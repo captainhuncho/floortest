@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { Waveform } from "@/components/Waveform";
 import { fmtBytes, fmtTime } from "@/lib/format";
+import { MIX_STATUS } from "@/lib/plans";
 import { GenrePicker } from "./GenrePicker";
 import { useTrackUpload } from "./useTrackUpload";
 
@@ -39,6 +40,7 @@ export function SubmitForm({
   const [drag, setDrag] = useState(false);
   const [track, setTrack] = useState({ title: "", artist: "" });
   const [genre, setGenre] = useState("");
+  const [mix, setMix] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function pick(f: File | undefined) {
@@ -50,6 +52,7 @@ export function SubmitForm({
     resetUpload();
     setTrack({ title: "", artist: "" });
     setGenre("");
+    setMix("");
   }
 
   function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -208,6 +211,27 @@ export function SubmitForm({
 
       <GenrePicker genres={genres} value={genre} onChange={setGenre} inputClass={L.input} labelClass={L.label} />
       <input type="hidden" name="genre" value={genre} />
+
+      <fieldset>
+        <legend className={L.label}>Demo status</legend>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {Object.entries(MIX_STATUS).map(([k, v]) => (
+            <button
+              key={k}
+              type="button"
+              aria-pressed={mix === k}
+              onClick={() => setMix(mix === k ? "" : k)}
+              className={`${L.round} border px-3.5 py-2 text-sm transition ${
+                mix === k ? "border-lime bg-lime/10 text-bone" : `${L.line} ${L.mute} hover:text-bone`
+              }`}
+            >
+              {mix === k && "✓ "}
+              {v}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+      <input type="hidden" name="mix_status" value={mix} />
 
       <details className={`group ${L.round} border ${L.line}`}>
         <summary className={`cursor-pointer list-none px-4 py-3 text-sm ${L.mute} hover:text-bone`}>
