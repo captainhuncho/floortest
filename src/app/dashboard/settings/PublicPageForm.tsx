@@ -1,7 +1,8 @@
 "use client";
 
+import { useActionForm } from "@/components/useActionForm";
 import { useRouter } from "next/navigation";
-import { useActionState, useRef, useState } from "react";
+import {useRef, useState} from "react";
 import { updatePublicPage } from "../actions";
 
 const STYLES = [
@@ -10,10 +11,10 @@ const STYLES = [
 ] as const;
 
 export function PublicPageForm({ handle, style, roleLine }: { handle: string; style: string; roleLine: string }) {
-  const [state, action, pending] = useActionState(updatePublicPage, undefined);
+  const [state, onSubmit, pending] = useActionForm(updatePublicPage, undefined);
   const [picked, setPicked] = useState(style);
   return (
-    <form action={action} className="mt-4 space-y-5">
+    <form onSubmit={onSubmit} className="mt-4 space-y-5">
       <fieldset>
         <legend className="label mb-2">Style</legend>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -89,7 +90,9 @@ export function CoverUpload({ handle, cover }: { handle: string; cover: string |
       <div>
         <p className="font-medium">Cover photo</p>
         <p className="text-sm text-mute">Portrait works best. JPG, PNG or WebP, up to 8 MB. Shown publicly on the Stage page.</p>
-        <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => upload(e.target.files?.[0])} />
+        <input ref={input} type="file"
+      aria-label="Choose a cover photo"
+      tabIndex={-1} accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => upload(e.target.files?.[0])} />
         <div className="mt-2 flex gap-2">
           <button type="button" className="btn-ghost btn-sm" disabled={busy} onClick={() => input.current?.click()}>
             {busy ? "Working…" : cover ? "Replace" : "Upload"}

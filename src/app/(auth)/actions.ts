@@ -6,7 +6,7 @@ import { now, q } from "@/lib/db";
 import { env } from "@/lib/env";
 import { APP_URL, sendMail } from "@/lib/mail";
 import { RESERVED_HANDLES } from "@/lib/plans";
-import { allow, requestIp } from "@/lib/ratelimit";
+import { allow, recentCount, record, requestIp } from "@/lib/ratelimit";
 
 export type FormState = { error?: string; ok?: boolean } | undefined;
 
@@ -80,12 +80,17 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
   const email = String(form.get("email") || "").trim().toLowerCase().slice(0, 200);
   const password = String(form.get("password") || "").slice(0, 200);
   const ip = await requestIp();
-  // Slows guessing both per connection and per account.
-  if (!(await allow("login_ip", ip, 20, 15 * 60_000)) || !(await allow("login_email", email, 10, 15 * 60_000)))
+  // Failed attempts only, both per connection and per account, so normal logins never lock anyone out.
+  const WINDOW = 15 * 60_000;
+  if ((await recentCount("login_fail_ip", ip, WINDOW)) >= 20 || (await recentCount("login_fail_email", email, WINDOW)) >= 10)
     return { error: "Too many attempts. Wait 15 minutes, or reset your password." };
   const row = await q.get<{ id: number; password_hash: string }>("SELECT id, password_hash FROM users WHERE email = ?", email);
   const ok = verifyPassword(password, row?.password_hash ?? DUMMY_HASH);
-  if (!row || !ok) return { error: "Email or password is incorrect." };
+  if (!row || !ok) {
+    await record("login_fail_ip", ip);
+    await record("login_fail_email", email);
+    return { error: "Email or password is incorrect." };
+  }
   await createSession(row.id);
   redirect("/dashboard/floor");
 }

@@ -38,3 +38,18 @@ print(json.dumps({n: hashlib.sha256(z.read(n)).hexdigest() for n in z.namelist()
   assert.equal(members["Crate/rekordbox.xml"], sha(new TextEncoder().encode("<xml/>")));
   assert.deepEqual(sent, ["xml", "wav"]);
 });
+
+test("an unreadable entry is skipped and the archive stays valid", async () => {
+  const zip = zipStream([
+    { name: "a.txt", open: async () => streamOf([new TextEncoder().encode("hello")]) },
+    { name: "missing.wav", open: async () => Promise.reject(new Error("NoSuchKey")) },
+    { name: "b.txt", open: async () => streamOf([new TextEncoder().encode("world")]) },
+  ]);
+  const bytes = new Uint8Array(await new Response(zip).arrayBuffer());
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "zip-test-"));
+  const file = path.join(dir, "t.zip");
+  fs.writeFileSync(file, bytes);
+  assert.match(execFileSync("unzip", ["-t", file]).toString(), /No errors detected/);
+  const names = execFileSync("python3", ["-c", "import zipfile,sys; print(','.join(zipfile.ZipFile(sys.argv[1]).namelist()))", file]).toString().trim();
+  assert.equal(names, "a.txt,b.txt");
+});

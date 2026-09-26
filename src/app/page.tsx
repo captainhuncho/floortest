@@ -18,10 +18,16 @@ const features = [
   ["Intake you control", "Closing dates per callout, upload limits, verified sender emails, blocking, and automatic deletion of what you don't keep."],
 ];
 
-export default async function Home() {
+export default async function Home({ searchParams }: { searchParams: Promise<{ deleted?: string }> }) {
   const user = await currentUser();
+  const deleted = !!(await searchParams).deleted;
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6">
+      {deleted && (
+        <p role="status" className="mt-6 rounded-lg border border-line bg-ink-2 px-4 py-3 text-sm">
+          Your account and everything in it have been deleted. Thanks for trying FloorTest.
+        </p>
+      )}
       <header className="flex items-center justify-between py-6">
         <Logo />
         <nav className="flex items-center gap-2">

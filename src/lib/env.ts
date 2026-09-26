@@ -54,6 +54,7 @@ export function configProblems() {
   }
   if (!env.email.resendKey) p.push("RESEND_API_KEY is not set: emails are only logged, never delivered.");
   if (!env.cronSecret) p.push("CRON_SECRET is not set: scheduled jobs are disabled.");
+  if (!env.supportEmail) p.push("SUPPORT_EMAIL is not set: contact-form messages aren't delivered anywhere.");
   if (env.signupMode === "invite" && !env.inviteCodes.length) p.push("SIGNUP_MODE is invite but BETA_INVITE_CODES is empty: nobody new can sign up.");
   return p;
 }

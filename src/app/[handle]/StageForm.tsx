@@ -232,6 +232,8 @@ export function StageForm({ handle, receiverName, collectionName, bpmRange, genr
             ref={inputRef}
             id="stage-file"
             type="file"
+      aria-label="Choose a WAV or MP3 file"
+      tabIndex={-1}
             accept=".wav,.mp3,audio/wav,audio/mpeg"
             className="sr-only"
             onChange={(e) => {

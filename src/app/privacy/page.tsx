@@ -34,7 +34,7 @@ export default function Privacy() {
           "Emails",
           [
             "We email senders about their tracks (delivered, listened, downloaded, replied) and receivers about new tracks and alerts, according to their notification settings. We keep a copy of each email so receivers can see what was sent on their behalf.",
-            "Email delivery may use a third-party provider (currently Resend when enabled).",
+            "Email delivery uses a third-party provider (Resend).",
           ],
         ],
         [
@@ -43,7 +43,13 @@ export default function Privacy() {
             "We use one cookie to keep you signed in and one to remember your preferred Submissions layout. The upload page remembers your name and email in your own browser so you don't retype them. We don't use advertising or tracking cookies.",
           ],
         ],
-        ["Your choices", ["You can ask us to export or delete your data through the Contact us page."]],
+        [
+          "Where it's stored",
+          [
+            "Account data and track history are kept in a hosted Postgres database, and audio files and cover photos in private cloud storage. Both are run by infrastructure providers acting on our behalf. Files are only ever served through short-lived, signed links.",
+          ],
+        ],
+        ["Your choices", ["Receivers can delete their account and every stored file from Settings at any time. Senders can ask us to delete their data through the Contact us page."]],
       ]}
     />
   );

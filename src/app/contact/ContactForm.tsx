@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionForm } from "@/components/useActionForm";
+
 import { sendContact } from "./actions";
 
 export function ContactForm({ name, email }: { name: string; email: string }) {
-  const [state, action, pending] = useActionState(sendContact, undefined);
+  const [state, onSubmit, pending] = useActionForm(sendContact, undefined);
   if (state?.ok)
     return (
       <div className="card p-6" role="status">
@@ -13,7 +14,7 @@ export function ContactForm({ name, email }: { name: string; email: string }) {
       </div>
     );
   return (
-    <form action={action} className="space-y-4">
+    <form onSubmit={onSubmit} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block space-y-1.5">
           <span className="label">Name</span>

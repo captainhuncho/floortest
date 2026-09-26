@@ -28,6 +28,14 @@ export function zipStream(entries: Entry[]): ReadableStream<Uint8Array> {
     const central: Buffer[] = [];
     let offset = 0;
     for (const e of entries) {
+      // Open before writing anything, so an unreadable file is skipped rather than corrupting the archive.
+      let body: ReadableStream<Uint8Array>;
+      try {
+        body = await e.open();
+      } catch (err) {
+        console.error("[zip] skipping unreadable entry", e.name, err);
+        continue;
+      }
       const name = Buffer.from(e.name, "utf8");
       const localOffset = offset;
       const header = Buffer.concat([u32(0x04034b50), u16(20), u16(FLAGS), u16(0), u16(time), u16(date), u32(0), u32(0), u32(0), u16(name.length), u16(0), name]);
@@ -35,7 +43,7 @@ export function zipStream(entries: Entry[]): ReadableStream<Uint8Array> {
       yield new Uint8Array(header);
       let crc = 0;
       let size = 0;
-      for await (const value of (await e.open()) as unknown as AsyncIterable<Uint8Array>) {
+      for await (const value of body as unknown as AsyncIterable<Uint8Array>) {
         crc = zlib.crc32(value, crc);
         size += value.byteLength;
         offset += value.byteLength;
@@ -55,7 +63,8 @@ export function zipStream(entries: Entry[]): ReadableStream<Uint8Array> {
       await e.onSent?.();
     }
     const cd = Buffer.concat(central);
-    yield new Uint8Array(Buffer.concat([cd, u32(0x06054b50), u16(0), u16(0), u16(entries.length), u16(entries.length), u32(cd.length), u32(offset), u16(0)]));
+    const count = central.length;
+    yield new Uint8Array(Buffer.concat([cd, u32(0x06054b50), u16(0), u16(0), u16(count), u16(count), u32(cd.length), u32(offset), u16(0)]));
   }
 
   // Pull-based, so storage is read only as fast as the receiver downloads.

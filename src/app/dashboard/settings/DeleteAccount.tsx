@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionForm } from "@/components/useActionForm";
+import {useState} from "react";
 import { deleteAccount } from "../actions";
 
 export function DeleteAccount({ handle }: { handle: string }) {
-  const [state, action, pending] = useActionState(deleteAccount, undefined);
+  const [state, onSubmit, pending] = useActionForm(deleteAccount, undefined);
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState("");
   if (!open)
@@ -14,7 +15,7 @@ export function DeleteAccount({ handle }: { handle: string }) {
       </button>
     );
   return (
-    <form action={action} className="space-y-3 rounded-lg border border-danger/40 bg-danger/5 p-4">
+    <form onSubmit={onSubmit} className="space-y-3 rounded-lg border border-danger/40 bg-danger/5 p-4">
       <p className="text-sm">
         This permanently deletes your link, every track and file you&apos;ve received, your contacts and all history. Senders&apos; receipts
         stop working. It can&apos;t be undone.

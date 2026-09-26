@@ -6,6 +6,7 @@
  * Queries use `?` placeholders; they're rewritten to $1, $2… before execution.
  * Kept free of `server-only` so scripts (seed, migrate) can import it.
  */
+import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { MIGRATIONS } from "./migrations";
 
@@ -91,6 +92,7 @@ async function openPostgres(url: string): Promise<Db> {
 
 async function openPglite(dir: string): Promise<Db> {
   const { PGlite, types } = await import("@electric-sql/pglite");
+  await mkdir(dir, { recursive: true }); // first run on a fresh install
   const pg = await PGlite.create(dir, { parsers: { [types.INT8]: (v: string) => Number(v) } });
   const rawOf = (q: { query: typeof pg.query }): Raw => ({
     async query(text, params) {

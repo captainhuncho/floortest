@@ -1,7 +1,8 @@
 "use client";
 
+import { useActionForm } from "@/components/useActionForm";
 import Link from "next/link";
-import { useActionState, useEffect, useState } from "react";
+import {useEffect, useState} from "react";
 import type { FormState } from "./actions";
 
 type Field = {
@@ -32,7 +33,7 @@ export function AuthForm({
   /** Shown instead of the form once the action returns { ok: true }. */
   success?: React.ReactNode;
 }) {
-  const [state, formAction, pending] = useActionState(action, undefined);
+  const [state, onSubmit, pending] = useActionForm(action, undefined);
   const [tz, setTz] = useState("UTC");
   // The browser's timezone, so digests and dates default to local time.
   useEffect(() => setTz(Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"), []);
@@ -40,7 +41,7 @@ export function AuthForm({
   if (state?.ok && success) return <div role="status">{success}</div>;
 
   return (
-    <form action={formAction} className="space-y-4" noValidate={false}>
+    <form onSubmit={onSubmit} className="space-y-4" noValidate={false}>
       <input type="hidden" name="tz" value={tz} />
       {Object.entries(hidden ?? {}).map(([k, v]) => (
         <input key={k} type="hidden" name={k} value={v} />

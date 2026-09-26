@@ -1,12 +1,13 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionForm } from "@/components/useActionForm";
+
 import { updateSettings } from "../actions";
 
 export function SettingsForm({ name, handle, base }: { name: string; handle: string; base: string }) {
-  const [state, action, pending] = useActionState(updateSettings, undefined);
+  const [state, onSubmit, pending] = useActionForm(updateSettings, undefined);
   return (
-    <form action={action} className="mt-4 space-y-4">
+    <form onSubmit={onSubmit} className="mt-4 space-y-4">
       <label className="block space-y-1.5">
         <span className="label">Display name</span>
         <input name="name" defaultValue={name} className="input" required />

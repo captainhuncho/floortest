@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useEffect, useState, useTransition } from "react";
+import { useActionForm } from "@/components/useActionForm";
+import {useEffect, useState, useTransition} from "react";
 import { useToast } from "@/components/Toast";
 import { sendDigestNow, updateNotifications } from "../actions";
 
@@ -30,7 +31,7 @@ function HourSelect({ name, value, label }: { name: string; value: number; label
 }
 
 export function NotificationsForm({ prefs, pending }: { prefs: Prefs; pending: number }) {
-  const [state, action, saving] = useActionState(updateNotifications, undefined);
+  const [state, onSubmit, saving] = useActionForm(updateNotifications, undefined);
   const [mode, setMode] = useState(prefs.mode);
   const [quiet, setQuiet] = useState(prefs.quietStart != null);
   const [tz, setTz] = useState(prefs.tz);
@@ -41,7 +42,7 @@ export function NotificationsForm({ prefs, pending }: { prefs: Prefs; pending: n
   useEffect(() => setTz(Intl.DateTimeFormat().resolvedOptions().timeZone || prefs.tz), [prefs.tz]);
 
   return (
-    <form action={action} className="space-y-7">
+    <form onSubmit={onSubmit} className="space-y-7">
       <input type="hidden" name="tz" value={tz} />
       <fieldset>
         <legend className="font-semibold">New tracks</legend>

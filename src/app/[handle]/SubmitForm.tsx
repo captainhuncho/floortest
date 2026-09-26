@@ -69,6 +69,8 @@ export function SubmitForm({ handle, receiverName, genres }: { handle: string; r
       ref={inputRef}
       id="track-file"
       type="file"
+      aria-label="Choose a WAV or MP3 file"
+      tabIndex={-1}
       accept=".wav,.mp3,audio/wav,audio/mpeg"
       className="sr-only"
       onChange={(e) => {
