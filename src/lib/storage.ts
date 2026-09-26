@@ -132,6 +132,10 @@ async function s3(): Promise<Storage> {
     endpoint: c.endpoint,
     forcePathStyle: c.forcePathStyle,
     credentials: c.accessKeyId && c.secretAccessKey ? { accessKeyId: c.accessKeyId, secretAccessKey: c.secretAccessKey } : undefined,
+    // Otherwise the SDK signs a CRC32 of an empty body into presigned PUTs, which R2 rejects
+    // for the real file (and browsers see it as a CORS failure).
+    requestChecksumCalculation: "WHEN_REQUIRED",
+    responseChecksumValidation: "WHEN_REQUIRED",
   });
   const Bucket = c.bucket!;
   const asciiName = (s: string) => s.replace(/[^\x20-\x7e]/g, "_").replace(/"/g, "");
