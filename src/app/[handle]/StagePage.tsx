@@ -2,7 +2,7 @@ import type { Collection, User } from "@/lib/db";
 import { fmtDay } from "@/lib/format";
 import { genresFor, MAX_UPLOAD_BYTES, RETAIN_UNREVIEWED_DAYS } from "@/lib/plans";
 import { mono, serif } from "../fonts";
-import { StageForm } from "./StageForm";
+import { SubmitForm } from "./SubmitForm";
 
 const initials = (name: string) =>
   name
@@ -42,130 +42,82 @@ export function StagePage({
 
   return (
     <div className={`${serif.variable} ${mono.variable} stage relative min-h-dvh overflow-clip bg-[#120d0a] text-bone`}>
-      {/* Atmosphere: a blurred wash of the cover everywhere, the sharp photo in the middle. */}
+      {/* Atmosphere: a blurred wash of the cover, or warm light when there isn't one. */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
         {cover ? (
-          <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={cover} alt="" className="absolute inset-0 h-full w-full scale-125 object-cover opacity-50 blur-3xl" />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={cover}
-              alt=""
-              className="absolute inset-x-0 top-0 h-[58vh] w-full object-cover object-top [mask-image:linear-gradient(to_bottom,black_55%,transparent)] lg:inset-y-0 lg:left-1/2 lg:h-full lg:w-[min(44vw,760px)] lg:-translate-x-1/2 lg:[mask-image:linear-gradient(to_right,transparent,black_18%,black_82%,transparent)]"
-            />
-          </>
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={cover} alt="" className="absolute inset-0 h-full w-full scale-125 object-cover opacity-45 blur-3xl" />
         ) : (
-          <div className="absolute inset-0 bg-[radial-gradient(60%_50%_at_50%_30%,#6b3f14_0%,transparent_70%),radial-gradient(40%_40%_at_80%_90%,#2b3a0a_0%,transparent_70%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(60%_50%_at_50%_20%,#6b3f14_0%,transparent_70%),radial-gradient(40%_40%_at_80%_90%,#2b3a0a_0%,transparent_70%)]" />
         )}
-        <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_50%_40%,transparent_40%,rgba(10,7,5,0.85)_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_50%_30%,transparent_35%,rgba(10,7,5,0.9)_100%)]" />
       </div>
 
-      {/* With a cover, the photo owns the middle column; without one, the two panels sit together. */}
-      <main
-        className={`relative z-10 mx-auto grid min-h-dvh gap-5 px-4 pb-8 sm:px-8 lg:items-start lg:gap-8 lg:py-12 ${
-          cover
-            ? "max-w-[1360px] pt-[22vh] lg:grid-cols-[minmax(0,460px)_minmax(120px,1fr)_minmax(0,520px)]"
-            : "max-w-[1080px] pt-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]"
-        }`}
-      >
-        {/* Receiver card: first on phones so the sender knows where they are. */}
-        <section
-          aria-labelledby="stage-h"
-          className={`stage-panel order-1 rounded-3xl p-5 sm:p-8 lg:sticky lg:top-12 lg:order-2 ${cover ? "lg:col-start-3" : "lg:col-start-2"} lg:row-start-1`}
-        >
-          <header className="flex items-center gap-4 border-b border-white/10 pb-6">
-            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-bone text-lg font-bold text-ink" aria-hidden>
-              {initials(receiver.name)}
-            </span>
-            <div className="min-w-0">
-              <p className="stage-label">Private submission link for</p>
-              <p className="truncate text-lg font-semibold">{receiver.name}</p>
+      <main className="relative z-10 mx-auto w-full max-w-[540px] px-4 py-8 sm:py-14">
+        <section aria-labelledby="stage-h" className="stage-panel rounded-3xl p-5 sm:p-7">
+          <header className="flex items-center gap-3.5">
+            {cover ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={cover} alt="" className="h-12 w-12 shrink-0 rounded-full object-cover" />
+            ) : (
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-bone font-bold text-ink" aria-hidden>
+                {initials(receiver.name)}
+              </span>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-semibold">{receiver.name}</p>
               <p className="stage-label truncate">
                 {receiver.role_line ? `${receiver.role_line} · ` : ""}@{receiver.handle}
               </p>
             </div>
+            <span
+              className={`shrink-0 rounded-full px-2.5 py-1 font-[family-name:var(--font-stage-mono)] text-[11px] font-medium uppercase ${
+                accepting ? "bg-lime text-ink" : "border border-white/15 text-[#bdb1a3]"
+              }`}
+            >
+              {accepting ? "Open" : "Paused"}
+            </span>
           </header>
 
-          <p className="stage-label mt-5 flex sm:mt-7 items-center gap-3 text-lime">
-            <span aria-hidden className="h-px w-10 bg-lime" />[{accepting ? "Now accepting unreleased music" : "Not accepting right now"}]
-          </p>
-          <h1 id="stage-h" className="mt-4 sm:mt-5 text-[clamp(2.1rem,4.4vw,4.25rem)] font-bold leading-[0.92] tracking-[-0.035em]">
+          <h1 id="stage-h" className="mt-6 text-[clamp(1.9rem,6vw,2.6rem)] font-bold leading-[0.95] tracking-[-0.03em]">
             Send the demo.
             <span className="block font-[family-name:var(--font-serif)] text-[1.08em] font-normal italic tracking-[-0.02em]">
               See what happens.
             </span>
           </h1>
-          <p className="mt-5 max-w-xl text-[15px] leading-relaxed sm:mt-6 sm:text-[17px] text-[#d8cfc4]">
-            Upload the actual WAV or MP3 straight into {first}&apos;s current collection. No streaming links and no profile needed.
-            {" "}
-            {first} downloads the original when they&apos;re ready to play it.
+          <p className="mt-3 text-[15px] leading-relaxed text-[#d8cfc4]">
+            The original WAV or MP3, straight to {first}. No links, no account.
           </p>
 
           {collection && (
-            <div className="mt-7 flex items-center gap-4 rounded-2xl border border-white/10 bg-black/25 p-5">
-              <svg aria-hidden viewBox="0 0 32 24" className="h-7 w-9 shrink-0 text-[#d8cfc4]" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <rect x="1" y="3" width="30" height="20" rx="2" />
-                <path d="M1 8h30" />
-              </svg>
-              <div className="min-w-0 flex-1">
-                <p className="stage-label">Current destination</p>
-                <p className="truncate text-xl font-semibold">{collection.name}</p>
-                <p className="stage-label normal-case tracking-normal">Chosen by {first} · your file lands here automatically</p>
+            <div className="mt-5 rounded-2xl border border-white/10 bg-black/25 px-4 py-3">
+              <p className="stage-label">Sending to</p>
+              <p className="truncate font-semibold">{collection.name}</p>
+              {(brief.length > 0 || collection.brief_note) && (
+                <p className="mt-1 font-[family-name:var(--font-stage-mono)] text-xs leading-relaxed text-[#bdb1a3]">
+                  {[...brief.map((b) => b.v), collection.brief_note].filter(Boolean).join(" · ")}
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="mt-6">
+            {accepting ? (
+              <SubmitForm handle={receiver.handle} receiverName={first} genres={genres.list} look="stage" />
+            ) : (
+              <div role="status" className="rounded-2xl border border-white/10 bg-black/25 p-5">
+                <p className="stage-label">Submissions paused</p>
+                <p className="mt-2 text-xl font-semibold">{closedReason}</p>
+                {note && <p className="mt-3 whitespace-pre-wrap border-l-2 border-lime pl-4">{note}</p>}
+                <p className="mt-2 text-[#d8cfc4]">This link stays the same. Check back when {first} is taking music again.</p>
+                {collection?.closes_at && <p className="stage-label mt-4">Closed {fmtDay(collection.closes_at, receiver.tz)}</p>}
               </div>
-              <span
-                className={`shrink-0 rounded-full px-3 py-1 font-[family-name:var(--font-stage-mono)] text-xs font-medium uppercase ${
-                  accepting ? "bg-lime text-ink" : "bg-white/10 text-[#d8cfc4]"
-                }`}
-              >
-                {accepting ? "Open" : "Closed"}
-              </span>
-            </div>
-          )}
-
-          {(brief.length > 0 || collection?.brief_note) && (
-            <dl className="mt-4 overflow-hidden rounded-2xl border border-white/10">
-              {brief.length > 0 && (
-                <div className={`grid divide-white/10 sm:divide-x ${brief.length === 3 ? "sm:grid-cols-3" : brief.length === 2 ? "sm:grid-cols-2" : ""}`}>
-                  {brief.map((b) => (
-                    <div key={b.k} className="border-b border-white/10 p-4 sm:border-b-0">
-                      <dt className="stage-label">{b.k}</dt>
-                      <dd className="mt-1.5 font-[family-name:var(--font-stage-mono)] text-sm leading-snug">{b.v}</dd>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {collection?.brief_note && (
-                <div className={`p-4 ${brief.length ? "border-t border-white/10" : ""}`}>
-                  <dt className="sr-only">Brief</dt>
-                  <dd className="font-[family-name:var(--font-stage-mono)] text-sm text-[#d8cfc4]">{collection.brief_note}</dd>
-                </div>
-              )}
-            </dl>
-          )}
+            )}
+          </div>
         </section>
-
-        <section aria-label="Submission" className="stage-panel order-2 rounded-3xl p-6 sm:p-7 lg:order-1 lg:col-start-1 lg:row-start-1">
-          {accepting ? (
-            <StageForm
-              handle={receiver.handle}
-              receiverName={receiver.name}
-              collectionName={collection?.name ?? null}
-              bpmRange={collection?.bpm_min && collection?.bpm_max ? [collection.bpm_min, collection.bpm_max] : null}
-              genres={genres.list}
-              maxMb={Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)}
-              retentionDays={RETAIN_UNREVIEWED_DAYS}
-            />
-          ) : (
-            <div role="status">
-              <p className="stage-label">Submissions paused</p>
-              <p className="mt-3 text-2xl font-semibold">{closedReason}</p>
-              {note && <p className="mt-4 whitespace-pre-wrap border-l-2 border-lime pl-4 text-bone">{note}</p>}
-              <p className="mt-3 text-[#d8cfc4]">This link stays the same. Check back when {first} is taking music again.</p>
-              {collection?.closes_at && <p className="stage-label mt-6">Closed {fmtDay(collection.closes_at, receiver.tz)}</p>}
-            </div>
-          )}
-        </section>
+        <p className="stage-label mt-5 text-center">
+          Kept private · unreviewed tracks deleted after {RETAIN_UNREVIEWED_DAYS} days · max {Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} MB
+        </p>
       </main>
     </div>
   );

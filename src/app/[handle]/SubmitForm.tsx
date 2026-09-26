@@ -7,7 +7,33 @@ import { fmtBytes, fmtTime } from "@/lib/format";
 import { GenrePicker } from "./GenrePicker";
 import { useTrackUpload } from "./useTrackUpload";
 
-export function SubmitForm({ handle, receiverName, genres }: { handle: string; receiverName: string; genres: string[] }) {
+/** Class names per page style; the flow is identical. */
+const LOOKS = {
+  classic: { card: "card", input: "input", label: "label", mute: "text-mute", line: "border-line", btn: "btn-lime", ghost: "btn-ghost", round: "rounded-md" },
+  stage: {
+    card: "rounded-2xl border border-white/10 bg-black/25",
+    input: "stage-input",
+    label: "stage-label",
+    mute: "text-[#bdb1a3]",
+    line: "border-white/10",
+    btn: "btn-lime rounded-xl",
+    ghost: "btn-ghost rounded-xl",
+    round: "rounded-xl",
+  },
+};
+
+export function SubmitForm({
+  handle,
+  receiverName,
+  genres,
+  look: lookName = "classic",
+}: {
+  handle: string;
+  receiverName: string;
+  genres: string[];
+  look?: keyof typeof LOOKS;
+}) {
+  const L = LOOKS[lookName];
   const { file, analysis, analyzing, phase, progress, error, token, sender, setSender, pick: pickFile, send, reset: resetUpload } =
     useTrackUpload(handle);
   const [drag, setDrag] = useState(false);
@@ -33,17 +59,17 @@ export function SubmitForm({ handle, receiverName, genres }: { handle: string; r
 
   if (phase === "done" && token) {
     return (
-      <div className="card p-6" role="status">
+      <div className={`${L.card} p-6`} role="status">
         <span className="chip border-lime/50 text-lime">Delivered</span>
         <h2 className="mt-4 text-2xl font-bold">&ldquo;{track.title}&rdquo; is on {receiverName}&apos;s desk.</h2>
-        <p className="mt-2 text-mute">
+        <p className={`mt-2 ${L.mute}`}>
           We sent a receipt to {sender.email}. You&apos;ll hear from us when it&apos;s listened to, downloaded or replied to.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
-          <Link href={`/t/${token}`} className="btn-lime">
+          <Link href={`/t/${token}`} className={L.btn}>
             View receipt
           </Link>
-          <button className="btn-ghost" onClick={reset}>
+          <button className={L.ghost} onClick={reset}>
             Send another track
           </button>
         </div>
@@ -89,12 +115,12 @@ export function SubmitForm({ handle, receiverName, genres }: { handle: string; r
   if (!file) {
     return (
       <div className="space-y-4">
-        <div {...dropProps} className={`card border-dashed p-8 text-center transition ${drag ? "border-lime bg-lime/5" : ""}`}>
+        <div {...dropProps} className={`${L.card} border-dashed p-8 text-center transition ${drag ? "border-lime bg-lime/5" : ""}`}>
           {fileInput}
-          <button type="button" onClick={() => inputRef.current?.click()} className="btn-lime px-6 py-3.5 text-base">
+          <button type="button" onClick={() => inputRef.current?.click()} className={`${L.btn} px-6 py-3.5 text-base`}>
             Choose WAV or MP3
           </button>
-          <p className="mt-3 text-sm text-mute">or drag it here · up to 250 MB</p>
+          <p className={`mt-3 text-sm ${L.mute}`}>or drag it here · up to 250 MB</p>
         </div>
         {errorBox}
       </div>
@@ -105,7 +131,7 @@ export function SubmitForm({ handle, receiverName, genres }: { handle: string; r
   return (
     <form onSubmit={submit} className="space-y-5" {...dropProps}>
       {fileInput}
-      <div className="card p-5">
+      <div className={`${L.card} p-5`}>
         <div className="flex items-baseline justify-between gap-4">
           <p className="truncate font-medium">{file.name}</p>
           {!busy && (
@@ -117,7 +143,7 @@ export function SubmitForm({ handle, receiverName, genres }: { handle: string; r
         <div className="mt-4">
           <Waveform peaks={analysis?.peaks ?? null} progress={busy ? progress : 0} height={48} dim={analyzing} />
         </div>
-        <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-mute tnum">
+        <p className={`mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm ${L.mute} tnum`}>
           <span>{/\.wav$/i.test(file.name) ? "WAV" : "MP3"}</span>
           <span>{fmtBytes(file.size)}</span>
           {analyzing ? (
@@ -135,9 +161,9 @@ export function SubmitForm({ handle, receiverName, genres }: { handle: string; r
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block space-y-1.5">
-          <span className="label">Track title</span>
+          <span className={L.label}>Track title</span>
           <input
-            className="input"
+            className={L.input}
             name="title"
             required
             value={track.title}
@@ -145,9 +171,9 @@ export function SubmitForm({ handle, receiverName, genres }: { handle: string; r
           />
         </label>
         <label className="block space-y-1.5">
-          <span className="label">Artist</span>
+          <span className={L.label}>Artist</span>
           <input
-            className="input"
+            className={L.input}
             name="artist"
             placeholder="Defaults to your name"
             value={track.artist}
@@ -155,9 +181,9 @@ export function SubmitForm({ handle, receiverName, genres }: { handle: string; r
           />
         </label>
         <label className="block space-y-1.5">
-          <span className="label">Your name</span>
+          <span className={L.label}>Your name</span>
           <input
-            className="input"
+            className={L.input}
             name="name"
             required
             autoComplete="name"
@@ -166,9 +192,9 @@ export function SubmitForm({ handle, receiverName, genres }: { handle: string; r
           />
         </label>
         <label className="block space-y-1.5">
-          <span className="label">Your email</span>
+          <span className={L.label}>Your email</span>
           <input
-            className="input"
+            className={L.input}
             name="email"
             type="email"
             required
@@ -176,26 +202,26 @@ export function SubmitForm({ handle, receiverName, genres }: { handle: string; r
             value={sender.email}
             onChange={(e) => setSender((s) => ({ ...s, email: e.target.value }))}
           />
-          <span className="block text-sm text-mute">For your receipt and updates only.</span>
+          <span className={`block text-sm ${L.mute}`}>For your receipt and updates only.</span>
         </label>
       </div>
 
-      <GenrePicker genres={genres} value={genre} onChange={setGenre} inputClass="input" labelClass="label" />
+      <GenrePicker genres={genres} value={genre} onChange={setGenre} inputClass={L.input} labelClass={L.label} />
       <input type="hidden" name="genre" value={genre} />
 
-      <details className="group rounded-md border border-line">
-        <summary className="cursor-pointer list-none px-4 py-3 text-sm text-mute hover:text-bone">
+      <details className={`group ${L.round} border ${L.line}`}>
+        <summary className={`cursor-pointer list-none px-4 py-3 text-sm ${L.mute} hover:text-bone`}>
           <span className="group-open:hidden">+ Add a message or release status (optional)</span>
           <span className="hidden group-open:inline">− Message and release status</span>
         </summary>
-        <div className="space-y-4 border-t border-line p-4">
+        <div className={`space-y-4 border-t ${L.line} p-4`}>
           <label className="block space-y-1.5">
-            <span className="label">Message for {receiverName}</span>
-            <textarea className="input min-h-24 resize-y" name="message" maxLength={2000} placeholder="Travels privately with the track." />
+            <span className={L.label}>Message for {receiverName}</span>
+            <textarea className={`${L.input} min-h-24 resize-y`} name="message" maxLength={2000} placeholder="Travels privately with the track." />
           </label>
           <label className="block space-y-1.5">
-            <span className="label">Release status</span>
-            <select name="release_status" className="input" defaultValue="">
+            <span className={L.label}>Release status</span>
+            <select name="release_status" className={L.input} defaultValue="">
               <option value="">Not specified</option>
               <option value="unsigned">Unreleased demo</option>
               <option value="signed">Signed, forthcoming</option>
@@ -207,7 +233,7 @@ export function SubmitForm({ handle, receiverName, genres }: { handle: string; r
 
       {errorBox}
 
-      <button className="btn-lime w-full py-3.5 text-base" disabled={busy || analyzing}>
+      <button className={`${L.btn} w-full py-3.5 text-base`} disabled={busy || analyzing}>
         {busy ? `Uploading… ${Math.round(progress * 100)}%` : analyzing ? "Reading audio…" : `Send to ${receiverName}`}
       </button>
     </form>
