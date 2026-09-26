@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #10110f;
+  --color-ink-2: #171815;
+  --color-ink-3: #1f201c;
+  --color-line: #2c2e29;
+  --color-bone: #f1f1eb;
+  --color-mute: #a3a69b; /* ≈7:1 on ink, ≈6.5:1 on panels */
+  --color-dim: #85887f; /* decorative only; ≥4.5:1 on ink */
+  --color-lime: #d5ff48;
+  --color-olive: #536400;
+  --color-danger: #ff6b5a;
+  --font-sans: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+html, body { background: var(--color-ink); color: var(--color-bone); }
+body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+/* Visible focus everywhere, for keyboard users only. */
+:focus-visible { outline: 2px solid var(--color-lime); outline-offset: 2px; border-radius: 4px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+::selection { background: var(--color-lime); color: var(--color-ink); }
+
+@utility label { @apply text-xs font-medium uppercase tracking-[0.12em] text-mute; }
+@utility input {
+  @apply w-full rounded-md border border-line bg-ink-2 px-3 py-2.5 text-sm text-bone placeholder:text-dim outline-none transition focus:border-lime/70 focus:ring-2 focus:ring-lime/15;
+}
+@utility btn { @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40; }
+@utility btn-lime { @apply btn bg-lime text-ink hover:bg-[#e2ff7a]; }
+@utility btn-ghost { @apply btn border border-line text-bone hover:border-mute hover:bg-ink-3; }
+@utility btn-sm { @apply min-h-9 px-3! py-1.5! text-sm!; }
+@utility card { @apply rounded-xl border border-line bg-ink-2; }
+@utility chip { @apply inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap; }
+@utility tnum { font-variant-numeric: tabular-nums; }
+
+/* ── Stage public page ───────────────────────────────────────────── */
+@utility stage-panel {
+  background: rgb(26 19 15 / 0.84);
+  border: 1px solid rgb(255 255 255 / 0.09);
+  box-shadow: 0 30px 80px -20px rgb(0 0 0 / 0.7);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+}
+/* Mono labels stay at 12px+ and ~8:1 contrast on the warm panel. */
+@utility stage-label {
+  font-family: var(--font-stage-mono), var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #bdb1a3;
+}
+@utility stage-input {
+  @apply w-full rounded-xl border border-[#4a3d33] bg-black/25 px-4 py-3.5 text-[15px] text-bone outline-none transition placeholder:text-[#8f8377] focus:border-lime/70 focus:ring-2 focus:ring-lime/15;
+  font-family: var(--font-stage-mono), var(--font-mono);
+}
