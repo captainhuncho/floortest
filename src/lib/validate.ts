@@ -1,12 +1,12 @@
-import "server-only";
-
 /**
  * Structural validation of uploaded audio. This is not antivirus scanning: it rejects anything
  * that isn't a well-formed WAV or MPEG audio stream, which covers disguised executables, archives
  * and documents. A malware scanner (e.g. ClamAV) should be added before public launch.
  */
-export async function validateAudio(file: File): Promise<{ ok: true; kind: "wav" | "mp3" } | { ok: false; reason: string }> {
-  const head = new Uint8Array(await file.slice(0, 1024 * 1024).arrayBuffer());
+type Reader = { size: number; read(start: number, end: number): Promise<Uint8Array> };
+
+export async function validateAudio(file: Reader): Promise<{ ok: true; kind: "wav" | "mp3" } | { ok: false; reason: string }> {
+  const head = await file.read(0, Math.min(file.size, 1024 * 1024) - 1);
   const ascii = (s: number, e: number) => String.fromCharCode(...head.slice(s, e));
   const view = new DataView(head.buffer, head.byteOffset, head.byteLength);
 
@@ -44,7 +44,7 @@ export async function validateAudio(file: File): Promise<{ ok: true; kind: "wav"
     off = 10 + size + (head[5] & 0x10 ? 10 : 0);
     if (off >= file.size) return { ok: false, reason: "This MP3 has tags but no audio." };
     if (off + 8192 > head.length) {
-      const more = new Uint8Array(await file.slice(off, off + 64 * 1024).arrayBuffer());
+      const more = await file.read(off, Math.min(file.size, off + 64 * 1024) - 1);
       return findFrames(more, 0) ? { ok: true, kind: "mp3" } : { ok: false, reason: "That file doesn't look like MP3 audio." };
     }
   }

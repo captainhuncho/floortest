@@ -1,12 +1,12 @@
 import { requireUser } from "@/lib/auth";
-import { db } from "@/lib/db";
+import {q } from "@/lib/db";
 import { fmtDate } from "@/lib/format";
 
 type Mail = { id: number; to_email: string; subject: string; body: string; status: string; created_at: number };
 
 export default async function Emails() {
   const user = await requireUser();
-  const mails = db().prepare("SELECT * FROM outbox WHERE user_id = ? AND audience = 'sender' ORDER BY created_at DESC LIMIT 200").all(user.id) as Mail[];
+  const mails = (await q.all<Mail>("SELECT * FROM outbox WHERE user_id = ? AND audience = 'sender' ORDER BY created_at DESC LIMIT 200", user.id));
   const live = !!process.env.RESEND_API_KEY;
   return (
     <div className="px-4 py-6 sm:px-8">

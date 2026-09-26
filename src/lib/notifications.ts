@@ -1,22 +1,22 @@
 import "server-only";
 import { activeCollection, capacity, isClosed, isPaused } from "./core";
-import { db, now, type User } from "./db";
+import { now, q, type User } from "./db";
 
 export type Notice = { id: string; title: string; detail: string; href: string; at: number; unread: boolean; tone: "info" | "alert" };
 
 const DAY = 86_400_000;
+const shortDate = (ts: number, tz: string) => new Date(ts).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: tz });
 
 /** New submissions and auto-deletions since the bell was last opened, plus live alerts about the link. */
-export function notificationsFor(user: User) {
-  const seen = (db().prepare("SELECT notifications_seen_at AS s FROM users WHERE id = ?").get(user.id) as { s: number | null }).s ?? 0;
-  const events = db()
-    .prepare(
-      `SELECT e.id, e.type, e.track_id, e.created_at, t.title, s.name AS sender, c.name AS collection
-       FROM events e JOIN senders s ON s.id = e.sender_id LEFT JOIN tracks t ON t.id = e.track_id
-       LEFT JOIN collections c ON c.id = t.collection_id
-       WHERE e.user_id = ? AND e.type IN ('submitted', 'expired') ORDER BY e.created_at DESC LIMIT 20`,
-    )
-    .all(user.id) as { id: number; type: string; track_id: number; created_at: number; title: string; sender: string; collection: string | null }[];
+export async function notificationsFor(user: User) {
+  const seen = (await q.get<{ s: number | null }>("SELECT notifications_seen_at AS s FROM users WHERE id = ?", user.id))?.s ?? 0;
+  const events = await q.all<{ id: number; type: string; track_id: number; created_at: number; title: string; sender: string; collection: string | null }>(
+    `SELECT e.id, e.type, e.track_id, e.created_at, t.title, s.name AS sender, c.name AS collection
+     FROM events e JOIN senders s ON s.id = e.sender_id LEFT JOIN tracks t ON t.id = e.track_id
+     LEFT JOIN collections c ON c.id = t.collection_id
+     WHERE e.user_id = ? AND e.type IN ('submitted', 'expired') ORDER BY e.created_at DESC LIMIT 20`,
+    user.id,
+  );
 
   const items: Notice[] = events.map((e) => ({
     id: `e${e.id}`,
@@ -28,26 +28,26 @@ export function notificationsFor(user: User) {
     tone: "info",
   }));
 
-  // Live alerts: always shown while true, counted until the bell is opened.
+  // Live alerts: shown while true.
   const alerts: Notice[] = [];
-  const c = activeCollection(user);
+  const c = await activeCollection(user);
   const t = now();
   if (isPaused(user))
     alerts.push({
       id: "paused",
       title: "Submissions are paused",
-      detail: user.pause_until ? `Reopens ${new Date(user.pause_until).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : "Resume from your profile menu.",
-      href: "/dashboard",
+      detail: user.pause_until ? `Reopens ${shortDate(user.pause_until, user.tz)}` : "Switch them back on in the sidebar.",
+      href: "/dashboard/floor",
       at: user.paused_at!,
       unread: false,
       tone: "alert",
     });
-  if (capacity(user).full)
-    alerts.push({ id: "full", title: "Your desk is full", detail: "Your link has stopped taking uploads. Delete tracks to free space, or upgrade.", href: "/dashboard/settings", at: t, unread: true, tone: "alert" });
+  if ((await capacity(user)).full)
+    alerts.push({ id: "full", title: "Your desk is full", detail: "Your link has stopped taking uploads.", href: "/dashboard/settings", at: t, unread: true, tone: "alert" });
   if (c && isClosed(c))
     alerts.push({ id: "closed", title: `“${c.name}” is closed`, detail: "Your link isn't taking uploads. Pick an open collection.", href: "/dashboard/collections", at: c.closes_at!, unread: c.closes_at! > seen, tone: "alert" });
   else if (c?.closes_at && c.closes_at - t < 3 * DAY)
-    alerts.push({ id: "closing", title: `“${c.name}” closes soon`, detail: `Closes ${new Date(c.closes_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`, href: "/dashboard/collections", at: t, unread: t - DAY > seen, tone: "alert" });
+    alerts.push({ id: "closing", title: `“${c.name}” closes soon`, detail: `Closes ${shortDate(c.closes_at, user.tz)}`, href: "/dashboard/collections", at: t, unread: t - DAY > seen, tone: "alert" });
 
   const all = [...alerts, ...items];
   return { items: all, unread: all.filter((n) => n.unread).length };

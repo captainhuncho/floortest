@@ -1,5 +1,5 @@
 import { requireUser } from "@/lib/auth";
-import { db } from "@/lib/db";
+import {q } from "@/lib/db";
 import { fmtDate } from "@/lib/format";
 import { prefsFor } from "@/lib/notify";
 import { NotificationsForm } from "./NotificationsForm";
@@ -10,14 +10,10 @@ type Mail = { id: number; subject: string; body: string; status: string; created
 
 export default async function Notifications() {
   const user = await requireUser();
-  const p = prefsFor(user.id);
-  const mails = db()
-    .prepare("SELECT id, subject, body, status, created_at FROM outbox WHERE user_id = ? AND audience = 'receiver' ORDER BY created_at DESC LIMIT 20")
-    .all(user.id) as Mail[];
+  const p = await prefsFor(user.id);
+  const mails = (await q.all<Mail>("SELECT id, subject, body, status, created_at FROM outbox WHERE user_id = ? AND audience = 'receiver' ORDER BY created_at DESC LIMIT 20", user.id));
   const pending = (
-    db()
-      .prepare("SELECT COUNT(*) AS n FROM tracks WHERE user_id = ? AND deleted_at IS NULL AND receiver_notified_at IS NULL AND decision IS NULL")
-      .get(user.id) as { n: number }
+    (await q.get<{ n: number }>("SELECT COUNT(*) AS n FROM tracks WHERE user_id = ? AND deleted_at IS NULL AND receiver_notified_at IS NULL AND decision IS NULL", user.id))!
   ).n;
 
   return (

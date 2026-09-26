@@ -10,7 +10,7 @@ export const runtime = "nodejs";
  * ?format=svg (default) | png   &download=1 to save as a file.
  */
 export async function GET(req: Request, ctx: RouteContext<"/api/qr/[handle]">) {
-  const u = userByHandle((await ctx.params).handle);
+  const u = await userByHandle((await ctx.params).handle);
   if (!u) return new Response("Not found", { status: 404 });
   const url = new URL(req.url);
   const png = url.searchParams.get("format") === "png";

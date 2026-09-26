@@ -1,6 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { capacity, REFERRAL_BONUS, referralCodeFor } from "@/lib/core";
-import { db } from "@/lib/db";
+import {q } from "@/lib/db";
 import { fmtDay } from "@/lib/format";
 import { APP_URL } from "@/lib/mail";
 import { InviteLink } from "./InviteLink";
@@ -11,13 +11,11 @@ type Invitee = { name: string; created_at: number; referral_rewarded_at: number 
 
 export default async function Referrals() {
   const user = await requireUser();
-  const code = referralCodeFor(user.id);
+  const code = await referralCodeFor(user.id);
   const link = `${APP_URL}/signup?ref=${code}`;
-  const invited = db()
-    .prepare("SELECT name, created_at, referral_rewarded_at FROM users WHERE referred_by = ? ORDER BY created_at DESC")
-    .all(user.id) as Invitee[];
+  const invited = (await q.all<Invitee>("SELECT name, created_at, referral_rewarded_at FROM users WHERE referred_by = ? ORDER BY created_at DESC", user.id));
   const active = invited.filter((i) => i.referral_rewarded_at).length;
-  const { bonus } = capacity(user);
+  const { bonus } = await capacity(user);
 
   return (
     <div className="max-w-3xl space-y-10 px-4 py-6 sm:px-8">

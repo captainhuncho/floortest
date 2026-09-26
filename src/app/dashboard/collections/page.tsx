@@ -10,7 +10,7 @@ export const metadata = { title: "Collections — FloorTest" };
 
 export default async function Collections() {
   const user = await requireUser();
-  const collections = collectionsFor(user.id);
+  const collections = await collectionsFor(user.id);
   return (
     <div className="max-w-4xl px-4 py-6 sm:px-8">
       <h1 className="text-3xl font-bold tracking-tight">Collections</h1>

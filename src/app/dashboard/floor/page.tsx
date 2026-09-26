@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { activeCollection, capacity, collectionsFor, isClosed, isPaused } from "@/lib/core";
-import { db, type EventRow } from "@/lib/db";
+import {q, type EventRow } from "@/lib/db";
 import { fmtDay } from "@/lib/format";
 import { APP_URL } from "@/lib/mail";
 import { localHour, prefsFor } from "@/lib/notify";
@@ -46,12 +46,12 @@ const delta = (now: number, prev: number) => {
 export default async function TheFloor({ searchParams }: { searchParams: Promise<{ welcome?: string }> }) {
   const user = await requireUser();
   const welcome = !!(await searchParams).welcome;
-  const prefs = prefsFor(user.id);
-  const stats = homeStats(user.id, prefs.tz);
-  const mix = genreMix(user.id);
-  const collections = collectionsFor(user.id);
-  const active = activeCollection(user);
-  const cap = capacity(user);
+  const prefs = await prefsFor(user.id);
+  const stats = await homeStats(user.id, prefs.tz);
+  const mix = await genreMix(user.id);
+  const collections = await collectionsFor(user.id);
+  const active = await activeCollection(user);
+  const cap = await capacity(user);
   const paused = isPaused(user);
   const link = `${APP_URL}/${user.handle}`;
   const hour = localHour(prefs.tz);
@@ -59,30 +59,18 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   const first = user.name.split(/\s+/)[0];
 
   const upNext = (
-    db()
-      .prepare(
-        `SELECT t.id, t.title, t.artist, t.genre, t.duration, t.peaks, t.played_at, s.name AS sender FROM tracks t
+    (await q.all<{ id: number; title: string; artist: string; genre: string; duration: number | null; peaks: string | null; played_at: number | null; sender: string }>(`SELECT t.id, t.title, t.artist, t.genre, t.duration, t.peaks, t.played_at, s.name AS sender FROM tracks t
          JOIN senders s ON s.id = t.sender_id WHERE t.user_id = ? AND t.deleted_at IS NULL AND t.decision IS NULL
-         ORDER BY t.created_at LIMIT 4`,
-      )
-      .all(user.id) as { id: number; title: string; artist: string; genre: string; duration: number | null; peaks: string | null; played_at: number | null; sender: string }[]
+         ORDER BY t.created_at LIMIT 4`, user.id))
   ).map((t) => ({ ...t, peaks: t.peaks ? JSON.parse(t.peaks) : null, played: !!t.played_at }));
 
-  const events = db()
-    .prepare(
-      `SELECT e.*, t.title AS track_title, s.name AS sender_name FROM events e
+  const events = (await q.all<EventRow & { track_title: string | null; sender_name: string }>(`SELECT e.*, t.title AS track_title, s.name AS sender_name FROM events e
        LEFT JOIN tracks t ON t.id = e.track_id JOIN senders s ON s.id = e.sender_id
-       WHERE e.user_id = ? AND e.type != 'note' ORDER BY e.created_at DESC LIMIT 6`,
-    )
-    .all(user.id) as (EventRow & { track_title: string | null; sender_name: string })[];
+       WHERE e.user_id = ? AND e.type != 'note' ORDER BY e.created_at DESC LIMIT 6`, user.id));
 
-  const contacts = db()
-    .prepare(
-      `SELECT s.id, s.name, s.verified_at, COUNT(t.id) AS sent, COUNT(CASE WHEN t.decision = 'kept' THEN 1 END) AS kept
+  const contacts = (await q.all<{ id: number; name: string; verified_at: number | null; sent: number; kept: number }>(`SELECT s.id, s.name, s.verified_at, COUNT(t.id) AS sent, COUNT(CASE WHEN t.decision = 'kept' THEN 1 END) AS kept
        FROM senders s JOIN tracks t ON t.sender_id = s.id WHERE s.user_id = ?
-       GROUP BY s.id ORDER BY kept DESC, sent DESC, MAX(t.created_at) DESC LIMIT 4`,
-    )
-    .all(user.id) as { id: number; name: string; verified_at: number | null; sent: number; kept: number }[];
+       GROUP BY s.id ORDER BY kept DESC, sent DESC, MAX(t.created_at) DESC LIMIT 4`, user.id));
 
   // Link health: the one thing to fix, if anything.
   const openAlternative = collections.find((c) => !isClosed(c) && c.id !== active?.id);
@@ -125,9 +113,9 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
       ),
     };
 
-  const anyDecision = !!db().prepare("SELECT 1 FROM tracks WHERE user_id = ? AND decision IS NOT NULL LIMIT 1").get(user.id);
-  const anySet = !!db().prepare("SELECT 1 FROM tracks WHERE user_id = ? AND decision = 'kept' AND downloaded_at IS NOT NULL LIMIT 1").get(user.id);
-  const anyTrack = !!db().prepare("SELECT 1 FROM tracks WHERE user_id = ? LIMIT 1").get(user.id);
+  const anyDecision = !!(await q.get<Record<string, unknown>>("SELECT 1 FROM tracks WHERE user_id = ? AND decision IS NOT NULL LIMIT 1", user.id));
+  const anySet = !!(await q.get<Record<string, unknown>>("SELECT 1 FROM tracks WHERE user_id = ? AND decision = 'kept' AND downloaded_at IS NOT NULL LIMIT 1", user.id));
+  const anyTrack = !!(await q.get<Record<string, unknown>>("SELECT 1 FROM tracks WHERE user_id = ? LIMIT 1", user.id));
   const steps = [
     { done: anyTrack, label: "Share your link and receive a track", href: "/dashboard/settings" },
     { done: !!active && genresFor(active).custom, label: "Choose genres for your current callout", href: "/dashboard/collections" },

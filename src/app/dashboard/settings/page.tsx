@@ -2,20 +2,21 @@ import Link from "next/link";
 import { logout } from "../../(auth)/actions";
 import { requireUser } from "@/lib/auth";
 import { capacity } from "@/lib/core";
-import { db, type Sender } from "@/lib/db";
+import {q, type Sender } from "@/lib/db";
 import { fmtDay } from "@/lib/format";
 import { APP_URL } from "@/lib/mail";
 import { PLANS, RATE_PER_EMAIL_PER_DAY, RATE_PER_IP_PER_HOUR, RETAIN_PASSED_DAYS, RETAIN_UNREVIEWED_DAYS, SIGNALS } from "@/lib/plans";
 import { blockSender, setPlan } from "../actions";
 import { CoverUpload, PublicPageForm } from "./PublicPageForm";
+import { DeleteAccount } from "./DeleteAccount";
 import { SettingsForm } from "./SettingsForm";
 
 export const metadata = { title: "Settings — FloorTest" };
 
 export default async function Settings() {
   const user = await requireUser();
-  const cap = capacity(user);
-  const blocked = db().prepare("SELECT * FROM senders WHERE user_id = ? AND blocked_at IS NOT NULL ORDER BY blocked_at DESC").all(user.id) as Sender[];
+  const cap = await capacity(user);
+  const blocked = (await q.all<Sender>("SELECT * FROM senders WHERE user_id = ? AND blocked_at IS NOT NULL ORDER BY blocked_at DESC", user.id));
   return (
     <div className="max-w-3xl space-y-10 px-4 py-6 sm:px-8">
       <h1 className="text-3xl font-bold tracking-tight">Link, plan & storage</h1>
@@ -33,7 +34,7 @@ export default async function Settings() {
         </h2>
         <p className="mt-1 text-sm text-mute">What senders see at your link. Set each callout&apos;s brief on the Collections page.</p>
         <PublicPageForm handle={user.handle} style={user.page_style} roleLine={user.role_line} />
-        <CoverUpload handle={user.handle} cover={user.cover_file} />
+        <CoverUpload handle={user.handle} cover={user.cover_key} />
       </section>
 
       <section aria-labelledby="plan-h">
@@ -136,9 +137,17 @@ export default async function Settings() {
         )}
       </section>
 
-      <form action={logout} className="border-t border-line pt-6">
-        <button className="btn-ghost btn-sm">Log out</button>
-      </form>
+      <section aria-labelledby="danger-h" className="border-t border-line pt-6">
+        <h2 id="danger-h" className="text-lg font-semibold">
+          Account
+        </h2>
+        <div className="mt-3 flex flex-wrap items-start gap-3">
+          <form action={logout}>
+            <button className="btn-ghost btn-sm">Log out</button>
+          </form>
+          <DeleteAccount handle={user.handle} />
+        </div>
+      </section>
     </div>
   );
 }

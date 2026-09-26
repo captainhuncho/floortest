@@ -49,42 +49,70 @@ export function useTrackUpload(handle: string) {
     return tags;
   }
 
-  function send(fd: FormData) {
+  /**
+   * Three steps: ask the server for an upload URL (it checks the rules first), PUT the file
+   * straight to storage with progress, then ask the server to verify it and create the track.
+   */
+  async function send(fd: FormData) {
     if (!file) return setError("Choose a WAV or MP3 file.");
-    fd.set("file", file);
-    if (analysis) {
-      fd.set("duration", String(analysis.duration));
-      fd.set("peaks", JSON.stringify(analysis.peaks));
-      if (analysis.bpm) fd.set("bpm", String(analysis.bpm));
-    }
+    const field = (k: string) => String(fd.get(k) ?? "");
     try {
-      localStorage.setItem(SENDER_KEY, JSON.stringify({ name: fd.get("name"), email: fd.get("email") }));
+      localStorage.setItem(SENDER_KEY, JSON.stringify({ name: field("name"), email: field("email") }));
     } catch {}
-
     setError(null);
     setPhase("uploading");
     setProgress(0);
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", `/api/submit/${handle}`);
-    xhr.upload.onprogress = (ev) => ev.lengthComputable && setProgress(ev.loaded / ev.total);
-    xhr.onload = () => {
-      let body: { token?: string; error?: string } = {};
-      try {
-        body = JSON.parse(xhr.responseText);
-      } catch {}
-      if (xhr.status === 200 && body.token) {
-        setToken(body.token);
-        setPhase("done");
-      } else {
-        setError(body.error || "Upload failed. Your details are still here, so you can try again.");
-        setPhase("idle");
-      }
-    };
-    xhr.onerror = () => {
-      setError("Network error. Your details are still here. Check your connection and try again.");
+    const fail = (msg: string) => {
+      setError(msg);
       setPhase("idle");
     };
-    xhr.send(fd);
+    const json = async (res: Response) => ((await res.json().catch(() => ({}))) as { error?: string; token?: string; uploadId?: string; target?: { url: string; headers: Record<string, string> } });
+
+    try {
+      const start = await fetch(`/api/submit/${handle}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: field("name"),
+          email: field("email"),
+          title: field("title"),
+          artist: field("artist"),
+          message: field("message"),
+          genre: field("genre"),
+          release_status: field("release_status"),
+          mix_status: field("mix_status"),
+          fileName: file.name,
+          size: file.size,
+        }),
+      });
+      const started = await json(start);
+      if (!start.ok || !started.uploadId || !started.target) return fail(started.error || "Couldn't start the upload. Please try again.");
+
+      const put = await new Promise<number>((resolve) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", started.target!.url);
+        for (const [k, v] of Object.entries(started.target!.headers)) xhr.setRequestHeader(k, v);
+        xhr.upload.onprogress = (ev) => ev.lengthComputable && setProgress((ev.loaded / ev.total) * 0.97);
+        xhr.onload = () => resolve(xhr.status);
+        xhr.onerror = () => resolve(0);
+        xhr.send(file);
+      });
+      if (put < 200 || put >= 300)
+        return fail(put === 0 ? "Network error. Your details are still here. Check your connection and try again." : "The upload didn't go through. Please try again.");
+
+      const done = await fetch(`/api/submit/${handle}/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uploadId: started.uploadId, duration: analysis?.duration, bpm: analysis?.bpm, peaks: analysis?.peaks }),
+      });
+      const finished = await json(done);
+      if (!done.ok || !finished.token) return fail(finished.error || "Upload failed. Your details are still here, so you can try again.");
+      setProgress(1);
+      setToken(finished.token);
+      setPhase("done");
+    } catch {
+      fail("Network error. Your details are still here. Check your connection and try again.");
+    }
   }
 
   function reset() {

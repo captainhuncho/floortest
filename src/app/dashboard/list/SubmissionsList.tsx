@@ -1,5 +1,5 @@
 import { activeCollection, capacity, collectionsFor, isClosed, isPaused } from "@/lib/core";
-import { db, type Track, type User } from "@/lib/db";
+import { q, likeContains, type Track, type User } from "@/lib/db";
 import { APP_URL } from "@/lib/mail";
 import { MIX_STATUS, RELEASE_STATUS } from "@/lib/plans";
 import { ExportButton } from "../ExportButton";
@@ -21,14 +21,14 @@ const TYPE_SHORT: Record<string, string> = { unsigned: "Demo", signed: "Signed",
 const MIX_SHORT: Record<string, string> = { raw: "Work in progress", mixed: "Unmastered", mastered: "Mastered" };
 
 /** Dense, scan-first Submissions: every track on one screen, decisions inline. */
-export function SubmissionsList({ user, sp }: { user: User; sp: Search }) {
+export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) {
   const status = STATUS.find(([k]) => k === sp.s) ?? STATUS[0];
-  const collections = collectionsFor(user.id);
+  const collections = await collectionsFor(user.id);
   const collection = sp.c ? collections.find((c) => String(c.id) === sp.c) : undefined;
   const type = sp.type && sp.type in RELEASE_STATUS ? sp.type : undefined;
   const senderId = sp.sender ? Number(sp.sender) : undefined;
   const genre = sp.genre ? sp.genre.slice(0, 40) : undefined;
-  const q = (sp.q || "").trim().slice(0, 100);
+  const search = (sp.q || "").trim().slice(0, 100);
 
   const where = ["t.user_id = ?", "t.deleted_at IS NULL", status[2]];
   const args: (string | number)[] = [user.id];
@@ -36,35 +36,21 @@ export function SubmissionsList({ user, sp }: { user: User; sp: Search }) {
   if (type) (where.push("t.release_status = ?"), args.push(type));
   if (senderId) (where.push("t.sender_id = ?"), args.push(senderId));
   if (genre) (where.push("t.genre = ?"), args.push(genre));
-  if (q) {
-    where.push("(t.title LIKE ? OR t.artist LIKE ? OR s.name LIKE ? OR t.genre LIKE ?)");
-    args.push(...Array(4).fill(`%${q}%`));
+  if (search) {
+    where.push("(t.title ILIKE ? OR t.artist ILIKE ? OR s.name ILIKE ? OR t.genre ILIKE ?)");
+    args.push(...Array(4).fill(likeContains(search)));
   }
 
-  const tracks = db()
-    .prepare(
-      `SELECT t.*, s.name AS sender_name, s.email AS sender_email, s.verified_at AS sender_verified, c.name AS collection_name
+  const tracks = (await q.all<Track & { sender_name: string; sender_email: string; sender_verified: number | null; collection_name: string | null }>(`SELECT t.*, s.name AS sender_name, s.email AS sender_email, s.verified_at AS sender_verified, c.name AS collection_name
        FROM tracks t JOIN senders s ON s.id = t.sender_id LEFT JOIN collections c ON c.id = t.collection_id
-       WHERE ${where.join(" AND ")} ORDER BY t.created_at DESC LIMIT 500`,
-    )
-    .all(...args) as (Track & { sender_name: string; sender_email: string; sender_verified: number | null; collection_name: string | null })[];
+       WHERE ${where.join(" AND ")} ORDER BY t.created_at DESC LIMIT 500`, ...args));
 
-  const senders = db()
-    .prepare(
-      `SELECT s.id, s.name, COUNT(t.id) AS n FROM senders s JOIN tracks t ON t.sender_id = s.id AND t.deleted_at IS NULL
-       WHERE s.user_id = ? GROUP BY s.id ORDER BY s.name COLLATE NOCASE`,
-    )
-    .all(user.id) as { id: number; name: string; n: number }[];
-  const genres = db()
-    .prepare(
-      `SELECT genre, COUNT(*) AS n FROM tracks WHERE user_id = ? AND deleted_at IS NULL AND genre != ''
-       GROUP BY genre ORDER BY n DESC, genre COLLATE NOCASE`,
-    )
-    .all(user.id) as { genre: string; n: number }[];
+  const senders = (await q.all<{ id: number; name: string; n: number }>(`SELECT s.id, s.name, COUNT(t.id) AS n FROM senders s JOIN tracks t ON t.sender_id = s.id AND t.deleted_at IS NULL
+       WHERE s.user_id = ? GROUP BY s.id ORDER BY lower(s.name)`, user.id));
+  const genres = (await q.all<{ genre: string; n: number }>(`SELECT genre, COUNT(*) AS n FROM tracks WHERE user_id = ? AND deleted_at IS NULL AND genre != ''
+       GROUP BY genre ORDER BY n DESC, lower(genre)`, user.id));
   const keptCount = (
-    db()
-      .prepare(`SELECT COUNT(*) AS n FROM tracks WHERE user_id = ? AND deleted_at IS NULL AND decision = 'kept' ${collection ? "AND collection_id = ?" : ""}`)
-      .get(...(collection ? [user.id, collection.id] : [user.id])) as { n: number }
+    (await q.get<{ n: number }>(`SELECT COUNT(*) AS n FROM tracks WHERE user_id = ? AND deleted_at IS NULL AND decision = 'kept' ${collection ? "AND collection_id = ?" : ""}`, ...(collection ? [user.id, collection.id] : [user.id])))!
   ).n;
 
   const href = (patch: Partial<Search>) => {
@@ -100,9 +86,9 @@ export function SubmissionsList({ user, sp }: { user: User; sp: Search }) {
     createdAt: t.created_at,
   }));
 
-  const active = activeCollection(user);
+  const active = await activeCollection(user);
   const paused = isPaused(user);
-  const open = !paused && !!active && !isClosed(active) && !capacity(user).full;
+  const open = !paused && !!active && !isClosed(active) && !(await capacity(user)).full;
 
   const menus: { label: string; options: Option[] }[] = [
     { label: "Status", options: STATUS.map(([k, l]) => ({ label: l, href: href({ s: k === "all" ? undefined : k }), active: status[0] === k })) },
@@ -168,13 +154,13 @@ export function SubmissionsList({ user, sp }: { user: User; sp: Search }) {
           <label htmlFor="list-q" className="sr-only">
             Search
           </label>
-          <input id="list-q" name="q" defaultValue={q} placeholder="Search" className="input w-44 py-1.5" />
+          <input id="list-q" name="q" defaultValue={search} placeholder="Search" className="input w-44 py-1.5" />
         </form>
         <ViewToggle view="list" />
       </div>
 
       {rows.length === 0 ? (
-        <p className="px-6 py-20 text-center text-mute">{q || sp.s || sp.c || sp.type || sp.sender || sp.genre ? "Nothing matches these filters." : "No tracks yet. Share your link to start receiving."}</p>
+        <p className="px-6 py-20 text-center text-mute">{search || sp.s || sp.c || sp.type || sp.sender || sp.genre ? "Nothing matches these filters." : "No tracks yet. Share your link to start receiving."}</p>
       ) : (
         <ListRows rows={rows} />
       )}

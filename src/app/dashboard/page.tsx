@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { collectionsFor } from "@/lib/core";
-import { db, type Sender, type Track } from "@/lib/db";
+import { q, likeContains, type Sender, type Track } from "@/lib/db";
 import { APP_URL } from "@/lib/mail";
 import { ExportButton } from "./ExportButton";
 import { ReviewPanel } from "./ReviewPanel";
@@ -32,9 +32,9 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
   const view = sp.view === "list" || sp.view === "queue" ? sp.view : saved === "queue" ? "queue" : "list";
   if (view === "list") return <SubmissionsList user={user} sp={sp} />;
   const status: StatusKey = STATUSES.some(([k]) => k === sp.s) ? (sp.s as StatusKey) : "review";
-  const collections = collectionsFor(user.id);
+  const collections = await collectionsFor(user.id);
   const collection = sp.c ? collections.find((c) => String(c.id) === sp.c) : undefined;
-  const q = (sp.q || "").trim().slice(0, 100);
+  const search = (sp.q || "").trim().slice(0, 100);
 
   // Shared filters (collection + search); status is applied per tab so every tab can show a count.
   const base = ["t.user_id = ?", "t.deleted_at IS NULL"];
@@ -43,27 +43,22 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
     base.push("t.collection_id = ?");
     args.push(collection.id);
   }
-  if (q) {
-    base.push("(t.title LIKE ? OR t.artist LIKE ? OR s.name LIKE ? OR s.email LIKE ? OR t.genre LIKE ?)");
-    args.push(...Array(5).fill(`%${q}%`));
+  if (search) {
+    base.push("(t.title ILIKE ? OR t.artist ILIKE ? OR s.name ILIKE ? OR s.email ILIKE ? OR t.genre ILIKE ?)");
+    args.push(...Array(5).fill(likeContains(search)));
   }
   const from = "FROM tracks t JOIN senders s ON s.id = t.sender_id LEFT JOIN collections c ON c.id = t.collection_id";
-  const counts = Object.fromEntries(
-    STATUSES.map(([k, , cond]) => [
-      k,
-      (db().prepare(`SELECT COUNT(*) AS n ${from} WHERE ${base.join(" AND ")} AND ${cond}`).get(...args) as { n: number }).n,
-    ]),
-  ) as Record<StatusKey, number>;
+  // One pass for every tab's count.
+  const counts = (await q.get<Record<StatusKey, number>>(
+    `SELECT ${STATUSES.map(([k, , cond]) => `COUNT(*) FILTER (WHERE ${cond}) AS "${k}"`).join(", ")} ${from} WHERE ${base.join(" AND ")}`,
+    ...args,
+  ))!;
 
   const cond = STATUSES.find(([k]) => k === status)![2];
   // Needs review plays oldest-first like a queue; decided views show the latest decisions first.
   const order = status === "review" ? "t.created_at ASC" : status === "all" ? "t.created_at DESC" : "t.decided_at DESC";
-  const tracks = db()
-    .prepare(
-      `SELECT t.*, s.name AS sender_name, c.name AS collection_name ${from}
-       WHERE ${base.join(" AND ")} AND ${cond} ORDER BY ${order} LIMIT 500`,
-    )
-    .all(...args) as (Track & { sender_name: string; collection_name: string | null })[];
+  const tracks = (await q.all<Track & { sender_name: string; collection_name: string | null }>(`SELECT t.*, s.name AS sender_name, c.name AS collection_name ${from}
+       WHERE ${base.join(" AND ")} AND ${cond} ORDER BY ${order} LIMIT 500`, ...args));
 
   const rows: Row[] = tracks.map((t) => ({
     id: t.id,
@@ -83,7 +78,7 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
   }));
 
   const href = (patch: Partial<Search>) => {
-    const merged: Search = { c: sp.c, s: status === "review" ? undefined : status, q: q || undefined, t: sp.t, ...patch };
+    const merged: Search = { c: sp.c, s: status === "review" ? undefined : status, q: search || undefined, t: sp.t, ...patch };
     const p = new URLSearchParams();
     for (const [k, v] of Object.entries(merged)) if (v) p.set(k, v);
     const s = p.toString();
@@ -93,9 +88,9 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
   // The review panel always has something: the requested track, else the first in the list.
   const selectedId = sp.t ? Number(sp.t) : rows[0]?.id;
   const selected = selectedId
-    ? (db().prepare("SELECT * FROM tracks WHERE id = ? AND user_id = ? AND deleted_at IS NULL").get(selectedId, user.id) as Track | undefined)
+    ? ((await q.get<Track>("SELECT * FROM tracks WHERE id = ? AND user_id = ? AND deleted_at IS NULL", selectedId, user.id)))
     : undefined;
-  const sender = selected ? (db().prepare("SELECT * FROM senders WHERE id = ?").get(selected.sender_id) as Sender) : undefined;
+  const sender = selected ? ((await q.get<Sender>("SELECT * FROM senders WHERE id = ?", selected.sender_id))!) : undefined;
   const idx = selected ? rows.findIndex((r) => r.id === selected.id) : -1;
   const nextRow = idx >= 0 ? rows[idx + 1] : rows.find((r) => r.id !== selected?.id);
   const prevRow = idx > 0 ? rows[idx - 1] : undefined;
@@ -162,17 +157,17 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
             <label htmlFor="q" className="sr-only">
               Search tracks
             </label>
-            <input id="q" name="q" defaultValue={q} placeholder="Search title, artist or sender" className="input py-2" />
+            <input id="q" name="q" defaultValue={search} placeholder="Search title, artist or sender" className="input py-2" />
           </form>
         </div>
 
         <div className="mt-4">
-          {totalActive === 0 && !q ? (
+          {totalActive === 0 && !search ? (
             <EmptyDesk link={`${APP_URL}/${user.handle}`} welcome={!!sp.welcome} />
           ) : rows.length === 0 ? (
             <div className="rounded-xl border border-line py-16 text-center">
               <p className="font-medium">
-                {q ? `Nothing matches “${q}”.` : status === "review" ? "Nothing waiting. You're all caught up." : "Nothing here yet."}
+                {search ? `Nothing matches “${search}”.` : status === "review" ? "Nothing waiting. You're all caught up." : "Nothing here yet."}
               </p>
               {status === "review" && counts.kept > 0 && (
                 <Link href={href({ s: "kept", t: undefined })} className="mt-3 inline-block text-lime underline underline-offset-4">

@@ -9,25 +9,36 @@ import { SubmitForm } from "./SubmitForm";
 
 type Props = { params: Promise<{ handle: string }>; searchParams: Promise<{ style?: string }> };
 
+/** Link previews for when a DJ shares their link on socials or in DMs. */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const u = userByHandle((await params).handle);
-  return { title: u ? `Send music to ${u.name} — FloorTest` : "FloorTest" };
+  const u = await userByHandle((await params).handle);
+  if (!u) return { title: "FloorTest" };
+  const title = `Send music to ${u.name}`;
+  const description = `Upload your WAV or MP3 straight to ${u.name}${u.role_line ? ` (${u.role_line})` : ""}. No account needed, and you'll hear when it's played.`;
+  const images = u.cover_key ? [{ url: `/api/cover/${u.handle}?v=${encodeURIComponent(u.cover_key)}` }] : undefined;
+  return {
+    title: `${title} — FloorTest`,
+    description,
+    alternates: { canonical: `/${u.handle}` },
+    openGraph: { title, description, type: "website", url: `/${u.handle}`, images },
+    twitter: { card: images ? "summary_large_image" : "summary", title, description, images: images?.map((i) => i.url) },
+  };
 }
 
 export default async function ReceiverPage({ params, searchParams }: Props) {
   const { handle } = await params;
-  const receiver = userByHandle(handle);
+  const receiver = await userByHandle(handle);
   if (!receiver) notFound();
-  const collection = activeCollection(receiver);
+  const collection = await activeCollection(receiver);
   const closed = isClosed(collection);
-  const { full } = capacity(receiver);
+  const { full } = await capacity(receiver);
   const genres = genresFor(collection).list;
   const paused = isPaused(receiver);
   const note = paused ? receiver.pause_message : "";
   const closedReason = paused
     ? pausedMessage(receiver)
     : closed
-    ? `“${collection!.name}” closed on ${fmtDay(collection!.closes_at!)}.`
+    ? `“${collection!.name}” closed on ${fmtDay(collection!.closes_at!, receiver.tz)}.`
     : full
       ? `${receiver.name} isn't accepting new tracks right now.`
       : null;
@@ -49,7 +60,7 @@ export default async function ReceiverPage({ params, searchParams }: Props) {
         <p className="mt-4 inline-flex w-fit flex-wrap items-center gap-x-2 gap-y-1 rounded-full border border-lime/40 bg-lime/5 px-3 py-1 text-sm">
           <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-lime" />
           Receiving for <span className="font-medium text-lime">{collection.name}</span>
-          {collection.closes_at && <span className="text-mute">· closes {fmtDay(collection.closes_at)}</span>}
+          {collection.closes_at && <span className="text-mute">· closes {fmtDay(collection.closes_at, receiver.tz)}</span>}
         </p>
       )}
       <div className="mt-10">

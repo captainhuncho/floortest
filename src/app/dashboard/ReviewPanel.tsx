@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { PlayerTrack } from "@/components/Player";
 import { deletesAt } from "@/lib/core";
-import { db, type Collection, type EventRow, type Sender, type Track } from "@/lib/db";
+import {q, type Collection, type EventRow, type Sender, type Track } from "@/lib/db";
 import { fmtBytes, fmtDate, fmtDay } from "@/lib/format";
 import { MIX_STATUS, RELEASE_STATUS } from "@/lib/plans";
 import { addNote, deleteTrack, moveTrack, replyToSender } from "./actions";
@@ -10,7 +10,7 @@ import { DecisionRail } from "./DecisionRail";
 import { DetailPlayer } from "./DetailPlayer";
 import { History } from "./History";
 
-export function ReviewPanel({
+export async function ReviewPanel({
   track: t,
   sender,
   collections,
@@ -25,18 +25,10 @@ export function ReviewPanel({
   next: { href: string; track: PlayerTrack } | null;
   prevHref: string | null;
 }) {
-  const events = db()
-    .prepare(
-      `SELECT e.*, t.title AS track_title FROM events e LEFT JOIN tracks t ON t.id = e.track_id
-       WHERE e.sender_id = ? ORDER BY e.created_at DESC LIMIT 8`,
-    )
-    .all(sender.id) as (EventRow & { track_title: string | null })[];
-  const stats = db()
-    .prepare(
-      `SELECT COUNT(*) AS sent, COUNT(CASE WHEN decision = 'kept' THEN 1 END) AS kept, COUNT(downloaded_at) AS downloaded
-       FROM tracks WHERE sender_id = ?`,
-    )
-    .get(sender.id) as { sent: number; kept: number; downloaded: number };
+  const events = (await q.all<EventRow & { track_title: string | null }>(`SELECT e.*, t.title AS track_title FROM events e LEFT JOIN tracks t ON t.id = e.track_id
+       WHERE e.sender_id = ? ORDER BY e.created_at DESC LIMIT 8`, sender.id));
+  const stats = (await q.get<{ sent: number; kept: number; downloaded: number }>(`SELECT COUNT(*) AS sent, COUNT(CASE WHEN decision = 'kept' THEN 1 END) AS kept, COUNT(downloaded_at) AS downloaded
+       FROM tracks WHERE sender_id = ?`, sender.id))!;
   const player: PlayerTrack = {
     id: t.id,
     title: t.title,

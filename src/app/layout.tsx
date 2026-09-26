@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { env } from "@/lib/env";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(env.appUrl),
   title: "FloorTest — the receiving desk for unreleased music",
   description: "One permanent link routes every callout. Senders upload the original. FloorTest tells them what happens next.",
+  openGraph: { siteName: "FloorTest", type: "website" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

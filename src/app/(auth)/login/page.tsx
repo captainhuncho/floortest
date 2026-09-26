@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AuthForm } from "../AuthForm";
 import { login } from "../actions";
 
@@ -12,7 +13,17 @@ export default function LoginPage() {
         submit="Log in"
         fields={[
           { name: "email", label: "Email", type: "email", autoComplete: "email" },
-          { name: "password", label: "Password", type: "password", autoComplete: "current-password" },
+          {
+            name: "password",
+            label: "Password",
+            type: "password",
+            autoComplete: "current-password",
+            hint: (
+              <Link href="/forgot" className="underline-offset-4 hover:text-bone hover:underline">
+                Forgot your password?
+              </Link>
+            ),
+          },
         ]}
         footer={{ text: "New to FloorTest?", href: "/signup", link: "Claim your link" }}
       />

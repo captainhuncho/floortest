@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { ownedSender } from "@/lib/core";
-import { db, type EventRow, type Track } from "@/lib/db";
+import {q, type EventRow, type Track } from "@/lib/db";
 import { ago, fmtDate, fmtDay, fmtTime } from "@/lib/format";
 import { addNote, blockSender, replyToSender } from "../../actions";
 import { Composer, ConfirmButton } from "../../ClientBits";
@@ -14,26 +14,18 @@ type Item =
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
-  const s = ownedSender(user.id, Number((await params).id));
+  const s = await ownedSender(user.id, Number((await params).id));
   return { title: `${s?.name ?? "Contact"} — FloorTest` };
 }
 
 export default async function Contact({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
-  const s = ownedSender(user.id, Number((await params).id));
+  const s = await ownedSender(user.id, Number((await params).id));
   if (!s) notFound();
-  const tracks = db()
-    .prepare(
-      `SELECT t.*, c.name AS collection_name FROM tracks t LEFT JOIN collections c ON c.id = t.collection_id
-       WHERE t.sender_id = ? ORDER BY t.created_at DESC`,
-    )
-    .all(s.id) as (Track & { collection_name: string | null })[];
-  const events = db()
-    .prepare(
-      `SELECT e.*, t.title AS track_title FROM events e LEFT JOIN tracks t ON t.id = e.track_id
-       WHERE e.sender_id = ? AND e.type IN ('reply', 'note') ORDER BY e.created_at`,
-    )
-    .all(s.id) as (EventRow & { track_title: string | null })[];
+  const tracks = (await q.all<Track & { collection_name: string | null }>(`SELECT t.*, c.name AS collection_name FROM tracks t LEFT JOIN collections c ON c.id = t.collection_id
+       WHERE t.sender_id = ? ORDER BY t.created_at DESC`, s.id));
+  const events = (await q.all<EventRow & { track_title: string | null }>(`SELECT e.*, t.title AS track_title FROM events e LEFT JOIN tracks t ON t.id = e.track_id
+       WHERE e.sender_id = ? AND e.type IN ('reply', 'note') ORDER BY e.created_at`, s.id));
 
   const thread: Item[] = [
     ...tracks.filter((t) => t.message).map((t) => ({ kind: "message" as const, at: t.created_at, text: t.message, track: t.title, trackId: t.id })),

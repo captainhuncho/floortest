@@ -1,24 +1,27 @@
-import fs from "node:fs";
-import { Readable } from "node:stream";
 import { currentUser } from "@/lib/auth";
-import { ownedTrack, trackPath } from "@/lib/core";
+import { ownedTrack } from "@/lib/core";
+import { storage } from "@/lib/storage";
 
 export const runtime = "nodejs";
 
-/** Streams audio to the owning receiver with HTTP range support so seeking works. */
+/**
+ * Playback for the owning receiver. With S3 storage this redirects to a short-lived signed URL,
+ * so audio streams straight from the bucket (range requests included). Locally it streams from disk.
+ */
 export async function GET(req: Request, ctx: RouteContext<"/api/tracks/[id]/audio">) {
   const user = await currentUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
-  const t = ownedTrack(user.id, Number((await ctx.params).id));
-  const p = t && trackPath(t);
-  if (!t || !p || !fs.existsSync(p)) return new Response("Not found", { status: 404 });
+  const t = await ownedTrack(user.id, Number((await ctx.params).id));
+  if (!t?.file_key) return new Response("Not found", { status: 404 });
+  const store = await storage();
 
-  const size = fs.statSync(p).size;
-  const headers: Record<string, string> = {
-    "Content-Type": t.mime,
-    "Accept-Ranges": "bytes",
-    "Cache-Control": "private, max-age=3600",
-  };
+  const signed = await store.signedGetUrl(t.file_key, { contentType: t.mime, expiresIn: 3600 });
+  if (signed) return new Response(null, { status: 302, headers: { Location: signed, "Cache-Control": "private, no-store" } });
+
+  const head = await store.head(t.file_key);
+  if (!head) return new Response("Not found", { status: 404 });
+  const size = head.size;
+  const base = { "Content-Type": t.mime, "Accept-Ranges": "bytes", "Cache-Control": "private, max-age=3600" };
   const range = req.headers.get("range")?.match(/bytes=(\d*)-(\d*)/);
   if (range) {
     let start = range[1] ? Number(range[1]) : size - Number(range[2]);
@@ -26,13 +29,12 @@ export async function GET(req: Request, ctx: RouteContext<"/api/tracks/[id]/audi
     start = Math.max(0, start);
     end = Math.min(size - 1, end);
     if (start > end) return new Response(null, { status: 416, headers: { "Content-Range": `bytes */${size}` } });
-    const stream = Readable.toWeb(fs.createReadStream(p, { start, end })) as ReadableStream;
-    return new Response(stream, {
+    const { body } = await store.stream(t.file_key, { start, end });
+    return new Response(body, {
       status: 206,
-      headers: { ...headers, "Content-Range": `bytes ${start}-${end}/${size}`, "Content-Length": String(end - start + 1) },
+      headers: { ...base, "Content-Range": `bytes ${start}-${end}/${size}`, "Content-Length": String(end - start + 1) },
     });
   }
-  return new Response(Readable.toWeb(fs.createReadStream(p)) as ReadableStream, {
-    headers: { ...headers, "Content-Length": String(size) },
-  });
+  const { body } = await store.stream(t.file_key);
+  return new Response(body, { headers: { ...base, "Content-Length": String(size) } });
 }

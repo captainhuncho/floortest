@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { Waveform } from "@/components/Waveform";
-import { db, type Track } from "@/lib/db";
+import {q, type Track } from "@/lib/db";
 import { fmtDate, fmtDay, fmtTime } from "@/lib/format";
 import { RETAIN_UNREVIEWED_DAYS, SIGNALS } from "@/lib/plans";
 
@@ -9,14 +9,10 @@ export const metadata = { title: "Your receipt — FloorTest", robots: { index: 
 
 export default async function Receipt({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const t = db()
-    .prepare(
-      `SELECT t.*, u.name AS receiver, c.name AS collection, s.email AS sender_email, s.verified_at
+  const t = (await q.get<(Track & { receiver: string; collection: string | null; sender_email: string; verified_at: number | null })>(`SELECT t.*, u.name AS receiver, c.name AS collection, s.email AS sender_email, s.verified_at
        FROM tracks t JOIN users u ON u.id = t.user_id JOIN senders s ON s.id = t.sender_id
        LEFT JOIN collections c ON c.id = t.collection_id
-       WHERE t.token = ?`,
-    )
-    .get(token) as (Track & { receiver: string; collection: string | null; sender_email: string; verified_at: number | null }) | undefined;
+       WHERE t.token = ?`, token));
   if (!t) notFound();
 
   // Kept and passed are private to the receiver. Senders only see what they were promised.

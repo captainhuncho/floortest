@@ -10,7 +10,7 @@ import { PauseSwitch, type PauseState } from "./PauseSwitch";
 type Props = {
   user: { handle: string; name: string };
   link: string;
-  collections: { id: number; name: string }[];
+  collections: { id: number; name: string; closed: boolean }[];
   activeId: number | null;
   needsReview: number;
   cap: { used: number; limit: number; full: boolean };
@@ -112,6 +112,7 @@ export function Sidebar({ user, link, collections, activeId, needsReview, cap, p
             {collections.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
+                {c.closed ? " (closed)" : ""}
               </option>
             ))}
           </select>

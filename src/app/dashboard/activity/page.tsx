@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
-import { db, type EventRow } from "@/lib/db";
+import {q, type EventRow } from "@/lib/db";
 import { History } from "../History";
 
 export const metadata = { title: "Activity — FloorTest" };
@@ -17,14 +17,10 @@ export default async function Activity({ searchParams }: { searchParams: Promise
   const f = (await searchParams).f;
   const filter = FILTERS.find(([k]) => k === f) ?? FILTERS[0];
   const types = filter[2];
-  const events = db()
-    .prepare(
-      `SELECT e.*, t.title AS track_title, s.name AS sender_name FROM events e
+  const events = (await q.all<EventRow & { track_title: string | null; sender_name: string }>(`SELECT e.*, t.title AS track_title, s.name AS sender_name FROM events e
        LEFT JOIN tracks t ON t.id = e.track_id JOIN senders s ON s.id = e.sender_id
        WHERE e.user_id = ? ${types ? `AND e.type IN (${types.map(() => "?").join(",")})` : "AND e.type != 'note'"}
-       ORDER BY e.created_at DESC LIMIT 200`,
-    )
-    .all(user.id, ...(types ?? [])) as (EventRow & { track_title: string | null; sender_name: string })[];
+       ORDER BY e.created_at DESC LIMIT 200`, user.id, ...(types ?? [])));
 
   return (
     <div className="max-w-3xl px-4 py-6 sm:px-8">

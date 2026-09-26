@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { q, likeContains } from "@/lib/db";
 import { ago } from "@/lib/format";
 
 export const metadata = { title: "Contacts — FloorTest" };
@@ -20,9 +20,9 @@ type Row = {
 };
 
 const SORTS = [
-  ["recent", "Recent", "last_at DESC"],
-  ["kept", "Most kept", "kept DESC, last_at DESC"],
-  ["name", "A–Z", "s.name COLLATE NOCASE ASC"],
+  ["recent", "Recent", "last_at DESC NULLS LAST"],
+  ["kept", "Most kept", "kept DESC, last_at DESC NULLS LAST"],
+  ["name", "A–Z", "lower(s.name) ASC"],
 ] as const;
 const SHOWS = [
   ["all", "Everyone", "1 = 1"],
@@ -36,12 +36,10 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
   const sp = await searchParams;
   const sort = SORTS.find(([k]) => k === sp.sort) ?? SORTS[0];
   const show = SHOWS.find(([k]) => k === sp.show) ?? SHOWS[0];
-  const q = (sp.q || "").trim().slice(0, 100);
+  const search = (sp.q || "").trim().slice(0, 100);
 
   // Every sender, with their track stats and the latest message in either direction.
-  const rows = db()
-    .prepare(
-      `WITH msgs AS (
+  const rows = (await q.all<Row>(`WITH msgs AS (
          SELECT sender_id, created_at AS at, message AS text, 'message' AS kind FROM tracks WHERE user_id = ? AND message != ''
          UNION ALL
          SELECT sender_id, created_at, detail, 'reply' FROM events WHERE user_id = ? AND type = 'reply'
@@ -57,14 +55,12 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
        FROM senders s
        LEFT JOIN tracks t ON t.sender_id = s.id
        LEFT JOIN lm ON lm.sender_id = s.id AND lm.rn = 1
-       WHERE s.user_id = ? AND ${show[2]} ${q ? "AND (s.name LIKE ? OR s.email LIKE ?)" : ""}
-       GROUP BY s.id ORDER BY ${sort[2]}`,
-    )
-    .all(user.id, user.id, user.id, ...(q ? [`%${q}%`, `%${q}%`] : [])) as Row[];
+       WHERE s.user_id = ? AND ${show[2]} ${search ? "AND (s.name ILIKE ? OR s.email ILIKE ?)" : ""}
+       GROUP BY s.id, lm.text, lm.kind ORDER BY ${sort[2]}`, user.id, user.id, user.id, ...(search ? [likeContains(search), likeContains(search)] : [])));
 
   const href = (patch: Record<string, string | undefined>) => {
     const p = new URLSearchParams();
-    for (const [k, v] of Object.entries({ sort: sp.sort, show: sp.show, q: q || undefined, ...patch })) if (v) p.set(k, v);
+    for (const [k, v] of Object.entries({ sort: sp.sort, show: sp.show, q: search || undefined, ...patch })) if (v) p.set(k, v);
     return `/dashboard/contacts${p.size ? `?${p}` : ""}`;
   };
 
@@ -94,7 +90,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
           <label htmlFor="contacts-q" className="sr-only">
             Search contacts
           </label>
-          <input id="contacts-q" name="q" defaultValue={q} placeholder="Name or email" className="input w-52 py-2" />
+          <input id="contacts-q" name="q" defaultValue={search} placeholder="Name or email" className="input w-52 py-2" />
         </form>
       </div>
       <div className="mt-3 flex items-center gap-2 text-sm text-mute">
@@ -112,7 +108,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
       </div>
 
       {rows.length === 0 ? (
-        <p className="py-16 text-center text-mute">{q ? `No contacts match “${q}”.` : "Contacts appear here after their first upload."}</p>
+        <p className="py-16 text-center text-mute">{search ? `No contacts match “${search}”.` : "Contacts appear here after their first upload."}</p>
       ) : (
         <ul className="mt-4 divide-y divide-line rounded-xl border border-line">
           {rows.map((r) => (

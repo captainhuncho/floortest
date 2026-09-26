@@ -1,5 +1,5 @@
 import "server-only";
-import { db, now } from "./db";
+import { now, q } from "./db";
 import { APP_URL, sendMail } from "./mail";
 
 /** How a receiver hears about new tracks. Emails go to the receiver's own address. */
@@ -17,13 +17,12 @@ export type NotifyPrefs = {
   alert_full_sent_at: number | null;
 };
 
-export function prefsFor(userId: number) {
-  return db()
-    .prepare(
-      `SELECT id, email, name, notify_submissions, digest_hour, quiet_start, quiet_end, notify_alerts, tz, last_digest_at, alert_full_sent_at
-       FROM users WHERE id = ?`,
-    )
-    .get(userId) as NotifyPrefs;
+export async function prefsFor(userId: number) {
+  return (await q.get<NotifyPrefs>(
+    `SELECT id, email, name, notify_submissions, digest_hour, quiet_start, quiet_end, notify_alerts, tz, last_digest_at, alert_full_sent_at
+     FROM users WHERE id = ?`,
+    userId,
+  ))!;
 }
 
 /** The hour (0–23) at `ts` in the receiver's timezone. */
@@ -44,14 +43,13 @@ export function inQuietHours(p: Pick<NotifyPrefs, "quiet_start" | "quiet_end" | 
 
 /** Called after a track is delivered. Instant mode emails now unless it's quiet hours; otherwise the digest picks it up. */
 export async function notifyNewSubmission(receiverId: number, trackId: number) {
-  const p = prefsFor(receiverId);
+  const p = await prefsFor(receiverId);
   if (p.notify_submissions !== "instant" || inQuietHours(p)) return;
-  const t = db()
-    .prepare(
-      `SELECT t.title, t.artist, t.message, s.name AS sender, c.name AS collection FROM tracks t
-       JOIN senders s ON s.id = t.sender_id LEFT JOIN collections c ON c.id = t.collection_id WHERE t.id = ?`,
-    )
-    .get(trackId) as { title: string; artist: string; message: string; sender: string; collection: string | null };
+  const t = (await q.get<{ title: string; artist: string; message: string; sender: string; collection: string | null }>(
+    `SELECT t.title, t.artist, t.message, s.name AS sender, c.name AS collection FROM tracks t
+     JOIN senders s ON s.id = t.sender_id LEFT JOIN collections c ON c.id = t.collection_id WHERE t.id = ?`,
+    trackId,
+  ))!;
   await sendMail({
     userId: p.id,
     audience: "receiver",
@@ -64,20 +62,24 @@ export async function notifyNewSubmission(receiverId: number, trackId: number) {
       `\nChange how often you hear from us: ${APP_URL}/dashboard/notifications`,
     ].join("\n"),
   });
-  db().prepare("UPDATE tracks SET receiver_notified_at = ? WHERE id = ?").run(now(), trackId);
+  await q.run("UPDATE tracks SET receiver_notified_at = ? WHERE id = ?", now(), trackId);
 }
 
 /** One email when the link pauses because the desk is full. Re-arms once there's space again. */
 export async function alertIfFull(receiverId: number, full: boolean) {
-  const p = prefsFor(receiverId);
   if (!full) {
-    if (p.alert_full_sent_at) db().prepare("UPDATE users SET alert_full_sent_at = NULL WHERE id = ?").run(p.id);
+    await q.run("UPDATE users SET alert_full_sent_at = NULL WHERE id = ? AND alert_full_sent_at IS NOT NULL", receiverId);
     return;
   }
-  if (!p.notify_alerts || p.alert_full_sent_at) return;
-  db().prepare("UPDATE users SET alert_full_sent_at = ? WHERE id = ?").run(now(), p.id);
+  // Claim the alert atomically so two concurrent uploads can't both send it.
+  const p = await q.get<{ email: string }>(
+    "UPDATE users SET alert_full_sent_at = ? WHERE id = ? AND notify_alerts = 1 AND alert_full_sent_at IS NULL RETURNING email",
+    now(),
+    receiverId,
+  );
+  if (!p) return;
   await sendMail({
-    userId: p.id,
+    userId: receiverId,
     audience: "receiver",
     to: p.email,
     subject: "Your FloorTest link is paused",
@@ -85,23 +87,18 @@ export async function alertIfFull(receiverId: number, full: boolean) {
   });
 }
 
-type Pending = { id: number; title: string; artist: string; sender: string; created_at: number };
-
-function pendingFor(userId: number) {
-  return db()
-    .prepare(
-      `SELECT t.id, t.title, t.artist, s.name AS sender, t.created_at FROM tracks t JOIN senders s ON s.id = t.sender_id
-       WHERE t.user_id = ? AND t.deleted_at IS NULL AND t.receiver_notified_at IS NULL AND t.decision IS NULL
-       ORDER BY t.created_at`,
-    )
-    .all(userId) as Pending[];
-}
+type Pending = { id: number; title: string; artist: string; sender: string };
 
 /** Sends one receiver's digest of tracks they haven't been emailed about. Returns how many tracks it covered. */
 export async function sendDigest(userId: number) {
-  const p = prefsFor(userId);
-  const items = pendingFor(userId);
-  db().prepare("UPDATE users SET last_digest_at = ? WHERE id = ?").run(now(), userId);
+  const p = await prefsFor(userId);
+  await q.run("UPDATE users SET last_digest_at = ? WHERE id = ?", now(), userId);
+  const items = await q.all<Pending>(
+    `SELECT t.id, t.title, t.artist, s.name AS sender FROM tracks t JOIN senders s ON s.id = t.sender_id
+     WHERE t.user_id = ? AND t.deleted_at IS NULL AND t.receiver_notified_at IS NULL AND t.decision IS NULL
+     ORDER BY t.created_at`,
+    userId,
+  );
   if (!items.length) return 0;
   const lines = items.slice(0, 25).map((t) => `• ${t.artist} – ${t.title} (from ${t.sender})`);
   if (items.length > 25) lines.push(`• …and ${items.length - 25} more`);
@@ -112,8 +109,7 @@ export async function sendDigest(userId: number) {
     subject: `${items.length} new track${items.length === 1 ? "" : "s"} waiting on FloorTest`,
     body: [`Hi ${p.name.split(/\s+/)[0]},`, "", ...lines, "", `Start listening: ${APP_URL}/dashboard`, "", `Digest settings: ${APP_URL}/dashboard/notifications`].join("\n"),
   });
-  const mark = db().prepare("UPDATE tracks SET receiver_notified_at = ? WHERE id = ?");
-  for (const t of items) mark.run(now(), t.id);
+  await q.run(`UPDATE tracks SET receiver_notified_at = ? WHERE id IN (${items.map(() => "?").join(",")})`, now(), ...items.map((t) => t.id));
   return items.length;
 }
 
@@ -122,17 +118,15 @@ export async function sendDigest(userId: number) {
  * held back by quiet hours when those hours end.
  */
 export async function runDigests(at = now()) {
-  const users = db()
-    .prepare("SELECT id FROM users WHERE notify_submissions IN ('digest', 'instant')")
-    .all() as { id: number }[];
+  const users = await q.all<Pick<NotifyPrefs, "id" | "notify_submissions" | "digest_hour" | "quiet_end" | "tz" | "last_digest_at">>(
+    "SELECT id, notify_submissions, digest_hour, quiet_end, tz, last_digest_at FROM users WHERE notify_submissions IN ('digest', 'instant')",
+  );
   let sent = 0;
-  for (const { id } of users) {
-    const p = prefsFor(id);
-    const hour = localHour(p.tz, at);
+  for (const p of users) {
     const target = p.notify_submissions === "digest" ? p.digest_hour : p.quiet_end;
-    if (target == null || hour !== target) continue;
+    if (target == null || localHour(p.tz, at) !== target) continue;
     if (p.last_digest_at && at - p.last_digest_at < 20 * 3_600_000) continue;
-    if (await sendDigest(id)) sent++;
+    if (await sendDigest(p.id)) sent++;
   }
   return sent;
 }

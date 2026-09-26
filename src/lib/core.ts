@@ -1,15 +1,14 @@
 import "server-only";
 import crypto from "node:crypto";
-import fs from "node:fs";
-import path from "node:path";
 import {
-  db,
+  isDecision,
   logEvent,
   now,
-  tx,
-  UPLOAD_DIR,
+  q,
+  USER_COLUMNS,
   type Collection,
   type Decision,
+  type Queryable,
   type Sender,
   type Track,
   type User,
@@ -17,29 +16,33 @@ import {
 import { APP_URL, sendMail } from "./mail";
 import { alertIfFull, notifyNewSubmission } from "./notify";
 import {
+  ACCEPTED_EXT,
   deletesAt,
   listenThreshold,
+  MAX_UPLOAD_BYTES,
   planOf,
   RATE_PER_EMAIL_PER_DAY,
   RATE_PER_IP_PER_HOUR,
   RETAIN_PASSED_DAYS,
   RETAIN_UNREVIEWED_DAYS,
 } from "./plans";
+import { recentCount, record } from "./ratelimit";
+import { storage } from "./storage";
+import { validateAudio } from "./validate";
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
+/** How long a sender has between authorising an upload and completing it. */
+const UPLOAD_TTL = 2 * HOUR;
 
-export function activeCount(userId: number) {
-  const r = db().prepare("SELECT COUNT(*) AS n FROM tracks WHERE user_id = ? AND deleted_at IS NULL").get(userId) as {
-    n: number;
-  };
-  return r.n;
+export async function activeCount(userId: number, db: Queryable = q) {
+  return (await db.get<{ n: number }>("SELECT COUNT(*) AS n FROM tracks WHERE user_id = ? AND deleted_at IS NULL", userId))!.n;
 }
 
 /** Plan limit plus song slots earned through referrals. */
-export function capacity(user: Pick<User, "id" | "plan">) {
-  const used = activeCount(user.id);
-  const bonus = (db().prepare("SELECT bonus_songs AS b FROM users WHERE id = ?").get(user.id) as { b: number } | undefined)?.b ?? 0;
+export async function capacity(user: Pick<User, "id" | "plan">, db: Queryable = q) {
+  const used = await activeCount(user.id, db);
+  const bonus = (await db.get<{ b: number }>("SELECT bonus_songs AS b FROM users WHERE id = ?", user.id))?.b ?? 0;
   const limit = planOf(user.plan).limit + bonus;
   return { used, limit, bonus, full: used >= limit };
 }
@@ -48,17 +51,17 @@ export const REFERRAL_BONUS = 10;
 
 /**
  * A referral pays out once the invited receiver gets their first track, so only real,
- * active desks earn slots. Both sides get the bonus.
+ * active desks earn slots. Both sides get the bonus, once.
  */
 async function rewardReferral(receiverId: number) {
-  const u = db()
-    .prepare("SELECT id, name, referred_by, referral_rewarded_at FROM users WHERE id = ?")
-    .get(receiverId) as { id: number; name: string; referred_by: number | null; referral_rewarded_at: number | null };
-  if (!u.referred_by || u.referral_rewarded_at) return;
-  const r = db().prepare("UPDATE users SET referral_rewarded_at = ? WHERE id = ? AND referral_rewarded_at IS NULL").run(now(), u.id);
-  if (!r.changes) return;
-  db().prepare("UPDATE users SET bonus_songs = bonus_songs + ? WHERE id IN (?, ?)").run(REFERRAL_BONUS, u.id, u.referred_by);
-  const referrer = db().prepare("SELECT id, email, name FROM users WHERE id = ?").get(u.referred_by) as { id: number; email: string; name: string } | undefined;
+  const u = await q.get<{ id: number; name: string; referred_by: number | null }>(
+    "UPDATE users SET referral_rewarded_at = ? WHERE id = ? AND referred_by IS NOT NULL AND referral_rewarded_at IS NULL RETURNING id, name, referred_by",
+    now(),
+    receiverId,
+  );
+  if (!u?.referred_by) return;
+  await q.run("UPDATE users SET bonus_songs = bonus_songs + ? WHERE id IN (?, ?)", REFERRAL_BONUS, u.id, u.referred_by);
+  const referrer = await q.get<{ id: number; email: string }>("SELECT id, email FROM users WHERE id = ?", u.referred_by);
   if (referrer)
     await sendMail({
       userId: referrer.id,
@@ -71,91 +74,76 @@ async function rewardReferral(receiverId: number) {
 
 export type CollectionSummary = Collection & { count: number; needs_review: number; kept: number };
 
-export function collectionsFor(userId: number) {
-  return db()
-    .prepare(
-      `SELECT c.*,
-              (SELECT COUNT(*) FROM tracks t WHERE t.collection_id = c.id AND t.deleted_at IS NULL) AS count,
-              (SELECT COUNT(*) FROM tracks t WHERE t.collection_id = c.id AND t.deleted_at IS NULL AND t.decision IS NULL) AS needs_review,
-              (SELECT COUNT(*) FROM tracks t WHERE t.collection_id = c.id AND t.deleted_at IS NULL AND t.decision = 'kept') AS kept
-       FROM collections c WHERE c.user_id = ? ORDER BY c.created_at`,
-    )
-    .all(userId) as CollectionSummary[];
+export async function collectionsFor(userId: number) {
+  return q.all<CollectionSummary>(
+    `SELECT c.*,
+            (SELECT COUNT(*) FROM tracks t WHERE t.collection_id = c.id AND t.deleted_at IS NULL) AS count,
+            (SELECT COUNT(*) FROM tracks t WHERE t.collection_id = c.id AND t.deleted_at IS NULL AND t.decision IS NULL) AS needs_review,
+            (SELECT COUNT(*) FROM tracks t WHERE t.collection_id = c.id AND t.deleted_at IS NULL AND t.decision = 'kept') AS kept
+     FROM collections c WHERE c.user_id = ? ORDER BY c.created_at`,
+    userId,
+  );
 }
 
-export function userByHandle(handle: string) {
-  return db()
-    .prepare("SELECT id, email, name, handle, plan, active_collection_id, role_line, cover_file, page_style, paused_at, pause_until, pause_message, created_at FROM users WHERE handle = ?")
-    .get(handle.toLowerCase()) as User | undefined;
+export async function userByHandle(handle: string) {
+  return q.get<User>(`SELECT ${USER_COLUMNS} FROM users WHERE handle = ?`, handle.toLowerCase());
 }
 
-export function activeCollection(user: User) {
-  return user.active_collection_id
-    ? (db().prepare("SELECT * FROM collections WHERE id = ?").get(user.active_collection_id) as Collection | undefined)
-    : undefined;
+export async function activeCollection(user: Pick<User, "active_collection_id">, db: Queryable = q) {
+  return user.active_collection_id ? db.get<Collection>("SELECT * FROM collections WHERE id = ?", user.active_collection_id) : undefined;
 }
 
 export const isClosed = (c: Collection | undefined, at = now()) => !!c?.closes_at && c.closes_at <= at;
 
 /** "Pause my link": the receiver is away. Ends on its own at pause_until, if one was set. */
-export const isPaused = (u: Pick<User, "paused_at" | "pause_until">, at = now()) =>
-  !!u.paused_at && (!u.pause_until || u.pause_until > at);
+export const isPaused = (u: Pick<User, "paused_at" | "pause_until">, at = now()) => !!u.paused_at && (!u.pause_until || u.pause_until > at);
 
-export function pausedMessage(u: Pick<User, "name" | "pause_until" | "pause_message">) {
-  const until = u.pause_until ? ` until ${new Date(u.pause_until).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}` : "";
+export function pausedMessage(u: Pick<User, "name" | "pause_until" | "tz">) {
+  const until = u.pause_until ? ` until ${new Date(u.pause_until).toLocaleDateString("en-GB", { day: "numeric", month: "long", timeZone: u.tz })}` : "";
   return `${u.name} is taking a break from submissions${until}.`;
 }
 
-export function ownedTrack(userId: number, trackId: number) {
-  return db().prepare("SELECT * FROM tracks WHERE id = ? AND user_id = ? AND deleted_at IS NULL").get(trackId, userId) as
-    | Track
-    | undefined;
+export async function ownedTrack(userId: number, trackId: number) {
+  if (!Number.isSafeInteger(trackId)) return undefined;
+  return q.get<Track>("SELECT * FROM tracks WHERE id = ? AND user_id = ? AND deleted_at IS NULL", trackId, userId);
 }
 
-export function ownedSender(userId: number, senderId: number) {
-  return db().prepare("SELECT * FROM senders WHERE id = ? AND user_id = ?").get(senderId, userId) as Sender | undefined;
-}
-
-export function trackPath(t: Track) {
-  return t.file_name ? path.join(UPLOAD_DIR, t.file_name) : null;
+export async function ownedSender(userId: number, senderId: number) {
+  if (!Number.isSafeInteger(senderId)) return undefined;
+  return q.get<Sender>("SELECT * FROM senders WHERE id = ? AND user_id = ?", senderId, userId);
 }
 
 /* ───────────────────────── Intake ───────────────────────── */
 
 /** A refusal we can show the sender. Messages stay neutral so spammers learn little. */
 export class IntakeError extends Error {
-  constructor(message: string, readonly status = 409) {
+  constructor(
+    message: string,
+    readonly status = 409,
+  ) {
     super(message);
   }
 }
 
-/** Every rule a submission must pass before we accept bytes. */
-export function checkIntake(receiver: User, email: string, ip: string) {
+/** Link-level rules: paused, closed, full. */
+async function checkOpen(receiver: User, db: Queryable = q) {
   if (isPaused(receiver)) throw new IntakeError(pausedMessage(receiver));
-  const collection = activeCollection(receiver);
-  if (isClosed(collection)) throw new IntakeError(`This callout closed. ${receiver.name} isn't accepting tracks right now.`);
-  if (capacity(receiver).full) throw new IntakeError(`${receiver.name} isn't accepting new tracks right now.`);
+  if (isClosed(await activeCollection(receiver, db))) throw new IntakeError(`This callout closed. ${receiver.name} isn't accepting tracks right now.`);
+  if ((await capacity(receiver, db)).full) throw new IntakeError(`${receiver.name} isn't accepting new tracks right now.`);
+}
 
-  const blocked = db()
-    .prepare("SELECT 1 FROM senders WHERE user_id = ? AND email = ? AND blocked_at IS NOT NULL")
-    .get(receiver.id, email);
-  if (blocked) throw new IntakeError(`${receiver.name} isn't accepting tracks from this address.`, 403);
-
-  const t = now();
-  const byIp = db()
-    .prepare("SELECT COUNT(*) AS n FROM upload_attempts WHERE receiver_id = ? AND ip = ? AND created_at > ?")
-    .get(receiver.id, ip, t - HOUR) as { n: number };
-  if (byIp.n >= RATE_PER_IP_PER_HOUR) throw new IntakeError("Too many uploads from this connection. Try again in an hour.", 429);
-  const byEmail = db()
-    .prepare("SELECT COUNT(*) AS n FROM upload_attempts WHERE receiver_id = ? AND email = ? AND created_at > ?")
-    .get(receiver.id, email, t - DAY) as { n: number };
-  if (byEmail.n >= RATE_PER_EMAIL_PER_DAY)
+/** Every rule a submission must pass before we hand out an upload URL. */
+export async function checkIntake(receiver: User, email: string, ip: string) {
+  await checkOpen(receiver);
+  if (await q.get("SELECT 1 FROM senders WHERE user_id = ? AND email = ? AND blocked_at IS NOT NULL", receiver.id, email))
+    throw new IntakeError(`${receiver.name} isn't accepting tracks from this address.`, 403);
+  if ((await recentCount("upload_ip", `${receiver.id}:${ip}`, HOUR)) >= RATE_PER_IP_PER_HOUR)
+    throw new IntakeError("Too many uploads from this connection. Try again in an hour.", 429);
+  if ((await recentCount("upload_email", `${receiver.id}:${email}`, DAY)) >= RATE_PER_EMAIL_PER_DAY)
     throw new IntakeError(`You've sent ${RATE_PER_EMAIL_PER_DAY} tracks to ${receiver.name} today. Try again tomorrow.`, 429);
 }
 
-export type SubmitInput = {
-  receiver: User;
-  ip: string;
+export type SubmissionMeta = {
   name: string;
   email: string;
   title: string;
@@ -164,114 +152,155 @@ export type SubmitInput = {
   releaseStatus: string;
   mixStatus: string;
   genre: string;
-  file: File;
-  duration: number | null;
-  bpm: number | null;
-  peaks: number[] | null;
+  originalName: string;
 };
 
-export async function submitTrack(input: SubmitInput) {
-  const { receiver } = input;
-  const email = input.email.trim().toLowerCase();
-  checkIntake(receiver, email, input.ip);
+/**
+ * Step 1 of a submission: check the rules, then authorise a direct upload to storage.
+ * The file never passes through the app server.
+ */
+export async function startUpload(receiver: User, meta: SubmissionMeta, size: number, ip: string) {
+  const ext = meta.originalName.toLowerCase().match(/\.(wav|mp3)$/)?.[0];
+  if (!ext || !ACCEPTED_EXT.includes(ext)) throw new IntakeError("Only WAV and MP3 files are accepted.", 400);
+  if (!Number.isSafeInteger(size) || size <= 0) throw new IntakeError("Choose a WAV or MP3 file.", 400);
+  if (size > MAX_UPLOAD_BYTES) throw new IntakeError("File is too large (max 250 MB).", 413);
+  await checkIntake(receiver, meta.email, ip);
 
-  const ext = path.extname(input.file.name).toLowerCase() === ".wav" ? ".wav" : ".mp3";
-  const fileName = `${crypto.randomUUID()}${ext}`;
-  const buf = Buffer.from(await input.file.arrayBuffer());
-  fs.writeFileSync(path.join(UPLOAD_DIR, fileName), buf);
+  // Attempts count toward the limits even if the upload is abandoned.
+  await record("upload_ip", `${receiver.id}:${ip}`);
+  await record("upload_email", `${receiver.id}:${meta.email}`);
 
+  const id = crypto.randomBytes(24).toString("base64url");
+  const key = `audio/${receiver.id}/${crypto.randomUUID()}${ext}`;
+  await q.run(
+    "INSERT INTO uploads (id, receiver_id, file_key, ext, size, meta, ip, created_at) VALUES (?,?,?,?,?,?,?,?)",
+    id,
+    receiver.id,
+    key,
+    ext,
+    size,
+    JSON.stringify(meta),
+    ip,
+    now(),
+  );
+  const target = await (await storage()).uploadTarget(key, ext === ".wav" ? "audio/wav" : "audio/mpeg", size);
+  return { uploadId: id, target };
+}
+
+type Upload = { id: string; receiver_id: number; file_key: string; ext: string; size: number; meta: string; created_at: number };
+
+/**
+ * Step 2: the browser has uploaded the file. Verify it's really there, the right size, and real
+ * audio, then create the track and tell everyone.
+ */
+export async function completeUpload(receiver: User, uploadId: string, analysis: { duration: number | null; bpm: number | null; peaks: number[] | null }) {
+  const up = await q.get<Upload>("SELECT * FROM uploads WHERE id = ? AND receiver_id = ? AND created_at > ?", uploadId, receiver.id, now() - UPLOAD_TTL);
+  if (!up) throw new IntakeError("This upload expired. Please send the track again.", 410);
+  const store = await storage();
+  const discard = async () => {
+    await store.delete(up.file_key).catch(() => {});
+    await q.run("DELETE FROM uploads WHERE id = ?", up.id);
+  };
+
+  const head = await store.head(up.file_key);
+  if (!head) throw new IntakeError("The file didn't finish uploading. Please try again.", 400);
+  if (head.size !== up.size || head.size > MAX_UPLOAD_BYTES) {
+    await discard();
+    throw new IntakeError("The uploaded file doesn't match what was expected. Please try again.", 400);
+  }
+  const check = await validateAudio({ size: head.size, read: (s, e) => store.read(up.file_key, s, e) });
+  if (!check.ok) {
+    await discard();
+    throw new IntakeError(check.reason, 415);
+  }
+
+  const meta = JSON.parse(up.meta) as SubmissionMeta;
   let result: { track: Track; sender: Sender; collection: Collection | undefined };
   try {
-    result = tx(() => {
-      // Re-check inside the transaction so concurrent uploads cannot overshoot capacity.
-      checkIntake(receiver, email, input.ip);
-      const d = db();
-      d.prepare("INSERT INTO upload_attempts (receiver_id, ip, email, created_at) VALUES (?,?,?,?)").run(receiver.id, input.ip, email, now());
-      d.prepare(
+    result = await q.tx(async (db) => {
+      // Serialise concurrent completions for this receiver so capacity can't be overshot.
+      const fresh = await db.get<User>(`SELECT ${USER_COLUMNS} FROM users WHERE id = ? FOR UPDATE`, receiver.id);
+      if (!fresh) throw new IntakeError("Receiver not found", 404);
+      await checkOpen(fresh, db);
+      const sender = (await db.get<Sender>(
         `INSERT INTO senders (user_id, email, name, created_at, verify_token) VALUES (?,?,?,?,?)
-         ON CONFLICT(user_id, email) DO UPDATE SET name = excluded.name`,
-      ).run(receiver.id, email, input.name.trim(), now(), crypto.randomBytes(16).toString("base64url"));
-      const sender = d.prepare("SELECT * FROM senders WHERE user_id = ? AND email = ?").get(receiver.id, email) as Sender;
-      const collection = activeCollection(receiver);
-      const token = crypto.randomBytes(12).toString("base64url");
-      const ins = d
-        .prepare(
-          `INSERT INTO tracks (user_id, collection_id, sender_id, token, title, artist, message, release_status, mix_status, genre, file_name, original_name, mime, size, duration, bpm, peaks, created_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-        )
-        .run(
-          receiver.id,
-          collection?.id ?? null,
-          sender.id,
-          token,
-          input.title.trim(),
-          input.artist.trim(),
-          input.message.trim(),
-          input.releaseStatus,
-          input.mixStatus,
-          input.genre,
-          fileName,
-          input.file.name,
-          ext === ".wav" ? "audio/wav" : "audio/mpeg",
-          buf.length,
-          input.duration,
-          input.bpm,
-          input.peaks ? JSON.stringify(input.peaks) : null,
-          now(),
-        );
-      const track = d.prepare("SELECT * FROM tracks WHERE id = ?").get(Number(ins.lastInsertRowid)) as Track;
-      logEvent({
-        user_id: receiver.id,
-        sender_id: sender.id,
-        track_id: track.id,
-        type: "submitted",
-        detail: collection ? `into ${collection.name}` : "",
-      });
+         ON CONFLICT (user_id, email) DO UPDATE SET name = excluded.name RETURNING *`,
+        fresh.id,
+        meta.email,
+        meta.name,
+        now(),
+        crypto.randomBytes(16).toString("base64url"),
+      ))!;
+      const collection = await activeCollection(fresh, db);
+      const track = (await db.get<Track>(
+        `INSERT INTO tracks (user_id, collection_id, sender_id, token, title, artist, message, release_status, mix_status, genre,
+                             file_key, original_name, mime, size, duration, bpm, peaks, created_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING *`,
+        fresh.id,
+        collection?.id ?? null,
+        sender.id,
+        crypto.randomBytes(12).toString("base64url"),
+        meta.title,
+        meta.artist,
+        meta.message,
+        meta.releaseStatus,
+        meta.mixStatus,
+        meta.genre,
+        up.file_key,
+        meta.originalName,
+        up.ext === ".wav" ? "audio/wav" : "audio/mpeg",
+        head.size,
+        analysis.duration,
+        analysis.bpm,
+        analysis.peaks ? JSON.stringify(analysis.peaks) : null,
+        now(),
+      ))!;
+      await logEvent({ user_id: fresh.id, sender_id: sender.id, track_id: track.id, type: "submitted", detail: collection ? `into ${collection.name}` : "" }, db);
+      await db.run("DELETE FROM uploads WHERE id = ?", up.id);
       return { track, sender, collection };
     });
   } catch (e) {
-    fs.rmSync(path.join(UPLOAD_DIR, fileName), { force: true });
+    await discard();
     throw e;
   }
 
   const { track, sender, collection } = result;
   const verify = sender.verified_at
     ? []
-    : [``, `Confirm this is your email so ${receiver.name} sees you as a verified sender:`, `${APP_URL}/v/${sender.verify_token}`];
+    : ["", `Confirm this is your email so ${receiver.name} sees you as a verified sender:`, `${APP_URL}/v/${sender.verify_token}`];
   await sendMail({
     userId: receiver.id,
     to: sender.email,
     subject: `Delivered: ${track.artist} – ${track.title}`,
     body: [
       `Hi ${sender.name},`,
-      ``,
+      "",
       `"${track.title}" was delivered to ${receiver.name}${collection ? ` for ${collection.name}` : ""}.`,
       `We'll email you when it's listened to, when the original is downloaded, and if ${receiver.name} replies.`,
-      ``,
+      "",
       `Your private receipt: ${APP_URL}/t/${track.token}`,
       ...verify,
-      ``,
-      `— FloorTest`,
+      "",
+      "— FloorTest",
     ].join("\n"),
   });
   await notifyNewSubmission(receiver.id, track.id);
-  await alertIfFull(receiver.id, capacity(receiver).full);
+  await alertIfFull(receiver.id, (await capacity(receiver)).full);
   await rewardReferral(receiver.id);
   return track;
 }
 
-export function verifySender(token: string) {
-  const s = db().prepare("SELECT * FROM senders WHERE verify_token = ?").get(token) as Sender | undefined;
-  if (!s) return null;
-  if (!s.verified_at) db().prepare("UPDATE senders SET verified_at = ? WHERE id = ?").run(now(), s.id);
-  return s;
+export async function senderByVerifyToken(token: string) {
+  return q.get<Sender>("SELECT * FROM senders WHERE verify_token = ?", token);
+}
+
+export async function verifySender(token: string) {
+  return q.get<Sender>("UPDATE senders SET verified_at = COALESCE(verified_at, ?) WHERE verify_token = ? RETURNING *", now(), token);
 }
 
 /* ───────────────────────── Signals ───────────────────────── */
 
-function senderOf(t: Track) {
-  return db().prepare("SELECT * FROM senders WHERE id = ?").get(t.sender_id) as Sender;
-}
+const senderOf = async (t: Track) => (await q.get<Sender>("SELECT * FROM senders WHERE id = ?", t.sender_id))!;
 
 /**
  * Listened: the client reports seconds actually heard (seeks excluded).
@@ -280,10 +309,10 @@ function senderOf(t: Track) {
 export async function markListened(user: User, t: Track, secondsHeard: number) {
   if (t.played_at) return false;
   if (!(secondsHeard >= listenThreshold(t.duration) - 0.5)) return false;
-  const r = db().prepare("UPDATE tracks SET played_at = ? WHERE id = ? AND played_at IS NULL").run(now(), t.id);
+  const r = await q.run("UPDATE tracks SET played_at = ? WHERE id = ? AND played_at IS NULL", now(), t.id);
   if (!r.changes) return false;
-  const s = senderOf(t);
-  logEvent({ user_id: user.id, sender_id: s.id, track_id: t.id, type: "played", detail: `${Math.round(secondsHeard)}s` });
+  const s = await senderOf(t);
+  await logEvent({ user_id: user.id, sender_id: s.id, track_id: t.id, type: "played", detail: `${Math.round(secondsHeard)}s` });
   await sendMail({
     userId: user.id,
     to: s.email,
@@ -295,12 +324,10 @@ export async function markListened(user: User, t: Track, secondsHeard: number) {
 
 /** Downloaded: called only once the original file has been fully sent. */
 export async function markDownloaded(user: User, t: Track) {
-  const fresh = db().prepare("SELECT downloaded_at FROM tracks WHERE id = ?").get(t.id) as { downloaded_at: number | null };
-  const first = !fresh.downloaded_at;
-  const s = senderOf(t);
-  db().prepare("UPDATE tracks SET downloaded_at = COALESCE(downloaded_at, ?) WHERE id = ?").run(now(), t.id);
-  if (!first) return;
-  logEvent({ user_id: user.id, sender_id: s.id, track_id: t.id, type: "downloaded", detail: "" });
+  const r = await q.run("UPDATE tracks SET downloaded_at = ? WHERE id = ? AND downloaded_at IS NULL", now(), t.id);
+  if (!r.changes) return;
+  const s = await senderOf(t);
+  await logEvent({ user_id: user.id, sender_id: s.id, track_id: t.id, type: "downloaded", detail: "" });
   await sendMail({
     userId: user.id,
     to: s.email,
@@ -312,21 +339,23 @@ export async function markDownloaded(user: User, t: Track) {
 /* ───────────────────────── Decisions ───────────────────────── */
 
 /** Keep or "could be better" (stored as passed). Private to the receiver: senders are never told. Returns what undo needs. */
-export function decide(user: User, t: Track, decision: Decision) {
+export async function decide(user: User, t: Track, decision: Decision) {
   const prev = { decision: t.decision, decided_at: t.decided_at };
-  db().prepare("UPDATE tracks SET decision = ?, decided_at = ? WHERE id = ?").run(decision, now(), t.id);
-  const eventId = logEvent({ user_id: user.id, sender_id: t.sender_id, track_id: t.id, type: decision, detail: "" });
+  await q.run("UPDATE tracks SET decision = ?, decided_at = ? WHERE id = ?", decision, now(), t.id);
+  const eventId = await logEvent({ user_id: user.id, sender_id: t.sender_id, track_id: t.id, type: decision, detail: "" });
   return { prev, eventId };
 }
 
-export function undoDecision(
-  user: User,
-  t: Track,
-  prev: { decision: Decision | null; decided_at: number | null },
-  eventId: number,
-) {
-  db().prepare("UPDATE tracks SET decision = ?, decided_at = ? WHERE id = ?").run(prev.decision, prev.decided_at, t.id);
-  db().prepare("DELETE FROM events WHERE id = ? AND user_id = ? AND track_id = ?").run(eventId, user.id, t.id);
+export async function undoDecision(user: User, t: Track, prev: { decision: unknown; decided_at: unknown }, eventId: number) {
+  // The undo token round-trips through the browser: accept only values this app could have produced.
+  const decision = isDecision(prev.decision) ? prev.decision : null;
+  const decidedAt = decision && typeof prev.decided_at === "number" ? prev.decided_at : null;
+  await q.run("UPDATE tracks SET decision = ?, decided_at = ? WHERE id = ?", decision, decidedAt, t.id);
+  if (Number.isSafeInteger(eventId)) await q.run("DELETE FROM events WHERE id = ? AND user_id = ? AND track_id = ?", eventId, user.id, t.id);
+}
+
+export async function clearDecision(t: Track) {
+  await q.run("UPDATE tracks SET decision = NULL, decided_at = NULL WHERE id = ?", t.id);
 }
 
 export async function reply(user: User, s: Sender, t: Track | undefined, body: string) {
@@ -336,67 +365,82 @@ export async function reply(user: User, s: Sender, t: Track | undefined, body: s
     subject: t ? `${user.name} replied about "${t.title}"` : `Message from ${user.name}`,
     body: `${body}\n\n— ${user.name}${t ? `\n\nYour receipt: ${APP_URL}/t/${t.token}` : ""}\n\nSent via FloorTest`,
   });
-  if (t) db().prepare("UPDATE tracks SET replied_at = COALESCE(replied_at, ?) WHERE id = ?").run(now(), t.id);
-  logEvent({ user_id: user.id, sender_id: s.id, track_id: t?.id ?? null, type: "reply", detail: body });
+  if (t) await q.run("UPDATE tracks SET replied_at = COALESCE(replied_at, ?) WHERE id = ?", now(), t.id);
+  await logEvent({ user_id: user.id, sender_id: s.id, track_id: t?.id ?? null, type: "reply", detail: body });
 }
 
 /* ───────────────────────── Removal & retention ───────────────────────── */
 
-function removeFile(t: Track) {
-  const p = trackPath(t);
-  if (p) fs.rmSync(p, { force: true });
+async function removeFile(key: string | null) {
+  if (key) await (await storage()).delete(key).catch((e) => console.error("[storage] delete failed", key, e));
 }
 
 /** Removes the audio and frees the slot. History stays attached to the sender. */
-export function deleteTrack(user: User, t: Track) {
-  db().prepare("UPDATE tracks SET deleted_at = ?, file_name = NULL WHERE id = ?").run(now(), t.id);
-  logEvent({ user_id: user.id, sender_id: t.sender_id, track_id: t.id, type: "deleted", detail: "" });
-  removeFile(t);
-  void alertIfFull(user.id, capacity(user).full); // re-arms the "link paused" email once there's space
+export async function deleteTrack(user: User, t: Track) {
+  await q.run("UPDATE tracks SET deleted_at = ?, file_key = NULL WHERE id = ?", now(), t.id);
+  await logEvent({ user_id: user.id, sender_id: t.sender_id, track_id: t.id, type: "deleted", detail: "" });
+  await removeFile(t.file_key);
+  await alertIfFull(user.id, (await capacity(user)).full); // re-arms the "link paused" email once there's space
 }
 
-type G = typeof globalThis & { __floortestPurgeAt?: number };
-
-/** Deletes files past their published retention date. Cheap to call; runs at most every 10 minutes. */
-export function purgeExpired() {
-  const g = globalThis as G;
+/**
+ * Retention and cleanup. Runs from the daily cron; also opportunistically (at most every
+ * 10 minutes per server instance) so single-server installs don't depend on a scheduler.
+ */
+export async function purgeExpired({ force = false } = {}) {
+  const g = globalThis as typeof globalThis & { __floortestPurgeAt?: number };
   const t = now();
-  if (g.__floortestPurgeAt && t - g.__floortestPurgeAt < 10 * 60_000) return;
+  if (!force && g.__floortestPurgeAt && t - g.__floortestPurgeAt < 10 * 60_000) return { expired: 0, abandoned: 0 };
   g.__floortestPurgeAt = t;
-  // Rate limiting only looks back 24h, so IP addresses aren't kept longer than 48h.
-  db().prepare("DELETE FROM upload_attempts WHERE created_at < ?").run(t - 2 * DAY);
-  const expired = db()
-    .prepare(
-      `SELECT * FROM tracks WHERE deleted_at IS NULL AND (
-         (decision IS NULL AND created_at < ?) OR (decision = 'passed' AND decided_at < ?))`,
-    )
-    .all(t - RETAIN_UNREVIEWED_DAYS * DAY, t - RETAIN_PASSED_DAYS * DAY) as Track[];
-  for (const tr of expired) {
-    db().prepare("UPDATE tracks SET deleted_at = ?, file_name = NULL WHERE id = ?").run(t, tr.id);
-    logEvent({ user_id: tr.user_id, sender_id: tr.sender_id, track_id: tr.id, type: "expired", detail: "" });
-    removeFile(tr);
+
+  // Rate limits look back at most 24h, so IP addresses aren't kept longer than 48h.
+  await q.run("DELETE FROM rate_events WHERE created_at < ?", t - 2 * DAY);
+  await q.run("DELETE FROM sessions WHERE expires_at < ?", t);
+  await q.run("DELETE FROM password_resets WHERE expires_at < ?", t - DAY);
+
+  const abandoned = await q.all<{ id: string; file_key: string }>("SELECT id, file_key FROM uploads WHERE created_at < ?", t - UPLOAD_TTL);
+  for (const u of abandoned) {
+    await removeFile(u.file_key);
+    await q.run("DELETE FROM uploads WHERE id = ?", u.id);
   }
+
+  const expired = await q.all<Track>(
+    `SELECT * FROM tracks WHERE deleted_at IS NULL AND (
+       (decision IS NULL AND created_at < ?) OR (decision = 'passed' AND decided_at < ?)) LIMIT 500`,
+    t - RETAIN_UNREVIEWED_DAYS * DAY,
+    t - RETAIN_PASSED_DAYS * DAY,
+  );
+  for (const tr of expired) {
+    await q.run("UPDATE tracks SET deleted_at = ?, file_key = NULL WHERE id = ?", t, tr.id);
+    await logEvent({ user_id: tr.user_id, sender_id: tr.sender_id, track_id: tr.id, type: "expired", detail: "" });
+    await removeFile(tr.file_key);
+  }
+  return { expired: expired.length, abandoned: abandoned.length };
 }
 
 export { deletesAt };
 
-export function setBlocked(user: User, s: Sender, blocked: boolean) {
-  db().prepare("UPDATE senders SET blocked_at = ? WHERE id = ?").run(blocked ? now() : null, s.id);
-  logEvent({ user_id: user.id, sender_id: s.id, track_id: null, type: blocked ? "blocked" : "unblocked", detail: "" });
+export async function setBlocked(user: User, s: Sender, blocked: boolean) {
+  await q.run("UPDATE senders SET blocked_at = ? WHERE id = ?", blocked ? now() : null, s.id);
+  await logEvent({ user_id: user.id, sender_id: s.id, track_id: null, type: blocked ? "blocked" : "unblocked", detail: "" });
 }
 
 /** A short, unambiguous invite code, created the first time someone opens Referrals. */
-export function referralCodeFor(userId: number) {
-  const existing = (db().prepare("SELECT referral_code AS c FROM users WHERE id = ?").get(userId) as { c: string | null }).c;
+export async function referralCodeFor(userId: number) {
+  const existing = (await q.get<{ c: string | null }>("SELECT referral_code AS c FROM users WHERE id = ?", userId))?.c;
   if (existing) return existing;
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  for (;;) {
+  for (let attempt = 0; attempt < 5; attempt++) {
     const code = Array.from(crypto.randomBytes(7), (b) => alphabet[b % alphabet.length]).join("");
-    try {
-      db().prepare("UPDATE users SET referral_code = ? WHERE id = ?").run(code, userId);
-      return code;
-    } catch {
-      // unique collision: try another
-    }
+    const r = await q.run(
+      "UPDATE users SET referral_code = ? WHERE id = ? AND referral_code IS NULL AND NOT EXISTS (SELECT 1 FROM users WHERE referral_code = ?)",
+      code,
+      userId,
+      code,
+    );
+    if (r.changes) return code;
+    const current = (await q.get<{ c: string | null }>("SELECT referral_code AS c FROM users WHERE id = ?", userId))?.c;
+    if (current) return current; // set concurrently
   }
+  throw new Error("Could not allocate a referral code");
 }

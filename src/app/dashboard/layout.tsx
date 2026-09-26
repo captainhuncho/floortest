@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { PlayerBar, PlayerProvider } from "@/components/Player";
 import { ToastProvider } from "@/components/Toast";
 import { requireUser } from "@/lib/auth";
@@ -11,13 +12,20 @@ import { TopBar } from "./TopBar";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
-  purgeExpired();
-  const collections = collectionsFor(user.id);
-  const cap = capacity(user);
+  // Retention cleanup runs after the response, so it never slows a page down.
+  after(() => purgeExpired().catch((e) => console.error("[purge]", e)));
+  const [collections, cap, active, notices] = await Promise.all([collectionsFor(user.id), capacity(user), activeCollection(user), notificationsFor(user)]);
+  // Even with the switch on, uploads stop if the routed collection closed or the desk is full.
+  const blocked = !active
+    ? "No collection selected"
+    : isClosed(active)
+      ? `But “${active.name}” is closed, so uploads are still off`
+      : cap.full
+        ? "But your desk is full, so uploads are still off"
+        : null;
   const plan = planOf(user.plan);
   const upgrade = Object.values(PLANS).find((p) => p.limit > plan.limit) ?? null;
-  const since = new Date(user.created_at);
-  const memberSince = `${String(since.getDate()).padStart(2, "0")}.${String(since.getMonth() + 1).padStart(2, "0")}.${since.getFullYear()}`;
+  const memberSince = new Date(user.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: user.tz }).replaceAll("/", ".");
   const link = `${APP_URL}/${user.handle}`;
 
   return (
@@ -27,32 +35,25 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <Sidebar
             user={{ handle: user.handle, name: user.name }}
             link={link}
-            collections={collections.map((c) => ({ id: c.id, name: c.name }))}
+            collections={collections.map((c) => ({ id: c.id, name: c.name, closed: isClosed(c) }))}
             activeId={user.active_collection_id}
             needsReview={collections.reduce((n, c) => n + c.needs_review, 0)}
             cap={cap}
             plan={{ name: plan.name, upgrade: upgrade && { name: upgrade.name, limit: upgrade.limit } }}
             pause={{
-                  on: isPaused(user),
-                  until: user.pause_until ? new Date(user.pause_until).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : null,
-                  untilTs: user.pause_until,
-                  // Even with the switch on, uploads stop if the routed collection closed or the desk is full.
-                  blocked: (() => {
-                    const c = activeCollection(user);
-                    if (!c) return "No collection selected";
-                    if (isClosed(c)) return `But “${c.name}” is closed, so uploads are still off`;
-                    if (cap.full) return "But your desk is full, so uploads are still off";
-                    return null;
-                  })(),
-                  message: user.pause_message,
-                }}
+              on: isPaused(user),
+              until: user.pause_until ? new Date(user.pause_until).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: user.tz }) : null,
+              untilTs: user.pause_until,
+              blocked,
+              message: user.pause_message,
+            }}
           />
           <main id="main" className="min-w-0 pb-24 md:overflow-y-auto">
             <div className="sticky top-0 z-40 flex h-[68px] items-center justify-end border-b border-line bg-ink/85 px-4 backdrop-blur sm:px-6">
               <TopBar
                 user={{ name: user.name, email: user.email, handle: user.handle, plan: plan.name, memberSince }}
                 link={link}
-                notices={notificationsFor(user)}
+                notices={notices}
                 footer={footerLinks()}
                 version={VERSION}
               />

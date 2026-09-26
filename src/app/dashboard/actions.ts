@@ -2,8 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireUser } from "@/lib/auth";
+import { destroySession, requireUser, verifyPassword } from "@/lib/auth";
 import {
+  capacity,
+  clearDecision as clearTrackDecision,
   decide,
   deleteTrack as removeTrack,
   ownedSender,
@@ -12,16 +14,19 @@ import {
   setBlocked,
   undoDecision as restoreDecision,
 } from "@/lib/core";
-import { db, logEvent, now, type Decision } from "@/lib/db";
+import { isDecision, likeContains, logEvent, now, q, type Decision } from "@/lib/db";
 import { sendDigest } from "@/lib/notify";
-import { cleanGenre, PLANS, RESERVED_HANDLES } from "@/lib/plans";
+import { cleanGenre, PLANS, planOf, RESERVED_HANDLES } from "@/lib/plans";
+import { storage } from "@/lib/storage";
 
 const done = () => revalidatePath("/dashboard", "layout");
 
+/** Postgres unique-violation, e.g. two people claiming the same link name at once. */
+const isUniqueViolation = (e: unknown) => (e as { code?: string })?.code === "23505";
+
 function ownCollection(userId: number, id: number) {
-  return db().prepare("SELECT id, name FROM collections WHERE id = ? AND user_id = ?").get(id, userId) as
-    | { id: number; name: string }
-    | undefined;
+  if (!Number.isSafeInteger(id)) return Promise.resolve(undefined);
+  return q.get<{ id: number; name: string }>("SELECT id, name FROM collections WHERE id = ? AND user_id = ?", id, userId);
 }
 
 /* Collections */
@@ -30,26 +35,27 @@ export async function createCollection(form: FormData) {
   const u = await requireUser();
   const name = String(form.get("name") || "").trim().slice(0, 60);
   if (!name) return;
-  const r = db().prepare("INSERT INTO collections (user_id, name, created_at) VALUES (?,?,?)").run(u.id, name, now());
-  if (form.get("activate")) db().prepare("UPDATE users SET active_collection_id = ? WHERE id = ?").run(Number(r.lastInsertRowid), u.id);
+  const c = await q.get<{ id: number }>("INSERT INTO collections (user_id, name, created_at) VALUES (?,?,?) RETURNING id", u.id, name, now());
+  if (form.get("activate")) await q.run("UPDATE users SET active_collection_id = ? WHERE id = ?", c!.id, u.id);
   done();
 }
 
 export async function setActiveCollection(id: number) {
   const u = await requireUser();
-  if (!ownCollection(u.id, id)) return;
-  db().prepare("UPDATE users SET active_collection_id = ? WHERE id = ?").run(id, u.id);
+  if (!(await ownCollection(u.id, id))) return;
+  await q.run("UPDATE users SET active_collection_id = ? WHERE id = ?", id, u.id);
   done();
+  revalidatePath(`/${u.handle}`);
 }
 
 export async function updateCollection(id: number, form: FormData) {
   const u = await requireUser();
-  if (!ownCollection(u.id, id)) return;
+  if (!(await ownCollection(u.id, id))) return;
   const name = String(form.get("name") || "").trim().slice(0, 60);
   const closes = String(form.get("closes") || "");
   // A closing date means "open through the end of that day" in the receiver's timezone offset sent by the browser.
   const offset = Number(form.get("tz") || 0);
-  const closesAt = /^\d{4}-\d{2}-\d{2}$/.test(closes) ? Date.parse(`${closes}T23:59:59Z`) + offset * 60_000 : null;
+  const closesAt = /^\d{4}-\d{2}-\d{2}$/.test(closes) ? Date.parse(`${closes}T23:59:59Z`) + (Number.isFinite(offset) ? offset : 0) * 60_000 : null;
   const text = (k: string, max: number) => String(form.get(k) || "").trim().slice(0, max);
   const bpm = (k: string) => {
     const n = Math.round(Number(form.get(k)));
@@ -57,31 +63,38 @@ export async function updateCollection(id: number, form: FormData) {
   };
   let [lo, hi] = [bpm("bpm_min"), bpm("bpm_max")];
   if (lo && hi && lo > hi) [lo, hi] = [hi, lo];
-  if (name) db().prepare("UPDATE collections SET name = ? WHERE id = ?").run(name, id);
-  db()
-    .prepare("UPDATE collections SET closes_at = ?, brief_wanted = ?, bpm_min = ?, bpm_max = ?, brief_note = ? WHERE id = ?")
-    .run(closesAt, text("brief_wanted", 120), lo, hi, text("brief_note", 200), id);
   let genres: string[] = [];
   try {
     const raw = JSON.parse(String(form.get("genres") || "[]"));
     if (Array.isArray(raw)) genres = [...new Set(raw.filter((g) => typeof g === "string").map(cleanGenre).filter(Boolean))].slice(0, 30);
   } catch {}
-  db().prepare("UPDATE collections SET genres = ? WHERE id = ?").run(genres.length ? JSON.stringify(genres) : "", id);
+  await q.run(
+    `UPDATE collections SET name = COALESCE(NULLIF(?, ''), name), closes_at = ?, brief_wanted = ?, bpm_min = ?, bpm_max = ?, brief_note = ?, genres = ?
+     WHERE id = ?`,
+    name,
+    closesAt,
+    text("brief_wanted", 120),
+    lo,
+    hi,
+    text("brief_note", 200),
+    genres.length ? JSON.stringify(genres) : "",
+    id,
+  );
   done();
+  revalidatePath(`/${u.handle}`);
 }
 
 export async function deleteCollection(id: number) {
   const u = await requireUser();
-  if (!ownCollection(u.id, id)) return;
-  const count = db().prepare("SELECT COUNT(*) AS n FROM collections WHERE user_id = ?").get(u.id) as { n: number };
-  if (count.n <= 1) return; // the link always needs somewhere to route
-  // Tracks fall back to "unsorted" (collection_id NULL) rather than being deleted.
-  db().prepare("UPDATE tracks SET collection_id = NULL WHERE collection_id = ?").run(id);
-  db().prepare("DELETE FROM collections WHERE id = ?").run(id);
-  if (u.active_collection_id === id) {
-    const next = db().prepare("SELECT id FROM collections WHERE user_id = ? ORDER BY created_at LIMIT 1").get(u.id) as { id: number };
-    db().prepare("UPDATE users SET active_collection_id = ? WHERE id = ?").run(next.id, u.id);
-  }
+  if (!(await ownCollection(u.id, id))) return;
+  if ((await q.count("SELECT COUNT(*) AS n FROM collections WHERE user_id = ?", u.id)) <= 1) return; // the link always needs somewhere to route
+  await q.tx(async (db) => {
+    // Tracks fall back to "unsorted" (collection_id NULL) rather than being deleted.
+    await db.run("UPDATE tracks SET collection_id = NULL WHERE collection_id = ?", id);
+    await db.run("DELETE FROM collections WHERE id = ?", id);
+    if (u.active_collection_id === id)
+      await db.run("UPDATE users SET active_collection_id = (SELECT id FROM collections WHERE user_id = ? ORDER BY created_at LIMIT 1) WHERE id = ?", u.id, u.id);
+  });
   done();
 }
 
@@ -91,9 +104,10 @@ export type UndoToken = { trackId: number; prev: { decision: Decision | null; de
 
 export async function decideTrack(trackId: number, decision: Decision): Promise<UndoToken | null> {
   const u = await requireUser();
-  const t = ownedTrack(u.id, trackId);
+  if (!isDecision(decision)) return null;
+  const t = await ownedTrack(u.id, trackId);
   if (!t) return null;
-  const r = decide(u, t, decision);
+  const r = await decide(u, t, decision);
   done();
   return { trackId, ...r };
 }
@@ -101,35 +115,35 @@ export async function decideTrack(trackId: number, decision: Decision): Promise<
 /** Back to Needs review. Used when a receiver toggles off Keep or Could be better. */
 export async function clearDecision(trackId: number) {
   const u = await requireUser();
-  const t = ownedTrack(u.id, trackId);
+  const t = await ownedTrack(u.id, trackId);
   if (!t) return;
-  db().prepare("UPDATE tracks SET decision = NULL, decided_at = NULL WHERE id = ?").run(t.id);
+  await clearTrackDecision(t);
   done();
 }
 
 export async function undoDecision(token: UndoToken) {
   const u = await requireUser();
-  const t = ownedTrack(u.id, token.trackId);
+  const t = await ownedTrack(u.id, Number(token?.trackId));
   if (!t) return;
-  restoreDecision(u, t, token.prev, token.eventId);
+  await restoreDecision(u, t, token.prev ?? {}, Number(token.eventId));
   done();
 }
 
 export async function moveTrack(trackId: number, form: FormData) {
   const u = await requireUser();
-  const t = ownedTrack(u.id, trackId);
-  const target = ownCollection(u.id, Number(form.get("collection")));
+  const t = await ownedTrack(u.id, trackId);
+  const target = await ownCollection(u.id, Number(form.get("collection")));
   if (!t || !target || t.collection_id === target.id) return;
-  db().prepare("UPDATE tracks SET collection_id = ? WHERE id = ?").run(target.id, t.id);
-  logEvent({ user_id: u.id, sender_id: t.sender_id, track_id: t.id, type: "moved", detail: `to ${target.name}` });
+  await q.run("UPDATE tracks SET collection_id = ? WHERE id = ?", target.id, t.id);
+  await logEvent({ user_id: u.id, sender_id: t.sender_id, track_id: t.id, type: "moved", detail: `to ${target.name}` });
   done();
 }
 
 export async function deleteTrack(trackId: number, back: string) {
   const u = await requireUser();
-  const t = ownedTrack(u.id, trackId);
+  const t = await ownedTrack(u.id, trackId);
   if (!t) return;
-  removeTrack(u, t);
+  await removeTrack(u, t);
   done();
   redirect(back.startsWith("/dashboard") ? back : "/dashboard");
 }
@@ -139,26 +153,26 @@ export async function deleteTrack(trackId: number, back: string) {
 export async function addNote(senderId: number, trackId: number | null, form: FormData) {
   const u = await requireUser();
   const body = String(form.get("body") || "").trim().slice(0, 4000);
-  if (!body || !ownedSender(u.id, senderId)) return;
-  if (trackId && !ownedTrack(u.id, trackId)) return;
-  logEvent({ user_id: u.id, sender_id: senderId, track_id: trackId, type: "note", detail: body });
+  if (!body || !(await ownedSender(u.id, senderId))) return;
+  if (trackId && !(await ownedTrack(u.id, trackId))) return;
+  await logEvent({ user_id: u.id, sender_id: senderId, track_id: trackId, type: "note", detail: body });
   done();
 }
 
 export async function replyToSender(senderId: number, trackId: number | null, form: FormData) {
   const u = await requireUser();
-  const s = ownedSender(u.id, senderId);
+  const s = await ownedSender(u.id, senderId);
   const body = String(form.get("body") || "").trim().slice(0, 4000);
   if (!s || !body) return;
-  await reply(u, s, trackId ? ownedTrack(u.id, trackId) : undefined, body);
+  await reply(u, s, trackId ? await ownedTrack(u.id, trackId) : undefined, body);
   done();
 }
 
 export async function blockSender(senderId: number, blocked: boolean) {
   const u = await requireUser();
-  const s = ownedSender(u.id, senderId);
+  const s = await ownedSender(u.id, senderId);
   if (!s) return;
-  setBlocked(u, s, blocked);
+  await setBlocked(u, s, !!blocked);
   done();
 }
 
@@ -166,7 +180,7 @@ export async function blockSender(senderId: number, blocked: boolean) {
 
 export async function markNotificationsRead() {
   const u = await requireUser();
-  db().prepare("UPDATE users SET notifications_seen_at = ? WHERE id = ?").run(now(), u.id);
+  await q.run("UPDATE users SET notifications_seen_at = ? WHERE id = ?", now(), u.id);
   done();
 }
 
@@ -175,18 +189,23 @@ export type SearchHit = { kind: "track" | "contact"; id: number; title: string; 
 /** Type-ahead for the search dialog: a few tracks and contacts matching the query. */
 export async function quickSearch(query: string): Promise<SearchHit[]> {
   const u = await requireUser();
-  const q = query.trim().slice(0, 100);
-  if (!q) return [];
-  const like = `%${q}%`;
-  const tracks = db()
-    .prepare(
-      `SELECT t.id, t.title, t.artist, s.name AS sender FROM tracks t JOIN senders s ON s.id = t.sender_id
-       WHERE t.user_id = ? AND t.deleted_at IS NULL AND (t.title LIKE ? OR t.artist LIKE ?) ORDER BY t.created_at DESC LIMIT 6`,
-    )
-    .all(u.id, like, like) as { id: number; title: string; artist: string; sender: string }[];
-  const contacts = db()
-    .prepare("SELECT id, name, email FROM senders WHERE user_id = ? AND (name LIKE ? OR email LIKE ?) ORDER BY name LIMIT 4")
-    .all(u.id, like, like) as { id: number; name: string; email: string }[];
+  const text = String(query ?? "").trim().slice(0, 100);
+  if (!text) return [];
+  const like = likeContains(text);
+  const tracks = await q.all<{ id: number; title: string; artist: string; sender: string }>(
+    `SELECT t.id, t.title, t.artist, s.name AS sender FROM tracks t JOIN senders s ON s.id = t.sender_id
+     WHERE t.user_id = ? AND t.deleted_at IS NULL AND (t.title ILIKE ? OR t.artist ILIKE ? OR t.genre ILIKE ?) ORDER BY t.created_at DESC LIMIT 6`,
+    u.id,
+    like,
+    like,
+    like,
+  );
+  const contacts = await q.all<{ id: number; name: string; email: string }>(
+    "SELECT id, name, email FROM senders WHERE user_id = ? AND (name ILIKE ? OR email ILIKE ?) ORDER BY lower(name) LIMIT 4",
+    u.id,
+    like,
+    like,
+  );
   return [
     ...tracks.map((t) => ({ kind: "track" as const, id: t.id, title: `${t.artist} - ${t.title}`, detail: `from ${t.sender}`, href: `/dashboard?view=queue&s=all&t=${t.id}` })),
     ...contacts.map((c) => ({ kind: "contact" as const, id: c.id, title: c.name, detail: c.email, href: `/dashboard/contacts/${c.id}` })),
@@ -201,17 +220,15 @@ export async function pauseLink(form: FormData) {
   const until = String(form.get("until") || "");
   const offset = Number(form.get("tz") || 0);
   // "Until 12 Oct" means back on the morning of the 12th, receiver's local time.
-  const untilAt = /^\d{4}-\d{2}-\d{2}$/.test(until) ? Date.parse(`${until}T00:00:00Z`) + offset * 60_000 : null;
-  db()
-    .prepare("UPDATE users SET paused_at = ?, pause_until = ?, pause_message = ? WHERE id = ?")
-    .run(now(), untilAt && untilAt > now() ? untilAt : null, message, u.id);
+  const untilAt = /^\d{4}-\d{2}-\d{2}$/.test(until) ? Date.parse(`${until}T00:00:00Z`) + (Number.isFinite(offset) ? offset : 0) * 60_000 : null;
+  await q.run("UPDATE users SET paused_at = ?, pause_until = ?, pause_message = ? WHERE id = ?", now(), untilAt && untilAt > now() ? untilAt : null, message, u.id);
   done();
   revalidatePath(`/${u.handle}`);
 }
 
 export async function resumeLink() {
   const u = await requireUser();
-  db().prepare("UPDATE users SET paused_at = NULL, pause_until = NULL WHERE id = ?").run(u.id);
+  await q.run("UPDATE users SET paused_at = NULL, pause_until = NULL WHERE id = ?", u.id);
   done();
   revalidatePath(`/${u.handle}`);
 }
@@ -227,26 +244,23 @@ export async function updateNotifications(_: SettingsState, form: FormData): Pro
     const n = Number(v);
     return Number.isInteger(n) && n >= 0 && n <= 23 ? n : null;
   };
-  let tz = String(form.get("tz") || "UTC");
+  let tz = String(form.get("tz") || "UTC").slice(0, 64);
   try {
     new Intl.DateTimeFormat("en", { timeZone: tz });
   } catch {
     tz = "UTC";
   }
   const quiet = form.get("quiet") === "on";
-  db()
-    .prepare(
-      "UPDATE users SET notify_submissions = ?, digest_hour = ?, quiet_start = ?, quiet_end = ?, notify_alerts = ?, tz = ? WHERE id = ?",
-    )
-    .run(
-      ["instant", "digest", "off"].includes(mode) ? mode : "digest",
-      hour("digest_hour") ?? 9,
-      quiet ? hour("quiet_start") : null,
-      quiet ? hour("quiet_end") : null,
-      form.get("notify_alerts") === "on" ? 1 : 0,
-      tz,
-      u.id,
-    );
+  await q.run(
+    "UPDATE users SET notify_submissions = ?, digest_hour = ?, quiet_start = ?, quiet_end = ?, notify_alerts = ?, tz = ? WHERE id = ?",
+    ["instant", "digest", "off"].includes(mode) ? mode : "digest",
+    hour("digest_hour") ?? 9,
+    quiet ? hour("quiet_start") : null,
+    quiet ? hour("quiet_end") : null,
+    form.get("notify_alerts") === "on" ? 1 : 0,
+    tz,
+    u.id,
+  );
   done();
   return { ok: true };
 }
@@ -270,8 +284,12 @@ export async function updateSettings(_: SettingsState, form: FormData): Promise<
   if (!name) return { error: "Name is required." };
   if (!/^[a-z0-9][a-z0-9-_]{1,29}$/.test(handle)) return { error: "Link names use 2–30 letters, numbers, - or _." };
   if (RESERVED_HANDLES.has(handle)) return { error: "That link name is reserved." };
-  if (db().prepare("SELECT 1 FROM users WHERE handle = ? AND id != ?").get(handle, u.id)) return { error: "That link is taken." };
-  db().prepare("UPDATE users SET name = ?, handle = ? WHERE id = ?").run(name, handle, u.id);
+  try {
+    await q.run("UPDATE users SET name = ?, handle = ? WHERE id = ?", name, handle, u.id);
+  } catch (e) {
+    if (isUniqueViolation(e)) return { error: "That link is taken." };
+    throw e;
+  }
   done();
   return { ok: true };
 }
@@ -280,16 +298,36 @@ export async function updatePublicPage(_: SettingsState, form: FormData): Promis
   const u = await requireUser();
   const style = form.get("page_style") === "stage" ? "stage" : "classic";
   const role = String(form.get("role_line") || "").trim().slice(0, 60);
-  db().prepare("UPDATE users SET page_style = ?, role_line = ? WHERE id = ?").run(style, role, u.id);
+  await q.run("UPDATE users SET page_style = ?, role_line = ? WHERE id = ?", style, role, u.id);
   done();
   revalidatePath(`/${u.handle}`);
   return { ok: true };
 }
 
-/** Plan switch without billing, for early design partners. */
+/** Plan switch without billing, for the beta. Refuses a plan too small for what's already stored. */
 export async function setPlan(plan: string) {
   const u = await requireUser();
-  if (!(plan in PLANS)) return;
-  db().prepare("UPDATE users SET plan = ? WHERE id = ?").run(plan, u.id);
+  if (!Object.hasOwn(PLANS, plan)) return;
+  const cap = await capacity(u);
+  if (cap.used > planOf(plan).limit + cap.bonus) return;
+  await q.run("UPDATE users SET plan = ? WHERE id = ?", plan, u.id);
   done();
+}
+
+/** Permanently deletes the account, every stored file, and all history. Requires the password. */
+export async function deleteAccount(_: SettingsState, form: FormData): Promise<SettingsState> {
+  const u = await requireUser();
+  const row = await q.get<{ password_hash: string }>("SELECT password_hash FROM users WHERE id = ?", u.id);
+  if (!row || !verifyPassword(String(form.get("password") || ""), row.password_hash)) return { error: "That password isn't right." };
+  const store = await storage();
+  const keys = await q.all<{ k: string }>(
+    "SELECT file_key AS k FROM tracks WHERE user_id = ? AND file_key IS NOT NULL UNION SELECT file_key FROM uploads WHERE receiver_id = ?",
+    u.id,
+    u.id,
+  );
+  for (const { k } of keys) await store.delete(k).catch(() => {});
+  if (u.cover_key) await store.delete(u.cover_key).catch(() => {});
+  await destroySession();
+  await q.run("DELETE FROM users WHERE id = ?", u.id); // cascades to everything the account owns
+  redirect("/?deleted=1");
 }

@@ -25,6 +25,6 @@ export function fmtDate(ts: number) {
   return new Date(ts).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
-export function fmtDay(ts: number) {
-  return new Date(ts).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+export function fmtDay(ts: number, timeZone?: string) {
+  return new Date(ts).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone });
 }

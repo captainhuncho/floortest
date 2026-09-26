@@ -1,8 +1,7 @@
 import "server-only";
-import fs from "node:fs";
-import zlib from "node:zlib";
 import type { Track } from "./db";
-import { trackPath } from "./core";
+import { storage } from "./storage";
+import { zipStream, type Entry } from "./zip";
 
 const xmlEsc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -60,95 +59,26 @@ export function m3u(tracks: Track[]) {
   return ["#EXTM3U", ...tracks.flatMap((t) => [`#EXTINF:${Math.round(t.duration ?? -1)},${t.artist} - ${t.title}`, crateFileName(t)])].join("\n") + "\n";
 }
 
-type Entry = { name: string; data: () => Buffer; onSent?: () => void };
-
-/** Minimal store-only (uncompressed) ZIP writer, streamed one file at a time. Audio doesn't compress anyway. */
-export function zipStream(entries: Entry[]): ReadableStream<Uint8Array> {
-  const central: Buffer[] = [];
-  let offset = 0;
-  let i = 0;
-  // pull() is only called again once the consumer has taken the previous chunks,
-  // so an entry's onSent fires after its bytes have actually left.
-  let pending: (() => void) | undefined;
-  const dosTime = (() => {
-    const d = new Date();
-    const time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
-    const date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
-    return { time, date };
-  })();
-
-  return new ReadableStream({
-    pull(controller) {
-      pending?.();
-      pending = undefined;
-      if (i < entries.length) {
-        const e = entries[i++];
-        const data = e.data();
-        const name = Buffer.from(e.name, "utf8");
-        const crc = zlib.crc32(data) >>> 0;
-        if (offset + data.length > 0xfffffff0) {
-          controller.error(new Error("Crate too large for a single ZIP"));
-          return;
-        }
-        const local = Buffer.alloc(30);
-        local.writeUInt32LE(0x04034b50, 0);
-        local.writeUInt16LE(20, 4);
-        local.writeUInt16LE(0x0800, 6); // UTF-8 names
-        local.writeUInt16LE(0, 8);
-        local.writeUInt16LE(dosTime.time, 10);
-        local.writeUInt16LE(dosTime.date, 12);
-        local.writeUInt32LE(crc, 14);
-        local.writeUInt32LE(data.length, 18);
-        local.writeUInt32LE(data.length, 22);
-        local.writeUInt16LE(name.length, 26);
-        local.writeUInt16LE(0, 28);
-
-        const cen = Buffer.alloc(46);
-        cen.writeUInt32LE(0x02014b50, 0);
-        cen.writeUInt16LE(20, 4);
-        cen.writeUInt16LE(20, 6);
-        cen.writeUInt16LE(0x0800, 8);
-        cen.writeUInt16LE(0, 10);
-        cen.writeUInt16LE(dosTime.time, 12);
-        cen.writeUInt16LE(dosTime.date, 14);
-        cen.writeUInt32LE(crc, 16);
-        cen.writeUInt32LE(data.length, 20);
-        cen.writeUInt32LE(data.length, 24);
-        cen.writeUInt16LE(name.length, 28);
-        cen.writeUInt32LE(offset, 42);
-        central.push(cen, name);
-
-        controller.enqueue(new Uint8Array(Buffer.concat([local, name])));
-        controller.enqueue(new Uint8Array(data));
-        offset += 30 + name.length + data.length;
-        pending = e.onSent;
-        return;
-      }
-      const cd = Buffer.concat(central);
-      const end = Buffer.alloc(22);
-      end.writeUInt32LE(0x06054b50, 0);
-      end.writeUInt16LE(entries.length, 8);
-      end.writeUInt16LE(entries.length, 10);
-      end.writeUInt32LE(cd.length, 12);
-      end.writeUInt32LE(offset, 16);
-      controller.enqueue(new Uint8Array(Buffer.concat([cd, end])));
-      controller.close();
+const textStream = (s: string) =>
+  new ReadableStream<Uint8Array>({
+    start(c) {
+      c.enqueue(new TextEncoder().encode(s));
+      c.close();
     },
   });
-}
 
-export function crateZip(crateName: string, baseDir: string, tracks: Track[], onTrackSent?: (t: Track) => void) {
+/** Kept tracks + rekordbox.xml + M3U8, streamed from storage. `onTrackSent` fires after each file has gone out. */
+export function crateZip(crateName: string, baseDir: string, tracks: Track[], onTrackSent?: (t: Track) => Promise<void> | void) {
   const folder = safeName(crateName);
+  const files = tracks.filter((t) => t.file_key);
   const entries: Entry[] = [
-    { name: `${folder}/rekordbox.xml`, data: () => Buffer.from(rekordboxXml(crateName, baseDir, tracks)) },
-    { name: `${folder}/${folder}.m3u8`, data: () => Buffer.from(m3u(tracks)) },
-    ...tracks
-      .filter((t) => trackPath(t))
-      .map((t) => ({
-        name: `${folder}/${crateFileName(t)}`,
-        data: () => fs.readFileSync(trackPath(t)!),
-        onSent: onTrackSent && (() => onTrackSent(t)),
-      })),
+    { name: `${folder}/rekordbox.xml`, open: async () => textStream(rekordboxXml(crateName, baseDir, files)) },
+    { name: `${folder}/${folder}.m3u8`, open: async () => textStream(m3u(files)) },
+    ...files.map((t) => ({
+      name: `${folder}/${crateFileName(t)}`,
+      open: async () => (await (await storage()).stream(t.file_key!)).body,
+      onSent: onTrackSent && (() => onTrackSent(t)),
+    })),
   ];
   return zipStream(entries);
 }

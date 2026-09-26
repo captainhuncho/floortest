@@ -12,7 +12,7 @@ const initials = (name: string) =>
     .map((w) => w[0]!.toUpperCase())
     .join("");
 
-const shortDay = (ts: number) => new Date(ts).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+const shortDay = (ts: number, timeZone: string) => new Date(ts).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone });
 
 /** The "Stage" public page: an atmospheric, photo-led take on the receiver link. */
 export function StagePage({
@@ -29,7 +29,7 @@ export function StagePage({
   note?: string;
 }) {
   const first = receiver.name.split(/\s+/)[0];
-  const cover = receiver.cover_file ? `/api/cover/${receiver.handle}?v=${encodeURIComponent(receiver.cover_file)}` : null;
+  const cover = receiver.cover_key ? `/api/cover/${receiver.handle}?v=${encodeURIComponent(receiver.cover_key)}` : null;
   const range = collection?.bpm_min && collection?.bpm_max ? `${collection.bpm_min}–${collection.bpm_max} BPM` : null;
   const genres = genresFor(collection);
   // "Wanted" defaults to the collection's own genre list when no custom brief is written.
@@ -37,7 +37,7 @@ export function StagePage({
   const brief = [
     wanted && { k: "Wanted", v: wanted },
     range && { k: "Range", v: range },
-    collection?.closes_at && { k: "Deadline", v: `Open until ${shortDay(collection.closes_at)}` },
+    collection?.closes_at && { k: "Deadline", v: `Open until ${shortDay(collection.closes_at, receiver.tz)}` },
   ].filter(Boolean) as { k: string; v: string }[];
 
   return (
@@ -155,7 +155,7 @@ export function StagePage({
               <p className="mt-3 text-2xl font-semibold">{closedReason}</p>
               {note && <p className="mt-4 whitespace-pre-wrap border-l-2 border-lime pl-4 text-bone">{note}</p>}
               <p className="mt-3 text-[#d8cfc4]">This link stays the same. Check back when {first} is taking music again.</p>
-              {collection?.closes_at && <p className="stage-label mt-6">Closed {fmtDay(collection.closes_at)}</p>}
+              {collection?.closes_at && <p className="stage-label mt-6">Closed {fmtDay(collection.closes_at, receiver.tz)}</p>}
             </div>
           )}
         </section>
