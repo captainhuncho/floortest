@@ -11,7 +11,7 @@ import { SubmissionsList } from "./list/SubmissionsList";
 import { TrackList, type Row } from "./TrackList";
 import { VIEW_COOKIE, ViewToggle } from "./ViewToggle";
 
-export const metadata = { title: "Submissions — FloorTest" };
+export const metadata = { title: "Review Queue — FloorTest" };
 
 const STATUSES = [
   ["review", "Needs review", "t.decision IS NULL"],
@@ -103,7 +103,7 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
         <header className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 id="submissions-h" className="text-3xl font-bold tracking-tight">
-              Submissions
+              Review Queue
             </h1>
             <p className="mt-1 text-mute">
               {counts.review

@@ -40,7 +40,7 @@ export default function Privacy() {
         [
           "Cookies and local storage",
           [
-            "We use one cookie to keep you signed in and one to remember your preferred Submissions layout. The upload page remembers your name and email in your own browser so you don't retype them. We don't use advertising or tracking cookies.",
+            "We use one cookie to keep you signed in and one to remember your preferred Review Queue layout. The upload page remembers your name and email in your own browser so you don't retype them. We don't use advertising or tracking cookies.",
           ],
         ],
         [

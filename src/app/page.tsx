@@ -6,13 +6,13 @@ import { PLANS } from "@/lib/plans";
 const steps = [
   ["Share one", "permanent link"],
   ["Senders upload", "the original file"],
-  ["Press play", "in Submissions"],
+  ["Press play", "in the Review Queue"],
   ["Keep, could be better", "or reply"],
   ["Prepare kept", "tracks for your set"],
 ];
 
 const features = [
-  ["One place to review", "Submissions is the whole job: play, then keep it or mark it could be better, and the next track comes up. Undo is always one key away."],
+  ["One place to review", "The Review Queue is the whole job: play, then keep it or mark it could be better, and the next track comes up. Undo is always one key away."],
   ["Signals that mean something", "Senders hear when a track was really listened to (30 seconds or a quarter of it), downloaded, or replied to. Your keep and could-be-better calls stay private."],
   ["Originals, ready for the booth", "Kept tracks download together as WAV/MP3 originals with a Rekordbox XML and M3U8 playlist."],
   ["Intake you control", "Closing dates per callout, upload limits, verified sender emails, blocking, and automatic deletion of what you don't keep."],

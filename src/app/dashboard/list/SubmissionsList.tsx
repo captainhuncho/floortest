@@ -125,7 +125,7 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
   return (
     <div className="flex min-h-full flex-col">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3.5 sm:px-6">
-        <h1 className="text-2xl font-bold tracking-tight">Submissions</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Review Queue</h1>
         <div className="flex flex-wrap items-center gap-2">
           <a
             href="/dashboard/collections"

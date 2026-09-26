@@ -98,7 +98,7 @@ export function CollectionCard({ c, receiving, closed, canDelete }: { c: C; rece
                 type="button"
                 className="btn text-danger hover:bg-danger/10"
                 onClick={() => {
-                  if (confirm(`Delete “${c.name}”? Its tracks stay in Submissions, unsorted.`)) start(() => deleteCollection(c.id));
+                  if (confirm(`Delete “${c.name}”? Its tracks stay in the Review Queue, unsorted.`)) start(() => deleteCollection(c.id));
                 }}
               >
                 Delete

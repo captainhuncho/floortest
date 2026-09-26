@@ -143,7 +143,7 @@ export function ListRows({ rows }: { rows: ListRow[] }) {
 
   return (
     <>
-      <ul ref={listRef} className="@container divide-y divide-line" aria-label="Submissions">
+      <ul ref={listRef} className="@container divide-y divide-line" aria-label="Review Queue">
         {rows.map((r) => {
           const isCurrent = player.current?.id === r.id;
           const playing = isCurrent && player.playing;

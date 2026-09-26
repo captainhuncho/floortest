@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 
 export const VIEW_COOKIE = "ft_submissions_view";
 
-/** Switches Submissions between the focused Queue and the dense List; the choice is remembered. */
+/** Switches the Review Queue between the focused Queue and the dense List; the choice is remembered. */
 export function ViewToggle({ view }: { view: "queue" | "list" }) {
   const router = useRouter();
   const go = (v: "queue" | "list") => {

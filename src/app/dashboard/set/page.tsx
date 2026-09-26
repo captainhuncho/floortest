@@ -32,7 +32,7 @@ export default async function PrepareForSet() {
             <p className="card p-6 text-mute">
               Nothing kept yet. Press Keep (K) while reviewing in{" "}
               <Link href="/dashboard" className="text-bone underline underline-offset-4">
-                Submissions
+                Review Queue
               </Link>{" "}
               and tracks show up here.
             </p>
