@@ -114,18 +114,23 @@ export async function sendDigest(userId: number) {
 }
 
 /**
- * Hourly job. Digest users get their summary at their chosen hour; instant users get anything
- * held back by quiet hours when those hours end.
+ * Scheduled job. Digest users get their summary at their chosen hour; instant users get anything
+ * held back by quiet hours once those hours end. A receiver is due when their target hour has
+ * passed since their last digest, so an hourly schedule hits the hour exactly and a daily one
+ * (Vercel Hobby) still sends once a day.
  */
 export async function runDigests(at = now()) {
-  const users = await q.all<Pick<NotifyPrefs, "id" | "notify_submissions" | "digest_hour" | "quiet_end" | "tz" | "last_digest_at">>(
-    "SELECT id, notify_submissions, digest_hour, quiet_end, tz, last_digest_at FROM users WHERE notify_submissions IN ('digest', 'instant')",
+  const users = await q.all<Pick<NotifyPrefs, "id" | "notify_submissions" | "digest_hour" | "quiet_start" | "quiet_end" | "tz" | "last_digest_at">>(
+    "SELECT id, notify_submissions, digest_hour, quiet_start, quiet_end, tz, last_digest_at FROM users WHERE notify_submissions IN ('digest', 'instant')",
   );
   let sent = 0;
   for (const p of users) {
     const target = p.notify_submissions === "digest" ? p.digest_hour : p.quiet_end;
-    if (target == null || localHour(p.tz, at) !== target) continue;
-    if (p.last_digest_at && at - p.last_digest_at < 20 * 3_600_000) continue;
+    if (target == null) continue;
+    if (p.notify_submissions === "instant" && inQuietHours(p, at)) continue;
+    const hoursSince = (localHour(p.tz, at) - target + 24) % 24;
+    const lastTarget = at - (at % 3_600_000) - hoursSince * 3_600_000;
+    if (p.last_digest_at && p.last_digest_at >= lastTarget) continue;
     if (await sendDigest(p.id)) sent++;
   }
   return sent;

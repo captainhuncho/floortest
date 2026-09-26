@@ -50,7 +50,7 @@ Recommended stack: **Vercel** (app + cron) · **Supabase** (Postgres) · **Cloud
    ```
    Supabase Storage also works through its S3 endpoint (`https://<ref>.supabase.co/storage/v1/s3`, `S3_FORCE_PATH_STYLE=true`, region = project region).
 3. **Email.** Verify your sending domain in Resend, then set `RESEND_API_KEY` and `MAIL_FROM`.
-4. **App.** Import the repo into Vercel and set the variables from `.env.example`, at minimum `APP_URL`, `APP_SECRET` (`openssl rand -base64 48`), `CRON_SECRET`, `BETA_INVITE_CODES`. The cron jobs in `vercel.json` are picked up automatically. The digest job runs hourly, which needs a Vercel Pro plan; on Hobby (daily jobs only), call `/api/cron/digest` hourly from an external scheduler such as cron-job.org with the `Authorization: Bearer $CRON_SECRET` header.
+4. **App.** Import the repo into Vercel and set the variables from `.env.example`, at minimum `APP_URL`, `APP_SECRET` (`openssl rand -base64 48`), `CRON_SECRET`, `BETA_INVITE_CODES`. The cron jobs in `vercel.json` are picked up automatically. They run daily so they fit Vercel Hobby: digests go out once a day at 08:00 UTC. For digests at each receiver's chosen hour, change the digest schedule to `0 * * * *` on Vercel Pro, or call `/api/cron/digest` hourly from an external scheduler such as cron-job.org with the `Authorization: Bearer $CRON_SECRET` header.
 5. **Verify.**
    - `curl -H "Authorization: Bearer $CRON_SECRET" https://your-domain/api/health` should report `database: ok`, `storage: ok (s3)`, `email: resend` and an empty `problems` list.
    - Sign up with an invite code, then `npm run smoke -- https://your-domain <your-handle>`. Delete the smoke track afterwards.
