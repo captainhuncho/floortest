@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { createCollection, deleteCollection, setActiveCollection, updateCollection } from "../actions";
+import { ExportButton } from "../ExportButton";
 import { GenresField } from "./GenresField";
 
 type C = {
@@ -55,9 +56,10 @@ export function CollectionCard({ c, receiving, closed, canDelete }: { c: C; rece
           )}
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href={`/dashboard?c=${c.id}`} className="btn-ghost btn-sm">
-            Review in Submissions
+          <Link href={`/dashboard/collections/${c.id}`} className="btn-ghost btn-sm">
+            Open
           </Link>
+          <ExportButton collectionId={c.id} count={c.count} whole label="Download" variant="ghost" />
           {!receiving && (
             <button className="btn-ghost btn-sm" disabled={pending} onClick={() => start(() => setActiveCollection(c.id))}>
               Send new tracks here

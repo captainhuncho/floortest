@@ -37,8 +37,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
               Review ({c.needs_review})
             </Link>
           )}
-          <ExportButton collectionId={c.id} count={c.kept} label="Kept crate" />
-          <ExportButton collectionId={c.id} count={c.count} whole label="Whole folder" variant="ghost" />
+          <ExportButton collectionId={c.id} count={c.count} whole label="Download collection" />
         </div>
       </div>
       <div className="mt-6">
