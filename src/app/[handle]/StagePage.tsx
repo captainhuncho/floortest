@@ -61,11 +61,18 @@ export function StagePage({
         <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_50%_40%,transparent_40%,rgba(10,7,5,0.85)_100%)]" />
       </div>
 
-      <main className="relative z-10 mx-auto grid min-h-dvh max-w-[1600px] gap-6 px-4 pb-8 pt-[34vh] sm:px-8 lg:grid-cols-[minmax(0,500px)_1fr_minmax(0,640px)] lg:items-start lg:gap-8 lg:py-10">
+      {/* With a cover, the photo owns the middle column; without one, the two panels sit together. */}
+      <main
+        className={`relative z-10 mx-auto grid min-h-dvh gap-5 px-4 pb-8 sm:px-8 lg:items-start lg:gap-8 lg:py-12 ${
+          cover
+            ? "max-w-[1360px] pt-[22vh] lg:grid-cols-[minmax(0,460px)_minmax(120px,1fr)_minmax(0,520px)]"
+            : "max-w-[1080px] pt-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]"
+        }`}
+      >
         {/* Receiver card: first on phones so the sender knows where they are. */}
         <section
           aria-labelledby="stage-h"
-          className="stage-panel order-1 rounded-3xl p-6 sm:p-8 lg:sticky lg:top-10 lg:order-3 lg:col-start-3 lg:mt-[18vh]"
+          className={`stage-panel order-1 rounded-3xl p-5 sm:p-8 lg:sticky lg:top-12 lg:order-2 ${cover ? "lg:col-start-3" : "lg:col-start-2"} lg:row-start-1`}
         >
           <header className="flex items-center gap-4 border-b border-white/10 pb-6">
             <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-bone text-lg font-bold text-ink" aria-hidden>
@@ -80,16 +87,16 @@ export function StagePage({
             </div>
           </header>
 
-          <p className="stage-label mt-7 flex items-center gap-3 text-lime">
+          <p className="stage-label mt-5 flex sm:mt-7 items-center gap-3 text-lime">
             <span aria-hidden className="h-px w-10 bg-lime" />[{accepting ? "Now accepting unreleased music" : "Not accepting right now"}]
           </p>
-          <h1 id="stage-h" className="mt-5 text-[clamp(2.75rem,5.4vw,5.25rem)] font-bold leading-[0.92] tracking-[-0.035em]">
+          <h1 id="stage-h" className="mt-4 sm:mt-5 text-[clamp(2.1rem,4.4vw,4.25rem)] font-bold leading-[0.92] tracking-[-0.035em]">
             Send the demo.
             <span className="block font-[family-name:var(--font-serif)] text-[1.08em] font-normal italic tracking-[-0.02em]">
               See what happens.
             </span>
           </h1>
-          <p className="mt-6 max-w-xl text-[17px] leading-relaxed text-[#d8cfc4]">
+          <p className="mt-5 max-w-xl text-[15px] leading-relaxed sm:mt-6 sm:text-[17px] text-[#d8cfc4]">
             Upload the actual WAV or MP3 straight into {first}&apos;s current collection. No streaming links and no profile needed.
             {" "}
             {first} downloads the original when they&apos;re ready to play it.
@@ -138,7 +145,7 @@ export function StagePage({
           )}
         </section>
 
-        <section aria-label="Submission" className="stage-panel order-2 rounded-3xl p-6 sm:p-8 lg:order-1 lg:col-start-1 lg:row-start-1">
+        <section aria-label="Submission" className="stage-panel order-2 rounded-3xl p-6 sm:p-7 lg:order-1 lg:col-start-1 lg:row-start-1">
           {accepting ? (
             <StageForm
               handle={receiver.handle}
