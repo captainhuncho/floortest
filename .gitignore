@@ -4,3 +4,5 @@ data
 next-env.d.ts
 *.tsbuildinfo
 .env*.local
+.vercel
+.env*
