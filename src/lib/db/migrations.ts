@@ -158,4 +158,23 @@ create table uploads (
 );
 `,
   },
+  {
+    // Hosted Postgres (e.g. Supabase) may expose the public schema through an HTTP API with a
+    // public key. FloorTest never uses that API, so lock every table: with RLS on and no policies,
+    // API roles see nothing. The app connects as the table owner, which RLS doesn't restrict.
+    id: "0002_lock_public_api",
+    sql: `
+alter table users enable row level security;
+alter table sessions enable row level security;
+alter table password_resets enable row level security;
+alter table collections enable row level security;
+alter table senders enable row level security;
+alter table tracks enable row level security;
+alter table events enable row level security;
+alter table outbox enable row level security;
+alter table rate_events enable row level security;
+alter table uploads enable row level security;
+alter table schema_migrations enable row level security;
+`,
+  },
 ];
