@@ -39,16 +39,6 @@ export function Sidebar({ user, link, collections, activeId, needsReview, cap, p
       </a>
       <div className="flex items-center justify-between gap-3 px-4 pt-4 md:pb-2">
         <Logo href="/dashboard/floor" />
-        <button
-          className="btn-ghost btn-sm md:hidden"
-          onClick={() => {
-            navigator.clipboard?.writeText(link);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1500);
-          }}
-        >
-          {copied ? "Copied" : "Copy my link"}
-        </button>
       </div>
 
       <nav aria-label="Main" className="mt-3 flex gap-1 overflow-x-auto px-2 pb-2 md:mt-2 md:flex-col md:gap-0.5 md:pb-0">
