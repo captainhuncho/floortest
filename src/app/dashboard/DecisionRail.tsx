@@ -47,7 +47,7 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
         const token = track.decision === d ? null : await decideTrack(track.id, d);
         if (token) {
           toast.show({
-            message: `${d === "kept" ? `“${track.title}” added to Prepare for set` : `Could be better: “${track.title}”`}`,
+            message: `${d === "kept" ? "Kept" : "Could be better:"} “${track.title}”`,
             action: {
               label: "Undo",
               run: async () => {

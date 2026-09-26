@@ -35,16 +35,12 @@ export function CollectionCard({ c, receiving, closed, canDelete }: { c: C; rece
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <h2 className="text-lg font-semibold">
-            <Link href={`/dashboard/collections/${c.id}`} className="hover:underline">
-              {c.name}
-            </Link>{" "}
+            {c.name}{" "}
             {receiving && !closed && <span className="chip ml-1 border-lime/60 text-lime">Receiving</span>}
             {closed && <span className="chip ml-1 border-line text-mute">Closed</span>}
           </h2>
           <p className="mt-1 text-sm text-mute">
-            <Link href={`/dashboard/collections/${c.id}`} className="hover:text-bone">
-              {c.needsReview} need review · {c.kept} kept · {c.count} total · Open folder →
-            </Link>
+            {c.needsReview} need review · {c.kept} kept · {c.count} total
             {c.closesLabel && ` · ${closed ? "closed" : "closes"} ${c.closesLabel}`}
           </p>
           {c.genres.length > 0 && <p className="mt-1 text-sm text-mute">Genres: {c.genres.join(" · ")}</p>}

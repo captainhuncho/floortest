@@ -5,20 +5,7 @@ import { useEffect, useState } from "react";
 const KEY = "floortest.exportBase";
 
 /** "Prepare for set": downloads every kept original as a crate. Rekordbox XML needs absolute paths, so we ask once where it'll be unzipped. */
-export function ExportButton({
-  collectionId,
-  count,
-  whole = false,
-  label,
-  variant = "lime",
-}: {
-  collectionId: number | null;
-  count: number;
-  /** The whole collection folder instead of just its kept tracks. */
-  whole?: boolean;
-  label?: string;
-  variant?: "lime" | "ghost";
-}) {
+export function ExportButton({ collectionId, count }: { collectionId: number | null; count: number }) {
   const [open, setOpen] = useState(false);
   const [base, setBase] = useState("");
 
@@ -31,20 +18,17 @@ export function ExportButton({
   const href = () => {
     const p = new URLSearchParams({ base });
     if (collectionId) p.set("collection", String(collectionId));
-    if (whole && collectionId) p.set("all", "1");
     return `/api/export?${p}`;
   };
 
   return (
     <div className="relative">
-      <button className={`${variant === "lime" ? "btn-lime" : "btn-ghost"} btn-sm`} disabled={!count} onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-        {label ?? "Prepare for set"} ({count})
+      <button className="btn-lime btn-sm" disabled={!count} onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        Prepare for set ({count})
       </button>
       {open && (
         <div className="card absolute right-0 top-full z-20 mt-2 w-80 p-4 shadow-2xl shadow-black/50">
-          <p className="font-medium">
-            Download {count} {whole ? "" : "kept "}track{count === 1 ? "" : "s"} as a crate
-          </p>
+          <p className="font-medium">Prepare {count} kept track{count === 1 ? "" : "s"} for your set</p>
           <p className="mt-1 text-sm text-mute">
             A ZIP of the original files with a <code>rekordbox.xml</code> and an M3U8 playlist (works in Serato, Traktor and Engine too).
             Senders are told their original was downloaded.
