@@ -26,8 +26,8 @@ export function Sidebar({ user, link, collections, activeId, needsReview, cap, p
   const nav = [
     { href: "/dashboard/floor", label: "The Floor", active: path === "/dashboard/floor" },
     { href: "/dashboard", label: "Review Queue", active: path === "/dashboard", badge: needsReview },
-    { href: "/dashboard/set", label: "Prepare for set", active: path.startsWith("/dashboard/set") },
     { href: "/dashboard/collections", label: "Collections", active: path.startsWith("/dashboard/collections") },
+    { href: "/dashboard/set", label: "Prepare for set", active: path.startsWith("/dashboard/set") },
     { href: "/dashboard/contacts", label: "Contacts", active: path.startsWith("/dashboard/contacts") },
     { href: "/dashboard/activity", label: "Activity", active: path.startsWith("/dashboard/activity") },
     { href: "/dashboard/settings", label: "Profile", active: path.startsWith("/dashboard/settings"), mobileOnly: true },
