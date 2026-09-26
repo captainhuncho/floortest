@@ -1,13 +1,14 @@
+import { recentAudit } from "@/lib/audit";
+import { AccountLog } from "../AccountLog";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { activeCollection, capacity, collectionsFor, isClosed, isPaused } from "@/lib/core";
-import {q, type EventRow } from "@/lib/db";
+import { q } from "@/lib/db";
 import { fmtDay } from "@/lib/format";
 import { APP_URL } from "@/lib/mail";
 import { localHour, prefsFor } from "@/lib/notify";
 import { genresFor } from "@/lib/plans";
 import { fmtDuration, genreMix, homeStats } from "@/lib/stats";
-import { History } from "../History";
 import { DailyColumns, GenreBars } from "./HomeCharts";
 import { SwitchCollection } from "./SwitchCollection";
 import { UpNext } from "./UpNext";
@@ -64,9 +65,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
          ORDER BY t.created_at LIMIT 4`, user.id))
   ).map((t) => ({ ...t, peaks: t.peaks ? JSON.parse(t.peaks) : null, played: !!t.played_at }));
 
-  const events = (await q.all<EventRow & { track_title: string | null; sender_name: string }>(`SELECT e.*, t.title AS track_title, s.name AS sender_name FROM events e
-       LEFT JOIN tracks t ON t.id = e.track_id JOIN senders s ON s.id = e.sender_id
-       WHERE e.user_id = ? AND e.type != 'note' ORDER BY e.created_at DESC LIMIT 6`, user.id));
+  const mine = await recentAudit(user.id, 6);
 
   const contacts = (await q.all<{ id: number; name: string; verified_at: number | null; sent: number; kept: number }>(`SELECT s.id, s.name, s.verified_at, COUNT(t.id) AS sent, COUNT(CASE WHEN t.decision = 'kept' THEN 1 END) AS kept
        FROM senders s JOIN tracks t ON t.sender_id = s.id WHERE s.user_id = ?
@@ -243,11 +242,11 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
         </Card>
 
         <Card
-          title="Recent activity"
+          title="Your recent activity"
           className="xl:col-span-2"
-          action={<Link href="/dashboard/activity" className="text-sm text-mute hover:text-bone">All activity</Link>}
+          action={<Link href="/dashboard/activity" className="text-sm text-mute hover:text-bone">Full log</Link>}
         >
-          <History events={events} showSender />
+          <AccountLog rows={mine} />
         </Card>
 
         <Card title="Top contacts" action={<Link href="/dashboard/contacts?sort=kept" className="text-sm text-mute hover:text-bone">All contacts</Link>}>

@@ -1,4 +1,5 @@
 import { currentUser } from "@/lib/auth";
+import { audit } from "@/lib/audit";
 import { markDownloaded } from "@/lib/core";
 import { crateZip, safeName } from "@/lib/crate";
 import { q, type Collection, type Track } from "@/lib/db";
@@ -26,6 +27,7 @@ export async function GET(req: Request) {
   if (!tracks.length) return new Response("Keep some tracks first.", { status: 400 });
 
   const crate = `FloorTest - ${collection?.name ?? "Kept"}`;
+  await audit(user.id, "exported", `${crate.replace(/^FloorTest - /, "")} · ${tracks.length} track${tracks.length === 1 ? "" : "s"}`);
   const zip = crateZip(crate, base, tracks, (t) => markDownloaded(user, t));
   return new Response(zip, {
     headers: {

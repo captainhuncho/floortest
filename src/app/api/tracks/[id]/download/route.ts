@@ -1,4 +1,5 @@
 import { currentUser } from "@/lib/auth";
+import { audit, trackLabel } from "@/lib/audit";
 import { markDownloaded, ownedTrack } from "@/lib/core";
 import { crateFileName } from "@/lib/crate";
 import { storage } from "@/lib/storage";
@@ -21,6 +22,7 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/tracks/[id]/dow
     new TransformStream<Uint8Array, Uint8Array>({
       async flush() {
         await markDownloaded(user, t).catch((e) => console.error("[download] mark failed", e));
+        await audit(user.id, "downloaded", trackLabel(t), t.id);
       },
     }),
   );

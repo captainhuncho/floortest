@@ -18,6 +18,7 @@ import { isDecision, likeContains, logEvent, now, q, type Decision } from "@/lib
 import { sendDigest } from "@/lib/notify";
 import { cleanGenre, PLANS, planOf, RESERVED_HANDLES } from "@/lib/plans";
 import { storage } from "@/lib/storage";
+import { audit, trackLabel } from "@/lib/audit";
 
 const done = () => revalidatePath("/dashboard", "layout");
 
@@ -37,20 +38,24 @@ export async function createCollection(form: FormData) {
   if (!name) return;
   const c = await q.get<{ id: number }>("INSERT INTO collections (user_id, name, created_at) VALUES (?,?,?) RETURNING id", u.id, name, now());
   if (form.get("activate")) await q.run("UPDATE users SET active_collection_id = ? WHERE id = ?", c!.id, u.id);
+  await audit(u.id, "collection_created", name);
   done();
 }
 
 export async function setActiveCollection(id: number) {
   const u = await requireUser();
-  if (!(await ownCollection(u.id, id))) return;
+  const c = await ownCollection(u.id, id);
+  if (!c) return;
   await q.run("UPDATE users SET active_collection_id = ? WHERE id = ?", id, u.id);
+  await audit(u.id, "collection_activated", c.name);
   done();
   revalidatePath(`/${u.handle}`);
 }
 
 export async function updateCollection(id: number, form: FormData) {
   const u = await requireUser();
-  if (!(await ownCollection(u.id, id))) return;
+  const c = await ownCollection(u.id, id);
+  if (!c) return;
   const name = String(form.get("name") || "").trim().slice(0, 60);
   const closes = String(form.get("closes") || "");
   // A closing date means "open through the end of that day" in the receiver's timezone offset sent by the browser.
@@ -80,13 +85,15 @@ export async function updateCollection(id: number, form: FormData) {
     genres.length ? JSON.stringify(genres) : "",
     id,
   );
+  await audit(u.id, "collection_updated", name || c.name);
   done();
   revalidatePath(`/${u.handle}`);
 }
 
 export async function deleteCollection(id: number) {
   const u = await requireUser();
-  if (!(await ownCollection(u.id, id))) return;
+  const c = await ownCollection(u.id, id);
+  if (!c) return;
   if ((await q.count("SELECT COUNT(*) AS n FROM collections WHERE user_id = ?", u.id)) <= 1) return; // the link always needs somewhere to route
   await q.tx(async (db) => {
     // Tracks fall back to "unsorted" (collection_id NULL) rather than being deleted.
@@ -95,6 +102,7 @@ export async function deleteCollection(id: number) {
     if (u.active_collection_id === id)
       await db.run("UPDATE users SET active_collection_id = (SELECT id FROM collections WHERE user_id = ? ORDER BY created_at LIMIT 1) WHERE id = ?", u.id, u.id);
   });
+  await audit(u.id, "collection_deleted", c.name);
   done();
 }
 
@@ -108,6 +116,7 @@ export async function decideTrack(trackId: number, decision: Decision): Promise<
   const t = await ownedTrack(u.id, trackId);
   if (!t) return null;
   const r = await decide(u, t, decision);
+  await audit(u.id, decision, trackLabel(t), t.id);
   done();
   return { trackId, ...r };
 }
@@ -118,6 +127,7 @@ export async function clearDecision(trackId: number) {
   const t = await ownedTrack(u.id, trackId);
   if (!t) return;
   await clearTrackDecision(t);
+  await audit(u.id, "decision_cleared", trackLabel(t), t.id);
   done();
 }
 
@@ -126,6 +136,7 @@ export async function undoDecision(token: UndoToken) {
   const t = await ownedTrack(u.id, Number(token?.trackId));
   if (!t) return;
   await restoreDecision(u, t, token.prev ?? {}, Number(token.eventId));
+  await audit(u.id, "decision_undone", trackLabel(t), t.id);
   done();
 }
 
@@ -136,6 +147,7 @@ export async function moveTrack(trackId: number, form: FormData) {
   if (!t || !target || t.collection_id === target.id) return;
   await q.run("UPDATE tracks SET collection_id = ? WHERE id = ?", target.id, t.id);
   await logEvent({ user_id: u.id, sender_id: t.sender_id, track_id: t.id, type: "moved", detail: `to ${target.name}` });
+  await audit(u.id, "moved", `${trackLabel(t)} to ${target.name}`, t.id);
   done();
 }
 
@@ -144,6 +156,7 @@ export async function deleteTrack(trackId: number, back: string) {
   const t = await ownedTrack(u.id, trackId);
   if (!t) return;
   await removeTrack(u, t);
+  await audit(u.id, "deleted_track", trackLabel(t));
   done();
   redirect(back.startsWith("/dashboard") ? back : "/dashboard");
 }
@@ -153,9 +166,11 @@ export async function deleteTrack(trackId: number, back: string) {
 export async function addNote(senderId: number, trackId: number | null, form: FormData) {
   const u = await requireUser();
   const body = String(form.get("body") || "").trim().slice(0, 4000);
-  if (!body || !(await ownedSender(u.id, senderId))) return;
+  const s = await ownedSender(u.id, senderId);
+  if (!body || !s) return;
   if (trackId && !(await ownedTrack(u.id, trackId))) return;
   await logEvent({ user_id: u.id, sender_id: senderId, track_id: trackId, type: "note", detail: body });
+  await audit(u.id, "noted", s.name, trackId);
   done();
 }
 
@@ -165,6 +180,7 @@ export async function replyToSender(senderId: number, trackId: number | null, fo
   const body = String(form.get("body") || "").trim().slice(0, 4000);
   if (!s || !body) return;
   await reply(u, s, trackId ? await ownedTrack(u.id, trackId) : undefined, body);
+  await audit(u.id, "replied", s.name, trackId);
   done();
 }
 
@@ -173,6 +189,7 @@ export async function blockSender(senderId: number, blocked: boolean) {
   const s = await ownedSender(u.id, senderId);
   if (!s) return;
   await setBlocked(u, s, !!blocked);
+  await audit(u.id, blocked ? "blocked" : "unblocked", s.name);
   done();
 }
 
@@ -222,6 +239,7 @@ export async function pauseLink(form: FormData) {
   // "Until 12 Oct" means back on the morning of the 12th, receiver's local time.
   const untilAt = /^\d{4}-\d{2}-\d{2}$/.test(until) ? Date.parse(`${until}T00:00:00Z`) + (Number.isFinite(offset) ? offset : 0) * 60_000 : null;
   await q.run("UPDATE users SET paused_at = ?, pause_until = ?, pause_message = ? WHERE id = ?", now(), untilAt && untilAt > now() ? untilAt : null, message, u.id);
+  await audit(u.id, "link_paused", message);
   done();
   revalidatePath(`/${u.handle}`);
 }
@@ -229,6 +247,7 @@ export async function pauseLink(form: FormData) {
 export async function resumeLink() {
   const u = await requireUser();
   await q.run("UPDATE users SET paused_at = NULL, pause_until = NULL WHERE id = ?", u.id);
+  await audit(u.id, "link_resumed");
   done();
   revalidatePath(`/${u.handle}`);
 }
@@ -261,6 +280,7 @@ export async function updateNotifications(_: SettingsState, form: FormData): Pro
     tz,
     u.id,
   );
+  await audit(u.id, "notifications_updated");
   done();
   return { ok: true };
 }
@@ -269,6 +289,7 @@ export async function updateNotifications(_: SettingsState, form: FormData): Pro
 export async function sendDigestNow(): Promise<number> {
   const u = await requireUser();
   const n = await sendDigest(u.id);
+  await audit(u.id, "digest_sent", `${n} track${n === 1 ? "" : "s"}`);
   done();
   return n;
 }
@@ -290,6 +311,7 @@ export async function updateSettings(_: SettingsState, form: FormData): Promise<
     if (isUniqueViolation(e)) return { error: "That link is taken." };
     throw e;
   }
+  if (name !== u.name || handle !== u.handle) await audit(u.id, "settings_updated", handle !== u.handle ? `link is now /${handle}` : name);
   done();
   return { ok: true };
 }
@@ -299,6 +321,7 @@ export async function updatePublicPage(_: SettingsState, form: FormData): Promis
   const style = form.get("page_style") === "stage" ? "stage" : "classic";
   const role = String(form.get("role_line") || "").trim().slice(0, 60);
   await q.run("UPDATE users SET page_style = ?, role_line = ? WHERE id = ?", style, role, u.id);
+  await audit(u.id, "page_updated", style === "stage" ? "Stage style" : "Classic style");
   done();
   revalidatePath(`/${u.handle}`);
   return { ok: true };
@@ -311,6 +334,7 @@ export async function setPlan(plan: string) {
   const cap = await capacity(u);
   if (cap.used > planOf(plan).limit + cap.bonus) return;
   await q.run("UPDATE users SET plan = ? WHERE id = ?", plan, u.id);
+  await audit(u.id, "plan_changed", planOf(plan).name);
   done();
 }
 

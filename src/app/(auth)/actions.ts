@@ -1,7 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { consumePasswordReset, createPasswordReset, createSession, destroySession, hashPassword, verifyPassword } from "@/lib/auth";
+import { audit } from "@/lib/audit";
+import { consumePasswordReset, createPasswordReset, createSession, currentUser, destroySession, hashPassword, verifyPassword } from "@/lib/auth";
 import { now, q } from "@/lib/db";
 import { env } from "@/lib/env";
 import { APP_URL, sendMail } from "@/lib/mail";
@@ -92,10 +93,13 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
     return { error: "Email or password is incorrect." };
   }
   await createSession(row.id);
+  await audit(row.id, "signed_in");
   redirect("/dashboard/floor");
 }
 
 export async function logout() {
+  const u = await currentUser();
+  if (u) await audit(u.id, "signed_out");
   await destroySession();
   redirect("/");
 }
@@ -128,5 +132,6 @@ export async function resetPassword(token: string, _: FormState, form: FormData)
   const userId = await consumePasswordReset(token, password);
   if (!userId) return { error: "This reset link has expired or was already used. Request a new one." };
   await createSession(userId);
+  await audit(userId, "password_reset");
   redirect("/dashboard/floor");
 }

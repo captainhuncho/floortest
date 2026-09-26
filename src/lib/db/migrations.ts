@@ -177,4 +177,21 @@ alter table uploads enable row level security;
 alter table schema_migrations enable row level security;
 `,
   },
+  {
+    // What the account holder did, for their own audit trail. Separate from desk events, which
+    // are mostly about senders and tracks and can't carry account-level actions.
+    id: "0003_account_log",
+    sql: `
+create table account_log (
+  id bigint generated always as identity primary key,
+  user_id bigint not null references users(id) on delete cascade,
+  action text not null,
+  detail text not null default '',
+  track_id bigint references tracks(id) on delete set null,
+  created_at bigint not null
+);
+create index account_log_user on account_log(user_id, created_at desc);
+alter table account_log enable row level security;
+`,
+  },
 ];

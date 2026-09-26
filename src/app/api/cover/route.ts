@@ -1,3 +1,4 @@
+import { audit } from "@/lib/audit";
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { currentUser } from "@/lib/auth";
@@ -36,6 +37,7 @@ export async function POST(req: Request) {
   await store.put(key, buf, TYPES[kind]);
   if (user.cover_key) await store.delete(user.cover_key).catch(() => {});
   await q.run("UPDATE users SET cover_key = ? WHERE id = ?", key, user.id);
+  await audit(user.id, "cover_updated");
   return NextResponse.json({ ok: true });
 }
 
@@ -44,5 +46,6 @@ export async function DELETE() {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (user.cover_key) await (await storage()).delete(user.cover_key).catch(() => {});
   await q.run("UPDATE users SET cover_key = NULL WHERE id = ?", user.id);
+  await audit(user.id, "cover_removed");
   return NextResponse.json({ ok: true });
 }
