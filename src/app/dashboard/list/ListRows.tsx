@@ -94,7 +94,7 @@ export function ListRows({ rows }: { rows: ListRow[] }) {
         const token = await decideTrack(r.id, next);
         if (token)
           toast.show({
-            message: `${next === "kept" ? "Kept" : "Could be better:"} “${r.title}”`,
+            message: `${next === "kept" ? `“${r.title}” added to Prepare for set` : `Could be better: “${r.title}”`}`,
             action: {
               label: "Undo",
               run: async () => {
