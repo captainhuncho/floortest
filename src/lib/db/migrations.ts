@@ -277,4 +277,13 @@ alter table contact_messages enable row level security;
 alter table incidents enable row level security;
 `,
   },
+  {
+    // Personal invites: a single-use code tied to one email address.
+    id: "0009_invite_email",
+    sql: `
+alter table invites add column email text;
+alter table invites add column sent_at bigint;
+create index invites_email on invites(email);
+`,
+  },
 ];

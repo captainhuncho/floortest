@@ -141,3 +141,68 @@ export async function setContactHandled(id: number, handled: boolean) {
   await logAdmin(a.id, handled ? "handled message" : "reopened message", `#${id}`);
   refresh();
 }
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const newCode = () => {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  return `FLOOR-${Array.from(crypto.randomBytes(6), (b) => alphabet[b % alphabet.length]).join("")}`;
+};
+
+async function mailInvite(code: string, email: string, inviter: string, note: string) {
+  const link = `${env.appUrl}/signup?invite=${encodeURIComponent(code)}`;
+  return sendMail({
+    userId: null,
+    audience: "support",
+    to: email,
+    subject: "You're invited to the FloorTest beta",
+    body: [
+      "Hi,",
+      "",
+      `${inviter} invited you to the FloorTest beta: one permanent link that receives demos, a queue to review them fast, and receipts that tell senders what happened.`,
+      note ? `\n"${note}"\n` : "",
+      `Claim your link: ${link}`,
+      "",
+      `Your invite code is ${code}. It's for ${email} only and works once.`,
+      "",
+      "— FloorTest",
+    ]
+      .filter((l, i, a) => l || a[i - 1])
+      .join("\n"),
+  });
+}
+
+/** Sends a personal, single-use invite to each address. Skips existing accounts and pending invites. */
+export async function inviteByEmail(form: FormData) {
+  const a = await requireAdminAction();
+  const note = String(form.get("note") || "").trim().slice(0, 300);
+  const emails = [...new Set(String(form.get("emails") || "").split(/[\s,;]+/).map((e) => e.trim().toLowerCase()).filter(Boolean))].slice(0, 50);
+  let sent = 0;
+  let skipped = 0;
+  for (const email of emails) {
+    const taken =
+      !EMAIL_RE.test(email) ||
+      (await q.get("SELECT 1 FROM users WHERE email = ?", email)) ||
+      (await q.get("SELECT 1 FROM invites WHERE email = ? AND revoked_at IS NULL AND NOT EXISTS (SELECT 1 FROM users u WHERE u.invite_code = invites.code)", email));
+    if (taken) {
+      skipped++;
+      continue;
+    }
+    const code = newCode();
+    await q.run("INSERT INTO invites (code, max_uses, note, email, created_at, sent_at) VALUES (?,?,?,?,?,?)", code, 1, note, email, now(), now());
+    await mailInvite(code, email, a.name, note);
+    await logAdmin(a.id, "invited by email", email, code);
+    sent++;
+  }
+  refresh();
+  redirect(`/admin/invites?sent=${sent}&skipped=${skipped}`);
+}
+
+export async function resendInvite(code: string) {
+  const a = await requireAdminAction();
+  const inv = await q.get<{ email: string | null; note: string }>("SELECT email, note FROM invites WHERE code = ? AND revoked_at IS NULL", code);
+  if (!inv?.email) return;
+  await mailInvite(code, inv.email, a.name, inv.note);
+  await q.run("UPDATE invites SET sent_at = ? WHERE code = ?", now(), code);
+  await logAdmin(a.id, "resent invite", inv.email, code);
+  refresh();
+}

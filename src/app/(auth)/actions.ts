@@ -33,13 +33,14 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DUMMY_HASH = hashPassword("timing-equaliser");
 
 /** Invite codes: an existing user's referral code, or one of BETA_INVITE_CODES. */
-async function resolveInvite(raw: string) {
+async function resolveInvite(raw: string, email = "") {
   const code = raw.trim().toUpperCase().slice(0, 32);
   if (!code) return { valid: false, referrerId: null as number | null, code };
   const referrer = await q.get<{ id: number }>("SELECT id FROM users WHERE referral_code = ?", code);
   if (referrer) return { valid: true, referrerId: referrer.id, code };
   // Codes created in the admin area, each with its own cap and a revoke switch.
-  const inv = await q.get<{ max_uses: number }>("SELECT max_uses FROM invites WHERE code = ? AND revoked_at IS NULL", code);
+  const inv = await q.get<{ max_uses: number; email: string | null }>("SELECT max_uses, email FROM invites WHERE code = ? AND revoked_at IS NULL", code);
+  if (inv?.email && inv.email !== email.trim().toLowerCase()) return { valid: false, referrerId: null as number | null, code };
   if (inv) return { valid: (await q.count("SELECT COUNT(*) AS n FROM users WHERE invite_code = ?", code)) < inv.max_uses, referrerId: null as number | null, code };
   // Beta codes are shared, so each one only opens a limited number of accounts.
   const valid = env.inviteCodes.includes(code) && (await q.count("SELECT COUNT(*) AS n FROM users WHERE invite_code = ?", code)) < env.inviteLimit;
@@ -60,9 +61,9 @@ export async function signup(_: FormState, form: FormData): Promise<FormState> {
   const email = String(form.get("email") || "").trim().toLowerCase().slice(0, 200);
   const handle = String(form.get("handle") || "").trim().toLowerCase();
   const password = String(form.get("password") || "");
-  const invite = await resolveInvite(String(form.get("ref") || form.get("invite") || ""));
+  const invite = await resolveInvite(String(form.get("ref") || form.get("invite") || ""), String(form.get("email") || ""));
 
-  if (env.signupMode === "invite" && !invite.valid) return { error: "That invite code is not valid or has been used up. Ask whoever invited you for a new one." };
+  if (env.signupMode === "invite" && !invite.valid) return { error: "That invite code is not valid, has been used, or was sent to a different email. Use the email your invite went to." };
   if (!name || !email || !handle || !password) return { error: "All fields are required." };
   if (!EMAIL.test(email)) return { error: "Enter a valid email." };
   if (!/^[a-z0-9][a-z0-9-_]{1,29}$/.test(handle)) return { error: "Link names use 2–30 letters, numbers, - or _." };
@@ -83,7 +84,7 @@ export async function signup(_: FormState, form: FormData): Promise<FormState> {
         name,
         handle,
         invite.referrerId,
-        invite.code || null,
+        invite.valid ? invite.code : null,
         validTz(String(form.get("tz") || "UTC")),
         now(),
       ))!;
