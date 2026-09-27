@@ -107,10 +107,6 @@ export default async function Home({
 
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_60%_at_70%_30%,rgba(107,63,20,0.25),transparent_70%)]"
-        />
         <div className="relative mx-auto max-w-6xl px-4 pb-10 pt-16 sm:px-6 sm:pt-24">
           <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-center">
             <div>
