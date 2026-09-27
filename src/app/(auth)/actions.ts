@@ -1,5 +1,6 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { audit } from "@/lib/audit";
 import { consumePasswordReset, createPasswordReset, createSession, currentUser, destroySession, hashPassword, verifyPassword } from "@/lib/auth";
@@ -8,6 +9,21 @@ import { env } from "@/lib/env";
 import { APP_URL, sendMail } from "@/lib/mail";
 import { RESERVED_HANDLES } from "@/lib/plans";
 import { allow, recentCount, record, requestIp } from "@/lib/ratelimit";
+import { checkSecondFactor, finishSignIn, sendEmailVerification } from "@/lib/security";
+import { readChallenge, signChallenge } from "@/lib/totp";
+
+const CHALLENGE = "floortest_2fa";
+
+/** Password (or reset link) checked out. Accounts with two-factor get a code step first. */
+async function afterPassword(userId: number, how: "password" | "reset") {
+  const twoFactor = await q.get("SELECT 1 FROM users WHERE id = ? AND totp_enabled_at IS NOT NULL", userId);
+  if (twoFactor) {
+    (await cookies()).set(CHALLENGE, signChallenge(userId, env.secret), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 300 });
+    redirect("/login/verify");
+  }
+  await finishSignIn(userId, how);
+  redirect("/dashboard/floor");
+}
 
 export type FormState = { error?: string; ok?: boolean } | undefined;
 
@@ -78,6 +94,7 @@ export async function signup(_: FormState, form: FormData): Promise<FormState> {
     throw e;
   }
   await createSession(userId);
+  await sendEmailVerification(userId);
   redirect("/dashboard/floor?welcome=1");
 }
 
@@ -96,9 +113,8 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
     await record("login_fail_email", email);
     return { error: "Email or password is incorrect." };
   }
-  await createSession(row.id);
-  await audit(row.id, "signed_in");
-  redirect("/dashboard/floor");
+  await afterPassword(row.id, "password");
+  return undefined;
 }
 
 export async function logout() {
@@ -135,7 +151,32 @@ export async function resetPassword(token: string, _: FormState, form: FormData)
   if (password !== String(form.get("confirm") || "")) return { error: "The two passwords don't match." };
   const userId = await consumePasswordReset(token, password);
   if (!userId) return { error: "This reset link has expired or was already used. Request a new one." };
-  await createSession(userId);
   await audit(userId, "password_reset");
+  await afterPassword(userId, "reset");
+  return undefined;
+}
+
+/** Second sign-in step: a 6-digit authenticator code or a one-time recovery code. */
+export async function verifySecondStep(_: FormState, form: FormData): Promise<FormState> {
+  const jar = await cookies();
+  const userId = readChallenge(jar.get(CHALLENGE)?.value, env.secret);
+  if (!userId) return { error: "That took too long. Log in again." };
+  const key = `user:${userId}`;
+  if ((await recentCount("twofa_fail", key, 15 * 60_000)) >= 8) return { error: "Too many wrong codes. Wait 15 minutes and log in again." };
+  const result = await checkSecondFactor(userId, String(form.get("code") || "").slice(0, 40));
+  if (!result) {
+    await record("twofa_fail", key);
+    return { error: "That code didn't work. Check your authenticator app and try again." };
+  }
+  jar.delete(CHALLENGE);
+  await finishSignIn(userId, result === "code" ? "two-factor" : "recovery code");
   redirect("/dashboard/floor");
+}
+
+/** From the dashboard banner: send the confirmation email again. */
+export async function resendEmailVerification(): Promise<boolean> {
+  const u = await currentUser();
+  if (!u || u.email_verified_at) return false;
+  if (!(await allow("verify_email", String(u.id), 3, HOUR))) return false;
+  return sendEmailVerification(u.id);
 }

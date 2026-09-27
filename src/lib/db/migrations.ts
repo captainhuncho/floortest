@@ -208,4 +208,19 @@ alter table users add column invite_code text;
 create index users_invite_code on users(invite_code);
 `,
   },
+  {
+    // Account security: verified receiver emails, optional authenticator-app sign-in, sign-in alerts.
+    // Accounts created before this are treated as verified.
+    id: "0006_account_security",
+    sql: `
+alter table users add column email_verified_at bigint;
+update users set email_verified_at = created_at;
+alter table users add column email_verify_token text unique;
+alter table users add column totp_secret text;
+alter table users add column totp_enabled_at bigint;
+alter table users add column totp_last_step bigint;
+alter table users add column recovery_codes text not null default '[]';
+alter table users add column signin_alerts int not null default 1;
+`,
+  },
 ];

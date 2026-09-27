@@ -10,6 +10,7 @@ import { footerLinks, VERSION } from "@/lib/site";
 import { Sidebar } from "./Sidebar";
 import { LinkPill } from "./LinkPill";
 import { TopBar } from "./TopBar";
+import { VerifyBanner } from "./VerifyBanner";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
@@ -60,6 +61,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 version={VERSION}
               />
             </div>
+            {!user.email_verified_at && <VerifyBanner email={user.email} />}
             {children}
           </main>
         </div>

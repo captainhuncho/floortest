@@ -10,6 +10,7 @@ import { blockSender, setPlan } from "../actions";
 import { CoverUpload, PublicPageForm } from "./PublicPageForm";
 import { DeleteAccount } from "./DeleteAccount";
 import { SecurityForm } from "./SecurityForm";
+import { TwoFactor } from "./TwoFactor";
 import { SettingsForm } from "./SettingsForm";
 
 export const metadata = { title: "Settings — FloorTest" };
@@ -146,11 +147,14 @@ export default async function Settings() {
 
       <section className="card p-6" aria-labelledby="security-h">
         <h2 id="security-h" className="text-lg font-semibold">
-          Password &amp; devices
+          Sign-in &amp; security
         </h2>
         <p className="mt-1 text-sm text-mute">Changing your password signs out every other device and emails you a notice.</p>
         <div className="mt-5">
           <SecurityForm otherSessions={otherSessions} />
+        </div>
+        <div className="mt-6 border-t border-line pt-6">
+          <TwoFactor enabled={!!user.totp_enabled_at} alerts={!!user.signin_alerts} />
         </div>
       </section>
 
