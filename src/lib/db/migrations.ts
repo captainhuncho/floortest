@@ -321,4 +321,23 @@ create table app_state (
 alter table app_state enable row level security;
 `,
   },
+  {
+    // Light identity verification (profile links + a code in a bio, reviewed by staff) and
+    // link names that can't be claimed without staff approval.
+    id: "0012_identity",
+    sql: `
+alter table users add column identity_status text not null default 'none' check (identity_status in ('none', 'pending', 'verified', 'rejected'));
+alter table users add column identity_code text;
+alter table users add column identity_links text not null default '[]';
+alter table users add column identity_note text not null default '';
+alter table users add column identity_submitted_at bigint;
+alter table users add column identity_verified_at bigint;
+create table protected_names (
+  handle text primary key,
+  note text not null default '',
+  created_at bigint not null
+);
+alter table protected_names enable row level security;
+`,
+  },
 ];

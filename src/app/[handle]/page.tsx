@@ -55,7 +55,14 @@ export default async function ReceiverPage({ params, searchParams }: Props) {
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col px-4 py-8 sm:py-12">
       <Logo className="mb-12" />
       <p className="label">Send music to</p>
-      <h1 className="mt-2 text-4xl font-bold tracking-tight sm:text-5xl">{receiver.name}</h1>
+      <h1 className="mt-2 text-4xl font-bold tracking-tight sm:text-5xl">
+        {receiver.name}
+        {receiver.identity_status === "verified" && (
+          <span title="Verified by FloorTest" className="chip ml-3 align-middle border-lime/60 text-sm font-medium text-lime">
+            ✓ Verified
+          </span>
+        )}
+      </h1>
       {collection && !closedReason && (
         <p className="mt-4 inline-flex w-fit flex-wrap items-center gap-x-2 gap-y-1 rounded-full border border-lime/40 bg-lime/5 px-3 py-1 text-sm">
           <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-lime" />
@@ -80,6 +87,14 @@ export default async function ReceiverPage({ params, searchParams }: Props) {
         <li>Files that aren&apos;t kept are deleted within {RETAIN_UNREVIEWED_DAYS} days.</li>
         <li>You&apos;ll get a private receipt and an email when it&apos;s listened to, downloaded or replied to.</li>
       </ul>
+      {receiver.identity_status !== "verified" && (
+        <p className="mt-6 text-xs text-mute">
+          Not sure this is really {receiver.name}?{" "}
+          <a href={`/contact?report=${receiver.handle}`} className="underline underline-offset-4 hover:text-bone">
+            Report impersonation
+          </a>
+        </p>
+      )}
     </main>
   );
 }

@@ -24,6 +24,7 @@ import { sendDigest } from "@/lib/notify";
 import { cleanGenre, PLANS, planOf, RESERVED_HANDLES } from "@/lib/plans";
 import { storage } from "@/lib/storage";
 import { audit, trackLabel } from "@/lib/audit";
+import { cleanProfileLink, IDENTITY_HOSTS, isProtectedHandle, newIdentityCode } from "@/lib/identity";
 
 const done = () => revalidatePath("/dashboard", "layout");
 
@@ -388,6 +389,7 @@ export async function updateSettings(_: SettingsState, form: FormData): Promise<
   if (!name) return { error: "Name is required." };
   if (!/^[a-z0-9][a-z0-9-_]{1,29}$/.test(handle)) return { error: "Link names use 2–30 letters, numbers, - or _." };
   if (RESERVED_HANDLES.has(handle)) return { error: "That link name is reserved." };
+  if (handle !== u.handle && (await isProtectedHandle(handle))) return { error: "That name is protected for a well-known artist. If it's you, contact us." };
   try {
     await q.run("UPDATE users SET name = ?, handle = ? WHERE id = ?", name, handle, u.id);
   } catch (e) {
@@ -518,6 +520,37 @@ export async function setSigninAlerts(on: boolean) {
   await q.run("UPDATE users SET signin_alerts = ? WHERE id = ?", on ? 1 : 0, u.id);
   await audit(u.id, on ? "signin_alerts_on" : "signin_alerts_off");
   done();
+}
+
+/* Identity verification: prove you're the real artist, get a Verified badge. */
+
+/** Gives the account its bio code (created once, reused so it doesn't change under them). */
+export async function identityCode(): Promise<string> {
+  const u = await requireUser();
+  const row = await q.get<{ c: string | null }>("SELECT identity_code AS c FROM users WHERE id = ?", u.id);
+  if (row?.c) return row.c;
+  const code = newIdentityCode();
+  await q.run("UPDATE users SET identity_code = COALESCE(identity_code, ?) WHERE id = ?", code, u.id);
+  return (await q.get<{ c: string }>("SELECT identity_code AS c FROM users WHERE id = ?", u.id))!.c;
+}
+
+export async function submitIdentity(_: SettingsState, form: FormData): Promise<SettingsState> {
+  const u = await requireUser();
+  if (u.identity_status === "verified") return { ok: true };
+  const links = [...new Set(form.getAll("link").map((l) => cleanProfileLink(String(l))).filter((l): l is string => !!l))].slice(0, 5);
+  if (!links.length) return { error: "Add at least one profile link." };
+  const bad = links.find((l) => !IDENTITY_HOSTS.some((h) => new URL(l).host === h || new URL(l).host.endsWith(`.${h}`)));
+  if (bad) return { error: `${new URL(bad).host} isn't one we can check. Use Instagram, SoundCloud, Resident Advisor, Spotify, Bandcamp, Mixcloud, TikTok, X, YouTube or Beatport.` };
+  await identityCode();
+  await q.run(
+    "UPDATE users SET identity_status = 'pending', identity_links = ?, identity_note = '', identity_submitted_at = ? WHERE id = ?",
+    JSON.stringify(links),
+    now(),
+    u.id,
+  );
+  await audit(u.id, "identity_submitted", links.map((l) => new URL(l).host).join(", "));
+  done();
+  return { ok: true };
 }
 
 /** Permanently deletes the account, every stored file, and all history. Requires the password. */

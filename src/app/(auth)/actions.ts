@@ -9,6 +9,7 @@ import { env } from "@/lib/env";
 import { APP_URL, sendMail } from "@/lib/mail";
 import { RESERVED_HANDLES } from "@/lib/plans";
 import { allow, recentCount, record, requestIp } from "@/lib/ratelimit";
+import { isProtectedHandle } from "@/lib/identity";
 import { checkSecondFactor, finishSignIn, sendEmailVerification } from "@/lib/security";
 import { readChallenge, signChallenge } from "@/lib/totp";
 
@@ -68,6 +69,7 @@ export async function signup(_: FormState, form: FormData): Promise<FormState> {
   if (!EMAIL.test(email)) return { error: "Enter a valid email." };
   if (!/^[a-z0-9][a-z0-9-_]{1,29}$/.test(handle)) return { error: "Link names use 2–30 letters, numbers, - or _." };
   if (RESERVED_HANDLES.has(handle)) return { error: "That link name is reserved." };
+  if (await isProtectedHandle(handle)) return { error: "That name is protected for a well-known artist. If it's you, contact us and we'll set it up." };
   if (password.length < 8 || password.length > 200) return { error: "Password must be at least 8 characters." };
   if (!(await allow("signup_ip", await requestIp(), 10, HOUR))) return { error: "Too many sign-ups from this connection. Try again later." };
 

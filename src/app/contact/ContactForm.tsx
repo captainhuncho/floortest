@@ -4,7 +4,7 @@ import { useActionForm } from "@/components/useActionForm";
 
 import { sendContact } from "./actions";
 
-export function ContactForm({ name, email }: { name: string; email: string }) {
+export function ContactForm({ name, email, topic, message }: { name: string; email: string; topic?: string; message?: string }) {
   const [state, onSubmit, pending] = useActionForm(sendContact, undefined);
   if (state?.ok)
     return (
@@ -27,15 +27,15 @@ export function ContactForm({ name, email }: { name: string; email: string }) {
       </div>
       <label className="block space-y-1.5">
         <span className="label">Topic</span>
-        <select name="topic" className="input">
-          {["General", "Account or billing", "A track I sent", "Report abuse", "Partnerships"].map((t) => (
+        <select name="topic" className="input" defaultValue={topic}>
+          {["General", "Account or billing", "A track I sent", "Report abuse", "Impersonation", "Partnerships"].map((t) => (
             <option key={t}>{t}</option>
           ))}
         </select>
       </label>
       <label className="block space-y-1.5">
         <span className="label">Message</span>
-        <textarea name="message" required maxLength={5000} className="input min-h-36 resize-y" />
+        <textarea name="message" required maxLength={5000} className="input min-h-36 resize-y" defaultValue={message} />
       </label>
       {state?.error && (
         <p role="alert" className="text-sm text-danger">

@@ -11,12 +11,17 @@ import { CoverUpload, PublicPageForm } from "./PublicPageForm";
 import { DeleteAccount } from "./DeleteAccount";
 import { SecurityForm } from "./SecurityForm";
 import { TwoFactor } from "./TwoFactor";
+import { IdentityForm } from "./IdentityForm";
 import { SettingsForm } from "./SettingsForm";
 
 export const metadata = { title: "Settings — FloorTest" };
 
 export default async function Settings() {
   const user = await requireUser();
+  const identity = await q.get<{ status: "none" | "pending" | "verified" | "rejected"; links: string; note: string }>(
+    "SELECT identity_status AS status, identity_links AS links, identity_note AS note FROM users WHERE id = ?",
+    user.id,
+  );
   const otherSessions = await q.count(
     "SELECT COUNT(*) AS n FROM sessions WHERE user_id = ? AND expires_at > ? AND token_hash <> ?",
     user.id,
@@ -143,6 +148,16 @@ export default async function Settings() {
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="card p-6" aria-labelledby="identity-h">
+        <h2 id="identity-h" className="text-lg font-semibold">
+          Verify it&apos;s you
+        </h2>
+        <p className="mt-1 text-sm text-mute">A ✓ Verified badge on your public page tells senders they&apos;ve found the real you, not an impersonator.</p>
+        <div className="mt-5">
+          <IdentityForm status={identity?.status ?? "none"} links={identity ? JSON.parse(identity.links || "[]") : []} note={identity?.note ?? ""} />
+        </div>
       </section>
 
       <section className="card p-6" aria-labelledby="security-h">

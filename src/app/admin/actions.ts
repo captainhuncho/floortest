@@ -230,3 +230,65 @@ export async function removeFromWaitlist(id: number) {
   if (w) await logAdmin(a.id, "removed from waitlist", w.email);
   refresh();
 }
+
+/* Identity verification and protected names */
+
+export async function approveIdentity(userId: number) {
+  const a = await requireAdminAction();
+  const u = await q.get<{ email: string; name: string; handle: string }>(
+    "UPDATE users SET identity_status = 'verified', identity_verified_at = ?, identity_note = '' WHERE id = ? RETURNING email, name, handle",
+    now(),
+    userId,
+  );
+  if (!u) return;
+  await sendMail({
+    userId,
+    audience: "receiver",
+    to: u.email,
+    subject: "You're verified on FloorTest",
+    body: `Hi ${u.name.split(/\s+/)[0]},\n\nYour FloorTest page now shows a ✓ Verified badge, so senders know it's really you: ${env.appUrl}/${u.handle}\n\nYou can remove the code from your bio now.\n\n— FloorTest`,
+  });
+  await logAdmin(a.id, "verified identity", `@${u.handle}`);
+  refresh();
+}
+
+export async function rejectIdentity(userId: number, form: FormData) {
+  const a = await requireAdminAction();
+  const note = String(form.get("note") || "").trim().slice(0, 200);
+  const u = await q.get<{ email: string; name: string; handle: string }>(
+    "UPDATE users SET identity_status = 'rejected', identity_note = ? WHERE id = ? RETURNING email, name, handle",
+    note,
+    userId,
+  );
+  if (!u) return;
+  await sendMail({
+    userId,
+    audience: "receiver",
+    to: u.email,
+    subject: "About your FloorTest verification",
+    body: `Hi ${u.name.split(/\s+/)[0]},\n\nWe couldn't verify your profiles yet${note ? `: ${note}` : "."}\n\nYou can fix it and send it again from Settings: ${env.appUrl}/dashboard/settings#identity-h\n\n— FloorTest`,
+  });
+  await logAdmin(a.id, "rejected identity", `@${u.handle}`, note);
+  refresh();
+}
+
+export async function addProtectedName(form: FormData) {
+  const a = await requireAdminAction();
+  const { normalizeName } = await import("@/lib/identity");
+  const names = String(form.get("names") || "")
+    .split(/[\n,;]+/)
+    .map((n) => normalizeName(n))
+    .filter((n) => n.length >= 3)
+    .slice(0, 100);
+  const note = String(form.get("note") || "").trim().slice(0, 120);
+  for (const n of names) await q.run("INSERT INTO protected_names (handle, note, created_at) VALUES (?,?,?) ON CONFLICT (handle) DO NOTHING", n, note, now());
+  if (names.length) await logAdmin(a.id, "protected names", names.join(", ").slice(0, 200), note);
+  refresh();
+}
+
+export async function removeProtectedName(handle: string) {
+  const a = await requireAdminAction();
+  await q.run("DELETE FROM protected_names WHERE handle = ?", handle);
+  await logAdmin(a.id, "unprotected name", handle);
+  refresh();
+}

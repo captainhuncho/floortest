@@ -29,6 +29,7 @@ export default function Privacy() {
           [
             "We keep a log of sign-ins and account changes so you can review them under Activity. If you turn on sign-in alerts (on by default), each alert email includes the time, the type of device and browser, and the network address it came from.",
             "If you turn on two-factor sign-in, we store your authenticator key encrypted, and your recovery codes only as one-way hashes.",
+            "If you ask to be verified, we store the public profile links you give us and a short code you place in one bio. FloorTest staff look at those public profiles to check it's you. We don't ask for ID documents.",
           ],
         ],
         [

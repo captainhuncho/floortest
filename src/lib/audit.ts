@@ -40,6 +40,7 @@ export const AUDIT_LABELS = {
   cover_updated: "Changed cover photo",
   cover_removed: "Removed cover photo",
   plan_changed: "Changed plan",
+  identity_submitted: "Asked to be verified",
 } as const;
 export type AuditAction = keyof typeof AUDIT_LABELS;
 

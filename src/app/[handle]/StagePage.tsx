@@ -65,7 +65,14 @@ export function StagePage({
               </span>
             )}
             <div className="min-w-0 flex-1">
-              <p className="truncate font-semibold">{receiver.name}</p>
+              <p className="truncate font-semibold">
+                {receiver.name}
+                {receiver.identity_status === "verified" && (
+                  <span title="Verified by FloorTest" className="ml-1.5 text-lime" aria-label="Verified">
+                    ✓
+                  </span>
+                )}
+              </p>
               <p className="stage-label truncate">
                 {receiver.role_line ? `${receiver.role_line} · ` : ""}@{receiver.handle}
               </p>
@@ -117,6 +124,14 @@ export function StagePage({
         </section>
         <p className="stage-label mt-5 text-center">
           Kept private · unreviewed tracks deleted after {RETAIN_UNREVIEWED_DAYS} days · max {Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} MB
+          {receiver.identity_status !== "verified" && (
+            <>
+              {" · "}
+              <a href={`/contact?report=${receiver.handle}`} className="underline underline-offset-4 hover:text-bone">
+                report impersonation
+              </a>
+            </>
+          )}
         </p>
       </main>
     </div>

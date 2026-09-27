@@ -47,12 +47,13 @@ export type User = {
   email_verified_at: number | null;
   totp_enabled_at: number | null;
   signin_alerts: number;
+  identity_status: "none" | "pending" | "verified" | "rejected";
   created_at: number;
 };
 
 /** Columns that make up `User`. Never select password_hash into it. */
 export const USER_COLUMNS =
-  "id, email, name, handle, plan, active_collection_id, role_line, cover_key, page_style, paused_at, pause_until, pause_message, tz, email_verified_at, totp_enabled_at, signin_alerts, created_at";
+  "id, email, name, handle, plan, active_collection_id, role_line, cover_key, page_style, paused_at, pause_until, pause_message, tz, email_verified_at, totp_enabled_at, signin_alerts, identity_status, created_at";
 
 export type Collection = {
   id: number;

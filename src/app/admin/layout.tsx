@@ -12,16 +12,17 @@ export const dynamic = "force-dynamic";
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const admin = await requireAdmin();
   // Counts that need attention, shown as badges.
-  const [inbox, waiting, incidents] = [
+  const [inbox, waiting, incidents, verifying] = [
     await q.count("SELECT COUNT(*) AS n FROM contact_messages WHERE handled_at IS NULL"),
     await q.count("SELECT COUNT(*) AS n FROM waitlist WHERE invited_at IS NULL"),
     await q.count("SELECT COUNT(*) AS n FROM incidents WHERE created_at >= ?", Date.now() - 86_400_000),
+    await q.count("SELECT COUNT(*) AS n FROM users WHERE identity_status = 'pending'"),
   ];
   const groups: NavGroup[] = [
     { title: "Monitor", items: [{ href: "/admin", label: "Overview" }, { href: "/admin/metrics", label: "Metrics" }, { href: "/admin/incidents", label: "Incidents", badge: incidents }] },
     { title: "Support", items: [{ href: "/admin/inbox", label: "Inbox", badge: inbox }, { href: "/admin/accounts", label: "Accounts" }, { href: "/admin/emails", label: "Emails" }] },
     { title: "Growth", items: [{ href: "/admin/waitlist", label: "Waitlist", badge: waiting }, { href: "/admin/invites", label: "Invites" }] },
-    { title: "Trust & safety", items: [{ href: "/admin/moderation", label: "Moderation" }, { href: "/admin/log", label: "Admin log" }] },
+    { title: "Trust & safety", items: [{ href: "/admin/verification", label: "Verification", badge: verifying }, { href: "/admin/moderation", label: "Moderation" }, { href: "/admin/log", label: "Admin log" }] },
   ];
   return (
     <div className="min-h-dvh">
