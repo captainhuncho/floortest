@@ -39,6 +39,17 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      // The old Vercel address sends people to the real domain (API routes stay put for cron jobs).
+      ...(process.env.APP_URL && !process.env.APP_URL.includes("vercel.app")
+        ? [
+            {
+              source: "/:path((?!api/).*)",
+              has: [{ type: "host" as const, value: "floortest.vercel.app" }],
+              destination: `${process.env.APP_URL}/:path`,
+              permanent: true,
+            },
+          ]
+        : []),
       // Renamed pages.
       { source: "/dashboard/conversations", destination: "/dashboard/contacts", permanent: true },
       { source: "/dashboard/conversations/:id", destination: "/dashboard/contacts/:id", permanent: true },
