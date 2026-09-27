@@ -62,8 +62,9 @@ function wrap(raw: Raw): Queryable {
 
 async function openPostgres(url: string): Promise<Db> {
   const { default: postgres } = await import("postgres");
+  const max = Math.max(1, Number(process.env.DB_POOL_MAX || 5));
   const sql = postgres(url, {
-    max: Number(process.env.DB_POOL_MAX || 5),
+    max,
     idle_timeout: 20,
     // Works behind transaction-mode poolers (Supabase :6543, PgBouncer).
     prepare: false,
@@ -78,11 +79,29 @@ async function openPostgres(url: string): Promise<Db> {
       return { rows: [...res], changes: res.count ?? 0 };
     },
   });
+  // Never run more queries at once than there are connections. Beyond that, postgres.js
+  // pipelines queries onto busy connections, which transaction-mode poolers (Supabase :6543)
+  // don't handle: statements stall until they hit the statement timeout.
+  let busy = 0;
+  const waiting: (() => void)[] = [];
+  const slot = async <T>(work: () => Promise<T>): Promise<T> => {
+    if (busy >= max) await new Promise<void>((resolve) => waiting.push(resolve));
+    else busy++;
+    try {
+      return await work();
+    } finally {
+      const next = waiting.shift();
+      if (next) next();
+      else busy--;
+    }
+  };
+  const pooled = rawOf(sql as unknown as Unsafe);
   return {
-    ...wrap(rawOf(sql as unknown as Unsafe)),
+    ...wrap({ query: (text, params) => slot(() => pooled.query(text, params)) }),
     kind: "postgres",
     async tx(fn) {
-      return (await sql.begin((t) => fn(wrap(rawOf(t as unknown as Unsafe))))) as never;
+      // A transaction holds one connection for its whole length, so it takes one slot.
+      return slot(async () => (await sql.begin((t) => fn(wrap(rawOf(t as unknown as Unsafe))))) as never);
     },
     async close() {
       await sql.end({ timeout: 5 });
