@@ -21,6 +21,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
     { label: "Listened", at: t.played_at, text: SIGNALS.listened },
     { label: "Downloaded", at: t.downloaded_at, text: SIGNALS.downloaded },
     { label: "Replied", at: t.replied_at, text: `${t.receiver} sent you a message. Check your email.` },
+    { label: "Played out", at: t.played_out_at, text: t.played_out_note ? `${SIGNALS.playedOut}: ${t.played_out_note}` : SIGNALS.playedOut },
   ];
 
   return (

@@ -9,6 +9,7 @@ import type { Decision } from "@/lib/db";
 import { fmtTime } from "@/lib/format";
 import { toPlayer } from "@/lib/player-track";
 import { clearDecision, decideTrack, replyToSender, undoDecision } from "../actions";
+import { ReplyTemplates } from "../ReplyTemplates";
 
 export type ListRow = {
   id: number;
@@ -321,6 +322,13 @@ function Expanded({ row: r, decision, onClose }: { row: ListRow; decision: Decis
           <button className="btn-lime btn-sm" disabled={pending}>
             {pending ? "Sending…" : "Send reply"}
           </button>
+          <ReplyTemplates
+            onPick={(t) => {
+              if (area.current) area.current.value = t;
+              area.current?.focus();
+            }}
+            current={() => area.current?.value ?? ""}
+          />
           <button type="button" className="btn btn-sm text-mute" onClick={onClose}>
             Close
           </button>

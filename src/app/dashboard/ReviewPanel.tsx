@@ -7,6 +7,7 @@ import { MIX_STATUS, RELEASE_STATUS } from "@/lib/plans";
 import { addNote, deleteTrack, moveTrack, replyToSender } from "./actions";
 import { ConfirmButton, NoteForm } from "./ClientBits";
 import { DecisionRail } from "./DecisionRail";
+import { PlayedOut } from "./PlayedOut";
 import { DetailPlayer } from "./DetailPlayer";
 import { History } from "./History";
 
@@ -64,6 +65,12 @@ export async function ReviewPanel({
           onReply={replyToSender.bind(null, sender.id, t.id)}
         />
       </div>
+
+      {t.decision === "kept" && (
+        <div className="mt-4">
+          <PlayedOut trackId={t.id} senderName={sender.name} at={t.played_out_at} note={t.played_out_note} />
+        </div>
+      )}
 
       {t.message && (
         <figure className="mt-6 rounded-lg border-l-2 border-lime bg-ink p-4">

@@ -95,6 +95,8 @@ export type Track = {
   bpm: number | null;
   peaks: string | null;
   played_at: number | null;
+  played_out_at: number | null;
+  played_out_note: string;
   downloaded_at: number | null;
   decision: Decision | null;
   decided_at: number | null;
@@ -112,7 +114,7 @@ export type EventRow = {
   user_id: number;
   sender_id: number;
   track_id: number | null;
-  type: "submitted" | "played" | "downloaded" | "kept" | "passed" | "note" | "reply" | "deleted" | "expired" | "moved" | "blocked" | "unblocked";
+  type: "submitted" | "played" | "downloaded" | "kept" | "passed" | "note" | "reply" | "deleted" | "expired" | "moved" | "blocked" | "unblocked" | "played_out";
   detail: string;
   created_at: number;
 };

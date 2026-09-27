@@ -1,0 +1,42 @@
+"use client";
+
+import { useActionForm } from "@/components/useActionForm";
+import { joinWaitlist } from "./waitlist/actions";
+
+const field = "w-full rounded-md border border-white/15 bg-black/30 px-4 py-3 font-[family-name:var(--font-stage-mono)] text-sm text-bone outline-none placeholder:text-[#8f8377] focus:border-lime/70";
+
+export function WaitlistForm() {
+  const [state, onSubmit, pending] = useActionForm(joinWaitlist, undefined);
+  if (state?.ok)
+    return (
+      <p role="status" className="rounded-md border border-lime/40 bg-lime/[0.06] px-5 py-4 font-[family-name:var(--font-stage-mono)] text-sm">
+        You&apos;re on the list. We&apos;ll email you an invite as soon as there&apos;s a spot.
+      </p>
+    );
+  return (
+    <form onSubmit={onSubmit} className="grid gap-3 sm:grid-cols-2">
+      <input name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden />
+      <input name="name" className={field} placeholder="Name or artist name" aria-label="Name" maxLength={100} />
+      <input name="email" type="email" required className={field} placeholder="Email" aria-label="Email" maxLength={200} />
+      <select name="role" className={field} aria-label="What you do" defaultValue="">
+        <option value="">What do you do?</option>
+        <option>DJ</option>
+        <option>Label / A&amp;R</option>
+        <option>Curator / radio</option>
+        <option>Artist / producer</option>
+        <option>Other</option>
+      </select>
+      <input name="link" className={field} placeholder="Instagram, SoundCloud or site (optional)" aria-label="Link" maxLength={200} />
+      <div className="flex flex-wrap items-center gap-4 sm:col-span-2">
+        <button className="rounded-md bg-lime px-6 py-3.5 font-[family-name:var(--font-stage-mono)] text-sm font-medium uppercase text-ink hover:brightness-95" disabled={pending}>
+          {pending ? "Sending…" : "Request an invite →"}
+        </button>
+        {state?.error && (
+          <p role="alert" className="text-sm text-danger">
+            {state.error}
+          </p>
+        )}
+      </div>
+    </form>
+  );
+}

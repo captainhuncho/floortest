@@ -12,6 +12,7 @@ import {
   clearDecision as clearTrackDecision,
   decide,
   deleteTrack as removeTrack,
+  markPlayedOut,
   ownedSender,
   ownedTrack,
   reply,
@@ -175,6 +176,72 @@ export async function clearKept() {
   );
   await audit(u.id, "set_cleared", `${r.changes} track${r.changes === 1 ? "" : "s"}`);
   done();
+}
+
+/** Kept tracks only: tells the sender it was played in a set. */
+export async function playedOut(trackId: number, note: string) {
+  const u = await requireUser();
+  const t = await ownedTrack(u.id, trackId);
+  if (!t || t.decision !== "kept") return false;
+  const ok = await markPlayedOut(u, t, String(note || ""));
+  if (ok) await audit(u.id, "played_out", trackLabel(t), t.id);
+  done();
+  return ok;
+}
+
+/** Beta feedback lands in the admin inbox, tagged with the page it came from. */
+export async function sendFeedback(kind: string, message: string, path: string) {
+  const u = await requireUser();
+  const body = String(message || "").trim().slice(0, 3000);
+  if (!body) return;
+  const topic = ["Idea", "Bug", "Confusing", "Love it"].includes(kind) ? `Feedback · ${kind}` : "Feedback";
+  await q.run(
+    "INSERT INTO contact_messages (user_id, name, email, topic, message, created_at) VALUES (?,?,?,?,?,?)",
+    u.id,
+    u.name,
+    u.email,
+    topic,
+    `${body}\n\nPage: ${String(path || "").slice(0, 200)}`,
+    now(),
+  );
+}
+
+export async function dismissOnboarding() {
+  const u = await requireUser();
+  await q.run("UPDATE users SET onboarding_dismissed_at = ? WHERE id = ?", now(), u.id);
+  done();
+}
+
+/* Reply templates: up to 10 saved replies per account. */
+
+const templatesOf = async (userId: number) => {
+  const row = await q.get<{ t: string }>("SELECT reply_templates AS t FROM users WHERE id = ?", userId);
+  try {
+    const list = JSON.parse(row?.t || "[]");
+    return Array.isArray(list) ? list.filter((x): x is string => typeof x === "string").slice(0, 10) : [];
+  } catch {
+    return [];
+  }
+};
+
+export async function getReplyTemplates(): Promise<string[]> {
+  return templatesOf((await requireUser()).id);
+}
+
+export async function saveReplyTemplate(text: string): Promise<string[]> {
+  const u = await requireUser();
+  const t = String(text || "").trim().slice(0, 2000);
+  const list = await templatesOf(u.id);
+  if (t && !list.includes(t) && list.length < 10) list.push(t);
+  await q.run("UPDATE users SET reply_templates = ? WHERE id = ?", JSON.stringify(list), u.id);
+  return list;
+}
+
+export async function deleteReplyTemplate(index: number): Promise<string[]> {
+  const u = await requireUser();
+  const list = (await templatesOf(u.id)).filter((_, i) => i !== index);
+  await q.run("UPDATE users SET reply_templates = ? WHERE id = ?", JSON.stringify(list), u.id);
+  return list;
 }
 
 /* Senders */

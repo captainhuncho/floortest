@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { isTyping, usePlayer, type PlayerTrack } from "@/components/Player";
 import { useToast } from "@/components/Toast";
+import { ReplyTemplates } from "./ReplyTemplates";
 import { decideTrack, undoDecision } from "./actions";
 
 type Props = {
@@ -157,6 +158,13 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
             <button className="btn-lime btn-sm" disabled={busy}>
               {busy ? "Sending…" : "Send reply"}
             </button>
+            <ReplyTemplates
+              onPick={(t) => {
+                if (replyRef.current) replyRef.current.value = t;
+                replyRef.current?.focus();
+              }}
+              current={() => replyRef.current?.value ?? ""}
+            />
             <button type="button" className="btn-ghost btn-sm" onClick={() => setReplying(false)}>
               Cancel
             </button>

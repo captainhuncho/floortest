@@ -1,3 +1,4 @@
+import { Onboarding } from "./Onboarding";
 import { recentAudit } from "@/lib/audit";
 import { AccountLog } from "../AccountLog";
 import Link from "next/link";
@@ -112,16 +113,6 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
       ),
     };
 
-  const anyDecision = !!(await q.get<Record<string, unknown>>("SELECT 1 FROM tracks WHERE user_id = ? AND decision IS NOT NULL LIMIT 1", user.id));
-  const anySet = !!(await q.get<Record<string, unknown>>("SELECT 1 FROM tracks WHERE user_id = ? AND decision = 'kept' AND downloaded_at IS NOT NULL LIMIT 1", user.id));
-  const anyTrack = !!(await q.get<Record<string, unknown>>("SELECT 1 FROM tracks WHERE user_id = ? LIMIT 1", user.id));
-  const steps = [
-    { done: anyTrack, label: "Share your link and receive a track", href: "/dashboard/settings" },
-    { done: !!active && genresFor(active).custom, label: "Choose genres for your current callout", href: "/dashboard/collections" },
-    { done: anyDecision, label: "Keep or mark your first track", href: "/dashboard" },
-    { done: anySet, label: "Prepare kept tracks for a set", href: "/dashboard?view=list&s=kept" },
-  ];
-  const stepsLeft = steps.filter((s) => !s.done).length;
   const daysLeft = active?.closes_at && !isClosed(active) ? Math.ceil((active.closes_at - Date.now()) / DAY) : null;
 
   return (
@@ -136,6 +127,8 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
         </p>
       </header>
 
+      <Onboarding user={user} />
+
       <div
         role="status"
         className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-5 py-4 ${
@@ -149,31 +142,6 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
         {status.action}
       </div>
 
-      {stepsLeft > 0 && (
-        <Card title="Getting started" action={<span className="text-sm text-mute">{steps.length - stepsLeft} of {steps.length} done</span>}>
-          <ol className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-            {steps.map((s, i) => (
-              <li key={s.label}>
-                <Link
-                  href={s.href}
-                  className={`flex h-full items-start gap-3 rounded-lg border p-3 text-sm transition ${s.done ? "border-line text-mute" : "border-line hover:border-mute"}`}
-                >
-                  <span
-                    aria-hidden
-                    className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-bold ${s.done ? "bg-lime text-ink" : "border border-line"}`}
-                  >
-                    {s.done ? "✓" : i + 1}
-                  </span>
-                  <span className={s.done ? "line-through" : ""}>
-                    {s.label}
-                    <span className="sr-only">{s.done ? " (done)" : ""}</span>
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ol>
-        </Card>
-      )}
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Stat label="Received this week" value={String(stats.receivedWeek)} note={delta(stats.receivedWeek, stats.receivedPrev)} />

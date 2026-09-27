@@ -6,6 +6,7 @@ import { PLANS } from "@/lib/plans";
 import { footerLinks } from "@/lib/site";
 import { mono, serif } from "./fonts";
 import { HomePreview } from "./HomePreview";
+import { WaitlistForm } from "./WaitlistForm";
 
 const HOST = APP_URL.replace(/^https?:\/\//, "");
 const DEMO = "/maxwell";
@@ -129,7 +130,7 @@ export default async function Home({
               </div>
               {!user && (
                 <p className="mt-4 font-[family-name:var(--font-stage-mono)] text-xs text-[#8f8377]">
-                  Private beta · sign-up by invite code
+                  Private beta · invite only · <a href="#waitlist" className="underline underline-offset-4 hover:text-bone">no invite? join the waitlist</a>
                 </p>
               )}
             </div>
@@ -424,6 +425,22 @@ export default async function Home({
           ))}
         </div>
       </section>
+
+      {/* Waitlist */}
+      {!user && (
+        <section id="waitlist" className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+          <div className="grid gap-10 rounded-lg border border-white/10 bg-ink-2 p-8 sm:p-12 lg:grid-cols-[1fr_1.2fr]">
+            <div>
+              <p className="font-[family-name:var(--font-stage-mono)] text-xs uppercase tracking-[0.12em] text-lime">[Private beta]</p>
+              <h2 className="mt-4 text-[clamp(2rem,4vw,3.25rem)] font-bold leading-[0.95] tracking-[-0.035em]">No invite yet?</h2>
+              <p className="mt-4 font-[family-name:var(--font-stage-mono)] text-sm leading-relaxed text-[#bdb1a3]">
+                We&apos;re letting DJs, labels and curators in a few at a time. Leave your details and you&apos;ll get a personal invite by email.
+              </p>
+            </div>
+            <WaitlistForm />
+          </div>
+        </section>
+      )}
 
       {/* FAQ */}
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">

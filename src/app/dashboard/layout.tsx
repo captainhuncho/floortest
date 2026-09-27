@@ -8,6 +8,7 @@ import { notificationsFor } from "@/lib/notifications";
 import { PLANS, planOf } from "@/lib/plans";
 import { footerLinks, VERSION } from "@/lib/site";
 import { Sidebar } from "./Sidebar";
+import { FeedbackButton } from "./FeedbackButton";
 import { LinkPill } from "./LinkPill";
 import { TopBar } from "./TopBar";
 import { VerifyBanner } from "./VerifyBanner";
@@ -54,6 +55,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <main id="main" className="min-w-0 pb-24 md:overflow-y-auto">
             <div className="sticky top-0 z-40 flex h-[68px] items-center justify-end gap-3 border-b border-line bg-ink/85 px-4 backdrop-blur sm:px-6">
               <LinkPill link={link} />
+              <FeedbackButton />
               <TopBar
                 user={{ name: user.name, email: user.email, handle: user.handle, plan: plan.name, memberSince }}
                 link={link}

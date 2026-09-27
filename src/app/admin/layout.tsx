@@ -12,6 +12,7 @@ const NAV = [
   ["/admin/inbox", "Inbox"],
   ["/admin/accounts", "Accounts"],
   ["/admin/emails", "Emails"],
+  ["/admin/waitlist", "Waitlist"],
   ["/admin/invites", "Invites"],
   ["/admin/moderation", "Moderation"],
   ["/admin/log", "Admin log"],

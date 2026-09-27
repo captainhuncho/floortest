@@ -336,6 +336,22 @@ export async function markDownloaded(user: User, t: Track) {
   });
 }
 
+/** The best news a sender can get: their track was played in a set. Once per track; the note is optional. */
+export async function markPlayedOut(user: User, t: Track, note: string) {
+  const clean = note.replace(/\s+/g, " ").trim().slice(0, 140);
+  const r = await q.run("UPDATE tracks SET played_out_at = ?, played_out_note = ? WHERE id = ? AND played_out_at IS NULL", now(), clean, t.id);
+  if (!r.changes) return false;
+  const s = await senderOf(t);
+  await logEvent({ user_id: user.id, sender_id: s.id, track_id: t.id, type: "played_out", detail: clean });
+  await sendMail({
+    userId: user.id,
+    to: s.email,
+    subject: `Played out: ${t.title}`,
+    body: `Hi ${s.name},\n\n${user.name} played "${t.title}" out in a set${clean ? ` (${clean})` : ""}. 🎛️\n\nYour receipt: ${APP_URL}/t/${t.token}\n\n— FloorTest`,
+  });
+  return true;
+}
+
 /* ───────────────────────── Decisions ───────────────────────── */
 
 /** Keep or "could be better" (stored as passed). Private to the receiver: senders are never told. Returns what undo needs. */

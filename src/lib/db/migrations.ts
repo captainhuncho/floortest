@@ -286,4 +286,25 @@ alter table invites add column sent_at bigint;
 create index invites_email on invites(email);
 `,
   },
+  {
+    // Beta features: waitlist, onboarding checklist, reply templates, "played it out".
+    id: "0010_beta_features",
+    sql: `
+create table waitlist (
+  id bigint generated always as identity primary key,
+  email text not null unique,
+  name text not null default '',
+  role text not null default '',
+  link text not null default '',
+  note text not null default '',
+  invited_at bigint,
+  created_at bigint not null
+);
+alter table waitlist enable row level security;
+alter table users add column onboarding_dismissed_at bigint;
+alter table users add column reply_templates text not null default '[]';
+alter table tracks add column played_out_at bigint;
+alter table tracks add column played_out_note text not null default '';
+`,
+  },
 ];

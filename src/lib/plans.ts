@@ -24,6 +24,7 @@ export const SIGNALS = {
   downloaded: "The original file finished downloading",
   kept: "The receiver explicitly kept it. Private to the receiver",
   replied: "The receiver sent you a message",
+  playedOut: "The receiver played it out in a set",
 } as const;
 export const LISTEN_MIN_SECONDS = 30;
 export const LISTEN_MIN_FRACTION = 0.25;
