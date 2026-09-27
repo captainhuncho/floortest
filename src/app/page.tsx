@@ -72,7 +72,7 @@ export default async function Home({
 
   return (
     <div
-      className={`${serif.variable} ${mono.variable} bg-[#120e0b] text-bone`}
+      className={`${serif.variable} ${mono.variable} bg-ink text-bone`}
     >
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         {deleted && (
@@ -151,7 +151,7 @@ export default async function Home({
               )}
             </div>
             {/* The one link, and where it routes: the product in a card. */}
-            <div className="rounded-lg border border-white/10 bg-[#1a1714] p-6 sm:p-8">
+            <div className="rounded-lg border border-white/10 bg-ink-2 p-6 sm:p-8">
               <p className="home-label">Permanent receiver link</p>
               <p className="mt-4 font-[family-name:var(--font-stage-mono)] text-xl sm:text-2xl">
               {HOST}/<wbr /><span className="text-lime">maxwell</span>
@@ -185,7 +185,7 @@ export default async function Home({
       </section>
 
       {/* Journey */}
-      <section className="border-y border-white/10 bg-[#141612]">
+      <section className="border-y border-white/10 bg-ink-2">
         <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
           <p className="font-[family-name:var(--font-stage-mono)] text-xs uppercase tracking-[0.12em] text-lime">
             [One private track · a visible journey]
@@ -251,7 +251,7 @@ export default async function Home({
           </p>
         </div>
         <div className="mt-10 grid md:grid-cols-2">
-          <div className="border border-white/10 bg-[#171411] p-8 sm:p-10">
+          <div className="border border-white/10 bg-ink-2 p-8 sm:p-10">
             <p className="home-label">The old way</p>
             <p className="mt-6 text-2xl sm:text-3xl">DMs, email and drives</p>
             <ul className="mt-8 divide-y divide-white/10 border-t border-white/10 font-[family-name:var(--font-stage-mono)] text-sm text-[#bdb1a3]">
@@ -313,7 +313,7 @@ export default async function Home({
           ))}
         </ol>
         <div className="mt-12 grid overflow-hidden rounded-lg border border-white/10 md:grid-cols-2">
-          <div className="bg-[#1a1511] p-8 sm:p-12">
+          <div className="bg-ink-2 p-8 sm:p-12">
             <p className="font-[family-name:var(--font-stage-mono)] text-xs uppercase tracking-[0.1em] text-lime">
               For DJs, performers &amp; labels
             </p>
@@ -332,7 +332,7 @@ export default async function Home({
               {user ? "Open your desk" : "Claim your link"} →
             </Link>
           </div>
-          <div className="border-t border-white/10 bg-[#1a1511] p-8 sm:p-12 md:border-l md:border-t-0">
+          <div className="border-t border-white/10 bg-ink-2 p-8 sm:p-12 md:border-l md:border-t-0">
             <p className="font-[family-name:var(--font-stage-mono)] text-xs uppercase tracking-[0.1em] text-lime">
               For artists &amp; senders
             </p>
@@ -409,7 +409,7 @@ export default async function Home({
           {Object.entries(PLANS).map(([id, p]) => (
             <div
               key={id}
-              className={`flex flex-col rounded-lg border p-7 ${id === "pro" ? "border-lime/40 bg-[radial-gradient(120%_100%_at_0%_0%,rgba(213,255,72,0.08),transparent_60%)]" : "border-white/10 bg-[#171411]"}`}
+              className={`flex flex-col rounded-lg border p-7 ${id === "pro" ? "border-lime/40 bg-[radial-gradient(120%_100%_at_0%_0%,rgba(213,255,72,0.08),transparent_60%)]" : "border-white/10 bg-ink-2"}`}
             >
               <p className="font-[family-name:var(--font-stage-mono)] text-xs uppercase tracking-[0.1em] text-lime">
                 {p.name}

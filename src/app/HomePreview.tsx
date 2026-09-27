@@ -27,7 +27,7 @@ export function HomePreview({ host }: { host: string }) {
   const t = TRACKS[sel];
 
   return (
-    <div className="overflow-hidden rounded-lg border border-white/10 bg-[#15110e] shadow-2xl shadow-black/60">
+    <div className="overflow-hidden rounded-lg border border-white/10 bg-ink-2 shadow-2xl shadow-black/60">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-4 sm:px-7">
         <p className="text-lg font-bold tracking-tight">FloorTest</p>
         <div className="flex items-center gap-1 overflow-x-auto">
