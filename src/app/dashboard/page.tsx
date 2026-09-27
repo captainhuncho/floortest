@@ -77,7 +77,7 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
   }));
 
   const href = (patch: Partial<Search>) => {
-    const merged: Search = { c: sp.c, s: status === "review" ? undefined : status, q: search || undefined, t: sp.t, ...patch };
+    const merged: Search = { view: sp.view === "queue" ? "queue" : undefined, c: sp.c, s: status === "review" ? undefined : status, q: search || undefined, t: sp.t, ...patch };
     const p = new URLSearchParams();
     for (const [k, v] of Object.entries(merged)) if (v) p.set(k, v);
     const s = p.toString();
@@ -93,12 +93,14 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
   const idx = selected ? rows.findIndex((r) => r.id === selected.id) : -1;
   const nextRow = idx >= 0 ? rows[idx + 1] : rows.find((r) => r.id !== selected?.id);
   const prevRow = idx > 0 ? rows[idx - 1] : undefined;
+  // Opening a track (t in the URL) is full review on narrow screens: the list steps aside until "Back".
+  const focused = !!sp.t && !!selected;
 
   const totalActive = collections.reduce((n, c) => n + c.count, 0);
 
   return (
     <div className={`grid min-h-full ${selected ? "xl:grid-cols-[minmax(0,1fr)_minmax(400px,460px)]" : ""}`}>
-      <section className="min-w-0 px-4 py-6 sm:px-8" aria-labelledby="submissions-h">
+      <section className={`min-w-0 px-4 py-6 sm:px-8 ${focused ? "hidden xl:block" : ""}`} aria-labelledby="submissions-h">
         <header className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 id="submissions-h" className="text-3xl font-bold tracking-tight">
@@ -186,8 +188,30 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
       {selected && sender && (
         <aside
           aria-label="Review"
-          className="border-t border-line bg-ink-2/60 xl:sticky xl:top-[68px] xl:h-[calc(100dvh-68px)] xl:self-start xl:overflow-y-auto xl:border-t-0 xl:border-l"
+          className={`${focused ? "" : "border-t"} border-line bg-ink-2/60 xl:sticky xl:top-[68px] xl:h-[calc(100dvh-68px)] xl:self-start xl:overflow-y-auto xl:border-t-0 xl:border-l`}
         >
+          {focused && (
+            <nav aria-label="Review navigation" className="sticky top-[68px] z-30 flex items-center gap-2 border-b border-line bg-ink/90 px-4 py-2.5 backdrop-blur sm:px-6 xl:hidden">
+              <Link href={href({ t: undefined })} className="text-sm text-mute hover:text-bone">
+                ← Review Queue
+              </Link>
+              <span className="ml-auto font-mono text-xs text-mute tnum">{idx >= 0 ? `${idx + 1} of ${rows.length}` : ""}</span>
+              {prevRow ? (
+                <Link href={href({ t: String(prevRow.id) })} className="btn-ghost btn-sm" aria-label="Previous track">
+                  ‹ Prev
+                </Link>
+              ) : (
+                <span className="btn-ghost btn-sm pointer-events-none opacity-40">‹ Prev</span>
+              )}
+              {nextRow ? (
+                <Link href={href({ t: String(nextRow.id) })} className="btn-ghost btn-sm" aria-label="Next track">
+                  Next ›
+                </Link>
+              ) : (
+                <span className="btn-ghost btn-sm pointer-events-none opacity-40">Next ›</span>
+              )}
+            </nav>
+          )}
           <ReviewPanel
             key={selected.id}
             track={selected}
