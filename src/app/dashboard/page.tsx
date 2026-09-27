@@ -186,7 +186,7 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
       {selected && sender && (
         <aside
           aria-label="Review"
-          className="order-first border-b border-line bg-ink-2/60 xl:sticky xl:top-[68px] xl:order-last xl:h-[calc(100dvh-68px)] xl:self-start xl:overflow-y-auto xl:border-b-0 xl:border-l"
+          className="border-t border-line bg-ink-2/60 xl:sticky xl:top-[68px] xl:h-[calc(100dvh-68px)] xl:self-start xl:overflow-y-auto xl:border-t-0 xl:border-l"
         >
           <ReviewPanel
             key={selected.id}
