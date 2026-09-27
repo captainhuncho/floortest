@@ -41,6 +41,12 @@ export async function createSession(userId: number) {
   });
 }
 
+/** Hash of this browser's session token, or null when signed out. */
+export async function currentSessionHash() {
+  const token = (await cookies()).get(COOKIE)?.value;
+  return token ? hashToken(token) : null;
+}
+
 export async function destroySession() {
   const jar = await cookies();
   const token = jar.get(COOKIE)?.value;

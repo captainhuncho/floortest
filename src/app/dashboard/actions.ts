@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { destroySession, requireUser, verifyPassword } from "@/lib/auth";
+import { currentSessionHash, destroySession, hashPassword, requireUser, verifyPassword } from "@/lib/auth";
+import { sendMail } from "@/lib/mail";
 import {
   capacity,
   clearDecision as clearTrackDecision,
@@ -348,6 +349,40 @@ export async function setPlan(plan: string) {
   await q.run("UPDATE users SET plan = ? WHERE id = ?", plan, u.id);
   await audit(u.id, "plan_changed", planOf(plan).name);
   done();
+}
+
+/** Changes the password after checking the current one, and signs out every other device. */
+export async function changePassword(_: SettingsState, form: FormData): Promise<SettingsState> {
+  const u = await requireUser();
+  const current = String(form.get("current") || "");
+  const next = String(form.get("password") || "");
+  const row = await q.get<{ password_hash: string }>("SELECT password_hash FROM users WHERE id = ?", u.id);
+  if (!row || !verifyPassword(current, row.password_hash)) return { error: "Your current password isn't right." };
+  if (next.length < 8 || next.length > 200) return { error: "Use at least 8 characters." };
+  if (next === current) return { error: "Pick a password you haven't used here." };
+  if (next.toLowerCase() === u.email.toLowerCase() || next.toLowerCase() === u.handle) return { error: "Don't use your email or link name as your password." };
+  if (String(form.get("confirm") || "") !== next) return { error: "The two new passwords don't match." };
+  const keep = await currentSessionHash();
+  await q.run("UPDATE users SET password_hash = ? WHERE id = ?", hashPassword(next), u.id);
+  await q.run("DELETE FROM sessions WHERE user_id = ? AND token_hash <> ?", u.id, keep ?? "");
+  await audit(u.id, "password_changed");
+  await sendMail({
+    userId: u.id,
+    audience: "receiver",
+    to: u.email,
+    subject: "Your FloorTest password was changed",
+    body: `Hi ${u.name.split(/\s+/)[0]},\n\nYour FloorTest password was just changed and every other device was signed out.\n\nIf this wasn't you, reset your password now from the log-in page and contact us.\n\n— FloorTest`,
+  });
+  return { ok: true };
+}
+
+/** Ends every session except this one: lost phone, shared laptop. */
+export async function signOutOtherDevices(): Promise<number> {
+  const u = await requireUser();
+  const keep = await currentSessionHash();
+  const r = await q.run("DELETE FROM sessions WHERE user_id = ? AND token_hash <> ?", u.id, keep ?? "");
+  await audit(u.id, "signed_out_others", `${r.changes} device${r.changes === 1 ? "" : "s"}`);
+  return r.changes;
 }
 
 /** Permanently deletes the account, every stored file, and all history. Requires the password. */

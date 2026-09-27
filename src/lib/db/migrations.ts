@@ -201,4 +201,11 @@ alter table account_log enable row level security;
 alter table tracks add column set_cleared_at bigint;
 `,
   },
+  {
+    id: "0005_invite_code",
+    sql: `
+alter table users add column invite_code text;
+create index users_invite_code on users(invite_code);
+`,
+  },
 ];

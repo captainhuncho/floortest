@@ -38,6 +38,8 @@ export const env = {
     .map((c) => c.trim().toUpperCase())
     .filter(Boolean),
   supportEmail: v("SUPPORT_EMAIL"),
+  /** Sign-ups allowed per BETA_INVITE_CODES code, so a leaked code cannot open the doors. */
+  inviteLimit: Math.max(1, Number(v("BETA_INVITE_LIMIT") ?? 25) || 25),
 };
 
 export function configProblems() {

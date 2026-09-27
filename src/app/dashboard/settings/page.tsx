@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { logout } from "../../(auth)/actions";
-import { requireUser } from "@/lib/auth";
+import { currentSessionHash, requireUser } from "@/lib/auth";
 import { capacity } from "@/lib/core";
 import {q, type Sender } from "@/lib/db";
 import { fmtDay } from "@/lib/format";
@@ -9,12 +9,19 @@ import { PLANS, RATE_PER_EMAIL_PER_DAY, RATE_PER_IP_PER_HOUR, RETAIN_PASSED_DAYS
 import { blockSender, setPlan } from "../actions";
 import { CoverUpload, PublicPageForm } from "./PublicPageForm";
 import { DeleteAccount } from "./DeleteAccount";
+import { SecurityForm } from "./SecurityForm";
 import { SettingsForm } from "./SettingsForm";
 
 export const metadata = { title: "Settings — FloorTest" };
 
 export default async function Settings() {
   const user = await requireUser();
+  const otherSessions = await q.count(
+    "SELECT COUNT(*) AS n FROM sessions WHERE user_id = ? AND expires_at > ? AND token_hash <> ?",
+    user.id,
+    Date.now(),
+    (await currentSessionHash()) ?? "",
+  );
   const cap = await capacity(user);
   const blocked = (await q.all<Sender>("SELECT * FROM senders WHERE user_id = ? AND blocked_at IS NOT NULL ORDER BY blocked_at DESC", user.id));
   return (
@@ -135,6 +142,16 @@ export default async function Settings() {
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="card p-6" aria-labelledby="security-h">
+        <h2 id="security-h" className="text-lg font-semibold">
+          Password &amp; devices
+        </h2>
+        <p className="mt-1 text-sm text-mute">Changing your password signs out every other device and emails you a notice.</p>
+        <div className="mt-5">
+          <SecurityForm otherSessions={otherSessions} />
+        </div>
       </section>
 
       <section aria-labelledby="danger-h" className="border-t border-line pt-6">

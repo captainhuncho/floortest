@@ -6,6 +6,8 @@ export const AUDIT_LABELS = {
   signed_in: "Signed in",
   signed_out: "Signed out",
   password_reset: "Reset password",
+  password_changed: "Changed password",
+  signed_out_others: "Signed out other devices",
   kept: "Kept",
   passed: "Marked could be better",
   decision_cleared: "Moved back to review",

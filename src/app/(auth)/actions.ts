@@ -19,9 +19,12 @@ const DUMMY_HASH = hashPassword("timing-equaliser");
 /** Invite codes: an existing user's referral code, or one of BETA_INVITE_CODES. */
 async function resolveInvite(raw: string) {
   const code = raw.trim().toUpperCase().slice(0, 32);
-  if (!code) return { valid: false, referrerId: null as number | null };
+  if (!code) return { valid: false, referrerId: null as number | null, code };
   const referrer = await q.get<{ id: number }>("SELECT id FROM users WHERE referral_code = ?", code);
-  return { valid: !!referrer || env.inviteCodes.includes(code), referrerId: referrer?.id ?? null };
+  if (referrer) return { valid: true, referrerId: referrer.id, code };
+  // Beta codes are shared, so each one only opens a limited number of accounts.
+  const valid = env.inviteCodes.includes(code) && (await q.count("SELECT COUNT(*) AS n FROM users WHERE invite_code = ?", code)) < env.inviteLimit;
+  return { valid, referrerId: null as number | null, code };
 }
 
 const validTz = (tz: string) => {
@@ -40,7 +43,7 @@ export async function signup(_: FormState, form: FormData): Promise<FormState> {
   const password = String(form.get("password") || "");
   const invite = await resolveInvite(String(form.get("ref") || form.get("invite") || ""));
 
-  if (env.signupMode === "invite" && !invite.valid) return { error: "FloorTest is invite-only during the beta. Enter a valid invite code." };
+  if (env.signupMode === "invite" && !invite.valid) return { error: "That invite code is not valid or has been used up. Ask whoever invited you for a new one." };
   if (!name || !email || !handle || !password) return { error: "All fields are required." };
   if (!EMAIL.test(email)) return { error: "Enter a valid email." };
   if (!/^[a-z0-9][a-z0-9-_]{1,29}$/.test(handle)) return { error: "Link names use 2–30 letters, numbers, - or _." };
@@ -55,12 +58,13 @@ export async function signup(_: FormState, form: FormData): Promise<FormState> {
   try {
     userId = await q.tx(async (db) => {
       const u = (await db.get<{ id: number }>(
-        "INSERT INTO users (email, password_hash, name, handle, referred_by, tz, created_at) VALUES (?,?,?,?,?,?,?) RETURNING id",
+        "INSERT INTO users (email, password_hash, name, handle, referred_by, invite_code, tz, created_at) VALUES (?,?,?,?,?,?,?,?) RETURNING id",
         email,
         hashPassword(password),
         name,
         handle,
         invite.referrerId,
+        invite.code || null,
         validTz(String(form.get("tz") || "UTC")),
         now(),
       ))!;
