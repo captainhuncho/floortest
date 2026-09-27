@@ -2,6 +2,11 @@
 
 import crypto from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { signViewAs, VIEW_AS_COOKIE } from "@/lib/auth";
+import { env } from "@/lib/env";
+import { sendMail } from "@/lib/mail";
 import { logAdmin, requireAdminAction } from "@/lib/admin";
 import { logEvent, now, q, type Track } from "@/lib/db";
 import { storage } from "@/lib/storage";
@@ -98,5 +103,41 @@ export async function blockSenderAsAdmin(senderId: number) {
   if (!s) return;
   await q.run("UPDATE senders SET blocked_at = COALESCE(blocked_at, ?) WHERE id = ?", now(), s.id);
   await logAdmin(a.id, "blocked sender", s.email);
+  refresh();
+}
+
+/** Read-only look at someone's desk, for support. 30 minutes, logged. */
+export async function startViewAs(userId: number) {
+  const a = await requireAdminAction();
+  const u = await target(userId);
+  if (!u || u.id === a.id) return;
+  (await cookies()).set(VIEW_AS_COOKIE, signViewAs(a.id, u.id, env.secret), {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/dashboard",
+    maxAge: 30 * 60,
+  });
+  await logAdmin(a.id, "viewed desk", `@${u.handle}`, "read-only, 30 min");
+  redirect("/dashboard/floor");
+}
+
+/** Sends a logged email again, to the same address. */
+export async function resendEmail(outboxId: number) {
+  const a = await requireAdminAction();
+  const m = await q.get<{ user_id: number | null; to_email: string; subject: string; body: string; audience: "sender" | "receiver" | "support" }>(
+    "SELECT user_id, to_email, subject, body, audience FROM outbox WHERE id = ?",
+    outboxId,
+  );
+  if (!m) return;
+  const status = await sendMail({ userId: m.user_id, to: m.to_email, subject: m.subject, body: m.body, audience: m.audience });
+  await logAdmin(a.id, "resent email", m.subject, status);
+  refresh();
+}
+
+export async function setContactHandled(id: number, handled: boolean) {
+  const a = await requireAdminAction();
+  await q.run("UPDATE contact_messages SET handled_at = ? WHERE id = ?", handled ? now() : null, id);
+  await logAdmin(a.id, handled ? "handled message" : "reopened message", `#${id}`);
   refresh();
 }

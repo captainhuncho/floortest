@@ -1,7 +1,7 @@
 import { after } from "next/server";
 import { PlayerBar, PlayerProvider } from "@/components/Player";
 import { ToastProvider } from "@/components/Toast";
-import { requireUser } from "@/lib/auth";
+import { requireUser, viewingAs } from "@/lib/auth";
 import { activeCollection, capacity, collectionsFor, isClosed, isPaused, purgeExpired } from "@/lib/core";
 import { APP_URL } from "@/lib/mail";
 import { notificationsFor } from "@/lib/notifications";
@@ -14,6 +14,7 @@ import { VerifyBanner } from "./VerifyBanner";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
+  const view = await viewingAs();
   // Retention cleanup runs after the response, so it never slows a page down.
   after(() => purgeExpired().catch((e) => console.error("[purge]", e)));
   const [collections, cap, active, notices] = await Promise.all([collectionsFor(user.id), capacity(user), activeCollection(user), notificationsFor(user)]);
@@ -61,7 +62,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 version={VERSION}
               />
             </div>
-            {!user.email_verified_at && <VerifyBanner email={user.email} />}
+            {view && (
+              <div role="alert" className="flex flex-wrap items-center justify-between gap-2 border-b border-danger/50 bg-danger/15 px-4 py-2.5 text-sm sm:px-6">
+                <span>
+                  <span className="font-semibold text-danger">Admin view</span> · You&apos;re seeing @{view.handle}&apos;s desk. Read-only: changes are blocked.
+                </span>
+                <a href="/dashboard/exit-view" className="font-medium text-danger underline underline-offset-4">
+                  Exit view
+                </a>
+              </div>
+            )}
+            {!view && !user.email_verified_at && <VerifyBanner email={user.email} />}
             {children}
           </main>
         </div>

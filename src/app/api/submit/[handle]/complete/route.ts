@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { completeUpload, IntakeError, userByHandle } from "@/lib/core";
+import { recordIncident } from "@/lib/incidents";
 
 export const runtime = "nodejs";
 
@@ -30,6 +31,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]
   } catch (e) {
     if (e instanceof IntakeError) return bad(e.message, e.status);
     console.error("[submit:complete]", e);
+    await recordIncident("upload_failed", `Upload to @${receiver.handle} failed`, e instanceof Error ? `${e.message}\n${e.stack ?? ""}` : String(e), "/api/submit/complete");
     return bad("Upload failed. Please try again.", 500);
   }
 }

@@ -249,4 +249,32 @@ alter table invites enable row level security;
 alter table admin_log enable row level security;
 `,
   },
+  {
+    // Support tools: a contact inbox and a feed of things that went wrong.
+    id: "0008_support",
+    sql: `
+create table contact_messages (
+  id bigint generated always as identity primary key,
+  user_id bigint references users(id) on delete set null,
+  name text not null,
+  email text not null,
+  topic text not null,
+  message text not null,
+  handled_at bigint,
+  created_at bigint not null
+);
+create index contact_messages_time on contact_messages(created_at desc);
+create table incidents (
+  id bigint generated always as identity primary key,
+  kind text not null,
+  message text not null,
+  detail text not null default '',
+  path text not null default '',
+  created_at bigint not null
+);
+create index incidents_time on incidents(created_at desc);
+alter table contact_messages enable row level security;
+alter table incidents enable row level security;
+`,
+  },
 ];

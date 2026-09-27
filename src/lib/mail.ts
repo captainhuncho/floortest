@@ -1,6 +1,7 @@
 import "server-only";
 import { now, q } from "./db";
 import { env } from "./env";
+import { recordIncident } from "./incidents";
 
 export const APP_URL = env.appUrl;
 
@@ -33,6 +34,7 @@ export async function sendMail(opts: { userId: number | null; to: string; subjec
       console.error("[mail] delivery failed", e);
     }
   }
+  if (status.startsWith("failed")) await recordIncident("email_failed", `Email to ${opts.to.replace(/^(.{2}).*@/, "$1…@")} ${status}`, opts.subject);
   await q.run(
     "INSERT INTO outbox (user_id, to_email, subject, body, status, audience, created_at) VALUES (?,?,?,?,?,?,?)",
     opts.userId,

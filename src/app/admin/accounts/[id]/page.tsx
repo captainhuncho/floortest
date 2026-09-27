@@ -5,7 +5,7 @@ import { q } from "@/lib/db";
 import { fmtBytes } from "@/lib/format";
 import { APP_URL } from "@/lib/mail";
 import { ConfirmButton } from "../../../dashboard/ClientBits";
-import { resetTwoFactor, setPlanFor, signOutEverywhere, suspendAccount, unsuspendAccount } from "../../actions";
+import { resetTwoFactor, setPlanFor, signOutEverywhere, startViewAs, suspendAccount, unsuspendAccount } from "../../actions";
 
 export default async function Account({ params }: { params: Promise<{ id: string }> }) {
   const id = Number((await params).id);
@@ -63,6 +63,9 @@ export default async function Account({ params }: { params: Promise<{ id: string
       <section className="space-y-4">
         <h2 className="text-lg font-semibold">Actions</h2>
         <div className="flex flex-wrap items-center gap-2">
+          <form action={startViewAs.bind(null, id)}>
+            <button className="btn-lime btn-sm">View their desk (read-only)</button>
+          </form>
           <form action={async (fd: FormData) => { "use server"; await setPlanFor(id, String(fd.get("plan"))); }} className="flex gap-2">
             <select name="plan" defaultValue={u.plan} className="input w-32" aria-label="Plan">
               <option value="free">Free</option>

@@ -1,5 +1,7 @@
 "use server";
 
+import { q } from "@/lib/db";
+
 import { currentUser } from "@/lib/auth";
 import { sendMail } from "@/lib/mail";
 import { allow, requestIp } from "@/lib/ratelimit";
@@ -19,6 +21,16 @@ export async function sendContact(_: ContactState, form: FormData): Promise<Cont
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Enter a valid email so we can reply." };
 
   const user = await currentUser();
+  // Kept in the admin inbox whether or not SUPPORT_EMAIL is set.
+  await q.run(
+    "INSERT INTO contact_messages (user_id, name, email, topic, message, created_at) VALUES (?,?,?,?,?,?)",
+    user?.id ?? null,
+    name,
+    email,
+    topic,
+    message,
+    Date.now(),
+  );
   await sendMail({
     userId: user?.id ?? null,
     audience: "support",
