@@ -1,12 +1,9 @@
-import { activeCollection, capacity, collectionsFor, isClosed, isPaused } from "@/lib/core";
+import { collectionsFor } from "@/lib/core";
 import { q, likeContains, type Track, type User } from "@/lib/db";
-import { APP_URL } from "@/lib/mail";
 import { MIX_STATUS, RELEASE_STATUS } from "@/lib/plans";
-import { ExportButton } from "../ExportButton";
 import { ViewToggle } from "../ViewToggle";
 import { FilterMenu, type Option } from "./FilterMenu";
 import { ListRows, type ListRow } from "./ListRows";
-import { ShareButton } from "./ShareButton";
 
 type Search = { c?: string; s?: string; q?: string; type?: string; sender?: string; genre?: string };
 
@@ -49,9 +46,6 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
        WHERE s.user_id = ? GROUP BY s.id ORDER BY lower(s.name)`, user.id));
   const genres = (await q.all<{ genre: string; n: number }>(`SELECT genre, COUNT(*) AS n FROM tracks WHERE user_id = ? AND deleted_at IS NULL AND genre != ''
        GROUP BY genre ORDER BY n DESC, lower(genre)`, user.id));
-  const keptCount = (
-    (await q.get<{ n: number }>(`SELECT COUNT(*) AS n FROM tracks WHERE user_id = ? AND deleted_at IS NULL AND decision = 'kept' ${collection ? "AND collection_id = ?" : ""}`, ...(collection ? [user.id, collection.id] : [user.id])))!
-  ).n;
 
   const href = (patch: Partial<Search>) => {
     const p = new URLSearchParams({ view: "list" });
@@ -86,9 +80,6 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
     createdAt: t.created_at,
   }));
 
-  const active = await activeCollection(user);
-  const paused = isPaused(user);
-  const open = !paused && !!active && !isClosed(active) && !(await capacity(user)).full;
 
   const menus: { label: string; options: Option[] }[] = [
     { label: "Status", options: STATUS.map(([k, l]) => ({ label: l, href: href({ s: k === "all" ? undefined : k }), active: status[0] === k })) },
@@ -126,20 +117,6 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
     <div className="flex min-h-full flex-col">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3.5 sm:px-6">
         <h1 className="text-2xl font-bold tracking-tight">Review Queue</h1>
-        <div className="flex flex-wrap items-center gap-2">
-          <a
-            href="/dashboard/collections"
-            className={`flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium ${
-              open ? "bg-lime/15 text-lime" : "bg-danger/15 text-danger"
-            }`}
-            title={open ? `Link is receiving into ${active!.name}` : paused ? "You paused submissions" : "Your link isn't accepting uploads"}
-          >
-            <span aria-hidden className={`h-2 w-2 rounded-full ${open ? "bg-lime" : "bg-danger"}`} />
-            {open ? "Open" : paused ? "Paused" : "Closed"}
-          </a>
-          <ExportButton collectionId={collection?.id ?? null} count={keptCount} />
-          <ShareButton link={`${APP_URL}/${user.handle}`} />
-        </div>
       </header>
 
       <div className="flex flex-wrap items-center gap-x-1 gap-y-2 border-b border-line bg-ink-2/60 px-2 py-1.5 sm:px-4">

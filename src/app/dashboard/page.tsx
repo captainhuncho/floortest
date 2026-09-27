@@ -4,7 +4,6 @@ import { requireUser } from "@/lib/auth";
 import { collectionsFor } from "@/lib/core";
 import { q, likeContains, type Sender, type Track } from "@/lib/db";
 import { APP_URL } from "@/lib/mail";
-import { ExportButton } from "./ExportButton";
 import { ReviewPanel } from "./ReviewPanel";
 import { toPlayer } from "@/lib/player-track";
 import { SubmissionsList } from "./list/SubmissionsList";
@@ -113,7 +112,6 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {status === "kept" && <ExportButton collectionId={collection?.id ?? null} count={counts.kept} />}
             <ViewToggle view="queue" />
           </div>
         </header>
