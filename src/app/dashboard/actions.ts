@@ -161,6 +161,18 @@ export async function deleteTrack(trackId: number, back: string) {
   redirect(back.startsWith("/dashboard") ? back : "/dashboard");
 }
 
+/** Starts a new Prepare for set batch. Tracks stay kept; they just leave the page. */
+export async function clearKept() {
+  const u = await requireUser();
+  const r = await q.run(
+    "UPDATE tracks SET set_cleared_at = ? WHERE user_id = ? AND decision = 'kept' AND set_cleared_at IS NULL AND deleted_at IS NULL",
+    now(),
+    u.id,
+  );
+  await audit(u.id, "set_cleared", `${r.changes} track${r.changes === 1 ? "" : "s"}`);
+  done();
+}
+
 /* Senders */
 
 export async function addNote(senderId: number, trackId: number | null, form: FormData) {

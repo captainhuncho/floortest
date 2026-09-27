@@ -3,7 +3,7 @@ import { q, type Track } from "@/lib/db";
 import type { Row } from "./TrackList";
 
 /** Track rows for list views: every live track, optionally just one collection and/or just kept ones. */
-export async function loadRows(userId: number, opts: { collectionId?: number; keptOnly?: boolean } = {}): Promise<Row[]> {
+export async function loadRows(userId: number, opts: { collectionId?: number; keptOnly?: boolean; inSet?: boolean } = {}): Promise<Row[]> {
   const where = ["t.user_id = ?", "t.deleted_at IS NULL"];
   const args: number[] = [userId];
   if (opts.collectionId) {
@@ -11,10 +11,11 @@ export async function loadRows(userId: number, opts: { collectionId?: number; ke
     args.push(opts.collectionId);
   }
   if (opts.keptOnly) where.push("t.decision = 'kept'");
+  if (opts.inSet) where.push("t.decision = 'kept' AND t.set_cleared_at IS NULL");
   const tracks = await q.all<Track & { sender_name: string; collection_name: string | null }>(
     `SELECT t.*, s.name AS sender_name, c.name AS collection_name FROM tracks t
      JOIN senders s ON s.id = t.sender_id LEFT JOIN collections c ON c.id = t.collection_id
-     WHERE ${where.join(" AND ")} ORDER BY ${opts.keptOnly ? "t.decided_at DESC" : "t.created_at DESC"} LIMIT 500`,
+     WHERE ${where.join(" AND ")} ORDER BY ${opts.keptOnly || opts.inSet ? "t.decided_at DESC" : "t.created_at DESC"} LIMIT 500`,
     ...args,
   );
   return tracks.map((t) => ({

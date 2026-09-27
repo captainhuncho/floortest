@@ -101,6 +101,7 @@ export type Track = {
   replied_at: number | null;
   receiver_notified_at: number | null;
   deleted_at: number | null;
+  set_cleared_at: number | null;
   created_at: number;
 };
 export type EventRow = {

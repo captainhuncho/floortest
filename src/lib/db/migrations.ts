@@ -194,4 +194,11 @@ create index account_log_user on account_log(user_id, created_at desc);
 alter table account_log enable row level security;
 `,
   },
+  {
+    // Prepare for set works in batches: clearing takes kept tracks off the page without un-keeping them.
+    id: "0004_set_cleared",
+    sql: `
+alter table tracks add column set_cleared_at bigint;
+`,
+  },
 ];

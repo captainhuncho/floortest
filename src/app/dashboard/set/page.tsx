@@ -3,13 +3,14 @@ import { requireUser } from "@/lib/auth";
 import { ExportButton } from "../ExportButton";
 import { loadRows, reviewHref } from "../rows";
 import { TrackList } from "../TrackList";
+import { ClearKept } from "./ClearKept";
 
 export const metadata = { title: "Prepare for set — FloorTest" };
 
 /** Everything you kept, ready to take to the booth, plus crate downloads. */
 export default async function PrepareForSet() {
   const user = await requireUser();
-  const kept = await loadRows(user.id, { keptOnly: true });
+  const kept = await loadRows(user.id, { inSet: true });
 
   return (
     <div className="max-w-5xl px-4 py-6 sm:px-8">
@@ -27,6 +28,7 @@ export default async function PrepareForSet() {
           ) : (
             <span className="btn-ghost btn-sm pointer-events-none opacity-40">Download files (0)</span>
           )}
+          <ClearKept count={kept.length} />
         </div>
       </div>
 
@@ -39,7 +41,7 @@ export default async function PrepareForSet() {
             <TrackList rows={kept} selectedId={null} hrefFor={Object.fromEntries(kept.map((r) => [r.id, reviewHref(r.id)]))} />
           ) : (
             <p className="card p-6 text-mute">
-              Nothing kept yet. Press Keep (K) while reviewing in{" "}
+              Nothing in this batch yet. Press Keep (K) while reviewing in{" "}
               <Link href="/dashboard" className="text-bone underline underline-offset-4">
                 Review Queue
               </Link>{" "}

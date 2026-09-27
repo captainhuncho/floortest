@@ -341,7 +341,8 @@ export async function markDownloaded(user: User, t: Track) {
 /** Keep or "could be better" (stored as passed). Private to the receiver: senders are never told. Returns what undo needs. */
 export async function decide(user: User, t: Track, decision: Decision) {
   const prev = { decision: t.decision, decided_at: t.decided_at };
-  await q.run("UPDATE tracks SET decision = ?, decided_at = ? WHERE id = ?", decision, now(), t.id);
+  // Keeping (again) always puts the track in the current Prepare for set batch.
+  await q.run("UPDATE tracks SET decision = ?, decided_at = ?, set_cleared_at = NULL WHERE id = ?", decision, now(), t.id);
   const eventId = await logEvent({ user_id: user.id, sender_id: t.sender_id, track_id: t.id, type: decision, detail: "" });
   return { prev, eventId };
 }

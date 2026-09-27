@@ -25,7 +25,7 @@ export async function GET(req: Request) {
   const whole = !!collection && url.searchParams.get("all") === "1";
 
   const tracks = await q.all<Track>(
-    `SELECT * FROM tracks WHERE user_id = ? AND deleted_at IS NULL AND file_key IS NOT NULL ${whole ? "" : "AND decision = 'kept'"}
+    `SELECT * FROM tracks WHERE user_id = ? AND deleted_at IS NULL AND file_key IS NOT NULL ${whole ? "" : "AND decision = 'kept'"} ${collection ? "" : "AND set_cleared_at IS NULL"}
      ${collection ? "AND collection_id = ?" : ""} ORDER BY ${whole ? "created_at" : "decided_at"}`,
     ...(collection ? [user.id, collection.id] : [user.id]),
   );
