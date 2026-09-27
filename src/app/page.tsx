@@ -18,22 +18,10 @@ const JOURNEY = [
 ];
 
 const HOW = [
-  [
-    "Receive safely",
-    "DJs, performers and labels collect private demos through one permanent link.",
-  ],
-  [
-    "Route and organise",
-    "Send each callout into the right collection without changing the public URL.",
-  ],
-  [
-    "Listen and respond",
-    "Play it, keep it or mark it could be better, download the original and reply to the sender.",
-  ],
-  [
-    "Show what happened",
-    "The sender gets a receipt for delivery, listens, downloads and replies.",
-  ],
+  ["Share your link", "Post it once: in your bio, a callout, a DM. Senders upload the original file, no account needed."],
+  ["Route by callout", "Each callout gets its own collection. Switch where new tracks land in one click."],
+  ["Decide fast", "Play, then Keep or Could be better, and the next track is already up. Reply without leaving the queue."],
+  ["Take it to the booth", "Kept tracks download as one crate with a Rekordbox XML and playlist, or just the files."],
 ];
 
 const FAQ = [
@@ -50,8 +38,8 @@ const FAQ = [
     "Never. It stays the same while you route new tracks into whichever collection is receiving, or pause it while you're away.",
   ],
   [
-    "What can a sender see?",
-    "Delivered, listened (30 seconds, or a quarter of a short track), downloaded and replied. Keep and could-be-better decisions stay private to the receiver.",
+    'What counts as "listened"?',
+    "At least 30 seconds of real playback, or a quarter of a short track. Skipping around doesn't count, so the signal means something.",
   ],
   [
     "Is it free?",
@@ -121,10 +109,9 @@ export default async function Home({
                 </span>
               </h1>
               <p className="mt-8 max-w-2xl font-[family-name:var(--font-stage-mono)] text-[15px] leading-relaxed text-[#bdb1a3]">
-                FloorTest is the receiving desk for unreleased music and music
-                made for the dance floor. DJs, performers and labels receive
-                safely, listen, organise and respond, while senders follow every
-                listen, download and reply.
+                One permanent link for every demo you&apos;re sent. Hear what&apos;s
+                new in seconds, keep what works for your set, and answer every
+                sender without a single DM.
               </p>
               <div className="mt-10 flex flex-wrap items-center gap-6">
                 <Link
@@ -170,7 +157,7 @@ export default async function Home({
             </div>
           </div>
           <div className="mt-20 flex flex-wrap gap-x-8 gap-y-2 border-t border-white/10 pt-6">
-            {["Demos first", "Safe receiving", "Two-way signals"].map((t) => (
+            {["No sender accounts", "Original WAV & MP3", "Every decision undoable"].map((t) => (
               <span key={t} className="home-label flex items-center gap-2">
                 <span className="h-1.5 w-1.5 rounded-md bg-lime" />
                 {t}
@@ -317,9 +304,8 @@ export default async function Home({
               Your private receiving room.
             </p>
             <p className="mt-5 font-[family-name:var(--font-stage-mono)] text-sm leading-relaxed text-[#bdb1a3]">
-              Review unreleased demos safely, organise every callout and deal
-              with the people behind the music. Listen, keep, download, reply
-              and prepare your set from one place.
+              Every demo in one queue, sorted by callout, ready to play. No more
+              digging through DMs, inboxes and expired links before a gig.
             </p>
             <Link
               href={cta.href}
@@ -333,12 +319,11 @@ export default async function Home({
               For artists &amp; senders
             </p>
             <p className="mt-8 text-[clamp(2rem,4vw,3.25rem)] font-bold leading-[0.95] tracking-[-0.035em]">
-              Know what happened next.
+              Send it once. Stop wondering.
             </p>
             <p className="mt-5 font-[family-name:var(--font-stage-mono)] text-sm leading-relaxed text-[#bdb1a3]">
-              Send a demo without making an account. FloorTest confirms delivery
-              and keeps a clear receipt as the receiver listens, downloads or
-              replies.
+              No account, no chasing. Upload the original, get a private receipt,
+              and hear back the moment your track moves.
             </p>
             <Link
               href={DEMO}
@@ -364,12 +349,12 @@ export default async function Home({
           <dl className="divide-y divide-white/10 border-y border-white/10">
             {[
               [
-                "Original files",
-                "Receivers get the actual WAV or MP3, not a fragile streaming link.",
+                "Your decisions stay yours",
+                "Senders see listens, downloads and replies. Keep and could-be-better calls are never shared.",
               ],
               [
-                "Controlled access",
-                "Your link routes to the collection you choose. Pause it, set closing dates, or block a sender.",
+                "You control intake",
+                "Pause your link while touring, set closing dates per callout, and block anyone.",
               ],
               [
                 "Clear retention",
