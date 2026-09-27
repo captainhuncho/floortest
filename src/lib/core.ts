@@ -255,6 +255,25 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
         analysis.peaks ? JSON.stringify(analysis.peaks) : null,
         now(),
       ))!;
+      // Possible duplicate: the same file (byte size and length) already on this desk, or the same
+      // sender re-sending the same title. Flagged for the receiver, never blocked.
+      const dup = await db.get<{ id: number }>(
+        `SELECT id FROM tracks WHERE user_id = ? AND id <> ? AND deleted_at IS NULL
+           AND ((size = ? AND (duration IS NULL OR ? IS NULL OR abs(duration - ?) < 0.5))
+             OR (sender_id = ? AND lower(title) = lower(?)))
+         ORDER BY created_at LIMIT 1`,
+        fresh.id,
+        track.id,
+        head.size,
+        analysis.duration,
+        analysis.duration,
+        sender.id,
+        meta.title,
+      );
+      if (dup) {
+        await db.run("UPDATE tracks SET duplicate_of = ? WHERE id = ?", dup.id, track.id);
+        track.duplicate_of = dup.id;
+      }
       await logEvent({ user_id: fresh.id, sender_id: sender.id, track_id: track.id, type: "submitted", detail: collection ? `into ${collection.name}` : "" }, db);
       await db.run("DELETE FROM uploads WHERE id = ?", up.id);
       return { track, sender, collection };

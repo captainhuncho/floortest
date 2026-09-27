@@ -1,0 +1,73 @@
+import "server-only";
+import { env } from "./env";
+import { now, q } from "./db";
+import { APP_URL, sendMail } from "./mail";
+
+const DAY = 86_400_000;
+
+/**
+ * One gentle reminder per track: still unheard and undecided 14 days after delivery. It goes to
+ * the receiver, never the sender, and a receiver gets at most one reminder email per run.
+ */
+export async function runNudges(at = now()) {
+  const tracks = await q.all<{ id: number; user_id: number; title: string; artist: string; sender: string }>(
+    `SELECT t.id, t.user_id, t.title, t.artist, s.name AS sender FROM tracks t
+       JOIN senders s ON s.id = t.sender_id JOIN users u ON u.id = t.user_id
+     WHERE t.deleted_at IS NULL AND t.played_at IS NULL AND t.decision IS NULL AND t.nudged_at IS NULL
+       AND t.created_at < ? AND u.suspended_at IS NULL AND u.notify_alerts = 1
+     ORDER BY t.user_id, t.created_at LIMIT 500`,
+    at - 14 * DAY,
+  );
+  const byUser = new Map<number, typeof tracks>();
+  for (const t of tracks) byUser.set(t.user_id, [...(byUser.get(t.user_id) ?? []), t]);
+  let sent = 0;
+  for (const [userId, list] of byUser) {
+    const u = await q.get<{ email: string; name: string }>("SELECT email, name FROM users WHERE id = ?", userId);
+    if (!u) continue;
+    const lines = list.slice(0, 10).map((t) => `• ${t.artist} – ${t.title} (from ${t.sender})`);
+    if (list.length > 10) lines.push(`• …and ${list.length - 10} more`);
+    await sendMail({
+      userId,
+      audience: "receiver",
+      to: u.email,
+      subject: `${list.length} track${list.length === 1 ? "" : "s"} still waiting on FloorTest`,
+      body: [`Hi ${u.name.split(/\s+/)[0]},`, "", "These have been on your desk for two weeks without a listen:", "", ...lines, "", `Give them a spin: ${APP_URL}/dashboard?view=queue`, "", "You'll only be reminded once per track.", "", "— FloorTest"].join("\n"),
+    });
+    await q.run(`UPDATE tracks SET nudged_at = ? WHERE id IN (${list.map(() => "?").join(",")})`, at, ...list.map((t) => t.id));
+    sent++;
+  }
+  return sent;
+}
+
+/** Monday metrics email to the admins. Runs from the daily job and sends at most once a week. */
+export async function runAdminDigest(at = now()) {
+  if (!env.adminEmails.length || new Date(at).getUTCDay() !== 1) return false;
+  const last = Number((await q.get<{ value: string }>("SELECT value FROM app_state WHERE key = 'admin_digest'"))?.value ?? 0);
+  if (at - last < 6 * DAY) return false;
+  const c = (sql: string, ...a: number[]) => q.count(sql, ...a);
+  const week = at - 7 * DAY;
+  const lines = [
+    `New receivers: ${await c("SELECT COUNT(*) AS n FROM users WHERE created_at >= ?", week)} (total ${await c("SELECT COUNT(*) AS n FROM users")})`,
+    `Tracks received: ${await c("SELECT COUNT(*) AS n FROM tracks WHERE created_at >= ?", week)}`,
+    `Active receivers: ${await c("SELECT COUNT(DISTINCT user_id) AS n FROM account_log WHERE created_at >= ?", week)}`,
+    `Decisions: ${await c("SELECT COUNT(*) AS n FROM tracks WHERE decided_at >= ?", week)} (${await c("SELECT COUNT(*) AS n FROM tracks WHERE decision = 'kept' AND decided_at >= ?", week)} kept)`,
+    `Played out: ${await c("SELECT COUNT(*) AS n FROM tracks WHERE played_out_at >= ?", week)}`,
+    `Waitlist: ${await c("SELECT COUNT(*) AS n FROM waitlist WHERE invited_at IS NULL")} waiting (+${await c("SELECT COUNT(*) AS n FROM waitlist WHERE created_at >= ?", week)} this week)`,
+    `Open feedback and messages: ${await c("SELECT COUNT(*) AS n FROM contact_messages WHERE handled_at IS NULL")}`,
+    `Incidents: ${await c("SELECT COUNT(*) AS n FROM incidents WHERE created_at >= ?", week)}`,
+  ];
+  for (const to of env.adminEmails)
+    await sendMail({
+      userId: null,
+      audience: "support",
+      to,
+      subject: "FloorTest this week",
+      body: ["The last 7 days on FloorTest:", "", ...lines.map((l) => `• ${l}`), "", `Details: ${APP_URL}/admin/metrics`, "", "— FloorTest"].join("\n"),
+    });
+  await q.run(
+    "INSERT INTO app_state (key, value, updated_at) VALUES ('admin_digest', ?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
+    String(at),
+    at,
+  );
+  return true;
+}

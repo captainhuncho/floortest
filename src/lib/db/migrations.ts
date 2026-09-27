@@ -307,4 +307,18 @@ alter table tracks add column played_out_at bigint;
 alter table tracks add column played_out_note text not null default '';
 `,
   },
+  {
+    // Duplicate flags, 14-day follow-up nudges, and small app-wide state (e.g. last admin digest).
+    id: "0011_standby_batch",
+    sql: `
+alter table tracks add column duplicate_of bigint references tracks(id) on delete set null;
+alter table tracks add column nudged_at bigint;
+create table app_state (
+  key text primary key,
+  value text not null,
+  updated_at bigint not null
+);
+alter table app_state enable row level security;
+`,
+  },
 ];

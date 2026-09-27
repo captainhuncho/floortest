@@ -20,7 +20,7 @@ const STATUSES = [
 ] as const;
 type StatusKey = (typeof STATUSES)[number][0];
 
-type Search = { c?: string; s?: string; t?: string; q?: string; welcome?: string; view?: string; type?: string; sender?: string };
+type Search = { c?: string; s?: string; t?: string; q?: string; welcome?: string; view?: string; type?: string; sender?: string; genre?: string; bpm?: string; verified?: string };
 
 export default async function Submissions({ searchParams }: { searchParams: Promise<Search> }) {
   const user = await requireUser();

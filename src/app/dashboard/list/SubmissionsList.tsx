@@ -5,7 +5,17 @@ import { ViewToggle } from "../ViewToggle";
 import { FilterMenu, type Option } from "./FilterMenu";
 import { ListRows, type ListRow } from "./ListRows";
 
-type Search = { c?: string; s?: string; q?: string; type?: string; sender?: string; genre?: string };
+type Search = { c?: string; s?: string; q?: string; type?: string; sender?: string; genre?: string; bpm?: string; verified?: string };
+
+// DJ-friendly tempo bands. Tracks without a detected BPM only show under "Any tempo".
+const BPM = [
+  ["lt110", "Under 110", 0, 110],
+  ["110-120", "110–120", 110, 120],
+  ["120-125", "120–125", 120, 125],
+  ["125-130", "125–130", 125, 130],
+  ["130-140", "130–140", 130, 140],
+  ["140+", "140 and up", 140, 999],
+] as const;
 
 const STATUS = [
   ["all", "All", "1 = 1"],
@@ -26,6 +36,8 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
   const senderId = sp.sender ? Number(sp.sender) : undefined;
   const genre = sp.genre ? sp.genre.slice(0, 40) : undefined;
   const search = (sp.q || "").trim().slice(0, 100);
+  const bpm = BPM.find(([k]) => k === sp.bpm);
+  const verifiedOnly = sp.verified === "1";
 
   const where = ["t.user_id = ?", "t.deleted_at IS NULL", status[2]];
   const args: (string | number)[] = [user.id];
@@ -33,6 +45,8 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
   if (type) (where.push("t.release_status = ?"), args.push(type));
   if (senderId) (where.push("t.sender_id = ?"), args.push(senderId));
   if (genre) (where.push("t.genre = ?"), args.push(genre));
+  if (bpm) (where.push("t.bpm >= ? AND t.bpm < ?"), args.push(bpm[2], bpm[3]));
+  if (verifiedOnly) where.push("s.verified_at IS NOT NULL");
   if (search) {
     where.push("(t.title ILIKE ? OR t.artist ILIKE ? OR s.name ILIKE ? OR t.genre ILIKE ?)");
     args.push(...Array(4).fill(likeContains(search)));
@@ -70,6 +84,7 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
       !collection ? t.collection_name : null,
     ].filter(Boolean) as string[],
     mixLabel: MIX_STATUS[t.mix_status as keyof typeof MIX_STATUS] ?? null,
+    duplicateOf: t.duplicate_of,
     message: t.message,
     duration: t.duration,
     peaks: t.peaks ? JSON.parse(t.peaks) : null,
@@ -105,9 +120,17 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
       ],
     },
     {
+      label: "BPM",
+      options: [
+        { label: "Any tempo", href: href({ bpm: undefined }), active: !bpm },
+        ...BPM.map(([k, l]) => ({ label: l, href: href({ bpm: k }), active: bpm?.[0] === k })),
+      ],
+    },
+    {
       label: "Sender",
       options: [
-        { label: "Everyone", href: href({ sender: undefined }), active: !senderId },
+        { label: "Everyone", href: href({ sender: undefined, verified: undefined }), active: !senderId && !verifiedOnly },
+        { label: "Verified senders only", href: href({ sender: undefined, verified: "1" }), active: verifiedOnly },
         ...senders.map((s) => ({ label: s.name, href: href({ sender: String(s.id) }), active: s.id === senderId, count: s.n })),
       ],
     },

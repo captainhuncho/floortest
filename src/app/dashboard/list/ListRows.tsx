@@ -21,6 +21,7 @@ export type ListRow = {
   senderVerified: boolean;
   meta: string[];
   mixLabel: string | null;
+  duplicateOf: number | null;
   message: string;
   duration: number | null;
   peaks: number[] | null;
@@ -189,6 +190,7 @@ export function ListRows({ rows }: { rows: ListRow[] }) {
                 >
                   <p className="truncate text-[17px] font-semibold tracking-tight">
                     {r.artist} - {r.title}
+                    {r.duplicateOf && <span className="chip ml-2 align-middle border-danger/40 text-[11px] font-normal text-danger">Possible duplicate</span>}
                   </p>
                   <p className="mt-0.5 truncate text-[15px] text-mute">{r.meta.join("  ·  ")}</p>
                 </button>

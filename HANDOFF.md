@@ -16,12 +16,7 @@
 - Terms and Privacy are drafts: review with the legal plugin, then a lawyer.
 - Next: use the marketing, brand-voice and legal plugins on the home page copy, emails and legal pages.
 
-## On standby (next batch, agreed 27 Sep 2026)
-- Smart filters in the Review Queue: BPM range, genre, key, verified senders only.
-- Duplicate detection: same file twice, or a sender re-sending a track.
-- Mobile listening: phone-first queue with swipe to keep / could be better.
-- Sender history page: every track a sender has sent, via a magic link to their email.
-- Follow-up nudges: remind the receiver once if a track sits unheard for 14 days.
-- Weekly beta digest email to the admin (the Metrics numbers).
-- Terms and Privacy: finalize with the legal plugin, then a lawyer.
+## On standby
+- Musical key detection (needed before a key filter).
 - Virus scanning of uploads (paid, ~$5–6/mo).
+- Lawyer review of Terms and Privacy (drafts updated 27 Sep 2026).

@@ -91,6 +91,32 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
     return () => window.removeEventListener("keydown", onKey);
   }, [decide, next, prevHref, player, router, toast, track]);
 
+  // Phones: swipe the review panel right to keep, left for could be better.
+  useEffect(() => {
+    if (!window.matchMedia("(pointer: coarse)").matches) return;
+    const zone = document.querySelector<HTMLElement>("[data-swipe-zone]");
+    if (!zone) return;
+    let x0 = 0;
+    let y0 = 0;
+    const start = (e: TouchEvent) => {
+      x0 = e.touches[0].clientX;
+      y0 = e.touches[0].clientY;
+    };
+    const end = (e: TouchEvent) => {
+      if (isTyping(e.target) || (e.target instanceof HTMLElement && e.target.closest("[role=slider], input, textarea"))) return;
+      const dx = e.changedTouches[0].clientX - x0;
+      const dy = e.changedTouches[0].clientY - y0;
+      if (Math.abs(dx) < 90 || Math.abs(dy) > 60) return;
+      decide(dx > 0 ? "kept" : "passed");
+    };
+    zone.addEventListener("touchstart", start, { passive: true });
+    zone.addEventListener("touchend", end);
+    return () => {
+      zone.removeEventListener("touchstart", start);
+      zone.removeEventListener("touchend", end);
+    };
+  }, [decide]);
+
   const btn = "btn flex-1 flex-col gap-0.5 py-3 border";
   return (
     <div>
@@ -173,6 +199,7 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
         </form>
       )}
 
+      <p className="mt-3 text-xs text-mute [@media(pointer:fine)]:hidden">Swipe right to keep · swipe left for could be better</p>
       <p className="mt-3 hidden text-xs text-mute md:block">
         {next ? "Keep or Could be better moves to the next track." : "Last track in this view."} Space play · ←/→ 10s · ↑/↓ or J move · U undo
       </p>

@@ -75,7 +75,13 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
             : `Files are deleted within ${RETAIN_UNREVIEWED_DAYS} days of delivery unless ${t.receiver} keeps them.`}
         </p>
       </section>
-      <p className="mt-6 text-sm text-mute">No account needed. Bookmark this page to check in any time.</p>
+      <p className="mt-6 text-sm text-mute">
+        No account needed. Bookmark this page to check in any time, or{" "}
+        <a href="/sent" className="text-bone underline underline-offset-4">
+          see everything you&apos;ve sent
+        </a>
+        .
+      </p>
     </main>
   );
 }

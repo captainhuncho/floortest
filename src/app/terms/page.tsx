@@ -6,7 +6,7 @@ export default function Terms() {
   return (
     <LegalPage
       title="Terms of Use"
-      updated="26 September 2026"
+      updated="27 September 2026"
       sections={[
         ["The service", ["FloorTest lets receivers (DJs, curators and labels) collect unreleased music through a permanent link, and lets senders deliver original audio files to them. It's currently a private beta and may change or be unavailable."]],
         [
@@ -27,6 +27,16 @@ export default function Terms() {
           "Acceptable use",
           [
             "No malware, spam, harassment or content that infringes someone else's rights. We may remove content, block senders or suspend accounts that break these rules.",
+          ],
+        ],
+        [
+          "Beta invites",
+          ["Sign-up is by invitation during the beta. Personal invites work once, for the email address they were sent to. Don't sell or publish invite codes."],
+        ],
+        [
+          "Your account",
+          [
+            "Keep your password safe and turn on two-factor sign-in if you can. You're responsible for activity on your account. We may suspend an account that breaks these terms or puts other users at risk; suspension takes your link offline but doesn't delete your data.",
           ],
         ],
         [

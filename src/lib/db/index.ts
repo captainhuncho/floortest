@@ -97,6 +97,8 @@ export type Track = {
   played_at: number | null;
   played_out_at: number | null;
   played_out_note: string;
+  duplicate_of: number | null;
+  nudged_at: number | null;
   downloaded_at: number | null;
   decision: Decision | null;
   decided_at: number | null;

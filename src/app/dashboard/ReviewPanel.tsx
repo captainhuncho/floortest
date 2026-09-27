@@ -41,9 +41,17 @@ export async function ReviewPanel({
   const removal = deletesAt(t);
 
   return (
-    <div className="p-5 sm:p-6">
+    <div className="p-5 sm:p-6" data-swipe-zone>
       <p className="label">Now reviewing</p>
       <h2 className="mt-2 text-2xl font-bold leading-tight tracking-tight">{t.title}</h2>
+      {t.duplicate_of && (
+        <p className="mt-2 text-sm text-danger">
+          Possible duplicate of an earlier track.{" "}
+          <Link href={`/dashboard?view=queue&s=all&t=${t.duplicate_of}`} className="underline underline-offset-4">
+            Compare
+          </Link>
+        </p>
+      )}
       <p className="mt-1 text-mute">
         {t.artist}
         {t.genre && <span> · {t.genre}</span>}

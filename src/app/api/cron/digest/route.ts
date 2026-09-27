@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { recordIncident } from "@/lib/incidents";
 import { cronAuthorized } from "@/lib/cron";
+import { runAdminDigest, runNudges } from "@/lib/jobs";
 import { runDigests } from "@/lib/notify";
 
 export const runtime = "nodejs";
@@ -10,7 +11,7 @@ export const maxDuration = 300;
 export async function GET(req: Request) {
   if (!cronAuthorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
-    return NextResponse.json({ digestsSent: await runDigests() });
+    return NextResponse.json({ digestsSent: await runDigests(), nudges: await runNudges(), adminDigest: await runAdminDigest() });
   } catch (e) {
     await recordIncident("cron_failed", "Digest job failed", e instanceof Error ? `${e.message}\n${e.stack ?? ""}` : String(e), "/api/cron/digest");
     throw e;
