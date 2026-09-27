@@ -38,6 +38,9 @@ async function resolveInvite(raw: string) {
   if (!code) return { valid: false, referrerId: null as number | null, code };
   const referrer = await q.get<{ id: number }>("SELECT id FROM users WHERE referral_code = ?", code);
   if (referrer) return { valid: true, referrerId: referrer.id, code };
+  // Codes created in the admin area, each with its own cap and a revoke switch.
+  const inv = await q.get<{ max_uses: number }>("SELECT max_uses FROM invites WHERE code = ? AND revoked_at IS NULL", code);
+  if (inv) return { valid: (await q.count("SELECT COUNT(*) AS n FROM users WHERE invite_code = ?", code)) < inv.max_uses, referrerId: null as number | null, code };
   // Beta codes are shared, so each one only opens a limited number of accounts.
   const valid = env.inviteCodes.includes(code) && (await q.count("SELECT COUNT(*) AS n FROM users WHERE invite_code = ?", code)) < env.inviteLimit;
   return { valid, referrerId: null as number | null, code };
@@ -106,13 +109,14 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
   const WINDOW = 15 * 60_000;
   if ((await recentCount("login_fail_ip", ip, WINDOW)) >= 20 || (await recentCount("login_fail_email", email, WINDOW)) >= 10)
     return { error: "Too many attempts. Wait 15 minutes, or reset your password." };
-  const row = await q.get<{ id: number; password_hash: string }>("SELECT id, password_hash FROM users WHERE email = ?", email);
+  const row = await q.get<{ id: number; password_hash: string; suspended_at: number | null }>("SELECT id, password_hash, suspended_at FROM users WHERE email = ?", email);
   const ok = verifyPassword(password, row?.password_hash ?? DUMMY_HASH);
   if (!row || !ok) {
     await record("login_fail_ip", ip);
     await record("login_fail_email", email);
     return { error: "Email or password is incorrect." };
   }
+  if (row.suspended_at) return { error: "This account is suspended. Contact support if you think that's a mistake." };
   await afterPassword(row.id, "password");
   return undefined;
 }

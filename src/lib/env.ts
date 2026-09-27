@@ -38,6 +38,11 @@ export const env = {
     .map((c) => c.trim().toUpperCase())
     .filter(Boolean),
   supportEmail: v("SUPPORT_EMAIL"),
+  /** Accounts (by email) that can open /admin. They must also have two-factor sign-in on. */
+  adminEmails: (v("ADMIN_EMAILS") ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean),
   /** Sign-ups allowed per BETA_INVITE_CODES code, so a leaked code cannot open the doors. */
   inviteLimit: Math.max(1, Number(v("BETA_INVITE_LIMIT") ?? 25) || 25),
 };
@@ -57,6 +62,6 @@ export function configProblems() {
   if (!env.email.resendKey) p.push("RESEND_API_KEY is not set: emails are only logged, never delivered.");
   if (!env.cronSecret) p.push("CRON_SECRET is not set: scheduled jobs are disabled.");
   if (!env.supportEmail) p.push("SUPPORT_EMAIL is not set: contact-form messages aren't delivered anywhere.");
-  if (env.signupMode === "invite" && !env.inviteCodes.length) p.push("SIGNUP_MODE is invite but BETA_INVITE_CODES is empty: nobody new can sign up.");
+  
   return p;
 }

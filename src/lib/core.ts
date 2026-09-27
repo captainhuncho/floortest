@@ -86,7 +86,7 @@ export async function collectionsFor(userId: number) {
 }
 
 export async function userByHandle(handle: string) {
-  return q.get<User>(`SELECT ${USER_COLUMNS} FROM users WHERE handle = ?`, handle.toLowerCase());
+  return q.get<User>(`SELECT ${USER_COLUMNS} FROM users WHERE handle = ? AND suspended_at IS NULL`, handle.toLowerCase());
 }
 
 export async function activeCollection(user: Pick<User, "active_collection_id">, db: Queryable = q) {

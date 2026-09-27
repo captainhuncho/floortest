@@ -223,4 +223,30 @@ alter table users add column recovery_codes text not null default '[]';
 alter table users add column signin_alerts int not null default 1;
 `,
   },
+  {
+    // Platform admin: suspensions, invite codes managed in-app, and a log of every admin action.
+    id: "0007_admin",
+    sql: `
+alter table users add column suspended_at bigint;
+alter table users add column suspended_reason text not null default '';
+create table invites (
+  code text primary key,
+  max_uses int not null default 25,
+  note text not null default '',
+  created_at bigint not null,
+  revoked_at bigint
+);
+create table admin_log (
+  id bigint generated always as identity primary key,
+  admin_id bigint references users(id) on delete set null,
+  action text not null,
+  target text not null default '',
+  detail text not null default '',
+  created_at bigint not null
+);
+create index admin_log_time on admin_log(created_at desc);
+alter table invites enable row level security;
+alter table admin_log enable row level security;
+`,
+  },
 ];
