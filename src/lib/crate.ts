@@ -68,12 +68,23 @@ const textStream = (s: string) =>
   });
 
 /** Kept tracks + rekordbox.xml + M3U8, streamed from storage. `onTrackSent` fires after each file has gone out. */
-export function crateZip(crateName: string, baseDir: string, tracks: Track[], onTrackSent?: (t: Track) => Promise<void> | void) {
+/** A crate ZIP. With filesOnly, just the original audio: no Rekordbox XML or playlist. */
+export function crateZip(
+  crateName: string,
+  baseDir: string,
+  tracks: Track[],
+  onTrackSent?: (t: Track) => Promise<void> | void,
+  filesOnly = false,
+) {
   const folder = safeName(crateName);
   const files = tracks.filter((t) => t.file_key);
   const entries: Entry[] = [
-    { name: `${folder}/rekordbox.xml`, open: async () => textStream(rekordboxXml(crateName, baseDir, files)) },
-    { name: `${folder}/${folder}.m3u8`, open: async () => textStream(m3u(files)) },
+    ...(filesOnly
+      ? []
+      : [
+          { name: `${folder}/rekordbox.xml`, open: async () => textStream(rekordboxXml(crateName, baseDir, files)) },
+          { name: `${folder}/${folder}.m3u8`, open: async () => textStream(m3u(files)) },
+        ]),
     ...files.map((t) => ({
       name: `${folder}/${crateFileName(t)}`,
       open: async () => (await (await storage()).stream(t.file_key!)).body,

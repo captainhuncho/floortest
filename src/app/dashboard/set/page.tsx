@@ -16,9 +16,18 @@ export default async function PrepareForSet() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Prepare for set</h1>
-          <p className="mt-2 max-w-xl text-mute">Every track you keep lands here. Download them as a crate with a Rekordbox XML and playlist.</p>
+          <p className="mt-2 max-w-xl text-mute">Every track you keep lands here. Download a crate with a Rekordbox XML and playlist, or just the files.</p>
         </div>
-        <ExportButton collectionId={null} count={kept.length} label="Download kept crate" />
+        <div className="flex flex-col items-stretch gap-2">
+          <ExportButton collectionId={null} count={kept.length} label="Download kept crate" />
+          {kept.length > 0 ? (
+            <a href="/api/export?files=1" className="btn-ghost btn-sm" title="Just the original audio files, no Rekordbox XML or playlist">
+              Download files ({kept.length})
+            </a>
+          ) : (
+            <span className="btn-ghost btn-sm pointer-events-none opacity-40">Download files (0)</span>
+          )}
+        </div>
       </div>
 
       <section aria-labelledby="kept-h" className="mt-8">
