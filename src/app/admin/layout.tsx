@@ -20,7 +20,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   ];
   const groups: NavGroup[] = [
     { title: "Monitor", items: [{ href: "/admin", label: "Overview" }, { href: "/admin/metrics", label: "Metrics" }, { href: "/admin/incidents", label: "Incidents", badge: incidents }] },
-    { title: "Support", items: [{ href: "/admin/inbox", label: "Inbox", badge: inbox }, { href: "/admin/accounts", label: "Accounts" }, { href: "/admin/emails", label: "Emails" }] },
+    { title: "Support", items: [{ href: "/admin/inbox", label: "Inbox", badge: inbox }, { href: "/admin/accounts", label: "Users" }, { href: "/admin/emails", label: "Emails" }] },
     { title: "Growth", items: [{ href: "/admin/waitlist", label: "Waitlist", badge: waiting }, { href: "/admin/invites", label: "Invites" }] },
     { title: "Trust & safety", items: [{ href: "/admin/verification", label: "Verification", badge: verifying }, { href: "/admin/moderation", label: "Moderation" }, { href: "/admin/log", label: "Admin log" }] },
   ];

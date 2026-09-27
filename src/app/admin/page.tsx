@@ -20,6 +20,7 @@ export default async function AdminOverview() {
     c("SELECT COUNT(*) AS n FROM outbox WHERE status = 'sent' AND created_at >= ?", t - 30 * DAY),
     c("SELECT COUNT(*) AS n FROM outbox WHERE status LIKE 'failed%' AND created_at >= ?", t - 30 * DAY),
   ]);
+  const senderPeople = await c("SELECT COUNT(DISTINCT lower(email)) AS n FROM senders");
   const bytes = (await q.get<{ n: number | null }>("SELECT SUM(size) AS n FROM tracks WHERE deleted_at IS NULL AND file_key IS NOT NULL"))?.n ?? 0;
   const newest = await q.all<{ id: number; name: string; handle: string; created_at: number }>(
     "SELECT id, name, handle, created_at FROM users ORDER BY created_at DESC LIMIT 5",
@@ -27,10 +28,10 @@ export default async function AdminOverview() {
   const problems = configProblems();
 
   const stats = [
-    ["Receivers", users, `+${users7} this week`],
+    ["Users", users + senderPeople, `${users} receivers (+${users7} this week) · ${senderPeople} senders`],
     ["Tracks received", tracks, `+${tracks7} this week`],
     ["Tracks on file", live, fmtBytes(bytes)],
-    ["Senders", senders, ""],
+    ["Sender contacts", senders, "sender-receiver pairs"],
     ["Emails sent (30d)", sent30, failed30 ? `${failed30} failed` : "none failed"],
     ["Two-factor on", twofa, `${suspended} suspended`],
   ] as const;

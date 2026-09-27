@@ -9,6 +9,7 @@ export default function Privacy() {
       title="Privacy Policy"
       updated="27 September 2026"
       sections={[
+        ["Who this covers", ["Everyone who uses FloorTest is a user. Users are one of two kinds: receivers, who have an account and a link that collects music (DJs, curators, labels), and senders, who send music to a receiver's link without needing an account."] ],
         [
           "Receivers (account holders)",
           [

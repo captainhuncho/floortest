@@ -8,7 +8,13 @@ export default function Terms() {
       title="Terms of Use"
       updated="27 September 2026"
       sections={[
-        ["The service", ["FloorTest lets receivers (DJs, curators and labels) collect unreleased music through a permanent link, and lets senders deliver original audio files to them. It's currently a private beta and may change or be unavailable."]],
+        [
+          "The service",
+          [
+            "FloorTest lets receivers collect unreleased music through a permanent link, and lets senders deliver original audio files to them. It's currently a private beta and may change or be unavailable.",
+            "Everyone who uses FloorTest is a user. Users are one of two kinds: receivers, who have an account and a link that collects music (DJs, curators, labels), and senders, who send music to a receiver's link without needing an account. These terms apply to all users.",
+          ],
+        ],
         [
           "If you send music",
           [

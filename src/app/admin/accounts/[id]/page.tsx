@@ -43,7 +43,7 @@ export default async function Account({ params }: { params: Promise<{ id: string
   return (
     <div className="space-y-8">
       <div>
-        <Link href="/admin/accounts" className="text-sm text-mute hover:text-bone">← Accounts</Link>
+        <Link href="/admin/accounts" className="text-sm text-mute hover:text-bone">← Users</Link>
         <h1 className="mt-2 text-3xl font-bold tracking-tight">
           {u.name} <span className="text-mute">@{u.handle}</span>
           {u.suspended_at && <span className="chip ml-3 align-middle border-danger/50 text-danger">Suspended</span>}
