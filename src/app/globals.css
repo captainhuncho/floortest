@@ -55,3 +55,13 @@ body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
   @apply w-full rounded-xl border border-[#4a3d33] bg-black/25 px-4 py-3.5 text-[15px] text-bone outline-none transition placeholder:text-[#8f8377] focus:border-lime/70 focus:ring-2 focus:ring-lime/15;
   font-family: var(--font-stage-mono), var(--font-mono);
 }
+
+/* Home page: small uppercase mono labels, like the Stage page. */
+@utility home-label {
+  font-family: var(--font-stage-mono), var(--font-mono);
+  font-size: 0.7rem;
+  line-height: 1.4;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #8f8377;
+}
