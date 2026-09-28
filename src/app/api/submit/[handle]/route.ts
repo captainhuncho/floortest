@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { currentUser } from "@/lib/auth";
 import { IntakeError, startUpload, userByHandle } from "@/lib/core";
 import { cleanGenre, MIX_STATUS, RELEASE_STATUS } from "@/lib/plans";
 import { ipFrom } from "@/lib/ratelimit";
@@ -23,8 +24,12 @@ export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]
   }
   const str = (k: string, max: number) => String(body[k] ?? "").trim().slice(0, max);
   const pick = (k: string, allowed: object) => (Object.hasOwn(allowed, str(k, 20)) ? str(k, 20) : "");
-  const name = str("name", 100);
-  const email = str("email", 200).toLowerCase();
+  // Sending from a FloorTest account: name and email come from the account, not the form.
+  const account = body.asAccount ? await currentUser() : null;
+  if (body.asAccount && !account) return bad("Sign in again to send from your account.", 401);
+  if (account && account.id === receiver.id) return bad("That's your own link. Share it with others to receive music.");
+  const name = account ? account.name : str("name", 100);
+  const email = account ? account.email.toLowerCase() : str("email", 200).toLowerCase();
   const title = str("title", 200);
   const genre = cleanGenre(String(body.genre ?? ""));
   const fileName = str("fileName", 255);
@@ -49,6 +54,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]
         mixStatus: pick("mix_status", MIX_STATUS),
         genre,
         originalName: fileName,
+        ...(account ? { accountId: account.id, accountVerified: !!account.email_verified_at } : {}),
       },
       size,
       ipFrom(req.headers),

@@ -28,15 +28,18 @@ export function SubmitForm({
   receiverName,
   genres,
   look: lookName = "classic",
+  account,
 }: {
   handle: string;
   receiverName: string;
   genres: string[];
   look?: keyof typeof LOOKS;
+  /** Sending from a signed-in FloorTest account: name and email come from the account. */
+  account?: { name: string; email: string };
 }) {
   const L = LOOKS[lookName];
   const { file, analysis, analyzing, phase, progress, error, token, sender, setSender, pick: pickFile, send, reset: resetUpload } =
-    useTrackUpload(handle);
+    useTrackUpload(handle, { asAccount: !!account });
   const [drag, setDrag] = useState(false);
   const [track, setTrack] = useState({ title: "", artist: "" });
   const [genre, setGenre] = useState("");
@@ -183,6 +186,14 @@ export function SubmitForm({
             onChange={(e) => setTrack((t) => ({ ...t, artist: e.target.value }))}
           />
         </label>
+        {account ? (
+          <p className={`sm:col-span-2 text-sm ${L.mute}`}>
+            Sending as <span className="text-bone">{account.name}</span> ({account.email}). Updates go to your FloorTest account.
+            <input type="hidden" name="name" value={account.name} />
+            <input type="hidden" name="email" value={account.email} />
+          </p>
+        ) : (
+          <>
         <label className="block space-y-1.5">
           <span className={L.label}>Your name</span>
           <input
@@ -207,6 +218,8 @@ export function SubmitForm({
           />
           <span className={`block text-sm ${L.mute}`}>For your receipt and updates only.</span>
         </label>
+          </>
+        )}
       </div>
 
       <GenrePicker genres={genres} value={genre} onChange={setGenre} inputClass={L.input} labelClass={L.label} />

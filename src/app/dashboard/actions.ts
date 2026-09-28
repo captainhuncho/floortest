@@ -8,7 +8,11 @@ import QRCode from "qrcode";
 import { env } from "@/lib/env";
 import { hashRecovery, newRecoveryCodes, newTotpSecret, openSecret, otpauthUri, sealSecret, verifyTotp } from "@/lib/totp";
 import {
+  activeCollection,
   capacity,
+  isClosed,
+  isPaused,
+  userByHandle,
   clearDecision as clearTrackDecision,
   decide,
   deleteTrack as removeTrack,
@@ -21,7 +25,7 @@ import {
 } from "@/lib/core";
 import { isDecision, likeContains, logEvent, now, q, type Decision } from "@/lib/db";
 import { sendDigest } from "@/lib/notify";
-import { cleanGenre, PLANS, planOf, RESERVED_HANDLES } from "@/lib/plans";
+import { cleanGenre, genresFor, PLANS, planOf, RESERVED_HANDLES } from "@/lib/plans";
 import { storage } from "@/lib/storage";
 import { audit, trackLabel } from "@/lib/audit";
 import { cleanProfileLink, IDENTITY_HOSTS, isProtectedHandle, newIdentityCode } from "@/lib/identity";
@@ -211,6 +215,25 @@ export async function dismissOnboarding() {
   const u = await requireUser();
   await q.run("UPDATE users SET onboarding_dismissed_at = ? WHERE id = ?", now(), u.id);
   done();
+}
+
+/* Sending music from your account to another user's link */
+
+export type ReceiverLookup =
+  | { found: false; reason: string }
+  | { found: true; handle: string; name: string; roleLine: string; verified: boolean; accepting: boolean; reason: string | null; genres: string[] };
+
+/** Who is floortest.../<handle>? Used by the Send page as you type. */
+export async function lookupReceiver(raw: string): Promise<ReceiverLookup> {
+  const u = await requireUser();
+  const handle = String(raw || "").trim().toLowerCase().replace(/^.*\//, "").replace(/[^a-z0-9-_]/g, "").slice(0, 30);
+  if (!handle) return { found: false, reason: "" };
+  if (handle === u.handle) return { found: false, reason: "That's your own link." };
+  const r = await userByHandle(handle);
+  if (!r) return { found: false, reason: "No one has that link." };
+  const c = await activeCollection(r);
+  const reason = isPaused(r) ? `${r.name} has paused submissions.` : !c ? `${r.name} isn't taking music right now.` : isClosed(c) ? `${c.name} has closed.` : (await capacity(r)).full ? `${r.name}'s desk is full right now.` : null;
+  return { found: true, handle: r.handle, name: r.name, roleLine: r.role_line, verified: r.identity_status === "verified", accepting: !reason, reason, genres: genresFor(c).list };
 }
 
 /* Reply templates: up to 10 saved replies per account. */

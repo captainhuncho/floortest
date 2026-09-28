@@ -28,6 +28,7 @@ export function Sidebar({ user, link, collections, activeId, needsReview, cap, p
     { href: "/dashboard", label: "Review Queue", active: path === "/dashboard", badge: needsReview },
     { href: "/dashboard/collections", label: "Collections", active: path.startsWith("/dashboard/collections") },
     { href: "/dashboard/set", label: "Prepare for set", active: path.startsWith("/dashboard/set") },
+    { href: "/dashboard/send", label: "Send", active: path.startsWith("/dashboard/send") },
     { href: "/dashboard/contacts", label: "Contacts", active: path.startsWith("/dashboard/contacts") },
     { href: "/dashboard/activity", label: "Activity", active: path.startsWith("/dashboard/activity") },
     { href: "/dashboard/settings", label: "Profile", active: path.startsWith("/dashboard/settings"), mobileOnly: true },

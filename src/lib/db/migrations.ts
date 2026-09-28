@@ -340,4 +340,22 @@ create table protected_names (
 alter table protected_names enable row level security;
 `,
   },
+  {
+    // Receivers can send music too, from their account: the sender row remembers which account it was.
+    id: "0013_account_sends",
+    sql: `
+alter table senders add column account_id bigint references users(id) on delete set null;
+create index senders_account on senders(account_id);
+`,
+  },
+  {
+    // Repair two placeholder values that escaped into Maxwell's beta receiver page.
+    // The exact predicates make this a no-op for every other account and collection.
+    id: "0014_maxwell_public_page_repair",
+    sql: `
+update users set role_line = 'DJ / Performer' where handle = 'maxwell' and role_line = 'MA?';
+update collections set name = 'Afterlife'
+where name = 'MA?' and user_id = (select id from users where handle = 'maxwell');
+`,
+  },
 ];

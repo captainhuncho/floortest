@@ -54,6 +54,14 @@ const nextConfig: NextConfig = {
       { source: "/dashboard/conversations", destination: "/dashboard/contacts", permanent: true },
       { source: "/dashboard/conversations/:id", destination: "/dashboard/contacts/:id", permanent: true },
       { source: "/dashboard/home", destination: "/dashboard/floor", permanent: true },
+      // Preserve links shared from the pre-beta prototype. Authenticated destinations
+      // still pass through the normal session checks, so these aliases do not bypass access control.
+      { source: "/dj", destination: "/dashboard/floor", permanent: true },
+      { source: "/sender", destination: "/sent", permanent: true },
+      { source: "/mobile", destination: "/dashboard/floor", permanent: true },
+      { source: "/activity", destination: "/dashboard/activity", permanent: true },
+      { source: "/collections", destination: "/dashboard/collections", permanent: true },
+      { source: "/operations", destination: "/admin", permanent: true },
     ];
   },
 };

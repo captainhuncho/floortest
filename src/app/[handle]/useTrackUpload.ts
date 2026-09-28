@@ -10,7 +10,7 @@ const SENDER_KEY = "floortest.sender";
 export type Phase = "idle" | "uploading" | "done";
 
 /** File selection, in-browser analysis and upload. Shared by every public page style. */
-export function useTrackUpload(handle: string) {
+export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {}) {
   const [file, setFile] = useState<File | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
@@ -83,6 +83,7 @@ export function useTrackUpload(handle: string) {
           mix_status: field("mix_status"),
           fileName: file.name,
           size: file.size,
+          asAccount: !!opts.asAccount,
         }),
       });
       const started = await json(start);

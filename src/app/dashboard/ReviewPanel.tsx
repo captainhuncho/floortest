@@ -28,6 +28,10 @@ export async function ReviewPanel({
 }) {
   const events = (await q.all<EventRow & { track_title: string | null }>(`SELECT e.*, t.title AS track_title FROM events e LEFT JOIN tracks t ON t.id = e.track_id
        WHERE e.sender_id = ? ORDER BY e.created_at DESC LIMIT 8`, sender.id));
+  // Sent from someone's FloorTest account: show who they are on the platform.
+  const senderAccount = sender.account_id
+    ? await q.get<{ handle: string; identity_status: string }>("SELECT handle, identity_status FROM users WHERE id = ? AND suspended_at IS NULL", sender.account_id)
+    : undefined;
   const stats = (await q.get<{ sent: number; kept: number; downloaded: number }>(`SELECT COUNT(*) AS sent, COUNT(CASE WHEN decision = 'kept' THEN 1 END) AS kept, COUNT(downloaded_at) AS downloaded
        FROM tracks WHERE sender_id = ?`, sender.id))!;
   const player: PlayerTrack = {
@@ -162,6 +166,15 @@ export async function ReviewPanel({
           )}
         </p>
         <p className="text-sm text-mute">{sender.email}</p>
+        {senderAccount && (
+          <p className="mt-1 text-sm">
+            <span className="chip border-lime/40 text-lime">FloorTest user</span>{" "}
+            <a href={`/${senderAccount.handle}`} target="_blank" rel="noreferrer" className="font-mono text-mute underline-offset-4 hover:text-bone hover:underline">
+              /{senderAccount.handle}
+            </a>
+            {senderAccount.identity_status === "verified" && <span className="ml-1.5 text-lime">✓ Verified</span>}
+          </p>
+        )}
         <p className="mt-1 text-sm text-mute">
           {stats.sent} sent · {stats.kept} kept · {stats.downloaded} downloaded · since {fmtDay(sender.created_at)}
         </p>

@@ -8,6 +8,13 @@ test("SQL placeholders become $n, but not inside quoted strings", () => {
   assert.equal(toPositional("select ? , '?' as q, \"a?\" from t where x = ?"), "select $1 , '?' as q, \"a?\" from t where x = $2");
 });
 
+test("SQL placeholder conversion preserves explicit nullable parameter types", () => {
+  assert.equal(
+    toPositional("select ? where ? is null or ?::double precision is null or abs(duration - ?) < 0.5"),
+    "select $1 where $2 is null or $3::double precision is null or abs(duration - $4) < 0.5",
+  );
+});
+
 test("Listened threshold: 30s, or a quarter of shorter tracks", () => {
   assert.equal(listenThreshold(600), 30);
   assert.equal(listenThreshold(40), 10);

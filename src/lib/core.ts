@@ -153,6 +153,9 @@ export type SubmissionMeta = {
   mixStatus: string;
   genre: string;
   originalName: string;
+  /** Set when a signed-in FloorTest user sends from their account (their email is already confirmed). */
+  accountId?: number;
+  accountVerified?: boolean;
 };
 
 /**
@@ -223,13 +226,18 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
       if (!fresh) throw new IntakeError("Receiver not found", 404);
       await checkOpen(fresh, db);
       const sender = (await db.get<Sender>(
-        `INSERT INTO senders (user_id, email, name, created_at, verify_token) VALUES (?,?,?,?,?)
-         ON CONFLICT (user_id, email) DO UPDATE SET name = excluded.name RETURNING *`,
+        `INSERT INTO senders (user_id, email, name, created_at, verify_token, account_id, verified_at) VALUES (?,?,?,?,?,?,?)
+         ON CONFLICT (user_id, email) DO UPDATE SET name = excluded.name,
+           account_id = COALESCE(excluded.account_id, senders.account_id),
+           verified_at = COALESCE(senders.verified_at, excluded.verified_at)
+         RETURNING *`,
         fresh.id,
         meta.email,
         meta.name,
         now(),
         crypto.randomBytes(16).toString("base64url"),
+        meta.accountId ?? null,
+        meta.accountId && meta.accountVerified ? now() : null,
       ))!;
       const collection = await activeCollection(fresh, db);
       const track = (await db.get<Track>(
@@ -259,7 +267,7 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
       // sender re-sending the same title. Flagged for the receiver, never blocked.
       const dup = await db.get<{ id: number }>(
         `SELECT id FROM tracks WHERE user_id = ? AND id <> ? AND deleted_at IS NULL
-           AND ((size = ? AND (duration IS NULL OR ? IS NULL OR abs(duration - ?) < 0.5))
+           AND ((size = ? AND (duration IS NULL OR ?::double precision IS NULL OR abs(duration - ?) < 0.5))
              OR (sender_id = ? AND lower(title) = lower(?)))
          ORDER BY created_at LIMIT 1`,
         fresh.id,

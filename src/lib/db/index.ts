@@ -76,6 +76,7 @@ export type Sender = {
   verified_at: number | null;
   verify_token: string | null;
   blocked_at: number | null;
+  account_id: number | null;
 };
 export type Decision = "kept" | "passed";
 export const isDecision = (v: unknown): v is Decision => v === "kept" || v === "passed";
