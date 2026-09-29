@@ -158,6 +158,8 @@ export function getDb(): Promise<Db> {
   if (!g.__floortestDb) {
     g.__floortestDb = (async () => {
       const url = process.env.DATABASE_URL;
+      // On Vercel the disk is read-only, so the embedded fallback can only fail confusingly.
+      if (!url && process.env.VERCEL) throw new Error(`DATABASE_URL is not set for this ${process.env.VERCEL_ENV ?? "Vercel"} deployment.`);
       const db = url ? await openPostgres(url) : await openPglite(path.join(dataDir(), "pg"));
       if (process.env.DB_AUTO_MIGRATE !== "false") await migrate(db);
       return db;

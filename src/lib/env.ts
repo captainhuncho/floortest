@@ -7,9 +7,12 @@ import "server-only";
 const v = (k: string) => (process.env[k] ?? "").trim() || undefined;
 
 export const isProd = process.env.NODE_ENV === "production";
+/** A Vercel preview deployment: separate database and bucket, fictional data only. */
+export const isPreview = process.env.VERCEL_ENV === "preview";
 
 export const env = {
-  appUrl: (v("APP_URL") ?? "http://localhost:3000").replace(/\/$/, ""),
+  /** Previews use their own address, so links and emails never point at the live site. */
+  appUrl: (isPreview && v("VERCEL_URL") ? `https://${v("VERCEL_URL")}` : (v("APP_URL") ?? "http://localhost:3000")).replace(/\/$/, ""),
   /** Signs local upload tokens. Must be long and random in production. */
   secret: v("APP_SECRET") ?? "dev-only-secret-change-me",
   databaseUrl: v("DATABASE_URL"),
