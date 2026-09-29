@@ -1,3 +1,4 @@
+import { mono, serif } from "./fonts";
 import type { Metadata } from "next";
 import "./globals.css";
 import { env, isPreview } from "@/lib/env";
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${serif.variable} ${mono.variable}`}>
       <body className="min-h-dvh">
         {isPreview && (
           <p className="bg-lime px-4 py-1 text-center text-xs font-medium text-ink">Preview · test data only, separate from the live site</p>

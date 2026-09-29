@@ -187,20 +187,20 @@ export function PlayerBar() {
   const d = duration || current.duration || 0;
   return (
     <>
-      {/* Phones: a mini player that floats above the tab bar and stays put across screens. */}
-      <div className="fixed inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+76px)] z-30 flex items-center gap-3 rounded-2xl border border-line bg-ink-2/95 p-2.5 shadow-2xl shadow-black/60 backdrop-blur md:hidden">
-        <span aria-hidden className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-[#6b4bff] via-[#2f5bff] to-lime">
-          <span className="h-3 w-3 rounded-full bg-ink" />
-        </span>
-        <Link href={`/dashboard?view=queue&s=all&t=${current.id}`} className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{current.title}</p>
-          <div className="mt-1">
-            <Waveform peaks={current.peaks} progress={d ? time / d : 0} onSeek={seek} height={20} label={`Seek ${current.title}`} />
-          </div>
+      {/* Phones (Figma "Mini Player"): floats above the tab bar and stays put across screens. */}
+      <div className="fixed inset-x-4 bottom-[calc(max(1rem,env(safe-area-inset-bottom))+72px)] z-30 flex items-center gap-3 rounded-2xl border border-[#2a2e24] bg-[#10110f] p-3 font-[family-name:var(--font-stage-mono)] md:hidden">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/icons/mini-art.svg" alt="" className="size-11 shrink-0" />
+        <Link href={`/dashboard?view=queue&s=all&t=${current.id}`} className="flex min-w-0 flex-1 flex-col gap-2">
+          <span className="flex items-center justify-between gap-2">
+            <span className="truncate text-sm font-bold tracking-[-0.4px] text-[#f1f1eb]">{current.title}</span>
+            <span className="shrink-0 text-[10px] text-[#6b6e65] tnum">{fmtTime(time)}</span>
+          </span>
+          <Waveform peaks={current.peaks} progress={d ? time / d : 0} onSeek={seek} height={18} label={`Seek ${current.title}`} />
         </Link>
         <button
           onClick={toggle}
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-bone text-ink"
+          className="grid size-7 shrink-0 place-items-center rounded-[14px] bg-white text-[#10110f]"
           aria-label={playing ? `Pause ${current.title}` : `Play ${current.title}`}
         >
           <PlayIcon playing={playing} />

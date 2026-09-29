@@ -30,40 +30,43 @@ export async function Onboarding({ user }: { user: User }) {
   const doneCount = steps.filter((s) => s.done).length;
   if (doneCount === steps.length) return null;
 
+  // Figma "Get Your Desk Running": one column, checked steps struck through, open steps carry a hint.
   return (
-    <section aria-labelledby="onboard-h" className="card p-5">
-      <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h2 id="onboard-h" className="text-lg font-semibold">
-          Get your desk running <span className="text-sm font-normal text-mute">· {doneCount} of {steps.length}</span>
+    <section aria-labelledby="onboard-h" className="rounded-2xl border border-[#2c2e29] bg-[#1e1f1b] p-4">
+      <div className="flex items-center justify-between gap-3">
+        <h2 id="onboard-h" className="text-[11px] font-bold uppercase tracking-[1px] text-[#f1f1eb]">
+          Get your desk running · {doneCount} of {steps.length}
         </h2>
         <form action={dismissOnboarding}>
-          <button className="text-sm text-mute hover:text-bone">Hide this</button>
+          <button className="text-[10px] text-[#6b6e65] hover:text-[#f1f1eb]">Hide this</button>
         </form>
       </div>
-      <div className="mt-3 h-1 overflow-hidden rounded-sm bg-line">
-        <div className="h-full bg-lime" style={{ width: `${(doneCount / steps.length) * 100}%` }} />
-      </div>
-      <ol className="mt-4 grid gap-2 sm:grid-cols-2">
+      <ol className="mt-3 space-y-3">
         {steps.map((s) => {
           const body = (
             <>
-              <span aria-hidden className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-sm border text-xs ${s.done ? "border-lime bg-lime text-ink" : "border-line"}`}>
-                {s.done ? "✓" : ""}
+              <span aria-hidden className={`mt-px grid size-4 shrink-0 place-items-center rounded border-[1.5px] border-white ${s.done ? "bg-white" : ""}`}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {s.done && <img src="/icons/check.svg" alt="" className="size-2.5" />}
               </span>
-              <span>
-                <span className={`block text-sm font-medium ${s.done ? "text-mute line-through" : ""}`}>{s.label}</span>
-                {!s.done && <span className="block text-xs text-mute">{s.hint}</span>}
-              </span>
+              {s.done ? (
+                <span className="min-w-0 flex-1 text-xs font-medium text-[#6b6e65] line-through">{s.label}</span>
+              ) : (
+                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span className="text-xs font-bold text-[#f1f1eb]">{s.label}</span>
+                  <span className="text-[10px] text-[#4a4d44]">{s.hint}</span>
+                </span>
+              )}
             </>
           );
           return (
             <li key={s.label}>
               {s.href && !s.done ? (
-                <Link href={s.href} className="flex gap-3 rounded-md p-2 hover:bg-ink-3">
+                <Link href={s.href} className="flex items-start gap-2">
                   {body}
                 </Link>
               ) : (
-                <div className="flex gap-3 p-2">{body}</div>
+                <div className="flex items-start gap-2">{body}</div>
               )}
             </li>
           );

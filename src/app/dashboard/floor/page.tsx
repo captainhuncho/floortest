@@ -12,6 +12,7 @@ import { genresFor } from "@/lib/plans";
 import { fmtDuration, genreMix, homeStats } from "@/lib/stats";
 import { DailyColumns, GenreBars } from "./HomeCharts";
 import { SwitchCollection } from "./SwitchCollection";
+import { CopyLinkBox } from "./CopyLinkBox";
 import { UpNext } from "./UpNext";
 
 export const metadata = { title: "The Floor — FloorTest" };
@@ -20,9 +21,9 @@ const DAY = 86_400_000;
 
 function Card({ title, action, children, className = "" }: { title: string; action?: React.ReactNode; children: React.ReactNode; className?: string }) {
   return (
-    <section className={`card p-5 ${className}`} aria-label={title}>
-      <div className="mb-4 flex items-baseline justify-between gap-3">
-        <h2 className="font-semibold">{title}</h2>
+    <section className={`rounded-2xl border border-[#2c2e29] bg-[#1e1f1b] p-4 ${className}`} aria-label={title}>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="text-[10px] font-bold uppercase tracking-[1px] text-[#a3a69b]">{title}</h2>
         {action}
       </div>
       {children}
@@ -30,20 +31,32 @@ function Card({ title, action, children, className = "" }: { title: string; acti
   );
 }
 
-function Stat({ label, value, note }: { label: string; value: string; note?: string }) {
+/** Figma "kpi-card". */
+function Stat({ label, value, note }: { label: string; value: string; note?: React.ReactNode }) {
   return (
-    <div className="card p-5">
-      <p className="text-sm text-mute">{label}</p>
-      <p className="mt-2 text-3xl font-semibold tracking-tight tnum">{value}</p>
-      {note && <p className="mt-1 text-sm text-mute">{note}</p>}
+    <div className="flex flex-col gap-1.5 rounded-xl border border-[#2c2e29] bg-[#1e1f1b] p-3.5">
+      <p className="text-[10px] font-bold uppercase tracking-[1px] text-[#a3a69b]">{label}</p>
+      <p className="text-[30px] font-bold leading-none text-[#f1f1eb] tnum">{value}</p>
+      {note && <p className="text-[10px] text-[#6b6e65]">{note}</p>}
     </div>
   );
 }
 
 const delta = (now: number, prev: number) => {
   const d = now - prev;
-  return d === 0 ? "Same as last week" : `${d > 0 ? "↑" : "↓"} ${Math.abs(d)} vs last week`;
+  if (d === 0) return "Same as last week";
+  return (
+    <>
+      <span className="text-white">
+        {d > 0 ? "↑" : "↓"} {Math.abs(d)}
+      </span>{" "}
+      vs last week
+    </>
+  );
 };
+
+// Figma card action link (Manage, Filter, Start reviewing).
+const act = "text-[11px] font-bold text-[#f1f1eb] hover:text-lime";
 
 export default async function TheFloor({ searchParams }: { searchParams: Promise<{ welcome?: string }> }) {
   const user = await requireUser();
@@ -107,7 +120,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
       tone: "ok",
       text: `Your link is open and sending tracks to “${active.name}”${active.closes_at ? `, closing ${fmtDay(active.closes_at)}` : ""}.`,
       action: (
-        <a href={`/${user.handle}`} target="_blank" className="btn-ghost btn-sm">
+        <a href={`/${user.handle}`} target="_blank" className="shrink-0 rounded-lg border border-[#2c2e29] bg-[#1a1c18] px-3.5 py-[7px] text-[11px] font-bold text-[#f1f1eb]">
           Preview link
         </a>
       ),
@@ -116,34 +129,36 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   const daysLeft = active?.closes_at && !isClosed(active) ? Math.ceil((active.closes_at - Date.now()) / DAY) : null;
 
   return (
-    <div className="space-y-6 px-4 py-6 sm:px-8">
-      <header>
-        <p className="text-sm text-mute">{welcome ? "Welcome to FloorTest" : new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: prefs.tz })}</p>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight">
+    <div className="space-y-4 px-4 py-4 font-[family-name:var(--font-stage-mono)] sm:px-8 sm:py-6">
+      <header className="flex flex-col gap-2">
+        <p className="text-[10px] font-bold uppercase tracking-[1px] text-[#6b6e65]">{welcome ? "Welcome to FloorTest" : new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: prefs.tz })}</p>
+        <h1 className="text-[34px] font-bold leading-[1.05] tracking-[-1px] text-[#f1f1eb]">
           {greeting}, {first}.
         </h1>
-        <p className="mt-1 text-mute">
+        <p className="text-[13px] text-[#a3a69b]">
           {stats.waiting ? `${stats.waiting} track${stats.waiting === 1 ? " is" : "s are"} waiting for you.` : "Nothing is waiting. You're all caught up."}
         </p>
       </header>
 
       <Onboarding user={user} />
 
+      {/* Figma "Submission Status Banner" */}
       <div
         role="status"
-        className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-5 py-4 ${
-          status.tone === "ok" ? "border-lime/40 bg-lime/5" : "border-danger/40 bg-danger/10"
-        }`}
+        className={`flex flex-wrap items-center gap-3 rounded-xl border px-4 py-3.5 ${status.tone === "ok" ? "border-[#2c2e29] bg-[#1e1f1b]" : "border-danger/40 bg-danger/10"}`}
       >
-        <p className="flex items-start gap-3">
-          <span aria-hidden className={`mt-2 h-2 w-2 shrink-0 rounded-full ${status.tone === "ok" ? "bg-lime" : "bg-danger"}`} />
-          <span>{status.text}</span>
-        </p>
+        {status.tone === "ok" ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src="/icons/green-dot.svg" alt="" className="size-2 shrink-0" />
+        ) : (
+          <span aria-hidden className="size-2 shrink-0 rounded-full bg-danger" />
+        )}
+        <p className="min-w-0 flex-1 text-[13px] font-medium text-[#a3a69b]">{status.text}</p>
         {status.action}
       </div>
 
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
         <Stat label="Received this week" value={String(stats.receivedWeek)} note={delta(stats.receivedWeek, stats.receivedPrev)} />
         <Stat label="Waiting for a decision" value={String(stats.waiting)} note={stats.decisionRate !== null ? `${stats.decisionRate}% of last 30 days decided` : undefined} />
         <Stat label="Kept this week" value={String(stats.keptWeek)} note={delta(stats.keptWeek, stats.keptPrev)} />
@@ -160,21 +175,21 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
           className="xl:col-span-2"
           action={
             upNext.length > 0 && (
-              <Link href="/dashboard?view=queue" className="text-sm text-lime underline-offset-4 hover:underline">
+              <Link href="/dashboard?view=queue" className="text-xs font-bold text-white hover:text-lime">
                 Start reviewing →
               </Link>
             )
           }
         >
-          {upNext.length ? <UpNext items={upNext} /> : <p className="text-mute">Nothing waiting. New tracks will show up here first.</p>}
+          {upNext.length ? <UpNext items={upNext} /> : <p className="text-xs text-[#6b6e65]">Nothing waiting. New tracks will show up here first.</p>}
         </Card>
 
-        <Card title="Current callout" action={<Link href="/dashboard/collections" className="text-sm text-mute hover:text-bone">Manage</Link>}>
+        <Card title="Current callout" action={<Link href="/dashboard/collections" className={act}>Manage</Link>}>
           {active ? (
             <div className="space-y-3">
-              <div>
-                <p className="text-xl font-semibold">{active.name}</p>
-                <p className="text-sm text-mute">
+              <div className="flex flex-col gap-1">
+                <p className="break-words text-[30px] font-bold leading-tight text-[#f1f1eb]">{active.name}</p>
+                <p className="text-xs text-[#6b6e65]">
                   {isClosed(active)
                     ? `Closed ${fmtDay(active.closes_at!)}`
                     : daysLeft !== null
@@ -184,20 +199,19 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
                   {collections.find((c) => c.id === active.id)?.count ?? 0} tracks
                 </p>
               </div>
-              {genresFor(active).custom && (
+              {(genresFor(active).custom || (active.bpm_min && active.bpm_max)) && (
                 <div className="flex flex-wrap gap-1.5">
-                  {genresFor(active).list.map((g) => (
-                    <span key={g} className="chip border-line text-mute">
+                  {[...(genresFor(active).custom ? genresFor(active).list : []), ...(active.bpm_min && active.bpm_max ? [`${active.bpm_min}–${active.bpm_max} BPM`] : [])].map((g) => (
+                    <span key={g} className="rounded-md bg-[#1a1c18] px-2.5 py-1 text-[11px] text-[#a3a69b]">
                       {g}
                     </span>
                   ))}
                 </div>
               )}
-              {active.bpm_min && active.bpm_max && <p className="text-sm text-mute">{active.bpm_min}–{active.bpm_max} BPM</p>}
-              <p className="truncate rounded-md border border-line bg-ink px-3 py-2 font-mono text-sm">{link.replace(/^https?:\/\//, "")}</p>
+              <CopyLinkBox link={link} />
             </div>
           ) : (
-            <p className="text-mute">No collection selected.</p>
+            <p className="text-xs text-[#6b6e65]">No collection selected.</p>
           )}
         </Card>
 
@@ -205,19 +219,19 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
           <DailyColumns data={stats.daily} />
         </Card>
 
-        <Card title="Genres, last 30 days" action={<Link href="/dashboard?view=list" className="text-sm text-mute hover:text-bone">Filter</Link>}>
+        <Card title="Genres, last 30 days" action={<Link href="/dashboard?view=list" className={act}>Filter</Link>}>
           <GenreBars data={mix} />
         </Card>
 
         <Card
           title="Your recent activity"
           className="xl:col-span-2"
-          action={<Link href="/dashboard/activity" className="text-sm text-mute hover:text-bone">Full log</Link>}
+          action={<Link href="/dashboard/activity" className={act}>Full log</Link>}
         >
           <AccountLog rows={mine} />
         </Card>
 
-        <Card title="Top contacts" action={<Link href="/dashboard/contacts?sort=kept" className="text-sm text-mute hover:text-bone">All contacts</Link>}>
+        <Card title="Top contacts" action={<Link href="/dashboard/contacts?sort=kept" className={act}>All contacts</Link>}>
           {contacts.length ? (
             <ul className="divide-y divide-line">
               {contacts.map((c) => (
