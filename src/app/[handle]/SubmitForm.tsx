@@ -277,6 +277,13 @@ export function SubmitForm({
 
       {errorBox}
 
+      <p className={`text-xs ${L.mute}`}>
+        By sending you confirm you own or control this track and you&apos;re 18 or over. {receiverName} may listen to it, download it and play it
+        in their sets, but can&apos;t release it anywhere without a signed agreement with you.{" "}
+        <a href="/terms" target="_blank" className="underline underline-offset-4">Terms</a> ·{" "}
+        <a href="/privacy" target="_blank" className="underline underline-offset-4">Privacy</a>
+      </p>
+
       <button className={`${L.btn} w-full py-3.5 text-base`} disabled={busy || analyzing}>
         {busy ? `Uploading… ${Math.round(progress * 100)}%` : analyzing ? "Reading audio…" : `Send to ${receiverName}`}
       </button>

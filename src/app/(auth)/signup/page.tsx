@@ -45,6 +45,11 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
         ]}
         footer={{ text: "Already receiving?", href: "/login", link: "Log in" }}
       />
+      <p className="mt-6 text-xs text-mute">
+        By creating an account you confirm you&apos;re 18 or over and agree to the{" "}
+        <a href="/terms" className="underline underline-offset-4 hover:text-bone">Terms</a> and{" "}
+        <a href="/privacy" className="underline underline-offset-4 hover:text-bone">Privacy Policy</a>.
+      </p>
     </>
   );
 }

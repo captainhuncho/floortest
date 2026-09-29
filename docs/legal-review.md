@@ -1,3 +1,27 @@
+# Brief for the lawyer (updated 29 Sep 2026)
+
+The drafts at /terms and /privacy were rewritten on 29 Sep 2026 to close the gaps listed further down. Owner decisions so far:
+
+- **Operator:** Maxwell Adjavon, trading as FloorTest, until FloorTest Ltd is registered in England and Wales. The drafts avoid calling it "Ltd" until then. Change `src/lib/legal.ts` once incorporated.
+- **Contact:** support@floortest.fm (temporary; will change once the domain is set up).
+- **Minimum age:** 18+. Stated in both documents, on sign-up and on the send form.
+- **Sender licence:** the receiver may listen, download, evaluate and play the track in DJ sets, live performances and broadcasts. Releasing, distributing, selling, licensing or uploading it as a release on any platform needs a separate written agreement.
+- **Agreement points:** sign-up and the send form now show a line linking to both documents.
+
+**Questions for you:**
+
+1. Sender licence: do recorded DJ mixes posted online (SoundCloud, YouTube, Mixcloud) count as "playing in sets" or as releasing? The owner's intent is that anything short of releasing the track is fine.
+2. Controller roles for sender data: is FloorTest a separate or joint controller with the receiver?
+3. Sender data retention: currently "as long as the receiver's account exists". Is that defensible, or should we set a fixed period?
+4. The liability cap of £100 while free, with the consumer-law carve-outs: is it adequate?
+5. Transfers: the UK–US data bridge covers certified providers; confirm the right wording for Vercel, Cloudflare and Resend.
+6. Is a clickwrap line enough for senders (no checkbox), given they don't have an account?
+7. Anything needed before using the "FloorTest Ltd" name publicly?
+
+**Still to confirm on the tech side:** the R2 bucket's jurisdiction, and that support@floortest.fm actually receives mail.
+
+---
+
 # Terms and Privacy: gap review
 
 **This is not legal advice.** It compares the draft [Terms](../src/app/terms/page.tsx) and [Privacy](../src/app/privacy/page.tsx) pages with what the code actually does (27 Sep 2026), so a UK data-protection lawyer can finish them faster. Have a lawyer sign off before public launch.
