@@ -83,7 +83,7 @@ export async function alertIfFull(receiverId: number, full: boolean) {
     audience: "receiver",
     to: p.email,
     subject: "Your FloorTest link is paused",
-    body: `Your desk is full, so your link has stopped accepting uploads.\n\nDelete tracks or upgrade to reopen it: ${APP_URL}/dashboard/settings`,
+    body: `Your desk is full, so your link has stopped accepting uploads.\n\nYour desk holds 20 active tracks on Free. Clear some, or move to Pro (free during the beta), to reopen it: ${APP_URL}/dashboard/settings`,
   });
 }
 

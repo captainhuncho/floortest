@@ -55,7 +55,7 @@ export default async function Settings() {
           Plan
         </h2>
         <p className="mt-1 text-mute">
-          {cap.used} of {cap.limit.toLocaleString()} active songs
+          {cap.used} of {cap.limit.toLocaleString()} active tracks
           {cap.bonus > 0 && ` (including ${cap.bonus} earned through referrals)`}. Deleting a song frees its slot.
         </p>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -69,7 +69,7 @@ export default async function Settings() {
                   ${p.price}
                   <span className="text-sm font-normal text-mute">{p.price ? "/mo" : ""}</span>
                 </p>
-                <p className="mt-3">{p.limit.toLocaleString()} active songs</p>
+                <p className="mt-3">{p.limit.toLocaleString()} active tracks</p>
                 <p className="text-sm text-mute">{p.blurb}</p>
                 <form action={setPlan.bind(null, id)} className="mt-5">
                   <button className={`${current ? "btn-ghost" : "btn-lime"} btn-sm w-full`} disabled={current || tooSmall}>

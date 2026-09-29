@@ -1,5 +1,5 @@
 export const PLANS = {
-  free: { name: "Free", price: 0, limit: 20, blurb: "Delete a song and the slot returns" },
+  free: { name: "Free", price: 0, limit: 20, blurb: "Delete a track and the slot returns" },
   pro: { name: "Pro", price: 20, limit: 500, blurb: "For active DJs and curators" },
   team: { name: "Team", price: 60, limit: 2000, blurb: "Shared collections and receivers" },
 } as const;

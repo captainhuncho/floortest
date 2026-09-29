@@ -118,7 +118,7 @@ function Panel({ children, className = "" }: { children: React.ReactNode; classN
 function ProfilePanel({ user, link, footer, version, onNavigate, onQr }: Props & { onNavigate: () => void; onQr: () => void }) {
   const toast = useToast();
   const items = [
-    { icon: "+", title: "Referrals", sub: "Invite DJs · earn song slots", href: "/dashboard/referrals" },
+    { icon: "+", title: "Referrals", sub: "Invite DJs · earn track slots", href: "/dashboard/referrals" },
     { icon: "↗", title: "Submission link", sub: link.replace(/^https?:\/\//, ""), href: `/${user.handle}`, external: true, copy: true },
     { icon: "✉", title: "Emails to senders", sub: "Everything FloorTest told them", href: "/dashboard/emails" },
   ];

@@ -52,7 +52,7 @@ export default function Terms() {
           "Beta invites and bonuses",
           [
             "Sign-up is by invitation during the beta. Personal invites work once, for the email address they were sent to. Don't sell or publish invite codes.",
-            "Referral bonuses such as extra song slots are part of the beta and may be changed or withdrawn later.",
+            "Referral bonuses such as extra track slots are part of the beta and may be changed or withdrawn later.",
           ],
         ],
         [
@@ -64,7 +64,7 @@ export default function Terms() {
         ],
         [
           "Plans and pricing",
-          ["Plans limit how many active songs you can hold. Paid billing isn't enabled during the beta. We'll give at least 30 days' notice before charging anything, and you can leave without paying."],
+          ["Plans limit how many active tracks you can hold. Paid billing isn't enabled during the beta. We'll give at least 30 days' notice before charging anything, and you can leave without paying."],
         ],
         [
           "Liability",

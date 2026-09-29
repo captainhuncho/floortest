@@ -255,7 +255,7 @@ export function SubmitForm({
 
       <details className={`group ${L.round} border ${L.line}`}>
         <summary className={`cursor-pointer list-none px-4 py-3 text-sm ${L.mute} hover:text-bone`}>
-          <span className="group-open:hidden">+ Add a message or release status (optional)</span>
+          <span className="group-open:hidden">+ Add a message or release status</span>
           <span className="hidden group-open:inline">− Message and release status</span>
         </summary>
         <div className={`space-y-4 border-t ${L.line} p-4`}>

@@ -17,7 +17,7 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
     <>
       <h1 className="mb-2 text-2xl font-bold tracking-tight">Claim your receiver link</h1>
       <p className="mb-8 text-sm text-mute">
-        One permanent link for every callout. Free for 20 active songs.
+        One link for every callout. Free for up to 20 active tracks.
         {inviteOnly && !referrer && " FloorTest is invite-only during the beta."}
       </p>
       {personal?.email && (
@@ -27,18 +27,18 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
       )}
       {referrer && (
         <p className="mb-6 rounded-lg border border-lime/40 bg-lime/5 px-4 py-3 text-sm">
-          Invited by <span className="font-medium">{referrer.name}</span>. You both get 10 extra song slots once your first track arrives.
+          Invited by <span className="font-medium">{referrer.name}</span>. You both get 10 extra track slots once your first track arrives.
         </p>
       )}
       <AuthForm
         action={signup}
         hidden={referrer ? { ref } : undefined}
-        submit="Create receiver"
+        submit="Create my link"
         fields={[
           ...(inviteOnly && !referrer
             ? [{ name: "invite", label: "Invite code", placeholder: "From your invite", autoComplete: "off", defaultValue: inviteCode || ref || undefined }]
             : []),
-          { name: "name", label: "DJ / curator name", placeholder: "Maxwell", autoComplete: "name" },
+          { name: "name", label: "Your name or alias", placeholder: "Maxwell", autoComplete: "name" },
           { name: "handle", label: "Your link", prefix: `${host}/`, placeholder: "maxwell", autoComplete: "username" },
           { name: "email", label: "Email", type: "email", placeholder: "you@example.com", autoComplete: "email", defaultValue: personal?.email ?? undefined },
           { name: "password", label: "Password", type: "password", placeholder: "8+ characters", autoComplete: "new-password", minLength: 8 },

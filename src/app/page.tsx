@@ -14,7 +14,7 @@ const DEMO = "/maxwell";
 const JOURNEY = [
   ["✓", "Delivered", "Original audio received safely"],
   ["♪", "Listened", "The receiver really played it"],
-  ["↓", "Downloaded", "The file went to the booth"],
+  ["↓", "Downloaded", "The original file was downloaded"],
   ["↩", "Replied", "A message came back"],
 ];
 
@@ -44,7 +44,7 @@ const FAQ = [
   ],
   [
     "Is it free?",
-    "During the beta, yes: every plan is free and sign-up is by invite code.",
+    "Yes, for up to 20 active tracks, and free for good at that size. During the beta, Pro and Team are free too, and sign-up is by invite.",
   ],
 ];
 
@@ -57,7 +57,7 @@ export default async function Home({
   const deleted = !!(await searchParams).deleted;
   const cta = user
     ? { href: "/dashboard/floor", label: "Open your desk" }
-    : { href: "/signup", label: "Claim your receiving link" };
+    : { href: "/signup", label: "Claim your link" };
 
   return (
     <div
@@ -111,7 +111,7 @@ export default async function Home({
               </h1>
               <p className="mt-8 max-w-2xl font-[family-name:var(--font-stage-mono)] text-[15px] leading-relaxed text-[#bdb1a3]">
                 One permanent link for every demo you&apos;re sent. Hear what&apos;s
-                new in seconds, keep what works for your set, and answer every
+                new in seconds, keep what's right for your set, and answer every
                 sender without a single DM.
               </p>
               <div className="mt-10 flex flex-wrap items-center gap-6">
@@ -125,7 +125,7 @@ export default async function Home({
                   href={DEMO}
                   className="font-[family-name:var(--font-stage-mono)] text-sm text-[#d8cfc4] hover:text-bone"
                 >
-                  view a demo submission link ↗
+                  See a demo link →
                 </Link>
               </div>
               {!user && (
@@ -158,7 +158,7 @@ export default async function Home({
             </div>
           </div>
           <div className="mt-20 flex flex-wrap gap-x-8 gap-y-2 border-t border-white/10 pt-6">
-            {["No sender accounts", "Original WAV & MP3", "Every decision undoable"].map((t) => (
+            {["No sender accounts", "Original WAV & MP3", "Change any decision later"].map((t) => (
               <span key={t} className="home-label flex items-center gap-2">
                 <span className="h-1.5 w-1.5 rounded-md bg-lime" />
                 {t}
@@ -179,8 +179,8 @@ export default async function Home({
               Know what happened next.
             </h2>
             <p className="font-[family-name:var(--font-stage-mono)] text-sm leading-relaxed text-[#bdb1a3] lg:pb-2">
-              FloorTest quietly records the meaningful moments between sending a
-              track and hearing it in a room.
+              FloorTest records the four moments that matter between sending a
+              track and hearing back.
             </p>
           </div>
           <ol className="mt-10 grid overflow-hidden rounded-lg border border-white/10 sm:grid-cols-2 lg:grid-cols-4">
@@ -262,7 +262,7 @@ export default async function Home({
                 "Original audio, ready to download",
                 "Every track routed into a collection",
                 "Replies stay attached to submissions",
-                "Meaningful activity reaches the sender",
+                "Senders hear when it's listened to, downloaded or replied to",
               ].map((t) => (
                 <li key={t} className="py-3.5">
                   <span className="mr-3">→</span>
@@ -280,7 +280,7 @@ export default async function Home({
           [How FloorTest works]
         </p>
         <h2 className="mt-4 text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
-          One link. A visible relationship.
+          Share once. Decide fast.
         </h2>
         <ol className="mt-10 grid border-t border-white/10 sm:grid-cols-2 lg:grid-cols-4">
           {HOW.map(([title, body], i) => (
@@ -302,7 +302,7 @@ export default async function Home({
               For DJs, performers &amp; labels
             </p>
             <p className="mt-8 text-[clamp(2rem,4vw,3.25rem)] font-bold leading-[0.95] tracking-[-0.035em]">
-              Your private receiving room.
+              Every demo in one place.
             </p>
             <p className="mt-5 font-[family-name:var(--font-stage-mono)] text-sm leading-relaxed text-[#bdb1a3]">
               Every demo in one queue, sorted by callout, ready to play. No more
@@ -359,7 +359,7 @@ export default async function Home({
               ],
               [
                 "Clear retention",
-                "Free accounts hold 20 active tracks. Unreviewed tracks auto-delete after 90 days; kept ones stay until you remove them.",
+                "Undecided tracks are deleted after 90 days, could-be-better tracks 30 days after you mark them. Kept tracks stay until you delete them.",
               ],
             ].map(([k, v]) => (
               <div key={k} className="py-5">
@@ -381,11 +381,11 @@ export default async function Home({
           [Start small · grow when needed]
         </p>
         <h2 className="mt-4 text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
-          Receiving should be easy.
+          Start free. Grow when your inbox does.
         </h2>
         <p className="mt-4 font-[family-name:var(--font-stage-mono)] text-sm text-[#bdb1a3]">
-          Free during the beta. Paid plans start after it ends, and you&apos;ll
-          hear first.
+          Free for up to 20 active tracks, for good. Pro and Team are free
+          during the beta. Paid plans come after it, and beta users hear first.
         </p>
         <div className="mt-10 grid gap-4 md:grid-cols-3">
           {Object.entries(PLANS).map(([id, p]) => (
@@ -397,15 +397,13 @@ export default async function Home({
                 {p.name}
               </p>
               <p className="mt-8 text-4xl font-bold">
-                ${p.price}
-                {p.price > 0 && (
-                  <span className="ml-1 font-[family-name:var(--font-stage-mono)] text-xs font-normal text-[#8f8377]">
-                    / month after beta
-                  </span>
-                )}
+                Free
+                <span className="ml-2 font-[family-name:var(--font-stage-mono)] text-xs font-normal text-[#8f8377]">
+                  {p.price > 0 ? "during the beta" : "for good"}
+                </span>
               </p>
               <p className="mt-6 text-lg">
-                {p.limit.toLocaleString("en")} active songs
+                {p.limit.toLocaleString("en")} active tracks
               </p>
               <p className="mt-1 flex-1 font-[family-name:var(--font-stage-mono)] text-sm text-[#bdb1a3]">
                 {p.blurb}
@@ -418,7 +416,7 @@ export default async function Home({
                   ? "Open your desk"
                   : id === "free"
                     ? "Start free"
-                    : "Start in beta"}{" "}
+                    : "Try it in the beta"}{" "}
                 →
               </Link>
             </div>
@@ -484,16 +482,16 @@ export default async function Home({
       <section className="bg-lime text-ink">
         <div className="mx-auto max-w-6xl px-4 py-24 text-center sm:px-6">
           <p className="font-[family-name:var(--font-stage-mono)] text-xs uppercase tracking-[0.12em]">
-            Your link. Your collections. Your music network.
+            Your link. Your collections. Your call.
           </p>
           <h2 className="mx-auto mt-6 max-w-4xl text-[clamp(2.5rem,7vw,5.5rem)] font-bold leading-[0.92] tracking-[-0.045em]">
-            Make every private track easier to receive.
+            Every demo in one place. Ready to play.
           </h2>
           <Link
             href={cta.href}
             className="mt-10 inline-block rounded-md bg-ink px-7 py-4 font-[family-name:var(--font-stage-mono)] text-sm text-bone hover:bg-black"
           >
-            {user ? "open your desk" : "claim your permanent link"} →
+            {user ? "Open your desk" : "Claim your link"} →
           </Link>
         </div>
       </section>

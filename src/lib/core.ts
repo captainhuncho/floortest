@@ -39,7 +39,7 @@ export async function activeCount(userId: number, db: Queryable = q) {
   return (await db.get<{ n: number }>("SELECT COUNT(*) AS n FROM tracks WHERE user_id = ? AND deleted_at IS NULL", userId))!.n;
 }
 
-/** Plan limit plus song slots earned through referrals. */
+/** Plan limit plus track slots earned through referrals. */
 export async function capacity(user: Pick<User, "id" | "plan">, db: Queryable = q) {
   const used = await activeCount(user.id, db);
   const bonus = (await db.get<{ b: number }>("SELECT bonus_songs AS b FROM users WHERE id = ?", user.id))?.b ?? 0;
@@ -67,8 +67,8 @@ async function rewardReferral(receiverId: number) {
       userId: referrer.id,
       audience: "receiver",
       to: referrer.email,
-      subject: `You earned ${REFERRAL_BONUS} more song slots`,
-      body: `${u.name} just received their first track on FloorTest. You both get ${REFERRAL_BONUS} extra active songs.\n\nYour referrals: ${APP_URL}/dashboard/referrals`,
+      subject: `You both got ${REFERRAL_BONUS} more track slots`,
+      body: `${u.name} just received their first track on FloorTest. You both get ${REFERRAL_BONUS} extra active tracks.\n\nYour referrals: ${APP_URL}/dashboard/referrals`,
     });
 }
 
@@ -344,7 +344,7 @@ export async function markListened(user: User, t: Track, secondsHeard: number) {
     userId: user.id,
     to: s.email,
     subject: `Listened: ${t.title}`,
-    body: `Hi ${s.name},\n\n${user.name} listened to "${t.title}".\n\nThis means it was played for at least 30 seconds (or a quarter of the track). It doesn't say anything about whether it'll be played out.\n\nYour receipt: ${APP_URL}/t/${t.token}\n\n— FloorTest`,
+    body: `Hi ${s.name},\n\n${user.name} listened to "${t.title}".\n\nThis means it was played for at least 30 seconds (or a quarter of the track). It doesn't tell you whether it'll be played out.\n\nYour receipt: ${APP_URL}/t/${t.token}\n\n— FloorTest`,
   });
   return true;
 }
@@ -359,7 +359,7 @@ export async function markDownloaded(user: User, t: Track) {
     userId: user.id,
     to: s.email,
     subject: `Downloaded: ${t.title}`,
-    body: `Hi ${s.name},\n\n${user.name} downloaded the original file of "${t.title}".\n\nYour receipt: ${APP_URL}/t/${t.token}\n\n— FloorTest`,
+    body: `Hi ${s.name},\n\n${user.name} downloaded the original file of "${t.title}".\n\nDownloading usually means they want it on hand, but it isn't a promise.\n\nYour receipt: ${APP_URL}/t/${t.token}\n\n— FloorTest`,
   });
 }
 
