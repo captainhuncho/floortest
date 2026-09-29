@@ -10,7 +10,7 @@ export function WaitlistForm() {
   if (state?.ok)
     return (
       <p role="status" className="rounded-md border border-lime/40 bg-lime/[0.06] px-5 py-4 font-[family-name:var(--font-stage-mono)] text-sm">
-        You&apos;re on the list. We&apos;ll email you an invite as soon as there&apos;s a spot.
+        You&apos;re on the list. Invites go out in small batches, and we&apos;ll email yours. Know someone already on FloorTest? Ask them for an invite link.
       </p>
     );
   return (

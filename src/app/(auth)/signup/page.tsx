@@ -3,7 +3,7 @@ import { env } from "@/lib/env";
 import { AuthForm } from "../AuthForm";
 import { signup } from "../actions";
 
-export const metadata = { title: "Create your receiver — FloorTest" };
+export const metadata = { title: "Claim your link — FloorTest" };
 
 export default async function SignupPage({ searchParams }: { searchParams: Promise<{ ref?: string; invite?: string }> }) {
   const sp = await searchParams;
@@ -15,10 +15,15 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
   const host = env.appUrl.replace(/^https?:\/\//, "");
   return (
     <>
-      <h1 className="mb-2 text-2xl font-bold tracking-tight">Claim your receiver link</h1>
+      <h1 className="mb-2 text-2xl font-bold tracking-tight">Claim your link</h1>
       <p className="mb-8 text-sm text-mute">
         One link for every callout. Free for up to 20 active tracks.
-        {inviteOnly && !referrer && " FloorTest is invite-only during the beta."}
+        {inviteOnly && !referrer && (
+          <>
+            {" "}FloorTest is invite-only during the beta.{" "}
+            <a href="/#waitlist" className="underline underline-offset-4 hover:text-bone">No code? Join the waitlist</a>
+          </>
+        )}
       </p>
       {personal?.email && (
         <p className="mb-6 rounded-lg border border-lime/40 bg-lime/5 px-4 py-3 text-sm">

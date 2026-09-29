@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { currentUser } from "@/lib/auth";
 import { APP_URL } from "@/lib/mail";
+import { env } from "@/lib/env";
 import { PLANS } from "@/lib/plans";
 import { footerLinks } from "@/lib/site";
 import { mono, serif } from "./fonts";
@@ -13,7 +14,7 @@ const DEMO = "/maxwell";
 
 const JOURNEY = [
   ["✓", "Delivered", "Original audio received safely"],
-  ["♪", "Listened", "The receiver really played it"],
+  ["♪", "Listened", "Played for 30+ seconds"],
   ["↓", "Downloaded", "The original file was downloaded"],
   ["↩", "Replied", "A message came back"],
 ];
@@ -55,9 +56,13 @@ export default async function Home({
 }) {
   const user = await currentUser();
   const deleted = !!(await searchParams).deleted;
+  // Invite-only: most visitors have no code, so the main button leads to the waitlist.
+  const inviteOnly = env.signupMode === "invite";
   const cta = user
     ? { href: "/dashboard/floor", label: "Open your desk" }
-    : { href: "/signup", label: "Claim your link" };
+    : inviteOnly
+      ? { href: "#waitlist", label: "Request an invite" }
+      : { href: "/signup", label: "Claim your link" };
 
   return (
     <div
@@ -85,8 +90,8 @@ export default async function Home({
                 <Link href="/login" className="btn-ghost btn-sm">
                   Log in
                 </Link>
-                <Link href="/signup" className="btn-lime btn-sm">
-                  Get your link
+                <Link href={cta.href} className="btn-lime btn-sm">
+                  {inviteOnly ? "Request an invite" : "Get your link"}
                 </Link>
               </>
             )}
@@ -130,13 +135,18 @@ export default async function Home({
               </div>
               {!user && (
                 <p className="mt-4 font-[family-name:var(--font-stage-mono)] text-xs text-[#8f8377]">
-                  Private beta · invite only · <a href="#waitlist" className="underline underline-offset-4 hover:text-bone">no invite? join the waitlist</a>
+                  Private beta · invites go out in small batches to DJs, curators and labels
+                  {inviteOnly && (
+                    <>
+                      {" "}· <Link href="/signup" className="underline underline-offset-4 hover:text-bone">Have an invite? Claim your link</Link>
+                    </>
+                  )}
                 </p>
               )}
             </div>
             {/* The one link, and where it routes: the product in a card. */}
             <div className="rounded-lg border border-white/10 bg-ink-2 p-6 sm:p-8">
-              <p className="home-label">Permanent receiver link</p>
+              <p className="home-label">Your receiving link</p>
               <p className="mt-4 font-[family-name:var(--font-stage-mono)] text-xl sm:text-2xl">
               {HOST}/<wbr /><span className="text-lime">maxwell</span>
               </p>
@@ -299,7 +309,7 @@ export default async function Home({
         <div className="mt-12 grid overflow-hidden rounded-lg border border-white/10 md:grid-cols-2">
           <div className="bg-ink-2 p-8 sm:p-12">
             <p className="font-[family-name:var(--font-stage-mono)] text-xs uppercase tracking-[0.1em] text-lime">
-              For DJs, performers &amp; labels
+              For DJs, curators and labels
             </p>
             <p className="mt-8 text-[clamp(2rem,4vw,3.25rem)] font-bold leading-[0.95] tracking-[-0.035em]">
               Every demo in one place.
@@ -312,7 +322,7 @@ export default async function Home({
               href={cta.href}
               className="mt-8 inline-block rounded-md bg-lime px-6 py-3.5 font-[family-name:var(--font-stage-mono)] text-sm font-medium uppercase text-ink"
             >
-              {user ? "Open your desk" : "Claim your link"} →
+              {cta.label} →
             </Link>
           </div>
           <div className="border-t border-white/10 bg-ink-2 p-8 sm:p-12 md:border-l md:border-t-0">
@@ -323,14 +333,15 @@ export default async function Home({
               Send it once. Stop wondering.
             </p>
             <p className="mt-5 font-[family-name:var(--font-stage-mono)] text-sm leading-relaxed text-[#bdb1a3]">
-              No account, no chasing. Upload the original, get a private receipt,
-              and hear back the moment your track moves.
+              No account. Upload the original WAV or MP3, confirm your email once,
+              and follow it: Delivered, Listened, Downloaded, Replied. Want your
+              own link? Request an invite below.
             </p>
             <Link
               href={DEMO}
               className="mt-8 inline-block rounded-md border border-white/25 px-6 py-3.5 font-[family-name:var(--font-stage-mono)] text-sm text-bone hover:border-white/50"
             >
-              try the sender view →
+              Try the sender view →
             </Link>
           </div>
         </div>
@@ -385,7 +396,8 @@ export default async function Home({
         </h2>
         <p className="mt-4 font-[family-name:var(--font-stage-mono)] text-sm text-[#bdb1a3]">
           Free for up to 20 active tracks, for good. Pro and Team are free
-          during the beta. Paid plans come after it, and beta users hear first.
+          during the beta. Paid plans come after it: beta users hear first, get
+          at least 30 days&apos; notice, and never lose tracks they already have.
         </p>
         <div className="mt-10 grid gap-4 md:grid-cols-3">
           {Object.entries(PLANS).map(([id, p]) => (
@@ -415,8 +427,8 @@ export default async function Home({
                 {user
                   ? "Open your desk"
                   : id === "free"
-                    ? "Start free"
-                    : "Try it in the beta"}{" "}
+                    ? inviteOnly ? "Request an invite" : "Start free"
+                    : inviteOnly ? "Request an invite" : "Try it in the beta"}{" "}
                 →
               </Link>
             </div>
@@ -491,7 +503,7 @@ export default async function Home({
             href={cta.href}
             className="mt-10 inline-block rounded-md bg-ink px-7 py-4 font-[family-name:var(--font-stage-mono)] text-sm text-bone hover:bg-black"
           >
-            {user ? "Open your desk" : "Claim your link"} →
+            {cta.label} →
           </Link>
         </div>
       </section>
