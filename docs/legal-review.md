@@ -2,7 +2,7 @@
 
 The drafts at /terms and /privacy were rewritten on 29 Sep 2026 to close the gaps listed further down. Owner decisions so far:
 
-- **Operator:** Maxwell Adjavon, trading as FloorTest, until FloorTest Ltd is registered in England and Wales. The drafts avoid calling it "Ltd" until then. Change `src/lib/legal.ts` once incorporated.
+- **Operator:** FloorTest LTD, a company being registered in **Ghana** (not the UK). Governing law is set to Ghana. Complaints point to Ghana's Data Protection Commission and the user's local authority, such as the UK ICO. Add the registration number and address to `src/lib/legal.ts` once incorporated.
 - **Contact:** support@floortest.fm (temporary; will change once the domain is set up).
 - **Minimum age:** 18+. Stated in both documents, on sign-up and on the send form.
 - **Sender licence:** the receiver may listen, download, evaluate and play the track in DJ sets, live performances and broadcasts. Releasing, distributing, selling, licensing or uploading it as a release on any platform needs a separate written agreement.
@@ -16,7 +16,10 @@ The drafts at /terms and /privacy were rewritten on 29 Sep 2026 to close the gap
 4. The liability cap of £100 while free, with the consumer-law carve-outs: is it adequate?
 5. Transfers: the UK–US data bridge covers certified providers; confirm the right wording for Vercel, Cloudflare and Resend.
 6. Is a clickwrap line enough for senders (no checkbox), given they don't have an account?
-7. Anything needed before using the "FloorTest Ltd" name publicly?
+7. Until FloorTest LTD is registered, who is legally the operator and controller? Can the pages name the company before it exists?
+8. **Ghana Data Protection Act 2012 (Act 843):** does FloorTest LTD need to register with the Data Protection Commission before processing data?
+9. **UK and EU users:** as a Ghana company targeting UK and EU users, does FloorTest need a UK and/or EU representative (UK GDPR / GDPR Art. 27), and is Ghana law workable as governing law for UK and EU consumers?
+10. The operator is based in Ghana while hosting is in the UK and US. Does the transfers section need Ghana-specific wording?
 
 **Still to confirm on the tech side:** the R2 bucket's jurisdiction, and that support@floortest.fm actually receives mail.
 
@@ -26,7 +29,7 @@ The drafts at /terms and /privacy were rewritten on 29 Sep 2026 to close the gap
 
 **This is not legal advice.** It compares the draft [Terms](../src/app/terms/page.tsx) and [Privacy](../src/app/privacy/page.tsx) pages with what the code actually does (27 Sep 2026), so a UK data-protection lawyer can finish them faster. Have a lawyer sign off before public launch.
 
-Assumed setup: operator based in the UK, users in the UK and EU, so UK GDPR, EU GDPR and PECR apply. Hosting: Vercel functions in London (`lhr1`), Supabase Postgres in London, Cloudflare R2 for audio, Resend for email.
+Original assumed setup (now superseded: the operator is a Ghana company): operator based in the UK, users in the UK and EU, so UK GDPR, EU GDPR and PECR apply. Hosting: Vercel functions in London (`lhr1`), Supabase Postgres in London, Cloudflare R2 for audio, Resend for email.
 
 ## 1. Where the drafts don't match the code
 

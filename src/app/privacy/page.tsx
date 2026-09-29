@@ -90,14 +90,14 @@ export default function Privacy() {
           "Who processes data for us",
           [
             "FloorTest runs on providers acting on our instructions: Vercel (hosting, run from London), Supabase (database, London), Cloudflare R2 (audio files and cover photos, private storage) and Resend (email delivery). Files are only ever served through short-lived, signed links.",
-            "Vercel, Cloudflare and Resend are US companies, so some data may be handled in the United States. Where that happens we rely on the UK–US data bridge or the standard contractual safeguards those providers offer.",
+            "Vercel, Cloudflare and Resend are US companies, so some data may be handled in the United States. Data about UK and EU users can also be handled outside those regions. Where it goes to the US we rely on the UK–US data bridge or the standard contractual safeguards those providers offer.",
           ],
         ],
         [
           "Your rights",
           [
             `You can ask us for a copy of your data, to correct it, to delete it, to restrict or object to how we use it, or to receive it in a portable format. Receivers can delete their account and every stored file from Settings at any time. Senders and anyone else can email ${LEGAL.email}. We'll reply within one month.`,
-            "If you're unhappy with how we handle your data you can complain to the Information Commissioner's Office (ico.org.uk), or your local data protection authority if you're in the EU.",
+            "If you're unhappy with how we handle your data you can complain to the Data Protection Commission of Ghana (dataprotection.org.gh), or to the data protection authority where you live, such as the Information Commissioner's Office (ico.org.uk) in the UK.",
           ],
         ],
         [

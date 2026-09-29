@@ -77,7 +77,7 @@ export default function Terms() {
           "Changes and law",
           [
             "We'll tell account holders by email before any significant change to these terms takes effect.",
-            "These terms are governed by the law of England and Wales. If you're a consumer, you keep any protections of the country you live in, and can bring claims in your local courts.",
+            "These terms are governed by the laws of Ghana. If you're a consumer, you keep any protections the law of the country you live in gives you, and can bring claims in your local courts.",
           ],
         ],
       ]}
