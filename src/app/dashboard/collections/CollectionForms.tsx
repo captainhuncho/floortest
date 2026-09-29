@@ -27,8 +27,8 @@ const toDateInput = (ts: number | null) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-export function CollectionCard({ c, receiving, closed, canDelete }: { c: C; receiving: boolean; closed: boolean; canDelete: boolean }) {
-  const [editing, setEditing] = useState(false);
+export function CollectionCard({ c, receiving, closed, canDelete, startEditing = false }: { c: C; receiving: boolean; closed: boolean; canDelete: boolean; startEditing?: boolean }) {
+  const [editing, setEditing] = useState(startEditing);
   const [pending, start] = useTransition();
 
   return (
@@ -139,18 +139,30 @@ export function CollectionCard({ c, receiving, closed, canDelete }: { c: C; rece
   );
 }
 
-export function NewCollection() {
+export function NewCollection({ tile = false }: { tile?: boolean }) {
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
   if (!open)
-    return (
+    return tile ? (
+      // Figma "new-collection-tile"
+      <button
+        onClick={() => setOpen(true)}
+        className="flex aspect-[171/221] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-[#2c2e29] bg-[#10110f] font-[family-name:var(--font-stage-mono)]"
+      >
+        <span className="grid size-9 place-items-center rounded-full bg-[#1e1f1b]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icons/plus.svg" alt="" className="size-3.5" />
+        </span>
+        <span className="text-[11px] font-bold text-[#a3a69b]">New collection</span>
+      </button>
+    ) : (
       <button className="btn-ghost" onClick={() => setOpen(true)}>
         + New collection
       </button>
     );
   return (
     <form
-      className="card flex flex-wrap items-end gap-3 p-5"
+      className={`card flex flex-wrap items-end gap-3 p-5 ${tile ? "col-span-full" : ""}`}
       action={(fd) =>
         start(async () => {
           await createCollection(fd);
@@ -172,5 +184,83 @@ export function NewCollection() {
         Cancel
       </button>
     </form>
+  );
+}
+
+// Deterministic decorative waveform for a tile, so each collection keeps its own shape.
+const tileBars = (seed: number, n: number) =>
+  Array.from({ length: n }, (_, i) => 0.25 + 0.75 * Math.abs(Math.sin((i + 1) * 1.7 + seed) * Math.cos(i * 0.6 + seed * 0.3)));
+
+/** Figma "collection-tile": artwork, receiving badge, play, then name, count and a menu. */
+export function CollectionTile({ c, receiving, closed, canDelete }: { c: C; receiving: boolean; closed: boolean; canDelete: boolean }) {
+  const [menu, setMenu] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [pending, start] = useTransition();
+  if (editing)
+    return (
+      <div className="col-span-full">
+        <CollectionCard c={c} receiving={receiving} closed={closed} canDelete={canDelete} startEditing />
+        <button className="mt-2 text-sm text-mute hover:text-bone" onClick={() => setEditing(false)}>
+          Close
+        </button>
+      </div>
+    );
+  const rows = [tileBars(c.id, 16), tileBars(c.id + 7, 16)];
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-[#2c2e29] bg-[#1e1f1b] font-[family-name:var(--font-stage-mono)]">
+      <Link href={`/dashboard/collections/${c.id}`} className="relative flex aspect-square flex-col justify-end gap-1.5 bg-gradient-to-b from-[#1a2a0a] to-[#0b0c0a] p-4" aria-label={`Open ${c.name}`}>
+        {rows.map((bars, r) => (
+          <span key={r} aria-hidden className={`flex items-center gap-0.5 ${r ? "h-5" : "h-7"}`}>
+            {bars.map((h, i) => (
+              <span key={i} className={`w-0.5 rounded-[1px] ${i < (r ? 8 : 12) ? "bg-white" : "bg-[#6b6e65]"}`} style={{ height: `${Math.round(h * 100)}%`, opacity: i < (r ? 8 : 12) ? 0.5 + h / 2 : 0.2 }} />
+            ))}
+          </span>
+        ))}
+        {receiving && !closed && (
+          <span className="absolute left-2.5 top-2.5 flex items-center gap-1 rounded-md border border-white bg-white/[0.08] px-2 py-1 text-[8px] font-bold tracking-[0.5px] text-white">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icons/receiving-dot.svg" alt="" className="size-[5px]" />
+            RECEIVING
+          </span>
+        )}
+        {closed && <span className="absolute left-2.5 top-2.5 rounded-md border border-[#6b6e65] px-2 py-1 text-[8px] font-bold tracking-[0.5px] text-[#a3a69b]">CLOSED</span>}
+      </Link>
+      <Link href={`/dashboard?view=queue&c=${c.id}`} aria-label={`Play ${c.name} in the queue`} className="absolute right-2.5 grid size-[30px] place-items-center rounded-lg bg-[#0b0c0a] opacity-90" style={{ top: "calc(100% - 56px - 40px)" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/icons/tile-play.svg" alt="" className="size-3" />
+      </Link>
+      <div className="flex flex-col gap-[3px] px-2.5 pb-3 pt-2.5">
+        <Link href={`/dashboard/collections/${c.id}`} className="truncate text-[13px] font-bold text-[#f1f1eb]">
+          {c.name}
+        </Link>
+        <div className="flex items-center justify-between text-[#a3a69b]">
+          <span className="text-[10px]">
+            {c.count} track{c.count === 1 ? "" : "s"}
+            {c.needsReview > 0 && ` · ${c.needsReview} new`}
+          </span>
+          <button onClick={() => setMenu((m) => !m)} aria-expanded={menu} aria-label={`More for ${c.name}`} className="px-1 text-sm leading-none">
+            ···
+          </button>
+        </div>
+      </div>
+      {menu && (
+        <div role="menu" className="absolute bottom-10 right-2 z-10 w-48 overflow-hidden rounded-xl border border-[#2c2e29] bg-[#1a1c18] text-xs shadow-2xl shadow-black/60">
+          {!receiving && (
+            <button role="menuitem" className="block w-full px-3 py-2.5 text-left hover:bg-[#2a2e24]" disabled={pending} onClick={() => start(async () => { await setActiveCollection(c.id); setMenu(false); })}>
+              Send new tracks here
+            </button>
+          )}
+          <Link role="menuitem" href={`/dashboard/collections/${c.id}`} className="block px-3 py-2.5 hover:bg-[#2a2e24]">
+            Open folder
+          </Link>
+          <button role="menuitem" className="block w-full px-3 py-2.5 text-left hover:bg-[#2a2e24]" onClick={() => { setMenu(false); setEditing(true); }}>
+            Edit info
+          </button>
+          <div className="px-3 py-2">
+            <ExportButton collectionId={c.id} count={c.count} whole label="Download" variant="ghost" />
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
