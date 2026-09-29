@@ -145,7 +145,7 @@ export function ListRows({ rows }: { rows: ListRow[] }) {
 
   return (
     <>
-      <ul ref={listRef} className="@container divide-y divide-line" aria-label="Review Queue">
+      <ul ref={listRef} className="@container space-y-2.5 px-3 font-[family-name:var(--font-stage-mono)] md:space-y-0 md:divide-y md:divide-line md:px-0 md:font-sans" aria-label="Review Queue">
         {rows.map((r) => {
           const isCurrent = player.current?.id === r.id;
           const playing = isCurrent && player.playing;
@@ -158,9 +158,78 @@ export function ListRows({ rows }: { rows: ListRow[] }) {
               data-row={r.id}
               aria-current={selected === r.id ? "true" : undefined}
               onClick={() => setSelected(r.id)}
-              className={`group transition ${selected === r.id ? "bg-ink-3" : "hover:bg-ink-2"} ${decision === "passed" ? "opacity-60" : ""}`}
+              className={`group transition ${selected === r.id ? "md:bg-ink-3" : "md:hover:bg-ink-2"} ${decision === "passed" ? "opacity-60" : ""}`}
             >
-              <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 px-3 py-3.5 sm:px-4 @4xl:grid-cols-[auto_minmax(0,1fr)_minmax(0,1.15fr)_auto]">
+              {/* Phones: Figma "track-card" */}
+              <div className="flex flex-col gap-2.5 rounded-[14px] border border-[#2c2e29] bg-[#1e1f1b] p-3 md:hidden">
+                <div className="flex items-center gap-2.5">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelected(r.id);
+                      player.play(toPlayer(r), queue);
+                    }}
+                    className="grid size-7 shrink-0 place-items-center rounded-full bg-white text-[10px] font-bold text-[#10110f]"
+                    aria-label={playing ? `Pause ${r.title}` : `Play ${r.title}`}
+                  >
+                    {playing ? (
+                      <PlayIcon playing className="size-3" />
+                    ) : isCurrent ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src="/icons/card-play.svg" alt="" className="size-3" />
+                    ) : (
+                      initials(r.artist)
+                    )}
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelected(r.id);
+                      setExpanded((x) => (x === r.id ? null : r.id));
+                    }}
+                    aria-expanded={open}
+                    className="flex min-w-0 flex-1 flex-col gap-0.5 text-left"
+                  >
+                    <span className="truncate text-sm font-bold text-[#f1f1eb]">
+                      {r.artist} - {r.title}
+                    </span>
+                    <span className="truncate text-[10px] font-medium text-[#a3a69b]">{r.meta.join(" · ")}</span>
+                  </button>
+                  <span className="shrink-0 text-[10px] font-medium text-[#5f6158]" suppressHydrationWarning>
+                    {age(r.createdAt)}
+                  </span>
+                </div>
+                <div onClick={(e) => e.stopPropagation()}>
+                  <Waveform
+                    peaks={r.peaks}
+                    height={24}
+                    progress={isCurrent && d ? player.time / d : 0}
+                    onSeek={isCurrent ? player.seek : (f) => (player.play(toPlayer(r), queue), setTimeout(() => player.seek(f), 250))}
+                    label={`Seek ${r.title}`}
+                  />
+                </div>
+                <div className="flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
+                  <span title={r.played ? "Listened" : "Not listened yet"} className={`grid size-9 place-items-center ${r.played ? "text-white" : "text-[#a3a69b]"}`}>
+                    <FigmaIcon name="headphones" />
+                    <span className="sr-only">{r.played ? "Listened" : "Not listened yet"}</span>
+                  </span>
+                  <button aria-label={`Keep ${r.title}`} aria-pressed={decision === "kept"} onClick={() => decide(r, "kept", false)} className={`grid size-9 place-items-center ${decision === "kept" ? "text-white" : "text-[#a3a69b]"}`}>
+                    <FigmaIcon name="heart" />
+                  </button>
+                  <button aria-label={`Not for me: ${r.title}`} aria-pressed={decision === "passed"} onClick={() => decide(r, "passed", false)} className={`grid size-9 place-items-center ${decision === "passed" ? "text-white" : "text-[#a3a69b]"}`}>
+                    <FigmaIcon name="thumbs-down" />
+                  </button>
+                  <button aria-label={`Reply to ${r.sender}`} aria-pressed={open} onClick={() => (setSelected(r.id), setExpanded(open ? null : r.id))} className={`relative grid size-9 place-items-center ${open ? "text-white" : "text-[#a3a69b]"}`}>
+                    <FigmaIcon name="message-square" />
+                    {r.replied && <span className="absolute right-2 top-2 size-1.5 rounded-full bg-lime" />}
+                  </button>
+                  <a href={`/api/tracks/${r.id}/download`} aria-label={`Download original of ${r.title}`} className="grid size-9 place-items-center text-[#a3a69b]">
+                    <FigmaIcon name="download" />
+                  </a>
+                </div>
+              </div>
+
+              <div className="hidden grid-cols-[auto_minmax(0,1fr)_auto] md:grid items-center gap-4 px-3 py-3.5 sm:px-4 @4xl:grid-cols-[auto_minmax(0,1fr)_minmax(0,1.15fr)_auto]">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -243,7 +312,11 @@ export function ListRows({ rows }: { rows: ListRow[] }) {
                 </div>
               </div>
 
-              {open && <Expanded row={r} decision={decision} onClose={() => setExpanded(null)} />}
+              {open && (
+                <div className="mt-2 overflow-hidden rounded-[14px] md:mt-0 md:rounded-none">
+                  <Expanded row={r} decision={decision} onClose={() => setExpanded(null)} />
+                </div>
+              )}
             </li>
           );
         })}
@@ -403,3 +476,14 @@ const Icon = {
     </svg>
   ),
 };
+
+/** Icon exported from the Figma design, tinted with the current text colour. */
+function FigmaIcon({ name }: { name: string }) {
+  return (
+    <span
+      aria-hidden
+      className="block size-3.5 bg-current"
+      style={{ mask: `url(/icons/${name}.svg) center / contain no-repeat`, WebkitMask: `url(/icons/${name}.svg) center / contain no-repeat` }}
+    />
+  );
+}
