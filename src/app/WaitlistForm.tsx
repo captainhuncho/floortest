@@ -35,14 +35,14 @@ export function WaitlistForm({ host }: { host: string }) {
         <option>Other</option>
       </select>
       <label className={`${field} flex items-center gap-0 sm:col-span-2`}>
-        <span className="text-[#8f8377]">{host}/</span>
+        <span className="min-w-0 max-w-[60%] shrink truncate text-[#8f8377]">{host}/</span>
         <input
           name="handle"
           value={handle}
           onChange={(e) => setHandle(e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, "").slice(0, 30))}
           placeholder="the link you'd like"
           aria-label="The link you'd like"
-          className="min-w-0 flex-1 bg-transparent text-lime outline-none placeholder:text-[#8f8377]"
+          className="min-w-[6rem] flex-1 bg-transparent text-lime outline-none placeholder:text-[#8f8377]"
         />
       </label>
       <input name="link" className={field} placeholder="Instagram, SoundCloud or site (optional)" aria-label="Link" maxLength={200} />

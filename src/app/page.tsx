@@ -150,7 +150,7 @@ export default async function Home({
               {user ? (
                 <>
                   <p className="home-label">Your receiving link</p>
-                  <p className="mt-4 font-[family-name:var(--font-stage-mono)] text-xl sm:text-2xl">
+                  <p className="mt-4 break-all font-[family-name:var(--font-stage-mono)] text-xl sm:text-2xl">
                     {HOST}/<wbr /><span className="text-lime">{user.handle}</span>
                   </p>
                 </>
