@@ -24,10 +24,10 @@ export function Sidebar({ user, link, collections, activeId, needsReview, cap, p
   const pct = Math.min(100, (cap.used / cap.limit) * 100);
 
   const nav = [
-    { href: "/dashboard/floor", label: "The Floor", active: path === "/dashboard/floor" },
-    { href: "/dashboard", label: "Review Queue", active: path === "/dashboard", badge: needsReview },
-    { href: "/dashboard/collections", label: "Collections", active: path.startsWith("/dashboard/collections") },
-    { href: "/dashboard/set", label: "Prepare for set", active: path.startsWith("/dashboard/set") },
+    { href: "/dashboard/floor", label: "The Floor", active: path === "/dashboard/floor", tab: true },
+    { href: "/dashboard", label: "Review Queue", active: path === "/dashboard", badge: needsReview, tab: true },
+    { href: "/dashboard/collections", label: "Collections", active: path.startsWith("/dashboard/collections"), tab: true },
+    { href: "/dashboard/set", label: "Prepare for set", active: path.startsWith("/dashboard/set"), tab: true },
     { href: "/dashboard/send", label: "Send", active: path.startsWith("/dashboard/send") },
     { href: "/dashboard/contacts", label: "Contacts", active: path.startsWith("/dashboard/contacts") },
     { href: "/dashboard/activity", label: "Activity", active: path.startsWith("/dashboard/activity") },
@@ -49,7 +49,7 @@ export function Sidebar({ user, link, collections, activeId, needsReview, cap, p
             key={n.href}
             href={n.href}
             aria-current={n.active ? "page" : undefined}
-            className={`${"mobileOnly" in n ? "md:hidden" : ""} flex shrink-0 items-center justify-between gap-3 rounded-md px-3 py-2.5 transition ${
+            className={`${"mobileOnly" in n ? "md:hidden" : ""} ${"tab" in n ? "hidden md:flex" : "flex"} shrink-0 items-center justify-between gap-3 rounded-md px-3 py-2.5 transition ${
               n.active ? "bg-ink-3 font-medium text-bone" : "text-mute hover:bg-ink-3/60 hover:text-bone"
             }`}
           >

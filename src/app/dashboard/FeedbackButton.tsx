@@ -16,8 +16,12 @@ export function FeedbackButton() {
 
   return (
     <div className="relative">
-      <button type="button" className="btn-ghost btn-sm" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-        Feedback
+      <button type="button" className="btn-ghost btn-sm" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label="Feedback">
+        {/* Phones: an icon, so the header row fits. */}
+        <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4 sm:hidden" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 5h16v11H9l-5 4z" />
+        </svg>
+        <span className="hidden sm:inline">Feedback</span>
       </button>
       {open && (
         <form

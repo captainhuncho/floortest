@@ -21,7 +21,7 @@ export function LinkPill({ link }: { link: string }) {
   }
 
   return (
-    <div className="mr-auto flex min-w-0 items-center rounded-full border border-line bg-ink-2 p-1">
+    <div className="mr-auto flex shrink-0 items-center sm:min-w-0 sm:shrink rounded-full border border-line bg-ink-2 p-1">
       <button
         type="button"
         onClick={copy}

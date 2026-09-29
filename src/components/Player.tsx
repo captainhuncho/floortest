@@ -186,7 +186,27 @@ export function PlayerBar() {
   if (!current) return null;
   const d = duration || current.duration || 0;
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-ink/95 backdrop-blur">
+    <>
+      {/* Phones: a mini player that floats above the tab bar and stays put across screens. */}
+      <div className="fixed inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+76px)] z-30 flex items-center gap-3 rounded-2xl border border-line bg-ink-2/95 p-2.5 shadow-2xl shadow-black/60 backdrop-blur md:hidden">
+        <span aria-hidden className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-[#6b4bff] via-[#2f5bff] to-lime">
+          <span className="h-3 w-3 rounded-full bg-ink" />
+        </span>
+        <Link href={`/dashboard?view=queue&s=all&t=${current.id}`} className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium">{current.title}</p>
+          <div className="mt-1">
+            <Waveform peaks={current.peaks} progress={d ? time / d : 0} onSeek={seek} height={20} label={`Seek ${current.title}`} />
+          </div>
+        </Link>
+        <button
+          onClick={toggle}
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-bone text-ink"
+          aria-label={playing ? `Pause ${current.title}` : `Play ${current.title}`}
+        >
+          <PlayIcon playing={playing} />
+        </button>
+      </div>
+    <div className="fixed inset-x-0 bottom-0 z-30 hidden border-t border-line bg-ink/95 backdrop-blur md:block">
       <div className="flex items-center gap-4 px-4 py-3">
         <button
           onClick={toggle}
@@ -206,5 +226,6 @@ export function PlayerBar() {
         <span className="hidden text-sm text-mute tnum sm:block">{fmtTime(d)}</span>
       </div>
     </div>
+    </>
   );
 }
