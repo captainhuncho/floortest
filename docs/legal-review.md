@@ -3,7 +3,7 @@
 The drafts at /terms and /privacy were rewritten on 29 Sep 2026 to close the gaps listed further down. Owner decisions so far:
 
 - **Operator:** FloorTest LTD, a company being registered in **Ghana** (not the UK). Governing law is set to Ghana. Complaints point to Ghana's Data Protection Commission and the user's local authority, such as the UK ICO. Add the registration number and address to `src/lib/legal.ts` once incorporated.
-- **Contact:** support@floortest.fm (temporary; will change once the domain is set up).
+- **Contact:** info@imullar.com for now; support@floortest.fm later.
 - **Minimum age:** 18+. Stated in both documents, on sign-up and on the send form.
 - **Sender licence:** the receiver may listen, download, evaluate and play the track in DJ sets, live performances and broadcasts. Releasing, distributing, selling, licensing or uploading it as a release on any platform needs a separate written agreement.
 - **Agreement points:** sign-up and the send form now show a line linking to both documents.
