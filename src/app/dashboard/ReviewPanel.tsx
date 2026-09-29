@@ -9,6 +9,8 @@ import { ConfirmButton, NoteForm } from "./ClientBits";
 import { DecisionRail } from "./DecisionRail";
 import { PlayedOut } from "./PlayedOut";
 import { DetailPlayer } from "./DetailPlayer";
+import { DesktopOnly, MobileOnly } from "./DesktopOnly";
+import { MobileTransport } from "./MobileTransport";
 import { History } from "./History";
 
 export async function ReviewPanel({
@@ -45,7 +47,46 @@ export async function ReviewPanel({
   const removal = deletesAt(t);
 
   return (
-    <div className="p-5 sm:p-6" data-swipe-zone>
+    <div className="p-4 sm:p-6" data-swipe-zone>
+      {/* Phones: Figma "08 Full Player / DJ Review" */}
+      <div className="font-[family-name:var(--font-stage-mono)] md:hidden">
+        <div className="flex items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icons/review-art.svg" alt="" className="size-[52px] shrink-0" />
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <h2 className="truncate text-base font-bold text-[#f1f1eb]">{t.title}</h2>
+            <p className="truncate text-xs text-[#a3a69b]">{t.artist}</p>
+          </div>
+        </div>
+        <dl className="mt-3.5 grid grid-cols-2 gap-1.5">
+          {[
+            ["TEMPO", t.bpm ? `${Math.round(t.bpm)} BPM` : "—"],
+            ["GENRE", t.genre || "—"],
+            ["LENGTH", t.duration ? `${Math.floor(t.duration / 60)}:${String(Math.round(t.duration % 60)).padStart(2, "0")}` : "—"],
+            ["DEMO STATUS", t.mix_status ? MIX_STATUS[t.mix_status as keyof typeof MIX_STATUS] : "—"],
+          ].map(([k, v]) => (
+            <div key={k} className="flex flex-col gap-1 rounded-lg bg-[#171815] p-2.5">
+              <dt className="text-[8px] text-[#6b6e65]">{k}</dt>
+              <dd className="truncate text-[13px] font-bold text-[#f1f1eb]">{v}</dd>
+            </div>
+          ))}
+        </dl>
+        <MobileTransport track={player} prevHref={prevHref} nextHref={next?.href ?? null} />
+        <div className="mt-3.5">
+          <MobileOnly>
+          <DecisionRail
+            track={{ ...player, decision: t.decision }}
+            senderName={sender.name}
+            selfHref={selfHref}
+            next={next}
+            prevHref={prevHref}
+            onReply={replyToSender.bind(null, sender.id, t.id)}
+          />
+          </MobileOnly>
+        </div>
+      </div>
+
+      <div className="hidden md:block">
       <p className="label">Now reviewing</p>
       <h2 className="mt-2 text-2xl font-bold leading-tight tracking-tight">{t.title}</h2>
       {t.duplicate_of && (
@@ -68,14 +109,17 @@ export async function ReviewPanel({
       </div>
 
       <div className="mt-5">
-        <DecisionRail
-          track={{ ...player, decision: t.decision }}
-          senderName={sender.name}
-          selfHref={selfHref}
-          next={next}
-          prevHref={prevHref}
-          onReply={replyToSender.bind(null, sender.id, t.id)}
-        />
+        <DesktopOnly>
+          <DecisionRail
+            track={{ ...player, decision: t.decision }}
+            senderName={sender.name}
+            selfHref={selfHref}
+            next={next}
+            prevHref={prevHref}
+            onReply={replyToSender.bind(null, sender.id, t.id)}
+          />
+        </DesktopOnly>
+      </div>
       </div>
 
       {t.decision === "kept" && (

@@ -191,7 +191,19 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
           className={`${focused ? "" : "border-t"} border-line bg-ink-2/60 xl:sticky xl:top-[68px] xl:h-[calc(100dvh-68px)] xl:self-start xl:overflow-y-auto xl:border-t-0 xl:border-l`}
         >
           {focused && (
-            <nav aria-label="Review navigation" className="sticky top-[68px] z-30 flex items-center gap-2 border-b border-line bg-ink/90 px-4 py-2.5 backdrop-blur sm:px-6 xl:hidden">
+            // Phones: Figma "Header" (← QUEUE / Now reviewing); the transport below has previous and next.
+            <header className="flex items-end justify-between gap-3 px-4 pt-3 font-[family-name:var(--font-stage-mono)] md:hidden">
+              <div className="flex flex-col gap-[3px]">
+                <Link href={href({ t: undefined })} className="text-[8px] font-medium text-[#a3a69b]">
+                  ← QUEUE
+                </Link>
+                <h1 className="text-[22px] font-extrabold text-[#f1f1eb]">Now reviewing</h1>
+              </div>
+              <span className="pb-1 text-[10px] text-[#6b6e65] tnum">{idx >= 0 ? `${idx + 1} of ${rows.length}` : ""}</span>
+            </header>
+          )}
+          {focused && (
+            <nav aria-label="Review navigation" className="sticky top-[68px] z-30 hidden items-center gap-2 border-b border-line bg-ink/90 px-4 py-2.5 backdrop-blur sm:px-6 md:flex xl:hidden">
               <Link href={href({ t: undefined })} className="text-sm text-mute hover:text-bone">
                 ← Review Queue
               </Link>
