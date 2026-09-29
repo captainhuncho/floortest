@@ -103,7 +103,7 @@ export default async function Home({
       {/* Hero */}
       <section className="relative overflow-hidden">
         <div className="relative mx-auto max-w-6xl px-4 pb-10 pt-16 sm:px-6 sm:pt-24">
-          <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-center">
+          <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-center">
             <div>
               <p className="flex items-center gap-3 font-[family-name:var(--font-stage-mono)] text-xs uppercase tracking-[0.12em] text-lime">
                 <span aria-hidden className="h-px w-8 bg-lime" /> The receiving
@@ -146,7 +146,7 @@ export default async function Home({
               )}
             </div>
             {/* The one link, and where it routes: the product in a card. */}
-            <div className="rounded-lg border border-white/10 bg-ink-2 p-6 sm:p-8">
+            <div className="min-w-0 rounded-lg border border-white/10 bg-ink-2 p-6 sm:p-8">
               {user ? (
                 <>
                   <p className="home-label">Your receiving link</p>
@@ -187,7 +187,7 @@ export default async function Home({
           <p className="font-[family-name:var(--font-stage-mono)] text-xs uppercase tracking-[0.12em] text-lime">
             [One private track · a visible journey]
           </p>
-          <div className="mt-5 grid gap-6 lg:grid-cols-2 lg:items-end">
+          <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-end">
             <h2 className="text-[clamp(2.5rem,5.5vw,4.5rem)] font-bold leading-[0.95] tracking-[-0.04em]">
               Know what happened next.
             </h2>
@@ -196,7 +196,7 @@ export default async function Home({
               track and hearing back.
             </p>
           </div>
-          <ol className="mt-10 grid overflow-hidden rounded-lg border border-white/10 sm:grid-cols-2 lg:grid-cols-4">
+          <ol className="mt-10 grid grid-cols-1 overflow-hidden rounded-lg border border-white/10 sm:grid-cols-2 lg:grid-cols-4">
             {JOURNEY.map(([icon, title, body], i) => (
               <li
                 key={title}
@@ -238,7 +238,7 @@ export default async function Home({
         <p className="font-[family-name:var(--font-stage-mono)] text-xs uppercase tracking-[0.12em] text-lime">
           [Why FloorTest]
         </p>
-        <div className="mt-5 grid gap-6 lg:grid-cols-2 lg:items-end">
+        <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-end">
           <h2 className="text-[clamp(2.5rem,5.5vw,4.5rem)] font-bold leading-[0.95] tracking-[-0.04em]">
             Stop receiving music everywhere.
           </h2>
@@ -247,7 +247,7 @@ export default async function Home({
             missing context.
           </p>
         </div>
-        <div className="mt-10 grid md:grid-cols-2">
+        <div className="mt-10 grid grid-cols-1 md:grid-cols-2">
           <div className="border border-white/10 bg-ink-2 p-8 sm:p-10">
             <p className="home-label">The old way</p>
             <p className="mt-6 text-2xl sm:text-3xl">DMs, email and drives</p>
@@ -295,7 +295,7 @@ export default async function Home({
         <h2 className="mt-4 text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
           Share once. Decide fast.
         </h2>
-        <ol className="mt-10 grid border-t border-white/10 sm:grid-cols-2 lg:grid-cols-4">
+        <ol className="mt-10 grid grid-cols-1 border-t border-white/10 sm:grid-cols-2 lg:grid-cols-4">
           {HOW.map(([title, body], i) => (
             <li
               key={title}
@@ -309,8 +309,8 @@ export default async function Home({
             </li>
           ))}
         </ol>
-        <div className="mt-12 grid overflow-hidden rounded-lg border border-white/10 md:grid-cols-2">
-          <div className="bg-ink-2 p-8 sm:p-12">
+        <div className="mt-12 grid grid-cols-1 overflow-hidden rounded-lg border border-white/10 md:grid-cols-2">
+          <div className="bg-ink-2 p-6 sm:p-12">
             <p className="font-[family-name:var(--font-stage-mono)] text-xs uppercase tracking-[0.1em] text-lime">
               For DJs, curators and labels
             </p>
@@ -328,7 +328,7 @@ export default async function Home({
               {cta.label} →
             </Link>
           </div>
-          <div className="border-t border-white/10 bg-ink-2 p-8 sm:p-12 md:border-l md:border-t-0">
+          <div className="border-t border-white/10 bg-ink-2 p-6 sm:p-12 md:border-l md:border-t-0">
             <p className="font-[family-name:var(--font-stage-mono)] text-xs uppercase tracking-[0.1em] text-lime">
               For artists &amp; senders
             </p>
@@ -352,7 +352,7 @@ export default async function Home({
 
       {/* Private by design */}
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-        <div className="grid gap-10 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
           <div>
             <p className="font-[family-name:var(--font-stage-mono)] text-xs uppercase tracking-[0.12em] text-lime">
               [Private by design]
@@ -402,7 +402,7 @@ export default async function Home({
           during the beta. Paid plans come after it: beta users hear first, get
           at least 30 days&apos; notice, and never lose tracks they already have.
         </p>
-        <div className="mt-10 grid gap-4 md:grid-cols-3">
+        <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
           {Object.entries(PLANS).map(([id, p]) => (
             <div
               key={id}
@@ -442,7 +442,7 @@ export default async function Home({
       {/* Waitlist */}
       {!user && (
         <section id="waitlist" className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-          <div className="grid gap-10 rounded-lg border border-white/10 bg-ink-2 p-8 sm:p-12 lg:grid-cols-[1fr_1.2fr]">
+          <div className="grid grid-cols-1 gap-10 rounded-lg border border-white/10 bg-ink-2 p-6 sm:p-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
             <div>
               <p className="font-[family-name:var(--font-stage-mono)] text-xs uppercase tracking-[0.12em] text-lime">[Private beta]</p>
               <h2 className="mt-4 text-[clamp(2rem,4vw,3.25rem)] font-bold leading-[0.95] tracking-[-0.035em]">No invite yet?</h2>

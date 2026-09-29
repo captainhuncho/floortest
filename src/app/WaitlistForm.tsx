@@ -22,7 +22,7 @@ export function WaitlistForm({ host }: { host: string }) {
       </p>
     );
   return (
-    <form onSubmit={onSubmit} className="grid gap-3 sm:grid-cols-2">
+    <form onSubmit={onSubmit} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <input name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden />
       <input name="name" className={field} placeholder="Name or artist name" aria-label="Name" maxLength={100} />
       <input name="email" type="email" required className={field} placeholder="Email" aria-label="Email" maxLength={200} />
