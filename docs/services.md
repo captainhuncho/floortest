@@ -50,7 +50,6 @@ Last updated 29 Sep 2026.
 
 ## Planned, not yet connected
 
-- **Key detection: dropped.** DJs read key in Rekordbox.
 - **Virus scanning** for uploads (paid; needed before public launch).
 - **Lawyer** covering Ghana and UK/EU data protection. The brief is in `docs/legal-review.md`.
 - **Mailbox for support@floortest.fm**, to replace info@imullar.com.

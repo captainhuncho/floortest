@@ -59,7 +59,7 @@ Monday: check metrics. Tuesday–Thursday: partner calls and fixes. Friday: one 
 1. **Problem:** submissions lose context before anyone presses play.
 2. **Product:** one link; the receiver chooses where it routes. *Live now.*
 3. **Loop:** upload → collection → listen/download → sender told. *Live now.*
-4. **Why DJs:** routing, fast decisions, Rekordbox export (*live*); BPM and waveform (*live*). No key detection: DJs get key from Rekordbox (decided 29 Sep 2026).
+4. **Why DJs:** routing, fast decisions, Rekordbox export (*live*); BPM and waveform (*live*).
 5. **Why artists:** no account, honest signals.
 6. **Model:** a free tier capped at 20 active tracks → Pro → Team. Paid prices under test.
 7. **Wedge:** DJs with weekly callouts; every submission brings a sender who might DJ too.
