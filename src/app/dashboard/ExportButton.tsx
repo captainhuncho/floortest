@@ -11,6 +11,7 @@ export function ExportButton({
   whole = false,
   label,
   variant = "lime",
+  buttonClassName,
 }: {
   collectionId: number | null;
   count: number;
@@ -18,6 +19,8 @@ export function ExportButton({
   whole?: boolean;
   label?: string;
   variant?: "lime" | "ghost";
+  /** Replaces the default button look (Figma full-width buttons on Prepare). */
+  buttonClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [base, setBase] = useState("");
@@ -36,8 +39,8 @@ export function ExportButton({
   };
 
   return (
-    <div className="relative">
-      <button className={`${variant === "lime" ? "btn-lime" : "btn-ghost"} btn-sm`} disabled={!count} onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+    <div className={buttonClassName ? "relative w-full" : "relative"}>
+      <button className={buttonClassName ?? `${variant === "lime" ? "btn-lime" : "btn-ghost"} btn-sm`} disabled={!count} onClick={() => setOpen((o) => !o)} aria-expanded={open}>
         {label ?? "Prepare for set"} ({count})
       </button>
       {open && (

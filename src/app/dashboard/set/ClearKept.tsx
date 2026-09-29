@@ -20,7 +20,7 @@ export function ClearKept({ count }: { count: number }) {
 
   return (
     <>
-      <button type="button" className="btn-ghost btn-sm text-danger" disabled={!count} onClick={() => setOpen(true)}>
+      <button type="button" className="mx-auto block py-1 text-[11px] font-medium text-[#ff5f56] underline underline-offset-2 disabled:opacity-40" disabled={!count} onClick={() => setOpen(true)}>
         Clear kept
       </button>
       <dialog
