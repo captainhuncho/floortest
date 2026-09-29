@@ -5,7 +5,7 @@ import { signup } from "../actions";
 
 export const metadata = { title: "Claim your link — FloorTest" };
 
-export default async function SignupPage({ searchParams }: { searchParams: Promise<{ ref?: string; invite?: string }> }) {
+export default async function SignupPage({ searchParams }: { searchParams: Promise<{ ref?: string; invite?: string; handle?: string }> }) {
   const sp = await searchParams;
   const ref = (sp.ref || "").toUpperCase().slice(0, 32);
   const inviteCode = (sp.invite || "").toUpperCase().slice(0, 32);
@@ -44,7 +44,7 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
             ? [{ name: "invite", label: "Invite code", placeholder: "From your invite", autoComplete: "off", defaultValue: inviteCode || ref || undefined }]
             : []),
           { name: "name", label: "Your name or alias", placeholder: "Maxwell", autoComplete: "name" },
-          { name: "handle", label: "Your link", prefix: `${host}/`, placeholder: "maxwell", autoComplete: "username" },
+          { name: "handle", label: "Your link", prefix: `${host}/`, placeholder: "yourname", autoComplete: "username", defaultValue: (sp.handle || "").toLowerCase().replace(/[^a-z0-9-_]/g, "").slice(0, 30) || undefined },
           { name: "email", label: "Email", type: "email", placeholder: "you@example.com", autoComplete: "email", defaultValue: personal?.email ?? undefined },
           { name: "password", label: "Password", type: "password", placeholder: "8+ characters", autoComplete: "new-password", minLength: 8 },
         ]}

@@ -6,7 +6,7 @@ import { inviteFromWaitlist, removeFromWaitlist } from "../actions";
 /** People who asked for an invite from the home page. */
 export default async function Waitlist({ searchParams }: { searchParams: Promise<{ show?: string }> }) {
   const showAll = (await searchParams).show === "all";
-  const rows = await q.all<{ id: number; email: string; name: string; role: string; link: string; invited_at: number | null; created_at: number; joined: string | null }>(
+  const rows = await q.all<{ id: number; email: string; name: string; role: string; link: string; handle: string; invited_at: number | null; created_at: number; joined: string | null }>(
     `SELECT w.*, (SELECT u.handle FROM users u WHERE u.email = w.email) AS joined FROM waitlist w
      ${showAll ? "" : "WHERE w.invited_at IS NULL"} ORDER BY w.created_at ASC LIMIT 500`,
   );
@@ -35,7 +35,10 @@ export default async function Waitlist({ searchParams }: { searchParams: Promise
                   {w.name && <span className="font-medium">{w.name} </span>}
                   <span className="text-mute">{w.email}</span>
                 </td>
-                <td className="px-4 py-3">{w.role}</td>
+                <td className="px-4 py-3">
+                  {w.role}
+                  {w.handle && <span className="block font-mono text-xs text-lime">/{w.handle}</span>}
+                </td>
                 <td className="max-w-48 truncate px-4 py-3">
                   {w.link && (
                     <a href={safeLink(w.link)} target="_blank" rel="noreferrer noopener" className="text-mute underline-offset-4 hover:text-bone hover:underline">

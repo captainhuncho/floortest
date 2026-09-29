@@ -7,6 +7,7 @@ import { PLANS } from "@/lib/plans";
 import { footerLinks } from "@/lib/site";
 import { mono, serif } from "./fonts";
 import { HomePreview } from "./HomePreview";
+import { ClaimBox } from "./ClaimBox";
 import { WaitlistForm } from "./WaitlistForm";
 
 const HOST = APP_URL.replace(/^https?:\/\//, "");
@@ -130,7 +131,7 @@ export default async function Home({
                   href={DEMO}
                   className="font-[family-name:var(--font-stage-mono)] text-sm text-[#d8cfc4] hover:text-bone"
                 >
-                  See a demo link →
+                  See a demo link <span className="text-[#8f8377]">(example: /maxwell)</span> →
                 </Link>
               </div>
               {!user && (
@@ -146,25 +147,27 @@ export default async function Home({
             </div>
             {/* The one link, and where it routes: the product in a card. */}
             <div className="rounded-lg border border-white/10 bg-ink-2 p-6 sm:p-8">
-              <p className="home-label">Your receiving link</p>
-              <p className="mt-4 font-[family-name:var(--font-stage-mono)] text-xl sm:text-2xl">
-              {HOST}/<wbr /><span className="text-lime">maxwell</span>
-              </p>
-              <div className="mt-6 space-y-3">
-                <div className="flex items-center justify-between rounded-md border border-white/10 px-4 py-3 text-sm text-[#a8a59c]">
+              {user ? (
+                <>
+                  <p className="home-label">Your receiving link</p>
+                  <p className="mt-4 font-[family-name:var(--font-stage-mono)] text-xl sm:text-2xl">
+                    {HOST}/<wbr /><span className="text-lime">{user.handle}</span>
+                  </p>
+                </>
+              ) : (
+                <ClaimBox host={HOST} inviteOnly={inviteOnly} />
+              )}
+              <p className="home-label mt-6">Same link. You choose where it routes.</p>
+              <div className="mt-3 space-y-2">
+                <div className="flex items-center justify-between rounded-md border border-white/10 px-4 py-2.5 text-xs text-[#a8a59c]">
                   <span>Yesterday</span>
-                  <span>Afterlife collection</span>
+                  <span>Friday residency</span>
                 </div>
-                <div className="flex items-center justify-between rounded-md border border-lime/50 bg-lime/[0.08] px-4 py-3 text-sm">
+                <div className="flex items-center justify-between rounded-md border border-lime/50 bg-lime/[0.08] px-4 py-2.5 text-xs">
                   <span className="text-[#a8a59c]">Today</span>
-                  <span className="font-semibold text-lime">
-                    Villagers collection
-                  </span>
+                  <span className="font-semibold text-lime">Radio show callout</span>
                 </div>
               </div>
-              <p className="mt-5 text-sm text-[#a8a59c]">
-                The public URL stays the same. You choose where it routes.
-              </p>
             </div>
           </div>
           <div className="mt-20 flex flex-wrap gap-x-8 gap-y-2 border-t border-white/10 pt-6">
@@ -447,7 +450,7 @@ export default async function Home({
                 We&apos;re letting DJs, labels and curators in a few at a time. Leave your details and you&apos;ll get a personal invite by email.
               </p>
             </div>
-            <WaitlistForm />
+            <WaitlistForm host={HOST} />
           </div>
         </section>
       )}

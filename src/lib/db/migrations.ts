@@ -358,4 +358,11 @@ update collections set name = 'Afterlife'
 where name = 'MA?' and user_id = (select id from users where handle = 'maxwell');
 `,
   },
+  {
+    // The link name someone typed on the home page before joining the waitlist. Not reserved: a hint for their invite.
+    id: "0015_waitlist_handle",
+    sql: `
+alter table waitlist add column handle text not null default '';
+`,
+  },
 ];

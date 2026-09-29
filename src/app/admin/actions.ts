@@ -148,8 +148,8 @@ const newCode = () => {
   return `FLOOR-${Array.from(crypto.randomBytes(6), (b) => alphabet[b % alphabet.length]).join("")}`;
 };
 
-async function mailInvite(code: string, email: string, inviter: string, note: string) {
-  const link = `${env.appUrl}/signup?invite=${encodeURIComponent(code)}`;
+async function mailInvite(code: string, email: string, inviter: string, note: string, handle = "") {
+  const link = `${env.appUrl}/signup?invite=${encodeURIComponent(code)}${handle ? `&handle=${encodeURIComponent(handle)}` : ""}`;
   return sendMail({
     userId: null,
     audience: "support",
@@ -210,7 +210,7 @@ export async function resendInvite(code: string) {
 /** Waitlist → personal invite in one click. */
 export async function inviteFromWaitlist(id: number) {
   const a = await requireAdminAction();
-  const w = await q.get<{ email: string; invited_at: number | null }>("SELECT email, invited_at FROM waitlist WHERE id = ?", id);
+  const w = await q.get<{ email: string; invited_at: number | null; handle: string }>("SELECT email, invited_at, handle FROM waitlist WHERE id = ?", id);
   if (!w || w.invited_at) return;
   if (await q.get("SELECT 1 FROM users WHERE email = ?", w.email)) {
     await q.run("UPDATE waitlist SET invited_at = ? WHERE id = ?", now(), id);
@@ -218,7 +218,7 @@ export async function inviteFromWaitlist(id: number) {
   }
   const code = newCode();
   await q.run("INSERT INTO invites (code, max_uses, note, email, created_at, sent_at) VALUES (?,?,?,?,?,?)", code, 1, "From the waitlist", w.email, now(), now());
-  await mailInvite(code, w.email, a.name, "");
+  await mailInvite(code, w.email, a.name, "", w.handle);
   await q.run("UPDATE waitlist SET invited_at = ? WHERE id = ?", now(), id);
   await logAdmin(a.id, "invited from waitlist", w.email, code);
   refresh();

@@ -1,6 +1,8 @@
 "use server";
 
 import { q } from "@/lib/db";
+import { isProtectedHandle } from "@/lib/identity";
+import { RESERVED_HANDLES } from "@/lib/plans";
 import { allow, requestIp } from "@/lib/ratelimit";
 
 export type WaitlistState = { ok?: boolean; error?: string } | undefined;
@@ -13,13 +15,28 @@ export async function joinWaitlist(_: WaitlistState, form: FormData): Promise<Wa
   if (!(await allow("waitlist_ip", await requestIp(), 5, 3_600_000))) return { error: "Too many requests. Try again later." };
   const str = (k: string, max: number) => String(form.get(k) || "").trim().slice(0, max);
   await q.run(
-    "INSERT INTO waitlist (email, name, role, link, note, created_at) VALUES (?,?,?,?,?,?) ON CONFLICT (email) DO NOTHING",
+    "INSERT INTO waitlist (email, name, role, link, note, handle, created_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT (email) DO NOTHING",
     email,
     str("name", 100),
     str("role", 40),
     str("link", 200),
     str("note", 500),
+    cleanHandle(str("handle", 40)),
     Date.now(),
   );
   return { ok: true };
+}
+
+const cleanHandle = (raw: string) => raw.toLowerCase().replace(/[^a-z0-9-_]/g, "").slice(0, 30);
+
+/**
+ * "Is this link name free?" for the home-page claim box. Only ever answers free/taken, and protected
+ * names read as taken, so it can't be used to map the protected list. Rate-limited per network.
+ */
+export async function checkHandle(raw: string): Promise<"free" | "taken" | "invalid" | "slow"> {
+  const h = cleanHandle(String(raw || ""));
+  if (!/^[a-z0-9][a-z0-9-_]{1,29}$/.test(h)) return "invalid";
+  if (!(await allow("handle_check", await requestIp(), 60, 3_600_000))) return "slow";
+  if (RESERVED_HANDLES.has(h) || (await isProtectedHandle(h))) return "taken";
+  return (await q.get("SELECT 1 FROM users WHERE handle = ?", h)) ? "taken" : "free";
 }
