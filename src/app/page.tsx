@@ -23,7 +23,7 @@ const JOURNEY = [
 const HOW = [
   ["Share your link", "Post it once: in your bio, a callout, a DM. Senders upload the original file, no account needed."],
   ["Route by callout", "Each callout gets its own collection. Switch where new tracks land in one click."],
-  ["Decide fast", "Play, then Keep or Could be better, and the next track is already up. Reply without leaving the queue."],
+  ["Decide fast", "Play, then Keep or Not for me, and the next track is already up. Reply without leaving the queue."],
   ["Take it to the booth", "Kept tracks download as one crate with a Rekordbox XML and playlist, or just the files."],
 ];
 
@@ -365,7 +365,7 @@ export default async function Home({
             {[
               [
                 "Your decisions stay yours",
-                "Senders see listens, downloads and replies. Keep and could-be-better calls are never shared.",
+                "Senders see listens, downloads and replies. Keep and not-for-me calls are never shared.",
               ],
               [
                 "You control intake",
@@ -373,7 +373,7 @@ export default async function Home({
               ],
               [
                 "Clear retention",
-                "Undecided tracks are deleted after 90 days, could-be-better tracks 30 days after you mark them. Kept tracks stay until you delete them.",
+                "Undecided tracks are deleted after 90 days, tracks marked “Not for me” 30 days after you mark them. Kept tracks stay until you delete them.",
               ],
             ].map(([k, v]) => (
               <div key={k} className="py-5">

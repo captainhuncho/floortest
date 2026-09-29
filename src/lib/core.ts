@@ -381,7 +381,7 @@ export async function markPlayedOut(user: User, t: Track, note: string) {
 
 /* ───────────────────────── Decisions ───────────────────────── */
 
-/** Keep or "could be better" (stored as passed). Private to the receiver: senders are never told. Returns what undo needs. */
+/** Keep or "not for me" (stored as passed). Private to the receiver: senders are never told. Returns what undo needs. */
 export async function decide(user: User, t: Track, decision: Decision) {
   const prev = { decision: t.decision, decided_at: t.decided_at };
   // Keeping (again) always puts the track in the current Prepare for set batch.

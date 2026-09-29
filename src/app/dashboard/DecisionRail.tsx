@@ -48,7 +48,7 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
         const token = track.decision === d ? null : await decideTrack(track.id, d);
         if (token) {
           toast.show({
-            message: `${d === "kept" ? `“${track.title}” added to Prepare for set` : `Could be better: “${track.title}”`}`,
+            message: `${d === "kept" ? `“${track.title}” added to Prepare for set` : `Not for me: “${track.title}”`}`,
             action: {
               label: "Undo",
               run: async () => {
@@ -91,7 +91,7 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
     return () => window.removeEventListener("keydown", onKey);
   }, [decide, next, prevHref, player, router, toast, track]);
 
-  // Phones: swipe the review panel right to keep, left for could be better.
+  // Phones: swipe the review panel right to keep, left for Not for me.
   useEffect(() => {
     if (!window.matchMedia("(pointer: coarse)").matches) return;
     const zone = document.querySelector<HTMLElement>("[data-swipe-zone]");
@@ -128,7 +128,7 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
           aria-keyshortcuts="X"
           className={`${btn} ${track.decision === "passed" ? "border-bone bg-bone/10" : "border-line hover:border-mute hover:bg-ink-3"}`}
         >
-          <span className="text-base font-semibold">Could be better</span>
+          <span className="text-base font-semibold">Not for me</span>
           <span className="hidden text-xs text-mute md:inline">X</span>
         </button>
         <button
@@ -199,9 +199,9 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
         </form>
       )}
 
-      <p className="mt-3 text-xs text-mute [@media(pointer:fine)]:hidden">Swipe right to keep · swipe left for could be better</p>
+      <p className="mt-3 text-xs text-mute [@media(pointer:fine)]:hidden">Swipe right to keep · swipe left: not for me</p>
       <p className="mt-3 hidden text-xs text-mute md:block">
-        {next ? "Keep or Could be better moves to the next track." : "Last track in this view."} Space play · ←/→ 10s · ↑/↓ or J move · U undo
+        {next ? "Keep or Not for me moves to the next track." : "Last track in this view."} Space play · ←/→ 10s · ↑/↓ or J move · U undo
       </p>
     </div>
   );

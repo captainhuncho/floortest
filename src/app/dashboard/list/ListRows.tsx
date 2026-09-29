@@ -96,7 +96,7 @@ export function ListRows({ rows }: { rows: ListRow[] }) {
         const token = await decideTrack(r.id, next);
         if (token)
           toast.show({
-            message: `${next === "kept" ? `“${r.title}” added to Prepare for set` : `Could be better: “${r.title}”`}`,
+            message: `${next === "kept" ? `“${r.title}” added to Prepare for set` : `Not for me: “${r.title}”`}`,
             action: {
               label: "Undo",
               run: async () => {
@@ -223,7 +223,7 @@ export function ListRows({ rows }: { rows: ListRow[] }) {
                   <ActionButton label={`Keep ${r.title}`} tip="Keep" hint="K" pressed={decision === "kept"} onClick={() => decide(r, "kept", false)}>
                     <Icon.Heart filled={decision === "kept"} />
                   </ActionButton>
-                  <ActionButton label={`Could be better: ${r.title}`} tip="Could be better" hint="X" pressed={decision === "passed"} onClick={() => decide(r, "passed", false)}>
+                  <ActionButton label={`Not for me: ${r.title}`} tip="Not for me" hint="X" pressed={decision === "passed"} onClick={() => decide(r, "passed", false)}>
                     <Icon.ThumbDown filled={decision === "passed"} />
                   </ActionButton>
                   <ActionButton label={`Reply to ${r.sender}`} tip="Reply" hint="R" pressed={open} onClick={() => (setSelected(r.id), setExpanded(open ? null : r.id))}>
@@ -249,7 +249,7 @@ export function ListRows({ rows }: { rows: ListRow[] }) {
         })}
       </ul>
       <p className="hidden px-6 py-4 text-xs text-mute md:block">
-        ↑/↓ select · Space play · K keep · X could be better · R reply · Enter details · ←/→ 10s · U undo · {fmtCount(rows.length)}
+        ↑/↓ select · Space play · K keep · X not for me · R reply · Enter details · ←/→ 10s · U undo · {fmtCount(rows.length)}
       </p>
     </>
   );
@@ -286,7 +286,7 @@ function Expanded({ row: r, decision, onClose }: { row: ListRow; decision: Decis
         </p>
         <p className="text-mute">
           {fmtTime(r.duration)}
-          {r.mixLabel && ` · ${r.mixLabel}`} · {decision === "kept" ? "Kept" : decision === "passed" ? "Could be better" : "Needs review"} ·{" "}
+          {r.mixLabel && ` · ${r.mixLabel}`} · {decision === "kept" ? "Kept" : decision === "passed" ? "Not for me" : "Needs review"} ·{" "}
           {r.played ? "Listened" : "Not listened"} · {r.downloaded ? "Downloaded" : "Not downloaded"}
         </p>
         <Link href={`/dashboard?view=queue&s=all&t=${r.id}`} className="inline-block underline underline-offset-4 hover:text-lime">

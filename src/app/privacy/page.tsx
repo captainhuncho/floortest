@@ -69,7 +69,7 @@ export default function Privacy() {
         [
           "How long we keep it",
           [
-            `Audio a receiver hasn't decided on is deleted ${RETAIN_UNREVIEWED_DAYS} days after delivery. Audio marked “could be better” is deleted ${RETAIN_PASSED_DAYS} days later. Kept audio stays until the receiver deletes it.`,
+            `Audio a receiver hasn't decided on is deleted ${RETAIN_UNREVIEWED_DAYS} days after delivery. Audio marked “not for me” is deleted ${RETAIN_PASSED_DAYS} days later. Kept audio stays until the receiver deletes it.`,
             "Track history and sender details (for example, that a track was delivered and listened to, and who sent it) stay for as long as the receiver's account exists, so both sides keep an accurate record. They're deleted when the receiver deletes their account, or sooner if a sender asks us.",
             "When something is deleted it's removed from the live service straight away and from our database backups within 30 days.",
           ],

@@ -8,7 +8,7 @@ All drafts follow [brand-voice.md](brand-voice.md). Replace {braces}. Nothing he
 
 > Hey {first name},
 >
-> I'm building FloorTest, a receiving desk for unreleased music. You share one link, artists upload the original WAV or MP3 (no account), and you work through them with play → Keep / Could be better → next. Kept tracks export as a Rekordbox crate.
+> I'm building FloorTest, a receiving desk for unreleased music. You share one link, artists upload the original WAV or MP3 (no account), and you work through them with play → Keep / Not for me → next. Kept tracks export as a Rekordbox crate.
 >
 > Senders get told when you've listened, downloaded or replied, so the "did you hear my track?" DMs stop.
 >
@@ -30,7 +30,7 @@ All drafts follow [brand-voice.md](brand-voice.md). Replace {braces}. Nothing he
 >
 > On your desk:
 > • Space plays
-> • K keeps, X marks could be better, and the next track starts
+> • K keeps, X marks not for me, and the next track starts
 > • U undoes
 >
 > Kept tracks download as a crate with a Rekordbox XML.

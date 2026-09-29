@@ -84,7 +84,7 @@ export default async function ReceiverPage({ params, searchParams }: Props) {
       <ul className="mt-6 space-y-1 text-sm text-mute" aria-label="How your file is handled">
         <li>WAV or MP3, up to 250 MB. No account needed.</li>
         <li>Only {receiver.name} can hear or download your file.</li>
-        <li>Tracks {receiver.name} doesn&apos;t decide on are deleted after {RETAIN_UNREVIEWED_DAYS} days, and ones marked could be better {RETAIN_PASSED_DAYS} days later. Kept tracks stay until they&apos;re deleted.</li>
+        <li>Tracks {receiver.name} doesn&apos;t decide on are deleted after {RETAIN_UNREVIEWED_DAYS} days, and ones marked “Not for me” {RETAIN_PASSED_DAYS} days later. Kept tracks stay until they&apos;re deleted.</li>
         <li>You&apos;ll get a private receipt and an email when it&apos;s listened to, downloaded or replied to.</li>
       </ul>
       {receiver.identity_status !== "verified" && (

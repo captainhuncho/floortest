@@ -21,7 +21,7 @@ const STATUS = [
   ["all", "All", "1 = 1"],
   ["review", "Needs review", "t.decision IS NULL"],
   ["kept", "Kept", "t.decision = 'kept'"],
-  ["passed", "Could be better", "t.decision = 'passed'"],
+  ["passed", "Not for me", "t.decision = 'passed'"],
 ] as const;
 
 const TYPE_SHORT: Record<string, string> = { unsigned: "Demo", signed: "Signed", released: "Released" };

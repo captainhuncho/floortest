@@ -97,7 +97,7 @@ export function HomePreview({ host }: { host: string }) {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              {["Keep", "Could be better", "Download", "Reply"].map((b) => (
+              {["Keep", "Not for me", "Download", "Reply"].map((b) => (
                 <span key={b} className="rounded-md border border-white/15 px-3 py-2 font-[family-name:var(--font-stage-mono)] text-[11px] uppercase text-[#d8cfc4]">
                   {b}
                 </span>

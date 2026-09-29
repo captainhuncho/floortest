@@ -41,7 +41,7 @@ The biggest current problem is that the same thing has several names. Pick one a
 | **track** | song, submission (in user-facing copy), demo (as a noun for every file) | Plans currently say "active songs". Change to "active tracks". "Demo" is fine when talking about unreleased demos specifically. |
 | **callout** / **collection** | folder, project, campaign | A callout is the ask ("send me Afro house for Villagers"). A collection is where those tracks land. |
 | **receiver** / **sender** | curator/artist as role names, user, submitter | In marketing, prefer the real people: "DJs, curators and labels" / "artists and producers". |
-| **Keep** / **Could be better** | pass, reject, decline, no | Always capitalised as buttons, lowercase in running text: "tracks you keep". |
+| **Keep** / **Not for me** | pass, reject, decline, no | Always capitalised as buttons, lowercase in running text: "tracks you keep". |
 | **Listened / Downloaded / Replied / Delivered** | heard, played out, used, opened | These are defined signals. Never paraphrase them. |
 | **private receipt** | tracking page, status page | |
 | **FloorTest** | Floortest, Floor Test, FT | |

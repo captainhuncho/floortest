@@ -9,7 +9,7 @@ Reviewed against [brand-voice.md](brand-voice.md), 27 Sep 2026. Findings are ord
 | 1 | Home, journey step "Downloaded" ([page.tsx:15](../src/app/page.tsx)) | "The file went to the booth" overclaims. The Listened email itself says a signal "doesn't say anything about whether it'll be played out". The home page contradicts the product's own honesty. | "The original file was downloaded" |
 | 2 | Sign-up subtitle vs home pricing | Sign-up says "Free for 20 active songs". Home FAQ says "every plan is free" during beta. Both are true, but read together they sound like a contradiction. | Lead with the free tier; treat beta access to paid plans as a bonus. Sign-up: "One link for every callout. Free for up to 20 active tracks." FAQ "Is it free?": "Yes, for up to 20 active tracks, and free forever at that size. During the beta, Pro and Team are free too." |
 | 3 | Hero trust strip: "Every decision undoable" | Undo only covers recent decisions (toast + U key). If older decisions can also be changed from the track, say "Change any decision later"; otherwise "Undo any decision". | Check behaviour, then pick the accurate one |
-| 4 | Home "Clear retention" | Mixes plan limits (20 tracks) into retention, and leaves out that "could be better" tracks go after 30 days. Missing facts here are what the Terms/Privacy lawyers will check. | "Undecided tracks are deleted after 90 days, could-be-better tracks 30 days after you mark them. Kept tracks stay until you delete them." |
+| 4 | Home "Clear retention" | Mixes plan limits (20 tracks) into retention, and leaves out that "not for me" tracks go after 30 days. Missing facts here are what the Terms/Privacy lawyers will check. | "Undecided tracks are deleted after 90 days, tracks marked not for me 30 days after you mark them. Kept tracks stay until you delete them." |
 | 5 | Pricing shows $20 and $60 "after beta" | The deck says pricing "should be validated with early users". Printing it publicly now makes it hard to change and may put off the beta DJs you most want. | Show plan limits, drop the prices: "Paid plans come after the beta. Beta users hear first and get a founding rate." (Only promise the founding rate if you mean it.) |
 
 ## 2. Consistency (one pass, low risk)
@@ -41,7 +41,7 @@ Generally the best copy in the product: short and specific.
 - "For your receipt and updates only." Good. Consider adding "Never shared beyond {receiver}".
 - "No preview in this browser. The upload still works." Good.
 - "Link not recognised" / "This link stays the same. Check back soon." Good.
-- Receipt: "Files are deleted within 90 days of delivery unless {receiver} keeps them." Accurate, but "could be better" tracks go at +30 days from marking, which may be earlier; "within 90 days" still holds. Fine.
+- Receipt: "Files are deleted within 90 days of delivery unless {receiver} keeps them." Accurate, but "not for me" tracks go at +30 days from marking, which may be earlier; "within 90 days" still holds. Fine.
 - "+ Add a message or release status (optional)": "(optional)" is redundant with "+ Add". Cut it.
 
 ## 5. Emails

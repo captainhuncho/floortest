@@ -18,7 +18,7 @@ export async function Onboarding({ user }: { user: User }) {
       href: "/dashboard/collections",
     },
     { done: await has("SELECT 1 FROM tracks WHERE user_id = ? LIMIT 1"), label: "Share your link and get a first track", hint: "Post it in your bio, a callout or a DM. Use Copy link at the top.", href: null },
-    { done: await has("SELECT 1 FROM tracks WHERE user_id = ? AND decision IS NOT NULL LIMIT 1"), label: "Make your first decision", hint: "Play a track, then Keep or Could be better.", href: "/dashboard?view=queue" },
+    { done: await has("SELECT 1 FROM tracks WHERE user_id = ? AND decision IS NOT NULL LIMIT 1"), label: "Make your first decision", hint: "Play a track, then Keep or Not for me.", href: "/dashboard?view=queue" },
     {
       done: await has("SELECT 1 FROM account_log WHERE user_id = ? AND action IN ('exported','downloaded') LIMIT 1"),
       label: "Take kept tracks to your set",

@@ -15,7 +15,7 @@ export const metadata = { title: "Review Queue — FloorTest" };
 const STATUSES = [
   ["review", "Needs review", "t.decision IS NULL"],
   ["kept", "Kept", "t.decision = 'kept'"],
-  ["passed", "Could be better", "t.decision = 'passed'"],
+  ["passed", "Not for me", "t.decision = 'passed'"],
   ["all", "All", "1 = 1"],
 ] as const;
 type StatusKey = (typeof STATUSES)[number][0];
@@ -241,7 +241,7 @@ function EmptyDesk({ link, welcome }: { link: string; welcome: boolean }) {
           <span className="text-lime">1</span> Press play
         </li>
         <li className="rounded-md border border-line p-4">
-          <span className="text-lime">2</span> Keep, could be better, or reply. The next track comes up automatically
+          <span className="text-lime">2</span> Keep, Not for me, or reply. The next track comes up automatically
         </li>
         <li className="rounded-md border border-line p-4">
           <span className="text-lime">3</span> Prepare your kept tracks for a set

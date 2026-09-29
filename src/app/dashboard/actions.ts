@@ -132,7 +132,7 @@ export async function decideTrack(trackId: number, decision: Decision): Promise<
   return { trackId, ...r };
 }
 
-/** Back to Needs review. Used when a receiver toggles off Keep or Could be better. */
+/** Back to Needs review. Used when a receiver toggles off Keep or Not for me. */
 export async function clearDecision(trackId: number) {
   const u = await requireUser();
   const t = await ownedTrack(u.id, trackId);

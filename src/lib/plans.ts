@@ -1,7 +1,7 @@
 export const PLANS = {
   free: { name: "Free", price: 0, limit: 20, blurb: "Delete a track and the slot returns" },
-  pro: { name: "Pro", price: 20, limit: 500, blurb: "For active DJs and curators" },
-  team: { name: "Team", price: 60, limit: 2000, blurb: "Shared collections and receivers" },
+  pro: { name: "Pro", price: 6.99, limit: 500, blurb: "For active DJs and curators" },
+  team: { name: "Team", price: 12.99, limit: 2000, blurb: "Shared collections and receivers" },
 } as const;
 
 export type PlanId = keyof typeof PLANS;

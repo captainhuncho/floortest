@@ -26,7 +26,7 @@ export default function Trust() {
       "How long we keep them",
       [
         `Tracks a receiver hasn't decided on are deleted ${RETAIN_UNREVIEWED_DAYS} days after delivery.`,
-        `Tracks a receiver marks “could be better” are deleted ${RETAIN_PASSED_DAYS} days later.`,
+        `Tracks a receiver marks “not for me” are deleted ${RETAIN_PASSED_DAYS} days later.`,
         "Tracks a receiver keeps stay until they delete them.",
       ],
     ],
@@ -36,7 +36,7 @@ export default function Trust() {
         `Listened: ${SIGNALS.listened.toLowerCase()} (${LISTEN_MIN_SECONDS} seconds at most).`,
         `Downloaded: ${SIGNALS.downloaded.toLowerCase()}.`,
         `Replied: ${SIGNALS.replied.toLowerCase()}.`,
-        "Keep and could-be-better decisions are private to the receiver and never shared.",
+        "Keep and not-for-me decisions are private to the receiver and never shared.",
       ],
     ],
     [

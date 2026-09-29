@@ -88,7 +88,7 @@ export function Status({ row }: { row: Pick<Row, "decision" | "played" | "downlo
       {row.decision === "kept" ? (
         <span className="chip border-lime/60 text-lime">Kept</span>
       ) : row.decision === "passed" ? (
-        <span className="chip border-line text-mute">Could be better</span>
+        <span className="chip border-line text-mute">Not for me</span>
       ) : (
         <span className="chip border-bone/30 text-bone">Needs review</span>
       )}

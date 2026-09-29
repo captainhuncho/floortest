@@ -13,7 +13,7 @@ export const AUDIT_LABELS = {
   signin_alerts_on: "Turned on sign-in alerts",
   signin_alerts_off: "Turned off sign-in alerts",
   kept: "Kept",
-  passed: "Marked could be better",
+  passed: "Marked not for me",
   decision_cleared: "Moved back to review",
   decision_undone: "Undid decision on",
   listened: "Listened to",

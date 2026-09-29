@@ -56,7 +56,7 @@ export default async function Settings() {
         </h2>
         <p className="mt-1 text-mute">
           {cap.used} of {cap.limit.toLocaleString()} active tracks
-          {cap.bonus > 0 && ` (including ${cap.bonus} earned through referrals)`}. Deleting a song frees its slot.
+          {cap.bonus > 0 && ` (including ${cap.bonus} earned through referrals)`}. Deleting a track frees its slot.
         </p>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           {Object.entries(PLANS).map(([id, p]) => {
@@ -65,10 +65,8 @@ export default async function Settings() {
             return (
               <div key={id} className={`card flex flex-col p-5 ${current ? "border-lime/60" : ""}`}>
                 <p className="label">{p.name}</p>
-                <p className="mt-3 text-3xl font-bold tnum">
-                  ${p.price}
-                  <span className="text-sm font-normal text-mute">{p.price ? "/mo" : ""}</span>
-                </p>
+                <p className="mt-3 text-3xl font-bold">Free</p>
+                <p className="text-sm text-mute tnum">{p.price ? `during the beta · then $${p.price}/mo` : "for good"}</p>
                 <p className="mt-3">{p.limit.toLocaleString()} active tracks</p>
                 <p className="text-sm text-mute">{p.blurb}</p>
                 <form action={setPlan.bind(null, id)} className="mt-5">
@@ -93,7 +91,7 @@ export default async function Settings() {
             Each connection can send {RATE_PER_IP_PER_HOUR} tracks an hour, and each email {RATE_PER_EMAIL_PER_DAY} a day, to your link.
           </li>
           <li>Tracks you haven&apos;t decided on are deleted {RETAIN_UNREVIEWED_DAYS} days after delivery.</li>
-          <li>Tracks marked could be better are deleted {RETAIN_PASSED_DAYS} days after you mark them. Kept tracks stay until you delete them.</li>
+          <li>Tracks marked “Not for me” are deleted {RETAIN_PASSED_DAYS} days after you mark them. Kept tracks stay until you delete them.</li>
           <li>Closing dates are set per collection on the Collections page.</li>
         </ul>
       </section>
@@ -102,7 +100,7 @@ export default async function Settings() {
         <h2 id="signals-h" className="text-lg font-semibold">
           What senders are told
         </h2>
-        <p className="mt-1 text-mute">Senders get an email and see these on their receipt. Your keep and could-be-better calls are never shared.</p>
+        <p className="mt-1 text-mute">Senders get an email and see these on their receipt. Your keep and not-for-me calls are never shared.</p>
         <dl className="mt-3 divide-y divide-line rounded-xl border border-line">
           {[
             ["Delivered", "Their file reached your desk"],
@@ -116,7 +114,7 @@ export default async function Settings() {
             </div>
           ))}
           <div className="grid gap-1 px-4 py-3 sm:grid-cols-[140px_1fr]">
-            <dt className="font-medium text-mute">Kept, Could be better</dt>
+            <dt className="font-medium text-mute">Kept, Not for me</dt>
             <dd className="text-mute">Private to you</dd>
           </div>
         </dl>

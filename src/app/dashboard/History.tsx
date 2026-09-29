@@ -6,7 +6,7 @@ const LABEL: Record<EventRow["type"], string> = {
   played: "You listened to",
   downloaded: "You downloaded",
   kept: "You kept",
-  passed: "Could be better:",
+  passed: "Not for me:",
   note: "Private note",
   reply: "You replied",
   deleted: "You deleted",
