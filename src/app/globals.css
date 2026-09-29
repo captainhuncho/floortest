@@ -19,6 +19,11 @@ html, body { background: var(--color-ink); color: var(--color-bone); }
 body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
 /* Visible focus everywhere, for keyboard users only. */
 :focus-visible { outline: 2px solid var(--color-lime); outline-offset: 2px; border-radius: 4px; }
+/* Grid items default to min-width:auto, so one long unbroken line (a link, a filename) can stretch a
+   column past the screen and make phones zoom out. Let columns shrink; text truncates or wraps instead. */
+@layer base {
+  .grid > * { min-width: 0; }
+}
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
 ::selection { background: var(--color-lime); color: var(--color-ink); }
 
