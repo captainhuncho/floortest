@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { Waveform } from "@/components/Waveform";
 import { fmtBytes, fmtTime } from "@/lib/format";
 import { MIX_STATUS } from "@/lib/plans";
@@ -45,6 +46,12 @@ export function SubmitForm({
   const [genre, setGenre] = useState("");
   const [mix, setMix] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+
+  // From the dashboard, refresh the page so the new track shows in your Sent list.
+  useEffect(() => {
+    if (account && phase === "done") router.refresh();
+  }, [account, phase, router]);
 
   async function pick(f: File | undefined) {
     const tags = await pickFile(f);
@@ -69,7 +76,7 @@ export function SubmitForm({
         <span className="chip border-lime/50 text-lime">Delivered</span>
         <h2 className="mt-4 text-2xl font-bold">&ldquo;{track.title}&rdquo; is on {receiverName}&apos;s desk.</h2>
         <p className={`mt-2 ${L.mute}`}>
-          We sent a receipt to {sender.email}. You&apos;ll hear from us when it&apos;s listened to, downloaded or replied to.
+          We sent a receipt to {account?.email ?? sender.email}. You&apos;ll hear from us when it&apos;s listened to, downloaded or replied to.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link href={`/t/${token}`} className={L.btn}>

@@ -44,15 +44,44 @@ export function SendComposer({ host, account, initial }: { host: string; account
               <span className="font-medium">{found.name}</span>
               {found.verified && <span className="ml-1.5 text-lime">✓ Verified</span>}
               {found.roleLine && <span className="text-mute"> · {found.roleLine}</span>}
-              {!found.accepting && <span className="ml-2 text-danger">{found.reason}</span>}
             </span>
           )}
         </div>
       </div>
 
-      {found?.found && found.accepting && (
+      {found?.found && (
         <div key={found.handle} className="rounded-lg border border-line p-5">
-          <SubmitForm handle={found.handle} receiverName={found.name} genres={found.genres} account={account} />
+          <p className="label">Send music to</p>
+          <p className="mt-1 text-2xl font-bold tracking-tight">
+            {found.name}
+            {found.verified && <span className="chip ml-2 align-middle border-lime/60 text-xs font-medium text-lime">✓ Verified</span>}
+          </p>
+          {found.accepting && found.collection && (
+            <p className="mt-3 inline-flex w-fit items-center gap-2 rounded-full border border-lime/40 bg-lime/5 px-3 py-1 text-sm">
+              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-lime" />
+              Receiving for <span className="font-medium text-lime">{found.collection}</span>
+            </p>
+          )}
+          {found.accepting && found.brief.length > 0 && (
+            <dl className="mt-4 grid gap-x-6 gap-y-2 border-y border-line py-3 text-sm sm:grid-cols-2">
+              {found.brief.map((b) => (
+                <div key={b.k}>
+                  <dt className="label">{b.k}</dt>
+                  <dd className="mt-0.5">{b.v}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          <div className="mt-5">
+            {found.accepting ? (
+              <SubmitForm handle={found.handle} receiverName={found.name} genres={found.genres} account={account} />
+            ) : (
+              <div role="status">
+                <p className="font-medium">{found.reason}</p>
+                {found.note && <p className="mt-3 whitespace-pre-wrap border-l-2 border-lime pl-3">{found.note}</p>}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

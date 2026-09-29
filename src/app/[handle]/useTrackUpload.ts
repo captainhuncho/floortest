@@ -57,7 +57,7 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
     if (!file) return setError("Choose a WAV or MP3 file.");
     const field = (k: string) => String(fd.get(k) ?? "");
     try {
-      localStorage.setItem(SENDER_KEY, JSON.stringify({ name: field("name"), email: field("email") }));
+      if (!opts.asAccount) localStorage.setItem(SENDER_KEY, JSON.stringify({ name: field("name"), email: field("email") }));
     } catch {}
     setError(null);
     setPhase("uploading");

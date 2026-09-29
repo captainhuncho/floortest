@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSessionHash, destroySession, hashPassword, requireUser, verifyPassword } from "@/lib/auth";
 import { sendMail } from "@/lib/mail";
+import { fmtDay } from "@/lib/format";
 import QRCode from "qrcode";
 import { env } from "@/lib/env";
 import { hashRecovery, newRecoveryCodes, newTotpSecret, openSecret, otpauthUri, sealSecret, verifyTotp } from "@/lib/totp";
@@ -221,7 +222,8 @@ export async function dismissOnboarding() {
 
 export type ReceiverLookup =
   | { found: false; reason: string }
-  | { found: true; handle: string; name: string; roleLine: string; verified: boolean; accepting: boolean; reason: string | null; genres: string[] };
+  | { found: true; handle: string; name: string; roleLine: string; verified: boolean; accepting: boolean; reason: string | null; genres: string[]; note: string;
+      collection: string | null; brief: { k: string; v: string }[] };
 
 /** Who is floortest.../<handle>? Used by the Send page as you type. */
 export async function lookupReceiver(raw: string): Promise<ReceiverLookup> {
@@ -233,7 +235,19 @@ export async function lookupReceiver(raw: string): Promise<ReceiverLookup> {
   if (!r) return { found: false, reason: "No one has that link." };
   const c = await activeCollection(r);
   const reason = isPaused(r) ? `${r.name} has paused submissions.` : !c ? `${r.name} isn't taking music right now.` : isClosed(c) ? `${c.name} has closed.` : (await capacity(r)).full ? `${r.name}'s desk is full right now.` : null;
-  return { found: true, handle: r.handle, name: r.name, roleLine: r.role_line, verified: r.identity_status === "verified", accepting: !reason, reason, genres: genresFor(c).list };
+  // The same brief the receiver's own link shows, so sending from the desk feels like being on their page.
+  const g = genresFor(c);
+  const wanted = c?.brief_wanted || (g.custom ? g.list.join(" · ") : "");
+  const brief = [
+    wanted && { k: "Wanted", v: wanted },
+    c?.bpm_min && c?.bpm_max && { k: "Range", v: `${c.bpm_min}–${c.bpm_max} BPM` },
+    c?.closes_at && { k: "Deadline", v: `Open until ${fmtDay(c.closes_at, r.tz)}` },
+    c?.brief_note && { k: "Note", v: c.brief_note },
+  ].filter((b): b is { k: string; v: string } => !!b);
+  return {
+    found: true, handle: r.handle, name: r.name, roleLine: r.role_line, verified: r.identity_status === "verified",
+    accepting: !reason, reason, genres: g.list, note: isPaused(r) ? r.pause_message : "", collection: c?.name ?? null, brief,
+  };
 }
 
 /* Reply templates: up to 10 saved replies per account. */
