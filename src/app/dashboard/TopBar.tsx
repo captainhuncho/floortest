@@ -8,6 +8,7 @@ import { useToast } from "@/components/Toast";
 import type { Notice } from "@/lib/notifications";
 import { logout } from "../(auth)/actions";
 import { markNotificationsRead, quickSearch, type SearchHit } from "./actions";
+import { PauseSwitch, type PauseState } from "./PauseSwitch";
 
 type Props = {
   user: { name: string; email: string; handle: string; plan: string; memberSince: string };
@@ -15,6 +16,8 @@ type Props = {
   notices: { items: Notice[]; unread: number };
   footer: { label: string; href: string; external: boolean }[];
   version: string;
+  /** Phones: the sidebar is hidden, so its switch lives in the profile menu. */
+  pause: PauseState;
 };
 
 type Open = null | "search" | "bell" | "profile" | "qr";
@@ -51,7 +54,7 @@ export function TopBar(p: Props) {
   }, [open]);
 
   const toggle = (k: Exclude<Open, null>) => setOpen((o) => (o === k ? null : k));
-  const round = "grid h-11 w-11 place-items-center rounded-full border border-line bg-ink-2 text-bone transition hover:border-mute";
+  const round = "grid size-9 place-items-center rounded-full border border-[#2a2e24] bg-[#1f201c] text-[#a3a69b] transition hover:border-mute sm:size-11 sm:border-line sm:bg-ink-2 sm:text-bone";
 
   return (
     <div ref={root} className="relative flex items-center justify-end gap-2">
@@ -86,13 +89,13 @@ export function TopBar(p: Props) {
           onClick={() => toggle("profile")}
           aria-expanded={open === "profile"}
           aria-haspopup="menu"
-          className="flex items-center gap-3 rounded-full border border-line bg-ink-2 py-1 pl-5 pr-1 transition hover:border-mute"
+          className="flex items-center gap-3 rounded-full border border-[#2a2e24] bg-[#1f201c] transition hover:border-mute sm:border-line sm:bg-ink-2 sm:py-1 sm:pl-5 sm:pr-1"
         >
           <span className="hidden text-[15px] sm:inline">{p.user.handle}</span>
           <svg aria-hidden viewBox="0 0 12 12" className={`hidden h-3 w-3 text-mute transition sm:block ${open === "profile" ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth="1.5">
             <path d="M3 4.5 6 7.5 9 4.5" />
           </svg>
-          <span className="grid h-9 w-9 place-items-center rounded-full bg-bone text-sm font-bold text-ink">{initials(p.user.name)}</span>
+          <span className="grid size-9 place-items-center rounded-full font-[family-name:var(--font-stage-mono)] text-[10px] font-bold text-white sm:bg-bone sm:font-sans sm:text-sm sm:text-ink">{initials(p.user.name)}</span>
           <span className="sr-only">Account menu</span>
         </button>
         {open === "profile" && <ProfilePanel {...p} onNavigate={() => setOpen(null)} onQr={() => setOpen("qr")} />}
@@ -115,12 +118,20 @@ function Panel({ children, className = "" }: { children: React.ReactNode; classN
   );
 }
 
-function ProfilePanel({ user, link, footer, version, onNavigate, onQr }: Props & { onNavigate: () => void; onQr: () => void }) {
+function ProfilePanel({ user, link, footer, version, pause, onNavigate, onQr }: Props & { onNavigate: () => void; onQr: () => void }) {
   const toast = useToast();
   const items = [
     { icon: "+", title: "Referrals", sub: "Invite DJs · earn track slots", href: "/dashboard/referrals" },
     { icon: "↗", title: "Submission link", sub: link.replace(/^https?:\/\//, ""), href: `/${user.handle}`, external: true, copy: true },
     { icon: "✉", title: "Emails to senders", sub: "Everything FloorTest told them", href: "/dashboard/emails" },
+  ];
+  // Phones: the sidebar is hidden, so its links move here.
+  const mobile = [
+    { icon: "↑", title: "Send", sub: "Send music to another FloorTest user", href: "/dashboard/send" },
+    { icon: "☰", title: "Contacts", sub: "Everyone who sent you music", href: "/dashboard/contacts" },
+    { icon: "◷", title: "Activity", sub: "Everything you did, newest first", href: "/dashboard/activity" },
+    { icon: "⚙", title: "Profile & settings", sub: "Plan, security, public page", href: "/dashboard/settings" },
+    { icon: "✎", title: "Feedback", sub: "Tell us what to fix or build", href: "/contact?topic=feedback" },
   ];
   return (
     <Panel>
@@ -137,6 +148,25 @@ function ProfilePanel({ user, link, footer, version, onNavigate, onQr }: Props &
           <span className="shrink-0 self-start rounded-full bg-lime px-2.5 py-0.5 font-mono text-xs font-semibold uppercase text-ink">{user.plan}</span>
         </div>
 
+        <div className="border-b border-line px-6 py-4 md:hidden">
+          <PauseSwitch pause={pause} />
+        </div>
+        <ul className="border-b border-line px-2 py-2 md:hidden">
+          {mobile.map((i) => (
+            <li key={i.title}>
+              <Link href={i.href} onClick={onNavigate} role="menuitem" className="group flex items-center gap-4 rounded-xl px-4 py-3 hover:bg-ink-3">
+                <span aria-hidden className="w-6 shrink-0 text-center text-lg text-mute">
+                  {i.icon}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block">{i.title}</span>
+                  <span className="block truncate font-mono text-xs text-mute">{i.sub}</span>
+                </span>
+                <span aria-hidden className="text-xl text-mute">→</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
         <ul className="px-2 py-2">
           <li>
             <button onClick={onQr} role="menuitem" className="group flex w-full items-center gap-4 rounded-xl px-4 py-3.5 text-left hover:bg-ink-3">

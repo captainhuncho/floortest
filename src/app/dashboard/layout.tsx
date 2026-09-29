@@ -7,6 +7,7 @@ import { APP_URL } from "@/lib/mail";
 import { notificationsFor } from "@/lib/notifications";
 import { PLANS, planOf } from "@/lib/plans";
 import { footerLinks, VERSION } from "@/lib/site";
+import { Logo } from "@/components/Logo";
 import { Sidebar } from "./Sidebar";
 import { FeedbackButton } from "./FeedbackButton";
 import { LinkPill } from "./LinkPill";
@@ -32,6 +33,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const upgrade = Object.values(PLANS).find((p) => p.limit > plan.limit) ?? null;
   const memberSince = new Date(user.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: user.tz }).replaceAll("/", ".");
   const link = `${APP_URL}/${user.handle}`;
+  const pauseState = {
+              on: isPaused(user),
+              until: user.pause_until ? new Date(user.pause_until).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: user.tz }) : null,
+              untilTs: user.pause_until,
+              blocked,
+              message: user.pause_message,
+            };
 
   return (
     <PlayerProvider>
@@ -45,24 +53,24 @@ export default async function DashboardLayout({ children }: { children: React.Re
             needsReview={collections.reduce((n, c) => n + c.needs_review, 0)}
             cap={cap}
             plan={{ name: plan.name, upgrade: upgrade && { name: upgrade.name, limit: upgrade.limit } }}
-            pause={{
-              on: isPaused(user),
-              until: user.pause_until ? new Date(user.pause_until).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: user.tz }) : null,
-              untilTs: user.pause_until,
-              blocked,
-              message: user.pause_message,
-            }}
+            pause={pauseState}
           />
           <main id="main" className="min-w-0 pb-48 md:overflow-y-auto md:pb-24">
             <div className="sticky top-0 z-40 flex h-[68px] items-center justify-end gap-3 border-b border-line bg-ink/85 px-4 backdrop-blur sm:px-6">
-              <LinkPill link={link} />
-              <FeedbackButton />
+              <Logo href="/dashboard/floor" className="mr-auto md:hidden" />
+              <div className="mr-auto hidden md:block">
+                <LinkPill link={link} />
+              </div>
+              <div className="hidden md:block">
+                <FeedbackButton />
+              </div>
               <TopBar
                 user={{ name: user.name, email: user.email, handle: user.handle, plan: plan.name, memberSince }}
                 link={link}
                 notices={notices}
                 footer={footerLinks()}
                 version={VERSION}
+                pause={pauseState}
               />
             </div>
             {view && (
