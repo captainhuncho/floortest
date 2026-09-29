@@ -10,9 +10,9 @@ const COLLECTIONS = [
 ];
 
 const TRACKS = [
-  { title: "Night Bloom", artist: "Amankwa", bpm: 124, key: "8A", art: "from-[#6b4bff] to-[#ff5a5a]", status: "New", signals: 1 },
-  { title: "Soft Landing", artist: "Niella", bpm: 120, key: "9B", art: "from-[#2f5bff] to-[#6ff0c8]", status: "Listened", signals: 2 },
-  { title: "Dust & Honey", artist: "Mensa", bpm: 128, key: "2A", art: "from-[#b8862a] to-[#d9a441]", status: "Downloaded", signals: 3 },
+  { title: "Night Bloom", artist: "Amankwa", bpm: 124, art: "from-[#6b4bff] to-[#ff5a5a]", status: "New", signals: 1 },
+  { title: "Soft Landing", artist: "Niella", bpm: 120, art: "from-[#2f5bff] to-[#6ff0c8]", status: "Listened", signals: 2 },
+  { title: "Dust & Honey", artist: "Mensa", bpm: 128, art: "from-[#b8862a] to-[#d9a441]", status: "Downloaded", signals: 3 },
 ];
 
 const RECEIPT = ["Delivered", "Listened", "Downloaded", "Replied"];
@@ -73,7 +73,7 @@ export function HomePreview({ host }: { host: string }) {
                 <span className="w-36 shrink-0 sm:w-44">
                   <span className="block truncate font-semibold">{r.title}</span>
                   <span className="block truncate font-[family-name:var(--font-stage-mono)] text-[11px] text-[#8f8377]">
-                    {r.artist} · {r.bpm} BPM · {r.key}
+                    {r.artist} · {r.bpm} BPM
                   </span>
                 </span>
                 <span aria-hidden className="hidden h-8 flex-1 items-center gap-[3px] md:flex">
@@ -93,7 +93,7 @@ export function HomePreview({ host }: { host: string }) {
               <p className="home-label text-lime">Selected track</p>
               <p className="mt-1 text-xl font-semibold">{t.title}</p>
               <p className="font-[family-name:var(--font-stage-mono)] text-xs text-[#8f8377]">
-                {t.artist} · {t.bpm} BPM · {t.key}
+                {t.artist} · {t.bpm} BPM
               </p>
             </div>
             <div className="flex flex-wrap gap-2">

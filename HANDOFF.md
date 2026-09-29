@@ -17,6 +17,5 @@
 - Next: use the marketing, brand-voice and legal plugins on the home page copy, emails and legal pages.
 
 ## On standby
-- Musical key detection (needed before a key filter).
 - Virus scanning of uploads (paid, ~$5–6/mo).
 - Lawyer review of Terms and Privacy (drafts updated 27 Sep 2026).
