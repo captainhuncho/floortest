@@ -168,7 +168,7 @@ export default async function Account() {
           <span className="text-[13px] font-medium text-[#f1f1eb]">Current plan</span>
           <span className="text-[11px] text-[#a3a69b]">{plan.name}</span>
         </div>
-        <Link href="/dashboard/settings#plan-h" className="rounded-[10px] border border-[#6444ff] bg-[#6444ff] px-3 py-2 text-center text-[11px] font-bold text-white drop-shadow-[0_8px_10px_rgba(100,68,255,0.25)]">
+        <Link href="/dashboard/plans" className="rounded-[10px] border border-[#6444ff] bg-[#6444ff] px-3 py-2 text-center text-[11px] font-bold text-white drop-shadow-[0_8px_10px_rgba(100,68,255,0.25)]">
           See plans · free during the beta
         </Link>
       </section>

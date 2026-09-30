@@ -18,14 +18,15 @@ export default async function Notifications() {
 
   return (
     <div className="max-w-3xl space-y-10 px-4 py-6 sm:px-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Notifications</h1>
-        <p className="mt-2 text-mute">
+      <div className="font-[family-name:var(--font-stage-mono)]">
+        <p className="text-[9px] font-bold uppercase tracking-[1px] text-[#6b6e65]">Updates</p>
+        <h1 className="mt-1.5 text-[28px] font-bold tracking-[-0.8px]">Notifications</h1>
+        <p className="mt-2 text-[12px] text-mute">
           How FloorTest emails you at <span className="text-bone">{user.email}</span>. The bell in the top bar always shows everything.
         </p>
       </div>
 
-      <section className="card p-6">
+      <section className="sm:card sm:p-6">
         <NotificationsForm
           prefs={{
             mode: p.notify_submissions,
