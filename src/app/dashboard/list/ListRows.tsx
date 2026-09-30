@@ -45,14 +45,6 @@ function age(ts: number) {
   return mo < 12 ? `${mo}mo` : `${Math.round(mo / 12)}y`;
 }
 
-/** Stable warm tile colour per artist, standing in for artwork. */
-function tileStyle(seed: string) {
-  let h = 0;
-  for (const c of seed) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  const hue = h % 360;
-  return { background: `linear-gradient(135deg, hsl(${hue} 45% 32%), hsl(${(hue + 40) % 360} 55% 18%))` };
-}
-
 const initials = (s: string) =>
   s
     .split(/[\s&,]+/)
@@ -147,7 +139,7 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
 
   return (
     <>
-      <ul ref={listRef} className="@container space-y-2.5 px-3 font-[family-name:var(--font-stage-mono)] md:space-y-0 md:divide-y md:divide-line md:px-0 md:font-sans" aria-label="Review Queue">
+      <ul ref={listRef} className="@container space-y-2.5 px-3 font-[family-name:var(--font-stage-mono)] md:space-y-2 md:px-0" aria-label="Review Queue">
         {rows.map((r) => {
           const isCurrent = player.current?.id === r.id;
           const playing = isCurrent && player.playing;
@@ -160,7 +152,7 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
               data-row={r.id}
               aria-current={selected === r.id ? "true" : undefined}
               onClick={() => setSelected(r.id)}
-              className={`group transition ${selected === r.id ? "md:bg-ink-3" : "md:hover:bg-ink-2"} ${decision === "passed" ? "opacity-60" : ""}`}
+              className={`group transition ${decision === "passed" ? "opacity-60" : ""}`}
             >
               {/* Phones: Figma "track-card" */}
               <div className="flex flex-col gap-2.5 rounded-[14px] border border-line bg-ink-3 p-3 md:hidden">
@@ -241,22 +233,21 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
                 </div>
               </div>
 
-              <div className="hidden grid-cols-[auto_minmax(0,1fr)_auto] md:grid items-center gap-4 px-3 py-3.5 sm:px-4 @4xl:grid-cols-[auto_minmax(0,1fr)_minmax(0,1.15fr)_auto]">
+              <div className={`hidden grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 rounded-xl border px-4 py-3 transition md:grid @4xl:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_auto] ${selected === r.id ? "border-mute/60 bg-ink-4" : "border-line bg-ink-3 hover:border-line-2"}`}>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelected(r.id);
                     player.play(toPlayer(r), queue);
                   }}
-                  style={tileStyle(r.artist)}
-                  className="relative grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-md text-sm font-bold text-bone/90 shadow-inner"
+                  className="relative grid size-9 shrink-0 place-items-center overflow-hidden rounded-full bg-bone text-[11px] font-bold text-ink"
                   aria-label={playing ? `Pause ${r.title}` : `Play ${r.title}`}
                 >
                   <span className={`transition ${isCurrent ? "opacity-0" : "group-hover:opacity-0"}`}>{initials(r.artist)}</span>
                   <span
-                    className={`absolute inset-0 grid place-items-center bg-ink/55 transition ${isCurrent ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+                    className={`absolute inset-0 grid place-items-center bg-bone transition ${isCurrent ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
                   >
-                    <PlayIcon playing={playing} className="h-5 w-5 text-lime" />
+                    <PlayIcon playing={playing} className="h-4 w-4 text-ink" />
                   </span>
                 </button>
 
@@ -269,11 +260,11 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
                   aria-expanded={open}
                   className="min-w-0 text-left"
                 >
-                  <p className="truncate text-[17px] font-semibold tracking-tight">
+                  <p className="truncate text-[13px] font-bold">
                     {r.artist} - {r.title}
                     {r.duplicateOf && <span className="chip ml-2 align-middle border-danger/40 text-[11px] font-normal text-danger">Possible duplicate</span>}
                   </p>
-                  <p className="mt-0.5 truncate text-[15px] text-mute">{r.meta.join("  ·  ")}</p>
+                  <p className="mt-1 truncate text-[10px] text-faint">{r.meta.join(" · ")}</p>
                 </button>
 
                 <div className="hidden min-w-0 @4xl:block" onClick={(e) => e.stopPropagation()}>
@@ -318,7 +309,7 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
                   >
                     <Icon.Download />
                   </a>
-                  <span className="hidden w-12 text-right text-sm text-mute tnum sm:block" title={new Date(r.createdAt).toLocaleString()} suppressHydrationWarning>
+                  <span className="hidden w-12 text-right text-[10px] text-faint tnum sm:block" title={new Date(r.createdAt).toLocaleString()} suppressHydrationWarning>
                     {age(r.createdAt)}
                   </span>
                 </div>
@@ -333,9 +324,25 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
           );
         })}
       </ul>
-      <p className="hidden px-6 py-4 text-xs text-mute md:block">
-        ↑/↓ select · Space play · K keep · X not for me · R reply · Enter details · ←/→ 10s · U undo · {fmtCount(rows.length)}
-      </p>
+      <div className="mt-4 hidden items-center justify-between gap-4 rounded-xl border border-line bg-ink-2 px-4 py-3 font-[family-name:var(--font-stage-mono)] text-[10px] text-faint md:flex">
+        <p className="flex flex-wrap gap-x-4 gap-y-1">
+          {[
+            ["↑/↓", "select"],
+            ["Space", "play"],
+            ["K", "keep"],
+            ["X", "not for me"],
+            ["R", "reply"],
+            ["Enter", "details"],
+            ["←/→", "10s"],
+            ["U", "undo"],
+          ].map(([k, v]) => (
+            <span key={k}>
+              <span className="font-bold text-bone">{k}</span> {v}
+            </span>
+          ))}
+        </p>
+        <span className="shrink-0 text-mute">{fmtCount(rows.length)}</span>
+      </div>
     </>
   );
 }
@@ -454,7 +461,7 @@ function ActionButton({
       aria-pressed={pressed}
       aria-keyshortcuts={hint}
       title={`${tip} (${hint})`}
-      className={`grid h-10 w-10 place-items-center rounded-md transition hover:bg-ink-3 ${pressed ? "text-lime" : "text-bone/80 hover:text-bone"}`}
+      className={`grid h-10 w-10 place-items-center rounded-md transition hover:bg-ink-3 ${pressed ? "text-bone" : "text-mute hover:text-bone"}`}
     >
       {children}
     </button>

@@ -31,7 +31,7 @@ export function FilterMenu({ label, options }: { label: string; options: Option[
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-haspopup="menu"
-        className={`flex items-center gap-1.5 rounded-md border border-line bg-ink-3 px-3 py-1.5 text-[11px] font-medium transition hover:text-bone md:border-0 md:bg-transparent md:px-2.5 md:py-2 md:text-[15px] md:font-normal ${filtered ? "text-bone" : "text-mute md:text-mute"}`}
+        className={`flex items-center gap-1.5 rounded-md border border-line bg-ink-3 px-3 py-1.5 text-[11px] font-medium transition hover:text-bone md:px-2.5 md:py-1.5 md:text-[11px] ${filtered ? "text-bone" : "text-mute"}`}
       >
         {label}
         {filtered && <span className="max-w-32 truncate text-lime">: {current.label}</span>}
