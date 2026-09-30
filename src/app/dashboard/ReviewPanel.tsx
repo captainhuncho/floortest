@@ -3,7 +3,7 @@ import type { PlayerTrack } from "@/components/Player";
 import { deletesAt } from "@/lib/core";
 import {q, type Collection, type EventRow, type Sender, type Track } from "@/lib/db";
 import { fmtBytes, fmtDate, fmtDay } from "@/lib/format";
-import { MIX_STATUS, RELEASE_STATUS } from "@/lib/plans";
+import { MIX_STATUS, RELEASE_STATUS, stemsEnabled } from "@/lib/plans";
 import { addNote, deleteTrack, moveTrack, replyToSender } from "./actions";
 import { ConfirmButton, NoteForm } from "./ClientBits";
 import { DecisionRail } from "./DecisionRail";
@@ -29,6 +29,7 @@ export async function ReviewPanel({
   next: { href: string; track: PlayerTrack } | null;
   prevHref: string | null;
 }) {
+  const receiverPlan = (await q.get<{ plan: string }>("SELECT plan FROM users WHERE id = ?", t.user_id))?.plan ?? "free";
   const events = (await q.all<EventRow & { track_title: string | null }>(`SELECT e.*, t.title AS track_title FROM events e LEFT JOIN tracks t ON t.id = e.track_id
        WHERE e.sender_id = ? ORDER BY e.created_at DESC LIMIT 8`, sender.id));
   // Sent from someone's FloorTest account: show who they are on the platform.
@@ -129,9 +130,11 @@ export async function ReviewPanel({
         </div>
       )}
 
-      <div className="mt-4">
-        <StemsBox track={t} senderName={sender.name} />
-      </div>
+      {stemsEnabled(receiverPlan) && (
+        <div className="mt-4">
+          <StemsBox track={t} senderName={sender.name} />
+        </div>
+      )}
 
       {t.message && (
         <figure className="mt-6 rounded-lg border-l-2 border-lime bg-ink p-4">

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { Waveform } from "@/components/Waveform";
 import {q, type Track } from "@/lib/db";
 import { fmtDate, fmtDay, fmtTime } from "@/lib/format";
-import { RETAIN_UNREVIEWED_DAYS, SIGNALS } from "@/lib/plans";
+import { RETAIN_UNREVIEWED_DAYS, SIGNALS, stemsEnabled } from "@/lib/plans";
 import { MAX_STEMS, stemsFor } from "@/lib/stems";
 import { StemUpload } from "./StemUpload";
 
@@ -10,13 +10,14 @@ export const metadata = { title: "Your receipt — FloorTest", robots: { index: 
 
 export default async function Receipt({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const t = (await q.get<(Track & { receiver: string; collection: string | null; sender_email: string; verified_at: number | null })>(`SELECT t.*, u.name AS receiver, c.name AS collection, s.email AS sender_email, s.verified_at
+  const t = (await q.get<(Track & { receiver: string; receiver_plan: string; collection: string | null; sender_email: string; verified_at: number | null })>(`SELECT t.*, u.name AS receiver, u.plan AS receiver_plan, c.name AS collection, s.email AS sender_email, s.verified_at
        FROM tracks t JOIN users u ON u.id = t.user_id JOIN senders s ON s.id = t.sender_id
        LEFT JOIN collections c ON c.id = t.collection_id
        WHERE t.token = ?`, token));
   if (!t) notFound();
 
-  const stems = t.stems_requested_at && !t.deleted_at ? await stemsFor(t.id) : [];
+  const stemsOn = !!t.stems_requested_at && !t.deleted_at && stemsEnabled(t.receiver_plan);
+  const stems = stemsOn ? await stemsFor(t.id) : [];
   // Kept and passed are private to the receiver. Senders only see what they were promised.
   const steps = [
     { label: "Delivered", at: t.created_at, text: `On ${t.receiver}'s desk${t.collection ? ` for ${t.collection}` : ""}` },
@@ -68,7 +69,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
         })}
       </ol>
 
-      {t.stems_requested_at && !t.deleted_at && (
+      {stemsOn && (
         <StemUpload token={token} receiver={t.receiver.split(/\s+/)[0]} existing={stems.map((x) => x.name)} max={MAX_STEMS} />
       )}
 

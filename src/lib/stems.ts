@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import { IntakeError } from "./core";
 import { now, q, type Sender, type Track, type User } from "./db";
 import { APP_URL, sendMail } from "./mail";
-import { MAX_UPLOAD_BYTES } from "./plans";
+import { MAX_UPLOAD_BYTES, stemsEnabled } from "./plans";
 import { recentCount, record } from "./ratelimit";
 import { storage } from "./storage";
 import { validateAudio } from "./validate";
@@ -21,6 +21,7 @@ export async function stemsFor(trackId: number) {
 
 /** The receiver asks for stems: marks the track and emails the sender a link to their receipt. */
 export async function requestStems(user: User, t: Track) {
+  if (!stemsEnabled(user.plan)) return;
   const s = await q.get<Sender>("SELECT * FROM senders WHERE id = ?", t.sender_id);
   if (!s || t.deleted_at) return;
   const first = !t.stems_requested_at;
@@ -45,6 +46,8 @@ async function trackForStems(token: string) {
   const t = await q.get<Track>("SELECT * FROM tracks WHERE token = ?", token);
   if (!t || t.deleted_at) throw new IntakeError("This track is no longer available.", 404);
   if (!t.stems_requested_at) throw new IntakeError("Stems weren't requested for this track.", 403);
+  const plan = (await q.get<{ plan: string }>("SELECT plan FROM users WHERE id = ?", t.user_id))?.plan ?? "free";
+  if (!stemsEnabled(plan)) throw new IntakeError("Not found", 404);
   return t;
 }
 

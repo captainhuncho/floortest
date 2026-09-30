@@ -1,5 +1,6 @@
 import { currentUser } from "@/lib/auth";
 import { ownedTrack } from "@/lib/core";
+import { stemsEnabled } from "@/lib/plans";
 import { q } from "@/lib/db";
 import type { Stem } from "@/lib/stems";
 import { storage } from "@/lib/storage";
@@ -13,6 +14,7 @@ const attachment = (name: string) => `attachment; filename="${name.replace(/[^\x
 export async function GET(_req: Request, ctx: RouteContext<"/api/tracks/[id]/stems/[stemId]">) {
   const user = await currentUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
+  if (!stemsEnabled(user.plan)) return new Response("Not found", { status: 404 });
   const { id, stemId } = await ctx.params;
   const t = await ownedTrack(user.id, Number(id));
   const stem = t && (await q.get<Stem>("SELECT * FROM stems WHERE id = ? AND track_id = ?", Number(stemId), t.id));

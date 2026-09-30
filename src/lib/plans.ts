@@ -6,6 +6,13 @@ export const PLANS = {
 
 export type PlanId = keyof typeof PLANS;
 
+/**
+ * Stems (ask a sender for stems, they upload them to the track) are built but not released:
+ * they'll be a paid feature. While this is empty, nothing about stems shows and the API refuses.
+ */
+export const STEMS_PLANS: readonly PlanId[] = [];
+export const stemsEnabled = (plan: string) => (STEMS_PLANS as readonly string[]).includes(plan);
+
 export function planOf(id: string) {
   return PLANS[(id in PLANS ? id : "free") as PlanId];
 }
