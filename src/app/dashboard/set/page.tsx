@@ -14,11 +14,17 @@ export default async function PrepareForSet() {
 
   // Figma "06 Prepare for Set".
   return (
-    <div className="max-w-3xl px-3 py-3 font-[family-name:var(--font-stage-mono)] sm:px-8 sm:py-6">
-      <p className="text-[8px] font-medium tracking-[0.5px] text-white">PREPARE FOR SET</p>
-      <h1 className="text-xl font-bold text-bone sm:text-3xl">Prepare</h1>
-      <p className="mt-3 text-xs leading-[1.4] text-mute">Every track you keep lands here. Download a crate with a Rekordbox XML and playlist, or just the files.</p>
-      <div className="mt-3 flex flex-col gap-2">
+    <div className="max-w-3xl px-3 py-3 font-[family-name:var(--font-stage-mono)] sm:px-8 sm:py-6 md:max-w-6xl">
+      <div className="md:flex md:items-start md:justify-between md:gap-8">
+      <div>
+      <p className="text-[8px] font-medium tracking-[0.5px] text-white md:hidden">PREPARE FOR SET</p>
+      <h1 className="text-xl font-bold text-bone sm:text-3xl md:text-[32px]">
+        <span className="md:hidden">Prepare</span>
+        <span className="hidden md:inline">Prepare for set</span>
+      </h1>
+      <p className="mt-3 max-w-md text-xs leading-[1.4] text-mute">Every track you keep lands here. Download a crate with a Rekordbox XML and playlist, or just the files.</p>
+      </div>
+      <div className="mt-3 flex flex-col gap-2 md:mt-0 md:w-56 md:shrink-0">
         <ExportButton
           collectionId={null}
           count={kept.length}
@@ -34,8 +40,9 @@ export default async function PrepareForSet() {
         )}
         <ClearKept count={kept.length} />
       </div>
+      </div>
 
-      <section aria-labelledby="kept-h" className="mt-3 pt-2">
+      <section aria-labelledby="kept-h" className="mt-3 pt-2 md:mt-6">
         <h2 id="kept-h" className="text-[10px] font-bold tracking-[1px] text-faint">
           KEPT TRACKS ({kept.length})
         </h2>

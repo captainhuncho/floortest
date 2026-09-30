@@ -22,7 +22,7 @@ export function KeptCards({ rows }: { rows: Row[] }) {
         const on = current?.id === r.id;
         const d = (on && duration) || r.duration || 0;
         return (
-          <li key={r.id} className="flex flex-col gap-3 rounded-xl border border-line bg-ink-3 p-4">
+          <li key={r.id} className="flex flex-col gap-3 rounded-xl border border-line bg-ink-3 p-4 md:px-4 md:py-3">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => play(toPlayer(r), queue)}
@@ -42,10 +42,22 @@ export function KeptCards({ rows }: { rows: Row[] }) {
                   {[r.artist, r.genre, r.sender !== r.artist ? `via ${r.sender}` : null].filter(Boolean).join(" · ")}
                 </span>
               </Link>
-              <span className="shrink-0 text-[10px] text-faint">{ago(r.createdAt)}</span>
+              {/* Desktop: one row, as Figma "desktop-prepare-for-set" */}
+              <div className="hidden w-64 shrink-0 md:block">
+                <Waveform peaks={r.peaks} progress={on && d ? time / d : 0} onSeek={on ? seek : undefined} height={28} label={`Seek ${r.title}`} />
+              </div>
+              <span className="hidden shrink-0 items-center gap-3 md:flex">
+                <span className="rounded border border-white bg-white/[0.12] px-1.5 py-0.5 text-[9px] font-bold text-white">Kept</span>
+                <span className="w-20 text-[11px] text-mute">{r.downloaded ? "Downloaded" : r.played ? "Listened" : "Not played"}</span>
+                <span className="w-14 text-right text-[11px] font-medium text-mute">{r.bpm ? `${Math.round(r.bpm)} BPM` : ""}</span>
+                <span className="w-10 text-right text-[11px] text-faint tnum">{fmtTime(r.duration)}</span>
+              </span>
+              <span className="shrink-0 text-[10px] text-faint md:w-14 md:text-right">{ago(r.createdAt)}</span>
             </div>
-            <Waveform peaks={r.peaks} progress={on && d ? time / d : 0} onSeek={on ? seek : undefined} height={24} label={`Seek ${r.title}`} />
-            <div className="flex items-center justify-between">
+            <div className="md:hidden">
+              <Waveform peaks={r.peaks} progress={on && d ? time / d : 0} onSeek={on ? seek : undefined} height={24} label={`Seek ${r.title}`} />
+            </div>
+            <div className="flex items-center justify-between md:hidden">
               <span className="flex items-center gap-2">
                 <span className="rounded border border-white bg-white/[0.12] px-1.5 py-0.5 text-[9px] font-bold text-white">Kept</span>
                 <span className="text-[11px] text-mute">{r.downloaded ? "Downloaded" : r.played ? "Listened" : "Not played yet"}</span>
