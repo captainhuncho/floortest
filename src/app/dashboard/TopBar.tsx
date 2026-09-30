@@ -31,6 +31,7 @@ const initials = (name: string) =>
 
 export function TopBar(p: Props) {
   const [open, setOpen] = useState<Open>(null);
+  const router = useRouter();
   const root = useRef<HTMLDivElement>(null);
 
   // One popover at a time; outside click and Escape close it. ⌘K / Ctrl+K opens search.
@@ -86,7 +87,7 @@ export function TopBar(p: Props) {
 
       <div className="relative">
         <button
-          onClick={() => toggle("profile")}
+          onClick={() => (window.matchMedia("(max-width: 767px)").matches ? router.push("/dashboard/account") : toggle("profile"))}
           aria-expanded={open === "profile"}
           aria-haspopup="menu"
           className="flex items-center gap-3 rounded-full border border-[#2a2e24] bg-[#1f201c] transition hover:border-mute sm:border-line sm:bg-ink-2 sm:py-1 sm:pl-5 sm:pr-1"
