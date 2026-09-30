@@ -41,10 +41,10 @@ export default async function ReceiverPage({ params }: Props) {
       ? `${receiver.name} isn't accepting new tracks right now.`
       : null;
 
-  const custom = genresFor(collection).custom;
   const range = collection?.bpm_min && collection?.bpm_max ? `${collection.bpm_min}–${collection.bpm_max} BPM` : null;
   const wantedText = collection?.brief_wanted || "";
-  const showBrief = !closedReason && collection && (custom || range || wantedText || collection.brief_note || collection.closes_at);
+  // Always tell senders what's wanted: the collection's own genres, or the default list when none are set.
+  const showBrief = !closedReason && genres.length > 0;
   const bullets = [
     "WAV or MP3, up to 250 MB. No account needed.",
     `Only ${receiver.name} can hear or download your file.`,
@@ -75,7 +75,7 @@ export default async function ReceiverPage({ params }: Props) {
         {showBrief && (
           <section aria-label="What they're looking for" className="group-has-[[data-picked]]/page:hidden flex flex-col gap-2 rounded-xl border border-[#2c2e29] bg-[#171815] p-3">
             <p className="text-[10px] font-bold uppercase tracking-[0.5px] text-[#a3a69b]">What I&apos;m looking for</p>
-            {custom && (
+            {(
               <ul className="flex flex-wrap gap-1.5">
                 {genres.map((g) => (
                   <li key={g} className="rounded-full border border-[#2c2e29] bg-[#10110f] px-2 py-1 text-[10px] font-bold">
@@ -86,8 +86,8 @@ export default async function ReceiverPage({ params }: Props) {
             )}
             {wantedText && <p className="text-[11px] font-bold">{wantedText}</p>}
             {range && <p className="text-[11px] font-bold">{range}</p>}
-            {collection!.closes_at && <p className="text-[11px] font-bold">Open until {fmtDay(collection!.closes_at, receiver.tz)}</p>}
-            {collection!.brief_note && <p className="text-[11px] italic leading-4 text-[#a3a69b]">&ldquo;{collection!.brief_note}&rdquo;</p>}
+            {collection?.closes_at && <p className="text-[11px] font-bold">Open until {fmtDay(collection.closes_at, receiver.tz)}</p>}
+            {collection?.brief_note && <p className="text-[11px] italic leading-4 text-[#a3a69b]">&ldquo;{collection.brief_note}&rdquo;</p>}
           </section>
         )}
       </div>
