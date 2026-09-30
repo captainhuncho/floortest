@@ -13,6 +13,7 @@ import { fmtDuration, genreMix, homeStats } from "@/lib/stats";
 import { DailyColumns, GenreBars } from "./HomeCharts";
 import { SwitchCollection } from "./SwitchCollection";
 import { CopyLinkBox } from "./CopyLinkBox";
+import { SendMusicCard } from "./SendMusicCard";
 import { UpNext } from "./UpNext";
 
 export const metadata = { title: "The Floor — FloorTest" };
@@ -80,6 +81,14 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   ).map((t) => ({ ...t, peaks: t.peaks ? JSON.parse(t.peaks) : null, played: !!t.played_at }));
 
   const mine = await recentAudit(user.id, 6);
+
+  // FloorTest users you've sent music to from your account, most recent first.
+  const recentSends = await q.all<{ handle: string; name: string }>(
+    `SELECT u.handle, u.name FROM senders s JOIN users u ON u.id = s.user_id
+     WHERE s.account_id = ? AND u.suspended_at IS NULL
+     GROUP BY u.id, u.handle, u.name ORDER BY MAX(s.created_at) DESC LIMIT 6`,
+    user.id,
+  );
 
   const contacts = (await q.all<{ id: number; name: string; verified_at: number | null; sent: number; kept: number }>(`SELECT s.id, s.name, s.verified_at, COUNT(t.id) AS sent, COUNT(CASE WHEN t.decision = 'kept' THEN 1 END) AS kept
        FROM senders s JOIN tracks t ON t.sender_id = s.id WHERE s.user_id = ?
@@ -158,14 +167,16 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
       </div>
 
 
+      <SendMusicCard recent={recentSends} />
+
       <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
         <Stat label="Received this week" value={String(stats.receivedWeek)} note={delta(stats.receivedWeek, stats.receivedPrev)} />
-        <Stat label="Waiting for a decision" value={String(stats.waiting)} note={stats.decisionRate !== null ? `${stats.decisionRate}% of last 30 days decided` : undefined} />
+        <Stat label="Waiting for decision" value={String(stats.waiting)} note={stats.decisionRate !== null ? `${stats.decisionRate}% in last 30 days` : undefined} />
         <Stat label="Kept this week" value={String(stats.keptWeek)} note={delta(stats.keptWeek, stats.keptPrev)} />
         <Stat
           label="Time to first listen"
           value={stats.medianListenMs !== null ? fmtDuration(stats.medianListenMs) : "—"}
-          note={stats.listenedSample ? `Median, last 30 days (${stats.listenedSample} tracks)` : "Listen to a track to start this"}
+          note={stats.listenedSample ? `last 30 days (${stats.listenedSample} tracks)` : "Listen to a track to start this"}
         />
       </div>
 
