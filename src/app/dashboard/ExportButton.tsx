@@ -39,7 +39,7 @@ export function ExportButton({
   };
 
   return (
-    <div className={buttonClassName ? "relative w-full" : "relative"}>
+    <div className={buttonClassName?.includes("w-full") ? "relative w-full" : "relative"}>
       <button className={buttonClassName ?? `${variant === "lime" ? "btn-lime" : "btn-ghost"} btn-sm`} disabled={!count} onClick={() => setOpen((o) => !o)} aria-expanded={open}>
         {label ?? "Prepare for set"} ({count})
       </button>

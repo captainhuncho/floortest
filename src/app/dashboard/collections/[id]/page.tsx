@@ -7,9 +7,7 @@ import { fmtDay } from "@/lib/format";
 import { genresFor, MIX_STATUS } from "@/lib/plans";
 import { ExportButton } from "../../ExportButton";
 import { ListRows, type ListRow } from "../../list/ListRows";
-import { loadRows, reviewHref } from "../../rows";
-import { TrackList } from "../../TrackList";
-import { CollectionDetailHeader } from "../CollectionForms";
+import { CollectionDetailHeader, EditCollectionInfo } from "../CollectionForms";
 
 export const metadata = { title: "Collection — FloorTest" };
 
@@ -20,7 +18,6 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
   const all = await collectionsFor(user.id);
   const c = all.find((x) => String(x.id) === id);
   if (!c) notFound();
-  const rows = await loadRows(user.id, { collectionId: c.id });
   const receiving = c.id === user.active_collection_id;
   const genres = genresFor(c);
 
@@ -104,45 +101,74 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
           <span className="font-normal text-faint">·</span>
           <span>{c.count} TOTAL</span>
         </p>
+      </div>
+
+      {/* Desktop: Figma "desktop-collection-detail" */}
+      <div className="hidden max-w-6xl flex-col gap-5 px-8 pb-5 pt-6 font-[family-name:var(--font-stage-mono)] text-bone md:flex">
+        <div>
+          <p className="text-[11px] text-faint">
+            <Link href="/dashboard/collections" className="hover:text-bone">
+              ← Collections
+            </Link>{" "}
+            / <span className="text-bone">{c.name}</span>
+          </p>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
+            <h1 className="flex items-center gap-3 text-[32px] font-bold">
+              {c.name}
+              {receiving && !isClosed(c) && (
+                <span className="flex items-center gap-1 rounded-md border border-white bg-white/10 px-2 py-1 text-[8px] font-bold tracking-[0.5px]">
+                  <span aria-hidden className="size-[5px] rounded-full bg-white" />
+                  RECEIVING
+                </span>
+              )}
+              {isClosed(c) && <span className="rounded-md border border-faint px-2 py-1 text-[8px] font-bold tracking-[0.5px] text-mute">CLOSED</span>}
+            </h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <EditCollectionInfo c={editable} receiving={receiving} closed={isClosed(c)} canDelete={all.length > 1} />
+              <ExportButton collectionId={c.id} count={c.count} whole label="Download Originals" buttonClassName="rounded-md bg-bone px-3 py-1.5 text-[11px] font-bold text-ink" />
+            </div>
+          </div>
+        </div>
+        <section className="grid grid-cols-[1.4fr_0.8fr_1.6fr] gap-6 rounded-xl border border-line bg-ink-3 px-4 py-3.5">
+          <div className="min-w-0">
+            <p className="text-[9px] font-bold uppercase text-faint">Genres</p>
+            <p className="mt-1 truncate text-[12px]">{genres.custom ? genres.list.join(", ") : c.brief_wanted || "Any"}</p>
+          </div>
+          <div>
+            <p className="text-[9px] font-bold uppercase text-faint">BPM range</p>
+            <p className="mt-1 text-[12px]">{c.bpm_min && c.bpm_max ? `${c.bpm_min} – ${c.bpm_max} BPM` : "Any"}</p>
+          </div>
+          <div className="min-w-0">
+            <p className="text-[9px] font-bold uppercase text-faint">Submission brief</p>
+            <p className="mt-1 truncate text-[12px] italic">{c.brief_note ? `“${c.brief_note}”` : "—"}</p>
+          </div>
+        </section>
+        <dl className="grid grid-cols-3 gap-4">
+          {[
+            ["Needs review", c.needs_review],
+            ["Kept", c.kept],
+            ["Total received", c.count],
+          ].map(([k, v]) => (
+            <div key={k} className="flex flex-col-reverse gap-1 rounded-xl border border-line bg-ink-3 px-4 py-3">
+              <dt className="sr-only">{k}</dt>
+              <dd className="text-[16px] font-bold">
+                {v} track{v === 1 ? "" : "s"}
+              </dd>
+              <span aria-hidden className="text-[9px] font-bold uppercase text-faint">
+                {k}
+              </span>
+            </div>
+          ))}
+        </dl>
+      </div>
+
+      {/* One list for every screen size, so keyboard shortcuts and the player are registered once. */}
+      <div className="max-w-6xl pb-4 font-[family-name:var(--font-stage-mono)] md:px-8">
         {cards.length ? (
           <ListRows rows={cards} statusTag />
         ) : (
-          <p className="rounded-xl border border-line bg-ink-3 p-4 text-[12px] text-mute">
-            This folder is empty. Tracks sent while it&apos;s receiving land here.
-          </p>
+          <p className="mx-4 rounded-xl border border-line bg-ink-3 p-4 text-[12px] text-mute md:mx-0">This folder is empty. Tracks sent while it&apos;s receiving land here.</p>
         )}
-      </div>
-
-      <div className="hidden max-w-5xl px-4 py-6 sm:px-8 md:block">
-        <Link href="/dashboard/collections" className="text-sm text-mute hover:text-bone">
-          ← Collections
-        </Link>
-        <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">
-              {c.name}
-              {receiving && <span className="chip ml-3 align-middle border-lime/50 text-lime">Receiving</span>}
-            </h1>
-            <p className="mt-2 text-mute">
-              {c.count} track{c.count === 1 ? "" : "s"} · {c.needs_review} need review · {c.kept} kept
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {c.needs_review > 0 && (
-              <Link href={`/dashboard?view=queue&c=${c.id}`} className="btn-ghost btn-sm">
-                Review ({c.needs_review})
-              </Link>
-            )}
-            <ExportButton collectionId={c.id} count={c.count} whole label="Download collection" />
-          </div>
-        </div>
-        <div className="mt-6">
-          {rows.length ? (
-            <TrackList rows={rows} selectedId={null} hrefFor={Object.fromEntries(rows.map((r) => [r.id, reviewHref(r.id)]))} />
-          ) : (
-            <p className="card p-6 text-mute">This folder is empty. Tracks sent while it&apos;s receiving land here.</p>
-          )}
-        </div>
       </div>
     </>
   );

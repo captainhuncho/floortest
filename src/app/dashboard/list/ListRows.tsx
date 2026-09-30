@@ -264,7 +264,14 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
                     {r.artist} - {r.title}
                     {r.duplicateOf && <span className="chip ml-2 align-middle border-danger/40 text-[11px] font-normal text-danger">Possible duplicate</span>}
                   </p>
-                  <p className="mt-1 truncate text-[10px] text-faint">{r.meta.join(" · ")}</p>
+                  <p className="mt-1 flex items-center gap-2 truncate text-[10px] text-faint">
+                    <span className="truncate">{r.meta.join(" · ")}</span>
+                    {statusTag && (
+                      <span className={`shrink-0 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase ${decision === "kept" ? "bg-bone/10 text-bone" : "bg-line text-mute"}`}>
+                        {decision === "kept" ? "Kept" : decision === "passed" ? "Not for me" : "Needs review"}
+                      </span>
+                    )}
+                  </p>
                 </button>
 
                 <div className="hidden min-w-0 @4xl:block" onClick={(e) => e.stopPropagation()}>
