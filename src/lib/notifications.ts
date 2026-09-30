@@ -9,13 +9,16 @@ const shortDate = (ts: number, tz: string) => new Date(ts).toLocaleDateString("e
 
 /** New submissions and auto-deletions since the bell was last opened, plus live alerts about the link. */
 export async function notificationsFor(user: User) {
-  const seen = (await q.get<{ s: number | null }>("SELECT notifications_seen_at AS s FROM users WHERE id = ?", user.id))?.s ?? 0;
+  const row = await q.get<{ s: number | null; c: number | null }>("SELECT notifications_seen_at AS s, notifications_cleared_at AS c FROM users WHERE id = ?", user.id);
+  const seen = row?.s ?? 0;
+  const cleared = row?.c ?? 0;
   const events = await q.all<{ id: number; type: string; track_id: number; created_at: number; title: string; sender: string; collection: string | null }>(
     `SELECT e.id, e.type, e.track_id, e.created_at, t.title, s.name AS sender, c.name AS collection
      FROM events e JOIN senders s ON s.id = e.sender_id LEFT JOIN tracks t ON t.id = e.track_id
      LEFT JOIN collections c ON c.id = t.collection_id
-     WHERE e.user_id = ? AND e.type IN ('submitted', 'expired') ORDER BY e.created_at DESC LIMIT 20`,
+     WHERE e.user_id = ? AND e.created_at > ? AND e.type IN ('submitted', 'expired') ORDER BY e.created_at DESC LIMIT 20`,
     user.id,
+    cleared,
   );
 
   const items: Notice[] = events.map((e) => ({
@@ -43,7 +46,7 @@ export async function notificationsFor(user: User) {
       tone: "alert",
     });
   if ((await capacity(user)).full)
-    alerts.push({ id: "full", title: "Your desk is full", detail: "Your link has stopped taking uploads.", href: "/dashboard/settings", at: t, unread: true, tone: "alert" });
+    alerts.push({ id: "full", title: "Your desk is full", detail: "Your link has stopped taking uploads.", href: "/dashboard/plans", at: t, unread: true, tone: "alert" });
   if (c && isClosed(c))
     alerts.push({ id: "closed", title: `“${c.name}” is closed`, detail: "Your link isn't taking uploads. Pick an open collection.", href: "/dashboard/collections", at: c.closes_at!, unread: c.closes_at! > seen, tone: "alert" });
   else if (c?.closes_at && c.closes_at - t < 3 * DAY)

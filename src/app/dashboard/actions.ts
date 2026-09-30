@@ -316,6 +316,13 @@ export async function blockSender(senderId: number, blocked: boolean) {
 
 /* Top bar */
 
+/** "Clear all": the bell starts empty again. Live alerts (desk full, paused) stay while they're true. */
+export async function clearNotifications() {
+  const u = await requireUser();
+  await q.run("UPDATE users SET notifications_cleared_at = ?, notifications_seen_at = ? WHERE id = ?", now(), now(), u.id);
+  done();
+}
+
 export async function markNotificationsRead() {
   const u = await requireUser();
   await q.run("UPDATE users SET notifications_seen_at = ? WHERE id = ?", now(), u.id);

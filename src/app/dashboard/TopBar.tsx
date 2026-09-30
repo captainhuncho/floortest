@@ -7,7 +7,7 @@ import { createPortal } from "react-dom";
 import { useToast } from "@/components/Toast";
 import type { Notice } from "@/lib/notifications";
 import { logout } from "../(auth)/actions";
-import { markNotificationsRead, quickSearch, type SearchHit } from "./actions";
+import { clearNotifications, markNotificationsRead, quickSearch, type SearchHit } from "./actions";
 import { PauseSwitch, type PauseState } from "./PauseSwitch";
 
 type Props = {
@@ -37,7 +37,8 @@ export function TopBar(p: Props) {
   // One popover at a time; outside click and Escape close it. ⌘K / Ctrl+K opens search.
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
-      if (open && open !== "search" && open !== "qr" && !root.current?.contains(e.target as Node)) setOpen(null);
+      const t = e.target as Element;
+      if (open && open !== "search" && open !== "qr" && !root.current?.contains(t) && !t.closest?.("[data-sheet]")) setOpen(null);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(null);
@@ -82,7 +83,13 @@ export function TopBar(p: Props) {
             </span>
           )}
         </button>
-        {open === "bell" && <Notifications items={p.notices.items} unread={p.notices.unread} onNavigate={() => setOpen(null)} />}
+        {open === "bell" &&
+          (window.matchMedia("(max-width: 767px)").matches ? (
+            // Phones: a centred sheet over the page, so nothing runs off screen.
+            createPortal(<Notifications sheet items={p.notices.items} unread={p.notices.unread} onNavigate={() => setOpen(null)} />, document.body)
+          ) : (
+            <Notifications items={p.notices.items} unread={p.notices.unread} onNavigate={() => setOpen(null)} />
+          ))}
       </div>
 
       <div className="relative">
@@ -291,28 +298,49 @@ function QrDialog({ handle, link, onClose }: { handle: string; link: string; onC
   );
 }
 
-function Notifications({ items, unread, onNavigate }: { items: Notice[]; unread: number; onNavigate: () => void }) {
-  const [, start] = useTransition();
+function Notifications({ items, unread, onNavigate, sheet = false }: { items: Notice[]; unread: number; onNavigate: () => void; sheet?: boolean }) {
+  const [clearing, start] = useTransition();
+  const [list, setList] = useState(items);
+  const router = useRouter();
   // Opening the bell marks everything as seen; the dots stay until the next visit.
   useEffect(() => {
     if (unread) start(() => markNotificationsRead());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  return (
-    <Panel>
-      <div className="flex items-center justify-between border-b border-line px-5 py-4">
+  const clearable = list.some((n) => n.tone !== "alert");
+  const body = (
+    <>
+      <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
         <p className="font-semibold">
           Notifications {unread > 0 && <span className="ml-1 font-mono text-xs uppercase text-lime">{unread} new</span>}
         </p>
-        <Link href="/dashboard/notifications" onClick={onNavigate} className="text-sm text-mute underline-offset-4 hover:text-bone hover:underline">
-          Email settings
-        </Link>
+        <div className="flex items-center gap-3">
+          {clearable && (
+            <button
+              type="button"
+              disabled={clearing}
+              onClick={() =>
+                start(async () => {
+                  await clearNotifications();
+                  setList((l) => l.filter((n) => n.tone === "alert"));
+                  router.refresh();
+                })
+              }
+              className="text-sm text-mute underline-offset-4 hover:text-bone hover:underline disabled:opacity-50"
+            >
+              {clearing ? "Clearing…" : "Clear all"}
+            </button>
+          )}
+          <button type="button" onClick={onNavigate} aria-label="Close notifications" className="grid size-8 place-items-center rounded-full text-lg leading-none text-mute hover:bg-ink-3 hover:text-bone">
+            ✕
+          </button>
+        </div>
       </div>
-      {items.length === 0 ? (
-        <p className="px-5 py-10 text-center text-mute">Nothing yet. New submissions show up here.</p>
+      {list.length === 0 ? (
+        <p className="px-5 py-10 text-center text-mute">You&apos;re all caught up. New submissions show up here.</p>
       ) : (
         <ul>
-          {items.map((n) => (
+          {list.map((n) => (
             <li key={n.id} className="border-b border-line last:border-b-0">
               <Link href={n.href} onClick={onNavigate} className="flex gap-3 px-5 py-3.5 hover:bg-ink-3">
                 <span
@@ -331,7 +359,23 @@ function Notifications({ items, unread, onNavigate }: { items: Notice[]; unread:
           ))}
         </ul>
       )}
-    </Panel>
+      <Link href="/dashboard/notifications" onClick={onNavigate} className="block border-t border-line px-5 py-3 text-center text-sm text-mute hover:text-bone">
+        Email settings
+      </Link>
+    </>
+  );
+  if (!sheet) return <Panel>{body}</Panel>;
+  return (
+    <div data-sheet className="fixed inset-0 z-[60] flex items-start justify-center bg-black/60 px-3 pt-20 backdrop-blur-[2px]" onClick={onNavigate}>
+      <div
+        role="dialog"
+        aria-label="Notifications"
+        onClick={(e) => e.stopPropagation()}
+        className="max-h-[calc(100dvh-7rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-line bg-ink-2 text-bone shadow-2xl shadow-black/70"
+      >
+        {body}
+      </div>
+    </div>
   );
 }
 

@@ -374,4 +374,11 @@ alter table users add column notify_product int not null default 0;
 alter table tracks add column expiry_warned_at bigint;
 `,
   },
+  {
+    // "Clear all" in the bell hides everything before this moment.
+    id: "0017_notifications_cleared",
+    sql: `
+alter table users add column notifications_cleared_at bigint;
+`,
+  },
 ];
