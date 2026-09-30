@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { Logo } from "@/components/Logo";
 import { Waveform } from "@/components/Waveform";
 import {q, type Track } from "@/lib/db";
 import { fmtDate, fmtDay, fmtTime } from "@/lib/format";
@@ -25,59 +24,64 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
   ];
 
   return (
-    <main className="mx-auto max-w-xl px-4 py-8 sm:py-12">
-      <Logo className="mb-12" />
-      <p className="label">Private receipt</p>
-      <h1 className="mt-2 text-3xl font-bold tracking-tight">{t.title}</h1>
-      <p className="text-mute">
-        {t.artist} · sent to {t.receiver}
-        {t.duration ? ` · ${fmtTime(t.duration)}` : ""}
-      </p>
+    <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-6 bg-[#10110f] px-5 py-8 font-[family-name:var(--font-stage-mono)] text-[#f1f1eb] sm:py-12">
+      <div className="flex flex-col gap-1.5">
+        <p className="text-[9px] font-bold uppercase tracking-[1px] text-[#6b6e65]">Private receipt</p>
+        <h1 className="break-words text-[28px] font-bold tracking-[-0.8px]">{t.title}</h1>
+        <p className="text-[11px] text-[#a3a69b]">
+          {t.artist} · sent to {t.receiver}
+          {t.duration ? ` · ${fmtTime(t.duration)}` : ""}
+        </p>
+      </div>
       {t.peaks && (
-        <div className="mt-8">
-          <Waveform peaks={JSON.parse(t.peaks)} height={48} dim />
+        <div className="rounded-xl border border-[#2c2e29] bg-[#1e1f1b] px-1 py-1">
+          <Waveform peaks={JSON.parse(t.peaks)} height={48} />
         </div>
       )}
-      <ol className="mt-10">
+      <ol className="rounded-2xl border border-[#2c2e29] bg-[#1e1f1b] p-4">
         {steps.map((s, i) => {
           const done = !!s.at;
           return (
-            <li key={s.label} className="relative flex gap-4 pb-7 last:pb-0">
-              {i < steps.length - 1 && <span className="absolute left-[9px] top-6 h-[calc(100%-12px)] w-px bg-line" />}
+            <li key={s.label} className="relative flex gap-3 pb-5 last:pb-0">
+              {i < steps.length - 1 && <span className="absolute left-[9px] top-5 h-[calc(100%-20px)] w-0.5 rounded-[1px] bg-[#2c2e29]" />}
               <span
                 aria-hidden
-                className={`mt-1 grid h-5 w-5 shrink-0 place-items-center rounded-full border text-[12px] font-bold ${
-                  done ? "border-lime bg-lime text-ink" : "border-line bg-ink"
+                className={`grid size-5 shrink-0 place-items-center rounded-full text-[12px] font-bold ${
+                  done ? "bg-[#2c2e29] text-lime" : "bg-[#2c2e29]"
                 }`}
               >
-                {done ? "✓" : ""}
+                {done ? "✓" : <span className="size-1.5 rounded-full bg-[#10110f]" />}
               </span>
-              <div>
-                <p className={`font-medium ${done ? "" : "text-mute"}`}>
+              <div className="min-w-0 pt-px">
+                <p className={`text-[12px] font-bold ${done ? "" : "text-[#6b6e65]"}`}>
                   {s.label} <span className="sr-only">{done ? "(done)" : "(not yet)"}</span>
                 </p>
-                <p className="text-sm text-mute">{done ? `${fmtDate(s.at!)} · ${s.text}` : `Not yet · ${s.text}`}</p>
+                <p className={`text-[10px] ${done ? "text-[#6b6e65]" : "text-[#4a4d44]"}`}>
+                  {done ? `${fmtDate(s.at!)} · ${s.text}` : `Not yet · ${s.text}`}
+                </p>
               </div>
             </li>
           );
         })}
       </ol>
 
-      <section className="mt-10 space-y-2 rounded-lg border border-line p-4 text-sm text-mute">
+      <section className="flex flex-col gap-2.5 rounded-[14px] border border-[#2c2e29] bg-[#171815] p-3.5 text-[10px] text-[#6b6e65]">
         <p>
-          Updates go to <span className="text-bone">{t.sender_email}</span>
+          Updates go to <span className="font-bold text-[#a3a69b]">{t.sender_email}</span>
           {t.verified_at ? " (confirmed)." : ". Confirm your email from the delivery email so the receiver sees you as verified."}
         </p>
+        <hr className="border-[#2c2e29]" />
         <p>Only {t.receiver} can hear or download your file. It&apos;s never shared publicly.</p>
+        <hr className="border-[#2c2e29]" />
         <p>
           {t.deleted_at
             ? `The file was deleted on ${fmtDay(t.deleted_at)}.`
             : `Files are deleted within ${RETAIN_UNREVIEWED_DAYS} days of delivery unless ${t.receiver} keeps them.`}
         </p>
       </section>
-      <p className="mt-6 text-sm text-mute">
+      <p className="text-[10px] text-[#4a4d44]">
         No account needed. Bookmark this page to check in any time, or{" "}
-        <a href="/sent" className="text-bone underline underline-offset-4">
+        <a href="/sent" className="text-[#6b6e65] underline">
           see everything you&apos;ve sent
         </a>
         .

@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Logo } from "@/components/Logo";
 import { activeCollection, capacity, isClosed, isPaused, pausedMessage, userByHandle } from "@/lib/core";
 import { fmtDay } from "@/lib/format";
-import { genresFor, RETAIN_PASSED_DAYS, RETAIN_UNREVIEWED_DAYS } from "@/lib/plans";
+import { genresFor, RETAIN_UNREVIEWED_DAYS } from "@/lib/plans";
 import { StagePage } from "./StagePage";
 import { SubmitForm } from "./SubmitForm";
 
@@ -51,46 +50,79 @@ export default async function ReceiverPage({ params, searchParams }: Props) {
     return <StagePage receiver={receiver} collection={collection} accepting={!closedReason} closedReason={closedReason} note={note} />;
   }
 
+  const custom = genresFor(collection).custom;
+  const range = collection?.bpm_min && collection?.bpm_max ? `${collection.bpm_min}–${collection.bpm_max} BPM` : null;
+  const wantedText = collection?.brief_wanted || "";
+  const showBrief = !closedReason && collection && (custom || range || wantedText || collection.brief_note || collection.closes_at);
+  const bullets = [
+    "WAV or MP3, up to 250 MB. No account needed.",
+    `Only ${receiver.name} can hear or download your file.`,
+    `Files that aren't kept are deleted within ${RETAIN_UNREVIEWED_DAYS} days.`,
+    "You'll get a private receipt and an email when it's listened to, downloaded or replied to.",
+  ];
+
   return (
-    <main className="mx-auto flex min-h-dvh max-w-xl flex-col px-4 py-8 sm:py-12">
-      <Logo className="mb-12" />
-      <p className="label">Send music to</p>
-      <h1 className="mt-2 text-4xl font-bold tracking-tight sm:text-5xl">
-        {receiver.name}
-        {receiver.identity_status === "verified" && (
-          <span title="Verified by FloorTest" className="chip ml-3 align-middle border-lime/60 text-sm font-medium text-lime">
-            ✓ Verified
-          </span>
-        )}
-      </h1>
-      {collection && !closedReason && (
-        <p className="mt-4 inline-flex w-fit flex-wrap items-center gap-x-2 gap-y-1 rounded-full border border-lime/40 bg-lime/5 px-3 py-1 text-sm">
-          <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-lime" />
-          Receiving for <span className="font-medium text-lime">{collection.name}</span>
-          {collection.closes_at && <span className="text-mute">· closes {fmtDay(collection.closes_at, receiver.tz)}</span>}
-        </p>
-      )}
-      <div className="mt-10">
-        {closedReason ? (
-          <div className="card p-6" role="status">
-            <p className="font-medium">{closedReason}</p>
-            {note && <p className="mt-3 whitespace-pre-wrap border-l-2 border-lime pl-3">{note}</p>}
-            <p className="mt-2 text-sm text-mute">This link stays the same. Check back soon.</p>
-          </div>
-        ) : (
-          <SubmitForm handle={receiver.handle} receiverName={receiver.name} genres={genres} />
+    <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-6 bg-[#10110f] px-[18px] py-8 font-[family-name:var(--font-stage-mono)] text-[#f1f1eb] sm:py-12">
+      <div className="flex flex-col gap-3">
+        <p className="text-[10px] font-bold uppercase tracking-[1px] text-[#a3a69b]">Send music to</p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="break-words text-[clamp(2rem,12vw,3.5rem)] font-bold leading-none">
+            {receiver.name}
+            {receiver.identity_status === "verified" && (
+              <span title="Verified by FloorTest" className="ml-2 align-middle text-base text-lime" aria-label="Verified">
+                ✓
+              </span>
+            )}
+          </h1>
+          {collection && !closedReason && (
+            <p className="inline-flex items-center gap-2 rounded-full border border-[#2c2e29] bg-[#171815] px-2.5 py-1.5 text-[11px] font-bold">
+              <span aria-hidden className="size-1.5 rounded-full bg-lime" />
+              Receiving for <span className="text-lime">{collection.name}</span>
+            </p>
+          )}
+        </div>
+        {showBrief && (
+          <section aria-label="What they're looking for" className="flex flex-col gap-2 rounded-xl border border-[#2c2e29] bg-[#171815] p-3">
+            <p className="text-[10px] font-bold uppercase tracking-[0.5px] text-[#a3a69b]">What I&apos;m looking for</p>
+            {custom && (
+              <ul className="flex flex-wrap gap-1.5">
+                {genres.map((g) => (
+                  <li key={g} className="rounded-full border border-[#2c2e29] bg-[#10110f] px-2 py-1 text-[10px] font-bold">
+                    {g}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {wantedText && <p className="text-[11px] font-bold">{wantedText}</p>}
+            {range && <p className="text-[11px] font-bold">{range}</p>}
+            {collection!.closes_at && <p className="text-[11px] font-bold">Open until {fmtDay(collection!.closes_at, receiver.tz)}</p>}
+            {collection!.brief_note && <p className="text-[11px] italic leading-4 text-[#a3a69b]">&ldquo;{collection!.brief_note}&rdquo;</p>}
+          </section>
         )}
       </div>
-      <ul className="mt-6 space-y-1 text-sm text-mute" aria-label="How your file is handled">
-        <li>WAV or MP3, up to 250 MB. No account needed.</li>
-        <li>Only {receiver.name} can hear or download your file.</li>
-        <li>Tracks {receiver.name} doesn&apos;t decide on are deleted after {RETAIN_UNREVIEWED_DAYS} days, and ones marked “Not for me” {RETAIN_PASSED_DAYS} days later. Kept tracks stay until they&apos;re deleted.</li>
-        <li>You&apos;ll get a private receipt and an email when it&apos;s listened to, downloaded or replied to.</li>
+      <div>
+        {closedReason ? (
+          <div className="rounded-2xl border border-[#2c2e29] bg-[#171815] p-5" role="status">
+            <p className="font-bold">{closedReason}</p>
+            {note && <p className="mt-3 whitespace-pre-wrap border-l-2 border-lime pl-3 text-[13px]">{note}</p>}
+            <p className="mt-2 text-[12px] text-[#85887f]">This link stays the same. Check back soon.</p>
+          </div>
+        ) : (
+          <SubmitForm handle={receiver.handle} receiverName={receiver.name} genres={genres} look="mobile" />
+        )}
+      </div>
+      <ul className="flex flex-col gap-2.5" aria-label="How your file is handled">
+        {bullets.map((b) => (
+          <li key={b} className="flex gap-2.5 text-[11px] font-medium leading-4 text-[#85887f]">
+            <span aria-hidden>→</span>
+            {b}
+          </li>
+        ))}
       </ul>
       {receiver.identity_status !== "verified" && (
-        <p className="mt-6 text-xs text-mute">
+        <p className="mt-auto pt-4 text-center text-[12px] font-medium leading-[18px] text-[#85887f]">
           Not sure this is really {receiver.name}?{" "}
-          <a href={`/contact?report=${receiver.handle}`} className="underline underline-offset-4 hover:text-bone">
+          <a href={`/contact?report=${receiver.handle}`} className="underline hover:text-[#f1f1eb]">
             Report impersonation
           </a>
         </p>
