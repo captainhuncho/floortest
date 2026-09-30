@@ -34,3 +34,31 @@ test("rejects disguised and truncated files", async () => {
   const oneFrame = mp3().slice(0, 420); // a lone sync word is not enough
   assert.equal((await validateAudio(reader(oneFrame))).ok, false);
 });
+
+const join = (...parts: Uint8Array[]) => {
+  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  let o = 0;
+  for (const p of parts) (out.set(p, o), (o += p.length));
+  return out;
+};
+const junk = (n: number) => new Uint8Array(n).fill(0x4d); // stand-in for a hidden payload
+
+test("rejects files with a payload hidden after real audio", async () => {
+  assert.equal((await validateAudio(reader(join(wav(), junk(400 * 1024))))).ok, false);
+  // A long MP3 whose last 64 KB is not audio or a tag.
+  const frames = new Uint8Array(417 * 3000);
+  for (let i = 0; i < 3000; i++) frames.set([0xff, 0xfb, 0x90, 0x00], i * 417);
+  assert.equal((await validateAudio(reader(join(frames, junk(128 * 1024))))).ok, false);
+  assert.deepEqual(await validateAudio(reader(frames)), { ok: true, kind: "mp3" });
+});
+
+test("allows normal trailing metadata and streaming WAV headers", async () => {
+  assert.deepEqual(await validateAudio(reader(join(wav(), junk(4096)))), { ok: true, kind: "wav" });
+  const streaming = wav();
+  new DataView(streaming.buffer).setUint32(4, 0xffffffff, true);
+  assert.deepEqual(await validateAudio(reader(join(streaming, junk(400 * 1024)))), { ok: true, kind: "wav" });
+  const frames = new Uint8Array(417 * 3000);
+  for (let i = 0; i < 3000; i++) frames.set([0xff, 0xfb, 0x90, 0x00], i * 417);
+  const id3v1 = new TextEncoder().encode("TAG" + " ".repeat(125));
+  assert.deepEqual(await validateAudio(reader(join(frames, id3v1))), { ok: true, kind: "mp3" });
+});

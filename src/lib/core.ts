@@ -256,7 +256,7 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
         meta.genre,
         up.file_key,
         meta.originalName,
-        up.ext === ".wav" ? "audio/wav" : "audio/mpeg",
+        check.kind === "wav" ? "audio/wav" : "audio/mpeg", // from the file's contents, not its name
         head.size,
         analysis.duration,
         analysis.bpm,

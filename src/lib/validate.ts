@@ -1,7 +1,8 @@
 /**
  * Structural validation of uploaded audio. This is not antivirus scanning: it rejects anything
  * that isn't a well-formed WAV or MPEG audio stream, which covers disguised executables, archives
- * and documents. A malware scanner (e.g. ClamAV) should be added before public launch.
+ * and documents. It also checks the end of the file, so nothing can ride along after real audio
+ * (a "polyglot" file). Files are only ever served as audio attachments, never executed.
  */
 type Reader = { size: number; read(start: number, end: number): Promise<Uint8Array> };
 
@@ -11,6 +12,11 @@ export async function validateAudio(file: Reader): Promise<{ ok: true; kind: "wa
   const view = new DataView(head.buffer, head.byteOffset, head.byteLength);
 
   if (ascii(0, 4) === "RIFF" && ascii(8, 12) === "WAVE") {
+    // The RIFF header states the file's length. Anything well beyond it is a hidden payload.
+    const riffEnd = 8 + view.getUint32(4, true);
+    const declared = view.getUint32(4, true);
+    // Some recorders leave the length as 0 or 0xFFFFFFFF while streaming; only trust a real value.
+    if (declared > 36 && declared !== 0xffffffff && file.size > riffEnd + TRAILER_ALLOWANCE) return { ok: false, reason: "This WAV file has unexpected data after the audio." };
     let off = 12;
     let fmtOk = false;
     while (off + 8 <= head.length) {
@@ -31,7 +37,11 @@ export async function validateAudio(file: Reader): Promise<{ ok: true; kind: "wa
           [8, 16, 24, 32].includes(bits);
         if (!fmtOk) return { ok: false, reason: "Unsupported WAV format. Use PCM or float WAV." };
       }
-      if (id === "data") return fmtOk ? { ok: true, kind: "wav" } : { ok: false, reason: "This WAV file is missing its format header." };
+      if (id === "data") {
+        if (!fmtOk) return { ok: false, reason: "This WAV file is missing its format header." };
+        if (off + 8 + size > file.size + 1) return { ok: false, reason: "This WAV file looks incomplete or damaged." };
+        return { ok: true, kind: "wav" };
+      }
       off += 8 + size + (size % 2);
     }
     return { ok: false, reason: "This WAV file looks incomplete or damaged." };
@@ -45,10 +55,25 @@ export async function validateAudio(file: Reader): Promise<{ ok: true; kind: "wa
     if (off >= file.size) return { ok: false, reason: "This MP3 has tags but no audio." };
     if (off + 8192 > head.length) {
       const more = await file.read(off, Math.min(file.size, off + 64 * 1024) - 1);
-      return findFrames(more, 0) ? { ok: true, kind: "mp3" } : { ok: false, reason: "That file doesn't look like MP3 audio." };
+      if (!findFrames(more, 0)) return { ok: false, reason: "That file doesn't look like MP3 audio." };
+      return (await mp3TailOk(file)) ? { ok: true, kind: "mp3" } : { ok: false, reason: "This MP3 has unexpected data after the audio." };
     }
   }
-  return findFrames(head, off) ? { ok: true, kind: "mp3" } : { ok: false, reason: "That file doesn't look like WAV or MP3 audio." };
+  if (!findFrames(head, off)) return { ok: false, reason: "That file doesn't look like WAV or MP3 audio." };
+  return (await mp3TailOk(file)) ? { ok: true, kind: "mp3" } : { ok: false, reason: "This MP3 has unexpected data after the audio." };
+}
+
+/** Room for padding and trailing metadata chunks (ID3, bext) after the declared audio. */
+const TRAILER_ALLOWANCE = 256 * 1024;
+
+/** The last part of an MP3 must still be audio frames or a known tag, not something appended. */
+async function mp3TailOk(file: Reader) {
+  if (file.size <= 1024 * 1024) return true; // already covered by the head read
+  const start = Math.max(0, file.size - 64 * 1024);
+  const tail = await file.read(start, file.size - 1);
+  const text = String.fromCharCode(...tail.slice(-8192));
+  if (/TAG|APETAGEX|LYRICS200|ID3/.test(text)) return true;
+  return findFrames(tail, 0);
 }
 
 const BITRATES_V1_L3 = [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320];
