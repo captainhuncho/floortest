@@ -53,9 +53,9 @@ export default async function ReceiverPage({ params }: Props) {
   ];
 
   return (
-    <main className="group/page mx-auto flex min-h-dvh max-w-xl flex-col gap-6 bg-[#10110f] px-[18px] py-8 font-[family-name:var(--font-stage-mono)] text-[#f1f1eb] sm:py-12">
+    <main className="group/page mx-auto flex min-h-dvh max-w-xl flex-col gap-6 bg-ink px-[18px] py-8 font-[family-name:var(--font-stage-mono)] text-bone sm:py-12">
       <div className="flex flex-col gap-3">
-        <p className="text-[10px] font-bold uppercase tracking-[1px] text-[#a3a69b]">Send music to</p>
+        <p className="text-[10px] font-bold uppercase tracking-[1px] text-mute">Send music to</p>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="break-words text-[clamp(2rem,12vw,3.5rem)] font-bold leading-none group-has-[[data-picked]]/page:text-[32px] group-has-[[data-picked]]/page:font-extrabold">
             {receiver.name}
@@ -66,19 +66,19 @@ export default async function ReceiverPage({ params }: Props) {
             )}
           </h1>
           {collection && !closedReason && (
-            <p className="inline-flex items-center gap-2 rounded-full border border-[#2c2e29] bg-[#171815] px-2.5 py-1.5 text-[11px] font-bold">
+            <p className="inline-flex items-center gap-2 rounded-full border border-line bg-ink-2 px-2.5 py-1.5 text-[11px] font-bold">
               <span aria-hidden className="size-1.5 rounded-full bg-lime" />
               Receiving for <span className="text-lime">{collection.name}</span>
             </p>
           )}
         </div>
         {showBrief && (
-          <section aria-label="What they're looking for" className="group-has-[[data-picked]]/page:hidden flex flex-col gap-2 rounded-xl border border-[#2c2e29] bg-[#171815] p-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.5px] text-[#a3a69b]">What I&apos;m looking for</p>
+          <section aria-label="What they're looking for" className="group-has-[[data-picked]]/page:hidden flex flex-col gap-2 rounded-xl border border-line bg-ink-2 p-3">
+            <p className="text-[10px] font-bold uppercase tracking-[0.5px] text-mute">What I&apos;m looking for</p>
             {(
               <ul className="flex flex-wrap gap-1.5">
                 {genres.map((g) => (
-                  <li key={g} className="rounded-full border border-[#2c2e29] bg-[#10110f] px-2 py-1 text-[10px] font-bold">
+                  <li key={g} className="rounded-full border border-line bg-ink px-2 py-1 text-[10px] font-bold">
                     {g}
                   </li>
                 ))}
@@ -87,16 +87,16 @@ export default async function ReceiverPage({ params }: Props) {
             {wantedText && <p className="text-[11px] font-bold">{wantedText}</p>}
             {range && <p className="text-[11px] font-bold">{range}</p>}
             {collection?.closes_at && <p className="text-[11px] font-bold">Open until {fmtDay(collection.closes_at, receiver.tz)}</p>}
-            {collection?.brief_note && <p className="text-[11px] italic leading-4 text-[#a3a69b]">&ldquo;{collection.brief_note}&rdquo;</p>}
+            {collection?.brief_note && <p className="text-[11px] italic leading-4 text-mute">&ldquo;{collection.brief_note}&rdquo;</p>}
           </section>
         )}
       </div>
       <div>
         {closedReason ? (
-          <div className="rounded-2xl border border-[#2c2e29] bg-[#171815] p-5" role="status">
+          <div className="rounded-2xl border border-line bg-ink-2 p-5" role="status">
             <p className="font-bold">{closedReason}</p>
             {note && <p className="mt-3 whitespace-pre-wrap border-l-2 border-lime pl-3 text-[13px]">{note}</p>}
-            <p className="mt-2 text-[12px] text-[#85887f]">This link stays the same. Check back soon.</p>
+            <p className="mt-2 text-[12px] text-dim">This link stays the same. Check back soon.</p>
           </div>
         ) : (
           <SubmitForm handle={receiver.handle} receiverName={receiver.name} genres={genres} look="mobile" />
@@ -104,16 +104,16 @@ export default async function ReceiverPage({ params }: Props) {
       </div>
       <ul className="flex flex-col gap-2.5" aria-label="How your file is handled">
         {bullets.map((b) => (
-          <li key={b} className="flex gap-2.5 text-[11px] font-medium leading-4 text-[#85887f]">
+          <li key={b} className="flex gap-2.5 text-[11px] font-medium leading-4 text-dim">
             <span aria-hidden>→</span>
             {b}
           </li>
         ))}
       </ul>
       {receiver.identity_status !== "verified" && (
-        <p className="mt-auto pt-4 text-center text-[12px] font-medium leading-[18px] text-[#85887f]">
+        <p className="mt-auto pt-4 text-center text-[12px] font-medium leading-[18px] text-dim">
           Not sure this is really {receiver.name}?{" "}
-          <a href={`/contact?report=${receiver.handle}`} className="underline hover:text-[#f1f1eb]">
+          <a href={`/contact?report=${receiver.handle}`} className="underline hover:text-bone">
             Report impersonation
           </a>
         </p>

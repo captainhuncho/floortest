@@ -24,39 +24,39 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
   ];
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-6 bg-[#10110f] px-5 py-8 font-[family-name:var(--font-stage-mono)] text-[#f1f1eb] sm:py-12">
+    <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-6 bg-ink px-5 py-8 font-[family-name:var(--font-stage-mono)] text-bone sm:py-12">
       <div className="flex flex-col gap-1.5">
-        <p className="text-[9px] font-bold uppercase tracking-[1px] text-[#6b6e65]">Private receipt</p>
+        <p className="text-[9px] font-bold uppercase tracking-[1px] text-faint">Private receipt</p>
         <h1 className="break-words text-[28px] font-bold tracking-[-0.8px]">{t.title}</h1>
-        <p className="text-[11px] text-[#a3a69b]">
+        <p className="text-[11px] text-mute">
           {t.artist} · sent to {t.receiver}
           {t.duration ? ` · ${fmtTime(t.duration)}` : ""}
         </p>
       </div>
       {t.peaks && (
-        <div className="rounded-xl border border-[#2c2e29] bg-[#1e1f1b] px-1 py-1">
+        <div className="rounded-xl border border-line bg-ink-3 px-1 py-1">
           <Waveform peaks={JSON.parse(t.peaks)} height={48} />
         </div>
       )}
-      <ol className="rounded-2xl border border-[#2c2e29] bg-[#1e1f1b] p-4">
+      <ol className="rounded-2xl border border-line bg-ink-3 p-4">
         {steps.map((s, i) => {
           const done = !!s.at;
           return (
             <li key={s.label} className="relative flex gap-3 pb-5 last:pb-0">
-              {i < steps.length - 1 && <span className="absolute left-[9px] top-5 h-[calc(100%-20px)] w-0.5 rounded-[1px] bg-[#2c2e29]" />}
+              {i < steps.length - 1 && <span className="absolute left-[9px] top-5 h-[calc(100%-20px)] w-0.5 rounded-[1px] bg-line" />}
               <span
                 aria-hidden
                 className={`grid size-5 shrink-0 place-items-center rounded-full text-[12px] font-bold ${
-                  done ? "bg-[#2c2e29] text-lime" : "bg-[#2c2e29]"
+                  done ? "bg-line text-lime" : "bg-line"
                 }`}
               >
-                {done ? "✓" : <span className="size-1.5 rounded-full bg-[#10110f]" />}
+                {done ? "✓" : <span className="size-1.5 rounded-full bg-ink" />}
               </span>
               <div className="min-w-0 pt-px">
-                <p className={`text-[12px] font-bold ${done ? "" : "text-[#6b6e65]"}`}>
+                <p className={`text-[12px] font-bold ${done ? "" : "text-faint"}`}>
                   {s.label} <span className="sr-only">{done ? "(done)" : "(not yet)"}</span>
                 </p>
-                <p className={`text-[10px] ${done ? "text-[#6b6e65]" : "text-[#4a4d44]"}`}>
+                <p className={`text-[10px] ${done ? "text-faint" : "text-faint"}`}>
                   {done ? `${fmtDate(s.at!)} · ${s.text}` : `Not yet · ${s.text}`}
                 </p>
               </div>
@@ -65,23 +65,23 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
         })}
       </ol>
 
-      <section className="flex flex-col gap-2.5 rounded-[14px] border border-[#2c2e29] bg-[#171815] p-3.5 text-[10px] text-[#6b6e65]">
+      <section className="flex flex-col gap-2.5 rounded-[14px] border border-line bg-ink-2 p-3.5 text-[10px] text-faint">
         <p>
-          Updates go to <span className="font-bold text-[#a3a69b]">{t.sender_email}</span>
+          Updates go to <span className="font-bold text-mute">{t.sender_email}</span>
           {t.verified_at ? " (confirmed)." : ". Confirm your email from the delivery email so the receiver sees you as verified."}
         </p>
-        <hr className="border-[#2c2e29]" />
+        <hr className="border-line" />
         <p>Only {t.receiver} can hear or download your file. It&apos;s never shared publicly.</p>
-        <hr className="border-[#2c2e29]" />
+        <hr className="border-line" />
         <p>
           {t.deleted_at
             ? `The file was deleted on ${fmtDay(t.deleted_at)}.`
             : `Files are deleted within ${RETAIN_UNREVIEWED_DAYS} days of delivery unless ${t.receiver} keeps them.`}
         </p>
       </section>
-      <p className="text-[10px] text-[#4a4d44]">
+      <p className="text-[10px] text-faint">
         No account needed. Bookmark this page to check in any time, or{" "}
-        <a href="/sent" className="text-[#6b6e65] underline">
+        <a href="/sent" className="text-faint underline">
           see everything you&apos;ve sent
         </a>
         .

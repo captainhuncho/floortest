@@ -12,22 +12,12 @@ import { useTrackUpload } from "./useTrackUpload";
 /** Class names per page style; the flow is identical. */
 const LOOKS = {
   classic: { card: "card", input: "input", label: "label", mute: "text-mute", line: "border-line", btn: "btn-lime", ghost: "btn-ghost", round: "rounded-md" },
-  stage: {
-    card: "rounded-2xl border border-white/10 bg-black/25",
-    input: "stage-input",
-    label: "stage-label",
-    mute: "text-[#bdb1a3]",
-    line: "border-white/10",
-    btn: "btn-lime rounded-xl",
-    ghost: "btn-ghost rounded-xl",
-    round: "rounded-xl",
-  },
   mobile: {
-    card: "rounded-xl border border-[#2c2e29] bg-[#171815]",
-    input: "input !rounded-md !border-[#3a3d37] !bg-[#161715] !text-[12px]",
-    label: "text-[11px] font-bold uppercase text-[#8e918b]",
-    mute: "text-[#8e918b]",
-    line: "border-[#2c2e29]",
+    card: "rounded-xl border border-line bg-ink-2",
+    input: "input !rounded-md !border-line-2 !bg-ink-2 !text-[12px]",
+    label: "text-[11px] font-bold uppercase text-dim",
+    mute: "text-dim",
+    line: "border-line",
     btn: "btn-lime !rounded-md font-extrabold",
     ghost: "btn-ghost !rounded-md",
     round: "rounded-md",
@@ -83,22 +73,22 @@ export function SubmitForm({
 
   if (phase === "done" && token && m) {
     return (
-      <div className="flex flex-col gap-4 rounded-2xl border border-[#2c2e29] bg-[#1a1c18] p-5" role="status">
+      <div className="flex flex-col gap-4 rounded-2xl border border-line bg-ink-2 p-5" role="status">
         <span className="w-fit rounded-md border border-lime/20 bg-lime/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.5px] text-lime">
           Delivered
         </span>
         <h2 className="text-[22px] font-bold leading-7">&ldquo;{track.title}&rdquo; is on {receiverName}&apos;s desk.</h2>
-        <p className="text-[12px] leading-[18px] text-[#a3a69b]">
+        <p className="text-[12px] leading-[18px] text-mute">
           We sent a receipt to {account?.email ?? sender.email}. You&apos;ll hear from us when it&apos;s listened to, downloaded or replied to.
         </p>
-        <hr className="border-[#2c2e29]" />
+        <hr className="border-line" />
         <div className="flex gap-2.5">
-          <Link href={`/t/${token}`} className="flex flex-1 items-center justify-center rounded-[10px] bg-lime px-3.5 py-3 text-[12px] font-bold text-[#10110f]">
+          <Link href={`/t/${token}`} className="flex flex-1 items-center justify-center rounded-[10px] bg-lime px-3.5 py-3 text-[12px] font-bold text-ink">
             View receipt
           </Link>
           <button
             onClick={reset}
-            className="flex flex-1 items-center justify-center rounded-[10px] border border-[#2c2e29] bg-[#10110f] px-3.5 py-3 text-[12px] font-bold"
+            className="flex flex-1 items-center justify-center rounded-[10px] border border-line bg-ink px-3.5 py-3 text-[12px] font-bold"
           >
             Send another track
           </button>
@@ -167,17 +157,17 @@ export function SubmitForm({
       <div className="space-y-4">
         <div
           {...dropProps}
-          className={`flex flex-col items-center gap-2 rounded-2xl border p-4 py-8 transition ${drag ? "border-lime bg-lime/5" : "border-[#2c2e29] bg-[#171815]"}`}
+          className={`flex flex-col items-center gap-2 rounded-2xl border p-4 py-8 transition ${drag ? "border-lime bg-lime/5" : "border-line bg-ink-2"}`}
         >
           {fileInput}
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            className="rounded-full bg-lime px-[18px] py-3 text-[14px] font-bold uppercase text-[#10110f]"
+            className="rounded-full bg-lime px-[18px] py-3 text-[14px] font-bold uppercase text-ink"
           >
             Choose WAV or MP3
           </button>
-          <p className="text-center text-[11px] font-medium text-[#85887f]">or drag it here · up to 250 MB</p>
+          <p className="text-center text-[11px] font-medium text-dim">or drag it here · up to 250 MB</p>
         </div>
         {errorBox}
       </div>
@@ -215,7 +205,7 @@ export function SubmitForm({
         <div className="mt-4">
           <Waveform peaks={analysis?.peaks ?? null} progress={busy ? progress : 0} height={48} dim={analyzing} />
         </div>
-        <p className={`mt-3 flex flex-wrap gap-y-1 ${m ? `gap-x-2 border-t ${L.line} pt-3 text-[11px] font-bold [&>*:not(:first-child)]:before:mr-2 [&>*:not(:first-child)]:before:font-normal [&>*:not(:first-child)]:before:text-[#3a3d37] [&>*:not(:first-child)]:before:content-['|']` : "gap-x-4 text-sm"} ${L.mute} tnum`}>
+        <p className={`mt-3 flex flex-wrap gap-y-1 ${m ? `gap-x-2 border-t ${L.line} pt-3 text-[11px] font-bold [&>*:not(:first-child)]:before:mr-2 [&>*:not(:first-child)]:before:font-normal [&>*:not(:first-child)]:before:text-line-2 [&>*:not(:first-child)]:before:content-['|']` : "gap-x-4 text-sm"} ${L.mute} tnum`}>
           <span>{/\.wav$/i.test(file.name) ? "WAV" : "MP3"}</span>
           <span>{fmtBytes(file.size)}</span>
           {analyzing ? (
@@ -304,7 +294,7 @@ export function SubmitForm({
               className={
                 m
                   ? `flex items-center gap-2.5 rounded-md border p-3 text-left text-[12px] transition ${
-                      mix === k ? "border-lime bg-[#20221e] font-bold text-lime" : "border-[#252723] bg-[#161715] font-medium text-white"
+                      mix === k ? "border-lime bg-ink-3 font-bold text-lime" : "border-line bg-ink-2 font-medium text-white"
                     }`
                   : `${L.round} border px-3.5 py-2 text-sm transition ${mix === k ? "border-lime bg-lime/10 text-bone" : `${L.line} ${L.mute} hover:text-bone`}`
               }
@@ -312,7 +302,7 @@ export function SubmitForm({
               {m ? (
                 <span
                   aria-hidden
-                  className={`grid size-3.5 shrink-0 place-items-center rounded-full border-[1.5px] ${mix === k ? "border-lime" : "border-[#3a3d37]"}`}
+                  className={`grid size-3.5 shrink-0 place-items-center rounded-full border-[1.5px] ${mix === k ? "border-lime" : "border-line-2"}`}
                 >
                   {mix === k && <span className="size-1.5 rounded-full bg-lime" />}
                 </span>

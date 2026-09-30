@@ -54,8 +54,8 @@ export async function ReviewPanel({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icons/review-art.svg" alt="" className="size-[52px] shrink-0" />
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <h2 className="truncate text-base font-bold text-[#f1f1eb]">{t.title}</h2>
-            <p className="truncate text-xs text-[#a3a69b]">{t.artist}</p>
+            <h2 className="truncate text-base font-bold text-bone">{t.title}</h2>
+            <p className="truncate text-xs text-mute">{t.artist}</p>
           </div>
         </div>
         <dl className="mt-3.5 grid grid-cols-2 gap-1.5">
@@ -65,9 +65,9 @@ export async function ReviewPanel({
             ["LENGTH", t.duration ? `${Math.floor(t.duration / 60)}:${String(Math.round(t.duration % 60)).padStart(2, "0")}` : "—"],
             ["DEMO STATUS", t.mix_status ? MIX_STATUS[t.mix_status as keyof typeof MIX_STATUS] : "—"],
           ].map(([k, v]) => (
-            <div key={k} className="flex flex-col gap-1 rounded-lg bg-[#171815] p-2.5">
-              <dt className="text-[8px] text-[#6b6e65]">{k}</dt>
-              <dd className="truncate text-[13px] font-bold text-[#f1f1eb]">{v}</dd>
+            <div key={k} className="flex flex-col gap-1 rounded-lg bg-ink-2 p-2.5">
+              <dt className="text-[8px] text-faint">{k}</dt>
+              <dd className="truncate text-[13px] font-bold text-bone">{v}</dd>
             </div>
           ))}
         </dl>

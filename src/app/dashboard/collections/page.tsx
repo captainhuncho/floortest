@@ -14,11 +14,11 @@ export default async function Collections() {
   // Figma "03 Collections": a tile per callout, then a dashed tile to add one.
   return (
     <div className="max-w-5xl px-3 py-4 font-[family-name:var(--font-stage-mono)] sm:px-8 sm:py-6">
-      <h1 className="text-[23px] font-bold text-[#f1f1eb] sm:text-3xl">Collections</h1>
-      <p className="mt-3.5 text-[11px] leading-[1.5] text-[#a3a69b] sm:text-sm">
+      <h1 className="text-[23px] font-bold text-bone sm:text-3xl">Collections</h1>
+      <p className="mt-3.5 text-[11px] leading-[1.5] text-mute sm:text-sm">
         One per callout. Your link <span className="break-all text-lime">{APP_URL.replace(/^https?:\/\//, "")}/{user.handle}</span> sends new tracks to
         whichever collection is marked receiving. Reviewing happens in{" "}
-        <Link href="/dashboard" className="text-[#f1f1eb] underline underline-offset-4">
+        <Link href="/dashboard" className="text-bone underline underline-offset-4">
           Review Queue
         </Link>
         .

@@ -32,13 +32,13 @@ export async function Onboarding({ user }: { user: User }) {
 
   // Figma "Get Your Desk Running": one column, checked steps struck through, open steps carry a hint.
   return (
-    <section aria-labelledby="onboard-h" className="rounded-2xl border border-[#2c2e29] bg-[#1e1f1b] p-4">
+    <section aria-labelledby="onboard-h" className="rounded-2xl border border-line bg-ink-3 p-4">
       <div className="flex items-center justify-between gap-3">
-        <h2 id="onboard-h" className="text-[11px] font-bold uppercase tracking-[1px] text-[#f1f1eb]">
+        <h2 id="onboard-h" className="text-[11px] font-bold uppercase tracking-[1px] text-bone">
           Get your desk running · {doneCount} of {steps.length}
         </h2>
         <form action={dismissOnboarding}>
-          <button className="text-[10px] text-[#6b6e65] hover:text-[#f1f1eb]">Hide this</button>
+          <button className="text-[10px] text-faint hover:text-bone">Hide this</button>
         </form>
       </div>
       <ol className="mt-3 space-y-3">
@@ -50,11 +50,11 @@ export async function Onboarding({ user }: { user: User }) {
                 {s.done && <img src="/icons/check.svg" alt="" className="size-2.5" />}
               </span>
               {s.done ? (
-                <span className="min-w-0 flex-1 text-xs font-medium text-[#6b6e65] line-through">{s.label}</span>
+                <span className="min-w-0 flex-1 text-xs font-medium text-faint line-through">{s.label}</span>
               ) : (
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="text-xs font-bold text-[#f1f1eb]">{s.label}</span>
-                  <span className="text-[10px] text-[#4a4d44]">{s.hint}</span>
+                  <span className="text-xs font-bold text-bone">{s.label}</span>
+                  <span className="text-[10px] text-faint">{s.hint}</span>
                 </span>
               )}
             </>

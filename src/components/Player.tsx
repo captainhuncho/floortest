@@ -188,19 +188,19 @@ export function PlayerBar() {
   return (
     <>
       {/* Phones (Figma "Mini Player"): floats above the tab bar and stays put across screens. */}
-      <div className="fixed inset-x-4 bottom-[calc(max(1rem,env(safe-area-inset-bottom))+72px)] z-30 flex items-center gap-3 rounded-2xl border border-[#2a2e24] bg-[#10110f] p-3 font-[family-name:var(--font-stage-mono)] md:hidden">
+      <div className="fixed inset-x-4 bottom-[calc(max(1rem,env(safe-area-inset-bottom))+72px)] z-30 flex items-center gap-3 rounded-2xl border border-ink-4 bg-ink p-3 font-[family-name:var(--font-stage-mono)] md:hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icons/mini-art.svg" alt="" className="size-11 shrink-0" />
         <Link href={`/dashboard?view=queue&s=all&t=${current.id}`} className="flex min-w-0 flex-1 flex-col gap-2">
           <span className="flex items-center justify-between gap-2">
-            <span className="truncate text-sm font-bold tracking-[-0.4px] text-[#f1f1eb]">{current.title}</span>
-            <span className="shrink-0 text-[10px] text-[#6b6e65] tnum">{fmtTime(time)}</span>
+            <span className="truncate text-sm font-bold tracking-[-0.4px] text-bone">{current.title}</span>
+            <span className="shrink-0 text-[10px] text-faint tnum">{fmtTime(time)}</span>
           </span>
           <Waveform peaks={current.peaks} progress={d ? time / d : 0} onSeek={seek} height={18} label={`Seek ${current.title}`} />
         </Link>
         <button
           onClick={toggle}
-          className="grid size-7 shrink-0 place-items-center rounded-[14px] bg-white text-[#10110f]"
+          className="grid size-7 shrink-0 place-items-center rounded-[14px] bg-white text-ink"
           aria-label={playing ? `Pause ${current.title}` : `Play ${current.title}`}
         >
           <PlayIcon playing={playing} />

@@ -105,14 +105,14 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
 
   return (
     <>
-    <div className="flex flex-col gap-4 px-4 pb-4 pt-1 font-[family-name:var(--font-stage-mono)] text-[#f1f1eb] md:hidden">
+    <div className="flex flex-col gap-4 px-4 pb-4 pt-1 font-[family-name:var(--font-stage-mono)] text-bone md:hidden">
       <div className="flex items-center gap-2">
         <Link href="/dashboard/floor" aria-label="Back to the Floor" className="grid size-8 place-items-center">
           <span aria-hidden className="size-4 bg-current [mask:url(/icons/arrow-left.svg)_center/contain_no-repeat]" />
         </Link>
         <h1 className="text-[18px] font-bold">Contacts</h1>
       </div>
-      <nav aria-label="Contacts view" className="flex rounded-[20px] border border-[#2c2e29] bg-[#1e1f1b] p-0.5">
+      <nav aria-label="Contacts view" className="flex rounded-[20px] border border-line bg-ink-3 p-0.5">
         {(
           [
             ["messages", `MESSAGES (${messages.length})`],
@@ -124,7 +124,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
             href={href({ tab: k === "people" ? undefined : k })}
             aria-current={tab === k ? "page" : undefined}
             className={`flex-1 rounded-2xl border-2 py-1.5 text-center text-[11px] ${
-              tab === k ? "border-lime bg-[#272824] font-bold text-lime" : "border-transparent text-[#6b6e65]"
+              tab === k ? "border-lime bg-ink-4 font-bold text-lime" : "border-transparent text-faint"
             }`}
           >
             {label}
@@ -140,18 +140,18 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
               [totals.sent, "Total submissions"],
               [totals.engaged, "Engaged"],
             ].map(([v, k]) => (
-              <div key={k} className="flex flex-col-reverse gap-1 rounded-[10px] border border-[#2c2e29] bg-[#171815] p-3">
-                <dt className="text-[9px] font-bold uppercase tracking-[1px] text-[#6b6e65]">{k}</dt>
+              <div key={k} className="flex flex-col-reverse gap-1 rounded-[10px] border border-line bg-ink-2 p-3">
+                <dt className="text-[9px] font-bold uppercase tracking-[1px] text-faint">{k}</dt>
                 <dd className="text-[24px] font-extrabold">{v}</dd>
               </div>
             ))}
           </dl>
           <form action="/dashboard/contacts" role="search" className="flex gap-2.5">
             {sp.show && <input type="hidden" name="show" value={sp.show} />}
-            <label className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg border border-[#2c2e29] bg-[#1e1f1b] px-3.5 py-2.5">
-              <span aria-hidden className="size-3.5 shrink-0 bg-[#6b6e65] [mask:url(/icons/search.svg)_center/contain_no-repeat]" />
+            <label className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg border border-line bg-ink-3 px-3.5 py-2.5">
+              <span aria-hidden className="size-3.5 shrink-0 bg-faint [mask:url(/icons/search.svg)_center/contain_no-repeat]" />
               <span className="sr-only">Search contacts</span>
-              <input name="q" defaultValue={search} placeholder="Search names or emails" className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-[#6b6e65]" />
+              <input name="q" defaultValue={search} placeholder="Search names or emails" className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-faint" />
             </label>
           </form>
           <div className="flex gap-2 overflow-x-auto">
@@ -160,27 +160,27 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
                 key={k}
                 href={href({ show: k === "all" ? undefined : k })}
                 aria-current={show[0] === k ? "page" : undefined}
-                className={`shrink-0 rounded-md px-2.5 py-1 text-[10px] ${show[0] === k ? "border border-[#2c2e29] bg-[#1e1f1b] font-bold" : "text-[#a3a69b]"}`}
+                className={`shrink-0 rounded-md px-2.5 py-1 text-[10px] ${show[0] === k ? "border border-line bg-ink-3 font-bold" : "text-mute"}`}
               >
                 {label.toLowerCase()}
               </Link>
             ))}
           </div>
           {rows.length === 0 ? (
-            <p className="py-10 text-center text-[12px] text-[#a3a69b]">{search ? `No contacts match “${search}”.` : "Contacts appear here after their first upload."}</p>
+            <p className="py-10 text-center text-[12px] text-mute">{search ? `No contacts match “${search}”.` : "Contacts appear here after their first upload."}</p>
           ) : (
             <ul className="flex flex-col gap-3">
               {rows.map((r) => {
                 const last = latestBy.get(r.id);
                 return (
-                  <li key={r.id} className="flex flex-col gap-2.5 rounded-[10px] border border-[#2c2e29] bg-[#1e1f1b] p-3">
+                  <li key={r.id} className="flex flex-col gap-2.5 rounded-[10px] border border-line bg-ink-3 p-3">
                     <Link href={`/dashboard/contacts/${r.id}`} className="flex items-center gap-3">
                       <span className="grid size-9 shrink-0 place-items-center rounded-full text-[14px] font-bold text-white" style={hue(r.id)}>
                         {r.name.trim()[0]?.toUpperCase()}
                       </span>
                       <span className="flex min-w-0 flex-1 flex-col gap-1">
                         <span className="truncate text-[13px] font-bold">{r.name}</span>
-                        <span className="truncate text-[11px] text-[#6b6e65]">{r.email}</span>
+                        <span className="truncate text-[11px] text-faint">{r.email}</span>
                         {(r.verified_at || r.blocked_at) && (
                           <span className={`w-fit rounded border px-1.5 py-0.5 text-[9px] font-bold ${r.blocked_at ? "border-danger/50 text-danger" : "border-lime/40 text-lime"}`}>
                             {r.blocked_at ? "blocked" : "verified"}
@@ -191,7 +191,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
                     {last && (
                       <div className="flex flex-col gap-1">
                         <p className="truncate text-[13px] font-bold">{last.title}</p>
-                        <p className="text-[10px] tracking-[0.5px] text-[#6b6e65]">
+                        <p className="text-[10px] tracking-[0.5px] text-faint">
                           {last.collection ? `${last.collection.toUpperCase()} · ` : ""}
                           {short(last.created_at)}
                         </p>
@@ -200,7 +200,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
                     <div className="flex items-center gap-3">
                       <div className="flex flex-col gap-1">
                         <p className="text-[22px] font-extrabold leading-none">{r.sent}</p>
-                        <p className="text-[10px] text-[#6b6e65]">
+                        <p className="text-[10px] text-faint">
                           sent · {r.kept} kept · {r.downloaded} downloaded
                         </p>
                       </div>
@@ -209,10 +209,10 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
                       )}
                     </div>
                     <div className="flex gap-1.5">
-                      <a href={`mailto:${r.email}`} className="flex items-center gap-1.5 rounded-md border border-[#2c2e29] bg-[#1e1f1b] px-2.5 py-1.5 text-[11px] text-[#a3a69b]">
+                      <a href={`mailto:${r.email}`} className="flex items-center gap-1.5 rounded-md border border-line bg-ink-3 px-2.5 py-1.5 text-[11px] text-mute">
                         ✉ <span className="font-bold">email</span>
                       </a>
-                      <Link href={`/dashboard/contacts/${r.id}`} aria-label={`More about ${r.name}`} className="rounded-md border border-[#2c2e29] bg-[#1e1f1b] px-2.5 py-1.5 text-[11px] text-[#a3a69b]">
+                      <Link href={`/dashboard/contacts/${r.id}`} aria-label={`More about ${r.name}`} className="rounded-md border border-line bg-ink-3 px-2.5 py-1.5 text-[11px] text-mute">
                         ···
                       </Link>
                     </div>
@@ -236,19 +236,19 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
                 key={k}
                 href={href({ tab: "messages", from: k === "all" ? undefined : k })}
                 aria-current={from === k ? "page" : undefined}
-                className={`rounded-md px-2.5 py-1 text-[10px] ${from === k ? "border border-[#2c2e29] bg-[#1e1f1b] font-bold" : "text-[#a3a69b]"}`}
+                className={`rounded-md px-2.5 py-1 text-[10px] ${from === k ? "border border-line bg-ink-3 font-bold" : "text-mute"}`}
               >
                 {label}
               </Link>
             ))}
           </div>
           {messages.length === 0 ? (
-            <p className="py-10 text-center text-[12px] text-[#a3a69b]">Messages from senders, and your replies, show up here.</p>
+            <p className="py-10 text-center text-[12px] text-mute">Messages from senders, and your replies, show up here.</p>
           ) : (
             <ul className="flex flex-col gap-3">
               {messages.map((m, i) => (
                 <li key={i}>
-                  <Link href={`/dashboard/contacts/${m.sender_id}`} className="flex flex-col gap-3 rounded-[10px] border border-[#2c2e29] bg-[#1e1f1b] p-3">
+                  <Link href={`/dashboard/contacts/${m.sender_id}`} className="flex flex-col gap-3 rounded-[10px] border border-line bg-ink-3 p-3">
                     <span className="flex items-center justify-between gap-2">
                       <span className="flex min-w-0 items-center gap-2">
                         <span className="grid size-6 shrink-0 place-items-center rounded-full text-[10px] font-bold text-white" style={hue(m.sender_id)}>
@@ -256,11 +256,11 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
                         </span>
                         <span className="truncate text-[13px] font-bold">{m.kind === "reply" ? `You → ${m.name}` : m.name}</span>
                       </span>
-                      <span className="shrink-0 text-[11px] text-[#6b6e65]">{ago(m.at)}</span>
+                      <span className="shrink-0 text-[11px] text-faint">{ago(m.at)}</span>
                     </span>
-                    <span className="line-clamp-3 text-[11px] italic leading-[1.4] text-[#a3a69b]">&ldquo;{m.text}&rdquo;</span>
+                    <span className="line-clamp-3 text-[11px] italic leading-[1.4] text-mute">&ldquo;{m.text}&rdquo;</span>
                     {m.title && (
-                      <span className="flex items-center gap-2 rounded-md border border-[#2c2e29] bg-[#10110f] p-2 text-[11px] font-bold">
+                      <span className="flex items-center gap-2 rounded-md border border-line bg-ink p-2 text-[11px] font-bold">
                         <span aria-hidden>♫</span>
                         <span className="truncate">
                           {m.title}

@@ -162,7 +162,7 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
               className={`group transition ${selected === r.id ? "md:bg-ink-3" : "md:hover:bg-ink-2"} ${decision === "passed" ? "opacity-60" : ""}`}
             >
               {/* Phones: Figma "track-card" */}
-              <div className="flex flex-col gap-2.5 rounded-[14px] border border-[#2c2e29] bg-[#1e1f1b] p-3 md:hidden">
+              <div className="flex flex-col gap-2.5 rounded-[14px] border border-line bg-ink-3 p-3 md:hidden">
                 <div className="flex items-center gap-2.5">
                   <button
                     onClick={(e) => {
@@ -170,7 +170,7 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
                       setSelected(r.id);
                       player.play(toPlayer(r), queue);
                     }}
-                    className="grid size-7 shrink-0 place-items-center rounded-full bg-white text-[10px] font-bold text-[#10110f]"
+                    className="grid size-7 shrink-0 place-items-center rounded-full bg-white text-[10px] font-bold text-ink"
                     aria-label={playing ? `Pause ${r.title}` : `Play ${r.title}`}
                   >
                     {playing ? (
@@ -191,21 +191,21 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
                     aria-expanded={open}
                     className="flex min-w-0 flex-1 flex-col gap-0.5 text-left"
                   >
-                    <span className="truncate text-sm font-bold text-[#f1f1eb]">
+                    <span className="truncate text-sm font-bold text-bone">
                       {r.artist} - {r.title}
                     </span>
-                    <span className="truncate text-[10px] font-medium text-[#a3a69b]">{r.meta.join(" · ")}</span>
+                    <span className="truncate text-[10px] font-medium text-mute">{r.meta.join(" · ")}</span>
                   </button>
                   {statusTag ? (
                     <span
                       className={`shrink-0 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase ${
-                        decision === "kept" ? "bg-white/10 text-white" : "bg-[#2c2e29] text-[#a3a69b]"
+                        decision === "kept" ? "bg-white/10 text-white" : "bg-line text-mute"
                       }`}
                     >
                       {decision === "kept" ? "Kept" : decision === "passed" ? "Not for me" : "Needs review"}
                     </span>
                   ) : (
-                    <span className="shrink-0 text-[10px] font-medium text-[#5f6158]" suppressHydrationWarning>
+                    <span className="shrink-0 text-[10px] font-medium text-faint" suppressHydrationWarning>
                       {age(r.createdAt)}
                     </span>
                   )}
@@ -220,21 +220,21 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
                   />
                 </div>
                 <div className="flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
-                  <span title={r.played ? "Listened" : "Not listened yet"} className={`grid size-9 place-items-center ${r.played ? "text-white" : "text-[#a3a69b]"}`}>
+                  <span title={r.played ? "Listened" : "Not listened yet"} className={`grid size-9 place-items-center ${r.played ? "text-white" : "text-mute"}`}>
                     <FigmaIcon name="headphones" />
                     <span className="sr-only">{r.played ? "Listened" : "Not listened yet"}</span>
                   </span>
-                  <button aria-label={`Keep ${r.title}`} aria-pressed={decision === "kept"} onClick={() => decide(r, "kept", false)} className={`grid size-9 place-items-center ${decision === "kept" ? "text-white" : "text-[#a3a69b]"}`}>
+                  <button aria-label={`Keep ${r.title}`} aria-pressed={decision === "kept"} onClick={() => decide(r, "kept", false)} className={`grid size-9 place-items-center ${decision === "kept" ? "text-white" : "text-mute"}`}>
                     <FigmaIcon name="heart" />
                   </button>
-                  <button aria-label={`Not for me: ${r.title}`} aria-pressed={decision === "passed"} onClick={() => decide(r, "passed", false)} className={`grid size-9 place-items-center ${decision === "passed" ? "text-white" : "text-[#a3a69b]"}`}>
+                  <button aria-label={`Not for me: ${r.title}`} aria-pressed={decision === "passed"} onClick={() => decide(r, "passed", false)} className={`grid size-9 place-items-center ${decision === "passed" ? "text-white" : "text-mute"}`}>
                     <FigmaIcon name="thumbs-down" />
                   </button>
-                  <button aria-label={`Reply to ${r.sender}`} aria-pressed={open} onClick={() => (setSelected(r.id), setExpanded(open ? null : r.id))} className={`relative grid size-9 place-items-center ${open ? "text-white" : "text-[#a3a69b]"}`}>
+                  <button aria-label={`Reply to ${r.sender}`} aria-pressed={open} onClick={() => (setSelected(r.id), setExpanded(open ? null : r.id))} className={`relative grid size-9 place-items-center ${open ? "text-white" : "text-mute"}`}>
                     <FigmaIcon name="message-square" />
                     {r.replied && <span className="absolute right-2 top-2 size-1.5 rounded-full bg-lime" />}
                   </button>
-                  <a href={`/api/tracks/${r.id}/download`} aria-label={`Download original of ${r.title}`} className="grid size-9 place-items-center text-[#a3a69b]">
+                  <a href={`/api/tracks/${r.id}/download`} aria-label={`Download original of ${r.title}`} className="grid size-9 place-items-center text-mute">
                     <FigmaIcon name="download" />
                   </a>
                 </div>

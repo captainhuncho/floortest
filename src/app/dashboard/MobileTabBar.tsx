@@ -24,7 +24,7 @@ export function MobileTabBar({ needsReview }: { needsReview: number }) {
   return (
     <nav
       aria-label="Main"
-      className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 flex items-center justify-between rounded-[32px] bg-[#1a1c18] p-2 font-[family-name:var(--font-stage-mono)] drop-shadow-[0_8px_12px_rgba(0,0,0,0.4)] md:hidden"
+      className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 flex items-center justify-between rounded-[32px] bg-ink-2 p-2 font-[family-name:var(--font-stage-mono)] drop-shadow-[0_8px_12px_rgba(0,0,0,0.4)] md:hidden"
     >
       {tabs.map((t) => (
         <Link
@@ -32,7 +32,7 @@ export function MobileTabBar({ needsReview }: { needsReview: number }) {
           href={t.href}
           aria-current={t.active ? "page" : undefined}
           className={`relative flex h-12 flex-col items-center justify-center gap-[3px] rounded-[24px] px-3 py-1.5 text-[8px] uppercase ${
-            t.active ? "bg-[#2a2e24] font-bold text-white" : "font-medium text-[#85887f]"
+            t.active ? "bg-ink-4 font-bold text-white" : "font-medium text-dim"
           }`}
         >
           <Icon name={t.icon} />

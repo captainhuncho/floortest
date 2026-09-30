@@ -194,12 +194,12 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
             // Phones: Figma "Header" (← QUEUE / Now reviewing); the transport below has previous and next.
             <header className="flex items-end justify-between gap-3 px-4 pt-3 font-[family-name:var(--font-stage-mono)] md:hidden">
               <div className="flex flex-col gap-[3px]">
-                <Link href={href({ t: undefined })} className="text-[8px] font-medium text-[#a3a69b]">
+                <Link href={href({ t: undefined })} className="text-[8px] font-medium text-mute">
                   ← QUEUE
                 </Link>
-                <h1 className="text-[22px] font-extrabold text-[#f1f1eb]">Now reviewing</h1>
+                <h1 className="text-[22px] font-extrabold text-bone">Now reviewing</h1>
               </div>
-              <span className="pb-1 text-[10px] text-[#6b6e65] tnum">{idx >= 0 ? `${idx + 1} of ${rows.length}` : ""}</span>
+              <span className="pb-1 text-[10px] text-faint tnum">{idx >= 0 ? `${idx + 1} of ${rows.length}` : ""}</span>
             </header>
           )}
           {focused && (

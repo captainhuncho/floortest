@@ -118,7 +118,7 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
   }, [decide]);
 
   const btn = "btn flex-1 flex-col gap-0.5 py-3 border";
-  const pill = "rounded-full border border-[#2c2e29] bg-[#1e1f1b] px-3.5 py-2 text-[9px] font-medium text-[#a3a69b]";
+  const pill = "rounded-full border border-line bg-ink-3 px-3.5 py-2 text-[9px] font-medium text-mute";
   return (
     <div>
       {/* Phones: Figma "Decisions" pills + "DJ Decision Area" */}
@@ -127,7 +127,7 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
           <a href={`/api/tracks/${track.id}/download`} className={pill}>
             DOWNLOAD
           </a>
-          <button onClick={() => setReplying((r) => !r)} aria-expanded={replying} className={replying ? "rounded-full bg-white px-3.5 py-2 text-[9px] font-bold text-[#10110f]" : pill}>
+          <button onClick={() => setReplying((r) => !r)} aria-expanded={replying} className={replying ? "rounded-full bg-white px-3.5 py-2 text-[9px] font-bold text-ink" : pill}>
             REPLY
           </button>
         </div>
@@ -136,7 +136,7 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
             onClick={() => decide("passed")}
             disabled={busy}
             aria-pressed={track.decision === "passed"}
-            className={`flex-1 rounded-xl border border-[#ff5f57] p-3.5 text-[11px] font-bold ${track.decision === "passed" ? "bg-[#ff5f57] text-[#10110f]" : "bg-[rgba(255,95,87,0.1)] text-[#ff5f57]"}`}
+            className={`flex-1 rounded-xl border border-[#ff5f57] p-3.5 text-[11px] font-bold ${track.decision === "passed" ? "bg-[#ff5f57] text-ink" : "bg-[rgba(255,95,87,0.1)] text-[#ff5f57]"}`}
           >
             ✕ NOT FOR ME
           </button>
@@ -144,7 +144,7 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
             onClick={() => decide("kept")}
             disabled={busy}
             aria-pressed={track.decision === "kept"}
-            className={`flex-1 rounded-xl p-3.5 text-[11px] font-bold ${track.decision === "kept" ? "bg-lime text-[#10110f]" : "bg-white text-[#10110f]"}`}
+            className={`flex-1 rounded-xl p-3.5 text-[11px] font-bold ${track.decision === "kept" ? "bg-lime text-ink" : "bg-white text-ink"}`}
           >
             {track.decision === "kept" ? "✓ KEPT" : "✓ KEEP"}
           </button>
@@ -230,7 +230,7 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
         </form>
       )}
 
-      <p className="mt-3 font-[family-name:var(--font-stage-mono)] text-[10px] text-[#6b6e65] [@media(pointer:fine)]:hidden">Swipe right to keep · swipe left: not for me</p>
+      <p className="mt-3 font-[family-name:var(--font-stage-mono)] text-[10px] text-faint [@media(pointer:fine)]:hidden">Swipe right to keep · swipe left: not for me</p>
       <p className="mt-3 hidden text-xs text-mute md:block">
         {next ? "Keep or Not for me moves to the next track." : "Last track in this view."} Space play · ←/→ 10s · ↑/↓ or J move · U undo
       </p>
