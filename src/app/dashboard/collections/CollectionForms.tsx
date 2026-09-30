@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { createCollection, deleteCollection, setActiveCollection, updateCollection } from "../actions";
 import { ExportButton } from "../ExportButton";
 import { GenresField } from "./GenresField";
@@ -195,7 +195,6 @@ const tileBars = (seed: number, n: number) =>
 export function CollectionTile({ c, receiving, closed, canDelete }: { c: C; receiving: boolean; closed: boolean; canDelete: boolean }) {
   const [menu, setMenu] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [pending, start] = useTransition();
   if (editing)
     return (
       <div className="col-span-full">
@@ -238,46 +237,112 @@ export function CollectionTile({ c, receiving, closed, canDelete }: { c: C; rece
             {c.count} track{c.count === 1 ? "" : "s"}
             {c.needsReview > 0 && ` · ${c.needsReview} new`}
           </span>
-          <button onClick={() => setMenu((m) => !m)} aria-expanded={menu} aria-label={`More for ${c.name}`} className="px-1 text-sm leading-none">
+          <button onClick={() => setMenu((m) => !m)} aria-haspopup="menu" aria-label={`More for ${c.name}`} className="px-1 text-sm leading-none">
             ···
           </button>
         </div>
       </div>
-      {menu && (
-        <div role="menu" className="absolute bottom-10 right-2 z-10 w-48 overflow-hidden rounded-xl border border-[#2c2e29] bg-[#1a1c18] text-xs shadow-2xl shadow-black/60">
-          {!receiving && (
-            <button role="menuitem" className="block w-full px-3 py-2.5 text-left hover:bg-[#2a2e24]" disabled={pending} onClick={() => start(async () => { await setActiveCollection(c.id); setMenu(false); })}>
-              Send new tracks here
-            </button>
-          )}
-          <Link role="menuitem" href={`/dashboard/collections/${c.id}`} className="block px-3 py-2.5 hover:bg-[#2a2e24]">
-            Open folder
-          </Link>
-          <button role="menuitem" className="block w-full px-3 py-2.5 text-left hover:bg-[#2a2e24]" onClick={() => { setMenu(false); setEditing(true); }}>
-            Edit info
-          </button>
-          <div className="px-3 py-2">
-            <ExportButton collectionId={c.id} count={c.count} whole label="Download" variant="ghost" />
-          </div>
-        </div>
-      )}
+      {menu && <CollectionOptions c={c} receiving={receiving} onEdit={() => setEditing(true)} onClose={() => setMenu(false)} showOpen />}
     </div>
   );
 }
 
-/** Figma "btn-edit-mobile": opens the collection's edit form in place. */
-export function EditCollectionInfo({ c, receiving, closed, canDelete }: { c: C; receiving: boolean; closed: boolean; canDelete: boolean }) {
-  const [open, setOpen] = useState(false);
-  return open ? (
-    <div className="w-full">
-      <CollectionCard c={c} receiving={receiving} closed={closed} canDelete={canDelete} startEditing />
-      <button className="mt-2 text-sm text-mute hover:text-bone" onClick={() => setOpen(false)}>
-        Close
-      </button>
+/** Options over the whole screen; tapping anywhere outside the card closes it. */
+function OptionsSheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 pb-8 backdrop-blur-[2px] sm:items-center" onClick={onClose}>
+      <div
+        role="menu"
+        aria-label={title}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-sm overflow-hidden rounded-2xl border border-[#2c2e29] bg-[#1a1c18] font-[family-name:var(--font-stage-mono)] text-[13px] text-[#f1f1eb] shadow-2xl shadow-black/60"
+      >
+        <p className="truncate border-b border-[#2c2e29] px-4 py-3 text-[10px] font-bold uppercase tracking-[1px] text-[#a3a69b]">{title}</p>
+        <div className="flex flex-col divide-y divide-[#2c2e29] [&>*]:block [&>*]:w-full [&>*]:px-4 [&>*]:py-3.5 [&>*]:text-left">{children}</div>
+      </div>
     </div>
-  ) : (
-    <button onClick={() => setOpen(true)} className="rounded-md border border-[#2c2e29] bg-[#1e1f1b] px-3 py-1.5 text-[10px] font-bold text-[#f1f1eb]">
-      Edit Info
-    </button>
+  );
+}
+
+/** The shared options for one collection. */
+function CollectionOptions({ c, receiving, onEdit, onClose, showOpen }: { c: C; receiving: boolean; onEdit: () => void; onClose: () => void; showOpen: boolean }) {
+  const [pending, start] = useTransition();
+  return (
+    <OptionsSheet title={c.name} onClose={onClose}>
+      {!receiving && (
+        <button role="menuitem" disabled={pending} onClick={() => start(async () => { await setActiveCollection(c.id); onClose(); })}>
+          Send new tracks here
+        </button>
+      )}
+      {showOpen && (
+        <Link role="menuitem" href={`/dashboard/collections/${c.id}`}>
+          Open folder
+        </Link>
+      )}
+      {c.needsReview > 0 && (
+        <Link role="menuitem" href={`/dashboard?view=queue&c=${c.id}`}>
+          Review {c.needsReview} new
+        </Link>
+      )}
+      <button role="menuitem" onClick={() => { onClose(); onEdit(); }}>
+        Edit info
+      </button>
+      <div>
+        <ExportButton collectionId={c.id} count={c.count} whole label="Download collection" variant="ghost" />
+      </div>
+      <button role="menuitem" className="text-center! text-[#a3a69b]" onClick={onClose}>
+        Cancel
+      </button>
+    </OptionsSheet>
+  );
+}
+
+/** Figma "04 Collection Detail" header: back, name, ••• options, receiving badge and Edit Info. */
+export function CollectionDetailHeader({ c, receiving, closed, canDelete }: { c: C; receiving: boolean; closed: boolean; canDelete: boolean }) {
+  const [menu, setMenu] = useState(false);
+  const [editing, setEditing] = useState(false);
+  return (
+    <>
+      <div className="flex h-12 items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <Link href="/dashboard/collections" aria-label="Back to Collections" className="grid size-8 place-items-center">
+            <span aria-hidden className="size-4 bg-current [mask:url(/icons/arrow-left.svg)_center/contain_no-repeat]" />
+          </Link>
+          <h1 className="min-w-0 truncate text-[20px] font-bold">{c.name}</h1>
+        </div>
+        <button onClick={() => setMenu(true)} aria-haspopup="menu" aria-label={`Options for ${c.name}`} className="grid size-9 shrink-0 place-items-center text-lg font-bold leading-none">
+          •••
+        </button>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {receiving && !closed ? (
+          <span className="flex items-center gap-1 rounded-md border border-white bg-white/10 px-2 py-1 text-[8px] font-bold tracking-[0.5px] text-white">
+            <span aria-hidden className="size-[5px] rounded-full bg-white" />
+            RECEIVING
+          </span>
+        ) : (
+          <span className="text-[8px] font-bold tracking-[0.5px] text-[#5f6158]">{closed ? "CLOSED" : "NOT RECEIVING"}</span>
+        )}
+        {!editing && (
+          <button onClick={() => setEditing(true)} className="rounded-md border border-[#2c2e29] bg-[#1e1f1b] px-3 py-1.5 text-[10px] font-bold text-[#f1f1eb]">
+            Edit Info
+          </button>
+        )}
+      </div>
+      {editing && (
+        <div className="w-full">
+          <CollectionCard c={c} receiving={receiving} closed={closed} canDelete={canDelete} startEditing />
+          <button className="mt-2 text-sm text-mute hover:text-bone" onClick={() => setEditing(false)}>
+            Close
+          </button>
+        </div>
+      )}
+      {menu && <CollectionOptions c={c} receiving={receiving} onEdit={() => setEditing(true)} onClose={() => setMenu(false)} showOpen={false} />}
+    </>
   );
 }

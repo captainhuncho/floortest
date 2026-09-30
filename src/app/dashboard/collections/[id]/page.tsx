@@ -9,7 +9,7 @@ import { ExportButton } from "../../ExportButton";
 import { ListRows, type ListRow } from "../../list/ListRows";
 import { loadRows, reviewHref } from "../../rows";
 import { TrackList } from "../../TrackList";
-import { EditCollectionInfo } from "../CollectionForms";
+import { CollectionDetailHeader } from "../CollectionForms";
 
 export const metadata = { title: "Collection — FloorTest" };
 
@@ -69,23 +69,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
   return (
     <>
       <div className="flex flex-col gap-3 px-4 pb-4 pt-1 font-[family-name:var(--font-stage-mono)] text-[#f1f1eb] md:hidden">
-        <div className="flex h-12 items-center gap-2">
-          <Link href="/dashboard/collections" aria-label="Back to Collections" className="grid size-8 place-items-center">
-            <span aria-hidden className="size-4 bg-current [mask:url(/icons/arrow-left.svg)_center/contain_no-repeat]" />
-          </Link>
-          <h1 className="min-w-0 truncate text-[20px] font-bold">{c.name}</h1>
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          {receiving ? (
-            <span className="flex items-center gap-1 rounded-md border border-white bg-white/10 px-2 py-1 text-[8px] font-bold tracking-[0.5px] text-white">
-              <span aria-hidden className="size-[5px] rounded-full bg-white" />
-              RECEIVING
-            </span>
-          ) : (
-            <span className="text-[8px] font-bold tracking-[0.5px] text-[#5f6158]">{isClosed(c) ? "CLOSED" : "NOT RECEIVING"}</span>
-          )}
-          <EditCollectionInfo c={editable} receiving={receiving} closed={isClosed(c)} canDelete={all.length > 1} />
-        </div>
+        <CollectionDetailHeader c={editable} receiving={receiving} closed={isClosed(c)} canDelete={all.length > 1} />
         {(genres.custom || c.bpm_min || c.brief_note || c.brief_wanted) && (
           <section className="flex flex-col gap-2.5 rounded-xl border border-[#2c2e29] bg-[#1e1f1b] p-3.5">
             <div className="flex items-start justify-between gap-4">
