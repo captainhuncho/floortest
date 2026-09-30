@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 
-/** Chart-mark lime: a deeper step than the brand accent, validated on the dark surface (L 0.48–0.67, ≥3:1). */
-const MARK = "#83a322";
+/** Chart marks are white, as in the Figma "desktop-floor-dashboard". */
+const MARK = "var(--color-bone)";
 
 type Day = { day: string; count: number; today: boolean };
 
