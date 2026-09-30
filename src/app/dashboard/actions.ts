@@ -29,6 +29,7 @@ import { sendDigest } from "@/lib/notify";
 import { cleanGenre, genresFor, PLANS, planOf, RESERVED_HANDLES } from "@/lib/plans";
 import { storage } from "@/lib/storage";
 import { audit, trackLabel } from "@/lib/audit";
+import { requestStems } from "@/lib/stems";
 import { cleanProfileLink, IDENTITY_HOSTS, isProtectedHandle, newIdentityCode } from "@/lib/identity";
 
 const done = () => revalidatePath("/dashboard", "layout");
@@ -302,6 +303,16 @@ export async function replyToSender(senderId: number, trackId: number | null, fo
   if (!s || !body) return;
   await reply(u, s, trackId ? await ownedTrack(u.id, trackId) : undefined, body);
   await audit(u.id, "replied", s.name, trackId);
+  done();
+}
+
+/** Asks the sender for stems (emails them once) so they can upload them from their receipt page. */
+export async function askForStems(trackId: number) {
+  const u = await requireUser();
+  const t = await ownedTrack(u.id, trackId);
+  if (!t) return;
+  await requestStems(u, t);
+  await audit(u.id, "stems_requested", trackLabel(t), t.id);
   done();
 }
 

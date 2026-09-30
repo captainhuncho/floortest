@@ -3,6 +3,7 @@ import { now, q } from "./db";
 
 /** Things the account holder can do, as they read in their activity log. */
 export const AUDIT_LABELS = {
+  stems_requested: "Asked for stems for",
   signed_in: "Signed in",
   signed_out: "Signed out",
   password_reset: "Reset password",

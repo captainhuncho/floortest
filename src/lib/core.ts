@@ -419,11 +419,18 @@ async function removeFile(key: string | null) {
   if (key) await (await storage()).delete(key).catch((e) => console.error("[storage] delete failed", key, e));
 }
 
+/** A track's stems go when the track goes. */
+async function removeStems(trackId: number) {
+  const rows = await q.all<{ file_key: string }>("DELETE FROM stems WHERE track_id = ? RETURNING file_key", trackId);
+  for (const r of rows) await removeFile(r.file_key);
+}
+
 /** Removes the audio and frees the slot. History stays attached to the sender. */
 export async function deleteTrack(user: User, t: Track) {
   await q.run("UPDATE tracks SET deleted_at = ?, file_key = NULL WHERE id = ?", now(), t.id);
   await logEvent({ user_id: user.id, sender_id: t.sender_id, track_id: t.id, type: "deleted", detail: "" });
   await removeFile(t.file_key);
+  await removeStems(t.id);
   await alertIfFull(user.id, await capacity(user)); // re-arms the "link paused" email once there's space
 }
 
@@ -458,6 +465,7 @@ export async function purgeExpired({ force = false } = {}) {
     await q.run("UPDATE tracks SET deleted_at = ?, file_key = NULL WHERE id = ?", t, tr.id);
     await logEvent({ user_id: tr.user_id, sender_id: tr.sender_id, track_id: tr.id, type: "expired", detail: "" });
     await removeFile(tr.file_key);
+    await removeStems(tr.id);
   }
   return { expired: expired.length, abandoned: abandoned.length };
 }

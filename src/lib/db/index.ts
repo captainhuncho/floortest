@@ -112,6 +112,7 @@ export type Track = {
   deleted_at: number | null;
   set_cleared_at: number | null;
   created_at: number;
+  stems_requested_at: number | null;
 };
 export type EventRow = {
   id: number;

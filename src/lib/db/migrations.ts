@@ -381,4 +381,22 @@ alter table tracks add column expiry_warned_at bigint;
 alter table users add column notifications_cleared_at bigint;
 `,
   },
+  {
+    // Receivers can ask for stems; senders upload them to the track from their receipt page.
+    id: "0018_stems",
+    sql: `
+alter table tracks add column stems_requested_at bigint;
+create table stems (
+  id bigint generated always as identity primary key,
+  track_id bigint not null references tracks(id) on delete cascade,
+  file_key text not null,
+  name text not null,
+  mime text not null,
+  size bigint not null,
+  created_at bigint not null
+);
+create index stems_track on stems(track_id);
+alter table stems enable row level security;
+`,
+  },
 ];

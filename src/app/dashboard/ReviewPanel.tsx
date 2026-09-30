@@ -8,6 +8,7 @@ import { addNote, deleteTrack, moveTrack, replyToSender } from "./actions";
 import { ConfirmButton, NoteForm } from "./ClientBits";
 import { DecisionRail } from "./DecisionRail";
 import { PlayedOut } from "./PlayedOut";
+import { StemsBox } from "./StemsBox";
 import { DetailPlayer } from "./DetailPlayer";
 import { DesktopOnly, MobileOnly } from "./DesktopOnly";
 import { MobileTransport } from "./MobileTransport";
@@ -127,6 +128,10 @@ export async function ReviewPanel({
           <PlayedOut trackId={t.id} senderName={sender.name} at={t.played_out_at} note={t.played_out_note} />
         </div>
       )}
+
+      <div className="mt-4">
+        <StemsBox track={t} senderName={sender.name} />
+      </div>
 
       {t.message && (
         <figure className="mt-6 rounded-lg border-l-2 border-lime bg-ink p-4">

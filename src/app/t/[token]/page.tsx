@@ -3,6 +3,8 @@ import { Waveform } from "@/components/Waveform";
 import {q, type Track } from "@/lib/db";
 import { fmtDate, fmtDay, fmtTime } from "@/lib/format";
 import { RETAIN_UNREVIEWED_DAYS, SIGNALS } from "@/lib/plans";
+import { MAX_STEMS, stemsFor } from "@/lib/stems";
+import { StemUpload } from "./StemUpload";
 
 export const metadata = { title: "Your receipt — FloorTest", robots: { index: false } };
 
@@ -14,6 +16,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
        WHERE t.token = ?`, token));
   if (!t) notFound();
 
+  const stems = t.stems_requested_at && !t.deleted_at ? await stemsFor(t.id) : [];
   // Kept and passed are private to the receiver. Senders only see what they were promised.
   const steps = [
     { label: "Delivered", at: t.created_at, text: `On ${t.receiver}'s desk${t.collection ? ` for ${t.collection}` : ""}` },
@@ -64,6 +67,10 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
           );
         })}
       </ol>
+
+      {t.stems_requested_at && !t.deleted_at && (
+        <StemUpload token={token} receiver={t.receiver.split(/\s+/)[0]} existing={stems.map((x) => x.name)} max={MAX_STEMS} />
+      )}
 
       <section className="flex flex-col gap-2.5 rounded-[14px] border border-line bg-ink-2 p-3.5 text-[10px] text-faint">
         <p>
