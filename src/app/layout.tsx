@@ -1,7 +1,10 @@
 import { mono, serif } from "./fonts";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { env, isPreview } from "@/lib/env";
+
+/** maximumScale stops iOS Safari zooming in on small text fields and staying zoomed; people can still pinch-zoom. */
+export const viewport: Viewport = { width: "device-width", initialScale: 1, maximumScale: 1, themeColor: "#10110f" };
 
 export const metadata: Metadata = {
   metadataBase: new URL(env.appUrl),
