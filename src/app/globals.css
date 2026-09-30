@@ -1,13 +1,19 @@
 @import "tailwindcss";
 
 @theme {
+  /* One grey scale for the whole product. Surfaces, darkest first. */
   --color-ink: #10110f;
   --color-ink-2: #171815;
-  --color-ink-3: #1f201c;
+  --color-ink-3: #1e1f1b;
+  --color-ink-4: #2a2e24; /* raised / active */
+  /* Lines */
   --color-line: #2c2e29;
+  --color-line-2: #3a3d37;
+  /* Text, brightest first */
   --color-bone: #f1f1eb;
   --color-mute: #a3a69b; /* ≈7:1 on ink, ≈6.5:1 on panels */
-  --color-dim: #85887f; /* decorative only; ≥4.5:1 on ink */
+  --color-dim: #85887f; /* ≥4.5:1 on ink */
+  --color-faint: #6b6e65; /* labels and meta only */
   --color-lime: #d5ff48;
   --color-olive: #536400;
   --color-danger: #ff6b5a;
@@ -39,34 +45,12 @@ body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
 @utility chip { @apply inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap; }
 @utility tnum { font-variant-numeric: tabular-nums; }
 
-/* ── Stage public page ───────────────────────────────────────────── */
-@utility stage-panel {
-  background: rgb(26 19 15 / 0.84);
-  border: 1px solid rgb(255 255 255 / 0.09);
-  box-shadow: 0 30px 80px -20px rgb(0 0 0 / 0.7);
-  -webkit-backdrop-filter: blur(24px);
-  backdrop-filter: blur(24px);
-}
-/* Mono labels stay at 12px+ and ~8:1 contrast on the warm panel. */
-@utility stage-label {
-  font-family: var(--font-stage-mono), var(--font-mono);
-  font-size: 0.75rem;
-  line-height: 1.4;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #bdb1a3;
-}
-@utility stage-input {
-  @apply w-full rounded-xl border border-[#4a3d33] bg-black/25 px-4 py-3.5 text-[15px] text-bone outline-none transition placeholder:text-[#8f8377] focus:border-lime/70 focus:ring-2 focus:ring-lime/15;
-  font-family: var(--font-stage-mono), var(--font-mono);
-}
-
-/* Home page: small uppercase mono labels, like the Stage page. */
+/* Home page: small uppercase mono labels. */
 @utility home-label {
   font-family: var(--font-stage-mono), var(--font-mono);
   font-size: 0.7rem;
   line-height: 1.4;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #8f8377;
+  color: var(--color-dim);
 }

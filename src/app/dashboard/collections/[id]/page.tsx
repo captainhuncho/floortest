@@ -68,18 +68,18 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
 
   return (
     <>
-      <div className="flex flex-col gap-3 px-4 pb-4 pt-1 font-[family-name:var(--font-stage-mono)] text-[#f1f1eb] md:hidden">
+      <div className="flex flex-col gap-3 px-4 pb-4 pt-1 font-[family-name:var(--font-stage-mono)] text-bone md:hidden">
         <CollectionDetailHeader c={editable} receiving={receiving} closed={isClosed(c)} canDelete={all.length > 1} />
         {(genres.custom || c.bpm_min || c.brief_note || c.brief_wanted) && (
-          <section className="flex flex-col gap-2.5 rounded-xl border border-[#2c2e29] bg-[#1e1f1b] p-3.5">
+          <section className="flex flex-col gap-2.5 rounded-xl border border-line bg-ink-3 p-3.5">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-[9px] font-bold text-[#5f6158]">GENRES</p>
+                <p className="text-[9px] font-bold text-faint">GENRES</p>
                 <p className="text-[12px]">{genres.custom ? genres.list.join(", ") : c.brief_wanted || "Any"}</p>
               </div>
               {c.bpm_min && c.bpm_max && (
                 <div className="shrink-0 text-right">
-                  <p className="text-[9px] font-bold text-[#5f6158]">BPM</p>
+                  <p className="text-[9px] font-bold text-faint">BPM</p>
                   <p className="text-[12px]">
                     {c.bpm_min}-{c.bpm_max}
                   </p>
@@ -88,9 +88,9 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
             </div>
             {c.brief_note && (
               <>
-                <hr className="border-[#2c2e29]" />
+                <hr className="border-line" />
                 <div>
-                  <p className="text-[9px] font-bold text-[#5f6158]">BRIEF</p>
+                  <p className="text-[9px] font-bold text-faint">BRIEF</p>
                   <p className="text-[12px] italic">&ldquo;{c.brief_note}&rdquo;</p>
                 </div>
               </>
@@ -98,16 +98,16 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
           </section>
         )}
         <p className="flex gap-2 text-[10px] font-bold">
-          <span className="text-[#a3a69b]">{c.needs_review} NEED REVIEW</span>
-          <span className="font-normal text-[#5f6158]">·</span>
+          <span className="text-mute">{c.needs_review} NEED REVIEW</span>
+          <span className="font-normal text-faint">·</span>
           <span className="text-white">{c.kept} KEPT</span>
-          <span className="font-normal text-[#5f6158]">·</span>
+          <span className="font-normal text-faint">·</span>
           <span>{c.count} TOTAL</span>
         </p>
         {cards.length ? (
           <ListRows rows={cards} statusTag />
         ) : (
-          <p className="rounded-xl border border-[#2c2e29] bg-[#1e1f1b] p-4 text-[12px] text-[#a3a69b]">
+          <p className="rounded-xl border border-line bg-ink-3 p-4 text-[12px] text-mute">
             This folder is empty. Tracks sent while it&apos;s receiving land here.
           </p>
         )}

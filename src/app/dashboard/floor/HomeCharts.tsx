@@ -77,17 +77,17 @@ export function GenreBars({ data }: { data: { genre: string; n: number }[] }) {
   const [hover, setHover] = useState<number | null>(null);
   const total = data.reduce((s, d) => s + d.n, 0);
   const max = Math.max(1, ...data.map((d) => d.n));
-  if (!total) return <p className="text-xs text-[#6b6e65]">No tracks in the last 30 days.</p>;
+  if (!total) return <p className="text-xs text-faint">No tracks in the last 30 days.</p>;
   return (
     <figure>
       <ul className="space-y-3" aria-hidden onMouseLeave={() => setHover(null)}>
         {data.map((d, i) => (
           <li key={d.genre} className="flex items-center gap-3" onMouseEnter={() => setHover(i)}>
-            <span className="w-[100px] shrink-0 truncate text-xs text-[#a3a69b]">{d.genre}</span>
-            <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-[3px] bg-[#232420]">
+            <span className="w-[100px] shrink-0 truncate text-xs text-mute">{d.genre}</span>
+            <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-[3px] bg-ink-3">
               <span className="block h-full bg-white transition-opacity" style={{ width: `${(d.n / max) * 100}%`, opacity: hover === null || hover === i ? 1 : 0.45 }} />
             </span>
-            <span className="w-6 shrink-0 text-right text-[11px] text-[#6b6e65] tnum">{hover === i ? `${Math.round((d.n / total) * 100)}%` : d.n}</span>
+            <span className="w-6 shrink-0 text-right text-[11px] text-faint tnum">{hover === i ? `${Math.round((d.n / total) * 100)}%` : d.n}</span>
           </li>
         ))}
       </ul>

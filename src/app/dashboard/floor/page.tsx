@@ -22,9 +22,9 @@ const DAY = 86_400_000;
 
 function Card({ title, action, children, className = "" }: { title: string; action?: React.ReactNode; children: React.ReactNode; className?: string }) {
   return (
-    <section className={`rounded-2xl border border-[#2c2e29] bg-[#1e1f1b] p-4 ${className}`} aria-label={title}>
+    <section className={`rounded-2xl border border-line bg-ink-3 p-4 ${className}`} aria-label={title}>
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="text-[10px] font-bold uppercase tracking-[1px] text-[#a3a69b]">{title}</h2>
+        <h2 className="text-[10px] font-bold uppercase tracking-[1px] text-mute">{title}</h2>
         {action}
       </div>
       {children}
@@ -35,10 +35,10 @@ function Card({ title, action, children, className = "" }: { title: string; acti
 /** Figma "kpi-card". */
 function Stat({ label, value, note }: { label: string; value: string; note?: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-1.5 rounded-xl border border-[#2c2e29] bg-[#1e1f1b] p-3.5">
-      <p className="text-[10px] font-bold uppercase tracking-[1px] text-[#a3a69b]">{label}</p>
-      <p className="text-[30px] font-bold leading-none text-[#f1f1eb] tnum">{value}</p>
-      {note && <p className="text-[10px] text-[#6b6e65]">{note}</p>}
+    <div className="flex flex-col gap-1.5 rounded-xl border border-line bg-ink-3 p-3.5">
+      <p className="text-[10px] font-bold uppercase tracking-[1px] text-mute">{label}</p>
+      <p className="text-[30px] font-bold leading-none text-bone tnum">{value}</p>
+      {note && <p className="text-[10px] text-faint">{note}</p>}
     </div>
   );
 }
@@ -57,7 +57,7 @@ const delta = (now: number, prev: number) => {
 };
 
 // Figma card action link (Manage, Filter, Start reviewing).
-const act = "text-[11px] font-bold text-[#f1f1eb] hover:text-lime";
+const act = "text-[11px] font-bold text-bone hover:text-lime";
 
 export default async function TheFloor({ searchParams }: { searchParams: Promise<{ welcome?: string }> }) {
   const user = await requireUser();
@@ -129,7 +129,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
       tone: "ok",
       text: `Your link is open and sending tracks to “${active.name}”${active.closes_at ? `, closing ${fmtDay(active.closes_at)}` : ""}.`,
       action: (
-        <a href={`/${user.handle}`} target="_blank" className="shrink-0 rounded-lg border border-[#2c2e29] bg-[#1a1c18] px-3.5 py-[7px] text-[11px] font-bold text-[#f1f1eb]">
+        <a href={`/${user.handle}`} target="_blank" className="shrink-0 rounded-lg border border-line bg-ink-2 px-3.5 py-[7px] text-[11px] font-bold text-bone">
           Preview link
         </a>
       ),
@@ -140,11 +140,11 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   return (
     <div className="space-y-4 px-4 py-4 font-[family-name:var(--font-stage-mono)] sm:px-8 sm:py-6">
       <header className="flex flex-col gap-2">
-        <p className="text-[10px] font-bold uppercase tracking-[1px] text-[#6b6e65]">{welcome ? "Welcome to FloorTest" : new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: prefs.tz })}</p>
-        <h1 className="text-[34px] font-bold leading-[1.05] tracking-[-1px] text-[#f1f1eb]">
+        <p className="text-[10px] font-bold uppercase tracking-[1px] text-faint">{welcome ? "Welcome to FloorTest" : new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: prefs.tz })}</p>
+        <h1 className="text-[34px] font-bold leading-[1.05] tracking-[-1px] text-bone">
           {greeting}, {first}.
         </h1>
-        <p className="text-[13px] text-[#a3a69b]">
+        <p className="text-[13px] text-mute">
           {stats.waiting ? `${stats.waiting} track${stats.waiting === 1 ? " is" : "s are"} waiting for you.` : "Nothing is waiting. You're all caught up."}
         </p>
       </header>
@@ -154,7 +154,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
       {/* Figma "Submission Status Banner" */}
       <div
         role="status"
-        className={`flex flex-wrap items-center gap-3 rounded-xl border px-4 py-3.5 ${status.tone === "ok" ? "border-[#2c2e29] bg-[#1e1f1b]" : "border-danger/40 bg-danger/10"}`}
+        className={`flex flex-wrap items-center gap-3 rounded-xl border px-4 py-3.5 ${status.tone === "ok" ? "border-line bg-ink-3" : "border-danger/40 bg-danger/10"}`}
       >
         {status.tone === "ok" ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -162,7 +162,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
         ) : (
           <span aria-hidden className="size-2 shrink-0 rounded-full bg-danger" />
         )}
-        <p className="min-w-0 flex-1 text-[13px] font-medium text-[#a3a69b]">{status.text}</p>
+        <p className="min-w-0 flex-1 text-[13px] font-medium text-mute">{status.text}</p>
         {status.action}
       </div>
 
@@ -192,15 +192,15 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
             )
           }
         >
-          {upNext.length ? <UpNext items={upNext} /> : <p className="text-xs text-[#6b6e65]">Nothing waiting. New tracks will show up here first.</p>}
+          {upNext.length ? <UpNext items={upNext} /> : <p className="text-xs text-faint">Nothing waiting. New tracks will show up here first.</p>}
         </Card>
 
         <Card title="Current callout" action={<Link href="/dashboard/collections" className={act}>Manage</Link>}>
           {active ? (
             <div className="space-y-3">
               <div className="flex flex-col gap-1">
-                <p className="break-words text-[30px] font-bold leading-tight text-[#f1f1eb]">{active.name}</p>
-                <p className="text-xs text-[#6b6e65]">
+                <p className="break-words text-[30px] font-bold leading-tight text-bone">{active.name}</p>
+                <p className="text-xs text-faint">
                   {isClosed(active)
                     ? `Closed ${fmtDay(active.closes_at!)}`
                     : daysLeft !== null
@@ -213,7 +213,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
               {(genresFor(active).custom || (active.bpm_min && active.bpm_max)) && (
                 <div className="flex flex-wrap gap-1.5">
                   {[...(genresFor(active).custom ? genresFor(active).list : []), ...(active.bpm_min && active.bpm_max ? [`${active.bpm_min}–${active.bpm_max} BPM`] : [])].map((g) => (
-                    <span key={g} className="rounded-md bg-[#1a1c18] px-2.5 py-1 text-[11px] text-[#a3a69b]">
+                    <span key={g} className="rounded-md bg-ink-2 px-2.5 py-1 text-[11px] text-mute">
                       {g}
                     </span>
                   ))}
@@ -222,7 +222,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
               <CopyLinkBox link={link} />
             </div>
           ) : (
-            <p className="text-xs text-[#6b6e65]">No collection selected.</p>
+            <p className="text-xs text-faint">No collection selected.</p>
           )}
         </Card>
 

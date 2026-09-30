@@ -27,14 +27,14 @@ export default async function Activity({ searchParams }: { searchParams: Promise
        ORDER BY e.created_at DESC LIMIT 200`, user.id, ...(types ?? [])));
 
   return (
-    <div className="flex max-w-3xl flex-col gap-4 px-4 py-4 font-[family-name:var(--font-stage-mono)] text-[#f1f1eb] sm:px-8 sm:py-6">
-      <div className="flex items-center gap-3 border-b border-[#2c2e29] pb-4">
+    <div className="flex max-w-3xl flex-col gap-4 px-4 py-4 font-[family-name:var(--font-stage-mono)] text-bone sm:px-8 sm:py-6">
+      <div className="flex items-center gap-3 border-b border-line pb-4">
         <Link href="/dashboard/account" aria-label="Back to Account" className="text-[18px] leading-none md:hidden">
           ‹
         </Link>
         <h1 className="text-[18px] font-bold sm:text-3xl">Activity</h1>
       </div>
-      <p className="text-[12px] leading-[1.5] text-[#a3a69b]">
+      <p className="text-[12px] leading-[1.5] text-mute">
         {filter[0] === "you" ? "Everything you did in your account, newest first. Only you can see this." : "What happened on your desk, including what senders did."}
       </p>
       <nav className="-mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0" aria-label="Filter">
@@ -43,15 +43,15 @@ export default async function Activity({ searchParams }: { searchParams: Promise
             key={k}
             href={k === "you" ? "/dashboard/activity" : `/dashboard/activity?f=${k}`}
             aria-current={filter[0] === k ? "page" : undefined}
-            className={`shrink-0 rounded-full border border-[#2c2e29] px-3 py-1.5 text-[11px] ${
-              filter[0] === k ? "bg-white font-bold text-[#10110f]" : "bg-[#1e1f1b] font-medium text-[#a3a69b]"
+            className={`shrink-0 rounded-full border border-line px-3 py-1.5 text-[11px] ${
+              filter[0] === k ? "bg-white font-bold text-ink" : "bg-ink-3 font-medium text-mute"
             }`}
           >
             {label}
           </Link>
         ))}
       </nav>
-      <div className="text-[12px] [&_li]:border-b [&_li]:border-[#2c2e29] [&_li]:pb-3 [&_li:last-child]:border-0 [&_li_.text-sm]:text-[10px] [&_li_.text-sm]:text-[#6b6e65] [&_li>span:first-child]:bg-white [&_li_.font-medium]:font-bold">
+      <div className="text-[12px] [&_li]:border-b [&_li]:border-line [&_li]:pb-3 [&_li:last-child]:border-0 [&_li_.text-sm]:text-[10px] [&_li_.text-sm]:text-faint [&_li>span:first-child]:bg-white [&_li_.font-medium]:font-bold">
         {filter[0] === "you" ? <AccountLog rows={mine} /> : <History events={events} showSender />}
       </div>
     </div>

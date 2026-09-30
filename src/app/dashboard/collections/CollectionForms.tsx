@@ -147,13 +147,13 @@ export function NewCollection({ tile = false }: { tile?: boolean }) {
       // Figma "new-collection-tile"
       <button
         onClick={() => setOpen(true)}
-        className="flex aspect-[171/221] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-[#2c2e29] bg-[#10110f] font-[family-name:var(--font-stage-mono)]"
+        className="flex aspect-[171/221] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-line bg-ink font-[family-name:var(--font-stage-mono)]"
       >
-        <span className="grid size-9 place-items-center rounded-full bg-[#1e1f1b]">
+        <span className="grid size-9 place-items-center rounded-full bg-ink-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icons/plus.svg" alt="" className="size-3.5" />
         </span>
-        <span className="text-[11px] font-bold text-[#a3a69b]">New collection</span>
+        <span className="text-[11px] font-bold text-mute">New collection</span>
       </button>
     ) : (
       <button className="btn-ghost" onClick={() => setOpen(true)}>
@@ -206,12 +206,12 @@ export function CollectionTile({ c, receiving, closed, canDelete }: { c: C; rece
     );
   const rows = [tileBars(c.id, 16), tileBars(c.id + 7, 16)];
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-[#2c2e29] bg-[#1e1f1b] font-[family-name:var(--font-stage-mono)]">
-      <Link href={`/dashboard/collections/${c.id}`} className="relative flex aspect-square flex-col justify-end gap-1.5 bg-gradient-to-b from-[#1a2a0a] to-[#0b0c0a] p-4" aria-label={`Open ${c.name}`}>
+    <div className="relative overflow-hidden rounded-2xl border border-line bg-ink-3 font-[family-name:var(--font-stage-mono)]">
+      <Link href={`/dashboard/collections/${c.id}`} className="relative flex aspect-square flex-col justify-end gap-1.5 bg-gradient-to-b from-[#1a2a0a] to-ink p-4" aria-label={`Open ${c.name}`}>
         {rows.map((bars, r) => (
           <span key={r} aria-hidden className={`flex items-center gap-0.5 ${r ? "h-5" : "h-7"}`}>
             {bars.map((h, i) => (
-              <span key={i} className={`w-0.5 rounded-[1px] ${i < (r ? 8 : 12) ? "bg-white" : "bg-[#6b6e65]"}`} style={{ height: `${Math.round(h * 100)}%`, opacity: i < (r ? 8 : 12) ? 0.5 + h / 2 : 0.2 }} />
+              <span key={i} className={`w-0.5 rounded-[1px] ${i < (r ? 8 : 12) ? "bg-white" : "bg-faint"}`} style={{ height: `${Math.round(h * 100)}%`, opacity: i < (r ? 8 : 12) ? 0.5 + h / 2 : 0.2 }} />
             ))}
           </span>
         ))}
@@ -222,17 +222,17 @@ export function CollectionTile({ c, receiving, closed, canDelete }: { c: C; rece
             RECEIVING
           </span>
         )}
-        {closed && <span className="absolute left-2.5 top-2.5 rounded-md border border-[#6b6e65] px-2 py-1 text-[8px] font-bold tracking-[0.5px] text-[#a3a69b]">CLOSED</span>}
+        {closed && <span className="absolute left-2.5 top-2.5 rounded-md border border-faint px-2 py-1 text-[8px] font-bold tracking-[0.5px] text-mute">CLOSED</span>}
       </Link>
-      <Link href={`/dashboard?view=queue&c=${c.id}`} aria-label={`Play ${c.name} in the queue`} className="absolute right-2.5 grid size-[30px] place-items-center rounded-lg bg-[#0b0c0a] opacity-90" style={{ top: "calc(100% - 56px - 40px)" }}>
+      <Link href={`/dashboard?view=queue&c=${c.id}`} aria-label={`Play ${c.name} in the queue`} className="absolute right-2.5 grid size-[30px] place-items-center rounded-lg bg-ink opacity-90" style={{ top: "calc(100% - 56px - 40px)" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icons/tile-play.svg" alt="" className="size-3" />
       </Link>
       <div className="flex flex-col gap-[3px] px-2.5 pb-3 pt-2.5">
-        <Link href={`/dashboard/collections/${c.id}`} className="truncate text-[13px] font-bold text-[#f1f1eb]">
+        <Link href={`/dashboard/collections/${c.id}`} className="truncate text-[13px] font-bold text-bone">
           {c.name}
         </Link>
-        <div className="flex items-center justify-between text-[#a3a69b]">
+        <div className="flex items-center justify-between text-mute">
           <span className="text-[10px]">
             {c.count} track{c.count === 1 ? "" : "s"}
             {c.needsReview > 0 && ` · ${c.needsReview} new`}
@@ -260,10 +260,10 @@ function OptionsSheet({ title, onClose, children }: { title: string; onClose: ()
         role="menu"
         aria-label={title}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-sm overflow-hidden rounded-2xl border border-[#2c2e29] bg-[#1a1c18] font-[family-name:var(--font-stage-mono)] text-[13px] text-[#f1f1eb] shadow-2xl shadow-black/60"
+        className="w-full max-w-sm overflow-hidden rounded-2xl border border-line bg-ink-2 font-[family-name:var(--font-stage-mono)] text-[13px] text-bone shadow-2xl shadow-black/60"
       >
-        <p className="truncate border-b border-[#2c2e29] px-4 py-3 text-[10px] font-bold uppercase tracking-[1px] text-[#a3a69b]">{title}</p>
-        <div className="flex flex-col divide-y divide-[#2c2e29] [&>*]:block [&>*]:w-full [&>*]:px-4 [&>*]:py-3.5 [&>*]:text-left">{children}</div>
+        <p className="truncate border-b border-line px-4 py-3 text-[10px] font-bold uppercase tracking-[1px] text-mute">{title}</p>
+        <div className="flex flex-col divide-y divide-line [&>*]:block [&>*]:w-full [&>*]:px-4 [&>*]:py-3.5 [&>*]:text-left">{children}</div>
       </div>
     </div>
   );
@@ -295,7 +295,7 @@ function CollectionOptions({ c, receiving, onEdit, onClose, showOpen }: { c: C; 
       <div>
         <ExportButton collectionId={c.id} count={c.count} whole label="Download collection" variant="ghost" />
       </div>
-      <button role="menuitem" className="text-center! text-[#a3a69b]" onClick={onClose}>
+      <button role="menuitem" className="text-center! text-mute" onClick={onClose}>
         Cancel
       </button>
     </OptionsSheet>
@@ -326,10 +326,10 @@ export function CollectionDetailHeader({ c, receiving, closed, canDelete }: { c:
             RECEIVING
           </span>
         ) : (
-          <span className="text-[8px] font-bold tracking-[0.5px] text-[#5f6158]">{closed ? "CLOSED" : "NOT RECEIVING"}</span>
+          <span className="text-[8px] font-bold tracking-[0.5px] text-faint">{closed ? "CLOSED" : "NOT RECEIVING"}</span>
         )}
         {!editing && (
-          <button onClick={() => setEditing(true)} className="rounded-md border border-[#2c2e29] bg-[#1e1f1b] px-3 py-1.5 text-[10px] font-bold text-[#f1f1eb]">
+          <button onClick={() => setEditing(true)} className="rounded-md border border-line bg-ink-3 px-3 py-1.5 text-[10px] font-bold text-bone">
             Edit Info
           </button>
         )}

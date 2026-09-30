@@ -140,14 +140,14 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
   return (
     <div className="flex min-h-full flex-col">
       <header className="flex flex-wrap items-center justify-between gap-3 px-3 pb-2 pt-3 md:border-b md:border-line md:px-6 md:py-3.5">
-        <h1 className="font-[family-name:var(--font-stage-mono)] text-xl font-bold text-[#f1f1eb] md:font-sans md:text-2xl md:tracking-tight">Review Queue</h1>
+        <h1 className="font-[family-name:var(--font-stage-mono)] text-xl font-bold text-bone md:font-sans md:text-2xl md:tracking-tight">Review Queue</h1>
       </header>
 
       {/* Phones: Figma "Filters-Scrollable" chips; desktop keeps the toolbar. */}
       <div className="flex flex-wrap items-center gap-1.5 px-3 pb-3 font-[family-name:var(--font-stage-mono)] md:gap-x-1 md:gap-y-2 md:border-b md:border-line md:bg-ink-2/60 md:px-4 md:py-1.5 md:font-sans">
         <Link
           href="/dashboard?view=list"
-          className={`rounded-xl px-3 py-1.5 text-[10px] font-bold md:hidden ${sp.s || sp.c || sp.type || sp.sender || sp.genre || search ? "border border-[#2c2e29] bg-[#1e1f1b] text-[#a3a69b]" : "bg-white text-[#10110f]"}`}
+          className={`rounded-xl px-3 py-1.5 text-[10px] font-bold md:hidden ${sp.s || sp.c || sp.type || sp.sender || sp.genre || search ? "border border-line bg-ink-3 text-mute" : "bg-white text-ink"}`}
         >
           All Queue
         </Link>

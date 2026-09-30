@@ -15,7 +15,7 @@ export function CopyLinkBox({ link }: { link: string }) {
     }
   }
   return (
-    <button type="button" onClick={copy} aria-label={`Copy your link, ${pretty}`} className="flex w-full items-center gap-2 rounded-xl border border-[#2c2e29] bg-[#10110f] p-3 text-left">
+    <button type="button" onClick={copy} aria-label={`Copy your link, ${pretty}`} className="flex w-full items-center gap-2 rounded-xl border border-line bg-ink p-3 text-left">
       <span className="min-w-0 flex-1 truncate text-xs text-white">{pretty}</span>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/icons/copy.svg" alt="" className="size-3.5 shrink-0" />

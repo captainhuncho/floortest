@@ -46,7 +46,7 @@ export function ClaimBox({ host, inviteOnly }: { host: string; inviteOnly: boole
         Your receiving link
       </label>
       <div className="mt-4 flex items-stretch border border-white/20 bg-black/30 focus-within:border-lime/70">
-        <span className="min-w-0 max-w-[60%] shrink self-center truncate pl-3 font-[family-name:var(--font-stage-mono)] text-sm text-[#8f8377] sm:text-base">{host}/</span>
+        <span className="min-w-0 max-w-[60%] shrink self-center truncate pl-3 font-[family-name:var(--font-stage-mono)] text-sm text-dim sm:text-base">{host}/</span>
         <input
           id="claim-name"
           value={name}
@@ -57,17 +57,17 @@ export function ClaimBox({ host, inviteOnly }: { host: string; inviteOnly: boole
           spellCheck={false}
           // The whole field row shows focus instead (the global outline would box just the name).
           style={{ outline: "none" }}
-          className="min-w-[6rem] flex-1 bg-transparent py-3 pr-2 font-[family-name:var(--font-stage-mono)] text-sm text-lime outline-none placeholder:text-[#5f5a52] sm:text-base"
+          className="min-w-[6rem] flex-1 bg-transparent py-3 pr-2 font-[family-name:var(--font-stage-mono)] text-sm text-lime outline-none placeholder:text-faint sm:text-base"
         />
       </div>
       <button className="mt-3 w-full bg-lime px-4 py-3 font-[family-name:var(--font-stage-mono)] text-sm font-medium uppercase text-ink hover:brightness-95">
         Claim your link →
       </button>
-      <p className="mt-3 min-h-5 font-[family-name:var(--font-stage-mono)] text-xs text-[#a8a59c]" aria-live="polite">
+      <p className="mt-3 min-h-5 font-[family-name:var(--font-stage-mono)] text-xs text-mute" aria-live="polite">
         {status ? (inviteOnly || status !== "free" ? HELP[status] : "Free right now.") : inviteOnly ? "Private beta · invite only" : ""}
       </p>
       {display && (
-        <p className="mt-1 font-[family-name:var(--font-serif)] text-lg italic text-[#d8cfc4]">
+        <p className="mt-1 font-[family-name:var(--font-serif)] text-lg italic text-bone">
           {possessive} desk · tracks for your next set
         </p>
       )}

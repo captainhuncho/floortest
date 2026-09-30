@@ -16,10 +16,10 @@ export function UpNext({ items }: { items: Item[] }) {
       {items.map((t) => {
         const on = current?.id === t.id;
         return (
-          <li key={t.id} className="flex items-center gap-3 rounded-xl bg-[#1a1c18] p-3">
+          <li key={t.id} className="flex items-center gap-3 rounded-xl bg-ink-2 p-3">
             <button
               onClick={() => play(toPlayer(t), queue)}
-              className="grid size-10 shrink-0 place-items-center rounded-full bg-white text-[#10110f]"
+              className="grid size-10 shrink-0 place-items-center rounded-full bg-white text-ink"
               aria-label={on && playing ? `Pause ${t.title}` : `Play ${t.title}`}
             >
               {on && playing ? (
@@ -30,14 +30,14 @@ export function UpNext({ items }: { items: Item[] }) {
               )}
             </button>
             <Link href={`/dashboard?view=queue&t=${t.id}`} className="flex min-w-0 flex-1 flex-col gap-1">
-              <span className="truncate text-sm font-bold tracking-[-0.4px] text-[#f1f1eb]">
+              <span className="truncate text-sm font-bold tracking-[-0.4px] text-bone">
                 {t.artist} - {t.title}
               </span>
-              <span className="truncate text-[11px] text-[#6b6e65]">
+              <span className="truncate text-[11px] text-faint">
                 {[t.genre, t.sender !== t.artist ? `via ${t.sender}` : null].filter(Boolean).join(" · ")}
               </span>
             </Link>
-            <span className="shrink-0 text-[13px] text-[#6b6e65] tnum">{fmtTime(t.duration)}</span>
+            <span className="shrink-0 text-[13px] text-faint tnum">{fmtTime(t.duration)}</span>
           </li>
         );
       })}
