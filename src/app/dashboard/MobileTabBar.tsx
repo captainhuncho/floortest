@@ -24,15 +24,17 @@ export function MobileTabBar({ needsReview }: { needsReview: number }) {
   return (
     <nav
       aria-label="Main"
-      className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 flex items-center justify-between rounded-[32px] bg-[#1a1c18] p-2 font-[family-name:var(--font-stage-mono)] drop-shadow-[0_8px_12px_rgba(0,0,0,0.4)] md:hidden"
+      className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-40 flex w-[min(21rem,calc(100%-3rem))] -translate-x-1/2 items-center justify-between gap-1 rounded-[28px] border border-white/[0.07] bg-gradient-to-b from-[#24261f] to-[#141512] p-1.5 font-[family-name:var(--font-stage-mono)] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_2px_4px_rgba(0,0,0,0.5),0_14px_30px_-6px_rgba(0,0,0,0.75)] md:hidden"
     >
       {tabs.map((t) => (
         <Link
           key={t.href}
           href={t.href}
           aria-current={t.active ? "page" : undefined}
-          className={`relative flex h-12 flex-col items-center justify-center gap-[3px] rounded-[24px] px-3 py-1.5 text-[8px] uppercase ${
-            t.active ? "bg-[#2a2e24] font-bold text-white" : "font-medium text-[#85887f]"
+          className={`relative flex h-12 flex-1 flex-col items-center justify-center gap-[3px] rounded-[22px] px-1 py-1.5 text-[8px] uppercase transition duration-100 active:translate-y-px active:scale-95 ${
+            t.active
+              ? "bg-gradient-to-b from-[#353a2d] to-[#23261e] font-bold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_2px_6px_rgba(0,0,0,0.55)]"
+              : "font-medium text-[#85887f] active:bg-[#1f211b] active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)]"
           }`}
         >
           <Icon name={t.icon} />
