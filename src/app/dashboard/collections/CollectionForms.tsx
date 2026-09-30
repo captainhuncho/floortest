@@ -264,3 +264,20 @@ export function CollectionTile({ c, receiving, closed, canDelete }: { c: C; rece
     </div>
   );
 }
+
+/** Figma "btn-edit-mobile": opens the collection's edit form in place. */
+export function EditCollectionInfo({ c, receiving, closed, canDelete }: { c: C; receiving: boolean; closed: boolean; canDelete: boolean }) {
+  const [open, setOpen] = useState(false);
+  return open ? (
+    <div className="w-full">
+      <CollectionCard c={c} receiving={receiving} closed={closed} canDelete={canDelete} startEditing />
+      <button className="mt-2 text-sm text-mute hover:text-bone" onClick={() => setOpen(false)}>
+        Close
+      </button>
+    </div>
+  ) : (
+    <button onClick={() => setOpen(true)} className="rounded-md border border-[#2c2e29] bg-[#1e1f1b] px-3 py-1.5 text-[10px] font-bold text-[#f1f1eb]">
+      Edit Info
+    </button>
+  );
+}

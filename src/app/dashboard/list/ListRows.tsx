@@ -60,7 +60,8 @@ const initials = (s: string) =>
     .map((w) => w[0]!.toUpperCase())
     .join("");
 
-export function ListRows({ rows }: { rows: ListRow[] }) {
+/** `statusTag` swaps the age for a Needs review / Kept / Not for me tag (Figma collection detail). */
+export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusTag?: boolean }) {
   const player = usePlayer();
   const toast = useToast();
   const [selected, setSelected] = useState<number | null>(null);
@@ -195,9 +196,19 @@ export function ListRows({ rows }: { rows: ListRow[] }) {
                     </span>
                     <span className="truncate text-[10px] font-medium text-[#a3a69b]">{r.meta.join(" · ")}</span>
                   </button>
-                  <span className="shrink-0 text-[10px] font-medium text-[#5f6158]" suppressHydrationWarning>
-                    {age(r.createdAt)}
-                  </span>
+                  {statusTag ? (
+                    <span
+                      className={`shrink-0 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase ${
+                        decision === "kept" ? "bg-white/10 text-white" : "bg-[#2c2e29] text-[#a3a69b]"
+                      }`}
+                    >
+                      {decision === "kept" ? "Kept" : decision === "passed" ? "Not for me" : "Needs review"}
+                    </span>
+                  ) : (
+                    <span className="shrink-0 text-[10px] font-medium text-[#5f6158]" suppressHydrationWarning>
+                      {age(r.createdAt)}
+                    </span>
+                  )}
                 </div>
                 <div onClick={(e) => e.stopPropagation()}>
                   <Waveform
