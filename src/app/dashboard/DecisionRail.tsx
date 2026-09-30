@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { isTyping, usePlayer, type PlayerTrack } from "@/components/Player";
 import { useToast } from "@/components/Toast";
+import { QuickReplies } from "./QuickReplies";
 import { ReplyTemplates } from "./ReplyTemplates";
 import { decideTrack, undoDecision } from "./actions";
 
@@ -199,6 +200,13 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
           <label className="sr-only" htmlFor="reply-body">
             Reply to {senderName}
           </label>
+          <QuickReplies
+            senderName={senderName}
+            onPick={(t) => {
+              if (replyRef.current) replyRef.current.value = t;
+              replyRef.current?.focus();
+            }}
+          />
           <textarea
             id="reply-body"
             ref={replyRef}

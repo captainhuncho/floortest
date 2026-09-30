@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { QuickReplies } from "./QuickReplies";
 
 export function ConfirmButton({
   action,
@@ -79,6 +80,7 @@ export function Composer({
   const [mode, setMode] = useState<"reply" | "note">("reply");
   const [pending, start] = useTransition();
   const ref = useRef<HTMLFormElement>(null);
+  const area = useRef<HTMLTextAreaElement>(null);
 
   return (
     <form
@@ -109,12 +111,24 @@ export function Composer({
       </label>
       <textarea
         id="composer"
+        ref={area}
         name="body"
         required
         maxLength={4000}
         className="input min-h-24 resize-y rounded-tl-none"
         placeholder={mode === "note" ? "Only you see this." : `Sent to ${senderName} by email.`}
       />
+      {mode === "reply" && (
+        <div className="mt-2">
+          <QuickReplies
+            senderName={senderName}
+            onPick={(t) => {
+              if (area.current) area.current.value = t;
+              area.current?.focus();
+            }}
+          />
+        </div>
+      )}
       <button className="btn-lime btn-sm mt-2" disabled={pending}>
         {pending ? "Saving…" : mode === "note" ? "Save note" : "Send email"}
       </button>

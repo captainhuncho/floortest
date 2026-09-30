@@ -9,6 +9,7 @@ import type { Decision } from "@/lib/db";
 import { fmtTime } from "@/lib/format";
 import { toPlayer } from "@/lib/player-track";
 import { clearDecision, decideTrack, replyToSender, undoDecision } from "../actions";
+import { QuickReplies } from "../QuickReplies";
 import { ReplyTemplates } from "../ReplyTemplates";
 
 export type ListRow = {
@@ -391,6 +392,13 @@ function Expanded({ row: r, decision, onClose }: { row: ListRow; decision: Decis
         <label htmlFor={`reply-${r.id}`} className="label mb-1.5 block">
           Reply to {r.sender}
         </label>
+        <QuickReplies
+          senderName={r.sender}
+          onPick={(t) => {
+            if (area.current) area.current.value = t;
+            area.current?.focus();
+          }}
+        />
         <textarea
           id={`reply-${r.id}`}
           ref={area}
