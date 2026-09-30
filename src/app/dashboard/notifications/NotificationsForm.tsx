@@ -5,7 +5,7 @@ import {useEffect, useState, useTransition} from "react";
 import { useToast } from "@/components/Toast";
 import { sendDigestNow, updateNotifications } from "../actions";
 
-type Prefs = { mode: "instant" | "digest" | "off"; digestHour: number; quietStart: number | null; quietEnd: number | null; alerts: boolean; tz: string };
+type Prefs = { mode: "instant" | "digest" | "off"; digestHour: number; quietStart: number | null; quietEnd: number | null; alerts: boolean; product: boolean; tz: string };
 
 const MODES = [
   { id: "instant", title: "Every new track", sub: "An email as each track arrives (held during quiet hours)." },
@@ -34,6 +34,7 @@ export function NotificationsForm({ prefs, pending }: { prefs: Prefs; pending: n
   const [state, onSubmit, saving] = useActionForm(updateNotifications, undefined);
   const [mode, setMode] = useState(prefs.mode);
   const [alerts, setAlerts] = useState(prefs.alerts);
+  const [product, setProduct] = useState(prefs.product);
   const [quiet, setQuiet] = useState(prefs.quietStart != null);
   const [tz, setTz] = useState(prefs.tz);
   const [sending, start] = useTransition();
@@ -100,7 +101,18 @@ export function NotificationsForm({ prefs, pending }: { prefs: Prefs; pending: n
                 </span>
           </span>
           <span className="text-[15px] font-bold">Storage warning</span>
-          <span className="text-[10px] text-mute">When your link pauses because your desk is full</span>
+          <span className="text-[10px] text-mute">At 80% full, when your link pauses, and a week before tracks are auto-deleted</span>
+        </label>
+        <label className="mt-3 flex cursor-pointer flex-col gap-1.5 rounded-2xl border border-line bg-ink-2 px-3.5 py-3 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-lime">
+          <input type="checkbox" name="notify_product" checked={product} onChange={(e) => setProduct(e.target.checked)} className="sr-only" />
+          <span className="flex items-center justify-between">
+            <span className={`text-[9px] font-bold uppercase tracking-[0.6px] ${product ? "text-lime" : "text-faint"}`}>{product ? "On" : "Off"}</span>
+            <span aria-hidden className={`grid size-5 shrink-0 place-items-center rounded-full ${product ? "bg-line text-lime" : "border border-line"}`}>
+                  {product ? "✓" : <span className="size-1.5 rounded-full bg-line" />}
+                </span>
+          </span>
+          <span className="text-[15px] font-bold">Product updates</span>
+          <span className="text-[10px] text-mute">New features and occasional news. No more than once a month</span>
         </label>
       </fieldset>
 

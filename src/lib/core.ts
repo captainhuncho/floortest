@@ -312,7 +312,7 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
     ].join("\n"),
   });
   await notifyNewSubmission(receiver.id, track.id);
-  await alertIfFull(receiver.id, (await capacity(receiver)).full);
+  await alertIfFull(receiver.id, await capacity(receiver));
   await rewardReferral(receiver.id);
   return track;
 }
@@ -385,7 +385,7 @@ export async function markPlayedOut(user: User, t: Track, note: string) {
 export async function decide(user: User, t: Track, decision: Decision) {
   const prev = { decision: t.decision, decided_at: t.decided_at };
   // Keeping (again) always puts the track in the current Prepare for set batch.
-  await q.run("UPDATE tracks SET decision = ?, decided_at = ?, set_cleared_at = NULL WHERE id = ?", decision, now(), t.id);
+  await q.run("UPDATE tracks SET decision = ?, decided_at = ?, set_cleared_at = NULL, expiry_warned_at = NULL WHERE id = ?", decision, now(), t.id);
   const eventId = await logEvent({ user_id: user.id, sender_id: t.sender_id, track_id: t.id, type: decision, detail: "" });
   return { prev, eventId };
 }
@@ -394,12 +394,12 @@ export async function undoDecision(user: User, t: Track, prev: { decision: unkno
   // The undo token round-trips through the browser: accept only values this app could have produced.
   const decision = isDecision(prev.decision) ? prev.decision : null;
   const decidedAt = decision && typeof prev.decided_at === "number" ? prev.decided_at : null;
-  await q.run("UPDATE tracks SET decision = ?, decided_at = ? WHERE id = ?", decision, decidedAt, t.id);
+  await q.run("UPDATE tracks SET decision = ?, decided_at = ?, expiry_warned_at = NULL WHERE id = ?", decision, decidedAt, t.id);
   if (Number.isSafeInteger(eventId)) await q.run("DELETE FROM events WHERE id = ? AND user_id = ? AND track_id = ?", eventId, user.id, t.id);
 }
 
 export async function clearDecision(t: Track) {
-  await q.run("UPDATE tracks SET decision = NULL, decided_at = NULL WHERE id = ?", t.id);
+  await q.run("UPDATE tracks SET decision = NULL, decided_at = NULL, expiry_warned_at = NULL WHERE id = ?", t.id);
 }
 
 export async function reply(user: User, s: Sender, t: Track | undefined, body: string) {
@@ -424,7 +424,7 @@ export async function deleteTrack(user: User, t: Track) {
   await q.run("UPDATE tracks SET deleted_at = ?, file_key = NULL WHERE id = ?", now(), t.id);
   await logEvent({ user_id: user.id, sender_id: t.sender_id, track_id: t.id, type: "deleted", detail: "" });
   await removeFile(t.file_key);
-  await alertIfFull(user.id, (await capacity(user)).full); // re-arms the "link paused" email once there's space
+  await alertIfFull(user.id, await capacity(user)); // re-arms the "link paused" email once there's space
 }
 
 /**

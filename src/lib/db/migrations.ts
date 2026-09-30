@@ -365,4 +365,13 @@ where name = 'MA?' and user_id = (select id from users where handle = 'maxwell')
 alter table waitlist add column handle text not null default '';
 `,
   },
+  {
+    // Storage heads-up at 80%, a warning before auto-deletion, and opt-in product news.
+    id: "0016_storage_and_product_notices",
+    sql: `
+alter table users add column alert_80_sent_at bigint;
+alter table users add column notify_product int not null default 0;
+alter table tracks add column expiry_warned_at bigint;
+`,
+  },
 ];

@@ -1,6 +1,7 @@
 import "server-only";
 import { now, q } from "./db";
 import { APP_URL, sendMail } from "./mail";
+import { RETAIN_PASSED_DAYS, RETAIN_UNREVIEWED_DAYS } from "./plans";
 
 /** How a receiver hears about new tracks. Emails go to the receiver's own address. */
 export type NotifyPrefs = {
@@ -12,6 +13,7 @@ export type NotifyPrefs = {
   quiet_start: number | null;
   quiet_end: number | null;
   notify_alerts: number;
+  notify_product: number;
   tz: string;
   last_digest_at: number | null;
   alert_full_sent_at: number | null;
@@ -19,7 +21,7 @@ export type NotifyPrefs = {
 
 export async function prefsFor(userId: number) {
   return (await q.get<NotifyPrefs>(
-    `SELECT id, email, name, notify_submissions, digest_hour, quiet_start, quiet_end, notify_alerts, tz, last_digest_at, alert_full_sent_at
+    `SELECT id, email, name, notify_submissions, digest_hour, quiet_start, quiet_end, notify_alerts, notify_product, tz, last_digest_at, alert_full_sent_at
      FROM users WHERE id = ?`,
     userId,
   ))!;
@@ -65,26 +67,83 @@ export async function notifyNewSubmission(receiverId: number, trackId: number) {
   await q.run("UPDATE tracks SET receiver_notified_at = ? WHERE id = ?", now(), trackId);
 }
 
-/** One email when the link pauses because the desk is full. Re-arms once there's space again. */
-export async function alertIfFull(receiverId: number, full: boolean) {
-  if (!full) {
-    await q.run("UPDATE users SET alert_full_sent_at = NULL WHERE id = ? AND alert_full_sent_at IS NOT NULL", receiverId);
-    return;
-  }
+/**
+ * Storage emails, each sent once and re-armed when space frees up:
+ * a heads-up at 80% of the desk, and a notice when the link pauses because it's full.
+ */
+export async function alertIfFull(receiverId: number, cap: { used: number; limit: number; full: boolean }) {
+  const nearly = !cap.full && cap.used >= Math.ceil(cap.limit * 0.8);
+  if (!cap.full) await q.run("UPDATE users SET alert_full_sent_at = NULL WHERE id = ? AND alert_full_sent_at IS NOT NULL", receiverId);
+  if (!nearly && !cap.full) await q.run("UPDATE users SET alert_80_sent_at = NULL WHERE id = ? AND alert_80_sent_at IS NOT NULL", receiverId);
+  if (!nearly && !cap.full) return;
+
   // Claim the alert atomically so two concurrent uploads can't both send it.
+  const column = cap.full ? "alert_full_sent_at" : "alert_80_sent_at";
   const p = await q.get<{ email: string }>(
-    "UPDATE users SET alert_full_sent_at = ? WHERE id = ? AND notify_alerts = 1 AND alert_full_sent_at IS NULL RETURNING email",
+    `UPDATE users SET ${column} = ? WHERE id = ? AND notify_alerts = 1 AND ${column} IS NULL RETURNING email`,
     now(),
     receiverId,
   );
   if (!p) return;
-  await sendMail({
-    userId: receiverId,
-    audience: "receiver",
-    to: p.email,
-    subject: "Your FloorTest link is paused",
-    body: `Your desk is full, so your link has stopped accepting uploads.\n\nYour desk holds 20 active tracks on Free. Clear some, or move to Pro (free during the beta), to reopen it: ${APP_URL}/dashboard/settings`,
-  });
+  const plans = `${APP_URL}/dashboard/plans`;
+  await sendMail(
+    cap.full
+      ? {
+          userId: receiverId,
+          audience: "receiver",
+          to: p.email,
+          subject: "Your FloorTest link is paused",
+          body: `Your desk is full (${cap.used} of ${cap.limit} tracks), so your link has stopped accepting uploads.\n\nClear some tracks, or move to a bigger plan (free during the beta), to reopen it: ${plans}`,
+        }
+      : {
+          userId: receiverId,
+          audience: "receiver",
+          to: p.email,
+          subject: "Your FloorTest desk is 80% full",
+          body: `You're using ${cap.used} of ${cap.limit} tracks. When it's full, your link stops accepting uploads.\n\nClear tracks you've decided on, or see bigger plans (free during the beta): ${plans}`,
+        },
+  );
+}
+
+const WARN_DAYS = 7;
+
+/**
+ * Daily: one email per receiver listing tracks that will be auto-deleted within a week,
+ * so nothing disappears without notice. Each track is only warned about once.
+ */
+export async function warnExpiring(at = now()) {
+  const day = 86_400_000;
+  const rows = await q.all<{ id: number; user_id: number; title: string; artist: string; decision: string | null; email: string }>(
+    `SELECT t.id, t.user_id, t.title, t.artist, t.decision, u.email FROM tracks t JOIN users u ON u.id = t.user_id
+     WHERE t.deleted_at IS NULL AND t.expiry_warned_at IS NULL AND u.notify_alerts = 1 AND (
+       (t.decision IS NULL AND t.created_at < ?) OR (t.decision = 'passed' AND t.decided_at < ?))
+     ORDER BY t.user_id, t.created_at LIMIT 2000`,
+    at - (RETAIN_UNREVIEWED_DAYS - WARN_DAYS) * day,
+    at - (RETAIN_PASSED_DAYS - WARN_DAYS) * day,
+  );
+  const byUser = new Map<number, typeof rows>();
+  for (const r of rows) byUser.set(r.user_id, [...(byUser.get(r.user_id) ?? []), r]);
+  for (const [userId, list] of byUser) {
+    const undecided = list.filter((r) => !r.decision).length;
+    await sendMail({
+      userId,
+      audience: "receiver",
+      to: list[0].email,
+      subject: `${list.length} track${list.length === 1 ? "" : "s"} will be deleted in ${WARN_DAYS} days`,
+      body: [
+        `These tracks are deleted automatically in about ${WARN_DAYS} days:`,
+        "",
+        ...list.slice(0, 20).map((r) => `- ${r.artist} – ${r.title}${r.decision ? " (Not for me)" : ""}`),
+        list.length > 20 ? `…and ${list.length - 20} more.` : "",
+        "",
+        undecided
+          ? `Keep anything you want to hold on to: ${APP_URL}/dashboard?view=list&s=review`
+          : `Nothing to do if you're happy for them to go. Changed your mind? ${APP_URL}/dashboard?view=list&s=passed`,
+      ].join("\n"),
+    });
+    await q.run(`UPDATE tracks SET expiry_warned_at = ? WHERE id IN (${list.map(() => "?").join(",")})`, at, ...list.map((r) => r.id));
+  }
+  return { warned: rows.length, receivers: byUser.size };
 }
 
 type Pending = { id: number; title: string; artist: string; sender: string };

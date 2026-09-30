@@ -392,12 +392,13 @@ export async function updateNotifications(_: SettingsState, form: FormData): Pro
   }
   const quiet = form.get("quiet") === "on";
   await q.run(
-    "UPDATE users SET notify_submissions = ?, digest_hour = ?, quiet_start = ?, quiet_end = ?, notify_alerts = ?, tz = ? WHERE id = ?",
+    "UPDATE users SET notify_submissions = ?, digest_hour = ?, quiet_start = ?, quiet_end = ?, notify_alerts = ?, notify_product = ?, tz = ? WHERE id = ?",
     ["instant", "digest", "off"].includes(mode) ? mode : "digest",
     hour("digest_hour") ?? 9,
     quiet ? hour("quiet_start") : null,
     quiet ? hour("quiet_end") : null,
     form.get("notify_alerts") === "on" ? 1 : 0,
+    form.get("notify_product") === "on" ? 1 : 0,
     tz,
     u.id,
   );
