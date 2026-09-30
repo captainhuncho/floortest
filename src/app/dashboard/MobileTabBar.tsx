@@ -19,7 +19,7 @@ export function MobileTabBar({ needsReview }: { needsReview: number }) {
     { href: "/dashboard/floor", label: "Floor", icon: "layout-grid", active: path === "/dashboard/floor" },
     { href: "/dashboard", label: "Queue", icon: "arrow-down-circle", active: path === "/dashboard", badge: needsReview },
     { href: "/dashboard/collections", label: "Collections", icon: "library", active: path.startsWith("/dashboard/collections") },
-    { href: "/dashboard/set", label: "Prepare", icon: "clipboard-check", active: path.startsWith("/dashboard/set") },
+    { href: "/dashboard/set", label: "Prepare", icon: "clipboard-check", active: path === "/dashboard/set" || path.startsWith("/dashboard/set/") },
   ];
   return (
     <nav

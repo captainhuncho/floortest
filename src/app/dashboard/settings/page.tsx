@@ -5,8 +5,8 @@ import { capacity } from "@/lib/core";
 import {q, type Sender } from "@/lib/db";
 import { fmtDay } from "@/lib/format";
 import { APP_URL } from "@/lib/mail";
-import { PLANS, RATE_PER_EMAIL_PER_DAY, RATE_PER_IP_PER_HOUR, RETAIN_PASSED_DAYS, RETAIN_UNREVIEWED_DAYS, SIGNALS } from "@/lib/plans";
-import { blockSender, setPlan } from "../actions";
+import { RATE_PER_EMAIL_PER_DAY, RATE_PER_IP_PER_HOUR, RETAIN_PASSED_DAYS, RETAIN_UNREVIEWED_DAYS, SIGNALS } from "@/lib/plans";
+import { blockSender } from "../actions";
 import { CoverUpload, PublicPageForm } from "./PublicPageForm";
 import { DeleteAccount } from "./DeleteAccount";
 import { SecurityForm } from "./SecurityForm";
@@ -32,7 +32,7 @@ export default async function Settings() {
   const blocked = (await q.all<Sender>("SELECT * FROM senders WHERE user_id = ? AND blocked_at IS NOT NULL ORDER BY blocked_at DESC", user.id));
   return (
     <div className="max-w-3xl space-y-10 px-4 py-6 sm:px-8">
-      <h1 className="text-3xl font-bold tracking-tight">Link, plan & storage</h1>
+      <h1 className="text-3xl font-bold">Settings</h1>
 
       <section className="card p-6" aria-labelledby="link-h">
         <h2 id="link-h" className="text-lg font-semibold">
@@ -50,35 +50,18 @@ export default async function Settings() {
         <CoverUpload handle={user.handle} cover={user.cover_key} />
       </section>
 
-      <section aria-labelledby="plan-h">
-        <h2 id="plan-h" className="text-lg font-semibold">
-          Plan
-        </h2>
-        <p className="mt-1 text-mute">
-          {cap.used} of {cap.limit.toLocaleString()} active tracks
-          {cap.bonus > 0 && ` (including ${cap.bonus} earned through referrals)`}. Deleting a track frees its slot.
-        </p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          {Object.entries(PLANS).map(([id, p]) => {
-            const current = user.plan === id;
-            const tooSmall = cap.used > p.limit + cap.bonus;
-            return (
-              <div key={id} className={`card flex flex-col p-5 ${current ? "border-lime/60" : ""}`}>
-                <p className="label">{p.name}</p>
-                <p className="mt-3 text-3xl font-bold">Free</p>
-                <p className="text-sm text-mute tnum">{p.price ? `during the beta · then $${p.price}/mo` : "for good"}</p>
-                <p className="mt-3">{p.limit.toLocaleString()} active tracks</p>
-                <p className="text-sm text-mute">{p.blurb}</p>
-                <form action={setPlan.bind(null, id)} className="mt-5">
-                  <button className={`${current ? "btn-ghost" : "btn-lime"} btn-sm w-full`} disabled={current || tooSmall}>
-                    {current ? "Current plan" : tooSmall ? "Over limit" : `Switch to ${p.name}`}
-                  </button>
-                </form>
-              </div>
-            );
-          })}
+      <section className="card flex flex-wrap items-center justify-between gap-3 p-6" aria-labelledby="plan-h">
+        <div>
+          <h2 id="plan-h" className="text-lg font-semibold">
+            Plan
+          </h2>
+          <p className="mt-1 text-sm text-mute">
+            {cap.used} of {cap.limit.toLocaleString()} active tracks{cap.bonus > 0 && ` (including ${cap.bonus} earned through referrals)`}.
+          </p>
         </div>
-        <p className="mt-3 text-sm text-mute">Billing isn&apos;t connected yet. Plan changes are free during the beta.</p>
+        <Link href="/dashboard/plans" className="btn-ghost btn-sm">
+          See plans →
+        </Link>
       </section>
 
       <section aria-labelledby="rules-h">

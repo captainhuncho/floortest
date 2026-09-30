@@ -54,3 +54,12 @@ body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
   text-transform: uppercase;
   color: var(--color-dim);
 }
+
+/* Dashboard: the older shared pieces (label, button, input, chip) in the Figma mono style,
+   so pages that use them match the redesigned ones. Scoped to the dashboard's <main>. */
+#main .label { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; color: var(--color-faint); }
+#main .btn { font-size: 12px; font-weight: 700; }
+#main .input { font-size: 12px; background: var(--color-ink-3); }
+#main .chip { font-size: 10px; font-weight: 700; }
+#main .card { background: var(--color-ink-3); }
+#main .btn-sm { font-size: 11px !important; }

@@ -119,7 +119,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
       tone: "warn",
       text: "Your desk is full, so your link has stopped taking uploads.",
       action: (
-        <Link href="/dashboard/settings#plan-h" className="btn-lime btn-sm">
+        <Link href="/dashboard/plans" className="btn-lime btn-sm">
           See plans
         </Link>
       ),
