@@ -8,7 +8,8 @@ import { pauseLink, resumeLink } from "./actions";
 export type PauseState = { on: boolean; until: string | null; untilTs: number | null; message: string; blocked: string | null };
 
 /** "Pause my link": the switch flips instantly; a note for senders and a reopen date are optional extras once paused. */
-export function PauseSwitch({ pause }: { pause: PauseState }) {
+/** `compact`: the desktop sidebar's small Figma card. */
+export function PauseSwitch({ pause, compact = false }: { pause: PauseState; compact?: boolean }) {
   const [paused, setPaused] = useState(pause.on);
   const [busy, start] = useTransition();
   const toast = useToast();
@@ -44,11 +45,11 @@ export function PauseSwitch({ pause }: { pause: PauseState }) {
   };
 
   return (
-    <div className="rounded-lg border border-line bg-ink p-3">
+    <div className={compact ? "rounded-xl border border-line bg-ink-3 p-3" : "rounded-lg border border-line bg-ink p-3"}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-medium">{paused ? "Paused" : "Taking submissions"}</p>
-          <p className="mt-0.5 text-xs leading-snug text-mute">
+          <p className={compact ? "text-[11px] font-bold" : "text-sm font-medium"}>{paused ? "Paused" : "Taking submissions"}</p>
+          <p className={compact ? "mt-1 text-[9px] leading-snug text-faint" : "mt-0.5 text-xs leading-snug text-mute"}>
             {paused ? (pause.on && pause.until ? `Reopens ${pause.until}` : "Your link shows you're on a break") : pause.blocked ? null : "Switch off while touring or on a break"}
           </p>
           {!paused && pause.blocked && (
@@ -63,11 +64,11 @@ export function PauseSwitch({ pause }: { pause: PauseState }) {
           aria-label="Accept submissions"
           aria-busy={busy}
           onClick={flip}
-          className={`relative mt-0.5 h-7 w-12 shrink-0 rounded-full transition-colors ${paused ? "bg-line" : "bg-lime"}`}
+          className={`relative shrink-0 rounded-full transition-colors ${compact ? "h-4 w-7" : "mt-0.5 h-7 w-12"} ${paused ? "bg-line" : compact ? "bg-bone" : "bg-lime"}`}
         >
           <span
             aria-hidden
-            className={`absolute top-1 h-5 w-5 rounded-full transition-all ${paused ? "left-1 bg-mute" : "left-6 bg-ink"}`}
+            className={`absolute rounded-full transition-all ${compact ? "top-0.5 h-3 w-3" : "top-1 h-5 w-5"} ${paused ? `${compact ? "left-0.5" : "left-1"} bg-mute` : `${compact ? "left-3.5" : "left-6"} bg-ink`}`}
           />
         </button>
       </div>
