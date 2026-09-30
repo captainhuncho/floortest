@@ -167,7 +167,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
       </div>
 
 
-      <SendMusicCard recent={recentSends} />
+      <SendMusicCard recent={recentSends} host={APP_URL.replace(/^https?:\/\//, "")} />
 
       <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
         <Stat label="Received this week" value={String(stats.receivedWeek)} note={delta(stats.receivedWeek, stats.receivedPrev)} />

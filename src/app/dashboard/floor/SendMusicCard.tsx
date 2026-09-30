@@ -1,7 +1,7 @@
 import Link from "next/link";
 
-/** Figma "Send Music Card": type a name or paste a link, or tap someone you've sent to before. */
-export function SendMusicCard({ recent }: { recent: { handle: string; name: string }[] }) {
+/** Figma "Send Music Card": add their link name after your host (or paste a whole link), or tap someone you've sent to before. */
+export function SendMusicCard({ recent, host }: { recent: { handle: string; name: string }[]; host: string }) {
   return (
     <section aria-label="Send music" className="flex flex-col gap-3 rounded-2xl border border-[#2c2e29] bg-[#1e1f1b] p-4">
       <h2 className="text-[10px] font-bold uppercase tracking-[1px] text-[#a3a69b]">Send music</h2>
@@ -9,15 +9,17 @@ export function SendMusicCard({ recent }: { recent: { handle: string; name: stri
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icons/search.svg" alt="" className="size-4 shrink-0" />
         <label htmlFor="send-to-q" className="sr-only">
-          Search by name or paste a link
+          Their link name
         </label>
+        <span className="min-w-0 max-w-[65%] shrink truncate text-[11px] text-[#6b6e65]">{host}/</span>
         <input
           id="send-to-q"
           name="to"
-          placeholder="Search by name or paste a link"
+          placeholder="their-link"
           autoComplete="off"
           autoCapitalize="none"
-          className="min-w-0 flex-1 bg-transparent text-[11px] text-[#f1f1eb] outline-none placeholder:text-[#6b6e65]"
+          className="-ml-2 min-w-[5rem] flex-1 bg-transparent text-[11px] text-lime outline-none placeholder:text-[#6b6e65]"
+          style={{ outline: "none" }}
         />
       </form>
       {recent.length > 0 && (
