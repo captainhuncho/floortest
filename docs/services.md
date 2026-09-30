@@ -50,6 +50,6 @@ Last updated 29 Sep 2026.
 
 ## Planned, not yet connected
 
-- **Virus scanning** for uploads (paid; needed before public launch).
+- **Virus scanning** for uploads: beta uses structural checks only (real WAV/MP3, nothing hidden after the audio). Before public launch, add our own ClamAV service (Fly.io or Render, ~$5–7/mo) that scans each upload before it can be played. Don't send files to third-party scanners (privacy).
 - **Lawyer** covering Ghana and UK/EU data protection. The brief is in `docs/legal-review.md`.
 - **Mailbox for support@floortest.fm**, to replace info@imullar.com.
