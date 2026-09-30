@@ -4,23 +4,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
-import { useToast } from "@/components/Toast";
 import type { Notice } from "@/lib/notifications";
-import { logout } from "../(auth)/actions";
 import { clearNotifications, markNotificationsRead, quickSearch, type SearchHit } from "./actions";
-import { PauseSwitch, type PauseState } from "./PauseSwitch";
 
 type Props = {
-  user: { name: string; email: string; handle: string; plan: string; memberSince: string };
-  link: string;
+  user: { name: string; handle: string };
   notices: { items: Notice[]; unread: number };
-  footer: { label: string; href: string; external: boolean }[];
-  version: string;
-  /** Phones: the sidebar is hidden, so its switch lives in the profile menu. */
-  pause: PauseState;
 };
 
-type Open = null | "search" | "bell" | "profile" | "qr";
+type Open = null | "search" | "bell";
 
 const initials = (name: string) =>
   name
@@ -38,7 +30,7 @@ export function TopBar(p: Props) {
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
       const t = e.target as Element;
-      if (open && open !== "search" && open !== "qr" && !root.current?.contains(t) && !t.closest?.("[data-sheet]")) setOpen(null);
+      if (open && open !== "search" && !root.current?.contains(t) && !t.closest?.("[data-sheet]")) setOpen(null);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(null);
@@ -94,24 +86,20 @@ export function TopBar(p: Props) {
 
       <div className="relative">
         <button
-          onClick={() => (window.matchMedia("(max-width: 767px)").matches ? router.push("/dashboard/account") : toggle("profile"))}
-          aria-expanded={open === "profile"}
-          aria-haspopup="menu"
+          onClick={() => router.push("/dashboard/account")}
           className="flex items-center gap-3 rounded-full border border-ink-4 bg-ink-3 transition hover:border-mute sm:border-line sm:bg-ink-2 sm:py-1 sm:pl-5 sm:pr-1"
         >
           <span className="hidden text-[15px] sm:inline">{p.user.handle}</span>
-          <svg aria-hidden viewBox="0 0 12 12" className={`hidden h-3 w-3 text-mute transition sm:block ${open === "profile" ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth="1.5">
+          <svg aria-hidden viewBox="0 0 12 12" className="hidden h-3 w-3 -rotate-90 text-mute sm:block" fill="none" stroke="currentColor" strokeWidth="1.5">
             <path d="M3 4.5 6 7.5 9 4.5" />
           </svg>
           <span className="grid size-9 place-items-center rounded-full font-[family-name:var(--font-stage-mono)] text-[10px] font-bold text-white sm:bg-bone sm:font-sans sm:text-sm sm:text-ink">{initials(p.user.name)}</span>
-          <span className="sr-only">Account menu</span>
+          <span className="sr-only">Your profile</span>
         </button>
-        {open === "profile" && <ProfilePanel {...p} onNavigate={() => setOpen(null)} onQr={() => setOpen("qr")} />}
       </div>
 
       {/* Portal: the blurred header would otherwise trap the fixed overlay inside itself. */}
       {open === "search" && createPortal(<SearchDialog onClose={() => setOpen(null)} />, document.body)}
-      {open === "qr" && createPortal(<QrDialog handle={p.user.handle} link={p.link} onClose={() => setOpen(null)} />, document.body)}
     </div>
   );
 }
@@ -122,178 +110,6 @@ function Panel({ children, className = "" }: { children: React.ReactNode; classN
       className={`absolute right-0 top-full z-50 mt-3 max-h-[calc(100dvh-90px)] w-[min(400px,calc(100vw-24px))] overflow-y-auto rounded-2xl border border-line bg-ink-2 shadow-2xl shadow-black/70 ${className}`}
     >
       {children}
-    </div>
-  );
-}
-
-function ProfilePanel({ user, link, footer, version, pause, onNavigate, onQr }: Props & { onNavigate: () => void; onQr: () => void }) {
-  const toast = useToast();
-  const items = [
-    { icon: "+", title: "Referrals", sub: "Invite DJs · earn track slots", href: "/dashboard/referrals" },
-    { icon: "↗", title: "Submission link", sub: link.replace(/^https?:\/\//, ""), href: `/${user.handle}`, external: true, copy: true },
-    { icon: "✉", title: "Emails to senders", sub: "Everything FloorTest told them", href: "/dashboard/emails" },
-  ];
-  // Phones: the sidebar is hidden, so its links move here.
-  const mobile = [
-    { icon: "↑", title: "Send", sub: "Send music to another FloorTest user", href: "/dashboard/send" },
-    { icon: "☰", title: "Contacts", sub: "Everyone who sent you music", href: "/dashboard/contacts" },
-    { icon: "◷", title: "Activity", sub: "Everything you did, newest first", href: "/dashboard/activity" },
-    { icon: "⚙", title: "Profile & settings", sub: "Plan, security, public page", href: "/dashboard/settings" },
-    { icon: "✎", title: "Feedback", sub: "Tell us what to fix or build", href: "/contact?topic=feedback" },
-  ];
-  return (
-    <Panel>
-      <div role="menu" aria-label="Account">
-        <div className="flex items-center gap-4 border-b border-line p-6">
-          <span aria-hidden className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-bone text-lg font-bold text-ink">
-            {initials(user.name)}
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-lg font-semibold">{user.name}</p>
-            <p className="truncate font-mono text-sm text-mute">{user.email}</p>
-            <p className="font-mono text-xs text-mute">Member since {user.memberSince}</p>
-          </div>
-          <span className="shrink-0 self-start rounded-full bg-lime px-2.5 py-0.5 font-mono text-xs font-semibold uppercase text-ink">{user.plan}</span>
-        </div>
-
-        <div className="border-b border-line px-6 py-4 md:hidden">
-          <PauseSwitch pause={pause} />
-        </div>
-        <ul className="border-b border-line px-2 py-2 md:hidden">
-          {mobile.map((i) => (
-            <li key={i.title}>
-              <Link href={i.href} onClick={onNavigate} role="menuitem" className="group flex items-center gap-4 rounded-xl px-4 py-3 hover:bg-ink-3">
-                <span aria-hidden className="w-6 shrink-0 text-center text-lg text-mute">
-                  {i.icon}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block">{i.title}</span>
-                  <span className="block truncate font-mono text-xs text-mute">{i.sub}</span>
-                </span>
-                <span aria-hidden className="text-xl text-mute">→</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-        <ul className="px-2 py-2">
-          <li>
-            <button onClick={onQr} role="menuitem" className="group flex w-full items-center gap-4 rounded-xl px-4 py-3.5 text-left hover:bg-ink-3">
-              <span aria-hidden className="w-6 shrink-0 text-center text-xl text-mute">
-                ▦
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block">QR code</span>
-                <span className="block truncate font-mono text-xs text-mute">For flyers, screens and stories</span>
-              </span>
-              <span aria-hidden className="text-xl text-mute transition group-hover:translate-x-0.5 group-hover:text-bone">
-                →
-              </span>
-            </button>
-          </li>
-          {items.map((i) => (
-            <li key={i.title} className="flex items-center">
-              <Link
-                href={i.href}
-                target={i.external ? "_blank" : undefined}
-                onClick={onNavigate}
-                role="menuitem"
-                className="group flex min-w-0 flex-1 items-center gap-4 rounded-xl px-4 py-3.5 hover:bg-ink-3"
-              >
-                <span aria-hidden className="w-6 shrink-0 text-center text-xl text-mute">
-                  {i.icon}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block">{i.title}</span>
-                  <span className="block truncate font-mono text-xs text-mute">{i.sub}</span>
-                </span>
-                <span aria-hidden className="text-xl text-mute transition group-hover:translate-x-0.5 group-hover:text-bone">
-                  {i.external ? "↗" : "→"}
-                </span>
-              </Link>
-              {i.copy && (
-                <button
-                  onClick={() => {
-                    navigator.clipboard?.writeText(link);
-                    toast.show({ message: "Submission link copied" });
-                  }}
-                  className="mr-2 rounded-md px-2 py-1.5 font-mono text-xs uppercase text-mute hover:bg-ink-3 hover:text-bone"
-                >
-                  Copy
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
-
-        <ul className="border-t border-line">
-          {footer.map((f) => (
-            <li key={f.label} className="border-b border-line last:border-b-0">
-              <Link
-                href={f.href}
-                target={f.external ? "_blank" : undefined}
-                rel={f.external ? "noopener noreferrer" : undefined}
-                onClick={onNavigate}
-                role="menuitem"
-                className="flex items-center justify-between px-6 py-4 hover:bg-ink-3"
-              >
-                {f.label}
-                <span aria-hidden className="text-lg text-mute">
-                  ↗
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-
-        <div className="flex items-center justify-between border-t border-line px-6 py-4">
-          <form action={logout}>
-            <button role="menuitem" className="font-mono text-sm uppercase tracking-wide hover:text-lime">
-              Sign out
-            </button>
-          </form>
-          <span className="font-mono text-xs text-mute">FloorTest v{version}</span>
-        </div>
-      </div>
-    </Panel>
-  );
-}
-
-function QrDialog({ handle, link, onClose }: { handle: string; link: string; onClose: () => void }) {
-  const close = useRef<HTMLButtonElement>(null);
-  useEffect(() => close.current?.focus(), []);
-  const src = `/api/qr/${handle}`;
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4" onMouseDown={onClose}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="qr-h"
-        className="w-full max-w-sm rounded-2xl border border-line bg-ink-2 p-6 shadow-2xl shadow-black/70"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 id="qr-h" className="text-lg font-semibold">
-              Your link as a QR code
-            </h2>
-            <p className="mt-1 font-mono text-xs text-mute">{link.replace(/^https?:\/\//, "")}</p>
-          </div>
-          <button ref={close} onClick={onClose} aria-label="Close" className="text-xl leading-none text-mute hover:text-bone">
-            ×
-          </button>
-        </div>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src} alt={`QR code linking to ${link}`} className="mt-5 aspect-square w-full rounded-xl bg-white" />
-        <div className="mt-5 grid grid-cols-2 gap-2">
-          <a href={`${src}?format=png&download=1`} className="btn-lime btn-sm">
-            Download PNG
-          </a>
-          <a href={`${src}?format=svg&download=1`} className="btn-ghost btn-sm">
-            Download SVG
-          </a>
-        </div>
-        <p className="mt-3 text-sm text-mute">PNG for stories and screens. SVG stays sharp at any size for print.</p>
-      </div>
     </div>
   );
 }

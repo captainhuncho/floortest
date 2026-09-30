@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { logout } from "../../(auth)/actions";
 import { requireUser } from "@/lib/auth";
-import { capacity, isPaused } from "@/lib/core";
+import { capacity, collectionsFor, isClosed, isPaused } from "@/lib/core";
 import { q } from "@/lib/db";
 import { APP_URL } from "@/lib/mail";
 import { planOf } from "@/lib/plans";
 import { VERSION } from "@/lib/site";
 import { PauseSwitch } from "../PauseSwitch";
-import { CopyRow } from "./CopyRow";
+import { LinkCard } from "./LinkCard";
 
 export const metadata = { title: "Account — FloorTest" };
 
@@ -18,7 +18,7 @@ const initials = (name: string) =>
     .map((w) => w[0]?.toUpperCase())
     .join("");
 
-/** Figma "10 Profile + Settings": where the profile button goes on phones. */
+/** Figma "10 Profile + Settings": your profile. Phones get one column; desktop splits it in two. */
 export default async function Account() {
   const user = await requireUser();
   const cap = await capacity(user);
@@ -29,6 +29,7 @@ export default async function Account() {
     count("SELECT COUNT(*) AS n FROM collections WHERE user_id = ?"),
     count("SELECT COUNT(*) AS n FROM senders WHERE user_id = ?"),
   ]);
+  const cols = (await collectionsFor(user.id)).map((c) => ({ id: c.id, name: c.name, closed: isClosed(c) }));
   const pct = Math.min(100, Math.round((cap.used / cap.limit) * 100));
   const link = `${APP_URL}/${user.handle}`;
   const since = new Date(user.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: user.tz }).replaceAll("/", ".");
@@ -55,8 +56,9 @@ export default async function Account() {
   );
 
   return (
-    <div className="mx-auto flex max-w-xl flex-col gap-4 px-4 py-3 font-[family-name:var(--font-stage-mono)]">
-      <div className="flex h-12 items-center gap-2">
+    <div className="mx-auto flex max-w-xl flex-col gap-4 px-4 py-3 font-[family-name:var(--font-stage-mono)] md:mx-0 md:grid md:max-w-6xl md:grid-cols-[minmax(0,380px)_minmax(0,1fr)] md:items-start md:gap-6 md:px-8 md:py-6">
+      <h1 className="hidden text-[32px] font-bold text-bone md:col-span-2 md:block">Account</h1>
+      <div className="flex h-12 items-center gap-2 md:hidden">
         <Link href="/dashboard/floor" aria-label="Back" className="grid size-8 place-items-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icons/arrow-left.svg" alt="" className="size-4" />
@@ -64,6 +66,7 @@ export default async function Account() {
         <span className="text-[10px] font-bold tracking-[0.5px] text-mute">ACCOUNT</span>
       </div>
 
+      <div className="contents md:flex md:flex-col md:gap-4">
       {/* Profile card */}
       <section className="flex flex-col gap-4 rounded-[18px] border border-line bg-ink-2 p-4 drop-shadow-[0_8px_12px_rgba(0,0,0,0.15)]">
         <div className="flex items-center gap-3">
@@ -104,6 +107,8 @@ export default async function Account() {
       {/* Taking submissions lives here on phones, where the sidebar is hidden. */}
       <section className={card}>
         <h2 className={label}>YOUR LINK</h2>
+        <LinkCard link={link} handle={user.handle} collections={cols} activeId={user.active_collection_id} />
+        {rule}
         <PauseSwitch
           pause={{
             on: isPaused(user),
@@ -115,6 +120,32 @@ export default async function Account() {
         />
       </section>
 
+      <section className={card}>
+        <h2 className={label}>STORAGE & PLAN</h2>
+        <div className="flex items-center justify-between">
+          <span className="text-[13px] font-medium text-bone">Storage</span>
+          <span className="text-[11px] text-mute">
+            {cap.used} of {cap.limit} tracks
+          </span>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <div className="h-1.5 overflow-hidden rounded-full bg-line">
+            <div className="h-full rounded-full bg-[#6444ff]" style={{ width: `${pct}%` }} />
+          </div>
+          <p className="text-[9px] text-dim">{pct}% used</p>
+        </div>
+        {rule}
+        <div className="flex items-center justify-between">
+          <span className="text-[13px] font-medium text-bone">Current plan</span>
+          <span className="text-[11px] text-mute">{plan.name}</span>
+        </div>
+        <Link href="/dashboard/plans" className="rounded-[10px] border border-[#6444ff] bg-[#6444ff] px-3 py-2 text-center text-[11px] font-bold text-white drop-shadow-[0_8px_10px_rgba(100,68,255,0.25)]">
+          See plans · free during the beta
+        </Link>
+      </section>
+      </div>
+
+      <div className="contents md:flex md:flex-col md:gap-4">
       <Section
         title="YOUR DESK"
         rows={[
@@ -141,7 +172,6 @@ export default async function Account() {
       <Section
         title="SUBMISSION"
         rows={[
-          <CopyRow key="l" link={link} />,
           <Row key="q" href={`/api/qr/${user.handle}?format=png&download=1`} title="QR code" value={<span className="text-[11px] text-mute">Download</span>} />,
         ]}
       />
@@ -149,29 +179,6 @@ export default async function Account() {
         title="PREFERENCES"
         rows={[<Row key="n" href="/dashboard/notifications" title="Notifications" value={<span className="text-[11px] text-mute">Email</span>} />]}
       />
-      <section className={card}>
-        <h2 className={label}>STORAGE & PLAN</h2>
-        <div className="flex items-center justify-between">
-          <span className="text-[13px] font-medium text-bone">Storage</span>
-          <span className="text-[11px] text-mute">
-            {cap.used} of {cap.limit} tracks
-          </span>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <div className="h-1.5 overflow-hidden rounded-full bg-line">
-            <div className="h-full rounded-full bg-[#6444ff]" style={{ width: `${pct}%` }} />
-          </div>
-          <p className="text-[9px] text-dim">{pct}% used</p>
-        </div>
-        {rule}
-        <div className="flex items-center justify-between">
-          <span className="text-[13px] font-medium text-bone">Current plan</span>
-          <span className="text-[11px] text-mute">{plan.name}</span>
-        </div>
-        <Link href="/dashboard/plans" className="rounded-[10px] border border-[#6444ff] bg-[#6444ff] px-3 py-2 text-center text-[11px] font-bold text-white drop-shadow-[0_8px_10px_rgba(100,68,255,0.25)]">
-          See plans · free during the beta
-        </Link>
-      </section>
       <Section
         title="PRIVACY"
         rows={[
@@ -195,6 +202,7 @@ export default async function Account() {
         <button className="w-full rounded-xl border border-line bg-ink-2 p-3 text-[13px] font-bold text-[#ff5a5f]">Sign out</button>
       </form>
       <p className="text-center text-[9px] text-faint">FLOORTEST v{VERSION}</p>
+      </div>
     </div>
   );
 }

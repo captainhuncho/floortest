@@ -2,26 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
 import { Logo } from "@/components/Logo";
-import { setActiveCollection } from "./actions";
-import { PauseSwitch, type PauseState } from "./PauseSwitch";
+import type { PauseState } from "./PauseSwitch";
 
 type Props = {
   user: { handle: string; name: string };
-  link: string;
-  collections: { id: number; name: string; closed: boolean }[];
-  activeId: number | null;
   needsReview: number;
   cap: { used: number; limit: number; full: boolean };
   pause: PauseState;
-  plan: { name: string; upgrade: { name: string; limit: number } | null };
 };
 
-export function Sidebar({ user, link, collections, activeId, needsReview, cap, pause, plan }: Props) {
+export function Sidebar({ user, needsReview, cap, pause }: Props) {
   const path = usePathname();
-  const [copied, setCopied] = useState(false);
-  const pct = Math.min(100, (cap.used / cap.limit) * 100);
 
   const nav = [
     { href: "/dashboard/floor", label: "The Floor", active: path === "/dashboard/floor", tab: true },
@@ -66,99 +58,21 @@ export function Sidebar({ user, link, collections, activeId, needsReview, cap, p
         ))}
       </nav>
 
-      <div className="mx-4 mt-4">
-        <PauseSwitch pause={pause} compact />
-      </div>
-
-      <div className="mx-4 mt-auto hidden rounded-xl border border-line bg-ink-3 p-3 pt-3 md:block">
-        <p className="text-[9px] font-bold uppercase tracking-[1px] text-faint">Your permanent link</p>
-        <p className="mt-1.5 truncate text-[12px]">
-          {link.replace(/^https?:\/\//, "").replace(user.handle, "")}
-          <span className="text-lime">{user.handle}</span>
-        </p>
-        <div className="mt-3 flex gap-2">
-          <button
-            className="flex-1 rounded-md bg-bone px-3 py-1.5 text-[11px] font-bold text-ink transition active:scale-95"
-            onClick={() => {
-              navigator.clipboard?.writeText(link);
-              setCopied(true);
-              setTimeout(() => setCopied(false), 1500);
-            }}
-          >
-            {copied ? "Copied" : "Copy link"}
-          </button>
-          <a href={`/${user.handle}`} target="_blank" className="rounded-md border border-line px-3 py-1.5 text-[11px] font-bold text-mute hover:text-bone">
-            Preview
-          </a>
-        </div>
-        <form
-          className="mt-3"
-          action={async (fd) => {
-            await setActiveCollection(Number(fd.get("id")));
-          }}
-        >
-          <label htmlFor="routes-to" className="mb-1.5 block text-[9px] font-bold uppercase tracking-[1px] text-faint">
-            Sends new tracks to
-          </label>
-          <select
-            id="routes-to"
-            name="id"
-            defaultValue={activeId ?? undefined}
-            key={activeId}
-            onChange={(e) => e.currentTarget.form?.requestSubmit()}
-            className="input py-2 text-[12px]"
-          >
-            {collections.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-                {c.closed ? " (closed)" : ""}
-              </option>
-            ))}
-          </select>
-        </form>
-      </div>
-
-
-      <div className={`p-4 pt-3 ${cap.full ? "" : "hidden md:block"}`}>
-        <Link
-          href="/dashboard/plans"
-          className={`group block rounded-xl border p-3 transition ${cap.full ? "border-danger/50 bg-danger/5" : "border-bone/70 bg-ink-3 hover:border-bone"}`}
-        >
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-[9px] font-bold uppercase tracking-[1px] text-bone">{plan.name} plan</span>
-            <span className={`text-xs tnum ${cap.full ? "text-danger" : "text-mute"}`}>
-              {cap.used} / {cap.limit.toLocaleString("en-US")}
-            </span>
-          </div>
-          <div
-            className="mt-2 h-1.5 overflow-hidden rounded-full bg-line"
-            role="meter"
-            aria-label="Active songs used"
-            aria-valuemin={0}
-            aria-valuemax={cap.limit}
-            aria-valuenow={cap.used}
-          >
-            <div className={`h-full rounded-full ${cap.full ? "bg-danger" : "bg-bone"}`} style={{ width: `${pct}%` }} />
-          </div>
-          <p className="mt-2.5 text-[11px] leading-snug text-mute">
-            {plan.upgrade ? `Upgrade to ${plan.upgrade.name} for ${plan.upgrade.limit.toLocaleString("en-US")} songs` : "You're on the top plan"}
-          </p>
-          <p className="mt-1.5 text-[10px] font-bold uppercase text-bone group-hover:underline">View plans →</p>
-        </Link>
+      <div className="mt-auto p-4">
         {cap.full && (
-          <p className="mt-2 text-sm text-danger">
-            Full: your link is paused. Delete tracks to free space, or{" "}
-            <Link href="/dashboard/plans" className="underline">
-              upgrade
-            </Link>
-            .
-          </p>
+          <Link href="/dashboard/plans" className="mb-3 block rounded-xl border border-danger/50 bg-danger/5 p-3 text-[11px] text-danger">
+            Your desk is full ({cap.used}/{cap.limit.toLocaleString("en-US")}), so your link is paused. Clear tracks or see plans →
+          </Link>
         )}
-
+        {pause.on && !cap.full && (
+          <Link href="/dashboard/account" className="mb-3 block rounded-xl border border-line bg-ink-3 p-3 text-[11px] text-mute">
+            Submissions are paused. Turn them back on in your profile →
+          </Link>
+        )}
         <Link
-          href="/dashboard/settings"
-          aria-current={path.startsWith("/dashboard/settings") ? "page" : undefined}
-          className="group mt-3 flex items-center gap-3 rounded-xl border border-line bg-ink-3 px-3 py-2.5 hover:border-mute"
+          href="/dashboard/account"
+          aria-current={path.startsWith("/dashboard/account") ? "page" : undefined}
+          className="group flex items-center gap-3 rounded-xl border border-line bg-ink-3 px-3 py-2.5 hover:border-mute"
         >
           <span aria-hidden className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-bone text-xs font-bold text-ink">
             {user.name
