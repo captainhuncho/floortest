@@ -28,23 +28,23 @@ export default async function Activity({ searchParams }: { searchParams: Promise
 
   return (
     <div className="flex max-w-3xl flex-col gap-4 px-4 py-4 font-[family-name:var(--font-stage-mono)] text-bone sm:px-8 sm:py-6">
-      <div className="flex items-center gap-3 border-b border-line pb-4">
+      <div className="flex items-center gap-3 border-b border-line pb-4 md:border-0 md:pb-0">
         <Link href="/dashboard/account" aria-label="Back to Account" className="text-[18px] leading-none md:hidden">
           ‹
         </Link>
-        <h1 className="text-[18px] font-bold sm:text-3xl">Activity</h1>
+        <h1 className="text-[18px] font-bold sm:text-3xl md:text-[32px]">Activity</h1>
       </div>
       <p className="text-[12px] leading-[1.5] text-mute">
         {filter[0] === "you" ? "Everything you did in your account, newest first. Only you can see this." : "What happened on your desk, including what senders did."}
       </p>
-      <nav className="-mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0" aria-label="Filter">
+      <nav className="-mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0 md:gap-6 md:border-b md:border-line" aria-label="Filter">
         {FILTERS.map(([k, label]) => (
           <Link
             key={k}
             href={k === "you" ? "/dashboard/activity" : `/dashboard/activity?f=${k}`}
             aria-current={filter[0] === k ? "page" : undefined}
-            className={`shrink-0 rounded-full border border-line px-3 py-1.5 text-[11px] ${
-              filter[0] === k ? "bg-white font-bold text-ink" : "bg-ink-3 font-medium text-mute"
+            className={`shrink-0 rounded-full border border-line px-3 py-1.5 text-[11px] md:-mb-px md:rounded-none md:border-0 md:border-b-2 md:bg-transparent md:px-1 md:py-2.5 md:text-[12px] ${
+              filter[0] === k ? "bg-white font-bold text-ink md:border-bone md:text-bone" : "bg-ink-3 font-medium text-mute md:border-transparent md:hover:text-bone"
             }`}
           >
             {label}
