@@ -201,7 +201,7 @@ export function SubmitForm({
 
   // Step 2: confirm what we read from the file, then the essentials.
   return (
-    <form onSubmit={submit} className="space-y-5" {...dropProps}>
+    <form onSubmit={submit} data-picked className="space-y-5" {...dropProps}>
       {fileInput}
       <div className={`${L.card} ${m ? "p-4" : "p-5"}`}>
         <div className="flex items-baseline justify-between gap-4">
@@ -215,7 +215,7 @@ export function SubmitForm({
         <div className="mt-4">
           <Waveform peaks={analysis?.peaks ?? null} progress={busy ? progress : 0} height={48} dim={analyzing} />
         </div>
-        <p className={`mt-3 flex flex-wrap gap-x-4 gap-y-1 ${m ? `border-t ${L.line} pt-3 text-[11px] font-bold` : "text-sm"} ${L.mute} tnum`}>
+        <p className={`mt-3 flex flex-wrap gap-y-1 ${m ? `gap-x-2 border-t ${L.line} pt-3 text-[11px] font-bold [&>*:not(:first-child)]:before:mr-2 [&>*:not(:first-child)]:before:font-normal [&>*:not(:first-child)]:before:text-[#3a3d37] [&>*:not(:first-child)]:before:content-['|']` : "gap-x-4 text-sm"} ${L.mute} tnum`}>
           <span>{/\.wav$/i.test(file.name) ? "WAV" : "MP3"}</span>
           <span>{fmtBytes(file.size)}</span>
           {analyzing ? (
@@ -326,12 +326,12 @@ export function SubmitForm({
       </fieldset>
       <input type="hidden" name="mix_status" value={mix} />
 
-      <details className={`group ${L.round} border ${L.line}`}>
-        <summary className={`cursor-pointer list-none px-4 py-3 text-sm ${L.mute} hover:text-bone`}>
+      <details open={m} className={`group ${m ? "" : `${L.round} border ${L.line}`}`}>
+        <summary className={`cursor-pointer list-none ${m ? "py-2 text-[12px] font-bold text-white" : `px-4 py-3 text-sm ${L.mute} hover:text-bone`}`}>
           <span className="group-open:hidden">+ Add a message or release status</span>
           <span className="hidden group-open:inline">− Message and release status</span>
         </summary>
-        <div className={`space-y-4 border-t ${L.line} p-4`}>
+        <div className={`space-y-4 ${m ? "pt-2" : `border-t ${L.line} p-4`}`}>
           <label className="block space-y-1.5">
             <span className={L.label}>Message for {receiverName}</span>
             <textarea className={`${L.input} min-h-24 resize-y`} name="message" maxLength={2000} placeholder="Travels privately with the track." />

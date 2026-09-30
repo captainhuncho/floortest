@@ -45,8 +45,8 @@ export default async function Settings() {
         <h2 id="page-h" className="text-lg font-semibold">
           Public page
         </h2>
-        <p className="mt-1 text-sm text-mute">What senders see at your link. Set each callout&apos;s brief on the Collections page.</p>
-        <PublicPageForm handle={user.handle} style={user.page_style} roleLine={user.role_line} />
+        <p className="mt-1 text-sm text-mute">How your link looks when shared. Set each callout&apos;s brief on the Collections page.</p>
+        <PublicPageForm roleLine={user.role_line} />
         <CoverUpload handle={user.handle} cover={user.cover_key} />
       </section>
 

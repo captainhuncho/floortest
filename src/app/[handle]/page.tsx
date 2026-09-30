@@ -3,10 +3,9 @@ import { notFound } from "next/navigation";
 import { activeCollection, capacity, isClosed, isPaused, pausedMessage, userByHandle } from "@/lib/core";
 import { fmtDay } from "@/lib/format";
 import { genresFor, RETAIN_UNREVIEWED_DAYS } from "@/lib/plans";
-import { StagePage } from "./StagePage";
 import { SubmitForm } from "./SubmitForm";
 
-type Props = { params: Promise<{ handle: string }>; searchParams: Promise<{ style?: string }> };
+type Props = { params: Promise<{ handle: string }>; };
 
 /** Link previews for when a DJ shares their link on socials or in DMs. */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -24,7 +23,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function ReceiverPage({ params, searchParams }: Props) {
+export default async function ReceiverPage({ params }: Props) {
   const { handle } = await params;
   const receiver = await userByHandle(handle);
   if (!receiver) notFound();
@@ -42,14 +41,6 @@ export default async function ReceiverPage({ params, searchParams }: Props) {
       ? `${receiver.name} isn't accepting new tracks right now.`
       : null;
 
-  // ?style= lets a receiver preview either design before switching.
-  const requested = (await searchParams).style;
-  const style = requested === "stage" || requested === "classic" ? requested : receiver.page_style;
-
-  if (style === "stage") {
-    return <StagePage receiver={receiver} collection={collection} accepting={!closedReason} closedReason={closedReason} note={note} />;
-  }
-
   const custom = genresFor(collection).custom;
   const range = collection?.bpm_min && collection?.bpm_max ? `${collection.bpm_min}–${collection.bpm_max} BPM` : null;
   const wantedText = collection?.brief_wanted || "";
@@ -62,11 +53,11 @@ export default async function ReceiverPage({ params, searchParams }: Props) {
   ];
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-6 bg-[#10110f] px-[18px] py-8 font-[family-name:var(--font-stage-mono)] text-[#f1f1eb] sm:py-12">
+    <main className="group/page mx-auto flex min-h-dvh max-w-xl flex-col gap-6 bg-[#10110f] px-[18px] py-8 font-[family-name:var(--font-stage-mono)] text-[#f1f1eb] sm:py-12">
       <div className="flex flex-col gap-3">
         <p className="text-[10px] font-bold uppercase tracking-[1px] text-[#a3a69b]">Send music to</p>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="break-words text-[clamp(2rem,12vw,3.5rem)] font-bold leading-none">
+          <h1 className="break-words text-[clamp(2rem,12vw,3.5rem)] font-bold leading-none group-has-[[data-picked]]/page:text-[32px] group-has-[[data-picked]]/page:font-extrabold">
             {receiver.name}
             {receiver.identity_status === "verified" && (
               <span title="Verified by FloorTest" className="ml-2 align-middle text-base text-lime" aria-label="Verified">
@@ -82,7 +73,7 @@ export default async function ReceiverPage({ params, searchParams }: Props) {
           )}
         </div>
         {showBrief && (
-          <section aria-label="What they're looking for" className="flex flex-col gap-2 rounded-xl border border-[#2c2e29] bg-[#171815] p-3">
+          <section aria-label="What they're looking for" className="group-has-[[data-picked]]/page:hidden flex flex-col gap-2 rounded-xl border border-[#2c2e29] bg-[#171815] p-3">
             <p className="text-[10px] font-bold uppercase tracking-[0.5px] text-[#a3a69b]">What I&apos;m looking for</p>
             {custom && (
               <ul className="flex flex-wrap gap-1.5">
