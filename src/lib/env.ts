@@ -14,7 +14,12 @@ export const env = {
   /** Previews use their own address, so links and emails never point at the live site. */
   appUrl: (isPreview && v("VERCEL_URL") ? `https://${v("VERCEL_URL")}` : (v("APP_URL") ?? "http://localhost:3000")).replace(/\/$/, ""),
   /** Signs local upload tokens. Must be long and random in production. */
-  secret: v("APP_SECRET") ?? "dev-only-secret-change-me",
+  get secret(): string {
+    const s = v("APP_SECRET");
+    // The live site never falls back to the public dev secret: anything signed with it could be forged.
+    if (!s && process.env.VERCEL_ENV === "production") throw new Error("APP_SECRET is not set. Refusing to sign or check tokens without it.");
+    return s ?? "dev-only-secret-change-me";
+  },
   databaseUrl: v("DATABASE_URL"),
   storage: {
     driver: (v("STORAGE_DRIVER") ?? (v("S3_BUCKET") ? "s3" : "local")) as "local" | "s3",

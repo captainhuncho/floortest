@@ -105,7 +105,16 @@ Besides the per-collection setting, a receiver can ask the artist, per track, fr
 16. **Is a one-tap Allow on the receipt page enough consent**, given the sender reaches it through their private link (no account)? Should we record more (time, IP, the exact wording shown)?
 17. **Withdrawal (owner decision):** after tapping Allow, the artist has a **2-minute window** to cancel (a countdown and Cancel button on their receipt, and the link in their confirmation email). After that the consent is **final and can't be withdrawn**, and only then is the receiver told and able to share. Please confirm this is enforceable and say how to word the "no take-backs" part kindly.
 
-## 5. Before invites go out
+## 5. Admin tools: erasure, account changes, suspensions (added 1 Oct 2026)
+
+What's built: admins can export everything held about an email address, delete an account, and erase someone as a sender. Admins can also change a user's handle or email, suspend accounts (the user is emailed the reason and can appeal), and record copyright takedowns.
+
+18. **Sender erasure vs. receivers' copies:** erasing a sender deletes their sender records and **every track they sent, from every receiver's desk**, with the files, and the receivers aren't told. Does a sender's erasure request override a receiver keeping a track they were sent (their legitimate interest, or the licence the sender granted at upload)? Should receivers be notified, or keep the track without the sender's personal data?
+19. **What we keep after erasure:** the admin log keeps a masked email (first two letters) and counts. Takedown cases keep the claimant's details and a track label. Is that acceptable to keep, and for how long?
+20. **Handle take-back for impersonation:** an admin can move an impersonator to a new handle without notice beyond an email, free the name immediately and give it to the real artist. Do the Terms need explicit wording for this?
+21. **Email changes by support:** support can start an email change after confirming identity by email. The new address must still confirm, and the old address is told. Is that enough protection, or should support changes need a waiting period?
+
+## 6. Before invites go out
 
 1. Set `SUPPORT_EMAIL` (and ideally a published privacy@ address).
 2. Fix the IP retention wording or run the purge more often.
