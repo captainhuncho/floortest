@@ -8,6 +8,7 @@ import { planOf } from "@/lib/plans";
 import { VERSION } from "@/lib/site";
 import { PauseSwitch } from "../PauseSwitch";
 import { LinkCard } from "./LinkCard";
+import { QrRow } from "./QrRow";
 
 export const metadata = { title: "Account — FloorTest" };
 
@@ -184,21 +185,7 @@ export default async function Account() {
       <Section
         title="SUBMISSION"
         rows={[
-          <div key="q" className="flex items-center gap-3 py-0.5">
-            <Icon i="▦" />
-            <a href={`/api/qr/${user.handle}?format=svg`} target="_blank" className="min-w-0 flex-1 text-[13px] font-medium text-bone hover:underline">
-              QR code <span className="text-[11px] font-normal text-mute">(view)</span>
-              <span className="mt-0.5 hidden text-[10px] font-normal text-faint md:block">For flyers, screens and stories</span>
-            </a>
-            <span className="flex gap-3 text-[11px]">
-              <a href={`/api/qr/${user.handle}?format=png&download=1`} className="text-mute hover:text-bone">
-                PNG ↓
-              </a>
-              <a href={`/api/qr/${user.handle}?format=svg&download=1`} className="text-mute hover:text-bone">
-                SVG ↓
-              </a>
-            </span>
-          </div>,
+          <QrRow key="q" handle={user.handle} link={link} />,
         ]}
       />
       <Section
