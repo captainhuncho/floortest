@@ -90,6 +90,21 @@ How it works in the product, for reference:
 
 Open points are questions 11–15 above.
 
+### Asking the artist first (added 1 Oct 2026)
+
+Besides the per-collection setting, a receiver can ask the artist, per track, from the contact's page: **"Request to share"**, with an optional note on who it's for (e.g. "a DJ friend playing in Accra"). The artist gets an email and sees the request on their private receipt page with **Allow** / **Decline**. Nothing changes unless they say yes; allowing makes that one track shareable, for playing and promotion only. Whether the partner may download is fixed at that moment by the receiver's plan, and the request says which. The receipt records the answer and its date.
+
+**Drafting job for you:** please write the request email and the receipt card wording. The owner wants it **clear but not tacky or scary**: a friendly ask between music people, not a legal notice, while still making the limits unmistakable (non-commercial partner, playing in sets and promotion only, no commercial release without a signed agreement, private link, 7 days, listen-only unless downloads are stated). Current placeholder:
+
+> **Invitee would like to share this track**
+> With someone they work with, so they can play it in their sets and help promote it. They'd only be able to listen, through a private FloorTest link that expires after 7 days. It's never for commercial release without a signed agreement with you.
+> "A DJ friend playing in Accra"
+> [Allow] [Decline]
+> Nothing changes unless you say yes.
+
+16. **Is a one-tap Allow on the receipt page enough consent**, given the sender reaches it through their private link (no account)? Should we record more (time, IP, the exact wording shown)?
+17. **Withdrawal:** can the artist take back an Allow later, and should that switch off existing share links immediately?
+
 ## 5. Before invites go out
 
 1. Set `SUPPORT_EMAIL` (and ideally a published privacy@ address).

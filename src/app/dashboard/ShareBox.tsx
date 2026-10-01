@@ -64,7 +64,7 @@ export function ShareBox({
             {!canDownload && (
               <>
                 {" "}
-                Colleagues can download tracks sent while you&apos;re on{" "}
+                Colleagues can download tracks sent (or approved by the artist) while you&apos;re on{" "}
                 <a href="/dashboard/plans" className="text-bone underline underline-offset-4">
                   Pro
                 </a>

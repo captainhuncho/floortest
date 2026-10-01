@@ -30,7 +30,7 @@ import { cleanGenre, genresFor, PLANS, planOf, RESERVED_HANDLES, SHARING_LIVE } 
 import { storage } from "@/lib/storage";
 import { audit, trackLabel } from "@/lib/audit";
 import { requestStems } from "@/lib/stems";
-import { createShare, revokeShares } from "@/lib/share";
+import { createShare, requestShareConsent, revokeShares } from "@/lib/share";
 import { parseCues } from "@/lib/cues";
 import { cleanProfileLink, IDENTITY_HOSTS, isProtectedHandle, newIdentityCode } from "@/lib/identity";
 
@@ -329,6 +329,17 @@ export async function shareTrack(trackId: number): Promise<{ url: string; expire
   await audit(u.id, "shared", trackLabel(t), t.id);
   done();
   return { url: `${APP_URL}/s/${s.token}`, expires: s.expires_at };
+}
+
+/** Ask the artist to allow sharing this track with a non-commercial partner (playing and promotion only). */
+export async function askToShare(trackId: number, note: string) {
+  const u = await requireUser();
+  const t = await ownedTrack(u.id, trackId);
+  if (!t) return false;
+  const r = await requestShareConsent(u, t, String(note ?? ""));
+  if (r) await audit(u.id, "share_requested", trackLabel(t), t.id);
+  done();
+  return !!r;
 }
 
 export async function stopSharing(trackId: number) {

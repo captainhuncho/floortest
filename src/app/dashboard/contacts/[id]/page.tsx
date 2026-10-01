@@ -7,6 +7,9 @@ import { ago, fmtDate, fmtDay, fmtTime } from "@/lib/format";
 import { addNote, blockSender, replyToSender } from "../../actions";
 import { Composer, ConfirmButton } from "../../ClientBits";
 import { Status } from "../../TrackList";
+import { ShareRequest } from "../ShareRequest";
+import { SHARING_LIVE } from "@/lib/plans";
+import type { ShareRequest as Req } from "@/lib/share";
 
 type Item =
   | { kind: "message"; at: number; text: string; track: string; trackId: number }
@@ -24,6 +27,14 @@ export default async function Contact({ params }: { params: Promise<{ id: string
   if (!s) notFound();
   const tracks = (await q.all<Track & { collection_name: string | null }>(`SELECT t.*, c.name AS collection_name FROM tracks t LEFT JOIN collections c ON c.id = t.collection_id
        WHERE t.sender_id = ? ORDER BY t.created_at DESC`, s.id));
+  // Latest share request per track (only used once sharing launches after the beta).
+  const requests = new Map<number, Req>();
+  if (SHARING_LIVE)
+    for (const r of await q.all<Req>(
+      `SELECT DISTINCT ON (r.track_id) r.* FROM share_requests r JOIN tracks t ON t.id = r.track_id WHERE t.sender_id = ? ORDER BY r.track_id, r.created_at DESC`,
+      s.id,
+    ))
+      requests.set(r.track_id, r);
   const events = (await q.all<EventRow & { track_title: string | null }>(`SELECT e.*, t.title AS track_title FROM events e LEFT JOIN tracks t ON t.id = e.track_id
        WHERE e.sender_id = ? AND e.type IN ('reply', 'note') ORDER BY e.created_at`, s.id));
 
@@ -112,6 +123,20 @@ export default async function Contact({ params }: { params: Promise<{ id: string
                 {!t.deleted_at && (
                   <div className="mt-1.5 flex flex-wrap gap-1">
                     <Status row={{ decision: t.decision, played: !!t.played_at, downloaded: !!t.downloaded_at }} />
+                  </div>
+                )}
+                {SHARING_LIVE && !t.deleted_at && (
+                  <div className="mt-2">
+                    <ShareRequest
+                      trackId={t.id}
+                      status={
+                        t.share_ok
+                          ? { state: "shareable", at: null }
+                          : requests.get(t.id)
+                            ? { state: requests.get(t.id)!.status, at: fmtDay(requests.get(t.id)!.created_at) }
+                            : { state: null, at: null }
+                      }
+                    />
                   </div>
                 )}
               </li>

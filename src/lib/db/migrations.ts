@@ -449,4 +449,21 @@ create index share_access_share on share_access(share_id);
 alter table share_access enable row level security;
 `,
   },
+  {
+    // A receiver asks the artist, per track, to share it with a non-commercial partner (playing and promotion only).
+    id: "0023_share_requests",
+    sql: `
+create table share_requests (
+  id bigint generated always as identity primary key,
+  track_id bigint not null references tracks(id) on delete cascade,
+  note text not null default '',
+  downloads int not null default 0,
+  status text not null default 'pending' check (status in ('pending', 'allowed', 'declined')),
+  created_at bigint not null,
+  decided_at bigint
+);
+create index share_requests_track on share_requests(track_id);
+alter table share_requests enable row level security;
+`,
+  },
 ];

@@ -5,6 +5,9 @@ import { fmtDate, fmtDay, fmtTime } from "@/lib/format";
 import { RETAIN_UNREVIEWED_DAYS, SIGNALS, stemsEnabled } from "@/lib/plans";
 import { MAX_STEMS, stemsFor } from "@/lib/stems";
 import { StemUpload } from "./StemUpload";
+import { ShareConsent } from "./ShareConsent";
+import { SHARING_LIVE } from "@/lib/plans";
+import { latestShareRequest } from "@/lib/share";
 
 export const metadata = { title: "Your receipt — FloorTest", robots: { index: false } };
 
@@ -17,6 +20,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
   if (!t) notFound();
 
   const shared = await q.get<{ at: number }>("SELECT MIN(created_at) AS at FROM track_shares WHERE track_id = ?", t.id);
+  const request = SHARING_LIVE && !t.deleted_at ? await latestShareRequest(t.id) : undefined;
   const stemsOn = !!t.stems_requested_at && !t.deleted_at && stemsEnabled(t.receiver_plan);
   const stems = stemsOn ? await stemsFor(t.id) : [];
   // Kept and passed are private to the receiver. Senders only see what they were promised.
@@ -70,6 +74,10 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
         })}
       </ol>
 
+      {request?.status === "pending" && (
+        <ShareConsent token={token} requestId={request.id} receiver={t.receiver.split(/\s+/)[0]} note={request.note} downloads={!!request.downloads} />
+      )}
+
       {stemsOn && (
         <StemUpload token={token} receiver={t.receiver.split(/\s+/)[0]} existing={stems.map((x) => x.name)} max={MAX_STEMS} />
       )}
@@ -83,6 +91,9 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
         <p>
           Only {t.receiver} can hear or download your file. It&apos;s never shared publicly.
           {shared?.at ? ` ${t.receiver} shared a private link with a colleague on ${fmtDay(shared.at)}.` : ""}
+          {request && request.status !== "pending" && request.decided_at
+            ? ` You ${request.status === "allowed" ? "allowed" : "declined"} sharing on ${fmtDay(request.decided_at)}.`
+            : ""}
         </p>
         <hr className="border-line" />
         <p>
