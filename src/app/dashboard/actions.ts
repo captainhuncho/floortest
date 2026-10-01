@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSessionHash, destroySession, hashPassword, requireUser, verifyPassword } from "@/lib/auth";
-import { sendMail } from "@/lib/mail";
+import { APP_URL, sendMail } from "@/lib/mail";
 import { fmtDay } from "@/lib/format";
 import QRCode from "qrcode";
 import { env } from "@/lib/env";
@@ -30,6 +30,7 @@ import { cleanGenre, genresFor, PLANS, planOf, RESERVED_HANDLES } from "@/lib/pl
 import { storage } from "@/lib/storage";
 import { audit, trackLabel } from "@/lib/audit";
 import { requestStems } from "@/lib/stems";
+import { createShare, revokeShares } from "@/lib/share";
 import { cleanProfileLink, IDENTITY_HOSTS, isProtectedHandle, newIdentityCode } from "@/lib/identity";
 
 const done = () => revalidatePath("/dashboard", "layout");
@@ -86,7 +87,7 @@ export async function updateCollection(id: number, form: FormData) {
     if (Array.isArray(raw)) genres = [...new Set(raw.filter((g) => typeof g === "string").map(cleanGenre).filter(Boolean))].slice(0, 30);
   } catch {}
   await q.run(
-    `UPDATE collections SET name = COALESCE(NULLIF(?, ''), name), closes_at = ?, brief_wanted = ?, bpm_min = ?, bpm_max = ?, brief_note = ?, genres = ?
+    `UPDATE collections SET name = COALESCE(NULLIF(?, ''), name), closes_at = ?, brief_wanted = ?, bpm_min = ?, bpm_max = ?, brief_note = ?, genres = ?, allow_sharing = ?
      WHERE id = ?`,
     name,
     closesAt,
@@ -95,6 +96,7 @@ export async function updateCollection(id: number, form: FormData) {
     hi,
     text("brief_note", 200),
     genres.length ? JSON.stringify(genres) : "",
+    form.get("allow_sharing") === "on" ? 1 : 0,
     id,
   );
   await audit(u.id, "collection_updated", name || c.name);
@@ -313,6 +315,26 @@ export async function askForStems(trackId: number) {
   if (!t) return;
   await requestStems(u, t);
   await audit(u.id, "stems_requested", trackLabel(t), t.id);
+  done();
+}
+
+/** A private listen-only link for a colleague, for tracks sent while sharing was allowed. */
+export async function shareTrack(trackId: number): Promise<{ url: string; expires: number } | null> {
+  const u = await requireUser();
+  const t = await ownedTrack(u.id, trackId);
+  if (!t) return null;
+  const s = await createShare(u, t);
+  if (!s) return null;
+  await audit(u.id, "shared", trackLabel(t), t.id);
+  done();
+  return { url: `${APP_URL}/s/${s.token}`, expires: s.expires_at };
+}
+
+export async function stopSharing(trackId: number) {
+  const u = await requireUser();
+  const t = await ownedTrack(u.id, trackId);
+  if (!t) return;
+  await revokeShares(u, t);
   done();
 }
 

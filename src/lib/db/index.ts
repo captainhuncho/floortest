@@ -66,6 +66,7 @@ export type Collection = {
   bpm_max: number | null;
   brief_note: string;
   genres: string;
+  allow_sharing: number;
 };
 export type Sender = {
   id: number;
@@ -113,13 +114,14 @@ export type Track = {
   set_cleared_at: number | null;
   created_at: number;
   stems_requested_at: number | null;
+  share_ok: number;
 };
 export type EventRow = {
   id: number;
   user_id: number;
   sender_id: number;
   track_id: number | null;
-  type: "submitted" | "played" | "downloaded" | "kept" | "passed" | "note" | "reply" | "deleted" | "expired" | "moved" | "blocked" | "unblocked" | "played_out";
+  type: "submitted" | "played" | "downloaded" | "kept" | "passed" | "note" | "reply" | "deleted" | "expired" | "moved" | "blocked" | "unblocked" | "played_out" | "shared";
   detail: string;
   created_at: number;
 };

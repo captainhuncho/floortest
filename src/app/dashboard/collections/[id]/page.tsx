@@ -60,6 +60,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
     bpmMin: c.bpm_min,
     bpmMax: c.bpm_max,
     briefNote: c.brief_note,
+    allowSharing: !!c.allow_sharing,
     genres: genres.custom ? genres.list : [],
   };
 

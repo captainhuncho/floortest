@@ -18,6 +18,7 @@ type C = {
   bpmMin: number | null;
   bpmMax: number | null;
   briefNote: string;
+  allowSharing: boolean;
   genres: string[];
 };
 
@@ -131,6 +132,15 @@ export function CollectionCard({ c, receiving, closed, canDelete, startEditing =
             <label className="block space-y-1.5 sm:col-span-2">
               <span className="label">Vibe note</span>
               <input name="brief_note" defaultValue={c.briefNote} maxLength={200} className="input" placeholder="Percussive, warm and built for late-night rooms" />
+            </label>
+            <label className="flex items-start gap-3 sm:col-span-2">
+              <input type="checkbox" name="allow_sharing" defaultChecked={c.allowSharing} className="mt-1 h-4 w-4 accent-lime" />
+              <span>
+                <span className="block text-sm font-medium">Let me share tracks with colleagues</span>
+                <span className="block text-xs text-mute">
+                  Senders see this in your brief. Only tracks sent while it&apos;s on can be shared, through a private listen-only link.
+                </span>
+              </span>
             </label>
           </fieldset>
         </form>

@@ -9,6 +9,9 @@ import { ConfirmButton, NoteForm } from "./ClientBits";
 import { DecisionRail } from "./DecisionRail";
 import { PlayedOut } from "./PlayedOut";
 import { StemsBox } from "./StemsBox";
+import { ShareBox } from "./ShareBox";
+import { activeShare, canShare } from "@/lib/share";
+import { APP_URL } from "@/lib/mail";
 import { DetailPlayer } from "./DetailPlayer";
 import { DesktopOnly, MobileOnly } from "./DesktopOnly";
 import { MobileTransport } from "./MobileTransport";
@@ -30,6 +33,7 @@ export async function ReviewPanel({
   prevHref: string | null;
 }) {
   const receiverPlan = (await q.get<{ plan: string }>("SELECT plan FROM users WHERE id = ?", t.user_id))?.plan ?? "free";
+  const share = canShare(t) ? await activeShare(t.id) : undefined;
   const events = (await q.all<EventRow & { track_title: string | null }>(`SELECT e.*, t.title AS track_title FROM events e LEFT JOIN tracks t ON t.id = e.track_id
        WHERE e.sender_id = ? ORDER BY e.created_at DESC LIMIT 8`, sender.id));
   // Sent from someone's FloorTest account: show who they are on the platform.
@@ -127,6 +131,19 @@ export async function ReviewPanel({
       {t.decision === "kept" && (
         <div className="mt-4">
           <PlayedOut trackId={t.id} senderName={sender.name} at={t.played_out_at} note={t.played_out_note} />
+        </div>
+      )}
+
+      {canShare(t) && (
+        <div className="mt-4">
+          <ShareBox
+            trackId={t.id}
+            active={
+              share
+                ? { url: `${APP_URL}/s/${share.token}`, expires: new Date(share.expires_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }), plays: share.plays }
+                : null
+            }
+          />
         </div>
       )}
 

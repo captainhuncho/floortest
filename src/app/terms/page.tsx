@@ -25,13 +25,14 @@ export default function Terms() {
           [
             "Only send music you own or are authorised to share. You keep all rights to your music.",
             "By sending a track you give the receiver you chose permission to listen to it, download it, evaluate it, and play it in their DJ sets, live performances and broadcasts.",
+            "If the receiver's brief says sharing with colleagues is allowed when you send, they may also share your track with colleagues through a private, listen-only FloorTest link that expires after 7 days. You can see on your receipt when this happens.",
             "The receiver may not release, distribute, sell, license or upload your track as a release on any platform without a separate written agreement with you.",
           ],
         ],
         [
           "If you receive music",
           [
-            "Use tracks you receive only as described above. Don't release, distribute, sell or publish them without a written agreement with the sender.",
+            "Use tracks you receive only as described above. Don't release, distribute, sell or publish them without a written agreement with the sender. Share a track with colleagues only through FloorTest's listen-only link, and only for tracks sent while your brief allowed sharing.",
             "You're responsible for how you use contact details senders share with you.",
             "Files aren't scanned for viruses yet. We check each file is real audio, but open downloads at your own risk and keep your security software up to date.",
           ],

@@ -15,6 +15,7 @@ const LABEL: Record<EventRow["type"], string> = {
   blocked: "You blocked this sender",
   unblocked: "You unblocked this sender",
   played_out: "You played out",
+  shared: "You shared with a colleague",
 };
 
 export function History({

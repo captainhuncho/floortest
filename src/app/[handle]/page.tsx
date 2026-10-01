@@ -88,6 +88,11 @@ export default async function ReceiverPage({ params }: Props) {
             {range && <p className="text-[11px] font-bold">{range}</p>}
             {collection?.closes_at && <p className="text-[11px] font-bold">Open until {fmtDay(collection.closes_at, receiver.tz)}</p>}
             {collection?.brief_note && <p className="text-[11px] italic leading-4 text-mute">&ldquo;{collection.brief_note}&rdquo;</p>}
+            {!!collection?.allow_sharing && (
+              <p className="flex items-center gap-1.5 text-[10px] font-medium text-dim">
+                <span aria-hidden className="text-lime">✓</span> Sharing with colleagues allowed
+              </p>
+            )}
           </section>
         )}
       </div>
@@ -99,7 +104,7 @@ export default async function ReceiverPage({ params }: Props) {
             <p className="mt-2 text-[12px] text-dim">This link stays the same. Check back soon.</p>
           </div>
         ) : (
-          <SubmitForm handle={receiver.handle} receiverName={receiver.name} genres={genres} look="mobile" />
+          <SubmitForm handle={receiver.handle} receiverName={receiver.name} genres={genres} look="mobile" allowSharing={!!collection?.allow_sharing} />
         )}
       </div>
       <ul className="flex flex-col gap-2.5" aria-label="How your file is handled">

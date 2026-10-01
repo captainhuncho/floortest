@@ -16,6 +16,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
        WHERE t.token = ?`, token));
   if (!t) notFound();
 
+  const shared = await q.get<{ at: number }>("SELECT MIN(created_at) AS at FROM track_shares WHERE track_id = ?", t.id);
   const stemsOn = !!t.stems_requested_at && !t.deleted_at && stemsEnabled(t.receiver_plan);
   const stems = stemsOn ? await stemsFor(t.id) : [];
   // Kept and passed are private to the receiver. Senders only see what they were promised.
@@ -79,7 +80,10 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
           {t.verified_at ? " (confirmed)." : ". Confirm your email from the delivery email so the receiver sees you as verified."}
         </p>
         <hr className="border-line" />
-        <p>Only {t.receiver} can hear or download your file. It&apos;s never shared publicly.</p>
+        <p>
+          Only {t.receiver} can hear or download your file. It&apos;s never shared publicly.
+          {shared?.at ? ` ${t.receiver} shared a private listen-only link with a colleague on ${fmtDay(shared.at)}.` : ""}
+        </p>
         <hr className="border-line" />
         <p>
           {t.deleted_at

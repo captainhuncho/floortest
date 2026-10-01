@@ -2,5 +2,5 @@
 export const LEGAL = {
   operator: "FloorTest LTD, a company being registered in Ghana",
   email: "info@imullar.com",
-  updated: "29 September 2026",
+  updated: "1 October 2026",
 };

@@ -30,6 +30,7 @@ export function SubmitForm({
   genres,
   look: lookName = "classic",
   account,
+  allowSharing = false,
 }: {
   handle: string;
   receiverName: string;
@@ -37,6 +38,8 @@ export function SubmitForm({
   look?: keyof typeof LOOKS;
   /** Sending from a signed-in FloorTest account: name and email come from the account. */
   account?: { name: string; email: string };
+  /** The collection lets the receiver share tracks with colleagues through a private listen-only link. */
+  allowSharing?: boolean;
 }) {
   const L = LOOKS[lookName];
   const m = lookName === "mobile";
@@ -342,7 +345,7 @@ export function SubmitForm({
 
       <p className={`text-xs ${L.mute}`}>
         By sending you confirm you own or control this track and you&apos;re 18 or over. {receiverName} may listen to it, download it and play it
-        in their sets, but can&apos;t release it anywhere without a signed agreement with you.{" "}
+        in their sets{allowSharing ? ", and share a private listen-only link with colleagues" : ""}, but can&apos;t release it anywhere without a signed agreement with you.{" "}
         <a href="/terms" target="_blank" className="underline underline-offset-4">Terms</a> ·{" "}
         <a href="/privacy" target="_blank" className="underline underline-offset-4">Privacy</a>
       </p>

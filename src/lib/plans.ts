@@ -22,7 +22,7 @@ export const ACCEPTED_MIME = ["audio/wav", "audio/x-wav", "audio/wave", "audio/v
 export const ACCEPTED_EXT = [".wav", ".mp3"];
 
 export const RESERVED_HANDLES = new Set([
-  "api", "dashboard", "sent", "waitlist", "login", "signup", "logout", "t", "settings", "pricing", "about", "admin", "floortest", "v", "trust", "licenses", "contact", "terms", "privacy", "forgot", "reset", "robots.txt", "sitemap.xml", "icon.svg", "_next", "static", "favicon.ico",
+  "api", "dashboard", "sent", "waitlist", "login", "signup", "logout", "t", "s", "settings", "pricing", "about", "admin", "floortest", "v", "trust", "licenses", "contact", "terms", "privacy", "forgot", "reset", "robots.txt", "sitemap.xml", "icon.svg", "_next", "static", "favicon.ico",
 ]);
 
 /** Signal definitions. These are shown to receivers and senders, so they must stay strict. */

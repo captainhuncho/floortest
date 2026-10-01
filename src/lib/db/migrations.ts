@@ -399,4 +399,23 @@ create index stems_track on stems(track_id);
 alter table stems enable row level security;
 `,
   },
+  {
+    // Sharing with colleagues: a collection can allow it; each track remembers whether it was allowed when it was sent.
+    id: "0019_sharing",
+    sql: `
+alter table collections add column allow_sharing int not null default 0;
+alter table tracks add column share_ok int not null default 0;
+create table track_shares (
+  id bigint generated always as identity primary key,
+  track_id bigint not null references tracks(id) on delete cascade,
+  token text not null unique,
+  created_at bigint not null,
+  expires_at bigint not null,
+  revoked_at bigint,
+  plays int not null default 0
+);
+create index track_shares_track on track_shares(track_id);
+alter table track_shares enable row level security;
+`,
+  },
 ];
