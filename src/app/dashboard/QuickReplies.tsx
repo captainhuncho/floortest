@@ -7,7 +7,7 @@ export const quickReplies = (name: string) => {
     { label: "Interested", text: `Thanks ${first}, I'm into this one and I'll be testing it in my sets. Send anything else you're working on.` },
     { label: "Send stems", text: `Thanks ${first}, I like this. Could you send the stems over? It'd help me play it out properly.` },
     {
-      label: "Pass",
+      label: "Not for me",
       text: `Thanks for sending this, ${first}. It's not right for what I'm playing at the moment, but keep me in mind for future music.`,
     },
   ];
