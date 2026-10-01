@@ -520,4 +520,30 @@ create index account_actions_user on account_actions(user_id, created_at desc);
 alter table account_actions enable row level security;
 `,
   },
+{
+    // Announcements to users (bell, optional email), and admin feature switches.
+    id: "0027_announcements_switches",
+    sql: `
+create table announcements (
+  id bigint generated always as identity primary key,
+  title text not null,
+  body text not null default '',
+  href text not null default '',
+  audience text not null default 'all' check (audience in ('all', 'free', 'pro', 'team')),
+  emailed int not null default 0,
+  admin_id bigint references users(id) on delete set null,
+  created_at bigint not null
+);
+create index announcements_time on announcements(created_at desc);
+alter table announcements enable row level security;
+create table feature_switches (
+  feature text primary key,
+  plans text not null default '[]',
+  users text not null default '[]',
+  admin_id bigint references users(id) on delete set null,
+  updated_at bigint not null
+);
+alter table feature_switches enable row level security;
+`,
+  },
 ];

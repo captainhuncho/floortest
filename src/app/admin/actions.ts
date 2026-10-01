@@ -2,6 +2,9 @@
 
 import crypto from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { FEATURES, type Feature } from "@/lib/features";
+import { PLANS } from "@/lib/plans";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { signViewAs, VIEW_AS_COOKIE } from "@/lib/auth";
@@ -440,4 +443,55 @@ export async function adminEraseSender(form: FormData) {
   await logAdmin(a.id, "erased sender (privacy request)", email.replace(/^(.{2}).*@/, "$1…@"), `${r.senders} sender records, ${r.files} files`);
   refresh();
   redirect(`/admin/privacy?done=sender`);
+}
+
+/** Turns a held-back feature on for chosen plans and named accounts (by handle). */
+export async function saveSwitch(feature: Feature, form: FormData) {
+  const a = await requireAdminAction();
+  if (!(feature in FEATURES)) return;
+  const plans = Object.keys(PLANS).filter((p) => form.get(`plan_${p}`) === "on");
+  const handles = [...new Set(String(form.get("handles") || "").split(/[\s,]+/).map((h) => h.replace(/^@/, "").toLowerCase()).filter(Boolean))].slice(0, 200);
+  const users = handles.length
+    ? (await q.all<{ id: number }>(`SELECT id FROM users WHERE lower(handle) IN (${handles.map(() => "?").join(",")})`, ...handles)).map((r) => r.id)
+    : [];
+  await q.run(
+    "INSERT INTO feature_switches (feature, plans, users, admin_id, updated_at) VALUES (?,?,?,?,?) ON CONFLICT (feature) DO UPDATE SET plans = excluded.plans, users = excluded.users, admin_id = excluded.admin_id, updated_at = excluded.updated_at",
+    feature, JSON.stringify(plans), JSON.stringify(users), a.id, now(),
+  );
+  await logAdmin(a.id, "changed feature switch", FEATURES[feature].label, `plans: ${plans.join(", ") || "none"} · accounts: ${users.length}`);
+  revalidatePath("/", "layout");
+}
+
+const AUDIENCES = ["all", "free", "pro", "team"] as const;
+
+/** Publishes to every matching user's bell; with email on, also emails those who opted into product news. */
+export async function publishAnnouncement(form: FormData) {
+  const a = await requireAdminAction();
+  const title = String(form.get("title") || "").trim().slice(0, 100);
+  const body = String(form.get("body") || "").trim().slice(0, 600);
+  const href = String(form.get("href") || "").trim().slice(0, 200);
+  const audience = String(form.get("audience") || "all") as (typeof AUDIENCES)[number];
+  const email = form.get("email") === "on";
+  if (!title || !AUDIENCES.includes(audience) || (href && !href.startsWith("/"))) return;
+  await q.run("INSERT INTO announcements (title, body, href, audience, emailed, admin_id, created_at) VALUES (?,?,?,?,?,?,?)", title, body, href, audience, email ? 1 : 0, a.id, now());
+  const people = email
+    ? await q.all<{ id: number; email: string }>(
+        `SELECT id, email FROM users WHERE notify_product = 1 AND suspended_at IS NULL AND email_verified_at IS NOT NULL ${audience === "all" ? "" : "AND plan = ?"} LIMIT 5000`,
+        ...(audience === "all" ? [] : [audience]),
+      )
+    : [];
+  await logAdmin(a.id, "published announcement", title, `${audience}${email ? ` · emailed ${people.length}` : ""}`);
+  if (people.length)
+    after(async () => {
+      for (const p of people)
+        await sendMail({
+          userId: p.id,
+          audience: "receiver",
+          to: p.email,
+          subject: title,
+          body: [body, "", href ? `${env.appUrl}${href}` : env.appUrl, "", "You get these because product news is on in your notification settings.", "FloorTest"].join("\n"),
+        }).catch(() => {});
+    });
+  refresh();
+  redirect("/admin/announcements?published=1");
 }

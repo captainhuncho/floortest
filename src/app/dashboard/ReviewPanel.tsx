@@ -3,7 +3,8 @@ import type { PlayerTrack } from "@/components/Player";
 import { deletesAt } from "@/lib/core";
 import {q, type Collection, type EventRow, type Sender, type Track } from "@/lib/db";
 import { fmtBytes, fmtDate, fmtDay } from "@/lib/format";
-import { MIX_STATUS, RELEASE_STATUS, stemsEnabled } from "@/lib/plans";
+import { MIX_STATUS, RELEASE_STATUS } from "@/lib/plans";
+import { featureOn } from "@/lib/features";
 import { addNote, deleteTrack, moveTrack, replyToSender } from "./actions";
 import { ConfirmButton, NoteForm } from "./ClientBits";
 import { DecisionRail } from "./DecisionRail";
@@ -35,6 +36,7 @@ export async function ReviewPanel({
   prevHref: string | null;
 }) {
   const receiverPlan = (await q.get<{ plan: string }>("SELECT plan FROM users WHERE id = ?", t.user_id))?.plan ?? "free";
+  const stemsOn = await featureOn("stems", { id: t.user_id, plan: receiverPlan });
   if (!t.share_ok) {
     await finalizeConsent(t.id);
     const fresh = await q.get<{ s: number; d: number }>("SELECT share_ok AS s, share_download AS d FROM tracks WHERE id = ?", t.id);
@@ -163,7 +165,7 @@ export async function ReviewPanel({
         </div>
       )}
 
-      {stemsEnabled(receiverPlan) && (
+      {stemsOn && (
         <div className="mt-4">
           <StemsBox track={t} senderName={sender.name} />
         </div>

@@ -1,6 +1,6 @@
 import { currentUser } from "@/lib/auth";
 import { ownedTrack } from "@/lib/core";
-import { stemsEnabled } from "@/lib/plans";
+import { featureOn } from "@/lib/features";
 import { safeName } from "@/lib/crate";
 import { stemsFor } from "@/lib/stems";
 import { storage } from "@/lib/storage";
@@ -13,7 +13,7 @@ export const maxDuration = 300;
 export async function GET(_req: Request, ctx: RouteContext<"/api/tracks/[id]/stems/zip">) {
   const user = await currentUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
-  if (!stemsEnabled(user.plan)) return new Response("Not found", { status: 404 });
+  if (!(await featureOn("stems", user))) return new Response("Not found", { status: 404 });
   const t = await ownedTrack(user.id, Number((await ctx.params).id));
   const stems = t ? await stemsFor(t.id) : [];
   if (!t || !stems.length) return new Response("Not found", { status: 404 });

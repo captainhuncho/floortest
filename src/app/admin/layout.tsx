@@ -28,7 +28,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           title: "Health",
           items: [
             { href: "/admin", label: "Overview", icon: "grid" },
-            { href: "/admin/metrics", label: "Metrics", icon: "chart" },
+            { href: "/admin/metrics", label: "Metrics", icon: "chart" }, { href: "/admin/revenue", label: "Revenue & plans", icon: "chart" }, { href: "/admin/storage", label: "Storage & costs", icon: "grid" },
             { href: "/admin/incidents", label: "Incidents", icon: "alert", badge: incidents },
           ],
         },
@@ -47,7 +47,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       id: "growth",
       title: "Growth",
       icon: "rocket",
-      sections: [{ title: "Beta access", items: [{ href: "/admin/waitlist", label: "Waitlist", icon: "list", badge: waiting }, { href: "/admin/invites", label: "Invites", icon: "ticket" }] }],
+      sections: [
+        { title: "Beta access", items: [{ href: "/admin/waitlist", label: "Waitlist", icon: "list", badge: waiting }, { href: "/admin/invites", label: "Invites", icon: "ticket" }] },
+        { title: "Product", items: [{ href: "/admin/announcements", label: "Announcements", icon: "mail" }, { href: "/admin/switches", label: "Feature switches", icon: "flag" }] },
+      ],
     },
     {
       id: "trust",

@@ -21,15 +21,31 @@ export async function notificationsFor(user: User) {
     cleared,
   );
 
-  const items: Notice[] = events.map((e) => ({
+  const news = await q.all<{ id: number; title: string; body: string; href: string; created_at: number }>(
+    "SELECT id, title, body, href, created_at FROM announcements WHERE created_at > ? AND created_at >= ? AND (audience = 'all' OR audience = ?) ORDER BY created_at DESC LIMIT 5",
+    cleared,
+    user.created_at,
+    user.plan,
+  );
+  const items: Notice[] = news.map((n) => ({
+    id: `a${n.id}`,
+    title: n.title,
+    detail: n.body,
+    href: n.href || "/dashboard",
+    at: n.created_at,
+    unread: n.created_at > seen,
+    tone: "info" as const,
+  }));
+  items.push(...events.map((e) => ({
     id: `e${e.id}`,
     title: e.type === "submitted" ? `New track: ${e.title}` : `Auto-deleted: ${e.title}`,
     detail: e.type === "submitted" ? `from ${e.sender}${e.collection ? ` · ${e.collection}` : ""}` : "Not kept within the retention period",
     href: e.type === "submitted" ? `/dashboard?view=queue&s=all&t=${e.track_id}` : "/dashboard/activity?f=intake",
     at: e.created_at,
     unread: e.created_at > seen,
-    tone: "info",
-  }));
+    tone: "info" as const,
+  })));
+  items.sort((a, b) => b.at - a.at);
 
   // Live alerts: shown while true.
   const alerts: Notice[] = [];

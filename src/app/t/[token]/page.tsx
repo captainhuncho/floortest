@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import { Waveform } from "@/components/Waveform";
 import {q, type Track } from "@/lib/db";
 import { fmtDate, fmtDay, fmtTime } from "@/lib/format";
-import { RETAIN_UNREVIEWED_DAYS, SIGNALS, stemsEnabled } from "@/lib/plans";
+import { RETAIN_UNREVIEWED_DAYS, SIGNALS } from "@/lib/plans";
+import { featureOn } from "@/lib/features";
 import { MAX_STEMS, stemsFor } from "@/lib/stems";
 import { StemUpload } from "./StemUpload";
 import { ShareConsent } from "./ShareConsent";
@@ -25,7 +26,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
 
   const shared = await q.get<{ at: number }>("SELECT MIN(created_at) AS at FROM track_shares WHERE track_id = ?", t.id);
   const request = SHARING_LIVE && !t.deleted_at ? await latestShareRequest(t.id) : undefined;
-  const stemsOn = !!t.stems_requested_at && !t.deleted_at && stemsEnabled(t.receiver_plan);
+  const stemsOn = !!t.stems_requested_at && !t.deleted_at && (await featureOn("stems", { id: t.user_id, plan: t.receiver_plan }));
   const stems = stemsOn ? await stemsFor(t.id) : [];
   // Kept and passed are private to the receiver. Senders only see what they were promised.
   const steps = [

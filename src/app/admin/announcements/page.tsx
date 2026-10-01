@@ -1,0 +1,101 @@
+import { q } from "@/lib/db";
+import { env } from "@/lib/env";
+import { publishAnnouncement } from "../actions";
+
+const AUD: Record<string, string> = { all: "Everyone", free: "Free plan", pro: "Pro plan", team: "Team plan" };
+
+/** Write an update, preview it as it'll appear in the bell and in email, then publish. */
+export default async function Announcements({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  const sp = await searchParams;
+  const draft = { title: (sp.title || "").slice(0, 100), body: (sp.body || "").slice(0, 600), href: (sp.href || "").slice(0, 200), audience: sp.audience && AUD[sp.audience] ? sp.audience : "all", email: sp.email === "on" };
+  const previewing = sp.preview === "1" && !!draft.title;
+  const reach = await q.count(
+    `SELECT COUNT(*) AS n FROM users WHERE suspended_at IS NULL ${draft.audience === "all" ? "" : "AND plan = ?"}`,
+    ...(draft.audience === "all" ? [] : [draft.audience]),
+  );
+  const emailReach = await q.count(
+    `SELECT COUNT(*) AS n FROM users WHERE notify_product = 1 AND suspended_at IS NULL AND email_verified_at IS NOT NULL ${draft.audience === "all" ? "" : "AND plan = ?"}`,
+    ...(draft.audience === "all" ? [] : [draft.audience]),
+  );
+  const past = await q.all<{ id: number; title: string; audience: string; emailed: number; created_at: number }>(
+    "SELECT id, title, audience, emailed, created_at FROM announcements ORDER BY created_at DESC LIMIT 30",
+  );
+  const fields = (
+    <>
+      <label className="block space-y-1.5">
+        <span className="label">Title</span>
+        <input name="title" required maxLength={100} defaultValue={draft.title} className="input" placeholder="New: export crates to Rekordbox" />
+      </label>
+      <label className="block space-y-1.5">
+        <span className="label">Message</span>
+        <textarea name="body" rows={3} maxLength={600} defaultValue={draft.body} className="input resize-y" />
+      </label>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="block space-y-1.5">
+          <span className="label">Link inside FloorTest (optional)</span>
+          <input name="href" defaultValue={draft.href} pattern="/.*" className="input" placeholder="/dashboard/set" />
+        </label>
+        <label className="block space-y-1.5">
+          <span className="label">Who sees it</span>
+          <select name="audience" defaultValue={draft.audience} className="input">
+            {Object.entries(AUD).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+        </label>
+      </div>
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" name="email" defaultChecked={draft.email} className="accent-lime" />
+        Also email people who turned on product news
+      </label>
+    </>
+  );
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Announcements</h1>
+        <p className="mt-2 text-mute">Shows in the bell for everyone in the audience. Email only goes to people who turned on product news.</p>
+      </div>
+      {sp.published && <p role="status" className="rounded-md border border-lime/40 bg-lime/5 px-4 py-3 text-sm">Published. Emails go out in the background.</p>}
+
+      <form className="space-y-3 rounded-md border border-line p-5">
+        <input type="hidden" name="preview" value="1" />
+        {fields}
+        <button className="btn-ghost btn-sm">Preview</button>
+      </form>
+
+      {previewing && (
+        <section aria-labelledby="pv-h" className="space-y-4 rounded-md border border-lime/40 p-5">
+          <h2 id="pv-h" className="text-lg font-semibold">Preview</h2>
+          <div className="max-w-sm rounded-xl border border-line bg-ink-2 p-3">
+            <p className="text-[12px] font-bold">{draft.title}</p>
+            {draft.body && <p className="mt-1 text-[11px] text-mute">{draft.body}</p>}
+          </div>
+          {draft.email && (
+            <pre className="max-w-xl whitespace-pre-wrap rounded-md border border-line bg-ink-2 p-3 text-xs text-mute">
+              {`Subject: ${draft.title}\n\n${draft.body}\n\n${draft.href ? `${env.appUrl}${draft.href}` : env.appUrl}`}
+            </pre>
+          )}
+          <p className="text-sm">
+            Reaches {reach} account{reach === 1 ? "" : "s"} in the bell{draft.email ? `, and emails ${emailReach}` : ""}.
+          </p>
+          <form action={publishAnnouncement}>
+            {Object.entries(draft).map(([k, v]) => (k === "email" ? v && <input key={k} type="hidden" name="email" value="on" /> : <input key={k} type="hidden" name={k} value={String(v)} />))}
+            <button className="btn-lime btn-sm">Publish</button>
+          </form>
+        </section>
+      )}
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold">Published</h2>
+        {!past.length && <p className="text-mute">Nothing yet.</p>}
+        <ul className="divide-y divide-line rounded-md border border-line">
+          {past.map((p) => (
+            <li key={p.id} className="flex flex-wrap justify-between gap-2 px-4 py-3 text-sm">
+              <span>{p.title}</span>
+              <span className="text-mute">{AUD[p.audience]}{p.emailed ? " · emailed" : ""} · {new Date(p.created_at).toLocaleDateString("en-GB")}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  );
+}
