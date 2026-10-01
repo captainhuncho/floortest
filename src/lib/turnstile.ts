@@ -2,9 +2,9 @@ import "server-only";
 
 /**
  * Cloudflare Turnstile: a free, mostly invisible bot check on public forms.
- * Off until TURNSTILE_SECRET_KEY and NEXT_PUBLIC_TURNSTILE_SITE_KEY are set; rate limits still apply either way.
+ * Off until TURNSTILE_SECRET_KEY and TURNSTILE_SITE_KEY (or NEXT_PUBLIC_TURNSTILE_SITE_KEY) are set; rate limits still apply either way.
  */
-export const turnstileOn = () => !!process.env.TURNSTILE_SECRET_KEY && !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+export const turnstileOn = () => !!process.env.TURNSTILE_SECRET_KEY && !!(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || process.env.TURNSTILE_SITE_KEY);
 
 export async function passedTurnstile(token: unknown, ip?: string) {
   if (!turnstileOn()) return true;
