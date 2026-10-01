@@ -172,7 +172,19 @@ export default async function Account() {
       <Section
         title="SUBMISSION"
         rows={[
-          <Row key="q" href={`/api/qr/${user.handle}?format=png&download=1`} title="QR code" value={<span className="text-[11px] text-mute">Download</span>} />,
+          <div key="q" className="flex items-center justify-between gap-3 py-0.5">
+            <a href={`/api/qr/${user.handle}?format=svg`} target="_blank" className="text-[13px] font-medium text-bone hover:underline">
+              QR code <span className="text-[11px] font-normal text-mute">(view)</span>
+            </a>
+            <span className="flex gap-3 text-[11px]">
+              <a href={`/api/qr/${user.handle}?format=png&download=1`} className="text-mute hover:text-bone">
+                PNG ↓
+              </a>
+              <a href={`/api/qr/${user.handle}?format=svg&download=1`} className="text-mute hover:text-bone">
+                SVG ↓
+              </a>
+            </span>
+          </div>,
         ]}
       />
       <Section
