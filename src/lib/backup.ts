@@ -26,8 +26,24 @@ export async function runBackup(at = now()) {
   const body = gzipSync(Buffer.from(JSON.stringify({ created_at: new Date(at).toISOString(), tables: data })));
   const store = await storage();
   await store.put(keyFor(at), new Uint8Array(body), "application/gzip");
-  // Age out every backup older than the cutoff, not just the one from exactly 14 days ago, so missed nights don't leave strays.
-  for (let d = BACKUP_KEEP_DAYS; d <= BACKUP_KEEP_DAYS + 60; d++) await store.delete(keyFor(at - d * DAY)).catch(() => {});
+  // Every backup ever written is listed in app_state, so anything past the cutoff is found and deleted however
+  // old it is or however many nights were missed. A failed delete stays on the list and is retried tomorrow.
+  const listed = await q.get<{ value: string }>("SELECT value FROM app_state WHERE key = 'backup_keys'");
+  let keys: string[] = [];
+  try {
+    keys = JSON.parse(listed?.value ?? "[]");
+  } catch {}
+  const cutoff = keyFor(at - BACKUP_KEEP_DAYS * DAY);
+  const keep: string[] = [];
+  for (const k of [...new Set([...keys, keyFor(at)])]) {
+    if (k > cutoff) keep.push(k); // keys are date-named, so they sort by date
+    else if (!(await store.delete(k).then(() => true, () => false))) keep.push(k);
+  }
+  await q.run(
+    "INSERT INTO app_state (key, value, updated_at) VALUES ('backup_keys', ?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
+    JSON.stringify(keep.sort()),
+    at,
+  );
   const rows = Object.values(data).reduce((n, r) => n + r.length, 0);
   await q.run(
     "INSERT INTO app_state (key, value, updated_at) VALUES ('last_backup', ?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",

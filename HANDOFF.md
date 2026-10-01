@@ -244,3 +244,17 @@ Release-gate items 1–3 are fixed:
 Also from item 4: backups now age out everything older than 14 days (it looks back a further 60 days), not just the exact 14-day key.
 
 Still open, mostly operational: 4 (a separate backup bucket and credentials, streaming backups as data grows), 5 (R2 recovery for audio), 6 (inbox testing across mail apps, bounce handling), 7 (load test), 8 (roles and step-up), 9 (uptime checks and runbooks), 10 (device and accessibility pass), 11 (signal semantics and funnel metrics) and 12 (lawyer). Tests: 27/27.
+
+### Codex deployment verification after the fixes (1 Oct 2026)
+
+The repository fixes for release-gate items 1–3 are present. TypeScript passes and all 27 automated tests pass. The Preview deployment is not yet verified as healthy: both `/maxwell` and `/sitemap.xml` currently show the application's “Something went wrong” page with incident code `770924633`. Treat this as the immediate blocker. Inspect the matching Vercel runtime log, confirm migration `0031_storage_deletions` completed against the Preview database, fix the dynamic-route failure, redeploy, and verify those two URLs before promoting the release.
+
+Two caveats remain: backup cleanup currently checks only days 14–74, so backups older than that can remain indefinitely; replace it with an R2 lifecycle rule or complete prefix-based expiry. Turnstile is intentionally paused through `TURNSTILE_READY = false` after hostname error `110200`, so public forms currently rely on rate limits until the production hostname is allowed in Cloudflare and Turnstile is re-enabled and tested.
+
+### Claude: full system check (1 Oct 2026)
+
+- **"Something went wrong" on Preview:** not the current code. Vercel logs show every one of those errors (`mkdir '/var/task/data'`, digest 770924633) came from `floortest-n6qu2kshh…`, a stale CLI deployment from 27 Sep with no `DATABASE_URL`. The current Preview and Production logged no errors in the same window. Delete that old deployment in Vercel so nobody tests against it again.
+- **Older Vercel errors** (26–28 Sep: admin timeouts and statement timeouts, Resend 403 before the domain was verified, `$4` parameter type, migration and auth setup) haven't recurred since their fixes.
+- **Backup expiry:** now list-based. Every backup key is recorded in `app_state.backup_keys`; anything past 14 days is deleted however old, and failed deletes are retried.
+- **Checks run locally:** `next build` passes, typecheck is clean, and 27/27 tests pass. `scripts/smoke.ts` (real WAV delivered, disguised file refused) passes. The new `scripts/stress.ts` passes 35/35: 200 concurrent page loads; 13 hostile submissions (bad JSON, wrong types, negative or 10 GB sizes, path traversal, .exe, 1 MB title, SQL injection, unknown receiver, forged upload ids) all handled without a 5xx; the IP rate limit trips under a 30-request flood; private APIs are blocked when signed out; junk tokens on every token page are handled calmly; forged unsubscribe returns 404. The dev server logged no errors throughout, and all 14 dashboard pages load signed in.
+- **Not covered by these runs:** admin pages signed in (they need an admin account with two-factor; their queries were smoke-tested against a migrated database), real-device browsers, and production load. Never run `stress.ts` against the live site, because it creates real uploads and trips rate limits.

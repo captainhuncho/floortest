@@ -64,3 +64,5 @@ async function submit(file: Buffer, fileName: string) {
   console.log(failed ? `\n${failed} check(s) failed` : "\nAll checks passed");
   process.exit(failed ? 1 : 0);
 })();
+
+export {};
