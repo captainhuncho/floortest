@@ -9,10 +9,10 @@ import { StemUpload } from "./StemUpload";
 import { ShareConsent } from "./ShareConsent";
 import { CancelConsent } from "./CancelConsent";
 import { SHARING_LIVE } from "@/lib/plans";
+import { finalizeConsent } from "@/lib/share";
 import { consentFinalAt, latestShareRequest } from "@/lib/share";
 
 /** Long enough for the post-Allow wait (see actions.ts). */
-export const maxDuration = 300;
 
 export const metadata = { title: "Your receipt — FloorTest", robots: { index: false } };
 
@@ -25,6 +25,8 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
   if (!t) notFound();
 
   const shared = await q.get<{ at: number }>("SELECT MIN(created_at) AS at FROM track_shares WHERE track_id = ?", t.id);
+  // Opening the receipt after the cancel window is one of the places a consent becomes final.
+  if (SHARING_LIVE && !t.deleted_at && !t.share_ok) await finalizeConsent(t.id);
   const request = SHARING_LIVE && !t.deleted_at ? await latestShareRequest(t.id) : undefined;
   const stemsOn = !!t.stems_requested_at && !t.deleted_at && (await featureOn("stems", { id: t.user_id, plan: t.receiver_plan }));
   const stems = stemsOn ? await stemsFor(t.id) : [];

@@ -4,6 +4,7 @@ import { purgeExpired } from "@/lib/core";
 import { cronAuthorized } from "@/lib/cron";
 import { warnExpiring } from "@/lib/notify";
 import { runBackup } from "@/lib/backup";
+import { finalizeAllDueConsents } from "@/lib/share";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -14,12 +15,13 @@ export async function GET(req: Request) {
   try {
     const warned = await warnExpiring();
     const purged = await purgeExpired({ force: true });
+    const consents = await finalizeAllDueConsents();
     // The backup failing shouldn't undo the cleanup, so it's recorded on its own.
     const backup = await runBackup().catch(async (e) => {
       await recordIncident("cron_failed", "Nightly database backup failed", e instanceof Error ? `${e.message}\n${e.stack ?? ""}` : String(e), "/api/cron/purge");
       return null;
     });
-    return NextResponse.json({ ...purged, ...warned, backup });
+    return NextResponse.json({ ...purged, ...warned, consents, backup });
   } catch (e) {
     await recordIncident("cron_failed", "Daily cleanup job failed", e instanceof Error ? `${e.message}\n${e.stack ?? ""}` : String(e), "/api/cron/purge");
     throw e;

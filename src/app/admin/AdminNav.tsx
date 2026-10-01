@@ -53,6 +53,8 @@ export function AdminNav({ groups, admin }: { groups: NavGroup[]; admin: { name:
       setOpen(localStorage.getItem(KEY) !== "closed");
     } catch {}
   }, []);
+  // Leaving a page (by picking a result or otherwise) ends the search.
+  useEffect(() => setQuery(""), [path]);
   const toggle = (next: boolean) => {
     setOpen(next);
     try {

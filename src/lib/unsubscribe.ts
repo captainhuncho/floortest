@@ -13,25 +13,39 @@ export type UnsubKind = keyof typeof UNSUB_KINDS;
 
 const sign = (payload: string) => crypto.createHmac("sha256", env.secret).update(`unsub:${payload}`).digest("base64url").slice(0, 22);
 
-/** A link token that can only switch off one kind of email for one account. Never expires; harmless if shared. */
-export function unsubToken(userId: number, kind: UnsubKind) {
-  const payload = `${userId}.${kind}`;
+const emailTag = (email: string) => crypto.createHash("sha256").update(email.trim().toLowerCase()).digest("base64url").slice(0, 8);
+
+/**
+ * A link token that can only switch off one kind of email for one account, at the address it was sent to.
+ * It stops working if the account's email changes (an old mailbox can't change the new owner's settings),
+ * and if APP_SECRET is rotated. Otherwise it never expires; it's harmless if shared.
+ */
+export function unsubToken(userId: number, kind: UnsubKind, email: string) {
+  const payload = `${userId}.${kind}.${emailTag(email)}`;
   return `${Buffer.from(payload).toString("base64url")}.${sign(payload)}`;
 }
 
-export function readUnsubToken(token: string): { userId: number; kind: UnsubKind } | null {
+function readUnsubToken(token: string): { userId: number; kind: UnsubKind; tag: string } | null {
   const [p, mac] = token.slice(0, 200).split(".");
   if (!p || !mac) return null;
   const payload = Buffer.from(p, "base64url").toString();
   const expected = sign(payload);
   if (mac.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(expected))) return null;
-  const [id, kind] = payload.split(".");
-  if (!(kind in UNSUB_KINDS) || !/^\d+$/.test(id)) return null;
-  return { userId: Number(id), kind: kind as UnsubKind };
+  const [id, kind, tag] = payload.split(".");
+  if (!(kind in UNSUB_KINDS) || !/^\d+$/.test(id) || !tag) return null;
+  return { userId: Number(id), kind: kind as UnsubKind, tag };
+}
+
+/** The token, if it's genuine and still matches the account's current email. */
+export async function checkUnsubToken(token: string) {
+  const t = readUnsubToken(token);
+  if (!t) return null;
+  const u = await q.get<{ email: string }>("SELECT email FROM users WHERE id = ?", t.userId);
+  return u && emailTag(u.email) === t.tag ? { userId: t.userId, kind: t.kind } : null;
 }
 
 export async function applyUnsubscribe(token: string) {
-  const t = readUnsubToken(token);
+  const t = await checkUnsubToken(token);
   if (!t) return null;
   await q.run(UNSUB_KINDS[t.kind].sql, t.userId);
   return t;

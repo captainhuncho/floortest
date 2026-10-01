@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Logo } from "@/components/Logo";
-import { applyUnsubscribe, readUnsubToken, UNSUB_KINDS } from "@/lib/unsubscribe";
+import { applyUnsubscribe, checkUnsubToken, UNSUB_KINDS } from "@/lib/unsubscribe";
 
 export const metadata = { title: "Unsubscribe — FloorTest", robots: { index: false } };
 
@@ -9,7 +9,7 @@ export const metadata = { title: "Unsubscribe — FloorTest", robots: { index: f
 export default async function Unsubscribe({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<{ done?: string }> }) {
   const { token } = await params;
   const done = !!(await searchParams).done;
-  const t = readUnsubToken(token);
+  const t = await checkUnsubToken(token);
 
   async function confirm() {
     "use server";
@@ -23,7 +23,7 @@ export default async function Unsubscribe({ params, searchParams }: { params: Pr
       {!t ? (
         <>
           <h1 className="text-3xl font-bold tracking-tight">Link not recognised</h1>
-          <p className="mt-3 text-mute">Manage your emails from Notifications in your FloorTest account instead.</p>
+          <p className="mt-3 text-mute">It may be from an address that&apos;s no longer on the account. Manage your emails from Notifications in your FloorTest account instead.</p>
         </>
       ) : done ? (
         <>

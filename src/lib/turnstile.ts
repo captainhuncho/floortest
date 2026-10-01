@@ -1,4 +1,5 @@
 import "server-only";
+import { recordIncident } from "./incidents";
 
 /**
  * Cloudflare Turnstile: a free, mostly invisible bot check on public forms.
@@ -15,8 +16,10 @@ export async function passedTurnstile(token: unknown, ip?: string) {
     const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", body, signal: AbortSignal.timeout(8000) });
     return !!((await res.json()) as { success?: boolean }).success;
   } catch (e) {
+    // Cloudflare unreachable: let people through (rate limits still hold), but record it so outages and abuse show up.
     console.error("[turnstile] verify failed", e);
-    return true; // Cloudflare down: don't lock everyone out; rate limits still hold
+    await recordIncident("server_error", "Bot check unavailable; let a form through unchecked", e instanceof Error ? e.message : String(e));
+    return true;
   }
 }
 

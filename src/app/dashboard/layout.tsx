@@ -12,6 +12,7 @@ import { MobileTabBar } from "./MobileTabBar";
 import { TopBar } from "./TopBar";
 import { VerifyBanner } from "./VerifyBanner";
 import { currentTheme, themeClass } from "@/lib/theme";
+import { SkipLink } from "@/components/SkipLink";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
@@ -40,6 +41,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div id="theme-root" className={themeClass(theme)}>
+    <SkipLink />
     <PlayerProvider>
       <ToastProvider>
         <div className="md:grid md:h-dvh md:grid-cols-[248px_1fr]">

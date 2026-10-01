@@ -26,9 +26,6 @@ export function Sidebar({ needsReview, cap, pause }: Props) {
 
   return (
     <aside className="hidden flex-col border-b border-line bg-ink-2 font-[family-name:var(--font-stage-mono)] md:flex md:h-dvh md:overflow-y-auto md:border-b-0 md:border-r">
-      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-lime focus:px-3 focus:py-2 focus:text-ink">
-        Skip to content
-      </a>
       <div className="flex items-center justify-between gap-3 px-4 pt-4 md:pb-2">
         <Logo href="/dashboard/floor" />
       </div>

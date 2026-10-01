@@ -15,7 +15,7 @@ export type Audience = "sender" | "receiver" | "support";
 export async function sendMail(opts: { userId: number | null; to: string; subject: string; body: string; audience?: Audience; unsubscribe?: UnsubKind }) {
   let status = "logged";
   // Optional emails carry a one-click unsubscribe (header for Gmail/Yahoo, plus a link in the text).
-  const unsub = opts.unsubscribe && opts.userId ? unsubToken(opts.userId, opts.unsubscribe) : null;
+  const unsub = opts.unsubscribe && opts.userId ? unsubToken(opts.userId, opts.unsubscribe, opts.to) : null;
   if (unsub) opts = { ...opts, body: `${opts.body}\n\n—\nStop these emails: ${APP_URL}/unsubscribe/${unsub}` };
   if (env.email.resendKey) {
     try {

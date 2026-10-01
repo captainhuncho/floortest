@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { logEvent, now, q, type Track, type User } from "./db";
 import { APP_URL, sendMail } from "./mail";
 import { shareDownloadEnabled, SHARING_LIVE } from "./plans";
+import { CLAIM_CANCEL, CLAIM_FINAL, MARK_SHAREABLE } from "./consent-sql";
 
 export type Share = { id: number; track_id: number; token: string; created_at: number; expires_at: number; revoked_at: number | null; plays: number; downloads: number };
 
@@ -68,7 +69,7 @@ export async function shareByToken(token: string) {
 
 /* ── Asking the artist: per-track permission to share with a non-commercial partner ── */
 
-export type ShareRequest = { id: number; track_id: number; note: string; downloads: number; status: "pending" | "allowed" | "declined" | "cancelled"; created_at: number; decided_at: number | null };
+export type ShareRequest = { id: number; track_id: number; note: string; downloads: number; status: "pending" | "allowed" | "declined" | "cancelled"; created_at: number; decided_at: number | null; finalized_at: number | null };
 
 export async function latestShareRequest(trackId: number) {
   return q.get<ShareRequest>("SELECT * FROM share_requests WHERE track_id = ? ORDER BY created_at DESC LIMIT 1", trackId);
@@ -125,14 +126,18 @@ export const consentFinalAt = (r: Pick<ShareRequest, "decided_at">) => (r.decide
  */
 export async function finalizeConsent(trackId: number) {
   if (!SHARING_LIVE) return;
-  const r = await q.get<ShareRequest>(
-    "SELECT * FROM share_requests WHERE track_id = ? AND status = 'allowed' AND decided_at <= ? ORDER BY decided_at DESC LIMIT 1",
-    trackId,
-    now() - CANCEL_MS,
-  );
-  if (!r) return;
-  // Claim the flip so the receiver is alerted exactly once, however many places call this.
-  const t = await q.get<Track>("UPDATE tracks SET share_ok = 1, share_download = ? WHERE id = ? AND share_ok = 0 RETURNING *", r.downloads, trackId);
+  // Claim the request and flip the track in one transaction. Cancelling claims the same row (finalized_at IS NULL),
+  // so exactly one of cancel / finalise wins, and the receiver is alerted once however many places call this.
+  const t = await q.tx(async (db) => {
+    const r = await db.get<ShareRequest>(
+      CLAIM_FINAL,
+      now(),
+      trackId,
+      now() - CANCEL_MS,
+    );
+    if (!r) return undefined;
+    return db.get<Track>(MARK_SHAREABLE, r.downloads, trackId);
+  });
   if (!t) return;
   const u = await q.get<{ email: string }>("SELECT email FROM users WHERE id = ?", t.user_id);
   if (u)
@@ -150,7 +155,7 @@ export async function finalizeDueConsents(userId: number) {
   if (!SHARING_LIVE) return;
   const due = await q.all<{ track_id: number }>(
     `SELECT DISTINCT r.track_id FROM share_requests r JOIN tracks t ON t.id = r.track_id
-     WHERE t.user_id = ? AND t.share_ok = 0 AND r.status = 'allowed' AND r.decided_at <= ?`,
+     WHERE t.user_id = ? AND t.share_ok = 0 AND r.status = 'allowed' AND r.finalized_at IS NULL AND r.decided_at <= ?`,
     userId,
     now() - CANCEL_MS,
   );
@@ -163,7 +168,8 @@ export async function answerShareRequest(trackToken: string, requestId: number, 
   const t = await q.get<Track>("SELECT * FROM tracks WHERE token = ?", trackToken);
   const req = t && (await q.get<ShareRequest>("SELECT * FROM share_requests WHERE id = ? AND track_id = ? AND status = 'pending'", requestId, t.id));
   if (!t || !req || t.deleted_at) return false;
-  await q.run("UPDATE share_requests SET status = ?, decided_at = ? WHERE id = ?", allow ? "allowed" : "declined", now(), req.id);
+  const claimed = await q.run("UPDATE share_requests SET status = ?, decided_at = ? WHERE id = ? AND status = 'pending'", allow ? "allowed" : "declined", now(), req.id);
+  if (!claimed.changes) return false; // answered twice at once: only the first counts
   const when = `${CONSENT_CANCEL_MINUTES} minutes`;
   const artist = await q.get<{ email: string; name: string }>("SELECT email, name FROM senders WHERE id = ?", t.sender_id);
   if (allow && artist)
@@ -193,7 +199,20 @@ export async function cancelShareConsent(trackToken: string, requestId: number) 
   const t = await q.get<Track>("SELECT * FROM tracks WHERE token = ?", trackToken);
   const req = t && (await q.get<ShareRequest>("SELECT * FROM share_requests WHERE id = ? AND track_id = ? AND status = 'allowed'", requestId, t.id));
   if (!t || !req || now() >= consentFinalAt(req)) return false;
-  await q.run("UPDATE share_requests SET status = 'cancelled' WHERE id = ?", req.id);
+  // Only while it's still inside the window and not yet claimed by finalisation.
+  const r = await q.run(CLAIM_CANCEL, req.id, now() - CANCEL_MS);
+  if (!r.changes) return false;
   // The receiver was never told about the Allow, so a cancel needs no email; their request simply shows as cancelled.
   return true;
+}
+
+/** Backstop for consents nobody looked at after the window closed: makes every due one final. Runs with the daily job. */
+export async function finalizeAllDueConsents() {
+  if (!SHARING_LIVE) return 0;
+  const due = await q.all<{ track_id: number }>(
+    "SELECT DISTINCT track_id FROM share_requests WHERE status = 'allowed' AND finalized_at IS NULL AND decided_at <= ? LIMIT 500",
+    now() - CANCEL_MS,
+  );
+  for (const d of due) await finalizeConsent(d.track_id);
+  return due.length;
 }

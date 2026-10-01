@@ -1,10 +1,11 @@
-import Link from "next/link";
 import { requireAdmin } from "@/lib/admin";
 import { q } from "@/lib/db";
 import { readFlash } from "@/lib/flash";
 import { currentTheme, themeClass } from "@/lib/theme";
 import { AdminNav, type NavGroup } from "./AdminNav";
 import { Toast } from "./AdminUi";
+import { AdminMobileNav } from "./AdminMobileNav";
+import { SkipLink } from "@/components/SkipLink";
 
 export const metadata = { title: "Admin — FloorTest", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -71,24 +72,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     .map((w) => w[0]?.toUpperCase())
     .join("");
   const notice = await readFlash();
-  const flat = groups.flatMap((g) => g.sections.flatMap((s) => s.items));
   return (
     <div id="theme-root" className={`${themeClass(await currentTheme())} md:flex`}>
+      <SkipLink />
       <div className="sticky top-0 hidden h-dvh md:block">
         <AdminNav groups={groups} admin={{ name: admin.name, initials }} />
       </div>
-      {/* Phones: a scrolling row of pages instead of the two-part sidebar. */}
-      <nav aria-label="Admin" className="sticky top-0 z-30 flex gap-1 overflow-x-auto border-b border-line bg-ink/95 px-3 py-2 font-[family-name:var(--font-stage-mono)] backdrop-blur md:hidden">
-        <Link href="/dashboard/floor" className="shrink-0 rounded-md px-2.5 py-1.5 text-[11px] text-faint">
-          ← Desk
-        </Link>
-        {flat.map((i) => (
-          <Link key={i.href} href={i.href} className="shrink-0 rounded-md px-2.5 py-1.5 text-[11px] text-mute hover:bg-ink-3 hover:text-bone">
-            {i.label}
-            {!!i.badge && <span className="ml-1 rounded bg-lime px-1 text-[9px] font-bold text-ink">{i.badge}</span>}
-          </Link>
-        ))}
-      </nav>
+      <AdminMobileNav groups={groups} />
       <div className="min-w-0 flex-1">
         <main id="main" className="mx-auto max-w-6xl px-4 py-6 font-[family-name:var(--font-stage-mono)] sm:px-8 md:py-8">
           {children}

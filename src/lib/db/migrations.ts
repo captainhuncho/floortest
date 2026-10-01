@@ -572,4 +572,12 @@ alter table waitlist add column source text not null default '';
 alter table users add column signup_source text not null default '';
 `,
   },
+{
+    // A consent becomes final exactly once: cancel and finalise both claim the row, and only one can win.
+    id: "0030_share_consent_final",
+    sql: `
+alter table share_requests add column finalized_at bigint;
+update share_requests r set finalized_at = r.decided_at from tracks t where t.id = r.track_id and r.status = 'allowed' and t.share_ok = 1;
+`,
+  },
 ];
