@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Logo } from "@/components/Logo";
 import { adminReady, requireAdmin } from "@/lib/admin";
 import { q } from "@/lib/db";
 import { AdminNav, type NavGroup } from "./AdminNav";
@@ -19,39 +18,82 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     await q.count("SELECT COUNT(*) AS n FROM users WHERE identity_status = 'pending'"),
   ];
   const groups: NavGroup[] = [
-    { title: "Monitor", items: [{ href: "/admin", label: "Overview" }, { href: "/admin/metrics", label: "Metrics" }, { href: "/admin/incidents", label: "Incidents", badge: incidents }] },
-    { title: "Support", items: [{ href: "/admin/inbox", label: "Inbox", badge: inbox }, { href: "/admin/accounts", label: "Users" }, { href: "/admin/emails", label: "Emails" }] },
-    { title: "Growth", items: [{ href: "/admin/waitlist", label: "Waitlist", badge: waiting }, { href: "/admin/invites", label: "Invites" }] },
-    { title: "Trust & safety", items: [{ href: "/admin/verification", label: "Verification", badge: verifying }, { href: "/admin/moderation", label: "Moderation" }, { href: "/admin/log", label: "Admin log" }] },
+    {
+      id: "monitor",
+      title: "Monitor",
+      icon: "pulse",
+      sections: [
+        {
+          title: "Health",
+          items: [
+            { href: "/admin", label: "Overview", icon: "grid" },
+            { href: "/admin/metrics", label: "Metrics", icon: "chart" },
+            { href: "/admin/incidents", label: "Incidents", icon: "alert", badge: incidents },
+          ],
+        },
+      ],
+    },
+    {
+      id: "support",
+      title: "Support",
+      icon: "life",
+      sections: [
+        { title: "People", items: [{ href: "/admin/inbox", label: "Inbox", icon: "inbox", badge: inbox }, { href: "/admin/accounts", label: "Users", icon: "users" }] },
+        { title: "Messages", items: [{ href: "/admin/emails", label: "Emails sent", icon: "mail" }] },
+      ],
+    },
+    {
+      id: "growth",
+      title: "Growth",
+      icon: "rocket",
+      sections: [{ title: "Beta access", items: [{ href: "/admin/waitlist", label: "Waitlist", icon: "list", badge: waiting }, { href: "/admin/invites", label: "Invites", icon: "ticket" }] }],
+    },
+    {
+      id: "trust",
+      title: "Trust & safety",
+      icon: "shield",
+      sections: [
+        { title: "Review", items: [{ href: "/admin/verification", label: "Verification", icon: "shield", badge: verifying }, { href: "/admin/moderation", label: "Moderation", icon: "flag" }] },
+        { title: "Records", items: [{ href: "/admin/log", label: "Admin log", icon: "log" }] },
+      ],
+    },
   ];
+  const initials = admin.name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join("");
+  const flat = groups.flatMap((g) => g.sections.flatMap((s) => s.items));
   return (
-    <div className="min-h-dvh">
-      <header className="sticky top-0 z-30 border-b border-line bg-ink/90 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-3">
-            <Logo href="/admin" />
-            <span className="chip border-danger/50 text-danger">Admin</span>
-          </div>
-
-          <Link href="/dashboard/floor" className="ml-auto text-sm text-mute hover:text-bone">
-            Back to my desk →
+    <div className="min-h-dvh bg-ink md:flex">
+      <div className="sticky top-0 hidden h-dvh md:block">
+        <AdminNav groups={groups} admin={{ name: admin.name, initials }} />
+      </div>
+      {/* Phones: a scrolling row of pages instead of the two-part sidebar. */}
+      <nav aria-label="Admin" className="sticky top-0 z-30 flex gap-1 overflow-x-auto border-b border-line bg-ink/95 px-3 py-2 font-[family-name:var(--font-stage-mono)] backdrop-blur md:hidden">
+        <Link href="/dashboard/floor" className="shrink-0 rounded-md px-2.5 py-1.5 text-[11px] text-faint">
+          ← Desk
+        </Link>
+        {flat.map((i) => (
+          <Link key={i.href} href={i.href} className="shrink-0 rounded-md px-2.5 py-1.5 text-[11px] text-mute hover:bg-ink-3 hover:text-bone">
+            {i.label}
+            {!!i.badge && <span className="ml-1 rounded bg-lime px-1 text-[9px] font-bold text-ink">{i.badge}</span>}
           </Link>
-        </div>
-      </header>
-      {!adminReady(admin) && (
-        <p role="alert" className="border-b border-danger/40 bg-danger/10 px-4 py-3 text-center text-sm text-danger">
-          Admin actions are locked until you turn on two-factor sign-in in{" "}
-          <Link href="/dashboard/settings#security-h" className="underline">
-            Settings
-          </Link>
-          . You can look around, but not change anything.
-        </p>
-      )}
-      <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 md:grid-cols-[190px_minmax(0,1fr)] md:gap-10 md:py-8">
-        <aside className="md:sticky md:top-20 md:self-start">
-          <AdminNav groups={groups} />
-        </aside>
-        <main className="min-w-0">{children}</main>
+        ))}
+      </nav>
+      <div className="min-w-0 flex-1">
+        {!adminReady(admin) && (
+          <p role="alert" className="border-b border-danger/40 bg-danger/10 px-4 py-3 text-center text-sm text-danger">
+            Admin actions are locked until you turn on two-factor sign-in in{" "}
+            <Link href="/dashboard/settings#security-h" className="underline">
+              Settings
+            </Link>
+            . You can look around, but not change anything.
+          </p>
+        )}
+        <main id="main" className="mx-auto max-w-6xl px-4 py-6 font-[family-name:var(--font-stage-mono)] sm:px-8 md:py-8">
+          {children}
+        </main>
       </div>
     </div>
   );
