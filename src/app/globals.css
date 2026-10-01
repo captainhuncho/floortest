@@ -71,8 +71,8 @@ body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
 .theme-day {
   --color-ink: #ffffff;
   --color-ink-2: #ffffff;
-  --color-ink-3: #f4f4f1;
-  --color-ink-4: #e9eae4;
+  --color-ink-3: #ffffff;
+  --color-ink-4: #f1f2ee;
   --color-line: #dcddd4;
   --color-line-2: #c6c8bd;
   --color-bone: #10110f;
@@ -95,8 +95,8 @@ body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
 .theme-system {
   --color-ink: #ffffff;
   --color-ink-2: #ffffff;
-  --color-ink-3: #f4f4f1;
-  --color-ink-4: #e9eae4;
+  --color-ink-3: #ffffff;
+  --color-ink-4: #f1f2ee;
   --color-line: #dcddd4;
   --color-line-2: #c6c8bd;
   --color-bone: #10110f;
