@@ -26,7 +26,12 @@ export async function runNudges(at = now()) {
     if (!u) continue;
     const lines = list.slice(0, 10).map((t) => `• ${t.artist} – ${t.title} (from ${t.sender})`);
     if (list.length > 10) lines.push(`• …and ${list.length - 10} more`);
-    await sendMail({
+    const ids = list.map((t) => t.id);
+    const marks = ids.map(() => "?").join(",");
+    // Claim first so a crash or rerun can't remind twice; a failed send hands them back for the next run.
+    const claimed = await q.run(`UPDATE tracks SET nudged_at = ? WHERE id IN (${marks}) AND nudged_at IS NULL`, at, ...ids);
+    if (!claimed.changes) continue;
+    const status = await sendMail({
       unsubscribe: "alerts",
       userId,
       audience: "receiver",
@@ -34,7 +39,10 @@ export async function runNudges(at = now()) {
       subject: `${list.length} track${list.length === 1 ? "" : "s"} still waiting on FloorTest`,
       body: [`Hi ${u.name.split(/\s+/)[0]},`, "", "These have been on your desk for two weeks without a listen:", "", ...lines, "", `Give them a spin: ${APP_URL}/dashboard?view=queue`, "", "You'll only be reminded once per track.", "", "— FloorTest"].join("\n"),
     });
-    await q.run(`UPDATE tracks SET nudged_at = ? WHERE id IN (${list.map(() => "?").join(",")})`, at, ...list.map((t) => t.id));
+    if (status.startsWith("failed")) {
+      await q.run(`UPDATE tracks SET nudged_at = NULL WHERE id IN (${marks})`, ...ids);
+      continue;
+    }
     sent++;
   }
   return sent;

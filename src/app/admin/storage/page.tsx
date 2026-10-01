@@ -36,6 +36,9 @@ export default async function Storage() {
     t - 365 * DAY,
   );
   const peak = Math.max(1, ...months.map((m) => Number(m.added)));
+  const queue = await q.all<{ file_key: string; reason: string; attempts: number; last_error: string | null; created_at: number }>(
+    "SELECT file_key, reason, attempts, last_error, created_at FROM storage_deletions ORDER BY attempts DESC, created_at LIMIT 50",
+  );
   return (
     <div className="space-y-8">
       <div>
@@ -91,6 +94,25 @@ export default async function Storage() {
         </table>
         {!top.length && <p className="p-6 text-mute">No audio stored.</p>}
       </div>
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold">Waiting to be deleted ({queue.length}{queue.length === 50 ? "+" : ""})</h2>
+        <p className="text-sm text-mute">Files from deleted tracks and accounts. They&apos;re normally gone within seconds; anything here is retried every night, and 5 failures raises an alert.</p>
+        {!queue.length ? (
+          <p className="text-sm text-lime">Nothing waiting.</p>
+        ) : (
+          <ul className="divide-y divide-line rounded-md border border-line text-sm">
+            {queue.map((d) => (
+              <li key={d.file_key} className="flex flex-wrap justify-between gap-2 px-4 py-2.5">
+                <span className="min-w-0 break-all">
+                  {d.file_key} <span className="text-mute">· {d.reason}</span>
+                  {d.last_error && <span className="block text-xs text-danger">{d.last_error}</span>}
+                </span>
+                <span className={d.attempts >= 5 ? "text-danger" : "text-mute"}>{d.attempts} tr{d.attempts === 1 ? "y" : "ies"} · {new Date(d.created_at).toLocaleDateString("en-GB")}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

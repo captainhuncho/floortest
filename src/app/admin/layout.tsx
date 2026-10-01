@@ -18,7 +18,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const [inbox, waiting, incidents, verifying] = [
     await q.count("SELECT COUNT(*) AS n FROM contact_messages WHERE handled_at IS NULL"),
     await q.count("SELECT COUNT(*) AS n FROM waitlist WHERE invited_at IS NULL"),
-    await q.count("SELECT COUNT(*) AS n FROM incidents WHERE created_at >= ?", Date.now() - 86_400_000),
+    await q.count("SELECT COUNT(*) AS n FROM incidents WHERE resolved_at IS NULL AND kind <> 'upload_rejected'"),
     await q.count("SELECT COUNT(*) AS n FROM users WHERE identity_status = 'pending'"),
   ];
   const takedowns = await q.count("SELECT COUNT(*) AS n FROM takedowns WHERE status = 'open'");

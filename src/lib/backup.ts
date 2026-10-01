@@ -1,6 +1,7 @@
 import "server-only";
 import { gzipSync } from "node:zlib";
 import { now, q } from "./db";
+import { backupSecret, sealBackup } from "./backup-crypto";
 import { storage } from "./storage";
 
 /** Kept this many days in the bucket, then deleted. */
@@ -8,7 +9,15 @@ export const BACKUP_KEEP_DAYS = 14;
 const DAY = 86_400_000;
 /** Short-lived or rebuildable: left out to keep backups small. */
 const SKIP = new Set(["sessions", "rate_events", "uploads", "password_resets", "schema_migrations"]);
-const keyFor = (t: number) => `backups/db-${new Date(t).toISOString().slice(0, 10)}.json.gz`;
+/** One file per run (date and time), so a manual rerun never replaces the night's good backup. */
+const keyFor = (t: number) => `backups/db-${new Date(t).toISOString().slice(0, 16).replace(":", "")}.json.gz.enc`;
+/** Day-level prefix for the age cutoff: keys sort by date, so anything below this is older than the cutoff. */
+const dayKey = (t: number) => `backups/db-${new Date(t).toISOString().slice(0, 10)}`;
+/** Live tokens and email bodies (they hold sign-in and unsubscribe links) are blanked: not needed to restore. */
+const SCRUB: Record<string, Record<string, unknown>> = {
+  users: { pending_email_token: null, email_verify_token: null },
+  outbox: { body: "" },
+};
 
 /**
  * Nightly logical backup: every table as JSON, gzipped, into the private storage bucket.
@@ -22,10 +31,13 @@ export async function runBackup(at = now()) {
     .map((r) => r.t)
     .filter((t) => !SKIP.has(t) && /^[a-z_]+$/.test(t));
   const data: Record<string, unknown[]> = {};
-  for (const t of tables) data[t] = await q.all(`SELECT * FROM ${t}`);
-  const body = gzipSync(Buffer.from(JSON.stringify({ created_at: new Date(at).toISOString(), tables: data })));
+  for (const t of tables) {
+    const rows = await q.all<Record<string, unknown>>(`SELECT * FROM "${t}"`);
+    data[t] = SCRUB[t] ? rows.map((r) => ({ ...r, ...SCRUB[t] })) : rows;
+  }
+  const body = sealBackup(gzipSync(Buffer.from(JSON.stringify({ created_at: new Date(at).toISOString(), tables: data }))), backupSecret());
   const store = await storage();
-  await store.put(keyFor(at), new Uint8Array(body), "application/gzip");
+  await store.put(keyFor(at), new Uint8Array(body), "application/octet-stream");
   // Every backup ever written is listed in app_state, so anything past the cutoff is found and deleted however
   // old it is or however many nights were missed. A failed delete stays on the list and is retried tomorrow.
   const listed = await q.get<{ value: string }>("SELECT value FROM app_state WHERE key = 'backup_keys'");
@@ -33,7 +45,7 @@ export async function runBackup(at = now()) {
   try {
     keys = JSON.parse(listed?.value ?? "[]");
   } catch {}
-  const cutoff = keyFor(at - BACKUP_KEEP_DAYS * DAY);
+  const cutoff = dayKey(at - BACKUP_KEEP_DAYS * DAY);
   const keep: string[] = [];
   for (const k of [...new Set([...keys, keyFor(at)])]) {
     if (k > cutoff) keep.push(k); // keys are date-named, so they sort by date

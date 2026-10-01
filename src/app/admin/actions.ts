@@ -505,7 +505,8 @@ export async function publishAnnouncement(form: FormData) {
   const href = String(form.get("href") || "").trim().slice(0, 200);
   const audience = String(form.get("audience") || "all") as (typeof AUDIENCES)[number];
   const email = form.get("email") === "on";
-  if (!title || !AUDIENCES.includes(audience) || (href && !href.startsWith("/"))) return fail("Needs a title, and links must start with /");
+  // Links must stay on FloorTest: "/path" only, never "//host" or "/\host" (which browsers treat as another site).
+  if (!title || !AUDIENCES.includes(audience) || (href && (!href.startsWith("/") || href.startsWith("//") || href.includes("\\")))) return fail("Needs a title, and links must start with /");
   await q.run("INSERT INTO announcements (title, body, href, audience, emailed, admin_id, created_at) VALUES (?,?,?,?,?,?,?)", title, body, href, audience, email ? 1 : 0, a.id, now());
   const people = email
     ? await q.all<{ id: number; email: string }>(
@@ -582,5 +583,25 @@ export async function adminCancelEmailChange(userId: number) {
   await cancelEmailChange(u.id);
   await logAdmin(a.id, "cancelled email change", `@${u.handle}`);
   await done("Email change cancelled");
+  refresh();
+}
+
+/** Marks an incident as dealt with, so it leaves the Overview to-do list. */
+export async function resolveIncident(id: number) {
+  const a = await requireAdminAction();
+  const r = await q.run("UPDATE incidents SET resolved_at = ? WHERE id = ? AND resolved_at IS NULL", now(), id);
+  if (r.changes) await logAdmin(a.id, "resolved incident", `#${id}`);
+  await done("Marked handled");
+  refresh();
+}
+
+/** Clears every open incident (of one kind, or all). For stale ones after a fix has shipped. */
+export async function resolveAllIncidents(kind: string) {
+  const a = await requireAdminAction();
+  const r = kind
+    ? await q.run("UPDATE incidents SET resolved_at = ? WHERE resolved_at IS NULL AND kind = ?", now(), kind)
+    : await q.run("UPDATE incidents SET resolved_at = ? WHERE resolved_at IS NULL", now());
+  await logAdmin(a.id, "resolved incidents", kind || "all", `${r.changes}`);
+  await done(`Marked ${r.changes} incident${r.changes === 1 ? "" : "s"} handled`);
   refresh();
 }

@@ -3,6 +3,7 @@ import { configProblems, env } from "@/lib/env";
 import { q } from "@/lib/db";
 import { fmtBytes } from "@/lib/format";
 import { BACKUP_KEEP_DAYS, lastBackup } from "@/lib/backup";
+import { lastRuns } from "@/lib/cron";
 
 const DAY = 86_400_000;
 
@@ -19,22 +20,29 @@ export default async function AdminOverview() {
     c("SELECT COUNT(*) AS n FROM contact_messages WHERE handled_at IS NULL AND topic NOT IN ('Suspension appeal', 'Privacy request')"),
     c("SELECT COUNT(*) AS n FROM users WHERE identity_status = 'pending'"),
     c("SELECT COUNT(*) AS n FROM waitlist WHERE invited_at IS NULL"),
-    c("SELECT COUNT(*) AS n FROM outbox WHERE status LIKE 'failed%' AND created_at >= ?", t - 7 * DAY),
-    c("SELECT COUNT(*) AS n FROM incidents WHERE created_at >= ?", t - DAY),
+    c("SELECT COUNT(*) AS n FROM incidents WHERE kind = 'email_failed' AND resolved_at IS NULL"),
+    c("SELECT COUNT(*) AS n FROM incidents WHERE kind NOT IN ('email_failed', 'upload_rejected') AND resolved_at IS NULL"),
   ]);
   const problems = configProblems();
   const backup = await lastBackup();
-  const backupStale = !backup || t - backup.at > 2 * DAY;
+  // Only an alarm once a backup has existed and gone stale (or a job failed): before the first night, it's just pending.
+  const backupStale = !!backup && t - backup.at > 2 * DAY;
+  const [runs, queued, stuck] = await Promise.all([
+    lastRuns(),
+    c("SELECT COUNT(*) AS n FROM storage_deletions"),
+    c("SELECT COUNT(*) AS n FROM storage_deletions WHERE attempts >= 5"),
+  ]);
 
   // Most urgent first. Legal deadlines (takedowns, privacy) lead.
   const todo = [
     { n: problems.length, label: "Configuration problems", sub: problems[0] ?? "", href: "#config", tone: "danger" },
-    { n: backupStale ? 1 : 0, label: "Database backup missing", sub: backup ? `Last one ${new Date(backup.at).toLocaleDateString("en-GB")}` : "No nightly backup has run yet", href: "#config", tone: "danger" },
+    { n: backupStale ? 1 : 0, label: "Database backup is overdue", sub: backup ? `Last one ${new Date(backup.at).toLocaleDateString("en-GB")}` : "", href: "#config", tone: "danger" },
+    { n: stuck, label: "Files stuck waiting to be deleted", sub: "Storage keeps refusing them; see Storage & costs", href: "/admin/storage", tone: "danger" },
     { n: takedowns, label: "Takedown claims to decide", sub: "Copyright claims waiting for a decision", href: "/admin/takedowns", tone: "danger" },
     { n: privacy, label: "Privacy requests", sub: "Copies of data or erasure, usually due within a month", href: "/admin/privacy", tone: "danger" },
     { n: appeals, label: "Suspension appeals", sub: "People asking to be restored", href: "/admin/inbox", tone: "warn" },
-    { n: failed, label: "Emails that failed this week", sub: "Check the address, then resend", href: "/admin/emails", tone: "warn" },
-    { n: incidents, label: "Incidents in the last 24 hours", sub: "Errors the app recorded", href: "/admin/incidents", tone: "warn" },
+    { n: failed, label: "Email failures to check", sub: "Check the address or the email service, then mark handled", href: "/admin/incidents?kind=email_failed", tone: "warn" },
+    { n: incidents, label: "Open incidents", sub: "Errors the app recorded; mark each handled when dealt with", href: "/admin/incidents", tone: "warn" },
     { n: verifying, label: "Verification requests", sub: "Check the code in their bio", href: "/admin/verification", tone: "info" },
     { n: inbox, label: "Inbox messages", sub: "Support questions and reports", href: "/admin/inbox", tone: "info" },
     { n: waiting, label: "People on the waitlist", sub: "Waiting for an invite", href: "/admin/waitlist", tone: "info" },
@@ -127,7 +135,12 @@ export default async function AdminOverview() {
         )}
         <p className="mt-3 text-sm text-mute">Sign-up mode: {env.signupMode}. Emails send from {env.email.from}.</p>
         <p className="mt-1 text-sm text-mute">
-          Backups: {backup ? `last ${new Date(backup.at).toLocaleString("en-GB")} · ${fmtBytes(backup.bytes)} · ${backup.rows.toLocaleString("en")} rows, kept ${BACKUP_KEEP_DAYS} days in the storage bucket under backups/` : "none yet. The first runs with tonight's cleanup job."}
+          Backups: {backup ? `last ${new Date(backup.at).toLocaleString("en-GB")} · ${fmtBytes(backup.bytes)} · ${backup.rows.toLocaleString("en")} rows, encrypted, kept ${BACKUP_KEEP_DAYS} days in the storage bucket under backups/` : "the first runs with tonight's cleanup job (03:30 UTC)."}
+        </p>
+        <p className="mt-1 text-sm text-mute">
+          Nightly cleanup: {runs.purge ? `${runs.purge.ok ? "ok" : "FAILED"} ${new Date(runs.purge.at).toLocaleString("en-GB")} (${(runs.purge.ms / 1000).toFixed(1)}s)` : "not run yet"} · Morning emails:{" "}
+          {runs.digest ? `${runs.digest.ok ? "ok" : "FAILED"} ${new Date(runs.digest.at).toLocaleString("en-GB")} (${(runs.digest.ms / 1000).toFixed(1)}s)` : "not run yet"} · Files waiting to be deleted: {queued}
+          {stuck ? ` (${stuck} stuck)` : ""}
         </p>
       </section>
 

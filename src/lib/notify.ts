@@ -1,6 +1,7 @@
 import "server-only";
 import { now, q } from "./db";
 import { APP_URL, sendMail } from "./mail";
+import { recordIncident } from "./incidents";
 import { RETAIN_PASSED_DAYS, RETAIN_UNREVIEWED_DAYS } from "./plans";
 
 /** How a receiver hears about new tracks. Emails go to the receiver's own address. */
@@ -127,7 +128,12 @@ export async function warnExpiring(at = now()) {
   for (const r of rows) byUser.set(r.user_id, [...(byUser.get(r.user_id) ?? []), r]);
   for (const [userId, list] of byUser) {
     const undecided = list.filter((r) => !r.decision).length;
-    await sendMail({
+    const ids = list.map((r) => r.id);
+    const marks = ids.map(() => "?").join(",");
+    // Claim first so a crash or rerun can't warn twice; a failed send hands them back for tomorrow.
+    const claimed = await q.run(`UPDATE tracks SET expiry_warned_at = ? WHERE id IN (${marks}) AND expiry_warned_at IS NULL`, at, ...ids);
+    if (!claimed.changes) continue;
+    const status = await sendMail({
       unsubscribe: "alerts",
       userId,
       audience: "receiver",
@@ -144,7 +150,7 @@ export async function warnExpiring(at = now()) {
           : `Nothing to do if you're happy for them to go. Changed your mind? ${APP_URL}/dashboard?view=list&s=passed`,
       ].join("\n"),
     });
-    await q.run(`UPDATE tracks SET expiry_warned_at = ? WHERE id IN (${list.map(() => "?").join(",")})`, at, ...list.map((r) => r.id));
+    if (status.startsWith("failed")) await q.run(`UPDATE tracks SET expiry_warned_at = NULL WHERE id IN (${marks})`, ...ids);
   }
   return { warned: rows.length, receivers: byUser.size };
 }
@@ -154,25 +160,40 @@ type Pending = { id: number; title: string; artist: string; sender: string };
 /** Sends one receiver's digest of tracks they haven't been emailed about. Returns how many tracks it covered. */
 export async function sendDigest(userId: number) {
   const p = await prefsFor(userId);
-  await q.run("UPDATE users SET last_digest_at = ? WHERE id = ?", now(), userId);
   const items = await q.all<Pending>(
     `SELECT t.id, t.title, t.artist, s.name AS sender FROM tracks t JOIN senders s ON s.id = t.sender_id
      WHERE t.user_id = ? AND t.deleted_at IS NULL AND t.receiver_notified_at IS NULL AND t.decision IS NULL
      ORDER BY t.created_at`,
     userId,
   );
-  if (!items.length) return 0;
+  if (!items.length) {
+    await q.run("UPDATE users SET last_digest_at = ? WHERE id = ?", now(), userId);
+    return 0;
+  }
+  // Claim the tracks before sending, so a crash or a second run can't email them twice.
+  const marks = items.map(() => "?").join(",");
+  const claimed = await q.all<{ id: number }>(
+    `UPDATE tracks SET receiver_notified_at = ? WHERE id IN (${marks}) AND receiver_notified_at IS NULL RETURNING id`,
+    now(),
+    ...items.map((t) => t.id),
+  );
+  if (!claimed.length) return 0;
   const lines = items.slice(0, 25).map((t) => `• ${t.artist} – ${t.title} (from ${t.sender})`);
   if (items.length > 25) lines.push(`• …and ${items.length - 25} more`);
-  await sendMail({
-      unsubscribe: "submissions",
+  const status = await sendMail({
+    unsubscribe: "submissions",
     userId,
     audience: "receiver",
     to: p.email,
     subject: `${items.length} new track${items.length === 1 ? "" : "s"} waiting on FloorTest`,
     body: [`Hi ${p.name.split(/\s+/)[0]},`, "", ...lines, "", `Start listening: ${APP_URL}/dashboard`, "", `Digest settings: ${APP_URL}/dashboard/notifications`].join("\n"),
   });
-  await q.run(`UPDATE tracks SET receiver_notified_at = ? WHERE id IN (${items.map(() => "?").join(",")})`, now(), ...items.map((t) => t.id));
+  if (status.startsWith("failed")) {
+    // Hand the tracks back so the next run tries again; the digest isn't marked as sent.
+    await q.run(`UPDATE tracks SET receiver_notified_at = NULL WHERE id IN (${claimed.map(() => "?").join(",")})`, ...claimed.map((c) => c.id));
+    return 0;
+  }
+  await q.run("UPDATE users SET last_digest_at = ? WHERE id = ?", now(), userId);
   return items.length;
 }
 
@@ -187,6 +208,7 @@ export async function runDigests(at = now()) {
     "SELECT id, notify_submissions, digest_hour, quiet_start, quiet_end, tz, last_digest_at FROM users WHERE notify_submissions IN ('digest', 'instant')",
   );
   let sent = 0;
+  let failed = 0;
   for (const p of users) {
     const target = p.notify_submissions === "digest" ? p.digest_hour : p.quiet_end;
     if (target == null) continue;
@@ -194,7 +216,14 @@ export async function runDigests(at = now()) {
     const hoursSince = (localHour(p.tz, at) - target + 24) % 24;
     const lastTarget = at - (at % 3_600_000) - hoursSince * 3_600_000;
     if (p.last_digest_at && p.last_digest_at >= lastTarget) continue;
-    if (await sendDigest(p.id)) sent++;
+    // One receiver's problem never stops everyone else's digest.
+    try {
+      if (await sendDigest(p.id)) sent++;
+    } catch (e) {
+      failed++;
+      console.error("[digest] receiver", p.id, e);
+    }
   }
+  if (failed) await recordIncident("email_failed", `${failed} digest${failed === 1 ? "" : "s"} could not be sent`, "They'll be retried on the next run.");
   return sent;
 }

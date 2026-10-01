@@ -29,7 +29,11 @@ export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]
     });
     return NextResponse.json({ token: track.token });
   } catch (e) {
-    if (e instanceof IntakeError) return bad(e.message, e.status);
+    if (e instanceof IntakeError) {
+      // A refused file (not audio, wrong size, expired): logged so "why didn't my track arrive?" has an answer.
+      await recordIncident("upload_rejected", `Upload to @${receiver.handle} refused (${e.status})`, e.message, "/api/submit/complete");
+      return bad(e.message, e.status);
+    }
     console.error("[submit:complete]", e);
     await recordIncident("upload_failed", `Upload to @${receiver.handle} failed`, e instanceof Error ? `${e.message}\n${e.stack ?? ""}` : String(e), "/api/submit/complete");
     return bad("Upload failed. Please try again.", 500);

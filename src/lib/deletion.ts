@@ -1,6 +1,6 @@
 import "server-only";
 import { now, q, type Queryable } from "./db";
-import { accountKeys, drainDeletions, queueDeletion, trackKeys } from "./deletion-core";
+import { accountKeys, drainDeletions, queueDeletion, STUCK_AFTER, trackKeys } from "./deletion-core";
 import { recordIncident } from "./incidents";
 import { storage } from "./storage";
 
@@ -16,9 +16,14 @@ export async function retireTrackFiles(db: Queryable, trackIds: number[], reason
 /** Deletes what's queued, now. Anything that fails stays queued for the nightly job; repeated failures raise an incident. */
 export async function drainNow(limit = 500) {
   const r = await drainDeletions(q, await storage(), now(), limit);
-  if (r.failed) {
-    const stuck = await q.count("SELECT COUNT(*) AS n FROM storage_deletions WHERE attempts >= 5");
-    if (stuck) await recordIncident("server_error", `${stuck} private file${stuck === 1 ? "" : "s"} could not be deleted from storage after 5 tries`, "See storage_deletions");
-  }
-  return r;
+  if (r.newlyStuck)
+    await recordIncident(
+      "server_error",
+      `${r.newlyStuck} private file${r.newlyStuck === 1 ? "" : "s"} could not be deleted from storage after ${STUCK_AFTER} tries`,
+      "See Admin → Storage & costs → Waiting to be deleted",
+      "",
+      { urgent: true },
+    );
+  const stuck = await q.count(`SELECT COUNT(*) AS n FROM storage_deletions WHERE attempts >= ${STUCK_AFTER}`);
+  return { ...r, stuck };
 }

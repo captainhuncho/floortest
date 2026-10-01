@@ -30,7 +30,9 @@ function readUnsubToken(token: string): { userId: number; kind: UnsubKind; tag: 
   if (!p || !mac) return null;
   const payload = Buffer.from(p, "base64url").toString();
   const expected = sign(payload);
-  if (mac.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(expected))) return null;
+  const got = Buffer.from(mac);
+  const want = Buffer.from(expected);
+  if (got.length !== want.length || !crypto.timingSafeEqual(got, want)) return null;
   const [id, kind, tag] = payload.split(".");
   if (!(kind in UNSUB_KINDS) || !/^\d+$/.test(id) || !tag) return null;
   return { userId: Number(id), kind: kind as UnsubKind, tag };

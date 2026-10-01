@@ -24,6 +24,8 @@ export async function allow(bucket: string, key: string, limit: number, windowMs
  * client-appendable X-Forwarded-For.
  */
 export function ipFrom(h: Headers) {
+  // On Vercel only its own header counts: a client can set the others, which would let it dodge rate limits.
+  if (process.env.VERCEL) return (h.get("x-vercel-forwarded-for")?.split(",")[0] || "unknown").trim();
   return (
     h.get("x-vercel-forwarded-for")?.split(",")[0] ||
     h.get("cf-connecting-ip") ||

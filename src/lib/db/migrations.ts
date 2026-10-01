@@ -595,4 +595,18 @@ create table storage_deletions (
 alter table storage_deletions enable row level security;
 `,
   },
+{
+    // Incidents can be marked handled; indexes for the nightly jobs and admin queries as data grows.
+    id: "0032_resolved_and_indexes",
+    sql: `
+alter table incidents add column resolved_at bigint;
+create index incidents_kind_time on incidents(kind, created_at desc);
+create index tracks_retention_unreviewed on tracks(created_at) where deleted_at is null and decision is null;
+create index tracks_retention_passed on tracks(decided_at) where deleted_at is null and decision = 'passed';
+create index tracks_played_out on tracks(played_out_at) where played_out_at is not null;
+create index rate_events_time on rate_events(created_at);
+create index account_log_time on account_log(created_at);
+create index outbox_status_time on outbox(status, created_at desc);
+`,
+  },
 ];

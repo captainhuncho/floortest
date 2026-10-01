@@ -13,7 +13,7 @@ export default async function AdminLog() {
         {rows.map((r) => (
           <li key={r.id} className="flex flex-wrap justify-between gap-2 px-4 py-3">
             <span>
-              <span className="font-medium capitalize">{r.action}</span> {r.target} {r.detail && <span className="text-mute">· {r.detail}</span>}
+              <span className="font-medium">{r.action.charAt(0).toUpperCase() + r.action.slice(1)}</span> {r.target} {r.detail && <span className="text-mute">· {r.detail}</span>}
             </span>
             <span className="text-mute">{r.admin ?? "deleted admin"} · {new Date(r.created_at).toLocaleString("en-GB")}</span>
           </li>

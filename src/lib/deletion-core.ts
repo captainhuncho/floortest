@@ -5,6 +5,9 @@ import type { Queryable } from "./db/client";
  * storage_deletions *before* the rows that point to it are removed, so a failed delete is never forgotten:
  * it stays queued and is retried until the store confirms. Free of server-only imports so it can be tested.
  */
+/** After this many failed tries a file counts as stuck and the admins are told (once). */
+export const STUCK_AFTER = 5;
+
 export type Deleter = { delete: (key: string) => Promise<void> };
 
 export async function queueDeletion(db: Queryable, keys: (string | null | undefined)[], reason: string, at: number) {
@@ -43,6 +46,7 @@ export async function drainDeletions(db: Queryable, store: Deleter, at: number, 
   const rows = await db.all<{ file_key: string }>("SELECT file_key FROM storage_deletions ORDER BY created_at LIMIT ?", limit);
   let deleted = 0;
   let failed = 0;
+  let newlyStuck = 0; // reached 5 failed attempts on this run: reported once, not on every retry
   for (const { file_key } of rows) {
     try {
       await store.delete(file_key);
@@ -50,13 +54,14 @@ export async function drainDeletions(db: Queryable, store: Deleter, at: number, 
       deleted++;
     } catch (e) {
       failed++;
-      await db.run(
-        "UPDATE storage_deletions SET attempts = attempts + 1, last_error = ?, last_attempt_at = ? WHERE file_key = ?",
+      const row = await db.get<{ attempts: number }>(
+        "UPDATE storage_deletions SET attempts = attempts + 1, last_error = ?, last_attempt_at = ? WHERE file_key = ? RETURNING attempts",
         String(e instanceof Error ? e.message : e).slice(0, 300),
         at,
         file_key,
       );
+      if (row && Number(row.attempts) === STUCK_AFTER) newlyStuck++;
     }
   }
-  return { deleted, failed, waiting: rows.length - deleted };
+  return { deleted, failed, newlyStuck, waiting: rows.length - deleted };
 }

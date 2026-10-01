@@ -465,7 +465,7 @@ export async function purgeExpired({ force = false } = {}) {
   // The opportunistic runs above only clear sessions, rate-limit records and abandoned uploads.
   if (!force) {
     await drainNow();
-    return { expired: 0, abandoned: abandoned.length };
+    return { expired: 0, abandoned: abandoned.length, deletions: null };
   }
   const expired = await q.all<Track>(
     `SELECT * FROM tracks WHERE deleted_at IS NULL AND (
@@ -480,8 +480,14 @@ export async function purgeExpired({ force = false } = {}) {
     });
     await logEvent({ user_id: tr.user_id, sender_id: tr.sender_id, track_id: tr.id, type: "expired", detail: "" });
   }
-  await drainNow();
-  return { expired: expired.length, abandoned: abandoned.length };
+  const deletions = await drainNow();
+  const left = expired.length === 500 ? await q.count(
+    `SELECT COUNT(*) AS n FROM tracks WHERE deleted_at IS NULL AND ((decision IS NULL AND created_at < ?) OR (decision = 'passed' AND decided_at < ?))`,
+    t - RETAIN_UNREVIEWED_DAYS * DAY,
+    t - RETAIN_PASSED_DAYS * DAY,
+  ) : 0;
+  // deletions: files removed from storage tonight; left: tracks past retention still waiting (500 a night at most)
+  return { expired: expired.length, abandoned: abandoned.length, left, deletions };
 }
 
 export { deletesAt };

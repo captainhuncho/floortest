@@ -30,6 +30,8 @@ Production and Preview have separate values. Never paste values into chats or ti
 | `CRON_SECRET` | Lets Vercel's scheduler call the nightly jobs |
 | `SIGNUP_MODE` (`invite`/`open`), `BETA_INVITE_CODES` | Who can sign up |
 | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Bot check |
+| `BACKUP_KEY` (recommended) | Encrypts nightly backups. If unset, `APP_SECRET` is used. **Keep a copy outside Vercel and the bucket:** without it, backups can't be read |
+| `ALERT_WEBHOOK_URL` (optional) | A Discord or Slack incoming-webhook URL. Urgent alerts go there as well as email, so you still hear about it if email itself is down |
 | `DB_AUTO_MIGRATE=true`, `DB_POOL_MAX=5` | Database behaviour |
 
 Code switches (in the repo, not Vercel): `SHARING_LIVE` and `STEMS_PLANS` in `src/lib/plans.ts`, `TURNSTILE_READY` in `src/lib/turnstile.ts`. Stems can also be switched per plan or account in **Admin → Feature switches**.
@@ -51,14 +53,17 @@ Database changes are numbered migrations in `src/lib/db/migrations.ts`. They run
 | 03:30 daily | `/api/cron/purge` | **1. Backup first.** Writes the whole database to R2 `backups/db-YYYY-MM-DD.json.gz`. If the backup fails, the job stops: nothing is deleted that night, an incident is raised, and it returns 500. **2.** Sends 7-day deletion warnings. **3.** Deletes tracks past retention (unreviewed 90 days, "not for me" 30 days), abandoned uploads, expired sessions and rate-limit records. **4.** Finalises share consents left past their 2-minute window. **5.** Retries queued file deletions |
 | 08:00 daily | `/api/cron/digest` | Receiver digests, 2-week nudges, and the Monday admin metrics email |
 
+The email jobs mark each track before sending and give it back if the send fails, so a crash or a rerun can't send the same email twice, and a failed email is retried on the next run. One receiver's failed digest never stops the others.
+
 Normal page visits also run light cleanup (sessions, rate limits, abandoned uploads), at most every 10 minutes per server. Track retention only runs in the nightly job, after a good backup.
 
 ## Backups and restore
 
-- **What's covered:** every table except short-lived ones (sessions, rate limits, pending uploads, password resets). Audio files are **not** in the database backup; they live in R2.
+- **What's covered:** every table except short-lived ones (sessions, rate limits, pending uploads, password resets). Live email-confirmation tokens and email bodies are blanked. Audio files are **not** in the database backup; they live in R2.
+- **Encrypted** (AES-256-GCM) with `BACKUP_KEY` (or `APP_SECRET`). Rotating that key makes older backups unreadable unless you keep the old key. Each run gets its own file (`db-YYYY-MM-DDTHHMM.json.gz.enc`), so a manual rerun never replaces the night's backup.
 - **Kept** 14 days. Every backup is listed in `app_state.backup_keys`, so older ones are always deleted, even after missed nights.
 - **Status:** Admin → Overview shows the last backup. It becomes a red to-do if none ran in 2 days.
-- **Restore drill** (run after schema changes and monthly): download a backup from R2, then run `npx tsx scripts/restore-drill.ts path/to/db-YYYY-MM-DD.json.gz`. It rebuilds a throwaway database and checks every table's row count. It never touches production.
+- **Restore drill** (run after schema changes and monthly): download a backup from R2, then run `BACKUP_KEY=… npx tsx scripts/restore-drill.ts path/to/db-….json.gz.enc` (use the same key as the server). It rebuilds a throwaway database and checks every table's row count. It never touches production.
 - **A real restore:** restore into a *new* Supabase database first, check it, then point `DATABASE_URL` at it and redeploy. Never overwrite production in place.
 - **Gaps (to do):** a separate bucket and credentials for backups, recovery copies of audio (R2 versioning or replication), and Supabase point-in-time recovery (paid).
 
@@ -75,7 +80,9 @@ So a storage outage can delay a deletion but can never lose track of a file. Acc
 ## Monitoring
 
 - **Admin → Overview:** the to-do list (takedowns, privacy requests, appeals, failed emails, incidents, missing backups) and this week vs last.
-- **Admin → Incidents:** server errors, failed uploads, failed emails, cron failures, bot-check problems and stuck deletions. **5 or more incidents in an hour email the admins**, at most once an hour.
+- **Admin → Incidents:** server errors, failed uploads, failed emails, cron failures, bot-check problems and stuck deletions. Open incidents stay on the Overview until you **mark them handled**, one by one or all at once. "Upload refused" entries record why a visitor's file was turned away; they're for reference and never alert.
+- **Alerts:** a failed nightly job or a stuck file deletion alerts the admins **straight away** (at most every 15 minutes). Anything else alerts when there are 5 or more incidents in an hour (at most once an hour). Alerts go by email, and to `ALERT_WEBHOOK_URL` when it's set.
+- **Overview → Configuration:** when the nightly cleanup and morning emails last ran (ok or failed, and how long they took), the last backup, and how many files are waiting to be deleted.
 - **Vercel → Logs / Observability:** raw runtime errors.
 - **Health check:** `/api/health` (database). With the cron secret, it also checks storage and configuration.
 - **To add:** an external uptime monitor on `/` and `/api/health`.
