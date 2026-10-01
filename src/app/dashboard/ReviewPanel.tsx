@@ -9,6 +9,8 @@ import { ConfirmButton, NoteForm } from "./ClientBits";
 import { DecisionRail } from "./DecisionRail";
 import { PlayedOut } from "./PlayedOut";
 import { StemsBox } from "./StemsBox";
+import { PrepBox } from "./PrepBox";
+import { parseCues } from "@/lib/cues";
 import { ShareBox } from "./ShareBox";
 import { activeShare, canShare } from "@/lib/share";
 import { APP_URL } from "@/lib/mail";
@@ -129,9 +131,14 @@ export async function ReviewPanel({
       </div>
 
       {t.decision === "kept" && (
-        <div className="mt-4">
-          <PlayedOut trackId={t.id} senderName={sender.name} at={t.played_out_at} note={t.played_out_note} />
-        </div>
+        <>
+          <div className="mt-4">
+            <PlayedOut trackId={t.id} senderName={sender.name} at={t.played_out_at} note={t.played_out_note} />
+          </div>
+          <div className="mt-4">
+            <PrepBox track={player} energy={t.energy} cues={parseCues(t.cues, t.duration)} />
+          </div>
+        </>
       )}
 
       {canShare(t) && (

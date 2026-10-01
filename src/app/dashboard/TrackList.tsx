@@ -21,6 +21,9 @@ export type Row = {
   decision: "kept" | "passed" | null;
   hasMessage: boolean;
   createdAt: number;
+  /** Set prep, on kept tracks. */
+  energy?: number | null;
+  cueCount?: number;
 };
 
 

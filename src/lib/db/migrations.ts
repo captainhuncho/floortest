@@ -418,4 +418,12 @@ create index track_shares_track on track_shares(track_id);
 alter table track_shares enable row level security;
 `,
   },
+  {
+    // Set prep on kept tracks: an energy rating (1–5) and labelled cue points, exported to Rekordbox.
+    id: "0020_cues_energy",
+    sql: `
+alter table tracks add column energy int check (energy between 1 and 5);
+alter table tracks add column cues text not null default '[]';
+`,
+  },
 ];

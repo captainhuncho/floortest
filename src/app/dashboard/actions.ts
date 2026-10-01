@@ -31,6 +31,7 @@ import { storage } from "@/lib/storage";
 import { audit, trackLabel } from "@/lib/audit";
 import { requestStems } from "@/lib/stems";
 import { createShare, revokeShares } from "@/lib/share";
+import { parseCues } from "@/lib/cues";
 import { cleanProfileLink, IDENTITY_HOSTS, isProtectedHandle, newIdentityCode } from "@/lib/identity";
 
 const done = () => revalidatePath("/dashboard", "layout");
@@ -335,6 +336,17 @@ export async function stopSharing(trackId: number) {
   const t = await ownedTrack(u.id, trackId);
   if (!t) return;
   await revokeShares(u, t);
+  done();
+}
+
+/** Set prep on a kept track: energy (1–5, or null) and labelled cue points. */
+export async function savePrep(trackId: number, energy: number | null, cues: { at: number; label: string }[]) {
+  const u = await requireUser();
+  const t = await ownedTrack(u.id, trackId);
+  if (!t) return;
+  const e = energy && Number.isInteger(energy) && energy >= 1 && energy <= 5 ? energy : null;
+  const clean = parseCues(JSON.stringify(cues), t.duration);
+  await q.run("UPDATE tracks SET energy = ?, cues = ? WHERE id = ?", e, JSON.stringify(clean), t.id);
   done();
 }
 

@@ -115,6 +115,9 @@ export type Track = {
   created_at: number;
   stems_requested_at: number | null;
   share_ok: number;
+  energy: number | null;
+  /** JSON: [{ at: seconds, label }] */
+  cues: string;
 };
 export type EventRow = {
   id: number;

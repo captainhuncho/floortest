@@ -1,6 +1,7 @@
 import "server-only";
 import { q, type Track } from "@/lib/db";
 import type { Row } from "./TrackList";
+import { parseCues } from "@/lib/cues";
 
 /** Track rows for list views: every live track, optionally just one collection and/or just kept ones. */
 export async function loadRows(userId: number, opts: { collectionId?: number; keptOnly?: boolean; inSet?: boolean } = {}): Promise<Row[]> {
@@ -33,6 +34,8 @@ export async function loadRows(userId: number, opts: { collectionId?: number; ke
     decision: t.decision,
     hasMessage: !!t.message,
     createdAt: t.created_at,
+    energy: t.energy,
+    cueCount: parseCues(t.cues, t.duration).length,
   }));
 }
 
