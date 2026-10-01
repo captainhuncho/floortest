@@ -25,6 +25,7 @@ import {
   RATE_PER_IP_PER_HOUR,
   RETAIN_PASSED_DAYS,
   RETAIN_UNREVIEWED_DAYS,
+  shareDownloadEnabled,
 } from "./plans";
 import { recentCount, record } from "./ratelimit";
 import { storage } from "./storage";
@@ -242,8 +243,8 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
       const collection = await activeCollection(fresh, db);
       const track = (await db.get<Track>(
         `INSERT INTO tracks (user_id, collection_id, sender_id, token, title, artist, message, release_status, mix_status, genre,
-                             file_key, original_name, mime, size, duration, bpm, peaks, created_at, share_ok)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING *`,
+                             file_key, original_name, mime, size, duration, bpm, peaks, created_at, share_ok, share_download)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING *`,
         fresh.id,
         collection?.id ?? null,
         sender.id,
@@ -263,6 +264,7 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
         analysis.peaks ? JSON.stringify(analysis.peaks) : null,
         now(),
         collection?.allow_sharing ? 1 : 0,
+        collection?.allow_sharing && shareDownloadEnabled(fresh.plan) ? 1 : 0,
       ))!;
       // Possible duplicate: the same file (byte size and length) already on this desk, or the same
       // sender re-sending the same title. Flagged for the receiver, never blocked.

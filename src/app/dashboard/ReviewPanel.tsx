@@ -3,7 +3,7 @@ import type { PlayerTrack } from "@/components/Player";
 import { deletesAt } from "@/lib/core";
 import {q, type Collection, type EventRow, type Sender, type Track } from "@/lib/db";
 import { fmtBytes, fmtDate, fmtDay } from "@/lib/format";
-import { MIX_STATUS, RELEASE_STATUS, shareDownloadEnabled, stemsEnabled } from "@/lib/plans";
+import { MIX_STATUS, RELEASE_STATUS, stemsEnabled } from "@/lib/plans";
 import { addNote, deleteTrack, moveTrack, replyToSender } from "./actions";
 import { ConfirmButton, NoteForm } from "./ClientBits";
 import { DecisionRail } from "./DecisionRail";
@@ -12,7 +12,7 @@ import { StemsBox } from "./StemsBox";
 import { PrepBox } from "./PrepBox";
 import { parseCues } from "@/lib/cues";
 import { ShareBox } from "./ShareBox";
-import { activeShare, canShare } from "@/lib/share";
+import { activeShare, canShare, shareAudience } from "@/lib/share";
 import { APP_URL } from "@/lib/mail";
 import { DetailPlayer } from "./DetailPlayer";
 import { DesktopOnly, MobileOnly } from "./DesktopOnly";
@@ -36,6 +36,7 @@ export async function ReviewPanel({
 }) {
   const receiverPlan = (await q.get<{ plan: string }>("SELECT plan FROM users WHERE id = ?", t.user_id))?.plan ?? "free";
   const share = canShare(t) ? await activeShare(t.id) : undefined;
+  const audience = canShare(t) ? await shareAudience(t.id) : [];
   const events = (await q.all<EventRow & { track_title: string | null }>(`SELECT e.*, t.title AS track_title FROM events e LEFT JOIN tracks t ON t.id = e.track_id
        WHERE e.sender_id = ? ORDER BY e.created_at DESC LIMIT 8`, sender.id));
   // Sent from someone's FloorTest account: show who they are on the platform.
@@ -145,7 +146,8 @@ export async function ReviewPanel({
         <div className="mt-4">
           <ShareBox
             trackId={t.id}
-            canDownload={shareDownloadEnabled(receiverPlan)}
+            canDownload={!!t.share_download}
+            audience={audience}
             active={
               share
                 ? { url: `${APP_URL}/s/${share.token}`, expires: new Date(share.expires_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }), plays: share.plays }

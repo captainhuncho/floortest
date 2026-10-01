@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { activeCollection, capacity, isClosed, isPaused, pausedMessage, userByHandle } from "@/lib/core";
 import { fmtDay } from "@/lib/format";
-import { genresFor, RETAIN_UNREVIEWED_DAYS } from "@/lib/plans";
+import { genresFor, RETAIN_UNREVIEWED_DAYS, shareDownloadEnabled } from "@/lib/plans";
 import { SubmitForm } from "./SubmitForm";
 
 type Props = { params: Promise<{ handle: string }>; };
@@ -104,7 +104,7 @@ export default async function ReceiverPage({ params }: Props) {
             <p className="mt-2 text-[12px] text-dim">This link stays the same. Check back soon.</p>
           </div>
         ) : (
-          <SubmitForm handle={receiver.handle} receiverName={receiver.name} genres={genres} look="mobile" allowSharing={!!collection?.allow_sharing} />
+          <SubmitForm handle={receiver.handle} receiverName={receiver.name} genres={genres} look="mobile" allowSharing={!!collection?.allow_sharing} sharingDownloads={shareDownloadEnabled(receiver.plan)} />
         )}
       </div>
       <ul className="flex flex-col gap-2.5" aria-label="How your file is handled">

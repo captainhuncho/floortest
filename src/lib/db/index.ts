@@ -118,6 +118,8 @@ export type Track = {
   energy: number | null;
   /** JSON: [{ at: seconds, label }] */
   cues: string;
+  /** Colleagues may download: the receiver was on a paid plan and allowed sharing when this was sent. */
+  share_download: number;
 };
 export type EventRow = {
   id: number;

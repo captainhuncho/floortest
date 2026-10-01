@@ -433,4 +433,20 @@ alter table tracks add column cues text not null default '[]';
 alter table track_shares add column downloads int not null default 0;
 `,
   },
+  {
+    // Share downloads are fixed by the receiver's plan when the track was sent; colleagues sign in, and access is logged per account.
+    id: "0022_share_accounts",
+    sql: `
+alter table tracks add column share_download int not null default 0;
+create table share_access (
+  id bigint generated always as identity primary key,
+  share_id bigint not null references track_shares(id) on delete cascade,
+  user_id bigint not null references users(id) on delete cascade,
+  kind text not null check (kind in ('play', 'download')),
+  created_at bigint not null
+);
+create index share_access_share on share_access(share_id);
+alter table share_access enable row level security;
+`,
+  },
 ];

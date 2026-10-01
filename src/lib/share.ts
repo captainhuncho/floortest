@@ -31,6 +31,20 @@ export async function createShare(user: User, t: Track) {
   return share;
 }
 
+/** Who opened a share link, by FloorTest account. Colleagues must be signed in to listen or download. */
+export async function logShareAccess(shareId: number, userId: number, kind: "play" | "download") {
+  await q.run("INSERT INTO share_access (share_id, user_id, kind, created_at) VALUES (?,?,?,?)", shareId, userId, kind, now());
+}
+
+export async function shareAudience(trackId: number) {
+  return q.all<{ name: string; handle: string; plays: number; downloads: number }>(
+    `SELECT u.name, u.handle, COUNT(CASE WHEN a.kind = 'play' THEN 1 END) AS plays, COUNT(CASE WHEN a.kind = 'download' THEN 1 END) AS downloads
+     FROM share_access a JOIN track_shares s ON s.id = a.share_id JOIN users u ON u.id = a.user_id
+     WHERE s.track_id = ? GROUP BY u.id, u.name, u.handle ORDER BY MAX(a.created_at) DESC`,
+    trackId,
+  );
+}
+
 export async function revokeShares(user: User, t: Track) {
   if (t.user_id !== user.id) return;
   await q.run("UPDATE track_shares SET revoked_at = ? WHERE track_id = ? AND revoked_at IS NULL", now(), t.id);
@@ -38,8 +52,8 @@ export async function revokeShares(user: User, t: Track) {
 
 /** The public side: the share, its track and the receiver's name, only while the link is live. */
 export async function shareByToken(token: string) {
-  return q.get<Share & { title: string; artist: string; peaks: string | null; duration: number | null; mime: string; file_key: string | null; receiver: string; receiver_plan: string; deleted_at: number | null; original_name: string; artist_title: string }>(
-    `SELECT s.*, t.title, t.artist, t.peaks, t.duration, t.mime, t.file_key, t.deleted_at, t.original_name, t.artist || ' - ' || t.title AS artist_title, u.name AS receiver, u.plan AS receiver_plan
+  return q.get<Share & { title: string; artist: string; peaks: string | null; duration: number | null; mime: string; file_key: string | null; receiver: string; receiver_id: number; receiver_plan: string; share_download: number; deleted_at: number | null; original_name: string; artist_title: string }>(
+    `SELECT s.*, t.title, t.artist, t.peaks, t.duration, t.mime, t.file_key, t.deleted_at, t.original_name, t.artist || ' - ' || t.title AS artist_title, u.name AS receiver, u.id AS receiver_id, u.plan AS receiver_plan, t.share_download
      FROM track_shares s JOIN tracks t ON t.id = s.track_id JOIN users u ON u.id = t.user_id
      WHERE s.token = ? AND s.revoked_at IS NULL AND s.expires_at > ? AND t.share_ok = 1 AND t.deleted_at IS NULL`,
     token,

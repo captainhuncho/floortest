@@ -14,6 +14,16 @@ import { checkSecondFactor, finishSignIn, sendEmailVerification } from "@/lib/se
 import { readChallenge, signChallenge } from "@/lib/totp";
 
 const CHALLENGE = "floortest_2fa";
+/** Set by a share link: where to land after signing in or up (only ever a /s/ share page). */
+const NEXT = "floortest_next";
+
+async function landing(fallback: string) {
+  const jar = await cookies();
+  const next = jar.get(NEXT)?.value ?? "";
+  if (!/^\/s\/[A-Za-z0-9_-]{10,40}$/.test(next)) return fallback;
+  jar.delete(NEXT);
+  return next;
+}
 
 /** Password (or reset link) checked out. Accounts with two-factor get a code step first. */
 async function afterPassword(userId: number, how: "password" | "reset") {
@@ -23,7 +33,7 @@ async function afterPassword(userId: number, how: "password" | "reset") {
     redirect("/login/verify");
   }
   await finishSignIn(userId, how);
-  redirect("/dashboard/floor");
+  redirect(await landing("/dashboard/floor"));
 }
 
 export type FormState = { error?: string; ok?: boolean } | undefined;
@@ -101,7 +111,7 @@ export async function signup(_: FormState, form: FormData): Promise<FormState> {
   }
   await createSession(userId);
   await sendEmailVerification(userId);
-  redirect("/dashboard/floor?welcome=1");
+  redirect(await landing("/dashboard/floor?welcome=1"));
 }
 
 export async function login(_: FormState, form: FormData): Promise<FormState> {
@@ -177,7 +187,7 @@ export async function verifySecondStep(_: FormState, form: FormData): Promise<Fo
   }
   jar.delete(CHALLENGE);
   await finishSignIn(userId, result === "code" ? "two-factor" : "recovery code");
-  redirect("/dashboard/floor");
+  redirect(await landing("/dashboard/floor"));
 }
 
 /** From the dashboard banner: send the confirmation email again. */

@@ -31,6 +31,7 @@ export function SubmitForm({
   look: lookName = "classic",
   account,
   allowSharing = false,
+  sharingDownloads = false,
 }: {
   handle: string;
   receiverName: string;
@@ -40,6 +41,8 @@ export function SubmitForm({
   account?: { name: string; email: string };
   /** The collection lets the receiver share tracks with colleagues through a private listen-only link. */
   allowSharing?: boolean;
+  /** The receiver is on a paid plan now, so colleagues can download this track (fixed at send time). */
+  sharingDownloads?: boolean;
 }) {
   const L = LOOKS[lookName];
   const m = lookName === "mobile";
@@ -345,7 +348,7 @@ export function SubmitForm({
 
       <p className={`text-xs ${L.mute}`}>
         By sending you confirm you own or control this track and you&apos;re 18 or over. {receiverName} may listen to it, download it and play it
-        in their sets{allowSharing ? ", and share it with colleagues through a private FloorTest link (listen-only, or downloadable on paid plans)" : ""}, but can&apos;t release it anywhere without a signed agreement with you.{" "}
+        in their sets{allowSharing ? `, and share it with colleagues who have FloorTest accounts, through a private link, for promotion and their DJ sets (${sharingDownloads ? "they can listen and download" : "listen only"})` : ""}, but can&apos;t release it anywhere without a signed agreement with you.{" "}
         <a href="/terms" target="_blank" className="underline underline-offset-4">Terms</a> ·{" "}
         <a href="/privacy" target="_blank" className="underline underline-offset-4">Privacy</a>
       </p>
