@@ -11,17 +11,23 @@ import { signViewAs, VIEW_AS_COOKIE } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { sendMail } from "@/lib/mail";
 import { logAdmin, requireAdminAction } from "@/lib/admin";
+import { flash } from "@/lib/flash";
 import { logEvent, now, q, type Track } from "@/lib/db";
 import { storage } from "@/lib/storage";
 import { eraseSender, purgeAccount } from "@/lib/privacy";
 
 const refresh = () => revalidatePath("/admin", "layout");
+const done = (m: string) => flash(m);
+const fail = async (m: string) => {
+  await flash(m, "error");
+  refresh();
+};
 const target = async (id: number) => q.get<{ id: number; email: string; handle: string }>("SELECT id, email, handle FROM users WHERE id = ?", id);
 
 export async function suspendAccount(userId: number, reason: string) {
   const a = await requireAdminAction();
   const u = await target(userId);
-  if (!u || u.id === a.id) return;
+  if (!u || u.id === a.id) return fail("Couldn't suspend: account not found, or it's yours");
   const why = String(reason || "").trim().slice(0, 200);
   const r = await q.tx(async (db) => {
     const r = await db.run("UPDATE users SET suspended_at = ?, suspended_reason = ? WHERE id = ? AND suspended_at IS NULL", now(), why, u.id);
@@ -31,7 +37,7 @@ export async function suspendAccount(userId: number, reason: string) {
     await db.run("INSERT INTO admin_log (admin_id, action, target, detail, created_at) VALUES (?,?,?,?,?)", a.id, "suspended", `@${u.handle}`, why, now());
     return r;
   });
-  if (!r.changes) return;
+  if (!r.changes) return fail("Already suspended");
   await sendMail({
     userId: u.id,
     audience: "support",
@@ -49,13 +55,14 @@ export async function suspendAccount(userId: number, reason: string) {
       "FloorTest",
     ].join("\n"),
   }).catch(() => {});
+  await done(`Suspended @${u.handle} and emailed them`);
   refresh();
 }
 
 export async function unsuspendAccount(userId: number) {
   const a = await requireAdminAction();
   const u = await target(userId);
-  if (!u) return;
+  if (!u) return fail("Account not found");
   const r = await q.tx(async (db) => {
     const r = await db.run("UPDATE users SET suspended_at = NULL, suspended_reason = '' WHERE id = ? AND suspended_at IS NOT NULL", u.id);
     if (!r.changes) return r;
@@ -63,7 +70,7 @@ export async function unsuspendAccount(userId: number) {
     await db.run("INSERT INTO admin_log (admin_id, action, target, detail, created_at) VALUES (?,?,?,?,?)", a.id, "unsuspended", `@${u.handle}`, "", now());
     return r;
   });
-  if (!r.changes) return;
+  if (!r.changes) return fail("Not suspended");
   await sendMail({
     userId: u.id,
     audience: "support",
@@ -71,15 +78,17 @@ export async function unsuspendAccount(userId: number) {
     subject: "Your FloorTest account is back",
     body: ["Hi,", "", `Your account is restored. You can sign in again, and your submission link is back online: ${env.appUrl}/login`, "", "FloorTest"].join("\n"),
   }).catch(() => {});
+  await done(`Restored @${u.handle} and emailed them`);
   refresh();
 }
 
 export async function signOutEverywhere(userId: number) {
   const a = await requireAdminAction();
   const u = await target(userId);
-  if (!u) return;
+  if (!u) return fail("Account not found");
   const r = await q.run("DELETE FROM sessions WHERE user_id = ?", u.id);
   await logAdmin(a.id, "signed out everywhere", `@${u.handle}`, `${r.changes} sessions`);
+  await done(`Signed @${u.handle} out of ${r.changes} session${r.changes === 1 ? "" : "s"}`);
   refresh();
 }
 
@@ -87,22 +96,24 @@ export async function signOutEverywhere(userId: number) {
 export async function resetTwoFactor(userId: number, form: FormData) {
   const a = await requireAdminAction();
   const u = await target(userId);
-  if (!u || u.id === a.id) return;
+  if (!u || u.id === a.id) return fail("You can't reset your own two-factor here");
   // Step-up: type their handle and how you confirmed it's them.
   const how = String(form.get("how") || "").trim().slice(0, 200);
-  if (String(form.get("handle") || "").trim().replace(/^@/, "").toLowerCase() !== u.handle.toLowerCase() || how.length < 5) return;
+  if (String(form.get("handle") || "").trim().replace(/^@/, "").toLowerCase() !== u.handle.toLowerCase() || how.length < 5) return fail("Nothing changed: the handle didn't match, or the note is too short");
   await q.run("UPDATE users SET totp_enabled_at = NULL, totp_secret = NULL, totp_last_step = NULL, recovery_codes = '[]' WHERE id = ?", u.id);
   await q.run("DELETE FROM sessions WHERE user_id = ?", u.id);
   await logAdmin(a.id, "reset two-factor", `@${u.handle}`, how);
+  await done(`Two-factor reset for @${u.handle}; they're signed out`);
   refresh();
 }
 
 export async function setPlanFor(userId: number, plan: string) {
   const a = await requireAdminAction();
   const u = await target(userId);
-  if (!u || !["free", "pro", "team"].includes(plan)) return;
+  if (!u || !["free", "pro", "team"].includes(plan)) return fail("Couldn't change the plan");
   await q.run("UPDATE users SET plan = ? WHERE id = ?", plan, u.id);
   await logAdmin(a.id, "changed plan", `@${u.handle}`, plan);
+  await done(`@${u.handle} is now on ${plan}`);
   refresh();
 }
 
@@ -115,6 +126,7 @@ export async function createInvite(form: FormData) {
   const note = String(form.get("note") || "").trim().slice(0, 120);
   await q.run("INSERT INTO invites (code, max_uses, note, created_at) VALUES (?,?,?,?) ON CONFLICT (code) DO NOTHING", code, max, note, now());
   await logAdmin(a.id, "created invite", code, `${max} uses${note ? ` · ${note}` : ""}`);
+  await done(`Invite ${code} created`);
   refresh();
 }
 
@@ -122,6 +134,7 @@ export async function revokeInvite(code: string) {
   const a = await requireAdminAction();
   await q.run("UPDATE invites SET revoked_at = ? WHERE code = ? AND revoked_at IS NULL", now(), code);
   await logAdmin(a.id, "revoked invite", code);
+  await done(`Revoked ${code}`);
   refresh();
 }
 
@@ -132,11 +145,12 @@ export async function removeTrackAsAdmin(trackId: number, reason: string) {
     "SELECT t.*, u.handle FROM tracks t JOIN users u ON u.id = t.user_id WHERE t.id = ? AND t.deleted_at IS NULL",
     trackId,
   );
-  if (!t) return;
+  if (!t) return fail("That track is already gone");
   await q.run("UPDATE tracks SET deleted_at = ?, file_key = NULL WHERE id = ?", now(), t.id);
   if (t.file_key) await (await storage()).delete(t.file_key).catch(() => {});
   await logEvent({ user_id: t.user_id, sender_id: t.sender_id, track_id: t.id, type: "deleted", detail: "removed by FloorTest" });
   await logAdmin(a.id, "removed track", `${t.artist} – ${t.title}`, `from @${t.handle}${reason ? ` · ${reason}` : ""}`);
+  await done(`Removed "${t.title}" and its file`);
   refresh();
 }
 
@@ -144,9 +158,10 @@ export async function removeTrackAsAdmin(trackId: number, reason: string) {
 export async function blockSenderAsAdmin(senderId: number) {
   const a = await requireAdminAction();
   const s = await q.get<{ id: number; email: string; user_id: number }>("SELECT id, email, user_id FROM senders WHERE id = ?", senderId);
-  if (!s) return;
+  if (!s) return fail("Sender not found");
   await q.run("UPDATE senders SET blocked_at = COALESCE(blocked_at, ?) WHERE id = ?", now(), s.id);
   await logAdmin(a.id, "blocked sender", s.email);
+  await done(`Blocked ${s.email} on that link`);
   refresh();
 }
 
@@ -173,9 +188,10 @@ export async function resendEmail(outboxId: number) {
     "SELECT user_id, to_email, subject, body, audience FROM outbox WHERE id = ?",
     outboxId,
   );
-  if (!m) return;
+  if (!m) return fail("Email not found");
   const status = await sendMail({ userId: m.user_id, to: m.to_email, subject: m.subject, body: m.body, audience: m.audience });
   await logAdmin(a.id, "resent email", m.subject, status);
+  await done(status.startsWith("failed") ? `Resend failed: ${status}` : `Resent to ${m.to_email}`);
   refresh();
 }
 
@@ -183,6 +199,7 @@ export async function setContactHandled(id: number, handled: boolean) {
   const a = await requireAdminAction();
   await q.run("UPDATE contact_messages SET handled_at = ? WHERE id = ?", handled ? now() : null, id);
   await logAdmin(a.id, handled ? "handled message" : "reopened message", `#${id}`);
+  await done(handled ? "Marked handled" : "Reopened");
   refresh();
 }
 
@@ -244,10 +261,11 @@ export async function inviteByEmail(form: FormData) {
 export async function resendInvite(code: string) {
   const a = await requireAdminAction();
   const inv = await q.get<{ email: string | null; note: string }>("SELECT email, note FROM invites WHERE code = ? AND revoked_at IS NULL", code);
-  if (!inv?.email) return;
-  if ((await mailInvite(code, inv.email, a.name, inv.note)).startsWith("failed")) return refresh();
+  if (!inv?.email) return fail("Couldn't resend: the invite is revoked or has no email");
+  if ((await mailInvite(code, inv.email, a.name, inv.note)).startsWith("failed")) return fail("The email failed to send. Check Emails sent, then try again.");
   await q.run("UPDATE invites SET sent_at = ? WHERE code = ?", now(), code);
   await logAdmin(a.id, "resent invite", inv.email, code);
+  await done(`Invite resent to ${inv.email}`);
   refresh();
 }
 
@@ -255,17 +273,18 @@ export async function resendInvite(code: string) {
 export async function inviteFromWaitlist(id: number) {
   const a = await requireAdminAction();
   const w = await q.get<{ email: string; invited_at: number | null; handle: string }>("SELECT email, invited_at, handle FROM waitlist WHERE id = ?", id);
-  if (!w || w.invited_at) return;
+  if (!w || w.invited_at) return fail("Already invited");
   if (await q.get("SELECT 1 FROM users WHERE email = ?", w.email)) {
     await q.run("UPDATE waitlist SET invited_at = ? WHERE id = ?", now(), id);
-    return refresh();
+    return fail("They already have an account");
   }
   const code = newCode();
   await q.run("INSERT INTO invites (code, max_uses, note, email, created_at) VALUES (?,?,?,?,?)", code, 1, "From the waitlist", w.email, now());
-  if ((await mailInvite(code, w.email, a.name, "", w.handle)).startsWith("failed")) return refresh();
+  if ((await mailInvite(code, w.email, a.name, "", w.handle)).startsWith("failed")) return fail("The invite email failed to send. It's saved; resend it from Invites.");
   await q.run("UPDATE invites SET sent_at = ? WHERE code = ?", now(), code);
   await q.run("UPDATE waitlist SET invited_at = ? WHERE id = ?", now(), id);
   await logAdmin(a.id, "invited from waitlist", w.email, code);
+  await done(`Invited ${w.email}`);
   refresh();
 }
 
@@ -273,6 +292,7 @@ export async function removeFromWaitlist(id: number) {
   const a = await requireAdminAction();
   const w = await q.get<{ email: string }>("DELETE FROM waitlist WHERE id = ? RETURNING email", id);
   if (w) await logAdmin(a.id, "removed from waitlist", w.email);
+  await done(w ? `Removed ${w.email} from the waitlist` : "Already removed");
   refresh();
 }
 
@@ -285,7 +305,7 @@ export async function approveIdentity(userId: number) {
     now(),
     userId,
   );
-  if (!u) return;
+  if (!u) return fail("Account not found");
   await sendMail({
     userId,
     audience: "receiver",
@@ -294,6 +314,7 @@ export async function approveIdentity(userId: number) {
     body: `Hi ${u.name.split(/\s+/)[0]},\n\nYour FloorTest page now shows a ✓ Verified badge, so senders know it's really you: ${env.appUrl}/${u.handle}\n\nYou can remove the code from your bio now.\n\n— FloorTest`,
   });
   await logAdmin(a.id, "verified identity", `@${u.handle}`);
+  await done(`Verified @${u.handle} and emailed them`);
   refresh();
 }
 
@@ -305,7 +326,7 @@ export async function rejectIdentity(userId: number, form: FormData) {
     note,
     userId,
   );
-  if (!u) return;
+  if (!u) return fail("Account not found");
   await sendMail({
     userId,
     audience: "receiver",
@@ -314,6 +335,7 @@ export async function rejectIdentity(userId: number, form: FormData) {
     body: `Hi ${u.name.split(/\s+/)[0]},\n\nWe couldn't verify your profiles yet${note ? `: ${note}` : "."}\n\nYou can fix it and send it again from Settings: ${env.appUrl}/dashboard/settings#identity-h\n\n— FloorTest`,
   });
   await logAdmin(a.id, "rejected identity", `@${u.handle}`, note);
+  await done(`Rejected @${u.handle}'s verification and emailed them`);
   refresh();
 }
 
@@ -328,6 +350,7 @@ export async function addProtectedName(form: FormData) {
   const note = String(form.get("note") || "").trim().slice(0, 120);
   for (const n of names) await q.run("INSERT INTO protected_names (handle, note, created_at) VALUES (?,?,?) ON CONFLICT (handle) DO NOTHING", n, note, now());
   if (names.length) await logAdmin(a.id, "protected names", names.join(", ").slice(0, 200), note);
+  await done(names.length ? `Protected ${names.length} name${names.length === 1 ? "" : "s"}` : "No names of 3+ characters to add");
   refresh();
 }
 
@@ -335,6 +358,7 @@ export async function removeProtectedName(handle: string) {
   const a = await requireAdminAction();
   await q.run("DELETE FROM protected_names WHERE handle = ?", handle);
   await logAdmin(a.id, "unprotected name", handle);
+  await done(`Unprotected ${handle}`);
   refresh();
 }
 
@@ -349,10 +373,11 @@ const cleanBlock = (raw: string) => {
 export async function addPlatformBlock(form: FormData) {
   const a = await requireAdminAction();
   const b = cleanBlock(String(form.get("value") || ""));
-  if (!b) return;
+  if (!b) return fail("Enter an email address or a domain like example.com");
   const reason = String(form.get("reason") || "").trim().slice(0, 200);
   await q.run("INSERT INTO platform_blocks (kind, value, reason, admin_id, created_at) VALUES (?,?,?,?,?) ON CONFLICT (value) DO NOTHING", b.kind, b.value, reason, a.id, now());
   await logAdmin(a.id, `blocked ${b.kind} everywhere`, b.value, reason);
+  await done(`Blocked ${b.value} everywhere`);
   refresh();
 }
 
@@ -366,9 +391,10 @@ export async function blockEverywhere(email: string) {
 export async function removePlatformBlock(id: number) {
   const a = await requireAdminAction();
   const b = await q.get<{ value: string }>("SELECT value FROM platform_blocks WHERE id = ?", id);
-  if (!b) return;
+  if (!b) return fail("Already lifted");
   await q.run("DELETE FROM platform_blocks WHERE id = ?", id);
   await logAdmin(a.id, "lifted platform block", b.value);
+  await done(`${b.value} can send again`);
   refresh();
 }
 
@@ -378,7 +404,7 @@ export async function openTakedown(form: FormData) {
   const claimant = String(form.get("claimant") || "").trim().slice(0, 120);
   const claimantEmail = String(form.get("claimant_email") || "").trim().toLowerCase().slice(0, 200);
   const ref = String(form.get("track") || "").trim().slice(0, 100);
-  if (!claimant || !claimantEmail.includes("@") || !ref) return;
+  if (!claimant || !claimantEmail.includes("@") || !ref) return fail("Fill in the claimant, a valid email and the track");
   const t = await q.get<{ id: number; title: string; artist: string; handle: string }>(
     "SELECT t.id, t.title, t.artist, u.handle FROM tracks t JOIN users u ON u.id = t.user_id WHERE t.token = ? OR t.id::text = ?",
     ref,
@@ -390,6 +416,7 @@ export async function openTakedown(form: FormData) {
     t?.id ?? null, label, claimant, claimantEmail, String(form.get("basis") || "").trim().slice(0, 2000), a.id, now(),
   );
   await logAdmin(a.id, "opened takedown", label, claimant);
+  await done(t ? `Case opened for ${label}` : `Case opened, but no track matched "${ref}"`);
   refresh();
 }
 
@@ -397,7 +424,7 @@ export async function openTakedown(form: FormData) {
 export async function decideTakedown(id: number, outcome: "removed" | "rejected", form: FormData) {
   const a = await requireAdminAction();
   const c = await q.get<{ id: number; track_id: number | null; track_label: string; status: string }>("SELECT id, track_id, track_label, status FROM takedowns WHERE id = ?", id);
-  if (!c || c.status !== "open") return;
+  if (!c || c.status !== "open") return fail("That case is already closed");
   const notes = String(form.get("notes") || "").trim().slice(0, 1000);
   const owner = c.track_id
     ? await q.get<{ id: number; email: string; title: string; artist: string }>("SELECT u.id, u.email, t.title, t.artist FROM tracks t JOIN users u ON u.id = t.user_id WHERE t.id = ?", c.track_id)
@@ -421,6 +448,7 @@ export async function decideTakedown(id: number, outcome: "removed" | "rejected"
         "FloorTest",
       ].join("\n"),
     }).catch(() => {});
+  await done(outcome === "removed" ? "Track removed; receiver emailed" : "Claim rejected");
   refresh();
 }
 
@@ -428,7 +456,7 @@ export async function decideTakedown(id: number, outcome: "removed" | "rejected"
 export async function adminDeleteAccount(userId: number, form: FormData) {
   const a = await requireAdminAction();
   const u = await target(userId);
-  if (!u || u.id === a.id || String(form.get("confirm") || "").trim().toLowerCase() !== u.email.toLowerCase()) return;
+  if (!u || u.id === a.id || String(form.get("confirm") || "").trim().toLowerCase() !== u.email.toLowerCase()) return fail("Nothing deleted: the email you typed didn't match");
   await purgeAccount(u.id);
   await logAdmin(a.id, "deleted account (privacy request)", `@${u.handle}`, u.email.replace(/^(.{2}).*@/, "$1…@"));
   refresh();
@@ -438,7 +466,7 @@ export async function adminDeleteAccount(userId: number, form: FormData) {
 export async function adminEraseSender(form: FormData) {
   const a = await requireAdminAction();
   const email = String(form.get("email") || "").trim().toLowerCase();
-  if (!EMAIL_RE.test(email) || String(form.get("confirm") || "").trim().toLowerCase() !== email) return;
+  if (!EMAIL_RE.test(email) || String(form.get("confirm") || "").trim().toLowerCase() !== email) return fail("Nothing erased: the email you typed didn't match");
   const r = await eraseSender(email);
   await logAdmin(a.id, "erased sender (privacy request)", email.replace(/^(.{2}).*@/, "$1…@"), `${r.senders} sender records, ${r.files} files`);
   refresh();
@@ -472,7 +500,7 @@ export async function publishAnnouncement(form: FormData) {
   const href = String(form.get("href") || "").trim().slice(0, 200);
   const audience = String(form.get("audience") || "all") as (typeof AUDIENCES)[number];
   const email = form.get("email") === "on";
-  if (!title || !AUDIENCES.includes(audience) || (href && !href.startsWith("/"))) return;
+  if (!title || !AUDIENCES.includes(audience) || (href && !href.startsWith("/"))) return fail("Needs a title, and links must start with /");
   await q.run("INSERT INTO announcements (title, body, href, audience, emailed, admin_id, created_at) VALUES (?,?,?,?,?,?,?)", title, body, href, audience, email ? 1 : 0, a.id, now());
   const people = email
     ? await q.all<{ id: number; email: string }>(
@@ -493,5 +521,6 @@ export async function publishAnnouncement(form: FormData) {
         }).catch(() => {});
     });
   refresh();
+  await done(people.length ? `Published; emailing ${people.length} people` : "Published");
   redirect("/admin/announcements?published=1");
 }

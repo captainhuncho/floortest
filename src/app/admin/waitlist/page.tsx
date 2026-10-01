@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ConfirmButton } from "../../dashboard/ClientBits";
+import { ConfirmButton } from "../AdminUi";
 import { q } from "@/lib/db";
 import { inviteFromWaitlist, removeFromWaitlist } from "../actions";
 

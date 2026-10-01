@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/admin";
 import { q } from "@/lib/db";
+import { readFlash } from "@/lib/flash";
 import { AdminNav, type NavGroup } from "./AdminNav";
+import { Toast } from "./AdminUi";
 
 export const metadata = { title: "Admin — FloorTest", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -67,6 +69,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     .slice(0, 2)
     .map((w) => w[0]?.toUpperCase())
     .join("");
+  const notice = await readFlash();
   const flat = groups.flatMap((g) => g.sections.flatMap((s) => s.items));
   return (
     <div className="min-h-dvh bg-ink md:flex">
@@ -90,6 +93,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           {children}
         </main>
       </div>
+      <Toast flash={notice} />
     </div>
   );
 }

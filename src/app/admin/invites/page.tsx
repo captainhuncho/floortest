@@ -1,4 +1,4 @@
-import { ConfirmButton } from "../../dashboard/ClientBits";
+import { ConfirmButton } from "../AdminUi";
 import { q } from "@/lib/db";
 import { env } from "@/lib/env";
 import { createInvite, inviteByEmail, resendInvite, revokeInvite } from "../actions";

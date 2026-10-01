@@ -4,7 +4,7 @@ import { AUDIT_LABELS, type AuditAction } from "@/lib/audit";
 import { q } from "@/lib/db";
 import { fmtBytes } from "@/lib/format";
 import { APP_URL } from "@/lib/mail";
-import { ConfirmButton } from "../../../dashboard/ClientBits";
+import { ConfirmButton } from "../../AdminUi";
 import { resetTwoFactor, setPlanFor, signOutEverywhere, startViewAs, suspendAccount, unsuspendAccount } from "../../actions";
 
 export default async function Account({ params }: { params: Promise<{ id: string }> }) {

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ConfirmButton } from "../../dashboard/ClientBits";
+import { ConfirmButton } from "../AdminUi";
 import { likeContains, q } from "@/lib/db";
 import { fmtBytes } from "@/lib/format";
 import { blockEverywhere, blockSenderAsAdmin, removeTrackAsAdmin } from "../actions";
