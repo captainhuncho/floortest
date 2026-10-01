@@ -87,13 +87,20 @@ export default async function Account({ params }: { params: Promise<{ id: string
             Sign out everywhere
           </ConfirmButton>
           {u.totp_enabled_at && (
-            <ConfirmButton
-              action={resetTwoFactor.bind(null, id)}
-              message={`Turn off two-factor for @${u.handle}? Only do this after confirming who they are. They'll be signed out.`}
-              className="btn-ghost btn-sm"
-            >
-              Reset two-factor
-            </ConfirmButton>
+            <details className="w-full rounded-md border border-line p-3">
+              <summary className="cursor-pointer text-sm">Reset two-factor…</summary>
+              <form action={resetTwoFactor.bind(null, id)} className="mt-3 grid gap-2 sm:grid-cols-[1fr_2fr_auto] sm:items-end">
+                <label className="block space-y-1.5">
+                  <span className="label">Type their handle</span>
+                  <input name="handle" required className="input" placeholder={u.handle} autoComplete="off" />
+                </label>
+                <label className="block space-y-1.5">
+                  <span className="label">How you confirmed it&apos;s them</span>
+                  <input name="how" required minLength={5} className="input" placeholder="Replied from account email + ID match" />
+                </label>
+                <button className="btn-ghost btn-sm">Reset and sign out</button>
+              </form>
+            </details>
           )}
         </div>
         {u.suspended_at ? (

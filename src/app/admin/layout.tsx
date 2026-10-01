@@ -55,7 +55,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       icon: "shield",
       sections: [
         { title: "Review", items: [{ href: "/admin/verification", label: "Verification", icon: "shield", badge: verifying }, { href: "/admin/moderation", label: "Moderation", icon: "flag" }, { href: "/admin/takedowns", label: "Takedowns", icon: "alert", badge: takedowns }, { href: "/admin/blocks", label: "Sender blocks", icon: "shield" }] },
-        { title: "Records", items: [{ href: "/admin/log", label: "Admin log", icon: "log" }] },
+        { title: "Records", items: [{ href: "/admin/privacy", label: "Data requests", icon: "users" }, { href: "/admin/log", label: "Admin log", icon: "log" }] },
       ],
     },
   ];

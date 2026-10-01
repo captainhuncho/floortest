@@ -7,6 +7,7 @@ import { APP_URL, sendMail } from "@/lib/mail";
 import { fmtDay } from "@/lib/format";
 import QRCode from "qrcode";
 import { env } from "@/lib/env";
+import { purgeAccount } from "@/lib/privacy";
 import { hashRecovery, newRecoveryCodes, newTotpSecret, openSecret, otpauthUri, sealSecret, verifyTotp } from "@/lib/totp";
 import {
   activeCollection,
@@ -659,15 +660,7 @@ export async function deleteAccount(_: SettingsState, form: FormData): Promise<S
   const u = await requireUser();
   const row = await q.get<{ password_hash: string }>("SELECT password_hash FROM users WHERE id = ?", u.id);
   if (!row || !verifyPassword(String(form.get("password") || ""), row.password_hash)) return { error: "That password isn't right." };
-  const store = await storage();
-  const keys = await q.all<{ k: string }>(
-    "SELECT file_key AS k FROM tracks WHERE user_id = ? AND file_key IS NOT NULL UNION SELECT file_key FROM uploads WHERE receiver_id = ?",
-    u.id,
-    u.id,
-  );
-  for (const { k } of keys) await store.delete(k).catch(() => {});
-  if (u.cover_key) await store.delete(u.cover_key).catch(() => {});
   await destroySession();
-  await q.run("DELETE FROM users WHERE id = ?", u.id); // cascades to everything the account owns
+  await purgeAccount(u.id);
   redirect("/?deleted=1");
 }

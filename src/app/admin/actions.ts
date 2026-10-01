@@ -10,6 +10,7 @@ import { sendMail } from "@/lib/mail";
 import { logAdmin, requireAdminAction } from "@/lib/admin";
 import { logEvent, now, q, type Track } from "@/lib/db";
 import { storage } from "@/lib/storage";
+import { eraseSender, purgeAccount } from "@/lib/privacy";
 
 const refresh = () => revalidatePath("/admin", "layout");
 const target = async (id: number) => q.get<{ id: number; email: string; handle: string }>("SELECT id, email, handle FROM users WHERE id = ?", id);
@@ -80,13 +81,16 @@ export async function signOutEverywhere(userId: number) {
 }
 
 /** For a receiver locked out of their authenticator app after confirming who they are. */
-export async function resetTwoFactor(userId: number) {
+export async function resetTwoFactor(userId: number, form: FormData) {
   const a = await requireAdminAction();
   const u = await target(userId);
   if (!u || u.id === a.id) return;
+  // Step-up: type their handle and how you confirmed it's them.
+  const how = String(form.get("how") || "").trim().slice(0, 200);
+  if (String(form.get("handle") || "").trim().replace(/^@/, "").toLowerCase() !== u.handle.toLowerCase() || how.length < 5) return;
   await q.run("UPDATE users SET totp_enabled_at = NULL, totp_secret = NULL, totp_last_step = NULL, recovery_codes = '[]' WHERE id = ?", u.id);
   await q.run("DELETE FROM sessions WHERE user_id = ?", u.id);
-  await logAdmin(a.id, "reset two-factor", `@${u.handle}`);
+  await logAdmin(a.id, "reset two-factor", `@${u.handle}`, how);
   refresh();
 }
 
@@ -225,8 +229,8 @@ export async function inviteByEmail(form: FormData) {
       continue;
     }
     const code = newCode();
-    await q.run("INSERT INTO invites (code, max_uses, note, email, created_at, sent_at) VALUES (?,?,?,?,?,?)", code, 1, note, email, now(), now());
-    await mailInvite(code, email, a.name, note);
+    await q.run("INSERT INTO invites (code, max_uses, note, email, created_at) VALUES (?,?,?,?,?)", code, 1, note, email, now());
+    if (!(await mailInvite(code, email, a.name, note)).startsWith("failed")) await q.run("UPDATE invites SET sent_at = ? WHERE code = ?", now(), code);
     await logAdmin(a.id, "invited by email", email, code);
     sent++;
   }
@@ -238,7 +242,7 @@ export async function resendInvite(code: string) {
   const a = await requireAdminAction();
   const inv = await q.get<{ email: string | null; note: string }>("SELECT email, note FROM invites WHERE code = ? AND revoked_at IS NULL", code);
   if (!inv?.email) return;
-  await mailInvite(code, inv.email, a.name, inv.note);
+  if ((await mailInvite(code, inv.email, a.name, inv.note)).startsWith("failed")) return refresh();
   await q.run("UPDATE invites SET sent_at = ? WHERE code = ?", now(), code);
   await logAdmin(a.id, "resent invite", inv.email, code);
   refresh();
@@ -254,8 +258,9 @@ export async function inviteFromWaitlist(id: number) {
     return refresh();
   }
   const code = newCode();
-  await q.run("INSERT INTO invites (code, max_uses, note, email, created_at, sent_at) VALUES (?,?,?,?,?,?)", code, 1, "From the waitlist", w.email, now(), now());
-  await mailInvite(code, w.email, a.name, "", w.handle);
+  await q.run("INSERT INTO invites (code, max_uses, note, email, created_at) VALUES (?,?,?,?,?)", code, 1, "From the waitlist", w.email, now());
+  if ((await mailInvite(code, w.email, a.name, "", w.handle)).startsWith("failed")) return refresh();
+  await q.run("UPDATE invites SET sent_at = ? WHERE code = ?", now(), code);
   await q.run("UPDATE waitlist SET invited_at = ? WHERE id = ?", now(), id);
   await logAdmin(a.id, "invited from waitlist", w.email, code);
   refresh();
@@ -414,4 +419,25 @@ export async function decideTakedown(id: number, outcome: "removed" | "rejected"
       ].join("\n"),
     }).catch(() => {});
   refresh();
+}
+
+/** Admin side of a privacy request. The typed address has to match before anything is deleted. */
+export async function adminDeleteAccount(userId: number, form: FormData) {
+  const a = await requireAdminAction();
+  const u = await target(userId);
+  if (!u || u.id === a.id || String(form.get("confirm") || "").trim().toLowerCase() !== u.email.toLowerCase()) return;
+  await purgeAccount(u.id);
+  await logAdmin(a.id, "deleted account (privacy request)", `@${u.handle}`, u.email.replace(/^(.{2}).*@/, "$1…@"));
+  refresh();
+  redirect(`/admin/privacy?done=account`);
+}
+
+export async function adminEraseSender(form: FormData) {
+  const a = await requireAdminAction();
+  const email = String(form.get("email") || "").trim().toLowerCase();
+  if (!EMAIL_RE.test(email) || String(form.get("confirm") || "").trim().toLowerCase() !== email) return;
+  const r = await eraseSender(email);
+  await logAdmin(a.id, "erased sender (privacy request)", email.replace(/^(.{2}).*@/, "$1…@"), `${r.senders} sender records, ${r.files} files`);
+  refresh();
+  redirect(`/admin/privacy?done=sender`);
 }
