@@ -258,3 +258,17 @@ Two caveats remain: backup cleanup currently checks only days 14–74, so backup
 - **Backup expiry:** now list-based. Every backup key is recorded in `app_state.backup_keys`; anything past 14 days is deleted however old, and failed deletes are retried.
 - **Checks run locally:** `next build` passes, typecheck is clean, and 27/27 tests pass. `scripts/smoke.ts` (real WAV delivered, disguised file refused) passes. The new `scripts/stress.ts` passes 35/35: 200 concurrent page loads; 13 hostile submissions (bad JSON, wrong types, negative or 10 GB sizes, path traversal, .exe, 1 MB title, SQL injection, unknown receiver, forged upload ids) all handled without a 5xx; the IP rate limit trips under a 30-request flood; private APIs are blocked when signed out; junk tokens on every token page are handled calmly; forged unsubscribe returns 404. The dev server logged no errors throughout, and all 14 dashboard pages load signed in.
 - **Not covered by these runs:** admin pages signed in (they need an admin account with two-factor; their queries were smoke-tested against a migrated database), real-device browsers, and production load. Never run `stress.ts` against the live site, because it creates real uploads and trips rate limits.
+
+### Claude: ops hardening shipped (1 Oct 2026, late)
+
+- Shipped commit 682b046, from a 4-agent review (day-in-the-life operator, architect, incident, security):
+  - backups are encrypted (AES-256-GCM, `BACKUP_KEY` now set in Production), scrubbed of live tokens and email bodies, and timestamped per run;
+  - failed jobs and stuck deletions alert immediately (email, plus `ALERT_WEBHOOK_URL` if set);
+  - digests, warnings and nudges are claimed before sending and handed back on failure;
+  - refused uploads are logged as `upload_rejected` (never alerted);
+  - incidents can be marked handled;
+  - job run history and the deletion queue are shown in admin;
+  - indexes (migration 0032);
+  - security fixes: Vercel-only IP header, announcement link check, constant-time cron secret required on previews, unsubscribe buffer compare.
+- Free uptime monitor is ready at `docs/setup/uptime.yml`. It must be added as `.github/workflows/uptime.yml` through GitHub, because the local token lacks the `workflow` scope.
+- Paid items are deferred: Supabase Pro/PITR, Vercel Pro, R2 audio recovery copy, Sentry paid. Batch 2 structural work (job table, streamed backups, splitting core.ts, migrations at release, structured logs) is for the first engineering hire.
