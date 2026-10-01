@@ -1,169 +1,288 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AUDIT_LABELS, type AuditAction } from "@/lib/audit";
-import { q } from "@/lib/db";
+import { activeCollection, capacity, isClosed, isPaused } from "@/lib/core";
+import { q, type User } from "@/lib/db";
 import { fmtBytes } from "@/lib/format";
 import { APP_URL } from "@/lib/mail";
+import { planOf } from "@/lib/plans";
 import { ConfirmButton } from "../../AdminUi";
-import { resetTwoFactor, setPlanFor, signOutEverywhere, startViewAs, suspendAccount, unsuspendAccount } from "../../actions";
+import {
+  resendEmail,
+  resetTwoFactor,
+  setContactHandled,
+  setPlanFor,
+  signOutEverywhere,
+  startViewAs,
+  suspendAccount,
+  unsuspendAccount,
+} from "../../actions";
 
+const day = (t: number) => new Date(t).toLocaleDateString("en-GB");
+const when = (t: number) => new Date(t).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
+
+/** User 360: everything about one account on one page, with every admin action in one place. */
 export default async function Account({ params }: { params: Promise<{ id: string }> }) {
   const id = Number((await params).id);
   if (!Number.isSafeInteger(id)) notFound();
-  const u = await q.get<{
-    id: number; name: string; handle: string; email: string; plan: string; created_at: number; tz: string;
-    suspended_at: number | null; suspended_reason: string; totp_enabled_at: number | null; email_verified_at: number | null;
-    invite_code: string | null; referred_by: number | null;
-  }>(
-    "SELECT id, name, handle, email, plan, created_at, tz, suspended_at, suspended_reason, totp_enabled_at, email_verified_at, invite_code, referred_by FROM users WHERE id = ?",
-    id,
-  );
+  const u = await q.get<User & { identity_status: string | null; invite_code: string | null; referred_by: number | null; suspended_at: number | null; suspended_reason: string }>("SELECT * FROM users WHERE id = ?", id);
   if (!u) notFound();
-  const history = await q.all<{ id: number; kind: string; reason: string; created_at: number; admin: string | null }>(
-    "SELECT a.id, a.kind, a.reason, a.created_at, x.handle AS admin FROM account_actions a LEFT JOIN users x ON x.id = a.admin_id WHERE a.user_id = ? ORDER BY a.created_at DESC LIMIT 20",
+  const t = Date.now();
+
+  const [cap, collection, collections, all, bytes, sessions] = await Promise.all([
+    capacity(u),
+    activeCollection(u),
+    q.count("SELECT COUNT(*) AS n FROM collections WHERE user_id = ?", id),
+    q.count("SELECT COUNT(*) AS n FROM tracks WHERE user_id = ?", id),
+    q.get<{ n: number | null }>("SELECT SUM(size) AS n FROM tracks WHERE user_id = ? AND deleted_at IS NULL AND file_key IS NOT NULL", id),
+    q.count("SELECT COUNT(*) AS n FROM sessions WHERE user_id = ? AND expires_at > ?", id, t),
+  ]);
+  const senders = await q.all<{ id: number; name: string; email: string; blocked_at: number | null; tracks: number; last: number | null }>(
+    `SELECT s.id, s.name, s.email, s.blocked_at, COUNT(tr.id)::int AS tracks, MAX(tr.created_at) AS last
+     FROM senders s LEFT JOIN tracks tr ON tr.sender_id = s.id WHERE s.user_id = ? GROUP BY s.id ORDER BY s.blocked_at IS NULL, tracks DESC LIMIT 10`,
     id,
   );
-  const appeals = await q.all<{ id: number; message: string; created_at: number; handled_at: number | null }>(
-    "SELECT id, message, created_at, handled_at FROM contact_messages WHERE topic = 'Suspension appeal' AND (user_id = ? OR lower(email) = lower(?)) ORDER BY created_at DESC LIMIT 10",
+  const senderTotal = await q.count("SELECT COUNT(*) AS n FROM senders WHERE user_id = ?", id);
+  const emails = await q.all<{ id: number; subject: string; status: string; created_at: number }>(
+    "SELECT id, subject, status, created_at FROM outbox WHERE user_id = ? OR lower(to_email) = lower(?) ORDER BY created_at DESC LIMIT 12",
     id,
     u.email,
   );
-  const [live, all, bytes, senders, sessions] = await Promise.all([
-    q.count("SELECT COUNT(*) AS n FROM tracks WHERE user_id = ? AND deleted_at IS NULL", id),
-    q.count("SELECT COUNT(*) AS n FROM tracks WHERE user_id = ?", id),
-    q.get<{ n: number | null }>("SELECT SUM(size) AS n FROM tracks WHERE user_id = ? AND deleted_at IS NULL AND file_key IS NOT NULL", id),
-    q.count("SELECT COUNT(*) AS n FROM senders WHERE user_id = ?", id),
-    q.count("SELECT COUNT(*) AS n FROM sessions WHERE user_id = ? AND expires_at > ?", id, Date.now()),
-  ]);
+  const messages = await q.all<{ id: number; topic: string; message: string; created_at: number; handled_at: number | null }>(
+    "SELECT id, topic, message, created_at, handled_at FROM contact_messages WHERE user_id = ? OR lower(email) = lower(?) ORDER BY created_at DESC LIMIT 10",
+    id,
+    u.email,
+  );
+  const history = await q.all<{ action: string; detail: string; created_at: number; admin: string | null }>(
+    `SELECT l.action, l.detail, l.created_at, x.handle AS admin FROM admin_log l LEFT JOIN users x ON x.id = l.admin_id WHERE l.target = ?
+     UNION ALL
+     SELECT 'changed plan (by them)' AS action, a.detail, a.created_at, NULL AS admin FROM account_log a WHERE a.user_id = ? AND a.action = 'plan_changed'
+     ORDER BY created_at DESC LIMIT 25`,
+    `@${u.handle}`,
+    id,
+  );
   const log = await q.all<{ id: number; action: AuditAction; detail: string; created_at: number }>(
     "SELECT id, action, detail, created_at FROM account_log WHERE user_id = ? ORDER BY created_at DESC LIMIT 15",
     id,
   );
-  const facts = [
-    ["Email", `${u.email}${u.email_verified_at ? "" : " (unconfirmed)"}`],
-    ["Link", `${APP_URL.replace(/^https?:\/\//, "")}/${u.handle}`],
-    ["Joined", new Date(u.created_at).toLocaleString("en-GB")],
-    ["Invite", u.invite_code ?? (u.referred_by ? `referral from #${u.referred_by}` : "none")],
-    ["Tracks", `${live} on file · ${all} ever · ${fmtBytes(bytes?.n ?? 0)}`],
-    ["Senders", String(senders)],
-    ["Security", `${u.totp_enabled_at ? "Two-factor on" : "Password only"} · ${sessions} active session${sessions === 1 ? "" : "s"}`],
+
+  const link = !!u.suspended_at ? "Offline (suspended)" : isPaused(u) ? "Paused" : collection && isClosed(collection) ? "Closed" : cap.full ? "Full" : "Open";
+  const chips: [string, boolean][] = [
+    [u.email_verified_at ? "Email confirmed" : "Email unconfirmed", !!u.email_verified_at],
+    [u.totp_enabled_at ? "Two-factor on" : "Password only", !!u.totp_enabled_at],
+    [u.identity_status === "verified" ? "Verified ✓" : u.identity_status === "pending" ? "Verification pending" : "Not verified", u.identity_status === "verified"],
   ];
+  const usage = [
+    ["Plan", planOf(u.plan).name],
+    ["Desk", `${cap.used} / ${cap.limit} tracks${cap.bonus ? ` (+${cap.bonus} bonus)` : ""}`],
+    ["Storage", fmtBytes(bytes?.n ?? 0)],
+    ["Link", link],
+    ["Collections", `${collections}${collection ? ` · active: ${collection.name}` : ""}`],
+    ["Received ever", String(all)],
+    ["Senders", String(senderTotal)],
+    ["Sessions", String(sessions)],
+  ];
+  const fill = Math.min(100, Math.round((cap.used / Math.max(1, cap.limit)) * 100));
 
   return (
     <div className="space-y-8">
       <div>
         <Link href="/admin/accounts" className="text-sm text-mute hover:text-bone">← Users</Link>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight">
-          {u.name} <span className="text-mute">@{u.handle}</span>
-          {u.suspended_at && <span className="chip ml-3 align-middle border-danger/50 text-danger">Suspended</span>}
-        </h1>
-        {u.suspended_at && <p className="mt-2 text-sm text-danger">Suspended {new Date(u.suspended_at).toLocaleString("en-GB")}{u.suspended_reason ? `: ${u.suspended_reason}` : ""}</p>}
+        <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h1 className="text-3xl font-bold tracking-tight">{u.name}</h1>
+          <a href={`${APP_URL}/${u.handle}`} target="_blank" rel="noreferrer" className="text-mute hover:text-bone">@{u.handle} ↗</a>
+        </div>
+        <p className="mt-1 text-sm text-mute">
+          {u.email} · joined {day(u.created_at)} · {u.invite_code ? `invite ${u.invite_code}` : u.referred_by ? <Link href={`/admin/accounts/${u.referred_by}`} className="underline">referred</Link> : "no invite"} · {u.tz}
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {u.suspended_at && <span className="chip border-danger/50 text-danger">Suspended {day(u.suspended_at)}{u.suspended_reason ? `: ${u.suspended_reason}` : ""}</span>}
+          {chips.map(([label, good]) => (
+            <span key={label} className={`chip ${good ? "border-lime/40 text-lime" : "border-line text-mute"}`}>{label}</span>
+          ))}
+        </div>
       </div>
 
-      <dl className="grid gap-x-8 gap-y-3 rounded-md border border-line p-5 sm:grid-cols-2">
-        {facts.map(([k, v]) => (
-          <div key={k}>
-            <dt className="label">{k}</dt>
-            <dd className="mt-0.5 break-words">{v}</dd>
-          </div>
-        ))}
-      </dl>
+      <div className="grid gap-8 lg:grid-cols-[1fr_20rem]">
+        <div className="min-w-0 space-y-8">
+          <section aria-labelledby="usage-h" className="space-y-3">
+            <h2 id="usage-h" className="text-lg font-semibold">Usage</h2>
+            <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {usage.map(([k, v]) => (
+                <div key={k} className="rounded-md border border-line p-3">
+                  <dt className="label">{k}</dt>
+                  <dd className="mt-1 break-words text-sm font-bold">{v}</dd>
+                </div>
+              ))}
+            </dl>
+            <div className="h-1.5 rounded-full bg-ink-3" aria-label={`Desk ${fill}% full`}>
+              <div className={`h-1.5 rounded-full ${fill >= 90 ? "bg-danger" : "bg-lime"}`} style={{ width: `${fill}%` }} />
+            </div>
+          </section>
 
-      <section className="space-y-4">
-        <h2 className="text-lg font-semibold">Actions</h2>
-        <div className="flex flex-wrap items-center gap-2">
-          <form action={startViewAs.bind(null, id)}>
-            <button className="btn-lime btn-sm">View their desk (read-only)</button>
-          </form>
-          <form action={async (fd: FormData) => { "use server"; await setPlanFor(id, String(fd.get("plan"))); }} className="flex gap-2">
-            <select name="plan" defaultValue={u.plan} className="input w-32" aria-label="Plan">
-              <option value="free">Free</option>
-              <option value="pro">Pro</option>
-              <option value="team">Team</option>
-            </select>
-            <button className="btn-ghost btn-sm">Set plan</button>
-          </form>
-          <ConfirmButton action={signOutEverywhere.bind(null, id)} message={`Sign @${u.handle} out of every device?`} className="btn-ghost btn-sm">
-            Sign out everywhere
-          </ConfirmButton>
-          {u.totp_enabled_at && (
-            <details className="w-full rounded-md border border-line p-3">
-              <summary className="cursor-pointer text-sm">Reset two-factor…</summary>
-              <form action={resetTwoFactor.bind(null, id)} className="mt-3 grid gap-2 sm:grid-cols-[1fr_2fr_auto] sm:items-end">
-                <label className="block space-y-1.5">
-                  <span className="label">Type their handle</span>
-                  <input name="handle" required className="input" placeholder={u.handle} autoComplete="off" />
-                </label>
-                <label className="block space-y-1.5">
-                  <span className="label">How you confirmed it&apos;s them</span>
-                  <input name="how" required minLength={5} className="input" placeholder="Replied from account email + ID match" />
-                </label>
-                <button className="btn-ghost btn-sm">Reset and sign out</button>
-              </form>
-            </details>
-          )}
-        </div>
-        {u.suspended_at ? (
-          <ConfirmButton action={unsuspendAccount.bind(null, id)} message={`Restore @${u.handle}? Their link and sign-in come back.`} className="btn-lime btn-sm">
-            Unsuspend
-          </ConfirmButton>
-        ) : (
-          <form
-            action={async (fd: FormData) => { "use server"; await suspendAccount(id, String(fd.get("reason") || "")); }}
-            className="flex flex-wrap items-end gap-2 rounded-md border border-danger/30 p-4"
-          >
-            <label className="block flex-1 space-y-1.5">
-              <span className="label">Suspend: reason (kept in the admin log)</span>
-              <input name="reason" className="input" placeholder="e.g. spam uploads" required />
-            </label>
-            <button className="btn-sm rounded-md border border-danger/50 px-4 text-danger hover:bg-danger/10">Suspend account</button>
-          </form>
-        )}
-        <p className="text-xs text-mute">Suspending signs them out, blocks sign-in, takes their public link offline and emails them how to appeal. Nothing is deleted.</p>
-        {(history.length > 0 || appeals.length > 0) && (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <p className="label">Suspension history</p>
-              <ul className="mt-2 space-y-1 text-sm">
-                {history.map((h) => (
-                  <li key={h.id}>
-                    {h.kind === "suspended" ? "Suspended" : "Restored"} {new Date(h.created_at).toLocaleDateString("en-GB")}
+          <section aria-labelledby="senders-h" className="space-y-3">
+            <h2 id="senders-h" className="text-lg font-semibold">Senders <span className="text-mute">({senderTotal})</span></h2>
+            {!senders.length ? (
+              <p className="text-mute">Nobody has sent them anything yet.</p>
+            ) : (
+              <ul className="divide-y divide-line rounded-md border border-line text-sm">
+                {senders.map((s) => (
+                  <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5">
+                    <span className="min-w-0">
+                      {s.name} <span className="text-mute">{s.email}</span>
+                      {s.blocked_at && <span className="chip ml-2 border-danger/50 text-danger">Blocked by them</span>}
+                    </span>
+                    <span className="text-mute tnum">{s.tracks} track{s.tracks === 1 ? "" : "s"}{s.last ? ` · last ${day(s.last)}` : ""}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {senderTotal > senders.length && (
+              <Link href={`/admin/moderation?q=${encodeURIComponent(u.handle)}`} className="text-sm text-mute underline">Search their tracks in Moderation</Link>
+            )}
+          </section>
+
+          <section aria-labelledby="emails-h" className="space-y-3">
+            <h2 id="emails-h" className="text-lg font-semibold">Emails we sent them</h2>
+            {!emails.length ? (
+              <p className="text-mute">None.</p>
+            ) : (
+              <ul className="divide-y divide-line rounded-md border border-line text-sm">
+                {emails.map((m) => (
+                  <li key={m.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5">
+                    <span className="min-w-0">
+                      {m.subject}
+                      {m.status.startsWith("failed") && <span className="chip ml-2 border-danger/50 text-danger">{m.status}</span>}
+                    </span>
+                    <span className="flex items-center gap-3 text-mute">
+                      {day(m.created_at)}
+                      {m.status.startsWith("failed") && (
+                        <ConfirmButton action={resendEmail.bind(null, m.id)} message={`Send "${m.subject}" to ${u.email} again?`} confirmLabel="Resend" className="text-sm text-bone underline">
+                          Resend
+                        </ConfirmButton>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section aria-labelledby="support-h" className="space-y-3">
+            <h2 id="support-h" className="text-lg font-semibold">Messages to us</h2>
+            {!messages.length ? (
+              <p className="text-mute">None, including appeals and privacy requests.</p>
+            ) : (
+              <ul className="divide-y divide-line rounded-md border border-line text-sm">
+                {messages.map((m) => (
+                  <li key={m.id} className="space-y-1 px-4 py-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-bold">
+                        {m.topic}
+                        {!m.handled_at && <span className="chip ml-2 border-lime/50 text-lime">Open</span>}
+                      </span>
+                      <span className="flex items-center gap-3 text-mute">
+                        {day(m.created_at)}
+                        <form action={setContactHandled.bind(null, m.id, !m.handled_at)}>
+                          <button className="text-sm text-bone underline">{m.handled_at ? "Reopen" : "Mark handled"}</button>
+                        </form>
+                      </span>
+                    </div>
+                    <p className="line-clamp-3 whitespace-pre-wrap text-mute">{m.message}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section aria-labelledby="hist-h" className="space-y-3">
+            <h2 id="hist-h" className="text-lg font-semibold">History</h2>
+            <p className="text-sm text-mute">Everything admins did to this account, plus plan changes they made themselves.</p>
+            <ul className="divide-y divide-line rounded-md border border-line text-sm">
+              {history.map((h, i) => (
+                <li key={i} className="flex flex-wrap justify-between gap-2 px-4 py-2.5">
+                  <span>
+                    {h.action[0].toUpperCase() + h.action.slice(1)}
+                    {h.detail && <span className="text-mute"> · {h.detail}</span>}
                     {h.admin && <span className="text-mute"> · @{h.admin}</span>}
-                    {h.reason && <span className="text-mute"> · {h.reason}</span>}
-                  </li>
-                ))}
-                {!history.length && <li className="text-mute">None</li>}
-              </ul>
-            </div>
-            <div>
-              <p className="label">Appeals</p>
-              <ul className="mt-2 space-y-2 text-sm">
-                {appeals.map((m) => (
-                  <li key={m.id}>
-                    <Link href="/admin/inbox" className="hover:underline">{new Date(m.created_at).toLocaleDateString("en-GB")}</Link>
-                    {!m.handled_at && <span className="chip ml-2 border-lime/50 text-lime">Open</span>}
-                    <p className="line-clamp-2 text-mute">{m.message}</p>
-                  </li>
-                ))}
-                {!appeals.length && <li className="text-mute">None</li>}
-              </ul>
-            </div>
-          </div>
-        )}
-      </section>
+                  </span>
+                  <span className="text-mute">{when(h.created_at)}</span>
+                </li>
+              ))}
+              {!history.length && <li className="px-4 py-3 text-mute">Nothing yet.</li>}
+            </ul>
+          </section>
 
-      <section>
-        <h2 className="text-lg font-semibold">Recent account activity</h2>
-        <ul className="mt-3 divide-y divide-line rounded-md border border-line text-sm">
-          {log.map((r) => (
-            <li key={r.id} className="flex justify-between gap-4 px-4 py-2.5">
-              <span>{AUDIT_LABELS[r.action] ?? r.action} <span className="text-mute">{r.detail}</span></span>
-              <span className="shrink-0 text-mute">{new Date(r.created_at).toLocaleString("en-GB")}</span>
-            </li>
-          ))}
-          {!log.length && <li className="px-4 py-3 text-mute">Nothing recorded yet.</li>}
-        </ul>
-      </section>
+          <section aria-labelledby="act-h" className="space-y-3">
+            <h2 id="act-h" className="text-lg font-semibold">Their recent activity</h2>
+            <ul className="divide-y divide-line rounded-md border border-line text-sm">
+              {log.map((r) => (
+                <li key={r.id} className="flex justify-between gap-4 px-4 py-2.5">
+                  <span>{AUDIT_LABELS[r.action] ?? r.action} <span className="text-mute">{r.detail}</span></span>
+                  <span className="shrink-0 text-mute">{when(r.created_at)}</span>
+                </li>
+              ))}
+              {!log.length && <li className="px-4 py-3 text-mute">Nothing recorded yet.</li>}
+            </ul>
+          </section>
+        </div>
+
+        <aside aria-labelledby="actions-h" className="space-y-4 lg:sticky lg:top-6 lg:self-start">
+          <h2 id="actions-h" className="text-lg font-semibold">Actions</h2>
+          <div className="space-y-4 rounded-md border border-line p-4">
+            <form action={startViewAs.bind(null, id)}>
+              <button className="btn-lime btn-sm w-full">View their desk (read-only)</button>
+            </form>
+            <form action={async (fd: FormData) => { "use server"; await setPlanFor(id, String(fd.get("plan"))); }} className="flex gap-2">
+              <select name="plan" defaultValue={u.plan} className="input min-w-0 flex-1" aria-label="Plan">
+                <option value="free">Free</option>
+                <option value="pro">Pro</option>
+                <option value="team">Team</option>
+              </select>
+              <button className="btn-ghost btn-sm">Set plan</button>
+            </form>
+            <ConfirmButton action={signOutEverywhere.bind(null, id)} message={`Sign @${u.handle} out of every device?`} className="btn-ghost btn-sm w-full">
+              Sign out everywhere ({sessions})
+            </ConfirmButton>
+            {u.totp_enabled_at && (
+              <details className="rounded-md border border-line p-3">
+                <summary className="cursor-pointer text-sm">Reset two-factor…</summary>
+                <form action={resetTwoFactor.bind(null, id)} className="mt-3 space-y-2">
+                  <label className="block space-y-1.5">
+                    <span className="label">Type their handle</span>
+                    <input name="handle" required className="input" placeholder={u.handle} autoComplete="off" />
+                  </label>
+                  <label className="block space-y-1.5">
+                    <span className="label">How you confirmed it&apos;s them</span>
+                    <input name="how" required minLength={5} className="input" placeholder="Replied from account email + ID match" />
+                  </label>
+                  <button className="btn-ghost btn-sm">Reset and sign out</button>
+                </form>
+              </details>
+            )}
+          </div>
+
+          <div className="space-y-3 rounded-md border border-danger/30 p-4">
+            {u.suspended_at ? (
+              <ConfirmButton action={unsuspendAccount.bind(null, id)} message={`Restore @${u.handle}? Their link and sign-in come back, and they're emailed.`} className="btn-lime btn-sm w-full">
+                Unsuspend
+              </ConfirmButton>
+            ) : (
+              <form action={async (fd: FormData) => { "use server"; await suspendAccount(id, String(fd.get("reason") || "")); }} className="space-y-2">
+                <label className="block space-y-1.5">
+                  <span className="label">Suspend: reason (they&apos;re emailed it)</span>
+                  <input name="reason" className="input" placeholder="e.g. spam uploads" required />
+                </label>
+                <button className="btn-sm w-full rounded-md border border-danger/50 px-4 text-danger hover:bg-danger/10">Suspend account</button>
+              </form>
+            )}
+            <p className="text-xs text-mute">Suspending signs them out, blocks sign-in, takes their link offline and emails them how to appeal. Nothing is deleted.</p>
+            <Link href={`/admin/privacy?email=${encodeURIComponent(u.email)}`} className="block text-sm text-danger underline">
+              Delete account or download their data…
+            </Link>
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }
