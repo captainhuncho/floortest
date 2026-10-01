@@ -37,7 +37,7 @@ export default async function Invites({ searchParams }: { searchParams: Promise<
         <form action={inviteByEmail} className="grid gap-3 rounded-md border border-line p-5">
           <label className="block space-y-1.5">
             <span className="label">Emails (one per line, or separated by commas)</span>
-            <textarea name="emails" required rows={3} className="input resize-y font-mono" placeholder={"dj@example.com\nlabel@example.com"} />
+            <textarea name="emails" required rows={3} className="input resize-y" placeholder={"dj@example.com\nlabel@example.com"} />
           </label>
           <label className="block space-y-1.5">
             <span className="label">Personal note (optional, included in the email)</span>
@@ -65,7 +65,7 @@ export default async function Invites({ searchParams }: { searchParams: Promise<
                         <span className="chip border-line text-mute">Pending</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 font-mono text-mute">{r.code}</td>
+                    <td className="px-4 py-3 text-mute">{r.code}</td>
                     <td className="px-4 py-3 text-mute">{new Date(r.sent_at ?? r.created_at).toLocaleDateString("en-GB")}</td>
                     <td className="space-x-3 whitespace-nowrap px-4 py-3 text-right">
                       {!r.revoked_at && !r.used && (
@@ -95,7 +95,7 @@ export default async function Invites({ searchParams }: { searchParams: Promise<
         <form action={createInvite} className="grid gap-3 rounded-md border border-line p-5 sm:grid-cols-[1fr_120px_1fr_auto] sm:items-end">
           <label className="block space-y-1.5">
             <span className="label">Code (blank = random)</span>
-            <input name="code" className="input font-mono uppercase" placeholder="FLOOR-XXXXX" />
+            <input name="code" className="input uppercase" placeholder="FLOOR-XXXXX" />
           </label>
           <label className="block space-y-1.5">
             <span className="label">Max uses</span>
@@ -115,7 +115,7 @@ export default async function Invites({ searchParams }: { searchParams: Promise<
             <tbody className="divide-y divide-line">
               {shared.map((r) => (
                 <tr key={r.code} className={r.revoked_at ? "text-mute" : ""}>
-                  <td className="px-4 py-3 font-mono">{r.code}{r.revoked_at && <span className="chip ml-2 border-line">Revoked</span>}</td>
+                  <td className="px-4 py-3">{r.code}{r.revoked_at && <span className="chip ml-2 border-line">Revoked</span>}</td>
                   <td className="px-4 py-3 tnum">{r.used} / {r.max_uses}</td>
                   <td className="px-4 py-3">{r.note}</td>
                   <td className="px-4 py-3 text-mute">{new Date(r.created_at).toLocaleDateString("en-GB")}</td>
@@ -130,7 +130,7 @@ export default async function Invites({ searchParams }: { searchParams: Promise<
               ))}
               {legacy.map((r) => (
                 <tr key={r.code} className="text-mute">
-                  <td className="px-4 py-3 font-mono">{r.code} <span className="chip ml-2 border-line">From Vercel settings</span></td>
+                  <td className="px-4 py-3">{r.code} <span className="chip ml-2 border-line">From Vercel settings</span></td>
                   <td className="px-4 py-3 tnum">{r.used} / {env.inviteLimit}</td>
                   <td className="px-4 py-3">Remove from BETA_INVITE_CODES to revoke</td>
                   <td className="px-4 py-3" />

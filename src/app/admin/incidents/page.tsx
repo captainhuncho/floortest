@@ -38,11 +38,11 @@ export default async function Incidents({ searchParams }: { searchParams: Promis
                 <span>
                   <span className="chip mr-2 border-danger/40 text-danger">{KINDS[r.kind] ?? r.kind}</span>
                   {r.message}
-                  {r.path && <span className="ml-2 font-mono text-xs text-mute">{r.path}</span>}
+                  {r.path && <span className="ml-2 text-xs text-mute">{r.path}</span>}
                 </span>
                 <span className="text-sm text-mute">{new Date(r.created_at).toLocaleString("en-GB")}</span>
               </summary>
-              {r.detail && <pre className="overflow-x-auto border-t border-line px-4 py-3 font-mono text-xs text-mute">{r.detail}</pre>}
+              {r.detail && <pre className="overflow-x-auto border-t border-line px-4 py-3 text-xs text-mute">{r.detail}</pre>}
             </details>
           </li>
         ))}

@@ -40,7 +40,7 @@ export default async function Emails({ searchParams }: { searchParams: Promise<{
                 </span>
               </summary>
               <div className="border-t border-line px-4 py-3">
-                <pre className="whitespace-pre-wrap font-sans text-sm text-mute">{m.body}</pre>
+                <pre className="whitespace-pre-wrap text-sm text-mute">{m.body}</pre>
                 <ConfirmButton action={resendEmail.bind(null, m.id)} message={`Send "${m.subject}" to ${m.to_email} again?`} className="btn-ghost btn-sm mt-3">
                   Resend
                 </ConfirmButton>

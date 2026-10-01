@@ -37,7 +37,7 @@ export default async function Waitlist({ searchParams }: { searchParams: Promise
                 </td>
                 <td className="px-4 py-3">
                   {w.role}
-                  {w.handle && <span className="block font-mono text-xs text-lime">/{w.handle}</span>}
+                  {w.handle && <span className="block text-xs text-lime">/{w.handle}</span>}
                 </td>
                 <td className="max-w-48 truncate px-4 py-3">
                   {w.link && (

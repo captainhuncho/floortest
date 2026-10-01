@@ -33,7 +33,7 @@ export default async function Verification() {
                 <span className="text-sm text-mute">{u.identity_submitted_at ? new Date(u.identity_submitted_at).toLocaleString("en-GB") : ""}</span>
               </div>
               <p className="mt-2 text-sm">
-                Look for <span className="rounded-sm bg-ink px-2 py-0.5 font-mono text-lime">{u.identity_code}</span> in one of:
+                Look for <span className="rounded-sm bg-ink px-2 py-0.5 text-lime">{u.identity_code}</span> in one of:
               </p>
               <ul className="mt-2 space-y-1 text-sm">
                 {(JSON.parse(u.identity_links || "[]") as string[]).map((l) => (
@@ -79,7 +79,7 @@ export default async function Verification() {
         <ul className="mt-4 flex flex-wrap gap-2">
           {names.map((n) => (
             <li key={n.handle} className="chip border-line">
-              <span className="font-mono">{n.handle}</span>
+              <span className="">{n.handle}</span>
               {n.note && <span className="ml-1 text-mute">· {n.note}</span>}
               <ConfirmButton action={removeProtectedName.bind(null, n.handle)} message={`Let people claim "${n.handle}" again?`} className="ml-2 text-mute hover:text-danger">
                 ×
