@@ -8,6 +8,7 @@ import { fmtDay } from "@/lib/format";
 import QRCode from "qrcode";
 import { env } from "@/lib/env";
 import { purgeAccount } from "@/lib/privacy";
+import { cancelEmailChange, changeHandle, requestEmailChange } from "@/lib/accounts";
 import { hashRecovery, newRecoveryCodes, newTotpSecret, openSecret, otpauthUri, sealSecret, verifyTotp } from "@/lib/totp";
 import {
   activeCollection,
@@ -489,15 +490,9 @@ export async function updateSettings(_: SettingsState, form: FormData): Promise<
   const name = String(form.get("name") || "").trim().slice(0, 80);
   const handle = String(form.get("handle") || "").trim().toLowerCase();
   if (!name) return { error: "Name is required." };
-  if (!/^[a-z0-9][a-z0-9-_]{1,29}$/.test(handle)) return { error: "Link names use 2–30 letters, numbers, - or _." };
-  if (RESERVED_HANDLES.has(handle)) return { error: "That link name is reserved." };
-  if (handle !== u.handle && (await isProtectedHandle(handle))) return { error: "That name is protected for a well-known artist. If it's you, contact us." };
-  try {
-    await q.run("UPDATE users SET name = ?, handle = ? WHERE id = ?", name, handle, u.id);
-  } catch (e) {
-    if (isUniqueViolation(e)) return { error: "That link is taken." };
-    throw e;
-  }
+  const problem = await changeHandle(u.id, handle);
+  if (problem) return { error: problem };
+  await q.run("UPDATE users SET name = ? WHERE id = ?", name, u.id);
   if (name !== u.name || handle !== u.handle) await audit(u.id, "settings_updated", handle !== u.handle ? `link is now /${handle}` : name);
   done();
   return { ok: true };
@@ -663,4 +658,22 @@ export async function deleteAccount(_: SettingsState, form: FormData): Promise<S
   await destroySession();
   await purgeAccount(u.id);
   redirect("/?deleted=1");
+}
+
+/** Starts an email change from Settings. Needs the password; the new address must confirm before it takes effect. */
+export async function changeMyEmail(_: SettingsState, form: FormData): Promise<SettingsState> {
+  const u = await requireUser();
+  const row = await q.get<{ password_hash: string }>("SELECT password_hash FROM users WHERE id = ?", u.id);
+  if (!row || !verifyPassword(String(form.get("password") || ""), row.password_hash)) return { error: "That password isn't right." };
+  const problem = await requestEmailChange(u.id, String(form.get("email") || ""), "user");
+  if (problem) return { error: problem };
+  await audit(u.id, "settings_updated", "started an email change");
+  done();
+  return { ok: true };
+}
+
+export async function cancelMyEmailChange() {
+  const u = await requireUser();
+  await cancelEmailChange(u.id);
+  done();
 }

@@ -546,4 +546,22 @@ create table feature_switches (
 alter table feature_switches enable row level security;
 `,
   },
+{
+    // Email changes wait for a click from the new address; old handles forward (and stay reserved) for a while.
+    id: "0028_email_change_handle_history",
+    sql: `
+alter table users add column pending_email text;
+alter table users add column pending_email_token text unique;
+alter table users add column pending_email_at bigint;
+create table handle_history (
+  old_handle text primary key,
+  user_id bigint not null references users(id) on delete cascade,
+  forward int not null default 1,
+  created_at bigint not null,
+  expires_at bigint not null
+);
+create index handle_history_user on handle_history(user_id);
+alter table handle_history enable row level security;
+`,
+  },
 ];

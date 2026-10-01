@@ -1,0 +1,125 @@
+import "server-only";
+import crypto from "node:crypto";
+import { now, q } from "./db";
+import { isProtectedHandle } from "./identity";
+import { APP_URL, sendMail } from "./mail";
+import { RESERVED_HANDLES } from "./plans";
+
+const DAY = 86_400_000;
+const isUniqueViolation = (e: unknown) => (e as { code?: string })?.code === "23505";
+/** How long an old link keeps forwarding, and stays reserved for its owner. */
+export const HANDLE_HOLD_DAYS = 90;
+/** How long the confirmation link for a new email works. */
+export const EMAIL_CHANGE_HOURS = 48;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const mask = (e: string) => e.replace(/^(.{2}).*@/, "$1…@");
+
+/** An old handle someone else gave up recently: reserved, so nobody can grab a link that's still in bios. */
+export async function handleHeld(handle: string, forUserId = 0) {
+  return !!(await q.get("SELECT 1 FROM handle_history WHERE old_handle = ? AND expires_at > ? AND user_id <> ?", handle, now(), forUserId));
+}
+
+/** Where an old link points now, if it still forwards. */
+export async function forwardedHandle(old: string) {
+  return (
+    await q.get<{ handle: string }>(
+      "SELECT u.handle FROM handle_history h JOIN users u ON u.id = h.user_id WHERE h.old_handle = ? AND h.forward = 1 AND h.expires_at > ? AND u.suspended_at IS NULL",
+      old.toLowerCase(),
+      now(),
+    )
+  )?.handle;
+}
+
+/**
+ * Moves an account to a new handle. The old one forwards for HANDLE_HOLD_DAYS and is reserved for them,
+ * unless `forward` is off (taken back for impersonation): then it's released at once.
+ * `checks` off skips the protected-name rule, for admins giving a protected name to the real artist.
+ */
+export async function changeHandle(userId: number, next: string, { forward = true, checks = true } = {}): Promise<string | null> {
+  const handle = next.trim().toLowerCase().replace(/^@/, "");
+  if (!/^[a-z0-9][a-z0-9-_]{1,29}$/.test(handle)) return "Link names use 2–30 letters, numbers, - or _.";
+  if (RESERVED_HANDLES.has(handle)) return "That link name is reserved.";
+  const u = await q.get<{ handle: string }>("SELECT handle FROM users WHERE id = ?", userId);
+  if (!u) return "Account not found.";
+  if (u.handle === handle) return null;
+  if (checks && (await isProtectedHandle(handle))) return "That name is protected for a well-known artist. If it's you, contact us.";
+  if (await handleHeld(handle, userId)) return "That link was someone's until recently and is still reserved.";
+  try {
+    await q.tx(async (db) => {
+      await db.run("DELETE FROM handle_history WHERE old_handle = ?", handle); // taking back one of your own old links
+      await db.run("UPDATE users SET handle = ? WHERE id = ?", handle, userId);
+      if (forward)
+        await db.run(
+          "INSERT INTO handle_history (old_handle, user_id, forward, created_at, expires_at) VALUES (?,?,?,?,?) ON CONFLICT (old_handle) DO UPDATE SET user_id = excluded.user_id, forward = 1, created_at = excluded.created_at, expires_at = excluded.expires_at",
+          u.handle, userId, 1, now(), now() + HANDLE_HOLD_DAYS * DAY,
+        );
+      else await db.run("DELETE FROM handle_history WHERE old_handle = ?", u.handle);
+    });
+  } catch (e) {
+    if (isUniqueViolation(e)) return "That link is taken.";
+    throw e;
+  }
+  return null;
+}
+
+/**
+ * Starts an email change: nothing changes until the new address clicks the link we send it.
+ * The current address is told, so the real owner notices a change they didn't ask for.
+ */
+export async function requestEmailChange(userId: number, next: string, by: "user" | "admin"): Promise<string | null> {
+  const email = next.trim().toLowerCase();
+  if (!EMAIL_RE.test(email) || email.length > 200) return "Enter a valid email address.";
+  const u = await q.get<{ email: string; name: string }>("SELECT email, name FROM users WHERE id = ?", userId);
+  if (!u) return "Account not found.";
+  if (u.email === email) return "That's already the email on this account.";
+  if (await q.get("SELECT 1 FROM users WHERE lower(email) = ?", email)) return "Another account already uses that email.";
+  const token = crypto.randomBytes(24).toString("base64url");
+  await q.run("UPDATE users SET pending_email = ?, pending_email_token = ?, pending_email_at = ? WHERE id = ?", email, token, now(), userId);
+  const first = u.name.split(/\s+/)[0];
+  await sendMail({
+    userId,
+    audience: "support",
+    to: email,
+    subject: "Confirm your new email for FloorTest",
+    body: `Hi ${first},\n\nConfirm this address to make it the email for your FloorTest account (sign-in, password resets and alerts):\n${APP_URL}/confirm-email/${token}\n\nThe link works for ${EMAIL_CHANGE_HOURS} hours. If you didn't ask for this, ignore it and nothing changes.\n\n— FloorTest`,
+  });
+  await sendMail({
+    userId,
+    audience: "support",
+    to: u.email,
+    subject: "Your FloorTest email is being changed",
+    body: `Hi ${first},\n\n${by === "admin" ? "At your request, our support team started" : "Someone signed in to your account started"} changing its email to ${mask(email)}. It only changes once that address confirms.\n\nIf this wasn't you, reply to this email or contact us straight away: ${APP_URL}/contact\n\n— FloorTest`,
+  });
+  return null;
+}
+
+export async function pendingEmailFor(token: string) {
+  if (!token || token.length > 100) return undefined;
+  return q.get<{ id: number; email: string; pending_email: string; pending_email_at: number }>(
+    "SELECT id, email, pending_email, pending_email_at FROM users WHERE pending_email_token = ? AND pending_email_at > ?",
+    token,
+    now() - EMAIL_CHANGE_HOURS * 3_600_000,
+  );
+}
+
+/** The click from the new address. Swaps the email, marks it confirmed, and signs out other devices. */
+export async function confirmEmailChange(token: string) {
+  const p = await pendingEmailFor(token);
+  if (!p) return null;
+  try {
+    const r = await q.run(
+      "UPDATE users SET email = pending_email, email_verified_at = ?, email_verify_token = NULL, pending_email = NULL, pending_email_token = NULL, pending_email_at = NULL WHERE id = ? AND pending_email_token = ?",
+      now(), p.id, token,
+    );
+    if (!r.changes) return null;
+  } catch (e) {
+    if (isUniqueViolation(e)) return null; // someone else took that address in the meantime
+    throw e;
+  }
+  await q.run("DELETE FROM sessions WHERE user_id = ?", p.id);
+  return { id: p.id, from: p.email, to: p.pending_email };
+}
+
+export async function cancelEmailChange(userId: number) {
+  await q.run("UPDATE users SET pending_email = NULL, pending_email_token = NULL, pending_email_at = NULL WHERE id = ?", userId);
+}

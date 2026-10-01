@@ -13,6 +13,7 @@ import { SecurityForm } from "./SecurityForm";
 import { TwoFactor } from "./TwoFactor";
 import { IdentityForm } from "./IdentityForm";
 import { SettingsForm } from "./SettingsForm";
+import { EmailForm } from "./EmailForm";
 
 export const metadata = { title: "Settings — FloorTest" };
 
@@ -29,6 +30,7 @@ export default async function Settings() {
     (await currentSessionHash()) ?? "",
   );
   const cap = await capacity(user);
+  const pendingEmail = (await q.get<{ e: string | null }>("SELECT pending_email AS e FROM users WHERE id = ? AND pending_email_at > ?", user.id, Date.now() - 48 * 3_600_000))?.e ?? null;
   const blocked = (await q.all<Sender>("SELECT * FROM senders WHERE user_id = ? AND blocked_at IS NOT NULL ORDER BY blocked_at DESC", user.id));
   return (
     <div className="max-w-3xl space-y-10 px-4 py-6 sm:px-8">
@@ -39,6 +41,13 @@ export default async function Settings() {
           Your link
         </h2>
         <SettingsForm name={user.name} handle={user.handle} base={APP_URL} />
+      </section>
+
+      <section className="card p-6" aria-labelledby="email-h">
+        <h2 id="email-h" className="text-lg font-semibold">
+          Email
+        </h2>
+        <EmailForm email={user.email} pending={pendingEmail} />
       </section>
 
       <section className="card p-6" aria-labelledby="page-h">

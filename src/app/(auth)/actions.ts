@@ -1,5 +1,6 @@
 "use server";
 
+import { handleHeld } from "@/lib/accounts";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { audit } from "@/lib/audit";
@@ -84,7 +85,7 @@ export async function signup(_: FormState, form: FormData): Promise<FormState> {
   if (!(await allow("signup_ip", await requestIp(), 10, HOUR))) return { error: "Too many sign-ups from this connection. Try again later." };
 
   if (await q.get("SELECT 1 FROM users WHERE email = ?", email)) return { error: "An account with that email exists. Log in instead." };
-  if (await q.get("SELECT 1 FROM users WHERE handle = ?", handle)) return { error: "That link is taken." };
+  if ((await q.get("SELECT 1 FROM users WHERE handle = ?", handle)) || (await handleHeld(handle))) return { error: "That link is taken." };
 
   let userId: number;
   try {

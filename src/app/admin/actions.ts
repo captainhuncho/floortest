@@ -12,6 +12,7 @@ import { env } from "@/lib/env";
 import { sendMail } from "@/lib/mail";
 import { logAdmin, requireAdminAction } from "@/lib/admin";
 import { flash } from "@/lib/flash";
+import { cancelEmailChange, changeHandle, requestEmailChange } from "@/lib/accounts";
 import { logEvent, now, q, type Track } from "@/lib/db";
 import { storage } from "@/lib/storage";
 import { eraseSender, purgeAccount } from "@/lib/privacy";
@@ -523,4 +524,58 @@ export async function publishAnnouncement(form: FormData) {
   refresh();
   await done(people.length ? `Published; emailing ${people.length} people` : "Published");
   redirect("/admin/announcements?published=1");
+}
+
+/** Moves an account to a new handle. For impersonation, the old name is released (no forwarding) and can be protected. */
+export async function adminChangeHandle(userId: number, form: FormData) {
+  const a = await requireAdminAction();
+  const u = await target(userId);
+  if (!u) return fail("Account not found");
+  const takeback = form.get("takeback") === "on";
+  const reason = String(form.get("reason") || "").trim().slice(0, 200);
+  if (reason.length < 5) return fail("Add a reason (at least a few words) for the record");
+  const problem = await changeHandle(u.id, String(form.get("handle") || ""), { forward: !takeback, checks: false });
+  if (problem) return fail(problem);
+  const fresh = await target(userId);
+  if (takeback && form.get("protect") === "on") {
+    const { normalizeName } = await import("@/lib/identity");
+    await q.run("INSERT INTO protected_names (handle, note, created_at) VALUES (?,?,?) ON CONFLICT (handle) DO NOTHING", normalizeName(u.handle), `taken back from #${u.id}`, now());
+  }
+  await logAdmin(a.id, takeback ? "took back handle" : "changed handle", `@${u.handle}`, `now @${fresh?.handle} · ${reason}`);
+  if (fresh && fresh.handle !== u.handle)
+    await sendMail({
+      userId: u.id,
+      audience: "support",
+      to: u.email,
+      subject: "Your FloorTest link changed",
+      body: takeback
+        ? `Hi,\n\nWe've changed your FloorTest link to ${env.appUrl}/${fresh.handle} because the name you had belongs to another artist. Reason: ${reason}\n\nIf you think this is a mistake, contact us: ${env.appUrl}/contact\n\n— FloorTest`
+        : `Hi,\n\nAs requested, your FloorTest link is now ${env.appUrl}/${fresh.handle}. Your old link forwards there for 90 days, so update your bios before then.\n\n— FloorTest`,
+    }).catch(() => {});
+  await done(`@${u.handle} is now @${fresh?.handle}${takeback ? "; old name released" : "; old link forwards for 90 days"}`);
+  refresh();
+}
+
+/** Starts an email change for someone who can't do it themselves. The new address still has to confirm. */
+export async function adminChangeEmail(userId: number, form: FormData) {
+  const a = await requireAdminAction();
+  const u = await target(userId);
+  if (!u) return fail("Account not found");
+  const how = String(form.get("how") || "").trim().slice(0, 200);
+  if (how.length < 5) return fail("Say how you confirmed it's them, for the record");
+  const problem = await requestEmailChange(u.id, String(form.get("email") || ""), "admin");
+  if (problem) return fail(problem);
+  await logAdmin(a.id, "started email change", `@${u.handle}`, how);
+  await done("Confirmation sent to the new address; the old one was told");
+  refresh();
+}
+
+export async function adminCancelEmailChange(userId: number) {
+  const a = await requireAdminAction();
+  const u = await target(userId);
+  if (!u) return fail("Account not found");
+  await cancelEmailChange(u.id);
+  await logAdmin(a.id, "cancelled email change", `@${u.handle}`);
+  await done("Email change cancelled");
+  refresh();
 }

@@ -18,7 +18,7 @@ export function SettingsForm({ name, handle, base }: { name: string; handle: str
           <span className="flex items-center pl-3 text-sm text-mute">{base.replace(/^https?:\/\//, "")}/</span>
           <input name="handle" defaultValue={handle} className="w-full bg-transparent py-2.5 pr-3 text-sm outline-none" required />
         </div>
-        <span className="block text-xs text-mute">Changing this breaks links you&apos;ve already shared.</span>
+        <span className="block text-xs text-mute">If you change it, your old link forwards here for 90 days and nobody else can take it. Update your bios before then.</span>
       </label>
       {state?.error && <p className="text-sm text-danger">{state.error}</p>}
       {state?.ok && <p className="text-sm text-lime">Saved.</p>}

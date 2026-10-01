@@ -8,6 +8,9 @@ import { APP_URL } from "@/lib/mail";
 import { planOf } from "@/lib/plans";
 import { ConfirmButton } from "../../AdminUi";
 import {
+  adminCancelEmailChange,
+  adminChangeEmail,
+  adminChangeHandle,
   resendEmail,
   resetTwoFactor,
   setContactHandled,
@@ -25,9 +28,11 @@ const when = (t: number) => new Date(t).toLocaleString("en-GB", { dateStyle: "me
 export default async function Account({ params }: { params: Promise<{ id: string }> }) {
   const id = Number((await params).id);
   if (!Number.isSafeInteger(id)) notFound();
-  const u = await q.get<User & { identity_status: string | null; invite_code: string | null; referred_by: number | null; suspended_at: number | null; suspended_reason: string }>("SELECT * FROM users WHERE id = ?", id);
+  const u = await q.get<User & { identity_status: string | null; invite_code: string | null; referred_by: number | null; suspended_at: number | null; suspended_reason: string; pending_email: string | null; pending_email_at: number | null }>("SELECT * FROM users WHERE id = ?", id);
   if (!u) notFound();
   const t = Date.now();
+  const pendingEmail = u.pending_email && (u.pending_email_at ?? 0) > t - 48 * 3_600_000 ? u.pending_email : null;
+  const oldHandles = await q.all<{ old_handle: string; forward: number; expires_at: number }>("SELECT old_handle, forward, expires_at FROM handle_history WHERE user_id = ? AND expires_at > ? ORDER BY created_at DESC", id, t);
 
   const [cap, collection, collections, all, bytes, sessions] = await Promise.all([
     capacity(u),
@@ -97,6 +102,10 @@ export default async function Account({ params }: { params: Promise<{ id: string
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           {u.suspended_at && <span className="chip border-danger/50 text-danger">Suspended {day(u.suspended_at)}{u.suspended_reason ? `: ${u.suspended_reason}` : ""}</span>}
+          {pendingEmail && <span className="chip border-lime/40 text-lime">Email change to {pendingEmail} waiting</span>}
+          {oldHandles.map((h) => (
+            <span key={h.old_handle} className="chip border-line text-mute">/{h.old_handle} forwards until {day(h.expires_at)}</span>
+          ))}
           {chips.map(([label, good]) => (
             <span key={label} className={`chip ${good ? "border-lime/40 text-lime" : "border-line text-mute"}`}>{label}</span>
           ))}
@@ -260,6 +269,55 @@ export default async function Account({ params }: { params: Promise<{ id: string
                 </form>
               </details>
             )}
+          </div>
+
+          <div className="space-y-3 rounded-md border border-line p-4">
+            <details>
+              <summary className="cursor-pointer text-sm">Change handle…</summary>
+              <form action={adminChangeHandle.bind(null, id)} className="mt-3 space-y-2">
+                <label className="block space-y-1.5">
+                  <span className="label">New handle</span>
+                  <input name="handle" required className="input" placeholder={u.handle} autoComplete="off" />
+                </label>
+                <label className="block space-y-1.5">
+                  <span className="label">Reason</span>
+                  <input name="reason" required minLength={5} className="input" placeholder="Typo at sign-up, asked by email" />
+                </label>
+                <label className="flex items-start gap-2 text-sm">
+                  <input type="checkbox" name="takeback" className="mt-1 accent-lime" />
+                  <span>Taking it back for impersonation: don&apos;t forward the old link, and free the name now</span>
+                </label>
+                <label className="flex items-start gap-2 text-sm">
+                  <input type="checkbox" name="protect" className="mt-1 accent-lime" />
+                  <span>Also protect the old name (only with the box above)</span>
+                </label>
+                <button className="btn-ghost btn-sm">Change handle</button>
+                <p className="text-xs text-mute">They&apos;re emailed. Normally the old link forwards for 90 days and stays reserved for them.</p>
+              </form>
+            </details>
+            <details>
+              <summary className="cursor-pointer text-sm">Change email…</summary>
+              {pendingEmail && (
+                <div className="mt-3 flex items-center justify-between gap-2 text-sm">
+                  <span className="text-mute">Waiting for {pendingEmail}</span>
+                  <ConfirmButton action={adminCancelEmailChange.bind(null, id)} message="Cancel the pending email change?" className="text-sm underline">
+                    Cancel
+                  </ConfirmButton>
+                </div>
+              )}
+              <form action={adminChangeEmail.bind(null, id)} className="mt-3 space-y-2">
+                <label className="block space-y-1.5">
+                  <span className="label">New email</span>
+                  <input name="email" type="email" required className="input" autoComplete="off" />
+                </label>
+                <label className="block space-y-1.5">
+                  <span className="label">How you confirmed it&apos;s them</span>
+                  <input name="how" required minLength={5} className="input" placeholder="Wrote in from the account email" />
+                </label>
+                <button className="btn-ghost btn-sm">Send confirmation</button>
+                <p className="text-xs text-mute">Only changes once the new address clicks the link. The current address is told.</p>
+              </form>
+            </details>
           </div>
 
           <div className="space-y-3 rounded-md border border-danger/30 p-4">

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
+import { forwardedHandle } from "@/lib/accounts";
 import { activeCollection, capacity, isClosed, isPaused, pausedMessage, userByHandle } from "@/lib/core";
 import { fmtDay } from "@/lib/format";
 import { genresFor, RETAIN_UNREVIEWED_DAYS, shareDownloadEnabled, SHARING_LIVE } from "@/lib/plans";
@@ -26,7 +27,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ReceiverPage({ params }: Props) {
   const { handle } = await params;
   const receiver = await userByHandle(handle);
-  if (!receiver) notFound();
+  if (!receiver) {
+    const moved = await forwardedHandle(handle);
+    if (moved) permanentRedirect(`/${moved}`);
+    notFound();
+  }
   const collection = await activeCollection(receiver);
   const closed = isClosed(collection);
   const { full } = await capacity(receiver);
