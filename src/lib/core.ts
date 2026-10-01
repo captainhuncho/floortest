@@ -26,6 +26,7 @@ import {
   RETAIN_PASSED_DAYS,
   RETAIN_UNREVIEWED_DAYS,
   shareDownloadEnabled,
+  SHARING_LIVE,
 } from "./plans";
 import { recentCount, record } from "./ratelimit";
 import { storage } from "./storage";
@@ -263,8 +264,8 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
         analysis.bpm,
         analysis.peaks ? JSON.stringify(analysis.peaks) : null,
         now(),
-        collection?.allow_sharing ? 1 : 0,
-        collection?.allow_sharing && shareDownloadEnabled(fresh.plan) ? 1 : 0,
+        SHARING_LIVE && collection?.allow_sharing ? 1 : 0,
+        SHARING_LIVE && collection?.allow_sharing && shareDownloadEnabled(fresh.plan) ? 1 : 0,
       ))!;
       // Possible duplicate: the same file (byte size and length) already on this desk, or the same
       // sender re-sending the same title. Flagged for the receiver, never blocked.

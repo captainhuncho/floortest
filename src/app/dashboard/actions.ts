@@ -26,7 +26,7 @@ import {
 } from "@/lib/core";
 import { isDecision, likeContains, logEvent, now, q, type Decision } from "@/lib/db";
 import { sendDigest } from "@/lib/notify";
-import { cleanGenre, genresFor, PLANS, planOf, RESERVED_HANDLES } from "@/lib/plans";
+import { cleanGenre, genresFor, PLANS, planOf, RESERVED_HANDLES, SHARING_LIVE } from "@/lib/plans";
 import { storage } from "@/lib/storage";
 import { audit, trackLabel } from "@/lib/audit";
 import { requestStems } from "@/lib/stems";
@@ -97,7 +97,7 @@ export async function updateCollection(id: number, form: FormData) {
     hi,
     text("brief_note", 200),
     genres.length ? JSON.stringify(genres) : "",
-    form.get("allow_sharing") === "on" ? 1 : 0,
+    SHARING_LIVE ? (form.get("allow_sharing") === "on" ? 1 : 0) : 0,
     id,
   );
   await audit(u.id, "collection_updated", name || c.name);

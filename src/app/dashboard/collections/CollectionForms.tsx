@@ -5,6 +5,7 @@ import { useEffect, useState, useTransition } from "react";
 import { createCollection, deleteCollection, setActiveCollection, updateCollection } from "../actions";
 import { ExportButton } from "../ExportButton";
 import { GenresField } from "./GenresField";
+import { SHARING_LIVE } from "@/lib/plans";
 
 type C = {
   id: number;
@@ -133,6 +134,7 @@ export function CollectionCard({ c, receiving, closed, canDelete, startEditing =
               <span className="label">Vibe note</span>
               <input name="brief_note" defaultValue={c.briefNote} maxLength={200} className="input" placeholder="Percussive, warm and built for late-night rooms" />
             </label>
+            {SHARING_LIVE && (
             <label className="flex items-start gap-3 sm:col-span-2">
               <input type="checkbox" name="allow_sharing" defaultChecked={c.allowSharing} className="mt-1 h-4 w-4 accent-lime" />
               <span>
@@ -142,6 +144,7 @@ export function CollectionCard({ c, receiving, closed, canDelete, startEditing =
                 </span>
               </span>
             </label>
+            )}
           </fieldset>
         </form>
       )}

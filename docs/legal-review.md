@@ -74,6 +74,8 @@ Original assumed setup (now superseded: the operator is a Ghana company): operat
 
 ## 4. Sharing with colleagues (added 1 Oct 2026)
 
+**Status: held back until after the beta** (`SHARING_LIVE = false` in `src/lib/plans.ts`). The Terms and Privacy wording below is already in place so it's reviewed before launch.
+
 How it works in the product, for reference:
 
 | Part | Behaviour |
