@@ -36,7 +36,8 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["@electric-sql/pglite", "postgres"],
   poweredByHeader: false,
   // The Turnstile site key is public by design; this lets it be stored as TURNSTILE_SITE_KEY in Vercel.
-  env: { NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || process.env.TURNSTILE_SITE_KEY || "" },
+  // Empty while the bot check is paused (see TURNSTILE_READY in src/lib/turnstile.ts); the widget then renders nothing.
+  env: { NEXT_PUBLIC_TURNSTILE_SITE_KEY: "" },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

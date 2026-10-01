@@ -5,7 +5,12 @@ import { recordIncident } from "./incidents";
  * Cloudflare Turnstile: a free, mostly invisible bot check on public forms.
  * Off until TURNSTILE_SECRET_KEY and TURNSTILE_SITE_KEY (or NEXT_PUBLIC_TURNSTILE_SITE_KEY) are set; rate limits still apply either way.
  */
-export const turnstileOn = () => !!process.env.TURNSTILE_SECRET_KEY && !!(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || process.env.TURNSTILE_SITE_KEY);
+/**
+ * Paused 1 Oct 2026: the Cloudflare widget isn't yet allowed on floortest.imullar.com (error 110200), which
+ * blocked every form. Flip to true once the hostname is added to the widget in Cloudflare.
+ */
+export const TURNSTILE_READY = false;
+export const turnstileOn = () => TURNSTILE_READY && !!process.env.TURNSTILE_SECRET_KEY && !!(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || process.env.TURNSTILE_SITE_KEY);
 
 export async function passedTurnstile(token: unknown, ip?: string) {
   if (!turnstileOn()) return true;
