@@ -69,10 +69,10 @@ body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
    "System" follows the device setting. */
 .theme-root { background: var(--color-ink); color: var(--color-bone); min-height: 100dvh; }
 .theme-day {
-  --color-ink: #f6f6f1;
+  --color-ink: #ffffff;
   --color-ink-2: #ffffff;
-  --color-ink-3: #efefe8;
-  --color-ink-4: #e3e5d8;
+  --color-ink-3: #f4f4f1;
+  --color-ink-4: #e9eae4;
   --color-line: #dcddd4;
   --color-line-2: #c6c8bd;
   --color-bone: #10110f;
@@ -93,10 +93,10 @@ body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
 .theme-day :focus-visible { outline-color: #4f5e00; }
 @media (prefers-color-scheme: light) {
 .theme-system {
-  --color-ink: #f6f6f1;
+  --color-ink: #ffffff;
   --color-ink-2: #ffffff;
-  --color-ink-3: #efefe8;
-  --color-ink-4: #e3e5d8;
+  --color-ink-3: #f4f4f1;
+  --color-ink-4: #e9eae4;
   --color-line: #dcddd4;
   --color-line-2: #c6c8bd;
   --color-bone: #10110f;
@@ -125,7 +125,7 @@ body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
   color-scheme: dark;
 }
 /* The page behind the app (overscroll, short pages) matches the chosen mode. */
-html:has(.theme-day), html:has(.theme-day) body { background: #f6f6f1; }
+html:has(.theme-day), html:has(.theme-day) body { background: #ffffff; }
 @media (prefers-color-scheme: light) {
-  html:has(.theme-system), html:has(.theme-system) body { background: #f6f6f1; }
+  html:has(.theme-system), html:has(.theme-system) body { background: #ffffff; }
 }
