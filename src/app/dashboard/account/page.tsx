@@ -37,9 +37,13 @@ export default async function Account() {
   const card = "flex flex-col gap-2 rounded-[14px] border border-line bg-ink-2 p-3";
   const label = "text-[10px] font-bold tracking-[0.5px] text-mute";
   const rule = <div className="h-px w-full bg-line" />;
-  const Row = ({ href, title, value, external }: { href: string; title: string; value?: React.ReactNode; external?: boolean }) => (
+  // `sub`: the one-line explanation under each item, shown on desktop (the old profile menu had these).
+  const Row = ({ href, title, sub, value, external }: { href: string; title: string; sub?: string; value?: React.ReactNode; external?: boolean }) => (
     <Link href={href} target={external ? "_blank" : undefined} className="flex items-center justify-between gap-3 py-0.5">
-      <span className="text-[13px] font-medium text-bone">{title}</span>
+      <span className="min-w-0">
+        <span className="block text-[13px] font-medium text-bone">{title}</span>
+        {sub && <span className="mt-0.5 hidden truncate text-[10px] text-faint md:block">{sub}</span>}
+      </span>
       {value ?? <span aria-hidden className="text-sm text-mute">{external ? "↗" : "›"}</span>}
     </Link>
   );
@@ -149,22 +153,23 @@ export default async function Account() {
       <Section
         title="YOUR DESK"
         rows={[
-          <Row key="s" href="/dashboard/send" title="Send music" />,
-          <Row key="c" href="/dashboard/contacts" title="Contacts" />,
-          <Row key="a" href="/dashboard/activity" title="Activity" />,
-          <Row key="e" href="/dashboard/emails" title="Emails to senders" />,
-          <Row key="r" href="/dashboard/referrals" title="Referrals" />,
+          <Row key="s" href="/dashboard/send" title="Send music" sub="Send music to another FloorTest user" />,
+          <Row key="c" href="/dashboard/contacts" title="Contacts" sub="Everyone who sent you music" />,
+          <Row key="a" href="/dashboard/activity" title="Activity" sub="Everything you did, newest first" />,
+          <Row key="e" href="/dashboard/emails" title="Emails to senders" sub="Everything FloorTest told them" />,
+          <Row key="r" href="/dashboard/referrals" title="Referrals" sub="Invite DJs · earn track slots" />,
         ]}
       />
       <Section
         title="ACCOUNT"
         rows={[
-          <Row key="p" href="/dashboard/settings#page-h" title="Edit profile" />,
-          <Row key="e" href="/dashboard/settings#security-h" title="Email & password" />,
+          <Row key="p" href="/dashboard/settings#page-h" title="Edit profile" sub="Name, link name, public page and cover photo" />,
+          <Row key="e" href="/dashboard/settings#security-h" title="Email & password" sub="Change your sign-in details" />,
           <Row
             key="t"
             href="/dashboard/settings#security-h"
             title="Two-factor authentication"
+            sub="A code from your phone when you sign in"
             value={<span className="rounded bg-ink-4 px-1.5 py-0.5 text-[8px] font-bold uppercase text-white">{user.totp_enabled_at ? "On" : "Off"}</span>}
           />,
         ]}
@@ -175,6 +180,7 @@ export default async function Account() {
           <div key="q" className="flex items-center justify-between gap-3 py-0.5">
             <a href={`/api/qr/${user.handle}?format=svg`} target="_blank" className="text-[13px] font-medium text-bone hover:underline">
               QR code <span className="text-[11px] font-normal text-mute">(view)</span>
+              <span className="mt-0.5 hidden text-[10px] font-normal text-faint md:block">For flyers, screens and stories</span>
             </a>
             <span className="flex gap-3 text-[11px]">
               <a href={`/api/qr/${user.handle}?format=png&download=1`} className="text-mute hover:text-bone">
@@ -189,22 +195,22 @@ export default async function Account() {
       />
       <Section
         title="PREFERENCES"
-        rows={[<Row key="n" href="/dashboard/notifications" title="Notifications" value={<span className="text-[11px] text-mute">Email</span>} />]}
+        rows={[<Row key="n" href="/dashboard/notifications" title="Notifications" sub="How and when we email you" value={<span className="text-[11px] text-mute">Email</span>} />]}
       />
       <Section
         title="PRIVACY"
         rows={[
-          <Row key="p" href="/dashboard/settings#security-h" title="Privacy + security" />,
-          <Row key="b" href="/dashboard/settings#blocked-h" title="Blocked users" />,
-          <Row key="d" href="/contact?topic=data" title="Data export" />,
+          <Row key="p" href="/dashboard/settings#security-h" title="Privacy + security" sub="Sessions, sign-in alerts and verification" />,
+          <Row key="b" href="/dashboard/settings#blocked-h" title="Blocked users" sub="Senders who can no longer reach you" />,
+          <Row key="d" href="/contact?topic=data" title="Data export" sub="Ask for a copy of your data" />,
         ]}
       />
       <Section
         title="ABOUT FLOORTEST"
         rows={[
-          <Row key="c" href="/contact" title="Contact us" external />,
-          <Row key="f" href="/contact?topic=feedback" title="Send feedback" external />,
-          <Row key="t" href="/trust" title="Trust & security" external />,
+          <Row key="c" href="/contact" title="Contact us" sub="Questions, problems, anything" external />,
+          <Row key="f" href="/contact?topic=feedback" title="Send feedback" sub="Tell us what to fix or build" external />,
+          <Row key="t" href="/trust" title="Trust & security" sub="How we keep music private" external />,
           <Row key="te" href="/terms" title="Terms & conditions" external />,
           <Row key="l" href="/licenses" title="Legal" external />,
           <Row key="pr" href="/privacy" title="Privacy policy" external />,
