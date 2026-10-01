@@ -12,6 +12,7 @@ import { env } from "@/lib/env";
 import { sendMail } from "@/lib/mail";
 import { logAdmin, requireAdminAction } from "@/lib/admin";
 import { flash } from "@/lib/flash";
+import { drainNow, retireTrackFiles } from "@/lib/deletion";
 import { cancelEmailChange, changeHandle, requestEmailChange } from "@/lib/accounts";
 import { logEvent, now, q, type Track } from "@/lib/db";
 import { storage } from "@/lib/storage";
@@ -147,8 +148,11 @@ export async function removeTrackAsAdmin(trackId: number, reason: string) {
     trackId,
   );
   if (!t) return fail("That track is already gone");
-  await q.run("UPDATE tracks SET deleted_at = ?, file_key = NULL WHERE id = ?", now(), t.id);
-  if (t.file_key) await (await storage()).delete(t.file_key).catch(() => {});
+  await q.tx(async (db) => {
+    await retireTrackFiles(db, [t.id], "removed by admin");
+    await db.run("UPDATE tracks SET deleted_at = ?, file_key = NULL WHERE id = ?", now(), t.id);
+  });
+  await drainNow();
   await logEvent({ user_id: t.user_id, sender_id: t.sender_id, track_id: t.id, type: "deleted", detail: "removed by FloorTest" });
   await logAdmin(a.id, "removed track", `${t.artist} – ${t.title}`, `from @${t.handle}${reason ? ` · ${reason}` : ""}`);
   await done(`Removed "${t.title}" and its file`);

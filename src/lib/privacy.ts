@@ -1,19 +1,17 @@
 import "server-only";
-import { q } from "@/lib/db";
-import { storage } from "@/lib/storage";
+import { now, q } from "@/lib/db";
+import { accountKeys, drainNow, queueDeletion, trackKeys } from "@/lib/deletion";
 
-/** Deletes an account, its files and everything it owns (the database cascades the rest). */
+/**
+ * Deletes an account and everything it owns. Every file (audio, stems, unfinished uploads, cover) is queued
+ * for deletion in the same transaction that removes the rows, so none is lost if storage is slow or down.
+ */
 export async function purgeAccount(userId: number) {
-  const store = await storage();
-  const keys = await q.all<{ k: string }>(
-    "SELECT file_key AS k FROM tracks WHERE user_id = ? AND file_key IS NOT NULL UNION SELECT file_key FROM uploads WHERE receiver_id = ?",
-    userId,
-    userId,
-  );
-  for (const { k } of keys) await store.delete(k).catch(() => {});
-  const cover = await q.get<{ k: string | null }>("SELECT cover_key AS k FROM users WHERE id = ?", userId);
-  if (cover?.k) await store.delete(cover.k).catch(() => {});
-  await q.run("DELETE FROM users WHERE id = ?", userId);
+  await q.tx(async (db) => {
+    await queueDeletion(db, await accountKeys(db, userId), `account #${userId} deleted`, now());
+    await db.run("DELETE FROM users WHERE id = ?", userId); // cascades to everything the account owns
+  });
+  await drainNow();
 }
 
 /** Everything held about one email address as a sender, an account, or a person who wrote in. */
@@ -34,17 +32,17 @@ export async function dataFor(email: string) {
   return { email: e, account, sent, messages, emails, waitlist };
 }
 
-/** Erases someone as a sender: their sender records and the tracks they sent (files included), plus their messages and waitlist entry. */
+/** Erases someone as a sender: their sender records and the tracks they sent (files and stems), plus their messages and waitlist entry. */
 export async function eraseSender(email: string) {
   const e = email.trim().toLowerCase();
-  const store = await storage();
-  const keys = await q.all<{ k: string }>(
-    "SELECT t.file_key AS k FROM tracks t JOIN senders s ON s.id = t.sender_id WHERE lower(s.email) = ? AND t.file_key IS NOT NULL",
-    e,
-  );
-  for (const { k } of keys) await store.delete(k).catch(() => {});
-  const r = await q.run("DELETE FROM senders WHERE lower(email) = ?", e); // cascades to their tracks
-  await q.run("DELETE FROM contact_messages WHERE lower(email) = ?", e);
-  await q.run("DELETE FROM waitlist WHERE lower(email) = ?", e);
-  return { senders: r.changes, files: keys.length };
+  const r = await q.tx(async (db) => {
+    const ids = (await db.all<{ id: number }>("SELECT t.id FROM tracks t JOIN senders s ON s.id = t.sender_id WHERE lower(s.email) = ?", e)).map((x) => x.id);
+    const files = await queueDeletion(db, await trackKeys(db, ids), "sender erased", now());
+    const gone = await db.run("DELETE FROM senders WHERE lower(email) = ?", e); // cascades to their tracks and stems
+    await db.run("DELETE FROM contact_messages WHERE lower(email) = ?", e);
+    await db.run("DELETE FROM waitlist WHERE lower(email) = ?", e);
+    return { senders: gone.changes, files };
+  });
+  await drainNow();
+  return r;
 }

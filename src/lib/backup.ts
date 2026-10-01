@@ -26,7 +26,8 @@ export async function runBackup(at = now()) {
   const body = gzipSync(Buffer.from(JSON.stringify({ created_at: new Date(at).toISOString(), tables: data })));
   const store = await storage();
   await store.put(keyFor(at), new Uint8Array(body), "application/gzip");
-  await store.delete(keyFor(at - BACKUP_KEEP_DAYS * DAY)).catch(() => {});
+  // Age out every backup older than the cutoff, not just the one from exactly 14 days ago, so missed nights don't leave strays.
+  for (let d = BACKUP_KEEP_DAYS; d <= BACKUP_KEEP_DAYS + 60; d++) await store.delete(keyFor(at - d * DAY)).catch(() => {});
   const rows = Object.values(data).reduce((n, r) => n + r.length, 0);
   await q.run(
     "INSERT INTO app_state (key, value, updated_at) VALUES ('last_backup', ?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",

@@ -580,4 +580,19 @@ alter table share_requests add column finalized_at bigint;
 update share_requests r set finalized_at = r.decided_at from tracks t where t.id = r.track_id and r.status = 'allowed' and t.share_ok = 1;
 `,
   },
+{
+    // Files waiting to be deleted from storage. Recorded before the rows that point to them go, so none is lost.
+    id: "0031_storage_deletions",
+    sql: `
+create table storage_deletions (
+  file_key text primary key,
+  reason text not null default '',
+  attempts int not null default 0,
+  last_error text,
+  created_at bigint not null,
+  last_attempt_at bigint
+);
+alter table storage_deletions enable row level security;
+`,
+  },
 ];

@@ -189,3 +189,58 @@ These are separate from the code findings above. Treat them as launch and operat
 - **Unsubscribe tokens:** now bound to the address the email went to (a short email hash in the signed token). An old mailbox's links stop working after an email change.
 - **Rotating `APP_SECRET` is an operational event:** it invalidates every unsubscribe link already sent (people can still use Notifications), every upload token in flight, and admin "view as" sessions. Do it deliberately, and expect a few dead links.
 - **Build and tests:** the Vercel preview build of the checklist work passed. Locally, `npm test` passes, including the 3 new consent tests.
+
+## Final consolidated audit — master handoff for Claude (1 Oct 2026)
+
+Use this section as the single current checklist. It consolidates the earlier reviews, verifies Claude's completed work, and adds the remaining issues found in the final repository-wide pass. Do not treat the older sections as separate batches of work.
+
+### Verified complete
+
+- Consent finalisation no longer waits inside a Vercel function. Cancellation and finalisation claim one state atomically, the track update is transactional, and the winner alone sends the email.
+- Consent race/idempotency coverage exists and passes: cancel-before-deadline, repeated finalisation and concurrent cancel/finalise.
+- Admin search resets, mobile admin navigation identifies the current page, and keyboard skip links are present.
+- Turnstile requires a complete public/secret key pair, the server-side site-key alias is exposed safely through `next.config.ts`, and Cloudflare verification outages create incidents.
+- Unsubscribe tokens are bound to the destination email.
+- TypeScript passes. The complete test suite passes when invoked as `node --import tsx --test tests/*.test.ts`: 24/24 tests on 1 Oct 2026. The ordinary `npm test` command cannot run in the Codex sandbox because `tsx` is denied permission to create its IPC socket; that is an environment restriction, not a failing test. The production build likewise cannot write `.next/trace` in this sandbox, so retain the successful Vercel Preview build as the production-build evidence.
+
+### Must fix before expanding the beta
+
+1. **Make backup precede deletion.** `src/app/api/cron/purge/route.ts` still runs `purgeExpired()` before `runBackup()`. Create and verify the backup first. If it fails, stop destructive retention work, record the incident and return a failure. Add a non-production restore drill that proves the resulting backup can recreate a usable database.
+
+2. **Prevent orphaned private files during privacy deletion.** `purgeAccount()` and `eraseSender()` in `src/lib/privacy.ts` delete primary track/upload objects but do not collect the `stems.file_key` objects before database cascades remove their rows. They also swallow storage-delete failures and then delete the database record, permanently losing the key needed for retry. Build one deletion service used by account deletion, sender erasure, track deletion and retention. It must enumerate primary audio, stems, artwork and pending uploads; record every attempted key and outcome; retry failures from a durable queue; and delete database ownership only after the file disposition is known. Add tests for partial storage failure, stems, artwork, pending uploads and repeated/idempotent deletion.
+
+3. **Stop publishing private receiver links.** `src/app/sitemap.ts` still enumerates every verified handle. Keep the sitemap to marketing/legal pages unless a receiver explicitly opts into discovery. Add `noindex` metadata to receiver pages by default; robots.txt is not a privacy boundary.
+
+4. **Harden backup retention and isolation.** Current cleanup deletes only the exact `today - 14 days` key, so missed cron days leave old backups indefinitely. Apply an R2 lifecycle rule or add prefix listing and delete everything older than the cutoff. Put database backups in a separate private bucket/credential scope with no browser CORS or application download path. Add a size/row guard now; move away from whole-database in-memory JSON plus synchronous gzip before growth. Document excluded tables, encryption, restore access, RPO/RTO and how backup copies age out after a privacy deletion.
+
+5. **Add recoverability for audio objects.** Database backups do not protect WAV/MP3/stem/cover objects. Enable an appropriate R2 recovery mechanism (versioning/replication or a second private recovery bucket), protect it with separate least-privilege credentials, and prove recovery by reconnecting copied audio to a restored non-production database.
+
+6. **Finish production email and support setup.** Verify the sending domain and SPF/DKIM/DMARC, set `MAIL_FROM`, `MAIL_REPLY_TO` and `SUPPORT_EMAIL`, and test receipt, receiver alert, reply, security/reset and unsubscribe flows in Gmail, Outlook and Apple Mail. Monitor bounces, complaints and suppressions and do not keep retrying hard-bounced recipients.
+
+7. **Prove serverless capacity and job safety.** Confirm the Supabase pooled connection string is used by Vercel, then load-test concurrent upload initiation/completion, playback/dashboard traffic and cron work while watching connection counts, query latency, memory and duration. Every scheduled job must tolerate duplication, interruption and delay.
+
+8. **Complete access control and operational accountability.** Split founder/owner, admin and support roles before adding operators. Require recent two-factor step-up for erasure, impersonation, handle/email takeover, two-factor reset and production switches. Keep immutable audit records for actor, target, reason, time and outcome. Document emergency admin lockout and secret rotation; rotating `APP_SECRET` invalidates upload tokens, unsubscribe links and admin view-as sessions.
+
+9. **Add production monitoring and runbooks.** Alert on upload start-to-completion failures, storage errors/capacity, database latency/connections, cron/backup failures, email delivery problems and abnormal submission volume. Add external checks for the landing page, safe health endpoint and upload initiation. Assign an owner/escalation path and write concise runbooks for Vercel, Supabase, R2, Resend, leaked links/tokens and abusive senders.
+
+10. **Complete real-device, accessibility and trust testing.** Test large WAV/MP3 files, slow/interrupted mobile uploads, expired URLs, duplicates, malformed files, seeking, downloads and storage limits on current iOS Safari, Android Chrome and desktop Chrome/Safari/Firefox. Complete keyboard, screen-reader, focus, contrast, zoom and reduced-motion checks across public submission, receipt, receiver dashboard and admin. Keep virus scanning explicitly documented as a controlled-beta limitation until isolation/scanning is implemented.
+
+11. **Make sender signals exact and measurable.** Define and test authoritative semantics for delivered, listened, downloaded, replied, kept/not-for-me and played-out so refreshes, seeking, range requests or failed downloads cannot create false receipts. Measure the private-music funnel without logging filenames, message bodies, tokens or signed URLs. Review weekly: upload success, time to first listen, response/download rate, active receivers, storage pressure and support incidents.
+
+12. **Finish legal review before a broad launch.** Have counsel review Terms, Privacy, upload licence, takedown process, international transfers/Ghana wording, retention promises and colleague-sharing consent. Keep stems, colleague sharing and other unfinished features behind switches until their security, recovery and consent tests pass.
+
+### Release gate
+
+Do not broaden access until items 1–3 are fixed and verified in Preview. Then complete 4–8 before calling the platform production-ready. For every release: run typecheck, all automated tests and a production build; deploy Preview; smoke-test anonymous upload, account upload, receipt playback, receiver listen/download/reply, retention, email, admin and mobile; then promote the exact verified commit. Record the commit, deployment URL, migration result and rollback point in this handoff.
+
+### Claude's response to the consolidated audit (1 Oct 2026)
+
+Release-gate items 1–3 are fixed:
+
+1. **Backup precedes deletion.** The nightly job now runs the backup first. If the backup fails, it records an incident, deletes nothing and returns 500. Retention (deleting people's tracks) now runs only from that nightly job; the opportunistic in-request cleanup only clears sessions, rate-limit records and abandoned uploads. `scripts/restore-drill.ts` loads a backup into a throwaway in-memory database and checks row counts per table. Run on 1 Oct, every table restored cleanly.
+2. **Durable file deletion.** A new `storage_deletions` queue (migration 0031, `src/lib/deletion-core.ts` and `deletion.ts`) is used by account deletion, sender erasure, receiver track deletion, admin removal, retention and abandoned uploads. Every object (audio, stems, pending uploads, cover) is queued in the same transaction that deletes the rows pointing to it. It is then deleted straight away, and failures stay queued with attempt count and error. Anything stuck after 5 tries raises an incident. `tests/deletion.test.ts` covers stems, covers and uploads, partial storage failure with retry, and idempotent queueing. Not yet routed through the queue: cover replacement and failed-upload discard (single immediate deletes).
+3. **Receiver links are no longer published.** The sitemap lists only the marketing and legal pages, and receiver pages are `noindex, nofollow` (link previews still work).
+
+Also from item 4: backups now age out everything older than 14 days (it looks back a further 60 days), not just the exact 14-day key.
+
+Still open, mostly operational: 4 (a separate backup bucket and credentials, streaming backups as data grows), 5 (R2 recovery for audio), 6 (inbox testing across mail apps, bounce handling), 7 (load test), 8 (roles and step-up), 9 (uptime checks and runbooks), 10 (device and accessibility pass), 11 (signal semantics and funnel metrics) and 12 (lawyer). Tests: 27/27.

@@ -1,4 +1,5 @@
 import "server-only";
+import { drainNow, queueDeletion, retireTrackFiles } from "./deletion";
 import crypto from "node:crypto";
 import {
   isDecision,
@@ -427,22 +428,14 @@ export async function reply(user: User, s: Sender, t: Track | undefined, body: s
 
 /* ───────────────────────── Removal & retention ───────────────────────── */
 
-async function removeFile(key: string | null) {
-  if (key) await (await storage()).delete(key).catch((e) => console.error("[storage] delete failed", key, e));
-}
-
-/** A track's stems go when the track goes. */
-async function removeStems(trackId: number) {
-  const rows = await q.all<{ file_key: string }>("DELETE FROM stems WHERE track_id = ? RETURNING file_key", trackId);
-  for (const r of rows) await removeFile(r.file_key);
-}
-
 /** Removes the audio and frees the slot. History stays attached to the sender. */
 export async function deleteTrack(user: User, t: Track) {
-  await q.run("UPDATE tracks SET deleted_at = ?, file_key = NULL WHERE id = ?", now(), t.id);
+  await q.tx(async (db) => {
+    await retireTrackFiles(db, [t.id], "deleted by receiver");
+    await db.run("UPDATE tracks SET deleted_at = ?, file_key = NULL WHERE id = ?", now(), t.id);
+  });
   await logEvent({ user_id: user.id, sender_id: t.sender_id, track_id: t.id, type: "deleted", detail: "" });
-  await removeFile(t.file_key);
-  await removeStems(t.id);
+  await drainNow();
   await alertIfFull(user.id, await capacity(user)); // re-arms the "link paused" email once there's space
 }
 
@@ -462,11 +455,18 @@ export async function purgeExpired({ force = false } = {}) {
   await q.run("DELETE FROM password_resets WHERE expires_at < ?", t - DAY);
 
   const abandoned = await q.all<{ id: string; file_key: string }>("SELECT id, file_key FROM uploads WHERE created_at < ?", t - UPLOAD_TTL);
-  for (const u of abandoned) {
-    await removeFile(u.file_key);
-    await q.run("DELETE FROM uploads WHERE id = ?", u.id);
-  }
+  for (const u of abandoned)
+    await q.tx(async (db) => {
+      await queueDeletion(db, [u.file_key], "upload abandoned", t);
+      await db.run("DELETE FROM uploads WHERE id = ?", u.id);
+    });
 
+  // Retention deletes people's tracks, so it only runs from the nightly job, right after a successful backup.
+  // The opportunistic runs above only clear sessions, rate-limit records and abandoned uploads.
+  if (!force) {
+    await drainNow();
+    return { expired: 0, abandoned: abandoned.length };
+  }
   const expired = await q.all<Track>(
     `SELECT * FROM tracks WHERE deleted_at IS NULL AND (
        (decision IS NULL AND created_at < ?) OR (decision = 'passed' AND decided_at < ?)) LIMIT 500`,
@@ -474,11 +474,13 @@ export async function purgeExpired({ force = false } = {}) {
     t - RETAIN_PASSED_DAYS * DAY,
   );
   for (const tr of expired) {
-    await q.run("UPDATE tracks SET deleted_at = ?, file_key = NULL WHERE id = ?", t, tr.id);
+    await q.tx(async (db) => {
+      await retireTrackFiles(db, [tr.id], "retention");
+      await db.run("UPDATE tracks SET deleted_at = ?, file_key = NULL WHERE id = ?", t, tr.id);
+    });
     await logEvent({ user_id: tr.user_id, sender_id: tr.sender_id, track_id: tr.id, type: "expired", detail: "" });
-    await removeFile(tr.file_key);
-    await removeStems(tr.id);
   }
+  await drainNow();
   return { expired: expired.length, abandoned: abandoned.length };
 }
 

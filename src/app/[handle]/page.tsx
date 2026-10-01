@@ -19,6 +19,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: `${title} — FloorTest`,
     description,
     alternates: { canonical: `/${u.handle}` },
+    // Shared by the receiver, not for search engines: link previews still work, search listings don't.
+    robots: { index: false, follow: false },
     openGraph: { title, description, type: "website", url: `/${u.handle}`, images },
     twitter: { card: images ? "summary_large_image" : "summary", title, description, images: images?.map((i) => i.url) },
   };
