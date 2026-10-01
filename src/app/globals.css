@@ -70,18 +70,18 @@ body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
 .theme-root { background: var(--color-ink); color: var(--color-bone); min-height: 100dvh; }
 .theme-day {
   --color-ink: #ffffff;
-  --color-ink-2: #ffffff;
-  --color-ink-3: #ffffff;
-  --color-ink-4: #f1f2ee;
-  --color-line: #dcddd4;
-  --color-line-2: #c6c8bd;
-  --color-bone: #10110f;
-  --color-mute: #55584f;
-  --color-dim: #62655c;
-  --color-faint: #73766c;
-  --color-lime: #4f5e00;
-  --color-olive: #3f4a00;
-  --color-danger: #c2321f;
+  --color-ink-2: #f5f5f5;
+  --color-ink-3: #f5f5f5;
+  --color-ink-4: #e8e8e8;
+  --color-line: #e5e5e5;
+  --color-line-2: #d4d4d4;
+  --color-bone: #0a0a0a;
+  --color-mute: #525252;
+  --color-dim: #666666;
+  --color-faint: #767676;
+  --color-lime: #0a0a0a;
+  --color-olive: #3f3f3f;
+  --color-danger: #c4321f;
   color-scheme: light;
 }
 .theme-day .bg-lime, .theme-day .btn-lime { background-color: #d5ff48; }
@@ -90,22 +90,23 @@ body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
 .theme-day .bg-bone { background-color: #10110f; }
 .theme-day .bg-bone.text-ink, .theme-day .bg-bone .text-ink { color: #f1f1eb; }
 .theme-day ::selection { background: #d5ff48; color: #10110f; }
-.theme-day :focus-visible { outline-color: #4f5e00; }
+.theme-day :focus-visible { outline-color: #0a0a0a; }
+.theme-day #main .input, .theme-day .input { background: #ffffff; }
 @media (prefers-color-scheme: light) {
 .theme-system {
   --color-ink: #ffffff;
-  --color-ink-2: #ffffff;
-  --color-ink-3: #ffffff;
-  --color-ink-4: #f1f2ee;
-  --color-line: #dcddd4;
-  --color-line-2: #c6c8bd;
-  --color-bone: #10110f;
-  --color-mute: #55584f;
-  --color-dim: #62655c;
-  --color-faint: #73766c;
-  --color-lime: #4f5e00;
-  --color-olive: #3f4a00;
-  --color-danger: #c2321f;
+  --color-ink-2: #f5f5f5;
+  --color-ink-3: #f5f5f5;
+  --color-ink-4: #e8e8e8;
+  --color-line: #e5e5e5;
+  --color-line-2: #d4d4d4;
+  --color-bone: #0a0a0a;
+  --color-mute: #525252;
+  --color-dim: #666666;
+  --color-faint: #767676;
+  --color-lime: #0a0a0a;
+  --color-olive: #3f3f3f;
+  --color-danger: #c4321f;
   color-scheme: light;
 }
 .theme-system .bg-lime, .theme-system .btn-lime { background-color: #d5ff48; }
@@ -114,7 +115,8 @@ body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
 .theme-system .bg-bone { background-color: #10110f; }
 .theme-system .bg-bone.text-ink, .theme-system .bg-bone .text-ink { color: #f1f1eb; }
 .theme-system ::selection { background: #d5ff48; color: #10110f; }
-.theme-system :focus-visible { outline-color: #4f5e00; }
+.theme-system :focus-visible { outline-color: #0a0a0a; }
+.theme-system #main .input, .theme-system .input { background: #ffffff; }
 }
 /* Pieces designed as dark objects (the floating phone tab bar) stay dark in Day mode. */
 .theme-root .keep-night {
