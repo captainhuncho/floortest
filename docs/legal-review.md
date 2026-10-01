@@ -92,7 +92,7 @@ Open points are questions 11–15 above.
 
 ### Asking the artist first (added 1 Oct 2026)
 
-Besides the per-collection setting, a receiver can ask the artist, per track, from the contact's page: **"Request to share"**, with an optional note on who it's for (e.g. "a DJ friend playing in Accra"). The artist gets an email and sees the request on their private receipt page with **Allow** / **Decline**. Nothing changes unless they say yes; allowing makes that one track shareable, for playing and promotion only. Whether the partner may download is fixed at that moment by the receiver's plan, and the request says which. The receipt records the answer and its date.
+Besides the per-collection setting, a receiver can ask the artist, per track, from the contact's page: **"Request to share"**, with an optional note on who it's for (e.g. "a DJ friend playing in Accra"). The artist gets an email and sees the request on their private receipt page with **Allow** / **Decline**. Nothing changes unless they say yes. After Allow they have 2 minutes to cancel; then it's final, the receiver is emailed, and that one track becomes shareable, for playing and promotion only. Whether the partner may download is fixed at that moment by the receiver's plan, and the request says which. The receipt records the answer and its date.
 
 **Drafting job for you:** please write the request email and the receipt card wording. The owner wants it **clear but not tacky or scary**: a friendly ask between music people, not a legal notice, while still making the limits unmistakable (non-commercial partner, playing in sets and promotion only, no commercial release without a signed agreement, private link, 7 days, listen-only unless downloads are stated). Current placeholder:
 
@@ -103,7 +103,7 @@ Besides the per-collection setting, a receiver can ask the artist, per track, fr
 > Nothing changes unless you say yes.
 
 16. **Is a one-tap Allow on the receipt page enough consent**, given the sender reaches it through their private link (no account)? Should we record more (time, IP, the exact wording shown)?
-17. **Withdrawal:** can the artist take back an Allow later, and should that switch off existing share links immediately?
+17. **Withdrawal (owner decision):** after tapping Allow, the artist has a **2-minute window** to cancel (a countdown and Cancel button on their receipt, and the link in their confirmation email). After that the consent is **final and can't be withdrawn**, and only then is the receiver told and able to share. Please confirm this is enforceable and say how to word the "no take-backs" part kindly.
 
 ## 5. Before invites go out
 

@@ -12,7 +12,7 @@ import { StemsBox } from "./StemsBox";
 import { PrepBox } from "./PrepBox";
 import { parseCues } from "@/lib/cues";
 import { ShareBox } from "./ShareBox";
-import { activeShare, canShare, shareAudience } from "@/lib/share";
+import { activeShare, canShare, finalizeConsent, shareAudience } from "@/lib/share";
 import { APP_URL } from "@/lib/mail";
 import { DetailPlayer } from "./DetailPlayer";
 import { DesktopOnly, MobileOnly } from "./DesktopOnly";
@@ -35,6 +35,12 @@ export async function ReviewPanel({
   prevHref: string | null;
 }) {
   const receiverPlan = (await q.get<{ plan: string }>("SELECT plan FROM users WHERE id = ?", t.user_id))?.plan ?? "free";
+  if (!t.share_ok) {
+    await finalizeConsent(t.id);
+    const fresh = await q.get<{ s: number; d: number }>("SELECT share_ok AS s, share_download AS d FROM tracks WHERE id = ?", t.id);
+    t.share_ok = fresh?.s ?? 0;
+    t.share_download = fresh?.d ?? 0;
+  }
   const share = canShare(t) ? await activeShare(t.id) : undefined;
   const audience = canShare(t) ? await shareAudience(t.id) : [];
   const events = (await q.all<EventRow & { track_title: string | null }>(`SELECT e.*, t.title AS track_title FROM events e LEFT JOIN tracks t ON t.id = e.track_id

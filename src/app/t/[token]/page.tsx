@@ -6,8 +6,12 @@ import { RETAIN_UNREVIEWED_DAYS, SIGNALS, stemsEnabled } from "@/lib/plans";
 import { MAX_STEMS, stemsFor } from "@/lib/stems";
 import { StemUpload } from "./StemUpload";
 import { ShareConsent } from "./ShareConsent";
+import { CancelConsent } from "./CancelConsent";
 import { SHARING_LIVE } from "@/lib/plans";
-import { latestShareRequest } from "@/lib/share";
+import { consentFinalAt, latestShareRequest } from "@/lib/share";
+
+/** Long enough for the post-Allow wait (see actions.ts). */
+export const maxDuration = 300;
 
 export const metadata = { title: "Your receipt — FloorTest", robots: { index: false } };
 
@@ -77,6 +81,9 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
       {request?.status === "pending" && (
         <ShareConsent token={token} requestId={request.id} receiver={t.receiver.split(/\s+/)[0]} note={request.note} downloads={!!request.downloads} />
       )}
+      {request?.status === "allowed" && (
+        <CancelConsent token={token} requestId={request.id} receiver={t.receiver.split(/\s+/)[0]} finalAt={consentFinalAt(request)} />
+      )}
 
       {stemsOn && (
         <StemUpload token={token} receiver={t.receiver.split(/\s+/)[0]} existing={stems.map((x) => x.name)} max={MAX_STEMS} />
@@ -92,7 +99,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
           Only {t.receiver} can hear or download your file. It&apos;s never shared publicly.
           {shared?.at ? ` ${t.receiver} shared a private link with a colleague on ${fmtDay(shared.at)}.` : ""}
           {request && request.status !== "pending" && request.decided_at
-            ? ` You ${request.status === "allowed" ? "allowed" : "declined"} sharing on ${fmtDay(request.decided_at)}.`
+            ? ` You ${request.status === "allowed" ? "allowed" : request.status === "cancelled" ? "cancelled" : "declined"} sharing on ${fmtDay(request.decided_at)}.`
             : ""}
         </p>
         <hr className="border-line" />

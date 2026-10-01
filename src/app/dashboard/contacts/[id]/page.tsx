@@ -9,7 +9,7 @@ import { Composer, ConfirmButton } from "../../ClientBits";
 import { Status } from "../../TrackList";
 import { ShareRequest } from "../ShareRequest";
 import { SHARING_LIVE } from "@/lib/plans";
-import type { ShareRequest as Req } from "@/lib/share";
+import { consentFinalAt, finalizeConsent, type ShareRequest as Req } from "@/lib/share";
 
 type Item =
   | { kind: "message"; at: number; text: string; track: string; trackId: number }
@@ -29,6 +29,7 @@ export default async function Contact({ params }: { params: Promise<{ id: string
        WHERE t.sender_id = ? ORDER BY t.created_at DESC`, s.id));
   // Latest share request per track (only used once sharing launches after the beta).
   const requests = new Map<number, Req>();
+  if (SHARING_LIVE) for (const t of tracks) if (!t.share_ok) await finalizeConsent(t.id);
   if (SHARING_LIVE)
     for (const r of await q.all<Req>(
       `SELECT DISTINCT ON (r.track_id) r.* FROM share_requests r JOIN tracks t ON t.id = r.track_id WHERE t.sender_id = ? ORDER BY r.track_id, r.created_at DESC`,
@@ -130,10 +131,16 @@ export default async function Contact({ params }: { params: Promise<{ id: string
                     <ShareRequest
                       trackId={t.id}
                       status={
-                        t.share_ok
+                        t.share_ok || (requests.get(t.id)?.status === "allowed" && consentFinalAt(requests.get(t.id)!) <= Date.now())
                           ? { state: "shareable", at: null }
                           : requests.get(t.id)
-                            ? { state: requests.get(t.id)!.status, at: fmtDay(requests.get(t.id)!.created_at) }
+                            ? {
+                                state: requests.get(t.id)!.status,
+                                at:
+                                  requests.get(t.id)!.status === "allowed"
+                                    ? new Date(consentFinalAt(requests.get(t.id)!)).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
+                                    : fmtDay(requests.get(t.id)!.created_at),
+                              }
                             : { state: null, at: null }
                       }
                     />

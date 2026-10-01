@@ -19,7 +19,7 @@ export function ShareConsent({ token, requestId, receiver, note, downloads }: { 
     return (
       <section className="rounded-2xl border border-line bg-ink-2 p-4 text-[12px]">
         {answer === "allowed"
-          ? `Thanks. ${receiver} can now share this track privately, for playing and promotion only. You'll see it here when they do.`
+          ? `Thanks. You have 2 minutes to change your mind. After that it's final.`
           : `No problem. ${receiver} won't share this track.`}
       </section>
     );

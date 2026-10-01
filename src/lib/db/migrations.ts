@@ -466,4 +466,12 @@ create index share_requests_track on share_requests(track_id);
 alter table share_requests enable row level security;
 `,
   },
+  {
+    // An artist's Allow has a cancel window; a cancelled consent is kept for the record.
+    id: "0024_share_consent_cancel",
+    sql: `
+alter table share_requests drop constraint if exists share_requests_status_check;
+alter table share_requests add constraint share_requests_status_check check (status in ('pending', 'allowed', 'declined', 'cancelled'));
+`,
+  },
 ];
