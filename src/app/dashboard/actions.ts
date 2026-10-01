@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { currentSessionHash, destroySession, hashPassword, requireUser, verifyPassword } from "@/lib/auth";
 import { APP_URL, sendMail } from "@/lib/mail";
@@ -676,4 +677,11 @@ export async function cancelMyEmailChange() {
   const u = await requireUser();
   await cancelEmailChange(u.id);
   done();
+}
+
+/** Day, Night or System for the signed-in app. A cookie, so every page renders in it from the first byte. */
+export async function setTheme(theme: string) {
+  if (!["night", "day", "system"].includes(theme)) return;
+  (await cookies()).set("ft_theme", theme, { path: "/", maxAge: 365 * 86_400, sameSite: "lax", secure: process.env.NODE_ENV === "production" });
+  revalidatePath("/", "layout");
 }

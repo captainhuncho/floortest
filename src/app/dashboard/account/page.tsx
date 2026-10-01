@@ -9,6 +9,8 @@ import { VERSION } from "@/lib/site";
 import { PauseSwitch } from "../PauseSwitch";
 import { LinkCard } from "./LinkCard";
 import { QrRow } from "./QrRow";
+import { ThemeSwitch } from "./ThemeSwitch";
+import { currentTheme } from "@/lib/theme";
 
 export const metadata = { title: "Account — FloorTest" };
 
@@ -21,6 +23,7 @@ const initials = (name: string) =>
 
 /** Figma "10 Profile + Settings": your profile. Phones get one column; desktop splits it in two. */
 export default async function Account() {
+  const theme = await currentTheme();
   const user = await requireUser();
   const cap = await capacity(user);
   const plan = planOf(user.plan);
@@ -172,13 +175,13 @@ export default async function Account() {
         title="ACCOUNT"
         rows={[
           <Row key="p" href="/dashboard/settings#page-h" icon="✎" title="Edit profile" sub="Name, link name, public page and cover photo" />,
-          <Row key="e" href="/dashboard/settings#security-h" icon="@" title="Email & password" sub="Change your sign-in details" />,
+          <Row key="e" href="/dashboard/settings#email-h" icon="@" title="Email & password" sub="Change your sign-in details" />,
           <Row
             key="t"
             href="/dashboard/settings#security-h"
             icon="⚿" title="Two-factor authentication"
             sub="A code from your phone when you sign in"
-            value={<span className="rounded bg-ink-4 px-1.5 py-0.5 text-[8px] font-bold uppercase text-white">{user.totp_enabled_at ? "On" : "Off"}</span>}
+            value={<span className="rounded bg-ink-4 px-1.5 py-0.5 text-[8px] font-bold uppercase text-bone">{user.totp_enabled_at ? "On" : "Off"}</span>}
           />,
         ]}
       />
@@ -190,7 +193,17 @@ export default async function Account() {
       />
       <Section
         title="PREFERENCES"
-        rows={[<Row key="n" href="/dashboard/notifications" icon="◎" title="Notifications" sub="How and when we email you" value={<span className="text-[11px] text-mute">Email</span>} />]}
+        rows={[
+          <Row key="n" href="/dashboard/notifications" icon="◎" title="Notifications" sub="How and when we email you" value={<span className="text-[11px] text-mute">Email</span>} />,
+          <div key="t" className="flex items-center gap-3 py-1">
+            <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-full border border-line text-sm text-mute">◐</span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[12px] font-bold">Appearance</span>
+              <span className="block text-[10px] text-faint">Night, Day, or match your device</span>
+            </span>
+            <ThemeSwitch current={theme} />
+          </div>,
+        ]}
       />
       <Section
         title="PRIVACY"

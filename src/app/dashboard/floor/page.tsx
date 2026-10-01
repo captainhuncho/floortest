@@ -48,7 +48,7 @@ const delta = (now: number, prev: number) => {
   if (d === 0) return "Same as last week";
   return (
     <>
-      <span className="text-white">
+      <span className="text-bone">
         {d > 0 ? "↑" : "↓"} {Math.abs(d)}
       </span>{" "}
       vs last week
@@ -186,7 +186,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
           className="xl:col-span-2"
           action={
             upNext.length > 0 && (
-              <Link href="/dashboard?view=queue" className="text-xs font-bold text-white hover:text-lime">
+              <Link href="/dashboard?view=queue" className="text-xs font-bold text-bone hover:text-lime">
                 Start reviewing →
               </Link>
             )

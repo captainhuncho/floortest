@@ -213,17 +213,17 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
                   />
                 </div>
                 <div className="flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
-                  <span title={r.played ? "Listened" : "Not listened yet"} className={`grid size-9 place-items-center ${r.played ? "text-white" : "text-mute"}`}>
+                  <span title={r.played ? "Listened" : "Not listened yet"} className={`grid size-9 place-items-center ${r.played ? "text-bone" : "text-mute"}`}>
                     <FigmaIcon name="headphones" />
                     <span className="sr-only">{r.played ? "Listened" : "Not listened yet"}</span>
                   </span>
-                  <button aria-label={`Keep ${r.title}`} aria-pressed={decision === "kept"} onClick={() => decide(r, "kept", false)} className={`grid size-9 place-items-center ${decision === "kept" ? "text-white" : "text-mute"}`}>
+                  <button aria-label={`Keep ${r.title}`} aria-pressed={decision === "kept"} onClick={() => decide(r, "kept", false)} className={`grid size-9 place-items-center ${decision === "kept" ? "text-bone" : "text-mute"}`}>
                     <FigmaIcon name="heart" />
                   </button>
-                  <button aria-label={`Not for me: ${r.title}`} aria-pressed={decision === "passed"} onClick={() => decide(r, "passed", false)} className={`grid size-9 place-items-center ${decision === "passed" ? "text-white" : "text-mute"}`}>
+                  <button aria-label={`Not for me: ${r.title}`} aria-pressed={decision === "passed"} onClick={() => decide(r, "passed", false)} className={`grid size-9 place-items-center ${decision === "passed" ? "text-bone" : "text-mute"}`}>
                     <FigmaIcon name="thumbs-down" />
                   </button>
-                  <button aria-label={`Reply to ${r.sender}`} aria-pressed={open} onClick={() => (setSelected(r.id), setExpanded(open ? null : r.id))} className={`relative grid size-9 place-items-center ${open ? "text-white" : "text-mute"}`}>
+                  <button aria-label={`Reply to ${r.sender}`} aria-pressed={open} onClick={() => (setSelected(r.id), setExpanded(open ? null : r.id))} className={`relative grid size-9 place-items-center ${open ? "text-bone" : "text-mute"}`}>
                     <FigmaIcon name="message-square" />
                     {r.replied && <span className="absolute right-2 top-2 size-1.5 rounded-full bg-lime" />}
                   </button>

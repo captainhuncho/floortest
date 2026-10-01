@@ -15,7 +15,7 @@ export function MobileTransport({ track, prevHref, nextHref }: { track: PlayerTr
     <div className="font-[family-name:var(--font-stage-mono)]">
       <div className="flex flex-col gap-2.5 py-3.5">
         <div className="flex justify-between text-[9px]">
-          <span className="text-white tnum">{on ? fmtTime(time) : "0:00"}</span>
+          <span className="text-bone tnum">{on ? fmtTime(time) : "0:00"}</span>
           <span className="text-faint tnum">{fmtTime(d)}</span>
         </div>
         <div className="py-2">

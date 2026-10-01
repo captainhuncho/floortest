@@ -78,7 +78,7 @@ export function TopBar(p: Props) {
         {open === "bell" &&
           (window.matchMedia("(max-width: 767px)").matches ? (
             // Phones: a centred sheet over the page, so nothing runs off screen.
-            createPortal(<Notifications sheet items={p.notices.items} unread={p.notices.unread} onNavigate={() => setOpen(null)} />, document.body)
+            createPortal(<Notifications sheet items={p.notices.items} unread={p.notices.unread} onNavigate={() => setOpen(null)} />, document.getElementById("theme-root") ?? document.body)
           ) : (
             <Notifications items={p.notices.items} unread={p.notices.unread} onNavigate={() => setOpen(null)} />
           ))}
@@ -93,13 +93,13 @@ export function TopBar(p: Props) {
           <svg aria-hidden viewBox="0 0 12 12" className="hidden h-3 w-3 -rotate-90 text-mute sm:block" fill="none" stroke="currentColor" strokeWidth="1.5">
             <path d="M3 4.5 6 7.5 9 4.5" />
           </svg>
-          <span className="grid size-9 place-items-center rounded-full font-[family-name:var(--font-stage-mono)] text-[10px] font-bold text-white sm:bg-bone sm:font-sans sm:text-sm sm:text-ink">{initials(p.user.name)}</span>
+          <span className="grid size-9 place-items-center rounded-full font-[family-name:var(--font-stage-mono)] text-[10px] font-bold text-bone sm:bg-bone sm:font-sans sm:text-sm sm:text-ink">{initials(p.user.name)}</span>
           <span className="sr-only">Your profile</span>
         </button>
       </div>
 
       {/* Portal: the blurred header would otherwise trap the fixed overlay inside itself. */}
-      {open === "search" && createPortal(<SearchDialog onClose={() => setOpen(null)} />, document.body)}
+      {open === "search" && createPortal(<SearchDialog onClose={() => setOpen(null)} />, document.getElementById("theme-root") ?? document.body)}
     </div>
   );
 }

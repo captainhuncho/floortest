@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/admin";
 import { q } from "@/lib/db";
 import { readFlash } from "@/lib/flash";
+import { currentTheme, themeClass } from "@/lib/theme";
 import { AdminNav, type NavGroup } from "./AdminNav";
 import { Toast } from "./AdminUi";
 
@@ -72,7 +73,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const notice = await readFlash();
   const flat = groups.flatMap((g) => g.sections.flatMap((s) => s.items));
   return (
-    <div className="min-h-dvh bg-ink md:flex">
+    <div id="theme-root" className={`${themeClass(await currentTheme())} md:flex`}>
       <div className="sticky top-0 hidden h-dvh md:block">
         <AdminNav groups={groups} admin={{ name: admin.name, initials }} />
       </div>

@@ -29,7 +29,7 @@ export function SendMusicCard({ recent, host }: { recent: { handle: string; name
             {recent.map((r) => (
               <li key={r.handle}>
                 <Link href={`/dashboard/send?to=${r.handle}`} className="flex w-[72px] flex-col items-center gap-1.5">
-                  <span className="grid size-11 place-items-center rounded-full border border-line bg-ink-2 text-[10px] font-bold text-white">
+                  <span className="grid size-11 place-items-center rounded-full border border-line bg-ink-2 text-[10px] font-bold text-bone">
                     {r.name.trim()[0]?.toUpperCase()}
                   </span>
                   <span className="w-full truncate text-center text-[10px] text-bone">{r.name.split(/\s+/)[0]}</span>

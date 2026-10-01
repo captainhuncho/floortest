@@ -18,7 +18,7 @@ export function QrRow({ handle, link }: { handle: string; link: string }) {
         </span>
         <span className="text-[11px] text-mute group-hover:text-bone">Preview</span>
       </button>
-      {open && createPortal(<QrDialog handle={handle} link={link} onClose={() => setOpen(false)} />, document.body)}
+      {open && createPortal(<QrDialog handle={handle} link={link} onClose={() => setOpen(false)} />, document.getElementById("theme-root") ?? document.body)}
     </>
   );
 }

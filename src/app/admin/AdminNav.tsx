@@ -91,7 +91,7 @@ export function AdminNav({ groups, admin }: { groups: NavGroup[]; admin: { name:
   );
 
   return (
-    <aside className={`flex h-dvh shrink-0 flex-col border-r border-line bg-black font-[family-name:var(--font-stage-mono)] ${open ? "w-64" : "w-16"}`}>
+    <aside className={`flex h-dvh shrink-0 flex-col border-r border-line bg-ink-2 font-[family-name:var(--font-stage-mono)] ${open ? "w-64" : "w-16"}`}>
       <div className={`flex items-center gap-2.5 px-3 pb-3 pt-4 ${open ? "justify-between" : "flex-col"}`}>
         <Link href="/admin" className="flex items-center gap-2.5">
           <span className="grid size-8 place-items-center rounded-lg bg-bone text-[11px] font-black text-ink">FT</span>

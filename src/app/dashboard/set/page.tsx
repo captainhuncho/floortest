@@ -17,7 +17,7 @@ export default async function PrepareForSet() {
     <div className="max-w-3xl px-3 py-3 font-[family-name:var(--font-stage-mono)] sm:px-8 sm:py-6 md:max-w-6xl">
       <div className="md:flex md:items-start md:justify-between md:gap-8">
       <div>
-      <p className="text-[8px] font-medium tracking-[0.5px] text-white md:hidden">PREPARE FOR SET</p>
+      <p className="text-[8px] font-medium tracking-[0.5px] text-bone md:hidden">PREPARE FOR SET</p>
       <h1 className="text-xl font-bold text-bone sm:text-3xl md:text-[32px]">
         <span className="md:hidden">Prepare</span>
         <span className="hidden md:inline">Prepare for set</span>

@@ -98,7 +98,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
         <p className="flex gap-2 text-[10px] font-bold">
           <span className="text-mute">{c.needs_review} NEED REVIEW</span>
           <span className="font-normal text-faint">·</span>
-          <span className="text-white">{c.kept} KEPT</span>
+          <span className="text-bone">{c.kept} KEPT</span>
           <span className="font-normal text-faint">·</span>
           <span>{c.count} TOTAL</span>
         </p>

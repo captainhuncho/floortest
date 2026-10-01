@@ -11,10 +11,12 @@ import { FeedbackButton } from "./FeedbackButton";
 import { MobileTabBar } from "./MobileTabBar";
 import { TopBar } from "./TopBar";
 import { VerifyBanner } from "./VerifyBanner";
+import { currentTheme, themeClass } from "@/lib/theme";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
   const view = await viewingAs();
+  const theme = await currentTheme();
   // Retention cleanup runs after the response, so it never slows a page down.
   after(() => purgeExpired().catch((e) => console.error("[purge]", e)));
   // Backstop: any share consents whose 2-minute window has passed become final (and the receiver is emailed once).
@@ -37,6 +39,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             };
 
   return (
+    <div id="theme-root" className={themeClass(theme)}>
     <PlayerProvider>
       <ToastProvider>
         <div className="md:grid md:h-dvh md:grid-cols-[248px_1fr]">
@@ -72,5 +75,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <MobileTabBar needsReview={collections.reduce((n, c) => n + c.needs_review, 0)} />
       </ToastProvider>
     </PlayerProvider>
+    </div>
   );
 }
