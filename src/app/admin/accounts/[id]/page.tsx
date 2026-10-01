@@ -19,6 +19,15 @@ export default async function Account({ params }: { params: Promise<{ id: string
     id,
   );
   if (!u) notFound();
+  const history = await q.all<{ id: number; kind: string; reason: string; created_at: number; admin: string | null }>(
+    "SELECT a.id, a.kind, a.reason, a.created_at, x.handle AS admin FROM account_actions a LEFT JOIN users x ON x.id = a.admin_id WHERE a.user_id = ? ORDER BY a.created_at DESC LIMIT 20",
+    id,
+  );
+  const appeals = await q.all<{ id: number; message: string; created_at: number; handled_at: number | null }>(
+    "SELECT id, message, created_at, handled_at FROM contact_messages WHERE topic = 'Suspension appeal' AND (user_id = ? OR lower(email) = lower(?)) ORDER BY created_at DESC LIMIT 10",
+    id,
+    u.email,
+  );
   const [live, all, bytes, senders, sessions] = await Promise.all([
     q.count("SELECT COUNT(*) AS n FROM tracks WHERE user_id = ? AND deleted_at IS NULL", id),
     q.count("SELECT COUNT(*) AS n FROM tracks WHERE user_id = ?", id),
@@ -103,7 +112,37 @@ export default async function Account({ params }: { params: Promise<{ id: string
             <button className="btn-sm rounded-md border border-danger/50 px-4 text-danger hover:bg-danger/10">Suspend account</button>
           </form>
         )}
-        <p className="text-xs text-mute">Suspending signs them out, blocks sign-in and takes their public link offline. Nothing is deleted.</p>
+        <p className="text-xs text-mute">Suspending signs them out, blocks sign-in, takes their public link offline and emails them how to appeal. Nothing is deleted.</p>
+        {(history.length > 0 || appeals.length > 0) && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <p className="label">Suspension history</p>
+              <ul className="mt-2 space-y-1 text-sm">
+                {history.map((h) => (
+                  <li key={h.id}>
+                    {h.kind === "suspended" ? "Suspended" : "Restored"} {new Date(h.created_at).toLocaleDateString("en-GB")}
+                    {h.admin && <span className="text-mute"> · @{h.admin}</span>}
+                    {h.reason && <span className="text-mute"> · {h.reason}</span>}
+                  </li>
+                ))}
+                {!history.length && <li className="text-mute">None</li>}
+              </ul>
+            </div>
+            <div>
+              <p className="label">Appeals</p>
+              <ul className="mt-2 space-y-2 text-sm">
+                {appeals.map((m) => (
+                  <li key={m.id}>
+                    <Link href="/admin/inbox" className="hover:underline">{new Date(m.created_at).toLocaleDateString("en-GB")}</Link>
+                    {!m.handled_at && <span className="chip ml-2 border-lime/50 text-lime">Open</span>}
+                    <p className="line-clamp-2 text-mute">{m.message}</p>
+                  </li>
+                ))}
+                {!appeals.length && <li className="text-mute">None</li>}
+              </ul>
+            </div>
+          </div>
+        )}
       </section>
 
       <section>

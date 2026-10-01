@@ -504,4 +504,20 @@ create index takedowns_status on takedowns(status);
 alter table takedowns enable row level security;
 `,
   },
+{
+    // Every suspension and restore on an account, kept as history (the users row only holds the current state).
+    id: "0026_account_actions",
+    sql: `
+create table account_actions (
+  id bigint generated always as identity primary key,
+  user_id bigint not null references users(id) on delete cascade,
+  kind text not null check (kind in ('suspended', 'unsuspended')),
+  reason text not null default '',
+  admin_id bigint references users(id) on delete set null,
+  created_at bigint not null
+);
+create index account_actions_user on account_actions(user_id, created_at desc);
+alter table account_actions enable row level security;
+`,
+  },
 ];

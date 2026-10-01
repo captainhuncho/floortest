@@ -4,9 +4,11 @@ import { ContactForm } from "./ContactForm";
 
 export const metadata = { title: "Contact us — FloorTest" };
 
-export default async function Contact({ searchParams }: { searchParams: Promise<{ report?: string }> }) {
+export default async function Contact({ searchParams }: { searchParams: Promise<{ report?: string; appeal?: string }> }) {
   const user = await currentUser();
-  const report = ((await searchParams).report || "").toLowerCase().replace(/[^a-z0-9-_]/g, "").slice(0, 30);
+  const sp = await searchParams;
+  const appeal = !!sp.appeal;
+  const report = ((sp).report || "").toLowerCase().replace(/[^a-z0-9-_]/g, "").slice(0, 30);
   return (
     <main className="mx-auto max-w-xl px-4 py-10 sm:py-16">
       <Logo className="mb-12" />
@@ -15,8 +17,8 @@ export default async function Contact({ searchParams }: { searchParams: Promise<
       <ContactForm
         name={user?.name ?? ""}
         email={user?.email ?? ""}
-        topic={report ? "Impersonation" : undefined}
-        message={report ? `I think floortest.imullar.com/${report} is pretending to be someone else, because: ` : undefined}
+        topic={appeal ? "Suspension appeal" : report ? "Impersonation" : undefined}
+        message={appeal ? "Account email: \nWhy I think the suspension is a mistake: " : report ? `I think floortest.imullar.com/${report} is pretending to be someone else, because: ` : undefined}
       />
     </main>
   );

@@ -129,7 +129,7 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
     await record("login_fail_email", email);
     return { error: "Email or password is incorrect." };
   }
-  if (row.suspended_at) return { error: "This account is suspended. Contact support if you think that's a mistake." };
+  if (row.suspended_at) return { error: "This account is suspended. To appeal, go to the Contact page and choose Suspension appeal." };
   await afterPassword(row.id, "password");
   return undefined;
 }

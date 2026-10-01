@@ -28,7 +28,7 @@ export function ContactForm({ name, email, topic, message }: { name: string; ema
       <label className="block space-y-1.5">
         <span className="label">Topic</span>
         <select name="topic" className="input" defaultValue={topic}>
-          {["General", "Account or billing", "A track I sent", "Report abuse", "Impersonation", "Partnerships"].map((t) => (
+          {["General", "Account or billing", "A track I sent", "Report abuse", "Impersonation", "Suspension appeal", "Partnerships"].map((t) => (
             <option key={t}>{t}</option>
           ))}
         </select>

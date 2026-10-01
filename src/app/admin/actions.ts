@@ -18,9 +18,33 @@ export async function suspendAccount(userId: number, reason: string) {
   const a = await requireAdminAction();
   const u = await target(userId);
   if (!u || u.id === a.id) return;
-  await q.run("UPDATE users SET suspended_at = ?, suspended_reason = ? WHERE id = ? AND suspended_at IS NULL", now(), String(reason || "").slice(0, 200), u.id);
-  await q.run("DELETE FROM sessions WHERE user_id = ?", u.id);
-  await logAdmin(a.id, "suspended", `@${u.handle}`, reason);
+  const why = String(reason || "").trim().slice(0, 200);
+  const r = await q.tx(async (db) => {
+    const r = await db.run("UPDATE users SET suspended_at = ?, suspended_reason = ? WHERE id = ? AND suspended_at IS NULL", now(), why, u.id);
+    if (!r.changes) return r;
+    await db.run("DELETE FROM sessions WHERE user_id = ?", u.id);
+    await db.run("INSERT INTO account_actions (user_id, kind, reason, admin_id, created_at) VALUES (?,?,?,?,?)", u.id, "suspended", why, a.id, now());
+    await db.run("INSERT INTO admin_log (admin_id, action, target, detail, created_at) VALUES (?,?,?,?,?)", a.id, "suspended", `@${u.handle}`, why, now());
+    return r;
+  });
+  if (!r.changes) return;
+  await sendMail({
+    userId: u.id,
+    audience: "support",
+    to: u.email,
+    subject: "Your FloorTest account is suspended",
+    body: [
+      "Hi,",
+      "",
+      "We've suspended your FloorTest account. While it's suspended you can't sign in, and your submission link is offline. Nothing has been deleted.",
+      "",
+      `Reason: ${why || "a breach of our Terms"}`,
+      "",
+      `If you think this is a mistake, you can appeal here and a person will review it: ${env.appUrl}/contact?appeal=1`,
+      "",
+      "FloorTest",
+    ].join("\n"),
+  }).catch(() => {});
   refresh();
 }
 
@@ -28,8 +52,21 @@ export async function unsuspendAccount(userId: number) {
   const a = await requireAdminAction();
   const u = await target(userId);
   if (!u) return;
-  await q.run("UPDATE users SET suspended_at = NULL, suspended_reason = '' WHERE id = ?", u.id);
-  await logAdmin(a.id, "unsuspended", `@${u.handle}`);
+  const r = await q.tx(async (db) => {
+    const r = await db.run("UPDATE users SET suspended_at = NULL, suspended_reason = '' WHERE id = ? AND suspended_at IS NOT NULL", u.id);
+    if (!r.changes) return r;
+    await db.run("INSERT INTO account_actions (user_id, kind, admin_id, created_at) VALUES (?,?,?,?)", u.id, "unsuspended", a.id, now());
+    await db.run("INSERT INTO admin_log (admin_id, action, target, detail, created_at) VALUES (?,?,?,?,?)", a.id, "unsuspended", `@${u.handle}`, "", now());
+    return r;
+  });
+  if (!r.changes) return;
+  await sendMail({
+    userId: u.id,
+    audience: "support",
+    to: u.email,
+    subject: "Your FloorTest account is back",
+    body: ["Hi,", "", `Your account is restored. You can sign in again, and your submission link is back online: ${env.appUrl}/login`, "", "FloorTest"].join("\n"),
+  }).catch(() => {});
   refresh();
 }
 
@@ -354,8 +391,27 @@ export async function decideTakedown(id: number, outcome: "removed" | "rejected"
   const c = await q.get<{ id: number; track_id: number | null; track_label: string; status: string }>("SELECT id, track_id, track_label, status FROM takedowns WHERE id = ?", id);
   if (!c || c.status !== "open") return;
   const notes = String(form.get("notes") || "").trim().slice(0, 1000);
+  const owner = c.track_id
+    ? await q.get<{ id: number; email: string; title: string; artist: string }>("SELECT u.id, u.email, t.title, t.artist FROM tracks t JOIN users u ON u.id = t.user_id WHERE t.id = ?", c.track_id)
+    : undefined;
   if (outcome === "removed" && c.track_id) await removeTrackAsAdmin(c.track_id, `takedown #${c.id}`);
   await q.run("UPDATE takedowns SET status = ?, notes = ?, decided_at = ?, admin_id = ? WHERE id = ? AND status = 'open'", outcome, notes, now(), a.id, c.id);
   await logAdmin(a.id, outcome === "removed" ? "upheld takedown" : "rejected takedown", c.track_label, notes);
+  if (outcome === "removed" && owner)
+    await sendMail({
+      userId: owner.id,
+      audience: "support",
+      to: owner.email,
+      subject: "A track was removed from your desk",
+      body: [
+        "Hi,",
+        "",
+        `We removed "${owner.artist} – ${owner.title}" from your desk after a copyright claim, and deleted the file. You don't need to do anything.`,
+        "",
+        `If you have questions, contact us: ${env.appUrl}/contact`,
+        "",
+        "FloorTest",
+      ].join("\n"),
+    }).catch(() => {});
   refresh();
 }
