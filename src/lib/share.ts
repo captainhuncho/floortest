@@ -2,7 +2,7 @@ import "server-only";
 import crypto from "node:crypto";
 import { logEvent, now, q, type Track, type User } from "./db";
 
-export type Share = { id: number; track_id: number; token: string; created_at: number; expires_at: number; revoked_at: number | null; plays: number };
+export type Share = { id: number; track_id: number; token: string; created_at: number; expires_at: number; revoked_at: number | null; plays: number; downloads: number };
 
 const DAY = 86_400_000;
 /** Listen-only links for colleagues last a week; the receiver can switch one off sooner. */
@@ -38,8 +38,8 @@ export async function revokeShares(user: User, t: Track) {
 
 /** The public side: the share, its track and the receiver's name, only while the link is live. */
 export async function shareByToken(token: string) {
-  return q.get<Share & { title: string; artist: string; peaks: string | null; duration: number | null; mime: string; file_key: string | null; receiver: string; deleted_at: number | null }>(
-    `SELECT s.*, t.title, t.artist, t.peaks, t.duration, t.mime, t.file_key, t.deleted_at, u.name AS receiver
+  return q.get<Share & { title: string; artist: string; peaks: string | null; duration: number | null; mime: string; file_key: string | null; receiver: string; receiver_plan: string; deleted_at: number | null; original_name: string; artist_title: string }>(
+    `SELECT s.*, t.title, t.artist, t.peaks, t.duration, t.mime, t.file_key, t.deleted_at, t.original_name, t.artist || ' - ' || t.title AS artist_title, u.name AS receiver, u.plan AS receiver_plan
      FROM track_shares s JOIN tracks t ON t.id = s.track_id JOIN users u ON u.id = t.user_id
      WHERE s.token = ? AND s.revoked_at IS NULL AND s.expires_at > ? AND t.share_ok = 1 AND t.deleted_at IS NULL`,
     token,

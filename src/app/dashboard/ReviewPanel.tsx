@@ -3,7 +3,7 @@ import type { PlayerTrack } from "@/components/Player";
 import { deletesAt } from "@/lib/core";
 import {q, type Collection, type EventRow, type Sender, type Track } from "@/lib/db";
 import { fmtBytes, fmtDate, fmtDay } from "@/lib/format";
-import { MIX_STATUS, RELEASE_STATUS, stemsEnabled } from "@/lib/plans";
+import { MIX_STATUS, RELEASE_STATUS, shareDownloadEnabled, stemsEnabled } from "@/lib/plans";
 import { addNote, deleteTrack, moveTrack, replyToSender } from "./actions";
 import { ConfirmButton, NoteForm } from "./ClientBits";
 import { DecisionRail } from "./DecisionRail";
@@ -145,6 +145,7 @@ export async function ReviewPanel({
         <div className="mt-4">
           <ShareBox
             trackId={t.id}
+            canDownload={shareDownloadEnabled(receiverPlan)}
             active={
               share
                 ? { url: `${APP_URL}/s/${share.token}`, expires: new Date(share.expires_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }), plays: share.plays }

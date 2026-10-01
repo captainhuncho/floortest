@@ -5,7 +5,7 @@ import { useToast } from "@/components/Toast";
 import { shareTrack, stopSharing } from "./actions";
 
 /** Share a track with a colleague: a private listen-only link that expires after a week. */
-export function ShareBox({ trackId, active }: { trackId: number; active: { url: string; expires: string; plays: number } | null }) {
+export function ShareBox({ trackId, active, canDownload }: { trackId: number; active: { url: string; expires: string; plays: number } | null; canDownload: boolean }) {
   const [link, setLink] = useState(active);
   const [pending, start] = useTransition();
   const toast = useToast();
@@ -24,7 +24,7 @@ export function ShareBox({ trackId, active }: { trackId: number; active: { url: 
         <div className="mt-2 flex flex-col gap-2">
           <p className="truncate text-[12px] text-bone">{link.url.replace(/^https?:\/\//, "")}</p>
           <p className="text-[10px] text-faint">
-            Listen-only, no download button · works until {link.expires} · {link.plays} play{link.plays === 1 ? "" : "s"}
+            {canDownload ? "Listen and download" : "Listen-only, no download button"} · works until {link.expires} · {link.plays} play{link.plays === 1 ? "" : "s"}
           </p>
           <div className="flex gap-2">
             <button type="button" onClick={() => copy(link.url)} className="rounded-md bg-bone px-3 py-1.5 text-[11px] font-bold text-ink">
@@ -48,7 +48,18 @@ export function ShareBox({ trackId, active }: { trackId: number; active: { url: 
         </div>
       ) : (
         <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-[12px] text-mute">A private link a colleague can listen to for 7 days. The sender is told.</p>
+          <p className="text-[12px] text-mute">
+            A private link a colleague can {canDownload ? "listen to and download" : "listen to"} for 7 days. The sender is told.
+            {!canDownload && (
+              <>
+                {" "}
+                <a href="/dashboard/plans" className="text-bone underline underline-offset-4">
+                  Let colleagues download on Pro
+                </a>
+                .
+              </>
+            )}
+          </p>
           <button
             type="button"
             disabled={pending}

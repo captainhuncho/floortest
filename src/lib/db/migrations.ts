@@ -426,4 +426,11 @@ alter table tracks add column energy int check (energy between 1 and 5);
 alter table tracks add column cues text not null default '[]';
 `,
   },
+  {
+    // Colleague downloads from share links (paid plans only).
+    id: "0021_share_downloads",
+    sql: `
+alter table track_shares add column downloads int not null default 0;
+`,
+  },
 ];

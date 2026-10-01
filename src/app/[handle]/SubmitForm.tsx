@@ -345,7 +345,7 @@ export function SubmitForm({
 
       <p className={`text-xs ${L.mute}`}>
         By sending you confirm you own or control this track and you&apos;re 18 or over. {receiverName} may listen to it, download it and play it
-        in their sets{allowSharing ? ", and share a private listen-only link with colleagues" : ""}, but can&apos;t release it anywhere without a signed agreement with you.{" "}
+        in their sets{allowSharing ? ", and share it with colleagues through a private FloorTest link (listen-only, or downloadable on paid plans)" : ""}, but can&apos;t release it anywhere without a signed agreement with you.{" "}
         <a href="/terms" target="_blank" className="underline underline-offset-4">Terms</a> ·{" "}
         <a href="/privacy" target="_blank" className="underline underline-offset-4">Privacy</a>
       </p>

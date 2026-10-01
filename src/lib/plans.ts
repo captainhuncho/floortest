@@ -13,6 +13,10 @@ export type PlanId = keyof typeof PLANS;
 export const STEMS_PLANS: readonly PlanId[] = [];
 export const stemsEnabled = (plan: string) => (STEMS_PLANS as readonly string[]).includes(plan);
 
+/** Colleagues can download a shared track only when the receiver who shared it is on a paid plan. */
+export const SHARE_DOWNLOAD_PLANS: readonly PlanId[] = ["pro", "team"];
+export const shareDownloadEnabled = (plan: string) => (SHARE_DOWNLOAD_PLANS as readonly string[]).includes(plan);
+
 export function planOf(id: string) {
   return PLANS[(id in PLANS ? id : "free") as PlanId];
 }

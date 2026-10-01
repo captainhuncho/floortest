@@ -82,7 +82,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
         <hr className="border-line" />
         <p>
           Only {t.receiver} can hear or download your file. It&apos;s never shared publicly.
-          {shared?.at ? ` ${t.receiver} shared a private listen-only link with a colleague on ${fmtDay(shared.at)}.` : ""}
+          {shared?.at ? ` ${t.receiver} shared a private link with a colleague on ${fmtDay(shared.at)}.` : ""}
         </p>
         <hr className="border-line" />
         <p>
