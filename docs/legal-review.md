@@ -1,4 +1,4 @@
-# Brief for the lawyer (updated 29 Sep 2026)
+# Brief for the lawyer (updated 1 Oct 2026)
 
 The drafts at /terms and /privacy were rewritten on 29 Sep 2026 to close the gaps listed further down. Owner decisions so far:
 
@@ -7,6 +7,7 @@ The drafts at /terms and /privacy were rewritten on 29 Sep 2026 to close the gap
 - **Minimum age:** 18+. Stated in both documents, on sign-up and on the send form.
 - **Sender licence:** the receiver may listen, download, evaluate and play the track in DJ sets, live performances and broadcasts. Releasing, distributing, selling, licensing or uploading it as a release on any platform needs a separate written agreement.
 - **Agreement points:** sign-up and the send form now show a line linking to both documents.
+- **Sharing with colleagues (added 1 Oct 2026):** see the section below. The Terms now say a receiver may share a track with colleagues through a private FloorTest link, but only if their brief allowed sharing when the track was sent. Colleagues can listen; if the receiver is on a paid plan, colleagues can also download, under the same rules as the receiver.
 
 **Questions for you:**
 
@@ -20,6 +21,11 @@ The drafts at /terms and /privacy were rewritten on 29 Sep 2026 to close the gap
 8. **Ghana Data Protection Act 2012 (Act 843):** does FloorTest LTD need to register with the Data Protection Commission before processing data?
 9. **UK and EU users:** as a Ghana company targeting UK and EU users, does FloorTest need a UK and/or EU representative (UK GDPR / GDPR Art. 27), and is Ghana law workable as governing law for UK and EU consumers?
 10. The operator is based in Ghana while hosting is in the UK and US. Does the transfers section need Ghana-specific wording?
+11. **Sharing consent:** the sender agrees to sharing through one line above the Send button, shown only when the receiver's brief allows it (no checkbox). Is that clear enough consent to let third parties hear, and on paid plans download, an unreleased track?
+12. **Colleagues are bound by what?** Colleagues have no account and accept nothing; they see a note asking them not to pass the track on or release it. Can the sender or FloorTest enforce anything against a colleague, or does the receiver carry full responsibility for who they share with? Should the Terms say so explicitly?
+13. **Download depends on the receiver's plan, checked at the time of download.** A sender agrees while the receiver is on Free (listen-only), and the receiver later upgrades, so colleagues can download. Is that within what the sender agreed to ("listen-only, or downloadable on paid plans"), or should downloads only be allowed if the receiver was already on a paid plan when the track was sent?
+14. **Personal data of colleagues:** FloorTest logs plays and downloads per share link (counts only; no names, emails or IP addresses are stored for share links). Does the Privacy Policy need to mention people who open a share link?
+15. **Takedown:** if a sender withdraws consent or reports misuse, we can switch off every share link for a track. Should the Terms give senders a right to ask for that, and a timeframe?
 
 **Still to confirm on the tech side:** the R2 bucket's jurisdiction, and that support@floortest.fm actually receives mail.
 
@@ -66,7 +72,23 @@ Original assumed setup (now superseded: the operator is a Ghana company): operat
 | **Referral bonus** | Say bonus slots can be changed or withdrawn after the beta. |
 | **Beta and pricing** | Good that it promises notice before charging. Add how much notice (for example 30 days) and that beta users can leave without charge. |
 
-## 4. Before invites go out
+## 4. Sharing with colleagues (added 1 Oct 2026)
+
+How it works in the product, for reference:
+
+| Part | Behaviour |
+| --- | --- |
+| Opt-in | Off by default. A receiver turns on "Let me share tracks with colleagues" per collection. |
+| What senders see | The brief on the receiver's link shows "Sharing with colleagues allowed". The agreement line above Send adds: the receiver may "share it with colleagues through a private FloorTest link (listen-only, or downloadable on paid plans)". |
+| Which tracks | Only tracks sent while the collection allowed sharing. Turning it on later doesn't open up older tracks (stored per track at upload). |
+| The link | Private, unguessable, expires after 7 days. The receiver can switch it off at any time; it stops working immediately. Not indexed by search engines. |
+| Colleague access | No account. On Free: a player only, no download button (a browser can't fully prevent saving playing audio, so we don't promise copy protection). On Pro/Team: a "Download the original" button. Plays and downloads are counted. |
+| Sender visibility | The sender's receipt says the receiver shared a private link with a colleague, with the date. |
+| Terms | Receiver section and "Use tracks only as described" were updated to cover this. Dated 1 Oct 2026. |
+
+Open points are questions 11–15 above.
+
+## 5. Before invites go out
 
 1. Set `SUPPORT_EMAIL` (and ideally a published privacy@ address).
 2. Fix the IP retention wording or run the purge more often.
