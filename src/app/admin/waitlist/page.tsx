@@ -6,18 +6,19 @@ import { inviteFromWaitlist, removeFromWaitlist } from "../actions";
 /** People who asked for an invite from the home page. */
 export default async function Waitlist({ searchParams }: { searchParams: Promise<{ show?: string }> }) {
   const showAll = (await searchParams).show === "all";
-  const rows = await q.all<{ id: number; email: string; name: string; role: string; link: string; handle: string; invited_at: number | null; created_at: number; joined: string | null }>(
+  const rows = await q.all<{ id: number; email: string; name: string; role: string; link: string; handle: string; source: string; invited_at: number | null; created_at: number; joined: string | null }>(
     `SELECT w.*, (SELECT u.handle FROM users u WHERE u.email = w.email) AS joined FROM waitlist w
      ${showAll ? "" : "WHERE w.invited_at IS NULL"} ORDER BY w.created_at ASC LIMIT 500`,
   );
   const waiting = await q.count("SELECT COUNT(*) AS n FROM waitlist WHERE invited_at IS NULL");
+  const sources = await q.all<{ source: string; n: number }>("SELECT source, COUNT(*)::int AS n FROM waitlist WHERE source <> '' GROUP BY source ORDER BY n DESC LIMIT 3");
   const safeLink = (l: string) => (/^https?:\/\//i.test(l) ? l : l ? `https://${l.replace(/^@/, "instagram.com/")}` : "");
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Waitlist</h1>
-          <p className="mt-2 text-mute">{waiting} waiting · oldest first. Invite sends a personal, single-use invite by email.</p>
+          <p className="mt-2 text-mute">{waiting} waiting · oldest first{sources.length ? ` · top sources: ${sources.map((s) => `${s.source} (${s.n})`).join(", ")}` : ""}. Invite sends a personal, single-use invite by email.</p>
         </div>
         <Link href={showAll ? "/admin/waitlist" : "/admin/waitlist?show=all"} className="btn-ghost btn-sm">
           {showAll ? "Waiting only" : "Show invited too"}
@@ -34,6 +35,7 @@ export default async function Waitlist({ searchParams }: { searchParams: Promise
                 <td className="px-4 py-3">
                   {w.name && <span className="font-medium">{w.name} </span>}
                   <span className="text-mute">{w.email}</span>
+                  {w.source && <span className="block text-xs text-faint">from {w.source}</span>}
                 </td>
                 <td className="px-4 py-3">
                   {w.role}

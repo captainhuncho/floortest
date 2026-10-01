@@ -1,5 +1,6 @@
 "use client";
 
+import { Turnstile } from "@/components/Turnstile";
 import { useActionForm } from "@/components/useActionForm";
 
 import { sendContact } from "./actions";
@@ -42,6 +43,7 @@ export function ContactForm({ name, email, topic, message }: { name: string; ema
           {state.error}
         </p>
       )}
+      <Turnstile />
       <button className="btn-lime" disabled={pending}>
         {pending ? "Sending…" : "Send message"}
       </button>

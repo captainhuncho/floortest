@@ -3,6 +3,7 @@ import { currentUser } from "@/lib/auth";
 import { IntakeError, startUpload, userByHandle } from "@/lib/core";
 import { cleanGenre, MIX_STATUS, RELEASE_STATUS } from "@/lib/plans";
 import { ipFrom } from "@/lib/ratelimit";
+import { BOT_MESSAGE, passedTurnstile } from "@/lib/turnstile";
 
 export const runtime = "nodejs";
 
@@ -27,6 +28,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]
   // Sending from a FloorTest account: name and email come from the account, not the form.
   const account = body.asAccount ? await currentUser() : null;
   if (body.asAccount && !account) return bad("Sign in again to send from your account.", 401);
+  if (!account && !(await passedTurnstile(body.turnstile, ipFrom(req.headers)))) return bad(BOT_MESSAGE, 403);
   if (account && account.id === receiver.id) return bad("That's your own link. Share it with others to receive music.");
   const name = account ? account.name : str("name", 100);
   const email = account ? account.email.toLowerCase() : str("email", 200).toLowerCase();

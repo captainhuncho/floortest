@@ -81,6 +81,7 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
           genre: field("genre"),
           release_status: field("release_status"),
           mix_status: field("mix_status"),
+          turnstile: field("cf-turnstile-response"),
           fileName: file.name,
           size: file.size,
           asAccount: !!opts.asAccount,

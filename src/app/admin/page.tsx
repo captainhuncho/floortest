@@ -2,6 +2,7 @@ import Link from "next/link";
 import { configProblems, env } from "@/lib/env";
 import { q } from "@/lib/db";
 import { fmtBytes } from "@/lib/format";
+import { BACKUP_KEEP_DAYS, lastBackup } from "@/lib/backup";
 
 const DAY = 86_400_000;
 
@@ -22,10 +23,13 @@ export default async function AdminOverview() {
     c("SELECT COUNT(*) AS n FROM incidents WHERE created_at >= ?", t - DAY),
   ]);
   const problems = configProblems();
+  const backup = await lastBackup();
+  const backupStale = !backup || t - backup.at > 2 * DAY;
 
   // Most urgent first. Legal deadlines (takedowns, privacy) lead.
   const todo = [
     { n: problems.length, label: "Configuration problems", sub: problems[0] ?? "", href: "#config", tone: "danger" },
+    { n: backupStale ? 1 : 0, label: "Database backup missing", sub: backup ? `Last one ${new Date(backup.at).toLocaleDateString("en-GB")}` : "No nightly backup has run yet", href: "#config", tone: "danger" },
     { n: takedowns, label: "Takedown claims to decide", sub: "Copyright claims waiting for a decision", href: "/admin/takedowns", tone: "danger" },
     { n: privacy, label: "Privacy requests", sub: "Copies of data or erasure, usually due within a month", href: "/admin/privacy", tone: "danger" },
     { n: appeals, label: "Suspension appeals", sub: "People asking to be restored", href: "/admin/inbox", tone: "warn" },
@@ -122,6 +126,9 @@ export default async function AdminOverview() {
           <p className="mt-3 text-sm text-lime">Everything required is set.</p>
         )}
         <p className="mt-3 text-sm text-mute">Sign-up mode: {env.signupMode}. Emails send from {env.email.from}.</p>
+        <p className="mt-1 text-sm text-mute">
+          Backups: {backup ? `last ${new Date(backup.at).toLocaleString("en-GB")} · ${fmtBytes(backup.bytes)} · ${backup.rows.toLocaleString("en")} rows, kept ${BACKUP_KEEP_DAYS} days in the storage bucket under backups/` : "none yet. The first runs with tonight's cleanup job."}
+        </p>
       </section>
 
       <section aria-labelledby="new-h">

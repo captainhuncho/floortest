@@ -53,6 +53,7 @@ export async function notifyNewSubmission(receiverId: number, trackId: number) {
     trackId,
   ))!;
   await sendMail({
+      unsubscribe: "submissions",
     userId: p.id,
     audience: "receiver",
     to: p.email,
@@ -86,8 +87,9 @@ export async function alertIfFull(receiverId: number, cap: { used: number; limit
   );
   if (!p) return;
   const plans = `${APP_URL}/dashboard/plans`;
-  await sendMail(
-    cap.full
+  await sendMail({
+    unsubscribe: "alerts",
+    ...(cap.full
       ? {
           userId: receiverId,
           audience: "receiver",
@@ -101,8 +103,8 @@ export async function alertIfFull(receiverId: number, cap: { used: number; limit
           to: p.email,
           subject: "Your FloorTest desk is 80% full",
           body: `You're using ${cap.used} of ${cap.limit} tracks. When it's full, your link stops accepting uploads.\n\nClear tracks you've decided on, or see bigger plans (free during the beta): ${plans}`,
-        },
-  );
+        }),
+  });
 }
 
 const WARN_DAYS = 7;
@@ -126,6 +128,7 @@ export async function warnExpiring(at = now()) {
   for (const [userId, list] of byUser) {
     const undecided = list.filter((r) => !r.decision).length;
     await sendMail({
+      unsubscribe: "alerts",
       userId,
       audience: "receiver",
       to: list[0].email,
@@ -162,6 +165,7 @@ export async function sendDigest(userId: number) {
   const lines = items.slice(0, 25).map((t) => `• ${t.artist} – ${t.title} (from ${t.sender})`);
   if (items.length > 25) lines.push(`• …and ${items.length - 25} more`);
   await sendMail({
+      unsubscribe: "submissions",
     userId,
     audience: "receiver",
     to: p.email,

@@ -5,12 +5,14 @@ import { q } from "@/lib/db";
 import { currentUser } from "@/lib/auth";
 import { sendMail } from "@/lib/mail";
 import { allow, requestIp } from "@/lib/ratelimit";
+import { BOT_MESSAGE, passedTurnstile } from "@/lib/turnstile";
 import { supportEmail } from "@/lib/site";
 
 export type ContactState = { ok?: boolean; error?: string } | undefined;
 
 export async function sendContact(_: ContactState, form: FormData): Promise<ContactState> {
   if (!(await allow("contact_ip", await requestIp(), 5, 3_600_000))) return { error: "Too many messages from this connection. Try again in an hour." };
+  if (!(await passedTurnstile(form.get("cf-turnstile-response"), await requestIp()))) return { error: BOT_MESSAGE };
 
   const str = (k: string, max: number) => String(form.get(k) ?? "").trim().slice(0, max);
   const name = str("name", 100);

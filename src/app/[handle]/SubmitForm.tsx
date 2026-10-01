@@ -1,5 +1,6 @@
 "use client";
 
+import { Turnstile } from "@/components/Turnstile";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -353,6 +354,7 @@ export function SubmitForm({
         <a href="/privacy" target="_blank" className="underline underline-offset-4">Privacy</a>
       </p>
 
+      {!account && <Turnstile />}
       <button className={`${L.btn} w-full py-3.5 ${m ? "text-[14px]" : "text-base"}`} disabled={busy || analyzing}>
         {busy ? `Uploading… ${Math.round(progress * 100)}%` : analyzing ? "Reading audio…" : `Send to ${receiverName}`}
       </button>

@@ -27,6 +27,7 @@ export async function runNudges(at = now()) {
     const lines = list.slice(0, 10).map((t) => `• ${t.artist} – ${t.title} (from ${t.sender})`);
     if (list.length > 10) lines.push(`• …and ${list.length - 10} more`);
     await sendMail({
+      unsubscribe: "alerts",
       userId,
       audience: "receiver",
       to: u.email,

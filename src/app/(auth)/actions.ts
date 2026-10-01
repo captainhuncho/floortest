@@ -1,6 +1,7 @@
 "use server";
 
 import { handleHeld } from "@/lib/accounts";
+import { BOT_MESSAGE, passedTurnstile } from "@/lib/turnstile";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { audit } from "@/lib/audit";
@@ -73,6 +74,7 @@ export async function signup(_: FormState, form: FormData): Promise<FormState> {
   const email = String(form.get("email") || "").trim().toLowerCase().slice(0, 200);
   const handle = String(form.get("handle") || "").trim().toLowerCase();
   const password = String(form.get("password") || "");
+  if (!(await passedTurnstile(form.get("cf-turnstile-response"), await requestIp()))) return { error: BOT_MESSAGE };
   const invite = await resolveInvite(String(form.get("ref") || form.get("invite") || ""), String(form.get("email") || ""));
 
   if (env.signupMode === "invite" && !invite.valid) return { error: "That invite code is not valid, has been used, or was sent to a different email. Use the email your invite went to." };
@@ -91,7 +93,7 @@ export async function signup(_: FormState, form: FormData): Promise<FormState> {
   try {
     userId = await q.tx(async (db) => {
       const u = (await db.get<{ id: number }>(
-        "INSERT INTO users (email, password_hash, name, handle, referred_by, invite_code, tz, created_at) VALUES (?,?,?,?,?,?,?,?) RETURNING id",
+        "INSERT INTO users (email, password_hash, name, handle, referred_by, invite_code, tz, signup_source, created_at) VALUES (?,?,?,?,?,?,?,?,?) RETURNING id",
         email,
         hashPassword(password),
         name,
@@ -99,6 +101,7 @@ export async function signup(_: FormState, form: FormData): Promise<FormState> {
         invite.referrerId,
         invite.valid ? invite.code : null,
         validTz(String(form.get("tz") || "UTC")),
+        String(form.get("source") || "").trim().slice(0, 200),
         now(),
       ))!;
       const c = (await db.get<{ id: number }>("INSERT INTO collections (user_id, name, created_at) VALUES (?,?,?) RETURNING id", u.id, "Inbox", now()))!;

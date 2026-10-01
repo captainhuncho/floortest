@@ -564,4 +564,12 @@ create index handle_history_user on handle_history(user_id);
 alter table handle_history enable row level security;
 `,
   },
+{
+    // Where people came from (UTM tags or the referring site), for the waitlist and sign-ups.
+    id: "0029_sources",
+    sql: `
+alter table waitlist add column source text not null default '';
+alter table users add column signup_source text not null default '';
+`,
+  },
 ];

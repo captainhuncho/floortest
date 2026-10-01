@@ -28,7 +28,7 @@ const when = (t: number) => new Date(t).toLocaleString("en-GB", { dateStyle: "me
 export default async function Account({ params }: { params: Promise<{ id: string }> }) {
   const id = Number((await params).id);
   if (!Number.isSafeInteger(id)) notFound();
-  const u = await q.get<User & { identity_status: string | null; invite_code: string | null; referred_by: number | null; suspended_at: number | null; suspended_reason: string; pending_email: string | null; pending_email_at: number | null }>("SELECT * FROM users WHERE id = ?", id);
+  const u = await q.get<User & { identity_status: string | null; invite_code: string | null; referred_by: number | null; suspended_at: number | null; suspended_reason: string; pending_email: string | null; pending_email_at: number | null; signup_source: string }>("SELECT * FROM users WHERE id = ?", id);
   if (!u) notFound();
   const t = Date.now();
   const pendingEmail = u.pending_email && (u.pending_email_at ?? 0) > t - 48 * 3_600_000 ? u.pending_email : null;
@@ -98,7 +98,7 @@ export default async function Account({ params }: { params: Promise<{ id: string
           <a href={`${APP_URL}/${u.handle}`} target="_blank" rel="noreferrer" className="text-mute hover:text-bone">@{u.handle} ↗</a>
         </div>
         <p className="mt-1 text-sm text-mute">
-          {u.email} · joined {day(u.created_at)} · {u.invite_code ? `invite ${u.invite_code}` : u.referred_by ? <Link href={`/admin/accounts/${u.referred_by}`} className="underline">referred</Link> : "no invite"} · {u.tz}
+          {u.email} · joined {day(u.created_at)} · {u.invite_code ? `invite ${u.invite_code}` : u.referred_by ? <Link href={`/admin/accounts/${u.referred_by}`} className="underline">referred</Link> : "no invite"} · {u.tz}{u.signup_source ? ` · came from ${u.signup_source}` : ""}
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           {u.suspended_at && <span className="chip border-danger/50 text-danger">Suspended {day(u.suspended_at)}{u.suspended_reason ? `: ${u.suspended_reason}` : ""}</span>}

@@ -9,6 +9,10 @@ import { mono, serif } from "./fonts";
 import { HomePreview } from "./HomePreview";
 import { ClaimBox } from "./ClaimBox";
 import { WaitlistForm } from "./WaitlistForm";
+import { RememberSource } from "@/components/SourceField";
+
+/** The one address search engines should use for the home page. */
+export const metadata = { alternates: { canonical: "/" } };
 
 const HOST = APP_URL.replace(/^https?:\/\//, "");
 const DEMO = "/maxwell";
@@ -69,6 +73,7 @@ export default async function Home({
     <div
       className={`${serif.variable} ${mono.variable} bg-ink text-bone`}
     >
+      <RememberSource />
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         {deleted && (
           <p

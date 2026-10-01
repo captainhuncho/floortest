@@ -514,6 +514,7 @@ export async function publishAnnouncement(form: FormData) {
     after(async () => {
       for (const p of people)
         await sendMail({
+      unsubscribe: "product",
           userId: p.id,
           audience: "receiver",
           to: p.email,

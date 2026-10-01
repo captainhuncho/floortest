@@ -36,6 +36,7 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
         </p>
       )}
       <AuthForm
+        botCheck
         action={signup}
         hidden={referrer ? { ref } : undefined}
         submit="Create my link"
