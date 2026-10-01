@@ -6,13 +6,12 @@ import { Logo } from "@/components/Logo";
 import type { PauseState } from "./PauseSwitch";
 
 type Props = {
-  user: { handle: string; name: string };
   needsReview: number;
   cap: { used: number; limit: number; full: boolean };
   pause: PauseState;
 };
 
-export function Sidebar({ user, needsReview, cap, pause }: Props) {
+export function Sidebar({ needsReview, cap, pause }: Props) {
   const path = usePathname();
 
   const nav = [
@@ -68,26 +67,6 @@ export function Sidebar({ user, needsReview, cap, pause }: Props) {
             Submissions are paused. Turn them back on in your profile →
           </Link>
         )}
-        <Link
-          href="/dashboard/account"
-          aria-current={path.startsWith("/dashboard/account") ? "page" : undefined}
-          className="group flex items-center gap-3 rounded-xl border border-line bg-ink-3 px-3 py-2.5 hover:border-mute"
-        >
-          <span aria-hidden className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-bone text-xs font-bold text-ink">
-            {user.name
-              .split(/\s+/)
-              .slice(0, 2)
-              .map((w) => w[0]?.toUpperCase())
-              .join("")}
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-[12px] font-bold">{user.name}</span>
-            <span className="block text-[10px] text-faint group-hover:text-mute">{pause.on ? "Link paused" : "Receiver link active"}</span>
-          </span>
-          <span aria-hidden className="text-mute group-hover:text-bone">
-            →
-          </span>
-        </Link>
       </div>
     </aside>
   );

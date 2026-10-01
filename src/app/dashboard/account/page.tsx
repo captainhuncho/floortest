@@ -38,13 +38,20 @@ export default async function Account() {
   const label = "text-[10px] font-bold tracking-[0.5px] text-mute";
   const rule = <div className="h-px w-full bg-line" />;
   // `sub`: the one-line explanation under each item, shown on desktop (the old profile menu had these).
-  const Row = ({ href, title, sub, value, external }: { href: string; title: string; sub?: string; value?: React.ReactNode; external?: boolean }) => (
-    <Link href={href} target={external ? "_blank" : undefined} className="flex items-center justify-between gap-3 py-0.5">
-      <span className="min-w-0">
+  const Icon = ({ i }: { i?: string }) =>
+    i ? (
+      <span aria-hidden className="grid w-5 shrink-0 place-items-center text-[15px] leading-none text-mute">
+        {i}
+      </span>
+    ) : null;
+  const Row = ({ href, title, sub, value, external, icon }: { href: string; title: string; sub?: string; value?: React.ReactNode; external?: boolean; icon?: string }) => (
+    <Link href={href} target={external ? "_blank" : undefined} className="group flex items-center gap-3 py-0.5">
+      <Icon i={icon} />
+      <span className="min-w-0 flex-1">
         <span className="block text-[13px] font-medium text-bone">{title}</span>
         {sub && <span className="mt-0.5 hidden truncate text-[10px] text-faint md:block">{sub}</span>}
       </span>
-      {value ?? <span aria-hidden className="text-sm text-mute">{external ? "↗" : "›"}</span>}
+      {value ?? <span aria-hidden className="text-sm text-mute transition group-hover:translate-x-0.5 group-hover:text-bone">{external ? "↗" : "→"}</span>}
     </Link>
   );
   const Section = ({ title, rows }: { title: string; rows: React.ReactNode[] }) => (
@@ -153,22 +160,22 @@ export default async function Account() {
       <Section
         title="YOUR DESK"
         rows={[
-          <Row key="s" href="/dashboard/send" title="Send music" sub="Send music to another FloorTest user" />,
-          <Row key="c" href="/dashboard/contacts" title="Contacts" sub="Everyone who sent you music" />,
-          <Row key="a" href="/dashboard/activity" title="Activity" sub="Everything you did, newest first" />,
-          <Row key="e" href="/dashboard/emails" title="Emails to senders" sub="Everything FloorTest told them" />,
-          <Row key="r" href="/dashboard/referrals" title="Referrals" sub="Invite DJs · earn track slots" />,
+          <Row key="s" href="/dashboard/send" icon="↑" title="Send music" sub="Send music to another FloorTest user" />,
+          <Row key="c" href="/dashboard/contacts" icon="☰" title="Contacts" sub="Everyone who sent you music" />,
+          <Row key="a" href="/dashboard/activity" icon="◷" title="Activity" sub="Everything you did, newest first" />,
+          <Row key="e" href="/dashboard/emails" icon="✉" title="Emails to senders" sub="Everything FloorTest told them" />,
+          <Row key="r" href="/dashboard/referrals" icon="+" title="Referrals" sub="Invite DJs · earn track slots" />,
         ]}
       />
       <Section
         title="ACCOUNT"
         rows={[
-          <Row key="p" href="/dashboard/settings#page-h" title="Edit profile" sub="Name, link name, public page and cover photo" />,
-          <Row key="e" href="/dashboard/settings#security-h" title="Email & password" sub="Change your sign-in details" />,
+          <Row key="p" href="/dashboard/settings#page-h" icon="✎" title="Edit profile" sub="Name, link name, public page and cover photo" />,
+          <Row key="e" href="/dashboard/settings#security-h" icon="@" title="Email & password" sub="Change your sign-in details" />,
           <Row
             key="t"
             href="/dashboard/settings#security-h"
-            title="Two-factor authentication"
+            icon="⚿" title="Two-factor authentication"
             sub="A code from your phone when you sign in"
             value={<span className="rounded bg-ink-4 px-1.5 py-0.5 text-[8px] font-bold uppercase text-white">{user.totp_enabled_at ? "On" : "Off"}</span>}
           />,
@@ -177,8 +184,9 @@ export default async function Account() {
       <Section
         title="SUBMISSION"
         rows={[
-          <div key="q" className="flex items-center justify-between gap-3 py-0.5">
-            <a href={`/api/qr/${user.handle}?format=svg`} target="_blank" className="text-[13px] font-medium text-bone hover:underline">
+          <div key="q" className="flex items-center gap-3 py-0.5">
+            <Icon i="▦" />
+            <a href={`/api/qr/${user.handle}?format=svg`} target="_blank" className="min-w-0 flex-1 text-[13px] font-medium text-bone hover:underline">
               QR code <span className="text-[11px] font-normal text-mute">(view)</span>
               <span className="mt-0.5 hidden text-[10px] font-normal text-faint md:block">For flyers, screens and stories</span>
             </a>
@@ -195,25 +203,25 @@ export default async function Account() {
       />
       <Section
         title="PREFERENCES"
-        rows={[<Row key="n" href="/dashboard/notifications" title="Notifications" sub="How and when we email you" value={<span className="text-[11px] text-mute">Email</span>} />]}
+        rows={[<Row key="n" href="/dashboard/notifications" icon="◎" title="Notifications" sub="How and when we email you" value={<span className="text-[11px] text-mute">Email</span>} />]}
       />
       <Section
         title="PRIVACY"
         rows={[
-          <Row key="p" href="/dashboard/settings#security-h" title="Privacy + security" sub="Sessions, sign-in alerts and verification" />,
-          <Row key="b" href="/dashboard/settings#blocked-h" title="Blocked users" sub="Senders who can no longer reach you" />,
-          <Row key="d" href="/contact?topic=data" title="Data export" sub="Ask for a copy of your data" />,
+          <Row key="p" href="/dashboard/settings#security-h" icon="⛨" title="Privacy + security" sub="Sessions, sign-in alerts and verification" />,
+          <Row key="b" href="/dashboard/settings#blocked-h" icon="⊘" title="Blocked users" sub="Senders who can no longer reach you" />,
+          <Row key="d" href="/contact?topic=data" icon="⇩" title="Data export" sub="Ask for a copy of your data" />,
         ]}
       />
       <Section
         title="ABOUT FLOORTEST"
         rows={[
-          <Row key="c" href="/contact" title="Contact us" sub="Questions, problems, anything" external />,
-          <Row key="f" href="/contact?topic=feedback" title="Send feedback" sub="Tell us what to fix or build" external />,
-          <Row key="t" href="/trust" title="Trust & security" sub="How we keep music private" external />,
-          <Row key="te" href="/terms" title="Terms & conditions" external />,
-          <Row key="l" href="/licenses" title="Legal" external />,
-          <Row key="pr" href="/privacy" title="Privacy policy" external />,
+          <Row key="c" href="/contact" icon="✆" title="Contact us" sub="Questions, problems, anything" external />,
+          <Row key="f" href="/contact?topic=feedback" icon="✎" title="Send feedback" sub="Tell us what to fix or build" external />,
+          <Row key="t" href="/trust" icon="✓" title="Trust & security" sub="How we keep music private" external />,
+          <Row key="te" href="/terms" icon="§" title="Terms & conditions" external />,
+          <Row key="l" href="/licenses" icon="¶" title="Legal" external />,
+          <Row key="pr" href="/privacy" icon="⚑" title="Privacy policy" external />,
         ]}
       />
       <form action={logout}>

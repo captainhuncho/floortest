@@ -38,7 +38,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <ToastProvider>
         <div className="md:grid md:h-dvh md:grid-cols-[248px_1fr]">
           <Sidebar
-            user={{ handle: user.handle, name: user.name }}
             needsReview={collections.reduce((n, c) => n + c.needs_review, 0)}
             cap={cap}
             pause={pauseState}
