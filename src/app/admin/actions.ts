@@ -292,3 +292,70 @@ export async function removeProtectedName(handle: string) {
   await logAdmin(a.id, "unprotected name", handle);
   refresh();
 }
+
+const cleanBlock = (raw: string) => {
+  const v = raw.trim().toLowerCase().replace(/^@/, "");
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return { kind: "email" as const, value: v };
+  if (/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(v)) return { kind: "domain" as const, value: v };
+  return null;
+};
+
+/** Stops an address, or a whole domain, sending to anyone on FloorTest. */
+export async function addPlatformBlock(form: FormData) {
+  const a = await requireAdminAction();
+  const b = cleanBlock(String(form.get("value") || ""));
+  if (!b) return;
+  const reason = String(form.get("reason") || "").trim().slice(0, 200);
+  await q.run("INSERT INTO platform_blocks (kind, value, reason, admin_id, created_at) VALUES (?,?,?,?,?) ON CONFLICT (value) DO NOTHING", b.kind, b.value, reason, a.id, now());
+  await logAdmin(a.id, `blocked ${b.kind} everywhere`, b.value, reason);
+  refresh();
+}
+
+export async function blockEverywhere(email: string) {
+  const f = new FormData();
+  f.set("value", email);
+  f.set("reason", "from moderation");
+  await addPlatformBlock(f);
+}
+
+export async function removePlatformBlock(id: number) {
+  const a = await requireAdminAction();
+  const b = await q.get<{ value: string }>("SELECT value FROM platform_blocks WHERE id = ?", id);
+  if (!b) return;
+  await q.run("DELETE FROM platform_blocks WHERE id = ?", id);
+  await logAdmin(a.id, "lifted platform block", b.value);
+  refresh();
+}
+
+/** Logs a copyright claim. The track is found by its receipt token or its id. */
+export async function openTakedown(form: FormData) {
+  const a = await requireAdminAction();
+  const claimant = String(form.get("claimant") || "").trim().slice(0, 120);
+  const claimantEmail = String(form.get("claimant_email") || "").trim().toLowerCase().slice(0, 200);
+  const ref = String(form.get("track") || "").trim().slice(0, 100);
+  if (!claimant || !claimantEmail.includes("@") || !ref) return;
+  const t = await q.get<{ id: number; title: string; artist: string; handle: string }>(
+    "SELECT t.id, t.title, t.artist, u.handle FROM tracks t JOIN users u ON u.id = t.user_id WHERE t.token = ? OR t.id::text = ?",
+    ref,
+    ref,
+  );
+  const label = t ? `${t.artist} – ${t.title} (@${t.handle})` : `Not found: ${ref}`;
+  await q.run(
+    "INSERT INTO takedowns (track_id, track_label, claimant, claimant_email, basis, admin_id, created_at) VALUES (?,?,?,?,?,?,?)",
+    t?.id ?? null, label, claimant, claimantEmail, String(form.get("basis") || "").trim().slice(0, 2000), a.id, now(),
+  );
+  await logAdmin(a.id, "opened takedown", label, claimant);
+  refresh();
+}
+
+/** Closes a case: removes the track (and its file) or rejects the claim, with a note for the record. */
+export async function decideTakedown(id: number, outcome: "removed" | "rejected", form: FormData) {
+  const a = await requireAdminAction();
+  const c = await q.get<{ id: number; track_id: number | null; track_label: string; status: string }>("SELECT id, track_id, track_label, status FROM takedowns WHERE id = ?", id);
+  if (!c || c.status !== "open") return;
+  const notes = String(form.get("notes") || "").trim().slice(0, 1000);
+  if (outcome === "removed" && c.track_id) await removeTrackAsAdmin(c.track_id, `takedown #${c.id}`);
+  await q.run("UPDATE takedowns SET status = ?, notes = ?, decided_at = ?, admin_id = ? WHERE id = ? AND status = 'open'", outcome, notes, now(), a.id, c.id);
+  await logAdmin(a.id, outcome === "removed" ? "upheld takedown" : "rejected takedown", c.track_label, notes);
+  refresh();
+}

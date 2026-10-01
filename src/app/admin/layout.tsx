@@ -17,6 +17,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     await q.count("SELECT COUNT(*) AS n FROM incidents WHERE created_at >= ?", Date.now() - 86_400_000),
     await q.count("SELECT COUNT(*) AS n FROM users WHERE identity_status = 'pending'"),
   ];
+  const takedowns = await q.count("SELECT COUNT(*) AS n FROM takedowns WHERE status = 'open'");
   const groups: NavGroup[] = [
     {
       id: "monitor",
@@ -53,7 +54,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       title: "Trust & safety",
       icon: "shield",
       sections: [
-        { title: "Review", items: [{ href: "/admin/verification", label: "Verification", icon: "shield", badge: verifying }, { href: "/admin/moderation", label: "Moderation", icon: "flag" }] },
+        { title: "Review", items: [{ href: "/admin/verification", label: "Verification", icon: "shield", badge: verifying }, { href: "/admin/moderation", label: "Moderation", icon: "flag" }, { href: "/admin/takedowns", label: "Takedowns", icon: "alert", badge: takedowns }, { href: "/admin/blocks", label: "Sender blocks", icon: "shield" }] },
         { title: "Records", items: [{ href: "/admin/log", label: "Admin log", icon: "log" }] },
       ],
     },

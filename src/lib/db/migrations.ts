@@ -474,4 +474,34 @@ alter table share_requests drop constraint if exists share_requests_status_check
 alter table share_requests add constraint share_requests_status_check check (status in ('pending', 'allowed', 'declined', 'cancelled'));
 `,
   },
+{
+    // Platform-wide sender blocks (one address or a whole domain), and copyright takedown cases.
+    id: "0025_blocks_takedowns",
+    sql: `
+create table platform_blocks (
+  id bigint generated always as identity primary key,
+  kind text not null check (kind in ('email', 'domain')),
+  value text not null unique,
+  reason text not null default '',
+  admin_id bigint references users(id) on delete set null,
+  created_at bigint not null
+);
+alter table platform_blocks enable row level security;
+create table takedowns (
+  id bigint generated always as identity primary key,
+  track_id bigint references tracks(id) on delete set null,
+  track_label text not null default '',
+  claimant text not null,
+  claimant_email text not null,
+  basis text not null default '',
+  status text not null default 'open' check (status in ('open', 'removed', 'rejected')),
+  notes text not null default '',
+  admin_id bigint references users(id) on delete set null,
+  created_at bigint not null,
+  decided_at bigint
+);
+create index takedowns_status on takedowns(status);
+alter table takedowns enable row level security;
+`,
+  },
 ];

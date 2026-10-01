@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ConfirmButton } from "../../dashboard/ClientBits";
 import { likeContains, q } from "@/lib/db";
 import { fmtBytes } from "@/lib/format";
-import { blockSenderAsAdmin, removeTrackAsAdmin } from "../actions";
+import { blockEverywhere, blockSenderAsAdmin, removeTrackAsAdmin } from "../actions";
 
 /** Find any track or sender across every account, for abuse reports and takedowns. */
 export default async function Moderation({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
@@ -48,6 +48,10 @@ export default async function Moderation({ searchParams }: { searchParams: Promi
                         Block sender
                       </ConfirmButton>
                     )}
+                    <ConfirmButton action={blockEverywhere.bind(null, t.email)} message={`Block ${t.email} from sending to anyone on FloorTest?`} className="text-sm text-mute hover:text-bone">
+                      Block everywhere
+                    </ConfirmButton>
+                    <span className="text-faint">#{t.id}</span>
                     <ConfirmButton
                       action={removeTrackAsAdmin.bind(null, t.id, "")}
                       message={`Remove "${t.title}" from @${t.handle}'s desk and delete the file? This can't be undone.`}

@@ -134,9 +134,17 @@ async function checkOpen(receiver: User, db: Queryable = q) {
   if ((await capacity(receiver, db)).full) throw new IntakeError(`${receiver.name} isn't accepting new tracks right now.`);
 }
 
+/** Blocked across every link by FloorTest, by exact address or by domain. */
+export async function platformBlocked(email: string) {
+  const e = email.trim().toLowerCase();
+  const domain = e.split("@")[1] || "";
+  return !!(await q.get("SELECT 1 FROM platform_blocks WHERE (kind = 'email' AND value = ?) OR (kind = 'domain' AND value = ?)", e, domain));
+}
+
 /** Every rule a submission must pass before we hand out an upload URL. */
 export async function checkIntake(receiver: User, email: string, ip: string) {
   await checkOpen(receiver);
+  if (await platformBlocked(email)) throw new IntakeError("This address can't send tracks on FloorTest.", 403);
   if (await q.get("SELECT 1 FROM senders WHERE user_id = ? AND email = ? AND blocked_at IS NOT NULL", receiver.id, email))
     throw new IntakeError(`${receiver.name} isn't accepting tracks from this address.`, 403);
   if ((await recentCount("upload_ip", `${receiver.id}:${ip}`, HOUR)) >= RATE_PER_IP_PER_HOUR)
