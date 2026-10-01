@@ -7,13 +7,16 @@ import { env } from "./env";
 export const isAdminEmail = (email: string) => env.adminEmails.includes(email.toLowerCase());
 
 /**
- * Admin pages are for ADMIN_EMAILS only, and only with two-factor on. Anyone else gets a plain
- * 404 so the admin area doesn't advertise itself.
+ * Admin pages are for ADMIN_EMAILS only, with a confirmed email (so nobody can claim an admin address by
+ * signing up with it) and two-factor on, even just to look. Anyone else gets a plain 404 so the admin
+ * area doesn't advertise itself; an admin address missing either is sent to Settings to fix it.
  */
 export async function requireAdmin(): Promise<User> {
   const u = await currentUser();
   if (!u) redirect("/login");
   if (!isAdminEmail(u.email)) notFound();
+  // An admin address only counts once the email is confirmed and two-factor is on; until then, no admin data.
+  if (!u.email_verified_at || !adminReady(u)) redirect("/dashboard/settings#security-h");
   return u;
 }
 

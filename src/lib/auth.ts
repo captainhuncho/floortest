@@ -78,12 +78,12 @@ export const viewingAs = cache(async (): Promise<{ adminId: number; userId: numb
   const token = jar.get(COOKIE)?.value;
   if (!va || !token) return null;
   // The real session must still be that admin, with two-factor on and still on the admin list.
-  const admin = await q.get<{ id: number; email: string; totp_enabled_at: number | null }>(
-    "SELECT u.id, u.email, u.totp_enabled_at FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ? AND u.suspended_at IS NULL",
+  const admin = await q.get<{ id: number; email: string; totp_enabled_at: number | null; email_verified_at: number | null }>(
+    "SELECT u.id, u.email, u.totp_enabled_at, u.email_verified_at FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ? AND u.suspended_at IS NULL",
     hashToken(token),
     now(),
   );
-  if (!admin || admin.id !== va.adminId || !admin.totp_enabled_at || !env.adminEmails.includes(admin.email.toLowerCase())) return null;
+  if (!admin || admin.id !== va.adminId || !admin.totp_enabled_at || !admin.email_verified_at || !env.adminEmails.includes(admin.email.toLowerCase())) return null;
   const target = await q.get<{ handle: string }>("SELECT handle FROM users WHERE id = ?", va.userId);
   return target ? { ...va, handle: target.handle } : null;
 });

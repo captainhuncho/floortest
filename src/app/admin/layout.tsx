@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { adminReady, requireAdmin } from "@/lib/admin";
+import { requireAdmin } from "@/lib/admin";
 import { q } from "@/lib/db";
 import { AdminNav, type NavGroup } from "./AdminNav";
 
@@ -82,15 +82,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         ))}
       </nav>
       <div className="min-w-0 flex-1">
-        {!adminReady(admin) && (
-          <p role="alert" className="border-b border-danger/40 bg-danger/10 px-4 py-3 text-center text-sm text-danger">
-            Admin actions are locked until you turn on two-factor sign-in in{" "}
-            <Link href="/dashboard/settings#security-h" className="underline">
-              Settings
-            </Link>
-            . You can look around, but not change anything.
-          </p>
-        )}
         <main id="main" className="mx-auto max-w-6xl px-4 py-6 font-[family-name:var(--font-stage-mono)] sm:px-8 md:py-8">
           {children}
         </main>
