@@ -130,7 +130,8 @@ Draft Cookie Policy now at `/cookies`, linked from the footer and the Privacy Po
     - EU Digital Services Act: if we serve EU users, a single point of contact and notice-and-action wording.
     - Accessibility statement: not legally required for a private company, but recommended?
     - ICO registration and data protection fee: confirm we must register and pay.
-24. **Age:** the Terms say 18+. Is a self-declaration at sign-up enough?
+24. **Advertising (future, 2 Oct 2026):** we may (a) run ads to promote FloorTest, which would mean ad pixels such as the Meta Pixel or Google Ads tag, and (b) later sell ad space on FloorTest. For (a), what consent setup is required (a consent banner, a consent mode, an updated Cookie Policy)? For (b), what Advertising Terms, ad labelling (ASA/CAP Code) and DSA ad-transparency duties apply?
+25. **Age:** the Terms say 18+. Is a self-declaration at sign-up enough?
 
 ## 7. Before invites go out
 
