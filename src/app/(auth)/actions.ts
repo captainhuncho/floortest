@@ -1,5 +1,6 @@
 "use server";
 
+import { switchOn } from "@/lib/switches";
 import { handleHeld } from "@/lib/accounts";
 import { BOT_MESSAGE, passedTurnstile } from "@/lib/turnstile";
 import { cookies } from "next/headers";
@@ -77,7 +78,7 @@ export async function signup(_: FormState, form: FormData): Promise<FormState> {
   if (!(await passedTurnstile(form.get("cf-turnstile-response"), await requestIp()))) return { error: BOT_MESSAGE };
   const invite = await resolveInvite(String(form.get("ref") || form.get("invite") || ""), String(form.get("email") || ""));
 
-  if (env.signupMode === "invite" && !invite.valid) return { error: "That invite code is not valid, has been used, or was sent to a different email. Use the email your invite went to." };
+  if (!(await switchOn("open_signup")) && !invite.valid) return { error: "That invite code is not valid, has been used, or was sent to a different email. Use the email your invite went to." };
   if (!name || !email || !handle || !password) return { error: "All fields are required." };
   if (!EMAIL.test(email)) return { error: "Enter a valid email." };
   if (!/^[a-z0-9][a-z0-9-_]{1,29}$/.test(handle)) return { error: "Link names use 2–30 letters, numbers, - or _." };

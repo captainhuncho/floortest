@@ -17,8 +17,8 @@ export const env = {
   get secret(): string {
     const s = v("APP_SECRET");
     // The live site never falls back to the public dev secret: anything signed with it could be forged.
-    if (!s && process.env.VERCEL_ENV === "production") throw new Error("APP_SECRET is not set. Refusing to sign or check tokens without it.");
-    return s ?? "dev-only-secret-change-me";
+    if (!s) throw new Error("APP_SECRET is not set. Refusing to sign or check tokens without it.");
+    return s;
   },
   databaseUrl: v("DATABASE_URL"),
   storage: {
@@ -38,8 +38,6 @@ export const env = {
     replyTo: v("MAIL_REPLY_TO"),
   },
   cronSecret: v("CRON_SECRET"),
-  /** "invite" (default in production): signing up needs an invite code. "open": anyone can sign up. */
-  signupMode: (v("SIGNUP_MODE") ?? (isProd ? "invite" : "open")) as "invite" | "open",
   /** Comma-separated codes that let someone sign up in invite mode (besides existing users' referral codes). */
   inviteCodes: (v("BETA_INVITE_CODES") ?? "")
     .split(",")

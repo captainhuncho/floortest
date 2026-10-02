@@ -1,3 +1,5 @@
+import { switchOn } from "@/lib/switches";
+import { botCheckKey } from "@/lib/turnstile";
 import { q } from "@/lib/db";
 import { env } from "@/lib/env";
 import { AuthForm } from "../AuthForm";
@@ -11,7 +13,7 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
   const inviteCode = (sp.invite || "").toUpperCase().slice(0, 32);
   const personal = inviteCode ? await q.get<{ email: string | null }>("SELECT email FROM invites WHERE code = ? AND revoked_at IS NULL", inviteCode) : undefined;
   const referrer = ref ? await q.get<{ name: string }>("SELECT name FROM users WHERE referral_code = ?", ref) : undefined;
-  const inviteOnly = env.signupMode === "invite";
+  const inviteOnly = !(await switchOn("open_signup"));
   const host = env.appUrl.replace(/^https?:\/\//, "");
   return (
     <>
@@ -36,7 +38,8 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
         </p>
       )}
       <AuthForm
-        botCheck
+        botCheckKey={await botCheckKey()}
+        captureSource
         action={signup}
         hidden={referrer ? { ref } : undefined}
         submit="Create my link"

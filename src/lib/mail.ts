@@ -1,7 +1,7 @@
 import "server-only";
 import { unsubToken, type UnsubKind } from "./unsubscribe";
 import { now, q } from "./db";
-import { env } from "./env";
+import { env, isPreview } from "./env";
 import { recordIncident } from "./incidents";
 
 export const APP_URL = env.appUrl;
@@ -17,7 +17,14 @@ export async function sendMail(opts: { userId: number | null; to: string; subjec
   // Optional emails carry a one-click unsubscribe (header for Gmail/Yahoo, plus a link in the text).
   const unsub = opts.unsubscribe && opts.userId ? unsubToken(opts.userId, opts.unsubscribe, opts.to) : null;
   if (unsub) opts = { ...opts, body: `${opts.body}\n\n—\nStop these emails: ${APP_URL}/unsubscribe/${unsub}` };
-  if (env.email.resendKey) {
+  // Staging (Vercel previews) never emails real people: everything goes to STAGING_EMAIL_TO, or nowhere.
+  const staging = isPreview;
+  const stagingTo = staging ? (process.env.STAGING_EMAIL_TO ?? "").trim() : "";
+  if (staging) {
+    opts = { ...opts, subject: `[Staging → ${opts.to}] ${opts.subject}`, to: stagingTo || opts.to };
+    if (!stagingTo) status = "logged (staging)";
+  }
+  if (env.email.resendKey && !(staging && !stagingTo)) {
     try {
       const res = await fetch("https://api.resend.com/emails", {
         method: "POST",

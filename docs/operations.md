@@ -28,13 +28,14 @@ Production and Preview have separate values. Never paste values into chats or ti
 | `RESEND_API_KEY`, `MAIL_FROM`, `MAIL_REPLY_TO`, `SUPPORT_EMAIL` | Email |
 | `ADMIN_EMAILS` | Who can open `/admin` (they also need a confirmed email and two-factor) |
 | `CRON_SECRET` | Lets Vercel's scheduler call the nightly jobs |
-| `SIGNUP_MODE` (`invite`/`open`), `BETA_INVITE_CODES` | Who can sign up |
-| `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Bot check |
-| `BACKUP_KEY` (recommended) | Encrypts nightly backups. If unset, `APP_SECRET` is used. **Keep a copy outside Vercel and the bucket:** without it, backups can't be read |
+| `BETA_INVITE_CODES` | Extra shared invite codes (sign-up itself is a switch, below) |
+| `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Bot check (on/off is a switch, below) |
+| `STAGING_EMAIL_TO` (previews only) | On staging, every email goes to this address instead of the real person. Unset means nothing is sent |
+| `BACKUP_KEY` (required) | Encrypts nightly backups. **Keep a copy outside Vercel and the bucket:** without it, backups can't be read |
 | `ALERT_WEBHOOK_URL` (optional) | A Discord or Slack incoming-webhook URL. Urgent alerts go there as well as email, so you still hear about it if email itself is down |
 | `DB_AUTO_MIGRATE=true`, `DB_POOL_MAX=5` | Database behaviour |
 
-Code switches (in the repo, not Vercel): `SHARING_LIVE` and `STEMS_PLANS` in `src/lib/plans.ts`, `TURNSTILE_READY` in `src/lib/turnstile.ts`. Stems can also be switched per plan or account in **Admin → Feature switches**.
+**Switches (Admin → Feature switches, no deploy):** sharing with colleagues, bot check, open sign-up, and pause all uploads (maintenance). Stems is switched per plan or per account on the same page. Every flip is logged.
 
 ## Releasing
 
@@ -60,7 +61,7 @@ Normal page visits also run light cleanup (sessions, rate limits, abandoned uplo
 ## Backups and restore
 
 - **What's covered:** every table except short-lived ones (sessions, rate limits, pending uploads, password resets). Live email-confirmation tokens and email bodies are blanked. Audio files are **not** in the database backup; they live in R2.
-- **Encrypted** (AES-256-GCM) with `BACKUP_KEY` (or `APP_SECRET`). Rotating that key makes older backups unreadable unless you keep the old key. Each run gets its own file (`db-YYYY-MM-DDTHHMM.json.gz.enc`), so a manual rerun never replaces the night's backup.
+- **Encrypted** (AES-256-GCM) with `BACKUP_KEY`. Rotating it makes older backups unreadable unless you keep the old key. Each run gets its own file (`db-YYYY-MM-DDTHHMM.json.gz.enc`), so a manual rerun never replaces the night's backup.
 - **Kept** 14 days. Every backup is listed in `app_state.backup_keys`, so older ones are always deleted, even after missed nights.
 - **Status:** Admin → Overview shows the last backup. It becomes a red to-do if none ran in 2 days.
 - **Restore drill** (run after schema changes and monthly): download a backup from R2, then run `BACKUP_KEY=… npx tsx scripts/restore-drill.ts path/to/db-….json.gz.enc` (use the same key as the server). It rebuilds a throwaway database and checks every table's row count. It never touches production.
@@ -100,7 +101,7 @@ So a storage outage can delay a deletion but can never lose track of a file. Acc
 |---|---|---|
 | Site down / 5xx | Vercel deployment state and logs; `/api/health` | Promote the previous deployment. If the database is the cause, check Supabase status and connections |
 | "Something went wrong" on one page | Admin → Incidents (the code on the error page matches the log digest) | Fix forward, or roll back |
-| Nobody can sign up or send | Admin → Incidents for "Bot check"; Cloudflare Turnstile widget hostnames | Set `TURNSTILE_READY = false` and ship to pause the check |
+| Nobody can sign up or send | Admin → Incidents for "Bot check"; Cloudflare Turnstile widget hostnames | Admin → Feature switches → turn off **Bot check** (instant) |
 | Emails not arriving | Admin → Emails sent (status column), Resend dashboard | Check domain verification and API key; resend from admin |
 | Backup missing (red on Overview) | Admin → Incidents "Nightly database backup failed"; R2 credentials | Fix and rerun: in Vercel → Cron Jobs, run `/api/cron/purge` |
 | Storage errors | Incidents "could not be deleted" / upload failures; Cloudflare R2 status | Queued deletions retry automatically once R2 is back |

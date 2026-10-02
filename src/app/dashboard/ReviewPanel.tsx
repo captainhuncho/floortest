@@ -43,8 +43,9 @@ export async function ReviewPanel({
     t.share_ok = fresh?.s ?? 0;
     t.share_download = fresh?.d ?? 0;
   }
-  const share = canShare(t) ? await activeShare(t.id) : undefined;
-  const audience = canShare(t) ? await shareAudience(t.id) : [];
+  const shareable = await canShare(t);
+  const share = shareable ? await activeShare(t.id) : undefined;
+  const audience = shareable ? await shareAudience(t.id) : [];
   const events = (await q.all<EventRow & { track_title: string | null }>(`SELECT e.*, t.title AS track_title FROM events e LEFT JOIN tracks t ON t.id = e.track_id
        WHERE e.sender_id = ? ORDER BY e.created_at DESC LIMIT 8`, sender.id));
   // Sent from someone's FloorTest account: show who they are on the platform.
@@ -150,7 +151,7 @@ export async function ReviewPanel({
         </>
       )}
 
-      {canShare(t) && (
+      {shareable && (
         <div className="mt-4">
           <ShareBox
             trackId={t.id}

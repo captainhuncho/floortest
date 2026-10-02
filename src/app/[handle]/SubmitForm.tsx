@@ -33,6 +33,7 @@ export function SubmitForm({
   account,
   allowSharing = false,
   sharingDownloads = false,
+  botCheckKey = null,
 }: {
   handle: string;
   receiverName: string;
@@ -44,6 +45,8 @@ export function SubmitForm({
   allowSharing?: boolean;
   /** The receiver is on a paid plan now, so colleagues can download this track (fixed at send time). */
   sharingDownloads?: boolean;
+  /** Turnstile site key for anonymous senders when the bot check is on. */
+  botCheckKey?: string | null;
 }) {
   const L = LOOKS[lookName];
   const m = lookName === "mobile";
@@ -354,7 +357,7 @@ export function SubmitForm({
         <a href="/privacy" target="_blank" className="underline underline-offset-4">Privacy</a>
       </p>
 
-      {!account && <Turnstile />}
+      {!account && <Turnstile siteKey={botCheckKey} />}
       <button className={`${L.btn} w-full py-3.5 ${m ? "text-[14px]" : "text-base"}`} disabled={busy || analyzing}>
         {busy ? `Uploading… ${Math.round(progress * 100)}%` : analyzing ? "Reading audio…" : `Send to ${receiverName}`}
       </button>

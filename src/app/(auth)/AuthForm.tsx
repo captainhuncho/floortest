@@ -26,7 +26,8 @@ export function AuthForm({
   footer,
   hidden,
   success,
-  botCheck = false,
+  botCheckKey,
+  captureSource = false,
 }: {
   action: (s: FormState, f: FormData) => Promise<FormState>;
   fields: Field[];
@@ -35,8 +36,10 @@ export function AuthForm({
   hidden?: Record<string, string>;
   /** Shown instead of the form once the action returns { ok: true }. */
   success?: React.ReactNode;
-  /** Show the Turnstile bot check (sign-up). */
-  botCheck?: boolean;
+  /** Turnstile site key when the bot check is on (sign-up). */
+  botCheckKey?: string | null;
+  /** Record where the visitor came from (sign-up). */
+  captureSource?: boolean;
 }) {
   const [state, onSubmit, pending] = useActionForm(action, undefined);
   const [tz, setTz] = useState("UTC");
@@ -91,8 +94,8 @@ export function AuthForm({
           {state.error}
         </p>
       )}
-      {botCheck && <SourceField />}
-      {botCheck && <Turnstile />}
+      {captureSource && <SourceField />}
+      <Turnstile siteKey={botCheckKey ?? null} />
       <button className="btn-lime w-full" disabled={pending}>
         {pending ? "One moment…" : submit}
       </button>

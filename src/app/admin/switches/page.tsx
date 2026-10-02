@@ -1,7 +1,9 @@
 import { q } from "@/lib/db";
 import { FEATURES, switchFor, type Feature } from "@/lib/features";
 import { PLANS } from "@/lib/plans";
-import { saveSwitch } from "../actions";
+import { flipSwitch, saveSwitch } from "../actions";
+import { ConfirmButton } from "../AdminUi";
+import { SWITCHES, switchOn, type SwitchKey } from "@/lib/switches";
 
 /** Held-back features, switched on per plan or for named accounts (for testing with a few people first). */
 export default async function Switches() {
@@ -14,12 +16,39 @@ export default async function Switches() {
       return { f, s, handles };
     }),
   );
+  const site = await Promise.all((Object.keys(SWITCHES) as SwitchKey[]).map(async (key) => ({ key, on: await switchOn(key) })));
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Feature switches</h1>
         <p className="mt-2 text-mute">Switch a held-back feature on for whole plans, or for a few accounts to try it first. Changes apply straight away.</p>
       </div>
+      <section aria-labelledby="site-h" className="space-y-3">
+        <h2 id="site-h" className="text-lg font-semibold">Site-wide</h2>
+        <ul className="divide-y divide-line rounded-md border border-line">
+          {site.map(({ key, on }) => (
+            <li key={key} className="flex flex-wrap items-center justify-between gap-4 p-5">
+              <div className="min-w-0 max-w-2xl">
+                <p className="font-bold">{SWITCHES[key].label}</p>
+                <p className="mt-1 text-sm text-mute">{SWITCHES[key].description}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className={`chip ${on ? "border-lime/50 text-lime" : "border-line text-mute"}`}>{on ? "On" : "Off"}</span>
+                <ConfirmButton
+                  action={flipSwitch.bind(null, key, !on)}
+                  message={`Turn ${on ? "off" : "on"} "${SWITCHES[key].label}"? It takes effect straight away for everyone.`}
+                  confirmLabel={on ? "Turn off" : "Turn on"}
+                  danger={key === "uploads_paused" && !on}
+                  className="btn-ghost btn-sm"
+                >
+                  {on ? "Turn off" : "Turn on"}
+                </ConfirmButton>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
+      <h2 className="text-lg font-semibold">By plan or account</h2>
       {list.map(({ f, s, handles }) => (
         <form key={f} action={saveSwitch.bind(null, f)} className="space-y-4 rounded-md border border-line p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -45,10 +74,6 @@ export default async function Switches() {
           <button className="btn-lime btn-sm">Save</button>
         </form>
       ))}
-      <div className="rounded-md border border-line p-5">
-        <p className="text-lg font-bold">Sharing with colleagues</p>
-        <p className="mt-1 text-sm text-mute">Held until after the beta and the lawyer&apos;s wording. It involves the artist and the colleague as well as the receiver, so it&apos;s switched on in code for everyone at once, not from here.</p>
-      </div>
     </div>
   );
 }

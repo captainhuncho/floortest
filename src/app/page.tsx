@@ -1,3 +1,5 @@
+import { switchOn } from "@/lib/switches";
+import { botCheckKey } from "@/lib/turnstile";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { currentUser } from "@/lib/auth";
@@ -62,7 +64,7 @@ export default async function Home({
   const user = await currentUser();
   const deleted = !!(await searchParams).deleted;
   // Invite-only: most visitors have no code, so the main button leads to the waitlist.
-  const inviteOnly = env.signupMode === "invite";
+  const inviteOnly = !(await switchOn("open_signup"));
   const cta = user
     ? { href: "/dashboard/floor", label: "Open your desk" }
     : inviteOnly
@@ -455,7 +457,7 @@ export default async function Home({
                 We&apos;re letting DJs, labels and curators in a few at a time. Leave your details and you&apos;ll get a personal invite by email.
               </p>
             </div>
-            <WaitlistForm host={HOST} />
+            <WaitlistForm host={HOST} botCheckKey={await botCheckKey()} />
           </div>
         </section>
       )}

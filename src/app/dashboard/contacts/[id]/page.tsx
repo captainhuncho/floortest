@@ -8,7 +8,7 @@ import { addNote, blockSender, replyToSender } from "../../actions";
 import { Composer, ConfirmButton } from "../../ClientBits";
 import { Status } from "../../TrackList";
 import { ShareRequest } from "../ShareRequest";
-import { SHARING_LIVE } from "@/lib/plans";
+import { switchOn } from "@/lib/switches";
 import { consentFinalAt, finalizeConsent, type ShareRequest as Req } from "@/lib/share";
 
 type Item =
@@ -29,8 +29,9 @@ export default async function Contact({ params }: { params: Promise<{ id: string
        WHERE t.sender_id = ? ORDER BY t.created_at DESC`, s.id));
   // Latest share request per track (only used once sharing launches after the beta).
   const requests = new Map<number, Req>();
-  if (SHARING_LIVE) for (const t of tracks) if (!t.share_ok) await finalizeConsent(t.id);
-  if (SHARING_LIVE)
+  const sharing = await switchOn("sharing");
+  if (sharing) for (const t of tracks) if (!t.share_ok) await finalizeConsent(t.id);
+  if (sharing)
     for (const r of await q.all<Req>(
       `SELECT DISTINCT ON (r.track_id) r.* FROM share_requests r JOIN tracks t ON t.id = r.track_id WHERE t.sender_id = ? ORDER BY r.track_id, r.created_at DESC`,
       s.id,
@@ -126,7 +127,7 @@ export default async function Contact({ params }: { params: Promise<{ id: string
                     <Status row={{ decision: t.decision, played: !!t.played_at, downloaded: !!t.downloaded_at }} />
                   </div>
                 )}
-                {SHARING_LIVE && !t.deleted_at && (
+                {sharing && !t.deleted_at && (
                   <div className="mt-2">
                     <ShareRequest
                       trackId={t.id}

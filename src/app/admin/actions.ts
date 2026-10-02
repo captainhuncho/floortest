@@ -12,6 +12,7 @@ import { env } from "@/lib/env";
 import { sendMail } from "@/lib/mail";
 import { logAdmin, requireAdminAction } from "@/lib/admin";
 import { flash } from "@/lib/flash";
+import { setSwitch, SWITCHES, type SwitchKey } from "@/lib/switches";
 import { drainNow, retireTrackFiles } from "@/lib/deletion";
 import { cancelEmailChange, changeHandle, requestEmailChange } from "@/lib/accounts";
 import { logEvent, now, q, type Track } from "@/lib/db";
@@ -604,4 +605,14 @@ export async function resolveAllIncidents(kind: string) {
   await logAdmin(a.id, "resolved incidents", kind || "all", `${r.changes}`);
   await done(`Marked ${r.changes} incident${r.changes === 1 ? "" : "s"} handled`);
   refresh();
+}
+
+/** Flips a site-wide switch (sharing, bot check, open sign-up, pause uploads). Takes effect on the next request. */
+export async function flipSwitch(key: SwitchKey, on: boolean) {
+  const a = await requireAdminAction();
+  if (!(key in SWITCHES)) return fail("Unknown switch");
+  await setSwitch(key, on, a.id);
+  await logAdmin(a.id, on ? "switched on" : "switched off", SWITCHES[key].label);
+  await done(`${SWITCHES[key].label}: ${on ? "on" : "off"}`);
+  revalidatePath("/", "layout");
 }

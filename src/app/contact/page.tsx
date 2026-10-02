@@ -1,3 +1,4 @@
+import { botCheckKey } from "@/lib/turnstile";
 import { Logo } from "@/components/Logo";
 import { currentUser } from "@/lib/auth";
 import { ContactForm } from "./ContactForm";
@@ -15,6 +16,7 @@ export default async function Contact({ searchParams }: { searchParams: Promise<
       <h1 className="text-4xl font-bold tracking-tight">Contact us</h1>
       <p className="mb-8 mt-3 text-mute">Questions, problems with a track, or something to report. A person reads every message.</p>
       <ContactForm
+        botCheckKey={await botCheckKey()}
         name={user?.name ?? ""}
         email={user?.email ?? ""}
         topic={appeal ? "Suspension appeal" : report ? "Impersonation" : undefined}

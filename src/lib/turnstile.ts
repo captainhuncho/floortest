@@ -1,16 +1,19 @@
 import "server-only";
 import { recordIncident } from "./incidents";
+import { switchOn } from "./switches";
 
 /**
- * Cloudflare Turnstile: a free, mostly invisible bot check on public forms.
- * Off until TURNSTILE_SECRET_KEY and TURNSTILE_SITE_KEY (or NEXT_PUBLIC_TURNSTILE_SITE_KEY) are set; rate limits still apply either way.
+ * Cloudflare Turnstile: a free, mostly invisible bot check on public forms. On when the "Bot check" switch is on
+ * (Admin → Feature switches) and both TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY are set. Rate limits apply either way.
  */
-/** On since 1 Oct 2026, after floortest.imullar.com was added to the widget's hostnames. */
-export const TURNSTILE_READY = true;
-export const turnstileOn = () => TURNSTILE_READY && !!process.env.TURNSTILE_SECRET_KEY && !!(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || process.env.TURNSTILE_SITE_KEY);
+export async function botCheckKey(): Promise<string | null> {
+  if (!(await switchOn("bot_check"))) return null;
+  const site = process.env.TURNSTILE_SITE_KEY;
+  return site && process.env.TURNSTILE_SECRET_KEY ? site : null;
+}
 
 export async function passedTurnstile(token: unknown, ip?: string) {
-  if (!turnstileOn()) return true;
+  if (!(await botCheckKey())) return true;
   if (typeof token !== "string" || !token || token.length > 2048) return false;
   try {
     const body = new URLSearchParams({ secret: process.env.TURNSTILE_SECRET_KEY!, response: token });

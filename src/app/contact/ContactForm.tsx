@@ -5,7 +5,7 @@ import { useActionForm } from "@/components/useActionForm";
 
 import { sendContact } from "./actions";
 
-export function ContactForm({ name, email, topic, message }: { name: string; email: string; topic?: string; message?: string }) {
+export function ContactForm({ name, email, topic, message, botCheckKey }: { name: string; email: string; topic?: string; message?: string; botCheckKey: string | null }) {
   const [state, onSubmit, pending] = useActionForm(sendContact, undefined);
   if (state?.ok)
     return (
@@ -43,7 +43,7 @@ export function ContactForm({ name, email, topic, message }: { name: string; ema
           {state.error}
         </p>
       )}
-      <Turnstile />
+      <Turnstile siteKey={botCheckKey} />
       <button className="btn-lime" disabled={pending}>
         {pending ? "Sending…" : "Send message"}
       </button>

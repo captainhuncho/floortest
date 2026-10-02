@@ -1,5 +1,6 @@
 import "server-only";
 import { drainNow, queueDeletion, retireTrackFiles } from "./deletion";
+import { switchOn } from "./switches";
 import crypto from "node:crypto";
 import {
   isDecision,
@@ -27,7 +28,6 @@ import {
   RETAIN_PASSED_DAYS,
   RETAIN_UNREVIEWED_DAYS,
   shareDownloadEnabled,
-  SHARING_LIVE,
 } from "./plans";
 import { recentCount, record } from "./ratelimit";
 import { storage } from "./storage";
@@ -130,6 +130,7 @@ export class IntakeError extends Error {
 
 /** Link-level rules: paused, closed, full. */
 async function checkOpen(receiver: User, db: Queryable = q) {
+  if (await switchOn("uploads_paused", db)) throw new IntakeError("FloorTest is taking a short break for maintenance. Please try again in a little while.", 503);
   if (isPaused(receiver)) throw new IntakeError(pausedMessage(receiver));
   if (isClosed(await activeCollection(receiver, db))) throw new IntakeError(`This callout closed. ${receiver.name} isn't accepting tracks right now.`);
   if ((await capacity(receiver, db)).full) throw new IntakeError(`${receiver.name} isn't accepting new tracks right now.`);
@@ -211,6 +212,7 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
   const up = await q.get<Upload>("SELECT * FROM uploads WHERE id = ? AND receiver_id = ? AND created_at > ?", uploadId, receiver.id, now() - UPLOAD_TTL);
   if (!up) throw new IntakeError("This upload expired. Please send the track again.", 410);
   const store = await storage();
+  const sharing = await switchOn("sharing");
   const discard = async () => {
     await store.delete(up.file_key).catch(() => {});
     await q.run("DELETE FROM uploads WHERE id = ?", up.id);
@@ -273,8 +275,8 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
         analysis.bpm,
         analysis.peaks ? JSON.stringify(analysis.peaks) : null,
         now(),
-        SHARING_LIVE && collection?.allow_sharing ? 1 : 0,
-        SHARING_LIVE && collection?.allow_sharing && shareDownloadEnabled(fresh.plan) ? 1 : 0,
+        sharing && collection?.allow_sharing ? 1 : 0,
+        sharing && collection?.allow_sharing && shareDownloadEnabled(fresh.plan) ? 1 : 0,
       ))!;
       // Possible duplicate: the same file (byte size and length) already on this desk, or the same
       // sender re-sending the same title. Flagged for the receiver, never blocked.

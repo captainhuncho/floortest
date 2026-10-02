@@ -1,3 +1,4 @@
+import { switchOn } from "@/lib/switches";
 import Link from "next/link";
 import { configProblems, env } from "@/lib/env";
 import { q } from "@/lib/db";
@@ -133,7 +134,7 @@ export default async function AdminOverview() {
         ) : (
           <p className="mt-3 text-sm text-lime">Everything required is set.</p>
         )}
-        <p className="mt-3 text-sm text-mute">Sign-up mode: {env.signupMode}. Emails send from {env.email.from}.</p>
+        <p className="mt-3 text-sm text-mute">Sign-up: {(await switchOn("open_signup")) ? "open to anyone" : "invite only"}. Emails send from {env.email.from}.</p>
         <p className="mt-1 text-sm text-mute">
           Backups: {backup ? `last ${new Date(backup.at).toLocaleString("en-GB")} · ${fmtBytes(backup.bytes)} · ${backup.rows.toLocaleString("en")} rows, encrypted, kept ${BACKUP_KEEP_DAYS} days in the storage bucket under backups/` : "the first runs with tonight's cleanup job (03:30 UTC)."}
         </p>

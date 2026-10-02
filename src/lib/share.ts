@@ -2,7 +2,8 @@ import "server-only";
 import crypto from "node:crypto";
 import { logEvent, now, q, type Track, type User } from "./db";
 import { APP_URL, sendMail } from "./mail";
-import { shareDownloadEnabled, SHARING_LIVE } from "./plans";
+import { shareDownloadEnabled } from "./plans";
+import { switchOn } from "./switches";
 import { CLAIM_CANCEL, CLAIM_FINAL, MARK_SHAREABLE } from "./consent-sql";
 
 export type Share = { id: number; track_id: number; token: string; created_at: number; expires_at: number; revoked_at: number | null; plays: number; downloads: number };
@@ -12,7 +13,7 @@ const DAY = 86_400_000;
 export const SHARE_DAYS = 7;
 
 /** A track can be shared only if its collection allowed sharing when it was sent, and it's still on the desk. */
-export const canShare = (t: Pick<Track, "share_ok" | "deleted_at" | "file_key">) => SHARING_LIVE && !!t.share_ok && !t.deleted_at && !!t.file_key;
+export const canShare = async (t: Pick<Track, "share_ok" | "deleted_at" | "file_key">) => (await switchOn("sharing")) && !!t.share_ok && !t.deleted_at && !!t.file_key;
 
 export async function activeShare(trackId: number) {
   return q.get<Share>("SELECT * FROM track_shares WHERE track_id = ? AND revoked_at IS NULL AND expires_at > ? ORDER BY created_at DESC LIMIT 1", trackId, now());
@@ -22,7 +23,7 @@ export async function activeShare(trackId: number) {
 export async function createShare(user: User, t0: Track) {
   await finalizeConsent(t0.id);
   const t = (await q.get<Track>("SELECT * FROM tracks WHERE id = ?", t0.id)) ?? t0;
-  if (!canShare(t) || t.user_id !== user.id) return null;
+  if (!(await canShare(t)) || t.user_id !== user.id) return null;
   const existing = await activeShare(t.id);
   if (existing) return existing;
   const share = (await q.get<Share>(
@@ -57,7 +58,7 @@ export async function revokeShares(user: User, t: Track) {
 
 /** The public side: the share, its track and the receiver's name, only while the link is live. */
 export async function shareByToken(token: string) {
-  if (!SHARING_LIVE) return undefined;
+  if (!(await switchOn("sharing"))) return undefined;
   return q.get<Share & { title: string; artist: string; peaks: string | null; duration: number | null; mime: string; file_key: string | null; receiver: string; receiver_id: number; receiver_plan: string; share_download: number; deleted_at: number | null; original_name: string; artist_title: string }>(
     `SELECT s.*, t.title, t.artist, t.peaks, t.duration, t.mime, t.file_key, t.deleted_at, t.original_name, t.artist || ' - ' || t.title AS artist_title, u.name AS receiver, u.id AS receiver_id, u.plan AS receiver_plan, t.share_download
      FROM track_shares s JOIN tracks t ON t.id = s.track_id JOIN users u ON u.id = t.user_id
@@ -81,7 +82,7 @@ export async function latestShareRequest(trackId: number) {
  * Placeholder wording until the lawyer's draft (docs/legal-review.md).
  */
 export async function requestShareConsent(user: User, t: Track, note: string) {
-  if (!SHARING_LIVE || t.user_id !== user.id || t.deleted_at || t.share_ok) return null;
+  if (!(await switchOn("sharing")) || t.user_id !== user.id || t.deleted_at || t.share_ok) return null;
   const open = await latestShareRequest(t.id);
   if (open?.status === "pending") return open;
   const downloads = shareDownloadEnabled(user.plan) ? 1 : 0;
@@ -125,7 +126,7 @@ export const consentFinalAt = (r: Pick<ShareRequest, "decided_at">) => (r.decide
  * so no background job is needed.
  */
 export async function finalizeConsent(trackId: number) {
-  if (!SHARING_LIVE) return;
+  if (!(await switchOn("sharing"))) return;
   // Claim the request and flip the track in one transaction. Cancelling claims the same row (finalized_at IS NULL),
   // so exactly one of cancel / finalise wins, and the receiver is alerted once however many places call this.
   const t = await q.tx(async (db) => {
@@ -152,7 +153,7 @@ export async function finalizeConsent(trackId: number) {
 
 /** Every receiver's Allows whose window has passed. A backstop for when the post-Allow wait didn't run. */
 export async function finalizeDueConsents(userId: number) {
-  if (!SHARING_LIVE) return;
+  if (!(await switchOn("sharing"))) return;
   const due = await q.all<{ track_id: number }>(
     `SELECT DISTINCT r.track_id FROM share_requests r JOIN tracks t ON t.id = r.track_id
      WHERE t.user_id = ? AND t.share_ok = 0 AND r.status = 'allowed' AND r.finalized_at IS NULL AND r.decided_at <= ?`,
@@ -164,7 +165,7 @@ export async function finalizeDueConsents(userId: number) {
 
 /** The artist's answer, from their private receipt page. Allowing starts the cancel window; sharing begins after it. */
 export async function answerShareRequest(trackToken: string, requestId: number, allow: boolean) {
-  if (!SHARING_LIVE) return false;
+  if (!(await switchOn("sharing"))) return false;
   const t = await q.get<Track>("SELECT * FROM tracks WHERE token = ?", trackToken);
   const req = t && (await q.get<ShareRequest>("SELECT * FROM share_requests WHERE id = ? AND track_id = ? AND status = 'pending'", requestId, t.id));
   if (!t || !req || t.deleted_at) return false;
@@ -195,7 +196,7 @@ export async function answerShareRequest(trackToken: string, requestId: number, 
 
 /** Within the cancel window only. After it, an Allow is final. */
 export async function cancelShareConsent(trackToken: string, requestId: number) {
-  if (!SHARING_LIVE) return false;
+  if (!(await switchOn("sharing"))) return false;
   const t = await q.get<Track>("SELECT * FROM tracks WHERE token = ?", trackToken);
   const req = t && (await q.get<ShareRequest>("SELECT * FROM share_requests WHERE id = ? AND track_id = ? AND status = 'allowed'", requestId, t.id));
   if (!t || !req || now() >= consentFinalAt(req)) return false;
@@ -208,7 +209,7 @@ export async function cancelShareConsent(trackToken: string, requestId: number) 
 
 /** Backstop for consents nobody looked at after the window closed: makes every due one final. Runs with the daily job. */
 export async function finalizeAllDueConsents() {
-  if (!SHARING_LIVE) return 0;
+  if (!(await switchOn("sharing"))) return 0;
   const due = await q.all<{ track_id: number }>(
     "SELECT DISTINCT track_id FROM share_requests WHERE status = 'allowed' AND finalized_at IS NULL AND decided_at <= ? LIMIT 500",
     now() - CANCEL_MS,

@@ -609,4 +609,17 @@ create index account_log_time on account_log(created_at);
 create index outbox_status_time on outbox(status, created_at desc);
 `,
   },
+{
+    // Site-wide on/off switches flipped from admin (sharing, bot check, open sign-up, pause uploads).
+    id: "0033_switches",
+    sql: `
+create table switches (
+  key text primary key,
+  on_ int not null,
+  admin_id bigint references users(id) on delete set null,
+  updated_at bigint not null
+);
+alter table switches enable row level security;
+`,
+  },
 ];

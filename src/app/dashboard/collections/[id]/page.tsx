@@ -1,3 +1,4 @@
+import { switchOn } from "@/lib/switches";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
@@ -61,6 +62,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
     bpmMax: c.bpm_max,
     briefNote: c.brief_note,
     allowSharing: !!c.allow_sharing,
+    sharingAvailable: await switchOn("sharing"),
     genres: genres.custom ? genres.list : [],
   };
 

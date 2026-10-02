@@ -8,7 +8,7 @@ import { SourceField } from "@/components/SourceField";
 
 const field = "w-full rounded-md border border-white/15 bg-black/30 px-4 py-3 font-[family-name:var(--font-stage-mono)] text-sm text-bone outline-none placeholder:text-dim focus:border-lime/70";
 
-export function WaitlistForm({ host }: { host: string }) {
+export function WaitlistForm({ host, botCheckKey }: { host: string; botCheckKey: string | null }) {
   const [state, onSubmit, pending] = useActionForm(joinWaitlist, undefined);
   const [handle, setHandle] = useState("");
   // The claim box in the hero hands over the name typed there.
@@ -50,7 +50,7 @@ export function WaitlistForm({ host }: { host: string }) {
       <input name="link" className={field} placeholder="Instagram, SoundCloud or site (optional)" aria-label="Link" maxLength={200} />
       <div className="flex flex-wrap items-center gap-4 sm:col-span-2">
         <SourceField />
-        <div className="sm:col-span-2"><Turnstile /></div>
+        <div className="sm:col-span-2"><Turnstile siteKey={botCheckKey} /></div>
         <button className="rounded-md bg-lime px-6 py-3.5 font-[family-name:var(--font-stage-mono)] text-sm font-medium uppercase text-ink hover:brightness-95" disabled={pending}>
           {pending ? "Sending…" : "Request an invite →"}
         </button>

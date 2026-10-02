@@ -2,7 +2,7 @@
  * Restore drill: loads a nightly backup into a brand-new, throwaway in-memory database (never production)
  * and checks every table comes back with the same row count.
  *   BACKUP_KEY=… npx tsx scripts/restore-drill.ts path/to/db-YYYY-MM-DDTHHMM.json.gz.enc
- * (the same key the server uses: BACKUP_KEY, or APP_SECRET when that is unset; older .json.gz files need none)
+ * (BACKUP_KEY: the same key the server uses, from your password manager)
  * Download the file from the backups/ folder in the storage bucket first. Run it after schema changes too.
  */
 import { readFileSync } from "node:fs";
@@ -14,7 +14,7 @@ import { backupSecret, openBackup } from "../src/lib/backup-crypto";
 async function main() {
   const file = process.argv[2];
   if (!file) throw new Error("Give the path to a backup .json.gz");
-  const dump = JSON.parse(gunzipSync(openBackup(readFileSync(file), file.endsWith(".enc") ? backupSecret() : "")).toString()) as { created_at: string; tables: Record<string, Record<string, unknown>[]> };
+  const dump = JSON.parse(gunzipSync(openBackup(readFileSync(file), backupSecret())).toString()) as { created_at: string; tables: Record<string, Record<string, unknown>[]> };
 
   const pg = await PGlite.create();
   await pg.exec("create table schema_migrations (id text primary key, applied_at bigint not null)");
