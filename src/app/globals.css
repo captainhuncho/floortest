@@ -31,7 +31,30 @@ body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
 @layer base {
   .grid > * { min-width: 0; }
 }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+/* Motion (Emil Kowalski's rules): ease-out curves, under 300ms, transform and opacity only.
+   Menus, dialogs and toasts fade and scale in from 0.97 rather than appearing out of nowhere;
+   buttons give press feedback. Keyboard-driven review actions stay instant. */
+:root { --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); }
+[role="menu"], [role="listbox"] {
+  transform-origin: top; transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out);
+  @starting-style { opacity: 0; transform: scale(0.97) translateY(-4px); }
+}
+[role="dialog"] {
+  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+  @starting-style { opacity: 0; transform: scale(0.97); }
+}
+[data-toast] {
+  transition: opacity 250ms var(--ease-drawer), transform 250ms var(--ease-drawer);
+  @starting-style { opacity: 0; transform: translateY(16px); }
+}
+button:not(:disabled), .btn, a[role="button"] { -webkit-tap-highlight-color: transparent; }
+button:not(:disabled):active, .btn:not(:disabled):active { transform: scale(0.97); transition: transform 100ms var(--ease-out); }
+.switch-thumb { transition: transform 200ms var(--ease-out), background-color 150ms var(--ease-out); }
+/* Reduced motion: keep fades and colour, drop movement. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transform: none !important; scroll-behavior: auto !important; }
+  [role="menu"], [role="listbox"], [role="dialog"], [data-toast] { transition: opacity 150ms linear !important; }
+}
 ::selection { background: var(--color-lime); color: var(--color-ink); }
 
 @utility label { @apply text-xs font-medium uppercase tracking-[0.12em] text-mute; }

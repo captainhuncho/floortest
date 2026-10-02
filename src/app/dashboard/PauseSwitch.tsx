@@ -68,7 +68,7 @@ export function PauseSwitch({ pause, compact = false }: { pause: PauseState; com
         >
           <span
             aria-hidden
-            className={`absolute rounded-full transition-all ${compact ? "top-0.5 h-3 w-3" : "top-1 h-5 w-5"} ${paused ? `${compact ? "left-0.5" : "left-1"} bg-mute` : `${compact ? "left-3.5" : "left-6"} bg-ink`}`}
+            className={`switch-thumb absolute rounded-full ${compact ? "left-0.5 top-0.5 h-3 w-3" : "left-1 top-1 h-5 w-5"} ${paused ? "bg-mute" : `${compact ? "translate-x-3" : "translate-x-5"} bg-ink`}`}
           />
         </button>
       </div>

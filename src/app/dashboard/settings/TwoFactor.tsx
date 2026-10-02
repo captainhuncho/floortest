@@ -179,7 +179,7 @@ export function TwoFactor({ enabled, alerts }: { enabled: boolean; alerts: boole
           }
           className={`relative h-7 w-12 shrink-0 rounded-full transition ${alertsOn ? "bg-lime" : "bg-line"}`}
         >
-          <span className={`absolute top-1 h-5 w-5 rounded-full bg-ink transition-all ${alertsOn ? "left-6" : "left-1"}`} />
+          <span className={`switch-thumb absolute left-1 top-1 h-5 w-5 rounded-full bg-ink ${alertsOn ? "translate-x-5" : ""}`} />
         </button>
       </div>
     </div>

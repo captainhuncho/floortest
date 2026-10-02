@@ -54,6 +54,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         {toast && (
           <div
             key={toast.id}
+            data-toast
             className="pointer-events-auto flex items-center gap-4 rounded-lg border border-line bg-bone px-4 py-3 text-sm text-ink shadow-2xl shadow-black/60"
           >
             <span>{toast.message}</span>
