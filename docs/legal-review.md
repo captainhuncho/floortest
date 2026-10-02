@@ -118,25 +118,27 @@ What's built: admins can export everything held about an email address, delete a
 
 Draft Cookie Policy now at `/cookies`, linked from the footer and the Privacy Policy. It lists every cookie: `floortest_session` (30 days), `floortest_2fa` (5 min), `floortest_view_as` (support only), `ft_flash` (30 s), `ft_theme` and `ft_submissions_view` (1 year, user settings). Local storage: sender name and email on the upload page, export folder name, admin menu state. No advertising or analytics cookies (Vercel Analytics and Sentry are cookieless). Turnstile runs on public forms.
 
-22. **No banner:** we rely on the PECR reg. 6(4) / ePrivacy Art. 5(3) exemption (strictly necessary, or a setting the user asked for). Is that sound for the theme, layout and remembered sender details? Is Turnstile covered as security?
-23. **Laws and notices to display. Please confirm the list and what each must say:**
-    - UK GDPR / EU GDPR Art. 13–14: Privacy Policy (have a draft).
-    - PECR / ePrivacy: Cookie Policy (have a draft).
-    - Data (Use and Access) Act 2025: any changes to cookie exemptions or complaints handling we must reflect.
-    - Electronic Commerce Regulations 2002 and Companies Act 2006: operator name, geographic address, email, company number and VAT number if any, on the site.
-    - Consumer Rights Act 2015 and Consumer Contracts Regulations 2013: needed once paid plans exist (pre-contract info, 14-day cancellation).
-    - Online Safety Act 2023: we host user-uploaded audio; does a user-to-user service duty apply (illegal-content risk assessment, reporting and complaints routes)?
-    - Copyright takedown: UK has no DMCA, but should we publish a notice-and-takedown process (and a US DMCA agent if we serve US users)?
-    - EU Digital Services Act: if we serve EU users, a single point of contact and notice-and-action wording.
-    - Accessibility statement: not legally required for a private company, but recommended?
-    - ICO registration and data protection fee: confirm we must register and pay.
-24. **Advertising (future, 2 Oct 2026):** we may (a) run ads to promote FloorTest, which would mean ad pixels such as the Meta Pixel or Google Ads tag, and (b) later sell ad space on FloorTest. For (a), what consent setup is required (a consent banner, a consent mode, an updated Cookie Policy)? For (b), what Advertising Terms, ad labelling (ASA/CAP Code) and DSA ad-transparency duties apply?
-25. **Serving US and EU users (confirmed 2 Oct 2026):**
-    - EU: do we need a GDPR Art. 27 EU representative (we're UK-based), and a DSA legal representative and points of contact? How do DSA transparency-report duties apply to a micro/small platform?
-    - US: register a DMCA designated agent with the US Copyright Office to keep safe harbour; publish a DMCA notice and counter-notice process.
-    - US privacy: when do CCPA/CPRA and other state laws apply (thresholds), and once ad pixels exist, do we need a "Your Privacy Choices" / Do Not Sell or Share link and to honour Global Privacy Control?
-    - US children: COPPA, given we're 18+ only.
-    - Governing law and disputes in the Terms for US and EU users (EU consumers keep their home-country protections).
+FloorTest will be registered in and operated from **Ghana**, serving users worldwide, including the UK, EU and US. Hosting is in London.
+
+22. **No banner:** we rely on the exemption for cookies that are strictly necessary or remember a setting the user asked for (UK PECR reg. 6(4), EU ePrivacy Art. 5(3)). Is that sound for the theme, layout and remembered sender details? Is Turnstile covered as security?
+23. **Ghana (home country):** please confirm:
+    - Data Protection Act 2012 (Act 843): registering as a data controller with the Data Protection Commission, renewal, and anything our Privacy Policy must add.
+    - Electronic Transactions Act 2008 (Act 772): information the website must display (operator name, address, registration number, contact).
+    - Cybersecurity Act 2020 (Act 1038): any duties for an online platform, including breach reporting and whether we must register or be licensed.
+    - Copyright Act 2005 (Act 690): takedown and safe-harbour position for user uploads.
+    - Company registration (Office of the Registrar of Companies): the entity type and the name to show on the site.
+    - Moving personal data out of Ghana: our providers are in the UK, EU and US. What does Act 843 require?
+24. **UK and EU users:**
+    - Because we're outside the UK and EU, do we need a UK representative (UK GDPR Art. 27) and an EU representative (EU GDPR Art. 27)?
+    - EU Digital Services Act: do we need a legal representative in the EU and a public point of contact? How do the transparency-report duties apply to a micro or small platform?
+    - Online Safety Act 2023 (UK): does it apply to us as an overseas service with UK users who upload audio?
+    - Consumer law for paid plans later (UK Consumer Contracts Regulations, EU Consumer Rights Directive): pre-purchase information and the 14-day right to cancel.
+25. **US users:**
+    - Register a DMCA designated agent with the US Copyright Office to keep safe harbour, and publish a DMCA notice and counter-notice process.
+    - When do CCPA/CPRA and other state privacy laws apply (thresholds)? Once ad pixels exist, do we need a "Your Privacy Choices" link and to honour Global Privacy Control?
+    - COPPA, given we're 18+ only.
+    - **Advertising (future):** we may run ads to promote FloorTest, which would mean pixels such as the Meta Pixel or Google Ads tag. What consent banner and policy updates are needed? If we later sell ad space on FloorTest, which Advertising Terms, ad-labelling rules and DSA ad-transparency duties apply?
+    - Accessibility statement: required or recommended in any of these markets?
 26. **Age:** the Terms say 18+. Is a self-declaration at sign-up enough?
 
 ## 7. Before invites go out
