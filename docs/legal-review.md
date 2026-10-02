@@ -131,7 +131,13 @@ Draft Cookie Policy now at `/cookies`, linked from the footer and the Privacy Po
     - Accessibility statement: not legally required for a private company, but recommended?
     - ICO registration and data protection fee: confirm we must register and pay.
 24. **Advertising (future, 2 Oct 2026):** we may (a) run ads to promote FloorTest, which would mean ad pixels such as the Meta Pixel or Google Ads tag, and (b) later sell ad space on FloorTest. For (a), what consent setup is required (a consent banner, a consent mode, an updated Cookie Policy)? For (b), what Advertising Terms, ad labelling (ASA/CAP Code) and DSA ad-transparency duties apply?
-25. **Age:** the Terms say 18+. Is a self-declaration at sign-up enough?
+25. **Serving US and EU users (confirmed 2 Oct 2026):**
+    - EU: do we need a GDPR Art. 27 EU representative (we're UK-based), and a DSA legal representative and points of contact? How do DSA transparency-report duties apply to a micro/small platform?
+    - US: register a DMCA designated agent with the US Copyright Office to keep safe harbour; publish a DMCA notice and counter-notice process.
+    - US privacy: when do CCPA/CPRA and other state laws apply (thresholds), and once ad pixels exist, do we need a "Your Privacy Choices" / Do Not Sell or Share link and to honour Global Privacy Control?
+    - US children: COPPA, given we're 18+ only.
+    - Governing law and disputes in the Terms for US and EU users (EU consumers keep their home-country protections).
+26. **Age:** the Terms say 18+. Is a self-declaration at sign-up enough?
 
 ## 7. Before invites go out
 
