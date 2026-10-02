@@ -38,22 +38,22 @@ export default async function Account() {
   const link = `${APP_URL}/${user.handle}`;
   const since = new Date(user.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: user.tz }).replaceAll("/", ".");
 
-  const card = "flex flex-col gap-2 rounded-[14px] border border-line bg-ink-2 p-3";
+  const card = "flex flex-col gap-2 rounded-[14px] border border-line bg-ink-2 p-3 md:gap-3 md:p-5";
   const label = "text-[11px] font-bold tracking-[0.5px] text-mute";
   const rule = <div className="h-px w-full bg-line" />;
-  // `sub`: the one-line explanation under each item, shown on desktop (the old profile menu had these).
   const Icon = ({ i }: { i?: string }) =>
     i ? (
       <span aria-hidden className="grid w-5 shrink-0 place-items-center text-[15px] leading-none text-mute">
         {i}
       </span>
     ) : null;
+  // `sub`: the one-line explanation under each item, shown on desktop.
   const Row = ({ href, title, sub, value, external, icon }: { href: string; title: string; sub?: string; value?: React.ReactNode; external?: boolean; icon?: string }) => (
-    <Link href={href} target={external ? "_blank" : undefined} className="group flex items-center gap-3 py-0.5">
+    <Link href={href} target={external ? "_blank" : undefined} className="group flex items-center gap-3 py-0.5 md:py-1">
       <Icon i={icon} />
       <span className="min-w-0 flex-1">
-        <span className="block text-[13px] font-medium text-bone">{title}</span>
-        {sub && <span className="mt-0.5 hidden truncate text-[11px] text-faint md:block">{sub}</span>}
+        <span className="block text-[13px] font-medium text-bone md:text-[14px]">{title}</span>
+        {sub && <span className="mt-0.5 hidden truncate text-[12px] text-faint md:block">{sub}</span>}
       </span>
       {value ?? <span aria-hidden className="text-sm text-mute transition group-hover:translate-x-0.5 group-hover:text-bone">{external ? "↗" : "→"}</span>}
     </Link>
@@ -62,17 +62,22 @@ export default async function Account() {
     <section className={card}>
       <h2 className={label}>{title}</h2>
       {rows.map((r, i) => (
-        <div key={i} className="flex flex-col gap-2">
+        <div key={i} className="flex flex-col gap-2 md:gap-3">
           {i > 0 && rule}
           {r}
         </div>
       ))}
     </section>
   );
+  const stats: [number, string][] = [
+    [reviewed, "tracks reviewed"],
+    [collections, "collections"],
+    [contacts, "contacts"],
+  ];
 
   return (
-    <div className="mx-auto flex max-w-xl flex-col gap-4 px-4 py-3 md:mx-0 md:grid md:max-w-6xl md:grid-cols-[minmax(0,380px)_minmax(0,1fr)] md:items-start md:gap-6 md:px-8 md:py-6">
-      <h1 className="hidden text-[32px] font-bold text-bone md:col-span-2 md:block">Account</h1>
+    <div className="mx-auto flex max-w-xl flex-col gap-4 px-4 py-3 md:max-w-6xl md:gap-6 md:px-8 md:py-8">
+      <h1 className="hidden text-[32px] font-bold text-bone md:block">Account</h1>
       <div className="flex h-12 items-center gap-2 md:hidden">
         <Link href="/dashboard/floor" aria-label="Back" className="grid size-8 place-items-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -81,153 +86,130 @@ export default async function Account() {
         <span className="text-[11px] font-bold tracking-[0.5px] text-mute">ACCOUNT</span>
       </div>
 
-      <div className="contents md:flex md:flex-col md:gap-4">
-      {/* Profile card */}
-      <section className="flex flex-col gap-4 rounded-[18px] border border-line bg-ink-2 p-4 drop-shadow-[0_8px_12px_rgba(0,0,0,0.15)]">
-        <div className="flex items-center gap-3">
-          <span className="grid size-14 shrink-0 place-items-center rounded-full bg-[#6444ff] text-lg font-bold text-white drop-shadow-[0_8px_9px_rgba(100,68,255,0.2)]">{initials(user.name)}</span>
+      {/* Who you are, your plan and your numbers: one band on desktop, stacked on phones. */}
+      <section className="flex flex-col gap-4 rounded-[18px] border border-line bg-ink-2 p-4 md:grid md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1.1fr)] md:items-center md:gap-8 md:p-6">
+        <div className="flex items-center gap-3 md:gap-4">
+          <span className="grid size-14 shrink-0 place-items-center rounded-full bg-[#6444ff] text-lg font-bold text-white md:size-16">{initials(user.name)}</span>
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <p className="truncate text-[22px] font-bold text-bone">{user.name}</p>
-            <p className="truncate text-xs text-mute">{user.email}</p>
+            <p className="truncate text-xs text-mute md:text-[13px]">{user.email}</p>
             <p className="text-[11px] text-dim">Member since {since}</p>
           </div>
         </div>
-        <div className="flex items-center justify-between gap-3">
-          <span className="rounded-lg border border-line bg-white/[0.08] px-2 py-1 text-[11px] font-bold tracking-[0.5px] text-bone">
-            {plan.name.toUpperCase()} · {cap.used}/{cap.limit} tracks
-          </span>
-          <div className="flex w-[120px] flex-col gap-1.5">
-            <div className="h-1.5 overflow-hidden rounded-full bg-line">
-              <div className="h-full rounded-full bg-[#6444ff]" style={{ width: `${pct}%` }} />
-            </div>
-            <p className="text-[11px] text-dim">{pct}% used</p>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-[13px] font-bold text-bone">{plan.name} plan</span>
+            <span className="text-[11px] text-mute tnum">
+              {cap.used} of {cap.limit} tracks
+            </span>
           </div>
-        </div>
-      </section>
-
-      {/* Quick stats */}
-      <div className="flex gap-2">
-        {[
-          [reviewed, "tracks reviewed"],
-          [collections, "collections"],
-          [contacts, "contacts"],
-        ].map(([n, l]) => (
-          <div key={l} className="flex min-w-0 flex-1 flex-col gap-1 rounded-xl border border-line bg-ink-2 p-3">
-            <p className="text-base font-bold text-bone tnum">{n}</p>
-            <p className="text-[11px] text-dim">{l}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Taking submissions lives here on phones, where the sidebar is hidden. */}
-      <section className={card}>
-        <h2 className={label}>YOUR LINK</h2>
-        <LinkCard link={link} handle={user.handle} collections={cols} activeId={user.active_collection_id} />
-        {rule}
-        <PauseSwitch
-          pause={{
-            on: isPaused(user),
-            until: user.pause_until ? new Date(user.pause_until).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: user.tz }) : null,
-            untilTs: user.pause_until,
-            blocked: null,
-            message: user.pause_message,
-          }}
-        />
-      </section>
-
-      <section className={card}>
-        <h2 className={label}>STORAGE & PLAN</h2>
-        <div className="flex items-center justify-between">
-          <span className="text-[13px] font-medium text-bone">Storage</span>
-          <span className="text-[11px] text-mute">
-            {cap.used} of {cap.limit} tracks
-          </span>
-        </div>
-        <div className="flex flex-col gap-1.5">
           <div className="h-1.5 overflow-hidden rounded-full bg-line">
             <div className="h-full rounded-full bg-[#6444ff]" style={{ width: `${pct}%` }} />
           </div>
-          <p className="text-[11px] text-dim">{pct}% used</p>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] text-dim">{pct}% used</span>
+            <Link href="/dashboard/plans" className="text-[11px] font-bold text-bone underline-offset-4 hover:underline">
+              See plans · free in the beta →
+            </Link>
+          </div>
         </div>
-        {rule}
-        <div className="flex items-center justify-between">
-          <span className="text-[13px] font-medium text-bone">Current plan</span>
-          <span className="text-[11px] text-mute">{plan.name}</span>
-        </div>
-        <Link href="/dashboard/plans" className="rounded-[10px] border border-[#6444ff] bg-[#6444ff] px-3 py-2 text-center text-[11px] font-bold text-white drop-shadow-[0_8px_10px_rgba(100,68,255,0.25)]">
-          See plans · free during the beta
-        </Link>
+        <dl className="grid grid-cols-3 gap-2 md:border-l md:border-line md:pl-8">
+          {stats.map(([n, l]) => (
+            <div key={l} className="flex min-w-0 flex-col gap-1">
+              <dt className="order-2 text-[11px] text-dim">{l}</dt>
+              <dd className="order-1 text-base font-bold text-bone tnum md:text-[22px]">{n}</dd>
+            </div>
+          ))}
+        </dl>
       </section>
+
+      <div className="flex flex-col gap-4 md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:items-start md:gap-6">
+        <div className="flex flex-col gap-4 md:gap-6">
+          {/* Taking submissions lives here on phones, where the sidebar is hidden. */}
+          <section className={card}>
+            <h2 className={label}>YOUR LINK</h2>
+            <LinkCard link={link} handle={user.handle} collections={cols} activeId={user.active_collection_id} />
+            {rule}
+            <QrRow handle={user.handle} link={link} />
+            {rule}
+            <PauseSwitch
+              pause={{
+                on: isPaused(user),
+                until: user.pause_until ? new Date(user.pause_until).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: user.tz }) : null,
+                untilTs: user.pause_until,
+                blocked: null,
+                message: user.pause_message,
+              }}
+            />
+          </section>
+          <Section
+            title="YOUR DESK"
+            rows={[
+              <Row key="s" href="/dashboard/send" icon="↑" title="Send music" sub="Send music to another FloorTest user" />,
+              <Row key="c" href="/dashboard/contacts" icon="☰" title="Contacts" sub="Everyone who sent you music" />,
+              <Row key="a" href="/dashboard/activity" icon="◷" title="Activity" sub="Everything you did, newest first" />,
+              <Row key="e" href="/dashboard/emails" icon="✉" title="Emails to senders" sub="Everything FloorTest told them" />,
+              <Row key="r" href="/dashboard/referrals" icon="+" title="Referrals" sub="Invite DJs · earn track slots" />,
+            ]}
+          />
+        </div>
+        <div className="flex flex-col gap-4 md:gap-6">
+          <Section
+            title="ACCOUNT"
+            rows={[
+              <Row key="p" href="/dashboard/settings#page-h" icon="✎" title="Edit profile" sub="Name, link name, public page and cover photo" />,
+              <Row key="e" href="/dashboard/settings#email-h" icon="@" title="Email & password" sub="Change your sign-in details" />,
+              <Row
+                key="t"
+                href="/dashboard/settings#security-h"
+                icon="⚿"
+                title="Two-factor authentication"
+                sub="A code from your phone when you sign in"
+                value={<span className="rounded bg-ink-4 px-1.5 py-0.5 text-[11px] font-bold uppercase text-bone">{user.totp_enabled_at ? "On" : "Off"}</span>}
+              />,
+            ]}
+          />
+          <Section
+            title="PREFERENCES"
+            rows={[
+              <Row key="n" href="/dashboard/notifications" icon="◎" title="Notifications" sub="How and when we email you" value={<span className="text-[11px] text-mute">Email</span>} />,
+              <div key="t" className="flex items-center gap-3 py-1">
+                <span aria-hidden className="grid w-5 shrink-0 place-items-center text-[15px] leading-none text-mute">◐</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13px] font-medium text-bone md:text-[14px]">Appearance</span>
+                  <span className="mt-0.5 hidden text-[12px] text-faint md:block">Night, Day, or match your device</span>
+                </span>
+                <ThemeSwitch current={theme} />
+              </div>,
+            ]}
+          />
+          <Section
+            title="PRIVACY"
+            rows={[
+              <Row key="p" href="/dashboard/settings#security-h" icon="⛨" title="Privacy + security" sub="Sessions, sign-in alerts and verification" />,
+              <Row key="b" href="/dashboard/settings#blocked-h" icon="⊘" title="Blocked users" sub="Senders who can no longer reach you" />,
+              <Row key="d" href="/contact?topic=data" icon="⇩" title="Data export" sub="Ask for a copy of your data" />,
+            ]}
+          />
+          <Section
+            title="ABOUT FLOORTEST"
+            rows={[
+              <Row key="c" href="/contact" icon="✆" title="Contact us" sub="Questions, problems, anything" external />,
+              <Row key="f" href="/contact?topic=feedback" icon="✎" title="Send feedback" sub="Tell us what to fix or build" external />,
+              <Row key="t" href="/trust" icon="✓" title="Trust & security" sub="How we keep music private" external />,
+              <Row key="te" href="/terms" icon="§" title="Terms & conditions" external />,
+              <Row key="l" href="/licenses" icon="¶" title="Legal" external />,
+              <Row key="pr" href="/privacy" icon="⚑" title="Privacy policy" external />,
+            ]}
+          />
+        </div>
       </div>
 
-      <div className="contents md:flex md:flex-col md:gap-4">
-      <Section
-        title="YOUR DESK"
-        rows={[
-          <Row key="s" href="/dashboard/send" icon="↑" title="Send music" sub="Send music to another FloorTest user" />,
-          <Row key="c" href="/dashboard/contacts" icon="☰" title="Contacts" sub="Everyone who sent you music" />,
-          <Row key="a" href="/dashboard/activity" icon="◷" title="Activity" sub="Everything you did, newest first" />,
-          <Row key="e" href="/dashboard/emails" icon="✉" title="Emails to senders" sub="Everything FloorTest told them" />,
-          <Row key="r" href="/dashboard/referrals" icon="+" title="Referrals" sub="Invite DJs · earn track slots" />,
-        ]}
-      />
-      <Section
-        title="ACCOUNT"
-        rows={[
-          <Row key="p" href="/dashboard/settings#page-h" icon="✎" title="Edit profile" sub="Name, link name, public page and cover photo" />,
-          <Row key="e" href="/dashboard/settings#email-h" icon="@" title="Email & password" sub="Change your sign-in details" />,
-          <Row
-            key="t"
-            href="/dashboard/settings#security-h"
-            icon="⚿" title="Two-factor authentication"
-            sub="A code from your phone when you sign in"
-            value={<span className="rounded bg-ink-4 px-1.5 py-0.5 text-[11px] font-bold uppercase text-bone">{user.totp_enabled_at ? "On" : "Off"}</span>}
-          />,
-        ]}
-      />
-      <Section
-        title="SUBMISSION"
-        rows={[
-          <QrRow key="q" handle={user.handle} link={link} />,
-        ]}
-      />
-      <Section
-        title="PREFERENCES"
-        rows={[
-          <Row key="n" href="/dashboard/notifications" icon="◎" title="Notifications" sub="How and when we email you" value={<span className="text-[11px] text-mute">Email</span>} />,
-          <div key="t" className="flex items-center gap-3 py-1">
-            <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-full border border-line text-sm text-mute">◐</span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[12px] font-bold">Appearance</span>
-              <span className="block text-[11px] text-faint">Night, Day, or match your device</span>
-            </span>
-            <ThemeSwitch current={theme} />
-          </div>,
-        ]}
-      />
-      <Section
-        title="PRIVACY"
-        rows={[
-          <Row key="p" href="/dashboard/settings#security-h" icon="⛨" title="Privacy + security" sub="Sessions, sign-in alerts and verification" />,
-          <Row key="b" href="/dashboard/settings#blocked-h" icon="⊘" title="Blocked users" sub="Senders who can no longer reach you" />,
-          <Row key="d" href="/contact?topic=data" icon="⇩" title="Data export" sub="Ask for a copy of your data" />,
-        ]}
-      />
-      <Section
-        title="ABOUT FLOORTEST"
-        rows={[
-          <Row key="c" href="/contact" icon="✆" title="Contact us" sub="Questions, problems, anything" external />,
-          <Row key="f" href="/contact?topic=feedback" icon="✎" title="Send feedback" sub="Tell us what to fix or build" external />,
-          <Row key="t" href="/trust" icon="✓" title="Trust & security" sub="How we keep music private" external />,
-          <Row key="te" href="/terms" icon="§" title="Terms & conditions" external />,
-          <Row key="l" href="/licenses" icon="¶" title="Legal" external />,
-          <Row key="pr" href="/privacy" icon="⚑" title="Privacy policy" external />,
-        ]}
-      />
-      <form action={logout}>
-        <button className="w-full rounded-xl border border-line bg-ink-2 p-3 text-[13px] font-bold text-[#ff5a5f]">Sign out</button>
-      </form>
-      <p className="text-center text-[11px] text-faint">FLOORTEST v{VERSION}</p>
+      <div className="flex flex-col items-center gap-3 md:flex-row md:justify-between">
+        <form action={logout} className="w-full md:w-auto">
+          <button className="w-full rounded-xl border border-line bg-ink-2 px-6 p-3 text-[13px] font-bold text-[#ff5a5f]">Sign out</button>
+        </form>
+        <p className="text-[11px] text-faint">FLOORTEST v{VERSION}</p>
       </div>
     </div>
   );

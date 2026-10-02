@@ -9,17 +9,14 @@ export function LinkCard({ link, handle, collections, activeId }: { link: string
   const pretty = link.replace(/^https?:\/\//, "");
   return (
     <div className="flex flex-col gap-3">
-      <div>
-        <p className="text-[11px] font-bold uppercase tracking-[1px] text-faint">Your link</p>
-        <p className="mt-1.5 truncate text-[12px]">
-          {pretty.replace(handle, "")}
-          <span className="text-lime">{handle}</span>
-        </p>
-      </div>
+      <p className="truncate text-[13px] md:text-[18px]">
+        {pretty.replace(handle, "")}
+        <span className="text-lime">{handle}</span>
+      </p>
       <div className="flex gap-2">
         <button
           type="button"
-          className="flex-1 rounded-md bg-bone px-3 py-1.5 text-[11px] font-bold text-ink transition active:scale-95"
+          className="flex-1 rounded-md bg-bone px-3 py-1.5 text-[11px] font-bold text-ink transition active:scale-95 md:py-2.5 md:text-[12px]"
           onClick={() => {
             navigator.clipboard?.writeText(link);
             setCopied(true);
@@ -28,7 +25,7 @@ export function LinkCard({ link, handle, collections, activeId }: { link: string
         >
           {copied ? "Copied" : "Copy link"}
         </button>
-        <a href={`/${handle}`} target="_blank" className="rounded-md border border-line px-3 py-1.5 text-[11px] font-bold text-mute hover:text-bone">
+        <a href={`/${handle}`} target="_blank" className="rounded-md border border-line px-3 py-1.5 text-[11px] font-bold text-mute hover:text-bone md:px-5 md:py-2.5 md:text-[12px]">
           Preview
         </a>
       </div>
