@@ -95,7 +95,7 @@ export default function Privacy() {
         [
           "Who processes data for us",
           [
-            "FloorTest runs on providers acting on our instructions: Vercel (hosting, run from London), Supabase (database, London), Cloudflare R2 (audio files and cover photos, private storage) and Resend (email delivery). Files are only ever served through short-lived, signed links.",
+            "FloorTest runs on providers acting on our instructions: Vercel (hosting, run from London), Supabase (database, London), Cloudflare R2 (audio files and cover photos, private storage) and Resend (email delivery). Files are only ever served through short-lived, signed links. The full list, including Sentry, is on our Sub-processors page at /subprocessors.",
             "Vercel, Cloudflare and Resend are US companies, so some data may be handled in the United States. Data about UK and EU users can also be handled outside those regions. Where it goes to the US we rely on the UK–US data bridge or the standard contractual safeguards those providers offer.",
           ],
         ],

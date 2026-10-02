@@ -16,6 +16,12 @@ export function footerLinks() {
     { label: "Terms of Use", href: env("TERMS_URL") ?? "/terms", external: !!env("TERMS_URL") },
     { label: "Privacy Policy", href: env("PRIVACY_URL") ?? "/privacy", external: !!env("PRIVACY_URL") },
     { label: "Cookie Policy", href: "/cookies", external: false },
+    { label: "Your Privacy Choices", href: "/privacy-choices", external: false },
+    { label: "Notice and Takedown", href: "/takedown", external: false },
+    { label: "Content Rules", href: "/content-rules", external: false },
+    { label: "Sub-processors", href: "/subprocessors", external: false },
+    { label: "Responsible Disclosure", href: "/security", external: false },
+    { label: "Law Enforcement", href: "/law-enforcement", external: false },
     { label: "Third-party licenses", href: "/licenses", external: false },
   ];
 }
