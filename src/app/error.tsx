@@ -1,10 +1,14 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
 
 /** Last-resort error screen. The digest lets you find the matching server log line. */
 export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
-  useEffect(() => console.error(error), [error]);
+  // Errors caught here never reach the browser's crash handler, so report them to Sentry directly.
+  useEffect(() => {
+    Sentry.captureException(error);
+  }, [error]);
   return (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col justify-center px-4 py-12">
       <h1 className="text-3xl font-bold tracking-tight">Something went wrong</h1>

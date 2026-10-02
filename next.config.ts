@@ -22,7 +22,7 @@ if (process.env.NODE_ENV === "production")
       "style-src 'self' 'unsafe-inline'",
       `img-src 'self' data: blob: ${store}`,
       `media-src 'self' blob: ${store}`,
-      `connect-src 'self' ${store} https://challenges.cloudflare.com`,
+      `connect-src 'self' ${store} https://challenges.cloudflare.com https://*.ingest.us.sentry.io`,
       "font-src 'self' data:",
       "object-src 'none'",
       "base-uri 'self'",
