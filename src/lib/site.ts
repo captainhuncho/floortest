@@ -15,6 +15,7 @@ export function footerLinks() {
     // Hosted legal documents replace the built-in drafts once their URLs are set.
     { label: "Terms of Use", href: env("TERMS_URL") ?? "/terms", external: !!env("TERMS_URL") },
     { label: "Privacy Policy", href: env("PRIVACY_URL") ?? "/privacy", external: !!env("PRIVACY_URL") },
+    { label: "Cookie Policy", href: "/cookies", external: false },
     { label: "Third-party licenses", href: "/licenses", external: false },
   ];
 }

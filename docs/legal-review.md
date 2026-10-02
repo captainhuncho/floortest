@@ -114,7 +114,25 @@ What's built: admins can export everything held about an email address, delete a
 20. **Handle take-back for impersonation:** an admin can move an impersonator to a new handle without notice beyond an email, free the name immediately and give it to the real artist. Do the Terms need explicit wording for this?
 21. **Email changes by support:** support can start an email change after confirming identity by email. The new address must still confirm, and the old address is told. Is that enough protection, or should support changes need a waiting period?
 
-## 6. Before invites go out
+## 6. Cookies and the notices we must display (added 2 Oct 2026)
+
+Draft Cookie Policy now at `/cookies`, linked from the footer and the Privacy Policy. It lists every cookie: `floortest_session` (30 days), `floortest_2fa` (5 min), `floortest_view_as` (support only), `ft_flash` (30 s), `ft_theme` and `ft_submissions_view` (1 year, user settings). Local storage: sender name and email on the upload page, export folder name, admin menu state. No advertising or analytics cookies (Vercel Analytics and Sentry are cookieless). Turnstile runs on public forms.
+
+22. **No banner:** we rely on the PECR reg. 6(4) / ePrivacy Art. 5(3) exemption (strictly necessary, or a setting the user asked for). Is that sound for the theme, layout and remembered sender details? Is Turnstile covered as security?
+23. **Laws and notices to display. Please confirm the list and what each must say:**
+    - UK GDPR / EU GDPR Art. 13–14: Privacy Policy (have a draft).
+    - PECR / ePrivacy: Cookie Policy (have a draft).
+    - Data (Use and Access) Act 2025: any changes to cookie exemptions or complaints handling we must reflect.
+    - Electronic Commerce Regulations 2002 and Companies Act 2006: operator name, geographic address, email, company number and VAT number if any, on the site.
+    - Consumer Rights Act 2015 and Consumer Contracts Regulations 2013: needed once paid plans exist (pre-contract info, 14-day cancellation).
+    - Online Safety Act 2023: we host user-uploaded audio; does a user-to-user service duty apply (illegal-content risk assessment, reporting and complaints routes)?
+    - Copyright takedown: UK has no DMCA, but should we publish a notice-and-takedown process (and a US DMCA agent if we serve US users)?
+    - EU Digital Services Act: if we serve EU users, a single point of contact and notice-and-action wording.
+    - Accessibility statement: not legally required for a private company, but recommended?
+    - ICO registration and data protection fee: confirm we must register and pay.
+24. **Age:** the Terms say 18+. Is a self-declaration at sign-up enough?
+
+## 7. Before invites go out
 
 1. Set `SUPPORT_EMAIL` (and ideally a published privacy@ address).
 2. Fix the IP retention wording or run the purge more often.

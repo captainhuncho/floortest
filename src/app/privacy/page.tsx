@@ -89,7 +89,7 @@ export default function Privacy() {
         [
           "Cookies and local storage",
           [
-            "We use a cookie to keep you signed in, a short-lived cookie during the two-factor step of signing in, one to remember your preferred Review Queue layout, and one for your Day or Night appearance. The upload page remembers your name and email in your own browser so you don't retype them. These are all needed for features you ask for, so we don't show a cookie banner. We don't use advertising or tracking cookies. We count page visits with Vercel Web Analytics, which sets no cookies and doesn't identify you. When a page crashes or runs slowly, a technical report (what broke or how long each step took, without your IP address or what you typed) goes to Sentry so we can fix it.",
+            "We use a cookie to keep you signed in, a short-lived cookie during the two-factor step of signing in, one to remember your preferred Review Queue layout, and one for your Day or Night appearance. The upload page remembers your name and email in your own browser so you don't retype them. These are all needed for features you ask for, so we don't show a cookie banner. Each one is listed, with how long it lasts, in our Cookie Policy at /cookies. We don't use advertising or tracking cookies. We count page visits with Vercel Web Analytics, which sets no cookies and doesn't identify you. When a page crashes or runs slowly, a technical report (what broke or how long each step took, without your IP address or what you typed) goes to Sentry so we can fix it.",
           ],
         ],
         [
