@@ -32,6 +32,29 @@ export default async function Metrics() {
     });
   }
   const peak = Math.max(1, ...weeks.map((w) => Math.max(w.active, w.tracks)));
+
+  // Funnel over the last 30 days: from wanting in to the first real listen.
+  const since = t - 30 * DAY;
+  const funnel: [string, number][] = [
+    ["Joined the waitlist", await q.count("SELECT COUNT(*) AS n FROM waitlist WHERE created_at >= ?", since)],
+    ["Invited", await q.count("SELECT COUNT(*) AS n FROM invites WHERE created_at >= ?", since)],
+    ["Signed up", await q.count("SELECT COUNT(*) AS n FROM users WHERE created_at >= ?", since)],
+    ["Got a first track", await q.count("SELECT COUNT(*) AS n FROM users u WHERE u.created_at >= ? AND EXISTS (SELECT 1 FROM tracks t WHERE t.user_id = u.id)", since)],
+    ["Listened to one", await q.count("SELECT COUNT(*) AS n FROM users u WHERE u.created_at >= ? AND EXISTS (SELECT 1 FROM tracks t WHERE t.user_id = u.id AND t.played_at IS NOT NULL)", since)],
+  ];
+  const top = Math.max(1, ...funnel.map(([, n]) => n));
+  // Uploads over the last 48 hours (attempts are only kept that long): started, delivered, refused.
+  const recent = t - 2 * DAY;
+  const started = await q.count("SELECT COUNT(*) AS n FROM rate_events WHERE bucket = 'upload_ip' AND created_at >= ?", recent);
+  const delivered = await q.count("SELECT COUNT(*) AS n FROM tracks WHERE created_at >= ?", recent);
+  const refused = await q.count("SELECT COUNT(*) AS n FROM incidents WHERE kind = 'upload_rejected' AND created_at >= ?", recent);
+  const sources = await q.all<{ source: string; n: number }>(
+    `SELECT source, COUNT(*)::int AS n FROM (
+       SELECT source FROM waitlist WHERE source <> '' AND created_at >= ? UNION ALL SELECT signup_source FROM users WHERE signup_source <> '' AND created_at >= ?
+     ) s GROUP BY source ORDER BY n DESC LIMIT 6`,
+    since,
+    since,
+  );
   const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)}%` : "–");
   const dur = (ms: number | null) => (ms == null ? "–" : fmtDuration(ms));
 
@@ -56,6 +79,22 @@ export default async function Metrics() {
           </li>
         ))}
       </ul>
+      <section aria-labelledby="funnel-h" className="space-y-3">
+        <h2 id="funnel-h" className="text-lg font-semibold">Funnel, last 30 days</h2>
+        <ul className="space-y-2">
+          {funnel.map(([label, n], i) => (
+            <li key={label} className="grid grid-cols-[12rem_1fr_6rem] items-center gap-3 text-sm">
+              <span>{label}</span>
+              <span className="h-2 rounded-full bg-ink-3"><span className="block h-2 rounded-full bg-lime" style={{ width: `${(n / top) * 100}%` }} /></span>
+              <span className="text-right tnum">{n}{i > 0 && funnel[i - 1][1] ? <span className="text-mute"> · {pct(n, funnel[i - 1][1])}</span> : null}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="text-sm text-mute">
+          Uploads, last 48 hours: {started} started · {delivered} delivered ({pct(delivered, started)}) · {refused} refused (see Incidents → Upload refused).
+          {sources.length ? ` Top sources: ${sources.map((s) => `${s.source} (${s.n})`).join(", ")}.` : ""} Website visits are in Vercel → Analytics.
+        </p>
+      </section>
       <section>
         <h2 className="text-lg font-semibold">Last 8 weeks</h2>
         <p className="mt-1 text-sm text-mute">

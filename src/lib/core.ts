@@ -29,7 +29,7 @@ import {
   RETAIN_UNREVIEWED_DAYS,
   shareDownloadEnabled,
 } from "./plans";
-import { recentCount, record } from "./ratelimit";
+import { allow } from "./ratelimit";
 import { storage } from "./storage";
 import { validateAudio } from "./validate";
 
@@ -149,9 +149,10 @@ export async function checkIntake(receiver: User, email: string, ip: string) {
   if (await platformBlocked(email)) throw new IntakeError("This address can't send tracks on FloorTest.", 403);
   if (await q.get("SELECT 1 FROM senders WHERE user_id = ? AND email = ? AND blocked_at IS NOT NULL", receiver.id, email))
     throw new IntakeError(`${receiver.name} isn't accepting tracks from this address.`, 403);
-  if ((await recentCount("upload_ip", `${receiver.id}:${ip}`, HOUR)) >= RATE_PER_IP_PER_HOUR)
+  // Each attempt takes a slot (even if the upload is later abandoned), counted race-safely.
+  if (!(await allow("upload_ip", `${receiver.id}:${ip}`, RATE_PER_IP_PER_HOUR, HOUR)))
     throw new IntakeError("Too many uploads from this connection. Try again in an hour.", 429);
-  if ((await recentCount("upload_email", `${receiver.id}:${email}`, DAY)) >= RATE_PER_EMAIL_PER_DAY)
+  if (!(await allow("upload_email", `${receiver.id}:${email}`, RATE_PER_EMAIL_PER_DAY, DAY)))
     throw new IntakeError(`You've sent ${RATE_PER_EMAIL_PER_DAY} tracks to ${receiver.name} today. Try again tomorrow.`, 429);
 }
 
@@ -180,10 +181,6 @@ export async function startUpload(receiver: User, meta: SubmissionMeta, size: nu
   if (!Number.isSafeInteger(size) || size <= 0) throw new IntakeError("Choose a WAV or MP3 file.", 400);
   if (size > MAX_UPLOAD_BYTES) throw new IntakeError("File is too large (max 250 MB).", 413);
   await checkIntake(receiver, meta.email, ip);
-
-  // Attempts count toward the limits even if the upload is abandoned.
-  await record("upload_ip", `${receiver.id}:${ip}`);
-  await record("upload_email", `${receiver.id}:${meta.email}`);
 
   const id = crypto.randomBytes(24).toString("base64url");
   const key = `audio/${receiver.id}/${crypto.randomUUID()}${ext}`;

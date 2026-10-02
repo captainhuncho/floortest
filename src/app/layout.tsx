@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/next";
 import { mono, serif } from "./fonts";
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
@@ -21,6 +22,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <p className="bg-lime px-4 py-1 text-center text-xs font-medium text-ink">Preview · test data only, separate from the live site</p>
         )}
         {children}
+        {/* Cookie-free page-view counts (Vercel Web Analytics): no personal data, no consent banner needed. */}
+        <Analytics />
       </body>
     </html>
   );

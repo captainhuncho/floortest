@@ -12,11 +12,17 @@ export async function record(bucket: string, key: string, db: Queryable = q) {
   await db.run("INSERT INTO rate_events (bucket, key, created_at) VALUES (?,?,?)", bucket, key, now());
 }
 
-/** Records one event and reports whether the caller is still within `limit` per window. */
+/**
+ * Takes one slot and reports whether the caller is still within `limit` per window. Race-safe: the slot is
+ * recorded first, then counted, and handed back if it went over, so requests arriving at the same instant
+ * can't all slip under the limit together.
+ */
 export async function allow(bucket: string, key: string, limit: number, windowMs: number) {
-  if ((await recentCount(bucket, key, windowMs)) >= limit) return false;
-  await record(bucket, key);
-  return true;
+  const mine = await q.get<{ id: number }>("INSERT INTO rate_events (bucket, key, created_at) VALUES (?,?,?) RETURNING id", bucket, key, now());
+  const n = await recentCount(bucket, key, windowMs);
+  if (n <= limit) return true;
+  if (mine) await q.run("DELETE FROM rate_events WHERE id = ?", mine.id);
+  return false;
 }
 
 /**
