@@ -39,7 +39,7 @@ export default async function Account() {
   const since = new Date(user.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: user.tz }).replaceAll("/", ".");
 
   const card = "flex flex-col gap-2 rounded-[14px] border border-line bg-ink-2 p-3";
-  const label = "text-[10px] font-bold tracking-[0.5px] text-mute";
+  const label = "text-[11px] font-bold tracking-[0.5px] text-mute";
   const rule = <div className="h-px w-full bg-line" />;
   // `sub`: the one-line explanation under each item, shown on desktop (the old profile menu had these).
   const Icon = ({ i }: { i?: string }) =>
@@ -53,7 +53,7 @@ export default async function Account() {
       <Icon i={icon} />
       <span className="min-w-0 flex-1">
         <span className="block text-[13px] font-medium text-bone">{title}</span>
-        {sub && <span className="mt-0.5 hidden truncate text-[10px] text-faint md:block">{sub}</span>}
+        {sub && <span className="mt-0.5 hidden truncate text-[11px] text-faint md:block">{sub}</span>}
       </span>
       {value ?? <span aria-hidden className="text-sm text-mute transition group-hover:translate-x-0.5 group-hover:text-bone">{external ? "↗" : "→"}</span>}
     </Link>
@@ -78,7 +78,7 @@ export default async function Account() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icons/arrow-left.svg" alt="" className="size-4" />
         </Link>
-        <span className="text-[10px] font-bold tracking-[0.5px] text-mute">ACCOUNT</span>
+        <span className="text-[11px] font-bold tracking-[0.5px] text-mute">ACCOUNT</span>
       </div>
 
       <div className="contents md:flex md:flex-col md:gap-4">
@@ -89,18 +89,18 @@ export default async function Account() {
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <p className="truncate text-[22px] font-bold text-bone">{user.name}</p>
             <p className="truncate text-xs text-mute">{user.email}</p>
-            <p className="text-[10px] text-dim">Member since {since}</p>
+            <p className="text-[11px] text-dim">Member since {since}</p>
           </div>
         </div>
         <div className="flex items-center justify-between gap-3">
-          <span className="rounded-lg border border-line bg-white/[0.08] px-2 py-1 text-[9px] font-bold tracking-[0.5px] text-bone">
+          <span className="rounded-lg border border-line bg-white/[0.08] px-2 py-1 text-[11px] font-bold tracking-[0.5px] text-bone">
             {plan.name.toUpperCase()} · {cap.used}/{cap.limit} tracks
           </span>
           <div className="flex w-[120px] flex-col gap-1.5">
             <div className="h-1.5 overflow-hidden rounded-full bg-line">
               <div className="h-full rounded-full bg-[#6444ff]" style={{ width: `${pct}%` }} />
             </div>
-            <p className="text-[9px] text-dim">{pct}% used</p>
+            <p className="text-[11px] text-dim">{pct}% used</p>
           </div>
         </div>
       </section>
@@ -114,7 +114,7 @@ export default async function Account() {
         ].map(([n, l]) => (
           <div key={l} className="flex min-w-0 flex-1 flex-col gap-1 rounded-xl border border-line bg-ink-2 p-3">
             <p className="text-base font-bold text-bone tnum">{n}</p>
-            <p className="text-[9px] text-dim">{l}</p>
+            <p className="text-[11px] text-dim">{l}</p>
           </div>
         ))}
       </div>
@@ -147,7 +147,7 @@ export default async function Account() {
           <div className="h-1.5 overflow-hidden rounded-full bg-line">
             <div className="h-full rounded-full bg-[#6444ff]" style={{ width: `${pct}%` }} />
           </div>
-          <p className="text-[9px] text-dim">{pct}% used</p>
+          <p className="text-[11px] text-dim">{pct}% used</p>
         </div>
         {rule}
         <div className="flex items-center justify-between">
@@ -181,7 +181,7 @@ export default async function Account() {
             href="/dashboard/settings#security-h"
             icon="⚿" title="Two-factor authentication"
             sub="A code from your phone when you sign in"
-            value={<span className="rounded bg-ink-4 px-1.5 py-0.5 text-[8px] font-bold uppercase text-bone">{user.totp_enabled_at ? "On" : "Off"}</span>}
+            value={<span className="rounded bg-ink-4 px-1.5 py-0.5 text-[11px] font-bold uppercase text-bone">{user.totp_enabled_at ? "On" : "Off"}</span>}
           />,
         ]}
       />
@@ -199,7 +199,7 @@ export default async function Account() {
             <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-full border border-line text-sm text-mute">◐</span>
             <span className="min-w-0 flex-1">
               <span className="block text-[12px] font-bold">Appearance</span>
-              <span className="block text-[10px] text-faint">Night, Day, or match your device</span>
+              <span className="block text-[11px] text-faint">Night, Day, or match your device</span>
             </span>
             <ThemeSwitch current={theme} />
           </div>,
@@ -227,7 +227,7 @@ export default async function Account() {
       <form action={logout}>
         <button className="w-full rounded-xl border border-line bg-ink-2 p-3 text-[13px] font-bold text-[#ff5a5f]">Sign out</button>
       </form>
-      <p className="text-center text-[9px] text-faint">FLOORTEST v{VERSION}</p>
+      <p className="text-center text-[11px] text-faint">FLOORTEST v{VERSION}</p>
       </div>
     </div>
   );

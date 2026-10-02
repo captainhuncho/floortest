@@ -67,8 +67,8 @@ export function HomePreview({ host }: { host: string }) {
                 aria-pressed={sel === i}
                 className={`flex w-full items-center gap-4 py-3.5 pl-3 pr-2 text-left transition ${sel === i ? "border-l-2 border-lime bg-white/[0.03]" : "border-l-2 border-transparent hover:bg-white/[0.02]"}`}
               >
-                <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-md bg-gradient-to-br ${r.art} text-[9px] font-medium text-white`}>
-                  PLAY
+                <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-md bg-gradient-to-br ${r.art} text-[11px] font-medium text-white`}>
+                  <span className="rounded bg-ink/70 px-1">PLAY</span>
                 </span>
                 <span className="w-36 shrink-0 sm:w-44">
                   <span className="block truncate font-semibold">{r.title}</span>
@@ -81,7 +81,7 @@ export function HomePreview({ host }: { host: string }) {
                     <span key={j} className={`w-full rounded-sm ${sel === i ? "bg-lime/70" : "bg-white/25"}`} style={{ height: `${Math.round(h * 100)}%` }} />
                   ))}
                 </span>
-                <span className="ml-auto w-24 shrink-0 text-right text-[10px] uppercase text-dim">{r.status}</span>
+                <span className="ml-auto w-24 shrink-0 text-right text-[11px] uppercase text-dim">{r.status}</span>
               </button>
             </li>
           ))}
@@ -114,7 +114,7 @@ export function HomePreview({ host }: { host: string }) {
             {RECEIPT.map((s, i) => (
               <li key={s}>
                 <span className={`block h-1 rounded-sm ${i < t.signals ? "bg-lime" : "bg-white/10"}`} />
-                <span className={`mt-2 block text-[10px] uppercase ${i < t.signals ? "text-bone" : "text-dim"}`}>{s}</span>
+                <span className={`mt-2 block text-[11px] uppercase ${i < t.signals ? "text-bone" : "text-dim"}`}>{s}</span>
               </li>
             ))}
           </ol>

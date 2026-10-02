@@ -84,7 +84,7 @@ export async function ReviewPanel({
             ["DEMO STATUS", t.mix_status ? MIX_STATUS[t.mix_status as keyof typeof MIX_STATUS] : "—"],
           ].map(([k, v]) => (
             <div key={k} className="flex flex-col gap-1 rounded-lg bg-ink-2 p-2.5">
-              <dt className="text-[8px] text-faint">{k}</dt>
+              <dt className="text-[11px] text-faint">{k}</dt>
               <dd className="truncate text-[13px] font-bold text-bone">{v}</dd>
             </div>
           ))}
@@ -173,7 +173,7 @@ export async function ReviewPanel({
       )}
 
       {t.message && (
-        <figure className="mt-6 rounded-lg border-l-2 border-lime bg-ink p-4">
+        <figure className="mt-6 rounded-lg border border-line bg-ink p-4">
           <figcaption className="label mb-2">Message from {sender.name}</figcaption>
           <blockquote className="whitespace-pre-wrap">{t.message}</blockquote>
         </figure>

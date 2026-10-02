@@ -21,7 +21,7 @@ export function QuickReplies({ senderName, onPick }: { senderName: string; onPic
           key={q.label}
           type="button"
           onClick={() => onPick(q.text)}
-          className="rounded border border-line px-2 py-1 text-[9px] font-bold uppercase tracking-[0.5px] text-bone transition hover:border-lime hover:text-lime active:scale-95"
+          className="rounded border border-line px-2 py-1 text-[11px] font-bold uppercase tracking-[0.5px] text-bone transition hover:border-lime hover:text-lime active:scale-95"
         >
           {q.label}
         </button>

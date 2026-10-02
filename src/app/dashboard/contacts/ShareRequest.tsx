@@ -37,7 +37,7 @@ export function ShareRequest({ trackId, status }: { trackId: number; status: { s
         });
       }}
     >
-      <label className="text-[10px] text-faint" htmlFor={`share-note-${trackId}`}>
+      <label className="text-[11px] text-faint" htmlFor={`share-note-${trackId}`}>
         Who is it for? (optional, the artist sees this)
       </label>
       <input
@@ -48,7 +48,7 @@ export function ShareRequest({ trackId, status }: { trackId: number; status: { s
         placeholder="e.g. a DJ friend playing in Accra"
         className="input py-1.5 text-[11px]"
       />
-      <p className="text-[10px] text-faint">For playing in sets and promotion only, never commercial release.</p>
+      <p className="text-[11px] text-faint">For playing in sets and promotion only, never commercial release.</p>
       <div className="flex gap-2">
         <button disabled={pending} className="btn-lime btn-sm">
           {pending ? "Sending…" : "Send request"}

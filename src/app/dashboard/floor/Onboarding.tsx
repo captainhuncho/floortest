@@ -38,7 +38,7 @@ export async function Onboarding({ user }: { user: User }) {
           Get your desk running · {doneCount} of {steps.length}
         </h2>
         <form action={dismissOnboarding}>
-          <button className="text-[10px] text-faint hover:text-bone">Hide this</button>
+          <button className="text-[11px] text-faint hover:text-bone">Hide this</button>
         </form>
       </div>
       <ol className="mt-3 space-y-3">
@@ -54,7 +54,7 @@ export async function Onboarding({ user }: { user: User }) {
               ) : (
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <span className="text-xs font-bold text-bone">{s.label}</span>
-                  <span className="text-[10px] text-faint">{s.hint}</span>
+                  <span className="text-[11px] text-faint">{s.hint}</span>
                 </span>
               )}
             </>

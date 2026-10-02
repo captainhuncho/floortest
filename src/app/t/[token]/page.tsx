@@ -43,7 +43,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
   return (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-6 bg-ink px-5 py-8 text-bone sm:py-12">
       <div className="flex flex-col gap-1.5">
-        <p className="text-[9px] font-bold uppercase tracking-[1px] text-faint">Private receipt</p>
+        <p className="text-[11px] font-bold uppercase tracking-[1px] text-faint">Private receipt</p>
         <h1 className="break-words text-[28px] font-bold tracking-[-0.8px]">{t.title}</h1>
         <p className="text-[11px] text-mute">
           {t.artist} · sent to {t.receiver}
@@ -73,7 +73,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
                 <p className={`text-[12px] font-bold ${done ? "" : "text-faint"}`}>
                   {s.label} <span className="sr-only">{done ? "(done)" : "(not yet)"}</span>
                 </p>
-                <p className={`text-[10px] ${done ? "text-faint" : "text-faint"}`}>
+                <p className={`text-[11px] ${done ? "text-faint" : "text-faint"}`}>
                   {done ? `${fmtDate(s.at!)} · ${s.text}` : `Not yet · ${s.text}`}
                 </p>
               </div>
@@ -93,7 +93,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
         <StemUpload token={token} receiver={t.receiver.split(/\s+/)[0]} existing={stems.map((x) => x.name)} max={MAX_STEMS} />
       )}
 
-      <section className="flex flex-col gap-2.5 rounded-[14px] border border-line bg-ink-2 p-3.5 text-[10px] text-faint">
+      <section className="flex flex-col gap-2.5 rounded-[14px] border border-line bg-ink-2 p-3.5 text-[11px] text-faint">
         <p>
           Updates go to <span className="font-bold text-mute">{t.sender_email}</span>
           {t.verified_at ? " (confirmed)." : ". Confirm your email from the delivery email so the receiver sees you as verified."}
@@ -113,7 +113,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
             : `Files are deleted within ${RETAIN_UNREVIEWED_DAYS} days of delivery unless ${t.receiver} keeps them.`}
         </p>
       </section>
-      <p className="text-[10px] text-faint">
+      <p className="text-[11px] text-faint">
         No account needed. Bookmark this page to check in any time, or{" "}
         <a href="/sent" className="text-faint underline">
           see everything you&apos;ve sent

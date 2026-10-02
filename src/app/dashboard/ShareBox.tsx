@@ -30,11 +30,11 @@ export function ShareBox({
   };
   return (
     <section className="rounded-xl border border-line bg-ink-2 p-4">
-      <h3 className="text-[10px] font-bold uppercase tracking-[1px] text-mute">Share with a colleague</h3>
+      <h3 className="text-[11px] font-bold uppercase tracking-[1px] text-mute">Share with a colleague</h3>
       {link ? (
         <div className="mt-2 flex flex-col gap-2">
           <p className="truncate text-[12px] text-bone">{link.url.replace(/^https?:\/\//, "")}</p>
-          <p className="text-[10px] text-faint">
+          <p className="text-[11px] text-faint">
             {canDownload ? "Listen and download" : "Listen-only, no download button"} · works until {link.expires} · {link.plays} play{link.plays === 1 ? "" : "s"}
           </p>
           <div className="flex gap-2">
@@ -92,7 +92,7 @@ export function ShareBox({
       )}
       {audience.length > 0 && (
         <div className="mt-3 border-t border-line pt-3">
-          <p className="text-[10px] font-bold uppercase tracking-[1px] text-faint">Who listened</p>
+          <p className="text-[11px] font-bold uppercase tracking-[1px] text-faint">Who listened</p>
           <ul className="mt-1.5 flex flex-col gap-1 text-[11px]">
             {audience.map((a) => (
               <li key={a.handle} className="flex justify-between gap-3">

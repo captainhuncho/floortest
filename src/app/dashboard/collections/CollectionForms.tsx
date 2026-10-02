@@ -230,13 +230,13 @@ export function CollectionTile({ c, receiving, closed, canDelete }: { c: C; rece
           </span>
         ))}
         {receiving && !closed && (
-          <span className="absolute left-2.5 top-2.5 flex items-center gap-1 rounded-md border border-white bg-white/[0.08] px-2 py-1 text-[8px] font-bold tracking-[0.5px] text-white">
+          <span className="absolute left-2.5 top-2.5 flex items-center gap-1 rounded-md border border-white bg-white/[0.08] px-2 py-1 text-[11px] font-bold tracking-[0.5px] text-white">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/icons/receiving-dot.svg" alt="" className="size-[5px]" />
             RECEIVING
           </span>
         )}
-        {closed && <span className="absolute left-2.5 top-2.5 rounded-md border border-faint px-2 py-1 text-[8px] font-bold tracking-[0.5px] text-mute">CLOSED</span>}
+        {closed && <span className="absolute left-2.5 top-2.5 rounded-md border border-faint px-2 py-1 text-[11px] font-bold tracking-[0.5px] text-mute">CLOSED</span>}
       </Link>
       <Link href={`/dashboard?view=queue&c=${c.id}`} aria-label={`Play ${c.name} in the queue`} className="absolute right-2.5 grid size-[30px] place-items-center rounded-lg bg-ink opacity-90" style={{ top: "calc(100% - 56px - 40px)" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -247,7 +247,7 @@ export function CollectionTile({ c, receiving, closed, canDelete }: { c: C; rece
           {c.name}
         </Link>
         <div className="flex items-center justify-between text-mute">
-          <span className="text-[10px]">
+          <span className="text-[11px]">
             {c.count} track{c.count === 1 ? "" : "s"}
             {c.needsReview > 0 && ` · ${c.needsReview} new`}
           </span>
@@ -276,7 +276,7 @@ function OptionsSheet({ title, onClose, children }: { title: string; onClose: ()
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-sm overflow-hidden rounded-2xl border border-line bg-ink-2 text-[13px] text-bone shadow-2xl shadow-black/60"
       >
-        <p className="truncate border-b border-line px-4 py-3 text-[10px] font-bold uppercase tracking-[1px] text-mute">{title}</p>
+        <p className="truncate border-b border-line px-4 py-3 text-[11px] font-bold uppercase tracking-[1px] text-mute">{title}</p>
         <div className="flex flex-col divide-y divide-line [&>*]:block [&>*]:w-full [&>*]:px-4 [&>*]:py-3.5 [&>*]:text-left">{children}</div>
       </div>
     </div>
@@ -335,15 +335,15 @@ export function CollectionDetailHeader({ c, receiving, closed, canDelete }: { c:
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2">
         {receiving && !closed ? (
-          <span className="flex items-center gap-1 rounded-md border border-white bg-white/10 px-2 py-1 text-[8px] font-bold tracking-[0.5px] text-white">
+          <span className="flex items-center gap-1 rounded-md border border-white bg-white/10 px-2 py-1 text-[11px] font-bold tracking-[0.5px] text-white">
             <span aria-hidden className="size-[5px] rounded-full bg-white" />
             RECEIVING
           </span>
         ) : (
-          <span className="text-[8px] font-bold tracking-[0.5px] text-faint">{closed ? "CLOSED" : "NOT RECEIVING"}</span>
+          <span className="text-[11px] font-bold tracking-[0.5px] text-faint">{closed ? "CLOSED" : "NOT RECEIVING"}</span>
         )}
         {!editing && (
-          <button onClick={() => setEditing(true)} className="rounded-md border border-line bg-ink-3 px-3 py-1.5 text-[10px] font-bold text-bone">
+          <button onClick={() => setEditing(true)} className="rounded-md border border-line bg-ink-3 px-3 py-1.5 text-[11px] font-bold text-bone">
             Edit Info
           </button>
         )}

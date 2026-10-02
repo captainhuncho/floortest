@@ -19,7 +19,7 @@ export default async function Notifications() {
   return (
     <div className="max-w-3xl space-y-10 px-4 py-6 sm:px-8">
       <div >
-        <p className="text-[9px] font-bold uppercase tracking-[1px] text-faint">Updates</p>
+        <p className="text-[11px] font-bold uppercase tracking-[1px] text-faint">Updates</p>
         <h1 className="mt-1.5 text-[28px] font-bold tracking-[-0.8px]">Notifications</h1>
         <p className="mt-2 text-[12px] text-mute">
           How FloorTest emails you at <span className="text-bone">{user.email}</span>. The bell in the top bar always shows everything.

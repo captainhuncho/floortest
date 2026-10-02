@@ -198,7 +198,7 @@ export default async function Home({
             <h2 className="text-[clamp(2.5rem,5.5vw,4.5rem)] font-bold leading-[0.95] tracking-[-0.04em]">
               Know what happened next.
             </h2>
-            <p className="text-sm leading-relaxed text-mute lg:pb-2">
+            <p className="max-w-[65ch] text-sm leading-relaxed text-mute lg:pb-2">
               FloorTest records the four moments that matter between sending a
               track and hearing back.
             </p>
@@ -249,7 +249,7 @@ export default async function Home({
           <h2 className="text-[clamp(2.5rem,5.5vw,4.5rem)] font-bold leading-[0.95] tracking-[-0.04em]">
             Stop receiving music everywhere.
           </h2>
-          <p className="text-sm leading-relaxed text-mute lg:pb-2">
+          <p className="max-w-[65ch] text-sm leading-relaxed text-mute lg:pb-2">
             One private workflow replaces scattered inboxes, expired links and
             missing context.
           </p>
@@ -310,7 +310,7 @@ export default async function Home({
             >
               <p className="home-label">0{i + 1}</p>
               <p className="mt-8 text-xl">{title}</p>
-              <p className="mt-3 text-sm leading-relaxed text-mute">
+              <p className="mt-3 max-w-[65ch] text-sm leading-relaxed text-mute">
                 {body}
               </p>
             </li>
@@ -492,7 +492,7 @@ export default async function Home({
                   −
                 </span>
               </summary>
-              <p className="max-w-3xl pb-6 text-sm leading-relaxed text-mute">
+              <p className="max-w-[65ch] pb-6 text-sm leading-relaxed text-mute">
                 {a}
               </p>
             </details>

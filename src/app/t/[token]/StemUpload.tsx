@@ -52,7 +52,7 @@ export function StemUpload({ token, receiver, existing, max }: { token: string; 
         <h2 id="stems-h" className="text-[12px] font-bold">
           {receiver} asked for the stems
         </h2>
-        <p className="mt-1 text-[10px] text-faint">
+        <p className="mt-1 text-[11px] text-faint">
           One WAV or MP3 per stem, up to {max}. Only {receiver} can hear or download them.
         </p>
       </div>

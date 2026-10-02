@@ -74,12 +74,12 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
           <section className="flex flex-col gap-2.5 rounded-xl border border-line bg-ink-3 p-3.5">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-[9px] font-bold text-faint">GENRES</p>
+                <p className="text-[11px] font-bold text-faint">GENRES</p>
                 <p className="text-[12px]">{genres.custom ? genres.list.join(", ") : c.brief_wanted || "Any"}</p>
               </div>
               {c.bpm_min && c.bpm_max && (
                 <div className="shrink-0 text-right">
-                  <p className="text-[9px] font-bold text-faint">BPM</p>
+                  <p className="text-[11px] font-bold text-faint">BPM</p>
                   <p className="text-[12px]">
                     {c.bpm_min}-{c.bpm_max}
                   </p>
@@ -90,14 +90,14 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
               <>
                 <hr className="border-line" />
                 <div>
-                  <p className="text-[9px] font-bold text-faint">BRIEF</p>
+                  <p className="text-[11px] font-bold text-faint">BRIEF</p>
                   <p className="text-[12px] italic">&ldquo;{c.brief_note}&rdquo;</p>
                 </div>
               </>
             )}
           </section>
         )}
-        <p className="flex gap-2 text-[10px] font-bold">
+        <p className="flex gap-2 text-[11px] font-bold">
           <span className="text-mute">{c.needs_review} NEED REVIEW</span>
           <span className="font-normal text-faint">·</span>
           <span className="text-bone">{c.kept} KEPT</span>
@@ -119,12 +119,12 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
             <h1 className="flex items-center gap-3 text-[32px] font-bold">
               {c.name}
               {receiving && !isClosed(c) && (
-                <span className="flex items-center gap-1 rounded-md border border-white bg-white/10 px-2 py-1 text-[8px] font-bold tracking-[0.5px]">
+                <span className="flex items-center gap-1 rounded-md border border-white bg-white/10 px-2 py-1 text-[11px] font-bold tracking-[0.5px]">
                   <span aria-hidden className="size-[5px] rounded-full bg-white" />
                   RECEIVING
                 </span>
               )}
-              {isClosed(c) && <span className="rounded-md border border-faint px-2 py-1 text-[8px] font-bold tracking-[0.5px] text-mute">CLOSED</span>}
+              {isClosed(c) && <span className="rounded-md border border-faint px-2 py-1 text-[11px] font-bold tracking-[0.5px] text-mute">CLOSED</span>}
             </h1>
             <div className="flex flex-wrap items-center gap-2">
               <EditCollectionInfo c={editable} receiving={receiving} closed={isClosed(c)} canDelete={all.length > 1} />
@@ -134,15 +134,15 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
         </div>
         <section className="grid grid-cols-[1.4fr_0.8fr_1.6fr] gap-6 rounded-xl border border-line bg-ink-3 px-4 py-3.5">
           <div className="min-w-0">
-            <p className="text-[9px] font-bold uppercase text-faint">Genres</p>
+            <p className="text-[11px] font-bold uppercase text-faint">Genres</p>
             <p className="mt-1 truncate text-[12px]">{genres.custom ? genres.list.join(", ") : c.brief_wanted || "Any"}</p>
           </div>
           <div>
-            <p className="text-[9px] font-bold uppercase text-faint">BPM range</p>
+            <p className="text-[11px] font-bold uppercase text-faint">BPM range</p>
             <p className="mt-1 text-[12px]">{c.bpm_min && c.bpm_max ? `${c.bpm_min} – ${c.bpm_max} BPM` : "Any"}</p>
           </div>
           <div className="min-w-0">
-            <p className="text-[9px] font-bold uppercase text-faint">Submission brief</p>
+            <p className="text-[11px] font-bold uppercase text-faint">Submission brief</p>
             <p className="mt-1 truncate text-[12px] italic">{c.brief_note ? `“${c.brief_note}”` : "—"}</p>
           </div>
         </section>
@@ -157,7 +157,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
               <dd className="text-[16px] font-bold">
                 {v} track{v === 1 ? "" : "s"}
               </dd>
-              <span aria-hidden className="text-[9px] font-bold uppercase text-faint">
+              <span aria-hidden className="text-[11px] font-bold uppercase text-faint">
                 {k}
               </span>
             </div>

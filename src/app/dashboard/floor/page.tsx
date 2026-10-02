@@ -24,7 +24,7 @@ function Card({ title, action, children, className = "" }: { title: string; acti
   return (
     <section className={`rounded-2xl border border-line bg-ink-3 p-4 ${className}`} aria-label={title}>
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="text-[10px] font-bold uppercase tracking-[1px] text-mute">{title}</h2>
+        <h2 className="text-[11px] font-bold uppercase tracking-[1px] text-mute">{title}</h2>
         {action}
       </div>
       {children}
@@ -36,9 +36,9 @@ function Card({ title, action, children, className = "" }: { title: string; acti
 function Stat({ label, value, note }: { label: string; value: string; note?: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1.5 rounded-xl border border-line bg-ink-3 p-3.5">
-      <p className="text-[10px] font-bold uppercase tracking-[1px] text-mute">{label}</p>
+      <p className="text-[11px] font-bold uppercase tracking-[1px] text-mute">{label}</p>
       <p className="text-[30px] font-bold leading-none text-bone tnum">{value}</p>
-      {note && <p className="text-[10px] text-faint">{note}</p>}
+      {note && <p className="text-[11px] text-faint">{note}</p>}
     </div>
   );
 }
@@ -140,7 +140,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   return (
     <div className="space-y-4 px-4 py-4 sm:px-8 sm:py-6">
       <header className="flex flex-col gap-2">
-        <p className="text-[10px] font-bold uppercase tracking-[1px] text-faint">{welcome ? "Welcome to FloorTest" : new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: prefs.tz })}</p>
+        <p className="text-[11px] font-bold uppercase tracking-[1px] text-faint">{welcome ? "Welcome to FloorTest" : new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: prefs.tz })}</p>
         <h1 className="text-[34px] font-bold leading-[1.05] tracking-[-1px] text-bone">
           {greeting}, {first}.
         </h1>

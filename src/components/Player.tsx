@@ -194,7 +194,7 @@ export function PlayerBar() {
         <Link href={`/dashboard?view=queue&s=all&t=${current.id}`} className="flex min-w-0 flex-1 flex-col gap-2">
           <span className="flex items-center justify-between gap-2">
             <span className="truncate text-sm font-bold tracking-[-0.4px] text-bone">{current.title}</span>
-            <span className="shrink-0 text-[10px] text-faint tnum">{fmtTime(time)}</span>
+            <span className="shrink-0 text-[11px] text-faint tnum">{fmtTime(time)}</span>
           </span>
           <Waveform peaks={current.peaks} progress={d ? time / d : 0} onSeek={seek} height={18} label={`Seek ${current.title}`} />
         </Link>

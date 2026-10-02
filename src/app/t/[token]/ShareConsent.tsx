@@ -42,7 +42,7 @@ export function ShareConsent({ token, requestId, receiver, note, downloads }: { 
           Decline
         </button>
       </div>
-      <p className="text-[10px] text-faint">Nothing changes unless you say yes.</p>
+      <p className="text-[11px] text-faint">Nothing changes unless you say yes.</p>
     </section>
   );
 }

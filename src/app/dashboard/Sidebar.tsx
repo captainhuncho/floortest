@@ -45,7 +45,7 @@ export function Sidebar({ needsReview, cap, pause }: Props) {
               {n.label}
             </span>
             {"badge" in n && !!n.badge && (
-              <span className="rounded-full bg-lime px-2 py-0.5 text-[10px] font-bold text-ink tnum" aria-label={`${n.badge} need review`}>
+              <span className="rounded-full bg-lime px-2 py-0.5 text-[11px] font-bold text-ink tnum" aria-label={`${n.badge} need review`}>
                 {n.badge}
               </span>
             )}

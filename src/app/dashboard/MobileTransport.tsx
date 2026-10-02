@@ -14,7 +14,7 @@ export function MobileTransport({ track, prevHref, nextHref }: { track: PlayerTr
   return (
     <div >
       <div className="flex flex-col gap-2.5 py-3.5">
-        <div className="flex justify-between text-[9px]">
+        <div className="flex justify-between text-[11px]">
           <span className="text-bone tnum">{on ? fmtTime(time) : "0:00"}</span>
           <span className="text-faint tnum">{fmtTime(d)}</span>
         </div>
@@ -32,13 +32,13 @@ export function MobileTransport({ track, prevHref, nextHref }: { track: PlayerTr
           // eslint-disable-next-line @next/next/no-img-element
           <span className={`${skip} opacity-30`}><img src="/icons/skip-back.svg" alt="" className="size-5" /></span>
         )}
-        <button onClick={() => (on ? seekBy(-15) : play(track))} className="rounded-md bg-ink-2 p-2 text-[10px] text-bone" aria-label="Back 15 seconds">
+        <button onClick={() => (on ? seekBy(-15) : play(track))} className="rounded-md bg-ink-2 p-2 text-[11px] text-bone" aria-label="Back 15 seconds">
           -15S
         </button>
         <button onClick={() => (on ? toggle() : play(track))} className="grid size-14 place-items-center rounded-full bg-white text-ink" aria-label={on && playing ? "Pause" : "Play"}>
           <PlayIcon playing={on && playing} className="size-5" />
         </button>
-        <button onClick={() => (on ? seekBy(15) : play(track))} className="rounded-md bg-ink-2 p-2 text-[10px] text-bone" aria-label="Forward 15 seconds">
+        <button onClick={() => (on ? seekBy(15) : play(track))} className="rounded-md bg-ink-2 p-2 text-[11px] text-bone" aria-label="Forward 15 seconds">
           +15S
         </button>
         {nextHref ? (

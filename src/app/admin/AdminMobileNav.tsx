@@ -19,13 +19,13 @@ export function AdminMobileNav({ groups }: { groups: NavGroup[] }) {
       <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-[12px] font-bold [&::-webkit-details-marker]:hidden">
         <span className="text-faint">Admin /</span>
         <span className="min-w-0 flex-1 truncate">{current?.label ?? "Menu"}</span>
-        {waiting > 0 && <span className="rounded bg-lime px-1.5 text-[10px] text-ink">{waiting}</span>}
+        {waiting > 0 && <span className="rounded bg-lime px-1.5 text-[11px] text-ink">{waiting}</span>}
         <span aria-hidden className="text-faint transition group-open:rotate-180">▾</span>
       </summary>
       <nav aria-label="Admin" className="max-h-[70dvh] overflow-y-auto border-t border-line px-2 pb-3">
         {groups.map((g) => (
           <div key={g.id} className="mt-3">
-            <p className="px-2 pb-1 text-[10px] font-bold uppercase tracking-[1px] text-faint">{g.title}</p>
+            <p className="px-2 pb-1 text-[11px] font-bold uppercase tracking-[1px] text-faint">{g.title}</p>
             {g.sections.flatMap((s) => s.items).map((i) => (
               <Link
                 key={i.href}
@@ -34,7 +34,7 @@ export function AdminMobileNav({ groups }: { groups: NavGroup[] }) {
                 className={`flex items-center justify-between rounded-lg px-2 py-2 text-[12px] ${isActive(i.href) ? "bg-ink-4 font-bold text-bone" : "text-mute"}`}
               >
                 {i.label}
-                {!!i.badge && <span className="rounded bg-lime px-1.5 text-[10px] font-bold text-ink">{i.badge}</span>}
+                {!!i.badge && <span className="rounded bg-lime px-1.5 text-[11px] font-bold text-ink">{i.badge}</span>}
               </Link>
             ))}
           </div>

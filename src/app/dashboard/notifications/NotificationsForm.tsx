@@ -56,13 +56,13 @@ export function NotificationsForm({ prefs, pending }: { prefs: Prefs; pending: n
             >
               <input type="radio" name="notify_submissions" value={m.id} checked={mode === m.id} onChange={() => setMode(m.id)} className="sr-only" />
               <span className="flex items-center justify-between">
-                <span className={`text-[9px] font-bold uppercase tracking-[0.6px] ${mode === m.id ? "text-lime" : "text-faint"}`}>{mode === m.id ? "On" : "Off"}</span>
+                <span className={`text-[11px] font-bold uppercase tracking-[0.6px] ${mode === m.id ? "text-lime" : "text-faint"}`}>{mode === m.id ? "On" : "Off"}</span>
                 <span aria-hidden className={`grid size-5 shrink-0 place-items-center rounded-full ${mode === m.id ? "bg-line text-lime" : "border border-line"}`}>
                   {mode === m.id ? "✓" : <span className="size-1.5 rounded-full bg-line" />}
                 </span>
               </span>
               <span className="text-[15px] font-bold">{m.title}</span>
-              <span className="text-[10px] text-mute">{m.sub}</span>
+              <span className="text-[11px] text-mute">{m.sub}</span>
             </label>
           ))}
         </div>
@@ -95,24 +95,24 @@ export function NotificationsForm({ prefs, pending }: { prefs: Prefs; pending: n
         <label className="mt-3 flex cursor-pointer flex-col gap-1.5 rounded-2xl border border-line bg-ink-2 px-3.5 py-3 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-lime">
           <input type="checkbox" name="notify_alerts" checked={alerts} onChange={(e) => setAlerts(e.target.checked)} className="sr-only" />
           <span className="flex items-center justify-between">
-            <span className={`text-[9px] font-bold uppercase tracking-[0.6px] ${alerts ? "text-lime" : "text-faint"}`}>{alerts ? "On" : "Off"}</span>
+            <span className={`text-[11px] font-bold uppercase tracking-[0.6px] ${alerts ? "text-lime" : "text-faint"}`}>{alerts ? "On" : "Off"}</span>
             <span aria-hidden className={`grid size-5 shrink-0 place-items-center rounded-full ${alerts ? "bg-line text-lime" : "border border-line"}`}>
                   {alerts ? "✓" : <span className="size-1.5 rounded-full bg-line" />}
                 </span>
           </span>
           <span className="text-[15px] font-bold">Storage warning</span>
-          <span className="text-[10px] text-mute">At 80% full, when your link pauses, and a week before tracks are auto-deleted</span>
+          <span className="text-[11px] text-mute">At 80% full, when your link pauses, and a week before tracks are auto-deleted</span>
         </label>
         <label className="mt-3 flex cursor-pointer flex-col gap-1.5 rounded-2xl border border-line bg-ink-2 px-3.5 py-3 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-lime">
           <input type="checkbox" name="notify_product" checked={product} onChange={(e) => setProduct(e.target.checked)} className="sr-only" />
           <span className="flex items-center justify-between">
-            <span className={`text-[9px] font-bold uppercase tracking-[0.6px] ${product ? "text-lime" : "text-faint"}`}>{product ? "On" : "Off"}</span>
+            <span className={`text-[11px] font-bold uppercase tracking-[0.6px] ${product ? "text-lime" : "text-faint"}`}>{product ? "On" : "Off"}</span>
             <span aria-hidden className={`grid size-5 shrink-0 place-items-center rounded-full ${product ? "bg-line text-lime" : "border border-line"}`}>
                   {product ? "✓" : <span className="size-1.5 rounded-full bg-line" />}
                 </span>
           </span>
           <span className="text-[15px] font-bold">Product updates</span>
-          <span className="text-[10px] text-mute">New features and occasional news. No more than once a month</span>
+          <span className="text-[11px] text-mute">New features and occasional news. No more than once a month</span>
         </label>
       </fieldset>
 

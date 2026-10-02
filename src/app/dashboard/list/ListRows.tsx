@@ -163,7 +163,7 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
                       setSelected(r.id);
                       player.play(toPlayer(r), queue);
                     }}
-                    className="grid size-7 shrink-0 place-items-center rounded-full bg-white text-[10px] font-bold text-ink"
+                    className="grid size-7 shrink-0 place-items-center rounded-full bg-white text-[11px] font-bold text-ink"
                     aria-label={playing ? `Pause ${r.title}` : `Play ${r.title}`}
                   >
                     {playing ? (
@@ -187,18 +187,18 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
                     <span className="truncate text-sm font-bold text-bone">
                       {r.artist} - {r.title}
                     </span>
-                    <span className="truncate text-[10px] font-medium text-mute">{r.meta.join(" · ")}</span>
+                    <span className="truncate text-[11px] font-medium text-mute">{r.meta.join(" · ")}</span>
                   </button>
                   {statusTag ? (
                     <span
-                      className={`shrink-0 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase ${
+                      className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-bold uppercase ${
                         decision === "kept" ? "bg-white/10 text-white" : "bg-line text-mute"
                       }`}
                     >
                       {decision === "kept" ? "Kept" : decision === "passed" ? "Not for me" : "Needs review"}
                     </span>
                   ) : (
-                    <span className="shrink-0 text-[10px] font-medium text-faint" suppressHydrationWarning>
+                    <span className="shrink-0 text-[11px] font-medium text-faint" suppressHydrationWarning>
                       {age(r.createdAt)}
                     </span>
                   )}
@@ -264,10 +264,10 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
                     {r.artist} - {r.title}
                     {r.duplicateOf && <span className="chip ml-2 align-middle border-danger/40 text-[11px] font-normal text-danger">Possible duplicate</span>}
                   </p>
-                  <p className="mt-1 flex items-center gap-2 truncate text-[10px] text-faint">
+                  <p className="mt-1 flex items-center gap-2 truncate text-[11px] text-faint">
                     <span className="truncate">{r.meta.join(" · ")}</span>
                     {statusTag && (
-                      <span className={`shrink-0 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase ${decision === "kept" ? "bg-bone/10 text-bone" : "bg-line text-mute"}`}>
+                      <span className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-bold uppercase ${decision === "kept" ? "bg-bone/10 text-bone" : "bg-line text-mute"}`}>
                         {decision === "kept" ? "Kept" : decision === "passed" ? "Not for me" : "Needs review"}
                       </span>
                     )}
@@ -316,7 +316,7 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
                   >
                     <Icon.Download />
                   </a>
-                  <span className="hidden w-12 text-right text-[10px] text-faint tnum sm:block" title={new Date(r.createdAt).toLocaleString()} suppressHydrationWarning>
+                  <span className="hidden w-12 text-right text-[11px] text-faint tnum sm:block" title={new Date(r.createdAt).toLocaleString()} suppressHydrationWarning>
                     {age(r.createdAt)}
                   </span>
                 </div>
@@ -331,7 +331,7 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
           );
         })}
       </ul>
-      <div className="mt-4 hidden items-center justify-between gap-4 rounded-xl border border-line bg-ink-2 px-4 py-3 text-[10px] text-faint md:flex">
+      <div className="mt-4 hidden items-center justify-between gap-4 rounded-xl border border-line bg-ink-2 px-4 py-3 text-[11px] text-faint md:flex">
         <p className="flex flex-wrap gap-x-4 gap-y-1">
           {[
             ["↑/↓", "select"],
@@ -367,7 +367,7 @@ function Expanded({ row: r, decision, onClose }: { row: ListRow; decision: Decis
     <div className="grid gap-5 border-t border-line/60 bg-ink/40 px-4 py-5 sm:px-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:pl-[88px]">
       <div className="space-y-3 text-sm">
         {r.message ? (
-          <figure className="rounded-lg border-l-2 border-lime bg-ink-2 p-3">
+          <figure className="rounded-lg border border-line bg-ink-2 p-3">
             <figcaption className="label mb-1">Message from {r.sender}</figcaption>
             <blockquote className="whitespace-pre-wrap text-[15px] text-bone">{r.message}</blockquote>
           </figure>

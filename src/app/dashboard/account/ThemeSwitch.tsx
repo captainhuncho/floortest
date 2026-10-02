@@ -22,7 +22,7 @@ export function ThemeSwitch({ current }: { current: string }) {
           aria-checked={current === o.id}
           disabled={pending}
           onClick={() => start(() => setTheme(o.id))}
-          className={`rounded-md px-2.5 py-1 text-[10px] font-bold transition ${current === o.id ? "bg-bone text-ink" : "text-mute hover:text-bone"}`}
+          className={`rounded-md px-2.5 py-1 text-[11px] font-bold transition ${current === o.id ? "bg-bone text-ink" : "text-mute hover:text-bone"}`}
         >
           {o.label}
         </button>

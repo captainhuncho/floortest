@@ -65,7 +65,7 @@ export default async function ReceiverPage({ params }: Props) {
   return (
     <main className="group/page mx-auto flex min-h-dvh max-w-xl flex-col gap-6 bg-ink px-[18px] py-8 text-bone sm:py-12">
       <div className="flex flex-col gap-3">
-        <p className="text-[10px] font-bold uppercase tracking-[1px] text-mute">Send music to</p>
+        <p className="text-[11px] font-bold uppercase tracking-[1px] text-mute">Send music to</p>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="break-words text-[clamp(2rem,12vw,3.5rem)] font-bold leading-none group-has-[[data-picked]]/page:text-[32px] group-has-[[data-picked]]/page:font-extrabold">
             {receiver.name}
@@ -84,11 +84,11 @@ export default async function ReceiverPage({ params }: Props) {
         </div>
         {showBrief && (
           <section aria-label="What they're looking for" className="group-has-[[data-picked]]/page:hidden flex flex-col gap-2 rounded-xl border border-line bg-ink-2 p-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.5px] text-mute">What I&apos;m looking for</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.5px] text-mute">What I&apos;m looking for</p>
             {(
               <ul className="flex flex-wrap gap-1.5">
                 {genres.map((g) => (
-                  <li key={g} className="rounded-full border border-line bg-ink px-2 py-1 text-[10px] font-bold">
+                  <li key={g} className="rounded-full border border-line bg-ink px-2 py-1 text-[11px] font-bold">
                     {g}
                   </li>
                 ))}
@@ -99,7 +99,7 @@ export default async function ReceiverPage({ params }: Props) {
             {collection?.closes_at && <p className="text-[11px] font-bold">Open until {fmtDay(collection.closes_at, receiver.tz)}</p>}
             {collection?.brief_note && <p className="text-[11px] italic leading-4 text-mute">&ldquo;{collection.brief_note}&rdquo;</p>}
             {sharing && !!collection?.allow_sharing && (
-              <p className="flex items-center gap-1.5 text-[10px] font-medium text-dim">
+              <p className="flex items-center gap-1.5 text-[11px] font-medium text-dim">
                 <span aria-hidden className="text-lime">✓</span> Sharing with colleagues allowed
               </p>
             )}

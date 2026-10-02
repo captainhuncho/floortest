@@ -141,7 +141,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
               [totals.engaged, "Engaged"],
             ].map(([v, k]) => (
               <div key={k} className="flex flex-col-reverse gap-1 rounded-[10px] border border-line bg-ink-2 p-3">
-                <dt className="text-[9px] font-bold uppercase tracking-[1px] text-faint">{k}</dt>
+                <dt className="text-[11px] font-bold uppercase tracking-[1px] text-faint">{k}</dt>
                 <dd className="text-[24px] font-extrabold">{v}</dd>
               </div>
             ))}
@@ -160,7 +160,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
                 key={k}
                 href={href({ show: k === "all" ? undefined : k })}
                 aria-current={show[0] === k ? "page" : undefined}
-                className={`shrink-0 rounded-md px-2.5 py-1 text-[10px] ${show[0] === k ? "border border-line bg-ink-3 font-bold" : "text-mute"}`}
+                className={`shrink-0 rounded-md px-2.5 py-1 text-[11px] ${show[0] === k ? "border border-line bg-ink-3 font-bold" : "text-mute"}`}
               >
                 {label.toLowerCase()}
               </Link>
@@ -182,7 +182,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
                         <span className="truncate text-[13px] font-bold">{r.name}</span>
                         <span className="truncate text-[11px] text-faint">{r.email}</span>
                         {(r.verified_at || r.blocked_at) && (
-                          <span className={`w-fit rounded border px-1.5 py-0.5 text-[9px] font-bold ${r.blocked_at ? "border-danger/50 text-danger" : "border-lime/40 text-lime"}`}>
+                          <span className={`w-fit rounded border px-1.5 py-0.5 text-[11px] font-bold ${r.blocked_at ? "border-danger/50 text-danger" : "border-lime/40 text-lime"}`}>
                             {r.blocked_at ? "blocked" : "verified"}
                           </span>
                         )}
@@ -191,7 +191,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
                     {last && (
                       <div className="flex flex-col gap-1">
                         <p className="truncate text-[13px] font-bold">{last.title}</p>
-                        <p className="text-[10px] tracking-[0.5px] text-faint">
+                        <p className="text-[11px] tracking-[0.5px] text-faint">
                           {last.collection ? `${last.collection.toUpperCase()} · ` : ""}
                           {short(last.created_at)}
                         </p>
@@ -200,12 +200,12 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
                     <div className="flex items-center gap-3">
                       <div className="flex flex-col gap-1">
                         <p className="text-[22px] font-extrabold leading-none">{r.sent}</p>
-                        <p className="text-[10px] text-faint">
+                        <p className="text-[11px] text-faint">
                           sent · {r.kept} kept · {r.downloaded} downloaded
                         </p>
                       </div>
                       {r.last_at && Date.now() - r.last_at < WEEK && (
-                        <span className="rounded-md border border-[#1e4226] bg-[#162a1a] px-2.5 py-1 text-[10px] font-bold tracking-[1px] text-[#4ade80]">NEW</span>
+                        <span className="rounded-md border border-[#1e4226] bg-[#162a1a] px-2.5 py-1 text-[11px] font-bold tracking-[1px] text-[#4ade80]">NEW</span>
                       )}
                     </div>
                     <div className="flex gap-1.5">
@@ -236,7 +236,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
                 key={k}
                 href={href({ tab: "messages", from: k === "all" ? undefined : k })}
                 aria-current={from === k ? "page" : undefined}
-                className={`rounded-md px-2.5 py-1 text-[10px] ${from === k ? "border border-line bg-ink-3 font-bold" : "text-mute"}`}
+                className={`rounded-md px-2.5 py-1 text-[11px] ${from === k ? "border border-line bg-ink-3 font-bold" : "text-mute"}`}
               >
                 {label}
               </Link>
@@ -251,7 +251,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
                   <Link href={`/dashboard/contacts/${m.sender_id}`} className="flex flex-col gap-3 rounded-[10px] border border-line bg-ink-3 p-3">
                     <span className="flex items-center justify-between gap-2">
                       <span className="flex min-w-0 items-center gap-2">
-                        <span className="grid size-6 shrink-0 place-items-center rounded-full text-[10px] font-bold text-white" style={hue(m.sender_id)}>
+                        <span className="grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-bold text-white" style={hue(m.sender_id)}>
                           {initials(m.name)}
                         </span>
                         <span className="truncate text-[13px] font-bold">{m.kind === "reply" ? `You → ${m.name}` : m.name}</span>
@@ -280,7 +280,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
     <div className="hidden max-w-6xl flex-col gap-5 px-8 py-6 text-bone md:flex">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <p className="text-[9px] font-bold uppercase tracking-[1px] text-faint">Relationships</p>
+          <p className="text-[11px] font-bold uppercase tracking-[1px] text-faint">Relationships</p>
           <h1 className="mt-1 text-[28px] font-bold">Messages and people, together</h1>
         </div>
         <nav aria-label="Contacts view" className="flex rounded-full border border-line bg-ink-3 p-0.5">
@@ -294,10 +294,10 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
               key={k}
               href={href({ tab: k === "people" ? undefined : k })}
               aria-current={tab === k ? "page" : undefined}
-              className={`flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-bold ${tab === k ? "border-lime text-lime" : "border-transparent text-faint hover:text-bone"}`}
+              className={`flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-bold ${tab === k ? "border-lime text-lime" : "border-transparent text-faint hover:text-bone"}`}
             >
               {label}
-              <span className={`rounded-full px-1.5 text-[9px] ${tab === k ? "bg-lime/15" : "bg-line"}`}>{n}</span>
+              <span className={`rounded-full px-1.5 text-[11px] ${tab === k ? "bg-lime/15" : "bg-line"}`}>{n}</span>
             </Link>
           ))}
         </nav>
@@ -312,7 +312,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
               [totals.engaged, "Engaged relationships"],
             ].map(([v, k]) => (
               <div key={k} className="flex flex-col-reverse gap-3 rounded-xl border border-line bg-ink-3 p-4">
-                <dt className="text-[9px] font-bold uppercase tracking-[1px] text-faint">{k}</dt>
+                <dt className="text-[11px] font-bold uppercase tracking-[1px] text-faint">{k}</dt>
                 <dd className="text-[28px] font-extrabold leading-none">{v}</dd>
               </div>
             ))}
@@ -345,7 +345,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
             </p>
           ) : (
             <table className="w-full overflow-hidden rounded-xl border border-line text-left">
-              <thead className="border-b border-line text-[9px] font-bold uppercase tracking-[1px] text-faint">
+              <thead className="border-b border-line text-[11px] font-bold uppercase tracking-[1px] text-faint">
                 <tr>
                   <th className="px-4 py-3 font-bold">Submitter</th>
                   <th className="px-4 py-3 font-bold">Latest submission</th>
@@ -366,9 +366,9 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
                           </span>
                           <span className="min-w-0">
                             <span className="block truncate text-[12px] font-bold">{r.name}</span>
-                            <span className="block truncate text-[10px] text-faint">{r.email}</span>
+                            <span className="block truncate text-[11px] text-faint">{r.email}</span>
                             {(r.verified_at || r.blocked_at) && (
-                              <span className={`mt-1 inline-block rounded border px-1.5 text-[9px] font-bold ${r.blocked_at ? "border-danger/50 text-danger" : "border-lime/40 text-lime"}`}>
+                              <span className={`mt-1 inline-block rounded border px-1.5 text-[11px] font-bold ${r.blocked_at ? "border-danger/50 text-danger" : "border-lime/40 text-lime"}`}>
                                 {r.blocked_at ? "blocked" : "verified"}
                               </span>
                             )}
@@ -379,7 +379,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
                         {last ? (
                           <>
                             <p className="truncate text-[12px] font-bold">{last.title}</p>
-                            <p className="text-[10px] tracking-[0.5px] text-faint">
+                            <p className="text-[11px] tracking-[0.5px] text-faint">
                               {last.collection ? `${last.collection.toUpperCase()} · ` : ""}
                               {short(last.created_at)}
                             </p>
@@ -390,25 +390,25 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
                       </td>
                       <td className="px-4 py-3.5">
                         <p className="text-[20px] font-extrabold leading-none">{r.sent}</p>
-                        <p className="mt-1 text-[10px] text-faint">
+                        <p className="mt-1 text-[11px] text-faint">
                           {r.kept} kept · {r.downloaded} downloaded
                         </p>
                       </td>
                       <td className="px-4 py-3.5">
                         {r.last_at && Date.now() - r.last_at < WEEK ? (
-                          <span className="rounded-md border border-[#1e4226] bg-[#162a1a] px-2 py-1 text-[9px] font-bold tracking-[1px] text-[#4ade80]">NEW</span>
+                          <span className="rounded-md border border-[#1e4226] bg-[#162a1a] px-2 py-1 text-[11px] font-bold tracking-[1px] text-[#4ade80]">NEW</span>
                         ) : Number(r.kept) > 0 ? (
-                          <span className="rounded-md border border-line px-2 py-1 text-[9px] font-bold tracking-[1px] text-bone">KEPT</span>
+                          <span className="rounded-md border border-line px-2 py-1 text-[11px] font-bold tracking-[1px] text-bone">KEPT</span>
                         ) : (
-                          <span className="text-[10px] text-faint">{r.last_at ? ago(r.last_at) : "—"}</span>
+                          <span className="text-[11px] text-faint">{r.last_at ? ago(r.last_at) : "—"}</span>
                         )}
                       </td>
                       <td className="px-4 py-3.5">
                         <div className="flex justify-end gap-1.5">
-                          <a href={`mailto:${r.email}`} className="rounded-md border border-line bg-ink-3 px-2.5 py-1.5 text-[10px] font-bold text-mute hover:text-bone">
+                          <a href={`mailto:${r.email}`} className="rounded-md border border-line bg-ink-3 px-2.5 py-1.5 text-[11px] font-bold text-mute hover:text-bone">
                             email
                           </a>
-                          <Link href={`/dashboard/contacts/${r.id}`} aria-label={`More about ${r.name}`} className="rounded-md border border-line bg-ink-3 px-2.5 py-1.5 text-[10px] text-mute hover:text-bone">
+                          <Link href={`/dashboard/contacts/${r.id}`} aria-label={`More about ${r.name}`} className="rounded-md border border-line bg-ink-3 px-2.5 py-1.5 text-[11px] text-mute hover:text-bone">
                             ···
                           </Link>
                         </div>
@@ -434,7 +434,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
                 key={k}
                 href={href({ tab: "messages", from: k === "all" ? undefined : k })}
                 aria-current={from === k ? "page" : undefined}
-                className={`rounded-md px-2.5 py-1 text-[10px] ${from === k ? "border border-line bg-ink-3 font-bold" : "text-mute hover:text-bone"}`}
+                className={`rounded-md px-2.5 py-1 text-[11px] ${from === k ? "border border-line bg-ink-3 font-bold" : "text-mute hover:text-bone"}`}
               >
                 {label}
               </Link>
@@ -448,12 +448,12 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
                 <li key={i} className="flex flex-col gap-3 rounded-xl border border-line bg-ink-3 p-4">
                   <div className="flex items-center justify-between gap-2">
                     <span className="flex min-w-0 items-center gap-2.5">
-                      <span className="grid size-7 shrink-0 place-items-center rounded-full text-[10px] font-bold text-white" style={hue(m.sender_id)}>
+                      <span className="grid size-7 shrink-0 place-items-center rounded-full text-[11px] font-bold text-white" style={hue(m.sender_id)}>
                         {initials(m.name)}
                       </span>
                       <span className="truncate text-[13px] font-bold">{m.kind === "reply" ? `You → ${m.name}` : m.name}</span>
                     </span>
-                    <span className="shrink-0 text-[10px] text-faint">{ago(m.at)}</span>
+                    <span className="shrink-0 text-[11px] text-faint">{ago(m.at)}</span>
                   </div>
                   <p className="text-[12px] italic leading-[1.5] text-mute">&ldquo;{m.text}&rdquo;</p>
                   {m.title && (
@@ -462,13 +462,13 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
                         <span aria-hidden>♫</span>
                         <span className="min-w-0">
                           <span className="block truncate text-[12px] font-bold">{m.title}</span>
-                          <span className="block text-[10px] text-faint">attached submission{m.collection ? ` · ${m.collection}` : ""}</span>
+                          <span className="block text-[11px] text-faint">attached submission{m.collection ? ` · ${m.collection}` : ""}</span>
                         </span>
                       </span>
                     </div>
                   )}
                   <div className="flex justify-end">
-                    <Link href={`/dashboard/contacts/${m.sender_id}`} className="rounded-md border border-line px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.5px] hover:border-lime hover:text-lime">
+                    <Link href={`/dashboard/contacts/${m.sender_id}`} className="rounded-md border border-line px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.5px] hover:border-lime hover:text-lime">
                       Reply →
                     </Link>
                   </div>

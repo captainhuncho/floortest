@@ -51,7 +51,7 @@ export default async function Activity({ searchParams }: { searchParams: Promise
           </Link>
         ))}
       </nav>
-      <div className="text-[12px] [&_li]:border-b [&_li]:border-line [&_li]:pb-3 [&_li:last-child]:border-0 [&_li_.text-sm]:text-[10px] [&_li_.text-sm]:text-faint [&_li>span:first-child]:bg-white [&_li_.font-medium]:font-bold">
+      <div className="text-[12px] [&_li]:border-b [&_li]:border-line [&_li]:pb-3 [&_li:last-child]:border-0 [&_li_.text-sm]:text-[11px] [&_li_.text-sm]:text-faint [&_li>span:first-child]:bg-white [&_li_.font-medium]:font-bold">
         {filter[0] === "you" ? <AccountLog rows={mine} /> : <History events={events} showSender />}
       </div>
     </div>

@@ -81,7 +81,7 @@ export function AdminNav({ groups, admin }: { groups: NavGroup[]; admin: { name:
       {open ? (
         <>
           <span className="min-w-0 flex-1 truncate">{i.label}</span>
-          {!!i.badge && <span className="rounded bg-lime px-1.5 text-[10px] font-bold text-ink tnum">{i.badge}</span>}
+          {!!i.badge && <span className="rounded bg-lime px-1.5 text-[11px] font-bold text-ink tnum">{i.badge}</span>}
         </>
       ) : (
         <>
@@ -131,7 +131,7 @@ export function AdminNav({ groups, admin }: { groups: NavGroup[]; admin: { name:
             {shown.length === 0 && <p className="px-2 py-3 text-[11px] text-faint">No pages match. Press Enter to search users.</p>}
             {shown.map((g) => (
               <div key={g.id} className="mb-4">
-                <p className="px-2 pb-1 text-[10px] font-bold uppercase tracking-[1px] text-faint">{g.title}</p>
+                <p className="px-2 pb-1 text-[11px] font-bold uppercase tracking-[1px] text-faint">{g.title}</p>
                 <div className="flex flex-col gap-0.5">{g.items.map(link)}</div>
               </div>
             ))}
@@ -141,7 +141,7 @@ export function AdminNav({ groups, admin }: { groups: NavGroup[]; admin: { name:
         )}
       </nav>
       <div className={`flex items-center gap-2 border-t border-line p-3 ${open ? "" : "flex-col"}`}>
-        <Link href="/dashboard/account" title={admin.name} className="grid size-8 shrink-0 place-items-center rounded-full bg-ink-4 text-[9px] font-bold text-bone">
+        <Link href="/dashboard/account" title={admin.name} className="grid size-8 shrink-0 place-items-center rounded-full bg-ink-4 text-[11px] font-bold text-bone">
           {admin.initials}
         </Link>
         {open && <span className="min-w-0 flex-1 truncate text-[11px] text-mute">{admin.name}</span>}

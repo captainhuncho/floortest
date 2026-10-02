@@ -49,7 +49,7 @@ export function PauseSwitch({ pause, compact = false }: { pause: PauseState; com
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className={compact ? "text-[11px] font-bold" : "text-sm font-medium"}>{paused ? "Paused" : "Taking submissions"}</p>
-          <p className={compact ? "mt-1 text-[9px] leading-snug text-faint" : "mt-0.5 text-xs leading-snug text-mute"}>
+          <p className={compact ? "mt-1 text-[11px] leading-snug text-faint" : "mt-0.5 text-xs leading-snug text-mute"}>
             {paused ? (pause.on && pause.until ? `Reopens ${pause.until}` : "Your link shows you're on a break") : pause.blocked ? null : "Switch off while touring or on a break"}
           </p>
           {!paused && pause.blocked && (

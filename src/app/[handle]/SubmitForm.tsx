@@ -84,7 +84,7 @@ export function SubmitForm({
   if (phase === "done" && token && m) {
     return (
       <div className="flex flex-col gap-4 rounded-2xl border border-line bg-ink-2 p-5" role="status">
-        <span className="w-fit rounded-md border border-lime/20 bg-lime/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.5px] text-lime">
+        <span className="w-fit rounded-md border border-lime/20 bg-lime/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.5px] text-lime">
           Delivered
         </span>
         <h2 className="text-[22px] font-bold leading-7">&ldquo;{track.title}&rdquo; is on {receiverName}&apos;s desk.</h2>
@@ -284,7 +284,7 @@ export function SubmitForm({
           />
           {!m && <span className={`block text-sm ${L.mute}`}>For your receipt and updates only.</span>}
         </label>
-        {m && <p className={`col-span-2 -mt-1 text-[10px] ${L.mute}`}>For your receipt and updates only.</p>}
+        {m && <p className={`col-span-2 -mt-1 text-[11px] ${L.mute}`}>For your receipt and updates only.</p>}
           </>
         )}
       </div>
