@@ -140,11 +140,11 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
   return (
     <div className="flex min-h-full flex-col">
       <header className="flex flex-wrap items-center justify-between gap-3 px-3 pb-2 pt-3 md:px-8 md:pb-4 md:pt-6">
-        <h1 className="font-[family-name:var(--font-stage-mono)] text-xl font-bold text-bone md:text-[32px]">Review Queue</h1>
+        <h1 className="text-xl font-bold text-bone md:text-[32px]">Review Queue</h1>
       </header>
 
       {/* Phones: Figma "Filters-Scrollable" chips; desktop keeps the toolbar. */}
-      <div className="flex flex-wrap items-center gap-1.5 px-3 pb-3 font-[family-name:var(--font-stage-mono)] md:gap-2 md:px-8 md:pb-5">
+      <div className="flex flex-wrap items-center gap-1.5 px-3 pb-3 md:gap-2 md:px-8 md:pb-5">
         <Link
           href="/dashboard?view=list"
           className={`rounded-xl px-3 py-1.5 text-[10px] font-bold md:hidden ${sp.s || sp.c || sp.type || sp.sender || sp.genre || search ? "border border-line bg-ink-3 text-mute" : "bg-white text-ink"}`}

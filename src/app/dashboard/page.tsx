@@ -192,7 +192,7 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
         >
           {focused && (
             // Phones: Figma "Header" (← QUEUE / Now reviewing); the transport below has previous and next.
-            <header className="flex items-end justify-between gap-3 px-4 pt-3 font-[family-name:var(--font-stage-mono)] md:hidden">
+            <header className="flex items-end justify-between gap-3 px-4 pt-3 md:hidden">
               <div className="flex flex-col gap-[3px]">
                 <Link href={href({ t: undefined })} className="text-[8px] font-medium text-mute">
                   ← QUEUE

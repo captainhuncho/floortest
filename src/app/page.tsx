@@ -112,7 +112,7 @@ export default async function Home({
         <div className="relative mx-auto max-w-6xl px-4 pb-10 pt-16 sm:px-6 sm:pt-24">
           <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-center">
             <div>
-              <p className="flex items-center gap-3 font-[family-name:var(--font-stage-mono)] text-xs uppercase tracking-[0.12em] text-lime">
+              <p className="flex items-center gap-3 text-xs uppercase tracking-[0.12em] text-lime">
                 <span aria-hidden className="h-px w-8 bg-lime" /> The receiving
                 desk for unreleased music
               </p>
@@ -122,7 +122,7 @@ export default async function Home({
                   to the DJ set.
                 </span>
               </h1>
-              <p className="mt-8 max-w-2xl font-[family-name:var(--font-stage-mono)] text-[15px] leading-relaxed text-mute">
+              <p className="mt-8 max-w-2xl text-[15px] leading-relaxed text-mute">
                 One permanent link for every demo you&apos;re sent. Hear what&apos;s
                 new in seconds, keep what's right for your set, and answer every
                 sender without a single DM.
@@ -130,19 +130,19 @@ export default async function Home({
               <div className="mt-10 flex flex-wrap items-center gap-6">
                 <Link
                   href={cta.href}
-                  className="rounded-md bg-lime px-6 py-4 font-[family-name:var(--font-stage-mono)] text-sm font-medium uppercase text-ink hover:brightness-95"
+                  className="rounded-md bg-lime px-6 py-4 text-sm font-medium uppercase text-ink hover:brightness-95"
                 >
                   {cta.label} →
                 </Link>
                 <Link
                   href={DEMO}
-                  className="font-[family-name:var(--font-stage-mono)] text-sm text-bone hover:text-bone"
+                  className="text-sm text-bone hover:text-bone"
                 >
                   See a demo link <span className="text-dim">(example: /maxwell)</span> →
                 </Link>
               </div>
               {!user && (
-                <p className="mt-4 font-[family-name:var(--font-stage-mono)] text-xs text-dim">
+                <p className="mt-4 text-xs text-dim">
                   Private beta · invites go out in small batches to DJs, curators and labels
                   {inviteOnly && (
                     <>
@@ -157,7 +157,7 @@ export default async function Home({
               {user ? (
                 <>
                   <p className="home-label">Your link</p>
-                  <p className="mt-4 break-all font-[family-name:var(--font-stage-mono)] text-xl sm:text-2xl">
+                  <p className="mt-4 break-all text-xl sm:text-2xl">
                     {HOST}/<wbr /><span className="text-lime">{user.handle}</span>
                   </p>
                 </>
@@ -191,14 +191,14 @@ export default async function Home({
       {/* Journey */}
       <section className="border-y border-white/10 bg-ink-2">
         <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
-          <p className="font-[family-name:var(--font-stage-mono)] text-xs uppercase tracking-[0.12em] text-lime">
+          <p className="text-xs uppercase tracking-[0.12em] text-lime">
             [One private track · a visible journey]
           </p>
           <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-end">
             <h2 className="text-[clamp(2.5rem,5.5vw,4.5rem)] font-bold leading-[0.95] tracking-[-0.04em]">
               Know what happened next.
             </h2>
-            <p className="font-[family-name:var(--font-stage-mono)] text-sm leading-relaxed text-mute lg:pb-2">
+            <p className="text-sm leading-relaxed text-mute lg:pb-2">
               FloorTest records the four moments that matter between sending a
               track and hearing back.
             </p>
@@ -216,10 +216,10 @@ export default async function Home({
                   {icon}
                 </span>
                 <span>
-                  <span className="block font-[family-name:var(--font-stage-mono)] text-sm uppercase">
+                  <span className="block text-sm uppercase">
                     {title}
                   </span>
-                  <span className="mt-1 block font-[family-name:var(--font-stage-mono)] text-xs text-dim">
+                  <span className="mt-1 block text-xs text-dim">
                     {body}
                   </span>
                 </span>
@@ -232,7 +232,7 @@ export default async function Home({
       {/* Product preview */}
       <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
         <div className="mb-4 flex items-center justify-between">
-          <p className="font-[family-name:var(--font-stage-mono)] text-xs uppercase tracking-[0.12em] text-lime">
+          <p className="text-xs uppercase tracking-[0.12em] text-lime">
             [Live product preview]
           </p>
           <p className="home-label">Click a track</p>
@@ -242,14 +242,14 @@ export default async function Home({
 
       {/* Why */}
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-        <p className="font-[family-name:var(--font-stage-mono)] text-xs uppercase tracking-[0.12em] text-lime">
+        <p className="text-xs uppercase tracking-[0.12em] text-lime">
           [Why FloorTest]
         </p>
         <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-end">
           <h2 className="text-[clamp(2.5rem,5.5vw,4.5rem)] font-bold leading-[0.95] tracking-[-0.04em]">
             Stop receiving music everywhere.
           </h2>
-          <p className="font-[family-name:var(--font-stage-mono)] text-sm leading-relaxed text-mute lg:pb-2">
+          <p className="text-sm leading-relaxed text-mute lg:pb-2">
             One private workflow replaces scattered inboxes, expired links and
             missing context.
           </p>
@@ -258,7 +258,7 @@ export default async function Home({
           <div className="border border-white/10 bg-ink-2 p-8 sm:p-10">
             <p className="home-label">The old way</p>
             <p className="mt-6 text-2xl sm:text-3xl">DMs, email and drives</p>
-            <ul className="mt-8 divide-y divide-white/10 border-t border-white/10 font-[family-name:var(--font-stage-mono)] text-sm text-mute">
+            <ul className="mt-8 divide-y divide-white/10 border-t border-white/10 text-sm text-mute">
               {[
                 "Links expire before listening",
                 "Files lose sender context",
@@ -273,11 +273,11 @@ export default async function Home({
             </ul>
           </div>
           <div className="bg-lime p-8 text-ink sm:p-10">
-            <p className="font-[family-name:var(--font-stage-mono)] text-[0.7rem] uppercase tracking-[0.1em]">
+            <p className="text-[0.7rem] uppercase tracking-[0.1em]">
               With FloorTest
             </p>
             <p className="mt-6 text-2xl sm:text-3xl">One receiving desk</p>
-            <ul className="mt-8 divide-y divide-ink/15 border-t border-ink/15 font-[family-name:var(--font-stage-mono)] text-sm">
+            <ul className="mt-8 divide-y divide-ink/15 border-t border-ink/15 text-sm">
               {[
                 "Original audio, ready to download",
                 "Every track routed into a collection",
@@ -296,7 +296,7 @@ export default async function Home({
 
       {/* How */}
       <section id="how" className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-        <p className="font-[family-name:var(--font-stage-mono)] text-xs uppercase tracking-[0.12em] text-lime">
+        <p className="text-xs uppercase tracking-[0.12em] text-lime">
           [How FloorTest works]
         </p>
         <h2 className="mt-4 text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
@@ -310,7 +310,7 @@ export default async function Home({
             >
               <p className="home-label">0{i + 1}</p>
               <p className="mt-8 text-xl">{title}</p>
-              <p className="mt-3 font-[family-name:var(--font-stage-mono)] text-sm leading-relaxed text-mute">
+              <p className="mt-3 text-sm leading-relaxed text-mute">
                 {body}
               </p>
             </li>
@@ -318,38 +318,38 @@ export default async function Home({
         </ol>
         <div className="mt-12 grid grid-cols-1 overflow-hidden rounded-lg border border-white/10 md:grid-cols-2">
           <div className="bg-ink-2 p-6 sm:p-12">
-            <p className="font-[family-name:var(--font-stage-mono)] text-xs uppercase tracking-[0.1em] text-lime">
+            <p className="text-xs uppercase tracking-[0.1em] text-lime">
               For DJs, curators and labels
             </p>
             <p className="mt-8 text-[clamp(2rem,4vw,3.25rem)] font-bold leading-[0.95] tracking-[-0.035em]">
               Every demo in one place.
             </p>
-            <p className="mt-5 font-[family-name:var(--font-stage-mono)] text-sm leading-relaxed text-mute">
+            <p className="mt-5 text-sm leading-relaxed text-mute">
               Every demo in one queue, sorted by callout, ready to play. No more
               digging through DMs, inboxes and expired links before a gig.
             </p>
             <Link
               href={cta.href}
-              className="mt-8 inline-block rounded-md bg-lime px-6 py-3.5 font-[family-name:var(--font-stage-mono)] text-sm font-medium uppercase text-ink"
+              className="mt-8 inline-block rounded-md bg-lime px-6 py-3.5 text-sm font-medium uppercase text-ink"
             >
               {cta.label} →
             </Link>
           </div>
           <div className="border-t border-white/10 bg-ink-2 p-6 sm:p-12 md:border-l md:border-t-0">
-            <p className="font-[family-name:var(--font-stage-mono)] text-xs uppercase tracking-[0.1em] text-lime">
+            <p className="text-xs uppercase tracking-[0.1em] text-lime">
               For artists and producers
             </p>
             <p className="mt-8 text-[clamp(2rem,4vw,3.25rem)] font-bold leading-[0.95] tracking-[-0.035em]">
               Send it once. Stop wondering.
             </p>
-            <p className="mt-5 font-[family-name:var(--font-stage-mono)] text-sm leading-relaxed text-mute">
+            <p className="mt-5 text-sm leading-relaxed text-mute">
               No account. Upload the original WAV or MP3, confirm your email once,
               and follow it: Delivered, Listened, Downloaded, Replied. Want your
               own link? Request an invite below.
             </p>
             <Link
               href={DEMO}
-              className="mt-8 inline-block rounded-md border border-white/25 px-6 py-3.5 font-[family-name:var(--font-stage-mono)] text-sm text-bone hover:border-white/50"
+              className="mt-8 inline-block rounded-md border border-white/25 px-6 py-3.5 text-sm text-bone hover:border-white/50"
             >
               Try the sender view →
             </Link>
@@ -361,7 +361,7 @@ export default async function Home({
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
           <div>
-            <p className="font-[family-name:var(--font-stage-mono)] text-xs uppercase tracking-[0.12em] text-lime">
+            <p className="text-xs uppercase tracking-[0.12em] text-lime">
               [Private by design]
             </p>
             <h2 className="mt-4 text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
@@ -384,10 +384,10 @@ export default async function Home({
               ],
             ].map(([k, v]) => (
               <div key={k} className="py-5">
-                <dt className="font-[family-name:var(--font-stage-mono)] text-xs uppercase tracking-[0.1em] text-lime">
+                <dt className="text-xs uppercase tracking-[0.1em] text-lime">
                   {k}
                 </dt>
-                <dd className="mt-2 font-[family-name:var(--font-stage-mono)] text-sm text-mute">
+                <dd className="mt-2 text-sm text-mute">
                   {v}
                 </dd>
               </div>
@@ -398,13 +398,13 @@ export default async function Home({
 
       {/* Pricing */}
       <section className="mx-auto max-w-6xl border-t border-white/10 px-4 py-16 sm:px-6">
-        <p className="font-[family-name:var(--font-stage-mono)] text-xs uppercase tracking-[0.12em] text-lime">
+        <p className="text-xs uppercase tracking-[0.12em] text-lime">
           [Start small · grow when needed]
         </p>
         <h2 className="mt-4 text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
           Start free. Grow when your inbox does.
         </h2>
-        <p className="mt-4 font-[family-name:var(--font-stage-mono)] text-sm text-mute">
+        <p className="mt-4 text-sm text-mute">
           Free for up to 20 active tracks, for good. Pro and Team are free
           during the beta. Paid plans come after it: beta users hear first, get
           at least 30 days&apos; notice, and never lose tracks they already have.
@@ -415,24 +415,24 @@ export default async function Home({
               key={id}
               className={`flex flex-col rounded-lg border p-7 ${id === "pro" ? "border-lime/40 bg-[radial-gradient(120%_100%_at_0%_0%,rgba(213,255,72,0.08),transparent_60%)]" : "border-white/10 bg-ink-2"}`}
             >
-              <p className="font-[family-name:var(--font-stage-mono)] text-xs uppercase tracking-[0.1em] text-lime">
+              <p className="text-xs uppercase tracking-[0.1em] text-lime">
                 {p.name}
               </p>
               <p className="mt-8 text-4xl font-bold">
                 Free
-                <span className="ml-2 font-[family-name:var(--font-stage-mono)] text-xs font-normal text-dim">
+                <span className="ml-2 text-xs font-normal text-dim">
                   {p.price > 0 ? "during the beta" : "for good"}
                 </span>
               </p>
               <p className="mt-6 text-lg">
                 {p.limit.toLocaleString("en")} active tracks
               </p>
-              <p className="mt-1 flex-1 font-[family-name:var(--font-stage-mono)] text-sm text-mute">
+              <p className="mt-1 flex-1 text-sm text-mute">
                 {p.blurb}
               </p>
               <Link
                 href={cta.href}
-                className="mt-8 w-fit rounded-md bg-lime px-5 py-3 font-[family-name:var(--font-stage-mono)] text-xs font-medium uppercase text-ink"
+                className="mt-8 w-fit rounded-md bg-lime px-5 py-3 text-xs font-medium uppercase text-ink"
               >
                 {user
                   ? "Open your desk"
@@ -451,9 +451,9 @@ export default async function Home({
         <section id="waitlist" className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
           <div className="grid grid-cols-1 gap-10 rounded-lg border border-white/10 bg-ink-2 p-6 sm:p-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
             <div>
-              <p className="font-[family-name:var(--font-stage-mono)] text-xs uppercase tracking-[0.12em] text-lime">[Private beta]</p>
+              <p className="text-xs uppercase tracking-[0.12em] text-lime">[Private beta]</p>
               <h2 className="mt-4 text-[clamp(2rem,4vw,3.25rem)] font-bold leading-[0.95] tracking-[-0.035em]">No invite yet?</h2>
-              <p className="mt-4 font-[family-name:var(--font-stage-mono)] text-sm leading-relaxed text-mute">
+              <p className="mt-4 text-sm leading-relaxed text-mute">
                 We&apos;re letting DJs, labels and curators in a few at a time. Leave your details and you&apos;ll get a personal invite by email.
               </p>
             </div>
@@ -464,7 +464,7 @@ export default async function Home({
 
       {/* FAQ */}
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-        <p className="font-[family-name:var(--font-stage-mono)] text-xs uppercase tracking-[0.12em] text-lime">
+        <p className="text-xs uppercase tracking-[0.12em] text-lime">
           [Questions, answered]
         </p>
         <h2 className="mt-4 text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
@@ -492,7 +492,7 @@ export default async function Home({
                   −
                 </span>
               </summary>
-              <p className="max-w-3xl pb-6 font-[family-name:var(--font-stage-mono)] text-sm leading-relaxed text-mute">
+              <p className="max-w-3xl pb-6 text-sm leading-relaxed text-mute">
                 {a}
               </p>
             </details>
@@ -503,7 +503,7 @@ export default async function Home({
       {/* Closing CTA */}
       <section className="bg-lime text-ink">
         <div className="mx-auto max-w-6xl px-4 py-24 text-center sm:px-6">
-          <p className="font-[family-name:var(--font-stage-mono)] text-xs uppercase tracking-[0.12em]">
+          <p className="text-xs uppercase tracking-[0.12em]">
             Your link. Your collections. Your call.
           </p>
           <h2 className="mx-auto mt-6 max-w-4xl text-[clamp(2.5rem,7vw,5.5rem)] font-bold leading-[0.92] tracking-[-0.045em]">
@@ -511,7 +511,7 @@ export default async function Home({
           </h2>
           <Link
             href={cta.href}
-            className="mt-10 inline-block rounded-md bg-ink px-7 py-4 font-[family-name:var(--font-stage-mono)] text-sm text-bone hover:bg-black"
+            className="mt-10 inline-block rounded-md bg-ink px-7 py-4 text-sm text-bone hover:bg-black"
           >
             {cta.label} →
           </Link>

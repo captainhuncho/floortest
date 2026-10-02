@@ -27,7 +27,7 @@ export default async function Activity({ searchParams }: { searchParams: Promise
        ORDER BY e.created_at DESC LIMIT 200`, user.id, ...(types ?? [])));
 
   return (
-    <div className="flex max-w-3xl flex-col gap-4 px-4 py-4 font-[family-name:var(--font-stage-mono)] text-bone sm:px-8 sm:py-6">
+    <div className="flex max-w-3xl flex-col gap-4 px-4 py-4 text-bone sm:px-8 sm:py-6">
       <div className="flex items-center gap-3 border-b border-line pb-4 md:border-0 md:pb-0">
         <Link href="/dashboard/account" aria-label="Back to Account" className="text-[18px] leading-none md:hidden">
           ‹

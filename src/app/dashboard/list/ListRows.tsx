@@ -139,7 +139,7 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
 
   return (
     <>
-      <ul ref={listRef} className="@container space-y-2.5 px-3 font-[family-name:var(--font-stage-mono)] md:space-y-2 md:px-0" aria-label="Review Queue">
+      <ul ref={listRef} className="@container space-y-2.5 px-3 md:space-y-2 md:px-0" aria-label="Review Queue">
         {rows.map((r) => {
           const isCurrent = player.current?.id === r.id;
           const playing = isCurrent && player.playing;
@@ -331,7 +331,7 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
           );
         })}
       </ul>
-      <div className="mt-4 hidden items-center justify-between gap-4 rounded-xl border border-line bg-ink-2 px-4 py-3 font-[family-name:var(--font-stage-mono)] text-[10px] text-faint md:flex">
+      <div className="mt-4 hidden items-center justify-between gap-4 rounded-xl border border-line bg-ink-2 px-4 py-3 text-[10px] text-faint md:flex">
         <p className="flex flex-wrap gap-x-4 gap-y-1">
           {[
             ["↑/↓", "select"],

@@ -105,7 +105,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
 
   return (
     <>
-    <div className="flex flex-col gap-4 px-4 pb-4 pt-1 font-[family-name:var(--font-stage-mono)] text-bone md:hidden">
+    <div className="flex flex-col gap-4 px-4 pb-4 pt-1 text-bone md:hidden">
       <div className="flex items-center gap-2">
         <Link href="/dashboard/floor" aria-label="Back to the Floor" className="grid size-8 place-items-center">
           <span aria-hidden className="size-4 bg-current [mask:url(/icons/arrow-left.svg)_center/contain_no-repeat]" />
@@ -277,7 +277,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
       )}
     </div>
     {/* Desktop: Figma "desktop-contacts-people" / "desktop-contacts-messages" */}
-    <div className="hidden max-w-6xl flex-col gap-5 px-8 py-6 font-[family-name:var(--font-stage-mono)] text-bone md:flex">
+    <div className="hidden max-w-6xl flex-col gap-5 px-8 py-6 text-bone md:flex">
       <div className="flex items-end justify-between gap-4">
         <div>
           <p className="text-[9px] font-bold uppercase tracking-[1px] text-faint">Relationships</p>

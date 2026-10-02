@@ -10,7 +10,7 @@ export default function GlobalError({ error }: { error: Error & { digest?: strin
   }, [error]);
   return (
     <html lang="en">
-      <body style={{ background: "#10110f", color: "#f1f1eb", fontFamily: "system-ui, sans-serif", padding: "48px 16px" }}>
+      <body style={{ background: "#10110f", color: "#f1f1eb", fontFamily: "'JetBrains Mono', monospace", padding: "48px 16px" }}>
         <h1>Something went wrong</h1>
         <p>Sorry about that. Reload the page, and if it keeps happening, contact us{error.digest ? ` and mention code ${error.digest}` : ""}.</p>
       </body>

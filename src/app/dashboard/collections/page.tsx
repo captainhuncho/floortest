@@ -15,7 +15,7 @@ export default async function Collections() {
   const sharing = await switchOn("sharing");
   // Figma "03 Collections": a tile per callout, then a dashed tile to add one.
   return (
-    <div className="max-w-5xl px-3 py-4 font-[family-name:var(--font-stage-mono)] sm:px-8 sm:py-6">
+    <div className="max-w-5xl px-3 py-4 sm:px-8 sm:py-6">
       <h1 className="text-[23px] font-bold text-bone sm:text-3xl">Collections</h1>
       <p className="mt-3.5 text-[11px] leading-[1.5] text-mute sm:text-sm">
         One per callout. Your link <span className="break-all text-lime">{APP_URL.replace(/^https?:\/\//, "")}/{user.handle}</span> sends new tracks to

@@ -80,7 +80,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       </div>
       <AdminMobileNav groups={groups} />
       <div className="min-w-0 flex-1">
-        <main id="main" className="mx-auto max-w-6xl px-4 py-6 font-[family-name:var(--font-stage-mono)] sm:px-8 md:py-8">
+        <main id="main" className="mx-auto max-w-6xl px-4 py-6 sm:px-8 md:py-8">
           {children}
         </main>
       </div>

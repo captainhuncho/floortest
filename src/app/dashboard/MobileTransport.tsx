@@ -12,7 +12,7 @@ export function MobileTransport({ track, prevHref, nextHref }: { track: PlayerTr
   const d = (on && duration) || track.duration || 0;
   const skip = "grid size-9 place-items-center";
   return (
-    <div className="font-[family-name:var(--font-stage-mono)]">
+    <div >
       <div className="flex flex-col gap-2.5 py-3.5">
         <div className="flex justify-between text-[9px]">
           <span className="text-bone tnum">{on ? fmtTime(time) : "0:00"}</span>

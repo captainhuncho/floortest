@@ -123,7 +123,7 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
   return (
     <div>
       {/* Phones: Figma "Decisions" pills + "DJ Decision Area" */}
-      <div className="font-[family-name:var(--font-stage-mono)] md:hidden">
+      <div className="md:hidden">
         <div className="flex flex-wrap gap-[5px]">
           <a href={`/api/tracks/${track.id}/download`} className={pill}>
             DOWNLOAD
@@ -238,7 +238,7 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
         </form>
       )}
 
-      <p className="mt-3 font-[family-name:var(--font-stage-mono)] text-[10px] text-faint [@media(pointer:fine)]:hidden">Swipe right to keep · swipe left: not for me</p>
+      <p className="mt-3 text-[10px] text-faint [@media(pointer:fine)]:hidden">Swipe right to keep · swipe left: not for me</p>
       <p className="mt-3 hidden text-xs text-mute md:block">
         {next ? "Keep or Not for me moves to the next track." : "Last track in this view."} Space play · ←/→ 10s · ↑/↓ or J move · U undo
       </p>

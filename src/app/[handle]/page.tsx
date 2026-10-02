@@ -63,7 +63,7 @@ export default async function ReceiverPage({ params }: Props) {
   ];
 
   return (
-    <main className="group/page mx-auto flex min-h-dvh max-w-xl flex-col gap-6 bg-ink px-[18px] py-8 font-[family-name:var(--font-stage-mono)] text-bone sm:py-12">
+    <main className="group/page mx-auto flex min-h-dvh max-w-xl flex-col gap-6 bg-ink px-[18px] py-8 text-bone sm:py-12">
       <div className="flex flex-col gap-3">
         <p className="text-[10px] font-bold uppercase tracking-[1px] text-mute">Send music to</p>
         <div className="flex flex-wrap items-center justify-between gap-3">

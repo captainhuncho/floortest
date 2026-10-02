@@ -14,7 +14,7 @@ export default async function Plans() {
   const card = "flex flex-col gap-1 rounded-xl bg-ink-2 px-3.5 py-3";
   const kicker = "text-[9px] font-medium uppercase tracking-[1px] text-faint";
   return (
-    <div className="flex max-w-xl flex-col gap-5 px-4 py-5 font-[family-name:var(--font-stage-mono)] text-bone sm:px-8">
+    <div className="flex max-w-xl flex-col gap-5 px-4 py-5 text-bone sm:px-8">
       <div className="flex flex-col gap-1">
         <Link href="/dashboard/account" className={kicker}>
           ← Account

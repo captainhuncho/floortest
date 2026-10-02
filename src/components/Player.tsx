@@ -188,7 +188,7 @@ export function PlayerBar() {
   return (
     <>
       {/* Phones (Figma "Mini Player"): floats above the tab bar and stays put across screens. */}
-      <div className="fixed inset-x-4 bottom-[calc(max(1rem,env(safe-area-inset-bottom))+72px)] z-30 flex items-center gap-3 rounded-2xl border border-ink-4 bg-ink p-3 font-[family-name:var(--font-stage-mono)] md:hidden">
+      <div className="fixed inset-x-4 bottom-[calc(max(1rem,env(safe-area-inset-bottom))+72px)] z-30 flex items-center gap-3 rounded-2xl border border-ink-4 bg-ink p-3 md:hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icons/mini-art.svg" alt="" className="size-11 shrink-0" />
         <Link href={`/dashboard?view=queue&s=all&t=${current.id}`} className="flex min-w-0 flex-1 flex-col gap-2">

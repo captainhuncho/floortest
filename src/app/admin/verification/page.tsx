@@ -79,7 +79,7 @@ export default async function Verification() {
         <ul className="mt-4 flex flex-wrap gap-2">
           {names.map((n) => (
             <li key={n.handle} className="chip border-line">
-              <span className="">{n.handle}</span>
+              <span >{n.handle}</span>
               {n.note && <span className="ml-1 text-mute">· {n.note}</span>}
               <ConfirmButton action={removeProtectedName.bind(null, n.handle)} message={`Let people claim "${n.handle}" again?`} className="ml-2 text-mute hover:text-danger">
                 ×

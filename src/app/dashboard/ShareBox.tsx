@@ -29,7 +29,7 @@ export function ShareBox({
     }
   };
   return (
-    <section className="rounded-xl border border-line bg-ink-2 p-4 font-[family-name:var(--font-stage-mono)]">
+    <section className="rounded-xl border border-line bg-ink-2 p-4">
       <h3 className="text-[10px] font-bold uppercase tracking-[1px] text-mute">Share with a colleague</h3>
       {link ? (
         <div className="mt-2 flex flex-col gap-2">

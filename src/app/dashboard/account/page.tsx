@@ -71,7 +71,7 @@ export default async function Account() {
   );
 
   return (
-    <div className="mx-auto flex max-w-xl flex-col gap-4 px-4 py-3 font-[family-name:var(--font-stage-mono)] md:mx-0 md:grid md:max-w-6xl md:grid-cols-[minmax(0,380px)_minmax(0,1fr)] md:items-start md:gap-6 md:px-8 md:py-6">
+    <div className="mx-auto flex max-w-xl flex-col gap-4 px-4 py-3 md:mx-0 md:grid md:max-w-6xl md:grid-cols-[minmax(0,380px)_minmax(0,1fr)] md:items-start md:gap-6 md:px-8 md:py-6">
       <h1 className="hidden text-[32px] font-bold text-bone md:col-span-2 md:block">Account</h1>
       <div className="flex h-12 items-center gap-2 md:hidden">
         <Link href="/dashboard/floor" aria-label="Back" className="grid size-8 place-items-center">

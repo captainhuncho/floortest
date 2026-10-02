@@ -8,7 +8,7 @@ export async function StemsBox({ track: t, senderName }: { track: Track; senderN
   const stems = await stemsFor(t.id);
   const first = senderName.split(/\s+/)[0];
   return (
-    <section aria-labelledby={`stems-${t.id}`} className="rounded-xl border border-line bg-ink-2 p-4 font-[family-name:var(--font-stage-mono)]">
+    <section aria-labelledby={`stems-${t.id}`} className="rounded-xl border border-line bg-ink-2 p-4">
       <div className="flex items-center justify-between gap-3">
         <h3 id={`stems-${t.id}`} className="text-[10px] font-bold uppercase tracking-[1px] text-mute">
           Stems{stems.length ? ` (${stems.length})` : ""}

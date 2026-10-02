@@ -38,7 +38,7 @@ function QrDialog({ handle, link, onClose }: { handle: string; link: string; onC
         role="dialog"
         aria-modal="true"
         aria-labelledby="qr-h"
-        className="w-full max-w-sm rounded-2xl border border-line bg-ink-2 p-6 font-[family-name:var(--font-stage-mono)] shadow-2xl shadow-black/70"
+        className="w-full max-w-sm rounded-2xl border border-line bg-ink-2 p-6 shadow-2xl shadow-black/70"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">

@@ -68,7 +68,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
 
   return (
     <>
-      <div className="flex flex-col gap-3 px-4 pb-4 pt-1 font-[family-name:var(--font-stage-mono)] text-bone md:hidden">
+      <div className="flex flex-col gap-3 px-4 pb-4 pt-1 text-bone md:hidden">
         <CollectionDetailHeader c={editable} receiving={receiving} closed={isClosed(c)} canDelete={all.length > 1} />
         {(genres.custom || c.bpm_min || c.brief_note || c.brief_wanted) && (
           <section className="flex flex-col gap-2.5 rounded-xl border border-line bg-ink-3 p-3.5">
@@ -107,7 +107,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
       </div>
 
       {/* Desktop: Figma "desktop-collection-detail" */}
-      <div className="hidden max-w-6xl flex-col gap-5 px-8 pb-5 pt-6 font-[family-name:var(--font-stage-mono)] text-bone md:flex">
+      <div className="hidden max-w-6xl flex-col gap-5 px-8 pb-5 pt-6 text-bone md:flex">
         <div>
           <p className="text-[11px] text-faint">
             <Link href="/dashboard/collections" className="hover:text-bone">
@@ -166,7 +166,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
       </div>
 
       {/* One list for every screen size, so keyboard shortcuts and the player are registered once. */}
-      <div className="max-w-6xl pb-4 font-[family-name:var(--font-stage-mono)] md:px-8">
+      <div className="max-w-6xl pb-4 md:px-8">
         {cards.length ? (
           <ListRows rows={cards} statusTag />
         ) : (

@@ -17,8 +17,9 @@
   --color-lime: #d5ff48;
   --color-olive: #536400;
   --color-danger: #ff6b5a;
-  --font-sans: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  /* One website font: JetBrains Mono (loaded in app/fonts.ts). Instrument Serif italic is a home-page accent only. */
+  --font-sans: var(--font-stage-mono), monospace;
+  --font-mono: var(--font-stage-mono), monospace;
 }
 
 html, body { background: var(--color-ink); color: var(--color-bone); }

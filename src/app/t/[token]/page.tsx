@@ -41,7 +41,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
   ];
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-6 bg-ink px-5 py-8 font-[family-name:var(--font-stage-mono)] text-bone sm:py-12">
+    <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-6 bg-ink px-5 py-8 text-bone sm:py-12">
       <div className="flex flex-col gap-1.5">
         <p className="text-[9px] font-bold uppercase tracking-[1px] text-faint">Private receipt</p>
         <h1 className="break-words text-[28px] font-bold tracking-[-0.8px]">{t.title}</h1>

@@ -15,7 +15,7 @@ export function AdminMobileNav({ groups }: { groups: NavGroup[] }) {
   const waiting = items.reduce((n, i) => n + (i.badge ?? 0), 0);
   useEffect(() => ref.current?.removeAttribute("open"), [path]);
   return (
-    <details ref={ref} className="group sticky top-0 z-30 border-b border-line bg-ink/95 font-[family-name:var(--font-stage-mono)] backdrop-blur md:hidden">
+    <details ref={ref} className="group sticky top-0 z-30 border-b border-line bg-ink/95 backdrop-blur md:hidden">
       <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-[12px] font-bold [&::-webkit-details-marker]:hidden">
         <span className="text-faint">Admin /</span>
         <span className="min-w-0 flex-1 truncate">{current?.label ?? "Menu"}</span>

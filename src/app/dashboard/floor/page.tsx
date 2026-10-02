@@ -138,7 +138,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   const daysLeft = active?.closes_at && !isClosed(active) ? Math.ceil((active.closes_at - Date.now()) / DAY) : null;
 
   return (
-    <div className="space-y-4 px-4 py-4 font-[family-name:var(--font-stage-mono)] sm:px-8 sm:py-6">
+    <div className="space-y-4 px-4 py-4 sm:px-8 sm:py-6">
       <header className="flex flex-col gap-2">
         <p className="text-[10px] font-bold uppercase tracking-[1px] text-faint">{welcome ? "Welcome to FloorTest" : new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: prefs.tz })}</p>
         <h1 className="text-[34px] font-bold leading-[1.05] tracking-[-1px] text-bone">

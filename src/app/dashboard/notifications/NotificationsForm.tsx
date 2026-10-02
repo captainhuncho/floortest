@@ -44,7 +44,7 @@ export function NotificationsForm({ prefs, pending }: { prefs: Prefs; pending: n
   useEffect(() => setTz(Intl.DateTimeFormat().resolvedOptions().timeZone || prefs.tz), [prefs.tz]);
 
   return (
-    <form onSubmit={onSubmit} className="space-y-7 font-[family-name:var(--font-stage-mono)]">
+    <form onSubmit={onSubmit} className="space-y-7">
       <input type="hidden" name="tz" value={tz} />
       <fieldset>
         <legend className="font-semibold">New tracks</legend>

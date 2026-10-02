@@ -67,7 +67,7 @@ export async function ReviewPanel({
   return (
     <div className="p-4 sm:p-6" data-swipe-zone>
       {/* Phones: Figma "08 Full Player / DJ Review" */}
-      <div className="font-[family-name:var(--font-stage-mono)] md:hidden">
+      <div className="md:hidden">
         <div className="flex items-center gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icons/review-art.svg" alt="" className="size-[52px] shrink-0" />

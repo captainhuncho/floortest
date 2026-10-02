@@ -14,7 +14,7 @@ export default async function PrepareForSet() {
 
   // Figma "06 Prepare for Set".
   return (
-    <div className="max-w-3xl px-3 py-3 font-[family-name:var(--font-stage-mono)] sm:px-8 sm:py-6 md:max-w-6xl">
+    <div className="max-w-3xl px-3 py-3 sm:px-8 sm:py-6 md:max-w-6xl">
       <div className="md:flex md:items-start md:justify-between md:gap-8">
       <div>
       <p className="text-[8px] font-medium tracking-[0.5px] text-bone md:hidden">PREPARE FOR SET</p>

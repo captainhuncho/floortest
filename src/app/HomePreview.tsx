@@ -37,7 +37,7 @@ export function HomePreview({ host }: { host: string }) {
               key={c.name}
               type="button"
               onClick={() => setCol(i)}
-              className={`shrink-0 rounded-md px-3.5 py-1.5 font-[family-name:var(--font-stage-mono)] text-xs ${
+              className={`shrink-0 rounded-md px-3.5 py-1.5 text-xs ${
                 col === i ? "border border-white/15 bg-white/10 text-bone" : "text-mute hover:text-bone"
               }`}
             >
@@ -53,7 +53,7 @@ export function HomePreview({ host }: { host: string }) {
             <p className="home-label">Receiving collection</p>
             <p className="mt-1 text-2xl font-bold uppercase tracking-tight sm:text-3xl">{COLLECTIONS[col].name}</p>
           </div>
-          <p className="flex items-center gap-2 font-[family-name:var(--font-stage-mono)] text-xs uppercase text-lime">
+          <p className="flex items-center gap-2 text-xs uppercase text-lime">
             <span className="h-1.5 w-1.5 rounded-md bg-lime" /> {COLLECTIONS[col].count} tracks · receiving now
           </p>
         </div>
@@ -67,12 +67,12 @@ export function HomePreview({ host }: { host: string }) {
                 aria-pressed={sel === i}
                 className={`flex w-full items-center gap-4 py-3.5 pl-3 pr-2 text-left transition ${sel === i ? "border-l-2 border-lime bg-white/[0.03]" : "border-l-2 border-transparent hover:bg-white/[0.02]"}`}
               >
-                <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-md bg-gradient-to-br ${r.art} font-[family-name:var(--font-stage-mono)] text-[9px] font-medium text-white`}>
+                <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-md bg-gradient-to-br ${r.art} text-[9px] font-medium text-white`}>
                   PLAY
                 </span>
                 <span className="w-36 shrink-0 sm:w-44">
                   <span className="block truncate font-semibold">{r.title}</span>
-                  <span className="block truncate font-[family-name:var(--font-stage-mono)] text-[11px] text-dim">
+                  <span className="block truncate text-[11px] text-dim">
                     {r.artist} · {r.bpm} BPM
                   </span>
                 </span>
@@ -81,7 +81,7 @@ export function HomePreview({ host }: { host: string }) {
                     <span key={j} className={`w-full rounded-sm ${sel === i ? "bg-lime/70" : "bg-white/25"}`} style={{ height: `${Math.round(h * 100)}%` }} />
                   ))}
                 </span>
-                <span className="ml-auto w-24 shrink-0 text-right font-[family-name:var(--font-stage-mono)] text-[10px] uppercase text-dim">{r.status}</span>
+                <span className="ml-auto w-24 shrink-0 text-right text-[10px] uppercase text-dim">{r.status}</span>
               </button>
             </li>
           ))}
@@ -92,13 +92,13 @@ export function HomePreview({ host }: { host: string }) {
             <div>
               <p className="home-label text-lime">Selected track</p>
               <p className="mt-1 text-xl font-semibold">{t.title}</p>
-              <p className="font-[family-name:var(--font-stage-mono)] text-xs text-dim">
+              <p className="text-xs text-dim">
                 {t.artist} · {t.bpm} BPM
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
               {["Keep", "Not for me", "Download", "Reply"].map((b) => (
-                <span key={b} className="rounded-md border border-white/15 px-3 py-2 font-[family-name:var(--font-stage-mono)] text-[11px] uppercase text-bone">
+                <span key={b} className="rounded-md border border-white/15 px-3 py-2 text-[11px] uppercase text-bone">
                   {b}
                 </span>
               ))}
@@ -114,13 +114,13 @@ export function HomePreview({ host }: { host: string }) {
             {RECEIPT.map((s, i) => (
               <li key={s}>
                 <span className={`block h-1 rounded-sm ${i < t.signals ? "bg-lime" : "bg-white/10"}`} />
-                <span className={`mt-2 block font-[family-name:var(--font-stage-mono)] text-[10px] uppercase ${i < t.signals ? "text-bone" : "text-dim"}`}>{s}</span>
+                <span className={`mt-2 block text-[10px] uppercase ${i < t.signals ? "text-bone" : "text-dim"}`}>{s}</span>
               </li>
             ))}
           </ol>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 px-4 py-3 font-[family-name:var(--font-stage-mono)] text-xs">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 px-4 py-3 text-xs">
           <span className="text-mute">Your link · {host}/maxwell</span>
           <span className="uppercase text-lime">Routing to {COLLECTIONS[col].name}</span>
         </div>
