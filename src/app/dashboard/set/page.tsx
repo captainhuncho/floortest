@@ -51,7 +51,7 @@ export default async function PrepareForSet() {
             <KeptCards rows={kept} />
           ) : (
             <p className="rounded-xl border border-line bg-ink-3 p-4 text-xs text-mute">
-              Nothing in this batch yet. Press Keep while reviewing in{" "}
+              Nothing ready for your set yet. Press Keep while reviewing in{" "}
               <Link href="/dashboard" className="text-bone underline underline-offset-4">
                 Review Queue
               </Link>{" "}

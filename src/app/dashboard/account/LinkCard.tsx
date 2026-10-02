@@ -10,7 +10,7 @@ export function LinkCard({ link, handle, collections, activeId }: { link: string
   return (
     <div className="flex flex-col gap-3">
       <div>
-        <p className="text-[9px] font-bold uppercase tracking-[1px] text-faint">Your permanent link</p>
+        <p className="text-[9px] font-bold uppercase tracking-[1px] text-faint">Your link</p>
         <p className="mt-1.5 truncate text-[12px]">
           {pretty.replace(handle, "")}
           <span className="text-lime">{handle}</span>

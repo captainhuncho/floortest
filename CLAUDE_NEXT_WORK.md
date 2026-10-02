@@ -57,7 +57,7 @@ Apply `docs/copy-review.md` and `docs/brand-voice.md` together:
 5. Inbox is track-attached conversation. Contacts/Submitters is person-level history. Do not duplicate them.
 6. Minimise DJ work: play, Keep/Could be better, automatic next track, optional reply. Feedback never blocks advancing.
 7. Receiver Activity shows receiver actions. Sender receipts expose only Delivered, Listened, Downloaded and Replied.
-8. Replies email the sender and remain attached to the track. Never expose private decisions.
+8. Replies remain attached to the track and are available through the sender tracker and, for account holders, in-app notifications; do not email for replies or other later tracker events. Send only the submission confirmation/tracker-link email and one listened email at 30 seconds or 25% of track duration, whichever is lower. Kept remains private to the receiver and must never appear on any sender surface. See [the sender notification decision and rationale](HANDOFF.md#sender-notification-decision--2-oct-2026).
 9. Incoming/collection cards remain compact and support grid/list without changing playback or decision behaviour.
 10. Show real metadata: BPM, duration, format, collection. Do not claim key/mood/energy/genre/quality analysis before implementation.
 

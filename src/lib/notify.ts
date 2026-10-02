@@ -64,6 +64,7 @@ export async function notifyNewSubmission(receiverId: number, trackId: number) {
       t.message ? `\n"${t.message}"` : "",
       `\nListen: ${APP_URL}/dashboard?view=queue&s=all&t=${trackId}`,
       `\nChange how often you hear from us: ${APP_URL}/dashboard/notifications`,
+      "\n— FloorTest",
     ].join("\n"),
   });
   await q.run("UPDATE tracks SET receiver_notified_at = ? WHERE id = ?", now(), trackId);
@@ -96,14 +97,14 @@ export async function alertIfFull(receiverId: number, cap: { used: number; limit
           audience: "receiver",
           to: p.email,
           subject: "Your FloorTest link is paused",
-          body: `Your desk is full (${cap.used} of ${cap.limit} tracks), so your link has stopped accepting uploads.\n\nClear some tracks, or move to a bigger plan (free during the beta), to reopen it: ${plans}`,
+          body: `Your desk is full (${cap.used} of ${cap.limit} tracks), so your link has stopped accepting uploads.\n\nClear some tracks, or move to a bigger plan (free during the beta), to reopen it: ${plans}\n\n— FloorTest`,
         }
       : {
           userId: receiverId,
           audience: "receiver",
           to: p.email,
           subject: "Your FloorTest desk is 80% full",
-          body: `You're using ${cap.used} of ${cap.limit} tracks. When it's full, your link stops accepting uploads.\n\nClear tracks you've decided on, or see bigger plans (free during the beta): ${plans}`,
+          body: `You're using ${cap.used} of ${cap.limit} tracks. When it's full, your link stops accepting uploads.\n\nClear tracks you've decided on, or see bigger plans (free during the beta): ${plans}\n\n— FloorTest`,
         }),
   });
 }
@@ -148,6 +149,8 @@ export async function warnExpiring(at = now()) {
         undecided
           ? `Keep anything you want to hold on to: ${APP_URL}/dashboard?view=list&s=review`
           : `Nothing to do if you're happy for them to go. Changed your mind? ${APP_URL}/dashboard?view=list&s=passed`,
+        "",
+        "— FloorTest",
       ].join("\n"),
     });
     if (status.startsWith("failed")) await q.run(`UPDATE tracks SET expiry_warned_at = NULL WHERE id IN (${marks})`, ...ids);
@@ -186,7 +189,7 @@ export async function sendDigest(userId: number) {
     audience: "receiver",
     to: p.email,
     subject: `${items.length} new track${items.length === 1 ? "" : "s"} waiting on FloorTest`,
-    body: [`Hi ${p.name.split(/\s+/)[0]},`, "", ...lines, "", `Start listening: ${APP_URL}/dashboard`, "", `Digest settings: ${APP_URL}/dashboard/notifications`].join("\n"),
+    body: [`Hi ${p.name.split(/\s+/)[0]},`, "", ...lines, "", `Start listening: ${APP_URL}/dashboard`, "", `Digest settings: ${APP_URL}/dashboard/notifications`, "", "— FloorTest"].join("\n"),
   });
   if (status.startsWith("failed")) {
     // Hand the tracks back so the next run tries again; the digest isn't marked as sent.

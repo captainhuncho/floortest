@@ -198,7 +198,7 @@ export async function ReviewPanel({
           {t.played_at ? `Listened ${fmtDate(t.played_at)}` : "Not listened yet"} ·{" "}
           {t.downloaded_at ? `Downloaded ${fmtDate(t.downloaded_at)}` : "Not downloaded"}
         </li>
-        <li>{removal ? `File auto-deletes ${fmtDay(removal)} unless kept` : "Kept until you delete it"}</li>
+        <li>{removal ? `Deleted on ${fmtDay(removal)} unless you keep it` : "Kept until you delete it"}</li>
       </ul>
 
       <div className="mt-5 flex flex-wrap items-center gap-2">

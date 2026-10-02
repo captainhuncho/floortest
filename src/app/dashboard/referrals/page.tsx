@@ -23,7 +23,7 @@ export default async function Referrals() {
         <h1 className="text-3xl font-bold tracking-tight">Referrals</h1>
         <p className="mt-2 max-w-xl text-mute">
           Invite DJs and curators. When someone you invite receives their first track, you both get {REFERRAL_BONUS} extra active
-          songs, on any plan, for good.
+          tracks, on any plan, for good.
         </p>
       </div>
 
@@ -35,7 +35,7 @@ export default async function Referrals() {
         {[
           ["Signed up", invited.length],
           ["Active", active],
-          ["Songs earned", `+${bonus}`],
+          ["Tracks earned", `+${bonus}`],
         ].map(([k, v]) => (
           <div key={k} className="card p-5">
             <dt className="label">{k}</dt>
@@ -59,7 +59,7 @@ export default async function Referrals() {
                   <p className="text-sm text-mute">Joined {fmtDay(i.created_at)}</p>
                 </div>
                 {i.referral_rewarded_at ? (
-                  <span className="chip border-lime/60 text-lime">+{REFERRAL_BONUS} songs each</span>
+                  <span className="chip border-lime/60 text-lime">+{REFERRAL_BONUS} tracks each</span>
                 ) : (
                   <span className="chip border-line text-mute">Waiting for their first track</span>
                 )}
@@ -74,7 +74,7 @@ export default async function Referrals() {
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li>They sign up with your link.</li>
           <li>The bonus unlocks when their link receives its first track, so only real desks count.</li>
-          <li>Bonus songs add to your plan limit and stay if you change plans.</li>
+          <li>Bonus tracks add to your plan limit and stay if you change plans.</li>
         </ul>
       </section>
     </div>

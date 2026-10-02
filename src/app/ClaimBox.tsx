@@ -43,7 +43,7 @@ export function ClaimBox({ host, inviteOnly }: { host: string; inviteOnly: boole
   return (
     <form onSubmit={claim}>
       <label htmlFor="claim-name" className="home-label">
-        Your receiving link
+        Your link
       </label>
       <div className="mt-4 flex items-stretch border border-white/20 bg-black/30 focus-within:border-lime/70">
         <span className="min-w-0 max-w-[60%] shrink self-center truncate pl-3 font-[family-name:var(--font-stage-mono)] text-sm text-dim sm:text-base">{host}/</span>

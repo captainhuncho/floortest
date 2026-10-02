@@ -16,6 +16,18 @@
 - Terms and Privacy are drafts: review with the legal plugin, then a lawyer.
 - Next: use the marketing, brand-voice and legal plugins on the home page copy, emails and legal pages.
 
+## Sender notification decision — 2 Oct 2026
+
+Product decision for implementation: keep sender email notifications intentionally minimal.
+
+- On submission, send the normal confirmation email with the private tracker link.
+- After confirmation, send one listened email per submission when the DJ/receiver crosses the existing listened threshold: 30 seconds or 25% of track duration, whichever is lower. Repeated listens must not send duplicate emails.
+- Do not email the sender for subsequent tracker events, including downloads or replies. Senders can follow later sender-visible status through their tracker link; senders with a Floortest account can receive those later events as in-app notifications.
+- Preserve receiver privacy: **kept is private to the receiver** and must never be exposed to the sender through email, the tracker, or in-app notifications.
+- Rationale: reduce notification noise, make the listened email meaningful, and materially reduce email costs at scale.
+
+This decision supersedes earlier guidance to email senders for replies or every tracker event. It records the intended product behavior; this notes update does not implement it.
+
 ## On standby
 - Virus scanning of uploads (paid, ~$5–6/mo).
 - Lawyer review of Terms and Privacy (drafts updated 27 Sep 2026).

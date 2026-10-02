@@ -48,13 +48,13 @@ export async function suspendAccount(userId: number, reason: string) {
     body: [
       "Hi,",
       "",
-      "We've suspended your FloorTest account. While it's suspended you can't sign in, and your submission link is offline. Nothing has been deleted.",
+      "We've suspended your FloorTest account. While it's suspended you can't sign in, and your link is offline. Nothing has been deleted.",
       "",
       `Reason: ${why || "a breach of our Terms"}`,
       "",
       `If you think this is a mistake, you can appeal here and a person will review it: ${env.appUrl}/contact?appeal=1`,
       "",
-      "FloorTest",
+      "— FloorTest",
     ].join("\n"),
   }).catch(() => {});
   await done(`Suspended @${u.handle} and emailed them`);
@@ -78,7 +78,7 @@ export async function unsuspendAccount(userId: number) {
     audience: "support",
     to: u.email,
     subject: "Your FloorTest account is back",
-    body: ["Hi,", "", `Your account is restored. You can sign in again, and your submission link is back online: ${env.appUrl}/login`, "", "FloorTest"].join("\n"),
+    body: ["Hi,", "", `Your account is restored. You can sign in again, and your link is back online: ${env.appUrl}/login`, "", "FloorTest"].join("\n"),
   }).catch(() => {});
   await done(`Restored @${u.handle} and emailed them`);
   refresh();
@@ -450,7 +450,7 @@ export async function decideTakedown(id: number, outcome: "removed" | "rejected"
         "",
         `If you have questions, contact us: ${env.appUrl}/contact`,
         "",
-        "FloorTest",
+        "— FloorTest",
       ].join("\n"),
     }).catch(() => {});
   await done(outcome === "removed" ? "Track removed; receiver emailed" : "Claim rejected");

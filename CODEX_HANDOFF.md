@@ -81,3 +81,7 @@ After deployment, verify:
 - No Vercel settings, environment variables, Git connection or analytics settings were changed.
 - No Supabase, R2 or Resend data was modified directly.
 - The existing sender-account work remains uncommitted and should be reviewed as one separate feature.
+
+## Sender notification decision — 2 Oct 2026
+
+See [the sender notification decision in HANDOFF.md](HANDOFF.md#sender-notification-decision--2-oct-2026): send the submission confirmation/tracker-link email, then one listened email at the existing threshold (30 seconds or 25% of track duration, whichever is lower). Later sender-visible events belong in the tracker and, for account holders, in-app notifications, without further event emails. Kept remains private to the receiver across all sender surfaces. This reduces noise, makes the listened email meaningful, and materially reduces email costs at scale. Implementation is pending; this update changes notes only.

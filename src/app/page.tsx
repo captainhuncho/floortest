@@ -41,7 +41,7 @@ const FAQ = [
     "The original WAV or MP3, up to 250 MB. No streaming or cloud links: the receiver gets the actual file.",
   ],
   [
-    "Does the public link change?",
+    "Does your link change?",
     "Never. It stays the same while you route new tracks into whichever collection is receiving, or pause it while you're away.",
   ],
   [
@@ -154,7 +154,7 @@ export default async function Home({
             <div className="min-w-0 rounded-lg border border-white/10 bg-ink-2 p-6 sm:p-8">
               {user ? (
                 <>
-                  <p className="home-label">Your receiving link</p>
+                  <p className="home-label">Your link</p>
                   <p className="mt-4 break-all font-[family-name:var(--font-stage-mono)] text-xl sm:text-2xl">
                     {HOST}/<wbr /><span className="text-lime">{user.handle}</span>
                   </p>
@@ -176,7 +176,7 @@ export default async function Home({
             </div>
           </div>
           <div className="mt-20 flex flex-wrap gap-x-8 gap-y-2 border-t border-white/10 pt-6">
-            {["No sender accounts", "Original WAV & MP3", "Change any decision later"].map((t) => (
+            {["No account needed to send", "Original WAV & MP3", "Change any decision later"].map((t) => (
               <span key={t} className="home-label flex items-center gap-2">
                 <span className="h-1.5 w-1.5 rounded-md bg-lime" />
                 {t}
@@ -335,7 +335,7 @@ export default async function Home({
           </div>
           <div className="border-t border-white/10 bg-ink-2 p-6 sm:p-12 md:border-l md:border-t-0">
             <p className="font-[family-name:var(--font-stage-mono)] text-xs uppercase tracking-[0.1em] text-lime">
-              For artists &amp; senders
+              For artists and producers
             </p>
             <p className="mt-8 text-[clamp(2rem,4vw,3.25rem)] font-bold leading-[0.95] tracking-[-0.035em]">
               Send it once. Stop wondering.
