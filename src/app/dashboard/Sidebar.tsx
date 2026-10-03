@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Logo } from "@/components/Logo";
+import { NavIcon, type NavIconName } from "@/components/NavIcon";
 import type { PauseState } from "./PauseSwitch";
 
 type Props = {
@@ -15,13 +16,13 @@ export function Sidebar({ needsReview, cap, pause }: Props) {
   const path = usePathname();
 
   const nav = [
-    { href: "/dashboard/floor", label: "The Floor", active: path === "/dashboard/floor", tab: true },
-    { href: "/dashboard", label: "Review Queue", active: path === "/dashboard", badge: needsReview, tab: true },
-    { href: "/dashboard/collections", label: "Collections", active: path.startsWith("/dashboard/collections"), tab: true },
-    { href: "/dashboard/set", label: "Prepare for set", active: path === "/dashboard/set" || path.startsWith("/dashboard/set/"), tab: true },
-    { href: "/dashboard/send", label: "Send", active: path.startsWith("/dashboard/send") },
-    { href: "/dashboard/contacts", label: "Contacts", active: path.startsWith("/dashboard/contacts") },
-    { href: "/dashboard/activity", label: "Activity", active: path.startsWith("/dashboard/activity") },
+    { href: "/dashboard/floor", label: "The Floor", icon: "floor", active: path === "/dashboard/floor", tab: true },
+    { href: "/dashboard", label: "Review Queue", icon: "queue", active: path === "/dashboard", badge: needsReview, tab: true },
+    { href: "/dashboard/collections", label: "Collections", icon: "collections", active: path.startsWith("/dashboard/collections"), tab: true },
+    { href: "/dashboard/set", label: "Prepare for set", icon: "prepare", active: path === "/dashboard/set" || path.startsWith("/dashboard/set/"), tab: true },
+    { href: "/dashboard/send", label: "Send", icon: "send", active: path.startsWith("/dashboard/send") },
+    { href: "/dashboard/contacts", label: "Contacts", icon: "contacts", active: path.startsWith("/dashboard/contacts") },
+    { href: "/dashboard/activity", label: "Activity", icon: "activity", active: path.startsWith("/dashboard/activity") },
   ];
 
   return (
@@ -30,22 +31,18 @@ export function Sidebar({ needsReview, cap, pause }: Props) {
         <Logo href="/dashboard/floor" />
       </div>
 
-      <nav aria-label="Main" className="mt-3 flex gap-1 overflow-x-auto px-2 pb-2 md:mt-2 md:flex-col md:gap-0.5 md:pb-0">
+      <nav aria-label="Main" className="keep-night tactile-panel mx-3 mt-3 flex flex-col gap-1 rounded-[22px] p-1.5">
         {nav.map((n) => (
           <Link
             key={n.href}
             href={n.href}
             aria-current={n.active ? "page" : undefined}
-            className={`${"mobileOnly" in n ? "md:hidden" : ""} ${"tab" in n ? "hidden md:flex" : "flex"} shrink-0 items-center justify-between gap-3 rounded-md px-3 py-2.5 text-[11px] uppercase tracking-[0.5px] transition ${
-              n.active ? "bg-ink-3 font-bold text-bone" : "font-medium text-mute hover:bg-ink-3/60 hover:text-bone"
-            }`}
+            className="tactile-item relative flex items-center gap-3 rounded-[16px] px-3 py-2.5 text-[12px] font-medium uppercase tracking-[0.5px]"
           >
-            <span className="flex items-center gap-3">
-              <span aria-hidden className={`size-1 rounded-full ${n.active ? "bg-bone" : "bg-faint"}`} />
-              {n.label}
-            </span>
+            <NavIcon name={n.icon as NavIconName} />
+            <span className="min-w-0 flex-1 truncate">{n.label}</span>
             {"badge" in n && !!n.badge && (
-              <span className="rounded-full bg-lime px-2 py-0.5 text-[11px] font-bold text-ink tnum" aria-label={`${n.badge} need review`}>
+              <span className="min-w-5 rounded-full bg-lime px-1.5 text-center text-[11px] font-bold leading-5 text-ink tnum" aria-label={`${n.badge} need review`}>
                 {n.badge}
               </span>
             )}
