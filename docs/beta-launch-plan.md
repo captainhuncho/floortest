@@ -36,6 +36,17 @@ Prove that DJs with weekly callouts **keep using** the desk, and that senders **
 - Open to a waitlist of 100. Post the social set weekly.
 - Test pricing with 10 active users: "Would you pay $X for 500 tracks?" Choose before announcing prices.
 
+## Before public launch (checklist)
+- **Security test with Strix** (open-source AI pentest agents, github.com/usestrix/strix): run once against the **local copy or a preview**, never the live site, once the feature set is stable. Needs Docker and an AI model key (a few to tens of dollars per run). Fix every confirmed finding, then re-run.
+- **Lawyer review** of the legal drafts ([legal-review.md](legal-review.md)), then replace the "draft" banners.
+- **Registrations:** Ghana Data Protection Commission, US DMCA designated agent, UK/EU representatives if the lawyer says so.
+- **Operator details** on the legal pages: registered company name, address, registration number.
+- **Paid infrastructure:** Supabase Pro (daily backups, point-in-time recovery), R2 versioning or a second recovery bucket.
+- **Antivirus scanning** of uploads (see Risks).
+- **Payments**, if charging at launch: plan changes go through checkout, not the self-serve switch.
+- **Full accessibility audit** (WCAG 2.2 AA) and an INP measurement on real devices.
+- **DMARC** moved from `p=none` to `p=quarantine` after two clean weeks.
+
 ## Weekly rhythm
 Monday: check metrics. Tuesday–Thursday: partner calls and fixes. Friday: one post, one changelog note to partners.
 
