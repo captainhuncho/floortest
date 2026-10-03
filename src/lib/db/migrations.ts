@@ -636,4 +636,12 @@ create table login_codes (
 alter table login_codes enable row level security;
 `,
   },
+{
+    // Send folders (paid, off in the beta): tracks sent together share a batch id so the receiver sees them as one folder.
+    id: "0035_track_batches",
+    sql: `
+alter table tracks add column batch_id text;
+create index tracks_batch on tracks(batch_id) where batch_id is not null;
+`,
+  },
 ];

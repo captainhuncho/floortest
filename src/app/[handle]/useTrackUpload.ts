@@ -9,8 +9,84 @@ const SENDER_KEY = "floortest.sender";
 
 export type Phase = "idle" | "uploading" | "done";
 
+type Fields = Record<string, string | boolean>;
+const NET =
+  "Network error. Your details are still here. Check your connection and try again.";
+
+/**
+ * One track, three steps: ask the server for an upload URL (it checks the rules first), PUT the file
+ * straight to storage with progress, then ask the server to verify it and create the track.
+ * Shared by the single-track form and Send folders.
+ */
+export async function uploadTrack(
+  handle: string,
+  file: File,
+  analysis: Analysis | null,
+  fields: Fields,
+  onProgress: (p: number) => void,
+): Promise<{ token: string } | { error: string }> {
+  const json = async (res: Response) =>
+    (await res.json().catch(() => ({}))) as {
+      error?: string;
+      token?: string;
+      uploadId?: string;
+      target?: { url: string; headers: Record<string, string> };
+    };
+  try {
+    const start = await fetch(`/api/submit/${handle}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...fields, fileName: file.name, size: file.size }),
+    });
+    const started = await json(start);
+    if (!start.ok || !started.uploadId || !started.target)
+      return {
+        error: started.error || "Couldn't start the upload. Please try again.",
+      };
+    const put = await new Promise<number>((resolve) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", started.target!.url);
+      for (const [k, v] of Object.entries(started.target!.headers))
+        xhr.setRequestHeader(k, v);
+      xhr.upload.onprogress = (ev) =>
+        ev.lengthComputable && onProgress((ev.loaded / ev.total) * 0.97);
+      xhr.onload = () => resolve(xhr.status);
+      xhr.onerror = () => resolve(0);
+      xhr.send(file);
+    });
+    if (put < 200 || put >= 300)
+      return {
+        error:
+          put === 0 ? NET : "The upload didn't go through. Please try again.",
+      };
+    const done = await fetch(`/api/submit/${handle}/complete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        uploadId: started.uploadId,
+        duration: analysis?.duration,
+        bpm: analysis?.bpm,
+        peaks: analysis?.peaks,
+      }),
+    });
+    const finished = await json(done);
+    if (!done.ok || !finished.token)
+      return {
+        error:
+          finished.error ||
+          "Upload failed. Your details are still here, so you can try again.",
+      };
+    return { token: finished.token };
+  } catch {
+    return { error: NET };
+  }
+}
+
 /** File selection, in-browser analysis and upload. Shared by every public page style. */
-export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {}) {
+export function useTrackUpload(
+  handle: string,
+  opts: { asAccount?: boolean } = {},
+) {
   const [file, setFile] = useState<File | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
@@ -24,7 +100,8 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
   useEffect(() => {
     try {
       const s = JSON.parse(localStorage.getItem(SENDER_KEY) || "null");
-      if (s?.name || s?.email) setSender({ name: s.name || "", email: s.email || "" });
+      if (s?.name || s?.email)
+        setSender({ name: s.name || "", email: s.email || "" });
     } catch {}
   }, []);
 
@@ -57,7 +134,11 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
     if (!file) return setError("Choose a WAV or MP3 file.");
     const field = (k: string) => String(fd.get(k) ?? "");
     try {
-      if (!opts.asAccount) localStorage.setItem(SENDER_KEY, JSON.stringify({ name: field("name"), email: field("email") }));
+      if (!opts.asAccount)
+        localStorage.setItem(
+          SENDER_KEY,
+          JSON.stringify({ name: field("name"), email: field("email") }),
+        );
     } catch {}
     setError(null);
     setPhase("uploading");
@@ -66,55 +147,28 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
       setError(msg);
       setPhase("idle");
     };
-    const json = async (res: Response) => ((await res.json().catch(() => ({}))) as { error?: string; token?: string; uploadId?: string; target?: { url: string; headers: Record<string, string> } });
-
-    try {
-      const start = await fetch(`/api/submit/${handle}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: field("name"),
-          email: field("email"),
-          title: field("title"),
-          artist: field("artist"),
-          message: field("message"),
-          genre: field("genre"),
-          release_status: field("release_status"),
-          mix_status: field("mix_status"),
-          turnstile: field("cf-turnstile-response"),
-          fileName: file.name,
-          size: file.size,
-          asAccount: !!opts.asAccount,
-        }),
-      });
-      const started = await json(start);
-      if (!start.ok || !started.uploadId || !started.target) return fail(started.error || "Couldn't start the upload. Please try again.");
-
-      const put = await new Promise<number>((resolve) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("PUT", started.target!.url);
-        for (const [k, v] of Object.entries(started.target!.headers)) xhr.setRequestHeader(k, v);
-        xhr.upload.onprogress = (ev) => ev.lengthComputable && setProgress((ev.loaded / ev.total) * 0.97);
-        xhr.onload = () => resolve(xhr.status);
-        xhr.onerror = () => resolve(0);
-        xhr.send(file);
-      });
-      if (put < 200 || put >= 300)
-        return fail(put === 0 ? "Network error. Your details are still here. Check your connection and try again." : "The upload didn't go through. Please try again.");
-
-      const done = await fetch(`/api/submit/${handle}/complete`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uploadId: started.uploadId, duration: analysis?.duration, bpm: analysis?.bpm, peaks: analysis?.peaks }),
-      });
-      const finished = await json(done);
-      if (!done.ok || !finished.token) return fail(finished.error || "Upload failed. Your details are still here, so you can try again.");
-      setProgress(1);
-      setToken(finished.token);
-      setPhase("done");
-    } catch {
-      fail("Network error. Your details are still here. Check your connection and try again.");
-    }
+    const r = await uploadTrack(
+      handle,
+      file,
+      analysis,
+      {
+        name: field("name"),
+        email: field("email"),
+        title: field("title"),
+        artist: field("artist"),
+        message: field("message"),
+        genre: field("genre"),
+        release_status: field("release_status"),
+        mix_status: field("mix_status"),
+        turnstile: field("cf-turnstile-response"),
+        asAccount: !!opts.asAccount,
+      },
+      setProgress,
+    );
+    if ("error" in r) return fail(r.error);
+    setProgress(1);
+    setToken(r.token);
+    setPhase("done");
   }
 
   function reset() {
@@ -125,5 +179,19 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
     setError(null);
   }
 
-  return { file, analysis, analyzing, phase, progress, error, setError, token, sender, setSender, pick, send, reset };
+  return {
+    file,
+    analysis,
+    analyzing,
+    phase,
+    progress,
+    error,
+    setError,
+    token,
+    sender,
+    setSender,
+    pick,
+    send,
+    reset,
+  };
 }

@@ -120,6 +120,8 @@ export type Track = {
   cues: string;
   /** Colleagues may download: the receiver was on a paid plan and allowed sharing when this was sent. */
   share_download: number;
+  /** Set when the track was sent as part of a folder. */
+  batch_id: string | null;
 };
 export type EventRow = {
   id: number;

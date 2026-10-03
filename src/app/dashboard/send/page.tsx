@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { q } from "@/lib/db";
 import { APP_URL } from "@/lib/mail";
+import { featureOn } from "@/lib/features";
 import { SendComposer } from "./SendComposer";
 
 export const metadata = { title: "Send — FloorTest" };
@@ -29,7 +30,7 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
       <h1 className="text-3xl font-bold tracking-tight">Send</h1>
       <p className="mt-2 text-mute">Send your music to another FloorTest user. Add the name at the end of their link.</p>
       <div className="mt-8">
-        <SendComposer host={APP_URL.replace(/^https?:\/\//, "")} account={{ name: user.name, email: user.email }} initial={to} />
+        <SendComposer host={APP_URL.replace(/^https?:\/\//, "")} account={{ name: user.name, email: user.email }} initial={to} folders={await featureOn("folders", user)} />
       </div>
 
       <section aria-labelledby="sent-h" className="mt-12">

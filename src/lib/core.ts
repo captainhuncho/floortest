@@ -169,6 +169,8 @@ export type SubmissionMeta = {
   /** Set when a signed-in FloorTest user sends from their account (their email is already confirmed). */
   accountId?: number;
   accountVerified?: boolean;
+  /** Send folders: tracks uploaded together share this id. */
+  batch?: string;
 };
 
 /**
@@ -180,6 +182,12 @@ export async function startUpload(receiver: User, meta: SubmissionMeta, size: nu
   if (!ext || !ACCEPTED_EXT.includes(ext)) throw new IntakeError("Only WAV and MP3 files are accepted.", 400);
   if (!Number.isSafeInteger(size) || size <= 0) throw new IntakeError("Choose a WAV or MP3 file.", 400);
   if (size > MAX_UPLOAD_BYTES) throw new IntakeError("File is too large (max 250 MB).", 413);
+  if (meta.batch) {
+    // A folder is capped at MAX_UPLOAD_BYTES in total: what's already sent in it plus what's still uploading.
+    const sent = Number((await q.get<{ n: string | number }>("SELECT COALESCE(SUM(size), 0) AS n FROM tracks WHERE user_id = ? AND batch_id = ?", receiver.id, meta.batch))?.n ?? 0);
+    const pending = Number((await q.get<{ n: string | number }>("SELECT COALESCE(SUM(size), 0) AS n FROM uploads WHERE receiver_id = ? AND meta::jsonb->>'batch' = ?", receiver.id, meta.batch))?.n ?? 0);
+    if (sent + pending + size > MAX_UPLOAD_BYTES) throw new IntakeError("This folder is over 250 MB in total.", 413);
+  }
   await checkIntake(receiver, meta.email, ip);
 
   const id = crypto.randomBytes(24).toString("base64url");
@@ -252,8 +260,8 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
       const collection = await activeCollection(fresh, db);
       const track = (await db.get<Track>(
         `INSERT INTO tracks (user_id, collection_id, sender_id, token, title, artist, message, release_status, mix_status, genre,
-                             file_key, original_name, mime, size, duration, bpm, peaks, created_at, share_ok, share_download)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING *`,
+                             file_key, original_name, mime, size, duration, bpm, peaks, created_at, share_ok, share_download, batch_id)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING *`,
         fresh.id,
         collection?.id ?? null,
         sender.id,
@@ -274,6 +282,7 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
         now(),
         sharing && collection?.allow_sharing ? 1 : 0,
         sharing && collection?.allow_sharing && shareDownloadEnabled(fresh.plan) ? 1 : 0,
+        meta.batch ?? null,
       ))!;
       // Possible duplicate: the same file (byte size and length) already on this desk, or the same
       // sender re-sending the same title. Flagged for the receiver, never blocked.

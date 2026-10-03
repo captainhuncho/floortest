@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { currentUser } from "@/lib/auth";
 import { IntakeError, startUpload, userByHandle } from "@/lib/core";
+import { featureOn } from "@/lib/features";
 import { cleanGenre, MIX_STATUS, RELEASE_STATUS } from "@/lib/plans";
 import { ipFrom } from "@/lib/ratelimit";
 import { BOT_MESSAGE, passedTurnstile } from "@/lib/turnstile";
@@ -30,6 +31,9 @@ export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]
   if (body.asAccount && !account) return bad("Sign in again to send from your account.", 401);
   if (!account && !(await passedTurnstile(body.turnstile, ipFrom(req.headers)))) return bad(BOT_MESSAGE, 403);
   if (account && account.id === receiver.id) return bad("That's your own link. Share it with others to receive music.");
+  // Send folders: a signed-in sender on a plan with the feature, sending several files under one id.
+  const batch = typeof body.batch === "string" && /^[A-Za-z0-9_-]{16,40}$/.test(body.batch) ? body.batch : null;
+  if (body.batch && (!batch || !account || !(await featureOn("folders", account)))) return bad("Sending folders isn't available on your plan.", 403);
   const name = account ? account.name : str("name", 100);
   const email = account ? account.email.toLowerCase() : str("email", 200).toLowerCase();
   const title = str("title", 200);
@@ -56,6 +60,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]
         mixStatus: pick("mix_status", MIX_STATUS),
         genre,
         originalName: fileName,
+        ...(batch ? { batch } : {}),
         ...(account ? { accountId: account.id, accountVerified: !!account.email_verified_at } : {}),
       },
       size,

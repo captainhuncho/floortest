@@ -108,6 +108,7 @@ export async function ReviewPanel({
       <div className="hidden md:block">
       <p className="label">Now reviewing</p>
       <h2 className="mt-2 text-2xl font-bold leading-tight tracking-tight">{t.title}</h2>
+      {t.batch_id && <p className="mt-2 w-fit rounded-full border border-line px-2.5 py-0.5 text-[11px] font-bold text-mute">Sent as part of a folder</p>}
       {t.duplicate_of && (
         <p className="mt-2 text-sm text-danger">
           Possible duplicate of an earlier track.{" "}
