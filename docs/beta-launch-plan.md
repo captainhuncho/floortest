@@ -51,7 +51,7 @@ Built or planned, switched on per plan from Admin → Feature switches once bill
 - **Payments**, if charging at launch: plan changes go through checkout, not the self-serve switch.
 - **Full accessibility audit** (WCAG 2.2 AA) and an INP measurement on real devices.
 - **DMARC** moved from `p=none` to `p=quarantine` after two clean weeks.
-- **Database network hardening:** (1) confirm the Postgres connection *requires* TLS (`sslmode=require` or stricter), not just prefers it; (2) check whether Supabase network restrictions can limit connections to Vercel. Vercel Hobby has no fixed outbound IPs, so this may need Vercel's Secure Compute or a different setup. FloorTest has no Cloudflare-proxied origin to hide: DNS points at Vercel (76.76.21.21) and Vercel is the edge.
+- **Database network hardening:** (1) ✅ done 2026-10-03: the Postgres client sets `ssl: "require"` on Vercel; (2) check whether Supabase network restrictions can limit connections to Vercel. Vercel Hobby has no fixed outbound IPs, so this may need Vercel's Secure Compute or a different setup. FloorTest has no Cloudflare-proxied origin to hide: DNS points at Vercel (76.76.21.21) and Vercel is the edge.
 
 ## Weekly rhythm
 Monday: check metrics. Tuesday–Thursday: partner calls and fixes. Friday: one post, one changelog note to partners.
