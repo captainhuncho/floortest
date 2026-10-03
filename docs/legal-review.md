@@ -139,7 +139,8 @@ FloorTest will be registered in and operated from **Ghana**, serving users world
     - COPPA, given we're 18+ only.
     - **Advertising (future):** we may run ads to promote FloorTest, which would mean pixels such as the Meta Pixel or Google Ads tag. What consent banner and policy updates are needed? If we later sell ad space on FloorTest, which Advertising Terms, ad-labelling rules and DSA ad-transparency duties apply?
     - Accessibility statement: required or recommended in any of these markets?
-26. **Age:** the Terms say 18+. Is a self-declaration at sign-up enough?
+26. **Automatic renewal (before payments go live):** the Plans page now shows beta terms only (no card, nothing renews, 30 days' notice and opt-in before any charge). For paid plans we'll need checkout wording for UK/EU consumer law and US state auto-renewal laws (e.g. California): price, billing period, that it renews until cancelled, how to cancel online, and renewal reminders. Please supply or approve that wording.
+27. **Age:** the Terms say 18+. Is a self-declaration at sign-up enough?
 
 ## 7. Before invites go out
 

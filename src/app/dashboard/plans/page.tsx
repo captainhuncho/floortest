@@ -62,7 +62,21 @@ export default async function Plans() {
             <button className="rounded-full bg-white px-3.5 py-2 text-[11px] font-bold text-ink">UPGRADE TO PRO · FREE IN BETA</button>
           </form>
         )}
-        <p className="text-[11px] text-faint">Billing isn&apos;t connected yet. Plan changes are free during the beta.</p>
+        <section aria-labelledby="renewal-h" className="space-y-1.5 text-[11px] text-dim">
+          <h2 id="renewal-h" className="font-bold text-mute">Renewal and billing</h2>
+          <p>All plans are free during the beta. We don&apos;t take a card, so nothing renews and nothing is charged.</p>
+          <p>
+            Before paid plans start, everyone on Pro or Team gets at least 30 days&apos; notice by email with the price. You&apos;re only charged if you
+            choose to continue; otherwise you move to Free and keep every track you already have.
+          </p>
+          <p>
+            Free stays free. See the{" "}
+            <Link href="/terms" className="underline underline-offset-4 hover:text-bone">
+              Terms of Use
+            </Link>
+            .
+          </p>
+        </section>
       </div>
     </div>
   );
