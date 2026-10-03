@@ -4,6 +4,7 @@ export const PERIODS = [
   ["30d", "Last 30 days", 30],
   ["3m", "Last 3 months", 91],
   ["6m", "Last 6 months", 182],
+  ["year", "This year", 0],
 ] as const;
 
 export type Period = { key: string; label: string; from: number; to: number; fromDate: string; toDate: string };
@@ -23,5 +24,7 @@ export function parsePeriod(sp: { p?: string; from?: string; to?: string }, now 
     }
   }
   const [key, label, days] = PERIODS.find(([k]) => k === sp.p) ?? PERIODS[0];
-  return { key, label, from: now - days * DAY, to: now, fromDate: iso(now - days * DAY), toDate: iso(now) };
+  // "This year" starts on 1 January (UTC); the others count back from today.
+  const from = key === "year" ? Date.UTC(new Date(now).getUTCFullYear(), 0, 1) : now - days * DAY;
+  return { key, label, from, to: now, fromDate: iso(from), toDate: iso(now) };
 }
