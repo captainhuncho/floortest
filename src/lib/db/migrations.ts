@@ -684,4 +684,11 @@ alter table tracks add column sets_ok int not null default 0;
 update tracks set sets_ok = 1;
 `,
   },
+{
+    // Link names can change once a year; an undo back to the old name within the hold doesn't count.
+    id: "0039_handle_changed_at",
+    sql: `
+alter table users add column handle_changed_at bigint;
+`,
+  },
 ];

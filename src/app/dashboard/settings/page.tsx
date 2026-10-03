@@ -1,3 +1,4 @@
+import { nextHandleChange } from "@/lib/accounts";
 import Link from "next/link";
 import { logout } from "../../(auth)/actions";
 import { currentSessionHash, requireUser } from "@/lib/auth";
@@ -19,6 +20,7 @@ export const metadata = { title: "Settings — FloorTest" };
 
 export default async function Settings() {
   const user = await requireUser();
+  const nextLink = await nextHandleChange(user.id);
   const identity = await q.get<{ status: "none" | "pending" | "verified" | "rejected"; links: string; note: string }>(
     "SELECT identity_status AS status, identity_links AS links, identity_note AS note FROM users WHERE id = ?",
     user.id,
@@ -40,7 +42,7 @@ export default async function Settings() {
         <h2 id="link-h" className="text-lg font-semibold">
           Your link
         </h2>
-        <SettingsForm name={user.name} handle={user.handle} base={APP_URL} />
+        <SettingsForm name={user.name} handle={user.handle} base={APP_URL} nextChange={nextLink ? new Date(nextLink).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : null} />
       </section>
 
       <section className="card p-6" aria-labelledby="email-h">

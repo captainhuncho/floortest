@@ -7,8 +7,17 @@ import { RESERVED_HANDLES } from "./plans";
 
 const DAY = 86_400_000;
 const isUniqueViolation = (e: unknown) => (e as { code?: string })?.code === "23505";
-/** How long an old link keeps forwarding, and stays reserved for its owner. */
-export const HANDLE_HOLD_DAYS = 90;
+/** How long an old link keeps forwarding, and stays reserved for its owner. Then anyone can claim it. */
+export const HANDLE_HOLD_DAYS = 14;
+/** A link name can change once in this many days. */
+export const HANDLE_CHANGE_DAYS = 365;
+
+/** When this account may next change its link name, or null if it can now. */
+export async function nextHandleChange(userId: number) {
+  const r = await q.get<{ handle_changed_at: number | null }>("SELECT handle_changed_at FROM users WHERE id = ?", userId);
+  const at = r?.handle_changed_at ? r.handle_changed_at + HANDLE_CHANGE_DAYS * DAY : 0;
+  return at > now() ? at : null;
+}
 /** How long the confirmation link for a new email works. */
 export const EMAIL_CHANGE_HOURS = 48;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -33,7 +42,8 @@ export async function forwardedHandle(old: string) {
 /**
  * Moves an account to a new handle. The old one forwards for HANDLE_HOLD_DAYS and is reserved for them,
  * unless `forward` is off (taken back for impersonation): then it's released at once.
- * `checks` off skips the protected-name rule, for admins giving a protected name to the real artist.
+ * `checks` off skips the protected-name rule and the once-a-year limit, for admins.
+ * Going back to your own old name while it's still held is an undo: it doesn't use up the yearly change.
  */
 export async function changeHandle(userId: number, next: string, { forward = true, checks = true } = {}): Promise<string | null> {
   const handle = next.trim().toLowerCase().replace(/^@/, "");
@@ -44,14 +54,21 @@ export async function changeHandle(userId: number, next: string, { forward = tru
   if (u.handle === handle) return null;
   if (checks && (await isProtectedHandle(handle))) return "That name is protected for a well-known artist. If it's you, contact us.";
   if (await handleHeld(handle, userId)) return "That link was someone's until recently and is still reserved.";
+  // Switching back keeps the original deadline, so bouncing between names can't hold two of them forever.
+  const undo = await q.get<{ expires_at: number }>("SELECT expires_at FROM handle_history WHERE old_handle = ? AND user_id = ? AND expires_at > ?", handle, userId, now());
+  if (checks && !undo) {
+    const next = await nextHandleChange(userId);
+    if (next) return `You can change your link once a year. Next change: ${new Date(next).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}.`;
+  }
   try {
     await q.tx(async (db) => {
       await db.run("DELETE FROM handle_history WHERE old_handle = ?", handle); // taking back one of your own old links
       await db.run("UPDATE users SET handle = ? WHERE id = ?", handle, userId);
+      if (!undo) await db.run("UPDATE users SET handle_changed_at = ? WHERE id = ?", now(), userId);
       if (forward)
         await db.run(
           "INSERT INTO handle_history (old_handle, user_id, forward, created_at, expires_at) VALUES (?,?,?,?,?) ON CONFLICT (old_handle) DO UPDATE SET user_id = excluded.user_id, forward = 1, created_at = excluded.created_at, expires_at = excluded.expires_at",
-          u.handle, userId, 1, now(), now() + HANDLE_HOLD_DAYS * DAY,
+          u.handle, userId, 1, now(), undo ? undo.expires_at : now() + HANDLE_HOLD_DAYS * DAY,
         );
       else await db.run("DELETE FROM handle_history WHERE old_handle = ?", u.handle);
     });
