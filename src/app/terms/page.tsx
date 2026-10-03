@@ -54,6 +54,7 @@ export default function Terms() {
           [
             "Sign-up is by invitation during the beta. Personal invites work once, for the email address they were sent to. Don't sell or publish invite codes.",
             "Referral bonuses such as extra track slots are part of the beta and may be changed or withdrawn later.",
+            "The Verified mark means we checked that the account controlled the linked profile when it was verified. It isn't an endorsement or a guarantee of identity, and we can remove it at any time.",
           ],
         ],
         [

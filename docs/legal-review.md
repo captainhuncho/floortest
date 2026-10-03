@@ -141,7 +141,8 @@ FloorTest will be registered in and operated from **Ghana**, serving users world
     - Accessibility statement: required or recommended in any of these markets?
 26. **Automatic renewal (before payments go live):** the Plans page now shows beta terms only (no card, nothing renews, 30 days' notice and opt-in before any charge). For paid plans we'll need checkout wording for UK/EU consumer law and US state auto-renewal laws (e.g. California): price, billing period, that it renews until cancelled, how to cancel online, and renewal reminders. Please supply or approve that wording.
 27. **Beta access isn't a gift:** the Terms and Plans page now say free Pro/Team during the beta (and referral bonuses) is a temporary trial, not a gift, purchase or lifetime plan, has no cash value, can't be transferred, and ends when paid plans start. Is that enough to prevent claims of a gifted or lifetime subscription, and does it work with gift-card or consumer rules in Ghana, the UK, EU and US?
-28. **Age:** the Terms say 18+. Is a self-declaration at sign-up enough?
+28. **The word "Verified":** the public mark (design name "Cue Point") says "Verified by FloorTest: this account controls the linked profile", and the Terms say it isn't an endorsement or identity guarantee and can be removed. We only check that a code appears in the bio of a profile the account controls. Is "Verified" safe enough, or should it be softer (e.g. "Profile checked")? Any liability if an impersonator is verified?
+29. **Age:** the Terms say 18+. Is a self-declaration at sign-up enough?
 
 ## 7. Before invites go out
 

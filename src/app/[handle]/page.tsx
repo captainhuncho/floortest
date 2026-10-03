@@ -71,7 +71,7 @@ export default async function ReceiverPage({ params }: Props) {
           <h1 className="break-words text-[clamp(2rem,12vw,3.5rem)] font-bold leading-none group-has-[[data-picked]]/page:text-[32px] group-has-[[data-picked]]/page:font-extrabold">
             {receiver.name}
             {receiver.identity_status === "verified" && (
-              <CuePoint size={24} label="Verified by FloorTest" className="-mt-1 ml-2" />
+              <CuePoint size={24} label="Verified by FloorTest: this account controls the linked profile" className="-mt-1 ml-2" />
             )}
           </h1>
           {collection && !closedReason && (
