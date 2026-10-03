@@ -25,6 +25,9 @@ export default async function Revenue({ searchParams }: { searchParams: Promise<
   const signups = await q.count("SELECT COUNT(*) AS n FROM users WHERE created_at >= ? AND created_at < ?", from, to);
   const paidSignups = await q.count("SELECT COUNT(*) AS n FROM users WHERE plan <> 'free' AND created_at >= ? AND created_at < ?", from, to);
   const rank = (p: string) => (["free", "pro", "team"] as string[]).indexOf(p);
+  // Users' own changes are logged by plan name ("Team"), admin changes by id ("team").
+  const planId = (d: string) => (Object.keys(PLANS) as PlanId[]).find((p) => p === d || PLANS[p].name.toLowerCase() === d.toLowerCase()) ?? d;
+  for (const c of history) c.detail = planId(c.detail);
   // Walk every change oldest first, so each one is compared with the plan the account had just before it
   // (accounts start on Free), even when that earlier change was before the period.
   const planNow = new Map<number, string>();
