@@ -14,6 +14,13 @@ export const STEMS_PLANS: readonly PlanId[] = [];
 export const stemsEnabled = (plan: string) => (STEMS_PLANS as readonly string[]).includes(plan);
 
 /** Colleagues can download a shared track only when the receiver who shared it is on a paid plan. */
+/** What each plan includes, for the Plans and checkout pages. Only list things that exist today. */
+export const PLAN_FEATURES: Record<PlanId, string[]> = {
+  free: ["20 active tracks", "Your permanent link and public page", "Review Queue, collections and Rekordbox export", "Receipts and updates for your senders"],
+  pro: ["500 active tracks", "Everything in Free", "Colleagues can download tracks you share", "Paid features as they launch (stems, folders)"],
+  team: ["2,000 active tracks", "Everything in Pro"],
+};
+
 export const SHARE_DOWNLOAD_PLANS: readonly PlanId[] = ["pro", "team"];
 export const shareDownloadEnabled = (plan: string) => (SHARE_DOWNLOAD_PLANS as readonly string[]).includes(plan);
 

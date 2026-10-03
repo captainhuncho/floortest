@@ -519,6 +519,8 @@ export async function updatePublicPage(_: SettingsState, form: FormData): Promis
 export async function setPlan(plan: string) {
   const u = await requireUser();
   if (!Object.hasOwn(PLANS, plan)) return;
+  // Once billing is on, upgrades only happen through checkout; this action can still move people down.
+  if ((await switchOn("billing")) && planOf(plan).price > planOf(u.plan).price) return;
   const cap = await capacity(u);
   if (cap.used > planOf(plan).limit + cap.bonus) return;
   await q.run("UPDATE users SET plan = ? WHERE id = ?", plan, u.id);

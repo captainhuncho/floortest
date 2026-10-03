@@ -22,6 +22,11 @@ export const SWITCHES = {
     description: "Anyone can create an account. Off means an invite code is needed (the beta).",
     initial: false,
   },
+  billing: {
+    label: "Paid plans and checkout",
+    description: "Upgrades go through the checkout page instead of switching plan for free. Keep off until card payments are connected and the lawyer has approved the renewal wording.",
+    initial: false,
+  },
   uploads_paused: {
     label: "Pause all uploads",
     description: "Maintenance switch: every receiver's link stops taking new tracks, with a short notice to senders. Nothing is lost.",
