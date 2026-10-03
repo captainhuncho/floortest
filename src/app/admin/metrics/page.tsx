@@ -71,12 +71,12 @@ export default async function Metrics({ searchParams }: { searchParams: Promise<
 
   const lower = period.key === "custom" ? period.label : period.label.toLowerCase();
   const cards = [
-    ["Activated", pct(activated, receivers), `${activated} of ${receivers} receivers got a first track, all time`],
-    ["Sign-up → first track", dur(toFirstTrack), "median, all time"],
-    ["Delivery → first listen", dur(toListen), `median, ${lower}`],
-    ["Delivery → decision", dur(toDecide), `median, ${lower}`],
-    ["Keep rate", pct(kept, decided), `${kept} kept of ${decided} decided, ${lower}`],
-    ["Returning senders", pct(returning, senders), `${returning} of ${senders} sent more than once, all time`],
+    ["growth", "Activated", pct(activated, receivers), `${activated} of ${receivers} receivers got a first track, all time`],
+    ["growth", "Sign-up → first track", dur(toFirstTrack), "median, all time"],
+    ["monitor", "Delivery → first listen", dur(toListen), `median, ${lower}`],
+    ["monitor", "Delivery → decision", dur(toDecide), `median, ${lower}`],
+    ["monitor", "Keep rate", pct(kept, decided), `${kept} kept of ${decided} decided, ${lower}`],
+    ["support", "Returning senders", pct(returning, senders), `${returning} of ${senders} sent more than once, all time`],
   ];
 
   return (
@@ -86,21 +86,24 @@ export default async function Metrics({ searchParams }: { searchParams: Promise<
         <PeriodPicker path="/admin/metrics" period={period} />
       </div>
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {cards.map(([k, v, sub]) => (
-          <li key={k} className="card p-5">
-            <p className="label">{k}</p>
+        {cards.map(([area, k, v, sub]) => (
+          <li key={k} data-area={area} className="card area-card p-5">
+            <p className="label flex items-center gap-2">
+              <span aria-hidden className="area-dot size-1.5 rounded-full" />
+              {k}
+            </p>
             <p className="mt-2 text-3xl font-bold tnum">{v}</p>
             <p className="mt-1 text-sm text-mute">{sub}</p>
           </li>
         ))}
       </ul>
-      <section aria-labelledby="funnel-h" className="space-y-3">
+      <section aria-labelledby="funnel-h" data-area="growth" className="space-y-3">
         <h2 id="funnel-h" className="text-lg font-semibold">Funnel, {lower}</h2>
         <ul className="space-y-2">
           {funnel.map(([label, n], i) => (
             <li key={label} className="grid grid-cols-[12rem_1fr_6rem] items-center gap-3 text-sm">
               <span>{label}</span>
-              <span className="h-2 rounded-full bg-ink-3"><span className="block h-2 rounded-full bg-lime" style={{ width: `${(n / top) * 100}%` }} /></span>
+              <span className="h-2 rounded-full bg-ink-3"><span className="area-dot block h-2 rounded-full" style={{ width: `${(n / top) * 100}%` }} /></span>
               <span className="text-right tnum">{n}{i > 0 && funnel[i - 1][1] ? <span className="text-mute"> · {pct(n, funnel[i - 1][1])}</span> : null}</span>
             </li>
           ))}
@@ -113,14 +116,14 @@ export default async function Metrics({ searchParams }: { searchParams: Promise<
       <section>
         <h2 className="text-lg font-semibold">{monthly ? "By month" : "By week"}, {lower}</h2>
         <p className="mt-1 text-sm text-mute">
-          <span className="mr-1 inline-block h-2 w-2 rounded-sm bg-lime" /> Active receivers <span className="ml-3 mr-1 inline-block h-2 w-2 rounded-sm bg-bone/40" /> Tracks received
+          <span className="mr-1 inline-block h-2 w-2 rounded-sm bg-lime" /> Active receivers <span data-area="monitor" className="area-dot ml-3 mr-1 inline-block h-2 w-2 rounded-sm" /> Tracks received
         </p>
         <div className="mt-4 grid items-end gap-2" style={{ height: 180, gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))` }}>
           {weeks.map((w) => (
             <div key={w.label} className="flex h-full flex-col justify-end">
               <div className="flex flex-1 items-end justify-center gap-1">
                 <div title={`${w.active} active`} className="w-1/3 rounded-sm bg-lime" style={{ height: `${(w.active / peak) * 100}%`, minHeight: w.active ? 3 : 0 }} />
-                <div title={`${w.tracks} tracks`} className="w-1/3 rounded-sm bg-bone/40" style={{ height: `${(w.tracks / peak) * 100}%`, minHeight: w.tracks ? 3 : 0 }} />
+                <div title={`${w.tracks} tracks`} data-area="monitor" className="area-dot w-1/3 rounded-sm" style={{ height: `${(w.tracks / peak) * 100}%`, minHeight: w.tracks ? 3 : 0 }} />
               </div>
               <p className="mt-2 text-center text-xs text-mute">{w.label}</p>
               <p className="text-center text-xs tnum">
