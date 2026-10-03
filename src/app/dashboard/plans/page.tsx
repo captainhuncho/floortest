@@ -66,6 +66,10 @@ export default async function Plans() {
           <h2 id="renewal-h" className="font-bold text-mute">Renewal and billing</h2>
           <p>All plans are free during the beta. We don&apos;t take a card, so nothing renews and nothing is charged.</p>
           <p>
+            Free Pro and Team during the beta is a temporary trial, not a gift or a lifetime plan. It has no cash value, can&apos;t be transferred, and ends
+            when paid plans start. Referral bonuses work the same way.
+          </p>
+          <p>
             Before paid plans start, everyone on Pro or Team gets at least 30 days&apos; notice by email with the price. You&apos;re only charged if you
             choose to continue; otherwise you move to Free and keep every track you already have.
           </p>

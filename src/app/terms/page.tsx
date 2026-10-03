@@ -65,7 +65,10 @@ export default function Terms() {
         ],
         [
           "Plans and pricing",
-          ["Plans limit how many active tracks you can hold. Paid billing isn't enabled during the beta. We'll give at least 30 days' notice before charging anything, and you can leave without paying."],
+          [
+            "Plans limit how many active tracks you can hold. Paid billing isn't enabled during the beta. We'll give at least 30 days' notice before charging anything, and you can leave without paying.",
+            "Free use of Pro or Team during the beta is a temporary trial, not a gift, a purchase or a lifetime plan. It has no cash value, can't be sold, transferred or exchanged, and ends when paid plans start. The same applies to referral bonuses and extra track slots.",
+          ],
         ],
         [
           "Liability",
