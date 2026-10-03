@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { q } from "@/lib/db";
+import { allowances } from "@/lib/allowance";
 import { fmtBytes } from "@/lib/format";
 import { RETAIN_PASSED_DAYS, RETAIN_UNREVIEWED_DAYS } from "@/lib/plans";
 
@@ -35,6 +36,7 @@ export default async function Storage() {
      FROM tracks WHERE created_at > ? GROUP BY m ORDER BY m`,
     t - 365 * DAY,
   );
+  const allow = await allowances();
   const peak = Math.max(1, ...months.map((m) => Number(m.added)));
   const queue = await q.all<{ file_key: string; reason: string; attempts: number; last_error: string | null; created_at: number }>(
     "SELECT file_key, reason, attempts, last_error, created_at FROM storage_deletions ORDER BY attempts DESC, created_at LIMIT 50",
@@ -59,6 +61,28 @@ export default async function Storage() {
           </div>
         ))}
       </div>
+      <section aria-labelledby="allow-h" className="space-y-3">
+        <h2 id="allow-h" className="text-lg font-semibold">Allowance</h2>
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {allow.map((a) => {
+            const pct = Math.min(100, (a.used / a.limit) * 100);
+            const tone = pct >= 90 ? "bg-danger" : pct >= 80 ? "bg-[#ffb648]" : "bg-lime";
+            return (
+              <li key={a.label} className="rounded-md border border-line p-4">
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="font-semibold">{a.label}</p>
+                  <p className="text-sm tnum">{pct < 1 && a.used > 0 ? "<1" : Math.round(pct)}% full</p>
+                </div>
+                <div className="mt-3 h-2 rounded-full bg-ink-3" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)} aria-label={`${a.label} used`}>
+                  <div className={`h-2 rounded-full ${tone}`} style={{ width: `${Math.max(pct, a.used ? 1 : 0)}%` }} />
+                </div>
+                <p className="mt-2 text-sm tnum">{fmtBytes(a.used)} of {fmtBytes(a.limit)}</p>
+                <p className="mt-1 text-xs text-mute">{a.note}</p>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Added each month</h2>
         {!months.length && <p className="text-mute">Nothing in the last year.</p>}

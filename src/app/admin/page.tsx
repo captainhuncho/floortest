@@ -3,6 +3,7 @@ import Link from "next/link";
 import { configProblems, env } from "@/lib/env";
 import { q } from "@/lib/db";
 import { fmtBytes } from "@/lib/format";
+import { ALLOWANCE_WARN, allowances } from "@/lib/allowance";
 import { BACKUP_KEEP_DAYS, lastBackup } from "@/lib/backup";
 import { lastRuns } from "@/lib/cron";
 
@@ -34,10 +35,12 @@ export default async function AdminOverview() {
     c("SELECT COUNT(*) AS n FROM storage_deletions WHERE attempts >= 5"),
   ]);
 
+  const full = (await allowances()).filter((a) => a.used >= a.limit * ALLOWANCE_WARN);
   // Most urgent first. Legal deadlines (takedowns, privacy) lead.
   const todo = [
     { n: problems.length, label: "Configuration problems", sub: problems[0] ?? "", href: "#config", tone: "danger" },
     { n: backupStale ? 1 : 0, label: "Database backup is overdue", sub: backup ? `Last one ${new Date(backup.at).toLocaleDateString("en-GB")}` : "", href: "#config", tone: "danger" },
+    { n: full.length, label: "Storage is getting full", sub: full.map((a) => `${a.label} ${Math.round((a.used / a.limit) * 100)}%`).join(" · "), href: "/admin/storage", tone: "danger" },
     { n: stuck, label: "Files stuck waiting to be deleted", sub: "Storage keeps refusing them; see Storage & costs", href: "/admin/storage", tone: "danger" },
     { n: takedowns, label: "Takedown claims to decide", sub: "Copyright claims waiting for a decision", href: "/admin/takedowns", tone: "danger" },
     { n: privacy, label: "Privacy requests", sub: "Copies of data or erasure, usually due within a month", href: "/admin/privacy", tone: "danger" },
