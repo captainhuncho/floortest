@@ -46,7 +46,17 @@ export default async function Metrics({ searchParams }: { searchParams: Promise<
   // Funnel over the period: from wanting in to the first real listen.
   const funnel: [string, number][] = [
     ["Joined the waitlist", await q.count("SELECT COUNT(*) AS n FROM waitlist WHERE created_at >= ? AND created_at < ?", since, until)],
-    ["Invited", await q.count("SELECT COUNT(*) AS n FROM invites WHERE created_at >= ? AND created_at < ?", since, until)],
+    // Personal invites sent, plus people who joined with a shared beta code or a friend's referral code
+    // (those never create an invite), so every sign-up has a step before it and the step never tops 100%.
+    [
+      "Invited or used a code",
+      (await q.count("SELECT COUNT(*) AS n FROM invites WHERE created_at >= ? AND created_at < ?", since, until)) +
+        (await q.count(
+          "SELECT COUNT(*) AS n FROM users u WHERE u.created_at >= ? AND u.created_at < ? AND NOT EXISTS (SELECT 1 FROM invites i WHERE i.code = u.invite_code)",
+          since,
+          until,
+        )),
+    ],
     ["Signed up", await q.count("SELECT COUNT(*) AS n FROM users WHERE created_at >= ? AND created_at < ?", since, until)],
     ["Got a first track", await q.count("SELECT COUNT(*) AS n FROM users u WHERE u.created_at >= ? AND u.created_at < ? AND EXISTS (SELECT 1 FROM tracks t WHERE t.user_id = u.id)", since, until)],
     ["Listened to one", await q.count("SELECT COUNT(*) AS n FROM users u WHERE u.created_at >= ? AND u.created_at < ? AND EXISTS (SELECT 1 FROM tracks t WHERE t.user_id = u.id AND t.played_at IS NOT NULL)", since, until)],
