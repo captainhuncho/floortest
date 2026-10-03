@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { flash } from "@/lib/flash";
 import { passwordStrength } from "@/lib/password-strength";
 import { currentSessionHash, destroySession, hashPassword, requireUser, verifyPassword } from "@/lib/auth";
 import { APP_URL, sendMail } from "@/lib/mail";
@@ -546,9 +545,8 @@ export async function confirmBetaUpgrade(plan: string, form: FormData) {
   if (cap.used > planOf(plan).limit + cap.bonus) redirect("/dashboard/plans");
   await q.run("UPDATE users SET plan = ? WHERE id = ?", plan, u.id);
   await audit(u.id, "plan_changed", planOf(plan).name);
-  await flash(`You're on ${planOf(plan).name}. Free during the beta.`);
   done();
-  redirect("/dashboard/plans");
+  redirect(`/dashboard/plans?welcome=${plan}`);
 }
 
 /** Changes the password after checking the current one, and signs out every other device. */
