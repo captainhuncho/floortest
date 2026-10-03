@@ -67,12 +67,13 @@ export default async function AdminOverview() {
   const bytes = Number((await q.get<{ n: number | null }>("SELECT SUM(size) AS n FROM tracks WHERE deleted_at IS NULL AND file_key IS NOT NULL"))?.n ?? 0);
   const newest = await q.all<{ id: number; name: string; handle: string; created_at: number }>("SELECT id, name, handle, created_at FROM users ORDER BY created_at DESC LIMIT 5");
 
-  const trend: [string, [number, number], boolean?][] = [
-    ["New receivers", signups],
-    ["Tracks received", tracks],
-    ["Active senders", senders],
-    ["Emails sent", sent],
-    ["Emails failed", failedW, true],
+  // Each number takes the colour of the admin area it belongs to (see the menu).
+  const trend: [string, [number, number], string, boolean?][] = [
+    ["New receivers", signups, "growth"],
+    ["Tracks received", tracks, "monitor"],
+    ["Active senders", senders, "support"],
+    ["Emails sent", sent, "support"],
+    ["Emails failed", failedW, "trust", true],
   ];
   const tones: Record<string, string> = { danger: "bg-danger", warn: "bg-[#e0a33a]", info: "bg-lime" };
 
@@ -106,12 +107,15 @@ export default async function AdminOverview() {
       <section aria-labelledby="week-h" className="space-y-3">
         <h2 id="week-h" className="text-lg font-semibold">This week vs last</h2>
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          {trend.map(([k, [now, prev], lowerIsBetter]) => {
+          {trend.map(([k, [now, prev], area, lowerIsBetter]) => {
             const diff = now - prev;
             const good = lowerIsBetter ? diff <= 0 : diff >= 0;
             return (
-              <li key={k} className="card p-4">
-                <p className="label">{k}</p>
+              <li key={k} data-area={area} className="card area-card p-4">
+                <p className="label flex items-center gap-2">
+                  <span aria-hidden className="area-dot size-1.5 rounded-full" />
+                  {k}
+                </p>
                 <p className="mt-2 text-2xl font-bold tnum">{now.toLocaleString("en")}</p>
                 <p className={`mt-1 text-sm tnum ${diff === 0 ? "text-mute" : good ? "text-lime" : "text-danger"}`}>
                   {diff === 0 ? "Same as last week" : `${diff > 0 ? "▲" : "▼"} ${Math.abs(diff)}${prev ? ` (${diff > 0 ? "+" : "−"}${Math.round((Math.abs(diff) / prev) * 100)}%)` : ""} vs ${prev}`}

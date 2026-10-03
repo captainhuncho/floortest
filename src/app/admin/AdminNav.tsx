@@ -65,7 +65,6 @@ export function AdminNav({ groups, admin }: { groups: NavGroup[]; admin: { name:
   const shown = groups
     .map((g) => ({ ...g, items: g.sections.flatMap((s) => s.items).filter((i) => !q || i.label.toLowerCase().includes(q)) }))
     .filter((g) => g.items.length);
-  const all = groups.flatMap((g) => g.sections.flatMap((s) => s.items));
 
   const link = (i: NavItem) => (
     <Link
@@ -128,14 +127,20 @@ export function AdminNav({ groups, admin }: { groups: NavGroup[]; admin: { name:
           <>
             {shown.length === 0 && <p className="tactile-label px-2.5 py-3 text-[11px]">No pages match. Press Enter to search users.</p>}
             {shown.map((g) => (
-              <div key={g.id} className="mb-3 last:mb-0">
-                <p className="tactile-label px-2.5 pb-1 pt-1 text-[11px] font-bold uppercase tracking-[1px]">{g.title}</p>
+              <div key={g.id} data-area={g.id} className="mb-3 last:mb-0">
+                <p className="area-label px-2.5 pb-1 pt-1 text-[11px] font-bold uppercase tracking-[1px]">{g.title}</p>
                 <div className="flex flex-col gap-0.5">{g.items.map(link)}</div>
               </div>
             ))}
           </>
         ) : (
-          <div className="flex flex-col gap-0.5">{all.map(link)}</div>
+          <div className="flex flex-col gap-0.5">
+            {groups.map((g) => (
+              <div key={g.id} data-area={g.id} className="flex flex-col gap-0.5">
+                {g.sections.flatMap((x) => x.items).map(link)}
+              </div>
+            ))}
+          </div>
         )}
       </nav>
       <div className={`flex items-center gap-2 border-t border-line p-3 ${open ? "" : "flex-col"}`}>
