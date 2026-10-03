@@ -57,7 +57,7 @@ export function DailyColumns({ data }: { data: Day[] }) {
           </div>
         )}
       </div>
-      <table className="sr-only">
+      <div className="sr-only"><table>
         <caption>Tracks received per day, last 14 days</caption>
         <tbody>
           {data.map((d) => (
@@ -67,7 +67,7 @@ export function DailyColumns({ data }: { data: Day[] }) {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
     </figure>
   );
 }
@@ -91,7 +91,7 @@ export function GenreBars({ data }: { data: { genre: string; n: number }[] }) {
           </li>
         ))}
       </ul>
-      <table className="sr-only">
+      <div className="sr-only"><table>
         <caption>Tracks received by genre, last 30 days</caption>
         <tbody>
           {data.map((d) => (
@@ -103,7 +103,7 @@ export function GenreBars({ data }: { data: { genre: string; n: number }[] }) {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
     </figure>
   );
 }

@@ -4,6 +4,8 @@ import { fmtDate } from "@/lib/format";
 
 type Mail = { id: number; to_email: string; subject: string; body: string; status: string; created_at: number };
 
+export const metadata = { title: "Emails to senders — FloorTest" };
+
 export default async function Emails() {
   const user = await requireUser();
   const mails = (await q.all<Mail>("SELECT * FROM outbox WHERE user_id = ? AND audience = 'sender' ORDER BY created_at DESC LIMIT 200", user.id));
