@@ -8,7 +8,7 @@ import { storage } from "./storage";
 export const BACKUP_KEEP_DAYS = 14;
 const DAY = 86_400_000;
 /** Short-lived or rebuildable: left out to keep backups small. */
-const SKIP = new Set(["sessions", "rate_events", "uploads", "password_resets", "schema_migrations"]);
+const SKIP = new Set(["sessions", "rate_events", "uploads", "password_resets", "login_codes", "schema_migrations"]);
 /** One file per run (date and time), so a manual rerun never replaces the night's good backup. */
 const keyFor = (t: number) => `backups/db-${new Date(t).toISOString().slice(0, 16).replace(":", "")}.json.gz.enc`;
 /** Day-level prefix for the age cutoff: keys sort by date, so anything below this is older than the cutoff. */

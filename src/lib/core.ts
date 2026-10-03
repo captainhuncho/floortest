@@ -452,6 +452,7 @@ export async function purgeExpired({ force = false } = {}) {
   await q.run("DELETE FROM rate_events WHERE created_at < ?", t - 2 * DAY);
   await q.run("DELETE FROM sessions WHERE expires_at < ?", t);
   await q.run("DELETE FROM password_resets WHERE expires_at < ?", t - DAY);
+  await q.run("DELETE FROM login_codes WHERE expires_at < ?", t);
 
   const abandoned = await q.all<{ id: string; file_key: string }>("SELECT id, file_key FROM uploads WHERE created_at < ?", t - UPLOAD_TTL);
   for (const u of abandoned)

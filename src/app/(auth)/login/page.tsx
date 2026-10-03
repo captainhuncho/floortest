@@ -27,6 +27,12 @@ export default function LoginPage() {
         ]}
         footer={{ text: "New to FloorTest?", href: "/signup", link: "Claim your link" }}
       />
+      <p className="mt-6 text-center text-sm text-mute">
+        No password?{" "}
+        <Link href="/login/code" className="text-bone underline underline-offset-4">
+          Email me a sign-in code
+        </Link>
+      </p>
     </>
   );
 }

@@ -622,4 +622,18 @@ create table switches (
 alter table switches enable row level security;
 `,
   },
+{
+    // Sign in with a 6-digit code emailed to the account address (instead of a password).
+    id: "0034_login_codes",
+    sql: `
+create table login_codes (
+  user_id bigint primary key references users(id) on delete cascade,
+  code_hash text not null,
+  attempts int not null default 0,
+  expires_at bigint not null,
+  created_at bigint not null
+);
+alter table login_codes enable row level security;
+`,
+  },
 ];

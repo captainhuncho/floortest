@@ -3,6 +3,7 @@
 import { switchOn } from "@/lib/switches";
 import { handleHeld } from "@/lib/accounts";
 import { BOT_MESSAGE, passedTurnstile } from "@/lib/turnstile";
+import crypto from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { audit } from "@/lib/audit";
@@ -29,7 +30,7 @@ async function landing(fallback: string) {
 }
 
 /** Password (or reset link) checked out. Accounts with two-factor get a code step first. */
-async function afterPassword(userId: number, how: "password" | "reset") {
+async function afterPassword(userId: number, how: "password" | "reset" | "email code") {
   const twoFactor = await q.get("SELECT 1 FROM users WHERE id = ? AND totp_enabled_at IS NOT NULL", userId);
   if (twoFactor) {
     (await cookies()).set(CHALLENGE, signChallenge(userId, env.secret), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 300 });
@@ -175,6 +176,67 @@ export async function resetPassword(token: string, _: FormState, form: FormData)
   if (!userId) return { error: "This reset link has expired or was already used. Request a new one." };
   await audit(userId, "password_reset");
   await afterPassword(userId, "reset");
+  return undefined;
+}
+
+const CODE_EMAIL = "floortest_code_email";
+const CODE_MS = 10 * 60_000;
+const CODE_TRIES = 5;
+// Keyed with the app secret, so a leaked table can't be brute-forced back into codes.
+const codeHash = (userId: number, code: string) => crypto.createHmac("sha256", env.secret).update(`${userId}:${code}`).digest("hex");
+
+/** Emails a 6-digit sign-in code. Always moves on to the code page, so it can't reveal which emails have accounts. */
+export async function requestLoginCode(_: FormState, form: FormData): Promise<FormState> {
+  const email = String(form.get("email") || "").trim().toLowerCase().slice(0, 200);
+  if (!EMAIL.test(email)) return { error: "Enter the email you signed up with." };
+  const ip = await requestIp();
+  if (!(await allow("login_code_ip", ip, 10, HOUR)) || !(await allow("login_code_email", email, 5, HOUR)))
+    return { error: "Too many codes requested. Try again in an hour, or log in with your password." };
+  const user = await q.get<{ id: number; name: string; suspended_at: number | null }>("SELECT id, name, suspended_at FROM users WHERE email = ?", email);
+  if (user && !user.suspended_at) {
+    const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
+    await q.run(
+      `INSERT INTO login_codes (user_id, code_hash, attempts, expires_at, created_at) VALUES (?,?,0,?,?)
+       ON CONFLICT (user_id) DO UPDATE SET code_hash = excluded.code_hash, attempts = 0, expires_at = excluded.expires_at, created_at = excluded.created_at`,
+      user.id,
+      codeHash(user.id, code),
+      now() + CODE_MS,
+      now(),
+    );
+    await sendMail({
+      userId: user.id,
+      audience: "receiver",
+      to: email,
+      subject: `${code} is your FloorTest sign-in code`,
+      body: `Hi ${user.name.split(/\s+/)[0]},\n\nYour sign-in code is:\n\n${code}\n\nIt works once, for 10 minutes. If you didn't try to sign in, ignore this email. Nobody can get in without the code.\n\n— FloorTest`,
+    });
+  }
+  (await cookies()).set(CODE_EMAIL, email, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: CODE_MS / 1000 });
+  redirect("/login/code/enter");
+}
+
+/** Checks the emailed code. Five wrong tries uses it up. Two-factor accounts still get the authenticator step. */
+export async function verifyLoginCode(_: FormState, form: FormData): Promise<FormState> {
+  const jar = await cookies();
+  const email = jar.get(CODE_EMAIL)?.value ?? "";
+  if (!email) return { error: "That took too long. Ask for a new code." };
+  const code = String(form.get("code") || "").replace(/\D/g, "").slice(0, 6);
+  const user = await q.get<{ id: number; suspended_at: number | null; email_verified_at: number | null }>("SELECT id, suspended_at, email_verified_at FROM users WHERE email = ?", email);
+  const row = user && (await q.get<{ code_hash: string; attempts: number }>("SELECT code_hash, attempts FROM login_codes WHERE user_id = ? AND expires_at > ?", user.id, now()));
+  if (!user || !row || row.attempts >= CODE_TRIES) return { error: "That code has expired. Ask for a new one." };
+  const ok = code.length === 6 && crypto.timingSafeEqual(Buffer.from(codeHash(user.id, code)), Buffer.from(row.code_hash));
+  if (!ok) {
+    await q.run("UPDATE login_codes SET attempts = attempts + 1 WHERE user_id = ?", user.id);
+    return { error: row.attempts + 1 >= CODE_TRIES ? "Too many wrong codes. Ask for a new one." : "That code didn't work. Check the latest email and try again." };
+  }
+  // Used once: deleting it is what makes the code single-use.
+  const used = await q.run("DELETE FROM login_codes WHERE user_id = ? AND code_hash = ?", user.id, row.code_hash);
+  if (!used.changes) return { error: "That code was already used. Ask for a new one." };
+  if (user.suspended_at) return { error: "This account is suspended. To appeal, go to the Contact page and choose Suspension appeal." };
+  jar.delete(CODE_EMAIL);
+  // Receiving the code proves the address is theirs.
+  if (!user.email_verified_at) await q.run("UPDATE users SET email_verified_at = ? WHERE id = ?", now(), user.id);
+  await afterPassword(user.id, "email code");
   return undefined;
 }
 
