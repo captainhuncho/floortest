@@ -74,6 +74,7 @@ export function NotificationsForm({ prefs, pending }: { prefs: Prefs; pending: n
         )}
       </fieldset>
 
+      <div>
       <fieldset disabled={mode !== "instant"} className="disabled:opacity-50">
         <legend className="font-semibold">Quiet hours</legend>
         <label className="mt-3 flex items-center gap-3">
@@ -87,8 +88,9 @@ export function NotificationsForm({ prefs, pending }: { prefs: Prefs; pending: n
             <p className="pb-3 text-sm text-mute">Anything that arrives is sent as one email when quiet hours end.</p>
           </div>
         )}
-        {mode !== "instant" && <p className="mt-2 text-sm text-mute">Only applies to “Every new track”.</p>}
       </fieldset>
+      {mode !== "instant" && <p className="mt-2 text-sm text-mute">Quiet hours only apply to “Every new track”.</p>}
+      </div>
 
       <fieldset>
         <legend className="font-semibold">Alerts</legend>

@@ -45,7 +45,7 @@ export function PauseSwitch({ pause, compact = false }: { pause: PauseState; com
   };
 
   return (
-    <div className={compact ? "rounded-xl border border-line bg-ink-3 p-3" : "rounded-lg border border-line bg-ink p-3"}>
+    <div className={compact ? "rounded-xl border border-line bg-ink-3 p-3" : "py-1"}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className={compact ? "text-[11px] font-bold" : "text-sm font-medium"}>{paused ? "Paused" : "Taking submissions"}</p>

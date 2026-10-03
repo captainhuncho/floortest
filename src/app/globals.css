@@ -13,7 +13,7 @@
   --color-bone: #f1f1eb;
   --color-mute: #a3a69b; /* ≈7:1 on ink, ≈6.5:1 on panels */
   --color-dim: #85887f; /* ≥4.5:1 on ink */
-  --color-faint: #80837a; /* labels and meta only; ≥4.5:1 on ink */
+  --color-faint: #8a8d84; /* labels and meta only; ≥4.5:1 on ink */
   --color-lime: #d5ff48;
   --color-olive: #536400;
   --color-danger: #ff6b5a;
@@ -81,10 +81,10 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
 
 /* Dashboard: the older shared pieces (label, button, input, chip) in the Figma mono style,
    so pages that use them match the redesigned ones. Scoped to the dashboard's <main>. */
-#main .label { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; color: var(--color-faint); }
+#main .label { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; color: var(--color-faint); }
 #main .btn { font-size: 12px; font-weight: 700; }
 #main .input { font-size: 12px; background: var(--color-ink-3); }
-#main .chip { font-size: 10px; font-weight: 700; }
+#main .chip { font-size: 11px; font-weight: 700; }
 #main .card { background: var(--color-ink-3); }
 #main .btn-sm { font-size: 11px !important; }
 
@@ -146,7 +146,7 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
 .theme-root .keep-night {
   --color-ink: #10110f; --color-ink-2: #171815; --color-ink-3: #1e1f1b; --color-ink-4: #2a2e24;
   --color-line: #2c2e29; --color-line-2: #3a3d37;
-  --color-bone: #f1f1eb; --color-mute: #a3a69b; --color-dim: #85887f; --color-faint: #80837a;
+  --color-bone: #f1f1eb; --color-mute: #a3a69b; --color-dim: #85887f; --color-faint: #8a8d84;
   --color-lime: #d5ff48; --color-olive: #536400; --color-danger: #ff6b5a;
   color-scheme: dark;
 }

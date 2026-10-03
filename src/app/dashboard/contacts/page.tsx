@@ -93,7 +93,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
       .slice(0, 2)
       .map((w) => w[0]!.toUpperCase())
       .join("");
-  const hue = (id: number) => ({ background: `hsl(${(id * 67) % 360} 45% 35%)` });
+  const hue = (id: number) => ({ background: `hsl(${(id * 67) % 360} 45% 30%)` });
   const short = (ts: number) => new Date(ts).toLocaleDateString("en-GB", { day: "numeric", month: "short" }).toUpperCase();
   const WEEK = 7 * 24 * 60 * 60 * 1000;
 
@@ -141,7 +141,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
               [totals.engaged, "Engaged"],
             ].map(([v, k]) => (
               <div key={k} className="flex flex-col-reverse gap-1 rounded-[10px] border border-line bg-ink-2 p-3">
-                <dt className="text-[11px] font-bold uppercase tracking-[1px] text-faint">{k}</dt>
+                <dt className="text-[11px] font-bold text-faint">{k}</dt>
                 <dd className="text-[24px] font-extrabold">{v}</dd>
               </div>
             ))}
@@ -280,8 +280,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
     <div className="hidden max-w-6xl flex-col gap-5 px-8 py-6 text-bone md:flex">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[1px] text-faint">Relationships</p>
-          <h1 className="mt-1 text-[28px] font-bold">Messages and people, together</h1>
+          <h1 className="text-[28px] font-bold">Messages and people, together</h1>
         </div>
         <nav aria-label="Contacts view" className="flex rounded-full border border-line bg-ink-3 p-0.5">
           {(
@@ -312,7 +311,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
               [totals.engaged, "Engaged relationships"],
             ].map(([v, k]) => (
               <div key={k} className="flex flex-col-reverse gap-3 rounded-xl border border-line bg-ink-3 p-4">
-                <dt className="text-[11px] font-bold uppercase tracking-[1px] text-faint">{k}</dt>
+                <dt className="text-[11px] font-bold text-faint">{k}</dt>
                 <dd className="text-[28px] font-extrabold leading-none">{v}</dd>
               </div>
             ))}
