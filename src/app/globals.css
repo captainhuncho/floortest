@@ -26,6 +26,8 @@ html, body { background: var(--color-ink); color: var(--color-bone); }
 body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
 /* Visible focus everywhere, for keyboard users only. */
 :focus-visible { outline: 2px solid var(--color-lime); outline-offset: 2px; border-radius: 4px; }
+/* Inputs styled without their own outline (inside a pill or search box): ring the box instead. */
+:is(label, div, form):has(> input.outline-none:focus-visible, > textarea.outline-none:focus-visible) { outline: 2px solid var(--color-lime); outline-offset: 2px; }
 /* Grid items default to min-width:auto, so one long unbroken line (a link, a filename) can stretch a
    column past the screen and make phones zoom out. Let columns shrink; text truncates or wraps instead. */
 @layer base {

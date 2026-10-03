@@ -1,5 +1,6 @@
 "use client";
 
+import { useFocusTrap } from "@/components/useFocusTrap";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -25,6 +26,8 @@ export function QrRow({ handle, link }: { handle: string; link: string }) {
 
 function QrDialog({ handle, link, onClose }: { handle: string; link: string; onClose: () => void }) {
   const close = useRef<HTMLButtonElement>(null);
+  const box = useRef<HTMLDivElement>(null);
+  useFocusTrap(box);
   useEffect(() => {
     close.current?.focus();
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -35,6 +38,8 @@ function QrDialog({ handle, link, onClose }: { handle: string; link: string; onC
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4 backdrop-blur-[2px]" onClick={onClose}>
       <div
+        ref={box}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby="qr-h"

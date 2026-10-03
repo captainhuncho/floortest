@@ -1,5 +1,6 @@
 "use client";
 
+import { useFocusTrap } from "@/components/useFocusTrap";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
@@ -181,15 +182,24 @@ function Notifications({ items, unread, onNavigate, sheet = false }: { items: No
     </>
   );
   if (!sheet) return <Panel>{body}</Panel>;
+  return <NotificationsSheet onNavigate={onNavigate}>{body}</NotificationsSheet>;
+}
+
+function NotificationsSheet({ onNavigate, children }: { onNavigate: () => void; children: React.ReactNode }) {
+  const box = useRef<HTMLDivElement>(null);
+  useFocusTrap(box);
   return (
     <div data-sheet className="fixed inset-0 z-[60] flex items-start justify-center bg-black/60 px-3 pt-20 backdrop-blur-[2px]" onClick={onNavigate}>
       <div
+        ref={box}
+        tabIndex={-1}
         role="dialog"
+        aria-modal="true"
         aria-label="Notifications"
         onClick={(e) => e.stopPropagation()}
         className="max-h-[calc(100dvh-7rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-line bg-ink-2 text-bone shadow-2xl shadow-black/70"
       >
-        {body}
+        {children}
       </div>
     </div>
   );
@@ -201,7 +211,9 @@ function SearchDialog({ onClose }: { onClose: () => void }) {
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [active, setActive] = useState(0);
   const input = useRef<HTMLInputElement>(null);
+  const box = useRef<HTMLDivElement>(null);
   useEffect(() => input.current?.focus(), []);
+  useFocusTrap(box);
 
   useEffect(() => {
     const t = setTimeout(async () => {
@@ -229,6 +241,7 @@ function SearchDialog({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-[60] flex items-start justify-center bg-black/60 px-4 pt-[12vh]" onMouseDown={onClose}>
       <div
+        ref={box}
         role="dialog"
         aria-modal="true"
         aria-label="Search"

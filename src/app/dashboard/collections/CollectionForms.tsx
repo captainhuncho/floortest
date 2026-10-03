@@ -1,7 +1,8 @@
 "use client";
 
+import { useFocusTrap } from "@/components/useFocusTrap";
 import Link from "next/link";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, useRef } from "react";
 import { createCollection, deleteCollection, setActiveCollection, updateCollection } from "../actions";
 import { ExportButton } from "../ExportButton";
 import { GenresField } from "./GenresField";
@@ -263,6 +264,8 @@ export function CollectionTile({ c, receiving, closed, canDelete }: { c: C; rece
 
 /** Options over the whole screen; tapping anywhere outside the card closes it. */
 function OptionsSheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  const box = useRef<HTMLDivElement>(null);
+  useFocusTrap(box);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
@@ -271,6 +274,8 @@ function OptionsSheet({ title, onClose, children }: { title: string; onClose: ()
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 pb-8 backdrop-blur-[2px] sm:items-center" onClick={onClose}>
       <div
+        ref={box}
+        tabIndex={-1}
         role="menu"
         aria-label={title}
         onClick={(e) => e.stopPropagation()}
@@ -364,6 +369,8 @@ export function CollectionDetailHeader({ c, receiving, closed, canDelete }: { c:
 /** Desktop "Edit Collection": the edit form in a pop-up over the page. Tap outside or ✕ to close. */
 export function EditCollectionInfo({ c, receiving, closed, canDelete }: { c: C; receiving: boolean; closed: boolean; canDelete: boolean }) {
   const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  useFocusTrap(box, open);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
@@ -377,7 +384,7 @@ export function EditCollectionInfo({ c, receiving, closed, canDelete }: { c: C; 
       </button>
       {open && (
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 pt-20 backdrop-blur-[2px]" onClick={() => setOpen(false)}>
-          <div role="dialog" aria-label={`Edit ${c.name}`} onClick={(e) => e.stopPropagation()} className="relative w-full max-w-xl">
+          <div ref={box} tabIndex={-1} role="dialog" aria-modal="true" aria-label={`Edit ${c.name}`} onClick={(e) => e.stopPropagation()} className="relative w-full max-w-xl">
             <button onClick={() => setOpen(false)} aria-label="Close" className="absolute right-3 top-3 z-10 grid size-8 place-items-center rounded-full text-lg text-mute hover:bg-ink-3 hover:text-bone">
               ✕
             </button>
