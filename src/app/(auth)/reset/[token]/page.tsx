@@ -24,7 +24,7 @@ export default async function ResetPage({ params }: { params: Promise<{ token: s
         action={resetPassword.bind(null, token)}
         submit="Save and log in"
         fields={[
-          { name: "password", label: "New password", type: "password", placeholder: "8+ characters", autoComplete: "new-password", minLength: 8 },
+          { name: "password", label: "New password", type: "password", placeholder: "8+ characters", autoComplete: "new-password", minLength: 8, strength: true },
           { name: "confirm", label: "Confirm it", type: "password", autoComplete: "new-password", minLength: 8 },
         ]}
       />

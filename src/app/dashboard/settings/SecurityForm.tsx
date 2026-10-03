@@ -4,8 +4,10 @@ import { useState, useTransition } from "react";
 import { useToast } from "@/components/Toast";
 import { useActionForm } from "@/components/useActionForm";
 import { changePassword, signOutOtherDevices } from "../actions";
+import { PasswordStrength } from "@/components/PasswordStrength";
 
-export function SecurityForm({ otherSessions }: { otherSessions: number }) {
+export function SecurityForm({ otherSessions, context = [] }: { otherSessions: number; context?: string[] }) {
+  const [pw, setPw] = useState("");
   const [state, onSubmit, pending] = useActionForm(changePassword, undefined);
   const [others, setOthers] = useState(otherSessions);
   const [signingOut, start] = useTransition();
@@ -25,7 +27,8 @@ export function SecurityForm({ otherSessions }: { otherSessions: number }) {
         </label>
         <label className="block space-y-1.5">
           <span className="label">New password</span>
-          <input className="input" type="password" name="password" required minLength={8} autoComplete="new-password" />
+          <input className="input" type="password" name="password" required minLength={8} autoComplete="new-password" onChange={(e) => setPw(e.target.value)} />
+          <PasswordStrength value={pw} context={context} />
         </label>
         <label className="block space-y-1.5">
           <span className="label">Repeat new password</span>

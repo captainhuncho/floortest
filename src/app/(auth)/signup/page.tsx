@@ -50,7 +50,7 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
           { name: "name", label: "Your name or alias", placeholder: "Maxwell", autoComplete: "name" },
           { name: "handle", label: "Your link", prefix: `${host}/`, placeholder: "yourname", autoComplete: "username", defaultValue: (sp.handle || "").toLowerCase().replace(/[^a-z0-9-_]/g, "").slice(0, 30) || undefined },
           { name: "email", label: "Email", type: "email", placeholder: "you@example.com", autoComplete: "email", defaultValue: personal?.email ?? undefined },
-          { name: "password", label: "Password", type: "password", placeholder: "8+ characters", autoComplete: "new-password", minLength: 8 },
+          { name: "password", label: "Password", type: "password", placeholder: "8+ characters", autoComplete: "new-password", minLength: 8, strength: true },
         ]}
         footer={{ text: "Already receiving?", href: "/login", link: "Log in" }}
       />

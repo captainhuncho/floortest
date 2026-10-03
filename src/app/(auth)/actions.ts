@@ -1,5 +1,7 @@
 "use server";
 
+import { passwordStrength } from "@/lib/password-strength";
+
 import { switchOn } from "@/lib/switches";
 import { handleHeld } from "@/lib/accounts";
 import { BOT_MESSAGE, passedTurnstile } from "@/lib/turnstile";
@@ -86,7 +88,8 @@ export async function signup(_: FormState, form: FormData): Promise<FormState> {
   if (!/^[a-z0-9][a-z0-9-_]{1,29}$/.test(handle)) return { error: "Link names use 2–30 letters, numbers, - or _." };
   if (RESERVED_HANDLES.has(handle)) return { error: "That link name is reserved." };
   if (await isProtectedHandle(handle)) return { error: "That name is protected for a well-known artist. If it's you, contact us and we'll set it up." };
-  if (password.length < 8 || password.length > 200) return { error: "Password must be at least 8 characters." };
+  const strength = passwordStrength(password, [name, email, handle]);
+  if (!strength.ok) return { error: strength.tip ?? "Choose a stronger password." };
   if (!(await allow("signup_ip", await requestIp(), 10, HOUR))) return { error: "Too many sign-ups from this connection. Try again later." };
 
   if (await q.get("SELECT 1 FROM users WHERE email = ?", email)) return { error: "An account with that email exists. Log in instead." };
@@ -171,7 +174,8 @@ export async function requestPasswordReset(_: FormState, form: FormData): Promis
 
 export async function resetPassword(token: string, _: FormState, form: FormData): Promise<FormState> {
   const password = String(form.get("password") || "");
-  if (password.length < 8 || password.length > 200) return { error: "Password must be at least 8 characters." };
+  const strength = passwordStrength(password);
+  if (!strength.ok) return { error: strength.tip ?? "Choose a stronger password." };
   if (password !== String(form.get("confirm") || "")) return { error: "The two passwords don't match." };
   const userId = await consumePasswordReset(token, password);
   if (!userId) return { error: "This reset link has expired or was already used. Request a new one." };

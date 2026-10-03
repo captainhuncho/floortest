@@ -6,6 +6,7 @@ import { useActionForm } from "@/components/useActionForm";
 import Link from "next/link";
 import {useEffect, useState} from "react";
 import type { FormState } from "./actions";
+import { PasswordStrength } from "@/components/PasswordStrength";
 
 type Field = {
   name: string;
@@ -17,6 +18,8 @@ type Field = {
   defaultValue?: string;
   minLength?: number;
   hint?: React.ReactNode;
+  /** New-password field: show the live strength meter. */
+  strength?: boolean;
 };
 
 export function AuthForm({
@@ -43,13 +46,22 @@ export function AuthForm({
 }) {
   const [state, onSubmit, pending] = useActionForm(action, undefined);
   const [tz, setTz] = useState("UTC");
+  const [values, setValues] = useState<Record<string, string>>({});
   // The browser's timezone, so digests and dates default to local time.
   useEffect(() => setTz(Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"), []);
 
   if (state?.ok && success) return <div role="status">{success}</div>;
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4" noValidate={false}>
+    <form
+      onSubmit={onSubmit}
+      onInput={(e) => {
+        const el = e.target as HTMLInputElement;
+        if (el.name) setValues((v) => ({ ...v, [el.name]: el.value }));
+      }}
+      className="space-y-4"
+      noValidate={false}
+    >
       <input type="hidden" name="tz" value={tz} />
       {Object.entries(hidden ?? {}).map(([k, v]) => (
         <input key={k} type="hidden" name={k} value={v} />
@@ -86,6 +98,7 @@ export function AuthForm({
               autoComplete={f.autoComplete}
             />
           )}
+          {f.strength && <PasswordStrength value={values[f.name] ?? ""} context={["name", "email", "handle"].map((k) => values[k] ?? "")} />}
           {f.hint && <div className="text-sm text-mute">{f.hint}</div>}
         </div>
       ))}

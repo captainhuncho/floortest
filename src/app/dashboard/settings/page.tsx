@@ -156,7 +156,7 @@ export default async function Settings() {
         </h2>
         <p className="mt-1 text-sm text-mute">Changing your password signs out every other device and emails you a notice.</p>
         <div className="mt-5">
-          <SecurityForm otherSessions={otherSessions} />
+          <SecurityForm otherSessions={otherSessions} context={[user.name, user.email, user.handle]} />
         </div>
         <div className="mt-6 border-t border-line pt-6">
           <TwoFactor enabled={!!user.totp_enabled_at} alerts={!!user.signin_alerts} />
