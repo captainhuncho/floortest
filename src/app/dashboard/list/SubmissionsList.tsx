@@ -25,7 +25,7 @@ const STATUS = [
   ["passed", "Not for me", "t.decision = 'passed'"],
 ] as const;
 
-const TYPE_SHORT: Record<string, string> = { unsigned: "Demo", signed: "Signed", released: "Released" };
+const TYPE_SHORT: Record<string, string> = { unsigned: "Unreleased", signed: "Signed", released: "Released" };
 const MIX_SHORT: Record<string, string> = { raw: "Work in progress", mixed: "Unmastered", mastered: "Mastered" };
 
 /** Dense, scan-first Submissions: every track on one screen, decisions inline. */
@@ -78,7 +78,7 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
     senderVerified: !!t.sender_verified,
     meta: [
       t.sender_name !== t.artist ? `via ${t.sender_name}` : null,
-      TYPE_SHORT[t.release_status] ?? "Demo",
+      TYPE_SHORT[t.release_status] ?? "Unreleased",
       t.genre || null,
       MIX_SHORT[t.mix_status],
       t.bpm ? `${Math.round(t.bpm)} BPM` : null,

@@ -293,7 +293,7 @@ export function SubmitForm({
       <input type="hidden" name="genre" value={genre} />
 
       <fieldset>
-        <legend className={L.label}>Demo status</legend>
+        <legend className={L.label}>Mix status</legend>
         <div className={`mt-2 flex gap-2 ${m ? "flex-col" : "flex-wrap"}`}>
           {Object.entries(MIX_STATUS).map(([k, v]) => (
             <button
@@ -340,7 +340,7 @@ export function SubmitForm({
             <span className={L.label}>Release status</span>
             <select name="release_status" className={L.input} defaultValue="">
               <option value="">Not specified</option>
-              <option value="unsigned">Unreleased demo</option>
+              <option value="unsigned">Unreleased</option>
               <option value="signed">Signed, forthcoming</option>
               <option value="released">Already released</option>
             </select>

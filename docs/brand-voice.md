@@ -38,7 +38,7 @@ The biggest current problem is that the same thing has several names. Pick one a
 | --- | --- | --- |
 | **your link** / **receiving link** (first mention) | receiver link, submission link, permanent receiver link, demo submission link | "Permanent" is a benefit to state, not part of the name: *"Your link never changes."* |
 | **desk** | receiving room, workspace, inbox | The receiver's side of FloorTest. "Open your desk." |
-| **track** | song, submission (in user-facing copy), demo (as a noun for every file) | Plans currently say "active songs". Change to "active tracks". "Demo" is fine when talking about unreleased demos specifically. |
+| **track** | song, submission (in user-facing copy), demo (as a noun for every file) | Plans currently say "active songs". Change to "active tracks". Say "track", not "demo": promos and released music arrive too. "Demo" only for a specific unfinished track. Tagline stays "for unreleased music" (decided 2026-10-03). |
 | **callout** / **collection** | folder, project, campaign | A callout is the ask ("send me Afro house for Villagers"). A collection is where those tracks land. |
 | **receiver** / **sender** | curator/artist as role names, user, submitter | In marketing, prefer the real people: "DJs, curators and labels" / "artists and producers". |
 | **Keep** / **Not for me** | pass, reject, decline, no | Always capitalised as buttons, lowercase in running text: "tracks you keep". |
@@ -63,7 +63,7 @@ The biggest current problem is that the same thing has several names. Pick one a
 | --- | --- |
 | The file went to the booth | The original was downloaded |
 | Your music network | (cut: we don't have a network feature) |
-| Make every private track easier to receive | Every demo in one place. Ready to play. |
+| Make every private track easier to receive | Every track in one place. Ready to play. |
 | Receiving should be easy. | Free for your first 20 tracks. |
 | Create receiver | Create my link |
 | DJ / curator name | Your name or alias |

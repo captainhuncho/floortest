@@ -225,7 +225,7 @@ async function mailInvite(code: string, email: string, inviter: string, note: st
     body: [
       "Hi,",
       "",
-      `${inviter} invited you to the FloorTest beta: one permanent link that receives demos, a queue to review them fast, and receipts that tell senders what happened.`,
+      `${inviter} invited you to the FloorTest beta: one permanent link that receives every track, a queue to review them fast, and receipts that tell senders what happened.`,
       note ? `\n"${note}"\n` : "",
       `Claim your link: ${link}`,
       "",

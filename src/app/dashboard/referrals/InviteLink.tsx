@@ -14,7 +14,7 @@ export function InviteLink({ link, code }: { link: string; code: string }) {
           onClick={async () => {
             if (navigator.share) {
               try {
-                await navigator.share({ title: "FloorTest invite", text: "I use FloorTest for demos: one link, every track in one place, and senders get told when you've listened. Here's an invite:", url: link });
+                await navigator.share({ title: "FloorTest invite", text: "I use FloorTest for new music: one link, every track in one place, and senders get told when you've listened. Here's an invite:", url: link });
                 return;
               } catch {}
             }

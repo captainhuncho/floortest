@@ -123,7 +123,7 @@ export default async function Home({
                 </span>
               </h1>
               <p className="mt-8 max-w-2xl text-[15px] leading-relaxed text-mute">
-                One permanent link for every demo you&apos;re sent. Hear what&apos;s
+                One permanent link for every track you&apos;re sent. Hear what&apos;s
                 new in seconds, keep what's right for your set, and answer every
                 sender without a single DM.
               </p>
@@ -138,7 +138,7 @@ export default async function Home({
                   href={DEMO}
                   className="text-sm text-bone hover:text-bone"
                 >
-                  See a demo link <span className="text-dim">(example: /maxwell)</span> →
+                  See an example link <span className="text-dim">(example: /maxwell)</span> →
                 </Link>
               </div>
               {!user && (
@@ -313,10 +313,10 @@ export default async function Home({
               For DJs, curators and labels
             </p>
             <p className="mt-8 text-[clamp(2rem,4vw,3.25rem)] font-bold leading-[0.95] tracking-[-0.035em]">
-              Every demo in one place.
+              Every track in one place.
             </p>
             <p className="mt-5 text-sm leading-relaxed text-mute">
-              Every demo in one queue, sorted by callout, ready to play. No more
+              Every track in one queue, sorted by callout, ready to play. No more
               digging through DMs, inboxes and expired links before a gig.
             </p>
             <Link
@@ -488,7 +488,7 @@ export default async function Home({
             Your link. Your collections. Your call.
           </p>
           <h2 className="mx-auto max-w-4xl text-[clamp(2.5rem,7vw,5.5rem)] font-bold leading-[0.92] tracking-[-0.045em]">
-            Every demo in one place. Ready to play.
+            Every track in one place. Ready to play.
           </h2>
           <Link
             href={cta.href}

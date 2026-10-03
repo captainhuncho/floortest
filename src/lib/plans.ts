@@ -57,7 +57,7 @@ export const RATE_PER_IP_PER_HOUR = 10;
 export const RATE_PER_EMAIL_PER_DAY = 5;
 
 /** Sender-declared context. Labels are shared by both public page styles and the review panel. */
-export const RELEASE_STATUS = { unsigned: "Unreleased demo", signed: "Signed, forthcoming", released: "Already released" } as const;
+export const RELEASE_STATUS = { unsigned: "Unreleased", signed: "Signed, forthcoming", released: "Already released" } as const;
 export const MIX_STATUS = { raw: "Raw / work in progress", mixed: "Mixed, not mastered", mastered: "Fully mixed & mastered" } as const;
 
 /** Offered to senders when a collection hasn't set its own genre list. */

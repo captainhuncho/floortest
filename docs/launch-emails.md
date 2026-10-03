@@ -54,7 +54,7 @@ All drafts follow [brand-voice.md](brand-voice.md). Replace {braces}. Nothing he
 ## 4. Social posts
 
 **Launch (Instagram / X / Threads):**
-> Every demo in one place. Ready to play.
+> Every track in one place. Ready to play.
 > FloorTest is a receiving desk for unreleased music. One link, original files, and artists hear when you've listened.
 > Private beta now. Invite codes for DJs running callouts: link in bio.
 
