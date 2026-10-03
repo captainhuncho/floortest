@@ -20,6 +20,7 @@ import { DetailPlayer } from "./DetailPlayer";
 import { DesktopOnly, MobileOnly } from "./DesktopOnly";
 import { MobileTransport } from "./MobileTransport";
 import { History } from "./History";
+import { votesFor } from "@/lib/team";
 
 export async function ReviewPanel({
   track: t,
@@ -44,6 +45,7 @@ export async function ReviewPanel({
     t.share_ok = fresh?.s ?? 0;
     t.share_download = fresh?.d ?? 0;
   }
+  const votes = await votesFor(t.id);
   const shareable = await canShare(t);
   const share = shareable ? await activeShare(t.id) : undefined;
   const audience = shareable ? await shareAudience(t.id) : [];
@@ -151,6 +153,22 @@ export async function ReviewPanel({
             <PrepBox track={player} energy={t.energy} cues={parseCues(t.cues, t.duration)} />
           </div>
         </>
+      )}
+
+      {votes.length > 0 && (
+        <section aria-labelledby="votes-h" className="mt-4 rounded-xl border border-line bg-ink-3 p-3.5">
+          <h2 id="votes-h" className="text-[11px] font-bold uppercase text-faint">
+            Team votes · {votes.filter((v) => v.vote === "keep").length} keep, {votes.filter((v) => v.vote === "pass").length} pass
+          </h2>
+          <ul className="mt-2 space-y-1 text-[12px] text-mute">
+            {votes.map((v) => (
+              <li key={v.user_id}>
+                <span className="font-bold text-bone">{v.name}</span>: {v.vote}
+                {v.note && <> · &ldquo;{v.note}&rdquo;</>}
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {shareable && (

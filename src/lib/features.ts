@@ -7,6 +7,7 @@ import { STEMS_PLANS } from "./plans";
 export const FEATURES = {
   stems: { label: "Stems", description: "Receivers ask senders for stems; senders upload them to the track.", defaultPlans: STEMS_PLANS as readonly string[] },
   folders: { label: "Send folders", description: "Senders on this plan can send a whole folder of tracks (up to 250 MB in total) in one go.", defaultPlans: [] as readonly string[] },
+  shared: { label: "Shared collections", description: "Receivers on this plan can add teammates to a collection; teammates listen and vote keep or pass.", defaultPlans: ["team"] as readonly string[] },
 } as const;
 export type Feature = keyof typeof FEATURES;
 

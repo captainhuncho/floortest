@@ -31,6 +31,8 @@ export const AUDIT_LABELS = {
   blocked: "Blocked",
   unblocked: "Unblocked",
   collection_created: "Created collection",
+  teammate_added: "Added a teammate to a collection",
+  teammate_removed: "Removed a teammate from a collection",
   collection_activated: "Now routing to",
   collection_updated: "Edited collection",
   collection_deleted: "Deleted collection",

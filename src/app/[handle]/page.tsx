@@ -1,4 +1,5 @@
 import { CuePoint } from "@/components/CuePoint";
+import { listeners } from "@/lib/team";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { forwardedHandle } from "@/lib/accounts";
@@ -39,6 +40,7 @@ export default async function ReceiverPage({ params }: Props) {
   }
   const collection = await activeCollection(receiver);
   const sharing = await switchOn("sharing");
+  const team = await listeners(collection);
   const closed = isClosed(collection);
   const { full } = await capacity(receiver);
   const genres = genresFor(collection).list;
@@ -58,7 +60,7 @@ export default async function ReceiverPage({ params }: Props) {
   const showBrief = !closedReason && genres.length > 0;
   const bullets = [
     "WAV or MP3, up to 250 MB. No account needed.",
-    `Only ${receiver.name} can hear or download your file.`,
+    team.length ? `Only ${receiver.name} can download your file. Their team can listen and suggest, nothing more.` : `Only ${receiver.name} can hear or download your file.`,
     `Files that aren't kept are deleted within ${RETAIN_UNREVIEWED_DAYS} days.`,
     "You'll get a private receipt and an email when it's listened to, downloaded or replied to.",
   ];
@@ -81,6 +83,11 @@ export default async function ReceiverPage({ params }: Props) {
             </p>
           )}
         </div>
+        {team.length > 0 && !closedReason && (
+          <p className="text-[12px] text-mute">
+            Tracks sent here are also heard by {receiver.name}&apos;s team: <span className="text-bone">{team.map((m) => m.name).join(", ")}</span>.
+          </p>
+        )}
         {showBrief && (
           <section aria-label="What they're looking for" className="group-has-[[data-picked]]/page:hidden flex flex-col gap-2 rounded-xl border border-line bg-ink-2 p-3">
             <p className="text-[11px] font-bold uppercase tracking-[0.5px] text-mute">What I&apos;m looking for</p>

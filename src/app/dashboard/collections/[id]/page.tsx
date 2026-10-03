@@ -9,6 +9,9 @@ import { genresFor, MIX_STATUS } from "@/lib/plans";
 import { ExportButton } from "../../ExportButton";
 import { ListRows, type ListRow } from "../../list/ListRows";
 import { CollectionDetailHeader, EditCollectionInfo } from "../CollectionForms";
+import { Teammates } from "../Teammates";
+import { featureOn } from "@/lib/features";
+import { MAX_MEMBERS, members, voteTally } from "@/lib/team";
 
 export const metadata = { title: "Collection — FloorTest" };
 
@@ -21,6 +24,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
   if (!c) notFound();
   const receiving = c.id === user.active_collection_id;
   const genres = genresFor(c);
+  const team = (await featureOn("shared", user)) ? await members(c.id) : null;
 
   const tracks = await q.all<Track & { sender_name: string; sender_email: string; sender_verified: number | null }>(
     `SELECT t.*, s.name AS sender_name, s.email AS sender_email, s.verified_at AS sender_verified
@@ -29,6 +33,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
     user.id,
     c.id,
   );
+  const tally = await voteTally(tracks.map((t) => t.id));
   const cards: ListRow[] = tracks.map((t) => ({
     id: t.id,
     title: t.title,
@@ -37,7 +42,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
     senderId: t.sender_id,
     senderEmail: t.sender_email,
     senderVerified: !!t.sender_verified,
-    meta: [t.genre || null, t.bpm ? `${Math.round(t.bpm)} BPM` : null].filter(Boolean) as string[],
+    meta: [t.genre || null, t.bpm ? `${Math.round(t.bpm)} BPM` : null, tally.get(t.id)].filter(Boolean) as string[],
     mixLabel: MIX_STATUS[t.mix_status as keyof typeof MIX_STATUS] ?? null,
     duplicateOf: t.duplicate_of,
     message: t.message,
@@ -167,6 +172,11 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
 
       {/* One list for every screen size, so keyboard shortcuts and the player are registered once. */}
       <div className="max-w-6xl pb-4 md:px-8">
+        {team && (
+          <div className="mx-4 mb-4 md:mx-0">
+            <Teammates collectionId={c.id} members={team} max={MAX_MEMBERS} />
+          </div>
+        )}
         {cards.length ? (
           <ListRows rows={cards} statusTag />
         ) : (

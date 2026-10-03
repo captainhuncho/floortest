@@ -653,4 +653,27 @@ alter table users add column first_track_nudged_at bigint;
 update users set welcomed_at = created_at, first_track_nudged_at = created_at;
 `,
   },
+{
+    // Shared collections (Team): teammates can listen to a collection's tracks and vote keep or pass with a note. The owner decides.
+    id: "0037_shared_collections",
+    sql: `
+create table collection_members (
+  collection_id bigint not null references collections(id) on delete cascade,
+  user_id bigint not null references users(id) on delete cascade,
+  added_at bigint not null,
+  primary key (collection_id, user_id)
+);
+create index collection_members_user on collection_members(user_id);
+create table track_votes (
+  track_id bigint not null references tracks(id) on delete cascade,
+  user_id bigint not null references users(id) on delete cascade,
+  vote text not null check (vote in ('keep','pass')),
+  note text not null default '',
+  created_at bigint not null,
+  primary key (track_id, user_id)
+);
+alter table collection_members enable row level security;
+alter table track_votes enable row level security;
+`,
+  },
 ];

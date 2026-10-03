@@ -34,6 +34,7 @@ import { cleanGenre, genresFor, PLANS, planOf, RESERVED_HANDLES } from "@/lib/pl
 import { switchOn } from "@/lib/switches";
 import { storage } from "@/lib/storage";
 import { audit, trackLabel } from "@/lib/audit";
+import { addMember, castVote, listeners, memberTrack, removeMember } from "@/lib/team";
 import { requestStems } from "@/lib/stems";
 import { createShare, requestShareConsent, revokeShares } from "@/lib/share";
 import { parseCues } from "@/lib/cues";
@@ -247,11 +248,13 @@ export async function lookupReceiver(raw: string): Promise<ReceiverLookup> {
   // The same brief the receiver's own link shows, so sending from the desk feels like being on their page.
   const g = genresFor(c);
   const wanted = c?.brief_wanted || (g.custom ? g.list.join(" · ") : "");
+  const team = await listeners(c);
   const brief = [
     wanted && { k: "Wanted", v: wanted },
     c?.bpm_min && c?.bpm_max && { k: "Range", v: `${c.bpm_min}–${c.bpm_max} BPM` },
     c?.closes_at && { k: "Deadline", v: `Open until ${fmtDay(c.closes_at, r.tz)}` },
     c?.brief_note && { k: "Note", v: c.brief_note },
+    team.length > 0 && { k: "Team", v: `Also heard by ${team.map((m) => m.name).join(", ")}` },
   ].filter((b): b is { k: string; v: string } => !!b);
   return {
     found: true, handle: r.handle, name: r.name, roleLine: r.role_line, verified: r.identity_status === "verified",
@@ -710,4 +713,44 @@ export async function setTheme(theme: string) {
   if (!["night", "day", "system"].includes(theme)) return;
   (await cookies()).set("ft_theme", theme, { path: "/", maxAge: 365 * 86_400, sameSite: "lax", secure: process.env.NODE_ENV === "production" });
   revalidatePath("/", "layout");
+}
+
+/* ───────────────────────── Shared collections (Team) ───────────────────────── */
+
+export async function addTeammate(collectionId: number, _prev: string | null, form: FormData): Promise<string | null> {
+  const u = await requireUser();
+  const c = await ownCollection(u.id, collectionId);
+  if (!c) return null;
+  const who = String(form.get("who") || "");
+  const err = await addMember(u, c, who);
+  if (err) return err;
+  await audit(u.id, "teammate_added", `${c.name}: ${who.trim()}`);
+  done();
+  return null;
+}
+
+export async function removeTeammate(collectionId: number, userId: number) {
+  const u = await requireUser();
+  const c = await ownCollection(u.id, collectionId);
+  if (!c) return;
+  await removeMember(c.id, userId);
+  await audit(u.id, "teammate_removed", c.name);
+  done();
+}
+
+/** A teammate leaving a collection someone shared with them. */
+export async function leaveShared(collectionId: number) {
+  const u = await requireUser();
+  await removeMember(collectionId, u.id);
+  done();
+  redirect("/dashboard/collections");
+}
+
+export async function voteOnTrack(trackId: number, vote: "keep" | "pass", form: FormData) {
+  const u = await requireUser();
+  if (vote !== "keep" && vote !== "pass") return;
+  const t = await memberTrack(u.id, trackId);
+  if (!t) return;
+  await castVote(u.id, t, vote, String(form.get("note") || ""));
+  done();
 }

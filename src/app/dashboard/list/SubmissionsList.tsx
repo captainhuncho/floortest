@@ -1,3 +1,4 @@
+import { voteTally } from "@/lib/team";
 import Link from "next/link";
 import { collectionsFor } from "@/lib/core";
 import { q, likeContains, type Track, type User } from "@/lib/db";
@@ -68,6 +69,7 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
     return `/dashboard?${p}`;
   };
 
+  const tally = await voteTally(tracks.map((t) => t.id));
   const rows: ListRow[] = tracks.map((t) => ({
     id: t.id,
     title: t.title,
@@ -83,6 +85,7 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
       MIX_SHORT[t.mix_status],
       t.bpm ? `${Math.round(t.bpm)} BPM` : null,
       !collection ? t.collection_name : null,
+      tally.get(t.id),
     ].filter(Boolean) as string[],
     mixLabel: MIX_STATUS[t.mix_status as keyof typeof MIX_STATUS] ?? null,
     duplicateOf: t.duplicate_of,

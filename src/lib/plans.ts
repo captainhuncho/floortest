@@ -1,7 +1,7 @@
 export const PLANS = {
   free: { name: "Free", price: 0, limit: 20, blurb: "Delete a track and the slot returns" },
   pro: { name: "Pro", price: 6.99, limit: 500, blurb: "For active DJs and curators" },
-  team: { name: "Team", price: 12.99, limit: 2000, blurb: "Shared collections and receivers" },
+  team: { name: "Team", price: 12.99, limit: 2000, blurb: "For labels and crews who listen together" },
 } as const;
 
 export type PlanId = keyof typeof PLANS;
@@ -18,7 +18,7 @@ export const stemsEnabled = (plan: string) => (STEMS_PLANS as readonly string[])
 export const PLAN_FEATURES: Record<PlanId, string[]> = {
   free: ["20 active tracks", "Your permanent link and public page", "Review Queue, collections and Rekordbox export", "Receipts and updates for your senders"],
   pro: ["500 active tracks", "Everything in Free", "Colleagues can download tracks you share", "Paid features as they launch (stems, folders)"],
-  team: ["2,000 active tracks", "Everything in Pro"],
+  team: ["2,000 active tracks", "Everything in Pro", "Shared collections: up to 10 teammates listen and vote"],
 };
 
 export const SHARE_DOWNLOAD_PLANS: readonly PlanId[] = ["pro", "team"];
