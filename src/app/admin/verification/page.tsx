@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ConfirmButton } from "../AdminUi";
 import { q } from "@/lib/db";
-import { addProtectedName, approveIdentity, rejectIdentity, removeProtectedName } from "../actions";
+import { addProtectedName, approveIdentity, rejectIdentity, removeProtectedName, revokeIdentity } from "../actions";
 
 /** Identity requests to review, and names nobody can claim without us. */
 export default async function Verification() {
@@ -92,15 +92,27 @@ export default async function Verification() {
 
       <section>
         <h2 className="text-lg font-semibold">Verified</h2>
-        <ul className="mt-3 flex flex-wrap gap-2">
+        <p className="mt-1 text-sm text-mute">Revoke removes the badge straight away and emails them your reason. They can apply again.</p>
+        <ul className="mt-3 divide-y divide-line rounded-md border border-line">
           {verified.map((u) => (
-            <li key={u.id}>
-              <Link href={`/admin/accounts/${u.id}`} className="chip border-lime/50 text-lime hover:bg-lime/10">
-                ✓ {u.name} @{u.handle}
-              </Link>
+            <li key={u.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+              <p className="min-w-0">
+                <Link href={`/admin/accounts/${u.id}`} className="font-medium text-lime hover:underline">
+                  ✓ {u.name}
+                </Link>{" "}
+                <span className="text-sm text-mute">
+                  @{u.handle}
+                  {u.identity_verified_at ? ` · since ${new Date(u.identity_verified_at).toLocaleDateString("en-GB")}` : ""}
+                </span>
+              </p>
+              <form action={revokeIdentity.bind(null, u.id)} className="flex flex-wrap gap-2">
+                <label className="sr-only" htmlFor={`revoke-${u.id}`}>Reason for removing @{u.handle}&apos;s verification</label>
+                <input id={`revoke-${u.id}`} name="note" required className="input w-64 py-1.5" placeholder="Reason (sent to them)" />
+                <button className="btn-sm rounded-md border border-danger/50 px-3 text-danger hover:bg-danger/10">Revoke</button>
+              </form>
             </li>
           ))}
-          {!verified.length && <li className="text-sm text-mute">Nobody yet.</li>}
+          {!verified.length && <li className="px-4 py-6 text-sm text-mute">Nobody yet.</li>}
         </ul>
       </section>
     </div>
