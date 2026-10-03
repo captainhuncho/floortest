@@ -1,3 +1,4 @@
+import { CuePoint } from "@/components/CuePoint";
 import Link from "next/link";
 import { ConfirmButton } from "../AdminUi";
 import { q } from "@/lib/db";
@@ -18,7 +19,7 @@ export default async function Verification() {
       <section>
         <h1 className="text-3xl font-bold tracking-tight">Verification</h1>
         <p className="mt-2 text-mute">
-          Open each profile and check the code is in the bio and the profile matches the name. Approve adds a ✓ Verified badge to their page.
+          Open each profile and check the code is in the bio and the profile matches the name. Approve adds the Verified mark (Cue Point) to their page.
         </p>
         <ul className="mt-6 space-y-3">
           {pending.map((u) => (
@@ -98,7 +99,8 @@ export default async function Verification() {
             <li key={u.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
               <p className="min-w-0">
                 <Link href={`/admin/accounts/${u.id}`} className="font-medium text-lime hover:underline">
-                  ✓ {u.name}
+                  <CuePoint size={16} className="mr-1.5" />
+                  {u.name}
                 </Link>{" "}
                 <span className="text-sm text-mute">
                   @{u.handle}

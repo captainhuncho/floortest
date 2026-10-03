@@ -1,5 +1,6 @@
 "use client";
 
+import { CuePoint } from "@/components/CuePoint";
 import { useEffect, useState, useTransition } from "react";
 import { SubmitForm } from "../../[handle]/SubmitForm";
 import { lookupReceiver, type ReceiverLookup } from "../actions";
@@ -42,7 +43,7 @@ export function SendComposer({ host, account, initial }: { host: string; account
           {!pending && found?.found && (
             <span>
               <span className="font-medium">{found.name}</span>
-              {found.verified && <span className="ml-1.5 text-lime">✓ Verified</span>}
+              {found.verified && <span className="ml-1.5 inline-flex items-center gap-1 text-lime"><CuePoint size={16} /> Verified</span>}
               {found.roleLine && <span className="text-mute"> · {found.roleLine}</span>}
             </span>
           )}
@@ -54,7 +55,7 @@ export function SendComposer({ host, account, initial }: { host: string; account
           <p className="label">Send music to</p>
           <p className="mt-1 text-2xl font-bold tracking-tight">
             {found.name}
-            {found.verified && <span className="chip ml-2 align-middle border-lime/60 text-xs font-medium text-lime">✓ Verified</span>}
+            {found.verified && <span className="chip ml-2 inline-flex items-center gap-1.5 align-middle border-lime/60 text-xs font-medium text-lime"><CuePoint size={16} /> Verified</span>}
           </p>
           {found.accepting && found.collection && (
             <p className="mt-3 inline-flex w-fit items-center gap-2 rounded-full border border-lime/40 bg-lime/5 px-3 py-1 text-sm">

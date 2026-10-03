@@ -1,5 +1,6 @@
 "use client";
 
+import { CuePoint } from "@/components/CuePoint";
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/Toast";
 import { useActionForm } from "@/components/useActionForm";
@@ -22,7 +23,7 @@ export function IdentityForm({ status, links, note }: { status: Status; links: s
   if (now === "verified")
     return (
       <p className="flex items-center gap-2">
-        <span className="chip border-lime/60 text-lime">✓ Verified</span>
+        <span className="chip inline-flex items-center gap-1.5 border-lime/60 text-lime"><CuePoint size={16} /> Verified</span>
         <span className="text-sm text-mute">Your public page shows senders it&apos;s really you.</span>
       </p>
     );

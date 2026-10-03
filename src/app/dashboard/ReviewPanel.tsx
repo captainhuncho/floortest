@@ -1,3 +1,4 @@
+import { CuePoint } from "@/components/CuePoint";
 import Link from "next/link";
 import type { PlayerTrack } from "@/components/Player";
 import { deletesAt } from "@/lib/core";
@@ -260,7 +261,7 @@ export async function ReviewPanel({
             <a href={`/${senderAccount.handle}`} target="_blank" rel="noreferrer" className="font-mono text-mute underline-offset-4 hover:text-bone hover:underline">
               /{senderAccount.handle}
             </a>
-            {senderAccount.identity_status === "verified" && <span className="ml-1.5 text-lime">✓ Verified</span>}
+            {senderAccount.identity_status === "verified" && <span className="ml-1.5 inline-flex items-center gap-1 text-lime"><CuePoint size={16} /> Verified</span>}
           </p>
         )}
         <p className="mt-1 text-sm text-mute">

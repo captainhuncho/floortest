@@ -1,3 +1,4 @@
+import { CuePoint } from "@/components/CuePoint";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { forwardedHandle } from "@/lib/accounts";
@@ -70,9 +71,7 @@ export default async function ReceiverPage({ params }: Props) {
           <h1 className="break-words text-[clamp(2rem,12vw,3.5rem)] font-bold leading-none group-has-[[data-picked]]/page:text-[32px] group-has-[[data-picked]]/page:font-extrabold">
             {receiver.name}
             {receiver.identity_status === "verified" && (
-              <span title="Verified by FloorTest" className="ml-2 align-middle text-base text-lime" aria-label="Verified">
-                ✓
-              </span>
+              <CuePoint size={24} label="Verified by FloorTest" className="-mt-1 ml-2" />
             )}
           </h1>
           {collection && !closedReason && (

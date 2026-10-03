@@ -144,7 +144,7 @@ export default async function Settings() {
         <h2 id="identity-h" className="text-lg font-semibold">
           Verify it&apos;s you
         </h2>
-        <p className="mt-1 text-sm text-mute">A ✓ Verified badge on your public page tells senders they&apos;ve found the real you, not an impersonator.</p>
+        <p className="mt-1 text-sm text-mute">The Verified mark on your public page tells senders they&apos;ve found the real you, not an impersonator.</p>
         <div className="mt-5">
           <IdentityForm status={identity?.status ?? "none"} links={identity ? JSON.parse(identity.links || "[]") : []} note={identity?.note ?? ""} />
         </div>

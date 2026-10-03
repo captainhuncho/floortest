@@ -75,7 +75,7 @@ export default async function Account({ params }: { params: Promise<{ id: string
   const chips: [string, boolean][] = [
     [u.email_verified_at ? "Email confirmed" : "Email unconfirmed", !!u.email_verified_at],
     [u.totp_enabled_at ? "Two-factor on" : "Password only", !!u.totp_enabled_at],
-    [u.identity_status === "verified" ? "Verified ✓" : u.identity_status === "pending" ? "Verification pending" : "Not verified", u.identity_status === "verified"],
+    [u.identity_status === "verified" ? "Verified" : u.identity_status === "pending" ? "Verification pending" : "Not verified", u.identity_status === "verified"],
   ];
   const usage = [
     ["Plan", planOf(u.plan).name],

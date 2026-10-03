@@ -317,14 +317,14 @@ export async function approveIdentity(userId: number) {
     audience: "receiver",
     to: u.email,
     subject: "You're verified on FloorTest",
-    body: `Hi ${u.name.split(/\s+/)[0]},\n\nYour FloorTest page now shows a ✓ Verified badge, so senders know it's really you: ${env.appUrl}/${u.handle}\n\nYou can remove the code from your bio now.\n\n— FloorTest`,
+    body: `Hi ${u.name.split(/\s+/)[0]},\n\nYour FloorTest page now shows the Verified mark next to your name, so senders know it's really you: ${env.appUrl}/${u.handle}\n\nYou can remove the code from your bio now.\n\n— FloorTest`,
   });
   await logAdmin(a.id, "verified identity", `@${u.handle}`);
   await done(`Verified @${u.handle} and emailed them`);
   refresh();
 }
 
-/** Takes a ✓ Verified badge back (e.g. the account changed hands or was verified by mistake). A reason is required and sent to them. */
+/** Takes the Verified mark back (e.g. the account changed hands or was verified by mistake). A reason is required and sent to them. */
 export async function revokeIdentity(userId: number, form: FormData) {
   const a = await requireAdminAction();
   const note = String(form.get("note") || "").trim().slice(0, 200);
@@ -340,7 +340,7 @@ export async function revokeIdentity(userId: number, form: FormData) {
     audience: "receiver",
     to: u.email,
     subject: "Your FloorTest verification was removed",
-    body: `Hi ${u.name.split(/\s+/)[0]},\n\nWe've removed the ✓ Verified badge from your FloorTest page: ${note}\n\nYou can apply again from Settings: ${env.appUrl}/dashboard/settings#identity-h\n\nIf you think this is a mistake, reply to this email.\n\n— FloorTest`,
+    body: `Hi ${u.name.split(/\s+/)[0]},\n\nWe've removed the Verified mark from your FloorTest page: ${note}\n\nYou can apply again from Settings: ${env.appUrl}/dashboard/settings#identity-h\n\nIf you think this is a mistake, reply to this email.\n\n— FloorTest`,
   });
   await logAdmin(a.id, "revoked verification", `@${u.handle}`, note);
   await done(`Removed @${u.handle}'s verification and emailed them`);
