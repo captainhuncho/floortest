@@ -112,7 +112,7 @@ export default async function Home({
         <div className="relative mx-auto max-w-6xl px-4 pb-10 pt-16 sm:px-6 sm:pt-24">
           <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-center">
             <div>
-              <p className="flex items-center gap-3 text-xs uppercase tracking-[0.12em] text-lime">
+              <p className="flex items-center gap-3 text-sm text-lime">
                 <span aria-hidden className="h-px w-8 bg-lime" /> The receiving
                 desk for unreleased music
               </p>
@@ -164,7 +164,7 @@ export default async function Home({
               ) : (
                 <ClaimBox host={HOST} inviteOnly={inviteOnly} />
               )}
-              <p className="home-label mt-6">Same link. You choose where it routes.</p>
+              <p className="home-label mt-6 normal-case tracking-normal">Same link. You choose where it routes.</p>
               <div className="mt-3 space-y-2">
                 <div className="flex items-center justify-between rounded-md border border-white/10 px-4 py-2.5 text-xs text-mute">
                   <span>Yesterday</span>
@@ -191,10 +191,7 @@ export default async function Home({
       {/* Journey */}
       <section className="border-y border-white/10 bg-ink-2">
         <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
-          <p className="text-xs uppercase tracking-[0.12em] text-lime">
-            [One private track · a visible journey]
-          </p>
-          <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-end">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-end">
             <h2 className="text-[clamp(2.5rem,5.5vw,4.5rem)] font-bold leading-[0.95] tracking-[-0.04em]">
               Know what happened next.
             </h2>
@@ -242,10 +239,7 @@ export default async function Home({
 
       {/* Why */}
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-        <p className="text-xs uppercase tracking-[0.12em] text-lime">
-          [Why FloorTest]
-        </p>
-        <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-end">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-end">
           <h2 className="text-[clamp(2.5rem,5.5vw,4.5rem)] font-bold leading-[0.95] tracking-[-0.04em]">
             Stop receiving music everywhere.
           </h2>
@@ -296,10 +290,7 @@ export default async function Home({
 
       {/* How */}
       <section id="how" className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-        <p className="text-xs uppercase tracking-[0.12em] text-lime">
-          [How FloorTest works]
-        </p>
-        <h2 className="mt-4 text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
+        <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
           Share once. Decide fast.
         </h2>
         <ol className="mt-10 grid grid-cols-1 border-t border-white/10 sm:grid-cols-2 lg:grid-cols-4">
@@ -361,10 +352,7 @@ export default async function Home({
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
           <div>
-            <p className="text-xs uppercase tracking-[0.12em] text-lime">
-              [Private by design]
-            </p>
-            <h2 className="mt-4 text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
+            <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
               Music stays between the people you choose.
             </h2>
           </div>
@@ -398,10 +386,7 @@ export default async function Home({
 
       {/* Pricing */}
       <section className="mx-auto max-w-6xl border-t border-white/10 px-4 py-16 sm:px-6">
-        <p className="text-xs uppercase tracking-[0.12em] text-lime">
-          [Start small · grow when needed]
-        </p>
-        <h2 className="mt-4 text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
+        <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
           Start free. Grow when your inbox does.
         </h2>
         <p className="mt-4 text-sm text-mute">
@@ -413,7 +398,7 @@ export default async function Home({
           {Object.entries(PLANS).map(([id, p]) => (
             <div
               key={id}
-              className={`flex flex-col rounded-lg border p-7 ${id === "pro" ? "border-lime/40 bg-[radial-gradient(120%_100%_at_0%_0%,rgba(213,255,72,0.08),transparent_60%)]" : "border-white/10 bg-ink-2"}`}
+              className={`flex flex-col rounded-lg border p-7 ${id === "pro" ? "border-lime/40 bg-ink-2" : "border-white/10 bg-ink-2"}`}
             >
               <p className="text-xs uppercase tracking-[0.1em] text-lime">
                 {p.name}
@@ -451,8 +436,7 @@ export default async function Home({
         <section id="waitlist" className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
           <div className="grid grid-cols-1 gap-10 rounded-lg border border-white/10 bg-ink-2 p-6 sm:p-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
             <div>
-              <p className="text-xs uppercase tracking-[0.12em] text-lime">[Private beta]</p>
-              <h2 className="mt-4 text-[clamp(2rem,4vw,3.25rem)] font-bold leading-[0.95] tracking-[-0.035em]">No invite yet?</h2>
+              <h2 className="text-[clamp(2rem,4vw,3.25rem)] font-bold leading-[0.95] tracking-[-0.035em]">No invite yet?</h2>
               <p className="mt-4 text-sm leading-relaxed text-mute">
                 We&apos;re letting DJs, labels and curators in a few at a time. Leave your details and you&apos;ll get a personal invite by email.
               </p>
@@ -464,10 +448,7 @@ export default async function Home({
 
       {/* FAQ */}
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-        <p className="text-xs uppercase tracking-[0.12em] text-lime">
-          [Questions, answered]
-        </p>
-        <h2 className="mt-4 text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
+        <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
           Before the first track lands.
         </h2>
         <div className="mt-10 border-t border-white/10">
@@ -503,10 +484,10 @@ export default async function Home({
       {/* Closing CTA */}
       <section className="bg-lime text-ink">
         <div className="mx-auto max-w-6xl px-4 py-24 text-center sm:px-6">
-          <p className="text-xs uppercase tracking-[0.12em]">
+          <p className="text-sm">
             Your link. Your collections. Your call.
           </p>
-          <h2 className="mx-auto mt-6 max-w-4xl text-[clamp(2.5rem,7vw,5.5rem)] font-bold leading-[0.92] tracking-[-0.045em]">
+          <h2 className="mx-auto max-w-4xl text-[clamp(2.5rem,7vw,5.5rem)] font-bold leading-[0.92] tracking-[-0.045em]">
             Every demo in one place. Ready to play.
           </h2>
           <Link

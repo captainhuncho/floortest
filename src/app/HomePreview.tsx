@@ -87,7 +87,7 @@ export function HomePreview({ host }: { host: string }) {
           ))}
         </ul>
 
-        <div className="mt-5 rounded-lg border border-white/10 bg-black/20 p-5">
+        <div className="mt-5 border-t border-white/10 pt-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="home-label text-lime">Selected track</p>
@@ -120,7 +120,7 @@ export function HomePreview({ host }: { host: string }) {
           </ol>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 px-4 py-3 text-xs">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-3 text-xs">
           <span className="text-mute">Your link · {host}/maxwell</span>
           <span className="uppercase text-lime">Routing to {COLLECTIONS[col].name}</span>
         </div>
