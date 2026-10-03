@@ -36,6 +36,11 @@ Prove that DJs with weekly callouts **keep using** the desk, and that senders **
 - Open to a waitlist of 100. Post the social set weekly.
 - Test pricing with 10 active users: "Would you pay $X for 500 tracks?" Choose before announcing prices.
 
+## After the beta: paid features (Pro and above)
+Built or planned, switched on per plan from Admin → Feature switches once billing is live:
+- **Stems:** built, held back (`stems` feature switch, no plans yet).
+- **Send folders (planned, not built):** Pro and Team can send a whole folder of tracks in one go, up to **250 MB in total**, from Send music (and later the sender page). Each file goes through the same checks as a single track (real WAV/MP3, no hidden payloads). The receiver sees them as one batch with each track reviewable on its own. Add it to the feature registry (`src/lib/features.ts`) with no plans in the beta, then enable for Pro and Team.
+
 ## Before public launch (checklist)
 - **Security test with Strix** (open-source AI pentest agents, github.com/usestrix/strix): run once against the **local copy or a preview**, never the live site, once the feature set is stable. Needs Docker and an AI model key (a few to tens of dollars per run). Fix every confirmed finding, then re-run.
 - **Lawyer review** of the legal drafts ([legal-review.md](legal-review.md)), then replace the "draft" banners.
