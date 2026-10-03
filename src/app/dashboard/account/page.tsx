@@ -167,6 +167,15 @@ export default async function Account() {
                 sub="A code from your phone when you sign in"
                 value={<span className="rounded bg-ink-4 px-1.5 py-0.5 text-[11px] font-bold uppercase text-bone">{user.totp_enabled_at ? "On" : "Off"}</span>}
               />,
+              <form key="o" action={logout}>
+                <button className="group flex w-full items-center gap-3 py-0.5 text-left md:py-1">
+                  <span aria-hidden className="grid w-5 shrink-0 place-items-center text-[15px] leading-none text-danger">⏻</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[13px] font-bold text-danger md:text-[14px]">Sign out</span>
+                    <span className="mt-0.5 hidden truncate text-[12px] text-faint md:block">Signs out this device</span>
+                  </span>
+                </button>
+              </form>,
             ]}
           />
           <Section
@@ -205,12 +214,7 @@ export default async function Account() {
         </div>
       </div>
 
-      <div className="flex flex-col items-center gap-3 md:flex-row md:justify-between">
-        <form action={logout} className="w-full md:w-auto">
-          <button className="w-full rounded-xl border border-line bg-ink-2 px-6 p-3 text-[13px] font-bold text-[#ff5a5f]">Sign out</button>
-        </form>
-        <p className="text-[11px] text-faint">FLOORTEST v{VERSION}</p>
-      </div>
+      <p className="text-center text-[11px] text-faint">FLOORTEST v{VERSION}</p>
     </div>
   );
 }
