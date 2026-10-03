@@ -77,7 +77,12 @@ export default async function Account() {
 
   return (
     <div className="mx-auto flex max-w-xl flex-col gap-4 px-4 py-3 md:max-w-6xl md:gap-6 md:px-8 md:py-8">
-      <h1 className="hidden text-[32px] font-bold text-bone md:block">Account</h1>
+      <div className="hidden items-center justify-between gap-4 md:flex">
+        <h1 className="text-[32px] font-bold text-bone">Account</h1>
+        <form action={logout}>
+          <button className="rounded-full border border-danger/50 px-4 py-2 text-[12px] font-bold text-danger hover:bg-danger/10">Sign out</button>
+        </form>
+      </div>
       <div className="flex h-12 items-center gap-2 md:hidden">
         <Link href="/dashboard/floor" aria-label="Back" className="grid size-8 place-items-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -167,15 +172,6 @@ export default async function Account() {
                 sub="A code from your phone when you sign in"
                 value={<span className="rounded bg-ink-4 px-1.5 py-0.5 text-[11px] font-bold uppercase text-bone">{user.totp_enabled_at ? "On" : "Off"}</span>}
               />,
-              <form key="o" action={logout}>
-                <button className="group flex w-full items-center gap-3 py-0.5 text-left md:py-1">
-                  <span aria-hidden className="grid w-5 shrink-0 place-items-center text-[15px] leading-none text-danger">⏻</span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[13px] font-bold text-danger md:text-[14px]">Sign out</span>
-                    <span className="mt-0.5 hidden truncate text-[12px] text-faint md:block">Signs out this device</span>
-                  </span>
-                </button>
-              </form>,
             ]}
           />
           <Section
@@ -214,6 +210,9 @@ export default async function Account() {
         </div>
       </div>
 
+      <form action={logout} className="mt-2 md:hidden">
+        <button className="w-full rounded-xl border border-danger/50 py-3 text-[13px] font-bold text-danger">Sign out</button>
+      </form>
       <p className="text-center text-[11px] text-faint">FLOORTEST v{VERSION}</p>
     </div>
   );
