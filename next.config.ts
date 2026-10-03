@@ -34,6 +34,9 @@ if (process.env.NODE_ENV === "production")
 const nextConfig: NextConfig = {
   // Native/WASM database drivers load at runtime rather than being bundled.
   serverExternalPackages: ["@electric-sql/pglite", "postgres"],
+  // PGlite (the in-process database) is only for local development; on Vercel DATABASE_URL is always set,
+  // so it's left out of the deployed functions. Each deployment stores a copy of them, so this saves ~25 MB apiece.
+  outputFileTracingExcludes: process.env.VERCEL ? { "*": ["node_modules/@electric-sql/pglite/**"] } : {},
   poweredByHeader: false,
   // The Turnstile site key is public by design; this lets it be stored as TURNSTILE_SITE_KEY in Vercel.
   async headers() {
