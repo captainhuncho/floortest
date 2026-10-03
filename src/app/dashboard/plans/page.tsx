@@ -11,10 +11,12 @@ export const metadata = { title: "Plans — FloorTest" };
  * Usage, then the three plans side by side on desktop (stacked on phones). During the beta every plan
  * upgrades go through checkout, where the beta discount makes the total $0.00; once the billing switch is on, checkout charges.
  */
-export default async function Plans() {
+export default async function Plans({ searchParams }: { searchParams: Promise<{ welcome?: string }> }) {
   const user = await requireUser();
   const cap = await capacity(user);
   const current = planOf(user.plan);
+  // Just upgraded at checkout: celebrate it, but only if the plan really is theirs now.
+  const welcomed = (await searchParams).welcome === user.plan && current.price > 0;
   const billing = await switchOn("billing");
   const pct = Math.min(100, Math.round((cap.used / Math.max(1, cap.limit)) * 100));
   const ids = Object.keys(PLANS) as PlanId[];
@@ -29,6 +31,21 @@ export default async function Plans() {
         <h1 className="text-[28px] font-bold tracking-[-0.8px] md:text-[32px]">Plans</h1>
         <p className="text-sm text-mute">{billing ? "Pick the plan that fits your inbox." : "Every plan is free during the beta: the beta discount takes checkout to $0.00."}</p>
       </div>
+
+      {welcomed && (
+        <div role="status" className="flex items-start gap-3 rounded-xl border border-lime/50 bg-lime/10 p-4 md:p-5">
+          <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-full bg-lime text-[15px] font-bold text-ink">
+            ✓
+          </span>
+          <div>
+            <p className="text-[15px] font-bold">You&apos;re on {current.name} now.</p>
+            <p className="mt-0.5 text-[13px] text-mute">
+              Room for {current.limit.toLocaleString("en")} active tracks{user.plan === "team" ? ", and you can add teammates to any collection" : ""}.{" "}
+              {billing ? "Thanks for upgrading." : "Free for the rest of the beta."}
+            </p>
+          </div>
+        </div>
+      )}
 
       <section aria-labelledby="usage-h" className="rounded-xl border border-line bg-ink-2 p-4 md:p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
