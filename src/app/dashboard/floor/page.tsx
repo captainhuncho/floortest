@@ -1,3 +1,4 @@
+import { CuePoint } from "@/components/CuePoint";
 import { Onboarding } from "./Onboarding";
 import { recentAudit } from "@/lib/audit";
 import { AccountLog } from "../AccountLog";
@@ -143,6 +144,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
         <p className="text-[11px] font-bold uppercase tracking-[1px] text-faint">{welcome ? "Welcome to FloorTest" : new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: prefs.tz })}</p>
         <h1 className="text-[34px] font-bold leading-[1.05] tracking-[-1px] text-bone">
           {greeting}, {first}.
+          {user.identity_status === "verified" && <CuePoint size={24} label="Verified" className="-mt-1 ml-2" />}
         </h1>
         <p className="text-[13px] text-mute">
           {stats.waiting ? `${stats.waiting} track${stats.waiting === 1 ? " is" : "s are"} waiting for you.` : "Nothing is waiting. You're all caught up."}

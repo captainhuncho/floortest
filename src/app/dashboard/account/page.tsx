@@ -1,3 +1,4 @@
+import { CuePoint } from "@/components/CuePoint";
 import Link from "next/link";
 import { logout } from "../../(auth)/actions";
 import { requireUser } from "@/lib/auth";
@@ -96,7 +97,10 @@ export default async function Account() {
         <div className="flex items-center gap-3 md:gap-4">
           <span className="grid size-14 shrink-0 place-items-center rounded-full bg-[#6444ff] text-lg font-bold text-white md:size-16">{initials(user.name)}</span>
           <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <p className="truncate text-[22px] font-bold text-bone">{user.name}</p>
+            <p className="flex min-w-0 items-center gap-2 text-[22px] font-bold text-bone">
+              <span className="truncate">{user.name}</span>
+              {user.identity_status === "verified" && <CuePoint size={20} label="Verified" />}
+            </p>
             <p className="truncate text-xs text-mute md:text-[13px]">{user.email}</p>
             <p className="text-[11px] text-dim">Member since {since}</p>
           </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { CuePoint } from "@/components/CuePoint";
 import { useFocusTrap } from "@/components/useFocusTrap";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -9,7 +10,7 @@ import type { Notice } from "@/lib/notifications";
 import { clearNotifications, markNotificationsRead, quickSearch, type SearchHit } from "./actions";
 
 type Props = {
-  user: { name: string; handle: string };
+  user: { name: string; handle: string; verified: boolean };
   notices: { items: Notice[]; unread: number };
 };
 
@@ -90,7 +91,10 @@ export function TopBar(p: Props) {
           onClick={() => router.push("/dashboard/account")}
           className="flex items-center gap-3 rounded-full border border-ink-4 bg-ink-3 transition hover:border-mute sm:border-line sm:bg-ink-2 sm:py-1 sm:pl-5 sm:pr-1"
         >
-          <span className="hidden text-[15px] sm:inline">{p.user.handle}</span>
+          <span className="hidden items-center gap-1.5 text-[15px] sm:inline-flex">
+            {p.user.handle}
+            {p.user.verified && <CuePoint size={16} label="Verified" />}
+          </span>
           <svg aria-hidden viewBox="0 0 12 12" className="hidden h-3 w-3 -rotate-90 text-mute sm:block" fill="none" stroke="currentColor" strokeWidth="1.5">
             <path d="M3 4.5 6 7.5 9 4.5" />
           </svg>

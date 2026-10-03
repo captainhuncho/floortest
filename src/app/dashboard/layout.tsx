@@ -57,7 +57,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
               <div className="hidden md:block">
                 <FeedbackButton />
               </div>
-              <TopBar user={{ name: user.name, handle: user.handle }} notices={notices} />
+              <TopBar user={{ name: user.name, handle: user.handle, verified: user.identity_status === "verified" }} notices={notices} />
             </div>
             {view && (
               <div role="alert" className="flex flex-wrap items-center justify-between gap-2 border-b border-danger/50 bg-danger/15 px-4 py-2.5 text-sm sm:px-6">
