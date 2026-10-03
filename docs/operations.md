@@ -90,6 +90,12 @@ So a storage outage can delay a deletion but can never lose track of a file. Acc
 
 ## Security
 
+- **Vercel Firewall (edge, before the app runs):** set up 2026-10-03 in Vercel → floortest → Firewall → Rules.
+  - **Block common attack paths:** WordPress, `.env`, `.git`, phpMyAdmin, xmlrpc, cgi-bin and `.php` requests get a 403.
+  - **Rate limit authentication endpoints:** POSTs to `/login`, `/login/code`, `/login/code/enter`, `/signup` and `/forgot` above 20 a minute per IP get a 403. Hobby allows only one rate-limit rule.
+  - **Bot Protection:** in **Log** mode. Check Firewall → Traffic for a few days, and switch to Challenge only if no real senders appear in it.
+  - **Not available on Hobby:** an upload rate-limit rule (needs Pro; the app's own upload limits still apply) and the OWASP ruleset (Enterprise).
+
 - **Admin:** listed email, confirmed email and two-factor are all required, and every admin action is logged (**Admin → Admin log**). Two-factor resets need the user's handle typed in, plus a note on how you confirmed it's them.
 - **Abuse:** rate limits per connection and per email address on uploads, logins, contact and waitlist; Turnstile on public forms; IP addresses are kept at most 48 hours.
 - **Blocking abusers:** per receiver, by the receiver; platform-wide by email address or domain in **Admin → Sender blocks**.
