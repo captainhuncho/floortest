@@ -297,7 +297,8 @@ export async function addNote(senderId: number, trackId: number | null, form: Fo
   const body = String(form.get("body") || "").trim().slice(0, 4000);
   const s = await ownedSender(u.id, senderId);
   if (!body || !s) return;
-  if (trackId && !(await ownedTrack(u.id, trackId))) return;
+  // The track must be this sender's, so a note can't be filed against someone else's music.
+  if (trackId && (await ownedTrack(u.id, trackId))?.sender_id !== s.id) return;
   await logEvent({ user_id: u.id, sender_id: senderId, track_id: trackId, type: "note", detail: body });
   await audit(u.id, "noted", s.name, trackId);
   done();
@@ -308,7 +309,10 @@ export async function replyToSender(senderId: number, trackId: number | null, fo
   const s = await ownedSender(u.id, senderId);
   const body = String(form.get("body") || "").trim().slice(0, 4000);
   if (!s || !body) return;
-  await reply(u, s, trackId ? await ownedTrack(u.id, trackId) : undefined, body);
+  // Only this sender's own track: the reply email carries its private receipt link.
+  const t = trackId ? await ownedTrack(u.id, trackId) : undefined;
+  if (trackId && t?.sender_id !== s.id) return;
+  await reply(u, s, t, body);
   await audit(u.id, "replied", s.name, trackId);
   done();
 }
