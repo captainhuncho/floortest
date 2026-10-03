@@ -161,6 +161,7 @@ export function useTrackUpload(
         release_status: field("release_status"),
         mix_status: field("mix_status"),
         turnstile: field("cf-turnstile-response"),
+        sets_ok: fd.get("sets_ok") === "on",
         asAccount: !!opts.asAccount,
       },
       setProgress,

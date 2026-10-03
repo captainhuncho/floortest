@@ -16,7 +16,7 @@ export const stemsEnabled = (plan: string) => (STEMS_PLANS as readonly string[])
 /** Colleagues can download a shared track only when the receiver who shared it is on a paid plan. */
 /** What each plan includes, for the Plans and checkout pages. Only list things that exist today. */
 export const PLAN_FEATURES: Record<PlanId, string[]> = {
-  free: ["20 active tracks", "Your permanent link and public page", "Review Queue, collections and Rekordbox export", "Receipts and updates for your senders"],
+  free: ["20 active tracks", "Your receiving link and public page", "Review Queue, collections and Rekordbox export", "Receipts and updates for your senders"],
   pro: ["500 active tracks", "Everything in Free", "Colleagues can download tracks you share", "Paid features as they launch (stems, folders)"],
   team: ["2,000 active tracks", "Everything in Pro", "Shared collections: up to 10 teammates listen and vote"],
 };
@@ -59,7 +59,7 @@ export function deletesAt(t: { decision: string | null; decided_at: number | nul
   return t.created_at + RETAIN_UNREVIEWED_DAYS * DAY;
 }
 
-/** Intake limits per receiver link. */
+/** Intake limits per receiving link. */
 export const RATE_PER_IP_PER_HOUR = 10;
 export const RATE_PER_EMAIL_PER_DAY = 5;
 

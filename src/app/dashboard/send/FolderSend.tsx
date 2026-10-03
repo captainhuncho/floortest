@@ -20,6 +20,7 @@ export function FolderSend({ handle, receiverName, genres }: { handle: string; r
   const [items, setItems] = useState<Item[]>([]);
   const [genre, setGenre] = useState("");
   const [message, setMessage] = useState("");
+  const [setsOk, setSetsOk] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const folderRef = useRef<HTMLInputElement>(null);
@@ -51,7 +52,7 @@ export function FolderSend({ handle, receiverName, genres }: { handle: string; r
         handle,
         it.file,
         analysis,
-        { title: it.title || it.file.name, artist: it.artist, message, genre, release_status: "", mix_status: "", asAccount: true, batch },
+        { title: it.title || it.file.name, artist: it.artist, message, genre, release_status: "", mix_status: "", asAccount: true, batch, sets_ok: setsOk },
         (p) => update(i, { progress: p }),
       );
       update(i, "error" in r ? { state: "failed", error: r.error } : { state: "sent", progress: 1 });
@@ -118,6 +119,12 @@ export function FolderSend({ handle, receiverName, genres }: { handle: string; r
           <label className="block space-y-1.5">
             <span className="label">Message (optional, sent with every track)</span>
             <textarea value={message} onChange={(e) => setMessage(e.target.value)} disabled={running} rows={3} maxLength={2000} className="input resize-y" />
+          </label>
+          <label className="flex items-start gap-2.5 text-sm">
+            <input type="checkbox" checked={setsOk} onChange={(e) => setSetsOk(e.target.checked)} disabled={running} className="mt-0.5 size-4 shrink-0 accent-lime" />
+            <span>
+              Let {receiverName} play these in DJ sets, live and on broadcasts. <span className="text-mute">Leave this off and they&apos;re for listening and feedback only.</span>
+            </span>
           </label>
         </>
       )}

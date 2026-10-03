@@ -110,6 +110,9 @@ export async function ReviewPanel({
       <div className="hidden md:block">
       <p className="label">Now reviewing</p>
       <h2 className="mt-2 text-2xl font-bold leading-tight tracking-tight">{t.title}</h2>
+      <p className={`mt-2 w-fit rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${t.sets_ok ? "border-lime/50 text-lime" : "border-line text-mute"}`}>
+        {t.sets_ok ? "Cleared for DJ sets" : "Evaluation only: ask before playing it out"}
+      </p>
       {t.batch_id && <p className="mt-2 w-fit rounded-full border border-line px-2.5 py-0.5 text-[11px] font-bold text-mute">Sent as part of a folder</p>}
       {t.duplicate_of && (
         <p className="mt-2 text-sm text-danger">

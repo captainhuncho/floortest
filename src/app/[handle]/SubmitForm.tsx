@@ -350,9 +350,16 @@ export function SubmitForm({
 
       {errorBox}
 
+      <label className="flex items-start gap-2.5 text-[13px]">
+        <input type="checkbox" name="sets_ok" className="mt-0.5 size-4 shrink-0 accent-lime" />
+        <span>
+          Let {receiverName} play it in DJ sets, live and on broadcasts. <span className={L.mute}>Leave this off and it&apos;s for listening and feedback only.</span>
+        </span>
+      </label>
+
       <p className={`text-xs ${L.mute}`}>
-        By sending you confirm you own or control this track and you&apos;re 18 or over. {receiverName} may listen to it, download it and play it
-        in their sets{allowSharing ? `, and share it with colleagues who have FloorTest accounts, through a private link, for promotion and their DJ sets (${sharingDownloads ? "they can listen and download" : "listen only"})` : ""}, but can&apos;t release it anywhere without a signed agreement with you.{" "}
+        By sending you confirm you own or control this track and you&apos;re 18 or over. {receiverName} may listen to it and download it to evaluate it
+        {allowSharing ? `, and share it with colleagues who have FloorTest accounts, through a private link, for promotion (${sharingDownloads ? "they can listen and download" : "listen only"})` : ""}. They can play it in sets only if you tick the box above, and can&apos;t release it anywhere without a signed agreement with you.{" "}
         <a href="/terms" target="_blank" className="underline underline-offset-4">Terms</a> ·{" "}
         <a href="/privacy" target="_blank" className="underline underline-offset-4">Privacy</a>
       </p>

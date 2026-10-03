@@ -30,7 +30,7 @@ export function ShareConsent({ token, requestId, receiver, note, downloads }: { 
         {receiver} would like to share this track
       </h2>
       <p className="text-[12px] leading-[1.6] text-mute">
-        With someone they work with, so they can play it in their sets and help promote it. They&apos;d {downloads ? "be able to listen and download" : "only be able to listen"}, through a private
+        With someone they work with, to help promote it. They&apos;d {downloads ? "be able to listen and download" : "only be able to listen"}, through a private
         FloorTest link that expires after 7 days. It&apos;s never for commercial release without a signed agreement with you.
       </p>
       {note && <p className="border-l-2 border-lime pl-3 text-[12px] italic text-bone">&ldquo;{note}&rdquo;</p>}

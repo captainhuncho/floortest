@@ -10,7 +10,7 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1, maxi
 export const metadata: Metadata = {
   metadataBase: new URL(env.appUrl),
   title: "FloorTest — the receiving desk for unreleased music",
-  description: "One permanent link routes every callout. Senders upload the original. FloorTest tells them what happens next.",
+  description: "One receiving link for every callout, and it never changes. Senders upload the original. FloorTest tells them what happens next.",
   openGraph: { siteName: "FloorTest", type: "website" },
 };
 

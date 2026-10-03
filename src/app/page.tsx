@@ -123,7 +123,7 @@ export default async function Home({
                 </span>
               </h1>
               <p className="mt-8 max-w-2xl text-[15px] leading-relaxed text-mute">
-                One permanent link for every track you&apos;re sent. Hear what&apos;s
+                One receiving link for every track you&apos;re sent. Hear what&apos;s
                 new in seconds, keep what's right for your set, and answer every
                 sender without a single DM.
               </p>

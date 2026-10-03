@@ -122,6 +122,7 @@ export type Track = {
   share_download: number;
   /** Set when the track was sent as part of a folder. */
   batch_id: string | null;
+  sets_ok: number;
 };
 export type EventRow = {
   id: number;

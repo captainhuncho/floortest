@@ -60,6 +60,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]
         mixStatus: pick("mix_status", MIX_STATUS),
         genre,
         originalName: fileName,
+        setsOk: body.sets_ok === true,
         ...(batch ? { batch } : {}),
         ...(account ? { accountId: account.id, accountVerified: !!account.email_verified_at } : {}),
       },

@@ -676,4 +676,12 @@ alter table collection_members enable row level security;
 alter table track_votes enable row level security;
 `,
   },
+{
+    // Playing a track in DJ sets is the sender's choice (off by default). Tracks sent earlier were sent under terms that allowed it.
+    id: "0038_sets_consent",
+    sql: `
+alter table tracks add column sets_ok int not null default 0;
+update tracks set sets_ok = 1;
+`,
+  },
 ];

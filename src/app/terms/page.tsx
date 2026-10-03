@@ -16,7 +16,7 @@ export default function Terms() {
         [
           "The service",
           [
-            "FloorTest lets receivers collect unreleased music through a permanent link, and lets senders deliver original audio files to them. It's currently a private beta and may change or be unavailable.",
+            "FloorTest lets receivers collect unreleased music through a receiving link, and lets senders deliver original audio files to them. It's currently a private beta and may change or be unavailable.",
             "Everyone who uses FloorTest is a user. Users are one of two kinds: receivers, who have an account and a link that collects music (DJs, curators, labels), and senders, who send music to a receiver's link. These terms apply to all users. You must be 18 or over to use FloorTest.",
           ],
         ],
@@ -24,8 +24,8 @@ export default function Terms() {
           "If you send music",
           [
             "Only send music you own or are authorised to share. You keep all rights to your music.",
-            "By sending a track you give the receiver you chose permission to listen to it, download it, evaluate it, and play it in their DJ sets, live performances and broadcasts.",
-            "If the receiver's brief says sharing with colleagues is allowed when you send, they may also share your track with colleagues who have FloorTest accounts, through a private link that expires after 7 days. Sharing is only for promotion and for playing your track in DJ sets. Colleagues can listen; they can also download it only if the receiver was on a paid plan when you sent it, and you're told which before you send. Colleagues are bound by these Terms like any user: they may not pass it on or release it commercially without a signed agreement with you. You can see on your receipt when it's shared.",
+            "By sending a track you give the receiver you chose permission to listen to it, download it and evaluate it. They may also play it in their DJ sets, live performances and broadcasts, but only if you allow that when you send it (the box on the send form). Otherwise it's for evaluation only.",
+            "If the receiver's brief says sharing with colleagues is allowed when you send, they may also share your track with colleagues who have FloorTest accounts, through a private link that expires after 7 days. Sharing is only for promotion, and for playing your track in DJ sets if you allowed that. Colleagues can listen; they can also download it only if the receiver was on a paid plan when you sent it, and you're told which before you send. Colleagues are bound by these Terms like any user: they may not pass it on or release it commercially without a signed agreement with you. You can see on your receipt when it's shared.",
             "The receiver may not release, distribute, sell, license or upload your track as a release on any platform without a separate written agreement with you.",
           ],
         ],
