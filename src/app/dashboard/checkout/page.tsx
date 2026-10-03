@@ -1,26 +1,27 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { isAdminEmail } from "@/lib/admin";
 import { requireUser } from "@/lib/auth";
-import { PLAN_FEATURES, PLANS, type PlanId } from "@/lib/plans";
+import { PLAN_FEATURES, PLANS, planOf, type PlanId } from "@/lib/plans";
 import { switchOn } from "@/lib/switches";
+import { confirmBetaUpgrade } from "../actions";
 
 export const metadata = { title: "Checkout — FloorTest" };
 
 /**
- * Upgrade checkout: order summary, the renewal terms in plain words, and payment. Card payments
- * aren't connected yet, so the pay button is disabled; with the billing switch off, only admins
- * can open this page (to review it).
+ * Every upgrade goes through here. During the beta a discount takes the total to $0.00 and confirming
+ * applies the plan (no card). Once the billing switch is on, the discount goes and the total is
+ * charged by card (not connected yet, so the button stays disabled).
  */
-export default async function Checkout({ searchParams }: { searchParams: Promise<{ plan?: string }> }) {
+export default async function Checkout({ searchParams }: { searchParams: Promise<{ plan?: string; agree?: string }> }) {
   const user = await requireUser();
+  const sp = await searchParams;
+  const id = sp.plan as PlanId;
+  if (!Object.hasOwn(PLANS, id) || PLANS[id].price <= planOf(user.plan).price) notFound();
   const billing = await switchOn("billing");
-  const admin = isAdminEmail(user.email);
-  if (!billing && !admin) notFound();
-  const id = (await searchParams).plan as PlanId;
-  if (!Object.hasOwn(PLANS, id) || PLANS[id].price === 0) notFound();
   const p = PLANS[id];
-  const price = `$${p.price.toFixed(2)}`;
+  const usd = (n: number) => `$${n.toFixed(2)}`;
+  const price = usd(p.price);
+  const due = billing ? p.price : 0;
   const today = new Date();
   const renews = new Date(today.getFullYear(), today.getMonth() + 1, today.getDate()).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
@@ -32,12 +33,6 @@ export default async function Checkout({ searchParams }: { searchParams: Promise
         </Link>
         <h1 className="text-[28px] font-bold tracking-[-0.8px] md:text-[32px]">Upgrade to {p.name}</h1>
       </div>
-
-      {!billing && (
-        <p role="note" className="rounded-md border border-[#ffb648]/50 bg-[#ffb648]/10 px-4 py-3 text-sm">
-          Preview for admins: the billing switch is off and card payments aren&apos;t connected, so nobody else can see this page and nothing can be charged.
-        </p>
-      )}
 
       <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] md:items-start md:gap-6">
         <section aria-labelledby="summary-h" className="rounded-xl border border-line bg-ink-2 p-4 md:p-5">
@@ -61,51 +56,79 @@ export default async function Checkout({ searchParams }: { searchParams: Promise
               </li>
             ))}
           </ul>
-          <div className="mt-4 space-y-1.5 border-t border-line pt-4 text-[13px]">
+          <dl className="mt-4 space-y-1.5 border-t border-line pt-4 text-[13px]">
             <div className="flex justify-between">
-              <span className="text-mute">Due today</span>
-              <span className="font-bold tnum">{price}</span>
+              <dt className="text-mute">{p.name}, monthly</dt>
+              <dd className="tnum">{price}</dd>
             </div>
-            <div className="flex justify-between">
-              <span className="text-mute">Then every month</span>
-              <span className="tnum">{price}</span>
+            {!billing && (
+              <div className="flex justify-between text-lime">
+                <dt>Beta discount</dt>
+                <dd className="tnum">−{price}</dd>
+              </div>
+            )}
+            <div className="flex justify-between border-t border-line pt-2 text-[15px] font-bold">
+              <dt>Due today</dt>
+              <dd className="tnum">{usd(due)}</dd>
             </div>
-            <p className="text-[11px] text-dim">Prices in US dollars. Any tax due where you live is shown before you pay.</p>
-          </div>
+          </dl>
+          <p className="mt-2 text-[11px] text-dim">{billing ? "Prices in US dollars. Any tax due where you live is shown before you pay." : "The beta discount applied automatically. No card needed."}</p>
         </section>
 
         <section aria-labelledby="pay-h" className="rounded-xl border border-line bg-ink-2 p-4 md:p-5">
           <h2 id="pay-h" className="label">
-            Payment
+            {billing ? "Payment" : "Confirm"}
           </h2>
-          <div className="mt-3 rounded-md border border-dashed border-line px-4 py-6 text-center text-[13px] text-mute">Card payments aren&apos;t connected yet.</div>
 
-          <div className="mt-4 space-y-2 text-[12px] text-mute">
+          <div className="mt-3 space-y-2 text-[12px] text-mute">
             <h3 className="font-bold text-bone">How renewal works</h3>
-            <ul className="list-disc space-y-1 pl-4">
-              <li>
-                You&apos;re charged {price} today, and {price} every month after that, starting {renews}.
-              </li>
-              <li>Your plan renews automatically until you cancel.</li>
-              <li>Cancel any time in Account → Plans, online, in a couple of clicks. You keep {p.name} until the end of the month you&apos;ve paid for.</li>
-              <li>We email you before any price change. Your tracks are never deleted because you cancel.</li>
-            </ul>
+            {billing ? (
+              <ul className="list-disc space-y-1 pl-4">
+                <li>
+                  You&apos;re charged {price} today, and {price} every month after that, starting {renews}.
+                </li>
+                <li>Your plan renews automatically until you cancel.</li>
+                <li>Cancel any time in Account → Plans, online, in a couple of clicks. You keep {p.name} until the end of the month you&apos;ve paid for.</li>
+                <li>We email you before any price change. Your tracks are never deleted because you cancel.</li>
+              </ul>
+            ) : (
+              <ul className="list-disc space-y-1 pl-4">
+                <li>{p.name} is free for the rest of the beta. Nothing is charged today and nothing renews.</li>
+                <li>
+                  This is a temporary trial, not a gift or a lifetime plan. After the beta {p.name} costs {price} a month.
+                </li>
+                <li>Before that, you get at least 30 days&apos; notice by email. You&apos;re only charged if you choose to continue; otherwise you move to Free and keep every track you have.</li>
+              </ul>
+            )}
           </div>
 
-          <label className="mt-4 flex items-start gap-2.5 text-[12px]">
-            <input type="checkbox" disabled className="mt-0.5 size-4 accent-lime" />
-            <span>
-              I agree to the{" "}
-              <Link href="/terms" className="underline underline-offset-4">
-                Terms of Use
-              </Link>{" "}
-              and understand my subscription renews monthly at {price} until I cancel.
-            </span>
-          </label>
-          <button disabled className="btn-lime mt-4 w-full">
-            Pay {price} and upgrade
-          </button>
-          <p className="mt-2 text-center text-[11px] text-dim">Secure payment by card. We never see or store your card number.</p>
+          {billing ? (
+            <>
+              <div className="mt-4 rounded-md border border-dashed border-line px-4 py-6 text-center text-[13px] text-mute">Card payments aren&apos;t connected yet.</div>
+              <button disabled className="btn-lime mt-4 w-full">
+                Pay {price} and upgrade
+              </button>
+            </>
+          ) : (
+            <form action={confirmBetaUpgrade.bind(null, id)} className="mt-4 space-y-4">
+              <label className="flex items-start gap-2.5 text-[12px]">
+                <input type="checkbox" name="agree" required className="mt-0.5 size-4 accent-lime" />
+                <span>
+                  I agree to the{" "}
+                  <Link href="/terms" className="underline underline-offset-4">
+                    Terms of Use
+                  </Link>{" "}
+                  and understand {p.name} is free only during the beta.
+                </span>
+              </label>
+              {sp.agree && (
+                <p role="alert" className="text-[12px] text-danger">
+                  Tick the box to confirm.
+                </p>
+              )}
+              <button className="btn-lime w-full">Confirm upgrade · {usd(0)}</button>
+            </form>
+          )}
         </section>
       </div>
     </div>

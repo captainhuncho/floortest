@@ -9,7 +9,7 @@ export const metadata = { title: "Plans — FloorTest" };
 
 /**
  * Usage, then the three plans side by side on desktop (stacked on phones). During the beta every plan
- * is free and switching is instant; once the billing switch is on, upgrades go through checkout.
+ * upgrades go through checkout, where the beta discount makes the total $0.00; once the billing switch is on, checkout charges.
  */
 export default async function Plans() {
   const user = await requireUser();
@@ -27,7 +27,7 @@ export default async function Plans() {
           ← Account
         </Link>
         <h1 className="text-[28px] font-bold tracking-[-0.8px] md:text-[32px]">Plans</h1>
-        <p className="text-sm text-mute">{billing ? "Pick the plan that fits your inbox." : "Every plan is free during the beta. Switch any time."}</p>
+        <p className="text-sm text-mute">{billing ? "Pick the plan that fits your inbox." : "Every plan is free during the beta: the beta discount takes checkout to $0.00."}</p>
       </div>
 
       <section aria-labelledby="usage-h" className="rounded-xl border border-line bg-ink-2 p-4 md:p-5">
@@ -88,15 +88,13 @@ export default async function Plans() {
                   <p className="text-center text-[12px] text-mute">You&apos;re on this plan</p>
                 ) : tooSmall ? (
                   <p className="text-center text-[12px] text-mute">You have more tracks than this plan holds</p>
-                ) : billing && upgrade ? (
+                ) : upgrade ? (
                   <Link href={`/dashboard/checkout?plan=${id}`} className="btn-lime w-full">
                     Upgrade to {p.name}
                   </Link>
                 ) : (
                   <form action={setPlan.bind(null, id)}>
-                    <button className={`w-full ${upgrade ? "btn-lime" : "btn-ghost"}`}>
-                      {upgrade ? `Switch to ${p.name}` : `Move to ${p.name}`}
-                    </button>
+                    <button className="btn-ghost w-full">Move to {p.name}</button>
                   </form>
                 )}
               </div>

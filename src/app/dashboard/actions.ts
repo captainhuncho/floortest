@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { flash } from "@/lib/flash";
 import { currentSessionHash, destroySession, hashPassword, requireUser, verifyPassword } from "@/lib/auth";
 import { APP_URL, sendMail } from "@/lib/mail";
 import { fmtDay } from "@/lib/format";
@@ -516,16 +517,34 @@ export async function updatePublicPage(_: SettingsState, form: FormData): Promis
 }
 
 /** Plan switch without billing, for the beta. Refuses a plan too small for what's already stored. */
+/** Moving down (or sideways) a plan. Upgrades always go through checkout: see confirmBetaUpgrade. */
 export async function setPlan(plan: string) {
   const u = await requireUser();
   if (!Object.hasOwn(PLANS, plan)) return;
-  // Once billing is on, upgrades only happen through checkout; this action can still move people down.
-  if ((await switchOn("billing")) && planOf(plan).price > planOf(u.plan).price) return;
+  if (planOf(plan).price > planOf(u.plan).price) return;
   const cap = await capacity(u);
   if (cap.used > planOf(plan).limit + cap.bonus) return;
   await q.run("UPDATE users SET plan = ? WHERE id = ?", plan, u.id);
   await audit(u.id, "plan_changed", planOf(plan).name);
   done();
+}
+
+/**
+ * Checkout during the beta: the beta discount makes the total $0.00, so confirming applies the plan
+ * straight away (no card). Once the billing switch is on, upgrades need a real payment instead.
+ */
+export async function confirmBetaUpgrade(plan: string, form: FormData) {
+  const u = await requireUser();
+  if (!Object.hasOwn(PLANS, plan) || planOf(plan).price <= planOf(u.plan).price) redirect("/dashboard/plans");
+  if (await switchOn("billing")) redirect(`/dashboard/checkout?plan=${plan}`);
+  if (form.get("agree") !== "on") redirect(`/dashboard/checkout?plan=${plan}&agree=1`);
+  const cap = await capacity(u);
+  if (cap.used > planOf(plan).limit + cap.bonus) redirect("/dashboard/plans");
+  await q.run("UPDATE users SET plan = ? WHERE id = ?", plan, u.id);
+  await audit(u.id, "plan_changed", planOf(plan).name);
+  await flash(`You're on ${planOf(plan).name}. Free during the beta.`);
+  done();
+  redirect("/dashboard/plans");
 }
 
 /** Changes the password after checking the current one, and signs out every other device. */

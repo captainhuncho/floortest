@@ -24,7 +24,7 @@ export const SWITCHES = {
   },
   billing: {
     label: "Paid plans and checkout",
-    description: "Upgrades go through the checkout page instead of switching plan for free. Keep off until card payments are connected and the lawyer has approved the renewal wording.",
+    description: "Off: checkout applies the beta discount (total $0.00). On: the discount goes and checkout charges by card. Keep off until card payments are connected and the lawyer has approved the renewal wording.",
     initial: false,
   },
   uploads_paused: {
