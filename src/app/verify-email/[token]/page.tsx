@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { q } from "@/lib/db";
+import { sendWelcome } from "@/lib/onboarding";
 import { confirmEmail } from "@/lib/security";
 
 export const metadata = { title: "Confirm your email — FloorTest", robots: { index: false } };
@@ -15,6 +16,7 @@ export default async function VerifyEmail({ params, searchParams }: { params: Pr
   async function confirm() {
     "use server";
     const ok = await confirmEmail(token);
+    if (ok) await sendWelcome(ok.id);
     redirect(ok ? `/verify-email/${encodeURIComponent(token)}?done=1` : `/verify-email/${encodeURIComponent(token)}`);
   }
 

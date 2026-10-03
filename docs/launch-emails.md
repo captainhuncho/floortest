@@ -4,7 +4,7 @@ All drafts follow [brand-voice.md](brand-voice.md). Replace {braces}. Nothing he
 
 ## 1. Personal beta invite (founder → DJ, by DM or email)
 
-**Subject:** A demo link for {callout name}?
+**Subject:** A link for your next callout?
 
 > Hey {first name},
 >

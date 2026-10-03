@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { recordIncident } from "@/lib/incidents";
 import { cronAuthorized, recordRun } from "@/lib/cron";
 import { runAdminDigest, runNudges } from "@/lib/jobs";
+import { runFirstTrackNudges } from "@/lib/onboarding";
 import { runDigests } from "@/lib/notify";
 
 export const runtime = "nodejs";
@@ -12,7 +13,7 @@ export async function GET(req: Request) {
   if (!cronAuthorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const started = Date.now();
   try {
-    const result = { digestsSent: await runDigests(), nudges: await runNudges(), adminDigest: await runAdminDigest() };
+    const result = { digestsSent: await runDigests(), nudges: await runNudges(), firstTrackNudges: await runFirstTrackNudges(), adminDigest: await runAdminDigest() };
     await recordRun("digest", started, true, result);
     return NextResponse.json(result);
   } catch (e) {

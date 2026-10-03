@@ -20,7 +20,7 @@ Prove that DJs with weekly callouts **keep using** the desk, and that senders **
 **Week 0: ready (this week)**
 - Fix the "before invites" items in [legal-review.md](legal-review.md) and section 1 of [copy-review.md](copy-review.md).
 - Verify the Resend domain so emails reach people other than you (open item in HANDOFF).
-- Add the welcome email ([launch-emails.md](launch-emails.md) #2).
+- ✅ Welcome email ([launch-emails.md](launch-emails.md) #2): sent once, when the account's email is confirmed. ✅ First-track nudge (#3): 7 days after sign-up if no track has arrived (morning job).
 - Uptime monitor on `/api/health`.
 
 **Weeks 1–2: 10 design partners, by hand**

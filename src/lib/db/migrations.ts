@@ -644,4 +644,13 @@ alter table tracks add column batch_id text;
 create index tracks_batch on tracks(batch_id) where batch_id is not null;
 `,
   },
+{
+    // Onboarding emails, each sent once: welcome on confirming the email, and a nudge 7 days later if nothing has arrived.
+    id: "0036_onboarding_emails",
+    sql: `
+alter table users add column welcomed_at bigint;
+alter table users add column first_track_nudged_at bigint;
+update users set welcomed_at = created_at, first_track_nudged_at = created_at;
+`,
+  },
 ];

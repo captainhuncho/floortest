@@ -14,6 +14,7 @@ import { APP_URL, sendMail } from "@/lib/mail";
 import { RESERVED_HANDLES } from "@/lib/plans";
 import { allow, recentCount, record, requestIp } from "@/lib/ratelimit";
 import { isProtectedHandle } from "@/lib/identity";
+import { sendWelcome } from "@/lib/onboarding";
 import { checkSecondFactor, finishSignIn, sendEmailVerification } from "@/lib/security";
 import { readChallenge, signChallenge } from "@/lib/totp";
 
@@ -235,7 +236,10 @@ export async function verifyLoginCode(_: FormState, form: FormData): Promise<For
   if (user.suspended_at) return { error: "This account is suspended. To appeal, go to the Contact page and choose Suspension appeal." };
   jar.delete(CODE_EMAIL);
   // Receiving the code proves the address is theirs.
-  if (!user.email_verified_at) await q.run("UPDATE users SET email_verified_at = ? WHERE id = ?", now(), user.id);
+  if (!user.email_verified_at) {
+    await q.run("UPDATE users SET email_verified_at = ? WHERE id = ?", now(), user.id);
+    await sendWelcome(user.id);
+  }
   await afterPassword(user.id, "email code");
   return undefined;
 }
