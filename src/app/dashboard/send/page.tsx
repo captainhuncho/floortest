@@ -17,9 +17,11 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
   }>(
     `SELECT t.token, t.title, t.artist, t.created_at, t.played_at, t.downloaded_at, t.replied_at, t.played_out_at, t.deleted_at, u.name AS receiver, u.handle
      FROM tracks t JOIN senders s ON s.id = t.sender_id JOIN users u ON u.id = t.user_id
-     WHERE s.account_id = ? OR lower(s.email) = ?
+     WHERE s.account_id = ? OR (? AND lower(s.email) = ?)
      ORDER BY t.created_at DESC LIMIT 200`,
     user.id,
+    // Tracks sent from the public link by email only count once this account has proved it owns that email.
+    !!user.email_verified_at,
     user.email.toLowerCase(),
   );
   const status = (r: (typeof sent)[number]) =>
