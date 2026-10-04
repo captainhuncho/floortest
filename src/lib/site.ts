@@ -10,6 +10,7 @@ export function footerLinks() {
   return [
     ...ext("Shop", env("SHOP_URL")),
     ...ext("FloorTest on Instagram", env("INSTAGRAM_URL")),
+    { label: "Track what you've sent", href: "/sent", external: false },
     { label: "Contact us", href: "/contact", external: false },
     { label: "Trust & Security", href: "/trust", external: false },
     // Hosted legal documents replace the built-in drafts once their URLs are set.

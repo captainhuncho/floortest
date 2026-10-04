@@ -330,6 +330,7 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
       `We'll email you when it's listened to, when the original is downloaded, and if ${receiver.name} replies.`,
       "",
       `Your private receipt: ${APP_URL}/t/${track.token}`,
+      `Everything you've sent, with what happened to each: ${APP_URL}/sent`,
       ...verify,
       "",
       "— FloorTest",
@@ -368,7 +369,7 @@ export async function markListened(user: User, t: Track, secondsHeard: number) {
     userId: user.id,
     to: s.email,
     subject: `Listened: ${t.title}`,
-    body: `Hi ${s.name},\n\n${user.name} listened to "${t.title}".\n\nThis means it was played for at least 30 seconds (or a quarter of the track). It doesn't tell you whether it'll be played out.\n\nYour receipt: ${APP_URL}/t/${t.token}\n\n— FloorTest`,
+    body: `Hi ${s.name},\n\n${user.name} listened to "${t.title}".\n\nThis means it was played for at least 30 seconds (or a quarter of the track). It doesn't tell you whether it'll be played out.\n\nYour receipt: ${APP_URL}/t/${t.token}\nEverything you've sent: ${APP_URL}/sent\n\n— FloorTest`,
   });
   return true;
 }
@@ -383,7 +384,7 @@ export async function markDownloaded(user: User, t: Track) {
     userId: user.id,
     to: s.email,
     subject: `Downloaded: ${t.title}`,
-    body: `Hi ${s.name},\n\n${user.name} downloaded the original file of "${t.title}".\n\nDownloading usually means they want it on hand, but it isn't a promise.\n\nYour receipt: ${APP_URL}/t/${t.token}\n\n— FloorTest`,
+    body: `Hi ${s.name},\n\n${user.name} downloaded the original file of "${t.title}".\n\nDownloading usually means they want it on hand, but it isn't a promise.\n\nYour receipt: ${APP_URL}/t/${t.token}\nEverything you've sent: ${APP_URL}/sent\n\n— FloorTest`,
   });
 }
 
@@ -398,7 +399,7 @@ export async function markPlayedOut(user: User, t: Track, note: string) {
     userId: user.id,
     to: s.email,
     subject: `Played out: ${t.title}`,
-    body: `Hi ${s.name},\n\n${user.name} played "${t.title}" out in a set${clean ? ` (${clean})` : ""}. 🎛️\n\nYour receipt: ${APP_URL}/t/${t.token}\n\n— FloorTest`,
+    body: `Hi ${s.name},\n\n${user.name} played "${t.title}" out in a set${clean ? ` (${clean})` : ""}. 🎛️\n\nYour receipt: ${APP_URL}/t/${t.token}\nEverything you've sent: ${APP_URL}/sent\n\n— FloorTest`,
   });
   return true;
 }

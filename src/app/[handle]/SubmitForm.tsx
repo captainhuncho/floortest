@@ -103,6 +103,11 @@ export function SubmitForm({
             Send another track
           </button>
         </div>
+        {!account && (
+          <a href="/sent" className="text-center text-[12px] font-medium text-mute underline underline-offset-4">
+            Track everything you&apos;ve sent, no account needed
+          </a>
+        )}
       </div>
     );
   }
@@ -123,6 +128,14 @@ export function SubmitForm({
             Send another track
           </button>
         </div>
+        {!account && (
+          <p className={`mt-4 text-sm ${L.mute}`}>
+            <a href="/sent" className="underline underline-offset-4">
+              Track everything you&apos;ve sent
+            </a>
+            , no account needed.
+          </p>
+        )}
       </div>
     );
   }

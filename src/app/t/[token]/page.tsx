@@ -115,10 +115,10 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
       </section>
       <p className="text-[11px] text-faint">
         No account needed. Bookmark this page to check in any time, or{" "}
-        <a href="/sent" className="text-faint underline">
+        <a href="/sent" className="font-medium text-bone underline underline-offset-4">
           see everything you&apos;ve sent
-        </a>
-        .
+        </a>{" "}
+        in one place.
       </p>
     </main>
   );
