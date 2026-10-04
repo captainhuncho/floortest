@@ -11,12 +11,22 @@ export function FeedbackButton() {
   const [kind, setKind] = useState("Idea");
   const [pending, start] = useTransition();
   const text = useRef<HTMLTextAreaElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
   const path = usePathname();
   const toast = useToast();
 
   return (
-    <div className="relative">
-      <button type="button" className="btn-ghost btn-sm" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label="Feedback">
+    <div
+      className="relative"
+      onKeyDown={(e) => {
+        // Escape closes the panel and puts focus back on the button.
+        if (e.key === "Escape" && open) {
+          setOpen(false);
+          trigger.current?.focus();
+        }
+      }}
+    >
+      <button ref={trigger} type="button" className="btn-ghost btn-sm" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label="Feedback">
         {/* Phones: an icon, so the header row fits. */}
         <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4 sm:hidden" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
           <path d="M4 5h16v11H9l-5 4z" />

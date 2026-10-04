@@ -185,3 +185,8 @@ html:has(.theme-day), html:has(.theme-day) body { background: #ffffff; }
 @media (prefers-color-scheme: light) {
   html:has(.theme-system), html:has(.theme-system) body { background: #ffffff; }
 }
+
+/* iOS Safari zooms into any field under 16px when it's focused. Zoom stays unlocked, so touch screens get 16px fields instead. */
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea { font-size: 16px !important; }
+}
