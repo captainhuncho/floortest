@@ -691,4 +691,21 @@ update tracks set sets_ok = 1;
 alter table users add column handle_changed_at bigint;
 `,
   },
+{
+    // Tap speed: how long the screen takes to respond after a tap or key press. No account, IP or query string is stored.
+    id: "0040_tap_speed",
+    sql: `
+create table tap_timings (
+  id bigint generated always as identity primary key,
+  created_at bigint not null,
+  path text not null,
+  target text not null default '',
+  ms int not null,
+  device text not null default '',
+  browser text not null default ''
+);
+create index tap_timings_created on tap_timings(created_at);
+alter table tap_timings enable row level security;
+`,
+  },
 ];

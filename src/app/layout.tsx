@@ -1,3 +1,4 @@
+import { TapSpeed } from "@/components/TapSpeed";
 import { Analytics } from "@vercel/analytics/next";
 import { mono, serif } from "./fonts";
 import type { Metadata, Viewport } from "next";
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         {/* Cookie-free page-view counts (Vercel Web Analytics): no personal data, no consent banner needed. */}
         <Analytics />
+        {!isPreview && process.env.NODE_ENV === "production" && <TapSpeed />}
       </body>
     </html>
   );
