@@ -216,7 +216,7 @@ export default async function Home({
                   <span className="block text-sm uppercase">
                     {title}
                   </span>
-                  <span className="mt-1 block text-xs text-dim">
+                  <span className="mt-1 block text-xs text-mute">
                     {body}
                   </span>
                 </span>
