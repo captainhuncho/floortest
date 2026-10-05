@@ -5,7 +5,6 @@ import { Logo } from "@/components/Logo";
 import { currentUser } from "@/lib/auth";
 import { APP_URL } from "@/lib/mail";
 import { env } from "@/lib/env";
-import { offeredPlans, planGrid } from "@/lib/plan-store";
 import { footerGroups } from "@/lib/site";
 import { pairs, siteCopy, siteImageUrl } from "@/lib/content";
 import { mono, serif } from "./fonts";
@@ -20,12 +19,6 @@ export const metadata = { alternates: { canonical: "/" } };
 const HOST = APP_URL.replace(/^https?:\/\//, "");
 const DEMO = "/maxwell";
 
-const JOURNEY = [
-  ["✓", "Delivered", "Original audio received safely"],
-  ["♪", "Listened", "Played for 30+ seconds"],
-  ["↓", "Downloaded", "The original file was downloaded"],
-  ["↩", "Replied", "A message came back"],
-];
 
 
 
@@ -38,7 +31,6 @@ export default async function Home({
 }) {
   const user = await currentUser();
   const deleted = !!(await searchParams).deleted;
-  const plans = await offeredPlans();
   const c = await siteCopy("home");
   const HOW = pairs(c.how_steps);
   const FAQ = pairs(c.faq);
@@ -74,6 +66,9 @@ export default async function Home({
               </Link>
             ) : (
               <>
+                <Link href="/pricing" className="hidden px-2 text-sm text-mute hover:text-bone sm:inline">
+                  Pricing
+                </Link>
                 <Link href="/login" className="btn-ghost btn-sm">
                   Log in
                 </Link>
@@ -161,51 +156,12 @@ export default async function Home({
               </div>
             </div>
           </div>
-          <div className="mt-20 flex flex-wrap gap-x-8 gap-y-2 border-t border-white/10 pt-6">
-            {["No account needed to send", "Original WAV & MP3", "Change any decision later"].map((t) => (
-              <span key={t} className="home-label flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-md bg-lime" />
-                {t}
-              </span>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Journey */}
-      <section className="border-y border-white/10 bg-ink-2">
-        <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-end">
-            <h2 className="text-[clamp(2.5rem,5.5vw,4.5rem)] font-bold leading-[0.95] tracking-[-0.04em]">
-              {c.journey_title}
-            </h2>
-            <p className="max-w-[65ch] text-sm leading-relaxed text-mute lg:pb-2">
-              {c.journey_intro}
-            </p>
-          </div>
-          <ol className="mt-10 grid grid-cols-1 overflow-hidden rounded-lg border border-white/10 sm:grid-cols-2 lg:grid-cols-4">
-            {JOURNEY.map(([icon, title, body], i) => (
-              <li
-                key={title}
-                className={`flex gap-4 border-white/10 p-6 ${i ? "border-t sm:border-t-0 sm:border-l" : "bg-lime/[0.06]"} ${i === 2 ? "sm:border-l-0 sm:border-t lg:border-t-0 lg:border-l" : ""} ${i === 3 ? "sm:border-t lg:border-t-0" : ""}`}
-              >
-                <span
-                  aria-hidden
-                  className={`text-xl ${i ? "text-dim" : "text-lime"}`}
-                >
-                  {icon}
-                </span>
-                <span>
-                  <span className="block text-sm uppercase">
-                    {title}
-                  </span>
-                  <span className="mt-1 block text-xs text-mute">
-                    {body}
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ol>
+          <p className="mt-16 border-t border-white/10 pt-6 text-sm text-mute">
+            {c.free_line}{" "}
+            <Link href="/pricing" className="text-bone underline decoration-lime underline-offset-4">
+              See pricing
+            </Link>
+          </p>
         </div>
       </section>
 
@@ -227,66 +183,16 @@ export default async function Home({
         )}
       </section>
 
-      {/* Why */}
-      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-end">
-          <h2 className="text-[clamp(2.5rem,5.5vw,4.5rem)] font-bold leading-[0.95] tracking-[-0.04em]">
-            {c.problem_title}
-          </h2>
-          <p className="max-w-[65ch] text-sm leading-relaxed text-mute lg:pb-2">
-            {c.problem_intro}
-          </p>
-        </div>
-        <div className="mt-10 grid grid-cols-1 md:grid-cols-2">
-          <div className="border border-white/10 bg-ink-2 p-8 sm:p-10">
-            <p className="home-label">The old way</p>
-            <p className="mt-6 text-2xl sm:text-3xl">DMs, email and drives</p>
-            <ul className="mt-8 divide-y divide-white/10 border-t border-white/10 text-sm text-mute">
-              {[
-                "Links expire before listening",
-                "Files lose sender context",
-                "Feedback disappears in chats",
-                "Artists never know what happened",
-              ].map((t) => (
-                <li key={t} className="py-3.5">
-                  <span className="mr-3 text-lime">→</span>
-                  {t}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="bg-lime p-8 text-ink sm:p-10">
-            <p className="text-[0.7rem] uppercase tracking-[0.1em]">
-              With FloorTest
-            </p>
-            <p className="mt-6 text-2xl sm:text-3xl">One receiving desk</p>
-            <ul className="mt-8 divide-y divide-ink/15 border-t border-ink/15 text-sm">
-              {[
-                "Original audio, ready to download",
-                "Every track routed into a collection",
-                "Replies stay attached to submissions",
-                "Senders hear when it's listened to, downloaded or replied to",
-              ].map((t) => (
-                <li key={t} className="py-3.5">
-                  <span className="mr-3">→</span>
-                  {t}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </section>
-
       {/* How */}
       <section id="how" className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
         <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
           {c.how_title}
         </h2>
-        <ol className="mt-10 grid grid-cols-1 border-t border-white/10 sm:grid-cols-2 lg:grid-cols-4">
+        <ol className="mt-10 grid grid-cols-1 border-t border-white/10 sm:grid-cols-3">
           {HOW.map(([title, body], i) => (
             <li
               key={title}
-              className={`border-white/10 py-8 pr-6 ${i ? "lg:border-l lg:pl-6" : ""} ${i % 2 ? "sm:border-l sm:pl-6" : ""}`}
+              className={`border-white/10 py-8 pr-6 ${i ? "sm:border-l sm:pl-6" : ""}`}
             >
               <p className="home-label">0{i + 1}</p>
               <p className="mt-8 text-xl">{title}</p>
@@ -296,45 +202,6 @@ export default async function Home({
             </li>
           ))}
         </ol>
-        <div className="mt-12 grid grid-cols-1 overflow-hidden rounded-lg border border-white/10 md:grid-cols-2">
-          <div className="bg-ink-2 p-6 sm:p-12">
-            <p className="text-xs uppercase tracking-[0.1em] text-lime">
-              For DJs, curators and labels
-            </p>
-            <p className="mt-8 text-[clamp(2rem,4vw,3.25rem)] font-bold leading-[0.95] tracking-[-0.035em]">
-              Every track in one place.
-            </p>
-            <p className="mt-5 text-sm leading-relaxed text-mute">
-              Every track in one queue, sorted by callout, ready to play. No more
-              digging through DMs, inboxes and expired links before a gig.
-            </p>
-            <Link
-              href={cta.href}
-              className="mt-8 inline-block rounded-md bg-lime px-6 py-3.5 text-sm font-medium uppercase text-ink"
-            >
-              {cta.label} →
-            </Link>
-          </div>
-          <div className="border-t border-white/10 bg-ink-2 p-6 sm:p-12 md:border-l md:border-t-0">
-            <p className="text-xs uppercase tracking-[0.1em] text-lime">
-              For artists and producers
-            </p>
-            <p className="mt-8 text-[clamp(2rem,4vw,3.25rem)] font-bold leading-[0.95] tracking-[-0.035em]">
-              Send it once. Stop wondering.
-            </p>
-            <p className="mt-5 text-sm leading-relaxed text-mute">
-              No account. Upload the original WAV or MP3, confirm your email once,
-              and follow it: Delivered, Listened, Downloaded, Replied. Want your
-              own link? Request an invite below.
-            </p>
-            <Link
-              href={DEMO}
-              className="mt-8 inline-block rounded-md border border-white/25 px-6 py-3.5 text-sm text-bone hover:border-white/50"
-            >
-              Try the sender view →
-            </Link>
-          </div>
-        </div>
       </section>
 
       {/* Private by design */}
@@ -370,51 +237,6 @@ export default async function Home({
               </div>
             ))}
           </dl>
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section className="mx-auto max-w-6xl border-t border-white/10 px-4 py-16 sm:px-6">
-        <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
-          {c.pricing_title}
-        </h2>
-        <p className="mt-4 text-sm text-mute">
-          {c.pricing_intro}
-        </p>
-        <div className={`mt-10 grid grid-cols-1 gap-4 ${planGrid(plans.length)}`}>
-          {plans.map((p) => (
-            <div
-              key={p.id}
-              className={`flex flex-col rounded-lg border p-7 ${p.featured ? "border-lime/40 bg-ink-2" : "border-white/10 bg-ink-2"}`}
-            >
-              <p className="text-xs uppercase tracking-[0.1em] text-lime">
-                {p.name}
-              </p>
-              <p className="mt-8 text-4xl font-bold">
-                Free
-                <span className="ml-2 text-xs font-normal text-dim">
-                  {p.price > 0 ? "during the beta" : "for good"}
-                </span>
-              </p>
-              <p className="mt-6 text-lg">
-                {p.limit.toLocaleString("en")} active tracks
-              </p>
-              <p className="mt-1 flex-1 text-sm text-mute">
-                {p.blurb}
-              </p>
-              <Link
-                href={cta.href}
-                className="mt-8 w-fit rounded-md bg-lime px-5 py-3 text-xs font-medium uppercase text-ink"
-              >
-                {user
-                  ? "Open your desk"
-                  : p.id === "free"
-                    ? inviteOnly ? "Request an invite" : "Start free"
-                    : inviteOnly ? "Request an invite" : "Try it in the beta"}{" "}
-                →
-              </Link>
-            </div>
-          ))}
         </div>
       </section>
 
@@ -465,24 +287,6 @@ export default async function Home({
               </p>
             </details>
           ))}
-        </div>
-      </section>
-
-      {/* Closing CTA */}
-      <section className="bg-lime text-ink">
-        <div className="mx-auto max-w-6xl px-4 py-24 text-center sm:px-6">
-          <p className="text-sm">
-            {c.closing_kicker}
-          </p>
-          <h2 className="mx-auto max-w-4xl text-[clamp(2.5rem,7vw,5.5rem)] font-bold leading-[0.92] tracking-[-0.045em]">
-            {c.closing_title}
-          </h2>
-          <Link
-            href={cta.href}
-            className="mt-10 inline-block rounded-md bg-ink px-7 py-4 text-sm text-bone hover:bg-black"
-          >
-            {cta.label} →
-          </Link>
         </div>
       </section>
 

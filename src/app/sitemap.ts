@@ -6,7 +6,7 @@ import { env } from "@/lib/env";
  * they're also marked noindex (see [handle]/page.tsx).
  */
 export default function sitemap(): MetadataRoute.Sitemap {
-  return ["", "/trust", "/contact", "/terms", "/privacy", "/cookies", "/privacy-choices", "/takedown", "/content-rules", "/subprocessors", "/security", "/law-enforcement", "/licenses"].map((p) => ({
+  return ["", "/pricing", "/trust", "/contact", "/terms", "/privacy", "/cookies", "/privacy-choices", "/takedown", "/content-rules", "/subprocessors", "/security", "/law-enforcement", "/licenses"].map((p) => ({
     url: `${env.appUrl}${p}`,
     changeFrequency: p ? "monthly" : "weekly",
     priority: p ? 0.4 : 1,

@@ -13,7 +13,7 @@ export function footerGroups(): { title: string; links: FooterLink[] }[] {
   const page = (label: string, href: string) => ({ label, href, external: false });
   return [
     { title: "For senders", links: [page("Track what you've sent", "/sent"), page("Content rules", "/content-rules")] },
-    { title: "Help", links: [page("Contact us", "/contact"), page("Trust & Security", "/trust"), page("Report a security issue", "/security")] },
+    { title: "Help", links: [page("Pricing", "/pricing"), page("Contact us", "/contact"), page("Trust & Security", "/trust"), page("Report a security issue", "/security")] },
     {
       title: "Legal",
       links: [
