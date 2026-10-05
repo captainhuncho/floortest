@@ -156,12 +156,6 @@ export default async function Home({
               </div>
             </div>
           </div>
-          <p className="mt-16 border-t border-white/10 pt-6 text-sm text-mute">
-            {c.free_line}{" "}
-            <Link href="/pricing" className="text-bone underline decoration-lime underline-offset-4">
-              See pricing
-            </Link>
-          </p>
         </div>
       </section>
 
@@ -237,6 +231,21 @@ export default async function Home({
               </div>
             ))}
           </dl>
+        </div>
+      </section>
+
+      {/* Plans */}
+      <section className="mx-auto max-w-4xl px-4 py-20 text-center sm:px-6">
+        <p className="text-sm uppercase tracking-[0.2em] text-mute">{c.plans_kicker}</p>
+        <h2 className="mt-5 text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[1] tracking-[-0.04em]">{c.plans_title}</h2>
+        <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-mute sm:text-lg">{c.plans_intro}</p>
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+          <Link href={cta.href} className="rounded-full bg-lime px-8 py-4 text-base font-semibold text-ink hover:brightness-95">
+            {user ? "Open your desk" : inviteOnly ? "Request an invite" : "Start free"}
+          </Link>
+          <Link href="/pricing" className="rounded-full border border-line-2 bg-ink-2 px-8 py-4 text-base font-semibold text-bone hover:border-mute">
+            Compare all plans
+          </Link>
         </div>
       </section>
 

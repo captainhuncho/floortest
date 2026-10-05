@@ -24,7 +24,6 @@ export const SITE_PAGES = {
       headline: f("Headline", "From private tracks"),
       headline_italic: f("Headline, second line (italic)", "to the DJ set."),
       intro: text("Intro", "One receiving link for every track you're sent. Hear what's new in seconds, keep what's right for your set, and answer every sender without a single DM."),
-      free_line: f("Line under the hero", "Free for up to 20 active tracks, for good. Pro and Team are free during the beta."),
       preview_image: f("Product preview image", "", { kind: "image", hint: "Replaces the clickable product preview below the receipts section. Leave empty to keep the clickable preview." }),
       preview_alt: f("Product preview image: description", "The FloorTest review queue", { hint: "Read aloud by screen readers." }),
       how_title: f("How it works: title", "Share once. Decide fast."),
@@ -34,6 +33,9 @@ export const SITE_PAGES = {
         { kind: "pairs", hint: "Each step: a title line, then its text. Leave a blank line between steps." },
       ),
       private_title: f("Privacy section: title", "Music stays between the people you choose."),
+      plans_kicker: f("Plans: small label", "Plans"),
+      plans_title: f("Plans: headline", "Start free. Grow when your inbox does."),
+      plans_intro: text("Plans: intro", "Free holds 20 active tracks, for good. Pro and Team hold hundreds more, and both are free during the beta."),
       faq_title: f("Questions: title", "Before the first track lands."),
       faq: text(
         "Questions and answers",
