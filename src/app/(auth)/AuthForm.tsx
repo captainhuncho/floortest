@@ -125,7 +125,7 @@ export function AuthForm({
                 aria-pressed={!!shown[f.name]}
                 className="absolute inset-y-0 right-0 grid w-12 place-items-center text-mute hover:text-bone"
               >
-                <NavIcon name={shown[f.name] ? "eyeOff" : "eye"} className="size-[18px]" />
+                {shown[f.name] ? <NavIcon name="eyeOff" className="size-[18px]" /> : <EyeIcon />}
               </button>
             </div>
           ) : (
@@ -171,5 +171,14 @@ export function AuthForm({
         </p>
       )}
     </form>
+  );
+}
+
+/** "Show password" eye, exported from the FloorTest Product System Figma file. */
+function EyeIcon() {
+  return (
+    <svg aria-hidden viewBox="0 40.5 19 13" fill="none" className="h-[13px] w-[19px]">
+      <path d="M9.5 41.25C11.3776 41.25 13.2118 41.7952 14.7695 42.8145C16.3199 43.8289 17.5257 45.2669 18.2393 46.9453C18.2522 46.9808 18.252 47.0182 18.2393 47.0537C17.5257 48.7325 16.3201 50.171 14.7695 51.1855C13.2118 52.2048 11.3776 52.75 9.5 52.75C7.62238 52.75 5.78822 52.2048 4.23047 51.1855C2.67979 50.1709 1.47329 48.7327 0.759766 47.0537C0.747138 47.0183 0.74693 46.9806 0.759766 46.9453C1.47333 45.2667 2.68004 43.8289 4.23047 42.8145C5.78822 41.7952 7.62238 41.25 9.5 41.25ZM11.6006 47C11.6004 48.1083 10.6757 49.0352 9.5 49.0352C8.32449 49.0349 7.40058 48.1082 7.40039 47C7.40039 45.8917 8.32437 44.9641 9.5 44.9639C10.6758 44.9639 11.6006 45.8915 11.6006 47ZM13.1006 47C13.1006 45.0312 11.472 43.4639 9.5 43.4639C7.52818 43.4641 5.90039 45.0314 5.90039 47C5.90058 48.9685 7.52829 50.5349 9.5 50.5352C11.4719 50.5352 13.1004 48.9686 13.1006 47Z" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
   );
 }
