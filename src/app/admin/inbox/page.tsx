@@ -2,15 +2,15 @@ import Link from "next/link";
 import { q } from "@/lib/db";
 import { setContactHandled } from "../actions";
 
-/** Contact-form messages: open ones to deal with, and handled ones kept for reference. */
+/** Contact-form messages: open ones to deal with, and handled ones kept for reference. In-app feedback has its own board. */
 export default async function Inbox({ searchParams }: { searchParams: Promise<{ show?: string }> }) {
   const showHandled = (await searchParams).show === "handled";
   const rows = await q.all<{ id: number; name: string; email: string; topic: string; message: string; handled_at: number | null; created_at: number; user_id: number | null; handle: string | null }>(
     `SELECT m.*, u.handle FROM contact_messages m LEFT JOIN users u ON u.id = m.user_id
-     WHERE m.handled_at IS ${showHandled ? "NOT NULL" : "NULL"} ORDER BY ${showHandled ? "m.handled_at" : "m.created_at"} DESC LIMIT 200`,
+     WHERE m.topic NOT LIKE 'Feedback%' AND m.handled_at IS ${showHandled ? "NOT NULL" : "NULL"} ORDER BY ${showHandled ? "m.handled_at" : "m.created_at"} DESC LIMIT 200`,
   );
-  const open = await q.count("SELECT COUNT(*) AS n FROM contact_messages WHERE handled_at IS NULL");
-  const handled = await q.count("SELECT COUNT(*) AS n FROM contact_messages WHERE handled_at IS NOT NULL");
+  const open = await q.count("SELECT COUNT(*) AS n FROM contact_messages WHERE topic NOT LIKE 'Feedback%' AND handled_at IS NULL");
+  const handled = await q.count("SELECT COUNT(*) AS n FROM contact_messages WHERE topic NOT LIKE 'Feedback%' AND handled_at IS NOT NULL");
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4">

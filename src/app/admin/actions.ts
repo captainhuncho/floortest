@@ -638,3 +638,34 @@ export async function flipSwitch(key: SwitchKey, on: boolean) {
   await done(`${SWITCHES[key].label}: ${on ? "on" : "off"}`);
   revalidatePath("/", "layout");
 }
+
+/* ───────────────────────── Beta partners and feedback ───────────────────────── */
+
+export async function savePartnerNote(email: string, form: FormData) {
+  const a = await requireAdminAction();
+  const key = email.trim().toLowerCase().slice(0, 200);
+  if (!key) return;
+  const note = String(form.get("note") || "").slice(0, 4000);
+  await q.run(
+    `INSERT INTO partner_notes (email, note, admin_id, updated_at) VALUES (?,?,?,?)
+     ON CONFLICT (email) DO UPDATE SET note = excluded.note, admin_id = excluded.admin_id, updated_at = excluded.updated_at`,
+    key,
+    note,
+    a.id,
+    now(),
+  );
+  await logAdmin(a.id, "partner note", key);
+  await done("Note saved");
+  refresh();
+}
+
+const FEEDBACK_STATUSES = ["new", "planned", "fixed", "wontdo"] as const;
+
+export async function setFeedbackStatus(id: number, status: string) {
+  const a = await requireAdminAction();
+  if (!(FEEDBACK_STATUSES as readonly string[]).includes(status) || !Number.isSafeInteger(id)) return;
+  await q.run("UPDATE contact_messages SET feedback_status = ?, handled_at = ? WHERE id = ? AND topic LIKE 'Feedback%'", status, status === "new" ? null : now(), id);
+  await logAdmin(a.id, "feedback status", `#${id}`, status);
+  await done(status === "new" ? "Moved back to New" : `Marked ${status === "wontdo" ? "won't do" : status}`);
+  refresh();
+}

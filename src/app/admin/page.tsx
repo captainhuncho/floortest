@@ -1,3 +1,4 @@
+import { partnerRows } from "@/lib/partners";
 import { switchOn } from "@/lib/switches";
 import Link from "next/link";
 import { configProblems, env } from "@/lib/env";
@@ -15,11 +16,13 @@ export default async function AdminOverview() {
   const c = (sql: string, ...a: (string | number)[]) => q.count(sql, ...a);
   const week = (sql: string) => Promise.all([c(sql, t - 7 * DAY, t), c(sql, t - 14 * DAY, t - 7 * DAY)]);
 
+  const newFeedback = await c("SELECT COUNT(*) AS n FROM contact_messages WHERE topic LIKE 'Feedback%' AND feedback_status = 'new'");
+  const partnersStuck = (await partnerRows()).filter((r) => r.flag).length;
   const [takedowns, appeals, privacy, inbox, verifying, waiting, failed, incidents] = await Promise.all([
     c("SELECT COUNT(*) AS n FROM takedowns WHERE status = 'open'"),
     c("SELECT COUNT(*) AS n FROM contact_messages WHERE handled_at IS NULL AND topic = 'Suspension appeal'"),
     c("SELECT COUNT(*) AS n FROM contact_messages WHERE handled_at IS NULL AND topic = 'Privacy request'"),
-    c("SELECT COUNT(*) AS n FROM contact_messages WHERE handled_at IS NULL AND topic NOT IN ('Suspension appeal', 'Privacy request')"),
+    c("SELECT COUNT(*) AS n FROM contact_messages WHERE handled_at IS NULL AND topic NOT IN ('Suspension appeal', 'Privacy request') AND topic NOT LIKE 'Feedback%'"),
     c("SELECT COUNT(*) AS n FROM users WHERE identity_status = 'pending'"),
     c("SELECT COUNT(*) AS n FROM waitlist WHERE invited_at IS NULL"),
     c("SELECT COUNT(*) AS n FROM incidents WHERE kind = 'email_failed' AND resolved_at IS NULL"),
@@ -49,6 +52,8 @@ export default async function AdminOverview() {
     { n: incidents, label: "Open incidents", sub: "Errors the app recorded; mark each handled when dealt with", href: "/admin/incidents", tone: "warn" },
     { n: verifying, label: "Verification requests", sub: "Check the code in their bio", href: "/admin/verification", tone: "info" },
     { n: inbox, label: "Inbox messages", sub: "Support questions and reports", href: "/admin/inbox", tone: "info" },
+    { n: newFeedback, label: "New feedback", sub: "Ideas, bugs and reactions from inside the app, waiting to be triaged", href: "/admin/feedback?status=new", tone: "info" },
+    { n: partnersStuck, label: "Beta partners who need a nudge", sub: "No track after a week, gone quiet, or invited but not joined", href: "/admin/partners?show=stuck", tone: "warn" },
     { n: waiting, label: "People on the waitlist", sub: "Waiting for an invite", href: "/admin/waitlist", tone: "info" },
   ].filter((x) => x.n > 0);
 

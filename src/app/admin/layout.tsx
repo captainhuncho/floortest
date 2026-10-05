@@ -15,8 +15,9 @@ export const dynamic = "force-dynamic";
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const admin = await requireAdmin();
   // Counts that need attention, shown as badges.
+  const feedback = await q.count("SELECT COUNT(*) AS n FROM contact_messages WHERE topic LIKE 'Feedback%' AND feedback_status = 'new'");
   const [inbox, waiting, incidents, verifying] = [
-    await q.count("SELECT COUNT(*) AS n FROM contact_messages WHERE handled_at IS NULL"),
+    await q.count("SELECT COUNT(*) AS n FROM contact_messages WHERE handled_at IS NULL AND topic NOT LIKE 'Feedback%'"),
     await q.count("SELECT COUNT(*) AS n FROM waitlist WHERE invited_at IS NULL"),
     await q.count("SELECT COUNT(*) AS n FROM incidents WHERE resolved_at IS NULL AND kind <> 'upload_rejected'"),
     await q.count("SELECT COUNT(*) AS n FROM users WHERE identity_status = 'pending'"),
@@ -43,7 +44,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       title: "Support",
       icon: "life",
       sections: [
-        { title: "People", items: [{ href: "/admin/inbox", label: "Inbox", icon: "inbox", badge: inbox }, { href: "/admin/accounts", label: "Users", icon: "users" }] },
+        { title: "People", items: [{ href: "/admin/inbox", label: "Inbox", icon: "inbox", badge: inbox }, { href: "/admin/partners", label: "Beta partners", icon: "rocket" }, { href: "/admin/feedback", label: "Feedback", icon: "flag", badge: feedback }, { href: "/admin/accounts", label: "Users", icon: "users" }] },
         { title: "Messages", items: [{ href: "/admin/emails", label: "Emails sent", icon: "mail" }] },
       ],
     },

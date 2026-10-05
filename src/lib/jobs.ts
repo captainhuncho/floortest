@@ -62,7 +62,8 @@ export async function runAdminDigest(at = now()) {
     `Decisions: ${await c("SELECT COUNT(*) AS n FROM tracks WHERE decided_at >= ?", week)} (${await c("SELECT COUNT(*) AS n FROM tracks WHERE decision = 'kept' AND decided_at >= ?", week)} kept)`,
     `Played out: ${await c("SELECT COUNT(*) AS n FROM tracks WHERE played_out_at >= ?", week)}`,
     `Waitlist: ${await c("SELECT COUNT(*) AS n FROM waitlist WHERE invited_at IS NULL")} waiting (+${await c("SELECT COUNT(*) AS n FROM waitlist WHERE created_at >= ?", week)} this week)`,
-    `Open feedback and messages: ${await c("SELECT COUNT(*) AS n FROM contact_messages WHERE handled_at IS NULL")}`,
+    `Open messages: ${await c("SELECT COUNT(*) AS n FROM contact_messages WHERE handled_at IS NULL AND topic NOT LIKE 'Feedback%'")}`,
+    `New feedback: ${await c("SELECT COUNT(*) AS n FROM contact_messages WHERE topic LIKE 'Feedback%' AND feedback_status = 'new'")}`,
     `Incidents: ${await c("SELECT COUNT(*) AS n FROM incidents WHERE created_at >= ?", week)}`,
   ];
   for (const to of env.adminEmails)

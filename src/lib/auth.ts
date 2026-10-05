@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import "server-only";
 import crypto from "node:crypto";
 import { cookies, headers } from "next/headers";
@@ -100,12 +101,17 @@ export const currentUser = cache(async (): Promise<User | null> => {
   const token = (await cookies()).get(COOKIE)?.value;
   if (!token) return null;
   const cols = USER_COLUMNS.split(", ").map((c) => `u.${c}`).join(", ");
-  const row = await q.get<User>(
-    `SELECT ${cols} FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ? AND u.suspended_at IS NULL`,
+  const row = await q.get<User & { last_active_at?: number | null }>(
+    `SELECT ${cols}, u.last_active_at FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ? AND u.suspended_at IS NULL`,
     hashToken(token),
     now(),
   );
-  return row ?? null;
+  if (!row) return null;
+  // "Last active" for the admin's beta tracker: written at most once an hour, after the response is sent.
+  const last = row.last_active_at;
+  delete row.last_active_at;
+  if (!last || now() - last > 3_600_000) after(() => q.run("UPDATE users SET last_active_at = ? WHERE id = ?", now(), row.id).catch(() => {}));
+  return row;
 });
 
 export async function requireUser(): Promise<User> {

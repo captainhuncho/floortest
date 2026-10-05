@@ -212,12 +212,13 @@ export async function sendFeedback(kind: string, message: string, path: string) 
   if (!body) return;
   const topic = ["Idea", "Bug", "Confusing", "Love it"].includes(kind) ? `Feedback · ${kind}` : "Feedback";
   await q.run(
-    "INSERT INTO contact_messages (user_id, name, email, topic, message, created_at) VALUES (?,?,?,?,?,?)",
+    "INSERT INTO contact_messages (user_id, name, email, topic, message, page, created_at) VALUES (?,?,?,?,?,?,?)",
     u.id,
     u.name,
     u.email,
     topic,
-    `${body}\n\nPage: ${String(path || "").slice(0, 200)}`,
+    body,
+    String(path || "").slice(0, 200),
     now(),
   );
 }

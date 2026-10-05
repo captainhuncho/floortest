@@ -732,4 +732,23 @@ delete from tap_timings where created_at in (
 );
 `,
   },
+{
+    // Beta partners and feedback: when each account was last active (updated at most hourly), the admin's call notes
+    // per person (by email, so invites not yet used can have notes too), and feedback status and page.
+    id: "0043_partners_feedback",
+    sql: `
+alter table users add column last_active_at bigint;
+create table partner_notes (
+  email text primary key,
+  note text not null default '',
+  admin_id bigint references users(id) on delete set null,
+  updated_at bigint not null
+);
+alter table partner_notes enable row level security;
+alter table contact_messages add column feedback_status text not null default 'new' check (feedback_status in ('new', 'planned', 'fixed', 'wontdo'));
+alter table contact_messages add column page text not null default '';
+update contact_messages set page = substring(message from '\nPage: ([^\n]*)$'), message = regexp_replace(message, '\n\nPage: [^\n]*$', '')
+  where topic like 'Feedback%' and message ~ '\nPage: [^\n]*$';
+`,
+  },
 ];
