@@ -20,6 +20,8 @@ type Field = {
   hint?: React.ReactNode;
   /** New-password field: show the live strength meter. */
   strength?: boolean;
+  /** Pick one of these instead of typing. */
+  choices?: { value: string; label: string }[];
 };
 
 export function AuthForm({
@@ -66,7 +68,20 @@ export function AuthForm({
       {Object.entries(hidden ?? {}).map(([k, v]) => (
         <input key={k} type="hidden" name={k} value={v} />
       ))}
-      {fields.map((f) => (
+      {fields.map((f) =>
+        f.choices ? (
+          <fieldset key={f.name} className="space-y-1.5">
+            <legend className="label mb-1.5 block">{f.label}</legend>
+            <div className="grid grid-cols-2 gap-2">
+              {f.choices.map((c) => (
+                <label key={c.value} className="flex cursor-pointer items-center gap-2 rounded-md border border-line bg-ink-2 px-3 py-2.5 text-sm has-[:checked]:border-lime/70 has-[:checked]:text-bone">
+                  <input type="radio" name={f.name} value={c.value} required defaultChecked={f.defaultValue === c.value} className="accent-lime" />
+                  {c.label}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        ) : (
         <div key={f.name} className="space-y-1.5">
           <label htmlFor={`f-${f.name}`} className="label block">
             {f.label}
@@ -101,7 +116,8 @@ export function AuthForm({
           {f.strength && <PasswordStrength value={values[f.name] ?? ""} context={["name", "email", "handle"].map((k) => values[k] ?? "")} />}
           {f.hint && <div className="text-sm text-mute">{f.hint}</div>}
         </div>
-      ))}
+        ),
+      )}
       {state?.error && (
         <p role="alert" className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
           {state.error}

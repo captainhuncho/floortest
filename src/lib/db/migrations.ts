@@ -893,4 +893,12 @@ alter table site_content enable row level security;
 alter table site_content_versions enable row level security;
 `,
   },
+  {
+    // Who the account is for: a DJ/curator or a label/A&R team. Asked at sign-up so beta feedback can be told apart;
+    // existing accounts stay unset until they pick in Settings.
+    id: "0051_user_kind",
+    sql: `
+alter table users add column kind text check (kind in ('dj', 'label'));
+`,
+  },
 ];

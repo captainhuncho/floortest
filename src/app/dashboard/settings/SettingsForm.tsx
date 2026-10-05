@@ -4,7 +4,7 @@ import { useActionForm } from "@/components/useActionForm";
 
 import { updateSettings } from "../actions/settings";
 
-export function SettingsForm({ name, handle, base, nextChange }: { name: string; handle: string; base: string; nextChange: string | null }) {
+export function SettingsForm({ name, handle, base, nextChange, kind }: { name: string; handle: string; base: string; nextChange: string | null; kind: "dj" | "label" | null }) {
   const [state, onSubmit, pending] = useActionForm(updateSettings, undefined);
   return (
     <form onSubmit={onSubmit} className="mt-4 space-y-4">
@@ -12,6 +12,20 @@ export function SettingsForm({ name, handle, base, nextChange }: { name: string;
         <span className="label">Display name</span>
         <input name="name" defaultValue={name} className="input" required />
       </label>
+      <fieldset className="space-y-1.5">
+        <legend className="label mb-1.5 block">I&apos;m receiving music as</legend>
+        <div className="grid max-w-md grid-cols-2 gap-2">
+          {[
+            ["dj", "DJ or curator"],
+            ["label", "Label or A&R"],
+          ].map(([v, l]) => (
+            <label key={v} className="flex cursor-pointer items-center gap-2 rounded-md border border-line bg-ink-2 px-3 py-2.5 text-sm has-[:checked]:border-lime/70">
+              <input type="radio" name="kind" value={v} defaultChecked={kind === v} className="accent-lime" />
+              {l}
+            </label>
+          ))}
+        </div>
+      </fieldset>
       <label className="block space-y-1.5">
         <span className="label">Your link</span>
         <div className="flex items-stretch overflow-hidden rounded-md border border-line bg-ink-2 focus-within:border-lime/70">

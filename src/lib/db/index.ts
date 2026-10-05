@@ -32,6 +32,8 @@ export const likeContains = (s: string) => `%${s.replace(/[\\%_]/g, (c) => `\\${
 // Row types
 export type User = {
   id: number;
+  /** Who the account is for; null for accounts made before sign-up asked. */
+  kind: "dj" | "label" | null;
   email: string;
   name: string;
   handle: string;

@@ -67,7 +67,8 @@ export async function updateSettings(_: SettingsState, form: FormData): Promise<
   if (!name) return { error: "Name is required." };
   const problem = await changeHandle(u.id, handle);
   if (problem) return { error: problem };
-  await q.run("UPDATE users SET name = ? WHERE id = ?", name, u.id);
+  const kind = form.get("kind") === "label" ? "label" : form.get("kind") === "dj" ? "dj" : u.kind;
+  await q.run("UPDATE users SET name = ?, kind = ? WHERE id = ?", name, kind, u.id);
   if (name !== u.name || handle !== u.handle) await audit(u.id, "settings_updated", handle !== u.handle ? `link is now /${handle}` : name);
   done();
   return { ok: true };

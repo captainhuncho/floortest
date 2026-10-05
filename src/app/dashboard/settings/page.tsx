@@ -44,7 +44,7 @@ export default async function Settings() {
         <h2 id="link-h" className="text-lg font-semibold">
           Your link
         </h2>
-        <SettingsForm name={user.name} handle={user.handle} base={APP_URL} nextChange={nextLink ? new Date(nextLink).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : null} />
+        <SettingsForm kind={user.kind} name={user.name} handle={user.handle} base={APP_URL} nextChange={nextLink ? new Date(nextLink).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : null} />
       </section>
 
       <section className="card p-6" aria-labelledby="email-h">

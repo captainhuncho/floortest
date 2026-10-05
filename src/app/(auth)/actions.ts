@@ -99,7 +99,7 @@ export async function signup(_: FormState, form: FormData): Promise<FormState> {
   try {
     userId = await q.tx(async (db) => {
       const u = (await db.get<{ id: number }>(
-        "INSERT INTO users (email, password_hash, name, handle, referred_by, invite_code, tz, signup_source, created_at) VALUES (?,?,?,?,?,?,?,?,?) RETURNING id",
+        "INSERT INTO users (email, password_hash, name, handle, referred_by, invite_code, tz, signup_source, kind, created_at) VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING id",
         email,
         hashPassword(password),
         name,
@@ -108,6 +108,7 @@ export async function signup(_: FormState, form: FormData): Promise<FormState> {
         invite.valid ? invite.code : null,
         validTz(String(form.get("tz") || "UTC")),
         String(form.get("source") || "").trim().slice(0, 200),
+        form.get("kind") === "label" ? "label" : "dj",
         now(),
       ))!;
       const c = (await db.get<{ id: number }>("INSERT INTO collections (user_id, name, created_at) VALUES (?,?,?) RETURNING id", u.id, "Inbox", now()))!;
