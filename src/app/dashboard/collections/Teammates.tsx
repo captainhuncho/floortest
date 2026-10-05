@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { addTeammate, removeTeammate } from "../actions";
+import { addTeammate, removeTeammate } from "../actions/team";
 
 /** Owner's side of a shared collection: who can listen and vote, and adding or removing them. */
 export function Teammates({ collectionId, members, max }: { collectionId: number; members: { id: number; name: string; handle: string }[]; max: number }) {

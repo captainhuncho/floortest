@@ -1,6 +1,6 @@
 import { trackUse } from "@/lib/usage";
 import { requireUser } from "@/lib/auth";
-import { capacity, REFERRAL_BONUS, referralCodeFor } from "@/lib/core";
+import { capacity, REFERRAL_BONUS, referralCodeFor } from "@/lib/desk";
 import {q } from "@/lib/db";
 import { fmtDay } from "@/lib/format";
 import { APP_URL } from "@/lib/mail";

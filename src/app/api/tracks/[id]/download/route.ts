@@ -1,6 +1,7 @@
 import { currentUser } from "@/lib/auth";
 import { audit, trackLabel } from "@/lib/audit";
-import { markDownloaded, ownedTrack } from "@/lib/core";
+import { markDownloaded } from "@/lib/review";
+import { ownedTrack } from "@/lib/desk";
 import { crateFileName } from "@/lib/crate";
 import { storage } from "@/lib/storage";
 

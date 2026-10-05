@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { completeUpload, IntakeError, userByHandle } from "@/lib/core";
+import { completeUpload, IntakeError } from "@/lib/intake";
+import { userByHandle } from "@/lib/desk";
 import { recordIncident } from "@/lib/incidents";
 
 export const runtime = "nodejs";

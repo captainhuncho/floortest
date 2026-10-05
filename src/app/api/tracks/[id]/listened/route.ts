@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { currentUser } from "@/lib/auth";
 import { audit, trackLabel } from "@/lib/audit";
-import { markListened, ownedTrack } from "@/lib/core";
+import { markListened } from "@/lib/review";
+import { ownedTrack } from "@/lib/desk";
 
 export const runtime = "nodejs";
 

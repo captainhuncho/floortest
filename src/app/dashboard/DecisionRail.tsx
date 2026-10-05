@@ -6,7 +6,7 @@ import { isTyping, usePlayer, type PlayerTrack } from "@/components/Player";
 import { useToast } from "@/components/Toast";
 import { QuickReplies } from "./QuickReplies";
 import { ReplyTemplates } from "./ReplyTemplates";
-import { decideTrack, undoDecision } from "./actions";
+import { decideTrack, undoDecision } from "./actions/review";
 
 type Props = {
   track: PlayerTrack & { decision: "kept" | "passed" | null };

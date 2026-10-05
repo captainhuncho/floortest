@@ -2,7 +2,7 @@
 
 import { useActionForm } from "@/components/useActionForm";
 import {useState} from "react";
-import { deleteAccount } from "../actions";
+import { deleteAccount } from "../actions/settings";
 
 export function DeleteAccount({ handle }: { handle: string }) {
   const [state, onSubmit, pending] = useActionForm(deleteAccount, undefined);

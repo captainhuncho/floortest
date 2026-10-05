@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { currentUser } from "@/lib/auth";
-import { IntakeError, startUpload, userByHandle } from "@/lib/core";
+import { IntakeError, startUpload } from "@/lib/intake";
+import { userByHandle } from "@/lib/desk";
 import { featureOn } from "@/lib/features";
 import { cleanGenre, MIX_STATUS, RELEASE_STATUS } from "@/lib/plans";
 import { ipFrom } from "@/lib/ratelimit";

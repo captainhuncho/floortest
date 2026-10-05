@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import type { Notice } from "@/lib/notifications";
-import { clearNotifications, markNotificationsRead, quickSearch, type SearchHit } from "./actions";
+import { clearNotifications, markNotificationsRead, quickSearch, type SearchHit } from "./actions/desk";
 
 type Props = {
   user: { name: string; handle: string; verified: boolean };

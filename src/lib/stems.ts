@@ -1,6 +1,6 @@
 import "server-only";
 import crypto from "node:crypto";
-import { IntakeError } from "./core";
+import { IntakeError } from "./intake";
 import { now, q, type Sender, type Track, type User } from "./db";
 import { APP_URL, sendMail } from "./mail";
 import { MAX_UPLOAD_BYTES } from "./plans";

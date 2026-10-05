@@ -2,7 +2,7 @@ import { trackUse } from "@/lib/usage";
 import { switchOn } from "@/lib/switches";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
-import { collectionsFor, isClosed } from "@/lib/core";
+import { collectionsFor, isClosed } from "@/lib/desk";
 import { fmtDay } from "@/lib/format";
 import { genresFor } from "@/lib/plans";
 import { APP_URL } from "@/lib/mail";

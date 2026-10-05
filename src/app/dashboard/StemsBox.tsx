@@ -1,7 +1,7 @@
 import type { Track } from "@/lib/db";
 import { fmtBytes, fmtDay } from "@/lib/format";
 import { stemsFor } from "@/lib/stems";
-import { askForStems } from "./actions";
+import { askForStems } from "./actions/review";
 
 /** Stems for a track: ask the sender for them, then download them one by one or as a ZIP. */
 export async function StemsBox({ track: t, senderName }: { track: Track; senderName: string }) {

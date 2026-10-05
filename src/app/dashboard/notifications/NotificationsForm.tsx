@@ -3,7 +3,7 @@
 import { useActionForm } from "@/components/useActionForm";
 import {useEffect, useState, useTransition} from "react";
 import { useToast } from "@/components/Toast";
-import { sendDigestNow, updateNotifications } from "../actions";
+import { sendDigestNow, updateNotifications } from "../actions/settings";
 
 type Prefs = { mode: "instant" | "digest" | "off"; digestHour: number; quietStart: number | null; quietEnd: number | null; alerts: boolean; product: boolean; tz: string };
 

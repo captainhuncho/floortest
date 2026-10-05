@@ -1,0 +1,178 @@
+"use server";
+
+/** Settings: alerts, profile and public page, plans and checkout, identity, email change, theme and deleting the account. */
+import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { destroySession, requireUser, verifyPassword } from "@/lib/auth";
+import { env } from "@/lib/env";
+import { purgeAccount } from "@/lib/privacy";
+import { cancelEmailChange, changeHandle, requestEmailChange } from "@/lib/accounts";
+import { capacity } from "@/lib/desk";
+import { now, q } from "@/lib/db";
+import { sendDigest } from "@/lib/notify";
+import { PLANS, planOf } from "@/lib/plans";
+import { switchOn } from "@/lib/switches";
+import { audit } from "@/lib/audit";
+import { cleanProfileLink, IDENTITY_HOSTS, newIdentityCode } from "@/lib/identity";
+import { done } from "./common";
+
+export async function updateNotifications(_: SettingsState, form: FormData): Promise<SettingsState> {
+  const u = await requireUser();
+  const mode = String(form.get("notify_submissions"));
+  const hour = (k: string) => {
+    const v = form.get(k);
+    if (v === null || v === "") return null;
+    const n = Number(v);
+    return Number.isInteger(n) && n >= 0 && n <= 23 ? n : null;
+  };
+  let tz = String(form.get("tz") || "UTC").slice(0, 64);
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: tz });
+  } catch {
+    tz = "UTC";
+  }
+  const quiet = form.get("quiet") === "on";
+  await q.run(
+    "UPDATE users SET notify_submissions = ?, digest_hour = ?, quiet_start = ?, quiet_end = ?, notify_alerts = ?, notify_product = ?, tz = ? WHERE id = ?",
+    ["instant", "digest", "off"].includes(mode) ? mode : "digest",
+    hour("digest_hour") ?? 9,
+    quiet ? hour("quiet_start") : null,
+    quiet ? hour("quiet_end") : null,
+    form.get("notify_alerts") === "on" ? 1 : 0,
+    form.get("notify_product") === "on" ? 1 : 0,
+    tz,
+    u.id,
+  );
+  await audit(u.id, "notifications_updated");
+  done();
+  return { ok: true };
+}
+
+/** Sends the digest immediately, whatever the schedule. Handy for checking what it looks like. */
+export async function sendDigestNow(): Promise<number> {
+  const u = await requireUser();
+  const n = await sendDigest(u.id);
+  await audit(u.id, "digest_sent", `${n} track${n === 1 ? "" : "s"}`);
+  done();
+  return n;
+}
+
+export type SettingsState = { ok?: boolean; error?: string } | undefined;
+
+export async function updateSettings(_: SettingsState, form: FormData): Promise<SettingsState> {
+  const u = await requireUser();
+  const name = String(form.get("name") || "").trim().slice(0, 80);
+  const handle = String(form.get("handle") || "").trim().toLowerCase();
+  if (!name) return { error: "Name is required." };
+  const problem = await changeHandle(u.id, handle);
+  if (problem) return { error: problem };
+  await q.run("UPDATE users SET name = ? WHERE id = ?", name, u.id);
+  if (name !== u.name || handle !== u.handle) await audit(u.id, "settings_updated", handle !== u.handle ? `link is now /${handle}` : name);
+  done();
+  return { ok: true };
+}
+
+export async function updatePublicPage(_: SettingsState, form: FormData): Promise<SettingsState> {
+  const u = await requireUser();
+  const style = form.get("page_style") === "stage" ? "stage" : "classic";
+  const role = String(form.get("role_line") || "").trim().slice(0, 60);
+  await q.run("UPDATE users SET page_style = ?, role_line = ? WHERE id = ?", style, role, u.id);
+  await audit(u.id, "page_updated", style === "stage" ? "Stage style" : "Classic style");
+  done();
+  revalidatePath(`/${u.handle}`);
+  return { ok: true };
+}
+
+/** Moving down (or sideways) a plan. Upgrades always go through checkout: see confirmBetaUpgrade. */
+export async function setPlan(plan: string) {
+  const u = await requireUser();
+  if (!Object.hasOwn(PLANS, plan)) return;
+  if (planOf(plan).price > planOf(u.plan).price) return;
+  const cap = await capacity(u);
+  if (cap.used > planOf(plan).limit + cap.bonus) return;
+  await q.run("UPDATE users SET plan = ? WHERE id = ?", plan, u.id);
+  await audit(u.id, "plan_changed", planOf(plan).name);
+  done();
+}
+
+/**
+ * Checkout during the beta: the beta discount makes the total $0.00, so confirming applies the plan
+ * straight away (no card). Once the billing switch is on, upgrades need a real payment instead.
+ */
+export async function confirmBetaUpgrade(plan: string, form: FormData) {
+  const u = await requireUser();
+  if (!Object.hasOwn(PLANS, plan) || planOf(plan).price <= planOf(u.plan).price) redirect("/dashboard/plans");
+  if (await switchOn("billing")) redirect(`/dashboard/checkout?plan=${plan}`);
+  if (form.get("agree") !== "on") redirect(`/dashboard/checkout?plan=${plan}&agree=1`);
+  const cap = await capacity(u);
+  if (cap.used > planOf(plan).limit + cap.bonus) redirect("/dashboard/plans");
+  await q.run("UPDATE users SET plan = ? WHERE id = ?", plan, u.id);
+  await audit(u.id, "plan_changed", planOf(plan).name);
+  done();
+  redirect(`/dashboard/plans?welcome=${plan}`);
+}
+
+/** Gives the account its bio code (created once, reused so it doesn't change under them). */
+export async function identityCode(): Promise<string> {
+  const u = await requireUser();
+  const row = await q.get<{ c: string | null }>("SELECT identity_code AS c FROM users WHERE id = ?", u.id);
+  if (row?.c) return row.c;
+  const code = newIdentityCode();
+  await q.run("UPDATE users SET identity_code = COALESCE(identity_code, ?) WHERE id = ?", code, u.id);
+  return (await q.get<{ c: string }>("SELECT identity_code AS c FROM users WHERE id = ?", u.id))!.c;
+}
+
+export async function submitIdentity(_: SettingsState, form: FormData): Promise<SettingsState> {
+  const u = await requireUser();
+  if (u.identity_status === "verified") return { ok: true };
+  const links = [...new Set(form.getAll("link").map((l) => cleanProfileLink(String(l))).filter((l): l is string => !!l))].slice(0, 5);
+  if (!links.length) return { error: "Add at least one profile link." };
+  const bad = links.find((l) => !IDENTITY_HOSTS.some((h) => new URL(l).host === h || new URL(l).host.endsWith(`.${h}`)));
+  if (bad) return { error: `${new URL(bad).host} isn't one we can check. Use Instagram, SoundCloud, Resident Advisor, Spotify, Bandcamp, Mixcloud, TikTok, X, YouTube or Beatport.` };
+  await identityCode();
+  await q.run(
+    "UPDATE users SET identity_status = 'pending', identity_links = ?, identity_note = '', identity_submitted_at = ? WHERE id = ?",
+    JSON.stringify(links),
+    now(),
+    u.id,
+  );
+  await audit(u.id, "identity_submitted", links.map((l) => new URL(l).host).join(", "));
+  done();
+  return { ok: true };
+}
+
+/** Permanently deletes the account, every stored file, and all history. Requires the password. */
+export async function deleteAccount(_: SettingsState, form: FormData): Promise<SettingsState> {
+  const u = await requireUser();
+  const row = await q.get<{ password_hash: string }>("SELECT password_hash FROM users WHERE id = ?", u.id);
+  if (!row || !verifyPassword(String(form.get("password") || ""), row.password_hash)) return { error: "That password isn't right." };
+  await destroySession();
+  await purgeAccount(u.id);
+  redirect("/?deleted=1");
+}
+
+/** Starts an email change from Settings. Needs the password; the new address must confirm before it takes effect. */
+export async function changeMyEmail(_: SettingsState, form: FormData): Promise<SettingsState> {
+  const u = await requireUser();
+  const row = await q.get<{ password_hash: string }>("SELECT password_hash FROM users WHERE id = ?", u.id);
+  if (!row || !verifyPassword(String(form.get("password") || ""), row.password_hash)) return { error: "That password isn't right." };
+  const problem = await requestEmailChange(u.id, String(form.get("email") || ""), "user");
+  if (problem) return { error: problem };
+  await audit(u.id, "settings_updated", "started an email change");
+  done();
+  return { ok: true };
+}
+
+export async function cancelMyEmailChange() {
+  const u = await requireUser();
+  await cancelEmailChange(u.id);
+  done();
+}
+
+/** Day, Night or System for the signed-in app. A cookie, so every page renders in it from the first byte. */
+export async function setTheme(theme: string) {
+  if (!["night", "day", "system"].includes(theme)) return;
+  (await cookies()).set("ft_theme", theme, { path: "/", maxAge: 365 * 86_400, sameSite: "lax", secure: process.env.NODE_ENV === "production" });
+  revalidatePath("/", "layout");
+}

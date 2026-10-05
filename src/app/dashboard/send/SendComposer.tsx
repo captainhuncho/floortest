@@ -4,7 +4,7 @@ import { CuePoint } from "@/components/CuePoint";
 import { useEffect, useState, useTransition } from "react";
 import { SubmitForm } from "../../[handle]/SubmitForm";
 import { FolderSend } from "./FolderSend";
-import { lookupReceiver, type ReceiverLookup } from "../actions";
+import { lookupReceiver, type ReceiverLookup } from "../actions/desk";
 
 /** Type someone's link name, see who they are, then send them a track from your account. */
 export function SendComposer({ host, account, initial, folders }: { host: string; account: { name: string; email: string }; initial: string; folders: boolean }) {

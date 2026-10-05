@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { PLAN_FEATURES, PLANS, planOf, type PlanId } from "@/lib/plans";
 import { switchOn } from "@/lib/switches";
-import { confirmBetaUpgrade } from "../actions";
+import { confirmBetaUpgrade } from "../actions/settings";
 
 export const metadata = { title: "Checkout — FloorTest" };
 

@@ -1,12 +1,12 @@
 import { CuePoint } from "@/components/CuePoint";
 import Link from "next/link";
 import type { PlayerTrack } from "@/components/Player";
-import { deletesAt } from "@/lib/core";
+import { deletesAt } from "@/lib/plans";
 import {q, type Collection, type EventRow, type Sender, type Track } from "@/lib/db";
 import { fmtBytes, fmtDate, fmtDay } from "@/lib/format";
 import { MIX_STATUS, RELEASE_STATUS } from "@/lib/plans";
 import { featureOn } from "@/lib/features";
-import { addNote, deleteTrack, moveTrack, replyToSender } from "./actions";
+import { addNote, deleteTrack, moveTrack, replyToSender } from "./actions/review";
 import { ConfirmButton, NoteForm } from "./ClientBits";
 import { DecisionRail } from "./DecisionRail";
 import { PlayedOut } from "./PlayedOut";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { setActiveCollection } from "../actions";
+import { setActiveCollection } from "../actions/collections";
 
 /** Your receiving link: copy, preview, and which collection new tracks go to. */
 export function LinkCard({ link, handle, collections, activeId }: { link: string; handle: string; collections: { id: number; name: string; closed: boolean }[]; activeId: number | null }) {

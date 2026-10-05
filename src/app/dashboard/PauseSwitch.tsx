@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { useToast } from "@/components/Toast";
-import { pauseLink, resumeLink } from "./actions";
+import { pauseLink, resumeLink } from "./actions/desk";
 
 export type PauseState = { on: boolean; until: string | null; untilTs: number | null; message: string; blocked: string | null };
 

@@ -5,7 +5,7 @@ import { recentAudit } from "@/lib/audit";
 import { AccountLog } from "../AccountLog";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
-import { activeCollection, capacity, collectionsFor, isClosed, isPaused } from "@/lib/core";
+import { activeCollection, capacity, collectionsFor, isClosed, isPaused } from "@/lib/desk";
 import { q } from "@/lib/db";
 import { fmtDay } from "@/lib/format";
 import { APP_URL } from "@/lib/mail";

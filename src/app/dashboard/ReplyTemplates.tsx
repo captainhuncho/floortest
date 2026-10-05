@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { deleteReplyTemplate, getReplyTemplates, saveReplyTemplate } from "./actions";
+import { deleteReplyTemplate, getReplyTemplates, saveReplyTemplate } from "./actions/review";
 
 /** Saved replies next to the reply box: insert one, or save what you've written for next time. */
 export function ReplyTemplates({ onPick, current }: { onPick: (text: string) => void; current: () => string }) {

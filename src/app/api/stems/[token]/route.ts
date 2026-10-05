@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { IntakeError } from "@/lib/core";
+import { IntakeError } from "@/lib/intake";
 import { ipFrom } from "@/lib/ratelimit";
 import { startStemUpload } from "@/lib/stems";
 

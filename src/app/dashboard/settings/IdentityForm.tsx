@@ -4,7 +4,7 @@ import { CuePoint } from "@/components/CuePoint";
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/Toast";
 import { useActionForm } from "@/components/useActionForm";
-import { identityCode, submitIdentity } from "../actions";
+import { identityCode, submitIdentity } from "../actions/settings";
 
 type Status = "none" | "pending" | "verified" | "rejected";
 

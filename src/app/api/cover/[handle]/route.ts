@@ -1,4 +1,4 @@
-import { userByHandle } from "@/lib/core";
+import { userByHandle } from "@/lib/desk";
 import { storage } from "@/lib/storage";
 
 export const runtime = "nodejs";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { setTheme } from "../actions";
+import { setTheme } from "../actions/settings";
 
 const OPTIONS = [
   { id: "night", label: "Night" },

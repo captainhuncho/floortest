@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useToast } from "@/components/Toast";
 import { useActionForm } from "@/components/useActionForm";
-import { changePassword, signOutOtherDevices } from "../actions";
+import { changePassword, signOutOtherDevices } from "../actions/security";
 import { PasswordStrength } from "@/components/PasswordStrength";
 
 export function SecurityForm({ otherSessions, context = [] }: { otherSessions: number; context?: string[] }) {

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useToast } from "@/components/Toast";
-import { shareTrack, stopSharing } from "./actions";
+import { shareTrack, stopSharing } from "./actions/review";
 
 /** Share a track with a colleague: a private listen-only link that expires after a week. */
 export function ShareBox({

@@ -3,7 +3,7 @@
 import { useFocusTrap } from "@/components/useFocusTrap";
 import Link from "next/link";
 import { useEffect, useState, useTransition, useRef } from "react";
-import { createCollection, deleteCollection, setActiveCollection, updateCollection } from "../actions";
+import { createCollection, deleteCollection, setActiveCollection, updateCollection } from "../actions/collections";
 import { ExportButton } from "../ExportButton";
 import { GenresField } from "./GenresField";
 

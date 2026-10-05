@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { activeCollection } from "@/lib/core";
+import { activeCollection } from "@/lib/desk";
 import { q, type User } from "@/lib/db";
-import { dismissOnboarding } from "../actions";
+import { dismissOnboarding } from "../actions/desk";
 
 /** First-week checklist: each step ticks itself off from what the receiver has actually done. */
 export async function Onboarding({ user }: { user: User }) {

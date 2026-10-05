@@ -1,5 +1,5 @@
 import { Logo } from "@/components/Logo";
-import { senderByVerifyToken } from "@/lib/core";
+import { senderByVerifyToken } from "@/lib/intake";
 import { ConfirmEmail } from "./ConfirmEmail";
 
 export const metadata = { title: "Confirm your email — FloorTest", robots: { index: false } };

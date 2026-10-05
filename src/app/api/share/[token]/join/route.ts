@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { referralCodeFor } from "@/lib/core";
+import { referralCodeFor } from "@/lib/desk";
 import { shareByToken } from "@/lib/share";
 
 export const runtime = "nodejs";

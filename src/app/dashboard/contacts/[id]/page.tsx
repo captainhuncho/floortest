@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { ownedSender } from "@/lib/core";
+import { ownedSender } from "@/lib/desk";
 import {q, type EventRow, type Track } from "@/lib/db";
 import { ago, fmtDate, fmtDay, fmtTime } from "@/lib/format";
-import { addNote, blockSender, replyToSender } from "../../actions";
+import { addNote, blockSender, replyToSender } from "../../actions/review";
 import { Composer, ConfirmButton } from "../../ClientBits";
 import { Status } from "../../TrackList";
 import { ShareRequest } from "../ShareRequest";

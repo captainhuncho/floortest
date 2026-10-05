@@ -1,5 +1,5 @@
 import { currentUser } from "@/lib/auth";
-import { ownedTrack } from "@/lib/core";
+import { ownedTrack } from "@/lib/desk";
 import { featureOn } from "@/lib/features";
 import { q } from "@/lib/db";
 import type { Stem } from "@/lib/stems";

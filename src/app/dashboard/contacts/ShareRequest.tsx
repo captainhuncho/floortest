@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useToast } from "@/components/Toast";
-import { askToShare } from "../actions";
+import { askToShare } from "../actions/review";
 
 /** Ask the artist, per track, to allow sharing it with a non-commercial partner. */
 export function ShareRequest({ trackId, status }: { trackId: number; status: { state: "pending" | "allowed" | "declined" | "cancelled" | "shareable" | null; at: string | null } }) {

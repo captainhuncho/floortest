@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useToast } from "@/components/Toast";
 import { useActionForm } from "@/components/useActionForm";
-import { confirmTwoFactor, disableTwoFactor, setSigninAlerts, startTwoFactor } from "../actions";
+import { confirmTwoFactor, disableTwoFactor, setSigninAlerts, startTwoFactor } from "../actions/security";
 
 /** Optional account protections the holder chooses: authenticator-app sign-in and sign-in alerts. */
 export function TwoFactor({ enabled, alerts }: { enabled: boolean; alerts: boolean }) {

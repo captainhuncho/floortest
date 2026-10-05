@@ -1,7 +1,7 @@
 import { voteTally } from "@/lib/team";
 import { TRACK_STATUSES } from "@/lib/statuses";
 import Link from "next/link";
-import { collectionsFor } from "@/lib/core";
+import { collectionsFor } from "@/lib/desk";
 import { q, likeContains, type Track, type User } from "@/lib/db";
 import { MIX_STATUS, RELEASE_STATUS } from "@/lib/plans";
 import { ViewToggle } from "../ViewToggle";

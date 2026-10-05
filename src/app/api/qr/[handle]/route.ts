@@ -1,5 +1,5 @@
 import QRCode from "qrcode";
-import { userByHandle } from "@/lib/core";
+import { userByHandle } from "@/lib/desk";
 import { APP_URL } from "@/lib/mail";
 
 export const runtime = "nodejs";

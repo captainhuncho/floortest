@@ -1,10 +1,10 @@
 import { trackUse } from "@/lib/usage";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
-import { capacity } from "@/lib/core";
+import { capacity } from "@/lib/desk";
 import { PLAN_FEATURES, PLANS, RETAIN_UNREVIEWED_DAYS, planOf, type PlanId } from "@/lib/plans";
 import { switchOn } from "@/lib/switches";
-import { setPlan } from "../actions";
+import { setPlan } from "../actions/settings";
 
 export const metadata = { title: "Plans — FloorTest" };
 

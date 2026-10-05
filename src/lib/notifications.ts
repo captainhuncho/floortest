@@ -1,5 +1,5 @@
 import "server-only";
-import { activeCollection, capacity, isClosed, isPaused } from "./core";
+import { activeCollection, capacity, isClosed, isPaused } from "./desk";
 import { now, q, type User } from "./db";
 
 export type Notice = { id: string; title: string; detail: string; href: string; at: number; unread: boolean; tone: "info" | "alert" };

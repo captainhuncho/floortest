@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionForm } from "@/components/useActionForm";
-import { cancelMyEmailChange, changeMyEmail } from "../actions";
+import { cancelMyEmailChange, changeMyEmail } from "../actions/settings";
 
 /** Change the account email. Nothing changes until the new address confirms; the current one is told. */
 export function EmailForm({ email, pending }: { email: string; pending: string | null }) {

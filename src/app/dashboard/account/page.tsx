@@ -2,7 +2,7 @@ import { CuePoint } from "@/components/CuePoint";
 import Link from "next/link";
 import { logout } from "../../(auth)/actions";
 import { requireUser } from "@/lib/auth";
-import { capacity, collectionsFor, isClosed, isPaused } from "@/lib/core";
+import { capacity, collectionsFor, isClosed, isPaused } from "@/lib/desk";
 import { q } from "@/lib/db";
 import { APP_URL } from "@/lib/mail";
 import { planOf } from "@/lib/plans";

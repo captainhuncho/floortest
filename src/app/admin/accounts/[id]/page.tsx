@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AUDIT_LABELS, type AuditAction } from "@/lib/audit";
-import { activeCollection, capacity, isClosed, isPaused } from "@/lib/core";
+import { activeCollection, capacity, isClosed, isPaused } from "@/lib/desk";
 import { q, type User } from "@/lib/db";
 import { fmtBytes } from "@/lib/format";
 import { APP_URL } from "@/lib/mail";

@@ -3,7 +3,7 @@ import { listeners } from "@/lib/team";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { forwardedHandle } from "@/lib/accounts";
-import { activeCollection, capacity, isClosed, isPaused, pausedMessage, userByHandle } from "@/lib/core";
+import { activeCollection, capacity, isClosed, isPaused, pausedMessage, userByHandle } from "@/lib/desk";
 import { fmtDay } from "@/lib/format";
 import { genresFor, RETAIN_UNREVIEWED_DAYS, shareDownloadEnabled } from "@/lib/plans";
 import { switchOn } from "@/lib/switches";

@@ -1,7 +1,7 @@
 import { trackUse } from "@/lib/usage";
 import { currentUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { markDownloaded } from "@/lib/core";
+import { markDownloaded } from "@/lib/review";
 import { crateZip, safeName } from "@/lib/crate";
 import { q, type Collection, type Track } from "@/lib/db";
 

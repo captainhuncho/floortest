@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { currentUser } from "@/lib/auth";
-import { ownedTrack } from "@/lib/core";
+import { ownedTrack } from "@/lib/desk";
 import { q } from "@/lib/db";
 
 export const runtime = "nodejs";

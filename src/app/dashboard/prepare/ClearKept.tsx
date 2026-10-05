@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useToast } from "@/components/Toast";
-import { clearKept } from "../actions";
+import { clearKept } from "../actions/review";
 
 /** Clears the current Prepare for set batch, after a clear warning. */
 export function ClearKept({ count }: { count: number }) {

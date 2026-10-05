@@ -2,7 +2,7 @@
 
 import { useActionForm } from "@/components/useActionForm";
 
-import { updateSettings } from "../actions";
+import { updateSettings } from "../actions/settings";
 
 export function SettingsForm({ name, handle, base, nextChange }: { name: string; handle: string; base: string; nextChange: string | null }) {
   const [state, onSubmit, pending] = useActionForm(updateSettings, undefined);

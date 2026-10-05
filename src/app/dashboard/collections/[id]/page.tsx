@@ -3,7 +3,7 @@ import { switchOn } from "@/lib/switches";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { collectionsFor, isClosed } from "@/lib/core";
+import { collectionsFor, isClosed } from "@/lib/desk";
 import { q, type Track } from "@/lib/db";
 import { fmtDay } from "@/lib/format";
 import { genresFor, MIX_STATUS } from "@/lib/plans";

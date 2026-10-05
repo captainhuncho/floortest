@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { IntakeError } from "@/lib/core";
+import { IntakeError } from "@/lib/intake";
 import { completeStemUpload } from "@/lib/stems";
 
 export const runtime = "nodejs";

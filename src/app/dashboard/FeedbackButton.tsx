@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { useToast } from "@/components/Toast";
-import { sendFeedback } from "./actions";
+import { sendFeedback } from "./actions/desk";
 
 /** Beta feedback from anywhere in the dashboard, with the page it came from. Goes to the admin inbox. */
 export function FeedbackButton() {

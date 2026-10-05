@@ -3,7 +3,7 @@ import { trackUse } from "@/lib/usage";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
-import { collectionsFor } from "@/lib/core";
+import { collectionsFor } from "@/lib/desk";
 import { q, likeContains, type Sender, type Track } from "@/lib/db";
 import { APP_URL } from "@/lib/mail";
 import { ReviewPanel } from "../ReviewPanel";

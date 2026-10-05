@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { recordIncident } from "@/lib/incidents";
-import { cleanupRecords, purgeExpired } from "@/lib/core";
+import { cleanupRecords, purgeExpired } from "@/lib/retention";
 import { cronAuthorized, recordRun } from "@/lib/cron";
 import { warnExpiring } from "@/lib/notify";
 import { runBackup } from "@/lib/backup";

@@ -3,7 +3,7 @@
 import { useActionForm } from "@/components/useActionForm";
 import { useRouter } from "next/navigation";
 import {useRef, useState} from "react";
-import { updatePublicPage } from "../actions";
+import { updatePublicPage } from "../actions/settings";
 
 export function PublicPageForm({ roleLine }: { roleLine: string }) {
   const [state, onSubmit, pending] = useActionForm(updatePublicPage, undefined);

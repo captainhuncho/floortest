@@ -9,7 +9,7 @@ import { Waveform } from "@/components/Waveform";
 import type { Decision } from "@/lib/db";
 import { fmtTime } from "@/lib/format";
 import { toPlayer } from "@/lib/player-track";
-import { clearDecision, decideTrack, replyToSender, undoDecision } from "../actions";
+import { clearDecision, decideTrack, replyToSender, undoDecision } from "../actions/review";
 import { QuickReplies } from "../QuickReplies";
 import { ReplyTemplates } from "../ReplyTemplates";
 

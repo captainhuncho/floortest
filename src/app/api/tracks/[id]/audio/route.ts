@@ -1,5 +1,5 @@
 import { currentUser } from "@/lib/auth";
-import { ownedTrack } from "@/lib/core";
+import { ownedTrack } from "@/lib/desk";
 import { memberTrack } from "@/lib/team";
 import { storage } from "@/lib/storage";
 

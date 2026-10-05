@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { q, type Track } from "@/lib/db";
-import { leaveShared, voteOnTrack } from "../../actions";
+import { leaveShared, voteOnTrack } from "../../actions/team";
 import { memberCollection, members, type Vote } from "@/lib/team";
 
 export const metadata = { title: "Shared collection — FloorTest" };

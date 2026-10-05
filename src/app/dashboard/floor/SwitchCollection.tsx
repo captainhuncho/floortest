@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { setActiveCollection } from "../actions";
+import { setActiveCollection } from "../actions/collections";
 
 export function SwitchCollection({ id, name }: { id: number; name: string }) {
   const [pending, start] = useTransition();
