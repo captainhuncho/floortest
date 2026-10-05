@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { capacity, collectionsFor, isClosed, isPaused } from "@/lib/desk";
 import { q } from "@/lib/db";
 import { APP_URL } from "@/lib/mail";
-import { planOf } from "@/lib/plans";
+import { planOf } from "@/lib/plan-store";
 import { VERSION } from "@/lib/site";
 import { PauseSwitch } from "../PauseSwitch";
 import { LinkCard } from "./LinkCard";
@@ -27,7 +27,7 @@ export default async function Account() {
   const theme = await currentTheme();
   const user = await requireUser();
   const cap = await capacity(user);
-  const plan = planOf(user.plan);
+  const plan = await planOf(user.plan);
   const count = async (sql: string) => (await q.get<{ n: number }>(sql, user.id))?.n ?? 0;
   const [reviewed, collections, contacts] = await Promise.all([
     count("SELECT COUNT(*) AS n FROM tracks WHERE user_id = ? AND decision IS NOT NULL"),

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { q } from "@/lib/db";
 import { parsePeriod } from "@/lib/period";
-import { PLANS, type PlanId } from "@/lib/plans";
+import { allPlans } from "@/lib/plan-store";
 import { PeriodPicker } from "../PeriodPicker";
 
 const money = (n: number) => `$${n.toFixed(2)}`;
@@ -12,7 +12,8 @@ export default async function Revenue({ searchParams }: { searchParams: Promise<
   const { from, to } = period;
   const byPlan = await q.all<{ plan: string; n: number }>("SELECT plan, COUNT(*)::int AS n FROM users WHERE suspended_at IS NULL GROUP BY plan");
   const count = (p: string) => byPlan.find((r) => r.plan === p)?.n ?? 0;
-  const paid = (["pro", "team"] as PlanId[]).reduce((s, p) => s + count(p) * PLANS[p].price, 0);
+  const plans = await allPlans();
+  const paid = plans.reduce((s, p) => s + count(p.id) * p.price, 0);
   const total = byPlan.reduce((s, r) => s + r.n, 0);
   const history = await q.all<{ handle: string; user_id: number; detail: string; created_at: number; by: string }>(
     `SELECT u.handle, u.id AS user_id, l.detail, l.created_at, 'user' AS by FROM account_log l JOIN users u ON u.id = l.user_id WHERE l.action = 'plan_changed' AND l.created_at < ?
@@ -24,9 +25,10 @@ export default async function Revenue({ searchParams }: { searchParams: Promise<
   );
   const signups = await q.count("SELECT COUNT(*) AS n FROM users WHERE created_at >= ? AND created_at < ?", from, to);
   const paidSignups = await q.count("SELECT COUNT(*) AS n FROM users WHERE plan <> 'free' AND created_at >= ? AND created_at < ?", from, to);
-  const rank = (p: string) => (["free", "pro", "team"] as string[]).indexOf(p);
+  // Up or down is by price (plans are ordered by Admin → Plans; price decides which way a change goes).
+  const rank = (p: string) => plans.find((x) => x.id === p)?.price ?? -1;
   // Users' own changes are logged by plan name ("Team"), admin changes by id ("team").
-  const planId = (d: string) => (Object.keys(PLANS) as PlanId[]).find((p) => p === d || PLANS[p].name.toLowerCase() === d.toLowerCase()) ?? d;
+  const planId = (d: string) => plans.find((p) => p.id === d || p.name.toLowerCase() === d.toLowerCase())?.id ?? d;
   for (const c of history) c.detail = planId(c.detail);
   // Walk every change oldest first, so each one is compared with the plan the account had just before it
   // (accounts start on Free), even when that earlier change was before the period.
@@ -67,12 +69,12 @@ export default async function Revenue({ searchParams }: { searchParams: Promise<
             <tr>{["Plan", "Price", "Accounts", "Monthly value"].map((h) => <th key={h} className="px-4 py-2.5 font-medium">{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-line">
-            {(Object.keys(PLANS) as PlanId[]).map((p) => (
-              <tr key={p}>
-                <td className="px-4 py-3">{PLANS[p].name}</td>
-                <td className="px-4 py-3 text-mute">{PLANS[p].price ? money(PLANS[p].price) : "Free"}</td>
-                <td className="px-4 py-3 tnum">{count(p)}</td>
-                <td className="px-4 py-3 tnum">{money(count(p) * PLANS[p].price)}</td>
+            {plans.map((plan) => (
+              <tr key={plan.id}>
+                <td className="px-4 py-3">{plan.name}{plan.retired && <span className="ml-2 text-xs text-faint">retired</span>}</td>
+                <td className="px-4 py-3 text-mute">{plan.price ? money(plan.price) : "Free"}</td>
+                <td className="px-4 py-3 tnum">{count(plan.id)}</td>
+                <td className="px-4 py-3 tnum">{money(count(plan.id) * plan.price)}</td>
               </tr>
             ))}
           </tbody>
@@ -103,7 +105,7 @@ export default async function Revenue({ searchParams }: { searchParams: Promise<
           {changes.map((c, i) => (
             <li key={i} className="flex flex-wrap justify-between gap-2 px-4 py-3 text-sm">
               <span>
-                {c.user_id ? <Link href={`/admin/accounts/${c.user_id}`} className="hover:underline">@{c.handle}</Link> : `@${c.handle}`} → {PLANS[c.detail as PlanId]?.name ?? c.detail}
+                {c.user_id ? <Link href={`/admin/accounts/${c.user_id}`} className="hover:underline">@{c.handle}</Link> : `@${c.handle}`} → {plans.find((x) => x.id === c.detail)?.name ?? c.detail}
                 <span className="text-mute"> · {c.dir > 0 ? "upgrade" : c.dir < 0 ? "downgrade" : "same plan"} · {c.by === "admin" ? "set by admin" : "by them"}</span>
               </span>
               <span className="text-mute">{new Date(c.created_at).toLocaleDateString("en-GB")}</span>

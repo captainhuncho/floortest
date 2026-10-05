@@ -4,7 +4,7 @@ import crypto from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { FEATURES, type Feature } from "@/lib/features";
-import { PLANS } from "@/lib/plans";
+import { allPlans, FREE_PLAN } from "@/lib/plan-store";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { signViewAs, VIEW_AS_COOKIE } from "@/lib/auth";
@@ -505,7 +505,7 @@ export async function adminEraseSender(form: FormData) {
 export async function saveSwitch(feature: Feature, form: FormData) {
   const a = await requireAdminAction();
   if (!(feature in FEATURES)) return;
-  const plans = Object.keys(PLANS).filter((p) => form.get(`plan_${p}`) === "on");
+  const plans = (await allPlans()).map((p) => p.id).filter((p) => form.get(`plan_${p}`) === "on");
   const handles = [...new Set(String(form.get("handles") || "").split(/[\s,]+/).map((h) => h.replace(/^@/, "").toLowerCase()).filter(Boolean))].slice(0, 200);
   const users = handles.length
     ? (await q.all<{ id: number }>(`SELECT id FROM users WHERE lower(handle) IN (${handles.map(() => "?").join(",")})`, ...handles)).map((r) => r.id)
@@ -677,4 +677,76 @@ export async function setFeedbackStatus(id: number, status: string) {
   await logAdmin(a.id, "feedback status", `#${id}`, status);
   await done(status === "new" ? "Moved back to New" : `Marked ${status === "wontdo" ? "won't do" : status}`);
   refresh();
+}
+
+/** Biggest active-track count among a plan's accounts (bonus slots excluded), so a limit cut can't strand anyone. */
+const fullestOn = async (plan: string) =>
+  (await q.get<{ n: number }>("SELECT COALESCE(MAX(c), 0) AS n FROM (SELECT COUNT(t.id) AS c FROM users u LEFT JOIN tracks t ON t.user_id = u.id AND t.deleted_at IS NULL WHERE u.plan = ? GROUP BY u.id) x", plan))!.n;
+
+export async function savePlan(id: string, form: FormData) {
+  const a = await requireAdminAction();
+  const old = (await allPlans()).find((p) => p.id === id);
+  if (!old) return fail("That plan no longer exists.");
+  const name = String(form.get("name") || "").trim().slice(0, 40);
+  const price = Math.round(Number(form.get("price")) * 100);
+  const limit = Math.floor(Number(form.get("limit")));
+  const blurb = String(form.get("blurb") || "").trim().slice(0, 200);
+  const features = String(form.get("features") || "").split("\n").map((f) => f.trim()).filter(Boolean).slice(0, 20).map((f) => f.slice(0, 120));
+  const position = Math.floor(Number(form.get("position")) || 0);
+  if (!name) return fail("Give the plan a name.");
+  if (!Number.isFinite(price) || price < 0 || price > 100000) return fail("Price must be between $0 and $1,000.");
+  if (id === FREE_PLAN && price !== 0) return fail("Free must stay at $0.");
+  if (!Number.isFinite(limit) || limit < 1 || limit > 1000000) return fail("Track limit must be at least 1.");
+  const fullest = await fullestOn(id);
+  if (limit < fullest) return fail(`Someone on ${old.name} already has ${fullest} active tracks, so the limit can't go below that.`);
+  await q.run(
+    "UPDATE plans SET name = ?, price_cents = ?, track_limit = ?, blurb = ?, features = ?, share_downloads = ?, featured = ?, position = ?, updated_at = ? WHERE id = ?",
+    name, price, limit, blurb, JSON.stringify(features), form.get("share_downloads") === "on" ? 1 : 0, form.get("featured") === "on" ? 1 : 0, position, now(), id,
+  );
+  const changes = [
+    old.price * 100 !== price && `price $${old.price} → $${price / 100}`,
+    old.limit !== limit && `limit ${old.limit} → ${limit}`,
+    old.name !== name && `name ${old.name} → ${name}`,
+  ].filter(Boolean);
+  await logAdmin(a.id, "edited plan", id, changes.join(" · ") || "wording");
+  await done(`${name} saved.`);
+  revalidatePath("/", "layout");
+}
+
+export async function addPlan(form: FormData) {
+  const a = await requireAdminAction();
+  const id = String(form.get("id") || "").trim().toLowerCase();
+  const name = String(form.get("name") || "").trim().slice(0, 40);
+  if (!/^[a-z][a-z0-9_-]{1,23}$/.test(id)) return fail("The plan code must be 2–24 lowercase letters, numbers, - or _, starting with a letter.");
+  if (!name) return fail("Give the plan a name.");
+  if ((await allPlans()).some((p) => p.id === id)) return fail("A plan with that code already exists.");
+  const position = ((await q.get<{ p: number }>("SELECT COALESCE(MAX(position), 0) AS p FROM plans"))!.p) + 1;
+  // New plans start retired (hidden) so they can be filled in before anyone sees them.
+  await q.run(
+    "INSERT INTO plans (id, name, price_cents, track_limit, blurb, features, share_downloads, featured, position, retired_at, updated_at) VALUES (?,?,?,?,?,?,0,0,?,?,?)",
+    id, name, 0, 20, "", "[]", position, now(), now(),
+  );
+  await logAdmin(a.id, "added plan", id, name);
+  await done(`${name} added. It's hidden until you offer it.`);
+  revalidatePath("/", "layout");
+}
+
+export async function setPlanOffered(id: string, offered: boolean) {
+  const a = await requireAdminAction();
+  if (id === FREE_PLAN && !offered) return fail("Free can't be retired: every account falls back to it.");
+  await q.run("UPDATE plans SET retired_at = ?, updated_at = ? WHERE id = ?", offered ? null : now(), now(), id);
+  await logAdmin(a.id, offered ? "offered plan" : "retired plan", id);
+  await done(offered ? "Plan is offered again." : "Plan retired. Current users keep it; nobody new can pick it.");
+  revalidatePath("/", "layout");
+}
+
+export async function deletePlan(id: string) {
+  const a = await requireAdminAction();
+  if (id === FREE_PLAN) return fail("Free can't be deleted.");
+  const n = (await q.get<{ n: number }>("SELECT COUNT(*) AS n FROM users WHERE plan = ?", id))!.n;
+  if (n) return fail(`${n} account${n === 1 ? " is" : "s are"} on this plan. Retire it instead, or move them first.`);
+  await q.run("DELETE FROM plans WHERE id = ?", id);
+  await logAdmin(a.id, "deleted plan", id);
+  await done("Plan deleted.");
+  revalidatePath("/", "layout");
 }

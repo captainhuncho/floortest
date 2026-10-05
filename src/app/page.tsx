@@ -5,7 +5,7 @@ import { Logo } from "@/components/Logo";
 import { currentUser } from "@/lib/auth";
 import { APP_URL } from "@/lib/mail";
 import { env } from "@/lib/env";
-import { PLANS } from "@/lib/plans";
+import { offeredPlans, planGrid } from "@/lib/plan-store";
 import { footerGroups } from "@/lib/site";
 import { mono, serif } from "./fonts";
 import { HomePreview } from "./HomePreview";
@@ -63,6 +63,7 @@ export default async function Home({
 }) {
   const user = await currentUser();
   const deleted = !!(await searchParams).deleted;
+  const plans = await offeredPlans();
   // Invite-only: most visitors have no code, so the main button leads to the waitlist.
   const inviteOnly = !(await switchOn("open_signup"));
   const cta = user
@@ -402,11 +403,11 @@ export default async function Home({
           during the beta. Paid plans come after it: beta users hear first, get
           at least 30 days&apos; notice, and never lose tracks they already have.
         </p>
-        <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
-          {Object.entries(PLANS).map(([id, p]) => (
+        <div className={`mt-10 grid grid-cols-1 gap-4 ${planGrid(plans.length)}`}>
+          {plans.map((p) => (
             <div
-              key={id}
-              className={`flex flex-col rounded-lg border p-7 ${id === "pro" ? "border-lime/40 bg-ink-2" : "border-white/10 bg-ink-2"}`}
+              key={p.id}
+              className={`flex flex-col rounded-lg border p-7 ${p.featured ? "border-lime/40 bg-ink-2" : "border-white/10 bg-ink-2"}`}
             >
               <p className="text-xs uppercase tracking-[0.1em] text-lime">
                 {p.name}
@@ -429,7 +430,7 @@ export default async function Home({
               >
                 {user
                   ? "Open your desk"
-                  : id === "free"
+                  : p.id === "free"
                     ? inviteOnly ? "Request an invite" : "Start free"
                     : inviteOnly ? "Request an invite" : "Try it in the beta"}{" "}
                 →

@@ -6,7 +6,8 @@ import crypto from "node:crypto";
 import { logEvent, now, q, USER_COLUMNS, type Collection, type Queryable, type Sender, type Track, type User } from "./db";
 import { noLinks, APP_URL, sendMailLater } from "./mail";
 import { alertIfFull, notifyNewSubmission } from "./notify";
-import { ACCEPTED_EXT, MAX_UPLOAD_BYTES, RATE_PER_EMAIL_PER_DAY, RATE_PER_IP_PER_HOUR, shareDownloadEnabled } from "./plans";
+import { ACCEPTED_EXT, MAX_UPLOAD_BYTES, RATE_PER_EMAIL_PER_DAY, RATE_PER_IP_PER_HOUR } from "./plans";
+import { shareDownloadEnabled } from "./plan-store";
 import { allow } from "./ratelimit";
 import { sealUpload, storage } from "./storage";
 import { validateAudio } from "./validate";
@@ -189,7 +190,7 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
         analysis.peaks ? JSON.stringify(analysis.peaks) : null,
         now(),
         sharing && collection?.allow_sharing ? 1 : 0,
-        sharing && collection?.allow_sharing && shareDownloadEnabled(fresh.plan) ? 1 : 0,
+        sharing && collection?.allow_sharing && (await shareDownloadEnabled(fresh.plan)) ? 1 : 0,
         meta.batch ?? null,
         meta.setsOk ? 1 : 0,
       ))!;

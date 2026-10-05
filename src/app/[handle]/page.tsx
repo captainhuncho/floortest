@@ -5,7 +5,8 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { forwardedHandle } from "@/lib/accounts";
 import { activeCollection, capacity, isClosed, isPaused, pausedMessage, userByHandle } from "@/lib/desk";
 import { fmtDay } from "@/lib/format";
-import { genresFor, RETAIN_UNREVIEWED_DAYS, shareDownloadEnabled } from "@/lib/plans";
+import { genresFor, RETAIN_UNREVIEWED_DAYS } from "@/lib/plans";
+import { shareDownloadEnabled } from "@/lib/plan-store";
 import { switchOn } from "@/lib/switches";
 import { botCheckKey } from "@/lib/turnstile";
 import { SubmitForm } from "./SubmitForm";
@@ -120,7 +121,7 @@ export default async function ReceiverPage({ params }: Props) {
             <p className="mt-2 text-[12px] text-dim">This link stays the same. Check back soon.</p>
           </div>
         ) : (
-          <SubmitForm botCheckKey={await botCheckKey()} handle={receiver.handle} receiverName={receiver.name} genres={genres} look="mobile" allowSharing={sharing && !!collection?.allow_sharing} sharingDownloads={shareDownloadEnabled(receiver.plan)} />
+          <SubmitForm botCheckKey={await botCheckKey()} handle={receiver.handle} receiverName={receiver.name} genres={genres} look="mobile" allowSharing={sharing && !!collection?.allow_sharing} sharingDownloads={await shareDownloadEnabled(receiver.plan)} />
         )}
       </div>
       <ul className="flex flex-col gap-2.5" aria-label="How your file is handled">

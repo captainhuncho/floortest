@@ -5,7 +5,7 @@ import { activeCollection, capacity, isClosed, isPaused } from "@/lib/desk";
 import { q, type User } from "@/lib/db";
 import { fmtBytes } from "@/lib/format";
 import { APP_URL } from "@/lib/mail";
-import { planOf } from "@/lib/plans";
+import { planOf } from "@/lib/plan-store";
 import { ConfirmButton } from "../../AdminUi";
 import {
   adminCancelEmailChange,
@@ -78,7 +78,7 @@ export default async function Account({ params }: { params: Promise<{ id: string
     [u.identity_status === "verified" ? "Verified" : u.identity_status === "pending" ? "Verification pending" : "Not verified", u.identity_status === "verified"],
   ];
   const usage = [
-    ["Plan", planOf(u.plan).name],
+    ["Plan", (await planOf(u.plan)).name],
     ["Desk", `${cap.used} / ${cap.limit} tracks${cap.bonus ? ` (+${cap.bonus} bonus)` : ""}`],
     ["Storage", fmtBytes(bytes?.n ?? 0)],
     ["Link", link],

@@ -11,7 +11,7 @@ import { cancelEmailChange, changeHandle, requestEmailChange } from "@/lib/accou
 import { capacity } from "@/lib/desk";
 import { now, q } from "@/lib/db";
 import { sendDigest } from "@/lib/notify";
-import { PLANS, planOf } from "@/lib/plans";
+import { offeredPlan, planOf } from "@/lib/plan-store";
 import { switchOn } from "@/lib/switches";
 import { audit } from "@/lib/audit";
 import { cleanProfileLink, IDENTITY_HOSTS, newIdentityCode } from "@/lib/identity";
@@ -87,12 +87,12 @@ export async function updatePublicPage(_: SettingsState, form: FormData): Promis
 /** Moving down (or sideways) a plan. Upgrades always go through checkout: see confirmBetaUpgrade. */
 export async function setPlan(plan: string) {
   const u = await requireUser();
-  if (!Object.hasOwn(PLANS, plan)) return;
-  if (planOf(plan).price > planOf(u.plan).price) return;
+  const next = await offeredPlan(plan);
+  if (!next || next.price > (await planOf(u.plan)).price) return;
   const cap = await capacity(u);
-  if (cap.used > planOf(plan).limit + cap.bonus) return;
-  await q.run("UPDATE users SET plan = ? WHERE id = ?", plan, u.id);
-  await audit(u.id, "plan_changed", planOf(plan).name);
+  if (cap.used > next.limit + cap.bonus) return;
+  await q.run("UPDATE users SET plan = ? WHERE id = ?", next.id, u.id);
+  await audit(u.id, "plan_changed", next.name);
   done();
 }
 
@@ -102,13 +102,14 @@ export async function setPlan(plan: string) {
  */
 export async function confirmBetaUpgrade(plan: string, form: FormData) {
   const u = await requireUser();
-  if (!Object.hasOwn(PLANS, plan) || planOf(plan).price <= planOf(u.plan).price) redirect("/dashboard/plans");
-  if (await switchOn("billing")) redirect(`/dashboard/checkout?plan=${plan}`);
-  if (form.get("agree") !== "on") redirect(`/dashboard/checkout?plan=${plan}&agree=1`);
+  const next = await offeredPlan(plan);
+  if (!next || next.price <= (await planOf(u.plan)).price) redirect("/dashboard/plans");
+  if (await switchOn("billing")) redirect(`/dashboard/checkout?plan=${next.id}`);
+  if (form.get("agree") !== "on") redirect(`/dashboard/checkout?plan=${next.id}&agree=1`);
   const cap = await capacity(u);
-  if (cap.used > planOf(plan).limit + cap.bonus) redirect("/dashboard/plans");
-  await q.run("UPDATE users SET plan = ? WHERE id = ?", plan, u.id);
-  await audit(u.id, "plan_changed", planOf(plan).name);
+  if (cap.used > next.limit + cap.bonus) redirect("/dashboard/plans");
+  await q.run("UPDATE users SET plan = ? WHERE id = ?", next.id, u.id);
+  await audit(u.id, "plan_changed", next.name);
   done();
   redirect(`/dashboard/plans?welcome=${plan}`);
 }

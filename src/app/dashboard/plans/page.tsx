@@ -2,7 +2,8 @@ import { trackUse } from "@/lib/usage";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { capacity } from "@/lib/desk";
-import { PLAN_FEATURES, PLANS, RETAIN_UNREVIEWED_DAYS, planOf, type PlanId } from "@/lib/plans";
+import { RETAIN_UNREVIEWED_DAYS } from "@/lib/plans";
+import { allPlans, planGrid, planOf } from "@/lib/plan-store";
 import { switchOn } from "@/lib/switches";
 import { setPlan } from "../actions/settings";
 
@@ -16,13 +17,13 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
   const user = await requireUser();
   await trackUse(user.id, "plans");
   const cap = await capacity(user);
-  const current = planOf(user.plan);
+  const current = await planOf(user.plan);
   // Just upgraded at checkout: celebrate it, but only if the plan really is theirs now.
   const welcomed = (await searchParams).welcome === user.plan && current.price > 0;
   const billing = await switchOn("billing");
   const pct = Math.min(100, Math.round((cap.used / Math.max(1, cap.limit)) * 100));
-  const ids = Object.keys(PLANS) as PlanId[];
-  const rank = (p: string) => ids.indexOf(p as PlanId);
+  // Offered plans, plus the person's own plan even if it's been retired (they keep it until they change).
+  const plans = (await allPlans()).filter((p) => !p.retired || p.id === user.plan);
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-5 text-bone sm:px-8 md:py-8">
@@ -65,13 +66,13 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
         </p>
       </section>
 
-      <ul className="grid gap-3 md:grid-cols-3 md:gap-4">
-        {ids.map((id) => {
-          const p = PLANS[id];
+      <ul className={`grid gap-3 md:gap-4 ${planGrid(plans.length)}`}>
+        {plans.map((p) => {
+          const id = p.id;
           const isCurrent = user.plan === id;
           const tooSmall = cap.used > p.limit + cap.bonus;
-          const upgrade = rank(id) > rank(user.plan);
-          const featured = id === "pro";
+          const upgrade = p.price > current.price;
+          const featured = p.featured;
           return (
             <li
               key={id}
@@ -93,7 +94,7 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
               {!billing && p.price > 0 && <p className="text-[11px] text-lime">Free during the beta</p>}
               <p className="mt-1 text-[12px] text-mute">{p.blurb}</p>
               <ul className="mt-4 flex-1 space-y-1.5 text-[13px]">
-                {PLAN_FEATURES[id].map((f) => (
+                {p.features.map((f) => (
                   <li key={f} className="flex gap-2">
                     <span aria-hidden className="text-lime">
                       ✓

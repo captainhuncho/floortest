@@ -2,7 +2,7 @@ import "server-only";
 import crypto from "node:crypto";
 import { logEvent, now, q, type Track, type User } from "./db";
 import { APP_URL, sendMail } from "./mail";
-import { shareDownloadEnabled } from "./plans";
+import { shareDownloadEnabled } from "./plan-store";
 import { switchOn } from "./switches";
 import { CLAIM_CANCEL, CLAIM_FINAL, MARK_SHAREABLE } from "./consent-sql";
 
@@ -85,7 +85,7 @@ export async function requestShareConsent(user: User, t: Track, note: string) {
   if (!(await switchOn("sharing")) || t.user_id !== user.id || t.deleted_at || t.share_ok) return null;
   const open = await latestShareRequest(t.id);
   if (open?.status === "pending") return open;
-  const downloads = shareDownloadEnabled(user.plan) ? 1 : 0;
+  const downloads = (await shareDownloadEnabled(user.plan)) ? 1 : 0;
   const req = (await q.get<ShareRequest>(
     "INSERT INTO share_requests (track_id, note, downloads, created_at) VALUES (?,?,?,?) RETURNING *",
     t.id,

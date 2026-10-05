@@ -838,4 +838,34 @@ alter table collections add constraint collections_sharing_flag check (allow_sha
 create unique index users_handle_lower on users(lower(handle));
 `,
   },
+{
+    // Plans move from code into the database so Admin → Plans can change prices, limits, names, feature lists and
+    // which features each plan unlocks, and add or retire plans. Seeded with today's three plans exactly.
+    id: "0049_plans_table",
+    sql: `
+create table plans (
+  id text primary key check (id ~ '^[a-z][a-z0-9_]{1,23}$'),
+  name text not null,
+  price_cents int not null default 0 check (price_cents >= 0),
+  track_limit int not null check (track_limit > 0),
+  blurb text not null default '',
+  features text not null default '[]',
+  share_downloads int not null default 0 check (share_downloads in (0, 1)),
+  featured int not null default 0 check (featured in (0, 1)),
+  position int not null default 0,
+  retired_at bigint,
+  updated_at bigint not null
+);
+alter table plans enable row level security;
+insert into plans (id, name, price_cents, track_limit, blurb, features, share_downloads, featured, position, updated_at) values
+  ('free', 'Free', 0, 20, 'Delete a track and the slot returns',
+   '["20 active tracks","Your receiving link and public page","Review Queue, collections and Rekordbox export","Receipts and updates for your senders"]', 0, 0, 1, 0),
+  ('pro', 'Pro', 699, 500, 'For active DJs and curators',
+   '["500 active tracks","Everything in Free","Colleagues can download tracks you share","Paid features as they launch (stems, folders)"]', 1, 1, 2, 0),
+  ('team', 'Team', 1299, 2000, 'For labels and crews who listen together',
+   '["2,000 active tracks","Everything in Pro","Shared collections: up to 10 teammates listen and vote"]', 1, 0, 3, 0);
+alter table users drop constraint if exists users_plan_known;
+alter table users add constraint users_plan_fk foreign key (plan) references plans(id) not valid;
+`,
+  },
 ];

@@ -1,12 +1,13 @@
 import { q } from "@/lib/db";
 import { FEATURES, switchFor, type Feature } from "@/lib/features";
-import { PLANS } from "@/lib/plans";
+import { allPlans } from "@/lib/plan-store";
 import { flipSwitch, saveSwitch } from "../actions";
 import { ConfirmButton } from "../AdminUi";
 import { SWITCHES, switchOn, type SwitchKey } from "@/lib/switches";
 
 /** Held-back features, switched on per plan or for named accounts (for testing with a few people first). */
 export default async function Switches() {
+  const plans = await allPlans();
   const list = await Promise.all(
     (Object.keys(FEATURES) as Feature[]).map(async (f) => {
       const s = await switchFor(f);
@@ -54,15 +55,15 @@ export default async function Switches() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-lg font-bold">{FEATURES[f].label}</p>
             <span className={`chip ${s.plans.length || s.users.length ? "border-lime/50 text-lime" : "border-line text-mute"}`}>
-              {s.plans.length ? `On for ${s.plans.map((p) => PLANS[p as keyof typeof PLANS]?.name ?? p).join(", ")}` : s.users.length ? `On for ${s.users.length} account${s.users.length === 1 ? "" : "s"}` : "Off"}
+              {s.plans.length ? `On for ${s.plans.map((p) => plans.find((x) => x.id === p)?.name ?? p).join(", ")}` : s.users.length ? `On for ${s.users.length} account${s.users.length === 1 ? "" : "s"}` : "Off"}
             </span>
           </div>
           <p className="text-sm text-mute">{FEATURES[f].description}</p>
           <fieldset className="flex flex-wrap gap-4">
             <legend className="label mb-2">Plans</legend>
-            {Object.entries(PLANS).map(([id, p]) => (
-              <label key={id} className="flex items-center gap-2 text-sm">
-                <input type="checkbox" name={`plan_${id}`} defaultChecked={s.plans.includes(id)} className="accent-lime" />
+            {plans.map((p) => (
+              <label key={p.id} className="flex items-center gap-2 text-sm">
+                <input type="checkbox" name={`plan_${p.id}`} defaultChecked={s.plans.includes(p.id)} className="accent-lime" />
                 {p.name}
               </label>
             ))}

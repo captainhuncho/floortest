@@ -3,7 +3,7 @@ import "server-only";
 import crypto from "node:crypto";
 import { now, q, USER_COLUMNS, type Collection, type Queryable, type Sender, type Track, type User } from "./db";
 import { APP_URL, sendMail } from "./mail";
-import { planOf } from "./plans";
+import { planOf } from "./plan-store";
 
 export async function activeCount(userId: number, db: Queryable = q) {
   return (await db.get<{ n: number }>("SELECT COUNT(*) AS n FROM tracks WHERE user_id = ? AND deleted_at IS NULL", userId))!.n;
@@ -13,7 +13,7 @@ export async function activeCount(userId: number, db: Queryable = q) {
 export async function capacity(user: Pick<User, "id" | "plan">, db: Queryable = q) {
   const used = await activeCount(user.id, db);
   const bonus = (await db.get<{ b: number }>("SELECT bonus_songs AS b FROM users WHERE id = ?", user.id))?.b ?? 0;
-  const limit = planOf(user.plan).limit + bonus;
+  const limit = (await planOf(user.plan)).limit + bonus;
   return { used, limit, bonus, full: used >= limit };
 }
 

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { PLAN_FEATURES, PLANS, planOf, type PlanId } from "@/lib/plans";
+import { offeredPlan, planOf } from "@/lib/plan-store";
 import { switchOn } from "@/lib/switches";
 import { confirmBetaUpgrade } from "../actions/settings";
 
@@ -15,10 +15,10 @@ export const metadata = { title: "Checkout — FloorTest" };
 export default async function Checkout({ searchParams }: { searchParams: Promise<{ plan?: string; agree?: string }> }) {
   const user = await requireUser();
   const sp = await searchParams;
-  const id = sp.plan as PlanId;
-  if (!Object.hasOwn(PLANS, id) || PLANS[id].price <= planOf(user.plan).price) notFound();
+  const p = await offeredPlan(String(sp.plan ?? ""));
+  if (!p || p.price <= (await planOf(user.plan)).price) notFound();
+  const id = p.id;
   const billing = await switchOn("billing");
-  const p = PLANS[id];
   const usd = (n: number) => `$${n.toFixed(2)}`;
   const price = usd(p.price);
   const due = billing ? p.price : 0;
@@ -47,7 +47,7 @@ export default async function Checkout({ searchParams }: { searchParams: Promise
             </p>
           </div>
           <ul className="mt-3 space-y-1.5 text-[13px] text-mute">
-            {PLAN_FEATURES[id].map((f) => (
+            {p.features.map((f) => (
               <li key={f} className="flex gap-2">
                 <span aria-hidden className="text-lime">
                   ✓

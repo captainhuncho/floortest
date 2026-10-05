@@ -1,32 +1,4 @@
-export const PLANS = {
-  free: { name: "Free", price: 0, limit: 20, blurb: "Delete a track and the slot returns" },
-  pro: { name: "Pro", price: 6.99, limit: 500, blurb: "For active DJs and curators" },
-  team: { name: "Team", price: 12.99, limit: 2000, blurb: "For labels and crews who listen together" },
-} as const;
-
-export type PlanId = keyof typeof PLANS;
-
-/**
- * Stems (ask a sender for stems, they upload them to the track) are built but not released:
- * they'll be a paid feature. While this is empty, nothing about stems shows and the API refuses.
- */
-export const STEMS_PLANS: readonly PlanId[] = [];
-export const stemsEnabled = (plan: string) => (STEMS_PLANS as readonly string[]).includes(plan);
-
-/** Colleagues can download a shared track only when the receiver who shared it is on a paid plan. */
-/** What each plan includes, for the Plans and checkout pages. Only list things that exist today. */
-export const PLAN_FEATURES: Record<PlanId, string[]> = {
-  free: ["20 active tracks", "Your receiving link and public page", "Review Queue, collections and Rekordbox export", "Receipts and updates for your senders"],
-  pro: ["500 active tracks", "Everything in Free", "Colleagues can download tracks you share", "Paid features as they launch (stems, folders)"],
-  team: ["2,000 active tracks", "Everything in Pro", "Shared collections: up to 10 teammates listen and vote"],
-};
-
-export const SHARE_DOWNLOAD_PLANS: readonly PlanId[] = ["pro", "team"];
-export const shareDownloadEnabled = (plan: string) => (SHARE_DOWNLOAD_PLANS as readonly string[]).includes(plan);
-
-export function planOf(id: string) {
-  return PLANS[(id in PLANS ? id : "free") as PlanId];
-}
+/* Plans (names, prices, limits, features) live in the database: see plan-store.ts and Admin → Plans. */
 
 export const MAX_UPLOAD_BYTES = 250 * 1024 * 1024;
 export const ACCEPTED_MIME = ["audio/wav", "audio/x-wav", "audio/wave", "audio/vnd.wave", "audio/mpeg", "audio/mp3"];
