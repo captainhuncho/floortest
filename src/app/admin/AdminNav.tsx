@@ -92,9 +92,17 @@ export function AdminNav({ groups, admin }: { groups: NavGroup[]; admin: { name:
   return (
     <aside className={`flex h-dvh shrink-0 flex-col border-r border-line bg-ink-2 ${open ? "w-64" : "w-16"}`}>
       <div className={`flex items-center gap-2.5 px-3 pb-3 pt-4 ${open ? "justify-between" : "flex-col"}`}>
-        <Link href="/admin" className="flex items-center gap-2.5">
-          <span className="grid size-8 place-items-center rounded-lg bg-bone text-[11px] font-black text-ink">FT</span>
-          {open && <span className="text-[14px] font-bold text-bone">Admin</span>}
+        <Link href="/admin" className="flex items-center gap-2.5" aria-label="FloorTest admin">
+          {/* The FloorTest mark: a lime record with a dark centre. */}
+          <span aria-hidden className="grid size-7 shrink-0 place-items-center rounded-full bg-lime">
+            <span className="size-2.5 rounded-full bg-ink" />
+          </span>
+          {open && (
+            <span className="flex flex-col leading-tight">
+              <span className="text-[14px] font-bold text-bone">FloorTest</span>
+              <span className="text-[11px] font-bold uppercase tracking-[1px] text-faint">Admin</span>
+            </span>
+          )}
         </Link>
         <button type="button" onClick={() => toggle(!open)} aria-label={open ? "Collapse menu" : "Expand menu"} className="grid size-7 place-items-center rounded-md text-faint hover:bg-ink-3 hover:text-bone">
           <Icon name="chevron" className={`size-3.5 transition ${open ? "" : "rotate-180"}`} />
