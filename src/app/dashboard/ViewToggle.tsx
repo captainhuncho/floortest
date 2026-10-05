@@ -1,8 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-
-export const VIEW_COOKIE = "ft_submissions_view";
+import { VIEW_COOKIE } from "./view-cookie";
 
 /** Switches the Review Queue between the focused Queue and the dense List; the choice is remembered. */
 export function ViewToggle({ view }: { view: "queue" | "list" }) {

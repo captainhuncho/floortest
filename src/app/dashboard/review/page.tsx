@@ -8,7 +8,8 @@ import { ReviewPanel } from "../ReviewPanel";
 import { toPlayer } from "@/lib/player-track";
 import { SubmissionsList } from "../list/SubmissionsList";
 import { TrackList, type Row } from "../TrackList";
-import { VIEW_COOKIE, ViewToggle } from "../ViewToggle";
+import { ViewToggle } from "../ViewToggle";
+import { VIEW_COOKIE } from "../view-cookie";
 
 export const metadata = { title: "Review Queue — FloorTest" };
 
@@ -27,8 +28,8 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
   const sp = await searchParams;
   const jar = await cookies();
   const saved = jar.get(VIEW_COOKIE)?.value;
-  // List (scan everything, decide inline) is the default; Queue is the focused one-at-a-time mode.
-  const view = sp.view === "list" || sp.view === "queue" ? sp.view : saved === "queue" ? "queue" : "list";
+  // Queue is the default; the List view sticks once someone picks it (remembered in a cookie).
+  const view = sp.view === "list" || sp.view === "queue" ? sp.view : saved === "list" ? "list" : "queue";
   if (view === "list") return <SubmissionsList user={user} sp={sp} />;
   const status: StatusKey = STATUSES.some(([k]) => k === sp.s) ? (sp.s as StatusKey) : "review";
   const collections = await collectionsFor(user.id);
