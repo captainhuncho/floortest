@@ -52,7 +52,7 @@ export default async function PrepareForSet() {
           ) : (
             <p className="rounded-xl border border-line bg-ink-3 p-4 text-xs text-mute">
               Nothing ready for your set yet. Press Keep while reviewing in{" "}
-              <Link href="/dashboard" className="text-bone underline underline-offset-4">
+              <Link href="/dashboard/review" className="text-bone underline underline-offset-4">
                 Review Queue
               </Link>{" "}
               and tracks show up here.

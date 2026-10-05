@@ -29,7 +29,7 @@ export function UpNext({ items }: { items: Item[] }) {
                 <img src="/icons/play.svg" alt="" className="size-4" />
               )}
             </button>
-            <Link href={`/dashboard?view=queue&t=${t.id}`} className="flex min-w-0 flex-1 flex-col gap-1">
+            <Link href={`/dashboard/review?view=queue&t=${t.id}`} className="flex min-w-0 flex-1 flex-col gap-1">
               <span className="truncate text-sm font-bold tracking-[-0.4px] text-bone">
                 {t.artist} - {t.title}
               </span>

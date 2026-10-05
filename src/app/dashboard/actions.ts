@@ -179,7 +179,7 @@ export async function deleteTrack(trackId: number, back: string) {
   await removeTrack(u, t);
   await audit(u.id, "deleted_track", trackLabel(t));
   done();
-  redirect(back.startsWith("/dashboard") ? back : "/dashboard");
+  redirect(back.startsWith("/dashboard") ? back : "/dashboard/review");
 }
 
 /** Starts a new Prepare for set batch. Tracks stay kept; they just leave the page. */
@@ -340,7 +340,7 @@ export async function shareTrack(trackId: number): Promise<{ url: string; expire
   if (!s) return null;
   await audit(u.id, "shared", trackLabel(t), t.id);
   done();
-  return { url: `${APP_URL}/s/${s.token}`, expires: s.expires_at };
+  return { url: `${APP_URL}/share/${s.token}`, expires: s.expires_at };
 }
 
 /** Ask the artist to allow sharing this track with a non-commercial partner (playing and promotion only). */
@@ -420,7 +420,7 @@ export async function quickSearch(query: string): Promise<SearchHit[]> {
     like,
   );
   return [
-    ...tracks.map((t) => ({ kind: "track" as const, id: t.id, title: `${t.artist} - ${t.title}`, detail: `from ${t.sender}`, href: `/dashboard?view=queue&s=all&t=${t.id}` })),
+    ...tracks.map((t) => ({ kind: "track" as const, id: t.id, title: `${t.artist} - ${t.title}`, detail: `from ${t.sender}`, href: `/dashboard/review?view=queue&s=all&t=${t.id}` })),
     ...contacts.map((c) => ({ kind: "contact" as const, id: c.id, title: c.name, detail: c.email, href: `/dashboard/contacts/${c.id}` })),
   ];
 }

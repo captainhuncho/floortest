@@ -15,7 +15,7 @@ export function AccountLog({ rows }: { rows: AuditRow[] }) {
               <span className="font-medium">{AUDIT_LABELS[r.action] ?? r.action}</span>
               {r.detail &&
                 (r.track_id ? (
-                  <Link href={`/dashboard?view=queue&s=all&t=${r.track_id}`} className="text-mute hover:text-bone">
+                  <Link href={`/dashboard/review?view=queue&s=all&t=${r.track_id}`} className="text-mute hover:text-bone">
                     {" "}
                     {r.detail}
                   </Link>

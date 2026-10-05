@@ -117,7 +117,7 @@ export async function ReviewPanel({
       {t.duplicate_of && (
         <p className="mt-2 text-sm text-danger">
           Possible duplicate of an earlier track.{" "}
-          <Link href={`/dashboard?view=queue&s=all&t=${t.duplicate_of}`} className="underline underline-offset-4">
+          <Link href={`/dashboard/review?view=queue&s=all&t=${t.duplicate_of}`} className="underline underline-offset-4">
             Compare
           </Link>
         </p>
@@ -182,7 +182,7 @@ export async function ReviewPanel({
             audience={audience}
             active={
               share
-                ? { url: `${APP_URL}/s/${share.token}`, expires: new Date(share.expires_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }), plays: share.plays }
+                ? { url: `${APP_URL}/share/${share.token}`, expires: new Date(share.expires_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }), plays: share.plays }
                 : null
             }
           />
@@ -249,7 +249,7 @@ export async function ReviewPanel({
           <button className="rounded-r-md border border-l-0 border-line px-3 text-sm text-mute hover:text-bone">Move</button>
         </form>
         <ConfirmButton
-          action={deleteTrack.bind(null, t.id, next?.href ?? "/dashboard")}
+          action={deleteTrack.bind(null, t.id, next?.href ?? "/dashboard/review")}
           message="Delete this file now? The slot returns. Sender history is kept."
           className="btn btn-sm text-danger hover:bg-danger/10"
         >

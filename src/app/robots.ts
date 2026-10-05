@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { env } from "@/lib/env";
 
 /** Search and AI-search crawlers may read public pages; everything personal stays out. */
-const PRIVATE = ["/dashboard", "/admin", "/api/", "/t/", "/s/", "/v/", "/sent/", "/reset/", "/verify-email/", "/confirm-email/", "/unsubscribe/", "/login", "/signup", "/forgot"];
+const PRIVATE = ["/dashboard", "/admin", "/api/", "/t/", "/s/", "/v/", "/receipt/", "/share/", "/confirm-sender/", "/sent/", "/reset/", "/verify-email/", "/confirm-email/", "/unsubscribe/", "/login", "/signup", "/forgot"];
 const AI_SEARCH = ["OAI-SearchBot", "ChatGPT-User", "PerplexityBot", "Perplexity-User", "Claude-SearchBot", "Claude-User", "Google-Extended", "Applebot-Extended"];
 
 export default function robots(): MetadataRoute.Robots {

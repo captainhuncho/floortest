@@ -107,7 +107,7 @@ export async function requestShareConsent(user: User, t: Track, note: string) {
         req.note ? `\n"${req.note}"\n` : "",
         `They would ${downloads ? "be able to listen and download" : "only be able to listen"}, through a private FloorTest link that expires after 7 days. It's never for commercial release without a signed agreement with you.`,
         "",
-        `Allow or decline here: ${APP_URL}/t/${t.token}`,
+        `Allow or decline here: ${APP_URL}/receipt/${t.token}`,
         "",
         "Nothing changes unless you say yes.",
       ].join("\n"),
@@ -179,7 +179,7 @@ export async function answerShareRequest(trackToken: string, requestId: number, 
       audience: "sender",
       to: artist.email,
       subject: `You allowed sharing "${t.title}"`,
-      body: `Thanks. If you change your mind, you have ${when} to cancel on your receipt: ${APP_URL}/t/${t.token}\n\nAfter that it's final and can't be withdrawn. Sharing is only for playing in sets and promotion, never commercial release without a signed agreement with you.`,
+      body: `Thanks. If you change your mind, you have ${when} to cancel on your receipt: ${APP_URL}/receipt/${t.token}\n\nAfter that it's final and can't be withdrawn. Sharing is only for playing in sets and promotion, never commercial release without a signed agreement with you.`,
     });
   // The receiver hears about an Allow only once it's final (finalizeConsent), never during the cancel window.
   const r = await q.get<{ email: string }>("SELECT email FROM users WHERE id = ?", t.user_id);

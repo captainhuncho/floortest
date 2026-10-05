@@ -36,7 +36,7 @@ export function KeptCards({ rows }: { rows: Row[] }) {
                   <img src="/icons/play.svg" alt="" className="size-3" />
                 )}
               </button>
-              <Link href={`/dashboard?view=queue&s=all&t=${r.id}`} className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <Link href={`/dashboard/review?view=queue&s=all&t=${r.id}`} className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="truncate text-[13px] font-bold text-bone">{r.title}</span>
                 <span className="truncate text-[11px] text-mute">
                   {[r.artist, r.genre, r.sender !== r.artist ? `via ${r.sender}` : null].filter(Boolean).join(" · ")}

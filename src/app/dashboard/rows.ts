@@ -39,4 +39,4 @@ export async function loadRows(userId: number, opts: { collectionId?: number; ke
   }));
 }
 
-export const reviewHref = (id: number) => `/dashboard?view=queue&s=all&t=${id}`;
+export const reviewHref = (id: number) => `/dashboard/review?view=queue&s=all&t=${id}`;

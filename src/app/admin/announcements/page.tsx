@@ -33,7 +33,7 @@ export default async function Announcements({ searchParams }: { searchParams: Pr
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block space-y-1.5">
           <span className="label">Link inside FloorTest (optional)</span>
-          <input name="href" defaultValue={draft.href} pattern="/.*" className="input" placeholder="/dashboard/set" />
+          <input name="href" defaultValue={draft.href} pattern="/.*" className="input" placeholder="/dashboard/prepare" />
         </label>
         <label className="block space-y-1.5">
           <span className="label">Who sees it</span>

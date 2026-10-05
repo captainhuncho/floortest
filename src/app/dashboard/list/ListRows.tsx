@@ -388,7 +388,7 @@ function Expanded({ row: r, decision, onClose }: { row: ListRow; decision: Decis
           {r.mixLabel && ` · ${r.mixLabel}`} · {decision === "kept" ? "Kept" : decision === "passed" ? "Not for me" : "Needs review"} ·{" "}
           {r.played ? "Listened" : "Not listened"} · {r.downloaded ? "Downloaded" : "Not downloaded"}
         </p>
-        <Link href={`/dashboard?view=queue&s=all&t=${r.id}`} className="inline-block underline underline-offset-4 hover:text-lime">
+        <Link href={`/dashboard/review?view=queue&s=all&t=${r.id}`} className="inline-block underline underline-offset-4 hover:text-lime">
           Open full review →
         </Link>
       </div>

@@ -93,7 +93,7 @@ export function SubmitForm({
         </p>
         <hr className="border-line" />
         <div className="flex gap-2.5">
-          <Link href={`/t/${token}`} className="flex flex-1 items-center justify-center rounded-[10px] bg-lime px-3.5 py-3 text-[12px] font-bold text-ink">
+          <Link href={`/receipt/${token}`} className="flex flex-1 items-center justify-center rounded-[10px] bg-lime px-3.5 py-3 text-[12px] font-bold text-ink">
             View receipt
           </Link>
           <button
@@ -121,7 +121,7 @@ export function SubmitForm({
           We sent a receipt to {account?.email ?? sender.email}. You&apos;ll hear from us when it&apos;s listened to, downloaded or replied to.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
-          <Link href={`/t/${token}`} className={L.btn}>
+          <Link href={`/receipt/${token}`} className={L.btn}>
             View receipt
           </Link>
           <button className={L.ghost} onClick={reset}>

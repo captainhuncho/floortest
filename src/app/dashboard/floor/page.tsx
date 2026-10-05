@@ -188,7 +188,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
           className="xl:col-span-2"
           action={
             upNext.length > 0 && (
-              <Link href="/dashboard?view=queue" className="text-xs font-bold text-bone hover:text-lime">
+              <Link href="/dashboard/review?view=queue" className="text-xs font-bold text-bone hover:text-lime">
                 Start reviewing →
               </Link>
             )
@@ -232,7 +232,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
           <DailyColumns data={stats.daily} />
         </Card>
 
-        <Card title="Genres, last 30 days" action={<Link href="/dashboard?view=list" className={act}>Filter</Link>}>
+        <Card title="Genres, last 30 days" action={<Link href="/dashboard/review?view=list" className={act}>Filter</Link>}>
           <GenreBars data={mix} />
         </Card>
 

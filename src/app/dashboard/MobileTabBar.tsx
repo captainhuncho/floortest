@@ -17,9 +17,9 @@ export function MobileTabBar({ needsReview }: { needsReview: number }) {
   const path = usePathname();
   const tabs = [
     { href: "/dashboard/floor", label: "Floor", icon: "layout-grid", active: path === "/dashboard/floor" },
-    { href: "/dashboard", label: "Queue", icon: "arrow-down-circle", active: path === "/dashboard", badge: needsReview },
+    { href: "/dashboard/review", label: "Queue", icon: "arrow-down-circle", active: path === "/dashboard/review", badge: needsReview },
     { href: "/dashboard/collections", label: "Collections", icon: "library", active: path.startsWith("/dashboard/collections") },
-    { href: "/dashboard/set", label: "Prepare", icon: "clipboard-check", active: path === "/dashboard/set" || path.startsWith("/dashboard/set/") },
+    { href: "/dashboard/prepare", label: "Prepare", icon: "clipboard-check", active: path === "/dashboard/prepare" || path.startsWith("/dashboard/prepare/") },
   ];
   return (
     <nav

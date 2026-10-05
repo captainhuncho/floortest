@@ -239,7 +239,7 @@ export function CollectionTile({ c, receiving, closed, canDelete }: { c: C; rece
         )}
         {closed && <span className="absolute left-2.5 top-2.5 rounded-md border border-faint px-2 py-1 text-[11px] font-bold tracking-[0.5px] text-mute">CLOSED</span>}
       </Link>
-      <Link href={`/dashboard?view=queue&c=${c.id}`} aria-label={`Play ${c.name} in the queue`} className="absolute right-2.5 grid size-[30px] place-items-center rounded-lg bg-ink opacity-90" style={{ top: "calc(100% - 56px - 40px)" }}>
+      <Link href={`/dashboard/review?view=queue&c=${c.id}`} aria-label={`Play ${c.name} in the queue`} className="absolute right-2.5 grid size-[30px] place-items-center rounded-lg bg-ink opacity-90" style={{ top: "calc(100% - 56px - 40px)" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icons/tile-play.svg" alt="" className="size-3" />
       </Link>
@@ -304,7 +304,7 @@ function CollectionOptions({ c, receiving, onEdit, onClose, showOpen }: { c: C; 
         </Link>
       )}
       {c.needsReview > 0 && (
-        <Link role="menuitem" href={`/dashboard?view=queue&c=${c.id}`}>
+        <Link role="menuitem" href={`/dashboard/review?view=queue&c=${c.id}`}>
           Review {c.needsReview} new
         </Link>
       )}

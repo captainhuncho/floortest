@@ -318,7 +318,7 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
   const { track, sender, collection } = result;
   const verify = sender.verified_at
     ? []
-    : ["", `Confirm this is your email so ${receiver.name} sees you as a verified sender:`, `${APP_URL}/v/${sender.verify_token}`];
+    : ["", `Confirm this is your email so ${receiver.name} sees you as a verified sender:`, `${APP_URL}/confirm-sender/${sender.verify_token}`];
   await sendMail({
     userId: receiver.id,
     to: sender.email,
@@ -329,7 +329,7 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
       `"${track.title}" was delivered to ${receiver.name}${collection ? ` for ${collection.name}` : ""}.`,
       `We'll email you when it's listened to, when the original is downloaded, and if ${receiver.name} replies.`,
       "",
-      `Your private receipt: ${APP_URL}/t/${track.token}`,
+      `Your private receipt: ${APP_URL}/receipt/${track.token}`,
       `Everything you've sent, with what happened to each: ${APP_URL}/sent`,
       ...verify,
       "",
@@ -369,7 +369,7 @@ export async function markListened(user: User, t: Track, secondsHeard: number) {
     userId: user.id,
     to: s.email,
     subject: `Listened: ${t.title}`,
-    body: `Hi ${s.name},\n\n${user.name} listened to "${t.title}".\n\nThis means it was played for at least 30 seconds (or a quarter of the track). It doesn't tell you whether it'll be played out.\n\nYour receipt: ${APP_URL}/t/${t.token}\nEverything you've sent: ${APP_URL}/sent\n\n— FloorTest`,
+    body: `Hi ${s.name},\n\n${user.name} listened to "${t.title}".\n\nThis means it was played for at least 30 seconds (or a quarter of the track). It doesn't tell you whether it'll be played out.\n\nYour receipt: ${APP_URL}/receipt/${t.token}\nEverything you've sent: ${APP_URL}/sent\n\n— FloorTest`,
   });
   return true;
 }
@@ -384,7 +384,7 @@ export async function markDownloaded(user: User, t: Track) {
     userId: user.id,
     to: s.email,
     subject: `Downloaded: ${t.title}`,
-    body: `Hi ${s.name},\n\n${user.name} downloaded the original file of "${t.title}".\n\nDownloading usually means they want it on hand, but it isn't a promise.\n\nYour receipt: ${APP_URL}/t/${t.token}\nEverything you've sent: ${APP_URL}/sent\n\n— FloorTest`,
+    body: `Hi ${s.name},\n\n${user.name} downloaded the original file of "${t.title}".\n\nDownloading usually means they want it on hand, but it isn't a promise.\n\nYour receipt: ${APP_URL}/receipt/${t.token}\nEverything you've sent: ${APP_URL}/sent\n\n— FloorTest`,
   });
 }
 
@@ -399,7 +399,7 @@ export async function markPlayedOut(user: User, t: Track, note: string) {
     userId: user.id,
     to: s.email,
     subject: `Played out: ${t.title}`,
-    body: `Hi ${s.name},\n\n${user.name} played "${t.title}" out in a set${clean ? ` (${clean})` : ""}. 🎛️\n\nYour receipt: ${APP_URL}/t/${t.token}\nEverything you've sent: ${APP_URL}/sent\n\n— FloorTest`,
+    body: `Hi ${s.name},\n\n${user.name} played "${t.title}" out in a set${clean ? ` (${clean})` : ""}. 🎛️\n\nYour receipt: ${APP_URL}/receipt/${t.token}\nEverything you've sent: ${APP_URL}/sent\n\n— FloorTest`,
   });
   return true;
 }
@@ -432,7 +432,7 @@ export async function reply(user: User, s: Sender, t: Track | undefined, body: s
     userId: user.id,
     to: s.email,
     subject: t ? `${user.name} replied about "${t.title}"` : `Message from ${user.name}`,
-    body: `${body}\n\n— ${user.name}${t ? `\n\nYour receipt: ${APP_URL}/t/${t.token}` : ""}\n\nSent via FloorTest`,
+    body: `${body}\n\n— ${user.name}${t ? `\n\nYour receipt: ${APP_URL}/receipt/${t.token}` : ""}\n\nSent via FloorTest`,
   });
   if (t) await q.run("UPDATE tracks SET replied_at = COALESCE(replied_at, ?) WHERE id = ?", now(), t.id);
   await logEvent({ user_id: user.id, sender_id: s.id, track_id: t?.id ?? null, type: "reply", detail: body });

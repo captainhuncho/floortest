@@ -191,7 +191,7 @@ export function PlayerBar() {
       <div className="fixed inset-x-4 bottom-[calc(max(1rem,env(safe-area-inset-bottom))+72px)] z-30 flex items-center gap-3 rounded-2xl border border-ink-4 bg-ink p-3 md:hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icons/mini-art.svg" alt="" className="size-11 shrink-0" />
-        <Link href={`/dashboard?view=queue&s=all&t=${current.id}`} className="flex min-w-0 flex-1 flex-col gap-2">
+        <Link href={`/dashboard/review?view=queue&s=all&t=${current.id}`} className="flex min-w-0 flex-1 flex-col gap-2">
           <span className="flex items-center justify-between gap-2">
             <span className="truncate text-sm font-bold tracking-[-0.4px] text-bone">{current.title}</span>
             <span className="shrink-0 text-[11px] text-faint tnum">{fmtTime(time)}</span>
@@ -215,7 +215,7 @@ export function PlayerBar() {
         >
           <PlayIcon playing={playing} />
         </button>
-        <Link href={`/dashboard?view=queue&s=all&t=${current.id}`} className="w-40 min-w-0 shrink-0 sm:w-56">
+        <Link href={`/dashboard/review?view=queue&s=all&t=${current.id}`} className="w-40 min-w-0 shrink-0 sm:w-56">
           <p className="truncate text-sm font-medium">{current.title}</p>
           <p className="truncate text-sm text-mute">{current.artist}</p>
         </Link>

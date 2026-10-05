@@ -55,7 +55,12 @@ const nextConfig: NextConfig = {
             },
           ]
         : []),
-      // Renamed pages.
+      // Renamed pages. Old addresses keep working (they're in emails already sent).
+      { source: "/dashboard", destination: "/dashboard/review", permanent: true },
+      { source: "/dashboard/set", destination: "/dashboard/prepare", permanent: true },
+      { source: "/t/:token", destination: "/receipt/:token", permanent: true },
+      { source: "/s/:token", destination: "/share/:token", permanent: true },
+      { source: "/v/:token", destination: "/confirm-sender/:token", permanent: true },
       { source: "/dashboard/conversations", destination: "/dashboard/contacts", permanent: true },
       { source: "/dashboard/conversations/:id", destination: "/dashboard/contacts/:id", permanent: true },
       { source: "/dashboard/home", destination: "/dashboard/floor", permanent: true },

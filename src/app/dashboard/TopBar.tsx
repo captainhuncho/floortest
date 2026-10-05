@@ -232,7 +232,7 @@ function SearchDialog({ onClose }: { onClose: () => void }) {
     ...hits,
     ...(q.trim()
       ? [
-          { kind: "track" as const, id: -1, title: `Search submissions for “${q.trim()}”`, detail: "", href: `/dashboard?q=${encodeURIComponent(q.trim())}` },
+          { kind: "track" as const, id: -1, title: `Search submissions for “${q.trim()}”`, detail: "", href: `/dashboard/review?q=${encodeURIComponent(q.trim())}` },
           { kind: "contact" as const, id: -2, title: `Search contacts for “${q.trim()}”`, detail: "", href: `/dashboard/contacts?q=${encodeURIComponent(q.trim())}` },
         ]
       : []),

@@ -6,14 +6,14 @@ import { allow, ipFrom } from "@/lib/ratelimit";
 export const runtime = "nodejs";
 
 /**
- * Collapses a path to its page, never the person or item: /t/abc123 → /t/:token, /dashboard/collections/42 → …/:id,
+ * Collapses a path to its page, never the person or item: /receipt/abc123 → /receipt/:token, /dashboard/collections/42 → …/:id,
  * and anyone's receiving link (/djkwame) → /:link.
  */
 function pageOf(path: string) {
   const parts = path.split("?")[0].split("/").filter(Boolean).slice(0, 4);
   if (parts.length === 1 && !RESERVED_HANDLES.has(parts[0].toLowerCase())) return "/:link";
   const out = parts.map((p, i) =>
-    /^\d+$/.test(p) ? ":id" : i > 0 && ["t", "s", "sent", "reset", "v", "verify-email", "unsubscribe"].includes(parts[i - 1]) ? ":token" : p.length > 40 ? ":token" : p,
+    /^\d+$/.test(p) ? ":id" : i > 0 && ["t", "s", "v", "receipt", "share", "confirm-sender", "sent", "reset", "verify-email", "unsubscribe"].includes(parts[i - 1]) ? ":token" : p.length > 40 ? ":token" : p,
   );
   return "/" + out.join("/");
 }

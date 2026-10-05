@@ -66,7 +66,7 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
   const href = (patch: Partial<Search>) => {
     const p = new URLSearchParams({ view: "list" });
     for (const [k, v] of Object.entries({ ...sp, ...patch })) if (v && k !== "view" && k !== "t" && k !== "welcome") p.set(k, v);
-    return `/dashboard?${p}`;
+    return `/dashboard/review?${p}`;
   };
 
   const tally = await voteTally(tracks.map((t) => t.id));
@@ -149,7 +149,7 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
       {/* Phones: Figma "Filters-Scrollable" chips; desktop keeps the toolbar. */}
       <div className="flex flex-wrap items-center gap-1.5 px-3 pb-3 md:gap-2 md:px-8 md:pb-5">
         <Link
-          href="/dashboard?view=list"
+          href="/dashboard/review?view=list"
           className={`rounded-xl px-3 py-1.5 text-[11px] font-bold md:hidden ${sp.s || sp.c || sp.type || sp.sender || sp.genre || search ? "border border-line bg-ink-3 text-mute" : "bg-white text-ink"}`}
         >
           All Queue
@@ -157,7 +157,7 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
         {menus.map((m) => (
           <FilterMenu key={m.label} label={m.label} options={m.options} />
         ))}
-        <form action="/dashboard" role="search" className="ml-auto flex items-center gap-2">
+        <form action="/dashboard/review" role="search" className="ml-auto flex items-center gap-2">
           <input type="hidden" name="view" value="list" />
           {Object.entries(sp).map(([k, v]) =>
             v && ["c", "s", "type", "sender", "genre"].includes(k) ? <input key={k} type="hidden" name={k} value={v} /> : null,

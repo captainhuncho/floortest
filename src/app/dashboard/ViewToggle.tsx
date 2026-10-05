@@ -9,7 +9,7 @@ export function ViewToggle({ view }: { view: "queue" | "list" }) {
   const router = useRouter();
   const go = (v: "queue" | "list") => {
     document.cookie = `${VIEW_COOKIE}=${v}; path=/; max-age=31536000; samesite=lax`;
-    router.push(`/dashboard?view=${v}`);
+    router.push(`/dashboard/review?view=${v}`);
   };
   return (
     <div className="flex rounded-lg border border-line p-0.5" role="group" aria-label="Layout">

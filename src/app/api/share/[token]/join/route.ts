@@ -15,6 +15,6 @@ export async function GET(req: Request, ctx: RouteContext<"/api/share/[token]/jo
   if (!s) return NextResponse.redirect(new URL("/", url));
   const to = url.searchParams.get("to") === "signup" ? `/signup?ref=${encodeURIComponent(await referralCodeFor(s.receiver_id))}` : "/login";
   const res = NextResponse.redirect(new URL(to, url));
-  res.cookies.set("floortest_next", `/s/${token}`, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 3600 });
+  res.cookies.set("floortest_next", `/share/${token}`, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 3600 });
   return res;
 }

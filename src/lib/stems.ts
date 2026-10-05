@@ -36,7 +36,7 @@ export async function requestStems(user: User, t: Track) {
     body: [
       `${user.name} liked "${t.title}" and asked for the stems.`,
       "",
-      `Upload them here as WAV or MP3 files (one file per stem, up to ${MAX_STEMS}): ${APP_URL}/t/${t.token}`,
+      `Upload them here as WAV or MP3 files (one file per stem, up to ${MAX_STEMS}): ${APP_URL}/receipt/${t.token}`,
       "",
       "Only they can hear or download them.",
     ].join("\n"),

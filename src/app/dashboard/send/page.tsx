@@ -44,7 +44,7 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
             const [label, good] = status(r);
             return (
               <li key={r.token}>
-                <Link href={`/t/${r.token}`} className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-ink-2">
+                <Link href={`/receipt/${r.token}`} className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-ink-2">
                   <span className="min-w-0">
                     <span className="block truncate font-medium">
                       {r.artist} - {r.title}

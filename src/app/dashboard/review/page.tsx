@@ -4,11 +4,11 @@ import { requireUser } from "@/lib/auth";
 import { collectionsFor } from "@/lib/core";
 import { q, likeContains, type Sender, type Track } from "@/lib/db";
 import { APP_URL } from "@/lib/mail";
-import { ReviewPanel } from "./ReviewPanel";
+import { ReviewPanel } from "../ReviewPanel";
 import { toPlayer } from "@/lib/player-track";
-import { SubmissionsList } from "./list/SubmissionsList";
-import { TrackList, type Row } from "./TrackList";
-import { VIEW_COOKIE, ViewToggle } from "./ViewToggle";
+import { SubmissionsList } from "../list/SubmissionsList";
+import { TrackList, type Row } from "../TrackList";
+import { VIEW_COOKIE, ViewToggle } from "../ViewToggle";
 
 export const metadata = { title: "Review Queue — FloorTest" };
 
@@ -151,7 +151,7 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
               </Link>
             );
           })}
-          <form action="/dashboard" className="ml-auto min-w-48 flex-1 sm:max-w-72" role="search">
+          <form action="/dashboard/review" className="ml-auto min-w-48 flex-1 sm:max-w-72" role="search">
             {sp.c && <input type="hidden" name="c" value={sp.c} />}
             {status !== "review" && <input type="hidden" name="s" value={status} />}
             <label htmlFor="q" className="sr-only">

@@ -82,7 +82,7 @@ export default async function Contact({ params }: { params: Promise<{ id: string
                       {" "}
                       · about{" "}
                       {m.trackId ? (
-                        <Link href={`/dashboard?view=queue&s=all&t=${m.trackId}`} className="underline underline-offset-2 hover:text-bone">
+                        <Link href={`/dashboard/review?view=queue&s=all&t=${m.trackId}`} className="underline underline-offset-2 hover:text-bone">
                           {m.track}
                         </Link>
                       ) : (
@@ -115,7 +115,7 @@ export default async function Contact({ params }: { params: Promise<{ id: string
                 {t.deleted_at ? (
                   <p className="truncate text-mute line-through">{t.title}</p>
                 ) : (
-                  <Link href={`/dashboard?view=queue&s=all&t=${t.id}`} className="block truncate font-medium hover:text-lime">
+                  <Link href={`/dashboard/review?view=queue&s=all&t=${t.id}`} className="block truncate font-medium hover:text-lime">
                     {t.title}
                   </Link>
                 )}

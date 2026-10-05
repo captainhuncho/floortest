@@ -17,9 +17,9 @@ export function Sidebar({ needsReview, cap, pause }: Props) {
 
   const nav = [
     { href: "/dashboard/floor", label: "The Floor", icon: "floor", active: path === "/dashboard/floor", tab: true },
-    { href: "/dashboard", label: "Review Queue", icon: "queue", active: path === "/dashboard", badge: needsReview, tab: true },
+    { href: "/dashboard/review", label: "Review Queue", icon: "queue", active: path === "/dashboard/review", badge: needsReview, tab: true },
     { href: "/dashboard/collections", label: "Collections", icon: "collections", active: path.startsWith("/dashboard/collections"), tab: true },
-    { href: "/dashboard/set", label: "Prepare for set", icon: "prepare", active: path === "/dashboard/set" || path.startsWith("/dashboard/set/"), tab: true },
+    { href: "/dashboard/prepare", label: "Prepare for set", icon: "prepare", active: path === "/dashboard/prepare" || path.startsWith("/dashboard/prepare/"), tab: true },
     { href: "/dashboard/send", label: "Send", icon: "send", active: path.startsWith("/dashboard/send") },
     { href: "/dashboard/contacts", label: "Contacts", icon: "contacts", active: path.startsWith("/dashboard/contacts") },
     { href: "/dashboard/activity", label: "Activity", icon: "activity", active: path.startsWith("/dashboard/activity") },
