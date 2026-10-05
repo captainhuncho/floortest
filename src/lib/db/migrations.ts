@@ -800,4 +800,27 @@ create index feature_use_day on feature_use(day);
 alter table feature_use enable row level security;
 `,
   },
+{
+    // Indexes for the queries that run most (backend review, 2026-10-05): the Review Queue's status filters,
+    // the duplicate check on every upload, email lookups that ignore case, foreign keys that cascades scan,
+    // and the nightly clean-up's age filters. Small tables today, so building them here is quick.
+    id: "0047_query_indexes",
+    sql: `
+create index tracks_user_decision on tracks(user_id, decision, created_at) where deleted_at is null;
+create index tracks_user_decided on tracks(user_id, decided_at desc) where deleted_at is null and decision is not null;
+create index tracks_user_size on tracks(user_id, size) where deleted_at is null;
+create index tracks_sender_title on tracks(sender_id, lower(title)) where deleted_at is null;
+create index tracks_duplicate_of on tracks(duplicate_of) where duplicate_of is not null;
+create index events_track on events(track_id) where track_id is not null;
+create index events_time on events(created_at);
+create index contact_messages_user on contact_messages(user_id) where user_id is not null;
+create index share_access_user on share_access(user_id);
+create index share_access_time on share_access(created_at);
+create index senders_email_lower on senders(lower(email));
+create index outbox_to_lower on outbox(lower(to_email));
+create index outbox_time on outbox(created_at);
+create index uploads_receiver on uploads(receiver_id);
+create index uploads_time on uploads(created_at);
+`,
+  },
 ];

@@ -1,5 +1,6 @@
 "use client";
 
+import { decisionLabel } from "@/lib/statuses";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { isTyping, PlayIcon, usePlayer } from "@/components/Player";
@@ -148,7 +149,7 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
           const open = expanded === r.id;
           // Waiting for a decision stands out (lime edge, bright title); decided tracks step back with their outcome shown.
           const waiting = !decision;
-          const outcome = decision === "kept" ? "Kept" : decision === "passed" ? "Not for me" : null;
+          const outcome = decision ? decisionLabel(decision) : null;
           return (
             <li
               key={r.id}
@@ -203,7 +204,7 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
                         decision === "kept" ? "bg-white/10 text-white" : "bg-line text-mute"
                       }`}
                     >
-                      {decision === "kept" ? "Kept" : decision === "passed" ? "Not for me" : "Needs review"}
+                      {decisionLabel(decision)}
                     </span>
                   ) : outcome ? (
                     <span className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-bold uppercase ${decision === "kept" ? "bg-white/10 text-bone" : "bg-line text-mute"}`}>{outcome}</span>
@@ -396,7 +397,7 @@ function Expanded({ row: r, decision, onClose }: { row: ListRow; decision: Decis
         </p>
         <p className="text-mute">
           {fmtTime(r.duration)}
-          {r.mixLabel && ` · ${r.mixLabel}`} · {decision === "kept" ? "Kept" : decision === "passed" ? "Not for me" : "Needs review"} ·{" "}
+          {r.mixLabel && ` · ${r.mixLabel}`} · {decisionLabel(decision)} ·{" "}
           {r.played ? "Listened" : "Not listened"} · {r.downloaded ? "Downloaded" : "Not downloaded"}
         </p>
         <Link href={`/dashboard/review?view=queue&s=all&t=${r.id}`} className="inline-block underline underline-offset-4 hover:text-lime">

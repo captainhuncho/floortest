@@ -1,4 +1,5 @@
 import { voteTally } from "@/lib/team";
+import { TRACK_STATUSES } from "@/lib/statuses";
 import Link from "next/link";
 import { collectionsFor } from "@/lib/core";
 import { q, likeContains, type Track, type User } from "@/lib/db";
@@ -19,12 +20,8 @@ const BPM = [
   ["140+", "140 and up", 140, 999],
 ] as const;
 
-const STATUS = [
-  ["all", "All", "1 = 1"],
-  ["review", "Needs review", "t.decision IS NULL"],
-  ["kept", "Kept", "t.decision = 'kept'"],
-  ["passed", "Not for me", "t.decision = 'passed'"],
-] as const;
+/** Same statuses as everywhere, with All first in this view. */
+const STATUS = (["all", "review", "kept", "passed"] as const).map((k) => TRACK_STATUSES.find(([key]) => key === k)!);
 
 const TYPE_SHORT: Record<string, string> = { unsigned: "Unreleased", signed: "Signed", released: "Released" };
 const MIX_SHORT: Record<string, string> = { raw: "Work in progress", mixed: "Unmastered", mastered: "Mastered" };

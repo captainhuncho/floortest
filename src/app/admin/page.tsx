@@ -1,3 +1,4 @@
+import { mailUsage } from "@/lib/mail-quota";
 import { partnerRows } from "@/lib/partners";
 import { switchOn } from "@/lib/switches";
 import Link from "next/link";
@@ -19,6 +20,7 @@ export default async function AdminOverview() {
   const newFeedback = await c("SELECT COUNT(*) AS n FROM contact_messages WHERE topic LIKE 'Feedback%' AND feedback_status = 'new'");
   const partnersStuck = (await partnerRows()).filter((r) => r.flag).length;
   const jobIssues = await jobProblems();
+  const mail = await mailUsage();
   const [takedowns, appeals, privacy, inbox, verifying, waiting, failed, incidents] = await Promise.all([
     c("SELECT COUNT(*) AS n FROM takedowns WHERE status = 'open'"),
     c("SELECT COUNT(*) AS n FROM contact_messages WHERE handled_at IS NULL AND topic = 'Suspension appeal'"),
@@ -43,6 +45,7 @@ export default async function AdminOverview() {
   // Most urgent first. Legal deadlines (takedowns, privacy) lead.
   const todo = [
     { n: problems.length, label: "Configuration problems", sub: problems[0] ?? "", href: "#config", tone: "danger" },
+    { n: mail.warn ? 1 : 0, label: "Close to the email sending limit", sub: `${mail.day} of ${mail.limits.day} today · ${mail.month} of ${mail.limits.month} this month. Upgrade Resend before it runs out.`, href: "/admin/emails", tone: "danger" },
     { n: jobIssues.length, label: "Scheduled job failed or late", sub: jobIssues[0] ?? "", href: "/admin/jobs", tone: "danger" },
     { n: backupStale ? 1 : 0, label: "Database backup is overdue", sub: backup ? `Last one ${new Date(backup.at).toLocaleDateString("en-GB")}` : "", href: "#config", tone: "danger" },
     { n: full.length, label: "Storage is getting full", sub: full.map((a) => `${a.label} ${Math.round((a.used / a.limit) * 100)}%`).join(" · "), href: "/admin/storage", tone: "danger" },

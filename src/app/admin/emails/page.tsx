@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ConfirmButton } from "../AdminUi";
 import { likeContains, q } from "@/lib/db";
 import { liftSuppression, resendEmail } from "../actions";
+import { mailUsage } from "@/lib/mail-quota";
 
 const DELIVERY: Record<string, [string, string]> = {
   delivered: ["Delivered", "border-lime/50 text-lime"],
@@ -20,6 +21,8 @@ export default async function Emails({ searchParams }: { searchParams: Promise<{
     failedOnly ? "(o.status LIKE 'failed%' OR o.status LIKE 'skipped%' OR o.delivery IN ('bounced', 'complained'))" : "",
   ].filter(Boolean);
   const tracking = !!process.env.RESEND_WEBHOOK_SECRET;
+  const usage = await mailUsage();
+  const pct = (n: number, d: number) => Math.min(100, Math.round((n / d) * 100));
   const blocked = await q.all<{ email: string; reason: string; detail: string; created_at: number }>("SELECT * FROM email_suppressions ORDER BY created_at DESC LIMIT 100");
   const rows = await q.all<{ id: number; to_email: string; subject: string; body: string; status: string; delivery: string; audience: string; created_at: number; handle: string | null; user_id: number | null }>(
     `SELECT o.*, u.handle FROM outbox o LEFT JOIN users u ON u.id = o.user_id ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY o.created_at DESC LIMIT 200`,
@@ -37,6 +40,25 @@ export default async function Emails({ searchParams }: { searchParams: Promise<{
           <button className="btn-ghost btn-sm">Search</button>
         </form>
       </div>
+      <div className="mt-6 grid gap-3 sm:grid-cols-2">
+        {[
+          ["Sent today (UTC)", usage.day, usage.limits.day],
+          ["Sent this month", usage.month, usage.limits.month],
+        ].map(([k, n, cap]) => (
+          <div key={String(k)} className={`rounded-md border p-4 ${Number(n) >= Number(cap) * 0.8 ? "border-danger/50" : "border-line"}`}>
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="label">{k}</p>
+              <p className="text-sm tnum">
+                {Number(n).toLocaleString("en")} of {Number(cap).toLocaleString("en")}
+              </p>
+            </div>
+            <div className="mt-2 h-2 rounded-full bg-ink-3" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct(Number(n), Number(cap))} aria-label={String(k)}>
+              <div className={`h-2 rounded-full ${Number(n) >= Number(cap) * 0.8 ? "bg-danger" : "bg-lime"}`} style={{ width: `${pct(Number(n), Number(cap))}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="mt-2 text-xs text-faint">Resend&apos;s plan caps. Over them, emails fail. After upgrading, set MAIL_DAILY_LIMIT and MAIL_MONTHLY_LIMIT in Vercel.</p>
       {!tracking && (
         <div className="mt-6 rounded-md border border-line p-4 text-sm text-mute">
           <p className="font-medium text-bone">Delivery tracking isn&apos;t connected</p>

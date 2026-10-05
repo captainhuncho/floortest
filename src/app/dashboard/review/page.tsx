@@ -1,3 +1,4 @@
+import { TRACK_STATUSES, type TrackStatus } from "@/lib/statuses";
 import { trackUse } from "@/lib/usage";
 import { cookies } from "next/headers";
 import Link from "next/link";
@@ -14,13 +15,8 @@ import { VIEW_COOKIE } from "../view-cookie";
 
 export const metadata = { title: "Review Queue — FloorTest" };
 
-const STATUSES = [
-  ["review", "Needs review", "t.decision IS NULL"],
-  ["kept", "Kept", "t.decision = 'kept'"],
-  ["passed", "Not for me", "t.decision = 'passed'"],
-  ["all", "All", "1 = 1"],
-] as const;
-type StatusKey = (typeof STATUSES)[number][0];
+const STATUSES = TRACK_STATUSES;
+type StatusKey = TrackStatus;
 
 type Search = { c?: string; s?: string; t?: string; q?: string; welcome?: string; view?: string; type?: string; sender?: string; genre?: string; bpm?: string; verified?: string };
 
@@ -50,17 +46,31 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
     args.push(...Array(5).fill(likeContains(search)));
   }
   const from = "FROM tracks t JOIN senders s ON s.id = t.sender_id LEFT JOIN collections c ON c.id = t.collection_id";
-  // One pass for every tab's count.
-  const counts = (await q.get<Record<StatusKey, number>>(
-    `SELECT ${STATUSES.map(([k, , cond]) => `COUNT(*) FILTER (WHERE ${cond}) AS "${k}"`).join(", ")} ${from} WHERE ${base.join(" AND ")}`,
-    ...args,
-  ))!;
-
   const cond = STATUSES.find(([k]) => k === status)![2];
   // Needs review plays oldest-first like a queue; decided views show the latest decisions first.
   const order = status === "review" ? "t.created_at ASC" : status === "all" ? "t.created_at DESC" : "t.decided_at DESC";
-  const tracks = (await q.all<Track & { sender_name: string; collection_name: string | null }>(`SELECT t.*, s.name AS sender_name, c.name AS collection_name ${from}
-       WHERE ${base.join(" AND ")} AND ${cond} ORDER BY ${order} LIMIT 500`, ...args));
+  // The open track (when the address names one) with its sender, scoped to this account.
+  const selectedWithSender = (id: number) =>
+    Number.isSafeInteger(id)
+      ? q.get<Track & { s: Sender }>(
+          "SELECT t.*, to_jsonb(s) AS s FROM tracks t JOIN senders s ON s.id = t.sender_id WHERE t.id = ? AND t.user_id = ? AND t.deleted_at IS NULL",
+          id,
+          user.id,
+        )
+      : Promise.resolve(undefined);
+  // Counts for every tab, the list, and the requested track load at the same time.
+  const [counts, tracks, requested] = await Promise.all([
+    q.get<Record<StatusKey, number>>(
+      `SELECT ${STATUSES.map(([k, , c]) => `COUNT(*) FILTER (WHERE ${c}) AS "${k}"`).join(", ")} ${from} WHERE ${base.join(" AND ")}`,
+      ...args,
+    ).then((r) => r!),
+    q.all<Track & { sender_name: string; collection_name: string | null }>(
+      `SELECT t.*, s.name AS sender_name, c.name AS collection_name ${from}
+       WHERE ${base.join(" AND ")} AND ${cond} ORDER BY ${order} LIMIT 500`,
+      ...args,
+    ),
+    sp.t ? selectedWithSender(Number(sp.t)) : Promise.resolve(undefined),
+  ]);
 
   const rows: Row[] = tracks.map((t) => ({
     id: t.id,
@@ -84,15 +94,14 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
     const p = new URLSearchParams();
     for (const [k, v] of Object.entries(merged)) if (v) p.set(k, v);
     const s = p.toString();
-    return `/dashboard${s ? `?${s}` : ""}`;
+    return `/dashboard/review${s ? `?${s}` : ""}`;
   };
 
   // The review panel always has something: the requested track, else the first in the list.
-  const selectedId = sp.t ? Number(sp.t) : rows[0]?.id;
-  const selected = selectedId
-    ? ((await q.get<Track>("SELECT * FROM tracks WHERE id = ? AND user_id = ? AND deleted_at IS NULL", selectedId, user.id)))
-    : undefined;
-  const sender = selected ? ((await q.get<Sender>("SELECT * FROM senders WHERE id = ?", selected.sender_id))!) : undefined;
+  const picked = requested ?? (!sp.t && rows[0] ? await selectedWithSender(rows[0].id) : undefined);
+  const { s: pickedSender, ...pickedTrack } = picked ?? ({} as Partial<Track & { s: Sender }>);
+  const selected = picked ? (pickedTrack as Track) : undefined;
+  const sender = picked ? (typeof pickedSender === "string" ? (JSON.parse(pickedSender) as Sender) : pickedSender) : undefined;
   const idx = selected ? rows.findIndex((r) => r.id === selected.id) : -1;
   const nextRow = idx >= 0 ? rows[idx + 1] : rows.find((r) => r.id !== selected?.id);
   const prevRow = idx > 0 ? rows[idx - 1] : undefined;

@@ -6,6 +6,10 @@ import { crateZip, safeName } from "@/lib/crate";
 import { q, type Collection, type Track } from "@/lib/db";
 
 export const runtime = "nodejs";
+/** Largest single crate download: ZIP files without the 64-bit extension stop at 4 GB, and the download must finish in time. */
+const MAX_CRATE_BYTES = 3 * 1024 ** 3;
+const MAX_CRATE_TRACKS = 300;
+
 export const maxDuration = 300;
 
 /**
@@ -32,6 +36,13 @@ export async function GET(req: Request) {
     ...(collection ? [user.id, collection.id] : [user.id]),
   );
   if (!tracks.length) return new Response(whole ? "This collection is empty." : "Keep some tracks first.", { status: 400 });
+  // One download has to finish inside the server's 5-minute limit, and a plain ZIP can't go past 4 GB.
+  const bytes = tracks.reduce((n, t) => n + (t.size ?? 0), 0);
+  if (bytes > MAX_CRATE_BYTES || tracks.length > MAX_CRATE_TRACKS)
+    return new Response(
+      `This crate is too big for one download (${tracks.length} tracks, ${(bytes / 1024 ** 3).toFixed(1)} GB; the limit is ${MAX_CRATE_TRACKS} tracks or ${MAX_CRATE_BYTES / 1024 ** 3} GB). Download it a collection at a time, or clear tracks you've already played out.`,
+      { status: 413 },
+    );
 
   const crate = `FloorTest - ${collection ? (whole ? collection.name : `${collection.name} (kept)`) : "Kept"}`;
   await audit(user.id, "exported", `${crate.replace(/^FloorTest - /, "")} · ${tracks.length} track${tracks.length === 1 ? "" : "s"}${filesOnly ? " · files only" : ""}`);

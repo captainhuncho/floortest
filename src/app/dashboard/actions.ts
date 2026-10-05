@@ -135,10 +135,10 @@ export type UndoToken = { trackId: number; prev: { decision: Decision | null; de
 
 export async function decideTrack(trackId: number, decision: Decision): Promise<UndoToken | null> {
   const u = await requireUser();
-  await trackUse(u.id, "decide");
   if (!isDecision(decision)) return null;
   const t = await ownedTrack(u.id, trackId);
   if (!t) return null;
+  await trackUse(u.id, "decide");
   const r = await decide(u, t, decision);
   await audit(u.id, decision, trackLabel(t), t.id);
   done();
@@ -200,9 +200,9 @@ export async function clearKept() {
 /** Kept tracks only: tells the sender it was played in a set. */
 export async function playedOut(trackId: number, note: string) {
   const u = await requireUser();
-  await trackUse(u.id, "played_out");
   const t = await ownedTrack(u.id, trackId);
   if (!t || t.decision !== "kept") return false;
+  await trackUse(u.id, "played_out");
   const ok = await markPlayedOut(u, t, String(note || ""));
   if (ok) await audit(u.id, "played_out", trackLabel(t), t.id);
   done();
