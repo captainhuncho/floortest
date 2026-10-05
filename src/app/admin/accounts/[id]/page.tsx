@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { KIND_LABEL } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { AUDIT_LABELS, type AuditAction } from "@/lib/audit";
 import { activeCollection, capacity, isClosed, isPaused } from "@/lib/desk";
@@ -98,7 +99,7 @@ export default async function Account({ params }: { params: Promise<{ id: string
           <a href={`${APP_URL}/${u.handle}`} target="_blank" rel="noreferrer" className="text-mute hover:text-bone">@{u.handle} ↗</a>
         </div>
         <p className="mt-1 text-sm text-mute">
-          {u.email} · {u.kind === "label" ? "Label / A&R" : u.kind === "dj" ? "DJ / curator" : "type not set"} · joined {day(u.created_at)} · {u.invite_code ? `invite ${u.invite_code}` : u.referred_by ? <Link href={`/admin/accounts/${u.referred_by}`} className="underline">referred</Link> : "no invite"} · {u.tz}{u.signup_source ? ` · came from ${u.signup_source}` : ""}
+          {u.email} · {KIND_LABEL[u.kind ?? ""] ?? "type not set"} · joined {day(u.created_at)} · {u.invite_code ? `invite ${u.invite_code}` : u.referred_by ? <Link href={`/admin/accounts/${u.referred_by}`} className="underline">referred</Link> : "no invite"} · {u.tz}{u.signup_source ? ` · came from ${u.signup_source}` : ""}
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           {u.suspended_at && <span className="chip border-danger/50 text-danger">Suspended {day(u.suspended_at)}{u.suspended_reason ? `: ${u.suspended_reason}` : ""}</span>}

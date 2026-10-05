@@ -1,6 +1,7 @@
 "use server";
 
 import { passwordStrength } from "@/lib/password-strength";
+import { KINDS } from "@/lib/db";
 
 import { switchOn } from "@/lib/switches";
 import { handleHeld } from "@/lib/accounts";
@@ -108,7 +109,7 @@ export async function signup(_: FormState, form: FormData): Promise<FormState> {
         invite.valid ? invite.code : null,
         validTz(String(form.get("tz") || "UTC")),
         String(form.get("source") || "").trim().slice(0, 200),
-        form.get("kind") === "label" ? "label" : "dj",
+        KINDS.includes(String(form.get("kind"))) ? String(form.get("kind")) : "dj",
         now(),
       ))!;
       const c = (await db.get<{ id: number }>("INSERT INTO collections (user_id, name, created_at) VALUES (?,?,?) RETURNING id", u.id, "Inbox", now()))!;

@@ -4,7 +4,7 @@ import { useActionForm } from "@/components/useActionForm";
 
 import { updateSettings } from "../actions/settings";
 
-export function SettingsForm({ name, handle, base, nextChange, kind }: { name: string; handle: string; base: string; nextChange: string | null; kind: "dj" | "label" | null }) {
+export function SettingsForm({ name, handle, base, nextChange, kind }: { name: string; handle: string; base: string; nextChange: string | null; kind: string | null }) {
   const [state, onSubmit, pending] = useActionForm(updateSettings, undefined);
   return (
     <form onSubmit={onSubmit} className="mt-4 space-y-4">
@@ -14,9 +14,10 @@ export function SettingsForm({ name, handle, base, nextChange, kind }: { name: s
       </label>
       <fieldset className="space-y-1.5">
         <legend className="label mb-1.5 block">I&apos;m receiving music as</legend>
-        <div className="grid max-w-md grid-cols-2 gap-2">
+        <div className="grid max-w-lg grid-cols-3 gap-2">
           {[
             ["dj", "DJ or curator"],
+            ["producer", "Producer"],
             ["label", "Label or A&R"],
           ].map(([v, l]) => (
             <label key={v} className="flex cursor-pointer items-center gap-2 rounded-md border border-line bg-ink-2 px-3 py-2.5 text-sm has-[:checked]:border-lime/70">

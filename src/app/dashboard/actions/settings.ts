@@ -2,6 +2,7 @@
 
 /** Settings: alerts, profile and public page, plans and checkout, identity, email change, theme and deleting the account. */
 import { revalidatePath } from "next/cache";
+import { KINDS } from "@/lib/db";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { destroySession, requireUser, verifyPassword } from "@/lib/auth";
@@ -67,7 +68,7 @@ export async function updateSettings(_: SettingsState, form: FormData): Promise<
   if (!name) return { error: "Name is required." };
   const problem = await changeHandle(u.id, handle);
   if (problem) return { error: problem };
-  const kind = form.get("kind") === "label" ? "label" : form.get("kind") === "dj" ? "dj" : u.kind;
+  const kind = KINDS.includes(String(form.get("kind"))) ? String(form.get("kind")) : u.kind;
   await q.run("UPDATE users SET name = ?, kind = ? WHERE id = ?", name, kind, u.id);
   if (name !== u.name || handle !== u.handle) await audit(u.id, "settings_updated", handle !== u.handle ? `link is now /${handle}` : name);
   done();

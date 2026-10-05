@@ -33,7 +33,7 @@ export const likeContains = (s: string) => `%${s.replace(/[\\%_]/g, (c) => `\\${
 export type User = {
   id: number;
   /** Who the account is for; null for accounts made before sign-up asked. */
-  kind: "dj" | "label" | null;
+  kind: "dj" | "producer" | "label" | null;
   email: string;
   name: string;
   handle: string;
@@ -148,3 +148,7 @@ export async function logEvent(e: Omit<EventRow, "id" | "created_at">, db: Query
   );
   return r!.id;
 }
+
+/** Who an account is for, as asked at sign-up. */
+export const KINDS = ["dj", "producer", "label"];
+export const KIND_LABEL: Record<string, string> = { dj: "DJ / curator", producer: "Producer", label: "Label / A&R" };

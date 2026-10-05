@@ -72,7 +72,7 @@ export function AuthForm({
         f.choices ? (
           <fieldset key={f.name} className="space-y-1.5">
             <legend className="label mb-1.5 block">{f.label}</legend>
-            <div className="grid grid-cols-2 gap-2">
+            <div className={`grid gap-2 ${f.choices.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
               {f.choices.map((c) => (
                 <label key={c.value} className="flex cursor-pointer items-center gap-2 rounded-md border border-line bg-ink-2 px-3 py-2.5 text-sm has-[:checked]:border-lime/70 has-[:checked]:text-bone">
                   <input type="radio" name={f.name} value={c.value} required defaultChecked={f.defaultValue === c.value} className="accent-lime" />
