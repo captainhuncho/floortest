@@ -51,6 +51,7 @@ Built or planned, switched on per plan from Admin → Feature switches once bill
 - **Antivirus scanning** of uploads (see Risks).
 - **Payments**, if charging at launch: plan changes go through checkout, not the self-serve switch.
 - **Full accessibility audit** (WCAG 2.2 AA) and an INP measurement on real devices. (1) ✅ 2026-10-04: axe-core scan of every main page in Night and Day and at phone width, plus keyboard checks; fixed pinch-zoom being locked, one low-contrast line, the loading placeholder label, a small tap target and Escape on the Feedback panel. (2) Still to do: a pass with a real screen reader (VoiceOver on iPhone and Mac) and INP on a real phone.
+- **Before opening sign-up to everyone:** stop sign-up revealing which emails have accounts. Always answer "Check your email", and email existing owners a "you already have an account, log in here" note instead. Today this is only reachable with a valid invite code.
 - **DMARC** moved from `p=none` to `p=quarantine` after two clean weeks.
 - **Database network hardening:** (1) ✅ done 2026-10-03: the Postgres client sets `ssl: "require"` on Vercel; (2) check whether Supabase network restrictions can limit connections to Vercel. Vercel Hobby has no fixed outbound IPs, so this may need Vercel's Secure Compute or a different setup. FloorTest has no Cloudflare-proxied origin to hide: DNS points at Vercel (76.76.21.21) and Vercel is the edge.
 
