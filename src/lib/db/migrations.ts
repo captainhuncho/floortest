@@ -823,4 +823,19 @@ create index uploads_receiver on uploads(receiver_id);
 create index uploads_time on uploads(created_at);
 `,
   },
+{
+    // Rules the database enforces itself (backend review, 2026-10-05). NOT VALID: they apply to every new or changed
+    // row without re-checking old ones, so the update can't fail on historic data. Link names are unique whatever their case.
+    id: "0048_constraints",
+    sql: `
+alter table users add constraint users_plan_known check (plan in ('free', 'pro', 'team')) not valid;
+alter table users add constraint users_signin_alerts_flag check (signin_alerts in (0, 1)) not valid;
+alter table tracks add constraint tracks_size_positive check (size >= 0) not valid;
+alter table tracks add constraint tracks_flags check (share_ok in (0, 1) and share_download in (0, 1) and sets_ok in (0, 1)) not valid;
+alter table tracks add constraint tracks_decision_known check (decision is null or decision in ('kept', 'passed')) not valid;
+alter table collections add constraint collections_bpm_range check (bpm_min is null or bpm_max is null or bpm_min <= bpm_max) not valid;
+alter table collections add constraint collections_sharing_flag check (allow_sharing in (0, 1)) not valid;
+create unique index users_handle_lower on users(lower(handle));
+`,
+  },
 ];

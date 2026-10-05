@@ -1,6 +1,7 @@
 "use server";
 
 /** Security: password, other devices, two-factor and sign-in alerts. */
+import { allow } from "@/lib/ratelimit";
 import { passwordStrength } from "@/lib/password-strength";
 import { currentSessionHash, hashPassword, requireUser, verifyPassword } from "@/lib/auth";
 import { sendMail } from "@/lib/mail";
@@ -15,6 +16,7 @@ import { type SettingsState } from "./settings";
 /** Changes the password after checking the current one, and signs out every other device. */
 export async function changePassword(_: SettingsState, form: FormData): Promise<SettingsState> {
   const u = await requireUser();
+  if (!(await allow("password_change", String(u.id), 10, 3_600_000))) return { error: "Too many tries. Wait an hour and try again." };
   const current = String(form.get("current") || "");
   const next = String(form.get("password") || "");
   const row = await q.get<{ password_hash: string }>("SELECT password_hash FROM users WHERE id = ?", u.id);
@@ -79,6 +81,7 @@ export async function confirmTwoFactor(code: string): Promise<{ codes?: string[]
 /** Turning it off needs the password and a current code (or a recovery code). */
 export async function disableTwoFactor(_: SettingsState, form: FormData): Promise<SettingsState> {
   const u = await requireUser();
+  if (!(await allow("twofa_disable", String(u.id), 10, 3_600_000))) return { error: "Too many tries. Wait an hour and try again." };
   const row = await q.get<{ password_hash: string; totp_secret: string | null; totp_last_step: number | null; recovery_codes: string }>(
     "SELECT password_hash, totp_secret, totp_last_step, recovery_codes FROM users WHERE id = ?",
     u.id,

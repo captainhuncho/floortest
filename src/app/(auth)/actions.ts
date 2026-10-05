@@ -227,13 +227,16 @@ export async function verifyLoginCode(_: FormState, form: FormData): Promise<For
   if (!email) return { error: "That took too long. Ask for a new code." };
   const code = String(form.get("code") || "").replace(/\D/g, "").slice(0, 6);
   const user = await q.get<{ id: number; suspended_at: number | null; email_verified_at: number | null }>("SELECT id, suspended_at, email_verified_at FROM users WHERE email = ?", email);
-  const row = user && (await q.get<{ code_hash: string; attempts: number }>("SELECT code_hash, attempts FROM login_codes WHERE user_id = ? AND expires_at > ?", user.id, now()));
-  if (!user || !row || row.attempts >= CODE_TRIES) return { error: "That code has expired. Ask for a new one." };
+  // Each try is counted before the code is compared, in one statement, so parallel guesses can't all slip in at once.
+  const row = user && (await q.get<{ code_hash: string; attempts: number }>(
+    "UPDATE login_codes SET attempts = attempts + 1 WHERE user_id = ? AND expires_at > ? AND attempts < ? RETURNING code_hash, attempts",
+    user.id,
+    now(),
+    CODE_TRIES,
+  ));
+  if (!user || !row) return { error: "That code has expired. Ask for a new one." };
   const ok = code.length === 6 && crypto.timingSafeEqual(Buffer.from(codeHash(user.id, code)), Buffer.from(row.code_hash));
-  if (!ok) {
-    await q.run("UPDATE login_codes SET attempts = attempts + 1 WHERE user_id = ?", user.id);
-    return { error: row.attempts + 1 >= CODE_TRIES ? "Too many wrong codes. Ask for a new one." : "That code didn't work. Check the latest email and try again." };
-  }
+  if (!ok) return { error: row.attempts >= CODE_TRIES ? "Too many wrong codes. Ask for a new one." : "That code didn't work. Check the latest email and try again." };
   // Used once: deleting it is what makes the code single-use.
   const used = await q.run("DELETE FROM login_codes WHERE user_id = ? AND code_hash = ?", user.id, row.code_hash);
   if (!used.changes) return { error: "That code was already used. Ask for a new one." };
