@@ -751,4 +751,38 @@ update contact_messages set page = substring(message from '\nPage: ([^\n]*)$'), 
   where topic like 'Feedback%' and message ~ '\nPage: [^\n]*$';
 `,
   },
+{
+    // Scheduled job history (the latest run per job stays in app_state for the Overview); kept 90 days.
+    id: "0044_job_runs",
+    sql: `
+create table job_runs (
+  id bigint generated always as identity primary key,
+  job text not null,
+  started_at bigint not null,
+  ms int not null,
+  ok int not null,
+  result text not null default ''
+);
+create index job_runs_job on job_runs(job, started_at);
+alter table job_runs enable row level security;
+`,
+  },
+{
+    // Delivery tracking from Resend's webhooks: what happened after an email left us, and addresses we stop emailing
+    // because they bounced for good or marked us as spam.
+    id: "0045_email_delivery",
+    sql: `
+alter table outbox add column provider_id text;
+alter table outbox add column delivery text not null default '';
+alter table outbox add column delivery_at bigint;
+create index outbox_provider on outbox(provider_id) where provider_id is not null;
+create table email_suppressions (
+  email text primary key,
+  reason text not null check (reason in ('bounced', 'complained')),
+  detail text not null default '',
+  created_at bigint not null
+);
+alter table email_suppressions enable row level security;
+`,
+  },
 ];

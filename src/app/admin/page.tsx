@@ -6,7 +6,7 @@ import { q } from "@/lib/db";
 import { fmtBytes } from "@/lib/format";
 import { ALLOWANCE_WARN, allowances } from "@/lib/allowance";
 import { BACKUP_KEEP_DAYS, lastBackup } from "@/lib/backup";
-import { lastRuns } from "@/lib/cron";
+import { jobProblems, lastRuns } from "@/lib/cron";
 
 const DAY = 86_400_000;
 
@@ -18,6 +18,7 @@ export default async function AdminOverview() {
 
   const newFeedback = await c("SELECT COUNT(*) AS n FROM contact_messages WHERE topic LIKE 'Feedback%' AND feedback_status = 'new'");
   const partnersStuck = (await partnerRows()).filter((r) => r.flag).length;
+  const jobIssues = await jobProblems();
   const [takedowns, appeals, privacy, inbox, verifying, waiting, failed, incidents] = await Promise.all([
     c("SELECT COUNT(*) AS n FROM takedowns WHERE status = 'open'"),
     c("SELECT COUNT(*) AS n FROM contact_messages WHERE handled_at IS NULL AND topic = 'Suspension appeal'"),
@@ -42,6 +43,7 @@ export default async function AdminOverview() {
   // Most urgent first. Legal deadlines (takedowns, privacy) lead.
   const todo = [
     { n: problems.length, label: "Configuration problems", sub: problems[0] ?? "", href: "#config", tone: "danger" },
+    { n: jobIssues.length, label: "Scheduled job failed or late", sub: jobIssues[0] ?? "", href: "/admin/jobs", tone: "danger" },
     { n: backupStale ? 1 : 0, label: "Database backup is overdue", sub: backup ? `Last one ${new Date(backup.at).toLocaleDateString("en-GB")}` : "", href: "#config", tone: "danger" },
     { n: full.length, label: "Storage is getting full", sub: full.map((a) => `${a.label} ${Math.round((a.used / a.limit) * 100)}%`).join(" · "), href: "/admin/storage", tone: "danger" },
     { n: stuck, label: "Files stuck waiting to be deleted", sub: "Storage keeps refusing them; see Storage & costs", href: "/admin/storage", tone: "danger" },

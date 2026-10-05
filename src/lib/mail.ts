@@ -14,6 +14,11 @@ export type Audience = "sender" | "receiver" | "support";
  */
 export async function sendMail(opts: { userId: number | null; to: string; subject: string; body: string; audience?: Audience; unsubscribe?: UnsubKind }) {
   let status = "logged";
+  let providerId: string | null = null;
+  // An address that bounced for good gets nothing more; one that reported us as spam still gets what it asks for
+  // (sign-in codes, resets) but no optional email. Admin → Emails can lift either.
+  const block = await q.get<{ reason: string }>("SELECT reason FROM email_suppressions WHERE email = ?", opts.to.trim().toLowerCase()).catch(() => undefined);
+  const suppressed = block && (block.reason === "bounced" || opts.unsubscribe) ? block : undefined;
   // Optional emails carry a one-click unsubscribe (header for Gmail/Yahoo, plus a link in the text).
   const unsub = opts.unsubscribe && opts.userId ? unsubToken(opts.userId, opts.unsubscribe, opts.to) : null;
   if (unsub) opts = { ...opts, body: `${opts.body}\n\n—\nStop these emails: ${APP_URL}/unsubscribe/${unsub}` };
@@ -24,7 +29,8 @@ export async function sendMail(opts: { userId: number | null; to: string; subjec
     opts = { ...opts, subject: `[Staging → ${opts.to}] ${opts.subject}`, to: stagingTo || opts.to };
     if (!stagingTo) status = "logged (staging)";
   }
-  if (env.email.resendKey && !(staging && !stagingTo)) {
+  if (suppressed) status = `skipped (${suppressed.reason} before)`;
+  else if (env.email.resendKey && !(staging && !stagingTo)) {
     try {
       const res = await fetch("https://api.resend.com/emails", {
         method: "POST",
@@ -42,7 +48,8 @@ export async function sendMail(opts: { userId: number | null; to: string; subjec
         signal: AbortSignal.timeout(10_000),
       });
       status = res.ok ? "sent" : `failed (${res.status})`;
-      if (!res.ok) console.error("[mail] Resend rejected", res.status, await res.text().catch(() => ""));
+      if (res.ok) providerId = ((await res.json().catch(() => ({}))) as { id?: string }).id ?? null;
+      else console.error("[mail] Resend rejected", res.status, await res.text().catch(() => ""));
     } catch (e) {
       status = "failed (network)";
       console.error("[mail] delivery failed", e);
@@ -50,7 +57,7 @@ export async function sendMail(opts: { userId: number | null; to: string; subjec
   }
   if (status.startsWith("failed")) await recordIncident("email_failed", `Email to ${opts.to.replace(/^(.{2}).*@/, "$1…@")} ${status}`, opts.subject);
   await q.run(
-    "INSERT INTO outbox (user_id, to_email, subject, body, status, audience, created_at) VALUES (?,?,?,?,?,?,?)",
+    "INSERT INTO outbox (user_id, to_email, subject, body, status, audience, created_at, provider_id) VALUES (?,?,?,?,?,?,?,?)",
     opts.userId,
     opts.to,
     opts.subject,
@@ -58,6 +65,7 @@ export async function sendMail(opts: { userId: number | null; to: string; subjec
     status,
     opts.audience ?? "sender",
     now(),
+    providerId,
   );
   return status;
 }

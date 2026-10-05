@@ -1,5 +1,6 @@
 import "server-only";
 import { recordIncident } from "./incidents";
+import { record } from "./ratelimit";
 import { switchOn } from "./switches";
 
 /**
@@ -14,7 +15,12 @@ export async function botCheckKey(): Promise<string | null> {
 
 export async function passedTurnstile(token: unknown, ip?: string) {
   if (!(await botCheckKey())) return true;
-  if (typeof token !== "string" || !token || token.length > 2048) return false;
+  // Failed checks go on Admin → Security (by connection, kept 48 hours like every rate-limit record).
+  const failed = async () => {
+    await record("bot_fail", ip && ip !== "unknown" ? ip : "unknown").catch(() => {});
+    return false;
+  };
+  if (typeof token !== "string" || !token || token.length > 2048) return failed();
   try {
     const body = new URLSearchParams({ secret: process.env.TURNSTILE_SECRET_KEY!, response: token });
     if (ip && ip !== "unknown") body.set("remoteip", ip);
@@ -27,7 +33,7 @@ export async function passedTurnstile(token: unknown, ip?: string) {
       await recordIncident("server_error", "Bot check misconfigured; let a form through unchecked", ours.join(", "));
       return true;
     }
-    return false;
+    return failed();
   } catch (e) {
     // Cloudflare unreachable: let people through (rate limits still hold), but record it so outages and abuse show up.
     console.error("[turnstile] verify failed", e);

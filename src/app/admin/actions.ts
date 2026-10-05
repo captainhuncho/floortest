@@ -639,6 +639,15 @@ export async function flipSwitch(key: SwitchKey, on: boolean) {
   revalidatePath("/", "layout");
 }
 
+/** Lets email go to an address again after a bounce or spam report (for example, once they've fixed their mailbox). */
+export async function liftSuppression(email: string) {
+  const a = await requireAdminAction();
+  await q.run("DELETE FROM email_suppressions WHERE email = ?", email.trim().toLowerCase());
+  await logAdmin(a.id, "lifted email block", email);
+  await done(`Email to ${email} allowed again`);
+  refresh();
+}
+
 /* ───────────────────────── Beta partners and feedback ───────────────────────── */
 
 export async function savePartnerNote(email: string, form: FormData) {
