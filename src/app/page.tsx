@@ -7,6 +7,7 @@ import { APP_URL } from "@/lib/mail";
 import { env } from "@/lib/env";
 import { offeredPlans, planGrid } from "@/lib/plan-store";
 import { footerGroups } from "@/lib/site";
+import { pairs, siteCopy, siteImageUrl } from "@/lib/content";
 import { mono, serif } from "./fonts";
 import { HomePreview } from "./HomePreview";
 import { ClaimBox } from "./ClaimBox";
@@ -26,35 +27,9 @@ const JOURNEY = [
   ["↩", "Replied", "A message came back"],
 ];
 
-const HOW = [
-  ["Share your link", "Post it once: in your bio, a callout, a DM. Senders upload the original file, no account needed."],
-  ["Route by callout", "Each callout gets its own collection. Switch where new tracks land in one click."],
-  ["Decide fast", "Play, then Keep or Not for me, and the next track is already up. Reply without leaving the queue."],
-  ["Take it to the booth", "Kept tracks download as one crate with a Rekordbox XML and playlist, or just the files."],
-];
 
-const FAQ = [
-  [
-    "Do senders need an account?",
-    "No. They send through a receiver's link with their name and email, confirm the email once, and get a private receipt link to follow the track.",
-  ],
-  [
-    "What files can be submitted?",
-    "The original WAV or MP3, up to 250 MB. No streaming or cloud links: the receiver gets the actual file.",
-  ],
-  [
-    "Does your link change?",
-    "Never. It stays the same while you route new tracks into whichever collection is receiving, or pause it while you're away.",
-  ],
-  [
-    'What counts as "listened"?',
-    "At least 30 seconds of real playback, or a quarter of a short track. Skipping around doesn't count, so the signal means something.",
-  ],
-  [
-    "Is it free?",
-    "Yes, for up to 20 active tracks, and free for good at that size. During the beta, Pro and Team are free too, and sign-up is by invite.",
-  ],
-];
+
+
 
 export default async function Home({
   searchParams,
@@ -64,6 +39,9 @@ export default async function Home({
   const user = await currentUser();
   const deleted = !!(await searchParams).deleted;
   const plans = await offeredPlans();
+  const c = await siteCopy("home");
+  const HOW = pairs(c.how_steps);
+  const FAQ = pairs(c.faq);
   // Invite-only: most visitors have no code, so the main button leads to the waitlist.
   const inviteOnly = !(await switchOn("open_signup"));
   const cta = user
@@ -122,19 +100,16 @@ export default async function Home({
           <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-center">
             <div>
               <p className="flex items-center gap-3 text-sm text-lime">
-                <span aria-hidden className="h-px w-8 bg-lime" /> The receiving
-                desk for unreleased music
+                <span aria-hidden className="h-px w-8 bg-lime" /> {c.eyebrow}
               </p>
               <h1 className="mt-6 text-[clamp(3rem,7.5vw,6.5rem)] font-bold leading-[0.9] tracking-[-0.045em]">
-                From private tracks
+                {c.headline}
                 <span className="block font-[family-name:var(--font-serif)] font-normal italic tracking-[-0.02em] text-mute">
-                  to the DJ set.
+                  {c.headline_italic}
                 </span>
               </h1>
               <p className="mt-8 max-w-2xl text-[15px] leading-relaxed text-mute">
-                One receiving link for every track you&apos;re sent. Hear what&apos;s
-                new in seconds, keep what's right for your set, and answer every
-                sender without a single DM.
+                {c.intro}
               </p>
               <div className="mt-10 flex flex-wrap items-center gap-6">
                 <Link
@@ -202,11 +177,10 @@ export default async function Home({
         <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-end">
             <h2 className="text-[clamp(2.5rem,5.5vw,4.5rem)] font-bold leading-[0.95] tracking-[-0.04em]">
-              Know what happened next.
+              {c.journey_title}
             </h2>
             <p className="max-w-[65ch] text-sm leading-relaxed text-mute lg:pb-2">
-              FloorTest records the four moments that matter between sending a
-              track and hearing back.
+              {c.journey_intro}
             </p>
           </div>
           <ol className="mt-10 grid grid-cols-1 overflow-hidden rounded-lg border border-white/10 sm:grid-cols-2 lg:grid-cols-4">
@@ -237,24 +211,30 @@ export default async function Home({
 
       {/* Product preview */}
       <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
-        <div className="mb-4 flex items-center justify-between">
-          <p className="text-xs uppercase tracking-[0.12em] text-lime">
-            [Live product preview]
-          </p>
-          <p className="home-label">Click a track</p>
-        </div>
-        <HomePreview host={HOST} />
+        {c.preview_image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={siteImageUrl(c.preview_image)} alt={c.preview_alt} className="w-full rounded-lg border border-white/10" />
+        ) : (
+          <>
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-xs uppercase tracking-[0.12em] text-lime">
+                [Live product preview]
+              </p>
+              <p className="home-label">Click a track</p>
+            </div>
+            <HomePreview host={HOST} />
+          </>
+        )}
       </section>
 
       {/* Why */}
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-end">
           <h2 className="text-[clamp(2.5rem,5.5vw,4.5rem)] font-bold leading-[0.95] tracking-[-0.04em]">
-            Stop receiving music everywhere.
+            {c.problem_title}
           </h2>
           <p className="max-w-[65ch] text-sm leading-relaxed text-mute lg:pb-2">
-            One private workflow replaces scattered inboxes, expired links and
-            missing context.
+            {c.problem_intro}
           </p>
         </div>
         <div className="mt-10 grid grid-cols-1 md:grid-cols-2">
@@ -300,7 +280,7 @@ export default async function Home({
       {/* How */}
       <section id="how" className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
         <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
-          Share once. Decide fast.
+          {c.how_title}
         </h2>
         <ol className="mt-10 grid grid-cols-1 border-t border-white/10 sm:grid-cols-2 lg:grid-cols-4">
           {HOW.map(([title, body], i) => (
@@ -362,7 +342,7 @@ export default async function Home({
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
           <div>
             <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
-              Music stays between the people you choose.
+              {c.private_title}
             </h2>
           </div>
           <dl className="divide-y divide-white/10 border-y border-white/10">
@@ -396,12 +376,10 @@ export default async function Home({
       {/* Pricing */}
       <section className="mx-auto max-w-6xl border-t border-white/10 px-4 py-16 sm:px-6">
         <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
-          Start free. Grow when your inbox does.
+          {c.pricing_title}
         </h2>
         <p className="mt-4 text-sm text-mute">
-          Free for up to 20 active tracks, for good. Pro and Team are free
-          during the beta. Paid plans come after it: beta users hear first, get
-          at least 30 days&apos; notice, and never lose tracks they already have.
+          {c.pricing_intro}
         </p>
         <div className={`mt-10 grid grid-cols-1 gap-4 ${planGrid(plans.length)}`}>
           {plans.map((p) => (
@@ -458,7 +436,7 @@ export default async function Home({
       {/* FAQ */}
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
         <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
-          Before the first track lands.
+          {c.faq_title}
         </h2>
         <div className="mt-10 border-t border-white/10">
           {FAQ.map(([q, a], i) => (
@@ -494,10 +472,10 @@ export default async function Home({
       <section className="bg-lime text-ink">
         <div className="mx-auto max-w-6xl px-4 py-24 text-center sm:px-6">
           <p className="text-sm">
-            Your link. Your collections. Your call.
+            {c.closing_kicker}
           </p>
           <h2 className="mx-auto max-w-4xl text-[clamp(2.5rem,7vw,5.5rem)] font-bold leading-[0.92] tracking-[-0.045em]">
-            Every track in one place. Ready to play.
+            {c.closing_title}
           </h2>
           <Link
             href={cta.href}

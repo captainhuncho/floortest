@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { fill, siteCopy } from "@/lib/content";
 import { Waveform } from "@/components/Waveform";
 import {q, type Track } from "@/lib/db";
 import { fmtDate, fmtDay, fmtTime } from "@/lib/format";
@@ -32,6 +33,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
   const stemsOn = !!t.stems_requested_at && !t.deleted_at && (await featureOn("stems", { id: t.user_id, plan: t.receiver_plan }));
   const stems = stemsOn ? await stemsFor(t.id) : [];
   // Kept and passed are private to the receiver. Senders only see what they were promised.
+  const c = await siteCopy("receipt");
   const steps = [
     { label: "Delivered", at: t.created_at, text: `On ${t.receiver}'s desk${t.collection ? ` for ${t.collection}` : ""}` },
     { label: "Listened", at: t.played_at, text: SIGNALS.listened },
@@ -43,7 +45,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
   return (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-6 bg-ink px-5 py-8 text-bone sm:py-12">
       <div className="flex flex-col gap-1.5">
-        <p className="text-[11px] font-bold uppercase tracking-[1px] text-faint">Private receipt</p>
+        <p className="text-[11px] font-bold uppercase tracking-[1px] text-faint">{c.kicker}</p>
         <h1 className="break-words text-[28px] font-bold tracking-[-0.8px]">{t.title}</h1>
         <p className="text-[11px] text-mute">
           {t.artist} · sent to {t.receiver}
@@ -100,7 +102,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
         </p>
         <hr className="border-line" />
         <p>
-          Only {t.receiver} can hear or download your file. It&apos;s never shared publicly.
+          {fill(c.private_note, { receiver: t.receiver })}
           {shared?.at ? ` ${t.receiver} shared a private link with a colleague on ${fmtDay(shared.at)}.` : ""}
           {request && request.status !== "pending" && request.decided_at
             ? ` You ${request.status === "allowed" ? "allowed" : request.status === "cancelled" ? "cancelled" : "declined"} sharing on ${fmtDay(request.decided_at)}.`
@@ -114,11 +116,15 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
         </p>
       </section>
       <p className="text-[11px] text-faint">
-        No account needed. Bookmark this page to check in any time, or{" "}
-        <a href="/sent" className="font-medium text-bone underline underline-offset-4">
-          see everything you&apos;ve sent
-        </a>{" "}
-        in one place.
+        {c.footer.split(/(\[[^\]]+\])/).map((part, i) =>
+          /^\[.+\]$/.test(part) ? (
+            <a key={i} href="/sent" className="font-medium text-bone underline underline-offset-4">
+              {part.slice(1, -1)}
+            </a>
+          ) : (
+            part
+          ),
+        )}
       </p>
     </main>
   );

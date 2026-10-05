@@ -1,4 +1,5 @@
 import { switchOn } from "@/lib/switches";
+import { siteCopy } from "@/lib/content";
 import { botCheckKey } from "@/lib/turnstile";
 import { q } from "@/lib/db";
 import { env } from "@/lib/env";
@@ -14,12 +15,13 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
   const personal = inviteCode ? await q.get<{ email: string | null }>("SELECT email FROM invites WHERE code = ? AND revoked_at IS NULL", inviteCode) : undefined;
   const referrer = ref ? await q.get<{ name: string }>("SELECT name FROM users WHERE referral_code = ?", ref) : undefined;
   const inviteOnly = !(await switchOn("open_signup"));
+  const c = await siteCopy("auth");
   const host = env.appUrl.replace(/^https?:\/\//, "");
   return (
     <>
-      <h1 className="mb-2 text-2xl font-bold tracking-tight">Claim your link</h1>
+      <h1 className="mb-2 text-2xl font-bold tracking-tight">{c.signup_title}</h1>
       <p className="mb-8 text-sm text-mute">
-        One link for every callout. Free for up to 20 active tracks.
+        {c.signup_intro}
         {inviteOnly && !referrer && (
           <>
             {" "}FloorTest is invite-only during the beta.{" "}

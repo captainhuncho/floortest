@@ -868,4 +868,29 @@ alter table users drop constraint if exists users_plan_known;
 alter table users add constraint users_plan_fk foreign key (plan) references plans(id) not valid;
 `,
   },
+  {
+    // Site wording and images edited in Admin → Site content: a draft and a published copy per page, plus every
+    // published version so an older one can be restored.
+    id: "0050_site_content",
+    sql: `
+create table site_content (
+  page text primary key,
+  draft text not null default '{}',
+  published text not null default '{}',
+  admin_id bigint references users(id) on delete set null,
+  updated_at bigint not null,
+  published_at bigint
+);
+create table site_content_versions (
+  id bigint generated always as identity primary key,
+  page text not null,
+  body text not null,
+  admin_id bigint references users(id) on delete set null,
+  created_at bigint not null
+);
+create index site_content_versions_page on site_content_versions (page, created_at desc);
+alter table site_content enable row level security;
+alter table site_content_versions enable row level security;
+`,
+  },
 ];

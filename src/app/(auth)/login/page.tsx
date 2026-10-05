@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { AuthForm } from "../AuthForm";
 import { login } from "../actions";
+import { siteCopy } from "@/lib/content";
 
 export const metadata = { title: "Log in — FloorTest" };
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const c = await siteCopy("auth");
   return (
     <>
-      <h1 className="mb-8 text-2xl font-bold tracking-tight">Back to the desk</h1>
+      <h1 className="mb-8 text-2xl font-bold tracking-tight">{c.login_title}</h1>
       <AuthForm
         action={login}
         submit="Log in"

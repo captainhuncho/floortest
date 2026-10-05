@@ -33,7 +33,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           title: "Health",
           items: [
             { href: "/admin", label: "Overview", icon: "grid" },
-            { href: "/admin/metrics", label: "Metrics", icon: "chart" }, { href: "/admin/revenue", label: "Revenue", icon: "chart" }, { href: "/admin/plans", label: "Plans & prices", icon: "list" }, { href: "/admin/storage", label: "Storage & costs", icon: "grid" }, { href: "/admin/speed", label: "Speed", icon: "chart" }, { href: "/admin/jobs", label: "Jobs", icon: "list" }, { href: "/admin/usage", label: "Feature use", icon: "chart" },
+            { href: "/admin/metrics", label: "Metrics", icon: "chart" }, { href: "/admin/revenue", label: "Revenue", icon: "chart" }, { href: "/admin/plans", label: "Plans & prices", icon: "list" }, { href: "/admin/content", label: "Site content", icon: "list" }, { href: "/admin/storage", label: "Storage & costs", icon: "grid" }, { href: "/admin/speed", label: "Speed", icon: "chart" }, { href: "/admin/jobs", label: "Jobs", icon: "list" }, { href: "/admin/usage", label: "Feature use", icon: "chart" },
             { href: "/admin/incidents", label: "Incidents", icon: "alert", badge: incidents },
             { href: "/admin/security", label: "Security", icon: "shield" },
           ],

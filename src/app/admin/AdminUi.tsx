@@ -84,3 +84,45 @@ export function ConfirmButton({
     </>
   );
 }
+
+/** Site content image: uploads straight away, then keeps the stored key in a hidden field for the form to save. */
+export function ImageField({ name, label, hint, initial }: { name: string; label: string; hint?: string; initial: string }) {
+  const [key, setKey] = useState(initial);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const url = key ? `/api/site-image/${key.replace(/^site\//, "")}` : "";
+  async function upload(file: File) {
+    setBusy(true);
+    setError("");
+    const body = new FormData();
+    body.set("file", file);
+    const res = await fetch("/api/admin/site-image", { method: "POST", body }).catch(() => null);
+    const data = await res?.json().catch(() => null);
+    setBusy(false);
+    if (res?.ok && data?.key) setKey(data.key);
+    else setError(data?.error ?? "Upload failed. Try again.");
+  }
+  return (
+    <div className="space-y-1.5">
+      <span className="label">{label}</span>
+      <input type="hidden" name={name} value={key} />
+      {url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={url} alt="" className="max-h-48 rounded-md border border-line" />
+      )}
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="btn-ghost btn-sm cursor-pointer">
+          {busy ? "Uploading…" : key ? "Replace image" : "Upload image"}
+          <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={busy} onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
+        </label>
+        {key && (
+          <button type="button" className="btn-ghost btn-sm" onClick={() => setKey("")}>
+            Remove
+          </button>
+        )}
+      </div>
+      {hint && <p className="text-xs text-dim">{hint}</p>}
+      {error && <p role="alert" className="text-xs text-danger">{error}</p>}
+    </div>
+  );
+}

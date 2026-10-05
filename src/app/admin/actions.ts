@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { FEATURES, type Feature } from "@/lib/features";
 import { allPlans, FREE_PLAN } from "@/lib/plan-store";
+import { SITE_PAGES, type Field, type SitePage } from "@/lib/content";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { signViewAs, VIEW_AS_COOKIE } from "@/lib/auth";
@@ -717,7 +718,7 @@ export async function addPlan(form: FormData) {
   const a = await requireAdminAction();
   const id = String(form.get("id") || "").trim().toLowerCase();
   const name = String(form.get("name") || "").trim().slice(0, 40);
-  if (!/^[a-z][a-z0-9_-]{1,23}$/.test(id)) return fail("The plan code must be 2–24 lowercase letters, numbers, - or _, starting with a letter.");
+  if (!/^[a-z][a-z0-9_]{1,23}$/.test(id)) return fail("The plan code must be 2–24 lowercase letters, numbers or _, starting with a letter.");
   if (!name) return fail("Give the plan a name.");
   if ((await allPlans()).some((p) => p.id === id)) return fail("A plan with that code already exists.");
   const position = ((await q.get<{ p: number }>("SELECT COALESCE(MAX(position), 0) AS p FROM plans"))!.p) + 1;
@@ -749,4 +750,51 @@ export async function deletePlan(id: string) {
   await logAdmin(a.id, "deleted plan", id);
   await done("Plan deleted.");
   revalidatePath("/", "layout");
+}
+
+/** Admin → Site content: save a page's draft, and publish it when the Publish button was pressed. */
+export async function saveContent(page: SitePage, form: FormData) {
+  const a = await requireAdminAction();
+  const def = SITE_PAGES[page];
+  if (!def) return;
+  const values: Record<string, string> = {};
+  for (const [k, fld] of Object.entries(def.fields as Record<string, Field>)) {
+    let v = String(form.get(k) ?? "").replace(/\r\n/g, "\n").trim().slice(0, 4000);
+    if (fld.kind === "image" && v && !/^site\/[a-f0-9]{18}\.(jpg|png|webp)$/.test(v)) v = "";
+    if (fld.kind !== "image" && !v) v = fld.start;
+    values[k] = v;
+  }
+  const body = JSON.stringify(values);
+  const publish = form.get("intent") === "publish";
+  const t = now();
+  await q.run(
+    `INSERT INTO site_content (page, draft, published, admin_id, updated_at, published_at) VALUES (?,?,?,?,?,?)
+     ON CONFLICT (page) DO UPDATE SET draft = excluded.draft, admin_id = excluded.admin_id, updated_at = excluded.updated_at${publish ? ", published = excluded.published, published_at = excluded.published_at" : ""}`,
+    page, body, publish ? body : "{}", a.id, t, publish ? t : null,
+  );
+  if (publish) {
+    await q.run("INSERT INTO site_content_versions (page, body, admin_id, created_at) VALUES (?,?,?,?)", page, body, a.id, t);
+    await logAdmin(a.id, "published site content", def.label);
+    revalidatePath("/", "layout");
+  }
+  await done(publish ? `${def.label} published.` : `${def.label} draft saved. Preview it, then publish.`);
+  refresh();
+}
+
+/** Copy an older published version back into the draft (it goes live only when published). */
+export async function restoreContent(page: SitePage, versionId: number) {
+  const a = await requireAdminAction();
+  const v = await q.get<{ body: string }>("SELECT body FROM site_content_versions WHERE id = ? AND page = ?", versionId, page);
+  if (!v) return fail("That version no longer exists.");
+  await q.run("UPDATE site_content SET draft = ?, admin_id = ?, updated_at = ? WHERE page = ?", v.body, a.id, now(), page);
+  await done("Version copied into the draft. Preview it, then publish.");
+  refresh();
+}
+
+/** Throw the draft away: it goes back to what's published. */
+export async function discardDraft(page: SitePage) {
+  const a = await requireAdminAction();
+  await q.run("UPDATE site_content SET draft = published, admin_id = ?, updated_at = ? WHERE page = ?", a.id, now(), page);
+  await done("Draft discarded.");
+  refresh();
 }

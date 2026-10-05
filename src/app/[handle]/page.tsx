@@ -1,4 +1,5 @@
 import { CuePoint } from "@/components/CuePoint";
+import { fill, siteCopy } from "@/lib/content";
 import { listeners } from "@/lib/team";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
@@ -59,17 +60,14 @@ export default async function ReceiverPage({ params }: Props) {
   const wantedText = collection?.brief_wanted || "";
   // Always tell senders what's wanted: the collection's own genres, or the default list when none are set.
   const showBrief = !closedReason && genres.length > 0;
-  const bullets = [
-    "WAV or MP3, up to 250 MB. No account needed.",
-    team.length ? `Only ${receiver.name} can download your file. Their team can listen and suggest, nothing more.` : `Only ${receiver.name} can hear or download your file.`,
-    `Files that aren't kept are deleted within ${RETAIN_UNREVIEWED_DAYS} days.`,
-    "You'll get a private receipt and an email when it's listened to, downloaded or replied to.",
-  ];
+  const c = await siteCopy("link");
+  const vars = { receiver: receiver.name, days: RETAIN_UNREVIEWED_DAYS };
+  const bullets = [c.bullet_files, team.length ? c.bullet_private_team : c.bullet_private, c.bullet_retention, c.bullet_receipt].map((b) => fill(b, vars)).filter(Boolean);
 
   return (
     <main className="group/page mx-auto flex min-h-dvh max-w-xl flex-col gap-6 bg-ink px-[18px] py-8 text-bone sm:py-12">
       <div className="flex flex-col gap-3">
-        <p className="text-[11px] font-bold uppercase tracking-[1px] text-mute">Send music to</p>
+        <p className="text-[11px] font-bold uppercase tracking-[1px] text-mute">{c.kicker}</p>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="break-words text-[clamp(2rem,12vw,3.5rem)] font-bold leading-none group-has-[[data-picked]]/page:text-[32px] group-has-[[data-picked]]/page:font-extrabold">
             {receiver.name}
@@ -91,7 +89,7 @@ export default async function ReceiverPage({ params }: Props) {
         )}
         {showBrief && (
           <section aria-label="What they're looking for" className="group-has-[[data-picked]]/page:hidden flex flex-col gap-2 rounded-xl border border-line bg-ink-2 p-3">
-            <p className="text-[11px] font-bold uppercase tracking-[0.5px] text-mute">What I&apos;m looking for</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.5px] text-mute">{c.looking_for}</p>
             {(
               <ul className="flex flex-wrap gap-1.5">
                 {genres.map((g) => (
@@ -118,7 +116,7 @@ export default async function ReceiverPage({ params }: Props) {
           <div className="rounded-2xl border border-line bg-ink-2 p-5" role="status">
             <p className="font-bold">{closedReason}</p>
             {note && <p className="mt-3 whitespace-pre-wrap border-l-2 border-lime pl-3 text-[13px]">{note}</p>}
-            <p className="mt-2 text-[12px] text-dim">This link stays the same. Check back soon.</p>
+            <p className="mt-2 text-[12px] text-dim">{c.closed_note}</p>
           </div>
         ) : (
           <SubmitForm botCheckKey={await botCheckKey()} handle={receiver.handle} receiverName={receiver.name} genres={genres} look="mobile" allowSharing={sharing && !!collection?.allow_sharing} sharingDownloads={await shareDownloadEnabled(receiver.plan)} />

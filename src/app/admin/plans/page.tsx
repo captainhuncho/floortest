@@ -93,7 +93,7 @@ export default async function Plans() {
       <form action={addPlan} className="flex flex-wrap items-end gap-3 rounded-md border border-dashed border-line p-5">
         <label className="space-y-1.5">
           <span className="label">New plan code</span>
-          <input name="id" required pattern="[a-z][a-z0-9_\-]{1,23}" placeholder="label" className="input" />
+          <input name="id" required pattern="[a-z][a-z0-9_]{1,23}" placeholder="label" className="input" />
         </label>
         <label className="space-y-1.5">
           <span className="label">Name</span>
