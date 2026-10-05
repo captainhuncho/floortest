@@ -6,7 +6,7 @@ import { currentUser } from "@/lib/auth";
 import { APP_URL } from "@/lib/mail";
 import { env } from "@/lib/env";
 import { PLANS } from "@/lib/plans";
-import { footerLinks } from "@/lib/site";
+import { footerGroups } from "@/lib/site";
 import { mono, serif } from "./fonts";
 import { HomePreview } from "./HomePreview";
 import { ClaimBox } from "./ClaimBox";
@@ -507,30 +507,35 @@ export default async function Home({
         </div>
       </section>
 
-      <footer className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-10 text-sm text-mute sm:px-6">
-        <div className="flex items-center gap-4">
+      <footer className="mx-auto max-w-6xl px-4 pb-10 pt-12 text-sm text-mute sm:px-6">
+        <div className="flex flex-col gap-3 border-t border-line pt-10 sm:flex-row sm:items-center sm:justify-between">
           <Logo />
-          <span>Built for DJs and curators who receive music every week.</span>
+          <p className="max-w-xs">Built for DJs and curators who receive music every week.</p>
         </div>
-        <nav className="flex flex-wrap gap-x-5 gap-y-2" aria-label="Footer">
-          {footerLinks().map((l) =>
-            l.external ? (
-              <a
-                key={l.label}
-                href={l.href}
-                target="_blank"
-                rel="noreferrer"
-                className="hover:text-bone"
-              >
-                {l.label}
-              </a>
-            ) : (
-              <Link key={l.label} href={l.href} className="hover:text-bone">
-                {l.label}
-              </Link>
-            ),
-          )}
+        <nav aria-label="Footer" className="mt-8 grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
+          {footerGroups().map((g) => (
+            <div key={g.title} className={g.title === "Legal" ? "col-span-2 sm:col-span-1" : ""}>
+              <h2 className="text-[11px] font-bold uppercase tracking-[1px] text-faint">{g.title}</h2>
+              {/* Legal is the long list: two columns on phones so it doesn't run down the screen. */}
+              <ul className={`mt-3 grid gap-y-1 ${g.title === "Legal" ? "grid-cols-2 gap-x-6 sm:grid-cols-1" : ""}`}>
+                {g.links.map((l) => (
+                  <li key={l.label}>
+                    {l.external ? (
+                      <a href={l.href} target="_blank" rel="noreferrer" className="inline-block py-1.5 hover:text-bone">
+                        {l.label}
+                      </a>
+                    ) : (
+                      <Link href={l.href} className="inline-block py-1.5 hover:text-bone">
+                        {l.label}
+                      </Link>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </nav>
+        <p className="mt-10 border-t border-line pt-6 text-xs text-dim">© {new Date().getFullYear()} FloorTest. Private beta.</p>
       </footer>
     </div>
   );
