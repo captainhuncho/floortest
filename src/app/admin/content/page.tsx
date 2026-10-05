@@ -5,12 +5,14 @@ import { contentRow, SITE_PAGES, type Field, type SitePage } from "@/lib/content
 import { fmtDate } from "@/lib/format";
 import { discardDraft, restoreContent, saveContent } from "../actions";
 import { ConfirmButton, ImageField } from "../AdminUi";
+import { EmailEditor } from "./EmailEditor";
 
 const PAGES = Object.keys(SITE_PAGES) as SitePage[];
 
 /** Edit the words and images on public pages: save a draft, preview it on the real page, then publish. */
-export default async function SiteContent({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
-  const want = (await searchParams).page as SitePage;
+export default async function SiteContent({ searchParams }: { searchParams: Promise<{ page?: string; email?: string }> }) {
+  const sp = await searchParams;
+  const want = sp.page as SitePage;
   const page = PAGES.includes(want) ? want : "home";
   const def = SITE_PAGES[page];
   const row = await contentRow(page);
@@ -32,11 +34,16 @@ export default async function SiteContent({ searchParams }: { searchParams: Prom
       </div>
       <nav aria-label="Pages" className="flex flex-wrap gap-2">
         {PAGES.map((p) => (
-          <Link key={p} href={`/admin/content?page=${p}`} aria-current={p === page ? "page" : undefined} className={`chip ${p === page ? "border-lime/50 text-lime" : "border-line text-mute hover:text-bone"}`}>
+          <Link key={p} href={`/admin/content?page=${p}`} aria-current={p === page && sp.page !== "emails" ? "page" : undefined} className={`chip ${p === page && sp.page !== "emails" ? "border-lime/50 text-lime" : "border-line text-mute hover:text-bone"}`}>
             {SITE_PAGES[p].label}
           </Link>
         ))}
+        <Link href="/admin/content?page=emails" aria-current={sp.page === "emails" ? "page" : undefined} className={`chip ${sp.page === "emails" ? "border-lime/50 text-lime" : "border-line text-mute hover:text-bone"}`}>
+          Emails
+        </Link>
       </nav>
+      {sp.page === "emails" ? <EmailEditor want={sp.email} /> : (
+      <>
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <span className={`chip ${unpublished ? "border-lime/50 text-lime" : "border-line text-mute"}`}>{unpublished ? "Draft not published yet" : "Draft matches the live page"}</span>
         {row?.published_at && <span className="text-mute">Last published {fmtDate(row.published_at)}</span>}
@@ -104,6 +111,8 @@ export default async function SiteContent({ searchParams }: { searchParams: Prom
           <p className="text-sm text-mute">Nothing published from here yet: the page shows its original wording.</p>
         )}
       </section>
+      </>
+      )}
     </div>
   );
 }

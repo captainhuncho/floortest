@@ -1,5 +1,6 @@
 /** Intake: checks before a sender can send, the two-step upload, and confirming a sender's email. */
 import "server-only";
+import { emailText } from "./email-copy";
 import { after } from "next/server";
 import { switchOn } from "./switches";
 import crypto from "node:crypto";
@@ -231,19 +232,16 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
   sendMailLater({
     userId: receiver.id,
     to: sender.email,
-    subject: `Delivered: ${sArtist} – ${sTitle}`,
-    body: [
-      `Hi ${sName},`,
-      "",
-      `"${sTitle}" was delivered to ${receiver.name}${collection ? ` for ${collection.name}` : ""}.`,
-      `We'll email you when it's listened to, when the original is downloaded, and if ${receiver.name} replies.`,
-      "",
-      `Your private receipt: ${APP_URL}/receipt/${track.token}`,
-      `Everything you've sent, with what happened to each: ${APP_URL}/sent`,
-      ...verify,
-      "",
-      "— FloorTest",
-    ].join("\n"),
+    ...(await emailText("delivered", {
+      sender: sName,
+      receiver: receiver.name,
+      title: sTitle,
+      artist: sArtist,
+      for_collection: collection ? ` for ${collection.name}` : "",
+      receipt_url: `${APP_URL}/receipt/${track.token}`,
+      sent_url: `${APP_URL}/sent`,
+      confirm_block: verify.join("\n"),
+    })),
   });
   // The track is saved: everything else happens after the sender's response, and one failure can't block the others.
   after(async () => {

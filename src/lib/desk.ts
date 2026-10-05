@@ -1,5 +1,6 @@
 /** A receiver's desk: capacity, collections, link status, ownership checks and referrals. */
 import "server-only";
+import { emailText } from "./email-copy";
 import crypto from "node:crypto";
 import { now, q, USER_COLUMNS, type Collection, type Queryable, type Sender, type Track, type User } from "./db";
 import { APP_URL, sendMail } from "./mail";
@@ -51,8 +52,7 @@ export async function rewardReferral(receiverId: number, senderEmail: string) {
       userId: referrer.id,
       audience: "receiver",
       to: referrer.email,
-      subject: `You both got ${REFERRAL_BONUS} more track slots`,
-      body: `${u.name} just received their first track on FloorTest. You both get ${REFERRAL_BONUS} extra active tracks.\n\nYour referrals: ${APP_URL}/dashboard/referrals`,
+      ...(await emailText("referral", { friend: u.name, bonus: REFERRAL_BONUS, referrals_url: `${APP_URL}/dashboard/referrals` })),
     });
 }
 

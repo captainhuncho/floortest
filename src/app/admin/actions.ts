@@ -1,6 +1,7 @@
 "use server";
 
 import crypto from "node:crypto";
+import { EMAILS, emailKey, emailTemplate, emailText, fillEmail, SAMPLE_VARS, type EmailId } from "@/lib/email-copy";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { FEATURES, type Feature } from "@/lib/features";
@@ -222,20 +223,7 @@ async function mailInvite(code: string, email: string, inviter: string, note: st
     userId: null,
     audience: "support",
     to: email,
-    subject: "You're invited to the FloorTest beta",
-    body: [
-      "Hi,",
-      "",
-      `${inviter} invited you to the FloorTest beta: one receiving link that never changes and takes every track, a queue to review them fast, and receipts that tell senders what happened.`,
-      note ? `\n"${note}"\n` : "",
-      `Claim your link: ${link}`,
-      "",
-      `Your invite code is ${code}. It's for ${email} only and works once.`,
-      "",
-      "— FloorTest",
-    ]
-      .filter((l, i, a) => l || a[i - 1])
-      .join("\n"),
+    ...(await emailText("invite", { inviter, personal_note: note ? `\n"${note}"\n` : "", signup_url: link, code, email })),
   });
 }
 
@@ -782,8 +770,9 @@ export async function saveContent(page: SitePage, form: FormData) {
 }
 
 /** Copy an older published version back into the draft (it goes live only when published). */
-export async function restoreContent(page: SitePage, versionId: number) {
+export async function restoreContent(page: string, versionId: number) {
   const a = await requireAdminAction();
+  if (!contentKeys.includes(page)) return;
   const v = await q.get<{ body: string }>("SELECT body FROM site_content_versions WHERE id = ? AND page = ?", versionId, page);
   if (!v) return fail("That version no longer exists.");
   await q.run("UPDATE site_content SET draft = ?, admin_id = ?, updated_at = ? WHERE page = ?", v.body, a.id, now(), page);
@@ -792,9 +781,48 @@ export async function restoreContent(page: SitePage, versionId: number) {
 }
 
 /** Throw the draft away: it goes back to what's published. */
-export async function discardDraft(page: SitePage) {
+export async function discardDraft(page: string) {
   const a = await requireAdminAction();
+  if (!contentKeys.includes(page)) return;
   await q.run("UPDATE site_content SET draft = published, admin_id = ?, updated_at = ? WHERE page = ?", a.id, now(), page);
   await done("Draft discarded.");
   refresh();
+}
+
+const contentKeys: string[] = [...Object.keys(SITE_PAGES), ...(Object.keys(EMAILS) as EmailId[]).map(emailKey)];
+
+/** Admin → Site content → Emails: save an email's wording as a draft, or publish it so it's used from the next send. */
+export async function saveEmail(id: EmailId, form: FormData) {
+  const a = await requireAdminAction();
+  const def = EMAILS[id];
+  if (!def) return;
+  const subject = String(form.get("subject") ?? "").replace(/\s+/g, " ").trim().slice(0, 200) || def.subject;
+  const body = String(form.get("body") ?? "").replace(/\r\n/g, "\n").trim().slice(0, 6000) || def.body;
+  const unknown = [...`${subject} ${body}`.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).filter((k) => !(k in def.vars));
+  if (unknown.length) return fail(`Unknown fill-in: {${unknown[0]}}. Use only the ones listed.`);
+  const json = JSON.stringify({ subject, body });
+  const publish = form.get("intent") === "publish";
+  const key = emailKey(id);
+  const t = now();
+  await q.run(
+    `INSERT INTO site_content (page, draft, published, admin_id, updated_at, published_at) VALUES (?,?,?,?,?,?)
+     ON CONFLICT (page) DO UPDATE SET draft = excluded.draft, admin_id = excluded.admin_id, updated_at = excluded.updated_at${publish ? ", published = excluded.published, published_at = excluded.published_at" : ""}`,
+    key, json, publish ? json : "{}", a.id, t, publish ? t : null,
+  );
+  if (publish) {
+    await q.run("INSERT INTO site_content_versions (page, body, admin_id, created_at) VALUES (?,?,?,?)", key, json, a.id, t);
+    await logAdmin(a.id, "published email wording", def.label);
+  }
+  await done(publish ? `${def.label} email published: it's used from the next send.` : `${def.label} draft saved.`);
+  refresh();
+}
+
+/** Send the draft, filled with example details, to the admin's own address. */
+export async function sendTestEmail(id: EmailId) {
+  const a = await requireAdminAction();
+  if (!EMAILS[id]) return;
+  const t = await emailTemplate(id, "draft");
+  const status = await sendMail({ userId: null, audience: "support", to: a.email, subject: `[Test] ${fillEmail(t.subject, SAMPLE_VARS)}`, body: fillEmail(t.body, SAMPLE_VARS) });
+  if (status.startsWith("failed")) return fail(`Test didn't send: ${status}`);
+  await done(`Test sent to ${a.email}.`);
 }

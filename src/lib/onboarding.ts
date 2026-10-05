@@ -1,4 +1,5 @@
 import "server-only";
+import { emailText } from "./email-copy";
 import { now, q } from "./db";
 import { APP_URL, sendMail } from "./mail";
 
@@ -19,25 +20,7 @@ export async function sendWelcome(userId: number) {
     userId,
     audience: "receiver",
     to: u.email,
-    subject: `Your link is live: ${link.replace(/^https?:\/\//, "")}`,
-    body: [
-      `Hi ${first(u.name)},`,
-      "",
-      `Your receiving link is ready: ${link}`,
-      "",
-      "Put it in your bio or your next callout. Artists upload the original file and you'll get an email when tracks arrive (change how often in Notifications).",
-      "",
-      "On your desk:",
-      "• Space plays",
-      "• K keeps, X marks not for me, and the next track starts",
-      "• U undoes",
-      "",
-      "Kept tracks download as a crate with a Rekordbox XML.",
-      "",
-      "Reply to this email with anything that's broken or missing. During the beta, I read every one.",
-      "",
-      "— FloorTest",
-    ].join("\n"),
+    ...(await emailText("welcome", { first_name: first(u.name), link, link_short: link.replace(/^https?:\/\//, "") })),
   });
 }
 
@@ -60,16 +43,7 @@ export async function runFirstTrackNudges(at = now()) {
       userId: u.id,
       audience: "receiver",
       to: u.email,
-      subject: "Nothing on your desk yet",
-      body: [
-        `Hi ${first(u.name)},`,
-        "",
-        "Your link hasn't had a track yet. The quickest way to get the first one: post a callout with your link, for example:",
-        "",
-        `"Sending me music? Upload the WAV here: ${link}. You'll know when I've listened."`,
-        "",
-        "— FloorTest",
-      ].join("\n"),
+      ...(await emailText("first_track_nudge", { first_name: first(u.name), link })),
     });
     if (status.startsWith("failed")) await q.run("UPDATE users SET first_track_nudged_at = NULL WHERE id = ?", u.id);
     else sent++;

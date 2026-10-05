@@ -1,5 +1,6 @@
 /** Reviewing: listened, downloaded, played out, decisions, replies, deleting and blocking. */
 import "server-only";
+import { emailText } from "./email-copy";
 import { drainNow, retireTrackFiles } from "./deletion";
 import { isDecision, logEvent, now, q, type Decision, type Sender, type Track, type User } from "./db";
 import { APP_URL, sendMailLater } from "./mail";
@@ -23,8 +24,7 @@ export async function markListened(user: User, t: Track, secondsHeard: number) {
   sendMailLater({
     userId: user.id,
     to: s.email,
-    subject: `Listened: ${t.title}`,
-    body: `Hi ${s.name},\n\n${user.name} listened to "${t.title}".\n\nThis means it was played for at least 30 seconds (or a quarter of the track). It doesn't tell you whether it'll be played out.\n\nYour receipt: ${APP_URL}/receipt/${t.token}\nEverything you've sent: ${APP_URL}/sent\n\n— FloorTest`,
+    ...(await emailText("listened", { sender: s.name, receiver: user.name, title: t.title, receipt_url: `${APP_URL}/receipt/${t.token}`, sent_url: `${APP_URL}/sent` })),
   });
   return true;
 }
@@ -38,8 +38,7 @@ export async function markDownloaded(user: User, t: Track) {
   sendMailLater({
     userId: user.id,
     to: s.email,
-    subject: `Downloaded: ${t.title}`,
-    body: `Hi ${s.name},\n\n${user.name} downloaded the original file of "${t.title}".\n\nDownloading usually means they want it on hand, but it isn't a promise.\n\nYour receipt: ${APP_URL}/receipt/${t.token}\nEverything you've sent: ${APP_URL}/sent\n\n— FloorTest`,
+    ...(await emailText("downloaded", { sender: s.name, receiver: user.name, title: t.title, receipt_url: `${APP_URL}/receipt/${t.token}`, sent_url: `${APP_URL}/sent` })),
   });
 }
 
@@ -53,8 +52,7 @@ export async function markPlayedOut(user: User, t: Track, note: string) {
   sendMailLater({
     userId: user.id,
     to: s.email,
-    subject: `Played out: ${t.title}`,
-    body: `Hi ${s.name},\n\n${user.name} played "${t.title}" out in a set${clean ? ` (${clean})` : ""}. 🎛️\n\nYour receipt: ${APP_URL}/receipt/${t.token}\nEverything you've sent: ${APP_URL}/sent\n\n— FloorTest`,
+    ...(await emailText("played_out", { sender: s.name, receiver: user.name, title: t.title, receipt_url: `${APP_URL}/receipt/${t.token}`, sent_url: `${APP_URL}/sent`, note: clean ? ` (${clean})` : "" })),
   });
   return true;
 }
