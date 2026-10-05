@@ -4,7 +4,8 @@ import { Turnstile } from "@/components/Turnstile";
 import { SourceField } from "@/components/SourceField";
 import { useActionForm } from "@/components/useActionForm";
 import Link from "next/link";
-import {useEffect, useState} from "react";
+import { useEffect, useState } from "react";
+import { NavIcon } from "@/components/NavIcon";
 import type { FormState } from "./actions";
 import { PasswordStrength } from "@/components/PasswordStrength";
 
@@ -33,6 +34,7 @@ export function AuthForm({
   success,
   botCheckKey,
   captureSource = false,
+  consents,
 }: {
   action: (s: FormState, f: FormData) => Promise<FormState>;
   fields: Field[];
@@ -45,10 +47,13 @@ export function AuthForm({
   botCheckKey?: string | null;
   /** Record where the visitor came from (sign-up). */
   captureSource?: boolean;
+  /** Tick boxes above the button; required ones must be ticked to submit. */
+  consents?: { name: string; label: React.ReactNode; required?: boolean }[];
 }) {
   const [state, onSubmit, pending] = useActionForm(action, undefined);
   const [tz, setTz] = useState("UTC");
   const [values, setValues] = useState<Record<string, string>>({});
+  const [shown, setShown] = useState<Record<string, boolean>>({});
   // The browser's timezone, so digests and dates default to local time.
   useEffect(() => setTz(Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"), []);
 
@@ -100,6 +105,29 @@ export function AuthForm({
                 className="w-full bg-transparent py-2.5 pr-3 text-sm outline-none placeholder:text-dim"
               />
             </div>
+          ) : f.type === "password" ? (
+            <div className="relative">
+              <input
+                id={`f-${f.name}`}
+                className="input pr-12"
+                name={f.name}
+                type={shown[f.name] ? "text" : "password"}
+                required
+                minLength={f.minLength}
+                defaultValue={f.defaultValue}
+                placeholder={f.placeholder}
+                autoComplete={f.autoComplete}
+              />
+              <button
+                type="button"
+                onClick={() => setShown((v) => ({ ...v, [f.name]: !v[f.name] }))}
+                aria-label={shown[f.name] ? "Hide password" : "Show password"}
+                aria-pressed={!!shown[f.name]}
+                className="absolute inset-y-0 right-0 grid w-12 place-items-center text-mute hover:text-bone"
+              >
+                <NavIcon name={shown[f.name] ? "eyeOff" : "eye"} className="size-[18px]" />
+              </button>
+            </div>
           ) : (
             <input
               id={`f-${f.name}`}
@@ -118,6 +146,12 @@ export function AuthForm({
         </div>
         ),
       )}
+      {consents?.map((c) => (
+        <label key={c.name} className="flex items-start gap-3 text-sm text-mute">
+          <input type="checkbox" name={c.name} required={c.required} className="mt-0.5 size-4 shrink-0 accent-lime" />
+          <span>{c.label}</span>
+        </label>
+      ))}
       {state?.error && (
         <p role="alert" className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
           {state.error}

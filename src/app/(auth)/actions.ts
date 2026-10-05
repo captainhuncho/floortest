@@ -1,6 +1,7 @@
 "use server";
 
 import { passwordStrength } from "@/lib/password-strength";
+import { LEGAL } from "@/lib/legal";
 import { KINDS } from "@/lib/db";
 
 import { switchOn } from "@/lib/switches";
@@ -80,6 +81,7 @@ export async function signup(_: FormState, form: FormData): Promise<FormState> {
   const email = String(form.get("email") || "").trim().toLowerCase().slice(0, 200);
   const handle = String(form.get("handle") || "").trim().toLowerCase();
   const password = String(form.get("password") || "");
+  if (form.get("agree") !== "on") return { error: "Please confirm you're 18 or over and agree to the Terms to create an account." };
   if (!(await passedTurnstile(form.get("cf-turnstile-response"), await requestIp()))) return { error: BOT_MESSAGE };
   const invite = await resolveInvite(String(form.get("ref") || form.get("invite") || ""), String(form.get("email") || ""));
 
@@ -100,7 +102,7 @@ export async function signup(_: FormState, form: FormData): Promise<FormState> {
   try {
     userId = await q.tx(async (db) => {
       const u = (await db.get<{ id: number }>(
-        "INSERT INTO users (email, password_hash, name, handle, referred_by, invite_code, tz, signup_source, kind, created_at) VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING id",
+        "INSERT INTO users (email, password_hash, name, handle, referred_by, invite_code, tz, signup_source, kind, terms_accepted_at, terms_version, notify_product, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id",
         email,
         hashPassword(password),
         name,
@@ -110,6 +112,9 @@ export async function signup(_: FormState, form: FormData): Promise<FormState> {
         validTz(String(form.get("tz") || "UTC")),
         String(form.get("source") || "").trim().slice(0, 200),
         KINDS.includes(String(form.get("kind"))) ? String(form.get("kind")) : "dj",
+        now(),
+        LEGAL.updated,
+        form.get("updates") === "on" ? 1 : 0,
         now(),
       ))!;
       const c = (await db.get<{ id: number }>("INSERT INTO collections (user_id, name, created_at) VALUES (?,?,?) RETURNING id", u.id, "Inbox", now()))!;
@@ -150,7 +155,7 @@ export async function logout() {
   const u = await currentUser();
   if (u) await audit(u.id, "signed_out");
   await destroySession();
-  redirect("/");
+  redirect("/signed-out");
 }
 
 /** Always answers the same way, so it can't be used to discover which emails have accounts. */

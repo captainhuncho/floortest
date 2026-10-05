@@ -19,7 +19,7 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
   const host = env.appUrl.replace(/^https?:\/\//, "");
   return (
     <>
-      <h1 className="mb-2 text-2xl font-bold tracking-tight">{c.signup_title}</h1>
+      <h1 className="mb-3 text-2xl font-semibold tracking-tight lg:text-[40px] lg:leading-[44px] lg:tracking-[-1.2px]">{c.signup_title}</h1>
       <p className="mb-8 text-sm text-mute">
         {c.signup_intro}
         {inviteOnly && !referrer && (
@@ -55,13 +55,22 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
           { name: "email", label: "Email", type: "email", placeholder: "you@example.com", autoComplete: "email", defaultValue: personal?.email ?? undefined },
           { name: "password", label: "Password", type: "password", placeholder: "8+ characters", autoComplete: "new-password", minLength: 8, strength: true },
         ]}
-        footer={{ text: "Already receiving?", href: "/login", link: "Log in" }}
+        footer={{ text: "Already have an account?", href: "/login", link: "Sign in" }}
+        consents={[
+          {
+            name: "agree",
+            required: true,
+            label: (
+              <>
+                I&apos;m 18 or over, and I agree to the{" "}
+                <a href="/terms" target="_blank" className="text-bone underline underline-offset-4">Terms of Use</a> and have read the{" "}
+                <a href="/privacy" target="_blank" className="text-bone underline underline-offset-4">Privacy Policy</a>.
+              </>
+            ),
+          },
+          { name: "updates", label: "Email me occasional product news. Optional, and you can turn it off any time." },
+        ]}
       />
-      <p className="mt-6 text-xs text-mute">
-        By creating an account you confirm you&apos;re 18 or over and agree to the{" "}
-        <a href="/terms" className="underline underline-offset-4 hover:text-bone">Terms</a> and{" "}
-        <a href="/privacy" className="underline underline-offset-4 hover:text-bone">Privacy Policy</a>.
-      </p>
     </>
   );
 }

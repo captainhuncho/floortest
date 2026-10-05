@@ -9,7 +9,8 @@ export default async function LoginPage() {
   const c = await siteCopy("auth");
   return (
     <>
-      <h1 className="mb-8 text-2xl font-bold tracking-tight">{c.login_title}</h1>
+      <h1 className="text-2xl font-semibold tracking-tight lg:text-[40px] lg:leading-[44px] lg:tracking-[-1.2px]">{c.login_title}</h1>
+      <p className="mb-8 mt-3 text-mute lg:text-base">Sign in to your music desk.</p>
       <AuthForm
         action={login}
         submit="Log in"

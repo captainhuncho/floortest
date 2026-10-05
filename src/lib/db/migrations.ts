@@ -901,4 +901,13 @@ alter table site_content_versions enable row level security;
 alter table users add column kind text check (kind in ('dj', 'producer', 'label'));
 `,
   },
+  {
+    // Proof of agreement at sign-up: when the person ticked "18 or over and agree to the Terms", and which Terms
+    // (the date on the legal pages). Older accounts agreed through the sign-up notice and stay unset.
+    id: "0052_terms_acceptance",
+    sql: `
+alter table users add column terms_accepted_at bigint;
+alter table users add column terms_version text;
+`,
+  },
 ];
