@@ -42,6 +42,13 @@ Built or planned, switched on per plan from Admin → Feature switches once bill
 - **Shared collections (Team, on):** the owner adds up to 10 FloorTest accounts to a collection (Collections → open one → Teammates). Teammates listen and vote keep or pass with a note under Collections → Shared with you; they can't download, decide or reply. They only hear tracks sent after they were added, and the send pages name the team before anyone sends. Votes show in the owner's lists and review panel. Access pauses if the owner leaves Team. Lawyer: confirm the privacy policy covers teammates hearing a track.
 - **Send folders (built, off):** Pro and Team can send a whole folder of tracks in one go, up to **250 MB in total**, from Send music (and later the sender page). Each file goes through the same checks as a single track (real WAV/MP3, no hidden payloads). The receiver sees them as one batch with each track reviewable on its own. Add it to the feature registry (`src/lib/features.ts`) with no plans in the beta, then enable for Pro and Team.
 
+## Settings to change by hand (backend review, 2026-10-05)
+- **Supabase connection pooler:** in Vercel, `DATABASE_URL` should use Supabase's pooler (port **6543**, "Transaction" mode), and set `DB_POOL_MAX=2`.
+- **Database updates at deploy:** set `DB_AUTO_MIGRATE=false` in Vercel Production. Updates now run during each Vercel build (`vercel-build`).
+- **Alerts that don't depend on email:** set `ALERT_WEBHOOK_URL` (a Discord or Slack webhook) so incident alerts still arrive if Resend is down.
+- **Uptime monitor:** a free UptimeRobot (or similar) check on `https://floortest.imullar.com/api/health` every 5 minutes, alerting you.
+- **Resend plan:** the free plan stops at 100 emails a day / 3,000 a month. Upgrade before invites go out, then set `MAIL_DAILY_LIMIT` and `MAIL_MONTHLY_LIMIT` in Vercel. Admin → Emails shows usage.
+
 ## Before public launch (checklist)
 - **Security test with Strix** (open-source AI pentest agents, github.com/usestrix/strix): run once against the **local copy or a preview**, never the live site, once the feature set is stable. Needs Docker and an AI model key (a few to tens of dollars per run). Fix every confirmed finding, then re-run.
 - **Lawyer review** of the legal drafts ([legal-review.md](legal-review.md)), then replace the "draft" banners.
