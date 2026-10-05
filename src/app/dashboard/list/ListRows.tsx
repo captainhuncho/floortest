@@ -146,6 +146,9 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
           const d = player.duration || r.duration || 0;
           const decision = decisionOf(r);
           const open = expanded === r.id;
+          // Waiting for a decision stands out (lime edge, bright title); decided tracks step back with their outcome shown.
+          const waiting = !decision;
+          const outcome = decision === "kept" ? "Kept" : decision === "passed" ? "Not for me" : null;
           return (
             <li
               key={r.id}
@@ -155,7 +158,11 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
               className={`group transition ${decision === "passed" ? "opacity-60" : ""}`}
             >
               {/* Phones: Figma "track-card" */}
-              <div className="flex flex-col gap-2.5 rounded-[14px] border border-line bg-ink-3 p-3 md:hidden">
+              <div
+                className={`flex flex-col gap-2.5 rounded-[14px] border p-3 md:hidden ${
+                  waiting ? "border-line border-l-[3px] border-l-lime bg-ink-3" : "border-line bg-ink-2"
+                }`}
+              >
                 <div className="flex items-center gap-2.5">
                   <button
                     onClick={(e) => {
@@ -184,7 +191,8 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
                     aria-expanded={open}
                     className="flex min-w-0 flex-1 flex-col gap-0.5 text-left"
                   >
-                    <span className="truncate text-sm font-bold text-bone">
+                    <span className={`truncate text-sm ${waiting ? "font-bold text-bone" : "font-medium text-mute"}`}>
+                      {waiting && <span className="sr-only">Needs review: </span>}
                       {r.artist} - {r.title}
                     </span>
                     <span className="truncate text-[11px] font-medium text-mute">{r.meta.join(" · ")}</span>
@@ -197,6 +205,8 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
                     >
                       {decision === "kept" ? "Kept" : decision === "passed" ? "Not for me" : "Needs review"}
                     </span>
+                  ) : outcome ? (
+                    <span className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-bold uppercase ${decision === "kept" ? "bg-white/10 text-bone" : "bg-line text-mute"}`}>{outcome}</span>
                   ) : (
                     <span className="shrink-0 text-[11px] font-medium text-faint" suppressHydrationWarning>
                       {age(r.createdAt)}
@@ -233,7 +243,7 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
                 </div>
               </div>
 
-              <div className={`hidden grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 rounded-xl border px-4 py-3 transition md:grid @4xl:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_auto] ${selected === r.id ? "border-mute/60 bg-ink-4" : "border-line bg-ink-3 hover:border-line-2"}`}>
+              <div className={`hidden grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 rounded-xl border px-4 py-3 transition md:grid @4xl:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_auto] ${waiting ? "border-l-[3px] border-l-lime" : ""} ${selected === r.id ? "border-mute/60 bg-ink-4" : waiting ? "border-line bg-ink-3 hover:border-line-2" : "border-line bg-ink-2 hover:border-line-2"}`}>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -260,15 +270,16 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
                   aria-expanded={open}
                   className="min-w-0 text-left"
                 >
-                  <p className="truncate text-[13px] font-bold">
+                  <p className={`truncate text-[13px] ${waiting ? "font-bold text-bone" : "font-medium text-mute"}`}>
+                    {waiting && <span className="sr-only">Needs review: </span>}
                     {r.artist} - {r.title}
                     {r.duplicateOf && <span className="chip ml-2 align-middle border-danger/40 text-[11px] font-normal text-danger">Possible duplicate</span>}
                   </p>
                   <p className="mt-1 flex items-center gap-2 truncate text-[11px] text-faint">
                     <span className="truncate">{r.meta.join(" · ")}</span>
-                    {statusTag && (
+                    {(statusTag || outcome) && (
                       <span className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-bold uppercase ${decision === "kept" ? "bg-bone/10 text-bone" : "bg-line text-mute"}`}>
-                        {decision === "kept" ? "Kept" : decision === "passed" ? "Not for me" : "Needs review"}
+                        {outcome ?? "Needs review"}
                       </span>
                     )}
                   </p>
