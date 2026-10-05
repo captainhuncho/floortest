@@ -83,7 +83,7 @@ export default function Privacy() {
         [
           "Emails",
           [
-            "We email senders about their tracks (delivered, listened, downloaded, replied, played out) and receivers about new tracks, reminders about tracks left unheard for two weeks, and account alerts, according to their settings. We keep a copy of each email so receivers can see what was sent on their behalf. We don't send marketing without your agreement.",
+            "We email senders about their tracks (delivered, listened, downloaded, replied, played out) and receivers about new tracks, reminders about tracks left unheard for two weeks, and account alerts, according to their settings. We keep a copy of each email for 90 days so receivers can see what was sent on their behalf. We don't send marketing without your agreement.",
           ],
         ],
         [
