@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { passwordStrength } from "@/lib/password-strength";
 import { trackUse } from "@/lib/usage";
+import { allow } from "@/lib/ratelimit";
 import { currentSessionHash, destroySession, hashPassword, requireUser, verifyPassword } from "@/lib/auth";
 import { APP_URL, sendMail } from "@/lib/mail";
 import { fmtDay } from "@/lib/format";
@@ -318,6 +319,11 @@ export async function replyToSender(senderId: number, trackId: number | null, fo
   const s = await ownedSender(u.id, senderId);
   const body = String(form.get("body") || "").trim().slice(0, 4000);
   if (!s || !body) return;
+  // Replies are real email from our address: cap them so an account can't be used to mail people in bulk.
+  if (!(await allow("reply_user", String(u.id), 60, 3_600_000)) || !(await allow("reply_to", `${u.id}:${s.id}`, 8, 86_400_000))) {
+    await audit(u.id, "reply_limited", s.name, trackId);
+    return;
+  }
   // Only this sender's own track: the reply email carries its private receipt link.
   const t = trackId ? await ownedTrack(u.id, trackId) : undefined;
   if (trackId && t?.sender_id !== s.id) return;

@@ -26,6 +26,7 @@ export const AUDIT_LABELS = {
   moved: "Moved",
   deleted_track: "Deleted",
   replied: "Replied to",
+  reply_limited: "Reply not sent (reply limit reached) to",
   played_out: "Played out",
   noted: "Added a note on",
   blocked: "Blocked",

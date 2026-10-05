@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import "server-only";
 import { drainNow, queueDeletion, retireTrackFiles } from "./deletion";
 import { switchOn } from "./switches";
@@ -15,7 +16,7 @@ import {
   type Track,
   type User,
 } from "./db";
-import { APP_URL, sendMail } from "./mail";
+import { noLinks, APP_URL, sendMail, sendMailLater } from "./mail";
 import { alertIfFull, notifyNewSubmission } from "./notify";
 import {
   ACCEPTED_EXT,
@@ -30,7 +31,7 @@ import {
   shareDownloadEnabled,
 } from "./plans";
 import { allow } from "./ratelimit";
-import { storage } from "./storage";
+import { sealUpload, storage } from "./storage";
 import { validateAudio } from "./validate";
 
 const HOUR = 3_600_000;
@@ -51,19 +52,32 @@ export async function capacity(user: Pick<User, "id" | "plan">, db: Queryable = 
 }
 
 export const REFERRAL_BONUS = 10;
+/** Most extra slots referrals can ever add to one account. */
+export const REFERRAL_BONUS_CAP = 100;
 
 /**
- * A referral pays out once the invited receiver gets their first track, so only real,
- * active desks earn slots. Both sides get the bonus, once.
+ * A referral pays out once the invited receiver gets their first track, so only real, active desks earn slots.
+ * Both sides get the bonus, once, up to REFERRAL_BONUS_CAP each. It doesn't count when the invited account's email
+ * isn't confirmed, or when the first track came from either account itself (that's how slots get farmed).
  */
-async function rewardReferral(receiverId: number) {
-  const u = await q.get<{ id: number; name: string; referred_by: number | null }>(
-    "UPDATE users SET referral_rewarded_at = ? WHERE id = ? AND referred_by IS NOT NULL AND referral_rewarded_at IS NULL RETURNING id, name, referred_by",
-    now(),
-    receiverId,
-  );
+async function rewardReferral(receiverId: number, senderEmail: string) {
+  const from = senderEmail.trim().toLowerCase();
+  const u = await q.tx(async (db) => {
+    const r = await db.get<{ id: number; name: string; referred_by: number | null }>(
+      `UPDATE users u SET referral_rewarded_at = ? WHERE u.id = ? AND u.referred_by IS NOT NULL AND u.referral_rewarded_at IS NULL
+         AND u.email_verified_at IS NOT NULL AND lower(u.email) <> ?
+         AND NOT EXISTS (SELECT 1 FROM users r WHERE r.id = u.referred_by AND lower(r.email) = ?)
+       RETURNING u.id, u.name, u.referred_by`,
+      now(),
+      receiverId,
+      from,
+      from,
+    );
+    if (r?.referred_by)
+      await db.run("UPDATE users SET bonus_songs = LEAST(bonus_songs + ?, ?) WHERE id IN (?, ?)", REFERRAL_BONUS, REFERRAL_BONUS_CAP, r.id, r.referred_by);
+    return r;
+  });
   if (!u?.referred_by) return;
-  await q.run("UPDATE users SET bonus_songs = bonus_songs + ? WHERE id IN (?, ?)", REFERRAL_BONUS, u.id, u.referred_by);
   const referrer = await q.get<{ id: number; email: string }>("SELECT id, email FROM users WHERE id = ?", u.referred_by);
   if (referrer)
     await sendMail({
@@ -220,18 +234,24 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
   if (!up) throw new IntakeError("This upload expired. Please send the track again.", 410);
   const store = await storage();
   const sharing = await switchOn("sharing");
+  let fileKey = up.file_key;
   const discard = async () => {
-    await store.delete(up.file_key).catch(() => {});
+    await store.delete(fileKey).catch(() => {});
+    if (fileKey !== up.file_key) await store.delete(up.file_key).catch(() => {});
     await q.run("DELETE FROM uploads WHERE id = ?", up.id);
   };
 
-  const head = await store.head(up.file_key);
-  if (!head) throw new IntakeError("The file didn't finish uploading. Please try again.", 400);
-  if (head.size !== up.size || head.size > MAX_UPLOAD_BYTES) {
+  if (!(await store.head(up.file_key))) throw new IntakeError("The file didn't finish uploading. Please try again.", 400);
+  // From here on the sender's upload link can't touch the file: everything below checks and keeps the sealed copy.
+  fileKey = await sealUpload(store, up.file_key);
+  // If we crash before the track is saved, the abandoned-upload clean-up still finds (and deletes) the sealed copy.
+  await q.run("UPDATE uploads SET file_key = ? WHERE id = ?", fileKey, up.id);
+  const head = await store.head(fileKey);
+  if (!head || head.size !== up.size || head.size > MAX_UPLOAD_BYTES) {
     await discard();
     throw new IntakeError("The uploaded file doesn't match what was expected. Please try again.", 400);
   }
-  const check = await validateAudio({ size: head.size, read: (s, e) => store.read(up.file_key, s, e) });
+  const check = await validateAudio({ size: head.size, read: (s, e) => store.read(fileKey, s, e) });
   if (!check.ok) {
     await discard();
     throw new IntakeError(check.reason, 415);
@@ -274,7 +294,7 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
         meta.releaseStatus,
         meta.mixStatus,
         meta.genre,
-        up.file_key,
+        fileKey,
         meta.originalName,
         check.kind === "wav" ? "audio/wav" : "audio/mpeg", // from the file's contents, not its name
         head.size,
@@ -316,17 +336,19 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
   }
 
   const { track, sender, collection } = result;
+  // Everything the sender typed is shown without links: this email goes to whatever address they entered.
+  const [sName, sTitle, sArtist] = [noLinks(sender.name), noLinks(track.title), noLinks(track.artist)];
   const verify = sender.verified_at
     ? []
     : ["", `Confirm this is your email so ${receiver.name} sees you as a verified sender:`, `${APP_URL}/confirm-sender/${sender.verify_token}`];
-  await sendMail({
+  sendMailLater({
     userId: receiver.id,
     to: sender.email,
-    subject: `Delivered: ${track.artist} – ${track.title}`,
+    subject: `Delivered: ${sArtist} – ${sTitle}`,
     body: [
-      `Hi ${sender.name},`,
+      `Hi ${sName},`,
       "",
-      `"${track.title}" was delivered to ${receiver.name}${collection ? ` for ${collection.name}` : ""}.`,
+      `"${sTitle}" was delivered to ${receiver.name}${collection ? ` for ${collection.name}` : ""}.`,
       `We'll email you when it's listened to, when the original is downloaded, and if ${receiver.name} replies.`,
       "",
       `Your private receipt: ${APP_URL}/receipt/${track.token}`,
@@ -336,9 +358,15 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
       "— FloorTest",
     ].join("\n"),
   });
-  await notifyNewSubmission(receiver.id, track.id);
-  await alertIfFull(receiver.id, await capacity(receiver));
-  await rewardReferral(receiver.id);
+  // The track is saved: everything else happens after the sender's response, and one failure can't block the others.
+  after(async () => {
+    const results = await Promise.allSettled([
+      notifyNewSubmission(receiver.id, track.id),
+      capacity(receiver).then((c) => alertIfFull(receiver.id, c)),
+      rewardReferral(receiver.id, sender.email),
+    ]);
+    for (const r of results) if (r.status === "rejected") console.error("[intake] after-save step failed", r.reason);
+  });
   return track;
 }
 
@@ -365,7 +393,7 @@ export async function markListened(user: User, t: Track, secondsHeard: number) {
   if (!r.changes) return false;
   const s = await senderOf(t);
   await logEvent({ user_id: user.id, sender_id: s.id, track_id: t.id, type: "played", detail: `${Math.round(secondsHeard)}s` });
-  await sendMail({
+  sendMailLater({
     userId: user.id,
     to: s.email,
     subject: `Listened: ${t.title}`,
@@ -380,7 +408,7 @@ export async function markDownloaded(user: User, t: Track) {
   if (!r.changes) return;
   const s = await senderOf(t);
   await logEvent({ user_id: user.id, sender_id: s.id, track_id: t.id, type: "downloaded", detail: "" });
-  await sendMail({
+  sendMailLater({
     userId: user.id,
     to: s.email,
     subject: `Downloaded: ${t.title}`,
@@ -395,7 +423,7 @@ export async function markPlayedOut(user: User, t: Track, note: string) {
   if (!r.changes) return false;
   const s = await senderOf(t);
   await logEvent({ user_id: user.id, sender_id: s.id, track_id: t.id, type: "played_out", detail: clean });
-  await sendMail({
+  sendMailLater({
     userId: user.id,
     to: s.email,
     subject: `Played out: ${t.title}`,
@@ -428,7 +456,7 @@ export async function clearDecision(t: Track) {
 }
 
 export async function reply(user: User, s: Sender, t: Track | undefined, body: string) {
-  await sendMail({
+  sendMailLater({
     userId: user.id,
     to: s.email,
     subject: t ? `${user.name} replied about "${t.title}"` : `Message from ${user.name}`,

@@ -6,7 +6,7 @@ import { APP_URL, sendMail } from "./mail";
 import { MAX_UPLOAD_BYTES } from "./plans";
 import { featureOn } from "./features";
 import { recentCount, record } from "./ratelimit";
-import { storage } from "./storage";
+import { sealUpload, storage } from "./storage";
 import { validateAudio } from "./validate";
 
 export type Stem = { id: number; track_id: number; file_key: string; name: string; mime: string; size: number; created_at: number };
@@ -94,17 +94,23 @@ export async function completeStemUpload(token: string, uploadId: string) {
   const meta = up ? (JSON.parse(up.meta) as { kind?: string; trackId?: number; name?: string }) : null;
   if (!up || meta?.kind !== "stem" || meta.trackId !== t.id) throw new IntakeError("This upload expired. Please try again.", 410);
   const store = await storage();
+  let fileKey = up.file_key;
   const discard = async () => {
-    await store.delete(up.file_key).catch(() => {});
+    await store.delete(fileKey).catch(() => {});
+    if (fileKey !== up.file_key) await store.delete(up.file_key).catch(() => {});
     await q.run("DELETE FROM uploads WHERE id = ?", up.id);
   };
-  const head = await store.head(up.file_key);
-  if (!head) throw new IntakeError("The file didn't finish uploading. Please try again.", 400);
-  if (head.size !== up.size) {
+  if (!(await store.head(up.file_key))) throw new IntakeError("The file didn't finish uploading. Please try again.", 400);
+  // Checked and kept as a sealed copy the sender's upload link can't overwrite.
+  fileKey = await sealUpload(store, up.file_key);
+  // If we crash before the track is saved, the abandoned-upload clean-up still finds (and deletes) the sealed copy.
+  await q.run("UPDATE uploads SET file_key = ? WHERE id = ?", fileKey, up.id);
+  const head = await store.head(fileKey);
+  if (!head || head.size !== up.size) {
     await discard();
     throw new IntakeError("The uploaded file doesn't match what was expected. Please try again.", 400);
   }
-  const check = await validateAudio({ size: head.size, read: (s, e) => store.read(up.file_key, s, e) });
+  const check = await validateAudio({ size: head.size, read: (s, e) => store.read(fileKey, s, e) });
   if (!check.ok) {
     await discard();
     throw new IntakeError(check.reason, 415);
@@ -113,7 +119,7 @@ export async function completeStemUpload(token: string, uploadId: string) {
   const stem = (await q.get<Stem>(
     "INSERT INTO stems (track_id, file_key, name, mime, size, created_at) VALUES (?,?,?,?,?,?) RETURNING *",
     t.id,
-    up.file_key,
+    fileKey,
     meta.name || "Stem",
     check.kind === "wav" ? "audio/wav" : "audio/mpeg",
     head.size,

@@ -24,7 +24,28 @@ export interface Storage {
   /** A short-lived URL the browser can fetch directly, or null when the app must stream the file itself. */
   signedGetUrl(key: string, opts?: { filename?: string; contentType?: string; expiresIn?: number }): Promise<string | null>;
   put(key: string, data: Uint8Array, contentType: string): Promise<void>;
+  /** Server-side copy within the bucket. */
+  copy(from: string, to: string): Promise<void>;
   delete(key: string): Promise<void>;
+}
+
+/**
+ * How long an upload link can be used to start an upload. Short, so a link can't be reused to change a file later;
+ * a long upload still finishes, because only the start of the request has to fall inside it.
+ */
+export const UPLOAD_LINK_SECONDS = 15 * 60;
+
+/**
+ * Moves an upload out of reach of its upload link: copies it to a new random key (in the same folder) that no link
+ * points at, then deletes the original. Check the file *after* sealing, so what was checked is what's kept.
+ */
+export async function sealUpload(store: Storage, key: string) {
+  const slash = key.lastIndexOf("/");
+  const ext = key.slice(key.lastIndexOf(".")).toLowerCase();
+  const sealed = `${key.slice(0, slash + 1)}${crypto.randomUUID()}${/^\.[a-z0-9]{1,5}$/.test(ext) ? ext : ""}`;
+  await store.copy(key, sealed);
+  await store.delete(key).catch(() => {});
+  return sealed;
 }
 
 /* ───────────── Local ───────────── */
@@ -37,7 +58,7 @@ function localPath(key: string) {
 }
 
 /** HMAC-signed token authorising one local upload of at most `size` bytes to `key`. */
-export function signUploadToken(key: string, size: number, ttlMs = 3_600_000) {
+export function signUploadToken(key: string, size: number, ttlMs = UPLOAD_LINK_SECONDS * 1000) {
   const body = Buffer.from(JSON.stringify({ key, size, exp: Date.now() + ttlMs })).toString("base64url");
   const sig = crypto.createHmac("sha256", env.secret).update(body).digest("base64url");
   return `${body}.${sig}`;
@@ -92,6 +113,11 @@ const local: Storage = {
     await fs.promises.mkdir(path.dirname(p), { recursive: true });
     await fs.promises.writeFile(p, data);
   },
+  async copy(from, to) {
+    const p = localPath(to);
+    await fs.promises.mkdir(path.dirname(p), { recursive: true });
+    await fs.promises.copyFile(localPath(from), p);
+  },
   async delete(key) {
     await fs.promises.rm(localPath(key), { force: true });
   },
@@ -124,7 +150,7 @@ let s3Impl: Storage | undefined;
 
 async function s3(): Promise<Storage> {
   if (s3Impl) return s3Impl;
-  const { S3Client, PutObjectCommand, HeadObjectCommand, GetObjectCommand, DeleteObjectCommand } = await import("@aws-sdk/client-s3");
+  const { S3Client, PutObjectCommand, HeadObjectCommand, GetObjectCommand, DeleteObjectCommand, CopyObjectCommand } = await import("@aws-sdk/client-s3");
   const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");
   const c = env.storage.s3;
   const client = new S3Client({
@@ -144,7 +170,7 @@ async function s3(): Promise<Storage> {
     driver: "s3",
     async uploadTarget(key, contentType, size) {
       const url = await getSignedUrl(client, new PutObjectCommand({ Bucket, Key: key, ContentType: contentType, ContentLength: size }), {
-        expiresIn: 3600,
+        expiresIn: UPLOAD_LINK_SECONDS,
       });
       return { url, headers: { "Content-Type": contentType } };
     },
@@ -181,6 +207,9 @@ async function s3(): Promise<Storage> {
     },
     async put(key, data, contentType) {
       await client.send(new PutObjectCommand({ Bucket, Key: key, Body: data, ContentType: contentType }));
+    },
+    async copy(from, to) {
+      await client.send(new CopyObjectCommand({ Bucket, Key: to, CopySource: `${Bucket}/${from.split("/").map(encodeURIComponent).join("/")}` }));
     },
     async delete(key) {
       await client.send(new DeleteObjectCommand({ Bucket, Key: key }));

@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import "server-only";
 import { unsubToken, type UnsubKind } from "./unsubscribe";
 import { now, q } from "./db";
@@ -12,6 +13,30 @@ export type Audience = "sender" | "receiver" | "support";
  * Every email is recorded in the outbox so receivers can see what was sent on their behalf.
  * With RESEND_API_KEY set it's also delivered; a delivery failure is logged, never thrown.
  */
+/**
+ * Text a sender typed (their name, a title), made safe to put in our emails: web links and bare domains become
+ * "[link removed]", so FloorTest's address can't be used to deliver someone's phishing link.
+ */
+export function noLinks(s: string) {
+  return s
+    .replace(/\b(?:https?:\/\/|www\.)\S+/gi, "[link removed]")
+    .replace(/\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|net|org|io|co|app|ly|me|xyz|info|biz|link|click|top|site|online|ru|cn|tk|gq|ml|ga|cf)\b\S*/gi, "[link removed]")
+    .slice(0, 200);
+}
+
+/**
+ * Sends after the response has gone back, so a slow or failing email service never makes someone wait.
+ * Still recorded in the outbox (and as an incident if it fails), exactly like sendMail.
+ */
+export function sendMailLater(opts: Parameters<typeof sendMail>[0]) {
+  try {
+    after(() => sendMail(opts).then(() => undefined).catch((e) => console.error("[mail] later send failed", e)));
+  } catch {
+    // Outside a request (a script or job): just send without waiting.
+    void sendMail(opts).catch((e) => console.error("[mail] send failed", e));
+  }
+}
+
 export async function sendMail(opts: { userId: number | null; to: string; subject: string; body: string; audience?: Audience; unsubscribe?: UnsubKind }) {
   let status = "logged";
   let providerId: string | null = null;
@@ -45,7 +70,7 @@ export async function sendMail(opts: { userId: number | null; to: string; subjec
             ? { headers: { "List-Unsubscribe": `<${APP_URL}/api/unsubscribe/${unsub}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } }
             : {}),
         }),
-        signal: AbortSignal.timeout(10_000),
+        signal: AbortSignal.timeout(5_000),
       });
       status = res.ok ? "sent" : `failed (${res.status})`;
       if (res.ok) providerId = ((await res.json().catch(() => ({}))) as { id?: string }).id ?? null;

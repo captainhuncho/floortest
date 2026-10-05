@@ -239,9 +239,28 @@ export async function verifyLoginCode(_: FormState, form: FormData): Promise<For
   if (!used.changes) return { error: "That code was already used. Ask for a new one." };
   if (user.suspended_at) return { error: "This account is suspended. To appeal, go to the Contact page and choose Suspension appeal." };
   jar.delete(CODE_EMAIL);
-  // Receiving the code proves the address is theirs.
+  // Receiving the code proves the address is theirs. The account was never confirmed, so whoever created it may not be
+  // this person (someone can sign up with another's email and wait). Reset what the creator set up: sign out every
+  // other session, replace the password with an unusable one, and turn off two-factor. The owner sets their own.
   if (!user.email_verified_at) {
-    await q.run("UPDATE users SET email_verified_at = ? WHERE id = ?", now(), user.id);
+    await q.tx(async (db) => {
+      await db.run(
+        "UPDATE users SET email_verified_at = ?, password_hash = ?, totp_secret = NULL, totp_enabled_at = NULL, totp_last_step = NULL, recovery_codes = '[]' WHERE id = ?",
+        now(),
+        hashPassword(crypto.randomBytes(32).toString("base64url")),
+        user.id,
+      );
+      await db.run("DELETE FROM sessions WHERE user_id = ?", user.id);
+    });
+    const u = await q.get<{ email: string; name: string }>("SELECT email, name FROM users WHERE id = ?", user.id);
+    if (u)
+      await sendMail({
+        userId: user.id,
+        audience: "receiver",
+        to: u.email,
+        subject: "Your email is confirmed: set a password",
+        body: `Hi ${u.name.split(/\s+/)[0]},\n\nYou've confirmed your email by signing in with a code. To keep your account yours, we signed out every other device and cleared any password or two-factor sign-in set before the email was confirmed.\n\nTo set your own password, use "Forgot your password?" on the log-in page: ${APP_URL}/forgot\n\n— FloorTest`,
+      });
     await sendWelcome(user.id);
   }
   await afterPassword(user.id, "email code");
