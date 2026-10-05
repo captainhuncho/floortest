@@ -19,6 +19,13 @@ export const metadata = { alternates: { canonical: "/" } };
 const HOST = APP_URL.replace(/^https?:\/\//, "");
 const DEMO = "/maxwell";
 
+const JOURNEY = [
+  ["✓", "Delivered", "Original audio received safely"],
+  ["♪", "Listened", "Played for 30+ seconds"],
+  ["↓", "Downloaded", "The original file was downloaded"],
+  ["↩", "Replied", "A message came back"],
+];
+
 
 
 
@@ -183,7 +190,7 @@ export default async function Home({
         <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
           {c.how_title}
         </h2>
-        <ol className="mt-10 grid grid-cols-1 border-t border-white/10 sm:grid-cols-3">
+        <ol className="mt-10 grid grid-cols-1 border-t border-white/10 sm:grid-cols-2">
           {HOW.map(([title, body], i) => (
             <li
               key={title}
@@ -197,6 +204,43 @@ export default async function Home({
             </li>
           ))}
         </ol>
+      </section>
+
+      {/* Journey */}
+      <section className="border-y border-white/10 bg-ink-2">
+        <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-end">
+            <h2 className="text-[clamp(2.5rem,5.5vw,4.5rem)] font-bold leading-[0.95] tracking-[-0.04em]">
+              {c.journey_title}
+            </h2>
+            <p className="max-w-[65ch] text-sm leading-relaxed text-mute lg:pb-2">
+              {c.journey_intro}
+            </p>
+          </div>
+          <ol className="mt-10 grid grid-cols-1 overflow-hidden rounded-lg border border-white/10 sm:grid-cols-2 lg:grid-cols-4">
+            {JOURNEY.map(([icon, title, body], i) => (
+              <li
+                key={title}
+                className={`flex gap-4 border-white/10 p-6 ${i ? "border-t sm:border-t-0 sm:border-l" : "bg-lime/[0.06]"} ${i === 2 ? "sm:border-l-0 sm:border-t lg:border-t-0 lg:border-l" : ""} ${i === 3 ? "sm:border-t lg:border-t-0" : ""}`}
+              >
+                <span
+                  aria-hidden
+                  className={`text-xl ${i ? "text-dim" : "text-lime"}`}
+                >
+                  {icon}
+                </span>
+                <span>
+                  <span className="block text-sm uppercase">
+                    {title}
+                  </span>
+                  <span className="mt-1 block text-xs text-mute">
+                    {body}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
       </section>
 
       {/* Private by design */}

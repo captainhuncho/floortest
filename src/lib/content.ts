@@ -29,9 +29,11 @@ export const SITE_PAGES = {
       how_title: f("How it works: title", "Share once. Decide fast."),
       how_steps: text(
         "How it works: steps",
-        "Share one link\nPut it in your bio or a callout. Senders upload the original WAV or MP3, no account needed.\n\nDecide fast\nPlay, keep or pass, and the next track is already up. Kept tracks export straight to Rekordbox.\n\nSenders hear back\nEvery sender gets a private receipt: delivered, listened, downloaded, replied.",
+        "Share one link\nPut it in your bio or a callout. Senders upload the original WAV or MP3, no account needed.\n\nDecide fast\nPlay, keep or pass, and the next track is already up. Kept tracks export straight to Rekordbox.",
         { kind: "pairs", hint: "Each step: a title line, then its text. Leave a blank line between steps." },
       ),
+      journey_title: f("Receipts: title", "Know what happened next."),
+      journey_intro: text("Receipts: intro", "Every sender gets a private receipt. FloorTest records the four moments that matter between sending a track and hearing back."),
       private_title: f("Privacy section: title", "Music stays between the people you choose."),
       plans_kicker: f("Plans: small label", "Plans"),
       plans_title: f("Plans: headline (beta)", "Start free. Grow when your inbox does.", { hint: "Shown while the Billing switch is off." }),
