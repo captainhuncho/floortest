@@ -708,4 +708,28 @@ create index tap_timings_created on tap_timings(created_at);
 alter table tap_timings enable row level security;
 `,
   },
+{
+    // Speed: besides taps, page changes inside the app ("nav") and the first appearance of a freshly opened page ("load").
+    id: "0041_speed_kinds",
+    sql: `
+alter table tap_timings add column kind text not null default 'tap';
+create index tap_timings_kind on tap_timings(kind, created_at);
+`,
+  },
+{
+    // Removes one batch of four fake timings sent to production by mistake while testing on 2026-10-05.
+    // Matched by its exact values and the single timestamp the batch was saved with, so no real timing can match.
+    id: "0042_remove_test_timings",
+    sql: `
+delete from tap_timings where created_at in (
+  select created_at from tap_timings
+  where path = '/dashboard/collections/:id' and ms = 850 and device = 'phone' and browser = 'Safari' and target = 'link'
+) and device = 'phone' and browser = 'Safari' and (
+  (path = '/dashboard/collections/:id' and ms = 850 and target = 'link') or
+  (path = '/:link' and ms = 1400 and target = 'page') or
+  (path = '/dashboard' and ms = 40 and target = 'Keep') or
+  (path = '/:link' and ms = 20 and target = '')
+);
+`,
+  },
 ];
