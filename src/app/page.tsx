@@ -86,9 +86,9 @@ export default async function Home({
             trying FloorTest.
           </p>
         )}
-        <header className="flex items-center justify-between py-6">
+        <header className="flex items-center justify-between gap-3 py-6">
           <Logo />
-          <nav className="flex items-center gap-2">
+          <nav className="flex shrink-0 items-center gap-2 whitespace-nowrap">
             {user ? (
               <Link href="/dashboard/floor" className="btn-lime btn-sm">
                 Open desk
@@ -99,7 +99,15 @@ export default async function Home({
                   Log in
                 </Link>
                 <Link href={cta.href} className="btn-lime btn-sm">
-                  {inviteOnly ? "Request an invite" : "Get your link"}
+                  {inviteOnly ? (
+                    <>
+                      {/* Narrow phones: the short label, so the header stays on one line. */}
+                      <span className="sm:hidden">Get invite</span>
+                      <span className="hidden sm:inline">Request an invite</span>
+                    </>
+                  ) : (
+                    "Get your link"
+                  )}
                 </Link>
               </>
             )}
