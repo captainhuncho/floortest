@@ -1,3 +1,4 @@
+import { trackUse } from "@/lib/usage";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
@@ -30,6 +31,7 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
   const saved = jar.get(VIEW_COOKIE)?.value;
   // Queue is the default; the List view sticks once someone picks it (remembered in a cookie).
   const view = sp.view === "list" || sp.view === "queue" ? sp.view : saved === "list" ? "list" : "queue";
+  await trackUse(user.id, view === "list" ? "review_list" : "review_queue");
   if (view === "list") return <SubmissionsList user={user} sp={sp} />;
   const status: StatusKey = STATUSES.some(([k]) => k === sp.s) ? (sp.s as StatusKey) : "review";
   const collections = await collectionsFor(user.id);

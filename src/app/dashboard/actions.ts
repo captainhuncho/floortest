@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { passwordStrength } from "@/lib/password-strength";
+import { trackUse } from "@/lib/usage";
 import { currentSessionHash, destroySession, hashPassword, requireUser, verifyPassword } from "@/lib/auth";
 import { APP_URL, sendMail } from "@/lib/mail";
 import { fmtDay } from "@/lib/format";
@@ -133,6 +134,7 @@ export type UndoToken = { trackId: number; prev: { decision: Decision | null; de
 
 export async function decideTrack(trackId: number, decision: Decision): Promise<UndoToken | null> {
   const u = await requireUser();
+  await trackUse(u.id, "decide");
   if (!isDecision(decision)) return null;
   const t = await ownedTrack(u.id, trackId);
   if (!t) return null;
@@ -197,6 +199,7 @@ export async function clearKept() {
 /** Kept tracks only: tells the sender it was played in a set. */
 export async function playedOut(trackId: number, note: string) {
   const u = await requireUser();
+  await trackUse(u.id, "played_out");
   const t = await ownedTrack(u.id, trackId);
   if (!t || t.decision !== "kept") return false;
   const ok = await markPlayedOut(u, t, String(note || ""));
@@ -311,6 +314,7 @@ export async function addNote(senderId: number, trackId: number | null, form: Fo
 
 export async function replyToSender(senderId: number, trackId: number | null, form: FormData) {
   const u = await requireUser();
+  await trackUse(u.id, "reply");
   const s = await ownedSender(u.id, senderId);
   const body = String(form.get("body") || "").trim().slice(0, 4000);
   if (!s || !body) return;
@@ -719,6 +723,7 @@ export async function setTheme(theme: string) {
 
 export async function addTeammate(collectionId: number, _prev: string | null, form: FormData): Promise<string | null> {
   const u = await requireUser();
+  await trackUse(u.id, "teammates");
   const c = await ownCollection(u.id, collectionId);
   if (!c) return null;
   const who = String(form.get("who") || "");
@@ -748,6 +753,7 @@ export async function leaveShared(collectionId: number) {
 
 export async function voteOnTrack(trackId: number, vote: "keep" | "pass", form: FormData) {
   const u = await requireUser();
+  await trackUse(u.id, "vote");
   if (vote !== "keep" && vote !== "pass") return;
   const t = await memberTrack(u.id, trackId);
   if (!t) return;

@@ -1,3 +1,4 @@
+import { trackUse } from "@/lib/usage";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { q, likeContains } from "@/lib/db";
@@ -33,6 +34,7 @@ const SHOWS = [
 
 export default async function Contacts({ searchParams }: { searchParams: Promise<{ sort?: string; show?: string; q?: string; tab?: string; from?: string }> }) {
   const user = await requireUser();
+  await trackUse(user.id, "contacts");
   const sp = await searchParams;
   const sort = SORTS.find(([k]) => k === sp.sort) ?? SORTS[0];
   const show = SHOWS.find(([k]) => k === sp.show) ?? SHOWS[0];

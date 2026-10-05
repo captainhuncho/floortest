@@ -1,3 +1,4 @@
+import { trackUse } from "@/lib/usage";
 import { currentUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { markDownloaded } from "@/lib/core";
@@ -19,6 +20,7 @@ export async function GET(req: Request) {
   const base = (url.searchParams.get("base") || "").slice(0, 500);
   const filesOnly = url.searchParams.get("files") === "1";
   if (!base && !filesOnly) return new Response("Choose the folder you'll unzip into.", { status: 400 });
+  await trackUse(user.id, "export");
 
   const collection = cid ? await q.get<Collection>("SELECT * FROM collections WHERE id = ? AND user_id = ?", Number(cid), user.id) : undefined;
   if (cid && !collection) return new Response("Not found", { status: 404 });

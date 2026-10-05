@@ -1,3 +1,4 @@
+import { trackUse } from "@/lib/usage";
 import { switchOn } from "@/lib/switches";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -18,6 +19,7 @@ export const metadata = { title: "Collection — FloorTest" };
 /** A collection as a folder: every track in it, whatever its status. Phones get the Figma "04 Collection Detail". */
 export default async function CollectionFolder({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
+  await trackUse(user.id, "collection");
   const { id } = await params;
   const all = await collectionsFor(user.id);
   const c = all.find((x) => String(x.id) === id);

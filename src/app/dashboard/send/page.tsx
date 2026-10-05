@@ -1,3 +1,4 @@
+import { trackUse } from "@/lib/usage";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { q } from "@/lib/db";
@@ -10,6 +11,7 @@ export const metadata = { title: "Send — FloorTest" };
 /** Send your own music to another user's link, and see what happened to everything you've sent. */
 export default async function Send({ searchParams }: { searchParams: Promise<{ to?: string }> }) {
   const user = await requireUser();
+  await trackUse(user.id, "send");
   const to = ((await searchParams).to || "").trim().replace(/[?#].*$/, "").replace(/\/+$/, "").split("/").pop()!.replace(/^@/, "").toLowerCase().replace(/[^a-z0-9-_]/g, "").slice(0, 30);
   const sent = await q.all<{
     token: string; title: string; artist: string; created_at: number; played_at: number | null; downloaded_at: number | null;

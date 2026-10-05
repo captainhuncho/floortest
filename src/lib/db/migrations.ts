@@ -785,4 +785,19 @@ create table email_suppressions (
 alter table email_suppressions enable row level security;
 `,
   },
+{
+    // Feature use: per account, per day, how often each part of FloorTest was used (no content), for Admin → Feature use.
+    id: "0046_feature_use",
+    sql: `
+create table feature_use (
+  user_id bigint not null references users(id) on delete cascade,
+  feature text not null,
+  day text not null,
+  uses int not null default 1,
+  primary key (user_id, feature, day)
+);
+create index feature_use_day on feature_use(day);
+alter table feature_use enable row level security;
+`,
+  },
 ];

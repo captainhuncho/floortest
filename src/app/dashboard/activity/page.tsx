@@ -1,3 +1,4 @@
+import { trackUse } from "@/lib/usage";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import {q, type EventRow } from "@/lib/db";
@@ -17,6 +18,7 @@ const FILTERS = [
 
 export default async function Activity({ searchParams }: { searchParams: Promise<{ f?: string }> }) {
   const user = await requireUser();
+  await trackUse(user.id, "activity");
   const f = (await searchParams).f;
   const filter = FILTERS.find(([k]) => k === f) ?? FILTERS[0];
   const types = filter[2];

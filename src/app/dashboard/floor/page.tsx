@@ -1,3 +1,4 @@
+import { trackUse } from "@/lib/usage";
 import { CuePoint } from "@/components/CuePoint";
 import { Onboarding } from "./Onboarding";
 import { recentAudit } from "@/lib/audit";
@@ -62,6 +63,7 @@ const act = "text-[11px] font-bold text-bone hover:text-lime";
 
 export default async function TheFloor({ searchParams }: { searchParams: Promise<{ welcome?: string }> }) {
   const user = await requireUser();
+  await trackUse(user.id, "floor");
   const welcome = !!(await searchParams).welcome;
   const prefs = await prefsFor(user.id);
   const stats = await homeStats(user.id, prefs.tz);

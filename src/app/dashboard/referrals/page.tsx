@@ -1,3 +1,4 @@
+import { trackUse } from "@/lib/usage";
 import { requireUser } from "@/lib/auth";
 import { capacity, REFERRAL_BONUS, referralCodeFor } from "@/lib/core";
 import {q } from "@/lib/db";
@@ -11,6 +12,7 @@ type Invitee = { name: string; created_at: number; referral_rewarded_at: number 
 
 export default async function Referrals() {
   const user = await requireUser();
+  await trackUse(user.id, "referrals");
   const code = await referralCodeFor(user.id);
   const link = `${APP_URL}/signup?ref=${code}`;
   const invited = (await q.all<Invitee>("SELECT name, created_at, referral_rewarded_at FROM users WHERE referred_by = ? ORDER BY created_at DESC", user.id));

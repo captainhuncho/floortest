@@ -1,3 +1,4 @@
+import { trackUse } from "@/lib/usage";
 import { switchOn } from "@/lib/switches";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
@@ -12,6 +13,7 @@ export const metadata = { title: "Collections — FloorTest" };
 
 export default async function Collections() {
   const user = await requireUser();
+  await trackUse(user.id, "collections");
   const collections = await collectionsFor(user.id);
   const sharing = await switchOn("sharing");
   const shared = await sharedWith(user.id);

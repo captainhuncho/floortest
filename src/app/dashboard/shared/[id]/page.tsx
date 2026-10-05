@@ -1,3 +1,4 @@
+import { trackUse } from "@/lib/usage";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
@@ -10,6 +11,7 @@ export const metadata = { title: "Shared collection — FloorTest" };
 /** A teammate's view of a shared collection: listen, vote keep or pass, add a note. The owner decides. */
 export default async function SharedCollection({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
+  await trackUse(user.id, "shared");
   const c = await memberCollection(user.id, Number((await params).id));
   if (!c) notFound();
   const tracks = await q.all<Track>(

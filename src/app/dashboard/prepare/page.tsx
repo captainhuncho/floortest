@@ -1,3 +1,4 @@
+import { trackUse } from "@/lib/usage";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { ExportButton } from "../ExportButton";
@@ -10,6 +11,7 @@ export const metadata = { title: "Prepare for set — FloorTest" };
 /** Everything you kept, ready to take to the booth, plus crate downloads. */
 export default async function PrepareForSet() {
   const user = await requireUser();
+  await trackUse(user.id, "prepare");
   const kept = await loadRows(user.id, { inSet: true });
 
   // Figma "06 Prepare for Set".

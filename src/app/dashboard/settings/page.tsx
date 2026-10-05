@@ -1,3 +1,4 @@
+import { trackUse } from "@/lib/usage";
 import { nextHandleChange } from "@/lib/accounts";
 import Link from "next/link";
 import { logout } from "../../(auth)/actions";
@@ -20,6 +21,7 @@ export const metadata = { title: "Settings — FloorTest" };
 
 export default async function Settings() {
   const user = await requireUser();
+  await trackUse(user.id, "settings");
   const nextLink = await nextHandleChange(user.id);
   const identity = await q.get<{ status: "none" | "pending" | "verified" | "rejected"; links: string; note: string }>(
     "SELECT identity_status AS status, identity_links AS links, identity_note AS note FROM users WHERE id = ?",

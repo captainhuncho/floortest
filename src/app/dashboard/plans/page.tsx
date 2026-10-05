@@ -1,3 +1,4 @@
+import { trackUse } from "@/lib/usage";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { capacity } from "@/lib/core";
@@ -13,6 +14,7 @@ export const metadata = { title: "Plans — FloorTest" };
  */
 export default async function Plans({ searchParams }: { searchParams: Promise<{ welcome?: string }> }) {
   const user = await requireUser();
+  await trackUse(user.id, "plans");
   const cap = await capacity(user);
   const current = planOf(user.plan);
   // Just upgraded at checkout: celebrate it, but only if the plan really is theirs now.
