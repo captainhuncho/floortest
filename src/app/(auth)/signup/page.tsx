@@ -49,7 +49,7 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
           ...(inviteOnly && !referrer
             ? [{ name: "invite", label: "Invite code", placeholder: "From your invite", autoComplete: "off", defaultValue: inviteCode || ref || undefined }]
             : []),
-          { name: "kind", label: "I'm receiving music as", choices: [{ value: "dj", label: "DJ or curator" }, { value: "producer", label: "Producer" }, { value: "label", label: "Label or A&R" }] },
+          { name: "kind", label: "What best describes you?", choices: [{ value: "dj", label: "DJ or curator" }, { value: "producer", label: "Producer" }, { value: "label", label: "Label or A&R" }] },
           { name: "name", label: "Your name or alias", placeholder: "Maxwell", autoComplete: "name" },
           { name: "handle", label: "Your link", prefix: `${host}/`, placeholder: "yourname", autoComplete: "username", defaultValue: (sp.handle || "").toLowerCase().replace(/[^a-z0-9-_]/g, "").slice(0, 30) || undefined },
           { name: "email", label: "Email", type: "email", placeholder: "you@example.com", autoComplete: "email", defaultValue: personal?.email ?? undefined },

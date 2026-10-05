@@ -13,7 +13,7 @@ export function SettingsForm({ name, handle, base, nextChange, kind }: { name: s
         <input name="name" defaultValue={name} className="input" required />
       </label>
       <fieldset className="space-y-1.5">
-        <legend className="label mb-1.5 block">I&apos;m receiving music as</legend>
+        <legend className="label mb-1.5 block">What best describes you?</legend>
         <div className="grid max-w-lg grid-cols-3 gap-2">
           {[
             ["dj", "DJ or curator"],
