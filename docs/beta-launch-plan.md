@@ -42,6 +42,13 @@ Built or planned, switched on per plan from Admin → Feature switches once bill
 - **Shared collections (Team, on):** the owner adds up to 10 FloorTest accounts to a collection (Collections → open one → Teammates). Teammates listen and vote keep or pass with a note under Collections → Shared with you; they can't download, decide or reply. They only hear tracks sent after they were added, and the send pages name the team before anyone sends. Votes show in the owner's lists and review panel. Access pauses if the owner leaves Team. Lawyer: confirm the privacy policy covers teammates hearing a track.
 - **Send folders (built, off):** Pro and Team can send a whole folder of tracks in one go, up to **250 MB in total**, from Send music (and later the sender page). Each file goes through the same checks as a single track (real WAV/MP3, no hidden payloads). The receiver sees them as one batch with each track reviewable on its own. Add it to the feature registry (`src/lib/features.ts`) with no plans in the beta, then enable for Pro and Team.
 
+## Sign-up page improvements (noted 2026-10-06)
+- "What best describes you?" becomes a dropdown (DJ or curator / Producer / Label or A&R), not three radio boxes. The radios also look like filled white dots before anything is picked, which reads as all selected.
+- The link field's prefix wraps onto two lines on phones (long domains like the trial's). Show just "/" plus the name, or put the full address as a hint under the field.
+- Too many boxes at once: group the three tick boxes visually (required agreement first, the two optional emails as a smaller "Email me" group, perhaps collapsed).
+- Invite code only when sign-up is invite-only (already the case); when shown, place it last or make it clearer it comes from an invite email.
+- Match the desktop Figma layout on phones too (spacing, 40px heading scales down).
+
 ## Revenue ideas to revisit (parked 2026-10-06)
 **Launch plan shape (proposed):** Free stays generous so links keep bringing in senders; Pro gets the power features. Free: 20 active tracks, undecided tracks kept 30 days, 2 collections, FloorTest-branded link page. Pro: 500 tracks, 90 days, unlimited collections, Rekordbox/crate export, own branding, listening insights. Team: 2,000 tracks plus teammates and votes, priced per seat for labels. Beta users keep what they signed up with; changes apply to new sign-ups after notice. Pro trial (14 days) offered at the moment someone hits a limit; annual plans (e.g. Pro $59/year).
 
