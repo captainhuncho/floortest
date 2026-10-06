@@ -22,10 +22,9 @@ export async function notificationsFor(user: User) {
   );
 
   const news = await q.all<{ id: number; title: string; body: string; href: string; created_at: number }>(
-    "SELECT id, title, body, href, created_at FROM announcements WHERE created_at > ? AND created_at >= ? AND (audience = 'all' OR audience = ?) ORDER BY created_at DESC LIMIT 5",
+    "SELECT a.id, a.title, a.body, a.href, a.created_at FROM announcements a JOIN announcement_recipients r ON r.announcement_id = a.id AND r.user_id = ? WHERE a.created_at > ? ORDER BY a.created_at DESC LIMIT 5",
+    user.id,
     cleared,
-    user.created_at,
-    user.plan,
   );
   const items: Notice[] = news.map((n) => ({
     id: `a${n.id}`,

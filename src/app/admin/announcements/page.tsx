@@ -1,22 +1,20 @@
 import { q } from "@/lib/db";
 import { env } from "@/lib/env";
+import { audienceWhere, describeAudience, readAudience } from "@/lib/audience";
+import { allPlans } from "@/lib/plan-store";
 import { publishAnnouncement } from "../actions";
-
-const AUD: Record<string, string> = { all: "Everyone", free: "Free plan", pro: "Pro plan", team: "Team plan" };
+import { AudienceFields } from "../AudienceFields";
 
 /** Write an update, preview it as it'll appear in the bell and in email, then publish. */
 export default async function Announcements({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const sp = await searchParams;
-  const draft = { title: (sp.title || "").slice(0, 100), body: (sp.body || "").slice(0, 600), href: (sp.href || "").slice(0, 200), audience: sp.audience && AUD[sp.audience] ? sp.audience : "all", email: sp.email === "on" };
+  const draft = { title: (sp.title || "").slice(0, 100), body: (sp.body || "").slice(0, 600), href: (sp.href || "").slice(0, 200), email: sp.email === "on" };
+  const aud = readAudience((k) => sp[k]);
+  const plans = await allPlans();
+  const w = audienceWhere(aud);
   const previewing = sp.preview === "1" && !!draft.title;
-  const reach = await q.count(
-    `SELECT COUNT(*) AS n FROM users WHERE suspended_at IS NULL ${draft.audience === "all" ? "" : "AND plan = ?"}`,
-    ...(draft.audience === "all" ? [] : [draft.audience]),
-  );
-  const emailReach = await q.count(
-    `SELECT COUNT(*) AS n FROM users WHERE notify_product = 1 AND suspended_at IS NULL AND email_verified_at IS NOT NULL ${draft.audience === "all" ? "" : "AND plan = ?"}`,
-    ...(draft.audience === "all" ? [] : [draft.audience]),
-  );
+  const reach = await q.count(`SELECT COUNT(*) AS n FROM users u WHERE ${w.sql}`, ...w.args);
+  const emailReach = await q.count(`SELECT COUNT(*) AS n FROM users u WHERE ${w.sql} AND u.notify_product = 1 AND u.email_verified_at IS NOT NULL`, ...w.args);
   const past = await q.all<{ id: number; title: string; audience: string; emailed: number; created_at: number }>(
     "SELECT id, title, audience, emailed, created_at FROM announcements ORDER BY created_at DESC LIMIT 30",
   );
@@ -35,13 +33,11 @@ export default async function Announcements({ searchParams }: { searchParams: Pr
           <span className="label">Link inside FloorTest (optional)</span>
           <input name="href" defaultValue={draft.href} pattern="/.*" className="input" placeholder="/dashboard/prepare" />
         </label>
-        <label className="block space-y-1.5">
-          <span className="label">Who sees it</span>
-          <select name="audience" defaultValue={draft.audience} className="input">
-            {Object.entries(AUD).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
-        </label>
       </div>
+      <fieldset className="space-y-2">
+        <legend className="label mb-1.5">Who sees it</legend>
+        <AudienceFields a={aud} plans={plans} />
+      </fieldset>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" name="email" defaultChecked={draft.email} className="accent-lime" />
         Also email people who turned on product news
@@ -75,7 +71,7 @@ export default async function Announcements({ searchParams }: { searchParams: Pr
             </pre>
           )}
           <p className="text-sm">
-            Reaches {reach} account{reach === 1 ? "" : "s"} in the bell{draft.email ? `, and emails ${emailReach}` : ""}.
+            {describeAudience(aud, (id) => plans.find((p) => p.id === id)?.name ?? id)}: reaches {reach} account{reach === 1 ? "" : "s"} in the bell{draft.email ? `, and emails ${emailReach}` : ""}.
           </p>
           <form action={publishAnnouncement}>
             {Object.entries(draft).map(([k, v]) => (k === "email" ? v && <input key={k} type="hidden" name="email" value="on" /> : <input key={k} type="hidden" name={k} value={String(v)} />))}
@@ -91,7 +87,7 @@ export default async function Announcements({ searchParams }: { searchParams: Pr
           {past.map((p) => (
             <li key={p.id} className="flex flex-wrap justify-between gap-2 px-4 py-3 text-sm">
               <span>{p.title}</span>
-              <span className="text-mute">{AUD[p.audience]}{p.emailed ? " · emailed" : ""} · {new Date(p.created_at).toLocaleDateString("en-GB")}</span>
+              <span className="text-mute">{p.audience}{p.emailed ? " · emailed" : ""} · {new Date(p.created_at).toLocaleDateString("en-GB")}</span>
             </li>
           ))}
         </ul>

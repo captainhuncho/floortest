@@ -917,4 +917,33 @@ alter table users add column terms_version text;
 alter table tracks add column ai_use text check (ai_use in ('none', 'partial', 'full'));
 `,
   },
+  {
+    // Admin CRM: announcements go to an exact list of people chosen by filters (plan, account type, tag, joined,
+    // activity), so the bell and email always reach the same audience. Older announcements are backfilled to who
+    // they reached then. Plus private admin tags and notes on accounts.
+    id: "0054_admin_crm",
+    sql: `
+create table announcement_recipients (
+  announcement_id bigint not null references announcements(id) on delete cascade,
+  user_id bigint not null references users(id) on delete cascade,
+  primary key (announcement_id, user_id)
+);
+create index announcement_recipients_user on announcement_recipients (user_id);
+insert into announcement_recipients (announcement_id, user_id)
+  select a.id, u.id from announcements a join users u on (a.audience = 'all' or u.plan = a.audience) and u.created_at <= a.created_at;
+alter table announcements drop constraint if exists announcements_audience_check;
+update announcements set audience = case audience when 'all' then 'Everyone' when 'free' then 'Free' when 'pro' then 'Pro' when 'team' then 'Team' else audience end;
+alter table announcement_recipients enable row level security;
+alter table users add column admin_tags text not null default '';
+create table account_notes (
+  id bigint generated always as identity primary key,
+  user_id bigint not null references users(id) on delete cascade,
+  admin_id bigint references users(id) on delete set null,
+  body text not null,
+  created_at bigint not null
+);
+create index account_notes_user on account_notes (user_id, created_at desc);
+alter table account_notes enable row level security;
+`,
+  },
 ];

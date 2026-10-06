@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { FEATURES, type Feature } from "@/lib/features";
 import { allPlans, FREE_PLAN } from "@/lib/plan-store";
+import { audienceWhere, cleanTags, describeAudience, readAudience } from "@/lib/audience";
 import { SITE_PAGES, type Field, type SitePage } from "@/lib/content";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -507,26 +508,31 @@ export async function saveSwitch(feature: Feature, form: FormData) {
   revalidatePath("/", "layout");
 }
 
-const AUDIENCES = ["all", "free", "pro", "team"] as const;
-
-/** Publishes to every matching user's bell; with email on, also emails those who opted into product news. */
+/** Publishes to the bell of everyone matching the filters; with email on, also emails those of them who opted into product news. */
 export async function publishAnnouncement(form: FormData) {
   const a = await requireAdminAction();
   const title = String(form.get("title") || "").trim().slice(0, 100);
   const body = String(form.get("body") || "").trim().slice(0, 600);
   const href = String(form.get("href") || "").trim().slice(0, 200);
-  const audience = String(form.get("audience") || "all") as (typeof AUDIENCES)[number];
+  const aud = readAudience((k) => form.get(k));
   const email = form.get("email") === "on";
   // Links must stay on FloorTest: "/path" only, never "//host" or "/\host" (which browsers treat as another site).
-  if (!title || !AUDIENCES.includes(audience) || (href && (!href.startsWith("/") || href.startsWith("//") || href.includes("\\")))) return fail("Needs a title, and links must start with /");
-  await q.run("INSERT INTO announcements (title, body, href, audience, emailed, admin_id, created_at) VALUES (?,?,?,?,?,?,?)", title, body, href, audience, email ? 1 : 0, a.id, now());
+  if (!title || (href && (!href.startsWith("/") || href.startsWith("//") || href.includes("\\")))) return fail("Needs a title, and links must start with /");
+  const plans = await allPlans();
+  const label = describeAudience(aud, (id) => plans.find((p) => p.id === id)?.name ?? id);
+  const w = audienceWhere(aud);
+  const id = (await q.get<{ id: number }>(
+    "INSERT INTO announcements (title, body, href, audience, emailed, admin_id, created_at) VALUES (?,?,?,?,?,?,?) RETURNING id",
+    title, body, href, label, email ? 1 : 0, a.id, now(),
+  ))!.id;
+  await q.run(`INSERT INTO announcement_recipients (announcement_id, user_id) SELECT ?, u.id FROM users u WHERE ${w.sql}`, id, ...w.args);
   const people = email
     ? await q.all<{ id: number; email: string }>(
-        `SELECT id, email FROM users WHERE notify_product = 1 AND suspended_at IS NULL AND email_verified_at IS NOT NULL ${audience === "all" ? "" : "AND plan = ?"} LIMIT 5000`,
-        ...(audience === "all" ? [] : [audience]),
+        `SELECT u.id, u.email FROM users u WHERE ${w.sql} AND u.notify_product = 1 AND u.email_verified_at IS NOT NULL LIMIT 5000`,
+        ...w.args,
       )
     : [];
-  await logAdmin(a.id, "published announcement", title, `${audience}${email ? ` · emailed ${people.length}` : ""}`);
+  await logAdmin(a.id, "published announcement", title, `${label}${email ? ` · emailed ${people.length}` : ""}`);
   if (people.length)
     after(async () => {
       for (const p of people)
@@ -825,4 +831,26 @@ export async function sendTestEmail(id: EmailId) {
   const status = await sendMail({ userId: null, audience: "support", to: a.email, subject: `[Test] ${fillEmail(t.subject, SAMPLE_VARS)}`, body: fillEmail(t.body, SAMPLE_VARS) });
   if (status.startsWith("failed")) return fail(`Test didn't send: ${status}`);
   await done(`Test sent to ${a.email}.`);
+}
+
+/** Private admin tags on an account, used to filter Users and announcements. */
+export async function saveTags(userId: number, form: FormData) {
+  const a = await requireAdminAction();
+  const u = await target(userId);
+  if (!u) return;
+  const tags = cleanTags(String(form.get("tags") || ""));
+  await q.run("UPDATE users SET admin_tags = ? WHERE id = ?", tags, userId);
+  await logAdmin(a.id, "tagged account", `@${u.handle}`, tags || "none");
+  await done("Tags saved.");
+  refresh();
+}
+
+/** A private note on an account, visible only in Admin. */
+export async function addNote(userId: number, form: FormData) {
+  const a = await requireAdminAction();
+  const body = String(form.get("note") || "").trim().slice(0, 2000);
+  if (!body || !(await target(userId))) return fail("Write a note first.");
+  await q.run("INSERT INTO account_notes (user_id, admin_id, body, created_at) VALUES (?,?,?,?)", userId, a.id, body, now());
+  await done("Note added.");
+  refresh();
 }

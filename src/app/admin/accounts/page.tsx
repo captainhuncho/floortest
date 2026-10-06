@@ -1,34 +1,48 @@
 import Link from "next/link";
+import { audienceWhere, readAudience } from "@/lib/audience";
+import { allPlans } from "@/lib/plan-store";
+import { AudienceFields } from "../AudienceFields";
 import { KIND_LABEL } from "@/lib/db";
 import { likeContains, q } from "@/lib/db";
 
 /** Users: receivers (accounts with a link) and senders (people who've sent tracks, identified by email). */
-export default async function Users({ searchParams }: { searchParams: Promise<{ q?: string; kind?: string }> }) {
+export default async function Users({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const sp = await searchParams;
   const search = (sp.q || "").trim().slice(0, 100);
-  if (sp.kind === "senders") return <Senders search={search} />;
-  const only = sp.kind === "labels" ? "label" : sp.kind === "producers" ? "producer" : null;
+  if (sp.view === "senders") return <Senders search={search} />;
+  const aud = readAudience((k) => sp[k]);
+  const w = audienceWhere(aud, Date.now(), true);
+  const plans = await allPlans();
+  const query = new URLSearchParams(Object.entries({ ...aud, joined: aud.joined ? String(aud.joined) : "", q: search }).filter(([, v]) => v) as [string, string][]).toString();
   const rows = await q.all<{
     id: number; name: string; handle: string; email: string; plan: string; created_at: number;
-    suspended_at: number | null; totp_enabled_at: number | null; email_verified_at: number | null; live: number; kind: string | null;
+    suspended_at: number | null; totp_enabled_at: number | null; email_verified_at: number | null; live: number; kind: string | null; admin_tags: string;
   }>(
-    `SELECT u.id, u.name, u.handle, u.email, u.plan, u.kind, u.created_at, u.suspended_at, u.totp_enabled_at, u.email_verified_at,
+    `SELECT u.id, u.name, u.handle, u.email, u.plan, u.kind, u.admin_tags, u.created_at, u.suspended_at, u.totp_enabled_at, u.email_verified_at,
        (SELECT COUNT(*) FROM tracks t WHERE t.user_id = u.id AND t.deleted_at IS NULL) AS live
-     FROM users u WHERE ${only ? "u.kind = ?" : "TRUE"} ${search ? "AND (u.name ILIKE ? OR u.email ILIKE ? OR u.handle ILIKE ?)" : ""}
+     FROM users u WHERE ${w.sql} ${search ? "AND (u.name ILIKE ? OR u.email ILIKE ? OR u.handle ILIKE ?)" : ""}
      ORDER BY u.created_at DESC LIMIT 200`,
-    ...(only ? [only] : []),
+    ...w.args,
     ...(search ? Array(3).fill(likeContains(search)) : []),
   );
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight">Users</h1>
-        <form className="flex gap-2">
-          <input name="q" defaultValue={search} placeholder="Name, email or link" className="input w-64" aria-label="Search receivers" />
-          <button className="btn-ghost btn-sm">Search</button>
-        </form>
+        <a href={`/api/admin/users-csv${query ? `?${query}` : ""}`} className="btn-ghost btn-sm">
+          Export CSV
+        </a>
       </div>
-      <Tabs active={only ? (`${only}s` as "labels" | "producers") : "receivers"} />
+      <Tabs active="receivers" />
+      <form className="mt-4 space-y-3 rounded-md border border-line p-4">
+        <AudienceFields a={aud} plans={plans} />
+        <div className="flex flex-wrap items-center gap-2">
+          <input name="q" defaultValue={search} placeholder="Name, email or link" className="input w-64" aria-label="Search receivers" />
+          <button className="btn-lime btn-sm">Filter</button>
+          <a href="/admin/accounts" className="text-sm text-mute hover:text-bone">Clear</a>
+          <span className="ml-auto text-sm text-mute">{rows.length === 200 ? "Showing the newest 200" : `${rows.length} account${rows.length === 1 ? "" : "s"}`}</span>
+        </div>
+      </form>
       <div className="mt-4 overflow-x-auto rounded-md border border-line">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-line text-mute">
@@ -45,6 +59,7 @@ export default async function Users({ searchParams }: { searchParams: Promise<{ 
                   <Link href={`/admin/accounts/${u.id}`} className="font-medium hover:underline">{u.name}</Link>
                   <span className="text-mute"> @{u.handle}</span>
                   {u.suspended_at && <span className="chip ml-2 border-danger/50 text-danger">Suspended</span>}
+                  {u.admin_tags && u.admin_tags.split(",").map((t) => <span key={t} className="chip ml-1 border-line text-mute">{t}</span>)}
                 </td>
                 <td className="px-4 py-3 text-mute">{KIND_LABEL[u.kind ?? ""] ?? "—"}</td>
                 <td className="px-4 py-3 text-mute">{u.email}{!u.email_verified_at && <span className="ml-1 text-danger">(unconfirmed)</span>}</td>
@@ -62,14 +77,12 @@ export default async function Users({ searchParams }: { searchParams: Promise<{ 
   );
 }
 
-function Tabs({ active }: { active: "receivers" | "producers" | "labels" | "senders" }) {
+function Tabs({ active }: { active: "receivers" | "senders" }) {
   return (
     <nav className="mt-6 flex gap-1 border-b border-line" aria-label="User type">
       {[
         ["receivers", "Receivers", "/admin/accounts"],
-        ["producers", "Producers", "/admin/accounts?kind=producers"],
-        ["labels", "Labels", "/admin/accounts?kind=labels"],
-        ["senders", "Senders", "/admin/accounts?kind=senders"],
+        ["senders", "Senders", "/admin/accounts?view=senders"],
       ].map(([k, label, href]) => (
         <Link
           key={k}
@@ -99,7 +112,7 @@ async function Senders({ search }: { search: string }) {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight">Users</h1>
         <form className="flex gap-2">
-          <input type="hidden" name="kind" value="senders" />
+          <input type="hidden" name="view" value="senders" />
           <input name="q" defaultValue={search} placeholder="Sender name or email" className="input w-64" aria-label="Search senders" />
           <button className="btn-ghost btn-sm">Search</button>
         </form>

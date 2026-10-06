@@ -20,6 +20,8 @@ import {
   startViewAs,
   suspendAccount,
   unsuspendAccount,
+  addNote,
+  saveTags,
 } from "../../actions";
 
 const day = (t: number) => new Date(t).toLocaleDateString("en-GB");
@@ -29,7 +31,11 @@ const when = (t: number) => new Date(t).toLocaleString("en-GB", { dateStyle: "me
 export default async function Account({ params }: { params: Promise<{ id: string }> }) {
   const id = Number((await params).id);
   if (!Number.isSafeInteger(id)) notFound();
-  const u = await q.get<User & { identity_status: string | null; invite_code: string | null; referred_by: number | null; suspended_at: number | null; suspended_reason: string; pending_email: string | null; pending_email_at: number | null; signup_source: string }>("SELECT * FROM users WHERE id = ?", id);
+  const u = await q.get<User & { identity_status: string | null; invite_code: string | null; referred_by: number | null; suspended_at: number | null; suspended_reason: string; pending_email: string | null; pending_email_at: number | null; signup_source: string; admin_tags: string }>("SELECT * FROM users WHERE id = ?", id);
+  const notes = await q.all<{ id: number; body: string; created_at: number; handle: string | null }>(
+    "SELECT n.id, n.body, n.created_at, a.handle FROM account_notes n LEFT JOIN users a ON a.id = n.admin_id WHERE n.user_id = ? ORDER BY n.created_at DESC LIMIT 50",
+    id,
+  );
   if (!u) notFound();
   const t = Date.now();
   const pendingEmail = u.pending_email && (u.pending_email_at ?? 0) > t - 48 * 3_600_000 ? u.pending_email : null;
@@ -115,6 +121,27 @@ export default async function Account({ params }: { params: Promise<{ id: string
 
       <div className="grid gap-8 lg:grid-cols-[1fr_20rem]">
         <div className="min-w-0 space-y-8">
+          <section aria-labelledby="crm-h" className="space-y-3">
+            <h2 id="crm-h" className="text-lg font-semibold">Tags and notes <span className="text-sm font-normal text-mute">(only admins see these)</span></h2>
+            <form action={saveTags.bind(null, u.id)} className="flex flex-wrap items-center gap-2">
+              <input name="tags" defaultValue={u.admin_tags.split(",").join(", ")} placeholder="beta-1, label-lead" className="input max-w-md" aria-label="Tags" />
+              <button className="btn-ghost btn-sm">Save tags</button>
+            </form>
+            <form action={addNote.bind(null, u.id)} className="space-y-2">
+              <textarea name="note" rows={2} maxLength={2000} placeholder="Add a note: a call, a promise, feedback…" className="input" aria-label="New note" />
+              <button className="btn-ghost btn-sm">Add note</button>
+            </form>
+            {notes.length > 0 && (
+              <ul className="divide-y divide-line rounded-md border border-line">
+                {notes.map((n) => (
+                  <li key={n.id} className="px-4 py-3 text-sm">
+                    <p className="whitespace-pre-wrap">{n.body}</p>
+                    <p className="mt-1 text-xs text-mute">{day(n.created_at)}{n.handle ? ` · @${n.handle}` : ""}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
           <section aria-labelledby="usage-h" className="space-y-3">
             <h2 id="usage-h" className="text-lg font-semibold">Usage</h2>
             <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
