@@ -8,6 +8,10 @@
   "observability": { "enabled": true },
   // Run near the database (London) rather than near each visitor: one round trip to the user, many to Postgres.
   "placement": { "mode": "smart" },
+  // Read audio directly from R2 (streams); uploads and signed links still use the S3 API keys.
+  "r2_buckets": [{ "binding": "AUDIO", "bucket_name": "floortest-audio-preview" }],
+  // Big crates: allow up to 5 minutes of CPU per download.
+  "limits": { "cpu_ms": 300000 },
   // Trial only: preview bucket and a Neon branch copy. Secrets (DATABASE_URL, APP_SECRET, CRON_SECRET, S3 keys) are set with wrangler secret.
   "vars": {
     "APP_URL": "https://floortest-trial.maxwelladjavon.workers.dev",

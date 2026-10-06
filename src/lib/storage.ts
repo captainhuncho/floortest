@@ -183,10 +183,22 @@ async function s3(): Promise<Storage> {
       }
     },
     async read(key, start, end) {
+      const b = await r2Binding();
+      if (b) {
+        const o = await b.get(key, { range: { offset: start, length: end - start + 1 } });
+        return o ? new Uint8Array(await o.arrayBuffer()) : new Uint8Array();
+      }
       const r = await client.send(new GetObjectCommand({ Bucket, Key: key, Range: `bytes=${start}-${end}` }));
       return (await r.Body?.transformToByteArray()) ?? new Uint8Array();
     },
     async stream(key, range) {
+      // On Cloudflare, read through the R2 binding: it streams, where the S3 library buffers whole files in memory.
+      const b = await r2Binding();
+      if (b) {
+        const o = await b.get(key, range ? { range: { offset: range.start, length: range.end - range.start + 1 } } : undefined);
+        if (!o) throw new Error(`Not found: ${key}`);
+        return { body: o.body, size: o.size };
+      }
       const r = await client.send(new GetObjectCommand({ Bucket, Key: key, Range: range ? `bytes=${range.start}-${range.end}` : undefined }));
       const total = r.ContentRange ? Number(r.ContentRange.split("/")[1]) : Number(r.ContentLength ?? 0);
       return { body: r.Body!.transformToWebStream() as ReadableStream<Uint8Array>, size: total };
@@ -220,4 +232,14 @@ async function s3(): Promise<Storage> {
 
 export async function storage(): Promise<Storage> {
   return env.storage.driver === "s3" ? s3() : local;
+}
+
+type R2Object = { body: ReadableStream<Uint8Array>; size: number; arrayBuffer(): Promise<ArrayBuffer> };
+type R2Bucket = { get(key: string, opts?: { range?: { offset: number; length: number } }): Promise<R2Object | null> };
+
+/** The bucket bound to this Worker as AUDIO on Cloudflare; null everywhere else. */
+async function r2Binding(): Promise<R2Bucket | null> {
+  if (typeof navigator === "undefined" || navigator.userAgent !== "Cloudflare-Workers") return null;
+  const { getCloudflareContext } = await import("@opennextjs/cloudflare");
+  return ((getCloudflareContext().env as Record<string, unknown>).AUDIO as R2Bucket | undefined) ?? null;
 }
