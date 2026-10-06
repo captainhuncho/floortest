@@ -21,6 +21,8 @@ type Field = {
   hint?: React.ReactNode;
   /** New-password field: show the live strength meter. */
   strength?: boolean;
+  /** Not required (everything else is). */
+  optional?: boolean;
   /** Pick one of these instead of typing. */
   choices?: { value: string; label: string }[];
 };
@@ -134,7 +136,7 @@ export function AuthForm({
               className="input"
               name={f.name}
               type={f.type || "text"}
-              required
+              required={!f.optional}
               minLength={f.minLength}
               defaultValue={f.defaultValue}
               placeholder={f.placeholder}

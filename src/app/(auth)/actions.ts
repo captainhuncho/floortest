@@ -77,21 +77,24 @@ const validTz = (tz: string) => {
 };
 
 export async function signup(_: FormState, form: FormData): Promise<FormState> {
-  const name = String(form.get("name") || "").trim().slice(0, 80);
+  const firstName = String(form.get("first_name") || "").trim().slice(0, 60);
+  const lastName = String(form.get("last_name") || "").trim().slice(0, 60);
   const email = String(form.get("email") || "").trim().toLowerCase().slice(0, 200);
   const handle = String(form.get("handle") || "").trim().toLowerCase();
+  // Public name: their professional name, or the username when they leave it empty.
+  const name = String(form.get("name") || "").trim().slice(0, 80) || handle;
   const password = String(form.get("password") || "");
   if (form.get("agree") !== "on") return { error: "Please confirm you're 18 or over and agree to the Terms to create an account." };
   if (!(await passedTurnstile(form.get("cf-turnstile-response"), await requestIp()))) return { error: BOT_MESSAGE };
   const invite = await resolveInvite(String(form.get("ref") || form.get("invite") || ""), String(form.get("email") || ""));
 
   if (!(await switchOn("open_signup")) && !invite.valid) return { error: "That invite code is not valid, has been used, or was sent to a different email. Use the email your invite went to." };
-  if (!name || !email || !handle || !password) return { error: "All fields are required." };
+  if (!firstName || !lastName || !email || !handle || !password) return { error: "Fill in your first name, surname, username, email and password." };
   if (!EMAIL.test(email)) return { error: "Enter a valid email." };
   if (!/^[a-z0-9][a-z0-9-_]{1,29}$/.test(handle)) return { error: "Link names use 2–30 letters, numbers, - or _." };
   if (RESERVED_HANDLES.has(handle)) return { error: "That link name is reserved." };
   if (await isProtectedHandle(handle)) return { error: "That name is protected for a well-known artist. If it's you, contact us and we'll set it up." };
-  const strength = passwordStrength(password, [name, email, handle]);
+  const strength = passwordStrength(password, [name, firstName, lastName, email, handle]);
   if (!strength.ok) return { error: strength.tip ?? "Choose a stronger password." };
   if (!(await allow("signup_ip", await requestIp(), 10, HOUR))) return { error: "Too many sign-ups from this connection. Try again later." };
 
@@ -102,10 +105,12 @@ export async function signup(_: FormState, form: FormData): Promise<FormState> {
   try {
     userId = await q.tx(async (db) => {
       const u = (await db.get<{ id: number }>(
-        "INSERT INTO users (email, password_hash, name, handle, referred_by, invite_code, tz, signup_source, kind, terms_accepted_at, terms_version, notify_product, product_consent_at, notify_marketing, marketing_consent_at, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id",
+        "INSERT INTO users (email, password_hash, name, first_name, last_name, handle, referred_by, invite_code, tz, signup_source, kind, terms_accepted_at, terms_version, notify_product, product_consent_at, notify_marketing, marketing_consent_at, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id",
         email,
         hashPassword(password),
         name,
+        firstName,
+        lastName,
         handle,
         invite.referrerId,
         invite.valid ? invite.code : null,

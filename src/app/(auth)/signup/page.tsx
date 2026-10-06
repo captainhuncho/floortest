@@ -50,8 +50,10 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
             ? [{ name: "invite", label: "Invite code", placeholder: "From your invite", autoComplete: "off", defaultValue: inviteCode || ref || undefined }]
             : []),
           { name: "kind", label: "What best describes you?", choices: [{ value: "dj", label: "DJ or curator" }, { value: "producer", label: "Producer" }, { value: "label", label: "Label or A&R" }] },
-          { name: "name", label: "Your name or alias", placeholder: "Maxwell", autoComplete: "name" },
-          { name: "handle", label: "Your link", prefix: `${host}/`, placeholder: "yourname", autoComplete: "username", defaultValue: (sp.handle || "").toLowerCase().replace(/[^a-z0-9-_]/g, "").slice(0, 30) || undefined },
+          { name: "first_name", label: "First name", placeholder: "Maxwell", autoComplete: "given-name" },
+          { name: "last_name", label: "Surname", placeholder: "Adjavon", autoComplete: "family-name", hint: "Kept private: for your account, billing and receipts. Never shown on your page." },
+          { name: "handle", label: "Username", prefix: `${host}/`, placeholder: "yourname", autoComplete: "username", defaultValue: (sp.handle || "").toLowerCase().replace(/[^a-z0-9-_]/g, "").slice(0, 30) || undefined },
+          { name: "name", label: "Professional name (optional)", placeholder: "DJ, artist or label name", autoComplete: "nickname", optional: true, hint: "Shown on your page. Leave empty to show your username." },
           { name: "email", label: "Email", type: "email", placeholder: "you@example.com", autoComplete: "email", defaultValue: personal?.email ?? undefined },
           { name: "password", label: "Password", type: "password", placeholder: "8+ characters", autoComplete: "new-password", minLength: 8, strength: true },
         ]}

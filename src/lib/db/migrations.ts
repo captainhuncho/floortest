@@ -968,4 +968,13 @@ create table newsletter_subscribers (
 alter table newsletter_subscribers enable row level security;
 `,
   },
+  {
+    // Legal name for records, accounting and billing, kept private. The public name stays in users.name
+    // (professional name, or the username when none is given). Older accounts fill these in from Settings.
+    id: "0056_legal_name",
+    sql: `
+alter table users add column first_name text not null default '';
+alter table users add column last_name text not null default '';
+`,
+  },
 ];

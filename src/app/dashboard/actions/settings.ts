@@ -70,13 +70,15 @@ export type SettingsState = { ok?: boolean; error?: string } | undefined;
 
 export async function updateSettings(_: SettingsState, form: FormData): Promise<SettingsState> {
   const u = await requireUser();
-  const name = String(form.get("name") || "").trim().slice(0, 80);
   const handle = String(form.get("handle") || "").trim().toLowerCase();
-  if (!name) return { error: "Name is required." };
+  const name = String(form.get("name") || "").trim().slice(0, 80) || handle;
+  const firstName = String(form.get("first_name") || "").trim().slice(0, 60);
+  const lastName = String(form.get("last_name") || "").trim().slice(0, 60);
+  if (!firstName || !lastName) return { error: "Add your first name and surname." };
   const problem = await changeHandle(u.id, handle);
   if (problem) return { error: problem };
   const kind = KINDS.includes(String(form.get("kind"))) ? String(form.get("kind")) : u.kind;
-  await q.run("UPDATE users SET name = ?, kind = ? WHERE id = ?", name, kind, u.id);
+  await q.run("UPDATE users SET name = ?, first_name = ?, last_name = ?, kind = ? WHERE id = ?", name, firstName, lastName, kind, u.id);
   if (name !== u.name || handle !== u.handle) await audit(u.id, "settings_updated", handle !== u.handle ? `link is now /${handle}` : name);
   done();
   return { ok: true };

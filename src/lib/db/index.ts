@@ -32,6 +32,9 @@ export const likeContains = (s: string) => `%${s.replace(/[\\%_]/g, (c) => `\\${
 // Row types
 export type User = {
   id: number;
+  /** Legal name, private: records, accounting and billing. Empty on accounts made before sign-up asked. */
+  first_name: string;
+  last_name: string;
   /** Who the account is for; null for accounts made before sign-up asked. */
   kind: "dj" | "producer" | "label" | null;
   email: string;
@@ -55,7 +58,7 @@ export type User = {
 
 /** Columns that make up `User`. Never select password_hash into it. */
 export const USER_COLUMNS =
-  "id, email, name, handle, plan, active_collection_id, role_line, cover_key, page_style, paused_at, pause_until, pause_message, tz, email_verified_at, totp_enabled_at, signin_alerts, identity_status, created_at";
+  "id, email, name, first_name, last_name, kind, handle, plan, active_collection_id, role_line, cover_key, page_style, paused_at, pause_until, pause_message, tz, email_verified_at, totp_enabled_at, signin_alerts, identity_status, created_at";
 
 export type Collection = {
   id: number;
