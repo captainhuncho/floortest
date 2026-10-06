@@ -68,9 +68,9 @@ async function openPostgres(url: string): Promise<Db> {
     idle_timeout: 20,
     // Works behind transaction-mode poolers (Supabase :6543, PgBouncer).
     prepare: false,
-    // On Vercel the database is across the internet (Supabase), so the connection must be encrypted;
-    // it fails rather than falling back to plain text.
-    ssl: process.env.VERCEL ? "require" : undefined,
+    // Any database across the internet (Neon) must be encrypted; it fails rather than falling back to plain text.
+    // Only a database on this machine may skip it.
+    ssl: /@(localhost|127\.0\.0\.1|\[::1\])[:/]/.test(url) ? undefined : "require",
     // bigint (epoch-ms timestamps, ids, counts) as JS numbers; all values stay well below 2^53.
     types: { bigint: { to: 20, from: [20], serialize: (x: number) => String(x), parse: (x: string) => Number(x) } },
     onnotice: () => {},

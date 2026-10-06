@@ -1,5 +1,6 @@
 import { after } from "next/server";
 import { PlayerBar, PlayerProvider } from "@/components/Player";
+import { LivePulse } from "@/components/LivePulse";
 import { ToastProvider } from "@/components/Toast";
 import { requireUser, viewingAs } from "@/lib/auth";
 import { activeCollection, capacity, collectionsFor, isClosed, isPaused } from "@/lib/desk";
@@ -72,6 +73,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             )}
             {!view && !user.email_verified_at && <VerifyBanner email={user.email} />}
             {children}
+            {!view && <LivePulse url="/api/pulse" />}
           </main>
         </div>
         <PlayerBar />

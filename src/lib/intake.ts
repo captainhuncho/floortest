@@ -193,7 +193,7 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
         analysis.peaks ? JSON.stringify(analysis.peaks) : null,
         now(),
         sharing && collection?.allow_sharing ? 1 : 0,
-        sharing && collection?.allow_sharing && (await shareDownloadEnabled(fresh.plan)) ? 1 : 0,
+        sharing && collection?.allow_sharing && (await shareDownloadEnabled(fresh.plan, db)) ? 1 : 0,
         meta.batch ?? null,
         meta.setsOk ? 1 : 0,
         meta.aiUse,

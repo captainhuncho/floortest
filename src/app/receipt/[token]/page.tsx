@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { LivePulse } from "@/components/LivePulse";
 import { fill, siteCopy } from "@/lib/content";
 import { Waveform } from "@/components/Waveform";
 import {q, type Track } from "@/lib/db";
@@ -126,6 +127,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
           ),
         )}
       </p>
+      <LivePulse url={`/api/pulse/receipt/${token}`} every={8000} />
     </main>
   );
 }

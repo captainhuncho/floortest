@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { q } from "./db";
+import { q, type Queryable } from "./db";
 
 /** A plan as Admin → Plans defines it. Prices are in US dollars. */
 export type Plan = {
@@ -56,6 +56,17 @@ export async function offeredPlan(id: string) {
 /** Grid columns for a row of plan cards, so 2, 3 or 4 plans all sit neatly. */
 export const planGrid = (n: number) => (n >= 4 ? "md:grid-cols-2 lg:grid-cols-4" : n === 2 ? "md:grid-cols-2" : n === 1 ? "" : "md:grid-cols-3");
 
-export async function shareDownloadEnabled(plan: string) {
-  return (await planOf(plan)).shareDownloads;
+/**
+ * Inside a transaction, plan details must be read on the transaction's own connection (`db`): reading through the
+ * shared pool would wait for a second connection while the first is held, and with a small pool that can freeze.
+ */
+export async function shareDownloadEnabled(plan: string, db: Queryable = q) {
+  const r = await db.get<{ s: number }>("SELECT share_downloads AS s FROM plans WHERE id = ?", plan);
+  return !!r?.s;
+}
+
+/** An account's plan track limit, read on `db` (see above); an unknown plan counts as Free. */
+export async function planLimit(plan: string, db: Queryable = q) {
+  const r = await db.get<{ n: number }>("SELECT track_limit AS n FROM plans WHERE id IN (?, ?) ORDER BY (id = ?) DESC LIMIT 1", plan, FREE_PLAN, plan);
+  return r?.n ?? 0;
 }
