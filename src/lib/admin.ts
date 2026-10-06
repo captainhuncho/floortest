@@ -16,7 +16,7 @@ export async function requireAdmin(): Promise<User> {
   if (!u) redirect("/login");
   if (!isAdminEmail(u.email)) notFound();
   // An admin address only counts once the email is confirmed and two-factor is on; until then, no admin data.
-  if (!u.email_verified_at || !adminReady(u)) redirect("/dashboard/settings#security-h");
+  if (!u.email_verified_at || !adminReady(u)) redirect("/dashboard/settings/security");
   return u;
 }
 

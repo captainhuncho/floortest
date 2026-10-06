@@ -64,7 +64,7 @@ export async function notifyNewSubmission(receiverId: number, trackId: number) {
       `${t.sender} sent "${t.title}"${t.collection ? ` to ${t.collection}` : ""}.`,
       t.message ? `\n"${t.message}"` : "",
       `\nListen: ${APP_URL}/dashboard?view=queue&s=all&t=${trackId}`,
-      `\nChange how often you hear from us: ${APP_URL}/dashboard/notifications`,
+      `\nChange how often you hear from us: ${APP_URL}/dashboard/settings/notifications`,
       "\n— FloorTest",
     ].join("\n"),
   });
@@ -190,7 +190,7 @@ export async function sendDigest(userId: number) {
     audience: "receiver",
     to: p.email,
     subject: `${items.length} new track${items.length === 1 ? "" : "s"} waiting on FloorTest`,
-    body: [`Hi ${p.name.split(/\s+/)[0]},`, "", ...lines, "", `Start listening: ${APP_URL}/dashboard`, "", `Digest settings: ${APP_URL}/dashboard/notifications`, "", "— FloorTest"].join("\n"),
+    body: [`Hi ${p.name.split(/\s+/)[0]},`, "", ...lines, "", `Start listening: ${APP_URL}/dashboard`, "", `Digest settings: ${APP_URL}/dashboard/settings/notifications`, "", "— FloorTest"].join("\n"),
   });
   if (status.startsWith("failed")) {
     // Hand the tracks back so the next run tries again; the digest isn't marked as sent.

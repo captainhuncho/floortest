@@ -29,7 +29,7 @@ export default async function Unsubscribe({ params, searchParams }: { params: Pr
         <>
           <h1 className="text-3xl font-bold tracking-tight">You&apos;re unsubscribed</h1>
           <p className="mt-3 text-mute">We won&apos;t send you {UNSUB_KINDS[t.kind].label} any more. You&apos;ll still get emails you need, like sign-in and security notices.</p>
-          <Link href="/dashboard/notifications" className="btn-ghost mt-8 inline-block">Change email settings</Link>
+          <Link href="/dashboard/settings/notifications" className="btn-ghost mt-8 inline-block">Change email settings</Link>
         </>
       ) : (
         <form action={confirm}>

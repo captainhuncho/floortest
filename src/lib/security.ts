@@ -64,7 +64,7 @@ export async function finishSignIn(userId: number, how: "password" | "two-factor
       how !== "password" ? `Method: ${how}` : "",
       "",
       "If this was you, there's nothing to do.",
-      `If it wasn't, change your password and sign out other devices: ${APP_URL}/dashboard/settings#security-h`,
+      `If it wasn't, change your password and sign out other devices: ${APP_URL}/dashboard/settings/security`,
       "",
       `Turn these emails off in Settings.`,
       "",

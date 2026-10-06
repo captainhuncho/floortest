@@ -27,7 +27,7 @@ export function PublicPageForm({ roleLine, links }: { roleLine: string; links: P
   const nextKey = useRef(rows.length);
   const used = new Set(rows.map((r) => r.platform));
   return (
-    <form onSubmit={onSubmit} className="mt-4 space-y-5">
+    <form onSubmit={onSubmit} className="space-y-5">
       <label className="block space-y-1.5">
         <span className="label">Role line</span>
         <input name="role_line" defaultValue={roleLine} maxLength={60} className="input" placeholder="DJ / Performer" />
@@ -120,8 +120,8 @@ export function CoverUpload({ handle, cover }: { handle: string; cover: string |
   }
 
   return (
-    <div className="mt-5 flex flex-wrap items-center gap-4">
-      <div className="grid h-28 w-20 shrink-0 place-items-center overflow-hidden rounded-lg border border-line bg-ink">
+    <div className="flex items-center gap-4">
+      <div className="grid size-24 shrink-0 place-items-center overflow-hidden rounded-2xl border border-line bg-ink">
         {cover ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={`/api/cover/${handle}?v=${encodeURIComponent(cover)}`} alt="Current profile photo" className="h-full w-full object-cover" />
@@ -130,17 +130,16 @@ export function CoverUpload({ handle, cover }: { handle: string; cover: string |
         )}
       </div>
       <div>
-        <p className="font-medium">Profile photo</p>
-        <p className="text-sm text-mute">A square photo works best. JPG, PNG or WebP, up to 8 MB. Shown at the top of your link page and when your link is shared.</p>
+        <p className="text-sm text-mute">Square works best. JPG, PNG or WebP, up to 8 MB.</p>
         <input ref={input} type="file"
       aria-label="Choose a profile photo"
       tabIndex={-1} accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => upload(e.target.files?.[0])} />
         <div className="mt-2 flex gap-2">
-          <button type="button" className="btn-ghost btn-sm" disabled={busy} onClick={() => input.current?.click()}>
+          <button type="button" className="btn-lime btn-sm min-h-11" disabled={busy} onClick={() => input.current?.click()}>
             {busy ? "Working…" : cover ? "Replace" : "Upload"}
           </button>
           {cover && (
-            <button type="button" className="btn btn-sm text-mute hover:text-bone" disabled={busy} onClick={remove}>
+            <button type="button" className="btn btn-sm min-h-11 text-mute hover:text-bone" disabled={busy} onClick={remove}>
               Remove
             </button>
           )}

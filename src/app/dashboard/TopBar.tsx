@@ -180,7 +180,7 @@ function Notifications({ items, unread, onNavigate, sheet = false }: { items: No
           ))}
         </ul>
       )}
-      <Link href="/dashboard/notifications" onClick={onNavigate} className="block border-t border-line px-5 py-3 text-center text-sm text-mute hover:text-bone">
+      <Link href="/dashboard/settings/notifications" onClick={onNavigate} className="block border-t border-line px-5 py-3 text-center text-sm text-mute hover:text-bone">
         Email settings
       </Link>
     </>

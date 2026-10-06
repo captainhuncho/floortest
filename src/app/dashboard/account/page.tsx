@@ -166,11 +166,11 @@ export default async function Account() {
           <Section
             title="ACCOUNT"
             rows={[
-              <Row key="p" href="/dashboard/settings#page-h" icon="✎" title="Edit profile" sub="Name, link name, public page and cover photo" />,
-              <Row key="e" href="/dashboard/settings#email-h" icon="@" title="Email & password" sub="Change your sign-in details" />,
+              <Row key="p" href="/dashboard/settings/profile" icon="✎" title="Profile" sub="Photo, name, link and profiles" />,
+              <Row key="e" href="/dashboard/settings/security" icon="@" title="Security" sub="Email, password and devices" />,
               <Row
                 key="t"
-                href="/dashboard/settings#security-h"
+                href="/dashboard/settings/security"
                 icon="⚿"
                 title="Two-factor authentication"
                 sub="A code from your phone when you sign in"
@@ -181,7 +181,7 @@ export default async function Account() {
           <Section
             title="PREFERENCES"
             rows={[
-              <Row key="n" href="/dashboard/notifications" icon="◎" title="Notifications" sub="How and when we email you" value={<span className="text-[11px] text-mute">Email</span>} />,
+              <Row key="n" href="/dashboard/settings/notifications" icon="◎" title="Notifications" sub="How and when we email you" value={<span className="text-[11px] text-mute">Email</span>} />,
               <div key="t" className="flex items-center gap-3 py-1">
                 <span aria-hidden className="grid w-5 shrink-0 place-items-center text-[15px] leading-none text-mute">◐</span>
                 <span className="min-w-0 flex-1">
@@ -195,9 +195,10 @@ export default async function Account() {
           <Section
             title="PRIVACY"
             rows={[
-              <Row key="p" href="/dashboard/settings#security-h" icon="⛨" title="Privacy + security" sub="Sessions, sign-in alerts and verification" />,
-              <Row key="b" href="/dashboard/settings#blocked-h" icon="⊘" title="Blocked users" sub="Senders who can no longer reach you" />,
+              <Row key="p" href="/dashboard/settings/plan" icon="▤" title="Plan" sub="Usage and plans" />,
+              <Row key="b" href="/dashboard/settings/receiving" icon="⊘" title="Receiving" sub="Blocked senders and desk rules" />,
               <Row key="d" href="/contact?topic=data" icon="⇩" title="Data export" sub="Ask for a copy of your data" />,
+              <Row key="a" href="/dashboard/settings/account" icon="⏻" title="Log out or delete account" sub="Leave this device, or remove everything" />,
             ]}
           />
           <Section

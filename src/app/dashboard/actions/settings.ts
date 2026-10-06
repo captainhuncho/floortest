@@ -2,6 +2,9 @@
 
 /** Settings: alerts, profile and public page, plans and checkout, identity, email change, theme and deleting the account. */
 import { revalidatePath } from "next/cache";
+import { stepUp } from "@/lib/step-up";
+import { allow } from "@/lib/ratelimit";
+import { sendMail } from "@/lib/mail";
 import { MAX_LINKS, slotLink, type ProfileLink } from "@/lib/socials";
 import { KINDS } from "@/lib/db";
 import { cookies } from "next/headers";
@@ -167,11 +170,18 @@ export async function submitIdentity(_: SettingsState, form: FormData): Promise<
   return { ok: true };
 }
 
-/** Permanently deletes the account, every stored file, and all history. Requires the password. */
+/** Permanently deletes the account, every stored file, and all history. Password (and two-step code), then an email to say it's done. */
 export async function deleteAccount(_: SettingsState, form: FormData): Promise<SettingsState> {
   const u = await requireUser();
-  const row = await q.get<{ password_hash: string }>("SELECT password_hash FROM users WHERE id = ?", u.id);
-  if (!row || !verifyPassword(String(form.get("password") || ""), row.password_hash)) return { error: "That password isn't right." };
+  const problem = await stepUp(u.id, String(form.get("password") || ""), String(form.get("code") || ""));
+  if (problem) return { error: problem };
+  await sendMail({
+    userId: null,
+    audience: "support",
+    to: u.email,
+    subject: "Your FloorTest account was deleted",
+    body: `Hi ${u.name.split(/\s+/)[0]},\n\nYour FloorTest account (${u.handle}) and everything on it were deleted just now, at your request from Settings.\n\nIf this wasn't you, reply to this email straight away.\n\n— FloorTest`,
+  });
   await destroySession();
   await purgeAccount(u.id);
   redirect("/?deleted=1");
@@ -180,9 +190,12 @@ export async function deleteAccount(_: SettingsState, form: FormData): Promise<S
 /** Starts an email change from Settings. Needs the password; the new address must confirm before it takes effect. */
 export async function changeMyEmail(_: SettingsState, form: FormData): Promise<SettingsState> {
   const u = await requireUser();
-  const row = await q.get<{ password_hash: string }>("SELECT password_hash FROM users WHERE id = ?", u.id);
-  if (!row || !verifyPassword(String(form.get("password") || ""), row.password_hash)) return { error: "That password isn't right." };
-  const problem = await requestEmailChange(u.id, String(form.get("email") || ""), "user");
+  const denied = await stepUp(u.id, String(form.get("password") || ""), String(form.get("code") || ""));
+  if (denied) return { error: denied };
+  const email = String(form.get("email") || "").trim().toLowerCase();
+  // Each change emails the new address: limited, so this can't be used to flood someone's inbox.
+  if (!(await allow("email_change_to", email, 3, 24 * 3_600_000))) return { error: "Too many confirmation emails to that address today. Try again tomorrow." };
+  const problem = await requestEmailChange(u.id, email, "user");
   if (problem) return { error: problem };
   await audit(u.id, "settings_updated", "started an email change");
   done();

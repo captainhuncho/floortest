@@ -25,7 +25,7 @@ export async function Onboarding({ user }: { user: User }) {
       hint: "Download a crate from Prepare for set.",
       href: "/dashboard/prepare",
     },
-    { done: !!user.totp_enabled_at, label: "Protect your account (optional)", hint: "Turn on two-factor sign-in.", href: "/dashboard/settings#security-h" },
+    { done: !!user.totp_enabled_at, label: "Protect your account (optional)", hint: "Turn on two-factor sign-in.", href: "/dashboard/settings/security" },
   ];
   const doneCount = steps.filter((s) => s.done).length;
   if (doneCount === steps.length) return null;

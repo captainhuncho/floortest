@@ -4,6 +4,7 @@ import {q } from "@/lib/db";
 import { fmtDate } from "@/lib/format";
 import { prefsFor } from "@/lib/notify";
 import { NotificationsForm } from "./NotificationsForm";
+import { PageTitle } from "../Section";
 
 export const metadata = { title: "Notifications — FloorTest" };
 
@@ -19,15 +20,16 @@ export default async function Notifications() {
   ).n;
 
   return (
-    <div className="max-w-3xl space-y-10 px-4 py-6 sm:px-8">
-      <div >
-        <h1 className="text-[28px] font-bold tracking-[-0.8px]">Notifications</h1>
-        <p className="mt-2 text-[12px] text-mute">
-          How FloorTest emails you at <span className="text-bone">{user.email}</span>. The bell in the top bar always shows everything.
-        </p>
-      </div>
-
-      <section className="sm:card sm:p-6">
+    <>
+      <PageTitle
+        title="Notifications"
+        sub={
+          <>
+            How FloorTest emails you at <span className="text-bone">{user.email}</span>. The bell in the top bar always shows everything.
+          </>
+        }
+      />
+      <section className="rounded-xl border border-line bg-ink-2 p-5 sm:p-6">
         <NotificationsForm
           prefs={{
             mode: p.notify_submissions,
@@ -68,6 +70,6 @@ export default async function Notifications() {
           </ul>
         )}
       </section>
-    </div>
+    </>
   );
 }

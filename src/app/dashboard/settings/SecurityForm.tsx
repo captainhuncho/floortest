@@ -6,7 +6,7 @@ import { useActionForm } from "@/components/useActionForm";
 import { changePassword, signOutOtherDevices } from "../actions/security";
 import { PasswordStrength } from "@/components/PasswordStrength";
 
-export function SecurityForm({ otherSessions, context = [] }: { otherSessions: number; context?: string[] }) {
+export function SecurityForm({ otherSessions, context = [], twoFactor }: { otherSessions: number; context?: string[]; twoFactor: boolean }) {
   const [pw, setPw] = useState("");
   const [state, onSubmit, pending] = useActionForm(changePassword, undefined);
   const [others, setOthers] = useState(otherSessions);
@@ -34,8 +34,12 @@ export function SecurityForm({ otherSessions, context = [] }: { otherSessions: n
           <span className="label">Repeat new password</span>
           <input className="input" type="password" name="confirm" required minLength={8} autoComplete="new-password" />
         </label>
+        {twoFactor && <label className="block space-y-1.5">
+          <span className="label">Two-step code</span>
+          <input name="code" required inputMode="numeric" autoComplete="one-time-code" placeholder="6-digit or recovery code" className="input" />
+        </label>}
         <div className="flex items-center gap-3 sm:col-span-3">
-          <button className="btn-lime btn-sm" disabled={pending}>
+          <button className="btn-lime btn-sm min-h-11" disabled={pending}>
             {pending ? "Saving…" : "Change password"}
           </button>
           {state?.error && (

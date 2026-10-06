@@ -331,7 +331,7 @@ export async function revokeIdentity(userId: number, form: FormData) {
     audience: "receiver",
     to: u.email,
     subject: "Your FloorTest verification was removed",
-    body: `Hi ${u.name.split(/\s+/)[0]},\n\nWe've removed the Verified mark from your FloorTest page: ${note}\n\nYou can apply again from Settings: ${env.appUrl}/dashboard/settings#identity-h\n\nIf you think this is a mistake, reply to this email.\n\n— FloorTest`,
+    body: `Hi ${u.name.split(/\s+/)[0]},\n\nWe've removed the Verified mark from your FloorTest page: ${note}\n\nYou can apply again from Settings: ${env.appUrl}/dashboard/settings/profile#identity-h\n\nIf you think this is a mistake, reply to this email.\n\n— FloorTest`,
   });
   await logAdmin(a.id, "revoked verification", `@${u.handle}`, note);
   await done(`Removed @${u.handle}'s verification and emailed them`);
@@ -351,7 +351,7 @@ export async function rejectIdentity(userId: number, form: FormData) {
     audience: "receiver",
     to: u.email,
     subject: "About your FloorTest verification",
-    body: `Hi ${u.name.split(/\s+/)[0]},\n\nWe couldn't verify your profiles yet${note ? `: ${note}` : "."}\n\nYou can fix it and send it again from Settings: ${env.appUrl}/dashboard/settings#identity-h\n\n— FloorTest`,
+    body: `Hi ${u.name.split(/\s+/)[0]},\n\nWe couldn't verify your profiles yet${note ? `: ${note}` : "."}\n\nYou can fix it and send it again from Settings: ${env.appUrl}/dashboard/settings/profile#identity-h\n\n— FloorTest`,
   });
   await logAdmin(a.id, "rejected identity", `@${u.handle}`, note);
   await done(`Rejected @${u.handle}'s verification and emailed them`);

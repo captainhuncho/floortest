@@ -2,6 +2,7 @@
 
 /** Security: password, other devices, two-factor and sign-in alerts. */
 import { allow } from "@/lib/ratelimit";
+import { stepUp } from "@/lib/step-up";
 import { passwordStrength } from "@/lib/password-strength";
 import { currentSessionHash, hashPassword, requireUser, verifyPassword } from "@/lib/auth";
 import { sendMail } from "@/lib/mail";
@@ -19,8 +20,8 @@ export async function changePassword(_: SettingsState, form: FormData): Promise<
   if (!(await allow("password_change", String(u.id), 10, 3_600_000))) return { error: "Too many tries. Wait an hour and try again." };
   const current = String(form.get("current") || "");
   const next = String(form.get("password") || "");
-  const row = await q.get<{ password_hash: string }>("SELECT password_hash FROM users WHERE id = ?", u.id);
-  if (!row || !verifyPassword(current, row.password_hash)) return { error: "Your current password isn't right." };
+  const denied = await stepUp(u.id, current, String(form.get("code") || ""));
+  if (denied) return { error: denied };
   if (next === current) return { error: "Pick a password you haven't used here." };
   const strength = passwordStrength(next, [u.name, u.email, u.handle]);
   if (!strength.ok) return { error: strength.tip ?? "Choose a stronger password." };
