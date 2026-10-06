@@ -1,4 +1,6 @@
 import { CuePoint } from "@/components/CuePoint";
+import { ProfileLinks } from "@/components/ProfileLinks";
+import { readLinks } from "@/lib/socials";
 import Link from "next/link";
 import type { PlayerTrack } from "@/components/Player";
 import { deletesAt } from "@/lib/plans";
@@ -278,6 +280,14 @@ export async function ReviewPanel({
           )}
         </p>
         <p className="text-sm text-mute">{sender.email}</p>
+        {readLinks(sender.links).length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <ProfileLinks links={readLinks(sender.links)} size={18} />
+            <span className="chip border-line text-mute" title="Anyone can paste a profile link. FloorTest hasn't checked these belong to the sender.">
+              Links not verified
+            </span>
+          </div>
+        )}
         {senderAccount && (
           <p className="mt-1 text-sm">
             <span className="chip border-lime/40 text-lime">FloorTest user</span>{" "}

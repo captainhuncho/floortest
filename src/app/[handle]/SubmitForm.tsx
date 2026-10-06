@@ -298,6 +298,11 @@ export function SubmitForm({
           {!m && <span className={`block text-sm ${L.mute}`}>For your receipt and updates only.</span>}
         </label>
         {m && <p className={`col-span-2 -mt-1 text-[11px] ${L.mute}`}>For your receipt and updates only.</p>}
+        <label className={`block space-y-1.5 ${m ? "col-span-2" : ""}`}>
+          <span className={L.label}>Your Instagram or streaming profile (optional)</span>
+          <input className={L.input} name="sender_links" autoComplete="url" maxLength={600} placeholder="instagram.com/you, open.spotify.com/artist/…" />
+          <span className={`block text-[11px] ${L.mute}`}>Up to 3 links, separated by commas. Helps the receiver know who you are.</span>
+        </label>
           </>
         )}
       </div>

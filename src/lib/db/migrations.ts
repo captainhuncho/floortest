@@ -984,4 +984,11 @@ alter table users add column last_name text not null default '';
 alter table users add column links text not null default '[]';
 `,
   },
+  {
+    // Senders' own profile links (Instagram, Spotify…), remembered per receiver. Shown as "not verified".
+    id: "0058_sender_links",
+    sql: `
+alter table senders add column links text not null default '[]';
+`,
+  },
 ];

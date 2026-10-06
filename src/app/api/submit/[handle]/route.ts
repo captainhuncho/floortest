@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { parseLinks } from "@/lib/socials";
 import { currentUser } from "@/lib/auth";
 import { IntakeError, startUpload } from "@/lib/intake";
 import { userByHandle } from "@/lib/desk";
@@ -46,6 +47,9 @@ export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]
   if (!title) return bad("Add a track title.");
   if (!genre) return bad("Choose a genre.");
   if (!name) return bad("Add your name.");
+  const senderLinks = parseLinks(str("sender_links", 600).split(",").join("\n"));
+  if (senderLinks.error) return bad(`Profile link: ${senderLinks.error}`);
+  if (senderLinks.links.length > 3) return bad("Add up to 3 profile links.");
   if (!Object.hasOwn(AI_USE, str("ai_use", 20))) return bad("Say whether you used AI to make this track.");
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return bad("Enter a valid email so we can tell you what happens next.");
 
@@ -60,6 +64,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]
         message: str("message", 2000),
         releaseStatus: pick("release_status", RELEASE_STATUS),
         aiUse: pick("ai_use", AI_USE),
+        senderLinks: JSON.stringify(senderLinks.links),
         mixStatus: pick("mix_status", MIX_STATUS),
         genre,
         originalName: fileName,

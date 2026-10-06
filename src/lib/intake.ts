@@ -67,6 +67,8 @@ export type SubmissionMeta = {
   releaseStatus: string;
   /** The sender's AI declaration: none, partial or full. */
   aiUse: string;
+  /** Sender's profile links as JSON (already checked); "[]" keeps what they gave before. */
+  senderLinks?: string;
   mixStatus: string;
   genre: string;
   originalName: string;
@@ -156,8 +158,9 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
       if (!fresh) throw new IntakeError("Receiver not found", 404);
       await checkOpen(fresh, db);
       const sender = (await db.get<Sender>(
-        `INSERT INTO senders (user_id, email, name, created_at, verify_token, account_id, verified_at) VALUES (?,?,?,?,?,?,?)
+        `INSERT INTO senders (user_id, email, name, created_at, verify_token, account_id, verified_at, links) VALUES (?,?,?,?,?,?,?,?)
          ON CONFLICT (user_id, email) DO UPDATE SET name = excluded.name,
+           links = CASE WHEN excluded.links <> '[]' THEN excluded.links ELSE senders.links END,
            account_id = COALESCE(excluded.account_id, senders.account_id),
            verified_at = COALESCE(senders.verified_at, excluded.verified_at)
          RETURNING *`,
@@ -168,6 +171,7 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
         crypto.randomBytes(16).toString("base64url"),
         meta.accountId ?? null,
         meta.accountId && meta.accountVerified ? now() : null,
+        meta.senderLinks ?? "[]",
       ))!;
       const collection = await activeCollection(fresh, db);
       const track = (await db.get<Track>(

@@ -85,6 +85,8 @@ export type Sender = {
   verify_token: string | null;
   blocked_at: number | null;
   account_id: number | null;
+  /** Profile links the sender gave, JSON; read with readLinks(). Not verified. */
+  links: string;
 };
 export type Decision = "kept" | "passed";
 export const isDecision = (v: unknown): v is Decision => v === "kept" || v === "passed";
