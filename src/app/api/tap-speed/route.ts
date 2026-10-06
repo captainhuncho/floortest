@@ -13,7 +13,7 @@ function pageOf(path: string) {
   const parts = path.split("?")[0].split("/").filter(Boolean).slice(0, 4);
   if (parts.length === 1 && !RESERVED_HANDLES.has(parts[0].toLowerCase())) return "/:link";
   const out = parts.map((p, i) =>
-    /^\d+$/.test(p) ? ":id" : i > 0 && ["t", "s", "v", "receipt", "share", "confirm-sender", "sent", "reset", "verify-email", "unsubscribe"].includes(parts[i - 1]) ? ":token" : p.length > 40 ? ":token" : p,
+    /^\d+$/.test(p) ? ":id" : i > 0 && ["t", "s", "v", "receipt", "share", "sent", "reset", "verify-email", "unsubscribe"].includes(parts[i - 1]) ? ":token" : p.length > 40 ? ":token" : p,
   );
   return "/" + out.join("/");
 }

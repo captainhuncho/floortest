@@ -17,8 +17,8 @@ export const EMAILS = {
     label: "Delivered",
     to: "Sender, when their track arrives",
     subject: "Delivered: {artist} – {title}",
-    body: "Hi {sender},\n\n\"{title}\" was delivered to {receiver}{for_collection}.\nWe'll email you when it's listened to, when the original is downloaded, and if {receiver} replies.\n\nYour private receipt: {receipt_url}\nEverything you've sent, with what happened to each: {sent_url}\n{confirm_block}\n\n— FloorTest",
-    vars: { ...TRACK_VARS, artist: "Artist", for_collection: '" for <collection>" when sent to one, else empty', confirm_block: "Ask to confirm their email, only when not yet confirmed" },
+    body: "Hi {sender},\n\n\"{title}\" was delivered to {receiver}{for_collection}.\nWe'll email you when it's listened to, when the original is downloaded, and if {receiver} replies.\n\nYour private receipt: {receipt_url}\nEverything you've sent, with what happened to each: {sent_url}\n\n— FloorTest",
+    vars: { ...TRACK_VARS, artist: "Artist", for_collection: '" for <collection>" when sent to one, else empty' },
   },
   listened: {
     label: "Listened",
@@ -112,7 +112,6 @@ export const SAMPLE_VARS: Record<string, string> = {
   receipt_url: `${U}/receipt/example`,
   sent_url: `${U}/sent`,
   for_collection: " for Friday residency",
-  confirm_block: `\nConfirm this is your email so Maxwell sees you as a verified sender:\n${U}/confirm-sender/example`,
   note: " (opened the second hour)",
   first_name: "Maxwell",
   link: `${U}/maxwell`,

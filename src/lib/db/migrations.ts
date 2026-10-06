@@ -1038,4 +1038,21 @@ alter table tracks add column batch_id text;
 create index tracks_send_batch on tracks (user_id, batch_id) where batch_id is not null;
 `,
   },
+  {
+    // Senders without an account confirm their email with a 6-digit code before sending. Replaces the
+    // "confirm your email" link in receipts (and its token); saved receipt wording drops that block.
+    id: "0062_sender_codes",
+    sql: `
+create table sender_codes (
+  email text primary key,
+  code_hash text not null,
+  expires_at bigint not null,
+  attempts int not null default 0,
+  created_at bigint not null
+);
+alter table sender_codes enable row level security;
+alter table senders drop column verify_token;
+update site_content set draft = replace(draft, '{confirm_block}', ''), published = replace(published, '{confirm_block}', '') where page = 'email_delivered';
+`,
+  },
 ];

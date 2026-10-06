@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { Waveform } from "@/components/Waveform";
 import { fmtBytes, fmtTime } from "@/lib/format";
 import { MIX_STATUS } from "@/lib/plans";
+import { EmailCode, startEmailCheck } from "./EmailCode";
 import { GenrePicker } from "./GenrePicker";
 import { MAX_FILES, useTrackUpload, type Item } from "./useTrackUpload";
 
@@ -50,11 +51,14 @@ export function SubmitForm({
 }) {
   const L = LOOKS[lookName];
   const m = lookName === "mobile";
-  const { items, phase, error, sender, setSender, add, remove, edit, send, reset: resetUpload } = useTrackUpload(handle, { asAccount: !!account });
+  const { items, phase, error, setError, sender, setSender, add, remove, edit, send, reset: resetUpload } = useTrackUpload(handle, { asAccount: !!account });
   const [drag, setDrag] = useState(false);
   const [genre, setGenre] = useState("");
   const [mix, setMix] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  // Without an account: the form waiting while the sender types the emailed code.
+  const [waiting, setWaiting] = useState<{ email: string; fd: FormData } | null>(null);
+  const [checking, setChecking] = useState(false);
   const router = useRouter();
   const many = items.length > 1;
   const busy = phase === "uploading";
@@ -72,9 +76,18 @@ export function SubmitForm({
     setMix("");
   }
 
-  function submit(e: React.FormEvent<HTMLFormElement>) {
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    send(new FormData(e.currentTarget));
+    const fd = new FormData(e.currentTarget);
+    if (account) return send(fd);
+    const email = String(fd.get("email") ?? "").trim().toLowerCase();
+    if (!email) return send(fd); // the usual "add your email" message
+    setChecking(true);
+    const r = await startEmailCheck(email, String(fd.get("cf-turnstile-response") ?? ""));
+    setChecking(false);
+    if (r === null) return send(fd);
+    if (r === "code") return setWaiting({ email, fd });
+    setError(r);
   }
 
   const sentTitle = many ? `${items.length} tracks` : `“${items[0]?.tags.title}”`;
@@ -336,8 +349,21 @@ export function SubmitForm({
       </p>
 
       {!account && <Turnstile siteKey={botCheckKey} />}
-      <button className={`${L.btn} w-full py-3.5 ${m ? "text-[14px]" : "text-base"}`} disabled={busy || analyzing}>
-        {busy
+      {waiting ? (
+        <EmailCode
+          email={waiting.email}
+          onConfirmed={() => {
+            const fd = waiting.fd;
+            setWaiting(null);
+            send(fd);
+          }}
+          onCancel={() => setWaiting(null)}
+        />
+      ) : (
+      <button className={`${L.btn} w-full py-3.5 ${m ? "text-[14px]" : "text-base"}`} disabled={busy || analyzing || checking}>
+        {checking
+          ? "Checking your email…"
+          : busy
           ? `Uploading ${items.filter((it) => it.status === "done").length + 1} of ${items.length}…`
           : analyzing
             ? "Reading audio…"
@@ -345,6 +371,7 @@ export function SubmitForm({
               ? `Send ${items.length} tracks to ${receiverName}`
               : `Send to ${receiverName}`}
       </button>
+      )}
     </form>
   );
 }

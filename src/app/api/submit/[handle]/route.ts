@@ -7,7 +7,7 @@ import { q } from "@/lib/db";
 import { folderLimit } from "@/lib/plan-store";
 import { cleanGenre, MIX_STATUS, AI_USE, RELEASE_STATUS } from "@/lib/plans";
 import { ipFrom } from "@/lib/ratelimit";
-import { BOT_MESSAGE, passedTurnstile } from "@/lib/turnstile";
+import { confirmedEmail } from "@/lib/sender-code";
 
 export const runtime = "nodejs";
 
@@ -46,17 +46,13 @@ export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]
   if (body.release && !release) return bad("Something's wrong with this release. Please start again.");
   // EPs and albums go only to receivers whose plan accepts folders (Pro and Team); the size cap is checked at upload.
   if (release && !(await folderLimit(receiver.plan))) return bad(`${receiver.name} can receive up to 3 tracks at a time. Send the tracks one by one.`, 403);
-  // Up to 3 tracks sent together share a batch; like a release, later tracks join without a fresh bot check.
+  // Up to 3 tracks sent together share a batch (one send, 250 MB between them).
   const batch = !release && typeof body.batch === "string" && /^[A-Za-z0-9_-]{16,40}$/.test(body.batch) ? body.batch : null;
-  const joining = release
-    ? !!(await q.get("SELECT 1 FROM releases WHERE id = ? AND user_id = ?", release.id, receiver.id))
-    : batch
-      ? !!(await q.get("SELECT 1 FROM tracks WHERE user_id = ? AND batch_id = ?", receiver.id, batch))
-      : false;
-  if (!account && !joining && !(await passedTurnstile(body.turnstile, ipFrom(req.headers)))) return bad(BOT_MESSAGE, 403);
   if (account && account.id === receiver.id) return bad("That's your own link. Share it with others to receive music.");
   const name = account ? account.name : str("name", 100);
   const email = account ? account.email.toLowerCase() : str("email", 200).toLowerCase();
+  // Without an account, the email must be confirmed with a code first (which is also where the bot check happens).
+  if (!account && (await confirmedEmail()) !== email) return NextResponse.json({ error: "Confirm your email first.", needsCode: true }, { status: 401 });
   const title = str("title", 200);
   const genre = cleanGenre(String(body.genre ?? ""));
   const fileName = str("fileName", 255);
@@ -92,7 +88,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]
         trackNo: Number.isInteger(Number(body.track_no)) && Number(body.track_no) >= 1 && Number(body.track_no) <= 99 ? Number(body.track_no) : null,
         musicalKey: str("musical_key", 12),
         isrc: /^[A-Z]{2}[A-Z0-9]{3}\d{7}$/.test(str("isrc", 12).toUpperCase().replace(/-/g, "")) ? str("isrc", 12).toUpperCase().replace(/-/g, "") : "",
-        ...(account ? { accountId: account.id, accountVerified: !!account.email_verified_at } : {}),
+        ...(account ? { accountId: account.id, emailConfirmed: !!account.email_verified_at } : { emailConfirmed: true }),
       },
       size,
       ipFrom(req.headers),

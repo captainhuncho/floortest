@@ -7,6 +7,7 @@ import { MAX_RELEASE_TRACKS } from "@/lib/plans";
 import { readTags, type Tags } from "@/lib/tags";
 import { Turnstile } from "@/components/Turnstile";
 import { MAX_BYTES, uploadTrack } from "../../[handle]/useTrackUpload";
+import { EmailCode, startEmailCheck } from "../../[handle]/EmailCode";
 
 type Item = { file: File; tags: Tags; state: "waiting" | "sending" | "sent" | "failed"; progress: number; error?: string };
 type Kind = "ep" | "album";
@@ -55,7 +56,9 @@ export function FolderSend({
   botCheckKey?: string | null;
 }) {
   const [who, setWho] = useState({ name: "", email: "", links: "" });
-  const formRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [waiting, setWaiting] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [items, setItems] = useState<Item[]>([]);
   const [release, setRelease] = useState<{ title: string; artist: string; kind: Kind }>({ title: "", artist: "", kind: "ep" });
   const [genre, setGenre] = useState("");
@@ -102,8 +105,19 @@ export function FolderSend({
     if (!genre) return setError("Choose a genre.");
     if (!aiUse) return setError("Say whether you used AI to make these tracks.");
     if (!account && (!who.name.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(who.email))) return setError("Add your name and email.");
-    const turnstile = String((formRef.current?.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement | null)?.value ?? "");
     setError(null);
+    if (!account) {
+      setChecking(true);
+      const turnstile = String((formRef.current?.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement | null)?.value ?? "");
+      const r = await startEmailCheck(who.email, turnstile);
+      setChecking(false);
+      if (r === "code") return setWaiting(true);
+      if (r) return setError(r);
+    }
+    upload();
+  }
+
+  async function upload() {
     setRunning(true);
     for (const [i, it] of items.entries()) {
       if (it.state === "sent") continue;
@@ -122,7 +136,7 @@ export function FolderSend({
           mix_status: "",
           ai_use: aiUse,
           asAccount: !!account,
-          ...(account ? {} : { name: who.name.trim(), email: who.email.trim(), sender_links: who.links, turnstile }),
+          ...(account ? {} : { name: who.name.trim(), email: who.email.trim(), sender_links: who.links }),
           sets_ok: setsOk,
           release: { id, title: release.title.trim(), artist: release.artist.trim(), kind: release.kind },
           track_no: it.tags.trackNo ?? i + 1,
@@ -147,7 +161,14 @@ export function FolderSend({
     );
 
   return (
-    <div ref={formRef} className="space-y-4">
+    <form
+      ref={formRef}
+      className="space-y-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        sendAll();
+      }}
+    >
       <input ref={folderRef} type="file" className="hidden" onChange={(e) => choose(e.target.files)} {...{ webkitdirectory: "", directory: "" }} />
       <input ref={filesRef} type="file" multiple accept=".wav,.mp3,audio/wav,audio/mpeg" className="hidden" onChange={(e) => choose(e.target.files)} />
       {!items.length && (
@@ -294,11 +315,21 @@ export function FolderSend({
           <a href="/terms" target="_blank" className="underline underline-offset-4">Terms</a>
         </p>
       )}
-      {items.length > 0 && (
-        <button type="button" onClick={sendAll} disabled={running} className="btn-lime">
-          {running ? "Sending…" : items.some((i) => i.state === "failed") ? "Retry the failed tracks" : `Send folder (${items.length} tracks)`}
+      {waiting && (
+        <EmailCode
+          email={who.email.trim().toLowerCase()}
+          onConfirmed={() => {
+            setWaiting(false);
+            upload();
+          }}
+          onCancel={() => setWaiting(false)}
+        />
+      )}
+      {items.length > 0 && !waiting && (
+        <button type="submit" disabled={running || checking} className="btn-lime">
+          {checking ? "Checking your email…" : running ? "Sending…" : items.some((i) => i.state === "failed") ? "Retry the failed tracks" : `Send folder (${items.length} tracks)`}
         </button>
       )}
-    </div>
+    </form>
   );
 }

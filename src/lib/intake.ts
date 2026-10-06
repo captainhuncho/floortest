@@ -75,7 +75,8 @@ export type SubmissionMeta = {
   originalName: string;
   /** Set when a signed-in FloorTest user sends from their account (their email is already confirmed). */
   accountId?: number;
-  accountVerified?: boolean;
+  /** The email is proven: a code from this browser, or a signed-in account with a confirmed email. */
+  emailConfirmed?: boolean;
   /** Send folders: tracks uploaded together share this id. */
   /** Part of a release sent together; the first track's details create it. */
   release?: { id: string; title: string; artist: string; kind: "ep" | "album" };
@@ -187,10 +188,10 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
       if (!fresh) throw new IntakeError("Receiver not found", 404);
       await checkOpen(fresh, db);
       const sender = (await db.get<Sender>(
-        `INSERT INTO senders (user_id, email, name, created_at, verify_token, account_id, verified_at, links) VALUES (?,?,?,?,?,?,?,?)
-         ON CONFLICT (user_id, email) DO UPDATE SET name = excluded.name,
-           -- Anyone can type an email, so a public send only fills empty links; changing them takes the signed-in account.
-           links = CASE WHEN excluded.links <> '[]' AND (senders.links = '[]' OR excluded.account_id IS NOT NULL) THEN excluded.links ELSE senders.links END,
+        `INSERT INTO senders (user_id, email, name, created_at, account_id, verified_at, links) VALUES (?,?,?,?,?,?,?)
+         -- Name and links change only on a send whose email is proven.
+         ON CONFLICT (user_id, email) DO UPDATE SET name = CASE WHEN excluded.verified_at IS NOT NULL THEN excluded.name ELSE senders.name END,
+           links = CASE WHEN excluded.verified_at IS NOT NULL AND excluded.links <> '[]' THEN excluded.links ELSE senders.links END,
            account_id = COALESCE(excluded.account_id, senders.account_id),
            verified_at = COALESCE(senders.verified_at, excluded.verified_at)
          RETURNING *`,
@@ -198,9 +199,8 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
         meta.email,
         meta.name,
         now(),
-        crypto.randomBytes(16).toString("base64url"),
         meta.accountId ?? null,
-        meta.accountId && meta.accountVerified ? now() : null,
+        meta.emailConfirmed ? now() : null,
         meta.senderLinks ?? "[]",
       ))!;
       const collection = await activeCollection(fresh, db);
@@ -272,9 +272,6 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
   const { track, sender, collection } = result;
   // Everything the sender typed is shown without links: this email goes to whatever address they entered.
   const [sName, sTitle, sArtist] = [noLinks(sender.name), noLinks(track.title), noLinks(track.artist)];
-  const verify = sender.verified_at
-    ? []
-    : ["", `Confirm this is your email so ${receiver.name} sees you as a verified sender:`, `${APP_URL}/confirm-sender/${sender.verify_token}`];
   sendMailLater({
     userId: receiver.id,
     to: sender.email,
@@ -286,7 +283,6 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
       for_collection: collection ? ` for ${collection.name}` : "",
       receipt_url: `${APP_URL}/receipt/${track.token}`,
       sent_url: `${APP_URL}/sent`,
-      confirm_block: verify.join("\n"),
     })),
   });
   // The track is saved: everything else happens after the sender's response, and one failure can't block the others.
@@ -299,14 +295,6 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
     for (const r of results) if (r.status === "rejected") console.error("[intake] after-save step failed", r.reason);
   });
   return track;
-}
-
-export async function senderByVerifyToken(token: string) {
-  return q.get<Sender>("SELECT * FROM senders WHERE verify_token = ?", token);
-}
-
-export async function verifySender(token: string) {
-  return q.get<Sender>("UPDATE senders SET verified_at = COALESCE(verified_at, ?) WHERE verify_token = ? RETURNING *", now(), token);
 }
 
 /* ───────────────────────── Signals ───────────────────────── */

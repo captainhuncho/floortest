@@ -158,7 +158,7 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
     setPhase("uploading");
     const shared = {
       name: field("name"), email: field("email"), sender_links: field("sender_links"), message: field("message"), genre: field("genre"),
-      release_status: field("release_status"), ai_use: field("ai_use"), mix_status: field("mix_status"), turnstile: field("cf-turnstile-response"),
+      release_status: field("release_status"), ai_use: field("ai_use"), mix_status: field("mix_status"),
       sets_ok: fd.get("sets_ok") === "on", asAccount: !!opts.asAccount,
     };
     for (const it of items) {

@@ -82,7 +82,6 @@ export type Sender = {
   name: string;
   created_at: number;
   verified_at: number | null;
-  verify_token: string | null;
   blocked_at: number | null;
   account_id: number | null;
   /** Profile links the sender gave, JSON; read with readLinks(). Not verified. */
