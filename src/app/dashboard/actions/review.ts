@@ -214,3 +214,21 @@ export async function blockSender(senderId: number, blocked: boolean) {
   await audit(u.id, blocked ? "blocked" : "unblocked", s.name);
   done();
 }
+
+/** Keep or pass every track of a release still waiting for a decision, in one go. */
+export async function decideRelease(releaseId: string, decision: Decision) {
+  const u = await requireUser();
+  if (!isDecision(decision)) return;
+  const tracks = await q.all<{ id: number }>(
+    "SELECT id FROM tracks WHERE user_id = ? AND release_id = ? AND deleted_at IS NULL AND decision IS NULL",
+    u.id,
+    releaseId,
+  );
+  for (const { id } of tracks) {
+    const t = await ownedTrack(u.id, id);
+    if (t) await decide(u, t, decision);
+  }
+  await trackUse(u.id, "decide");
+  await audit(u.id, decision, `release · ${tracks.length} tracks`);
+  done();
+}

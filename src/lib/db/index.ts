@@ -132,7 +132,11 @@ export type Track = {
   /** Colleagues may download: the receiver was on a paid plan and allowed sharing when this was sent. */
   share_download: number;
   /** Set when the track was sent as part of a folder. */
-  batch_id: string | null;
+  /** Sent as part of a release (EP, album, bundle). */
+  release_id: string | null;
+  track_no: number | null;
+  musical_key: string;
+  isrc: string;
   sets_ok: number;
 };
 export type EventRow = {

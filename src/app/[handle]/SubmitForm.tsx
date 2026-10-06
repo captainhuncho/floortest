@@ -8,7 +8,7 @@ import { Waveform } from "@/components/Waveform";
 import { fmtBytes, fmtTime } from "@/lib/format";
 import { MIX_STATUS } from "@/lib/plans";
 import { GenrePicker } from "./GenrePicker";
-import { useTrackUpload } from "./useTrackUpload";
+import { MAX_FILES, useTrackUpload, type Item } from "./useTrackUpload";
 
 /** Class names per page style; the flow is identical. */
 const LOOKS = {
@@ -50,28 +50,24 @@ export function SubmitForm({
 }) {
   const L = LOOKS[lookName];
   const m = lookName === "mobile";
-  const { file, analysis, analyzing, phase, progress, error, token, sender, setSender, pick: pickFile, send, reset: resetUpload } =
-    useTrackUpload(handle, { asAccount: !!account });
+  const { items, phase, error, sender, setSender, add, remove, edit, send, reset: resetUpload } = useTrackUpload(handle, { asAccount: !!account });
   const [drag, setDrag] = useState(false);
-  const [track, setTrack] = useState({ title: "", artist: "" });
   const [genre, setGenre] = useState("");
   const [mix, setMix] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const many = items.length > 1;
+  const busy = phase === "uploading";
+  const analyzing = items.some((it) => it.analyzing);
+  const ordered = items;
 
-  // From the dashboard, refresh the page so the new track shows in your Sent list.
+  // From the dashboard, refresh the page so the new tracks show in your Sent list.
   useEffect(() => {
     if (account && phase === "done") router.refresh();
   }, [account, phase, router]);
 
-  async function pick(f: File | undefined) {
-    const tags = await pickFile(f);
-    if (tags) setTrack({ title: tags.title, artist: tags.artist });
-  }
-
   function reset() {
     resetUpload();
-    setTrack({ title: "", artist: "" });
     setGenre("");
     setMix("");
   }
@@ -81,66 +77,29 @@ export function SubmitForm({
     send(new FormData(e.currentTarget));
   }
 
-  if (phase === "done" && token && m) {
+  const sentTitle = many ? `${items.length} tracks` : `“${items[0]?.tags.title}”`;
+  const firstToken = ordered.find((it) => it.token)?.token;
+
+  if (phase === "done" && firstToken) {
     return (
-      <div className="flex flex-col gap-4 rounded-2xl border border-line bg-ink-2 p-5" role="status">
-        <span className="w-fit rounded-md border border-lime/20 bg-lime/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.5px] text-lime">
-          Delivered
-        </span>
-        <h2 className="text-[22px] font-bold leading-7">&ldquo;{track.title}&rdquo; is on {receiverName}&apos;s desk.</h2>
-        <p className="text-[12px] leading-[18px] text-mute">
-          We sent a receipt to {account?.email ?? sender.email}. You&apos;ll hear from us when it&apos;s listened to, downloaded or replied to.
+      <div className={m ? "flex flex-col gap-4 rounded-2xl border border-line bg-ink-2 p-5" : `${L.card} p-6`} role="status">
+        <span className={m ? "w-fit rounded-md border border-lime/20 bg-lime/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.5px] text-lime" : "chip w-fit border-lime/50 text-lime"}>Delivered</span>
+        <h2 className={m ? "text-[22px] font-bold leading-7" : "mt-4 text-2xl font-bold"}>{sentTitle} {many ? "are" : "is"} on {receiverName}&apos;s desk.</h2>
+        <p className={m ? "text-[12px] leading-[18px] text-mute" : `mt-2 ${L.mute}`}>
+          We sent {many ? "receipts" : "a receipt"} to {account?.email ?? sender.email}. You&apos;ll hear from us when {many ? "they're" : "it's"} listened to, downloaded or replied to.
         </p>
-        <hr className="border-line" />
-        <div className="flex gap-2.5">
-          <Link href={`/receipt/${token}`} className="flex flex-1 items-center justify-center rounded-[10px] bg-lime px-3.5 py-3 text-[12px] font-bold text-ink">
-            View receipt
+        <div className={m ? "flex gap-2.5" : "mt-6 flex flex-wrap gap-3"}>
+          <Link href={many ? "/sent" : `/receipt/${firstToken}`} className={m ? "flex flex-1 items-center justify-center rounded-[10px] bg-lime px-3.5 py-3 text-[12px] font-bold text-ink" : L.btn}>
+            {many ? "See your receipts" : "View receipt"}
           </Link>
-          <button
-            onClick={reset}
-            className="flex flex-1 items-center justify-center rounded-[10px] border border-line bg-ink px-3.5 py-3 text-[12px] font-bold"
-          >
-            Send another track
+          <button onClick={reset} className={m ? "flex flex-1 items-center justify-center rounded-[10px] border border-line bg-ink px-3.5 py-3 text-[12px] font-bold" : L.ghost}>
+            Send more
           </button>
         </div>
-        {!account && (
-          <a href="/sent" className="text-center text-[12px] font-medium text-mute underline underline-offset-4">
-            Track everything you&apos;ve sent, no account needed
-          </a>
-        )}
       </div>
     );
   }
 
-  if (phase === "done" && token) {
-    return (
-      <div className={`${L.card} p-6`} role="status">
-        <span className="chip border-lime/50 text-lime">Delivered</span>
-        <h2 className="mt-4 text-2xl font-bold">&ldquo;{track.title}&rdquo; is on {receiverName}&apos;s desk.</h2>
-        <p className={`mt-2 ${L.mute}`}>
-          We sent a receipt to {account?.email ?? sender.email}. You&apos;ll hear from us when it&apos;s listened to, downloaded or replied to.
-        </p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Link href={`/receipt/${token}`} className={L.btn}>
-            View receipt
-          </Link>
-          <button className={L.ghost} onClick={reset}>
-            Send another track
-          </button>
-        </div>
-        {!account && (
-          <p className={`mt-4 text-sm ${L.mute}`}>
-            <a href="/sent" className="underline underline-offset-4">
-              Track everything you&apos;ve sent
-            </a>
-            , no account needed.
-          </p>
-        )}
-      </div>
-    );
-  }
-
-  const busy = phase === "uploading";
   const dropProps = {
     onDragOver: (e: React.DragEvent) => {
       e.preventDefault();
@@ -150,7 +109,7 @@ export function SubmitForm({
     onDrop: (e: React.DragEvent) => {
       e.preventDefault();
       setDrag(false);
-      if (!busy) pick(e.dataTransfer.files[0]);
+      if (!busy) add(e.dataTransfer.files);
     },
   };
   const fileInput = (
@@ -158,12 +117,13 @@ export function SubmitForm({
       ref={inputRef}
       id="track-file"
       type="file"
-      aria-label="Choose a WAV or MP3 file"
+      multiple
+      aria-label="Choose WAV or MP3 files"
       tabIndex={-1}
       accept=".wav,.mp3,audio/wav,audio/mpeg"
       className="sr-only"
       onChange={(e) => {
-        pick(e.target.files?.[0]);
+        add(e.target.files);
         e.target.value = "";
       }}
     />
@@ -174,97 +134,71 @@ export function SubmitForm({
     </p>
   );
 
-  // Step 1: the only thing asked for is the file.
-  if (!file && m) {
+  // Step 1: the only thing asked for is the files.
+  if (!items.length) {
     return (
       <div className="space-y-4">
-        <div
-          {...dropProps}
-          className={`flex flex-col items-center gap-2 rounded-2xl border p-4 py-8 transition ${drag ? "border-lime bg-lime/5" : "border-line bg-ink-2"}`}
-        >
+        <div {...dropProps} className={m ? `flex flex-col items-center gap-2 rounded-2xl border p-4 py-8 transition ${drag ? "border-lime bg-lime/5" : "border-line bg-ink-2"}` : `${L.card} border-dashed p-8 text-center transition ${drag ? "border-lime bg-lime/5" : ""}`}>
           {fileInput}
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            className="rounded-full bg-lime px-[18px] py-3 text-[14px] font-bold uppercase text-ink"
-          >
+          <button type="button" onClick={() => inputRef.current?.click()} className={m ? "rounded-full bg-lime px-[18px] py-3 text-[14px] font-bold uppercase text-ink" : `${L.btn} px-6 py-3.5 text-base`}>
             Choose WAV or MP3
           </button>
-          <p className="text-center text-[11px] font-medium text-dim">or drag it here · up to 250 MB</p>
+          <p className={m ? "text-center text-[11px] font-medium text-dim" : `mt-3 text-sm ${L.mute}`}>or drag them here · up to {MAX_FILES} tracks · 250 MB each</p>
         </div>
         {errorBox}
       </div>
     );
   }
 
-  if (!file) {
-    return (
-      <div className="space-y-4">
-        <div {...dropProps} className={`${L.card} border-dashed p-8 text-center transition ${drag ? "border-lime bg-lime/5" : ""}`}>
-          {fileInput}
-          <button type="button" onClick={() => inputRef.current?.click()} className={`${L.btn} px-6 py-3.5 text-base`}>
-            Choose WAV or MP3
-          </button>
-          <p className={`mt-3 text-sm ${L.mute}`}>or drag it here · up to 250 MB</p>
-        </div>
-        {errorBox}
+  const row = (it: Item, i: number) => (
+    <li key={it.id} className={`${L.card} ${m ? "p-3" : "p-4"} space-y-2`}>
+      <div className="flex items-center gap-3">
+        {many && <span className={`w-5 shrink-0 text-right text-[12px] tnum ${L.mute}`}>{i + 1}</span>}
+        <p className={`min-w-0 flex-1 truncate text-[12px] ${L.mute}`}>
+          {it.file.name} · {/\.wav$/i.test(it.file.name) ? "WAV" : "MP3"} · {fmtBytes(it.file.size)}
+          {it.analysis && ` · ${fmtTime(it.analysis.duration)}`}
+          {(it.tags.bpm ?? it.analysis?.bpm) && ` · ${Math.round((it.tags.bpm ?? it.analysis?.bpm)!)} BPM`}
+          {it.tags.key && ` · ${it.tags.key}`}
+        </p>
+        {it.status === "done" ? (
+          <span className="text-[12px] text-lime">✓ Sent</span>
+        ) : it.status === "uploading" ? (
+          <span className="text-[12px] tnum">{Math.round(it.progress * 100)}%</span>
+        ) : (
+          !busy && (
+            <button type="button" onClick={() => remove(it.id)} className={`text-[12px] underline underline-offset-4 ${L.mute} hover:text-bone`} aria-label={`Remove ${it.file.name}`}>
+              Remove
+            </button>
+          )
+        )}
       </div>
-    );
-  }
+      {!many && <Waveform peaks={it.analysis?.peaks ?? null} progress={it.status === "uploading" ? it.progress : 0} height={48} dim={it.analyzing} />}
+      <div className={`grid gap-2 ${many ? "grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)]" : m ? "grid-cols-2 gap-3" : "sm:grid-cols-2 gap-4"}`}>
+        <label className="block space-y-1">
+          <span className={L.label}>Track title</span>
+          <input className={L.input} required value={it.tags.title} disabled={it.status === "done"} onChange={(e) => edit(it.id, { title: e.target.value })} />
+        </label>
+        <label className="block space-y-1">
+          <span className={L.label}>Artist</span>
+          <input className={L.input} placeholder="Defaults to your name" value={it.tags.artist} disabled={it.status === "done"} onChange={(e) => edit(it.id, { artist: e.target.value })} />
+        </label>
+      </div>
+      {it.error && <p className="text-[12px] text-danger">{it.error}</p>}
+    </li>
+  );
 
-  // Step 2: confirm what we read from the file, then the essentials.
+  // Step 2: confirm what we read from the files, then the essentials.
   return (
     <form onSubmit={submit} data-picked className="space-y-5" {...dropProps}>
       {fileInput}
-      <div className={`${L.card} ${m ? "p-4" : "p-5"}`}>
-        <div className="flex items-baseline justify-between gap-4">
-          <p className={`truncate ${m ? "text-[13px] font-bold" : "font-medium"}`}>{m && <span aria-hidden className="mr-2 text-lime">♫</span>}{file.name}</p>
-          {!busy && (
-            <button type="button" onClick={() => inputRef.current?.click()} className={`shrink-0 underline underline-offset-4 ${m ? "text-[11px] font-bold text-lime" : "text-sm text-bone"}`}>
-              Change file
-            </button>
-          )}
-        </div>
-        <div className="mt-4">
-          <Waveform peaks={analysis?.peaks ?? null} progress={busy ? progress : 0} height={48} dim={analyzing} />
-        </div>
-        <p className={`mt-3 flex flex-wrap gap-y-1 ${m ? `gap-x-2 border-t ${L.line} pt-3 text-[11px] font-bold [&>*:not(:first-child)]:before:mr-2 [&>*:not(:first-child)]:before:font-normal [&>*:not(:first-child)]:before:text-line-2 [&>*:not(:first-child)]:before:content-['|']` : "gap-x-4 text-sm"} ${L.mute} tnum`}>
-          <span>{/\.wav$/i.test(file.name) ? "WAV" : "MP3"}</span>
-          <span>{fmtBytes(file.size)}</span>
-          {analyzing ? (
-            <span>Reading audio…</span>
-          ) : analysis ? (
-            <>
-              <span>{fmtTime(analysis.duration)}</span>
-              {analysis.bpm && <span>~{Math.round(analysis.bpm)} BPM</span>}
-            </>
-          ) : (
-            <span>No preview in this browser. The upload still works.</span>
-          )}
-        </p>
-      </div>
+      <ol className="space-y-3">{ordered.map(row)}</ol>
+      {!busy && items.length < MAX_FILES && (
+        <button type="button" onClick={() => inputRef.current?.click()} className={`text-sm underline underline-offset-4 ${L.mute} hover:text-bone`}>
+          + Add another track
+        </button>
+      )}
 
       <div className={`grid gap-4 ${m ? "grid-cols-2 gap-3" : "sm:grid-cols-2"}`}>
-        <label className="block space-y-1.5">
-          <span className={L.label}>Track title</span>
-          <input
-            className={L.input}
-            name="title"
-            required
-            value={track.title}
-            onChange={(e) => setTrack((t) => ({ ...t, title: e.target.value }))}
-          />
-        </label>
-        <label className="block space-y-1.5">
-          <span className={L.label}>Artist</span>
-          <input
-            className={L.input}
-            name="artist"
-            placeholder="Defaults to your name"
-            value={track.artist}
-            onChange={(e) => setTrack((t) => ({ ...t, artist: e.target.value }))}
-          />
-        </label>
         {account ? (
           <p className={`${m ? "col-span-2 text-[11px]" : "sm:col-span-2 text-sm"} ${L.mute}`}>
             Sending as <span className="text-bone">{account.name}</span> ({account.email}). Updates go to your FloorTest account.
@@ -367,7 +301,7 @@ export function SubmitForm({
       </details>
 
       <fieldset className="space-y-2">
-        <legend className={`${L.label} mb-2`}>Did you use AI to make this track?</legend>
+        <legend className={`${L.label} mb-2`}>Did you use AI to make {many ? "these tracks" : "this track"}?</legend>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           {[
               ["none", "No"],
@@ -390,12 +324,12 @@ export function SubmitForm({
       <label className="flex items-start gap-2.5 text-[13px]">
         <input type="checkbox" name="sets_ok" className="mt-0.5 size-4 shrink-0 accent-lime" />
         <span>
-          Let {receiverName} play it in DJ sets, live and on broadcasts. <span className={L.mute}>Leave this off and it&apos;s for listening and feedback only.</span>
+          Let {receiverName} play {many ? "them" : "it"} in DJ sets, live and on broadcasts. <span className={L.mute}>Leave this off and {many ? "they're" : "it's"} for listening and feedback only.</span>
         </span>
       </label>
 
       <p className={`text-xs ${L.mute}`}>
-        By sending you confirm you own or control this track, your answer about AI is accurate, and you&apos;re 18 or over. {receiverName} may listen to it and download it to evaluate it
+        By sending you confirm you own or control {many ? "these tracks" : "this track"}, your answer about AI is accurate, and you&apos;re 18 or over. {receiverName} may listen to it and download it to evaluate it
         {allowSharing ? `, and share it with colleagues who have FloorTest accounts, through a private link, for promotion (${sharingDownloads ? "they can listen and download" : "listen only"})` : ""}. They can play it in sets only if you tick the box above, and can&apos;t release it anywhere without a signed agreement with you.{" "}
         <a href="/terms" target="_blank" className="underline underline-offset-4">Terms</a> ·{" "}
         <a href="/privacy" target="_blank" className="underline underline-offset-4">Privacy</a>
@@ -403,7 +337,13 @@ export function SubmitForm({
 
       {!account && <Turnstile siteKey={botCheckKey} />}
       <button className={`${L.btn} w-full py-3.5 ${m ? "text-[14px]" : "text-base"}`} disabled={busy || analyzing}>
-        {busy ? `Uploading… ${Math.round(progress * 100)}%` : analyzing ? "Reading audio…" : `Send to ${receiverName}`}
+        {busy
+          ? `Uploading ${items.filter((it) => it.status === "done").length + 1} of ${items.length}…`
+          : analyzing
+            ? "Reading audio…"
+            : many
+              ? `Send ${items.length} tracks to ${receiverName}`
+              : `Send to ${receiverName}`}
       </button>
     </form>
   );

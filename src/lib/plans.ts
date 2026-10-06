@@ -34,6 +34,9 @@ export function deletesAt(t: { decision: string | null; decided_at: number | nul
 /** Intake limits per receiving link. */
 export const RATE_PER_IP_PER_HOUR = 10;
 export const RATE_PER_EMAIL_PER_DAY = 5;
+/** Most tracks in one EP or album (Send folders). A release counts as one send against the daily limit. */
+export const MAX_RELEASE_TRACKS = 12;
+export const RELEASE_KINDS = { ep: "EP", album: "Album" } as const;
 
 /** Sender-declared context. Labels are shared by both public page styles and the review panel. */
 /** What the sender declared about AI when sending. */

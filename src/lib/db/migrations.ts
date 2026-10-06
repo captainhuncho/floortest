@@ -991,4 +991,32 @@ alter table users add column links text not null default '[]';
 alter table senders add column links text not null default '[]';
 `,
   },
+  {
+    // Releases: an EP or album sent as a folder, shown to the receiver as one release. Replaces folder batches (existing
+    // batches become releases). Plus details read from the files themselves (track number, key, ISRC).
+    id: "0059_releases",
+    sql: `
+create table releases (
+  id text primary key check (id ~ '^[A-Za-z0-9_-]{16,40}$'),
+  user_id bigint not null references users(id) on delete cascade,
+  sender_id bigint references senders(id) on delete set null,
+  title text not null default '',
+  artist text not null default '',
+  kind text not null default 'ep' check (kind in ('ep', 'album')),
+  created_at bigint not null
+);
+create index releases_user on releases (user_id, created_at desc);
+alter table releases enable row level security;
+insert into releases (id, user_id, sender_id, title, kind, created_at)
+  select batch_id, min(user_id), min(sender_id), 'Folder', 'ep', min(created_at) from tracks
+  where batch_id is not null and batch_id ~ '^[A-Za-z0-9_-]{16,40}$' group by batch_id;
+alter table tracks rename column batch_id to release_id;
+update tracks set release_id = null where release_id is not null and release_id not in (select id from releases);
+alter table tracks add constraint tracks_release_fk foreign key (release_id) references releases(id) on delete set null;
+create index tracks_release on tracks (release_id) where release_id is not null;
+alter table tracks add column track_no int check (track_no between 1 and 99);
+alter table tracks add column musical_key text not null default '';
+alter table tracks add column isrc text not null default '';
+`,
+  },
 ];

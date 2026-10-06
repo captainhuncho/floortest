@@ -31,8 +31,11 @@ export async function GET(req: Request) {
   const whole = !!collection && url.searchParams.get("all") === "1";
 
   const tracks = await q.all<Track>(
-    `SELECT * FROM tracks WHERE user_id = ? AND deleted_at IS NULL AND file_key IS NOT NULL ${whole ? "" : "AND decision = 'kept'"} ${collection ? "" : "AND set_cleared_at IS NULL"}
-     ${collection ? "AND collection_id = ?" : ""} ORDER BY ${whole ? "created_at" : "decided_at"}`,
+    // EPs and albums carry their release name, so the crate keeps them together in their own folder.
+    `SELECT tracks.*, CASE WHEN r.title <> '' THEN r.title END AS release_folder
+     FROM tracks LEFT JOIN releases r ON r.id = tracks.release_id
+     WHERE tracks.user_id = ? AND tracks.deleted_at IS NULL AND tracks.file_key IS NOT NULL ${whole ? "" : "AND tracks.decision = 'kept'"} ${collection ? "" : "AND tracks.set_cleared_at IS NULL"}
+     ${collection ? "AND tracks.collection_id = ?" : ""} ORDER BY ${whole ? "tracks.created_at" : "tracks.decided_at"}`,
     ...(collection ? [user.id, collection.id] : [user.id]),
   );
   if (!tracks.length) return new Response(whole ? "This collection is empty." : "Keep some tracks first.", { status: 400 });

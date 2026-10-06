@@ -6,9 +6,9 @@ import type { PlayerTrack } from "@/components/Player";
 import { deletesAt } from "@/lib/plans";
 import {q, type Collection, type EventRow, type Sender, type Track } from "@/lib/db";
 import { fmtBytes, fmtDate, fmtDay } from "@/lib/format";
-import { MIX_STATUS, AI_USE, RELEASE_STATUS } from "@/lib/plans";
+import { MIX_STATUS, AI_USE, RELEASE_KINDS, RELEASE_STATUS } from "@/lib/plans";
 import { featureOn } from "@/lib/features";
-import { addNote, deleteTrack, moveTrack, replyToSender } from "./actions/review";
+import { addNote, decideRelease, deleteTrack, moveTrack, replyToSender } from "./actions/review";
 import { ConfirmButton, NoteForm } from "./ClientBits";
 import { DecisionRail } from "./DecisionRail";
 import { PlayedOut } from "./PlayedOut";
@@ -57,6 +57,15 @@ export async function ReviewPanel({
   const senderAccount = sender.account_id
     ? await q.get<{ handle: string; identity_status: string }>("SELECT handle, identity_status FROM users WHERE id = ? AND suspended_at IS NULL", sender.account_id)
     : undefined;
+  const release = t.release_id
+    ? await q.get<{ id: string; title: string; artist: string; kind: string }>("SELECT id, title, artist, kind FROM releases WHERE id = ? AND user_id = ?", t.release_id, t.user_id)
+    : undefined;
+  const releaseTracks = release
+    ? await q.all<{ id: number; title: string; track_no: number | null; decision: string | null }>(
+        "SELECT id, title, track_no, decision FROM tracks WHERE release_id = ? AND user_id = ? AND deleted_at IS NULL ORDER BY COALESCE(track_no, 99), created_at",
+        release.id, t.user_id,
+      )
+    : [];
   const stats = (await q.get<{ sent: number; kept: number; downloaded: number }>(`SELECT COUNT(*) AS sent, COUNT(CASE WHEN decision = 'kept' THEN 1 END) AS kept, COUNT(downloaded_at) AS downloaded
        FROM tracks WHERE sender_id = ?`, sender.id))!;
   const player: PlayerTrack = {
@@ -115,7 +124,35 @@ export async function ReviewPanel({
       <p className={`mt-2 w-fit rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${t.sets_ok ? "border-lime/50 text-lime" : "border-line text-mute"}`}>
         {t.sets_ok ? "Cleared for DJ sets" : "Evaluation only: ask before playing it out"}
       </p>
-      {t.batch_id && <p className="mt-2 w-fit rounded-full border border-line px-2.5 py-0.5 text-[11px] font-bold text-mute">Sent as part of a folder</p>}
+      {release && (
+        <div className="mt-3 rounded-md border border-line p-3">
+          <p className="text-[11px] font-bold uppercase tracking-[0.5px] text-mute">
+            {`${RELEASE_KINDS[release.kind as keyof typeof RELEASE_KINDS] ?? "Release"} · ${releaseTracks.length} tracks`}
+          </p>
+          {<p className="mt-1 font-semibold">{release.title}{release.artist && <span className="font-normal text-mute"> · {release.artist}</span>}</p>}
+          <ol className="mt-2 space-y-0.5 text-sm">
+            {releaseTracks.map((r, i) => (
+              <li key={r.id} className={r.id === t.id ? "font-semibold text-bone" : "text-mute"}>
+                <Link href={`/dashboard/review?view=queue&s=all&t=${r.id}`} className="hover:text-bone">
+                  <span className="tnum mr-2">{r.track_no ?? i + 1}.</span>
+                  {r.title}
+                  {r.decision && <span className="ml-2 text-[11px]">{r.decision === "kept" ? "✓ kept" : "passed"}</span>}
+                </Link>
+              </li>
+            ))}
+          </ol>
+          {releaseTracks.some((r) => !r.decision) && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <form action={decideRelease.bind(null, release.id, "kept")}>
+                <button className="btn-ghost btn-sm">Keep all undecided</button>
+              </form>
+              <form action={decideRelease.bind(null, release.id, "passed")}>
+                <button className="btn-ghost btn-sm">Pass all undecided</button>
+              </form>
+            </div>
+          )}
+        </div>
+      )}
       {t.duplicate_of && (
         <p className="mt-2 text-sm text-danger">
           Possible duplicate of an earlier track.{" "}
@@ -127,6 +164,8 @@ export async function ReviewPanel({
       <p className="mt-1 text-mute">
         {t.artist}
         {t.genre && <span> · {t.genre}</span>}
+        {t.musical_key && <span> · {t.musical_key}</span>}
+        {t.isrc && <span title="ISRC"> · {t.isrc}</span>}
         {t.release_status && <span> · {RELEASE_STATUS[t.release_status as keyof typeof RELEASE_STATUS]}</span>}
         {t.ai_use && t.ai_use !== "none" && <span className="ml-1 rounded-full border border-line-2 px-1.5 py-px text-[10px] font-bold uppercase tracking-[0.5px]">{AI_USE[t.ai_use]}</span>}
         {t.mix_status && <span> · {MIX_STATUS[t.mix_status as keyof typeof MIX_STATUS]}</span>}

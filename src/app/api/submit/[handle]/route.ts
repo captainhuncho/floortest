@@ -3,6 +3,7 @@ import { parseLinks } from "@/lib/socials";
 import { currentUser } from "@/lib/auth";
 import { IntakeError, startUpload } from "@/lib/intake";
 import { userByHandle } from "@/lib/desk";
+import { q } from "@/lib/db";
 import { featureOn } from "@/lib/features";
 import { cleanGenre, MIX_STATUS, AI_USE, RELEASE_STATUS } from "@/lib/plans";
 import { ipFrom } from "@/lib/ratelimit";
@@ -31,11 +32,24 @@ export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]
   // Sending from a FloorTest account: name and email come from the account, not the form.
   const account = body.asAccount ? await currentUser() : null;
   if (body.asAccount && !account) return bad("Sign in again to send from your account.", 401);
-  if (!account && !(await passedTurnstile(body.turnstile, ipFrom(req.headers)))) return bad(BOT_MESSAGE, 403);
+  // Release: an EP or album sent as a folder (account senders only). Later tracks join the release its sender started.
+  const rel = body.release && typeof body.release === "object" ? (body.release as Record<string, unknown>) : null;
+  const release = rel && typeof rel.id === "string" && /^[A-Za-z0-9_-]{16,40}$/.test(rel.id)
+    ? {
+        id: rel.id,
+        title: String(rel.title ?? "").trim().slice(0, 200),
+        artist: String(rel.artist ?? "").trim().slice(0, 200),
+        kind: (String(rel.kind) === "album" ? "album" : "ep") as "ep" | "album",
+      }
+    : null;
+  if (body.release && !release) return bad("Something's wrong with this release. Please start again.");
+  // EPs and albums are Send folders: signed-in senders on a plan with the feature.
+  if (release && (!account || !(await featureOn("folders", account)))) return bad("Sending EPs and albums isn't available on your plan.", 403);
+  const joining = release
+    ? !!(await q.get("SELECT 1 FROM releases WHERE id = ? AND user_id = ?", release.id, receiver.id))
+    : false;
+  if (!account && !joining && !(await passedTurnstile(body.turnstile, ipFrom(req.headers)))) return bad(BOT_MESSAGE, 403);
   if (account && account.id === receiver.id) return bad("That's your own link. Share it with others to receive music.");
-  // Send folders: a signed-in sender on a plan with the feature, sending several files under one id.
-  const batch = typeof body.batch === "string" && /^[A-Za-z0-9_-]{16,40}$/.test(body.batch) ? body.batch : null;
-  if (body.batch && (!batch || !account || !(await featureOn("folders", account)))) return bad("Sending folders isn't available on your plan.", 403);
   const name = account ? account.name : str("name", 100);
   const email = account ? account.email.toLowerCase() : str("email", 200).toLowerCase();
   const title = str("title", 200);
@@ -69,7 +83,10 @@ export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]
         genre,
         originalName: fileName,
         setsOk: body.sets_ok === true,
-        ...(batch ? { batch } : {}),
+        ...(release ? { release } : {}),
+        trackNo: Number.isInteger(Number(body.track_no)) && Number(body.track_no) >= 1 && Number(body.track_no) <= 99 ? Number(body.track_no) : null,
+        musicalKey: str("musical_key", 12),
+        isrc: /^[A-Z]{2}[A-Z0-9]{3}\d{7}$/.test(str("isrc", 12).toUpperCase().replace(/-/g, "")) ? str("isrc", 12).toUpperCase().replace(/-/g, "") : "",
         ...(account ? { accountId: account.id, accountVerified: !!account.email_verified_at } : {}),
       },
       size,

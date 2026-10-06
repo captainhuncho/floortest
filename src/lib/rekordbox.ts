@@ -13,6 +13,13 @@ export function crateFileName(t: Track) {
   return `${safeName(`${t.artist} - ${t.title}`)} [${t.id}].${ext}`;
 }
 
+/** Where a track sits inside a crate: EPs and albums get their own folder, numbered in track order. */
+export function cratePath(t: Track & { release_folder?: string | null }) {
+  if (!t.release_folder) return crateFileName(t);
+  const no = t.track_no ? `${String(t.track_no).padStart(2, "0")} ` : "";
+  return `${safeName(t.release_folder)}/${no}${crateFileName(t)}`;
+}
+
 /**
  * Rekordbox collection XML. Rekordbox needs absolute file locations, so `baseDir`
  * is where the user will unzip the crate (e.g. /Users/me/Music/FloorTest).
@@ -20,7 +27,7 @@ export function crateFileName(t: Track) {
 export function rekordboxXml(crateName: string, baseDir: string, tracks: Track[]) {
   const dir = baseDir.replace(/\\/g, "/").replace(/\/+$/, "");
   const loc = (t: Track) => {
-    const full = `${dir}/${safeName(crateName)}/${crateFileName(t)}`;
+    const full = `${dir}/${safeName(crateName)}/${cratePath(t)}`;
     // Keep Windows drive letters (C:) literal; they need a leading slash after localhost.
     const encoded = full.split("/").map(encodeURIComponent).join("/").replace(/^([A-Za-z])%3A/, "$1:");
     return `file://localhost${encoded.startsWith("/") ? "" : "/"}${encoded}`;
@@ -64,7 +71,7 @@ function positionMarks(t: Track) {
 }
 
 export function m3u(tracks: Track[]) {
-  return ["#EXTM3U", ...tracks.flatMap((t) => [`#EXTINF:${Math.round(t.duration ?? -1)},${t.artist} - ${t.title}`, crateFileName(t)])].join("\n") + "\n";
+  return ["#EXTM3U", ...tracks.flatMap((t) => [`#EXTINF:${Math.round(t.duration ?? -1)},${t.artist} - ${t.title}`, cratePath(t)])].join("\n") + "\n";
 }
 
 export const textStream = (s: string) =>

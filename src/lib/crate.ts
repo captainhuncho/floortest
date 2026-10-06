@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { zipStream, type Entry } from "./zip";
 
 export { crateFileName, m3u, rekordboxXml, safeName } from "./rekordbox";
-import { crateFileName, m3u, rekordboxXml, safeName, textStream } from "./rekordbox";
+import { cratePath, m3u, rekordboxXml, safeName, textStream } from "./rekordbox";
 
 export function crateZip(
   crateName: string,
@@ -23,7 +23,7 @@ export function crateZip(
           { name: `${folder}/${folder}.m3u8`, open: async () => textStream(m3u(files)) },
         ]),
     ...files.map((t) => ({
-      name: `${folder}/${crateFileName(t)}`,
+      name: `${folder}/${cratePath(t)}`,
       open: async () => (await (await storage()).stream(t.file_key!)).body,
       onSent: onTrackSent && (() => onTrackSent(t)),
     })),

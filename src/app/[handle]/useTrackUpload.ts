@@ -9,14 +9,14 @@ const SENDER_KEY = "floortest.sender";
 
 export type Phase = "idle" | "uploading" | "done";
 
-type Fields = Record<string, string | boolean>;
+type Fields = Record<string, unknown>;
 const NET =
   "Network error. Your details are still here. Check your connection and try again.";
 
 /**
  * One track, three steps: ask the server for an upload URL (it checks the rules first), PUT the file
  * straight to storage with progress, then ask the server to verify it and create the track.
- * Shared by the single-track form and Send folders.
+ * Called once per file; several files sent together share a release.
  */
 export async function uploadTrack(
   handle: string,
@@ -82,119 +82,104 @@ export async function uploadTrack(
   }
 }
 
-/** File selection, in-browser analysis and upload. Shared by every public page style. */
-export function useTrackUpload(
-  handle: string,
-  opts: { asAccount?: boolean } = {},
-) {
-  const [file, setFile] = useState<File | null>(null);
-  const [analysis, setAnalysis] = useState<Analysis | null>(null);
-  const [analyzing, setAnalyzing] = useState(false);
+/** Separate tracks in one go on the send form. EPs and albums go through Send folders (paid). */
+export const MAX_FILES = 3;
+
+/** One chosen file: what we read from it (editable) and how its upload is going. */
+export type Item = {
+  id: string;
+  file: File;
+  analysis: Analysis | null;
+  analyzing: boolean;
+  tags: Tags;
+  status: "ready" | "uploading" | "done" | "error";
+  progress: number;
+  token?: string;
+  error?: string;
+};
+
+const newId = () => Array.from(crypto.getRandomValues(new Uint8Array(18)), (b) => "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"[b % 64]).join("");
+
+/** Chosen files, in-browser reading and analysis, and uploads. One file is a single; several are sent as a release. */
+export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {}) {
+  const [items, setItems] = useState<Item[]>([]);
   const [phase, setPhase] = useState<Phase>("idle");
-  const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [sender, setSender] = useState({ name: "", email: "" });
 
   // Name and email are captured once and remembered on this device.
   useEffect(() => {
     try {
       const s = JSON.parse(localStorage.getItem(SENDER_KEY) || "null");
-      if (s?.name || s?.email)
-        setSender({ name: s.name || "", email: s.email || "" });
+      if (s?.name || s?.email) setSender({ name: s.name || "", email: s.email || "" });
     } catch {}
   }, []);
 
-  /** Validates and analyses a file. Resolves with tags read from it (or its filename). */
-  async function pick(f: File | undefined): Promise<Tags | null> {
+  const patch = (id: string, p: Partial<Item>) => setItems((list) => list.map((it) => (it.id === id ? { ...it, ...p } : it)));
+
+  /** Adds files: checks each, then reads its details and analyses its audio in the background. */
+  function add(files: FileList | File[] | null | undefined) {
     setError(null);
-    if (!f) return null;
-    if (!/\.(wav|mp3)$/i.test(f.name)) {
-      setError("Only WAV and MP3 files are accepted.");
-      return null;
+    const chosen = Array.from(files ?? []);
+    if (!chosen.length) return;
+    const bad = chosen.find((f) => !/\.(wav|mp3)$/i.test(f.name));
+    if (bad) return setError(`"${bad.name}" isn't a WAV or MP3.`);
+    const big = chosen.find((f) => f.size > MAX_BYTES);
+    if (big) return setError(`"${big.name}" is over 250 MB.`);
+    const room = MAX_FILES - items.length;
+    if (chosen.length > room) return setError(`Up to ${MAX_FILES} tracks at a time.`);
+    const fresh: Item[] = chosen.map((file) => ({
+      id: newId(), file, analysis: null, analyzing: true, status: "ready", progress: 0,
+      tags: { title: file.name.replace(/\.(wav|mp3)$/i, ""), artist: "", album: "", trackNo: null, bpm: null, key: "", isrc: "" },
+    }));
+    setItems((list) => [...list, ...fresh]);
+    for (const it of fresh) {
+      readTags(it.file).then((tags) => patch(it.id, { tags }));
+      analyzeAudio(it.file).then((analysis) => patch(it.id, { analysis, analyzing: false }), () => patch(it.id, { analyzing: false }));
     }
-    if (f.size > MAX_BYTES) {
-      setError("That file is over 250 MB.");
-      return null;
-    }
-    setFile(f);
-    setAnalysis(null);
-    setAnalyzing(true);
-    const tags = await readTags(f);
-    setAnalysis(await analyzeAudio(f));
-    setAnalyzing(false);
-    return tags;
   }
 
-  /**
-   * Three steps: ask the server for an upload URL (it checks the rules first), PUT the file
-   * straight to storage with progress, then ask the server to verify it and create the track.
-   */
+  const remove = (id: string) => setItems((list) => list.filter((it) => it.id !== id));
+  const edit = (id: string, t: Partial<Tags>) => setItems((list) => list.map((it) => (it.id === id ? { ...it, tags: { ...it.tags, ...t } } : it)));
+
+  /** Sends every file not yet sent, one after another, each as its own track. */
   async function send(fd: FormData) {
-    if (!file) return setError("Choose a WAV or MP3 file.");
+    if (!items.length) return setError("Choose a WAV or MP3 file.");
     const field = (k: string) => String(fd.get(k) ?? "");
     try {
-      if (!opts.asAccount)
-        localStorage.setItem(
-          SENDER_KEY,
-          JSON.stringify({ name: field("name"), email: field("email") }),
-        );
+      if (!opts.asAccount) localStorage.setItem(SENDER_KEY, JSON.stringify({ name: field("name"), email: field("email") }));
     } catch {}
     setError(null);
     setPhase("uploading");
-    setProgress(0);
-    const fail = (msg: string) => {
-      setError(msg);
-      setPhase("idle");
+    const shared = {
+      name: field("name"), email: field("email"), sender_links: field("sender_links"), message: field("message"), genre: field("genre"),
+      release_status: field("release_status"), ai_use: field("ai_use"), mix_status: field("mix_status"), turnstile: field("cf-turnstile-response"),
+      sets_ok: fd.get("sets_ok") === "on", asAccount: !!opts.asAccount,
     };
-    const r = await uploadTrack(
-      handle,
-      file,
-      analysis,
-      {
-        name: field("name"),
-        email: field("email"),
-        sender_links: field("sender_links"),
-        title: field("title"),
-        artist: field("artist"),
-        message: field("message"),
-        genre: field("genre"),
-        release_status: field("release_status"),
-        ai_use: field("ai_use"),
-        mix_status: field("mix_status"),
-        turnstile: field("cf-turnstile-response"),
-        sets_ok: fd.get("sets_ok") === "on",
-        asAccount: !!opts.asAccount,
-      },
-      setProgress,
-    );
-    if ("error" in r) return fail(r.error);
-    setProgress(1);
-    setToken(r.token);
+    for (const it of items) {
+      if (it.status === "done") continue;
+      patch(it.id, { status: "uploading", progress: 0, error: undefined });
+      const r = await uploadTrack(
+        handle, it.file, it.analysis,
+        { ...shared, title: it.tags.title, artist: it.tags.artist, musical_key: it.tags.key, isrc: it.tags.isrc },
+        (p) => patch(it.id, { progress: p }),
+      );
+      if ("error" in r) {
+        patch(it.id, { status: "error", error: r.error });
+        setError(`${it.tags.title || it.file.name}: ${r.error}`);
+        setPhase("idle");
+        return;
+      }
+      patch(it.id, { status: "done", progress: 1, token: r.token });
+    }
     setPhase("done");
   }
 
   function reset() {
-    setFile(null);
-    setAnalysis(null);
-    setToken(null);
+    setItems([]);
     setPhase("idle");
     setError(null);
   }
 
-  return {
-    file,
-    analysis,
-    analyzing,
-    phase,
-    progress,
-    error,
-    setError,
-    token,
-    sender,
-    setSender,
-    pick,
-    send,
-    reset,
-  };
+  return { items, phase, error, setError, sender, setSender, add, remove, edit, send, reset };
 }

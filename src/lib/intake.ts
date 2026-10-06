@@ -7,7 +7,7 @@ import crypto from "node:crypto";
 import { logEvent, now, q, USER_COLUMNS, type Collection, type Queryable, type Sender, type Track, type User } from "./db";
 import { noLinks, APP_URL, sendMailLater } from "./mail";
 import { alertIfFull, notifyNewSubmission } from "./notify";
-import { ACCEPTED_EXT, MAX_UPLOAD_BYTES, RATE_PER_EMAIL_PER_DAY, RATE_PER_IP_PER_HOUR } from "./plans";
+import { ACCEPTED_EXT, MAX_RELEASE_TRACKS, MAX_UPLOAD_BYTES, RATE_PER_EMAIL_PER_DAY, RATE_PER_IP_PER_HOUR } from "./plans";
 import { shareDownloadEnabled } from "./plan-store";
 import { allow } from "./ratelimit";
 import { sealUpload, storage } from "./storage";
@@ -46,12 +46,13 @@ export async function platformBlocked(email: string) {
 }
 
 /** Every rule a submission must pass before we hand out an upload URL. */
-export async function checkIntake(receiver: User, email: string, ip: string) {
+export async function checkIntake(receiver: User, email: string, ip: string, countsAsSend = true) {
   await checkOpen(receiver);
   if (await platformBlocked(email)) throw new IntakeError("This address can't send tracks on FloorTest.", 403);
   if (await q.get("SELECT 1 FROM senders WHERE user_id = ? AND email = ? AND blocked_at IS NOT NULL", receiver.id, email))
     throw new IntakeError(`${receiver.name} isn't accepting tracks from this address.`, 403);
-  // Each attempt takes a slot (even if the upload is later abandoned), counted race-safely.
+  // Each attempt takes a slot (even if the upload is later abandoned), counted race-safely. Later tracks of a release don't.
+  if (!countsAsSend) return;
   if (!(await allow("upload_ip", `${receiver.id}:${ip}`, RATE_PER_IP_PER_HOUR, HOUR)))
     throw new IntakeError("Too many uploads from this connection. Try again in an hour.", 429);
   if (!(await allow("upload_email", `${receiver.id}:${email}`, RATE_PER_EMAIL_PER_DAY, DAY)))
@@ -76,7 +77,11 @@ export type SubmissionMeta = {
   accountId?: number;
   accountVerified?: boolean;
   /** Send folders: tracks uploaded together share this id. */
-  batch?: string;
+  /** Part of a release sent together; the first track's details create it. */
+  release?: { id: string; title: string; artist: string; kind: "ep" | "album" };
+  trackNo?: number | null;
+  musicalKey?: string;
+  isrc?: string;
   /** The sender lets the receiver play the track in DJ sets, live and on broadcasts. */
   setsOk?: boolean;
 };
@@ -90,13 +95,19 @@ export async function startUpload(receiver: User, meta: SubmissionMeta, size: nu
   if (!ext || !ACCEPTED_EXT.includes(ext)) throw new IntakeError("Only WAV and MP3 files are accepted.", 400);
   if (!Number.isSafeInteger(size) || size <= 0) throw new IntakeError("Choose a WAV or MP3 file.", 400);
   if (size > MAX_UPLOAD_BYTES) throw new IntakeError("File is too large (max 250 MB).", 413);
-  if (meta.batch) {
-    // A folder is capped at MAX_UPLOAD_BYTES in total: what's already sent in it plus what's still uploading.
-    const sent = Number((await q.get<{ n: string | number }>("SELECT COALESCE(SUM(size), 0) AS n FROM tracks WHERE user_id = ? AND batch_id = ?", receiver.id, meta.batch))?.n ?? 0);
-    const pending = Number((await q.get<{ n: string | number }>("SELECT COALESCE(SUM(size), 0) AS n FROM uploads WHERE receiver_id = ? AND meta::jsonb->>'batch' = ?", receiver.id, meta.batch))?.n ?? 0);
-    if (sent + pending + size > MAX_UPLOAD_BYTES) throw new IntakeError("This folder is over 250 MB in total.", 413);
+  // A release counts as one send: only its first track takes a rate-limit slot, and it holds at most MAX_RELEASE_TRACKS.
+  let firstOfRelease = true;
+  if (meta.release) {
+    const inRelease =
+      Number((await q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM tracks WHERE user_id = ? AND release_id = ?", receiver.id, meta.release.id))?.n ?? 0) +
+      Number((await q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM uploads WHERE receiver_id = ? AND meta::jsonb->'release'->>'id' = ?", receiver.id, meta.release.id))?.n ?? 0);
+    // Only the sender who started a release can add to it.
+    const owner = await q.get<{ email: string }>("SELECT s.email FROM releases r JOIN senders s ON s.id = r.sender_id WHERE r.id = ? AND r.user_id = ?", meta.release.id, receiver.id);
+    if (owner && owner.email !== meta.email) throw new IntakeError("That release belongs to someone else.", 403);
+    if (inRelease >= MAX_RELEASE_TRACKS) throw new IntakeError(`A release can have up to ${MAX_RELEASE_TRACKS} tracks.`, 413);
+    firstOfRelease = inRelease === 0;
   }
-  await checkIntake(receiver, meta.email, ip);
+  await checkIntake(receiver, meta.email, ip, firstOfRelease);
 
   const id = crypto.randomBytes(24).toString("base64url");
   const key = `audio/${receiver.id}/${crypto.randomUUID()}${ext}`;
@@ -174,10 +185,15 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
         meta.senderLinks ?? "[]",
       ))!;
       const collection = await activeCollection(fresh, db);
+      if (meta.release)
+        await db.run(
+          "INSERT INTO releases (id, user_id, sender_id, title, artist, kind, created_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT (id) DO NOTHING",
+          meta.release.id, fresh.id, sender.id, meta.release.title, meta.release.artist, meta.release.kind, now(),
+        );
       const track = (await db.get<Track>(
         `INSERT INTO tracks (user_id, collection_id, sender_id, token, title, artist, message, release_status, mix_status, genre,
-                             file_key, original_name, mime, size, duration, bpm, peaks, created_at, share_ok, share_download, batch_id, sets_ok, ai_use)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING *`,
+                             file_key, original_name, mime, size, duration, bpm, peaks, created_at, share_ok, share_download, release_id, sets_ok, ai_use, track_no, musical_key, isrc)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING *`,
         fresh.id,
         collection?.id ?? null,
         sender.id,
@@ -198,9 +214,12 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
         now(),
         sharing && collection?.allow_sharing ? 1 : 0,
         sharing && collection?.allow_sharing && (await shareDownloadEnabled(fresh.plan, db)) ? 1 : 0,
-        meta.batch ?? null,
+        meta.release?.id ?? null,
         meta.setsOk ? 1 : 0,
         meta.aiUse,
+        meta.trackNo ?? null,
+        meta.musicalKey ?? "",
+        meta.isrc ?? "",
       ))!;
       // Possible duplicate: the same file (byte size and length) already on this desk, or the same
       // sender re-sending the same title. Flagged for the receiver, never blocked.
