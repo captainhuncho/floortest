@@ -946,4 +946,26 @@ create index account_notes_user on account_notes (user_id, created_at desc);
 alter table account_notes enable row level security;
 `,
   },
+  {
+    // Marketing consent, kept apart from product news, with when each was given (proof of consent).
+    // Newsletter sign-ups from people without an account, confirmed by email (double opt-in).
+    id: "0055_marketing_consent",
+    sql: `
+alter table users add column notify_marketing int not null default 0 check (notify_marketing in (0, 1));
+alter table users add column product_consent_at bigint;
+alter table users add column marketing_consent_at bigint;
+update users set product_consent_at = created_at where notify_product = 1;
+create table newsletter_subscribers (
+  id bigint generated always as identity primary key,
+  email text not null unique,
+  token text not null unique,
+  marketing int not null default 0 check (marketing in (0, 1)),
+  source text not null default '',
+  created_at bigint not null,
+  confirmed_at bigint,
+  unsubscribed_at bigint
+);
+alter table newsletter_subscribers enable row level security;
+`,
+  },
 ];

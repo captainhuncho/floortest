@@ -84,6 +84,7 @@ export default function Privacy() {
           "Emails",
           [
             "We email senders about their tracks (delivered, listened, downloaded, replied, played out) and receivers about new tracks, reminders about tracks left unheard for two weeks, and account alerts, according to their settings. We keep a copy of each email for 90 days so receivers can see what was sent on their behalf. We don't send marketing without your agreement.",
+            "Newsletter and offers are two separate choices, both off unless you tick them: the newsletter (product news and tips, about once a month) and offers and promotions from FloorTest. We record when you agreed. You can sign up for the newsletter without an account; we email you a link to confirm first and send nothing else until you click it. Every newsletter or offer email has a one-click unsubscribe link, and you can change both choices any time in Notifications. We never sell or share these lists.",
           ],
         ],
         [

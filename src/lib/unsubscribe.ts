@@ -7,7 +7,8 @@ import { env } from "./env";
 export const UNSUB_KINDS = {
   submissions: { label: "new-track emails and digests", sql: "UPDATE users SET notify_submissions = 'off' WHERE id = ?" },
   alerts: { label: "reminders and desk alerts", sql: "UPDATE users SET notify_alerts = 0 WHERE id = ?" },
-  product: { label: "product news", sql: "UPDATE users SET notify_product = 0 WHERE id = ?" },
+  product: { label: "the newsletter", sql: "UPDATE users SET notify_product = 0, product_consent_at = NULL WHERE id = ?" },
+  marketing: { label: "offers and promotions", sql: "UPDATE users SET notify_marketing = 0, marketing_consent_at = NULL WHERE id = ?" },
 } as const;
 export type UnsubKind = keyof typeof UNSUB_KINDS;
 

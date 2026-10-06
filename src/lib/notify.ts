@@ -15,6 +15,7 @@ export type NotifyPrefs = {
   quiet_end: number | null;
   notify_alerts: number;
   notify_product: number;
+  notify_marketing: number;
   tz: string;
   last_digest_at: number | null;
   alert_full_sent_at: number | null;
@@ -22,7 +23,7 @@ export type NotifyPrefs = {
 
 export async function prefsFor(userId: number) {
   return (await q.get<NotifyPrefs>(
-    `SELECT id, email, name, notify_submissions, digest_hour, quiet_start, quiet_end, notify_alerts, notify_product, tz, last_digest_at, alert_full_sent_at
+    `SELECT id, email, name, notify_submissions, digest_hour, quiet_start, quiet_end, notify_alerts, notify_product, notify_marketing, tz, last_digest_at, alert_full_sent_at
      FROM users WHERE id = ?`,
     userId,
   ))!;

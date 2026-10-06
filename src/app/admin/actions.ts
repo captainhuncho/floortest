@@ -1,6 +1,7 @@
 "use server";
 
 import crypto from "node:crypto";
+import { newsletterFooter } from "@/lib/newsletter";
 import { EMAILS, emailKey, emailTemplate, emailText, fillEmail, SAMPLE_VARS, type EmailId } from "@/lib/email-copy";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
@@ -515,7 +516,10 @@ export async function publishAnnouncement(form: FormData) {
   const body = String(form.get("body") || "").trim().slice(0, 600);
   const href = String(form.get("href") || "").trim().slice(0, 200);
   const aud = readAudience((k) => form.get(k));
-  const email = form.get("email") === "on";
+  const list = form.get("list") === "marketing" ? "marketing" : form.get("list") === "product" ? "product" : null;
+  const email = !!list;
+  const consent = list === "marketing" ? "u.notify_marketing = 1" : "u.notify_product = 1";
+  const outside = email && form.get("subscribers") === "on";
   // Links must stay on FloorTest: "/path" only, never "//host" or "/\host" (which browsers treat as another site).
   if (!title || (href && (!href.startsWith("/") || href.startsWith("//") || href.includes("\\")))) return fail("Needs a title, and links must start with /");
   const plans = await allPlans();
@@ -528,25 +532,34 @@ export async function publishAnnouncement(form: FormData) {
   await q.run(`INSERT INTO announcement_recipients (announcement_id, user_id) SELECT ?, u.id FROM users u WHERE ${w.sql}`, id, ...w.args);
   const people = email
     ? await q.all<{ id: number; email: string }>(
-        `SELECT u.id, u.email FROM users u WHERE ${w.sql} AND u.notify_product = 1 AND u.email_verified_at IS NOT NULL LIMIT 5000`,
+        `SELECT u.id, u.email FROM users u WHERE ${w.sql} AND ${consent} AND u.email_verified_at IS NOT NULL LIMIT 5000`,
         ...w.args,
       )
     : [];
-  await logAdmin(a.id, "published announcement", title, `${label}${email ? ` · emailed ${people.length}` : ""}`);
-  if (people.length)
+  // People without an account who confirmed the newsletter (and, for offers, opted into those too).
+  const subscribers = outside
+    ? await q.all<{ email: string; token: string }>(
+        `SELECT s.email, s.token FROM newsletter_subscribers s WHERE s.confirmed_at IS NOT NULL AND s.unsubscribed_at IS NULL ${list === "marketing" ? "AND s.marketing = 1" : ""}
+           AND NOT EXISTS (SELECT 1 FROM users u WHERE lower(u.email) = s.email) LIMIT 5000`,
+      )
+    : [];
+  await logAdmin(a.id, "published announcement", title, `${label}${email ? ` · ${list} email to ${people.length} accounts${outside ? ` + ${subscribers.length} subscribers` : ""}` : ""}`);
+  if (people.length || subscribers.length)
     after(async () => {
       for (const p of people)
         await sendMail({
-      unsubscribe: "product",
+      unsubscribe: list === "marketing" ? "marketing" : "product",
           userId: p.id,
           audience: "receiver",
           to: p.email,
           subject: title,
-          body: [body, "", href ? `${env.appUrl}${href}` : env.appUrl, "", "You get these because product news is on in your notification settings.", "FloorTest"].join("\n"),
+          body: [body, "", href ? `${env.appUrl}${href}` : env.appUrl, "", list === "marketing" ? "You get these because offers and promotions are on in your notification settings." : "You get these because the newsletter is on in your notification settings.", "FloorTest"].join("\n"),
         }).catch(() => {});
+      for (const sub of subscribers)
+        await sendMail({ userId: null, audience: "support", to: sub.email, subject: title, body: [body, "", href ? `${env.appUrl}${href}` : env.appUrl, "", newsletterFooter(sub.token)].join("\n") }).catch(() => {});
     });
   refresh();
-  await done(people.length ? `Published; emailing ${people.length} people` : "Published");
+  await done(people.length + subscribers.length ? `Published; emailing ${people.length + subscribers.length} people` : "Published");
   redirect("/admin/announcements?published=1");
 }
 

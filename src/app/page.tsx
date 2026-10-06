@@ -11,6 +11,7 @@ import { mono, serif } from "./fonts";
 import { HomePreview } from "./HomePreview";
 import { ClaimBox } from "./ClaimBox";
 import { WaitlistForm } from "./WaitlistForm";
+import { NewsletterForm } from "./NewsletterForm";
 import { RememberSource } from "@/components/SourceField";
 
 /** The one address search engines should use for the home page. */
@@ -348,6 +349,10 @@ export default async function Home({
         <div className="flex flex-col gap-3 border-t border-line pt-10 sm:flex-row sm:items-center sm:justify-between">
           <Logo />
           <p className="max-w-xs">{c.footer_line}</p>
+        </div>
+        <div className="mt-8 max-w-md">
+          <p className="mb-3 text-sm font-bold text-bone">Get the FloorTest newsletter</p>
+          <NewsletterForm />
         </div>
         <nav aria-label="Footer" className="mt-8 grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
           {footerGroups().map((g) => (

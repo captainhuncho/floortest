@@ -68,7 +68,8 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
               </>
             ),
           },
-          { name: "updates", label: "Email me occasional product news. Optional, and you can turn it off any time." },
+          { name: "updates", label: "Send me the FloorTest newsletter: product news and tips. Optional." },
+          { name: "offers", label: "Send me offers and promotions from FloorTest. Optional, and you can turn either off any time." },
         ]}
       />
     </>

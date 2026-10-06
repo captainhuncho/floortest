@@ -36,6 +36,7 @@ export default async function Notifications() {
             quietEnd: p.quiet_end,
             alerts: !!p.notify_alerts,
             product: !!p.notify_product,
+            marketing: !!p.notify_marketing,
             tz: p.tz,
           }}
           pending={pending}
