@@ -189,7 +189,8 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
       const sender = (await db.get<Sender>(
         `INSERT INTO senders (user_id, email, name, created_at, verify_token, account_id, verified_at, links) VALUES (?,?,?,?,?,?,?,?)
          ON CONFLICT (user_id, email) DO UPDATE SET name = excluded.name,
-           links = CASE WHEN excluded.links <> '[]' THEN excluded.links ELSE senders.links END,
+           -- Anyone can type an email, so a public send only fills empty links; changing them takes the signed-in account.
+           links = CASE WHEN excluded.links <> '[]' AND (senders.links = '[]' OR excluded.account_id IS NOT NULL) THEN excluded.links ELSE senders.links END,
            account_id = COALESCE(excluded.account_id, senders.account_id),
            verified_at = COALESCE(senders.verified_at, excluded.verified_at)
          RETURNING *`,
