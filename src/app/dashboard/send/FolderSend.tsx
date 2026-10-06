@@ -12,6 +12,24 @@ type Item = { file: File; tags: Tags; state: "waiting" | "sending" | "sent" | "f
 type Kind = "ep" | "album";
 
 const audio = (f: File) => /\.(wav|mp3)$/i.test(f.name);
+/** Files inside a dropped folder (or loose dropped files), read through the browser's entry API. */
+async function droppedFiles(dt: DataTransfer): Promise<File[]> {
+  const entries = [...dt.items].map((i) => i.webkitGetAsEntry?.()).filter((e): e is FileSystemEntry => !!e);
+  if (!entries.length) return [...dt.files];
+  const walk = async (e: FileSystemEntry): Promise<File[]> => {
+    if (e.isFile) return [await new Promise<File>((res, rej) => (e as FileSystemFileEntry).file(res, rej))];
+    const reader = (e as FileSystemDirectoryEntry).createReader();
+    const all: FileSystemEntry[] = [];
+    for (;;) {
+      const batch = await new Promise<FileSystemEntry[]>((res, rej) => reader.readEntries(res, rej));
+      if (!batch.length) break;
+      all.push(...batch);
+    }
+    return (await Promise.all(all.map(walk))).flat();
+  };
+  return (await Promise.all(entries.map(walk))).flat();
+}
+
 const releaseId = () => Array.from(crypto.getRandomValues(new Uint8Array(18)), (b) => "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"[b % 64]).join("");
 
 /**
@@ -52,7 +70,9 @@ export function FolderSend({
   const total = items.reduce((s, i) => s + i.file.size, 0);
   const done = items.length > 0 && items.every((i) => i.state === "sent");
 
-  async function choose(list: FileList | null) {
+  const [drag, setDrag] = useState(false);
+
+  async function choose(list: FileList | File[] | null) {
     setError(null);
     const files = [...(list ?? [])].filter(audio);
     if (!files.length) return setError("That folder has no WAV or MP3 files.");
@@ -128,17 +148,34 @@ export function FolderSend({
 
   return (
     <div ref={formRef} className="space-y-4">
-      <p className="text-sm text-mute">Up to {MAX_RELEASE_TRACKS} tracks and {fmtBytes(folderBytes)}. Titles, track order, BPM and key are read from your files.</p>
-      <div className="flex flex-wrap gap-2">
-        <input ref={folderRef} type="file" className="hidden" onChange={(e) => choose(e.target.files)} {...{ webkitdirectory: "", directory: "" }} />
-        <input ref={filesRef} type="file" multiple accept=".wav,.mp3,audio/wav,audio/mpeg" className="hidden" onChange={(e) => choose(e.target.files)} />
-        <button type="button" disabled={running} onClick={() => folderRef.current?.click()} className="btn-ghost btn-sm">
-          Choose a folder
-        </button>
-        <button type="button" disabled={running} onClick={() => filesRef.current?.click()} className="btn-ghost btn-sm">
-          Choose several files
-        </button>
-      </div>
+      <input ref={folderRef} type="file" className="hidden" onChange={(e) => choose(e.target.files)} {...{ webkitdirectory: "", directory: "" }} />
+      <input ref={filesRef} type="file" multiple accept=".wav,.mp3,audio/wav,audio/mpeg" className="hidden" onChange={(e) => choose(e.target.files)} />
+      {!items.length && (
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDrag(true);
+          }}
+          onDragLeave={() => setDrag(false)}
+          onDrop={async (e) => {
+            e.preventDefault();
+            setDrag(false);
+            choose(await droppedFiles(e.dataTransfer));
+          }}
+          className={`card border-dashed p-8 text-center transition ${drag ? "border-lime bg-lime/5" : ""}`}
+        >
+          <button type="button" disabled={running} onClick={() => folderRef.current?.click()} className="btn-lime">
+            Choose a folder
+          </button>
+          <p className="mt-3 text-sm text-mute">
+            or drag it here ·{" "}
+            <button type="button" onClick={() => filesRef.current?.click()} className="underline underline-offset-4">
+              pick files
+            </button>
+          </p>
+          <p className="mt-1 text-xs text-mute">Up to {MAX_RELEASE_TRACKS} tracks and {fmtBytes(folderBytes)}. Titles, track order, BPM and key are read from your files.</p>
+        </div>
+      )}
 
       {items.length > 0 && (
         <>
@@ -152,9 +189,17 @@ export function FolderSend({
               <input value={release.artist} disabled={running} placeholder="Defaults to your name" onChange={(e) => setRelease((r) => ({ ...r, artist: e.target.value }))} maxLength={200} className="input" />
             </label>
           </div>
-          <p className="text-sm text-mute tnum">
-            {items.length} tracks · {fmtBytes(total)} of {fmtBytes(folderBytes)}
-          </p>
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-sm text-mute tnum">
+              <span>{items.length} of {MAX_RELEASE_TRACKS} tracks</span>
+              <span>
+                {fmtBytes(total)} of {fmtBytes(folderBytes)}
+              </span>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-ink-3" role="progressbar" aria-label="Folder size" aria-valuenow={Math.round((total / folderBytes) * 100)} aria-valuemin={0} aria-valuemax={100}>
+              <div className={`h-full rounded-full ${total > folderBytes ? "bg-danger" : "bg-lime"}`} style={{ width: `${Math.min(100, (total / folderBytes) * 100)}%` }} />
+            </div>
+          </div>
           <ol className="divide-y divide-line rounded-md border border-line">
             {items.map((it, i) => (
               <li key={it.file.name + i} className="flex items-center gap-3 px-3 py-2.5 text-sm">
@@ -167,11 +212,21 @@ export function FolderSend({
                     onChange={(e) => editTags(i, { title: e.target.value })}
                     className="w-full bg-transparent font-medium text-bone outline-none"
                   />
-                  <span className="block text-xs text-mute">
-                    {[it.tags.artist, it.tags.bpm && `${it.tags.bpm} BPM`, it.tags.key, it.tags.isrc].filter(Boolean).join(" · ") || it.file.name}
+                  <span className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-mute">
+                    <span className="truncate">{it.tags.artist || it.file.name}</span>
+                    {[it.tags.bpm && `${it.tags.bpm} BPM`, it.tags.key, it.tags.isrc].filter(Boolean).map((c) => (
+                      <span key={String(c)} className="rounded border border-line px-1.5 py-px tnum">
+                        {c}
+                      </span>
+                    ))}
                   </span>
                   {it.error && <span className="block text-xs text-danger">{it.error}</span>}
                 </span>
+                {!running && it.state !== "sent" && (
+                  <button type="button" aria-label={`Remove ${it.tags.title || it.file.name}`} onClick={() => setItems((all) => all.filter((_, j) => j !== i))} className="shrink-0 px-1 text-mute hover:text-bone">
+                    ×
+                  </button>
+                )}
                 <span className="shrink-0 text-xs text-mute tnum">
                   {it.state === "sent" ? "Sent" : it.state === "sending" ? `${Math.round(it.progress * 100)}%` : it.state === "failed" ? "Failed" : fmtBytes(it.file.size)}
                 </span>

@@ -45,7 +45,7 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
     base.push("(t.title ILIKE ? OR t.artist ILIKE ? OR s.name ILIKE ? OR s.email ILIKE ? OR t.genre ILIKE ?)");
     args.push(...Array(5).fill(likeContains(search)));
   }
-  const from = "FROM tracks t JOIN senders s ON s.id = t.sender_id LEFT JOIN collections c ON c.id = t.collection_id";
+  const from = "FROM tracks t JOIN senders s ON s.id = t.sender_id LEFT JOIN collections c ON c.id = t.collection_id LEFT JOIN releases r ON r.id = t.release_id";
   const cond = STATUSES.find(([k]) => k === status)![2];
   // Needs review plays oldest-first like a queue; decided views show the latest decisions first.
   const order = status === "review" ? "t.created_at ASC" : status === "all" ? "t.created_at DESC" : "t.decided_at DESC";
@@ -64,15 +64,22 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
       `SELECT ${STATUSES.map(([k, , c]) => `COUNT(*) FILTER (WHERE ${c}) AS "${k}"`).join(", ")} ${from} WHERE ${base.join(" AND ")}`,
       ...args,
     ).then((r) => r!),
-    q.all<Track & { sender_name: string; collection_name: string | null }>(
-      `SELECT t.*, s.name AS sender_name, c.name AS collection_name ${from}
+    q.all<Track & { sender_name: string; collection_name: string | null; release_title: string | null }>(
+      `SELECT t.*, s.name AS sender_name, c.name AS collection_name, r.title AS release_title ${from}
        WHERE ${base.join(" AND ")} AND ${cond} ORDER BY ${order} LIMIT 500`,
       ...args,
     ),
     sp.t ? selectedWithSender(Number(sp.t)) : Promise.resolve(undefined),
   ]);
 
-  const rows: Row[] = tracks.map((t) => ({
+  // A folder's tracks sit together under its first track, in track order.
+  const firstAt = new Map<string, number>();
+  tracks.forEach((t, i) => t.release_id && !firstAt.has(t.release_id) && firstAt.set(t.release_id, i));
+  const ordered = tracks
+    .map((t, i) => ({ t, at: t.release_id ? firstAt.get(t.release_id)! : i }))
+    .sort((a, b) => a.at - b.at || (a.t.track_no ?? 0) - (b.t.track_no ?? 0))
+    .map((x) => x.t);
+  const rows: Row[] = ordered.map((t) => ({
     id: t.id,
     title: t.title,
     artist: t.artist,
@@ -87,6 +94,7 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
     decision: t.decision,
     hasMessage: !!t.message,
     createdAt: t.created_at,
+    release: t.release_id ? { id: t.release_id, title: t.release_title ?? "Folder", count: tracks.filter((x) => x.release_id === t.release_id).length } : null,
   }));
 
   const href = (patch: Partial<Search>) => {

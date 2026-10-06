@@ -4,12 +4,14 @@ import { CuePoint } from "@/components/CuePoint";
 import { useEffect, useState, useTransition } from "react";
 import { SubmitForm } from "../../[handle]/SubmitForm";
 import { FolderSend } from "./FolderSend";
+import { SendModeTabs } from "../../[handle]/SendModes";
+import { ProfileLinks } from "@/components/ProfileLinks";
 import { lookupReceiver, type ReceiverLookup } from "../actions/desk";
 
 /** Type someone's link name, see who they are, then send them a track from your account. */
 export function SendComposer({ host, account, initial }: { host: string; account: { name: string; email: string }; initial: string }) {
   const [handle, setHandle] = useState(initial);
-  const [mode, setMode] = useState<"track" | "folder">("track");
+  const [mode, setMode] = useState<"tracks" | "folder">("tracks");
   const [found, setFound] = useState<ReceiverLookup | null>(null);
   const [pending, start] = useTransition();
 
@@ -54,11 +56,16 @@ export function SendComposer({ host, account, initial }: { host: string; account
 
       {found?.found && (
         <div key={found.handle} className="rounded-lg border border-line p-5">
+          {found.photo && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={found.photo} alt="" width={64} height={64} className="mb-3 size-16 rounded-xl object-cover" />
+          )}
           <p className="label">Send music to</p>
           <p className="mt-1 text-2xl font-bold tracking-tight">
             {found.name}
             {found.verified && <span className="chip ml-2 inline-flex items-center gap-1.5 align-middle border-lime/60 text-xs font-medium text-lime"><CuePoint size={16} /> Verified</span>}
           </p>
+          {found.links.length > 0 && <ProfileLinks links={found.links} className="mt-3" />}
           {found.accepting && found.collection && (
             <p className="mt-3 inline-flex w-fit items-center gap-2 rounded-full border border-lime/40 bg-lime/5 px-3 py-1 text-sm">
               <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-lime" />
@@ -79,13 +86,7 @@ export function SendComposer({ host, account, initial }: { host: string; account
             {found.accepting ? (
               <>
                 {found.folderBytes > 0 && (
-                  <div role="tablist" aria-label="What to send" className="mb-4 inline-flex rounded-full border border-line bg-ink-3 p-0.5 text-sm">
-                    {(["track", "folder"] as const).map((m) => (
-                      <button key={m} role="tab" aria-selected={mode === m} type="button" onClick={() => setMode(m)} className={`rounded-full px-3 py-1 ${mode === m ? "bg-bone font-semibold text-ink" : "text-mute"}`}>
-                        {m === "track" ? "Up to 3 tracks" : "A folder"}
-                      </button>
-                    ))}
-                  </div>
+                  <SendModeTabs mode={mode} setMode={setMode} folderBytes={found.folderBytes} className="mb-4" />
                 )}
                 {found.folderBytes > 0 && mode === "folder" ? (
                   <FolderSend handle={found.handle} receiverName={found.name} genres={found.genres} folderBytes={found.folderBytes} account={account} />

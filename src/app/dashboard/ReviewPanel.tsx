@@ -78,54 +78,8 @@ export async function ReviewPanel({
   };
   const removal = deletesAt(t);
 
-  return (
-    <div className="p-4 sm:p-6" data-swipe-zone>
-      {/* Phones: Figma "08 Full Player / DJ Review" */}
-      <div className="md:hidden">
-        <div className="flex items-center gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icons/review-art.svg" alt="" className="size-[52px] shrink-0" />
-          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <h2 className="truncate text-base font-bold text-bone">{t.title}</h2>
-            <p className="truncate text-xs text-mute">{t.artist}</p>
-          </div>
-        </div>
-        <dl className="mt-3.5 grid grid-cols-2 gap-1.5">
-          {[
-            ["TEMPO", t.bpm ? `${Math.round(t.bpm)} BPM` : "—"],
-            ["GENRE", t.genre || "—"],
-            ["LENGTH", t.duration ? `${Math.floor(t.duration / 60)}:${String(Math.round(t.duration % 60)).padStart(2, "0")}` : "—"],
-            ["DEMO STATUS", t.mix_status ? MIX_STATUS[t.mix_status as keyof typeof MIX_STATUS] : "—"],
-          ].map(([k, v]) => (
-            <div key={k} className="flex flex-col gap-1 rounded-lg bg-ink-2 p-2.5">
-              <dt className="text-[11px] text-faint">{k}</dt>
-              <dd className="truncate text-[13px] font-bold text-bone">{v}</dd>
-            </div>
-          ))}
-        </dl>
-        <MobileTransport track={player} prevHref={prevHref} nextHref={next?.href ?? null} />
-        <div className="mt-3.5">
-          <MobileOnly>
-          <DecisionRail
-            track={{ ...player, decision: t.decision }}
-            senderName={sender.name}
-            selfHref={selfHref}
-            next={next}
-            prevHref={prevHref}
-            onReply={replyToSender.bind(null, sender.id, t.id)}
-          />
-          </MobileOnly>
-        </div>
-      </div>
-
-      <div className="hidden md:block">
-      <p className="label">Now reviewing</p>
-      <h2 className="mt-2 text-2xl font-bold leading-tight tracking-tight">{t.title}</h2>
-      <p className={`mt-2 w-fit rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${t.sets_ok ? "border-lime/50 text-lime" : "border-line text-mute"}`}>
-        {t.sets_ok ? "Cleared for DJ sets" : "Evaluation only: ask before playing it out"}
-      </p>
-      {release && (
-        <div className="mt-3 rounded-md border border-line p-3">
+  const releaseBlock = release && (
+<div className="mt-3 rounded-md border border-line p-3">
           <p className="text-[11px] font-bold uppercase tracking-[0.5px] text-mute">
             {`Folder · ${releaseTracks.length} tracks`}
           </p>
@@ -152,7 +106,59 @@ export async function ReviewPanel({
             </div>
           )}
         </div>
-      )}
+  );
+
+  return (
+    <div className="p-4 sm:p-6" data-swipe-zone>
+      {/* Phones: Figma "08 Full Player / DJ Review" */}
+      <div className="md:hidden">
+        <div className="flex items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icons/review-art.svg" alt="" className="size-[52px] shrink-0" />
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <h2 className="truncate text-base font-bold text-bone">{t.title}</h2>
+            <p className="truncate text-xs text-mute">
+              {t.artist}
+              {t.isrc && <span title="ISRC"> · {t.isrc}</span>}
+            </p>
+          </div>
+        </div>
+        <dl className="mt-3.5 grid grid-cols-2 gap-1.5">
+          {[
+            ["TEMPO", [t.bpm && `${Math.round(t.bpm)} BPM`, t.musical_key].filter(Boolean).join(" · ") || "—"],
+            ["GENRE", t.genre || "—"],
+            ["LENGTH", t.duration ? `${Math.floor(t.duration / 60)}:${String(Math.round(t.duration % 60)).padStart(2, "0")}` : "—"],
+            ["DEMO STATUS", t.mix_status ? MIX_STATUS[t.mix_status as keyof typeof MIX_STATUS] : "—"],
+          ].map(([k, v]) => (
+            <div key={k} className="flex flex-col gap-1 rounded-lg bg-ink-2 p-2.5">
+              <dt className="text-[11px] text-faint">{k}</dt>
+              <dd className="truncate text-[13px] font-bold text-bone">{v}</dd>
+            </div>
+          ))}
+        </dl>
+        {releaseBlock}
+        <MobileTransport track={player} prevHref={prevHref} nextHref={next?.href ?? null} />
+        <div className="mt-3.5">
+          <MobileOnly>
+          <DecisionRail
+            track={{ ...player, decision: t.decision }}
+            senderName={sender.name}
+            selfHref={selfHref}
+            next={next}
+            prevHref={prevHref}
+            onReply={replyToSender.bind(null, sender.id, t.id)}
+          />
+          </MobileOnly>
+        </div>
+      </div>
+
+      <div className="hidden md:block">
+      <p className="label">Now reviewing</p>
+      <h2 className="mt-2 text-2xl font-bold leading-tight tracking-tight">{t.title}</h2>
+      <p className={`mt-2 w-fit rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${t.sets_ok ? "border-lime/50 text-lime" : "border-line text-mute"}`}>
+        {t.sets_ok ? "Cleared for DJ sets" : "Evaluation only: ask before playing it out"}
+      </p>
+      {releaseBlock}
       {t.duplicate_of && (
         <p className="mt-2 text-sm text-danger">
           Possible duplicate of an earlier track.{" "}

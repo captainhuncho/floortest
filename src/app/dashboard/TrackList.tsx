@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Fragment } from "react";
 import { PlayIcon, usePlayer, type PlayerTrack } from "@/components/Player";
 import { Waveform } from "@/components/Waveform";
 import { ago, fmtTime } from "@/lib/format";
@@ -24,6 +25,8 @@ export type Row = {
   /** Set prep, on kept tracks. */
   energy?: number | null;
   cueCount?: number;
+  /** The folder this track came in, if any; its tracks are listed together under a header. */
+  release?: { id: string; title: string; count: number } | null;
 };
 
 
@@ -33,17 +36,25 @@ export function TrackList({ rows, selectedId, hrefFor }: { rows: Row[]; selected
 
   return (
     <ul className="@container divide-y divide-line rounded-xl border border-line" aria-label="Tracks">
-      {rows.map((r) => {
+      {rows.map((r, i) => {
+        const header = r.release && r.release.id !== rows[i - 1]?.release?.id;
         const isCurrent = current?.id === r.id;
         const selected = selectedId === r.id;
         const d = duration || r.duration || 0;
         return (
+          <Fragment key={r.id}>
+          {header && (
+            <li className="flex items-baseline gap-2 bg-ink-2 px-3 py-2 text-sm">
+              <span className="text-[11px] font-bold uppercase tracking-[0.5px] text-mute">Folder</span>
+              <span className="min-w-0 truncate font-semibold">{r.release!.title}</span>
+              <span className="shrink-0 text-mute tnum">· {r.release!.count} tracks</span>
+            </li>
+          )}
           <li
-            key={r.id}
             aria-current={selected ? "true" : undefined}
             className={`group relative grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 px-3 py-3 transition @3xl:grid-cols-[auto_minmax(0,14rem)_minmax(0,1fr)_auto] ${
               selected ? "bg-ink-3" : "hover:bg-ink-2"
-            }`}
+            } ${r.release ? "pl-6" : ""}`}
           >
             {selected && <span aria-hidden className="absolute inset-y-2 left-0 w-1 rounded-r bg-lime" />}
             <button
@@ -78,6 +89,7 @@ export function TrackList({ rows, selectedId, hrefFor }: { rows: Row[]; selected
               </span>
             </div>
           </li>
+          </Fragment>
         );
       })}
     </ul>
