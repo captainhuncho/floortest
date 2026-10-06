@@ -1030,4 +1030,12 @@ update plans set folder_bytes = 3221225472 where id = 'team';
 delete from feature_switches where feature = 'folders';
 `,
   },
+  {
+    // Up to 3 tracks sent together share one batch: one send against the daily limit, 250 MB between them.
+    id: "0061_track_batches",
+    sql: `
+alter table tracks add column batch_id text;
+create index tracks_send_batch on tracks (user_id, batch_id) where batch_id is not null;
+`,
+  },
 ];

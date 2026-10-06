@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { analyzeAudio, type Analysis } from "@/lib/analyze";
 import { readTags, type Tags } from "@/lib/tags";
+import { MAX_BATCH_TRACKS } from "@/lib/plans";
 
 export const MAX_BYTES = 250 * 1024 * 1024;
 const SENDER_KEY = "floortest.sender";
@@ -83,7 +84,7 @@ export async function uploadTrack(
 }
 
 /** Separate tracks in one go on the send form, up to MAX_BYTES together. EPs and albums go through Send folders (paid). */
-export const MAX_FILES = 3;
+export const MAX_FILES = MAX_BATCH_TRACKS;
 
 /** One chosen file: what we read from it (editable) and how its upload is going. */
 export type Item = {
@@ -106,6 +107,8 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
   const [sender, setSender] = useState({ name: "", email: "" });
+  // One send = one batch; a retry after a failure stays in it.
+  const [batch, setBatch] = useState(newId);
 
   // Name and email are captured once and remembered on this device.
   useEffect(() => {
@@ -163,7 +166,7 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
       patch(it.id, { status: "uploading", progress: 0, error: undefined });
       const r = await uploadTrack(
         handle, it.file, it.analysis,
-        { ...shared, title: it.tags.title, artist: it.tags.artist, musical_key: it.tags.key, isrc: it.tags.isrc },
+        { ...shared, batch, title: it.tags.title, artist: it.tags.artist, musical_key: it.tags.key, isrc: it.tags.isrc },
         (p) => patch(it.id, { progress: p }),
       );
       if ("error" in r) {
@@ -179,6 +182,7 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
 
   function reset() {
     setItems([]);
+    setBatch(newId());
     setPhase("idle");
     setError(null);
   }

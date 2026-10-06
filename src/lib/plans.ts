@@ -65,6 +65,8 @@ export const DEFAULT_GENRES = [
   "Downtempo / Electronica",
 ];
 export const MAX_GENRE_LENGTH = 40;
+/** Separate tracks in one send (not a folder); they share MAX_UPLOAD_BYTES. */
+export const MAX_BATCH_TRACKS = 3;
 /** A collection names up to this many genres for senders to pick from. */
 export const MAX_COLLECTION_GENRES = 6;
 

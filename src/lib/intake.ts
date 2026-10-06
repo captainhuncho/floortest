@@ -7,7 +7,7 @@ import crypto from "node:crypto";
 import { logEvent, now, q, USER_COLUMNS, type Collection, type Queryable, type Sender, type Track, type User } from "./db";
 import { noLinks, APP_URL, sendMailLater } from "./mail";
 import { alertIfFull, notifyNewSubmission } from "./notify";
-import { ACCEPTED_EXT, MAX_RELEASE_TRACKS, MAX_UPLOAD_BYTES, RATE_PER_EMAIL_PER_DAY, RATE_PER_IP_PER_HOUR } from "./plans";
+import { ACCEPTED_EXT, MAX_BATCH_TRACKS, MAX_RELEASE_TRACKS, MAX_UPLOAD_BYTES, RATE_PER_EMAIL_PER_DAY, RATE_PER_IP_PER_HOUR } from "./plans";
 import { folderLimit, shareDownloadEnabled } from "./plan-store";
 import { allow } from "./ratelimit";
 import { sealUpload, storage } from "./storage";
@@ -79,6 +79,8 @@ export type SubmissionMeta = {
   /** Send folders: tracks uploaded together share this id. */
   /** Part of a release sent together; the first track's details create it. */
   release?: { id: string; title: string; artist: string; kind: "ep" | "album" };
+  /** Up to MAX_BATCH_TRACKS tracks sent together (not a folder): one send, MAX_UPLOAD_BYTES between them. */
+  batch?: string;
   trackNo?: number | null;
   musicalKey?: string;
   isrc?: string;
@@ -112,6 +114,16 @@ export async function startUpload(receiver: User, meta: SubmissionMeta, size: nu
     if (!cap) throw new IntakeError(`${receiver.name} can't receive folders. Send up to 3 tracks at a time.`, 403);
     if (releaseBytes + size > cap) throw new IntakeError(`This folder is over ${Math.round(cap / 1073741824)} GB, the most ${receiver.name} can receive in one folder.`, 413);
     firstOfRelease = inRelease === 0;
+  } else if (meta.batch) {
+    const sum = async (sql: string) => (await q.get<{ n: number; b: number }>(sql, receiver.id, meta.batch))!;
+    const done = await sum("SELECT COUNT(*)::int AS n, COALESCE(SUM(size), 0)::bigint AS b FROM tracks WHERE user_id = ? AND batch_id = ?");
+    const open = await sum("SELECT COUNT(*)::int AS n, COALESCE(SUM(size), 0)::bigint AS b FROM uploads WHERE receiver_id = ? AND meta::jsonb->>'batch' = ?");
+    // Only the sender who started a batch can add to it.
+    const owner = await q.get<{ email: string }>("SELECT s.email FROM tracks t JOIN senders s ON s.id = t.sender_id WHERE t.user_id = ? AND t.batch_id = ? LIMIT 1", receiver.id, meta.batch);
+    if (owner && owner.email !== meta.email) throw new IntakeError("That send belongs to someone else.", 403);
+    if (Number(done.n) + Number(open.n) >= MAX_BATCH_TRACKS) throw new IntakeError(`Up to ${MAX_BATCH_TRACKS} tracks at a time.`, 413);
+    if (Number(done.b) + Number(open.b) + size > MAX_UPLOAD_BYTES) throw new IntakeError("These tracks add up to more than 250 MB.", 413);
+    firstOfRelease = Number(done.n) + Number(open.n) === 0;
   }
   await checkIntake(receiver, meta.email, ip, firstOfRelease);
 
@@ -198,8 +210,8 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
         );
       const track = (await db.get<Track>(
         `INSERT INTO tracks (user_id, collection_id, sender_id, token, title, artist, message, release_status, mix_status, genre,
-                             file_key, original_name, mime, size, duration, bpm, peaks, created_at, share_ok, share_download, release_id, sets_ok, ai_use, track_no, musical_key, isrc)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING *`,
+                             file_key, original_name, mime, size, duration, bpm, peaks, created_at, share_ok, share_download, release_id, sets_ok, ai_use, track_no, musical_key, isrc, batch_id)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING *`,
         fresh.id,
         collection?.id ?? null,
         sender.id,
@@ -226,6 +238,7 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
         meta.trackNo ?? null,
         meta.musicalKey ?? "",
         meta.isrc ?? "",
+        meta.batch ?? null,
       ))!;
       // Possible duplicate: the same file (byte size and length) already on this desk, or the same
       // sender re-sending the same title. Flagged for the receiver, never blocked.
