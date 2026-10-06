@@ -68,9 +68,9 @@ async function openPostgres(url: string): Promise<Db> {
     idle_timeout: 20,
     // Works behind transaction-mode poolers (Supabase :6543, PgBouncer).
     prepare: false,
-    // On Vercel the database is across the internet (Supabase), so the connection must be encrypted;
-    // it fails rather than falling back to plain text.
-    ssl: process.env.VERCEL ? "require" : undefined,
+    // Any database across the internet (Neon, from Vercel or Cloudflare) must be encrypted; it fails rather than
+    // falling back to plain text. Only a database on this machine may skip it.
+    ssl: /@(localhost|127\.0\.0\.1|\[::1\])[:/]/.test(url) ? undefined : "require",
     // bigint (epoch-ms timestamps, ids, counts) as JS numbers; all values stay well below 2^53.
     types: { bigint: { to: 20, from: [20], serialize: (x: number) => String(x), parse: (x: string) => Number(x) } },
     onnotice: () => {},
@@ -155,8 +155,13 @@ export function dataDir() {
 
 type G = typeof globalThis & { __floortestDb?: Promise<Db> };
 
-/** Shared connection for this process, migrated on first use. */
+/** Cloudflare Workers can't share a connection between requests, so there each request gets its own. */
+const onWorkers = typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers";
+const perRequest = new WeakMap<object, Promise<Db>>();
+
+/** Shared connection for this process, migrated on first use (one per request on Cloudflare). */
 export function getDb(): Promise<Db> {
+  if (onWorkers) return requestDb();
   const g = globalThis as G;
   if (!g.__floortestDb) {
     g.__floortestDb = (async () => {
@@ -172,4 +177,17 @@ export function getDb(): Promise<Db> {
     });
   }
   return g.__floortestDb;
+}
+
+async function requestDb(): Promise<Db> {
+  const { getCloudflareContext } = await import("@opennextjs/cloudflare");
+  const { ctx } = getCloudflareContext();
+  let db = perRequest.get(ctx);
+  if (!db) {
+    const url = process.env.DATABASE_URL;
+    if (!url) throw new Error("DATABASE_URL is not set for this Cloudflare deployment.");
+    db = openPostgres(url);
+    perRequest.set(ctx, db);
+  }
+  return db;
 }

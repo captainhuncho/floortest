@@ -5,5 +5,18 @@
   "compatibility_date": "2026-10-06",
   "compatibility_flags": ["nodejs_compat"],
   "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  // Run near the database (London) rather than near each visitor: one round trip to the user, many to Postgres.
+  "placement": { "mode": "smart" },
+  // Trial only: preview bucket and a Neon branch copy. Secrets (DATABASE_URL, APP_SECRET, CRON_SECRET, S3 keys) are set with wrangler secret.
+  "vars": {
+    "APP_URL": "https://floortest-trial.maxwelladjavon.workers.dev",
+    "STORAGE_DRIVER": "s3",
+    "S3_ENDPOINT": "https://cb211746f4681143b94d4e3f0493928d.r2.cloudflarestorage.com",
+    "S3_REGION": "auto",
+    "S3_BUCKET": "floortest-audio-preview",
+    "SIGNUP_MODE": "open",
+    "DB_AUTO_MIGRATE": "false",
+    "DB_POOL_MAX": "2"
+  }
 }
