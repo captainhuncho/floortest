@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import {useRef, useState} from "react";
 import { MAX_LINKS, PLATFORMS, type ProfileLink } from "@/lib/socials";
 import { updatePublicPage } from "../actions/settings";
+import { SaveBar } from "./SaveBar";
 
 const PLACEHOLDER: Record<string, string> = {
-  instagram: "yourname or instagram.com/yourname",
-  tiktok: "yourname or tiktok.com/@yourname",
-  soundcloud: "yourname or soundcloud.com/yourname",
-  youtube: "yourname or youtube.com/@yourname",
+  instagram: "@yourname or a link",
+  tiktok: "@yourname or a link",
+  soundcloud: "@yourname or a link",
+  youtube: "@yourname or a link",
   spotify: "open.spotify.com/artist/…",
   applemusic: "music.apple.com/…/artist/…",
   beatport: "beatport.com/artist/…",
@@ -36,13 +37,13 @@ export function PublicPageForm({ roleLine, links }: { roleLine: string; links: P
       <fieldset className="space-y-2">
         <legend className="label mb-1.5">Your profiles</legend>
         {rows.map((r, i) => (
-          <div key={r.key} className="flex gap-2">
+          <div key={r.key} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 rounded-lg border border-line p-2 sm:flex sm:rounded-none sm:border-0 sm:p-0">
             <select
               name="platform"
               aria-label={`Platform ${i + 1}`}
               value={r.platform}
               onChange={(e) => setRows((all) => all.map((x) => (x.key === r.key ? { ...x, platform: e.target.value } : x)))}
-              className="input w-36 shrink-0 sm:w-40"
+              className="input sm:w-40 sm:shrink-0"
             >
               {PLATFORMS.map((p) => (
                 <option key={p.key} value={p.key}>
@@ -58,13 +59,13 @@ export function PublicPageForm({ roleLine, links }: { roleLine: string; links: P
               onChange={(e) => setRows((all) => all.map((x) => (x.key === r.key ? { ...x, url: e.target.value } : x)))}
               placeholder={PLACEHOLDER[r.platform]}
               maxLength={300}
-              className="input min-w-0 flex-1"
+              className="input col-span-2 min-w-0 sm:flex-1"
             />
             <button
               type="button"
-              aria-label={`Remove profile ${i + 1}`}
+              aria-label={`Remove ${PLATFORMS.find((p) => p.key === r.platform)?.label ?? "website"} profile`}
               onClick={() => setRows((all) => (all.length > 1 ? all.filter((x) => x.key !== r.key) : [{ ...all[0], url: "" }]))}
-              className="btn-ghost btn-sm shrink-0 px-3"
+              className="btn-ghost btn-sm row-start-1 col-start-2 min-h-11 min-w-11 shrink-0 px-3 sm:order-last"
             >
               ×
             </button>
@@ -77,18 +78,14 @@ export function PublicPageForm({ roleLine, links }: { roleLine: string; links: P
               const platform = [...PLATFORMS.map((p) => p.key as string), "website"].find((k) => !used.has(k)) ?? "website";
               setRows((all) => [...all, { key: nextKey.current++, platform, url: "" }]);
             }}
-            className="text-sm text-lime underline underline-offset-4"
+            className="btn-ghost btn-sm min-h-11"
           >
             + Add a profile
           </button>
         )}
         <p className="text-sm text-mute">Up to {MAX_LINKS}. They show as icons under your name so senders know it&apos;s really you.</p>
       </fieldset>
-      {state?.error && <p className="text-sm text-danger">{state.error}</p>}
-      {state?.ok && <p className="text-sm text-lime">Saved.</p>}
-      <button className="btn-lime btn-sm" disabled={pending}>
-        {pending ? "Saving…" : "Save"}
-      </button>
+      <SaveBar pending={pending} state={state} />
     </form>
   );
 }
