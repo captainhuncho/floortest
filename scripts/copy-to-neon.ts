@@ -13,7 +13,8 @@ import postgres from "postgres";
 import { MIGRATIONS } from "../src/lib/db/migrations";
 
 const SRC = process.env.SUPABASE_DATABASE_URL;
-const DST = process.env.NEON_DATABASE_URL;
+// --test copies into the Neon "copy-test" branch (NEON_TEST_URL) instead of production.
+const DST = process.argv.includes("--test") ? process.env.NEON_TEST_URL : process.env.NEON_DATABASE_URL;
 if (!SRC || !DST) throw new Error("Put SUPABASE_DATABASE_URL and NEON_DATABASE_URL in .env.neon");
 if (SRC === DST) throw new Error("The two addresses are the same.");
 
