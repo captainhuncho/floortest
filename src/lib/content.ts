@@ -40,6 +40,7 @@ export const SITE_PAGES = {
       plans_intro: text("Plans: intro (beta)", "Free for 20 active tracks. Pro and Team for busy desks and whole crews."),
       plans_title_launch: f("Plans: headline (after launch)", "Free while you find your sound.", { hint: "Shown once the Billing switch is on." }),
       plans_intro_launch: text("Plans: intro (after launch)", "Free holds 20 tracks at a time, for good. Pro and Team make room for hundreds more and bring your crew in."),
+      footer_line: f("Footer: who it's for", "Built for DJs, producers and labels who live on new music."),
       faq_title: f("Questions: title", "Before the first track lands."),
       faq: text(
         "Questions and answers",

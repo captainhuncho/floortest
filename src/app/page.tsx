@@ -347,7 +347,7 @@ export default async function Home({
       <footer className="mx-auto max-w-6xl px-4 pb-10 pt-12 text-sm text-mute sm:px-6">
         <div className="flex flex-col gap-3 border-t border-line pt-10 sm:flex-row sm:items-center sm:justify-between">
           <Logo />
-          <p className="max-w-xs">Built for DJs and curators who receive music every week.</p>
+          <p className="max-w-xs">{c.footer_line}</p>
         </div>
         <nav aria-label="Footer" className="mt-8 grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
           {footerGroups().map((g) => (
