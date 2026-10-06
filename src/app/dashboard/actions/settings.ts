@@ -2,7 +2,7 @@
 
 /** Settings: alerts, profile and public page, plans and checkout, identity, email change, theme and deleting the account. */
 import { revalidatePath } from "next/cache";
-import { parseLinks } from "@/lib/socials";
+import { MAX_LINKS, slotLink, type ProfileLink } from "@/lib/socials";
 import { KINDS } from "@/lib/db";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -89,8 +89,18 @@ export async function updatePublicPage(_: SettingsState, form: FormData): Promis
   const u = await requireUser();
   const style = form.get("page_style") === "stage" ? "stage" : "classic";
   const role = String(form.get("role_line") || "").trim().slice(0, 60);
-  const parsed = parseLinks(String(form.get("links") || "").slice(0, 4000));
-  if (parsed.error) return { error: parsed.error };
+  // One slot per profile: the platform picked, and its link.
+  const platforms = form.getAll("platform").map(String);
+  const urls = form.getAll("url").map((v) => String(v).slice(0, 300));
+  const links: ProfileLink[] = [];
+  for (const [i, raw] of urls.entries()) {
+    if (!raw.trim()) continue;
+    const r = slotLink(platforms[i] ?? "website", raw);
+    if ("error" in r) return { error: r.error };
+    if (!links.some((l) => l.url === r.url)) links.push(r);
+  }
+  if (links.length > MAX_LINKS) return { error: `Up to ${MAX_LINKS} profiles.` };
+  const parsed = { links };
   await q.run("UPDATE users SET page_style = ?, role_line = ?, links = ? WHERE id = ?", style, role, JSON.stringify(parsed.links), u.id);
   await audit(u.id, "page_updated", style === "stage" ? "Stage style" : "Classic style");
   done();

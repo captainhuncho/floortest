@@ -60,7 +60,7 @@ export default async function Settings() {
           Public page
         </h2>
         <p className="mt-1 text-sm text-mute">How your link looks when shared. Set each callout&apos;s brief on the Collections page.</p>
-        <PublicPageForm roleLine={user.role_line} links={readLinks(user.links).map((l) => l.url).join("\n")} />
+        <PublicPageForm roleLine={user.role_line} links={readLinks(user.links)} />
         <CoverUpload handle={user.handle} cover={user.cover_key} />
       </section>
 

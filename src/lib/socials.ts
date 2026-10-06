@@ -37,6 +37,26 @@ export function parseLink(raw: string): ProfileLink | { error: string } {
   return { platform: p?.key ?? "website", url: u.toString().slice(0, 300) };
 }
 
+/** Where a bare username goes, for platforms that have one. */
+const BY_NAME: Partial<Record<PlatformKey, (n: string) => string>> = {
+  instagram: (n) => `instagram.com/${n}`,
+  tiktok: (n) => `tiktok.com/@${n}`,
+  soundcloud: (n) => `soundcloud.com/${n}`,
+  youtube: (n) => `youtube.com/@${n}`,
+};
+
+/** One profile slot: the platform the person picked, and a link (or just a username). The link must be on that platform. */
+export function slotLink(platform: string, raw: string): ProfileLink | { error: string } {
+  const text = raw.trim();
+  const p = PLATFORMS.find((x) => x.key === platform);
+  const name = text.replace(/^@/, "");
+  const r = parseLink(p && /^[\w.-]+$/.test(name) && !name.includes(".") && BY_NAME[p.key] ? BY_NAME[p.key]!(name) : text);
+  if ("error" in r) return r;
+  if (p && r.platform !== p.key) return { error: `That isn't a ${p.label} link.` };
+  if (!p && r.platform !== "website") return { error: `Pick ${PLATFORMS.find((x) => x.key === r.platform)!.label} for that link.` };
+  return r;
+}
+
 /** Links from a textarea, one per line: recognised, de-duplicated, at most MAX_LINKS. */
 export function parseLinks(raw: string): { links: ProfileLink[]; error?: string } {
   const links: ProfileLink[] = [];
