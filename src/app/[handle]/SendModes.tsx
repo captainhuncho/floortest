@@ -15,7 +15,7 @@ export function SendModes({ folderBytes, ...form }: FormProps & { folderBytes: n
       <div role="tablist" aria-label="What to send" className="inline-flex rounded-full border border-line bg-ink-3 p-0.5 text-sm group-has-[[data-picked]]/page:hidden">
         {(["tracks", "folder"] as const).map((m) => (
           <button key={m} role="tab" type="button" aria-selected={mode === m} onClick={() => setMode(m)} className={`rounded-full px-3 py-1 ${mode === m ? "bg-bone font-semibold text-ink" : "text-mute"}`}>
-            {m === "tracks" ? "Tracks" : "EP or album"}
+            {m === "tracks" ? "Up to 3 tracks" : "A folder"}
           </button>
         ))}
       </div>

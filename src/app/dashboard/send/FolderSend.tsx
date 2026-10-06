@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { analyzeAudio } from "@/lib/analyze";
 import { fmtBytes } from "@/lib/format";
-import { MAX_RELEASE_TRACKS, RELEASE_KINDS } from "@/lib/plans";
+import { MAX_RELEASE_TRACKS } from "@/lib/plans";
 import { readTags, type Tags } from "@/lib/tags";
 import { Turnstile } from "@/components/Turnstile";
 import { MAX_BYTES, uploadTrack } from "../../[handle]/useTrackUpload";
@@ -15,7 +15,7 @@ const audio = (f: File) => /\.(wav|mp3)$/i.test(f.name);
 const releaseId = () => Array.from(crypto.getRandomValues(new Uint8Array(18)), (b) => "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"[b % 64]).join("");
 
 /**
- * Send folders: an EP or album, to receivers whose plan accepts folders (Pro and Team), up to their folder size. Pick a folder or several files; each file's own details (title, artist,
+ * Send folders (an EP, album or set of tracks), to receivers whose plan accepts folders (Pro and Team), up to their folder size. Pick a folder or several files; each file's own details (title, artist,
  * album, track number, BPM, key, ISRC) fill the list, in track order. They arrive as one release the receiver can open,
  * keep or pass whole, and download as its own folder in a crate. Every file still goes through the usual checks.
  */
@@ -56,11 +56,11 @@ export function FolderSend({
     setError(null);
     const files = [...(list ?? [])].filter(audio);
     if (!files.length) return setError("That folder has no WAV or MP3 files.");
-    if (files.length > MAX_RELEASE_TRACKS) return setError(`An EP or album can have up to ${MAX_RELEASE_TRACKS} tracks.`);
+    if (files.length > MAX_RELEASE_TRACKS) return setError(`A folder can have up to ${MAX_RELEASE_TRACKS} tracks.`);
     const big = files.find((f) => f.size > MAX_BYTES);
     if (big) return setError(`"${big.name}" is over 250 MB.`);
     const size = files.reduce((n, f) => n + f.size, 0);
-    if (size > folderBytes) return setError(`That's ${fmtBytes(size)}. ${receiverName} can receive up to ${fmtBytes(folderBytes)} in one EP or album.`);
+    if (size > folderBytes) return setError(`That's ${fmtBytes(size)}. ${receiverName} can receive up to ${fmtBytes(folderBytes)} in one folder.`);
     const read = await Promise.all(files.map(async (file) => ({ file, tags: await readTags(file), state: "waiting" as const, progress: 0 })));
     // Track order from the files' own numbers, then by name.
     read.sort((a, b) => (a.tags.trackNo ?? 99) - (b.tags.trackNo ?? 99) || a.file.name.localeCompare(b.file.name));
@@ -78,7 +78,7 @@ export function FolderSend({
   const editTags = (i: number, t: Partial<Tags>) => setItems((all) => all.map((it, j) => (j === i ? { ...it, tags: { ...it.tags, ...t } } : it)));
 
   async function sendAll() {
-    if (!release.title.trim()) return setError(`Give the ${RELEASE_KINDS[release.kind]} a title.`);
+    if (!release.title.trim()) return setError("Give the folder a name.");
     if (!genre) return setError("Choose a genre.");
     if (!aiUse) return setError("Say whether you used AI to make these tracks.");
     if (!account && (!who.name.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(who.email))) return setError("Add your name and email.");
@@ -120,15 +120,15 @@ export function FolderSend({
     return (
       <div role="status" className="card p-6">
         <p className="font-medium">
-          &ldquo;{release.title}&rdquo; ({RELEASE_KINDS[release.kind]}, {items.length} tracks) sent to {receiverName}.
+          &ldquo;{release.title}&rdquo; ({items.length} tracks) sent to {receiverName}.
         </p>
-        <p className="mt-2 text-sm text-mute">It arrives as one release. Each track gets its own receipt and updates.</p>
+        <p className="mt-2 text-sm text-mute">It arrives as one folder. Each track gets its own receipt and updates.</p>
       </div>
     );
 
   return (
     <div ref={formRef} className="space-y-4">
-      <p className="text-sm text-mute">Send an EP or album as one release: up to {MAX_RELEASE_TRACKS} tracks and {fmtBytes(folderBytes)}. Titles, track order, BPM and key are read from your files.</p>
+      <p className="text-sm text-mute">Up to {MAX_RELEASE_TRACKS} tracks and {fmtBytes(folderBytes)}. Titles, track order, BPM and key are read from your files.</p>
       <div className="flex flex-wrap gap-2">
         <input ref={folderRef} type="file" className="hidden" onChange={(e) => choose(e.target.files)} {...{ webkitdirectory: "", directory: "" }} />
         <input ref={filesRef} type="file" multiple accept=".wav,.mp3,audio/wav,audio/mpeg" className="hidden" onChange={(e) => choose(e.target.files)} />
@@ -142,16 +142,9 @@ export function FolderSend({
 
       {items.length > 0 && (
         <>
-          <div className="grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)_minmax(0,0.8fr)]">
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)]">
             <label className="block space-y-1.5">
-              <span className="label">Type</span>
-              <select value={release.kind} disabled={running} onChange={(e) => setRelease((r) => ({ ...r, kind: e.target.value as Kind }))} className="input">
-                <option value="ep">EP</option>
-                <option value="album">Album</option>
-              </select>
-            </label>
-            <label className="block space-y-1.5">
-              <span className="label">{RELEASE_KINDS[release.kind]} title</span>
+              <span className="label">Folder name</span>
               <input value={release.title} disabled={running} onChange={(e) => setRelease((r) => ({ ...r, title: e.target.value }))} maxLength={200} className="input" />
             </label>
             <label className="block space-y-1.5">
@@ -248,7 +241,7 @@ export function FolderSend({
       )}
       {items.length > 0 && (
         <button type="button" onClick={sendAll} disabled={running} className="btn-lime">
-          {running ? "Sending…" : items.some((i) => i.state === "failed") ? "Retry the failed tracks" : `Send ${RELEASE_KINDS[release.kind]} (${items.length} tracks)`}
+          {running ? "Sending…" : items.some((i) => i.state === "failed") ? "Retry the failed tracks" : `Send folder (${items.length} tracks)`}
         </button>
       )}
     </div>

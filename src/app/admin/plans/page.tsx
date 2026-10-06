@@ -46,7 +46,7 @@ export default async function Plans() {
                   <input name="limit" type="number" min={1} defaultValue={p.limit} className="input tnum" />
                 </label>
                 <label className="space-y-1.5">
-                  <span className="label">EP/album folders (MB, 0 = off)</span>
+                  <span className="label">Folders (MB, 0 = off)</span>
                   <input name="folder_mb" type="number" min={0} max={20480} defaultValue={Math.round(p.folderBytes / 1048576)} className="input tnum" />
                 </label>
                 <label className="space-y-1.5">

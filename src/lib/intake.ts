@@ -109,8 +109,8 @@ export async function startUpload(receiver: User, meta: SubmissionMeta, size: nu
     const releaseBytes =
       Number((await q.get<{ n: number }>("SELECT COALESCE(SUM(size), 0) AS n FROM tracks WHERE user_id = ? AND release_id = ?", receiver.id, meta.release.id))?.n ?? 0) +
       Number((await q.get<{ n: number }>("SELECT COALESCE(SUM(size), 0) AS n FROM uploads WHERE receiver_id = ? AND meta::jsonb->'release'->>'id' = ?", receiver.id, meta.release.id))?.n ?? 0);
-    if (!cap) throw new IntakeError(`${receiver.name} can't receive EPs or albums. Send up to 3 tracks at a time.`, 403);
-    if (releaseBytes + size > cap) throw new IntakeError(`This EP or album is over ${Math.round(cap / 1073741824)} GB, the most ${receiver.name} can receive in one folder.`, 413);
+    if (!cap) throw new IntakeError(`${receiver.name} can't receive folders. Send up to 3 tracks at a time.`, 403);
+    if (releaseBytes + size > cap) throw new IntakeError(`This folder is over ${Math.round(cap / 1073741824)} GB, the most ${receiver.name} can receive in one folder.`, 413);
     firstOfRelease = inRelease === 0;
   }
   await checkIntake(receiver, meta.email, ip, firstOfRelease);

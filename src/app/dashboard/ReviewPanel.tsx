@@ -6,7 +6,7 @@ import type { PlayerTrack } from "@/components/Player";
 import { deletesAt } from "@/lib/plans";
 import {q, type Collection, type EventRow, type Sender, type Track } from "@/lib/db";
 import { fmtBytes, fmtDate, fmtDay } from "@/lib/format";
-import { MIX_STATUS, AI_USE, RELEASE_KINDS, RELEASE_STATUS } from "@/lib/plans";
+import { MIX_STATUS, AI_USE, RELEASE_STATUS } from "@/lib/plans";
 import { featureOn } from "@/lib/features";
 import { addNote, decideRelease, deleteTrack, moveTrack, replyToSender } from "./actions/review";
 import { ConfirmButton, NoteForm } from "./ClientBits";
@@ -127,7 +127,7 @@ export async function ReviewPanel({
       {release && (
         <div className="mt-3 rounded-md border border-line p-3">
           <p className="text-[11px] font-bold uppercase tracking-[0.5px] text-mute">
-            {`${RELEASE_KINDS[release.kind as keyof typeof RELEASE_KINDS] ?? "Release"} · ${releaseTracks.length} tracks`}
+            {`Folder · ${releaseTracks.length} tracks`}
           </p>
           {<p className="mt-1 font-semibold">{release.title}{release.artist && <span className="font-normal text-mute"> · {release.artist}</span>}</p>}
           <ol className="mt-2 space-y-0.5 text-sm">

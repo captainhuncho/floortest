@@ -82,7 +82,7 @@ export function SendComposer({ host, account, initial }: { host: string; account
                   <div role="tablist" aria-label="What to send" className="mb-4 inline-flex rounded-full border border-line bg-ink-3 p-0.5 text-sm">
                     {(["track", "folder"] as const).map((m) => (
                       <button key={m} role="tab" aria-selected={mode === m} type="button" onClick={() => setMode(m)} className={`rounded-full px-3 py-1 ${mode === m ? "bg-bone font-semibold text-ink" : "text-mute"}`}>
-                        {m === "track" ? "Tracks" : "EP or album"}
+                        {m === "track" ? "Up to 3 tracks" : "A folder"}
                       </button>
                     ))}
                   </div>
