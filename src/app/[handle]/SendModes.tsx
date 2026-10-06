@@ -31,7 +31,7 @@ export function SendModeTabs({ mode, setMode, folderBytes, className = "" }: { m
       {(["tracks", "folder"] as const).map((m) => (
         <button key={m} role="tab" type="button" aria-selected={mode === m} onClick={() => setMode(m)} className={`rounded-lg px-3 py-2 text-left ${mode === m ? "bg-bone text-ink" : "text-mute hover:text-bone"}`}>
           <span className="block text-sm font-semibold">{m === "tracks" ? "Up to 3 tracks" : "A folder"}</span>
-          <span className={`block text-xs ${mode === m ? "text-ink/70" : "text-mute"}`}>{m === "tracks" ? "250 MB each" : `Up to ${MAX_RELEASE_TRACKS} tracks · ${fmtBytes(folderBytes)}`}</span>
+          <span className={`block text-xs ${mode === m ? "text-ink/70" : "text-mute"}`}>{m === "tracks" ? "250 MB in total" : `Up to ${MAX_RELEASE_TRACKS} tracks · ${fmtBytes(folderBytes)}`}</span>
         </button>
       ))}
     </div>

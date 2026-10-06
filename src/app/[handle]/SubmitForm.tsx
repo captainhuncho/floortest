@@ -143,7 +143,7 @@ export function SubmitForm({
           <button type="button" onClick={() => inputRef.current?.click()} className={m ? "rounded-full bg-lime px-[18px] py-3 text-[14px] font-bold uppercase text-ink" : `${L.btn} px-6 py-3.5 text-base`}>
             Choose WAV or MP3
           </button>
-          <p className={m ? "text-center text-[11px] font-medium text-dim" : `mt-3 text-sm ${L.mute}`}>or drag them here · up to {MAX_FILES} tracks · 250 MB each</p>
+          <p className={m ? "text-center text-[11px] font-medium text-dim" : `mt-3 text-sm ${L.mute}`}>or drag them here · up to {MAX_FILES} tracks · 250 MB in total</p>
         </div>
         {errorBox}
       </div>

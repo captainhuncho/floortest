@@ -82,7 +82,7 @@ export async function uploadTrack(
   }
 }
 
-/** Separate tracks in one go on the send form. EPs and albums go through Send folders (paid). */
+/** Separate tracks in one go on the send form, up to MAX_BYTES together. EPs and albums go through Send folders (paid). */
 export const MAX_FILES = 3;
 
 /** One chosen file: what we read from it (editable) and how its upload is going. */
@@ -128,6 +128,8 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
     if (big) return setError(`"${big.name}" is over 250 MB.`);
     const room = MAX_FILES - items.length;
     if (chosen.length > room) return setError(`Up to ${MAX_FILES} tracks at a time.`);
+    const total = [...items.map((i) => i.file), ...chosen].reduce((n, f) => n + f.size, 0);
+    if (total > MAX_BYTES) return setError("Your tracks add up to more than 250 MB. Send fewer, or use MP3s.");
     const fresh: Item[] = chosen.map((file) => ({
       id: newId(), file, analysis: null, analyzing: true, status: "ready", progress: 0,
       tags: { title: file.name.replace(/\.(wav|mp3)$/i, ""), artist: "", album: "", trackNo: null, bpm: null, key: "", isrc: "" },

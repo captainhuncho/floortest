@@ -4,7 +4,7 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { now, q } from "@/lib/db";
-import { cleanGenre } from "@/lib/plans";
+import { cleanGenre, MAX_COLLECTION_GENRES } from "@/lib/plans";
 import { switchOn } from "@/lib/switches";
 import { audit } from "@/lib/audit";
 import { done, ownCollection } from "./common";
@@ -48,7 +48,7 @@ export async function updateCollection(id: number, form: FormData) {
   let genres: string[] = [];
   try {
     const raw = JSON.parse(String(form.get("genres") || "[]"));
-    if (Array.isArray(raw)) genres = [...new Set(raw.filter((g) => typeof g === "string").map(cleanGenre).filter(Boolean))].slice(0, 30);
+    if (Array.isArray(raw)) genres = [...new Set(raw.filter((g) => typeof g === "string").map(cleanGenre).filter(Boolean))].slice(0, MAX_COLLECTION_GENRES);
   } catch {}
   await q.run(
     `UPDATE collections SET name = COALESCE(NULLIF(?, ''), name), closes_at = ?, brief_wanted = ?, bpm_min = ?, bpm_max = ?, brief_note = ?, genres = ?, allow_sharing = ?

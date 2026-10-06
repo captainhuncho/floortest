@@ -1,15 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { DEFAULT_GENRES, MAX_GENRE_LENGTH } from "@/lib/plans";
+import { DEFAULT_GENRES, MAX_COLLECTION_GENRES, MAX_GENRE_LENGTH } from "@/lib/plans";
 
-/** Chips editor for a collection's genre list. Empty means senders see the standard list. */
+/** Chips editor for a collection's genre list (up to MAX_COLLECTION_GENRES). Empty means senders see the standard list. */
 export function GenresField({ initial }: { initial: string[] }) {
-  const [list, setList] = useState(initial);
+  const [list, setList] = useState(initial.slice(0, MAX_COLLECTION_GENRES));
+  const full = list.length >= MAX_COLLECTION_GENRES;
   const [draft, setDraft] = useState("");
   const add = (g: string) => {
     const clean = g.replace(/\s+/g, " ").trim().slice(0, MAX_GENRE_LENGTH);
-    if (clean && !list.some((x) => x.toLowerCase() === clean.toLowerCase()) && list.length < 30) setList([...list, clean]);
+    if (clean && !list.some((x) => x.toLowerCase() === clean.toLowerCase()) && list.length < MAX_COLLECTION_GENRES) setList([...list, clean]);
   };
   const suggestions = DEFAULT_GENRES.filter((g) => !list.includes(g));
 
@@ -27,6 +28,11 @@ export function GenresField({ initial }: { initial: string[] }) {
           </span>
         ))}
       </div>
+      <p className="text-xs text-mute tnum">
+        {list.length} of {MAX_COLLECTION_GENRES}
+        {full && " · remove one to add another"}
+      </p>
+      {!full && (
       <div className="flex gap-2">
         <label className="sr-only" htmlFor="genre-draft">
           Add a genre
@@ -50,7 +56,8 @@ export function GenresField({ initial }: { initial: string[] }) {
           Add
         </button>
       </div>
-      {suggestions.length > 0 && (
+      )}
+      {!full && suggestions.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           <span className="py-1 text-sm text-mute">Quick add:</span>
           {suggestions.map((g) => (

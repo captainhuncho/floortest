@@ -65,12 +65,14 @@ export const DEFAULT_GENRES = [
   "Downtempo / Electronica",
 ];
 export const MAX_GENRE_LENGTH = 40;
+/** A collection names up to this many genres for senders to pick from. */
+export const MAX_COLLECTION_GENRES = 6;
 
 /** A collection's own genre list, or the defaults. */
 export function genresFor(c: { genres: string } | undefined | null): { list: string[]; custom: boolean } {
   try {
     const parsed = c?.genres ? JSON.parse(c.genres) : null;
-    if (Array.isArray(parsed) && parsed.length) return { list: parsed.filter((g) => typeof g === "string"), custom: true };
+    if (Array.isArray(parsed) && parsed.length) return { list: parsed.filter((g) => typeof g === "string").slice(0, MAX_COLLECTION_GENRES), custom: true };
   } catch {}
   return { list: DEFAULT_GENRES, custom: false };
 }
