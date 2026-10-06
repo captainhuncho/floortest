@@ -361,6 +361,25 @@ export function SubmitForm({
         </div>
       </details>
 
+      <fieldset className="space-y-2">
+        <legend className={`${L.label} mb-2`}>Did you use AI to make this track?</legend>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {[
+              ["none", "No"],
+              ["partial", "Partly", "e.g. AI vocals, stems or mastering"],
+              ["full", "Fully AI-generated"],
+            ].map(([v, l, hint]) => (
+            <label key={v} className="flex cursor-pointer items-start gap-2 rounded-md border border-line px-3 py-2.5 text-[13px] has-[:checked]:border-lime/70">
+              <input type="radio" name="ai_use" value={v} required className="mt-0.5 accent-lime" />
+              <span>
+                {l}
+                {hint && <span className={`block text-[11px] ${L.mute}`}>{hint}</span>}
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
       {errorBox}
 
       <label className="flex items-start gap-2.5 text-[13px]">
@@ -371,7 +390,7 @@ export function SubmitForm({
       </label>
 
       <p className={`text-xs ${L.mute}`}>
-        By sending you confirm you own or control this track and you&apos;re 18 or over. {receiverName} may listen to it and download it to evaluate it
+        By sending you confirm you own or control this track, your answer about AI is accurate, and you&apos;re 18 or over. {receiverName} may listen to it and download it to evaluate it
         {allowSharing ? `, and share it with colleagues who have FloorTest accounts, through a private link, for promotion (${sharingDownloads ? "they can listen and download" : "listen only"})` : ""}. They can play it in sets only if you tick the box above, and can&apos;t release it anywhere without a signed agreement with you.{" "}
         <a href="/terms" target="_blank" className="underline underline-offset-4">Terms</a> ·{" "}
         <a href="/privacy" target="_blank" className="underline underline-offset-4">Privacy</a>

@@ -159,6 +159,7 @@ export function useTrackUpload(
         message: field("message"),
         genre: field("genre"),
         release_status: field("release_status"),
+        ai_use: field("ai_use"),
         mix_status: field("mix_status"),
         turnstile: field("cf-turnstile-response"),
         sets_ok: fd.get("sets_ok") === "on",

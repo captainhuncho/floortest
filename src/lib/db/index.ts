@@ -108,6 +108,8 @@ export type Track = {
   decision: Decision | null;
   decided_at: number | null;
   release_status: string;
+  /** Sender's AI declaration; null on tracks sent before the question was asked. */
+  ai_use: "none" | "partial" | "full" | null;
   mix_status: string;
   genre: string;
   replied_at: number | null;

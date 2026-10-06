@@ -21,6 +21,7 @@ export function FolderSend({ handle, receiverName, genres }: { handle: string; r
   const [genre, setGenre] = useState("");
   const [message, setMessage] = useState("");
   const [setsOk, setSetsOk] = useState(false);
+  const [aiUse, setAiUse] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const folderRef = useRef<HTMLInputElement>(null);
@@ -41,6 +42,7 @@ export function FolderSend({ handle, receiverName, genres }: { handle: string; r
 
   async function sendAll() {
     if (!genre) return setError("Choose a genre for the folder.");
+    if (!aiUse) return setError("Say whether you used AI to make these tracks.");
     setError(null);
     setRunning(true);
     const batch = batchId();
@@ -52,7 +54,7 @@ export function FolderSend({ handle, receiverName, genres }: { handle: string; r
         handle,
         it.file,
         analysis,
-        { title: it.title || it.file.name, artist: it.artist, message, genre, release_status: "", mix_status: "", asAccount: true, batch, sets_ok: setsOk },
+        { title: it.title || it.file.name, artist: it.artist, message, genre, release_status: "", mix_status: "", ai_use: aiUse, asAccount: true, batch, sets_ok: setsOk },
         (p) => update(i, { progress: p }),
       );
       update(i, "error" in r ? { state: "failed", error: r.error } : { state: "sent", progress: 1 });
@@ -119,6 +121,15 @@ export function FolderSend({ handle, receiverName, genres }: { handle: string; r
           <label className="block space-y-1.5">
             <span className="label">Message (optional, sent with every track)</span>
             <textarea value={message} onChange={(e) => setMessage(e.target.value)} disabled={running} rows={3} maxLength={2000} className="input resize-y" />
+          </label>
+          <label className="block space-y-1.5">
+            <span className="label">Did you use AI to make these tracks?</span>
+            <select value={aiUse} onChange={(e) => setAiUse(e.target.value)} disabled={running} required className="input">
+              <option value="" disabled>Choose one</option>
+              <option value="none">No</option>
+              <option value="partial">Partly (e.g. AI vocals, stems or mastering)</option>
+              <option value="full">Fully AI-generated</option>
+            </select>
           </label>
           <label className="flex items-start gap-2.5 text-sm">
             <input type="checkbox" checked={setsOk} onChange={(e) => setSetsOk(e.target.checked)} disabled={running} className="mt-0.5 size-4 shrink-0 accent-lime" />

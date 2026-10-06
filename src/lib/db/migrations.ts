@@ -910,4 +910,11 @@ alter table users add column terms_accepted_at bigint;
 alter table users add column terms_version text;
 `,
   },
+  {
+    // Senders must say whether AI was used to make a track; receivers see it on the track. Older tracks stay unset.
+    id: "0053_track_ai_use",
+    sql: `
+alter table tracks add column ai_use text check (ai_use in ('none', 'partial', 'full'));
+`,
+  },
 ];

@@ -19,6 +19,7 @@ export default function ContentRules() {
           "You must not use FloorTest to",
           [
             "Send music you don't have the right to share, or pretend to be another artist, label or person.",
+            "Give a false answer about whether you used AI to make a track, or send AI-generated vocals or music made to sound like a real artist without their permission.",
             "Send anything illegal, including content that sexualises children, terrorist content, or content that infringes someone's rights.",
             "Harass, threaten, or send hateful or abusive messages, track titles, notes or replies.",
             "Spam receivers, send the same track again and again, or get round a block.",

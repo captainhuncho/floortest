@@ -36,6 +36,8 @@ export const RATE_PER_IP_PER_HOUR = 10;
 export const RATE_PER_EMAIL_PER_DAY = 5;
 
 /** Sender-declared context. Labels are shared by both public page styles and the review panel. */
+/** What the sender declared about AI when sending. */
+export const AI_USE = { none: "No AI used", partial: "Made with some AI", full: "Fully AI-generated" } as const;
 export const RELEASE_STATUS = { unsigned: "Unreleased", signed: "Signed, forthcoming", released: "Already released" } as const;
 export const MIX_STATUS = { raw: "Raw / work in progress", mixed: "Mixed, not mastered", mastered: "Fully mixed & mastered" } as const;
 

@@ -4,7 +4,7 @@ import type { PlayerTrack } from "@/components/Player";
 import { deletesAt } from "@/lib/plans";
 import {q, type Collection, type EventRow, type Sender, type Track } from "@/lib/db";
 import { fmtBytes, fmtDate, fmtDay } from "@/lib/format";
-import { MIX_STATUS, RELEASE_STATUS } from "@/lib/plans";
+import { MIX_STATUS, AI_USE, RELEASE_STATUS } from "@/lib/plans";
 import { featureOn } from "@/lib/features";
 import { addNote, deleteTrack, moveTrack, replyToSender } from "./actions/review";
 import { ConfirmButton, NoteForm } from "./ClientBits";
@@ -126,6 +126,7 @@ export async function ReviewPanel({
         {t.artist}
         {t.genre && <span> · {t.genre}</span>}
         {t.release_status && <span> · {RELEASE_STATUS[t.release_status as keyof typeof RELEASE_STATUS]}</span>}
+        {t.ai_use && t.ai_use !== "none" && <span className="ml-1 rounded-full border border-line-2 px-1.5 py-px text-[10px] font-bold uppercase tracking-[0.5px]">{AI_USE[t.ai_use]}</span>}
         {t.mix_status && <span> · {MIX_STATUS[t.mix_status as keyof typeof MIX_STATUS]}</span>}
       </p>
 

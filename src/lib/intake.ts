@@ -65,6 +65,8 @@ export type SubmissionMeta = {
   artist: string;
   message: string;
   releaseStatus: string;
+  /** The sender's AI declaration: none, partial or full. */
+  aiUse: string;
   mixStatus: string;
   genre: string;
   originalName: string;
@@ -170,8 +172,8 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
       const collection = await activeCollection(fresh, db);
       const track = (await db.get<Track>(
         `INSERT INTO tracks (user_id, collection_id, sender_id, token, title, artist, message, release_status, mix_status, genre,
-                             file_key, original_name, mime, size, duration, bpm, peaks, created_at, share_ok, share_download, batch_id, sets_ok)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING *`,
+                             file_key, original_name, mime, size, duration, bpm, peaks, created_at, share_ok, share_download, batch_id, sets_ok, ai_use)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING *`,
         fresh.id,
         collection?.id ?? null,
         sender.id,
@@ -194,6 +196,7 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
         sharing && collection?.allow_sharing && (await shareDownloadEnabled(fresh.plan)) ? 1 : 0,
         meta.batch ?? null,
         meta.setsOk ? 1 : 0,
+        meta.aiUse,
       ))!;
       // Possible duplicate: the same file (byte size and length) already on this desk, or the same
       // sender re-sending the same title. Flagged for the receiver, never blocked.

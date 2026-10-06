@@ -3,7 +3,7 @@ import { currentUser } from "@/lib/auth";
 import { IntakeError, startUpload } from "@/lib/intake";
 import { userByHandle } from "@/lib/desk";
 import { featureOn } from "@/lib/features";
-import { cleanGenre, MIX_STATUS, RELEASE_STATUS } from "@/lib/plans";
+import { cleanGenre, MIX_STATUS, AI_USE, RELEASE_STATUS } from "@/lib/plans";
 import { ipFrom } from "@/lib/ratelimit";
 import { BOT_MESSAGE, passedTurnstile } from "@/lib/turnstile";
 
@@ -46,6 +46,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]
   if (!title) return bad("Add a track title.");
   if (!genre) return bad("Choose a genre.");
   if (!name) return bad("Add your name.");
+  if (!Object.hasOwn(AI_USE, str("ai_use", 20))) return bad("Say whether you used AI to make this track.");
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return bad("Enter a valid email so we can tell you what happens next.");
 
   try {
@@ -58,6 +59,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]
         artist: str("artist", 200) || name,
         message: str("message", 2000),
         releaseStatus: pick("release_status", RELEASE_STATUS),
+        aiUse: pick("ai_use", AI_USE),
         mixStatus: pick("mix_status", MIX_STATUS),
         genre,
         originalName: fileName,
