@@ -112,12 +112,11 @@ async function main() {
   const VERIFIED = new Set(["ama@example.com", "a&r@nightshift.example"]);
   const sender = async (name: string, email: string, ago: number) =>
     (senders[email] ??= await id(
-      "INSERT INTO senders (user_id, email, name, created_at, verify_token, verified_at) VALUES (?,?,?,?,?,?)",
+      "INSERT INTO senders (user_id, email, name, created_at, verified_at) VALUES (?,?,?,?,?)",
       uid,
       email,
       name,
       now - ago * DAY,
-      crypto.randomBytes(16).toString("base64url"),
       VERIFIED.has(email) ? now - ago * DAY + 3_600_000 : null,
     ));
   const ev = (sid: number, tid: number | null, type: string, at: number, detail = "") =>
