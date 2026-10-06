@@ -1,4 +1,5 @@
 import { trackUse } from "@/lib/usage";
+import { readLinks } from "@/lib/socials";
 import { nextHandleChange } from "@/lib/accounts";
 import Link from "next/link";
 import { logout } from "../../(auth)/actions";
@@ -59,7 +60,7 @@ export default async function Settings() {
           Public page
         </h2>
         <p className="mt-1 text-sm text-mute">How your link looks when shared. Set each callout&apos;s brief on the Collections page.</p>
-        <PublicPageForm roleLine={user.role_line} />
+        <PublicPageForm roleLine={user.role_line} links={readLinks(user.links).map((l) => l.url).join("\n")} />
         <CoverUpload handle={user.handle} cover={user.cover_key} />
       </section>
 

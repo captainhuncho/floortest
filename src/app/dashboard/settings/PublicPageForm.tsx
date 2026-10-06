@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import {useRef, useState} from "react";
 import { updatePublicPage } from "../actions/settings";
 
-export function PublicPageForm({ roleLine }: { roleLine: string }) {
+export function PublicPageForm({ roleLine, links }: { roleLine: string; links: string }) {
   const [state, onSubmit, pending] = useActionForm(updatePublicPage, undefined);
   return (
     <form onSubmit={onSubmit} className="mt-4 space-y-5">
@@ -14,6 +14,14 @@ export function PublicPageForm({ roleLine }: { roleLine: string }) {
         <input name="role_line" defaultValue={roleLine} maxLength={60} className="input" placeholder="DJ / Performer" />
         <span className="block text-sm text-mute">Shown in link previews when you share your link.</span>
       </label>
+      <label className="block space-y-1.5">
+        <span className="label">Your profiles</span>
+        <textarea name="links" defaultValue={links} rows={4} className="input font-mono text-[13px]" placeholder={"instagram.com/yourname\nopen.spotify.com/artist/…\nsoundcloud.com/yourname"} />
+        <span className="block text-sm text-mute">
+          One link per line, up to 8: Instagram, TikTok, Spotify, Apple Music, SoundCloud, Beatport, Bandcamp, YouTube or your website. They show as icons under your name so senders know it&apos;s really you.
+        </span>
+      </label>
+      {state?.error && <p className="text-sm text-danger">{state.error}</p>}
       {state?.ok && <p className="text-sm text-lime">Saved.</p>}
       <button className="btn-lime btn-sm" disabled={pending}>
         {pending ? "Saving…" : "Save"}
@@ -53,16 +61,16 @@ export function CoverUpload({ handle, cover }: { handle: string; cover: string |
       <div className="grid h-28 w-20 shrink-0 place-items-center overflow-hidden rounded-lg border border-line bg-ink">
         {cover ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={`/api/cover/${handle}?v=${encodeURIComponent(cover)}`} alt="Current cover photo" className="h-full w-full object-cover" />
+          <img src={`/api/cover/${handle}?v=${encodeURIComponent(cover)}`} alt="Current profile photo" className="h-full w-full object-cover" />
         ) : (
           <span className="px-2 text-center text-xs text-mute">No photo</span>
         )}
       </div>
       <div>
-        <p className="font-medium">Cover photo</p>
-        <p className="text-sm text-mute">Portrait works best. JPG, PNG or WebP, up to 8 MB. Shown when your link is shared on socials and in messages.</p>
+        <p className="font-medium">Profile photo</p>
+        <p className="text-sm text-mute">A square photo works best. JPG, PNG or WebP, up to 8 MB. Shown at the top of your link page and when your link is shared.</p>
         <input ref={input} type="file"
-      aria-label="Choose a cover photo"
+      aria-label="Choose a profile photo"
       tabIndex={-1} accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => upload(e.target.files?.[0])} />
         <div className="mt-2 flex gap-2">
           <button type="button" className="btn-ghost btn-sm" disabled={busy} onClick={() => input.current?.click()}>

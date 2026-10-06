@@ -2,6 +2,7 @@
 
 /** Settings: alerts, profile and public page, plans and checkout, identity, email change, theme and deleting the account. */
 import { revalidatePath } from "next/cache";
+import { parseLinks } from "@/lib/socials";
 import { KINDS } from "@/lib/db";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -88,7 +89,9 @@ export async function updatePublicPage(_: SettingsState, form: FormData): Promis
   const u = await requireUser();
   const style = form.get("page_style") === "stage" ? "stage" : "classic";
   const role = String(form.get("role_line") || "").trim().slice(0, 60);
-  await q.run("UPDATE users SET page_style = ?, role_line = ? WHERE id = ?", style, role, u.id);
+  const parsed = parseLinks(String(form.get("links") || "").slice(0, 4000));
+  if (parsed.error) return { error: parsed.error };
+  await q.run("UPDATE users SET page_style = ?, role_line = ?, links = ? WHERE id = ?", style, role, JSON.stringify(parsed.links), u.id);
   await audit(u.id, "page_updated", style === "stage" ? "Stage style" : "Classic style");
   done();
   revalidatePath(`/${u.handle}`);

@@ -1,4 +1,6 @@
 import { CuePoint } from "@/components/CuePoint";
+import { ProfileLinks } from "@/components/ProfileLinks";
+import { readLinks } from "@/lib/socials";
 import { fill, siteCopy } from "@/lib/content";
 import { listeners } from "@/lib/team";
 import type { Metadata } from "next";
@@ -67,6 +69,16 @@ export default async function ReceiverPage({ params }: Props) {
   return (
     <main className="group/page mx-auto flex min-h-dvh max-w-xl flex-col gap-6 bg-ink px-[18px] py-8 text-bone sm:py-12">
       <div className="flex flex-col gap-3">
+        {receiver.cover_key && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={`/api/cover/${receiver.handle}?v=${encodeURIComponent(receiver.cover_key)}`}
+            alt=""
+            width={112}
+            height={112}
+            className="mb-1 size-28 rounded-2xl object-cover group-has-[[data-picked]]/page:hidden"
+          />
+        )}
         <p className="text-[11px] font-bold uppercase tracking-[1px] text-mute">{c.kicker}</p>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="break-words text-[clamp(2rem,12vw,3.5rem)] font-bold leading-none group-has-[[data-picked]]/page:text-[32px] group-has-[[data-picked]]/page:font-extrabold">
@@ -82,6 +94,7 @@ export default async function ReceiverPage({ params }: Props) {
             </p>
           )}
         </div>
+        <ProfileLinks links={readLinks(receiver.links)} className="group-has-[[data-picked]]/page:hidden" />
         {team.length > 0 && !closedReason && (
           <p className="text-[12px] text-mute">
             Tracks sent here are also heard by {receiver.name}&apos;s team: <span className="text-bone">{team.map((m) => m.name).join(", ")}</span>.

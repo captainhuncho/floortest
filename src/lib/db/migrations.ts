@@ -977,4 +977,11 @@ alter table users add column first_name text not null default '';
 alter table users add column last_name text not null default '';
 `,
   },
+  {
+    // Profile links on a receiver's page (Instagram, TikTok, Spotify, Apple Music, SoundCloud…), as JSON [{platform, url}].
+    id: "0057_profile_links",
+    sql: `
+alter table users add column links text not null default '[]';
+`,
+  },
 ];
