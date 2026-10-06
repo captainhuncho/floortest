@@ -8,7 +8,7 @@ import { logEvent, now, q, USER_COLUMNS, type Collection, type Queryable, type S
 import { noLinks, APP_URL, sendMailLater } from "./mail";
 import { alertIfFull, notifyNewSubmission } from "./notify";
 import { ACCEPTED_EXT, MAX_RELEASE_TRACKS, MAX_UPLOAD_BYTES, RATE_PER_EMAIL_PER_DAY, RATE_PER_IP_PER_HOUR } from "./plans";
-import { shareDownloadEnabled } from "./plan-store";
+import { folderLimit, shareDownloadEnabled } from "./plan-store";
 import { allow } from "./ratelimit";
 import { sealUpload, storage } from "./storage";
 import { validateAudio } from "./validate";
@@ -105,6 +105,12 @@ export async function startUpload(receiver: User, meta: SubmissionMeta, size: nu
     const owner = await q.get<{ email: string }>("SELECT s.email FROM releases r JOIN senders s ON s.id = r.sender_id WHERE r.id = ? AND r.user_id = ?", meta.release.id, receiver.id);
     if (owner && owner.email !== meta.email) throw new IntakeError("That release belongs to someone else.", 403);
     if (inRelease >= MAX_RELEASE_TRACKS) throw new IntakeError(`A release can have up to ${MAX_RELEASE_TRACKS} tracks.`, 413);
+    const cap = await folderLimit(receiver.plan);
+    const releaseBytes =
+      Number((await q.get<{ n: number }>("SELECT COALESCE(SUM(size), 0) AS n FROM tracks WHERE user_id = ? AND release_id = ?", receiver.id, meta.release.id))?.n ?? 0) +
+      Number((await q.get<{ n: number }>("SELECT COALESCE(SUM(size), 0) AS n FROM uploads WHERE receiver_id = ? AND meta::jsonb->'release'->>'id' = ?", receiver.id, meta.release.id))?.n ?? 0);
+    if (!cap) throw new IntakeError(`${receiver.name} can't receive EPs or albums. Send up to 3 tracks at a time.`, 403);
+    if (releaseBytes + size > cap) throw new IntakeError(`This EP or album is over ${Math.round(cap / 1073741824)} GB, the most ${receiver.name} can receive in one folder.`, 413);
     firstOfRelease = inRelease === 0;
   }
   await checkIntake(receiver, meta.email, ip, firstOfRelease);

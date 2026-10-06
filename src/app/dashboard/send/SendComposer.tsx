@@ -7,7 +7,7 @@ import { FolderSend } from "./FolderSend";
 import { lookupReceiver, type ReceiverLookup } from "../actions/desk";
 
 /** Type someone's link name, see who they are, then send them a track from your account. */
-export function SendComposer({ host, account, initial, folders }: { host: string; account: { name: string; email: string }; initial: string; folders: boolean }) {
+export function SendComposer({ host, account, initial }: { host: string; account: { name: string; email: string }; initial: string }) {
   const [handle, setHandle] = useState(initial);
   const [mode, setMode] = useState<"track" | "folder">("track");
   const [found, setFound] = useState<ReceiverLookup | null>(null);
@@ -78,7 +78,7 @@ export function SendComposer({ host, account, initial, folders }: { host: string
           <div className="mt-5">
             {found.accepting ? (
               <>
-                {folders && (
+                {found.folderBytes > 0 && (
                   <div role="tablist" aria-label="What to send" className="mb-4 inline-flex rounded-full border border-line bg-ink-3 p-0.5 text-sm">
                     {(["track", "folder"] as const).map((m) => (
                       <button key={m} role="tab" aria-selected={mode === m} type="button" onClick={() => setMode(m)} className={`rounded-full px-3 py-1 ${mode === m ? "bg-bone font-semibold text-ink" : "text-mute"}`}>
@@ -87,8 +87,8 @@ export function SendComposer({ host, account, initial, folders }: { host: string
                     ))}
                   </div>
                 )}
-                {folders && mode === "folder" ? (
-                  <FolderSend handle={found.handle} receiverName={found.name} genres={found.genres} />
+                {found.folderBytes > 0 && mode === "folder" ? (
+                  <FolderSend handle={found.handle} receiverName={found.name} genres={found.genres} folderBytes={found.folderBytes} account={account} />
                 ) : (
                   <SubmitForm handle={found.handle} receiverName={found.name} genres={found.genres} account={account} />
                 )}

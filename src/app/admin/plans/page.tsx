@@ -35,7 +35,7 @@ export default async function Plans() {
                 <span className="label">Name</span>
                 <input name="name" defaultValue={p.name} required maxLength={40} className="input" />
               </label>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <label className="space-y-1.5">
                   <span className="label">Price (US$ / month)</span>
                   <input name="price" type="number" min={0} max={1000} step="0.01" defaultValue={p.price} disabled={p.id === FREE_PLAN} className="input tnum" />
@@ -44,6 +44,10 @@ export default async function Plans() {
                 <label className="space-y-1.5">
                   <span className="label">Track limit</span>
                   <input name="limit" type="number" min={1} defaultValue={p.limit} className="input tnum" />
+                </label>
+                <label className="space-y-1.5">
+                  <span className="label">EP/album folders (MB, 0 = off)</span>
+                  <input name="folder_mb" type="number" min={0} max={20480} defaultValue={Math.round(p.folderBytes / 1048576)} className="input tnum" />
                 </label>
                 <label className="space-y-1.5">
                   <span className="label">Order</span>

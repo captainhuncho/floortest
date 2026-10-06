@@ -4,7 +4,7 @@ import { currentUser } from "@/lib/auth";
 import { IntakeError, startUpload } from "@/lib/intake";
 import { userByHandle } from "@/lib/desk";
 import { q } from "@/lib/db";
-import { featureOn } from "@/lib/features";
+import { folderLimit } from "@/lib/plan-store";
 import { cleanGenre, MIX_STATUS, AI_USE, RELEASE_STATUS } from "@/lib/plans";
 import { ipFrom } from "@/lib/ratelimit";
 import { BOT_MESSAGE, passedTurnstile } from "@/lib/turnstile";
@@ -32,7 +32,8 @@ export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]
   // Sending from a FloorTest account: name and email come from the account, not the form.
   const account = body.asAccount ? await currentUser() : null;
   if (body.asAccount && !account) return bad("Sign in again to send from your account.", 401);
-  // Release: an EP or album sent as a folder (account senders only). Later tracks join the release its sender started.
+  // Release: an EP or album sent as a folder. Only the first track passes the bot check; later ones can only join a
+  // release that same sender already started.
   const rel = body.release && typeof body.release === "object" ? (body.release as Record<string, unknown>) : null;
   const release = rel && typeof rel.id === "string" && /^[A-Za-z0-9_-]{16,40}$/.test(rel.id)
     ? {
@@ -43,8 +44,8 @@ export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]
       }
     : null;
   if (body.release && !release) return bad("Something's wrong with this release. Please start again.");
-  // EPs and albums are Send folders: signed-in senders on a plan with the feature.
-  if (release && (!account || !(await featureOn("folders", account)))) return bad("Sending EPs and albums isn't available on your plan.", 403);
+  // EPs and albums go only to receivers whose plan accepts folders (Pro and Team); the size cap is checked at upload.
+  if (release && !(await folderLimit(receiver.plan))) return bad(`${receiver.name} can receive up to 3 tracks at a time. Send the tracks one by one.`, 403);
   const joining = release
     ? !!(await q.get("SELECT 1 FROM releases WHERE id = ? AND user_id = ?", release.id, receiver.id))
     : false;

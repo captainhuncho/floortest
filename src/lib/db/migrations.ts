@@ -1019,4 +1019,15 @@ alter table tracks add column musical_key text not null default '';
 alter table tracks add column isrc text not null default '';
 `,
   },
+  {
+    // Which receivers accept EP/album folders, and how big: set per plan in Admin → Plans (0 = no folders).
+    // Pro 1 GB, Team 3 GB. Replaces the "folders" feature switch, which went by the sender's plan.
+    id: "0060_plan_folder_limit",
+    sql: `
+alter table plans add column folder_bytes bigint not null default 0 check (folder_bytes >= 0);
+update plans set folder_bytes = 1073741824 where id = 'pro';
+update plans set folder_bytes = 3221225472 where id = 'team';
+delete from feature_switches where feature = 'folders';
+`,
+  },
 ];

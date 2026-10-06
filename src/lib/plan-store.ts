@@ -17,19 +17,21 @@ export type Plan = {
   position: number;
   /** Retired plans keep their current users but aren't offered to anyone new. */
   retired: boolean;
+  /** Largest EP/album folder this plan's receivers accept, in bytes; 0 means folders are off. */
+  folderBytes: number;
 };
 
 /** Every account starts here, and it can't be retired or deleted. */
 export const FREE_PLAN = "free";
 
-type Row = { id: string; name: string; price_cents: number; track_limit: number; blurb: string; features: string; share_downloads: number; featured: number; position: number; retired_at: number | null };
+type Row = { id: string; name: string; price_cents: number; track_limit: number; blurb: string; features: string; share_downloads: number; featured: number; position: number; retired_at: number | null; folder_bytes: number };
 const toPlan = (r: Row): Plan => {
   let features: string[] = [];
   try {
     const f = JSON.parse(r.features);
     if (Array.isArray(f)) features = f.map(String);
   } catch {}
-  return { id: r.id, name: r.name, price: r.price_cents / 100, limit: r.track_limit, blurb: r.blurb, features, shareDownloads: !!r.share_downloads, featured: !!r.featured, position: r.position, retired: !!r.retired_at };
+  return { id: r.id, name: r.name, price: r.price_cents / 100, limit: r.track_limit, blurb: r.blurb, features, shareDownloads: !!r.share_downloads, featured: !!r.featured, position: r.position, retired: !!r.retired_at, folderBytes: Number(r.folder_bytes) || 0 };
 };
 
 /** All plans, retired ones included, in display order. Read once per request. */
@@ -69,4 +71,10 @@ export async function shareDownloadEnabled(plan: string, db: Queryable = q) {
 export async function planLimit(plan: string, db: Queryable = q) {
   const r = await db.get<{ n: number }>("SELECT track_limit AS n FROM plans WHERE id IN (?, ?) ORDER BY (id = ?) DESC LIMIT 1", plan, FREE_PLAN, plan);
   return r?.n ?? 0;
+}
+
+/** A receiver's folder limit, read on `db` (see shareDownloadEnabled); 0 when their plan doesn't accept folders. */
+export async function folderLimit(plan: string, db: Queryable = q) {
+  const r = await db.get<{ b: number }>("SELECT folder_bytes AS b FROM plans WHERE id = ?", plan);
+  return Number(r?.b) || 0;
 }

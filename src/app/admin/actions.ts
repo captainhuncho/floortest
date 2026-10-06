@@ -701,20 +701,23 @@ export async function savePlan(id: string, form: FormData) {
   const blurb = String(form.get("blurb") || "").trim().slice(0, 200);
   const features = String(form.get("features") || "").split("\n").map((f) => f.trim()).filter(Boolean).slice(0, 20).map((f) => f.slice(0, 120));
   const position = Math.floor(Number(form.get("position")) || 0);
+  const folderMb = Math.floor(Number(form.get("folder_mb")) || 0);
   if (!name) return fail("Give the plan a name.");
+  if (folderMb < 0 || folderMb > 20480) return fail("Folder limit must be between 0 and 20,480 MB.");
   if (!Number.isFinite(price) || price < 0 || price > 100000) return fail("Price must be between $0 and $1,000.");
   if (id === FREE_PLAN && price !== 0) return fail("Free must stay at $0.");
   if (!Number.isFinite(limit) || limit < 1 || limit > 1000000) return fail("Track limit must be at least 1.");
   const fullest = await fullestOn(id);
   if (limit < fullest) return fail(`Someone on ${old.name} already has ${fullest} active tracks, so the limit can't go below that.`);
   await q.run(
-    "UPDATE plans SET name = ?, price_cents = ?, track_limit = ?, blurb = ?, features = ?, share_downloads = ?, featured = ?, position = ?, updated_at = ? WHERE id = ?",
-    name, price, limit, blurb, JSON.stringify(features), form.get("share_downloads") === "on" ? 1 : 0, form.get("featured") === "on" ? 1 : 0, position, now(), id,
+    "UPDATE plans SET name = ?, price_cents = ?, track_limit = ?, blurb = ?, features = ?, share_downloads = ?, featured = ?, position = ?, folder_bytes = ?, updated_at = ? WHERE id = ?",
+    name, price, limit, blurb, JSON.stringify(features), form.get("share_downloads") === "on" ? 1 : 0, form.get("featured") === "on" ? 1 : 0, position, folderMb * 1048576, now(), id,
   );
   const changes = [
     old.price * 100 !== price && `price $${old.price} → $${price / 100}`,
     old.limit !== limit && `limit ${old.limit} → ${limit}`,
     old.name !== name && `name ${old.name} → ${name}`,
+    old.folderBytes !== folderMb * 1048576 && `folders ${Math.round(old.folderBytes / 1048576)} → ${folderMb} MB`,
   ].filter(Boolean);
   await logAdmin(a.id, "edited plan", id, changes.join(" · ") || "wording");
   await done(`${name} saved.`);
