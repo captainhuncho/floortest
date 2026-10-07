@@ -12,6 +12,8 @@ import { jobProblems, lastRuns } from "@/lib/cron";
 const DAY = 86_400_000;
 /** Below this, week-on-week percentages are noise ("1 → 3 is +200%"), so only the difference is shown. */
 const PCT_FROM = 10;
+/** Days shown in each weekly card's mini chart. */
+const SPARK_DAYS = 14;
 
 type Tone = "ok" | "warn" | "bad" | "idle";
 type Todo = { n: number; label: string; sub: string; href: string; area: string; urgent?: boolean; oldest?: number | null; dueDays?: number };
@@ -30,6 +32,47 @@ export default async function AdminOverview() {
       return fallback;
     });
   const num = (v: unknown) => Number(v ?? 0);
+
+  // Round two, started first so it runs alongside the rest: the review loop, daily series and recent activity.
+  const median = (name: string, sql: string, ...a: number[]) =>
+    safe(name, q.get<{ m: number | null }>(`SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY v) AS m FROM (${sql}) x`, ...a).then((r) => (r?.m == null ? null : Number(r.m))), null);
+  const daily = (name: string, sql: string) =>
+    safe(name, q.all<{ d: number; n: number }>(`SELECT FLOOR((created_at - ?) / ${DAY}) AS d, COUNT(*) AS n FROM (${sql}) x GROUP BY 1`, t - SPARK_DAYS * DAY, t - SPARK_DAYS * DAY), [] as { d: number; n: number }[]);
+  const roundTwo = Promise.all([
+    median("time to listen", "SELECT played_at - created_at AS v FROM tracks WHERE played_at IS NOT NULL AND created_at >= ?", w0),
+    median("time to decide", "SELECT decided_at - created_at AS v FROM tracks WHERE decided_at IS NOT NULL AND created_at >= ?", w0),
+    safe(
+      "review loop",
+      q.get<Record<string, unknown>>(
+        `SELECT
+           (SELECT COUNT(*) FROM tracks WHERE decision IS NOT NULL AND decided_at >= ?) AS decided,
+           (SELECT COUNT(*) FROM tracks WHERE decision = 'kept' AND decided_at >= ?) AS kept,
+           (SELECT COUNT(DISTINCT user_id) FROM account_log WHERE created_at >= ?) AS active,
+           (SELECT COUNT(*) FROM users u WHERE EXISTS (SELECT 1 FROM tracks t WHERE t.user_id = u.id)) AS activated,
+           (SELECT COUNT(*) FROM users) AS receivers`,
+        w0, w0, w0,
+      ),
+      undefined,
+    ),
+    Promise.all([
+      daily("daily sign-ups", "SELECT created_at FROM users WHERE created_at >= ?"),
+      daily("daily tracks", "SELECT created_at FROM tracks WHERE created_at >= ?"),
+      daily("daily senders", "SELECT MIN(t.created_at) AS created_at FROM tracks t JOIN senders s ON s.id = t.sender_id WHERE t.created_at >= ? GROUP BY s.email, FLOOR(t.created_at / 86400000)"),
+      daily("daily emails", "SELECT created_at FROM outbox WHERE status = 'sent' AND created_at >= ?"),
+      daily("daily failures", "SELECT created_at FROM outbox WHERE status LIKE 'failed%' AND created_at >= ?"),
+    ]),
+    safe(
+      "recent activity",
+      q.all<{ kind: string; text: string; ref: string; created_at: number }>(
+        `SELECT * FROM (
+           SELECT 'signup' AS kind, name || ' @' || handle AS text, CAST(id AS text) AS ref, created_at FROM users
+           UNION ALL SELECT 'takedown', 'Takedown claim received', CAST(id AS text), created_at FROM takedowns
+           UNION ALL SELECT 'admin', action || CASE WHEN target <> '' THEN ' · ' || target ELSE '' END, '', created_at FROM admin_log WHERE action NOT IN ('signed in to ops', 'signed out of ops')
+         ) a ORDER BY created_at DESC LIMIT 8`,
+      ),
+      [],
+    ),
+  ]);
 
   // Everything at once, one query per table where possible.
   const [msg, td, usr, inc, del, wait, wk, partnersStuck, jobIssues, mail, backup, runs, storage, signupOpen] = await Promise.all([
@@ -160,7 +203,19 @@ export default async function AdminOverview() {
     ["Emails failed", num(wk?.failed), num(wk?.failed_prev), "trust", true],
   ];
   const bytes = storage[0]?.used ?? 0;
-  const newest = await safe("newest receivers", q.all<{ id: number; name: string; handle: string; created_at: number }>("SELECT id, name, handle, created_at FROM users ORDER BY created_at DESC LIMIT 5"), []);
+  const [toListen, toDecide, loop, series, activity] = await roundTwo;
+  const decided = num(loop?.decided);
+  const receivers = num(loop?.receivers);
+  const product: { label: string; value: string; note: string; area: string }[] = [
+    { label: "Active receivers", value: num(loop?.active).toLocaleString("en"), note: `of ${receivers} · used their desk this week`, area: "growth" },
+    { label: "Time to listen", value: dur(toListen), note: "median, tracks sent this week", area: "monitor" },
+    { label: "Time to decide", value: dur(toDecide), note: "median, keep or pass", area: "monitor" },
+    { label: "Kept", value: decided ? `${Math.round((num(loop?.kept) / decided) * 100)}%` : "—", note: `of ${decided} decided this week`, area: "support" },
+    { label: "Activated", value: receivers ? `${Math.round((num(loop?.activated) / receivers) * 100)}%` : "—", note: `${num(loop?.activated)} have received a track`, area: "growth" },
+    { label: "Paid", value: num(usr?.active) ? `${Math.round((num(usr?.paid) / num(usr?.active)) * 100)}%` : "—", note: `${num(usr?.paid)} of ${num(usr?.active)} active accounts`, area: "growth" },
+  ];
+  const activityHref = (a: { kind: string; ref: string }) => (a.kind === "signup" ? `/admin/accounts/${a.ref}` : a.kind === "takedown" ? "/admin/takedowns" : "/admin/log");
+  const activityLabel: Record<string, string> = { signup: "Sign-up", takedown: "Takedown", admin: "Admin" };
 
   const dot: Record<Tone, string> = { ok: "bg-lime", warn: "bg-[#e0a33a]", bad: "bg-danger", idle: "bg-faint" };
   const banner: Record<Tone, string> = { ok: "border-lime/40 bg-lime/5", warn: "border-[#e0a33a]/50 bg-[#e0a33a]/10", bad: "border-danger/50 bg-danger/10", idle: "border-line" };
@@ -255,7 +310,7 @@ export default async function AdminOverview() {
       <section aria-labelledby="week-h" className="space-y-3">
         <h2 id="week-h" className="text-lg font-semibold">Last 7 days vs the 7 before</h2>
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          {trend.map(([k, cur, prev, area, lowerIsBetter]) => {
+          {trend.map(([k, cur, prev, area, lowerIsBetter], i) => {
             const diff = cur - prev;
             const good = lowerIsBetter ? diff <= 0 : diff >= 0;
             const pct = prev >= PCT_FROM ? ` (${diff > 0 ? "+" : "−"}${Math.round((Math.abs(diff) / prev) * 100)}%)` : "";
@@ -269,6 +324,7 @@ export default async function AdminOverview() {
                 <p className={`mt-1 text-sm tnum ${diff === 0 ? "text-mute" : good ? "text-lime" : "text-danger"}`}>
                   {diff === 0 ? "Same as before" : `${diff > 0 ? "▲" : "▼"} ${Math.abs(diff)}${pct} vs ${prev}`}
                 </p>
+                <Spark rows={series[i]} label={k} />
               </li>
             );
           })}
@@ -279,18 +335,39 @@ export default async function AdminOverview() {
         </p>
       </section>
 
-      <section aria-labelledby="new-h">
-        <h2 id="new-h" className="text-lg font-semibold">Newest receivers</h2>
-        <ul className="mt-3 divide-y divide-line rounded-md border border-line">
-          {newest.map((u) => (
-            <li key={u.id}>
-              <Link href={`/admin/accounts/${u.id}`} className="flex justify-between px-4 py-3 hover:bg-ink-2">
-                <span>{u.name} <span className="text-mute">@{u.handle}</span></span>
-                <span className="text-sm text-mute">{new Date(u.created_at).toLocaleDateString("en-GB")}</span>
-              </Link>
+      <section aria-labelledby="loop-h" className="space-y-3">
+        <h2 id="loop-h" className="text-lg font-semibold">Is it working?</h2>
+        <ul className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          {product.map((m) => (
+            <li key={m.label} data-area={m.area} className="card p-4">
+              <p className="label flex items-center gap-2">
+                <span aria-hidden className="area-dot size-1.5 rounded-full" />
+                {m.label}
+              </p>
+              <p className="mt-2 text-2xl font-bold tnum">{m.value}</p>
+              <p className="mt-1 text-xs text-mute">{m.note}</p>
             </li>
           ))}
         </ul>
+      </section>
+
+      <section aria-labelledby="act-h">
+        <h2 id="act-h" className="text-lg font-semibold">Recent activity</h2>
+        {activity.length ? (
+          <ul className="mt-3 divide-y divide-line rounded-md border border-line">
+            {activity.map((a, i) => (
+              <li key={`${a.kind}-${a.created_at}-${i}`}>
+                <Link href={activityHref(a)} className="flex items-center gap-3 px-4 py-2.5 hover:bg-ink-2">
+                  <span className="w-20 shrink-0 text-xs font-bold uppercase tracking-[1px] text-faint">{activityLabel[a.kind]}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm">{a.text}</span>
+                  <span className="shrink-0 text-xs text-mute tnum">{ago(t - Number(a.created_at))}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-3 text-sm text-mute">Nothing yet.</p>
+        )}
       </section>
 
       <p className="text-sm text-mute">
@@ -303,4 +380,29 @@ export default async function AdminOverview() {
 
 function tileOf([tone, value]: [Tone, string]) {
   return { tone, value };
+}
+
+/** A small bar per day for the last SPARK_DAYS days, in the card's area colour; the last 7 are brighter. */
+function Spark({ rows, label }: { rows: { d: number; n: number }[]; label: string }) {
+  const days = Array.from({ length: SPARK_DAYS }, (_, i) => Number(rows.find((r) => Number(r.d) === i)?.n ?? 0));
+  const peak = Math.max(1, ...days);
+  return (
+    <div role="img" aria-label={`${label}, last ${SPARK_DAYS} days: ${days.join(", ")}`} className="mt-3 flex h-8 items-end gap-[2px]">
+      {days.map((n, i) => (
+        <span key={i} className={`flex-1 rounded-[1px] bg-[var(--area)] ${i < SPARK_DAYS - 7 ? "opacity-35" : "opacity-90"}`} style={{ height: `${Math.max(6, (n / peak) * 100)}%` }} />
+      ))}
+    </div>
+  );
+}
+
+/** 95 minutes → "1.6h", 3 days → "3.0d". */
+function dur(ms: number | null) {
+  if (ms == null) return "—";
+  const h = ms / 3_600_000;
+  return h < 1 ? `${Math.max(1, Math.round(h * 60))}m` : h < 48 ? `${h.toFixed(1)}h` : `${(h / 24).toFixed(1)}d`;
+}
+
+function ago(ms: number) {
+  const m = Math.floor(ms / 60_000);
+  return m < 60 ? `${Math.max(1, m)}m ago` : m < 2880 ? `${Math.floor(m / 60)}h ago` : `${Math.floor(m / 1440)}d ago`;
 }
