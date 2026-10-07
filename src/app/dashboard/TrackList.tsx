@@ -76,7 +76,7 @@ export function TrackList({ rows, selectedId, hrefFor }: { rows: Row[]; selected
               </p>
             </Link>
             <div className="hidden min-w-0 @3xl:block">
-              <Waveform peaks={r.peaks} height={28} progress={isCurrent && d ? time / d : 0} onSeek={isCurrent ? seek : undefined} dim={!!r.decision && !isCurrent} />
+              <Waveform peaks={r.peaks} height={28} progress={isCurrent && d ? time / d : 0} duration={d} onSeek={isCurrent ? seek : undefined} dim={!!r.decision && !isCurrent} />
             </div>
             <div className="flex items-center gap-3 text-sm text-mute tnum">
               <span className="hidden gap-1 @xl:flex">

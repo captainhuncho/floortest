@@ -44,7 +44,7 @@ export function KeptCards({ rows }: { rows: Row[] }) {
               </Link>
               {/* Desktop: one row, as Figma "desktop-prepare-for-set" */}
               <div className="hidden w-64 shrink-0 md:block">
-                <Waveform peaks={r.peaks} progress={on && d ? time / d : 0} onSeek={on ? seek : undefined} height={28} label={`Seek ${r.title}`} />
+                <Waveform peaks={r.peaks} progress={on && d ? time / d : 0} duration={d} onSeek={on ? seek : undefined} height={28} label={`Seek ${r.title}`} />
               </div>
               <span className="hidden shrink-0 items-center gap-3 md:flex">
                 <span className="rounded border border-white bg-white/[0.12] px-1.5 py-0.5 text-[11px] font-bold text-white">Kept</span>
@@ -60,7 +60,7 @@ export function KeptCards({ rows }: { rows: Row[] }) {
               <span className="shrink-0 text-[11px] text-faint md:w-14 md:text-right">{ago(r.createdAt)}</span>
             </div>
             <div className="md:hidden">
-              <Waveform peaks={r.peaks} progress={on && d ? time / d : 0} onSeek={on ? seek : undefined} height={24} label={`Seek ${r.title}`} />
+              <Waveform peaks={r.peaks} progress={on && d ? time / d : 0} duration={d} onSeek={on ? seek : undefined} height={24} label={`Seek ${r.title}`} />
             </div>
             <div className="flex items-center justify-between md:hidden">
               <span className="flex items-center gap-2">

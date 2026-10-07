@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { fmtTime } from "@/lib/format";
 
 type Props = {
   peaks: number[] | null;
@@ -10,9 +11,11 @@ type Props = {
   label?: string;
   className?: string;
   dim?: boolean;
+  /** Track length in seconds, so screen readers hear "0:42 of 6:12" rather than a percentage. */
+  duration?: number;
 };
 
-export function Waveform({ peaks, progress = 0, height = 36, onSeek, label, className = "", dim }: Props) {
+export function Waveform({ peaks, progress = 0, height = 36, onSeek, label, className = "", dim, duration }: Props) {
   const ref = useRef<SVGSVGElement>(null);
   const data = peaks && peaks.length ? peaks : Array.from({ length: 90 }, () => 0.08);
   const n = data.length;
@@ -47,7 +50,7 @@ export function Waveform({ peaks, progress = 0, height = 36, onSeek, label, clas
       aria-valuemin={interactive ? 0 : undefined}
       aria-valuemax={interactive ? 100 : undefined}
       aria-valuenow={interactive ? Math.round(progress * 100) : undefined}
-      aria-valuetext={interactive ? `${Math.round(progress * 100)} percent` : undefined}
+      aria-valuetext={interactive ? (duration ? `${fmtTime(progress * duration)} of ${fmtTime(duration)}` : `${Math.round(progress * 100)} percent`) : undefined}
     >
       {data.map((p, i) => {
         const h = Math.max(1.5, p * (height - 2));

@@ -225,6 +225,9 @@ export function SubmitForm({
         onCancel={() => setWaiting(null)}
       />
     )}
+    <p role="status" className="sr-only">
+      {busy ? `Uploading track ${Math.min(items.filter((it) => it.status === "done").length + 1, items.length)} of ${items.length}` : ""}
+    </p>
     <form onSubmit={submit} data-picked className={waiting ? "hidden" : "space-y-5"} {...dropProps}>
       {fileInput}
       <ol className="space-y-3">{ordered.map(row)}</ol>

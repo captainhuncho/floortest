@@ -19,7 +19,7 @@ export function MobileTransport({ track, prevHref, nextHref }: { track: PlayerTr
           <span className="text-faint tnum">{fmtTime(d)}</span>
         </div>
         <div className="py-2">
-          <Waveform peaks={track.peaks} height={60} progress={on && d ? time / d : 0} onSeek={on ? seek : (f) => (play(track), setTimeout(() => seek(f), 250))} label={`Seek ${track.title}`} />
+          <Waveform peaks={track.peaks} height={60} progress={on && d ? time / d : 0} duration={d} onSeek={on ? seek : (f) => (play(track), setTimeout(() => seek(f), 250))} label={`Seek ${track.title}`} />
         </div>
       </div>
       <div className="flex items-center justify-between px-6">
