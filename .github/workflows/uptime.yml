@@ -12,9 +12,9 @@ jobs:
     timeout-minutes: 3
     steps:
       - name: Home page answers
-        run: curl -fsS --max-time 20 --retry 2 --retry-delay 10 -o /dev/null -w "home %{http_code} in %{time_total}s\n" https://floortest.imullar.com/
+        run: curl -fsS --max-time 20 --retry 2 --retry-delay 10 -o /dev/null -w "home %{http_code} in %{time_total}s\n" https://floortest.app/
       - name: Health check (database)
         run: |
-          body=$(curl -fsS --max-time 20 --retry 2 --retry-delay 10 https://floortest.imullar.com/api/health)
+          body=$(curl -fsS --max-time 20 --retry 2 --retry-delay 10 https://floortest.app/api/health)
           echo "$body"
           echo "$body" | grep -q '"ok":true'
