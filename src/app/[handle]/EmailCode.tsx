@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Result = { ok?: boolean; error?: string; confirmed?: boolean };
 const post = async (body: Record<string, unknown>): Promise<Result> => {
@@ -27,8 +27,22 @@ export async function startEmailCheck(email: string, turnstile: string): Promise
   return sent.ok ? "code" : sent.error || "Couldn't send the code. Please try again.";
 }
 
-/** The 6-digit code step, shown in place of the send button. */
-export function EmailCode({ email, onConfirmed, onCancel, className = "" }: { email: string; onConfirmed: () => void; onCancel: () => void; className?: string }) {
+/**
+ * The confirm screen after Send, in place of the form (which stays filled in behind it): what's being sent and to
+ * whom, then the 6-digit code. "Back" returns to the form as it was.
+ */
+export function EmailCode({ email, receiverName, sending, onConfirmed, onCancel }: {
+  email: string;
+  receiverName: string;
+  /** Track titles (or the folder name) being sent. */
+  sending: string[];
+  onConfirmed: () => void;
+  onCancel: () => void;
+}) {
+  const top = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    top.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+  }, []);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ text: string; error: boolean } | null>(null);
@@ -51,14 +65,25 @@ export function EmailCode({ email, onConfirmed, onCancel, className = "" }: { em
   }
 
   return (
-    <div role="group" aria-labelledby="email-code-title" className={`space-y-3 rounded-xl border border-lime/40 bg-lime/5 p-4 ${className}`}>
+    <div ref={top} role="group" aria-labelledby="email-code-title" className="scroll-mt-6 space-y-5">
+      <button type="button" onClick={onCancel} disabled={busy} className="inline-flex min-h-11 items-center text-sm text-mute hover:text-bone">
+        ← Back to your details
+      </button>
       <div>
-        <p id="email-code-title" className="font-semibold">Check your email</p>
-        <p className="mt-1 text-sm text-mute">
-          We sent a 6-digit code to <span className="break-all text-bone">{email}</span>. Enter it to send. This browser remembers your email for 30 days.
+        <p className="text-[11px] font-bold uppercase tracking-[0.5px] text-lime">One last step</p>
+        <h2 id="email-code-title" className="mt-1 text-2xl font-bold">Check your email</h2>
+        <p className="mt-2 text-sm text-mute">
+          We sent a 6-digit code to <span className="break-all text-bone">{email}</span>. Enter it to send to {receiverName}. This browser remembers your email for 30 days.
         </p>
       </div>
-      <div className="flex flex-col gap-2 sm:flex-row">
+      <ul className="divide-y divide-line rounded-xl border border-line bg-ink-2 text-sm">
+        {sending.map((t, i) => (
+          <li key={i} className="truncate px-4 py-2.5">
+            {t}
+          </li>
+        ))}
+      </ul>
+      <div className="space-y-3">
         <input
           aria-label="6-digit code"
           value={code}
@@ -68,25 +93,24 @@ export function EmailCode({ email, onConfirmed, onCancel, className = "" }: { em
           autoComplete="one-time-code"
           autoFocus
           placeholder="123456"
-          className="input w-full text-center text-lg tracking-[0.3em] tnum sm:w-40"
+          className="input w-full text-center text-2xl tracking-[0.4em] tnum"
         />
-        <button type="button" onClick={confirm} disabled={busy} className="btn-lime min-h-11 flex-1">
-          {busy ? "Checking…" : "Confirm and send"}
+        <button type="button" onClick={confirm} disabled={busy} className="btn-lime min-h-12 w-full font-bold">
+          {busy ? "Checking…" : `Confirm and send to ${receiverName}`}
         </button>
-      </div>
-      {note && (
-        <p role={note.error ? "alert" : "status"} className={`text-sm ${note.error ? "text-danger" : "text-lime"}`}>
-          {note.text}
+        {note && (
+          <p role={note.error ? "alert" : "status"} className={`text-sm ${note.error ? "text-danger" : "text-lime"}`}>
+            {note.text}
+          </p>
+        )}
+        <p className="text-sm text-mute">
+          No email?{" "}
+          <button type="button" onClick={resend} disabled={busy} className="inline-flex min-h-11 items-center underline underline-offset-4 hover:text-bone">
+            Send a new code
+          </button>{" "}
+          or check your spam folder.
         </p>
-      )}
-      <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-mute">
-        <button type="button" onClick={resend} disabled={busy} className="inline-flex min-h-11 items-center underline underline-offset-4 hover:text-bone">
-          Send a new code
-        </button>
-        <button type="button" onClick={onCancel} disabled={busy} className="inline-flex min-h-11 items-center underline underline-offset-4 hover:text-bone">
-          Change email
-        </button>
-      </p>
+      </div>
     </div>
   );
 }

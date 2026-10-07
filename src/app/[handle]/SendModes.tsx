@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { fmtBytes } from "@/lib/format";
-import { MAX_RELEASE_TRACKS } from "@/lib/plans";
 import { FolderSend } from "../dashboard/send/FolderSend";
 import { SubmitForm } from "./SubmitForm";
 
@@ -14,7 +12,7 @@ export function SendModes({ folderBytes, ...form }: FormProps & { folderBytes: n
   if (!folderBytes) return <SubmitForm {...form} />;
   return (
     <div className="space-y-4">
-      <SendModeTabs mode={mode} setMode={setMode} folderBytes={folderBytes} className="group-has-[[data-picked]]/page:hidden" />
+      <SendModeTabs mode={mode} setMode={setMode} className="group-has-[[data-picked]]/page:hidden" />
       {mode === "tracks" ? (
         <SubmitForm {...form} />
       ) : (
@@ -24,16 +22,24 @@ export function SendModes({ folderBytes, ...form }: FormProps & { folderBytes: n
   );
 }
 
-/** "Up to 3 tracks" or "A folder", each with its limits. Shared by the link page and the dashboard Send page. */
-export function SendModeTabs({ mode, setMode, folderBytes, className = "" }: { mode: "tracks" | "folder"; setMode: (m: "tracks" | "folder") => void; folderBytes: number; className?: string }) {
+/** "3 tracks" or "Folder": a slim switch; each mode's drop box states its own limits. Shared by the link page and the dashboard Send page. */
+export function SendModeTabs({ mode, setMode, className = "" }: { mode: "tracks" | "folder"; setMode: (m: "tracks" | "folder") => void; className?: string }) {
   return (
-    <div role="tablist" aria-label="What to send" className={`grid grid-cols-2 gap-1 rounded-xl border border-line bg-ink-3 p-1 ${className}`}>
-      {(["tracks", "folder"] as const).map((m) => (
-        <button key={m} role="tab" type="button" aria-selected={mode === m} onClick={() => setMode(m)} className={`rounded-lg px-3 py-2 text-left ${mode === m ? "bg-bone text-ink" : "text-mute hover:text-bone"}`}>
-          <span className="block text-sm font-semibold">{m === "tracks" ? "Up to 3 tracks" : "A folder"}</span>
-          <span className={`block text-xs ${mode === m ? "text-ink/70" : "text-mute"}`}>{m === "tracks" ? "250 MB in total" : `Up to ${MAX_RELEASE_TRACKS} tracks · ${fmtBytes(folderBytes)}`}</span>
-        </button>
-      ))}
+    <div className={className}>
+      <div role="tablist" aria-label="What to send" className="inline-flex rounded-full border border-line bg-ink-2 p-1 text-sm">
+        {(["tracks", "folder"] as const).map((m) => (
+          <button
+            key={m}
+            role="tab"
+            type="button"
+            aria-selected={mode === m}
+            onClick={() => setMode(m)}
+            className={`tap-tall rounded-full px-4 py-1.5 transition ${mode === m ? "bg-ink-4 font-semibold text-lime" : "text-mute hover:text-bone"}`}
+          >
+            {m === "tracks" ? "3 tracks" : "Folder"}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

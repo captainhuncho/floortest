@@ -169,8 +169,22 @@ export function FolderSend({
     );
 
   return (
+    <>
+    {waiting && (
+      <EmailCode
+        email={who.email.trim().toLowerCase()}
+        receiverName={receiverName}
+        sending={[`${release.title} · ${items.length} tracks`]}
+        onConfirmed={() => {
+          setWaiting(false);
+          upload();
+        }}
+        onCancel={() => setWaiting(false)}
+      />
+    )}
     <form
       ref={formRef}
+      hidden={waiting}
       className="space-y-4"
       onSubmit={(e) => {
         e.preventDefault();
@@ -356,21 +370,12 @@ export function FolderSend({
           <a href="/terms" target="_blank" className="underline underline-offset-4">Terms</a>
         </p>
       )}
-      {waiting && (
-        <EmailCode
-          email={who.email.trim().toLowerCase()}
-          onConfirmed={() => {
-            setWaiting(false);
-            upload();
-          }}
-          onCancel={() => setWaiting(false)}
-        />
-      )}
-      {items.length > 0 && !waiting && (
+      {items.length > 0 && (
         <button type="submit" disabled={running || checking} className="btn-lime min-h-11 w-full">
           {checking ? "Checking your email…" : running ? "Sending…" : items.some((i) => i.state === "failed") ? "Retry the failed tracks" : `Send folder (${items.length} tracks)`}
         </button>
       )}
     </form>
+    </>
   );
 }

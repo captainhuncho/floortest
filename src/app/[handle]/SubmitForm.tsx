@@ -211,7 +211,21 @@ export function SubmitForm({
 
   // Step 2: confirm what we read from the files, then the essentials.
   return (
-    <form onSubmit={submit} data-picked className="space-y-5" {...dropProps}>
+    <>
+    {waiting && (
+      <EmailCode
+        email={waiting.email}
+        receiverName={receiverName}
+        sending={items.map((it) => `${it.tags.title || it.file.name}${it.tags.artist ? ` · ${it.tags.artist}` : ""}`)}
+        onConfirmed={() => {
+          const fd = waiting.fd;
+          setWaiting(null);
+          send(fd);
+        }}
+        onCancel={() => setWaiting(null)}
+      />
+    )}
+    <form onSubmit={submit} data-picked className={waiting ? "hidden" : "space-y-5"} {...dropProps}>
       {fileInput}
       <ol className="space-y-3">{ordered.map(row)}</ol>
       {!busy && items.length < MAX_FILES && (
@@ -339,17 +353,6 @@ export function SubmitForm({
       </p>
 
       {!account && <Turnstile siteKey={botCheckKey} />}
-      {waiting ? (
-        <EmailCode
-          email={waiting.email}
-          onConfirmed={() => {
-            const fd = waiting.fd;
-            setWaiting(null);
-            send(fd);
-          }}
-          onCancel={() => setWaiting(null)}
-        />
-      ) : (
       <button className={`${L.btn} w-full py-3.5 ${m ? "text-[14px]" : "text-base"}`} disabled={busy || analyzing || checking}>
         {checking
           ? "Checking your email…"
@@ -361,7 +364,7 @@ export function SubmitForm({
               ? `Send ${items.length} tracks to ${receiverName}`
               : `Send to ${receiverName}`}
       </button>
-      )}
     </form>
+    </>
   );
 }
