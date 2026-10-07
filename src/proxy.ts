@@ -18,6 +18,8 @@ const OPS_PATHS = ["/admin", "/api/admin", "/ops-login"];
 const SHARED = ["/api/site-image", "/api/tap-speed"];
 const under = (path: string, list: string[]) => list.some((p) => path === p || path.startsWith(`${p}/`));
 const isOps = (path: string) => under(path, OPS_PATHS);
+// Open while the site is gated: the gate itself, and signing in (a real sign-in then unlocks the site).
+const GATE_OPEN = ["/coming-soon", "/login", "/forgot", "/reset", "/signed-out"];
 const notFound = (req: NextRequest) => NextResponse.rewrite(new URL("/_not-found", req.url), { status: 404 });
 
 export function proxy(req: NextRequest) {
@@ -25,7 +27,7 @@ export function proxy(req: NextRequest) {
   const onOpsHost = !!OPS_HOST && req.headers.get("host") === OPS_HOST;
   // Coming-soon gate: every page on the main site shows the coming-soon page until the password is entered.
   // The API (webhooks, health, cron) and ops (its own sign-in) stay reachable.
-  if (gatePassword() && !onOpsHost && !path.startsWith("/api/") && path !== "/coming-soon" && !hasGatePass(req.cookies.get(GATE_COOKIE)?.value)) {
+  if (gatePassword() && !onOpsHost && !path.startsWith("/api/") && !under(path, GATE_OPEN) && !hasGatePass(req.cookies.get(GATE_COOKIE)?.value)) {
     const url = req.nextUrl.clone();
     url.pathname = "/coming-soon";
     url.search = `?next=${encodeURIComponent(path + req.nextUrl.search)}`;

@@ -7,6 +7,7 @@ import { cache } from "react";
 import { now, q, USER_COLUMNS, type User } from "./db";
 import { env, isProd } from "./env";
 import { hasLiveOpsSession } from "./ops";
+import { GATE_COOKIE, GATE_DAYS, gatePassword, gateToken } from "./site-gate";
 
 const COOKIE = "floortest_session";
 const SESSION_MS = 1000 * 60 * 60 * 24 * 30;
@@ -41,6 +42,9 @@ export async function createSession(userId: number) {
     path: "/",
     expires: new Date(expires),
   });
+  // While the site is behind the coming-soon gate, a real sign-in lets that browser through it.
+  if (gatePassword())
+    (await cookies()).set(GATE_COOKIE, gateToken(), { httpOnly: true, sameSite: "lax", secure: isProd, path: "/", maxAge: GATE_DAYS * 86_400 });
 }
 
 /** Hash of this browser's session token, or null when signed out. */

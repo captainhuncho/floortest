@@ -13,6 +13,12 @@ export default async function ComingSoon({ searchParams }: { searchParams: Promi
       <h1 className="mt-3 text-[32px] font-bold leading-tight tracking-[-0.8px] sm:text-[44px]">The receiving desk for unreleased music.</h1>
       <p className="mt-4 text-mute">FloorTest is getting ready. If you&apos;ve been invited to look around, enter the password.</p>
       <GateForm next={next} />
+      <p className="mt-8 text-sm text-mute">
+        Already have an account?{" "}
+        <a href="/login" className="inline-flex min-h-11 items-center text-bone underline underline-offset-4 hover:text-lime">
+          Sign in
+        </a>
+      </p>
     </main>
   );
 }
