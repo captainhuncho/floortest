@@ -3,7 +3,7 @@ import { q } from "@/lib/db";
 
 /** Free-plan allowances. Update these when a plan changes. */
 export const FILES_ALLOWANCE = 10 * 1024 ** 3; // Cloudflare R2 free tier: 10 GB
-export const DATABASE_ALLOWANCE = 500 * 1024 ** 2; // Supabase free plan: 500 MB database
+export const DATABASE_ALLOWANCE = 500 * 1024 ** 2; // Neon free plan: 0.5 GB storage per project
 /** From this share of an allowance, the admin Overview shows a to-do. */
 export const ALLOWANCE_WARN = 0.8;
 
@@ -21,6 +21,6 @@ export async function allowances(): Promise<Allowance[]> {
   const database = await n("SELECT pg_database_size(current_database()) AS n");
   return [
     { label: "File storage (Cloudflare R2)", used: audio + backups, limit: FILES_ALLOWANCE, note: "Audio, stems, unfinished uploads and backups. Past the free 10 GB it's billed per GB, not blocked." },
-    { label: "Database (Supabase)", used: database, limit: DATABASE_ALLOWANCE, note: "Accounts, track details and activity. At 500 MB the free plan goes read-only, so upgrade before then." },
+    { label: "Database (Neon)", used: database, limit: DATABASE_ALLOWANCE, note: "Accounts, track details and activity. Upgrade Neon before this fills up: the free plan stops taking writes at its limit." },
   ];
 }

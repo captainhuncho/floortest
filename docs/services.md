@@ -35,7 +35,7 @@ Last updated 29 Sep 2026.
 ## Contacts used on the site
 
 - Support, privacy and data requests: **info@imullar.com** (temporary; an @floortest.app address later). The contact form sends here (Vercel `SUPPORT_EMAIL`).
-- Operator named in Terms and Privacy: **FloorTest LTD**, being registered in Ghana. Change it in `src/lib/legal.ts`.
+- Operator named in Terms and Privacy: **FloorTest Labs**, being registered in Ghana. Change it in `src/lib/legal.ts`.
 
 ## Where each setting lives
 

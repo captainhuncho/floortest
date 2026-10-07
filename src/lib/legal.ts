@@ -1,6 +1,6 @@
-/** Who runs FloorTest, as named on the legal pages. Add the registration number and address once FloorTest LTD is registered in Ghana. */
+/** Who runs FloorTest, as named on the legal pages. Add the registration number and address once FloorTest Labs is registered in Ghana. */
 export const LEGAL = {
-  operator: "FloorTest LTD, a company being registered in Ghana",
+  operator: "FloorTest Labs, a company being registered in Ghana",
   email: "info@imullar.com",
-  updated: "6 October 2026",
+  updated: "7 October 2026",
 };

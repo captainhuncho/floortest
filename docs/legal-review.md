@@ -1,9 +1,10 @@
-# Brief for the lawyer (updated 1 Oct 2026)
+# Brief for the lawyer (updated 7 Oct 2026)
 
 The drafts at /terms and /privacy were rewritten on 29 Sep 2026 to close the gaps listed further down. Owner decisions so far:
 
-- **Operator:** FloorTest LTD, a company being registered in **Ghana** (not the UK). Governing law is set to Ghana. Complaints point to Ghana's Data Protection Commission and the user's local authority, such as the UK ICO. Add the registration number and address to `src/lib/legal.ts` once incorporated.
-- **Contact:** info@imullar.com for now; an @floortest.app support address later.
+- **Operator:** **FloorTest Labs**, a company being registered in **Ghana** (not the UK). Renamed from "FloorTest LTD" on 7 Oct 2026; the Terms and Privacy pages now use the new name. Governing law is set to Ghana. Complaints point to Ghana's Data Protection Commission and the user's local authority, such as the UK ICO. Add the registration number and address to `src/lib/legal.ts` once incorporated.
+- **Contact:** info@imullar.com for now; an @floortest.app support address once the company mailbox (Google Workspace) is set up.
+- **Website:** **floortest.app** (moved from floortest.imullar.com on 7 Oct 2026; old links redirect). Emails come from hello@floortest.app.
 - **Minimum age:** 18+. Stated in both documents, on sign-up and on the send form.
 - **Sender licence:** the receiver may listen, download, evaluate and play the track in DJ sets, live performances and broadcasts. Releasing, distributing, selling, licensing or uploading it as a release on any platform needs a separate written agreement.
 - **Agreement points:** sign-up and the send form now show a line linking to both documents.
@@ -17,8 +18,8 @@ The drafts at /terms and /privacy were rewritten on 29 Sep 2026 to close the gap
 4. The liability cap of £100 while free, with the consumer-law carve-outs: is it adequate?
 5. Transfers: the UK–US data bridge covers certified providers; confirm the right wording for Vercel, Cloudflare and Resend.
 6. Is a clickwrap line enough for senders (no checkbox), given they don't have an account?
-7. Until FloorTest LTD is registered, who is legally the operator and controller? Can the pages name the company before it exists?
-8. **Ghana Data Protection Act 2012 (Act 843):** does FloorTest LTD need to register with the Data Protection Commission before processing data?
+7. Until FloorTest Labs is registered, who is legally the operator and controller? Can the pages name the company before it exists?
+8. **Ghana Data Protection Act 2012 (Act 843):** does FloorTest Labs need to register with the Data Protection Commission before processing data?
 9. **UK and EU users:** as a Ghana company targeting UK and EU users, does FloorTest need a UK and/or EU representative (UK GDPR / GDPR Art. 27), and is Ghana law workable as governing law for UK and EU consumers?
 10. The operator is based in Ghana while hosting is in the UK and US. Does the transfers section need Ghana-specific wording?
 11. **Sharing consent:** the sender agrees to sharing through one line above the Send button, shown only when the receiver's brief allows it (no checkbox). Is that clear enough consent to let third parties hear, and on paid plans download, an unreleased track?
@@ -26,6 +27,33 @@ The drafts at /terms and /privacy were rewritten on 29 Sep 2026 to close the gap
 13. **Resolved:** downloads are fixed at send time by the receiver's plan, and the agreement line tells the sender which applies ("listen only" or "they can listen and download"). Please confirm the wording is clear enough.
 14. **Colleague data:** because colleagues sign in, FloorTest now records which account played or downloaded each shared track, and shows those names to the receiver who shared it (not to the sender). The Privacy Policy needs a line on this. Is showing the receiver who listened acceptable without separate consent?
 15. **Takedown:** if a sender withdraws consent or reports misuse, we can switch off every share link for a track. Should the Terms give senders a right to ask for that, and a timeframe?
+
+## What changed since 1 Oct 2026 (please review)
+
+Already reflected in the live Terms, Privacy, Cookie and Sub-processors pages unless marked **(not yet in the policies)**.
+
+- **Company and website:** operator renamed **FloorTest Labs**; site moved to floortest.app; emails from hello@floortest.app.
+- **Database provider:** moved from Supabase to **Neon** (still hosted in London). Privacy and Sub-processors updated.
+- **Senders confirm their email:** senders without an account get a 6-digit code by email before anything uploads. A cookie (`ft_sender`) remembers the confirmed address in that browser for 30 days. Listed in the Cookie Policy and Privacy Policy as strictly necessary.
+- **Senders must name a public profile:** an Instagram handle and/or a streaming profile (Spotify, Apple Music, SoundCloud, Beatport, Bandcamp, YouTube or TikTok), shown to the receiver labelled "not verified". **(not yet in the policies)**
+- **Required track details:** artist, genre, mix status, release status and an **AI-use declaration** (none / partly / fully AI-generated), shown to the receiver. The sender confirms the AI answer is accurate when sending.
+- **DJ sets permission:** now an explicit on/off switch per send, **off by default** ("Let [receiver] play this in DJ sets, live and on broadcasts?"), with the result stated in plain words. Off means listening and feedback only.
+- **Sending several tracks:** up to 3 tracks in one send, or a **folder** (EP/album, up to 12 tracks) for receivers on paid plans. Track details (title, artist, track number, BPM, key, **ISRC**) are read from the files in the sender's own browser before upload.
+- **Sign-up:** first name and surname are collected **privately** (account, billing, receipts; never public); a public "professional name" is optional. We record which version of the Terms was accepted and when, and the 18+ confirmation. Newsletter (double opt-in) and offers are two separate, unticked choices.
+- **Receiver profiles:** receivers can add a profile photo and links to their social and streaming profiles on their public page.
+- **Staff tools:** staff can add internal **tags and notes** to accounts, filter accounts by audience, and **export a CSV** of accounts (names, emails, consents) for outreach. Every export is logged. **(notes and exports not yet in the Privacy Policy)**
+- **Staff access is now separate:** the admin area lives only at ops.floortest.app with its own sign-in (password and two-step code every time, 8-hour maximum). "View as" support access to a user's account is read-only, 30 minutes, and logged.
+- **Account deletion:** now needs the password (and two-step code if on) and sends a confirmation email afterwards.
+
+**New questions:**
+
+16. **Company name:** please confirm the exact legal name to show (for example "FloorTest Labs Ltd" or "FloorTest Labs Limited") and whether the pages may use it before registration completes (see Q7).
+17. **Required sender profile:** is requiring a public Instagram or streaming profile proportionate under data minimisation, given it helps receivers spot impersonators? What retention period should apply, and does the Privacy Policy need a specific line?
+18. **AI-use declaration:** if a sender declares "No" falsely, where does liability sit? Is the sender's confirmation line ("your answer about AI is accurate") enough, or should the Terms add a specific warranty and indemnity?
+19. **DJ sets switch:** is an explicit, default-off switch (no tick box) a sufficient grant of the performance permission? Please also confirm the Terms are clear that performing-rights fees (PRS, GEMA etc.) stay with the venue or broadcaster and aren't FloorTest's concern.
+20. **Folders:** when a sender sends a whole EP or album, does a single confirmation that they "own or control these tracks" cover every track, or should it be per track?
+21. **Staff notes and CSV export:** what must the Privacy Policy say about internal notes on accounts and exporting account lists? Are notes included in a subject access request?
+22. **Email confirmation cookie:** we treat the 30-day `ft_sender` cookie as strictly necessary (it replaces asking for a code on every send). Please confirm no consent banner is needed for it.
 
 **Still to confirm on the tech side:** the R2 bucket's jurisdiction, and that the @floortest.app support address actually receives mail.
 

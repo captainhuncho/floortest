@@ -21,6 +21,8 @@ export default function Cookies() {
             "floortest_session: keeps you signed in. Strictly necessary. Lasts 30 days, or until you sign out.",
             "floortest_2fa: remembers that you've entered your password while you type your two-factor code. Strictly necessary. Lasts 5 minutes.",
             "floortest_view_as: used only by FloorTest support staff to see an account as its owner sees it, when helping with a problem. Never set for users. Ends when support leaves the view.",
+            "ft_sender: remembers that this browser confirmed your email with a 6-digit code, so you aren't asked again each time you send music without an account. Strictly necessary. Lasts 30 days.",
+            "__Host-ft_ops: keeps FloorTest staff signed in to the separate admin area (ops.floortest.app). Never set for users. Lasts up to 8 hours, and ends after an hour without activity.",
             "ft_flash: carries a one-off confirmation message (like \"Saved\") to the next page. Strictly necessary. Lasts 30 seconds.",
             "ft_theme: remembers whether you chose Night, Day or match your device. A setting you asked for. Lasts 1 year.",
             "ft_submissions_view: remembers whether you prefer the Queue or List layout in your Review Queue. A setting you asked for. Lasts 1 year.",

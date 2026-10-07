@@ -19,7 +19,7 @@ export default function Subprocessors() {
           "Current list",
           [
             "Vercel Inc. (USA): hosts the website and app, run from London (UK). Sees: all data passing through pages and requests. Also Vercel Web Analytics: anonymous page-visit counts, no cookies.",
-            "Supabase Inc. (USA): database, hosted in London (UK). Stores: accounts, track details, sender details, activity records.",
+            "Neon (USA): database, hosted in London (UK). Stores: accounts, track details, sender details, activity records.",
             "Cloudflare Inc. (USA): R2 private file storage (audio files, stems, cover photos, backups) and Turnstile bot checks on public forms.",
             "Resend Inc. (USA): sends email (receipts, alerts, digests, sign-in and security emails). Sees: recipient name and email, and the email content.",
             "Functional Software Inc., trading as Sentry (USA): error and performance reports when a page crashes or runs slowly. No IP addresses or form contents are sent.",
