@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { GATE_COOKIE, gatePassword, hasGatePass } from "@/lib/site-gate";
 
 /**
  * Keeps the admin area and the main site apart by host. With OPS_URL set (production): the ops host serves only the
@@ -20,8 +21,17 @@ const isOps = (path: string) => under(path, OPS_PATHS);
 const notFound = (req: NextRequest) => NextResponse.rewrite(new URL("/_not-found", req.url), { status: 404 });
 
 export function proxy(req: NextRequest) {
-  if (!OPS_HOST) return NextResponse.next();
   const path = req.nextUrl.pathname;
+  const onOpsHost = !!OPS_HOST && req.headers.get("host") === OPS_HOST;
+  // Coming-soon gate: every page on the main site shows the coming-soon page until the password is entered.
+  // The API (webhooks, health, cron) and ops (its own sign-in) stay reachable.
+  if (gatePassword() && !onOpsHost && !path.startsWith("/api/") && path !== "/coming-soon" && !hasGatePass(req.cookies.get(GATE_COOKIE)?.value)) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/coming-soon";
+    url.search = `?next=${encodeURIComponent(path + req.nextUrl.search)}`;
+    return NextResponse.rewrite(url);
+  }
+  if (!OPS_HOST) return NextResponse.next();
   const onOps = req.headers.get("host") === OPS_HOST;
   if (onOps) {
     if (path === "/") return NextResponse.redirect(new URL("/admin", req.url));
