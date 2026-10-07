@@ -14,7 +14,7 @@ Acceptance: `/api/health` is healthy and `npm run smoke -- <preview-url> <seed-h
 
 ## P0 — beta operations blockers
 
-1. Verify `floortest.imullar.com` in Resend and set verified `MAIL_FROM`.
+1. Done 7 Oct: `floortest.app` verified in Resend; `MAIL_FROM` is `FloorTest <hello@floortest.app>`.
 2. Set `SUPPORT_EMAIL`; contact and sender-rights requests currently have no working destination.
 3. Test real MP3/WAV files on iPhone Safari, Android Chrome, desktop Safari and Chrome.
 4. Add uptime monitoring for authenticated `/api/health`.

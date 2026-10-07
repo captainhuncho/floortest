@@ -1,6 +1,6 @@
 # Where things stand (27 Sep 2026)
 
-**Live:** https://floortest.imullar.com (Vercel project `floortest`, London; DNS A record 76.76.21.21 at TMDHosting). `floortest.vercel.app` redirects there, except `/api/*`.
+**Live:** https://floortest.app (Vercel project `floortest`, London; DNS at Hosting.com, A record 76.76.21.21, `www` redirects to the apex). The old `floortest.imullar.com` and `floortest.vercel.app` both 308-redirect to `floortest.app`, keeping the path.
 
 **Admin:** `/admin`, for `ADMIN_EMAILS` only, and actions need two-factor on.
 
@@ -9,7 +9,7 @@
 **Deploy:** `npx vercel deploy --prod` from this folder (already linked). Migrations run automatically on first request.
 
 **Open items**
-- Resend: verify `floortest.imullar.com` (DNS at TMDHosting), then set `MAIL_FROM="FloorTest <hello@floortest.imullar.com>"`. Until then emails only reach the Resend account owner.
+- Resend: `floortest.app` verified (records on `send` and `resend._domainkey` at Hosting.com); `MAIL_FROM="FloorTest <hello@floortest.app>"`.
 - `SUPPORT_EMAIL` not set (contact form goes nowhere).
 - Virus scanning of uploads (ClamAV on a small server, ~$5–6/mo): parked.
 - Old Supabase project in the FloorTest org ("maxwelladjavon@gmail.com's Project") holds an earlier prototype plus an empty `schema_migrations` table from a failed connection: pause/delete when ready.

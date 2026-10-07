@@ -66,7 +66,7 @@ Decided: not a reason to use Supabase Realtime; the database stays on Neon.
 - **Supabase connection pooler:** in Vercel, `DATABASE_URL` should use Supabase's pooler (port **6543**, "Transaction" mode), and set `DB_POOL_MAX=2`.
 - **Database updates at deploy:** set `DB_AUTO_MIGRATE=false` in Vercel Production. Updates now run during each Vercel build (`vercel-build`).
 - **Alerts that don't depend on email:** set `ALERT_WEBHOOK_URL` (a Discord or Slack webhook) so incident alerts still arrive if Resend is down.
-- **Uptime monitor:** a free UptimeRobot (or similar) check on `https://floortest.imullar.com/api/health` every 5 minutes, alerting you.
+- **Uptime monitor:** a free UptimeRobot (or similar) check on `https://floortest.app/api/health` every 5 minutes, alerting you.
 - **Resend plan:** the free plan stops at 100 emails a day / 3,000 a month. Upgrade before invites go out, then set `MAIL_DAILY_LIMIT` and `MAIL_MONTHLY_LIMIT` in Vercel. Admin → Emails shows usage.
 
 ## Before public launch (checklist)

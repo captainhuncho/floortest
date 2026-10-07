@@ -11,20 +11,20 @@ Last updated 29 Sep 2026.
 | **Vercel** | Hosts the website and runs the code (London region). Also runs the daily scheduled jobs: digests, nudges, clean-up. | Team `maxwelladjavon-5776s-projects`, project **floortest** | vercel.com → floortest. Secrets: Settings → Environment Variables |
 | **Supabase** | The database (accounts, tracks, decisions, logs). | Org **FloorTest**. Live: **floortest** (`crghwblbuodxhsfgeppw`, London). Preview: **floortest-preview** (`azvsdmrnwunbpdyitoji`, London). Old: `culzghp…`, paused 29 Sep 2026; reminder set for 14 Dec 2026 to delete it. | supabase.com/dashboard |
 | **Cloudflare R2** | Stores the audio files and cover photos, privately. | Buckets: **floortest-audio** (live), **floortest-audio-preview** (tests only) | dash.cloudflare.com → R2 |
-| **Resend** | Sends every email: receipts, alerts, invites, digests. | Sending domain `floortest.imullar.com` (verified) | resend.com |
+| **Resend** | Sends every email: receipts, alerts, invites, digests. | Sending domain `floortest.app` (verified), from `hello@floortest.app` | resend.com |
 
 ## Domain
 
 | Service | What it does | Details |
 | --- | --- | --- |
-| **TMDHosting** | Holds DNS for `imullar.com`. | An A record points `floortest.imullar.com` to Vercel (`76.76.21.21`). The Resend records live here too. `floortest.vercel.app` redirects to the custom domain. |
+| **Hosting.com** | Registrar and DNS (cPanel) for `floortest.app`, and DNS for the old `imullar.com`. | An A record points `floortest.app` to Vercel (`76.76.21.21`); `www`, the old `floortest.imullar.com` and `floortest.vercel.app` redirect to it. The Resend records live here too. |
 
 ## Monitoring
 
 | Service | What it does | Details |
 | --- | --- | --- |
-| **UptimeRobot** | Checks the site every 5 minutes and emails if it's down. | Monitors `https://floortest.imullar.com/api/health`, which replies `"ok": true` when the site and database are working. |
-| **FloorTest admin** | In-app monitoring: incidents (errors), email log, metrics, weekly admin digest email. | `floortest.imullar.com/admin`. Needs an admin email and two-factor sign-in. |
+| **UptimeRobot** | Checks the site every 5 minutes and emails if it's down. | Monitors `https://floortest.app/api/health`, which replies `"ok": true` when the site and database are working. |
+| **FloorTest admin** | In-app monitoring: incidents (errors), email log, metrics, weekly admin digest email. | `floortest.app/admin`. Needs an admin email and two-factor sign-in. |
 
 ## Code
 
@@ -34,7 +34,7 @@ Last updated 29 Sep 2026.
 
 ## Contacts used on the site
 
-- Support, privacy and data requests: **info@imullar.com** (temporary; support@floortest.fm later). The contact form sends here (Vercel `SUPPORT_EMAIL`).
+- Support, privacy and data requests: **info@imullar.com** (temporary; an @floortest.app address later). The contact form sends here (Vercel `SUPPORT_EMAIL`).
 - Operator named in Terms and Privacy: **FloorTest LTD**, being registered in Ghana. Change it in `src/lib/legal.ts`.
 
 ## Where each setting lives
@@ -52,4 +52,4 @@ Last updated 29 Sep 2026.
 
 - **Virus scanning** for uploads: beta uses structural checks only (real WAV/MP3, nothing hidden after the audio). Before public launch, add our own ClamAV service (Fly.io or Render, ~$5–7/mo) that scans each upload before it can be played. Don't send files to third-party scanners (privacy).
 - **Lawyer** covering Ghana and UK/EU data protection. The brief is in `docs/legal-review.md`.
-- **Mailbox for support@floortest.fm**, to replace info@imullar.com.
+- **Support mailbox on @floortest.app** (Google Workspace planned), to replace info@imullar.com.

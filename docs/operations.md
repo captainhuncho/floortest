@@ -9,9 +9,9 @@ How the backend works, how to run it, and what to do when something goes wrong. 
 | App (pages, API, admin) | Vercel, project `floortest`, region London (`lhr1`) | Next.js 16 app. Every push to `main` deploys to production; other branches get previews behind Vercel login |
 | Database | Supabase Postgres (pooled connection) | Accounts, tracks, senders, events, admin records. Preview uses its own database |
 | Audio and files | Cloudflare R2, bucket `floortest-audio` (preview: `floortest-audio-preview`) | Original WAV/MP3s, stems, cover photos, unfinished uploads, nightly backups under `backups/` |
-| Email | Resend, from `hello@floortest.imullar.com` | Receipts, alerts, digests, invites, security emails |
-| Bot check | Cloudflare Turnstile (hostname `floortest.imullar.com`) | Sign-up, waitlist, contact, anonymous uploads |
-| Domain and DNS | imullar.com DNS host | `floortest.imullar.com` points at Vercel; SPF/DKIM for Resend; DMARC inherited from `imullar.com` (`p=none`) |
+| Email | Resend, from `hello@floortest.app` | Receipts, alerts, digests, invites, security emails |
+| Bot check | Cloudflare Turnstile (hostnames `floortest.app`, plus the old `floortest.imullar.com`) | Sign-up, waitlist, contact, anonymous uploads |
+| Domain and DNS | Hosting.com (cPanel) | `floortest.app` points at Vercel (A 76.76.21.21); Resend SPF/DKIM on `send` / `resend._domainkey`; DMARC `p=none` on `_dmarc.floortest.app`. Old `floortest.imullar.com` redirects to `floortest.app` |
 
 Uploads never pass through the app: the browser gets a short-lived signed URL and sends the file straight to R2, then the app checks the file is real audio before creating the track.
 
@@ -23,7 +23,7 @@ Production and Preview have separate values. Never paste values into chats or ti
 |---|---|
 | `DATABASE_URL` | Postgres connection (use the pooled string) |
 | `APP_SECRET` | Signs upload links, unsubscribe links and admin "view as". Production refuses to run without it |
-| `APP_URL` | `https://floortest.imullar.com` |
+| `APP_URL` | `https://floortest.app` |
 | `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `STORAGE_DRIVER=s3` | R2 storage |
 | `RESEND_API_KEY`, `MAIL_FROM`, `MAIL_REPLY_TO`, `SUPPORT_EMAIL` | Email |
 | `ADMIN_EMAILS` | Who can open `/admin` (they also need a confirmed email and two-factor) |
@@ -42,7 +42,7 @@ Production and Preview have separate values. Never paste values into chats or ti
 1. Work on branch `mobile-next`. Every push builds a preview.
 2. Check: `npm run typecheck`, `npm test`, and `npx next build` all pass. The preview build must say Ready in Vercel.
 3. Ship: fast-forward `main` to `mobile-next` and push. Production deploys in about 1–2 minutes.
-4. After shipping, check `https://floortest.imullar.com/api/health` returns `{"ok":true}`. In Vercel, check that runtime logs show no 5xx.
+4. After shipping, check `https://floortest.app/api/health` returns `{"ok":true}`. In Vercel, check that runtime logs show no 5xx.
 5. Rolling back: in Vercel → Deployments, promote the previous production deployment. It's instant, and database changes are additive, so old code still runs.
 
 Database changes are numbered migrations in `src/lib/db/migrations.ts`. They run automatically the first time a new deployment touches the database. Only ever add new migrations; never edit old ones.

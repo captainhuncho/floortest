@@ -3,7 +3,7 @@
 The drafts at /terms and /privacy were rewritten on 29 Sep 2026 to close the gaps listed further down. Owner decisions so far:
 
 - **Operator:** FloorTest LTD, a company being registered in **Ghana** (not the UK). Governing law is set to Ghana. Complaints point to Ghana's Data Protection Commission and the user's local authority, such as the UK ICO. Add the registration number and address to `src/lib/legal.ts` once incorporated.
-- **Contact:** info@imullar.com for now; support@floortest.fm later.
+- **Contact:** info@imullar.com for now; an @floortest.app support address later.
 - **Minimum age:** 18+. Stated in both documents, on sign-up and on the send form.
 - **Sender licence:** the receiver may listen, download, evaluate and play the track in DJ sets, live performances and broadcasts. Releasing, distributing, selling, licensing or uploading it as a release on any platform needs a separate written agreement.
 - **Agreement points:** sign-up and the send form now show a line linking to both documents.
@@ -27,7 +27,7 @@ The drafts at /terms and /privacy were rewritten on 29 Sep 2026 to close the gap
 14. **Colleague data:** because colleagues sign in, FloorTest now records which account played or downloaded each shared track, and shows those names to the receiver who shared it (not to the sender). The Privacy Policy needs a line on this. Is showing the receiver who listened acceptable without separate consent?
 15. **Takedown:** if a sender withdraws consent or reports misuse, we can switch off every share link for a track. Should the Terms give senders a right to ask for that, and a timeframe?
 
-**Still to confirm on the tech side:** the R2 bucket's jurisdiction, and that support@floortest.fm actually receives mail.
+**Still to confirm on the tech side:** the R2 bucket's jurisdiction, and that the @floortest.app support address actually receives mail.
 
 ---
 
