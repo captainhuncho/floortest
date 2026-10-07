@@ -34,7 +34,7 @@ export default async function Emails({ searchParams }: { searchParams: Promise<{
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <h1 className="text-3xl font-bold tracking-tight">Emails</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Email log</h1>
         <form className="flex flex-wrap items-center gap-2">
           <input name="q" defaultValue={search} className="input w-64" placeholder="Recipient or subject" aria-label="Search emails" />
           <label className="flex items-center gap-1.5 text-sm text-mute">

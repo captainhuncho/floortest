@@ -40,7 +40,7 @@ function Icon({ name, className = "size-4" }: { name: IconName; className?: stri
 const KEY = "floortest-admin-panel";
 
 /**
- * Admin sidebar: every page listed at once, grouped by job (Monitor, Support, Growth, Trust & safety),
+ * Admin sidebar: Overview, then pages grouped by job (Support, Growth, Product, Trust & safety, Platform, Admin),
  * with counts. Search filters the list (Enter searches users); the arrow collapses it to icons.
  */
 export function AdminNav({ groups, admin }: { groups: NavGroup[]; admin: { name: string; initials: string } }) {
@@ -64,7 +64,7 @@ export function AdminNav({ groups, admin }: { groups: NavGroup[]; admin: { name:
   };
   const q = query.trim().toLowerCase();
   const shown = groups
-    .map((g) => ({ ...g, items: g.sections.flatMap((s) => s.items).filter((i) => !q || i.label.toLowerCase().includes(q)) }))
+    .map((g) => ({ ...g, items: g.sections.flatMap((s) => s.items).filter((i) => !q || i.label.toLowerCase().includes(q) || g.title.toLowerCase().includes(q)) }))
     .filter((g) => g.items.length);
 
   const link = (i: NavItem) => (
@@ -135,7 +135,7 @@ export function AdminNav({ groups, admin }: { groups: NavGroup[]; admin: { name:
             {shown.length === 0 && <p className="tactile-label px-2.5 py-3 text-[11px]">No pages match. Press Enter to search users.</p>}
             {shown.map((g) => (
               <div key={g.id} data-area={g.id} className="mb-3 last:mb-0">
-                <p className="area-label px-2.5 pb-1 pt-1 text-[11px] font-bold uppercase tracking-[1px]">{g.title}</p>
+                {g.title && <p className="area-label px-2.5 pb-1 pt-1 text-[11px] font-bold uppercase tracking-[1px]">{g.title}</p>}
                 <div className="flex flex-col gap-0.5">{g.items.map(link)}</div>
               </div>
             ))}

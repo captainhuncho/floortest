@@ -18,7 +18,7 @@ export default async function Privacy({ searchParams }: { searchParams: Promise<
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Data requests</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Privacy requests</h1>
         <p className="mt-2 text-mute">When someone asks for a copy of their data, or to be erased. Look them up by email. People can also do both themselves from Settings if they have an account.</p>
       </div>
       {sp.done && (

@@ -74,6 +74,9 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
 [data-area="support"] { --area: #ffb648; }
 [data-area="growth"] { --area: #d5ff48; }
 [data-area="trust"] { --area: #ff8a7a; }
+[data-area="product"] { --area: #b9a2ff; }
+[data-area="admin"] { --area: #a8ac9f; }
+[data-area="overview"] { --area: #d5ff48; }
 [data-area] .area-label { color: var(--area); }
 /* Admin menu: brighter, heavier links than the generic tactile list. */
 [data-area] .tactile-item { color: #c4c7bd; }

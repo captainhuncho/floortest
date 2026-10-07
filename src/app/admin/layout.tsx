@@ -27,30 +27,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     count("/admin/verification", "SELECT COUNT(*) AS n FROM users WHERE identity_status = 'pending'"),
     count("/admin/takedowns", "SELECT COUNT(*) AS n FROM takedowns WHERE status = 'open'"),
   ]);
+  // Grouped by the question being asked; Overview sits on its own at the top, the admin tools at the bottom.
   const allGroups: NavGroup[] = [
-    {
-      id: "monitor",
-      title: "Monitor",
-      icon: "pulse",
-      sections: [
-        {
-          title: "Health",
-          items: [
-            { href: "/admin", label: "Overview", icon: "grid" },
-            { href: "/admin/metrics", label: "Metrics", icon: "chart" }, { href: "/admin/revenue", label: "Revenue", icon: "chart" }, { href: "/admin/plans", label: "Plans & prices", icon: "list" }, { href: "/admin/content", label: "Site content", icon: "list" }, { href: "/admin/storage", label: "Storage & costs", icon: "grid" }, { href: "/admin/speed", label: "Speed", icon: "chart" }, { href: "/admin/jobs", label: "Jobs", icon: "list" }, { href: "/admin/usage", label: "Feature use", icon: "chart" },
-            { href: "/admin/incidents", label: "Incidents", icon: "alert", badge: incidents },
-            { href: "/admin/security", label: "Security", icon: "shield" },
-          ],
-        },
-      ],
-    },
+    { id: "overview", title: "", icon: "grid", sections: [{ title: "", items: [{ href: "/admin", label: "Overview", icon: "grid" }] }] },
     {
       id: "support",
       title: "Support",
       icon: "life",
       sections: [
-        { title: "People", items: [{ href: "/admin/inbox", label: "Inbox", icon: "inbox", badge: inbox }, { href: "/admin/partners", label: "Beta partners", icon: "rocket" }, { href: "/admin/feedback", label: "Feedback", icon: "flag", badge: feedback }, { href: "/admin/accounts", label: "Users", icon: "users" }] },
-        { title: "Messages", items: [{ href: "/admin/emails", label: "Emails sent", icon: "mail" }] },
+        { title: "Now", items: [{ href: "/admin/inbox", label: "Inbox", icon: "inbox", badge: inbox }, { href: "/admin/feedback", label: "Feedback", icon: "flag", badge: feedback }, { href: "/admin/emails", label: "Email log", icon: "mail" }] },
+        { title: "People", items: [{ href: "/admin/accounts", label: "Users", icon: "users" }, { href: "/admin/partners", label: "Beta partners", icon: "rocket" }] },
       ],
     },
     {
@@ -59,7 +45,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       icon: "rocket",
       sections: [
         { title: "Beta access", items: [{ href: "/admin/waitlist", label: "Waitlist", icon: "list", badge: waiting }, { href: "/admin/invites", label: "Invites", icon: "ticket" }] },
-        { title: "Product", items: [{ href: "/admin/announcements", label: "Announcements", icon: "mail" }, { href: "/admin/switches", label: "Feature switches", icon: "flag" }] },
+        { title: "Reach", items: [{ href: "/admin/announcements", label: "Announcements", icon: "mail" }] },
+        { title: "Revenue", items: [{ href: "/admin/revenue", label: "Revenue", icon: "chart" }, { href: "/admin/plans", label: "Plans & prices", icon: "list" }] },
+      ],
+    },
+    {
+      id: "product",
+      title: "Product",
+      icon: "chart",
+      sections: [
+        { title: "Insight", items: [{ href: "/admin/metrics", label: "Metrics", icon: "chart" }, { href: "/admin/usage", label: "Feature use", icon: "chart" }] },
+        { title: "Control", items: [{ href: "/admin/switches", label: "Feature switches", icon: "flag" }, { href: "/admin/content", label: "Site content", icon: "list" }] },
       ],
     },
     {
@@ -67,9 +63,24 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       title: "Trust & safety",
       icon: "shield",
       sections: [
-        { title: "Review", items: [{ href: "/admin/verification", label: "Verification", icon: "shield", badge: verifying }, { href: "/admin/moderation", label: "Moderation", icon: "flag" }, { href: "/admin/takedowns", label: "Takedowns", icon: "alert", badge: takedowns }, { href: "/admin/blocks", label: "Sender blocks", icon: "shield" }] },
-        { title: "Records", items: [{ href: "/admin/privacy", label: "Data requests", icon: "users" }, { href: "/admin/log", label: "Admin log", icon: "log" }, { href: "/admin/team", label: "Ops team", icon: "users" }] },
+        { title: "Review", items: [{ href: "/admin/verification", label: "Verification", icon: "shield", badge: verifying }, { href: "/admin/moderation", label: "Moderation", icon: "flag" }, { href: "/admin/takedowns", label: "Takedowns", icon: "alert", badge: takedowns }] },
+        { title: "Abuse & legal", items: [{ href: "/admin/blocks", label: "Sender blocks", icon: "shield" }, { href: "/admin/privacy", label: "Privacy requests", icon: "users" }] },
       ],
+    },
+    {
+      id: "monitor",
+      title: "Platform",
+      icon: "pulse",
+      sections: [
+        { title: "Health", items: [{ href: "/admin/incidents", label: "Incidents", icon: "alert", badge: incidents }, { href: "/admin/jobs", label: "Jobs", icon: "list" }, { href: "/admin/speed", label: "Speed", icon: "chart" }] },
+        { title: "Resources", items: [{ href: "/admin/storage", label: "Storage", icon: "grid" }] },
+      ],
+    },
+    {
+      id: "admin",
+      title: "Admin",
+      icon: "log",
+      sections: [{ title: "", items: [{ href: "/admin/security", label: "Security", icon: "shield" }, { href: "/admin/log", label: "Admin log", icon: "log" }, { href: "/admin/team", label: "Ops team", icon: "users" }] }],
     },
   ];
   // Each person sees only what they can open; empty sections and groups drop out.

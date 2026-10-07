@@ -27,7 +27,7 @@ export function AdminMobileNav({ groups }: { groups: NavGroup[] }) {
       <nav aria-label="Admin" className="max-h-[70dvh] overflow-y-auto border-t border-line px-2 pb-3">
         {groups.map((g) => (
           <div key={g.id} className="mt-3">
-            <p className="px-2 pb-1 text-[11px] font-bold uppercase tracking-[1px] text-faint">{g.title}</p>
+            {g.title && <p className="px-2 pb-1 text-[11px] font-bold uppercase tracking-[1px] text-faint">{g.title}</p>}
             {g.sections.flatMap((s) => s.items).map((i) => (
               <Link
                 key={i.href}
