@@ -1,5 +1,6 @@
 "use client";
 
+import { opsSignOut } from "../ops-login/actions";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
@@ -42,7 +43,9 @@ export function AdminMobileNav({ groups }: { groups: NavGroup[] }) {
             ))}
           </div>
         ))}
-        <Link href="/dashboard/floor" className="mt-3 block rounded-lg px-2 py-2 text-[12px] text-faint">← Back to my desk</Link>
+        <form action={opsSignOut}>
+          <button className="mt-3 block min-h-11 w-full rounded-lg px-2 py-2 text-left text-[12px] text-faint">Sign out of ops</button>
+        </form>
       </nav>
     </details>
   );

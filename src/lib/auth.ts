@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { now, q, USER_COLUMNS, type User } from "./db";
 import { env, isProd } from "./env";
+import { hasLiveOpsSession } from "./ops";
 
 const COOKIE = "floortest_session";
 const SESSION_MS = 1000 * 60 * 60 * 24 * 30;
@@ -76,15 +77,14 @@ function readViewAs(token: string | undefined, secret: string) {
 export const viewingAs = cache(async (): Promise<{ adminId: number; userId: number; handle: string } | null> => {
   const jar = await cookies();
   const va = readViewAs(jar.get(VIEW_AS_COOKIE)?.value, env.secret);
-  const token = jar.get(COOKIE)?.value;
-  if (!va || !token) return null;
-  // The real session must still be that admin, with two-factor on and still on the admin list.
-  const admin = await q.get<{ id: number; email: string; totp_enabled_at: number | null; email_verified_at: number | null }>(
-    "SELECT u.id, u.email, u.totp_enabled_at, u.email_verified_at FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ? AND u.suspended_at IS NULL",
-    hashToken(token),
-    now(),
+  if (!va) return null;
+  // That admin must still qualify (admin list, confirmed email, two-factor) and be signed in on ops right now.
+  const admin = await q.get<{ email: string; totp_enabled_at: number | null; email_verified_at: number | null }>(
+    "SELECT email, totp_enabled_at, email_verified_at FROM users WHERE id = ? AND suspended_at IS NULL",
+    va.adminId,
   );
-  if (!admin || admin.id !== va.adminId || !admin.totp_enabled_at || !admin.email_verified_at || !env.adminEmails.includes(admin.email.toLowerCase())) return null;
+  if (!admin || !admin.totp_enabled_at || !admin.email_verified_at || !env.adminEmails.includes(admin.email.toLowerCase())) return null;
+  if (!(await hasLiveOpsSession(va.adminId))) return null;
   const target = await q.get<{ handle: string }>("SELECT handle FROM users WHERE id = ?", va.userId);
   return target ? { ...va, handle: target.handle } : null;
 });

@@ -1055,4 +1055,27 @@ alter table senders drop column verify_token;
 update site_content set draft = replace(draft, '{confirm_block}', ''), published = replace(published, '{confirm_block}', '') where page = 'email_delivered';
 `,
   },
+  {
+    // The admin area gets its own sign-in on its own host (ops.floortest.app): password and two-step code every time,
+    // 1 hour idle / 8 hours at most. "View as" crosses to the main site with a single-use, 60-second ticket.
+    id: "0063_ops_sessions",
+    sql: `
+create table admin_sessions (
+  token_hash text primary key,
+  user_id bigint not null references users(id) on delete cascade,
+  created_at bigint not null,
+  last_seen_at bigint not null,
+  expires_at bigint not null
+);
+create index admin_sessions_user on admin_sessions(user_id);
+alter table admin_sessions enable row level security;
+create table view_tickets (
+  token_hash text primary key,
+  admin_id bigint not null references users(id) on delete cascade,
+  user_id bigint not null references users(id) on delete cascade,
+  expires_at bigint not null
+);
+alter table view_tickets enable row level security;
+`,
+  },
 ];

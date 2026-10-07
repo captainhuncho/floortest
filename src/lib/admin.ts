@@ -1,6 +1,6 @@
 import "server-only";
 import { notFound, redirect } from "next/navigation";
-import { currentUser } from "./auth";
+import { currentOpsAdmin } from "./ops";
 import { now, q, type User } from "./db";
 import { env } from "./env";
 
@@ -8,15 +8,14 @@ export const isAdminEmail = (email: string) => env.adminEmails.includes(email.to
 
 /**
  * Admin pages are for ADMIN_EMAILS only, with a confirmed email (so nobody can claim an admin address by
- * signing up with it) and two-factor on, even just to look. Anyone else gets a plain 404 so the admin
- * area doesn't advertise itself; an admin address missing either is sent to Settings to fix it.
+ * signing up with it) and two-factor on, signed in through the separate ops sign-in. Anyone else gets a plain 404.
  */
 export async function requireAdmin(): Promise<User> {
-  const u = await currentUser();
-  if (!u) redirect("/login");
-  if (!isAdminEmail(u.email)) notFound();
-  // An admin address only counts once the email is confirmed and two-factor is on; until then, no admin data.
-  if (!u.email_verified_at || !adminReady(u)) redirect("/dashboard/settings/security");
+  // Only the ops sign-in counts (its own cookie on the ops host); a main-site session grants nothing here.
+  const u = await currentOpsAdmin();
+  if (!u) redirect("/ops-login");
+  // Rechecked on every request, so removing an address from ADMIN_EMAILS or turning off two-factor ends access at once.
+  if (!isAdminEmail(u.email) || !u.email_verified_at || !adminReady(u)) notFound();
   return u;
 }
 

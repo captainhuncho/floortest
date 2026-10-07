@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { opsSignOut } from "../ops-login/actions";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -152,14 +153,16 @@ export function AdminNav({ groups, admin }: { groups: NavGroup[]; admin: { name:
         )}
       </nav>
       <div className={`flex items-center gap-2 border-t border-line p-3 ${open ? "" : "flex-col"}`}>
-        <Link href="/dashboard/account" title={admin.name} className="grid size-8 shrink-0 place-items-center rounded-full bg-ink-4 text-[11px] font-bold text-bone">
+        <span title={admin.name} className="grid size-8 shrink-0 place-items-center rounded-full bg-ink-4 text-[11px] font-bold text-bone">
           {admin.initials}
-        </Link>
+        </span>
         {open && <span className="min-w-0 flex-1 truncate text-[11px] text-mute">{admin.name}</span>}
-        <Link href="/dashboard/floor" title="Back to my desk" className="flex items-center gap-1 rounded-md px-2 py-1.5 text-[11px] text-faint hover:bg-ink-3 hover:text-bone">
-          <Icon name="back" className="size-3.5" />
-          {open && "Desk"}
-        </Link>
+        <form action={opsSignOut}>
+          <button title="Sign out of ops" className="flex items-center gap-1 rounded-md px-2 py-1.5 text-[11px] text-faint hover:bg-ink-3 hover:text-bone">
+            <Icon name="back" className="size-3.5" />
+            {open ? "Sign out" : <span className="sr-only">Sign out</span>}
+          </button>
+        </form>
       </div>
     </aside>
   );

@@ -72,7 +72,7 @@ export async function runAdminDigest(at = now()) {
       audience: "support",
       to,
       subject: "FloorTest this week",
-      body: ["The last 7 days on FloorTest:", "", ...lines.map((l) => `• ${l}`), "", `Details: ${APP_URL}/admin/metrics`, "", "— FloorTest"].join("\n"),
+      body: ["The last 7 days on FloorTest:", "", ...lines.map((l) => `• ${l}`), "", `Details: ${env.opsUrl}/admin/metrics`, "", "— FloorTest"].join("\n"),
     });
   await q.run(
     "INSERT INTO app_state (key, value, updated_at) VALUES ('admin_digest', ?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",

@@ -11,7 +11,8 @@ import { audienceWhere, cleanTags, describeAudience, readAudience } from "@/lib/
 import { SITE_PAGES, type Field, type SitePage } from "@/lib/content";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { signViewAs, VIEW_AS_COOKIE } from "@/lib/auth";
+import { issueViewTicket } from "@/lib/ops";
+import { APP_URL } from "@/lib/mail";
 import { env } from "@/lib/env";
 import { sendMail } from "@/lib/mail";
 import { logAdmin, requireAdminAction } from "@/lib/admin";
@@ -180,15 +181,10 @@ export async function startViewAs(userId: number) {
   const a = await requireAdminAction();
   const u = await target(userId);
   if (!u || u.id === a.id) return;
-  (await cookies()).set(VIEW_AS_COOKIE, signViewAs(a.id, u.id, env.secret), {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/dashboard",
-    maxAge: 30 * 60,
-  });
+  // The desk lives on the main site; a single-use, 60-second ticket carries the admin across.
+  const ticket = await issueViewTicket(a.id, u.id);
   await logAdmin(a.id, "viewed desk", `@${u.handle}`, "read-only, 30 min");
-  redirect("/dashboard/floor");
+  redirect(`${APP_URL}/dashboard/view-as?t=${encodeURIComponent(ticket)}`);
 }
 
 /** Sends a logged email again, to the same address. */

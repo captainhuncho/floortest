@@ -13,6 +13,13 @@ export const isPreview = process.env.VERCEL_ENV === "preview";
 export const env = {
   /** Previews use their own address, so links and emails never point at the live site. */
   appUrl: (isPreview && v("VERCEL_URL") ? `https://${v("VERCEL_URL")}` : (v("APP_URL") ?? "http://localhost:3000")).replace(/\/$/, ""),
+  /**
+   * Where the admin area lives (its own host, its own sign-in). Unset locally and on previews: admin then sits on the
+   * app's own address, still behind the separate admin sign-in.
+   */
+  get opsUrl(): string {
+    return (isPreview ? null : v("OPS_URL"))?.replace(/\/$/, "") ?? this.appUrl;
+  },
   /** Signs local upload tokens. Must be long and random in production. */
   get secret(): string {
     const s = v("APP_SECRET");
