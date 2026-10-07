@@ -206,8 +206,15 @@ export function SubmitForm({
       {fileInput}
       <ol className="space-y-3">{ordered.map(row)}</ol>
       {!busy && items.length < MAX_FILES && (
-        <button type="button" onClick={() => inputRef.current?.click()} className={`text-sm underline underline-offset-4 ${L.mute} hover:text-bone`}>
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          className={`flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-dashed ${L.line} px-4 py-3 text-sm font-semibold text-bone hover:border-lime/60`}
+        >
           + Add another track
+          <span className={`font-normal ${L.mute}`}>
+            ({MAX_FILES - items.length} more, {MAX_FILES} max)
+          </span>
         </button>
       )}
 
