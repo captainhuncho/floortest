@@ -196,8 +196,8 @@ export function SubmitForm({
           <input className={L.input} required value={it.tags.title} disabled={it.status === "done"} onChange={(e) => edit(it.id, { title: e.target.value })} />
         </label>
         <label className="block space-y-1">
-          <span className={L.label}>Artist</span>
-          <input className={L.input} placeholder="Defaults to your name" value={it.tags.artist} disabled={it.status === "done"} onChange={(e) => edit(it.id, { artist: e.target.value })} />
+          <span className={L.label}>Artist<Req /></span>
+          <input className={L.input} required value={it.tags.artist} disabled={it.status === "done"} onChange={(e) => edit(it.id, { artist: e.target.value })} />
         </label>
       </div>
       {it.error && <p className="text-[12px] text-danger">{it.error}</p>}
@@ -257,8 +257,8 @@ export function SubmitForm({
         </label>
         {m && <p className={`col-span-2 -mt-1 text-[11px] ${L.mute}`}>For your receipt and updates only.</p>}
         <label className={`block space-y-1.5 ${m ? "col-span-2" : ""}`}>
-          <span className={L.label}>Your Instagram or streaming profile (optional)</span>
-          <input className={L.input} name="sender_links" autoComplete="url" maxLength={600} placeholder="instagram.com/you, open.spotify.com/artist/…" />
+          <span className={L.label}>Your Instagram or streaming profile<Req /></span>
+          <input className={L.input} name="sender_links" required autoComplete="url" maxLength={600} placeholder="instagram.com/you, open.spotify.com/artist/…" />
           <span className={`block text-[11px] ${L.mute}`}>Up to 3 links, separated by commas. Helps the receiver know who you are.</span>
         </label>
           </>

@@ -67,6 +67,8 @@ export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]
   const senderLinks = parseLinks(str("sender_links", 600).split(",").join("\n"));
   if (senderLinks.error) return bad(`Profile link: ${senderLinks.error}`);
   if (senderLinks.links.length > 3) return bad("Add up to 3 profile links.");
+  if (!account && !senderLinks.links.length) return bad("Add your Instagram or streaming profile, so the receiver knows who you are.");
+  if (!str("artist", 200)) return bad("Add the artist.");
   if (!Object.hasOwn(AI_USE, str("ai_use", 20))) return bad("Say whether you used AI to make this track.");
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return bad("Enter a valid email so we can tell you what happens next.");
 
@@ -77,7 +79,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]
         name,
         email,
         title,
-        artist: str("artist", 200) || name,
+        artist: str("artist", 200),
         message: str("message", 2000),
         releaseStatus: pick("release_status", RELEASE_STATUS),
         aiUse: pick("ai_use", AI_USE),
