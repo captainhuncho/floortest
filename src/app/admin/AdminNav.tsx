@@ -94,10 +94,8 @@ export function AdminNav({ groups, admin }: { groups: NavGroup[]; admin: { name:
     <aside className={`flex h-dvh shrink-0 flex-col border-r border-line bg-ink-2 ${open ? "w-64" : "w-16"}`}>
       <div className={`flex items-center gap-2.5 px-3 pb-3 pt-4 ${open ? "justify-between" : "flex-col"}`}>
         <Link href="/admin" className="flex items-center gap-2.5" aria-label="FloorTest admin">
-          {/* The FloorTest mark: a lime record with a dark centre. */}
-          <span aria-hidden className="grid size-7 shrink-0 place-items-center rounded-full bg-lime">
-            <span className="size-2.5 rounded-full bg-ink" />
-          </span>
+          {/* Ops has its own brushed-silver crest, so it never looks like the main site. */}
+          <img src="/brand/crest-ops.svg" alt="" aria-hidden className="size-8 shrink-0" />
           {open && (
             <span className="flex flex-col leading-tight">
               <span className="text-[14px] font-bold text-bone">FloorTest</span>
