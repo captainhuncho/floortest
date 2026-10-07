@@ -348,7 +348,56 @@ export default async function Home({
         </div>
       </section>
 
-      <footer className="mx-auto max-w-6xl px-4 pb-10 pt-12 text-sm text-mute sm:px-6">
+      {/* Desktop: brand + newsletter left, links right; reference legal pages in a small bottom row. */}
+      <footer className="mx-auto hidden max-w-6xl px-6 pb-10 pt-12 text-sm text-mute lg:block">
+        <div className="grid grid-cols-12 gap-8 border-t border-line pt-10">
+          <div className="col-span-5">
+            <Logo />
+            <p className="mt-3 max-w-xs">{c.footer_line}</p>
+            <div className="mt-8 max-w-md">
+              <p className="mb-3 text-sm font-bold text-bone">Get the FloorTest newsletter</p>
+              <NewsletterForm />
+            </div>
+          </div>
+          <nav aria-label="Footer" className="col-span-7 grid grid-cols-3 gap-x-6 pl-8">
+            {footerGroups().map((g) => (
+              <div key={g.title}>
+                <h2 className="text-[11px] font-bold uppercase tracking-[1px] text-faint">{g.title}</h2>
+                <ul className="mt-3 grid gap-y-1">
+                  {(g.title === "Legal" ? g.links.slice(0, LEGAL_MAIN) : g.links).map((l) => (
+                    <li key={l.label}>
+                      {l.external ? (
+                        <a href={l.href} target="_blank" rel="noreferrer" className="inline-block py-1.5 hover:text-bone">
+                          {l.label}
+                        </a>
+                      ) : (
+                        <Link href={l.href} className="inline-block py-1.5 hover:text-bone">
+                          {l.label}
+                        </Link>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </nav>
+        </div>
+        <div className="mt-10 flex items-center justify-between gap-3 border-t border-line pt-6 text-xs text-dim">
+          <p>© {new Date().getFullYear()} FloorTest Labs. Private beta.</p>
+          <ul className="flex flex-wrap gap-x-4">
+            {(footerGroups().find((g) => g.title === "Legal")?.links.slice(LEGAL_MAIN) ?? []).map((l) => (
+              <li key={l.label}>
+                <Link href={l.href} className="inline-block py-1.5 hover:text-bone">
+                  {l.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </footer>
+
+      {/* Phones and tablets. */}
+      <footer className="mx-auto max-w-6xl px-4 pb-10 pt-12 text-sm text-mute sm:px-6 lg:hidden">
         <div className="flex flex-col gap-3 border-t border-line pt-10 sm:flex-row sm:items-center sm:justify-between">
           <Logo />
           <p className="max-w-xs">{c.footer_line}</p>
@@ -385,3 +434,6 @@ export default async function Home({
     </div>
   );
 }
+
+// Desktop footer: the first four legal links stay in the Legal column; the rest go in the bottom row.
+const LEGAL_MAIN = 4;
