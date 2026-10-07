@@ -259,7 +259,7 @@ export async function resendInvite(code: string) {
   const a = await requireAdminAction("invites");
   const inv = await q.get<{ email: string | null; note: string }>("SELECT email, note FROM invites WHERE code = ? AND revoked_at IS NULL", code);
   if (!inv?.email) return fail("Couldn't resend: the invite is revoked or has no email");
-  if ((await mailInvite(code, inv.email, a.name, inv.note)).startsWith("failed")) return fail("The email failed to send. Check Emails sent, then try again.");
+  if ((await mailInvite(code, inv.email, a.name, inv.note)).startsWith("failed")) return fail("The email failed to send. Check the Email log, then try again.");
   await q.run("UPDATE invites SET sent_at = ? WHERE code = ?", now(), code);
   await logAdmin(a.id, "resent invite", inv.email, code);
   await done(`Invite resent to ${inv.email}`);
