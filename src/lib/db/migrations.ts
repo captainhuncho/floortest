@@ -1128,4 +1128,14 @@ update plans set yearly_price_cents = 7799 where id = 'pro';
 update plans set yearly_price_cents = 14499 where id = 'team';
 `,
   },
+  {
+    // Discounts on top of list prices (Admin → Plans): a percentage off, an optional label and end date.
+    // List prices never change; the plans page shows them struck through while a discount runs.
+    id: "0069_plan_discounts",
+    sql: `
+alter table plans add column discount_pct int not null default 0 check (discount_pct between 0 and 90);
+alter table plans add column discount_label text not null default '';
+alter table plans add column discount_ends_at bigint;
+`,
+  },
 ];

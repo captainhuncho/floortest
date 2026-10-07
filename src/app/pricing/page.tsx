@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { currentUser } from "@/lib/auth";
 import { siteCopy } from "@/lib/content";
-import { offeredPlans, planGrid } from "@/lib/plan-store";
+import { afterDiscount, discountNow, offeredPlans, planGrid } from "@/lib/plan-store";
 import { switchOn } from "@/lib/switches";
 
 export const metadata = { title: "Pricing — FloorTest", alternates: { canonical: "/pricing" } };
@@ -29,7 +29,7 @@ export default async function Pricing() {
               <div key={p.id} className={`flex flex-col rounded-lg border bg-ink-2 p-7 ${p.featured ? "border-lime/40" : "border-white/10"}`}>
                 <p className="text-xs uppercase tracking-[0.1em] text-lime">{p.name}</p>
                 <p className="mt-8 text-4xl font-bold">
-                  {billing && p.price > 0 ? `$${p.price}` : "Free"}
+                  {billing && p.price > 0 ? (discountNow(p) ? <>${afterDiscount(p.price, discountNow(p))} <s className="text-base font-normal text-dim">${p.price}</s></> : `$${p.price}`) : "Free"}
                   <span className="ml-2 text-xs font-normal text-dim">{p.price > 0 ? (billing ? "/ month" : "during the beta") : "for good"}</span>
                 </p>
                 <p className="mt-6 text-lg">{p.limit.toLocaleString("en")} active tracks</p>

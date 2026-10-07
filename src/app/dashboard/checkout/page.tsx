@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { offeredPlan, planOf } from "@/lib/plan-store";
+import { afterDiscount, discountNow, offeredPlan, planOf } from "@/lib/plan-store";
 import { switchOn } from "@/lib/switches";
 import { confirmBetaUpgrade } from "../actions/settings";
 
@@ -21,7 +21,10 @@ export default async function Checkout({ searchParams }: { searchParams: Promise
   const billing = await switchOn("billing");
   const usd = (n: number) => `$${n.toFixed(2)}`;
   const price = usd(p.price);
-  const due = billing ? p.price : 0;
+  // A running plan discount comes off the list price; during the beta the beta discount covers the rest.
+  const off = discountNow(p);
+  const offered = off ? afterDiscount(p.price, off) : p.price;
+  const due = billing ? offered : 0;
   const today = new Date();
   const renews = new Date(today.getFullYear(), today.getMonth() + 1, today.getDate()).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
@@ -61,10 +64,18 @@ export default async function Checkout({ searchParams }: { searchParams: Promise
               <dt className="text-mute">{p.name}, monthly</dt>
               <dd className="tnum">{price}</dd>
             </div>
+            {off > 0 && (
+              <div className="flex justify-between text-lime">
+                <dt>
+                  {p.discount.label || "Offer"} ({off}% off)
+                </dt>
+                <dd className="tnum">−{usd(p.price - offered)}</dd>
+              </div>
+            )}
             {!billing && (
               <div className="flex justify-between text-lime">
                 <dt>Beta discount</dt>
-                <dd className="tnum">−{price}</dd>
+                <dd className="tnum">−{usd(offered)}</dd>
               </div>
             )}
             <div className="flex justify-between border-t border-line pt-2 text-[15px] font-bold">
@@ -85,7 +96,9 @@ export default async function Checkout({ searchParams }: { searchParams: Promise
             {billing ? (
               <ul className="list-disc space-y-1 pl-4">
                 <li>
-                  You&apos;re charged {price} today, and {price} every month after that, starting {renews}.
+                  {off > 0
+                    ? `You're charged ${usd(offered)} today. Renewals are ${usd(offered)} a month while the ${p.discount.label || "offer"} runs, then ${price} a month, starting ${renews}.`
+                    : `You're charged ${price} today, and ${price} every month after that, starting ${renews}.`}
                 </li>
                 <li>Your plan renews automatically until you cancel.</li>
                 <li>Cancel any time in Account → Plans, online, in a couple of clicks. You keep {p.name} until the end of the month you&apos;ve paid for.</li>

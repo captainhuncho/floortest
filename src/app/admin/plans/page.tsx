@@ -1,7 +1,7 @@
 import { requireAdmin } from "@/lib/admin";
 import Link from "next/link";
 import { q } from "@/lib/db";
-import { allPlans, FREE_PLAN } from "@/lib/plan-store";
+import { afterDiscount, allPlans, discountNow, FREE_PLAN } from "@/lib/plan-store";
 import { addPlan, deletePlan, savePlan, setPlanOffered } from "../actions";
 import { ConfirmButton } from "../AdminUi";
 import { PlanPricing } from "./PlanPricing";
@@ -36,6 +36,7 @@ export default async function Plans() {
               <div className="flex flex-wrap gap-2">
                 <span className="chip border-line text-mute">{users} {users === 1 ? "person" : "people"} on it</span>
                 {p.featured && <span className="chip border-lime/50 text-lime">Recommended</span>}
+                {discountNow(p) > 0 && <span className="chip border-lime/50 text-lime">{discountNow(p)}% off</span>}
                 <span className={`chip ${p.retired ? "border-line text-mute" : "border-lime/50 text-lime"}`}>{p.retired ? "Retired" : "Offered"}</span>
               </div>
             </header>
@@ -54,6 +55,35 @@ export default async function Plans() {
                   <PlanPricing monthly={p.price} yearly={p.yearly} />
                 )}
               </fieldset>
+
+              {!free && (
+                <fieldset className="space-y-3">
+                  <legend className={legend}>Discount</legend>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <label className="block space-y-1.5">
+                      <span className="label">Percent off</span>
+                      <input name="discount_pct" type="number" min={0} max={90} step={1} defaultValue={p.discount.pct} className="input tnum" />
+                      <span className="block text-xs text-dim">0 = no discount; list prices stay as set above</span>
+                    </label>
+                    <label className="block space-y-1.5">
+                      <span className="label">Label</span>
+                      <input name="discount_label" defaultValue={p.discount.label} maxLength={40} placeholder="Launch offer" className="input" />
+                      <span className="block text-xs text-dim">Shown on the plan card</span>
+                    </label>
+                    <label className="block space-y-1.5">
+                      <span className="label">Last day</span>
+                      <input name="discount_ends" type="date" defaultValue={p.discount.endsAt ? new Date(p.discount.endsAt).toISOString().slice(0, 10) : ""} className="input tnum" />
+                      <span className="block text-xs text-dim">Leave empty to run until you turn it off</span>
+                    </label>
+                  </div>
+                  {discountNow(p) > 0 && (
+                    <p className="text-xs text-lime">
+                      Running now: ${afterDiscount(p.price, discountNow(p))} / month{p.yearly ? ` · $${afterDiscount(p.yearly, discountNow(p))} / year` : ""}
+                    </p>
+                  )}
+                  {p.discount.pct > 0 && discountNow(p) === 0 && <p className="text-xs text-mute">Ended; set a new last day or put it to 0.</p>}
+                </fieldset>
+              )}
 
               <fieldset className="space-y-3">
                 <legend className={legend}>Capacity</legend>

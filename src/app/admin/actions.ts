@@ -731,16 +731,25 @@ export async function savePlan(id: string, form: FormData) {
   if (id === FREE_PLAN && price !== 0) return fail("Free must stay at $0.");
   if (!Number.isFinite(yearly) || yearly < 0 || yearly > 1000000) return fail("Yearly price must be between $0 and $10,000.");
   if (id === FREE_PLAN && yearly !== 0) return fail("Free has no yearly price.");
+  // Discount: a percentage off list prices, optional label, optional last day (inclusive, end of that day UTC).
+  const discountPct = Math.round(Number(form.get("discount_pct") || 0));
+  const discountLabel = String(form.get("discount_label") || "").trim().slice(0, 40);
+  const endsOn = String(form.get("discount_ends") || "").trim();
+  const discountEndsAt = endsOn ? Date.parse(`${endsOn}T23:59:59Z`) : null;
+  if (!Number.isFinite(discountPct) || discountPct < 0 || discountPct > 90) return fail("Discount must be between 0% and 90%.");
+  if (id === FREE_PLAN && discountPct) return fail("Free can't have a discount.");
+  if (endsOn && (discountEndsAt == null || !Number.isFinite(discountEndsAt))) return fail("Pick a valid end date for the discount.");
   if (!Number.isFinite(limit) || limit < 1 || limit > 1000000) return fail("Track limit must be at least 1.");
   const fullest = await fullestOn(id);
   if (limit < fullest) return fail(`Someone on ${old.name} already has ${fullest} active tracks, so the limit can't go below that.`);
   await q.run(
-    "UPDATE plans SET name = ?, price_cents = ?, yearly_price_cents = ?, track_limit = ?, blurb = ?, features = ?, share_downloads = ?, featured = ?, position = ?, folder_bytes = ?, updated_at = ? WHERE id = ?",
-    name, price, yearly, limit, blurb, JSON.stringify(features), form.get("share_downloads") === "on" ? 1 : 0, form.get("featured") === "on" ? 1 : 0, position, folderMb * 1048576, now(), id,
+    "UPDATE plans SET name = ?, price_cents = ?, yearly_price_cents = ?, discount_pct = ?, discount_label = ?, discount_ends_at = ?, track_limit = ?, blurb = ?, features = ?, share_downloads = ?, featured = ?, position = ?, folder_bytes = ?, updated_at = ? WHERE id = ?",
+    name, price, yearly, discountPct, discountLabel, discountPct ? discountEndsAt : null, limit, blurb, JSON.stringify(features), form.get("share_downloads") === "on" ? 1 : 0, form.get("featured") === "on" ? 1 : 0, position, folderMb * 1048576, now(), id,
   );
   const changes = [
     old.price * 100 !== price && `price $${old.price} → $${price / 100}`,
     Math.round(old.yearly * 100) !== yearly && `yearly $${old.yearly} → $${yearly / 100}`,
+    old.discount.pct !== discountPct && `discount ${old.discount.pct}% → ${discountPct}%`,
     old.limit !== limit && `limit ${old.limit} → ${limit}`,
     old.name !== name && `name ${old.name} → ${name}`,
     old.folderBytes !== folderMb * 1048576 && `folders ${Math.round(old.folderBytes / 1048576)} → ${folderMb} MB`,

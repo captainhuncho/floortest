@@ -3,7 +3,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { capacity } from "@/lib/desk";
 import { RETAIN_UNREVIEWED_DAYS } from "@/lib/plans";
-import { allPlans, planGrid, planOf } from "@/lib/plan-store";
+import { afterDiscount, allPlans, discountNow, planGrid, planOf } from "@/lib/plan-store";
 import { switchOn } from "@/lib/switches";
 import { setPlan } from "../actions/settings";
 
@@ -108,6 +108,10 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
           const upgrade = p.price > current.price;
           const featured = p.featured;
           const extras = extrasOf(p);
+          // A running discount shows the list price struck through; list prices themselves never change.
+          const off = discountNow(p);
+          const list = yearly ? p.yearly : p.price;
+          const shown = off && list ? afterDiscount(list, off) : list;
           const action = billing ? `Upgrade to ${p.name}` : "Start in beta →";
           return (
             <li
@@ -125,11 +129,19 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
               </div>
 
               <div className="flex min-h-[78px] flex-col gap-1">
+                {off > 0 && (
+                  <p className="w-fit rounded-full border border-lime/50 px-2.5 py-0.5 text-[11px] font-semibold text-lime">
+                    {p.discount.label || "Offer"} · {off}% off{p.discount.endsAt ? ` · until ${new Date(p.discount.endsAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })}` : ""}
+                  </p>
+                )}
                 <p className="flex items-baseline gap-2 whitespace-nowrap">
                   {p.price && yearly && !p.yearly ? (
                     <span className="text-[22px] font-semibold leading-[54px] whitespace-nowrap">To be confirmed</span>
                   ) : (
-                    <span className={`${yearly && p.yearly >= 100 ? "text-[40px]" : "text-5xl"} font-semibold leading-[54px] tnum`}>${p.price ? (yearly ? p.yearly : p.price) : 0}</span>
+                    <>
+                      <span className={`${shown >= 100 || off ? "text-[40px]" : "text-5xl"} font-semibold leading-[54px] tnum`}>${p.price ? shown : 0}</span>
+                      {off > 0 && list > 0 && <s className="text-sm text-mute tnum">${list}</s>}
+                    </>
                   )}
                   {p.price > 0 && (!yearly || p.yearly > 0) && <span className="text-sm text-mute">/ {yearly ? "year" : "month"}</span>}
                 </p>

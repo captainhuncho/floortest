@@ -21,19 +21,28 @@ export type Plan = {
   retired: boolean;
   /** Largest EP/album folder this plan's receivers accept, in bytes; 0 means folders are off. */
   folderBytes: number;
+  /** A percentage off list price (0 = none), with an optional label and end time. List prices stay as they are. */
+  discount: { pct: number; label: string; endsAt: number | null };
 };
+
+/** The discount running on a plan right now, or 0. */
+export const discountNow = (p: Pick<Plan, "price" | "discount">, at = Date.now()) =>
+  p.price > 0 && p.discount.pct > 0 && (!p.discount.endsAt || p.discount.endsAt > at) ? p.discount.pct : 0;
+
+/** A price after a percentage off, to the cent. */
+export const afterDiscount = (amount: number, pct: number) => Math.round(amount * (100 - pct)) / 100;
 
 /** Every account starts here, and it can't be retired or deleted. */
 export const FREE_PLAN = "free";
 
-type Row = { id: string; name: string; price_cents: number; yearly_price_cents: number; track_limit: number; blurb: string; features: string; share_downloads: number; featured: number; position: number; retired_at: number | null; folder_bytes: number };
+type Row = { id: string; name: string; price_cents: number; yearly_price_cents: number; discount_pct: number; discount_label: string; discount_ends_at: number | null; track_limit: number; blurb: string; features: string; share_downloads: number; featured: number; position: number; retired_at: number | null; folder_bytes: number };
 const toPlan = (r: Row): Plan => {
   let features: string[] = [];
   try {
     const f = JSON.parse(r.features);
     if (Array.isArray(f)) features = f.map(String);
   } catch {}
-  return { id: r.id, name: r.name, price: r.price_cents / 100, yearly: (Number(r.yearly_price_cents) || 0) / 100, limit: r.track_limit, blurb: r.blurb, features, shareDownloads: !!r.share_downloads, featured: !!r.featured, position: r.position, retired: !!r.retired_at, folderBytes: Number(r.folder_bytes) || 0 };
+  return { id: r.id, name: r.name, price: r.price_cents / 100, yearly: (Number(r.yearly_price_cents) || 0) / 100, limit: r.track_limit, blurb: r.blurb, features, shareDownloads: !!r.share_downloads, featured: !!r.featured, position: r.position, retired: !!r.retired_at, folderBytes: Number(r.folder_bytes) || 0, discount: { pct: Number(r.discount_pct) || 0, label: r.discount_label ?? "", endsAt: r.discount_ends_at == null ? null : Number(r.discount_ends_at) } };
 };
 
 /** All plans, retired ones included, in display order. Read once per request. */
