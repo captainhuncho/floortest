@@ -66,7 +66,10 @@ export default async function Home({
             trying FloorTest.
           </p>
         )}
-        <header className="flex items-center justify-between gap-3 py-6">
+      </div>
+      {/* Stays at the top while scrolling. */}
+      <div className="sticky top-0 z-40 border-b border-white/5 bg-ink/85 backdrop-blur">
+        <header className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
           <Logo />
           <nav className="flex shrink-0 items-center gap-2 whitespace-nowrap">
             {user ? (
