@@ -1,4 +1,5 @@
 import { trackUse } from "@/lib/usage";
+import { canCapCallouts } from "@/lib/desk";
 import { switchOn } from "@/lib/switches";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -70,6 +71,9 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
     briefNote: c.brief_note,
     allowSharing: !!c.allow_sharing,
     sharingAvailable: await switchOn("sharing"),
+    maxTracks: c.max_tracks,
+    full: !!c.full_at,
+    canCap: canCapCallouts(user.plan),
     genres: genres.custom ? genres.list : [],
   };
 
@@ -131,7 +135,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
                   RECEIVING
                 </span>
               )}
-              {isClosed(c) && <span className="rounded-md border border-faint px-2 py-1 text-[11px] font-bold tracking-[0.5px] text-mute">CLOSED</span>}
+              {isClosed(c) && <span className="rounded-md border border-faint px-2 py-1 text-[11px] font-bold tracking-[0.5px] text-mute">{c.full_at ? "FULL" : "CLOSED"}</span>}
             </h1>
             <div className="flex flex-wrap items-center gap-2">
               <EditCollectionInfo c={editable} receiving={receiving} closed={isClosed(c)} canDelete={all.length > 1} />

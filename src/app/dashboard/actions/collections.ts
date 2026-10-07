@@ -1,6 +1,7 @@
 "use server";
 
 /** Collections: create, choose which one receives, edit and delete. */
+import { canCapCallouts } from "@/lib/desk";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { now, q } from "@/lib/db";
@@ -63,6 +64,13 @@ export async function updateCollection(id: number, form: FormData) {
     (await switchOn("sharing")) ? (form.get("allow_sharing") === "on" ? 1 : 0) : 0,
     id,
   );
+  // Pro/Team track cap. Re-checked on every save: raising or clearing it reopens a full callout.
+  if (canCapCallouts(u.plan)) {
+    const n = Math.round(Number(form.get("max_tracks")));
+    const max = form.get("max_tracks") && n >= 1 && n <= 100_000 ? n : null;
+    const received = Number((await q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM tracks WHERE collection_id = ?", id))?.n ?? 0);
+    await q.run("UPDATE collections SET max_tracks = ?, full_at = CASE WHEN ? THEN COALESCE(full_at, ?) ELSE NULL END WHERE id = ?", max, !!max && received >= max, now(), id);
+  }
   await audit(u.id, "collection_updated", name || c.name);
   done();
   revalidatePath(`/${u.handle}`);

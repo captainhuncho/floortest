@@ -77,7 +77,11 @@ export async function activeCollection(user: Pick<User, "active_collection_id">,
   return user.active_collection_id ? db.get<Collection>("SELECT * FROM collections WHERE id = ?", user.active_collection_id) : undefined;
 }
 
-export const isClosed = (c: Collection | undefined, at = now()) => !!c?.closes_at && c.closes_at <= at;
+export const isClosed = (c: Collection | undefined, at = now()) => (!!c?.closes_at && c.closes_at <= at) || !!c?.full_at;
+/** Closed because it reached its track cap (rather than its closing date). */
+export const isFull = (c: Collection | undefined) => !!c?.full_at;
+/** Whether this account's plan can cap callouts (Pro and Team). */
+export const canCapCallouts = (plan: string) => plan !== "free";
 
 /** "Pause my link": the receiver is away. Ends on its own at pause_until, if one was set. */
 export const isPaused = (u: Pick<User, "paused_at" | "pause_until">, at = now()) => !!u.paused_at && (!u.pause_until || u.pause_until > at);

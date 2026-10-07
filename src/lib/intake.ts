@@ -12,7 +12,7 @@ import { folderLimit, shareDownloadEnabled } from "./plan-store";
 import { allow } from "./ratelimit";
 import { sealUpload, storage } from "./storage";
 import { validateAudio } from "./validate";
-import { activeCollection, capacity, isClosed, isPaused, pausedMessage, rewardReferral } from "./desk";
+import { activeCollection, capacity, isClosed, isFull, isPaused, pausedMessage, rewardReferral } from "./desk";
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -34,7 +34,9 @@ export class IntakeError extends Error {
 async function checkOpen(receiver: User, db: Queryable = q) {
   if (await switchOn("uploads_paused", db)) throw new IntakeError("FloorTest is taking a short break for maintenance. Please try again in a little while.", 503);
   if (isPaused(receiver)) throw new IntakeError(pausedMessage(receiver));
-  if (isClosed(await activeCollection(receiver, db))) throw new IntakeError(`This callout closed. ${receiver.name} isn't accepting tracks right now.`);
+  const active = await activeCollection(receiver, db);
+  if (isFull(active)) throw new IntakeError(`This callout is full. ${receiver.name} isn't accepting tracks for it right now.`);
+  if (isClosed(active)) throw new IntakeError(`This callout closed. ${receiver.name} isn't accepting tracks right now.`);
   if ((await capacity(receiver, db)).full) throw new IntakeError(`${receiver.name} isn't accepting new tracks right now.`);
 }
 
@@ -204,6 +206,12 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
         meta.senderLinks ?? "[]",
       ))!;
       const collection = await activeCollection(fresh, db);
+      // A capped callout: checked here, under the receiver's row lock, so two sends can't both take the last slot.
+      if (collection?.max_tracks) {
+        const received = Number((await db.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM tracks WHERE collection_id = ?", collection.id))?.n ?? 0);
+        if (received >= collection.max_tracks) throw new IntakeError(`“${collection.name}” is full. ${fresh.name} isn't taking more tracks for it.`, 409);
+        if (received + 1 >= collection.max_tracks) await db.run("UPDATE collections SET full_at = ? WHERE id = ? AND full_at IS NULL", now(), collection.id);
+      }
       if (meta.release)
         await db.run(
           "INSERT INTO releases (id, user_id, sender_id, title, artist, kind, created_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT (id) DO NOTHING",

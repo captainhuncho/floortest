@@ -51,7 +51,7 @@ export async function lookupReceiver(raw: string): Promise<ReceiverLookup> {
   const r = await userByHandle(handle);
   if (!r) return { found: false, reason: "No one has that link." };
   const c = await activeCollection(r);
-  const reason = isPaused(r) ? `${r.name} has paused submissions.` : !c ? `${r.name} isn't taking music right now.` : isClosed(c) ? `${c.name} has closed.` : (await capacity(r)).full ? `${r.name}'s desk is full right now.` : null;
+  const reason = isPaused(r) ? `${r.name} has paused submissions.` : !c ? `${r.name} isn't taking music right now.` : isClosed(c) ? (c?.full_at ? `${c.name} is full.` : `${c.name} has closed.`) : (await capacity(r)).full ? `${r.name}'s desk is full right now.` : null;
   // The same brief the receiver's own link shows, so sending from the desk feels like being on their page.
   const g = genresFor(c);
   const wanted = c?.brief_wanted || (g.custom ? g.list.join(" · ") : "");

@@ -53,7 +53,9 @@ export default async function ReceiverPage({ params }: Props) {
   const closedReason = paused
     ? pausedMessage(receiver)
     : closed
-    ? `“${collection!.name}” closed on ${fmtDay(collection!.closes_at!, receiver.tz)}.`
+    ? collection!.full_at
+      ? `“${collection!.name}” is full: it has all the tracks ${receiver.name} asked for.`
+      : `“${collection!.name}” closed on ${fmtDay(collection!.closes_at!, receiver.tz)}.`
     : full
       ? `${receiver.name} isn't accepting new tracks right now.`
       : null;

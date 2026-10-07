@@ -23,6 +23,12 @@ type C = {
   /** The site-wide sharing switch (Admin → Feature switches); the option only shows when it is on. */
   sharingAvailable: boolean;
   genres: string[];
+  /** Pro/Team: "Stop at N tracks" for this callout (null = no cap). */
+  maxTracks: number | null;
+  /** The plan allows capping callouts. */
+  canCap: boolean;
+  /** Reached its track cap (shown as "Full" rather than "Closed"). */
+  full: boolean;
 };
 
 const toDateInput = (ts: number | null) => {
@@ -44,7 +50,7 @@ export function CollectionCard({ c, receiving, closed, canDelete, startEditing =
               {c.name}
             </Link>{" "}
             {receiving && !closed && <span className="chip ml-1 border-lime/60 text-lime">Receiving</span>}
-            {closed && <span className="chip ml-1 border-line text-mute">Closed</span>}
+            {closed && <span className="chip ml-1 border-line text-mute">{c.full ? "Full" : "Closed"}</span>}
           </h2>
           <p className="mt-1 text-sm text-mute">
             <Link href={`/dashboard/collections/${c.id}`} className="hover:text-bone">
@@ -85,7 +91,7 @@ export function CollectionCard({ c, receiving, closed, canDelete, startEditing =
             })
           }
         >
-          <label className="block space-y-1.5">
+          <label className="block space-y-1.5 sm:col-span-3">
             <span className="label">Name</span>
             <input name="name" defaultValue={c.name} className="input" maxLength={60} required />
           </label>
@@ -93,6 +99,15 @@ export function CollectionCard({ c, receiving, closed, canDelete, startEditing =
             <span className="label">Closes after (optional)</span>
             <input name="closes" type="date" defaultValue={toDateInput(c.closesAt)} className="input [color-scheme:dark]" />
           </label>
+          {c.canCap && (
+            <label className="block space-y-1.5">
+              <span className="label">Stop at (optional)</span>
+              <span className="flex items-center gap-2">
+                <input name="max_tracks" type="number" inputMode="numeric" min={1} max={100000} defaultValue={c.maxTracks ?? ""} placeholder="No limit" className="input w-32" />
+                <span className="text-sm text-mute">tracks</span>
+              </span>
+            </label>
+          )}
           <div className="flex gap-2">
             <button className="btn-lime" disabled={pending}>
               Save
@@ -111,6 +126,7 @@ export function CollectionCard({ c, receiving, closed, canDelete, startEditing =
           </div>
           <p className="text-sm text-mute sm:col-span-3">
             After the closing date your link shows “callout closed” and stops taking uploads. Clear the date to reopen.
+            {c.canCap && " With a track limit, it shows “callout full” once that many have arrived. Raise or clear the limit to reopen."}
           </p>
           <fieldset className="grid gap-4 border-t border-line pt-5 sm:col-span-3 sm:grid-cols-[1fr_auto]">
             <legend className="mb-1 font-medium">Brief for senders</legend>
@@ -237,7 +253,7 @@ export function CollectionTile({ c, receiving, closed, canDelete }: { c: C; rece
             RECEIVING
           </span>
         )}
-        {closed && <span className="absolute left-2.5 top-2.5 rounded-md border border-faint px-2 py-1 text-[11px] font-bold tracking-[0.5px] text-mute">CLOSED</span>}
+        {closed && <span className="absolute left-2.5 top-2.5 rounded-md border border-faint px-2 py-1 text-[11px] font-bold tracking-[0.5px] text-mute">{c.full ? "FULL" : "CLOSED"}</span>}
       </Link>
       <Link href={`/dashboard/review?view=queue&c=${c.id}`} aria-label={`Play ${c.name} in the queue`} className="absolute right-2.5 grid size-[30px] place-items-center rounded-lg bg-ink opacity-90" style={{ top: "calc(100% - 56px - 40px)" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -345,7 +361,7 @@ export function CollectionDetailHeader({ c, receiving, closed, canDelete }: { c:
             RECEIVING
           </span>
         ) : (
-          <span className="text-[11px] font-bold tracking-[0.5px] text-faint">{closed ? "CLOSED" : "NOT RECEIVING"}</span>
+          <span className="text-[11px] font-bold tracking-[0.5px] text-faint">{closed ? (c.full ? "FULL" : "CLOSED") : "NOT RECEIVING"}</span>
         )}
         {!editing && (
           <button onClick={() => setEditing(true)} className="rounded-md border border-line bg-ink-3 px-3 py-1.5 text-[11px] font-bold text-bone">

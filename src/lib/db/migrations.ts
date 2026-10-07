@@ -1078,4 +1078,13 @@ create table view_tickets (
 alter table view_tickets enable row level security;
 `,
   },
+  {
+    // Pro and Team receivers can cap a callout ("Stop at 50 tracks"). When the cap is reached the callout is marked
+    // full and behaves like a closed one until the cap is raised or removed.
+    id: "0064_callout_caps",
+    sql: `
+alter table collections add column max_tracks int check (max_tracks between 1 and 100000);
+alter table collections add column full_at bigint;
+`,
+  },
 ];

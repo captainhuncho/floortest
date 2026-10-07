@@ -68,6 +68,10 @@ export type Collection = {
   name: string;
   created_at: number;
   closes_at: number | null;
+  /** Pro/Team: stop taking tracks after this many have been received into this callout. */
+  max_tracks: number | null;
+  /** Set when the cap is reached; the callout then counts as closed. */
+  full_at: number | null;
   brief_wanted: string;
   bpm_min: number | null;
   bpm_max: number | null;
