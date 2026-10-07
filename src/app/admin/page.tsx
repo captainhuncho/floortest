@@ -19,7 +19,8 @@ type Tone = "ok" | "warn" | "bad" | "idle";
 type Todo = { n: number; label: string; sub: string; href: string; area: string; urgent?: boolean; oldest?: number | null; dueDays?: number };
 
 /** A verdict first, then what needs acting on, how the platform is running, and how this week compares with last. */
-export default async function AdminOverview() {
+export default async function AdminOverview({ searchParams }: { searchParams: Promise<{ activity?: string }> }) {
+  const withAdmin = (await searchParams).activity === "all";
   const t = Date.now();
   const w0 = t - 7 * DAY;
   const w1 = t - 14 * DAY;
@@ -67,8 +68,10 @@ export default async function AdminOverview() {
         `SELECT * FROM (
            SELECT 'signup' AS kind, name || ' @' || handle AS text, CAST(id AS text) AS ref, created_at FROM users
            UNION ALL SELECT 'takedown', 'Takedown claim received', CAST(id AS text), created_at FROM takedowns
-           UNION ALL SELECT 'admin', action || CASE WHEN target <> '' THEN ' · ' || target ELSE '' END, '', created_at FROM admin_log WHERE action NOT IN ('signed in to ops', 'signed out of ops')
+           UNION ALL SELECT 'first', u.name || ' received their first track', CAST(u.id AS text), MIN(t.created_at) FROM users u JOIN tracks t ON t.user_id = u.id GROUP BY u.id, u.name
+           UNION ALL SELECT 'admin', action || CASE WHEN target <> '' THEN ' · ' || target ELSE '' END, '', created_at FROM admin_log WHERE ? = 1 AND action NOT IN ('signed in to ops', 'signed out of ops')
          ) a ORDER BY created_at DESC LIMIT 8`,
+        withAdmin ? 1 : 0,
       ),
       [],
     ),
@@ -182,10 +185,10 @@ export default async function AdminOverview() {
   const health: { label: string; tone: Tone; value: string; href: string }[] = [
     { label: "Config", tone: problems.length ? "bad" : "ok", value: problems.length ? `${problems.length} problem${problems.length === 1 ? "" : "s"}` : "All set", href: "#health" },
     { label: "Backup", tone: backupStale ? "bad" : backup ? "ok" : "idle", value: backup ? `${new Date(backup.at).toLocaleDateString("en-GB")} · ${fmtBytes(backup.bytes)}` : "First one tonight", href: "/admin/jobs" },
-    { label: "Nightly cleanup", ...tileOf(jobTile(runs.purge, 1.5 * DAY)), href: "/admin/jobs" },
-    { label: "Morning emails", ...tileOf(jobTile(runs.digest, 1.5 * DAY)), href: "/admin/jobs" },
-    { label: "Email quota", tone: !mail ? "idle" : mail.warn ? "bad" : mailPct > 0.5 ? "warn" : "ok", value: mail ? `${Math.round(mailPct * 100)}% used` : "Unknown", href: "/admin/emails" },
-    { label: "Storage", tone: !storage.length ? "idle" : full.length ? "bad" : storagePct > 0.5 ? "warn" : "ok", value: storage.length ? `${Math.round(storagePct * 100)}% of the fullest` : "Unknown", href: "/admin/storage" },
+    { label: "Cleanup", ...tileOf(jobTile(runs.purge, 1.5 * DAY)), href: "/admin/jobs" },
+    { label: "Digest", ...tileOf(jobTile(runs.digest, 1.5 * DAY)), href: "/admin/jobs" },
+    { label: "Quota", tone: !mail ? "idle" : mail.warn ? "bad" : mailPct > 0.5 ? "warn" : "ok", value: mail ? `${Math.round(mailPct * 100)}% used` : "Unknown", href: "/admin/emails" },
+    { label: "Storage", tone: !storage.length ? "idle" : full.length ? "bad" : storagePct > 0.5 ? "warn" : "ok", value: storage.length ? `${Math.round(storagePct * 100)}% used` : "Unknown", href: "/admin/storage" },
   ];
 
   const degraded = health.some((h) => h.tone === "bad") || unavailable.length > 0;
@@ -193,7 +196,7 @@ export default async function AdminOverview() {
     ? { tone: "bad", text: unavailable.length && !health.some((h) => h.tone === "bad") ? "Some numbers couldn't load" : "Platform needs attention" }
     : now.length
       ? { tone: "warn", text: `${now.length} thing${now.length === 1 ? "" : "s"} need${now.length === 1 ? "s" : ""} action` }
-      : { tone: "ok", text: "All clear" };
+      : { tone: "ok", text: queue.length ? "All clear · nothing urgent" : "All clear · nothing waiting on you" };
 
   const trend: [string, number, number, string, boolean?][] = [
     ["New receivers", num(wk?.signups), num(wk?.signups_prev), "growth"],
@@ -206,16 +209,22 @@ export default async function AdminOverview() {
   const [toListen, toDecide, loop, series, activity] = await roundTwo;
   const decided = num(loop?.decided);
   const receivers = num(loop?.receivers);
-  const product: { label: string; value: string; note: string; area: string }[] = [
-    { label: "Active receivers", value: num(loop?.active).toLocaleString("en"), note: `of ${receivers} · used their desk this week`, area: "growth" },
-    { label: "Time to listen", value: dur(toListen), note: "median, tracks sent this week", area: "monitor" },
-    { label: "Time to decide", value: dur(toDecide), note: "median, keep or pass", area: "monitor" },
-    { label: "Kept", value: decided ? `${Math.round((num(loop?.kept) / decided) * 100)}%` : "—", note: `of ${decided} decided this week`, area: "support" },
-    { label: "Activated", value: receivers ? `${Math.round((num(loop?.activated) / receivers) * 100)}%` : "—", note: `${num(loop?.activated)} have received a track`, area: "growth" },
-    { label: "Paid", value: num(usr?.active) ? `${Math.round((num(usr?.paid) / num(usr?.active)) * 100)}%` : "—", note: `${num(usr?.paid)} of ${num(usr?.active)} active accounts`, area: "growth" },
-  ];
-  const activityHref = (a: { kind: string; ref: string }) => (a.kind === "signup" ? `/admin/accounts/${a.ref}` : a.kind === "takedown" ? "/admin/takedowns" : "/admin/log");
-  const activityLabel: Record<string, string> = { signup: "Sign-up", takedown: "Takedown", admin: "Admin" };
+  const active = num(usr?.active);
+  const paid = num(usr?.paid);
+  const activated = num(loop?.activated);
+  const share = (n: number, of: number) => (of >= PCT_FROM ? `${Math.round((n / of) * 100)}%` : `${n} of ${of}`);
+  // Cards with nothing to measure yet are left out rather than shown as dashes.
+  const product = [
+    { label: "Active receivers", value: share(num(loop?.active), receivers), note: "used their desk this week", area: "growth", show: receivers > 0 },
+    { label: "Time to listen", value: dur(toListen), note: "median, tracks sent this week", area: "monitor", show: toListen != null },
+    { label: "Time to decide", value: dur(toDecide), note: "median, keep or pass", area: "monitor", show: toDecide != null },
+    { label: "Kept", value: share(num(loop?.kept), decided), note: "of tracks decided this week", area: "support", show: decided > 0 },
+    { label: "Activated", value: share(activated, receivers), note: "receivers who have had a track", area: "growth", show: receivers > 0 },
+    { label: "Paid", value: share(paid, active), note: "active accounts on a paid plan", area: "growth", show: paid > 0 },
+  ].filter((m) => m.show);
+
+  const activityHref = (a: { kind: string; ref: string }) => (a.kind === "signup" || a.kind === "first" ? `/admin/accounts/${a.ref}` : a.kind === "takedown" ? "/admin/takedowns" : "/admin/log");
+  const activityLabel: Record<string, string> = { signup: "Sign-up", first: "First track", takedown: "Takedown", admin: "Admin" };
 
   const dot: Record<Tone, string> = { ok: "bg-lime", warn: "bg-[#e0a33a]", bad: "bg-danger", idle: "bg-faint" };
   const banner: Record<Tone, string> = { ok: "border-lime/40 bg-lime/5", warn: "border-[#e0a33a]/50 bg-[#e0a33a]/10", bad: "border-danger/50 bg-danger/10", idle: "border-line" };
@@ -231,9 +240,9 @@ export default async function AdminOverview() {
       </p>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <section aria-labelledby="now-h" className="space-y-3 lg:col-span-2">
-          <h2 id="now-h" className="text-lg font-semibold">Act now</h2>
-          {now.length ? (
+        <section aria-labelledby={now.length ? "now-h" : "queue-h"} className="space-y-3 lg:col-span-2">
+          {now.length > 0 && <h2 id="now-h" className="text-lg font-semibold">Act now</h2>}
+          {now.length > 0 && (
             <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line">
               {now.map((x) => {
                 const age = ageDays(x.oldest);
@@ -256,13 +265,11 @@ export default async function AdminOverview() {
                 );
               })}
             </ul>
-          ) : (
-            <p className="rounded-lg border border-line px-4 py-3 text-sm text-mute">Nothing urgent.</p>
           )}
 
           {queue.length > 0 && (
             <>
-              <h3 className="label pt-2">Queue</h3>
+              {now.length ? <h3 id="queue-h" className="label pt-2">Queue</h3> : <h2 id="queue-h" className="text-lg font-semibold">Waiting on you</h2>}
               <ul className="flex flex-wrap gap-2">
                 {queue.map((x) => {
                   const age = ageDays(x.oldest);
@@ -324,7 +331,7 @@ export default async function AdminOverview() {
                 <p className={`mt-1 text-sm tnum ${diff === 0 ? "text-mute" : good ? "text-lime" : "text-danger"}`}>
                   {diff === 0 ? "Same as before" : `${diff > 0 ? "▲" : "▼"} ${Math.abs(diff)}${pct} vs ${prev}`}
                 </p>
-                <Spark rows={series[i]} label={k} />
+                <Spark rows={series[i]} label={k} start={t - SPARK_DAYS * DAY} />
               </li>
             );
           })}
@@ -337,7 +344,7 @@ export default async function AdminOverview() {
 
       <section aria-labelledby="loop-h" className="space-y-3">
         <h2 id="loop-h" className="text-lg font-semibold">Is it working?</h2>
-        <ul className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <ul className="grid gap-3 sm:grid-cols-3 lg:grid-cols-[repeat(auto-fit,minmax(150px,1fr))]">
           {product.map((m) => (
             <li key={m.label} data-area={m.area} className="card p-4">
               <p className="label flex items-center gap-2">
@@ -352,7 +359,12 @@ export default async function AdminOverview() {
       </section>
 
       <section aria-labelledby="act-h">
-        <h2 id="act-h" className="text-lg font-semibold">Recent activity</h2>
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 id="act-h" className="text-lg font-semibold">Recent activity</h2>
+          <Link href={withAdmin ? "/admin" : "/admin?activity=all"} className="text-sm text-mute underline hover:text-bone">
+            {withAdmin ? "Hide admin actions" : "Include admin actions"}
+          </Link>
+        </div>
         {activity.length ? (
           <ul className="mt-3 divide-y divide-line rounded-md border border-line">
             {activity.map((a, i) => (
@@ -383,14 +395,26 @@ function tileOf([tone, value]: [Tone, string]) {
 }
 
 /** A small bar per day for the last SPARK_DAYS days, in the card's area colour; the last 7 are brighter. */
-function Spark({ rows, label }: { rows: { d: number; n: number }[]; label: string }) {
+function Spark({ rows, label, start }: { rows: { d: number; n: number }[]; label: string; start: number }) {
   const days = Array.from({ length: SPARK_DAYS }, (_, i) => Number(rows.find((r) => Number(r.d) === i)?.n ?? 0));
   const peak = Math.max(1, ...days);
+  const day = (i: number) => new Date(start + i * DAY).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
   return (
-    <div role="img" aria-label={`${label}, last ${SPARK_DAYS} days: ${days.join(", ")}`} className="mt-3 flex h-8 items-end gap-[2px]">
-      {days.map((n, i) => (
-        <span key={i} className={`flex-1 rounded-[1px] bg-[var(--area)] ${i < SPARK_DAYS - 7 ? "opacity-35" : "opacity-90"}`} style={{ height: `${Math.max(6, (n / peak) * 100)}%` }} />
-      ))}
+    <div role="img" aria-label={`${label}, last ${SPARK_DAYS} days: ${days.join(", ")}`} className="mt-3">
+      <div className="flex h-8 items-end gap-[2px]">
+        {days.map((n, i) => (
+          <span
+            key={i}
+            title={`${day(i)}: ${n}`}
+            className={`flex-1 rounded-[1px] bg-[var(--area)] ${i < SPARK_DAYS - 7 ? "opacity-35" : "opacity-90"} ${i === SPARK_DAYS - 7 ? "ml-1" : ""}`}
+            style={{ height: `${Math.max(6, (n / peak) * 100)}%` }}
+          />
+        ))}
+      </div>
+      <div className="mt-1 flex justify-between text-[10px] text-faint">
+        <span>2 weeks ago</span>
+        <span>this week</span>
+      </div>
     </div>
   );
 }
