@@ -54,7 +54,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           />
           <main id="main" className="min-w-0 pb-48 md:overflow-y-auto md:pb-24">
             <div className="sticky top-0 z-40 flex h-[68px] items-center justify-end gap-3 border-b border-line bg-ink/85 px-4 backdrop-blur sm:px-6 md:h-14 md:border-b-0 md:bg-ink/70">
-              <Logo href="/dashboard/floor" className="mr-auto md:hidden" />
+              <Logo href="/" className="mr-auto md:hidden" />
               <span className="mr-auto hidden md:block" />
               <div className="hidden md:block">
                 <FeedbackButton />

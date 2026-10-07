@@ -28,7 +28,7 @@ export function Sidebar({ needsReview, cap, pause }: Props) {
   return (
     <aside className="hidden flex-col border-b border-line bg-ink-2 md:flex md:h-dvh md:overflow-y-auto md:border-b-0 md:border-r">
       <div className="flex items-center justify-between gap-3 px-4 pt-4 md:pb-2">
-        <Logo href="/dashboard/floor" />
+        <Logo href="/" />
       </div>
 
       <nav aria-label="Main" className="keep-night tactile-panel mx-3 mt-3 flex flex-col gap-1 rounded-[22px] p-1.5">
