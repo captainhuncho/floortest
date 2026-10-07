@@ -57,6 +57,24 @@ export function slotLink(platform: string, raw: string): ProfileLink | { error: 
   return r;
 }
 
+/** A sender's two profile fields: Instagram (username or link) and one streaming profile. At least one is needed. */
+export function senderProfiles(instagram: string, streaming: string): { links: ProfileLink[] } | { error: string } {
+  const links: ProfileLink[] = [];
+  if (instagram.trim()) {
+    const r = slotLink("instagram", instagram);
+    if ("error" in r) return { error: `Instagram: ${r.error}` };
+    links.push(r);
+  }
+  if (streaming.trim()) {
+    const r = parseLink(streaming);
+    if ("error" in r) return { error: `Streaming profile: ${r.error}` };
+    if (r.platform === "website" || r.platform === "instagram") return { error: "Streaming profile: use a Spotify, Apple Music, SoundCloud, Beatport, Bandcamp, YouTube or TikTok link." };
+    links.push(r);
+  }
+  if (!links.length) return { error: "Add your Instagram or a streaming profile, so the receiver knows who you are." };
+  return { links };
+}
+
 /** Links from a textarea, one per line: recognised, de-duplicated, at most MAX_LINKS. */
 export function parseLinks(raw: string): { links: ProfileLink[]; error?: string } {
   const links: ProfileLink[] = [];

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { parseLinks } from "@/lib/socials";
+import { senderProfiles } from "@/lib/socials";
 import { currentUser } from "@/lib/auth";
 import { IntakeError, startUpload } from "@/lib/intake";
 import { userByHandle } from "@/lib/desk";
@@ -64,10 +64,9 @@ export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]
   if (!pick("mix_status", MIX_STATUS)) return bad("Choose a mix status.");
   if (!pick("release_status", RELEASE_STATUS)) return bad("Choose a release status.");
   if (!name) return bad("Add your name.");
-  const senderLinks = parseLinks(str("sender_links", 600).split(",").join("\n"));
-  if (senderLinks.error) return bad(`Profile link: ${senderLinks.error}`);
-  if (senderLinks.links.length > 3) return bad("Add up to 3 profile links.");
-  if (!account && !senderLinks.links.length) return bad("Add your Instagram or streaming profile, so the receiver knows who you are.");
+  // Senders without an account give their Instagram and/or a streaming profile; account senders have none here.
+  const profiles = account ? { links: [] } : senderProfiles(str("sender_instagram", 300), str("sender_streaming", 300));
+  if ("error" in profiles) return bad(profiles.error);
   if (!str("artist", 200)) return bad("Add the artist.");
   if (!Object.hasOwn(AI_USE, str("ai_use", 20))) return bad("Say whether you used AI to make this track.");
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return bad("Enter a valid email so we can tell you what happens next.");
@@ -83,7 +82,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]
         message: str("message", 2000),
         releaseStatus: pick("release_status", RELEASE_STATUS),
         aiUse: pick("ai_use", AI_USE),
-        senderLinks: JSON.stringify(senderLinks.links),
+        senderLinks: JSON.stringify(profiles.links),
         mixStatus: pick("mix_status", MIX_STATUS),
         genre,
         originalName: fileName,

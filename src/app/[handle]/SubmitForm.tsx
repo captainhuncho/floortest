@@ -86,6 +86,8 @@ export function SubmitForm({
     if (!email) return send(fd); // the usual "add your email" message
     if (!genre) return setError("Choose a genre.");
     if (!mix) return setError("Choose a mix status.");
+    if (!String(fd.get("sender_instagram") ?? "").trim() && !String(fd.get("sender_streaming") ?? "").trim())
+      return setError("Add your Instagram or a streaming profile.");
     setChecking(true);
     const r = await startEmailCheck(email, String(fd.get("cf-turnstile-response") ?? ""));
     setChecking(false);
@@ -256,11 +258,22 @@ export function SubmitForm({
           {!m && <span className={`block text-sm ${L.mute}`}>For your receipt and updates only.</span>}
         </label>
         {m && <p className={`col-span-2 -mt-1 text-[11px] ${L.mute}`}>For your receipt and updates only.</p>}
-        <label className={`block space-y-1.5 ${m ? "col-span-2" : ""}`}>
-          <span className={L.label}>Your Instagram or streaming profile<Req /></span>
-          <input className={L.input} name="sender_links" required autoComplete="url" maxLength={600} placeholder="instagram.com/you, open.spotify.com/artist/…" />
-          <span className={`block text-[11px] ${L.mute}`}>Up to 3 links, separated by commas. Helps the receiver know who you are.</span>
-        </label>
+        <fieldset className={`space-y-2 ${m ? "col-span-2" : "sm:col-span-2"}`}>
+          <legend className={`${L.label} mb-1.5`}>
+            Your profiles<Req /> <span className={`normal-case tracking-normal ${L.mute}`}>(at least one)</span>
+          </legend>
+          <div className={`grid gap-3 ${m ? "grid-cols-1" : "sm:grid-cols-2"}`}>
+            <label className="block space-y-1">
+              <span className={`block text-[11px] ${L.mute}`}>Instagram</span>
+              <input className={L.input} name="sender_instagram" autoComplete="off" maxLength={300} placeholder="@yourname" />
+            </label>
+            <label className="block space-y-1">
+              <span className={`block text-[11px] ${L.mute}`}>Streaming profile</span>
+              <input className={L.input} name="sender_streaming" inputMode="url" autoComplete="url" maxLength={300} placeholder="open.spotify.com/artist/…" />
+            </label>
+          </div>
+          <span className={`block text-[11px] ${L.mute}`}>Spotify, Apple Music, SoundCloud, Beatport, Bandcamp, YouTube or TikTok. Helps the receiver know who you are.</span>
+        </fieldset>
           </>
         )}
       </div>
@@ -268,39 +281,19 @@ export function SubmitForm({
       <GenrePicker genres={genres} value={genre} onChange={setGenre} inputClass={L.input} labelClass={L.label} />
       <input type="hidden" name="genre" value={genre} />
 
-      <fieldset>
-        <legend className={L.label}>Mix status<Req /></legend>
-        <div className={`mt-2 flex gap-2 ${m ? "flex-col" : "flex-wrap"}`}>
+      <label className="block space-y-1.5">
+        <span className={L.label}>Mix status<Req /></span>
+        <select name="mix_status" required className={L.input} value={mix} onChange={(e) => setMix(e.target.value)}>
+          <option value="" disabled>
+            Choose one
+          </option>
           {Object.entries(MIX_STATUS).map(([k, v]) => (
-            <button
-              key={k}
-              type="button"
-              aria-pressed={mix === k}
-              onClick={() => setMix(mix === k ? "" : k)}
-              className={
-                m
-                  ? `flex items-center gap-2.5 rounded-md border p-3 text-left text-[12px] transition ${
-                      mix === k ? "border-lime bg-ink-3 font-bold text-lime" : "border-line bg-ink-2 font-medium text-white"
-                    }`
-                  : `${L.round} border px-3.5 py-2 text-sm transition ${mix === k ? "border-lime bg-lime/10 text-bone" : `${L.line} ${L.mute} hover:text-bone`}`
-              }
-            >
-              {m ? (
-                <span
-                  aria-hidden
-                  className={`grid size-3.5 shrink-0 place-items-center rounded-full border-[1.5px] ${mix === k ? "border-lime" : "border-line-2"}`}
-                >
-                  {mix === k && <span className="size-1.5 rounded-full bg-lime" />}
-                </span>
-              ) : (
-                mix === k && "✓ "
-              )}
+            <option key={k} value={k}>
               {v}
-            </button>
+            </option>
           ))}
-        </div>
-      </fieldset>
-      <input type="hidden" name="mix_status" value={mix} />
+        </select>
+      </label>
 
       <label className="block space-y-1.5">
         <span className={L.label}>Release status<Req /></span>
@@ -318,24 +311,17 @@ export function SubmitForm({
         <textarea className={`${L.input} min-h-24 resize-y`} name="message" maxLength={2000} placeholder="What it is, where it fits, anything they should know. Travels privately with the track." />
       </label>
 
-      <fieldset className="space-y-2">
-        <legend className={`${L.label} mb-2`}>Did you use AI to make {many ? "these tracks" : "this track"}?<Req /></legend>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-          {[
-              ["none", "No"],
-              ["partial", "Partly", "e.g. AI vocals, stems or mastering"],
-              ["full", "Fully AI-generated"],
-            ].map(([v, l, hint]) => (
-            <label key={v} className="flex cursor-pointer items-start gap-2 rounded-md border border-line px-3 py-2.5 text-[13px] has-[:checked]:border-lime/70">
-              <input type="radio" name="ai_use" value={v} required className="mt-0.5 accent-lime" />
-              <span>
-                {l}
-                {hint && <span className={`block text-[11px] ${L.mute}`}>{hint}</span>}
-              </span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
+      <label className="block space-y-1.5">
+        <span className={L.label}>Did you use AI to make {many ? "these tracks" : "this track"}?<Req /></span>
+        <select name="ai_use" required className={L.input} defaultValue="">
+          <option value="" disabled>
+            Choose one
+          </option>
+          <option value="none">No</option>
+          <option value="partial">Partly (e.g. AI vocals, stems or mastering)</option>
+          <option value="full">Fully AI-generated</option>
+        </select>
+      </label>
 
       {errorBox}
 

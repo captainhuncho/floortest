@@ -157,7 +157,7 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
     setError(null);
     setPhase("uploading");
     const shared = {
-      name: field("name"), email: field("email"), sender_links: field("sender_links"), message: field("message"), genre: field("genre"),
+      name: field("name"), email: field("email"), sender_instagram: field("sender_instagram"), sender_streaming: field("sender_streaming"), message: field("message"), genre: field("genre"),
       release_status: field("release_status"), ai_use: field("ai_use"), mix_status: field("mix_status"),
       sets_ok: fd.get("sets_ok") === "on", asAccount: !!opts.asAccount,
     };

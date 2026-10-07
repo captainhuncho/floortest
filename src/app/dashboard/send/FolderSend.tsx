@@ -56,7 +56,7 @@ export function FolderSend({
   account?: { name: string; email: string };
   botCheckKey?: string | null;
 }) {
-  const [who, setWho] = useState({ name: "", email: "", links: "" });
+  const [who, setWho] = useState({ name: "", email: "", instagram: "", streaming: "" });
   const formRef = useRef<HTMLFormElement>(null);
   const [waiting, setWaiting] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -106,7 +106,7 @@ export function FolderSend({
   async function sendAll() {
     if (!release.title.trim()) return setError("Give the folder a name.");
     if (!release.artist.trim()) return setError("Add the artist.");
-    if (!account && !who.links.trim()) return setError("Add your Instagram or streaming profile.");
+    if (!account && !who.instagram.trim() && !who.streaming.trim()) return setError("Add your Instagram or a streaming profile.");
     if (!genre) return setError("Choose a genre.");
     if (!mix) return setError("Choose a mix status.");
     if (!releaseStatus) return setError("Choose a release status.");
@@ -143,7 +143,7 @@ export function FolderSend({
           mix_status: mix,
           ai_use: aiUse,
           asAccount: !!account,
-          ...(account ? {} : { name: who.name.trim(), email: who.email.trim(), sender_links: who.links }),
+          ...(account ? {} : { name: who.name.trim(), email: who.email.trim(), sender_instagram: who.instagram, sender_streaming: who.streaming }),
           sets_ok: setsOk,
           release: { id, title: release.title.trim(), artist: release.artist.trim(), kind: release.kind },
           track_no: it.tags.trackNo ?? i + 1,
@@ -321,10 +321,17 @@ export function FolderSend({
                 <span className="label">Your email<Req /></span>
                 <input type="email" value={who.email} onChange={(e) => setWho((w) => ({ ...w, email: e.target.value }))} disabled={running} autoComplete="email" maxLength={200} className="input" />
               </label>
-              <label className="block space-y-1.5 sm:col-span-2">
-                <span className="label">Your Instagram or streaming profile<Req /></span>
-                <input value={who.links} required onChange={(e) => setWho((w) => ({ ...w, links: e.target.value }))} disabled={running} maxLength={600} placeholder="instagram.com/you, open.spotify.com/artist/…" className="input" />
+              <label className="block space-y-1.5">
+                <span className="label">Instagram</span>
+                <input value={who.instagram} onChange={(e) => setWho((w) => ({ ...w, instagram: e.target.value }))} disabled={running} maxLength={300} placeholder="@yourname" className="input" />
               </label>
+              <label className="block space-y-1.5">
+                <span className="label">Streaming profile</span>
+                <input value={who.streaming} onChange={(e) => setWho((w) => ({ ...w, streaming: e.target.value }))} disabled={running} maxLength={300} placeholder="open.spotify.com/artist/…" className="input" />
+              </label>
+              <p className="text-xs text-mute sm:col-span-2">
+                <span className="text-danger">*</span> Add your Instagram, a streaming profile, or both, so {receiverName} knows who you are.
+              </p>
             </div>
           )}
           <label className="flex items-start gap-2.5 text-sm">
