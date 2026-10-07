@@ -5,7 +5,7 @@ import { Logo } from "@/components/Logo";
 import { currentUser } from "@/lib/auth";
 import { APP_URL } from "@/lib/mail";
 import { env } from "@/lib/env";
-import { footerFineprint, footerGroups } from "@/lib/site";
+import { footerGroups } from "@/lib/site";
 import { pairs, siteCopy, siteImageUrl } from "@/lib/content";
 import { mono, serif } from "./fonts";
 import { HomePreview } from "./HomePreview";
@@ -349,51 +349,38 @@ export default async function Home({
       </section>
 
       <footer className="mx-auto max-w-6xl px-4 pb-10 pt-12 text-sm text-mute sm:px-6">
-        <div className="grid gap-10 border-t border-line pt-10 lg:grid-cols-12 lg:gap-8">
-          {/* Brand and newsletter on the left, links on the right. */}
-          <div className="lg:col-span-5">
-            <Logo />
-            <p className="mt-3 max-w-xs">{c.footer_line}</p>
-            <div className="mt-8 max-w-md">
-              <p className="mb-3 text-sm font-bold text-bone">Get the FloorTest newsletter</p>
-              <NewsletterForm />
+        <div className="flex flex-col gap-3 border-t border-line pt-10 sm:flex-row sm:items-center sm:justify-between">
+          <Logo />
+          <p className="max-w-xs">{c.footer_line}</p>
+        </div>
+        <div className="mt-8 max-w-md">
+          <p className="mb-3 text-sm font-bold text-bone">Get the FloorTest newsletter</p>
+          <NewsletterForm />
+        </div>
+        <nav aria-label="Footer" className="mt-8 grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
+          {footerGroups().map((g) => (
+            <div key={g.title} className={g.title === "Legal" ? "col-span-2 sm:col-span-1" : ""}>
+              <h2 className="text-[11px] font-bold uppercase tracking-[1px] text-faint">{g.title}</h2>
+              {/* Legal is the long list: two columns on phones so it doesn't run down the screen. */}
+              <ul className={`mt-3 grid gap-y-1 ${g.title === "Legal" ? "grid-cols-2 gap-x-6 sm:grid-cols-1" : ""}`}>
+                {g.links.map((l) => (
+                  <li key={l.label}>
+                    {l.external ? (
+                      <a href={l.href} target="_blank" rel="noreferrer" className="inline-block py-1.5 hover:text-bone">
+                        {l.label}
+                      </a>
+                    ) : (
+                      <Link href={l.href} className="inline-block py-1.5 hover:text-bone">
+                        {l.label}
+                      </Link>
+                    )}
+                  </li>
+                ))}
+              </ul>
             </div>
-          </div>
-          <nav aria-label="Footer" className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3 lg:col-span-7 lg:pl-8">
-            {footerGroups().map((g) => (
-              <div key={g.title}>
-                <h2 className="text-[11px] font-bold uppercase tracking-[1px] text-faint">{g.title}</h2>
-                <ul className="mt-3 grid gap-y-1">
-                  {g.links.map((l) => (
-                    <li key={l.label}>
-                      {l.external ? (
-                        <a href={l.href} target="_blank" rel="noreferrer" className="inline-block py-1.5 hover:text-bone">
-                          {l.label}
-                        </a>
-                      ) : (
-                        <Link href={l.href} className="inline-block py-1.5 hover:text-bone">
-                          {l.label}
-                        </Link>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </nav>
-        </div>
-        <div className="mt-10 flex flex-col gap-3 border-t border-line pt-6 text-xs text-dim sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} FloorTest Labs. Private beta.</p>
-          <ul className="flex flex-wrap gap-x-4 gap-y-1">
-            {footerFineprint().map((l) => (
-              <li key={l.label}>
-                <Link href={l.href} className="inline-block py-1.5 hover:text-bone">
-                  {l.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
+          ))}
+        </nav>
+        <p className="mt-10 border-t border-line pt-6 text-xs text-dim">© {new Date().getFullYear()} FloorTest. Private beta.</p>
       </footer>
     </div>
   );
