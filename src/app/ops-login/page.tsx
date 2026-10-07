@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Logo } from "@/components/Logo";
 import { currentOpsAdmin } from "@/lib/ops";
 import { AuthForm } from "../(auth)/AuthForm";
 import { opsSignIn } from "./actions";
@@ -10,8 +11,8 @@ export default async function OpsLogin() {
   if (await currentOpsAdmin()) redirect("/admin");
   return (
     <main id="main" className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-5 py-12">
-      <p className="text-[22px] font-extrabold">floortest</p>
-      <p className="mt-1 text-[12px] font-medium uppercase tracking-[0.5px] text-dim">Ops</p>
+      <Logo href="/ops-login" />
+      <p className="mt-2 text-[12px] font-medium uppercase tracking-[0.5px] text-dim">Ops</p>
       <h1 className="mb-8 mt-8 text-2xl font-semibold">Sign in</h1>
       <AuthForm
         action={opsSignIn}
