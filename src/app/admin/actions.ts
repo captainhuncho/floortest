@@ -133,7 +133,8 @@ export async function createInvite(form: FormData) {
   const code = typed || `FLOOR-${Array.from(crypto.randomBytes(5), (b) => alphabet[b % alphabet.length]).join("")}`;
   const max = Math.min(10_000, Math.max(1, Math.round(Number(form.get("max_uses")) || 25)));
   const note = String(form.get("note") || "").trim().slice(0, 120);
-  await q.run("INSERT INTO invites (code, max_uses, note, created_at) VALUES (?,?,?,?) ON CONFLICT (code) DO NOTHING", code, max, note, now());
+  const r = await q.run("INSERT INTO invites (code, max_uses, note, created_at) VALUES (?,?,?,?) ON CONFLICT (code) DO NOTHING", code, max, note, now());
+  if (!r.changes) return fail(`An invite called ${code} already exists. Pick another code.`);
   await logAdmin(a.id, "created invite", code, `${max} uses${note ? ` · ${note}` : ""}`);
   await done(`Invite ${code} created`);
   refresh();
@@ -796,6 +797,7 @@ export async function restoreContent(page: string, versionId: number) {
   const v = await q.get<{ body: string }>("SELECT body FROM site_content_versions WHERE id = ? AND page = ?", versionId, page);
   if (!v) return fail("That version no longer exists.");
   await q.run("UPDATE site_content SET draft = ?, admin_id = ?, updated_at = ? WHERE page = ?", v.body, a.id, now(), page);
+  await logAdmin(a.id, "restored content version", page, `version ${versionId}`);
   await done("Version copied into the draft. Preview it, then publish.");
   refresh();
 }
@@ -804,8 +806,12 @@ export async function restoreContent(page: string, versionId: number) {
 export async function discardDraft(page: string) {
   const a = await requireAdminAction();
   if (!contentKeys.includes(page)) return;
+  // Keep the thrown-away draft in the version history, so a mis-click can be undone with Restore.
+  const cur = await q.get<{ draft: string; published: string }>("SELECT draft, published FROM site_content WHERE page = ?", page);
+  if (cur && cur.draft !== cur.published) await q.run("INSERT INTO site_content_versions (page, body, admin_id, created_at) VALUES (?,?,?,?)", page, cur.draft, a.id, now());
   await q.run("UPDATE site_content SET draft = published, admin_id = ?, updated_at = ? WHERE page = ?", a.id, now(), page);
-  await done("Draft discarded.");
+  await logAdmin(a.id, "discarded content draft", page);
+  await done("Draft discarded. It's kept in the history below if you need it back.");
   refresh();
 }
 

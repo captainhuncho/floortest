@@ -27,8 +27,10 @@ export default async function AdminLog({ searchParams }: { searchParams: Promise
   );
   const more = rows.length > PAGE;
   const shown = rows.slice(0, PAGE);
-  const admins = await q.all<{ id: number; email: string }>("SELECT DISTINCT u.id, u.email FROM admin_log l JOIN users u ON u.id = l.admin_id ORDER BY u.email");
-  const actions = await q.all<{ action: string; n: number }>("SELECT action, COUNT(*)::int AS n FROM admin_log GROUP BY action ORDER BY action");
+  const [admins, actions] = await Promise.all([
+    q.all<{ id: number; email: string }>("SELECT DISTINCT u.id, u.email FROM admin_log l JOIN users u ON u.id = l.admin_id ORDER BY u.email"),
+    q.all<{ action: string; n: number }>("SELECT action, COUNT(*)::int AS n FROM admin_log GROUP BY action ORDER BY action"),
+  ]);
 
   // Targets that name an account (@handle or an email) link to it.
   const handles = [...new Set(shown.map((r) => r.target.match(/^@([a-z0-9_-]+)/)?.[1]).filter((h): h is string => !!h))];

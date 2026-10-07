@@ -14,15 +14,17 @@ export default async function Metrics({ searchParams }: { searchParams: Promise<
   const median = async (sql: string, ...a: number[]) =>
     (await q.get<{ m: number | null }>(`SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY v) AS m FROM (${sql}) x`, ...a))?.m ?? null;
 
-  const receivers = await q.count("SELECT COUNT(*) AS n FROM users");
-  const activated = await q.count("SELECT COUNT(*) AS n FROM users u WHERE EXISTS (SELECT 1 FROM tracks t WHERE t.user_id = u.id)");
-  const toFirstTrack = await median("SELECT MIN(t.created_at) - u.created_at AS v FROM users u JOIN tracks t ON t.user_id = u.id GROUP BY u.id, u.created_at");
-  const toListen = await median("SELECT played_at - created_at AS v FROM tracks WHERE played_at IS NOT NULL AND created_at >= ? AND created_at < ?", since, until);
-  const toDecide = await median("SELECT decided_at - created_at AS v FROM tracks WHERE decided_at IS NOT NULL AND created_at >= ? AND created_at < ?", since, until);
-  const decided = await q.count("SELECT COUNT(*) AS n FROM tracks WHERE decision IS NOT NULL AND decided_at >= ? AND decided_at < ?", since, until);
-  const kept = await q.count("SELECT COUNT(*) AS n FROM tracks WHERE decision = 'kept' AND decided_at >= ? AND decided_at < ?", since, until);
-  const senders = await q.count("SELECT COUNT(*) AS n FROM senders");
-  const returning = await q.count("SELECT COUNT(*) AS n FROM (SELECT sender_id FROM tracks GROUP BY sender_id HAVING COUNT(*) > 1) x");
+  const [receivers, activated, toFirstTrack, toListen, toDecide, decided, kept, senders, returning] = await Promise.all([
+    q.count("SELECT COUNT(*) AS n FROM users"),
+    q.count("SELECT COUNT(*) AS n FROM users u WHERE EXISTS (SELECT 1 FROM tracks t WHERE t.user_id = u.id)"),
+    median("SELECT MIN(t.created_at) - u.created_at AS v FROM users u JOIN tracks t ON t.user_id = u.id GROUP BY u.id, u.created_at"),
+    median("SELECT played_at - created_at AS v FROM tracks WHERE played_at IS NOT NULL AND created_at >= ? AND created_at < ?", since, until),
+    median("SELECT decided_at - created_at AS v FROM tracks WHERE decided_at IS NOT NULL AND created_at >= ? AND created_at < ?", since, until),
+    q.count("SELECT COUNT(*) AS n FROM tracks WHERE decision IS NOT NULL AND decided_at >= ? AND decided_at < ?", since, until),
+    q.count("SELECT COUNT(*) AS n FROM tracks WHERE decision = 'kept' AND decided_at >= ? AND decided_at < ?", since, until),
+    q.count("SELECT COUNT(*) AS n FROM senders"),
+    q.count("SELECT COUNT(*) AS n FROM (SELECT sender_id FROM tracks GROUP BY sender_id HAVING COUNT(*) > 1) x"),
+  ]);
 
   // Across the period, oldest first: active receivers (did anything on their desk) and tracks received.
   // Weekly bars up to about four months, monthly beyond that.
@@ -32,15 +34,16 @@ export default async function Metrics({ searchParams }: { searchParams: Promise<
     const d = new Date(since);
     for (let m = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1); m < until; m = Date.UTC(new Date(m).getUTCFullYear(), new Date(m).getUTCMonth() + 1, 1)) starts.push(Math.max(m, since));
   } else for (let w = since; w < until; w += WEEK) starts.push(w);
-  const weeks = [];
-  for (const [i, from] of starts.entries()) {
-    const to = starts[i + 1] ?? until;
-    weeks.push({
-      label: new Date(from).toLocaleDateString("en-GB", monthly ? { month: "short", year: "2-digit", timeZone: "UTC" } : { day: "numeric", month: "short" }),
-      active: await q.count("SELECT COUNT(DISTINCT user_id) AS n FROM account_log WHERE created_at >= ? AND created_at < ?", from, to),
-      tracks: await q.count("SELECT COUNT(*) AS n FROM tracks WHERE created_at >= ? AND created_at < ?", from, to),
-    });
-  }
+  const weeks = await Promise.all(
+    starts.map(async (from, i) => {
+      const to = starts[i + 1] ?? until;
+      const [active, tracks] = await Promise.all([
+        q.count("SELECT COUNT(DISTINCT user_id) AS n FROM account_log WHERE created_at >= ? AND created_at < ?", from, to),
+        q.count("SELECT COUNT(*) AS n FROM tracks WHERE created_at >= ? AND created_at < ?", from, to),
+      ]);
+      return { label: new Date(from).toLocaleDateString("en-GB", monthly ? { month: "short", year: "2-digit", timeZone: "UTC" } : { day: "numeric", month: "short" }), active, tracks };
+    }),
+  );
   const peak = Math.max(1, ...weeks.map((w) => Math.max(w.active, w.tracks)));
 
   // Funnel over the period: from wanting in to the first real listen.

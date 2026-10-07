@@ -126,3 +126,34 @@ export function ImageField({ name, label, hint, initial }: { name: string; label
     </div>
   );
 }
+
+/**
+ * A submit button for a form that carries fields (a note, a reason), asking first. ConfirmButton can't read form
+ * fields, so this one lets the form submit normally once confirmed.
+ */
+export function ConfirmSubmit({
+  formAction,
+  message,
+  className,
+  children,
+}: {
+  formAction?: (form: FormData) => Promise<void>;
+  message: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      formAction={formAction}
+      className={className}
+      onClick={(e) => {
+        const form = e.currentTarget.form;
+        // Let the browser show "please fill in" first; only ask once the form is valid.
+        if (form && !form.checkValidity()) return;
+        if (!window.confirm(message)) e.preventDefault();
+      }}
+    >
+      {children}
+    </button>
+  );
+}

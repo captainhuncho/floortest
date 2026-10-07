@@ -14,10 +14,12 @@ const cost = (b: number) => `$${(gb(b) * R2_PER_GB).toFixed(2)}`;
 export default async function Storage() {
   const t = Date.now();
   const n = async (sql: string, ...a: unknown[]) => Number((await q.get<{ n: string | number | null }>(sql, ...a))?.n ?? 0);
-  const live = await n("SELECT COALESCE(SUM(size), 0) AS n FROM tracks WHERE file_key IS NOT NULL AND deleted_at IS NULL");
-  const stems = await n("SELECT COALESCE(SUM(size), 0) AS n FROM stems");
-  const pending = await n("SELECT COALESCE(SUM(size), 0) AS n FROM uploads");
-  const files = await n("SELECT COUNT(*) AS n FROM tracks WHERE file_key IS NOT NULL AND deleted_at IS NULL");
+  const [live, stems, pending, files] = await Promise.all([
+    n("SELECT COALESCE(SUM(size), 0) AS n FROM tracks WHERE file_key IS NOT NULL AND deleted_at IS NULL"),
+    n("SELECT COALESCE(SUM(size), 0) AS n FROM stems"),
+    n("SELECT COALESCE(SUM(size), 0) AS n FROM uploads"),
+    n("SELECT COUNT(*) AS n FROM tracks WHERE file_key IS NOT NULL AND deleted_at IS NULL"),
+  ]);
   const total = live + stems + pending;
   // Same rules as purgeExpired: unreviewed after RETAIN_UNREVIEWED_DAYS, not-for-me after RETAIN_PASSED_DAYS.
   const due = await q.get<{ n: number; b: string | number }>(

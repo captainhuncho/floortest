@@ -1,5 +1,6 @@
 import { q } from "@/lib/db";
 import { decideTakedown, openTakedown } from "../actions";
+import { ConfirmSubmit } from "../AdminUi";
 
 type Case = {
   id: number; track_id: number | null; track_label: string; claimant: string; claimant_email: string; basis: string;
@@ -54,15 +55,15 @@ export default async function Takedowns() {
             <p className="text-sm">{c.claimant} <span className="text-mute">{c.claimant_email}</span></p>
             {c.basis && <p className="whitespace-pre-wrap text-sm text-mute">{c.basis}</p>}
             <form className="flex flex-wrap items-end gap-2">
-              <input name="notes" className="input min-w-0 flex-1" placeholder="Note for the record" maxLength={1000} />
+              <input name="notes" required className="input min-w-0 flex-1" placeholder="Note for the record (required)" maxLength={1000} />
               {c.track_id && (
-                <button formAction={decideTakedown.bind(null, c.id, "removed")} className="btn-sm rounded-md bg-danger px-3 py-2 font-bold text-ink">
+                <ConfirmSubmit formAction={decideTakedown.bind(null, c.id, "removed")} message="Remove this track from the receiver's desk and delete the file? This can't be undone." className="btn-sm rounded-md bg-danger px-3 py-2 font-bold text-ink">
                   Remove track
-                </button>
+                </ConfirmSubmit>
               )}
-              <button formAction={decideTakedown.bind(null, c.id, "rejected")} className="btn-ghost btn-sm">
+              <ConfirmSubmit formAction={decideTakedown.bind(null, c.id, "rejected")} message="Reject this claim and close the case? The track stays up." className="btn-ghost btn-sm">
                 Reject claim
-              </button>
+              </ConfirmSubmit>
             </form>
           </div>
         ))}

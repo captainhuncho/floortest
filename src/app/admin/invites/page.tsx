@@ -10,7 +10,7 @@ export default async function Invites({ searchParams }: { searchParams: Promise<
   }>(
     `SELECT i.*, (SELECT COUNT(*) FROM users u WHERE u.invite_code = i.code) AS used,
        (SELECT u.handle FROM users u WHERE u.invite_code = i.code ORDER BY u.created_at LIMIT 1) AS joined
-     FROM invites i ORDER BY i.created_at DESC`,
+     FROM invites i ORDER BY i.created_at DESC LIMIT 1000`,
   );
   const legacy = await Promise.all(
     env.inviteCodes.map(async (code) => ({ code, used: await q.count("SELECT COUNT(*) AS n FROM users WHERE invite_code = ?", code) })),

@@ -4,14 +4,23 @@ import { q } from "@/lib/db";
 import { inviteFromWaitlist, removeFromWaitlist } from "../actions";
 
 /** People who asked for an invite from the home page. */
-export default async function Waitlist({ searchParams }: { searchParams: Promise<{ show?: string }> }) {
-  const showAll = (await searchParams).show === "all";
-  const rows = await q.all<{ id: number; email: string; name: string; role: string; link: string; handle: string; source: string; invited_at: number | null; created_at: number; joined: string | null }>(
+const PAGE = 200;
+
+export default async function Waitlist({ searchParams }: { searchParams: Promise<{ show?: string; n?: string }> }) {
+  const sp = await searchParams;
+  const showAll = sp.show === "all";
+  // Oldest first, a page at a time: "Show more" grows the list instead of silently stopping at a cap.
+  const limit = Math.min(5000, Math.max(PAGE, Math.round(Number(sp.n) || PAGE)));
+  const [rows, waiting, total, sources] = await Promise.all([
+    q.all<{ id: number; email: string; name: string; role: string; link: string; handle: string; source: string; invited_at: number | null; created_at: number; joined: string | null }>(
     `SELECT w.*, (SELECT u.handle FROM users u WHERE u.email = w.email) AS joined FROM waitlist w
-     ${showAll ? "" : "WHERE w.invited_at IS NULL"} ORDER BY w.created_at ASC LIMIT 500`,
-  );
-  const waiting = await q.count("SELECT COUNT(*) AS n FROM waitlist WHERE invited_at IS NULL");
-  const sources = await q.all<{ source: string; n: number }>("SELECT source, COUNT(*)::int AS n FROM waitlist WHERE source <> '' GROUP BY source ORDER BY n DESC LIMIT 3");
+     ${showAll ? "" : "WHERE w.invited_at IS NULL"} ORDER BY w.created_at ASC LIMIT ${limit}`,
+    ),
+    q.count("SELECT COUNT(*) AS n FROM waitlist WHERE invited_at IS NULL"),
+    q.count(`SELECT COUNT(*) AS n FROM waitlist ${showAll ? "" : "WHERE invited_at IS NULL"}`),
+    q.all<{ source: string; n: number }>("SELECT source, COUNT(*)::int AS n FROM waitlist WHERE source <> '' GROUP BY source ORDER BY n DESC LIMIT 3"),
+  ]);
+  const more = Number(total) > rows.length;
   const safeLink = (l: string) => (/^https?:\/\//i.test(l) ? l : l ? `https://${l.replace(/^@/, "instagram.com/")}` : "");
   return (
     <div>
@@ -71,6 +80,14 @@ export default async function Waitlist({ searchParams }: { searchParams: Promise
         </table>
         {!rows.length && <p className="p-6 text-mute">{showAll ? "Nobody has asked yet." : "Nobody waiting."}</p>}
       </div>
+      {more && (
+        <p className="mt-4 flex items-center gap-3 text-sm text-mute">
+          Showing {rows.length} of {Number(total)}.
+          <Link href={`/admin/waitlist?${showAll ? "show=all&" : ""}n=${limit + PAGE}`} className="btn-ghost btn-sm">
+            Show {Math.min(PAGE, Number(total) - rows.length)} more
+          </Link>
+        </p>
+      )}
     </div>
   );
 }

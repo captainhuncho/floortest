@@ -1,6 +1,6 @@
 import { CuePoint } from "@/components/CuePoint";
 import Link from "next/link";
-import { ConfirmButton } from "../AdminUi";
+import { ConfirmButton, ConfirmSubmit } from "../AdminUi";
 import { q } from "@/lib/db";
 import { addProtectedName, approveIdentity, rejectIdentity, removeProtectedName, revokeIdentity } from "../actions";
 
@@ -110,7 +110,9 @@ export default async function Verification() {
               <form action={revokeIdentity.bind(null, u.id)} className="flex flex-wrap gap-2">
                 <label className="sr-only" htmlFor={`revoke-${u.id}`}>Reason for removing @{u.handle}&apos;s verification</label>
                 <input id={`revoke-${u.id}`} name="note" required className="input w-64 py-1.5" placeholder="Reason (sent to them)" />
-                <button className="btn-sm rounded-md border border-danger/50 px-3 text-danger hover:bg-danger/10">Revoke</button>
+                <ConfirmSubmit message={`Remove @${u.handle}'s verified badge? They'll be told the reason.`} className="btn-sm rounded-md border border-danger/50 px-3 text-danger hover:bg-danger/10">
+                  Revoke
+                </ConfirmSubmit>
               </form>
             </li>
           ))}
