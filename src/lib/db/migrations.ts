@@ -1119,4 +1119,13 @@ create table ops_members (
 alter table ops_members enable row level security;
 `,
   },
+  {
+    // Yearly prices, set per plan in Admin → Plans (0 = not set yet). Pro and Team start at the agreed prices.
+    id: "0068_yearly_prices",
+    sql: `
+alter table plans add column yearly_price_cents int not null default 0 check (yearly_price_cents between 0 and 1000000);
+update plans set yearly_price_cents = 7799 where id = 'pro';
+update plans set yearly_price_cents = 14499 where id = 'team';
+`,
+  },
 ];

@@ -33,6 +33,9 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
   // Paid plans' own extras, minus lines the card already shows (capacity) or that only point at another plan.
   const extrasOf = (p: (typeof plans)[number]) => (p.price > 0 ? p.features.filter((f) => !/active tracks|^everything in/i.test(f)) : []);
   const sameTools = plans.every((p) => !extrasOf(p).length);
+  // Yearly against twelve months, rounded down so we never overstate it.
+  const saving = (p: (typeof plans)[number]) => (p.price && p.yearly ? Math.max(0, Math.floor((1 - p.yearly / (p.price * 12)) * 100)) : 0);
+  const yearlyUnset = plans.some((p) => p.price > 0 && !p.yearly);
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-5 text-bone sm:px-8 md:py-8">
@@ -122,15 +125,15 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
               </div>
 
               <div className="flex min-h-[78px] flex-col gap-1">
-                <p className="flex items-baseline gap-2">
-                  {p.price && yearly ? (
+                <p className="flex items-baseline gap-2 whitespace-nowrap">
+                  {p.price && yearly && !p.yearly ? (
                     <span className="text-[22px] font-semibold leading-[54px] whitespace-nowrap">To be confirmed</span>
                   ) : (
-                    <span className="text-5xl font-semibold leading-[54px] tnum">${p.price ? p.price : 0}</span>
+                    <span className={`${yearly && p.yearly >= 100 ? "text-[40px]" : "text-5xl"} font-semibold leading-[54px] tnum`}>${p.price ? (yearly ? p.yearly : p.price) : 0}</span>
                   )}
-                  {p.price > 0 && !yearly && <span className="text-sm text-mute">/ month</span>}
+                  {p.price > 0 && (!yearly || p.yearly > 0) && <span className="text-sm text-mute">/ {yearly ? "year" : "month"}</span>}
                 </p>
-                <p className="text-xs text-mute">{!p.price ? "Free plan" : yearly ? "Yearly price, after beta" : billing ? p.blurb : "After beta"}</p>
+                <p className="text-xs text-mute">{!p.price ? "Free plan" : yearly ? (p.yearly ? `${billing ? "Billed yearly" : "After beta"}${saving(p) ? ` · save ${saving(p)}%` : ""}` : "Yearly price, after beta") : billing ? p.blurb : "After beta"}</p>
               </div>
 
               <div>
@@ -190,7 +193,7 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
 
       <div className="flex flex-col gap-1 text-xs text-mute sm:flex-row sm:justify-between">
         <p>{sameTools ? "All plans include the same tools. Only active-track capacity changes." : "Every plan includes the core tools; bigger plans add room and a few extras."}</p>
-        <p>{yearly ? "Yearly pricing is not yet confirmed." : billing ? "Billed monthly." : "Prices shown apply after beta."}</p>
+        <p>{yearly && yearlyUnset ? "Yearly pricing is not yet confirmed for every plan." : yearly && billing ? "Billed yearly." : billing ? "Billed monthly." : "Prices shown apply after beta."}</p>
       </div>
 
       <section aria-labelledby="renewal-h" className="space-y-1.5 text-[11px] text-dim md:max-w-3xl">

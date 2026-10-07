@@ -7,6 +7,8 @@ export type Plan = {
   id: string;
   name: string;
   price: number;
+  /** Price per year in US dollars; 0 while not set. */
+  yearly: number;
   limit: number;
   blurb: string;
   features: string[];
@@ -24,14 +26,14 @@ export type Plan = {
 /** Every account starts here, and it can't be retired or deleted. */
 export const FREE_PLAN = "free";
 
-type Row = { id: string; name: string; price_cents: number; track_limit: number; blurb: string; features: string; share_downloads: number; featured: number; position: number; retired_at: number | null; folder_bytes: number };
+type Row = { id: string; name: string; price_cents: number; yearly_price_cents: number; track_limit: number; blurb: string; features: string; share_downloads: number; featured: number; position: number; retired_at: number | null; folder_bytes: number };
 const toPlan = (r: Row): Plan => {
   let features: string[] = [];
   try {
     const f = JSON.parse(r.features);
     if (Array.isArray(f)) features = f.map(String);
   } catch {}
-  return { id: r.id, name: r.name, price: r.price_cents / 100, limit: r.track_limit, blurb: r.blurb, features, shareDownloads: !!r.share_downloads, featured: !!r.featured, position: r.position, retired: !!r.retired_at, folderBytes: Number(r.folder_bytes) || 0 };
+  return { id: r.id, name: r.name, price: r.price_cents / 100, yearly: (Number(r.yearly_price_cents) || 0) / 100, limit: r.track_limit, blurb: r.blurb, features, shareDownloads: !!r.share_downloads, featured: !!r.featured, position: r.position, retired: !!r.retired_at, folderBytes: Number(r.folder_bytes) || 0 };
 };
 
 /** All plans, retired ones included, in display order. Read once per request. */

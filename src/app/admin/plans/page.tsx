@@ -44,6 +44,10 @@ export default async function Plans() {
                   {p.id === FREE_PLAN && <input type="hidden" name="price" value="0" />}
                 </label>
                 <label className="space-y-1.5">
+                  <span className="label">Price (US$ / year, 0 = not set)</span>
+                  <input name="yearly" type="number" min={0} max={10000} step="0.01" defaultValue={p.yearly} disabled={p.id === FREE_PLAN} className="input tnum" />
+                </label>
+                <label className="space-y-1.5">
                   <span className="label">Track limit</span>
                   <input name="limit" type="number" min={1} defaultValue={p.limit} className="input tnum" />
                 </label>
