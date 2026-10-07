@@ -70,8 +70,8 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
               </>
             ),
           },
-          { name: "updates", label: "Send me the FloorTest newsletter: product news and tips. Optional." },
-          { name: "offers", label: "Send me offers and promotions from FloorTest. Optional, and you can turn either off any time." },
+          { name: "updates", label: "The FloorTest newsletter: product news and tips" },
+          { name: "offers", label: "Offers and promotions from FloorTest" },
         ]}
       />
     </>

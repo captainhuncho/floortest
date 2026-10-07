@@ -77,17 +77,21 @@ export function AuthForm({
       ))}
       {fields.map((f) =>
         f.choices ? (
-          <fieldset key={f.name} className="space-y-1.5">
-            <legend className="label mb-1.5 block">{f.label}</legend>
-            <div className={`grid gap-2 ${f.choices.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
+          <div key={f.name} className="space-y-1.5">
+            <label htmlFor={`f-${f.name}`} className="label block">
+              {f.label}
+            </label>
+            <select id={`f-${f.name}`} name={f.name} required defaultValue={f.defaultValue ?? ""} className="input">
+              <option value="" disabled>
+                Choose one
+              </option>
               {f.choices.map((c) => (
-                <label key={c.value} className="flex cursor-pointer items-center gap-2 rounded-md border border-line bg-ink-2 px-3 py-2.5 text-sm has-[:checked]:border-lime/70 has-[:checked]:text-bone">
-                  <input type="radio" name={f.name} value={c.value} required defaultChecked={f.defaultValue === c.value} className="accent-lime" />
+                <option key={c.value} value={c.value}>
                   {c.label}
-                </label>
+                </option>
               ))}
-            </div>
-          </fieldset>
+            </select>
+          </div>
         ) : (
         <div key={f.name} className="space-y-1.5">
           <label htmlFor={`f-${f.name}`} className="label block">
@@ -95,7 +99,7 @@ export function AuthForm({
           </label>
           {f.prefix ? (
             <div className="flex items-stretch overflow-hidden rounded-md border border-line bg-ink-2 focus-within:border-lime/70">
-              <span className="flex items-center pl-3 text-sm text-mute">{f.prefix}</span>
+              <span className="flex shrink-0 items-center pl-3 text-sm text-mute">{f.prefix}</span>
               <input
                 id={`f-${f.name}`}
                 name={f.name}
@@ -104,7 +108,7 @@ export function AuthForm({
                 placeholder={f.placeholder}
                 autoComplete={f.autoComplete}
                 autoCapitalize="none"
-                className="w-full bg-transparent py-2.5 pr-3 text-sm outline-none placeholder:text-dim"
+                className="tap-tall w-full min-w-0 bg-transparent py-2.5 pr-3 text-sm outline-none placeholder:text-dim"
               />
             </div>
           ) : f.type === "password" ? (
@@ -148,12 +152,24 @@ export function AuthForm({
         </div>
         ),
       )}
-      {consents?.map((c) => (
-        <label key={c.name} className="flex items-start gap-3 text-sm text-mute">
-          <input type="checkbox" name={c.name} required={c.required} className="mt-0.5 size-4 shrink-0 accent-lime" />
+      {consents?.filter((c) => c.required).map((c) => (
+        <label key={c.name} className="tap-tall flex cursor-pointer items-start gap-3 text-sm text-mute">
+          <input type="checkbox" name={c.name} required className="mt-0.5 size-5 shrink-0 accent-lime" />
           <span>{c.label}</span>
         </label>
       ))}
+      {consents?.some((c) => !c.required) && (
+        <fieldset className="space-y-1 rounded-lg border border-line p-4">
+          <legend className="label px-1">Emails (optional)</legend>
+          {consents.filter((c) => !c.required).map((c) => (
+            <label key={c.name} className="tap-tall flex cursor-pointer items-start gap-3 py-1 text-sm text-mute">
+              <input type="checkbox" name={c.name} className="mt-0.5 size-5 shrink-0 accent-lime" />
+              <span>{c.label}</span>
+            </label>
+          ))}
+          <p className="pt-1 text-xs text-mute">You can turn either off any time in Settings.</p>
+        </fieldset>
+      )}
       {state?.error && (
         <p role="alert" className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
           {state.error}
@@ -161,7 +177,7 @@ export function AuthForm({
       )}
       {captureSource && <SourceField />}
       <Turnstile siteKey={botCheckKey ?? null} />
-      <button className="btn-lime w-full" disabled={pending}>
+      <button className="btn-lime min-h-11 w-full" disabled={pending}>
         {pending ? "One moment…" : submit}
       </button>
       {footer && (

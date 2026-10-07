@@ -44,9 +44,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           </div>
         </div>
         <nav aria-label="Legal" className="mt-10 flex justify-center gap-6 text-sm text-dim lg:mt-0 lg:justify-end">
-          <Link href="/terms" className="hover:text-bone">Terms</Link>
-          <Link href="/privacy" className="hover:text-bone">Privacy</Link>
-          <Link href="/cookies" className="hover:text-bone">Cookies</Link>
+          <Link href="/terms" className="tap inline-flex items-center hover:text-bone">Terms</Link>
+          <Link href="/privacy" className="tap inline-flex items-center hover:text-bone">Privacy</Link>
+          <Link href="/cookies" className="tap inline-flex items-center hover:text-bone">Cookies</Link>
         </nav>
       </main>
     </div>
