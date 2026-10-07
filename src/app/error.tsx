@@ -1,14 +1,52 @@
 "use client";
 
 import * as Sentry from "@sentry/nextjs";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+
+/**
+ * A page left open across an update still holds the old version's code: its buttons call server actions or load
+ * files that no longer exist. Those errors mean "reload", not "something broke".
+ */
+const STALE = /server action|older or newer deployment|chunkloaderror|loading chunk|dynamically imported module|importing a module script failed|unexpected response was received from the server/i;
+const RELOADED = "ft_reloaded_at";
 
 /** Last-resort error screen. The digest lets you find the matching server log line. */
 export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
-  // Errors caught here never reach the browser's crash handler, so report them to Sentry directly.
+  const stale = STALE.test(`${error.name} ${error.message}`);
+  const [reloading, setReloading] = useState(false);
+
   useEffect(() => {
-    Sentry.captureException(error);
-  }, [error]);
+    if (!stale) {
+      // Errors caught here never reach the browser's crash handler, so report them to Sentry directly.
+      Sentry.captureException(error);
+      return;
+    }
+    // Reload once by itself; if it happens again within a minute, show the screen instead of looping.
+    try {
+      const last = Number(sessionStorage.getItem(RELOADED) || 0);
+      if (Date.now() - last > 60_000) {
+        sessionStorage.setItem(RELOADED, String(Date.now()));
+        setReloading(true);
+        window.location.reload();
+      }
+    } catch {}
+  }, [error, stale]);
+
+  if (stale)
+    return (
+      <main className="mx-auto flex min-h-dvh max-w-xl flex-col justify-center px-4 py-12">
+        <h1 className="text-3xl font-bold tracking-tight">FloorTest was just updated</h1>
+        <p className="mt-3 text-mute">{reloading ? "Loading the new version…" : "Reload the page to continue. You may need to enter your details again."}</p>
+        {!reloading && (
+          <div className="mt-8">
+            <button onClick={() => window.location.reload()} className="btn-lime min-h-11">
+              Reload
+            </button>
+          </div>
+        )}
+      </main>
+    );
+
   return (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col justify-center px-4 py-12">
       <h1 className="text-3xl font-bold tracking-tight">Something went wrong</h1>
