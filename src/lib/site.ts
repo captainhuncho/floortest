@@ -22,12 +22,18 @@ export function footerGroups(): { title: string; links: FooterLink[] }[] {
         { label: "Privacy Policy", href: env("PRIVACY_URL") ?? "/privacy", external: !!env("PRIVACY_URL") },
         page("Cookie Policy", "/cookies"),
         page("Your Privacy Choices", "/privacy-choices"),
-        page("Notice and Takedown", "/takedown"),
-        page("Sub-processors", "/subprocessors"),
-        page("Law Enforcement", "/law-enforcement"),
-        page("Third-party licenses", "/licenses"),
       ],
     },
     { title: "Follow", links: [...ext("Shop", env("SHOP_URL")), ...ext("Instagram", env("INSTAGRAM_URL"))] },
   ].filter((g) => g.links.length);
+}
+
+/** Reference pages most visitors never need: a small row in the footer's bottom bar. */
+export function footerFineprint(): FooterLink[] {
+  return [
+    { label: "Notice and Takedown", href: "/takedown", external: false },
+    { label: "Sub-processors", href: "/subprocessors", external: false },
+    { label: "Law Enforcement", href: "/law-enforcement", external: false },
+    { label: "Third-party licenses", href: "/licenses", external: false },
+  ];
 }
