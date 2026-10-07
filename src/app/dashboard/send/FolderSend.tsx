@@ -1,5 +1,6 @@
 "use client";
 
+import { Req } from "@/components/Req";
 import { useRef, useState } from "react";
 import { analyzeAudio } from "@/lib/analyze";
 import { fmtBytes } from "@/lib/format";
@@ -206,7 +207,7 @@ export function FolderSend({
         <>
           <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)]">
             <label className="block space-y-1.5">
-              <span className="label">Folder name</span>
+              <span className="label">Folder name<Req /></span>
               <input value={release.title} disabled={running} onChange={(e) => setRelease((r) => ({ ...r, title: e.target.value }))} maxLength={200} className="input" />
             </label>
             <label className="block space-y-1.5">
@@ -259,7 +260,7 @@ export function FolderSend({
             ))}
           </ol>
           <label className="block space-y-1.5">
-            <span className="label">Genre</span>
+            <span className="label">Genre<Req /></span>
             <select value={genre} onChange={(e) => setGenre(e.target.value)} disabled={running} className="input">
               <option value="">Choose…</option>
               {genres.map((g) => (
@@ -269,7 +270,7 @@ export function FolderSend({
           </label>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block space-y-1.5">
-              <span className="label">Mix status</span>
+              <span className="label">Mix status<Req /></span>
               <select value={mix} onChange={(e) => setMix(e.target.value)} disabled={running} required className="input">
                 <option value="" disabled>
                   Choose one
@@ -282,7 +283,7 @@ export function FolderSend({
               </select>
             </label>
             <label className="block space-y-1.5">
-              <span className="label">Release status</span>
+              <span className="label">Release status<Req /></span>
               <select value={releaseStatus} onChange={(e) => setReleaseStatus(e.target.value)} disabled={running} required className="input">
                 <option value="" disabled>
                   Choose one
@@ -298,7 +299,7 @@ export function FolderSend({
             <textarea value={message} onChange={(e) => setMessage(e.target.value)} disabled={running} rows={3} maxLength={2000} className="input resize-y" />
           </label>
           <label className="block space-y-1.5">
-            <span className="label">Did you use AI to make these tracks?</span>
+            <span className="label">Did you use AI to make these tracks?<Req /></span>
             <select value={aiUse} onChange={(e) => setAiUse(e.target.value)} disabled={running} required className="input">
               <option value="" disabled>
                 Choose one
@@ -311,11 +312,11 @@ export function FolderSend({
           {!account && (
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block space-y-1.5">
-                <span className="label">Your name</span>
+                <span className="label">Your name<Req /></span>
                 <input value={who.name} onChange={(e) => setWho((w) => ({ ...w, name: e.target.value }))} disabled={running} autoComplete="name" maxLength={100} className="input" />
               </label>
               <label className="block space-y-1.5">
-                <span className="label">Your email</span>
+                <span className="label">Your email<Req /></span>
                 <input type="email" value={who.email} onChange={(e) => setWho((w) => ({ ...w, email: e.target.value }))} disabled={running} autoComplete="email" maxLength={200} className="input" />
               </label>
               <label className="block space-y-1.5 sm:col-span-2">
@@ -341,7 +342,7 @@ export function FolderSend({
       {items.length > 0 && !account && <Turnstile siteKey={botCheckKey} />}
       {items.length > 0 && (
         <p className="text-xs text-mute">
-          By sending you confirm you own or control these tracks, your answer about AI is accurate, and you&apos;re 18 or over.{" "}
+          <span className="text-danger">*</span> Required. By sending you confirm you own or control these tracks, your answer about AI is accurate, and you&apos;re 18 or over.{" "}
           <a href="/terms" target="_blank" className="underline underline-offset-4">Terms</a>
         </p>
       )}

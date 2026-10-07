@@ -1,5 +1,6 @@
 "use client";
 
+import { Req } from "@/components/Req";
 import { useState } from "react";
 
 const OTHER = "__other";
@@ -25,7 +26,7 @@ export function GenrePicker({
   return (
     <div className="space-y-2">
       <label className="block space-y-1.5">
-        <span className={labelClass}>Genre</span>
+        <span className={labelClass}>Genre<Req /></span>
         <select
           className={`${inputClass} ${invalid ? "border-danger/60" : ""}`}
           value={selected}

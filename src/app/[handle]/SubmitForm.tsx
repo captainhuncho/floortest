@@ -1,5 +1,6 @@
 "use client";
 
+import { Req } from "@/components/Req";
 import { Turnstile } from "@/components/Turnstile";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -191,7 +192,7 @@ export function SubmitForm({
       {!many && <Waveform peaks={it.analysis?.peaks ?? null} progress={it.status === "uploading" ? it.progress : 0} height={48} dim={it.analyzing} />}
       <div className={`grid gap-2 ${many ? "grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)]" : m ? "grid-cols-2 gap-3" : "sm:grid-cols-2 gap-4"}`}>
         <label className="block space-y-1">
-          <span className={L.label}>Track title</span>
+          <span className={L.label}>Track title<Req /></span>
           <input className={L.input} required value={it.tags.title} disabled={it.status === "done"} onChange={(e) => edit(it.id, { title: e.target.value })} />
         </label>
         <label className="block space-y-1">
@@ -231,7 +232,7 @@ export function SubmitForm({
         ) : (
           <>
         <label className="block space-y-1.5">
-          <span className={L.label}>Your name</span>
+          <span className={L.label}>Your name<Req /></span>
           <input
             className={L.input}
             name="name"
@@ -242,7 +243,7 @@ export function SubmitForm({
           />
         </label>
         <label className="block space-y-1.5">
-          <span className={L.label}>Your email</span>
+          <span className={L.label}>Your email<Req /></span>
           <input
             className={L.input}
             name="email"
@@ -268,7 +269,7 @@ export function SubmitForm({
       <input type="hidden" name="genre" value={genre} />
 
       <fieldset>
-        <legend className={L.label} id="mix-legend">Mix status</legend>
+        <legend className={L.label}>Mix status<Req /></legend>
         <div className={`mt-2 flex gap-2 ${m ? "flex-col" : "flex-wrap"}`}>
           {Object.entries(MIX_STATUS).map(([k, v]) => (
             <button
@@ -302,7 +303,7 @@ export function SubmitForm({
       <input type="hidden" name="mix_status" value={mix} />
 
       <label className="block space-y-1.5">
-        <span className={L.label}>Release status</span>
+        <span className={L.label}>Release status<Req /></span>
         <select name="release_status" required className={L.input} defaultValue="">
           <option value="" disabled>
             Choose one
@@ -318,7 +319,7 @@ export function SubmitForm({
       </label>
 
       <fieldset className="space-y-2">
-        <legend className={`${L.label} mb-2`}>Did you use AI to make {many ? "these tracks" : "this track"}?</legend>
+        <legend className={`${L.label} mb-2`}>Did you use AI to make {many ? "these tracks" : "this track"}?<Req /></legend>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           {[
               ["none", "No"],
@@ -346,6 +347,7 @@ export function SubmitForm({
       </label>
 
       <p className={`text-xs ${L.mute}`}>
+        <span className="text-danger">*</span> Required.{" "}
         By sending you confirm you own or control {many ? "these tracks" : "this track"}, your answer about AI is accurate, and you&apos;re 18 or over. {receiverName} may listen to it and download it to evaluate it
         {allowSharing ? `, and share it with colleagues who have FloorTest accounts, through a private link, for promotion (${sharingDownloads ? "they can listen and download" : "listen only"})` : ""}. They can play it in sets only if you tick the box above, and can&apos;t release it anywhere without a signed agreement with you.{" "}
         <a href="/terms" target="_blank" className="underline underline-offset-4">Terms</a> ·{" "}
