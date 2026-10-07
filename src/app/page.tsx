@@ -362,7 +362,7 @@ export default async function Home({
           <nav aria-label="Footer" className="col-span-7 grid grid-cols-3 gap-x-6 pl-8">
             {footerGroups().map((g) => (
               <div key={g.title}>
-                <h2 className="text-[11px] font-bold uppercase tracking-[1px] text-faint">{g.title}</h2>
+                <h2 className="text-[11px] font-bold uppercase tracking-[1.5px] text-lime">{g.title}</h2>
                 <ul className="mt-3 grid gap-y-1">
                   {(g.title === "Legal" ? g.links.slice(0, LEGAL_MAIN) : g.links).map((l) => (
                     <li key={l.label}>
@@ -409,7 +409,7 @@ export default async function Home({
         <nav aria-label="Footer" className="mt-8 grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
           {footerGroups().map((g) => (
             <div key={g.title} className={g.title === "Legal" ? "col-span-2 sm:col-span-1" : ""}>
-              <h2 className="text-[11px] font-bold uppercase tracking-[1px] text-faint">{g.title}</h2>
+              <h2 className="text-[11px] font-bold uppercase tracking-[1.5px] text-lime">{g.title}</h2>
               {/* Legal is the long list: two columns on phones so it doesn't run down the screen. */}
               <ul className={`mt-3 grid gap-y-1 ${g.title === "Legal" ? "grid-cols-2 gap-x-6 sm:grid-cols-1" : ""}`}>
                 {g.links.map((l) => (
