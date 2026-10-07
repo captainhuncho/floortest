@@ -20,7 +20,7 @@ export default async function Waitlist({ searchParams }: { searchParams: Promise
     `SELECT w.*, (SELECT u.handle FROM users u WHERE u.email = w.email) AS joined FROM waitlist w
      ${WHERE[tab].replace("invited_at", "w.invited_at")} ORDER BY w.created_at ASC LIMIT ${limit}`,
     ),
-    q.get<Record<Tab, number>>("SELECT COUNT(*) FILTER (WHERE invited_at IS NULL) AS waiting, COUNT(*) FILTER (WHERE invited_at IS NOT NULL) AS invited, COUNT(*) AS "all" FROM waitlist"),
+    q.get<Record<Tab, number>>(`SELECT COUNT(*) FILTER (WHERE invited_at IS NULL) AS waiting, COUNT(*) FILTER (WHERE invited_at IS NOT NULL) AS invited, COUNT(*) AS "all" FROM waitlist`),
     q.all<{ source: string; n: number }>("SELECT source, COUNT(*)::int AS n FROM waitlist WHERE source <> '' GROUP BY source ORDER BY n DESC LIMIT 3"),
   ]);
   const count = (t: Tab) => Number(counts?.[t] ?? 0);
