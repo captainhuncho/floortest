@@ -4,7 +4,7 @@ import Link from "next/link";
 export function Logo({ href = "/", className = "", ops = false }: { href?: string; className?: string; ops?: boolean }) {
   return (
     <Link href={href} className={`tap inline-flex items-center gap-2 text-lg font-bold tracking-tight ${className}`}>
-      <img src={ops ? "/brand/crest-ops.svg" : "/brand/crest.svg"} alt="" aria-hidden className="size-7 shrink-0" />
+      <img src={ops ? "/brand/crest-ops.png" : "/brand/crest.png"} alt="" aria-hidden className="size-7 shrink-0" />
       FloorTest
     </Link>
   );
