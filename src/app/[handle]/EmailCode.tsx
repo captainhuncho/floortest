@@ -55,10 +55,10 @@ export function EmailCode({ email, onConfirmed, onCancel, className = "" }: { em
       <div>
         <p id="email-code-title" className="font-semibold">Check your email</p>
         <p className="mt-1 text-sm text-mute">
-          We sent a 6-digit code to <span className="text-bone">{email}</span>. Enter it to send. This browser remembers your email for 30 days.
+          We sent a 6-digit code to <span className="break-all text-bone">{email}</span>. Enter it to send. This browser remembers your email for 30 days.
         </p>
       </div>
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
         <input
           aria-label="6-digit code"
           value={code}
@@ -68,9 +68,9 @@ export function EmailCode({ email, onConfirmed, onCancel, className = "" }: { em
           autoComplete="one-time-code"
           autoFocus
           placeholder="123456"
-          className="input w-36 text-center text-lg tracking-[0.3em] tnum"
+          className="input w-full text-center text-lg tracking-[0.3em] tnum sm:w-40"
         />
-        <button type="button" onClick={confirm} disabled={busy} className="btn-lime flex-1">
+        <button type="button" onClick={confirm} disabled={busy} className="btn-lime min-h-11 flex-1">
           {busy ? "Checking…" : "Confirm and send"}
         </button>
       </div>
@@ -80,10 +80,10 @@ export function EmailCode({ email, onConfirmed, onCancel, className = "" }: { em
         </p>
       )}
       <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-mute">
-        <button type="button" onClick={resend} disabled={busy} className="underline underline-offset-4 hover:text-bone">
+        <button type="button" onClick={resend} disabled={busy} className="inline-flex min-h-11 items-center underline underline-offset-4 hover:text-bone">
           Send a new code
         </button>
-        <button type="button" onClick={onCancel} disabled={busy} className="underline underline-offset-4 hover:text-bone">
+        <button type="button" onClick={onCancel} disabled={busy} className="inline-flex min-h-11 items-center underline underline-offset-4 hover:text-bone">
           Change email
         </button>
       </p>

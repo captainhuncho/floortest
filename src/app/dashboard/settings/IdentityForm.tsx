@@ -50,7 +50,7 @@ export function IdentityForm({ status, links, note }: { status: Status; links: s
           Add this code to the bio of one of your profiles for a day:{" "}
           <button
             type="button"
-            className="rounded-sm bg-ink px-2 py-0.5 font-mono text-bone hover:bg-ink-3"
+            className="tap rounded-sm bg-ink px-2 py-0.5 font-mono text-bone hover:bg-ink-3"
             onClick={() => {
               if (code) navigator.clipboard?.writeText(code);
               toast.show({ message: "Code copied" });
@@ -74,7 +74,7 @@ export function IdentityForm({ status, links, note }: { status: Status; links: s
           />
         ))}
         {count < 5 && (
-          <button type="button" className="w-fit text-sm text-mute hover:text-bone" onClick={() => setCount((c) => c + 1)}>
+          <button type="button" className="tap min-h-6 w-fit text-sm text-mute hover:text-bone" onClick={() => setCount((c) => c + 1)}>
             + Add another profile
           </button>
         )}

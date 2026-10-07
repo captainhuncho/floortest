@@ -49,7 +49,7 @@ export function SaveBar({ pending, state, label = "Save", busyLabel = "Saving…
           {shown.error}
         </p>
       )}
-      <p role="status" className="text-sm text-lime">
+      <p role="status" className={shown?.ok ? "text-sm text-lime" : "sr-only"}>
         {shown?.ok ? `✓ ${savedText}` : ""}
       </p>
     </div>

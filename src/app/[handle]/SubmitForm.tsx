@@ -18,7 +18,7 @@ const LOOKS = {
   classic: { card: "card", input: "input", label: "label", mute: "text-mute", line: "border-line", btn: "btn-lime", ghost: "btn-ghost", round: "rounded-md" },
   mobile: {
     card: "rounded-xl border border-line bg-ink-2",
-    input: "input !rounded-md !border-line-2 !bg-ink-2 !text-[12px]",
+    input: "input !rounded-md !border-line-2 !bg-ink-2 !text-base sm:!text-[12px]",
     label: "text-[11px] font-bold uppercase text-dim",
     mute: "text-dim",
     line: "border-line",
@@ -188,7 +188,7 @@ export function SubmitForm({
           <span className="text-[12px] tnum">{Math.round(it.progress * 100)}%</span>
         ) : (
           !busy && (
-            <button type="button" onClick={() => remove(it.id)} className={`text-[12px] underline underline-offset-4 ${L.mute} hover:text-bone`} aria-label={`Remove ${it.file.name}`}>
+            <button type="button" onClick={() => remove(it.id)} className={`-my-3 inline-flex min-h-11 items-center px-2 text-[12px] underline underline-offset-4 ${L.mute} hover:text-bone`} aria-label={`Remove ${it.file.name}`}>
               Remove
             </button>
           )

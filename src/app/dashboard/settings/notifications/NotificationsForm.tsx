@@ -78,8 +78,8 @@ export function NotificationsForm({ prefs, pending }: { prefs: Prefs; pending: n
       <div>
       <fieldset disabled={mode !== "instant"} className="disabled:opacity-50">
         <legend className="font-semibold">Quiet hours</legend>
-        <label className="mt-3 flex items-center gap-3">
-          <input type="checkbox" name="quiet" checked={quiet} onChange={(e) => setQuiet(e.target.checked)} className="h-4 w-4 accent-lime" />
+        <label className="tap-tall mt-3 flex cursor-pointer items-center gap-3">
+          <input type="checkbox" name="quiet" checked={quiet} onChange={(e) => setQuiet(e.target.checked)} className="size-6 accent-lime" />
           <span>Hold new-track emails overnight or during sets</span>
         </label>
         {quiet && (

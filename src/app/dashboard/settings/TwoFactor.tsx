@@ -177,7 +177,7 @@ export function TwoFactor({ enabled, alerts }: { enabled: boolean; alerts: boole
               toast.show({ message: `Sign-in alerts ${!alertsOn ? "on" : "off"}` });
             })
           }
-          className={`relative h-7 w-12 shrink-0 rounded-full transition ${alertsOn ? "bg-lime" : "bg-line"}`}
+          className={`relative h-7 w-12 shrink-0 rounded-full transition before:absolute before:-inset-2 before:content-[''] ${alertsOn ? "bg-lime" : "bg-line"}`}
         >
           <span className={`switch-thumb absolute left-1 top-1 h-5 w-5 rounded-full bg-ink ${alertsOn ? "translate-x-5" : ""}`} />
         </button>

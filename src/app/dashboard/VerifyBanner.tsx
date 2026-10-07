@@ -14,7 +14,7 @@ export function VerifyBanner({ email }: { email: string }) {
       </span>
       <button
         type="button"
-        className="min-h-6 font-medium text-lime underline-offset-4 hover:underline disabled:opacity-50"
+        className="tap min-h-6 font-medium text-lime underline-offset-4 hover:underline disabled:opacity-50"
         disabled={pending || sent === true}
         onClick={() => start(async () => setSent(await resendEmailVerification()))}
       >

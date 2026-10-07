@@ -198,7 +198,7 @@ export function FolderSend({
           </button>
           <p className="mt-3 text-sm text-mute">
             or drag it here ·{" "}
-            <button type="button" onClick={() => filesRef.current?.click()} className="underline underline-offset-4">
+            <button type="button" onClick={() => filesRef.current?.click()} className="inline-flex min-h-11 items-center underline underline-offset-4">
               pick files
             </button>
           </p>
@@ -211,7 +211,7 @@ export function FolderSend({
           <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)]">
             <label className="block space-y-1.5">
               <span className="label">Folder name<Req /></span>
-              <input value={release.title} disabled={running} onChange={(e) => setRelease((r) => ({ ...r, title: e.target.value }))} maxLength={200} className="input" />
+              <input value={release.title} disabled={running} required onChange={(e) => setRelease((r) => ({ ...r, title: e.target.value }))} maxLength={200} className="input" />
             </label>
             <label className="block space-y-1.5">
               <span className="label">Artist<Req /></span>
@@ -239,7 +239,7 @@ export function FolderSend({
                     value={it.tags.title}
                     disabled={running || it.state === "sent"}
                     onChange={(e) => editTags(i, { title: e.target.value })}
-                    className="w-full bg-transparent font-medium text-bone outline-none"
+                    className="tap-tall w-full bg-transparent font-medium text-bone outline-none"
                   />
                   <span className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-mute">
                     <span className="truncate">{it.tags.artist || it.file.name}</span>
@@ -252,7 +252,7 @@ export function FolderSend({
                   {it.error && <span className="block text-xs text-danger">{it.error}</span>}
                 </span>
                 {!running && it.state !== "sent" && (
-                  <button type="button" aria-label={`Remove ${it.tags.title || it.file.name}`} onClick={() => setItems((all) => all.filter((_, j) => j !== i))} className="shrink-0 px-1 text-mute hover:text-bone">
+                  <button type="button" aria-label={`Remove ${it.tags.title || it.file.name}`} onClick={() => setItems((all) => all.filter((_, j) => j !== i))} className="grid min-h-11 min-w-11 shrink-0 place-items-center text-mute hover:text-bone">
                     ×
                   </button>
                 )}
@@ -262,9 +262,37 @@ export function FolderSend({
               </li>
             ))}
           </ol>
+          {!account && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block space-y-1.5">
+                <span className="label">Your name<Req /></span>
+                <input value={who.name} onChange={(e) => setWho((w) => ({ ...w, name: e.target.value }))} disabled={running} autoComplete="name" maxLength={100} required className="input" />
+              </label>
+              <label className="block space-y-1.5">
+                <span className="label">Your email<Req /></span>
+                <input type="email" value={who.email} onChange={(e) => setWho((w) => ({ ...w, email: e.target.value }))} disabled={running} autoComplete="email" maxLength={200} required className="input" />
+              </label>
+              <fieldset className="space-y-2 sm:col-span-2">
+                <legend className="label mb-1.5">
+                  Your profiles<Req /> <span className="normal-case tracking-normal text-mute">(at least one)</span>
+                </legend>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="block space-y-1">
+                    <span className="block text-xs text-mute">Instagram</span>
+                    <input value={who.instagram} onChange={(e) => setWho((w) => ({ ...w, instagram: e.target.value }))} disabled={running} maxLength={300} placeholder="@yourname" className="input" />
+                  </label>
+                  <label className="block space-y-1">
+                    <span className="block text-xs text-mute">Streaming profile</span>
+                    <input value={who.streaming} onChange={(e) => setWho((w) => ({ ...w, streaming: e.target.value }))} disabled={running} inputMode="url" maxLength={300} placeholder="open.spotify.com/artist/…" className="input" />
+                  </label>
+                </div>
+                <span className="block text-xs text-mute">Spotify, Apple Music, SoundCloud, Beatport, Bandcamp, YouTube or TikTok. Helps {receiverName} know who you are.</span>
+              </fieldset>
+            </div>
+          )}
           <label className="block space-y-1.5">
             <span className="label">Genre<Req /></span>
-            <select value={genre} onChange={(e) => setGenre(e.target.value)} disabled={running} className="input">
+            <select value={genre} onChange={(e) => setGenre(e.target.value)} disabled={running} required className="input">
               <option value="">Choose…</option>
               {genres.map((g) => (
                 <option key={g}>{g}</option>
@@ -312,29 +340,6 @@ export function FolderSend({
               <option value="full">Fully AI-generated</option>
             </select>
           </label>
-          {!account && (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block space-y-1.5">
-                <span className="label">Your name<Req /></span>
-                <input value={who.name} onChange={(e) => setWho((w) => ({ ...w, name: e.target.value }))} disabled={running} autoComplete="name" maxLength={100} className="input" />
-              </label>
-              <label className="block space-y-1.5">
-                <span className="label">Your email<Req /></span>
-                <input type="email" value={who.email} onChange={(e) => setWho((w) => ({ ...w, email: e.target.value }))} disabled={running} autoComplete="email" maxLength={200} className="input" />
-              </label>
-              <label className="block space-y-1.5">
-                <span className="label">Instagram</span>
-                <input value={who.instagram} onChange={(e) => setWho((w) => ({ ...w, instagram: e.target.value }))} disabled={running} maxLength={300} placeholder="@yourname" className="input" />
-              </label>
-              <label className="block space-y-1.5">
-                <span className="label">Streaming profile</span>
-                <input value={who.streaming} onChange={(e) => setWho((w) => ({ ...w, streaming: e.target.value }))} disabled={running} maxLength={300} placeholder="open.spotify.com/artist/…" className="input" />
-              </label>
-              <p className="text-xs text-mute sm:col-span-2">
-                <span className="text-danger">*</span> Add your Instagram, a streaming profile, or both, so {receiverName} knows who you are.
-              </p>
-            </div>
-          )}
           <SetsPermission receiverName={receiverName} many checked={setsOk} onChange={setSetsOk} disabled={running} />
         </>
       )}
@@ -362,7 +367,7 @@ export function FolderSend({
         />
       )}
       {items.length > 0 && !waiting && (
-        <button type="submit" disabled={running || checking} className="btn-lime">
+        <button type="submit" disabled={running || checking} className="btn-lime min-h-11 w-full">
           {checking ? "Checking your email…" : running ? "Sending…" : items.some((i) => i.state === "failed") ? "Retry the failed tracks" : `Send folder (${items.length} tracks)`}
         </button>
       )}

@@ -43,8 +43,8 @@ export function SettingsForm({ name, firstName, lastName, handle, base, nextChan
       <label className="block space-y-1.5">
         <span className="label">Username</span>
         <div className="flex items-stretch overflow-hidden rounded-md border border-line bg-ink-2 focus-within:border-lime/70">
-          <span className="flex items-center pl-3 text-sm text-mute">{base.replace(/^https?:\/\//, "")}/</span>
-          <input name="handle" defaultValue={handle} className="w-full bg-transparent py-2.5 pr-3 text-sm outline-none" required />
+          <span className="flex shrink-0 items-center pl-3 text-sm text-mute">{base.replace(/^https?:\/\//, "")}/</span>
+          <input name="handle" defaultValue={handle} className="w-full min-w-0 bg-transparent py-2.5 pr-3 text-sm outline-none" required />
         </div>
         <span className="block text-xs text-mute">
           You can change it once a year{nextChange ? ` (next: ${nextChange})` : ""}. Your old link forwards here for 14 days, and you can switch back within that time. Update your bios first.

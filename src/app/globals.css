@@ -96,7 +96,10 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
 @utility btn-ghost { @apply btn border border-line text-bone hover:border-mute hover:bg-ink-3; }
 @utility btn-sm { @apply min-h-9 px-3! py-1.5! text-sm!; }
 /* Touch screens: every small button is still a full 44px target. */
-@media (pointer: coarse) { .btn-sm { min-height: 44px; } }
+@media (pointer: coarse) { .btn-sm, .input, select.input, .tap-tall { min-height: 44px; }
+  .tap { min-height: 44px; min-width: 44px; } }
+/* iPhone Safari zooms into any field under 16px when tapped; keep fields at 16px on touch screens. */
+@media (pointer: coarse) { input:not([type=checkbox]):not([type=radio]):not([type=file]), select, textarea { font-size: 16px !important; } }
 @utility card { @apply rounded-xl border border-line bg-ink-2; }
 @utility chip { @apply inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap; }
 @utility tnum { font-variant-numeric: tabular-nums; }
