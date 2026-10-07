@@ -208,7 +208,7 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
       const collection = await activeCollection(fresh, db);
       // A capped callout: checked here, under the receiver's row lock, so two sends can't both take the last slot.
       if (collection?.max_tracks) {
-        const received = Number((await db.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM tracks WHERE collection_id = ?", collection.id))?.n ?? 0);
+        const received = Number((await db.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM tracks WHERE collection_id = ? AND deleted_at IS NULL", collection.id))?.n ?? 0);
         if (received >= collection.max_tracks) throw new IntakeError(`“${collection.name}” is full. ${fresh.name} isn't taking more tracks for it.`, 409);
         if (received + 1 >= collection.max_tracks) await db.run("UPDATE collections SET full_at = ? WHERE id = ? AND full_at IS NULL", now(), collection.id);
       }

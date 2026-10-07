@@ -1,4 +1,5 @@
 /** Retention: the nightly clean-up of old records and of tracks past their retention. */
+import { reopenCallouts } from "./desk";
 import "server-only";
 import { after } from "next/server";
 import { drainNow, queueDeletion, retireTrackFiles } from "./deletion";
@@ -92,6 +93,7 @@ export async function purgeExpired({ force = false } = {}) {
     await q.tx(async (db) => {
       await retireTrackFiles(db, ids, "retention");
       await db.run(`UPDATE tracks SET deleted_at = ?, file_key = NULL WHERE id IN (${marks})`, t, ...ids);
+      await reopenCallouts(db);
       await db.run(
         `INSERT INTO events (user_id, sender_id, track_id, type, detail, created_at) SELECT user_id, sender_id, id, 'expired', '', ? FROM tracks WHERE id IN (${marks})`,
         t,

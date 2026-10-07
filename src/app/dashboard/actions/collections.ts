@@ -68,7 +68,7 @@ export async function updateCollection(id: number, form: FormData) {
   if (canCapCallouts(u.plan)) {
     const n = Math.round(Number(form.get("max_tracks")));
     const max = form.get("max_tracks") && n >= 1 && n <= 100_000 ? n : null;
-    const received = Number((await q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM tracks WHERE collection_id = ?", id))?.n ?? 0);
+    const received = Number((await q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM tracks WHERE collection_id = ? AND deleted_at IS NULL", id))?.n ?? 0);
     await q.run("UPDATE collections SET max_tracks = ?, full_at = CASE WHEN ? THEN COALESCE(full_at, ?) ELSE NULL END WHERE id = ?", max, !!max && received >= max, now(), id);
   }
   await audit(u.id, "collection_updated", name || c.name);

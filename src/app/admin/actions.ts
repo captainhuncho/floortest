@@ -1,5 +1,6 @@
 "use server";
 
+import { reopenCallouts } from "@/lib/desk";
 import crypto from "node:crypto";
 import { newsletterFooter } from "@/lib/newsletter";
 import { EMAILS, emailKey, emailTemplate, emailText, fillEmail, SAMPLE_VARS, type EmailId } from "@/lib/email-copy";
@@ -157,6 +158,7 @@ export async function removeTrackAsAdmin(trackId: number, reason: string) {
   await q.tx(async (db) => {
     await retireTrackFiles(db, [t.id], "removed by admin");
     await db.run("UPDATE tracks SET deleted_at = ?, file_key = NULL WHERE id = ?", now(), t.id);
+    await reopenCallouts(db);
   });
   await drainNow();
   await logEvent({ user_id: t.user_id, sender_id: t.sender_id, track_id: t.id, type: "deleted", detail: "removed by FloorTest" });

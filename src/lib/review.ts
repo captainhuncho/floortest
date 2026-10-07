@@ -6,7 +6,7 @@ import { isDecision, logEvent, now, q, type Decision, type Sender, type Track, t
 import { APP_URL, sendMailLater } from "./mail";
 import { alertIfFull } from "./notify";
 import { listenThreshold } from "./plans";
-import { capacity } from "./desk";
+import { capacity, reopenCallouts } from "./desk";
 
 const senderOf = async (t: Track) => (await q.get<Sender>("SELECT * FROM senders WHERE id = ?", t.sender_id))!;
 
@@ -98,6 +98,7 @@ export async function deleteTrack(user: User, t: Track) {
   await q.tx(async (db) => {
     await retireTrackFiles(db, [t.id], "deleted by receiver");
     await db.run("UPDATE tracks SET deleted_at = ?, file_key = NULL WHERE id = ?", now(), t.id);
+    await reopenCallouts(db);
   });
   await logEvent({ user_id: user.id, sender_id: t.sender_id, track_id: t.id, type: "deleted", detail: "" });
   await drainNow();

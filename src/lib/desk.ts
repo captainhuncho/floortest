@@ -80,6 +80,13 @@ export async function activeCollection(user: Pick<User, "active_collection_id">,
 export const isClosed = (c: Collection | undefined, at = now()) => (!!c?.closes_at && c.closes_at <= at) || !!c?.full_at;
 /** Closed because it reached its track cap (rather than its closing date). */
 export const isFull = (c: Collection | undefined) => !!c?.full_at;
+/** After tracks are deleted: a full callout whose live tracks have dropped back under its cap takes sends again. */
+export async function reopenCallouts(db: Queryable = q) {
+  await db.run(
+    `UPDATE collections c SET full_at = NULL WHERE c.full_at IS NOT NULL
+       AND c.max_tracks > (SELECT COUNT(*) FROM tracks t WHERE t.collection_id = c.id AND t.deleted_at IS NULL)`,
+  );
+}
 /** Whether this account's plan can cap callouts (Pro and Team). */
 export const canCapCallouts = (plan: string) => plan !== "free";
 
