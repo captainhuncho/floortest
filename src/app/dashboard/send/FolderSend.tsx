@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { analyzeAudio } from "@/lib/analyze";
 import { fmtBytes } from "@/lib/format";
-import { MAX_RELEASE_TRACKS } from "@/lib/plans";
+import { MAX_RELEASE_TRACKS, MIX_STATUS } from "@/lib/plans";
 import { readTags, type Tags } from "@/lib/tags";
 import { Turnstile } from "@/components/Turnstile";
 import { MAX_BYTES, uploadTrack } from "../../[handle]/useTrackUpload";
@@ -65,6 +65,8 @@ export function FolderSend({
   const [message, setMessage] = useState("");
   const [setsOk, setSetsOk] = useState(false);
   const [aiUse, setAiUse] = useState("");
+  const [mix, setMix] = useState("");
+  const [releaseStatus, setReleaseStatus] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [id] = useState(releaseId);
@@ -103,6 +105,8 @@ export function FolderSend({
   async function sendAll() {
     if (!release.title.trim()) return setError("Give the folder a name.");
     if (!genre) return setError("Choose a genre.");
+    if (!mix) return setError("Choose a mix status.");
+    if (!releaseStatus) return setError("Choose a release status.");
     if (!aiUse) return setError("Say whether you used AI to make these tracks.");
     if (!account && (!who.name.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(who.email))) return setError("Add your name and email.");
     setError(null);
@@ -132,8 +136,8 @@ export function FolderSend({
           artist: it.tags.artist || release.artist,
           message,
           genre,
-          release_status: "",
-          mix_status: "",
+          release_status: releaseStatus,
+          mix_status: mix,
           ai_use: aiUse,
           asAccount: !!account,
           ...(account ? {} : { name: who.name.trim(), email: who.email.trim(), sender_links: who.links }),
@@ -263,6 +267,32 @@ export function FolderSend({
               ))}
             </select>
           </label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block space-y-1.5">
+              <span className="label">Mix status</span>
+              <select value={mix} onChange={(e) => setMix(e.target.value)} disabled={running} required className="input">
+                <option value="" disabled>
+                  Choose one
+                </option>
+                {Object.entries(MIX_STATUS).map(([k, v]) => (
+                  <option key={k} value={k}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block space-y-1.5">
+              <span className="label">Release status</span>
+              <select value={releaseStatus} onChange={(e) => setReleaseStatus(e.target.value)} disabled={running} required className="input">
+                <option value="" disabled>
+                  Choose one
+                </option>
+                <option value="unsigned">Unreleased</option>
+                <option value="signed">Signed, forthcoming</option>
+                <option value="released">Already released</option>
+              </select>
+            </label>
+          </div>
           <label className="block space-y-1.5">
             <span className="label">Message (optional, sent with the release)</span>
             <textarea value={message} onChange={(e) => setMessage(e.target.value)} disabled={running} rows={3} maxLength={2000} className="input resize-y" />

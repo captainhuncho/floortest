@@ -61,6 +61,8 @@ export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]
   if (!fileName) return bad("Choose a WAV or MP3 file.");
   if (!title) return bad("Add a track title.");
   if (!genre) return bad("Choose a genre.");
+  if (!pick("mix_status", MIX_STATUS)) return bad("Choose a mix status.");
+  if (!pick("release_status", RELEASE_STATUS)) return bad("Choose a release status.");
   if (!name) return bad("Add your name.");
   const senderLinks = parseLinks(str("sender_links", 600).split(",").join("\n"));
   if (senderLinks.error) return bad(`Profile link: ${senderLinks.error}`);

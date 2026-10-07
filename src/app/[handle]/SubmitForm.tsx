@@ -79,9 +79,12 @@ export function SubmitForm({
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    if (account && (!genre || !mix)) return setError(!genre ? "Choose a genre." : "Choose a mix status.");
     if (account) return send(fd);
     const email = String(fd.get("email") ?? "").trim().toLowerCase();
     if (!email) return send(fd); // the usual "add your email" message
+    if (!genre) return setError("Choose a genre.");
+    if (!mix) return setError("Choose a mix status.");
     setChecking(true);
     const r = await startEmailCheck(email, String(fd.get("cf-turnstile-response") ?? ""));
     setChecking(false);
@@ -265,7 +268,7 @@ export function SubmitForm({
       <input type="hidden" name="genre" value={genre} />
 
       <fieldset>
-        <legend className={L.label}>Mix status</legend>
+        <legend className={L.label} id="mix-legend">Mix status</legend>
         <div className={`mt-2 flex gap-2 ${m ? "flex-col" : "flex-wrap"}`}>
           {Object.entries(MIX_STATUS).map(([k, v]) => (
             <button
@@ -298,27 +301,21 @@ export function SubmitForm({
       </fieldset>
       <input type="hidden" name="mix_status" value={mix} />
 
-      <details open={m} className={`group ${m ? "" : `${L.round} border ${L.line}`}`}>
-        <summary className={`cursor-pointer list-none ${m ? "py-2 text-[12px] font-bold text-white" : `px-4 py-3 text-sm ${L.mute} hover:text-bone`}`}>
-          <span className="group-open:hidden">+ Add a message or release status</span>
-          <span className="hidden group-open:inline">− Message and release status</span>
-        </summary>
-        <div className={`space-y-4 ${m ? "pt-2" : `border-t ${L.line} p-4`}`}>
-          <label className="block space-y-1.5">
-            <span className={L.label}>Message for {receiverName}</span>
-            <textarea className={`${L.input} min-h-24 resize-y`} name="message" maxLength={2000} placeholder="Travels privately with the track." />
-          </label>
-          <label className="block space-y-1.5">
-            <span className={L.label}>Release status</span>
-            <select name="release_status" className={L.input} defaultValue="">
-              <option value="">Not specified</option>
-              <option value="unsigned">Unreleased</option>
-              <option value="signed">Signed, forthcoming</option>
-              <option value="released">Already released</option>
-            </select>
-          </label>
-        </div>
-      </details>
+      <label className="block space-y-1.5">
+        <span className={L.label}>Release status</span>
+        <select name="release_status" required className={L.input} defaultValue="">
+          <option value="" disabled>
+            Choose one
+          </option>
+          <option value="unsigned">Unreleased</option>
+          <option value="signed">Signed, forthcoming</option>
+          <option value="released">Already released</option>
+        </select>
+      </label>
+      <label className="block space-y-1.5">
+        <span className={L.label}>Message for {receiverName} (optional)</span>
+        <textarea className={`${L.input} min-h-24 resize-y`} name="message" maxLength={2000} placeholder="What it is, where it fits, anything they should know. Travels privately with the track." />
+      </label>
 
       <fieldset className="space-y-2">
         <legend className={`${L.label} mb-2`}>Did you use AI to make {many ? "these tracks" : "this track"}?</legend>
