@@ -4,11 +4,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
 /**
- * Keeps an open page current without a reload: every few seconds, while the tab is visible, it asks `url` for a
+ * Keeps an open page current without a reload: every ten seconds while the tab is visible (and at once when it comes back into view), it asks `url` for a
  * small change marker and refreshes the page's data when it differs. Playback and anything typed are kept; while
  * someone is typing, the refresh waits until they leave the field.
  */
-export function LivePulse({ url, every = 5000 }: { url: string; every?: number }) {
+export function LivePulse({ url, every = 10_000 }: { url: string; every?: number }) {
   const router = useRouter();
   const last = useRef<string | null>(null);
   const due = useRef(false);

@@ -3,7 +3,7 @@ import { PlayerBar, PlayerProvider } from "@/components/Player";
 import { LivePulse } from "@/components/LivePulse";
 import { ToastProvider } from "@/components/Toast";
 import { requireUser, viewingAs } from "@/lib/auth";
-import { activeCollection, capacity, collectionsFor, isClosed, isPaused } from "@/lib/desk";
+import { activeCollectionForView, capacityForView, collectionsForView, isClosed, isPaused } from "@/lib/desk";
 import { purgeExpired } from "@/lib/retention";
 import { notificationsFor } from "@/lib/notifications";
 import { finalizeDueConsents } from "@/lib/share";
@@ -17,14 +17,12 @@ import { currentTheme, themeClass } from "@/lib/theme";
 import { SkipLink } from "@/components/SkipLink";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const user = await requireUser();
-  const view = await viewingAs();
-  const theme = await currentTheme();
+  const [user, view, theme] = await Promise.all([requireUser(), viewingAs(), currentTheme()]);
   // Retention cleanup runs after the response, so it never slows a page down.
   after(() => purgeExpired().catch((e) => console.error("[purge]", e)));
   // Backstop: any share consents whose 2-minute window has passed become final (and the receiver is emailed once).
   after(() => finalizeDueConsents(user.id).catch((e) => console.error("[consent]", e)));
-  const [collections, cap, active, notices] = await Promise.all([collectionsFor(user.id), capacity(user), activeCollection(user), notificationsFor(user)]);
+  const [collections, cap, active, notices] = await Promise.all([collectionsForView(user.id), capacityForView(user.id, user.plan), activeCollectionForView(user.active_collection_id), notificationsFor(user)]);
   // Even with the switch on, uploads stop if the routed collection closed or the desk is full.
   const blocked = !active
     ? "No collection selected"

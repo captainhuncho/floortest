@@ -5,6 +5,7 @@ import crypto from "node:crypto";
 import { now, q, USER_COLUMNS, type Collection, type Queryable, type Sender, type Track, type User } from "./db";
 import { APP_URL, sendMail } from "./mail";
 import { planLimit } from "./plan-store";
+import { cache } from "react";
 
 export async function activeCount(userId: number, db: Queryable = q) {
   return (await db.get<{ n: number }>("SELECT COUNT(*) AS n FROM tracks WHERE user_id = ? AND deleted_at IS NULL", userId))!.n;
@@ -129,3 +130,13 @@ export async function referralCodeFor(userId: number) {
   }
   throw new Error("Could not allocate a referral code");
 }
+
+/*
+ * Per-request memos for page renders: the dashboard layout and the page under it both need these, and React's
+ * cache() lets them share one query. Not for transactions (those pass their own db and must read fresh).
+ */
+export const collectionsForView = cache((userId: number) => collectionsFor(userId));
+export const capacityForView = cache((id: number, plan: User["plan"]) => capacity({ id, plan }));
+export const activeCollectionForView = cache((activeCollectionId: User["active_collection_id"]) => activeCollection({ active_collection_id: activeCollectionId }));
+/** The public link page and its metadata both look the receiver up; one query per request. */
+export const userByHandleForView = cache((handle: string) => userByHandle(handle));

@@ -6,7 +6,7 @@ import { listeners } from "@/lib/team";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { forwardedHandle } from "@/lib/accounts";
-import { activeCollection, capacity, isClosed, isPaused, pausedMessage, userByHandle } from "@/lib/desk";
+import { activeCollection, capacity, isClosed, isPaused, pausedMessage, userByHandleForView } from "@/lib/desk";
 import { fmtDay } from "@/lib/format";
 import { genresFor, RETAIN_UNREVIEWED_DAYS } from "@/lib/plans";
 import { folderLimit, shareDownloadEnabled } from "@/lib/plan-store";
@@ -18,7 +18,7 @@ type Props = { params: Promise<{ handle: string }>; };
 
 /** Link previews for when a DJ shares their link on socials or in DMs. */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const u = await userByHandle((await params).handle);
+  const u = await userByHandleForView((await params).handle);
   if (!u) return { title: "FloorTest" };
   const title = `Send music to ${u.name}`;
   const description = `Upload your WAV or MP3 straight to ${u.name}${u.role_line ? ` (${u.role_line})` : ""}. No account needed, and you'll hear when it's played.`;
@@ -36,17 +36,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ReceiverPage({ params }: Props) {
   const { handle } = await params;
-  const receiver = await userByHandle(handle);
+  const receiver = await userByHandleForView(handle);
   if (!receiver) {
     const moved = await forwardedHandle(handle);
     if (moved) permanentRedirect(`/${moved}`);
     notFound();
   }
-  const collection = await activeCollection(receiver);
-  const sharing = await switchOn("sharing");
+  const [collection, sharing, { full }] = await Promise.all([activeCollection(receiver), switchOn("sharing"), capacity(receiver)]);
   const team = await listeners(collection);
   const closed = isClosed(collection);
-  const { full } = await capacity(receiver);
   const genres = genresFor(collection).list;
   const paused = isPaused(receiver);
   const note = paused ? receiver.pause_message : "";

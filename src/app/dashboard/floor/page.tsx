@@ -5,11 +5,11 @@ import { recentAudit } from "@/lib/audit";
 import { AccountLog } from "../AccountLog";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
-import { activeCollection, capacity, collectionsFor, isClosed, isPaused } from "@/lib/desk";
+import { activeCollectionForView, capacityForView, collectionsForView, isClosed, isPaused } from "@/lib/desk";
 import { q } from "@/lib/db";
 import { fmtDay } from "@/lib/format";
 import { APP_URL } from "@/lib/mail";
-import { localHour, prefsFor } from "@/lib/notify";
+import { localHour, prefsForView } from "@/lib/notify";
 import { genresFor } from "@/lib/plans";
 import { fmtDuration, genreMix, homeStats } from "@/lib/stats";
 import { DailyColumns, GenreBars } from "./HomeCharts";
@@ -63,39 +63,38 @@ const act = "text-[11px] font-bold text-bone hover:text-lime";
 
 export default async function TheFloor({ searchParams }: { searchParams: Promise<{ welcome?: string }> }) {
   const user = await requireUser();
-  await trackUse(user.id, "floor");
-  const welcome = !!(await searchParams).welcome;
-  const prefs = await prefsFor(user.id);
+  // Everything below is independent, so it all goes to the database at once.
+  const [, sp, prefs, mix, collections, active, cap, upNextRows, mine, recentSends, contacts] = await Promise.all([
+    trackUse(user.id, "floor"),
+    searchParams,
+    prefsForView(user.id),
+    genreMix(user.id),
+    collectionsForView(user.id),
+    activeCollectionForView(user.active_collection_id),
+    capacityForView(user.id, user.plan),
+    q.all<{ id: number; title: string; artist: string; genre: string; duration: number | null; peaks: string | null; played_at: number | null; sender: string }>(`SELECT t.id, t.title, t.artist, t.genre, t.duration, t.peaks, t.played_at, s.name AS sender FROM tracks t
+         JOIN senders s ON s.id = t.sender_id WHERE t.user_id = ? AND t.deleted_at IS NULL AND t.decision IS NULL
+         ORDER BY t.created_at LIMIT 4`, user.id),
+    recentAudit(user.id, 6),
+    // FloorTest users you've sent music to from your account, most recent first.
+    q.all<{ handle: string; name: string }>(
+      `SELECT u.handle, u.name FROM senders s JOIN users u ON u.id = s.user_id
+       WHERE s.account_id = ? AND u.suspended_at IS NULL
+       GROUP BY u.id, u.handle, u.name ORDER BY MAX(s.created_at) DESC LIMIT 6`,
+      user.id,
+    ),
+    q.all<{ id: number; name: string; verified_at: number | null; sent: number; kept: number }>(`SELECT s.id, s.name, s.verified_at, COUNT(t.id) AS sent, COUNT(CASE WHEN t.decision = 'kept' THEN 1 END) AS kept
+       FROM senders s JOIN tracks t ON t.sender_id = s.id WHERE s.user_id = ?
+       GROUP BY s.id ORDER BY kept DESC, sent DESC, MAX(t.created_at) DESC LIMIT 4`, user.id),
+  ]);
+  const welcome = !!sp.welcome;
   const stats = await homeStats(user.id, prefs.tz);
-  const mix = await genreMix(user.id);
-  const collections = await collectionsFor(user.id);
-  const active = await activeCollection(user);
-  const cap = await capacity(user);
   const paused = isPaused(user);
   const link = `${APP_URL}/${user.handle}`;
   const hour = localHour(prefs.tz);
   const greeting = hour < 5 ? "Late night" : hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   const first = user.name.split(/\s+/)[0];
-
-  const upNext = (
-    (await q.all<{ id: number; title: string; artist: string; genre: string; duration: number | null; peaks: string | null; played_at: number | null; sender: string }>(`SELECT t.id, t.title, t.artist, t.genre, t.duration, t.peaks, t.played_at, s.name AS sender FROM tracks t
-         JOIN senders s ON s.id = t.sender_id WHERE t.user_id = ? AND t.deleted_at IS NULL AND t.decision IS NULL
-         ORDER BY t.created_at LIMIT 4`, user.id))
-  ).map((t) => ({ ...t, peaks: t.peaks ? JSON.parse(t.peaks) : null, played: !!t.played_at }));
-
-  const mine = await recentAudit(user.id, 6);
-
-  // FloorTest users you've sent music to from your account, most recent first.
-  const recentSends = await q.all<{ handle: string; name: string }>(
-    `SELECT u.handle, u.name FROM senders s JOIN users u ON u.id = s.user_id
-     WHERE s.account_id = ? AND u.suspended_at IS NULL
-     GROUP BY u.id, u.handle, u.name ORDER BY MAX(s.created_at) DESC LIMIT 6`,
-    user.id,
-  );
-
-  const contacts = (await q.all<{ id: number; name: string; verified_at: number | null; sent: number; kept: number }>(`SELECT s.id, s.name, s.verified_at, COUNT(t.id) AS sent, COUNT(CASE WHEN t.decision = 'kept' THEN 1 END) AS kept
-       FROM senders s JOIN tracks t ON t.sender_id = s.id WHERE s.user_id = ?
-       GROUP BY s.id ORDER BY kept DESC, sent DESC, MAX(t.created_at) DESC LIMIT 4`, user.id));
+  const upNext = upNextRows.map((t) => ({ ...t, peaks: t.peaks ? JSON.parse(t.peaks) : null, played: !!t.played_at }));
 
   // Link health: the one thing to fix, if anything.
   const openAlternative = collections.find((c) => !isClosed(c) && c.id !== active?.id);

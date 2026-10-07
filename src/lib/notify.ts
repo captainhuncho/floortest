@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { now, q } from "./db";
 import { APP_URL, sendMail } from "./mail";
 import { recordIncident } from "./incidents";
@@ -20,6 +21,8 @@ export type NotifyPrefs = {
   last_digest_at: number | null;
   alert_full_sent_at: number | null;
 };
+
+export const prefsForView = cache((userId: number) => prefsFor(userId));
 
 export async function prefsFor(userId: number) {
   return (await q.get<NotifyPrefs>(

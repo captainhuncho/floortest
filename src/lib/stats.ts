@@ -13,29 +13,32 @@ export async function homeStats(userId: number, tz: string) {
   const kept = (from: number, to: number) =>
     count("SELECT COUNT(*) AS n FROM tracks WHERE user_id = ? AND decision = 'kept' AND decided_at >= ? AND decided_at < ?", userId, from, to);
 
-  // Median delivery → first listen over the last 30 days: how quickly senders hear back.
-  const waits = (
-    await q.all<{ w: number }>(
-      "SELECT played_at - created_at AS w FROM tracks WHERE user_id = ? AND played_at IS NOT NULL AND created_at >= ? ORDER BY w",
-      userId,
-      t - 30 * DAY,
-    )
-  ).map((r) => r.w);
+  // All independent, so they go to the database together.
+  const [waitRows, recent30, decided30, receivedWeek, receivedPrev, keptWeek, keptPrev, waiting, daily] = await Promise.all([
+    // Median delivery → first listen over the last 30 days: how quickly senders hear back.
+    q.all<{ w: number }>("SELECT played_at - created_at AS w FROM tracks WHERE user_id = ? AND played_at IS NOT NULL AND created_at >= ? ORDER BY w", userId, t - 30 * DAY),
+    count("SELECT COUNT(*) AS n FROM tracks WHERE user_id = ? AND created_at >= ?", userId, t - 30 * DAY),
+    count("SELECT COUNT(*) AS n FROM tracks WHERE user_id = ? AND created_at >= ? AND decision IS NOT NULL", userId, t - 30 * DAY),
+    received(t - 7 * DAY, t),
+    received(t - 14 * DAY, t - 7 * DAY),
+    kept(t - 7 * DAY, t),
+    kept(t - 14 * DAY, t - 7 * DAY),
+    count("SELECT COUNT(*) AS n FROM tracks WHERE user_id = ? AND deleted_at IS NULL AND decision IS NULL", userId),
+    dailyReceived(userId, tz, 14),
+  ]);
+  const waits = waitRows.map((r) => r.w);
   const median = waits.length ? waits[Math.floor((waits.length - 1) / 2)] : null;
 
-  const recent30 = await count("SELECT COUNT(*) AS n FROM tracks WHERE user_id = ? AND created_at >= ?", userId, t - 30 * DAY);
-  const decided30 = await count("SELECT COUNT(*) AS n FROM tracks WHERE user_id = ? AND created_at >= ? AND decision IS NOT NULL", userId, t - 30 * DAY);
-
   return {
-    receivedWeek: await received(t - 7 * DAY, t),
-    receivedPrev: await received(t - 14 * DAY, t - 7 * DAY),
-    keptWeek: await kept(t - 7 * DAY, t),
-    keptPrev: await kept(t - 14 * DAY, t - 7 * DAY),
-    waiting: await count("SELECT COUNT(*) AS n FROM tracks WHERE user_id = ? AND deleted_at IS NULL AND decision IS NULL", userId),
+    receivedWeek,
+    receivedPrev,
+    keptWeek,
+    keptPrev,
+    waiting,
     medianListenMs: median,
     listenedSample: waits.length,
     decisionRate: recent30 ? Math.round((decided30 / recent30) * 100) : null,
-    daily: await dailyReceived(userId, tz, 14),
+    daily,
   };
 }
 
