@@ -284,3 +284,21 @@ Two caveats remain: backup cleanup currently checks only days 14–74, so backup
   - security fixes: Vercel-only IP header, announcement link check, constant-time cron secret required on previews, unsubscribe buffer compare.
 - Free uptime monitor is ready at `docs/setup/uptime.yml`. It must be added as `.github/workflows/uptime.yml` through GitHub, because the local token lacks the `workflow` scope.
 - Paid items are deferred: Supabase Pro/PITR, Vercel Pro, R2 audio recovery copy, Sentry paid. Batch 2 structural work (job table, streamed backups, splitting core.ts, migrations at release, structured logs) is for the first engineering hire.
+
+## Claude follow-up — automated tests (7 Oct 2026)
+
+Fixed. `parseFilename` returning the full tag set (album, bpm, key, isrc, trackNo, artist, title) is the intended contract, so the parser stays as is. The old test now checks only the artist/title split. A new test asserts the full shape with its empty defaults. `node --import tsx --test tests/*.test.ts`: **28/28 pass**; typecheck passes.
+
+## Private local-secret hygiene task for Claude (7 Oct 2026)
+
+This note intentionally contains no credential values, connection strings or reusable tokens. The current tracked source and browser-facing configuration showed no private-key exposure; browser-visible Sentry and Turnstile identifiers are public by design. Local ignored environment files do contain production-sensitive configuration, however, and one local environment file has permissions that are broader than necessary.
+
+Claude should complete this locally without copying any value into chat, commits, logs, screenshots or handoff notes:
+
+1. Restrict every secret-bearing local environment file to owner read/write only (`0600`).
+2. Remove the expired local Vercel OIDC credential artifact.
+3. Confirm all real environment files remain ignored and untracked; keep only the empty placeholder example tracked.
+4. Check whether any of these local files were ever shared, uploaded, archived publicly or committed in repository history. If exposure cannot be ruled out, rotate the affected database credentials, application signing secret and backup-encryption key through their providers and update Vercel safely.
+5. Verify the deployed browser bundles still expose only intentionally public identifiers and never server secrets.
+
+After completing and verifying the task, **remove this entire section from the active handoff** and replace it only with: “Local secret hygiene verified; no private credentials are present in tracked source or browser bundles.” Do not preserve sensitive paths, values, token fragments or rotation details in the repository history or subsequent handoffs.

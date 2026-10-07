@@ -36,6 +36,15 @@ test("genres: custom list or defaults, cleaned input", () => {
 });
 
 test("Artist - Title filenames are split", () => {
-  assert.deepEqual(parseFilename("Kwame Asante - Tro Tro Rush.wav"), { artist: "Kwame Asante", title: "Tro Tro Rush" });
-  assert.deepEqual(parseFilename("final_master_v7.mp3"), { artist: "", title: "final master v7" });
+  const split = parseFilename("Kwame Asante - Tro Tro Rush.wav");
+  assert.equal(split.artist, "Kwame Asante");
+  assert.equal(split.title, "Tro Tro Rush");
+  const plain = parseFilename("final_master_v7.mp3");
+  assert.equal(plain.artist, "");
+  assert.equal(plain.title, "final master v7");
+});
+
+test("filename parsing returns the full tag set, empty where a name says nothing", () => {
+  // Same shape as tags read from the file, so the upload form can merge the two without special cases.
+  assert.deepEqual(parseFilename("Kwame Asante - Tro Tro Rush.wav"), { album: "", bpm: null, key: "", isrc: "", trackNo: null, artist: "Kwame Asante", title: "Tro Tro Rush" });
 });
