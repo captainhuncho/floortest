@@ -1,5 +1,8 @@
 import { LegalPage } from "@/components/LegalPage";
 import { LEGAL } from "@/lib/legal";
+import { APP_URL } from "@/lib/mail";
+
+const HOST = APP_URL.replace(/^https?:\/\//, "");
 
 export const metadata = { title: "Notice and Takedown Policy (draft) — FloorTest" };
 
@@ -21,7 +24,7 @@ export default function Takedown() {
             "Use our contact form with the topic \"Copyright claim\" at /contact?takedown=1, or email us. Please include:",
             "1. Your name, address, phone and email, and whether you're the rights holder or acting for them.",
             "2. The work you own (title, artist, and a link or ISRC if released).",
-            "3. Where it is on FloorTest: the sender's link (floortest.imullar.com/name), the track title and artist as shown, and roughly when it was sent.",
+            `3. Where it is on FloorTest: the sender's link (${HOST}/name), the track title and artist as shown, and roughly when it was sent.`,
             "4. A statement that you believe in good faith the use isn't authorised by the rights holder, its agent or the law.",
             "5. A statement that the information in your notice is accurate and, under penalty of perjury, that you are the rights holder or authorised to act for them.",
             "6. Your physical or electronic signature (typing your full name is fine).",

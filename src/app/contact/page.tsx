@@ -2,6 +2,9 @@ import { botCheckKey } from "@/lib/turnstile";
 import { Logo } from "@/components/Logo";
 import { currentUser } from "@/lib/auth";
 import { ContactForm } from "./ContactForm";
+import { APP_URL } from "@/lib/mail";
+
+const HOST = APP_URL.replace(/^https?:\/\//, "");
 
 export const metadata = { title: "Contact us — FloorTest" };
 
@@ -21,7 +24,7 @@ export default async function Contact({ searchParams }: { searchParams: Promise<
         name={user?.name ?? ""}
         email={user?.email ?? ""}
         topic={appeal ? "Suspension appeal" : takedown ? "Copyright claim" : report ? "Impersonation" : undefined}
-        message={appeal ? "Account email: \nWhy I think the suspension is a mistake: " : takedown ? "My work (title, artist):\nWhere it is on FloorTest (link, track title):\nI'm the rights holder / acting for: \nI believe in good faith this use isn't authorised, and this notice is accurate. Signed: " : report ? `I think floortest.imullar.com/${report} is pretending to be someone else, because: ` : undefined}
+        message={appeal ? "Account email: \nWhy I think the suspension is a mistake: " : takedown ? "My work (title, artist):\nWhere it is on FloorTest (link, track title):\nI'm the rights holder / acting for: \nI believe in good faith this use isn't authorised, and this notice is accurate. Signed: " : report ? `I think ${HOST}/${report} is pretending to be someone else, because: ` : undefined}
       />
     </main>
   );

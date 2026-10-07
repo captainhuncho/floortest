@@ -1,5 +1,8 @@
 import { LegalPage } from "@/components/LegalPage";
 import { LEGAL } from "@/lib/legal";
+import { APP_URL } from "@/lib/mail";
+
+const HOST = APP_URL.replace(/^https?:\/\//, "");
 
 export const metadata = { title: "Information for Law Enforcement (draft) — FloorTest" };
 
@@ -13,7 +16,7 @@ export default function LawEnforcement() {
           "Requests for user data",
           [
             "FloorTest is operated from Ghana. We respond to requests from law enforcement and government authorities that are valid under the law that applies to us. Requests from other countries may need to go through a mutual legal assistance treaty (MLAT) or a similar process.",
-            `Send requests from an official email address to ${LEGAL.email}, with "Law enforcement request" in the subject. Include the legal basis, the account link name (floortest.imullar.com/name) or email address, the data you need, and a deadline.`,
+            `Send requests from an official email address to ${LEGAL.email}, with "Law enforcement request" in the subject. Include the legal basis, the account link name (${HOST}/name) or email address, the data you need, and a deadline.`,
           ],
         ],
         [

@@ -3,6 +3,7 @@ import { ConfirmButton } from "../AdminUi";
 import { likeContains, q } from "@/lib/db";
 import { liftSuppression, resendEmail } from "../actions";
 import { mailUsage } from "@/lib/mail-quota";
+import { APP_URL } from "@/lib/mail";
 
 const DELIVERY: Record<string, [string, string]> = {
   delivered: ["Delivered", "border-lime/50 text-lime"],
@@ -64,7 +65,7 @@ export default async function Emails({ searchParams }: { searchParams: Promise<{
           <p className="font-medium text-bone">Delivery tracking isn&apos;t connected</p>
           <p className="mt-1">
             You can see that an email left FloorTest, but not whether it arrived. To connect it: in Resend, go to Webhooks → Add endpoint, enter{" "}
-            <span className="font-mono text-bone">https://floortest.imullar.com/api/webhooks/resend</span>, and tick delivered, delivery delayed, bounced and
+            <span className="font-mono text-bone">{APP_URL}/api/webhooks/resend</span>, and tick delivered, delivery delayed, bounced and
             complained. Copy its signing secret into Vercel as <span className="font-mono text-bone">RESEND_WEBHOOK_SECRET</span> (Production), then redeploy.
           </p>
         </div>
