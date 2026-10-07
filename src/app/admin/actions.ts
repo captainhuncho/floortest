@@ -16,7 +16,8 @@ import { issueViewTicket } from "@/lib/ops";
 import { APP_URL } from "@/lib/mail";
 import { env } from "@/lib/env";
 import { sendMail } from "@/lib/mail";
-import { logAdmin, requireAdminAction } from "@/lib/admin";
+import { isAdminEmail, logAdmin, requireAdminAction } from "@/lib/admin";
+import { PERMS, ROLE_PERMS, ROLES, type Perm, type Role } from "@/lib/ops-perms";
 import { flash } from "@/lib/flash";
 import { setSwitch, SWITCHES, type SwitchKey } from "@/lib/switches";
 import { drainNow, retireTrackFiles } from "@/lib/deletion";
@@ -34,7 +35,7 @@ const fail = async (m: string) => {
 const target = async (id: number) => q.get<{ id: number; email: string; handle: string }>("SELECT id, email, handle FROM users WHERE id = ?", id);
 
 export async function suspendAccount(userId: number, reason: string) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("users.support");
   const u = await target(userId);
   if (!u || u.id === a.id) return fail("Couldn't suspend: account not found, or it's yours");
   const why = String(reason || "").trim().slice(0, 200);
@@ -69,7 +70,7 @@ export async function suspendAccount(userId: number, reason: string) {
 }
 
 export async function unsuspendAccount(userId: number) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("users.support");
   const u = await target(userId);
   if (!u) return fail("Account not found");
   const r = await q.tx(async (db) => {
@@ -92,7 +93,7 @@ export async function unsuspendAccount(userId: number) {
 }
 
 export async function signOutEverywhere(userId: number) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("super");
   const u = await target(userId);
   if (!u) return fail("Account not found");
   const r = await q.run("DELETE FROM sessions WHERE user_id = ?", u.id);
@@ -103,7 +104,7 @@ export async function signOutEverywhere(userId: number) {
 
 /** For a receiver locked out of their authenticator app after confirming who they are. */
 export async function resetTwoFactor(userId: number, form: FormData) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("super");
   const u = await target(userId);
   if (!u || u.id === a.id) return fail("You can't reset your own two-factor here");
   // Step-up: type their handle and how you confirmed it's them.
@@ -117,7 +118,7 @@ export async function resetTwoFactor(userId: number, form: FormData) {
 }
 
 export async function setPlanFor(userId: number, plan: string) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("super");
   const u = await target(userId);
   if (!u || !["free", "pro", "team"].includes(plan)) return fail("Couldn't change the plan");
   await q.run("UPDATE users SET plan = ? WHERE id = ?", plan, u.id);
@@ -127,7 +128,7 @@ export async function setPlanFor(userId: number, plan: string) {
 }
 
 export async function createInvite(form: FormData) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("invites");
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   const typed = String(form.get("code") || "").trim().toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 24);
   const code = typed || `FLOOR-${Array.from(crypto.randomBytes(5), (b) => alphabet[b % alphabet.length]).join("")}`;
@@ -141,7 +142,7 @@ export async function createInvite(form: FormData) {
 }
 
 export async function revokeInvite(code: string) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("invites");
   await q.run("UPDATE invites SET revoked_at = ? WHERE code = ? AND revoked_at IS NULL", now(), code);
   await logAdmin(a.id, "revoked invite", code);
   await done(`Revoked ${code}`);
@@ -150,7 +151,7 @@ export async function revokeInvite(code: string) {
 
 /** Takes down an abusive upload: file gone from storage, track gone from the receiver's desk. */
 export async function removeTrackAsAdmin(trackId: number, reason: string) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("moderation");
   const t = await q.get<Track & { handle: string }>(
     "SELECT t.*, u.handle FROM tracks t JOIN users u ON u.id = t.user_id WHERE t.id = ? AND t.deleted_at IS NULL",
     trackId,
@@ -170,7 +171,7 @@ export async function removeTrackAsAdmin(trackId: number, reason: string) {
 
 /** Blocks a sender email on one receiver's link (the same as the receiver blocking them). */
 export async function blockSenderAsAdmin(senderId: number) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("moderation");
   const s = await q.get<{ id: number; email: string; user_id: number }>("SELECT id, email, user_id FROM senders WHERE id = ?", senderId);
   if (!s) return fail("Sender not found");
   await q.run("UPDATE senders SET blocked_at = COALESCE(blocked_at, ?) WHERE id = ?", now(), s.id);
@@ -181,7 +182,7 @@ export async function blockSenderAsAdmin(senderId: number) {
 
 /** Read-only look at someone's desk, for support. 30 minutes, logged. */
 export async function startViewAs(userId: number) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("super");
   const u = await target(userId);
   if (!u || u.id === a.id) return;
   // The desk lives on the main site; a single-use, 60-second ticket carries the admin across.
@@ -192,7 +193,7 @@ export async function startViewAs(userId: number) {
 
 /** Sends a logged email again, to the same address. */
 export async function resendEmail(outboxId: number) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("emails.act");
   const m = await q.get<{ user_id: number | null; to_email: string; subject: string; body: string; audience: "sender" | "receiver" | "support" }>(
     "SELECT user_id, to_email, subject, body, audience FROM outbox WHERE id = ?",
     outboxId,
@@ -205,7 +206,7 @@ export async function resendEmail(outboxId: number) {
 }
 
 export async function setContactHandled(id: number, handled: boolean) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("inbox.act");
   await q.run("UPDATE contact_messages SET handled_at = ? WHERE id = ?", handled ? now() : null, id);
   await logAdmin(a.id, handled ? "handled message" : "reopened message", `#${id}`);
   await done(handled ? "Marked handled" : "Reopened");
@@ -230,7 +231,7 @@ async function mailInvite(code: string, email: string, inviter: string, note: st
 
 /** Sends a personal, single-use invite to each address. Skips existing accounts and pending invites. */
 export async function inviteByEmail(form: FormData) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("invites");
   const note = String(form.get("note") || "").trim().slice(0, 300);
   const emails = [...new Set(String(form.get("emails") || "").split(/[\s,;]+/).map((e) => e.trim().toLowerCase()).filter(Boolean))].slice(0, 50);
   let sent = 0;
@@ -255,7 +256,7 @@ export async function inviteByEmail(form: FormData) {
 }
 
 export async function resendInvite(code: string) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("invites");
   const inv = await q.get<{ email: string | null; note: string }>("SELECT email, note FROM invites WHERE code = ? AND revoked_at IS NULL", code);
   if (!inv?.email) return fail("Couldn't resend: the invite is revoked or has no email");
   if ((await mailInvite(code, inv.email, a.name, inv.note)).startsWith("failed")) return fail("The email failed to send. Check Emails sent, then try again.");
@@ -284,7 +285,7 @@ async function sendWaitlistInvite(id: number, a: { id: number; name: string }) {
 }
 
 export async function inviteFromWaitlist(id: number) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("waitlist");
   const r = await sendWaitlistInvite(id, a);
   if (r === "invited") return fail("Already invited");
   if (r === "joined") return fail("They already have an account");
@@ -295,7 +296,7 @@ export async function inviteFromWaitlist(id: number) {
 
 /** Waitlist → "Invite the oldest N": first come, first served, one at a time so a failed email stops nothing else. */
 export async function inviteOldestFromWaitlist(form: FormData) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("waitlist");
   const n = Math.min(50, Math.max(1, Math.round(Number(form.get("n")) || 0)));
   const ids = await q.all<{ id: number }>("SELECT id FROM waitlist WHERE invited_at IS NULL ORDER BY created_at ASC LIMIT ?", n);
   const tally = { sent: 0, joined: 0, invited: 0, failed: 0 };
@@ -306,7 +307,7 @@ export async function inviteOldestFromWaitlist(form: FormData) {
 }
 
 export async function removeFromWaitlist(id: number) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("waitlist");
   const w = await q.get<{ email: string }>("DELETE FROM waitlist WHERE id = ? RETURNING email", id);
   if (w) await logAdmin(a.id, "removed from waitlist", w.email);
   await done(w ? `Removed ${w.email} from the waitlist` : "Already removed");
@@ -316,7 +317,7 @@ export async function removeFromWaitlist(id: number) {
 /* Identity verification and protected names */
 
 export async function approveIdentity(userId: number) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("verification");
   const u = await q.get<{ email: string; name: string; handle: string }>(
     "UPDATE users SET identity_status = 'verified', identity_verified_at = ?, identity_note = '' WHERE id = ? RETURNING email, name, handle",
     now(),
@@ -337,7 +338,7 @@ export async function approveIdentity(userId: number) {
 
 /** Takes the Verified mark back (e.g. the account changed hands or was verified by mistake). A reason is required and sent to them. */
 export async function revokeIdentity(userId: number, form: FormData) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("verification");
   const note = String(form.get("note") || "").trim().slice(0, 200);
   if (!note) return fail("Give a reason; it's sent to them");
   const u = await q.get<{ email: string; name: string; handle: string }>(
@@ -358,7 +359,7 @@ export async function revokeIdentity(userId: number, form: FormData) {
 }
 
 export async function rejectIdentity(userId: number, form: FormData) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("verification");
   const note = String(form.get("note") || "").trim().slice(0, 200);
   const u = await q.get<{ email: string; name: string; handle: string }>(
     "UPDATE users SET identity_status = 'rejected', identity_note = ? WHERE id = ? RETURNING email, name, handle",
@@ -379,7 +380,7 @@ export async function rejectIdentity(userId: number, form: FormData) {
 }
 
 export async function addProtectedName(form: FormData) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("verification");
   const { normalizeName } = await import("@/lib/identity");
   const names = String(form.get("names") || "")
     .split(/[\n,;]+/)
@@ -394,7 +395,7 @@ export async function addProtectedName(form: FormData) {
 }
 
 export async function removeProtectedName(handle: string) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("verification");
   await q.run("DELETE FROM protected_names WHERE handle = ?", handle);
   await logAdmin(a.id, "unprotected name", handle);
   await done(`Unprotected ${handle}`);
@@ -410,7 +411,7 @@ const cleanBlock = (raw: string) => {
 
 /** Stops an address, or a whole domain, sending to anyone on FloorTest. */
 export async function addPlatformBlock(form: FormData) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("blocks");
   const b = cleanBlock(String(form.get("value") || ""));
   if (!b) return fail("Enter an email address or a domain like example.com");
   const reason = String(form.get("reason") || "").trim().slice(0, 200);
@@ -421,6 +422,7 @@ export async function addPlatformBlock(form: FormData) {
 }
 
 export async function blockEverywhere(email: string) {
+  await requireAdminAction("blocks");
   const f = new FormData();
   f.set("value", email);
   f.set("reason", "from moderation");
@@ -428,7 +430,7 @@ export async function blockEverywhere(email: string) {
 }
 
 export async function removePlatformBlock(id: number) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("blocks");
   const b = await q.get<{ value: string }>("SELECT value FROM platform_blocks WHERE id = ?", id);
   if (!b) return fail("Already lifted");
   await q.run("DELETE FROM platform_blocks WHERE id = ?", id);
@@ -439,7 +441,7 @@ export async function removePlatformBlock(id: number) {
 
 /** Logs a copyright claim. The track is found by its receipt token or its id. */
 export async function openTakedown(form: FormData) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("super");
   const claimant = String(form.get("claimant") || "").trim().slice(0, 120);
   const claimantEmail = String(form.get("claimant_email") || "").trim().toLowerCase().slice(0, 200);
   const ref = String(form.get("track") || "").trim().slice(0, 100);
@@ -461,7 +463,7 @@ export async function openTakedown(form: FormData) {
 
 /** Closes a case: removes the track (and its file) or rejects the claim, with a note for the record. */
 export async function decideTakedown(id: number, outcome: "removed" | "rejected", form: FormData) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("super");
   const c = await q.get<{ id: number; track_id: number | null; track_label: string; status: string }>("SELECT id, track_id, track_label, status FROM takedowns WHERE id = ?", id);
   if (!c || c.status !== "open") return fail("That case is already closed");
   const notes = String(form.get("notes") || "").trim().slice(0, 1000);
@@ -493,7 +495,7 @@ export async function decideTakedown(id: number, outcome: "removed" | "rejected"
 
 /** Admin side of a privacy request. The typed address has to match before anything is deleted. */
 export async function adminDeleteAccount(userId: number, form: FormData) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("super");
   const u = await target(userId);
   if (!u || u.id === a.id || String(form.get("confirm") || "").trim().toLowerCase() !== u.email.toLowerCase()) return fail("Nothing deleted: the email you typed didn't match");
   await purgeAccount(u.id);
@@ -503,7 +505,7 @@ export async function adminDeleteAccount(userId: number, form: FormData) {
 }
 
 export async function adminEraseSender(form: FormData) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("super");
   const email = String(form.get("email") || "").trim().toLowerCase();
   if (!EMAIL_RE.test(email) || String(form.get("confirm") || "").trim().toLowerCase() !== email) return fail("Nothing erased: the email you typed didn't match");
   const r = await eraseSender(email);
@@ -514,7 +516,7 @@ export async function adminEraseSender(form: FormData) {
 
 /** Turns a held-back feature on for chosen plans and named accounts (by handle). */
 export async function saveSwitch(feature: Feature, form: FormData) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("switches");
   if (!(feature in FEATURES)) return;
   const plans = (await allPlans()).map((p) => p.id).filter((p) => form.get(`plan_${p}`) === "on");
   const handles = [...new Set(String(form.get("handles") || "").split(/[\s,]+/).map((h) => h.replace(/^@/, "").toLowerCase()).filter(Boolean))].slice(0, 200);
@@ -531,7 +533,7 @@ export async function saveSwitch(feature: Feature, form: FormData) {
 
 /** Publishes to the bell of everyone matching the filters; with email on, also emails those of them who opted into product news. */
 export async function publishAnnouncement(form: FormData) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("announcements");
   const title = String(form.get("title") || "").trim().slice(0, 100);
   const body = String(form.get("body") || "").trim().slice(0, 600);
   const href = String(form.get("href") || "").trim().slice(0, 200);
@@ -585,7 +587,7 @@ export async function publishAnnouncement(form: FormData) {
 
 /** Moves an account to a new handle. For impersonation, the old name is released (no forwarding) and can be protected. */
 export async function adminChangeHandle(userId: number, form: FormData) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("super");
   const u = await target(userId);
   if (!u) return fail("Account not found");
   const takeback = form.get("takeback") === "on";
@@ -615,7 +617,7 @@ export async function adminChangeHandle(userId: number, form: FormData) {
 
 /** Starts an email change for someone who can't do it themselves. The new address still has to confirm. */
 export async function adminChangeEmail(userId: number, form: FormData) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("super");
   const u = await target(userId);
   if (!u) return fail("Account not found");
   const how = String(form.get("how") || "").trim().slice(0, 200);
@@ -628,7 +630,7 @@ export async function adminChangeEmail(userId: number, form: FormData) {
 }
 
 export async function adminCancelEmailChange(userId: number) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("super");
   const u = await target(userId);
   if (!u) return fail("Account not found");
   await cancelEmailChange(u.id);
@@ -639,7 +641,7 @@ export async function adminCancelEmailChange(userId: number) {
 
 /** Marks an incident as dealt with, so it leaves the Overview to-do list. */
 export async function resolveIncident(id: number) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("incidents.act");
   const r = await q.run("UPDATE incidents SET resolved_at = ? WHERE id = ? AND resolved_at IS NULL", now(), id);
   if (r.changes) await logAdmin(a.id, "resolved incident", `#${id}`);
   await done("Marked handled");
@@ -648,7 +650,7 @@ export async function resolveIncident(id: number) {
 
 /** Clears every open incident (of one kind, or all). For stale ones after a fix has shipped. */
 export async function resolveAllIncidents(kind: string) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("incidents.act");
   const r = kind
     ? await q.run("UPDATE incidents SET resolved_at = ? WHERE resolved_at IS NULL AND kind = ?", now(), kind)
     : await q.run("UPDATE incidents SET resolved_at = ? WHERE resolved_at IS NULL", now());
@@ -659,7 +661,7 @@ export async function resolveAllIncidents(kind: string) {
 
 /** Flips a site-wide switch (sharing, bot check, open sign-up, pause uploads). Takes effect on the next request. */
 export async function flipSwitch(key: SwitchKey, on: boolean) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("super");
   if (!(key in SWITCHES)) return fail("Unknown switch");
   await setSwitch(key, on, a.id);
   await logAdmin(a.id, on ? "switched on" : "switched off", SWITCHES[key].label);
@@ -669,7 +671,7 @@ export async function flipSwitch(key: SwitchKey, on: boolean) {
 
 /** Lets email go to an address again after a bounce or spam report (for example, once they've fixed their mailbox). */
 export async function liftSuppression(email: string) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("users.support");
   await q.run("DELETE FROM email_suppressions WHERE email = ?", email.trim().toLowerCase());
   await logAdmin(a.id, "lifted email block", email);
   await done(`Email to ${email} allowed again`);
@@ -679,7 +681,7 @@ export async function liftSuppression(email: string) {
 /* ───────────────────────── Beta partners and feedback ───────────────────────── */
 
 export async function savePartnerNote(email: string, form: FormData) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("partners.act");
   const key = email.trim().toLowerCase().slice(0, 200);
   if (!key) return;
   const note = String(form.get("note") || "").slice(0, 4000);
@@ -699,7 +701,7 @@ export async function savePartnerNote(email: string, form: FormData) {
 const FEEDBACK_STATUSES = ["new", "planned", "fixed", "wontdo"] as const;
 
 export async function setFeedbackStatus(id: number, status: string) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("feedback.act");
   if (!(FEEDBACK_STATUSES as readonly string[]).includes(status) || !Number.isSafeInteger(id)) return;
   await q.run("UPDATE contact_messages SET feedback_status = ?, handled_at = ? WHERE id = ? AND topic LIKE 'Feedback%'", status, status === "new" ? null : now(), id);
   await logAdmin(a.id, "feedback status", `#${id}`, status);
@@ -712,7 +714,7 @@ const fullestOn = async (plan: string) =>
   (await q.get<{ n: number }>("SELECT COALESCE(MAX(c), 0) AS n FROM (SELECT COUNT(t.id) AS c FROM users u LEFT JOIN tracks t ON t.user_id = u.id AND t.deleted_at IS NULL WHERE u.plan = ? GROUP BY u.id) x", plan))!.n;
 
 export async function savePlan(id: string, form: FormData) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("super");
   const old = (await allPlans()).find((p) => p.id === id);
   if (!old) return fail("That plan no longer exists.");
   const name = String(form.get("name") || "").trim().slice(0, 40);
@@ -745,7 +747,7 @@ export async function savePlan(id: string, form: FormData) {
 }
 
 export async function addPlan(form: FormData) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("super");
   const id = String(form.get("id") || "").trim().toLowerCase();
   const name = String(form.get("name") || "").trim().slice(0, 40);
   if (!/^[a-z][a-z0-9_]{1,23}$/.test(id)) return fail("The plan code must be 2–24 lowercase letters, numbers or _, starting with a letter.");
@@ -763,7 +765,7 @@ export async function addPlan(form: FormData) {
 }
 
 export async function setPlanOffered(id: string, offered: boolean) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("super");
   if (id === FREE_PLAN && !offered) return fail("Free can't be retired: every account falls back to it.");
   await q.run("UPDATE plans SET retired_at = ?, updated_at = ? WHERE id = ?", offered ? null : now(), now(), id);
   await logAdmin(a.id, offered ? "offered plan" : "retired plan", id);
@@ -772,7 +774,7 @@ export async function setPlanOffered(id: string, offered: boolean) {
 }
 
 export async function deletePlan(id: string) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("super");
   if (id === FREE_PLAN) return fail("Free can't be deleted.");
   const n = (await q.get<{ n: number }>("SELECT COUNT(*) AS n FROM users WHERE plan = ?", id))!.n;
   if (n) return fail(`${n} account${n === 1 ? " is" : "s are"} on this plan. Retire it instead, or move them first.`);
@@ -784,7 +786,7 @@ export async function deletePlan(id: string) {
 
 /** Admin → Site content: save a page's draft, and publish it when the Publish button was pressed. */
 export async function saveContent(page: SitePage, form: FormData) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("content");
   const def = SITE_PAGES[page];
   if (!def) return;
   const values: Record<string, string> = {};
@@ -813,7 +815,7 @@ export async function saveContent(page: SitePage, form: FormData) {
 
 /** Copy an older published version back into the draft (it goes live only when published). */
 export async function restoreContent(page: string, versionId: number) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("content");
   if (!contentKeys.includes(page)) return;
   const v = await q.get<{ body: string }>("SELECT body FROM site_content_versions WHERE id = ? AND page = ?", versionId, page);
   if (!v) return fail("That version no longer exists.");
@@ -825,7 +827,7 @@ export async function restoreContent(page: string, versionId: number) {
 
 /** Throw the draft away: it goes back to what's published. */
 export async function discardDraft(page: string) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("content");
   if (!contentKeys.includes(page)) return;
   // Keep the thrown-away draft in the version history, so a mis-click can be undone with Restore.
   const cur = await q.get<{ draft: string; published: string }>("SELECT draft, published FROM site_content WHERE page = ?", page);
@@ -840,7 +842,7 @@ const contentKeys: string[] = [...Object.keys(SITE_PAGES), ...(Object.keys(EMAIL
 
 /** Admin → Site content → Emails: save an email's wording as a draft, or publish it so it's used from the next send. */
 export async function saveEmail(id: EmailId, form: FormData) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("content");
   const def = EMAILS[id];
   if (!def) return;
   const subject = String(form.get("subject") ?? "").replace(/\s+/g, " ").trim().slice(0, 200) || def.subject;
@@ -866,7 +868,7 @@ export async function saveEmail(id: EmailId, form: FormData) {
 
 /** Send the draft, filled with example details, to the admin's own address. */
 export async function sendTestEmail(id: EmailId) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("content");
   if (!EMAILS[id]) return;
   const t = await emailTemplate(id, "draft");
   const status = await sendMail({ userId: null, audience: "support", to: a.email, subject: `[Test] ${fillEmail(t.subject, SAMPLE_VARS)}`, body: fillEmail(t.body, SAMPLE_VARS) });
@@ -876,7 +878,7 @@ export async function sendTestEmail(id: EmailId) {
 
 /** Private admin tags on an account, used to filter Users and announcements. */
 export async function saveTags(userId: number, form: FormData) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("users.support");
   const u = await target(userId);
   if (!u) return;
   const tags = cleanTags(String(form.get("tags") || ""));
@@ -888,10 +890,71 @@ export async function saveTags(userId: number, form: FormData) {
 
 /** A private note on an account, visible only in Admin. */
 export async function addNote(userId: number, form: FormData) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("users.support");
   const body = String(form.get("note") || "").trim().slice(0, 2000);
   if (!body || !(await target(userId))) return fail("Write a note first.");
   await q.run("INSERT INTO account_notes (user_id, admin_id, body, created_at) VALUES (?,?,?,?)", userId, a.id, body, now());
   await done("Note added.");
+  refresh();
+}
+
+/* Ops team: the super admin adds people with a role and can tick extra access or take some away. */
+
+const roleOf = (v: FormDataEntryValue | null): Role | null => (typeof v === "string" && v in ROLES ? (v as Role) : null);
+
+/** Ticked boxes against the role's defaults: what to add on top, and what to take away. */
+function grantsAndDenials(role: Role, form: FormData) {
+  const ticked = new Set((form.getAll("perm") as string[]).filter((p): p is Perm => p in PERMS));
+  const defaults = new Set(ROLE_PERMS[role]);
+  return {
+    grant: [...ticked].filter((p) => !defaults.has(p)).join(","),
+    deny: [...defaults].filter((p) => !ticked.has(p)).join(","),
+  };
+}
+
+export async function addOpsMember(form: FormData) {
+  const a = await requireAdminAction("super");
+  const email = String(form.get("email") || "").trim().toLowerCase().slice(0, 200);
+  const role = roleOf(form.get("role"));
+  if (!role) return fail("Pick a role.");
+  const u = await q.get<{ id: number; handle: string; email_verified_at: number | null; suspended_at: number | null }>("SELECT id, handle, email_verified_at, suspended_at FROM users WHERE email = ?", email);
+  // Only existing, confirmed accounts: nobody can sign up later with an address and inherit access.
+  if (!u) return fail("No FloorTest account uses that email. Ask them to sign up and confirm their email first.");
+  if (!u.email_verified_at) return fail("They need to confirm their email before they can join the ops team.");
+  if (u.suspended_at) return fail("That account is suspended.");
+  if (isAdminEmail(email)) return fail("That's a super admin already.");
+  const r = await q.run("INSERT INTO ops_members (user_id, role, invited_by, created_at) VALUES (?,?,?,?) ON CONFLICT (user_id) DO NOTHING", u.id, role, a.id, now());
+  if (!r.changes) return fail(`@${u.handle} is already on the ops team. Change their role below.`);
+  await logAdmin(a.id, "added to ops team", `@${u.handle}`, ROLES[role]);
+  await done(`Added @${u.handle} as ${ROLES[role]}. They sign in at the ops sign-in with two-step on.`);
+  refresh();
+}
+
+export async function saveOpsMember(userId: number, form: FormData) {
+  const a = await requireAdminAction("super");
+  const role = roleOf(form.get("role"));
+  if (!role) return fail("Pick a role.");
+  const before = await q.get<{ role: Role; grant_perms: string; deny_perms: string; handle: string }>(
+    "SELECT m.role, m.grant_perms, m.deny_perms, u.handle FROM ops_members m JOIN users u ON u.id = m.user_id WHERE m.user_id = ?",
+    userId,
+  );
+  if (!before) return fail("They're not on the ops team.");
+  // A role change starts from that role's defaults; otherwise the ticked boxes decide.
+  const { grant, deny } = role === before.role ? grantsAndDenials(role, form) : { grant: "", deny: "" };
+  await q.run("UPDATE ops_members SET role = ?, grant_perms = ?, deny_perms = ? WHERE user_id = ?", role, grant, deny, userId);
+  await logAdmin(a.id, "changed ops access", `@${before.handle}`, `${ROLES[before.role]} → ${ROLES[role]}${grant ? ` · +${grant}` : ""}${deny ? ` · −${deny}` : ""}`);
+  await done(role === before.role ? `Saved @${before.handle}'s access` : `@${before.handle} is now ${ROLES[role]}, with that role's defaults`);
+  refresh();
+}
+
+export async function setOpsMemberDisabled(userId: number, disabled: boolean) {
+  const a = await requireAdminAction("super");
+  const m = await q.get<{ handle: string }>("SELECT u.handle FROM ops_members m JOIN users u ON u.id = m.user_id WHERE m.user_id = ?", userId);
+  if (!m) return fail("They're not on the ops team.");
+  await q.run("UPDATE ops_members SET disabled_at = ? WHERE user_id = ?", disabled ? now() : null, userId);
+  // Signed out of ops at once, not at the end of their session.
+  if (disabled) await q.run("DELETE FROM admin_sessions WHERE user_id = ?", userId);
+  await logAdmin(a.id, disabled ? "removed ops access" : "restored ops access", `@${m.handle}`);
+  await done(disabled ? `@${m.handle} no longer has ops access` : `@${m.handle} has ops access again`);
   refresh();
 }

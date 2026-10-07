@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/admin";
 import { q } from "@/lib/db";
 import { JOBS, LATE_AFTER_MS, type JobName } from "@/lib/cron";
 
@@ -21,6 +22,7 @@ function summary(result: string) {
 
 /** Every scheduled job run for the last 90 days: when, how long, whether it worked and what it did. */
 export default async function Jobs() {
+  await requireAdmin("jobs");
   const now = Date.now();
   const runs = await q.all<Run>("SELECT id, job, started_at, ms, ok, result FROM job_runs ORDER BY started_at DESC LIMIT 200");
   return (

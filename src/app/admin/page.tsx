@@ -1,3 +1,5 @@
+import { can, requireAdmin } from "@/lib/admin";
+import { needFor } from "@/lib/ops-perms";
 import { mailUsage } from "@/lib/mail-quota";
 import { partnerRows } from "@/lib/partners";
 import { switchOn } from "@/lib/switches";
@@ -20,7 +22,12 @@ type Todo = { n: number; label: string; sub: string; href: string; area: string;
 
 /** A verdict first, then what needs acting on, how the platform is running, and how this week compares with last. */
 export default async function AdminOverview({ searchParams }: { searchParams: Promise<{ activity?: string }> }) {
-  const withAdmin = (await searchParams).activity === "all";
+  const withAdminParam = (await searchParams).activity === "all";
+  const me = await requireAdmin("overview");
+  // The admin log is the super admin's alone, so only they can mix admin actions into the activity feed.
+  const withAdmin = withAdminParam && me.access.super;
+  // Each person sees only the items and tiles for areas they can open.
+  const ok = (href: string) => href.startsWith("#") || can(me.access, needFor(href.split(/[?#]/)[0]));
   const t = Date.now();
   const w0 = t - 7 * DAY;
   const w1 = t - 14 * DAY;
@@ -170,7 +177,7 @@ export default async function AdminOverview({ searchParams }: { searchParams: Pr
     { n: num(usr?.verifying), label: "Verification", sub: "", href: "/admin/verification", area: "trust" },
     { n: partnersStuck, label: "Partners to nudge", sub: "", href: "/admin/partners?show=stuck", area: "growth" },
     { n: wait, label: "Waitlist", sub: "", href: "/admin/waitlist", area: "growth" },
-  ].filter((x) => x.n > 0);
+  ].filter((x) => x.n > 0 && ok(x.href));
   const now = todo.filter((x) => x.urgent);
   const queue = todo.filter((x) => !x.urgent);
 
@@ -190,6 +197,7 @@ export default async function AdminOverview({ searchParams }: { searchParams: Pr
     { label: "Quota", tone: !mail ? "idle" : mail.warn ? "bad" : mailPct > 0.5 ? "warn" : "ok", value: mail ? `${Math.round(mailPct * 100)}% used` : "Unknown", href: "/admin/emails" },
     { label: "Storage", tone: !storage.length ? "idle" : full.length ? "bad" : storagePct > 0.5 ? "warn" : "ok", value: storage.length ? `${Math.round(storagePct * 100)}% used` : "Unknown", href: "/admin/storage" },
   ];
+  const shownHealth = health.filter((h) => ok(h.href));
 
   const degraded = health.some((h) => h.tone === "bad") || unavailable.length > 0;
   const verdict: { tone: Tone; text: string } = degraded
@@ -292,7 +300,7 @@ export default async function AdminOverview({ searchParams }: { searchParams: Pr
         <section id="health" aria-labelledby="health-h" className="space-y-3">
           <h2 id="health-h" className="text-lg font-semibold">Health</h2>
           <ul className="grid grid-cols-2 gap-2">
-            {health.map((h) => (
+            {shownHealth.map((h) => (
               <li key={h.label}>
                 <Link href={h.href} className="block h-full rounded-lg border border-line bg-ink-2 p-3 hover:border-line-2">
                   <span className="label flex items-center gap-2">
@@ -361,9 +369,11 @@ export default async function AdminOverview({ searchParams }: { searchParams: Pr
       <section aria-labelledby="act-h">
         <div className="flex items-baseline justify-between gap-3">
           <h2 id="act-h" className="text-lg font-semibold">Recent activity</h2>
-          <Link href={withAdmin ? "/admin" : "/admin?activity=all"} className="text-sm text-mute underline hover:text-bone">
-            {withAdmin ? "Hide admin actions" : "Include admin actions"}
-          </Link>
+          {me.access.super && (
+            <Link href={withAdmin ? "/admin" : "/admin?activity=all"} className="text-sm text-mute underline hover:text-bone">
+              {withAdmin ? "Hide admin actions" : "Include admin actions"}
+            </Link>
+          )}
         </div>
         {activity.length ? (
           <ul className="mt-3 divide-y divide-line rounded-md border border-line">

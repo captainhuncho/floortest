@@ -54,6 +54,7 @@ Already reflected in the live Terms, Privacy, Cookie and Sub-processors pages un
 20. **Folders:** when a sender sends a whole EP or album, does a single confirmation that they "own or control these tracks" cover every track, or should it be per track?
 21. **Staff notes and CSV export:** what must the Privacy Policy say about internal notes on accounts and exporting account lists? Are notes included in a subject access request?
 22. **Email confirmation cookie:** we treat the 30-day `ft_sender` cookie as strictly necessary (it replaces asking for a code on every send). Please confirm no consent banner is needed for it.
+23. **Staff roles (added 7 Oct 2026):** ops now has role-based staff access (Customer Care, Developer, Product Lead, Sales & Marketing), each limited to what the role needs; deletion, data export, takedowns and account-takeover powers stay with the super admin. Privacy Policy section on staff access updated to say so. Is that wording enough for UK/EU GDPR Art. 32 and the Ghana Data Protection Act, or do staff need a written confidentiality undertaking we should mention?
 
 **Still to confirm on the tech side:** the R2 bucket's jurisdiction, and that the @floortest.app support address actually receives mail.
 

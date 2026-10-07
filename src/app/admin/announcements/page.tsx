@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/admin";
 import { q } from "@/lib/db";
 import { env } from "@/lib/env";
 import { audienceWhere, describeAudience, readAudience } from "@/lib/audience";
@@ -7,6 +8,7 @@ import { AudienceFields } from "../AudienceFields";
 
 /** Write an update, preview it as it'll appear in the bell and in email, then publish. */
 export default async function Announcements({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  await requireAdmin("announcements");
   const sp = await searchParams;
   const draft = { title: (sp.title || "").slice(0, 100), body: (sp.body || "").slice(0, 600), href: (sp.href || "").slice(0, 200), list: sp.list === "marketing" ? "marketing" : sp.list === "product" ? "product" : "", subscribers: sp.subscribers === "on" };
   const aud = readAudience((k) => sp[k]);

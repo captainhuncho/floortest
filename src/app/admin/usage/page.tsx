@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/admin";
 import { q } from "@/lib/db";
 import { FEATURES_USED, type FeatureUsed } from "@/lib/usage";
 
@@ -10,6 +11,7 @@ type Row = { feature: string; people: number; uses: number };
 
 /** Which parts of FloorTest people actually use, last 30 days against the 30 before. Counts only; no content. */
 export default async function Usage() {
+  await requireAdmin("usage");
   const t = Date.now();
   const [from, mid] = [isoDay(t - 60 * DAY), isoDay(t - 30 * DAY)];
   const period = (a: string, b: string | null) =>

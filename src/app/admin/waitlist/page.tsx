@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/admin";
 import Link from "next/link";
 import { ConfirmButton, ConfirmSubmit } from "../AdminUi";
 import { q } from "@/lib/db";
@@ -11,6 +12,7 @@ const WHERE: Record<Tab, string> = { waiting: "WHERE invited_at IS NULL", invite
 /** People who asked for an invite from the home page. */
 
 export default async function Waitlist({ searchParams }: { searchParams: Promise<{ status?: string; n?: string }> }) {
+  await requireAdmin("waitlist");
   const sp = await searchParams;
   const tab: Tab = sp.status === "invited" || sp.status === "all" ? sp.status : "waiting";
   // Oldest first, a page at a time: "Show more" grows the list instead of silently stopping at a cap.

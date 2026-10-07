@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/admin";
 import Link from "next/link";
 import { NO_TRACK_DAYS, NOT_JOINED_DAYS, partnerRows, QUIET_DAYS, type PartnerRow } from "@/lib/partners";
 import { savePartnerNote } from "../actions";
@@ -14,6 +15,7 @@ const STAGES: PartnerRow["stage"][] = ["Invited", "Joined", "Receiving", "Review
 
 /** Every beta account and unused personal invite: how far each person has got, who needs a nudge, and call notes. */
 export default async function Partners({ searchParams }: { searchParams: Promise<{ show?: string }> }) {
+  await requireAdmin("partners.read");
   const show = (await searchParams).show;
   const now = Date.now();
   const all = await partnerRows(now);

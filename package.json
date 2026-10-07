@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "tsx scripts/check-admin-perms.ts && next build",
+    "check:perms": "tsx scripts/check-admin-perms.ts",
     "vercel-build": "npm run db:migrate && next build",
     "start": "next start",
     "seed": "tsx scripts/seed.ts",

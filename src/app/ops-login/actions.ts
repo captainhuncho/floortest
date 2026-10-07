@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { hashPassword, verifyPassword } from "@/lib/auth";
-import { isAdminEmail, logAdmin } from "@/lib/admin";
+import { homeFor, logAdmin, opsAccessFor } from "@/lib/admin";
 import { q } from "@/lib/db";
 import { createOpsSession, currentOpsAdmin, destroyOpsSession } from "@/lib/ops";
 import { recentCount, record, requestIp } from "@/lib/ratelimit";
@@ -33,11 +33,13 @@ export async function opsSignIn(_: FormState, form: FormData): Promise<FormState
     email,
   );
   const passwordOk = verifyPassword(password, u?.password_hash ?? DUMMY);
-  if (!u || !passwordOk || !isAdminEmail(email) || !u.email_verified_at || !u.totp_enabled_at || u.suspended_at) return fail();
+  // The super admin, or an active ops team member; anyone else gets the same "didn't work" as a wrong password.
+  const access = u && passwordOk ? await opsAccessFor({ id: u.id, email }) : null;
+  if (!u || !passwordOk || !access || !u.email_verified_at || !u.totp_enabled_at || u.suspended_at) return fail();
   if (!(await checkSecondFactor(u.id, code))) return fail();
   await createOpsSession(u.id);
   await logAdmin(u.id, "signed in to ops", "", ip);
-  redirect("/admin");
+  redirect(homeFor(access));
 }
 
 export async function opsSignOut() {

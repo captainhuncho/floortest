@@ -5,7 +5,7 @@ import { SITE_PAGES, type SitePage } from "@/lib/content";
 
 /** Admin → Site content → Preview: turn on draft view for this browser and open the page. `?off` turns it off. */
 export async function GET(req: Request) {
-  await requireAdmin();
+  await requireAdmin("content");
   const url = new URL(req.url);
   const dm = await draftMode();
   if (url.searchParams.has("off")) {

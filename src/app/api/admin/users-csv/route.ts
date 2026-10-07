@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 
 /** Admin → Users → Export CSV: the filtered list, for outreach in a spreadsheet. Logged, since it contains emails. */
 export async function GET(req: Request) {
-  const a = await requireAdminAction();
+  const a = await requireAdminAction("super");
   const sp = new URL(req.url).searchParams;
   const aud = readAudience((k) => sp.get(k));
   const w = audienceWhere(aud, Date.now(), true);

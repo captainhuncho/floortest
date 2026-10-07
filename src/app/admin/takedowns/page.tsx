@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/admin";
 import { q } from "@/lib/db";
 import { decideTakedown, openTakedown } from "../actions";
 import { ConfirmSubmit } from "../AdminUi";
@@ -11,6 +12,7 @@ const day = (t: number) => new Date(t).toLocaleDateString("en-GB");
 
 /** Copyright claims: log each one, then remove the track or reject the claim. Every step is kept for the record. */
 export default async function Takedowns() {
+  await requireAdmin("super");
   const rows = await q.all<Case>(
     "SELECT c.*, u.handle AS admin FROM takedowns c LEFT JOIN users u ON u.id = c.admin_id ORDER BY (c.status = 'open') DESC, c.created_at DESC LIMIT 200",
   );

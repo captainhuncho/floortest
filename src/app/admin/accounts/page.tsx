@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/admin";
 import Link from "next/link";
 import { audienceWhere, readAudience } from "@/lib/audience";
 import { allPlans } from "@/lib/plan-store";
@@ -7,6 +8,7 @@ import { likeContains, q } from "@/lib/db";
 
 /** Users: receivers (accounts with a link) and senders (people who've sent tracks, identified by email). */
 export default async function Users({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  await requireAdmin("users.read");
   const sp = await searchParams;
   const search = (sp.q || "").trim().slice(0, 100);
   if (sp.view === "senders") return <Senders search={search} />;

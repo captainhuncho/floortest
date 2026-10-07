@@ -1102,4 +1102,21 @@ create index if not exists contact_open on contact_messages(topic) where handled
 create index if not exists incidents_open on incidents(kind) where resolved_at is null;
 `,
   },
+  {
+    // The ops team: people the super admin (ADMIN_EMAILS) lets into ops with a role. Extra and removed permissions
+    // are per person, on top of the role's defaults (see src/lib/ops-perms.ts).
+    id: "0067_ops_members",
+    sql: `
+create table ops_members (
+  user_id bigint primary key references users(id) on delete cascade,
+  role text not null check (role in ('care', 'developer', 'product', 'sales')),
+  grant_perms text not null default '',
+  deny_perms text not null default '',
+  invited_by bigint references users(id) on delete set null,
+  created_at bigint not null,
+  disabled_at bigint
+);
+alter table ops_members enable row level security;
+`,
+  },
 ];

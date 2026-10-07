@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/admin";
 import Link from "next/link";
 import { ConfirmButton } from "../AdminUi";
 import { likeContains, q } from "@/lib/db";
@@ -14,6 +15,7 @@ const DELIVERY: Record<string, [string, string]> = {
 
 /** Every email the platform sent, across all accounts, and what happened to it after it left (from Resend). */
 export default async function Emails({ searchParams }: { searchParams: Promise<{ q?: string; failed?: string }> }) {
+  await requireAdmin("emails.read");
   const sp = await searchParams;
   const search = (sp.q || "").trim().slice(0, 100);
   const failedOnly = sp.failed === "1";

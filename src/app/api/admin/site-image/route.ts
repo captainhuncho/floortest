@@ -10,7 +10,7 @@ const MAX = 5 * 1024 * 1024;
 
 /** Admin → Site content: upload an image for a page. Returns its storage key; the editor saves it into the draft. */
 export async function POST(req: Request) {
-  await requireAdminAction();
+  await requireAdminAction("content");
   if (Number(req.headers.get("content-length") || 0) > MAX + 64 * 1024) return NextResponse.json({ error: "Images must be under 5 MB." }, { status: 413 });
   const file = (await req.formData().catch(() => null))?.get("file");
   if (!(file instanceof File) || !file.size) return NextResponse.json({ error: "Choose an image." }, { status: 400 });

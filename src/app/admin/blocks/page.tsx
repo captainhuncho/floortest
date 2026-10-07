@@ -1,9 +1,11 @@
+import { requireAdmin } from "@/lib/admin";
 import { ConfirmButton } from "../AdminUi";
 import { q } from "@/lib/db";
 import { addPlatformBlock, removePlatformBlock } from "../actions";
 
 /** Senders blocked across every link, by address or whole domain. Each receiver's own blocks are separate. */
 export default async function Blocks() {
+  await requireAdmin("blocks");
   const rows = await q.all<{ id: number; kind: string; value: string; reason: string; created_at: number; admin: string | null }>(
     "SELECT b.*, u.handle AS admin FROM platform_blocks b LEFT JOIN users u ON u.id = b.admin_id ORDER BY b.created_at DESC",
   );

@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/admin";
 import Link from "next/link";
 import { ConfirmButton } from "../AdminUi";
 import { likeContains, q } from "@/lib/db";
@@ -6,6 +7,7 @@ import { blockEverywhere, blockSenderAsAdmin, removeTrackAsAdmin } from "../acti
 
 /** Find any track or sender across every account, for abuse reports and takedowns. */
 export default async function Moderation({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  await requireAdmin("moderation");
   const search = ((await searchParams).q || "").trim().slice(0, 100);
   const like = likeContains(search);
   const tracks = search

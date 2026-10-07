@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/admin";
 import Link from "next/link";
 import { q } from "@/lib/db";
 import { ConfirmButton } from "../AdminUi";
@@ -15,6 +16,7 @@ const INFO = new Set(["upload_rejected"]);
 
 /** Everything that went wrong, newest first. Open ones count on the Overview until they're marked handled. */
 export default async function Incidents({ searchParams }: { searchParams: Promise<{ kind?: string; show?: string }> }) {
+  await requireAdmin("incidents.read");
   const sp = await searchParams;
   const filter = sp.kind && KINDS[sp.kind] ? sp.kind : null;
   const showAll = sp.show === "all";

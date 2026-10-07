@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/admin";
 import Link from "next/link";
 import { q } from "@/lib/db";
 import { allowances } from "@/lib/allowance";
@@ -12,6 +13,7 @@ const cost = (b: number) => `$${(gb(b) * R2_PER_GB).toFixed(2)}`;
 
 /** What's stored, who stores most, what's about to be deleted, and how it's growing. */
 export default async function Storage() {
+  await requireAdmin("storage");
   const t = Date.now();
   const n = async (sql: string, ...a: unknown[]) => Number((await q.get<{ n: string | number | null }>(sql, ...a))?.n ?? 0);
   const [live, stems, pending, files] = await Promise.all([

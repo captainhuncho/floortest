@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/admin";
 import Link from "next/link";
 import { draftMode } from "next/headers";
 import { q } from "@/lib/db";
@@ -11,6 +12,7 @@ const PAGES = Object.keys(SITE_PAGES) as SitePage[];
 
 /** Edit the words and images on public pages: save a draft, preview it on the real page, then publish. */
 export default async function SiteContent({ searchParams }: { searchParams: Promise<{ page?: string; email?: string }> }) {
+  await requireAdmin("content");
   const sp = await searchParams;
   const want = sp.page as SitePage;
   const page = PAGES.includes(want) ? want : "home";

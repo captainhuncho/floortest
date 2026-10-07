@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/admin";
 import Link from "next/link";
 import { q } from "@/lib/db";
 import { allPlans, FREE_PLAN } from "@/lib/plan-store";
@@ -6,6 +7,7 @@ import { ConfirmButton } from "../AdminUi";
 
 /** Prices, track limits and wording for every plan. Changes show on the site straight away. */
 export default async function Plans() {
+  await requireAdmin("plans.read");
   const plans = await allPlans();
   const counts = new Map((await q.all<{ plan: string; n: number }>("SELECT plan, COUNT(*) AS n FROM users GROUP BY plan")).map((r) => [r.plan, Number(r.n)]));
   return (

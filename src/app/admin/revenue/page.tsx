@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/admin";
 import Link from "next/link";
 import { q } from "@/lib/db";
 import { parsePeriod } from "@/lib/period";
@@ -8,6 +9,7 @@ const money = (n: number) => `$${n.toFixed(2)}`;
 
 /** Who's on which plan and how that's moving. There's no billing yet, so value is at list price, not money received. */
 export default async function Revenue({ searchParams }: { searchParams: Promise<{ p?: string; from?: string; to?: string }> }) {
+  await requireAdmin("revenue");
   const period = parsePeriod(await searchParams);
   const { from, to } = period;
   const byPlan = await q.all<{ plan: string; n: number }>("SELECT plan, COUNT(*)::int AS n FROM users WHERE suspended_at IS NULL GROUP BY plan");

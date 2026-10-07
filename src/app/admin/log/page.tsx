@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/admin";
 import Link from "next/link";
 import { likeContains, q } from "@/lib/db";
 
@@ -8,6 +9,7 @@ type Row = { id: number; action: string; target: string; detail: string; created
 
 /** Every change made from the admin area: filter by admin or action, search, and jump to the account each one was about. */
 export default async function AdminLog({ searchParams }: { searchParams: Promise<{ admin?: string; action?: string; q?: string; before?: string }> }) {
+  await requireAdmin("super");
   const sp = await searchParams;
   const adminId = Number(sp.admin) || null;
   const action = (sp.action ?? "").slice(0, 80) || null;

@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/admin";
 import { CuePoint } from "@/components/CuePoint";
 import Link from "next/link";
 import { ConfirmButton, ConfirmSubmit } from "../AdminUi";
@@ -6,6 +7,7 @@ import { addProtectedName, approveIdentity, rejectIdentity, removeProtectedName,
 
 /** Identity requests to review, and names nobody can claim without us. */
 export default async function Verification() {
+  await requireAdmin("verification");
   const pending = await q.all<{ id: number; name: string; handle: string; email: string; identity_code: string | null; identity_links: string; identity_submitted_at: number | null }>(
     "SELECT id, name, handle, email, identity_code, identity_links, identity_submitted_at FROM users WHERE identity_status = 'pending' ORDER BY identity_submitted_at",
   );

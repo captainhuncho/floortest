@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/admin";
 import { q } from "@/lib/db";
 import { parsePeriod } from "@/lib/period";
 import { fmtDuration } from "@/lib/stats";
@@ -8,6 +9,7 @@ const WEEK = 7 * DAY;
 
 /** The beta's health in a handful of numbers: are receivers activating, acting fast, and coming back? */
 export default async function Metrics({ searchParams }: { searchParams: Promise<{ p?: string; from?: string; to?: string }> }) {
+  await requireAdmin("metrics");
   const t = Date.now();
   const period = parsePeriod(await searchParams, t);
   const { from: since, to: until } = period;

@@ -1,3 +1,4 @@
+import { can, requireAdmin } from "@/lib/admin";
 import Link from "next/link";
 import { KIND_LABEL } from "@/lib/db";
 import { notFound } from "next/navigation";
@@ -29,6 +30,8 @@ const when = (t: number) => new Date(t).toLocaleString("en-GB", { dateStyle: "me
 
 /** User 360: everything about one account on one page, with every admin action in one place. */
 export default async function Account({ params }: { params: Promise<{ id: string }> }) {
+  const me = await requireAdmin("users.read");
+  const support = can(me.access, "users.support");
   const id = Number((await params).id);
   if (!Number.isSafeInteger(id)) notFound();
   const u = await q.get<User & { identity_status: string | null; invite_code: string | null; referred_by: number | null; suspended_at: number | null; suspended_reason: string; pending_email: string | null; pending_email_at: number | null; signup_source: string; admin_tags: string }>("SELECT * FROM users WHERE id = ?", id);
@@ -266,6 +269,8 @@ export default async function Account({ params }: { params: Promise<{ id: string
 
         <aside aria-labelledby="actions-h" className="space-y-4 lg:sticky lg:top-6 lg:self-start">
           <h2 id="actions-h" className="text-lg font-semibold">Actions</h2>
+          {/* View as, plan, sign-out, two-step, handle and email: account-takeover powers, super admin only. */}
+          {me.access.super && (<>
           <div className="space-y-4 rounded-md border border-line p-4">
             <form action={startViewAs.bind(null, id)}>
               <button className="btn-lime btn-sm w-full">View their desk (read-only)</button>
@@ -347,7 +352,9 @@ export default async function Account({ params }: { params: Promise<{ id: string
               </form>
             </details>
           </div>
+          </>)}
 
+          {support && (
           <div className="space-y-3 rounded-md border border-danger/30 p-4">
             {u.suspended_at ? (
               <ConfirmButton action={unsuspendAccount.bind(null, id)} message={`Restore @${u.handle}? Their link and sign-in come back, and they're emailed.`} className="btn-lime btn-sm w-full">
@@ -363,10 +370,13 @@ export default async function Account({ params }: { params: Promise<{ id: string
               </form>
             )}
             <p className="text-xs text-mute">Suspending signs them out, blocks sign-in, takes their link offline and emails them how to appeal. Nothing is deleted.</p>
-            <Link href={`/admin/privacy?email=${encodeURIComponent(u.email)}`} className="block text-sm text-danger underline">
-              Delete account or download their data…
-            </Link>
+            {me.access.super && (
+              <Link href={`/admin/privacy?email=${encodeURIComponent(u.email)}`} className="block text-sm text-danger underline">
+                Delete account or download their data…
+              </Link>
+            )}
           </div>
+          )}
         </aside>
       </div>
     </div>

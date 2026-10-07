@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/admin";
 import { q } from "@/lib/db";
 import { FEATURES, switchFor, type Feature } from "@/lib/features";
 import { allPlans } from "@/lib/plan-store";
@@ -7,6 +8,7 @@ import { SWITCHES, switchOn, type SwitchKey } from "@/lib/switches";
 
 /** Held-back features, switched on per plan or for named accounts (for testing with a few people first). */
 export default async function Switches() {
+  await requireAdmin("switches");
   const plans = await allPlans();
   const list = await Promise.all(
     (Object.keys(FEATURES) as Feature[]).map(async (f) => {

@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/admin";
 import Link from "next/link";
 import { q } from "@/lib/db";
 import { setFeedbackStatus } from "../actions";
@@ -16,6 +17,7 @@ type Row = { id: number; user_id: number | null; handle: string | null; name: st
 
 /** In-app feedback from beta users: triage each item (new → planned → fixed, or won't do) and see what keeps coming up. */
 export default async function Feedback({ searchParams }: { searchParams: Promise<{ status?: string; type?: string; user?: string }> }) {
+  await requireAdmin("feedback.read");
   const sp = await searchParams;
   const status = STATUSES.some(([k]) => k === sp.status) ? sp.status! : sp.status === "all" ? "all" : "new";
   const type = (TYPES as readonly string[]).includes(sp.type ?? "") ? sp.type! : null;

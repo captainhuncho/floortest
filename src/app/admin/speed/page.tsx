@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/admin";
 import { q } from "@/lib/db";
 
 const DAY = 86_400_000;
@@ -16,6 +17,7 @@ const fmt = (ms: number) => (ms >= 1000 ? `${(ms / 1000).toFixed(1)} s` : `${Mat
 
 /** How fast FloorTest feels for real visitors, from the TapSpeed reporter. Works in Safari too. */
 export default async function Speed({ searchParams }: { searchParams: Promise<{ device?: string }> }) {
+  await requireAdmin("speed");
   const device = (await searchParams).device;
   const dev = device === "phone" || device === "desktop" || device === "tablet" ? device : null;
   const since = Date.now() - 7 * DAY;

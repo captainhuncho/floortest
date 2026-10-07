@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/admin";
 import Link from "next/link";
 import { q } from "@/lib/db";
 
@@ -33,6 +34,7 @@ type Top = { key: string; n: number; recent: number; last: number };
  * (connection addresses and emails are deleted after 48 hours, so this only ever covers the last two days).
  */
 export default async function Security() {
+  await requireAdmin("security");
   const t = Date.now();
   const since = t - 48 * HOUR;
   const top = (bucket: string, limit = 10) =>

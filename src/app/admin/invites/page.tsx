@@ -1,9 +1,11 @@
+import { requireAdmin } from "@/lib/admin";
 import { ConfirmButton } from "../AdminUi";
 import { q } from "@/lib/db";
 import { env } from "@/lib/env";
 import { createInvite, inviteByEmail, resendInvite, revokeInvite } from "../actions";
 
 export default async function Invites({ searchParams }: { searchParams: Promise<{ sent?: string; skipped?: string }> }) {
+  await requireAdmin("invites");
   const sp = await searchParams;
   const rows = await q.all<{
     code: string; max_uses: number; note: string; email: string | null; sent_at: number | null; created_at: number; revoked_at: number | null; used: number; joined: string | null;

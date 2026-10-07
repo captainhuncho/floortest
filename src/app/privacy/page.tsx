@@ -68,7 +68,7 @@ export default function Privacy() {
         [
           "Who at FloorTest can see what",
           [
-            "A small number of FloorTest staff can access the service to run it: to answer support requests, look into problems and act on abuse reports. Staff access requires two-factor sign-in, and every staff action (including viewing a receiver's desk to help them) is logged. Staff viewing a desk can't change anything, download files or trigger any signal to senders.",
+            "A small number of FloorTest staff can access the service to run it: to answer support requests, look into problems and act on abuse reports. Each person only gets the access their role needs (support staff, for example, can see account details to help you but can't delete accounts or export data). Staff access requires two-factor sign-in, and every staff action (including viewing a receiver's desk to help them) is logged. Staff viewing a desk can't change anything, download files or trigger any signal to senders.",
             "We also log technical errors, which can include the page or request involved, to keep the service working.",
           ],
         ],
