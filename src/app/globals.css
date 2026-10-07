@@ -74,6 +74,8 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
 [data-area="support"] { --area: #ffb648; }
 [data-area="growth"] { --area: #d5ff48; }
 [data-area="trust"] { --area: #ff8a7a; }
+/* The silver ops crest is dark-on-dark at small sizes: lift it so it reads clearly. */
+.crest-ops { filter: brightness(1.6) contrast(1.15) drop-shadow(0 0 6px rgb(255 255 255 / 0.12)); }
 [data-area="product"] { --area: #b9a2ff; }
 [data-area="admin"] { --area: #a8ac9f; }
 [data-area="overview"] { --area: #d5ff48; }

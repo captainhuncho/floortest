@@ -95,7 +95,7 @@ export function AdminNav({ groups, admin }: { groups: NavGroup[]; admin: { name:
       <div className={`flex items-center gap-2.5 px-3 pb-3 pt-4 ${open ? "justify-between" : "flex-col"}`}>
         <Link href="/admin" className="flex items-center gap-2.5" aria-label="FloorTest admin">
           {/* Ops has its own brushed-silver crest, so it never looks like the main site. */}
-          <img src="/brand/crest-ops.svg" alt="" aria-hidden className="size-10 shrink-0" />
+          <img src="/brand/crest-ops.svg" alt="" aria-hidden className="crest-ops size-10 shrink-0" />
           {open && (
             <span className="flex flex-col leading-tight">
               <span className="text-[16px] font-extrabold text-bone">FloorTest</span>

@@ -18,7 +18,7 @@ export function AdminMobileNav({ groups }: { groups: NavGroup[] }) {
   return (
     <details ref={ref} className="group sticky top-0 z-30 border-b border-line bg-ink/95 backdrop-blur md:hidden">
       <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-[12px] font-bold [&::-webkit-details-marker]:hidden">
-        <img src="/brand/crest-ops.svg" alt="" aria-hidden className="size-6 shrink-0" />
+        <img src="/brand/crest-ops.svg" alt="" aria-hidden className="crest-ops size-8 shrink-0" />
         <span className="text-faint">Admin /</span>
         <span className="min-w-0 flex-1 truncate">{current?.label ?? "Menu"}</span>
         {waiting > 0 && <span className="rounded bg-lime px-1.5 text-[11px] text-ink">{waiting}</span>}
