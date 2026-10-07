@@ -73,6 +73,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
     sharingAvailable: await switchOn("sharing"),
     maxTracks: c.max_tracks,
     full: !!c.full_at,
+    art: c.art_key ? `/api/collection-art/${c.id}?v=${encodeURIComponent(c.art_key)}` : null,
     canCap: canCapCallouts(user.plan),
     genres: genres.custom ? genres.list : [],
   };

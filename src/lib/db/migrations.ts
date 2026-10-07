@@ -1087,4 +1087,9 @@ alter table collections add column max_tracks int check (max_tracks between 1 an
 alter table collections add column full_at bigint;
 `,
   },
+  {
+    // Collections (callouts) can have their own artwork, shown on the dashboard and on the link while receiving.
+    id: "0065_collection_art",
+    sql: `alter table collections add column art_key text;`,
+  },
 ];

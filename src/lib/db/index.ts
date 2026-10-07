@@ -72,6 +72,8 @@ export type Collection = {
   max_tracks: number | null;
   /** Set when the cap is reached; the callout then counts as closed. */
   full_at: number | null;
+  /** Storage key of the collection's artwork (JPG/PNG/WebP), if any. */
+  art_key: string | null;
   brief_wanted: string;
   bpm_min: number | null;
   bpm_max: number | null;

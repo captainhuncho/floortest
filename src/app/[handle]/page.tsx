@@ -91,7 +91,12 @@ export default async function ReceiverPage({ params }: Props) {
           </h1>
           {collection && !closedReason && (
             <p className="inline-flex items-center gap-2 rounded-full border border-line bg-ink-2 px-2.5 py-1.5 text-[11px] font-bold">
-              <span aria-hidden className="size-1.5 rounded-full bg-lime" />
+              {collection.art_key ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={`/api/collection-art/${collection.id}?v=${encodeURIComponent(collection.art_key)}`} alt="" className="-my-0.5 size-5 rounded object-cover" />
+              ) : (
+                <span aria-hidden className="size-1.5 rounded-full bg-lime" />
+              )}
               Receiving for <span className="text-lime">{collection.name}</span>
             </p>
           )}

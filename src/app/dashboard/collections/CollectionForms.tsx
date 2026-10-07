@@ -3,6 +3,7 @@
 import { useFocusTrap } from "@/components/useFocusTrap";
 import Link from "next/link";
 import { useEffect, useState, useTransition, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { createCollection, deleteCollection, setActiveCollection, updateCollection } from "../actions/collections";
 import { ExportButton } from "../ExportButton";
 import { GenresField } from "./GenresField";
@@ -29,6 +30,8 @@ type C = {
   canCap: boolean;
   /** Reached its track cap (shown as "Full" rather than "Closed"). */
   full: boolean;
+  /** URL of the collection's artwork, if it has one. */
+  art: string | null;
 };
 
 const toDateInput = (ts: number | null) => {
@@ -166,6 +169,7 @@ export function CollectionCard({ c, receiving, closed, canDelete, startEditing =
           </fieldset>
         </form>
       )}
+      {editing && <ArtUpload id={c.id} name={c.name} art={c.art} />}
     </div>
   );
 }
@@ -239,7 +243,11 @@ export function CollectionTile({ c, receiving, closed, canDelete }: { c: C; rece
   return (
     <div className="relative overflow-hidden rounded-2xl border border-line bg-ink-3">
       <Link href={`/dashboard/collections/${c.id}`} className="relative flex aspect-square flex-col justify-end gap-1.5 bg-gradient-to-b from-[#1a2a0a] to-ink p-4" aria-label={`Open ${c.name}`}>
-        {rows.map((bars, r) => (
+        {c.art && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={c.art} alt="" className="absolute inset-0 size-full object-cover" />
+        )}
+        {!c.art && rows.map((bars, r) => (
           <span key={r} aria-hidden className={`flex items-center gap-0.5 ${r ? "h-5" : "h-7"}`}>
             {bars.map((h, i) => (
               <span key={i} className={`w-0.5 rounded-[1px] ${i < (r ? 8 : 12) ? "bg-white" : "bg-faint"}`} style={{ height: `${Math.round(h * 100)}%`, opacity: i < (r ? 8 : 12) ? 0.5 + h / 2 : 0.2 }} />
@@ -247,13 +255,13 @@ export function CollectionTile({ c, receiving, closed, canDelete }: { c: C; rece
           </span>
         ))}
         {receiving && !closed && (
-          <span className="absolute left-2.5 top-2.5 flex items-center gap-1 rounded-md border border-white bg-white/[0.08] px-2 py-1 text-[11px] font-bold tracking-[0.5px] text-white">
+          <span className="absolute left-2.5 top-2.5 flex items-center gap-1 rounded-md border border-white bg-black/60 px-2 py-1 text-[11px] font-bold tracking-[0.5px] text-white">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/icons/receiving-dot.svg" alt="" className="size-[5px]" />
             RECEIVING
           </span>
         )}
-        {closed && <span className="absolute left-2.5 top-2.5 rounded-md border border-faint px-2 py-1 text-[11px] font-bold tracking-[0.5px] text-mute">{c.full ? "FULL" : "CLOSED"}</span>}
+        {closed && <span className="absolute left-2.5 top-2.5 rounded-md border border-faint bg-black/60 px-2 py-1 text-[11px] font-bold tracking-[0.5px] text-mute">{c.full ? "FULL" : "CLOSED"}</span>}
       </Link>
       <Link href={`/dashboard/review?view=queue&c=${c.id}`} aria-label={`Play ${c.name} in the queue`} className="absolute right-2.5 grid size-[30px] place-items-center rounded-lg bg-ink opacity-90" style={{ top: "calc(100% - 56px - 40px)" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -348,6 +356,10 @@ export function CollectionDetailHeader({ c, receiving, closed, canDelete }: { c:
           <Link href="/dashboard/collections" aria-label="Back to Collections" className="grid size-8 place-items-center">
             <span aria-hidden className="size-4 bg-current [mask:url(/icons/arrow-left.svg)_center/contain_no-repeat]" />
           </Link>
+          {c.art && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={c.art} alt="" className="size-9 shrink-0 rounded-md object-cover" />
+          )}
           <h1 className="min-w-0 truncate text-[20px] font-bold">{c.name}</h1>
         </div>
         <button onClick={() => setMenu(true)} aria-haspopup="menu" aria-label={`Options for ${c.name}`} className="grid size-9 shrink-0 place-items-center text-lg font-bold leading-none">
@@ -409,5 +421,55 @@ export function EditCollectionInfo({ c, receiving, closed, canDelete }: { c: C; 
         </div>
       )}
     </>
+  );
+}
+
+/** The collection's artwork: shown on its tile and, while it's receiving, on the public link page. */
+function ArtUpload({ id, name, art }: { id: number; name: string; art: string | null }) {
+  const router = useRouter();
+  const input = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function send(method: "POST" | "DELETE", file?: File) {
+    setBusy(true);
+    setError(null);
+    const body = file ? new FormData() : undefined;
+    if (file) body!.set("file", file);
+    const res = await fetch(`/api/collection-art/${id}`, { method, body });
+    setBusy(false);
+    if (!res.ok) setError(((await res.json().catch(() => ({}))) as { error?: string }).error || "That didn't work. Try again.");
+    else router.refresh();
+  }
+  return (
+    <div className="mt-5 flex items-center gap-4 border-t border-line pt-5">
+      <div className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-xl border border-line bg-ink">
+        {art ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={art} alt={`Artwork for ${name}`} className="size-full object-cover" />
+        ) : (
+          <span className="px-2 text-center text-[11px] text-mute">No artwork</span>
+        )}
+      </div>
+      <div className="min-w-0">
+        <p className="label">Artwork (optional)</p>
+        <p className="mt-1 text-sm text-mute">Square works best. JPG, PNG or WebP, up to 8 MB. Shown on your link while this collection is receiving.</p>
+        <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" aria-label={`Choose artwork for ${name}`} tabIndex={-1} className="sr-only" onChange={(e) => e.target.files?.[0] && send("POST", e.target.files[0])} />
+        <div className="mt-2 flex gap-2">
+          <button type="button" disabled={busy} onClick={() => input.current?.click()} className="btn-ghost btn-sm min-h-11">
+            {busy ? "Working…" : art ? "Replace" : "Upload"}
+          </button>
+          {art && (
+            <button type="button" disabled={busy} onClick={() => send("DELETE")} className="btn btn-sm min-h-11 text-mute hover:text-bone">
+              Remove
+            </button>
+          )}
+        </div>
+        {error && (
+          <p role="alert" className="mt-2 text-sm text-danger">
+            {error}
+          </p>
+        )}
+      </div>
+    </div>
   );
 }

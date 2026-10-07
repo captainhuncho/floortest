@@ -1,7 +1,7 @@
 import { audit } from "@/lib/audit";
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
-import { currentUser } from "@/lib/auth";
+import { currentUser, viewingAs } from "@/lib/auth";
 import { q } from "@/lib/db";
 import { storage } from "@/lib/storage";
 import { imageKind, IMAGE_TYPES as TYPES } from "@/lib/images";
@@ -11,7 +11,8 @@ export const runtime = "nodejs";
 const MAX = 8 * 1024 * 1024;
 /** Upload or replace the receiver's cover photo (small, so it comes through the app). */
 export async function POST(req: Request) {
-  const user = await currentUser();
+  // A support "view as" session is read-only.
+  const user = (await viewingAs()) ? null : await currentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (Number(req.headers.get("content-length") || 0) > MAX + 64 * 1024)
     return NextResponse.json({ error: "Images must be under 8 MB." }, { status: 413 });
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE() {
-  const user = await currentUser();
+  const user = (await viewingAs()) ? null : await currentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (user.cover_key) await (await storage()).delete(user.cover_key).catch(() => {});
   await q.run("UPDATE users SET cover_key = NULL WHERE id = ?", user.id);
