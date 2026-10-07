@@ -14,8 +14,11 @@ export default async function ComingSoon({ searchParams }: { searchParams: Promi
         </span>
         <span className="text-[34px] font-extrabold tracking-[-1px] sm:text-[44px]">FloorTest</span>
       </div>
-      <h1 className="mt-14 text-[44px] font-extrabold uppercase leading-none tracking-[-1.5px] text-lime sm:text-[64px]">Coming soon</h1>
-      <p className="mt-5 text-mute">If you&apos;ve been invited to look around, enter the password.</p>
+      <h1 className="mt-8 inline-flex w-fit items-center gap-2 rounded-full border border-lime/50 bg-lime/10 px-4 py-1.5 text-sm font-bold text-lime">
+        <span aria-hidden className="size-2 animate-pulse rounded-full bg-lime motion-reduce:animate-none" />
+        Coming soon
+      </h1>
+      <p className="mt-6 text-mute">If you&apos;ve been invited to look around, enter the password.</p>
       <GateForm next={next} />
       <div className="mt-6">
         <SignInDialog />
