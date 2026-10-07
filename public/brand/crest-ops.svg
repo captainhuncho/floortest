@@ -1,44 +1,53 @@
-<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
-<!-- FloorTest crest, brushed silver, ops only ("Floortest crest / Brushed silver", Figma 346:335). -->
-<g filter="url(#face)">
-<path fill-rule="evenodd" clip-rule="evenodd" d="M128 64C128 47.0261 121.257 30.7475 109.255 18.7452C97.2525 6.74284 80.9739 0 64 0C47.0261 0 30.7475 6.74284 18.7452 18.7452C6.74284 30.7475 0 47.0261 0 64C0 80.9739 6.74284 97.2525 18.7452 109.255C30.7475 121.257 47.0261 128 64 128C80.9739 128 97.2525 121.257 109.255 109.255C121.257 97.2525 128 80.9739 128 64ZM86 64C86 58.1652 83.6822 52.5694 79.5564 48.4436C75.4306 44.3178 69.8348 42 64 42C58.1652 42 52.5694 44.3178 48.4436 48.4436C44.3178 52.5694 42 58.1652 42 64C42 69.8348 44.3178 75.4306 48.4436 79.5564C52.5694 83.6822 58.1652 86 64 86C69.8348 86 75.4306 83.6822 79.5564 79.5564C83.6822 75.4306 86 69.8348 86 64Z" fill="url(#faceFill)"/>
-</g>
-<g filter="url(#bevel)">
-<path fill-rule="evenodd" clip-rule="evenodd" d="M128 64C128 47.0261 121.257 30.7475 109.255 18.7452C97.2525 6.74284 80.9739 0 64 0C47.0261 0 30.7475 6.74284 18.7452 18.7452C6.74284 30.7475 0 47.0261 0 64C0 80.9739 6.74284 97.2525 18.7452 109.255C30.7475 121.257 47.0261 128 64 128C80.9739 128 97.2525 121.257 109.255 109.255C121.257 97.2525 128 80.9739 128 64ZM119 64C119 49.4131 113.205 35.4236 102.891 25.1091C92.5764 14.7946 78.5869 9 64 9C49.4131 9 35.4236 14.7946 25.1091 25.1091C14.7946 35.4236 9 49.4131 9 64C9 78.5869 14.7946 92.5764 25.1091 102.891C35.4236 113.205 49.4131 119 64 119C78.5869 119 92.5764 113.205 102.891 102.891C113.205 92.5764 119 78.5869 119 64Z" fill="url(#rim)"/>
-<path fill-rule="evenodd" clip-rule="evenodd" d="M92 64C92 56.5739 89.05 49.452 83.799 44.201C78.548 38.95 71.4261 36 64 36C56.5739 36 49.452 38.95 44.201 44.201C38.95 49.452 36 56.5739 36 64C36 71.4261 38.95 78.548 44.201 83.799C49.452 89.05 56.5739 92 64 92C71.4261 92 78.548 89.05 83.799 83.799C89.05 78.548 92 71.4261 92 64ZM86 64C86 58.1652 83.6822 52.5695 79.5564 48.4437C75.4306 44.3179 69.8348 42 64 42C58.1652 42 52.5695 44.3179 48.4437 48.4437C44.3179 52.5695 42 58.1652 42 64C42 69.8348 44.3179 75.4306 48.4437 79.5564C52.5695 83.6822 58.1652 86 64 86C69.8348 86 75.4306 83.6822 79.5564 79.5564C83.6822 75.4306 86 69.8348 86 64Z" fill="url(#collar)"/>
-<path d="M61.5 37L60.5 8H67.5L66.5 37H61.5Z" fill="url(#rib1)"/>
-<path d="M88.6327 75.3349L114.247 88.9689L110.747 95.0311L86.1327 79.6651L88.6327 75.3349Z" fill="url(#rib2)"/>
-<path d="M41.8673 79.6651L17.2526 95.0311L13.7526 88.9689L39.3673 75.3349L41.8673 79.6651Z" fill="url(#rib3)"/>
-</g>
+<svg width="140" height="146" viewBox="0 0 140 146" fill="none" xmlns="http://www.w3.org/2000/svg">
+<!-- FloorTest crest, brushed silver, ops only ("Floortest / Bold extruded crest — Silver", Figma 353:324). -->
 <defs>
-<filter id="face" x="0" y="0" width="128" height="130" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<path id="ring" fill-rule="evenodd" clip-rule="evenodd" d="M134 70C134 53.0261 127.257 36.7475 115.255 24.7452C103.253 12.7428 86.9739 6 70 6C53.0261 6 36.7475 12.7428 24.7452 24.7452C12.7428 36.7475 6 53.0261 6 70C6 86.9739 12.7428 103.253 24.7452 115.255C36.7475 127.257 53.0261 134 70 134C86.9739 134 103.253 127.257 115.255 115.255C127.257 103.253 134 86.9739 134 70ZM92 70C92 64.1652 89.6822 58.5694 85.5564 54.4436C81.4306 50.3178 75.8348 48 70 48C64.1652 48 58.5694 50.3178 54.4436 54.4436C50.3178 58.5694 48 64.1652 48 70C48 75.8348 50.3178 81.4306 54.4436 85.5564C58.5694 89.6822 64.1652 92 70 92C75.8348 92 81.4306 89.6822 85.5564 85.5564C89.6822 81.4306 92 75.8348 92 70Z"/>
+<filter id="face" x="6" y="6" width="128" height="131" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
 <feColorMatrix in="SourceAlpha" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="a"/>
-<feOffset dy="2"/><feGaussianBlur stdDeviation="3"/>
+<feOffset dy="3"/><feGaussianBlur stdDeviation="4"/>
 <feComposite in2="a" operator="arithmetic" k2="-1" k3="1"/>
-<feColorMatrix values="0 0 0 0 0.05811 0 0 0 0 0.06 0 0 0 0 0.06189 0 0 0 0.55 0"/>
+<feColorMatrix values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.72 0"/>
 <feBlend mode="multiply" in2="SourceGraphic"/>
 </filter>
-<filter id="bevel" x="-1" y="-1" width="130" height="130" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<filter id="raised" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
 <feColorMatrix in="SourceAlpha" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="a"/>
-<feOffset dx="1" dy="1"/><feGaussianBlur stdDeviation="0.5"/>
+<feOffset dy="2.5"/><feGaussianBlur stdDeviation="1"/>
+<feComposite in2="a" operator="out"/>
+<feColorMatrix values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.55 0" result="drop"/>
+<feOffset in="a" dx="1.6" dy="1.6"/><feGaussianBlur stdDeviation="0.9"/>
 <feComposite in2="a" operator="arithmetic" k2="-1" k3="1"/>
 <feColorMatrix values="0 0 0 0 0.91888 0 0 0 0 0.92 0 0 0 0 0.92112 0 0 0 0.7 0"/>
 <feBlend mode="screen" in2="SourceGraphic" result="hi"/>
-<feOffset in="a" dx="-1" dy="-1"/><feGaussianBlur stdDeviation="0.5"/>
+<feOffset in="a" dx="-1.6" dy="-1.6"/><feGaussianBlur stdDeviation="0.9"/>
 <feComposite in2="a" operator="arithmetic" k2="-1" k3="1"/>
 <feColorMatrix values="0 0 0 0 0.05811 0 0 0 0 0.06 0 0 0 0 0.06189 0 0 0 0.6 0"/>
-<feBlend mode="multiply" in2="hi"/>
+<feBlend mode="multiply" in2="hi" result="lit"/>
+<feMerge><feMergeNode in="drop"/><feMergeNode in="lit"/></feMerge>
 </filter>
-<linearGradient id="faceFill" x1="12.8" y1="25.6" x2="115.2" y2="102.4" gradientUnits="userSpaceOnUse">
+<linearGradient id="depth" x1="6" y1="70" x2="134" y2="70" gradientUnits="userSpaceOnUse">
+<stop stop-color="#4F575E"/><stop offset="0.45" stop-color="#1C2126"/><stop offset="0.72" stop-color="#5E666E"/><stop offset="1" stop-color="#090B0E"/>
+</linearGradient>
+<linearGradient id="faceFill" x1="18.8" y1="31.6" x2="121.2" y2="108.4" gradientUnits="userSpaceOnUse">
 <stop stop-color="#323334"/><stop offset="0.55" stop-color="#191A1A"/><stop offset="1" stop-color="#0B0B0C"/>
 </linearGradient>
 <linearGradient id="metal">
 <stop stop-color="#E2E3E4"/><stop offset="0.3" stop-color="#A2A8AE"/><stop offset="0.55" stop-color="#666E75"/><stop offset="0.76" stop-color="#B5BABF"/><stop offset="1" stop-color="#474D52"/>
 </linearGradient>
-<linearGradient id="rim" href="#metal" x1="12.8" y1="25.6" x2="115.2" y2="102.4" gradientUnits="userSpaceOnUse"/>
-<linearGradient id="collar" href="#metal" x1="41.6" y1="47.2" x2="86.4" y2="80.8" gradientUnits="userSpaceOnUse"/>
-<linearGradient id="rib1" href="#metal" x1="61.2" y1="13.8" x2="69.6723" y2="15.3338" gradientUnits="userSpaceOnUse"/>
-<linearGradient id="rib2" href="#metal" x1="88.9442" y1="79.2742" x2="105.32" y2="96.8051" gradientUnits="userSpaceOnUse"/>
-<linearGradient id="rib3" href="#metal" x1="16.5641" y1="79.2742" x2="32.9394" y2="96.8051" gradientUnits="userSpaceOnUse"/>
+<linearGradient id="rim" href="#metal" x1="18.8" y1="31.6" x2="121.2" y2="108.4" gradientUnits="userSpaceOnUse"/>
+<linearGradient id="collar" href="#metal" x1="44.4" y1="50.8" x2="95.6" y2="89.2" gradientUnits="userSpaceOnUse"/>
+<linearGradient id="rib1" href="#metal" x1="65.6" y1="23" x2="77.3506" y2="27.8471" gradientUnits="userSpaceOnUse"/>
+<linearGradient id="rib2" href="#metal" x1="97.0538" y1="85.6813" x2="112.173" y2="99.4116" gradientUnits="userSpaceOnUse"/>
+<linearGradient id="rib3" href="#metal" x1="25.2898" y1="85.6813" x2="40.4089" y2="99.4116" gradientUnits="userSpaceOnUse"/>
 </defs>
+<!-- Extruded depth: the ring repeated down and to the right, back to front. -->
+<g fill="url(#depth)">
+<use href="#ring" transform="translate(3 10)"/><use href="#ring" transform="translate(2.7 9)"/><use href="#ring" transform="translate(2.4 8)"/><use href="#ring" transform="translate(2.1 7)"/><use href="#ring" transform="translate(1.8 6)"/>
+<use href="#ring" transform="translate(1.5 5)"/><use href="#ring" transform="translate(1.2 4)"/><use href="#ring" transform="translate(0.9 3)"/><use href="#ring" transform="translate(0.6 2)"/><use href="#ring" transform="translate(0.3 1)"/>
+</g>
+<use href="#ring" fill="url(#faceFill)" filter="url(#face)"/>
+<path filter="url(#raised)" fill="url(#rim)" fill-rule="evenodd" clip-rule="evenodd" d="M134 70C134 53.0261 127.257 36.7475 115.255 24.7452C103.253 12.7428 86.9739 6 70 6C53.0261 6 36.7475 12.7428 24.7452 24.7452C12.7428 36.7475 6 53.0261 6 70C6 86.9739 12.7428 103.253 24.7452 115.255C36.7475 127.257 53.0261 134 70 134C86.9739 134 103.253 127.257 115.255 115.255C127.257 103.253 134 86.9739 134 70ZM120 70C120 56.7392 114.732 44.0215 105.355 34.6447C95.9785 25.2678 83.2608 20 70 20C56.7392 20 44.0215 25.2678 34.6447 34.6447C25.2678 44.0215 20 56.7392 20 70C20 83.2608 25.2678 95.9785 34.6447 105.355C44.0215 114.732 56.7392 120 70 120C83.2608 120 95.9785 114.732 105.355 105.355C114.732 95.9785 120 83.2608 120 70Z"/>
+<path filter="url(#raised)" fill="url(#collar)" fill-rule="evenodd" clip-rule="evenodd" d="M102 70C102 61.5131 98.6286 53.3737 92.6274 47.3726C86.6263 41.3714 78.4869 38 70 38C61.5131 38 53.3737 41.3714 47.3726 47.3726C41.3714 53.3737 38 61.5131 38 70C38 78.4869 41.3714 86.6263 47.3726 92.6274C53.3737 98.6286 61.5131 102 70 102C78.4869 102 86.6263 98.6286 92.6274 92.6274C98.6286 86.6263 102 78.4869 102 70ZM92 70C92 64.1652 89.6822 58.5695 85.5564 54.4437C81.4306 50.3179 75.8348 48 70 48C64.1652 48 58.5695 50.3179 54.4437 54.4437C50.3179 58.5695 48 64.1652 48 70C48 75.8348 50.3179 81.4306 54.4437 85.5564C58.5695 89.6822 64.1652 92 70 92C75.8348 92 81.4306 89.6822 85.5564 85.5564C89.6822 81.4306 92 75.8348 92 70Z"/>
+<path filter="url(#raised)" fill="url(#rib1)" d="M66 39L64.5 19H75.5L74 39H66Z"/>
+<path filter="url(#raised)" fill="url(#rib2)" d="M98.8468 82.0359L116.917 90.7369L111.417 100.263L94.8468 88.9641L98.8468 82.0359Z"/>
+<path filter="url(#raised)" fill="url(#rib3)" d="M45.1532 88.9641L28.5827 100.263L23.0827 90.7369L41.1532 82.0359L45.1532 88.9641Z"/>
 </svg>
