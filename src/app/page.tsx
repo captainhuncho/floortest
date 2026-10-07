@@ -359,34 +359,32 @@ export default async function Home({
               <NewsletterForm />
             </div>
           </div>
-          <nav aria-label="Footer" className="lg:col-span-7 lg:pl-8">
-            {/* Phones: each group folds into one row. Wider screens: columns, always open. */}
-            <div className="border-t border-line sm:hidden">
-              {footerGroups().map((g) => (
-                <details key={g.title} className="group border-b border-line">
-                  <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between text-[12px] font-bold uppercase tracking-[1px] text-bone [&::-webkit-details-marker]:hidden">
-                    {g.title}
-                    <span aria-hidden className="text-lg font-normal text-dim transition-transform group-open:rotate-45">
-                      +
-                    </span>
-                  </summary>
-                  <FooterLinks links={g.links} className="pb-3" />
-                </details>
-              ))}
-            </div>
-            <div className="hidden grid-cols-3 gap-x-6 sm:grid">
-              {footerGroups().map((g) => (
-                <div key={g.title}>
-                  <h2 className="text-[11px] font-bold uppercase tracking-[1px] text-faint">{g.title}</h2>
-                  <FooterLinks links={g.links} className="mt-3" />
-                </div>
-              ))}
-            </div>
+          <nav aria-label="Footer" className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3 lg:col-span-7 lg:pl-8">
+            {footerGroups().map((g) => (
+              <div key={g.title}>
+                <h2 className="text-[11px] font-bold uppercase tracking-[1px] text-faint">{g.title}</h2>
+                <ul className="mt-3 grid gap-y-1">
+                  {g.links.map((l) => (
+                    <li key={l.label}>
+                      {l.external ? (
+                        <a href={l.href} target="_blank" rel="noreferrer" className="inline-block py-1.5 hover:text-bone">
+                          {l.label}
+                        </a>
+                      ) : (
+                        <Link href={l.href} className="inline-block py-1.5 hover:text-bone">
+                          {l.label}
+                        </Link>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </nav>
         </div>
-        <div className="mt-6 flex flex-col-reverse gap-2 text-xs text-dim sm:mt-10 sm:flex-row sm:border-t sm:border-line sm:pt-6 sm:items-center sm:justify-between">
+        <div className="mt-10 flex flex-col gap-3 border-t border-line pt-6 text-xs text-dim sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} FloorTest Labs. Private beta.</p>
-          <ul className="flex flex-wrap gap-x-4">
+          <ul className="flex flex-wrap gap-x-4 gap-y-1">
             {footerFineprint().map((l) => (
               <li key={l.label}>
                 <Link href={l.href} className="inline-block py-1.5 hover:text-bone">
@@ -398,25 +396,5 @@ export default async function Home({
         </div>
       </footer>
     </div>
-  );
-}
-
-function FooterLinks({ links, className = "" }: { links: ReturnType<typeof footerGroups>[number]["links"]; className?: string }) {
-  return (
-    <ul className={`grid gap-y-1 ${className}`}>
-      {links.map((l) => (
-        <li key={l.label}>
-          {l.external ? (
-            <a href={l.href} target="_blank" rel="noreferrer" className="inline-block py-1.5 hover:text-bone">
-              {l.label}
-            </a>
-          ) : (
-            <Link href={l.href} className="inline-block py-1.5 hover:text-bone">
-              {l.label}
-            </Link>
-          )}
-        </li>
-      ))}
-    </ul>
   );
 }
