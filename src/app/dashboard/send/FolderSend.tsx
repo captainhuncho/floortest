@@ -9,6 +9,7 @@ import { readTags, type Tags } from "@/lib/tags";
 import { Turnstile } from "@/components/Turnstile";
 import { MAX_BYTES, uploadTrack } from "../../[handle]/useTrackUpload";
 import { EmailCode, startEmailCheck } from "../../[handle]/EmailCode";
+import { SetsPermission } from "../../[handle]/SetsPermission";
 
 type Item = { file: File; tags: Tags; state: "waiting" | "sending" | "sent" | "failed"; progress: number; error?: string };
 type Kind = "ep" | "album";
@@ -334,12 +335,7 @@ export function FolderSend({
               </p>
             </div>
           )}
-          <label className="flex items-start gap-2.5 text-sm">
-            <input type="checkbox" checked={setsOk} onChange={(e) => setSetsOk(e.target.checked)} disabled={running} className="mt-0.5 size-4 shrink-0 accent-lime" />
-            <span>
-              Let {receiverName} play these in DJ sets, live and on broadcasts. <span className="text-mute">Leave this off and they&apos;re for listening and feedback only.</span>
-            </span>
-          </label>
+          <SetsPermission receiverName={receiverName} many checked={setsOk} onChange={setSetsOk} disabled={running} />
         </>
       )}
 

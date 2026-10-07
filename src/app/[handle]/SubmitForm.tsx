@@ -10,6 +10,7 @@ import { fmtBytes, fmtTime } from "@/lib/format";
 import { MIX_STATUS } from "@/lib/plans";
 import { EmailCode, startEmailCheck } from "./EmailCode";
 import { GenrePicker } from "./GenrePicker";
+import { SetsPermission } from "./SetsPermission";
 import { MAX_FILES, useTrackUpload, type Item } from "./useTrackUpload";
 
 /** Class names per page style; the flow is identical. */
@@ -56,6 +57,7 @@ export function SubmitForm({
   const [drag, setDrag] = useState(false);
   const [genre, setGenre] = useState("");
   const [mix, setMix] = useState("");
+  const [setsOk, setSetsOk] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   // Without an account: the form waiting while the sender types the emailed code.
   const [waiting, setWaiting] = useState<{ email: string; fd: FormData } | null>(null);
@@ -75,6 +77,7 @@ export function SubmitForm({
     resetUpload();
     setGenre("");
     setMix("");
+    setSetsOk(false);
   }
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -325,17 +328,12 @@ export function SubmitForm({
 
       {errorBox}
 
-      <label className="flex items-start gap-2.5 text-[13px]">
-        <input type="checkbox" name="sets_ok" className="mt-0.5 size-4 shrink-0 accent-lime" />
-        <span>
-          Let {receiverName} play {many ? "them" : "it"} in DJ sets, live and on broadcasts. <span className={L.mute}>Leave this off and {many ? "they're" : "it's"} for listening and feedback only.</span>
-        </span>
-      </label>
+      <SetsPermission receiverName={receiverName} many={many} checked={setsOk} onChange={setSetsOk} disabled={busy} />
 
       <p className={`text-xs ${L.mute}`}>
         <span className="text-danger">*</span> Required.{" "}
         By sending you confirm you own or control {many ? "these tracks" : "this track"}, your answer about AI is accurate, and you&apos;re 18 or over. {receiverName} may listen to it and download it to evaluate it
-        {allowSharing ? `, and share it with colleagues who have FloorTest accounts, through a private link, for promotion (${sharingDownloads ? "they can listen and download" : "listen only"})` : ""}. They can play it in sets only if you tick the box above, and can&apos;t release it anywhere without a signed agreement with you.{" "}
+        {allowSharing ? `, and share it with colleagues who have FloorTest accounts, through a private link, for promotion (${sharingDownloads ? "they can listen and download" : "listen only"})` : ""}. They can play it in sets only if you turn on DJ sets above, and can&apos;t release it anywhere without a signed agreement with you.{" "}
         <a href="/terms" target="_blank" className="underline underline-offset-4">Terms</a> ·{" "}
         <a href="/privacy" target="_blank" className="underline underline-offset-4">Privacy</a>
       </p>
