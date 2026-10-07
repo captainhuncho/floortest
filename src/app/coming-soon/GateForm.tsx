@@ -6,7 +6,7 @@ import { unlockSite } from "./actions";
 export function GateForm({ next }: { next: string }) {
   const [state, action, pending] = useActionState(unlockSite, undefined);
   return (
-    <form action={action} className="mt-10 w-full max-w-sm space-y-3">
+    <form action={action} className="mt-8 w-full max-w-sm space-y-3">
       <input type="hidden" name="next" value={next} />
       <label htmlFor="gate-pw" className="label block">
         Have the password?
