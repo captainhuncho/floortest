@@ -37,14 +37,13 @@ export default async function Home({
 }: {
   searchParams: Promise<{ deleted?: string }>;
 }) {
-  const user = await currentUser();
-  const deleted = !!(await searchParams).deleted;
-  const c = await siteCopy("home");
+  // All independent: one round trip's wait instead of four.
+  const [user, sp, c, signupOpen, billing, botKey] = await Promise.all([currentUser(), searchParams, siteCopy("home"), switchOn("open_signup"), switchOn("billing"), botCheckKey()]);
+  const deleted = !!sp.deleted;
   const HOW = pairs(c.how_steps);
   const FAQ = pairs(c.faq);
   // Invite-only: most visitors have no code, so the main button leads to the waitlist.
-  const inviteOnly = !(await switchOn("open_signup"));
-  const billing = await switchOn("billing");
+  const inviteOnly = !signupOpen;
   const cta = user
     ? { href: "/dashboard/floor", label: "Open your desk" }
     : inviteOnly
@@ -175,7 +174,7 @@ export default async function Home({
       <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
         {c.preview_image ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={siteImageUrl(c.preview_image)} alt={c.preview_alt} className="w-full rounded-lg border border-white/10" />
+          <img src={siteImageUrl(c.preview_image)} alt={c.preview_alt} loading="lazy" decoding="async" className="w-full rounded-lg border border-white/10" />
         ) : (
           <>
             <div className="mb-4 flex items-center justify-between">
@@ -308,7 +307,7 @@ export default async function Home({
                 We&apos;re letting DJs, labels and curators in a few at a time. Leave your details and you&apos;ll get a personal invite by email.
               </p>
             </div>
-            <WaitlistForm host={HOST} botCheckKey={await botCheckKey()} />
+            <WaitlistForm host={HOST} botCheckKey={botKey} />
           </div>
         </section>
       )}

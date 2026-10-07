@@ -42,12 +42,12 @@ export default async function ReceiverPage({ params }: Props) {
     if (moved) permanentRedirect(`/${moved}`);
     notFound();
   }
-  const [collection, sharing, { full }] = await Promise.all([activeCollection(receiver), switchOn("sharing"), capacity(receiver)]);
-  const team = await listeners(collection);
+  const [collection, sharing, { full }, c] = await Promise.all([activeCollection(receiver), switchOn("sharing"), capacity(receiver), siteCopy("link")]);
   const closed = isClosed(collection);
   const genres = genresFor(collection).list;
   const paused = isPaused(receiver);
   const note = paused ? receiver.pause_message : "";
+  const [team, folderBytes, botKey, sharingDownloads] = await Promise.all([listeners(collection), folderLimit(receiver.plan), botCheckKey(), shareDownloadEnabled(receiver.plan)]);
   const closedReason = paused
     ? pausedMessage(receiver)
     : closed
@@ -62,7 +62,6 @@ export default async function ReceiverPage({ params }: Props) {
   const wantedText = collection?.brief_wanted || "";
   // Always tell senders what's wanted: the collection's own genres, or the default list when none are set.
   const showBrief = !closedReason && genres.length > 0;
-  const c = await siteCopy("link");
   const vars = { receiver: receiver.name, days: RETAIN_UNREVIEWED_DAYS };
   const bullets = [c.bullet_files, team.length ? c.bullet_private_team : c.bullet_private, c.bullet_retention, c.bullet_receipt].map((b) => fill(b, vars)).filter(Boolean);
 
@@ -137,7 +136,7 @@ export default async function ReceiverPage({ params }: Props) {
             <p className="mt-2 text-[12px] text-dim">{c.closed_note}</p>
           </div>
         ) : (
-          <SendModes folderBytes={await folderLimit(receiver.plan)} botCheckKey={await botCheckKey()} handle={receiver.handle} receiverName={receiver.name} callout={collection && !closedReason ? collection.name : null} genres={genres} look="mobile" allowSharing={sharing && !!collection?.allow_sharing} sharingDownloads={await shareDownloadEnabled(receiver.plan)} />
+          <SendModes folderBytes={folderBytes} botCheckKey={botKey} handle={receiver.handle} receiverName={receiver.name} callout={collection && !closedReason ? collection.name : null} genres={genres} look="mobile" allowSharing={sharing && !!collection?.allow_sharing} sharingDownloads={sharingDownloads} />
         )}
       </div>
       <ul className="flex flex-col gap-2.5" aria-label="How your file is handled">
