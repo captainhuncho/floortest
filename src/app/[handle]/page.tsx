@@ -132,7 +132,7 @@ export default async function ReceiverPage({ params }: Props) {
             <p className="mt-2 text-[12px] text-dim">{c.closed_note}</p>
           </div>
         ) : (
-          <SendModes folderBytes={await folderLimit(receiver.plan)} botCheckKey={await botCheckKey()} handle={receiver.handle} receiverName={receiver.name} genres={genres} look="mobile" allowSharing={sharing && !!collection?.allow_sharing} sharingDownloads={await shareDownloadEnabled(receiver.plan)} />
+          <SendModes folderBytes={await folderLimit(receiver.plan)} botCheckKey={await botCheckKey()} handle={receiver.handle} receiverName={receiver.name} callout={collection && !closedReason ? collection.name : null} genres={genres} look="mobile" allowSharing={sharing && !!collection?.allow_sharing} sharingDownloads={await shareDownloadEnabled(receiver.plan)} />
         )}
       </div>
       <ul className="flex flex-col gap-2.5" aria-label="How your file is handled">

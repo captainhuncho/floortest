@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { analyzeAudio, type Analysis } from "@/lib/analyze";
 import { readTags, type Tags } from "@/lib/tags";
 import { MAX_BATCH_TRACKS } from "@/lib/plans";
@@ -11,6 +11,7 @@ const SENDER_KEY = "floortest.sender";
 export type Phase = "idle" | "uploading" | "done";
 
 type Fields = Record<string, unknown>;
+export const CANCELLED = "Transfer cancelled.";
 const NET =
   "Network error. Your details are still here. Check your connection and try again.";
 
@@ -25,6 +26,7 @@ export async function uploadTrack(
   analysis: Analysis | null,
   fields: Fields,
   onProgress: (p: number) => void,
+  signal?: AbortSignal,
 ): Promise<{ token: string } | { error: string }> {
   const json = async (res: Response) =>
     (await res.json().catch(() => ({}))) as {
@@ -53,8 +55,11 @@ export async function uploadTrack(
         ev.lengthComputable && onProgress((ev.loaded / ev.total) * 0.97);
       xhr.onload = () => resolve(xhr.status);
       xhr.onerror = () => resolve(0);
+      xhr.onabort = () => resolve(-1);
+      signal?.addEventListener("abort", () => xhr.abort(), { once: true });
       xhr.send(file);
     });
+    if (put === -1) return { error: CANCELLED };
     if (put < 200 || put >= 300)
       return {
         error:
@@ -107,6 +112,9 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
   const [sender, setSender] = useState({ name: "", email: "" });
+  const abort = useRef<AbortController | null>(null);
+  // When the current transfer started, for the time-left estimate.
+  const [startedAt, setStartedAt] = useState(0);
   // One send = one batch; a retry after a failure stays in it.
   const [batch, setBatch] = useState(newId);
 
@@ -156,11 +164,14 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
     } catch {}
     setError(null);
     setPhase("uploading");
+    setStartedAt(Date.now());
+    abort.current = new AbortController();
     const shared = {
       name: field("name"), email: field("email"), sender_instagram: field("sender_instagram"), sender_streaming: field("sender_streaming"), message: field("message"), genre: field("genre"),
       release_status: field("release_status"), ai_use: field("ai_use"), mix_status: field("mix_status"),
       sets_ok: fd.get("sets_ok") === "on", asAccount: !!opts.asAccount,
     };
+    let sentCount = items.filter((x) => x.status === "done").length;
     for (const it of items) {
       if (it.status === "done") continue;
       patch(it.id, { status: "uploading", progress: 0, error: undefined });
@@ -168,7 +179,14 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
         handle, it.file, it.analysis,
         { ...shared, batch, title: it.tags.title, artist: it.tags.artist, musical_key: it.tags.key, isrc: it.tags.isrc },
         (p) => patch(it.id, { progress: p }),
+        abort.current.signal,
       );
+      if ("error" in r && r.error === CANCELLED) {
+        patch(it.id, { status: "ready", progress: 0 });
+        setError(sentCount > 0 ? "Transfer cancelled. Tracks already sent are on the desk; the rest weren't sent." : "Transfer cancelled. Nothing was sent.");
+        setPhase("idle");
+        return;
+      }
       if ("error" in r) {
         patch(it.id, { status: "error", error: r.error });
         setError(`${it.tags.title || it.file.name}: ${r.error}`);
@@ -176,6 +194,7 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
         return;
       }
       patch(it.id, { status: "done", progress: 1, token: r.token });
+      sentCount++;
     }
     setPhase("done");
   }
@@ -187,5 +206,7 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
     setError(null);
   }
 
-  return { items, phase, error, setError, sender, setSender, add, remove, edit, send, reset };
+  const cancel = () => abort.current?.abort();
+
+  return { items, phase, error, setError, sender, setSender, add, remove, edit, send, reset, cancel, startedAt };
 }

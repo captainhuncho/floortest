@@ -11,6 +11,7 @@ import { MIX_STATUS } from "@/lib/plans";
 import { EmailCode, startEmailCheck } from "./EmailCode";
 import { GenrePicker } from "./GenrePicker";
 import { SetsPermission } from "./SetsPermission";
+import { TransferScreen } from "./TransferScreen";
 import { MAX_FILES, useTrackUpload, type Item } from "./useTrackUpload";
 
 /** Class names per page style; the flow is identical. */
@@ -37,6 +38,7 @@ export function SubmitForm({
   allowSharing = false,
   sharingDownloads = false,
   botCheckKey = null,
+  callout = null,
 }: {
   handle: string;
   receiverName: string;
@@ -50,10 +52,12 @@ export function SubmitForm({
   sharingDownloads?: boolean;
   /** Turnstile site key for anonymous senders when the bot check is on. */
   botCheckKey?: string | null;
+  /** The collection (callout) receiving right now, shown on the transfer screen. */
+  callout?: string | null;
 }) {
   const L = LOOKS[lookName];
   const m = lookName === "mobile";
-  const { items, phase, error, setError, sender, setSender, add, remove, edit, send, reset: resetUpload } = useTrackUpload(handle, { asAccount: !!account });
+  const { items, phase, error, setError, sender, setSender, add, remove, edit, send, reset: resetUpload, cancel, startedAt } = useTrackUpload(handle, { asAccount: !!account });
   const [drag, setDrag] = useState(false);
   const [genre, setGenre] = useState("");
   const [mix, setMix] = useState("");
@@ -212,6 +216,16 @@ export function SubmitForm({
   // Step 2: confirm what we read from the files, then the essentials.
   return (
     <>
+    {busy && (
+      <TransferScreen
+        receiverName={receiverName}
+        handle={handle}
+        callout={callout}
+        startedAt={startedAt}
+        onCancel={cancel}
+        files={items.map((it) => ({ name: it.file.name, size: it.file.size, progress: it.progress, state: it.status === "done" ? "sent" : it.status === "uploading" ? "sending" : it.status === "error" ? "failed" : "waiting" }))}
+      />
+    )}
     {waiting && (
       <EmailCode
         email={waiting.email}

@@ -7,7 +7,8 @@ import { fmtBytes } from "@/lib/format";
 import { MAX_RELEASE_TRACKS, MIX_STATUS } from "@/lib/plans";
 import { readTags, type Tags } from "@/lib/tags";
 import { Turnstile } from "@/components/Turnstile";
-import { MAX_BYTES, uploadTrack } from "../../[handle]/useTrackUpload";
+import { CANCELLED, MAX_BYTES, uploadTrack } from "../../[handle]/useTrackUpload";
+import { TransferScreen } from "../../[handle]/TransferScreen";
 import { EmailCode, startEmailCheck } from "../../[handle]/EmailCode";
 import { SetsPermission } from "../../[handle]/SetsPermission";
 
@@ -47,6 +48,7 @@ export function FolderSend({
   folderBytes,
   account,
   botCheckKey = null,
+  callout = null,
 }: {
   handle: string;
   receiverName: string;
@@ -56,7 +58,11 @@ export function FolderSend({
   /** Sending from a signed-in FloorTest account; otherwise the sender gives their name and email. */
   account?: { name: string; email: string };
   botCheckKey?: string | null;
+  /** The collection (callout) receiving right now, shown on the transfer screen. */
+  callout?: string | null;
 }) {
+  const abort = useRef<AbortController | null>(null);
+  const [startedAt, setStartedAt] = useState(0);
   const [who, setWho] = useState({ name: "", email: "", instagram: "", streaming: "" });
   const formRef = useRef<HTMLFormElement>(null);
   const [waiting, setWaiting] = useState(false);
@@ -127,6 +133,9 @@ export function FolderSend({
 
   async function upload() {
     setRunning(true);
+    setStartedAt(Date.now());
+    abort.current = new AbortController();
+    let sentCount = items.filter((x) => x.state === "sent").length;
     for (const [i, it] of items.entries()) {
       if (it.state === "sent") continue;
       update(i, { state: "sending", progress: 0, error: undefined });
@@ -152,8 +161,15 @@ export function FolderSend({
           isrc: it.tags.isrc,
         },
         (p) => update(i, { progress: p }),
+        abort.current.signal,
       );
+      if ("error" in r && r.error === CANCELLED) {
+        update(i, { state: "waiting", progress: 0 });
+        setError(sentCount > 0 ? "Transfer cancelled. Tracks already sent are on the desk; send again to finish the rest." : "Transfer cancelled. Nothing was sent.");
+        break;
+      }
       update(i, "error" in r ? { state: "failed", error: r.error } : { state: "sent", progress: 1 });
+      if (!("error" in r)) sentCount++;
     }
     setRunning(false);
   }
@@ -170,6 +186,16 @@ export function FolderSend({
 
   return (
     <>
+    {running && (
+      <TransferScreen
+        receiverName={receiverName}
+        handle={handle}
+        callout={callout}
+        startedAt={startedAt}
+        onCancel={() => abort.current?.abort()}
+        files={items.map((it) => ({ name: it.file.name, size: it.file.size, progress: it.progress, state: it.state }))}
+      />
+    )}
     {waiting && (
       <EmailCode
         email={who.email.trim().toLowerCase()}
