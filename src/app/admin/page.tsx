@@ -6,159 +6,276 @@ import { configProblems, env } from "@/lib/env";
 import { q } from "@/lib/db";
 import { fmtBytes } from "@/lib/format";
 import { ALLOWANCE_WARN, allowances } from "@/lib/allowance";
-import { BACKUP_KEEP_DAYS, lastBackup } from "@/lib/backup";
+import { lastBackup } from "@/lib/backup";
 import { jobProblems, lastRuns } from "@/lib/cron";
 
 const DAY = 86_400_000;
+/** Below this, week-on-week percentages are noise ("1 → 3 is +200%"), so only the difference is shown. */
+const PCT_FROM = 10;
 
-/** What needs doing first, then how this week compares with last. */
+type Tone = "ok" | "warn" | "bad" | "idle";
+type Todo = { n: number; label: string; sub: string; href: string; area: string; urgent?: boolean; oldest?: number | null; dueDays?: number };
+
+/** A verdict first, then what needs acting on, how the platform is running, and how this week compares with last. */
 export default async function AdminOverview() {
   const t = Date.now();
-  const c = (sql: string, ...a: (string | number)[]) => q.count(sql, ...a);
-  const week = (sql: string) => Promise.all([c(sql, t - 7 * DAY, t), c(sql, t - 14 * DAY, t - 7 * DAY)]);
+  const w0 = t - 7 * DAY;
+  const w1 = t - 14 * DAY;
+  // One failing query hides its own panel, not the whole page.
+  const unavailable: string[] = [];
+  const safe = <T,>(name: string, p: Promise<T>, fallback: T) =>
+    p.catch((e) => {
+      console.error(`admin overview: ${name}`, e);
+      unavailable.push(name);
+      return fallback;
+    });
+  const num = (v: unknown) => Number(v ?? 0);
 
-  const newFeedback = await c("SELECT COUNT(*) AS n FROM contact_messages WHERE topic LIKE 'Feedback%' AND feedback_status = 'new'");
-  const partnersStuck = (await partnerRows()).filter((r) => r.flag).length;
-  const jobIssues = await jobProblems();
-  const mail = await mailUsage();
-  const [takedowns, appeals, privacy, inbox, verifying, waiting, failed, incidents] = await Promise.all([
-    c("SELECT COUNT(*) AS n FROM takedowns WHERE status = 'open'"),
-    c("SELECT COUNT(*) AS n FROM contact_messages WHERE handled_at IS NULL AND topic = 'Suspension appeal'"),
-    c("SELECT COUNT(*) AS n FROM contact_messages WHERE handled_at IS NULL AND topic = 'Privacy request'"),
-    c("SELECT COUNT(*) AS n FROM contact_messages WHERE handled_at IS NULL AND topic NOT IN ('Suspension appeal', 'Privacy request') AND topic NOT LIKE 'Feedback%'"),
-    c("SELECT COUNT(*) AS n FROM users WHERE identity_status = 'pending'"),
-    c("SELECT COUNT(*) AS n FROM waitlist WHERE invited_at IS NULL"),
-    c("SELECT COUNT(*) AS n FROM incidents WHERE kind = 'email_failed' AND resolved_at IS NULL"),
-    c("SELECT COUNT(*) AS n FROM incidents WHERE kind NOT IN ('email_failed', 'upload_rejected') AND resolved_at IS NULL"),
+  // Everything at once, one query per table where possible.
+  const [msg, td, usr, inc, del, wait, wk, partnersStuck, jobIssues, mail, backup, runs, storage, signupOpen] = await Promise.all([
+    safe(
+      "messages",
+      q.get<Record<string, unknown>>(
+        `SELECT
+           COUNT(*) FILTER (WHERE topic LIKE 'Feedback%' AND feedback_status = 'new') AS feedback,
+           COUNT(*) FILTER (WHERE handled_at IS NULL AND topic = 'Suspension appeal') AS appeals,
+           MIN(created_at) FILTER (WHERE handled_at IS NULL AND topic = 'Suspension appeal') AS appeals_at,
+           COUNT(*) FILTER (WHERE handled_at IS NULL AND topic = 'Privacy request') AS privacy,
+           MIN(created_at) FILTER (WHERE handled_at IS NULL AND topic = 'Privacy request') AS privacy_at,
+           COUNT(*) FILTER (WHERE handled_at IS NULL AND topic NOT IN ('Suspension appeal', 'Privacy request') AND topic NOT LIKE 'Feedback%') AS inbox,
+           MIN(created_at) FILTER (WHERE handled_at IS NULL AND topic NOT IN ('Suspension appeal', 'Privacy request') AND topic NOT LIKE 'Feedback%') AS inbox_at
+         FROM contact_messages`,
+      ),
+      undefined,
+    ),
+    safe("takedowns", q.get<Record<string, unknown>>("SELECT COUNT(*) AS n, MIN(created_at) AS at FROM takedowns WHERE status = 'open'"), undefined),
+    safe(
+      "accounts",
+      q.get<Record<string, unknown>>(
+        `SELECT
+           COUNT(*) FILTER (WHERE identity_status = 'pending') AS verifying,
+           COUNT(*) FILTER (WHERE suspended_at IS NULL) AS active,
+           COUNT(*) FILTER (WHERE suspended_at IS NULL AND plan <> 'free') AS paid,
+           MIN(created_at) AS first_at
+         FROM users`,
+      ),
+      undefined,
+    ),
+    safe(
+      "incidents",
+      q.get<Record<string, unknown>>(
+        `SELECT
+           COUNT(*) FILTER (WHERE kind = 'email_failed') AS failed,
+           COUNT(*) FILTER (WHERE kind NOT IN ('email_failed', 'upload_rejected')) AS other
+         FROM incidents WHERE resolved_at IS NULL`,
+      ),
+      undefined,
+    ),
+    safe("deletions", q.get<Record<string, unknown>>("SELECT COUNT(*) AS queued, COUNT(*) FILTER (WHERE attempts >= 5) AS stuck FROM storage_deletions"), undefined),
+    safe("waitlist", q.count("SELECT COUNT(*) AS n FROM waitlist WHERE invited_at IS NULL"), 0),
+    safe(
+      "weekly numbers",
+      q.get<Record<string, unknown>>(
+        `SELECT
+           (SELECT COUNT(*) FROM users WHERE created_at >= ? AND created_at < ?) AS signups,
+           (SELECT COUNT(*) FROM users WHERE created_at >= ? AND created_at < ?) AS signups_prev,
+           (SELECT COUNT(*) FROM tracks WHERE created_at >= ? AND created_at < ?) AS tracks,
+           (SELECT COUNT(*) FROM tracks WHERE created_at >= ? AND created_at < ?) AS tracks_prev,
+           (SELECT COUNT(DISTINCT s.email) FROM tracks t JOIN senders s ON s.id = t.sender_id WHERE t.created_at >= ? AND t.created_at < ?) AS senders,
+           (SELECT COUNT(DISTINCT s.email) FROM tracks t JOIN senders s ON s.id = t.sender_id WHERE t.created_at >= ? AND t.created_at < ?) AS senders_prev,
+           (SELECT COUNT(*) FROM outbox WHERE status = 'sent' AND created_at >= ? AND created_at < ?) AS sent,
+           (SELECT COUNT(*) FROM outbox WHERE status = 'sent' AND created_at >= ? AND created_at < ?) AS sent_prev,
+           (SELECT COUNT(*) FROM outbox WHERE status LIKE 'failed%' AND created_at >= ? AND created_at < ?) AS failed,
+           (SELECT COUNT(*) FROM outbox WHERE status LIKE 'failed%' AND created_at >= ? AND created_at < ?) AS failed_prev`,
+        ...Array.from({ length: 5 }, () => [w0, t, w1, w0]).flat(),
+      ),
+      undefined,
+    ),
+    safe("beta partners", partnerRows().then((r) => r.filter((x) => x.flag).length), 0),
+    safe("jobs", jobProblems(t), [] as string[]),
+    safe("email quota", mailUsage(), null),
+    safe("backups", lastBackup(), null),
+    safe("job runs", lastRuns(), { purge: null, digest: null }),
+    safe("storage", allowances(), []),
+    safe("sign-up mode", switchOn("open_signup"), false),
   ]);
+
   const problems = configProblems();
-  const backup = await lastBackup();
-  // Only an alarm once a backup has existed and gone stale (or a job failed): before the first night, it's just pending.
-  const backupStale = !!backup && t - backup.at > 2 * DAY;
-  const [runs, queued, stuck] = await Promise.all([
-    lastRuns(),
-    c("SELECT COUNT(*) AS n FROM storage_deletions"),
-    c("SELECT COUNT(*) AS n FROM storage_deletions WHERE attempts >= 5"),
-  ]);
+  const takedowns = num(td?.n);
+  const full = storage.filter((a) => a.used >= a.limit * ALLOWANCE_WARN);
+  // A backup that went stale is an alarm; so is none at all once the nightly job has been running for two days.
+  const backupStale = backup ? t - backup.at > 2 * DAY : !!runs.purge && t - num(usr?.first_at) > 2 * DAY;
+  const stuck = num(del?.stuck);
 
-  const full = (await allowances()).filter((a) => a.used >= a.limit * ALLOWANCE_WARN);
-  // Most urgent first. Legal deadlines (takedowns, privacy) lead.
-  const todo = [
-    { n: problems.length, label: "Configuration problems", sub: problems[0] ?? "", href: "#config", tone: "danger" },
-    { n: mail.warn ? 1 : 0, label: "Close to the email sending limit", sub: `${mail.day} of ${mail.limits.day} today · ${mail.month} of ${mail.limits.month} this month. Upgrade Resend before it runs out.`, href: "/admin/emails", tone: "danger" },
-    { n: jobIssues.length, label: "Scheduled job failed or late", sub: jobIssues[0] ?? "", href: "/admin/jobs", tone: "danger" },
-    { n: backupStale ? 1 : 0, label: "Database backup is overdue", sub: backup ? `Last one ${new Date(backup.at).toLocaleDateString("en-GB")}` : "", href: "#config", tone: "danger" },
-    { n: full.length, label: "Storage is getting full", sub: full.map((a) => `${a.label} ${Math.round((a.used / a.limit) * 100)}%`).join(" · "), href: "/admin/storage", tone: "danger" },
-    { n: stuck, label: "Files stuck waiting to be deleted", sub: "Storage keeps refusing them; see Storage & costs", href: "/admin/storage", tone: "danger" },
-    { n: takedowns, label: "Takedown claims to decide", sub: "Copyright claims waiting for a decision", href: "/admin/takedowns", tone: "danger" },
-    { n: privacy, label: "Privacy requests", sub: "Copies of data or erasure, usually due within a month", href: "/admin/privacy", tone: "danger" },
-    { n: appeals, label: "Suspension appeals", sub: "People asking to be restored", href: "/admin/inbox", tone: "warn" },
-    { n: failed, label: "Email failures to check", sub: "Check the address or the email service, then mark handled", href: "/admin/incidents?kind=email_failed", tone: "warn" },
-    { n: incidents, label: "Open incidents", sub: "Errors the app recorded; mark each handled when dealt with", href: "/admin/incidents", tone: "warn" },
-    { n: verifying, label: "Verification requests", sub: "Check the code in their bio", href: "/admin/verification", tone: "info" },
-    { n: inbox, label: "Inbox messages", sub: "Support questions and reports", href: "/admin/inbox", tone: "info" },
-    { n: newFeedback, label: "New feedback", sub: "Ideas, bugs and reactions from inside the app, waiting to be triaged", href: "/admin/feedback?status=new", tone: "info" },
-    { n: partnersStuck, label: "Beta partners who need a nudge", sub: "No track after a week, gone quiet, or invited but not joined", href: "/admin/partners?show=stuck", tone: "warn" },
-    { n: waiting, label: "People on the waitlist", sub: "Waiting for an invite", href: "/admin/waitlist", tone: "info" },
+  const todo: Todo[] = [
+    { n: problems.length, label: "Configuration problems", sub: problems[0] ?? "", href: "#health", area: "monitor", urgent: true },
+    { n: mail?.warn ? 1 : 0, label: "Close to the email sending limit", sub: mail ? `${mail.day} of ${mail.limits.day} today · ${mail.month} of ${mail.limits.month} this month. Upgrade Resend before it runs out.` : "", href: "/admin/emails", area: "monitor", urgent: true },
+    { n: jobIssues.length, label: "Scheduled job failed or late", sub: jobIssues[0] ?? "", href: "/admin/jobs", area: "monitor", urgent: true },
+    { n: backupStale ? 1 : 0, label: backup ? "Database backup is overdue" : "No database backup yet", sub: backup ? `Last one ${new Date(backup.at).toLocaleDateString("en-GB")}` : "The nightly job is running but hasn't saved a backup", href: "/admin/jobs", area: "monitor", urgent: true },
+    { n: full.length, label: "Storage is getting full", sub: full.map((a) => `${a.label} ${Math.round((a.used / a.limit) * 100)}%`).join(" · "), href: "/admin/storage", area: "monitor", urgent: true },
+    { n: stuck, label: "Files stuck waiting to be deleted", sub: "Storage keeps refusing them; see Storage & costs", href: "/admin/storage", area: "monitor", urgent: true },
+    { n: takedowns, label: "Takedown claims to decide", sub: "Copyright claims waiting for a decision", href: "/admin/takedowns", area: "trust", urgent: true, oldest: num(td?.at) || null, dueDays: 2 },
+    { n: num(msg?.privacy), label: "Privacy requests", sub: "Copies of data or erasure, due within a month", href: "/admin/privacy", area: "trust", urgent: true, oldest: num(msg?.privacy_at) || null, dueDays: 21 },
+    { n: num(msg?.appeals), label: "Suspension appeals", sub: "People asking to be restored", href: "/admin/inbox", area: "trust", urgent: true, oldest: num(msg?.appeals_at) || null, dueDays: 7 },
+    { n: num(inc?.failed), label: "Email failures", sub: "", href: "/admin/incidents?kind=email_failed", area: "monitor" },
+    { n: num(inc?.other), label: "Open incidents", sub: "", href: "/admin/incidents", area: "monitor" },
+    { n: num(msg?.inbox), label: "Inbox", sub: "", href: "/admin/inbox", area: "support", oldest: num(msg?.inbox_at) || null, dueDays: 3 },
+    { n: num(msg?.feedback), label: "New feedback", sub: "", href: "/admin/feedback?status=new", area: "support" },
+    { n: num(usr?.verifying), label: "Verification", sub: "", href: "/admin/verification", area: "trust" },
+    { n: partnersStuck, label: "Partners to nudge", sub: "", href: "/admin/partners?show=stuck", area: "growth" },
+    { n: wait, label: "Waitlist", sub: "", href: "/admin/waitlist", area: "growth" },
   ].filter((x) => x.n > 0);
+  const now = todo.filter((x) => x.urgent);
+  const queue = todo.filter((x) => !x.urgent);
 
-  const [signups, tracks, sent, failedW, senders] = await Promise.all([
-    week("SELECT COUNT(*) AS n FROM users WHERE created_at >= ? AND created_at < ?"),
-    week("SELECT COUNT(*) AS n FROM tracks WHERE created_at >= ? AND created_at < ?"),
-    week("SELECT COUNT(*) AS n FROM outbox WHERE status = 'sent' AND created_at >= ? AND created_at < ?"),
-    week("SELECT COUNT(*) AS n FROM outbox WHERE status LIKE 'failed%' AND created_at >= ? AND created_at < ?"),
-    week("SELECT COUNT(DISTINCT s.email) AS n FROM tracks t JOIN senders s ON s.id = t.sender_id WHERE t.created_at >= ? AND t.created_at < ?"),
-  ]);
-  const [users, paid, live] = await Promise.all([
-    c("SELECT COUNT(*) AS n FROM users WHERE suspended_at IS NULL"),
-    c("SELECT COUNT(*) AS n FROM users WHERE suspended_at IS NULL AND plan <> 'free'"),
-    c("SELECT COUNT(*) AS n FROM tracks WHERE deleted_at IS NULL AND file_key IS NOT NULL"),
-  ]);
-  const bytes = Number((await q.get<{ n: number | null }>("SELECT SUM(size) AS n FROM tracks WHERE deleted_at IS NULL AND file_key IS NOT NULL"))?.n ?? 0);
-  const newest = await q.all<{ id: number; name: string; handle: string; created_at: number }>("SELECT id, name, handle, created_at FROM users ORDER BY created_at DESC LIMIT 5");
+  const ageDays = (at?: number | null) => (at ? Math.floor((t - at) / DAY) : null);
+  const overdue = (x: Todo) => x.oldest != null && x.dueDays != null && (ageDays(x.oldest) ?? 0) >= x.dueDays;
 
-  // Each number takes the colour of the admin area it belongs to (see the menu).
-  const trend: [string, [number, number], string, boolean?][] = [
-    ["New receivers", signups, "growth"],
-    ["Tracks received", tracks, "monitor"],
-    ["Active senders", senders, "support"],
-    ["Emails sent", sent, "support"],
-    ["Emails failed", failedW, "trust", true],
+  // Health: one tile per moving part, worst state wins the verdict.
+  const jobTile = (r: { ok: boolean; at: number; ms: number } | null, late: number): [Tone, string] =>
+    !r ? ["idle", "Not run yet"] : !r.ok ? ["bad", `Failed ${new Date(r.at).toLocaleString("en-GB")}`] : t - r.at > late ? ["warn", `Last ${new Date(r.at).toLocaleDateString("en-GB")}`] : ["ok", `OK · ${new Date(r.at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} UTC`];
+  const mailPct = mail ? Math.max(mail.day / mail.limits.day, mail.month / mail.limits.month) : 0;
+  const storagePct = storage.length ? Math.max(...storage.map((a) => a.used / a.limit)) : 0;
+  const health: { label: string; tone: Tone; value: string; href: string }[] = [
+    { label: "Config", tone: problems.length ? "bad" : "ok", value: problems.length ? `${problems.length} problem${problems.length === 1 ? "" : "s"}` : "All set", href: "#health" },
+    { label: "Backup", tone: backupStale ? "bad" : backup ? "ok" : "idle", value: backup ? `${new Date(backup.at).toLocaleDateString("en-GB")} · ${fmtBytes(backup.bytes)}` : "First one tonight", href: "/admin/jobs" },
+    { label: "Nightly cleanup", ...tileOf(jobTile(runs.purge, 1.5 * DAY)), href: "/admin/jobs" },
+    { label: "Morning emails", ...tileOf(jobTile(runs.digest, 1.5 * DAY)), href: "/admin/jobs" },
+    { label: "Email quota", tone: !mail ? "idle" : mail.warn ? "bad" : mailPct > 0.5 ? "warn" : "ok", value: mail ? `${Math.round(mailPct * 100)}% used` : "Unknown", href: "/admin/emails" },
+    { label: "Storage", tone: !storage.length ? "idle" : full.length ? "bad" : storagePct > 0.5 ? "warn" : "ok", value: storage.length ? `${Math.round(storagePct * 100)}% of the fullest` : "Unknown", href: "/admin/storage" },
   ];
-  const tones: Record<string, string> = { danger: "bg-danger", warn: "bg-[#e0a33a]", info: "bg-lime" };
+
+  const degraded = health.some((h) => h.tone === "bad") || unavailable.length > 0;
+  const verdict: { tone: Tone; text: string } = degraded
+    ? { tone: "bad", text: unavailable.length && !health.some((h) => h.tone === "bad") ? "Some numbers couldn't load" : "Platform needs attention" }
+    : now.length
+      ? { tone: "warn", text: `${now.length} thing${now.length === 1 ? "" : "s"} need${now.length === 1 ? "s" : ""} action` }
+      : { tone: "ok", text: "All clear" };
+
+  const trend: [string, number, number, string, boolean?][] = [
+    ["New receivers", num(wk?.signups), num(wk?.signups_prev), "growth"],
+    ["Tracks received", num(wk?.tracks), num(wk?.tracks_prev), "monitor"],
+    ["Active senders", num(wk?.senders), num(wk?.senders_prev), "support"],
+    ["Emails sent", num(wk?.sent), num(wk?.sent_prev), "support"],
+    ["Emails failed", num(wk?.failed), num(wk?.failed_prev), "trust", true],
+  ];
+  const bytes = storage[0]?.used ?? 0;
+  const newest = await safe("newest receivers", q.all<{ id: number; name: string; handle: string; created_at: number }>("SELECT id, name, handle, created_at FROM users ORDER BY created_at DESC LIMIT 5"), []);
+
+  const dot: Record<Tone, string> = { ok: "bg-lime", warn: "bg-[#e0a33a]", bad: "bg-danger", idle: "bg-faint" };
+  const banner: Record<Tone, string> = { ok: "border-lime/40 bg-lime/5", warn: "border-[#e0a33a]/50 bg-[#e0a33a]/10", bad: "border-danger/50 bg-danger/10", idle: "border-line" };
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
       <h1 className="text-3xl font-bold tracking-tight">Overview</h1>
 
-      <section aria-labelledby="todo-h" className="space-y-3">
-        <h2 id="todo-h" className="text-lg font-semibold">To do</h2>
-        {todo.length ? (
-          <ul className="divide-y divide-line rounded-md border border-line">
-            {todo.map((x) => (
-              <li key={x.label}>
-                <Link href={x.href} className="flex items-center gap-4 px-4 py-3 hover:bg-ink-2">
-                  <span aria-hidden className={`size-2 shrink-0 rounded-full ${tones[x.tone]}`} />
-                  <span className="w-10 text-right text-xl font-bold tnum">{x.n}</span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-bold">{x.label}</span>
-                    {x.sub && <span className="block truncate text-sm text-mute">{x.sub}</span>}
+      <p role="status" className={`flex items-center gap-3 rounded-lg border px-4 py-3 text-lg font-bold ${banner[verdict.tone]}`}>
+        <span aria-hidden className={`size-2.5 shrink-0 rounded-full ${dot[verdict.tone]}`} />
+        {verdict.text}
+        {unavailable.length > 0 && <span className="text-sm font-normal text-mute">Couldn&apos;t load: {unavailable.join(", ")}</span>}
+      </p>
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <section aria-labelledby="now-h" className="space-y-3 lg:col-span-2">
+          <h2 id="now-h" className="text-lg font-semibold">Act now</h2>
+          {now.length ? (
+            <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line">
+              {now.map((x) => {
+                const age = ageDays(x.oldest);
+                return (
+                  <li key={x.label} data-area={x.area}>
+                    <Link href={x.href} className="flex items-center gap-4 border-l-2 border-[var(--area)] px-4 py-3 hover:bg-ink-2">
+                      <span className="w-8 text-right text-xl font-bold tnum">{x.n}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-bold">{x.label}</span>
+                        {x.sub && <span className="block truncate text-sm text-mute">{x.sub}</span>}
+                      </span>
+                      {age != null && (
+                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold tnum ${overdue(x) ? "bg-danger/15 text-danger" : "bg-ink-3 text-mute"}`}>
+                          oldest {age === 0 ? "today" : `${age}d`}
+                        </span>
+                      )}
+                      <span aria-hidden className="text-faint">→</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="rounded-lg border border-line px-4 py-3 text-sm text-mute">Nothing urgent.</p>
+          )}
+
+          {queue.length > 0 && (
+            <>
+              <h3 className="label pt-2">Queue</h3>
+              <ul className="flex flex-wrap gap-2">
+                {queue.map((x) => {
+                  const age = ageDays(x.oldest);
+                  return (
+                    <li key={x.label} data-area={x.area}>
+                      <Link href={x.href} className="flex items-center gap-2 rounded-full border border-line bg-ink-2 px-3 py-1.5 text-sm hover:border-[var(--area)]">
+                        <span aria-hidden className="area-dot size-1.5 rounded-full" />
+                        <span className="font-bold tnum">{x.n}</span>
+                        {x.label}
+                        {age != null && age > 0 && <span className={`text-xs tnum ${overdue(x) ? "text-danger" : "text-faint"}`}>· {age}d</span>}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          )}
+        </section>
+
+        <section id="health" aria-labelledby="health-h" className="space-y-3">
+          <h2 id="health-h" className="text-lg font-semibold">Health</h2>
+          <ul className="grid grid-cols-2 gap-2">
+            {health.map((h) => (
+              <li key={h.label}>
+                <Link href={h.href} className="block h-full rounded-lg border border-line bg-ink-2 p-3 hover:border-line-2">
+                  <span className="label flex items-center gap-2">
+                    <span aria-hidden className={`size-2 rounded-full ${dot[h.tone]}`} />
+                    {h.label}
                   </span>
-                  <span aria-hidden className="text-faint">→</span>
+                  <span className={`mt-1 block text-sm font-semibold ${h.tone === "bad" ? "text-danger" : ""}`}>{h.value}</span>
                 </Link>
               </li>
             ))}
           </ul>
-        ) : (
-          <p className="rounded-md border border-lime/40 bg-lime/5 px-4 py-3 text-sm">All clear. Nothing is waiting on you.</p>
-        )}
-      </section>
+          {problems.length > 0 && (
+            <ul className="space-y-2">
+              {problems.map((p) => (
+                <li key={p} className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm">{p}</li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
 
       <section aria-labelledby="week-h" className="space-y-3">
-        <h2 id="week-h" className="text-lg font-semibold">This week vs last</h2>
+        <h2 id="week-h" className="text-lg font-semibold">Last 7 days vs the 7 before</h2>
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          {trend.map(([k, [now, prev], area, lowerIsBetter]) => {
-            const diff = now - prev;
+          {trend.map(([k, cur, prev, area, lowerIsBetter]) => {
+            const diff = cur - prev;
             const good = lowerIsBetter ? diff <= 0 : diff >= 0;
+            const pct = prev >= PCT_FROM ? ` (${diff > 0 ? "+" : "−"}${Math.round((Math.abs(diff) / prev) * 100)}%)` : "";
             return (
               <li key={k} data-area={area} className="card area-card p-4">
                 <p className="label flex items-center gap-2">
                   <span aria-hidden className="area-dot size-1.5 rounded-full" />
                   {k}
                 </p>
-                <p className="mt-2 text-2xl font-bold tnum">{now.toLocaleString("en")}</p>
+                <p className="mt-2 text-2xl font-bold tnum">{cur.toLocaleString("en")}</p>
                 <p className={`mt-1 text-sm tnum ${diff === 0 ? "text-mute" : good ? "text-lime" : "text-danger"}`}>
-                  {diff === 0 ? "Same as last week" : `${diff > 0 ? "▲" : "▼"} ${Math.abs(diff)}${prev ? ` (${diff > 0 ? "+" : "−"}${Math.round((Math.abs(diff) / prev) * 100)}%)` : ""} vs ${prev}`}
+                  {diff === 0 ? "Same as before" : `${diff > 0 ? "▲" : "▼"} ${Math.abs(diff)}${pct} vs ${prev}`}
                 </p>
               </li>
             );
           })}
         </ul>
         <p className="text-sm text-mute">
-          {users.toLocaleString("en")} active accounts · {paid} on a paid plan · {live.toLocaleString("en")} tracks on file ({fmtBytes(bytes)}) ·{" "}
+          {num(usr?.active).toLocaleString("en")} active accounts · {num(usr?.paid)} on a paid plan · {fmtBytes(bytes)} in file storage ·{" "}
           <Link href="/admin/metrics" className="underline">more in Metrics</Link>
-        </p>
-      </section>
-
-      <section id="config" aria-labelledby="health-h">
-        <h2 id="health-h" className="text-lg font-semibold">Configuration</h2>
-        {problems.length ? (
-          <ul className="mt-3 space-y-2">
-            {problems.map((p) => (
-              <li key={p} className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm">{p}</li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-3 text-sm text-lime">Everything required is set.</p>
-        )}
-        <p className="mt-3 text-sm text-mute">Sign-up: {(await switchOn("open_signup")) ? "open to anyone" : "invite only"}. Emails send from {env.email.from}.</p>
-        <p className="mt-1 text-sm text-mute">
-          Backups: {backup ? `last ${new Date(backup.at).toLocaleString("en-GB")} · ${fmtBytes(backup.bytes)} · ${backup.rows.toLocaleString("en")} rows, encrypted, kept ${BACKUP_KEEP_DAYS} days in the storage bucket under backups/` : "the first runs with tonight's cleanup job (03:30 UTC)."}
-        </p>
-        <p className="mt-1 text-sm text-mute">
-          Nightly cleanup: {runs.purge ? `${runs.purge.ok ? "ok" : "FAILED"} ${new Date(runs.purge.at).toLocaleString("en-GB")} (${(runs.purge.ms / 1000).toFixed(1)}s)` : "not run yet"} · Morning emails:{" "}
-          {runs.digest ? `${runs.digest.ok ? "ok" : "FAILED"} ${new Date(runs.digest.at).toLocaleString("en-GB")} (${(runs.digest.ms / 1000).toFixed(1)}s)` : "not run yet"} · Files waiting to be deleted: {queued}
-          {stuck ? ` (${stuck} stuck)` : ""}
         </p>
       </section>
 
@@ -175,6 +292,15 @@ export default async function AdminOverview() {
           ))}
         </ul>
       </section>
+
+      <p className="text-sm text-mute">
+        Sign-up: {signupOpen ? "open to anyone" : "invite only"} · Emails send from {env.email.from} · Files waiting to be deleted: {num(del?.queued)}
+        {stuck ? ` (${stuck} stuck)` : ""}
+      </p>
     </div>
   );
+}
+
+function tileOf([tone, value]: [Tone, string]) {
+  return { tone, value };
 }

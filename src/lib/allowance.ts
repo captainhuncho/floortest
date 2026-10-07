@@ -12,13 +12,16 @@ export type Allowance = { label: string; used: number; limit: number; note: stri
 /** How full each storage allowance is: audio and backups in R2, and the Postgres database. */
 export async function allowances(): Promise<Allowance[]> {
   const n = async (sql: string) => Number((await q.get<{ n: string | number | null }>(sql))?.n ?? 0);
-  const audio =
-    (await n("SELECT COALESCE(SUM(size), 0) AS n FROM tracks WHERE file_key IS NOT NULL AND deleted_at IS NULL")) +
-    (await n("SELECT COALESCE(SUM(size), 0) AS n FROM stems")) +
-    (await n("SELECT COALESCE(SUM(size), 0) AS n FROM uploads"));
+  const [tracks, stems, uploads, backup, database] = await Promise.all([
+    n("SELECT COALESCE(SUM(size), 0) AS n FROM tracks WHERE file_key IS NOT NULL AND deleted_at IS NULL"),
+    n("SELECT COALESCE(SUM(size), 0) AS n FROM stems"),
+    n("SELECT COALESCE(SUM(size), 0) AS n FROM uploads"),
+    lastBackup(),
+    n("SELECT pg_database_size(current_database()) AS n"),
+  ]);
+  const audio = tracks + stems + uploads;
   // Each night's backup is kept BACKUP_KEEP_DAYS days in the same bucket.
-  const backups = ((await lastBackup())?.bytes ?? 0) * BACKUP_KEEP_DAYS;
-  const database = await n("SELECT pg_database_size(current_database()) AS n");
+  const backups = (backup?.bytes ?? 0) * BACKUP_KEEP_DAYS;
   return [
     { label: "File storage (Cloudflare R2)", used: audio + backups, limit: FILES_ALLOWANCE, note: "Audio, stems, unfinished uploads and backups. Past the free 10 GB it's billed per GB, not blocked." },
     { label: "Database (Neon)", used: database, limit: DATABASE_ALLOWANCE, note: "Accounts, track details and activity. Upgrade Neon before this fills up: the free plan stops taking writes at its limit." },

@@ -1092,4 +1092,14 @@ alter table collections add column full_at bigint;
     id: "0065_collection_art",
     sql: `alter table collections add column art_key text;`,
   },
+  {
+    // The admin Overview counts recent sign-ups and tracks, and open messages and incidents, on every view.
+    id: "0066_overview_indexes",
+    sql: `
+create index if not exists users_created on users(created_at);
+create index if not exists tracks_created on tracks(created_at);
+create index if not exists contact_open on contact_messages(topic) where handled_at is null;
+create index if not exists incidents_open on incidents(kind) where resolved_at is null;
+`,
+  },
 ];
