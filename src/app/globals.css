@@ -74,8 +74,10 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
 [data-area="support"] { --area: #ffb648; }
 [data-area="growth"] { --area: #d5ff48; }
 [data-area="trust"] { --area: #ff8a7a; }
-[data-area] .area-label { color: var(--area); opacity: 0.85; }
-[data-area] .tactile-item svg { color: var(--area); opacity: 0.7; transition: opacity 120ms var(--ease-out); }
+[data-area] .area-label { color: var(--area); }
+/* Admin menu: brighter, heavier links than the generic tactile list. */
+[data-area] .tactile-item { color: #c4c7bd; }
+[data-area] .tactile-item svg { color: var(--area); opacity: 0.9; transition: opacity 120ms var(--ease-out); }
 [data-area] .tactile-item:hover svg, [data-area] .tactile-item[aria-current="page"] svg { opacity: 1; }
 [data-area] .tactile-item[aria-current="page"] { box-shadow: inset 2px 0 0 var(--area), inset 0 1px 0 rgb(255 255 255 / 0.12), 0 2px 6px rgb(0 0 0 / 0.55); }
 .area-card { border-top: 2px solid var(--area); }

@@ -73,9 +73,9 @@ export function AdminNav({ groups, admin }: { groups: NavGroup[]; admin: { name:
       href={i.href}
       title={open ? undefined : i.label}
       aria-current={isActive(i.href) ? "page" : undefined}
-      className={`tactile-item relative flex items-center gap-2.5 rounded-[12px] px-2.5 py-2 text-[12px] font-medium ${open ? "" : "justify-center"}`}
+      className={`tactile-item relative flex items-center gap-2.5 rounded-[12px] px-2.5 py-2.5 text-[13px] font-semibold ${open ? "" : "justify-center"}`}
     >
-      <Icon name={i.icon} className="size-4 shrink-0" />
+      <Icon name={i.icon} className="size-[18px] shrink-0" />
       {open ? (
         <>
           <span className="min-w-0 flex-1 truncate">{i.label}</span>
@@ -95,11 +95,11 @@ export function AdminNav({ groups, admin }: { groups: NavGroup[]; admin: { name:
       <div className={`flex items-center gap-2.5 px-3 pb-3 pt-4 ${open ? "justify-between" : "flex-col"}`}>
         <Link href="/admin" className="flex items-center gap-2.5" aria-label="FloorTest admin">
           {/* Ops has its own brushed-silver crest, so it never looks like the main site. */}
-          <img src="/brand/crest-ops.svg" alt="" aria-hidden className="size-8 shrink-0" />
+          <img src="/brand/crest-ops.svg" alt="" aria-hidden className="size-10 shrink-0" />
           {open && (
             <span className="flex flex-col leading-tight">
-              <span className="text-[14px] font-bold text-bone">FloorTest</span>
-              <span className="text-[11px] font-bold uppercase tracking-[1px] text-faint">Admin</span>
+              <span className="text-[16px] font-extrabold text-bone">FloorTest</span>
+              <span className="text-[11px] font-bold uppercase tracking-[1.5px] text-mute">Admin</span>
             </span>
           )}
         </Link>
