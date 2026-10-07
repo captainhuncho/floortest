@@ -266,21 +266,42 @@ export async function resendInvite(code: string) {
 }
 
 /** Waitlist → personal invite in one click. */
-export async function inviteFromWaitlist(id: number) {
-  const a = await requireAdminAction();
+/** One waitlist invite: "sent", "joined" (already has an account), "invited" (already done), or "failed" (email didn't send). */
+async function sendWaitlistInvite(id: number, a: { id: number; name: string }) {
   const w = await q.get<{ email: string; invited_at: number | null; handle: string }>("SELECT email, invited_at, handle FROM waitlist WHERE id = ?", id);
-  if (!w || w.invited_at) return fail("Already invited");
+  if (!w || w.invited_at) return "invited" as const;
   if (await q.get("SELECT 1 FROM users WHERE email = ?", w.email)) {
     await q.run("UPDATE waitlist SET invited_at = ? WHERE id = ?", now(), id);
-    return fail("They already have an account");
+    return "joined" as const;
   }
   const code = newCode();
   await q.run("INSERT INTO invites (code, max_uses, note, email, created_at) VALUES (?,?,?,?,?)", code, 1, "From the waitlist", w.email, now());
-  if ((await mailInvite(code, w.email, a.name, "", w.handle)).startsWith("failed")) return fail("The invite email failed to send. It's saved; resend it from Invites.");
+  if ((await mailInvite(code, w.email, a.name, "", w.handle)).startsWith("failed")) return "failed" as const;
   await q.run("UPDATE invites SET sent_at = ? WHERE code = ?", now(), code);
   await q.run("UPDATE waitlist SET invited_at = ? WHERE id = ?", now(), id);
   await logAdmin(a.id, "invited from waitlist", w.email, code);
-  await done(`Invited ${w.email}`);
+  return "sent" as const;
+}
+
+export async function inviteFromWaitlist(id: number) {
+  const a = await requireAdminAction();
+  const r = await sendWaitlistInvite(id, a);
+  if (r === "invited") return fail("Already invited");
+  if (r === "joined") return fail("They already have an account");
+  if (r === "failed") return fail("The invite email failed to send. It's saved; resend it from Invites.");
+  await done("Invite sent");
+  refresh();
+}
+
+/** Waitlist → "Invite the oldest N": first come, first served, one at a time so a failed email stops nothing else. */
+export async function inviteOldestFromWaitlist(form: FormData) {
+  const a = await requireAdminAction();
+  const n = Math.min(50, Math.max(1, Math.round(Number(form.get("n")) || 0)));
+  const ids = await q.all<{ id: number }>("SELECT id FROM waitlist WHERE invited_at IS NULL ORDER BY created_at ASC LIMIT ?", n);
+  const tally = { sent: 0, joined: 0, invited: 0, failed: 0 };
+  for (const { id } of ids) tally[await sendWaitlistInvite(id, a)]++;
+  const extra = [tally.joined && `${tally.joined} already had an account`, tally.failed && `${tally.failed} emails failed (resend from Invites)`].filter(Boolean).join(" · ");
+  await (tally.failed ? fail : done)(`Invited ${tally.sent} from the waitlist${extra ? ` · ${extra}` : ""}`);
   refresh();
 }
 
