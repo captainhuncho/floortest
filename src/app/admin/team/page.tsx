@@ -1,6 +1,5 @@
 import { requireAdmin } from "@/lib/admin";
 import { q } from "@/lib/db";
-import { env } from "@/lib/env";
 import { parsePerms, PERMS, ROLE_PERMS, ROLES, SUPER_ONLY, type Perm, type Role } from "@/lib/ops-perms";
 import { ConfirmButton } from "../AdminUi";
 import { addOpsMember, saveOpsMember, setOpsMemberDisabled } from "../actions";
@@ -21,7 +20,7 @@ export default async function OpsTeam() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Ops team</h1>
         <p className="mt-2 max-w-2xl text-mute">
-          People who can sign in to ops, and what each can open. Super admins are set by ADMIN_EMAILS ({env.adminEmails.length}) and can&apos;t be removed here.
+          People who can sign in to ops, and what each can open.
         </p>
       </div>
 
