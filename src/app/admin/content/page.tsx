@@ -1,6 +1,5 @@
 import { requireAdmin } from "@/lib/admin";
 import Link from "next/link";
-import { draftMode } from "next/headers";
 import { q } from "@/lib/db";
 import { contentRow, SITE_PAGES, type Field, type SitePage } from "@/lib/content";
 import { fmtDate } from "@/lib/format";
@@ -24,7 +23,6 @@ export default async function SiteContent({ searchParams }: { searchParams: Prom
     "SELECT v.id, v.created_at, u.handle FROM site_content_versions v LEFT JOIN users u ON u.id = v.admin_id WHERE v.page = ? ORDER BY v.created_at DESC LIMIT 20",
     page,
   );
-  const previewOn = (await draftMode()).isEnabled;
   return (
     <div className="space-y-6">
       <div>
@@ -52,11 +50,10 @@ export default async function SiteContent({ searchParams }: { searchParams: Prom
         <a href={`/api/admin/preview?page=${page}`} target="_blank" rel="noreferrer" className="btn-ghost btn-sm">
           Preview draft ↗
         </a>
-        {previewOn && (
-          <a href="/api/admin/preview?off" className="text-xs text-mute underline underline-offset-4">
-            Stop showing drafts in this browser
-          </a>
-        )}
+        {/* The draft view lives on floortest.app, so this can't tell whether it's on: the link is always offered. */}
+        <a href="/api/admin/preview?off" className="text-xs text-mute underline underline-offset-4">
+          Stop showing drafts on the site
+        </a>
       </div>
       <form action={saveContent.bind(null, page)} className="space-y-5 rounded-md border border-line p-5">
         {Object.entries(def.fields as Record<string, Field>).map(([k, fld]) => {

@@ -164,7 +164,13 @@ export default async function Plans() {
                   </ConfirmButton>
                 )}
               </div>
-              <button form={formId} className="btn-lime btn-sm w-full sm:w-auto">Save changes</button>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                {/* Opens the real plan cards with these unsaved edits, in a new tab; nothing is saved. */}
+                <button form={formId} name="plan" value={p.id} formAction="/admin/plans/preview" formMethod="get" formTarget="_blank" formNoValidate className="btn-ghost btn-sm w-full sm:w-auto">
+                  Preview ↗
+                </button>
+                <button form={formId} className="btn-lime btn-sm w-full sm:w-auto">Save changes</button>
+              </div>
             </footer>
             )}
           </section>

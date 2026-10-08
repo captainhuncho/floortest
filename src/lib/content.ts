@@ -1,6 +1,8 @@
 import "server-only";
 import { cache } from "react";
-import { draftMode } from "next/headers";
+import { cookies, draftMode } from "next/headers";
+import { PREVIEW_COOKIE, previewer } from "./draft-preview";
+import { hasLiveOpsSession } from "./ops";
 import { currentUser } from "./auth";
 import { isAdminEmail } from "./admin";
 import { q } from "./db";
@@ -112,6 +114,9 @@ export const contentRow = (page: SitePage) =>
 /** Admins previewing (Admin → Site content → Preview) see drafts; everyone else sees what's published. */
 const previewing = cache(async () => {
   if (!(await draftMode()).isEnabled) return false;
+  // Opened from ops with a signed pass, and that person is still signed in to ops.
+  const id = previewer((await cookies()).get(PREVIEW_COOKIE)?.value);
+  if (id && (await hasLiveOpsSession(id))) return true;
   const u = await currentUser();
   return !!u && isAdminEmail(u.email);
 });

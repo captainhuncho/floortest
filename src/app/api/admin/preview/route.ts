@@ -1,18 +1,20 @@
 import { draftMode } from "next/headers";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/admin";
-import { SITE_PAGES, type SitePage } from "@/lib/content";
+import { previewPass } from "@/lib/draft-preview";
+import { APP_URL } from "@/lib/mail";
 
-/** Admin → Site content → Preview: turn on draft view for this browser and open the page. `?off` turns it off. */
+/**
+ * Admin → Site content → Preview. Drafts show on floortest.app, a different host from ops, so this hands over a
+ * 60-second signed pass (see /api/draft-preview). `?off` ends the preview there.
+ */
 export async function GET(req: Request) {
-  await requireAdmin("content");
+  const me = await requireAdmin("content");
   const url = new URL(req.url);
-  const dm = await draftMode();
   if (url.searchParams.has("off")) {
-    dm.disable();
-    redirect("/admin/content");
+    (await draftMode()).disable();
+    redirect(`${APP_URL}/api/draft-preview?off`);
   }
-  dm.enable();
-  const page = url.searchParams.get("page") as SitePage;
-  redirect(SITE_PAGES[page]?.path ?? "/");
+  const page = url.searchParams.get("page") ?? "";
+  redirect(`${APP_URL}/api/draft-preview?t=${encodeURIComponent(previewPass(me.id))}&page=${encodeURIComponent(page)}`);
 }

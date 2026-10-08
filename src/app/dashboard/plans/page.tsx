@@ -3,15 +3,12 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { capacity } from "@/lib/desk";
 import { RETAIN_UNREVIEWED_DAYS } from "@/lib/plans";
-import { afterDiscount, allPlans, discountNow, planGrid, planOf } from "@/lib/plan-store";
+import { allPlans, planOf } from "@/lib/plan-store";
 import { switchOn } from "@/lib/switches";
-import { setPlan } from "../actions/settings";
 import { BillingSwitch } from "./BillingSwitch";
+import { PlanCards } from "./PlanCards";
 
 export const metadata = { title: "Plans — FloorTest" };
-
-/** The core tools every plan gets; plans differ in room (and, on paid plans, a few extras). */
-const SHARED = ["Permanent receiving link", "Private track submissions", "Listen and review", "Receipts and updates for senders", "Organise collections", "Prepare for your set", "Download tracks"];
 
 /**
  * Usage, then the three plans side by side on desktop (stacked on phones). During the beta every plan
@@ -31,12 +28,6 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
   const pct = Math.min(100, Math.round((cap.used / Math.max(1, cap.limit)) * 100));
   // Offered plans, plus the person's own plan even if it's been retired (they keep it until they change).
   const plans = (await allPlans()).filter((p) => !p.retired || p.id === user.plan);
-  // Paid plans' own extras, minus lines the card already shows (capacity) or that only point at another plan.
-  const extrasOf = (p: (typeof plans)[number]) => (p.price > 0 ? p.features.filter((f) => !/active tracks|^everything in/i.test(f)) : []);
-  const sameTools = plans.every((p) => !extrasOf(p).length);
-  // Yearly against twelve months, rounded down so we never overstate it.
-  const saving = (p: (typeof plans)[number]) => (p.price && p.yearly ? Math.max(0, Math.floor((1 - p.yearly / (p.price * 12)) * 100)) : 0);
-  const yearlyUnset = plans.some((p) => p.price > 0 && !p.yearly);
 
   return (
     <div id="plans-root" data-period={yearly ? "year" : "month"} className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-5 text-bone sm:px-8 md:py-8">
@@ -80,125 +71,7 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
         </p>
       </section>
 
-      {!billing && (
-        <p className="flex items-center gap-2.5 rounded-lg border border-line bg-ink-2 px-[18px] py-3.5 text-sm font-medium">
-          <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-lime" />
-          Free during beta. Paid plans start after it ends.
-        </p>
-      )}
-
-      <ul className={`grid gap-4 ${planGrid(plans.length)}`}>
-        {plans.map((p) => {
-          const id = p.id;
-          const isCurrent = user.plan === id;
-          const tooSmall = cap.used > p.limit + cap.bonus;
-          const upgrade = p.price > current.price;
-          const featured = p.featured;
-          const extras = extrasOf(p);
-          // A running discount shows the list price struck through; list prices themselves never change.
-          const off = discountNow(p);
-          const action = billing ? `Upgrade to ${p.name}` : "Start in beta →";
-          return (
-            <li
-              key={id}
-              className={`flex flex-col gap-4 rounded-[14px] border p-6 md:p-7 ${featured ? "border-[#6c7e38] bg-[#20251a]" : "border-line bg-ink-2"}`}
-              aria-current={isCurrent ? "true" : undefined}
-            >
-              <div className="flex min-h-[30px] items-center justify-between gap-2">
-                <h2 className="text-2xl font-semibold">{p.name}</h2>
-                {isCurrent ? (
-                  <span className="rounded-full bg-bone px-2.5 py-1 text-[11px] font-semibold text-ink">Your plan</span>
-                ) : featured ? (
-                  <span className="rounded-full border border-[#6c7e38] px-2.5 py-1 text-[11px] font-semibold text-lime">More room</span>
-                ) : null}
-              </div>
-
-              {([false, true] as const).map((yr) => {
-                const list = yr ? p.yearly : p.price;
-                const shown = off && list ? afterDiscount(list, off) : list;
-                return (
-                  <div key={String(yr)} className={`${yr ? "period-year" : "period-month"} flex min-h-[78px] flex-col gap-1`}>
-                    {off > 0 && (
-                      <p className="w-fit rounded-full border border-lime/50 px-2.5 py-0.5 text-[11px] font-semibold text-lime">
-                        {p.discount.label || "Offer"} · {off}% off{p.discount.endsAt ? ` · until ${new Date(p.discount.endsAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })}` : ""}
-                      </p>
-                    )}
-                    <p className="flex items-baseline gap-2 whitespace-nowrap">
-                      {p.price && yr && !p.yearly ? (
-                        <span className="text-[22px] font-semibold leading-[54px] whitespace-nowrap">To be confirmed</span>
-                      ) : (
-                        <>
-                          <span className={`${shown >= 100 || off ? "text-[40px]" : "text-5xl"} font-semibold leading-[54px] tnum`}>${p.price ? shown : 0}</span>
-                          {off > 0 && list > 0 && <s className="text-sm text-mute tnum">${list}</s>}
-                        </>
-                      )}
-                      {p.price > 0 && (!yr || p.yearly > 0) && <span className="text-sm text-mute">/ {yr ? "year" : "month"}</span>}
-                    </p>
-                    <p className="text-xs text-mute">{!p.price ? "Free plan" : yr ? (p.yearly ? `${billing ? "Billed yearly" : "After beta"}${saving(p) ? ` · save ${saving(p)}%` : ""}` : "Yearly price, after beta") : billing ? p.blurb : "After beta"}</p>
-                  </div>
-                );
-              })}
-
-              <div>
-                {isCurrent ? (
-                  <p className="grid h-11 place-items-center rounded-lg border border-line text-[13px] font-semibold text-mute">You&apos;re on this plan</p>
-                ) : tooSmall ? (
-                  <p className="grid min-h-11 place-items-center rounded-lg border border-line px-3 text-center text-[12px] text-mute">You have more tracks than this plan holds</p>
-                ) : upgrade ? (
-                  <Link
-                    href={`/dashboard/checkout?plan=${id}`}
-                    className={`grid h-11 place-items-center rounded-lg border text-[13px] font-semibold ${featured ? "border-lime bg-lime text-ink hover:brightness-95" : "border-[#64675c] text-bone hover:border-bone"}`}
-                  >
-                    {action}
-                  </Link>
-                ) : (
-                  <form action={setPlan.bind(null, id)}>
-                    <button className="h-11 w-full rounded-lg border border-[#64675c] text-[13px] font-semibold text-bone hover:border-bone">Move to {p.name}</button>
-                  </form>
-                )}
-              </div>
-
-              <p className={`flex items-baseline gap-2 border-b pb-4 ${featured ? "border-[#6c7e38]" : "border-line"}`}>
-                <span className="text-[21px] font-semibold tnum">{p.limit.toLocaleString("en")}</span>
-                <span className="text-sm text-mute">active tracks</span>
-              </p>
-
-              <div className="flex flex-col gap-3.5">
-                <p className="text-xs font-semibold text-mute">Included in every plan</p>
-                <ul className="flex flex-col gap-2.5 text-sm">
-                  {SHARED.map((f) => (
-                    <li key={f} className="flex items-center gap-2.5">
-                      <svg aria-hidden viewBox="0 0 16 16" className="size-4 shrink-0 text-lime" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M3 8.5l3.2 3L13 4.5" />
-                      </svg>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                {extras.length > 0 && (
-                  <>
-                    <p className="pt-1 text-xs font-semibold text-mute">Also on {p.name}</p>
-                    <ul className="flex flex-col gap-2.5 text-sm">
-                      {extras.map((f) => (
-                        <li key={f} className="flex items-center gap-2.5">
-                          <span aria-hidden className="grid size-4 shrink-0 place-items-center text-lime">+</span>
-                          {f}
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-
-      <div className="flex flex-col gap-1 text-xs text-mute sm:flex-row sm:justify-between">
-        <p>{sameTools ? "All plans include the same tools. Only active-track capacity changes." : "Every plan includes the core tools; bigger plans add room and a few extras."}</p>
-        <p className="period-month">{billing ? "Billed monthly." : "Prices shown apply after beta."}</p>
-        <p className="period-year">{yearlyUnset ? "Yearly pricing is not yet confirmed for every plan." : billing ? "Billed yearly." : "Prices shown apply after beta."}</p>
-      </div>
+      <PlanCards plans={plans} billing={billing} userPlan={user.plan} currentPrice={current.price} capUsed={cap.used} capBonus={cap.bonus} />
 
       <section aria-labelledby="renewal-h" className="space-y-1.5 text-[11px] text-dim md:max-w-3xl">
         <h2 id="renewal-h" className="font-bold text-mute">
