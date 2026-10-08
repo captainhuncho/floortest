@@ -1,6 +1,7 @@
 "use server";
 
 /** Collections: create, choose which one receives, edit and delete. */
+import { redirect } from "next/navigation";
 import { canCapCallouts } from "@/lib/desk";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
@@ -76,10 +77,12 @@ export async function updateCollection(id: number, form: FormData) {
   revalidatePath(`/${u.handle}`);
 }
 
-export async function deleteCollection(id: number) {
+/** Deleting a collection is confirmed by typing its name in capitals; tracks in it are kept, unsorted. */
+export async function deleteCollection(id: number, confirm: string) {
   const u = await requireUser();
   const c = await ownCollection(u.id, id);
   if (!c) return;
+  if (confirm.trim() !== c.name.trim().toUpperCase()) return;
   if ((await q.count("SELECT COUNT(*) AS n FROM collections WHERE user_id = ?", u.id)) <= 1) return; // the link always needs somewhere to route
   await q.tx(async (db) => {
     // Tracks fall back to "unsorted" (collection_id NULL) rather than being deleted.
@@ -90,4 +93,5 @@ export async function deleteCollection(id: number) {
   });
   await audit(u.id, "collection_deleted", c.name);
   done();
+  redirect("/dashboard/collections");
 }

@@ -115,17 +115,6 @@ export function CollectionCard({ c, receiving, closed, canDelete, startEditing =
             <button className="btn-lime" disabled={pending}>
               Save
             </button>
-            {canDelete && (
-              <button
-                type="button"
-                className="btn text-danger hover:bg-danger/10"
-                onClick={() => {
-                  if (confirm(`Delete “${c.name}”? Its tracks stay in the Review Queue, unsorted.`)) start(() => deleteCollection(c.id));
-                }}
-              >
-                Delete
-              </button>
-            )}
           </div>
           <p className="text-sm text-mute sm:col-span-3">
             After the closing date your link shows “callout closed” and stops taking uploads. Clear the date to reopen.
@@ -471,5 +460,56 @@ function ArtUpload({ id, name, art }: { id: number; name: string; art: string | 
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * The danger zone on a collection: deleting needs the name typed in capitals. Its tracks aren't deleted; they go back
+ * to the Review Queue, unsorted. The last collection can't go, because the link always needs somewhere to send tracks.
+ */
+export function DeleteCollection({ c, canDelete }: { c: { id: number; name: string }; canDelete: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState("");
+  const [pending, start] = useTransition();
+  const want = c.name.trim().toUpperCase();
+  const match = typed.trim() === want;
+  return (
+    <section aria-labelledby={`del-${c.id}`} className="rounded-lg border border-danger/30 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 id={`del-${c.id}`} className="text-sm font-bold">Delete this collection</h3>
+          <p className="text-xs text-mute">{canDelete ? "Its tracks stay in your Review Queue, unsorted. This can't be undone." : "You need at least one collection, so this one can't be deleted. Make another first."}</p>
+        </div>
+        {canDelete && !open && (
+          <button type="button" onClick={() => setOpen(true)} className="btn-sm rounded-md border border-danger/50 px-4 text-danger hover:bg-danger/10">
+            Delete…
+          </button>
+        )}
+      </div>
+      {canDelete && open && (
+        <form
+          className="mt-4 space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (match) start(() => deleteCollection(c.id, typed));
+          }}
+        >
+          <label className="block space-y-1.5">
+            <span className="text-xs text-mute">
+              Type <span className="font-mono font-bold text-bone">{want}</span> to confirm
+            </span>
+            <input value={typed} onChange={(e) => setTyped(e.target.value)} autoFocus autoComplete="off" spellCheck={false} className="input font-mono" aria-invalid={typed !== "" && !match} />
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <button disabled={!match || pending} className="btn-sm rounded-md bg-danger px-4 font-bold text-ink disabled:cursor-not-allowed disabled:opacity-40">
+              {pending ? "Deleting…" : "Delete collection"}
+            </button>
+            <button type="button" onClick={() => { setOpen(false); setTyped(""); }} className="btn-ghost btn-sm">
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+    </section>
   );
 }

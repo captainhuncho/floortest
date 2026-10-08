@@ -10,7 +10,7 @@ import { fmtDay } from "@/lib/format";
 import { genresFor, MIX_STATUS } from "@/lib/plans";
 import { ExportButton } from "../../ExportButton";
 import { ListRows, type ListRow } from "../../list/ListRows";
-import { CollectionDetailHeader, EditCollectionInfo } from "../CollectionForms";
+import { CollectionDetailHeader, DeleteCollection, EditCollectionInfo } from "../CollectionForms";
 import { Teammates } from "../Teammates";
 import { featureOn } from "@/lib/features";
 import { MAX_MEMBERS, members, voteTally } from "@/lib/team";
@@ -189,6 +189,9 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
         ) : (
           <p className="mx-4 rounded-xl border border-line bg-ink-3 p-4 text-[12px] text-mute md:mx-0">This folder is empty. Tracks sent while it&apos;s receiving land here.</p>
         )}
+        <div className="mx-4 mt-8 md:mx-0">
+          <DeleteCollection c={{ id: c.id, name: c.name }} canDelete={all.length > 1} />
+        </div>
       </div>
     </>
   );
