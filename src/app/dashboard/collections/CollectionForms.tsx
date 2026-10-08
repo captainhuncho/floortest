@@ -57,7 +57,7 @@ export function CollectionCard({ c, receiving, closed, canDelete, startEditing =
           </h2>
           <p className="mt-1 text-sm text-mute">
             <Link href={`/dashboard/collections/${c.id}`} className="hover:text-bone">
-              {c.needsReview} need review · {c.kept} kept · {c.count} total · Open folder →
+              <b className="text-lime tnum">{c.needsReview}</b> need review · <b className="text-bone tnum">{c.kept}</b> kept · <b className="text-bone tnum">{c.count}</b> total · Open folder →
             </Link>
             {c.closesLabel && ` · ${closed ? "closed" : "closes"} ${c.closesLabel}`}
           </p>
