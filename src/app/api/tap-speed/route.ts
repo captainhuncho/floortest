@@ -27,20 +27,15 @@ export async function POST(req: Request) {
   const device = ["phone", "tablet", "desktop"].includes(String(body?.device)) ? String(body?.device) : "";
   const browser = ["Safari", "Chrome", "Firefox", "Edge", "Other"].includes(String(body?.browser)) ? String(body?.browser) : "";
   const t = now();
+  // Up to 30 timings per beacon, saved in one insert rather than one per row.
+  const rows: unknown[][] = [];
   for (const it of items as { kind?: unknown; path?: unknown; target?: unknown; ms?: unknown }[]) {
     const kind = it?.kind === "nav" || it?.kind === "load" ? it.kind : "tap";
     const ms = Math.round(Number(it?.ms));
     if (!Number.isFinite(ms) || ms < 0 || ms > (kind === "tap" ? 10_000 : 60_000) || typeof it?.path !== "string") continue;
-    await q.run(
-      "INSERT INTO tap_timings (created_at, kind, path, target, ms, device, browser) VALUES (?,?,?,?,?,?,?)",
-      t,
-      kind,
-      pageOf(it.path).slice(0, 120),
-      clean(it.target, 30),
-      ms,
-      device,
-      browser,
-    );
+    rows.push([t, kind, pageOf(it.path).slice(0, 120), clean(it.target, 30), ms, device, browser]);
   }
+  if (rows.length)
+    await q.run(`INSERT INTO tap_timings (created_at, kind, path, target, ms, device, browser) VALUES ${rows.map(() => "(?,?,?,?,?,?,?)").join(",")}`, ...rows.flat());
   return new NextResponse(null, { status: 204 });
 }

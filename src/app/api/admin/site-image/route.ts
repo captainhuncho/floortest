@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { requireAdminAction } from "@/lib/admin";
 import { imageKind, IMAGE_TYPES } from "@/lib/images";
+import { optimizeImage } from "@/lib/image-optimize";
 import { storage } from "@/lib/storage";
 
 export const runtime = "nodejs";
@@ -18,7 +19,9 @@ export async function POST(req: Request) {
   const buf = new Uint8Array(await file.arrayBuffer());
   const kind = imageKind(buf);
   if (!kind) return NextResponse.json({ error: "Use a JPG, PNG or WebP image." }, { status: 415 });
-  const key = `site/${crypto.randomBytes(9).toString("hex")}.${kind}`;
-  await (await storage()).put(key, buf, IMAGE_TYPES[kind]);
+  const opt = await optimizeImage(buf, 1920).catch(() => null);
+  if (!opt) return NextResponse.json({ error: "We couldn't read that image. Try another JPG, PNG or WebP." }, { status: 415 });
+  const key = `site/${crypto.randomBytes(9).toString("hex")}.webp`;
+  await (await storage()).put(key, opt, IMAGE_TYPES.webp);
   return NextResponse.json({ key });
 }

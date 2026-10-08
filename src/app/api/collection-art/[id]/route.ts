@@ -5,6 +5,7 @@ import { currentUser, viewingAs } from "@/lib/auth";
 import { q, type Collection } from "@/lib/db";
 import { activeCollection } from "@/lib/desk";
 import { imageKind, IMAGE_TYPES as TYPES } from "@/lib/images";
+import { optimizeImage } from "@/lib/image-optimize";
 import { storage } from "@/lib/storage";
 
 export const runtime = "nodejs";
@@ -31,9 +32,11 @@ export async function POST(req: Request, ctx: RouteContext<"/api/collection-art/
   const buf = new Uint8Array(await file.arrayBuffer());
   const kind = imageKind(buf);
   if (!kind) return NextResponse.json({ error: "Use a JPG, PNG or WebP image." }, { status: 415 });
+  const opt = await optimizeImage(buf, 1000).catch(() => null);
+  if (!opt) return NextResponse.json({ error: "We couldn't read that image. Try another JPG, PNG or WebP." }, { status: 415 });
   const store = await storage();
-  const key = `collection-art/${own.c.id}-${crypto.randomBytes(6).toString("hex")}.${kind}`;
-  await store.put(key, buf, TYPES[kind]);
+  const key = `collection-art/${own.c.id}-${crypto.randomBytes(6).toString("hex")}.webp`;
+  await store.put(key, opt, TYPES.webp);
   if (own.c.art_key) await store.delete(own.c.art_key).catch(() => {});
   await q.run("UPDATE collections SET art_key = ? WHERE id = ?", key, own.c.id);
   await audit(own.user.id, "collection_updated", `${own.c.name}: artwork`);

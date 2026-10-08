@@ -1163,4 +1163,16 @@ create index plan_requests_status on plan_requests(status, created_at);
 alter table plan_requests enable row level security;
 `,
   },
+  {
+    // Links between tables that had no index: deleting a track or account otherwise scans these tables in full.
+    id: "0071_fk_indexes",
+    sql: `
+create index if not exists account_log_track on account_log(track_id) where track_id is not null;
+create index if not exists takedowns_track on takedowns(track_id);
+create index if not exists password_resets_user on password_resets(user_id);
+create index if not exists releases_sender on releases(sender_id);
+create index if not exists track_votes_user on track_votes(user_id);
+create index if not exists users_referred_by on users(referred_by) where referred_by is not null;
+`,
+  },
 ];

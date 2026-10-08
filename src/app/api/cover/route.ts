@@ -5,6 +5,7 @@ import { currentUser, viewingAs } from "@/lib/auth";
 import { q } from "@/lib/db";
 import { storage } from "@/lib/storage";
 import { imageKind, IMAGE_TYPES as TYPES } from "@/lib/images";
+import { optimizeImage } from "@/lib/image-optimize";
 
 export const runtime = "nodejs";
 
@@ -24,9 +25,11 @@ export async function POST(req: Request) {
   const kind = imageKind(buf);
   if (!kind) return NextResponse.json({ error: "Use a JPG, PNG or WebP image." }, { status: 415 });
 
+  const opt = await optimizeImage(buf, 1600).catch(() => null);
+  if (!opt) return NextResponse.json({ error: "We couldn't read that image. Try another JPG, PNG or WebP." }, { status: 415 });
   const store = await storage();
-  const key = `covers/${user.id}-${crypto.randomBytes(6).toString("hex")}.${kind}`;
-  await store.put(key, buf, TYPES[kind]);
+  const key = `covers/${user.id}-${crypto.randomBytes(6).toString("hex")}.webp`;
+  await store.put(key, opt, TYPES.webp);
   if (user.cover_key) await store.delete(user.cover_key).catch(() => {});
   await q.run("UPDATE users SET cover_key = ? WHERE id = ?", key, user.id);
   await audit(user.id, "cover_updated");
