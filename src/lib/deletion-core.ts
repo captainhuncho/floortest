@@ -17,12 +17,13 @@ export async function queueDeletion(db: Queryable, keys: (string | null | undefi
   return unique.length;
 }
 
-/** Every object a track owns: its audio and its stems. */
+/** Every object a track owns: its audio, its stems and its artwork. */
 export async function trackKeys(db: Queryable, trackIds: number[]) {
   if (!trackIds.length) return [];
   const marks = trackIds.map(() => "?").join(",");
   const rows = await db.all<{ k: string | null }>(
-    `SELECT file_key AS k FROM tracks WHERE id IN (${marks}) UNION ALL SELECT file_key AS k FROM stems WHERE track_id IN (${marks})`,
+    `SELECT file_key AS k FROM tracks WHERE id IN (${marks}) UNION ALL SELECT art_key FROM tracks WHERE id IN (${marks}) AND art_key IS NOT NULL UNION ALL SELECT file_key AS k FROM stems WHERE track_id IN (${marks})`,
+    ...trackIds,
     ...trackIds,
     ...trackIds,
   );
@@ -33,10 +34,11 @@ export async function trackKeys(db: Queryable, trackIds: number[]) {
 export async function accountKeys(db: Queryable, userId: number) {
   const rows = await db.all<{ k: string | null }>(
     `SELECT t.file_key AS k FROM tracks t WHERE t.user_id = ?
+     UNION ALL SELECT t.art_key FROM tracks t WHERE t.user_id = ? AND t.art_key IS NOT NULL
      UNION ALL SELECT s.file_key FROM stems s JOIN tracks t ON t.id = s.track_id WHERE t.user_id = ?
      UNION ALL SELECT u.file_key FROM uploads u WHERE u.receiver_id = ?
      UNION ALL SELECT cover_key FROM users WHERE id = ?`,
-    userId, userId, userId, userId,
+    userId, userId, userId, userId, userId,
   );
   return rows.map((r) => r.k);
 }

@@ -92,7 +92,7 @@ export async function purgeExpired({ force = false } = {}) {
     const marks = ids.map(() => "?").join(",");
     await q.tx(async (db) => {
       await retireTrackFiles(db, ids, "retention");
-      await db.run(`UPDATE tracks SET deleted_at = ?, file_key = NULL WHERE id IN (${marks})`, t, ...ids);
+      await db.run(`UPDATE tracks SET deleted_at = ?, file_key = NULL, art_key = NULL WHERE id IN (${marks})`, t, ...ids);
       await reopenCallouts(db);
       await db.run(
         `INSERT INTO events (user_id, sender_id, track_id, type, detail, created_at) SELECT user_id, sender_id, id, 'expired', '', ? FROM tracks WHERE id IN (${marks})`,

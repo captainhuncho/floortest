@@ -88,6 +88,18 @@ export async function uploadTrack(
   }
 }
 
+/** Uploads artwork as-is, straight to storage, then asks the server to check it. Failures are ignored: the track is already sent. */
+async function sendArtwork(token: string, file: File) {
+  try {
+    const url = `/api/track-art/${encodeURIComponent(token)}`;
+    const post = (body: object) => fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const start = (await (await post({ type: file.type, size: file.size })).json().catch(() => ({}))) as { target?: { url: string; headers: Record<string, string> } };
+    if (!start.target) return;
+    const put = await fetch(start.target.url, { method: "PUT", headers: start.target.headers, body: file });
+    if (put.ok) await post({ done: true });
+  } catch {}
+}
+
 /** Separate tracks in one go on the send form, up to MAX_BYTES together. EPs and albums go through Send folders (paid). */
 export const MAX_FILES = MAX_BATCH_TRACKS;
 
@@ -195,6 +207,9 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
       }
       patch(it.id, { status: "done", progress: 1, token: r.token });
       sentCount++;
+      // Optional artwork goes with each track; the track is already sent, so a failed image never undoes that.
+      const art = fd.get("artwork");
+      if (art instanceof File && art.size) await sendArtwork(r.token, art);
     }
     setPhase("done");
   }

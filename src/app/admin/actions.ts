@@ -160,7 +160,7 @@ export async function removeTrackAsAdmin(trackId: number, reason: string) {
   if (!t) return fail("That track is already gone");
   await q.tx(async (db) => {
     await retireTrackFiles(db, [t.id], "removed by admin");
-    await db.run("UPDATE tracks SET deleted_at = ?, file_key = NULL WHERE id = ?", now(), t.id);
+    await db.run("UPDATE tracks SET deleted_at = ?, file_key = NULL, art_key = NULL WHERE id = ?", now(), t.id);
     await reopenCallouts(db);
   });
   await drainNow();
@@ -744,8 +744,8 @@ export async function savePlan(id: string, form: FormData) {
   const fullest = await fullestOn(id);
   if (limit < fullest) return fail(`Someone on ${old.name} already has ${fullest} active tracks, so the limit can't go below that.`);
   await q.run(
-    "UPDATE plans SET name = ?, price_cents = ?, yearly_price_cents = ?, discount_pct = ?, discount_label = ?, discount_ends_at = ?, track_limit = ?, blurb = ?, features = ?, share_downloads = ?, featured = ?, position = ?, folder_bytes = ?, updated_at = ? WHERE id = ?",
-    name, price, yearly, discountPct, discountLabel, discountPct ? discountEndsAt : null, limit, blurb, JSON.stringify(features), form.get("share_downloads") === "on" ? 1 : 0, form.get("featured") === "on" ? 1 : 0, position, folderMb * 1048576, now(), id,
+    "UPDATE plans SET name = ?, price_cents = ?, yearly_price_cents = ?, discount_pct = ?, discount_label = ?, discount_ends_at = ?, track_limit = ?, blurb = ?, features = ?, share_downloads = ?, track_art = ?, featured = ?, position = ?, folder_bytes = ?, updated_at = ? WHERE id = ?",
+    name, price, yearly, discountPct, discountLabel, discountPct ? discountEndsAt : null, limit, blurb, JSON.stringify(features), form.get("share_downloads") === "on" ? 1 : 0, form.get("track_art") === "on" ? 1 : 0, form.get("featured") === "on" ? 1 : 0, position, folderMb * 1048576, now(), id,
   );
   const changes = [
     old.price * 100 !== price && `price $${old.price} → $${price / 100}`,

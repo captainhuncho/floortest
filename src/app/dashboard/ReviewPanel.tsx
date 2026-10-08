@@ -108,13 +108,16 @@ export async function ReviewPanel({
         </div>
   );
 
+  // Artwork the sender attached (Team plans).
+  const art = t.art_key ? `/api/track-art/${t.id}?v=${encodeURIComponent(t.art_key)}` : null;
+
   return (
     <div className="p-4 sm:p-6" data-swipe-zone>
       {/* Phones: Figma "08 Full Player / DJ Review" */}
       <div className="md:hidden">
         <div className="flex items-center gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icons/review-art.svg" alt="" className="size-[52px] shrink-0" />
+          <img src={art ?? "/icons/review-art.svg"} alt="" className="size-[52px] shrink-0 rounded object-cover" />
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
             <h2 className="truncate text-base font-bold text-bone">{t.title}</h2>
             <p className="truncate text-xs text-mute">
@@ -153,6 +156,10 @@ export async function ReviewPanel({
       </div>
 
       <div className="hidden md:block">
+      {art && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={art} alt={`Artwork for ${t.title}`} className="mb-4 size-40 rounded-md border border-line object-cover" />
+      )}
       <p className="label">Now reviewing</p>
       <h2 className="mt-2 text-2xl font-bold leading-tight tracking-tight">{t.title}</h2>
       <p className={`mt-2 w-fit rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${t.sets_ok ? "border-lime/50 text-lime" : "border-line text-mute"}`}>

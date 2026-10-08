@@ -3,7 +3,7 @@
 /** Around the desk: feedback, onboarding, the Send page lookup, notifications, search and pausing the link. */
 import { readLinks, type ProfileLink } from "@/lib/socials";
 import { revalidatePath } from "next/cache";
-import { folderLimit } from "@/lib/plan-store";
+import { folderLimit, trackArtEnabled } from "@/lib/plan-store";
 import { requireUser } from "@/lib/auth";
 import { fmtDay } from "@/lib/format";
 import { activeCollection, capacity, isClosed, isPaused, userByHandle } from "@/lib/desk";
@@ -40,7 +40,7 @@ export async function dismissOnboarding() {
 export type ReceiverLookup =
   | { found: false; reason: string }
   | { found: true; handle: string; name: string; roleLine: string; verified: boolean; accepting: boolean; reason: string | null; genres: string[]; note: string;
-      collection: string | null; brief: { k: string; v: string }[]; folderBytes: number; photo: string | null; links: ProfileLink[] };
+      collection: string | null; brief: { k: string; v: string }[]; folderBytes: number; trackArt: boolean; photo: string | null; links: ProfileLink[] };
 
 /** Who is floortest.../<handle>? Used by the Send page as you type. */
 export async function lookupReceiver(raw: string): Promise<ReceiverLookup> {
@@ -67,6 +67,7 @@ export async function lookupReceiver(raw: string): Promise<ReceiverLookup> {
     found: true, handle: r.handle, name: r.name, roleLine: r.role_line, verified: r.identity_status === "verified",
     accepting: !reason, reason, genres: g.list, note: isPaused(r) ? r.pause_message : "", collection: c?.name ?? null, brief,
     folderBytes: await folderLimit(r.plan),
+    trackArt: await trackArtEnabled(r.plan),
     photo: r.cover_key ? `/api/cover/${r.handle}?v=${encodeURIComponent(r.cover_key)}` : null,
     links: readLinks(r.links),
   };

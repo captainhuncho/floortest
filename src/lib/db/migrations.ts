@@ -1175,4 +1175,13 @@ create index if not exists track_votes_user on track_votes(user_id);
 create index if not exists users_referred_by on users(referred_by) where referred_by is not null;
 `,
   },
+  {
+    // Track artwork: an optional image senders attach, for receivers whose plan includes it (Team).
+    id: "0072_track_art",
+    sql: `
+alter table plans add column if not exists track_art integer not null default 0;
+update plans set track_art = 1 where id = 'team';
+alter table tracks add column if not exists art_key text;
+`,
+  },
 ];

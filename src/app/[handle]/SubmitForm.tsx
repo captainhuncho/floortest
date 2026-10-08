@@ -39,6 +39,7 @@ export function SubmitForm({
   sharingDownloads = false,
   botCheckKey = null,
   callout = null,
+  trackArt = false,
 }: {
   handle: string;
   receiverName: string;
@@ -54,6 +55,8 @@ export function SubmitForm({
   botCheckKey?: string | null;
   /** The collection (callout) receiving right now, shown on the transfer screen. */
   callout?: string | null;
+  /** The receiver's plan takes track artwork (optional for the sender). */
+  trackArt?: boolean;
 }) {
   const L = LOOKS[lookName];
   const m = lookName === "mobile";
@@ -344,6 +347,14 @@ export function SubmitForm({
         <span className={L.label}>Message for {receiverName} (optional)</span>
         <textarea className={`${L.input} min-h-24 resize-y`} name="message" maxLength={2000} placeholder="What it is, where it fits, anything they should know. Travels privately with the track." />
       </label>
+
+      {trackArt && (
+        <label className="block space-y-1.5">
+          <span className={L.label}>Artwork (optional)</span>
+          <input type="file" name="artwork" accept="image/jpeg,image/png,image/webp" disabled={busy} className={`${L.input} file:mr-3 file:rounded file:border-0 file:bg-ink-3 file:px-3 file:py-1 file:text-bone`} />
+          <span className={`block text-xs ${L.mute}`}>JPG, PNG or WebP, up to 25 MB. Sent at full quality. {many ? "Goes with every track in this send." : ""}</span>
+        </label>
+      )}
 
       <label className="block space-y-1.5">
         <span className={L.label}>Did you use AI to make {many ? "these tracks" : "this track"}?<Req /></span>

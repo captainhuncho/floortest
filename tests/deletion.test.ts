@@ -18,14 +18,15 @@ async function setup() {
   await db.run("INSERT INTO senders (user_id, email, name, created_at) VALUES (1,'a@x.io','A',0)");
   await db.run("INSERT INTO tracks (user_id, sender_id, title, artist, token, file_key, original_name, mime, size, created_at) VALUES (1,1,'T','A','tok','audio/t.wav','t.wav','audio/wav',1,0)");
   await db.run("INSERT INTO stems (track_id, file_key, name, mime, size, created_at) VALUES (1,'stems/drums.wav','drums','audio/wav',1,0)");
+  await db.run("UPDATE tracks SET art_key = 'track-art/1/1-a.png' WHERE id = 1");
   await db.run("INSERT INTO uploads (id, receiver_id, file_key, ext, size, meta, ip, created_at) VALUES ('u1',1,'pending/u1.wav','wav',1,'{}','x',0)");
   return db;
 }
 
-test("an account's files include audio, stems, unfinished uploads and the cover", async () => {
+test("an account's files include audio, stems, unfinished uploads, the cover and track artwork", async () => {
   const db = await setup();
-  assert.deepEqual((await accountKeys(db as never, 1)).sort(), ["audio/t.wav", "covers/r.jpg", "pending/u1.wav", "stems/drums.wav"]);
-  assert.deepEqual((await trackKeys(db as never, [1])).sort(), ["audio/t.wav", "stems/drums.wav"]);
+  assert.deepEqual((await accountKeys(db as never, 1)).sort(), ["audio/t.wav", "covers/r.jpg", "pending/u1.wav", "stems/drums.wav", "track-art/1/1-a.png"]);
+  assert.deepEqual((await trackKeys(db as never, [1])).sort(), ["audio/t.wav", "stems/drums.wav", "track-art/1/1-a.png"]);
 });
 
 test("queued keys survive the rows being deleted, and failures stay queued until a retry succeeds", async () => {
@@ -43,7 +44,7 @@ test("queued keys survive the rows being deleted, and failures stay queued until
   down = false;
   assert.equal((await drainDeletions(db as never, store, 3)).deleted, 1);
   assert.equal((await db.all("SELECT * FROM storage_deletions")).length, 0);
-  assert.equal(deleted.length, 4);
+  assert.equal(deleted.length, 5);
 });
 
 test("queuing the same file twice is harmless", async () => {

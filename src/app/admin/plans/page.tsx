@@ -141,6 +141,13 @@ export default async function Plans() {
                     <span className="block text-xs text-mute">When this plan&apos;s receivers share a collection, colleagues get the download button.</span>
                   </span>
                 </label>
+                <label className="flex items-start gap-3 rounded-md border border-line px-3 py-2.5 text-sm">
+                  <input type="checkbox" name="track_art" defaultChecked={p.trackArt} className="mt-0.5 size-4 accent-lime" />
+                  <span>
+                    <span className="font-medium">Track artwork</span>
+                    <span className="block text-xs text-mute">Senders can attach optional artwork to tracks they send this plan&apos;s receivers.</span>
+                  </span>
+                </label>
               </fieldset>
               </fieldset>
             </form>

@@ -97,7 +97,7 @@ export async function reply(user: User, s: Sender, t: Track | undefined, body: s
 export async function deleteTrack(user: User, t: Track) {
   await q.tx(async (db) => {
     await retireTrackFiles(db, [t.id], "deleted by receiver");
-    await db.run("UPDATE tracks SET deleted_at = ?, file_key = NULL WHERE id = ?", now(), t.id);
+    await db.run("UPDATE tracks SET deleted_at = ?, file_key = NULL, art_key = NULL WHERE id = ?", now(), t.id);
     await reopenCallouts(db);
   });
   await logEvent({ user_id: user.id, sender_id: t.sender_id, track_id: t.id, type: "deleted", detail: "" });

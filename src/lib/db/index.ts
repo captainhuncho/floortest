@@ -143,6 +143,8 @@ export type Track = {
   musical_key: string;
   isrc: string;
   sets_ok: number;
+  /** Artwork the sender attached (plans with track artwork only). */
+  art_key: string | null;
 };
 export type EventRow = {
   id: number;

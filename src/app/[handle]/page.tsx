@@ -9,7 +9,7 @@ import { forwardedHandle } from "@/lib/accounts";
 import { activeCollection, capacity, isClosed, isPaused, pausedMessage, userByHandleForView } from "@/lib/desk";
 import { fmtDay } from "@/lib/format";
 import { genresFor, RETAIN_UNREVIEWED_DAYS } from "@/lib/plans";
-import { folderLimit, shareDownloadEnabled } from "@/lib/plan-store";
+import { folderLimit, shareDownloadEnabled, trackArtEnabled } from "@/lib/plan-store";
 import { switchOn } from "@/lib/switches";
 import { botCheckKey } from "@/lib/turnstile";
 import { SendModes } from "./SendModes";
@@ -47,7 +47,7 @@ export default async function ReceiverPage({ params }: Props) {
   const genres = genresFor(collection).list;
   const paused = isPaused(receiver);
   const note = paused ? receiver.pause_message : "";
-  const [team, folderBytes, botKey, sharingDownloads] = await Promise.all([listeners(collection), folderLimit(receiver.plan), botCheckKey(), shareDownloadEnabled(receiver.plan)]);
+  const [team, folderBytes, botKey, sharingDownloads, trackArt] = await Promise.all([listeners(collection), folderLimit(receiver.plan), botCheckKey(), shareDownloadEnabled(receiver.plan), trackArtEnabled(receiver.plan)]);
   const closedReason = paused
     ? pausedMessage(receiver)
     : closed
@@ -136,7 +136,7 @@ export default async function ReceiverPage({ params }: Props) {
             <p className="mt-2 text-[12px] text-dim">{c.closed_note}</p>
           </div>
         ) : (
-          <SendModes folderBytes={folderBytes} botCheckKey={botKey} handle={receiver.handle} receiverName={receiver.name} callout={collection && !closedReason ? collection.name : null} genres={genres} look="mobile" allowSharing={sharing && !!collection?.allow_sharing} sharingDownloads={sharingDownloads} />
+          <SendModes folderBytes={folderBytes} botCheckKey={botKey} handle={receiver.handle} receiverName={receiver.name} callout={collection && !closedReason ? collection.name : null} genres={genres} look="mobile" allowSharing={sharing && !!collection?.allow_sharing} sharingDownloads={sharingDownloads} trackArt={trackArt} />
         )}
       </div>
       <ul className="flex flex-col gap-2.5" aria-label="How your file is handled">
