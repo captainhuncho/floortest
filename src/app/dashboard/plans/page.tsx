@@ -6,6 +6,7 @@ import { RETAIN_UNREVIEWED_DAYS } from "@/lib/plans";
 import { afterDiscount, allPlans, discountNow, planGrid, planOf } from "@/lib/plan-store";
 import { switchOn } from "@/lib/switches";
 import { setPlan } from "../actions/settings";
+import { BillingSwitch } from "./BillingSwitch";
 
 export const metadata = { title: "Plans — FloorTest" };
 
@@ -38,28 +39,14 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
   const yearlyUnset = plans.some((p) => p.price > 0 && !p.yearly);
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-5 text-bone sm:px-8 md:py-8">
+    <div id="plans-root" data-period={yearly ? "year" : "month"} className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-5 text-bone sm:px-8 md:py-8">
       <Link href="/dashboard/account" className="text-[11px] font-medium text-faint hover:text-bone">
         ← Account
       </Link>
       <header className="flex flex-col items-center gap-3 text-center">
         <h1 className="text-[28px] tracking-[-0.5px] md:text-[36px]">Choose your plan</h1>
         <p className="text-[15px] text-mute">The same receiving desk. The capacity that fits your music.</p>
-        <nav aria-label="Billing period" className="flex gap-1 rounded-full border border-line bg-ink-2 p-1">
-          {(["year", "month"] as const).map((per) => {
-            const on = (per === "year") === yearly;
-            return (
-              <Link
-                key={per}
-                href={per === "year" ? "/dashboard/plans?period=year" : "/dashboard/plans"}
-                aria-current={on ? "page" : undefined}
-                className={`grid h-[34px] w-[88px] place-items-center rounded-full text-[13px] font-semibold ${on ? "bg-ink-3 text-lime" : "text-mute hover:text-bone"}`}
-              >
-                {per === "year" ? "Year" : "Month"}
-              </Link>
-            );
-          })}
-        </nav>
+        <BillingSwitch initial={yearly ? "year" : "month"} target="plans-root" />
       </header>
 
       {welcomed && (
@@ -110,8 +97,6 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
           const extras = extrasOf(p);
           // A running discount shows the list price struck through; list prices themselves never change.
           const off = discountNow(p);
-          const list = yearly ? p.yearly : p.price;
-          const shown = off && list ? afterDiscount(list, off) : list;
           const action = billing ? `Upgrade to ${p.name}` : "Start in beta →";
           return (
             <li
@@ -128,25 +113,31 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
                 ) : null}
               </div>
 
-              <div className="flex min-h-[78px] flex-col gap-1">
-                {off > 0 && (
-                  <p className="w-fit rounded-full border border-lime/50 px-2.5 py-0.5 text-[11px] font-semibold text-lime">
-                    {p.discount.label || "Offer"} · {off}% off{p.discount.endsAt ? ` · until ${new Date(p.discount.endsAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })}` : ""}
-                  </p>
-                )}
-                <p className="flex items-baseline gap-2 whitespace-nowrap">
-                  {p.price && yearly && !p.yearly ? (
-                    <span className="text-[22px] font-semibold leading-[54px] whitespace-nowrap">To be confirmed</span>
-                  ) : (
-                    <>
-                      <span className={`${shown >= 100 || off ? "text-[40px]" : "text-5xl"} font-semibold leading-[54px] tnum`}>${p.price ? shown : 0}</span>
-                      {off > 0 && list > 0 && <s className="text-sm text-mute tnum">${list}</s>}
-                    </>
-                  )}
-                  {p.price > 0 && (!yearly || p.yearly > 0) && <span className="text-sm text-mute">/ {yearly ? "year" : "month"}</span>}
-                </p>
-                <p className="text-xs text-mute">{!p.price ? "Free plan" : yearly ? (p.yearly ? `${billing ? "Billed yearly" : "After beta"}${saving(p) ? ` · save ${saving(p)}%` : ""}` : "Yearly price, after beta") : billing ? p.blurb : "After beta"}</p>
-              </div>
+              {([false, true] as const).map((yr) => {
+                const list = yr ? p.yearly : p.price;
+                const shown = off && list ? afterDiscount(list, off) : list;
+                return (
+                  <div key={String(yr)} className={`${yr ? "period-year" : "period-month"} flex min-h-[78px] flex-col gap-1`}>
+                    {off > 0 && (
+                      <p className="w-fit rounded-full border border-lime/50 px-2.5 py-0.5 text-[11px] font-semibold text-lime">
+                        {p.discount.label || "Offer"} · {off}% off{p.discount.endsAt ? ` · until ${new Date(p.discount.endsAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })}` : ""}
+                      </p>
+                    )}
+                    <p className="flex items-baseline gap-2 whitespace-nowrap">
+                      {p.price && yr && !p.yearly ? (
+                        <span className="text-[22px] font-semibold leading-[54px] whitespace-nowrap">To be confirmed</span>
+                      ) : (
+                        <>
+                          <span className={`${shown >= 100 || off ? "text-[40px]" : "text-5xl"} font-semibold leading-[54px] tnum`}>${p.price ? shown : 0}</span>
+                          {off > 0 && list > 0 && <s className="text-sm text-mute tnum">${list}</s>}
+                        </>
+                      )}
+                      {p.price > 0 && (!yr || p.yearly > 0) && <span className="text-sm text-mute">/ {yr ? "year" : "month"}</span>}
+                    </p>
+                    <p className="text-xs text-mute">{!p.price ? "Free plan" : yr ? (p.yearly ? `${billing ? "Billed yearly" : "After beta"}${saving(p) ? ` · save ${saving(p)}%` : ""}` : "Yearly price, after beta") : billing ? p.blurb : "After beta"}</p>
+                  </div>
+                );
+              })}
 
               <div>
                 {isCurrent ? (
@@ -205,7 +196,8 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
 
       <div className="flex flex-col gap-1 text-xs text-mute sm:flex-row sm:justify-between">
         <p>{sameTools ? "All plans include the same tools. Only active-track capacity changes." : "Every plan includes the core tools; bigger plans add room and a few extras."}</p>
-        <p>{yearly && yearlyUnset ? "Yearly pricing is not yet confirmed for every plan." : yearly && billing ? "Billed yearly." : billing ? "Billed monthly." : "Prices shown apply after beta."}</p>
+        <p className="period-month">{billing ? "Billed monthly." : "Prices shown apply after beta."}</p>
+        <p className="period-year">{yearlyUnset ? "Yearly pricing is not yet confirmed for every plan." : billing ? "Billed yearly." : "Prices shown apply after beta."}</p>
       </div>
 
       <section aria-labelledby="renewal-h" className="space-y-1.5 text-[11px] text-dim md:max-w-3xl">
