@@ -47,6 +47,8 @@ export const AUDIT_LABELS = {
   cover_removed: "Removed cover photo",
   plan_changed: "Changed plan",
   identity_submitted: "Asked to be verified",
+  plan_requested: "Asked for a bigger plan",
+  plan_request_withdrawn: "Withdrew a plan request",
 } as const;
 export type AuditAction = keyof typeof AUDIT_LABELS;
 

@@ -19,13 +19,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const allowed = (href: string) => can(access, needFor(href));
   // Badge counts, only for what this person can open, all at once.
   const count = (href: string, sql: string) => (allowed(href) ? q.count(sql) : Promise.resolve(0));
-  const [feedback, inbox, waiting, incidents, verifying, takedowns] = await Promise.all([
+  const [feedback, inbox, waiting, incidents, verifying, takedowns, planAsks] = await Promise.all([
     count("/admin/feedback", "SELECT COUNT(*) AS n FROM contact_messages WHERE topic LIKE 'Feedback%' AND feedback_status = 'new'"),
     count("/admin/inbox", "SELECT COUNT(*) AS n FROM contact_messages WHERE handled_at IS NULL AND topic NOT LIKE 'Feedback%'"),
     count("/admin/waitlist", "SELECT COUNT(*) AS n FROM waitlist WHERE invited_at IS NULL"),
     count("/admin/incidents", "SELECT COUNT(*) AS n FROM incidents WHERE resolved_at IS NULL AND kind <> 'upload_rejected'"),
     count("/admin/verification", "SELECT COUNT(*) AS n FROM users WHERE identity_status = 'pending'"),
     count("/admin/takedowns", "SELECT COUNT(*) AS n FROM takedowns WHERE status = 'open'"),
+    count("/admin/plan-requests", "SELECT COUNT(*) AS n FROM plan_requests WHERE status = 'pending'"),
   ]);
   // Grouped by the question being asked; Overview sits on its own at the top, the admin tools at the bottom.
   const allGroups: NavGroup[] = [
@@ -44,7 +45,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       title: "Growth",
       icon: "rocket",
       sections: [
-        { title: "Beta access", items: [{ href: "/admin/waitlist", label: "Waitlist", icon: "list", badge: waiting }, { href: "/admin/invites", label: "Invites", icon: "ticket" }] },
+        { title: "Beta access", items: [{ href: "/admin/waitlist", label: "Waitlist", icon: "list", badge: waiting }, { href: "/admin/invites", label: "Invites", icon: "ticket" }, { href: "/admin/plan-requests", label: "Plan requests", icon: "rocket", badge: planAsks }] },
         { title: "Reach", items: [{ href: "/admin/announcements", label: "Announcements", icon: "mail" }] },
         { title: "Revenue", items: [{ href: "/admin/revenue", label: "Revenue", icon: "chart" }, { href: "/admin/plans", label: "Plans & prices", icon: "list" }] },
       ],

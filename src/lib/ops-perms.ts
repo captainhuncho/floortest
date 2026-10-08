@@ -28,6 +28,7 @@ export const PERMS = {
   "partners.read": "Beta partners (view)",
   "partners.act": "Beta partners (notes)",
   waitlist: "Waitlist",
+  planRequests: "Plan requests (approve, decline)",
   invites: "Invites",
   announcements: "Announcements",
   switches: "Feature switches",
@@ -54,7 +55,7 @@ export const ROLE_PERMS: Record<Role, Perm[]> = {
   care: ["overview", "inbox.act", "feedback.act", "emails.act", "users.support", "verification", "partners.read"],
   developer: ["overview", "incidents.act", "jobs", "storage", "speed", "security", "switches", "metrics"],
   product: ["overview", "metrics", "usage", "feedback.act", "announcements", "content", "switches", "plans.read", "partners.act"],
-  sales: ["overview", "waitlist", "invites", "partners.act", "revenue", "announcements", "emails.read", "metrics"],
+  sales: ["overview", "planRequests", "waitlist", "invites", "partners.act", "revenue", "announcements", "emails.read", "metrics"],
 };
 
 /** Shown on the Ops team page so the super admin knows what can never be handed out. */
@@ -97,6 +98,7 @@ export const PAGE_NEEDS: Record<string, Need> = {
   "/admin/accounts": "users.read",
   "/admin/partners": "partners.read",
   "/admin/waitlist": "waitlist",
+  "/admin/plan-requests": "planRequests",
   "/admin/invites": "invites",
   "/admin/announcements": "announcements",
   "/admin/switches": "switches",
@@ -142,6 +144,8 @@ export const ACTION_NEEDS: Record<string, Need> = {
   revokeInvite: "invites",
   inviteByEmail: "invites",
   resendInvite: "invites",
+  approvePlanRequest: "planRequests",
+  declinePlanRequest: "planRequests",
   inviteFromWaitlist: "waitlist",
   inviteOldestFromWaitlist: "waitlist",
   removeFromWaitlist: "waitlist",

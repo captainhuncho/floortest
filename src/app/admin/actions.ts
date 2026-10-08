@@ -18,6 +18,7 @@ import { env } from "@/lib/env";
 import { sendMail } from "@/lib/mail";
 import { isAdminEmail, logAdmin, requireAdminAction } from "@/lib/admin";
 import { PERMS, ROLE_PERMS, ROLES, type Perm, type Role } from "@/lib/ops-perms";
+import type { PlanRequest } from "@/lib/plan-requests";
 import { flash } from "@/lib/flash";
 import { setSwitch, SWITCHES, type SwitchKey } from "@/lib/switches";
 import { drainNow, retireTrackFiles } from "@/lib/deletion";
@@ -971,3 +972,53 @@ export async function setOpsMemberDisabled(userId: number, disabled: boolean) {
   await done(disabled ? `@${m.handle} no longer has ops access` : `@${m.handle} has ops access again`);
   refresh();
 }
+
+/* Plan requests (beta): people ask for Pro or Team; ops gives the plan that fits who they are. */
+
+async function openRequest(id: number) {
+  return q.get<PlanRequest & { email: string; handle: string; name: string; current: string }>(
+    "SELECT r.*, u.email, u.handle, u.name, u.plan AS current FROM plan_requests r JOIN users u ON u.id = r.user_id WHERE r.id = ? AND r.status = 'pending'",
+    id,
+  );
+}
+
+export async function approvePlanRequest(id: number, form: FormData) {
+  const a = await requireAdminAction("planRequests");
+  const r = await openRequest(id);
+  if (!r) return fail("That request was already dealt with.");
+  const plan = (await allPlans()).find((p) => p.id === String(form.get("plan") || r.plan) && !p.retired);
+  if (!plan) return fail("Pick a plan that's offered.");
+  const note = String(form.get("note") || "").trim().slice(0, 500);
+  await q.tx(async (db) => {
+    await db.run("UPDATE users SET plan = ? WHERE id = ?", plan.id, r.user_id);
+    await db.run("UPDATE plan_requests SET status = 'approved', granted_plan = ?, decided_by = ?, decided_at = ?, decision_note = ? WHERE id = ?", plan.id, a.id, now(), note, id);
+  });
+  await logAdmin(a.id, "approved plan request", `@${r.handle}`, `${plan.name}${plan.id !== r.plan ? ` (asked for ${r.plan})` : ""}`);
+  await sendMail({
+    userId: r.user_id,
+    to: r.email,
+    subject: `You're on ${plan.name} — FloorTest`,
+    body: `Hi ${r.name.split(/\s+/)[0] || r.name},\n\nYou're on ${plan.name} now, free for the rest of the beta: room for ${plan.limit.toLocaleString("en")} active tracks.${plan.id !== r.plan ? ` (You asked for ${r.plan}; ${plan.name} fits how you work better for now. Reply if you think otherwise.)` : ""}${note ? `\n\n${note}` : ""}\n\nSee it: ${APP_URL}/dashboard/plans\n\n— FloorTest`,
+  }).catch(() => {});
+  await done(`@${r.handle} is on ${plan.name} and has been emailed.`);
+  refresh();
+}
+
+export async function declinePlanRequest(id: number, form: FormData) {
+  const a = await requireAdminAction("planRequests");
+  const r = await openRequest(id);
+  if (!r) return fail("That request was already dealt with.");
+  const reason = String(form.get("reason") || "").trim().slice(0, 500);
+  if (!reason) return fail("Give a short reason; it's sent to them.");
+  await q.run("UPDATE plan_requests SET status = 'declined', decided_by = ?, decided_at = ?, decision_note = ? WHERE id = ?", a.id, now(), reason, id);
+  await logAdmin(a.id, "declined plan request", `@${r.handle}`, reason.slice(0, 120));
+  await sendMail({
+    userId: r.user_id,
+    to: r.email,
+    subject: "About your FloorTest plan request",
+    body: `Hi ${r.name.split(/\s+/)[0] || r.name},\n\nThanks for asking for ${r.plan}. We're not moving you for now:\n\n${reason}\n\nYou keep everything on your current plan, and you can ask again any time from Account → Plans.\n\n— FloorTest`,
+  }).catch(() => {});
+  await done(`Declined @${r.handle}'s request; they've been emailed.`);
+  refresh();
+}
+

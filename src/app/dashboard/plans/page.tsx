@@ -7,6 +7,7 @@ import { allPlans, planOf } from "@/lib/plan-store";
 import { switchOn } from "@/lib/switches";
 import { BillingSwitch } from "./BillingSwitch";
 import { PlanCards } from "./PlanCards";
+import { pendingRequest } from "@/lib/plan-requests";
 
 export const metadata = { title: "Plans — FloorTest" };
 
@@ -14,7 +15,7 @@ export const metadata = { title: "Plans — FloorTest" };
  * Usage, then the three plans side by side on desktop (stacked on phones). During the beta every plan
  * upgrades go through checkout, where the beta discount makes the total $0.00; once the billing switch is on, checkout charges.
  */
-export default async function Plans({ searchParams }: { searchParams: Promise<{ welcome?: string; period?: string }> }) {
+export default async function Plans({ searchParams }: { searchParams: Promise<{ welcome?: string; period?: string; requested?: string }> }) {
   const user = await requireUser();
   await trackUse(user.id, "plans");
   const cap = await capacity(user);
@@ -22,6 +23,7 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
   // Just upgraded at checkout: celebrate it, but only if the plan really is theirs now.
   const sp = await searchParams;
   const welcomed = sp.welcome === user.plan && current.price > 0;
+  const pending = await pendingRequest(user.id);
   // Monthly prices are set; yearly ones aren't yet, so the Year view says so rather than guessing.
   const yearly = sp.period === "year";
   const billing = await switchOn("billing");
@@ -39,6 +41,12 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
         <p className="text-[15px] text-mute">The same receiving desk. The capacity that fits your music.</p>
         <BillingSwitch initial={yearly ? "year" : "month"} target="plans-root" />
       </header>
+
+      {sp.requested && pending && (
+        <p role="status" className="rounded-lg border border-lime/40 bg-lime/5 px-4 py-3 text-sm">
+          Request sent. We&apos;ll look at it and email you, usually within two working days.
+        </p>
+      )}
 
       {welcomed && (
         <div role="status" className="flex items-start gap-3 rounded-xl border border-lime/50 bg-lime/10 p-4 md:p-5">
@@ -71,7 +79,7 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
         </p>
       </section>
 
-      <PlanCards plans={plans} billing={billing} userPlan={user.plan} currentPrice={current.price} capUsed={cap.used} capBonus={cap.bonus} />
+      <PlanCards plans={plans} billing={billing} userPlan={user.plan} currentPrice={current.price} capUsed={cap.used} capBonus={cap.bonus} pendingPlan={pending?.plan ?? null} />
 
       <section aria-labelledby="renewal-h" className="space-y-1.5 text-[11px] text-dim md:max-w-3xl">
         <h2 id="renewal-h" className="font-bold text-mute">

@@ -21,6 +21,8 @@ import { switchOn } from "@/lib/switches";
 import { audit } from "@/lib/audit";
 import { cleanProfileLink, IDENTITY_HOSTS, newIdentityCode } from "@/lib/identity";
 import { done } from "./common";
+import { REQUEST_KINDS, VOLUMES, pendingRequest, type RequestKind } from "@/lib/plan-requests";
+import { APP_URL } from "@/lib/mail";
 
 export async function updateNotifications(_: SettingsState, form: FormData): Promise<SettingsState> {
   const u = await requireUser();
@@ -132,13 +134,9 @@ export async function confirmBetaUpgrade(plan: string, form: FormData) {
   const next = await offeredPlan(plan);
   if (!next || next.price <= (await planOf(u.plan)).price) redirect("/dashboard/plans");
   if (await switchOn("billing")) redirect(`/dashboard/checkout?plan=${next.id}`);
-  if (form.get("agree") !== "on") redirect(`/dashboard/checkout?plan=${next.id}&agree=1`);
-  const cap = await capacity(u);
-  if (cap.used > next.limit + cap.bonus) redirect("/dashboard/plans");
-  await q.run("UPDATE users SET plan = ? WHERE id = ?", next.id, u.id);
-  await audit(u.id, "plan_changed", next.name);
-  done();
-  redirect(`/dashboard/plans?welcome=${plan}`);
+  // During the beta, bigger plans are given on request (see requestPlan), never picked straight from checkout.
+  void form;
+  redirect(`/dashboard/plans/request?plan=${next.id}`);
 }
 
 /** Gives the account its bio code (created once, reused so it doesn't change under them). */
@@ -213,4 +211,45 @@ export async function setTheme(theme: string) {
   if (!["night", "day", "system"].includes(theme)) return;
   (await cookies()).set("ft_theme", theme, { path: "/", maxAge: 365 * 86_400, sameSite: "lax", secure: process.env.NODE_ENV === "production" });
   revalidatePath("/", "layout");
+}
+
+/**
+ * During the beta: ask for Pro or Team. Ops checks who the person is (artist, label, distributor…) and approves the
+ * plan that fits. One open request at a time; a new one replaces the old.
+ */
+export async function requestPlan(form: FormData) {
+  const u = await requireUser();
+  if (await switchOn("billing")) redirect("/dashboard/plans");
+  const next = await offeredPlan(String(form.get("plan") || ""));
+  if (!next || next.price <= (await planOf(u.plan)).price) redirect("/dashboard/plans");
+  if (!(await allow("plan_request", String(u.id), 5, 86_400_000))) redirect(`/dashboard/plans/request?plan=${next.id}&error=limit`);
+  const kind = String(form.get("kind") || "") as RequestKind;
+  if (!(kind in REQUEST_KINDS)) redirect(`/dashboard/plans/request?plan=${next.id}&error=kind`);
+  const org = String(form.get("org") || "").trim().slice(0, 120);
+  const link = String(form.get("link") || "").trim().slice(0, 300);
+  const volume = (VOLUMES as readonly string[]).includes(String(form.get("volume"))) ? String(form.get("volume")) : "";
+  const note = String(form.get("note") || "").trim().slice(0, 1000);
+  if (link && !/^https?:\/\/\S+\.\S+/i.test(link)) redirect(`/dashboard/plans/request?plan=${next.id}&error=link`);
+  await q.run("UPDATE plan_requests SET status = 'withdrawn' WHERE user_id = ? AND status = 'pending'", u.id);
+  await q.run(
+    "INSERT INTO plan_requests (user_id, plan, kind, org, link, volume, note, created_at) VALUES (?,?,?,?,?,?,?,?)",
+    u.id, next.id, kind, org, link, volume, note, now(),
+  );
+  await audit(u.id, "plan_requested", next.name);
+  // A heads-up to the super admins; the request waits in ops either way.
+  for (const to of env.adminEmails)
+    await sendMail({ userId: null, to, subject: `Plan request: @${u.handle} asked for ${next.name}`, body: `@${u.handle} (${REQUEST_KINDS[kind]}${org ? `, ${org}` : ""}) asked for ${next.name}.\n\nReview it in ops: ${env.opsUrl}/admin/plan-requests` }).catch(() => {});
+  done();
+  redirect("/dashboard/plans?requested=1");
+}
+
+/** Takes back an open plan request. */
+export async function withdrawPlanRequest() {
+  const u = await requireUser();
+  if (await pendingRequest(u.id)) {
+    await q.run("UPDATE plan_requests SET status = 'withdrawn' WHERE user_id = ? AND status = 'pending'", u.id);
+    await audit(u.id, "plan_request_withdrawn", "");
+  }
+  done();
+  redirect("/dashboard/plans");
 }

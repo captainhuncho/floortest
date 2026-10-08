@@ -17,6 +17,7 @@ export function PlanCards({
   capUsed = 0,
   capBonus = 0,
   preview = false,
+  pendingPlan = null,
 }: {
   plans: Plan[];
   billing: boolean;
@@ -25,6 +26,8 @@ export function PlanCards({
   capUsed?: number;
   capBonus?: number;
   preview?: boolean;
+  /** During the beta: the plan this person has asked for and is waiting on. */
+  pendingPlan?: string | null;
 }) {
   // Paid plans' own extras, minus lines the card already shows (capacity) or that only point at another plan.
   const extrasOf = (p: Plan) => (p.price > 0 ? p.features.filter((f) => !/active tracks|^everything in/i.test(f)) : []);
@@ -53,7 +56,7 @@ export function PlanCards({
           const off = discountNow(p);
           // One price size for both periods, so switching doesn't resize the number.
           const bigPrice = !!off || Math.max(p.price, p.yearly) >= 100;
-          const action = billing ? `Upgrade to ${p.name}` : "Start in beta →";
+          const action = billing ? `Upgrade to ${p.name}` : `Request ${p.name} →`;
           return (
             <li
               key={id}
@@ -107,9 +110,13 @@ export function PlanCards({
                   <p className="grid h-11 place-items-center rounded-lg border border-line text-[13px] font-semibold text-mute">You&apos;re on this plan</p>
                 ) : tooSmall ? (
                   <p className="grid min-h-11 place-items-center rounded-lg border border-line px-3 text-center text-[12px] text-mute">You have more tracks than this plan holds</p>
+                ) : upgrade && !billing && pendingPlan === id ? (
+                  <Link href={`/dashboard/plans/request?plan=${id}`} className="grid h-11 place-items-center rounded-lg border border-lime/50 bg-lime/5 text-[13px] font-semibold text-lime">
+                    Requested · in review
+                  </Link>
                 ) : upgrade ? (
                   <Link
-                    href={`/dashboard/checkout?plan=${id}`}
+                    href={billing ? `/dashboard/checkout?plan=${id}` : `/dashboard/plans/request?plan=${id}`}
                     className={`grid h-11 place-items-center rounded-lg border text-[13px] font-semibold ${featured ? "border-lime bg-lime text-ink hover:brightness-95" : "border-[#64675c] text-bone hover:border-bone"}`}
                   >
                     {action}

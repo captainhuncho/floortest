@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { afterDiscount, discountNow, offeredPlan, planOf } from "@/lib/plan-store";
 import { switchOn } from "@/lib/switches";
@@ -19,6 +19,8 @@ export default async function Checkout({ searchParams }: { searchParams: Promise
   if (!p || p.price <= (await planOf(user.plan)).price) notFound();
   const id = p.id;
   const billing = await switchOn("billing");
+  // During the beta, bigger plans are by request.
+  if (!billing) redirect(`/dashboard/plans/request?plan=${p.id}`);
   const usd = (n: number) => `$${n.toFixed(2)}`;
   const price = usd(p.price);
   // A running plan discount comes off the list price; during the beta the beta discount covers the rest.

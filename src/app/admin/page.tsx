@@ -85,7 +85,7 @@ export default async function AdminOverview({ searchParams }: { searchParams: Pr
   ]);
 
   // Everything at once, one query per table where possible.
-  const [msg, td, usr, inc, del, wait, wk, partnersStuck, jobIssues, mail, backup, runs, storage, signupOpen] = await Promise.all([
+  const [msg, td, usr, inc, del, wait, planReq, wk, partnersStuck, jobIssues, mail, backup, runs, storage, signupOpen] = await Promise.all([
     safe(
       "messages",
       q.get<Record<string, unknown>>(
@@ -126,6 +126,7 @@ export default async function AdminOverview({ searchParams }: { searchParams: Pr
     ),
     safe("deletions", q.get<Record<string, unknown>>("SELECT COUNT(*) AS queued, COUNT(*) FILTER (WHERE attempts >= 5) AS stuck FROM storage_deletions"), undefined),
     safe("waitlist", q.count("SELECT COUNT(*) AS n FROM waitlist WHERE invited_at IS NULL"), 0),
+    safe("plan requests", q.get<Record<string, unknown>>("SELECT COUNT(*) AS n, MIN(created_at) AS at FROM plan_requests WHERE status = 'pending'"), undefined),
     safe(
       "weekly numbers",
       q.get<Record<string, unknown>>(
@@ -176,6 +177,7 @@ export default async function AdminOverview({ searchParams }: { searchParams: Pr
     { n: num(msg?.feedback), label: "New feedback", sub: "", href: "/admin/feedback?status=new", area: "support" },
     { n: num(usr?.verifying), label: "Verification", sub: "", href: "/admin/verification", area: "trust" },
     { n: partnersStuck, label: "Partners to nudge", sub: "", href: "/admin/partners?show=stuck", area: "growth" },
+    { n: num(planReq?.n), label: "Plan requests", sub: "", href: "/admin/plan-requests", area: "growth", oldest: num(planReq?.at) || null, dueDays: 2 },
     { n: wait, label: "Waitlist", sub: "", href: "/admin/waitlist", area: "growth" },
   ].filter((x) => x.n > 0 && ok(x.href));
   const now = todo.filter((x) => x.urgent);

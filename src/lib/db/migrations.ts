@@ -1138,4 +1138,29 @@ alter table plans add column discount_label text not null default '';
 alter table plans add column discount_ends_at bigint;
 `,
   },
+  {
+    // During the beta, Pro and Team are by request: people say who they are, ops approves the plan that fits.
+    id: "0070_plan_requests",
+    sql: `
+create table plan_requests (
+  id bigint generated always as identity primary key,
+  user_id bigint not null references users(id) on delete cascade,
+  plan text not null,
+  kind text not null,
+  org text not null default '',
+  link text not null default '',
+  volume text not null default '',
+  note text not null default '',
+  status text not null default 'pending' check (status in ('pending', 'approved', 'declined', 'withdrawn')),
+  granted_plan text,
+  decided_by bigint references users(id) on delete set null,
+  decided_at bigint,
+  decision_note text not null default '',
+  created_at bigint not null
+);
+create unique index plan_requests_one_pending on plan_requests(user_id) where status = 'pending';
+create index plan_requests_status on plan_requests(status, created_at);
+alter table plan_requests enable row level security;
+`,
+  },
 ];
