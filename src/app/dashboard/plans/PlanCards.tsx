@@ -51,6 +51,8 @@ export function PlanCards({
           const extras = extrasOf(p);
           // A running discount shows the list price struck through; list prices themselves never change.
           const off = discountNow(p);
+          // One price size for both periods, so switching doesn't resize the number.
+          const bigPrice = !!off || Math.max(p.price, p.yearly) >= 100;
           const action = billing ? `Upgrade to ${p.name}` : "Start in beta →";
           return (
             <li
@@ -67,6 +69,8 @@ export function PlanCards({
                 ) : null}
               </div>
 
+              {/* Month and year sit in the same spot and cross-fade, so the card never changes size. */}
+              <div className="period-stack">
               {([false, true] as const).map((yr) => {
                 const list = yr ? p.yearly : p.price;
                 const shown = off && list ? afterDiscount(list, off) : list;
@@ -82,7 +86,7 @@ export function PlanCards({
                         <span className="text-[22px] font-semibold leading-[54px] whitespace-nowrap">To be confirmed</span>
                       ) : (
                         <>
-                          <span className={`${shown >= 100 || off ? "text-[40px]" : "text-5xl"} font-semibold leading-[54px] tnum`}>${p.price ? shown : 0}</span>
+                          <span className={`${bigPrice ? "text-[40px]" : "text-5xl"} font-semibold leading-[54px] tnum`}>${p.price ? shown : 0}</span>
                           {off > 0 && list > 0 && <s className="text-sm text-mute tnum">${list}</s>}
                         </>
                       )}
@@ -92,6 +96,7 @@ export function PlanCards({
                   </div>
                 );
               })}
+              </div>
 
               <div>
                 {preview ? (
@@ -154,8 +159,10 @@ export function PlanCards({
 
       <div className="flex flex-col gap-1 text-xs text-mute sm:flex-row sm:justify-between">
         <p>{sameTools ? "All plans include the same tools. Only active-track capacity changes." : "Every plan includes the core tools; bigger plans add room and a few extras."}</p>
-        <p className="period-month">{billing ? "Billed monthly." : "Prices shown apply after beta."}</p>
-        <p className="period-year">{yearlyUnset ? "Yearly pricing is not yet confirmed for every plan." : billing ? "Billed yearly." : "Prices shown apply after beta."}</p>
+        <div className="period-stack sm:text-right">
+          <p className="period-month">{billing ? "Billed monthly." : "Prices shown apply after beta."}</p>
+          <p className="period-year">{yearlyUnset ? "Yearly pricing is not yet confirmed for every plan." : billing ? "Billed yearly." : "Prices shown apply after beta."}</p>
+        </div>
       </div>
     </>
   );

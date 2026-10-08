@@ -74,10 +74,11 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
 [data-area="support"] { --area: #ffb648; }
 [data-area="growth"] { --area: #d5ff48; }
 [data-area="trust"] { --area: #ff8a7a; }
-/* Plans page Year/Month: both prices are on the page; the switch flips data-period and the new one fades up. */
-[data-period="year"] .period-month, [data-period="month"] .period-year { display: none; }
-.period-month, .period-year { animation: period-in 280ms cubic-bezier(0.22, 1, 0.36, 1); }
-@keyframes period-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+/* Plans page Year/Month: both versions sit in one grid cell (so nothing moves) and cross-fade when data-period flips. */
+.period-stack { display: grid; }
+.period-stack > * { grid-area: 1 / 1; transition: opacity 260ms cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 0s; }
+[data-period="year"] .period-stack > .period-month,
+[data-period="month"] .period-stack > .period-year { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 180ms ease-out, visibility 0s linear 180ms; }
 /* The silver ops crest is dark-on-dark at small sizes: lift it so it reads clearly. */
 .crest-ops { filter: brightness(1.6) contrast(1.15) drop-shadow(0 0 6px rgb(255 255 255 / 0.12)); }
 [data-area="product"] { --area: #b9a2ff; }
