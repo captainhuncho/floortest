@@ -61,11 +61,44 @@ export function CollectionCard({ c, receiving, closed, canDelete, startEditing =
             </Link>
             {c.closesLabel && ` · ${closed ? "closed" : "closes"} ${c.closesLabel}`}
           </p>
-          {c.genres.length > 0 && <p className="mt-1 text-sm text-mute">Genres: {c.genres.join(" · ")}</p>}
-          {(c.briefWanted || c.bpmMin || c.briefNote) && (
-            <p className="mt-1 text-sm text-mute">
-              Brief: {[c.briefWanted, c.bpmMin && c.bpmMax ? `${c.bpmMin}–${c.bpmMax} BPM` : "", c.briefNote].filter(Boolean).join(" · ")}
-            </p>
+          {(c.genres.length > 0 || c.briefWanted || c.bpmMin || c.briefNote) && (
+            <div className="mt-3 border-l-2 border-lime/60 pl-3">
+              <p className="text-[11px] font-bold uppercase tracking-[1.5px] text-bone underline decoration-lime/60 underline-offset-4">Brief</p>
+              <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm">
+                {c.bpmMin && c.bpmMax ? (
+                  <>
+                    <dt className="font-bold uppercase tracking-[0.5px] text-bone">BPM</dt>
+                    <dd className="text-mute tnum">
+                      {c.bpmMin}–{c.bpmMax}
+                    </dd>
+                  </>
+                ) : null}
+                {c.genres.length > 0 && (
+                  <>
+                    <dt className="font-bold uppercase tracking-[0.5px] text-bone">Genres</dt>
+                    <dd className="flex flex-wrap gap-1.5">
+                      {c.genres.map((g) => (
+                        <span key={g} className="rounded-full border border-line px-2 py-0.5 text-xs text-mute">
+                          {g}
+                        </span>
+                      ))}
+                    </dd>
+                  </>
+                )}
+                {c.briefWanted && (
+                  <>
+                    <dt className="font-bold uppercase tracking-[0.5px] text-bone">Wanted</dt>
+                    <dd className="text-mute">{c.briefWanted}</dd>
+                  </>
+                )}
+                {c.briefNote && (
+                  <>
+                    <dt className="font-bold uppercase tracking-[0.5px] text-bone">Note</dt>
+                    <dd className="italic text-mute">“{c.briefNote}”</dd>
+                  </>
+                )}
+              </dl>
+            </div>
           )}
         </div>
         <div className="flex flex-wrap gap-2">

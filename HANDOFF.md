@@ -290,3 +290,50 @@ Two caveats remain: backup cleanup currently checks only days 14–74, so backup
 Fixed. `parseFilename` returning the full tag set (album, bpm, key, isrc, trackNo, artist, title) is the intended contract, so the parser stays as is. The old test now checks only the artist/title split. A new test asserts the full shape with its empty defaults. `node --import tsx --test tests/*.test.ts`: **28/28 pass**; typecheck passes.
 
 Local secret hygiene verified; no private credentials are present in tracked source or browser bundles.
+
+## Claude review required — API access model (8 Oct 2026)
+
+FloorTest does **not** currently offer a public developer API. Keep the existing `/api/*` routes as private application infrastructure and do not document, advertise or stabilise them for third-party use.
+
+The intended access model is:
+
+- Receivers use FloorTest through authenticated browser sessions. Track playback, original downloads, exports, dashboard data and management actions must continue to enforce account, ownership or collection-membership checks.
+- Admin routes must continue to require the separate admin permission model; they are never part of a customer API.
+- Public submission is the deliberate exception. A sender may submit WAV/MP3 files through a receiver's public link without creating an account, but the flow must retain email confirmation, optional Turnstile when enabled, IP/email rate limits, file and audio validation, receiver/collection availability checks, plan capacity checks, expiring upload authorisation and post-upload sealing.
+- Sender receipts and their pulse endpoint are private capability links. Keep tokens high-entropy, non-enumerable and out of logs, analytics, referrers and public indexing. Receipt data must not reveal Keep/Not for me decisions.
+- Colleague share playback requires both a live private share token and a signed-in FloorTest account. Downloads additionally require the recorded sharing/download permission and applicable plan entitlement.
+- Storage objects must remain private. Browser access should use short-lived signed URLs or application-authorised streaming; never expose permanent public bucket URLs.
+- Cron, webhook, unsubscribe, stem-upload and other token routes must retain their existing signature, secret, expiry, ownership and replay protections as applicable.
+- The free product plan does not imply free API access. Users may use the FloorTest product within their plan allowance; they may not treat internal endpoints as a supported integration API.
+
+Claude: review every current route against this model before changing API access. Confirm that authenticated routes fail signed out, object-level ownership checks cannot be bypassed, capability tokens are sufficiently random and expire/revoke where promised, public submission limits cannot be bypassed by calling the endpoints directly, and no permissive CORS policy turns the internal API into a cross-origin service. Add regression tests for any gap found. Do not expose an API key, service credential, database credential or storage credential to the client.
+
+If FloorTest later launches integrations, build a deliberately separate, versioned API rather than blessing the current internal routes. The minimum design is `/api/v1`, hashed and revocable developer keys, explicit read/write scopes, per-account quotas and rate limits, audit logs, webhook signing and replay protection, documentation, stable versioning/deprecation rules, and explicit receiver consent before any private audio access. Sender events suitable for webhooks are delivered, listened, downloaded, replied and played out. Do not expose private receiver decisions by default.
+
+## Claude review required — engineering guides (8 Oct 2026)
+
+Four project-specific engineering guides now define the maintained boundaries for future work:
+
+- `SECURITY.md` — system boundary, threat model, invariants, severity context, known beta limitations and release verification.
+- `docs/CODE_STYLE.md` — current Next.js/TypeScript patterns, product terminology, responsive/UI rules and verification commands.
+- `docs/DATABASE.md` — PGlite/PostgreSQL model, query and migration rules, object lifecycle, deletion, backup and pooling guidance.
+- `docs/API_GUIDE.md` — internal route access classes, upload protocol, authorization, response semantics, audio delivery, receipt privacy and the boundary for any future public API.
+
+Claude: read these before changing authentication, storage, database migrations, API access, sharing, receipts, retention, admin permissions, navigation terminology or sender-visible signals. These documents do not change runtime behavior by themselves. If present code differs from a stated invariant, treat that as a review item: confirm the intended product behavior, add tests, and fix deliberately rather than silently rewriting the guide to match an unsafe implementation.
+
+### Claude action — bring README up to the current product
+
+Update `README.md` after reading the current routes and the four guides above. The README is stale and must describe the implementation that exists now, not the former prototype.
+
+At minimum, correct:
+
+- Receiver navigation to: The Floor, Review Queue, Collections, Prepare for set, Send, Contacts and Activity.
+- Mobile primary navigation to: Floor, Queue, Collections and Prepare.
+- Review terminology to: Needs review, Kept and Not for me; primary actions are Keep, Not for me and Reply.
+- The permanent receiving-link model and active collection routing.
+- Anonymous sender email-code confirmation, account-to-account Send, grouped releases/folders, private receipts and the current sender-visible signals.
+- Prepare for set, Rekordbox XML/playlist export, colleague sharing/voting, stem requests, Played out, Contacts/messages, plans/capacity, account/settings and admin/operations features that are already implemented.
+- The current database, private object storage, email, deployment, backup, deletion and API-access model.
+- The `Not built yet` section: verify every item against current code and feature switches; remove completed items and distinguish unfinished code from operational launch work.
+
+Do not change application behavior as part of the README refresh. Do not copy generic Prisma, JWT or public-API guidance into it. Verify every feature claim against current source, keep setup instructions usable, link `SECURITY.md`, `docs/CODE_STYLE.md`, `docs/DATABASE.md` and `docs/API_GUIDE.md`, then run a documentation consistency pass against route names and `package.json` commands.
