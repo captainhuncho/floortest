@@ -16,7 +16,7 @@ export function SendModes({ folderBytes, ...form }: FormProps & { folderBytes: n
       {mode === "tracks" ? (
         <SubmitForm {...form} />
       ) : (
-        <FolderSend handle={form.handle} receiverName={form.receiverName} genres={form.genres} folderBytes={folderBytes} botCheckKey={form.botCheckKey} callout={form.callout} />
+        <FolderSend handle={form.handle} receiverName={form.receiverName} genres={form.genres} folderBytes={folderBytes} botCheckKey={form.botCheckKey} callout={form.callout} trackArt={form.trackArt} />
       )}
     </div>
   );

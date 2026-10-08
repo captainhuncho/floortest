@@ -89,7 +89,7 @@ export async function uploadTrack(
 }
 
 /** Uploads artwork as-is, straight to storage, then asks the server to check it. Failures are ignored: the track is already sent. */
-async function sendArtwork(token: string, file: File) {
+export async function sendArtwork(token: string, file: File) {
   try {
     const url = `/api/track-art/${encodeURIComponent(token)}`;
     const post = (body: object) => fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });

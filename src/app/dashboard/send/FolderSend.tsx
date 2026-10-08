@@ -7,7 +7,7 @@ import { fmtBytes } from "@/lib/format";
 import { MAX_RELEASE_TRACKS, MIX_STATUS } from "@/lib/plans";
 import { readTags, type Tags } from "@/lib/tags";
 import { Turnstile } from "@/components/Turnstile";
-import { CANCELLED, MAX_BYTES, uploadTrack } from "../../[handle]/useTrackUpload";
+import { CANCELLED, MAX_BYTES, sendArtwork, uploadTrack } from "../../[handle]/useTrackUpload";
 import { TransferScreen } from "../../[handle]/TransferScreen";
 import { EmailCode, startEmailCheck } from "../../[handle]/EmailCode";
 import { SetsPermission } from "../../[handle]/SetsPermission";
@@ -48,8 +48,11 @@ export function FolderSend({
   folderBytes,
   account,
   botCheckKey = null,
+  trackArt = false,
   callout = null,
 }: {
+  /** The receiver's plan takes artwork: one optional cover for the whole release. */
+  trackArt?: boolean;
   handle: string;
   receiverName: string;
   genres: string[];
@@ -71,6 +74,8 @@ export function FolderSend({
   const [release, setRelease] = useState<{ title: string; artist: string; kind: Kind }>({ title: "", artist: "", kind: "ep" });
   const [genre, setGenre] = useState("");
   const [message, setMessage] = useState("");
+  const [artwork, setArtwork] = useState<File | null>(null);
+  const artSent = useRef(false);
   const [setsOk, setSetsOk] = useState(false);
   const [aiUse, setAiUse] = useState("");
   const [mix, setMix] = useState("");
@@ -169,7 +174,14 @@ export function FolderSend({
         break;
       }
       update(i, "error" in r ? { state: "failed", error: r.error } : { state: "sent", progress: 1 });
-      if (!("error" in r)) sentCount++;
+      if (!("error" in r)) {
+        sentCount++;
+        // The release's cover rides on its first track that arrives; the desk shows it for the whole folder.
+        if (artwork && !artSent.current) {
+          artSent.current = true;
+          await sendArtwork(r.token, artwork);
+        }
+      }
     }
     setRunning(false);
   }
@@ -380,6 +392,13 @@ export function FolderSend({
               <option value="full">Fully AI-generated</option>
             </select>
           </label>
+          {trackArt && (
+            <label className="block space-y-1.5">
+              <span className="label">Artwork (optional)</span>
+              <input type="file" accept="image/jpeg,image/png,image/webp" disabled={running} onChange={(e) => setArtwork(e.target.files?.[0] ?? null)} className="input file:mr-3 file:rounded file:border-0 file:bg-ink-3 file:px-3 file:py-1 file:text-bone" />
+              <span className="block text-xs text-mute">One cover for the whole release. JPG, PNG or WebP, up to 25 MB. Sent at full quality.</span>
+            </label>
+          )}
           <SetsPermission receiverName={receiverName} many checked={setsOk} onChange={setSetsOk} disabled={running} />
         </>
       )}

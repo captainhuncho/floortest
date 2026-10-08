@@ -89,7 +89,7 @@ export function SendComposer({ host, account, initial }: { host: string; account
                   <SendModeTabs mode={mode} setMode={setMode} className="mb-4" />
                 )}
                 {found.folderBytes > 0 && mode === "folder" ? (
-                  <FolderSend handle={found.handle} receiverName={found.name} genres={found.genres} folderBytes={found.folderBytes} account={account} />
+                  <FolderSend handle={found.handle} receiverName={found.name} genres={found.genres} folderBytes={found.folderBytes} account={account} trackArt={found.trackArt} />
                 ) : (
                   <SubmitForm handle={found.handle} receiverName={found.name} genres={found.genres} account={account} trackArt={found.trackArt} />
                 )}

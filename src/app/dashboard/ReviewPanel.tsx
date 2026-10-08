@@ -109,7 +109,13 @@ export async function ReviewPanel({
   );
 
   // Artwork the sender attached (Team plans).
-  const art = t.art_key ? `/api/track-art/${t.id}?v=${encodeURIComponent(t.art_key)}` : null;
+  // Tracks in a folder share the cover the sender attached to the release.
+  const artFrom = t.art_key
+    ? { id: t.id, art_key: t.art_key }
+    : t.release_id
+      ? await q.get<{ id: number; art_key: string }>("SELECT id, art_key FROM tracks WHERE release_id = ? AND user_id = ? AND art_key IS NOT NULL AND deleted_at IS NULL LIMIT 1", t.release_id, t.user_id)
+      : undefined;
+  const art = artFrom ? `/api/track-art/${artFrom.id}?v=${encodeURIComponent(artFrom.art_key)}` : null;
 
   return (
     <div className="p-4 sm:p-6" data-swipe-zone>
