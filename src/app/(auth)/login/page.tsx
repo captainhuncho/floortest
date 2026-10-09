@@ -2,15 +2,45 @@ import Link from "next/link";
 import { AuthForm } from "../AuthForm";
 import { login } from "../actions";
 import { siteCopy } from "@/lib/content";
+import { isPreview } from "@/lib/env";
+import { googleConfig } from "@/lib/google-auth";
+
+const GOOGLE_ERRORS: Record<string, string> = {
+  nomatch: "There's no FloorTest account with a confirmed email matching that Google account. Log in another way, or ask for an invite.",
+  suspended: "This account is suspended. To appeal, go to the Contact page and choose Suspension appeal.",
+  expired: "That took too long. Try Continue with Google again.",
+  failed: "Google didn't confirm your sign-in. Try again, or log in another way.",
+};
 
 export const metadata = { title: "Log in — FloorTest" };
 
-export default async function LoginPage() {
-  const c = await siteCopy("auth");
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ google?: string }> }) {
+  const [c, sp] = await Promise.all([siteCopy("auth"), searchParams]);
+  const google = !!googleConfig() && !isPreview;
+  const googleError = GOOGLE_ERRORS[String(sp.google ?? "")];
   return (
     <>
       <h1 className="text-2xl font-semibold tracking-tight lg:text-[40px] lg:leading-[44px] lg:tracking-[-1.2px]">{c.login_title}</h1>
       <p className="mb-8 mt-3 text-mute lg:text-base">Sign in to your music desk.</p>
+      {googleError && (
+        <p role="alert" className="mb-6 rounded-lg border border-danger/40 bg-danger/10 px-4 py-3 text-sm">
+          {googleError}
+        </p>
+      )}
+      {google && (
+        <>
+          {/* A plain link: the route sets up the protected hand-off to Google. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+          <a href="/api/auth/google" className="btn-ghost flex w-full items-center justify-center gap-3 py-3 text-sm font-semibold">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icons/google.svg" alt="" className="size-[18px]" />
+            Continue with Google
+          </a>
+          <div className="my-6 flex items-center gap-3 text-xs text-dim">
+            <span className="h-px flex-1 bg-line" /> or <span className="h-px flex-1 bg-line" />
+          </div>
+        </>
+      )}
       <AuthForm
         action={login}
         submit="Log in"
