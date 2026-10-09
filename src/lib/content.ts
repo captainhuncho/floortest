@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { cookies, draftMode } from "next/headers";
 import { PREVIEW_COOKIE, previewer } from "./draft-preview";
-import { hasLiveOpsSession } from "./ops";
+import { opsSessionLive } from "./ops";
 import { currentUser } from "./auth";
 import { isAdminEmail } from "./admin";
 import { q } from "./db";
@@ -146,8 +146,8 @@ export const contentRow = (page: SitePage) =>
 const previewing = cache(async () => {
   if (!(await draftMode()).isEnabled) return false;
   // Opened from ops with a signed pass, and that person is still signed in to ops.
-  const id = previewer((await cookies()).get(PREVIEW_COOKIE)?.value);
-  if (id && (await hasLiveOpsSession(id))) return true;
+  const p = previewer((await cookies()).get(PREVIEW_COOKIE)?.value);
+  if (p && (await opsSessionLive(p.session, p.adminId))) return true;
   const u = await currentUser();
   return !!u && isAdminEmail(u.email);
 });

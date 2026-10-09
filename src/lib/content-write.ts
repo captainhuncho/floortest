@@ -38,6 +38,7 @@ export async function writeContent(page: SitePage, incoming: Record<string, unkn
      ON CONFLICT (page) DO UPDATE SET draft = excluded.draft, admin_id = excluded.admin_id, updated_at = excluded.updated_at${publish ? ", published = excluded.published, published_at = excluded.published_at" : ""}`,
     page, body, publish ? body : "{}", adminId, t, publish ? t : null,
   );
+  if (!publish) await logAdmin(adminId, "saved site content draft", SITE_PAGES[page].label);
   if (publish) {
     await q.run("INSERT INTO site_content_versions (page, body, admin_id, created_at) VALUES (?,?,?,?)", page, body, adminId, t);
     await logAdmin(adminId, "published site content", SITE_PAGES[page].label);

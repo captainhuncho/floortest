@@ -51,6 +51,21 @@ export const currentOpsAdmin = cache(async (): Promise<User | null> => {
   return user as User;
 });
 
+/** The current ops session's token hash (ops host only), for binding a preview to this exact session. */
+export async function currentOpsSessionHash() {
+  const token = (await cookies()).get(COOKIE)?.value;
+  return token && (await currentOpsAdmin()) ? hashToken(token) : null;
+}
+
+/** Whether that exact ops session (by token hash) is still live and belongs to `userId`. */
+export async function opsSessionLive(session: string, userId: number) {
+  const t = now();
+  return !!(await q.get(
+    "SELECT 1 FROM admin_sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.user_id = ? AND s.expires_at > ? AND s.last_seen_at > ? AND u.suspended_at IS NULL",
+    session, userId, t, t - IDLE_MS,
+  ));
+}
+
 /** Whether this admin has a live ops session right now (for the read-only "view as" on the main site). */
 export async function hasLiveOpsSession(userId: number) {
   const t = now();

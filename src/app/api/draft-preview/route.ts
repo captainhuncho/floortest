@@ -2,7 +2,7 @@ import { cookies, draftMode } from "next/headers";
 import { redirect } from "next/navigation";
 import { isProd } from "@/lib/env";
 import { passHolder, PREVIEW_COOKIE, PREVIEW_MS, previewCookie } from "@/lib/draft-preview";
-import { hasLiveOpsSession } from "@/lib/ops";
+import { opsSessionLive } from "@/lib/ops";
 import { SITE_PAGES, type SitePage } from "@/lib/content";
 import { OPS_URL } from "@/lib/ops";
 
@@ -21,10 +21,10 @@ export async function GET(req: Request) {
     jar.delete(PREVIEW_COOKIE);
     redirect(`${OPS_URL}/admin/content`);
   }
-  const adminId = passHolder(url.searchParams.get("t"));
-  if (!adminId || !(await hasLiveOpsSession(adminId))) return new Response("This preview link has expired. Open it again from ops.", { status: 403 });
+  const holder = passHolder(url.searchParams.get("t"));
+  if (!holder || !(await opsSessionLive(holder.session, holder.adminId))) return new Response("This preview link has expired. Open it again from ops.", { status: 403 });
   dm.enable();
-  jar.set(PREVIEW_COOKIE, previewCookie(adminId), { httpOnly: true, secure: isProd, sameSite: "lax", path: "/", maxAge: PREVIEW_MS / 1000 });
+  jar.set(PREVIEW_COOKIE, previewCookie(holder), { httpOnly: true, secure: isProd, sameSite: "lax", path: "/", maxAge: PREVIEW_MS / 1000 });
   const page = url.searchParams.get("page") as SitePage;
   redirect(SITE_PAGES[page]?.path ?? "/");
 }

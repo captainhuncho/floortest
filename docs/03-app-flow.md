@@ -66,7 +66,7 @@ ops → Site content → Edit on the page ↗ ─► 60-second pass ─► floor
    ├─ click product image ─► choose file (resized to WebP)
    ├─ section bar: drag ⠿ / ↑ ↓ / Hide · Show
    └─ toolbar: Save draft · Publish (live + version) · Exit (ends preview, back to ops)
-Edit mode only works while that person is still signed in to ops; the API refuses otherwise.
+Edit mode is bound to the exact ops session that opened it (pass and cookie are signed with its token hash, 1-hour cookie): signing out of ops or that session timing out ends it at once. Saves 120/hour and uploads 30/hour per person; every draft save and publish is in the admin log.
 ```
 
 ## Ops (ops.floortest.app)

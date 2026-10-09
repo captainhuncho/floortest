@@ -11,7 +11,7 @@
     "seed": "tsx scripts/seed.ts",
     "db:migrate": "tsx scripts/migrate.ts",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test tests/*.test.ts",
+    "test": "tsx --conditions=react-server --test tests/*.test.ts",
     "smoke": "tsx scripts/smoke.ts"
   },
   "dependencies": {

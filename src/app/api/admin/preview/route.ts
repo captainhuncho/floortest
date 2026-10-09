@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/admin";
 import { previewPass } from "@/lib/draft-preview";
 import { APP_URL } from "@/lib/mail";
+import { currentOpsSessionHash } from "@/lib/ops";
 
 /**
  * Admin → Site content → Preview. Drafts show on floortest.app, a different host from ops, so this hands over a
@@ -16,5 +17,7 @@ export async function GET(req: Request) {
     redirect(`${APP_URL}/api/draft-preview?off`);
   }
   const page = url.searchParams.get("page") ?? "";
-  redirect(`${APP_URL}/api/draft-preview?t=${encodeURIComponent(previewPass(me.id))}&page=${encodeURIComponent(page)}`);
+  const session = await currentOpsSessionHash();
+  if (!session) redirect("/ops-login");
+  redirect(`${APP_URL}/api/draft-preview?t=${encodeURIComponent(previewPass({ adminId: me.id, session }))}&page=${encodeURIComponent(page)}`);
 }

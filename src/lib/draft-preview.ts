@@ -3,37 +3,41 @@ import crypto from "node:crypto";
 import { env } from "./env";
 
 /**
- * Previewing site-content drafts from ops. Ops lives on its own host, so a draft preview can't ride on the ops cookie:
- * ops hands out a short-lived signed pass for floortest.app, which turns on draft mode there and leaves a signed
- * "who is previewing" cookie. Drafts only show while that person's ops session is live (see content.ts).
+ * Previewing (and editing) site content from ops. Ops lives on its own host, so a draft preview can't ride on the ops
+ * cookie: ops hands out a short-lived signed pass for floortest.app, which turns on draft mode there and leaves a
+ * signed "who is previewing" cookie. Both are bound to the exact ops session that asked (its token hash), so signing
+ * out of ops, or that session timing out, ends the preview at once, and a copied cookie is useless on its own.
  */
 export const PREVIEW_COOKIE = "ft_preview";
 const PASS_MS = 60_000;
-export const PREVIEW_MS = 2 * 60 * 60_000;
+/** Matches the ops idle timeout. */
+export const PREVIEW_MS = 60 * 60_000;
 
-const sign = (kind: string, adminId: number, exp: number) =>
-  crypto.createHmac("sha256", env.secret).update(`draft-preview:${kind}:${adminId}:${exp}`).digest("base64url").slice(0, 32);
+export type Previewer = { adminId: number; session: string };
 
-const make = (kind: string, adminId: number, ms: number) => {
+const sign = (kind: string, adminId: number, session: string, exp: number) =>
+  crypto.createHmac("sha256", env.secret).update(`draft-preview:${kind}:${adminId}:${session}:${exp}`).digest("base64url").slice(0, 32);
+
+const make = (kind: string, p: Previewer, ms: number) => {
   const exp = Date.now() + ms;
-  return `${adminId}.${exp}.${sign(kind, adminId, exp)}`;
+  return `${p.adminId}.${p.session}.${exp}.${sign(kind, p.adminId, p.session, exp)}`;
 };
 
-/** Who signed `token` for `kind`, if it's genuine and unexpired. */
-function check(kind: string, token: string | undefined | null): number | null {
-  const [id, exp, sig] = String(token ?? "").split(".");
+/** Who signed `token` for `kind`, and from which ops session, if it's genuine and unexpired. */
+function check(kind: string, token: string | undefined | null): Previewer | null {
+  const [id, session, exp, sig] = String(token ?? "").split(".");
   const adminId = Number(id);
   const until = Number(exp);
-  if (!adminId || !until || until < Date.now() || !sig) return null;
-  const want = Buffer.from(sign(kind, adminId, until));
+  if (!adminId || !/^[a-f0-9]{64}$/.test(session ?? "") || !until || until < Date.now() || !sig) return null;
+  const want = Buffer.from(sign(kind, adminId, session, until));
   const got = Buffer.from(sig);
-  return got.length === want.length && crypto.timingSafeEqual(got, want) ? adminId : null;
+  return got.length === want.length && crypto.timingSafeEqual(got, want) ? { adminId, session } : null;
 }
 
 /** A 60-second pass from ops to floortest.app. */
-export const previewPass = (adminId: number) => make("pass", adminId, PASS_MS);
+export const previewPass = (p: Previewer) => make("pass", p, PASS_MS);
 export const passHolder = (token: string | null) => check("pass", token);
 
 /** The cookie floortest.app keeps while someone previews drafts. */
-export const previewCookie = (adminId: number) => make("cookie", adminId, PREVIEW_MS);
+export const previewCookie = (p: Previewer) => make("cookie", p, PREVIEW_MS);
 export const previewer = (token: string | undefined) => check("cookie", token);
