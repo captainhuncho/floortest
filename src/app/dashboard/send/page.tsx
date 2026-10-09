@@ -45,21 +45,11 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
     return ev ? `${ev[0]} ${ago(Number(ev[1]))}` : `Delivered ${ago(r.created_at)} · not played yet`;
   };
 
-  return (
-    <div className="max-w-3xl px-4 py-6 sm:px-8">
-      <h1 className="text-3xl font-bold tracking-tight">Send</h1>
-      <p className="mt-2 text-mute">Send your music to another FloorTest user. Add the name at the end of their link.</p>
-      <div className="mt-8">
-        <SendComposer host={APP_URL.replace(/^https?:\/\//, "")} account={{ name: user.name, email: user.email }} initial={to} />
-      </div>
-
-      <section aria-labelledby="sent-h" className="mt-12">
-        <h2 id="sent-h" className="label">
-          Sent ({sent.length})
-        </h2>
-        <p className="mt-1 text-sm text-mute">Tap a send to follow it: when it&apos;s delivered, listened to, downloaded and replied to.</p>
-        <ul className="mt-3 divide-y divide-line overflow-hidden rounded-md border border-line">
-          {sent.map((r) => (
+  // The last 30 days stay open; anything older folds under "Older than 30 days".
+  const cutoff = Date.now() - 30 * 86_400_000;
+  const recent = sent.filter((r) => Number(r.created_at) >= cutoff);
+  const older = sent.filter((r) => Number(r.created_at) < cutoff);
+  const row = (r: Sent) => (
             <li key={r.token}>
               <Link
                 href={`/receipt/${r.token}`}
@@ -98,7 +88,24 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
                 <span className="mt-1.5 block text-xs text-mute">{latest(r)}</span>
               </Link>
             </li>
-          ))}
+  );
+
+  return (
+    <div className="max-w-3xl px-4 py-6 sm:px-8">
+      <h1 className="text-3xl font-bold tracking-tight">Send</h1>
+      <p className="mt-2 text-mute">Send your music to another FloorTest user. Add the name at the end of their link.</p>
+      <div className="mt-8">
+        <SendComposer host={APP_URL.replace(/^https?:\/\//, "")} account={{ name: user.name, email: user.email }} initial={to} />
+      </div>
+
+      <section aria-labelledby="sent-h" className="mt-12">
+        <h2 id="sent-h" className="label">
+          Sent ({sent.length})
+        </h2>
+        <p className="mt-1 text-sm text-mute">Tap a send to follow it: when it&apos;s delivered, listened to, downloaded and replied to.</p>
+        <ul className="mt-3 divide-y divide-line overflow-hidden rounded-md border border-line">
+          {recent.map(row)}
+          {!recent.length && older.length > 0 && <li className="px-4 py-4 text-sm text-mute">Nothing sent in the last 30 days.</li>}
           {!sent.length && (
             <li className="px-4 py-6 text-sm text-mute">
               Nothing sent yet. Once you send a track it shows up here, and you can tap it to follow it: delivered, listened to, downloaded and the receiver&apos;s
@@ -106,6 +113,21 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
             </li>
           )}
         </ul>
+        {older.length > 0 && (
+          // Sends over 30 days old fold away so the page stays short; tap + to see them.
+          <details className="group mt-3">
+            <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg border border-line px-4 py-3 text-sm font-medium hover:bg-ink-2 [&::-webkit-details-marker]:hidden">
+              <span>
+                Older than 30 days <span className="text-mute tnum">({older.length})</span>
+              </span>
+              <span aria-hidden className="grid size-6 place-items-center rounded-md border border-line text-base leading-none">
+                <span className="group-open:hidden">+</span>
+                <span className="hidden group-open:inline">−</span>
+              </span>
+            </summary>
+            <ul className="mt-2 divide-y divide-line overflow-hidden rounded-md border border-line">{older.map(row)}</ul>
+          </details>
+        )}
       </section>
     </div>
   );
