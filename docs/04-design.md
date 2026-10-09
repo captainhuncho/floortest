@@ -35,8 +35,5 @@ Charts: white bars at night, olive (#5f8000) by day. Play buttons: white at nigh
 - Every option a person might need stays visible (no hiding common actions in menus); destructive actions always confirm.
 - Accessibility: WCAG 2.2 AA, visible focus, Escape closes dialogs, no pinch-zoom lock.
 
-## Motion
-- The crest is a record: it turns at 33⅓ while a track plays (holds where it stopped on pause), spins as the dashboard loading indicator, and does a one-time needle-drop intro on the coming-soon page. Nothing loops when idle; reduced motion = still. The ops crest never moves.
-
 ## Brand assets
 `public/brand/crest.svg` (lime, product), `public/brand/crest-ops.svg` (silver, ops only), `src/app/icon.svg`. Use the SVGs, never redraw.

@@ -34,11 +34,6 @@ export const usePlayer = () => {
   if (!c) throw new Error("usePlayer outside PlayerProvider");
   return c;
 };
-/** Whether something is playing; null outside the dashboard's player (the crest uses this). */
-export const useIsPlaying = () => {
-  const c = useContext(PlayerContext);
-  return c ? c.playing : null;
-};
 
 export const isTyping = (el: EventTarget | null) =>
   el instanceof HTMLElement && !!el.closest("input, textarea, select, [contenteditable]");

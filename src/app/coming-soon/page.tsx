@@ -1,4 +1,3 @@
-import { Crest } from "@/components/Crest";
 import { GateForm } from "./GateForm";
 import { SignInDialog } from "./SignInDialog";
 
@@ -10,7 +9,7 @@ export default async function ComingSoon({ searchParams }: { searchParams: Promi
   return (
     <main id="main" className="mx-auto flex min-h-dvh max-w-xl flex-col justify-center px-5 py-16">
       <div className="flex items-center gap-4">
-        <Crest intro className="size-14 sm:size-16" />
+        <img src="/brand/crest.svg" alt="" aria-hidden className="size-14 shrink-0 sm:size-16" />
         <span className="text-[34px] font-extrabold tracking-[-1px] sm:text-[44px]">FloorTest</span>
       </div>
       <h1 className="mt-8 inline-flex w-fit items-center gap-2 rounded-full border border-lime/50 bg-lime/10 px-4 py-1.5 text-sm font-bold text-lime">

@@ -226,15 +226,3 @@ html:has(.theme-day), html:has(.theme-day) body { background: #fafaf6; }
 .site-editing .site-editable:focus { outline-style: solid; outline-color: var(--color-lime); }
 .site-editing [data-edit-panel], .site-editing [data-edit-image] { cursor: pointer; outline: 1px dashed color-mix(in oklab, var(--color-lime) 35%, transparent); outline-offset: 6px; }
 .site-editing [data-edit-panel]:hover, .site-editing [data-edit-image]:hover { outline-color: var(--color-lime); }
-
-/* The crest as a record: the disc's centre is the turning point (73,80 of the 140×146 artwork). */
-.crest { transform-origin: 52.1% 54.8%; }
-/* 33⅓ rpm while a track plays; pausing holds it where it stopped, like a real deck. */
-.crest-deck { animation: crest-spin 1.8s linear infinite paused; }
-.crest-deck.crest-playing { animation-play-state: running; }
-.crest-loading { animation: crest-spin 0.9s linear infinite; }
-/* Needle drop: spins up and settles upright, once. */
-.crest-intro { animation: crest-drop 1.1s cubic-bezier(0.16, 1, 0.3, 1) both; }
-@keyframes crest-spin { to { rotate: 360deg; } }
-@keyframes crest-drop { from { rotate: -540deg; scale: 0.85; opacity: 0; } 60% { opacity: 1; } to { rotate: 0deg; scale: 1; opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .crest-deck, .crest-loading, .crest-intro { animation: none; } }
