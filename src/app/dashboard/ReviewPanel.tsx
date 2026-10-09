@@ -101,7 +101,7 @@ export async function ReviewPanel({
                 <button className="btn-ghost btn-sm">Keep all undecided</button>
               </form>
               <form action={decideRelease.bind(null, release.id, "passed")}>
-                <button className="btn-ghost btn-sm">Pass all undecided</button>
+                <button className="btn-ghost btn-sm">Not for me: all undecided</button>
               </form>
             </div>
           )}

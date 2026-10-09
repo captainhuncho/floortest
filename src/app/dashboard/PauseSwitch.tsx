@@ -61,7 +61,7 @@ export function PauseSwitch({ pause, compact = false }: { pause: PauseState; com
         <button
           role="switch"
           aria-checked={!paused}
-          aria-label="Accept submissions"
+          aria-label="Taking submissions"
           aria-busy={busy}
           onClick={flip}
           className={`relative shrink-0 rounded-full transition-colors ${compact ? "h-4 w-7" : "mt-0.5 h-7 w-12"} ${paused ? "bg-line" : compact ? "bg-bone" : "bg-lime"}`}

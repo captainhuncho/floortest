@@ -116,7 +116,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
         <SwitchCollection id={openAlternative.id} name={openAlternative.name} />
       ) : (
         <Link href="/dashboard/collections" className="btn-lime btn-sm">
-          Open a new callout
+          New collection
         </Link>
       ),
     };
@@ -197,7 +197,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
           {upNext.length ? <UpNext items={upNext} /> : <p className={META}>Nothing waiting. New tracks will show up here first.</p>}
         </Card>
 
-        <Card title="Current callout" action={<Link href="/dashboard/collections" className={act}>Manage</Link>}>
+        <Card title="Receiving now" action={<Link href="/dashboard/collections" className={act}>Manage</Link>}>
           {active ? (
             <div className="space-y-3">
               <div className="flex flex-col gap-1">

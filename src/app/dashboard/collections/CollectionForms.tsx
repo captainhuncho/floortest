@@ -103,7 +103,7 @@ export function CollectionCard({ c, receiving, closed, canDelete, startEditing =
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href={`/dashboard/collections/${c.id}`} className="btn-ghost btn-sm">
-            Open
+            Open collection
           </Link>
           <DownloadActions collectionId={c.id} crateName={c.name} count={c.count} size="sm" />
           {!receiving && (
@@ -346,7 +346,7 @@ function CollectionOptions({ c, receiving, onEdit, onClose, showOpen }: { c: C; 
       )}
       {showOpen && (
         <Link role="menuitem" href={`/dashboard/collections/${c.id}`}>
-          Open folder
+          Open collection
         </Link>
       )}
       {c.needsReview > 0 && (
@@ -355,7 +355,7 @@ function CollectionOptions({ c, receiving, onEdit, onClose, showOpen }: { c: C; 
         </Link>
       )}
       <button role="menuitem" onClick={() => { onClose(); onEdit(); }}>
-        Edit info
+        Edit collection
       </button>
       <div>
         <DownloadActions collectionId={c.id} crateName={c.name} count={c.count} size="sm" />
@@ -399,7 +399,7 @@ export function CollectionDetailHeader({ c, receiving, closed, canDelete }: { c:
         )}
         {!editing && (
           <button onClick={() => setEditing(true)} className="rounded-md border border-line bg-ink-3 px-3 py-1.5 text-[11px] font-bold text-bone">
-            Edit Info
+            Edit collection
           </button>
         )}
       </div>
@@ -430,7 +430,7 @@ export function EditCollectionInfo({ c, receiving, closed, canDelete }: { c: C; 
   return (
     <>
       <button onClick={() => setOpen(true)} className="rounded-md border border-line bg-ink-3 px-3 py-1.5 text-[11px] font-bold text-bone hover:border-mute">
-        Edit Collection
+        Edit collection
       </button>
       {open && (
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 pt-20 backdrop-blur-[2px]" onClick={() => setOpen(false)}>
