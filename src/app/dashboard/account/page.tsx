@@ -71,9 +71,9 @@ export default async function Account() {
     </section>
   );
   const stats: [number, string][] = [
-    [reviewed, "tracks reviewed"],
-    [collections, "collections"],
-    [contacts, "contacts"],
+    [reviewed, "Reviewed"],
+    [collections, "Collections"],
+    [contacts, "Contacts"],
   ];
 
   return (
@@ -125,7 +125,7 @@ export default async function Account() {
         <dl className="grid grid-cols-3 gap-2 lg:border-l lg:border-line lg:pl-8">
           {stats.map(([n, l]) => (
             <div key={l} className="flex min-w-0 flex-col gap-1">
-              <dt className="order-2 truncate text-[11px] text-dim">{l}</dt>
+              <dt className="order-2 text-[11px] font-bold uppercase tracking-[1px] text-dim">{l}</dt>
               <dd className="order-1 text-base font-bold text-bone tnum md:text-[22px]">{n}</dd>
             </div>
           ))}

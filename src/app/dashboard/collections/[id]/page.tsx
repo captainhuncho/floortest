@@ -140,7 +140,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
             </h1>
             <div className="flex flex-wrap items-center gap-2">
               <EditCollectionInfo c={editable} receiving={receiving} closed={isClosed(c)} canDelete={all.length > 1} />
-              <ExportButton collectionId={c.id} count={c.count} whole label="Download Originals" buttonClassName="rounded-md bg-bone px-3 py-1.5 text-[11px] font-bold text-ink" />
+              <ExportButton collectionId={c.id} crateName={c.name} count={c.count} whole label="Download Originals" buttonClassName="rounded-md bg-bone px-3 py-1.5 text-[11px] font-bold text-ink" />
             </div>
           </div>
         </div>

@@ -13,7 +13,8 @@ const MAX_CRATE_TRACKS = 300;
 export const maxDuration = 300;
 
 /**
- * GET /api/export?base=/Users/me/Music/FloorTest[&collection=ID][&all=1]
+ * GET /api/export?name=Friday set[&base=/Users/me/Music][&collection=ID][&all=1]
+ * `name` is the crate's folder; `base` (optional) is where it'll be unzipped, needed only for the Rekordbox XML.
  * Kept tracks prepared for a set; with a collection, just that one; with all=1, the whole collection folder.
  */
 export async function GET(req: Request) {
@@ -23,7 +24,7 @@ export async function GET(req: Request) {
   const cid = url.searchParams.get("collection");
   const base = (url.searchParams.get("base") || "").slice(0, 500);
   const filesOnly = url.searchParams.get("files") === "1";
-  if (!base && !filesOnly) return new Response("Choose the folder you'll unzip into.", { status: 400 });
+  const name = (url.searchParams.get("name") || "").replace(/[\\/:*?"<>|\x00-\x1f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 60);
   await trackUse(user.id, "export");
 
   const collection = cid ? await q.get<Collection>("SELECT * FROM collections WHERE id = ? AND user_id = ?", Number(cid), user.id) : undefined;
@@ -47,7 +48,7 @@ export async function GET(req: Request) {
       { status: 413 },
     );
 
-  const crate = `FloorTest - ${collection ? (whole ? collection.name : `${collection.name} (kept)`) : "Kept"}`;
+  const crate = name || `FloorTest - ${collection ? (whole ? collection.name : `${collection.name} (kept)`) : "Kept"}`;
   await audit(user.id, "exported", `${crate.replace(/^FloorTest - /, "")} · ${tracks.length} track${tracks.length === 1 ? "" : "s"}${filesOnly ? " · files only" : ""}`);
   const zip = crateZip(crate, base, tracks, (t) => markDownloaded(user, t), filesOnly);
   return new Response(zip, {

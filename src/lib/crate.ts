@@ -19,7 +19,8 @@ export function crateZip(
     ...(filesOnly
       ? []
       : [
-          { name: `${folder}/rekordbox.xml`, open: async () => textStream(rekordboxXml(crateName, baseDir, files)) },
+          // The XML needs absolute paths, so it's only included when we know where the crate will be unzipped.
+          ...(baseDir ? [{ name: `${folder}/rekordbox.xml`, open: async () => textStream(rekordboxXml(crateName, baseDir, files)) }] : []),
           { name: `${folder}/${folder}.m3u8`, open: async () => textStream(m3u(files)) },
         ]),
     ...files.map((t) => ({

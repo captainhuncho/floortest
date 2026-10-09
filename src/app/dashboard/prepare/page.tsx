@@ -31,14 +31,14 @@ export default async function PrepareForSet() {
           collectionId={null}
           count={kept.length}
           label="Download kept crate"
-          buttonClassName="w-full rounded-lg bg-white py-2.5 text-xs font-bold text-ink disabled:opacity-40"
+          buttonClassName="btn-lime w-full rounded-lg py-2.5 text-xs font-bold disabled:opacity-40"
         />
         {kept.length > 0 ? (
-          <a href="/api/export?files=1" className="rounded-lg border border-line py-2.5 text-center text-xs font-medium text-mute" title="Just the original audio files, no Rekordbox XML or playlist">
-            Download files ({kept.length})
+          <a href="/api/export?files=1" className="btn-ghost w-full rounded-lg py-2.5 text-center text-xs font-bold" title="Just the original audio files, no playlist or XML">
+            Files only ({kept.length})
           </a>
         ) : (
-          <span className="pointer-events-none rounded-lg border border-line py-2.5 text-center text-xs font-medium text-mute opacity-40">Download files (0)</span>
+          <span className="btn-ghost pointer-events-none w-full rounded-lg py-2.5 text-center text-xs font-bold opacity-40">Files only (0)</span>
         )}
         <ClearKept count={kept.length} />
       </div>

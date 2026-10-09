@@ -105,7 +105,7 @@ export function CollectionCard({ c, receiving, closed, canDelete, startEditing =
           <Link href={`/dashboard/collections/${c.id}`} className="btn-ghost btn-sm">
             Open
           </Link>
-          <ExportButton collectionId={c.id} count={c.count} whole label="Download" variant="ghost" />
+          <ExportButton collectionId={c.id} crateName={c.name} count={c.count} whole label="Download" variant="ghost" />
           {!receiving && (
             <button className="btn-ghost btn-sm" disabled={pending} onClick={() => start(() => setActiveCollection(c.id))}>
               Send new tracks here
@@ -358,7 +358,7 @@ function CollectionOptions({ c, receiving, onEdit, onClose, showOpen }: { c: C; 
         Edit info
       </button>
       <div>
-        <ExportButton collectionId={c.id} count={c.count} whole label="Download collection" variant="ghost" />
+        <ExportButton collectionId={c.id} crateName={c.name} count={c.count} whole label="Download collection" variant="ghost" />
       </div>
       <button role="menuitem" className="text-center! text-mute" onClick={onClose}>
         Cancel
