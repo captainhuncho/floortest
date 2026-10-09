@@ -2,9 +2,9 @@
   "name": "floortest-mobile",
   "private": true,
   "version": "0.1.0",
-  "description": "FloorTest for iPhone and Android: a Capacitor shell around floortest.app (see docs/06-plan.md → Mobile app).",
+  "description": "FloorTest for iPhone and Android: a Capacitor shell around floortest.app (see docs/06-plan.md \u2192 Mobile app).",
   "scripts": {
-    "sync": "cap sync",
+    "sync": "node scripts/write-start.mjs && cap sync",
     "ios": "cap open ios",
     "run:ios": "cap run ios"
   },

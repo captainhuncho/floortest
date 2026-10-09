@@ -17,6 +17,8 @@ const config: CapacitorConfig = {
   server: {
     url,
     cleartext: url.startsWith("http://"),
+    // No connection: show our own offline screen (www/index.html) instead of a browser error.
+    errorPath: "index.html",
     // Only FloorTest's own pages open inside the app; anything else opens in the browser.
     allowNavigation: ["floortest.app", "*.floortest.app", "localhost"],
   },

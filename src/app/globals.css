@@ -227,8 +227,12 @@ html:has(.theme-day), html:has(.theme-day) body { background: #fafaf6; }
 .site-editing [data-edit-panel], .site-editing [data-edit-image] { cursor: pointer; outline: 1px dashed color-mix(in oklab, var(--color-lime) 35%, transparent); outline-offset: 6px; }
 .site-editing [data-edit-panel]:hover, .site-editing [data-edit-image]:hover { outline-color: var(--color-lime); }
 
-/* Review on phones: the panel follows a swipe with a stamp (KEEP right, NOT FOR ME left). */
+/* Review on phones: the panel follows a swipe with a stamp on the trailing side, so it stays on screen (KEEP when dragging right, NOT FOR ME when dragging left). */
 [data-swipe-zone] { position: relative; touch-action: pan-y; will-change: transform; }
 [data-swipe-zone]::after { content: ""; position: absolute; top: 18px; padding: 4px 10px; border: 2px solid; border-radius: 8px; font: 800 16px var(--font-mono); letter-spacing: .04em; opacity: 0; pointer-events: none; }
-[data-swipe-zone][data-swipe="keep"]::after { content: "KEEP"; right: 18px; color: var(--color-lime); rotate: 8deg; opacity: var(--swipe-strength, 0); }
-[data-swipe-zone][data-swipe="pass"]::after { content: "NOT FOR ME"; left: 18px; color: var(--color-danger); rotate: -8deg; opacity: var(--swipe-strength, 0); }
+[data-swipe-zone][data-swipe="keep"]::after { content: "KEEP"; left: 18px; color: var(--color-lime); rotate: 8deg; opacity: var(--swipe-strength, 0); }
+[data-swipe-zone][data-swipe="pass"]::after { content: "NOT FOR ME"; right: 18px; color: var(--color-danger); rotate: -8deg; opacity: var(--swipe-strength, 0); }
+
+/* Inside the FloorTest phone app only: no long-press callouts or accidental text selection, except where you type. */
+.native-app { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+.native-app :is(input, textarea, [contenteditable="true"], [contenteditable="plaintext-only"], .selectable) { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }

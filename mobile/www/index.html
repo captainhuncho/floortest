@@ -5,19 +5,27 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>FloorTest</title>
 <style>
-  html, body { margin: 0; height: 100%; background: #10110f; color: #f1f1eb; font-family: ui-monospace, Menlo, monospace; }
-  main { height: 100%; display: grid; place-items: center; text-align: center; padding: 24px; }
-  p { color: #a3a69b; font-size: 14px; }
-  button { margin-top: 16px; background: #d5ff48; color: #10110f; border: 0; border-radius: 10px; padding: 12px 20px; font: 700 14px ui-monospace, Menlo, monospace; }
+  html, body { margin: 0; height: 100%; background: #10110f; color: #f1f1eb; font-family: ui-monospace, Menlo, monospace; -webkit-user-select: none; user-select: none; }
+  main { min-height: 100%; display: grid; place-items: center; text-align: center; padding: 24px; box-sizing: border-box; }
+  img { width: 64px; height: 64px; }
+  h1 { font-size: 20px; margin: 18px 0 6px; }
+  p { color: #a3a69b; font-size: 13px; line-height: 1.5; max-width: 28ch; margin: 0 auto; }
+  button { margin-top: 22px; background: #d5ff48; color: #10110f; border: 0; border-radius: 10px; padding: 13px 22px; font: 700 13px ui-monospace, Menlo, monospace; }
 </style>
+<script src="start.js"></script>
 </head>
 <body>
 <main>
   <div>
-    <h1>FloorTest</h1>
-    <p>Can't reach FloorTest right now. Check your connection.</p>
-    <button onclick="location.reload()">Try again</button>
+    <img src="crest.svg" alt="">
+    <h1>You're offline</h1>
+    <p>FloorTest needs a connection to load your desk. Check your Wi-Fi or mobile data.</p>
+    <button type="button" onclick="location.href = window.FLOORTEST_START || 'https://floortest.app/dashboard/floor'">Try again</button>
   </div>
 </main>
+<script>
+  // Back automatically as soon as the connection returns.
+  addEventListener("online", () => { location.href = window.FLOORTEST_START || "https://floortest.app/dashboard/floor"; });
+</script>
 </body>
 </html>

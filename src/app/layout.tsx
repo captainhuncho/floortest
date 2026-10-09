@@ -1,4 +1,5 @@
 import { TapSpeed } from "@/components/TapSpeed";
+import { NativeApp } from "@/components/NativeApp";
 import { Analytics } from "@vercel/analytics/next";
 import { mono, serif } from "./fonts";
 import type { Metadata, Viewport } from "next";
@@ -19,6 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${serif.variable} ${mono.variable}`}>
       <body className="min-h-dvh">
+        <NativeApp />
         {isPreview && (
           <p className="bg-lime px-4 py-1 text-center text-xs font-medium text-ink">Preview · test data only, separate from the live site</p>
         )}
