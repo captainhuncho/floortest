@@ -23,6 +23,7 @@ import { checkSecondFactor, finishSignIn, sendEmailVerification } from "@/lib/se
 import { readChallenge, signChallenge } from "@/lib/totp";
 import { GOOGLE_LINK_COOKIE, GOOGLE_SIGNUP_COOKIE, readIdentity, readPendingLink } from "@/lib/google-auth";
 import { pinGoogle } from "@/lib/google-link";
+import { accountEmailAllowed } from "@/lib/email-budget";
 
 const CHALLENGE = "floortest_2fa";
 /** Set by a share link: where to land after signing in or up (only ever a /s/ share page). */
@@ -78,6 +79,9 @@ const validTz = (tz: string) => {
   }
 };
 
+/** The same answer whether the email or the link name is the problem, so sign-up never confirms who has an account. */
+const TAKEN = "We couldn't create an account with those details. If you already have one, log in or reset your password. Otherwise, try a different link name.";
+
 type NewAccount = { email: string; firstName: string; lastName: string; handle: string; name: string; passwordHash: string; verified: boolean };
 
 /**
@@ -94,7 +98,19 @@ async function createAccount(form: FormData, a: NewAccount): Promise<{ id: numbe
   if (RESERVED_HANDLES.has(a.handle)) return { error: "That link name is reserved." };
   if (await isProtectedHandle(a.handle)) return { error: "That name is protected for a well-known artist. If it's you, contact us and we'll set it up." };
   if (!(await allow("signup_ip", await requestIp(), 10, HOUR))) return { error: "Too many sign-ups from this connection. Try again later." };
-  if (await q.get("SELECT 1 FROM users WHERE email = ?", a.email)) return { error: "An account with that email exists. Log in instead." };
+  // Never say whether an email has an account: the real owner gets a quiet heads-up instead (at most once a day).
+  const owner = await q.get<{ id: number; name: string }>("SELECT id, name FROM users WHERE email = ?", a.email);
+  if (owner) {
+    if ((await allow("signup_exists_notice", a.email, 1, 24 * HOUR)) && (await accountEmailAllowed()))
+      await sendMail({
+        userId: owner.id,
+        audience: "receiver",
+        to: a.email,
+        subject: "Someone tried to sign up with your email",
+        body: `Hi ${owner.name.split(/\s+/)[0]},\n\nSomeone just tried to create a FloorTest account with this email address. You already have one, so nothing was created.\n\nIf it was you, log in here: ${APP_URL}/login (forgot your password? ${APP_URL}/forgot)\n\nIf it wasn't you, you don't need to do anything.\n\n— FloorTest`,
+      });
+    return { error: TAKEN };
+  }
   if ((await q.get("SELECT 1 FROM users WHERE handle = ?", a.handle)) || (await handleHeld(a.handle))) return { error: "That link is taken." };
   try {
     return await q.tx(async (db) => {
@@ -126,7 +142,7 @@ async function createAccount(form: FormData, a: NewAccount): Promise<{ id: numbe
     });
   } catch (e) {
     // Lost a race for the same email or link name.
-    if ((e as { code?: string })?.code === "23505") return { error: "That email or link was just taken. Try another." };
+    if ((e as { code?: string })?.code === "23505") return { error: TAKEN };
     throw e;
   }
 }
@@ -233,7 +249,7 @@ export async function requestPasswordReset(_: FormState, form: FormData): Promis
   if (!(await allow("reset_ip", ip, 5, HOUR)) || !(await allow("reset_email", email, 3, HOUR)))
     return { error: "Too many requests. Try again in an hour." };
   const user = await q.get<{ id: number; name: string }>("SELECT id, name FROM users WHERE email = ?", email);
-  if (user) {
+  if (user && (await accountEmailAllowed())) {
     const token = await createPasswordReset(user.id);
     await sendMail({
       userId: user.id,
@@ -272,7 +288,7 @@ export async function requestLoginCode(_: FormState, form: FormData): Promise<Fo
   if (!(await allow("login_code_ip", ip, 10, HOUR)) || !(await allow("login_code_email", email, 5, HOUR)))
     return { error: "Too many codes requested. Try again in an hour, or log in with your password." };
   const user = await q.get<{ id: number; name: string; suspended_at: number | null }>("SELECT id, name, suspended_at FROM users WHERE email = ?", email);
-  if (user && !user.suspended_at) {
+  if (user && !user.suspended_at && (await accountEmailAllowed())) {
     const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
     await q.run(
       `INSERT INTO login_codes (user_id, code_hash, attempts, expires_at, created_at) VALUES (?,?,0,?,?)

@@ -1,4 +1,5 @@
 import "server-only";
+import { accountEmailAllowed } from "./email-budget";
 import crypto from "node:crypto";
 import { headers } from "next/headers";
 import { audit } from "./audit";
@@ -104,7 +105,7 @@ export async function sendEmailVerification(userId: number) {
     token,
     userId,
   );
-  if (!u) return false;
+  if (!u || !(await accountEmailAllowed())) return false;
   await sendMail({
     userId,
     audience: "receiver",

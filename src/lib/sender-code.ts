@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { now, q } from "./db";
 import { env } from "./env";
 import { sendMail } from "./mail";
+import { accountEmailAllowed } from "./email-budget";
 import { allow } from "./ratelimit";
 
 /**
@@ -31,6 +32,7 @@ export async function sendCode(email: string, ip: string) {
      ON CONFLICT (email) DO UPDATE SET code_hash = excluded.code_hash, expires_at = excluded.expires_at, attempts = 0, created_at = excluded.created_at`,
     email, hash(email, code), now() + CODE_TTL, now(),
   );
+  if (!(await accountEmailAllowed())) throw new CodeError("We can't send codes right now. Please try again in a few minutes.");
   await sendMail({
     userId: null,
     audience: "sender",
