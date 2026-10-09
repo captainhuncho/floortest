@@ -224,5 +224,5 @@ html:has(.theme-day), html:has(.theme-day) body { background: #fafaf6; }
 /* Editing the public site on the page (ops staff only): editable text is outlined, lists and images show a hint. */
 .site-editing .site-editable { outline: 1px dashed color-mix(in oklab, var(--color-lime) 55%, transparent); outline-offset: 3px; border-radius: 2px; cursor: text; }
 .site-editing .site-editable:focus { outline-style: solid; outline-color: var(--color-lime); }
-.site-editing [data-edit-pairs], .site-editing [data-edit-image] { cursor: pointer; outline: 1px dashed color-mix(in oklab, var(--color-lime) 35%, transparent); outline-offset: 6px; }
-.site-editing [data-edit-pairs]:hover, .site-editing [data-edit-image]:hover { outline-color: var(--color-lime); }
+.site-editing [data-edit-panel], .site-editing [data-edit-image] { cursor: pointer; outline: 1px dashed color-mix(in oklab, var(--color-lime) 35%, transparent); outline-offset: 6px; }
+.site-editing [data-edit-panel]:hover, .site-editing [data-edit-image]:hover { outline-color: var(--color-lime); }

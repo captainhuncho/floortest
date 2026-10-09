@@ -1,3 +1,5 @@
+import { siteEditor } from "@/lib/site-editor";
+import { EditablePage, editable } from "@/components/Editable";
 import { notFound } from "next/navigation";
 import { LivePulse } from "@/components/LivePulse";
 import { fill, siteCopy } from "@/lib/content";
@@ -34,7 +36,8 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
   const stemsOn = !!t.stems_requested_at && !t.deleted_at && (await featureOn("stems", { id: t.user_id, plan: t.receiver_plan }));
   const stems = stemsOn ? await stemsFor(t.id) : [];
   // Kept and passed are private to the receiver. Senders only see what they were promised.
-  const c = await siteCopy("receipt");
+  const [c, editor] = await Promise.all([siteCopy("receipt"), siteEditor()]);
+  const { E, panel } = editable(c, !!editor);
   const steps = [
     { label: "Delivered", at: t.created_at, text: `On ${t.receiver}'s desk${t.collection ? ` for ${t.collection}` : ""}` },
     { label: "Listened", at: t.played_at, text: SIGNALS.listened },
@@ -44,9 +47,10 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
   ];
 
   return (
+    <EditablePage editing={!!editor} page="receipt" label="Receipts" values={c}>
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-6 bg-ink px-5 py-8 text-bone sm:py-12">
       <div className="flex flex-col gap-1.5">
-        <p className="text-[11px] font-bold uppercase tracking-[1px] text-faint">{c.kicker}</p>
+        <p className="text-[11px] font-bold uppercase tracking-[1px] text-faint"><E k="kicker" /></p>
         <h1 className="break-words text-[28px] font-bold tracking-[-0.8px]">{t.title}</h1>
         <p className="text-[11px] text-mute">
           {t.artist} · sent to {t.receiver}
@@ -103,7 +107,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
         </p>
         <hr className="border-line" />
         <p>
-          {fill(c.private_note, { receiver: t.receiver })}
+          <span {...panel("private_note", "Keep {receiver} as it is: the page fills in the receiver's name.")}>{fill(c.private_note, { receiver: t.receiver })}</span>
           {shared?.at ? ` ${t.receiver} shared a private link with a colleague on ${fmtDay(shared.at)}.` : ""}
           {request && request.status !== "pending" && request.decided_at
             ? ` You ${request.status === "allowed" ? "allowed" : request.status === "cancelled" ? "cancelled" : "declined"} sharing on ${fmtDay(request.decided_at)}.`
@@ -116,7 +120,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
             : `Files are deleted within ${RETAIN_UNREVIEWED_DAYS} days of delivery unless ${t.receiver} keeps them.`}
         </p>
       </section>
-      <p className="text-[11px] text-faint">
+      <p {...panel("footer", "Words in [square brackets] link to the sender's history page.")} className="text-[11px] text-faint">
         {c.footer.split(/(\[[^\]]+\])/).map((part, i) =>
           /^\[.+\]$/.test(part) ? (
             <a key={i} href="/sent" className="font-medium text-bone underline underline-offset-4">
@@ -129,5 +133,6 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
       </p>
       <LivePulse url={`/api/pulse/receipt/${token}`} every={8000} />
     </main>
+    </EditablePage>
   );
 }

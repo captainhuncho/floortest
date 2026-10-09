@@ -41,7 +41,7 @@ Keep this file true to what is live. Any change to a feature updates its row her
 ## Features (ops)
 | Area | What it does | Where |
 |---|---|---|
-| Edit the site on the page | Ops staff with Site content open the real page from ops (**Edit on the page ↗**): click text to type, click a list (steps, questions) to edit it, click the product image to replace it, drag sections (or ↑ ↓) and hide/show them. Saves to a draft; **Publish** puts it live; versions kept to restore. Home has all of this; other pages are edited in the ops form | ops → Site content, then floortest.app in edit mode |
+| Edit the site on the page | Ops staff with Site content open the real page from ops (**Edit on the page ↗**): click text to type, click a list (steps, questions) to edit it, click the product image to replace it, drag sections (or ↑ ↓) and hide/show them. Saves to a draft; **Publish** puts it live; versions kept to restore. Home has all of this; Pricing, Sign-up/Log-in, the public link page and receipts have text editing (wording with fill-ins like {receiver} opens in a box) | ops → Site content, then floortest.app in edit mode |
 
 ## Rules that define the product
 - Uploads are originals, never transcoded. Previews (smaller stream copies) are planned for launch, made on the server only (see 06).

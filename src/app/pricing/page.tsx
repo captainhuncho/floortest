@@ -1,3 +1,5 @@
+import { siteEditor } from "@/lib/site-editor";
+import { EditablePage, editable } from "@/components/Editable";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { currentUser } from "@/lib/auth";
@@ -9,10 +11,12 @@ export const metadata = { title: "Pricing — FloorTest", alternates: { canonica
 
 /** Plans and prices, off the home page so it stays short. Prices and wording come from Admin → Plans and Site content. */
 export default async function Pricing() {
-  const [user, plans, c, open] = await Promise.all([currentUser(), offeredPlans(), siteCopy("pricing"), switchOn("open_signup")]);
+  const [user, plans, c, open, editor] = await Promise.all([currentUser(), offeredPlans(), siteCopy("pricing"), switchOn("open_signup"), siteEditor()]);
+  const { E } = editable(c, !!editor);
   const href = user ? "/dashboard/floor" : open ? "/signup" : "/#waitlist";
   const billing = await switchOn("billing");
   return (
+    <EditablePage editing={!!editor} page="pricing" label="Pricing" values={c}>
     <div className="bg-ink text-bone">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <header className="flex items-center justify-between gap-3 py-6">
@@ -22,8 +26,8 @@ export default async function Pricing() {
           </Link>
         </header>
         <main className="py-12">
-          <h1 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">{c.pricing_title}</h1>
-          <p className="mt-4 max-w-[65ch] text-sm text-mute">{c.pricing_intro}</p>
+          <h1 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]"><E k="pricing_title" /></h1>
+          <p className="mt-4 max-w-[65ch] text-sm text-mute"><E k="pricing_intro" /></p>
           <div className={`mt-10 grid grid-cols-1 gap-4 ${planGrid(plans.length)}`}>
             {plans.map((p) => (
               <div key={p.id} className={`flex flex-col rounded-lg border bg-ink-2 p-7 ${p.featured ? "border-lime/40" : "border-white/10"}`}>
@@ -54,5 +58,6 @@ export default async function Pricing() {
         </main>
       </div>
     </div>
+    </EditablePage>
   );
 }

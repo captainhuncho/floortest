@@ -1,3 +1,5 @@
+import { siteEditor } from "@/lib/site-editor";
+import { EditablePage, editable } from "@/components/Editable";
 import { CuePoint } from "@/components/CuePoint";
 import { ProfileLinks } from "@/components/ProfileLinks";
 import { readLinks } from "@/lib/socials";
@@ -42,7 +44,8 @@ export default async function ReceiverPage({ params }: Props) {
     if (moved) permanentRedirect(`/${moved}`);
     notFound();
   }
-  const [collection, sharing, { full }, c] = await Promise.all([activeCollection(receiver), switchOn("sharing"), capacity(receiver), siteCopy("link")]);
+  const [collection, sharing, { full }, c, editor] = await Promise.all([activeCollection(receiver), switchOn("sharing"), capacity(receiver), siteCopy("link"), siteEditor()]);
+  const { E, panel } = editable(c, !!editor);
   const closed = isClosed(collection);
   const genres = genresFor(collection).list;
   const paused = isPaused(receiver);
@@ -63,9 +66,10 @@ export default async function ReceiverPage({ params }: Props) {
   // Always tell senders what's wanted: the collection's own genres, or the default list when none are set.
   const showBrief = !closedReason && genres.length > 0;
   const vars = { receiver: receiver.name, days: RETAIN_UNREVIEWED_DAYS };
-  const bullets = [c.bullet_files, team.length ? c.bullet_private_team : c.bullet_private, c.bullet_retention, c.bullet_receipt].map((b) => fill(b, vars)).filter(Boolean);
+  const bullets = (["bullet_files", team.length ? "bullet_private_team" : "bullet_private", "bullet_retention", "bullet_receipt"] as const).map((k) => [k, fill(c[k], vars)] as const).filter(([, b]) => b);
 
   return (
+    <EditablePage editing={!!editor} page="link" label="Public link" values={c}>
     <main className="group/page mx-auto flex min-h-dvh max-w-xl flex-col gap-6 bg-ink px-[18px] py-8 text-bone sm:py-12">
       <div className="flex flex-col gap-3">
         {receiver.cover_key && (
@@ -78,7 +82,7 @@ export default async function ReceiverPage({ params }: Props) {
             className="mb-1 size-28 rounded-2xl object-cover group-has-[[data-picked]]/page:hidden"
           />
         )}
-        <p className="text-[11px] font-bold uppercase tracking-[1px] text-mute">{c.kicker}</p>
+        <p className="text-[11px] font-bold uppercase tracking-[1px] text-mute"><E k="kicker" /></p>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="break-words text-[clamp(2rem,12vw,3.5rem)] font-bold leading-none group-has-[[data-picked]]/page:text-[32px] group-has-[[data-picked]]/page:font-extrabold">
             {receiver.name}
@@ -106,7 +110,7 @@ export default async function ReceiverPage({ params }: Props) {
         )}
         {showBrief && (
           <section aria-label="What they're looking for" className="group-has-[[data-picked]]/page:hidden flex flex-col gap-2 rounded-xl border border-line bg-ink-2 p-3">
-            <p className="text-[11px] font-bold uppercase tracking-[0.5px] text-mute">{c.looking_for}</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.5px] text-mute"><E k="looking_for" /></p>
             {(
               <ul className="flex flex-wrap gap-1.5">
                 {genres.map((g) => (
@@ -133,15 +137,15 @@ export default async function ReceiverPage({ params }: Props) {
           <div className="rounded-2xl border border-line bg-ink-2 p-5" role="status">
             <p className="font-bold">{closedReason}</p>
             {note && <p className="mt-3 whitespace-pre-wrap border-l-2 border-lime pl-3 text-[13px]">{note}</p>}
-            <p className="mt-2 text-[12px] text-dim">{c.closed_note}</p>
+            <p className="mt-2 text-[12px] text-dim"><E k="closed_note" /></p>
           </div>
         ) : (
           <SendModes folderBytes={folderBytes} botCheckKey={botKey} handle={receiver.handle} receiverName={receiver.name} callout={collection && !closedReason ? collection.name : null} genres={genres} look="mobile" allowSharing={sharing && !!collection?.allow_sharing} sharingDownloads={sharingDownloads} trackArt={trackArt} />
         )}
       </div>
       <ul className="flex flex-col gap-2.5" aria-label="How your file is handled">
-        {bullets.map((b) => (
-          <li key={b} className="flex gap-2.5 text-[11px] font-medium leading-4 text-dim">
+        {bullets.map(([k, b]) => (
+          <li key={k} {...panel(k, "Keep {receiver} and {days} as they are: the page fills them in.")} className="flex gap-2.5 text-[11px] font-medium leading-4 text-dim">
             <span aria-hidden>→</span>
             {b}
           </li>
@@ -156,5 +160,6 @@ export default async function ReceiverPage({ params }: Props) {
         </p>
       )}
     </main>
+    </EditablePage>
   );
 }

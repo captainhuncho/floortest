@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 
 /**
  * Editing a public page on the page itself (only for ops staff with Site content, while previewing drafts).
- * Text marked data-edit="field" becomes typeable; data-edit-pairs="field" opens a small editor for lists
- * (steps, questions); data-edit-image="field" can be replaced or removed; sections can be dragged, moved or hidden.
+ * Text marked data-edit="field" becomes typeable; data-edit-panel="field" opens a small editor (lists, and wording
+ * with fill-ins like {receiver}); data-edit-image="field" can be replaced or removed; sections can be dragged, moved or hidden.
  * Everything saves into the draft; Publish puts it live. See docs/03-app-flow.md.
  */
 type Order = { id: string; hidden: boolean }[];
@@ -44,7 +44,7 @@ export function SiteEditor({
   const [changes, setChanges] = useState<Record<string, string>>({});
   const [order, setOrder] = useState<Order>(initialOrder ?? []);
   const [dragging, setDragging] = useState<string | null>(null);
-  const [panel, setPanel] = useState<{ field: string; text: string } | null>(null);
+  const [panel, setPanel] = useState<{ field: string; text: string; hint?: string } | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const imageInput = useRef<HTMLInputElement>(null);
@@ -67,11 +67,11 @@ export function SiteEditor({
       if (!editing) return;
       const t = e.target as HTMLElement;
       if (t.closest("[data-site-editor-ui]")) return;
-      const pairs = t.closest<HTMLElement>("[data-edit-pairs]");
-      if (pairs) {
+      const box = t.closest<HTMLElement>("[data-edit-panel]");
+      if (box) {
         e.preventDefault();
-        const f = pairs.dataset.editPairs!;
-        setPanel({ field: f, text: changes[f] ?? values[f] ?? "" });
+        const f = box.dataset.editPanel!;
+        setPanel({ field: f, text: changes[f] ?? values[f] ?? "", hint: box.dataset.editHint });
         return;
       }
       const img = t.closest<HTMLElement>("[data-edit-image]");
@@ -175,12 +175,12 @@ export function SiteEditor({
       {panel && (
         <div data-site-editor-ui className="keep-night fixed inset-0 z-[110] grid place-items-center bg-black/70 p-4" onClick={() => setPanel(null)}>
           <div className="w-full max-w-xl rounded-xl border border-line bg-ink-2 p-5 text-bone" onClick={(e) => e.stopPropagation()}>
-            <p className="font-bold">Edit this list</p>
-            <p className="mt-1 text-xs text-mute">Each item: a title line, then its text. Leave a blank line between items.</p>
+            <p className="font-bold">Edit this text</p>
+            <p className="mt-1 text-xs text-mute">{panel.hint ?? "Each item: a title line, then its text. Leave a blank line between items."}</p>
             <textarea value={panel.text} onChange={(e) => setPanel({ ...panel, text: e.target.value })} rows={14} className="input mt-3 w-full font-mono text-xs" />
             <div className="mt-3 flex justify-end gap-2">
               <button type="button" className="btn-ghost btn-sm" onClick={() => setPanel(null)}>Cancel</button>
-              <button type="button" className="btn-lime btn-sm" onClick={() => { set(panel.field, panel.text); setPanel(null); setStatus("List updated. Save to see it on the page."); }}>Apply</button>
+              <button type="button" className="btn-lime btn-sm" onClick={() => { set(panel.field, panel.text); setPanel(null); setStatus("Updated. Save to see it on the page."); }}>Apply</button>
             </div>
           </div>
         </div>

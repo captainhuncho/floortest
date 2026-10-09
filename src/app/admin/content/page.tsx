@@ -52,6 +52,7 @@ export default async function SiteContent({ searchParams }: { searchParams: Prom
           Edit on the page ↗
         </a>
         {/* The draft view lives on floortest.app, so this can't tell whether it's on: the link is always offered. */}
+        {page === "receipt" && <span className="text-xs text-mute">Receipts: after opening, go to any receipt link (from a sent email) to edit it there.</span>}
         <a href="/api/admin/preview?off" className="text-xs text-mute underline underline-offset-4">
           Stop showing drafts on the site
         </a>

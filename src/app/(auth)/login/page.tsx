@@ -1,3 +1,5 @@
+import { siteEditor } from "@/lib/site-editor";
+import { EditablePage, editable } from "@/components/Editable";
 import Link from "next/link";
 import { AuthForm } from "../AuthForm";
 import { login } from "../actions";
@@ -17,12 +19,14 @@ const GOOGLE_ERRORS: Record<string, string> = {
 export const metadata = { title: "Log in — FloorTest" };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ google?: string }> }) {
-  const [c, sp] = await Promise.all([siteCopy("auth"), searchParams]);
+  const [c, sp, editor] = await Promise.all([siteCopy("auth"), searchParams, siteEditor()]);
+  const { E } = editable(c, !!editor);
   const google = !!googleConfig() && !isPreview;
   const googleError = GOOGLE_ERRORS[String(sp.google ?? "")];
   return (
+    <EditablePage editing={!!editor} page="auth" label="Sign-up and log-in" values={c}>
     <>
-      <h1 className="text-2xl font-semibold tracking-tight lg:text-[40px] lg:leading-[44px] lg:tracking-[-1.2px]">{c.login_title}</h1>
+      <h1 className="text-2xl font-semibold tracking-tight lg:text-[40px] lg:leading-[44px] lg:tracking-[-1.2px]"><E k="login_title" /></h1>
       <p className="mb-8 mt-3 text-mute lg:text-base">Sign in to your music desk.</p>
       {googleError && (
         <p role="alert" className="mb-6 rounded-lg border border-danger/40 bg-danger/10 px-4 py-3 text-sm">
@@ -69,5 +73,6 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         </Link>
       </p>
     </>
+    </EditablePage>
   );
 }

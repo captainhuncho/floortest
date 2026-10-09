@@ -79,7 +79,7 @@ export default async function Home({
         <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
           <E k="how_title" />
         </h2>
-        <ol data-edit-pairs={editor ? "how_steps" : undefined} className="mt-10 grid grid-cols-1 border-t border-white/10 sm:grid-cols-2">
+        <ol data-edit-panel={editor ? "how_steps" : undefined} className="mt-10 grid grid-cols-1 border-t border-white/10 sm:grid-cols-2">
           {HOW.map(([title, body], i) => (
             <li
               key={title}
@@ -202,7 +202,7 @@ export default async function Home({
         <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
           <E k="faq_title" />
         </h2>
-        <div data-edit-pairs={editor ? "faq" : undefined} className="mt-10 border-t border-white/10">
+        <div data-edit-panel={editor ? "faq" : undefined} className="mt-10 border-t border-white/10">
           {FAQ.map(([q, a], i) => (
             <details
               key={q}

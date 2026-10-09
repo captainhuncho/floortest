@@ -1,3 +1,5 @@
+import { siteEditor } from "@/lib/site-editor";
+import { EditablePage, editable } from "@/components/Editable";
 import { switchOn } from "@/lib/switches";
 import { siteCopy } from "@/lib/content";
 import { botCheckKey } from "@/lib/turnstile";
@@ -16,13 +18,15 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
   const personal = inviteCode ? await q.get<{ email: string | null }>("SELECT email FROM invites WHERE code = ? AND revoked_at IS NULL", inviteCode) : undefined;
   const referrer = ref ? await q.get<{ name: string }>("SELECT name FROM users WHERE referral_code = ?", ref) : undefined;
   const inviteOnly = !(await switchOn("open_signup"));
-  const c = await siteCopy("auth");
+  const [c, editor] = await Promise.all([siteCopy("auth"), siteEditor()]);
+  const { E } = editable(c, !!editor);
   const host = env.appUrl.replace(/^https?:\/\//, "");
   return (
+    <EditablePage editing={!!editor} page="auth" label="Sign-up and log-in" values={c}>
     <>
-      <h1 className="mb-3 text-2xl font-semibold tracking-tight lg:text-[40px] lg:leading-[44px] lg:tracking-[-1.2px]">{c.signup_title}</h1>
+      <h1 className="mb-3 text-2xl font-semibold tracking-tight lg:text-[40px] lg:leading-[44px] lg:tracking-[-1.2px]"><E k="signup_title" /></h1>
       <p className="mb-8 text-sm text-mute">
-        {c.signup_intro}
+        <E k="signup_intro" />
         {inviteOnly && !referrer && (
           <>
             {" "}FloorTest is invite-only during the beta.{" "}
@@ -89,5 +93,6 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
         ]}
       />
     </>
+    </EditablePage>
   );
 }

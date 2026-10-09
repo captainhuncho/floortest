@@ -31,6 +31,7 @@ Core product is live: sending, review, collections, Prepare/downloads, plans by 
 - Rekordbox how-to video, footer legal placement, mobile footer redesign.
 
 ## Done (recent)
+- 9 Oct: on-page editing extended to Pricing, Sign-up/Log-in, public link and receipts.
 - 9 Oct: edit the home page on the page itself (text, lists, image, drag/hide sections) from ops → Site content.
 - 9 Oct: rate-limit audit; sign-up no longer reveals accounts; platform email cap. Button system; consistent names; one set of download buttons; Prepare redesign; Send folds after 10 days; Floor day-mode redesign; Google sign-in + sign-up + safety; track artwork (Team), incl. folders; legal pages public for Google review.
 - 8 Oct: image optimiser, foreign-key indexes, ops roles, plan requests, discounts, yearly prices, collection delete.
