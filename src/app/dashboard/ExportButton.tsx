@@ -13,6 +13,8 @@ export function ExportButton({
   variant = "lime",
   buttonClassName,
   crateName,
+  align = "right",
+  showCount = true,
 }: {
   collectionId: number | null;
   count: number;
@@ -24,6 +26,10 @@ export function ExportButton({
   buttonClassName?: string;
   /** Suggested folder name (a collection's name); otherwise a dated set name. */
   crateName?: string;
+  /** Which edge the panel lines up with; "start" opens rightwards on phones (for a button at the left). */
+  align?: "right" | "start";
+  /** Off where the count is already on the page. */
+  showCount?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [base, setBase] = useState("");
@@ -56,10 +62,10 @@ export function ExportButton({
   return (
     <div className={buttonClassName?.includes("w-full") ? "relative w-full" : "relative"}>
       <button className={buttonClassName ?? `${variant === "lime" ? "btn-lime" : "btn-ghost"} btn-sm`} disabled={!count} onClick={openPanel} aria-expanded={open}>
-        {label ?? "Prepare for set"} ({count})
+        {label ?? "Prepare for set"}{showCount ? ` (${count})` : ""}
       </button>
       {open && (
-        <div className="card absolute right-0 top-full z-20 mt-2 w-80 max-w-[calc(100vw-2rem)] space-y-4 p-4 shadow-2xl shadow-black/50">
+        <div className={`card absolute ${align === "start" ? "left-0 md:left-auto md:right-0" : "right-0"} top-full z-20 mt-2 w-80 max-w-[calc(100vw-2rem)] space-y-4 p-4 shadow-2xl shadow-black/50`}>
           <div>
             <p className="font-medium">
               Download {count} {whole ? "" : "kept "}track{count === 1 ? "" : "s"}
