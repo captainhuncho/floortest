@@ -18,8 +18,9 @@ const OPS_PATHS = ["/admin", "/api/admin", "/ops-login"];
 const SHARED = ["/api/site-image", "/api/tap-speed"];
 const under = (path: string, list: string[]) => list.some((p) => path === p || path.startsWith(`${p}/`));
 const isOps = (path: string) => under(path, OPS_PATHS);
-// Open while the site is gated: the gate itself, and signing in (a real sign-in then unlocks the site).
-const GATE_OPEN = ["/coming-soon", "/login", "/forgot", "/reset", "/signed-out"];
+// Open while the site is gated: the gate itself, signing in (a real sign-in then unlocks the site), and the legal
+// pages, which must be public (Google's sign-in review reads the privacy policy and terms).
+const GATE_OPEN = ["/coming-soon", "/login", "/forgot", "/reset", "/signed-out", "/privacy", "/privacy-choices", "/terms", "/cookies", "/subprocessors", "/security", "/takedown"];
 const notFound = (req: NextRequest) => NextResponse.rewrite(new URL("/_not-found", req.url), { status: 404 });
 
 export function proxy(req: NextRequest) {

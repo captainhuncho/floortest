@@ -31,6 +31,14 @@ export default function Privacy() {
           ],
         ],
         [
+          "Signing in with Google",
+          [
+            "If you choose “Continue with Google”, Google tells us your email address, whether Google has confirmed it, your name and a permanent ID for your Google account. We ask for nothing else: no access to your Gmail, contacts, files or calendar.",
+            "We use these only to sign you in or create your account: the email finds your FloorTest account, your name fills in the sign-up form, and the Google account ID is stored so that only that same Google account can sign in to yours later (lawful basis: our contract with you). We don't share this information with anyone or use it for advertising.",
+            "You can remove Google sign-in at any time in Settings → Security; we then delete the stored Google account ID. You can also revoke FloorTest's access from your Google Account settings. Our use of information received from Google follows the Google API Services User Data Policy, including its Limited Use requirements.",
+          ],
+        ],
+        [
           "Senders",
           [
             "When you send a track we store your name, email, the audio file, the details you enter (title, artist, message, release and mix status) and an analysis of the audio (waveform, length, estimated BPM). If you send from your FloorTest account, we link the track to that account.",
