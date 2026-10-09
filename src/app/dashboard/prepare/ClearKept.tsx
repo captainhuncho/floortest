@@ -20,8 +20,9 @@ export function ClearKept({ count }: { count: number }) {
 
   return (
     <>
-      <button type="button" className="mx-auto mt-1 block py-1 text-xs font-bold text-danger hover:underline hover:underline-offset-4 disabled:opacity-40" disabled={!count} onClick={() => setOpen(true)}>
-        Clear kept
+      <button type="button" className="block w-full rounded-md px-3 py-2.5 text-left text-sm text-danger hover:bg-danger/10 disabled:opacity-40" disabled={!count} onClick={() => setOpen(true)}>
+        Clear kept…
+        <span className="block text-xs text-mute">Start a fresh batch; tracks stay Kept</span>
       </button>
       <dialog
         ref={dialog}
