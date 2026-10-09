@@ -3,7 +3,8 @@
 import { useState } from "react";
 
 /** Chart marks are white, as in the Figma "desktop-floor-dashboard". */
-const MARK = "var(--color-bone)";
+// Bars: white at night, olive by day (readable on white). See .chart-mark in globals.css.
+const MARK = "var(--chart-mark)";
 
 type Day = { day: string; count: number; today: boolean };
 
@@ -18,7 +19,7 @@ export function DailyColumns({ data }: { data: Day[] }) {
       <div className="relative" style={{ height: H + 24 }} onMouseLeave={() => setHover(null)}>
         {/* One recessive gridline at the peak value carries the scale. */}
         <div className="absolute inset-x-0 border-t border-line" style={{ top: 0 }} aria-hidden />
-        <span className="absolute -top-2.5 right-0 bg-ink-2 pl-1 text-xs text-mute tnum" aria-hidden>
+        <span className="absolute -top-2.5 right-0 bg-ink-3 pl-1 text-xs text-mute tnum" aria-hidden>
           {max}
         </span>
         <div className="absolute inset-x-0 bottom-6 border-t border-line" aria-hidden />
@@ -84,8 +85,8 @@ export function GenreBars({ data }: { data: { genre: string; n: number }[] }) {
         {data.map((d, i) => (
           <li key={d.genre} className="flex items-center gap-3" onMouseEnter={() => setHover(i)}>
             <span className="w-[100px] shrink-0 truncate text-xs text-mute">{d.genre}</span>
-            <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-[3px] bg-ink-3">
-              <span className="block h-full bg-white transition-opacity" style={{ width: `${(d.n / max) * 100}%`, opacity: hover === null || hover === i ? 1 : 0.45 }} />
+            <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-[3px] bg-ink-2">
+              <span className="block h-full transition-opacity" style={{ background: MARK, width: `${(d.n / max) * 100}%`, opacity: hover === null || hover === i ? 1 : 0.45 }} />
             </span>
             <span className="w-6 shrink-0 text-right text-[11px] text-faint tnum">{hover === i ? `${Math.round((d.n / total) * 100)}%` : d.n}</span>
           </li>

@@ -22,11 +22,15 @@ export const metadata = { title: "The Floor — FloorTest" };
 
 const DAY = 86_400_000;
 
+/** One type scale for the whole page: eyebrow labels, body, meta and actions. */
+const EYEBROW = "text-[11px] font-bold uppercase tracking-[1px] text-mute";
+const META = "text-xs text-faint";
+
 function Card({ title, action, children, className = "" }: { title: string; action?: React.ReactNode; children: React.ReactNode; className?: string }) {
   return (
     <section className={`rounded-2xl border border-line bg-ink-3 p-4 ${className}`} aria-label={title}>
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="text-[11px] font-bold uppercase tracking-[1px] text-mute">{title}</h2>
+        <h2 className={EYEBROW}>{title}</h2>
         {action}
       </div>
       {children}
@@ -37,10 +41,10 @@ function Card({ title, action, children, className = "" }: { title: string; acti
 /** Figma "kpi-card". */
 function Stat({ label, value, note }: { label: string; value: string; note?: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-1.5 rounded-xl border border-line bg-ink-3 p-3.5">
-      <p className="text-[11px] font-bold uppercase tracking-[1px] text-mute">{label}</p>
+    <div className="flex flex-col gap-2 rounded-xl border border-line bg-ink-3 p-3.5">
+      <p className={`truncate ${EYEBROW}`}>{label}</p>
       <p className="text-[30px] font-bold leading-none text-bone tnum">{value}</p>
-      {note && <p className="text-[11px] text-faint">{note}</p>}
+      {note && <p className={META}>{note}</p>}
     </div>
   );
 }
@@ -59,7 +63,7 @@ const delta = (now: number, prev: number) => {
 };
 
 // Figma card action link (Manage, Filter, Start reviewing).
-const act = "text-[11px] font-bold text-bone hover:text-lime";
+const act = "text-xs font-bold text-bone hover:text-lime";
 
 export default async function TheFloor({ searchParams }: { searchParams: Promise<{ welcome?: string }> }) {
   const user = await requireUser();
@@ -131,7 +135,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
       tone: "ok",
       text: `Your link is open and sending tracks to “${active.name}”${active.closes_at ? `, closing ${fmtDay(active.closes_at)}` : ""}.`,
       action: (
-        <a href={`/${user.handle}`} target="_blank" className="shrink-0 rounded-lg border border-line bg-ink-2 px-3.5 py-[7px] text-[11px] font-bold text-bone">
+        <a href={`/${user.handle}`} target="_blank" className="shrink-0 rounded-lg border border-line bg-ink-3 px-3 py-[7px] text-xs font-bold text-bone">
           Preview link
         </a>
       ),
@@ -142,7 +146,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   return (
     <div className="space-y-4 px-4 py-4 sm:px-8 sm:py-6">
       <header className="flex flex-col gap-2">
-        <p className="text-[11px] font-bold uppercase tracking-[1px] text-faint">{welcome ? "Welcome to FloorTest" : new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: prefs.tz })}</p>
+        <p className={EYEBROW}>{welcome ? "Welcome to FloorTest" : new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: prefs.tz })}</p>
         <h1 className="text-[34px] font-bold leading-[1.05] tracking-[-1px] text-bone">
           {greeting}, {first}.
           {user.identity_status === "verified" && <CuePoint size={24} label="Verified" className="-mt-1 ml-2" />}
@@ -157,15 +161,10 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
       {/* Figma "Submission Status Banner" */}
       <div
         role="status"
-        className={`flex flex-wrap items-center gap-3 rounded-xl border px-4 py-3.5 ${status.tone === "ok" ? "border-line bg-ink-3" : "border-danger/40 bg-danger/10"}`}
+        className={`flex flex-wrap items-center gap-x-3 gap-y-2.5 rounded-xl border px-4 py-3.5 ${status.tone === "ok" ? "border-lime/30 bg-lime/10" : "border-danger/40 bg-danger/10"}`}
       >
-        {status.tone === "ok" ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src="/icons/green-dot.svg" alt="" className="size-2 shrink-0" />
-        ) : (
-          <span aria-hidden className="size-2 shrink-0 rounded-full bg-danger" />
-        )}
-        <p className="min-w-0 flex-1 text-[13px] font-medium text-mute">{status.text}</p>
+        <span aria-hidden className={`size-2 shrink-0 rounded-full ${status.tone === "ok" ? "live-dot" : "bg-danger"}`} />
+        <p className="min-w-[12rem] flex-1 text-[13px] font-medium leading-snug text-bone">{status.text}</p>
         {status.action}
       </div>
 
@@ -173,13 +172,13 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
       <SendMusicCard recent={recentSends} host={APP_URL.replace(/^https?:\/\//, "")} />
 
       <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
-        <Stat label="Received this week" value={String(stats.receivedWeek)} note={delta(stats.receivedWeek, stats.receivedPrev)} />
-        <Stat label="Waiting for decision" value={String(stats.waiting)} note={stats.decisionRate !== null ? `${stats.decisionRate}% in last 30 days` : undefined} />
-        <Stat label="Kept this week" value={String(stats.keptWeek)} note={delta(stats.keptWeek, stats.keptPrev)} />
+        <Stat label="Received" value={String(stats.receivedWeek)} note={delta(stats.receivedWeek, stats.receivedPrev)} />
+        <Stat label="Waiting" value={String(stats.waiting)} note={stats.decisionRate !== null ? `${stats.decisionRate}% decided, last 30 days` : "Needs a keep or pass"} />
+        <Stat label="Kept" value={String(stats.keptWeek)} note={delta(stats.keptWeek, stats.keptPrev)} />
         <Stat
-          label="Time to first listen"
+          label="First listen"
           value={stats.medianListenMs !== null ? fmtDuration(stats.medianListenMs) : "—"}
-          note={stats.listenedSample ? `last 30 days (${stats.listenedSample} tracks)` : "Listen to a track to start this"}
+          note={stats.listenedSample ? `Typical wait, ${stats.listenedSample} tracks` : "Listen to a track to start this"}
         />
       </div>
 
@@ -189,21 +188,21 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
           className="xl:col-span-2"
           action={
             upNext.length > 0 && (
-              <Link href="/dashboard/review?view=queue" className="text-xs font-bold text-bone hover:text-lime">
+              <Link href="/dashboard/review?view=queue" className={act}>
                 Start reviewing →
               </Link>
             )
           }
         >
-          {upNext.length ? <UpNext items={upNext} /> : <p className="text-xs text-faint">Nothing waiting. New tracks will show up here first.</p>}
+          {upNext.length ? <UpNext items={upNext} /> : <p className={META}>Nothing waiting. New tracks will show up here first.</p>}
         </Card>
 
         <Card title="Current callout" action={<Link href="/dashboard/collections" className={act}>Manage</Link>}>
           {active ? (
             <div className="space-y-3">
               <div className="flex flex-col gap-1">
-                <p className="break-words text-[30px] font-bold leading-tight text-bone">{active.name}</p>
-                <p className="text-xs text-faint">
+                <p className="break-words text-2xl font-bold leading-tight tracking-[-0.5px] text-bone">{active.name}</p>
+                <p className={META}>
                   {isClosed(active)
                     ? `Closed ${fmtDay(active.closes_at!)}`
                     : daysLeft !== null
@@ -216,7 +215,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
               {(genresFor(active).custom || (active.bpm_min && active.bpm_max)) && (
                 <div className="flex flex-wrap gap-1.5">
                   {[...(genresFor(active).custom ? genresFor(active).list : []), ...(active.bpm_min && active.bpm_max ? [`${active.bpm_min}–${active.bpm_max} BPM`] : [])].map((g) => (
-                    <span key={g} className="rounded-md bg-ink-2 px-2.5 py-1 text-[11px] text-mute">
+                    <span key={g} className="rounded-md bg-ink-2 px-2.5 py-1 text-xs text-mute">
                       {g}
                     </span>
                   ))}
@@ -225,7 +224,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
               <CopyLinkBox link={link} />
             </div>
           ) : (
-            <p className="text-xs text-faint">No collection selected.</p>
+            <p className={META}>No collection selected.</p>
           )}
         </Card>
 
@@ -255,7 +254,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
                       {c.name}
                       {c.verified_at ? <span className="sr-only"> (verified)</span> : null}
                     </span>
-                    <span className="shrink-0 text-sm text-mute tnum">
+                    <span className="shrink-0 text-xs text-mute tnum">
                       {c.kept} kept · {c.sent} sent
                     </span>
                   </Link>
@@ -263,7 +262,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
               ))}
             </ul>
           ) : (
-            <p className="text-mute">Contacts appear after the first upload.</p>
+            <p className={META}>Contacts appear after the first upload.</p>
           )}
         </Card>
       </div>

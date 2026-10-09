@@ -11,20 +11,20 @@ export function SendMusicCard({ recent, host }: { recent: { handle: string; name
         <label htmlFor="send-to-q" className="sr-only">
           Their link name
         </label>
-        <span className="min-w-0 max-w-[65%] shrink truncate text-[11px] text-faint">{host}/</span>
+        <span className="min-w-0 max-w-[65%] shrink truncate text-base text-faint md:text-xs">{host}/</span>
         <input
           id="send-to-q"
           name="to"
           placeholder="their-link"
           autoComplete="off"
           autoCapitalize="none"
-          className="-ml-2 min-w-[5rem] flex-1 bg-transparent text-[11px] text-lime outline-none placeholder:text-faint"
+          className="-ml-2 min-w-[5rem] flex-1 bg-transparent text-base text-lime outline-none placeholder:text-faint md:text-xs"
           style={{ outline: "none" }}
         />
       </form>
       {recent.length > 0 && (
         <div className="flex min-w-0 flex-col gap-2.5 md:flex-row md:items-center md:gap-3">
-          <p className="text-[11px] font-bold uppercase tracking-[1px] text-faint">Recent contacts</p>
+          <p className="text-[11px] font-bold uppercase tracking-[1px] text-mute">Recent contacts</p>
           <ul className="flex gap-3 overflow-x-auto">
             {recent.map((r) => (
               <li key={r.handle}>
@@ -39,7 +39,7 @@ export function SendMusicCard({ recent, host }: { recent: { handle: string; name
           </ul>
         </div>
       )}
-      <Link href="/dashboard/send" className="w-fit text-[11px] font-bold text-bone hover:text-lime md:ml-auto md:shrink-0">
+      <Link href="/dashboard/send" className="w-fit text-xs font-bold text-bone hover:text-lime md:ml-auto md:shrink-0">
         Send to new contact
       </Link>
     </section>

@@ -140,22 +140,23 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
    "System" follows the device setting. */
 .theme-root { background: var(--color-ink); color: var(--color-bone); min-height: 100dvh; }
 .theme-day {
-  --color-ink: #ffffff;
-  --color-ink-2: #f5f5f5;
-  --color-ink-3: #f5f5f5;
-  --color-ink-4: #e8e8e8;
-  --color-line: #e5e5e5;
-  --color-line-2: #d4d4d4;
-  --color-bone: #0a0a0a;
-  --color-mute: #525252;
-  --color-dim: #666666;
-  --color-faint: #767676;
-  --color-lime: #0a0a0a;
-  --color-olive: #3f3f3f;
+  --color-ink: #fafaf6;
+  --color-ink-2: #f1f3e8;
+  --color-ink-3: #ffffff;
+  --color-ink-4: #e6e9da;
+  --color-line: #e3e6d8;
+  --color-line-2: #cfd3c0;
+  --color-bone: #0d0e0b;
+  --color-mute: #4c4f45;
+  --color-dim: #5f6257;
+  --color-faint: #6e7166;
+  --color-lime: #4a6400;
+  --color-olive: #3d5200;
   --color-danger: #c4321f;
   color-scheme: light;
 }
 .theme-day .bg-lime, .theme-day .btn-lime { background-color: #d5ff48; }
+.theme-day .btn-lime { color: #10110f; }
 .theme-day .btn-lime:hover { background-color: #e2ff7a; }
 .theme-day .text-ink { color: #10110f; }
 .theme-day .bg-bone { background-color: #10110f; }
@@ -165,22 +166,23 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
 .theme-day #main .input, .theme-day .input { background: #ffffff; }
 @media (prefers-color-scheme: light) {
 .theme-system {
-  --color-ink: #ffffff;
-  --color-ink-2: #f5f5f5;
-  --color-ink-3: #f5f5f5;
-  --color-ink-4: #e8e8e8;
-  --color-line: #e5e5e5;
-  --color-line-2: #d4d4d4;
-  --color-bone: #0a0a0a;
-  --color-mute: #525252;
-  --color-dim: #666666;
-  --color-faint: #767676;
-  --color-lime: #0a0a0a;
-  --color-olive: #3f3f3f;
+  --color-ink: #fafaf6;
+  --color-ink-2: #f1f3e8;
+  --color-ink-3: #ffffff;
+  --color-ink-4: #e6e9da;
+  --color-line: #e3e6d8;
+  --color-line-2: #cfd3c0;
+  --color-bone: #0d0e0b;
+  --color-mute: #4c4f45;
+  --color-dim: #5f6257;
+  --color-faint: #6e7166;
+  --color-lime: #4a6400;
+  --color-olive: #3d5200;
   --color-danger: #c4321f;
   color-scheme: light;
 }
 .theme-system .bg-lime, .theme-system .btn-lime { background-color: #d5ff48; }
+.theme-system .btn-lime { color: #10110f; }
 .theme-system .btn-lime:hover { background-color: #e2ff7a; }
 .theme-system .text-ink { color: #10110f; }
 .theme-system .bg-bone { background-color: #10110f; }
@@ -189,6 +191,16 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
 .theme-system :focus-visible { outline-color: #0a0a0a; }
 .theme-system #main .input, .theme-system .input { background: #ffffff; }
 }
+/* Day mode: round play buttons are lime (white vanishes on light cards); the live-status dot is the readable olive. */
+.theme-root { --chart-mark: var(--color-bone); }
+.theme-root.theme-day { --chart-mark: #5f8000; }
+
+@media (prefers-color-scheme: light) { .theme-root.theme-system { --chart-mark: #5f8000; } }
+.play-dot { background: #ffffff; color: #10110f; }
+.theme-day .play-dot { background: #d5ff48; }
+@media (prefers-color-scheme: light) { .theme-system .play-dot { background: #d5ff48; } }
+.live-dot { background: var(--color-lime); box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-lime) 22%, transparent); }
+
 /* Pieces designed as dark objects (the floating phone tab bar) stay dark in Day mode. */
 .theme-root .keep-night {
   --color-ink: #10110f; --color-ink-2: #171815; --color-ink-3: #1e1f1b; --color-ink-4: #2a2e24;
@@ -198,9 +210,9 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
   color-scheme: dark;
 }
 /* The page behind the app (overscroll, short pages) matches the chosen mode. */
-html:has(.theme-day), html:has(.theme-day) body { background: #ffffff; }
+html:has(.theme-day), html:has(.theme-day) body { background: #fafaf6; }
 @media (prefers-color-scheme: light) {
-  html:has(.theme-system), html:has(.theme-system) body { background: #ffffff; }
+  html:has(.theme-system), html:has(.theme-system) body { background: #fafaf6; }
 }
 
 /* iOS Safari zooms into any field under 16px when it's focused. Zoom stays unlocked, so touch screens get 16px fields instead. */
