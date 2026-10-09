@@ -2,7 +2,8 @@ import { ExportButton } from "./ExportButton";
 
 /**
  * The same download choices wherever tracks can be downloaded (Prepare for set, a collection page, collection cards):
- * Download crate (a new named folder with a playlist, Rekordbox XML optional) and Files only (just the originals).
+ * the main download (a new named folder with a playlist, Rekordbox XML optional), named for what you get
+ * ("Download collection" or "Download kept"), and Files only (just the originals).
  * `extra` adds a page's own action in the same style (Prepare's Clear kept).
  */
 export function DownloadActions({
@@ -28,7 +29,7 @@ export function DownloadActions({
         whole={!!collectionId}
         crateName={crateName}
         count={count}
-        label="Download crate"
+        label={collectionId ? "Download collection" : "Download kept"}
         align="start"
         showCount={false}
         buttonClassName={`btn-lime w-full whitespace-nowrap font-bold disabled:opacity-40 ${box}`}
