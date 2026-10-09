@@ -37,11 +37,11 @@ export default async function PrepareForSet() {
           buttonClassName="btn-lime w-full whitespace-nowrap rounded-lg px-2 py-2.5 text-xs font-bold disabled:opacity-40 md:px-4"
         />
         {kept.length > 0 ? (
-          <a href="/api/export?files=1" className="whitespace-nowrap rounded-lg border border-line bg-ink-3 px-2 py-2.5 text-center text-xs font-bold text-bone hover:bg-ink-4 md:px-4" title="The original audio files, no playlist or XML">
+          <a href="/api/export?files=1" className="block whitespace-nowrap rounded-lg border border-line bg-ink-3 px-2 py-2.5 text-center text-xs font-bold text-bone hover:bg-ink-4 md:shrink-0 md:px-4" title="The original audio files, no playlist or XML">
             Files only
           </a>
         ) : (
-          <span className="pointer-events-none whitespace-nowrap rounded-lg border border-line bg-ink-3 px-2 py-2.5 text-center text-xs font-bold text-bone opacity-40 md:px-4">Files only</span>
+          <span className="pointer-events-none block whitespace-nowrap rounded-lg md:shrink-0 border border-line bg-ink-3 px-2 py-2.5 text-center text-xs font-bold text-bone opacity-40 md:px-4">Files only</span>
         )}
         <ClearKept count={kept.length} />
       </div>

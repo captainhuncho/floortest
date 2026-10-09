@@ -60,7 +60,7 @@ export function ExportButton({
   const ready = !!name.trim() && (!xml || !!base.trim());
 
   return (
-    <div className={buttonClassName?.includes("w-full") ? "relative w-full" : "relative"}>
+    <div className={buttonClassName?.includes("w-full") ? "relative w-full md:w-auto md:shrink-0" : "relative"}>
       <button className={buttonClassName ?? `${variant === "lime" ? "btn-lime" : "btn-ghost"} btn-sm`} disabled={!count} onClick={openPanel} aria-expanded={open}>
         {label ?? "Prepare for set"}{showCount ? ` (${count})` : ""}
       </button>
