@@ -19,11 +19,8 @@ export default async function ComingSoon({ searchParams }: { searchParams: Promi
       </h1>
       {/* What FloorTest is, readable without the password (Google's sign-in review needs this on the home page). */}
       <p className="mt-6 text-lg leading-relaxed text-bone">
-        FloorTest is a private receiving desk for unreleased music. DJs, curators and labels share one link; artists upload their original
-        tracks to it; the receiver listens, decides and downloads the ones they&apos;ll play, and the artist sees what happened to their music.
-      </p>
-      <p className="mt-3 text-sm text-mute">
-        You can sign in with your email and password, an emailed code, or your Google account. With Google we only use your name and email address to sign you in.
+        FloorTest is a private receiving desk for unreleased music: one link for DJs, curators and labels, the original files, and a receipt for every
+        artist. Sign in with email, a one-time code or Google (we only use your name and email).
       </p>
       <p className="mt-6 text-mute">We&apos;re in a private beta. If you&apos;ve been invited to look around, enter the password.</p>
       <GateForm next={next} />
