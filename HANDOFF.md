@@ -1,3 +1,5 @@
+> **Archived 9 Oct 2026.** History only. The current to-do list is `docs/06-plan.md`; start from `AGENTS.md`.
+
 # Where things stand (27 Sep 2026)
 
 **Live:** https://floortest.app (Vercel project `floortest`, London; DNS at Hosting.com, A record 76.76.21.21, `www` redirects to the apex). The old `floortest.imullar.com` and `floortest.vercel.app` both 308-redirect to `floortest.app`, keeping the path.

@@ -1,3 +1,5 @@
+> **Archived 9 Oct 2026.** History only. The current to-do list is `docs/06-plan.md`; start from `AGENTS.md`.
+
 # Codex handoff — 27 Sep 2026
 
 This is a deliberately small compatibility and data-repair patch. It was made after a read-only comparison of the live beta, the Vercel project, and the earlier receiver prototype. A Vercel **Preview** deployment was created for testing; Production was not redeployed or changed.

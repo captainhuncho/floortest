@@ -1,3 +1,5 @@
+> **Archived 9 Oct 2026.** History only. The current to-do list is `docs/06-plan.md`; start from `AGENTS.md`.
+
 # Claude next-work brief — 27 Sep 2026
 
 This is the consolidated implementation queue referenced by `CODEX_HANDOFF.md`. Re-check current code before changing anything: sender-account, upload, review-panel and navigation work is already present but uncommitted.

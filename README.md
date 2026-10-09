@@ -1,5 +1,7 @@
 # FloorTest
 
+**Start here:** `AGENTS.md` and the six docs in `docs/01-product.md` … `docs/06-plan.md` (kept current with the code).
+
 The receiving desk for unreleased music. A receiver (DJ, curator, label) shares one permanent link, hears incoming music fast, makes a quick decision and responds. A sender uploads an original file without an account and knows what happened next.
 
 ## Run it locally
