@@ -6,7 +6,7 @@ import { isPreview } from "@/lib/env";
 import { googleConfig } from "@/lib/google-auth";
 
 const GOOGLE_ERRORS: Record<string, string> = {
-  nomatch: "There's no FloorTest account with a confirmed email matching that Google account. Log in another way, or ask for an invite.",
+  unconfirmed: "Your FloorTest account's email isn't confirmed yet. Use “Email me a sign-in code” below once; after that, Google works.",
   suspended: "This account is suspended. To appeal, go to the Contact page and choose Suspension appeal.",
   expired: "That took too long. Try Continue with Google again.",
   failed: "Google didn't confirm your sign-in. Try again, or log in another way.",

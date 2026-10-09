@@ -2,7 +2,8 @@ import { switchOn } from "@/lib/switches";
 import { siteCopy } from "@/lib/content";
 import { botCheckKey } from "@/lib/turnstile";
 import { q } from "@/lib/db";
-import { env } from "@/lib/env";
+import { env, isPreview } from "@/lib/env";
+import { googleConfig } from "@/lib/google-auth";
 import { AuthForm } from "../AuthForm";
 import { signup } from "../actions";
 
@@ -38,6 +39,19 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
         <p className="mb-6 rounded-lg border border-lime/40 bg-lime/5 px-4 py-3 text-sm">
           Invited by <span className="font-medium">{referrer.name}</span>. You both get 10 extra track slots once your first track arrives.
         </p>
+      )}
+      {googleConfig() && !isPreview && (
+        <>
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+          <a href="/api/auth/google" className="btn-ghost flex w-full items-center justify-center gap-3 py-3 text-sm font-semibold">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icons/google.svg" alt="" className="size-[18px]" />
+            Sign up with Google
+          </a>
+          <div className="my-6 flex items-center gap-3 text-xs text-dim">
+            <span className="h-px flex-1 bg-line" /> or <span className="h-px flex-1 bg-line" />
+          </div>
+        </>
       )}
       <AuthForm
         botCheckKey={await botCheckKey()}

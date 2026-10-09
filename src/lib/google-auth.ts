@@ -70,8 +70,8 @@ export function emailFromClaims(c: Record<string, unknown>, clientId: string, at
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
 }
 
-/** Swaps the one-time code (with the PKCE verifier) for the signed-in person's email. */
-export async function emailFromCode(cfg: { id: string; secret: string }, code: string, verifier: string, redirectUri: string): Promise<string | null> {
+/** Swaps the one-time code (with the PKCE verifier) for who signed in: their confirmed email and name. */
+export async function identityFromCode(cfg: { id: string; secret: string }, code: string, verifier: string, redirectUri: string): Promise<GoogleIdentity | null> {
   const res = await fetch(TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -83,7 +83,34 @@ export async function emailFromCode(cfg: { id: string; secret: string }, code: s
   const payload = idToken.split(".")[1];
   if (!payload) return null;
   try {
-    return emailFromClaims(JSON.parse(Buffer.from(payload, "base64url").toString()), cfg.id);
+    const claims = JSON.parse(Buffer.from(payload, "base64url").toString()) as Record<string, unknown>;
+    const email = emailFromClaims(claims, cfg.id);
+    const name = (k: string) => String(claims[k] ?? "").trim().slice(0, 60);
+    return email ? { email, first: name("given_name"), last: name("family_name") } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Who Google confirmed, held for the sign-up form when no account matches. Signed, HttpOnly, 30 minutes. */
+export const GOOGLE_SIGNUP_COOKIE = "ft_google_signup";
+export const SIGNUP_MS = 30 * 60_000;
+export type GoogleIdentity = { email: string; first: string; last: string };
+
+export function signIdentity(id: GoogleIdentity, secret: string, at = Date.now()) {
+  const body = b64(Buffer.from(JSON.stringify({ ...id, exp: at + SIGNUP_MS })));
+  return `${body}.${mac(secret, `signup:${body}`)}`;
+}
+
+export function readIdentity(cookie: string | undefined, secret: string, at = Date.now()): GoogleIdentity | null {
+  const [body, sig] = String(cookie ?? "").split(".");
+  if (!body || !sig) return null;
+  const want = Buffer.from(mac(secret, `signup:${body}`));
+  const got = Buffer.from(sig);
+  if (got.length !== want.length || !crypto.timingSafeEqual(got, want)) return null;
+  try {
+    const v = JSON.parse(Buffer.from(body, "base64url").toString()) as GoogleIdentity & { exp: number };
+    return v.exp > at && v.email ? { email: v.email, first: v.first ?? "", last: v.last ?? "" } : null;
   } catch {
     return null;
   }

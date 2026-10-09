@@ -21,6 +21,7 @@ import { isProtectedHandle } from "@/lib/identity";
 import { sendWelcome } from "@/lib/onboarding";
 import { checkSecondFactor, finishSignIn, sendEmailVerification } from "@/lib/security";
 import { readChallenge, signChallenge } from "@/lib/totp";
+import { GOOGLE_SIGNUP_COOKIE, readIdentity } from "@/lib/google-auth";
 
 const CHALLENGE = "floortest_2fa";
 /** Set by a share link: where to land after signing in or up (only ever a /s/ share page). */
@@ -76,42 +77,34 @@ const validTz = (tz: string) => {
   }
 };
 
-export async function signup(_: FormState, form: FormData): Promise<FormState> {
-  const firstName = String(form.get("first_name") || "").trim().slice(0, 60);
-  const lastName = String(form.get("last_name") || "").trim().slice(0, 60);
-  const email = String(form.get("email") || "").trim().toLowerCase().slice(0, 200);
-  const handle = String(form.get("handle") || "").trim().toLowerCase();
-  // Public name: their professional name, or the username when they leave it empty.
-  const name = String(form.get("name") || "").trim().slice(0, 80) || handle;
-  const password = String(form.get("password") || "");
+type NewAccount = { email: string; firstName: string; lastName: string; handle: string; name: string; passwordHash: string; verified: boolean };
+
+/**
+ * Everything both sign-ups (password and Google) check and do once the person is known: the invite (unless sign-up
+ * is open), terms, the link name, the rate limit, and creating the account with its Inbox. Returns the new id or an error.
+ */
+async function createAccount(form: FormData, a: NewAccount): Promise<{ id: number } | { error: string }> {
   if (form.get("agree") !== "on") return { error: "Please confirm you're 18 or over and agree to the Terms to create an account." };
-  if (!(await passedTurnstile(form.get("cf-turnstile-response"), await requestIp()))) return { error: BOT_MESSAGE };
-  const invite = await resolveInvite(String(form.get("ref") || form.get("invite") || ""), String(form.get("email") || ""));
-
+  const invite = await resolveInvite(String(form.get("ref") || form.get("invite") || ""), a.email);
   if (!(await switchOn("open_signup")) && !invite.valid) return { error: "That invite code is not valid, has been used, or was sent to a different email. Use the email your invite went to." };
-  if (!firstName || !lastName || !email || !handle || !password) return { error: "Fill in your first name, surname, username, email and password." };
-  if (!EMAIL.test(email)) return { error: "Enter a valid email." };
-  if (!/^[a-z0-9][a-z0-9-_]{1,29}$/.test(handle)) return { error: "Link names use 2–30 letters, numbers, - or _." };
-  if (RESERVED_HANDLES.has(handle)) return { error: "That link name is reserved." };
-  if (await isProtectedHandle(handle)) return { error: "That name is protected for a well-known artist. If it's you, contact us and we'll set it up." };
-  const strength = passwordStrength(password, [name, firstName, lastName, email, handle]);
-  if (!strength.ok) return { error: strength.tip ?? "Choose a stronger password." };
+  if (!a.firstName || !a.lastName || !a.email || !a.handle) return { error: "Fill in your first name, surname, username and email." };
+  if (!EMAIL.test(a.email)) return { error: "Enter a valid email." };
+  if (!/^[a-z0-9][a-z0-9-_]{1,29}$/.test(a.handle)) return { error: "Link names use 2–30 letters, numbers, - or _." };
+  if (RESERVED_HANDLES.has(a.handle)) return { error: "That link name is reserved." };
+  if (await isProtectedHandle(a.handle)) return { error: "That name is protected for a well-known artist. If it's you, contact us and we'll set it up." };
   if (!(await allow("signup_ip", await requestIp(), 10, HOUR))) return { error: "Too many sign-ups from this connection. Try again later." };
-
-  if (await q.get("SELECT 1 FROM users WHERE email = ?", email)) return { error: "An account with that email exists. Log in instead." };
-  if ((await q.get("SELECT 1 FROM users WHERE handle = ?", handle)) || (await handleHeld(handle))) return { error: "That link is taken." };
-
-  let userId: number;
+  if (await q.get("SELECT 1 FROM users WHERE email = ?", a.email)) return { error: "An account with that email exists. Log in instead." };
+  if ((await q.get("SELECT 1 FROM users WHERE handle = ?", a.handle)) || (await handleHeld(a.handle))) return { error: "That link is taken." };
   try {
-    userId = await q.tx(async (db) => {
+    return await q.tx(async (db) => {
       const u = (await db.get<{ id: number }>(
-        "INSERT INTO users (email, password_hash, name, first_name, last_name, handle, referred_by, invite_code, tz, signup_source, kind, terms_accepted_at, terms_version, notify_product, product_consent_at, notify_marketing, marketing_consent_at, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id",
-        email,
-        hashPassword(password),
-        name,
-        firstName,
-        lastName,
-        handle,
+        "INSERT INTO users (email, password_hash, name, first_name, last_name, handle, referred_by, invite_code, tz, signup_source, kind, terms_accepted_at, terms_version, notify_product, product_consent_at, notify_marketing, marketing_consent_at, email_verified_at, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id",
+        a.email,
+        a.passwordHash,
+        a.name,
+        a.firstName,
+        a.lastName,
+        a.handle,
         invite.referrerId,
         invite.valid ? invite.code : null,
         validTz(String(form.get("tz") || "UTC")),
@@ -123,19 +116,65 @@ export async function signup(_: FormState, form: FormData): Promise<FormState> {
         form.get("updates") === "on" ? now() : null,
         form.get("offers") === "on" ? 1 : 0,
         form.get("offers") === "on" ? now() : null,
+        a.verified ? now() : null,
         now(),
       ))!;
       const c = (await db.get<{ id: number }>("INSERT INTO collections (user_id, name, created_at) VALUES (?,?,?) RETURNING id", u.id, "Inbox", now()))!;
       await db.run("UPDATE users SET active_collection_id = ? WHERE id = ?", c.id, u.id);
-      return u.id;
+      return { id: u.id };
     });
   } catch (e) {
     // Lost a race for the same email or link name.
     if ((e as { code?: string })?.code === "23505") return { error: "That email or link was just taken. Try another." };
     throw e;
   }
-  await createSession(userId);
-  await sendEmailVerification(userId);
+}
+
+const fromForm = (form: FormData, k: string, max: number) => String(form.get(k) || "").trim().slice(0, max);
+
+export async function signup(_: FormState, form: FormData): Promise<FormState> {
+  const firstName = fromForm(form, "first_name", 60);
+  const lastName = fromForm(form, "last_name", 60);
+  const email = fromForm(form, "email", 200).toLowerCase();
+  const handle = String(form.get("handle") || "").trim().toLowerCase();
+  // Public name: their professional name, or the username when they leave it empty.
+  const name = fromForm(form, "name", 80) || handle;
+  const password = String(form.get("password") || "");
+  if (form.get("agree") !== "on") return { error: "Please confirm you're 18 or over and agree to the Terms to create an account." };
+  if (!(await passedTurnstile(form.get("cf-turnstile-response"), await requestIp()))) return { error: BOT_MESSAGE };
+  if (!password) return { error: "Choose a password." };
+  const strength = passwordStrength(password, [name, firstName, lastName, email, handle]);
+  if (!strength.ok) return { error: strength.tip ?? "Choose a stronger password." };
+  const r = await createAccount(form, { email, firstName, lastName, handle, name, passwordHash: hashPassword(password), verified: false });
+  if ("error" in r) return r;
+  await createSession(r.id);
+  await sendEmailVerification(r.id);
+  redirect(await landing("/dashboard/floor?welcome=1"));
+}
+
+/**
+ * Sign-up after "Continue with Google" found no account. The email comes from Google (already confirmed), never from
+ * the form. Same rules as any sign-up otherwise: an invite code during the beta, the required details and the Terms.
+ */
+export async function signupWithGoogle(_: FormState, form: FormData): Promise<FormState> {
+  const jar = await cookies();
+  const who = readIdentity(jar.get(GOOGLE_SIGNUP_COOKIE)?.value, env.secret);
+  if (!who) return { error: "That took too long. Start again with Continue with Google." };
+  const handle = String(form.get("handle") || "").trim().toLowerCase();
+  // No password: they sign in with Google or an email code, and can set one later with "Forgot your password?".
+  const r = await createAccount(form, {
+    email: who.email,
+    firstName: fromForm(form, "first_name", 60),
+    lastName: fromForm(form, "last_name", 60),
+    handle,
+    name: fromForm(form, "name", 80) || handle,
+    passwordHash: hashPassword(crypto.randomBytes(32).toString("base64url")),
+    verified: true,
+  });
+  if ("error" in r) return r;
+  jar.delete(GOOGLE_SIGNUP_COOKIE);
+  await finishSignIn(r.id, "Google");
+  await sendWelcome(r.id);
   redirect(await landing("/dashboard/floor?welcome=1"));
 }
 

@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { q } from "@/lib/db";
 import { env } from "@/lib/env";
-import { checkFlow, emailFromCode, GOOGLE_COOKIE, googleConfig } from "@/lib/google-auth";
+import { checkFlow, GOOGLE_COOKIE, GOOGLE_SIGNUP_COOKIE, googleConfig, identityFromCode, signIdentity, SIGNUP_MS } from "@/lib/google-auth";
 import { finishSignIn } from "@/lib/security";
 import { signChallenge } from "@/lib/totp";
 
@@ -25,15 +25,20 @@ export async function GET(req: Request) {
   const verifier = checkFlow(flowCookie, url.searchParams.get("state"), env.secret);
   const code = url.searchParams.get("code");
   if (!verifier || !code) return back("expired");
-  const email = await emailFromCode(cfg, code, verifier, `${env.appUrl}/api/auth/google/callback`);
-  if (!email) return back("failed");
+  const who = await identityFromCode(cfg, code, verifier, `${env.appUrl}/api/auth/google/callback`);
+  if (!who) return back("failed");
 
-  // Only an existing account whose email was already confirmed with us. Google never creates or claims an account.
-  const user = await q.get<{ id: number; suspended_at: number | null; totp_enabled_at: number | null }>(
-    "SELECT id, suspended_at, totp_enabled_at FROM users WHERE lower(email) = ? AND email_verified_at IS NOT NULL",
-    email,
+  // Signs in only an account whose email was already confirmed with us; Google never claims an unconfirmed one.
+  const user = await q.get<{ id: number; suspended_at: number | null; totp_enabled_at: number | null; email_verified_at: number | null }>(
+    "SELECT id, suspended_at, totp_enabled_at, email_verified_at FROM users WHERE lower(email) = ?",
+    who.email,
   );
-  if (!user) return back("nomatch");
+  if (user && !user.email_verified_at) return back("unconfirmed");
+  // No account yet: on to the sign-up form, which still asks for an invite code during the beta.
+  if (!user) {
+    jar.set(GOOGLE_SIGNUP_COOKIE, signIdentity(who, env.secret), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: SIGNUP_MS / 1000 });
+    return NextResponse.redirect(`${env.appUrl}/signup/google`);
+  }
   if (user.suspended_at) return back("suspended");
   if (user.totp_enabled_at) {
     jar.set(CHALLENGE, signChallenge(user.id, env.secret), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 300 });

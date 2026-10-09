@@ -34,3 +34,15 @@ test("ID token claims must be for us, from Google, unexpired and with a verified
   assert.equal(emailFromClaims({ ...ok, exp: 1 }, "cid", 1000_000), null);
   assert.equal(emailFromClaims({ ...ok, email_verified: false }, "cid", 1000), null);
 });
+
+test("the sign-up hand-off keeps Google's email only while it's genuine and fresh", async () => {
+  const { readIdentity, signIdentity } = await import("../src/lib/google-auth");
+  const c = signIdentity({ email: "dj@example.com", first: "D", last: "J" }, SECRET, 1000);
+  assert.equal(readIdentity(c, SECRET, 2000)?.email, "dj@example.com");
+  assert.equal(readIdentity(c, SECRET, 1000 + 31 * 60_000), null);
+  assert.equal(readIdentity(c, "y".repeat(40), 2000), null);
+  const [body, sig] = c.split(".");
+  const swapped = Buffer.from(JSON.stringify({ email: "victim@example.com", first: "", last: "", exp: 9e15 })).toString("base64url");
+  assert.equal(readIdentity(`${swapped}.${sig}`, SECRET, 2000), null);
+  assert.ok(body);
+});
