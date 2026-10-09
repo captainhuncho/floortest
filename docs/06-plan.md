@@ -18,7 +18,8 @@ Plan + tappable prototype: claude.ai/artifact/5BVVpA3Zn9AxH71ut9hGFr (private), 
 - **Payments (decided 9 Oct):** web via Paddle, and in the app via Apple in-app purchase / Google Play Billing only (store rules). One plan per account from either source; no links to web payment inside the app; web subscribers see "managed on the website"; Restore purchases; server verifies purchases with Apple/Google and follows their renewal, cancellation and refund messages.
 - Owner: enrol Apple Developer ($99/yr, company + D-U-N-S) and Google Play ($25).
 - Foundations: ✅ `/api/v1` core (sign-in, refresh, sign-out, me, queue, keep/pass, audio) built 9 Oct with e2e tests; still to add: sends, collections, Prepare, push registration, uploads. After Vercel Pro: rest of (never database or storage keys on the phone), Sign in with Apple (required now that Google sign-in is live), push service, server-made audio previews.
-- Build (~4 weeks): Capacitor shell, background player + lock screen, push, share-to-FloorTest, swipe review, tabs Floor · Queue · Collections · Prepare. Then test + store review (~2 weeks).
+- ✅ 9 Oct: Capacitor iOS shell prototype (`mobile/`) running on the iPhone simulator: opens on the desk/sign-in, safe-area fixed, FloorTest icon and splash.
+- Build (~4 weeks):  background player + lock screen, push, share-to-FloorTest, swipe review, tabs Floor · Queue · Collections · Prepare. Then test + store review (~2 weeks).
 
 ## Before public launch (in order)
 1. **Paid infrastructure:** Vercel Pro, Neon Launch, paid UptimeRobot, Resend upgrade; `ALERT_WEBHOOK_URL`. Delete old Supabase (from 13 Oct).

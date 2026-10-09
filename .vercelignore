@@ -4,3 +4,6 @@ node_modules
 .claude
 *.tsbuildinfo
 .env*.local
+
+# The iPhone/Android app project; not part of the website
+mobile/
