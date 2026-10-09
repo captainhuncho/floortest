@@ -17,11 +17,42 @@ export type Field = { label: string; kind: Kind; start: string; vars?: string[];
 const f = (label: string, start: string, more: Partial<Field> = {}): Field => ({ label, kind: "line", start, ...more });
 const text = (label: string, start: string, more: Partial<Field> = {}) => f(label, start, { kind: "text", ...more });
 
+/** Home page sections that can be reordered or hidden (the header, hero and footer always stay put). */
+export const HOME_SECTIONS = {
+  preview: "Product preview",
+  how: "How it works",
+  journey: "Receipts",
+  private: "Privacy",
+  plans: "Plans",
+  waitlist: "Waitlist",
+  faq: "Questions",
+} as const;
+export type HomeSection = keyof typeof HOME_SECTIONS;
+const SECTION_IDS = Object.keys(HOME_SECTIONS) as HomeSection[];
+
+/** "how,-faq,preview" → every section once, in that order, missing ones appended; a leading "-" hides it. */
+export function sectionOrder(s: string): { id: HomeSection; hidden: boolean }[] {
+  const seen = new Set<string>();
+  const out: { id: HomeSection; hidden: boolean }[] = [];
+  for (const raw of s.split(",")) {
+    const hidden = raw.trim().startsWith("-");
+    const id = raw.trim().replace(/^-/, "") as HomeSection;
+    if (SECTION_IDS.includes(id) && !seen.has(id)) {
+      seen.add(id);
+      out.push({ id, hidden });
+    }
+  }
+  for (const id of SECTION_IDS) if (!seen.has(id)) out.push({ id, hidden: false });
+  return out;
+}
+export const orderString = (o: { id: HomeSection; hidden: boolean }[]) => o.map((x) => `${x.hidden ? "-" : ""}${x.id}`).join(",");
+
 export const SITE_PAGES = {
   home: {
     label: "Home",
     path: "/",
     fields: {
+      sections: f("Section order", SECTION_IDS.join(","), { hint: "Easiest to change on the page itself (Edit on the page). A \"-\" in front hides a section." }),
       eyebrow: f("Line above the headline", "The receiving desk for unreleased music"),
       headline: f("Headline", "From private tracks"),
       headline_italic: f("Headline, second line (italic)", "to the DJ set."),

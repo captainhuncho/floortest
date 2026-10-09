@@ -6,7 +6,9 @@ import { currentUser } from "@/lib/auth";
 import { APP_URL } from "@/lib/mail";
 import { env } from "@/lib/env";
 import { footerGroups } from "@/lib/site";
-import { pairs, siteCopy, siteImageUrl } from "@/lib/content";
+import { HOME_SECTIONS, pairs, sectionOrder, siteCopy, siteImageUrl, type HomeSection } from "@/lib/content";
+import { siteEditor } from "@/lib/site-editor";
+import { SectionFrame, SectionList, SiteEditor } from "@/components/SiteEditor";
 import { mono, serif } from "./fonts";
 import { HomePreview } from "./HomePreview";
 import { ClaimBox } from "./ClaimBox";
@@ -38,7 +40,10 @@ export default async function Home({
   searchParams: Promise<{ deleted?: string }>;
 }) {
   // All independent: one round trip's wait instead of four.
-  const [user, sp, c, signupOpen, billing, botKey] = await Promise.all([currentUser(), searchParams, siteCopy("home"), switchOn("open_signup"), switchOn("billing"), botCheckKey()]);
+  const [user, sp, c, signupOpen, billing, botKey, editor] = await Promise.all([currentUser(), searchParams, siteCopy("home"), switchOn("open_signup"), switchOn("billing"), botCheckKey(), siteEditor()]);
+  // Ops staff editing on the page get typeable text; everyone else gets plain text.
+  const E = ({ k }: { k: keyof typeof c }) => (editor ? <span data-edit={k}>{c[k]}</span> : <>{c[k]}</>);
+  const order = sectionOrder(c.sections);
   const deleted = !!sp.deleted;
   const HOW = pairs(c.how_steps);
   const FAQ = pairs(c.faq);
@@ -50,7 +55,186 @@ export default async function Home({
       ? { href: "#waitlist", label: "Request an invite" }
       : { href: "/signup", label: "Claim your link" };
 
-  return (
+  const SECTIONS: Record<HomeSection, React.ReactNode> = {
+    preview: (
+      <section data-edit-image={editor ? "preview_image" : undefined} className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+        {c.preview_image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={siteImageUrl(c.preview_image)} alt={c.preview_alt} loading="lazy" decoding="async" className="w-full rounded-lg border border-white/10" />
+        ) : (
+          <>
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-xs uppercase tracking-[0.12em] text-lime">
+                [Live product preview]
+              </p>
+              <p className="home-label">Click a track</p>
+            </div>
+            <HomePreview host={HOST} />
+          </>
+        )}
+      </section>
+  ),
+    how: (
+      <section id="how" className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+        <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
+          <E k="how_title" />
+        </h2>
+        <ol data-edit-pairs={editor ? "how_steps" : undefined} className="mt-10 grid grid-cols-1 border-t border-white/10 sm:grid-cols-2">
+          {HOW.map(([title, body], i) => (
+            <li
+              key={title}
+              className={`border-white/10 py-8 pr-6 ${i ? "sm:border-l sm:pl-6" : ""}`}
+            >
+              <p className="home-label">0{i + 1}</p>
+              <p className="mt-8 text-xl">{title}</p>
+              <p className="mt-3 max-w-[65ch] text-sm leading-relaxed text-mute">
+                {body}
+              </p>
+            </li>
+          ))}
+        </ol>
+      </section>
+  ),
+    journey: (
+      <section className="border-y border-white/10 bg-ink-2">
+        <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-end">
+            <h2 className="text-[clamp(2.5rem,5.5vw,4.5rem)] font-bold leading-[0.95] tracking-[-0.04em]">
+              <E k="journey_title" />
+            </h2>
+            <p className="max-w-[65ch] text-sm leading-relaxed text-mute lg:pb-2">
+              <E k="journey_intro" />
+            </p>
+          </div>
+          <ol className="mt-10 grid grid-cols-1 overflow-hidden rounded-lg border border-white/10 sm:grid-cols-2 lg:grid-cols-4">
+            {JOURNEY.map(([icon, title, body], i) => (
+              <li
+                key={title}
+                className={`flex gap-4 border-white/10 p-6 ${i ? "border-t sm:border-t-0 sm:border-l" : "bg-lime/[0.06]"} ${i === 2 ? "sm:border-l-0 sm:border-t lg:border-t-0 lg:border-l" : ""} ${i === 3 ? "sm:border-t lg:border-t-0" : ""}`}
+              >
+                <span
+                  aria-hidden
+                  className={`text-xl ${i ? "text-dim" : "text-lime"}`}
+                >
+                  {icon}
+                </span>
+                <span>
+                  <span className="block text-sm uppercase">
+                    {title}
+                  </span>
+                  <span className="mt-1 block text-xs text-mute">
+                    {body}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+  ),
+    private: (
+      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
+          <div>
+            <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
+              <E k="private_title" />
+            </h2>
+          </div>
+          <dl className="divide-y divide-white/10 border-y border-white/10">
+            {[
+              [
+                "Your decisions stay yours",
+                "Senders see listens, downloads and replies. Keep and not-for-me calls are never shared.",
+              ],
+              [
+                "You control intake",
+                "Pause your link while touring, set closing dates per callout, and block anyone.",
+              ],
+              [
+                "Clear retention",
+                "Undecided tracks are deleted after 90 days, tracks marked “Not for me” 30 days after you mark them. Kept tracks stay until you delete them.",
+              ],
+            ].map(([k, v]) => (
+              <div key={k} className="py-5">
+                <dt className="text-xs uppercase tracking-[0.1em] text-lime">
+                  {k}
+                </dt>
+                <dd className="mt-2 text-sm text-mute">
+                  {v}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </section>
+  ),
+    plans: (
+      <section className="mx-auto max-w-4xl px-4 py-20 text-center sm:px-6">
+        <p className="text-xs uppercase tracking-[0.2em] text-mute"><E k="plans_kicker" /></p>
+        <h2 className="mt-4 text-[clamp(1.75rem,3.6vw,2.75rem)] font-bold leading-[1.05] tracking-[-0.035em]"><E k={billing ? "plans_title_launch" : "plans_title"} /></h2>
+        <p className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-mute sm:text-base"><E k={billing ? "plans_intro_launch" : "plans_intro"} /></p>
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+          <Link href={cta.href} className="rounded-full bg-lime px-7 py-3 text-sm font-semibold text-ink hover:brightness-95">
+            {user ? "Open your desk" : inviteOnly ? "Request an invite" : "Start free"}
+          </Link>
+          <Link href="/pricing" className="rounded-full border border-line-2 bg-ink-2 px-7 py-3 text-sm font-semibold text-bone hover:border-mute">
+            Compare all plans
+          </Link>
+        </div>
+      </section>
+  ),
+    waitlist: !user ? (
+      <section id="waitlist" className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+          <div className="grid grid-cols-1 gap-10 rounded-lg border border-white/10 bg-ink-2 p-6 sm:p-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+            <div>
+              <h2 className="text-[clamp(2rem,4vw,3.25rem)] font-bold leading-[0.95] tracking-[-0.035em]">No invite yet?</h2>
+              <p className="mt-4 text-sm leading-relaxed text-mute">
+                We&apos;re letting DJs, labels and curators in a few at a time. Leave your details and you&apos;ll get a personal invite by email.
+              </p>
+            </div>
+            <WaitlistForm host={HOST} botCheckKey={botKey} />
+          </div>
+        </section>
+      ) : null
+,
+    faq: (
+      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+        <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
+          <E k="faq_title" />
+        </h2>
+        <div data-edit-pairs={editor ? "faq" : undefined} className="mt-10 border-t border-white/10">
+          {FAQ.map(([q, a], i) => (
+            <details
+              key={q}
+              open={i === 0}
+              className="group border-b border-white/10"
+            >
+              <summary className="flex cursor-pointer list-none items-center justify-between py-5 font-semibold">
+                {q}
+                <span
+                  aria-hidden
+                  className="text-xl text-lime group-open:hidden"
+                >
+                  +
+                </span>
+                <span
+                  aria-hidden
+                  className="hidden text-xl text-lime group-open:inline"
+                >
+                  −
+                </span>
+              </summary>
+              <p className="max-w-[65ch] pb-6 text-sm leading-relaxed text-mute">
+                {a}
+              </p>
+            </details>
+          ))}
+        </div>
+      </section>
+  ),
+  };
+
+  const page = (
     <div
       className={`${serif.variable} ${mono.variable} bg-ink text-bone`}
     >
@@ -106,16 +290,16 @@ export default async function Home({
           <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-center">
             <div>
               <p className="flex items-center gap-3 text-sm text-lime">
-                <span aria-hidden className="h-px w-8 bg-lime" /> {c.eyebrow}
+                <span aria-hidden className="h-px w-8 bg-lime" /> <E k="eyebrow" />
               </p>
               <h1 className="mt-6 text-[clamp(3rem,7.5vw,6.5rem)] font-bold leading-[0.9] tracking-[-0.045em]">
-                {c.headline}
+                <E k="headline" />
                 <span className="block font-[family-name:var(--font-serif)] font-normal italic tracking-[-0.02em] text-mute">
-                  {c.headline_italic}
+                  <E k="headline_italic" />
                 </span>
               </h1>
               <p className="mt-8 max-w-2xl text-[15px] leading-relaxed text-mute">
-                {c.intro}
+                <E k="intro" />
               </p>
               <div className="mt-10 flex flex-wrap items-center gap-6">
                 <Link
@@ -170,189 +354,21 @@ export default async function Home({
         </div>
       </section>
 
-      {/* Product preview */}
-      <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
-        {c.preview_image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={siteImageUrl(c.preview_image)} alt={c.preview_alt} loading="lazy" decoding="async" className="w-full rounded-lg border border-white/10" />
-        ) : (
-          <>
-            <div className="mb-4 flex items-center justify-between">
-              <p className="text-xs uppercase tracking-[0.12em] text-lime">
-                [Live product preview]
-              </p>
-              <p className="home-label">Click a track</p>
-            </div>
-            <HomePreview host={HOST} />
-          </>
-        )}
-      </section>
-
-      {/* How */}
-      <section id="how" className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-        <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
-          {c.how_title}
-        </h2>
-        <ol className="mt-10 grid grid-cols-1 border-t border-white/10 sm:grid-cols-2">
-          {HOW.map(([title, body], i) => (
-            <li
-              key={title}
-              className={`border-white/10 py-8 pr-6 ${i ? "sm:border-l sm:pl-6" : ""}`}
-            >
-              <p className="home-label">0{i + 1}</p>
-              <p className="mt-8 text-xl">{title}</p>
-              <p className="mt-3 max-w-[65ch] text-sm leading-relaxed text-mute">
-                {body}
-              </p>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      {/* Journey */}
-      <section className="border-y border-white/10 bg-ink-2">
-        <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-end">
-            <h2 className="text-[clamp(2.5rem,5.5vw,4.5rem)] font-bold leading-[0.95] tracking-[-0.04em]">
-              {c.journey_title}
-            </h2>
-            <p className="max-w-[65ch] text-sm leading-relaxed text-mute lg:pb-2">
-              {c.journey_intro}
-            </p>
-          </div>
-          <ol className="mt-10 grid grid-cols-1 overflow-hidden rounded-lg border border-white/10 sm:grid-cols-2 lg:grid-cols-4">
-            {JOURNEY.map(([icon, title, body], i) => (
-              <li
-                key={title}
-                className={`flex gap-4 border-white/10 p-6 ${i ? "border-t sm:border-t-0 sm:border-l" : "bg-lime/[0.06]"} ${i === 2 ? "sm:border-l-0 sm:border-t lg:border-t-0 lg:border-l" : ""} ${i === 3 ? "sm:border-t lg:border-t-0" : ""}`}
-              >
-                <span
-                  aria-hidden
-                  className={`text-xl ${i ? "text-dim" : "text-lime"}`}
-                >
-                  {icon}
-                </span>
-                <span>
-                  <span className="block text-sm uppercase">
-                    {title}
-                  </span>
-                  <span className="mt-1 block text-xs text-mute">
-                    {body}
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
-
-      {/* Private by design */}
-      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-        <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
-          <div>
-            <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
-              {c.private_title}
-            </h2>
-          </div>
-          <dl className="divide-y divide-white/10 border-y border-white/10">
-            {[
-              [
-                "Your decisions stay yours",
-                "Senders see listens, downloads and replies. Keep and not-for-me calls are never shared.",
-              ],
-              [
-                "You control intake",
-                "Pause your link while touring, set closing dates per callout, and block anyone.",
-              ],
-              [
-                "Clear retention",
-                "Undecided tracks are deleted after 90 days, tracks marked “Not for me” 30 days after you mark them. Kept tracks stay until you delete them.",
-              ],
-            ].map(([k, v]) => (
-              <div key={k} className="py-5">
-                <dt className="text-xs uppercase tracking-[0.1em] text-lime">
-                  {k}
-                </dt>
-                <dd className="mt-2 text-sm text-mute">
-                  {v}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      </section>
-
-      {/* Plans */}
-      <section className="mx-auto max-w-4xl px-4 py-20 text-center sm:px-6">
-        <p className="text-xs uppercase tracking-[0.2em] text-mute">{c.plans_kicker}</p>
-        <h2 className="mt-4 text-[clamp(1.75rem,3.6vw,2.75rem)] font-bold leading-[1.05] tracking-[-0.035em]">{billing ? c.plans_title_launch : c.plans_title}</h2>
-        <p className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-mute sm:text-base">{billing ? c.plans_intro_launch : c.plans_intro}</p>
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-          <Link href={cta.href} className="rounded-full bg-lime px-7 py-3 text-sm font-semibold text-ink hover:brightness-95">
-            {user ? "Open your desk" : inviteOnly ? "Request an invite" : "Start free"}
-          </Link>
-          <Link href="/pricing" className="rounded-full border border-line-2 bg-ink-2 px-7 py-3 text-sm font-semibold text-bone hover:border-mute">
-            Compare all plans
-          </Link>
-        </div>
-      </section>
-
-      {/* Waitlist */}
-      {!user && (
-        <section id="waitlist" className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-          <div className="grid grid-cols-1 gap-10 rounded-lg border border-white/10 bg-ink-2 p-6 sm:p-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-            <div>
-              <h2 className="text-[clamp(2rem,4vw,3.25rem)] font-bold leading-[0.95] tracking-[-0.035em]">No invite yet?</h2>
-              <p className="mt-4 text-sm leading-relaxed text-mute">
-                We&apos;re letting DJs, labels and curators in a few at a time. Leave your details and you&apos;ll get a personal invite by email.
-              </p>
-            </div>
-            <WaitlistForm host={HOST} botCheckKey={botKey} />
-          </div>
-        </section>
-      )}
-
-      {/* FAQ */}
-      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-        <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
-          {c.faq_title}
-        </h2>
-        <div className="mt-10 border-t border-white/10">
-          {FAQ.map(([q, a], i) => (
-            <details
-              key={q}
-              open={i === 0}
-              className="group border-b border-white/10"
-            >
-              <summary className="flex cursor-pointer list-none items-center justify-between py-5 font-semibold">
-                {q}
-                <span
-                  aria-hidden
-                  className="text-xl text-lime group-open:hidden"
-                >
-                  +
-                </span>
-                <span
-                  aria-hidden
-                  className="hidden text-xl text-lime group-open:inline"
-                >
-                  −
-                </span>
-              </summary>
-              <p className="max-w-[65ch] pb-6 text-sm leading-relaxed text-mute">
-                {a}
-              </p>
-            </details>
-          ))}
-        </div>
-      </section>
+      {/* Sections below the hero: order and visibility come from Site content (draggable when editing on the page). */}
+      <SectionList>
+        {order.filter((x) => editor || !x.hidden).map((x) => (
+          <SectionFrame key={x.id} id={x.id}>
+            {SECTIONS[x.id]}
+          </SectionFrame>
+        ))}
+      </SectionList>
 
       {/* Desktop: brand + newsletter left, links right; reference legal pages in a small bottom row. */}
       <footer className="mx-auto hidden max-w-6xl px-6 pb-10 pt-12 text-sm text-mute lg:block">
         <div className="grid grid-cols-12 gap-8 border-t border-line pt-10">
           <div className="col-span-5">
             <Logo />
-            <p className="mt-3 max-w-xs">{c.footer_line}</p>
+            <p className="mt-3 max-w-xs"><E k="footer_line" /></p>
             <div className="mt-8 max-w-md">
               <p className="mb-3 text-sm font-bold text-bone">Get the FloorTest newsletter</p>
               <NewsletterForm />
@@ -399,7 +415,7 @@ export default async function Home({
       <footer className="mx-auto max-w-6xl px-4 pb-10 pt-12 text-sm text-mute sm:px-6 lg:hidden">
         <div className="flex flex-col gap-3 border-t border-line pt-10 sm:flex-row sm:items-center sm:justify-between">
           <Logo />
-          <p className="max-w-xs">{c.footer_line}</p>
+          <p className="max-w-xs"><E k="footer_line" /></p>
         </div>
         <div className="mt-8 max-w-md">
           <p className="mb-3 text-sm font-bold text-bone">Get the FloorTest newsletter</p>
@@ -431,6 +447,14 @@ export default async function Home({
         <p className="mt-10 border-t border-line pt-6 text-xs text-dim">© {new Date().getFullYear()} FloorTest. Private beta.</p>
       </footer>
     </div>
+  );
+
+  return editor ? (
+    <SiteEditor page="home" label="Home" values={c} initialOrder={order} labels={HOME_SECTIONS}>
+      {page}
+    </SiteEditor>
+  ) : (
+    page
   );
 }
 

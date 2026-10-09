@@ -59,6 +59,16 @@ floortest.app/<handle> ─► choose files (or Send folders on Pro/Team)
 Link closed / paused / full ─► the page says why, no upload.
 ```
 
+## Editing the site (ops staff with Site content)
+```
+ops → Site content → Edit on the page ↗ ─► 60-second pass ─► floortest.app/<page> in draft + edit mode
+   ├─ click text ─► type          ├─ click a list ─► panel ─► Apply
+   ├─ click product image ─► choose file (resized to WebP)
+   ├─ section bar: drag ⠿ / ↑ ↓ / Hide · Show
+   └─ toolbar: Save draft · Publish (live + version) · Exit (ends preview, back to ops)
+Edit mode only works while that person is still signed in to ops; the API refuses otherwise.
+```
+
 ## Ops (ops.floortest.app)
 ```
 /ops-login (password + two-factor every time) ─► /admin (Overview: verdict, act now, queues, health)

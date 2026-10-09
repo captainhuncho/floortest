@@ -38,6 +38,11 @@ Keep this file true to what is live. Any change to a feature updates its row her
 | Track artwork (Team receivers) | Optional JPG/PNG/WebP ≤ 25 MB, kept at original quality; one cover per folder | send form |
 | Receipt | Follow one track: delivered, listened, downloaded, replied, played out | `/receipt/<token>`, `/sent` |
 
+## Features (ops)
+| Area | What it does | Where |
+|---|---|---|
+| Edit the site on the page | Ops staff with Site content open the real page from ops (**Edit on the page ↗**): click text to type, click a list (steps, questions) to edit it, click the product image to replace it, drag sections (or ↑ ↓) and hide/show them. Saves to a draft; **Publish** puts it live; versions kept to restore. Home has all of this; other pages are edited in the ops form | ops → Site content, then floortest.app in edit mode |
+
 ## Rules that define the product
 - Uploads are originals, never transcoded. Previews (smaller stream copies) are planned for launch, made on the server only (see 06).
 - Retention: undecided audio deleted after 90 days, "not for me" after 30 days; kept stays until the receiver deletes. Artwork is deleted with its track.

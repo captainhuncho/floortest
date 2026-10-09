@@ -9,7 +9,8 @@ import { after } from "next/server";
 import { FEATURES, type Feature } from "@/lib/features";
 import { allPlans, FREE_PLAN } from "@/lib/plan-store";
 import { audienceWhere, cleanTags, describeAudience, readAudience } from "@/lib/audience";
-import { SITE_PAGES, type Field, type SitePage } from "@/lib/content";
+import { SITE_PAGES, type SitePage } from "@/lib/content";
+import { writeContent } from "@/lib/content-write";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { issueViewTicket } from "@/lib/ops";
@@ -803,26 +804,8 @@ export async function saveContent(page: SitePage, form: FormData) {
   const a = await requireAdminAction("content");
   const def = SITE_PAGES[page];
   if (!def) return;
-  const values: Record<string, string> = {};
-  for (const [k, fld] of Object.entries(def.fields as Record<string, Field>)) {
-    let v = String(form.get(k) ?? "").replace(/\r\n/g, "\n").trim().slice(0, 4000);
-    if (fld.kind === "image" && v && !/^site\/[a-f0-9]{18}\.(jpg|png|webp)$/.test(v)) v = "";
-    if (fld.kind !== "image" && !v) v = fld.start;
-    values[k] = v;
-  }
-  const body = JSON.stringify(values);
   const publish = form.get("intent") === "publish";
-  const t = now();
-  await q.run(
-    `INSERT INTO site_content (page, draft, published, admin_id, updated_at, published_at) VALUES (?,?,?,?,?,?)
-     ON CONFLICT (page) DO UPDATE SET draft = excluded.draft, admin_id = excluded.admin_id, updated_at = excluded.updated_at${publish ? ", published = excluded.published, published_at = excluded.published_at" : ""}`,
-    page, body, publish ? body : "{}", a.id, t, publish ? t : null,
-  );
-  if (publish) {
-    await q.run("INSERT INTO site_content_versions (page, body, admin_id, created_at) VALUES (?,?,?,?)", page, body, a.id, t);
-    await logAdmin(a.id, "published site content", def.label);
-    revalidatePath("/", "layout");
-  }
+  await writeContent(page, Object.fromEntries(Object.keys(def.fields).map((k) => [k, form.get(k)])), a.id, publish, false);
   await done(publish ? `${def.label} published.` : `${def.label} draft saved. Preview it, then publish.`);
   refresh();
 }

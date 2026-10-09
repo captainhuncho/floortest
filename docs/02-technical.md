@@ -17,6 +17,7 @@ What FloorTest is built on, so nobody guesses. Change a tool, service or limit â
 | Monitoring | Sentry (`/api/monitoring` tunnel), Vercel Analytics, own incidents + job runs in ops | |
 | Images | sharp: covers, collection art, site images resized to WebP. Track artwork is **not** re-encoded | `src/lib/image-optimize.ts` |
 | Audio analysis | In the browser (duration, BPM, waveform peaks); tags via music-metadata | |
+| Site editing | Draft mode + signed preview cookie from ops; `src/lib/site-editor.ts` (permission), `/api/site-edit` (+ `/image`), `src/components/SiteEditor.tsx`, shared save in `src/lib/content-write.ts` | |
 | Scheduled jobs | Vercel Cron: `/api/cron/digest`, `/api/cron/purge` (retention, storage deletions) | |
 
 ## Hosts

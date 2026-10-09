@@ -47,8 +47,9 @@ export default async function SiteContent({ searchParams }: { searchParams: Prom
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <span className={`chip ${unpublished ? "border-lime/50 text-lime" : "border-line text-mute"}`}>{unpublished ? "Draft not published yet" : "Draft matches the live page"}</span>
         {row?.published_at && <span className="text-mute">Last published {fmtDate(row.published_at)}</span>}
-        <a href={`/api/admin/preview?page=${page}`} target="_blank" rel="noreferrer" className="btn-ghost btn-sm">
-          Preview draft ↗
+        {/* Opens the real page with editing on: click text to change it, swap images, drag sections. Home has the most. */}
+        <a href={`/api/admin/preview?page=${page}`} target="_blank" rel="noreferrer" className="btn-lime btn-sm">
+          Edit on the page ↗
         </a>
         {/* The draft view lives on floortest.app, so this can't tell whether it's on: the link is always offered. */}
         <a href="/api/admin/preview?off" className="text-xs text-mute underline underline-offset-4">
