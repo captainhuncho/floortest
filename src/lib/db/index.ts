@@ -53,6 +53,9 @@ export type User = {
   tz: string;
   email_verified_at: number | null;
   totp_enabled_at: number | null;
+  /** The Google account pinned for "Continue with Google", and when. */
+  google_sub: string | null;
+  google_linked_at: number | null;
   signin_alerts: number;
   identity_status: "none" | "pending" | "verified" | "rejected";
   created_at: number;

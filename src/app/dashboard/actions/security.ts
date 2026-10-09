@@ -12,6 +12,7 @@ import { hashRecovery, newRecoveryCodes, newTotpSecret, openSecret, otpauthUri, 
 import { now, q } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { done } from "./common";
+import { unpinGoogle } from "@/lib/google-link";
 import { type SettingsState } from "./settings";
 
 /** Changes the password after checking the current one, and signs out every other device. */
@@ -111,4 +112,15 @@ export async function setSigninAlerts(on: boolean) {
   await q.run("UPDATE users SET signin_alerts = ? WHERE id = ?", on ? 1 : 0, u.id);
   await audit(u.id, on ? "signin_alerts_on" : "signin_alerts_off");
   done();
+}
+
+/** Removes Google sign-in after checking the password (so a borrowed session can't quietly change how you sign in). */
+export async function disconnectGoogle(_: SettingsState, form: FormData): Promise<SettingsState> {
+  const u = await requireUser();
+  if (!(await allow("google_unlink", String(u.id), 10, 3_600_000))) return { error: "Too many tries. Wait an hour and try again." };
+  const row = await q.get<{ password_hash: string }>("SELECT password_hash FROM users WHERE id = ?", u.id);
+  if (!row || !verifyPassword(String(form.get("password") || ""), row.password_hash)) return { error: "Your password isn't right." };
+  await unpinGoogle(u.id);
+  done();
+  return { ok: true };
 }

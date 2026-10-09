@@ -21,7 +21,8 @@ import { isProtectedHandle } from "@/lib/identity";
 import { sendWelcome } from "@/lib/onboarding";
 import { checkSecondFactor, finishSignIn, sendEmailVerification } from "@/lib/security";
 import { readChallenge, signChallenge } from "@/lib/totp";
-import { GOOGLE_SIGNUP_COOKIE, readIdentity } from "@/lib/google-auth";
+import { GOOGLE_LINK_COOKIE, GOOGLE_SIGNUP_COOKIE, readIdentity, readPendingLink } from "@/lib/google-auth";
+import { pinGoogle } from "@/lib/google-link";
 
 const CHALLENGE = "floortest_2fa";
 /** Set by a share link: where to land after signing in or up (only ever a /s/ share page). */
@@ -36,7 +37,7 @@ async function landing(fallback: string) {
 }
 
 /** Password (or reset link) checked out. Accounts with two-factor get a code step first. */
-async function afterPassword(userId: number, how: "password" | "reset" | "email code") {
+async function afterPassword(userId: number, how: "password" | "reset" | "email code" | "Google") {
   const twoFactor = await q.get("SELECT 1 FROM users WHERE id = ? AND totp_enabled_at IS NOT NULL", userId);
   if (twoFactor) {
     (await cookies()).set(CHALLENGE, signChallenge(userId, env.secret), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 300 });
@@ -173,9 +174,28 @@ export async function signupWithGoogle(_: FormState, form: FormData): Promise<Fo
   });
   if ("error" in r) return r;
   jar.delete(GOOGLE_SIGNUP_COOKIE);
+  await q.run("UPDATE users SET google_sub = ?, google_linked_at = ? WHERE id = ?", who.sub, now(), r.id);
   await finishSignIn(r.id, "Google");
   await sendWelcome(r.id);
   redirect(await landing("/dashboard/floor?welcome=1"));
+}
+
+/**
+ * First "Continue with Google" on an existing account: the owner's password approves pinning that Google account.
+ * Two-factor (if on) still follows.
+ */
+export async function approveGoogleLink(_: FormState, form: FormData): Promise<FormState> {
+  const jar = await cookies();
+  const pending = readPendingLink(jar.get(GOOGLE_LINK_COOKIE)?.value, env.secret);
+  if (!pending) return { error: "That took too long. Start again with Continue with Google." };
+  if (!(await allow("google_link", String(pending.userId), 10, HOUR))) return { error: "Too many tries. Wait an hour and try again." };
+  const row = await q.get<{ password_hash: string; suspended_at: number | null }>("SELECT password_hash, suspended_at FROM users WHERE id = ?", pending.userId);
+  if (!row || !verifyPassword(String(form.get("password") || ""), row.password_hash)) return { error: "That password isn't right." };
+  if (row.suspended_at) return { error: "This account is suspended. To appeal, go to the Contact page and choose Suspension appeal." };
+  jar.delete(GOOGLE_LINK_COOKIE);
+  if (!(await pinGoogle(pending.userId, pending.sub))) return { error: "That Google account can't be connected to this account. Log in with your password instead." };
+  await afterPassword(pending.userId, "Google");
+  return undefined;
 }
 
 export async function login(_: FormState, form: FormData): Promise<FormState> {

@@ -1184,4 +1184,13 @@ update plans set track_art = 1 where id = 'team';
 alter table tracks add column if not exists art_key text;
 `,
   },
+  {
+    // Google sign-in: the Google account (its permanent id) pinned to a FloorTest account, one each way.
+    id: "0073_google_link",
+    sql: `
+alter table users add column if not exists google_sub text;
+alter table users add column if not exists google_linked_at bigint;
+create unique index if not exists users_google_sub on users(google_sub) where google_sub is not null;
+`,
+  },
 ];

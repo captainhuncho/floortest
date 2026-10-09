@@ -13,6 +13,8 @@ export const AUDIT_LABELS = {
   signed_out_others: "Signed out other devices",
   two_factor_on: "Turned on two-factor sign-in",
   two_factor_off: "Turned off two-factor sign-in",
+  google_connected: "Connected Google sign-in",
+  google_disconnected: "Removed Google sign-in",
   signin_alerts_on: "Turned on sign-in alerts",
   signin_alerts_off: "Turned off sign-in alerts",
   kept: "Kept",

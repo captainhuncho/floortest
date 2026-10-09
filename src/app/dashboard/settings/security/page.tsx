@@ -3,12 +3,16 @@ import { q } from "@/lib/db";
 import { EmailForm } from "../EmailForm";
 import { SecurityForm } from "../SecurityForm";
 import { TwoFactor } from "../TwoFactor";
+import { GoogleSignIn } from "../GoogleSignIn";
+import { isPreview } from "@/lib/env";
+import { googleConfig } from "@/lib/google-auth";
 import { PageTitle, Section } from "../Section";
 
 export const metadata = { title: "Security — FloorTest" };
 
-export default async function Security() {
+export default async function Security({ searchParams }: { searchParams: Promise<{ google?: string }> }) {
   const user = await requireUser();
+  const sp = await searchParams;
   const otherSessions = await q.count(
     "SELECT COUNT(*) AS n FROM sessions WHERE user_id = ? AND expires_at > ? AND token_hash <> ?",
     user.id,
@@ -28,6 +32,14 @@ export default async function Security() {
       <Section id="twofactor-h" title="Two-step sign-in">
         <TwoFactor enabled={!!user.totp_enabled_at} alerts={!!user.signin_alerts} />
       </Section>
+      {googleConfig() && !isPreview && (
+        <Section id="google-h" title="Google sign-in">
+          <GoogleSignIn
+            connectedAt={user.google_linked_at ? new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: user.tz || "UTC" }).format(Number(user.google_linked_at)) : null}
+            note={sp.google}
+          />
+        </Section>
+      )}
     </>
   );
 }

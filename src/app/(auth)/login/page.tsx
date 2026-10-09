@@ -9,6 +9,8 @@ const GOOGLE_ERRORS: Record<string, string> = {
   unconfirmed: "Your FloorTest account's email isn't confirmed yet. Use “Email me a sign-in code” below once; after that, Google works.",
   suspended: "This account is suspended. To appeal, go to the Contact page and choose Suspension appeal.",
   expired: "That took too long. Try Continue with Google again.",
+  untrusted: "Google sign-in works with Gmail and company Google Workspace accounts. For this email, log in with your password or an email code.",
+  different: "A different Google account is connected to this FloorTest account. Use that one, or log in another way.",
   failed: "Google didn't confirm your sign-in. Try again, or log in another way.",
 };
 
