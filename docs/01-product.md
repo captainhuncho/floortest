@@ -26,7 +26,7 @@ Keep this file true to what is live. Any change to a feature updates its row her
 | Contacts | Everyone who sent: counts, verified badge, messages, block | `/dashboard/contacts` |
 | Send | Send your own music to another link; sent list with progress (Delivered → Listened → Downloaded → Replied → Played out); sends older than 10 days fold under "Older than 10 days" | `/dashboard/send` |
 | Account / Settings | Profile + public page, receiving rules, notifications, plan, security (password, devices, two-factor, Google sign-in), delete account, Day/Night/System theme | `/dashboard/account`, `/dashboard/settings/*` |
-| Plans | Free (20 tracks), Pro ($6.99/mo, $77.99/yr, 500 tracks, folders 1 GB), Team ($12.99/mo, $144.99/yr, 2000 tracks, folders 3 GB, track artwork). Discounts set in ops. Beta: Pro/Team by request (form), free. After beta: self-serve subscription | `/dashboard/plans`, `/request`, `/checkout` |
+| Plans | Paid via Paddle on the web; in the (planned) app via Apple/Google in-app purchase — one plan per account either way. Free (20 tracks), Pro ($6.99/mo, $77.99/yr, 500 tracks, folders 1 GB), Team ($12.99/mo, $144.99/yr, 2000 tracks, folders 3 GB, track artwork). Discounts set in ops. Beta: Pro/Team by request (form), free. After beta: self-serve subscription | `/dashboard/plans`, `/request`, `/checkout` |
 | Referrals | Bonus track slots for both sides once the friend's first track arrives | `/dashboard/referrals` |
 
 ## Features (sender)

@@ -15,7 +15,8 @@ Core product is live: sending, review, collections, Prepare/downloads, plans by 
 
 ## Mobile app (picked back up 9 Oct · planning)
 Plan + tappable prototype: claude.ai/artifact/5BVVpA3Zn9AxH71ut9hGFr (private), kept in step with these docs.
-- Decide: payments in the app vs web-only; enrol Apple Developer ($99/yr, company + D-U-N-S) and Google Play ($25).
+- **Payments (decided 9 Oct):** web via Paddle, and in the app via Apple in-app purchase / Google Play Billing only (store rules). One plan per account from either source; no links to web payment inside the app; web subscribers see "managed on the website"; Restore purchases; server verifies purchases with Apple/Google and follows their renewal, cancellation and refund messages.
+- Owner: enrol Apple Developer ($99/yr, company + D-U-N-S) and Google Play ($25).
 - Foundations (after Vercel Pro): `/api/v1` with app tokens (never database or storage keys on the phone), Sign in with Apple (required now that Google sign-in is live), push service, server-made audio previews.
 - Build (~4 weeks): Capacitor shell, background player + lock screen, push, share-to-FloorTest, swipe review, tabs Floor · Queue · Collections · Prepare. Then test + store review (~2 weeks).
 
