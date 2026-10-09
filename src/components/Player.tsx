@@ -58,7 +58,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     a.src = `/api/tracks/${t.id}/audio`;
     void a.play().catch(() => setPlaying(false));
     if ("mediaSession" in navigator) {
-      navigator.mediaSession.metadata = new MediaMetadata({ title: t.title, artist: t.artist, album: "FloorTest" });
+      // Lock screen, Control Centre and headphones: title, artist and the FloorTest crest as artwork.
+      navigator.mediaSession.metadata = new MediaMetadata({ title: t.title, artist: t.artist, album: "FloorTest", artwork: [{ src: "/icon.svg", sizes: "512x512", type: "image/svg+xml" }] });
     }
     if (!t.peaks) void backfill(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -120,6 +121,15 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       navigator.mediaSession.setActionHandler("pause", () => a.pause());
       navigator.mediaSession.setActionHandler("seekbackward", () => (a.currentTime = Math.max(0, a.currentTime - 10)));
       navigator.mediaSession.setActionHandler("seekforward", () => (a.currentTime = Math.min(a.duration, a.currentTime + 10)));
+      // Skip between tracks in the current queue from the lock screen.
+      const step = (by: number) => {
+        const q = queue.current;
+        const i = q.findIndex((t) => t.id === listened.current.id);
+        const t = q[i + by];
+        if (i >= 0 && t) start(t);
+      };
+      navigator.mediaSession.setActionHandler("nexttrack", () => step(1));
+      navigator.mediaSession.setActionHandler("previoustrack", () => step(-1));
     }
     return () => {
       a.pause();

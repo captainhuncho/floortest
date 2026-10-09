@@ -92,29 +92,70 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
     return () => window.removeEventListener("keydown", onKey);
   }, [decide, next, prevHref, player, router, toast, track]);
 
-  // Phones: swipe the review panel right to keep, left for Not for me.
+  // Phones: drag the review panel right to keep, left for Not for me. The panel follows the finger with a stamp;
+  // let go past the line to decide (with a haptic tap in the app), or short of it to snap back.
   useEffect(() => {
     if (!window.matchMedia("(pointer: coarse)").matches) return;
     const zone = document.querySelector<HTMLElement>("[data-swipe-zone]");
     if (!zone) return;
-    let x0 = 0;
-    let y0 = 0;
+    const LINE = 90;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let x0 = 0, y0 = 0, dx = 0, mode: "idle" | "maybe" | "drag" | "scroll" = "idle";
+    const haptic = () => {
+      const cap = (window as unknown as { Capacitor?: { Plugins?: { Haptics?: { impact: (o: { style: string }) => Promise<void> } } } }).Capacitor;
+      if (cap?.Plugins?.Haptics) void cap.Plugins.Haptics.impact({ style: "MEDIUM" }).catch(() => {});
+      else navigator.vibrate?.(12);
+    };
+    const paint = (x: number) => {
+      zone.style.transform = x ? `translateX(${x}px) rotate(${x / 40}deg)` : "";
+      zone.dataset.swipe = x > LINE / 3 ? "keep" : x < -LINE / 3 ? "pass" : "";
+      zone.style.setProperty("--swipe-strength", String(Math.min(1, Math.abs(x) / LINE)));
+    };
     const start = (e: TouchEvent) => {
+      if (isTyping(e.target) || (e.target instanceof HTMLElement && e.target.closest("[role=slider], input, textarea, button, a"))) return void (mode = "idle");
       x0 = e.touches[0].clientX;
       y0 = e.touches[0].clientY;
+      dx = 0;
+      mode = "maybe";
+      zone.style.transition = "none";
     };
-    const end = (e: TouchEvent) => {
-      if (isTyping(e.target) || (e.target instanceof HTMLElement && e.target.closest("[role=slider], input, textarea"))) return;
-      const dx = e.changedTouches[0].clientX - x0;
-      const dy = e.changedTouches[0].clientY - y0;
-      if (Math.abs(dx) < 90 || Math.abs(dy) > 60) return;
-      decide(dx > 0 ? "kept" : "passed");
+    const move = (e: TouchEvent) => {
+      if (mode === "idle" || mode === "scroll") return;
+      const x = e.touches[0].clientX - x0;
+      const y = e.touches[0].clientY - y0;
+      if (mode === "maybe") {
+        if (Math.abs(y) > 12 && Math.abs(y) > Math.abs(x)) return void (mode = "scroll");
+        if (Math.abs(x) > 12) mode = "drag";
+        else return;
+      }
+      e.preventDefault();
+      if ((Math.abs(dx) < LINE) !== (Math.abs(x) < LINE)) haptic(); // crossing the line
+      dx = x;
+      paint(dx);
+    };
+    const end = () => {
+      if (mode !== "drag") return void (mode = "idle");
+      mode = "idle";
+      zone.style.transition = reduce ? "none" : "transform .22s cubic-bezier(.2,.8,.2,1)";
+      if (Math.abs(dx) < LINE) return paint(0);
+      const keep = dx > 0;
+      paint(keep ? window.innerWidth : -window.innerWidth);
+      setTimeout(() => {
+        zone.style.transition = "none";
+        paint(0);
+        decide(keep ? "kept" : "passed");
+      }, reduce ? 0 : 200);
     };
     zone.addEventListener("touchstart", start, { passive: true });
+    zone.addEventListener("touchmove", move, { passive: false });
     zone.addEventListener("touchend", end);
+    zone.addEventListener("touchcancel", end);
     return () => {
       zone.removeEventListener("touchstart", start);
+      zone.removeEventListener("touchmove", move);
       zone.removeEventListener("touchend", end);
+      zone.removeEventListener("touchcancel", end);
+      paint(0);
     };
   }, [decide]);
 
