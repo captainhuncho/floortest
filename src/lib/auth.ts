@@ -107,7 +107,7 @@ export const currentUser = cache(async (): Promise<User | null> => {
   if (!token) return null;
   const cols = USER_COLUMNS.split(", ").map((c) => `u.${c}`).join(", ");
   const row = await q.get<User & { last_active_at?: number | null }>(
-    `SELECT ${cols}, u.last_active_at FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ? AND u.suspended_at IS NULL`,
+    `SELECT ${cols}, u.last_active_at FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.kind = 'web' AND s.expires_at > ? AND u.suspended_at IS NULL`,
     hashToken(token),
     now(),
   );

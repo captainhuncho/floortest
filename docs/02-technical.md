@@ -18,6 +18,7 @@ What FloorTest is built on, so nobody guesses. Change a tool, service or limit â
 | Images | sharp: covers, collection art, site images resized to WebP. Track artwork is **not** re-encoded | `src/lib/image-optimize.ts` |
 | Audio analysis | In the browser (duration, BPM, waveform peaks); tags via music-metadata | |
 | Site editing | Draft mode + signed preview cookie bound to the ops session (token hash); `src/lib/site-editor.ts` (permission), `/api/site-edit` (+ `/image`), `src/components/SiteEditor.tsx`, shared save in `src/lib/content-write.ts` | |
+| App API | `/api/v1` for the mobile app (`src/lib/app-auth.ts`, `src/lib/api-v1.ts`): `auth/login` (same counters, human check and two-step as the web), `auth/refresh` (rotating), `auth/logout`, `me`, `queue`, `tracks/:id/decision`, `tracks/:id/audio` (signed link). Refresh tokens are `sessions` rows with kind `app` (60 days); access tokens are signed, 15 minutes, re-checked against the session on every request | |
 | Scheduled jobs | Vercel Cron: `/api/cron/digest`, `/api/cron/purge` (retention, storage deletions) | |
 
 ## Hosts

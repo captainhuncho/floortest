@@ -17,7 +17,7 @@ Core product is live: sending, review, collections, Prepare/downloads, plans by 
 Plan + tappable prototype: claude.ai/artifact/5BVVpA3Zn9AxH71ut9hGFr (private), kept in step with these docs.
 - **Payments (decided 9 Oct):** web via Paddle, and in the app via Apple in-app purchase / Google Play Billing only (store rules). One plan per account from either source; no links to web payment inside the app; web subscribers see "managed on the website"; Restore purchases; server verifies purchases with Apple/Google and follows their renewal, cancellation and refund messages.
 - Owner: enrol Apple Developer ($99/yr, company + D-U-N-S) and Google Play ($25).
-- Foundations (after Vercel Pro): `/api/v1` with app tokens (never database or storage keys on the phone), Sign in with Apple (required now that Google sign-in is live), push service, server-made audio previews.
+- Foundations: ✅ `/api/v1` core (sign-in, refresh, sign-out, me, queue, keep/pass, audio) built 9 Oct with e2e tests; still to add: sends, collections, Prepare, push registration, uploads. After Vercel Pro: rest of (never database or storage keys on the phone), Sign in with Apple (required now that Google sign-in is live), push service, server-made audio previews.
 - Build (~4 weeks): Capacitor shell, background player + lock screen, push, share-to-FloorTest, swipe review, tabs Floor · Queue · Collections · Prepare. Then test + store review (~2 weeks).
 
 ## Before public launch (in order)
@@ -37,6 +37,7 @@ Plan + tappable prototype: claude.ai/artifact/5BVVpA3Zn9AxH71ut9hGFr (private), 
 - Rekordbox how-to video, footer legal placement, mobile footer redesign.
 
 ## Done (recent)
+- 9 Oct: mobile app API v1 core (app sessions in `sessions`, rotating refresh, signed 15-min access tokens) + e2e tests.
 - 9 Oct: human check (Cloudflare) on log-in, email codes and ops sign-in after 3 wrong tries.
 - 9 Oct: end-to-end tests (Playwright): sign-up → send → keep → download, plus security guards. Floor greets by first name.
 - 9 Oct: on-page editing extended to Pricing, Sign-up/Log-in, public link and receipts.

@@ -39,6 +39,8 @@ Files are never public: the app hands out short-lived signed links after checkin
 
 Every ops page and action names its permission (`src/lib/ops-perms.ts`); the build fails if one doesn't.
 
+The mobile app signs in as an `app` row in `sessions` (refresh token stored hashed); it holds no database or storage keys, and "sign out everywhere", password changes and suspensions end it like any browser session. Browser cookies only ever match `web` sessions.
+
 Ops reaching into the main site (on-page editing, read-only "View as") is bound to the exact ops session that started it: signing out of ops or its timeout ends it at once.
 
 ## Retention and deletion

@@ -1198,4 +1198,13 @@ create unique index if not exists users_google_sub on users(google_sub) where go
     id: "0074_view_ticket_session",
     sql: `alter table view_tickets add column if not exists session_hash text not null default '';`,
   },
+  {
+    // The mobile app signs in through the same sessions table (kind 'app'), so every "sign out everywhere",
+    // password change and ops sign-out also signs out the phone.
+    id: "0075_app_sessions",
+    sql: `
+alter table sessions add column if not exists kind text not null default 'web';
+alter table sessions add column if not exists label text not null default '';
+`,
+  },
 ];
