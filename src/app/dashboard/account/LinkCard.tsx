@@ -16,7 +16,7 @@ export function LinkCard({ link, handle, collections, activeId }: { link: string
       <div className="flex gap-2">
         <button
           type="button"
-          className="flex-1 rounded-md bg-bone px-3 py-1.5 text-[11px] font-bold text-ink transition active:scale-95 md:py-2.5 md:text-[12px]"
+          className="btn-lime btn-sm flex-1 md:min-h-10"
           onClick={() => {
             navigator.clipboard?.writeText(link);
             setCopied(true);
@@ -25,7 +25,7 @@ export function LinkCard({ link, handle, collections, activeId }: { link: string
         >
           {copied ? "Copied" : "Copy link"}
         </button>
-        <a href={`/${handle}`} target="_blank" className="rounded-md border border-line px-3 py-1.5 text-[11px] font-bold text-mute hover:text-bone md:px-5 md:py-2.5 md:text-[12px]">
+        <a href={`/${handle}`} target="_blank" className="btn-ghost btn-sm md:min-h-10">
           Preview
         </a>
       </div>

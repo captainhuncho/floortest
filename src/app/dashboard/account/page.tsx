@@ -81,7 +81,7 @@ export default async function Account() {
       <div className="hidden items-center justify-between gap-4 md:flex">
         <h1 className="text-[32px] font-bold text-bone">Account</h1>
         <form action={logout}>
-          <button className="rounded-full border border-danger/50 px-4 py-2 text-[12px] font-bold text-danger hover:bg-danger/10">Sign out</button>
+          <button className="btn-danger btn-sm">Sign out</button>
         </form>
       </div>
       <div className="flex h-12 items-center gap-2 md:hidden">
@@ -216,7 +216,7 @@ export default async function Account() {
       </div>
 
       <form action={logout} className="mt-2 md:hidden">
-        <button className="w-full rounded-xl border border-danger/50 py-3 text-[13px] font-bold text-danger">Sign out</button>
+        <button className="btn-danger w-full">Sign out</button>
       </form>
       <p className="text-center text-[11px] text-faint">FLOORTEST v{VERSION}</p>
     </div>

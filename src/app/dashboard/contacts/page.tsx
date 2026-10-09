@@ -211,10 +211,10 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
                       )}
                     </div>
                     <div className="flex gap-1.5">
-                      <a href={`mailto:${r.email}`} className="flex items-center gap-1.5 rounded-md border border-line bg-ink-3 px-2.5 py-1.5 text-[11px] text-mute">
+                      <a href={`mailto:${r.email}`} className="btn-ghost btn-sm">
                         ✉ <span className="font-bold">email</span>
                       </a>
-                      <Link href={`/dashboard/contacts/${r.id}`} aria-label={`More about ${r.name}`} className="rounded-md border border-line bg-ink-3 px-2.5 py-1.5 text-[11px] text-mute">
+                      <Link href={`/dashboard/contacts/${r.id}`} aria-label={`More about ${r.name}`} className="btn-ghost btn-sm">
                         ···
                       </Link>
                     </div>
@@ -406,10 +406,10 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
                       </td>
                       <td className="px-4 py-3.5">
                         <div className="flex justify-end gap-1.5">
-                          <a href={`mailto:${r.email}`} className="rounded-md border border-line bg-ink-3 px-2.5 py-1.5 text-[11px] font-bold text-mute hover:text-bone">
+                          <a href={`mailto:${r.email}`} className="btn-ghost btn-sm">
                             email
                           </a>
-                          <Link href={`/dashboard/contacts/${r.id}`} aria-label={`More about ${r.name}`} className="rounded-md border border-line bg-ink-3 px-2.5 py-1.5 text-[11px] text-mute hover:text-bone">
+                          <Link href={`/dashboard/contacts/${r.id}`} aria-label={`More about ${r.name}`} className="btn-ghost btn-sm">
                             ···
                           </Link>
                         </div>
@@ -469,7 +469,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
                     </div>
                   )}
                   <div className="flex justify-end">
-                    <Link href={`/dashboard/contacts/${m.sender_id}`} className="rounded-md border border-line px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.5px] hover:border-lime hover:text-lime">
+                    <Link href={`/dashboard/contacts/${m.sender_id}`} className="btn-ghost btn-sm">
                       Reply →
                     </Link>
                   </div>

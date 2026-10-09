@@ -53,7 +53,7 @@ export function GoogleSignIn({ connectedAt, note }: { connectedAt: string | null
             <span className="block text-xs text-dim">Signed up with Google? Set a password first with &ldquo;Forgot your password?&rdquo; on the log-in page.</span>
           </label>
           <div className="flex gap-2">
-            <button className="btn-sm rounded-md border border-danger/50 px-3 text-danger hover:bg-danger/10" disabled={pending}>
+            <button className="btn-danger btn-sm" disabled={pending}>
               Remove
             </button>
             <button type="button" className="btn-ghost btn-sm" onClick={() => setConfirm(false)}>

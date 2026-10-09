@@ -19,9 +19,10 @@ export function DownloadActions({
   size?: "md" | "sm";
   extra?: React.ReactNode;
 }) {
-  const box = size === "md" ? "rounded-lg px-2 py-2.5 text-xs md:px-4" : "rounded-md px-3 py-1.5 text-[11px]";
+  // Phones fit three across in a grid, so the regular size trims its side padding there.
+  const box = size === "md" ? "px-2! md:px-4!" : "btn-sm";
   const filesHref = `/api/export?files=1${collectionId ? `&collection=${collectionId}&all=1` : ""}`;
-  const files = `block whitespace-nowrap border border-line bg-ink-3 text-center font-bold text-bone hover:bg-ink-4 md:shrink-0 ${box}`;
+  const files = `btn-ghost w-full md:w-auto md:shrink-0 ${box}`;
   return (
     <div className={size === "md" ? "grid grid-cols-3 items-start gap-2 md:flex md:shrink-0 md:justify-end" : "flex flex-wrap items-center gap-2"}>
       <ExportButton
@@ -32,7 +33,7 @@ export function DownloadActions({
         label={collectionId ? "Download collection" : "Download kept"}
         align="start"
         showCount={false}
-        buttonClassName={`btn-lime w-full whitespace-nowrap font-bold disabled:opacity-40 ${box}`}
+        buttonClassName={`btn-lime w-full ${box}`}
       />
       {count > 0 ? (
         <a href={filesHref} className={files} title="The original audio files, no playlist or XML">

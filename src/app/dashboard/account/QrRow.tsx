@@ -60,10 +60,10 @@ function QrDialog({ handle, link, onClose }: { handle: string; link: string; onC
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={src} alt={`QR code linking to ${link}`} className="mt-5 aspect-square w-full rounded-xl bg-white" />
         <div className="mt-5 grid grid-cols-2 gap-2">
-          <a href={`${src}?format=png&download=1`} className="rounded-md bg-lime px-3 py-2.5 text-center text-[12px] font-bold text-ink">
+          <a href={`${src}?format=png&download=1`} className="btn-lime">
             Download PNG
           </a>
-          <a href={`${src}?format=svg&download=1`} className="rounded-md border border-line px-3 py-2.5 text-center text-[12px] font-bold text-bone hover:border-mute">
+          <a href={`${src}?format=svg&download=1`} className="btn-ghost">
             Download SVG
           </a>
         </div>

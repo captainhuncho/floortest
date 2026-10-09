@@ -14,7 +14,7 @@ export async function StemsBox({ track: t, senderName }: { track: Track; senderN
           Stems{stems.length ? ` (${stems.length})` : ""}
         </h3>
         {stems.length > 0 && (
-          <a href={`/api/tracks/${t.id}/stems/zip`} className="rounded-md border border-line px-2.5 py-1 text-[11px] font-bold hover:border-lime hover:text-lime">
+          <a href={`/api/tracks/${t.id}/stems/zip`} className="btn-ghost btn-sm">
             Download all (ZIP)
           </a>
         )}
@@ -37,7 +37,7 @@ export async function StemsBox({ track: t, senderName }: { track: Track; senderN
       ) : (
         <form action={askForStems.bind(null, t.id)} className="mt-2 flex flex-wrap items-center justify-between gap-2">
           <p className="text-[12px] text-mute">Want to play it out properly? Ask {first} for the stems.</p>
-          <button className="rounded-md bg-lime px-3 py-1.5 text-[11px] font-bold text-ink active:scale-95">Request stems</button>
+          <button className="btn-lime btn-sm">Request stems</button>
         </form>
       )}
     </section>

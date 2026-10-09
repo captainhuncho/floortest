@@ -142,7 +142,7 @@ export function TwoFactor({ enabled, alerts }: { enabled: boolean; alerts: boole
               <input className="input font-mono" name="code" required autoComplete="one-time-code" />
             </label>
             <div className="flex gap-2">
-              <button className="btn-sm rounded-md border border-danger/50 px-3 text-danger hover:bg-danger/10" disabled={offPending}>
+              <button className="btn-danger btn-sm" disabled={offPending}>
                 Turn off
               </button>
               <button type="button" className="btn-ghost btn-sm" onClick={() => setConfirmOff(false)}>

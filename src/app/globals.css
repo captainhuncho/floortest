@@ -103,10 +103,11 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
 @utility input {
   @apply w-full rounded-md border border-line bg-ink-2 px-3 py-2.5 text-sm text-bone placeholder:text-dim outline-none transition focus:border-lime/70 focus:ring-2 focus:ring-lime/15;
 }
-@utility btn { @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40; }
-@utility btn-lime { @apply btn bg-lime text-ink hover:bg-[#e2ff7a]; }
+@utility btn { @apply inline-flex items-center justify-center gap-2 rounded-lg whitespace-nowrap px-4 py-2.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40; }
+@utility btn-lime { @apply btn border border-transparent bg-lime text-ink hover:bg-[#e2ff7a]; }
 @utility btn-ghost { @apply btn border border-line text-bone hover:border-mute hover:bg-ink-3; }
-@utility btn-sm { @apply min-h-9 px-3! py-1.5! text-sm!; }
+@utility btn-danger { @apply btn border border-danger/50 text-danger hover:bg-danger/10; }
+@utility btn-sm { @apply min-h-9 px-3! py-1.5! text-xs!; }
 /* Touch screens: every small button is still a full 44px target. */
 @media (pointer: coarse) { .btn-sm, .input, select.input, .tap-tall { min-height: 44px; }
   .tap { min-height: 44px; min-width: 44px; } }
@@ -129,7 +130,7 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
 /* Dashboard: the older shared pieces (label, button, input, chip) in the Figma mono style,
    so pages that use them match the redesigned ones. Scoped to the dashboard's <main>. */
 #main .label { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; color: var(--color-faint); }
-#main .btn { font-size: 12px; font-weight: 700; }
+#main :is(.btn, .btn-lime, .btn-ghost, .btn-danger) { font-size: 12px; font-weight: 700; }
 #main .input { font-size: 12px; background: var(--color-ink-3); }
 #main .chip { font-size: 11px; font-weight: 700; }
 #main .card { background: var(--color-ink-3); }

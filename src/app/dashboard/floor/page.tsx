@@ -135,7 +135,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
       tone: "ok",
       text: `Your link is open and sending tracks to “${active.name}”${active.closes_at ? `, closing ${fmtDay(active.closes_at)}` : ""}.`,
       action: (
-        <a href={`/${user.handle}`} target="_blank" className="shrink-0 rounded-lg border border-line bg-ink-3 px-3 py-[7px] text-xs font-bold text-bone">
+        <a href={`/${user.handle}`} target="_blank" className="btn-ghost btn-sm shrink-0">
           Preview link
         </a>
       ),

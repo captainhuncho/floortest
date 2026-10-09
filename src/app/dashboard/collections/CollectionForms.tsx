@@ -514,7 +514,7 @@ export function DeleteCollection({ c, canDelete }: { c: { id: number; name: stri
           <p className="text-xs text-mute">{canDelete ? "Its tracks stay in your Review Queue, unsorted. This can't be undone." : "You need at least one collection, so this one can't be deleted. Make another first."}</p>
         </div>
         {canDelete && !open && (
-          <button type="button" onClick={() => setOpen(true)} className="btn-sm rounded-md border border-danger/50 px-4 text-danger hover:bg-danger/10">
+          <button type="button" onClick={() => setOpen(true)} className="btn-danger btn-sm">
             Delete…
           </button>
         )}
@@ -534,7 +534,7 @@ export function DeleteCollection({ c, canDelete }: { c: { id: number; name: stri
             <input value={typed} onChange={(e) => setTyped(e.target.value)} autoFocus autoComplete="off" spellCheck={false} className="input font-mono" aria-invalid={typed !== "" && !match} />
           </label>
           <div className="flex flex-wrap gap-2">
-            <button disabled={!match || pending} className="btn-sm rounded-md bg-danger px-4 font-bold text-ink disabled:cursor-not-allowed disabled:opacity-40">
+            <button disabled={!match || pending} className="btn btn-sm bg-danger font-bold text-ink disabled:cursor-not-allowed disabled:opacity-40">
               {pending ? "Deleting…" : "Delete collection"}
             </button>
             <button type="button" onClick={() => { setOpen(false); setTyped(""); }} className="btn-ghost btn-sm">
