@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { GateForm } from "./GateForm";
 import { SignInDialog } from "./SignInDialog";
 
@@ -17,21 +16,11 @@ export default async function ComingSoon({ searchParams }: { searchParams: Promi
         <span aria-hidden className="size-2 animate-pulse rounded-full bg-lime motion-reduce:animate-none" />
         Coming soon
       </h1>
-      {/* What FloorTest is, readable without the password (Google's sign-in review needs this on the home page). */}
-      <p className="mt-6 text-lg leading-relaxed text-bone">
-        FloorTest is a private receiving desk for unreleased music: one link for DJs, curators and labels, the original files, and a receipt for every
-        artist. Sign in with email, a one-time code or Google (we only use your name and email).
-      </p>
-      <p className="mt-6 text-mute">We&apos;re in a private beta. If you&apos;ve been invited to look around, enter the password.</p>
+      <p className="mt-6 text-mute">If you&apos;ve been invited to look around, enter the password.</p>
       <GateForm next={next} />
       <div className="mt-6">
         <SignInDialog />
       </div>
-      <nav aria-label="Legal" className="mt-12 flex flex-wrap gap-x-5 gap-y-2 text-sm text-mute">
-        <Link href="/privacy" className="underline underline-offset-4 hover:text-bone">Privacy Policy</Link>
-        <Link href="/terms" className="underline underline-offset-4 hover:text-bone">Terms of Use</Link>
-        <Link href="/cookies" className="underline underline-offset-4 hover:text-bone">Cookies</Link>
-      </nav>
     </main>
   );
 }

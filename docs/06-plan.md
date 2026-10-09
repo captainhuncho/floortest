@@ -7,7 +7,7 @@ Core product is live: sending, review, collections, Prepare/downloads, plans by 
 
 | # | Item | Who | Status |
 |---|---|---|---|
-| B1 | Google brand verification (domain verified in Search Console → resubmit) | Owner | waiting on Google |
+| B1 | Google brand verification: paused until launch (site stays private). Domain already verified. To resubmit: make legal pages public again + a short description on the home/gate page, then "I have fixed the issues" | Owner + dev | at launch |
 | B2 | DNS update to Vercel's new addresses (saved 9 Oct) → Refresh in Vercel | Owner | check |
 | B3 | Strix security test against local/preview | Owner + dev | parked, needs AI key |
 | B4 | Folder cover follow-up: move cover to the next track if the first is deleted | Dev | optional |

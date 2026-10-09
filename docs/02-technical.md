@@ -21,7 +21,7 @@ What FloorTest is built on, so nobody guesses. Change a tool, service or limit �
 | Scheduled jobs | Vercel Cron: `/api/cron/digest`, `/api/cron/purge` (retention, storage deletions) | |
 
 ## Hosts
-- `floortest.app` — product (behind the coming-soon password until launch; legal pages public).
+- `floortest.app` — product (everything behind the coming-soon password until launch, legal pages included).
 - `ops.floortest.app` — ops only, own sign-in with two-factor every time; proxy splits hosts (`src/proxy.ts`).
 - DNS at the domain's cPanel host (Zone Editor): A `216.198.79.1` + `64.29.17.1`, `www`/`ops` CNAME to Vercel. Mail records belong to the host and Resend: don't touch.
 

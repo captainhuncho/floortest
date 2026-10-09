@@ -5,8 +5,8 @@ What happens when someone clicks, and which page comes next. Change a route or r
 ## Visitor (site gated until launch)
 ```
 floortest.app ──(no gate pass)──► /coming-soon ──password──► the page they wanted
-                                     ├─ Sign in ──► /login
-                                     └─ Privacy · Terms · Cookies (always public)
+                                     └─ Sign in ──► /login
+Nothing about FloorTest is public before launch (legal pages too); the gate shows only "Coming soon".
 ```
 
 ## Receiver: sign-up
