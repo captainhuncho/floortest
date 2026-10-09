@@ -45,8 +45,8 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
     return ev ? `${ev[0]} ${ago(Number(ev[1]))}` : `Delivered ${ago(r.created_at)} · not played yet`;
   };
 
-  // The last 30 days stay open; anything older folds under "Older than 30 days".
-  const cutoff = Date.now() - 30 * 86_400_000;
+  // The last 10 days stay open; anything older folds under "Older than 10 days".
+  const cutoff = Date.now() - 10 * 86_400_000;
   const recent = sent.filter((r) => Number(r.created_at) >= cutoff);
   const older = sent.filter((r) => Number(r.created_at) < cutoff);
   const row = (r: Sent) => (
@@ -105,7 +105,7 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
         <p className="mt-1 text-sm text-mute">Tap a send to follow it: when it&apos;s delivered, listened to, downloaded and replied to.</p>
         <ul className="mt-3 divide-y divide-line overflow-hidden rounded-md border border-line">
           {recent.map(row)}
-          {!recent.length && older.length > 0 && <li className="px-4 py-4 text-sm text-mute">Nothing sent in the last 30 days.</li>}
+          {!recent.length && older.length > 0 && <li className="px-4 py-4 text-sm text-mute">Nothing sent in the last 10 days.</li>}
           {!sent.length && (
             <li className="px-4 py-6 text-sm text-mute">
               Nothing sent yet. Once you send a track it shows up here, and you can tap it to follow it: delivered, listened to, downloaded and the receiver&apos;s
@@ -114,11 +114,11 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
           )}
         </ul>
         {older.length > 0 && (
-          // Sends over 30 days old fold away so the page stays short; tap + to see them.
+          // Sends over 10 days old fold away so the page stays short; tap + to see them.
           <details className="group mt-3">
             <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg border border-line px-4 py-3 text-sm font-medium hover:bg-ink-2 [&::-webkit-details-marker]:hidden">
               <span>
-                Older than 30 days <span className="text-mute tnum">({older.length})</span>
+                Older than 10 days <span className="text-mute tnum">({older.length})</span>
               </span>
               <span aria-hidden className="grid size-6 place-items-center rounded-md border border-line text-base leading-none">
                 <span className="group-open:hidden">+</span>
