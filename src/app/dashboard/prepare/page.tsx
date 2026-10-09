@@ -1,7 +1,7 @@
 import { trackUse } from "@/lib/usage";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
-import { ExportButton } from "../ExportButton";
+import { DownloadActions } from "../DownloadActions";
 import { loadRows } from "../rows";
 import { ClearKept } from "./ClearKept";
 import { KeptCards } from "./KeptCards";
@@ -27,24 +27,7 @@ export default async function PrepareForSet() {
       <p className="mt-3 max-w-md text-xs leading-[1.4] text-mute">Every track you keep lands here. Download a crate with a Rekordbox XML and playlist, or just the files.</p>
       </div>
       {/* Every option visible, same size: people use different ones. Clear is outlined red, and still confirms. */}
-      <div className="mt-4 grid grid-cols-3 items-start gap-2 md:mt-1 md:flex md:shrink-0 md:justify-end">
-        <ExportButton
-          collectionId={null}
-          count={kept.length}
-          label="Download crate"
-          align="start"
-          showCount={false}
-          buttonClassName="btn-lime w-full whitespace-nowrap rounded-lg px-2 py-2.5 text-xs font-bold disabled:opacity-40 md:px-4"
-        />
-        {kept.length > 0 ? (
-          <a href="/api/export?files=1" className="block whitespace-nowrap rounded-lg border border-line bg-ink-3 px-2 py-2.5 text-center text-xs font-bold text-bone hover:bg-ink-4 md:shrink-0 md:px-4" title="The original audio files, no playlist or XML">
-            Files only
-          </a>
-        ) : (
-          <span className="pointer-events-none block whitespace-nowrap rounded-lg md:shrink-0 border border-line bg-ink-3 px-2 py-2.5 text-center text-xs font-bold text-bone opacity-40 md:px-4">Files only</span>
-        )}
-        <ClearKept count={kept.length} />
-      </div>
+      <DownloadActions count={kept.length} extra={<ClearKept count={kept.length} />} />
       </div>
 
       <section aria-labelledby="kept-h" className="mt-3 pt-2 md:mt-6">

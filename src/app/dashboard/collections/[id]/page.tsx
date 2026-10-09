@@ -8,7 +8,7 @@ import { collectionsFor, isClosed } from "@/lib/desk";
 import { q, type Track } from "@/lib/db";
 import { fmtDay } from "@/lib/format";
 import { genresFor, MIX_STATUS } from "@/lib/plans";
-import { ExportButton } from "../../ExportButton";
+import { DownloadActions } from "../../DownloadActions";
 import { ListRows, type ListRow } from "../../list/ListRows";
 import { CollectionDetailHeader, DeleteCollection, EditCollectionInfo } from "../CollectionForms";
 import { Teammates } from "../Teammates";
@@ -140,7 +140,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
             </h1>
             <div className="flex flex-wrap items-center gap-2">
               <EditCollectionInfo c={editable} receiving={receiving} closed={isClosed(c)} canDelete={all.length > 1} />
-              <ExportButton collectionId={c.id} crateName={c.name} count={c.count} whole label="Download Originals" buttonClassName="rounded-md bg-bone px-3 py-1.5 text-[11px] font-bold text-ink" />
+              <DownloadActions collectionId={c.id} crateName={c.name} count={c.count} size="sm" />
             </div>
           </div>
         </div>

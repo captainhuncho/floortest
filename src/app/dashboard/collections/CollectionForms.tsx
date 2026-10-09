@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createCollection, deleteCollection, setActiveCollection, updateCollection } from "../actions/collections";
-import { ExportButton } from "../ExportButton";
+import { DownloadActions } from "../DownloadActions";
 import { GenresField } from "./GenresField";
 
 type C = {
@@ -105,7 +105,7 @@ export function CollectionCard({ c, receiving, closed, canDelete, startEditing =
           <Link href={`/dashboard/collections/${c.id}`} className="btn-ghost btn-sm">
             Open
           </Link>
-          <ExportButton collectionId={c.id} crateName={c.name} count={c.count} whole label="Download" variant="ghost" />
+          <DownloadActions collectionId={c.id} crateName={c.name} count={c.count} size="sm" />
           {!receiving && (
             <button className="btn-ghost btn-sm" disabled={pending} onClick={() => start(() => setActiveCollection(c.id))}>
               Send new tracks here
@@ -358,7 +358,7 @@ function CollectionOptions({ c, receiving, onEdit, onClose, showOpen }: { c: C; 
         Edit info
       </button>
       <div>
-        <ExportButton collectionId={c.id} crateName={c.name} count={c.count} whole label="Download collection" variant="ghost" />
+        <DownloadActions collectionId={c.id} crateName={c.name} count={c.count} size="sm" />
       </div>
       <button role="menuitem" className="text-center! text-mute" onClick={onClose}>
         Cancel
