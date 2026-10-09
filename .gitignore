@@ -12,3 +12,8 @@ next-env.d.ts
 # Local AI tool config (never commit)
 .mcp.json
 skills-lock.json
+
+# End-to-end test data and reports
+.e2e/
+test-results/
+playwright-report/

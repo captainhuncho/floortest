@@ -97,7 +97,8 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   const link = `${APP_URL}/${user.handle}`;
   const hour = localHour(prefs.tz);
   const greeting = hour < 5 ? "Late night" : hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-  const first = user.name.split(/\s+/)[0];
+  // Greet by first name; the public name can be a stage name or just the username.
+  const first = user.first_name?.trim() || user.name.split(/\s+/)[0];
   const upNext = upNextRows.map((t) => ({ ...t, peaks: t.peaks ? JSON.parse(t.peaks) : null, played: !!t.played_at }));
 
   // Link health: the one thing to fix, if anything.

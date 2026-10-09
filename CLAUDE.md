@@ -15,4 +15,4 @@ Any change that alters a feature, tool, route, screen rule, table/permission, or
 ## Basics
 - Work on `mobile-next`; `main` deploys production. Ship = merge into `main`, push, confirm the deploy is live.
 - Never put secrets in the repo or chat. Never run scripts against `./data` while the dev server runs; use a scratch `DATA_DIR`.
-- `npm run typecheck`, `npm test`, `npm run check:perms` before shipping.
+- `npm run typecheck`, `npm test`, `npm run check:perms` before shipping; `npm run e2e` when a change touches sending, review, downloads or auth.

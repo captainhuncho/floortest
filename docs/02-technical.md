@@ -34,6 +34,7 @@ What FloorTest is built on, so nobody guesses. Change a tool, service or limit �
 `DATABASE_URL`, `APP_URL`, `APP_SECRET`, `OPS_URL`, `ADMIN_EMAILS`, `S3_*`, `STORAGE_DRIVER`, `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `MAIL_FROM`, `SUPPORT_EMAIL`, `TURNSTILE_*`, `GOOGLE_CLIENT_ID/SECRET`, `CRON_SECRET`, `BACKUP_KEY`, `SITE_PASSWORD`, `BETA_INVITE_CODES`, `DB_POOL_MAX`, `NEXT_PUBLIC_SENTRY_DSN`, optional `ACCOUNT_EMAIL_CAP`. Values never go in the repo or chat.
 
 ## Working rules
+- `npm run e2e`: Playwright end-to-end tests (`e2e/`) in a real browser against a throwaway local copy (fresh seeded data in `.e2e/`, local storage, no email/bot check/site password; port 3210). Covers sign-up with invite → send a WAV → receiver keeps → Download kept ZIP, plus security guards. Stop other dev servers first.
 - `npm run dev` / `typecheck` / `test` / `check:perms`; run migrations or scripts against a scratch `DATA_DIR`, never `./data` while the dev server runs.
 - Deploy = merge `mobile-next` into `main` and push; confirm the production deploy is READY.
 - More: `docs/CODE_STYLE.md`, `docs/API_GUIDE.md`, `docs/DATABASE.md`, `docs/services.md`, `SECURITY.md`.
