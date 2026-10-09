@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { now, q, USER_COLUMNS, type User } from "./db";
 import { env, isProd } from "./env";
-import { hasLiveOpsSession } from "./ops";
+import { opsSessionLive } from "./ops";
 import { GATE_COOKIE, GATE_DAYS, gatePassword, gateToken } from "./site-gate";
 
 const COOKIE = "floortest_session";
@@ -62,19 +62,19 @@ export async function destroySession() {
 
 export const VIEW_AS_COOKIE = "floortest_view_as";
 
-/** Signed "admin X is viewing user Y until T" ticket, readable only on /dashboard pages. */
-export function signViewAs(adminId: number, userId: number, secret: string, ttlMs = 30 * 60_000) {
-  const body = `${adminId}.${userId}.${Date.now() + ttlMs}`;
+/** Signed "admin X, from ops session S, is viewing user Y until T" ticket, readable only on /dashboard pages. */
+export function signViewAs(adminId: number, userId: number, session: string, secret: string, ttlMs = 30 * 60_000) {
+  const body = `${adminId}.${userId}.${session}.${Date.now() + ttlMs}`;
   return `${body}.${crypto.createHmac("sha256", secret).update(`viewas:${body}`).digest("base64url")}`;
 }
 
 function readViewAs(token: string | undefined, secret: string) {
   if (!token) return null;
-  const [a, u, exp, mac] = token.split(".");
-  if (!a || !u || !exp || !mac) return null;
-  const want = crypto.createHmac("sha256", secret).update(`viewas:${a}.${u}.${exp}`).digest("base64url");
+  const [a, u, s, exp, mac] = token.split(".");
+  if (!a || !u || !/^[a-f0-9]{64}$/.test(s ?? "") || !exp || !mac) return null;
+  const want = crypto.createHmac("sha256", secret).update(`viewas:${a}.${u}.${s}.${exp}`).digest("base64url");
   if (want.length !== mac.length || !crypto.timingSafeEqual(Buffer.from(want), Buffer.from(mac)) || Number(exp) < Date.now()) return null;
-  return { adminId: Number(a), userId: Number(u) };
+  return { adminId: Number(a), userId: Number(u), session: s };
 }
 
 /** When an admin is viewing someone's desk: who they're viewing. Null otherwise. */
@@ -82,15 +82,16 @@ export const viewingAs = cache(async (): Promise<{ adminId: number; userId: numb
   const jar = await cookies();
   const va = readViewAs(jar.get(VIEW_AS_COOKIE)?.value, env.secret);
   if (!va) return null;
-  // That admin must still qualify (admin list, confirmed email, two-factor) and be signed in on ops right now.
+  // That admin must still qualify (admin list, confirmed email, two-factor), and the exact ops session that opened
+  // the view must still be live: signing out of ops ends it.
   const admin = await q.get<{ email: string; totp_enabled_at: number | null; email_verified_at: number | null }>(
     "SELECT email, totp_enabled_at, email_verified_at FROM users WHERE id = ? AND suspended_at IS NULL",
     va.adminId,
   );
   if (!admin || !admin.totp_enabled_at || !admin.email_verified_at || !env.adminEmails.includes(admin.email.toLowerCase())) return null;
-  if (!(await hasLiveOpsSession(va.adminId))) return null;
+  if (!(await opsSessionLive(va.session, va.adminId))) return null;
   const target = await q.get<{ handle: string }>("SELECT handle FROM users WHERE id = ?", va.userId);
-  return target ? { ...va, handle: target.handle } : null;
+  return target ? { adminId: va.adminId, userId: va.userId, handle: target.handle } : null;
 });
 
 /** The signed-in user, memoised per request. */

@@ -66,23 +66,22 @@ export async function opsSessionLive(session: string, userId: number) {
   ));
 }
 
-/** Whether this admin has a live ops session right now (for the read-only "view as" on the main site). */
-export async function hasLiveOpsSession(userId: number) {
-  const t = now();
-  return !!(await q.get("SELECT 1 FROM admin_sessions WHERE user_id = ? AND expires_at > ? AND last_seen_at > ?", userId, t, t - IDLE_MS));
-}
-
-/** A single-use, 60-second ticket that carries an admin from ops to the main site to view a desk read-only. */
+/**
+ * A single-use, 60-second ticket that carries an admin from ops to the main site to view a desk read-only. It records
+ * the exact ops session that asked, so the view lives and dies with that session.
+ */
 export async function issueViewTicket(adminId: number, userId: number) {
+  const session = await currentOpsSessionHash();
+  if (!session) throw new Error("No live ops session.");
   const token = crypto.randomBytes(32).toString("base64url");
   await q.run("DELETE FROM view_tickets WHERE expires_at < ?", now());
-  await q.run("INSERT INTO view_tickets (token_hash, admin_id, user_id, expires_at) VALUES (?,?,?,?)", hashToken(token), adminId, userId, now() + 60_000);
+  await q.run("INSERT INTO view_tickets (token_hash, admin_id, user_id, expires_at, session_hash) VALUES (?,?,?,?,?)", hashToken(token), adminId, userId, now() + 60_000, session);
   return token;
 }
 
 export async function redeemViewTicket(token: string) {
-  const row = await q.get<{ admin_id: number; user_id: number }>(
-    "DELETE FROM view_tickets WHERE token_hash = ? AND expires_at > ? RETURNING admin_id, user_id",
+  const row = await q.get<{ admin_id: number; user_id: number; session_hash: string }>(
+    "DELETE FROM view_tickets WHERE token_hash = ? AND expires_at > ? RETURNING admin_id, user_id, session_hash",
     hashToken(String(token).slice(0, 100)), now(),
   );
   return row ?? null;

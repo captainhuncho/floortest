@@ -39,6 +39,8 @@ Files are never public: the app hands out short-lived signed links after checkin
 
 Every ops page and action names its permission (`src/lib/ops-perms.ts`); the build fails if one doesn't.
 
+Ops reaching into the main site (on-page editing, read-only "View as") is bound to the exact ops session that started it: signing out of ops or its timeout ends it at once.
+
 ## Retention and deletion
 - Undecided audio: 90 days. "Not for me": 30 days. Kept: until the receiver deletes. Artwork and stems go with their track.
 - Deleting an account removes every file and row it owns; files are queued in `storage_deletions` and retried until gone; backups age out within 30 days.

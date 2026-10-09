@@ -1193,4 +1193,9 @@ alter table users add column if not exists google_linked_at bigint;
 create unique index if not exists users_google_sub on users(google_sub) where google_sub is not null;
 `,
   },
+  {
+    // "View as" tickets remember the exact ops session that asked, so viewing ends with that session.
+    id: "0074_view_ticket_session",
+    sql: `alter table view_tickets add column if not exists session_hash text not null default '';`,
+  },
 ];
