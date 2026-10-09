@@ -1,3 +1,4 @@
+import { botCheckKey } from "@/lib/turnstile";
 import { redirect } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { currentOpsAdmin } from "@/lib/ops";
@@ -16,6 +17,7 @@ export default async function OpsLogin() {
       <h1 className="mb-8 mt-8 text-2xl font-semibold">Sign in</h1>
       <AuthForm
         action={opsSignIn}
+        challengeKey={await botCheckKey()}
         submit="Sign in"
         fields={[
           { name: "email", label: "Email", type: "email", autoComplete: "username" },

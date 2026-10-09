@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 /** Security behaviour a visitor can see from outside, checked in a real browser. */
 
@@ -30,4 +30,29 @@ test("visitors never get editing markup on public pages", async ({ page }) => {
     await page.goto(path);
     await expect(page.locator("[data-edit], [data-edit-panel], [data-site-editor-ui]")).toHaveCount(0);
   }
+});
+
+test("after 3 wrong passwords, log-in asks for the human check, and the server enforces it", async ({ page }) => {
+  const ghost = `nobody+${Date.now().toString(36)}@example.test`;
+  await page.goto("/login");
+  for (let i = 0; i < 3; i++) {
+    await page.getByLabel("Email").fill(ghost);
+    await page.getByRole("textbox", { name: "Password" }).fill("wrong-password-123");
+    await page.getByRole("button", { name: "Log in" }).click();
+    await expect(page.getByRole("alert").filter({ hasText: /\S/ }).first()).toContainText("Email or password is incorrect");
+  }
+  // The check appears.
+  await expect(page.getByTestId("turnstile")).toHaveCount(1);
+
+  // A fresh page has no check on it: even the right password is refused until the check is passed.
+  await page.goto("/login");
+  await page.getByLabel("Email").fill("demo@floortest.test");
+  await page.getByRole("textbox", { name: "Password" }).fill("floortest-demo");
+  await page.getByRole("button", { name: "Log in" }).click();
+  await expect(page.getByRole("alert").filter({ hasText: /\S/ }).first()).toContainText("Confirm you're human");
+
+  // The check appears on that page too; with it passed, the same log-in goes through.
+  await expect(page.getByTestId("turnstile")).toHaveCount(1);
+  await page.getByRole("button", { name: "Log in" }).click();
+  await page.waitForURL(/\/dashboard\//, { timeout: 20_000 });
 });

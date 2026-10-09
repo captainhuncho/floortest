@@ -24,6 +24,7 @@ import { readChallenge, signChallenge } from "@/lib/totp";
 import { GOOGLE_LINK_COOKIE, GOOGLE_SIGNUP_COOKIE, readIdentity, readPendingLink } from "@/lib/google-auth";
 import { pinGoogle } from "@/lib/google-link";
 import { accountEmailAllowed } from "@/lib/email-budget";
+import { HUMAN_CHECK_AFTER, HUMAN_MESSAGE, humanCheck, recentFailures } from "@/lib/human-check";
 
 const CHALLENGE = "floortest_2fa";
 /** Set by a share link: where to land after signing in or up (only ever a /s/ share page). */
@@ -48,7 +49,8 @@ async function afterPassword(userId: number, how: "password" | "reset" | "email 
   redirect(await landing("/dashboard/floor"));
 }
 
-export type FormState = { error?: string; ok?: boolean } | undefined;
+/** `challenge`: show the human check (after repeated wrong tries). */
+export type FormState = { error?: string; ok?: boolean; challenge?: boolean } | undefined;
 
 const HOUR = 3_600_000;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -222,12 +224,16 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
   const WINDOW = 15 * 60_000;
   if ((await recentCount("login_fail_ip", ip, WINDOW)) >= 20 || (await recentCount("login_fail_email", email, WINDOW)) >= 10)
     return { error: "Too many attempts. Wait 15 minutes, or reset your password." };
+  // After a few wrong tries, prove you're human first (Cloudflare). Checked here on the server, so it can't be skipped.
+  const failures = await recentFailures("login_fail_email", "login_fail_ip", email, ip);
+  const human = await humanCheck(failures, form, ip);
+  if (!human.ok) return { error: HUMAN_MESSAGE, challenge: true };
   const row = await q.get<{ id: number; password_hash: string; suspended_at: number | null }>("SELECT id, password_hash, suspended_at FROM users WHERE email = ?", email);
   const ok = verifyPassword(password, row?.password_hash ?? DUMMY_HASH);
   if (!row || !ok) {
     await record("login_fail_ip", ip);
     await record("login_fail_email", email);
-    return { error: "Email or password is incorrect." };
+    return { error: "Email or password is incorrect.", challenge: failures + 1 >= HUMAN_CHECK_AFTER };
   }
   if (row.suspended_at) return { error: "This account is suspended. To appeal, go to the Contact page and choose Suspension appeal." };
   await afterPassword(row.id, "password");
@@ -285,6 +291,9 @@ export async function requestLoginCode(_: FormState, form: FormData): Promise<Fo
   const email = String(form.get("email") || "").trim().toLowerCase().slice(0, 200);
   if (!EMAIL.test(email)) return { error: "Enter the email you signed up with." };
   const ip = await requestIp();
+  // Asking for codes again and again: prove you're human first.
+  const asked = await recentFailures("login_code_email", "login_code_ip", email, ip);
+  if (!(await humanCheck(asked, form, ip)).ok) return { error: HUMAN_MESSAGE, challenge: true };
   if (!(await allow("login_code_ip", ip, 10, HOUR)) || !(await allow("login_code_email", email, 5, HOUR)))
     return { error: "Too many codes requested. Try again in an hour, or log in with your password." };
   const user = await q.get<{ id: number; name: string; suspended_at: number | null }>("SELECT id, name, suspended_at FROM users WHERE email = ?", email);

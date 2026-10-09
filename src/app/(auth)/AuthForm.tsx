@@ -37,6 +37,7 @@ export function AuthForm({
   botCheckKey,
   captureSource = false,
   consents,
+  challengeKey,
 }: {
   action: (s: FormState, f: FormData) => Promise<FormState>;
   fields: Field[];
@@ -51,6 +52,8 @@ export function AuthForm({
   captureSource?: boolean;
   /** Tick boxes above the button; required ones must be ticked to submit. */
   consents?: { name: string; label: React.ReactNode; required?: boolean }[];
+  /** Turnstile site key for a check that appears only when the server asks (after repeated wrong tries). */
+  challengeKey?: string | null;
 }) {
   const [state, onSubmit, pending] = useActionForm(action, undefined);
   const [tz, setTz] = useState("UTC");
@@ -177,6 +180,7 @@ export function AuthForm({
       )}
       {captureSource && <SourceField />}
       <Turnstile siteKey={botCheckKey ?? null} />
+      {state?.challenge && !botCheckKey && <Turnstile key="challenge" siteKey={challengeKey ?? null} eager />}
       <button className="btn-lime min-h-11 w-full" disabled={pending}>
         {pending ? "One moment…" : submit}
       </button>

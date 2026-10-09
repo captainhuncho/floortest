@@ -2,7 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 /**
  * End-to-end tests: a real browser against a throwaway local copy of FloorTest (fresh seeded data in .e2e/, local file
- * storage, no email sending, no bot check, no site password). Nothing here can touch the live database, R2 or Resend.
+ * storage, no email sending, Cloudflare's always-pass test keys for the bot check, no site password). Nothing here can touch the live database, R2 or Resend.
  * Run: npm run e2e (stop any other dev server first: they'd share the .next folder).
  */
 const PORT = 3210;
@@ -12,8 +12,9 @@ const env = {
   STORAGE_DRIVER: "local",
   S3_BUCKET: "",
   RESEND_API_KEY: "",
-  TURNSTILE_SITE_KEY: "",
-  TURNSTILE_SECRET_KEY: "",
+  // Cloudflare's published test keys: the check always passes, with no real puzzle (developers.cloudflare.com/turnstile/troubleshooting/testing).
+  TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
+  TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
   SITE_PASSWORD: "",
   GOOGLE_CLIENT_ID: "",
   GOOGLE_CLIENT_SECRET: "",

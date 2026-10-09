@@ -23,6 +23,7 @@ Nothing about FloorTest is public before launch (legal pages too); the gate show
 ## Receiver: sign-in
 ```
 /login ─┬─ email + password ──► (two-factor on?) /login/verify ──► Floor
+        │     after 3 wrong tries (15 min, per account or connection): Cloudflare human check appears and is required
         ├─ Email me a sign-in code ──► /login/code ──► /login/code/enter ──► Floor
         ├─ Forgot your password? ──► /forgot ──► "If that address has an account…" ──► email ──► /reset/<token> ──► Floor
         └─ Continue with Google ──► Google ──► callback

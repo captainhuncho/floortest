@@ -7,6 +7,7 @@ import { q } from "@/lib/db";
 import { createOpsSession, currentOpsAdmin, destroyOpsSession } from "@/lib/ops";
 import { recentCount, record, requestIp } from "@/lib/ratelimit";
 import { checkSecondFactor } from "@/lib/security";
+import { HUMAN_CHECK_AFTER, HUMAN_MESSAGE, humanCheck, recentFailures } from "@/lib/human-check";
 import type { FormState } from "../(auth)/actions";
 
 const DUMMY = hashPassword("not-a-real-password");
@@ -23,10 +24,12 @@ export async function opsSignIn(_: FormState, form: FormData): Promise<FormState
   const WINDOW = 15 * 60_000;
   if ((await recentCount("ops_fail_ip", ip, WINDOW)) >= 10 || (await recentCount("ops_fail_email", email, WINDOW)) >= 5)
     return { error: "Too many attempts. Wait 15 minutes." };
+  const failures = await recentFailures("ops_fail_email", "ops_fail_ip", email, ip);
+  if (!(await humanCheck(failures, form, ip)).ok) return { error: HUMAN_MESSAGE, challenge: true };
   const fail = async () => {
     await record("ops_fail_ip", ip);
     await record("ops_fail_email", email);
-    return { error: "Those details didn't work." };
+    return { error: "Those details didn't work.", challenge: failures + 1 >= HUMAN_CHECK_AFTER };
   };
   const u = await q.get<{ id: number; password_hash: string; email_verified_at: number | null; totp_enabled_at: number | null; suspended_at: number | null }>(
     "SELECT id, password_hash, email_verified_at, totp_enabled_at, suspended_at FROM users WHERE email = ?",

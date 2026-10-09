@@ -13,7 +13,7 @@ What FloorTest is built on, so nobody guesses. Change a tool, service or limit â
 | Hosting | **Vercel**, region lhr1 (London); Hobby now, **Pro before launch** | `main` deploys production; `mobile-next` is the working branch |
 | Email | **Resend** (sending + delivery webhook `/api/webhooks/resend`) | outbox table; suppression list; account emails capped per hour platform-wide |
 | Auth | Own sessions (hashed tokens, HttpOnly cookie); scrypt passwords; TOTP two-factor; Google OAuth (state + PKCE, `sub` pinned) | `src/lib/auth.ts`, `security.ts`, `google-auth.ts` |
-| Bot check | Cloudflare Turnstile on public forms (switch `bot_check`) | |
+| Bot check | Cloudflare Turnstile on public forms (switch `bot_check`), and on sign-in after 3 wrong tries in 15 min per account or connection (log-in, email codes, ops) â€” enforced on the server (`src/lib/human-check.ts`) | |
 | Monitoring | Sentry (`/api/monitoring` tunnel), Vercel Analytics, own incidents + job runs in ops | |
 | Images | sharp: covers, collection art, site images resized to WebP. Track artwork is **not** re-encoded | `src/lib/image-optimize.ts` |
 | Audio analysis | In the browser (duration, BPM, waveform peaks); tags via music-metadata | |

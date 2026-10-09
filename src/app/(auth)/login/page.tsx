@@ -1,3 +1,4 @@
+import { botCheckKey } from "@/lib/turnstile";
 import { siteEditor } from "@/lib/site-editor";
 import { EditablePage, editable } from "@/components/Editable";
 import Link from "next/link";
@@ -49,6 +50,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       )}
       <AuthForm
         action={login}
+        challengeKey={await botCheckKey()}
         submit="Log in"
         fields={[
           { name: "email", label: "Email", type: "email", autoComplete: "email" },

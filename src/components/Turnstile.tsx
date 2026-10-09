@@ -18,9 +18,9 @@ const api = () => (window as unknown as { turnstile?: TurnstileApi }).turnstile;
  * It stays invisible unless Cloudflare needs a click. A token works once, so it's renewed after every submit.
  * Renders nothing when `siteKey` is null (switched off or not configured).
  */
-export function Turnstile({ siteKey, theme = "dark" }: { siteKey: string | null; theme?: "dark" | "light" | "auto" }) {
+export function Turnstile({ siteKey, theme = "dark", eager = false }: { siteKey: string | null; theme?: "dark" | "light" | "auto"; /** Start the check straight away (it appeared because one is needed now). */ eager?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [started, setStarted] = useState(false);
+  const [started, setStarted] = useState(eager);
 
   // Wait for the first sign of use.
   useEffect(() => {

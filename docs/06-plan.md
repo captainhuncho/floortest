@@ -31,6 +31,7 @@ Core product is live: sending, review, collections, Prepare/downloads, plans by 
 - Rekordbox how-to video, footer legal placement, mobile footer redesign.
 
 ## Done (recent)
+- 9 Oct: human check (Cloudflare) on log-in, email codes and ops sign-in after 3 wrong tries.
 - 9 Oct: end-to-end tests (Playwright): sign-up → send → keep → download, plus security guards. Floor greets by first name.
 - 9 Oct: on-page editing extended to Pricing, Sign-up/Log-in, public link and receipts.
 - 9 Oct: edit the home page on the page itself (text, lists, image, drag/hide sections) from ops → Site content.
