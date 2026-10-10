@@ -51,7 +51,8 @@ Charts: white bars at night, olive (#5f8000) by day. Round play buttons use the 
 ## Layout
 - Cards: `rounded-2xl` (sections) / `rounded-xl` (stats), border `line`, background `ink-3`, 16px padding.
 - Phones first: 16px side gutter, no sideways scroll, nothing hidden behind the tab bar (main has bottom padding). Equal-width rows on phones, right-aligned groups on desktop.
-- Every option a person might need stays visible (no hiding common actions in menus); destructive actions always confirm.
+- Decision-time actions stay visible (play, Keep, Not for me, Reply, and the signals that change a decision: sets permission, release status, AI use, possible duplicate, deletion within 7 days, the sender's message). File and sender admin may fold into one closed **Details** disclosure (native `<details>`, remembered per device), never deeper than one tap. Destructive actions always confirm.
+- Don't repeat what the page already says: no status chip that matches the selected tab, no stat shown twice.
 - Accessibility: WCAG 2.2 AA, visible focus, Escape closes dialogs, no pinch-zoom lock.
 
 ## Brand assets

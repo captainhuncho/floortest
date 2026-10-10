@@ -8,6 +8,9 @@ import { QuickReplies } from "./QuickReplies";
 import { ReplyTemplates } from "./ReplyTemplates";
 import { decideTrack, undoDecision } from "./actions/review";
 
+/** Number keys jump through the track: 1 = a quarter in, 4 = near the end. */
+const JUMPS: Record<string, number> = { "1": 0.25, "2": 0.5, "3": 0.75, "4": 0.9 };
+
 type Props = {
   track: PlayerTrack & { decision: "kept" | "passed" | null };
   senderName: string;
@@ -23,6 +26,13 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
   const toast = useToast();
   const [busy, start] = useTransition();
   const [replying, setReplying] = useState(false);
+  // The swipe hint shows until the first swipe on this device.
+  const [swiped, setSwiped] = useState(true);
+  useEffect(() => {
+    try {
+      setSwiped(localStorage.getItem("ft:swiped") === "1");
+    } catch {}
+  }, []);
   const replyRef = useRef<HTMLTextAreaElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -81,8 +91,13 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
       else if (e.key === "ArrowUp" && prevHref) router.replace(prevHref, { scroll: false });
       else if (e.key === "ArrowRight") player.seekBy(10);
       else if (e.key === "ArrowLeft") player.seekBy(-10);
-      else if (e.code === "Space") {
-        if (e.target instanceof HTMLElement && e.target.closest("button, a, [role=slider]")) return;
+      else if (k in JUMPS) {
+        // 1–4: jump to 25 / 50 / 75 / 90% (straight to the drop). Starts the track first if it isn't playing.
+        const f = JUMPS[k];
+        if (player.current?.id === track.id) player.seek(f);
+        else (player.play(track), setTimeout(() => player.seek(f), 250));
+      } else if (e.code === "Space") {
+        if (e.target instanceof HTMLElement && e.target.closest("button, a, summary, [role=slider]")) return;
         if (player.current?.id === track.id) player.toggle();
         else player.play(track);
       } else return;
@@ -112,7 +127,7 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
       zone.style.setProperty("--swipe-strength", String(Math.min(1, Math.abs(x) / LINE)));
     };
     const start = (e: TouchEvent) => {
-      if (isTyping(e.target) || (e.target instanceof HTMLElement && e.target.closest("[role=slider], input, textarea, button, a"))) return void (mode = "idle");
+      if (isTyping(e.target) || (e.target instanceof HTMLElement && e.target.closest("[role=slider], input, textarea, button, a, summary, select"))) return void (mode = "idle");
       x0 = e.touches[0].clientX;
       y0 = e.touches[0].clientY;
       dx = 0;
@@ -143,6 +158,10 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
       setTimeout(() => {
         zone.style.transition = "none";
         paint(0);
+        setSwiped(true);
+        try {
+          localStorage.setItem("ft:swiped", "1");
+        } catch {}
         decide(keep ? "kept" : "passed");
       }, reduce ? 0 : 200);
     };
@@ -279,10 +298,14 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
         </form>
       )}
 
-      <p className="mt-3 text-[11px] text-faint [@media(pointer:fine)]:hidden">Swipe right to keep · swipe left: not for me</p>
-      <p className="mt-3 hidden text-xs text-mute md:block">
-        {next ? "Keep or Not for me moves to the next track." : "Last track in this view."} Space play · ←/→ 10s · ↑/↓ or J move · U undo
-      </p>
+      {!swiped && <p className="mt-3 text-[11px] text-faint [@media(pointer:fine)]:hidden">Swipe right to keep · swipe left: not for me</p>}
+      <details className="mt-3 hidden text-xs text-mute md:block">
+        <summary className="w-fit cursor-pointer list-none rounded border border-line px-1.5 py-0.5 hover:text-bone [&::-webkit-details-marker]:hidden">? Shortcuts</summary>
+        <p className="mt-2">
+          {next ? "Keep or Not for me moves to the next track." : "Last track in this view."} K keep · X not for me · R reply · Space play · 1–4 jump to 25/50/75/90% ·
+          ←/→ 10s · ↑/↓ or J move · U undo
+        </p>
+      </details>
     </div>
   );
 }

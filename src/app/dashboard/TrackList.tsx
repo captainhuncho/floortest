@@ -30,7 +30,8 @@ export type Row = {
 };
 
 
-export function TrackList({ rows, selectedId, hrefFor }: { rows: Row[]; selectedId: number | null; hrefFor: Record<number, string> }) {
+/** `showDecision`: the Kept / Not for me / Needs review chip, only where the tab doesn't already say it (All). */
+export function TrackList({ rows, selectedId, hrefFor, showDecision = true }: { rows: Row[]; selectedId: number | null; hrefFor: Record<number, string>; showDecision?: boolean }) {
   const { current, playing, time, duration, play, seek } = usePlayer();
   const queue = rows.map(toPlayer);
 
@@ -80,7 +81,7 @@ export function TrackList({ rows, selectedId, hrefFor }: { rows: Row[]; selected
             </div>
             <div className="flex items-center gap-3 text-sm text-mute tnum">
               <span className="hidden gap-1 @xl:flex">
-                <Status row={r} />
+                <Status row={r} decision={showDecision} />
               </span>
               <span className="hidden w-16 text-right @3xl:block">{r.bpm ? `${Math.round(r.bpm)} BPM` : ""}</span>
               <span className="w-10 text-right">{fmtTime(r.duration)}</span>
@@ -97,10 +98,10 @@ export function TrackList({ rows, selectedId, hrefFor }: { rows: Row[]; selected
 }
 
 /** Status is always spelled out, never colour alone. */
-export function Status({ row }: { row: Pick<Row, "decision" | "played" | "downloaded"> }) {
+export function Status({ row, decision = true }: { row: Pick<Row, "decision" | "played" | "downloaded">; decision?: boolean }) {
   return (
     <>
-      {row.decision === "kept" ? (
+      {!decision ? null : row.decision === "kept" ? (
         <span className="chip border-lime/60 text-lime">Kept</span>
       ) : row.decision === "passed" ? (
         <span className="chip border-line text-mute">Not for me</span>

@@ -22,6 +22,7 @@ import { DetailPlayer } from "./DetailPlayer";
 import { DesktopOnly, MobileOnly } from "./DesktopOnly";
 import { MobileTransport } from "./MobileTransport";
 import { History } from "./History";
+import { PanelDetails } from "./PanelDetails";
 import { votesFor } from "@/lib/team";
 
 export async function ReviewPanel({
@@ -47,27 +48,40 @@ export async function ReviewPanel({
     t.share_ok = fresh?.s ?? 0;
     t.share_download = fresh?.d ?? 0;
   }
-  const votes = await votesFor(t.id);
   const shareable = await canShare(t);
-  const share = shareable ? await activeShare(t.id) : undefined;
-  const audience = shareable ? await shareAudience(t.id) : [];
-  const events = (await q.all<EventRow & { track_title: string | null }>(`SELECT e.*, t.title AS track_title FROM events e LEFT JOIN tracks t ON t.id = e.track_id
-       WHERE e.sender_id = ? ORDER BY e.created_at DESC LIMIT 8`, sender.id));
-  // Sent from someone's FloorTest account: show who they are on the platform.
-  const senderAccount = sender.account_id
-    ? await q.get<{ handle: string; identity_status: string }>("SELECT handle, identity_status FROM users WHERE id = ? AND suspended_at IS NULL", sender.account_id)
-    : undefined;
-  const release = t.release_id
-    ? await q.get<{ id: string; title: string; artist: string; kind: string }>("SELECT id, title, artist, kind FROM releases WHERE id = ? AND user_id = ?", t.release_id, t.user_id)
-    : undefined;
+  // Independent lookups run together, so the next track opens quicker.
+  const [votes, share, audience, events, senderAccount, release, stats, artFrom] = await Promise.all([
+    votesFor(t.id),
+    shareable ? activeShare(t.id) : Promise.resolve(undefined),
+    shareable ? shareAudience(t.id) : Promise.resolve([]),
+    q.all<EventRow & { track_title: string | null }>(
+      `SELECT e.*, t.title AS track_title FROM events e LEFT JOIN tracks t ON t.id = e.track_id WHERE e.sender_id = ? ORDER BY e.created_at DESC LIMIT 3`,
+      sender.id,
+    ),
+    // Sent from someone's FloorTest account: show who they are on the platform.
+    sender.account_id
+      ? q.get<{ handle: string; identity_status: string }>("SELECT handle, identity_status FROM users WHERE id = ? AND suspended_at IS NULL", sender.account_id)
+      : Promise.resolve(undefined),
+    t.release_id
+      ? q.get<{ id: string; title: string; artist: string; kind: string }>("SELECT id, title, artist, kind FROM releases WHERE id = ? AND user_id = ?", t.release_id, t.user_id)
+      : Promise.resolve(undefined),
+    q.get<{ sent: number; kept: number; downloaded: number }>(
+      `SELECT COUNT(*) AS sent, COUNT(CASE WHEN decision = 'kept' THEN 1 END) AS kept, COUNT(downloaded_at) AS downloaded FROM tracks WHERE sender_id = ?`,
+      sender.id,
+    ).then((r) => r!),
+    // Artwork the sender attached (Team plans); tracks in a folder share the cover the sender attached to the release.
+    t.art_key
+      ? Promise.resolve({ id: t.id, art_key: t.art_key })
+      : t.release_id
+        ? q.get<{ id: number; art_key: string }>("SELECT id, art_key FROM tracks WHERE release_id = ? AND user_id = ? AND art_key IS NOT NULL AND deleted_at IS NULL LIMIT 1", t.release_id, t.user_id)
+        : Promise.resolve(undefined),
+  ]);
   const releaseTracks = release
     ? await q.all<{ id: number; title: string; track_no: number | null; decision: string | null }>(
         "SELECT id, title, track_no, decision FROM tracks WHERE release_id = ? AND user_id = ? AND deleted_at IS NULL ORDER BY COALESCE(track_no, 99), created_at",
         release.id, t.user_id,
       )
     : [];
-  const stats = (await q.get<{ sent: number; kept: number; downloaded: number }>(`SELECT COUNT(*) AS sent, COUNT(CASE WHEN decision = 'kept' THEN 1 END) AS kept, COUNT(downloaded_at) AS downloaded
-       FROM tracks WHERE sender_id = ?`, sender.id))!;
   const player: PlayerTrack = {
     id: t.id,
     title: t.title,
@@ -79,42 +93,66 @@ export async function ReviewPanel({
   const removal = deletesAt(t);
 
   const releaseBlock = release && (
-<div className="mt-3 rounded-md border border-line p-3">
-          <p className="text-[11px] font-bold uppercase tracking-[0.5px] text-mute">
-            {`Folder · ${releaseTracks.length} tracks`}
-          </p>
-          {<p className="mt-1 font-semibold">{release.title}{release.artist && <span className="font-normal text-mute"> · {release.artist}</span>}</p>}
-          <ol className="mt-2 space-y-0.5 text-sm">
-            {releaseTracks.map((r, i) => (
-              <li key={r.id} className={r.id === t.id ? "font-semibold text-bone" : "text-mute"}>
-                <Link href={`/dashboard/review?view=queue&s=all&t=${r.id}`} className="hover:text-bone">
-                  <span className="tnum mr-2">{r.track_no ?? i + 1}.</span>
-                  {r.title}
-                  {r.decision && <span className="ml-2 text-[11px]">{r.decision === "kept" ? "✓ kept" : "passed"}</span>}
-                </Link>
-              </li>
-            ))}
-          </ol>
-          {releaseTracks.some((r) => !r.decision) && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              <form action={decideRelease.bind(null, release.id, "kept")}>
-                <button className="btn-ghost btn-sm">Keep all undecided</button>
-              </form>
-              <form action={decideRelease.bind(null, release.id, "passed")}>
-                <button className="btn-ghost btn-sm">Not for me: all undecided</button>
-              </form>
-            </div>
-          )}
-        </div>
+    <details className="group/rel mt-3 rounded-md border border-line">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-3 text-sm [&::-webkit-details-marker]:hidden">
+        <span className="min-w-0 truncate">
+          <span className="text-[11px] font-bold uppercase tracking-[0.5px] text-mute">Folder · {releaseTracks.length} tracks</span>{" "}
+          <span className="font-semibold">{release.title}</span>
+          {release.artist && <span className="text-mute"> · {release.artist}</span>}
+        </span>
+        <span aria-hidden className="shrink-0 text-mute group-open/rel:rotate-180">▾</span>
+      </summary>
+      <div className="px-3 pb-3">
+        <ol className="space-y-0.5 text-sm">
+          {releaseTracks.map((r, i) => (
+            <li key={r.id} className={r.id === t.id ? "font-semibold text-bone" : "text-mute"}>
+              <Link href={`/dashboard/review?view=queue&s=all&t=${r.id}`} className="hover:text-bone">
+                <span className="tnum mr-2">{r.track_no ?? i + 1}.</span>
+                {r.title}
+                {r.decision && <span className="ml-2 text-[11px]">{r.decision === "kept" ? "✓ kept" : "passed"}</span>}
+              </Link>
+            </li>
+          ))}
+        </ol>
+        {releaseTracks.some((r) => !r.decision) && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <form action={decideRelease.bind(null, release.id, "kept")}>
+              <button className="btn-ghost btn-sm">Keep all undecided</button>
+            </form>
+            <form action={decideRelease.bind(null, release.id, "passed")}>
+              <button className="btn-ghost btn-sm">Not for me: all undecided</button>
+            </form>
+          </div>
+        )}
+      </div>
+    </details>
   );
 
-  // Artwork the sender attached (Team plans).
-  // Tracks in a folder share the cover the sender attached to the release.
-  const artFrom = t.art_key
-    ? { id: t.id, art_key: t.art_key }
-    : t.release_id
-      ? await q.get<{ id: number; art_key: string }>("SELECT id, art_key FROM tracks WHERE release_id = ? AND user_id = ? AND art_key IS NOT NULL AND deleted_at IS NULL LIMIT 1", t.release_id, t.user_id)
-      : undefined;
+  // What the decision needs, in one line: tempo, key, length, genre, mix.
+  const length = t.duration ? `${Math.floor(t.duration / 60)}:${String(Math.round(t.duration % 60)).padStart(2, "0")}` : null;
+  const meta = [t.bpm && `${Math.round(t.bpm)} BPM`, t.musical_key, length, t.genre, t.mix_status && MIX_STATUS[t.mix_status as keyof typeof MIX_STATUS]].filter(Boolean).join(" · ");
+  // The auto-delete date matters at decision time only when it's close.
+  const soon = removal && removal - Date.now() < 7 * 86_400_000 ? Math.max(0, Math.ceil((removal - Date.now()) / 86_400_000)) : null;
+  // Signals that change the decision stay visible: may it be played out, is it out already, made with AI, a duplicate, going soon.
+  const tags = (
+    <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] font-bold">
+      <span className={`rounded-full border px-2.5 py-0.5 ${t.sets_ok ? "border-lime/50 text-lime" : "border-line text-mute"}`}>
+        {t.sets_ok ? "Cleared for DJ sets" : "Evaluation only: ask before playing it out"}
+      </span>
+      {t.release_status && <span className="rounded-full border border-line px-2.5 py-0.5 text-mute">{RELEASE_STATUS[t.release_status as keyof typeof RELEASE_STATUS]}</span>}
+      {t.ai_use && t.ai_use !== "none" && <span className="rounded-full border border-line-2 px-2.5 py-0.5 uppercase tracking-[0.5px] text-mute">{AI_USE[t.ai_use]}</span>}
+      {soon !== null && <span className="rounded-full border border-danger/50 px-2.5 py-0.5 text-danger">{soon <= 1 ? "Deletes within a day" : `Deletes in ${soon} days`} unless you keep it</span>}
+      {t.duplicate_of && (
+        <span className="rounded-full border border-danger/50 px-2.5 py-0.5 text-danger">
+          Possible duplicate ·{" "}
+          <Link href={`/dashboard/review?view=queue&s=all&t=${t.duplicate_of}`} className="underline underline-offset-2">
+            Compare
+          </Link>
+        </span>
+      )}
+    </div>
+  );
+
   const art = artFrom ? `/api/track-art/${artFrom.id}?v=${encodeURIComponent(artFrom.art_key)}` : null;
 
   return (
@@ -132,19 +170,8 @@ export async function ReviewPanel({
             </p>
           </div>
         </div>
-        <dl className="mt-3.5 grid grid-cols-2 gap-1.5">
-          {[
-            ["TEMPO", [t.bpm && `${Math.round(t.bpm)} BPM`, t.musical_key].filter(Boolean).join(" · ") || "—"],
-            ["GENRE", t.genre || "—"],
-            ["LENGTH", t.duration ? `${Math.floor(t.duration / 60)}:${String(Math.round(t.duration % 60)).padStart(2, "0")}` : "—"],
-            ["MIX STATUS", t.mix_status ? MIX_STATUS[t.mix_status as keyof typeof MIX_STATUS] : "—"],
-          ].map(([k, v]) => (
-            <div key={k} className="flex flex-col gap-1 rounded-lg bg-ink-2 p-2.5">
-              <dt className="text-[11px] text-faint">{k}</dt>
-              <dd className="truncate text-[13px] font-bold text-bone">{v}</dd>
-            </div>
-          ))}
-        </dl>
+        {meta && <p className="mt-3 text-[13px] font-bold text-bone tnum">{meta}</p>}
+        {tags}
         {releaseBlock}
         <MobileTransport track={player} prevHref={prevHref} nextHref={next?.href ?? null} />
         <div className="mt-3.5">
@@ -168,27 +195,10 @@ export async function ReviewPanel({
       )}
       <p className="label">Now reviewing</p>
       <h2 className="mt-2 text-2xl font-bold leading-tight tracking-tight">{t.title}</h2>
-      <p className={`mt-2 w-fit rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${t.sets_ok ? "border-lime/50 text-lime" : "border-line text-mute"}`}>
-        {t.sets_ok ? "Cleared for DJ sets" : "Evaluation only: ask before playing it out"}
-      </p>
+      <p className="mt-1 text-mute">{t.artist}</p>
+      {meta && <p className="mt-1 font-bold tnum">{meta}</p>}
+      {tags}
       {releaseBlock}
-      {t.duplicate_of && (
-        <p className="mt-2 text-sm text-danger">
-          Possible duplicate of an earlier track.{" "}
-          <Link href={`/dashboard/review?view=queue&s=all&t=${t.duplicate_of}`} className="underline underline-offset-4">
-            Compare
-          </Link>
-        </p>
-      )}
-      <p className="mt-1 text-mute">
-        {t.artist}
-        {t.genre && <span> · {t.genre}</span>}
-        {t.musical_key && <span> · {t.musical_key}</span>}
-        {t.isrc && <span title="ISRC"> · {t.isrc}</span>}
-        {t.release_status && <span> · {RELEASE_STATUS[t.release_status as keyof typeof RELEASE_STATUS]}</span>}
-        {t.ai_use && t.ai_use !== "none" && <span className="ml-1 rounded-full border border-line-2 px-1.5 py-px text-[10px] font-bold uppercase tracking-[0.5px]">{AI_USE[t.ai_use]}</span>}
-        {t.mix_status && <span> · {MIX_STATUS[t.mix_status as keyof typeof MIX_STATUS]}</span>}
-      </p>
 
       <div className="mt-5">
         <DetailPlayer track={player} />
@@ -263,106 +273,104 @@ export async function ReviewPanel({
         </figure>
       )}
 
-      <dl className="mt-6 grid grid-cols-4 gap-2 text-center">
-        {[
-          ["BPM", t.bpm ? Math.round(t.bpm) : "—"],
-          ["Length", t.duration ? `${Math.floor(t.duration / 60)}:${String(Math.round(t.duration % 60)).padStart(2, "0")}` : "—"],
-          ["Format", t.mime === "audio/wav" ? "WAV" : "MP3"],
-          ["Size", fmtBytes(t.size)],
-        ].map(([k, v]) => (
-          <div key={k} className="rounded-md border border-line px-2 py-2">
-            <dt className="label">{k}</dt>
-            <dd className="mt-0.5 tnum">{v}</dd>
-          </div>
-        ))}
-      </dl>
+      <p className="mt-6 text-sm">
+        From{" "}
+        <Link href={`/dashboard/contacts/${sender.id}`} className="font-medium underline-offset-4 hover:underline">
+          {sender.name}
+        </Link>{" "}
+        {sender.verified_at ? (
+          <span className="chip ml-1 border-lime/50 text-lime">Verified email</span>
+        ) : (
+          <span className="chip ml-1 border-line text-mute">Unverified email</span>
+        )}
+      </p>
 
-      <ul className="mt-4 space-y-1 text-sm text-mute">
-        <li>Received {fmtDate(t.created_at)}</li>
-        <li>
-          {t.played_at ? `Listened ${fmtDate(t.played_at)}` : "Not listened yet"} ·{" "}
-          {t.downloaded_at ? `Downloaded ${fmtDate(t.downloaded_at)}` : "Not downloaded"}
-        </li>
-        <li>{removal ? `Deleted on ${fmtDay(removal)} unless you keep it` : "Kept until you delete it"}</li>
-      </ul>
+      <PanelDetails summary={<span>Details <span className="hidden text-mute sm:inline">· file, dates, move, delete, sender</span></span>}>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+          {[
+            ["Format", `${t.mime === "audio/wav" ? "WAV" : "MP3"} · ${fmtBytes(t.size)}`],
+            ["Received", fmtDate(t.created_at)],
+            ["Listened", t.played_at ? fmtDate(t.played_at) : "Not yet"],
+            ["Downloaded", t.downloaded_at ? fmtDate(t.downloaded_at) : "Not yet"],
+            ["Kept until", removal ? `${fmtDay(removal)}, then deleted unless you keep it` : "You delete it"],
+            ...(t.isrc ? [["ISRC", t.isrc]] : []),
+          ].map(([k, v]) => (
+            <div key={k} className="contents">
+              <dt className="text-mute">{k}</dt>
+              <dd className="tnum">{v}</dd>
+            </div>
+          ))}
+        </dl>
 
-      <div className="mt-5 flex flex-wrap items-center gap-2">
-        <a href={`/api/tracks/${t.id}/download`} className="btn-ghost btn-sm">
-          Download original
-        </a>
-        <form action={moveTrack.bind(null, t.id)} className="flex">
-          <label className="sr-only" htmlFor={`move-${t.id}`}>
-            Collection
-          </label>
-          <select
-            id={`move-${t.id}`}
-            name="collection"
-            defaultValue={t.collection_id ?? ""}
-            className="rounded-l-md border border-line bg-ink-2 px-2 py-1.5 text-sm text-bone"
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {/* Phones already have Download on the decision rail. */}
+          <a href={`/api/tracks/${t.id}/download`} className="btn-ghost btn-sm hidden md:inline-flex">
+            Download original
+          </a>
+          <form action={moveTrack.bind(null, t.id)} className="flex">
+            <label className="sr-only" htmlFor={`move-${t.id}`}>
+              Collection
+            </label>
+            <select
+              id={`move-${t.id}`}
+              name="collection"
+              defaultValue={t.collection_id ?? ""}
+              className="rounded-l-md border border-line bg-ink-2 px-2 py-1.5 text-sm text-bone"
+            >
+              {t.collection_id == null && <option value="">Unsorted</option>}
+              {collections.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <button className="rounded-r-md border border-l-0 border-line px-3 text-sm text-mute hover:text-bone">Move</button>
+          </form>
+          <ConfirmButton
+            action={deleteTrack.bind(null, t.id, next?.href ?? "/dashboard/review")}
+            message="Delete this file now? The slot returns. Sender history is kept."
+            className="btn btn-sm text-danger hover:bg-danger/10"
           >
-            {t.collection_id == null && <option value="">Unsorted</option>}
-            {collections.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <button className="rounded-r-md border border-l-0 border-line px-3 text-sm text-mute hover:text-bone">Move</button>
-        </form>
-        <ConfirmButton
-          action={deleteTrack.bind(null, t.id, next?.href ?? "/dashboard/review")}
-          message="Delete this file now? The slot returns. Sender history is kept."
-          className="btn btn-sm text-danger hover:bg-danger/10"
-        >
-          Delete
-        </ConfirmButton>
-      </div>
+            Delete
+          </ConfirmButton>
+        </div>
 
-      <section className="mt-8 border-t border-line pt-6" aria-labelledby="sender-h">
-        <div className="flex items-baseline justify-between">
-          <h3 id="sender-h" className="label">
-            Sender
-          </h3>
-          <Link href={`/dashboard/contacts/${sender.id}`} className="text-sm text-mute underline-offset-4 hover:text-bone hover:underline">
-            Contact →
-          </Link>
-        </div>
-        <p className="mt-2 font-medium">
-          <Link href={`/dashboard/contacts/${sender.id}`} className="underline-offset-4 hover:underline">
-            {sender.name}
-          </Link>{" "}
-          {sender.verified_at ? (
-            <span className="chip ml-1 border-lime/50 text-lime">Verified email</span>
-          ) : (
-            <span className="chip ml-1 border-line text-mute">Unverified email</span>
-          )}
-        </p>
-        <p className="text-sm text-mute">{sender.email}</p>
-        {readLinks(sender.links).length > 0 && (
-          <div className="mt-2 flex flex-wrap items-center gap-3">
-            <ProfileLinks links={readLinks(sender.links)} size={18} />
-            <span className="chip border-line text-mute" title="Anyone can paste a profile link. FloorTest hasn't checked these belong to the sender.">
-              Links not verified
-            </span>
+        <section className="mt-6 border-t border-line pt-4" aria-labelledby="sender-h">
+          <div className="flex items-baseline justify-between">
+            <h3 id="sender-h" className="label">
+              Sender
+            </h3>
+            <Link href={`/dashboard/contacts/${sender.id}`} className="text-sm text-mute underline-offset-4 hover:text-bone hover:underline">
+              Full history →
+            </Link>
           </div>
-        )}
-        {senderAccount && (
-          <p className="mt-1 text-sm">
-            <span className="chip border-lime/40 text-lime">FloorTest user</span>{" "}
-            <a href={`/${senderAccount.handle}`} target="_blank" rel="noreferrer" className="font-mono text-mute underline-offset-4 hover:text-bone hover:underline">
-              /{senderAccount.handle}
-            </a>
-            {senderAccount.identity_status === "verified" && <span className="ml-1.5 inline-flex items-center gap-1 text-lime"><CuePoint size={16} /> Verified</span>}
+          <p className="mt-2 text-sm text-mute">{sender.email}</p>
+          {readLinks(sender.links).length > 0 && (
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              <ProfileLinks links={readLinks(sender.links)} size={18} />
+              <span className="chip border-line text-mute" title="Anyone can paste a profile link. FloorTest hasn't checked these belong to the sender.">
+                Links not verified
+              </span>
+            </div>
+          )}
+          {senderAccount && (
+            <p className="mt-1 text-sm">
+              <span className="chip border-lime/40 text-lime">FloorTest user</span>{" "}
+              <a href={`/${senderAccount.handle}`} target="_blank" rel="noreferrer" className="font-mono text-mute underline-offset-4 hover:text-bone hover:underline">
+                /{senderAccount.handle}
+              </a>
+              {senderAccount.identity_status === "verified" && <span className="ml-1.5 inline-flex items-center gap-1 text-lime"><CuePoint size={16} /> Verified</span>}
+            </p>
+          )}
+          <p className="mt-1 text-sm text-mute">
+            {stats.sent} sent · {stats.kept} kept · {stats.downloaded} downloaded · since {fmtDay(sender.created_at)}
           </p>
-        )}
-        <p className="mt-1 text-sm text-mute">
-          {stats.sent} sent · {stats.kept} kept · {stats.downloaded} downloaded · since {fmtDay(sender.created_at)}
-        </p>
-        <NoteForm onNote={addNote.bind(null, sender.id, t.id)} />
-        <div className="mt-6">
-          <History events={events} currentTrackId={t.id} />
-        </div>
-      </section>
+          <NoteForm onNote={addNote.bind(null, sender.id, t.id)} />
+          <div className="mt-4">
+            <History events={events} currentTrackId={t.id} />
+          </div>
+        </section>
+      </PanelDetails>
     </div>
   );
 }

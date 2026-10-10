@@ -39,6 +39,8 @@ A share link (/s/…) remembers itself and is where sign-in lands.
 Floor (waiting count ─► Start reviewing; Up next rows open the track) ─► Review Queue (phones: player first, list under it) ─► play ─► Keep (K) ──► Prepare for set ─► Download kept ─► name folder ─► ZIP
                               ├─ Not for me (X)    └─ Files only · Clear kept (confirm)
                               └─ Reply (R) ──► sender email
+Review panel: title · one meta line · tags (sets / release / AI / duplicate / deleting soon) ─► waveform (1–4 jump) ─► Keep · Not for me · Reply ─► next track plays
+   Details (closed, remembered) ─► format & size · dates · Download · Move · Delete (confirm) · sender email, links, stats, note, last 3 events · Full history →
 Review Queue (List) ─► Select ─► tick tracks / Select all ─► bar: Keep · Not for me · Needs review · Move to… · Download · Delete ─► confirm ─► done (toast)
    Esc or Done leaves select mode; in select mode a tap on a row ticks it (never plays or opens it)
 Floor ─► Collections ─► New collection / Open collection ─► Edit collection · Download collection · Files only · Send new tracks here

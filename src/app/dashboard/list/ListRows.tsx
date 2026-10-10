@@ -36,6 +36,8 @@ export type ListRow = {
   createdAt: number;
 };
 
+const JUMPS: Record<string, number> = { "1": 0.25, "2": 0.5, "3": 0.75, "4": 0.9 };
+
 /** "2mo", "3d", "5h": the reference's compact age column. */
 function age(ts: number) {
   const m = Math.max(1, Math.round((Date.now() - ts) / 60000));
@@ -147,7 +149,11 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
       } else if (k === "k") decide(r, "kept", true);
       else if (k === "x") decide(r, "passed", true);
       else if (k === "r" || e.key === "Enter") setExpanded((x) => (x === r.id && e.key === "Enter" ? null : r.id));
-      else if (e.key === "ArrowRight") player.seekBy(10);
+      else if (k in JUMPS) {
+        // 1–4: jump to 25 / 50 / 75 / 90% of the selected track (starts it if needed).
+        if (player.current?.id === r.id) player.seek(JUMPS[k]);
+        else (player.play(toPlayer(r), queue), setTimeout(() => player.seek(JUMPS[k]), 250));
+      } else if (e.key === "ArrowRight") player.seekBy(10);
       else if (e.key === "ArrowLeft") player.seekBy(-10);
       else return;
       e.preventDefault();
@@ -415,6 +421,7 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
             ["X", "not for me"],
             ["R", "reply"],
             ["Enter", "details"],
+            ["1–4", "jump"],
             ["←/→", "10s"],
             ["U", "undo"],
           ].map(([k, v]) => (

@@ -11,6 +11,7 @@ import { toPlayer } from "@/lib/player-track";
 import { SubmissionsList } from "../list/SubmissionsList";
 import { TrackList, type Row } from "../TrackList";
 import { ViewToggle } from "../ViewToggle";
+import { FilterMenu } from "../list/FilterMenu";
 import { VIEW_COOKIE } from "../view-cookie";
 
 export const metadata = { title: "Review Queue — FloorTest" };
@@ -154,23 +155,19 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
         </nav>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <span className="text-sm text-mute">Collection:</span>
-          {[{ id: undefined as number | undefined, name: "All", needs_review: 0 }, ...collections].map((c) => {
-            const active = c.id === collection?.id;
-            return (
-              <Link
-                key={c.id ?? "all"}
-                href={href({ c: c.id ? String(c.id) : undefined, t: undefined })}
-                aria-current={active ? "true" : undefined}
-                className={`rounded-full border px-3 py-1.5 text-sm transition ${
-                  active ? "border-bone bg-bone text-ink" : "border-line text-mute hover:border-mute hover:text-bone"
-                }`}
-              >
-                {c.name}
-                {c.needs_review > 0 && <span className={active ? "" : "text-lime"}> · {c.needs_review} new</span>}
-              </Link>
-            );
-          })}
+          {collections.length > 1 && (
+            <FilterMenu
+              label="Collection"
+              options={[
+                { label: "All collections", href: href({ c: undefined, t: undefined }), active: !collection },
+                ...collections.map((c) => ({
+                  label: c.needs_review > 0 ? `${c.name} · ${c.needs_review} new` : c.name,
+                  href: href({ c: String(c.id), t: undefined }),
+                  active: c.id === collection?.id,
+                })),
+              ]}
+            />
+          )}
           <form action="/dashboard/review" className="ml-auto min-w-48 flex-1 sm:max-w-72" role="search">
             {sp.c && <input type="hidden" name="c" value={sp.c} />}
             {status !== "review" && <input type="hidden" name="s" value={status} />}
@@ -198,6 +195,7 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
           ) : (
             <TrackList
               rows={rows}
+              showDecision={status === "all"}
               selectedId={selected?.id ?? null}
               hrefFor={Object.fromEntries(rows.map((r) => [r.id, href({ t: String(r.id) })]))}
             />

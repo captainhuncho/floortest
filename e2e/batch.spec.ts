@@ -48,3 +48,24 @@ test("select tracks in the list and act on them together", async ({ page }) => {
   await expect(page.getByText("Lagoon Drive")).toHaveCount(0);
   await expect(page.getByText("Coastline (Dub)")).toHaveCount(0);
 });
+
+/** The review panel shows what the decision needs; file and sender admin wait in one closed Details section. */
+test("the review panel keeps the decision in view and folds the rest into Details", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByLabel("Email").fill("demo@floortest.test");
+  await page.getByRole("textbox", { name: "Password" }).fill("floortest-demo");
+  await page.getByRole("button", { name: "Log in" }).click();
+  await page.waitForURL(/\/dashboard\//);
+  await page.goto("/dashboard/review?view=queue"); // Needs review: the panel offers Keep (a kept track shows "Kept")
+
+  const panel = page.getByRole("complementary", { name: "Review" });
+  await expect(panel.getByRole("button", { name: /^Keep/ }).locator("visible=true").first()).toBeVisible();
+  await expect(panel.getByText(/\d+ BPM ·/).locator("visible=true").first()).toBeVisible();
+
+  // Details starts closed: Delete and Move aren't on screen until it's opened.
+  const details = panel.locator("details").filter({ hasText: "file, dates, move" });
+  await expect(details.getByRole("button", { name: "Delete" })).toBeHidden();
+  await details.locator("summary").click();
+  await expect(details.getByRole("button", { name: "Delete" })).toBeVisible();
+  await expect(details.getByText("Full history →")).toBeVisible();
+});
