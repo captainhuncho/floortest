@@ -14,7 +14,7 @@ export default async function ConnectGoogle() {
   if (!pending) redirect("/login");
   return (
     <>
-      <h1 className="mb-3 text-2xl font-semibold tracking-tight lg:text-[40px] lg:leading-[44px] lg:tracking-[-1.2px]">Connect Google</h1>
+      <h1 className="mb-3 text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">Connect Google</h1>
       <p className="mb-6 text-sm text-mute">
         <span className="text-bone">{pending.email}</span> already has a FloorTest account. Enter its password once to connect Google; after that, Google signs you straight in. We&apos;ll email you to confirm.
       </p>

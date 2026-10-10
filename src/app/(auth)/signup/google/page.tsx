@@ -16,7 +16,7 @@ export default async function GoogleSignup() {
   const host = env.appUrl.replace(/^https?:\/\//, "");
   return (
     <>
-      <h1 className="mb-3 text-2xl font-semibold tracking-tight lg:text-[40px] lg:leading-[44px] lg:tracking-[-1.2px]">Finish signing up</h1>
+      <h1 className="mb-3 text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">Finish signing up</h1>
       <p className="mb-6 text-sm text-mute">
         No FloorTest account uses this Google email yet. Fill in the rest to claim your link.
         {inviteOnly && (

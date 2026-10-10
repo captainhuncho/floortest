@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
-import { NavIcon } from "@/components/NavIcon";
 
 export const metadata = { title: "Signed out — FloorTest", robots: { index: false } };
 
@@ -11,19 +10,16 @@ export default async function SignedOut() {
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-5">
-        <span aria-hidden className="grid size-11 place-items-center rounded-lg bg-ink-3 text-lime">
-          <NavIcon name="signOut" className="size-5" />
-        </span>
         <div className="flex flex-col gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight lg:text-[40px] lg:leading-[44px] lg:tracking-[-1.2px]">You&apos;re signed out</h1>
-          <p className="text-mute lg:text-base">Your session on this device has ended. Sign in again to return to your music desk.</p>
+          <h1 className="text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">You&apos;re signed out</h1>
+          <p className="text-[13px] text-mute">Your session on this device has ended. Sign in again to return to your music desk.</p>
         </div>
       </div>
       <div className="flex flex-col gap-3">
-        <Link href="/login" className="btn-lime h-[52px] w-full">
+        <Link href="/login" className="btn-lime w-full">
           Sign in again
         </Link>
-        <Link href="/" className="btn-ghost h-[52px] w-full">
+        <Link href="/" className="btn-ghost w-full">
           Back to home
         </Link>
       </div>

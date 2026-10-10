@@ -27,8 +27,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   return (
     <EditablePage editing={!!editor} page="auth" label="Sign-up and log-in" values={c}>
     <>
-      <h1 className="text-2xl font-semibold tracking-tight lg:text-[40px] lg:leading-[44px] lg:tracking-[-1.2px]"><E k="login_title" /></h1>
-      <p className="mb-8 mt-3 text-mute lg:text-base">Sign in to your music desk.</p>
+      <h1 className="text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone"><E k="login_title" /></h1>
+      <p className="mb-8 mt-2 text-[13px] text-mute">Sign in to your music desk.</p>
       {googleError && (
         <p role="alert" className="mb-6 rounded-lg border border-danger/40 bg-danger/10 px-4 py-3 text-sm">
           {googleError}

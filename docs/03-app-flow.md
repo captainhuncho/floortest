@@ -11,7 +11,7 @@ Nothing about FloorTest is public before launch (legal pages too); the gate show
 
 ## Receiver: sign-up
 ```
-/signup ─┬─ form (invite code*, type, names, username, email, password, Terms)
+/signup ─┬─ form (invite code*, type, names, username, email, password, Terms; a missing field is pointed at, one at a time)
          │     ├─ ok ──► /dashboard/floor?welcome=1 (+ confirm-email email)
          │     └─ email already used ──► neutral error; owner gets a quiet email
          └─ Sign up with Google ──► Google ──► /api/auth/google/callback

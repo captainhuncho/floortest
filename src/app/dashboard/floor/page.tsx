@@ -48,6 +48,8 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   const upNext = upNextRows.map((t) => ({ ...t, peaks: t.peaks ? JSON.parse(t.peaks) : null, played: !!t.played_at }));
   const kept = collections.reduce((n, c) => n + c.kept, 0);
   const oldest = upNextRows[0]?.created_at;
+  // A desk that has never had a track: sharing the link is the first job, so the link comes first.
+  const fresh = welcome || (!stats.waiting && !kept && stats.receivedWeek + stats.receivedPrev === 0 && !stats.listenedSample);
   // First visit only: a greeting by first name; the public name can be a stage name or just the username.
   const first = user.first_name?.trim() || user.name.split(/\s+/)[0];
 
@@ -158,7 +160,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
         </section>
       )}
 
-      <section aria-labelledby="link-h" className="flex flex-col gap-3 border-t border-line pt-5">
+      <section aria-labelledby="link-h" className={`flex flex-col gap-3 border-t border-line pt-5 ${fresh ? "order-first border-t-0 pt-0" : ""}`}>
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
           <h2 id="link-h" className="eyebrow">Your link</h2>
           <p className="text-[12px] text-dim">

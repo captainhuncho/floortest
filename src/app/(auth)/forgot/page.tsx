@@ -7,7 +7,7 @@ export const metadata = { title: "Reset your password — FloorTest" };
 export default function ForgotPage() {
   return (
     <>
-      <h1 className="mb-2 text-2xl font-bold tracking-tight">Reset your password</h1>
+      <h1 className="mb-2 text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">Reset your password</h1>
       <p className="mb-8 text-sm text-mute">We&apos;ll email you a link to choose a new one.</p>
       <AuthForm
         action={requestPasswordReset}
@@ -15,8 +15,8 @@ export default function ForgotPage() {
         fields={[{ name: "email", label: "Email", type: "email", autoComplete: "email" }]}
         footer={{ text: "Remembered it?", href: "/login", link: "Log in" }}
         success={
-          <div className="card p-6">
-            <p className="font-medium">Check your email.</p>
+          <div className="flex flex-col">
+            <p className="text-[14px] font-semibold">Check your email.</p>
             <p className="mt-2 text-sm text-mute">
               If that address has an account, a reset link is on its way. It works for one hour.
             </p>

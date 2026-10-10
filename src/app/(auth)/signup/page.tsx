@@ -24,8 +24,8 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
   return (
     <EditablePage editing={!!editor} page="auth" label="Sign-up and log-in" values={c}>
     <>
-      <h1 className="mb-3 text-2xl font-semibold tracking-tight lg:text-[40px] lg:leading-[44px] lg:tracking-[-1.2px]"><E k="signup_title" /></h1>
-      <p className="mb-8 text-sm text-mute">
+      <h1 className="mb-3 text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone"><E k="signup_title" /></h1>
+      <p className="mb-8 text-[13px] text-mute">
         <E k="signup_intro" />
         {inviteOnly && !referrer && (
           <>
@@ -70,9 +70,8 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
           { name: "kind", label: "What best describes you?", choices: [{ value: "dj", label: "DJ or curator" }, { value: "producer", label: "Producer" }, { value: "label", label: "Label or A&R" }] },
           { name: "first_name", label: "First name", placeholder: "Maxwell", autoComplete: "given-name" },
           { name: "last_name", label: "Surname", placeholder: "Adjavon", autoComplete: "family-name", hint: "Kept private: for your account, billing and receipts. Never shown on your page." },
-          { name: "handle", label: "Username", prefix: `${host}/`, placeholder: "yourname", autoComplete: "username", defaultValue: (sp.handle || "").toLowerCase().replace(/[^a-z0-9-_]/g, "").slice(0, 30) || undefined },
-          { name: "name", label: "Professional name (optional)", placeholder: "DJ, artist or label name", autoComplete: "nickname", optional: true, hint: "Shown on your page. Leave empty to show your username." },
-          { name: "email", label: "Email", type: "email", placeholder: "you@example.com", autoComplete: "email", defaultValue: personal?.email ?? undefined },
+          { name: "handle", label: "Username", prefix: `${host}/`, placeholder: "yourname", autoComplete: "off", hint: "Your link. You can add a stage or label name later in Profile.", defaultValue: (sp.handle || "").toLowerCase().replace(/[^a-z0-9-_]/g, "").slice(0, 30) || undefined },
+          { name: "email", label: "Email", type: "email", placeholder: "you@example.com", autoComplete: "username email", defaultValue: personal?.email ?? undefined },
           { name: "password", label: "Password", type: "password", placeholder: "8+ characters", autoComplete: "new-password", minLength: 8, strength: true },
         ]}
         footer={{ text: "Already have an account?", href: "/login", link: "Sign in" }}

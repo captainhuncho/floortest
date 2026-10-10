@@ -10,7 +10,7 @@ export default async function ResetPage({ params }: { params: Promise<{ token: s
   if (!(await findPasswordReset(token)))
     return (
       <>
-        <h1 className="mb-2 text-2xl font-bold tracking-tight">This link has expired</h1>
+        <h1 className="mb-2 text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">This link has expired</h1>
         <p className="mb-6 text-sm text-mute">Reset links work once, for one hour.</p>
         <Link href="/forgot" className="btn-lime">
           Send a new link
@@ -19,7 +19,7 @@ export default async function ResetPage({ params }: { params: Promise<{ token: s
     );
   return (
     <>
-      <h1 className="mb-8 text-2xl font-bold tracking-tight">Choose a new password</h1>
+      <h1 className="mb-8 text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">Choose a new password</h1>
       <AuthForm
         action={resetPassword.bind(null, token)}
         submit="Save and log in"

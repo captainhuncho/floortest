@@ -4,7 +4,7 @@ import { Turnstile } from "@/components/Turnstile";
 import { SourceField } from "@/components/SourceField";
 import { useActionForm } from "@/components/useActionForm";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavIcon } from "@/components/NavIcon";
 import type { FormState } from "./actions";
 import { PasswordStrength } from "@/components/PasswordStrength";
@@ -16,6 +16,7 @@ type Field = {
   placeholder?: string;
   prefix?: string;
   autoComplete?: string;
+  inputMode?: "numeric" | "email" | "text";
   defaultValue?: string;
   minLength?: number;
   hint?: React.ReactNode;
@@ -27,6 +28,15 @@ type Field = {
   choices?: { value: string; label: string }[];
 };
 
+/** Things that arrive (a problem line, the server's answer) settle in from just below; reduced motion keeps the fade. */
+const ENTER = "starting:opacity-0 motion-safe:starting:translate-y-1 transition-[opacity,translate] duration-200 ease-[var(--ease-out)]";
+const LABEL = "text-[11px] font-bold uppercase tracking-[0.5px] text-dim";
+
+/**
+ * One form for every sign-in and sign-up screen. Problems are found here first, one at a time, under the field
+ * they belong to, in plain words (the browser's own bubbles never appear). The server's answer, when it has one,
+ * sits by the button and comes into view.
+ */
 export function AuthForm({
   action,
   fields,
@@ -59,32 +69,80 @@ export function AuthForm({
   const [tz, setTz] = useState("UTC");
   const [values, setValues] = useState<Record<string, string>>({});
   const [shown, setShown] = useState<Record<string, boolean>>({});
+  const [issue, setIssue] = useState<{ key: string; text: string } | null>(null);
+  const alertRef = useRef<HTMLParagraphElement>(null);
   // The browser's timezone, so digests and dates default to local time.
   useEffect(() => setTz(Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"), []);
+  useEffect(() => {
+    if (state?.error) alertRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [state?.error]);
 
-  if (state?.ok && success) return <div role="status">{success}</div>;
+  if (state?.ok && success) return <div role="status" className={ENTER}>{success}</div>;
+
+  /** Points at the first thing missing and says what to do. Mirrors what the server will check, so most forms never bounce. */
+  function check(form: HTMLFormElement) {
+    const fd = new FormData(form);
+    const flag = (key: string, text: string) => {
+      setIssue({ key, text });
+      const el = document.getElementById(`f-${key}`);
+      el?.focus({ preventScroll: true });
+      el?.scrollIntoView({ block: "center", behavior: "smooth" });
+      return false;
+    };
+    for (const f of fields) {
+      const v = String(fd.get(f.name) ?? "").trim();
+      if (!v && !f.optional) {
+        if (f.choices) return flag(f.name, "Pick one.");
+        if (f.type === "email") return flag(f.name, "Enter your email.");
+        if (f.type === "password") return flag(f.name, f.autoComplete === "new-password" ? "Choose a password of 8 characters or more." : "Enter your password.");
+        if (f.name === "code") return flag(f.name, "Enter the code from the email.");
+        return flag(f.name, `Add your ${f.label.toLowerCase()}.`);
+      }
+      if (v && f.type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return flag(f.name, "That doesn't look like an email address.");
+      if (v && f.minLength && v.length < f.minLength) return flag(f.name, `At least ${f.minLength} characters.`);
+    }
+    for (const c of consents ?? []) if (c.required && !fd.get(c.name)) return flag(c.name, "Tick this to continue.");
+    return true;
+  }
+
+  const problem = (key: string) =>
+    issue?.key === key ? (
+      <p id={`f-${key}-issue`} role="alert" className={`text-[12px] text-danger ${ENTER}`}>
+        {issue.text}
+      </p>
+    ) : null;
+  const invalid = (key: string) => (issue?.key === key ? "border-danger/60" : "");
+  const describe = (f: Field) => (issue?.key === f.name ? `f-${f.name}-issue` : f.hint ? `f-${f.name}-hint` : undefined);
 
   return (
     <form
-      onSubmit={onSubmit}
+      noValidate
+      aria-busy={pending}
+      onSubmit={(e) => {
+        setIssue(null);
+        if (!check(e.currentTarget)) return e.preventDefault();
+        onSubmit(e);
+      }}
       onInput={(e) => {
         const el = e.target as HTMLInputElement;
-        if (el.name) setValues((v) => ({ ...v, [el.name]: el.value }));
+        if (el.name) {
+          setValues((v) => ({ ...v, [el.name]: el.value }));
+          if (issue?.key === el.name) setIssue(null);
+        }
       }}
-      className="space-y-4"
-      noValidate={false}
+      className="flex flex-col gap-5"
     >
       <input type="hidden" name="tz" value={tz} />
       {Object.entries(hidden ?? {}).map(([k, v]) => (
         <input key={k} type="hidden" name={k} value={v} />
       ))}
-      {fields.map((f) =>
-        f.choices ? (
-          <div key={f.name} className="space-y-1.5">
-            <label htmlFor={`f-${f.name}`} className="label block">
-              {f.label}
-            </label>
-            <select id={`f-${f.name}`} name={f.name} required defaultValue={f.defaultValue ?? ""} className="input">
+      {fields.map((f) => (
+        <div key={f.name} className="flex flex-col gap-1.5">
+          <label htmlFor={`f-${f.name}`} className={LABEL}>
+            {f.label}
+          </label>
+          {f.choices ? (
+            <select id={`f-${f.name}`} name={f.name} required defaultValue={f.defaultValue ?? ""} aria-describedby={describe(f)} className={`input ${invalid(f.name)}`}>
               <option value="" disabled>
                 Choose one
               </option>
@@ -94,14 +152,8 @@ export function AuthForm({
                 </option>
               ))}
             </select>
-          </div>
-        ) : (
-        <div key={f.name} className="space-y-1.5">
-          <label htmlFor={`f-${f.name}`} className="label block">
-            {f.label}
-          </label>
-          {f.prefix ? (
-            <div className="flex items-stretch overflow-hidden rounded-md border border-line bg-ink-2 focus-within:border-lime/70">
+          ) : f.prefix ? (
+            <div className={`flex items-stretch overflow-hidden rounded-lg border bg-ink-2 focus-within:border-lime/70 ${issue?.key === f.name ? "border-danger/60" : "border-line"}`}>
               <span className="flex shrink-0 items-center pl-3 text-sm text-mute">{f.prefix}</span>
               <input
                 id={`f-${f.name}`}
@@ -111,6 +163,7 @@ export function AuthForm({
                 placeholder={f.placeholder}
                 autoComplete={f.autoComplete}
                 autoCapitalize="none"
+                aria-describedby={describe(f)}
                 className="tap-tall w-full min-w-0 bg-transparent py-2.5 pr-3 text-sm outline-none placeholder:text-dim"
               />
             </div>
@@ -118,7 +171,7 @@ export function AuthForm({
             <div className="relative">
               <input
                 id={`f-${f.name}`}
-                className="input pr-12"
+                className={`input pr-12 ${invalid(f.name)}`}
                 name={f.name}
                 type={shown[f.name] ? "text" : "password"}
                 required
@@ -126,6 +179,7 @@ export function AuthForm({
                 defaultValue={f.defaultValue}
                 placeholder={f.placeholder}
                 autoComplete={f.autoComplete}
+                aria-describedby={describe(f)}
               />
               <button
                 type="button"
@@ -134,73 +188,72 @@ export function AuthForm({
                 aria-pressed={!!shown[f.name]}
                 className="absolute inset-y-0 right-0 grid w-12 place-items-center text-mute hover:text-bone"
               >
-                {shown[f.name] ? <NavIcon name="eyeOff" className="size-[18px]" /> : <EyeIcon />}
+                <NavIcon name={shown[f.name] ? "eyeOff" : "eye"} className="size-[18px]" />
               </button>
             </div>
           ) : (
             <input
               id={`f-${f.name}`}
-              className="input"
+              className={`input ${invalid(f.name)}`}
               name={f.name}
               type={f.type || "text"}
+              inputMode={f.inputMode}
               required={!f.optional}
               minLength={f.minLength}
               defaultValue={f.defaultValue}
               placeholder={f.placeholder}
               autoComplete={f.autoComplete}
+              aria-describedby={describe(f)}
             />
           )}
           {f.strength && <PasswordStrength value={values[f.name] ?? ""} context={["name", "email", "handle"].map((k) => values[k] ?? "")} />}
-          {f.hint && <div className="text-sm text-mute">{f.hint}</div>}
+          {problem(f.name)}
+          {f.hint && issue?.key !== f.name && (
+            <div id={`f-${f.name}-hint`} className="text-[12px] text-dim">
+              {f.hint}
+            </div>
+          )}
         </div>
-        ),
-      )}
+      ))}
       {consents?.filter((c) => c.required).map((c) => (
-        <label key={c.name} className="tap-tall flex cursor-pointer items-start gap-3 text-sm text-mute">
-          <input type="checkbox" name={c.name} required className="mt-0.5 size-5 shrink-0 accent-lime" />
-          <span>{c.label}</span>
-        </label>
+        <div key={c.name} className="flex flex-col gap-1.5">
+          <label className="tap-tall flex cursor-pointer items-start gap-3 text-[13px] text-mute">
+            <input id={`f-${c.name}`} type="checkbox" name={c.name} required className="mt-0.5 size-5 shrink-0 accent-lime" />
+            <span>{c.label}</span>
+          </label>
+          {problem(c.name)}
+        </div>
       ))}
       {consents?.some((c) => !c.required) && (
-        <fieldset className="space-y-1 rounded-lg border border-line p-4">
-          <legend className="label px-1">Emails (optional)</legend>
+        <fieldset className="flex flex-col gap-1">
+          <legend className={`${LABEL} mb-1.5`}>Emails (optional)</legend>
           {consents.filter((c) => !c.required).map((c) => (
-            <label key={c.name} className="tap-tall flex cursor-pointer items-start gap-3 py-1 text-sm text-mute">
+            <label key={c.name} className="tap-tall flex cursor-pointer items-start gap-3 py-1 text-[13px] text-mute">
               <input type="checkbox" name={c.name} className="mt-0.5 size-5 shrink-0 accent-lime" />
               <span>{c.label}</span>
             </label>
           ))}
-          <p className="pt-1 text-xs text-mute">You can turn either off any time in Settings.</p>
         </fieldset>
       )}
       {state?.error && (
-        <p role="alert" className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+        <p ref={alertRef} role="alert" className={`rounded-lg border border-danger/40 bg-danger/10 px-3.5 py-2.5 text-[13px] text-danger ${ENTER}`}>
           {state.error}
         </p>
       )}
       {captureSource && <SourceField />}
       <Turnstile siteKey={botCheckKey ?? null} />
       {state?.challenge && !botCheckKey && <Turnstile key="challenge" siteKey={challengeKey ?? null} eager />}
-      <button className="btn-lime min-h-11 w-full" disabled={pending}>
+      <button className="btn-lime min-h-11 w-full text-[14px] font-bold" disabled={pending}>
         {pending ? "One moment…" : submit}
       </button>
       {footer && (
-        <p className="text-center text-sm text-mute">
+        <p className="text-center text-[13px] text-mute">
           {footer.text}{" "}
-          <Link href={footer.href} className="text-bone underline decoration-lime underline-offset-4">
+          <Link href={footer.href} className="text-bone underline underline-offset-4">
             {footer.link}
           </Link>
         </p>
       )}
     </form>
-  );
-}
-
-/** "Show password" eye, exported from the FloorTest Product System Figma file. */
-function EyeIcon() {
-  return (
-    <svg aria-hidden viewBox="0 40.5 19 13" fill="none" className="h-[13px] w-[19px]">
-      <path d="M9.5 41.25C11.3776 41.25 13.2118 41.7952 14.7695 42.8145C16.3199 43.8289 17.5257 45.2669 18.2393 46.9453C18.2522 46.9808 18.252 47.0182 18.2393 47.0537C17.5257 48.7325 16.3201 50.171 14.7695 51.1855C13.2118 52.2048 11.3776 52.75 9.5 52.75C7.62238 52.75 5.78822 52.2048 4.23047 51.1855C2.67979 50.1709 1.47329 48.7327 0.759766 47.0537C0.747138 47.0183 0.74693 46.9806 0.759766 46.9453C1.47333 45.2667 2.68004 43.8289 4.23047 42.8145C5.78822 41.7952 7.62238 41.25 9.5 41.25ZM11.6006 47C11.6004 48.1083 10.6757 49.0352 9.5 49.0352C8.32449 49.0349 7.40058 48.1082 7.40039 47C7.40039 45.8917 8.32437 44.9641 9.5 44.9639C10.6758 44.9639 11.6006 45.8915 11.6006 47ZM13.1006 47C13.1006 45.0312 11.472 43.4639 9.5 43.4639C7.52818 43.4641 5.90039 45.0314 5.90039 47C5.90058 48.9685 7.52829 50.5349 9.5 50.5352C11.4719 50.5352 13.1004 48.9686 13.1006 47Z" stroke="currentColor" strokeWidth="1.5" />
-    </svg>
   );
 }
