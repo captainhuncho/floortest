@@ -78,8 +78,9 @@ export function TopBar(p: Props) {
           )}
         </button>
         {open === "bell" &&
-          (window.matchMedia("(max-width: 767px)").matches ? (
-            // Phones: a centred sheet over the page, so nothing runs off screen.
+          (window.matchMedia("(max-width: 1023px)").matches ? (
+            // Phones and narrow windows: a centred sheet over the page. The anchored panel needs room to the left of
+            // the bell; below 1024px it would run under the sidebar, where the scrolling main area clips it.
             createPortal(<Notifications sheet items={p.notices.items} unread={p.notices.unread} onNavigate={() => setOpen(null)} />, document.getElementById("theme-root") ?? document.body)
           ) : (
             <Notifications items={p.notices.items} unread={p.notices.unread} onNavigate={() => setOpen(null)} />
@@ -112,7 +113,8 @@ export function TopBar(p: Props) {
 function Panel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`absolute right-0 top-full z-50 mt-3 max-h-[calc(100dvh-90px)] w-[min(400px,calc(100vw-24px))] overflow-y-auto rounded-2xl border border-line bg-ink-2 shadow-2xl shadow-black/70 ${className}`}
+      // Never wider than the main column (the sidebar is 248px): the main area scrolls, so it clips anything past its edge.
+      className={`absolute right-0 top-full z-50 mt-3 max-h-[calc(100dvh-90px)] w-[min(400px,calc(100vw-24px))] overflow-y-auto rounded-2xl border border-line bg-ink-2 shadow-2xl shadow-black/70 md:w-[min(400px,calc(100vw-248px-48px))] ${className}`}
     >
       {children}
     </div>
