@@ -46,7 +46,7 @@ export default async function Activity({ searchParams }: { searchParams: Promise
             href={k === "you" ? "/dashboard/activity" : `/dashboard/activity?f=${k}`}
             aria-current={filter[0] === k ? "page" : undefined}
             className={`shrink-0 rounded-full border border-line px-3 py-1.5 text-[11px] md:-mb-px md:rounded-none md:border-0 md:border-b-2 md:bg-transparent md:px-1 md:py-2.5 md:text-[12px] ${
-              filter[0] === k ? "bg-white font-bold text-ink md:border-bone md:text-bone" : "bg-ink-3 font-medium text-mute md:border-transparent md:hover:text-bone"
+              filter[0] === k ? "bg-bone font-bold text-ink md:border-bone md:text-bone" : "bg-ink-3 font-medium text-mute md:border-transparent md:hover:text-bone"
             }`}
           >
             {label}

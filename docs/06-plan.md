@@ -44,6 +44,7 @@ Plan + tappable prototype: claude.ai/artifact/5BVVpA3Zn9AxH71ut9hGFr (private), 
 - Rekordbox how-to video, footer legal placement, mobile footer redesign.
 
 ## Done (recent)
+- 10 Oct: UI polish pass: Account band no longer overlaps at laptop widths; Prepare titles keep room on narrower desktops; verify-email banner one line; Day mode fixed where white was hard-coded (Kept pills, play buttons via `play-dot`, Keep/Reply buttons, selected chips, Receiving badge).
 - 10 Oct: product review fixes: links re-route themselves off closed collections nightly + "Email me when it reopens" on closed/full/paused links (e2e test); plan cards derived from real plan capabilities, no held features, no offer while billing is off, "active tracks" defined; counts labelled by window (Received/Kept this week, Decided, Tracks sent); one date format; sender form keeps profiles on the device and groups mix/release/AI; phones get the player first in the queue and Up next before Send music; "Mix status" label; Contacts named Contacts; tooltips on list actions; bell grouped by day.
 - 10 Oct: batch actions in the List view (keep, not for me, needs review, move, download, delete) + e2e test.
 - 10 Oct: offline kept tracks (Save for offline in Prepare; offline screen player) on both apps.

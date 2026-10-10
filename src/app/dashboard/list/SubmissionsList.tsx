@@ -147,7 +147,7 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
       <div className="flex flex-wrap items-center gap-1.5 px-3 pb-3 md:gap-2 md:px-8 md:pb-5">
         <Link
           href="/dashboard/review?view=list"
-          className={`rounded-xl px-3 py-1.5 text-[11px] font-bold md:hidden ${sp.s || sp.c || sp.type || sp.sender || sp.genre || search ? "border border-line bg-ink-3 text-mute" : "bg-white text-ink"}`}
+          className={`rounded-xl px-3 py-1.5 text-[11px] font-bold md:hidden ${sp.s || sp.c || sp.type || sp.sender || sp.genre || search ? "border border-line bg-ink-3 text-mute" : "bg-bone text-ink"}`}
         >
           All Queue
         </Link>

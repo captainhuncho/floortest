@@ -225,7 +225,7 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
                       setSelected(r.id);
                       player.play(toPlayer(r), queue);
                     }}
-                    className="grid size-7 shrink-0 place-items-center rounded-full bg-white text-[11px] font-bold text-ink"
+                    className="play-dot grid size-7 shrink-0 place-items-center rounded-full text-[11px] font-bold"
                     aria-label={playing ? `Pause ${r.title}` : `Play ${r.title}`}
                   >
                     {playing ? (
@@ -255,7 +255,7 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
                   {statusTag ? (
                     <span
                       className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-bold uppercase ${
-                        decision === "kept" ? "bg-white/10 text-white" : "bg-line text-mute"
+                        decision === "kept" ? "bg-bone/10 text-bone" : "bg-line text-mute"
                       }`}
                     >
                       {decisionLabel(decision)}

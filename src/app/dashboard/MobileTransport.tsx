@@ -35,7 +35,7 @@ export function MobileTransport({ track, prevHref, nextHref }: { track: PlayerTr
         <button onClick={() => (on ? seekBy(-15) : play(track))} className="rounded-md bg-ink-2 p-2 text-[11px] text-bone" aria-label="Back 15 seconds">
           -15S
         </button>
-        <button onClick={() => (on ? toggle() : play(track))} className="grid size-14 place-items-center rounded-full bg-white text-ink" aria-label={on && playing ? "Pause" : "Play"}>
+        <button onClick={() => (on ? toggle() : play(track))} className="play-dot grid size-14 place-items-center rounded-full" aria-label={on && playing ? "Pause" : "Play"}>
           <PlayIcon playing={on && playing} className="size-5" />
         </button>
         <button onClick={() => (on ? seekBy(15) : play(track))} className="rounded-md bg-ink-2 p-2 text-[11px] text-bone" aria-label="Forward 15 seconds">

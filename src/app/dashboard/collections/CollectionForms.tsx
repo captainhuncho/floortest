@@ -390,8 +390,8 @@ export function CollectionDetailHeader({ c, receiving, closed, canDelete }: { c:
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2">
         {receiving && !closed ? (
-          <span className="flex items-center gap-1 rounded-md border border-white bg-white/10 px-2 py-1 text-[11px] font-bold tracking-[0.5px] text-white">
-            <span aria-hidden className="size-[5px] rounded-full bg-white" />
+          <span className="flex items-center gap-1 rounded-md border border-bone bg-bone/10 px-2 py-1 text-[11px] font-bold tracking-[0.5px] text-bone">
+            <span aria-hidden className="size-[5px] rounded-full bg-bone" />
             RECEIVING
           </span>
         ) : (

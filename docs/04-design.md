@@ -17,7 +17,7 @@ A dark DJ booth: calm, technical, confident. Night is the default; Day is warm o
 | `lime` | #d5ff48 | #4a6400 (as text/lines) | accent; lime fills stay #d5ff48 with dark text |
 | `danger` | #ff6b5a | #c4321f | destructive, errors |
 
-Charts: white bars at night, olive (#5f8000) by day. Play buttons: white at night, lime by day. Theme: Night / Day / System, chosen in Account; the floating phone tab bar stays dark.
+Charts: white bars at night, olive (#5f8000) by day. Round play buttons use the `play-dot` class: white at night, lime by day. Never hard-code white in the app: `bone` is the "ink on this theme" colour and flips by day (a `bg-bone` fill turns dark with light text); only things drawn over artwork or the QR code stay white. Theme: Night / Day / System, chosen in Account; the floating phone tab bar stays dark.
 
 ## Type
 - One font: **JetBrains Mono** (variable), everywhere. Instrument Serif italic only as a home-page accent.

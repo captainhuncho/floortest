@@ -94,7 +94,7 @@ export default async function Account() {
       </div>
 
       {/* Who you are, your plan and your numbers: one band on desktop, stacked on phones. */}
-      <section className="flex flex-col gap-4 rounded-[18px] border border-line bg-ink-2 p-4 lg:grid lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1.1fr)] lg:items-center lg:gap-8 md:p-6">
+      <section className="flex flex-col gap-4 rounded-[18px] border border-line bg-ink-2 p-4 md:p-6 xl:grid xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_auto] xl:items-center xl:gap-8">
         <div className="flex items-center gap-3 md:gap-4">
           <span className="grid size-14 shrink-0 place-items-center rounded-full bg-[#6444ff] text-lg font-bold text-white md:size-16">{initials(user.name)}</span>
           <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -123,9 +123,9 @@ export default async function Account() {
             </Link>
           </div>
         </div>
-        <dl className="grid grid-cols-3 gap-2 lg:border-l lg:border-line lg:pl-8">
+        <dl className="grid grid-cols-3 gap-2 xl:flex xl:gap-8 xl:border-l xl:border-line xl:pl-8">
           {stats.map(([n, l]) => (
-            <div key={l} className="flex min-w-0 flex-col gap-1">
+            <div key={l} className="flex min-w-0 flex-col gap-1 xl:shrink-0">
               <dt className="order-2 text-[11px] font-bold uppercase tracking-[1px] text-dim">{l}</dt>
               <dd className="order-1 text-base font-bold text-bone tnum md:text-[22px]">{n}</dd>
             </div>

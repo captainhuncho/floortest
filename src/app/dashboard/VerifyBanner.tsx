@@ -9,8 +9,8 @@ export function VerifyBanner({ email }: { email: string }) {
   const [pending, start] = useTransition();
   return (
     <div role="status" className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-lime/30 bg-lime/[0.07] px-4 py-2.5 text-sm sm:px-6">
-      <span>
-        Confirm <span className="font-medium">{email}</span> so password resets and alerts reach you. Check your inbox for the link.
+      <span className="min-w-0">
+        Confirm <span className="font-medium">{email}</span> so password resets and alerts reach you.<span className="hidden sm:inline"> The link is in your inbox.</span>
       </span>
       <button
         type="button"

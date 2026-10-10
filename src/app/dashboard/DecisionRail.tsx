@@ -169,7 +169,7 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
           <a href={`/api/tracks/${track.id}/download`} className={pill}>
             DOWNLOAD
           </a>
-          <button onClick={() => setReplying((r) => !r)} aria-expanded={replying} className={replying ? "rounded-full bg-white px-3.5 py-2 text-[11px] font-bold text-ink" : pill}>
+          <button onClick={() => setReplying((r) => !r)} aria-expanded={replying} className={replying ? "rounded-full bg-bone px-3.5 py-2 text-[11px] font-bold text-ink" : pill}>
             REPLY
           </button>
         </div>
@@ -186,7 +186,7 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
             onClick={() => decide("kept")}
             disabled={busy}
             aria-pressed={track.decision === "kept"}
-            className={`flex-1 rounded-xl p-3.5 text-[11px] font-bold ${track.decision === "kept" ? "bg-lime text-ink" : "bg-white text-ink"}`}
+            className={`flex-1 rounded-xl p-3.5 text-[11px] font-bold ${track.decision === "kept" ? "bg-lime text-ink" : "bg-bone text-ink"}`}
           >
             {track.decision === "kept" ? "✓ KEPT" : "✓ KEEP"}
           </button>
