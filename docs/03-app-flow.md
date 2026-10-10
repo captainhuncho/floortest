@@ -36,12 +36,13 @@ A share link (/s/…) remembers itself and is where sign-in lands.
 
 ## Receiver: daily loop
 ```
-Floor ─► Review Queue ─► play ─► Keep (K) ──► Prepare for set ─► Download kept ─► name folder ─► ZIP
+Floor (phones: stats, Up next, then Send music) ─► Review Queue (phones: player first, list under it) ─► play ─► Keep (K) ──► Prepare for set ─► Download kept ─► name folder ─► ZIP
                               ├─ Not for me (X)    └─ Files only · Clear kept (confirm)
                               └─ Reply (R) ──► sender email
 Review Queue (List) ─► Select ─► tick tracks / Select all ─► bar: Keep · Not for me · Needs review · Move to… · Download · Delete ─► confirm ─► done (toast)
    Esc or Done leaves select mode; in select mode a tap on a row ticks it (never plays or opens it)
 Floor ─► Collections ─► New collection / Open collection ─► Edit collection · Download collection · Files only · Send new tracks here
+Nightly ─► a link on a collection past its close date ─► moves to the newest open collection ─► bell: "Your link now goes to …" · activity: "Link moved on its own to"
 Floor ─► Send ─► their-link ─► upload ─► Sent list (≤10 days open, older folded) ─► Track → /receipt/<token>
 Avatar ─► Account ─► Settings (profile, receiving, notifications, plan, security) · Sign out ─► /signed-out
 ```
@@ -59,7 +60,8 @@ Mobile tab bar: Floor · Queue · Collections · Prepare. Desktop sidebar adds S
 floortest.app/<handle> ─► choose files (or Send folders on Pro/Team)
    ─► details form (+ Artwork on Team) ─► email ─► 6-digit code ─► upload (progress, cancel)
    ─► "Sent" screen ─► receipt email ─► /receipt/<token> (status updates by email)
-Link closed / paused / full ─► the page says why, no upload.
+Link closed / paused / full ─► the page says why, no upload ─► "Email me when it reopens" ─► one email when the link takes uploads again
+   (sent straight after the receiver switches collection, moves the closing date, resumes; nightly for a pause that ended on its own or a re-route)
 ```
 
 ## Offline kept tracks (iPhone and Android apps)

@@ -14,7 +14,7 @@ Table-by-table detail, query rules, migrations and backups: `docs/DATABASE.md`. 
 
 Files are never public: the app hands out short-lived signed links after checking who's asking.
 
-## Main tables by owner (73 migrations; full list in `src/lib/db/migrations.ts`)
+## Main tables by owner (77 migrations; full list in `src/lib/db/migrations.ts`)
 
 | Group | Tables | Personal data |
 |---|---|---|
@@ -23,7 +23,7 @@ Files are never public: the app hands out short-lived signed links after checkin
 | Music | `tracks`, `stems`, `collections`, `collection_members`, `track_votes`, `events` | file keys, titles, messages, listening/decision history |
 | Sharing (held) | `track_shares`, `share_access`, `share_requests` | who listened/downloaded |
 | Plans | `plans`, `plan_requests` | org name, link, notes |
-| Growth | `waitlist`, `invites`, `newsletter_subscribers`, `contact_messages` | name, email, links |
+| Growth | `waitlist`, `invites`, `newsletter_subscribers`, `contact_messages`, `reopen_alerts` ("email me when it reopens": sender email + receiver, sent rows deleted after 30 days, unanswered after a year; in data copies and erasure) | name, email, links |
 | Ops | `ops_members`, `admin_sessions`, `admin_log`, `account_notes`, `partner_notes`, `incidents`, `job_runs`, `switches`, `site_content*` | staff emails, notes about users |
 | Abuse/safety | `rate_events`, `platform_blocks`, `takedowns`, `protected_names`, `email_suppressions`, `storage_deletions` | IPs, emails (rate events deleted within 3 days) |
 

@@ -317,11 +317,11 @@ export function SubmitForm({
           <div className={`grid gap-3 ${m ? "grid-cols-1" : "sm:grid-cols-2"}`}>
             <label className="block space-y-1">
               <span className={`block text-[11px] ${L.mute}`}>Instagram</span>
-              <input className={L.input} name="sender_instagram" autoComplete="off" maxLength={300} placeholder="@yourname" />
+              <input className={L.input} name="sender_instagram" autoComplete="off" maxLength={300} placeholder="@yourname" value={sender.instagram} onChange={(e) => setSender((s) => ({ ...s, instagram: e.target.value }))} />
             </label>
             <label className="block space-y-1">
               <span className={`block text-[11px] ${L.mute}`}>Streaming profile</span>
-              <input className={L.input} name="sender_streaming" inputMode="url" autoComplete="url" maxLength={300} placeholder="open.spotify.com/artist/…" />
+              <input className={L.input} name="sender_streaming" inputMode="url" autoComplete="url" maxLength={300} placeholder="open.spotify.com/artist/…" value={sender.streaming} onChange={(e) => setSender((s) => ({ ...s, streaming: e.target.value }))} />
             </label>
           </div>
           <span className={`block text-[11px] ${L.mute}`}>Spotify, Apple Music, SoundCloud, Beatport, Bandcamp, YouTube or TikTok. Helps the receiver know who you are.</span>
@@ -333,6 +333,8 @@ export function SubmitForm({
       <GenrePicker genres={genres} value={genre} onChange={setGenre} inputClass={L.input} labelClass={L.label} />
       <input type="hidden" name="genre" value={genre} />
 
+      {/* The three facts about the track sit together: one row on a laptop, stacked on a phone. */}
+      <div className={`grid gap-4 ${m ? "" : "sm:grid-cols-3"}`}>
       <label className="block space-y-1.5">
         <span className={L.label}>Mix status<Req /></span>
         <select name="mix_status" required className={L.input} value={mix} onChange={(e) => setMix(e.target.value)}>
@@ -359,6 +361,18 @@ export function SubmitForm({
         </select>
       </label>
       <label className="block space-y-1.5">
+        <span className={L.label}>Made with AI?<Req /></span>
+        <select name="ai_use" required className={L.input} defaultValue="">
+          <option value="" disabled>
+            Choose one
+          </option>
+          <option value="none">No</option>
+          <option value="partial">Partly (e.g. AI vocals, stems or mastering)</option>
+          <option value="full">Fully AI-generated</option>
+        </select>
+      </label>
+      </div>
+      <label className="block space-y-1.5">
         <span className={L.label}>Message for {receiverName} (optional)</span>
         <textarea className={`${L.input} min-h-24 resize-y`} name="message" maxLength={2000} placeholder="What it is, where it fits, anything they should know. Travels privately with the track." />
       </label>
@@ -370,18 +384,6 @@ export function SubmitForm({
           <span className={`block text-xs ${L.mute}`}>JPG, PNG or WebP, up to 25 MB. Sent at full quality. {many ? "Goes with every track in this send." : ""}</span>
         </label>
       )}
-
-      <label className="block space-y-1.5">
-        <span className={L.label}>Did you use AI to make {many ? "these tracks" : "this track"}?<Req /></span>
-        <select name="ai_use" required className={L.input} defaultValue="">
-          <option value="" disabled>
-            Choose one
-          </option>
-          <option value="none">No</option>
-          <option value="partial">Partly (e.g. AI vocals, stems or mastering)</option>
-          <option value="full">Fully AI-generated</option>
-        </select>
-      </label>
 
       {errorBox}
 

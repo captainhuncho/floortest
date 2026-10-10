@@ -161,8 +161,11 @@ function Notifications({ items, unread, onNavigate, sheet = false }: { items: No
         <p className="px-5 py-10 text-center text-mute">You&apos;re all caught up. New submissions show up here.</p>
       ) : (
         <ul>
-          {list.map((n) => (
+          {list.map((n, i) => (
             <li key={n.id} className="border-b border-line last:border-b-0">
+              {dayLabel(n.at) !== (i > 0 ? dayLabel(list[i - 1].at) : null) && (
+                <p className="bg-ink-2 px-5 py-1.5 text-[11px] font-bold uppercase tracking-[1px] text-faint">{dayLabel(n.at)}</p>
+              )}
               <Link href={n.href} onClick={onNavigate} className="flex gap-3 px-5 py-3.5 hover:bg-ink-3">
                 <span
                   aria-hidden
@@ -187,6 +190,15 @@ function Notifications({ items, unread, onNavigate, sheet = false }: { items: No
   );
   if (!sheet) return <Panel>{body}</Panel>;
   return <NotificationsSheet onNavigate={onNavigate}>{body}</NotificationsSheet>;
+}
+
+/** "Today", "Yesterday", else the day, so a long list reads in stretches rather than one run of rows. */
+function dayLabel(at: number) {
+  const day = (t: number) => new Date(t).toDateString();
+  const t = Date.now();
+  if (day(at) === day(t)) return "Today";
+  if (day(at) === day(t - 86_400_000)) return "Yesterday";
+  return new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
 function NotificationsSheet({ onNavigate, children }: { onNavigate: () => void; children: React.ReactNode }) {

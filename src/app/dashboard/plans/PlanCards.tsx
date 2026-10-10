@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { fmtBytes } from "@/lib/format";
 import { afterDiscount, discountNow, planGrid, type Plan } from "@/lib/plan-store";
 import { setPlan } from "../actions/settings";
 
@@ -18,6 +19,7 @@ export function PlanCards({
   capBonus = 0,
   preview = false,
   pendingPlan = null,
+  sharing = false,
 }: {
   plans: Plan[];
   billing: boolean;
@@ -28,9 +30,25 @@ export function PlanCards({
   preview?: boolean;
   /** During the beta: the plan this person has asked for and is waiting on. */
   pendingPlan?: string | null;
+  /** Colleague sharing is live (switch `sharing`); until then nothing about it is promised. */
+  sharing?: boolean;
 }) {
-  // Paid plans' own extras, minus lines the card already shows (capacity) or that only point at another plan.
-  const extrasOf = (p: Plan) => (p.price > 0 ? p.features.filter((f) => !/active tracks|^everything in/i.test(f)) : []);
+  /*
+   * What a paid plan adds, read from what it actually enables (folders, artwork, colleague downloads) so the card can't
+   * drift from the product. Ops' own feature lines follow, minus capacity (shown above), "everything in" pointers and
+   * anything about features that are held (sharing, stems) while they're off.
+   */
+  const extrasOf = (p: Plan) => {
+    if (p.price <= 0) return [];
+    const live = [
+      p.folderBytes > 0 && `Send folders (EP or album) up to ${fmtBytes(p.folderBytes)}`,
+      p.trackArt && "Track artwork from senders",
+      sharing && p.shareDownloads && "Colleagues can download tracks you share",
+    ].filter((f): f is string => !!f);
+    const held = sharing ? /stems|as they launch/i : /colleague|share|teammate|stems|as they launch/i;
+    const own = p.features.filter((f) => !/active tracks|^everything in/i.test(f) && !held.test(f) && !live.some((l) => l.toLowerCase() === f.toLowerCase()));
+    return [...live, ...own];
+  };
   const sameTools = plans.every((p) => !extrasOf(p).length);
   // Yearly against twelve months, rounded down so we never overstate it.
   const saving = (p: Plan) => (p.price && p.yearly ? Math.max(0, Math.floor((1 - p.yearly / (p.price * 12)) * 100)) : 0);
@@ -52,8 +70,9 @@ export function PlanCards({
           const upgrade = p.price > currentPrice;
           const featured = p.featured;
           const extras = extrasOf(p);
-          // A running discount shows the list price struck through; list prices themselves never change.
-          const off = discountNow(p);
+          // A running discount shows the list price struck through; list prices themselves never change. While plans are
+          // free (billing off) no price applies yet, so no offer is shown either.
+          const off = billing ? discountNow(p) : 0;
           // One price size for both periods, so switching doesn't resize the number.
           const bigPrice = !!off || Math.max(p.price, p.yearly) >= 100;
           const action = billing ? `Upgrade to ${p.name}` : `Request ${p.name} →`;

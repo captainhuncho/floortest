@@ -9,6 +9,7 @@ import { now, q } from "@/lib/db";
 import { cleanGenre, MAX_COLLECTION_GENRES } from "@/lib/plans";
 import { switchOn } from "@/lib/switches";
 import { audit } from "@/lib/audit";
+import { sendReopenAlerts } from "@/lib/reopen";
 import { done, ownCollection } from "./common";
 
 export async function createCollection(form: FormData) {
@@ -27,6 +28,7 @@ export async function setActiveCollection(id: number) {
   if (!c) return;
   await q.run("UPDATE users SET active_collection_id = ? WHERE id = ?", id, u.id);
   await audit(u.id, "collection_activated", c.name);
+  await sendReopenAlerts(u.id);
   done();
   revalidatePath(`/${u.handle}`);
 }
@@ -73,6 +75,8 @@ export async function updateCollection(id: number, form: FormData) {
     await q.run("UPDATE collections SET max_tracks = ?, full_at = CASE WHEN ? THEN COALESCE(full_at, ?) ELSE NULL END WHERE id = ?", max, !!max && received >= max, now(), id);
   }
   await audit(u.id, "collection_updated", name || c.name);
+  // A new closing date or a raised cap can reopen the link: senders who asked to hear about it get their email.
+  if (u.active_collection_id === id) await sendReopenAlerts(u.id);
   done();
   revalidatePath(`/${u.handle}`);
 }

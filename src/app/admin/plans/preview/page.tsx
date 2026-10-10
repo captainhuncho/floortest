@@ -17,7 +17,7 @@ export default async function PlanPreview({ searchParams }: { searchParams: Prom
   await requireAdmin("plans.read");
   const sp = await searchParams;
   const id = one(sp.plan);
-  const [all, billing] = await Promise.all([allPlans(), switchOn("billing")]);
+  const [all, billing, sharing] = await Promise.all([allPlans(), switchOn("billing"), switchOn("sharing")]);
   const edited = all.find((p) => p.id === id);
   const apply = (p: Plan): Plan => {
     if (p.id !== id) return p;
@@ -62,7 +62,7 @@ export default async function PlanPreview({ searchParams }: { searchParams: Prom
           <p className="text-[15px] text-mute">The same receiving desk. The capacity that fits your music.</p>
           <BillingSwitch initial="month" target="plans-root" />
         </header>
-        <PlanCards plans={plans} billing={billing} userPlan={null} currentPrice={0} preview />
+        <PlanCards plans={plans} billing={billing} userPlan={null} currentPrice={0} preview sharing={sharing} />
       </div>
     </div>
   );

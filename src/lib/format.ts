@@ -19,13 +19,17 @@ export function ago(ts: number, now = Date.now()) {
   if (h < 24) return `${h}h ago`;
   const d = Math.round(h / 24);
   if (d < 30) return `${d}d ago`;
-  return new Date(ts).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  return fmtDay(ts);
 }
 
-export function fmtDate(ts: number) {
-  return new Date(ts).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+/** A moment: "10 Oct, 17:04" (the year only when it isn't this one). */
+export function fmtDate(ts: number, timeZone?: string) {
+  const d = new Date(ts);
+  const sameYear = d.getFullYear() === new Date().getFullYear();
+  return d.toLocaleString("en-GB", { day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }), hour: "2-digit", minute: "2-digit", hour12: false, timeZone });
 }
 
+/** A day: "29 Sept 2026". */
 export function fmtDay(ts: number, timeZone?: string) {
   return new Date(ts).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone });
 }

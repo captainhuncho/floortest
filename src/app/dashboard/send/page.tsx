@@ -95,10 +95,7 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
           {recent.map(row)}
           {!recent.length && older.length > 0 && <li className="px-4 py-4 text-sm text-mute">Nothing sent in the last 10 days.</li>}
           {!sent.length && (
-            <li className="px-4 py-6 text-sm text-mute">
-              Nothing sent yet. Once you send a track it shows up here, and you can tap it to follow it: delivered, listened to, downloaded and the receiver&apos;s
-              reply.
-            </li>
+            <li className="px-4 py-6 text-sm text-mute">Nothing sent yet.</li>
           )}
         </ul>
         {older.length > 0 && (

@@ -137,7 +137,7 @@ export async function ReviewPanel({
             ["TEMPO", [t.bpm && `${Math.round(t.bpm)} BPM`, t.musical_key].filter(Boolean).join(" · ") || "—"],
             ["GENRE", t.genre || "—"],
             ["LENGTH", t.duration ? `${Math.floor(t.duration / 60)}:${String(Math.round(t.duration % 60)).padStart(2, "0")}` : "—"],
-            ["DEMO STATUS", t.mix_status ? MIX_STATUS[t.mix_status as keyof typeof MIX_STATUS] : "—"],
+            ["MIX STATUS", t.mix_status ? MIX_STATUS[t.mix_status as keyof typeof MIX_STATUS] : "—"],
           ].map(([k, v]) => (
             <div key={k} className="flex flex-col gap-1 rounded-lg bg-ink-2 p-2.5">
               <dt className="text-[11px] text-faint">{k}</dt>

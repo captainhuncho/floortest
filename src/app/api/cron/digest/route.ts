@@ -4,6 +4,7 @@ import { cronAuthorized, recordRun } from "@/lib/cron";
 import { runAdminDigest, runNudges } from "@/lib/jobs";
 import { runFirstTrackNudges } from "@/lib/onboarding";
 import { runDigests } from "@/lib/notify";
+import { rerouteClosedLinks, sweepReopenAlerts } from "@/lib/reopen";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -13,7 +14,8 @@ export async function GET(req: Request) {
   if (!cronAuthorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const started = Date.now();
   try {
-    const result = { digestsSent: await runDigests(), nudges: await runNudges(), firstTrackNudges: await runFirstTrackNudges(), adminDigest: await runAdminDigest() };
+    // Links first: a link that moves off a closed collection may be the reopening a sender asked to hear about.
+    const result = { linksRerouted: await rerouteClosedLinks(), reopenAlerts: await sweepReopenAlerts(), digestsSent: await runDigests(), nudges: await runNudges(), firstTrackNudges: await runFirstTrackNudges(), adminDigest: await runAdminDigest() };
     await recordRun("digest", started, true, result);
     return NextResponse.json(result);
   } catch (e) {

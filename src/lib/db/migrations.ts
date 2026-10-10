@@ -1207,4 +1207,32 @@ alter table sessions add column if not exists kind text not null default 'web';
 alter table sessions add column if not exists label text not null default '';
 `,
   },
+  {
+    // "Email me when it reopens": senders who hit a closed, full or paused link leave an address; one email goes out
+    // when that receiver's link takes uploads again. One pending row per address and receiver.
+    id: "0076_reopen_alerts",
+    sql: `
+create table if not exists reopen_alerts (
+  id serial primary key,
+  user_id integer not null references users(id) on delete cascade,
+  email text not null,
+  created_at bigint not null,
+  sent_at bigint
+);
+create unique index if not exists reopen_alerts_pending on reopen_alerts(user_id, email) where sent_at is null;
+create index if not exists reopen_alerts_user on reopen_alerts(user_id);
+alter table reopen_alerts enable row level security;
+`,
+  },
+  {
+    // Plan cards now derive their extras (folders, artwork, colleague downloads) from what each plan really enables,
+    // so the seeded free-text lines that promised held or already-live features go. Only untouched seed text is replaced.
+    id: "0077_plan_features_truth",
+    sql: `
+update plans set features = '["500 active tracks","Everything in Free"]'
+  where id = 'pro' and features = '["500 active tracks","Everything in Free","Colleagues can download tracks you share","Paid features as they launch (stems, folders)"]';
+update plans set features = '["2,000 active tracks","Everything in Pro"]'
+  where id = 'team' and features = '["2,000 active tracks","Everything in Pro","Shared collections: up to 10 teammates listen and vote"]';
+`,
+  },
 ];

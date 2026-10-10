@@ -123,18 +123,18 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
   const [items, setItems] = useState<Item[]>([]);
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
-  const [sender, setSender] = useState({ name: "", email: "" });
+  const [sender, setSender] = useState({ name: "", email: "", instagram: "", streaming: "" });
   const abort = useRef<AbortController | null>(null);
   // When the current transfer started, for the time-left estimate.
   const [startedAt, setStartedAt] = useState(0);
   // One send = one batch; a retry after a failure stays in it.
   const [batch, setBatch] = useState(newId);
 
-  // Name and email are captured once and remembered on this device.
+  // Name, email and profiles are captured once and remembered on this device, so the next send is just the file.
   useEffect(() => {
     try {
       const s = JSON.parse(localStorage.getItem(SENDER_KEY) || "null");
-      if (s?.name || s?.email) setSender({ name: s.name || "", email: s.email || "" });
+      if (s?.name || s?.email) setSender({ name: s.name || "", email: s.email || "", instagram: s.instagram || "", streaming: s.streaming || "" });
     } catch {}
   }, []);
 
@@ -172,7 +172,7 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
     if (!items.length) return setError("Choose a WAV or MP3 file.");
     const field = (k: string) => String(fd.get(k) ?? "");
     try {
-      if (!opts.asAccount) localStorage.setItem(SENDER_KEY, JSON.stringify({ name: field("name"), email: field("email") }));
+      if (!opts.asAccount) localStorage.setItem(SENDER_KEY, JSON.stringify({ name: field("name"), email: field("email"), instagram: field("sender_instagram"), streaming: field("sender_streaming") }));
     } catch {}
     setError(null);
     setPhase("uploading");

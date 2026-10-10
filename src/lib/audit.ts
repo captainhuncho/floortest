@@ -41,6 +41,7 @@ export const AUDIT_LABELS = {
   collection_deleted: "Deleted collection",
   link_paused: "Paused your link",
   link_resumed: "Reopened your link",
+  link_rerouted: "Link moved on its own to",
   notifications_updated: "Changed notification settings",
   digest_sent: "Sent yourself a digest",
   settings_updated: "Changed name or link",

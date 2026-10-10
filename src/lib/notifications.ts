@@ -21,6 +21,12 @@ export async function notificationsFor(user: User) {
     cleared,
   );
 
+  // The nightly job moved the link off a closed collection: say where it goes now.
+  const moves = await q.all<{ id: number; detail: string; created_at: number }>(
+    "SELECT id, detail, created_at FROM account_log WHERE user_id = ? AND action = 'link_rerouted' AND created_at > ? ORDER BY created_at DESC LIMIT 3",
+    user.id,
+    cleared,
+  );
   const news = await q.all<{ id: number; title: string; body: string; href: string; created_at: number }>(
     "SELECT a.id, a.title, a.body, a.href, a.created_at FROM announcements a JOIN announcement_recipients r ON r.announcement_id = a.id AND r.user_id = ? WHERE a.created_at > ? ORDER BY a.created_at DESC LIMIT 5",
     user.id,
@@ -35,6 +41,15 @@ export async function notificationsFor(user: User) {
     unread: n.created_at > seen,
     tone: "info" as const,
   }));
+  items.push(...moves.map((m) => ({
+    id: `m${m.id}`,
+    title: `Your link now goes to ${m.detail.replace(/ \(.*\)$/, "")}`,
+    detail: `${m.detail.match(/\((.*)\)$/)?.[1] ?? "The collection it pointed at closed"}. Change it under Collections.`,
+    href: "/dashboard/collections",
+    at: m.created_at,
+    unread: m.created_at > seen,
+    tone: "info" as const,
+  })));
   items.push(...events.map((e) => ({
     id: `e${e.id}`,
     title: e.type === "submitted" ? `New track: ${e.title}` : `Auto-deleted: ${e.title}`,

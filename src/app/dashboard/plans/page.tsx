@@ -2,7 +2,7 @@ import { trackUse } from "@/lib/usage";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { capacity } from "@/lib/desk";
-import { RETAIN_UNREVIEWED_DAYS } from "@/lib/plans";
+import { RETAIN_PASSED_DAYS, RETAIN_UNREVIEWED_DAYS } from "@/lib/plans";
 import { allPlans, planOf } from "@/lib/plan-store";
 import { switchOn } from "@/lib/switches";
 import { BillingSwitch } from "./BillingSwitch";
@@ -26,7 +26,7 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
   const pending = await pendingRequest(user.id);
   // Monthly prices are set; yearly ones aren't yet, so the Year view says so rather than guessing.
   const yearly = sp.period === "year";
-  const billing = await switchOn("billing");
+  const [billing, sharing] = await Promise.all([switchOn("billing"), switchOn("sharing")]);
   const pct = Math.min(100, Math.round((cap.used / Math.max(1, cap.limit)) * 100));
   // Offered plans, plus the person's own plan even if it's been retired (they keep it until they change).
   const plans = (await allPlans()).filter((p) => !p.retired || p.id === user.plan);
@@ -74,12 +74,13 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
           <div className="h-full rounded-full bg-lime" style={{ width: `${pct}%` }} />
         </div>
         <p className="mt-2 text-[11px] text-dim">
-          Undecided tracks are deleted after {RETAIN_UNREVIEWED_DAYS} days; kept tracks stay until you delete them.
+          Active tracks are everything on your desk: waiting, kept and not for me. Undecided tracks leave after {RETAIN_UNREVIEWED_DAYS} days, not for me after{" "}
+          {RETAIN_PASSED_DAYS}, and kept tracks stay until you delete them. Deleting a track frees its slot at once.
           {cap.bonus > 0 && ` Includes ${cap.bonus} extra slots from referrals.`}
         </p>
       </section>
 
-      <PlanCards plans={plans} billing={billing} userPlan={user.plan} currentPrice={current.price} capUsed={cap.used} capBonus={cap.bonus} pendingPlan={pending?.plan ?? null} />
+      <PlanCards plans={plans} billing={billing} userPlan={user.plan} currentPrice={current.price} capUsed={cap.used} capBonus={cap.bonus} pendingPlan={pending?.plan ?? null} sharing={sharing} />
 
       <section aria-labelledby="renewal-h" className="space-y-1.5 text-[11px] text-dim md:max-w-3xl">
         <h2 id="renewal-h" className="font-bold text-mute">

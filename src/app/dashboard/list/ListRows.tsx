@@ -282,17 +282,17 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
                     <FigmaIcon name="headphones" />
                     <span className="sr-only">{r.played ? "Listened" : "Not listened yet"}</span>
                   </span>
-                  <button aria-label={`Keep ${r.title}`} aria-pressed={decision === "kept"} onClick={() => decide(r, "kept", false)} className={`grid size-9 place-items-center ${decision === "kept" ? "text-bone" : "text-mute"}`}>
+                  <button title="Keep (K)" aria-label={`Keep ${r.title}`} aria-pressed={decision === "kept"} onClick={() => decide(r, "kept", false)} className={`grid size-9 place-items-center ${decision === "kept" ? "text-bone" : "text-mute"}`}>
                     <FigmaIcon name="heart" />
                   </button>
-                  <button aria-label={`Not for me: ${r.title}`} aria-pressed={decision === "passed"} onClick={() => decide(r, "passed", false)} className={`grid size-9 place-items-center ${decision === "passed" ? "text-bone" : "text-mute"}`}>
+                  <button title="Not for me (X)" aria-label={`Not for me: ${r.title}`} aria-pressed={decision === "passed"} onClick={() => decide(r, "passed", false)} className={`grid size-9 place-items-center ${decision === "passed" ? "text-bone" : "text-mute"}`}>
                     <FigmaIcon name="thumbs-down" />
                   </button>
-                  <button aria-label={`Reply to ${r.sender}`} aria-pressed={open} onClick={() => (setSelected(r.id), setExpanded(open ? null : r.id))} className={`relative grid size-9 place-items-center ${open ? "text-bone" : "text-mute"}`}>
+                  <button title="Reply (R)" aria-label={`Reply to ${r.sender}`} aria-pressed={open} onClick={() => (setSelected(r.id), setExpanded(open ? null : r.id))} className={`relative grid size-9 place-items-center ${open ? "text-bone" : "text-mute"}`}>
                     <FigmaIcon name="message-square" />
                     {r.replied && <span className="absolute right-2 top-2 size-1.5 rounded-full bg-lime" />}
                   </button>
-                  <a href={`/api/tracks/${r.id}/download`} aria-label={`Download original of ${r.title}`} className="grid size-9 place-items-center text-mute">
+                  <a href={`/api/tracks/${r.id}/download`} title="Download original" aria-label={`Download original of ${r.title}`} className="grid size-9 place-items-center text-mute">
                     <FigmaIcon name="download" />
                   </a>
                 </div>

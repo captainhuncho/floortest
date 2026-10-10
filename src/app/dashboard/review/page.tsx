@@ -208,7 +208,7 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
       {selected && sender && (
         <aside
           aria-label="Review"
-          className={`${focused ? "" : "border-t"} border-line bg-ink-2/60 xl:sticky xl:top-[68px] xl:h-[calc(100dvh-68px)] xl:self-start xl:overflow-y-auto xl:border-t-0 xl:border-l`}
+          className={`${focused ? "" : "border-t max-md:order-first max-md:border-t-0 max-md:border-b"} border-line bg-ink-2/60 xl:sticky xl:top-[68px] xl:h-[calc(100dvh-68px)] xl:self-start xl:overflow-y-auto xl:border-t-0 xl:border-l`}
         >
           {focused && (
             // Phones: Figma "Header" (← QUEUE / Now reviewing); the transport below has previous and next.

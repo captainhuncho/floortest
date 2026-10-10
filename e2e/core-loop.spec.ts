@@ -52,7 +52,7 @@ test("the sender sends a WAV to the receiver's link", async ({ page }) => {
   await page.getByLabel("Genre").selectOption({ index: 1 });
   await page.getByLabel("Mix status").selectOption({ index: 1 });
   await page.getByLabel("Release status").selectOption("unsigned");
-  await page.getByLabel(/Did you use AI/).selectOption("none");
+  await page.getByLabel(/Made with AI/).selectOption("none");
   await page.getByRole("button", { name: /^Send to / }).click();
   await expect(page.getByText(/We sent a receipt to/)).toBeVisible({ timeout: 45_000 });
   await expect(page.getByRole("heading", { name: "Sent (1)" })).toBeVisible();

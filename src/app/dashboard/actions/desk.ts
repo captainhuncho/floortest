@@ -6,6 +6,7 @@ import { receiverLookup } from "@/lib/receiver-lookup";
 import { requireUser } from "@/lib/auth";
 import { likeContains, now, q } from "@/lib/db";
 import { audit } from "@/lib/audit";
+import { sendReopenAlerts } from "@/lib/reopen";
 import { done } from "./common";
 
 /** Beta feedback lands in the admin inbox, tagged with the page it came from. */
@@ -97,6 +98,7 @@ export async function resumeLink() {
   const u = await requireUser();
   await q.run("UPDATE users SET paused_at = NULL, pause_until = NULL WHERE id = ?", u.id);
   await audit(u.id, "link_resumed");
+  await sendReopenAlerts(u.id);
   done();
   revalidatePath(`/${u.handle}`);
 }

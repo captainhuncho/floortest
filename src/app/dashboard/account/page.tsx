@@ -2,6 +2,7 @@ import { CuePoint } from "@/components/CuePoint";
 import Link from "next/link";
 import { logout } from "../../(auth)/actions";
 import { requireUser } from "@/lib/auth";
+import { fmtDay } from "@/lib/format";
 import { capacity, collectionsFor, isClosed, isPaused } from "@/lib/desk";
 import { q } from "@/lib/db";
 import { APP_URL } from "@/lib/mail";
@@ -37,7 +38,7 @@ export default async function Account() {
   const cols = (await collectionsFor(user.id)).map((c) => ({ id: c.id, name: c.name, closed: isClosed(c) }));
   const pct = Math.min(100, Math.round((cap.used / cap.limit) * 100));
   const link = `${APP_URL}/${user.handle}`;
-  const since = new Date(user.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: user.tz }).replaceAll("/", ".");
+  const since = fmtDay(user.created_at, user.tz);
 
   const card = "flex flex-col gap-2 rounded-[14px] border border-line bg-ink-2 p-3 md:gap-3 md:p-5";
   const label = "text-[11px] font-bold tracking-[0.5px] text-mute";
@@ -71,7 +72,7 @@ export default async function Account() {
     </section>
   );
   const stats: [number, string][] = [
-    [reviewed, "Reviewed"],
+    [reviewed, "Decided"],
     [collections, "Collections"],
     [contacts, "Contacts"],
   ];

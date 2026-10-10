@@ -145,7 +145,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   const daysLeft = active?.closes_at && !isClosed(active) ? Math.ceil((active.closes_at - Date.now()) / DAY) : null;
 
   return (
-    <div className="space-y-4 px-4 py-4 sm:px-8 sm:py-6">
+    <div className="flex flex-col gap-4 px-4 py-4 sm:px-8 sm:py-6">
       <header className="flex flex-col gap-2">
         <p className={EYEBROW}>{welcome ? "Welcome to FloorTest" : new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: prefs.tz })}</p>
         <h1 className="text-[34px] font-bold leading-[1.05] tracking-[-1px] text-bone">
@@ -170,12 +170,15 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
       </div>
 
 
-      <SendMusicCard recent={recentSends} host={APP_URL.replace(/^https?:\/\//, "")} />
+      {/* Phones: stats and Up next first (reviewing is the daily job), then Send music; desktop keeps Send music up top. */}
+      <div className="max-md:order-3">
+        <SendMusicCard recent={recentSends} host={APP_URL.replace(/^https?:\/\//, "")} />
+      </div>
 
-      <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
-        <Stat label="Received" value={String(stats.receivedWeek)} note={delta(stats.receivedWeek, stats.receivedPrev)} />
+      <div className="grid grid-cols-2 gap-2 max-md:order-1 xl:grid-cols-4">
+        <Stat label="Received this week" value={String(stats.receivedWeek)} note={delta(stats.receivedWeek, stats.receivedPrev)} />
         <Stat label="Waiting" value={String(stats.waiting)} note={stats.decisionRate !== null ? `${stats.decisionRate}% decided, last 30 days` : "Needs a keep or pass"} />
-        <Stat label="Kept" value={String(stats.keptWeek)} note={delta(stats.keptWeek, stats.keptPrev)} />
+        <Stat label="Kept this week" value={String(stats.keptWeek)} note={delta(stats.keptWeek, stats.keptPrev)} />
         <Stat
           label="First listen"
           value={stats.medianListenMs !== null ? fmtDuration(stats.medianListenMs) : "—"}
@@ -183,7 +186,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
         />
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-3">
+      <div className="grid gap-6 max-md:order-2 xl:grid-cols-3">
         <Card
           title="Up next"
           className="xl:col-span-2"
@@ -198,7 +201,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
           {upNext.length ? <UpNext items={upNext} /> : <p className={META}>Nothing waiting. New tracks will show up here first.</p>}
         </Card>
 
-        <Card title="Receiving now" action={<Link href="/dashboard/collections" className={act}>Manage</Link>}>
+        <Card title="Your link goes to" action={<Link href="/dashboard/collections" className={act}>Manage</Link>}>
           {active ? (
             <div className="space-y-3">
               <div className="flex flex-col gap-1">
@@ -228,7 +231,9 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
             <p className={META}>No collection selected.</p>
           )}
         </Card>
+      </div>
 
+      <div className="grid gap-6 max-md:order-4 xl:grid-cols-3">
         <Card title="Tracks received, last 14 days" className="xl:col-span-2">
           <DailyColumns data={stats.daily} />
         </Card>

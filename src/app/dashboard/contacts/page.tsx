@@ -138,9 +138,9 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
         <>
           <dl className="grid grid-cols-3 gap-2">
             {[
-              [totals.people, "Unique submitters"],
-              [totals.sent, "Total submissions"],
-              [totals.engaged, "Engaged"],
+              [totals.people, "People"],
+              [totals.sent, "Tracks sent"],
+              [totals.engaged, "Kept or replied"],
             ].map(([v, k]) => (
               <div key={k} className="flex flex-col-reverse gap-1 rounded-[10px] border border-line bg-ink-2 p-3">
                 <dt className="text-[11px] font-bold text-faint">{k}</dt>
@@ -207,7 +207,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
                         </p>
                       </div>
                       {r.last_at && Date.now() - r.last_at < WEEK && (
-                        <span className="rounded-md border border-[#1e4226] bg-[#162a1a] px-2.5 py-1 text-[11px] font-bold tracking-[1px] text-[#4ade80]">NEW</span>
+                        <span title="Sent in the last 7 days" className="rounded-md border border-[#1e4226] bg-[#162a1a] px-2.5 py-1 text-[11px] font-bold tracking-[1px] text-[#4ade80]">SENT THIS WEEK</span>
                       )}
                     </div>
                     <div className="flex gap-1.5">
@@ -282,7 +282,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
     <div className="hidden max-w-6xl flex-col gap-5 px-8 py-6 text-bone md:flex">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-[28px] font-bold">Messages and people, together</h1>
+          <h1 className="text-[28px] font-bold">Contacts</h1>
         </div>
         <nav aria-label="Contacts view" className="flex rounded-full border border-line bg-ink-3 p-0.5">
           {(
@@ -308,9 +308,9 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
         <>
           <dl className="grid grid-cols-3 gap-3">
             {[
-              [totals.people, "Unique submitters"],
-              [totals.sent, "Total submissions"],
-              [totals.engaged, "Engaged relationships"],
+              [totals.people, "People who sent"],
+              [totals.sent, "Tracks sent"],
+              [totals.engaged, "Kept from or replied to"],
             ].map(([v, k]) => (
               <div key={k} className="flex flex-col-reverse gap-3 rounded-xl border border-line bg-ink-3 p-4">
                 <dt className="text-[11px] font-bold text-faint">{k}</dt>
@@ -348,10 +348,10 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
             <table className="w-full overflow-hidden rounded-xl border border-line text-left">
               <thead className="border-b border-line text-[11px] font-bold uppercase tracking-[1px] text-faint">
                 <tr>
-                  <th className="px-4 py-3 font-bold">Submitter</th>
-                  <th className="px-4 py-3 font-bold">Latest submission</th>
-                  <th className="px-4 py-3 font-bold">Signal</th>
-                  <th className="px-4 py-3 font-bold">Relationship</th>
+                  <th className="px-4 py-3 font-bold">Sender</th>
+                  <th className="px-4 py-3 font-bold">Latest track</th>
+                  <th className="px-4 py-3 font-bold">Tracks sent</th>
+                  <th className="px-4 py-3 font-bold">Status</th>
                   <th className="px-4 py-3 text-right font-bold">Manage</th>
                 </tr>
               </thead>
@@ -397,9 +397,9 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
                       </td>
                       <td className="px-4 py-3.5">
                         {r.last_at && Date.now() - r.last_at < WEEK ? (
-                          <span className="rounded-md border border-[#1e4226] bg-[#162a1a] px-2 py-1 text-[11px] font-bold tracking-[1px] text-[#4ade80]">NEW</span>
+                          <span title="Sent in the last 7 days" className="rounded-md border border-[#1e4226] bg-[#162a1a] px-2 py-1 text-[11px] font-bold tracking-[1px] text-[#4ade80]">SENT THIS WEEK</span>
                         ) : Number(r.kept) > 0 ? (
-                          <span className="rounded-md border border-line px-2 py-1 text-[11px] font-bold tracking-[1px] text-bone">KEPT</span>
+                          <span title="You kept at least one of their tracks" className="rounded-md border border-line px-2 py-1 text-[11px] font-bold tracking-[1px] text-bone">KEPT</span>
                         ) : (
                           <span className="text-[11px] text-faint">{r.last_at ? ago(r.last_at) : "—"}</span>
                         )}

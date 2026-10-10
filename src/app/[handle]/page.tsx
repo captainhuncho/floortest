@@ -14,6 +14,7 @@ import { genresFor, RETAIN_UNREVIEWED_DAYS } from "@/lib/plans";
 import { folderLimit, shareDownloadEnabled, trackArtEnabled } from "@/lib/plan-store";
 import { switchOn } from "@/lib/switches";
 import { botCheckKey } from "@/lib/turnstile";
+import { ReopenAlert } from "./ReopenAlert";
 import { SendModes } from "./SendModes";
 
 type Props = { params: Promise<{ handle: string }>; };
@@ -138,6 +139,7 @@ export default async function ReceiverPage({ params }: Props) {
             <p className="font-bold">{closedReason}</p>
             {note && <p className="mt-3 whitespace-pre-wrap border-l-2 border-lime pl-3 text-[13px]">{note}</p>}
             <p className="mt-2 text-[12px] text-dim"><E k="closed_note" /></p>
+            <ReopenAlert handle={receiver.handle} receiverName={receiver.name} botCheckKey={botKey} />
           </div>
         ) : (
           <SendModes folderBytes={folderBytes} botCheckKey={botKey} handle={receiver.handle} receiverName={receiver.name} callout={collection && !closedReason ? collection.name : null} genres={genres} look="mobile" allowSharing={sharing && !!collection?.allow_sharing} sharingDownloads={sharingDownloads} trackArt={trackArt} />

@@ -62,6 +62,13 @@ export const EMAILS = {
     body: "Hi,\n\n{inviter} invited you to the FloorTest beta: one receiving link that never changes and takes every track, a queue to review them fast, and receipts that tell senders what happened.\n{personal_note}\nClaim your link: {signup_url}\n\nYour invite code is {code}. It's for {email} only and works once.\n\n— FloorTest",
     vars: { inviter: "Who invited them", personal_note: "Your personal note in quotes, when you wrote one", signup_url: "Sign-up link with the code", code: "Invite code", email: "Their email" },
   },
+  link_reopened: {
+    label: "Link reopened",
+    to: "Sender who asked to hear when a closed link reopens",
+    subject: "{receiver} is taking music again",
+    body: "Hi,\n\nYou asked to hear when {receiver}'s FloorTest link reopened. It's open now: {link}\n\nUpload the WAV or MP3 and you'll get a private receipt that tells you when it's listened to, downloaded or replied to.\n\n— FloorTest",
+    vars: { receiver: "Receiver's name", link: "Their link" },
+  },
   referral: {
     label: "Referral bonus",
     to: "Receiver whose referral got their first track",
