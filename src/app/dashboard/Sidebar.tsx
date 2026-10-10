@@ -26,7 +26,7 @@ export function Sidebar({ needsReview, cap, pause }: Props) {
   ];
 
   return (
-    <aside className="keep-night hidden flex-col border-b border-line bg-ink-2 md:flex md:h-dvh md:overflow-y-auto md:border-b-0 md:border-r">
+    <aside className="keep-night hidden flex-col border-b border-line bg-ink-2 text-bone md:flex md:h-dvh md:overflow-y-auto md:border-b-0 md:border-r">
       <div className="flex items-center justify-between gap-3 px-4 pt-4 md:pb-2">
         <Logo href="/" />
       </div>
