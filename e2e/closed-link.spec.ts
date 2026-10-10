@@ -19,6 +19,20 @@ async function logIn(page: Page) {
   await page.waitForURL(/\/dashboard\//);
 }
 
+// Whatever happens above, the demo link is open again for the specs that follow.
+test.afterAll(async ({ browser }) => {
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  await logIn(page);
+  await page.goto("/dashboard/account");
+  const sw = page.getByRole("switch", { name: "Taking submissions" });
+  if ((await sw.getAttribute("aria-checked")) === "false") {
+    await sw.click();
+    await expect(page.getByText("Submissions reopened")).toBeVisible();
+  }
+  await ctx.close();
+});
+
 test("the receiver pauses their link", async ({ page }) => {
   await logIn(page);
   await page.goto("/dashboard/account");
@@ -35,7 +49,7 @@ test("a sender asks to hear when it reopens", async ({ browser }) => {
   await expect(page.getByText(/taking a break from submissions/)).toBeVisible();
   await page.getByLabel("Email me when it reopens").fill(email);
   await page.getByRole("button", { name: "Tell me" }).click();
-  await expect(page.getByRole("status")).toContainText("one email when");
+  await expect(page.getByText(/one email when Maxwell/)).toBeVisible();
   await ctx.close();
 });
 
