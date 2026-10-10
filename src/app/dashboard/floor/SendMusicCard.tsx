@@ -3,9 +3,9 @@ import Link from "next/link";
 /** Figma "Send Music Card": add their link name after your host (or paste a whole link), or tap someone you've sent to before. */
 export function SendMusicCard({ recent, host }: { recent: { handle: string; name: string }[]; host: string }) {
   return (
-    <section aria-label="Send music" className="flex flex-col gap-3 panel p-4 md:flex-row md:items-center md:gap-5 md:py-3">
+    <section aria-label="Send music" className="flex flex-col gap-3 md:flex-row md:items-center md:gap-5">
       <h2 className="eyebrow md:shrink-0">Send music</h2>
-      <form action="/dashboard/send" className="flex items-center gap-2 rounded-xl border border-line bg-ink p-3 md:w-[380px] md:shrink-0 md:py-2">
+      <form action="/dashboard/send" className="flex items-center gap-2 rounded-lg border border-line bg-ink-3 px-3 py-2.5 md:w-[380px] md:shrink-0">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icons/search.svg" alt="" className="size-4 shrink-0" />
         <label htmlFor="send-to-q" className="sr-only">
