@@ -26,8 +26,11 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 /// FloorTest's screen: the Capacitor web view, plus native touches so it feels like an app, not a website in a box.
 class MainViewController: CAPBridgeViewController {
     private let refresher = UIRefreshControl()
-    /// Shared files we've already taken the page to, so coming back to the app doesn't keep jumping to Send.
-    private var routed = Set<String>()
+    /// Shared files we've already taken the page to (kept across restarts), so opening the app doesn't keep jumping to Send.
+    private var routed: Set<String> {
+        get { Set(UserDefaults.standard.stringArray(forKey: "share.routed") ?? []) }
+        set { UserDefaults.standard.set(Array(newValue), forKey: "share.routed") }
+    }
 
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
@@ -52,7 +55,8 @@ class MainViewController: CAPBridgeViewController {
         let ids = Set(ShareInbox.entries().map(\.id))
         guard !ids.isEmpty, !ids.isSubset(of: routed), let base = bridge?.config.serverURL,
               let send = URL(string: "/dashboard/send?shared=1", relativeTo: base) else { return }
-        routed.formUnion(ids)
+        // Remember exactly the files waiting now, so the list never grows.
+        routed = ids
         webView?.load(URLRequest(url: send))
     }
 

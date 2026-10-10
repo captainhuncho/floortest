@@ -6,6 +6,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { analyzeAudio } from "@/lib/analyze";
 import { fmtTime } from "@/lib/format";
 import { listenThreshold } from "@/lib/plans";
+import { hideNowPlaying, onNowPlayingAction, showNowPlaying } from "@/lib/native-now-playing";
 import { Waveform } from "./Waveform";
 
 export type PlayerTrack = {
@@ -116,27 +117,37 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       if (!listened.current.duration) listened.current.duration = a.duration;
     });
     a.addEventListener("ended", onEnded);
+    // Skip between tracks in the current queue from the lock screen.
+    const step = (by: number) => {
+      const q = queue.current;
+      const i = q.findIndex((t) => t.id === listened.current.id);
+      const t = q[i + by];
+      if (i >= 0 && t) start(t);
+    };
     if ("mediaSession" in navigator) {
       navigator.mediaSession.setActionHandler("play", () => void a.play());
       navigator.mediaSession.setActionHandler("pause", () => a.pause());
       navigator.mediaSession.setActionHandler("seekbackward", () => (a.currentTime = Math.max(0, a.currentTime - 10)));
       navigator.mediaSession.setActionHandler("seekforward", () => (a.currentTime = Math.min(a.duration, a.currentTime + 10)));
-      // Skip between tracks in the current queue from the lock screen.
-      const step = (by: number) => {
-        const q = queue.current;
-        const i = q.findIndex((t) => t.id === listened.current.id);
-        const t = q[i + by];
-        if (i >= 0 && t) start(t);
-      };
       navigator.mediaSession.setActionHandler("nexttrack", () => step(1));
       navigator.mediaSession.setActionHandler("previoustrack", () => step(-1));
     }
+    // The Android app's notification player sends the same buttons.
+    const stopNative = onNowPlayingAction((act) => (act === "play" ? void a.play() : act === "pause" ? a.pause() : step(act === "next" ? 1 : -1)));
     return () => {
+      stopNative();
+      hideNowPlaying();
       a.pause();
       a.src = "";
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Android app: keep the notification player in step (title, play/pause, where we are). Progress runs on from here.
+  useEffect(() => {
+    if (!current) return;
+    showNowPlaying({ title: current.title, artist: current.artist, playing, position: audio.current?.currentTime ?? 0, duration: duration || current.duration || 0 });
+  }, [current, playing, duration]);
 
   const play = useCallback(
     (t: PlayerTrack, q?: PlayerTrack[]) => {

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only: allow plain http so the prototype can load the local site (http://localhost:3000).
+     Release builds load https://floortest.app and stay HTTPS-only. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+>
+    <application android:usesCleartextTraffic="true" />
+</manifest>

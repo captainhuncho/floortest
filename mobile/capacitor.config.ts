@@ -29,6 +29,8 @@ const config: CapacitorConfig = {
   },
   plugins: {
     SplashScreen: { launchShowDuration: 600, backgroundColor: "#10110f", showSpinner: false },
+    // Android: light clock and icons on the dark bars, whatever the phone's light/dark setting.
+    SystemBars: { style: "DARK" },
     // The status bar keeps its own strip, so the page never slides under the clock or the notch.
     StatusBar: { style: "DARK", backgroundColor: "#10110f", overlaysWebView: false },
   },

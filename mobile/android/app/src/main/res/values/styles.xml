@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Base application theme. -->
+    <style name="AppTheme" parent="Theme.AppCompat.NoActionBar">
+        <item name="colorPrimary">@color/ft_ink</item>
+        <item name="colorPrimaryDark">@color/ft_ink</item>
+        <item name="colorAccent">@color/ft_lime</item>
+    </style>
+
+    <!-- The app: FloorTest ink behind everything (no white flashes), light icons on dark system bars. -->
+    <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:background">@null</item>
+        <item name="android:windowBackground">@color/ft_ink</item>
+        <item name="android:statusBarColor">@color/ft_ink</item>
+        <item name="android:navigationBarColor">@color/ft_ink</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="colorAccent">@color/ft_lime</item>
+    </style>
+
+    <!-- Launch: the crest on ink (Android 12+ system splash), then the app theme. -->
+    <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+        <item name="android:background">@drawable/splash</item>
+        <item name="windowSplashScreenBackground">@color/ft_ink</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
+    </style>
+</resources>

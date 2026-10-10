@@ -18,7 +18,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${serif.variable} ${mono.variable}`}>
+    // suppressHydrationWarning: the Android app writes its safe-area sizes onto <html> before React starts.
+    <html lang="en" className={`${serif.variable} ${mono.variable}`} suppressHydrationWarning>
       <body className="min-h-dvh">
         <NativeApp />
         {isPreview && (

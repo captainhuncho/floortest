@@ -60,7 +60,7 @@ floortest.app/<handle> ─► choose files (or Send folders on Pro/Team)
 Link closed / paused / full ─► the page says why, no upload.
 ```
 
-## Share to FloorTest (iPhone app)
+## Share to FloorTest (iPhone and Android apps)
 ```
 Files / Dropbox / WeTransfer … ─► Share ─► FloorTest ─► file copied into the app's inbox ─► app opens on Send
    ─► "Shared to FloorTest" box ─► type their link name ─► the file is already in the form ─► usual send

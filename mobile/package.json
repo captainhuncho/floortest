@@ -6,9 +6,12 @@
   "scripts": {
     "sync": "node scripts/write-start.mjs && cap sync",
     "ios": "cap open ios",
-    "run:ios": "cap run ios"
+    "run:ios": "cap run ios",
+    "android": "cap open android",
+    "run:android": "cap run android"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.3",
     "@capacitor/core": "^8.5.3",
     "@capacitor/haptics": "^8.0.2",
     "@capacitor/ios": "^8.5.3",
