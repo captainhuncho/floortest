@@ -2,7 +2,7 @@ import "server-only";
 import { readLinks, type ProfileLink } from "@/lib/socials";
 import { folderLimit, trackArtEnabled } from "@/lib/plan-store";
 import type { User } from "@/lib/db";
-import { fmtDay } from "@/lib/format";
+import { briefItems } from "@/lib/brief";
 import { activeCollection, capacity, isClosed, isPaused, userByHandle } from "@/lib/desk";
 import { genresFor } from "@/lib/plans";
 import { listeners } from "@/lib/team";
@@ -23,15 +23,11 @@ export async function receiverLookup(u: Pick<User, "handle">, raw: string): Prom
   const reason = isPaused(r) ? `${r.name} has paused submissions.` : !c ? `${r.name} isn't taking music right now.` : isClosed(c) ? (c?.full_at ? `${c.name} is full.` : `${c.name} has closed.`) : (await capacity(r)).full ? `${r.name}'s desk is full right now.` : null;
   // The same brief the receiver's own link shows, so sending from the desk feels like being on their page.
   const g = genresFor(c);
-  const wanted = c?.brief_wanted || (g.custom ? g.list.join(" · ") : "");
   const team = await listeners(c);
   const brief = [
-    wanted && { k: "Wanted", v: wanted },
-    c?.bpm_min && c?.bpm_max && { k: "Range", v: `${c.bpm_min}–${c.bpm_max} BPM` },
-    c?.closes_at && { k: "Deadline", v: `Open until ${fmtDay(c.closes_at, r.tz)}` },
-    c?.brief_note && { k: "Note", v: c.brief_note },
-    team.length > 0 && { k: "Team", v: `Also heard by ${team.map((m) => m.name).join(", ")}` },
-  ].filter((b): b is { k: string; v: string } => !!b);
+    ...(c ? briefItems(c, g.custom ? g.list : [], r.tz).map((b) => ({ k: b.label, v: b.text })) : []),
+    ...(team.length > 0 ? [{ k: "Team", v: `Also heard by ${team.map((m) => m.name).join(", ")}` }] : []),
+  ];
   return {
     found: true, handle: r.handle, name: r.name, roleLine: r.role_line, verified: r.identity_status === "verified",
     accepting: !reason, reason, genres: g.list, note: isPaused(r) ? r.pause_message : "", collection: c?.name ?? null, brief,

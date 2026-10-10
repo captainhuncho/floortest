@@ -1,6 +1,6 @@
 import "server-only";
 import { now, q, type Queryable } from "./db";
-import { accountKeys, drainDeletions, queueDeletion, STUCK_AFTER, trackKeys } from "./deletion-core";
+import { accountKeys, drainDeletions, handOverFolderCovers, queueDeletion, STUCK_AFTER, trackKeys } from "./deletion-core";
 import { recordIncident } from "./incidents";
 import { storage } from "./storage";
 
@@ -9,6 +9,8 @@ export { accountKeys, queueDeletion, trackKeys };
 /** Queue a track's files (audio + stems) and drop its stem rows. Call inside the same transaction that retires the track. */
 export async function retireTrackFiles(db: Queryable, trackIds: number[], reason: string) {
   if (!trackIds.length) return;
+  // A folder's cover stays with the folder's remaining tracks rather than going with this one.
+  await handOverFolderCovers(db, trackIds);
   await queueDeletion(db, await trackKeys(db, trackIds), reason, now());
   await db.run(`DELETE FROM stems WHERE track_id IN (${trackIds.map(() => "?").join(",")})`, ...trackIds);
 }

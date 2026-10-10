@@ -133,7 +133,7 @@ export default async function Account() {
         </dl>
       </section>
 
-      <div className="flex flex-col gap-4 md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:items-start md:gap-6">
+      <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-6">
         <div className="flex flex-col gap-4 md:gap-6">
           {/* Taking submissions lives here on phones, where the sidebar is hidden. */}
           <section className={card}>

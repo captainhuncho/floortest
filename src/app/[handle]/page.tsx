@@ -1,3 +1,4 @@
+import { briefItems } from "@/lib/brief";
 import { siteEditor } from "@/lib/site-editor";
 import { EditablePage, editable } from "@/components/Editable";
 import { CuePoint } from "@/components/CuePoint";
@@ -62,8 +63,8 @@ export default async function ReceiverPage({ params }: Props) {
       ? `${receiver.name} isn't accepting new tracks right now.`
       : null;
 
-  const range = collection?.bpm_min && collection?.bpm_max ? `${collection.bpm_min}–${collection.bpm_max} BPM` : null;
-  const wantedText = collection?.brief_wanted || "";
+  // The genre chips cover genres here; everything else in the brief reads as it does on the desk.
+  const brief = collection ? briefItems(collection, [], receiver.tz).filter((b) => b.key !== "genres") : [];
   // Always tell senders what's wanted: the collection's own genres, or the default list when none are set.
   const showBrief = !closedReason && genres.length > 0;
   const vars = { receiver: receiver.name, days: RETAIN_UNREVIEWED_DAYS };
@@ -122,10 +123,16 @@ export default async function ReceiverPage({ params }: Props) {
                 ))}
               </ul>
             )}
-            {wantedText && <p className="text-[11px] font-bold">{wantedText}</p>}
-            {range && <p className="text-[11px] font-bold">{range}</p>}
-            {collection?.closes_at && <p className="text-[11px] font-bold">Open until {fmtDay(collection.closes_at, receiver.tz)}</p>}
-            {collection?.brief_note && <p className="text-[11px] italic leading-4 text-mute">&ldquo;{collection.brief_note}&rdquo;</p>}
+            {brief.length > 0 && (
+              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[11px]">
+                {brief.map((b) => (
+                  <div key={b.key} className="contents">
+                    <dt className="font-bold uppercase tracking-[0.5px] text-mute">{b.label}</dt>
+                    <dd className={b.key === "note" ? "italic leading-4 text-mute" : "font-bold"}>{b.text}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
             {sharing && !!collection?.allow_sharing && (
               <p className="flex items-center gap-1.5 text-[11px] font-medium text-dim">
                 <span aria-hidden className="text-lime">✓</span> Sharing with colleagues allowed

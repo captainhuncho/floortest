@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth";
 import { collectionsFor, isClosed } from "@/lib/desk";
 import { fmtDay } from "@/lib/format";
 import { genresFor } from "@/lib/plans";
+import { briefItems } from "@/lib/brief";
 import { APP_URL } from "@/lib/mail";
 import { CollectionTile, NewCollection } from "./CollectionForms";
 import { sharedWith } from "@/lib/team";
@@ -34,7 +35,7 @@ export default async function Collections() {
         {collections.map((c) => (
           <li key={c.id} className="contents">
             <CollectionTile
-              c={{ id: c.id, name: c.name, closesAt: c.closes_at, closesLabel: c.closes_at ? fmtDay(c.closes_at) : null, count: c.count, needsReview: c.needs_review, kept: c.kept, briefWanted: c.brief_wanted, bpmMin: c.bpm_min, bpmMax: c.bpm_max, briefNote: c.brief_note, allowSharing: !!c.allow_sharing, sharingAvailable: sharing, genres: genresFor(c).custom ? genresFor(c).list : [], maxTracks: c.max_tracks, full: !!c.full_at, art: c.art_key ? `/api/collection-art/${c.id}?v=${encodeURIComponent(c.art_key)}` : null, canCap: canCapCallouts(user.plan) }}
+              c={{ id: c.id, name: c.name, closesAt: c.closes_at, closesLabel: c.closes_at ? fmtDay(c.closes_at) : null, count: c.count, needsReview: c.needs_review, kept: c.kept, briefWanted: c.brief_wanted, bpmMin: c.bpm_min, bpmMax: c.bpm_max, briefNote: c.brief_note, allowSharing: !!c.allow_sharing, sharingAvailable: sharing, genres: genresFor(c).custom ? genresFor(c).list : [], brief: briefItems(c, genresFor(c).custom ? genresFor(c).list : [], user.tz), maxTracks: c.max_tracks, full: !!c.full_at, art: c.art_key ? `/api/collection-art/${c.id}?v=${encodeURIComponent(c.art_key)}` : null, canCap: canCapCallouts(user.plan) }}
               receiving={c.id === user.active_collection_id}
               closed={isClosed(c)}
               canDelete={collections.length > 1}

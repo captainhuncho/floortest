@@ -8,6 +8,7 @@ import { collectionsFor, isClosed } from "@/lib/desk";
 import { q, type Track } from "@/lib/db";
 import { fmtDay } from "@/lib/format";
 import { genresFor, MIX_STATUS } from "@/lib/plans";
+import { briefItems } from "@/lib/brief";
 import { DownloadActions } from "../../DownloadActions";
 import { ListRows, type ListRow } from "../../list/ListRows";
 import { CollectionDetailHeader, DeleteCollection, EditCollectionInfo } from "../CollectionForms";
@@ -76,37 +77,24 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
     art: c.art_key ? `/api/collection-art/${c.id}?v=${encodeURIComponent(c.art_key)}` : null,
     canCap: canCapCallouts(user.plan),
     genres: genres.custom ? genres.list : [],
+    brief: briefItems(c, genres.custom ? genres.list : [], user.tz),
   };
+  const brief = editable.brief;
 
   return (
     <>
       <div className="flex flex-col gap-3 px-4 pb-4 pt-1 text-bone md:hidden">
         <CollectionDetailHeader c={editable} receiving={receiving} closed={isClosed(c)} canDelete={all.length > 1} />
-        {(genres.custom || c.bpm_min || c.brief_note || c.brief_wanted) && (
-          <section className="flex flex-col gap-2.5 card p-3.5">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <p className="text-[11px] font-bold text-faint">GENRES</p>
-                <p className="text-[12px]">{genres.custom ? genres.list.join(", ") : c.brief_wanted || "Any"}</p>
-              </div>
-              {c.bpm_min && c.bpm_max && (
-                <div className="shrink-0 text-right">
-                  <p className="text-[11px] font-bold text-faint">BPM</p>
-                  <p className="text-[12px]">
-                    {c.bpm_min}-{c.bpm_max}
-                  </p>
+        {brief.length > 0 && (
+          <section aria-label="Brief" className="card p-3.5">
+            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-[12px]">
+              {brief.map((b) => (
+                <div key={b.key} className="contents">
+                  <dt className="text-[11px] font-bold uppercase text-faint">{b.label}</dt>
+                  <dd className={b.key === "note" ? "italic" : ""}>{b.text}</dd>
                 </div>
-              )}
-            </div>
-            {c.brief_note && (
-              <>
-                <hr className="border-line" />
-                <div>
-                  <p className="text-[11px] font-bold text-faint">BRIEF</p>
-                  <p className="text-[12px] italic">&ldquo;{c.brief_note}&rdquo;</p>
-                </div>
-              </>
-            )}
+              ))}
+            </dl>
           </section>
         )}
         <p className="flex gap-2 text-[11px] font-bold">
@@ -144,19 +132,19 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
             </div>
           </div>
         </div>
-        <section className="grid grid-cols-[1.4fr_0.8fr_1.6fr] gap-6 card px-4 py-3.5">
-          <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase text-faint">Genres</p>
-            <p className="mt-1 truncate text-[12px]">{genres.custom ? genres.list.join(", ") : c.brief_wanted || "Any"}</p>
-          </div>
-          <div>
-            <p className="text-[11px] font-bold uppercase text-faint">BPM range</p>
-            <p className="mt-1 text-[12px]">{c.bpm_min && c.bpm_max ? `${c.bpm_min} – ${c.bpm_max} BPM` : "Any"}</p>
-          </div>
-          <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase text-faint">Submission brief</p>
-            <p className="mt-1 truncate text-[12px] italic">{c.brief_note ? `“${c.brief_note}”` : "—"}</p>
-          </div>
+        <section aria-label="Brief" className="card px-4 py-3.5">
+          {brief.length ? (
+            <dl className="flex flex-wrap gap-x-8 gap-y-3">
+              {brief.map((b) => (
+                <div key={b.key} className={`min-w-0 ${b.key === "note" ? "basis-full lg:basis-auto lg:flex-1" : ""}`}>
+                  <dt className="text-[11px] font-bold uppercase text-faint">{b.label}</dt>
+                  <dd className={`mt-1 text-[12px] ${b.key === "note" ? "italic" : ""}`}>{b.text}</dd>
+                </div>
+              ))}
+            </dl>
+          ) : (
+            <p className="text-[12px] text-mute">No brief yet. Use Edit collection to add BPM, genres, what you want and a note for senders.</p>
+          )}
         </section>
         <dl className="grid grid-cols-3 gap-4">
           {[

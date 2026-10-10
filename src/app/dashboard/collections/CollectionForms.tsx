@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { createCollection, deleteCollection, setActiveCollection, updateCollection } from "../actions/collections";
 import { DownloadActions } from "../DownloadActions";
 import { GenresField } from "./GenresField";
+import type { BriefItem } from "@/lib/brief";
 
 type C = {
   id: number;
@@ -24,6 +25,8 @@ type C = {
   /** The site-wide sharing switch (Admin → Feature switches); the option only shows when it is on. */
   sharingAvailable: boolean;
   genres: string[];
+  /** The brief as shown everywhere (src/lib/brief.ts). */
+  brief: BriefItem[];
   /** Pro/Team: "Stop at N tracks" for this callout (null = no cap). */
   maxTracks: number | null;
   /** The plan allows capping callouts. */
@@ -61,42 +64,29 @@ export function CollectionCard({ c, receiving, closed, canDelete, startEditing =
             </Link>
             {c.closesLabel && ` · ${closed ? "closed" : "closes"} ${c.closesLabel}`}
           </p>
-          {(c.genres.length > 0 || c.briefWanted || c.bpmMin || c.briefNote) && (
+          {/* The deadline is already in the line above, so the card's brief leaves it out. */}
+          {c.brief.some((b) => b.key !== "deadline") && (
             <div className="mt-3 border-l-2 border-lime/60 pl-3">
               <p className="text-[11px] font-bold uppercase tracking-[1.5px] text-bone underline decoration-lime/60 underline-offset-4">Brief</p>
               <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm">
-                {c.bpmMin && c.bpmMax ? (
-                  <>
-                    <dt className="font-bold uppercase tracking-[0.5px] text-bone">BPM</dt>
-                    <dd className="text-mute tnum">
-                      {c.bpmMin}–{c.bpmMax}
-                    </dd>
-                  </>
-                ) : null}
-                {c.genres.length > 0 && (
-                  <>
-                    <dt className="font-bold uppercase tracking-[0.5px] text-bone">Genres</dt>
-                    <dd className="flex flex-wrap gap-1.5">
-                      {c.genres.map((g) => (
-                        <span key={g} className="rounded-full border border-line px-2 py-0.5 text-xs text-mute">
-                          {g}
-                        </span>
-                      ))}
-                    </dd>
-                  </>
-                )}
-                {c.briefWanted && (
-                  <>
-                    <dt className="font-bold uppercase tracking-[0.5px] text-bone">Wanted</dt>
-                    <dd className="text-mute">{c.briefWanted}</dd>
-                  </>
-                )}
-                {c.briefNote && (
-                  <>
-                    <dt className="font-bold uppercase tracking-[0.5px] text-bone">Note</dt>
-                    <dd className="italic text-mute">“{c.briefNote}”</dd>
-                  </>
-                )}
+                {c.brief
+                  .filter((b) => b.key !== "deadline")
+                  .map((b) => (
+                    <div key={b.key} className="contents">
+                      <dt className="font-bold uppercase tracking-[0.5px] text-bone">{b.label}</dt>
+                      {b.chips ? (
+                        <dd className="flex flex-wrap gap-1.5">
+                          {b.chips.map((g) => (
+                            <span key={g} className="rounded-full border border-line px-2 py-0.5 text-xs text-mute">
+                              {g}
+                            </span>
+                          ))}
+                        </dd>
+                      ) : (
+                        <dd className={`text-mute ${b.key === "note" ? "italic" : "tnum"}`}>{b.text}</dd>
+                      )}
+                    </div>
+                  ))}
               </dl>
             </div>
           )}

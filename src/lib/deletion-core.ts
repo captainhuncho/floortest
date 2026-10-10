@@ -18,6 +18,37 @@ export async function queueDeletion(db: Queryable, keys: (string | null | undefi
 }
 
 /** Every object a track owns: its audio, its stems and its artwork. */
+/**
+ * An EP or album keeps one cover, stored on one of its tracks (the others borrow it). Before those tracks' files are deleted,
+ * a cover on a track that's going passes to a track of the same folder that stays, unless one of those already has a cover.
+ * The image then follows the folder's remaining tracks (and their auto-delete), instead of vanishing with the first track.
+ * Run inside the same transaction as the deletion, before trackKeys().
+ */
+export async function handOverFolderCovers(db: Queryable, trackIds: number[]) {
+  if (!trackIds.length) return 0;
+  const marks = trackIds.map(() => "?").join(",");
+  const going = await db.all<{ id: number; user_id: number; release_id: string; art_key: string }>(
+    `SELECT id, user_id, release_id, art_key FROM tracks WHERE id IN (${marks}) AND art_key IS NOT NULL AND release_id IS NOT NULL`,
+    ...trackIds,
+  );
+  let moved = 0;
+  for (const t of going) {
+    const stays = `user_id = ? AND release_id = ? AND deleted_at IS NULL AND id NOT IN (${marks})`;
+    if (await db.get(`SELECT 1 FROM tracks WHERE ${stays} AND art_key IS NOT NULL LIMIT 1`, t.user_id, t.release_id, ...trackIds)) continue;
+    const next = await db.get<{ id: number }>(
+      `SELECT id FROM tracks WHERE ${stays} ORDER BY track_no NULLS LAST, created_at, id LIMIT 1`,
+      t.user_id,
+      t.release_id,
+      ...trackIds,
+    );
+    if (!next) continue;
+    await db.run("UPDATE tracks SET art_key = ? WHERE id = ?", t.art_key, next.id);
+    await db.run("UPDATE tracks SET art_key = NULL WHERE id = ?", t.id);
+    moved++;
+  }
+  return moved;
+}
+
 export async function trackKeys(db: Queryable, trackIds: number[]) {
   if (!trackIds.length) return [];
   const marks = trackIds.map(() => "?").join(",");

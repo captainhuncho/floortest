@@ -207,7 +207,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
                         </p>
                       </div>
                       {r.last_at && Date.now() - r.last_at < WEEK && (
-                        <span title="Sent in the last 7 days" className="rounded-md border border-[#1e4226] bg-[#162a1a] px-2.5 py-1 text-[11px] font-bold tracking-[1px] text-[#4ade80]">SENT THIS WEEK</span>
+                        <span title="Sent in the last 7 days" className="rounded-md border border-[#1e4226] bg-[#162a1a] px-2.5 py-1 whitespace-nowrap text-[11px] font-bold tracking-[1px] text-[#4ade80]">SENT THIS WEEK</span>
                       )}
                     </div>
                     <div className="flex gap-1.5">
@@ -397,7 +397,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
                       </td>
                       <td className="px-4 py-3.5">
                         {r.last_at && Date.now() - r.last_at < WEEK ? (
-                          <span title="Sent in the last 7 days" className="rounded-md border border-[#1e4226] bg-[#162a1a] px-2 py-1 text-[11px] font-bold tracking-[1px] text-[#4ade80]">SENT THIS WEEK</span>
+                          <span title="Sent in the last 7 days" className="rounded-md border border-[#1e4226] bg-[#162a1a] px-2 py-1 whitespace-nowrap text-[11px] font-bold tracking-[1px] text-[#4ade80]">SENT THIS WEEK</span>
                         ) : Number(r.kept) > 0 ? (
                           <span title="You kept at least one of their tracks" className="rounded-md border border-line px-2 py-1 text-[11px] font-bold tracking-[1px] text-bone">KEPT</span>
                         ) : (
