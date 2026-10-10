@@ -63,7 +63,7 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
 
   return (
     <div className="max-w-3xl px-4 py-6 sm:px-8">
-      <h1 className="text-3xl font-bold tracking-tight">Send</h1>
+      <h1 className="text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">Send</h1>
       <p className="mt-2 text-mute">Send your music to another FloorTest user. Add the name at the end of their link.</p>
       <div className="mt-8">
         <SendComposer host={APP_URL.replace(/^https?:\/\//, "")} account={{ name: user.name, email: user.email }} initial={to} />

@@ -45,9 +45,12 @@ export async function Onboarding({ user }: { user: User }) {
         {steps.map((s) => {
           const body = (
             <>
-              <span aria-hidden className={`mt-px grid size-4 shrink-0 place-items-center rounded border-[1.5px] border-white ${s.done ? "bg-white" : ""}`}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                {s.done && <img src="/icons/check.svg" alt="" className="size-2.5" />}
+              <span aria-hidden className={`mt-px grid size-4 shrink-0 place-items-center rounded border-[1.5px] border-bone ${s.done ? "bg-bone text-ink" : ""}`}>
+                {s.done && (
+                  <svg viewBox="0 0 16 16" className="size-2.5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 8.5l3.2 3L13 4.5" />
+                  </svg>
+                )}
               </span>
               {s.done ? (
                 <span className="min-w-0 flex-1 text-xs font-medium text-faint line-through">{s.label}</span>

@@ -79,7 +79,7 @@ export function PlanCards({
           return (
             <li
               key={id}
-              className={`flex flex-col gap-4 rounded-[14px] border p-6 md:p-7 ${featured ? "border-[#6c7e38] bg-[#20251a]" : "border-line bg-ink-2"}`}
+              className={`flex flex-col gap-4 rounded-panel border p-6 md:p-7 ${featured ? "border-[#6c7e38] bg-[#20251a]" : "border-line bg-ink-2"}`}
               aria-current={isCurrent ? "true" : undefined}
             >
               <div className="flex min-h-[30px] items-center justify-between gap-2">

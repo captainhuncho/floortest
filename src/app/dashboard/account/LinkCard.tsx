@@ -30,7 +30,7 @@ export function LinkCard({ link, handle, collections, activeId }: { link: string
         </a>
       </div>
       <form action={async (fd) => void (await setActiveCollection(Number(fd.get("id"))))}>
-        <label htmlFor="routes-to" className="mb-1.5 block text-[11px] font-bold uppercase tracking-[1px] text-faint">
+        <label htmlFor="routes-to" className="mb-1.5 block eyebrow text-faint">
           Sends new tracks to
         </label>
         <select

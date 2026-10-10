@@ -22,7 +22,7 @@ export default async function SharedTrack({ params }: { params: Promise<{ token:
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-6 bg-ink px-5 py-8 text-bone">
       <Logo />
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-[1px] text-faint">Shared with you by {s.receiver}</p>
+        <p className="eyebrow text-faint">Shared with you by {s.receiver}</p>
         <h1 className="mt-2 break-words text-[28px] font-bold tracking-[-0.8px]">{s.title}</h1>
         <p className="text-[12px] text-mute">{s.artist}</p>
       </div>

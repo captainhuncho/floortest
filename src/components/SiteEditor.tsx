@@ -213,7 +213,7 @@ export function SectionFrame({ id, children }: { id: string; children: React.Rea
       }}
     >
       {ctx.editing && (
-        <div data-site-editor-ui className="keep-night absolute right-3 top-3 z-30 flex items-center gap-1 rounded-lg border border-line bg-ink-2 p-1 text-bone opacity-100 shadow-lg sm:opacity-0 sm:group-hover/sec:opacity-100">
+        <div data-site-editor-ui className="keep-night absolute right-3 top-3 z-30 flex items-center gap-1 rounded-lg border border-line bg-ink-2 p-1 text-bone opacity-100 shadow-pop sm:opacity-0 sm:group-hover/sec:opacity-100">
           <span
             draggable
             onDragStart={() => ctx.setDragging(id)}

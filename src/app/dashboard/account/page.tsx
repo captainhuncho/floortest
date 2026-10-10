@@ -40,7 +40,7 @@ export default async function Account() {
   const link = `${APP_URL}/${user.handle}`;
   const since = fmtDay(user.created_at, user.tz);
 
-  const card = "flex flex-col gap-2 rounded-[14px] border border-line bg-ink-2 p-3 md:gap-3 md:p-5";
+  const card = "flex flex-col gap-2 rounded-panel border border-line bg-ink-2 p-3 md:gap-3 md:p-5";
   const label = "text-[11px] font-bold tracking-[0.5px] text-mute";
   const rule = <div className="h-px w-full bg-line" />;
   const Icon = ({ i }: { i?: string }) =>
@@ -80,7 +80,7 @@ export default async function Account() {
   return (
     <div className="mx-auto flex max-w-xl flex-col gap-4 px-4 py-3 md:max-w-6xl md:gap-6 md:px-8 md:py-8">
       <div className="hidden items-center justify-between gap-4 md:flex">
-        <h1 className="text-[32px] font-bold text-bone">Account</h1>
+        <h1 className="text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">Account</h1>
         <form action={logout}>
           <button className="btn-danger btn-sm">Sign out</button>
         </form>
@@ -94,7 +94,7 @@ export default async function Account() {
       </div>
 
       {/* Who you are, your plan and your numbers: one band on desktop, stacked on phones. */}
-      <section className="flex flex-col gap-4 rounded-[18px] border border-line bg-ink-2 p-4 md:p-6 xl:grid xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_auto] xl:items-center xl:gap-8">
+      <section className="flex flex-col gap-4 rounded-panel border border-line bg-ink-2 p-4 md:p-6 xl:grid xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_auto] xl:items-center xl:gap-8">
         <div className="flex items-center gap-3 md:gap-4">
           <span className="grid size-14 shrink-0 place-items-center rounded-full bg-[#6444ff] text-lg font-bold text-white md:size-16">{initials(user.name)}</span>
           <div className="flex min-w-0 flex-1 flex-col gap-1">

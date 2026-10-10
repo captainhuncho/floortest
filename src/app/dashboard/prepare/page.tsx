@@ -21,7 +21,7 @@ export default async function PrepareForSet() {
       <div className="md:flex md:items-start md:justify-between md:gap-8">
       <div>
       <p className="text-[11px] font-medium tracking-[0.5px] text-bone md:hidden">PREPARE FOR SET</p>
-      <h1 className="text-xl font-bold text-bone sm:text-3xl md:text-[32px]">
+      <h1 className="text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">
         <span className="md:hidden">Prepare</span>
         <span className="hidden md:inline">Prepare for set</span>
       </h1>

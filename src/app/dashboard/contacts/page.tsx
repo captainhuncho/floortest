@@ -114,7 +114,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
         </Link>
         <h1 className="text-[18px] font-bold">Contacts</h1>
       </div>
-      <nav aria-label="Contacts view" className="flex rounded-[20px] border border-line bg-ink-3 p-0.5">
+      <nav aria-label="Contacts view" className="flex rounded-sheet border border-line bg-ink-3 p-0.5">
         {(
           [
             ["messages", `MESSAGES (${messages.length})`],
@@ -142,7 +142,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
               [totals.sent, "Tracks sent"],
               [totals.engaged, "Kept or replied"],
             ].map(([v, k]) => (
-              <div key={k} className="flex flex-col-reverse gap-1 rounded-[10px] border border-line bg-ink-2 p-3">
+              <div key={k} className="flex flex-col-reverse gap-1 rounded-card border border-line bg-ink-2 p-3">
                 <dt className="text-[11px] font-bold text-faint">{k}</dt>
                 <dd className="text-[24px] font-extrabold">{v}</dd>
               </div>
@@ -175,7 +175,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
               {rows.map((r) => {
                 const last = latestBy.get(r.id);
                 return (
-                  <li key={r.id} className="flex flex-col gap-2.5 rounded-[10px] border border-line bg-ink-3 p-3">
+                  <li key={r.id} className="flex flex-col gap-2.5 rounded-card border border-line bg-ink-3 p-3">
                     <Link href={`/dashboard/contacts/${r.id}`} className="flex items-center gap-3">
                       <span className="grid size-9 shrink-0 place-items-center rounded-full text-[14px] font-bold text-white" style={hue(r.id)}>
                         {r.name.trim()[0]?.toUpperCase()}
@@ -250,7 +250,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
             <ul className="flex flex-col gap-3">
               {messages.map((m, i) => (
                 <li key={i}>
-                  <Link href={`/dashboard/contacts/${m.sender_id}`} className="flex flex-col gap-3 rounded-[10px] border border-line bg-ink-3 p-3">
+                  <Link href={`/dashboard/contacts/${m.sender_id}`} className="flex flex-col gap-3 rounded-card border border-line bg-ink-3 p-3">
                     <span className="flex items-center justify-between gap-2">
                       <span className="flex min-w-0 items-center gap-2">
                         <span className="grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-bold text-white" style={hue(m.sender_id)}>
@@ -282,7 +282,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
     <div className="hidden max-w-6xl flex-col gap-5 px-8 py-6 text-bone md:flex">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-[28px] font-bold">Contacts</h1>
+          <h1 className="text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">Contacts</h1>
         </div>
         <nav aria-label="Contacts view" className="flex rounded-full border border-line bg-ink-3 p-0.5">
           {(
@@ -346,7 +346,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
             </p>
           ) : (
             <table className="w-full overflow-hidden rounded-xl border border-line text-left">
-              <thead className="border-b border-line text-[11px] font-bold uppercase tracking-[1px] text-faint">
+              <thead className="border-b border-line eyebrow text-faint">
                 <tr>
                   <th className="px-4 py-3 font-bold">Sender</th>
                   <th className="px-4 py-3 font-bold">Latest track</th>

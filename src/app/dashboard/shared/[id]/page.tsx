@@ -34,7 +34,7 @@ export default async function SharedCollection({ params }: { params: Promise<{ i
         <Link href="/dashboard/collections" className="text-[11px] font-medium text-faint hover:text-bone">
           ← Collections
         </Link>
-        <h1 className="text-[28px] font-bold tracking-[-0.8px] md:text-[32px]">{c.name}</h1>
+        <h1 className="text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">{c.name}</h1>
         <p className="text-sm text-mute">
           Shared by {c.owner_name} with {team.map((m) => (m.id === user.id ? "you" : m.name)).join(", ")}. Vote keep or pass; {c.owner_name} makes the call.
         </p>

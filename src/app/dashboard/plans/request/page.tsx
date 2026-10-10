@@ -30,7 +30,7 @@ export default async function RequestPlan({ searchParams }: { searchParams: Prom
         ← Plans
       </Link>
       <header className="space-y-2">
-        <h1 className="text-[28px] tracking-[-0.5px] md:text-[32px]">Request {plan.name}</h1>
+        <h1 className="text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">Request {plan.name}</h1>
         <p className="text-[15px] text-mute">
           During the beta we set plans up by hand, so everyone gets the room that fits how they work. Tell us a little about you and we&apos;ll be in touch,
           usually within two working days. It&apos;s free for the rest of the beta.

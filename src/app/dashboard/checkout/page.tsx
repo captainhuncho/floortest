@@ -36,7 +36,7 @@ export default async function Checkout({ searchParams }: { searchParams: Promise
         <Link href="/dashboard/plans" className="text-[11px] font-medium text-faint hover:text-bone">
           ← Plans
         </Link>
-        <h1 className="text-[28px] font-bold tracking-[-0.8px] md:text-[32px]">Upgrade to {p.name}</h1>
+        <h1 className="text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">Upgrade to {p.name}</h1>
       </div>
 
       <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] md:items-start md:gap-6">

@@ -44,6 +44,7 @@ Plan + tappable prototype: claude.ai/artifact/5BVVpA3Zn9AxH71ut9hGFr (private), 
 - Rekordbox how-to video, footer legal placement, mobile footer redesign.
 
 ## Done (recent)
+- 10 Oct: final design pass: one page-title size on every dashboard page, one eyebrow style in two tones, radii by role everywhere (no ad-hoc pixel values), one pop shadow, the onboarding tick drawn with theme ink; the Floor chart component removed.
 - 10 Oct: sign-in and sign-up pass: one centred column (side panel gone), one heading size, inline one-at-a-time validation in the shared form, professional name moved to Profile, numeric keyboards for codes, calmer signed-out page, fresh desks see their link first.
 - 10 Oct: Floor pass: attention first (waiting count as the heading, one button, link problems as the only banner), Up next, kept-for-set line, one line of weekly facts, link and sending last; stat tiles, 14-day chart, genre mix, activity and contacts cards removed from the Floor (their pages remain).
 - 10 Oct: tracking pass: receipt leads with the strongest event and its time, "For you" only when there is something to do, bright/quiet timeline, meanings and details folded away; sender history and dashboard Send rows status-first with one dot instead of chips.

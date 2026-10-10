@@ -12,7 +12,7 @@ export default async function Emails() {
   const live = !!process.env.RESEND_API_KEY;
   return (
     <div className="px-4 py-6 sm:px-8">
-            <h1 className="mt-1 text-3xl font-bold tracking-tight">Emails sent to senders</h1>
+            <h1 className="mt-1 text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">Emails sent to senders</h1>
       <p className="mt-2 max-w-xl text-sm text-mute">
         What FloorTest told senders on your behalf.{" "}
         {live ? "Delivered via Resend." : "Email delivery isn't configured, so these are logged here only. Set RESEND_API_KEY to send them."}

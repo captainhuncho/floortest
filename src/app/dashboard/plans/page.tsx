@@ -37,7 +37,7 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
         ← Account
       </Link>
       <header className="flex flex-col items-center gap-3 text-center">
-        <h1 className="text-[28px] tracking-[-0.5px] md:text-[36px]">Choose your plan</h1>
+        <h1 className="text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">Choose your plan</h1>
         <p className="text-[15px] text-mute">The same receiving desk. The capacity that fits your music.</p>
         <BillingSwitch initial={yearly ? "year" : "month"} target="plans-root" />
       </header>

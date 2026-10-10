@@ -166,7 +166,7 @@ function Notifications({ items, unread, onNavigate, sheet = false }: { items: No
           {list.map((n, i) => (
             <li key={n.id} className="border-b border-line last:border-b-0">
               {dayLabel(n.at) !== (i > 0 ? dayLabel(list[i - 1].at) : null) && (
-                <p className="bg-ink-2 px-5 py-1.5 text-[11px] font-bold uppercase tracking-[1px] text-faint">{dayLabel(n.at)}</p>
+                <p className="bg-ink-2 px-5 py-1.5 eyebrow text-faint">{dayLabel(n.at)}</p>
               )}
               <Link href={n.href} onClick={onNavigate} className="flex gap-3 px-5 py-3.5 hover:bg-ink-3">
                 <span

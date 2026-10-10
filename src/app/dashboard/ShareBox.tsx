@@ -92,7 +92,7 @@ export function ShareBox({
       )}
       {audience.length > 0 && (
         <div className="mt-3 border-t border-line pt-3">
-          <p className="text-[11px] font-bold uppercase tracking-[1px] text-faint">Who listened</p>
+          <p className="eyebrow text-faint">Who listened</p>
           <ul className="mt-1.5 flex flex-col gap-1 text-[11px]">
             {audience.map((a) => (
               <li key={a.handle} className="flex justify-between gap-3">

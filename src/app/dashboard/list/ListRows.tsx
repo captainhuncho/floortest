@@ -209,12 +209,12 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
                   aria-label={`Select ${r.artist} - ${r.title}`}
                 />
               )}
-              <div className={picking ? `relative min-w-0 flex-1 rounded-[14px] ${picked.has(r.id) ? "ring-2 ring-lime/60" : ""}` : "contents"}>
+              <div className={picking ? `relative min-w-0 flex-1 rounded-panel ${picked.has(r.id) ? "ring-2 ring-lime/60" : ""}` : "contents"}>
               {/* Select mode: the whole row ticks the track, so a stray tap never plays, keeps or opens it. */}
-              {picking && <button type="button" tabIndex={-1} aria-hidden className="absolute inset-0 z-10 cursor-pointer rounded-[14px]" onClick={(e) => (e.stopPropagation(), toggle(r.id))} />}
+              {picking && <button type="button" tabIndex={-1} aria-hidden className="absolute inset-0 z-10 cursor-pointer rounded-panel" onClick={(e) => (e.stopPropagation(), toggle(r.id))} />}
               {/* Phones: Figma "track-card" */}
               <div
-                className={`flex flex-col gap-2.5 rounded-[14px] border p-3 md:hidden ${
+                className={`flex flex-col gap-2.5 rounded-panel border p-3 md:hidden ${
                   waiting ? "border-line border-l-[3px] border-l-lime bg-ink-3" : "border-line bg-ink-2"
                 }`}
               >
@@ -389,7 +389,7 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
               </div>
 
               {open && !picking && (
-                <div className="mt-2 overflow-hidden rounded-[14px] md:mt-0 md:rounded-none">
+                <div className="mt-2 overflow-hidden rounded-panel md:mt-0 md:rounded-none">
                   <Expanded row={r} decision={decision} onClose={() => setExpanded(null)} />
                 </div>
               )}

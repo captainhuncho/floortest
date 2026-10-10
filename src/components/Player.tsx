@@ -221,7 +221,7 @@ export function PlayerBar() {
         </Link>
         <button
           onClick={toggle}
-          className="grid size-7 shrink-0 place-items-center rounded-[14px] bg-white text-ink"
+          className="grid size-7 shrink-0 place-items-center rounded-panel bg-white text-ink"
           aria-label={playing ? `Pause ${current.title}` : `Play ${current.title}`}
         >
           <PlayIcon playing={playing} />
