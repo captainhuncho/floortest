@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { PGlite } from "@electric-sql/pglite";
 import { toPositional } from "../src/lib/db/client";
 import { MIGRATIONS } from "../src/lib/db/migrations";
-import { accountKeys, drainDeletions, queueDeletion, trackKeys } from "../src/lib/deletion-core";
+import { accountKeys, drainDeletions, handOverFolderCovers, queueDeletion, trackKeys } from "../src/lib/deletion-core";
 
 async function setup() {
   const pg = await PGlite.create();
@@ -52,4 +52,37 @@ test("queuing the same file twice is harmless", async () => {
   await queueDeletion(db as never, ["a", "a", null], "x", 1);
   await queueDeletion(db as never, ["a"], "x", 2);
   assert.equal((await db.all("SELECT * FROM storage_deletions")).length, 1);
+});
+
+/** Three tracks of one EP (ids 2, 3, 4) with the cover stored on the first. */
+async function folder() {
+  const db = await setup();
+  await db.run("INSERT INTO releases (id, user_id, sender_id, title, artist, kind, created_at) VALUES ('relEP0000000000001',1,1,'EP','A','ep',0)");
+  for (const n of [1, 2, 3])
+    await db.run(
+      "INSERT INTO tracks (user_id, sender_id, title, artist, token, file_key, original_name, mime, size, created_at, release_id, track_no) VALUES (1,1,?,'A',?,?,'x.wav','audio/wav',1,?,'relEP0000000000001',?)",
+      `T${n}`, `tok${n}`, `audio/e${n}.wav`, n, n,
+    );
+  await db.run("UPDATE tracks SET art_key = 'track-art/1/cover.png' WHERE id = 2");
+  return db;
+}
+const art = async (db: Awaited<ReturnType<typeof setup>>, id: number) => (await db.get<{ art_key: string | null }>("SELECT art_key FROM tracks WHERE id = ?", id))!.art_key;
+
+test("deleting the track that holds a folder's cover passes the cover to the next track, so it isn't deleted", async () => {
+  const db = await folder();
+  assert.equal(await handOverFolderCovers(db as never, [2]), 1);
+  assert.equal(await art(db, 2), null);
+  assert.equal(await art(db, 3), "track-art/1/cover.png");
+  assert.deepEqual(await trackKeys(db as never, [2]), ["audio/e1.wav"]); // the cover isn't queued for deletion
+});
+
+test("the cover goes when the whole folder goes, and stays put if a remaining track already has artwork", async () => {
+  const all = await folder();
+  assert.equal(await handOverFolderCovers(all as never, [2, 3, 4]), 0);
+  assert.ok((await trackKeys(all as never, [2, 3, 4])).includes("track-art/1/cover.png"));
+
+  const own = await folder();
+  await own.run("UPDATE tracks SET art_key = 'track-art/1/own.png' WHERE id = 4");
+  assert.equal(await handOverFolderCovers(own as never, [2]), 0);
+  assert.equal(await art(own, 3), null);
 });

@@ -32,6 +32,15 @@ test("visitors never get editing markup on public pages", async ({ page }) => {
   }
 });
 
+test("the public link shows the open callout's brief in the same order and wording as the desk", async ({ page }) => {
+  await page.goto("/maxwell");
+  const brief = page.getByRole("region", { name: "What they're looking for" });
+  await expect(brief).toContainText("BPM");
+  await expect(brief).toContainText("118–130");
+  await expect(brief).toContainText(/Deadline\s*Open until/);
+  await expect(brief).toContainText("“Percussive, warm and built for late-night rooms”");
+});
+
 test("offline saving: signed-in only, and each download link works for its own track and nothing else", async ({ page }) => {
   expect((await page.request.get("/api/offline/list")).status()).toBe(401);
   expect((await page.request.get("/api/offline/file/1.1.9999999999999.forged")).status()).toBe(403);
