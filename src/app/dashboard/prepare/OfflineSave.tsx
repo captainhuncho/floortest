@@ -44,7 +44,7 @@ export function OfflineSave({ count }: { count: number }) {
   }
 
   return (
-    <div className="mt-3 rounded-xl border border-line bg-ink-3 p-4 text-xs md:mt-6">
+    <div className="mt-3 card p-4 text-xs md:mt-6">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="font-bold text-bone">Save for offline</p>

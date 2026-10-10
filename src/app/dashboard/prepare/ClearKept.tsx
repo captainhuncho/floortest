@@ -27,7 +27,7 @@ export function ClearKept({ count }: { count: number }) {
         ref={dialog}
         onClose={() => setOpen(false)}
         aria-labelledby="clear-h"
-        className="m-auto w-[min(92vw,440px)] rounded-xl border border-line bg-ink-2 p-6 text-bone backdrop:bg-black/70"
+        className="dialog-box m-auto w-[min(92vw,440px)] backdrop:bg-black/70"
       >
         <h2 id="clear-h" className="text-xl font-bold">
           Clear {n}?

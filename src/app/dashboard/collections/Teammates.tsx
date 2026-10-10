@@ -7,7 +7,7 @@ import { addTeammate, removeTeammate } from "../actions/team";
 export function Teammates({ collectionId, members, max }: { collectionId: number; members: { id: number; name: string; handle: string }[]; max: number }) {
   const [error, add, pending] = useActionState(addTeammate.bind(null, collectionId), null);
   return (
-    <section aria-labelledby="team-h" className="rounded-xl border border-line bg-ink-3 p-3.5 md:px-4">
+    <section aria-labelledby="team-h" className="card p-3.5 md:px-4">
       <h2 id="team-h" className="text-[11px] font-bold uppercase text-faint">
         Teammates
       </h2>

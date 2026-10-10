@@ -54,7 +54,7 @@ export default async function Collections() {
           <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {shared.map((c) => (
               <li key={c.id}>
-                <Link href={`/dashboard/shared/${c.id}`} className="flex h-full flex-col gap-1 rounded-xl border border-line bg-ink-3 p-3.5 text-bone hover:border-faint">
+                <Link href={`/dashboard/shared/${c.id}`} className="flex h-full flex-col gap-1 card p-3.5 text-bone hover:border-faint">
                   <span className="truncate text-[14px] font-bold">{c.name}</span>
                   <span className="truncate text-[11px] text-mute">from {c.owner_name}</span>
                   <span className="mt-auto pt-2 text-[11px] font-bold tnum">

@@ -158,7 +158,7 @@ export function SiteEditor({
     <EditorCtx.Provider value={ctx}>
       {children}
       <input ref={imageInput} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => { onImage(e.target.files?.[0]); e.target.value = ""; }} />
-      <div data-site-editor-ui className="keep-night fixed inset-x-3 bottom-3 z-[100] mx-auto flex max-w-3xl flex-wrap items-center gap-2 rounded-xl border border-line bg-ink-2 p-2.5 text-bone shadow-2xl shadow-black/60 sm:inset-x-6">
+      <div data-site-editor-ui className="keep-night fixed inset-x-3 bottom-3 z-[100] mx-auto flex max-w-3xl flex-wrap items-center gap-2 rounded-xl border border-line bg-ink-2 p-2.5 text-bone shadow-pop sm:inset-x-6">
         <span className="px-1 text-xs font-bold">
           Editing {label}
           <span className="ml-1.5 font-normal text-mute">{count ? `· ${count} unsaved change${count === 1 ? "" : "s"}` : "· draft"}</span>

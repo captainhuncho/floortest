@@ -20,6 +20,31 @@
   /* One website font: JetBrains Mono (loaded in app/fonts.ts). Instrument Serif italic is a home-page accent only. */
   --font-sans: var(--font-stage-mono), monospace;
   --font-mono: var(--font-stage-mono), monospace;
+
+  /* ── Design system tokens (docs/04-design.md) ──
+     Radii: four steps, by role. control = buttons, inputs, chips-as-buttons; card = list rows and stat tiles;
+     panel = page sections and dialogs; sheet = phone sheets and the floating nav. Pills are rounded-full. */
+  --radius-control: 0.5rem;
+  --radius-card: 0.75rem;
+  --radius-panel: 1rem;
+  --radius-sheet: 1.375rem;
+  /* Type: the dashboard's scale with its leading, so a size never arrives without its line-height. */
+  --text-meta: 11px;
+  --text-meta--line-height: 1rem;
+  --text-body: 13px;
+  --text-body--line-height: 1.25rem;
+  --text-title: 28px;
+  --text-title--line-height: 1.1;
+  --text-title--letter-spacing: -0.5px;
+  --text-stat: 30px;
+  --text-stat--line-height: 1;
+  /* Shadows: only floating things cast them. pop = menus, dialogs, toasts; lift = a raised key or card. */
+  --shadow-pop: 0 24px 48px -12px rgb(0 0 0 / 0.6), 0 2px 6px rgb(0 0 0 / 0.4);
+  --shadow-lift: 0 2px 6px rgb(0 0 0 / 0.55);
+  /* Motion: ease-out for things arriving, ease-in-out for things moving on screen, drawer for sheets. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 html, body { background: var(--color-ink); color: var(--color-bone); }
@@ -36,7 +61,6 @@ body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
 /* Motion (Emil Kowalski's rules): ease-out curves, under 300ms, transform and opacity only.
    Menus, dialogs and toasts fade and scale in from 0.97 rather than appearing out of nowhere;
    buttons give press feedback. Keyboard-driven review actions stay instant. */
-:root { --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); }
 [role="menu"], [role="listbox"] {
   transform-origin: top; transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out);
   @starting-style { opacity: 0; transform: scale(0.97) translateY(-4px); }
@@ -114,6 +138,16 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
 /* iPhone Safari zooms into any field under 16px when tapped; keep fields at 16px on touch screens. */
 @media (pointer: coarse) { input:not([type=checkbox]):not([type=radio]):not([type=file]), select, textarea { font-size: 16px !important; } }
 @utility card { @apply rounded-xl border border-line bg-ink-2; }
+/* A page section: bigger radius than a card, same surface. Padding is the section's own choice. */
+@utility panel { @apply rounded-2xl border border-line bg-ink-3; }
+/* Section and card titles: small, bold, spaced capitals. Only ever a title for a block, never above a page heading. */
+@utility eyebrow { @apply text-[11px] font-bold uppercase tracking-[1px] text-mute; }
+/* Secondary line under a title or value. */
+@utility meta { @apply text-xs text-faint; }
+/* The box of a dialog, sheet or menu, and the scrim behind a modal one. Same shell everywhere. */
+@utility dialog-box { @apply rounded-2xl border border-line bg-ink-2 p-5 text-bone shadow-pop; }
+@utility scrim { @apply fixed inset-0 bg-black/70 backdrop-blur-[2px]; }
+@media (prefers-reduced-transparency: reduce) { .scrim { backdrop-filter: none; background: rgb(0 0 0 / 0.85); } }
 @utility chip { @apply inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap; }
 @utility tnum { font-variant-numeric: tabular-nums; }
 

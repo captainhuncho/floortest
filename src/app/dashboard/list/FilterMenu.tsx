@@ -40,7 +40,7 @@ export function FilterMenu({ label, options }: { label: string; options: Option[
         </svg>
       </button>
       {open && (
-        <div role="menu" className="absolute left-0 top-full z-30 mt-1 max-h-80 min-w-52 overflow-y-auto rounded-lg border border-line bg-ink-2 p-1 shadow-2xl shadow-black/60">
+        <div role="menu" className="absolute left-0 top-full z-30 mt-1 max-h-80 min-w-52 overflow-y-auto rounded-lg border border-line bg-ink-2 p-1 shadow-pop">
           {options.map((o) => (
             <Link
               key={o.href}

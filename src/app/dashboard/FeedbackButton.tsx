@@ -35,7 +35,7 @@ export function FeedbackButton() {
       </button>
       {open && (
         <form
-          className="card absolute right-0 top-full z-50 mt-2 w-80 space-y-3 p-4 shadow-2xl shadow-black/50"
+          className="card absolute right-0 top-full z-50 mt-2 w-80 space-y-3 p-4 shadow-pop"
           onSubmit={(e) => {
             e.preventDefault();
             const message = text.current?.value.trim() ?? "";

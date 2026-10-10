@@ -19,7 +19,7 @@ export function ReplyTemplates({ onPick, current }: { onPick: (text: string) => 
         Templates{list.length ? ` (${list.length})` : ""}
       </button>
       {open && (
-        <div className="card absolute bottom-full left-0 z-30 mb-2 w-80 p-2 shadow-2xl shadow-black/50">
+        <div className="card absolute bottom-full left-0 z-30 mb-2 w-80 p-2 shadow-pop">
           {list.length ? (
             <ul className="max-h-64 space-y-1 overflow-y-auto">
               {list.map((t, i) => (

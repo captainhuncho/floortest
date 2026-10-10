@@ -22,7 +22,7 @@ export function KeptCards({ rows }: { rows: Row[] }) {
         const on = current?.id === r.id;
         const d = (on && duration) || r.duration || 0;
         return (
-          <li key={r.id} className="flex flex-col gap-3 rounded-xl border border-line bg-ink-3 p-4 md:px-4 md:py-3">
+          <li key={r.id} className="flex flex-col gap-3 card p-4 md:px-4 md:py-3">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => play(toPlayer(r), queue)}

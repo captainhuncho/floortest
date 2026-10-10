@@ -10,7 +10,7 @@ export async function StemsBox({ track: t, senderName }: { track: Track; senderN
   return (
     <section aria-labelledby={`stems-${t.id}`} className="rounded-xl border border-line bg-ink-2 p-4">
       <div className="flex items-center justify-between gap-3">
-        <h3 id={`stems-${t.id}`} className="text-[11px] font-bold uppercase tracking-[1px] text-mute">
+        <h3 id={`stems-${t.id}`} className="eyebrow">
           Stems{stems.length ? ` (${stems.length})` : ""}
         </h3>
         {stems.length > 0 && (

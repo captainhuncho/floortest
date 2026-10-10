@@ -57,7 +57,7 @@ export function Sidebar({ needsReview, cap, pause }: Props) {
           </Link>
         )}
         {pause.on && !cap.full && (
-          <Link href="/dashboard/account" className="mb-3 block rounded-xl border border-line bg-ink-3 p-3 text-[11px] text-mute">
+          <Link href="/dashboard/account" className="mb-3 block card p-3 text-[11px] text-mute">
             Submissions are paused. Turn them back on in your profile →
           </Link>
         )}

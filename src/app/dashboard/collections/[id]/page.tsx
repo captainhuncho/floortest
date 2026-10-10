@@ -83,7 +83,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
       <div className="flex flex-col gap-3 px-4 pb-4 pt-1 text-bone md:hidden">
         <CollectionDetailHeader c={editable} receiving={receiving} closed={isClosed(c)} canDelete={all.length > 1} />
         {(genres.custom || c.bpm_min || c.brief_note || c.brief_wanted) && (
-          <section className="flex flex-col gap-2.5 rounded-xl border border-line bg-ink-3 p-3.5">
+          <section className="flex flex-col gap-2.5 card p-3.5">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <p className="text-[11px] font-bold text-faint">GENRES</p>
@@ -144,7 +144,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
             </div>
           </div>
         </div>
-        <section className="grid grid-cols-[1.4fr_0.8fr_1.6fr] gap-6 rounded-xl border border-line bg-ink-3 px-4 py-3.5">
+        <section className="grid grid-cols-[1.4fr_0.8fr_1.6fr] gap-6 card px-4 py-3.5">
           <div className="min-w-0">
             <p className="text-[11px] font-bold uppercase text-faint">Genres</p>
             <p className="mt-1 truncate text-[12px]">{genres.custom ? genres.list.join(", ") : c.brief_wanted || "Any"}</p>
@@ -164,7 +164,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
             ["Kept", c.kept],
             ["Total received", c.count],
           ].map(([k, v]) => (
-            <div key={k} className="flex flex-col-reverse gap-1 rounded-xl border border-line bg-ink-3 px-4 py-3">
+            <div key={k} className="flex flex-col-reverse gap-1 card px-4 py-3">
               <dt className="sr-only">{k}</dt>
               <dd className="text-[16px] font-bold">
                 {v} track{v === 1 ? "" : "s"}
@@ -187,7 +187,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
         {cards.length ? (
           <ListRows rows={cards} statusTag collections={all.map((x) => ({ id: x.id, name: x.name }))} />
         ) : (
-          <p className="mx-4 rounded-xl border border-line bg-ink-3 p-4 text-[12px] text-mute md:mx-0">This folder is empty. Tracks sent while it&apos;s receiving land here.</p>
+          <p className="mx-4 card p-4 text-[12px] text-mute md:mx-0">This folder is empty. Tracks sent while it&apos;s receiving land here.</p>
         )}
         <div className="mx-4 mt-8 md:mx-0">
           <DeleteCollection c={{ id: c.id, name: c.name }} canDelete={all.length > 1} />

@@ -35,7 +35,7 @@ export function PrepBox({ track, energy: initialEnergy, cues: initialCues }: { t
   return (
     <section aria-label="Set prep" className="rounded-xl border border-line bg-ink-2 p-4">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-[11px] font-bold uppercase tracking-[1px] text-mute">Set prep</h3>
+        <h3 className="eyebrow">Set prep</h3>
         {dirty && (
           <button
             type="button"

@@ -312,7 +312,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
               [totals.sent, "Tracks sent"],
               [totals.engaged, "Kept from or replied to"],
             ].map(([v, k]) => (
-              <div key={k} className="flex flex-col-reverse gap-3 rounded-xl border border-line bg-ink-3 p-4">
+              <div key={k} className="flex flex-col-reverse gap-3 card p-4">
                 <dt className="text-[11px] font-bold text-faint">{k}</dt>
                 <dd className="text-[28px] font-extrabold leading-none">{v}</dd>
               </div>
@@ -341,7 +341,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
             </div>
           </div>
           {rows.length === 0 ? (
-            <p className="rounded-xl border border-line bg-ink-3 p-8 text-center text-[12px] text-mute">
+            <p className="card p-8 text-center text-[12px] text-mute">
               {search ? `No contacts match “${search}”.` : "Contacts appear here after their first upload."}
             </p>
           ) : (
@@ -442,11 +442,11 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
             ))}
           </div>
           {messages.length === 0 ? (
-            <p className="rounded-xl border border-line bg-ink-3 p-8 text-center text-[12px] text-mute">Messages from senders, and your replies, show up here.</p>
+            <p className="card p-8 text-center text-[12px] text-mute">Messages from senders, and your replies, show up here.</p>
           ) : (
             <ul className="flex max-w-3xl flex-col gap-3">
               {messages.map((m, i) => (
-                <li key={i} className="flex flex-col gap-3 rounded-xl border border-line bg-ink-3 p-4">
+                <li key={i} className="flex flex-col gap-3 card p-4">
                   <div className="flex items-center justify-between gap-2">
                     <span className="flex min-w-0 items-center gap-2.5">
                       <span className="grid size-7 shrink-0 place-items-center rounded-full text-[11px] font-bold text-white" style={hue(m.sender_id)}>

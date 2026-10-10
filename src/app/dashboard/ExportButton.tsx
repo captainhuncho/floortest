@@ -65,7 +65,7 @@ export function ExportButton({
         {label ?? "Prepare for set"}{showCount ? ` (${count})` : ""}
       </button>
       {open && (
-        <div className={`card absolute ${align === "start" ? "left-0 md:left-auto md:right-0" : "right-0"} top-full z-20 mt-2 w-80 max-w-[calc(100vw-2rem)] space-y-4 p-4 shadow-2xl shadow-black/50`}>
+        <div className={`card absolute ${align === "start" ? "left-0 md:left-auto md:right-0" : "right-0"} top-full z-20 mt-2 w-80 max-w-[calc(100vw-2rem)] space-y-4 p-4 shadow-pop`}>
           <div>
             <p className="font-medium">
               Download {count} {whole ? "" : "kept "}track{count === 1 ? "" : "s"}

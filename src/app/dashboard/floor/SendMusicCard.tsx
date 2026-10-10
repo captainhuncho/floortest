@@ -3,8 +3,8 @@ import Link from "next/link";
 /** Figma "Send Music Card": add their link name after your host (or paste a whole link), or tap someone you've sent to before. */
 export function SendMusicCard({ recent, host }: { recent: { handle: string; name: string }[]; host: string }) {
   return (
-    <section aria-label="Send music" className="flex flex-col gap-3 rounded-2xl border border-line bg-ink-3 p-4 md:flex-row md:items-center md:gap-5 md:py-3">
-      <h2 className="text-[11px] font-bold uppercase tracking-[1px] text-mute md:shrink-0">Send music</h2>
+    <section aria-label="Send music" className="flex flex-col gap-3 panel p-4 md:flex-row md:items-center md:gap-5 md:py-3">
+      <h2 className="eyebrow md:shrink-0">Send music</h2>
       <form action="/dashboard/send" className="flex items-center gap-2 rounded-xl border border-line bg-ink p-3 md:w-[380px] md:shrink-0 md:py-2">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icons/search.svg" alt="" className="size-4 shrink-0" />
@@ -24,7 +24,7 @@ export function SendMusicCard({ recent, host }: { recent: { handle: string; name
       </form>
       {recent.length > 0 && (
         <div className="flex min-w-0 flex-col gap-2.5 md:flex-row md:items-center md:gap-3">
-          <p className="text-[11px] font-bold uppercase tracking-[1px] text-mute">Recent contacts</p>
+          <p className="eyebrow">Recent contacts</p>
           <ul className="flex gap-3 overflow-x-auto">
             {recent.map((r) => (
               <li key={r.handle}>

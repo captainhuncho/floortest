@@ -23,12 +23,12 @@ export const metadata = { title: "The Floor — FloorTest" };
 const DAY = 86_400_000;
 
 /** One type scale for the whole page: eyebrow labels, body, meta and actions. */
-const EYEBROW = "text-[11px] font-bold uppercase tracking-[1px] text-mute";
+const EYEBROW = "eyebrow";
 const META = "text-xs text-faint";
 
 function Card({ title, action, children, className = "" }: { title: string; action?: React.ReactNode; children: React.ReactNode; className?: string }) {
   return (
-    <section className={`rounded-2xl border border-line bg-ink-3 p-4 ${className}`} aria-label={title}>
+    <section className={`panel p-4 ${className}`} aria-label={title}>
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className={EYEBROW}>{title}</h2>
         {action}
@@ -41,7 +41,7 @@ function Card({ title, action, children, className = "" }: { title: string; acti
 /** Figma "kpi-card". */
 function Stat({ label, value, note }: { label: string; value: string; note?: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-line bg-ink-3 p-3.5">
+    <div className="flex flex-col gap-2 card p-3.5">
       <p className={`truncate ${EYEBROW}`}>{label}</p>
       <p className="text-[30px] font-bold leading-none text-bone tnum">{value}</p>
       {note && <p className={META}>{note}</p>}

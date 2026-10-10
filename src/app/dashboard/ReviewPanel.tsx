@@ -220,7 +220,7 @@ export async function ReviewPanel({
       )}
 
       {votes.length > 0 && (
-        <section aria-labelledby="votes-h" className="mt-4 rounded-xl border border-line bg-ink-3 p-3.5">
+        <section aria-labelledby="votes-h" className="mt-4 card p-3.5">
           <h2 id="votes-h" className="text-[11px] font-bold uppercase text-faint">
             Team votes · {votes.filter((v) => v.vote === "keep").length} keep, {votes.filter((v) => v.vote === "pass").length} pass
           </h2>

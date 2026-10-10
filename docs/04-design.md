@@ -23,6 +23,25 @@ Charts: white bars at night, olive (#5f8000) by day. Round play buttons use the 
 - One font: **JetBrains Mono** (variable), everywhere. Instrument Serif italic only as a home-page accent.
 - Scale on dashboard pages: eyebrow labels 11px bold uppercase, letter-spacing 1px, `mute`; body 13px; meta 12px `faint`; page titles 28–34px bold, tight tracking; stat numbers 30px bold, tabular.
 
+## Design system (tokens in `src/app/globals.css`, utilities next to them)
+
+| Layer | Rule |
+|---|---|
+| Type | Four roles on dashboard pages, each a token with its own leading: `text-meta` 11px (labels, meta), `text-body` 13px, `text-title` 28px bold tight (page titles; 32–34px only on the Floor greeting), `text-stat` 30px bold tabular. Tailwind `text-xs` (12px) and `text-sm` (14px) stay for dense rows and prose. Section titles use `eyebrow` (11px bold spaced caps, `mute`); secondary lines use `meta`. No other eyebrow styles. |
+| Spacing | Tailwind's 4px scale. Inside a block: 8px between related lines, 12px between groups. Between blocks: 16px on phones, 24px on desktop. Page gutters 16px / 32px. |
+| Radii | Four by role: `rounded-control` 8px (buttons, inputs), `rounded-card` 12px (rows, stat tiles, toasts), `rounded-panel` 16px (page sections, dialogs, menus), `rounded-sheet` 22px (phone sheets, the floating nav). Pills are `rounded-full`. Nothing else. |
+| Surfaces | Page `ink`; sections and cards `ink-3` (`card`, `panel`); floating things (menus, dialogs, sheets) `ink-2` (`dialog-box`); raised/active `ink-4`. One border, `line`, 1px. No nested cards: a card never holds another card. |
+| Shadows | Only floating things cast them: `shadow-pop` (menus, dialogs, toasts), `shadow-lift` (a raised key). Page cards have borders, not shadows. |
+| Icons | Drawn, stroke 1.8, 24-grid (`NavIcon`, `FigmaIcon`). Sizes 16px in text and rows, 18px in navigation, 20px in the player. Icon-only controls carry `aria-label` and `title`. |
+| Controls | Touch target 44px on touch screens (`btn-sm`, `.input`, `.tap`); 36px regular on desktop. Round play buttons use `play-dot`. |
+| Buttons | Below. |
+| Form controls | `.input` for every input, select and textarea: 8px radius, `ink-3` surface, lime focus ring. Labels above, 11px caps; help text 11px `dim` below. Required marks with `Req`. |
+| Cards | `card` (12px) for rows and tiles, `panel` (16px) for sections. 16px padding; 12px in dense lists. |
+| Navigation | Desktop: the dark `tactile-panel` rail (`keep-night`). Phones: the floating dark tab bar. Current item raised, lime count badges. |
+| Dialogs and sheets | One shell: `dialog-box` on the box, `scrim` behind a modal one. Native `<dialog>` where possible. Escape closes, focus is trapped, the first control is focused. Phones get a bottom sheet, desktop a centred box. |
+| Feedback | Four kinds: status (banner at the top of the page), completion (toast, bottom centre, with Undo where it applies), warning (lime-tinted banner), error (danger-tinted box next to the control). Loading: skeletons in the page's own shapes. Empty: one sentence saying what will appear here and the one action that makes it happen. |
+| Motion | Transform and opacity only. Entering: `--ease-out`, 150–250ms, from opacity 0 and scale 0.97, never from scale 0. Moving on screen: `--ease-in-out`. Sheets: `--ease-drawer`. Press: scale 0.97 on `:active`, instantly. Keyboard-driven actions (K, X, U, Space) never animate. Reduced motion keeps fades and drops movement. Hover styles only on hover-capable pointers (Tailwind's default). |
+
 ## Buttons (one system)
 - Corners `rounded-lg` everywhere. Two sizes: regular (`btn`) and small (`btn-sm`, 12px bold; still a 44px target on touch).
 - **Lime** (`btn-lime`) = the main action, one per area. **Outline** (`btn-ghost`) = secondary. **Red outline** (`btn-danger`) = destructive; confirmation dialogs use solid red for the final yes.

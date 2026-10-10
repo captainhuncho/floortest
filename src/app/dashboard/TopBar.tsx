@@ -114,7 +114,7 @@ function Panel({ children, className = "" }: { children: React.ReactNode; classN
   return (
     <div
       // Never wider than the main column (the sidebar is 248px): the main area scrolls, so it clips anything past its edge.
-      className={`absolute right-0 top-full z-50 mt-3 max-h-[calc(100dvh-90px)] w-[min(400px,calc(100vw-24px))] overflow-y-auto rounded-2xl border border-line bg-ink-2 shadow-2xl shadow-black/70 md:w-[min(400px,calc(100vw-248px-48px))] ${className}`}
+      className={`absolute right-0 top-full z-50 mt-3 max-h-[calc(100dvh-90px)] w-[min(400px,calc(100vw-24px))] overflow-y-auto rounded-2xl border border-line bg-ink-2 shadow-pop md:w-[min(400px,calc(100vw-248px-48px))] ${className}`}
     >
       {children}
     </div>
@@ -215,7 +215,7 @@ function NotificationsSheet({ onNavigate, children }: { onNavigate: () => void; 
         aria-modal="true"
         aria-label="Notifications"
         onClick={(e) => e.stopPropagation()}
-        className="max-h-[calc(100dvh-7rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-line bg-ink-2 text-bone shadow-2xl shadow-black/70"
+        className="max-h-[calc(100dvh-7rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-line bg-ink-2 text-bone shadow-pop"
       >
         {children}
       </div>
@@ -263,7 +263,7 @@ function SearchDialog({ onClose }: { onClose: () => void }) {
         role="dialog"
         aria-modal="true"
         aria-label="Search"
-        className="w-full max-w-xl overflow-hidden rounded-2xl border border-line bg-ink-2 shadow-2xl shadow-black/70"
+        className="w-full max-w-xl overflow-hidden rounded-2xl border border-line bg-ink-2 shadow-pop"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 border-b border-line px-5">

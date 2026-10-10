@@ -81,7 +81,7 @@ export default async function SharedCollection({ params }: { params: Promise<{ i
           })}
         </ul>
       ) : (
-        <p className="rounded-xl border border-line bg-ink-3 p-4 text-[12px] text-mute">Nothing to hear yet. Tracks sent from now on appear here.</p>
+        <p className="card p-4 text-[12px] text-mute">Nothing to hear yet. Tracks sent from now on appear here.</p>
       )}
 
       <form action={leaveShared.bind(null, c.id)}>

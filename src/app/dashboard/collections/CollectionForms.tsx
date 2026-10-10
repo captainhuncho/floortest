@@ -263,7 +263,7 @@ export function CollectionTile({ c, receiving, closed, canDelete }: { c: C; rece
     );
   const rows = [tileBars(c.id, 16), tileBars(c.id + 7, 16)];
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-line bg-ink-3">
+    <div className="relative overflow-hidden panel">
       <Link href={`/dashboard/collections/${c.id}`} className="relative flex aspect-square flex-col justify-end gap-1.5 bg-gradient-to-b from-[#1a2a0a] to-ink p-4" aria-label={`Open ${c.name}`}>
         {c.art && (
           // eslint-disable-next-line @next/next/no-img-element
@@ -325,9 +325,9 @@ function OptionsSheet({ title, onClose, children }: { title: string; onClose: ()
         role="menu"
         aria-label={title}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-sm overflow-hidden rounded-2xl border border-line bg-ink-2 text-[13px] text-bone shadow-2xl shadow-black/60"
+        className="w-full max-w-sm overflow-hidden rounded-2xl border border-line bg-ink-2 text-[13px] text-bone shadow-pop"
       >
-        <p className="truncate border-b border-line px-4 py-3 text-[11px] font-bold uppercase tracking-[1px] text-mute">{title}</p>
+        <p className="truncate border-b border-line px-4 py-3 eyebrow">{title}</p>
         <div className="flex flex-col divide-y divide-line [&>*]:block [&>*]:w-full [&>*]:px-4 [&>*]:py-3.5 [&>*]:text-left">{children}</div>
       </div>
     </div>

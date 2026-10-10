@@ -21,7 +21,7 @@ export function DeleteAccount({ handle, twoFactor }: { handle: string; twoFactor
         ref={dialog}
         aria-labelledby="delete-title"
         onClose={() => setTyped("")}
-        className="m-auto w-[min(92vw,28rem)] rounded-2xl border border-danger/40 bg-ink-2 p-5 text-bone backdrop:bg-black/70"
+        className="dialog-box m-auto w-[min(92vw,28rem)] border-danger/40 backdrop:bg-black/70"
       >
     <form onSubmit={onSubmit} className="space-y-3">
       <h2 id="delete-title" className="text-lg font-semibold text-danger">
