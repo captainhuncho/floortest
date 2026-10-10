@@ -202,7 +202,7 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
 @media (prefers-color-scheme: light) { .theme-system .play-dot { background: #d5ff48; } }
 .live-dot { background: var(--color-lime); box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-lime) 22%, transparent); }
 
-/* Pieces designed as dark objects (the floating phone tab bar) stay dark in Day mode. */
+/* Pieces designed as dark objects (the desktop sidebar, the floating phone tab bar) stay dark in Day mode. */
 .theme-root .keep-night {
   --color-ink: #10110f; --color-ink-2: #171815; --color-ink-3: #1e1f1b; --color-ink-4: #2a2e24;
   --color-line: #2c2e29; --color-line-2: #3a3d37;
@@ -210,6 +210,8 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
   --color-lime: #d5ff48; --color-olive: #536400; --color-danger: #ff6b5a;
   color-scheme: dark;
 }
+/* Day mode darkens focus rings for light pages; on a kept-dark piece the ring must stay lime to be seen. */
+.theme-root .keep-night :focus-visible { outline-color: var(--color-lime); }
 /* The page behind the app (overscroll, short pages) matches the chosen mode. */
 html:has(.theme-day), html:has(.theme-day) body { background: #fafaf6; }
 @media (prefers-color-scheme: light) {
