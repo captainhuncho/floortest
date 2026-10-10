@@ -67,7 +67,8 @@ export default async function ReceiverPage({ params }: Props) {
   // Always tell senders what's wanted: the collection's own genres, or the default list when none are set.
   const showBrief = !closedReason && genres.length > 0;
   const vars = { receiver: receiver.name, days: RETAIN_UNREVIEWED_DAYS };
-  const bullets = (["bullet_files", team.length ? "bullet_private_team" : "bullet_private", "bullet_retention", "bullet_receipt"] as const).map((k) => [k, fill(c[k], vars)] as const).filter(([, b]) => b);
+  // The drop zone already says what files it takes; the hand-off points below it are what happens after.
+  const bullets = ([team.length ? "bullet_private_team" : "bullet_private", "bullet_retention", "bullet_receipt"] as const).map((k) => [k, fill(c[k], vars)] as const).filter(([, b]) => b);
 
   return (
     <EditablePage editing={!!editor} page="link" label="Public link" values={c}>
@@ -110,8 +111,8 @@ export default async function ReceiverPage({ params }: Props) {
           </p>
         )}
         {showBrief && (
-          <section aria-label="What they're looking for" className="group-has-[[data-picked]]/page:hidden flex flex-col gap-2 rounded-xl border border-line bg-ink-2 p-3">
-            <p className="text-[11px] font-bold uppercase tracking-[0.5px] text-mute"><E k="looking_for" /></p>
+          <section aria-label="What they're looking for" className="group-has-[[data-picked]]/page:hidden mt-2 flex flex-col gap-2 border-t border-line pt-4">
+            <p className="eyebrow"><E k="looking_for" /></p>
             {(
               <ul className="flex flex-wrap gap-1.5">
                 {genres.map((g) => (
@@ -142,10 +143,10 @@ export default async function ReceiverPage({ params }: Props) {
             <ReopenAlert handle={receiver.handle} receiverName={receiver.name} botCheckKey={botKey} />
           </div>
         ) : (
-          <SendModes folderBytes={folderBytes} botCheckKey={botKey} handle={receiver.handle} receiverName={receiver.name} callout={collection && !closedReason ? collection.name : null} genres={genres} look="mobile" allowSharing={sharing && !!collection?.allow_sharing} sharingDownloads={sharingDownloads} trackArt={trackArt} />
+          <SendModes folderBytes={folderBytes} botCheckKey={botKey} handle={receiver.handle} receiverName={receiver.name} callout={collection && !closedReason ? collection.name : null} genres={genres} allowSharing={sharing && !!collection?.allow_sharing} sharingDownloads={sharingDownloads} trackArt={trackArt} />
         )}
       </div>
-      <ul className="flex flex-col gap-2.5" aria-label="How your file is handled">
+      <ul className="group-has-[[data-picked]]/page:hidden flex flex-col gap-2.5" aria-label="How your file is handled">
         {bullets.map(([k, b]) => (
           <li key={k} {...panel(k, "Keep {receiver} and {days} as they are: the page fills them in.")} className="flex gap-2.5 text-[11px] font-medium leading-4 text-dim">
             <span aria-hidden>→</span>

@@ -90,7 +90,7 @@ export function SendComposer({ host, account, initial }: { host: string; account
       </div>
 
       {found?.found && (
-        <div key={found.handle} className="rounded-lg border border-line p-5">
+        <div key={found.handle} className="border-t border-line pt-5">
           {found.photo && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={found.photo} alt="" width={64} height={64} className="mb-3 size-16 rounded-xl object-cover" />

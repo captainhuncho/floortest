@@ -222,7 +222,7 @@ export function FolderSend({
     )}
     <form
       ref={formRef}
-      hidden={waiting}
+      hidden={waiting || running}
       className="space-y-4"
       onSubmit={(e) => {
         e.preventDefault();

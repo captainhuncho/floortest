@@ -13,6 +13,8 @@ export function GenrePicker({
   inputClass,
   labelClass,
   invalid,
+  id,
+  issue,
 }: {
   genres: string[];
   value: string;
@@ -20,14 +22,19 @@ export function GenrePicker({
   inputClass: string;
   labelClass: string;
   invalid?: boolean;
+  id?: string;
+  /** The problem line to show under the field, when there is one. */
+  issue?: React.ReactNode;
 }) {
   const [other, setOther] = useState(false);
   const selected = other ? OTHER : value;
   return (
     <div className="space-y-2">
-      <label className="block space-y-1.5">
+      <label className="block space-y-1.5" htmlFor={id}>
         <span className={labelClass}>Genre<Req /></span>
         <select
+          id={id}
+          aria-describedby={issue ? `${id}-issue` : undefined}
           className={`${inputClass} ${invalid ? "border-danger/60" : ""}`}
           value={selected}
           required
@@ -51,6 +58,7 @@ export function GenrePicker({
           ))}
           <option value={OTHER}>Other…</option>
         </select>
+        {issue}
       </label>
       {other && (
         <label className="block">

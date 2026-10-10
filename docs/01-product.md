@@ -33,7 +33,7 @@ Keep this file true to what is live. Any change to a feature updates its row her
 
 | Area | What it does | Where |
 |---|---|---|
-| Send to a link | WAV/MP3 ≤ 250 MB, up to 3 tracks per send; title, artist, genre, mix and release status, AI use (required), message, DJ-sets permission; email code first (no account). Name, email and profiles are remembered on the device after the first send. **Closed, full or paused link:** the page says why and offers "Email me when it reopens" (one email, sent when the link takes uploads again) | `/<handle>` |
+| Send to a link | One step at a time: the page asks only for the file; once it's chosen the form appears (title and artist read from the file; you; about the track: genre, mix and release status, AI use; DJ-sets permission). A message and artwork are behind "Add…" links until wanted. Problems are shown under the field they belong to, one at a time, saying what to do (no browser bubbles). Upload progress replaces the form in place (one bar, time left, Cancel); done shows a check, the receipt email, and Delivered → Listened → Replied. WAV/MP3 ≤ 250 MB, up to 3 tracks per send; email code first (no account). Name, email and profiles are remembered on the device after the first send. **Closed, full or paused link:** the page says why and offers "Email me when it reopens" (one email, sent when the link takes uploads again) | `/<handle>` |
 | Folders (Pro/Team receivers) | EP/album up to 12 tracks within the receiver's folder size | `/<handle>` → Send folders |
 | Track artwork (Team receivers) | Optional JPG/PNG/WebP ≤ 25 MB, kept at original quality; one cover per folder | send form |
 | Receipt | Follow one track: delivered, listened, downloaded, replied, played out | `/receipt/<token>`, `/sent` |

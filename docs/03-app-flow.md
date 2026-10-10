@@ -58,8 +58,9 @@ Mobile tab bar: Floor · Queue · Collections · Prepare. Desktop sidebar adds S
 ## Sender
 ```
 floortest.app/<handle> ─► choose files (or Send folders on Pro/Team)
-   ─► details form (+ Artwork on Team) ─► email ─► 6-digit code ─► upload (progress, cancel)
-   ─► "Sent" screen ─► receipt email ─► /receipt/<token> (status updates by email)
+   ─► details form (title/artist · you · about the track; "+ Add a message" / "+ Add artwork" on Team) ─► email ─► 6-digit code
+   ─► upload in place (one bar, time left, Cancel) ─► done: check, receipt email, Delivered → Listened → Replied ─► View receipt / Send another
+   A missing field: the form points at it with one line saying what to do, nothing uploads until it's filled.
 Link closed / paused / full ─► the page says why, no upload ─► "Email me when it reopens" ─► one email when the link takes uploads again
    (sent straight after the receiver switches collection, moves the closing date, resumes; nightly for a pause that ended on its own or a re-route)
 ```
