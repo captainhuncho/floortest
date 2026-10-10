@@ -47,7 +47,7 @@ test("a sender asks to hear when it reopens", async ({ browser }) => {
   const page = await ctx.newPage();
   await page.goto("/maxwell");
   await expect(page.getByText(/taking a break from submissions/)).toBeVisible();
-  await page.getByLabel("Email me when it reopens").fill(email);
+  await page.getByRole("textbox", { name: "Email me when it reopens" }).fill(email);
   await page.getByRole("button", { name: "Tell me" }).click();
   await expect(page.getByText(/one email when Maxwell/)).toBeVisible();
   await ctx.close();
