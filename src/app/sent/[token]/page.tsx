@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { q } from "@/lib/db";
+import { ago, fmtDay } from "@/lib/format";
 import { readSenderLink } from "@/lib/senderLink";
 
 export const metadata = { title: "Your sends — FloorTest", robots: { index: false } };
@@ -28,8 +29,9 @@ export default async function SenderHistory({ params }: { params: Promise<{ toke
      WHERE lower(s.email) = ? AND u.suspended_at IS NULL ORDER BY t.created_at DESC LIMIT 300`,
     email,
   );
-  const status = (r: (typeof rows)[number]) =>
-    r.played_out_at ? ["Played out", true] : r.replied_at ? ["Replied", true] : r.downloaded_at ? ["Downloaded", true] : r.played_at ? ["Listened", true] : r.deleted_at ? ["Removed", false] : ["Delivered", false];
+  // The strongest thing that has happened, and when. Listens and anything after are the bright ones.
+  const status = (r: (typeof rows)[number]): [string, boolean, number] =>
+    r.played_out_at ? ["Played out", true, r.played_out_at] : r.replied_at ? ["Replied", true, r.replied_at] : r.downloaded_at ? ["Downloaded", true, r.downloaded_at] : r.played_at ? ["Listened", true, r.played_at] : r.deleted_at ? ["Removed", false, r.deleted_at] : ["Waiting to be heard", false, r.created_at];
   const heard = rows.filter((r) => r.played_at).length;
 
   return (
@@ -40,26 +42,28 @@ export default async function SenderHistory({ params }: { params: Promise<{ toke
       <p className="mt-2 text-mute">
         {rows.length} track{rows.length === 1 ? "" : "s"} sent · {heard} listened to
       </p>
-      <ul className="mt-8 divide-y divide-line rounded-md border border-line">
+      <ul className="mt-8 divide-y divide-line border-y border-line">
         {rows.map((r) => {
-          const [label, good] = status(r);
+          const [label, good, at] = status(r);
           return (
             <li key={r.token}>
-              <Link href={`/receipt/${r.token}`} className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-ink-2">
+              <Link href={`/receipt/${r.token}`} className="-mx-2 flex items-center justify-between gap-4 rounded-lg px-2 py-3.5 hover:bg-ink-2">
                 <span className="min-w-0">
-                  <span className="block truncate font-medium">
-                    {r.artist} - {r.title}
-                  </span>
-                  <span className="block text-sm text-mute">
-                    to {r.receiver} · {new Date(r.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                  <span className="block truncate text-[14px] font-semibold">{r.title}</span>
+                  <span className="block truncate text-[12px] text-mute">
+                    {r.artist} · to {r.receiver} · sent {fmtDay(r.created_at)}
                   </span>
                 </span>
-                <span className={`chip shrink-0 ${good ? "border-lime/50 text-lime" : "border-line text-mute"}`}>{label}</span>
+                <span className={`flex shrink-0 items-center gap-2 text-[12px] ${good ? "font-semibold text-bone" : "text-dim"}`}>
+                  <span aria-hidden className={`size-2 rounded-full ${good ? "bg-lime" : "border border-line-2"}`} />
+                  {label}
+                  {good && <span className="font-normal text-dim">{ago(at)}</span>}
+                </span>
               </Link>
             </li>
           );
         })}
-        {!rows.length && <li className="px-4 py-6 text-mute">No tracks yet.</li>}
+        {!rows.length && <li className="py-6 text-mute">Nothing sent yet. Send a track through a receiver&apos;s link and it will show here.</li>}
       </ul>
     </main>
   );

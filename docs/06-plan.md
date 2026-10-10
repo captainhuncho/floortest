@@ -44,6 +44,7 @@ Plan + tappable prototype: claude.ai/artifact/5BVVpA3Zn9AxH71ut9hGFr (private), 
 - Rekordbox how-to video, footer legal placement, mobile footer redesign.
 
 ## Done (recent)
+- 10 Oct: tracking pass: receipt leads with the strongest event and its time, "For you" only when there is something to do, bright/quiet timeline, meanings and details folded away; sender history and dashboard Send rows status-first with one dot instead of chips.
 - 10 Oct: submission flow pass: one look for the send form (public link and dashboard), no cards around sections, title/artist read from the file, message and artwork behind "Add…" links, inline one-at-a-time validation (no browser bubbles), upload progress in place of the full-screen takeover, success with the three receipt steps; brief on the link page as text; hand-off bullets only before a file is picked.
 - 10 Oct: design foundation: tokens for radii, type roles, shadows and easing; `panel`, `eyebrow`, `meta`, `dialog-box`, `scrim` utilities; dashboard cards, eyebrows, pop shadows and the two native dialogs moved onto them (same look). Design system written into 04.
 - 10 Oct: UI polish pass: Account band no longer overlaps at laptop widths; Prepare titles keep room on narrower desktops; verify-email banner one line; Day mode fixed where white was hard-coded (Kept pills, play buttons via `play-dot`, Keep/Reply buttons, selected chips, Receiving badge).

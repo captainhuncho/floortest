@@ -14,13 +14,6 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
   const to = ((await searchParams).to || "").trim().replace(/[?#].*$/, "").replace(/\/+$/, "").split("/").pop()!.replace(/^@/, "").toLowerCase().replace(/[^a-z0-9-_]/g, "").slice(0, 30);
   const sent = await sentBy(user);
   type Sent = (typeof sent)[number];
-  // What a sender is allowed to see, in order. The receiver's keep/pass decision is private and never shown.
-  const steps = (r: Sent) => [
-    { label: "Delivered", at: r.created_at },
-    { label: "Listened", at: r.played_at },
-    { label: "Downloaded", at: r.downloaded_at },
-    { label: "Replied", at: r.replied_at },
-  ];
   const t = Date.now();
   const ago = (ms: number) => {
     const m = Math.max(1, Math.floor((t - ms) / 60_000));
@@ -59,21 +52,11 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
                 {r.deleted_at ? (
                   <span className="mt-2 inline-block rounded-full border border-line px-2 py-0.5 text-[11px] text-mute">Removed by the receiver</span>
                 ) : (
-                  <span className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1" aria-label="Progress">
-                    {steps(r).map((st, i) => (
-                      <span key={st.label} className="flex items-center gap-1.5">
-                        {i > 0 && <span aria-hidden className={`hidden h-px w-3 sm:block ${st.at ? "bg-lime/60" : "bg-line"}`} />}
-                        <span className={`rounded-full border px-2 py-0.5 text-[11px] ${st.at ? "border-lime/50 text-lime" : "border-line text-faint"}`}>
-                          {st.at ? "✓ " : ""}
-                          {st.label}
-                          <span className="sr-only">{st.at ? " (done)" : " (not yet)"}</span>
-                        </span>
-                      </span>
-                    ))}
-                    {r.played_out_at && <span className="rounded-full bg-lime px-2 py-0.5 text-[11px] font-semibold text-ink">Played out</span>}
+                  <span className={`mt-2 flex items-center gap-2 text-[12px] ${r.played_at ? "font-semibold text-bone" : "text-dim"}`}>
+                    <span aria-hidden className={`size-2 rounded-full ${r.played_at ? "bg-lime" : "border border-line-2"}`} />
+                    {latest(r)}
                   </span>
                 )}
-                <span className="mt-1.5 block text-xs text-mute">{latest(r)}</span>
               </Link>
             </li>
   );

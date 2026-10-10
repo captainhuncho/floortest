@@ -4,22 +4,25 @@ import { notFound } from "next/navigation";
 import { LivePulse } from "@/components/LivePulse";
 import { fill, siteCopy } from "@/lib/content";
 import { Waveform } from "@/components/Waveform";
-import {q, type Track } from "@/lib/db";
-import { fmtDate, fmtDay, fmtTime } from "@/lib/format";
+import { q, type Track } from "@/lib/db";
+import { ago, fmtDate, fmtDay, fmtTime } from "@/lib/format";
 import { RETAIN_UNREVIEWED_DAYS, SIGNALS } from "@/lib/plans";
 import { featureOn } from "@/lib/features";
 import { MAX_STEMS, stemsFor } from "@/lib/stems";
 import { StemUpload } from "./StemUpload";
 import { ShareConsent } from "./ShareConsent";
 import { CancelConsent } from "./CancelConsent";
+import { StatusHeadline } from "./StatusHeadline";
 import { switchOn } from "@/lib/switches";
 import { finalizeConsent } from "@/lib/share";
 import { consentFinalAt, latestShareRequest } from "@/lib/share";
 
-/** Long enough for the post-Allow wait (see actions.ts). */
-
 export const metadata = { title: "Your receipt — FloorTest", robots: { index: false } };
 
+/**
+ * A sender's receipt. It answers, in this order: did they listen, when, what else has happened, what it means,
+ * and is there anything to do. The receiver's keep/pass decision is private and never appears here.
+ */
 export default async function Receipt({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const t = (await q.get<(Track & { receiver: string; receiver_plan: string; collection: string | null; sender_email: string; verified_at: number | null })>(`SELECT t.*, u.name AS receiver, u.plan AS receiver_plan, c.name AS collection, s.email AS sender_email, s.verified_at
@@ -35,102 +38,151 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
   const request = sharing && !t.deleted_at ? await latestShareRequest(t.id) : undefined;
   const stemsOn = !!t.stems_requested_at && !t.deleted_at && (await featureOn("stems", { id: t.user_id, plan: t.receiver_plan }));
   const stems = stemsOn ? await stemsFor(t.id) : [];
-  // Kept and passed are private to the receiver. Senders only see what they were promised.
   const [c, editor] = await Promise.all([siteCopy("receipt"), siteEditor()]);
   const { E, panel } = editable(c, !!editor);
-  const steps = [
-    { label: "Delivered", at: t.created_at, text: `On ${t.receiver}'s desk${t.collection ? ` for ${t.collection}` : ""}` },
-    { label: "Listened", at: t.played_at, text: SIGNALS.listened },
-    { label: "Downloaded", at: t.downloaded_at, text: SIGNALS.downloaded },
-    { label: "Replied", at: t.replied_at, text: `${t.receiver} sent you a message. Check your email.` },
-    { label: "Played out", at: t.played_out_at, text: t.played_out_note ? `${SIGNALS.playedOut}: ${t.played_out_note}` : SIGNALS.playedOut },
+  const who = t.receiver;
+
+  /*
+   * The lifecycle, from the track itself. "Meaningful" events are things the receiver did with the music;
+   * the rest is the system keeping its promises. Only meaningful ones get the bright treatment.
+   */
+  type Step = { key: string; label: string; at: number | null; meaningful: boolean; note?: string; means: string };
+  const steps: Step[] = [
+    { key: "delivered", label: "Delivered", at: t.created_at, meaningful: false, note: `to ${who}'s desk${t.collection ? ` for ${t.collection}` : ""}`, means: "The original file reached the desk safely." },
+    { key: "listened", label: "Listened", at: t.played_at, meaningful: true, means: SIGNALS.listened + "." },
+    { key: "downloaded", label: "Downloaded", at: t.downloaded_at, meaningful: true, means: SIGNALS.downloaded + "." },
+    { key: "replied", label: "Replied", at: t.replied_at, meaningful: true, note: "The message is in your email.", means: SIGNALS.replied + "." },
+    { key: "played_out", label: "Played out", at: t.played_out_at, meaningful: true, note: t.played_out_note || undefined, means: SIGNALS.playedOut + "." },
   ];
+  if (shared?.at) steps.push({ key: "shared", label: "Shared with a colleague", at: shared.at, meaningful: false, note: "Through a private link, to listen.", means: "" });
+  if (t.deleted_at) steps.push({ key: "removed", label: "Removed", at: t.deleted_at, meaningful: false, note: "The file is no longer on the desk.", means: "" });
+  const happened = steps.filter((s) => s.at).sort((a, b) => a.at! - b.at!);
+  const pending = steps.filter((s) => !s.at && s.key !== "shared" && s.key !== "removed" && !t.deleted_at);
+
+  // The headline is the strongest thing that has happened.
+  const when = (at: number) => `${fmtDate(at)} · ${ago(at)}`;
+  const headline = t.played_out_at
+    ? { status: "played_out", strong: true, title: `${who} played it out.`, detail: `${t.played_out_note ? `“${t.played_out_note}” · ` : ""}${when(t.played_out_at)}` }
+    : t.replied_at
+      ? { status: "replied", strong: true, title: `${who} replied.`, detail: `The message is in your email · ${when(t.replied_at)}` }
+      : t.downloaded_at
+        ? { status: "downloaded", strong: true, title: `${who} downloaded it.`, detail: `Listened ${t.played_at ? ago(t.played_at) : "earlier"}, downloaded ${when(t.downloaded_at)}` }
+        : t.played_at
+          ? { status: "listened", strong: true, title: `${who} listened.`, detail: when(t.played_at) }
+          : t.deleted_at
+            ? { status: "removed", strong: false, title: "The file has been removed.", detail: `Removed ${when(t.deleted_at)}. It was never listened to.` }
+            : { status: "waiting", strong: false, title: `Waiting for ${who} to listen.`, detail: `Delivered ${when(t.created_at)}. We'll email you the moment it's listened to.` };
+
+  const todo = request?.status === "pending" || !t.verified_at || stemsOn;
 
   return (
     <EditablePage editing={!!editor} page="receipt" label="Receipts" values={c}>
-    <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-6 bg-ink px-5 py-8 text-bone sm:py-12">
-      <div className="flex flex-col gap-1.5">
-        <p className="text-[11px] font-bold uppercase tracking-[1px] text-faint"><E k="kicker" /></p>
-        <h1 className="break-words text-[28px] font-bold tracking-[-0.8px]">{t.title}</h1>
-        <p className="text-[11px] text-mute">
-          {t.artist} · sent to {t.receiver}
-          {t.duration ? ` · ${fmtTime(t.duration)}` : ""}
-        </p>
-      </div>
-      {t.peaks && (
-        <div className="rounded-xl border border-line bg-ink-3 px-1 py-1">
-          <Waveform peaks={JSON.parse(t.peaks)} height={48} />
+    <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-8 bg-ink px-5 py-8 text-bone sm:py-12">
+      <header className="flex flex-col gap-5">
+        <p className="eyebrow"><E k="kicker" /></p>
+        <StatusHeadline status={headline.status} title={headline.title} detail={headline.detail} strong={headline.strong} />
+        <div className="flex flex-col gap-2 border-t border-line pt-4">
+          <p className="min-w-0 truncate text-[14px] font-semibold text-bone">
+            {t.title} <span className="font-normal text-mute">· {t.artist}{t.duration ? ` · ${fmtTime(t.duration)}` : ""}</span>
+          </p>
+          {t.peaks && <Waveform peaks={JSON.parse(t.peaks)} height={32} />}
         </div>
+      </header>
+
+      {todo && (
+        <section aria-labelledby="todo-h" className="flex flex-col gap-3">
+          <h2 id="todo-h" className="eyebrow">For you</h2>
+          {request?.status === "pending" && (
+            <ShareConsent token={token} requestId={request.id} receiver={who.split(/\s+/)[0]} note={request.note} downloads={!!request.downloads} />
+          )}
+          {stemsOn && <StemUpload token={token} receiver={who.split(/\s+/)[0]} existing={stems.map((x) => x.name)} max={MAX_STEMS} />}
+          {!t.verified_at && (
+            <p className="text-[13px] text-mute">
+              Confirm your email from the delivery email, so {who} sees you as verified. Updates go to <span className="text-bone">{t.sender_email}</span>.
+            </p>
+          )}
+        </section>
       )}
-      <ol className="rounded-2xl border border-line bg-ink-3 p-4">
-        {steps.map((s, i) => {
-          const done = !!s.at;
-          return (
-            <li key={s.label} className="relative flex gap-3 pb-5 last:pb-0">
-              {i < steps.length - 1 && <span className="absolute left-[9px] top-5 h-[calc(100%-20px)] w-0.5 rounded-[1px] bg-line" />}
-              <span
-                aria-hidden
-                className={`grid size-5 shrink-0 place-items-center rounded-full text-[12px] font-bold ${
-                  done ? "bg-line text-lime" : "bg-line"
-                }`}
-              >
-                {done ? "✓" : <span className="size-1.5 rounded-full bg-ink" />}
-              </span>
-              <div className="min-w-0 pt-px">
-                <p className={`text-[12px] font-bold ${done ? "" : "text-faint"}`}>
-                  {s.label} <span className="sr-only">{done ? "(done)" : "(not yet)"}</span>
+      {request?.status === "allowed" && <CancelConsent token={token} requestId={request.id} receiver={who.split(/\s+/)[0]} finalAt={consentFinalAt(request)} />}
+
+      <section aria-labelledby="history-h" className="flex flex-col gap-3">
+        <h2 id="history-h" className="eyebrow">What&apos;s happened</h2>
+        <ol className="flex flex-col">
+          {happened.map((s, i) => (
+            <li key={s.key} className="relative flex gap-3 pb-4 last:pb-0">
+              {(i < happened.length - 1 || pending.length > 0) && <span aria-hidden className="absolute left-[5px] top-4 h-[calc(100%-8px)] w-px bg-line" />}
+              <span aria-hidden className={`mt-[7px] size-[11px] shrink-0 rounded-full ${s.meaningful ? "bg-lime" : "border border-line-2 bg-ink"}`} />
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <p className={`text-[14px] leading-6 ${s.meaningful ? "font-bold text-bone" : "text-mute"}`}>
+                  {s.label}
+                  <span className="ml-2 text-[12px] font-normal text-dim tnum">{fmtDate(s.at!)}</span>
                 </p>
-                <p className={`text-[11px] ${done ? "text-faint" : "text-faint"}`}>
-                  {done ? `${fmtDate(s.at!)} · ${s.text}` : `Not yet · ${s.text}`}
-                </p>
+                {s.note && <p className={`text-[12px] ${s.meaningful ? "text-mute" : "text-dim"}`}>{s.note}</p>}
               </div>
             </li>
-          );
-        })}
-      </ol>
-
-      {request?.status === "pending" && (
-        <ShareConsent token={token} requestId={request.id} receiver={t.receiver.split(/\s+/)[0]} note={request.note} downloads={!!request.downloads} />
-      )}
-      {request?.status === "allowed" && (
-        <CancelConsent token={token} requestId={request.id} receiver={t.receiver.split(/\s+/)[0]} finalAt={consentFinalAt(request)} />
-      )}
-
-      {stemsOn && (
-        <StemUpload token={token} receiver={t.receiver.split(/\s+/)[0]} existing={stems.map((x) => x.name)} max={MAX_STEMS} />
-      )}
-
-      <section className="flex flex-col gap-2.5 rounded-[14px] border border-line bg-ink-2 p-3.5 text-[11px] text-faint">
-        <p>
-          Updates go to <span className="font-bold text-mute">{t.sender_email}</span>
-          {t.verified_at ? " (confirmed)." : ". Confirm your email from the delivery email so the receiver sees you as verified."}
-        </p>
-        <hr className="border-line" />
-        <p>
-          <span {...panel("private_note", "Keep {receiver} as it is: the page fills in the receiver's name.")}>{fill(c.private_note, { receiver: t.receiver })}</span>
-          {shared?.at ? ` ${t.receiver} shared a private link with a colleague on ${fmtDay(shared.at)}.` : ""}
-          {request && request.status !== "pending" && request.decided_at
-            ? ` You ${request.status === "allowed" ? "allowed" : request.status === "cancelled" ? "cancelled" : "declined"} sharing on ${fmtDay(request.decided_at)}.`
-            : ""}
-        </p>
-        <hr className="border-line" />
-        <p>
-          {t.deleted_at
-            ? `The file was deleted on ${fmtDay(t.deleted_at)}.`
-            : `Files are deleted within ${RETAIN_UNREVIEWED_DAYS} days of delivery unless ${t.receiver} keeps them.`}
-        </p>
+          ))}
+          {pending.map((s, i) => (
+            <li key={s.key} className="relative flex gap-3 pb-3 last:pb-0">
+              {i < pending.length - 1 && <span aria-hidden className="absolute left-[5px] top-4 h-[calc(100%-8px)] w-px bg-line" />}
+              <span aria-hidden className="mt-[7px] size-[11px] shrink-0 rounded-full border border-line bg-ink" />
+              <p className="text-[13px] leading-6 text-faint">
+                {s.label}
+                <span className="sr-only"> (not yet)</span>
+              </p>
+            </li>
+          ))}
+        </ol>
+        <details className="group text-[12px] text-dim">
+          <summary className="inline-flex min-h-9 cursor-pointer list-none items-center gap-1.5 text-bone underline-offset-4 hover:underline [&::-webkit-details-marker]:hidden">
+            <span aria-hidden className="text-lime transition-transform duration-150 group-open:rotate-45">+</span> What these mean
+          </summary>
+          <dl className="mt-2 flex flex-col gap-2 border-l border-line pl-3">
+            {steps.filter((s) => s.means).map((s) => (
+              <div key={s.key}>
+                <dt className="font-semibold text-mute">{s.label}</dt>
+                <dd>{s.means}</dd>
+              </div>
+            ))}
+            <div>
+              <dt className="font-semibold text-mute">Kept or not</dt>
+              <dd>{SIGNALS.kept}.</dd>
+            </div>
+          </dl>
+        </details>
       </section>
-      <p {...panel("footer", "Words in [square brackets] link to the sender's history page.")} className="text-[11px] text-faint">
-        {c.footer.split(/(\[[^\]]+\])/).map((part, i) =>
-          /^\[.+\]$/.test(part) ? (
-            <a key={i} href="/sent" className="font-medium text-bone underline underline-offset-4">
-              {part.slice(1, -1)}
-            </a>
-          ) : (
-            part
-          ),
-        )}
-      </p>
+
+      <details className="group text-[12px] text-dim">
+        <summary className="inline-flex min-h-9 cursor-pointer list-none items-center gap-1.5 text-bone underline-offset-4 hover:underline [&::-webkit-details-marker]:hidden">
+          <span aria-hidden className="text-lime transition-transform duration-150 group-open:rotate-45">+</span> Details
+        </summary>
+        <div className="mt-2 flex flex-col gap-2 border-l border-line pl-3">
+          <p>
+            Updates go to <span className="text-mute">{t.sender_email}</span>{t.verified_at ? " (confirmed)." : "."}
+          </p>
+          <p>
+            <span {...panel("private_note", "Keep {receiver} as it is: the page fills in the receiver's name.")}>{fill(c.private_note, { receiver: who })}</span>
+            {request && request.status !== "pending" && request.decided_at
+              ? ` You ${request.status === "allowed" ? "allowed" : request.status === "cancelled" ? "cancelled" : "declined"} sharing on ${fmtDay(request.decided_at)}.`
+              : ""}
+          </p>
+          <p>
+            {t.deleted_at
+              ? `The file was deleted on ${fmtDay(t.deleted_at)}.`
+              : `Files are deleted within ${RETAIN_UNREVIEWED_DAYS} days of delivery unless ${who} keeps them.`}
+          </p>
+          <p {...panel("footer", "Words in [square brackets] link to the sender's history page.")}>
+            {c.footer.split(/(\[[^\]]+\])/).map((part, i) =>
+              /^\[.+\]$/.test(part) ? (
+                <a key={i} href="/sent" className="text-bone underline underline-offset-4">
+                  {part.slice(1, -1)}
+                </a>
+              ) : (
+                part
+              ),
+            )}
+          </p>
+        </div>
+      </details>
       <LivePulse url={`/api/pulse/receipt/${token}`} every={8000} />
     </main>
     </EditablePage>
