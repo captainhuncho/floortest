@@ -42,15 +42,14 @@ test("the receiver pauses their link", async ({ page }) => {
   await expect(page.getByText("Submissions paused")).toBeVisible();
 });
 
-test("a sender asks to hear when it reopens", async ({ browser }) => {
-  const ctx = await browser.newContext();
-  const page = await ctx.newPage();
+test("a sender asks to hear when it reopens", async ({ page }) => {
+  // The page fixture carries the stand-in bot check; signed out, it's any sender.
+  await page.context().clearCookies();
   await page.goto("/maxwell");
   await expect(page.getByText(/taking a break from submissions/)).toBeVisible();
   await page.getByRole("textbox", { name: "Email me when it reopens" }).fill(email);
   await page.getByRole("button", { name: "Tell me" }).click();
   await expect(page.getByText(/one email when Maxwell/)).toBeVisible();
-  await ctx.close();
 });
 
 test("resuming the link sends the one email", async ({ page }) => {
