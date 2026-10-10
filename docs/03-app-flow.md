@@ -60,6 +60,15 @@ floortest.app/<handle> ─► choose files (or Send folders on Pro/Team)
 Link closed / paused / full ─► the page says why, no upload.
 ```
 
+## Offline kept tracks (iPhone and Android apps)
+```
+Prepare ─► Save for offline ─► "Save on this phone" ─► kept tracks download (Saving… n of N) ─► "N tracks on this phone"
+Every later visit to Prepare ─► phone copy brought in line (new keeps saved, cleared/deleted tracks removed)
+No connection ─► "You're offline" + SAVED ON THIS PHONE ─► tap to play (next plays on; lock screen / notification controls)
+   signal returns mid-track ─► keeps playing (only an idle screen returns to the desk)
+Remove from phone · sign out / reach sign-in · another account syncs · 30 days without opening Prepare online ─► copy wiped
+```
+
 ## Share to FloorTest (iPhone and Android apps)
 ```
 Files / Dropbox / WeTransfer … ─► Share ─► FloorTest ─► file copied into the app's inbox ─► app opens on Send

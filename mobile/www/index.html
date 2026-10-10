@@ -11,6 +11,20 @@
   h1 { font-size: 20px; margin: 18px 0 6px; }
   p { color: #a3a69b; font-size: 13px; line-height: 1.5; max-width: 28ch; margin: 0 auto; }
   button { margin-top: 22px; background: #d5ff48; color: #10110f; border: 0; border-radius: 10px; padding: 13px 22px; font: 700 13px ui-monospace, Menlo, monospace; }
+  /* Saved for offline: the kept tracks on this phone, playable with no connection. */
+  #saved { display: none; width: 100%; max-width: 420px; margin: 28px auto 0; text-align: left; }
+  #saved h2 { font-size: 11px; letter-spacing: 1px; color: #a3a69b; margin: 0 0 8px; font-weight: 700; }
+  #saved ul { list-style: none; margin: 0; padding: 0; border: 1px solid #2a2c27; border-radius: 12px; overflow: hidden; }
+  #saved li button { all: unset; box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-top: 1px solid #2a2c27; cursor: pointer; }
+  #saved li:first-child button { border-top: 0; }
+  #saved li button[aria-pressed="true"] { background: #1b1d18; }
+  #saved .dot { flex: none; width: 30px; height: 30px; border-radius: 50%; border: 1px solid #3a3d35; display: grid; place-items: center; font-size: 11px; color: #f1f1eb; }
+  #saved li button[aria-pressed="true"] .dot { background: #d5ff48; color: #10110f; border-color: #d5ff48; }
+  #saved .t { min-width: 0; flex: 1; }
+  #saved .t b { display: block; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #saved .t span { display: block; font-size: 11px; color: #a3a69b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #saved .len { flex: none; font-size: 11px; color: #a3a69b; }
+  body.has-saved main { place-items: start center; padding-top: max(48px, env(safe-area-inset-top)); }
 </style>
 <script id="ft-start">window.FLOORTEST_START = "https://floortest.app/dashboard/floor";</script>
 </head>
@@ -21,11 +35,93 @@
     <h1>You're offline</h1>
     <p>FloorTest needs a connection to load your desk. Check your Wi-Fi or mobile data.</p>
     <button type="button" onclick="location.href = window.FLOORTEST_START || 'https://floortest.app/dashboard/floor'">Try again</button>
+    <section id="saved" aria-labelledby="saved-h">
+      <h2 id="saved-h">SAVED ON THIS PHONE</h2>
+      <ul id="saved-list"></ul>
+    </section>
   </div>
 </main>
 <script>
-  // Back automatically as soon as the connection returns.
-  addEventListener("online", () => { location.href = window.FLOORTEST_START || "https://floortest.app/dashboard/floor"; });
+  const start = () => window.FLOORTEST_START || "https://floortest.app/dashboard/floor";
+  const audio = new Audio();
+  let tracks = [];
+  let current = -1;
+
+  // Back automatically as soon as the connection returns, unless a saved track is playing (a flicker of signal in the
+  // booth shouldn't stop the music).
+  addEventListener("online", () => { if (audio.paused) location.href = start(); });
+
+  const cap = window.Capacitor;
+  const crate = cap && cap.Plugins && cap.Plugins.OfflineCrate;
+  const nowPlaying = cap && cap.Plugins && cap.Plugins.NowPlaying;
+  const fmt = (s) => (s > 0 ? Math.floor(s / 60) + ":" + String(Math.floor(s % 60)).padStart(2, "0") : "");
+
+  function render() {
+    const list = document.getElementById("saved-list");
+    list.innerHTML = "";
+    tracks.forEach((t, i) => {
+      const li = document.createElement("li");
+      const b = document.createElement("button");
+      const on = i === current && !audio.paused;
+      b.setAttribute("aria-pressed", String(on));
+      b.setAttribute("aria-label", (on ? "Pause " : "Play ") + t.title + " by " + t.artist);
+      const dot = document.createElement("span"); dot.className = "dot"; dot.textContent = on ? "❚❚" : "▶";
+      const txt = document.createElement("span"); txt.className = "t";
+      const ti = document.createElement("b"); ti.textContent = t.title;
+      const ar = document.createElement("span"); ar.textContent = t.artist;
+      txt.append(ti, ar);
+      const len = document.createElement("span"); len.className = "len"; len.textContent = fmt(t.duration);
+      b.append(dot, txt, len);
+      b.onclick = () => (i === current ? (audio.paused ? audio.play() : audio.pause()) : play(i));
+      li.append(b);
+      list.append(li);
+    });
+  }
+
+  function play(i) {
+    const t = tracks[i];
+    if (!t) return;
+    current = i;
+    audio.src = cap.convertFileSrc(t.path);
+    audio.play().catch(() => {});
+    if ("mediaSession" in navigator) navigator.mediaSession.metadata = new MediaMetadata({ title: t.title, artist: t.artist, album: "FloorTest" });
+  }
+
+  function tell() {
+    render();
+    const t = tracks[current];
+    // Android's lock screen / notification player (iOS uses the Media Session above).
+    if (t && nowPlaying) Promise.resolve(nowPlaying.update({ title: t.title, artist: t.artist, playing: !audio.paused, position: audio.currentTime || 0, duration: audio.duration || t.duration || 0 })).catch(() => {});
+  }
+
+  audio.addEventListener("play", tell);
+  audio.addEventListener("pause", tell);
+  audio.addEventListener("ended", () => (current < tracks.length - 1 ? play(current + 1) : tell()));
+  if ("mediaSession" in navigator) {
+    navigator.mediaSession.setActionHandler("play", () => audio.play());
+    navigator.mediaSession.setActionHandler("pause", () => audio.pause());
+    navigator.mediaSession.setActionHandler("nexttrack", () => play(current + 1));
+    navigator.mediaSession.setActionHandler("previoustrack", () => play(Math.max(0, current - 1)));
+  }
+  if (nowPlaying) {
+    try {
+      nowPlaying.addListener("action", (e) => {
+        if (e.action === "play") audio.play();
+        else if (e.action === "pause") audio.pause();
+        else play(e.action === "next" ? current + 1 : Math.max(0, current - 1));
+      });
+    } catch (e) {}
+  }
+
+  if (crate) {
+    Promise.resolve(crate.list()).then((r) => {
+      tracks = (r && r.tracks) || [];
+      if (!tracks.length) return;
+      document.body.classList.add("has-saved");
+      document.getElementById("saved").style.display = "block";
+      render();
+    }).catch(() => {});
+  }
 </script>
 </body>
 </html>

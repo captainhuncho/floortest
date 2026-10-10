@@ -32,6 +32,26 @@ test("visitors never get editing markup on public pages", async ({ page }) => {
   }
 });
 
+test("offline saving: signed-in only, and each download link works for its own track and nothing else", async ({ page }) => {
+  expect((await page.request.get("/api/offline/list")).status()).toBe(401);
+  expect((await page.request.get("/api/offline/file/1.1.9999999999999.forged")).status()).toBe(403);
+
+  await page.goto("/login");
+  await page.getByLabel("Email").fill("demo@floortest.test");
+  await page.getByRole("textbox", { name: "Password" }).fill("floortest-demo");
+  await page.getByRole("button", { name: "Log in" }).click();
+  await page.waitForURL(/\/dashboard\//);
+  const list = await (await page.request.get("/api/offline/list")).json();
+  expect(list.tracks.length).toBeGreaterThan(0);
+  const first = list.tracks[0];
+  const file = await page.request.get(first.url);
+  expect(file.status()).toBe(200);
+  expect(file.headers()["content-type"]).toMatch(/^audio\//);
+  // Pointing a link at another track breaks its signature.
+  const [, , ...rest] = new URL(first.url).pathname.split("/").pop()!.split(".");
+  expect((await page.request.get(`/api/offline/file/${first.id + 1}.${list.owner}.${rest.join(".")}`)).status()).toBe(403);
+});
+
 test("after 3 wrong passwords, log-in asks for the human check, and the server enforces it", async ({ page }) => {
   const ghost = `nobody+${Date.now().toString(36)}@example.test`;
   await page.goto("/login");

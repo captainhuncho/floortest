@@ -35,6 +35,7 @@ class MainViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
         bridge?.registerPluginInstance(ShareInboxPlugin())
+        bridge?.registerPluginInstance(OfflineCratePlugin())
         // Shared something to FloorTest? Open the Send page with it whenever the app comes to the front.
         NotificationCenter.default.addObserver(self, selector: #selector(openSharedFiles), name: UIApplication.didBecomeActiveNotification, object: nil)
         guard let webView = webView else { return }

@@ -19,7 +19,7 @@ Share one link. Producers, labels and artists send their tracks to it: WAV or MP
 
 - Review fast: play a track, then swipe to keep it or pass. Senders never see your decision.
 - Listen anywhere: tracks keep playing with your screen locked, with lock-screen controls.
-- Prepare for your set: everything you keep is ready to download as a crate with a Rekordbox playlist.
+- Prepare for your set: everything you keep is ready to download as a crate with a Rekordbox playlist, or saved on your phone to play with no signal.
 - Callouts: open a collection for a brief, a genre or a deadline, and close it when you're full.
 - Send your own music: share a WAV or MP3 from Files, Dropbox or WeTransfer straight into FloorTest and send it to another FloorTest link.
 - Senders get a receipt and see when their track was delivered, listened to, downloaded and replied to.

@@ -5,6 +5,7 @@ import { DownloadActions } from "../DownloadActions";
 import { loadRows } from "../rows";
 import { ClearKept } from "./ClearKept";
 import { KeptCards } from "./KeptCards";
+import { OfflineSave } from "./OfflineSave";
 
 export const metadata = { title: "Prepare for set — FloorTest" };
 
@@ -29,6 +30,7 @@ export default async function PrepareForSet() {
       {/* Every option visible, same size: people use different ones. Clear is outlined red, and still confirms. */}
       <DownloadActions count={kept.length} extra={<ClearKept count={kept.length} />} />
       </div>
+      <OfflineSave count={kept.length} />
 
       <section aria-labelledby="kept-h" className="mt-3 pt-2 md:mt-6">
         <h2 id="kept-h" className="text-[11px] font-bold tracking-[1px] text-faint">

@@ -19,6 +19,7 @@
 		F7A100000000000C0FFEE002 /* ShareInboxPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7A100000000000C0FFEE001 /* ShareInboxPlugin.swift */; };
 		F7A100000000000C0FFEE005 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7A100000000000C0FFEE004 /* ShareViewController.swift */; };
 		F7A100000000000C0FFEE009 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = F7A100000000000C0FFEE008 /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		F7A100000000000C0FFEE101 /* OfflineCratePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7A100000000000C0FFEE100 /* OfflineCratePlugin.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -39,6 +40,7 @@
 		F7A100000000000C0FFEE006 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F7A100000000000C0FFEE007 /* ShareExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ShareExtension.entitlements; sourceTree = "<group>"; };
 		F7A100000000000C0FFEE008 /* ShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		F7A100000000000C0FFEE100 /* OfflineCratePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineCratePlugin.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -108,6 +110,7 @@
 			children = (
 				9582B6822FE993A50072D4E8 /* SceneDelegate.swift */,
 				F7A100000000000C0FFEE001 /* ShareInboxPlugin.swift */,
+				F7A100000000000C0FFEE100 /* OfflineCratePlugin.swift */,
 				F7A100000000000C0FFEE003 /* App.entitlements */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
@@ -242,6 +245,7 @@
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
 				F7A100000000000C0FFEE002 /* ShareInboxPlugin.swift in Sources */,
+				F7A100000000000C0FFEE101 /* OfflineCratePlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

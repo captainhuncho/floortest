@@ -20,7 +20,8 @@ Plan + tappable prototype: claude.ai/artifact/5BVVpA3Zn9AxH71ut9hGFr (private), 
 - Foundations: ✅ `/api/v1` core (sign-in, refresh, sign-out, me, queue, keep/pass, audio) built 9 Oct; ✅ 10 Oct: receivers, sends (+ upload, complete), collections, Prepare, all with e2e tests. Still to add: push registration (with the push service). After Vercel Pro: rest of (never database or storage keys on the phone), Sign in with Apple (required now that Google sign-in is live), push service, server-made audio previews.
 - ✅ 10 Oct: Share to FloorTest (iOS share extension → Send page with the file in the form), tried in the simulator from Files. Store listing draft: `mobile/store-listing.md`.
 - ✅ 10 Oct: Android app (`mobile/android`) running on the Pixel 9 emulator: desk, sign-in, dark bars, icon and splash, Back goes back a page, Share to FloorTest, background audio with a notification / lock-screen player (play/pause, next, previous).
-- Next (free): offline kept tracks (Prepare saved on the phone; the offline screen becomes a player for them); artwork on the Android notification player.
+- ✅ 10 Oct: offline kept tracks on iPhone and Android (Prepare → Save for offline; offline screen plays them; wiped on sign-out / other account / 30 days).
+- Next (free): artwork on the Android notification player.
 - ✅ 9 Oct: app polish: native pull-to-refresh, dark edges (no white flashes), back-swipe, own offline screen with Try again (auto-retries when back online), no long-press pop-ups or stray text selection outside fields (app only), reopening returns to where you were (within a day).
 - ✅ 9 Oct: background audio (plays with the screen locked), lock-screen next/previous + artwork, swipe-to-keep with live stamp and haptics.
 - ✅ 9 Oct: Capacitor iOS shell prototype (`mobile/`) running on the iPhone simulator: opens on the desk/sign-in, safe-area fixed, FloorTest icon and splash.
@@ -43,6 +44,7 @@ Plan + tappable prototype: claude.ai/artifact/5BVVpA3Zn9AxH71ut9hGFr (private), 
 - Rekordbox how-to video, footer legal placement, mobile footer redesign.
 
 ## Done (recent)
+- 10 Oct: offline kept tracks (Save for offline in Prepare; offline screen player) on both apps.
 - 10 Oct: Android app prototype (share, back button, background audio with notification player, icon/splash).
 - 10 Oct: app API v1 rest (receivers, sends + upload, collections, Prepare) on shared send checks; Share to FloorTest on iPhone.
 - 9 Oct: mobile app API v1 core (app sessions in `sessions`, rotating refresh, signed 15-min access tokens) + e2e tests.

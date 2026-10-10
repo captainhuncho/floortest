@@ -6,6 +6,10 @@ import android.os.Bundle;
 import android.webkit.WebView;
 import android.widget.Toast;
 import androidx.activity.OnBackPressedCallback;
+import androidx.webkit.WebViewCompat;
+import androidx.webkit.WebViewFeature;
+import java.lang.reflect.Method;
+import java.util.Collections;
 import com.getcapacitor.BridgeActivity;
 import java.io.File;
 import java.util.HashSet;
@@ -25,6 +29,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(ShareInboxPlugin.class);
         registerPlugin(NowPlayingPlugin.class);
+        registerPlugin(OfflineCratePlugin.class);
         super.onCreate(savedInstanceState);
         // Back goes back a page, like a browser; on the first page it leaves the app running (like Home).
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
@@ -35,7 +40,27 @@ public class MainActivity extends BridgeActivity {
                 else moveTaskToBack(true);
             }
         });
+        bridgeOnOfflineScreen();
         takeShare(getIntent());
+    }
+
+    /**
+     * The offline screen (errorPath) is served from the app itself at <scheme>://<hostname>, not the site's address, and
+     * Capacitor only injects its bridge for the site's address. Inject the same bridge there too, so the offline screen can
+     * list and play tracks saved for offline. (That address only ever serves the app's own bundled files, and Capacitor
+     * already accepts plugin calls from it.) If Capacitor changes, this quietly does nothing.
+     */
+    private void bridgeOnOfflineScreen() {
+        try {
+            if (getBridge() == null || !WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) return;
+            Method m = getBridge().getClass().getDeclaredMethod("getJSInjector");
+            m.setAccessible(true);
+            Object injector = m.invoke(getBridge());
+            if (injector == null) return;
+            String script = (String) injector.getClass().getMethod("getScriptString").invoke(injector);
+            String origin = getBridge().getScheme() + "://" + getBridge().getHost();
+            WebViewCompat.addDocumentStartJavaScript(getBridge().getWebView(), script, Collections.singleton(origin));
+        } catch (Exception ignored) {}
     }
 
     @Override
