@@ -5,6 +5,7 @@ import { expect, test } from "./fixtures";
  * A sender who hits a closed link leaves their email; when the receiver reopens the link, one email goes out.
  * The receiver pauses from Account, the sender asks on the public page, the receiver resumes and the email shows
  * under Account → Emails to senders (nothing is really delivered: the e2e server has no mail key).
+ * Runs before guards.spec.ts, which puts the demo account behind the human check.
  */
 test.describe.configure({ mode: "serial" });
 
