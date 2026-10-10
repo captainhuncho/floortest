@@ -185,7 +185,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
           </div>
         )}
         {cards.length ? (
-          <ListRows rows={cards} statusTag />
+          <ListRows rows={cards} statusTag collections={all.map((x) => ({ id: x.id, name: x.name }))} />
         ) : (
           <p className="mx-4 rounded-xl border border-line bg-ink-3 p-4 text-[12px] text-mute md:mx-0">This folder is empty. Tracks sent while it&apos;s receiving land here.</p>
         )}

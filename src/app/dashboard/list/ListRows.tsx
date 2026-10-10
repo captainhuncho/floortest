@@ -12,6 +12,8 @@ import { toPlayer } from "@/lib/player-track";
 import { clearDecision, decideTrack, replyToSender, undoDecision } from "../actions/review";
 import { QuickReplies } from "../QuickReplies";
 import { ReplyTemplates } from "../ReplyTemplates";
+import { BatchBar } from "./BatchBar";
+import { BATCH_MAX } from "@/lib/batch";
 
 export type ListRow = {
   id: number;
@@ -55,7 +57,7 @@ const initials = (s: string) =>
     .join("");
 
 /** `statusTag` swaps the age for a Needs review / Kept / Not for me tag (Figma collection detail). */
-export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusTag?: boolean }) {
+export function ListRows({ rows, statusTag = false, collections = [] }: { rows: ListRow[]; statusTag?: boolean; collections?: { id: number; name: string }[] }) {
   const player = usePlayer();
   const toast = useToast();
   const [selected, setSelected] = useState<number | null>(null);
@@ -64,6 +66,18 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
   const [, start] = useTransition();
   const queue = rows.map(toPlayer);
   const listRef = useRef<HTMLUListElement>(null);
+  // Select mode: tick tracks, then act on them all at once from the batch bar.
+  const [picking, setPicking] = useState(false);
+  const [picked, setPicked] = useState<Set<number>>(new Set());
+  const toggle = (id: number) =>
+    setPicked((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else if (n.size < BATCH_MAX) n.add(id);
+      return n;
+    });
+  const allPicked = rows.length > 0 && rows.slice(0, BATCH_MAX).every((r) => picked.has(r.id));
+  const stopPicking = () => (setPicking(false), setPicked(new Set()));
 
   // Server data wins once it arrives.
   useEffect(() => setDecisions({}), [rows]);
@@ -116,6 +130,10 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
+      if (picking) {
+        if (e.key === "Escape") (setPicking(false), setPicked(new Set()));
+        return;
+      }
       const i = rows.findIndex((r) => r.id === selected);
       const r = rows[i];
       const k = e.key.toLowerCase();
@@ -136,10 +154,33 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [rows, selected, select, decide, player, queue, toast]);
+  }, [rows, selected, select, decide, player, queue, toast, picking]);
 
   return (
     <>
+      <div className="mb-2 flex items-center justify-end gap-2 px-3 md:px-0">
+        {picking ? (
+          <>
+            <label className="mr-auto flex items-center gap-2 text-xs text-mute">
+              <input
+                type="checkbox"
+                className="size-4 accent-lime"
+                aria-label="Select all tracks"
+                checked={allPicked}
+                onChange={() => setPicked(allPicked ? new Set() : new Set(rows.slice(0, BATCH_MAX).map((r) => r.id)))}
+              />
+              Select all{rows.length > BATCH_MAX ? ` (first ${BATCH_MAX})` : ` (${rows.length})`}
+            </label>
+            <button type="button" className="btn btn-sm btn-ghost" onClick={stopPicking}>
+              Done
+            </button>
+          </>
+        ) : (
+          <button type="button" className="btn btn-sm btn-ghost" onClick={() => setPicking(true)}>
+            Select
+          </button>
+        )}
+      </div>
       <ul ref={listRef} className="@container space-y-2.5 px-3 md:space-y-2 md:px-0" aria-label="Review Queue">
         {rows.map((r) => {
           const isCurrent = player.current?.id === r.id;
@@ -155,9 +196,22 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
               key={r.id}
               data-row={r.id}
               aria-current={selected === r.id ? "true" : undefined}
-              onClick={() => setSelected(r.id)}
-              className={`group transition ${decision === "passed" ? "opacity-60" : ""}`}
+              onClick={() => (picking ? toggle(r.id) : setSelected(r.id))}
+              className={`group transition ${decision === "passed" ? "opacity-60" : ""} ${picking ? "flex items-center gap-2" : ""}`}
             >
+              {picking && (
+                <input
+                  type="checkbox"
+                  className="size-5 shrink-0 accent-lime"
+                  checked={picked.has(r.id)}
+                  onChange={() => toggle(r.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label={`Select ${r.artist} - ${r.title}`}
+                />
+              )}
+              <div className={picking ? `relative min-w-0 flex-1 rounded-[14px] ${picked.has(r.id) ? "ring-2 ring-lime/60" : ""}` : "contents"}>
+              {/* Select mode: the whole row ticks the track, so a stray tap never plays, keeps or opens it. */}
+              {picking && <button type="button" tabIndex={-1} aria-hidden className="absolute inset-0 z-10 cursor-pointer rounded-[14px]" onClick={(e) => (e.stopPropagation(), toggle(r.id))} />}
               {/* Phones: Figma "track-card" */}
               <div
                 className={`flex flex-col gap-2.5 rounded-[14px] border p-3 md:hidden ${
@@ -334,15 +388,24 @@ export function ListRows({ rows, statusTag = false }: { rows: ListRow[]; statusT
                 </div>
               </div>
 
-              {open && (
+              {open && !picking && (
                 <div className="mt-2 overflow-hidden rounded-[14px] md:mt-0 md:rounded-none">
                   <Expanded row={r} decision={decision} onClose={() => setExpanded(null)} />
                 </div>
               )}
+              </div>
             </li>
           );
         })}
       </ul>
+      {picking && picked.size > 0 && (
+        <BatchBar
+          ids={[...picked]}
+          collections={collections}
+          onDone={stopPicking}
+          onDecide={(d) => setDecisions((m) => ({ ...m, ...Object.fromEntries([...picked].map((id) => [id, d])) }))}
+        />
+      )}
       <div className="mt-4 hidden items-center justify-between gap-4 rounded-xl border border-line bg-ink-2 px-4 py-3 text-[11px] text-faint md:flex">
         <p className="flex flex-wrap gap-x-4 gap-y-1">
           {[

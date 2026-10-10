@@ -44,6 +44,7 @@ Plan + tappable prototype: claude.ai/artifact/5BVVpA3Zn9AxH71ut9hGFr (private), 
 - Rekordbox how-to video, footer legal placement, mobile footer redesign.
 
 ## Done (recent)
+- 10 Oct: batch actions in the List view (keep, not for me, needs review, move, download, delete) + e2e test.
 - 10 Oct: offline kept tracks (Save for offline in Prepare; offline screen player) on both apps.
 - 10 Oct: Android app prototype (share, back button, background audio with notification player, icon/splash).
 - 10 Oct: app API v1 rest (receivers, sends + upload, collections, Prepare) on shared send checks; Share to FloorTest on iPhone.

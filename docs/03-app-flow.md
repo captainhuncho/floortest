@@ -39,6 +39,8 @@ A share link (/s/…) remembers itself and is where sign-in lands.
 Floor ─► Review Queue ─► play ─► Keep (K) ──► Prepare for set ─► Download kept ─► name folder ─► ZIP
                               ├─ Not for me (X)    └─ Files only · Clear kept (confirm)
                               └─ Reply (R) ──► sender email
+Review Queue (List) ─► Select ─► tick tracks / Select all ─► bar: Keep · Not for me · Needs review · Move to… · Download · Delete ─► confirm ─► done (toast)
+   Esc or Done leaves select mode; in select mode a tap on a row ticks it (never plays or opens it)
 Floor ─► Collections ─► New collection / Open collection ─► Edit collection · Download collection · Files only · Send new tracks here
 Floor ─► Send ─► their-link ─► upload ─► Sent list (≤10 days open, older folded) ─► Track → /receipt/<token>
 Avatar ─► Account ─► Settings (profile, receiving, notifications, plan, security) · Sign out ─► /signed-out

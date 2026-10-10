@@ -171,7 +171,7 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
         <p className="px-6 py-20 text-center text-mute">{search || sp.s || sp.c || sp.type || sp.sender || sp.genre ? "Nothing matches these filters." : "No tracks yet. Share your link to start receiving."}</p>
       ) : (
         <div className="md:px-8">
-          <ListRows rows={rows} />
+          <ListRows rows={rows} collections={collections.map((c) => ({ id: c.id, name: c.name }))} />
         </div>
       )}
     </div>
