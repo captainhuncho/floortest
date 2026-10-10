@@ -48,6 +48,7 @@ test("a sender asks to hear when it reopens", async ({ page }) => {
   await page.goto("/maxwell");
   await expect(page.getByText(/taking a break from submissions/)).toBeVisible();
   await page.getByRole("textbox", { name: "Email me when it reopens" }).fill(email);
+  await expect(page.getByTestId("turnstile")).toBeAttached(); // the bot check mounts on first focus
   await page.getByRole("button", { name: "Tell me" }).click();
   await expect(page.getByText(/one email when Maxwell/)).toBeVisible();
 });
