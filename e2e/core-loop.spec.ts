@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { Page } from "@playwright/test";
-import { expect, test } from "./fixtures";
+import { expect, test, wav } from "./fixtures";
 
 /**
  * The money path, in a real browser: a sender signs up with an invite and sends a WAV to the demo receiver's link;
@@ -14,22 +14,9 @@ const stamp = Date.now().toString(36);
 const sender = { first: "Eddie", last: "Tester", handle: `e2e${stamp}`, email: `e2e+${stamp}@example.test`, password: "Correct-Horse-Battery-77" };
 const title = `E2E Track ${stamp}`;
 
-/** A short, valid WAV with a kick-drum pulse, so in-browser analysis has something real to read. */
 function wavFile() {
-  const rate = 22050;
-  const seconds = 6;
-  const n = rate * seconds;
-  const beat = (60 / 124) * rate;
-  const buf = Buffer.alloc(44 + n * 2);
-  buf.write("RIFF", 0); buf.writeUInt32LE(36 + n * 2, 4); buf.write("WAVE", 8); buf.write("fmt ", 12);
-  buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22); buf.writeUInt32LE(rate, 24);
-  buf.writeUInt32LE(rate * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34); buf.write("data", 36); buf.writeUInt32LE(n * 2, 40);
-  for (let i = 0; i < n; i++) {
-    const t = (i % beat) / rate;
-    buf.writeInt16LE(Math.round(Math.sin(2 * Math.PI * (50 + 120 * Math.exp(-t * 30)) * t) * Math.exp(-t * 9) * 29000), 44 + i * 2);
-  }
   const file = path.join(os.tmpdir(), `${title}.wav`);
-  fs.writeFileSync(file, buf);
+  fs.writeFileSync(file, wav());
   return file;
 }
 

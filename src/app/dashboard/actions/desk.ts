@@ -1,16 +1,11 @@
 "use server";
 
 /** Around the desk: feedback, onboarding, the Send page lookup, notifications, search and pausing the link. */
-import { readLinks, type ProfileLink } from "@/lib/socials";
 import { revalidatePath } from "next/cache";
-import { folderLimit, trackArtEnabled } from "@/lib/plan-store";
+import { receiverLookup } from "@/lib/receiver-lookup";
 import { requireUser } from "@/lib/auth";
-import { fmtDay } from "@/lib/format";
-import { activeCollection, capacity, isClosed, isPaused, userByHandle } from "@/lib/desk";
 import { likeContains, now, q } from "@/lib/db";
-import { genresFor } from "@/lib/plans";
 import { audit } from "@/lib/audit";
-import { listeners } from "@/lib/team";
 import { done } from "./common";
 
 /** Beta feedback lands in the admin inbox, tagged with the page it came from. */
@@ -37,40 +32,11 @@ export async function dismissOnboarding() {
   done();
 }
 
-export type ReceiverLookup =
-  | { found: false; reason: string }
-  | { found: true; handle: string; name: string; roleLine: string; verified: boolean; accepting: boolean; reason: string | null; genres: string[]; note: string;
-      collection: string | null; brief: { k: string; v: string }[]; folderBytes: number; trackArt: boolean; photo: string | null; links: ProfileLink[] };
+export type { ReceiverLookup } from "@/lib/receiver-lookup";
 
 /** Who is floortest.../<handle>? Used by the Send page as you type. */
-export async function lookupReceiver(raw: string): Promise<ReceiverLookup> {
-  const u = await requireUser();
-  const handle = String(raw || "").trim().toLowerCase().replace(/^.*\//, "").replace(/[^a-z0-9-_]/g, "").slice(0, 30);
-  if (!handle) return { found: false, reason: "" };
-  if (handle === u.handle) return { found: false, reason: "That's your own link." };
-  const r = await userByHandle(handle);
-  if (!r) return { found: false, reason: "No one has that link." };
-  const c = await activeCollection(r);
-  const reason = isPaused(r) ? `${r.name} has paused submissions.` : !c ? `${r.name} isn't taking music right now.` : isClosed(c) ? (c?.full_at ? `${c.name} is full.` : `${c.name} has closed.`) : (await capacity(r)).full ? `${r.name}'s desk is full right now.` : null;
-  // The same brief the receiver's own link shows, so sending from the desk feels like being on their page.
-  const g = genresFor(c);
-  const wanted = c?.brief_wanted || (g.custom ? g.list.join(" · ") : "");
-  const team = await listeners(c);
-  const brief = [
-    wanted && { k: "Wanted", v: wanted },
-    c?.bpm_min && c?.bpm_max && { k: "Range", v: `${c.bpm_min}–${c.bpm_max} BPM` },
-    c?.closes_at && { k: "Deadline", v: `Open until ${fmtDay(c.closes_at, r.tz)}` },
-    c?.brief_note && { k: "Note", v: c.brief_note },
-    team.length > 0 && { k: "Team", v: `Also heard by ${team.map((m) => m.name).join(", ")}` },
-  ].filter((b): b is { k: string; v: string } => !!b);
-  return {
-    found: true, handle: r.handle, name: r.name, roleLine: r.role_line, verified: r.identity_status === "verified",
-    accepting: !reason, reason, genres: g.list, note: isPaused(r) ? r.pause_message : "", collection: c?.name ?? null, brief,
-    folderBytes: await folderLimit(r.plan),
-    trackArt: await trackArtEnabled(r.plan),
-    photo: r.cover_key ? `/api/cover/${r.handle}?v=${encodeURIComponent(r.cover_key)}` : null,
-    links: readLinks(r.links),
-  };
+export async function lookupReceiver(raw: string) {
+  return receiverLookup(await requireUser(), raw);
 }
 
 /** "Clear all": the bell starts empty again. Live alerts (desk full, paused) stay while they're true. */

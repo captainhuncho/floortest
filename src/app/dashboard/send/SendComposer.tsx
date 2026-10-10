@@ -1,7 +1,9 @@
 "use client";
 
 import { CuePoint } from "@/components/CuePoint";
-import { useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
+import { fmtBytes } from "@/lib/format";
+import { clearShared, sharedFiles, type SharedFile } from "@/lib/native-share";
 import { SubmitForm } from "../../[handle]/SubmitForm";
 import { FolderSend } from "./FolderSend";
 import { SendModeTabs } from "../../[handle]/SendModes";
@@ -14,6 +16,23 @@ export function SendComposer({ host, account, initial }: { host: string; account
   const [mode, setMode] = useState<"tracks" | "folder">("tracks");
   const [found, setFound] = useState<ReceiverLookup | null>(null);
   const [pending, start] = useTransition();
+  // In the app: files shared in from another app, waiting to be sent.
+  const [shared, setShared] = useState<SharedFile[]>([]);
+  const [sharedReady, setSharedReady] = useState<File[] | undefined>(undefined);
+
+  useEffect(() => {
+    sharedFiles().then((list) => {
+      if (!list.length) return;
+      setShared(list);
+      setSharedReady(list.map((s) => s.file));
+      setMode("tracks");
+    });
+  }, []);
+  const dropShared = useCallback(() => {
+    clearShared(shared.map((s) => s.id));
+    setShared([]);
+    setSharedReady(undefined);
+  }, [shared]);
 
   useEffect(() => {
     const h = handle.trim();
@@ -24,6 +43,22 @@ export function SendComposer({ host, account, initial }: { host: string; account
 
   return (
     <div className="space-y-6">
+      {shared.length > 0 && (
+        <div role="status" className="flex items-start justify-between gap-4 rounded-lg border border-lime/40 bg-lime/5 px-4 py-3 text-sm">
+          <span className="min-w-0">
+            <span className="block font-medium">Shared to FloorTest</span>
+            {shared.map((s) => (
+              <span key={s.id} className="block truncate text-mute">
+                {s.file.name} · {fmtBytes(s.file.size)}
+              </span>
+            ))}
+            <span className="mt-1 block text-mute">{found?.found ? "It's in the form below." : "Who's it for? Add their link name."}</span>
+          </span>
+          <button type="button" onClick={dropShared} className="btn btn-sm btn-ghost shrink-0">
+            Remove
+          </button>
+        </div>
+      )}
       <div>
         <label htmlFor="send-to" className="label">
           Send to
@@ -91,7 +126,7 @@ export function SendComposer({ host, account, initial }: { host: string; account
                 {found.folderBytes > 0 && mode === "folder" ? (
                   <FolderSend handle={found.handle} receiverName={found.name} genres={found.genres} folderBytes={found.folderBytes} account={account} trackArt={found.trackArt} />
                 ) : (
-                  <SubmitForm handle={found.handle} receiverName={found.name} genres={found.genres} account={account} trackArt={found.trackArt} />
+                  <SubmitForm handle={found.handle} receiverName={found.name} genres={found.genres} account={account} trackArt={found.trackArt} initialFiles={sharedReady} onSent={shared.length ? dropShared : undefined} />
                 )}
               </>
             ) : (

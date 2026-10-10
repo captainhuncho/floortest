@@ -60,6 +60,13 @@ floortest.app/<handle> ─► choose files (or Send folders on Pro/Team)
 Link closed / paused / full ─► the page says why, no upload.
 ```
 
+## Share to FloorTest (iPhone app)
+```
+Files / Dropbox / WeTransfer … ─► Share ─► FloorTest ─► file copied into the app's inbox ─► app opens on Send
+   ─► "Shared to FloorTest" box ─► type their link name ─► the file is already in the form ─► usual send
+Not WAV/MP3 ─► "FloorTest takes WAV and MP3 files." · Remove ─► inbox cleared · sent ─► inbox cleared · unsent files clear after a day
+```
+
 ## Editing the site (ops staff with Site content)
 ```
 ops → Site content → Edit on the page ↗ ─► 60-second pass ─► floortest.app/<page> in draft + edit mode

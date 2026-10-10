@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { completeUpload, IntakeError } from "@/lib/intake";
 import { userByHandle } from "@/lib/desk";
 import { recordIncident } from "@/lib/incidents";
+import { readAnalysis } from "@/lib/submission";
 
 export const runtime = "nodejs";
 
@@ -17,17 +18,8 @@ export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]
   } catch {
     return bad("Could not read the request.");
   }
-  const num = (v: unknown, lo: number, hi: number) => (typeof v === "number" && Number.isFinite(v) && v > lo && v < hi ? v : null);
-  const peaks =
-    Array.isArray(body.peaks) && body.peaks.length <= 400 && body.peaks.every((v) => typeof v === "number" && Number.isFinite(v))
-      ? (body.peaks as number[]).map((v) => Math.min(1, Math.max(0, v)))
-      : null;
   try {
-    const track = await completeUpload(receiver, String(body.uploadId ?? ""), {
-      duration: num(body.duration, 0, 60 * 60 * 3),
-      bpm: num(body.bpm, 40, 250),
-      peaks,
-    });
+    const track = await completeUpload(receiver, String(body.uploadId ?? ""), readAnalysis(body));
     return NextResponse.json({ token: track.token });
   } catch (e) {
     if (e instanceof IntakeError) {

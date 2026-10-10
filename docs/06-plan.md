@@ -17,7 +17,9 @@ Core product is live: sending, review, collections, Prepare/downloads, plans by 
 Plan + tappable prototype: claude.ai/artifact/5BVVpA3Zn9AxH71ut9hGFr (private), kept in step with these docs.
 - **Payments (decided 9 Oct):** web via Paddle, and in the app via Apple in-app purchase / Google Play Billing only (store rules). One plan per account from either source; no links to web payment inside the app; web subscribers see "managed on the website"; Restore purchases; server verifies purchases with Apple/Google and follows their renewal, cancellation and refund messages.
 - Owner: enrol Apple Developer ($99/yr, company + D-U-N-S) and Google Play ($25).
-- Foundations: ✅ `/api/v1` core (sign-in, refresh, sign-out, me, queue, keep/pass, audio) built 9 Oct with e2e tests; still to add: sends, collections, Prepare, push registration, uploads. After Vercel Pro: rest of (never database or storage keys on the phone), Sign in with Apple (required now that Google sign-in is live), push service, server-made audio previews.
+- Foundations: ✅ `/api/v1` core (sign-in, refresh, sign-out, me, queue, keep/pass, audio) built 9 Oct; ✅ 10 Oct: receivers, sends (+ upload, complete), collections, Prepare, all with e2e tests. Still to add: push registration (with the push service). After Vercel Pro: rest of (never database or storage keys on the phone), Sign in with Apple (required now that Google sign-in is live), push service, server-made audio previews.
+- ✅ 10 Oct: Share to FloorTest (iOS share extension → Send page with the file in the form), tried in the simulator from Files. Store listing draft: `mobile/store-listing.md`.
+- Next (free): offline kept tracks (Prepare saved on the phone; the offline screen becomes a player for them), Android shell (needs Android Studio).
 - ✅ 9 Oct: app polish: native pull-to-refresh, dark edges (no white flashes), back-swipe, own offline screen with Try again (auto-retries when back online), no long-press pop-ups or stray text selection outside fields (app only), reopening returns to where you were (within a day).
 - ✅ 9 Oct: background audio (plays with the screen locked), lock-screen next/previous + artwork, swipe-to-keep with live stamp and haptics.
 - ✅ 9 Oct: Capacitor iOS shell prototype (`mobile/`) running on the iPhone simulator: opens on the desk/sign-in, safe-area fixed, FloorTest icon and splash.
@@ -40,6 +42,7 @@ Plan + tappable prototype: claude.ai/artifact/5BVVpA3Zn9AxH71ut9hGFr (private), 
 - Rekordbox how-to video, footer legal placement, mobile footer redesign.
 
 ## Done (recent)
+- 10 Oct: app API v1 rest (receivers, sends + upload, collections, Prepare) on shared send checks; Share to FloorTest on iPhone.
 - 9 Oct: mobile app API v1 core (app sessions in `sessions`, rotating refresh, signed 15-min access tokens) + e2e tests.
 - 9 Oct: human check (Cloudflare) on log-in, email codes and ops sign-in after 3 wrong tries.
 - 9 Oct: end-to-end tests (Playwright): sign-up → send → keep → download, plus security guards. Floor greets by first name.

@@ -40,6 +40,8 @@ export function SubmitForm({
   botCheckKey = null,
   callout = null,
   trackArt = false,
+  initialFiles,
+  onSent,
 }: {
   handle: string;
   receiverName: string;
@@ -57,6 +59,10 @@ export function SubmitForm({
   callout?: string | null;
   /** The receiver's plan takes track artwork (optional for the sender). */
   trackArt?: boolean;
+  /** Files already chosen, e.g. shared into the app from another app (added once, when the form opens). */
+  initialFiles?: File[];
+  /** Called once everything has been sent. */
+  onSent?: () => void;
 }) {
   const L = LOOKS[lookName];
   const m = lookName === "mobile";
@@ -78,7 +84,16 @@ export function SubmitForm({
   // From the dashboard, refresh the page so the new tracks show in your Sent list.
   useEffect(() => {
     if (account && phase === "done") router.refresh();
-  }, [account, phase, router]);
+    if (phase === "done") onSent?.();
+  }, [account, phase, router, onSent]);
+
+  // Files handed in from outside (Share to FloorTest) start in the form, once.
+  const preloaded = useRef(false);
+  useEffect(() => {
+    if (preloaded.current || !initialFiles?.length) return;
+    preloaded.current = true;
+    add(initialFiles);
+  }, [initialFiles, add]);
 
   function reset() {
     resetUpload();
