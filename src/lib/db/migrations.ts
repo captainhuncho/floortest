@@ -1235,4 +1235,12 @@ update plans set features = '["2,000 active tracks","Everything in Pro"]'
   where id = 'team' and features = '["2,000 active tracks","Everything in Pro","Shared collections: up to 10 teammates listen and vote"]';
 `,
   },
+  {
+    // Moving a link off a closed collection becomes the receiver's choice (Settings → Receiving), off by default:
+    // a closing date set on purpose must never quietly reopen the link to another collection.
+    id: "0078_reroute_opt_in",
+    sql: `
+alter table users add column if not exists reroute_closed integer not null default 0;
+`,
+  },
 ];

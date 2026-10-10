@@ -42,6 +42,7 @@ Plan + tappable prototype: claude.ai/artifact/5BVVpA3Zn9AxH71ut9hGFr (private), 
 - Rekordbox how-to video, footer legal placement, mobile footer redesign.
 
 ## Done (recent)
+- 10 Oct: review fixes for the reopen work: re-routing closed links is opt-in (Settings → Receiving) and emails the receiver; reopen emails queued (≤50 per click, rest nightly, failures retried) with an "ignore if you didn't ask" line; Floor greeting restored, first-listen time in words.
 - 10 Oct: B4 folder cover stays with the folder when its track is deleted; B5 one collection brief everywhere (`src/lib/brief.ts`).
 - 10 Oct: final design pass: one page-title size on every dashboard page, one eyebrow style in two tones, radii by role everywhere (no ad-hoc pixel values), one pop shadow, the onboarding tick drawn with theme ink; the Floor chart component removed.
 - 10 Oct: sign-in and sign-up pass: one centred column (side panel gone), one heading size, inline one-at-a-time validation in the shared form, professional name moved to Profile, numeric keyboards for codes, calmer signed-out page, fresh desks see their link first.

@@ -98,7 +98,7 @@ export async function resumeLink() {
   const u = await requireUser();
   await q.run("UPDATE users SET paused_at = NULL, pause_until = NULL WHERE id = ?", u.id);
   await audit(u.id, "link_resumed");
-  await sendReopenAlerts(u.id);
+  await sendReopenAlerts(u.id, { inRequest: true });
   done();
   revalidatePath(`/${u.handle}`);
 }

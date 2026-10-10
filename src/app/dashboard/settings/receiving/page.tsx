@@ -4,6 +4,7 @@ import { q, type Sender } from "@/lib/db";
 import { fmtDay } from "@/lib/format";
 import { MAX_UPLOAD_BYTES, RATE_PER_EMAIL_PER_DAY, RATE_PER_IP_PER_HOUR, RETAIN_PASSED_DAYS, RETAIN_UNREVIEWED_DAYS, SIGNALS } from "@/lib/plans";
 import { blockSender } from "../../actions/review";
+import { setRerouteClosed } from "../../actions/settings";
 import { PageTitle, Section } from "../Section";
 
 export const metadata = { title: "Receiving — FloorTest" };
@@ -11,9 +12,23 @@ export const metadata = { title: "Receiving — FloorTest" };
 export default async function Receiving() {
   const user = await requireUser();
   const blocked = await q.all<Sender>("SELECT * FROM senders WHERE user_id = ? AND blocked_at IS NOT NULL ORDER BY blocked_at DESC", user.id);
+  const reroute = !!(await q.get<{ v: number }>("SELECT reroute_closed AS v FROM users WHERE id = ?", user.id))?.v;
   return (
     <>
       <PageTitle title="Receiving" sub="Who can reach your desk, and what happens to what they send." />
+      <Section
+        id="reroute-h"
+        title="When a callout closes"
+        sub={
+          reroute
+            ? "On. When the collection your link sends to passes its closing date, your link moves to your newest open collection overnight. We email you when it does."
+            : "Off. When the collection your link sends to passes its closing date, your link stops taking music until you choose another collection."
+        }
+      >
+        <form action={setRerouteClosed.bind(null, !reroute)}>
+          <button className="btn-ghost btn-sm min-h-11">{reroute ? "Turn off" : "Turn on"}</button>
+        </form>
+      </Section>
       <Section id="blocked-h" title="Blocked senders" sub={blocked.length ? undefined : "None. Block a sender from their contact page."}>
         {blocked.length > 0 && (
           <ul className="divide-y divide-line rounded-lg border border-line">

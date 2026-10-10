@@ -28,7 +28,7 @@ export async function setActiveCollection(id: number) {
   if (!c) return;
   await q.run("UPDATE users SET active_collection_id = ? WHERE id = ?", id, u.id);
   await audit(u.id, "collection_activated", c.name);
-  await sendReopenAlerts(u.id);
+  await sendReopenAlerts(u.id, { inRequest: true });
   done();
   revalidatePath(`/${u.handle}`);
 }
@@ -76,7 +76,7 @@ export async function updateCollection(id: number, form: FormData) {
   }
   await audit(u.id, "collection_updated", name || c.name);
   // A new closing date or a raised cap can reopen the link: senders who asked to hear about it get their email.
-  if (u.active_collection_id === id) await sendReopenAlerts(u.id);
+  if (u.active_collection_id === id) await sendReopenAlerts(u.id, { inRequest: true });
   done();
   revalidatePath(`/${u.handle}`);
 }

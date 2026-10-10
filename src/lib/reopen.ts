@@ -10,7 +10,7 @@ import { audit } from "./audit";
 import { now, q, USER_COLUMNS, type Collection, type User } from "./db";
 import { activeCollection, capacity, isClosed, isPaused } from "./desk";
 import { emailText } from "./email-copy";
-import { APP_URL, sendMail } from "./mail";
+import { APP_URL, sendMail, sendMailLater } from "./mail";
 
 type LinkUser = Pick<User, "id" | "name" | "handle" | "plan" | "paused_at" | "pause_until" | "active_collection_id">;
 
@@ -27,20 +27,35 @@ export async function requestReopenAlert(userId: number, email: string) {
   await q.run("INSERT INTO reopen_alerts (user_id, email, created_at) VALUES (?,?,?) ON CONFLICT DO NOTHING", userId, email.trim().toLowerCase(), now());
 }
 
+/** How many reopen emails a receiver's own click sends (after the page has answered); the nightly run sends the rest. */
+const IN_REQUEST = 50;
+
 /**
  * If the receiver's link takes uploads again, every pending request gets its one email. Called after the actions that
- * can reopen a link (switching collection, editing a closing date, resuming) and nightly for time-based reopenings
- * (a pause that ended on its own, a re-route). Each row is claimed before sending so a retry can't email twice.
+ * can reopen a link (switching collection, editing a closing date, resuming): there, `inRequest` sends at most 50,
+ * after the page has answered, so the receiver's click never waits on email. Nightly (time-based reopenings, a
+ * re-route, and anyone left over) sends up to 200 per receiver and waits for each. Each row is claimed before sending
+ * so a retry can't email twice; a send that fails hands the row back for the next run.
  */
-export async function sendReopenAlerts(userId: number) {
+export async function sendReopenAlerts(userId: number, { inRequest = false } = {}) {
   const u = await q.get<User>(`SELECT ${USER_COLUMNS} FROM users WHERE id = ? AND suspended_at IS NULL`, userId);
   if (!u || !(await linkAccepting(u))) return 0;
-  const pending = await q.all<{ id: number; email: string }>("SELECT id, email FROM reopen_alerts WHERE user_id = ? AND sent_at IS NULL ORDER BY created_at LIMIT 200", userId);
+  const pending = await q.all<{ id: number; email: string }>(
+    "SELECT id, email FROM reopen_alerts WHERE user_id = ? AND sent_at IS NULL ORDER BY created_at LIMIT ?",
+    userId,
+    inRequest ? IN_REQUEST : 200,
+  );
+  const copy = await emailText("link_reopened", { receiver: u.name, link: `${APP_URL}/${u.handle}` });
   let sent = 0;
   for (const r of pending) {
     const claimed = await q.run("UPDATE reopen_alerts SET sent_at = ? WHERE id = ? AND sent_at IS NULL", now(), r.id);
     if (!claimed.changes) continue;
-    await sendMail({ userId, audience: "sender", to: r.email, ...(await emailText("link_reopened", { receiver: u.name, link: `${APP_URL}/${u.handle}` })) });
+    const mail = { userId, audience: "sender" as const, to: r.email, ...copy };
+    if (inRequest) sendMailLater(mail);
+    else if ((await sendMail(mail)).startsWith("failed")) {
+      await q.run("UPDATE reopen_alerts SET sent_at = NULL WHERE id = ?", r.id);
+      continue;
+    }
     sent++;
   }
   return sent;
@@ -55,14 +70,15 @@ export async function sweepReopenAlerts() {
 }
 
 /**
- * A link pointed at a collection whose closing date has passed moves to the receiver's newest open collection (no
- * closing date, or one still ahead, and not full). Full collections are left alone: that's the receiver's cap at work.
- * The move is logged on the account and shows in the bell, so the receiver always knows where their link goes.
+ * Only for receivers who turned it on (Settings → Receiving, off by default): a link pointed at a collection whose
+ * closing date has passed moves to their newest open collection (no closing date, or one still ahead, and not full).
+ * Full collections are left alone: that's the receiver's cap at work. The move is logged on the account, shows in the
+ * bell and is emailed, so the receiver always knows where their link goes.
  */
 export async function rerouteClosedLinks(at = now()) {
-  const stuck = await q.all<{ id: number; name: string; handle: string; closed_name: string; closes_at: number }>(
-    `SELECT u.id, u.name, u.handle, c.name AS closed_name, c.closes_at FROM users u JOIN collections c ON c.id = u.active_collection_id
-     WHERE u.suspended_at IS NULL AND c.closes_at IS NOT NULL AND c.closes_at <= ? AND c.full_at IS NULL LIMIT 500`,
+  const stuck = await q.all<{ id: number; name: string; first_name: string | null; email: string; handle: string; closed_name: string; closes_at: number }>(
+    `SELECT u.id, u.name, u.first_name, u.email, u.handle, c.name AS closed_name, c.closes_at FROM users u JOIN collections c ON c.id = u.active_collection_id
+     WHERE u.suspended_at IS NULL AND u.reroute_closed = 1 AND c.closes_at IS NOT NULL AND c.closes_at <= ? AND c.full_at IS NULL LIMIT 500`,
     at,
   );
   let moved = 0;
@@ -77,6 +93,18 @@ export async function rerouteClosedLinks(at = now()) {
     const r = await q.run("UPDATE users SET active_collection_id = ? WHERE id = ? AND active_collection_id <> ?", next.id, u.id, next.id);
     if (!r.changes) continue;
     await audit(u.id, "link_rerouted", `${next.name} (${u.closed_name} closed)`);
+    await sendMail({
+      userId: u.id,
+      audience: "receiver",
+      to: u.email,
+      ...(await emailText("link_rerouted", {
+        name: u.first_name || u.name.split(/\s+/)[0],
+        closed: u.closed_name,
+        collection: next.name,
+        link: `${APP_URL}/${u.handle}`,
+        settings_url: `${APP_URL}/dashboard/settings/receiving`,
+      })),
+    });
     await sendReopenAlerts(u.id);
     moved++;
   }

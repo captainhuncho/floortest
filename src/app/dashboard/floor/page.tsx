@@ -6,8 +6,8 @@ import { activeCollectionForView, capacityForView, collectionsForView, isClosed,
 import { q } from "@/lib/db";
 import { ago, fmtDay } from "@/lib/format";
 import { APP_URL } from "@/lib/mail";
-import { prefsForView } from "@/lib/notify";
-import { fmtDuration, homeStats } from "@/lib/stats";
+import { localHour, prefsForView } from "@/lib/notify";
+import { homeStats } from "@/lib/stats";
 import { SwitchCollection } from "./SwitchCollection";
 import { CopyLinkBox } from "./CopyLinkBox";
 import { SendMusicCard } from "./SendMusicCard";
@@ -52,6 +52,8 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   const fresh = welcome || (!stats.waiting && !kept && stats.receivedWeek + stats.receivedPrev === 0 && !stats.listenedSample);
   // First visit only: a greeting by first name; the public name can be a stage name or just the username.
   const first = user.first_name?.trim() || user.name.split(/\s+/)[0];
+  const hour = localHour(prefs.tz);
+  const greeting = hour < 5 ? "Late night" : hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
   // Link health: the one thing to fix, if anything.
   const openAlternative = collections.find((c) => !isClosed(c) && c.id !== active?.id);
@@ -83,7 +85,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   const facts = stats.receivedWeek + stats.receivedPrev + stats.keptWeek === 0 && !stats.listenedSample ? [] : [
     `${stats.receivedWeek} received this week${stats.receivedWeek !== stats.receivedPrev ? ` (${stats.receivedWeek > stats.receivedPrev ? "up" : "down"} from ${stats.receivedPrev})` : ""}`,
     `${stats.keptWeek} kept this week`,
-    stats.medianListenMs !== null ? `first listen usually within ${fmtDuration(stats.medianListenMs)}` : null,
+    stats.medianListenMs !== null ? `first listen usually within ${waitWords(stats.medianListenMs)}` : null,
     stats.decisionRate !== null ? `${stats.decisionRate}% of the last 30 days decided` : null,
   ].filter(Boolean);
 
@@ -94,16 +96,16 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
         <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
           <div className="flex min-w-0 flex-col gap-1.5">
             <h1 className="text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone sm:text-[32px]">
-              {welcome ? `Welcome, ${first}.` : stats.waiting ? `${stats.waiting} track${stats.waiting === 1 ? "" : "s"} waiting.` : "You're all caught up."}
+              {welcome ? `Welcome, ${first}.` : `${greeting}, ${first}.`}
             </h1>
             <p className="text-[13px] text-mute">
               {welcome
                 ? "Your link is ready. Share it and the first track lands here."
-                : stats.waiting && oldest
-                  ? `The oldest arrived ${ago(oldest)}.`
+                : stats.waiting
+                  ? `${stats.waiting} track${stats.waiting === 1 ? " is" : "s are"} waiting for you${oldest ? `; the oldest arrived ${ago(oldest)}` : ""}.`
                   : kept
-                    ? `${kept} kept track${kept === 1 ? "" : "s"} ready for your set.`
-                    : "New tracks will show up here first."}
+                    ? `You're all caught up. ${kept} kept track${kept === 1 ? " is" : "s are"} ready for your set.`
+                    : "You're all caught up. New tracks will show up here first."}
             </p>
           </div>
           {stats.waiting > 0 && (
@@ -183,4 +185,13 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
       </div>
     </div>
   );
+}
+
+/** "under an hour", "5 hours", "3 days": how long a first listen usually takes, in words. */
+function waitWords(ms: number) {
+  const h = ms / 3_600_000;
+  if (h < 1) return "under an hour";
+  if (h < 24) return `${Math.round(h)} hour${Math.round(h) === 1 ? "" : "s"}`;
+  const d = Math.round(h / 24);
+  return `${d} day${d === 1 ? "" : "s"}`;
 }

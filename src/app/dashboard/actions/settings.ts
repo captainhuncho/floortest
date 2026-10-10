@@ -253,3 +253,11 @@ export async function withdrawPlanRequest() {
   done();
   redirect("/dashboard/plans");
 }
+
+/** Settings → Receiving: when a callout's closing date passes, move the link to the newest open collection (off by default). */
+export async function setRerouteClosed(on: boolean) {
+  const u = await requireUser();
+  await q.run("UPDATE users SET reroute_closed = ? WHERE id = ?", on ? 1 : 0, u.id);
+  await audit(u.id, "settings_updated", on ? "link moves to an open collection when a callout closes" : "link stays put when a callout closes");
+  done();
+}

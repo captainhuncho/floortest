@@ -42,7 +42,7 @@ Floor (waiting count ─► Start reviewing; Up next rows open the track) ─►
 Review Queue (List) ─► Select ─► tick tracks / Select all ─► bar: Keep · Not for me · Needs review · Move to… · Download · Delete ─► confirm ─► done (toast)
    Esc or Done leaves select mode; in select mode a tap on a row ticks it (never plays or opens it)
 Floor ─► Collections ─► New collection / Open collection ─► Edit collection · Download collection · Files only · Send new tracks here
-Nightly ─► a link on a collection past its close date ─► moves to the newest open collection ─► bell: "Your link now goes to …" · activity: "Link moved on its own to"
+Nightly, only if Settings → Receiving → "When a callout closes" is on ─► a link on a collection past its close date ─► moves to the newest open collection ─► email to the receiver · bell: "Your link now goes to …" · activity: "Link moved on its own to"
 Floor ─► Send ─► their-link ─► upload ─► Sent list (≤10 days open, older folded) ─► Track → /receipt/<token>
 Avatar ─► Account ─► Settings (profile, receiving, notifications, plan, security) · Sign out ─► /signed-out
 ```
@@ -62,7 +62,7 @@ floortest.app/<handle> ─► choose files (or Send folders on Pro/Team)
    ─► upload in place (one bar, time left, Cancel) ─► done: check, receipt email, Delivered → Listened → Replied ─► View receipt / Send another
    A missing field: the form points at it with one line saying what to do, nothing uploads until it's filled.
 Link closed / paused / full ─► the page says why, no upload ─► "Email me when it reopens" ─► one email when the link takes uploads again
-   (sent straight after the receiver switches collection, moves the closing date, resumes; nightly for a pause that ended on its own or a re-route)
+   (after the receiver switches collection, moves the closing date or resumes: up to 50 sent just after the page answers, the rest nightly; nightly also for a pause that ended on its own or a re-route; a failed send is retried next night)
 ```
 
 ## Offline kept tracks (iPhone and Android apps)
