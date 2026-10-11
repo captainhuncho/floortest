@@ -68,6 +68,7 @@ const EVENT: Record<string, string> = {
   request_blocked: "Blocked",
   requests_paused: "Requests paused (many waiting)",
   probed: "Warning: many unknown addresses asked for codes",
+  sender_stopped: "The artist stopped sharing a track",
   recipient_added: "Added",
   recipient_removed: "Removed",
 };

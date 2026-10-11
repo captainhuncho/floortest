@@ -1,13 +1,17 @@
 import { LegalPage } from "@/components/LegalPage";
 import { LEGAL } from "@/lib/legal";
+import { SHARING_LEGAL, sharingWording } from "@/lib/legal-sharing";
 
 export const metadata = { title: "Terms of Use (draft) — FloorTest" };
 
-export default function Terms() {
+export default async function Terms() {
+  // Private sharing and team review: the new wording replaces the 1 Oct colleague wording when sharing is switched on.
+  const sharing = await sharingWording();
+  const S = SHARING_LEGAL.terms;
   return (
     <LegalPage
       title="Terms of Use"
-      updated={LEGAL.updated}
+      updated={sharing ? SHARING_LEGAL.updated : LEGAL.updated}
       sections={[
         [
           "Who we are",
@@ -26,18 +30,26 @@ export default function Terms() {
             "Only send music you own or are authorised to share. You keep all rights to your music.",
             "When you send a track you must say truthfully whether you used AI to make it: not at all, partly (for example AI vocals, stems or mastering), or fully. The receiver sees your answer. Don't send AI-generated vocals or music made to sound like a real artist unless you have their permission. A false answer breaks these Terms, and we may remove the track and block or suspend the sender.",
             "By sending a track you give the receiver you chose permission to listen to it, download it and evaluate it. They may also play it in their DJ sets, live performances and broadcasts, but only if you allow that when you send it (the box on the send form). Otherwise it's for evaluation only.",
-            "If the receiver's brief says sharing with colleagues is allowed when you send, they may also share your track with colleagues who have FloorTest accounts, through a private link that expires after 7 days. Sharing is only for promotion, and for playing your track in DJ sets if you allowed that. Colleagues can listen; they can also download it only if the receiver was on a paid plan when you sent it, and you're told which before you send. Colleagues are bound by these Terms like any user: they may not pass it on or release it commercially without a signed agreement with you. You can see on your receipt when it's shared.",
+            ...(sharing
+              ? [S.senderSharing, S.senderTeam]
+              : [
+                  "If the receiver's brief says sharing with colleagues is allowed when you send, they may also share your track with colleagues who have FloorTest accounts, through a private link that expires after 7 days. Sharing is only for promotion, and for playing your track in DJ sets if you allowed that. Colleagues can listen; they can also download it only if the receiver was on a paid plan when you sent it, and you're told which before you send. Colleagues are bound by these Terms like any user: they may not pass it on or release it commercially without a signed agreement with you. You can see on your receipt when it's shared.",
+                ]),
             "The receiver may not release, distribute, sell, license or upload your track as a release on any platform without a separate written agreement with you.",
           ],
         ],
         [
           "If you receive music",
           [
-            "Use tracks you receive only as described above. Don't release, distribute, sell or publish them without a written agreement with the sender. Share a track with colleagues only through FloorTest's share link, only for tracks sent while your brief allowed sharing, and only for promotion and DJ sets. If you received a track through a colleague's share link, the same rules apply to you.",
+            sharing
+              ? "Use tracks you receive only as described above. Don't release, distribute, sell or publish them without a written agreement with the sender."
+              : "Use tracks you receive only as described above. Don't release, distribute, sell or publish them without a written agreement with the sender. Share a track with colleagues only through FloorTest's share link, only for tracks sent while your brief allowed sharing, and only for promotion and DJ sets. If you received a track through a colleague's share link, the same rules apply to you.",
+            ...(sharing ? [S.receiver] : []),
             "You're responsible for how you use contact details senders share with you.",
             "Files aren't scanned for viruses yet. We check each file is real audio, but open downloads at your own risk and keep your security software up to date.",
           ],
         ],
+        ...(sharing ? ([["If someone shares a collection with you", S.recipients]] as [string, string[]][]) : []),
         [
           "Acceptable use",
           [

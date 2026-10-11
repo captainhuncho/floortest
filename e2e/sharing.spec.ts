@@ -164,3 +164,16 @@ test("the owner sees what each person has done and removes one with a confirmati
   await expect(page.getByText("Removed. Their access has ended.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Remove @lena" })).toHaveCount(0);
 });
+
+test("with sharing on, the legal pages carry the private-sharing wording, and the share page links to Privacy", async ({ page }) => {
+  await page.goto("/terms");
+  await expect(page.getByText(/^Private sharing\. If the receiver's collection allows private sharing/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "If someone shares a collection with you" })).toBeVisible();
+  await expect(page.getByText(/colleagues who have FloorTest accounts, through a private link that expires after 7 days/)).toHaveCount(0);
+  await page.goto("/privacy");
+  await expect(page.getByRole("heading", { name: "Team review" })).toBeVisible();
+  await page.goto("/cookies");
+  await expect(page.getByText(/^ft_ls_<link>/)).toBeVisible();
+  await page.goto(new URL(shareUrl).pathname);
+  await expect(page.getByRole("link", { name: "Privacy" })).toBeVisible();
+});

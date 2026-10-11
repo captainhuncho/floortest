@@ -135,7 +135,7 @@ export default async function ReceiverPage({ params }: Props) {
             )}
             {sharing && !!collection?.allow_sharing && (
               <p className="flex items-center gap-1.5 text-[11px] font-medium text-dim">
-                <span aria-hidden className="text-lime">✓</span> Sharing with colleagues allowed
+                <span aria-hidden className="text-lime">✓</span> May be shared privately with people {receiver.first_name || receiver.name.split(" ")[0]} names
               </p>
             )}
           </section>

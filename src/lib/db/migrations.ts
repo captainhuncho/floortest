@@ -1371,4 +1371,12 @@ alter table link_requests enable row level security;
 alter table link_events enable row level security;
 `,
   },
+  {
+    // Which sharing wording a track was sent under (null: none, or the 1 Oct colleague model). Collection share
+    // links play only tracks with a value here, so tracks sent before the new wording are never opened up.
+    id: "0082_track_share_terms",
+    sql: `
+alter table tracks add column if not exists share_terms text;
+`,
+  },
 ];

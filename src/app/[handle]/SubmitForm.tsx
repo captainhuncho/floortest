@@ -40,7 +40,7 @@ export function SubmitForm({
   genres: string[];
   /** Sending from a signed-in FloorTest account: name and email come from the account. */
   account?: { name: string; email: string };
-  /** The collection lets the receiver share tracks with colleagues through a private listen-only link. */
+  /** The collection lets the receiver share tracks privately with people they name (collection share links). */
   allowSharing?: boolean;
   /** The receiver is on a paid plan now, so colleagues can download this track (fixed at send time). */
   sharingDownloads?: boolean;
@@ -453,7 +453,11 @@ export function SubmitForm({
           </button>
           <p className="text-[11px] leading-4 text-dim">
             By sending you confirm you own or control {many ? "these tracks" : "this track"}, your answer about AI is accurate, and you&apos;re 18 or over. {receiverName} may listen to it and download it to evaluate it
-            {allowSharing ? `, and share it with colleagues who have FloorTest accounts, through a private link, for promotion (${sharingDownloads ? "they can listen and download" : "listen only"})` : ""}. They can play it in sets only if you turn on DJ sets above, and can&apos;t release it anywhere without a signed agreement with you.{" "}
+. They can play it in sets only if you turn on DJ sets above, and can&apos;t release it anywhere without a signed agreement with you.
+            {/* Draft wording (lawyer brief 11 Oct, 4.1); the version agreed to is stored on the track (SHARING_TERMS_VERSION). */}
+            {allowSharing
+              ? ` ${receiverName} can also share it privately, through FloorTest, with people they name, who must confirm their email first. Depending on what ${receiverName} allows, those people can listen, or listen and download. Nobody can publish or release it without a signed agreement with you.`
+              : ""}{" "}
             <a href="/terms" target="_blank" className="underline underline-offset-4">Terms</a> ·{" "}
             <a href="/privacy" target="_blank" className="underline underline-offset-4">Privacy</a>
           </p>

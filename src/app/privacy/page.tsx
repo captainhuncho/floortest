@@ -1,14 +1,18 @@
 import { LegalPage } from "@/components/LegalPage";
 import { RETAIN_PASSED_DAYS, RETAIN_UNREVIEWED_DAYS } from "@/lib/plans";
 import { LEGAL } from "@/lib/legal";
+import { SHARING_LEGAL, sharingWording } from "@/lib/legal-sharing";
 
 export const metadata = { title: "Privacy Policy (draft) — FloorTest" };
 
-export default function Privacy() {
+export default async function Privacy() {
+  // Private sharing and team review: the new wording replaces the 1 Oct colleague wording when sharing is switched on.
+  const sharing = await sharingWording();
+  const S = SHARING_LEGAL.privacy;
   return (
     <LegalPage
       title="Privacy Policy"
-      updated={LEGAL.updated}
+      updated={sharing ? SHARING_LEGAL.updated : LEGAL.updated}
       sections={[
         [
           "Who we are",
@@ -42,17 +46,24 @@ export default function Privacy() {
           "Senders",
           [
             "When you send a track we store your name, email, the audio file, the details you enter (title, artist, message, release and mix status) and an analysis of the audio (waveform, length, estimated BPM). If you send from your FloorTest account, we link the track to that account.",
-            "Your name, email and track are shared with the receiver you sent it to. If their brief said sharing with colleagues was allowed when you sent it, the receiver may also let colleagues with FloorTest accounts hear your track (and download it, if you were told so before sending). Colleagues see the track title and artist, not your email. The receiver decides what to do with your track and is responsible for how they use your contact details.",
+            sharing ? S.sender : "Your name, email and track are shared with the receiver you sent it to. If their brief said sharing with colleagues was allowed when you sent it, the receiver may also let colleagues with FloorTest accounts hear your track (and download it, if you were told so before sending). Colleagues see the track title and artist, not your email. The receiver decides what to do with your track and is responsible for how they use your contact details.",
             "We use your details to deliver your track and to send you the receipt and updates you're promised (lawful basis: our legitimate interest in running the service you chose to use, and yours in knowing what happened to your music).",
             "If you ask for your sender history, we email a private link that works for 24 hours. It shows your tracks and the signals you were promised (delivered, listened, downloaded, replied, played out), never a receiver's private decisions.",
           ],
         ],
-        [
-          "Shared tracks (colleagues)",
-          [
-            "When a receiver shares a track with you, you need a FloorTest account to listen. We record which account played or downloaded it and when, and show this to the receiver who shared it, so they know who heard their shared track (lawful basis: legitimate interest in protecting unreleased music).",
-          ],
-        ],
+        ...((sharing
+          ? [
+              ["If someone shares a collection with you", S.recipients],
+              ["Team review", [S.team]],
+            ]
+          : [
+              [
+                "Shared tracks (colleagues)",
+                [
+                  "When a receiver shares a track with you, you need a FloorTest account to listen. We record which account played or downloaded it and when, and show this to the receiver who shared it, so they know who heard their shared track (lawful basis: legitimate interest in protecting unreleased music).",
+                ],
+              ],
+            ]) as [string, string[]][]),
         [
           "Preventing abuse",
           [

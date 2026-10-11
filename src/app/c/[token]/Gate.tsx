@@ -63,7 +63,12 @@ export function Gate({ secret, ownerName, notice, initial, initialEmail }: { sec
   if (state.step === "notice")
     return (
       <form action={accept} className={box}>
-        <div className="rounded-lg border border-line bg-ink-2 p-4 text-[13px] leading-relaxed text-bone">{notice}</div>
+        <div className="rounded-lg border border-line bg-ink-2 p-4 text-[13px] leading-relaxed text-bone">
+          {notice}{" "}
+          <a href="/privacy" target="_blank" className="underline underline-offset-4">
+            Privacy Policy
+          </a>
+        </div>
         <label className="flex items-start gap-2 text-[13px]">
           <input type="checkbox" name="agree" required className="mt-0.5 size-4 accent-lime" />
           <span>I understand and agree.</span>

@@ -22,6 +22,10 @@ export default async function SharedLink({ params }: { params: Promise<{ token: 
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col px-[18px] py-10 text-bone">
       <Logo />
       {children}
+      <p className="mt-auto pt-12 text-[11px] text-faint">
+        <a href="/terms" className="underline underline-offset-4">Terms</a> ·{" "}
+        <a href="/privacy" className="underline underline-offset-4">Privacy</a> · Private and not indexed. Your email is used to let you in and to show the owner what you open, play and download.
+      </p>
     </main>
   );
   // A collection shared with an account, opened while signed out: sign in first, then come straight back.

@@ -1,7 +1,6 @@
 "use server";
 
 import { passwordStrength } from "@/lib/password-strength";
-import { LEGAL } from "@/lib/legal";
 import { KINDS } from "@/lib/db";
 
 import { switchOn } from "@/lib/switches";
@@ -10,6 +9,7 @@ import { BOT_MESSAGE, passedTurnstile } from "@/lib/turnstile";
 import crypto from "node:crypto";
 import { cookies } from "next/headers";
 import { NEXT_COOKIE, safeNext } from "@/lib/next-path";
+import { termsVersion } from "@/lib/legal-sharing";
 import { redirect } from "next/navigation";
 import { audit } from "@/lib/audit";
 import { consumePasswordReset, createPasswordReset, createSession, currentUser, destroySession, hashPassword, verifyPassword } from "@/lib/auth";
@@ -115,6 +115,8 @@ async function createAccount(form: FormData, a: NewAccount): Promise<{ id: numbe
     return { error: TAKEN };
   }
   if ((await q.get("SELECT 1 FROM users WHERE handle = ?", a.handle)) || (await handleHeld(a.handle))) return { error: "That link is taken." };
+  // Read before the transaction: a second query inside it would wait on the transaction's own connection.
+  const terms = await termsVersion();
   try {
     return await q.tx(async (db) => {
       const u = (await db.get<{ id: number }>(
@@ -131,7 +133,7 @@ async function createAccount(form: FormData, a: NewAccount): Promise<{ id: numbe
         String(form.get("source") || "").trim().slice(0, 200),
         KINDS.includes(String(form.get("kind"))) ? String(form.get("kind")) : "dj",
         now(),
-        LEGAL.updated,
+        terms,
         form.get("updates") === "on" ? 1 : 0,
         form.get("updates") === "on" ? now() : null,
         form.get("offers") === "on" ? 1 : 0,

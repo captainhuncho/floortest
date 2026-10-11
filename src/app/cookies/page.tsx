@@ -1,13 +1,15 @@
 import { LegalPage } from "@/components/LegalPage";
 import { LEGAL } from "@/lib/legal";
+import { SHARING_LEGAL, sharingWording } from "@/lib/legal-sharing";
 
 export const metadata = { title: "Cookie Policy (draft) — FloorTest" };
 
-export default function Cookies() {
+export default async function Cookies() {
+  const sharing = await sharingWording();
   return (
     <LegalPage
       title="Cookie Policy"
-      updated={LEGAL.updated}
+      updated={sharing ? SHARING_LEGAL.updated : LEGAL.updated}
       sections={[
         [
           "The short version",
@@ -26,6 +28,7 @@ export default function Cookies() {
             "ft_flash: carries a one-off confirmation message (like \"Saved\") to the next page. Strictly necessary. Lasts 30 seconds.",
             "ft_theme: remembers whether you chose Night, Day or match your device. A setting you asked for. Lasts 1 year.",
             "ft_submissions_view: remembers whether you prefer the Queue or List layout in your Review Queue. A setting you asked for. Lasts 1 year.",
+            ...(sharing ? SHARING_LEGAL.cookies : []),
           ],
         ],
         [

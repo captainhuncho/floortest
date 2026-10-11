@@ -7,6 +7,7 @@ import { now, q } from "./db";
 import { RETAIN_PASSED_DAYS, RETAIN_UNREVIEWED_DAYS } from "./plans";
 import { storage } from "./storage";
 import { UPLOAD_TTL } from "./intake";
+import { purgeLinkRecords } from "./share-links";
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -56,6 +57,7 @@ export async function cleanupRecords(t = now(), until = Date.now() + PURGE_BUDGE
     accountLog: await deleteInBatches("account_log", "created_at < ?", [t - KEEP_DAYS.account_log * DAY], until),
     adminLog: await deleteInBatches("admin_log", "created_at < ?", [t - KEEP_DAYS.admin_log * DAY], until),
     shareAccess: await deleteInBatches("share_access", "created_at < ?", [t - KEEP_DAYS.share_access * DAY], until),
+    shareLinks: await purgeLinkRecords(t),
   };
   return removed;
 }

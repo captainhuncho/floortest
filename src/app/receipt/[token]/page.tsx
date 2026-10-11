@@ -15,6 +15,7 @@ import { CancelConsent } from "./CancelConsent";
 import { StatusHeadline } from "./StatusHeadline";
 import { switchOn } from "@/lib/switches";
 import { finalizeConsent } from "@/lib/share";
+import { StopSharing } from "./StopSharing";
 import { consentFinalAt, latestShareRequest } from "@/lib/share";
 
 export const metadata = { title: "Your receipt — FloorTest", robots: { index: false } };
@@ -103,6 +104,8 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
           )}
         </section>
       )}
+      {/* Collection share links: the artist can stop private sharing of this track at any time. */}
+      {sharing && !t.deleted_at && !!t.share_ok && !!t.share_terms && t.share_terms !== "owner" && <StopSharing token={token} receiver={who.split(/\s+/)[0]} />}
       {request?.status === "allowed" && <CancelConsent token={token} requestId={request.id} receiver={who.split(/\s+/)[0]} finalAt={consentFinalAt(request)} />}
 
       <section aria-labelledby="history-h" className="flex flex-col gap-3">

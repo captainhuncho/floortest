@@ -34,7 +34,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
   const team = (await featureOn("shared", user)) ? await members(c.id) : null;
   // Share links (behind the "sharing" switch): only while sharing is switched on.
   const links = (await sharingOn()) ? await linksFor(user, c.id) : null;
-  const sharedTracks = links ? Number((await q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM tracks WHERE collection_id = ? AND deleted_at IS NULL AND share_ok = 1", c.id))?.n ?? 0) : 0;
+  const sharedTracks = links ? Number((await q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM tracks WHERE collection_id = ? AND deleted_at IS NULL AND share_ok = 1 AND share_terms IS NOT NULL", c.id))?.n ?? 0) : 0;
 
   const tracks = await q.all<Track & { sender_name: string; sender_email: string; sender_verified: number | null }>(
     `SELECT t.*, s.name AS sender_name, s.email AS sender_email, s.verified_at AS sender_verified

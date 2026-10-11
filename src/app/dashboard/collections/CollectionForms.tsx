@@ -171,9 +171,9 @@ export function CollectionCard({ c, receiving, closed, canDelete, startEditing =
             <label className="flex items-start gap-3 sm:col-span-2">
               <input type="checkbox" name="allow_sharing" defaultChecked={c.allowSharing} className="mt-1 h-4 w-4 accent-lime" />
               <span>
-                <span className="block text-sm font-medium">Let me share tracks with colleagues</span>
+                <span className="block text-sm font-medium">Let me share tracks privately</span>
                 <span className="block text-xs text-mute">
-                  Senders see this in your brief. Only tracks sent while it&apos;s on can be shared, through a private listen-only link.
+                  Senders see this in your brief and agree to it when they send. Only tracks sent while it&apos;s on can be shared, through share links to people you name.
                 </span>
               </span>
             </label>

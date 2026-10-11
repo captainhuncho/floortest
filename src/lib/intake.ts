@@ -1,4 +1,5 @@
 /** Intake: checks before a sender can send, the two-step upload, and confirming a sender's email. */
+import { SHARING_TERMS_VERSION } from "./legal";
 import "server-only";
 import { emailText } from "./email-copy";
 import { after } from "next/server";
@@ -269,8 +270,8 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
         );
       const track = (await db.get<Track>(
         `INSERT INTO tracks (user_id, collection_id, sender_id, token, title, artist, message, release_status, mix_status, genre,
-                             file_key, original_name, mime, size, duration, bpm, peaks, created_at, share_ok, share_download, release_id, sets_ok, ai_use, track_no, musical_key, isrc, batch_id)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING *`,
+                             file_key, original_name, mime, size, duration, bpm, peaks, created_at, share_ok, share_download, release_id, sets_ok, ai_use, track_no, musical_key, isrc, batch_id, share_terms)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING *`,
         fresh.id,
         collection?.id ?? null,
         sender.id,
@@ -298,6 +299,8 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
         meta.musicalKey ?? "",
         meta.isrc ?? "",
         meta.batch ?? null,
+        // The wording the sender agreed to (the send form shows it whenever the collection allows sharing).
+        sharing && collection?.allow_sharing ? (meta.ownerCollectionId ? "owner" : SHARING_TERMS_VERSION) : null,
       ))!;
       // Possible duplicate: the same file (byte size and length) already on this desk, or the same
       // sender re-sending the same title. Flagged for the receiver, never blocked.

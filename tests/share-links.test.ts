@@ -24,15 +24,19 @@ async function setup() {
   const sender = (await q.get<{ id: number }>("INSERT INTO senders (user_id, email, name, created_at) VALUES (?, 's@x.io', 'S', ?) RETURNING id", owner, now))!.id;
   const track = async (title: string, shareOk: number) =>
     (await q.get<{ id: number }>(
-      "INSERT INTO tracks (user_id, sender_id, collection_id, title, artist, token, file_key, original_name, mime, size, created_at, share_ok) VALUES (?,?,?,?,'A',?,'audio/x.wav','x.wav','audio/wav',1,?,?) RETURNING id",
-      owner, sender, col, title, `tok-${title}`, now, shareOk,
+      "INSERT INTO tracks (user_id, sender_id, collection_id, title, artist, token, file_key, original_name, mime, size, created_at, share_ok, share_terms) VALUES (?,?,?,?,'A',?,'audio/x.wav','x.wav','audio/wav',1,?,?,?) RETURNING id",
+      owner, sender, col, title, `tok-${title}`, now, shareOk, shareOk ? "test" : null,
     ))!.id;
-  return { q, owner: { id: owner }, mate, col, shared: await track("Shared", 1), privateTrack: await track("Private", 0) };
+  const shared = await track("Shared", 1);
+  // Sent under the 1 Oct colleague wording: shareable then, but not through collection links.
+  const oldModel = await track("Old", 1);
+  await q.run("UPDATE tracks SET share_terms = NULL WHERE id = ?", oldModel);
+  return { q, owner: { id: owner }, mate, col, shared, privateTrack: await track("Private", 0), oldModel };
 }
 
 test("share links: own address, named recipients, codes, sessions, reset, revoke, tracks", async () => {
   const L = await import("../src/lib/share-links");
-  const { q, owner, mate, col, shared, privateTrack } = await setup();
+  const { q, owner, mate, col, shared, privateTrack, oldModel } = await setup();
 
   const { link, url } = await L.createLink(owner, col, { permission: "listen", days: 14, requests: true });
   const secret = url.split("/c/")[1];
@@ -77,6 +81,7 @@ test("share links: own address, named recipients, codes, sessions, reset, revoke
   // Only tracks whose sender agreed to sharing are reachable.
   assert.deepEqual((await L.linkTracks(after)).map((t) => t.id), [shared]);
   assert.equal(await L.linkTrack(after, privateTrack), undefined);
+  assert.equal(await L.linkTrack(after, oldModel), undefined, "tracks sent before the new wording aren't shared");
 
   await L.revokeLink(owner, link.id);
   assert.equal(await L.linkBySecret(newUrl.split("/c/")[1]), undefined, "revoked for good");
@@ -173,4 +178,45 @@ test("account holders: open by number while signed in, Shared with you, activity
   await L.removeRecipient(o, m.recipient.id);
   assert.equal(await L.linkByKey(key, mate), undefined);
   assert.deepEqual(await L.sharedLinksFor(mate), []);
+});
+
+test("retention, account deletion and the artist's stop switch", async () => {
+  const L = await import("../src/lib/share-links");
+  const { q } = await import("../src/lib/db");
+  const o = (await q.get<{ id: number }>("SELECT id FROM users WHERE handle = 'owner'"))!;
+  const col = (await q.get<{ id: number }>("SELECT id FROM collections WHERE user_id = ?", o.id))!.id;
+  const DAY = 86_400_000;
+
+  // The artist stops sharing: the track leaves every link at once, and the owner sees why.
+  const { link, url } = await L.createLink(o, col, { permission: "listen", days: null, requests: true });
+  const live = (await L.linkBySecret(url.split("/c/")[1]))!;
+  const shared = (await L.linkTracks(live))[0];
+  assert.ok(shared);
+  assert.equal(await L.stopSharingByReceipt(shared.token), true);
+  assert.equal(await L.linkTrack(live, shared.id), undefined);
+  assert.equal(await L.stopSharingByReceipt(shared.token), false, "once");
+  assert.ok(await q.get("SELECT 1 FROM link_events WHERE link_id = ? AND kind = 'sender_stopped' AND track_id = ?", link.id, shared.id));
+
+  // Account deletion: off other people's lists, and their visits and activity gone.
+  const mate = (await q.get<{ id: number; email: string }>("SELECT id, email FROM users WHERE handle = 'mate'"))!;
+  await L.addRecipients(o, link.id, "@mate", "listen");
+  const m = (await L.recipientFor(live, { email: mate.email, userId: mate.id }))!;
+  await L.startLinkSession(live, m.recipient, { email: mate.email, userId: mate.id });
+  await q.tx((db) => L.forgetLinkPerson(db, mate.id, mate.email));
+  assert.equal(await L.recipientFor(live, { email: mate.email, userId: mate.id }), undefined);
+  assert.equal(await q.get("SELECT 1 FROM link_events WHERE email = ? OR user_id = ?", mate.email, mate.id), undefined);
+  assert.equal(await q.get("SELECT 1 FROM link_sessions WHERE user_id = ?", mate.id), undefined);
+
+  // Retention: stale codes and probe notes go; a link that ended over a year ago goes with everything on it.
+  await L.sendLinkCode(live, "old@x.io", "2.2.2.2", async () => {});
+  await L.logLinkEvent(link.id, "code_unlisted", { email: "probe@x.io" });
+  const later = Date.now() + 3 * DAY;
+  const r1 = await L.purgeLinkRecords(later);
+  assert.ok(r1.codes >= 1 && r1.notes >= 1);
+  assert.ok(await q.get("SELECT 1 FROM collection_links WHERE id = ?", link.id), "a live link stays");
+  await L.revokeLink(o, link.id);
+  assert.equal((await L.purgeLinkRecords(Date.now() + 30 * DAY)).links, 0, "a recently ended link stays");
+  assert.ok((await L.purgeLinkRecords(Date.now() + 400 * DAY)).links >= 1);
+  assert.equal(await q.get("SELECT 1 FROM collection_links WHERE id = ?", link.id), undefined);
+  assert.equal(await q.get("SELECT 1 FROM link_events WHERE link_id = ?", link.id), undefined);
 });

@@ -1,6 +1,6 @@
 import "server-only";
 import crypto from "node:crypto";
-import { now, q, type Collection, type Track, type User } from "./db";
+import { now, q, type Collection, type Queryable, type Track, type User } from "./db";
 import { env } from "./env";
 import { allow } from "./ratelimit";
 import { switchOn } from "./switches";
@@ -31,9 +31,9 @@ export const REQUESTS_PER_NETWORK_PER_HOUR = 10;
 export const REQUEST_COOLDOWN_DAYS = 30;
 export const PAUSE_REQUESTS_AT = 20;
 /** Bump when the access notice wording changes, so the next visit asks again. */
-export const NOTICE_VERSION = "2026-10-11";
+export const NOTICE_VERSION = "2026-10-11b";
 export const ACCESS_NOTICE =
-  "This collection may contain confidential or unreleased music. Your access is personal and revocable. You may not forward the link, publish, reproduce, distribute or share the audio unless the collection owner has expressly enabled that permission.";
+  "This collection may contain confidential or unreleased music. Your access is personal and can be ended at any time. Don't forward the link or code, or record, publish, reproduce, distribute or share the audio. If downloads are enabled for you, use the files only for the purpose they were shared for and delete them when asked. The owner can see when you open this collection and what you play and download.";
 
 export type Link = {
   id: number;
@@ -268,7 +268,7 @@ export async function sharedLinksFor(viewer: Viewer) {
   const rows = await q.all<{ id: number; collection_name: string; owner_name: string; permission: Permission; recipient_permission: Permission; link_expires: number | null; recipient_expires: number | null; added_at: number; count: number }>(
     `SELECT DISTINCT ON (l.id) l.id, c.name AS collection_name, u.name AS owner_name, l.permission, r.permission AS recipient_permission,
        l.expires_at AS link_expires, r.expires_at AS recipient_expires, r.added_at,
-       (SELECT COUNT(*)::int FROM tracks t WHERE t.collection_id = c.id AND t.deleted_at IS NULL AND t.file_key IS NOT NULL AND t.share_ok = 1) AS count
+       (SELECT COUNT(*)::int FROM tracks t WHERE t.collection_id = c.id AND t.deleted_at IS NULL AND t.file_key IS NOT NULL AND t.share_ok = 1 AND t.share_terms IS NOT NULL) AS count
      FROM link_recipients r JOIN collection_links l ON l.id = r.link_id JOIN collections c ON c.id = l.collection_id JOIN users u ON u.id = c.user_id
      WHERE r.removed_at IS NULL AND (r.expires_at IS NULL OR r.expires_at > ?) AND l.revoked_at IS NULL AND (l.expires_at IS NULL OR l.expires_at > ?)
        AND u.suspended_at IS NULL AND c.user_id <> ?
@@ -415,7 +415,7 @@ export async function requestAccess(link: Link, who: { email: string; userId: nu
 /** The tracks a link can play: this collection's live tracks whose sender agreed to sharing when they sent them. */
 export async function linkTracks(link: Pick<Link, "collection_id">) {
   return q.all<Track>(
-    "SELECT * FROM tracks WHERE collection_id = ? AND deleted_at IS NULL AND file_key IS NOT NULL AND share_ok = 1 ORDER BY created_at DESC LIMIT 500",
+    "SELECT * FROM tracks WHERE collection_id = ? AND deleted_at IS NULL AND file_key IS NOT NULL AND share_ok = 1 AND share_terms IS NOT NULL ORDER BY created_at DESC LIMIT 500",
     link.collection_id,
   );
 }
@@ -423,7 +423,7 @@ export async function linkTracks(link: Pick<Link, "collection_id">) {
 /** One track through a link, only if it's one of the link's tracks. */
 export async function linkTrack(link: Pick<Link, "collection_id">, trackId: number) {
   if (!Number.isSafeInteger(trackId)) return undefined;
-  return q.get<Track>("SELECT * FROM tracks WHERE id = ? AND collection_id = ? AND deleted_at IS NULL AND file_key IS NOT NULL AND share_ok = 1", trackId, link.collection_id);
+  return q.get<Track>("SELECT * FROM tracks WHERE id = ? AND collection_id = ? AND deleted_at IS NULL AND file_key IS NOT NULL AND share_ok = 1 AND share_terms IS NOT NULL", trackId, link.collection_id);
 }
 
 /** The owner's view of a collection's links: each with its recipients, waiting requests and recent activity. */
@@ -494,4 +494,80 @@ export async function linkNoticesFor(ownerId: number, since: number) {
     ownerId,
     since,
   );
+}
+
+/**
+ * How long share-link records are kept (proposed in the lawyer brief, S11; change here once the lawyer sets them).
+ * Codes: a day. "Unknown address asked for a code" notes: 2 days (only the last hour is used). A link that ended
+ * (revoked or expired) a year ago: everything about it, list, visits, activity and requests. Answered or stale
+ * requests: a year. Declines and blocks stay while the collection exists, so the limits keep working.
+ */
+export const LINK_KEEP_DAYS = { codes: 1, unlistedNotes: 2, endedLinks: 365, requests: 365 } as const;
+
+export async function purgeLinkRecords(t = now()) {
+  const ago = (days: number) => t - days * DAY;
+  const codes = await q.run("DELETE FROM link_codes WHERE expires_at < ?", ago(LINK_KEEP_DAYS.codes));
+  const notes = await q.run("DELETE FROM link_events WHERE kind = 'code_unlisted' AND created_at < ?", ago(LINK_KEEP_DAYS.unlistedNotes));
+  // A link's own row goes too: it cascades to its list, codes, visits, requests and activity.
+  const links = await q.run(
+    "DELETE FROM collection_links WHERE COALESCE(revoked_at, CASE WHEN expires_at < ? THEN expires_at END) < ?",
+    t,
+    ago(LINK_KEEP_DAYS.endedLinks),
+  );
+  const requests = await q.run(
+    "DELETE FROM link_requests WHERE (status = 'approved' AND decided_at < ?) OR (status = 'pending' AND created_at < ?)",
+    ago(LINK_KEEP_DAYS.requests),
+    ago(LINK_KEEP_DAYS.requests),
+  );
+  return { codes: codes.changes ?? 0, notes: notes.changes ?? 0, links: links.changes ?? 0, requests: requests.changes ?? 0 };
+}
+
+/** On account deletion: the account's place on other people's links, and its visits, requests and activity. */
+export async function forgetLinkPerson(db: Queryable, userId: number, email: string) {
+  const e = cleanEmail(email);
+  await db.run("DELETE FROM link_recipients WHERE kind = 'user' AND value = ?", String(userId));
+  await db.run("DELETE FROM link_sessions WHERE user_id = ? OR email = ?", userId, e);
+  await db.run("DELETE FROM link_events WHERE user_id = ? OR email = ?", userId, e);
+  await db.run("DELETE FROM link_requests WHERE (user_id = ? OR email = ?) AND status NOT IN ('declined', 'blocked')", userId, e);
+  await db.run("DELETE FROM link_codes WHERE email = ?", e);
+}
+
+/** For a data request: the collections shared with this address or account, and what it did through them. */
+export async function linkDataFor(email: string, userId: number | null) {
+  const e = cleanEmail(email);
+  const domain = e.split("@")[1] ?? "";
+  return {
+    onLists: await q.all<Record<string, unknown>>(
+      `SELECT c.name AS collection, u.name AS owner, r.kind, r.permission, r.added_at, r.removed_at FROM link_recipients r
+       JOIN collection_links l ON l.id = r.link_id JOIN collections c ON c.id = l.collection_id JOIN users u ON u.id = c.user_id
+       WHERE (r.kind = 'email' AND r.value = ?) OR (r.kind = 'domain' AND r.value = ?) OR (r.kind = 'user' AND r.value = ?) ORDER BY r.added_at`,
+      e, domain, userId === null ? "" : String(userId),
+    ),
+    activity: await q.all<Record<string, unknown>>(
+      `SELECT c.name AS collection, e.kind, t.title AS track, e.created_at FROM link_events e JOIN collection_links l ON l.id = e.link_id
+       JOIN collections c ON c.id = l.collection_id LEFT JOIN tracks t ON t.id = e.track_id WHERE e.email = ? OR (e.user_id IS NOT NULL AND e.user_id = ?) ORDER BY e.created_at`,
+      e, userId ?? -1,
+    ),
+    requests: await q.all<Record<string, unknown>>(
+      "SELECT c.name AS collection, r.name, r.note, r.status, r.created_at, r.decided_at FROM link_requests r JOIN collections c ON c.id = r.collection_id WHERE r.email = ? ORDER BY r.created_at",
+      e,
+    ),
+  };
+}
+
+/**
+ * The sender stops private sharing of one track, from their receipt (the receipt's private link is the key). It drops
+ * out of every share link at once; anyone who already downloaded it keeps their copy. The owner sees it in each
+ * link's activity. One-way: to share it again the receiver has to ask the artist.
+ */
+export async function stopSharingByReceipt(token: string) {
+  const t = await q.get<{ id: number; collection_id: number | null }>(
+    "UPDATE tracks SET share_ok = 0 WHERE token = ? AND share_ok = 1 AND deleted_at IS NULL RETURNING id, collection_id",
+    String(token).slice(0, 100),
+  );
+  if (!t) return false;
+  if (t.collection_id)
+    for (const l of await q.all<{ id: number }>("SELECT id FROM collection_links WHERE collection_id = ? AND revoked_at IS NULL", t.collection_id))
+      await logLinkEvent(l.id, "sender_stopped", {}, t.id);
+  return true;
 }

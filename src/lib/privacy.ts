@@ -1,6 +1,7 @@
 import "server-only";
 import { now, q } from "@/lib/db";
 import { accountKeys, drainNow, queueDeletion, trackKeys } from "@/lib/deletion";
+import { forgetLinkPerson, linkDataFor } from "@/lib/share-links";
 
 /**
  * Deletes an account and everything it owns. Every file (audio, stems, unfinished uploads, cover) is queued
@@ -9,6 +10,8 @@ import { accountKeys, drainNow, queueDeletion, trackKeys } from "@/lib/deletion"
 export async function purgeAccount(userId: number) {
   await q.tx(async (db) => {
     await queueDeletion(db, await accountKeys(db, userId), `account #${userId} deleted`, now());
+    const who = await db.get<{ email: string }>("SELECT email FROM users WHERE id = ?", userId);
+    if (who) await forgetLinkPerson(db, userId, who.email);
     await db.run("DELETE FROM users WHERE id = ?", userId); // cascades to everything the account owns
   });
   await drainNow();
@@ -40,7 +43,9 @@ export async function dataFor(email: string) {
         account.id,
       )
     : [];
-  return { email: e, account, sent, messages, emails, waitlist, reopenAlerts, comments };
+  // Collection share links: lists this address is on, what it opened, played or downloaded, and requests to join.
+  const shareLinks = await linkDataFor(e, account ? Number(account.id) : null);
+  return { email: e, account, sent, messages, emails, waitlist, reopenAlerts, comments, shareLinks };
 }
 
 /** Erases someone as a sender: their sender records and the tracks they sent (files and stems), plus their messages and waitlist entry. */

@@ -175,7 +175,7 @@ async function main() {
     if (t.pass) await ev(sid, tid, "passed", decidedAt!);
   }
   // Sharing tests: the Villagers tracks were sent while the callout allowed sharing.
-  if (process.env.SEED_SHARING === "1") await db.run("UPDATE tracks SET share_ok = 1 WHERE collection_id = ?", villagers);
+  if (process.env.SEED_SHARING === "1") await db.run("UPDATE tracks SET share_ok = 1, share_terms = ? WHERE collection_id = ?", "e2e", villagers);
   const ama = senders["ama@example.com"];
   await ev(ama, null, "note", now - 26 * DAY, "Consistently strong. Ask about a live set for the Accra date.");
   await db.run("UPDATE tracks SET replied_at = ? WHERE id = ?", now - 27 * DAY + 600_000, harmattan);
