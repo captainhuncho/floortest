@@ -47,7 +47,7 @@ export function TransferScreen({ receiverName, callout, files, startedAt, onCanc
     <section aria-live="polite" aria-label="Upload progress" className="motion-safe:starting:translate-y-1 flex flex-col gap-5 transition-[opacity,translate] duration-200 ease-[var(--ease-out)] starting:opacity-0">
       <div className="flex flex-col gap-1">
         <p className="eyebrow">Sending to {receiverName}{callout ? ` · ${callout}` : ""}</p>
-        <h2 className="truncate text-[22px] font-bold leading-7 text-bone">{current?.name}</h2>
+        <h2 className="truncate text-[28px] font-bold leading-[1.1] tracking-[-0.5px] text-bone">{current?.name}</h2>
         <p className="text-[13px] text-mute">{many ? `Track ${Math.min(doneCount + 1, files.length)} of ${files.length} · ` : ""}{fmtBytes(sent)} of {fmtBytes(total)}</p>
       </div>
 
@@ -63,8 +63,8 @@ export function TransferScreen({ receiverName, callout, files, startedAt, onCanc
 
       {many && (
         <ol className="divide-y divide-line border-y border-line text-[13px]">
-          {files.map((f) => (
-            <li key={f.name} className="flex items-center justify-between gap-3 py-2.5">
+          {files.map((f, i) => (
+            <li key={`${i}-${f.name}`} className="flex items-center justify-between gap-3 py-2.5">
               <span className={`truncate ${f.state === "sent" ? "text-mute" : "text-bone"}`}>{f.name}</span>
               <span className={`shrink-0 text-[12px] ${f.state === "sent" ? "text-lime" : f.state === "failed" ? "text-danger" : "text-dim"}`}>
                 {f.state === "sent" ? "Sent" : f.state === "sending" ? `${Math.round(f.progress * 100)}%` : f.state === "failed" ? "Failed" : "Waiting"}

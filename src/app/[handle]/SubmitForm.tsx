@@ -16,7 +16,7 @@ import { MAX_FILES, useTrackUpload, type Item } from "./useTrackUpload";
 
 /** Things that arrive on the page (a chosen track, a step, the result) settle in from just below. Reduced motion keeps only the fade. */
 const ENTER = "starting:opacity-0 motion-safe:starting:translate-y-1 transition-[opacity,translate] duration-200 ease-[var(--ease-out)]";
-const LABEL = "text-[11px] font-bold uppercase tracking-[0.5px] text-dim";
+const LABEL = "text-[11px] font-bold uppercase tracking-[1px] text-dim";
 const HELP = "text-[12px] text-dim";
 
 /** Something still needed: under its field it says what to do (`text`); above Send it's named in a word or two (`short`). */
@@ -61,7 +61,7 @@ export function SubmitForm({
   /** What happens to the file (who hears it, deletion, receipt), repeated above Send. */
   promise?: string[];
 }) {
-  const { items, phase, error, setError, sender, setSender, remembered, add, remove, edit, send, reset: resetUpload, cancel, startedAt } = useTrackUpload(handle, { asAccount: !!account });
+  const { items, phase, error, setError, sender, setSender, remembered, artFailed, add, remove, edit, send, reset: resetUpload, cancel, startedAt } = useTrackUpload(handle, { asAccount: !!account });
   const [drag, setDrag] = useState(false);
   // The sender's own pick wins; until they make one, a genre tapped in the brief fills the field.
   const [chosenGenre, setGenre] = useState<string | null>(null);
@@ -82,6 +82,7 @@ export function SubmitForm({
   const [checking, setChecking] = useState(false);
   const alertRef = useRef<HTMLParagraphElement>(null);
   const router = useRouter();
+  const doneRef = useRef<HTMLElement>(null);
 
   // A problem with the send (network, server) is explained in one place, and that place comes into view.
   useEffect(() => {
@@ -94,7 +95,11 @@ export function SubmitForm({
   // From the dashboard, refresh the page so the new tracks show in your Sent list.
   useEffect(() => {
     if (account && phase === "done") router.refresh();
-    if (phase === "done") onSent?.();
+    if (phase === "done") {
+      onSent?.();
+      // The page above folds away (data-picked on the done screen), so bring the confirmation to the top.
+      requestAnimationFrame(() => doneRef.current?.scrollIntoView({ block: "start", behavior: "smooth" }));
+    }
   }, [account, phase, router, onSent]);
 
   // Files handed in from outside (Share to FloorTest) start in the form, once.
@@ -174,7 +179,7 @@ export function SubmitForm({
   /* ── Done: what happened, what happens next, and the one link that matters. ── */
   if (phase === "done" && firstToken) {
     return (
-      <section role="status" className={`flex flex-col gap-5 ${ENTER}`}>
+      <section ref={doneRef} role="status" data-picked className={`flex scroll-mt-6 flex-col gap-5 ${ENTER}`}>
         <div className="flex items-start gap-3">
           <span aria-hidden className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-lime text-ink">
             <svg viewBox="0 0 16 16" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -182,7 +187,7 @@ export function SubmitForm({
             </svg>
           </span>
           <div className="min-w-0">
-            <h2 className="text-[22px] font-bold leading-7 text-bone">
+            <h2 className="text-[28px] font-bold leading-[1.1] tracking-[-0.5px] text-bone">
               {sentTitle} {many ? "are" : "is"} on {receiverName}&apos;s desk.
             </h2>
             <p className="mt-1.5 text-[13px] text-mute">
@@ -200,10 +205,26 @@ export function SubmitForm({
           ))}
         </ol>
         <p className={HELP}>You&apos;ll get an email at each step: when {many ? "they're" : "it's"} listened to, downloaded or replied to.</p>
+        {artFailed && <p className="text-[13px] text-mute">The artwork didn&apos;t upload. {many ? "The tracks were" : "The track was"} sent without it.</p>}
+        {many && (
+          <ul className="flex flex-col gap-1.5 text-[13px]" aria-label="Receipts">
+            {items
+              .filter((it) => it.token)
+              .map((it) => (
+                <li key={it.id}>
+                  <Link href={`/receipt/${it.token}`} className="inline-flex min-h-9 items-center underline underline-offset-4">
+                    Receipt for “{it.tags.title || it.file.name}”
+                  </Link>
+                </li>
+              ))}
+          </ul>
+        )}
         <div className="flex flex-wrap gap-2.5">
-          <Link href={many ? "/sent" : `/receipt/${firstToken}`} className="btn-lime">
-            {many ? "See your receipts" : "View receipt"}
-          </Link>
+          {!many && (
+            <Link href={`/receipt/${firstToken}`} className="btn-lime">
+              View receipt
+            </Link>
+          )}
           <button type="button" onClick={reset} className="btn-ghost">
             Send another
           </button>

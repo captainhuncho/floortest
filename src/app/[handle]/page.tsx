@@ -77,8 +77,8 @@ export default async function ReceiverPage({ params }: Props) {
 
   return (
     <EditablePage editing={!!editor} page="link" label="Public link" values={c}>
-    <main className="group/page mx-auto flex min-h-dvh max-w-xl flex-col gap-6 bg-ink px-[18px] py-8 text-bone sm:py-12">
-      <div className="flex flex-col gap-3">
+    <main className="group/page mx-auto flex min-h-dvh max-w-xl flex-col gap-6 bg-ink px-[18px] py-8 text-bone sm:py-12 lg:grid lg:max-w-5xl lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:content-start lg:gap-x-16 lg:gap-y-8 lg:px-8 lg:py-16">
+      <div className="flex flex-col gap-3 lg:col-start-1 lg:row-start-1">
         {receiver.cover_key && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -91,7 +91,7 @@ export default async function ReceiverPage({ params }: Props) {
         )}
         <p className="text-[11px] font-bold uppercase tracking-[1px] text-mute"><E k="kicker" /></p>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="break-words text-[clamp(2rem,12vw,3.5rem)] font-bold leading-none group-has-[[data-picked]]/page:text-[32px] group-has-[[data-picked]]/page:font-extrabold">
+          <h1 className="break-words text-[clamp(2rem,12vw,3.5rem)] font-bold leading-none group-has-[[data-picked]]/page:text-[28px] group-has-[[data-picked]]/page:tracking-[-0.5px]">
             {receiver.name}
             {receiver.identity_status === "verified" && (
               <CuePoint size={24} label="Verified by FloorTest: this account controls the linked profile" className="-mt-1 ml-2" />
@@ -111,7 +111,7 @@ export default async function ReceiverPage({ params }: Props) {
         </div>
         <ProfileLinks links={readLinks(receiver.links)} className="group-has-[[data-picked]]/page:hidden" />
       </div>
-      <div>
+      <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1">
         {closedReason ? (
           <div className="rounded-2xl border border-line bg-ink-2 p-5" role="status">
             <p className="font-bold">{closedReason}</p>
@@ -124,7 +124,7 @@ export default async function ReceiverPage({ params }: Props) {
         )}
       </div>
       {!closedReason && (
-      <ul className="-mt-2 flex flex-col gap-2 group-has-[[data-picked]]/page:hidden" aria-label="How your file is handled">
+      <ul className="-mt-2 flex flex-col gap-2 group-has-[[data-picked]]/page:hidden lg:col-start-1 lg:row-start-2 lg:mt-0 lg:self-start" aria-label="How your file is handled">
         {bullets.map(([k, b]) => (
           <li key={k} {...panel(k, "Keep {receiver} and {days} as they are: the page fills them in.")} className="flex gap-2.5 text-[13px] leading-5 text-mute">
             <span aria-hidden>→</span>
@@ -133,11 +133,11 @@ export default async function ReceiverPage({ params }: Props) {
         ))}
       </ul>
       )}
-      <footer className="mt-auto flex flex-col items-center gap-3 pt-4">
+      <footer className="mt-auto flex flex-col items-center gap-3 pt-4 lg:col-span-2 lg:mt-8">
         {receiver.identity_status !== "verified" && (
           <p className="text-center text-[12px] font-medium leading-[18px] text-dim">
             Not sure this is really {receiver.name}?{" "}
-            <a href={`/contact?report=${receiver.handle}`} className="underline hover:text-bone">
+            <a href={`/contact?report=${receiver.handle}`} className="py-3 underline hover:text-bone">
               Report impersonation
             </a>
           </p>

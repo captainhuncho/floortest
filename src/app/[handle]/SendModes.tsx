@@ -46,13 +46,12 @@ export function SendModes({
 export function SendModeTabs({ mode, setMode, className = "" }: { mode: "tracks" | "folder"; setMode: (m: "tracks" | "folder") => void; className?: string }) {
   return (
     <div className={className}>
-      <div role="tablist" aria-label="What to send" className="inline-flex rounded-full border border-line bg-ink-2 p-1 text-sm">
+      <div role="group" aria-label="What to send" className="inline-flex rounded-full border border-line bg-ink-2 p-1 text-sm">
         {(["tracks", "folder"] as const).map((m) => (
           <button
             key={m}
-            role="tab"
             type="button"
-            aria-selected={mode === m}
+            aria-pressed={mode === m}
             onClick={() => setMode(m)}
             className={`tap-tall rounded-full px-4 py-1.5 transition ${mode === m ? "bg-bone font-semibold text-ink" : "text-mute hover:text-bone"}`}
           >

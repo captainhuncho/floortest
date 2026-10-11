@@ -88,16 +88,18 @@ export async function uploadTrack(
   }
 }
 
-/** Uploads artwork as-is, straight to storage, then asks the server to check it. Failures are ignored: the track is already sent. */
-export async function sendArtwork(token: string, file: File) {
+/** Uploads artwork as-is, straight to storage, then asks the server to check it. Says whether it stuck; a failure never undoes the track. */
+export async function sendArtwork(token: string, file: File): Promise<boolean> {
   try {
     const url = `/api/track-art/${encodeURIComponent(token)}`;
     const post = (body: object) => fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const start = (await (await post({ type: file.type, size: file.size })).json().catch(() => ({}))) as { target?: { url: string; headers: Record<string, string> } };
-    if (!start.target) return;
+    if (!start.target) return false;
     const put = await fetch(start.target.url, { method: "PUT", headers: start.target.headers, body: file });
-    if (put.ok) await post({ done: true });
-  } catch {}
+    return put.ok && (await post({ done: true })).ok;
+  } catch {
+    return false;
+  }
 }
 
 /** Separate tracks in one go on the send form, up to MAX_BYTES together. EPs and albums go through Send folders (paid). */
@@ -126,6 +128,8 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
   const [sender, setSender] = useState({ name: "", email: "", instagram: "", streaming: "" });
   // True when complete details came from this device (the form can show them as one line).
   const [remembered, setRemembered] = useState(false);
+  // Optional artwork that didn't make it (the tracks themselves were sent); said on the done screen.
+  const [artFailed, setArtFailed] = useState(false);
   const abort = useRef<AbortController | null>(null);
   // When the current transfer started, for the time-left estimate.
   const [startedAt, setStartedAt] = useState(0);
@@ -180,6 +184,7 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
       if (!opts.asAccount) localStorage.setItem(SENDER_KEY, JSON.stringify({ name: field("name"), email: field("email"), instagram: field("sender_instagram"), streaming: field("sender_streaming") }));
     } catch {}
     setError(null);
+    setArtFailed(false);
     setPhase("uploading");
     setStartedAt(Date.now());
     abort.current = new AbortController();
@@ -214,7 +219,7 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
       sentCount++;
       // Optional artwork goes with each track; the track is already sent, so a failed image never undoes that.
       const art = fd.get("artwork");
-      if (art instanceof File && art.size) await sendArtwork(r.token, art);
+      if (art instanceof File && art.size && !(await sendArtwork(r.token, art))) setArtFailed(true);
     }
     setPhase("done");
   }
@@ -228,5 +233,5 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
 
   const cancel = () => abort.current?.abort();
 
-  return { items, phase, error, setError, sender, setSender, remembered, add, remove, edit, send, reset, cancel, startedAt };
+  return { items, phase, error, setError, sender, setSender, remembered, artFailed, add, remove, edit, send, reset, cancel, startedAt };
 }

@@ -70,7 +70,7 @@ export function EmailCode({ email, receiverName, sending, onConfirmed, onCancel 
         ← Back to your details
       </button>
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-[0.5px] text-lime">One last step</p>
+        <p className="eyebrow">One last step</p>
         <h2 id="email-code-title" className="mt-1 text-2xl font-bold">Check your email</h2>
         <p className="mt-2 text-sm text-mute">
           We sent a 6-digit code to <span className="break-all text-bone">{email}</span>. Enter it to send to {receiverName}. This browser remembers your email for 30 days.
