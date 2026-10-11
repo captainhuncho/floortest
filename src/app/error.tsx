@@ -1,7 +1,9 @@
 "use client";
 
 import * as Sentry from "@sentry/nextjs";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Logo } from "@/components/Logo";
 
 /**
  * A page left open across an update still holds the old version's code: its buttons call server actions or load
@@ -32,9 +34,14 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
     } catch {}
   }, [error, stale]);
 
+  // On ops (admin/error.tsx re-exports this page) the admin menu already shows the silver crest.
+  const onOps = usePathname()?.startsWith("/admin");
+  const logo = onOps ? null : <Logo className="mb-10" />;
+
   if (stale)
     return (
       <main className="mx-auto flex min-h-dvh max-w-xl flex-col justify-center px-4 py-12">
+        {logo}
         <h1 className="text-3xl font-bold tracking-tight">FloorTest was just updated</h1>
         <p className="mt-3 text-mute">{reloading ? "Loading the new version…" : "Reload the page to continue. You may need to enter your details again."}</p>
         {!reloading && (
@@ -49,6 +56,7 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col justify-center px-4 py-12">
+      {logo}
       <h1 className="text-3xl font-bold tracking-tight">Something went wrong</h1>
       <p className="mt-3 text-mute">
         Sorry about that. Try again, and if it keeps happening, let us know{error.digest ? ` and mention code ${error.digest}` : ""}.

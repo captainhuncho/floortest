@@ -29,7 +29,11 @@ export function HomePreview({ host }: { host: string }) {
   return (
     <div className="overflow-hidden rounded-lg border border-white/10 bg-ink-2 shadow-2xl shadow-black/60">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-4 sm:px-7">
-        <p className="text-lg font-bold tracking-tight">FloorTest</p>
+        <p className="inline-flex items-center gap-2 text-lg font-bold tracking-tight">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/crest.svg" alt="" aria-hidden className="size-7 shrink-0" />
+          FloorTest
+        </p>
         <div className="flex items-center gap-1 overflow-x-auto">
           <span className="home-label mr-2 hidden sm:inline">Collections</span>
           {COLLECTIONS.map((c, i) => (
