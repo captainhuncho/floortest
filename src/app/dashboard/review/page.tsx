@@ -12,6 +12,7 @@ import { SubmissionsList } from "../list/SubmissionsList";
 import { TrackList, type Row } from "../TrackList";
 import { ViewToggle } from "../ViewToggle";
 import { FilterMenu } from "../list/FilterMenu";
+import { StatusTabs } from "./StatusTabs";
 import { VIEW_COOKIE } from "../view-cookie";
 
 export const metadata = { title: "Review Queue — FloorTest" };
@@ -139,20 +140,10 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
           </div>
         </header>
 
-        <nav className="mt-6 flex flex-wrap gap-1 border-b border-line" aria-label="Status">
-          {STATUSES.map(([k, label]) => (
-            <Link
-              key={k}
-              href={href({ s: k === "review" ? undefined : k, t: undefined })}
-              aria-current={status === k ? "page" : undefined}
-              className={`-mb-px border-b-2 px-3 py-2.5 text-sm font-medium transition ${
-                status === k ? "border-lime text-bone" : "border-transparent text-mute hover:text-bone"
-              }`}
-            >
-              {label} <span className="tnum text-mute">{counts[k]}</span>
-            </Link>
-          ))}
-        </nav>
+        <StatusTabs
+          active={status}
+          tabs={STATUSES.map(([k, label]) => ({ key: k, label, count: counts[k], href: href({ s: k === "review" ? undefined : k, t: undefined }) }))}
+        />
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {collections.length > 1 && (
@@ -178,7 +169,8 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
           </form>
         </div>
 
-        <div className="mt-4">
+        {/* Fades while a tab change loads (see StatusTabs and globals.css). */}
+        <div className="review-list mt-4">
           {totalActive === 0 && !search ? (
             <EmptyDesk link={`${APP_URL}/${user.handle}`} welcome={!!sp.welcome} />
           ) : rows.length === 0 ? (
