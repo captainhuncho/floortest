@@ -67,6 +67,27 @@ Decided: a colleague is a **seat on an account** (label, radio, crew), not someo
 - Stems as a paid feature.
 - Rekordbox how-to video, footer legal placement, mobile footer redesign.
 
+## Carried over from the old lists (checked against the code 11 Oct)
+Open items from `HANDOFF.md`, `CLAUDE_NEXT_WORK.md` and `docs/beta-launch-plan.md` that weren't in this plan. Everything else in those lists is built or superseded.
+
+**Safety and operations (before public launch):**
+- Recovery copy of audio: R2 versioning or replication, so a bad delete or leaked key can be undone (`docs/operations.md` lists it as a gap). Set it up on `floortest-audio-eu` after the move.
+- Backups in their own bucket with their own key (today they sit in the audio bucket under `backups/`); streamed backups once the database grows.
+- Load test on Neon's pooled connection: many uploads, page loads and the nightly jobs at once.
+- Real-device upload test: large WAVs on slow and interrupted mobile data, expired upload links, seeking, downloads.
+- Email check in Gmail, Outlook and Apple Mail (receipt, alerts, reset, unsubscribe), and bounces not retried.
+- Check: cover replacement and a discarded failed upload go through the deletion queue (on 1 Oct they deleted directly).
+- Owner: delete the stale 27 Sep CLI deployment in Vercel (`floortest-n6qu2kshh…`) if it's still listed.
+
+**Product backlog (after launch, not promised anywhere):**
+- Duplicate warning: the same file (by fingerprint) sent twice, then the same track re-exported.
+- Saved filters as a review session; a "reply after listening" reminder.
+- "Get your own link" line on the sender's receipt (producers who also DJ).
+- Sign-up: "What best describes you?" as a dropdown.
+- Paid add-ons for Free users (ideas parked in `docs/beta-launch-plan.md`, after Paddle).
+- Watermarked previews for sensitive promos; open-source key detection.
+- Revisit Cloudflare Workers hosting only at tens of thousands of users (trial findings in `docs/beta-launch-plan.md`).
+
 ## Done (recent)
 - 11 Oct: retired tables dropped (colleague sharing, Review Together guests); recorded in `docs/retired.md`.
 - 11 Oct: the Admin role is shown as "A&R / Admin" everywhere people see it (same powers).
@@ -99,3 +120,11 @@ Decided: a colleague is a **seat on an account** (label, radio, crew), not someo
 - 9 Oct: edit the home page on the page itself (text, lists, image, drag/hide sections) from ops → Site content.
 - 9 Oct: rate-limit audit; sign-up no longer reveals accounts; platform email cap. Button system; consistent names; one set of download buttons; Prepare redesign; Send folds after 10 days; Floor day-mode redesign; Google sign-in + sign-up + safety; track artwork (Team), incl. folders; legal pages public for Google review.
 - 8 Oct: image optimiser, foreign-key indexes, ops roles, plan requests, discounts, yearly prices, collection delete.
+
+## Before 9 Oct
+This plan started on 9 Oct. Earlier work and decisions are in the archived lists (kept unchanged, history only):
+- `HANDOFF.md`: where things stood on 27 Sep, the sender-notification decision (2 Oct), the Codex reviews and audits of 1 Oct and Claude's fixes (backup before purge, the deletion queue, private receiver links, encrypted backups, alerts).
+- `CLAUDE_NEXT_WORK.md`: the 27 Sep queue: preview safety, copy and workflow rules, the ranked product additions, the admin specification and what not to build.
+- `CODEX_HANDOFF.md`: the 27 Sep compatibility and data-repair patch.
+- `docs/beta-launch-plan.md`: beta phases, pitch prep, the 6 Oct hosting decision and parked revenue ideas.
+- Day by day: `git log --before=2026-10-09`.
