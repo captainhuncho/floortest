@@ -19,7 +19,7 @@ Plan + tappable prototype: claude.ai/artifact/5BVVpA3Zn9AxH71ut9hGFr (private), 
 - ✅ 10 Oct: Share to FloorTest (iOS share extension → Send page with the file in the form), tried in the simulator from Files. Store listing draft: `mobile/store-listing.md`.
 - ✅ 10 Oct: Android app (`mobile/android`) running on the Pixel 9 emulator: desk, sign-in, dark bars, icon and splash, Back goes back a page, Share to FloorTest, background audio with a notification / lock-screen player (play/pause, next, previous).
 - ✅ 10 Oct: offline kept tracks on iPhone and Android (Prepare → Save for offline; offline screen plays them; wiped on sign-out / other account / 30 days).
-- Next (free): artwork on the Android notification player.
+- ✅ 11 Oct: artwork on the Android notification and lock-screen player (the crest on ink, `drawable-nodpi/now_playing_art.png`, drawn by `mobile/scripts/android-assets.mjs --art-only`).
 - ✅ 9 Oct: app polish: native pull-to-refresh, dark edges (no white flashes), back-swipe, own offline screen with Try again (auto-retries when back online), no long-press pop-ups or stray text selection outside fields (app only), reopening returns to where you were (within a day).
 - ✅ 9 Oct: background audio (plays with the screen locked), lock-screen next/previous + artwork, swipe-to-keep with live stamp and haptics.
 - ✅ 9 Oct: Capacitor iOS shell prototype (`mobile/`) running on the iPhone simulator: opens on the desk/sign-in, safe-area fixed, FloorTest icon and splash.

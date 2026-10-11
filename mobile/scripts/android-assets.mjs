@@ -1,5 +1,6 @@
-// Draws the Android app icon (adaptive + legacy) and splash from public/brand/crest.svg: the crest on FloorTest ink.
-// Run from the repo root (uses the website's sharp): node mobile/scripts/android-assets.mjs
+// Draws the Android app icon (adaptive + legacy), splash and now-playing artwork from public/brand/crest.svg: the crest on
+// FloorTest ink. Run from the repo root (uses the website's sharp): node mobile/scripts/android-assets.mjs
+// (add --art-only to redraw just the now-playing artwork).
 import sharp from "sharp";
 import fs from "node:fs";
 
@@ -18,6 +19,14 @@ async function onInk(size, crestSize, round = false) {
   return img.png().toBuffer();
 }
 
+const artOnly = process.argv.includes("--art-only");
+
+// Now-playing artwork: the notification and lock-screen player show it beside the track (a plain bitmap, which the
+// adaptive launcher icon isn't). One size; Android scales it.
+fs.mkdirSync(`${res}/drawable-nodpi`, { recursive: true });
+fs.writeFileSync(`${res}/drawable-nodpi/now_playing_art.png`, await onInk(512, 300));
+
+if (!artOnly) {
 for (const [d, k] of Object.entries(dens)) {
   const dir = `${res}/mipmap-${d}`;
   // Adaptive foreground: 108dp canvas, crest inside the 66dp safe zone (transparent; the background colour is ink).
@@ -41,4 +50,5 @@ for (const f of fs.readdirSync(res).filter((x) => x.startsWith("drawable"))) {
   const out = await sharp({ create: { width, height, channels: 4, background: ink } }).composite([{ input: mark, gravity: "center" }]).png().toBuffer();
   fs.writeFileSync(p, out);
 }
-console.log("android icons + splash written");
+}
+console.log(artOnly ? "now-playing artwork written" : "android icons, splash and now-playing artwork written");

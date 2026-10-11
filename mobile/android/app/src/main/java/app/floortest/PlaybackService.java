@@ -7,6 +7,8 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Build;
 import android.os.IBinder;
 import android.support.v4.media.MediaMetadataCompat;
@@ -23,6 +25,8 @@ public class PlaybackService extends Service {
     private static final String CHANNEL = "playback";
     private static final int ID = 7;
     private MediaSessionCompat session;
+    /** The FloorTest crest on ink, shown beside the track on the notification and lock screen. */
+    private Bitmap art;
 
     @Override
     public void onCreate() {
@@ -34,6 +38,7 @@ public class PlaybackService extends Service {
             ch.setShowBadge(false);
             nm.createNotificationChannel(ch);
         }
+        art = BitmapFactory.decodeResource(getResources(), R.drawable.now_playing_art);
         session = new MediaSessionCompat(this, "FloorTest");
         session.setCallback(new MediaSessionCompat.Callback() {
             @Override public void onPlay() { NowPlayingPlugin.send("play"); }
@@ -61,6 +66,7 @@ public class PlaybackService extends Service {
             .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artist)
             .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, "FloorTest")
             .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, in.getLongExtra("duration", 0))
+            .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, art)
             .build());
         session.setPlaybackState(new PlaybackStateCompat.Builder()
             .setActions(PlaybackStateCompat.ACTION_PLAY | PlaybackStateCompat.ACTION_PAUSE | PlaybackStateCompat.ACTION_PLAY_PAUSE
@@ -73,6 +79,7 @@ public class PlaybackService extends Service {
             .setSmallIcon(R.drawable.ic_stat_floortest)
             .setContentTitle(title)
             .setContentText(artist)
+            .setLargeIcon(art)
             .setContentIntent(PendingIntent.getActivity(this, 0, open, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT))
             .setDeleteIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_STOP))
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
