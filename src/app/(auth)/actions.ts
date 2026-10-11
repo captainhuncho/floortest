@@ -1,6 +1,6 @@
 "use server";
 
-import { acceptInvite, inviteBySecret } from "@/lib/account-members";
+import { acceptInvite, acceptInviteForEmail, inviteBySecret, inviteForEmail } from "@/lib/account-members";
 import { passwordStrength } from "@/lib/password-strength";
 import { KINDS } from "@/lib/db";
 
@@ -92,11 +92,12 @@ type NewAccount = { email: string; firstName: string; lastName: string; handle: 
  * Everything both sign-ups (password and Google) check and do once the person is known: the invite (unless sign-up
  * is open), terms, the link name, the rate limit, and creating the account with its Inbox. Returns the new id or an error.
  */
-async function createAccount(form: FormData, a: NewAccount): Promise<{ id: number } | { error: string }> {
+async function createAccount(form: FormData, a: NewAccount, opts: { googleEmail?: boolean } = {}): Promise<{ id: number } | { error: string }> {
   if (form.get("agree") !== "on") return { error: "Please confirm you're 18 or over and agree to the Terms to create an account." };
   const invite = await resolveInvite(String(form.get("ref") || form.get("invite") || ""), a.email);
   // A team invite sent to this email also opens sign-up during the beta (and proves the email: it came from the link).
-  const team = await teamInviteFor(form, a.email);
+  // With Google the email is already proven, so a live invite sent to it counts even without the invite link here.
+  const team = (await teamInviteFor(form, a.email)) ?? (opts.googleEmail ? await inviteForEmail(a.email) : undefined);
   if (team) a.verified = true;
   if (!(await switchOn("open_signup")) && !invite.valid && !team) return { error: "That invite code is not valid, has been used, or was sent to a different email. Use the email your invite went to." };
   if (!a.firstName || !a.lastName || !a.email || !a.handle) return { error: "Fill in your first name, surname, username and email." };
@@ -199,13 +200,13 @@ export async function signupWithGoogle(_: FormState, form: FormData): Promise<Fo
     name: fromForm(form, "name", 80) || handle,
     passwordHash: hashPassword(crypto.randomBytes(32).toString("base64url")),
     verified: true,
-  });
+  }, { googleEmail: true });
   if ("error" in r) return r;
   jar.delete(GOOGLE_SIGNUP_COOKIE);
   await q.run("UPDATE users SET google_sub = ?, google_linked_at = ? WHERE id = ?", who.sub, now(), r.id);
   await finishSignIn(r.id, "Google");
-  // Joining a team: accept the invite and open the team's desk straight away.
-  if (await joinTeamAfterSignup(form, r.id)) redirect("/dashboard/floor");
+  // Joining a team (from the invite link, or an invite sent to this Google email): accept it and open the team's desk.
+  if ((await joinTeamAfterSignup(form, r.id)) ?? (await joinTeamByEmail(r.id))) redirect("/dashboard/floor");
   await sendWelcome(r.id);
   redirect(await landing("/dashboard/floor?welcome=1"));
 }
@@ -423,6 +424,18 @@ async function joinTeamAfterSignup(form: FormData, userId: number) {
   const inv = await acceptInvite(secret, person).catch(() => null);
   if (!inv) return null;
   await audit(inv.account_id, "team_joined", person.email);
+  const jar = await cookies();
+  jar.set(DESK_COOKIE, String(inv.account_id), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 365 * 86_400 });
+  jar.delete(TEAM_INVITE_COOKIE);
+  return inv;
+}
+
+/** After a Google sign-up (email proven by Google): join the team whose invite went to that email, if any. */
+async function joinTeamByEmail(userId: number) {
+  const person = await q.get<{ id: number; email: string; email_verified_at: number | null }>("SELECT id, email, email_verified_at FROM users WHERE id = ?", userId);
+  const inv = person ? await acceptInviteForEmail(person).catch(() => undefined) : undefined;
+  if (!inv) return null;
+  await audit(inv.account_id, "team_joined", person!.email);
   const jar = await cookies();
   jar.set(DESK_COOKIE, String(inv.account_id), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 365 * 86_400 });
   jar.delete(TEAM_INVITE_COOKIE);

@@ -116,10 +116,34 @@ export async function inviteBySecret(secret: string) {
   );
 }
 
+/**
+ * The newest live invite sent to this exact email. Used only where the email is already proven (Google sign-up: Google
+ * confirmed it), so the person doesn't need the invite link in this browser.
+ */
+export async function inviteForEmail(email: string) {
+  if (!(await teamsOn())) return undefined;
+  return q.get<{ id: number; account_id: number; email: string; role: "admin" | "member"; account_name: string; account_handle: string }>(
+    `SELECT i.id, i.account_id, i.email, i.role, u.name AS account_name, u.handle AS account_handle FROM account_invites i JOIN users u ON u.id = i.account_id
+     WHERE i.email = ? AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > ? AND u.suspended_at IS NULL ORDER BY i.created_at DESC LIMIT 1`,
+    email.trim().toLowerCase(),
+    now(),
+  );
+}
+
+/** Accepts the live invite sent to this person's (proven) email, if there is one. */
+export async function acceptInviteForEmail(person: Pick<User, "id" | "email" | "email_verified_at">) {
+  const inv = await inviteForEmail(person.email);
+  return inv ? join(inv, person) : undefined;
+}
+
 /** Accepts an invite as this signed-in person. Their confirmed email must be the one invited. */
 export async function acceptInvite(secret: string, person: Pick<User, "id" | "email" | "email_verified_at">) {
   const inv = await inviteBySecret(secret);
   if (!inv) throw new TeamError("This invite isn't valid any more. Ask for a new one.");
+  return join(inv, person);
+}
+
+async function join<I extends { id: number; account_id: number; email: string; role: "admin" | "member" }>(inv: I, person: Pick<User, "id" | "email" | "email_verified_at">) {
   if (person.email.toLowerCase() !== inv.email) throw new TeamError(`This invite was sent to ${inv.email}. Log in with that email to accept it.`);
   if (!person.email_verified_at) throw new TeamError("Confirm your email first (check your inbox), then open the invite again.");
   if (person.id === inv.account_id) throw new TeamError("That's your own account.");

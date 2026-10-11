@@ -4,7 +4,7 @@ import { switchOn } from "@/lib/switches";
 import { env } from "@/lib/env";
 import { GOOGLE_SIGNUP_COOKIE, readIdentity } from "@/lib/google-auth";
 import { AuthForm } from "../../AuthForm";
-import { inviteBySecret } from "@/lib/account-members";
+import { inviteBySecret, inviteForEmail } from "@/lib/account-members";
 import { TEAM_INVITE_COOKIE } from "@/lib/next-path";
 import { signupWithGoogle } from "../../actions";
 
@@ -17,7 +17,8 @@ export default async function GoogleSignup() {
   // Joining a team from an invite sent to this Google email: no invite code needed.
   const teamSecret = (await cookies()).get(TEAM_INVITE_COOKIE)?.value ?? "";
   const inv = teamSecret ? await inviteBySecret(teamSecret) : undefined;
-  const team = inv && inv.email === who.email.toLowerCase() ? inv : undefined;
+  // Google has confirmed the email, so an invite sent to it counts even if they didn't come from the invite link.
+  const team = (inv && inv.email === who.email.toLowerCase() ? inv : undefined) ?? (await inviteForEmail(who.email));
   const inviteOnly = !(await switchOn("open_signup")) && !team;
   const host = env.appUrl.replace(/^https?:\/\//, "");
   return (
@@ -43,7 +44,7 @@ export default async function GoogleSignup() {
       <AuthForm
         captureSource
         action={signupWithGoogle}
-        hidden={team ? { team: teamSecret } : undefined}
+        hidden={inv && team?.id === inv.id ? { team: teamSecret } : undefined}
         submit="Create my link"
         fields={[
           ...(inviteOnly ? [{ name: "invite", label: "Invite code", placeholder: "From your invite", autoComplete: "off" }] : []),

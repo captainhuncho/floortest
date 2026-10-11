@@ -79,6 +79,17 @@ test("account teams: seats by plan, invites, roles, removal, reply approval and 
   assert.equal(decisionLocked({ role: "member" }, { decision: "kept", decided_role: "member" }), false);
   assert.equal(decisionLocked({ role: "admin" }, { decision: "kept", decided_role: "owner" }), false);
 
+  // Google sign-up: an invite found by its (Google-proven) email, accepted once.
+  const neo = await user("neo");
+  await T.inviteToTeam(desk("owner"), "neo@team.io", "member").catch(async () => {
+    await T.setExtraSeats(label, 5);
+    return T.inviteToTeam(desk("owner"), "neo@team.io", "member");
+  });
+  assert.equal((await T.inviteForEmail("NEO@team.io"))?.account_id, label);
+  assert.equal((await T.acceptInviteForEmail(await person(neo)))?.account_id, label);
+  assert.equal(await T.inviteForEmail("neo@team.io"), undefined, "used up");
+  assert.equal(await T.roleOn(label, neo), "member");
+
   // Leaving ends access at once.
   await T.removeFromTeam(desk("member", kofi), kofiRow.id);
   assert.equal(await T.roleOn(label, kofi), null);
