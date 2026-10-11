@@ -90,6 +90,33 @@ test("account teams: seats by plan, invites, roles, removal, reply approval and 
   assert.equal(await T.inviteForEmail("neo@team.io"), undefined, "used up");
   assert.equal(await T.roleOn(label, neo), "member");
 
+  // A downgrade pauses the latest joiners past the seats; the earliest keep theirs. Seats back, access back.
+  await T.setExtraSeats(label, 0);
+  await q.run("UPDATE users SET plan = 'free' WHERE id = ?", label);
+  assert.equal(await T.roleOn(label, ama), null, "Free has no seat for anyone but the owner");
+  await q.run("UPDATE users SET plan = 'pro' WHERE id = ?", label);
+  assert.equal(await T.roleOn(label, ama), "admin", "Pro: the earliest joiner keeps the one extra seat");
+  assert.equal(await T.roleOn(label, kofi), null, "the later joiner is paused");
+  assert.ok((await T.teamOf(label)).members.find((m) => m.user_id === kofi)?.paused);
+  assert.deepEqual((await T.teamsFor(kofi)).map((t) => t.id), [], "a paused seat isn't offered in the desk switcher");
+  await T.setExtraSeats(label, 5);
+  assert.equal(await T.roleOn(label, kofi), "member");
+
+  // Undo brings a call back unlocked: a member's Not for me, changed to Keep by an admin, then undone, is the member's to change again.
+  const R = await import("../src/lib/review");
+  const tid = (await q.get<{ id: number }>(
+    "INSERT INTO tracks (user_id, sender_id, title, artist, token, file_key, original_name, mime, size, created_at, decision, decided_role) VALUES (?,?,'U','A','tok-undo','k','u.wav','audio/wav',1,?,'passed','member') RETURNING id",
+    label, sender, now,
+  ))!.id;
+  const track = async () => (await q.get<import("../src/lib/db").Track>("SELECT * FROM tracks WHERE id = ?", tid))!;
+  const adminDesk = { ...(await q.get<import("../src/lib/db").User>("SELECT * FROM users WHERE id = ?", label))!, actor_id: ama, actor_name: "ama", role: "admin" as const };
+  const { prev, eventId } = await R.decide(adminDesk, await track(), "kept");
+  assert.equal(R.decisionLocked({ role: "member" }, await track()), true);
+  await R.undoDecision(adminDesk, await track(), prev, eventId);
+  const back = await track();
+  assert.equal(back.decision, "passed");
+  assert.equal(R.decisionLocked({ role: "member" }, back), false);
+
   // Leaving ends access at once.
   await T.removeFromTeam(desk("member", kofi), kofiRow.id);
   assert.equal(await T.roleOn(label, kofi), null);

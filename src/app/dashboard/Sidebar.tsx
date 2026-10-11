@@ -10,9 +10,11 @@ type Props = {
   needsReview: number;
   cap: { used: number; limit: number; full: boolean };
   pause: PauseState;
+  /** On a team desk, Members can't send as the account, so Send isn't offered. */
+  canSend?: boolean;
 };
 
-export function Sidebar({ needsReview, cap, pause }: Props) {
+export function Sidebar({ needsReview, cap, pause, canSend = true }: Props) {
   const path = usePathname();
 
   const nav = [
@@ -20,7 +22,7 @@ export function Sidebar({ needsReview, cap, pause }: Props) {
     { href: "/dashboard/review", label: "Review Queue", icon: "queue", active: path === "/dashboard/review", badge: needsReview, tab: true },
     { href: "/dashboard/collections", label: "Collections", icon: "collections", active: path.startsWith("/dashboard/collections"), tab: true },
     { href: "/dashboard/prepare", label: "Prepare for set", icon: "prepare", active: path === "/dashboard/prepare" || path.startsWith("/dashboard/prepare/"), tab: true },
-    { href: "/dashboard/send", label: "Send", icon: "send", active: path.startsWith("/dashboard/send") },
+    ...(canSend ? [{ href: "/dashboard/send", label: "Send", icon: "send", active: path.startsWith("/dashboard/send") }] : []),
     { href: "/dashboard/contacts", label: "Contacts", icon: "contacts", active: path.startsWith("/dashboard/contacts") },
     { href: "/dashboard/activity", label: "Activity", icon: "activity", active: path.startsWith("/dashboard/activity") },
   ];

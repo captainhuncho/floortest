@@ -45,6 +45,8 @@ test("a member switches to the team's desk, can't open owner settings, and their
   await page.getByText("Switch desk").click();
   await page.getByRole("button", { name: /Maxwell Adjavon/ }).click();
   await expect(page.getByText(/On Maxwell Adjavon.s desk as a member/)).toBeVisible();
+  // Members can't send as the account, so Send isn't offered.
+  await expect(page.getByRole("link", { name: /^Send$/i })).toHaveCount(0);
 
   // Owner-only and admin-only pages send members to the Team page instead.
   await page.goto("/dashboard/settings/security");

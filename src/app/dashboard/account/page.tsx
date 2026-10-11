@@ -155,7 +155,7 @@ export default async function Account() {
           <Section
             title="YOUR DESK"
             rows={[
-              <Row key="s" href="/dashboard/send" icon="↑" title="Send music" sub="Send music to another FloorTest user" />,
+              ...(user.role !== "member" ? [<Row key="s" href="/dashboard/send" icon="↑" title="Send music" sub="Send music to another FloorTest user" />] : []),
               <Row key="c" href="/dashboard/contacts" icon="☰" title="Contacts" sub="Everyone who sent you music" />,
               <Row key="a" href="/dashboard/activity" icon="◷" title="Activity" sub="Everything you did, newest first" />,
               <Row key="e" href="/dashboard/emails" icon="✉" title="Emails to senders" sub="Everything FloorTest told them" />,

@@ -36,7 +36,13 @@ export default async function Team({ searchParams }: { searchParams: Promise<{ d
         </p>
       )}
 
-      <Section id="people-h" title={`People (${team.used - team.invites.length} of ${team.seats} seats)`} sub={team.used >= team.seats ? "All seats are in use. Remove someone, or ask us for extra seats." : undefined}>
+      <Section id="people-h" title={`People (${team.used - team.invites.length} of ${team.seats} seats)`} sub={
+          team.members.some((m) => m.paused)
+            ? `More people than seats, so ${team.members.filter((m) => m.paused).length} ${team.members.filter((m) => m.paused).length === 1 ? "is" : "are"} paused (the latest to join). Remove someone or add seats.`
+            : team.used >= team.seats
+              ? "All seats are in use. Remove someone, or ask us for extra seats."
+              : undefined
+        }>
         <ul className="divide-y divide-line rounded-lg border border-line">
           <li className="flex items-center justify-between gap-3 px-4 py-3">
             <span className="min-w-0 truncate">
@@ -56,6 +62,9 @@ export default async function Team({ searchParams }: { searchParams: Promise<{ d
                   <span className="block truncate text-sm text-mute">
                     {m.email} · joined {fmtDay(m.created_at)}
                   </span>
+                  {m.paused && (
+                    <span className="mt-0.5 block text-[11px] text-danger">Paused: over your plan&apos;s seats. Remove someone or add seats to bring them back.</span>
+                  )}
                   {m.role === "admin" && !m.twofa && (
                     <span className="mt-0.5 block text-[11px] text-danger">Works as a member until they turn on two-step sign-in.</span>
                   )}

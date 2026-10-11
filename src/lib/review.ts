@@ -87,7 +87,8 @@ export async function undoDecision(user: User, t: Track, prev: { decision: unkno
   // The undo token round-trips through the browser: accept only values this app could have produced.
   const decision = isDecision(prev.decision) ? prev.decision : null;
   const decidedAt = decision && typeof prev.decided_at === "number" ? prev.decided_at : null;
-  await q.run("UPDATE tracks SET decision = ?, decided_at = ?, expiry_warned_at = NULL WHERE id = ?", decision, decidedAt, t.id);
+  // Who made the restored call isn't in the undo token, so it comes back unlocked rather than credited to the undoer.
+  await q.run("UPDATE tracks SET decision = ?, decided_at = ?, decided_by = NULL, decided_role = NULL, expiry_warned_at = NULL WHERE id = ?", decision, decidedAt, t.id);
   if (Number.isSafeInteger(eventId)) await q.run("DELETE FROM events WHERE id = ? AND user_id = ? AND track_id = ?", eventId, user.id, t.id);
 }
 

@@ -180,9 +180,12 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
         <CopyLinkBox link={link} />
       </section>
 
-      <div className="border-t border-line pt-5">
-        <SendMusicCard recent={recentSends} host={APP_URL.replace(/^https?:\/\//, "")} />
-      </div>
+      {/* On a team desk, Members can't send as the account. */}
+      {user.role !== "member" && (
+        <div className="border-t border-line pt-5">
+          <SendMusicCard recent={recentSends} host={APP_URL.replace(/^https?:\/\//, "")} />
+        </div>
+      )}
     </div>
   );
 }

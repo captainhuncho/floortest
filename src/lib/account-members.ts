@@ -48,24 +48,31 @@ export async function seatsUsed(accountId: number) {
 /** The person's role on an account they're signed in to, or null if they have none. */
 export async function roleOn(accountId: number, personId: number): Promise<TeamRole | null> {
   if (accountId === personId) return "owner";
-  const r = await q.get<{ role: "admin" | "member"; twofa: number | null }>(
-    "SELECT m.role, u.totp_enabled_at AS twofa FROM account_members m JOIN users u ON u.id = m.user_id WHERE m.account_id = ? AND m.user_id = ?",
+  const r = await q.get<{ role: "admin" | "member"; twofa: number | null; ahead: number }>(
+    `SELECT m.role, u.totp_enabled_at AS twofa,
+       (SELECT COUNT(*)::int FROM account_members o WHERE o.account_id = m.account_id AND (o.created_at < m.created_at OR (o.created_at = m.created_at AND o.id < m.id))) AS ahead
+     FROM account_members m JOIN users u ON u.id = m.user_id WHERE m.account_id = ? AND m.user_id = ?`,
     accountId,
     personId,
   );
   if (!r) return null;
+  // Over the seats (the plan was downgraded): the earliest joiners keep their seats, the rest are paused.
+  if (Number(r.ahead) >= (await seatsFor(accountId)) - 1) return null;
   // Admin powers need two-step sign-in on the admin's own login; without it they work as a member.
   return r.role === "admin" && r.twofa ? "admin" : "member";
 }
 
-/** The teams this person can switch to (not their own account). */
+/** The teams this person can switch to (not their own account, and not ones where their seat is paused). */
 export async function teamsFor(personId: number) {
   if (!(await teamsOn())) return [];
-  return q.all<{ id: number; name: string; handle: string; role: "admin" | "member" }>(
+  const rows = await q.all<{ id: number; name: string; handle: string; role: "admin" | "member" }>(
     `SELECT u.id, u.name, u.handle, m.role FROM account_members m JOIN users u ON u.id = m.account_id
      WHERE m.user_id = ? AND u.suspended_at IS NULL ORDER BY u.name`,
     personId,
   );
+  const out = [];
+  for (const r of rows) if (await roleOn(r.id, personId)) out.push(r);
+  return out;
 }
 
 /** Everyone on the account and the invites still waiting, for the Team page. */
@@ -73,15 +80,17 @@ export async function teamOf(accountId: number) {
   const owner = (await q.get<{ id: number; name: string; email: string }>("SELECT id, name, email FROM users WHERE id = ?", accountId))!;
   const members = await q.all<{ id: number; user_id: number; name: string; email: string; handle: string; role: "admin" | "member"; twofa: number | null; created_at: number }>(
     `SELECT m.id, m.user_id, u.name, u.email, u.handle, m.role, u.totp_enabled_at AS twofa, m.created_at FROM account_members m JOIN users u ON u.id = m.user_id
-     WHERE m.account_id = ? ORDER BY m.created_at`,
+     WHERE m.account_id = ? ORDER BY m.created_at, m.id`,
     accountId,
   );
+  const seats = await seatsFor(accountId);
   const invites = await q.all<{ id: number; email: string; role: "admin" | "member"; created_at: number; expires_at: number }>(
     "SELECT id, email, role, created_at, expires_at FROM account_invites WHERE account_id = ? AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > ? ORDER BY created_at",
     accountId,
     now(),
   );
-  return { owner, members, invites, seats: await seatsFor(accountId), used: await seatsUsed(accountId) };
+  // Members past the seats (after a downgrade) are paused: they keep their place but can't open the desk.
+  return { owner, members: members.map((m, i) => ({ ...m, paused: i >= seats - 1 })), invites, seats, used: await seatsUsed(accountId) };
 }
 
 /** Owners invite admins or members; admins invite members. Returns the invite secret (emailed, never stored). */
