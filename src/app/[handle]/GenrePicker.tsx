@@ -15,6 +15,8 @@ export function GenrePicker({
   invalid,
   id,
   issue,
+  dropdown = false,
+  name,
 }: {
   genres: string[];
   value: string;
@@ -25,11 +27,15 @@ export function GenrePicker({
   id?: string;
   /** The problem line to show under the field, when there is one. */
   issue?: React.ReactNode;
+  /** Always a dropdown (compact, e.g. one per track in a folder). */
+  dropdown?: boolean;
+  /** What the field is called for screen readers when its visible label is hidden (e.g. "Genre for Night Bloom"). */
+  name?: string;
 }) {
   const [other, setOther] = useState(false);
   const selected = other ? OTHER : value;
   // A receiver's own short list (6 at most) reads best as tappable choices; the long default list stays a dropdown.
-  if (genres.length <= 6)
+  if (genres.length <= 6 && !dropdown)
     return (
       <div className="space-y-2">
         <fieldset className="flex flex-col gap-1.5" aria-describedby={issue ? `${id}-issue` : undefined}>
@@ -76,7 +82,7 @@ export function GenrePicker({
   return (
     <div className="space-y-2">
       <label className="block space-y-1.5" htmlFor={id}>
-        <span className={labelClass}>Genre<Req /></span>
+        <span className={labelClass}>{name ?? "Genre"}<Req /></span>
         <select
           id={id}
           aria-describedby={issue ? `${id}-issue` : undefined}

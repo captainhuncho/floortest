@@ -11,8 +11,9 @@ import { CANCELLED, MAX_BYTES, sendArtwork, uploadTrack } from "../../[handle]/u
 import { TransferScreen } from "../../[handle]/TransferScreen";
 import { EmailCode, startEmailCheck } from "../../[handle]/EmailCode";
 import { SetsPermission } from "../../[handle]/SetsPermission";
+import { GenrePicker } from "../../[handle]/GenrePicker";
 
-type Item = { file: File; tags: Tags; state: "waiting" | "sending" | "sent" | "failed"; progress: number; error?: string };
+type Item = { file: File; tags: Tags; state: "waiting" | "sending" | "sent" | "failed"; progress: number; error?: string; genre?: string };
 type Kind = "ep" | "album";
 
 const audio = (f: File) => /\.(wav|mp3)$/i.test(f.name);
@@ -50,6 +51,7 @@ export function FolderSend({
   botCheckKey = null,
   trackArt = false,
   callout = null,
+  presetGenre = "",
 }: {
   /** The receiver's plan takes artwork: one optional cover for the whole release. */
   trackArt?: boolean;
@@ -63,6 +65,8 @@ export function FolderSend({
   botCheckKey?: string | null;
   /** The collection (callout) receiving right now, shown on the transfer screen. */
   callout?: string | null;
+  /** A genre the sender tapped in the receiver's brief; it starts as the folder's genre. */
+  presetGenre?: string;
 }) {
   const abort = useRef<AbortController | null>(null);
   const [startedAt, setStartedAt] = useState(0);
@@ -72,7 +76,11 @@ export function FolderSend({
   const [checking, setChecking] = useState(false);
   const [items, setItems] = useState<Item[]>([]);
   const [release, setRelease] = useState<{ title: string; artist: string; kind: Kind }>({ title: "", artist: "", kind: "ep" });
-  const [genre, setGenre] = useState("");
+  // A folder's genre: one for every track, or each track its own. The sender says which; the sender's own pick wins over a
+  // genre tapped in the brief.
+  const [chosenGenre, setGenre] = useState<string | null>(null);
+  const genre = chosenGenre ?? presetGenre;
+  const [genreMode, setGenreMode] = useState<"same" | "each">("same");
   const [message, setMessage] = useState("");
   const [artwork, setArtwork] = useState<File | null>(null);
   const artSent = useRef(false);
@@ -119,7 +127,14 @@ export function FolderSend({
     if (!release.title.trim()) return setError("Give the folder a name.");
     if (!release.artist.trim()) return setError("Add the artist.");
     if (!account && !who.instagram.trim() && !who.streaming.trim()) return setError("Add your Instagram or a streaming profile.");
-    if (!genre) return setError("Choose a genre.");
+    if (genreMode === "same" && !genre) return setError("Choose a genre for the folder, or say each track has its own.");
+    if (genreMode === "each") {
+      const missing = items.filter((it) => it.state !== "sent" && !it.genre?.trim());
+      if (missing.length)
+        return setError(
+          `Choose a genre for ${missing.length === 1 ? `“${missing[0].tags.title || missing[0].file.name}”` : `${missing.length} tracks: ${missing.map((it) => `“${it.tags.title || it.file.name}”`).join(", ")}`}.`,
+        );
+    }
     if (!mix) return setError("Choose a mix status.");
     if (!releaseStatus) return setError("Choose a release status.");
     if (!aiUse) return setError("Say whether you used AI to make these tracks.");
@@ -153,7 +168,7 @@ export function FolderSend({
           title: it.tags.title || it.file.name,
           artist: it.tags.artist || release.artist,
           message,
-          genre,
+          genre: genreMode === "each" ? it.genre!.trim() : genre,
           release_status: releaseStatus,
           mix_status: mix,
           ai_use: aiUse,
@@ -301,6 +316,20 @@ export function FolderSend({
                       </span>
                     ))}
                   </span>
+                  {genreMode === "each" && (
+                    <span className="mt-2 block max-w-xs">
+                      <GenrePicker
+                        id={`folder-genre-${i}`}
+                        genres={genres}
+                        value={it.genre ?? ""}
+                        onChange={(g) => update(i, { genre: g })}
+                        inputClass="input py-1.5 text-sm"
+                        labelClass="sr-only"
+                        dropdown
+                        name={`Genre for ${it.tags.title || it.file.name}`}
+                      />
+                    </span>
+                  )}
                   {it.error && <span className="block text-xs text-danger">{it.error}</span>}
                 </span>
                 {!running && it.state !== "sent" && (
@@ -342,15 +371,38 @@ export function FolderSend({
               </fieldset>
             </div>
           )}
-          <label className="block space-y-1.5">
-            <span className="label">Genre<Req /></span>
-            <select value={genre} onChange={(e) => setGenre(e.target.value)} disabled={running} required className="input">
-              <option value="">Choose…</option>
-              {genres.map((g) => (
-                <option key={g}>{g}</option>
+          <fieldset className="space-y-2.5" disabled={running}>
+            <legend className="label mb-1.5">
+              Genre<Req />
+            </legend>
+            <div role="group" aria-label="How the genre applies" className="inline-flex rounded-full border border-line bg-ink-2 p-1 text-sm">
+              {(
+                [
+                  ["same", "One genre for all tracks"],
+                  ["each", "Each track has its own"],
+                ] as const
+              ).map(([m, label]) => (
+                <button
+                  key={m}
+                  type="button"
+                  aria-pressed={genreMode === m}
+                  onClick={() => {
+                    // Switching to per-track starts each track on the folder's genre, so only the different ones need changing.
+                    if (m === "each" && genre) setItems((all) => all.map((it) => (it.genre ? it : { ...it, genre })));
+                    setGenreMode(m);
+                  }}
+                  className={`tap-tall rounded-full px-3.5 py-1.5 transition ${genreMode === m ? "bg-bone font-semibold text-ink" : "text-mute hover:text-bone"}`}
+                >
+                  {label}
+                </button>
               ))}
-            </select>
-          </label>
+            </div>
+            {genreMode === "same" ? (
+              <GenrePicker id="folder-genre" genres={genres} value={genre} onChange={setGenre} inputClass="input" labelClass="sr-only" />
+            ) : (
+              <p className="text-xs text-mute">Choose a genre on each track above.</p>
+            )}
+          </fieldset>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block space-y-1.5">
               <span className="label">Mix status<Req /></span>
