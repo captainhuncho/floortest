@@ -5,7 +5,7 @@ import { teamsOn } from "./account-members";
 /**
  * Review Together, folded into account teams: everyone on an account's team (the owner, admins and members, see
  * account-members.ts) comments on the desk's tracks and keeps one shared shortlist. Internal to the team; senders never
- * see it. The old per-collection guest list (collection_members, votes) is retired; its rows are kept, unread.
+ * see it. The old per-collection guest list and votes were retired and their tables dropped (docs/retired.md).
  */
 
 /** How many people besides the owner work this desk (team tools show only when there are some). */

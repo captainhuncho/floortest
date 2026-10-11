@@ -270,8 +270,8 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
         );
       const track = (await db.get<Track>(
         `INSERT INTO tracks (user_id, collection_id, sender_id, token, title, artist, message, release_status, mix_status, genre,
-                             file_key, original_name, mime, size, duration, bpm, peaks, created_at, share_ok, share_download, release_id, sets_ok, ai_use, track_no, musical_key, isrc, batch_id, share_terms)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING *`,
+                             file_key, original_name, mime, size, duration, bpm, peaks, created_at, share_ok, release_id, sets_ok, ai_use, track_no, musical_key, isrc, batch_id, share_terms)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING *`,
         fresh.id,
         collection?.id ?? null,
         sender.id,
@@ -291,7 +291,6 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
         analysis.peaks ? JSON.stringify(analysis.peaks) : null,
         now(),
         sharing && collection?.allow_sharing ? 1 : 0,
-        0, // share_download: the 1 Oct colleague model, retired; share links set downloads per person
         meta.release?.id ?? null,
         meta.setsOk ? 1 : 0,
         meta.aiUse || null, // owner uploads carry no sender AI declaration

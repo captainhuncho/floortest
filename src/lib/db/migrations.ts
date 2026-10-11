@@ -1448,4 +1448,22 @@ update plans set features = replace(features, ',"Shared collections: up to 10 te
 update plans set features = replace(features, '"Colleagues can download tracks you share",', '') where id = 'pro';
 `,
   },
+  {
+    // Drop the retired sharing and guest-review tables and columns (recorded in docs/retired.md): the 1 Oct per-track
+    // colleague sharing and the per-collection Review Together guests. Nothing reads or writes them since 11 Oct.
+    id: "0085_drop_retired",
+    sql: `
+drop table if exists share_access;
+drop table if exists track_shares;
+drop table if exists share_requests;
+drop table if exists track_votes;
+drop table if exists collection_members;
+alter table tracks drop constraint if exists tracks_flags;
+alter table tracks drop column if exists share_download;
+alter table tracks add constraint tracks_flags check (share_ok in (0, 1) and sets_ok in (0, 1)) not valid;
+alter table plans drop column if exists share_downloads;
+alter table collections drop column if exists team_can_decide;
+delete from feature_switches where feature = 'shared';
+`,
+  },
 ];

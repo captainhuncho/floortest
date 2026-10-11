@@ -39,7 +39,7 @@ Owner keeps control; sharing never makes music public or moves ownership. Behind
 - **Phases:** 1) ✅ Review Together (comments, shortlist, owner-allowed Keep / Not for me, no uploads; 11 Oct), ✅ owner uploads (11 Oct), ✅ hashed share codes (11 Oct) · 2) ✅ share links with their own IDs, verified recipients, request to join, expiry/reset/revoke, access notice (11 Oct; e2e `sharing.spec.ts`) · 3) ✅ "Shared with you" for account recipients, per-recipient activity, security notifications, single-recipient removal (11 Oct) · 4) Terms, Privacy, send-form line (lawyer), then switch on. Brief sent 11 Oct: `docs/legal/sharing-brief-2026-10-11.md` (also covers live Review Together). Our side ✅ (11 Oct): tracks record the sharing wording (`share_terms`), only those are shared; share-link records deleted on proposed periods; new Terms / Privacy / Cookies wording ready behind the switch (`src/lib/legal-sharing.ts`) and on the send form; Privacy links on the recipient page; senders can stop private sharing from the receipt. **At switch-on:** paste the lawyer's redlines into `legal-sharing.ts`, set its `updated` and `SHARING_TERMS_VERSION`, adjust `LINK_KEEP_DAYS`. The old per-track colleague sharing is retired (11 Oct), so the switch turns on only collection share links.
 
 ## Account teams (built 11 Oct · behind switch `teams`)
-Decided: a colleague is a **seat on an account** (label, radio, crew), not someone a track is shared with. Seats: Free 1, Pro 2, Team 5, extra seats as add-ons; seats get the plan's benefits only on that desk; Owner / Admin (override, two-step) / Member (review, notes, replies); the owner or an admin chooses whether members' replies need approval and by whom. Left: add-on seats self-serve once Paddle is live (today ops sets them); drop the retired Review Together guest tables (`collection_members`, `track_votes`) once you're sure; the app API works on your own desk only; lawyer: teams in the Terms/Privacy (who sees what, the owner's responsibility for their team).
+Decided: a colleague is a **seat on an account** (label, radio, crew), not someone a track is shared with. Seats: Free 1, Pro 2, Team 5, extra seats as add-ons; seats get the plan's benefits only on that desk; Owner / Admin (override, two-step) / Member (review, notes, replies); the owner or an admin chooses whether members' replies need approval and by whom. Left: add-on seats self-serve once Paddle is live (today ops sets them); the app API works on your own desk only; lawyer: teams in the Terms/Privacy (who sees what, the owner's responsibility for their team).
 
 ## Before public launch (in order)
 1. **Paid infrastructure:** Vercel Pro, Neon Launch, paid UptimeRobot, Resend upgrade; `ALERT_WEBHOOK_URL`. Delete old Supabase (from 13 Oct).
@@ -54,11 +54,11 @@ Decided: a colleague is a **seat on an account** (label, radio, crew), not someo
 
 ## After launch
 - Collection sharing switch-on (switch `sharing`, after the lawyer's wording; see Controlled collection sharing).
-- Drop the retired colleague-sharing tables (`track_shares`, `share_access`, `share_requests`) and columns (`tracks.share_download`, `plans.share_downloads`) once you're sure nothing is needed from them.
 - Stems as a paid feature.
 - Rekordbox how-to video, footer legal placement, mobile footer redesign.
 
 ## Done (recent)
+- 11 Oct: retired tables dropped (colleague sharing, Review Together guests); recorded in `docs/retired.md`.
 - 11 Oct: the Admin role is shown as "A&R / Admin" everywhere people see it (same powers).
 - 11 Oct: Review Together folded into account teams: comments and the shared shortlist for everyone on a team desk; per-collection guests, guest votes and the guests' Shared with you retired; adding your own tracks is owner/admin.
 - 11 Oct: account teams (behind switch `teams`): seats by plan + add-ons, invites, Owner/Admin/Member, desk switching, owner/admin override of members' calls, reply approval with a chosen approver, activity by person, ops seats controls.

@@ -17,7 +17,7 @@ const DAY = 24 * HOUR;
  * 10 minutes per server instance) so single-server installs don't depend on a scheduler.
  */
 /** How long records are kept before the nightly clean-up deletes them (days). */
-export const KEEP_DAYS = { outbox: 90, incidents: 90, events: 730, account_log: 365, admin_log: 730, share_access: 365 } as const;
+export const KEEP_DAYS = { outbox: 90, incidents: 90, events: 730, account_log: 365, admin_log: 730 } as const;
 
 const BATCH = 5000;
 
@@ -56,7 +56,6 @@ export async function cleanupRecords(t = now(), until = Date.now() + PURGE_BUDGE
     events: await deleteInBatches("events", "created_at < ?", [t - KEEP_DAYS.events * DAY], until),
     accountLog: await deleteInBatches("account_log", "created_at < ?", [t - KEEP_DAYS.account_log * DAY], until),
     adminLog: await deleteInBatches("admin_log", "created_at < ?", [t - KEEP_DAYS.admin_log * DAY], until),
-    shareAccess: await deleteInBatches("share_access", "created_at < ?", [t - KEEP_DAYS.share_access * DAY], until),
     shareLinks: await purgeLinkRecords(t),
   };
   return removed;

@@ -12,8 +12,6 @@ export type Plan = {
   limit: number;
   blurb: string;
   features: string[];
-  /** Colleagues can download tracks this plan's receivers share. */
-  shareDownloads: boolean;
   /** Senders can attach artwork to tracks they send this plan's receivers. */
   trackArt: boolean;
   /** Shown with a Recommended badge on plan cards. */
@@ -39,14 +37,14 @@ export const afterDiscount = (amount: number, pct: number) => Math.round(amount 
 /** Every account starts here, and it can't be retired or deleted. */
 export const FREE_PLAN = "free";
 
-type Row = { id: string; name: string; price_cents: number; yearly_price_cents: number; discount_pct: number; discount_label: string; discount_ends_at: number | null; track_limit: number; blurb: string; features: string; share_downloads: number; track_art: number; featured: number; position: number; retired_at: number | null; folder_bytes: number; seats: number };
+type Row = { id: string; name: string; price_cents: number; yearly_price_cents: number; discount_pct: number; discount_label: string; discount_ends_at: number | null; track_limit: number; blurb: string; features: string; track_art: number; featured: number; position: number; retired_at: number | null; folder_bytes: number; seats: number };
 const toPlan = (r: Row): Plan => {
   let features: string[] = [];
   try {
     const f = JSON.parse(r.features);
     if (Array.isArray(f)) features = f.map(String);
   } catch {}
-  return { id: r.id, name: r.name, price: r.price_cents / 100, yearly: (Number(r.yearly_price_cents) || 0) / 100, limit: r.track_limit, blurb: r.blurb, features, shareDownloads: !!r.share_downloads, trackArt: !!Number(r.track_art), featured: !!r.featured, position: r.position, retired: !!r.retired_at, folderBytes: Number(r.folder_bytes) || 0, seats: Number(r.seats) || 1, discount: { pct: Number(r.discount_pct) || 0, label: r.discount_label ?? "", endsAt: r.discount_ends_at == null ? null : Number(r.discount_ends_at) } };
+  return { id: r.id, name: r.name, price: r.price_cents / 100, yearly: (Number(r.yearly_price_cents) || 0) / 100, limit: r.track_limit, blurb: r.blurb, features, trackArt: !!Number(r.track_art), featured: !!r.featured, position: r.position, retired: !!r.retired_at, folderBytes: Number(r.folder_bytes) || 0, seats: Number(r.seats) || 1, discount: { pct: Number(r.discount_pct) || 0, label: r.discount_label ?? "", endsAt: r.discount_ends_at == null ? null : Number(r.discount_ends_at) } };
 };
 
 /** All plans, retired ones included, in display order. Read once per request. */
