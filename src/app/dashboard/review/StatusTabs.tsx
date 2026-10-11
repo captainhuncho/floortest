@@ -9,7 +9,7 @@ type Tab = { key: string; label: string; count: number; href: string };
 /**
  * Needs review · Kept · Not for me · All. The tapped tab lights up at once and the list fades while the new one
  * loads (the server answers in a moment, but the screen should react now); the page keeps its scroll position, and
- * hovering a tab starts loading it so it's often ready before the click.
+ * every tab is preloaded in the background so a switch is usually instant.
  */
 export function StatusTabs({ tabs, active }: { tabs: Tab[]; active: string }) {
   const router = useRouter();
@@ -37,6 +37,10 @@ export function StatusTabs({ tabs, active }: { tabs: Tab[]; active: string }) {
           <Link
             key={t.key}
             href={t.href}
+            // Load every tab's full page in the background as soon as the tabs are on screen (live site only), so a
+            // switch shows content that's already here. Each request crosses the ocean (edge near the user → London), so
+            // waiting for the tap costs ~0.5–1 s; phones have no hover to warm it. Decisions refresh this cache.
+            prefetch={true}
             scroll={false}
             aria-current={on ? "page" : undefined}
             onMouseEnter={() => router.prefetch(t.href)}
