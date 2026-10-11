@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
-import { inviteTeammate, saveReplyApproval, type TeamState } from "../../actions/account-team";
+import { useActionState, useTransition } from "react";
+import { changeTeamRole, inviteTeammate, saveReplyApproval, type TeamState } from "../../actions/account-team";
 
 export function InviteForm({ canInviteAdmins, full }: { canInviteAdmins: boolean; full: boolean }) {
   const [state, act, pending] = useActionState<TeamState, FormData>(inviteTeammate, null);
@@ -54,5 +54,25 @@ export function ApprovalForm({ on, approver, people }: { on: boolean; approver: 
         {state && <span className={state.error ? "text-danger" : "text-mute"}>{state.error ?? state.ok}</span>}
       </div>
     </form>
+  );
+}
+
+/** The owner's role picker for one person: saves as soon as it changes (an admin needs two-step sign-in to act as one). */
+export function RoleSelect({ memberId, name, role }: { memberId: number; name: string; role: "admin" | "member" }) {
+  const [pending, start] = useTransition();
+  return (
+    <select
+      aria-label={`Role for ${name}`}
+      defaultValue={role}
+      disabled={pending}
+      onChange={(e) => {
+        const next = e.currentTarget.value as "admin" | "member";
+        start(() => changeTeamRole(memberId, next));
+      }}
+      className="input h-9 w-auto py-0 pr-8 text-[12px]"
+    >
+      <option value="member">Member</option>
+      <option value="admin">Admin</option>
+    </select>
   );
 }

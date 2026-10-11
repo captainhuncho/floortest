@@ -2,10 +2,10 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { atLeast, canApprove, heldReplies, replyApproval, ROLE_LABEL, teamOf, teamsOn } from "@/lib/account-members";
 import { fmtDate, fmtDay } from "@/lib/format";
-import { answerHeldReply, cancelTeamInvite, changeTeamRole, removeTeammate } from "../../actions/account-team";
+import { answerHeldReply, cancelTeamInvite, removeTeammate } from "../../actions/account-team";
 import { ConfirmButton } from "../../ClientBits";
 import { PageTitle, Section } from "../Section";
-import { ApprovalForm, InviteForm } from "./TeamForms";
+import { ApprovalForm, InviteForm, RoleSelect } from "./TeamForms";
 
 export const metadata = { title: "Team — FloorTest" };
 
@@ -42,7 +42,7 @@ export default async function Team({ searchParams }: { searchParams: Promise<{ d
             <span className="min-w-0 truncate">
               <span className="font-medium">{team.owner.name}</span> <span className="text-sm text-mute">· {team.owner.email}</span>
             </span>
-            <span className="shrink-0 text-xs font-bold uppercase text-faint">{ROLE_LABEL.owner}</span>
+            <span className="shrink-0 rounded-full border border-lime/50 px-2.5 py-0.5 text-[11px] font-bold text-lime">{ROLE_LABEL.owner}</span>
           </li>
           {team.members.map((m) => {
             const self = m.user_id === user.actor_id;
@@ -55,24 +55,22 @@ export default async function Team({ searchParams }: { searchParams: Promise<{ d
                   </span>
                   <span className="block truncate text-sm text-mute">
                     {m.email} · joined {fmtDay(m.created_at)}
-                    {m.role === "admin" && !m.twofa && " · needs two-step sign-in to act as admin"}
                   </span>
+                  {m.role === "admin" && !m.twofa && (
+                    <span className="mt-0.5 block text-[11px] text-danger">Works as a member until they turn on two-step sign-in.</span>
+                  )}
                 </span>
-                <span className="flex shrink-0 items-center gap-3">
+                <span className="flex shrink-0 items-center gap-2">
                   {user.role === "owner" ? (
-                    <form action={changeTeamRole.bind(null, m.id, m.role === "admin" ? "member" : "admin")}>
-                      <button className="text-xs font-bold uppercase text-faint hover:text-bone" title="Change role">
-                        {ROLE_LABEL[m.role]} ⇄
-                      </button>
-                    </form>
+                    <RoleSelect memberId={m.id} name={m.name} role={m.role} />
                   ) : (
-                    <span className="text-xs font-bold uppercase text-faint">{ROLE_LABEL[m.role]}</span>
+                    <span className="rounded-full border border-line px-2.5 py-0.5 text-[11px] font-bold text-mute">{ROLE_LABEL[m.role]}</span>
                   )}
                   {canRemove && (
                     <ConfirmButton
                       action={removeTeammate.bind(null, m.id)}
                       message={self ? `Leave ${user.name}? You'll lose access to this desk now.` : `Remove ${m.name}? Their access to this desk ends now.`}
-                      className="text-xs font-bold text-mute hover:text-danger"
+                      className="btn-danger btn-sm h-9"
                     >
                       {self ? "Leave" : "Remove"}
                     </ConfirmButton>
@@ -88,7 +86,7 @@ export default async function Team({ searchParams }: { searchParams: Promise<{ d
               </span>
               {manage && (
                 <form action={cancelTeamInvite.bind(null, i.id)}>
-                  <button className="text-xs font-bold text-mute hover:text-danger">Cancel invite</button>
+                  <button className="btn-ghost btn-sm h-9">Cancel invite</button>
                 </form>
               )}
             </li>
