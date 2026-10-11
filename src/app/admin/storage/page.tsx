@@ -4,6 +4,9 @@ import { q } from "@/lib/db";
 import { allowances } from "@/lib/allowance";
 import { fmtBytes } from "@/lib/format";
 import { RETAIN_PASSED_DAYS, RETAIN_UNREVIEWED_DAYS } from "@/lib/plans";
+import { env } from "@/lib/env";
+import { AUDIT_BUCKETS, expectedFiles, lastChecks } from "@/lib/storage-audit";
+import { backupNow, checkStorage } from "../actions";
 
 const DAY = 86_400_000;
 /** Cloudflare R2 list price per GB-month. An estimate; the real bill is in Cloudflare. */
@@ -45,6 +48,8 @@ export default async function Storage() {
   const queue = await q.all<{ file_key: string; reason: string; attempts: number; last_error: string | null; created_at: number }>(
     "SELECT file_key, reason, attempts, last_error, created_at FROM storage_deletions ORDER BY attempts DESC, created_at LIMIT 50",
   );
+  const [expected, checks] = await Promise.all([expectedFiles(), lastChecks()]);
+  const kinds = Object.entries(expected.reduce<Record<string, number>>((m, f) => ((m[f.kind] = (m[f.kind] ?? 0) + 1), m), {}));
   return (
     <div className="space-y-8">
       <div>
@@ -65,6 +70,65 @@ export default async function Storage() {
           </div>
         ))}
       </div>
+      <section aria-labelledby="move-h" className="space-y-3 rounded-md border border-line p-4">
+        <h2 id="move-h" className="text-lg font-semibold">Storage move check</h2>
+        <p className="text-sm text-mute">
+          Before moving to another bucket: back up the database and keep the file list. After the copy: check the new bucket has every file at the
+          right size, and only then switch <code>S3_BUCKET</code>. Read-only; every check is in the admin log. The app uses{" "}
+          <span className="font-mono text-bone">{env.storage.s3.bucket ?? "local storage"}</span> now.
+        </p>
+        <p className="text-sm">
+          {expected.length} files expected: {kinds.map(([k, v]) => `${v} ${k}`).join(" · ")}
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <form action={backupNow}>
+            <button className="btn-ghost btn-sm">1. Back up the database now</button>
+          </form>
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- a file download */}
+          <a href="/api/admin/storage-manifest" className="btn-ghost btn-sm">
+            2. Download the file list (CSV)
+          </a>
+          <form action={checkStorage} className="flex items-center gap-2">
+            <label className="sr-only" htmlFor="check-bucket">
+              Bucket to check
+            </label>
+            <select id="check-bucket" name="bucket" defaultValue={AUDIT_BUCKETS.at(-1)} className="input w-auto text-sm">
+              {AUDIT_BUCKETS.map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
+            </select>
+            <button className="btn-lime btn-sm">3. Check this bucket</button>
+          </form>
+        </div>
+        {checks.length > 0 && (
+          <ul className="space-y-2 text-sm">
+            {checks.map((c) => (
+              <li key={c.bucket} className="rounded-md border border-line p-3">
+                <p>
+                  <span className="font-mono font-bold">{c.bucket}</span> · {new Date(c.at).toISOString().slice(0, 16).replace("T", " ")} UTC ·{" "}
+                  <span className={c.missing.length || c.wrongSize.length || !c.finished ? "text-danger" : "text-lime"}>
+                    {c.present} of {c.expected} present, {c.missing.length} missing, {c.wrongSize.length} wrong size{c.finished ? "" : ", not finished"}
+                  </span>
+                </p>
+                {(c.missing.length > 0 || c.wrongSize.length > 0) && (
+                  <ul className="mt-2 max-h-48 overflow-y-auto font-mono text-xs text-mute">
+                    {c.missing.map((m) => (
+                      <li key={m.key}>missing · {m.kind} · {m.key}</li>
+                    ))}
+                    {c.wrongSize.map((m) => (
+                      <li key={m.key}>
+                        wrong size · {m.kind} · {m.key} · want {m.want}, got {m.got}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
       <section aria-labelledby="allow-h" className="space-y-3">
         <h2 id="allow-h" className="text-lg font-semibold">Allowance</h2>
         <ul className="grid gap-3 sm:grid-cols-2">

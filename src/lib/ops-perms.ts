@@ -135,6 +135,8 @@ export const ACTION_NEEDS: Record<string, Need> = {
   resetTwoFactor: "super",
   setPlanFor: "super",
   setExtraSeatsFor: "super",
+  backupNow: "storage",
+  checkStorage: "storage",
   startViewAs: "super",
   adminChangeHandle: "super",
   adminChangeEmail: "super",

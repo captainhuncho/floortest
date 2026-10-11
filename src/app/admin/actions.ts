@@ -1,5 +1,7 @@
 "use server";
 
+import { runBackup } from "@/lib/backup";
+import { AUDIT_BUCKETS, checkBucket } from "@/lib/storage-audit";
 import { setExtraSeats } from "@/lib/account-members";
 import { reopenCallouts } from "@/lib/desk";
 import crypto from "node:crypto";
@@ -137,6 +139,31 @@ export async function setExtraSeatsFor(userId: number, form: FormData) {
   await setExtraSeats(u.id, n);
   await logAdmin(a.id, "set extra seats", `@${u.handle}`, String(n));
   await done(`@${u.handle} now has ${n} extra seat${n === 1 ? "" : "s"}`);
+  refresh();
+}
+
+/** Storage move: a fresh database backup now (its own file; the nightly backups are untouched; nothing is deleted). */
+export async function backupNow() {
+  const a = await requireAdminAction("storage");
+  try {
+    const r = await runBackup();
+    await logAdmin(a.id, "backed up the database", "", JSON.stringify(r));
+    await done("Database backed up.");
+  } catch (e) {
+    await logAdmin(a.id, "backup failed", "", e instanceof Error ? e.message : String(e));
+    return fail("The backup failed. Nothing was changed; see Incidents.");
+  }
+  refresh();
+}
+
+/** Storage move: confirm every file the database expects is in `bucket`, at the right size. Read-only; logged. */
+export async function checkStorage(form: FormData) {
+  const a = await requireAdminAction("storage");
+  const bucket = String(form.get("bucket") || "");
+  if (!AUDIT_BUCKETS.includes(bucket)) return fail("Choose a bucket from the list.");
+  const r = await checkBucket(bucket);
+  await logAdmin(a.id, "checked storage", bucket, `${r.present}/${r.expected} present, ${r.missing.length} missing, ${r.wrongSize.length} wrong size${r.finished ? "" : ", stopped early (time)"}`);
+  await done(r.missing.length || r.wrongSize.length ? `${bucket}: ${r.missing.length} missing, ${r.wrongSize.length} wrong size.` : r.finished ? `${bucket}: all ${r.expected} files present.` : `${bucket}: checked ${r.checked} of ${r.expected} before time ran out; run it again.`);
   refresh();
 }
 

@@ -26,7 +26,17 @@ Plan + tappable prototype: claude.ai/artifact/5BVVpA3Zn9AxH71ut9hGFr (private), 
 - Build (~4 weeks):  background player + lock screen, push, share-to-FloorTest, swipe review, tabs Floor · Queue · Collections · Prepare. Then test + store review (~2 weeks).
 
 ## In progress: audio bucket to Europe (started 11 Oct)
-Audio sits in `floortest-audio`, created in Eastern North America (ENAM), while the server, database and users are London/West Africa side; play start measured 0.9–1.5 s from Ghana. Steps: ✅ 1 `floortest-audio-eu` created (WEUR, Standard) · ✅ 2 CORS copied · ✅ 3 live token (R2 Account Token 2) already covers all buckets; preview tokens kept on the preview bucket only · ⬜ 4 R2 Data Migration (S3-compatible source: bucket `floortest-audio`, endpoint `https://<account>.r2.cloudflarestorage.com/floortest-audio`, S3 Access Key ID + Secret Access Key of a read token, not the token value) → destination `floortest-audio-eu` · ⬜ 5 Vercel `S3_BUCKET` = `floortest-audio-eu`, redeploy · ⬜ 6 run the migration again (skip existing) · ⬜ 7 verify live (play, upload, timing), update docs · ⬜ 8 owner deletes the old bucket after a week. Fallback if Data Migration won't connect: a one-off ops copy job using the app's own access.
+Audio sits in `floortest-audio`, created in Eastern North America (ENAM), while the server, database and users are London/West Africa side; play start measured 0.9–1.5 s from Ghana. Done: ✅ `floortest-audio-eu` created (WEUR, Standard) · ✅ CORS copied · ✅ the live token covers all buckets (preview tokens stay on the preview bucket) · ✅ ops **Storage move check** (Admin → Storage & costs): back up now, the file list, and a per-bucket check, all in the admin log.
+
+Runbook (each step is safe to stop after; nothing is deleted until the last one):
+1. Ops → Storage & costs → **1. Back up the database now**; then **2. Download the file list (CSV)** and keep it (the "before" record). Optional: Neon → branch/restore point.
+2. Ops → **3. Check this bucket** on `floortest-audio`: it should say all files present (the baseline).
+3. Cloudflare → R2 → Data Migration: source S3-compatible `floortest-audio` (endpoint `https://<account>.r2.cloudflarestorage.com`, the **S3 Access Key ID + Secret Access Key** of a read token, not the token value) → destination `floortest-audio-eu`. Wait for it to finish.
+4. Ops → check `floortest-audio-eu`: **0 missing, 0 wrong size.** If anything is missing, run the migration again (skip existing) and re-check. Don't go on until it's clean.
+5. Vercel → `S3_BUCKET` = `floortest-audio-eu` → redeploy. Play a track, upload a test track, check the timing.
+6. Run the migration once more (skip existing) for anything uploaded between steps 3 and 5, then check `floortest-audio-eu` again.
+7. **Rollback** at any point before step 8: set `S3_BUCKET` back to `floortest-audio` and redeploy (the old bucket is untouched).
+8. After a week with no problems: the owner deletes `floortest-audio` (permanent).
 
 ## Controlled collection sharing (decided 11 Oct · building)
 Owner keeps control; sharing never makes music public or moves ownership. Behind switch `sharing` until the lawyer approves the Terms.

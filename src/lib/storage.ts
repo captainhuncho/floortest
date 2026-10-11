@@ -147,6 +147,7 @@ export async function writeLocalUpload(key: string, body: ReadableStream<Uint8Ar
 /* ───────────── S3-compatible ───────────── */
 
 let s3Impl: Storage | undefined;
+let s3Client: import("@aws-sdk/client-s3").S3Client | undefined;
 
 async function s3(): Promise<Storage> {
   if (s3Impl) return s3Impl;
@@ -163,6 +164,7 @@ async function s3(): Promise<Storage> {
     requestChecksumCalculation: "WHEN_REQUIRED",
     responseChecksumValidation: "WHEN_REQUIRED",
   });
+  s3Client = client;
   const Bucket = c.bucket!;
   const asciiName = (s: string) => s.replace(/[^\x20-\x7e]/g, "_").replace(/"/g, "");
 
@@ -220,4 +222,21 @@ async function s3(): Promise<Storage> {
 
 export async function storage(): Promise<Storage> {
   return env.storage.driver === "s3" ? s3() : local;
+}
+
+/**
+ * Size of `key` in another bucket on the same storage account (null if it isn't there). For the storage move check in
+ * ops: confirms files arrived in the new bucket before the app is switched to it. Local storage has one folder, so the
+ * bucket name is ignored there.
+ */
+export async function headIn(bucket: string, key: string): Promise<{ size: number } | null> {
+  if (env.storage.driver !== "s3") return local.head(key);
+  await s3();
+  const { HeadObjectCommand } = await import("@aws-sdk/client-s3");
+  try {
+    const r = await s3Client!.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+    return { size: Number(r.ContentLength ?? 0) };
+  } catch {
+    return null;
+  }
 }
