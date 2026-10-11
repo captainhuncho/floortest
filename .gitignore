@@ -17,3 +17,6 @@ skills-lock.json
 .e2e/
 test-results/
 playwright-report/
+
+# Local screenshots (kept out of the repo)
+mobile/android-now-playing.png
