@@ -161,7 +161,13 @@ export async function checkStorage(form: FormData) {
   const a = await requireAdminAction("storage");
   const bucket = String(form.get("bucket") || "");
   if (!AUDIT_BUCKETS.includes(bucket)) return fail("Choose a bucket from the list.");
-  const r = await checkBucket(bucket);
+  let r;
+  try {
+    r = await checkBucket(bucket);
+  } catch (e) {
+    await logAdmin(a.id, "checked storage", bucket, `failed: ${(e as Error).message}`);
+    return fail(`${(e as Error).message}. Nothing was counted as missing; check the app's storage key can read this bucket.`);
+  }
   await logAdmin(a.id, "checked storage", bucket, `${r.present}/${r.expected} present, ${r.missing.length} missing, ${r.wrongSize.length} wrong size${r.finished ? "" : ", stopped early (time)"}`);
   await done(r.missing.length || r.wrongSize.length ? `${bucket}: ${r.missing.length} missing, ${r.wrongSize.length} wrong size.` : r.finished ? `${bucket}: all ${r.expected} files present.` : `${bucket}: checked ${r.checked} of ${r.expected} before time ran out; run it again.`);
   refresh();

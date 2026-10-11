@@ -236,7 +236,9 @@ export async function headIn(bucket: string, key: string): Promise<{ size: numbe
   try {
     const r = await s3Client!.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
     return { size: Number(r.ContentLength ?? 0) };
-  } catch {
-    return null;
+  } catch (e) {
+    // Only "not found" means missing; anything else (no access, wrong bucket, network) must not read as missing.
+    if ((e as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode === 404) return null;
+    throw new Error(`Couldn't read ${bucket}: ${(e as Error).name || "error"}`);
   }
 }
