@@ -53,7 +53,7 @@ This replaces the "Sharing with colleagues" model in the 7 October brief (questi
 | Ending access | The receiver can remove one person, reset the link (new address; everyone using the old one is signed out) or revoke it, all with immediate effect. Suspension or deletion of a FloorTest account, or signing out, also ends that account's access. |
 | Which tracks | Only tracks the sender sent while the collection allowed sharing (shown to the sender before sending). See S3 for tracks sent before the new wording. |
 | What the receiver sees | For each person: whether they've opened it, number of visits, how many tracks they played, downloads, and when they were last seen. The receiver is also told about each first visit, each download, and warnings (a link getting many requests, or 10+ unknown addresses asking for codes in an hour). |
-| What the sender sees | Today: nothing about share-link activity (see S9). |
+| What the sender sees | Today: nothing about share-link activity (see S9). They can stop private sharing of their track from their receipt at any time. |
 
 ## 2.2 What changed from the 1 October model
 
@@ -75,7 +75,7 @@ We'll fix these before switching sharing on. They're listed so your wording matc
 2. **No automatic deletion yet for share-link records** (codes, visits, activity, requests). We'll build it once you set the periods (S11).
 3. **The Terms, Privacy Policy, Cookie Policy and send form still describe the 1 October model.** They'll be replaced with the wording in section 4 once approved.
 4. **The recipient's page has no privacy link.** We'll add one under the access notice.
-5. **Senders can't yet withdraw sharing for a track.** We can add it if you advise it (S12).
+5. **Senders can now stop sharing a track** from their receipt (built 11 Oct; see S12 for wording).
 
 # 4. Draft wording for you to redline
 
@@ -87,7 +87,7 @@ We'll fix these before switching sharing on. They're listed so your wording matc
 
 **For senders, replacing the colleague paragraph:**
 
-> **Private sharing.** If the receiver's collection allows private sharing when you send, the receiver may let people they choose hear your track through a private FloorTest link. These can be people they add by email address, by company email domain or by FloorTest username, and people who ask and are approved. Each person must confirm their email address and accept FloorTest's rules before listening. The receiver decides whether each person can only listen or can also download the original file, and for how long (up to 90 days, or until the receiver ends it). Private sharing never makes your track public. Nobody given access may release, sell, distribute, upload or publish it without a signed agreement with you. The receiver can end anyone's access at any time. Tracks you sent before [date] are only shared this way if you agree to it for that track.
+> **Private sharing.** If the receiver's collection allows private sharing when you send, the receiver may let people they choose hear your track through a private FloorTest link. These can be people they add by email address, by company email domain or by FloorTest username, and people who ask and are approved. Each person must confirm their email address and accept FloorTest's rules before listening. The receiver decides whether each person can only listen or can also download the original file, and for how long (up to 90 days, or until the receiver ends it). Private sharing never makes your track public. Nobody given access may release, sell, distribute, upload or publish it without a signed agreement with you. The receiver can end anyone's access at any time. Tracks you sent before [date] are never shared this way.
 
 **For senders, about teams:**
 
@@ -156,7 +156,7 @@ Proposed (adds what the owner can see, and a link):
 
 **S2. Sender consent.** Is one line above Send (4.1), backed by the Terms, with no tick box, enough consent for named third parties to hear an unreleased track, and possibly download the original? Or should downloads need the sender's own choice when sending (e.g. "people they share with may: listen only / listen and download")?
 
-**S3. Tracks sent before the new wording.** Those senders agreed to the 1 October model, which they were told was account holders only, 7 days, with download fixed by plan. We propose those tracks are **not** shared by the new links unless the sender agrees for that track. Please confirm.
+**S3. Tracks sent before the new wording.** Those senders agreed to the 1 October model, which they were told was account holders only, 7 days, with download fixed by plan. We've built it so those tracks are **never** shared by the new links (the old per-track "ask the artist" flow was retired on 11 Oct). Please confirm, or tell us if a per-track consent route is worth rebuilding.
 
 **S4. Binding people who aren't account holders.** Recipients accept the access notice: a tick box, recorded with version, email and time. Is that a binding agreement, and with whom? Can the sender enforce it directly as a third-party beneficiary (e.g. under the UK Contracts (Rights of Third Parties) Act 1999), or only FloorTest or the receiver? How does this work under Ghana law?
 

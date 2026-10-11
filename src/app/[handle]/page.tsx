@@ -12,7 +12,7 @@ import { forwardedHandle } from "@/lib/accounts";
 import { activeCollection, capacity, isClosed, isPaused, pausedMessage, userByHandleForView } from "@/lib/desk";
 import { fmtDay } from "@/lib/format";
 import { genresFor, RETAIN_UNREVIEWED_DAYS } from "@/lib/plans";
-import { folderLimit, shareDownloadEnabled, trackArtEnabled } from "@/lib/plan-store";
+import { folderLimit, trackArtEnabled } from "@/lib/plan-store";
 import { switchOn } from "@/lib/switches";
 import { botCheckKey } from "@/lib/turnstile";
 import { ReopenAlert } from "./ReopenAlert";
@@ -52,7 +52,7 @@ export default async function ReceiverPage({ params }: Props) {
   const genres = genresFor(collection).list;
   const paused = isPaused(receiver);
   const note = paused ? receiver.pause_message : "";
-  const [team, folderBytes, botKey, sharingDownloads, trackArt] = await Promise.all([listeners(collection), folderLimit(receiver.plan), botCheckKey(), shareDownloadEnabled(receiver.plan), trackArtEnabled(receiver.plan)]);
+  const [team, folderBytes, botKey, trackArt] = await Promise.all([listeners(collection), folderLimit(receiver.plan), botCheckKey(), trackArtEnabled(receiver.plan)]);
   const closedReason = paused
     ? pausedMessage(receiver)
     : closed
@@ -150,7 +150,7 @@ export default async function ReceiverPage({ params }: Props) {
             <ReopenAlert handle={receiver.handle} receiverName={receiver.name} botCheckKey={botKey} />
           </div>
         ) : (
-          <SendModes folderBytes={folderBytes} botCheckKey={botKey} handle={receiver.handle} receiverName={receiver.name} callout={collection && !closedReason ? collection.name : null} genres={genres} allowSharing={sharing && !!collection?.allow_sharing} sharingDownloads={sharingDownloads} trackArt={trackArt} />
+          <SendModes folderBytes={folderBytes} botCheckKey={botKey} handle={receiver.handle} receiverName={receiver.name} callout={collection && !closedReason ? collection.name : null} genres={genres} allowSharing={sharing && !!collection?.allow_sharing} trackArt={trackArt} />
         )}
       </div>
       <ul className="group-has-[[data-picked]]/page:hidden flex flex-col gap-2.5" aria-label="How your file is handled">

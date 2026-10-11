@@ -28,7 +28,6 @@ export function SubmitForm({
   genres,
   account,
   allowSharing = false,
-  sharingDownloads = false,
   botCheckKey = null,
   callout = null,
   trackArt = false,
@@ -42,8 +41,6 @@ export function SubmitForm({
   account?: { name: string; email: string };
   /** The collection lets the receiver share tracks privately with people they name (collection share links). */
   allowSharing?: boolean;
-  /** The receiver is on a paid plan now, so colleagues can download this track (fixed at send time). */
-  sharingDownloads?: boolean;
   /** Turnstile site key for anonymous senders when the bot check is on. */
   botCheckKey?: string | null;
   /** The collection (callout) receiving right now, shown while uploading. */

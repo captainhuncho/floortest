@@ -11,7 +11,6 @@ import { clearDecision as clearTrackDecision, decide, deleteTrack as removeTrack
 import { isDecision, logEvent, now, q, type Decision } from "@/lib/db";
 import { audit, trackLabel } from "@/lib/audit";
 import { requestStems } from "@/lib/stems";
-import { createShare, requestShareConsent, revokeShares } from "@/lib/share";
 import { parseCues } from "@/lib/cues";
 import { done, ownCollection } from "./common";
 
@@ -161,37 +160,6 @@ export async function askForStems(trackId: number) {
   if (!t) return;
   await requestStems(u, t);
   await audit(u.id, "stems_requested", trackLabel(t), t.id);
-  done();
-}
-
-/** A private listen-only link for a colleague, for tracks sent while sharing was allowed. */
-export async function shareTrack(trackId: number): Promise<{ url: string; expires: number } | null> {
-  const u = await requireUser();
-  const t = await ownedTrack(u.id, trackId);
-  if (!t) return null;
-  const s = await createShare(u, t);
-  if (!s) return null;
-  await audit(u.id, "shared", trackLabel(t), t.id);
-  done();
-  return { url: `${APP_URL}/share/${s.token}`, expires: s.expires_at };
-}
-
-/** Ask the artist to allow sharing this track with a non-commercial partner (playing and promotion only). */
-export async function askToShare(trackId: number, note: string) {
-  const u = await requireUser();
-  const t = await ownedTrack(u.id, trackId);
-  if (!t) return false;
-  const r = await requestShareConsent(u, t, String(note ?? ""));
-  if (r) await audit(u.id, "share_requested", trackLabel(t), t.id);
-  done();
-  return !!r;
-}
-
-export async function stopSharing(trackId: number) {
-  const u = await requireUser();
-  const t = await ownedTrack(u.id, trackId);
-  if (!t) return;
-  await revokeShares(u, t);
   done();
 }
 

@@ -4,7 +4,6 @@ import { cleanupRecords, purgeExpired } from "@/lib/retention";
 import { cronAuthorized, recordRun } from "@/lib/cron";
 import { warnExpiring } from "@/lib/notify";
 import { runBackup } from "@/lib/backup";
-import { finalizeAllDueConsents } from "@/lib/share";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -29,8 +28,7 @@ export async function GET(req: Request) {
     }
     const warned = await warnExpiring();
     const purged = await purgeExpired({ force: true });
-    const consents = await finalizeAllDueConsents();
-    const result = { ...records, ...purged, ...warned, consents, backup };
+    const result = { ...records, ...purged, ...warned, backup };
     await recordRun("purge", started, true, result);
     return NextResponse.json(result);
   } catch (e) {

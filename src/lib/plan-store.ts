@@ -72,15 +72,10 @@ export async function offeredPlan(id: string) {
 export const planGrid = (n: number) => (n >= 4 ? "md:grid-cols-2 lg:grid-cols-4" : n === 2 ? "md:grid-cols-2" : n === 1 ? "" : "md:grid-cols-3");
 
 /**
- * Inside a transaction, plan details must be read on the transaction's own connection (`db`): reading through the
- * shared pool would wait for a second connection while the first is held, and with a small pool that can freeze.
+ * Whether senders can attach artwork to tracks for receivers on `plan`. Inside a transaction, plan details must be
+ * read on the transaction's own connection (`db`): reading through the shared pool would wait for a second connection
+ * while the first is held, and with a small pool that can freeze.
  */
-export async function shareDownloadEnabled(plan: string, db: Queryable = q) {
-  const r = await db.get<{ s: number }>("SELECT share_downloads AS s FROM plans WHERE id = ?", plan);
-  return !!r?.s;
-}
-
-/** Whether senders can attach artwork to tracks for receivers on `plan`. */
 export async function trackArtEnabled(plan: string, db: Queryable = q) {
   const r = await db.get<{ a: number }>("SELECT track_art AS a FROM plans WHERE id = ?", plan);
   return !!Number(r?.a);
@@ -92,7 +87,7 @@ export async function planLimit(plan: string, db: Queryable = q) {
   return r?.n ?? 0;
 }
 
-/** A receiver's folder limit, read on `db` (see shareDownloadEnabled); 0 when their plan doesn't accept folders. */
+/** A receiver's folder limit, read on `db` (see the note above trackArtEnabled); 0 when their plan doesn't accept folders. */
 export async function folderLimit(plan: string, db: Queryable = q) {
   const r = await db.get<{ b: number }>("SELECT folder_bytes AS b FROM plans WHERE id = ?", plan);
   return Number(r?.b) || 0;

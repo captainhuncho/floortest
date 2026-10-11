@@ -19,11 +19,10 @@ export async function deskPulse(userId: number) {
   return r ? `${r.e}.${r.v}.${r.s}.${r.a}` : "0";
 }
 
-/** What a sender's private receipt shows: the track's steps and any sharing request. */
+/** What a sender's private receipt shows: the track's steps. */
 export async function receiptPulse(token: string) {
   const r = await q.get<{ p: string }>(
-    `SELECT CONCAT_WS('.', t.played_at, t.downloaded_at, t.replied_at, t.played_out_at, t.deleted_at,
-       (SELECT MAX(COALESCE(sr.decided_at, sr.created_at)) FROM share_requests sr WHERE sr.track_id = t.id)) AS p
+    `SELECT CONCAT_WS('.', t.played_at, t.downloaded_at, t.replied_at, t.played_out_at, t.deleted_at, t.share_ok) AS p
      FROM tracks t WHERE t.token = ?`,
     token,
   );

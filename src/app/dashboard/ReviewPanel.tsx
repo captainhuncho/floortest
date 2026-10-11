@@ -15,8 +15,6 @@ import { PlayedOut } from "./PlayedOut";
 import { StemsBox } from "./StemsBox";
 import { PrepBox } from "./PrepBox";
 import { parseCues } from "@/lib/cues";
-import { ShareBox } from "./ShareBox";
-import { activeShare, canShare, finalizeConsent, shareAudience } from "@/lib/share";
 import { APP_URL } from "@/lib/mail";
 import { DetailPlayer } from "./DetailPlayer";
 import { DesktopOnly, MobileOnly } from "./DesktopOnly";
@@ -43,18 +41,9 @@ export async function ReviewPanel({
 }) {
   const receiverPlan = (await q.get<{ plan: string }>("SELECT plan FROM users WHERE id = ?", t.user_id))?.plan ?? "free";
   const stemsOn = await featureOn("stems", { id: t.user_id, plan: receiverPlan });
-  if (!t.share_ok) {
-    await finalizeConsent(t.id);
-    const fresh = await q.get<{ s: number; d: number }>("SELECT share_ok AS s, share_download AS d FROM tracks WHERE id = ?", t.id);
-    t.share_ok = fresh?.s ?? 0;
-    t.share_download = fresh?.d ?? 0;
-  }
-  const shareable = await canShare(t);
   // Independent lookups run together, so the next track opens quicker.
-  const [votes, share, audience, events, senderAccount, release, stats, artFrom, team, comments, shortlist] = await Promise.all([
+  const [votes, events, senderAccount, release, stats, artFrom, team, comments, shortlist] = await Promise.all([
     votesFor(t.id),
-    shareable ? activeShare(t.id) : Promise.resolve(undefined),
-    shareable ? shareAudience(t.id) : Promise.resolve([]),
     q.all<EventRow & { track_title: string | null }>(
       `SELECT e.*, t.title AS track_title FROM events e LEFT JOIN tracks t ON t.id = e.track_id WHERE e.sender_id = ? ORDER BY e.created_at DESC LIMIT 3`,
       sender.id,
@@ -253,20 +242,6 @@ export async function ReviewPanel({
 
       {team > 0 && <ReviewTogether trackId={t.id} meId={t.user_id} comments={comments} shortlistedBy={shortlist?.name ?? null} />}
 
-      {shareable && (
-        <div className="mt-4">
-          <ShareBox
-            trackId={t.id}
-            canDownload={!!t.share_download}
-            audience={audience}
-            active={
-              share
-                ? { url: null, expires: new Date(share.expires_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }), plays: share.plays }
-                : null
-            }
-          />
-        </div>
-      )}
 
       {stemsOn && (
         <div className="mt-4">

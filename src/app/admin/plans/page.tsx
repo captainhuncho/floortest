@@ -135,13 +135,6 @@ export default async function Plans() {
               <fieldset className="space-y-3">
                 <legend className={legend}>Access</legend>
                 <label className="flex items-start gap-3 rounded-md border border-line px-3 py-2.5 text-sm">
-                  <input type="checkbox" name="share_downloads" defaultChecked={p.shareDownloads} className="mt-0.5 size-4 accent-lime" />
-                  <span>
-                    <span className="font-medium">Colleagues can download shared tracks</span>
-                    <span className="block text-xs text-mute">When this plan&apos;s receivers share a collection, colleagues get the download button.</span>
-                  </span>
-                </label>
-                <label className="flex items-start gap-3 rounded-md border border-line px-3 py-2.5 text-sm">
                   <input type="checkbox" name="track_art" defaultChecked={p.trackArt} className="mt-0.5 size-4 accent-lime" />
                   <span>
                     <span className="font-medium">Track artwork</span>

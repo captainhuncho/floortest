@@ -9,7 +9,7 @@ import { logEvent, now, q, USER_COLUMNS, type Collection, type Queryable, type S
 import { noLinks, APP_URL, sendMailLater } from "./mail";
 import { alertIfFull, notifyNewSubmission } from "./notify";
 import { ACCEPTED_EXT, MAX_BATCH_TRACKS, MAX_RELEASE_TRACKS, MAX_UPLOAD_BYTES, RATE_PER_EMAIL_PER_DAY, RATE_PER_IP_PER_HOUR } from "./plans";
-import { folderLimit, shareDownloadEnabled } from "./plan-store";
+import { folderLimit } from "./plan-store";
 import { allow } from "./ratelimit";
 import { sealUpload, storage } from "./storage";
 import { validateAudio } from "./validate";
@@ -291,7 +291,7 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
         analysis.peaks ? JSON.stringify(analysis.peaks) : null,
         now(),
         sharing && collection?.allow_sharing ? 1 : 0,
-        sharing && collection?.allow_sharing && (await shareDownloadEnabled(fresh.plan, db)) ? 1 : 0,
+        0, // share_download: the 1 Oct colleague model, retired; share links set downloads per person
         meta.release?.id ?? null,
         meta.setsOk ? 1 : 0,
         meta.aiUse || null, // owner uploads carry no sender AI declaration

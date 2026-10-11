@@ -31,7 +31,7 @@ Nothing about FloorTest is public before launch (legal pages too); the gate show
               ├─ same email, not yet pinned ──► /login/google (FloorTest password) ──► pinned ──► Floor
               ├─ unconfirmed account / different Google account / not Gmail-Workspace ──► /login?google=<reason>
               └─ no account ──► /signup/google
-A share link (/s/…) remembers itself and is where sign-in lands.
+A collection shared with your account (/c/a.<n>) remembers itself and is where sign-in lands.
 ```
 
 ## Receiver: daily loop

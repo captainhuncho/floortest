@@ -8,8 +8,8 @@ import { now, q, type Queryable } from "./db";
  */
 export const SWITCHES = {
   sharing: {
-    label: "Sharing with colleagues",
-    description: "Receivers share a track with colleagues who have FloorTest accounts, and ask artists for consent. Held until after the beta and the lawyer's wording.",
+    label: "Collection share links",
+    description: "Receivers share collections privately with people they name (verified by email), and the Terms, Privacy and Cookie pages show the private-sharing wording. Held until the lawyer approves that wording.",
     initial: false,
   },
   bot_check: {

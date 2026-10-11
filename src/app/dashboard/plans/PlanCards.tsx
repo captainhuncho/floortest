@@ -43,7 +43,6 @@ export function PlanCards({
     const live = [
       p.folderBytes > 0 && `Send folders (EP or album) up to ${fmtBytes(p.folderBytes)}`,
       p.trackArt && "Track artwork from senders",
-      sharing && p.shareDownloads && "Colleagues can download tracks you share",
     ].filter((f): f is string => !!f);
     const held = sharing ? /stems|as they launch/i : /colleague|share|teammate|stems|as they launch/i;
     const own = p.features.filter((f) => !/active tracks|^everything in/i.test(f) && !held.test(f) && !live.some((l) => l.toLowerCase() === f.toLowerCase()));

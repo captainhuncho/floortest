@@ -10,13 +10,9 @@ import { RETAIN_UNREVIEWED_DAYS, SIGNALS } from "@/lib/plans";
 import { featureOn } from "@/lib/features";
 import { MAX_STEMS, stemsFor } from "@/lib/stems";
 import { StemUpload } from "./StemUpload";
-import { ShareConsent } from "./ShareConsent";
-import { CancelConsent } from "./CancelConsent";
 import { StatusHeadline } from "./StatusHeadline";
 import { switchOn } from "@/lib/switches";
-import { finalizeConsent } from "@/lib/share";
 import { StopSharing } from "./StopSharing";
-import { consentFinalAt, latestShareRequest } from "@/lib/share";
 
 export const metadata = { title: "Your receipt — FloorTest", robots: { index: false } };
 
@@ -32,11 +28,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
        WHERE t.token = ?`, token));
   if (!t) notFound();
 
-  const shared = await q.get<{ at: number }>("SELECT MIN(created_at) AS at FROM track_shares WHERE track_id = ?", t.id);
-  // Opening the receipt after the cancel window is one of the places a consent becomes final.
   const sharing = await switchOn("sharing");
-  if (sharing && !t.deleted_at && !t.share_ok) await finalizeConsent(t.id);
-  const request = sharing && !t.deleted_at ? await latestShareRequest(t.id) : undefined;
   const stemsOn = !!t.stems_requested_at && !t.deleted_at && (await featureOn("stems", { id: t.user_id, plan: t.receiver_plan }));
   const stems = stemsOn ? await stemsFor(t.id) : [];
   const [c, editor] = await Promise.all([siteCopy("receipt"), siteEditor()]);
@@ -55,10 +47,9 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
     { key: "replied", label: "Replied", at: t.replied_at, meaningful: true, note: "The message is in your email.", means: SIGNALS.replied + "." },
     { key: "played_out", label: "Played out", at: t.played_out_at, meaningful: true, note: t.played_out_note || undefined, means: SIGNALS.playedOut + "." },
   ];
-  if (shared?.at) steps.push({ key: "shared", label: "Shared with a colleague", at: shared.at, meaningful: false, note: "Through a private link, to listen.", means: "" });
   if (t.deleted_at) steps.push({ key: "removed", label: "Removed", at: t.deleted_at, meaningful: false, note: "The file is no longer on the desk.", means: "" });
   const happened = steps.filter((s) => s.at).sort((a, b) => a.at! - b.at!);
-  const pending = steps.filter((s) => !s.at && s.key !== "shared" && s.key !== "removed" && !t.deleted_at);
+  const pending = steps.filter((s) => !s.at && s.key !== "removed" && !t.deleted_at);
 
   // The headline is the strongest thing that has happened.
   const when = (at: number) => `${fmtDate(at)} · ${ago(at)}`;
@@ -74,7 +65,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
             ? { status: "removed", strong: false, title: "The file has been removed.", detail: `Removed ${when(t.deleted_at)}. It was never listened to.` }
             : { status: "waiting", strong: false, title: `Waiting for ${who} to listen.`, detail: `Delivered ${when(t.created_at)}. We'll email you the moment it's listened to.` };
 
-  const todo = request?.status === "pending" || !t.verified_at || stemsOn;
+  const todo = !t.verified_at || stemsOn;
 
   return (
     <EditablePage editing={!!editor} page="receipt" label="Receipts" values={c}>
@@ -93,9 +84,6 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
       {todo && (
         <section aria-labelledby="todo-h" className="flex flex-col gap-3">
           <h2 id="todo-h" className="eyebrow">For you</h2>
-          {request?.status === "pending" && (
-            <ShareConsent token={token} requestId={request.id} receiver={who.split(/\s+/)[0]} note={request.note} downloads={!!request.downloads} />
-          )}
           {stemsOn && <StemUpload token={token} receiver={who.split(/\s+/)[0]} existing={stems.map((x) => x.name)} max={MAX_STEMS} />}
           {!t.verified_at && (
             <p className="text-[13px] text-mute">
@@ -106,7 +94,6 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
       )}
       {/* Collection share links: the artist can stop private sharing of this track at any time. */}
       {sharing && !t.deleted_at && !!t.share_ok && !!t.share_terms && t.share_terms !== "owner" && <StopSharing token={token} receiver={who.split(/\s+/)[0]} />}
-      {request?.status === "allowed" && <CancelConsent token={token} requestId={request.id} receiver={who.split(/\s+/)[0]} finalAt={consentFinalAt(request)} />}
 
       <section aria-labelledby="history-h" className="flex flex-col gap-3">
         <h2 id="history-h" className="eyebrow">What&apos;s happened</h2>
@@ -164,9 +151,6 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
           </p>
           <p>
             <span {...panel("private_note", "Keep {receiver} as it is: the page fills in the receiver's name.")}>{fill(c.private_note, { receiver: who })}</span>
-            {request && request.status !== "pending" && request.decided_at
-              ? ` You ${request.status === "allowed" ? "allowed" : request.status === "cancelled" ? "cancelled" : "declined"} sharing on ${fmtDay(request.decided_at)}.`
-              : ""}
           </p>
           <p>
             {t.deleted_at
