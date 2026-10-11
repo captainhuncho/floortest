@@ -107,6 +107,25 @@ async function main() {
   const coverKey = `covers/${uid}-demo.jpg`;
   putFile(coverKey, fs.readFileSync(new URL("./assets/demo-cover.jpg", import.meta.url)));
   await db.run("UPDATE users SET cover_key = ?, active_collection_id = ? WHERE id = ?", coverKey, villagers, uid);
+  // End-to-end tests only (SEED_SHARING=1, set by playwright.config.ts): sharing switched on and the current callout
+  // open to sharing, so collection share links can be tested. The live site's switch is separate and stays off.
+  if (process.env.SEED_SHARING === "1") {
+    await db.run("INSERT INTO switches (key, on_, updated_at) VALUES ('sharing', 1, ?) ON CONFLICT (key) DO UPDATE SET on_ = 1", now);
+    await db.run("UPDATE collections SET allow_sharing = 1 WHERE id = ?", villagers);
+    // Two listeners with confirmed emails (test-only accounts): one the owner adds, one who has to ask.
+    for (const [email, name, handle] of [["listener@floortest.test", "Lena Listener", "lena"], ["stranger@floortest.test", "Sam Stranger", "samx"]])
+      await db.run(
+        "INSERT INTO users (email, password_hash, name, handle, plan, tz, email_verified_at, created_at) VALUES (?,?,?,?,?,?,?,?)",
+        email,
+        hash("floortest-demo"),
+        name,
+        handle,
+        "free",
+        "Europe/London",
+        now,
+        now - DAY,
+      );
+  }
 
   const senders: Record<string, number> = {};
   const VERIFIED = new Set(["ama@example.com", "a&r@nightshift.example"]);
@@ -155,6 +174,8 @@ async function main() {
     if (t.keep) await ev(sid, tid, "kept", decidedAt!);
     if (t.pass) await ev(sid, tid, "passed", decidedAt!);
   }
+  // Sharing tests: the Villagers tracks were sent while the callout allowed sharing.
+  if (process.env.SEED_SHARING === "1") await db.run("UPDATE tracks SET share_ok = 1 WHERE collection_id = ?", villagers);
   const ama = senders["ama@example.com"];
   await ev(ama, null, "note", now - 26 * DAY, "Consistently strong. Ask about a live set for the Accra date.");
   await db.run("UPDATE tracks SET replied_at = ? WHERE id = ?", now - 27 * DAY + 600_000, harmattan);

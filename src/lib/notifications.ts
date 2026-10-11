@@ -50,6 +50,22 @@ export async function notificationsFor(user: User) {
     unread: m.created_at > seen,
     tone: "info" as const,
   })));
+  // Share links: each request to join, until it's answered.
+  const asks = await q.all<{ id: number; name: string; email: string; created_at: number; collection_id: number; collection: string }>(
+    `SELECT r.id, r.name, r.email, r.created_at, r.collection_id, c.name AS collection FROM link_requests r JOIN collections c ON c.id = r.collection_id
+     WHERE c.user_id = ? AND r.status = 'pending' AND r.created_at > ? ORDER BY r.created_at DESC LIMIT 10`,
+    user.id,
+    cleared,
+  );
+  items.push(...asks.map((r) => ({
+    id: `r${r.id}`,
+    title: `${r.name || r.email} asked to hear ${r.collection}`,
+    detail: "Approve or decline under the collection's share links",
+    href: `/dashboard/collections/${r.collection_id}`,
+    at: r.created_at,
+    unread: r.created_at > seen,
+    tone: "info" as const,
+  })));
   items.push(...events.map((e) => ({
     id: `e${e.id}`,
     title: e.type === "submitted" ? `New track: ${e.title}` : `Auto-deleted: ${e.title}`,

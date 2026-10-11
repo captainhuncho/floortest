@@ -14,6 +14,8 @@ import { ListRows, type ListRow } from "../../list/ListRows";
 import { CollectionDetailHeader, DeleteCollection, EditCollectionInfo } from "../CollectionForms";
 import { Teammates } from "../Teammates";
 import { OwnerUpload } from "../OwnerUpload";
+import { ShareLinks, type ShareLinkView } from "../ShareLinks";
+import { linksFor, sharingOn } from "@/lib/share-links";
 import { featureOn } from "@/lib/features";
 import { MAX_MEMBERS, members, voteTally } from "@/lib/team";
 
@@ -30,6 +32,9 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
   const receiving = c.id === user.active_collection_id;
   const genres = genresFor(c);
   const team = (await featureOn("shared", user)) ? await members(c.id) : null;
+  // Share links (behind the "sharing" switch): only while sharing is switched on.
+  const links = (await sharingOn()) ? await linksFor(user, c.id) : null;
+  const sharedTracks = links ? Number((await q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM tracks WHERE collection_id = ? AND deleted_at IS NULL AND share_ok = 1", c.id))?.n ?? 0) : 0;
 
   const tracks = await q.all<Track & { sender_name: string; sender_email: string; sender_verified: number | null }>(
     `SELECT t.*, s.name AS sender_name, s.email AS sender_email, s.verified_at AS sender_verified
@@ -171,6 +176,11 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
         <div className="mx-4 mb-4 md:mx-0">
           <OwnerUpload collectionId={c.id} collectionName={c.name} />
         </div>
+        {links && (
+          <div className="mx-4 mb-4 md:mx-0">
+            <ShareLinks collectionId={c.id} links={links as ShareLinkView[]} sharedTracks={sharedTracks} />
+          </div>
+        )}
         {team && (
           <div className="mx-4 mb-4 md:mx-0">
             <Teammates collectionId={c.id} members={team} max={MAX_MEMBERS} teamCanDecide={!!c.team_can_decide} />

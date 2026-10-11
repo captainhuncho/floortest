@@ -20,7 +20,8 @@ const under = (path: string, list: string[]) => list.some((p) => path === p || p
 const isOps = (path: string) => under(path, OPS_PATHS);
 // Open while the site is gated: the gate itself and signing in (a real sign-in then unlocks the site). Nothing about
 // FloorTest is public before launch; Google's sign-in review (which needs public legal pages) waits until then.
-const GATE_OPEN = ["/coming-soon", "/login", "/forgot", "/reset", "/signed-out"];
+// "/c": collection share links, which do their own checks (and say "not available" while sharing is switched off).
+const GATE_OPEN = ["/coming-soon", "/login", "/forgot", "/reset", "/signed-out", "/c"];
 const notFound = (req: NextRequest) => NextResponse.rewrite(new URL("/_not-found", req.url), { status: 404 });
 
 export function proxy(req: NextRequest) {

@@ -99,3 +99,15 @@ Edit mode is bound to the exact ops session that opened it (pass and cookie are 
    sidebar: Overview · Support · Growth · Product · Trust & safety · Platform · Admin
    each page needs its permission, else ─► /admin/no-access
 ```
+
+## Collection share links (switch `sharing`; off on the live site)
+```
+Owner: collection page ─► Share links ─► New share link ─► address shown once ─► Add people (email / @company.com / @username)
+Recipient: /c/<id> ─► signed in with a confirmed email? ─┬─ yes ───────────────────────────────┐
+                                                        └─ no ─► email ─► 6-digit code (10 min) ┤
+   on the list? ─► access notice ─► tick ─► the collection (listen; download if allowed), 12 h ─┘
+   not on it ──► ask to join (name, note) ─► owner: bell + grouped email (≤ 1 an hour)
+                    ─► Approve (permission, days) / Decline / Block ─► requester emailed ─► opens the link again
+Reset ─► new address, every session on the old one ends · Revoke ─► link gone · Remove person ─► their sessions end
+```
+

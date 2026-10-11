@@ -21,6 +21,8 @@ const env = {
   NEXT_PUBLIC_SENTRY_DSN: "",
   OPS_URL: "",
   BETA_INVITE_CODES: "E2E-INVITE",
+  // Collection share links are tested here, so the test copy has sharing switched on (scripts/seed.ts).
+  SEED_SHARING: "1",
   APP_URL: `http://localhost:${PORT}`,
   APP_SECRET: "e2e-only-secret-not-used-anywhere-else-000000",
 };

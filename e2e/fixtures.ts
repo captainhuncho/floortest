@@ -5,7 +5,7 @@ import { test as base } from "@playwright/test";
  * hidden field with Cloudflare's documented dummy token, like the always-pass test keys do. The server-side rules
  * (no token after repeated failures = refused) are still exercised for real.
  */
-const FAKE_TURNSTILE = `
+export const FAKE_TURNSTILE = `
 window.turnstile = {
   render(el) {
     const box = document.createElement("div");
