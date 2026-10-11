@@ -5,7 +5,6 @@ import { q } from "./db";
 /** Features that can be switched on from admin, per plan or for named accounts. Code defaults apply until a switch is saved. */
 export const FEATURES = {
   stems: { label: "Stems", description: "Receivers ask senders for stems; senders upload them to the track.", defaultPlans: [] as readonly string[] },
-  shared: { label: "Shared collections", description: "Receivers on this plan can add teammates to a collection; teammates listen and vote keep or pass.", defaultPlans: ["team"] as readonly string[] },
 } as const;
 export type Feature = keyof typeof FEATURES;
 

@@ -5,7 +5,7 @@ import type { User } from "@/lib/db";
 import { briefItems } from "@/lib/brief";
 import { activeCollection, capacity, isClosed, isPaused, userByHandle } from "@/lib/desk";
 import { genresFor } from "@/lib/plans";
-import { listeners } from "@/lib/team";
+import { teamSize } from "@/lib/team";
 
 export type ReceiverLookup =
   | { found: false; reason: string }
@@ -23,10 +23,10 @@ export async function receiverLookup(u: Pick<User, "handle">, raw: string): Prom
   const reason = isPaused(r) ? `${r.name} has paused submissions.` : !c ? `${r.name} isn't taking music right now.` : isClosed(c) ? (c?.full_at ? `${c.name} is full.` : `${c.name} has closed.`) : (await capacity(r)).full ? `${r.name}'s desk is full right now.` : null;
   // The same brief the receiver's own link shows, so sending from the desk feels like being on their page.
   const g = genresFor(c);
-  const team = await listeners(c);
+  const team = await teamSize(r.id);
   const brief = [
     ...(c ? briefItems(c, g.custom ? g.list : [], r.tz).map((b) => ({ k: b.label, v: b.text })) : []),
-    ...(team.length > 0 ? [{ k: "Team", v: `Also heard by ${team.map((m) => m.name).join(", ")}` }] : []),
+    ...(team > 0 ? [{ k: "Team", v: `Heard by ${r.name}'s team` }] : []),
   ];
   return {
     found: true, handle: r.handle, name: r.name, roleLine: r.role_line, verified: r.identity_status === "verified",

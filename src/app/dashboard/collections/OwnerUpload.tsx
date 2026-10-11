@@ -77,7 +77,7 @@ export function OwnerUpload({ collectionId, collectionName }: { collectionId: nu
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-[11px] font-bold uppercase text-faint">Add your own tracks to {collectionName}</h2>
-          <p className="mt-1 text-[12px] text-mute">For files you already have (promos by email, a USB stick). Senders, labels and teammates send through your link instead.</p>
+          <p className="mt-1 text-[12px] text-mute">For files you already have (promos by email, a USB stick). Senders and labels send through your link instead.</p>
         </div>
         <button type="button" onClick={() => (setOpen(false), setItems([]))} disabled={busy} className="text-[11px] font-bold text-mute hover:text-bone">
           Close

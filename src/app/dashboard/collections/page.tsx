@@ -9,7 +9,6 @@ import { genresFor } from "@/lib/plans";
 import { briefItems } from "@/lib/brief";
 import { APP_URL } from "@/lib/mail";
 import { CollectionTile, NewCollection } from "./CollectionForms";
-import { sharedWith } from "@/lib/team";
 import { sharedLinksFor } from "@/lib/share-links";
 
 export const metadata = { title: "Collections — FloorTest" };
@@ -19,7 +18,7 @@ export default async function Collections() {
   await trackUse(user.id, "collections");
   const collections = await collectionsFor(user.id);
   const sharing = await switchOn("sharing");
-  const [shared, viaLinks] = await Promise.all([sharedWith(user.id), sharedLinksFor(user)]);
+  const viaLinks = await sharedLinksFor(user);
   // Figma "03 Collections": a tile per callout, then a dashed tile to add one.
   return (
     <div className="max-w-5xl px-3 py-4 sm:px-8 sm:py-6">
@@ -65,27 +64,6 @@ export default async function Collections() {
                       · {l.permission === "download" ? "Listen + Download" : "Listen"}
                       {l.expires_at ? ` · until ${fmtDay(l.expires_at)}` : ""}
                     </span>
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-      {shared.length > 0 && (
-        <section aria-labelledby="shared-h" className="mt-8">
-          <h2 id="shared-h" className="text-[15px] font-bold text-bone">
-            Shared with you
-          </h2>
-          <p className="mt-1 text-[11px] text-mute sm:text-sm">Listen and vote keep or pass. The owner makes the call.</p>
-          <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {shared.map((c) => (
-              <li key={c.id}>
-                <Link href={`/dashboard/shared/${c.id}`} className="flex h-full flex-col gap-1 card p-3.5 text-bone hover:border-faint">
-                  <span className="truncate text-[14px] font-bold">{c.name}</span>
-                  <span className="truncate text-[11px] text-mute">from {c.owner_name}</span>
-                  <span className="mt-auto pt-2 text-[11px] font-bold tnum">
-                    {c.unvoted} to vote <span className="font-normal text-faint">· {c.count} total</span>
                   </span>
                 </Link>
               </li>

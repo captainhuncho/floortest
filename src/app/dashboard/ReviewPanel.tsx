@@ -23,7 +23,7 @@ import { DesktopOnly, MobileOnly } from "./DesktopOnly";
 import { MobileTransport } from "./MobileTransport";
 import { History } from "./History";
 import { PanelDetails } from "./PanelDetails";
-import { commentsFor, shortlistOf, teamSize, votesFor } from "@/lib/team";
+import { commentsFor, shortlistOf, teamSize } from "@/lib/team";
 import { ReviewTogether } from "./ReviewTogether";
 
 export async function ReviewPanel({
@@ -44,8 +44,7 @@ export async function ReviewPanel({
   const receiverPlan = (await q.get<{ plan: string }>("SELECT plan FROM users WHERE id = ?", t.user_id))?.plan ?? "free";
   const stemsOn = await featureOn("stems", { id: t.user_id, plan: receiverPlan });
   // Independent lookups run together, so the next track opens quicker.
-  const [votes, events, senderAccount, release, stats, artFrom, team, comments, shortlist] = await Promise.all([
-    votesFor(t.id),
+  const [events, senderAccount, release, stats, artFrom, team, comments, shortlist] = await Promise.all([
     q.all<EventRow & { track_title: string | null }>(
       `SELECT e.*, t.title AS track_title FROM events e LEFT JOIN tracks t ON t.id = e.track_id WHERE e.sender_id = ? ORDER BY e.created_at DESC LIMIT 3`,
       sender.id,
@@ -67,8 +66,8 @@ export async function ReviewPanel({
       : t.release_id
         ? q.get<{ id: number; art_key: string }>("SELECT id, art_key FROM tracks WHERE release_id = ? AND user_id = ? AND art_key IS NOT NULL AND deleted_at IS NULL LIMIT 1", t.release_id, t.user_id)
         : Promise.resolve(undefined),
-    // Review Together: only when this collection has teammates.
-    teamSize(t.collection_id),
+    // Review Together: only when the account has a team.
+    teamSize(t.user_id),
     commentsFor(t.id),
     shortlistOf(t.id),
   ]);
@@ -240,23 +239,8 @@ export async function ReviewPanel({
         </>
       )}
 
-      {votes.length > 0 && (
-        <section aria-labelledby="votes-h" className="mt-4 card p-3.5">
-          <h2 id="votes-h" className="text-[11px] font-bold uppercase text-faint">
-            Team votes · {votes.filter((v) => v.vote === "keep").length} keep, {votes.filter((v) => v.vote === "pass").length} pass
-          </h2>
-          <ul className="mt-2 space-y-1 text-[12px] text-mute">
-            {votes.map((v) => (
-              <li key={v.user_id}>
-                <span className="font-bold text-bone">{v.name}</span>: {v.vote}
-                {v.note && <> · &ldquo;{v.note}&rdquo;</>}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
 
-      {team > 0 && <ReviewTogether trackId={t.id} meId={t.user_id} comments={comments} shortlistedBy={shortlist?.name ?? null} />}
+      {team > 0 && <ReviewTogether trackId={t.id} meId={desk?.actor_id ?? t.user_id} canModerate={desk?.role === "owner" || desk?.role === "admin"} comments={comments} shortlistedBy={shortlist?.name ?? null} />}
 
 
       {stemsOn && (

@@ -2,28 +2,30 @@
 
 import { useActionState, useEffect, useRef, useTransition } from "react";
 import { fmtDate } from "@/lib/format";
-import { commentOnTrack, deleteComment, shortlistTrack, teamDecide } from "./actions/team";
+import { commentOnTrack, deleteComment, shortlistTrack } from "./actions/team";
 
 type Comment = { id: number; user_id: number; name: string; body: string; created_at: number };
 
 /**
- * Review Together on one track: the team's shared shortlist, comments, and (for a teammate, if the owner allows) the
- * Keep / Not for me call. Internal to the team; senders never see it. Every action is checked again on the server.
+ * Review Together on one track, for an account's team: the shared shortlist and comments. Internal to the team;
+ * senders never see it. Keep / Not for me is the desk's own buttons (roles decide who can change what). Every action
+ * is checked again on the server.
  */
 export function ReviewTogether({
   trackId,
   meId,
+  canModerate,
   comments,
   shortlistedBy,
-  decide,
 }: {
   trackId: number;
+  /** The signed-in person (their own comments can be deleted). */
   meId: number;
+  /** Owners and admins can delete anyone's comment. */
+  canModerate: boolean;
   comments: Comment[];
   /** Who put it on the shortlist, or null. */
   shortlistedBy: string | null;
-  /** Teammates only, when the owner lets them make the call. */
-  decide?: { current: "kept" | "passed" | null; ownerName: string };
 }) {
   const [error, post, posting] = useActionState(commentOnTrack.bind(null, trackId), null);
   const [busy, start] = useTransition();
@@ -50,24 +52,6 @@ export function ReviewTogether({
         </button>
       </div>
 
-      {decide && (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="text-[12px] text-mute">Make the call for {decide.ownerName}:</span>
-          {(["kept", "passed"] as const).map((d) => (
-            <button
-              key={d}
-              type="button"
-              disabled={busy}
-              aria-pressed={decide.current === d}
-              onClick={() => start(() => teamDecide(trackId, d))}
-              className={decide.current === d ? "btn-lime btn-sm" : "btn-ghost btn-sm"}
-            >
-              {d === "kept" ? "Keep" : "Not for me"}
-            </button>
-          ))}
-        </div>
-      )}
-
       {comments.length > 0 && (
         <ul className="mt-3 space-y-2">
           {comments.map((c) => (
@@ -76,7 +60,7 @@ export function ReviewTogether({
                 <span className="font-bold text-bone">{c.name}</span>
                 <span className="text-[11px] text-faint">
                   {fmtDate(c.created_at)}
-                  {c.user_id === meId && (
+                  {(c.user_id === meId || canModerate) && (
                     <button type="button" className="ml-2 underline-offset-2 hover:text-danger hover:underline" onClick={() => start(() => deleteComment(c.id))}>
                       Delete
                     </button>

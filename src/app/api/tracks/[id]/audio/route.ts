@@ -1,19 +1,18 @@
 import { currentUser } from "@/lib/auth";
 import { ownedTrack } from "@/lib/desk";
-import { memberTrack } from "@/lib/team";
 import { storage } from "@/lib/storage";
 
 export const runtime = "nodejs";
 
 /**
- * Playback for the owning receiver, or a teammate on a shared collection. With S3 storage this redirects to a short-lived signed URL,
+ * Playback for the desk the track is on (its owner, or someone on the owner's team working that desk). With S3 storage this redirects to a short-lived signed URL,
  * so audio streams straight from the bucket (range requests included). Locally it streams from disk.
  */
 export async function GET(req: Request, ctx: RouteContext<"/api/tracks/[id]/audio">) {
   const user = await currentUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
   const id = Number((await ctx.params).id);
-  const t = (await ownedTrack(user.id, id)) ?? (await memberTrack(user.id, id));
+  const t = await ownedTrack(user.id, id);
   if (!t?.file_key) return new Response("Not found", { status: 404 });
   const store = await storage();
 

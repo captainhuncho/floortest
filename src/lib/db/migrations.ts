@@ -1439,4 +1439,13 @@ alter table account_invites enable row level security;
 alter table held_replies enable row level security;
 `,
   },
+  {
+    // Review Together folds into account teams: the per-collection guest list (collection_members) and guest votes
+    // (track_votes) are no longer read; their rows stay for now. Plan wording about them goes (seats show on cards).
+    id: "0084_review_together_into_teams",
+    sql: `
+update plans set features = replace(features, ',"Shared collections: up to 10 teammates listen and vote"', '') where id = 'team';
+update plans set features = replace(features, '"Colleagues can download tracks you share",', '') where id = 'pro';
+`,
+  },
 ];

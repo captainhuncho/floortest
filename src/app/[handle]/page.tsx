@@ -5,7 +5,7 @@ import { CuePoint } from "@/components/CuePoint";
 import { ProfileLinks } from "@/components/ProfileLinks";
 import { readLinks } from "@/lib/socials";
 import { fill, siteCopy } from "@/lib/content";
-import { listeners } from "@/lib/team";
+import { teamSize } from "@/lib/team";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { forwardedHandle } from "@/lib/accounts";
@@ -52,7 +52,7 @@ export default async function ReceiverPage({ params }: Props) {
   const genres = genresFor(collection).list;
   const paused = isPaused(receiver);
   const note = paused ? receiver.pause_message : "";
-  const [team, folderBytes, botKey, trackArt] = await Promise.all([listeners(collection), folderLimit(receiver.plan), botCheckKey(), trackArtEnabled(receiver.plan)]);
+  const [team, folderBytes, botKey, trackArt] = await Promise.all([teamSize(receiver.id), folderLimit(receiver.plan), botCheckKey(), trackArtEnabled(receiver.plan)]);
   const closedReason = paused
     ? pausedMessage(receiver)
     : closed
@@ -69,7 +69,7 @@ export default async function ReceiverPage({ params }: Props) {
   const showBrief = !closedReason && genres.length > 0;
   const vars = { receiver: receiver.name, days: RETAIN_UNREVIEWED_DAYS };
   // The drop zone already says what files it takes; the hand-off points below it are what happens after.
-  const bullets = ([team.length ? "bullet_private_team" : "bullet_private", "bullet_retention", "bullet_receipt"] as const).map((k) => [k, fill(c[k], vars)] as const).filter(([, b]) => b);
+  const bullets = ([team ? "bullet_private_team" : "bullet_private", "bullet_retention", "bullet_receipt"] as const).map((k) => [k, fill(c[k], vars)] as const).filter(([, b]) => b);
 
   return (
     <EditablePage editing={!!editor} page="link" label="Public link" values={c}>
@@ -106,10 +106,8 @@ export default async function ReceiverPage({ params }: Props) {
           )}
         </div>
         <ProfileLinks links={readLinks(receiver.links)} className="group-has-[[data-picked]]/page:hidden" />
-        {team.length > 0 && !closedReason && (
-          <p className="text-[12px] text-mute">
-            Tracks sent here are also heard by {receiver.name}&apos;s team: <span className="text-bone">{team.map((m) => m.name).join(", ")}</span>.
-          </p>
+        {team > 0 && !closedReason && (
+          <p className="text-[12px] text-mute">Tracks sent here are heard by {receiver.name}&apos;s team, who review them together.</p>
         )}
         {showBrief && (
           <section aria-label="What they're looking for" className="group-has-[[data-picked]]/page:hidden mt-2 flex flex-col gap-2 border-t border-line pt-4">

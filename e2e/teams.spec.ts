@@ -4,7 +4,7 @@ import { expect, test } from "./fixtures";
 /**
  * Account teams, end to end (switched on only in the test copy: SEED_TEAMS). The demo account (owner) has 3 seats
  * (Free 1 + 2 add-ons); Lena is on its team as a member. Members switch desks, work the team's desk, can't open the
- * owner's settings, and their replies wait for approval when the owner turns that on.
+ * owner's settings, comment for the team (Review Together), and their replies wait for approval when the owner turns that on.
  */
 test.describe.configure({ mode: "serial" });
 
@@ -51,6 +51,13 @@ test("a member switches to the team's desk, can't open owner settings, and their
   await expect(page).toHaveURL(/\/dashboard\/settings\/team\?denied=1/);
   await expect(page.getByRole("link", { name: "Security" })).toHaveCount(0);
 
+  // Review Together is part of the team desk: comment on a track for the team.
+  await page.goto("/dashboard/review");
+  const together = page.getByRole("region", { name: "Review together" }).first();
+  await together.getByRole("textbox", { name: "Comment for the team" }).fill("Strong groove, check the mixdown");
+  await together.getByRole("button", { name: "Comment" }).click();
+  await expect(together.getByText("Strong groove, check the mixdown")).toBeVisible();
+
   // The team's contacts are here; a reply from a member is held.
   await page.goto("/dashboard/contacts");
   await page.getByRole("link", { name: /Ama/ }).first().click();
@@ -68,4 +75,7 @@ test("the owner approves the held reply from the Team page", async ({ page }) =>
   await expect(page.getByText(/Lena Listener → /)).toBeVisible();
   await page.getByRole("button", { name: "Approve and send" }).click();
   await expect(page.getByRole("heading", { name: "Waiting for approval (0)" })).toBeVisible();
+  // The member's comment is on the owner's desk, signed by them.
+  await page.goto("/dashboard/review");
+  await expect(page.getByRole("region", { name: "Review together" }).first().getByText("Lena Listener")).toBeVisible();
 });

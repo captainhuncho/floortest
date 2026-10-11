@@ -57,7 +57,7 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
           <div>
             <p className="text-[15px] font-bold">You&apos;re on {current.name} now.</p>
             <p className="mt-0.5 text-[13px] text-mute">
-              Room for {current.limit.toLocaleString("en")} active tracks{user.plan === "team" ? ", and you can add teammates to any collection" : ""}.{" "}
+              Room for {current.limit.toLocaleString("en")} active tracks{current.seats > 1 && (await teamsOn()) ? `, and ${current.seats} people on the account` : ""}.{" "}
               {billing ? "Thanks for upgrading." : "Free for the rest of the beta."}
             </p>
           </div>

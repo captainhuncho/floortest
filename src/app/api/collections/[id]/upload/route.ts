@@ -14,6 +14,8 @@ const bad = (error: string, status = 400) => NextResponse.json({ error }, { stat
 export async function POST(req: Request, ctx: RouteContext<"/api/collections/[id]/upload">) {
   const u = await currentUser();
   if (!u) return bad("Sign in again.", 401);
+  // On a team desk, adding tracks is for the owner and admins; members review.
+  if (u.role === "member") return bad("Only the owner or an admin can add tracks here.", 403);
   const body = ((await req.json().catch(() => null)) ?? {}) as Record<string, unknown>;
   try {
     const r = await startOwnerUpload(u, Number((await ctx.params).id) || 0, {

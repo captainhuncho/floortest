@@ -13,12 +13,9 @@ import { briefItems } from "@/lib/brief";
 import { DownloadActions } from "../../DownloadActions";
 import { ListRows, type ListRow } from "../../list/ListRows";
 import { CollectionDetailHeader, DeleteCollection, EditCollectionInfo } from "../CollectionForms";
-import { Teammates } from "../Teammates";
 import { OwnerUpload } from "../OwnerUpload";
 import { ShareLinks, type ShareLinkView } from "../ShareLinks";
 import { linksFor, sharingOn } from "@/lib/share-links";
-import { featureOn } from "@/lib/features";
-import { MAX_MEMBERS, members, voteTally } from "@/lib/team";
 
 export const metadata = { title: "Collection — FloorTest" };
 
@@ -34,7 +31,6 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
   const genres = genresFor(c);
   // Team and link controls are for the owner and admins (their actions check this too).
   const admin = atLeast(user.role, "admin");
-  const team = admin && (await featureOn("shared", user)) ? await members(c.id) : null;
   // Share links (behind the "sharing" switch): only while sharing is switched on.
   const links = admin && (await sharingOn()) ? await linksFor(user, c.id) : null;
   const sharedTracks = links ? Number((await q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM tracks WHERE collection_id = ? AND deleted_at IS NULL AND share_ok = 1 AND share_terms IS NOT NULL", c.id))?.n ?? 0) : 0;
@@ -46,7 +42,6 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
     user.id,
     c.id,
   );
-  const tally = await voteTally(tracks.map((t) => t.id));
   const cards: ListRow[] = tracks.map((t) => ({
     id: t.id,
     title: t.title,
@@ -55,7 +50,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
     senderId: t.sender_id,
     senderEmail: t.sender_email,
     senderVerified: !!t.sender_verified,
-    meta: [t.genre || null, t.bpm ? `${Math.round(t.bpm)} BPM` : null, tally.get(t.id)].filter(Boolean) as string[],
+    meta: [t.genre || null, t.bpm ? `${Math.round(t.bpm)} BPM` : null].filter(Boolean) as string[],
     mixLabel: MIX_STATUS[t.mix_status as keyof typeof MIX_STATUS] ?? null,
     duplicateOf: t.duplicate_of,
     message: t.message,
@@ -176,17 +171,14 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
 
       {/* One list for every screen size, so keyboard shortcuts and the player are registered once. */}
       <div className="max-w-6xl pb-4 md:px-8">
-        <div className="mx-4 mb-4 md:mx-0">
-          <OwnerUpload collectionId={c.id} collectionName={c.name} />
-        </div>
+        {admin && (
+          <div className="mx-4 mb-4 md:mx-0">
+            <OwnerUpload collectionId={c.id} collectionName={c.name} />
+          </div>
+        )}
         {links && (
           <div className="mx-4 mb-4 md:mx-0">
             <ShareLinks collectionId={c.id} links={links as ShareLinkView[]} sharedTracks={sharedTracks} />
-          </div>
-        )}
-        {team && (
-          <div className="mx-4 mb-4 md:mx-0">
-            <Teammates collectionId={c.id} members={team} max={MAX_MEMBERS} teamCanDecide={!!c.team_can_decide} />
           </div>
         )}
         {cards.length ? (
