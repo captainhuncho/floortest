@@ -1278,4 +1278,97 @@ update track_shares set token = null;
 create unique index if not exists track_shares_token_hash on track_shares(token_hash);
 `,
   },
+  {
+    // Collection share links (sharing phase 2): their own random ID (only a fingerprint stored), named verified
+    // recipients, email codes, short access sessions, requests to join, and an activity trail. Separate from the
+    // submission link. Behind the "sharing" switch.
+    id: "0081_collection_links",
+    sql: `
+create table if not exists collection_links (
+  id bigint generated always as identity primary key,
+  collection_id bigint not null references collections(id) on delete cascade,
+  created_by bigint not null references users(id) on delete cascade,
+  label text not null default '',
+  token_hash text not null unique,
+  generation int not null default 1,
+  permission text not null check (permission in ('listen', 'download')),
+  requests_on int not null default 1,
+  requests_paused_at bigint,
+  expires_at bigint,
+  revoked_at bigint,
+  created_at bigint not null
+);
+create index if not exists collection_links_collection on collection_links(collection_id);
+create table if not exists link_recipients (
+  id bigint generated always as identity primary key,
+  link_id bigint not null references collection_links(id) on delete cascade,
+  kind text not null check (kind in ('email', 'domain', 'user')),
+  value text not null,
+  permission text not null check (permission in ('listen', 'download')),
+  expires_at bigint,
+  added_by bigint references users(id) on delete set null,
+  added_at bigint not null,
+  removed_at bigint,
+  request_id bigint
+);
+create unique index if not exists link_recipients_live on link_recipients(link_id, kind, value) where removed_at is null;
+create table if not exists link_sessions (
+  id bigint generated always as identity primary key,
+  link_id bigint not null references collection_links(id) on delete cascade,
+  recipient_id bigint references link_recipients(id) on delete cascade,
+  email text not null,
+  user_id bigint references users(id) on delete cascade,
+  token_hash text not null unique,
+  generation int not null,
+  notice_version text not null,
+  accepted_at bigint not null,
+  created_at bigint not null,
+  expires_at bigint not null,
+  revoked_at bigint,
+  last_seen_at bigint
+);
+create index if not exists link_sessions_link on link_sessions(link_id);
+create table if not exists link_codes (
+  link_id bigint not null references collection_links(id) on delete cascade,
+  email text not null,
+  code_hash text not null,
+  expires_at bigint not null,
+  attempts int not null default 0,
+  created_at bigint not null,
+  primary key (link_id, email)
+);
+create table if not exists link_requests (
+  id bigint generated always as identity primary key,
+  link_id bigint not null references collection_links(id) on delete cascade,
+  collection_id bigint not null references collections(id) on delete cascade,
+  email text not null,
+  user_id bigint references users(id) on delete set null,
+  name text not null default '',
+  note text not null default '',
+  status text not null check (status in ('pending', 'approved', 'declined', 'blocked')),
+  created_at bigint not null,
+  decided_at bigint,
+  decided_by bigint references users(id) on delete set null
+);
+create index if not exists link_requests_link on link_requests(link_id, status);
+create index if not exists link_requests_collection_email on link_requests(collection_id, email);
+create table if not exists link_events (
+  id bigint generated always as identity primary key,
+  link_id bigint not null references collection_links(id) on delete cascade,
+  email text,
+  user_id bigint references users(id) on delete set null,
+  kind text not null,
+  track_id bigint references tracks(id) on delete set null,
+  detail text not null default '',
+  created_at bigint not null
+);
+create index if not exists link_events_link on link_events(link_id, created_at);
+alter table collection_links enable row level security;
+alter table link_recipients enable row level security;
+alter table link_sessions enable row level security;
+alter table link_codes enable row level security;
+alter table link_requests enable row level security;
+alter table link_events enable row level security;
+`,
+  },
 ];
