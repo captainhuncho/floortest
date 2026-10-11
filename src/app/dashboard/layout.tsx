@@ -70,6 +70,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 <span>
                   <span className="font-semibold text-danger">Admin view</span> · You&apos;re seeing @{view.handle}&apos;s desk. Read-only: changes are blocked.
                 </span>
+                {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- a route handler that ends the admin view, so a full navigation */}
                 <a href="/dashboard/exit-view" className="font-medium text-danger underline underline-offset-4">
                   Exit view
                 </a>

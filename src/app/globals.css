@@ -12,8 +12,8 @@
   /* Text, brightest first */
   --color-bone: #f1f1eb;
   --color-mute: #a3a69b; /* ≈7:1 on ink, ≈6.5:1 on panels */
-  --color-dim: #85887f; /* ≥4.5:1 on ink */
-  --color-faint: #8a8d84; /* labels and meta only; ≥4.5:1 on ink */
+  --color-dim: #92958c; /* ≥4.5:1 on every surface, raised ink-4 included */
+  --color-faint: #94978e; /* labels and meta only; ≥4.5:1 on every surface */
   --color-lime: #d5ff48;
   --color-olive: #536400;
   --color-danger: #ff6b5a;
@@ -134,6 +134,8 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
 @utility btn-sm { @apply min-h-9 px-3! py-1.5! text-xs!; }
 /* Touch screens: every small button is still a full 44px target. */
 @media (pointer: coarse) { .btn-sm, .input, select.input, .tap-tall { min-height: 44px; }
+  /* Text-only actions (Delete, Hide this, Cancel…): a full-height tap area on phones without looking like a button. */
+  .tap-text { min-height: 44px; display: inline-flex; align-items: center; }
   .tap { min-height: 44px; min-width: 44px; } }
 /* iPhone Safari zooms into any field under 16px when tapped; keep fields at 16px on touch screens. */
 @media (pointer: coarse) { input:not([type=checkbox]):not([type=radio]):not([type=file]), select, textarea { font-size: 16px !important; } }
@@ -184,7 +186,7 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
   --color-bone: #0d0e0b;
   --color-mute: #4c4f45;
   --color-dim: #5f6257;
-  --color-faint: #6e7166;
+  --color-faint: #66695e;
   --color-lime: #4a6400;
   --color-olive: #3d5200;
   --color-danger: #c4321f;
@@ -210,7 +212,7 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
   --color-bone: #0d0e0b;
   --color-mute: #4c4f45;
   --color-dim: #5f6257;
-  --color-faint: #6e7166;
+  --color-faint: #66695e;
   --color-lime: #4a6400;
   --color-olive: #3d5200;
   --color-danger: #c4321f;
@@ -240,7 +242,7 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
 .theme-root .keep-night {
   --color-ink: #10110f; --color-ink-2: #171815; --color-ink-3: #1e1f1b; --color-ink-4: #2a2e24;
   --color-line: #2c2e29; --color-line-2: #3a3d37;
-  --color-bone: #f1f1eb; --color-mute: #a3a69b; --color-dim: #85887f; --color-faint: #8a8d84;
+  --color-bone: #f1f1eb; --color-mute: #a3a69b; --color-dim: #92958c; --color-faint: #94978e;
   --color-lime: #d5ff48; --color-olive: #536400; --color-danger: #ff6b5a;
   color-scheme: dark;
 }

@@ -246,7 +246,7 @@ export function CollectionTile({ c, receiving, closed, canDelete }: { c: C; rece
     return (
       <div className="col-span-full">
         <CollectionCard c={c} receiving={receiving} closed={closed} canDelete={canDelete} startEditing />
-        <button className="mt-2 text-sm text-mute hover:text-bone" onClick={() => setEditing(false)}>
+        <button className="mt-2 text-sm text-mute hover:text-bone tap-text" onClick={() => setEditing(false)}>
           Close
         </button>
       </div>
@@ -396,7 +396,7 @@ export function CollectionDetailHeader({ c, receiving, closed, canDelete }: { c:
       {editing && (
         <div className="w-full">
           <CollectionCard c={c} receiving={receiving} closed={closed} canDelete={canDelete} startEditing />
-          <button className="mt-2 text-sm text-mute hover:text-bone" onClick={() => setEditing(false)}>
+          <button className="mt-2 text-sm text-mute hover:text-bone tap-text" onClick={() => setEditing(false)}>
             Close
           </button>
         </div>

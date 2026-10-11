@@ -38,7 +38,7 @@ export async function Onboarding({ user }: { user: User }) {
           Get your desk running · {doneCount} of {steps.length}
         </h2>
         <form action={dismissOnboarding}>
-          <button className="text-[11px] text-faint hover:text-bone">Hide this</button>
+          <button className="text-[11px] text-faint hover:text-bone tap-text">Hide this</button>
         </form>
       </div>
       <ol className="mt-3 space-y-3">

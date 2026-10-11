@@ -13,7 +13,7 @@ A dark DJ booth: calm, technical, confident. Night is the default; Day is warm o
 | `ink-2` / `ink-3` / `ink-4` | #171815 / #1e1f1b / #2a2e24 | #f1f3e8 / #ffffff / #e6e9da | panels / cards / raised |
 | `line` / `line-2` | #2c2e29 / #3a3d37 | #e3e6d8 / #cfd3c0 | borders |
 | `bone` | #f1f1eb | #0d0e0b | main text |
-| `mute` / `dim` / `faint` | #a3a69b / #85887f / #8a8d84 | #4c4f45 / #5f6257 / #6e7166 | secondary / meta / labels (all ≥ 4.5:1) |
+| `mute` / `dim` / `faint` | #a3a69b / #92958c / #94978e | #4c4f45 / #5f6257 / #66695e | secondary / meta / labels (all ≥ 4.5:1 on every surface, raised included) |
 | `lime` | #d5ff48 | #4a6400 (as text/lines) | accent; lime fills stay #d5ff48 with dark text |
 | `danger` | #ff6b5a | #c4321f | destructive, errors |
 
@@ -33,7 +33,7 @@ Charts: white bars at night, olive (#5f8000) by day. Round play buttons use the 
 | Surfaces | Page `ink`; sections and cards `ink-3` (`card`, `panel`); floating things (menus, dialogs, sheets) `ink-2` (`dialog-box`); raised/active `ink-4`. One border, `line`, 1px. No nested cards: a card never holds another card. |
 | Shadows | Only floating things cast them: `shadow-pop` (menus, dialogs, toasts), `shadow-lift` (a raised key). Page cards have borders, not shadows. |
 | Icons | Drawn, stroke 1.8, 24-grid (`NavIcon`, `FigmaIcon`). Sizes 16px in text and rows, 18px in navigation, 20px in the player. Icon-only controls carry `aria-label` and `title`. |
-| Controls | Touch target 44px on touch screens (`btn-sm`, `.input`, `.tap`); 36px regular on desktop. Round play buttons use `play-dot`. |
+| Controls | Touch target 44px on touch screens (`btn-sm`, `.input`, `.tap`; text-only actions such as Delete or Hide this use `.tap-text`); 36px regular on desktop. Round play buttons use `play-dot`. |
 | Buttons | Below. |
 | Form controls | `.input` for every input, select and textarea: 8px radius, `ink-3` surface, lime focus ring. Labels above, 11px caps; help text 11px `dim` below. Required marks with `Req`. |
 | Cards | `card` (12px) for rows and tiles, `panel` (16px) for sections. 16px padding; 12px in dense lists. |

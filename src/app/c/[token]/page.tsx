@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { Logo } from "@/components/Logo";
 import { currentPerson } from "@/lib/auth";
@@ -23,8 +24,8 @@ export default async function SharedLink({ params }: { params: Promise<{ token: 
       <Logo />
       {children}
       <p className="mt-auto pt-12 text-[11px] text-faint">
-        <a href="/terms" className="underline underline-offset-4">Terms</a> ·{" "}
-        <a href="/privacy" className="underline underline-offset-4">Privacy</a> · Private and not indexed. Your email is used to let you in and to show the owner what you open, play and download.
+        <Link href="/terms" className="underline underline-offset-4">Terms</Link> ·{" "}
+        <Link href="/privacy" className="underline underline-offset-4">Privacy</Link> · Private and not indexed. Your email is used to let you in and to show the owner what you open, play and download.
       </p>
     </main>
   );

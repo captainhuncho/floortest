@@ -79,7 +79,7 @@ export function OwnerUpload({ collectionId, collectionName }: { collectionId: nu
           <h2 className="text-[11px] font-bold uppercase text-faint">Add your own tracks to {collectionName}</h2>
           <p className="mt-1 text-[12px] text-mute">For files you already have (promos by email, a USB stick). Senders and labels send through your link instead.</p>
         </div>
-        <button type="button" onClick={() => (setOpen(false), setItems([]))} disabled={busy} className="text-[11px] font-bold text-mute hover:text-bone">
+        <button type="button" onClick={() => (setOpen(false), setItems([]))} disabled={busy} className="tap-text text-[11px] font-bold text-mute hover:text-bone">
           Close
         </button>
       </div>

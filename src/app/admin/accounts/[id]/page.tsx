@@ -331,7 +331,7 @@ export default async function Account({ params }: { params: Promise<{ id: string
                   <span>Also protect the old name (only with the box above)</span>
                 </label>
                 <button className="btn-ghost btn-sm">Change handle</button>
-                <p className="text-xs text-mute">They&apos;re emailed. Normally the old link forwards for 14 days and stays reserved for them, then anyone can claim it. Admin changes don't count toward their once-a-year limit.</p>
+                <p className="text-xs text-mute">They&apos;re emailed. Normally the old link forwards for 14 days and stays reserved for them, then anyone can claim it. Admin changes don&apos;t count toward their once-a-year limit.</p>
               </form>
             </details>
             <details>

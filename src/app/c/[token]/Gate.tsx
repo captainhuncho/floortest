@@ -54,7 +54,7 @@ export function Gate({ secret, ownerName, notice, initial, initialEmail }: { sec
         <button disabled={checking} className="btn-lime">
           {checking ? "Checking…" : "Continue"}
         </button>
-        <button type="button" className="text-[13px] text-mute underline underline-offset-4" onClick={() => setState({ step: "email", email: state.email })}>
+        <button type="button" className="text-[13px] text-mute underline underline-offset-4 tap-text" onClick={() => setState({ step: "email", email: state.email })}>
           Use a different email
         </button>
       </form>

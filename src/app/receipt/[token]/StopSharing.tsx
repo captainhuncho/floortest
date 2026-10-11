@@ -25,7 +25,7 @@ export function StopSharing({ token, receiver }: { token: string; receiver: stri
             if (await stopSharing(token)) setDone(true);
           })
         }
-        className="text-bone underline underline-offset-4"
+        className="text-bone underline underline-offset-4 tap-text"
       >
         {busy ? "Stopping…" : "Stop private sharing"}
       </button>

@@ -107,7 +107,7 @@ export const SITE_PAGES = {
       looking_for: f("Brief heading", "What I'm looking for"),
       bullet_files: f("Note: files", "WAV or MP3, up to 250 MB. No account needed."),
       bullet_private: f("Note: who hears it", "Only {receiver} can hear or download your file.", { vars: ["receiver"] }),
-      bullet_private_team: f("Note: who hears it (with a team)", "Only {receiver} can download your file. Their team can listen and suggest, nothing more.", { vars: ["receiver"] }),
+      bullet_private_team: f("Note: who hears it (with a team)", "Only {receiver} and the people on their FloorTest team can hear or download your file.", { vars: ["receiver"] }),
       bullet_retention: f("Note: deletion", "Files that aren't kept are deleted within {days} days.", { vars: ["days"] }),
       bullet_receipt: f("Note: receipt", "You'll get a private receipt and an email when it's listened to, downloaded or replied to."),
       closed_note: f("When the link is closed", "This link stays the same. Check back soon."),

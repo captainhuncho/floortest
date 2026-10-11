@@ -41,6 +41,6 @@ What FloorTest is built on, so nobody guesses. Change a tool, service or limit �
 
 ## Working rules
 - `npm run e2e`: Playwright end-to-end tests (`e2e/`) in a real browser against a throwaway local copy (fresh seeded data in `.e2e/`, local storage, no email/bot check/site password; port 3210). Covers sign-up with invite → send a WAV → receiver keeps → Download kept ZIP, plus batch actions, the app API, offline links and security guards. Stop other dev servers first.
-- `npm run dev` / `typecheck` / `test` / `check:perms`; run migrations or scripts against a scratch `DATA_DIR`, never `./data` while the dev server runs.
+- `npm run dev` / `typecheck` / `lint` (ESLint: Next.js rules; React Compiler advice as warnings) / `test` / `check:perms`; run migrations or scripts against a scratch `DATA_DIR`, never `./data` while the dev server runs.
 - Deploy = merge `mobile-next` into `main` and push; confirm the production deploy is READY.
 - More: `docs/CODE_STYLE.md`, `docs/API_GUIDE.md`, `docs/DATABASE.md`, `docs/services.md`, `SECURITY.md`.

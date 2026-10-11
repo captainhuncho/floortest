@@ -41,7 +41,7 @@ export default async function RequestPlan({ searchParams }: { searchParams: Prom
         <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-lime/40 bg-lime/5 px-4 py-3 text-sm">
           <span>You already asked for {open.plan === plan.id ? plan.name : open.plan}. Sending this replaces it.</span>
           <form action={withdrawPlanRequest}>
-            <button className="text-xs text-mute underline underline-offset-4 hover:text-bone">Withdraw it</button>
+            <button className="text-xs text-mute underline underline-offset-4 hover:text-bone tap-text">Withdraw it</button>
           </form>
         </div>
       )}

@@ -82,7 +82,7 @@ export function PlanCards({
           return (
             <li
               key={id}
-              className={`flex flex-col gap-4 rounded-panel border p-6 md:p-7 ${featured ? "border-[#6c7e38] bg-[#20251a]" : "border-line bg-ink-2"}`}
+              className={`flex flex-col gap-4 rounded-panel border p-6 md:p-7 ${featured ? "border-lime/40 bg-lime/[0.06]" : "border-line bg-ink-2"}`}
               aria-current={isCurrent ? "true" : undefined}
             >
               <div className="flex min-h-[30px] items-center justify-between gap-2">
@@ -90,7 +90,7 @@ export function PlanCards({
                 {isCurrent ? (
                   <span className="rounded-full bg-bone px-2.5 py-1 text-[11px] font-semibold text-ink">Your plan</span>
                 ) : featured ? (
-                  <span className="rounded-full border border-[#6c7e38] px-2.5 py-1 text-[11px] font-semibold text-lime">More room</span>
+                  <span className="rounded-full border border-lime/50 px-2.5 py-1 text-[11px] font-semibold text-lime">More room</span>
                 ) : null}
               </div>
 
@@ -125,7 +125,7 @@ export function PlanCards({
 
               <div>
                 {preview ? (
-                  <span aria-hidden className={`grid h-11 place-items-center rounded-lg border text-[13px] font-semibold ${featured ? "border-lime bg-lime text-ink" : "border-[#64675c] text-bone"}`}>
+                  <span aria-hidden className={`grid h-11 place-items-center rounded-lg border text-[13px] font-semibold ${featured ? "border-lime bg-lime text-ink" : "border-line-2 text-bone"}`}>
                     {p.price ? action : "Start free"}
                   </span>
                 ) : isCurrent ? (
@@ -139,18 +139,18 @@ export function PlanCards({
                 ) : upgrade ? (
                   <Link
                     href={billing ? `/dashboard/checkout?plan=${id}` : `/dashboard/plans/request?plan=${id}`}
-                    className={`grid h-11 place-items-center rounded-lg border text-[13px] font-semibold ${featured ? "border-lime bg-lime text-ink hover:brightness-95" : "border-[#64675c] text-bone hover:border-bone"}`}
+                    className={`grid h-11 place-items-center rounded-lg border text-[13px] font-semibold ${featured ? "border-lime bg-lime text-ink hover:brightness-95" : "border-line-2 text-bone hover:border-bone"}`}
                   >
                     {action}
                   </Link>
                 ) : (
                   <form action={setPlan.bind(null, id)}>
-                    <button className="h-11 w-full rounded-lg border border-[#64675c] text-[13px] font-semibold text-bone hover:border-bone">Move to {p.name}</button>
+                    <button className="h-11 w-full rounded-lg border border-line-2 text-[13px] font-semibold text-bone hover:border-bone">Move to {p.name}</button>
                   </form>
                 )}
               </div>
 
-              <p className={`flex items-baseline gap-2 border-b pb-4 ${featured ? "border-[#6c7e38]" : "border-line"}`}>
+              <p className={`flex items-baseline gap-2 border-b pb-4 ${featured ? "border-lime/30" : "border-line"}`}>
                 <span className="text-[21px] font-semibold tnum">{p.limit.toLocaleString("en")}</span>
                 <span className="text-sm text-mute">active tracks</span>
               </p>

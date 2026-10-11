@@ -113,7 +113,7 @@ function NewLink({ collectionId }: { collectionId: number }) {
       ) : (
         <form action={create} className="grid gap-2.5 text-[12px] sm:grid-cols-2">
           <label className="flex flex-col gap-1">
-            <span className="text-mute">Name (only you see it)</span>
+            <span className="text-mute">Name (listeners never see it)</span>
             <input name="label" maxLength={60} placeholder="e.g. Label A&R" className="input text-[12px]" />
           </label>
           <label className="flex flex-col gap-1">
@@ -212,7 +212,7 @@ function LinkCard({ link }: { link: ShareLinkView }) {
                         toast.show({ message: "Removed. Their access has ended." });
                       })
                     }
-                    className="shrink-0 text-[11px] font-bold text-mute hover:text-danger"
+                    className="tap-text shrink-0 text-[11px] font-bold text-mute hover:text-danger"
                   >
                     Remove
                   </button>
@@ -271,7 +271,7 @@ function LinkCard({ link }: { link: ShareLinkView }) {
                       <button formAction={answerLinkRequest.bind(null, q.id, "decline")} className="btn-ghost btn-sm">
                         Decline
                       </button>
-                      <button formAction={answerLinkRequest.bind(null, q.id, "block")} className="text-[11px] font-bold text-mute hover:text-danger">
+                      <button formAction={answerLinkRequest.bind(null, q.id, "block")} className="text-[11px] font-bold text-mute hover:text-danger tap-text">
                         Block
                       </button>
                     </form>

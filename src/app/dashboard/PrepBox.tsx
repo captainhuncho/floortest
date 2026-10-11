@@ -89,7 +89,7 @@ export function PrepBox({ track, energy: initialEnergy, cues: initialCues }: { t
               + Cue at {fmtCue(player.time)}
             </button>
           ) : (
-            <button type="button" onClick={() => player.play(track)} className="text-[11px] text-mute underline-offset-4 hover:text-bone hover:underline">
+            <button type="button" onClick={() => player.play(track)} className="text-[11px] text-mute underline-offset-4 hover:text-bone hover:underline tap-text">
               Play to mark cues
             </button>
           )}

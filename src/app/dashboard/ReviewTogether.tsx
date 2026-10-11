@@ -61,7 +61,7 @@ export function ReviewTogether({
                 <span className="text-[11px] text-faint">
                   {fmtDate(c.created_at)}
                   {(c.user_id === meId || canModerate) && (
-                    <button type="button" className="ml-2 underline-offset-2 hover:text-danger hover:underline" onClick={() => start(() => deleteComment(c.id))}>
+                    <button type="button" className="ml-2 underline-offset-2 hover:text-danger hover:underline tap-text" onClick={() => start(() => deleteComment(c.id))}>
                       Delete
                     </button>
                   )}

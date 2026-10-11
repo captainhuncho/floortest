@@ -57,6 +57,7 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
         <button onClick={reset} className="btn-lime">
           Try again
         </button>
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- after an error, a full page load is the safer way out */}
         <a href="/contact" className="btn-ghost">
           Contact us
         </a>

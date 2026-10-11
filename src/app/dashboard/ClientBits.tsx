@@ -52,7 +52,7 @@ export function NoteForm({ onNote }: { onNote: (fd: FormData) => Promise<void> }
       }
     >
       <label className="label mb-1.5 block" htmlFor="note-body">
-        Private note, only you see this
+        Private note, never sent to the sender
       </label>
       <textarea id="note-body" name="body" required maxLength={4000} autoFocus className="input min-h-20 resize-y" />
       <div className="mt-2 flex gap-2">
@@ -116,7 +116,7 @@ export function Composer({
         required
         maxLength={4000}
         className="input min-h-24 resize-y rounded-tl-none"
-        placeholder={mode === "note" ? "Only you see this." : `Sent to ${senderName} by email.`}
+        placeholder={mode === "note" ? "Private: the sender never sees this." : `Sent to ${senderName} by email.`}
       />
       {mode === "reply" && (
         <div className="mt-2">

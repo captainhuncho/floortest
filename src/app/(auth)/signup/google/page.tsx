@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { switchOn } from "@/lib/switches";
@@ -29,7 +30,7 @@ export default async function GoogleSignup() {
         {inviteOnly && (
           <>
             {" "}FloorTest is invite-only during the beta.{" "}
-            <a href="/#waitlist" className="underline underline-offset-4 hover:text-bone">No code? Join the waitlist</a>
+            <Link href="/#waitlist" className="underline underline-offset-4 hover:text-bone">No code? Join the waitlist</Link>
           </>
         )}
       </p>

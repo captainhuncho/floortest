@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionForm } from "@/components/useActionForm";
 import { SourceField } from "@/components/SourceField";
 import { joinNewsletter } from "./newsletter/actions";
@@ -27,7 +28,7 @@ export function NewsletterForm() {
         Also send me offers and promotions. Optional.
       </label>
       <p className="text-xs text-dim">
-        Product news and tips, about once a month. Unsubscribe any time. See our <a href="/privacy" className="underline underline-offset-4 hover:text-bone">Privacy Policy</a>.
+        Product news and tips, about once a month. Unsubscribe any time. See our <Link href="/privacy" className="underline underline-offset-4 hover:text-bone">Privacy Policy</Link>.
       </p>
       {state?.error && <p role="alert" className="text-sm text-danger">{state.error}</p>}
       <SourceField />

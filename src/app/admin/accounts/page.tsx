@@ -41,7 +41,7 @@ export default async function Users({ searchParams }: { searchParams: Promise<Re
         <div className="flex flex-wrap items-center gap-2">
           <input name="q" defaultValue={search} placeholder="Name, email or link" className="input w-64" aria-label="Search receivers" />
           <button className="btn-lime btn-sm">Filter</button>
-          <a href="/admin/accounts" className="text-sm text-mute hover:text-bone">Clear</a>
+          <Link href="/admin/accounts" className="text-sm text-mute hover:text-bone">Clear</Link>
           <span className="ml-auto text-sm text-mute">{rows.length === 200 ? "Showing the newest 200" : `${rows.length} account${rows.length === 1 ? "" : "s"}`}</span>
         </div>
       </form>

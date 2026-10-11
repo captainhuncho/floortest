@@ -40,6 +40,7 @@ export function ClearKept({ count }: { count: number }) {
           You can&apos;t undo this. If you still need these files for a set, download them first.
         </p>
         <div className="mt-6 flex flex-wrap justify-end gap-2">
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- a file download, not a page */}
           <a href="/api/export?files=1" className="btn-ghost btn-sm mr-auto">
             Download files first
           </a>

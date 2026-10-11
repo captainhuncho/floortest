@@ -156,7 +156,7 @@
       "refersTo": "input",
       "description": "Every input, select and textarea.",
       "html": "<label class=\"ds-label\">Email<input class=\"ds-input\" placeholder=\"name@label.com\"></label>",
-      "css": ".ds-label{display:flex;flex-direction:column;gap:6px;font:700 11px 'JetBrains Mono',monospace;letter-spacing:1px;text-transform:uppercase;color:#a3a69b}.ds-input{background:#1e1f1b;color:#f1f1eb;border:1px solid #2c2e29;border-radius:8px;padding:10px 12px;font:400 12px 'JetBrains Mono',monospace;text-transform:none;letter-spacing:0;outline:none;transition:border-color 150ms,box-shadow 150ms}.ds-input::placeholder{color:#85887f}.ds-input:focus{border-color:rgb(213 255 72 / .7);box-shadow:0 0 0 2px rgb(213 255 72 / .15)}"
+      "css": ".ds-label{display:flex;flex-direction:column;gap:6px;font:700 11px 'JetBrains Mono',monospace;letter-spacing:1px;text-transform:uppercase;color:#a3a69b}.ds-input{background:#1e1f1b;color:#f1f1eb;border:1px solid #2c2e29;border-radius:8px;padding:10px 12px;font:400 12px 'JetBrains Mono',monospace;text-transform:none;letter-spacing:0;outline:none;transition:border-color 150ms,box-shadow 150ms}.ds-input::placeholder{color:#92958c}.ds-input:focus{border-color:rgb(213 255 72 / .7);box-shadow:0 0 0 2px rgb(213 255 72 / .15)}"
     },
     {
       "name": "Filter Chips",
@@ -172,7 +172,7 @@
       "refersTo": "card",
       "description": "Rows and tiles; border, no shadow.",
       "html": "<div class=\"ds-card\"><p class=\"ds-eyebrow\">This week</p><p class=\"ds-stat\">7</p><p class=\"ds-meta\">tracks received</p></div>",
-      "css": ".ds-card{background:#1e1f1b;border:1px solid #2c2e29;border-radius:12px;padding:16px;color:#f1f1eb;font-family:'JetBrains Mono',monospace}.ds-eyebrow{margin:0;font:700 11px/1rem 'JetBrains Mono',monospace;letter-spacing:1px;text-transform:uppercase;color:#a3a69b}.ds-stat{margin:8px 0 0;font:700 30px/1 'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}.ds-meta{margin:4px 0 0;font:400 11px/1rem 'JetBrains Mono',monospace;color:#8a8d84}"
+      "css": ".ds-card{background:#1e1f1b;border:1px solid #2c2e29;border-radius:12px;padding:16px;color:#f1f1eb;font-family:'JetBrains Mono',monospace}.ds-eyebrow{margin:0;font:700 11px/1rem 'JetBrains Mono',monospace;letter-spacing:1px;text-transform:uppercase;color:#a3a69b}.ds-stat{margin:8px 0 0;font:700 30px/1 'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}.ds-meta{margin:4px 0 0;font:400 11px/1rem 'JetBrains Mono',monospace;color:#94978e}"
     },
     {
       "name": "Navigation Rail",

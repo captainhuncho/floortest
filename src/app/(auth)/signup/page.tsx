@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { siteEditor } from "@/lib/site-editor";
 import { EditablePage, editable } from "@/components/Editable";
 import { switchOn } from "@/lib/switches";
@@ -33,7 +34,7 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
         {inviteOnly && !referrer && (
           <>
             {" "}FloorTest is invite-only during the beta.{" "}
-            <a href="/#waitlist" className="underline underline-offset-4 hover:text-bone">No code? Join the waitlist</a>
+            <Link href="/#waitlist" className="underline underline-offset-4 hover:text-bone">No code? Join the waitlist</Link>
           </>
         )}
       </p>

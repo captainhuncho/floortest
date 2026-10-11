@@ -169,6 +169,7 @@ export function SiteEditor({
         </label>
         <button type="button" className="btn-ghost btn-sm" disabled={busy || !count} onClick={() => save(false)}>Save draft</button>
         <button type="button" className="btn-lime btn-sm" disabled={busy} onClick={() => save(true)}>Publish</button>
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- a route handler that ends draft mode, so a full navigation */}
         <a href="/api/draft-preview?off" className="btn-ghost btn-sm" onClick={(e) => { if (count && !confirm("Leave without saving your changes?")) e.preventDefault(); }}>Exit</a>
         {status && <p role="status" className="w-full px-1 text-xs text-mute">{status}</p>}
       </div>

@@ -53,6 +53,7 @@ export default async function SiteContent({ searchParams }: { searchParams: Prom
         </a>
         {/* The draft view lives on floortest.app, so this can't tell whether it's on: the link is always offered. */}
         {page === "receipt" && <span className="text-xs text-mute">Receipts: after opening, go to any receipt link (from a sent email) to edit it there.</span>}
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- a route handler that clears the preview cookie, so a full navigation */}
         <a href="/api/admin/preview?off" className="text-xs text-mute underline underline-offset-4">
           Stop showing drafts on the site
         </a>

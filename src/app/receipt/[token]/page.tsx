@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { siteEditor } from "@/lib/site-editor";
 import { EditablePage, editable } from "@/components/Editable";
 import { notFound } from "next/navigation";
@@ -160,9 +161,9 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
           <p {...panel("footer", "Words in [square brackets] link to the sender's history page.")}>
             {c.footer.split(/(\[[^\]]+\])/).map((part, i) =>
               /^\[.+\]$/.test(part) ? (
-                <a key={i} href="/sent" className="text-bone underline underline-offset-4">
+                <Link key={i} href="/sent" className="text-bone underline underline-offset-4">
                   {part.slice(1, -1)}
-                </a>
+                </Link>
               ) : (
                 part
               ),
