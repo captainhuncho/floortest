@@ -1,5 +1,7 @@
 # Brief for the lawyer (updated 7 Oct 2026)
 
+> **11 Oct 2026: sharing brief.** Controlled collection sharing (phase 4) and the live Review Together feature have their own brief: [legal/sharing-brief-2026-10-11.md](legal/sharing-brief-2026-10-11.md) (sent as `legal/FloorTest-Labs-sharing-brief-2026-10-11.docx`). It replaces questions 11–15 and section 4 below (the 1 Oct colleague-sharing model, never switched on).
+
 The drafts at /terms and /privacy were rewritten on 29 Sep 2026 to close the gaps listed further down. Owner decisions so far:
 
 - **Operator:** **FloorTest Labs**, a company being registered in **Ghana** (not the UK). Renamed from "FloorTest LTD" on 7 Oct 2026; the Terms and Privacy pages now use the new name. Governing law is set to Ghana. Complaints point to Ghana's Data Protection Commission and the user's local authority, such as the UK ICO. Add the registration number and address to `src/lib/legal.ts` once incorporated.
@@ -101,7 +103,7 @@ Original assumed setup (now superseded: the operator is a Ghana company): operat
 | **Referral bonus** | Say bonus slots can be changed or withdrawn after the beta. |
 | **Beta and pricing** | Good that it promises notice before charging. Add how much notice (for example 30 days) and that beta users can leave without charge. |
 
-## 4. Sharing with colleagues (added 1 Oct 2026)
+## 4. Sharing with colleagues (added 1 Oct 2026; superseded 11 Oct, see the sharing brief)
 
 **Status: held back until after the beta** (`SHARING_LIVE = false` in `src/lib/plans.ts`). The Terms and Privacy wording below is already in place so it's reviewed before launch.
 
