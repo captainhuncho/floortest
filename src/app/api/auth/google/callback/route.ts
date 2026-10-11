@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { NEXT_COOKIE, safeNext } from "@/lib/next-path";
 import { NextResponse } from "next/server";
 import { currentUser } from "@/lib/auth";
 import { q } from "@/lib/db";
@@ -11,7 +12,7 @@ import { signChallenge } from "@/lib/totp";
 export const runtime = "nodejs";
 
 const CHALLENGE = "floortest_2fa";
-const NEXT = "floortest_next";
+const NEXT = NEXT_COOKIE;
 type Account = { id: number; email: string; suspended_at: number | null; totp_enabled_at: number | null; email_verified_at: number | null; google_sub: string | null };
 const COLS = "id, email, suspended_at, totp_enabled_at, email_verified_at, google_sub";
 
@@ -71,7 +72,7 @@ export async function GET(req: Request) {
   }
   await finishSignIn(user.id, "Google");
   const next = jar.get(NEXT)?.value ?? "";
-  if (/^\/s\/[A-Za-z0-9_-]{10,40}$/.test(next)) {
+  if (safeNext(next)) {
     jar.delete(NEXT);
     return go(next);
   }

@@ -9,6 +9,7 @@ import { handleHeld } from "@/lib/accounts";
 import { BOT_MESSAGE, passedTurnstile } from "@/lib/turnstile";
 import crypto from "node:crypto";
 import { cookies } from "next/headers";
+import { NEXT_COOKIE, safeNext } from "@/lib/next-path";
 import { redirect } from "next/navigation";
 import { audit } from "@/lib/audit";
 import { consumePasswordReset, createPasswordReset, createSession, currentUser, destroySession, hashPassword, verifyPassword } from "@/lib/auth";
@@ -27,13 +28,13 @@ import { accountEmailAllowed } from "@/lib/email-budget";
 import { HUMAN_CHECK_AFTER, HUMAN_MESSAGE, humanCheck, recentFailures } from "@/lib/human-check";
 
 const CHALLENGE = "floortest_2fa";
-/** Set by a share link: where to land after signing in or up (only ever a /s/ share page). */
-const NEXT = "floortest_next";
+/** Set by a share link: where to land after signing in or up (see `safeNext`). */
+const NEXT = NEXT_COOKIE;
 
 async function landing(fallback: string) {
   const jar = await cookies();
   const next = jar.get(NEXT)?.value ?? "";
-  if (!/^\/s\/[A-Za-z0-9_-]{10,40}$/.test(next)) return fallback;
+  if (!safeNext(next)) return fallback;
   jar.delete(NEXT);
   return next;
 }

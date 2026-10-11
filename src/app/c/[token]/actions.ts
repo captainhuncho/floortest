@@ -7,7 +7,7 @@ import { q } from "@/lib/db";
 import { APP_URL, sendMail } from "@/lib/mail";
 import { accountEmailAllowed } from "@/lib/email-budget";
 import { allow, requestIp } from "@/lib/ratelimit";
-import { checkLinkCode, linkBySecret, LinkError, recipientFor, requestAccess, sendLinkCode, startLinkSession } from "@/lib/share-links";
+import { checkLinkCode, linkByKey, LinkError, noteUnlistedCode, recipientFor, requestAccess, sendLinkCode, startLinkSession } from "@/lib/share-links";
 import { provenEmail, setLinkSession, setProvenEmail } from "@/lib/link-cookies";
 
 export type GateState = { step: "email" | "code" | "notice" | "request" | "sent" | "waiting" | "denied"; email?: string; error?: string } | null;
@@ -29,7 +29,7 @@ async function visitor(linkId: number) {
 
 /** Step 1: email a code. Same answer whether or not the address is on the list. */
 export async function sendCode(secret: string, _prev: GateState, form: FormData): Promise<GateState> {
-  const link = await linkBySecret(secret);
+  const link = await linkByKey(secret, await currentUser());
   if (!link) return GONE;
   const email = String(form.get("email") || "").trim().toLowerCase();
   try {
@@ -43,6 +43,8 @@ export async function sendCode(secret: string, _prev: GateState, form: FormData)
         body: `Your code to open a private FloorTest collection:\n\n${code}\n\nIt works for 10 minutes. If you didn't try to open a FloorTest link, ignore this email.\n\n— FloorTest`,
       });
     });
+    if (await noteUnlistedCode(link, email))
+      await warnOwner(link.owner_id, link.collection_id, "Someone may have your share link", `Codes were asked for 10 or more addresses that aren't on the list of a share link for "${link.collection_name}" in the last hour. If you didn't expect that, reset the link: the old address stops working, and you send the new one to the people you added (FloorTest accounts on the list keep access without it).`);
     return { step: "code", email };
   } catch (e) {
     return err(e, "email", email);
@@ -51,7 +53,7 @@ export async function sendCode(secret: string, _prev: GateState, form: FormData)
 
 /** Step 2: check the code. Then: on the list → the access notice; not on it → ask to join (if the link allows). */
 export async function checkCode(secret: string, _prev: GateState, form: FormData): Promise<GateState> {
-  const link = await linkBySecret(secret);
+  const link = await linkByKey(secret, await currentUser());
   if (!link) return GONE;
   const email = String(form.get("email") || "");
   try {
@@ -66,7 +68,7 @@ export async function checkCode(secret: string, _prev: GateState, form: FormData
 
 /** Step 3: accept the access notice and get in (a short session tied to this link's current address). */
 export async function acceptNotice(secret: string, _prev: GateState, form: FormData): Promise<GateState> {
-  const link = await linkBySecret(secret);
+  const link = await linkByKey(secret, await currentUser());
   if (!link) return GONE;
   if (form.get("agree") !== "on") return { step: "notice", error: "Tick the box to agree before opening the collection." };
   const who = await visitor(link.id);
@@ -81,7 +83,7 @@ export async function acceptNotice(secret: string, _prev: GateState, form: FormD
 
 /** Not on the list: ask the owner. Grouped email to the owner (at most one an hour) plus the bell. */
 export async function askToJoin(secret: string, _prev: GateState, form: FormData): Promise<GateState> {
-  const link = await linkBySecret(secret);
+  const link = await linkByKey(secret, await currentUser());
   if (!link) return GONE;
   const who = await visitor(link.id);
   if (!who) return { step: "email" };
@@ -94,6 +96,8 @@ export async function askToJoin(secret: string, _prev: GateState, form: FormData
       ip: await requestIp(),
     });
     if (r.status === "sent") await tellOwner(link.owner_id, link.collection_id, link.collection_name);
+    if (r.status === "sent" && r.paused)
+      await warnOwner(link.owner_id, link.collection_id, "A share link stopped taking requests", `A share link for "${link.collection_name}" has 20 requests waiting, so it stopped taking more. It may have been shared publicly. Answer the requests, or reset the link.`);
     return { step: r.status === "sent" ? "sent" : "waiting", email: who.email };
   } catch (e) {
     return err(e, "denied", who.email);
@@ -114,5 +118,19 @@ async function tellOwner(ownerId: number, collectionId: number, collectionName: 
     to: owner.email,
     subject: `${waiting} ${waiting === 1 ? "person is" : "people are"} asking to hear your music`,
     body: `Hi ${owner.first_name || owner.name.split(/\s+/)[0]},\n\nSomeone asked to join a share link for "${collectionName}"${waiting > 1 ? `, and ${waiting} requests are waiting in all` : ""}. Approve or decline: ${APP_URL}/dashboard/collections/${collectionId}\n\nNobody gets in until you approve them.\n\n— FloorTest`,
+  });
+}
+
+/** A security warning about a link, emailed straight away (the bell shows it too). Never more than one an hour per owner. */
+async function warnOwner(ownerId: number, collectionId: number, subject: string, text: string) {
+  if (!(await allow("link_warn_owner", String(ownerId), 1, 3_600_000))) return;
+  const owner = await q.get<{ email: string; first_name: string | null; name: string }>("SELECT email, first_name, name FROM users WHERE id = ?", ownerId);
+  if (!owner) return;
+  await sendMail({
+    userId: ownerId,
+    audience: "receiver",
+    to: owner.email,
+    subject,
+    body: `Hi ${owner.first_name || owner.name.split(/\s+/)[0]},\n\n${text}\n\nManage it here: ${APP_URL}/dashboard/collections/${collectionId}\n\n— FloorTest`,
   });
 }

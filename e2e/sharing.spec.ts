@@ -13,16 +13,21 @@ let shareUrl = "";
 
 async function logIn(page: Page, email: string) {
   await page.goto("/login");
+  await submitLogin(page, email, /\/dashboard\//);
+}
+
+/** Fills the log-in form already on screen; if the human check appears (see the guards spec), logs in again with it. */
+async function submitLogin(page: Page, email: string, landing: RegExp) {
   await page.getByLabel("Email").fill(email);
   await page.getByRole("textbox", { name: "Password" }).fill(PW);
   await page.getByRole("button", { name: "Log in" }).click();
-  // The guards spec leaves the demo login behind the human check: when the check appears, log in again with it.
-  const dashboard = page.waitForURL(/\/dashboard\//, { timeout: 60_000 }).then(() => "in" as const);
+  const dashboard = page.waitForURL(landing, { timeout: 60_000 }).then(() => "in" as const);
   const check = page.getByTestId("turnstile").waitFor({ state: "attached", timeout: 60_000 }).then(() => "check" as const, () => "none" as const);
-  if ((await Promise.race([dashboard, check])) === "check") {
+  // The check may already be on screen with a token (then the first click got through): retry only if still here.
+  if ((await Promise.race([dashboard, check])) === "check" && !(await page.waitForURL(landing, { timeout: 5_000 }).then(() => true, () => false))) {
     await page.getByRole("textbox", { name: "Password" }).fill(PW);
     await page.getByRole("button", { name: "Log in" }).click();
-    await page.waitForURL(/\/dashboard\//);
+    await page.waitForURL(landing);
   }
   await dashboard.catch(() => {});
 }
@@ -120,4 +125,42 @@ test("Reset ends the old address at once", async ({ browser, page }) => {
   await expect(listener.page.getByRole("heading", { name: /This link isn.t available/ })).toBeVisible();
   expect((await listener.page.request.get(src)).status()).toBeGreaterThanOrEqual(400);
   await listener.ctx.close();
+});
+
+test("an account on the list finds it under Shared with you, even after a reset, and sign-in brings them back", async ({ browser, page }) => {
+  const listener = await asUser(browser, "listener@floortest.test");
+  await listener.page.goto("/dashboard/collections");
+  await listener.page.getByRole("region", { name: "Shared with you to listen" }).getByRole("link", { name: /Villagers callout/ }).click();
+  await listener.page.waitForURL(/\/c\/a\.\d+$/);
+  const accountPath = new URL(listener.page.url()).pathname;
+  await listener.page.getByRole("checkbox", { name: "I understand and agree." }).check();
+  await listener.page.getByRole("button", { name: "Open the collection" }).click();
+  const src = (await listener.page.locator("audio").first().getAttribute("src"))!;
+  expect((await listener.page.request.get(src)).status()).toBe(200);
+  await listener.ctx.close();
+
+  // Signed out, the same address asks for sign-in and comes back after it.
+  await page.goto(accountPath);
+  await expect(page.getByRole("heading", { name: "Log in to open this collection." })).toBeVisible();
+  await page.getByRole("link", { name: "Log in" }).click();
+  await page.waitForURL(/\/login/);
+  await submitLogin(page, "listener@floortest.test", new RegExp(`${accountPath.replace(/\./g, "\\.")}$`));
+  await expect(page.getByRole("button", { name: "Open the collection" })).toBeVisible();
+
+  // Someone else signed in gets nothing from the number.
+  const stranger = await asUser(browser, "stranger@floortest.test");
+  await stranger.page.goto("/c/a.999999");
+  await expect(stranger.page.getByRole("heading", { name: /This link isn.t available/ })).toBeVisible();
+  await stranger.ctx.close();
+});
+
+test("the owner sees what each person has done and removes one with a confirmation", async ({ page }) => {
+  await logIn(page, "demo@floortest.test");
+  await openVillagers(page);
+  const lena = page.getByRole("listitem").filter({ has: page.getByRole("button", { name: "Remove @lena" }) }).first();
+  await expect(lena).toContainText(/visits? · 1 played/);
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "Remove @lena" }).first().click();
+  await expect(page.getByText("Removed. Their access has ended.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Remove @lena" })).toHaveCount(0);
 });

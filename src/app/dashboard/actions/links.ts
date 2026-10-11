@@ -3,7 +3,9 @@
 /** Collection share links, the owner's side: create, add or remove people, answer requests, reset, revoke. */
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
+import { q } from "@/lib/db";
 import {
+  accountLinkPath,
   addRecipients,
   createLink,
   decideRequest,
@@ -15,7 +17,7 @@ import {
   type Permission,
 } from "@/lib/share-links";
 import { done } from "./common";
-import { sendMailLater } from "@/lib/mail";
+import { APP_URL, sendMailLater } from "@/lib/mail";
 
 export type LinkState = { url?: string; error?: string; problems?: string[]; added?: number } | null;
 
@@ -67,6 +69,9 @@ export async function addLinkRecipients(linkId: number, _prev: LinkState, form: 
   const u = await requireUser();
   try {
     const r = await addRecipients(u, linkId, String(form.get("who") || ""), permissionOf(form.get("permission")), daysOf(form.get("days")));
+    // FloorTest accounts added by username are told, with a way in that needs no address: their own sign-in.
+    // People added by email or domain get the address from the owner (it's never stored, so we can't send it).
+    if (r.accounts.length) await tellAccounts(u.name, linkId, r.accounts);
     done();
     return { added: r.added, problems: r.problems };
   } catch (e) {
@@ -93,7 +98,7 @@ export async function answerLinkRequest(requestId: number, decision: "approve" |
       subject: decision === "approve" ? `${u.name} let you in` : `About your request to ${u.name}`,
       body:
         decision === "approve"
-          ? `Hi,\n\n${u.name} approved your request. Open the link you were sent again and confirm your email to listen.\n\nYour access is personal: please don't forward the link.\n\n— FloorTest`
+          ? `Hi,\n\n${u.name} approved your request. ${r.user_id ? `Open it here while signed in to FloorTest: ${APP_URL}${accountLinkPath(r.link_id)}` : "Open the link you were sent again and confirm your email to listen."}\n\nYour access is personal: please don't forward the link.\n\n— FloorTest`
           : `Hi,\n\n${u.name} isn't sharing this collection with you right now.\n\n— FloorTest`,
     });
   done();
@@ -103,4 +108,20 @@ export async function setLinkRequests(linkId: number, on: boolean) {
   const u = await requireUser();
   await setRequests(u, linkId, on).catch(() => {});
   done();
+}
+
+async function tellAccounts(ownerName: string, linkId: number, userIds: number[]) {
+  const c = await q.get<{ name: string }>("SELECT c.name FROM collection_links l JOIN collections c ON c.id = l.collection_id WHERE l.id = ?", linkId);
+  if (!c) return;
+  for (const id of userIds) {
+    const to = await q.get<{ email: string; first_name: string | null; name: string }>("SELECT email, first_name, name FROM users WHERE id = ? AND suspended_at IS NULL", id);
+    if (!to) continue;
+    sendMailLater({
+      userId: id,
+      audience: "receiver",
+      to: to.email,
+      subject: `${ownerName} shared "${c.name}" with you`,
+      body: `Hi ${to.first_name || to.name.split(/\s+/)[0]},\n\n${ownerName} shared a private collection with you on FloorTest: "${c.name}".\n\nListen here while signed in: ${APP_URL}${accountLinkPath(linkId)}\nIt's also under Collections → Shared with you.\n\nYour access is personal and the music may be unreleased: please don't share it.\n\n— FloorTest`,
+    });
+  }
 }

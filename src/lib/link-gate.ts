@@ -1,12 +1,14 @@
 import "server-only";
+import { currentUser } from "./auth";
 import { linkSessionSecret } from "./link-cookies";
-import { linkBySecret, linkSession, linkTrack } from "./share-links";
+import { linkByKey, linkSession, linkTrack } from "./share-links";
 
-/** For audio and downloads through a share link: the live link, a valid session for it, and one of its tracks. Re-checked on every request. */
-export async function gatedTrack(secret: string, trackId: number) {
-  const link = await linkBySecret(secret);
+/** For audio and downloads through a share link (its address, or `a.<id>` for account holders on the list): the live link, a valid session for it, and one of its tracks. Re-checked on every request. */
+export async function gatedTrack(key: string, trackId: number) {
+  const viewer = await currentUser();
+  const link = await linkByKey(key, viewer);
   if (!link) return undefined;
-  const session = await linkSession(link, await linkSessionSecret(link.id));
+  const session = await linkSession(link, await linkSessionSecret(link.id), viewer?.id ?? null);
   if (!session) return undefined;
   const track = await linkTrack(link, trackId);
   return track?.file_key ? { link, session, track } : undefined;

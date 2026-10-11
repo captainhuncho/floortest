@@ -1,6 +1,7 @@
 import "server-only";
 import { activeCollection, capacity, isClosed, isPaused } from "./desk";
 import { now, q, type User } from "./db";
+import { linkNoticesFor, sharedLinksFor, sharingOn } from "./share-links";
 
 export type Notice = { id: string; title: string; detail: string; href: string; at: number; unread: boolean; tone: "info" | "alert" };
 
@@ -66,6 +67,29 @@ export async function notificationsFor(user: User) {
     unread: r.created_at > seen,
     tone: "info" as const,
   })));
+  // Share links, the owner's side: first visit by each person, downloads, and security warnings.
+  const LINK_TITLE: Record<string, (x: { email: string | null; collection: string; title: string | null }) => string> = {
+    verified: (x) => `${x.email} opened ${x.collection}`,
+    downloaded: (x) => `${x.email} downloaded ${x.title ? `“${x.title}”` : "a track"}`,
+    requests_paused: (x) => `A share link for ${x.collection} stopped taking requests`,
+    probed: (x) => `Someone may have your share link for ${x.collection}`,
+  };
+  const linksOn = await sharingOn();
+  for (const e of linksOn ? await linkNoticesFor(user.id, cleared) : []) {
+    const warn = e.kind === "requests_paused" || e.kind === "probed";
+    items.push({
+      id: `l${e.id}`,
+      title: LINK_TITLE[e.kind]?.(e) ?? e.kind,
+      detail: warn ? "It may have been shared publicly. Check the people and requests, or reset the link." : e.kind === "downloaded" ? `through a share link · ${e.collection}` : "through a share link",
+      href: `/dashboard/collections/${e.collection_id}`,
+      at: e.created_at,
+      unread: e.created_at > seen,
+      tone: warn ? "alert" : "info",
+    });
+  }
+  // Share links, the recipient's side: collections newly shared with this account.
+  for (const l of (linksOn ? await sharedLinksFor(user) : []).filter((l) => l.added_at > cleared))
+    items.push({ id: `s${l.id}`, title: `${l.owner_name} shared ${l.collection_name} with you`, detail: "Private: listen while signed in", href: l.href, at: l.added_at, unread: l.added_at > seen, tone: "info" });
   items.push(...events.map((e) => ({
     id: `e${e.id}`,
     title: e.type === "submitted" ? `New track: ${e.title}` : `Auto-deleted: ${e.title}`,

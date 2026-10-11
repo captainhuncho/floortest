@@ -62,9 +62,9 @@ test("share links: own address, named recipients, codes, sessions, reset, revoke
   // A session works until the person is removed, or the link is reset.
   const r = (await L.recipientFor(live, { email: "a@x.io", userId: null }))!;
   const s1 = await L.startLinkSession(live, r.recipient, { email: "a@x.io", userId: null });
-  assert.ok(await L.linkSession(live, s1.secret));
+  assert.ok(await L.linkSession(live, s1.secret, null));
   await L.removeRecipient(owner, r.recipient.id);
-  assert.equal(await L.linkSession(live, s1.secret), undefined, "removing a person ends their access at once");
+  assert.equal(await L.linkSession(live, s1.secret, null), undefined, "removing a person ends their access at once");
   assert.equal(await L.recipientFor(live, { email: "a@x.io", userId: null }), undefined);
 
   const d = (await L.recipientFor(live, { email: "boss@label.com", userId: null }))!;
@@ -72,7 +72,7 @@ test("share links: own address, named recipients, codes, sessions, reset, revoke
   const newUrl = await L.resetLink(owner, link.id);
   assert.equal(await L.linkBySecret(secret), undefined, "reset: the old address stops working");
   const after = (await L.linkBySecret(newUrl.split("/c/")[1]))!;
-  assert.equal(await L.linkSession(after, s2.secret), undefined, "reset: everyone signed in through it is signed out");
+  assert.equal(await L.linkSession(after, s2.secret, null), undefined, "reset: everyone signed in through it is signed out");
 
   // Only tracks whose sender agreed to sharing are reachable.
   assert.deepEqual((await L.linkTracks(after)).map((t) => t.id), [shared]);
@@ -121,4 +121,56 @@ test("requests to join: one waiting, decline cooldown, approve with less than th
   assert.ok(paused.requests_paused_at, "requests pause at 20 waiting");
   await assert.rejects(L.requestAccess(paused, { email: "late@leak.io", userId: null, name: "", note: "", ip: "10.1.1.1" }), /isn't taking requests/);
   void link;
+});
+
+test("account holders: open by number while signed in, Shared with you, activity, and probing warnings", async () => {
+  const L = await import("../src/lib/share-links");
+  const { q } = await import("../src/lib/db");
+  const o = (await q.get<{ id: number }>("SELECT id FROM users WHERE handle = 'owner'"))!;
+  const col = (await q.get<{ id: number }>("SELECT id FROM collections WHERE user_id = ?", o.id))!.id;
+  const viewer = async (handle: string) => (await q.get<{ id: number; email: string; email_verified_at: number | null }>("SELECT id, email, email_verified_at FROM users WHERE handle = ?", handle))!;
+  const mate = await viewer("mate");
+  const ownerV = await viewer("owner");
+  const { link } = await L.createLink(o, col, { permission: "download", days: null, requests: false });
+  const key = L.accountLinkPath(link.id).split("/c/")[1];
+
+  // Not on the list yet: the number opens nothing, for anyone (signed out, or the owner).
+  assert.equal(await L.linkByKey(key, mate), undefined);
+  assert.equal(await L.linkByKey(key, null), undefined);
+  assert.equal(await L.linkByKey(key, ownerV), undefined);
+  const r = await L.addRecipients(o, link.id, "@mate", "download");
+  assert.deepEqual(r.accounts, [mate.id]);
+  const open = (await L.linkByKey(key, mate))!;
+  assert.equal(open.id, link.id);
+  assert.equal(await L.linkByKey(key, { ...mate, email_verified_at: null }), undefined, "a confirmed email is needed");
+  const listed = await L.sharedLinksFor(mate);
+  assert.deepEqual(listed.map((x) => [x.id, x.permission, x.count]), [[link.id, "download", 1]]);
+
+  // A visit opened by the account ends when that account isn't the one signed in.
+  const m = (await L.recipientFor(open, { email: mate.email, userId: mate.id }))!;
+  const s = await L.startLinkSession(open, m.recipient, { email: mate.email, userId: mate.id });
+  assert.ok(await L.linkSession(open, s.secret, mate.id));
+  assert.equal(await L.linkSession(open, s.secret, null), undefined, "signed out: the visit ends too");
+  assert.equal(await L.linkSession(open, s.secret, ownerV.id), undefined);
+
+  // Activity per person.
+  await L.logLinkEvent(link.id, "listened", { email: mate.email, userId: mate.id }, null);
+  await L.logLinkEvent(link.id, "downloaded", { email: mate.email, userId: mate.id }, null);
+  const view = (await L.linksFor(o, col)).find((l) => l.id === link.id)!;
+  assert.deepEqual([view.recipients[0].visits, view.recipients[0].downloaded], [1, 1]);
+  const notices = await L.linkNoticesFor(o.id, 0);
+  assert.ok(notices.some((n) => n.kind === "verified" && n.email === mate.email));
+  assert.ok(notices.some((n) => n.kind === "downloaded"));
+
+  // Codes for addresses not on the list: one warning once ten pile up in an hour, then quiet for a day.
+  const fires: boolean[] = [];
+  for (let i = 0; i < 12; i++) fires.push(await L.noteUnlistedCode(open, `p${i}@probe.io`));
+  assert.deepEqual(fires.map((f, i) => (f ? i : -1)).filter((i) => i >= 0), [9]);
+  assert.equal(await L.noteUnlistedCode(open, mate.email), false, "people on the list don't count");
+  assert.ok((await L.linkNoticesFor(o.id, 0)).some((n) => n.kind === "probed"));
+
+  // Removing the account takes it off Shared with you at once.
+  await L.removeRecipient(o, m.recipient.id);
+  assert.equal(await L.linkByKey(key, mate), undefined);
+  assert.deepEqual(await L.sharedLinksFor(mate), []);
 });

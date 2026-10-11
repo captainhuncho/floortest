@@ -3,7 +3,7 @@ import { Logo } from "@/components/Logo";
 import { currentUser } from "@/lib/auth";
 import { fmtTime } from "@/lib/format";
 import { linkSessionSecret } from "@/lib/link-cookies";
-import { ACCESS_NOTICE, linkBySecret, linkSession, linkTracks, recipientFor } from "@/lib/share-links";
+import { ACCESS_NOTICE, linkByKey, linkSession, linkTracks, recipientFor } from "@/lib/share-links";
 import { Gate } from "./Gate";
 
 // Private by design: never indexed, never cached.
@@ -16,13 +16,25 @@ export const dynamic = "force-dynamic";
  */
 export default async function SharedLink({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const link = await linkBySecret(token);
+  const u = await currentUser();
+  const link = await linkByKey(token, u);
   const shell = (children: React.ReactNode) => (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col px-[18px] py-10 text-bone">
       <Logo />
       {children}
     </main>
   );
+  // A collection shared with an account, opened while signed out: sign in first, then come straight back.
+  if (!link && !u && /^a\.\d{1,12}$/.test(token))
+    return shell(
+      <>
+        <h1 className="mt-10 text-[24px] font-bold">Log in to open this collection.</h1>
+        <p className="mt-2 text-mute">It was shared with your FloorTest account.</p>
+        <a href={`/c/${token}/login`} className="btn-lime mt-6 self-start">
+          Log in
+        </a>
+      </>,
+    );
   if (!link)
     return shell(
       <>
@@ -31,7 +43,7 @@ export default async function SharedLink({ params }: { params: Promise<{ token: 
       </>,
     );
 
-  const session = await linkSession(link, await linkSessionSecret(link.id));
+  const session = await linkSession(link, await linkSessionSecret(link.id), u?.id ?? null);
   if (session) {
     const tracks = await linkTracks(link);
     return shell(
@@ -69,7 +81,6 @@ export default async function SharedLink({ params }: { params: Promise<{ token: 
   }
 
   // Not in yet. A signed-in account with a confirmed email skips the code.
-  const u = await currentUser();
   const account = u?.email_verified_at ? { email: u.email.toLowerCase(), userId: u.id } : null;
   const onList = account ? await recipientFor(link, account) : undefined;
   const initial = account ? (onList ? "notice" : link.requests_on && !link.requests_paused_at ? "request" : "denied") : "email";

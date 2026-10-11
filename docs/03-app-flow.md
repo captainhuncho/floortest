@@ -108,6 +108,9 @@ Recipient: /c/<id> ─► signed in with a confirmed email? ─┬─ yes ──
    on the list? ─► access notice ─► tick ─► the collection (listen; download if allowed), 12 h ─┘
    not on it ──► ask to join (name, note) ─► owner: bell + grouped email (≤ 1 an hour)
                     ─► Approve (permission, days) / Decline / Block ─► requester emailed ─► opens the link again
-Reset ─► new address, every session on the old one ends · Revoke ─► link gone · Remove person ─► their sessions end
+Reset ─► new address, every session on the old one ends · Revoke ─► link gone · Remove person (confirm) ─► their sessions end
+Account added by @username ─► email + bell ─► Collections → Shared with you to listen ─► /c/a.<n> (signed in) ─► notice ─► listen
+   signed out ─► "Log in to open" ─► /login ─► back to /c/a.<n> · signing out ends the visit
+Owner bell: first visit by each person · downloads · "may have your link" (10+ unknown addresses in an hour; emailed) · requests paused
 ```
 

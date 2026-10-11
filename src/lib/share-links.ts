@@ -137,6 +137,7 @@ export async function addRecipients(owner: Pick<User, "id">, linkId: number, raw
   const link = await ownedLink(owner, linkId);
   if (!link || link.revoked_at) throw new LinkError("Not found");
   const problems: string[] = [];
+  const accounts: number[] = [];
   let added = 0;
   for (const part of raw.split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean).slice(0, 100)) {
     let kind: Recipient["kind"];
@@ -168,10 +169,11 @@ export async function addRecipients(owner: Pick<User, "id">, linkId: number, raw
     );
     if (r.changes) {
       added++;
+      if (kind === "user") accounts.push(Number(value));
       await logLinkEvent(link.id, "recipient_added", { email: kind === "user" ? null : value, userId: kind === "user" ? Number(value) : null }, null, kind);
     }
   }
-  return { added, problems };
+  return { added, problems, accounts };
 }
 
 /** Removes one person: their access ends at once, everyone else keeps theirs. */
@@ -231,6 +233,55 @@ export async function linkBySecret(secret: string) {
   return link;
 }
 
+/**
+ * Account holders on a link's list open it by its number instead of its address: `/c/a.<id>` (a "." never appears in
+ * a link address). It works only for a signed-in account with a confirmed email that is on the list right now, so
+ * resetting the address doesn't lock out the named accounts, and the number is useless to anyone else.
+ */
+const ACCOUNT_KEY = /^a\.(\d{1,12})$/;
+export const accountLinkPath = (linkId: number) => `/c/a.${linkId}`;
+type Viewer = { id: number; email: string; email_verified_at: number | null } | null | undefined;
+
+export async function linkForAccount(linkId: number, viewer: Viewer) {
+  if (!viewer?.email_verified_at || !(await sharingOn())) return undefined;
+  const link = await q.get<Link & { collection_name: string; owner_id: number; owner_name: string }>(
+    `SELECT l.*, c.name AS collection_name, c.user_id AS owner_id, u.name AS owner_name FROM collection_links l
+     JOIN collections c ON c.id = l.collection_id JOIN users u ON u.id = c.user_id
+     WHERE l.id = ? AND l.revoked_at IS NULL AND (l.expires_at IS NULL OR l.expires_at > ?) AND u.suspended_at IS NULL`,
+    linkId,
+    now(),
+  );
+  if (!link || link.owner_id === viewer.id) return undefined;
+  return (await recipientFor(link, { email: viewer.email, userId: viewer.id })) ? link : undefined;
+}
+
+/** A link by what's in the address bar: its secret address, or (for account holders on the list) its number. */
+export async function linkByKey(key: string, viewer: Viewer) {
+  const m = ACCOUNT_KEY.exec(key);
+  return m ? linkForAccount(Number(m[1]), viewer) : linkBySecret(key);
+}
+
+/** Collections shared with this account through share links (by username, confirmed email or company domain). */
+export async function sharedLinksFor(viewer: Viewer) {
+  if (!viewer?.email_verified_at || !(await sharingOn())) return [];
+  const email = cleanEmail(viewer.email);
+  const rows = await q.all<{ id: number; collection_name: string; owner_name: string; permission: Permission; recipient_permission: Permission; link_expires: number | null; recipient_expires: number | null; added_at: number; count: number }>(
+    `SELECT DISTINCT ON (l.id) l.id, c.name AS collection_name, u.name AS owner_name, l.permission, r.permission AS recipient_permission,
+       l.expires_at AS link_expires, r.expires_at AS recipient_expires, r.added_at,
+       (SELECT COUNT(*)::int FROM tracks t WHERE t.collection_id = c.id AND t.deleted_at IS NULL AND t.file_key IS NOT NULL AND t.share_ok = 1) AS count
+     FROM link_recipients r JOIN collection_links l ON l.id = r.link_id JOIN collections c ON c.id = l.collection_id JOIN users u ON u.id = c.user_id
+     WHERE r.removed_at IS NULL AND (r.expires_at IS NULL OR r.expires_at > ?) AND l.revoked_at IS NULL AND (l.expires_at IS NULL OR l.expires_at > ?)
+       AND u.suspended_at IS NULL AND c.user_id <> ?
+       AND ((r.kind = 'user' AND r.value = ?) OR (r.kind = 'email' AND r.value = ?) OR (r.kind = 'domain' AND r.value = ?))
+     ORDER BY l.id, r.added_at DESC`,
+    now(), now(), viewer.id, String(viewer.id), email, email.split("@")[1] ?? "",
+  );
+  return rows.map((r) => {
+    const ends = [r.link_expires, r.recipient_expires].filter((x): x is number => x !== null).map(Number);
+    return { id: r.id, collection_name: r.collection_name, owner_name: r.owner_name, count: Number(r.count), permission: lower(r.permission, r.recipient_permission), expires_at: ends.length ? Math.min(...ends) : null, added_at: Number(r.added_at), href: accountLinkPath(r.id) };
+  });
+}
+
 /** The live recipient entry this verified person matches (account, exact email, or company domain), with what they may do. */
 export async function recipientFor(link: Pick<Link, "id" | "permission">, who: { email: string | null; userId: number | null }) {
   const email = who.email ? cleanEmail(who.email) : null;
@@ -278,6 +329,23 @@ export async function checkLinkCode(link: Pick<Link, "id">, rawEmail: string, co
   return email;
 }
 
+/** Codes asked for addresses that aren't on the list, in an hour, before the owner is warned the address may be out. */
+export const PROBES_BEFORE_ALERT = 10;
+
+/**
+ * Notes a code request for an address that isn't on the list. Many in an hour suggests the address has spread: returns
+ * true the first time that happens in a day, so the owner is told once (bell + email), not on every request.
+ */
+export async function noteUnlistedCode(link: Pick<Link, "id" | "permission">, email: string) {
+  if (await recipientFor(link, { email, userId: null })) return false;
+  await logLinkEvent(link.id, "code_unlisted", { email });
+  const n = Number((await q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM link_events WHERE link_id = ? AND kind = 'code_unlisted' AND created_at > ?", link.id, now() - HOUR))?.n ?? 0);
+  if (n < PROBES_BEFORE_ALERT) return false;
+  if (await q.get("SELECT 1 FROM link_events WHERE link_id = ? AND kind = 'probed' AND created_at > ?", link.id, now() - DAY)) return false;
+  await logLinkEvent(link.id, "probed", {}, null, `${n} unlisted in an hour`);
+  return true;
+}
+
 /** Starts a verified visit once the notice is accepted. Returns the session secret for a cookie (only its fingerprint is kept). */
 export async function startLinkSession(link: Pick<Link, "id" | "generation" | "expires_at">, recipient: Recipient, who: { email: string; userId: number | null }) {
   const secret = newSecret();
@@ -294,7 +362,7 @@ export async function startLinkSession(link: Pick<Link, "id" | "generation" | "e
  * The visit behind a session cookie, re-checked on every request: same link generation (no reset since), not revoked,
  * not expired, the person still on the list, and (for account sessions) the account still in good standing.
  */
-export async function linkSession(link: Pick<Link, "id" | "generation" | "permission">, secret: string | undefined) {
+export async function linkSession(link: Pick<Link, "id" | "generation" | "permission">, secret: string | undefined, viewerId: number | null) {
   if (!secret) return undefined;
   const s = await q.get<{ id: number; email: string; user_id: number | null; recipient_id: number; generation: number }>(
     `SELECT s.* FROM link_sessions s JOIN link_recipients r ON r.id = s.recipient_id
@@ -302,6 +370,9 @@ export async function linkSession(link: Pick<Link, "id" | "generation" | "permis
     fingerprint(secret), link.id, now(), now(),
   );
   if (!s || s.generation !== link.generation) return undefined;
+  // A visit opened through a signed-in account lasts only while that account is signed in here: signing out (or
+  // "sign out everywhere", a password change, an ops sign-out) ends it too.
+  if (s.user_id && s.user_id !== viewerId) return undefined;
   if (s.user_id && !(await q.get("SELECT 1 FROM users WHERE id = ? AND suspended_at IS NULL", s.user_id))) return undefined;
   const r = await q.get<Recipient>("SELECT * FROM link_recipients WHERE id = ?", s.recipient_id);
   if (!r) return undefined;
@@ -333,11 +404,12 @@ export async function requestAccess(link: Link, who: { email: string; userId: nu
   await logLinkEvent(link.id, "requested", { email, userId: who.userId });
   // A pile of waiting requests suggests the address got out: stop taking more and let the owner decide.
   const waiting = Number((await q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM link_requests WHERE link_id = ? AND status = 'pending'", link.id))?.n ?? 0);
+  let paused = false;
   if (waiting >= PAUSE_REQUESTS_AT) {
-    await q.run("UPDATE collection_links SET requests_paused_at = ? WHERE id = ? AND requests_paused_at IS NULL", now(), link.id);
-    await logLinkEvent(link.id, "requests_paused", {}, null, `${waiting} waiting`);
+    paused = !!(await q.run("UPDATE collection_links SET requests_paused_at = ? WHERE id = ? AND requests_paused_at IS NULL", now(), link.id)).changes;
+    if (paused) await logLinkEvent(link.id, "requests_paused", {}, null, `${waiting} waiting`);
   }
-  return { status: "sent" as const };
+  return { status: "sent" as const, paused };
 }
 
 /** The tracks a link can play: this collection's live tracks whose sender agreed to sharing when they sent them. */
@@ -364,11 +436,7 @@ export async function linksFor(owner: Pick<User, "id">, collectionId: number) {
   return Promise.all(
     links.map(async (l) => ({
       ...l,
-      recipients: await q.all<Recipient & { name: string | null; handle: string | null }>(
-        `SELECT r.*, u.name, u.handle FROM link_recipients r LEFT JOIN users u ON r.kind = 'user' AND u.id = CAST(r.value AS bigint)
-         WHERE r.link_id = ? AND r.removed_at IS NULL ORDER BY r.added_at`,
-        l.id,
-      ),
+      recipients: await recipientsWithActivity(l.id),
       requests: await q.all<{ id: number; email: string; name: string; note: string; created_at: number; handle: string | null; verified: string | null }>(
         `SELECT r.id, r.email, r.name, r.note, r.created_at, u.handle, u.identity_status AS verified FROM link_requests r LEFT JOIN users u ON u.id = r.user_id
          WHERE r.link_id = ? AND r.status = 'pending' ORDER BY r.created_at`,
@@ -376,9 +444,54 @@ export async function linksFor(owner: Pick<User, "id">, collectionId: number) {
       ),
       events: await q.all<{ kind: string; email: string | null; created_at: number; title: string | null }>(
         `SELECT e.kind, COALESCE(e.email, u.email) AS email, e.created_at, t.title FROM link_events e LEFT JOIN users u ON u.id = e.user_id LEFT JOIN tracks t ON t.id = e.track_id
-         WHERE e.link_id = ? ORDER BY e.created_at DESC LIMIT 12`,
+         WHERE e.link_id = ? AND e.kind <> 'code_unlisted' ORDER BY e.created_at DESC LIMIT 12`,
         l.id,
       ),
     })),
+  );
+}
+
+/**
+ * Who's on a link and what each has done: visits (verified sessions), when last seen, tracks played, downloads, and
+ * for a company domain, which addresses came in through it.
+ */
+async function recipientsWithActivity(linkId: number) {
+  const rows = await q.all<Recipient & { name: string | null; handle: string | null; visits: number; last_seen: number | null }>(
+    `SELECT r.*, u.name, u.handle, COUNT(s.id)::int AS visits, MAX(COALESCE(s.last_seen_at, s.created_at)) AS last_seen
+     FROM link_recipients r LEFT JOIN users u ON r.kind = 'user' AND CAST(u.id AS text) = r.value LEFT JOIN link_sessions s ON s.recipient_id = r.id
+     WHERE r.link_id = ? AND r.removed_at IS NULL GROUP BY r.id, u.name, u.handle ORDER BY r.added_at`,
+    linkId,
+  );
+  const acts = await q.all<{ recipient_id: number; email: string; listened: number; downloaded: number }>(
+    `SELECT s.recipient_id, s.email,
+       (SELECT COUNT(DISTINCT e.track_id)::int FROM link_events e WHERE e.link_id = ? AND e.kind = 'listened' AND e.email = s.email) AS listened,
+       (SELECT COUNT(*)::int FROM link_events e WHERE e.link_id = ? AND e.kind = 'downloaded' AND e.email = s.email) AS downloaded
+     FROM (SELECT DISTINCT recipient_id, email FROM link_sessions WHERE link_id = ?) s`,
+    linkId, linkId, linkId,
+  );
+  return rows.map((r) => {
+    const mine = acts.filter((a) => a.recipient_id === r.id);
+    return {
+      ...r,
+      visits: Number(r.visits),
+      last_seen: r.last_seen === null ? null : Number(r.last_seen),
+      listened: mine.reduce((n, a) => n + Number(a.listened), 0),
+      downloaded: mine.reduce((n, a) => n + Number(a.downloaded), 0),
+      people: r.kind === "domain" ? mine.map((a) => a.email) : [],
+    };
+  });
+}
+
+/** Owner's bell: who opened what for the first time, downloads, and security warnings about their links. */
+export async function linkNoticesFor(ownerId: number, since: number) {
+  return q.all<{ id: number; kind: string; email: string | null; detail: string; created_at: number; collection_id: number; collection: string; title: string | null }>(
+    `SELECT e.id, e.kind, COALESCE(e.email, u.email) AS email, e.detail, e.created_at, c.id AS collection_id, c.name AS collection, t.title
+     FROM link_events e JOIN collection_links l ON l.id = e.link_id JOIN collections c ON c.id = l.collection_id
+     LEFT JOIN users u ON u.id = e.user_id LEFT JOIN tracks t ON t.id = e.track_id
+     WHERE c.user_id = ? AND e.created_at > ? AND (e.kind IN ('downloaded', 'requests_paused', 'probed')
+       OR (e.kind = 'verified' AND NOT EXISTS (SELECT 1 FROM link_events p WHERE p.link_id = e.link_id AND p.kind = 'verified' AND p.email = e.email AND p.id < e.id)))
+     ORDER BY e.created_at DESC LIMIT 15`,
+    ownerId,
+    since,
   );
 }

@@ -14,7 +14,20 @@ import {
   type LinkState,
 } from "../actions/links";
 
-type Recipient = { id: number; kind: "email" | "domain" | "user"; value: string; permission: "listen" | "download"; expires_at: number | null; name: string | null; handle: string | null };
+type Recipient = {
+  id: number;
+  kind: "email" | "domain" | "user";
+  value: string;
+  permission: "listen" | "download";
+  expires_at: number | null;
+  name: string | null;
+  handle: string | null;
+  visits: number;
+  last_seen: number | null;
+  listened: number;
+  downloaded: number;
+  people: string[];
+};
 type Request = { id: number; email: string; name: string; note: string; created_at: number; handle: string | null; verified: string | null };
 type Event = { kind: string; email: string | null; created_at: number; title: string | null };
 export type ShareLinkView = {
@@ -32,6 +45,14 @@ export type ShareLinkView = {
 };
 
 const PERM = { listen: "Listen", download: "Listen + Download" } as const;
+/** One line per person: what they've done so far (nothing yet, or visits, plays, downloads, last seen). */
+function activity(r: Recipient) {
+  if (!r.visits) return "Not opened yet";
+  const bits = [`${r.visits} ${r.visits === 1 ? "visit" : "visits"}`, `${r.listened} played`];
+  if (r.downloaded) bits.push(`${r.downloaded} downloaded`);
+  if (r.last_seen) bits.push(`last ${fmtDate(r.last_seen)}`);
+  return bits.join(" · ");
+}
 const day = (ts: number) => new Date(ts).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 const EVENT: Record<string, string> = {
   created: "Link made",
@@ -46,6 +67,7 @@ const EVENT: Record<string, string> = {
   request_declined: "Request declined",
   request_blocked: "Blocked",
   requests_paused: "Requests paused (many waiting)",
+  probed: "Warning: many unknown addresses asked for codes",
   recipient_added: "Added",
   recipient_removed: "Removed",
 };
@@ -134,6 +156,7 @@ function NewLink({ collectionId }: { collectionId: number }) {
 }
 
 function LinkCard({ link }: { link: ShareLinkView }) {
+  const toast = useToast();
   const [fresh, setFresh] = useState<string | null>(null);
   const [busy, start] = useTransition();
   const [addState, add, adding] = useActionState<LinkState, FormData>(addLinkRecipients.bind(null, link.id), null);
@@ -158,7 +181,8 @@ function LinkCard({ link }: { link: ShareLinkView }) {
             <ul className="mt-1.5 divide-y divide-line rounded-md border border-line">
               {link.recipients.map((r) => (
                 <li key={r.id} className="flex items-center justify-between gap-3 px-2.5 py-1.5">
-                  <span className="min-w-0 truncate">
+                  <span className="min-w-0">
+                    <span className="block truncate">
                     {r.kind === "user" ? (
                       <>
                         {r.name} <span className="text-faint">@{r.handle}</span>
@@ -169,8 +193,26 @@ function LinkCard({ link }: { link: ShareLinkView }) {
                       r.value
                     )}
                     <span className="text-faint"> · {PERM[r.permission]}{r.expires_at ? ` · until ${day(r.expires_at)}` : ""}</span>
+                    </span>
+                    <span className="block truncate text-[11px] text-faint">
+                      {activity(r)}
+                      {r.people.length > 0 && <> · {r.people.join(", ")}</>}
+                    </span>
                   </span>
-                  <button type="button" disabled={busy} onClick={() => start(() => removeLinkRecipient(r.id))} className="shrink-0 text-[11px] font-bold text-mute hover:text-danger">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    aria-label={`Remove ${r.kind === "user" ? `@${r.handle}` : r.kind === "domain" ? `@${r.value}` : r.value}`}
+                    onClick={() =>
+                      start(async () => {
+                        const who = r.kind === "user" ? r.name || `@${r.handle}` : r.kind === "domain" ? `everyone at @${r.value}` : r.value;
+                        if (!confirm(`Remove ${who}? Their access ends now, even mid-listen. Everyone else keeps theirs.`)) return;
+                        await removeLinkRecipient(r.id);
+                        toast.show({ message: "Removed. Their access has ended." });
+                      })
+                    }
+                    className="shrink-0 text-[11px] font-bold text-mute hover:text-danger"
+                  >
                     Remove
                   </button>
                 </li>
@@ -189,6 +231,7 @@ function LinkCard({ link }: { link: ShareLinkView }) {
               Add
             </button>
           </form>
+          <p className="mt-1 text-[11px] text-faint">@usernames are emailed and find it under Shared with you. Send the address yourself to emails and company domains.</p>
           {addState?.problems?.length ? (
             <ul className="mt-1.5 text-danger">
               {addState.problems.map((p) => (
