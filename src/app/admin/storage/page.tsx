@@ -92,7 +92,7 @@ export default async function Storage() {
             <label className="sr-only" htmlFor="check-bucket">
               Bucket to check
             </label>
-            <select id="check-bucket" name="bucket" defaultValue={AUDIT_BUCKETS.at(-1)} className="input w-auto text-sm">
+            <select id="check-bucket" name="bucket" defaultValue={env.storage.s3.bucket ?? AUDIT_BUCKETS.at(-1)} className="input w-auto text-sm">
               {AUDIT_BUCKETS.map((b) => (
                 <option key={b} value={b}>
                   {b}

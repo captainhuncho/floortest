@@ -25,8 +25,10 @@ Plan + tappable prototype: claude.ai/artifact/5BVVpA3Zn9AxH71ut9hGFr (private), 
 - ✅ 9 Oct: Capacitor iOS shell prototype (`mobile/`) running on the iPhone simulator: opens on the desk/sign-in, safe-area fixed, FloorTest icon and splash.
 - Build (~4 weeks):  background player + lock screen, push, share-to-FloorTest, swipe review, tabs Floor · Queue · Collections · Prepare. Then test + store review (~2 weeks).
 
-## In progress: audio bucket to Europe (started 11 Oct)
-Audio sits in `floortest-audio`, created in Eastern North America (ENAM), while the server, database and users are London/West Africa side; play start measured 0.9–1.5 s from Ghana. Done: ✅ `floortest-audio-eu` created (WEUR, Standard) · ✅ CORS copied · ✅ the live token covers all buckets (preview tokens stay on the preview bucket) · ✅ ops **Storage move check** (Admin → Storage & costs): back up now, the file list, and a per-bucket check, all in the admin log.
+## Audio bucket to Europe (moved 11 Oct · old bucket kept until 18 Oct)
+**Moved 11 Oct, 22:30 UTC:** the app uses `floortest-audio-eu` (Western Europe). Copied with `scripts/copy-bucket.ts` (Cloudflare Data Migration stalled); both buckets checked 27 of 27 before the switch; play and upload tried after it; catch-up copy found nothing to copy. **Left:** owner deletes the temporary R2 token now; owner deletes `floortest-audio` on/after 18 Oct if nothing went wrong (until then, rollback = `S3_BUCKET` back to `floortest-audio`; files uploaded since the switch would then need copying back with the same script); add R2 recovery (versioning/replication) on `floortest-audio-eu` (see Carried over).
+
+Before the move: audio sat in `floortest-audio`, created in Eastern North America (ENAM), while the server, database and users are London/West Africa side; play start measured 0.9–1.5 s from Ghana. Done: ✅ `floortest-audio-eu` created (WEUR, Standard) · ✅ CORS copied · ✅ the live token covers all buckets (preview tokens stay on the preview bucket) · ✅ ops **Storage move check** (Admin → Storage & costs): back up now, the file list, and a per-bucket check, all in the admin log.
 
 Runbook (each step is safe to stop after; nothing is deleted until the last one):
 1. Ops → Storage & costs → **1. Back up the database now**; then **2. Download the file list (CSV)** and keep it (the "before" record). Optional: Neon → branch/restore point.
@@ -89,6 +91,7 @@ Open items from `HANDOFF.md`, `CLAUDE_NEXT_WORK.md` and `docs/beta-launch-plan.m
 - Revisit Cloudflare Workers hosting only at tens of thousands of users (trial findings in `docs/beta-launch-plan.md`).
 
 ## Done (recent)
+- 11 Oct: audio bucket moved to Europe (`floortest-audio-eu`): ops Storage move check (backup now, file list, per-bucket check), `scripts/copy-bucket.ts`, switch verified by play and upload; old bucket kept a week for rollback.
 - 11 Oct: retired tables dropped (colleague sharing, Review Together guests); recorded in `docs/retired.md`.
 - 11 Oct: the Admin role is shown as "A&R / Admin" everywhere people see it (same powers).
 - 11 Oct: Review Together folded into account teams: comments and the shared shortlist for everyone on a team desk; per-collection guests, guest votes and the guests' Shared with you retired; adding your own tracks is owner/admin.
