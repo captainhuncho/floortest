@@ -1,7 +1,7 @@
 "use server";
 
 /** Collection share links, the owner's side: create, add or remove people, answer requests, reset, revoke. */
-import { requireUser, requireRole } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { q } from "@/lib/db";
 import {

@@ -4,7 +4,7 @@
 import { allow } from "@/lib/ratelimit";
 import { stepUp } from "@/lib/step-up";
 import { passwordStrength } from "@/lib/password-strength";
-import { currentSessionHash, hashPassword, requireUser, verifyPassword, requireRole } from "@/lib/auth";
+import { currentSessionHash, hashPassword, verifyPassword, requireRole } from "@/lib/auth";
 import { sendMail } from "@/lib/mail";
 import QRCode from "qrcode";
 import { env } from "@/lib/env";

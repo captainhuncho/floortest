@@ -18,7 +18,7 @@ const config = [
     },
   },
   { files: ["e2e/**"], rules: { "react-hooks/rules-of-hooks": "off" } },
-  { ignores: [".next/**", "mobile/**", "node_modules/**", "test-results/**", "playwright-report/**", ".e2e/**", "data/**", "next-env.d.ts"] },
+  { ignores: [".claude/**", ".impeccable/**", ".next/**", "mobile/**", "node_modules/**", "test-results/**", "playwright-report/**", ".e2e/**", "data/**", "next-env.d.ts"] },
 ];
 
 export default config;

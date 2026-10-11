@@ -4,7 +4,6 @@ import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { currentUser } from "@/lib/auth";
 import { APP_URL } from "@/lib/mail";
-import { env } from "@/lib/env";
 import { footerGroups } from "@/lib/site";
 import { HOME_SECTIONS, pairs, sectionOrder, siteCopy, siteImageUrl, type HomeSection } from "@/lib/content";
 import { siteEditor } from "@/lib/site-editor";

@@ -45,7 +45,26 @@ export async function dataFor(email: string) {
     : [];
   // Collection share links: lists this address is on, what it opened, played or downloaded, and requests to join.
   const shareLinks = await linkDataFor(e, account ? Number(account.id) : null);
-  return { email: e, account, sent, messages, emails, waitlist, reopenAlerts, comments, shareLinks };
+  // Account teams: teams this person is on, invites sent to this address, and replies they wrote that waited for approval.
+  const teams = {
+    memberOf: account
+      ? await q.all<Record<string, unknown>>(
+          "SELECT u.name AS account, u.handle, m.role, m.created_at AS joined_at FROM account_members m JOIN users u ON u.id = m.account_id WHERE m.user_id = ? ORDER BY m.created_at",
+          account.id,
+        )
+      : [],
+    invites: await q.all<Record<string, unknown>>(
+      "SELECT u.name AS account, i.role, i.created_at, i.expires_at, i.accepted_at, i.revoked_at FROM account_invites i JOIN users u ON u.id = i.account_id WHERE i.email = ? ORDER BY i.created_at",
+      e,
+    ),
+    heldReplies: account
+      ? await q.all<Record<string, unknown>>(
+          "SELECT u.name AS account, h.body, h.status, h.created_at, h.decided_at FROM held_replies h JOIN users u ON u.id = h.account_id WHERE h.author_id = ? ORDER BY h.created_at",
+          account.id,
+        )
+      : [],
+  };
+  return { email: e, account, sent, messages, emails, waitlist, reopenAlerts, comments, shareLinks, teams };
 }
 
 /** Erases someone as a sender: their sender records and the tracks they sent (files and stems), plus their messages and waitlist entry. */

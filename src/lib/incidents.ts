@@ -57,7 +57,7 @@ async function alert(db: Db, key: string, every: number, subject: string, lines:
   );
   if (!claimed) return;
   const { env } = await import("./env");
-  const { sendMail, APP_URL } = await import("./mail");
+  const { sendMail } = await import("./mail");
   const text = [...lines, "", `Details: ${env.opsUrl}/admin/incidents`].join("\n");
   const hook = process.env.ALERT_WEBHOOK_URL?.trim();
   if (hook && /^https:\/\//.test(hook))

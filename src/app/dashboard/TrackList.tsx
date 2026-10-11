@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Fragment } from "react";
-import { PlayIcon, usePlayer, type PlayerTrack } from "@/components/Player";
+import { PlayIcon, usePlayer } from "@/components/Player";
 import { Waveform } from "@/components/Waveform";
 import { ago, fmtTime } from "@/lib/format";
 import { toPlayer } from "@/lib/player-track";

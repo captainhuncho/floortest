@@ -9,7 +9,7 @@ import { MAX_LINKS, slotLink, type ProfileLink } from "@/lib/socials";
 import { KINDS } from "@/lib/db";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { destroySession, requireUser, verifyPassword, requireRole } from "@/lib/auth";
+import { destroySession, requireRole } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { purgeAccount } from "@/lib/privacy";
 import { cancelEmailChange, changeHandle, requestEmailChange } from "@/lib/accounts";
@@ -22,7 +22,6 @@ import { audit } from "@/lib/audit";
 import { cleanProfileLink, IDENTITY_HOSTS, newIdentityCode } from "@/lib/identity";
 import { done } from "./common";
 import { REQUEST_KINDS, VOLUMES, pendingRequest, type RequestKind } from "@/lib/plan-requests";
-import { APP_URL } from "@/lib/mail";
 
 export async function updateNotifications(_: SettingsState, form: FormData): Promise<SettingsState> {
   const u = await requireRole("owner");
