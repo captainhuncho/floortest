@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { discardFiles } from "@/lib/deletion";
 import { NextResponse } from "next/server";
 import { audit } from "@/lib/audit";
 import { currentUser, viewingAs } from "@/lib/auth";
@@ -37,8 +38,8 @@ export async function POST(req: Request, ctx: RouteContext<"/api/collection-art/
   const store = await storage();
   const key = `collection-art/${own.c.id}-${crypto.randomBytes(6).toString("hex")}.webp`;
   await store.put(key, opt, TYPES.webp);
-  if (own.c.art_key) await store.delete(own.c.art_key).catch(() => {});
   await q.run("UPDATE collections SET art_key = ? WHERE id = ?", key, own.c.id);
+  await discardFiles([own.c.art_key], "collection artwork replaced");
   await audit(own.user.id, "collection_updated", `${own.c.name}: artwork`);
   return NextResponse.json({ ok: true });
 }
@@ -46,8 +47,8 @@ export async function POST(req: Request, ctx: RouteContext<"/api/collection-art/
 export async function DELETE(_req: Request, ctx: RouteContext<"/api/collection-art/[id]">) {
   const own = await ownCollection((await ctx.params).id);
   if (!own) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (own.c.art_key) await (await storage()).delete(own.c.art_key).catch(() => {});
   await q.run("UPDATE collections SET art_key = NULL WHERE id = ?", own.c.id);
+  await discardFiles([own.c.art_key], "collection artwork removed");
   await audit(own.user.id, "collection_updated", `${own.c.name}: artwork removed`);
   return NextResponse.json({ ok: true });
 }

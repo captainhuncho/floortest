@@ -15,6 +15,25 @@ export async function retireTrackFiles(db: Queryable, trackIds: number[], reason
   await db.run(`DELETE FROM stems WHERE track_id IN (${trackIds.map(() => "?").join(",")})`, ...trackIds);
 }
 
+/**
+ * Deletes files that nothing points to any more (a replaced cover, a discarded upload). Each key is queued first, then
+ * deleted straight away; one that fails stays queued for the nightly retry (and an incident if it keeps failing) instead
+ * of being forgotten. Call it after the row that pointed to the file has changed. Never throws.
+ */
+export async function discardFiles(keys: (string | null | undefined)[], reason: string) {
+  const list = await queueDeletion(q, keys, reason, now()).then(
+    () => [...new Set(keys.filter((k): k is string => !!k))],
+    () => [],
+  );
+  if (!list.length) return;
+  const store = await storage();
+  for (const key of list)
+    await store.delete(key).then(
+      () => q.run("DELETE FROM storage_deletions WHERE file_key = ?", key),
+      () => {},
+    );
+}
+
 /** Deletes what's queued, now. Anything that fails stays queued for the nightly job; repeated failures raise an incident. */
 export async function drainNow(limit = 500) {
   const r = await drainDeletions(q, await storage(), now(), limit);

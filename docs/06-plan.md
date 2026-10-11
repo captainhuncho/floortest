@@ -79,7 +79,6 @@ Open items from `HANDOFF.md`, `CLAUDE_NEXT_WORK.md` and `docs/beta-launch-plan.m
 - Load test on Neon's pooled connection: many uploads, page loads and the nightly jobs at once.
 - Real-device upload test: large WAVs on slow and interrupted mobile data, expired upload links, seeking, downloads.
 - Email check in Gmail, Outlook and Apple Mail (receipt, alerts, reset, unsubscribe), and bounces not retried.
-- Check: cover replacement and a discarded failed upload go through the deletion queue (on 1 Oct they deleted directly).
 - Owner: delete the stale 27 Sep CLI deployment in Vercel (`floortest-n6qu2kshh…`) if it's still listed.
 
 **Product backlog (after launch, not promised anywhere):**
@@ -92,6 +91,7 @@ Open items from `HANDOFF.md`, `CLAUDE_NEXT_WORK.md` and `docs/beta-launch-plan.m
 - Revisit Cloudflare Workers hosting only at tens of thousands of users (trial findings in `docs/beta-launch-plan.md`).
 
 ## Done (recent)
+- 11 Oct: every file delete goes through the deletion queue: replaced covers and collection artwork, refused track artwork, discarded uploads and the originals of sealed uploads (`discardFiles`, test); the row changes first, then the file goes.
 - 11 Oct: audio bucket moved to Europe (`floortest-audio-eu`): ops Storage move check (backup now, file list, per-bucket check), `scripts/copy-bucket.ts`, switch verified by play and upload; old bucket kept a week for rollback.
 - 11 Oct: retired tables dropped (colleague sharing, Review Together guests); recorded in `docs/retired.md`.
 - 11 Oct: the Admin role is shown as "A&R / Admin" everywhere people see it (same powers).

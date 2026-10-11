@@ -1,5 +1,6 @@
 /** Intake: checks before a sender can send, the two-step upload, and confirming a sender's email. */
 import { SHARING_TERMS_VERSION } from "./legal";
+import { discardFiles } from "@/lib/deletion";
 import "server-only";
 import { emailText } from "./email-copy";
 import { after } from "next/server";
@@ -204,14 +205,14 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
   const sharing = await switchOn("sharing");
   let fileKey = up.file_key;
   const discard = async () => {
-    await store.delete(fileKey).catch(() => {});
-    if (fileKey !== up.file_key) await store.delete(up.file_key).catch(() => {});
+    await discardFiles([fileKey, up.file_key], "upload discarded");
     await q.run("DELETE FROM uploads WHERE id = ?", up.id);
   };
 
   if (!(await store.head(up.file_key))) throw new IntakeError("The file didn't finish uploading. Please try again.", 400);
   // From here on the sender's upload link can't touch the file: everything below checks and keeps the sealed copy.
   fileKey = await sealUpload(store, up.file_key);
+  await discardFiles([up.file_key], "upload sealed");
   // If we crash before the track is saved, the abandoned-upload clean-up still finds (and deletes) the sealed copy.
   await q.run("UPDATE uploads SET file_key = ? WHERE id = ?", fileKey, up.id);
   const head = await store.head(fileKey);

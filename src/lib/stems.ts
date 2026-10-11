@@ -1,4 +1,5 @@
 import "server-only";
+import { discardFiles } from "@/lib/deletion";
 import crypto from "node:crypto";
 import { IntakeError } from "./intake";
 import { now, q, type Sender, type Track, type User } from "./db";
@@ -96,13 +97,13 @@ export async function completeStemUpload(token: string, uploadId: string) {
   const store = await storage();
   let fileKey = up.file_key;
   const discard = async () => {
-    await store.delete(fileKey).catch(() => {});
-    if (fileKey !== up.file_key) await store.delete(up.file_key).catch(() => {});
+    await discardFiles([fileKey, up.file_key], "stem upload discarded");
     await q.run("DELETE FROM uploads WHERE id = ?", up.id);
   };
   if (!(await store.head(up.file_key))) throw new IntakeError("The file didn't finish uploading. Please try again.", 400);
   // Checked and kept as a sealed copy the sender's upload link can't overwrite.
   fileKey = await sealUpload(store, up.file_key);
+  await discardFiles([up.file_key], "upload sealed");
   // If we crash before the track is saved, the abandoned-upload clean-up still finds (and deletes) the sealed copy.
   await q.run("UPDATE uploads SET file_key = ? WHERE id = ?", fileKey, up.id);
   const head = await store.head(fileKey);

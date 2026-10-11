@@ -1,4 +1,5 @@
 import { audit } from "@/lib/audit";
+import { discardFiles } from "@/lib/deletion";
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { currentUser, viewingAs } from "@/lib/auth";
@@ -30,8 +31,8 @@ export async function POST(req: Request) {
   const store = await storage();
   const key = `covers/${user.id}-${crypto.randomBytes(6).toString("hex")}.webp`;
   await store.put(key, opt, TYPES.webp);
-  if (user.cover_key) await store.delete(user.cover_key).catch(() => {});
   await q.run("UPDATE users SET cover_key = ? WHERE id = ?", key, user.id);
+  await discardFiles([user.cover_key], "cover replaced");
   await audit(user.id, "cover_updated");
   return NextResponse.json({ ok: true });
 }
@@ -39,8 +40,8 @@ export async function POST(req: Request) {
 export async function DELETE() {
   const user = (await viewingAs()) ? null : await currentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (user.cover_key) await (await storage()).delete(user.cover_key).catch(() => {});
   await q.run("UPDATE users SET cover_key = NULL WHERE id = ?", user.id);
+  await discardFiles([user.cover_key], "cover removed");
   await audit(user.id, "cover_removed");
   return NextResponse.json({ ok: true });
 }

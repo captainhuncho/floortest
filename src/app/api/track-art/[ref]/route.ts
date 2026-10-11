@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { discardFiles } from "@/lib/deletion";
 import { NextResponse } from "next/server";
 import { currentUser } from "@/lib/auth";
 import { now, q, type Track } from "@/lib/db";
@@ -35,8 +36,8 @@ export async function POST(req: Request, ctx: RouteContext<"/api/track-art/[ref]
     const first = head ? new Uint8Array(await new Response((await store.stream(t.art_key, { start: 0, end: 15 })).body).arrayBuffer()) : null;
     const ext = t.art_key.split(".").pop();
     if (!first || imageKind(first) !== ext || head!.size > MAX) {
-      await store.delete(t.art_key).catch(() => {});
       await q.run("UPDATE tracks SET art_key = NULL WHERE id = ?", t.id);
+      await discardFiles([t.art_key], "track artwork refused");
       return err("Use a JPG, PNG or WebP image under 25 MB.", 415);
     }
     return NextResponse.json({ ok: true });

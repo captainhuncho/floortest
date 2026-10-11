@@ -37,14 +37,14 @@ export const UPLOAD_LINK_SECONDS = 15 * 60;
 
 /**
  * Moves an upload out of reach of its upload link: copies it to a new random key (in the same folder) that no link
- * points at, then deletes the original. Check the file *after* sealing, so what was checked is what's kept.
+ * points at. The caller discards the original (discardFiles), so a failed delete is retried rather than lost.
+ * Check the file *after* sealing, so what was checked is what's kept.
  */
 export async function sealUpload(store: Storage, key: string) {
   const slash = key.lastIndexOf("/");
   const ext = key.slice(key.lastIndexOf(".")).toLowerCase();
   const sealed = `${key.slice(0, slash + 1)}${crypto.randomUUID()}${/^\.[a-z0-9]{1,5}$/.test(ext) ? ext : ""}`;
   await store.copy(key, sealed);
-  await store.delete(key).catch(() => {});
   return sealed;
 }
 

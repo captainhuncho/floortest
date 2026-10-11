@@ -76,7 +76,7 @@ All file deletion goes through one queue (`storage_deletions`, `src/lib/deletion
 2. The files are then deleted immediately. A failure stays queued, with the error and attempt count.
 3. The nightly job retries. After 5 failed tries, an incident is raised.
 
-So a storage outage can delay a deletion but can never lose track of a file. Account deletion, sender erasure, receiver deletes, admin removals, takedowns and retention all use it.
+So a storage outage can delay a deletion but can never lose track of a file. Account deletion, sender erasure, receiver deletes, admin removals, takedowns and retention all use it. Files that are simply replaced or refused (a new profile cover or collection artwork, refused track artwork, a failed or discarded upload, the original of a sealed upload) go through `discardFiles()`: queued, deleted at once, retried if that fails. Nothing deletes from storage directly.
 
 ## Monitoring
 
