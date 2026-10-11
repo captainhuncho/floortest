@@ -7,8 +7,8 @@ How the backend works, how to run it, and what to do when something goes wrong. 
 | Piece | Service | What it holds |
 |---|---|---|
 | App (pages, API, admin) | Vercel, project `floortest`, region London (`lhr1`) | Next.js 16 app. Every push to `main` deploys to production; other branches get previews behind Vercel login |
-| Database | Supabase Postgres (pooled connection) | Accounts, tracks, senders, events, admin records. Preview uses its own database |
-| Audio and files | Cloudflare R2, bucket `floortest-audio` (preview: `floortest-audio-preview`) | Original WAV/MP3s, stems, cover photos, unfinished uploads, nightly backups under `backups/` |
+| Database | Neon Postgres, London (pooled connection) | Accounts, tracks, senders, events, admin records. Preview uses its own database |
+| Audio and files | Cloudflare R2, bucket `floortest-audio-eu`, Western Europe, since 11 Oct (preview: `floortest-audio-preview`; the old `floortest-audio` is kept until 18 Oct for rollback) | Original WAV/MP3s, stems, cover photos, unfinished uploads, nightly backups under `backups/` |
 | Email | Resend, from `hello@floortest.app` | Receipts, alerts, digests, invites, security emails |
 | Bot check | Cloudflare Turnstile (hostnames `floortest.app`, plus the old `floortest.imullar.com`) | Sign-up, waitlist, contact, anonymous uploads |
 | Domain and DNS | Hosting.com (cPanel) | `floortest.app` points at Vercel (A 76.76.21.21); Resend SPF/DKIM on `send` / `resend._domainkey`; DMARC `p=none` on `_dmarc.floortest.app`. Old `floortest.imullar.com` redirects to `floortest.app` |
@@ -65,8 +65,8 @@ Normal page visits also run light cleanup (sessions, rate limits, abandoned uplo
 - **Kept** 14 days. Every backup is listed in `app_state.backup_keys`, so older ones are always deleted, even after missed nights.
 - **Status:** Admin → Overview shows the last backup. It becomes a red to-do if none ran in 2 days.
 - **Restore drill** (run after schema changes and monthly): download a backup from R2, then run `BACKUP_KEY=… npx tsx scripts/restore-drill.ts path/to/db-….json.gz.enc` (use the same key as the server). It rebuilds a throwaway database and checks every table's row count. It never touches production.
-- **A real restore:** restore into a *new* Supabase database first, check it, then point `DATABASE_URL` at it and redeploy. Never overwrite production in place.
-- **Gaps (to do):** a separate bucket and credentials for backups, recovery copies of audio (R2 versioning or replication), and Supabase point-in-time recovery (paid).
+- **A real restore:** restore into a *new* Neon database (or branch) first, check it, then point `DATABASE_URL` at it and redeploy. Never overwrite production in place.
+- **Gaps (to do):** a separate bucket and credentials for backups, recovery copies of audio (R2 versioning or replication), and Neon point-in-time recovery beyond the free window (Neon Launch).
 
 ## Deleting things (privacy, retention, admin)
 
@@ -105,7 +105,7 @@ So a storage outage can delay a deletion but can never lose track of a file. Acc
 
 | Symptom | Check | Fix |
 |---|---|---|
-| Site down / 5xx | Vercel deployment state and logs; `/api/health` | Promote the previous deployment. If the database is the cause, check Supabase status and connections |
+| Site down / 5xx | Vercel deployment state and logs; `/api/health` | Promote the previous deployment. If the database is the cause, check Neon status and connections |
 | "Something went wrong" on one page | Admin → Incidents (the code on the error page matches the log digest) | Fix forward, or roll back |
 | Nobody can sign up or send | Admin → Incidents for "Bot check"; Cloudflare Turnstile widget hostnames | Admin → Feature switches → turn off **Bot check** (instant) |
 | Emails not arriving | Admin → Emails sent (status column), Resend dashboard | Check domain verification and API key; resend from admin |

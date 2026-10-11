@@ -91,6 +91,7 @@ Open items from `HANDOFF.md`, `CLAUDE_NEXT_WORK.md` and `docs/beta-launch-plan.m
 - Revisit Cloudflare Workers hosting only at tens of thousands of users (trial findings in `docs/beta-launch-plan.md`).
 
 ## Done (recent)
+- 11 Oct: README rewritten as a short, current entry point (runs, commands, how it fits together, links to the six docs and guides); `docs/operations.md` names Neon and the EU bucket.
 - 11 Oct: every file delete goes through the deletion queue: replaced covers and collection artwork, refused track artwork, discarded uploads and the originals of sealed uploads (`discardFiles`, test); the row changes first, then the file goes.
 - 11 Oct: audio bucket moved to Europe (`floortest-audio-eu`): ops Storage move check (backup now, file list, per-bucket check), `scripts/copy-bucket.ts`, switch verified by play and upload; old bucket kept a week for rollback.
 - 11 Oct: retired tables dropped (colleague sharing, Review Together guests); recorded in `docs/retired.md`.
