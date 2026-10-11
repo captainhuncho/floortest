@@ -28,7 +28,7 @@ export default async function PrepareForSet() {
       <p className="mt-3 max-w-md text-xs leading-[1.4] text-mute">Every track you keep lands here. Download a crate with a Rekordbox XML and playlist, or just the files.</p>
       </div>
       {/* Every option visible, same size: people use different ones. Clear is outlined red, and still confirms. */}
-      <DownloadActions count={kept.length} extra={<ClearKept count={kept.length} />} />
+      <DownloadActions count={kept.length} extra={user.role !== "member" ? <ClearKept count={kept.length} /> : undefined} />
       </div>
       <OfflineSave count={kept.length} />
 

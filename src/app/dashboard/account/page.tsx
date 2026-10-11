@@ -138,11 +138,11 @@ export default async function Account() {
           {/* Taking submissions lives here on phones, where the sidebar is hidden. */}
           <section className={card}>
             <h2 className={label}>YOUR LINK</h2>
-            <LinkCard link={link} handle={user.handle} collections={cols} activeId={user.active_collection_id} />
+            <LinkCard link={link} handle={user.handle} collections={cols} activeId={user.active_collection_id} canManage={user.role !== "member"} />
             {rule}
             <QrRow handle={user.handle} link={link} />
-            {rule}
-            <PauseSwitch
+            {user.role !== "member" && rule}
+            {user.role !== "member" && <PauseSwitch
               pause={{
                 on: isPaused(user),
                 until: user.pause_until ? new Date(user.pause_until).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: user.tz }) : null,
@@ -150,7 +150,7 @@ export default async function Account() {
                 blocked: null,
                 message: user.pause_message,
               }}
-            />
+            />}
           </section>
           <Section
             title="YOUR DESK"

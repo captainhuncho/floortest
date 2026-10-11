@@ -62,7 +62,8 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
     : !active || isClosed(active)
       ? {
           text: active ? `Your link sends tracks to “${active.name}”, which closed on ${fmtDay(active.closes_at!)}. Nobody can send you music right now.` : "Your link isn't sending tracks anywhere.",
-          action: openAlternative ? (
+          // Pointing the link elsewhere is for the owner and admins.
+          action: user.role === "member" ? undefined : openAlternative ? (
             <SwitchCollection id={openAlternative.id} name={openAlternative.name} />
           ) : (
             <Link href="/dashboard/collections" className="btn-lime btn-sm">
@@ -139,7 +140,8 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
       )}
 
       {/* The checklist helps a new desk; on a busy one the queue comes first. */}
-      <Onboarding user={user} />
+      {/* Setting up the account is for the owner and admins; members skip the checklist. */}
+      {user.role !== "member" && <Onboarding user={user} />}
 
       {kept > 0 && (
         <section aria-labelledby="set-h" className="flex items-center justify-between gap-4 border-t border-line pt-5">

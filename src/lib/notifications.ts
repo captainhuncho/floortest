@@ -11,7 +11,7 @@ const shortDate = (ts: number, tz: string) => new Date(ts).toLocaleDateString("e
 
 /** New submissions and auto-deletions since the bell was last opened, plus live alerts about the link. */
 export async function notificationsFor(user: User) {
-  const row = await q.get<{ s: number | null; c: number | null }>("SELECT notifications_seen_at AS s, notifications_cleared_at AS c FROM users WHERE id = ?", user.id);
+  const row = await bellState(user);
   const seen = row?.s ?? 0;
   const cleared = row?.c ?? 0;
   const events = await q.all<{ id: number; type: string; track_id: number; created_at: number; title: string; sender: string; collection: string | null }>(
@@ -131,4 +131,31 @@ export async function notificationsFor(user: User) {
 
   const all = [...alerts, ...items];
   return { items: all, unread: all.filter((n) => n.unread).length };
+}
+
+/**
+ * When this person last opened and last cleared the bell on this desk. Your own desk keeps it on your account; on a
+ * team desk each member has their own (on their team row), so one person's Clear doesn't empty the others' bells.
+ */
+async function bellState(user: Pick<User, "id" | "actor_id">) {
+  if (user.actor_id && user.actor_id !== user.id)
+    return q.get<{ s: number | null; c: number | null }>(
+      "SELECT notifications_seen_at AS s, notifications_cleared_at AS c FROM account_members WHERE account_id = ? AND user_id = ?",
+      user.id,
+      user.actor_id,
+    );
+  return q.get<{ s: number | null; c: number | null }>("SELECT notifications_seen_at AS s, notifications_cleared_at AS c FROM users WHERE id = ?", user.id);
+}
+
+/** Opening (seen) or clearing (seen and cleared) the bell, for this person on this desk. */
+export async function markBell(user: Pick<User, "id" | "actor_id">, clear: boolean) {
+  const t = now();
+  if (user.actor_id && user.actor_id !== user.id)
+    await q.run(
+      `UPDATE account_members SET notifications_seen_at = ?${clear ? ", notifications_cleared_at = ?" : ""} WHERE account_id = ? AND user_id = ?`,
+      ...(clear ? [t, t] : [t]),
+      user.id,
+      user.actor_id,
+    );
+  else await q.run(`UPDATE users SET notifications_seen_at = ?${clear ? ", notifications_cleared_at = ?" : ""} WHERE id = ?`, ...(clear ? [t, t] : [t]), user.id);
 }

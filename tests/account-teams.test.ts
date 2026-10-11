@@ -117,6 +117,15 @@ test("account teams: seats by plan, invites, roles, removal, reply approval and 
   assert.equal(back.decision, "passed");
   assert.equal(R.decisionLocked({ role: "member" }, back), false);
 
+  // The bell is per person on a team desk: a member clearing it leaves the owner's untouched.
+  const { markBell } = await import("../src/lib/notifications");
+  await q.run("UPDATE users SET notifications_cleared_at = NULL, notifications_seen_at = NULL WHERE id = ?", label);
+  await markBell({ id: label, actor_id: kofi }, true);
+  const ownerBell = await q.get<{ c: number | null }>("SELECT notifications_cleared_at AS c FROM users WHERE id = ?", label);
+  const kofiBell = await q.get<{ c: number | null }>("SELECT notifications_cleared_at AS c FROM account_members WHERE account_id = ? AND user_id = ?", label, kofi);
+  assert.equal(ownerBell?.c, null, "the owner's bell is untouched");
+  assert.ok(kofiBell?.c, "the member's own bell is cleared");
+
   // Leaving ends access at once.
   await T.removeFromTeam(desk("member", kofi), kofiRow.id);
   assert.equal(await T.roleOn(label, kofi), null);

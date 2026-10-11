@@ -32,7 +32,7 @@ export default async function Team({ searchParams }: { searchParams: Promise<{ d
       />
       {denied && (
         <p role="alert" className="rounded-lg border border-danger/40 px-4 py-3 text-sm">
-          That page is for the account&apos;s {user.role === "admin" ? "owner" : "owner or an A&R / Admin"}.
+          That&apos;s for the account&apos;s {user.role === "admin" ? "owner" : "owner or an A&R / Admin"}.
         </p>
       )}
 

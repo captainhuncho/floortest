@@ -118,6 +118,7 @@ export default async function Contact({ params }: { params: Promise<{ id: string
             ))}
           </ul>
         </section>
+        {user.role !== "member" && (
         <section>
           <h2 className="label">Intake</h2>
           <p className="mt-1 text-sm text-mute">
@@ -133,6 +134,7 @@ export default async function Contact({ params }: { params: Promise<{ id: string
             {s.blocked_at ? "Unblock sender" : "Block sender"}
           </ConfirmButton>
         </section>
+        )}
       </aside>
     </div>
   );

@@ -88,7 +88,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
   return (
     <>
       <div className="flex flex-col gap-3 px-4 pb-4 pt-1 text-bone md:hidden">
-        <CollectionDetailHeader c={editable} receiving={receiving} closed={isClosed(c)} canDelete={admin && all.length > 1} />
+        <CollectionDetailHeader c={editable} receiving={receiving} closed={isClosed(c)} canManage={admin} />
         {brief.length > 0 && (
           <section aria-label="Brief" className="card p-3.5">
             <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-[12px]">
@@ -131,7 +131,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
               {isClosed(c) && <span className="rounded-md border border-faint px-2 py-1 text-[11px] font-bold tracking-[0.5px] text-mute">{c.full_at ? "FULL" : "CLOSED"}</span>}
             </h1>
             <div className="flex flex-wrap items-center gap-2">
-              <EditCollectionInfo c={editable} receiving={receiving} closed={isClosed(c)} canDelete={admin && all.length > 1} />
+              <EditCollectionInfo c={editable} receiving={receiving} closed={isClosed(c)} canManage={admin} />
               <DownloadActions collectionId={c.id} crateName={c.name} count={c.count} size="sm" />
             </div>
           </div>
@@ -186,9 +186,11 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
         ) : (
           <p className="mx-4 card p-4 text-[12px] text-mute md:mx-0">This folder is empty. Tracks sent while it&apos;s receiving land here.</p>
         )}
-        <div className="mx-4 mt-8 md:mx-0">
-          <DeleteCollection c={{ id: c.id, name: c.name }} canDelete={admin && all.length > 1} />
-        </div>
+        {admin && (
+          <div className="mx-4 mt-8 md:mx-0">
+            <DeleteCollection c={{ id: c.id, name: c.name }} canDelete={all.length > 1} />
+          </div>
+        )}
       </div>
     </>
   );

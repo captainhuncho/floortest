@@ -1466,4 +1466,13 @@ alter table collections drop column if exists team_can_decide;
 delete from feature_switches where feature = 'shared';
 `,
   },
+  {
+    // The bell on a team desk is per person: each member keeps their own seen and cleared times for that desk,
+    // so one person clearing it doesn't empty everyone else's.
+    id: "0086_member_bell",
+    sql: `
+alter table account_members add column if not exists notifications_seen_at bigint;
+alter table account_members add column if not exists notifications_cleared_at bigint;
+`,
+  },
 ];

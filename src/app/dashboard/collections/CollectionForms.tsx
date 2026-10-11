@@ -43,7 +43,7 @@ const toDateInput = (ts: number | null) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-export function CollectionCard({ c, receiving, closed, canDelete, startEditing = false }: { c: C; receiving: boolean; closed: boolean; canDelete: boolean; startEditing?: boolean }) {
+export function CollectionCard({ c, receiving, closed, canManage = true, startEditing = false }: { c: C; receiving: boolean; closed: boolean; canManage?: boolean; startEditing?: boolean }) {
   const [editing, setEditing] = useState(startEditing);
   const [pending, start] = useTransition();
 
@@ -96,7 +96,7 @@ export function CollectionCard({ c, receiving, closed, canDelete, startEditing =
             Open collection
           </Link>
           <DownloadActions collectionId={c.id} crateName={c.name} count={c.count} size="sm" />
-          {!receiving && (
+          {!receiving && canManage && (
             <button className="btn-ghost btn-sm" disabled={pending} onClick={() => start(() => setActiveCollection(c.id))}>
               Send new tracks here
             </button>
@@ -239,13 +239,13 @@ const tileBars = (seed: number, n: number) =>
   Array.from({ length: n }, (_, i) => 0.25 + 0.75 * Math.abs(Math.sin((i + 1) * 1.7 + seed) * Math.cos(i * 0.6 + seed * 0.3)));
 
 /** Figma "collection-tile": artwork, receiving badge, play, then name, count and a menu. */
-export function CollectionTile({ c, receiving, closed, canDelete }: { c: C; receiving: boolean; closed: boolean; canDelete: boolean }) {
+export function CollectionTile({ c, receiving, closed, canManage = true }: { c: C; receiving: boolean; closed: boolean; /** Owner or A&R / Admin: may change where the link sends tracks. */ canManage?: boolean }) {
   const [menu, setMenu] = useState(false);
   const [editing, setEditing] = useState(false);
   if (editing)
     return (
       <div className="col-span-full">
-        <CollectionCard c={c} receiving={receiving} closed={closed} canDelete={canDelete} startEditing />
+        <CollectionCard c={c} receiving={receiving} closed={closed} canManage={canManage} startEditing />
         <button className="mt-2 text-sm text-mute hover:text-bone tap-text" onClick={() => setEditing(false)}>
           Close
         </button>
@@ -293,7 +293,7 @@ export function CollectionTile({ c, receiving, closed, canDelete }: { c: C; rece
           </button>
         </div>
       </div>
-      {menu && <CollectionOptions c={c} receiving={receiving} onEdit={() => setEditing(true)} onClose={() => setMenu(false)} showOpen />}
+      {menu && <CollectionOptions c={c} receiving={receiving} canManage={canManage} onEdit={() => setEditing(true)} onClose={() => setMenu(false)} showOpen />}
     </div>
   );
 }
@@ -325,11 +325,11 @@ function OptionsSheet({ title, onClose, children }: { title: string; onClose: ()
 }
 
 /** The shared options for one collection. */
-function CollectionOptions({ c, receiving, onEdit, onClose, showOpen }: { c: C; receiving: boolean; onEdit: () => void; onClose: () => void; showOpen: boolean }) {
+function CollectionOptions({ c, receiving, canManage, onEdit, onClose, showOpen }: { c: C; receiving: boolean; canManage: boolean; onEdit: () => void; onClose: () => void; showOpen: boolean }) {
   const [pending, start] = useTransition();
   return (
     <OptionsSheet title={c.name} onClose={onClose}>
-      {!receiving && (
+      {!receiving && canManage && (
         <button role="menuitem" disabled={pending} onClick={() => start(async () => { await setActiveCollection(c.id); onClose(); })}>
           Send new tracks here
         </button>
@@ -358,7 +358,7 @@ function CollectionOptions({ c, receiving, onEdit, onClose, showOpen }: { c: C; 
 }
 
 /** Figma "04 Collection Detail" header: back, name, ••• options, receiving badge and Edit Info. */
-export function CollectionDetailHeader({ c, receiving, closed, canDelete }: { c: C; receiving: boolean; closed: boolean; canDelete: boolean }) {
+export function CollectionDetailHeader({ c, receiving, closed, canManage = true }: { c: C; receiving: boolean; closed: boolean; /** Owner or A&R / Admin: may change where the link sends tracks. */ canManage?: boolean }) {
   const [menu, setMenu] = useState(false);
   const [editing, setEditing] = useState(false);
   return (
@@ -395,19 +395,19 @@ export function CollectionDetailHeader({ c, receiving, closed, canDelete }: { c:
       </div>
       {editing && (
         <div className="w-full">
-          <CollectionCard c={c} receiving={receiving} closed={closed} canDelete={canDelete} startEditing />
+          <CollectionCard c={c} receiving={receiving} closed={closed} canManage={canManage} startEditing />
           <button className="mt-2 text-sm text-mute hover:text-bone tap-text" onClick={() => setEditing(false)}>
             Close
           </button>
         </div>
       )}
-      {menu && <CollectionOptions c={c} receiving={receiving} onEdit={() => setEditing(true)} onClose={() => setMenu(false)} showOpen={false} />}
+      {menu && <CollectionOptions c={c} receiving={receiving} canManage={canManage} onEdit={() => setEditing(true)} onClose={() => setMenu(false)} showOpen={false} />}
     </>
   );
 }
 
 /** Desktop "Edit Collection": the edit form in a pop-up over the page. Tap outside or ✕ to close. */
-export function EditCollectionInfo({ c, receiving, closed, canDelete }: { c: C; receiving: boolean; closed: boolean; canDelete: boolean }) {
+export function EditCollectionInfo({ c, receiving, closed, canManage = true }: { c: C; receiving: boolean; closed: boolean; /** Owner or A&R / Admin: may change where the link sends tracks. */ canManage?: boolean }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   useFocusTrap(box, open);
@@ -428,7 +428,7 @@ export function EditCollectionInfo({ c, receiving, closed, canDelete }: { c: C; 
             <button onClick={() => setOpen(false)} aria-label="Close" className="absolute right-3 top-3 z-10 grid size-8 place-items-center rounded-full text-lg text-mute hover:bg-ink-3 hover:text-bone">
               ✕
             </button>
-            <CollectionCard c={c} receiving={receiving} closed={closed} canDelete={canDelete} startEditing />
+            <CollectionCard c={c} receiving={receiving} closed={closed} canManage={canManage} startEditing />
           </div>
         </div>
       )}

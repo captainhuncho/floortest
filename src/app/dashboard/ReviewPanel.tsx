@@ -309,13 +309,15 @@ export async function ReviewPanel({
             </select>
             <button className="rounded-r-md border border-l-0 border-line px-3 text-sm text-mute hover:text-bone">Move</button>
           </form>
-          <ConfirmButton
-            action={deleteTrack.bind(null, t.id, next?.href ?? "/dashboard/review")}
-            message="Delete this file now? The slot returns. Sender history is kept."
-            className="btn btn-sm text-danger hover:bg-danger/10"
-          >
-            Delete
-          </ConfirmButton>
+          {desk?.role !== "member" && (
+            <ConfirmButton
+              action={deleteTrack.bind(null, t.id, next?.href ?? "/dashboard/review")}
+              message="Delete this file now? The slot returns. Sender history is kept."
+              className="btn btn-sm text-danger hover:bg-danger/10"
+            >
+              Delete
+            </ConfirmButton>
+          )}
         </div>
 
         <section className="mt-6 border-t border-line pt-4" aria-labelledby="sender-h">

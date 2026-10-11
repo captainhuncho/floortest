@@ -1,6 +1,7 @@
 "use server";
 
 /** Around the desk: feedback, onboarding, the Send page lookup, notifications, search and pausing the link. */
+import { markBell } from "@/lib/notifications";
 import { revalidatePath } from "next/cache";
 import { receiverLookup } from "@/lib/receiver-lookup";
 import { requireUser, requireRole } from "@/lib/auth";
@@ -43,13 +44,13 @@ export async function lookupReceiver(raw: string) {
 /** "Clear all": the bell starts empty again. Live alerts (desk full, paused) stay while they're true. */
 export async function clearNotifications() {
   const u = await requireUser();
-  await q.run("UPDATE users SET notifications_cleared_at = ?, notifications_seen_at = ? WHERE id = ?", now(), now(), u.id);
+  await markBell(u, true);
   done();
 }
 
 export async function markNotificationsRead() {
   const u = await requireUser();
-  await q.run("UPDATE users SET notifications_seen_at = ? WHERE id = ?", now(), u.id);
+  await markBell(u, false);
   done();
 }
 

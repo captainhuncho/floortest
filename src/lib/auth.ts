@@ -156,10 +156,8 @@ export const currentPerson = cache(async (): Promise<User | null> => {
  */
 export async function requireRole(min: TeamRole): Promise<User> {
   const u = await requireUser();
-  if (!atLeast(u.role, min)) {
-    if ((await headers()).get("next-action")) throw new Error("Not allowed on this desk");
-    redirect("/dashboard/settings/team?denied=1");
-  }
+  // Pages and server actions alike go to the Team page with a short note, never to the error screen.
+  if (!atLeast(u.role, min)) redirect("/dashboard/settings/team?denied=1");
   return u;
 }
 
