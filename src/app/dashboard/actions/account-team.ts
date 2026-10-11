@@ -39,8 +39,8 @@ export async function inviteTeammate(_prev: TeamState, form: FormData): Promise<
       userId: u.id,
       audience: "receiver",
       to: email,
-      subject: `${u.actor_name} invited you to ${u.name} on FloorTest`,
-      body: `Hi,\n\n${u.actor_name} invited you to join ${u.name} on FloorTest as ${role === "admin" ? "an admin" : "a member"}, to review and reply to the music sent to ${APP_URL.replace(/^https?:\/\//, "")}/${u.handle}.\n\nAccept here (works for 7 days): ${APP_URL}/join/${secret}\n\nYou'll use your own FloorTest login. If you don't have one yet, you can create it from that link with this email address.\n\n— FloorTest`,
+      subject: u.actor_id === u.id ? `${u.name} invited you to their team on FloorTest` : `${u.actor_name} invited you to ${u.name}'s team on FloorTest`,
+      body: `Hi,\n\n${u.actor_id === u.id ? u.name : `${u.actor_name} (${u.name})`} invited you to join their team on FloorTest as ${role === "admin" ? "an admin" : "a member"}, to review and reply to the music sent to ${APP_URL.replace(/^https?:\/\//, "")}/${u.handle}.\n\nThere's no code to type: open this link to accept (it works for 7 days):\n${APP_URL}/join/${secret}\n\nYou'll use your own FloorTest login with this email address (${email}). No account yet? Create one from that link, with a password or with Google.\n\n— FloorTest`,
     });
     await audit(u.id, "team_invited", `${email} (${role})`);
     done();

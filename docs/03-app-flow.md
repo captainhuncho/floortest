@@ -118,7 +118,7 @@ Owner bell: first visit by each person · downloads · "may have your link" (10+
 ```
 Owner/Admin: Settings → Team ─► Invite (email, role) ─► email with /join/<invite> (7 days)
 Invitee ─► /join/<invite> ─┬─ signed in with that email ─► Join ─► team desk opens
-                           ├─ signed out ─► Log in (comes back) / Create your login (no invite code needed) ─► joined
+                           ├─ signed out ─► Log in (comes back) / Create your login, with a password or Google (no invite code; the invite is remembered for an hour in `ft_team_invite`) ─► joined
                            └─ other email ─► "sent to …, log in with that email"
 Desk bar ─► Switch desk ─► your own desk | each team (role shown)
 Member reply ─► approval off ─► sent │ approval on ─► held ─► approver / owner / admin: edit ─► Approve and send | Don't send

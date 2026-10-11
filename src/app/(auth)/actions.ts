@@ -9,7 +9,7 @@ import { handleHeld } from "@/lib/accounts";
 import { BOT_MESSAGE, passedTurnstile } from "@/lib/turnstile";
 import crypto from "node:crypto";
 import { cookies } from "next/headers";
-import { NEXT_COOKIE, safeNext } from "@/lib/next-path";
+import { NEXT_COOKIE, safeNext, TEAM_INVITE_COOKIE } from "@/lib/next-path";
 import { termsVersion } from "@/lib/legal-sharing";
 import { redirect } from "next/navigation";
 import { audit } from "@/lib/audit";
@@ -204,6 +204,8 @@ export async function signupWithGoogle(_: FormState, form: FormData): Promise<Fo
   jar.delete(GOOGLE_SIGNUP_COOKIE);
   await q.run("UPDATE users SET google_sub = ?, google_linked_at = ? WHERE id = ?", who.sub, now(), r.id);
   await finishSignIn(r.id, "Google");
+  // Joining a team: accept the invite and open the team's desk straight away.
+  if (await joinTeamAfterSignup(form, r.id)) redirect("/dashboard/floor");
   await sendWelcome(r.id);
   redirect(await landing("/dashboard/floor?welcome=1"));
 }
@@ -421,6 +423,8 @@ async function joinTeamAfterSignup(form: FormData, userId: number) {
   const inv = await acceptInvite(secret, person).catch(() => null);
   if (!inv) return null;
   await audit(inv.account_id, "team_joined", person.email);
-  (await cookies()).set(DESK_COOKIE, String(inv.account_id), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 365 * 86_400 });
+  const jar = await cookies();
+  jar.set(DESK_COOKIE, String(inv.account_id), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 365 * 86_400 });
+  jar.delete(TEAM_INVITE_COOKIE);
   return inv;
 }

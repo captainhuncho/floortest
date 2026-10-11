@@ -4,6 +4,8 @@ import { switchOn } from "@/lib/switches";
 import { env } from "@/lib/env";
 import { GOOGLE_SIGNUP_COOKIE, readIdentity } from "@/lib/google-auth";
 import { AuthForm } from "../../AuthForm";
+import { inviteBySecret } from "@/lib/account-members";
+import { TEAM_INVITE_COOKIE } from "@/lib/next-path";
 import { signupWithGoogle } from "../../actions";
 
 export const metadata = { title: "Finish signing up — FloorTest" };
@@ -12,7 +14,11 @@ export const metadata = { title: "Finish signing up — FloorTest" };
 export default async function GoogleSignup() {
   const who = readIdentity((await cookies()).get(GOOGLE_SIGNUP_COOKIE)?.value, env.secret);
   if (!who) redirect("/signup");
-  const inviteOnly = !(await switchOn("open_signup"));
+  // Joining a team from an invite sent to this Google email: no invite code needed.
+  const teamSecret = (await cookies()).get(TEAM_INVITE_COOKIE)?.value ?? "";
+  const inv = teamSecret ? await inviteBySecret(teamSecret) : undefined;
+  const team = inv && inv.email === who.email.toLowerCase() ? inv : undefined;
+  const inviteOnly = !(await switchOn("open_signup")) && !team;
   const host = env.appUrl.replace(/^https?:\/\//, "");
   return (
     <>
@@ -26,12 +32,18 @@ export default async function GoogleSignup() {
           </>
         )}
       </p>
+      {team && (
+        <p className="mb-6 rounded-lg border border-lime/40 bg-lime/5 px-4 py-3 text-sm">
+          You&apos;re joining <span className="font-medium">{team.account_name}</span> on FloorTest.
+        </p>
+      )}
       <p className="mb-6 rounded-lg border border-line bg-ink-2 px-4 py-3 text-sm">
         Signing up as <span className="font-medium text-bone">{who.email}</span> <span className="text-mute">(from Google, already confirmed)</span>
       </p>
       <AuthForm
         captureSource
         action={signupWithGoogle}
+        hidden={team ? { team: teamSecret } : undefined}
         submit="Create my link"
         fields={[
           ...(inviteOnly ? [{ name: "invite", label: "Invite code", placeholder: "From your invite", autoComplete: "off" }] : []),
