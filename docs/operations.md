@@ -125,3 +125,4 @@ So a storage outage can delay a deletion but can never lose track of a file. Acc
 - `npx tsx scripts/smoke.ts <url> <handle>`: a real upload end to end, plus a disguised file being refused. It creates a real track, so delete it afterwards.
 - `npx tsx scripts/stress.ts <url> <handle>`: concurrency, hostile input, rate limits and auth. **Local or throwaway deployments only, never the live site.**
 - `npx tsx scripts/restore-drill.ts <backup.json.gz>`: proves a backup restores.
+- `R2_ACCOUNT=… npx tsx scripts/copy-bucket.ts <from> <to> [--dry-run]`: copies every file between two R2 buckets inside Cloudflare (asks for the key, hidden), skips files already there at the same size, never deletes, checks sizes at the end. Used for the bucket move.
