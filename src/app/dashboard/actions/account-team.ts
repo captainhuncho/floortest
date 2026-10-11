@@ -40,7 +40,7 @@ export async function inviteTeammate(_prev: TeamState, form: FormData): Promise<
       audience: "receiver",
       to: email,
       subject: u.actor_id === u.id ? `${u.name} invited you to their team on FloorTest` : `${u.actor_name} invited you to ${u.name}'s team on FloorTest`,
-      body: `Hi,\n\n${u.actor_id === u.id ? u.name : `${u.actor_name} (${u.name})`} invited you to join their team on FloorTest as ${role === "admin" ? "an admin" : "a member"}, to review and reply to the music sent to ${APP_URL.replace(/^https?:\/\//, "")}/${u.handle}.\n\nThere's no code to type: open this link to accept (it works for 7 days):\n${APP_URL}/join/${secret}\n\nYou'll use your own FloorTest login with this email address (${email}). No account yet? Create one from that link, with a password or with Google.\n\n— FloorTest`,
+      body: `Hi,\n\n${u.actor_id === u.id ? u.name : `${u.actor_name} (${u.name})`} invited you to join their team on FloorTest as ${role === "admin" ? "an A&R / Admin" : "a member"}, to review and reply to the music sent to ${APP_URL.replace(/^https?:\/\//, "")}/${u.handle}.\n\nThere's no code to type: open this link to accept (it works for 7 days):\n${APP_URL}/join/${secret}\n\nYou'll use your own FloorTest login with this email address (${email}). No account yet? Create one from that link, with a password or with Google.\n\n— FloorTest`,
     });
     await audit(u.id, "team_invited", `${email} (${role})`);
     done();
@@ -92,7 +92,7 @@ export async function saveReplyApproval(_prev: TeamState, form: FormData): Promi
   }
 }
 
-/** The approver (or the owner or an admin) sends a held reply, edited if they like, or turns it down. */
+/** The approver (or the owner or an A&R / Admin) sends a held reply, edited if they like, or turns it down. */
 export async function answerHeldReply(heldId: number, send: boolean, form: FormData) {
   const u = await requireUser();
   const h = await decideHeld(u, heldId, send ? "sent" : "rejected").catch(() => undefined);

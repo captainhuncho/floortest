@@ -60,12 +60,12 @@ export async function markPlayedOut(user: User, t: Track, note: string) {
 /* ───────────────────────── Decisions ───────────────────────── */
 
 /**
- * On a team desk, a call made by the owner or an admin stands: a member can't change or clear it. Owners and admins
+ * On a team desk, a call made by the owner or an A&R / Admin stands: a member can't change or clear it. Owners and admins
  * can change anyone's.
  */
 export const decisionLocked = (user: Pick<User, "role">, t: Pick<Track, "decision" | "decided_role">) =>
   user.role === "member" && !!t.decision && (t.decided_role === "owner" || t.decided_role === "admin");
-export const LOCKED_MESSAGE = "An owner or admin made this call, so only they can change it.";
+export const LOCKED_MESSAGE = "The owner or an A&R / Admin made this call, so only they can change it.";
 
 /** Keep or "not for me" (stored as passed). Private to the receiver: senders are never told. Returns what undo needs. */
 export async function decide(user: User, t: Track, decision: Decision) {

@@ -28,7 +28,7 @@ test("account teams: seats by plan, invites, roles, removal, reply approval and 
 
   // Seats come from the plan: Free 1, Pro 2, Team 5, plus add-ons.
   assert.equal(await T.seatsFor(label), 2);
-  await assert.rejects(T.inviteToTeam(desk("member"), "x@team.io", "member"), /owner or an admin/);
+  await assert.rejects(T.inviteToTeam(desk("member"), "x@team.io", "member"), /owner or an A&R \/ Admin/);
   const a = await T.inviteToTeam(desk("owner"), "ama@team.io", "admin");
   await assert.rejects(T.inviteToTeam(desk("owner"), "kofi@team.io", "member"), /All your seats/, "Pro: you + 1");
   await T.setExtraSeats(label, 1);
@@ -55,12 +55,12 @@ test("account teams: seats by plan, invites, roles, removal, reply approval and 
   const team = await T.teamOf(label);
   const amaRow = team.members.find((m) => m.user_id === ama)!;
   const kofiRow = team.members.find((m) => m.user_id === kofi)!;
-  await assert.rejects(T.removeFromTeam(desk("member", kofi), amaRow.id), /owner or an admin/);
-  await assert.rejects(T.removeFromTeam({ id: label, role: "admin", actor_id: 999 }, amaRow.id), /Only the owner can remove an admin/);
+  await assert.rejects(T.removeFromTeam(desk("member", kofi), amaRow.id), /owner or an A&R \/ Admin/);
+  await assert.rejects(T.removeFromTeam({ id: label, role: "admin", actor_id: 999 }, amaRow.id), /Only the owner can remove an A&R \/ Admin/);
 
   // Reply approval: off by default; on with an approver, members' replies wait; the approver, owner and admins approve.
   assert.equal(await T.replyNeedsApproval(desk("member", kofi)), false);
-  await assert.rejects(T.setReplyApproval(desk("member", kofi), true, label), /owner or an admin/);
+  await assert.rejects(T.setReplyApproval(desk("member", kofi), true, label), /owner or an A&R \/ Admin/);
   await assert.rejects(T.setReplyApproval(desk("owner"), true, 999999), /someone on the team/);
   await T.setReplyApproval(desk("owner"), true, ama);
   assert.equal(await T.replyNeedsApproval(desk("member", kofi)), true);

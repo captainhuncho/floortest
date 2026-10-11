@@ -24,7 +24,7 @@ export type Comment = { id: number; user_id: number; name: string; body: string;
 
 export const commentsFor = (trackId: number) =>
   q.all<Comment>(
-    "SELECT c.id, c.user_id, u.name, c.body, c.created_at FROM track_comments c JOIN users u ON u.id = c.user_id WHERE c.track_id = ? ORDER BY c.created_at LIMIT 200",
+    "SELECT c.id, c.user_id, u.name, c.body, c.created_at FROM track_comments c JOIN users u ON u.id = c.user_id WHERE c.track_id = ? ORDER BY c.created_at, c.id LIMIT 200",
     trackId,
   );
 

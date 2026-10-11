@@ -59,6 +59,7 @@ Decided: a colleague is a **seat on an account** (label, radio, crew), not someo
 - Rekordbox how-to video, footer legal placement, mobile footer redesign.
 
 ## Done (recent)
+- 11 Oct: the Admin role is shown as "A&R / Admin" everywhere people see it (same powers).
 - 11 Oct: Review Together folded into account teams: comments and the shared shortlist for everyone on a team desk; per-collection guests, guest votes and the guests' Shared with you retired; adding your own tracks is owner/admin.
 - 11 Oct: account teams (behind switch `teams`): seats by plan + add-ons, invites, Owner/Admin/Member, desk switching, owner/admin override of members' calls, reply approval with a chosen approver, activity by person, ops seats controls.
 - 11 Oct: old per-track colleague sharing retired: `/share/` pages and routes, the review panel share box, "Request to share" on contacts and the artist's Allow/Decline on receipts, the plan's colleague-download setting; tracks sent before collection links stay unshared.

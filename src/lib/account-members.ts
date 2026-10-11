@@ -15,7 +15,7 @@ import { switchOn } from "./switches";
 export type TeamRole = "owner" | "admin" | "member";
 const RANK: Record<TeamRole, number> = { member: 1, admin: 2, owner: 3 };
 export const atLeast = (role: TeamRole, min: TeamRole) => RANK[role] >= RANK[min];
-export const ROLE_LABEL: Record<TeamRole, string> = { owner: "Owner", admin: "Admin", member: "Member" };
+export const ROLE_LABEL: Record<TeamRole, string> = { owner: "Owner", admin: "A&R / Admin", member: "Member" };
 
 const DAY = 86_400_000;
 const INVITE_DAYS = 7;
@@ -87,8 +87,8 @@ export async function teamOf(accountId: number) {
 /** Owners invite admins or members; admins invite members. Returns the invite secret (emailed, never stored). */
 export async function inviteToTeam(desk: Pick<User, "id" | "role" | "actor_id" | "email">, rawEmail: string, role: "admin" | "member") {
   if (!(await teamsOn())) throw new TeamError("Teams aren't available yet.");
-  if (!atLeast(desk.role, "admin")) throw new TeamError("Only the owner or an admin can invite people.");
-  if (role === "admin" && desk.role !== "owner") throw new TeamError("Only the owner can invite admins.");
+  if (!atLeast(desk.role, "admin")) throw new TeamError("Only the owner or an A&R / Admin can invite people.");
+  if (role === "admin" && desk.role !== "owner") throw new TeamError("Only the owner can invite A&R / Admins.");
   const email = rawEmail.trim().toLowerCase().slice(0, 200);
   if (!EMAIL.test(email)) throw new TeamError("Enter a valid email.");
   if (email === desk.email.toLowerCase()) throw new TeamError("That's the account's own email.");
@@ -158,7 +158,7 @@ async function join<I extends { id: number; account_id: number; email: string; r
 }
 
 export async function revokeInvite(desk: Pick<User, "id" | "role">, inviteId: number) {
-  if (!atLeast(desk.role, "admin")) throw new TeamError("Only the owner or an admin can do that.");
+  if (!atLeast(desk.role, "admin")) throw new TeamError("Only the owner or an A&R / Admin can do that.");
   await q.run("UPDATE account_invites SET revoked_at = ? WHERE id = ? AND account_id = ? AND accepted_at IS NULL", now(), inviteId, desk.id);
 }
 
@@ -167,8 +167,8 @@ export async function removeFromTeam(desk: Pick<User, "id" | "role" | "actor_id"
   const m = await q.get<{ user_id: number; role: "admin" | "member" }>("SELECT user_id, role FROM account_members WHERE id = ? AND account_id = ?", memberId, desk.id);
   if (!m) throw new TeamError("Not found");
   const self = m.user_id === desk.actor_id;
-  if (!self && !atLeast(desk.role, "admin")) throw new TeamError("Only the owner or an admin can remove people.");
-  if (!self && m.role === "admin" && desk.role !== "owner") throw new TeamError("Only the owner can remove an admin.");
+  if (!self && !atLeast(desk.role, "admin")) throw new TeamError("Only the owner or an A&R / Admin can remove people.");
+  if (!self && m.role === "admin" && desk.role !== "owner") throw new TeamError("Only the owner can remove an A&R / Admin.");
   await q.run("DELETE FROM account_members WHERE id = ?", memberId);
   return m;
 }
@@ -193,7 +193,7 @@ export async function replyApproval(accountId: number) {
 
 /** Owners and admins switch approval on (choosing the approver, who must be on the team) or off. */
 export async function setReplyApproval(desk: Pick<User, "id" | "role">, on: boolean, approverId: number) {
-  if (!atLeast(desk.role, "admin")) throw new TeamError("Only the owner or an admin can change this.");
+  if (!atLeast(desk.role, "admin")) throw new TeamError("Only the owner or an A&R / Admin can change this.");
   const onTeam = approverId === desk.id || !!(await q.get("SELECT 1 FROM account_members WHERE account_id = ? AND user_id = ?", desk.id, approverId));
   if (!onTeam) throw new TeamError("Choose someone on the team.");
   await q.run("UPDATE users SET reply_approval = ?, reply_approver_id = ? WHERE id = ?", on ? 1 : 0, approverId, desk.id);
@@ -232,7 +232,7 @@ export async function heldReplies(desk: Pick<User, "id" | "role" | "actor_id">) 
 
 /** Takes one waiting reply for a decision (approve or turn down); only once. */
 export async function decideHeld(desk: Pick<User, "id" | "role" | "actor_id">, heldId: number, status: "sent" | "rejected") {
-  if (!(await canApprove(desk))) throw new TeamError("Only the approver, the owner or an admin can do that.");
+  if (!(await canApprove(desk))) throw new TeamError("Only the approver, the owner or an A&R / Admin can do that.");
   return q.get<{ id: number; sender_id: number; track_id: number | null; body: string; author_id: number | null }>(
     "UPDATE held_replies SET status = ?, decided_by = ?, decided_at = ? WHERE id = ? AND account_id = ? AND status = 'waiting' RETURNING id, sender_id, track_id, body, author_id",
     status, desk.actor_id, now(), heldId, desk.id,

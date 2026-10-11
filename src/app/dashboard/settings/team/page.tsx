@@ -32,7 +32,7 @@ export default async function Team({ searchParams }: { searchParams: Promise<{ d
       />
       {denied && (
         <p role="alert" className="rounded-lg border border-danger/40 px-4 py-3 text-sm">
-          That page is for the account&apos;s {user.role === "admin" ? "owner" : "owner or admins"}.
+          That page is for the account&apos;s {user.role === "admin" ? "owner" : "owner or an A&R / Admin"}.
         </p>
       )}
 
@@ -94,7 +94,7 @@ export default async function Team({ searchParams }: { searchParams: Promise<{ d
         </ul>
         {manage && <InviteForm canInviteAdmins={user.role === "owner"} full={team.used >= team.seats} />}
         <p className="mt-3 text-xs text-mute">
-          Owner: everything. Admin: everything except plan, billing, account security and deleting the account; can change members&apos; calls and approve
+          Owner: everything. A&amp;R / Admin: everything except plan, billing, account security and deleting the account; can change members&apos; calls and approve
           replies (needs two-step sign-in). Member: review, Keep / Not for me, notes and replies.
         </p>
       </Section>
@@ -104,7 +104,7 @@ export default async function Team({ searchParams }: { searchParams: Promise<{ d
         title="Replies from members"
         sub={approval.on ? `Members' replies to senders wait for ${approver ?? "the approver"} before they're sent.` : "Members' replies go to senders straight away."}
       >
-        {manage ? <ApprovalForm on={approval.on} approver={approval.approver} people={people} /> : <p className="text-sm text-mute">Only the owner or an admin can change this.</p>}
+        {manage ? <ApprovalForm on={approval.on} approver={approval.approver} people={people} /> : <p className="text-sm text-mute">Only the owner or an A&R / Admin can change this.</p>}
       </Section>
 
       {(held.length > 0 || approves) && (

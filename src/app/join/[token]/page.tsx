@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Logo } from "@/components/Logo";
 import { currentPerson } from "@/lib/auth";
-import { inviteBySecret, ROLE_LABEL } from "@/lib/account-members";
+import { inviteBySecret } from "@/lib/account-members";
 import { JoinButton } from "./JoinButton";
 
 export const metadata: Metadata = { title: "Join a team — FloorTest", robots: { index: false, follow: false } };
@@ -29,7 +29,7 @@ export default async function Join({ params }: { params: Promise<{ token: string
     <>
       <h1 className="mt-10 text-[24px] font-bold leading-tight">Join {inv.account_name} on FloorTest</h1>
       <p className="mt-2 text-[14px] text-mute">
-        You&apos;re invited as {inv.role === "admin" ? "an" : "a"} {ROLE_LABEL[inv.role].toLowerCase()}, to review and reply to the music sent to /{inv.account_handle}. You keep
+        You&apos;re invited as {inv.role === "admin" ? "an A&R / Admin" : "a member"}, to review and reply to the music sent to /{inv.account_handle}. You keep
         your own login and can switch between your desk and theirs.
       </p>
     </>

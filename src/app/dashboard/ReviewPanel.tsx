@@ -142,7 +142,7 @@ export async function ReviewPanel({
       {caller && (
         <span className="rounded-full border border-line px-2.5 py-0.5 text-mute">
           {t.decision === "kept" ? "Kept" : "Not for me"} by {caller}
-          {desk && decisionLocked(desk, t) ? " · only an owner or admin can change it" : ""}
+          {desk && decisionLocked(desk, t) ? " · only the owner or an A&R / Admin can change it" : ""}
         </span>
       )}
       <span className={`rounded-full border px-2.5 py-0.5 ${t.sets_ok ? "border-lime/50 text-lime" : "border-line text-mute"}`}>

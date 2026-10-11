@@ -25,7 +25,7 @@ export async function batchTracks(ids: number[], action: BatchAction): Promise<B
   if (!(await allow("batch", String(u.id), 60, 3_600_000))) return { done: 0, skipped: wanted.length, error: "Too many changes at once. Try again shortly." };
   const type = action?.type;
   if (type === "delete" && (action as { confirm?: string }).confirm !== "delete") return { done: 0, skipped: wanted.length, error: "Confirm the delete first." };
-  if (type === "delete" && u.role === "member") return { done: 0, skipped: wanted.length, error: "Only the owner or an admin can delete tracks." };
+  if (type === "delete" && u.role === "member") return { done: 0, skipped: wanted.length, error: "Only the owner or an A&R / Admin can delete tracks." };
 
   const tracks = await q.all<Track>(
     `SELECT * FROM tracks WHERE user_id = ? AND deleted_at IS NULL AND id IN (${wanted.map(() => "?").join(",")})`,

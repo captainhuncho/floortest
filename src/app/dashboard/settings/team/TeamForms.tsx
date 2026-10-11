@@ -14,7 +14,7 @@ export function InviteForm({ canInviteAdmins, full }: { canInviteAdmins: boolean
       {canInviteAdmins && (
         <select name="role" defaultValue="member" aria-label="Role" className="input sm:w-36">
           <option value="member">Member</option>
-          <option value="admin">Admin</option>
+          <option value="admin">A&amp;R / Admin</option>
         </select>
       )}
       <button disabled={pending || full} className="btn-lime btn-sm min-h-11 shrink-0">
@@ -38,7 +38,7 @@ export function ApprovalForm({ on, approver, people }: { on: boolean; approver: 
         Members&apos; replies need approval before they&apos;re sent
       </label>
       <label className="flex flex-col gap-1">
-        <span className="text-mute">Who approves (the owner and admins can always approve too)</span>
+        <span className="text-mute">Who approves (the owner and A&amp;R / Admins can always approve too)</span>
         <select name="approver" defaultValue={approver} className="input sm:w-72">
           {people.map((p) => (
             <option key={p.user_id} value={p.user_id}>
@@ -72,7 +72,7 @@ export function RoleSelect({ memberId, name, role }: { memberId: number; name: s
       className="input h-9 w-auto py-0 pr-8 text-[12px]"
     >
       <option value="member">Member</option>
-      <option value="admin">Admin</option>
+      <option value="admin">A&amp;R / Admin</option>
     </select>
   );
 }

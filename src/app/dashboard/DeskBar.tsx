@@ -1,4 +1,5 @@
 import { switchDesk } from "./actions/account-team";
+import { ROLE_LABEL } from "@/lib/account-members";
 
 type Desk = { id: number; name: string; role: string };
 
@@ -14,7 +15,7 @@ export function DeskBar({ current, own, teams }: { current: Desk; own: Desk; tea
       <span className="min-w-0 truncate">
         {onTeam ? (
           <>
-            On <span className="font-semibold">{current.name}</span>&apos;s desk as {current.role === "admin" ? "an admin" : "a member"}
+            On <span className="font-semibold">{current.name}</span>&apos;s desk as {current.role === "admin" ? "an A&R / Admin" : "a member"}
           </>
         ) : (
           <>Your own desk</>
@@ -31,7 +32,7 @@ export function DeskBar({ current, own, teams }: { current: Desk; own: Desk; tea
                   className={`flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left hover:bg-ink-3 ${d.id === current.id ? "font-semibold" : ""}`}
                 >
                   <span className="truncate">{d.id === own.id ? `${d.name} (yours)` : d.name}</span>
-                  <span className="shrink-0 text-[11px] uppercase text-faint">{d.role}</span>
+                  <span className="shrink-0 text-[11px] text-faint">{ROLE_LABEL[d.role as keyof typeof ROLE_LABEL] ?? d.role}</span>
                 </button>
               </form>
             </li>
