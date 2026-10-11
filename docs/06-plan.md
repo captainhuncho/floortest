@@ -36,7 +36,7 @@ Owner keeps control; sharing never makes music public or moves ownership. Behind
 - **Request to join** (per link, on by default): someone not listed verifies their email, sends name + note; the owner approves (Listen or Listen + Download, never more than the link, with expiry) or declines; requests show which link they came through. Limits: one waiting request per email per link, 2 requests a day per email, 10 an hour per connection, 30-day cooldown after a decline (Block / Allow again), a link pauses requests at 20 waiting and warns it may have leaked, request emails grouped at most hourly. Messages never reveal the collection.
 - **Permissions:** Listen · Listen + Download · Review Together (account holders, invite only: comment, shortlist, and Keep / Not for me only if the owner allows; no uploads, replacing or deleting). Recipient invitations off.
 - **Sender permission:** the updated Terms plus one plain line on the send form ("The receiver can share what you send privately with people they invite to listen. They can't publish it."); only tracks sent under the new Terms version can be shared; earlier tracks keep today's per-track artist consent.
-- **Phases:** 1) ✅ Review Together (comments, shortlist, owner-allowed Keep / Not for me, no uploads; 11 Oct), owner uploads, ✅ hashed share codes (11 Oct) · 2) share links with their own IDs, verified recipients, request to join, expiry/reset/revoke, access notice · 3) per-recipient activity, security notifications, single-recipient removal · 4) Terms, Privacy, send-form line (lawyer), then switch on.
+- **Phases:** 1) ✅ Review Together (comments, shortlist, owner-allowed Keep / Not for me, no uploads; 11 Oct), ✅ owner uploads (11 Oct), ✅ hashed share codes (11 Oct) · 2) share links with their own IDs, verified recipients, request to join, expiry/reset/revoke, access notice · 3) per-recipient activity, security notifications, single-recipient removal · 4) Terms, Privacy, send-form line (lawyer), then switch on.
 
 ## Before public launch (in order)
 1. **Paid infrastructure:** Vercel Pro, Neon Launch, paid UptimeRobot, Resend upgrade; `ALERT_WEBHOOK_URL`. Delete old Supabase (from 13 Oct).
@@ -55,6 +55,7 @@ Owner keeps control; sharing never makes music public or moves ownership. Behind
 - Rekordbox how-to video, footer legal placement, mobile footer redesign.
 
 ## Done (recent)
+- 11 Oct: sharing phase 1: Review Together, owner uploads, share codes stored as fingerprints.
 - 10 Oct: review screens decongested (team review: designer, DJ/A&R, engineer): one meta line, decision tags, one Details section, no duplicate stats or status chips, collection filter menu, shortcuts behind "?", 1–4 jump keys, swipe hint until first swipe, panel lookups in parallel.
 - 10 Oct: review fixes for the reopen work: re-routing closed links is opt-in (Settings → Receiving) and emails the receiver; reopen emails queued (≤50 per click, rest nightly, failures retried) with an "ignore if you didn't ask" line; Floor greeting restored, first-listen time in words.
 - 10 Oct: B4 folder cover stays with the folder when its track is deleted; B5 one collection brief everywhere (`src/lib/brief.ts`).

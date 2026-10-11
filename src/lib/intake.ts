@@ -89,7 +89,50 @@ export type SubmissionMeta = {
   isrc?: string;
   /** The sender lets the receiver play the track in DJ sets, live and on broadcasts. */
   setsOk?: boolean;
+  /** Owner upload: the collection owner added this file to their own collection (no link rules, no emails). */
+  ownerCollectionId?: number;
 };
+
+/** Most files an owner can add to their own collections in an hour. */
+export const OWNER_UPLOADS_PER_HOUR = 60;
+
+/**
+ * Owner upload, step 1: the signed-in owner adds a file to one of their own collections (promos that came by email, a
+ * USB stick…). Only the owner, only their own collection, checked here and again at step 2. The link rules (paused,
+ * closed, callout cap) don't apply; the desk's capacity does. Everyone else sends through the owner's link.
+ */
+export async function startOwnerUpload(owner: User, collectionId: number, d: { fileName: string; size: number; title: string; artist: string; genre: string; rights: boolean }) {
+  const c = await q.get<Collection>("SELECT * FROM collections WHERE id = ? AND user_id = ?", collectionId, owner.id);
+  if (!c) throw new IntakeError("Not found", 404);
+  const ext = d.fileName.toLowerCase().match(/\.(wav|mp3)$/)?.[0];
+  if (!ext || !ACCEPTED_EXT.includes(ext)) throw new IntakeError("Only WAV and MP3 files are accepted.", 400);
+  if (!Number.isSafeInteger(d.size) || d.size <= 0) throw new IntakeError("Choose a WAV or MP3 file.", 400);
+  if (d.size > MAX_UPLOAD_BYTES) throw new IntakeError("File is too large (max 250 MB).", 413);
+  if (!d.rights) throw new IntakeError("Confirm you're allowed to keep this file on FloorTest.", 400);
+  if (!d.title.trim()) throw new IntakeError("Add a track title.", 400);
+  if ((await capacity(owner)).full) throw new IntakeError("Your desk is full. Clear some tracks or upgrade to add more.", 409);
+  if (!(await allow("owner_upload", String(owner.id), OWNER_UPLOADS_PER_HOUR, HOUR))) throw new IntakeError("Too many uploads. Try again in an hour.", 429);
+  const meta: SubmissionMeta = {
+    name: owner.name,
+    email: owner.email.toLowerCase(),
+    title: d.title.trim().slice(0, 200),
+    artist: d.artist.trim().slice(0, 200),
+    message: "",
+    releaseStatus: "",
+    aiUse: "",
+    mixStatus: "",
+    genre: d.genre.trim().slice(0, 60),
+    originalName: d.fileName.slice(0, 255),
+    accountId: owner.id,
+    emailConfirmed: true,
+    ownerCollectionId: c.id,
+  };
+  const id = crypto.randomBytes(24).toString("base64url");
+  const key = `audio/${owner.id}/${crypto.randomUUID()}${ext}`;
+  await q.run("INSERT INTO uploads (id, receiver_id, file_key, ext, size, meta, ip, created_at) VALUES (?,?,?,?,?,?,?,?)", id, owner.id, key, ext, d.size, JSON.stringify(meta), "owner", now());
+  const target = await (await storage()).uploadTarget(key, ext === ".wav" ? "audio/wav" : "audio/mpeg", d.size);
+  return { uploadId: id, target };
+}
 
 /**
  * Step 1 of a submission: check the rules, then authorise a direct upload to storage.
@@ -188,7 +231,11 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
       // Serialise concurrent completions for this receiver so capacity can't be overshot.
       const fresh = await db.get<User>(`SELECT ${USER_COLUMNS} FROM users WHERE id = ? FOR UPDATE`, receiver.id);
       if (!fresh) throw new IntakeError("Receiver not found", 404);
-      await checkOpen(fresh, db);
+      if (meta.ownerCollectionId) {
+        // Owner upload: only into their own collection, and only while the desk has room.
+        if (!(await db.get("SELECT 1 FROM collections WHERE id = ? AND user_id = ?", meta.ownerCollectionId, fresh.id))) throw new IntakeError("Not found", 404);
+        if ((await capacity(fresh, db)).full) throw new IntakeError("Your desk is full. Clear some tracks or upgrade to add more.", 409);
+      } else await checkOpen(fresh, db);
       const sender = (await db.get<Sender>(
         `INSERT INTO senders (user_id, email, name, created_at, account_id, verified_at, links) VALUES (?,?,?,?,?,?,?)
          -- Name and links change only on a send whose email is proven.
@@ -205,9 +252,12 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
         meta.emailConfirmed ? now() : null,
         meta.senderLinks ?? "[]",
       ))!;
-      const collection = await activeCollection(fresh, db);
+      const collection = meta.ownerCollectionId
+        ? await db.get<Collection>("SELECT * FROM collections WHERE id = ? AND user_id = ?", meta.ownerCollectionId, fresh.id)
+        : await activeCollection(fresh, db);
       // A capped callout: checked here, under the receiver's row lock, so two sends can't both take the last slot.
-      if (collection?.max_tracks) {
+      // (The owner's own uploads don't count against their callout's cap.)
+      if (collection?.max_tracks && !meta.ownerCollectionId) {
         const received = Number((await db.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM tracks WHERE collection_id = ? AND deleted_at IS NULL", collection.id))?.n ?? 0);
         if (received >= collection.max_tracks) throw new IntakeError(`“${collection.name}” is full. ${fresh.name} isn't taking more tracks for it.`, 409);
         if (received + 1 >= collection.max_tracks) await db.run("UPDATE collections SET full_at = ? WHERE id = ? AND full_at IS NULL", now(), collection.id);
@@ -243,7 +293,7 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
         sharing && collection?.allow_sharing && (await shareDownloadEnabled(fresh.plan, db)) ? 1 : 0,
         meta.release?.id ?? null,
         meta.setsOk ? 1 : 0,
-        meta.aiUse,
+        meta.aiUse || null, // owner uploads carry no sender AI declaration
         meta.trackNo ?? null,
         meta.musicalKey ?? "",
         meta.isrc ?? "",
@@ -268,7 +318,7 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
         await db.run("UPDATE tracks SET duplicate_of = ? WHERE id = ?", dup.id, track.id);
         track.duplicate_of = dup.id;
       }
-      await logEvent({ user_id: fresh.id, sender_id: sender.id, track_id: track.id, type: "submitted", detail: collection ? `into ${collection.name}` : "" }, db);
+      await logEvent({ user_id: fresh.id, sender_id: sender.id, track_id: track.id, type: "submitted", detail: `${meta.ownerCollectionId ? "added by you " : ""}${collection ? `into ${collection.name}` : ""}`.trim() }, db);
       await db.run("DELETE FROM uploads WHERE id = ?", up.id);
       return { track, sender, collection };
     });
@@ -278,6 +328,8 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
   }
 
   const { track, sender, collection } = result;
+  // The owner added it themselves: no "Delivered" email to themselves, no new-track alert, no referral reward.
+  if (meta.ownerCollectionId) return track;
   // Everything the sender typed is shown without links: this email goes to whatever address they entered.
   const [sName, sTitle, sArtist] = [noLinks(sender.name), noLinks(track.title), noLinks(track.artist)];
   sendMailLater({

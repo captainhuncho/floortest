@@ -13,6 +13,7 @@ import { DownloadActions } from "../../DownloadActions";
 import { ListRows, type ListRow } from "../../list/ListRows";
 import { CollectionDetailHeader, DeleteCollection, EditCollectionInfo } from "../CollectionForms";
 import { Teammates } from "../Teammates";
+import { OwnerUpload } from "../OwnerUpload";
 import { featureOn } from "@/lib/features";
 import { MAX_MEMBERS, members, voteTally } from "@/lib/team";
 
@@ -167,6 +168,9 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
 
       {/* One list for every screen size, so keyboard shortcuts and the player are registered once. */}
       <div className="max-w-6xl pb-4 md:px-8">
+        <div className="mx-4 mb-4 md:mx-0">
+          <OwnerUpload collectionId={c.id} collectionName={c.name} />
+        </div>
         {team && (
           <div className="mx-4 mb-4 md:mx-0">
             <Teammates collectionId={c.id} members={team} max={MAX_MEMBERS} teamCanDecide={!!c.team_can_decide} />

@@ -1,4 +1,4 @@
-import { expect, test } from "./fixtures";
+import { expect, test, wav } from "./fixtures";
 
 /** Batch actions in the List view, on the seeded receiver's own tracks: decide, move and delete several at once. */
 test("select tracks in the list and act on them together", async ({ page }) => {
@@ -69,3 +69,29 @@ test("the review panel keeps the decision in view and folds the rest into Detail
   await expect(details.getByRole("button", { name: "Delete" })).toBeVisible();
   await expect(details.getByText("Full history →")).toBeVisible();
 });
+
+/** The owner adds their own file to their own collection; nobody else can use that door. */
+test("the owner adds a WAV to their own collection; strangers and other collections are refused", async ({ page, browser }) => {
+  // Signed out: refused.
+  const anon = await browser.newContext();
+  expect((await anon.request.post("http://localhost:3210/api/collections/2/upload", { data: { fileName: "x.wav", size: 10, title: "X", rights: true } })).status()).toBe(401);
+  await anon.close();
+
+  await page.goto("/login");
+  await page.getByLabel("Email").fill("demo@floortest.test");
+  await page.getByRole("textbox", { name: "Password" }).fill("floortest-demo");
+  await page.getByRole("button", { name: "Log in" }).click();
+  await page.waitForURL(/\/dashboard\//);
+  // A collection that isn't theirs (or doesn't exist): not found.
+  expect((await page.request.post("/api/collections/999999/upload", { data: { fileName: "x.wav", size: 10, title: "X", rights: true } })).status()).toBe(404);
+
+  await page.goto("/dashboard/collections/2");
+  await page.getByRole("button", { name: "Add tracks" }).click();
+  await page.getByLabel("Choose WAV or MP3 files to add").setInputFiles({ name: "Owner Promo.wav", mimeType: "audio/wav", buffer: wav(4) });
+  await page.getByLabel(/own these recordings/).check();
+  await page.getByRole("button", { name: "Add 1 track" }).click();
+  await expect(page.getByText("Added", { exact: true })).toBeVisible({ timeout: 30_000 });
+  await page.reload();
+  await expect(page.getByText("Owner Promo").locator("visible=true").first()).toBeVisible();
+});
+

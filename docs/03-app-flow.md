@@ -43,7 +43,7 @@ Review panel: title · one meta line · tags (sets / release / AI / duplicate / 
    Details (closed, remembered) ─► format & size · dates · Download · Move · Delete (confirm) · sender email, links, stats, note, last 3 events · Full history →
 Review Queue (List) ─► Select ─► tick tracks / Select all ─► bar: Keep · Not for me · Needs review · Move to… · Download · Delete ─► confirm ─► done (toast)
    Esc or Done leaves select mode; in select mode a tap on a row ticks it (never plays or opens it)
-Floor ─► Collections ─► New collection / Open collection ─► Edit collection · Download collection · Files only · Send new tracks here
+Floor ─► Collections ─► New collection / Open collection ─► Add tracks (owner: choose WAV/MP3s, edit titles, rights tick, upload) ─► Edit collection · Download collection · Files only · Send new tracks here
 Nightly, only if Settings → Receiving → "When a callout closes" is on ─► a link on a collection past its close date ─► moves to the newest open collection ─► email to the receiver · bell: "Your link now goes to …" · activity: "Link moved on its own to"
 Floor ─► Send ─► their-link ─► upload ─► Sent list (≤10 days open, older folded) ─► Track → /receipt/<token>
 Avatar ─► Account ─► Settings (profile, receiving, notifications, plan, security) · Sign out ─► /signed-out
