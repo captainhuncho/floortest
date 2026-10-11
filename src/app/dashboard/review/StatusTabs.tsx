@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useTransition } from "react";
 
 type Tab = { key: string; label: string; count: number; href: string };
 
@@ -18,8 +18,19 @@ export function StatusTabs({ tabs, active }: { tabs: Tab[]; active: string }) {
   // The server's answer wins once it arrives.
   useEffect(() => setChosen(active), [active]);
 
+  // Keep the tabs where they were on screen. On phones the review panel sits above them and changes height with the
+  // new tab's first track; without this the tabs and list jump under the finger (iOS Safari has no scroll anchoring).
+  const nav = useRef<HTMLElement>(null);
+  const topBefore = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    if (topBefore.current === null || !nav.current) return;
+    const shift = nav.current.getBoundingClientRect().top - topBefore.current;
+    topBefore.current = null;
+    if (Math.abs(shift) > 1) window.scrollBy(0, shift);
+  }, [active]);
+
   return (
-    <nav className="mt-6 flex flex-wrap gap-1 border-b border-line" aria-label="Status" data-pending={pending ? "" : undefined} aria-busy={pending || undefined}>
+    <nav ref={nav} className="mt-6 flex flex-wrap gap-1 border-b border-line" aria-label="Status" data-pending={pending ? "" : undefined} aria-busy={pending || undefined}>
       {tabs.map((t) => {
         const on = chosen === t.key;
         return (
@@ -36,6 +47,7 @@ export function StatusTabs({ tabs, active }: { tabs: Tab[]; active: string }) {
               e.preventDefault();
               if (t.key === chosen) return;
               setChosen(t.key);
+              topBefore.current = nav.current?.getBoundingClientRect().top ?? null;
               start(() => router.push(t.href, { scroll: false }));
             }}
             className={`-mb-px border-b-2 px-3 py-2.5 text-sm font-medium transition-colors ${

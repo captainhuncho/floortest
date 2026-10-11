@@ -121,7 +121,7 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
   const totalActive = collections.reduce((n, c) => n + c.count, 0);
 
   return (
-    <div className={`grid min-h-full ${selected ? "xl:grid-cols-[minmax(0,1fr)_minmax(400px,460px)]" : ""}`}>
+    <div className={`grid min-h-full ${selected || totalActive > 0 ? "xl:grid-cols-[minmax(0,1fr)_minmax(400px,460px)]" : ""}`}>
       <section className={`min-w-0 px-4 py-6 sm:px-8 ${focused ? "hidden xl:block" : ""}`} aria-labelledby="submissions-h">
         <header className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -243,6 +243,12 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
             next={nextRow ? { href: href({ t: String(nextRow.id) }), track: toPlayer(nextRow) } : null}
             prevHref={prevRow ? href({ t: String(prevRow.id) }) : null}
           />
+        </aside>
+      )}
+      {/* Wide screens keep the review column even when this tab is empty, so switching tabs never reflows the page. */}
+      {!selected && totalActive > 0 && (
+        <aside aria-label="Review" className="hidden border-line bg-ink-2/60 xl:sticky xl:top-[68px] xl:flex xl:h-[calc(100dvh-68px)] xl:items-center xl:justify-center xl:self-start xl:border-l">
+          <p className="max-w-56 text-center text-sm text-mute">Nothing to review in this view. Pick another tab or collection.</p>
         </aside>
       )}
     </div>
