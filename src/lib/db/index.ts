@@ -75,6 +75,8 @@ export type Collection = {
   max_tracks: number | null;
   /** Set when the cap is reached; the callout then counts as closed. */
   full_at: number | null;
+  /** Review Together: teammates may make the Keep / Not for me call (0/1). */
+  team_can_decide: number;
   /** Storage key of the collection's artwork (JPG/PNG/WebP), if any. */
   art_key: string | null;
   brief_wanted: string;

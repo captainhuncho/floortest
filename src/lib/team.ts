@@ -112,3 +112,49 @@ export async function voteTally(trackIds: number[]) {
   );
   return new Map(rows.map((r) => [r.track_id, `Team ${r.keep} keep · ${r.pass} pass`]));
 }
+
+/**
+ * Review Together: who may review this track. The owner always; a teammate only on tracks sent after they joined (and
+ * while the owner's plan includes sharing). Returns the track and the reviewer's role, or undefined.
+ */
+export async function reviewTrack(userId: number, trackId: number) {
+  if (!Number.isSafeInteger(trackId)) return undefined;
+  const own = await q.get<Track>("SELECT * FROM tracks WHERE id = ? AND user_id = ? AND deleted_at IS NULL", trackId, userId);
+  if (own) return { track: own, role: "owner" as const };
+  const t = await memberTrack(userId, trackId);
+  return t ? { track: t, role: "member" as const } : undefined;
+}
+
+export type Comment = { id: number; user_id: number; name: string; body: string; created_at: number };
+
+export const commentsFor = (trackId: number) =>
+  q.all<Comment>(
+    "SELECT c.id, c.user_id, u.name, c.body, c.created_at FROM track_comments c JOIN users u ON u.id = c.user_id WHERE c.track_id = ? ORDER BY c.created_at LIMIT 200",
+    trackId,
+  );
+
+export async function addComment(userId: number, t: Pick<Track, "id">, body: string) {
+  const text = body.trim().slice(0, 1000);
+  if (!text) return;
+  await q.run("INSERT INTO track_comments (track_id, user_id, body, created_at) VALUES (?,?,?,?)", t.id, userId, text, now());
+}
+
+/** Only the person who wrote a comment can remove it. */
+export const removeComment = (userId: number, commentId: number) => q.run("DELETE FROM track_comments WHERE id = ? AND user_id = ?", commentId, userId);
+
+export const shortlistOf = (trackId: number) =>
+  q.get<{ user_id: number; name: string; created_at: number }>(
+    "SELECT s.user_id, u.name, s.created_at FROM track_shortlist s JOIN users u ON u.id = s.user_id WHERE s.track_id = ?",
+    trackId,
+  );
+
+/** One shared shortlist per collection: anyone reviewing can add a track or take it off. */
+export async function toggleShortlist(userId: number, t: Pick<Track, "id">) {
+  const off = await q.run("DELETE FROM track_shortlist WHERE track_id = ?", t.id);
+  if (!off.changes) await q.run("INSERT INTO track_shortlist (track_id, user_id, created_at) VALUES (?,?,?) ON CONFLICT DO NOTHING", t.id, userId, now());
+  return !off.changes;
+}
+
+/** How many teammates review this collection (the owner's panel shows team tools only when there are some). */
+export const teamSize = async (collectionId: number | null) =>
+  collectionId ? Number((await q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM collection_members WHERE collection_id = ?", collectionId))?.n ?? 0) : 0;

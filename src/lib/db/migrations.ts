@@ -1243,4 +1243,27 @@ update plans set features = '["2,000 active tracks","Everything in Pro"]'
 alter table users add column if not exists reroute_closed integer not null default 0;
 `,
   },
+  {
+    // Review Together: the owner and their teammates comment on tracks and keep one shared shortlist; the owner can let
+    // teammates make the Keep / Not for me call. All internal to the team: senders never see any of it.
+    id: "0079_review_together",
+    sql: `
+create table if not exists track_comments (
+  id bigint generated always as identity primary key,
+  track_id bigint not null references tracks(id) on delete cascade,
+  user_id bigint not null references users(id) on delete cascade,
+  body text not null,
+  created_at bigint not null
+);
+create index if not exists track_comments_track on track_comments(track_id, created_at);
+alter table track_comments enable row level security;
+create table if not exists track_shortlist (
+  track_id bigint primary key references tracks(id) on delete cascade,
+  user_id bigint not null references users(id) on delete cascade,
+  created_at bigint not null
+);
+alter table track_shortlist enable row level security;
+alter table collections add column if not exists team_can_decide integer not null default 0;
+`,
+  },
 ];

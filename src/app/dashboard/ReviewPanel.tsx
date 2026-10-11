@@ -23,7 +23,8 @@ import { DesktopOnly, MobileOnly } from "./DesktopOnly";
 import { MobileTransport } from "./MobileTransport";
 import { History } from "./History";
 import { PanelDetails } from "./PanelDetails";
-import { votesFor } from "@/lib/team";
+import { commentsFor, shortlistOf, teamSize, votesFor } from "@/lib/team";
+import { ReviewTogether } from "./ReviewTogether";
 
 export async function ReviewPanel({
   track: t,
@@ -50,7 +51,7 @@ export async function ReviewPanel({
   }
   const shareable = await canShare(t);
   // Independent lookups run together, so the next track opens quicker.
-  const [votes, share, audience, events, senderAccount, release, stats, artFrom] = await Promise.all([
+  const [votes, share, audience, events, senderAccount, release, stats, artFrom, team, comments, shortlist] = await Promise.all([
     votesFor(t.id),
     shareable ? activeShare(t.id) : Promise.resolve(undefined),
     shareable ? shareAudience(t.id) : Promise.resolve([]),
@@ -75,6 +76,10 @@ export async function ReviewPanel({
       : t.release_id
         ? q.get<{ id: number; art_key: string }>("SELECT id, art_key FROM tracks WHERE release_id = ? AND user_id = ? AND art_key IS NOT NULL AND deleted_at IS NULL LIMIT 1", t.release_id, t.user_id)
         : Promise.resolve(undefined),
+    // Review Together: only when this collection has teammates.
+    teamSize(t.collection_id),
+    commentsFor(t.id),
+    shortlistOf(t.id),
   ]);
   const releaseTracks = release
     ? await q.all<{ id: number; title: string; track_no: number | null; decision: string | null }>(
@@ -139,6 +144,7 @@ export async function ReviewPanel({
       <span className={`rounded-full border px-2.5 py-0.5 ${t.sets_ok ? "border-lime/50 text-lime" : "border-line text-mute"}`}>
         {t.sets_ok ? "Cleared for DJ sets" : "Evaluation only: ask before playing it out"}
       </span>
+      {shortlist && <span className="rounded-full border border-lime/50 px-2.5 py-0.5 text-lime">★ Shortlisted</span>}
       {t.release_status && <span className="rounded-full border border-line px-2.5 py-0.5 text-mute">{RELEASE_STATUS[t.release_status as keyof typeof RELEASE_STATUS]}</span>}
       {t.ai_use && t.ai_use !== "none" && <span className="rounded-full border border-line-2 px-2.5 py-0.5 uppercase tracking-[0.5px] text-mute">{AI_USE[t.ai_use]}</span>}
       {soon !== null && <span className="rounded-full border border-danger/50 px-2.5 py-0.5 text-danger">{soon <= 1 ? "Deletes within a day" : `Deletes in ${soon} days`} unless you keep it</span>}
@@ -244,6 +250,8 @@ export async function ReviewPanel({
           </ul>
         </section>
       )}
+
+      {team > 0 && <ReviewTogether trackId={t.id} meId={t.user_id} comments={comments} shortlistedBy={shortlist?.name ?? null} />}
 
       {shareable && (
         <div className="mt-4">

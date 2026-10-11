@@ -4,7 +4,9 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { q, type Track } from "@/lib/db";
 import { leaveShared, voteOnTrack } from "../../actions/team";
-import { memberCollection, members, type Vote } from "@/lib/team";
+import { memberCollection, members, type Comment, type Vote } from "@/lib/team";
+import { ReviewTogether } from "../../ReviewTogether";
+import { APP_URL } from "@/lib/mail";
 
 export const metadata = { title: "Shared collection — FloorTest" };
 
@@ -27,6 +29,20 @@ export default async function SharedCollection({ params }: { params: Promise<{ i
       )
     : [];
   const team = await members(c.id);
+  const ids = tracks.map((t) => t.id);
+  const marks = ids.map(() => "?").join(",");
+  const [comments, shortlists, owner] = await Promise.all([
+    ids.length
+      ? q.all<Comment & { track_id: number }>(
+          `SELECT c.id, c.track_id, c.user_id, u.name, c.body, c.created_at FROM track_comments c JOIN users u ON u.id = c.user_id WHERE c.track_id IN (${marks}) ORDER BY c.created_at`,
+          ...ids,
+        )
+      : Promise.resolve([]),
+    ids.length
+      ? q.all<{ track_id: number; name: string }>(`SELECT s.track_id, u.name FROM track_shortlist s JOIN users u ON u.id = s.user_id WHERE s.track_id IN (${marks})`, ...ids)
+      : Promise.resolve([]),
+    q.get<{ handle: string }>("SELECT handle FROM users WHERE id = ?", c.user_id),
+  ]);
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-5 px-4 py-5 text-bone sm:px-8 md:py-8">
@@ -36,7 +52,12 @@ export default async function SharedCollection({ params }: { params: Promise<{ i
         </Link>
         <h1 className="text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">{c.name}</h1>
         <p className="text-sm text-mute">
-          Shared by {c.owner_name} with {team.map((m) => (m.id === user.id ? "you" : m.name)).join(", ")}. Vote keep or pass; {c.owner_name} makes the call.
+          Shared by {c.owner_name} with {team.map((m) => (m.id === user.id ? "you" : m.name)).join(", ")}. Listen, vote, comment and shortlist
+          {c.team_can_decide ? "; you can also make the Keep / Not for me call." : `; ${c.owner_name} makes the call.`}
+        </p>
+        {/* Review Together never includes uploading: new music arrives only through the owner's link. */}
+        <p className="mt-2 rounded-md border border-line px-3 py-2 text-[12px] text-mute">
+          New music must still be sent through {c.owner_name}&apos;s link{owner ? <>: <span className="font-mono text-bone">{APP_URL.replace(/^https?:\/\//, "")}/{owner.handle}</span></> : "."}
         </p>
       </div>
 
@@ -66,6 +87,13 @@ export default async function SharedCollection({ params }: { params: Promise<{ i
                     </button>
                   </div>
                 </form>
+                <ReviewTogether
+                  trackId={t.id}
+                  meId={user.id}
+                  comments={comments.filter((x) => x.track_id === t.id)}
+                  shortlistedBy={shortlists.find((x) => x.track_id === t.id)?.name ?? null}
+                  decide={c.team_can_decide ? { current: t.decision, ownerName: c.owner_name } : undefined}
+                />
                 {others.length > 0 && (
                   <ul className="mt-3 space-y-1 border-t border-line pt-3 text-[12px] text-mute">
                     {others.map((v) => (

@@ -33,7 +33,14 @@ export async function dataFor(email: string) {
     "SELECT u.handle AS link, r.created_at, r.sent_at FROM reopen_alerts r JOIN users u ON u.id = r.user_id WHERE lower(r.email) = ? ORDER BY r.created_at",
     e,
   );
-  return { email: e, account, sent, messages, emails, waitlist, reopenAlerts };
+  // Review Together: comments this person wrote on teammates' tracks.
+  const comments = account
+    ? await q.all<Record<string, unknown>>(
+        "SELECT t.title AS track, c.body, c.created_at FROM track_comments c JOIN tracks t ON t.id = c.track_id WHERE c.user_id = ? ORDER BY c.created_at",
+        account.id,
+      )
+    : [];
+  return { email: e, account, sent, messages, emails, waitlist, reopenAlerts, comments };
 }
 
 /** Erases someone as a sender: their sender records and the tracks they sent (files and stems), plus their messages and waitlist entry. */

@@ -1,0 +1,109 @@
+"use client";
+
+import { useActionState, useEffect, useRef, useTransition } from "react";
+import { fmtDate } from "@/lib/format";
+import { commentOnTrack, deleteComment, shortlistTrack, teamDecide } from "./actions/team";
+
+type Comment = { id: number; user_id: number; name: string; body: string; created_at: number };
+
+/**
+ * Review Together on one track: the team's shared shortlist, comments, and (for a teammate, if the owner allows) the
+ * Keep / Not for me call. Internal to the team; senders never see it. Every action is checked again on the server.
+ */
+export function ReviewTogether({
+  trackId,
+  meId,
+  comments,
+  shortlistedBy,
+  decide,
+}: {
+  trackId: number;
+  meId: number;
+  comments: Comment[];
+  /** Who put it on the shortlist, or null. */
+  shortlistedBy: string | null;
+  /** Teammates only, when the owner lets them make the call. */
+  decide?: { current: "kept" | "passed" | null; ownerName: string };
+}) {
+  const [error, post, posting] = useActionState(commentOnTrack.bind(null, trackId), null);
+  const [busy, start] = useTransition();
+  const form = useRef<HTMLFormElement>(null);
+  const last = useRef(comments.length);
+  // Clear the box once the new comment shows up.
+  useEffect(() => {
+    if (comments.length > last.current) form.current?.reset();
+    last.current = comments.length;
+  }, [comments.length]);
+
+  return (
+    <section aria-label="Review together" className="mt-4 card p-3.5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-[11px] font-bold uppercase text-faint">Review together</h2>
+        <button
+          type="button"
+          disabled={busy}
+          aria-pressed={!!shortlistedBy}
+          onClick={() => start(() => shortlistTrack(trackId))}
+          className={shortlistedBy ? "btn-lime btn-sm" : "btn-ghost btn-sm"}
+        >
+          {shortlistedBy ? `★ Shortlisted by ${shortlistedBy}` : "☆ Shortlist"}
+        </button>
+      </div>
+
+      {decide && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="text-[12px] text-mute">Make the call for {decide.ownerName}:</span>
+          {(["kept", "passed"] as const).map((d) => (
+            <button
+              key={d}
+              type="button"
+              disabled={busy}
+              aria-pressed={decide.current === d}
+              onClick={() => start(() => teamDecide(trackId, d))}
+              className={decide.current === d ? "btn-lime btn-sm" : "btn-ghost btn-sm"}
+            >
+              {d === "kept" ? "Keep" : "Not for me"}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {comments.length > 0 && (
+        <ul className="mt-3 space-y-2">
+          {comments.map((c) => (
+            <li key={c.id} className="rounded-md border border-line bg-ink px-3 py-2 text-[12px]">
+              <p className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="font-bold text-bone">{c.name}</span>
+                <span className="text-[11px] text-faint">
+                  {fmtDate(c.created_at)}
+                  {c.user_id === meId && (
+                    <button type="button" className="ml-2 underline-offset-2 hover:text-danger hover:underline" onClick={() => start(() => deleteComment(c.id))}>
+                      Delete
+                    </button>
+                  )}
+                </span>
+              </p>
+              <p className="mt-1 whitespace-pre-wrap text-mute">{c.body}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <form ref={form} action={post} className="mt-3 flex flex-col gap-2 sm:flex-row">
+        <label className="sr-only" htmlFor={`comment-${trackId}`}>
+          Comment for the team
+        </label>
+        <textarea id={`comment-${trackId}`} name="body" required rows={1} maxLength={1000} placeholder="Comment for the team" className="input min-h-10 min-w-0 flex-1 text-[12px]" />
+        <button disabled={posting} className="btn-ghost btn-sm shrink-0">
+          {posting ? "Posting…" : "Comment"}
+        </button>
+      </form>
+      {error && (
+        <p role="alert" className="mt-2 text-[12px] text-danger">
+          {error}
+        </p>
+      )}
+      <p className="mt-2 text-[11px] text-faint">Only you and the team see comments and the shortlist.</p>
+    </section>
+  );
+}

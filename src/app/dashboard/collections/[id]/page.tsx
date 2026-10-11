@@ -169,7 +169,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
       <div className="max-w-6xl pb-4 md:px-8">
         {team && (
           <div className="mx-4 mb-4 md:mx-0">
-            <Teammates collectionId={c.id} members={team} max={MAX_MEMBERS} />
+            <Teammates collectionId={c.id} members={team} max={MAX_MEMBERS} teamCanDecide={!!c.team_can_decide} />
           </div>
         )}
         {cards.length ? (

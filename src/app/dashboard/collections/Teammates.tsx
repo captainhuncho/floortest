@@ -1,17 +1,26 @@
 "use client";
 
 import { useActionState } from "react";
-import { addTeammate, removeTeammate } from "../actions/team";
+import { addTeammate, removeTeammate, setTeamCanDecide } from "../actions/team";
 
 /** Owner's side of a shared collection: who can listen and vote, and adding or removing them. */
-export function Teammates({ collectionId, members, max }: { collectionId: number; members: { id: number; name: string; handle: string }[]; max: number }) {
+export function Teammates({ collectionId, members, max, teamCanDecide }: { collectionId: number; members: { id: number; name: string; handle: string }[]; max: number; teamCanDecide: boolean }) {
   const [error, add, pending] = useActionState(addTeammate.bind(null, collectionId), null);
   return (
     <section aria-labelledby="team-h" className="card p-3.5 md:px-4">
       <h2 id="team-h" className="text-[11px] font-bold uppercase text-faint">
         Teammates
       </h2>
-      <p className="mt-1 text-[12px] text-mute">Teammates can listen to every track here and vote keep or pass with a note. Only you decide, reply or download. Senders see who hears their track.</p>
+      <p className="mt-1 text-[12px] text-mute">
+        Review Together lets invited teammates listen, vote, comment and shortlist{teamCanDecide ? ", and make the Keep / Not for me call" : ""}. New music must still be sent
+        through your link: teammates can&apos;t upload. Only you reply or download. Senders see who hears their track.
+      </p>
+      <form action={setTeamCanDecide.bind(null, collectionId, !teamCanDecide)} className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-line px-3 py-2 text-[12px]">
+        <span className="min-w-0">
+          Teammates can Keep / Not for me <span className="text-faint">· {teamCanDecide ? "On" : "Off"}. Not for me starts the 30-day deletion.</span>
+        </span>
+        <button className="btn-ghost btn-sm shrink-0">{teamCanDecide ? "Turn off" : "Turn on"}</button>
+      </form>
       {members.length > 0 && (
         <ul className="mt-3 divide-y divide-line rounded-md border border-line">
           {members.map((m) => (
