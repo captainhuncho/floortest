@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Logo } from "@/components/Logo";
 import { siteEditor } from "@/lib/site-editor";
 import { EditablePage, editable } from "@/components/Editable";
 import { notFound } from "next/navigation";
@@ -172,6 +173,9 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
         </div>
       </details>
       <LivePulse url={`/api/pulse/receipt/${token}`} every={8000} />
+      <footer className="mt-auto flex justify-center pt-4">
+        <Logo small />
+      </footer>
     </main>
     </EditablePage>
   );

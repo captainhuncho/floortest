@@ -1,4 +1,5 @@
 import { briefItems } from "@/lib/brief";
+import { Logo } from "@/components/Logo";
 import { siteEditor } from "@/lib/site-editor";
 import { EditablePage, editable } from "@/components/Editable";
 import { CuePoint } from "@/components/CuePoint";
@@ -159,14 +160,17 @@ export default async function ReceiverPage({ params }: Props) {
           </li>
         ))}
       </ul>
-      {receiver.identity_status !== "verified" && (
-        <p className="mt-auto pt-4 text-center text-[12px] font-medium leading-[18px] text-dim">
-          Not sure this is really {receiver.name}?{" "}
-          <a href={`/contact?report=${receiver.handle}`} className="underline hover:text-bone">
-            Report impersonation
-          </a>
-        </p>
-      )}
+      <footer className="mt-auto flex flex-col items-center gap-3 pt-4">
+        {receiver.identity_status !== "verified" && (
+          <p className="text-center text-[12px] font-medium leading-[18px] text-dim">
+            Not sure this is really {receiver.name}?{" "}
+            <a href={`/contact?report=${receiver.handle}`} className="underline hover:text-bone">
+              Report impersonation
+            </a>
+          </p>
+        )}
+        <Logo small />
+      </footer>
     </main>
     </EditablePage>
   );
