@@ -12,7 +12,8 @@ export function ShareBox({
   audience,
 }: {
   trackId: number;
-  active: { url: string; expires: string; plays: number } | null;
+  /** The live link. Its address is only known right after it's made (only a fingerprint is stored), so `url` is null later. */
+  active: { url: string | null; expires: string; plays: number } | null;
   /** Fixed when the track was sent: the receiver was on a paid plan then. */
   canDownload: boolean;
   audience: { name: string; handle: string; plays: number; downloads: number }[];
@@ -33,14 +34,36 @@ export function ShareBox({
       <h3 className="eyebrow">Share with a colleague</h3>
       {link ? (
         <div className="mt-2 flex flex-col gap-2">
-          <p className="truncate text-[12px] text-bone">{link.url.replace(/^https?:\/\//, "")}</p>
+          {link.url ? (
+            <p className="truncate text-[12px] text-bone">{link.url.replace(/^https?:\/\//, "")}</p>
+          ) : (
+            <p className="text-[12px] text-mute">A link is live. For safety its address is shown only once, when it&apos;s made. Need it again? Make a new link: the old one stops working.</p>
+          )}
           <p className="text-[11px] text-faint">
             {canDownload ? "Listen and download" : "Listen-only, no download button"} · works until {link.expires} · {link.plays} play{link.plays === 1 ? "" : "s"}
           </p>
           <div className="flex gap-2">
-            <button type="button" onClick={() => copy(link.url)} className="rounded-md bg-bone px-3 py-1.5 text-[11px] font-bold text-ink">
-              Copy link
-            </button>
+            {link.url ? (
+              <button type="button" onClick={() => copy(link.url!)} className="rounded-md bg-bone px-3 py-1.5 text-[11px] font-bold text-ink">
+                Copy link
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() =>
+                  start(async () => {
+                    const r = await shareTrack(trackId);
+                    if (!r) return toast.show({ message: "This track can't be shared." });
+                    setLink({ url: r.url, expires: new Date(r.expires).toLocaleDateString("en-GB", { day: "numeric", month: "short" }), plays: 0 });
+                    copy(r.url);
+                  })
+                }
+                className="rounded-md bg-bone px-3 py-1.5 text-[11px] font-bold text-ink"
+              >
+                {pending ? "Making…" : "New link"}
+              </button>
+            )}
             <button
               type="button"
               disabled={pending}

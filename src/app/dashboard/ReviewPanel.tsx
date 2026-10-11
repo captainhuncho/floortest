@@ -261,7 +261,7 @@ export async function ReviewPanel({
             audience={audience}
             active={
               share
-                ? { url: `${APP_URL}/share/${share.token}`, expires: new Date(share.expires_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }), plays: share.plays }
+                ? { url: null, expires: new Date(share.expires_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }), plays: share.plays }
                 : null
             }
           />

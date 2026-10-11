@@ -1266,4 +1266,16 @@ alter table track_shortlist enable row level security;
 alter table collections add column if not exists team_can_decide integer not null default 0;
 `,
   },
+  {
+    // Share links keep only a fingerprint (SHA-256) of their secret, never the secret itself: a leaked database can't be
+    // turned into working links. Existing links keep working (their fingerprint is taken now) and the plain codes go.
+    id: "0080_share_token_hash",
+    sql: `
+alter table track_shares add column if not exists token_hash text;
+update track_shares set token_hash = encode(sha256(convert_to(token, 'UTF8')), 'hex') where token is not null and token_hash is null;
+alter table track_shares alter column token drop not null;
+update track_shares set token = null;
+create unique index if not exists track_shares_token_hash on track_shares(token_hash);
+`,
+  },
 ];

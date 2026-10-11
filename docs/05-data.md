@@ -21,7 +21,7 @@ Files are never public: the app hands out short-lived signed links after checkin
 | Receivers | `users`, `sessions`, `login_codes`, `password_resets`, `handle_history`, `account_log`, `account_actions` | name, email, password hash, two-factor secret (encrypted), Google account id, IPs in logs |
 | Senders | `senders`, `sender_codes`, `uploads`, `releases` | name, email, profile links |
 | Music | `tracks`, `stems`, `collections` (`team_can_decide`), `collection_members`, `track_votes`, `track_comments`, `track_shortlist`, `events` | file keys, titles, messages, listening/decision history |
-| Sharing (held) | `track_shares`, `share_access`, `share_requests` | who listened/downloaded |
+| Sharing (held) | `track_shares` (only a SHA-256 fingerprint of each link's secret, `token_hash`; the link is shown once when made, and making a new one retires the old), `share_access`, `share_requests` | who listened/downloaded |
 | Plans | `plans`, `plan_requests` | org name, link, notes |
 | Growth | `waitlist`, `invites`, `newsletter_subscribers`, `contact_messages`, `reopen_alerts` ("email me when it reopens": sender email + receiver, sent rows deleted after 30 days, unanswered after a year; in data copies and erasure) | name, email, links |
 | Ops | `ops_members`, `admin_sessions`, `admin_log`, `account_notes`, `partner_notes`, `incidents`, `job_runs`, `switches`, `site_content*` | staff emails, notes about users |
