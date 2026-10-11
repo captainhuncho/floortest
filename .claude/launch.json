@@ -9,15 +9,6 @@
         "dev"
       ],
       "port": 3000
-    },
-    {
-      "name": "floortest-teams-scratch",
-      "runtimeExecutable": "bash",
-      "runtimeArgs": [
-        "-c",
-        "rm -rf /private/tmp/claude-501/-Users-maxwelladjavon-floortest/907268ab-0b9a-40eb-b30d-3c38bc081e84/scratchpad/teams-data && DATA_DIR=/private/tmp/claude-501/-Users-maxwelladjavon-floortest/907268ab-0b9a-40eb-b30d-3c38bc081e84/scratchpad/teams-data SEED_SHARING=1 SEED_TEAMS=1 npx tsx scripts/seed.ts && DATA_DIR=/private/tmp/claude-501/-Users-maxwelladjavon-floortest/907268ab-0b9a-40eb-b30d-3c38bc081e84/scratchpad/teams-data npx next dev -p 3000"
-      ],
-      "port": 3000
     }
   ]
 }

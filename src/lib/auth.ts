@@ -97,6 +97,13 @@ export const viewingAs = cache(async (): Promise<{ adminId: number; userId: numb
 
 /** Which desk a person who's on a team is working on (an account id). Unset or their own id: their own desk. */
 export const DESK_COOKIE = "ft_desk";
+
+/** Works on a team's desk from now on (an account id), or back on your own desk (null). Callers check membership first. */
+export async function setDesk(accountId: number | null) {
+  const jar = await cookies();
+  if (accountId) jar.set(DESK_COOKIE, String(accountId), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 365 * 86_400 });
+  else jar.delete(DESK_COOKIE);
+}
 const self = (u: Omit<User, "actor_id" | "actor_name" | "role">): User => ({ ...u, actor_id: u.id, actor_name: u.name, role: "owner" });
 
 /**

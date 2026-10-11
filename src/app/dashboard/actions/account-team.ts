@@ -1,9 +1,8 @@
 "use server";
 
 /** Account teams: invite, remove, roles, reply approval, switching desks, and accepting an invite. */
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { DESK_COOKIE, requirePerson, requireUser } from "@/lib/auth";
+import { requirePerson, requireUser, setDesk } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import {
   acceptInvite,
@@ -24,11 +23,6 @@ import { done } from "./common";
 
 export type TeamState = { ok?: string; error?: string } | null;
 const fail = (e: unknown): TeamState => ({ error: e instanceof TeamError ? e.message : "Something went wrong. Please try again." });
-const deskCookie = async (accountId: number | null) => {
-  const jar = await cookies();
-  if (accountId) jar.set(DESK_COOKIE, String(accountId), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 365 * 86_400 });
-  else jar.delete(DESK_COOKIE);
-};
 
 export async function inviteTeammate(_prev: TeamState, form: FormData): Promise<TeamState> {
   const u = await requireUser();
@@ -65,7 +59,7 @@ export async function removeTeammate(memberId: number) {
   const who = await q.get<{ email: string }>("SELECT email FROM users WHERE id = ?", m.user_id);
   if (m.user_id === u.actor_id) {
     await audit(u.id, "team_left", who?.email ?? "");
-    await deskCookie(null);
+    await setDesk(null);
     redirect("/dashboard/floor");
   }
   await audit(u.id, "team_removed", who?.email ?? "");
@@ -111,7 +105,7 @@ export async function answerHeldReply(heldId: number, send: boolean, form: FormD
 export async function switchDesk(accountId: number | null) {
   const me = await requirePerson();
   if (accountId && accountId !== me.id && !(await roleOn(accountId, me.id))) return;
-  await deskCookie(accountId && accountId !== me.id ? accountId : null);
+  await setDesk(accountId && accountId !== me.id ? accountId : null);
   redirect("/dashboard/floor");
 }
 
@@ -121,7 +115,7 @@ export async function joinTeam(secret: string): Promise<TeamState> {
   try {
     const inv = await acceptInvite(secret, me);
     await audit(inv.account_id, "team_joined", me.email);
-    await deskCookie(inv.account_id);
+    await setDesk(inv.account_id);
   } catch (e) {
     return fail(e);
   }

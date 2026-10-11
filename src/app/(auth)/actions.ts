@@ -13,7 +13,7 @@ import { NEXT_COOKIE, safeNext, TEAM_INVITE_COOKIE } from "@/lib/next-path";
 import { termsVersion } from "@/lib/legal-sharing";
 import { redirect } from "next/navigation";
 import { audit } from "@/lib/audit";
-import { consumePasswordReset, createPasswordReset, createSession, currentPerson, DESK_COOKIE, destroySession, hashPassword, verifyPassword } from "@/lib/auth";
+import { consumePasswordReset, createPasswordReset, createSession, currentPerson, destroySession, hashPassword, setDesk, verifyPassword } from "@/lib/auth";
 import { now, q } from "@/lib/db";
 import { env } from "@/lib/env";
 import { APP_URL, sendMail } from "@/lib/mail";
@@ -422,22 +422,20 @@ async function joinTeamAfterSignup(form: FormData, userId: number) {
   const person = await q.get<{ id: number; email: string; email_verified_at: number | null }>("SELECT id, email, email_verified_at FROM users WHERE id = ?", userId);
   if (!person) return null;
   const inv = await acceptInvite(secret, person).catch(() => null);
-  if (!inv) return null;
-  await audit(inv.account_id, "team_joined", person.email);
-  const jar = await cookies();
-  jar.set(DESK_COOKIE, String(inv.account_id), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 365 * 86_400 });
-  jar.delete(TEAM_INVITE_COOKIE);
-  return inv;
+  return inv ? enterTeam(inv.account_id, person.email) : null;
 }
 
 /** After a Google sign-up (email proven by Google): join the team whose invite went to that email, if any. */
 async function joinTeamByEmail(userId: number) {
   const person = await q.get<{ id: number; email: string; email_verified_at: number | null }>("SELECT id, email, email_verified_at FROM users WHERE id = ?", userId);
   const inv = person ? await acceptInviteForEmail(person).catch(() => undefined) : undefined;
-  if (!inv) return null;
-  await audit(inv.account_id, "team_joined", person!.email);
-  const jar = await cookies();
-  jar.set(DESK_COOKIE, String(inv.account_id), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 365 * 86_400 });
-  jar.delete(TEAM_INVITE_COOKIE);
-  return inv;
+  return inv ? enterTeam(inv.account_id, person!.email) : null;
+}
+
+/** Just joined a team at sign-up: log it, open the team's desk, and forget the invite. */
+async function enterTeam(accountId: number, email: string) {
+  await audit(accountId, "team_joined", email);
+  await setDesk(accountId);
+  (await cookies()).delete(TEAM_INVITE_COOKIE);
+  return accountId;
 }

@@ -1,4 +1,4 @@
-import { test as base } from "@playwright/test";
+import { test as base, type Page } from "@playwright/test";
 
 /**
  * Stands in for Cloudflare's Turnstile script (the test machine may not reach Cloudflare): renders the widget's
@@ -40,4 +40,29 @@ export function wav(seconds = 6) {
     buf.writeInt16LE(Math.round(Math.sin(2 * Math.PI * (50 + 120 * Math.exp(-t * 30)) * t) * Math.exp(-t * 9) * 29000), 44 + i * 2);
   }
   return buf;
+}
+
+/** Password of the seeded test accounts (scripts/seed.ts): the demo receiver and the test listeners. */
+export const TEST_PASSWORD = "floortest-demo";
+
+/** Logs a seeded test account in and waits for the dashboard. */
+export async function logIn(page: Page, email: string) {
+  await page.goto("/login");
+  await submitLogin(page, email, /\/dashboard\//);
+}
+
+/** Fills the log-in form already on screen; if the human check appears (see the guards spec), logs in again with it. */
+export async function submitLogin(page: Page, email: string, landing: RegExp) {
+  await page.getByLabel("Email").fill(email);
+  await page.getByRole("textbox", { name: "Password" }).fill(TEST_PASSWORD);
+  await page.getByRole("button", { name: "Log in" }).click();
+  const dashboard = page.waitForURL(landing, { timeout: 60_000 }).then(() => "in" as const);
+  const check = page.getByTestId("turnstile").waitFor({ state: "attached", timeout: 60_000 }).then(() => "check" as const, () => "none" as const);
+  // The check may already be on screen with a token (then the first click got through): retry only if still here.
+  if ((await Promise.race([dashboard, check])) === "check" && !(await page.waitForURL(landing, { timeout: 5_000 }).then(() => true, () => false))) {
+    await page.getByRole("textbox", { name: "Password" }).fill(TEST_PASSWORD);
+    await page.getByRole("button", { name: "Log in" }).click();
+    await page.waitForURL(landing);
+  }
+  await dashboard.catch(() => {});
 }

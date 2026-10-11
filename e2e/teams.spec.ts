@@ -1,5 +1,4 @@
-import type { Page } from "@playwright/test";
-import { expect, test } from "./fixtures";
+import { expect, logIn, test } from "./fixtures";
 
 /**
  * Account teams, end to end (switched on only in the test copy: SEED_TEAMS). The demo account (owner) has 3 seats
@@ -7,23 +6,6 @@ import { expect, test } from "./fixtures";
  * owner's settings, comment for the team (Review Together), and their replies wait for approval when the owner turns that on.
  */
 test.describe.configure({ mode: "serial" });
-
-const PW = "floortest-demo";
-
-async function logIn(page: Page, email: string) {
-  await page.goto("/login");
-  await page.getByLabel("Email").fill(email);
-  await page.getByRole("textbox", { name: "Password" }).fill(PW);
-  await page.getByRole("button", { name: "Log in" }).click();
-  const dashboard = page.waitForURL(/\/dashboard\//, { timeout: 60_000 }).then(() => "in" as const);
-  const check = page.getByTestId("turnstile").waitFor({ state: "attached", timeout: 60_000 }).then(() => "check" as const, () => "none" as const);
-  if ((await Promise.race([dashboard, check])) === "check" && !(await page.waitForURL(/\/dashboard\//, { timeout: 5_000 }).then(() => true, () => false))) {
-    await page.getByRole("textbox", { name: "Password" }).fill(PW);
-    await page.getByRole("button", { name: "Log in" }).click();
-    await page.waitForURL(/\/dashboard\//);
-  }
-  await dashboard.catch(() => {});
-}
 
 test("the owner sees the team, turns on reply approval and invites someone", async ({ page }) => {
   await logIn(page, "demo@floortest.test");
