@@ -1,0 +1,251 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-11T18:07:55Z",
+  "title": "Design System: FloorTest",
+  "extensions": {
+    "colorMeta": {
+      "cue-lime": {
+        "role": "primary",
+        "displayName": "Cue Lime",
+        "canonical": "#d5ff48",
+        "tonalRamp": [
+          "#2b3300",
+          "#4a5900",
+          "#6b8000",
+          "#8fab00",
+          "#b3d61a",
+          "#d5ff48",
+          "#e2ff7a",
+          "#f0ffbf"
+        ]
+      },
+      "booth-black": {
+        "role": "neutral",
+        "displayName": "Booth Black",
+        "canonical": "#10110f",
+        "tonalRamp": [
+          "#10110f",
+          "#171815",
+          "#1e1f1b",
+          "#2a2e24",
+          "#3a3d37",
+          "#85887f",
+          "#a3a69b",
+          "#f1f1eb"
+        ]
+      },
+      "bone": {
+        "role": "neutral",
+        "displayName": "Bone",
+        "canonical": "#f1f1eb"
+      },
+      "danger": {
+        "role": "error",
+        "displayName": "Danger",
+        "canonical": "#ff6b5a"
+      },
+      "olive": {
+        "role": "secondary",
+        "displayName": "Olive",
+        "canonical": "#536400"
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The Floor greeting only."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Page titles."
+      },
+      "stat": {
+        "displayName": "Stat",
+        "purpose": "Numbers that are the point of a tile; tabular."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default dashboard text."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Section eyebrows (uppercase, Mute) and meta (Faint)."
+      },
+      "accent-serif": {
+        "displayName": "Accent serif",
+        "purpose": "Home-page italic accent only."
+      }
+    },
+    "shadows": [
+      {
+        "name": "pop",
+        "value": "0 24px 48px -12px rgb(0 0 0 / 0.6), 0 2px 6px rgb(0 0 0 / 0.4)",
+        "purpose": "Menus, dialogs, toasts."
+      },
+      {
+        "name": "lift",
+        "value": "0 2px 6px rgb(0 0 0 / 0.55)",
+        "purpose": "A raised key or card."
+      },
+      {
+        "name": "tactile-panel",
+        "value": "inset 0 1px 0 rgb(255 255 255 / 0.08), 0 2px 4px rgb(0 0 0 / 0.5), 0 14px 30px -6px rgb(0 0 0 / 0.75)",
+        "purpose": "Navigation rail and floating tab bar."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.23, 1, 0.32, 1)",
+        "purpose": "Things arriving; 150-250ms."
+      },
+      {
+        "name": "ease-in-out",
+        "value": "cubic-bezier(0.77, 0, 0.175, 1)",
+        "purpose": "Things moving on screen."
+      },
+      {
+        "name": "ease-drawer",
+        "value": "cubic-bezier(0.32, 0.72, 0, 1)",
+        "purpose": "Sheets."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one main action in an area.",
+      "html": "<button class=\"ds-btn-primary\">Download kept</button>",
+      "css": ".ds-btn-primary{background:var(--color-lime,#d5ff48);color:#10110f;border:1px solid transparent;border-radius:8px;padding:10px 16px;font:700 12px 'JetBrains Mono',monospace;cursor:pointer;transition:background-color 150ms cubic-bezier(0.23,1,0.32,1),transform 150ms cubic-bezier(0.23,1,0.32,1)}.ds-btn-primary:hover{background:#e2ff7a}.ds-btn-primary:active{transform:scale(.97)}.ds-btn-primary:focus-visible{outline:2px solid #d5ff48;outline-offset:2px}"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Secondary action.",
+      "html": "<button class=\"ds-btn-ghost\">Edit collection</button>",
+      "css": ".ds-btn-ghost{background:transparent;color:var(--color-bone,#f1f1eb);border:1px solid var(--color-line,#2c2e29);border-radius:8px;padding:10px 16px;font:700 12px 'JetBrains Mono',monospace;cursor:pointer;transition:background-color 150ms,border-color 150ms}.ds-btn-ghost:hover{border-color:#a3a69b;background:#1e1f1b}.ds-btn-ghost:focus-visible{outline:2px solid #d5ff48;outline-offset:2px}"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive; always confirms.",
+      "html": "<button class=\"ds-btn-danger\">Remove</button>",
+      "css": ".ds-btn-danger{background:transparent;color:#ff6b5a;border:1px solid rgb(255 107 90 / .5);border-radius:8px;padding:6px 12px;min-height:36px;font:700 11px 'JetBrains Mono',monospace;cursor:pointer}.ds-btn-danger:hover{background:rgb(255 107 90 / .1)}.ds-btn-danger:focus-visible{outline:2px solid #d5ff48;outline-offset:2px}"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Every input, select and textarea.",
+      "html": "<label class=\"ds-label\">Email<input class=\"ds-input\" placeholder=\"name@label.com\"></label>",
+      "css": ".ds-label{display:flex;flex-direction:column;gap:6px;font:700 11px 'JetBrains Mono',monospace;letter-spacing:1px;text-transform:uppercase;color:#a3a69b}.ds-input{background:#1e1f1b;color:#f1f1eb;border:1px solid #2c2e29;border-radius:8px;padding:10px 12px;font:400 12px 'JetBrains Mono',monospace;text-transform:none;letter-spacing:0;outline:none;transition:border-color 150ms,box-shadow 150ms}.ds-input::placeholder{color:#85887f}.ds-input:focus{border-color:rgb(213 255 72 / .7);box-shadow:0 0 0 2px rgb(213 255 72 / .15)}"
+    },
+    {
+      "name": "Filter Chips",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Filters and tabs; selected is a Bone fill.",
+      "html": "<div class=\"ds-chips\"><button class=\"ds-chip ds-chip-on\">Needs review 9</button><button class=\"ds-chip\">Kept 2</button><button class=\"ds-chip\">All 11</button></div>",
+      "css": ".ds-chips{display:flex;gap:6px}.ds-chip{border:1px solid #2c2e29;background:#1e1f1b;color:#a3a69b;border-radius:9999px;padding:6px 12px;font:500 11px 'JetBrains Mono',monospace;cursor:pointer}.ds-chip:hover{color:#f1f1eb}.ds-chip-on{background:#f1f1eb;color:#10110f;font-weight:700}"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Rows and tiles; border, no shadow.",
+      "html": "<div class=\"ds-card\"><p class=\"ds-eyebrow\">This week</p><p class=\"ds-stat\">7</p><p class=\"ds-meta\">tracks received</p></div>",
+      "css": ".ds-card{background:#1e1f1b;border:1px solid #2c2e29;border-radius:12px;padding:16px;color:#f1f1eb;font-family:'JetBrains Mono',monospace}.ds-eyebrow{margin:0;font:700 11px/1rem 'JetBrains Mono',monospace;letter-spacing:1px;text-transform:uppercase;color:#a3a69b}.ds-stat{margin:8px 0 0;font:700 30px/1 'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}.ds-meta{margin:4px 0 0;font:400 11px/1rem 'JetBrains Mono',monospace;color:#8a8d84}"
+    },
+    {
+      "name": "Navigation Rail",
+      "kind": "nav",
+      "refersTo": "navigation",
+      "description": "Dark tactile rail; current item raised; lime count badge.",
+      "html": "<nav class=\"ds-rail\"><a class=\"ds-rail-item\">The Floor</a><a class=\"ds-rail-item ds-rail-on\">Review Queue <span class=\"ds-badge\">3</span></a><a class=\"ds-rail-item\">Collections</a></nav>",
+      "css": ".ds-rail{display:flex;flex-direction:column;gap:4px;padding:6px;border-radius:22px;background:#171815;box-shadow:inset 0 1px 0 rgb(255 255 255 / .08),0 2px 4px rgb(0 0 0 / .5),0 14px 30px -6px rgb(0 0 0 / .75);width:220px}.ds-rail-item{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:16px;color:#85887f;font:500 12px 'JetBrains Mono',monospace;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;transition:background-color 120ms,color 120ms}.ds-rail-item:hover{color:#f1f1eb;background:rgb(255 255 255 / .04)}.ds-rail-on{color:#f1f1eb;background:#2a2e24;box-shadow:inset 0 1px 0 rgb(255 255 255 / .12),0 2px 6px rgb(0 0 0 / .55)}.ds-badge{background:#d5ff48;color:#10110f;border-radius:9999px;font:700 10px 'JetBrains Mono',monospace;padding:2px 6px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Booth at 2am",
+    "overview": "FloorTest looks like the inside of a DJ booth late in a set: near-black, warm, quiet, with one light that matters. Everything is ink and bone; a single lime accent marks the thing to do next, the way a cue light does on a deck. Nothing glows for decoration. The interface is a working surface for people deciding quickly, often on a phone between gigs, so it is dense, technical and calm rather than expressive.\n\nThe whole product is set in one monospaced face, which gives every screen the feel of gear: counts line up, durations and BPM read like readouts, labels read like panel markings. Depth is quiet. Surfaces step up in tone, not in shadow, and only things that float (menus, dialogs, toasts) cast one. Day theme is the same booth with the lights on: warm off-white paper, olive where lime would be unreadable as text, lime fills kept for the main action.",
+    "keyCharacteristics": [
+      "One accent, Cue Lime, reserved for the main action, live states and counts that need attention.",
+      "One typeface, JetBrains Mono, everywhere; Instrument Serif italic only as a home-page accent.",
+      "Tonal layering for depth; shadows only on floating things.",
+      "Four corner radii by role, nothing in between.",
+      "Dense, scannable rows; decision-time actions always visible.",
+      "Night is the default; the navigation stays dark in both themes."
+    ],
+    "rules": [
+      {
+        "name": "The One Light Rule",
+        "body": "Cue Lime appears where the next action or a live signal is, and nowhere else. If two lime buttons compete in one area, one of them is wrong.",
+        "section": "colors"
+      },
+      {
+        "name": "The Bone Not White Rule",
+        "body": "Never hard-code white in the app. Bone is the theme's ink and flips by day; only things drawn over artwork or a QR code stay white.",
+        "section": "colors"
+      },
+      {
+        "name": "The Token Only Rule",
+        "body": "Every colour comes from a token so both themes work. A hard-coded hex is a Day-theme bug waiting to happen.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Eyebrow Rule",
+        "body": "Section titles use the 11px bold spaced-caps eyebrow in Mute. No other eyebrow style exists.",
+        "section": "typography"
+      },
+      {
+        "name": "The Size Brings Its Leading Rule",
+        "body": "Each type role carries its own line-height; never set a size without it.",
+        "section": "typography"
+      },
+      {
+        "name": "The Floaters Only Rule",
+        "body": "Page cards have borders, not shadows. If it doesn't float above the page, it doesn't cast a shadow.",
+        "section": "elevation"
+      },
+      {
+        "name": "The No Nesting Rule",
+        "body": "A card never holds another card.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do use Cue Lime for the one main action per area and for live signals only.",
+      "Do take every colour from a token so Night and Day both work.",
+      "Do use the four radii by role (8 / 12 / 16 / 22px) and pills for chips.",
+      "Do keep text at 4.5:1 or better against its actual surface in both themes (WCAG 2.2 AA).",
+      "Do keep touch targets at 44px on touch screens.",
+      "Do animate only transform and opacity: entering 150–250ms ease-out from opacity 0 and scale 0.97; reduced motion keeps fades and drops movement."
+    ],
+    "donts": [
+      "Don't hard-code white or any hex in components.",
+      "Don't add shadows to page cards or nest a card inside a card.",
+      "Don't introduce a second typeface outside the home-page serif accent.",
+      "Don't add a second accent colour or a gradient for decoration.",
+      "Don't repeat on the page what it already says (no status chip matching the selected tab, no stat shown twice).",
+      "Don't animate keyboard-driven actions (K, X, U, Space) or start anything from scale 0."
+    ]
+  }
+}
