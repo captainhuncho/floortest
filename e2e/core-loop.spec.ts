@@ -49,10 +49,11 @@ test("the sender sends a WAV to the receiver's link", async ({ page }) => {
   await page.getByLabel("Choose WAV or MP3 files").setInputFiles(wavFile());
   await page.getByLabel("Track title").fill(title);
   await page.getByLabel("Artist").fill("E2E Artist");
-  await page.getByLabel("Genre").selectOption({ index: 1 });
-  await page.getByLabel("Mix status").selectOption({ index: 1 });
-  await page.getByLabel("Release status").selectOption("unsigned");
-  await page.getByLabel(/Made with AI/).selectOption("none");
+  // Genre, mix, release and AI are tap choices: the visible label is what a sender taps.
+  await page.getByRole("group", { name: /^Genre/ }).locator("label").first().click();
+  await page.getByRole("group", { name: /^Mix status/ }).getByText("Mixed, not mastered").click();
+  await page.getByRole("group", { name: /^Release status/ }).getByText("Unreleased").click();
+  await page.getByRole("group", { name: /^Made with AI/ }).getByText("No", { exact: true }).click();
   await page.getByRole("button", { name: /^Send to / }).click();
   // Generous: on a cold dev build the first upload compiles the whole send path.
   await expect(page.getByText(/We sent a receipt to/)).toBeVisible({ timeout: 80_000 });

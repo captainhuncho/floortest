@@ -124,6 +124,8 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
   const [sender, setSender] = useState({ name: "", email: "", instagram: "", streaming: "" });
+  // True when complete details came from this device (the form can show them as one line).
+  const [remembered, setRemembered] = useState(false);
   const abort = useRef<AbortController | null>(null);
   // When the current transfer started, for the time-left estimate.
   const [startedAt, setStartedAt] = useState(0);
@@ -134,7 +136,10 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
   useEffect(() => {
     try {
       const s = JSON.parse(localStorage.getItem(SENDER_KEY) || "null");
-      if (s?.name || s?.email) setSender({ name: s.name || "", email: s.email || "", instagram: s.instagram || "", streaming: s.streaming || "" });
+      if (s?.name || s?.email) {
+        setSender({ name: s.name || "", email: s.email || "", instagram: s.instagram || "", streaming: s.streaming || "" });
+        setRemembered(!!(s.name && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.email || "") && (s.instagram || s.streaming)));
+      }
     } catch {}
   }, []);
 
@@ -223,5 +228,5 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
 
   const cancel = () => abort.current?.abort();
 
-  return { items, phase, error, setError, sender, setSender, add, remove, edit, send, reset, cancel, startedAt };
+  return { items, phase, error, setError, sender, setSender, remembered, add, remove, edit, send, reset, cancel, startedAt };
 }

@@ -19,8 +19,8 @@ const ENTER = "starting:opacity-0 motion-safe:starting:translate-y-1 transition-
 const LABEL = "text-[11px] font-bold uppercase tracking-[0.5px] text-dim";
 const HELP = "text-[12px] text-dim";
 
-/** One problem at a time, under the field it belongs to, saying what to do. */
-type Issue = { key: string; text: string };
+/** Something still needed: under its field it says what to do (`text`); above Send it's named in a word or two (`short`). */
+type Issue = { key: string; short: string; text: string };
 
 export function SubmitForm({
   handle,
@@ -33,6 +33,9 @@ export function SubmitForm({
   trackArt = false,
   initialFiles,
   onSent,
+  presetGenre = "",
+  bpmRange = null,
+  promise = [],
 }: {
   handle: string;
   receiverName: string;
@@ -51,13 +54,26 @@ export function SubmitForm({
   initialFiles?: File[];
   /** Called once everything has been sent. */
   onSent?: () => void;
+  /** A genre the sender tapped in the receiver's brief; it fills the Genre field. */
+  presetGenre?: string;
+  /** The BPM range the receiver asked for, shown next to each track's own BPM. */
+  bpmRange?: [number, number] | null;
+  /** What happens to the file (who hears it, deletion, receipt), repeated above Send. */
+  promise?: string[];
 }) {
-  const { items, phase, error, setError, sender, setSender, add, remove, edit, send, reset: resetUpload, cancel, startedAt } = useTrackUpload(handle, { asAccount: !!account });
+  const { items, phase, error, setError, sender, setSender, remembered, add, remove, edit, send, reset: resetUpload, cancel, startedAt } = useTrackUpload(handle, { asAccount: !!account });
   const [drag, setDrag] = useState(false);
-  const [genre, setGenre] = useState("");
+  // The sender's own pick wins; until they make one, a genre tapped in the brief fills the field.
+  const [chosenGenre, setGenre] = useState<string | null>(null);
+  const genre = chosenGenre ?? presetGenre;
   const [mix, setMix] = useState("");
+  const [release, setRelease] = useState("");
+  const [ai, setAi] = useState("");
   const [setsOk, setSetsOk] = useState(false);
-  const [issue, setIssue] = useState<Issue | null>(null);
+  // Everything still missing, each shown under its field and listed together above Send.
+  const [issues, setIssues] = useState<Issue[]>([]);
+  // Details remembered on this device show as one line until the sender asks to change them.
+  const [changeYou, setChangeYou] = useState(false);
   const [messageOpen, setMessageOpen] = useState(false);
   const [artOpen, setArtOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -91,48 +107,56 @@ export function SubmitForm({
 
   function reset() {
     resetUpload();
-    setGenre("");
+    setGenre(null);
     setMix("");
+    setRelease("");
+    setAi("");
     setSetsOk(false);
-    setIssue(null);
+    setIssues([]);
     setMessageOpen(false);
     setArtOpen(false);
   }
 
-  /** Points at the field and says what's needed; the browser's own bubbles never appear (noValidate). */
-  function flag(key: string, text: string) {
-    setIssue({ key, text });
+  /** Moves to a field that needs an answer; the browser's own bubbles never appear (noValidate). */
+  function goTo(key: string) {
     const el = document.getElementById(key);
     el?.focus({ preventScroll: true });
     el?.scrollIntoView({ block: "center", behavior: "smooth" });
-    return false;
   }
-  const clear = (key: string) => issue?.key === key && setIssue(null);
+  const issueFor = (key: string) => issues.find((i) => i.key === key);
+  const clear = (key: string) => issueFor(key) && setIssues((list) => list.filter((i) => i.key !== key));
 
-  /** The same rules the server applies, checked here first so the answer is next to the field. */
+  /** The same rules the server applies, all checked at once so every answer still needed is shown together. */
   function complete(fd: FormData) {
+    const found: Issue[] = [];
+    const need = (key: string, short: string, text: string) => found.push({ key, short, text });
     for (const it of items) {
-      if (!it.tags.title.trim()) return flag(`title-${it.id}`, "Give this track a title.");
-      if (!it.tags.artist.trim()) return flag(`artist-${it.id}`, "Who's the artist?");
+      if (!it.tags.title.trim()) need(`title-${it.id}`, "title", "Give this track a title.");
+      if (!it.tags.artist.trim()) need(`artist-${it.id}`, "artist", "Who's the artist?");
     }
     if (!account) {
-      if (!String(fd.get("name") ?? "").trim()) return flag("sender-name", "Add your name so the receipt is yours.");
+      if (!String(fd.get("name") ?? "").trim()) need("sender-name", "your name", "Add your name so the receipt is yours.");
       const email = String(fd.get("email") ?? "").trim();
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return flag("sender-email", "Add an email for your receipt. Nothing else is sent to it.");
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) need("sender-email", "your email", "Add an email for your receipt. Nothing else is sent to it.");
       if (!String(fd.get("sender_instagram") ?? "").trim() && !String(fd.get("sender_streaming") ?? "").trim())
-        return flag("sender-instagram", `Add your Instagram or a streaming profile so ${receiverName} knows who you are.`);
+        need("sender-instagram", "a profile", `Add your Instagram or a streaming profile so ${receiverName} knows who you are.`);
     }
-    if (!genre) return flag("genre", `Pick a genre so ${receiverName} knows where it fits.`);
-    if (!mix) return flag("mix_status", "Say how finished it is.");
-    if (!String(fd.get("release_status") ?? "")) return flag("release_status", "Is it released, signed, or unreleased?");
-    if (!String(fd.get("ai_use") ?? "")) return flag("ai_use", "Say whether AI was used. Honest answers keep the desk fair.");
-    return true;
+    if (!genre) need("genre", "genre", `Pick a genre so ${receiverName} knows where it fits.`);
+    if (!mix) need("mix_status", "mix status", "Say how finished it is.");
+    if (!release) need("release_status", "release status", "Is it released, signed, or unreleased?");
+    if (!ai) need("ai_use", "AI use", "Say whether AI was used. Honest answers keep the desk fair.");
+    if (!found.length) return true;
+    // A remembered sender line hides the fields; open them if one of them is the problem.
+    if (found.some((i) => i.key.startsWith("sender-"))) setChangeYou(true);
+    setIssues(found);
+    requestAnimationFrame(() => goTo(found[0].key));
+    return false;
   }
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    setIssue(null);
+    setIssues([]);
     if (!complete(fd)) return;
     if (account) return send(fd);
     const email = String(fd.get("email") ?? "").trim().toLowerCase();
@@ -166,8 +190,8 @@ export function SubmitForm({
             </p>
           </div>
         </div>
-        <ol className="grid grid-cols-3 gap-2 border-y border-line py-3 text-[11px] uppercase tracking-[0.5px]">
-          {(["Delivered", "Listened", "Replied"] as const).map((step, i) => (
+        <ol className="grid grid-cols-2 gap-2 border-y border-line py-3 text-[11px] font-bold uppercase tracking-[1px] sm:grid-cols-4">
+          {(["Delivered", "Listened", "Downloaded", "Replied"] as const).map((step, i) => (
             <li key={step} className={`flex items-center gap-1.5 ${i === 0 ? "text-lime" : "text-dim"}`}>
               <span aria-hidden className={`size-1.5 rounded-full ${i === 0 ? "bg-lime" : "bg-line-2"}`} />
               {step}
@@ -221,13 +245,16 @@ export function SubmitForm({
       {error}
     </p>
   );
-  const problem = (key: string) =>
-    issue?.key === key ? (
-      <p id={`${key}-issue`} role="alert" className={`text-[12px] text-danger ${ENTER}`}>
-        {issue.text}
+  const problem = (key: string) => {
+    const it = issueFor(key);
+    return it ? (
+      <p id={`${key}-issue`} className={`text-[12px] text-danger ${ENTER}`}>
+        {it.text}
       </p>
     ) : null;
-  const invalid = (key: string) => (issue?.key === key ? "border-danger/60" : "");
+  };
+  const invalid = (key: string) => (issueFor(key) ? "border-danger/60" : "");
+  const described = (key: string, help?: string) => (issueFor(key) ? `${key}-issue` : help);
 
   /* ── Step 1: the only thing asked for is the file. ── */
   if (!items.length) {
@@ -259,6 +286,11 @@ export function SubmitForm({
           {it.file.name} · {/\.wav$/i.test(it.file.name) ? "WAV" : "MP3"} · {fmtBytes(it.file.size)}
           {it.analysis && ` · ${fmtTime(it.analysis.duration)}`}
           {(it.tags.bpm ?? it.analysis?.bpm) && ` · ${Math.round((it.tags.bpm ?? it.analysis?.bpm)!)} BPM`}
+          {bpmRange && (it.tags.bpm ?? it.analysis?.bpm) && (() => {
+            const bpm = Math.round((it.tags.bpm ?? it.analysis?.bpm)!);
+            const inside = bpm >= bpmRange[0] && bpm <= bpmRange[1];
+            return <span className={inside ? "text-bone" : undefined}>{` (${inside ? "in" : "outside"} the ${bpmRange[0]}–${bpmRange[1]} asked for)`}</span>;
+          })()}
           {it.tags.key && ` · ${it.tags.key}`}
         </p>
         {it.status === "done" ? (
@@ -275,12 +307,12 @@ export function SubmitForm({
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block space-y-1.5" htmlFor={`title-${it.id}`}>
           <span className={LABEL}>Track title<Req /></span>
-          <input id={`title-${it.id}`} className={`input ${invalid(`title-${it.id}`)}`} required value={it.tags.title} disabled={it.status === "done"} aria-describedby={issue?.key === `title-${it.id}` ? `title-${it.id}-issue` : undefined} onChange={(e) => (clear(`title-${it.id}`), edit(it.id, { title: e.target.value }))} />
+          <input id={`title-${it.id}`} className={`input ${invalid(`title-${it.id}`)}`} required value={it.tags.title} disabled={it.status === "done"} aria-describedby={described(`title-${it.id}`)} onChange={(e) => (clear(`title-${it.id}`), edit(it.id, { title: e.target.value }))} />
           {problem(`title-${it.id}`)}
         </label>
         <label className="block space-y-1.5" htmlFor={`artist-${it.id}`}>
           <span className={LABEL}>Artist<Req /></span>
-          <input id={`artist-${it.id}`} className={`input ${invalid(`artist-${it.id}`)}`} required value={it.tags.artist} disabled={it.status === "done"} aria-describedby={issue?.key === `artist-${it.id}` ? `artist-${it.id}-issue` : undefined} onChange={(e) => (clear(`artist-${it.id}`), edit(it.id, { artist: e.target.value }))} />
+          <input id={`artist-${it.id}`} className={`input ${invalid(`artist-${it.id}`)}`} required value={it.tags.artist} disabled={it.status === "done"} aria-describedby={described(`artist-${it.id}`)} onChange={(e) => (clear(`artist-${it.id}`), edit(it.id, { artist: e.target.value }))} />
           {problem(`artist-${it.id}`)}
         </label>
       </div>
@@ -335,26 +367,43 @@ export function SubmitForm({
             <input type="hidden" name="name" value={account.name} />
             <input type="hidden" name="email" value={account.email} />
           </p>
+        ) : remembered && !changeYou ? (
+          <section aria-labelledby="you-h" className="flex flex-col gap-2">
+            <h2 id="you-h" className="eyebrow">You</h2>
+            <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-mute">
+              <span className="min-w-0 break-words">
+                Sending as <span className="font-semibold text-bone">{sender.name}</span> · {sender.email}
+                {sender.instagram ? ` · ${sender.instagram}` : sender.streaming ? " · streaming profile" : ""}
+              </span>
+              <button type="button" onClick={() => setChangeYou(true)} className="inline-flex min-h-9 items-center text-[13px] font-semibold text-bone underline underline-offset-4">
+                Change
+              </button>
+            </p>
+            <input type="hidden" name="name" value={sender.name} />
+            <input type="hidden" name="email" value={sender.email} />
+            <input type="hidden" name="sender_instagram" value={sender.instagram} />
+            <input type="hidden" name="sender_streaming" value={sender.streaming} />
+          </section>
         ) : (
           <section aria-labelledby="you-h" className="flex flex-col gap-3">
             <h2 id="you-h" className="eyebrow">You</h2>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block space-y-1.5" htmlFor="sender-name">
                 <span className={LABEL}>Your name<Req /></span>
-                <input id="sender-name" className={`input ${invalid("sender-name")}`} name="name" required autoComplete="name" value={sender.name} aria-describedby={issue?.key === "sender-name" ? "sender-name-issue" : undefined} onChange={(e) => (clear("sender-name"), setSender((s) => ({ ...s, name: e.target.value })))} />
+                <input id="sender-name" className={`input ${invalid("sender-name")}`} name="name" required autoComplete="name" value={sender.name} aria-describedby={described("sender-name")} onChange={(e) => (clear("sender-name"), setSender((s) => ({ ...s, name: e.target.value })))} />
                 {problem("sender-name")}
               </label>
               <label className="block space-y-1.5" htmlFor="sender-email">
                 <span className={LABEL}>Your email<Req /></span>
-                <input id="sender-email" className={`input ${invalid("sender-email")}`} name="email" type="email" required autoComplete="email" value={sender.email} aria-describedby={issue?.key === "sender-email" ? "sender-email-issue" : "sender-email-help"} onChange={(e) => (clear("sender-email"), setSender((s) => ({ ...s, email: e.target.value })))} />
+                <input id="sender-email" className={`input ${invalid("sender-email")}`} name="email" type="email" required autoComplete="email" value={sender.email} aria-describedby={described("sender-email", "sender-email-help")} onChange={(e) => (clear("sender-email"), setSender((s) => ({ ...s, email: e.target.value })))} />
                 {problem("sender-email")}
               </label>
             </div>
-            {issue?.key !== "sender-email" && <p id="sender-email-help" className={`-mt-1 ${HELP}`}>For your receipt and updates only. Never shown to anyone.</p>}
+            {!issueFor("sender-email") && <p id="sender-email-help" className={`-mt-1 ${HELP}`}>For your receipt and updates only. Never shown to anyone.</p>}
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block space-y-1.5" htmlFor="sender-instagram">
                 <span className={LABEL}>Instagram</span>
-                <input id="sender-instagram" className={`input ${invalid("sender-instagram")}`} name="sender_instagram" autoComplete="off" maxLength={300} placeholder="@yourname" value={sender.instagram} aria-describedby={issue?.key === "sender-instagram" ? "sender-instagram-issue" : "profiles-help"} onChange={(e) => (clear("sender-instagram"), setSender((s) => ({ ...s, instagram: e.target.value })))} />
+                <input id="sender-instagram" className={`input ${invalid("sender-instagram")}`} name="sender_instagram" autoComplete="off" maxLength={300} placeholder="@yourname" value={sender.instagram} aria-describedby={described("sender-instagram", "profiles-help")} onChange={(e) => (clear("sender-instagram"), setSender((s) => ({ ...s, instagram: e.target.value })))} />
                 {problem("sender-instagram")}
               </label>
               <label className="block space-y-1.5" htmlFor="sender-streaming">
@@ -362,54 +411,26 @@ export function SubmitForm({
                 <input id="sender-streaming" className="input" name="sender_streaming" inputMode="url" autoComplete="url" maxLength={300} placeholder="open.spotify.com/artist/…" value={sender.streaming} aria-describedby="profiles-help" onChange={(e) => (clear("sender-instagram"), setSender((s) => ({ ...s, streaming: e.target.value })))} />
               </label>
             </div>
-            {issue?.key !== "sender-instagram" && <p id="profiles-help" className={`-mt-1 ${HELP}`}>One of these, so {receiverName} knows who you are.</p>}
+            {!issueFor("sender-instagram") && <p id="profiles-help" className={`-mt-1 ${HELP}`}>One of these, so {receiverName} knows who you are.</p>}
           </section>
         )}
 
         <section aria-labelledby="about-h" className="flex flex-col gap-3">
           <h2 id="about-h" className="eyebrow">About {many ? "these tracks" : "this track"}</h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <GenrePicker id="genre" genres={genres} value={genre} onChange={(g) => (clear("genre"), setGenre(g))} inputClass="input" labelClass={LABEL} invalid={issue?.key === "genre"} issue={problem("genre")} />
-            <input type="hidden" name="genre" value={genre} />
-            <label className="block space-y-1.5" htmlFor="mix_status">
-              <span className={LABEL}>Mix status<Req /></span>
-              <select id="mix_status" name="mix_status" required className={`input ${invalid("mix_status")}`} value={mix} aria-describedby={issue?.key === "mix_status" ? "mix_status-issue" : undefined} onChange={(e) => (clear("mix_status"), setMix(e.target.value))}>
-                <option value="" disabled>
-                  Choose one
-                </option>
-                {Object.entries(MIX_STATUS).map(([k, v]) => (
-                  <option key={k} value={k}>
-                    {v}
-                  </option>
-                ))}
-              </select>
-              {problem("mix_status")}
-            </label>
-            <label className="block space-y-1.5" htmlFor="release_status">
-              <span className={LABEL}>Release status<Req /></span>
-              <select id="release_status" name="release_status" required className={`input ${invalid("release_status")}`} defaultValue="" aria-describedby={issue?.key === "release_status" ? "release_status-issue" : undefined} onChange={() => clear("release_status")}>
-                <option value="" disabled>
-                  Choose one
-                </option>
-                <option value="unsigned">Unreleased</option>
-                <option value="signed">Signed, forthcoming</option>
-                <option value="released">Already released</option>
-              </select>
-              {problem("release_status")}
-            </label>
-            <label className="block space-y-1.5" htmlFor="ai_use">
-              <span className={LABEL}>Made with AI?<Req /></span>
-              <select id="ai_use" name="ai_use" required className={`input ${invalid("ai_use")}`} defaultValue="" aria-describedby={issue?.key === "ai_use" ? "ai_use-issue" : undefined} onChange={() => clear("ai_use")}>
-                <option value="" disabled>
-                  Choose one
-                </option>
-                <option value="none">No</option>
-                <option value="partial">Partly (e.g. AI vocals, stems or mastering)</option>
-                <option value="full">Fully AI-generated</option>
-              </select>
-              {problem("ai_use")}
-            </label>
-          </div>
+          <GenrePicker id="genre" genres={genres} value={genre} onChange={(g) => (clear("genre"), setGenre(g))} inputClass="input" labelClass={LABEL} invalid={!!issueFor("genre")} issue={problem("genre")} />
+          <input type="hidden" name="genre" value={genre} />
+          <Choice id="mix_status" name="mix_status" label="Mix status" value={mix} onChange={(v) => (clear("mix_status"), setMix(v))} issue={problem("mix_status")} options={Object.entries(MIX_STATUS).map(([k, v]) => [k, v.replace(" & ", " and ")])} />
+          <Choice id="release_status" name="release_status" label="Release status" value={release} onChange={(v) => (clear("release_status"), setRelease(v))} issue={problem("release_status")} options={[["unsigned", "Unreleased"], ["signed", "Signed, forthcoming"], ["released", "Already released"]]} />
+          <Choice
+            id="ai_use"
+            name="ai_use"
+            label="Made with AI?"
+            value={ai}
+            onChange={(v) => (clear("ai_use"), setAi(v))}
+            issue={problem("ai_use")}
+            options={[["none", "No"], ["partial", "Partly"], ["full", "Fully AI-generated"]]}
+            help="Partly means AI vocals, stems or mastering."
+          />
 
           {/* Optional extras stay out of the way until asked for. */}
           <div className="flex flex-wrap gap-x-5 gap-y-1">
@@ -443,14 +464,40 @@ export function SubmitForm({
 
         {errorBox}
 
+        {!account && <Turnstile siteKey={botCheckKey} />}
         <div className="flex flex-col gap-3">
-          {!account && <Turnstile siteKey={botCheckKey} />}
-          <button className="btn-lime w-full py-3.5 text-[14px] font-bold" disabled={busy || analyzing || checking}>
-            {checking ? "Checking your email…" : analyzing ? "Reading audio…" : many ? `Send ${items.length} tracks to ${receiverName}` : `Send to ${receiverName}`}
-          </button>
-          <p className="text-[11px] leading-4 text-dim">
-            By sending you confirm you own or control {many ? "these tracks" : "this track"}, your answer about AI is accurate, and you&apos;re 18 or over. {receiverName} may listen to it and download it to evaluate it
-. They can play it in sets only if you turn on DJ sets above, and can&apos;t release it anywhere without a signed agreement with you.
+          {issues.length > 0 && (
+            <div role="alert" className={`rounded-lg border border-danger/40 bg-danger/10 px-3.5 py-2.5 text-[13px] text-danger ${ENTER}`}>
+              {issues.length === 1 ? "One thing left: " : `${issues.length} things left: `}
+              {issues.map((it, i) => (
+                <span key={it.key}>
+                  {i > 0 && ", "}
+                  <button type="button" onClick={() => goTo(it.key)} className="underline underline-offset-4">
+                    {it.short}
+                  </button>
+                </span>
+              ))}
+              .
+            </div>
+          )}
+          {promise.length > 0 && (
+            <ul aria-label="What happens to your file" className="flex flex-col gap-1.5 text-[13px] leading-5 text-mute">
+              {promise.map((line) => (
+                <li key={line} className="flex gap-2.5">
+                  <span aria-hidden>→</span>
+                  {line}
+                </li>
+              ))}
+            </ul>
+          )}
+          {/* On phones the send button stays within reach at the bottom of the screen while the form scrolls. */}
+          <div className="max-sm:sticky max-sm:bottom-0 max-sm:z-10 max-sm:-mx-[18px] max-sm:border-t max-sm:border-line max-sm:bg-ink max-sm:px-[18px] max-sm:pt-3 max-sm:pb-[max(12px,env(safe-area-inset-bottom))]">
+            <button className="btn-lime w-full py-3.5 text-[14px] font-bold" disabled={busy || analyzing || checking}>
+              {checking ? "Checking your email…" : analyzing ? "Reading audio…" : many ? `Send ${items.length} tracks to ${receiverName}` : `Send to ${receiverName}`}
+            </button>
+          </div>
+          <p className="text-[12px] leading-[18px] text-dim">
+            By sending you confirm you own or control {many ? "these tracks" : "this track"}, your answer about AI is accurate, and you&apos;re 18 or over. {receiverName} may listen to it and download it to evaluate it. They can play it in sets only if you turn on DJ sets above, and can&apos;t release it anywhere without a signed agreement with you.
             {/* Draft wording (lawyer brief 11 Oct, 4.1); the version agreed to is stored on the track (SHARING_TERMS_VERSION). */}
             {allowSharing
               ? ` ${receiverName} can also share it privately, through FloorTest, with people they name, who must confirm their email first. Depending on what ${receiverName} allows, those people can listen, or listen and download. Nobody can publish or release it without a signed agreement with you.`
@@ -461,5 +508,54 @@ export function SubmitForm({
         </div>
       </form>
     </>
+  );
+}
+
+/** A required either/or answer as a row of tappable choices (radio buttons underneath, so keyboards and FormData just work). */
+function Choice({
+  id,
+  name,
+  label,
+  options,
+  value,
+  onChange,
+  issue,
+  help,
+}: {
+  id: string;
+  name: string;
+  label: string;
+  options: [string, string][];
+  value: string;
+  onChange: (v: string) => void;
+  issue: React.ReactNode;
+  help?: string;
+}) {
+  return (
+    <fieldset className="flex flex-col gap-1.5" aria-describedby={issue ? `${id}-issue` : help ? `${id}-help` : undefined}>
+      <legend className={`mb-1.5 ${LABEL}`}>
+        {label}
+        <Req />
+      </legend>
+      <div className="flex flex-wrap gap-1.5">
+        {options.map(([v, text], i) => (
+          <label
+            key={v}
+            className={`tap-tall inline-flex cursor-pointer items-center rounded-full border px-3.5 py-2 text-[13px] font-semibold transition-colors duration-150 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-lime ${
+              value === v ? "border-bone bg-bone text-ink" : `bg-ink-2 text-bone hover:border-line-2 ${issue ? "border-danger/60" : "border-line"}`
+            }`}
+          >
+            <input id={i === 0 ? id : undefined} type="radio" name={name} value={v} checked={value === v} onChange={() => onChange(v)} className="sr-only" />
+            {text}
+          </label>
+        ))}
+      </div>
+      {issue}
+      {help && !issue && (
+        <p id={`${id}-help`} className={HELP}>
+          {help}
+        </p>
+      )}
+    </fieldset>
   );
 }

@@ -50,7 +50,7 @@ export default async function ReceiverPage({ params }: Props) {
   const [collection, sharing, { full }, c, editor] = await Promise.all([activeCollection(receiver), switchOn("sharing"), capacity(receiver), siteCopy("link"), siteEditor()]);
   const { E, panel } = editable(c, !!editor);
   const closed = isClosed(collection);
-  const genres = genresFor(collection).list;
+  const { list: genres, custom: ownGenres } = genresFor(collection);
   const paused = isPaused(receiver);
   const note = paused ? receiver.pause_message : "";
   const [team, folderBytes, botKey, trackArt] = await Promise.all([teamSize(receiver.id), folderLimit(receiver.plan), botCheckKey(), trackArtEnabled(receiver.plan)]);
@@ -64,12 +64,15 @@ export default async function ReceiverPage({ params }: Props) {
       ? `${receiver.name} isn't accepting new tracks right now.`
       : null;
 
-  // The genre chips cover genres here; everything else in the brief reads as it does on the desk.
-  const brief = collection ? briefItems(collection, [], receiver.tz).filter((b) => b.key !== "genres") : [];
-  // Always tell senders what's wanted: the collection's own genres, or the default list when none are set.
-  const showBrief = !closedReason && genres.length > 0;
+  // The brief shows only what the receiver asked for: their own genres (never the default list, which they didn't choose),
+  // and the rest as it reads on the desk. Genres become tappable choices that carry into the form.
+  const briefRest = collection ? briefItems(collection, [], receiver.tz).filter((b) => b.key !== "genres") : [];
+  const firstName = receiver.first_name || receiver.name.split(" ")[0];
+  const shareNote = sharing && !!collection?.allow_sharing ? `${firstName} may share what you send privately with people they name.` : null;
+  const brief = closedReason ? null : { heading: <E k="looking_for" />, genres: ownGenres ? genres : [], items: briefRest, shareNote };
+  const bpmRange: [number, number] | null = collection?.bpm_min && collection.bpm_max ? [collection.bpm_min, collection.bpm_max] : null;
   const vars = { receiver: receiver.name, days: RETAIN_UNREVIEWED_DAYS };
-  // The drop zone already says what files it takes; the hand-off points below it are what happens after.
+  // What happens to the file: shown under the drop zone, and again above Send once a file is picked (the form gets the text).
   const bullets = ([team ? "bullet_private_team" : "bullet_private", "bullet_retention", "bullet_receipt"] as const).map((k) => [k, fill(c[k], vars)] as const).filter(([, b]) => b);
 
   return (
@@ -102,43 +105,11 @@ export default async function ReceiverPage({ params }: Props) {
               ) : (
                 <span aria-hidden className="size-1.5 rounded-full bg-lime" />
               )}
-              Receiving for <span className="text-lime">{collection.name}</span>
+              Receiving for <span className="text-bone">{collection.name}</span>
             </p>
           )}
         </div>
         <ProfileLinks links={readLinks(receiver.links)} className="group-has-[[data-picked]]/page:hidden" />
-        {team > 0 && !closedReason && (
-          <p className="text-[12px] text-mute">Tracks sent here are heard by {receiver.name}&apos;s team, who review them together.</p>
-        )}
-        {showBrief && (
-          <section aria-label="What they're looking for" className="group-has-[[data-picked]]/page:hidden mt-2 flex flex-col gap-2 border-t border-line pt-4">
-            <p className="eyebrow"><E k="looking_for" /></p>
-            {(
-              <ul className="flex flex-wrap gap-1.5">
-                {genres.map((g) => (
-                  <li key={g} className="rounded-full border border-line bg-ink px-2 py-1 text-[11px] font-bold">
-                    {g}
-                  </li>
-                ))}
-              </ul>
-            )}
-            {brief.length > 0 && (
-              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[11px]">
-                {brief.map((b) => (
-                  <div key={b.key} className="contents">
-                    <dt className="font-bold uppercase tracking-[0.5px] text-mute">{b.label}</dt>
-                    <dd className={b.key === "note" ? "italic leading-4 text-mute" : "font-bold"}>{b.text}</dd>
-                  </div>
-                ))}
-              </dl>
-            )}
-            {sharing && !!collection?.allow_sharing && (
-              <p className="flex items-center gap-1.5 text-[11px] font-medium text-dim">
-                <span aria-hidden className="text-lime">✓</span> May be shared privately with people {receiver.first_name || receiver.name.split(" ")[0]} names
-              </p>
-            )}
-          </section>
-        )}
       </div>
       <div>
         {closedReason ? (
@@ -149,17 +120,19 @@ export default async function ReceiverPage({ params }: Props) {
             <ReopenAlert handle={receiver.handle} receiverName={receiver.name} botCheckKey={botKey} />
           </div>
         ) : (
-          <SendModes folderBytes={folderBytes} botCheckKey={botKey} handle={receiver.handle} receiverName={receiver.name} callout={collection && !closedReason ? collection.name : null} genres={genres} allowSharing={sharing && !!collection?.allow_sharing} trackArt={trackArt} />
+          <SendModes folderBytes={folderBytes} brief={brief} bpmRange={bpmRange} promise={bullets.map(([, b]) => b)} botCheckKey={botKey} handle={receiver.handle} receiverName={receiver.name} callout={collection && !closedReason ? collection.name : null} genres={genres} allowSharing={sharing && !!collection?.allow_sharing} trackArt={trackArt} />
         )}
       </div>
-      <ul className="group-has-[[data-picked]]/page:hidden flex flex-col gap-2.5" aria-label="How your file is handled">
+      {!closedReason && (
+      <ul className="-mt-2 flex flex-col gap-2 group-has-[[data-picked]]/page:hidden" aria-label="How your file is handled">
         {bullets.map(([k, b]) => (
-          <li key={k} {...panel(k, "Keep {receiver} and {days} as they are: the page fills them in.")} className="flex gap-2.5 text-[11px] font-medium leading-4 text-dim">
+          <li key={k} {...panel(k, "Keep {receiver} and {days} as they are: the page fills them in.")} className="flex gap-2.5 text-[13px] leading-5 text-mute">
             <span aria-hidden>→</span>
             {b}
           </li>
         ))}
       </ul>
+      )}
       <footer className="mt-auto flex flex-col items-center gap-3 pt-4">
         {receiver.identity_status !== "verified" && (
           <p className="text-center text-[12px] font-medium leading-[18px] text-dim">
