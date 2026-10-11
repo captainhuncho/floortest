@@ -25,6 +25,9 @@ Plan + tappable prototype: claude.ai/artifact/5BVVpA3Zn9AxH71ut9hGFr (private), 
 - ✅ 9 Oct: Capacitor iOS shell prototype (`mobile/`) running on the iPhone simulator: opens on the desk/sign-in, safe-area fixed, FloorTest icon and splash.
 - Build (~4 weeks):  background player + lock screen, push, share-to-FloorTest, swipe review, tabs Floor · Queue · Collections · Prepare. Then test + store review (~2 weeks).
 
+## In progress: audio bucket to Europe (started 11 Oct)
+Audio sits in `floortest-audio`, created in Eastern North America (ENAM), while the server, database and users are London/West Africa side; play start measured 0.9–1.5 s from Ghana. Steps: ✅ 1 `floortest-audio-eu` created (WEUR, Standard) · ✅ 2 CORS copied · ✅ 3 live token (R2 Account Token 2) already covers all buckets; preview tokens kept on the preview bucket only · ⬜ 4 R2 Data Migration (S3-compatible source: bucket `floortest-audio`, endpoint `https://<account>.r2.cloudflarestorage.com/floortest-audio`, S3 Access Key ID + Secret Access Key of a read token, not the token value) → destination `floortest-audio-eu` · ⬜ 5 Vercel `S3_BUCKET` = `floortest-audio-eu`, redeploy · ⬜ 6 run the migration again (skip existing) · ⬜ 7 verify live (play, upload, timing), update docs · ⬜ 8 owner deletes the old bucket after a week. Fallback if Data Migration won't connect: a one-off ops copy job using the app's own access.
+
 ## Before public launch (in order)
 1. **Paid infrastructure:** Vercel Pro, Neon Launch, paid UptimeRobot, Resend upgrade; `ALERT_WEBHOOK_URL`. Delete old Supabase (from 13 Oct).
 2. **Vercel Firewall rate-limit rule** on `/api/*` and auth pages (needs Pro).
