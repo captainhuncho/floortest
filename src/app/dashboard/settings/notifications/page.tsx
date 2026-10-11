@@ -1,5 +1,5 @@
 import { trackUse } from "@/lib/usage";
-import { requireUser } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import {q } from "@/lib/db";
 import { fmtDate } from "@/lib/format";
 import { prefsFor } from "@/lib/notify";
@@ -11,7 +11,7 @@ export const metadata = { title: "Notifications — FloorTest" };
 type Mail = { id: number; subject: string; body: string; status: string; created_at: number };
 
 export default async function Notifications() {
-  const user = await requireUser();
+  const user = await requireRole("owner");
   await trackUse(user.id, "notifications");
   const p = await prefsFor(user.id);
   const mails = (await q.all<Mail>("SELECT id, subject, body, status, created_at FROM outbox WHERE user_id = ? AND audience = 'receiver' ORDER BY created_at DESC LIMIT 20", user.id));

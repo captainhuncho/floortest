@@ -23,6 +23,8 @@ const env = {
   BETA_INVITE_CODES: "E2E-INVITE",
   // Collection share links are tested here, so the test copy has sharing switched on (scripts/seed.ts).
   SEED_SHARING: "1",
+  // Account teams are tested too: teams switched on and a seeded team member (scripts/seed.ts).
+  SEED_TEAMS: "1",
   APP_URL: `http://localhost:${PORT}`,
   APP_SECRET: "e2e-only-secret-not-used-anywhere-else-000000",
 };

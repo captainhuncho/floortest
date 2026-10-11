@@ -1,6 +1,7 @@
 import { trackUse } from "@/lib/usage";
+import { teamsOn } from "@/lib/account-members";
 import Link from "next/link";
-import { requireUser } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { capacity } from "@/lib/desk";
 import { RETAIN_PASSED_DAYS, RETAIN_UNREVIEWED_DAYS } from "@/lib/plans";
 import { allPlans, planOf } from "@/lib/plan-store";
@@ -16,7 +17,7 @@ export const metadata = { title: "Plans — FloorTest" };
  * upgrades go through checkout, where the beta discount makes the total $0.00; once the billing switch is on, checkout charges.
  */
 export default async function Plans({ searchParams }: { searchParams: Promise<{ welcome?: string; period?: string; requested?: string }> }) {
-  const user = await requireUser();
+  const user = await requireRole("owner");
   await trackUse(user.id, "plans");
   const cap = await capacity(user);
   const current = await planOf(user.plan);
@@ -80,7 +81,7 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
         </p>
       </section>
 
-      <PlanCards plans={plans} billing={billing} userPlan={user.plan} currentPrice={current.price} capUsed={cap.used} capBonus={cap.bonus} pendingPlan={pending?.plan ?? null} sharing={sharing} />
+      <PlanCards teams={await teamsOn()} plans={plans} billing={billing} userPlan={user.plan} currentPrice={current.price} capUsed={cap.used} capBonus={cap.bonus} pendingPlan={pending?.plan ?? null} sharing={sharing} />
 
       <section aria-labelledby="renewal-h" className="space-y-1.5 text-[11px] text-dim md:max-w-3xl">
         <h2 id="renewal-h" className="font-bold text-mute">

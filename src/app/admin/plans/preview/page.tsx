@@ -62,7 +62,7 @@ export default async function PlanPreview({ searchParams }: { searchParams: Prom
           <p className="text-[15px] text-mute">The same receiving desk. The capacity that fits your music.</p>
           <BillingSwitch initial="month" target="plans-root" />
         </header>
-        <PlanCards plans={plans} billing={billing} userPlan={null} currentPrice={0} preview sharing={sharing} />
+        <PlanCards plans={plans} billing={billing} userPlan={null} currentPrice={0} preview sharing={sharing} teams />
       </div>
     </div>
   );

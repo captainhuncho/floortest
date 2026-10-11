@@ -174,6 +174,14 @@ async function main() {
     if (t.keep) await ev(sid, tid, "kept", decidedAt!);
     if (t.pass) await ev(sid, tid, "passed", decidedAt!);
   }
+  // Account-team tests (SEED_TEAMS=1, test runs only): teams switched on, the demo account has two add-on seats, and
+  // the test listener Lena is already on its team as a member (invite emails can't be read in a test run).
+  if (process.env.SEED_TEAMS === "1") {
+    await db.run("INSERT INTO switches (key, on_, updated_at) VALUES ('teams', 1, ?) ON CONFLICT (key) DO UPDATE SET on_ = 1", now);
+    await db.run("UPDATE users SET extra_seats = 2 WHERE id = ?", uid);
+    const lena = await db.get<{ id: number }>("SELECT id FROM users WHERE email = 'listener@floortest.test'");
+    if (lena) await db.run("INSERT INTO account_members (account_id, user_id, role, created_at) VALUES (?, ?, 'member', ?)", uid, lena.id, now);
+  }
   // Sharing tests: the Villagers tracks were sent while the callout allowed sharing.
   if (process.env.SEED_SHARING === "1") await db.run("UPDATE tracks SET share_ok = 1, share_terms = ? WHERE collection_id = ?", "e2e", villagers);
   const ama = senders["ama@example.com"];

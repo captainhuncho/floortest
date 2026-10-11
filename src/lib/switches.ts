@@ -27,6 +27,11 @@ export const SWITCHES = {
     description: "Off: checkout applies the beta discount (total $0.00). On: the discount goes and checkout charges by card. Keep off until card payments are connected and the lawyer has approved the renewal wording.",
     initial: false,
   },
+  teams: {
+    label: "Account teams",
+    description: "Owners invite people onto their account (seats by plan: Free 1, Pro 2, Team 5, plus add-on seats); each person keeps their own login and switches desks from the sidebar.",
+    initial: false,
+  },
   uploads_paused: {
     label: "Pause all uploads",
     description: "Maintenance switch: every receiver's link stops taking new tracks, with a short notice to senders. Nothing is lost.",

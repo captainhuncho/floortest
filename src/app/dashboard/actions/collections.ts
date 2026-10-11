@@ -4,7 +4,7 @@
 import { redirect } from "next/navigation";
 import { canCapCallouts } from "@/lib/desk";
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/auth";
+import { requireUser, requireRole } from "@/lib/auth";
 import { now, q } from "@/lib/db";
 import { cleanGenre, MAX_COLLECTION_GENRES } from "@/lib/plans";
 import { switchOn } from "@/lib/switches";
@@ -23,7 +23,7 @@ export async function createCollection(form: FormData) {
 }
 
 export async function setActiveCollection(id: number) {
-  const u = await requireUser();
+  const u = await requireRole("admin");
   const c = await ownCollection(u.id, id);
   if (!c) return;
   await q.run("UPDATE users SET active_collection_id = ? WHERE id = ?", id, u.id);
@@ -83,7 +83,7 @@ export async function updateCollection(id: number, form: FormData) {
 
 /** Deleting a collection is confirmed by typing its name in capitals; tracks in it are kept, unsorted. */
 export async function deleteCollection(id: number, confirm: string) {
-  const u = await requireUser();
+  const u = await requireRole("admin");
   const c = await ownCollection(u.id, id);
   if (!c) return;
   if (confirm.trim() !== c.name.trim().toUpperCase()) return;

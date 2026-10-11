@@ -3,7 +3,7 @@
 /** Shared collections: teammates and their votes. */
 import { redirect } from "next/navigation";
 import { trackUse } from "@/lib/usage";
-import { requireUser } from "@/lib/auth";
+import { requireUser, requireRole } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { addComment, addMember, castVote, memberTrack, removeComment, removeMember, reviewTrack, toggleShortlist } from "@/lib/team";
 import { allow } from "@/lib/ratelimit";
@@ -13,7 +13,7 @@ import { trackLabel } from "@/lib/audit";
 import { done, ownCollection } from "./common";
 
 export async function addTeammate(collectionId: number, _prev: string | null, form: FormData): Promise<string | null> {
-  const u = await requireUser();
+  const u = await requireRole("admin");
   await trackUse(u.id, "teammates");
   const c = await ownCollection(u.id, collectionId);
   if (!c) return null;
@@ -26,7 +26,7 @@ export async function addTeammate(collectionId: number, _prev: string | null, fo
 }
 
 export async function removeTeammate(collectionId: number, userId: number) {
-  const u = await requireUser();
+  const u = await requireRole("admin");
   const c = await ownCollection(u.id, collectionId);
   if (!c) return;
   await removeMember(c.id, userId);
@@ -97,7 +97,7 @@ export async function teamDecide(trackId: number, decision: "kept" | "passed") {
 
 /** Owner: let teammates make the Keep / Not for me call in this collection (off by default). */
 export async function setTeamCanDecide(collectionId: number, on: boolean) {
-  const u = await requireUser();
+  const u = await requireRole("admin");
   const c = await ownCollection(u.id, collectionId);
   if (!c) return;
   await q.run("UPDATE collections SET team_can_decide = ? WHERE id = ?", on ? 1 : 0, c.id);

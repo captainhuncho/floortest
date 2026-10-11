@@ -2,6 +2,7 @@ import "server-only";
 import { activeCollection, capacity, isClosed, isPaused } from "./desk";
 import { now, q, type User } from "./db";
 import { linkNoticesFor, sharedLinksFor, sharingOn } from "./share-links";
+import { canApprove, teamsOn } from "./account-members";
 
 export type Notice = { id: string; title: string; detail: string; href: string; at: number; unread: boolean; tone: "info" | "alert" };
 
@@ -121,6 +122,12 @@ export async function notificationsFor(user: User) {
     alerts.push({ id: "closed", title: `“${c.name}” is closed`, detail: "Your link isn't taking uploads. Pick an open collection.", href: "/dashboard/collections", at: c.closes_at!, unread: c.closes_at! > seen, tone: "alert" });
   else if (c?.closes_at && c.closes_at - t < 3 * DAY)
     alerts.push({ id: "closing", title: `“${c.name}” closes soon`, detail: `Closes ${shortDate(c.closes_at, user.tz)}`, href: "/dashboard/collections", at: t, unread: t - DAY > seen, tone: "alert" });
+
+  // Account teams: replies from members waiting for this person's approval.
+  if (user.actor_id !== undefined && (await teamsOn()) && (await canApprove(user))) {
+    const waiting = Number((await q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM held_replies WHERE account_id = ? AND status = 'waiting'", user.id))?.n ?? 0);
+    if (waiting) alerts.push({ id: "held", title: `${waiting} ${waiting === 1 ? "reply is" : "replies are"} waiting for approval`, detail: "From members, before they go to senders.", href: "/dashboard/settings/team", at: t, unread: true, tone: "alert" });
+  }
 
   const all = [...alerts, ...items];
   return { items: all, unread: all.filter((n) => n.unread).length };

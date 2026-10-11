@@ -20,6 +20,7 @@ export function PlanCards({
   preview = false,
   pendingPlan = null,
   sharing = false,
+  teams = false,
 }: {
   plans: Plan[];
   billing: boolean;
@@ -32,6 +33,8 @@ export function PlanCards({
   pendingPlan?: string | null;
   /** Colleague sharing is live (switch `sharing`); until then nothing about it is promised. */
   sharing?: boolean;
+  /** Account teams are live (switch `teams`): show each plan's seats. */
+  teams?: boolean;
 }) {
   /*
    * What a paid plan adds, read from what it actually enables (folders, artwork, colleague downloads) so the card can't
@@ -43,6 +46,7 @@ export function PlanCards({
     const live = [
       p.folderBytes > 0 && `Send folders (EP or album) up to ${fmtBytes(p.folderBytes)}`,
       p.trackArt && "Track artwork from senders",
+      teams && p.seats > 1 && `${p.seats} people on one account (you + ${p.seats - 1}), each with their own login; extra seats available`,
     ].filter((f): f is string => !!f);
     const held = sharing ? /stems|as they launch/i : /colleague|share|teammate|stems|as they launch/i;
     const own = p.features.filter((f) => !/active tracks|^everything in/i.test(f) && !held.test(f) && !live.some((l) => l.toLowerCase() === f.toLowerCase()));

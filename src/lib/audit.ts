@@ -52,6 +52,16 @@ export const AUDIT_LABELS = {
   identity_submitted: "Asked to be verified",
   plan_requested: "Asked for a bigger plan",
   plan_request_withdrawn: "Withdrew a plan request",
+  reply_held: "Reply waiting for approval, to",
+  reply_approved: "Approved a reply to",
+  reply_rejected: "Turned down a reply to",
+  team_invited: "Invited to the team:",
+  team_joined: "Joined the team:",
+  team_removed: "Removed from the team:",
+  team_left: "Left the team:",
+  team_role: "Changed a role:",
+  team_invite_revoked: "Cancelled an invite to",
+  reply_approval_set: "Changed reply approval:",
 } as const;
 export type AuditAction = keyof typeof AUDIT_LABELS;
 
@@ -60,7 +70,10 @@ export type AuditRow = { id: number; action: AuditAction; detail: string; track_
 /** Records one thing the account holder did. Never throws: the audit trail must not break the action. */
 export async function audit(userId: number, action: AuditAction, detail = "", trackId: number | null = null) {
   try {
-    await q.run("INSERT INTO account_log (user_id, action, detail, track_id, created_at) VALUES (?,?,?,?,?)", userId, action, detail.slice(0, 300), trackId, now());
+    await q.run(
+      "INSERT INTO account_log (user_id, action, detail, track_id, created_at, actor_id) VALUES (?,?,?,?,?,?)",
+      userId, action, detail.slice(0, 300), trackId, now(), await actorOn(userId),
+    );
   } catch (e) {
     console.error("[audit] failed to record", action, e);
   }
@@ -70,3 +83,14 @@ export const recentAudit = (userId: number, limit = 50) =>
   q.all<AuditRow>("SELECT id, action, detail, track_id, created_at FROM account_log WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT ?", userId, limit);
 
 export const trackLabel = (t: { artist: string; title: string }) => `${t.artist} – ${t.title}`;
+
+/** On a team desk, the person who did it (so the log reads "Ama kept…"); null on your own desk or outside a request. */
+async function actorOn(userId: number) {
+  try {
+    const { currentUser } = await import("./auth");
+    const u = await currentUser();
+    return u && u.id === userId && u.actor_id !== u.id ? u.actor_id : null;
+  } catch {
+    return null;
+  }
+}

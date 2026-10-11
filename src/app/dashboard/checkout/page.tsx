@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { requireUser } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { afterDiscount, discountNow, offeredPlan, planOf } from "@/lib/plan-store";
 import { switchOn } from "@/lib/switches";
 import { confirmBetaUpgrade } from "../actions/settings";
@@ -13,7 +13,7 @@ export const metadata = { title: "Checkout — FloorTest" };
  * charged by card (not connected yet, so the button stays disabled).
  */
 export default async function Checkout({ searchParams }: { searchParams: Promise<{ plan?: string; agree?: string }> }) {
-  const user = await requireUser();
+  const user = await requireRole("owner");
   const sp = await searchParams;
   const p = await offeredPlan(String(sp.plan ?? ""));
   if (!p || p.price <= (await planOf(user.plan)).price) notFound();

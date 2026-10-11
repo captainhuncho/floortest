@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NEXT_COOKIE, safeNext } from "@/lib/next-path";
 import { NextResponse } from "next/server";
-import { currentUser } from "@/lib/auth";
+import { currentPerson } from "@/lib/auth";
 import { q } from "@/lib/db";
 import { env } from "@/lib/env";
 import { checkFlow, GOOGLE_COOKIE, GOOGLE_LINK_COOKIE, GOOGLE_SIGNUP_COOKIE, googleConfig, identityFromCode, LINK_MS, signIdentity, signPendingLink, SIGNUP_MS } from "@/lib/google-auth";
@@ -37,7 +37,7 @@ export async function GET(req: Request) {
 
   // Connecting from Settings: the signed-in account, and only a Google account with the same email.
   if (flow.link) {
-    const me = await currentUser();
+    const me = await currentPerson();
     if (!me || me.id !== flow.link) return back("expired");
     if (who === "untrusted") return settings("untrusted");
     if (who === "bad") return settings("failed");

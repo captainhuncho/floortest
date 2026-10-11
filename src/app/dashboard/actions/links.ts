@@ -1,7 +1,7 @@
 "use server";
 
 /** Collection share links, the owner's side: create, add or remove people, answer requests, reset, revoke. */
-import { requireUser } from "@/lib/auth";
+import { requireUser, requireRole } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { q } from "@/lib/db";
 import {
@@ -30,7 +30,7 @@ const fail = (e: unknown): LinkState => ({ error: e instanceof LinkError ? e.mes
 
 /** A new link. Its full address is shown once, now; afterwards only Reset makes a new one. */
 export async function createShareLink(collectionId: number, _prev: LinkState, form: FormData): Promise<LinkState> {
-  const u = await requireUser();
+  const u = await requireRole("admin");
   try {
     const { link, url } = await createLink(u, collectionId, {
       permission: permissionOf(form.get("permission")),
@@ -47,7 +47,7 @@ export async function createShareLink(collectionId: number, _prev: LinkState, fo
 }
 
 export async function resetShareLink(linkId: number): Promise<LinkState> {
-  const u = await requireUser();
+  const u = await requireRole("admin");
   try {
     const url = await resetLink(u, linkId);
     await audit(u.id, "shared", `share link ${linkId} reset`);
@@ -59,14 +59,14 @@ export async function resetShareLink(linkId: number): Promise<LinkState> {
 }
 
 export async function revokeShareLink(linkId: number) {
-  const u = await requireUser();
+  const u = await requireRole("admin");
   await revokeLink(u, linkId).catch(() => {});
   await audit(u.id, "shared", `share link ${linkId} revoked`);
   done();
 }
 
 export async function addLinkRecipients(linkId: number, _prev: LinkState, form: FormData): Promise<LinkState> {
-  const u = await requireUser();
+  const u = await requireRole("admin");
   try {
     const r = await addRecipients(u, linkId, String(form.get("who") || ""), permissionOf(form.get("permission")), daysOf(form.get("days")));
     // FloorTest accounts added by username are told, with a way in that needs no address: their own sign-in.
@@ -80,13 +80,13 @@ export async function addLinkRecipients(linkId: number, _prev: LinkState, form: 
 }
 
 export async function removeLinkRecipient(recipientId: number) {
-  const u = await requireUser();
+  const u = await requireRole("admin");
   await removeRecipient(u, recipientId).catch(() => {});
   done();
 }
 
 export async function answerLinkRequest(requestId: number, decision: "approve" | "decline" | "block", form: FormData) {
-  const u = await requireUser();
+  const u = await requireRole("admin");
   if (!["approve", "decline", "block"].includes(decision)) return;
   const r = await decideRequest(u, requestId, decision, { permission: permissionOf(form.get("permission")), days: daysOf(form.get("days")) }).catch(() => null);
   // Tell the person who asked. A block reads like a decline: they're never told they were blocked.
@@ -105,7 +105,7 @@ export async function answerLinkRequest(requestId: number, decision: "approve" |
 }
 
 export async function setLinkRequests(linkId: number, on: boolean) {
-  const u = await requireUser();
+  const u = await requireRole("admin");
   await setRequests(u, linkId, on).catch(() => {});
   done();
 }

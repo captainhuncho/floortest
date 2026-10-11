@@ -9,7 +9,7 @@ import { MAX_LINKS, slotLink, type ProfileLink } from "@/lib/socials";
 import { KINDS } from "@/lib/db";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { destroySession, requireUser, verifyPassword } from "@/lib/auth";
+import { destroySession, requireUser, verifyPassword, requireRole } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { purgeAccount } from "@/lib/privacy";
 import { cancelEmailChange, changeHandle, requestEmailChange } from "@/lib/accounts";
@@ -25,7 +25,7 @@ import { REQUEST_KINDS, VOLUMES, pendingRequest, type RequestKind } from "@/lib/
 import { APP_URL } from "@/lib/mail";
 
 export async function updateNotifications(_: SettingsState, form: FormData): Promise<SettingsState> {
-  const u = await requireUser();
+  const u = await requireRole("owner");
   const mode = String(form.get("notify_submissions"));
   const hour = (k: string) => {
     const v = form.get(k);
@@ -65,7 +65,7 @@ export async function updateNotifications(_: SettingsState, form: FormData): Pro
 
 /** Sends the digest immediately, whatever the schedule. Handy for checking what it looks like. */
 export async function sendDigestNow(): Promise<number> {
-  const u = await requireUser();
+  const u = await requireRole("owner");
   const n = await sendDigest(u.id);
   await audit(u.id, "digest_sent", `${n} track${n === 1 ? "" : "s"}`);
   done();
@@ -75,7 +75,7 @@ export async function sendDigestNow(): Promise<number> {
 export type SettingsState = { ok?: boolean; error?: string } | undefined;
 
 export async function updateSettings(_: SettingsState, form: FormData): Promise<SettingsState> {
-  const u = await requireUser();
+  const u = await requireRole("owner");
   const handle = String(form.get("handle") || "").trim().toLowerCase();
   const name = String(form.get("name") || "").trim().slice(0, 80) || handle;
   const firstName = String(form.get("first_name") || "").trim().slice(0, 60);
@@ -91,7 +91,7 @@ export async function updateSettings(_: SettingsState, form: FormData): Promise<
 }
 
 export async function updatePublicPage(_: SettingsState, form: FormData): Promise<SettingsState> {
-  const u = await requireUser();
+  const u = await requireRole("admin");
   const style = form.get("page_style") === "stage" ? "stage" : "classic";
   const role = String(form.get("role_line") || "").trim().slice(0, 60);
   // One slot per profile: the platform picked, and its link.
@@ -115,7 +115,7 @@ export async function updatePublicPage(_: SettingsState, form: FormData): Promis
 
 /** Moving down (or sideways) a plan. Upgrades always go through checkout: see confirmBetaUpgrade. */
 export async function setPlan(plan: string) {
-  const u = await requireUser();
+  const u = await requireRole("owner");
   const next = await offeredPlan(plan);
   if (!next || next.price > (await planOf(u.plan)).price) return;
   const cap = await capacity(u);
@@ -130,7 +130,7 @@ export async function setPlan(plan: string) {
  * straight away (no card). Once the billing switch is on, upgrades need a real payment instead.
  */
 export async function confirmBetaUpgrade(plan: string, form: FormData) {
-  const u = await requireUser();
+  const u = await requireRole("owner");
   const next = await offeredPlan(plan);
   if (!next || next.price <= (await planOf(u.plan)).price) redirect("/dashboard/plans");
   if (await switchOn("billing")) redirect(`/dashboard/checkout?plan=${next.id}`);
@@ -141,7 +141,7 @@ export async function confirmBetaUpgrade(plan: string, form: FormData) {
 
 /** Gives the account its bio code (created once, reused so it doesn't change under them). */
 export async function identityCode(): Promise<string> {
-  const u = await requireUser();
+  const u = await requireRole("owner");
   const row = await q.get<{ c: string | null }>("SELECT identity_code AS c FROM users WHERE id = ?", u.id);
   if (row?.c) return row.c;
   const code = newIdentityCode();
@@ -150,7 +150,7 @@ export async function identityCode(): Promise<string> {
 }
 
 export async function submitIdentity(_: SettingsState, form: FormData): Promise<SettingsState> {
-  const u = await requireUser();
+  const u = await requireRole("owner");
   if (u.identity_status === "verified") return { ok: true };
   const links = [...new Set(form.getAll("link").map((l) => cleanProfileLink(String(l))).filter((l): l is string => !!l))].slice(0, 5);
   if (!links.length) return { error: "Add at least one profile link." };
@@ -170,7 +170,7 @@ export async function submitIdentity(_: SettingsState, form: FormData): Promise<
 
 /** Permanently deletes the account, every stored file, and all history. Password (and two-step code), then an email to say it's done. */
 export async function deleteAccount(_: SettingsState, form: FormData): Promise<SettingsState> {
-  const u = await requireUser();
+  const u = await requireRole("owner");
   const problem = await stepUp(u.id, String(form.get("password") || ""), String(form.get("code") || ""));
   if (problem) return { error: problem };
   await sendMail({
@@ -187,7 +187,7 @@ export async function deleteAccount(_: SettingsState, form: FormData): Promise<S
 
 /** Starts an email change from Settings. Needs the password; the new address must confirm before it takes effect. */
 export async function changeMyEmail(_: SettingsState, form: FormData): Promise<SettingsState> {
-  const u = await requireUser();
+  const u = await requireRole("owner");
   const denied = await stepUp(u.id, String(form.get("password") || ""), String(form.get("code") || ""));
   if (denied) return { error: denied };
   const email = String(form.get("email") || "").trim().toLowerCase();
@@ -201,7 +201,7 @@ export async function changeMyEmail(_: SettingsState, form: FormData): Promise<S
 }
 
 export async function cancelMyEmailChange() {
-  const u = await requireUser();
+  const u = await requireRole("owner");
   await cancelEmailChange(u.id);
   done();
 }
@@ -218,7 +218,7 @@ export async function setTheme(theme: string) {
  * plan that fits. One open request at a time; a new one replaces the old.
  */
 export async function requestPlan(form: FormData) {
-  const u = await requireUser();
+  const u = await requireRole("owner");
   if (await switchOn("billing")) redirect("/dashboard/plans");
   const next = await offeredPlan(String(form.get("plan") || ""));
   if (!next || next.price <= (await planOf(u.plan)).price) redirect("/dashboard/plans");
@@ -245,7 +245,7 @@ export async function requestPlan(form: FormData) {
 
 /** Takes back an open plan request. */
 export async function withdrawPlanRequest() {
-  const u = await requireUser();
+  const u = await requireRole("owner");
   if (await pendingRequest(u.id)) {
     await q.run("UPDATE plan_requests SET status = 'withdrawn' WHERE user_id = ? AND status = 'pending'", u.id);
     await audit(u.id, "plan_request_withdrawn", "");
@@ -256,7 +256,7 @@ export async function withdrawPlanRequest() {
 
 /** Settings → Receiving: when a callout's closing date passes, move the link to the newest open collection (off by default). */
 export async function setRerouteClosed(on: boolean) {
-  const u = await requireUser();
+  const u = await requireRole("admin");
   await q.run("UPDATE users SET reroute_closed = ? WHERE id = ?", on ? 1 : 0, u.id);
   await audit(u.id, "settings_updated", on ? "link moves to an open collection when a callout closes" : "link stays put when a callout closes");
   done();

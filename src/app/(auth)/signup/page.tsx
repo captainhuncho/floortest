@@ -8,16 +8,19 @@ import { env, isPreview } from "@/lib/env";
 import { googleConfig } from "@/lib/google-auth";
 import { AuthForm } from "../AuthForm";
 import { signup } from "../actions";
+import { inviteBySecret } from "@/lib/account-members";
 
 export const metadata = { title: "Claim your link — FloorTest" };
 
-export default async function SignupPage({ searchParams }: { searchParams: Promise<{ ref?: string; invite?: string; handle?: string }> }) {
+export default async function SignupPage({ searchParams }: { searchParams: Promise<{ ref?: string; invite?: string; handle?: string; team?: string }> }) {
   const sp = await searchParams;
   const ref = (sp.ref || "").toUpperCase().slice(0, 32);
   const inviteCode = (sp.invite || "").toUpperCase().slice(0, 32);
   const personal = inviteCode ? await q.get<{ email: string | null }>("SELECT email FROM invites WHERE code = ? AND revoked_at IS NULL", inviteCode) : undefined;
   const referrer = ref ? await q.get<{ name: string }>("SELECT name FROM users WHERE referral_code = ?", ref) : undefined;
-  const inviteOnly = !(await switchOn("open_signup"));
+  // Joining a team from an invite email: no invite code needed, and the email is the one invited.
+  const team = sp.team ? await inviteBySecret(sp.team) : undefined;
+  const inviteOnly = !(await switchOn("open_signup")) && !team;
   const [c, editor] = await Promise.all([siteCopy("auth"), siteEditor()]);
   const { E } = editable(c, !!editor);
   const host = env.appUrl.replace(/^https?:\/\//, "");
@@ -34,6 +37,12 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
           </>
         )}
       </p>
+      {team && (
+        <p className="mb-6 rounded-lg border border-lime/40 bg-lime/5 px-4 py-3 text-sm">
+          You&apos;re joining <span className="font-medium">{team.account_name}</span> on FloorTest. Create your own login with{" "}
+          <span className="font-medium">{team.email}</span>; you&apos;ll get your own link too.
+        </p>
+      )}
       {personal?.email && (
         <p className="mb-6 rounded-lg border border-lime/40 bg-lime/5 px-4 py-3 text-sm">
           You&apos;re invited. Sign up with <span className="font-medium">{personal.email}</span> to use it.
@@ -61,7 +70,7 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
         botCheckKey={await botCheckKey()}
         captureSource
         action={signup}
-        hidden={referrer ? { ref } : undefined}
+        hidden={team ? { team: sp.team! } : referrer ? { ref } : undefined}
         submit="Create my link"
         fields={[
           ...(inviteOnly && !referrer
@@ -71,7 +80,7 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
           { name: "first_name", label: "First name", placeholder: "Maxwell", autoComplete: "given-name" },
           { name: "last_name", label: "Surname", placeholder: "Adjavon", autoComplete: "family-name", hint: "Kept private: for your account, billing and receipts. Never shown on your page." },
           { name: "handle", label: "Username", prefix: `${host}/`, placeholder: "yourname", autoComplete: "off", hint: "Your link. You can add a stage or label name later in Profile.", defaultValue: (sp.handle || "").toLowerCase().replace(/[^a-z0-9-_]/g, "").slice(0, 30) || undefined },
-          { name: "email", label: "Email", type: "email", placeholder: "you@example.com", autoComplete: "username email", defaultValue: personal?.email ?? undefined },
+          { name: "email", label: "Email", type: "email", placeholder: "you@example.com", autoComplete: "username email", defaultValue: team?.email ?? personal?.email ?? undefined },
           { name: "password", label: "Password", type: "password", placeholder: "8+ characters", autoComplete: "new-password", minLength: 8, strength: true },
         ]}
         footer={{ text: "Already have an account?", href: "/login", link: "Sign in" }}

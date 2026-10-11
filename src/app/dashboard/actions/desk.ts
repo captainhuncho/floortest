@@ -3,7 +3,7 @@
 /** Around the desk: feedback, onboarding, the Send page lookup, notifications, search and pausing the link. */
 import { revalidatePath } from "next/cache";
 import { receiverLookup } from "@/lib/receiver-lookup";
-import { requireUser } from "@/lib/auth";
+import { requireUser, requireRole } from "@/lib/auth";
 import { likeContains, now, q } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { sendReopenAlerts } from "@/lib/reopen";
@@ -28,7 +28,7 @@ export async function sendFeedback(kind: string, message: string, path: string) 
 }
 
 export async function dismissOnboarding() {
-  const u = await requireUser();
+  const u = await requireRole("admin");
   await q.run("UPDATE users SET onboarding_dismissed_at = ? WHERE id = ?", now(), u.id);
   done();
 }
@@ -82,7 +82,7 @@ export async function quickSearch(query: string): Promise<SearchHit[]> {
 }
 
 export async function pauseLink(form: FormData) {
-  const u = await requireUser();
+  const u = await requireRole("admin");
   const message = String(form.get("message") || "").trim().slice(0, 280);
   const until = String(form.get("until") || "");
   const offset = Number(form.get("tz") || 0);
@@ -95,7 +95,7 @@ export async function pauseLink(form: FormData) {
 }
 
 export async function resumeLink() {
-  const u = await requireUser();
+  const u = await requireRole("admin");
   await q.run("UPDATE users SET paused_at = NULL, pause_until = NULL WHERE id = ?", u.id);
   await audit(u.id, "link_resumed");
   await sendReopenAlerts(u.id, { inRequest: true });

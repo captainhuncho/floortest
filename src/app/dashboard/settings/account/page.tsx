@@ -6,6 +6,7 @@ import { PageTitle, Section } from "../Section";
 export const metadata = { title: "Account — FloorTest" };
 
 export default async function AccountSettings() {
+  // Everyone can log out; deleting is only on your own desk (never a team's).
   const user = await requireUser();
   return (
     <>
@@ -15,9 +16,13 @@ export default async function AccountSettings() {
           <button className="btn-ghost btn-sm min-h-11">Log out</button>
         </form>
       </Section>
-      <Section id="danger-h" title="Delete account" tone="danger" sub="Deletes your account, your link and every track on your desk. This can't be undone.">
-        <DeleteAccount handle={user.handle} twoFactor={!!user.totp_enabled_at} />
-      </Section>
+      {user.role === "owner" ? (
+        <Section id="danger-h" title="Delete account" tone="danger" sub="Deletes your account, your link and every track on your desk. This can't be undone.">
+          <DeleteAccount handle={user.handle} twoFactor={!!user.totp_enabled_at} />
+        </Section>
+      ) : (
+        <p className="text-sm text-mute">You&apos;re on {user.name}&apos;s desk. To change or delete your own login, switch to your own desk first.</p>
+      )}
     </>
   );
 }

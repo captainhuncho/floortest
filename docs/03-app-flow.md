@@ -114,3 +114,15 @@ Account added by @username ─► email + bell ─► Collections → Shared wit
 Owner bell: first visit by each person · downloads · "may have your link" (10+ unknown addresses in an hour; emailed) · requests paused
 ```
 
+## Account teams (switch `teams`; off on the live site)
+```
+Owner/Admin: Settings → Team ─► Invite (email, role) ─► email with /join/<invite> (7 days)
+Invitee ─► /join/<invite> ─┬─ signed in with that email ─► Join ─► team desk opens
+                           ├─ signed out ─► Log in (comes back) / Create your login (no invite code needed) ─► joined
+                           └─ other email ─► "sent to …, log in with that email"
+Desk bar ─► Switch desk ─► your own desk | each team (role shown)
+Member reply ─► approval off ─► sent │ approval on ─► held ─► approver / owner / admin: edit ─► Approve and send | Don't send
+Member Keep / Not for me on an owner's or admin's call ─► refused (desk refreshes); owner/admin can change anyone's
+Owner-only or admin-only page as a member ─► Settings → Team (?denied)
+```
+

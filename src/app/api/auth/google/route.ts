@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { currentUser, viewingAs } from "@/lib/auth";
+import { currentPerson, viewingAs } from "@/lib/auth";
 import { env, isPreview } from "@/lib/env";
 import { FLOW_MS, GOOGLE_COOKIE, googleConfig, startFlow } from "@/lib/google-auth";
 
@@ -14,7 +14,7 @@ export async function GET(req: Request) {
   // Preview deployments have changing addresses Google doesn't know, so it's off there.
   if (!cfg || isPreview) return NextResponse.redirect(`${env.appUrl}/login`);
   const linking = new URL(req.url).searchParams.get("link") === "1";
-  const me = linking && !(await viewingAs()) ? await currentUser() : null;
+  const me = linking && !(await viewingAs()) ? await currentPerson() : null;
   if (linking && !me) return NextResponse.redirect(`${env.appUrl}/login`);
   const flow = startFlow(cfg.id, `${env.appUrl}/api/auth/google/callback`, env.secret, Date.now(), me?.id ?? null);
   const res = NextResponse.redirect(flow.url);

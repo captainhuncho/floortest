@@ -1,5 +1,6 @@
 "use server";
 
+import { acceptInvite, inviteBySecret } from "@/lib/account-members";
 import { passwordStrength } from "@/lib/password-strength";
 import { KINDS } from "@/lib/db";
 
@@ -12,7 +13,7 @@ import { NEXT_COOKIE, safeNext } from "@/lib/next-path";
 import { termsVersion } from "@/lib/legal-sharing";
 import { redirect } from "next/navigation";
 import { audit } from "@/lib/audit";
-import { consumePasswordReset, createPasswordReset, createSession, currentUser, destroySession, hashPassword, verifyPassword } from "@/lib/auth";
+import { consumePasswordReset, createPasswordReset, createSession, currentPerson, DESK_COOKIE, destroySession, hashPassword, verifyPassword } from "@/lib/auth";
 import { now, q } from "@/lib/db";
 import { env } from "@/lib/env";
 import { APP_URL, sendMail } from "@/lib/mail";
@@ -94,7 +95,10 @@ type NewAccount = { email: string; firstName: string; lastName: string; handle: 
 async function createAccount(form: FormData, a: NewAccount): Promise<{ id: number } | { error: string }> {
   if (form.get("agree") !== "on") return { error: "Please confirm you're 18 or over and agree to the Terms to create an account." };
   const invite = await resolveInvite(String(form.get("ref") || form.get("invite") || ""), a.email);
-  if (!(await switchOn("open_signup")) && !invite.valid) return { error: "That invite code is not valid, has been used, or was sent to a different email. Use the email your invite went to." };
+  // A team invite sent to this email also opens sign-up during the beta (and proves the email: it came from the link).
+  const team = await teamInviteFor(form, a.email);
+  if (team) a.verified = true;
+  if (!(await switchOn("open_signup")) && !invite.valid && !team) return { error: "That invite code is not valid, has been used, or was sent to a different email. Use the email your invite went to." };
   if (!a.firstName || !a.lastName || !a.email || !a.handle) return { error: "Fill in your first name, surname, username and email." };
   if (!EMAIL.test(a.email)) return { error: "Enter a valid email." };
   if (!/^[a-z0-9][a-z0-9-_]{1,29}$/.test(a.handle)) return { error: "Link names use 2–30 letters, numbers, - or _." };
@@ -170,6 +174,9 @@ export async function signup(_: FormState, form: FormData): Promise<FormState> {
   const r = await createAccount(form, { email, firstName, lastName, handle, name, passwordHash: hashPassword(password), verified: false });
   if ("error" in r) return r;
   await createSession(r.id);
+  // Joining a team: accept the invite and open the team's desk straight away.
+  const joined = await joinTeamAfterSignup(form, r.id);
+  if (joined) redirect("/dashboard/floor");
   await sendEmailVerification(r.id);
   redirect(await landing("/dashboard/floor?welcome=1"));
 }
@@ -244,7 +251,7 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
 }
 
 export async function logout() {
-  const u = await currentUser();
+  const u = await currentPerson();
   if (u) await audit(u.id, "signed_out");
   await destroySession();
   redirect("/signed-out");
@@ -391,8 +398,29 @@ export async function verifySecondStep(_: FormState, form: FormData): Promise<Fo
 
 /** From the dashboard banner: send the confirmation email again. */
 export async function resendEmailVerification(): Promise<boolean> {
-  const u = await currentUser();
+  const u = await currentPerson();
   if (!u || u.email_verified_at) return false;
   if (!(await allow("verify_email", String(u.id), 3, HOUR))) return false;
   return sendEmailVerification(u.id);
+}
+
+/** The team invite in a sign-up form, if it's live and was sent to this email. */
+async function teamInviteFor(form: FormData, email: string) {
+  const secret = String(form.get("team") || "");
+  if (!secret) return undefined;
+  const inv = await inviteBySecret(secret);
+  return inv && inv.email === email.trim().toLowerCase() ? inv : undefined;
+}
+
+/** After a sign-up from a team invite: join the team and switch to its desk. */
+async function joinTeamAfterSignup(form: FormData, userId: number) {
+  const secret = String(form.get("team") || "");
+  if (!secret) return null;
+  const person = await q.get<{ id: number; email: string; email_verified_at: number | null }>("SELECT id, email, email_verified_at FROM users WHERE id = ?", userId);
+  if (!person) return null;
+  const inv = await acceptInvite(secret, person).catch(() => null);
+  if (!inv) return null;
+  await audit(inv.account_id, "team_joined", person.email);
+  (await cookies()).set(DESK_COOKIE, String(inv.account_id), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 365 * 86_400 });
+  return inv;
 }

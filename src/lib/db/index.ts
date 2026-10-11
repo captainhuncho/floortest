@@ -59,6 +59,13 @@ export type User = {
   signin_alerts: number;
   identity_status: "none" | "pending" | "verified" | "rejected";
   created_at: number;
+  /**
+   * Who is actually signed in. On your own account: you, as "owner". On a team account you were invited to: the
+   * account's row above (so every desk page and action works on that desk), with you as the actor and your role.
+   */
+  actor_id: number;
+  actor_name: string;
+  role: "owner" | "admin" | "member";
 };
 
 /** Columns that make up `User`. Never select password_hash into it. */
@@ -124,6 +131,9 @@ export type Track = {
   downloaded_at: number | null;
   decision: Decision | null;
   decided_at: number | null;
+  /** Who made the call on a team desk, and as what (owners and admins can override members, not the reverse). */
+  decided_by?: number | null;
+  decided_role?: "owner" | "admin" | "member" | null;
   release_status: string;
   /** Sender's AI declaration; null on tracks sent before the question was asked. */
   ai_use: "none" | "partial" | "full" | null;
@@ -161,17 +171,20 @@ export type EventRow = {
   type: "submitted" | "played" | "downloaded" | "kept" | "passed" | "note" | "reply" | "deleted" | "expired" | "moved" | "blocked" | "unblocked" | "played_out" | "shared";
   detail: string;
   created_at: number;
+  /** On a team desk: the person who did it (null for the account itself, senders and the system). */
+  actor_id?: number | null;
 };
 
 export async function logEvent(e: Omit<EventRow, "id" | "created_at">, db: Queryable = q) {
   const r = await db.get<{ id: number }>(
-    "INSERT INTO events (user_id, sender_id, track_id, type, detail, created_at) VALUES (?,?,?,?,?,?) RETURNING id",
+    "INSERT INTO events (user_id, sender_id, track_id, type, detail, created_at, actor_id) VALUES (?,?,?,?,?,?,?) RETURNING id",
     e.user_id,
     e.sender_id,
     e.track_id,
     e.type,
     e.detail,
     now(),
+    e.actor_id && e.actor_id !== e.user_id ? e.actor_id : null,
   );
   return r!.id;
 }

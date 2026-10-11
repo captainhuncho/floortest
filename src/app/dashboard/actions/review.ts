@@ -1,13 +1,14 @@
 "use server";
 
 /** Reviewing tracks: decisions, undo, moving, deleting, played out, notes, replies, stems, sharing, set prep and blocking. */
+import { holdReply, replyNeedsApproval } from "@/lib/account-members";
 import { redirect } from "next/navigation";
 import { trackUse } from "@/lib/usage";
 import { allow } from "@/lib/ratelimit";
-import { requireUser } from "@/lib/auth";
+import { requireUser, requireRole } from "@/lib/auth";
 import { APP_URL } from "@/lib/mail";
 import { ownedSender, ownedTrack } from "@/lib/desk";
-import { clearDecision as clearTrackDecision, decide, deleteTrack as removeTrack, markPlayedOut, reply, setBlocked, undoDecision as restoreDecision } from "@/lib/review";
+import { clearDecision as clearTrackDecision, decide, decisionLocked, deleteTrack as removeTrack, markPlayedOut, reply, setBlocked, undoDecision as restoreDecision } from "@/lib/review";
 import { isDecision, logEvent, now, q, type Decision } from "@/lib/db";
 import { audit, trackLabel } from "@/lib/audit";
 import { requestStems } from "@/lib/stems";
@@ -21,6 +22,8 @@ export async function decideTrack(trackId: number, decision: Decision): Promise<
   if (!isDecision(decision)) return null;
   const t = await ownedTrack(u.id, trackId);
   if (!t) return null;
+  // An owner's or admin's call stands against a member: refresh so the desk shows it as it is.
+  if (decisionLocked(u, t)) return done(), null;
   await trackUse(u.id, "decide");
   const r = await decide(u, t, decision);
   await audit(u.id, decision, trackLabel(t), t.id);
@@ -32,7 +35,7 @@ export async function decideTrack(trackId: number, decision: Decision): Promise<
 export async function clearDecision(trackId: number) {
   const u = await requireUser();
   const t = await ownedTrack(u.id, trackId);
-  if (!t) return;
+  if (!t || decisionLocked(u, t)) return done();
   await clearTrackDecision(t);
   await audit(u.id, "decision_cleared", trackLabel(t), t.id);
   done();
@@ -41,7 +44,7 @@ export async function clearDecision(trackId: number) {
 export async function undoDecision(token: UndoToken) {
   const u = await requireUser();
   const t = await ownedTrack(u.id, Number(token?.trackId));
-  if (!t) return;
+  if (!t || decisionLocked(u, t)) return done();
   await restoreDecision(u, t, token.prev ?? {}, Number(token.eventId));
   await audit(u.id, "decision_undone", trackLabel(t), t.id);
   done();
@@ -53,13 +56,13 @@ export async function moveTrack(trackId: number, form: FormData) {
   const target = await ownCollection(u.id, Number(form.get("collection")));
   if (!t || !target || t.collection_id === target.id) return;
   await q.run("UPDATE tracks SET collection_id = ? WHERE id = ?", target.id, t.id);
-  await logEvent({ user_id: u.id, sender_id: t.sender_id, track_id: t.id, type: "moved", detail: `to ${target.name}` });
+  await logEvent({ user_id: u.id, actor_id: u.actor_id, sender_id: t.sender_id, track_id: t.id, type: "moved", detail: `to ${target.name}` });
   await audit(u.id, "moved", `${trackLabel(t)} to ${target.name}`, t.id);
   done();
 }
 
 export async function deleteTrack(trackId: number, back: string) {
-  const u = await requireUser();
+  const u = await requireRole("admin");
   const t = await ownedTrack(u.id, trackId);
   if (!t) return;
   await removeTrack(u, t);
@@ -70,7 +73,7 @@ export async function deleteTrack(trackId: number, back: string) {
 
 /** Starts a new Prepare for set batch. Tracks stay kept; they just leave the page. */
 export async function clearKept() {
-  const u = await requireUser();
+  const u = await requireRole("admin");
   const r = await q.run(
     "UPDATE tracks SET set_cleared_at = ? WHERE user_id = ? AND decision = 'kept' AND set_cleared_at IS NULL AND deleted_at IS NULL",
     now(),
@@ -129,7 +132,7 @@ export async function addNote(senderId: number, trackId: number | null, form: Fo
   if (!body || !s) return;
   // The track must be this sender's, so a note can't be filed against someone else's music.
   if (trackId && (await ownedTrack(u.id, trackId))?.sender_id !== s.id) return;
-  await logEvent({ user_id: u.id, sender_id: senderId, track_id: trackId, type: "note", detail: body });
+  await logEvent({ user_id: u.id, actor_id: u.actor_id, sender_id: senderId, track_id: trackId, type: "note", detail: body });
   await audit(u.id, "noted", s.name, trackId);
   done();
 }
@@ -148,6 +151,12 @@ export async function replyToSender(senderId: number, trackId: number | null, fo
   // Only this sender's own track: the reply email carries its private receipt link.
   const t = trackId ? await ownedTrack(u.id, trackId) : undefined;
   if (trackId && t?.sender_id !== s.id) return;
+  // On a team desk with approval on, a member's reply waits for the approver instead of going out.
+  if (await replyNeedsApproval(u)) {
+    await holdReply(u, s.id, t?.id ?? null, body);
+    await audit(u.id, "reply_held", s.name, trackId);
+    return done();
+  }
   await reply(u, s, t, body);
   await audit(u.id, "replied", s.name, trackId);
   done();
@@ -175,7 +184,7 @@ export async function savePrep(trackId: number, energy: number | null, cues: { a
 }
 
 export async function blockSender(senderId: number, blocked: boolean) {
-  const u = await requireUser();
+  const u = await requireRole("admin");
   const s = await ownedSender(u.id, senderId);
   if (!s) return;
   await setBlocked(u, s, !!blocked);

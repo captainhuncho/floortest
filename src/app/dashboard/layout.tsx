@@ -2,7 +2,7 @@ import { after } from "next/server";
 import { PlayerBar, PlayerProvider } from "@/components/Player";
 import { LivePulse } from "@/components/LivePulse";
 import { ToastProvider } from "@/components/Toast";
-import { requireUser, viewingAs } from "@/lib/auth";
+import { requireUser, viewingAs, currentPerson } from "@/lib/auth";
 import { activeCollectionForView, capacityForView, collectionsForView, isClosed, isPaused } from "@/lib/desk";
 import { purgeExpired } from "@/lib/retention";
 import { notificationsFor } from "@/lib/notifications";
@@ -12,6 +12,8 @@ import { FeedbackButton } from "./FeedbackButton";
 import { MobileTabBar } from "./MobileTabBar";
 import { TopBar } from "./TopBar";
 import { VerifyBanner } from "./VerifyBanner";
+import { DeskBar } from "./DeskBar";
+import { teamsFor } from "@/lib/account-members";
 import { currentTheme, themeClass } from "@/lib/theme";
 import { SkipLink } from "@/components/SkipLink";
 
@@ -19,7 +21,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const [user, view, theme] = await Promise.all([requireUser(), viewingAs(), currentTheme()]);
   // Retention cleanup runs after the response, so it never slows a page down.
   after(() => purgeExpired().catch((e) => console.error("[purge]", e)));
-  const [collections, cap, active, notices] = await Promise.all([collectionsForView(user.id), capacityForView(user.id, user.plan), activeCollectionForView(user.active_collection_id), notificationsFor(user)]);
+  const [collections, cap, active, notices, teams, me] = await Promise.all([
+    collectionsForView(user.id),
+    capacityForView(user.id, user.plan),
+    activeCollectionForView(user.active_collection_id),
+    notificationsFor(user),
+    view ? Promise.resolve([]) : teamsFor(user.actor_id),
+    currentPerson(),
+  ]);
   // Even with the switch on, uploads stop if the routed collection closed or the desk is full.
   const blocked = !active
     ? "No collection selected"
@@ -65,6 +74,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
                   Exit view
                 </a>
               </div>
+            )}
+            {/* Account teams: which desk this is, and switching between yours and your teams'. */}
+            {!view && me && (teams.length > 0 || user.actor_id !== user.id) && (
+              <DeskBar
+                current={{ id: user.id, name: user.name, role: user.role }}
+                own={{ id: me.id, name: me.name, role: "owner" }}
+                teams={teams.map((t) => ({ id: t.id, name: t.name, role: t.role }))}
+              />
             )}
             {!view && !user.email_verified_at && <VerifyBanner email={user.email} />}
             {children}

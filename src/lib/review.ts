@@ -20,7 +20,7 @@ export async function markListened(user: User, t: Track, secondsHeard: number) {
   const r = await q.run("UPDATE tracks SET played_at = ? WHERE id = ? AND played_at IS NULL", now(), t.id);
   if (!r.changes) return false;
   const s = await senderOf(t);
-  await logEvent({ user_id: user.id, sender_id: s.id, track_id: t.id, type: "played", detail: `${Math.round(secondsHeard)}s` });
+  await logEvent({ user_id: user.id, actor_id: user.actor_id, sender_id: s.id, track_id: t.id, type: "played", detail: `${Math.round(secondsHeard)}s` });
   sendMailLater({
     userId: user.id,
     to: s.email,
@@ -34,7 +34,7 @@ export async function markDownloaded(user: User, t: Track) {
   const r = await q.run("UPDATE tracks SET downloaded_at = ? WHERE id = ? AND downloaded_at IS NULL", now(), t.id);
   if (!r.changes) return;
   const s = await senderOf(t);
-  await logEvent({ user_id: user.id, sender_id: s.id, track_id: t.id, type: "downloaded", detail: "" });
+  await logEvent({ user_id: user.id, actor_id: user.actor_id, sender_id: s.id, track_id: t.id, type: "downloaded", detail: "" });
   sendMailLater({
     userId: user.id,
     to: s.email,
@@ -48,7 +48,7 @@ export async function markPlayedOut(user: User, t: Track, note: string) {
   const r = await q.run("UPDATE tracks SET played_out_at = ?, played_out_note = ? WHERE id = ? AND played_out_at IS NULL", now(), clean, t.id);
   if (!r.changes) return false;
   const s = await senderOf(t);
-  await logEvent({ user_id: user.id, sender_id: s.id, track_id: t.id, type: "played_out", detail: clean });
+  await logEvent({ user_id: user.id, actor_id: user.actor_id, sender_id: s.id, track_id: t.id, type: "played_out", detail: clean });
   sendMailLater({
     userId: user.id,
     to: s.email,
@@ -59,12 +59,27 @@ export async function markPlayedOut(user: User, t: Track, note: string) {
 
 /* ───────────────────────── Decisions ───────────────────────── */
 
+/**
+ * On a team desk, a call made by the owner or an admin stands: a member can't change or clear it. Owners and admins
+ * can change anyone's.
+ */
+export const decisionLocked = (user: Pick<User, "role">, t: Pick<Track, "decision" | "decided_role">) =>
+  user.role === "member" && !!t.decision && (t.decided_role === "owner" || t.decided_role === "admin");
+export const LOCKED_MESSAGE = "An owner or admin made this call, so only they can change it.";
+
 /** Keep or "not for me" (stored as passed). Private to the receiver: senders are never told. Returns what undo needs. */
 export async function decide(user: User, t: Track, decision: Decision) {
   const prev = { decision: t.decision, decided_at: t.decided_at };
   // Keeping (again) always puts the track in the current Prepare for set batch.
-  await q.run("UPDATE tracks SET decision = ?, decided_at = ?, set_cleared_at = NULL, expiry_warned_at = NULL WHERE id = ?", decision, now(), t.id);
-  const eventId = await logEvent({ user_id: user.id, sender_id: t.sender_id, track_id: t.id, type: decision, detail: "" });
+  await q.run(
+    "UPDATE tracks SET decision = ?, decided_at = ?, decided_by = ?, decided_role = ?, set_cleared_at = NULL, expiry_warned_at = NULL WHERE id = ?",
+    decision,
+    now(),
+    user.actor_id ?? user.id,
+    user.role ?? "owner",
+    t.id,
+  );
+  const eventId = await logEvent({ user_id: user.id, actor_id: user.actor_id, sender_id: t.sender_id, track_id: t.id, type: decision, detail: "" });
   return { prev, eventId };
 }
 
@@ -77,7 +92,7 @@ export async function undoDecision(user: User, t: Track, prev: { decision: unkno
 }
 
 export async function clearDecision(t: Track) {
-  await q.run("UPDATE tracks SET decision = NULL, decided_at = NULL, expiry_warned_at = NULL WHERE id = ?", t.id);
+  await q.run("UPDATE tracks SET decision = NULL, decided_at = NULL, decided_by = NULL, decided_role = NULL, expiry_warned_at = NULL WHERE id = ?", t.id);
 }
 
 export async function reply(user: User, s: Sender, t: Track | undefined, body: string) {
@@ -88,7 +103,7 @@ export async function reply(user: User, s: Sender, t: Track | undefined, body: s
     body: `${body}\n\n— ${user.name}${t ? `\n\nYour receipt: ${APP_URL}/receipt/${t.token}` : ""}\n\nSent via FloorTest`,
   });
   if (t) await q.run("UPDATE tracks SET replied_at = COALESCE(replied_at, ?) WHERE id = ?", now(), t.id);
-  await logEvent({ user_id: user.id, sender_id: s.id, track_id: t?.id ?? null, type: "reply", detail: body });
+  await logEvent({ user_id: user.id, actor_id: user.actor_id, sender_id: s.id, track_id: t?.id ?? null, type: "reply", detail: body });
 }
 
 /* ───────────────────────── Removal & retention ───────────────────────── */
@@ -100,12 +115,12 @@ export async function deleteTrack(user: User, t: Track) {
     await db.run("UPDATE tracks SET deleted_at = ?, file_key = NULL, art_key = NULL WHERE id = ?", now(), t.id);
     await reopenCallouts(db);
   });
-  await logEvent({ user_id: user.id, sender_id: t.sender_id, track_id: t.id, type: "deleted", detail: "" });
+  await logEvent({ user_id: user.id, actor_id: user.actor_id, sender_id: t.sender_id, track_id: t.id, type: "deleted", detail: "" });
   await drainNow();
   await alertIfFull(user.id, await capacity(user)); // re-arms the "link paused" email once there's space
 }
 
 export async function setBlocked(user: User, s: Sender, blocked: boolean) {
   await q.run("UPDATE senders SET blocked_at = ? WHERE id = ?", blocked ? now() : null, s.id);
-  await logEvent({ user_id: user.id, sender_id: s.id, track_id: null, type: blocked ? "blocked" : "unblocked", detail: "" });
+  await logEvent({ user_id: user.id, actor_id: user.actor_id, sender_id: s.id, track_id: null, type: blocked ? "blocked" : "unblocked", detail: "" });
 }

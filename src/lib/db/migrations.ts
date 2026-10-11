@@ -1379,4 +1379,64 @@ alter table link_events enable row level security;
 alter table tracks add column if not exists share_terms text;
 `,
   },
+  {
+    // Account teams: a label, radio station or crew has one account (its owner's) and invites people to work its desk,
+    // each with their own login. Seats come from the plan (Free 1, Pro 2, Team 5) plus add-on seats. Events and the
+    // account log record which person did each thing. Behind the "teams" switch.
+    id: "0083_account_teams",
+    sql: `
+create table if not exists account_members (
+  id bigserial primary key,
+  account_id bigint not null references users(id) on delete cascade,
+  user_id bigint not null references users(id) on delete cascade,
+  role text not null check (role in ('admin', 'member')),
+  invited_by bigint references users(id) on delete set null,
+  created_at bigint not null,
+  unique (account_id, user_id),
+  check (account_id <> user_id)
+);
+create index if not exists account_members_user on account_members(user_id);
+create table if not exists account_invites (
+  id bigserial primary key,
+  account_id bigint not null references users(id) on delete cascade,
+  email text not null,
+  role text not null check (role in ('admin', 'member')),
+  token_hash text not null unique,
+  invited_by bigint references users(id) on delete set null,
+  created_at bigint not null,
+  expires_at bigint not null,
+  accepted_at bigint,
+  revoked_at bigint
+);
+create index if not exists account_invites_account on account_invites(account_id);
+alter table users add column if not exists extra_seats int not null default 0 check (extra_seats between 0 and 500);
+alter table plans add column if not exists seats int not null default 1 check (seats between 1 and 500);
+update plans set seats = 2 where id = 'pro';
+update plans set seats = 5 where id = 'team';
+alter table events add column if not exists actor_id bigint references users(id) on delete set null;
+alter table account_log add column if not exists actor_id bigint references users(id) on delete set null;
+-- Who made each Keep / Not for me (and as what), so owners and admins can override members and not the other way round.
+alter table tracks add column if not exists decided_by bigint references users(id) on delete set null;
+alter table tracks add column if not exists decided_role text check (decided_role in ('owner', 'admin', 'member'));
+-- Replies from members can need approval first: off, or on with one approver (the owner or a teammate).
+alter table users add column if not exists reply_approval int not null default 0 check (reply_approval in (0, 1));
+alter table users add column if not exists reply_approver_id bigint references users(id) on delete set null;
+create table if not exists held_replies (
+  id bigserial primary key,
+  account_id bigint not null references users(id) on delete cascade,
+  author_id bigint references users(id) on delete set null,
+  sender_id bigint not null references senders(id) on delete cascade,
+  track_id bigint references tracks(id) on delete set null,
+  body text not null,
+  status text not null default 'waiting' check (status in ('waiting', 'sent', 'rejected')),
+  decided_by bigint references users(id) on delete set null,
+  decided_at bigint,
+  created_at bigint not null
+);
+create index if not exists held_replies_account on held_replies(account_id, status);
+alter table account_members enable row level security;
+alter table account_invites enable row level security;
+alter table held_replies enable row level security;
+`,
+  },
 ];

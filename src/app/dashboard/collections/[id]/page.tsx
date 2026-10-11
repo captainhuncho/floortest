@@ -1,4 +1,5 @@
 import { trackUse } from "@/lib/usage";
+import { atLeast } from "@/lib/account-members";
 import { canCapCallouts } from "@/lib/desk";
 import { switchOn } from "@/lib/switches";
 import Link from "next/link";
@@ -31,9 +32,11 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
   if (!c) notFound();
   const receiving = c.id === user.active_collection_id;
   const genres = genresFor(c);
-  const team = (await featureOn("shared", user)) ? await members(c.id) : null;
+  // Team and link controls are for the owner and admins (their actions check this too).
+  const admin = atLeast(user.role, "admin");
+  const team = admin && (await featureOn("shared", user)) ? await members(c.id) : null;
   // Share links (behind the "sharing" switch): only while sharing is switched on.
-  const links = (await sharingOn()) ? await linksFor(user, c.id) : null;
+  const links = admin && (await sharingOn()) ? await linksFor(user, c.id) : null;
   const sharedTracks = links ? Number((await q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM tracks WHERE collection_id = ? AND deleted_at IS NULL AND share_ok = 1 AND share_terms IS NOT NULL", c.id))?.n ?? 0) : 0;
 
   const tracks = await q.all<Track & { sender_name: string; sender_email: string; sender_verified: number | null }>(
@@ -90,7 +93,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
   return (
     <>
       <div className="flex flex-col gap-3 px-4 pb-4 pt-1 text-bone md:hidden">
-        <CollectionDetailHeader c={editable} receiving={receiving} closed={isClosed(c)} canDelete={all.length > 1} />
+        <CollectionDetailHeader c={editable} receiving={receiving} closed={isClosed(c)} canDelete={admin && all.length > 1} />
         {brief.length > 0 && (
           <section aria-label="Brief" className="card p-3.5">
             <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-[12px]">
@@ -133,7 +136,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
               {isClosed(c) && <span className="rounded-md border border-faint px-2 py-1 text-[11px] font-bold tracking-[0.5px] text-mute">{c.full_at ? "FULL" : "CLOSED"}</span>}
             </h1>
             <div className="flex flex-wrap items-center gap-2">
-              <EditCollectionInfo c={editable} receiving={receiving} closed={isClosed(c)} canDelete={all.length > 1} />
+              <EditCollectionInfo c={editable} receiving={receiving} closed={isClosed(c)} canDelete={admin && all.length > 1} />
               <DownloadActions collectionId={c.id} crateName={c.name} count={c.count} size="sm" />
             </div>
           </div>
@@ -192,7 +195,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
           <p className="mx-4 card p-4 text-[12px] text-mute md:mx-0">This folder is empty. Tracks sent while it&apos;s receiving land here.</p>
         )}
         <div className="mx-4 mt-8 md:mx-0">
-          <DeleteCollection c={{ id: c.id, name: c.name }} canDelete={all.length > 1} />
+          <DeleteCollection c={{ id: c.id, name: c.name }} canDelete={admin && all.length > 1} />
         </div>
       </div>
     </>

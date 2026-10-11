@@ -164,44 +164,63 @@ export default async function Account() {
           />
         </div>
         <div className="flex flex-col gap-4 md:gap-6">
-          <Section
-            title="ACCOUNT"
-            rows={[
-              <Row key="p" href="/dashboard/settings/profile" icon="✎" title="Profile" sub="Photo, name, link and profiles" />,
-              <Row key="e" href="/dashboard/settings/security" icon="@" title="Security" sub="Email, password and devices" />,
-              <Row
-                key="t"
-                href="/dashboard/settings/security"
-                icon="⚿"
-                title="Two-factor authentication"
-                sub="A code from your phone when you sign in"
-                value={<span className="rounded bg-ink-4 px-1.5 py-0.5 text-[11px] font-bold uppercase text-bone">{user.totp_enabled_at ? "On" : "Off"}</span>}
-              />,
-            ]}
-          />
-          <Section
-            title="PREFERENCES"
-            rows={[
-              <Row key="n" href="/dashboard/settings/notifications" icon="◎" title="Notifications" sub="How and when we email you" value={<span className="text-[11px] text-mute">Email</span>} />,
-              <div key="t" className="flex items-center gap-3 py-1">
-                <span aria-hidden className="grid w-5 shrink-0 place-items-center text-[15px] leading-none text-mute">◐</span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[13px] font-medium text-bone md:text-[14px]">Appearance</span>
-                  <span className="mt-0.5 hidden text-[12px] text-faint md:block">Night, Day, or match your device</span>
-                </span>
-                <ThemeSwitch current={theme} />
-              </div>,
-            ]}
-          />
-          <Section
-            title="PRIVACY"
-            rows={[
-              <Row key="p" href="/dashboard/settings/plan" icon="▤" title="Plan" sub="Usage and plans" />,
-              <Row key="b" href="/dashboard/settings/receiving" icon="⊘" title="Receiving" sub="Blocked senders and desk rules" />,
-              <Row key="d" href="/contact?topic=data" icon="⇩" title="Data export" sub="Ask for a copy of your data" />,
-              <Row key="a" href="/dashboard/settings/account" icon="⏻" title="Log out or delete account" sub="Leave this device, or remove everything" />,
-            ]}
-          />
+          {user.role !== "owner" ? (
+            // On a team desk: the team, what this role can change, and log out. Your own login lives on your own desk.
+            <Section
+              title={`TEAM · ${user.name.toUpperCase()}`}
+              rows={[
+                <Row key="t" href="/dashboard/settings/team" icon="◫" title="Team" sub="People on this account, roles and approvals" />,
+                ...(user.role === "admin"
+                  ? [
+                      <Row key="p" href="/dashboard/settings/profile" icon="✎" title="Profile" sub="Photo, name, link and profiles" />,
+                      <Row key="b" href="/dashboard/settings/receiving" icon="⊘" title="Receiving" sub="Blocked senders and desk rules" />,
+                    ]
+                  : []),
+                <Row key="a" href="/dashboard/settings/account" icon="⏻" title="Log out" sub="Your own login settings are on your own desk" />,
+              ]}
+            />
+          ) : (
+            <>
+            <Section
+              title="ACCOUNT"
+              rows={[
+                <Row key="p" href="/dashboard/settings/profile" icon="✎" title="Profile" sub="Photo, name, link and profiles" />,
+                <Row key="e" href="/dashboard/settings/security" icon="@" title="Security" sub="Email, password and devices" />,
+                <Row
+                  key="t"
+                  href="/dashboard/settings/security"
+                  icon="⚿"
+                  title="Two-factor authentication"
+                  sub="A code from your phone when you sign in"
+                  value={<span className="rounded bg-ink-4 px-1.5 py-0.5 text-[11px] font-bold uppercase text-bone">{user.totp_enabled_at ? "On" : "Off"}</span>}
+                />,
+              ]}
+            />
+            <Section
+              title="PREFERENCES"
+              rows={[
+                <Row key="n" href="/dashboard/settings/notifications" icon="◎" title="Notifications" sub="How and when we email you" value={<span className="text-[11px] text-mute">Email</span>} />,
+                <div key="t" className="flex items-center gap-3 py-1">
+                  <span aria-hidden className="grid w-5 shrink-0 place-items-center text-[15px] leading-none text-mute">◐</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[13px] font-medium text-bone md:text-[14px]">Appearance</span>
+                    <span className="mt-0.5 hidden text-[12px] text-faint md:block">Night, Day, or match your device</span>
+                  </span>
+                  <ThemeSwitch current={theme} />
+                </div>,
+              ]}
+            />
+            <Section
+              title="PRIVACY"
+              rows={[
+                <Row key="p" href="/dashboard/settings/plan" icon="▤" title="Plan" sub="Usage and plans" />,
+                <Row key="b" href="/dashboard/settings/receiving" icon="⊘" title="Receiving" sub="Blocked senders and desk rules" />,
+                <Row key="d" href="/contact?topic=data" icon="⇩" title="Data export" sub="Ask for a copy of your data" />,
+                <Row key="a" href="/dashboard/settings/account" icon="⏻" title="Log out or delete account" sub="Leave this device, or remove everything" />,
+              ]}
+            />
+            </>
+          )}
           <Section
             title="ABOUT FLOORTEST"
             rows={[

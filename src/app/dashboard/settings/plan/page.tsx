@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireUser } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { capacity } from "@/lib/desk";
 import { planOf } from "@/lib/plan-store";
 import { PageTitle, Section } from "../Section";
@@ -7,7 +7,7 @@ import { PageTitle, Section } from "../Section";
 export const metadata = { title: "Plan — FloorTest" };
 
 export default async function Plan() {
-  const user = await requireUser();
+  const user = await requireRole("owner");
   const cap = await capacity(user);
   const plan = await planOf(user.plan);
   const pct = cap.limit ? Math.min(100, Math.round((cap.used / cap.limit) * 100)) : 0;

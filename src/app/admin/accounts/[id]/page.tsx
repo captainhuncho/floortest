@@ -17,6 +17,7 @@ import {
   resetTwoFactor,
   setContactHandled,
   setPlanFor,
+  setExtraSeatsFor,
   signOutEverywhere,
   startViewAs,
   suspendAccount,
@@ -34,7 +35,7 @@ export default async function Account({ params }: { params: Promise<{ id: string
   const support = can(me.access, "users.support");
   const id = Number((await params).id);
   if (!Number.isSafeInteger(id)) notFound();
-  const u = await q.get<User & { identity_status: string | null; invite_code: string | null; referred_by: number | null; suspended_at: number | null; suspended_reason: string; pending_email: string | null; pending_email_at: number | null; signup_source: string; admin_tags: string }>("SELECT * FROM users WHERE id = ?", id);
+  const u = await q.get<User & { extra_seats: number; identity_status: string | null; invite_code: string | null; referred_by: number | null; suspended_at: number | null; suspended_reason: string; pending_email: string | null; pending_email_at: number | null; signup_source: string; admin_tags: string }>("SELECT * FROM users WHERE id = ?", id);
   const notes = await q.all<{ id: number; body: string; created_at: number; handle: string | null }>(
     "SELECT n.id, n.body, n.created_at, a.handle FROM account_notes n LEFT JOIN users a ON a.id = n.admin_id WHERE n.user_id = ? ORDER BY n.created_at DESC LIMIT 50",
     id,
@@ -282,6 +283,11 @@ export default async function Account({ params }: { params: Promise<{ id: string
                 <option value="team">Team</option>
               </select>
               <button className="btn-ghost btn-sm">Set plan</button>
+            </form>
+            <form action={setExtraSeatsFor.bind(null, id)} className="flex gap-2">
+              <label className="sr-only" htmlFor="extra-seats">Extra seats</label>
+              <input id="extra-seats" name="extra_seats" type="number" min={0} max={500} defaultValue={Number(u.extra_seats ?? 0)} className="input min-w-0 flex-1 tnum" />
+              <button className="btn-ghost btn-sm">Set extra seats</button>
             </form>
             <ConfirmButton action={signOutEverywhere.bind(null, id)} message={`Sign @${u.handle} out of every device?`} className="btn-ghost btn-sm w-full">
               Sign out everywhere ({sessions})

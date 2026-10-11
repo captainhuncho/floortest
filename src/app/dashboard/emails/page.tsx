@@ -1,4 +1,4 @@
-import { requireUser } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import {q } from "@/lib/db";
 import { fmtDate } from "@/lib/format";
 
@@ -7,7 +7,7 @@ type Mail = { id: number; to_email: string; subject: string; body: string; statu
 export const metadata = { title: "Emails to senders — FloorTest" };
 
 export default async function Emails() {
-  const user = await requireUser();
+  const user = await requireRole("admin");
   const mails = (await q.all<Mail>("SELECT * FROM outbox WHERE user_id = ? AND audience = 'sender' ORDER BY created_at DESC LIMIT 200", user.id));
   const live = !!process.env.RESEND_API_KEY;
   return (

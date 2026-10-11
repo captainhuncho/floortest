@@ -1,4 +1,5 @@
 import { after } from "next/server";
+import { atLeast, roleOn, teamsOn, type TeamRole } from "./account-members";
 import "server-only";
 import crypto from "node:crypto";
 import { cookies, headers } from "next/headers";
@@ -94,14 +95,36 @@ export const viewingAs = cache(async (): Promise<{ adminId: number; userId: numb
   return target ? { adminId: va.adminId, userId: va.userId, handle: target.handle } : null;
 });
 
-/** The signed-in user, memoised per request. */
+/** Which desk a person who's on a team is working on (an account id). Unset or their own id: their own desk. */
+export const DESK_COOKIE = "ft_desk";
+const self = (u: Omit<User, "actor_id" | "actor_name" | "role">): User => ({ ...u, actor_id: u.id, actor_name: u.name, role: "owner" });
+
+/**
+ * The desk being worked on, memoised per request: the signed-in person's own account, or a team account they've
+ * switched to (then the account's row, with them as `actor_id` and their `role`). Every desk page and action uses
+ * this, so a teammate works on the team's desk with its plan. Person-only things (sign-in, security, the /c share
+ * pages, sending as yourself) use `currentPerson()` instead.
+ */
 export const currentUser = cache(async (): Promise<User | null> => {
+  const person = await currentPerson();
+  if (!person || (await viewingAs())) return person;
+  const desk = Number((await cookies()).get(DESK_COOKIE)?.value);
+  if (!Number.isSafeInteger(desk) || desk <= 0 || desk === person.id || !(await teamsOn())) return person;
+  const role = await roleOn(desk, person.id);
+  if (!role) return person;
+  const account = await q.get<User>(`SELECT ${USER_COLUMNS} FROM users WHERE id = ? AND suspended_at IS NULL`, desk);
+  return account ? { ...account, actor_id: person.id, actor_name: person.name, role } : person;
+});
+
+/** The signed-in person themselves, whatever desk they're working on. Memoised per request. */
+export const currentPerson = cache(async (): Promise<User | null> => {
   const view = await viewingAs();
   if (view) {
     // Read-only: a server action (anything that changes data) acts as nobody while viewing.
     if ((await headers()).get("next-action")) return null;
     const cols = USER_COLUMNS;
-    return (await q.get<User>(`SELECT ${cols} FROM users WHERE id = ?`, view.userId)) ?? null;
+    const v = await q.get<User>(`SELECT ${cols} FROM users WHERE id = ?`, view.userId);
+    return v ? self(v) : null;
   }
   const token = (await cookies()).get(COOKIE)?.value;
   if (!token) return null;
@@ -116,8 +139,30 @@ export const currentUser = cache(async (): Promise<User | null> => {
   const last = row.last_active_at;
   delete row.last_active_at;
   if (!last || now() - last > 3_600_000) after(() => q.run("UPDATE users SET last_active_at = ? WHERE id = ?", now(), row.id).catch(() => {}));
-  return row;
+  return self(row);
 });
+
+/**
+ * The desk, but only for someone with at least `min` role on it: account security, billing and deleting the account
+ * need "owner" (so they only work on your own account); team and link settings "admin". Server actions call this
+ * themselves, so hiding a button is never the only guard.
+ */
+export async function requireRole(min: TeamRole): Promise<User> {
+  const u = await requireUser();
+  if (!atLeast(u.role, min)) {
+    if ((await headers()).get("next-action")) throw new Error("Not allowed on this desk");
+    redirect("/dashboard/settings/team?denied=1");
+  }
+  return u;
+}
+
+/** The signed-in person (never a team desk), or to the login page. */
+export async function requirePerson(): Promise<User> {
+  const u = await currentPerson();
+  if (!u && (await viewingAs())) redirect("/dashboard/floor?readonly=1");
+  if (!u) redirect("/login");
+  return u;
+}
 
 export async function requireUser(): Promise<User> {
   const u = await currentUser();

@@ -2,7 +2,7 @@
 
 /** A collection share link, the recipient's side: prove your email, accept the notice, or ask to join. */
 import { revalidatePath } from "next/cache";
-import { currentUser } from "@/lib/auth";
+import { currentPerson } from "@/lib/auth";
 import { q } from "@/lib/db";
 import { APP_URL, sendMail } from "@/lib/mail";
 import { accountEmailAllowed } from "@/lib/email-budget";
@@ -21,7 +21,7 @@ const err = (e: unknown, step: NonNullable<GateState>["step"], email?: string): 
 
 /** Who is at the door: a signed-in account with a confirmed email, or an address that just passed a code for this link. */
 async function visitor(linkId: number) {
-  const u = await currentUser();
+  const u = await currentPerson();
   if (u?.email_verified_at) return { email: u.email.toLowerCase(), userId: u.id, name: u.name };
   const email = await provenEmail(linkId);
   return email ? { email, userId: null, name: "" } : null;
@@ -29,7 +29,7 @@ async function visitor(linkId: number) {
 
 /** Step 1: email a code. Same answer whether or not the address is on the list. */
 export async function sendCode(secret: string, _prev: GateState, form: FormData): Promise<GateState> {
-  const link = await linkByKey(secret, await currentUser());
+  const link = await linkByKey(secret, await currentPerson());
   if (!link) return GONE;
   const email = String(form.get("email") || "").trim().toLowerCase();
   try {
@@ -53,7 +53,7 @@ export async function sendCode(secret: string, _prev: GateState, form: FormData)
 
 /** Step 2: check the code. Then: on the list → the access notice; not on it → ask to join (if the link allows). */
 export async function checkCode(secret: string, _prev: GateState, form: FormData): Promise<GateState> {
-  const link = await linkByKey(secret, await currentUser());
+  const link = await linkByKey(secret, await currentPerson());
   if (!link) return GONE;
   const email = String(form.get("email") || "");
   try {
@@ -68,7 +68,7 @@ export async function checkCode(secret: string, _prev: GateState, form: FormData
 
 /** Step 3: accept the access notice and get in (a short session tied to this link's current address). */
 export async function acceptNotice(secret: string, _prev: GateState, form: FormData): Promise<GateState> {
-  const link = await linkByKey(secret, await currentUser());
+  const link = await linkByKey(secret, await currentPerson());
   if (!link) return GONE;
   if (form.get("agree") !== "on") return { step: "notice", error: "Tick the box to agree before opening the collection." };
   const who = await visitor(link.id);
@@ -83,7 +83,7 @@ export async function acceptNotice(secret: string, _prev: GateState, form: FormD
 
 /** Not on the list: ask the owner. Grouped email to the owner (at most one an hour) plus the bell. */
 export async function askToJoin(secret: string, _prev: GateState, form: FormData): Promise<GateState> {
-  const link = await linkByKey(secret, await currentUser());
+  const link = await linkByKey(secret, await currentPerson());
   if (!link) return GONE;
   const who = await visitor(link.id);
   if (!who) return { step: "email" };

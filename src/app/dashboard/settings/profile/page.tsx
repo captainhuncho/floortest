@@ -2,7 +2,7 @@ import Link from "next/link";
 import { trackUse } from "@/lib/usage";
 import { readLinks } from "@/lib/socials";
 import { nextHandleChange } from "@/lib/accounts";
-import { requireUser } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { q } from "@/lib/db";
 import { APP_URL } from "@/lib/mail";
 import { CoverUpload, PublicPageForm } from "../PublicPageForm";
@@ -13,7 +13,7 @@ import { PageTitle, Section } from "../Section";
 export const metadata = { title: "Profile — FloorTest" };
 
 export default async function Profile() {
-  const user = await requireUser();
+  const user = await requireRole("admin");
   await trackUse(user.id, "settings");
   const nextLink = await nextHandleChange(user.id);
   const identity = await q.get<{ status: "none" | "pending" | "verified" | "rejected"; links: string; note: string }>(

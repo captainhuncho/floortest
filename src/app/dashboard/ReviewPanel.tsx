@@ -1,4 +1,6 @@
 import { CuePoint } from "@/components/CuePoint";
+import { currentUser } from "@/lib/auth";
+import { decisionLocked } from "@/lib/review";
 import { ProfileLinks } from "@/components/ProfileLinks";
 import { readLinks } from "@/lib/socials";
 import Link from "next/link";
@@ -128,8 +130,22 @@ export async function ReviewPanel({
   // The auto-delete date matters at decision time only when it's close.
   const soon = removal && removal - Date.now() < 7 * 86_400_000 ? Math.max(0, Math.ceil((removal - Date.now()) / 86_400_000)) : null;
   // Signals that change the decision stay visible: may it be played out, is it out already, made with AI, a duplicate, going soon.
+  // Account teams: who made the call, when it wasn't the account itself (and that a member can't change it).
+  const desk = await currentUser();
+  const caller =
+    t.decision && t.decided_by && t.decided_by !== t.user_id
+      ? (await q.get<{ name: string }>("SELECT name FROM users WHERE id = ?", t.decided_by))?.name
+      : t.decision && desk && desk.actor_id !== desk.id && t.decided_role === "owner"
+        ? desk.name
+        : null;
   const tags = (
     <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] font-bold">
+      {caller && (
+        <span className="rounded-full border border-line px-2.5 py-0.5 text-mute">
+          {t.decision === "kept" ? "Kept" : "Not for me"} by {caller}
+          {desk && decisionLocked(desk, t) ? " · only an owner or admin can change it" : ""}
+        </span>
+      )}
       <span className={`rounded-full border px-2.5 py-0.5 ${t.sets_ok ? "border-lime/50 text-lime" : "border-line text-mute"}`}>
         {t.sets_ok ? "Cleared for DJ sets" : "Evaluation only: ask before playing it out"}
       </span>

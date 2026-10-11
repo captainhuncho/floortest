@@ -1,4 +1,4 @@
-import { currentSessionHash, requireUser } from "@/lib/auth";
+import { currentSessionHash, requireRole } from "@/lib/auth";
 import { q } from "@/lib/db";
 import { EmailForm } from "../EmailForm";
 import { SecurityForm } from "../SecurityForm";
@@ -11,7 +11,7 @@ import { PageTitle, Section } from "../Section";
 export const metadata = { title: "Security — FloorTest" };
 
 export default async function Security({ searchParams }: { searchParams: Promise<{ google?: string }> }) {
-  const user = await requireUser();
+  const user = await requireRole("owner");
   const sp = await searchParams;
   const otherSessions = await q.count(
     "SELECT COUNT(*) AS n FROM sessions WHERE user_id = ? AND expires_at > ? AND token_hash <> ?",

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireUser } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { q, type Sender } from "@/lib/db";
 import { fmtDay } from "@/lib/format";
 import { MAX_UPLOAD_BYTES, RATE_PER_EMAIL_PER_DAY, RATE_PER_IP_PER_HOUR, RETAIN_PASSED_DAYS, RETAIN_UNREVIEWED_DAYS, SIGNALS } from "@/lib/plans";
@@ -10,7 +10,7 @@ import { PageTitle, Section } from "../Section";
 export const metadata = { title: "Receiving — FloorTest" };
 
 export default async function Receiving() {
-  const user = await requireUser();
+  const user = await requireRole("admin");
   const blocked = await q.all<Sender>("SELECT * FROM senders WHERE user_id = ? AND blocked_at IS NOT NULL ORDER BY blocked_at DESC", user.id);
   const reroute = !!(await q.get<{ v: number }>("SELECT reroute_closed AS v FROM users WHERE id = ?", user.id))?.v;
   return (

@@ -134,6 +134,7 @@ export const ACTION_NEEDS: Record<string, Need> = {
   signOutEverywhere: "super",
   resetTwoFactor: "super",
   setPlanFor: "super",
+  setExtraSeatsFor: "super",
   startViewAs: "super",
   adminChangeHandle: "super",
   adminChangeEmail: "super",

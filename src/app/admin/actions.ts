@@ -1,5 +1,6 @@
 "use server";
 
+import { setExtraSeats } from "@/lib/account-members";
 import { reopenCallouts } from "@/lib/desk";
 import crypto from "node:crypto";
 import { newsletterFooter } from "@/lib/newsletter";
@@ -126,6 +127,18 @@ export async function setPlanFor(userId: number, plan: string) {
   await q.run("UPDATE users SET plan = ? WHERE id = ?", plan, u.id);
   await logAdmin(a.id, "changed plan", `@${u.handle}`, plan);
   await done(`@${u.handle} is now on ${plan}`);
+  refresh();
+}
+
+/** Add-on seats for an account team (sold separately while card payments aren't live). */
+export async function setExtraSeatsFor(userId: number, form: FormData) {
+  const a = await requireAdminAction("super");
+  const u = await target(userId);
+  const n = Math.floor(Number(form.get("extra_seats")));
+  if (!u || !Number.isFinite(n) || n < 0 || n > 500) return fail("Extra seats must be between 0 and 500.");
+  await setExtraSeats(u.id, n);
+  await logAdmin(a.id, "set extra seats", `@${u.handle}`, String(n));
+  await done(`@${u.handle} now has ${n} extra seat${n === 1 ? "" : "s"}`);
   refresh();
 }
 
@@ -727,7 +740,9 @@ export async function savePlan(id: string, form: FormData) {
   const features = String(form.get("features") || "").split("\n").map((f) => f.trim()).filter(Boolean).slice(0, 20).map((f) => f.slice(0, 120));
   const position = Math.floor(Number(form.get("position")) || 0);
   const folderMb = Math.floor(Number(form.get("folder_mb")) || 0);
+  const seats = Math.floor(Number(form.get("seats")) || 1);
   if (!name) return fail("Give the plan a name.");
+  if (seats < 1 || seats > 500) return fail("Seats must be between 1 and 500.");
   if (folderMb < 0 || folderMb > 20480) return fail("Folder limit must be between 0 and 20,480 MB.");
   if (!Number.isFinite(price) || price < 0 || price > 100000) return fail("Price must be between $0 and $1,000.");
   if (id === FREE_PLAN && price !== 0) return fail("Free must stay at $0.");
@@ -745,8 +760,8 @@ export async function savePlan(id: string, form: FormData) {
   const fullest = await fullestOn(id);
   if (limit < fullest) return fail(`Someone on ${old.name} already has ${fullest} active tracks, so the limit can't go below that.`);
   await q.run(
-    "UPDATE plans SET name = ?, price_cents = ?, yearly_price_cents = ?, discount_pct = ?, discount_label = ?, discount_ends_at = ?, track_limit = ?, blurb = ?, features = ?, share_downloads = ?, track_art = ?, featured = ?, position = ?, folder_bytes = ?, updated_at = ? WHERE id = ?",
-    name, price, yearly, discountPct, discountLabel, discountPct ? discountEndsAt : null, limit, blurb, JSON.stringify(features), form.get("share_downloads") === "on" ? 1 : 0, form.get("track_art") === "on" ? 1 : 0, form.get("featured") === "on" ? 1 : 0, position, folderMb * 1048576, now(), id,
+    "UPDATE plans SET name = ?, price_cents = ?, yearly_price_cents = ?, discount_pct = ?, discount_label = ?, discount_ends_at = ?, track_limit = ?, blurb = ?, features = ?, share_downloads = ?, track_art = ?, featured = ?, position = ?, folder_bytes = ?, seats = ?, updated_at = ? WHERE id = ?",
+    name, price, yearly, discountPct, discountLabel, discountPct ? discountEndsAt : null, limit, blurb, JSON.stringify(features), form.get("share_downloads") === "on" ? 1 : 0, form.get("track_art") === "on" ? 1 : 0, form.get("featured") === "on" ? 1 : 0, position, folderMb * 1048576, seats, now(), id,
   );
   const changes = [
     old.price * 100 !== price && `price $${old.price} → $${price / 100}`,
@@ -755,6 +770,7 @@ export async function savePlan(id: string, form: FormData) {
     old.limit !== limit && `limit ${old.limit} → ${limit}`,
     old.name !== name && `name ${old.name} → ${name}`,
     old.folderBytes !== folderMb * 1048576 && `folders ${Math.round(old.folderBytes / 1048576)} → ${folderMb} MB`,
+    old.seats !== seats && `seats ${old.seats} → ${seats}`,
   ].filter(Boolean);
   await logAdmin(a.id, "edited plan", id, changes.join(" · ") || "wording");
   await done(`${name} saved.`);

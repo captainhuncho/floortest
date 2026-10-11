@@ -98,6 +98,11 @@ export default async function Plans() {
                     <input name="folder_mb" type="number" min={0} max={20480} defaultValue={Math.round(p.folderBytes / 1048576)} className="input tnum" />
                     <span className="block text-xs text-dim">Largest EP/album folder; 0 = folders off</span>
                   </label>
+                  <label className="block space-y-1.5">
+                    <span className="label">Seats</span>
+                    <input name="seats" type="number" min={1} max={500} defaultValue={p.seats} required className="input tnum" />
+                    <span className="block text-xs text-dim">People on one account, the owner included (account teams)</span>
+                  </label>
                 </div>
               </fieldset>
 

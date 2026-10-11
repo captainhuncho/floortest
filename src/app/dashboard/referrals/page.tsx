@@ -1,5 +1,5 @@
 import { trackUse } from "@/lib/usage";
-import { requireUser } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { capacity, REFERRAL_BONUS, referralCodeFor } from "@/lib/desk";
 import {q } from "@/lib/db";
 import { fmtDay } from "@/lib/format";
@@ -11,7 +11,7 @@ export const metadata = { title: "Referrals — FloorTest" };
 type Invitee = { name: string; created_at: number; referral_rewarded_at: number | null };
 
 export default async function Referrals() {
-  const user = await requireUser();
+  const user = await requireRole("owner");
   await trackUse(user.id, "referrals");
   const code = await referralCodeFor(user.id);
   const link = `${APP_URL}/signup?ref=${code}`;

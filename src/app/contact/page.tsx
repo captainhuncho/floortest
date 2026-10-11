@@ -1,6 +1,6 @@
 import { botCheckKey } from "@/lib/turnstile";
 import { Logo } from "@/components/Logo";
-import { currentUser } from "@/lib/auth";
+import { currentPerson } from "@/lib/auth";
 import { ContactForm } from "./ContactForm";
 import { APP_URL } from "@/lib/mail";
 
@@ -9,7 +9,7 @@ const HOST = APP_URL.replace(/^https?:\/\//, "");
 export const metadata = { title: "Contact us — FloorTest" };
 
 export default async function Contact({ searchParams }: { searchParams: Promise<{ report?: string; appeal?: string; takedown?: string }> }) {
-  const user = await currentUser();
+  const user = await currentPerson();
   const sp = await searchParams;
   const appeal = !!sp.appeal;
   const takedown = !!sp.takedown;

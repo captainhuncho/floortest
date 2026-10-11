@@ -27,6 +27,8 @@ export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]
   // Sending from a FloorTest account: name and email come from the account, not the form.
   const account = body.asAccount ? await currentUser() : null;
   if (body.asAccount && !account) return bad("Sign in again to send from your account.", 401);
+  // On a team desk, sending as the account is for its owner and admins.
+  if (account && account.role === "member") return bad(`Only the owner or an admin can send music as ${account.name}. Switch to your own desk to send as yourself.`, 403);
   const read = await readSubmission(body, receiver, account);
   if ("error" in read) return bad(read.error, read.status);
   // Without an account, the email must be confirmed with a code first (which is also where the bot check happens).

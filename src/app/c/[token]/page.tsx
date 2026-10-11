@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Logo } from "@/components/Logo";
-import { currentUser } from "@/lib/auth";
+import { currentPerson } from "@/lib/auth";
 import { fmtTime } from "@/lib/format";
 import { linkSessionSecret } from "@/lib/link-cookies";
 import { ACCESS_NOTICE, linkByKey, linkSession, linkTracks, recipientFor } from "@/lib/share-links";
@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
  */
 export default async function SharedLink({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const u = await currentUser();
+  const u = await currentPerson();
   const link = await linkByKey(token, u);
   const shell = (children: React.ReactNode) => (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col px-[18px] py-10 text-bone">

@@ -3,18 +3,24 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+/** Each page with the least team role that can open it (on your own desk you're the owner, so you see all of them). */
 export const SECTIONS = [
-  { slug: "profile", title: "Profile", sub: "Photo, name, link and profiles" },
-  { slug: "receiving", title: "Receiving", sub: "Blocked senders and desk rules" },
-  { slug: "notifications", title: "Notifications", sub: "How and when we email you" },
-  { slug: "plan", title: "Plan", sub: "Usage and plans" },
-  { slug: "security", title: "Security", sub: "Email, password, two-step sign-in" },
-  { slug: "account", title: "Account", sub: "Log out or delete your account" },
+  { slug: "profile", title: "Profile", sub: "Photo, name, link and profiles", min: "admin" },
+  { slug: "receiving", title: "Receiving", sub: "Blocked senders and desk rules", min: "admin" },
+  { slug: "team", title: "Team", sub: "People on this account, roles and approvals", min: "member" },
+  { slug: "notifications", title: "Notifications", sub: "How and when we email you", min: "owner" },
+  { slug: "plan", title: "Plan", sub: "Usage and plans", min: "owner" },
+  { slug: "security", title: "Security", sub: "Email, password, two-step sign-in", min: "owner" },
+  { slug: "account", title: "Account", sub: "Log out or delete your account", min: "member" },
 ] as const;
+const RANK = { member: 1, admin: 2, owner: 3 } as const;
+export const sectionsFor = (role: keyof typeof RANK, teams: boolean) =>
+  SECTIONS.filter((s) => RANK[role] >= RANK[s.min] && (s.slug !== "team" || teams));
 
 /** Desktop: a left rail of the six settings pages. Phones: a back link to the Account menu and this page's name. */
-export function SettingsNav() {
+export function SettingsNav({ role, teams }: { role: keyof typeof RANK; teams: boolean }) {
   const path = usePathname();
+  const sections = sectionsFor(role, teams);
   const current = SECTIONS.find((s) => path.startsWith(`/dashboard/settings/${s.slug}`));
   return (
     <>
@@ -28,7 +34,7 @@ export function SettingsNav() {
       <nav aria-label="Settings" className="hidden md:block">
         <p className="mb-3 px-3 text-[11px] font-bold uppercase tracking-[0.5px] text-mute">Settings</p>
         <ul className="space-y-0.5">
-          {SECTIONS.map((s) => {
+          {sections.map((s) => {
             const on = current?.slug === s.slug;
             return (
               <li key={s.slug}>
