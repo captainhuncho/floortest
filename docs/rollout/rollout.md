@@ -28,7 +28,7 @@
 | 3 | **Link-in-bio and QR story kit** | A ready caption, a QR story card and a 10-second clip showing Keep and then the next track, all in brand style. | Onboarding's one job is the first track in 48 h, and a story is where producers see it. | Low |
 | 4 | **Radio-show partnerships** | One London and one Lagos online radio show take demos only through their FloorTest link. Once a month, the host plays the kept tracks live on air. | Shows are already teams (host, producer, booker): the team story told on air. | Med |
 | 5 | **Receipt sender loop** | The receipt shows "DJ too? Get your own link" after delivery. We measure how many senders sign up and tune the wording, never the volume. | Many producers DJ, and they've just seen it work for them. | Low |
-| 6 | **City launch nights** | A night in London and one in Lagos. Founding DJs play tracks they kept on FloorTest, and their producers are invited. QR codes on the tables, no stage pitch. | Makes "from private tracks to the DJ set" visible in a real room. | High |
+| 6 | **City launch nights** | A night in London and one in Lagos. Founding DJs play tracks they kept on FloorTest, and their producers are invited. QR codes on the tables, no stage pitch. | Makes "from the studio to the floor" visible in a real room. | High |
 | 7 | **Creator newsletters** | Short features or sponsored mentions in DJ-tool and Afro house/amapiano newsletters, built around one founding DJ's workflow. | Readers are the people sent demos every week. | Med |
 | 8 | **Invite codes, DJ to DJ** | Each active desk gets 5 codes, worded like passing on a tip rather than a referral scheme. Codes are released when the desk has made 10 decisions. | Growth goes to desks that actually use FloorTest, so the north star isn't diluted. | Low |
 | 9 | **Producer-community callouts** | Founding DJs post callouts straight into producer Discords and forums, and we answer questions in the thread. | Producers arrive with the brief read, so tracks fit and decisions come faster. | Low |
@@ -54,7 +54,7 @@
 
 | Week | What we post |
 |---|---|
-| **L-1** | Teaser: the crest on Booth Black, "The receiving desk for unreleased music." Founding DJs post their link with the story kit. First callout of the week. |
+| **L-1** | Teaser: the crest on Booth Black, "The receiving desk for new music." Founding DJs post their link with the story kit. First callout of the week. |
 | **L** | Launch: a 10-second Keep clip, "Your link. Every track in one place. Ready to play.", launch-night reels from London and Lagos, sign-up opens. |
 | **L+1** | For senders: "What happens to your track", the receipt timeline (Delivered, Listened, Downloaded, Replied). Callout of the week from a Lagos DJ. |
 | **L+2** | From desk to set: Prepare and the Rekordbox export shown as a crate going into the booth. Radio segment clip. Callout of the week from a London DJ. |

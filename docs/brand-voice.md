@@ -13,7 +13,7 @@ Receivers are the customer. Senders are the growth loop: every sender who has a 
 
 ## The one-line idea
 
-**The receiving desk for unreleased music.** Use this as the category line everywhere. The hero line, *From private tracks to the DJ set*, is the promise.
+**The receiving desk for new music.** Use this as the category line everywhere. The hero line, *From the studio / to the floor.*, is the promise.
 
 ## Voice: four traits
 
@@ -38,11 +38,11 @@ The biggest current problem is that the same thing has several names. Pick one a
 | --- | --- | --- |
 | **your link** / **receiving link** (first mention) | receiver link, submission link, permanent receiver link, demo submission link | "Permanent" is a benefit to state, not part of the name: *"Your link never changes."* |
 | **desk** | receiving room, workspace, inbox | The receiver's side of FloorTest. "Open your desk." |
-| **track** | song, submission (in user-facing copy), demo (as a noun for every file) | Plans currently say "active songs". Change to "active tracks". Say "track", not "demo": promos and released music arrive too. "Demo" only for a specific unfinished track. Tagline stays "for unreleased music" (decided 2026-10-03). |
+| **track** | song, submission (in user-facing copy), demo (as a noun for every file) | Plans currently say "active songs". Change to "active tracks". Say "track", not "demo": promos and released music arrive too. "Demo" only for a specific unfinished track. Category line is "for new music" (decided 12 Oct 2026: released tracks arrive too; the core is exclusives and works in progress tested on the floor). |
 | **callout** / **collection** | folder, project, campaign | A callout is the ask ("send me Afro house for Villagers"). A collection is where those tracks land. |
 | **receiver** / **sender** | curator/artist as role names, user, submitter | In marketing, prefer the real people: "DJs, curators and labels" / "artists and producers". |
 | **Keep** / **Not for me** | pass, reject, decline, no | Always capitalised as buttons, lowercase in running text: "tracks you keep". |
-| **Listened / Downloaded / Replied / Delivered** | heard, played out, used, opened | These are defined signals. Never paraphrase them. |
+| **Delivered / Listened / Downloaded / Replied / Played out** | heard, used, opened, "spun" | These are defined signals. Never paraphrase them. **Played out** means the DJ marked it as played in a set: the floor test, and the payoff signal for senders (lead with it when it has happened; never imply it otherwise). |
 | **private receipt** | tracking page, status page | |
 | **FloorTest** | Floortest, Floor Test, FT | |
 

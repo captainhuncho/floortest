@@ -1,6 +1,6 @@
 ---
 name: FloorTest
-description: The receiving desk for unreleased music. A dark DJ booth, calm and technical, with one light that matters.
+description: The receiving desk for new music. A dark DJ booth, calm and technical, with one light that matters.
 colors:
   booth-black: "#10110f"
   booth-panel: "#171815"

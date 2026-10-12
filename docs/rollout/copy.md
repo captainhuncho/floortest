@@ -9,8 +9,8 @@ Rule: each block = heading (2–6 words) + at most one line. Image = a phrase fo
 
 | # | Copy | Image |
 |---|---|---|
-| Eyebrow | The receiving desk for unreleased music | — |
-| Hero | **From private tracks / *to the DJ set.*** · One link for every track you're sent. | Phone in a hand in a dim booth, Review Queue on screen, lime Keep lit |
+| Eyebrow | The receiving desk for new music | — |
+| Hero | **From the studio / *to the floor.*** · One link for every track you're sent. | Phone in a hand in a dim booth, Review Queue on screen, lime Keep lit |
 | CTA | Claim your link → (invite only: Join the waitlist →) · secondary: See pricing | — |
 | Tile 1 | **One link.** Put it in your bio. Senders do the rest. | Instagram bio with `floortest.app/<handle>` |
 | Tile 2 | **Originals, not streams.** WAV or MP3, up to 250 MB. | Drop box filling with a WAV file name |

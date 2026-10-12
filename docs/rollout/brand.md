@@ -7,14 +7,14 @@
 
 ## 2. Lines
 **Taglines / category lines**
-1. *The receiving desk for unreleased music.* Already the category line; keep it. **Favourite.**
+1. *The receiving desk for new music.* Already the category line; keep it. **Favourite.**
 2. *One link. Every track.* Says the mechanic in four words.
 3. *Play, keep, next.* The rhythm of the queue; good for clips and stickers.
 4. *Know what happened next.* The sender's side, for receipts and sender emails.
-5. *Where unreleased music lands.* Plain contrast with maker-side tools.
+5. *Where new music lands.* Plain contrast with maker-side tools.
 
 **Home headlines**
-1. *From private tracks / to the DJ set.* The current promise; the serif italic on line two does the work. **Favourite**: keep it.
+1. *From the studio / to the floor.* The current promise; the serif italic on line two does the work. **Favourite**: keep it.
 2. *Every track in one place. / Ready to play.* Already approved in the voice guide; more literal.
 3. *Stop digging through DMs.* Names the pain; use as a second line or ad, not the hero (it leads with a negative).
 
@@ -43,7 +43,7 @@
 5. **Senders never pay:** no paid boosts, no pay-to-be-heard; the free link is the business case for honesty. Contrast with paid submission platforms.
 
 **Launch announcement (draft)**
-> FloorTest is open: the receiving desk for unreleased music.
+> FloorTest is open: the receiving desk for new music.
 > DJs, curators and labels get one link for every track that's sent to them, a queue to play, keep or pass, and a crate ready for the set.
 > Senders get a private receipt that says what actually happened. Free for your first 20 tracks.
 

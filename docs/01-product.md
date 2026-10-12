@@ -1,6 +1,6 @@
 # 01 · Product requirements
 
-FloorTest is a private receiving desk for unreleased music. A receiver (DJ, curator, label) shares one link; artists (senders) upload original files to it; the receiver listens, decides and downloads what they'll play; the sender sees what happened to their track.
+FloorTest is a private receiving desk for new music: exclusives and works in progress that DJs test on the floor, and released tracks too. A receiver (DJ, curator, label) shares one link; artists (senders) upload original files to it; the receiver listens, decides and downloads what they'll play; the sender sees what happened to their track.
 
 Keep this file true to what is live. Any change to a feature updates its row here in the same commit (see `CLAUDE.md` → Docs).
 

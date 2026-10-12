@@ -1,6 +1,6 @@
 # FloorTest
 
-The receiving desk for unreleased music. A receiver (DJ, curator, label, radio) shares one permanent link; senders upload original WAV or MP3 files to it; the receiver listens, keeps or passes, and downloads what they'll play, ready for Rekordbox; the sender follows a private receipt that says what actually happened. Solo, or as a team on one desk.
+The receiving desk for new music: exclusives and works in progress for DJs to test on the floor, released tracks too. A receiver (DJ, curator, label, radio) shares one permanent link; senders upload original WAV or MP3 files to it; the receiver listens, keeps or passes, and downloads what they'll play, ready for Rekordbox; the sender follows a private receipt that says what actually happened. Solo, or as a team on one desk.
 
 Live at https://floortest.app (private beta, invite only).
 

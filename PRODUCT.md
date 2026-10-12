@@ -23,7 +23,7 @@ Other people who touch the product: share-link recipients (named listeners on a 
 
 ## Product Purpose
 
-FloorTest is the receiving desk for unreleased music. A receiver shares one permanent link; senders upload original files (WAV or MP3) to it; the receiver listens, keeps or passes, and downloads what they'll play, ready for Rekordbox; the sender follows a private receipt that says what actually happened.
+FloorTest is the receiving desk for new music: exclusives and works in progress first (what a DJ tests on the floor, hence the name), released tracks welcome too. A receiver shares one permanent link; senders upload original files (WAV or MP3) to it; the receiver listens, keeps or passes, and downloads what they'll play, ready for Rekordbox; the sender follows a private receipt that says what actually happened.
 
 Success: receivers clear their queue faster and find the tracks they play out; senders trust the receipt; teams review together without losing control.
 
@@ -50,7 +50,7 @@ Success: receivers clear their queue faster and find the tracks they play out; s
 
 ## Brand Commitments
 
-- Name: **FloorTest**. Category line: *The receiving desk for unreleased music.* Promise: *From private tracks to the DJ set.*
+- Name: **FloorTest**: where new music gets tested on the floor. Category line: *The receiving desk for new music.* Promise (home headline): *From the studio / to the floor.* (decided 12 Oct 2026; replaces "for unreleased music" and "From private tracks to the DJ set", since released tracks arrive too and the core use is exclusives and works in progress tested on the dancefloor). **Played out** (the DJ played it in a set) is the payoff signal for senders.
 - Voice (binding, `docs/brand-voice.md`): booth-level plain, honest about signals, calm not hype (no exclamation marks, no "revolutionise"), on both sides of the desk (respect the sender, never mock demos).
 - Operator: FloorTest Labs, being registered in Ghana; legal pages are drafts until the lawyer signs off.
 

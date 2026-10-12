@@ -13,7 +13,7 @@ Ready to paste once the developer accounts exist. Items marked **(confirm)** nee
 - **Price:** Free. Paid plans in the app via Apple In-App Purchase / Google Play Billing only (see docs/06-plan.md, Payments).
 
 ## Description
-FloorTest is the receiving desk for unreleased music.
+FloorTest is the receiving desk for new music.
 
 Share one link. Producers, labels and artists send their tracks to it: WAV or MP3, with the details you ask for. Everything lands in one Review Queue instead of your inbox, DMs and download links.
 

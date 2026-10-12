@@ -53,9 +53,9 @@ export const SITE_PAGES = {
     path: "/",
     fields: {
       sections: f("Section order", SECTION_IDS.join(","), { hint: "Easiest to change on the page itself (Edit on the page). A \"-\" in front hides a section." }),
-      eyebrow: f("Line above the headline", "The receiving desk for unreleased music"),
-      headline: f("Headline", "From private tracks"),
-      headline_italic: f("Headline, second line (italic)", "to the DJ set."),
+      eyebrow: f("Line above the headline", "The receiving desk for new music"),
+      headline: f("Headline", "From the studio"),
+      headline_italic: f("Headline, second line (italic)", "to the floor."),
       intro: text("Intro", "One receiving link for every track you're sent. Hear what's new in seconds, keep what's right for your set, and answer every sender without a single DM."),
       preview_image: f("Product preview image", "", { kind: "image", hint: "Replaces the clickable product preview below the receipts section. Leave empty to keep the clickable preview." }),
       preview_alt: f("Product preview image: description", "The FloorTest review queue", { hint: "Read aloud by screen readers." }),

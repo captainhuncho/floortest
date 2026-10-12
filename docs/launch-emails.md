@@ -8,7 +8,7 @@ All drafts follow [brand-voice.md](brand-voice.md). Replace {braces}. Nothing he
 
 > Hey {first name},
 >
-> I'm building FloorTest, a receiving desk for unreleased music. You share one link, artists upload the original WAV or MP3 (no account), and you work through them with play → Keep / Not for me → next. Kept tracks export as a Rekordbox crate.
+> I'm building FloorTest, a receiving desk for new music: exclusives and works in progress you can test on the floor. You share one link, artists upload the original WAV or MP3 (no account), and you work through them with play → Keep / Not for me → next. Kept tracks export as a Rekordbox crate.
 >
 > Senders get told when you've listened, downloaded or replied, so the "did you hear my track?" DMs stop.
 >
@@ -55,7 +55,7 @@ All drafts follow [brand-voice.md](brand-voice.md). Replace {braces}. Nothing he
 
 **Launch (Instagram / X / Threads):**
 > Every track in one place. Ready to play.
-> FloorTest is a receiving desk for unreleased music. One link, original files, and artists hear when you've listened.
+> FloorTest is a receiving desk for new music. One link, original files, and artists hear when you've listened.
 > Private beta now. Invite codes for DJs running callouts: link in bio.
 
 **Sender angle:**
