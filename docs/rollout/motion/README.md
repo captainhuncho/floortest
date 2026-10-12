@@ -15,4 +15,4 @@ Built from the product's own UI with sample data, in code. No AI video.
 - One lime per loop: the new-track dot, the Listened dot, the Keep button.
 - MP4 (for Instagram and WhatsApp) needs ffmpeg, which isn't installed here: `ffmpeg -ss 0.1 -i m3-keep.webm -c:v libx264 -pix_fmt yuv420p -movflags +faststart m3-keep.mp4`.
 - Fonts: JetBrains Mono under the SIL Open Font License (`fonts/JetBrainsMono-OFL.txt`).
-- To re-record after an edit: open the `.html` files in a browser to check, then record each cycle with Playwright (`recordVideo`, 540 × 675 at 2×).
+- To re-record after an edit: open the `.html` files in a browser to check, then record each cycle with Playwright (`recordVideo`): social at a 1080 × 1350 viewport with `html { zoom: 2 }` added after load, site at 540 × 675.
