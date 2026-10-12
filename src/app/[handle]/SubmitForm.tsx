@@ -7,12 +7,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Waveform } from "@/components/Waveform";
 import { fmtBytes, fmtTime } from "@/lib/format";
-import { MIX_STATUS } from "@/lib/plans";
 import { EmailCode, startEmailCheck } from "./EmailCode";
 import { GenrePicker } from "./GenrePicker";
 import { SetsPermission } from "./SetsPermission";
 import { TransferScreen } from "./TransferScreen";
 import { MAX_FILES, useTrackUpload, type Item } from "./useTrackUpload";
+import { AI_CHOICES, AI_HELP, Choice, MIX_CHOICES, RELEASE_CHOICES } from "./Choice";
 
 /** Things that arrive on the page (a chosen track, a step, the result) settle in from just below. Reduced motion keeps only the fade. */
 const ENTER = "starting:opacity-0 motion-safe:starting:translate-y-1 transition-[opacity,translate] duration-200 ease-[var(--ease-out)]";
@@ -440,8 +440,8 @@ export function SubmitForm({
           <h2 id="about-h" className="eyebrow">About {many ? "these tracks" : "this track"}</h2>
           <GenrePicker id="genre" genres={genres} value={genre} onChange={(g) => (clear("genre"), setGenre(g))} inputClass="input" labelClass={LABEL} invalid={!!issueFor("genre")} issue={problem("genre")} />
           <input type="hidden" name="genre" value={genre} />
-          <Choice id="mix_status" name="mix_status" label="Mix status" value={mix} onChange={(v) => (clear("mix_status"), setMix(v))} issue={problem("mix_status")} options={Object.entries(MIX_STATUS).map(([k, v]) => [k, v.replace(" & ", " and ")])} />
-          <Choice id="release_status" name="release_status" label="Release status" value={release} onChange={(v) => (clear("release_status"), setRelease(v))} issue={problem("release_status")} options={[["unsigned", "Unreleased"], ["signed", "Signed, forthcoming"], ["released", "Already released"]]} />
+          <Choice id="mix_status" name="mix_status" label="Mix status" value={mix} onChange={(v) => (clear("mix_status"), setMix(v))} issue={problem("mix_status")} options={MIX_CHOICES} />
+          <Choice id="release_status" name="release_status" label="Release status" value={release} onChange={(v) => (clear("release_status"), setRelease(v))} issue={problem("release_status")} options={RELEASE_CHOICES} />
           <Choice
             id="ai_use"
             name="ai_use"
@@ -449,8 +449,8 @@ export function SubmitForm({
             value={ai}
             onChange={(v) => (clear("ai_use"), setAi(v))}
             issue={problem("ai_use")}
-            options={[["none", "No"], ["partial", "Partly"], ["full", "Fully AI-generated"]]}
-            help="Partly means AI vocals, stems or mastering."
+            options={AI_CHOICES}
+            help={AI_HELP}
           />
 
           {/* Optional extras stay out of the way until asked for. */}
@@ -529,54 +529,5 @@ export function SubmitForm({
         </div>
       </form>
     </>
-  );
-}
-
-/** A required either/or answer as a row of tappable choices (radio buttons underneath, so keyboards and FormData just work). */
-function Choice({
-  id,
-  name,
-  label,
-  options,
-  value,
-  onChange,
-  issue,
-  help,
-}: {
-  id: string;
-  name: string;
-  label: string;
-  options: [string, string][];
-  value: string;
-  onChange: (v: string) => void;
-  issue: React.ReactNode;
-  help?: string;
-}) {
-  return (
-    <fieldset className="flex flex-col gap-1.5" aria-describedby={issue ? `${id}-issue` : help ? `${id}-help` : undefined}>
-      <legend className={`mb-1.5 ${LABEL}`}>
-        {label}
-        <Req />
-      </legend>
-      <div className="flex flex-wrap gap-1.5">
-        {options.map(([v, text], i) => (
-          <label
-            key={v}
-            className={`tap-tall inline-flex cursor-pointer items-center rounded-full border px-3.5 py-2 text-[13px] font-semibold transition-colors duration-150 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-lime ${
-              value === v ? "border-bone bg-bone text-ink" : `bg-ink-2 text-bone hover:border-line-2 ${issue ? "border-danger/60" : "border-line"}`
-            }`}
-          >
-            <input id={i === 0 ? id : undefined} type="radio" name={name} value={v} checked={value === v} onChange={() => onChange(v)} className="sr-only" />
-            {text}
-          </label>
-        ))}
-      </div>
-      {issue}
-      {help && !issue && (
-        <p id={`${id}-help`} className={HELP}>
-          {help}
-        </p>
-      )}
-    </fieldset>
   );
 }

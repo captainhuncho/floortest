@@ -7,7 +7,7 @@ import { toPlayer } from "@/lib/player-track";
 
 type Item = { id: number; title: string; artist: string; sender: string; genre: string; duration: number | null; peaks: number[] | null; played: boolean };
 
-/** The oldest tracks still waiting for a decision, playable in place (Figma "Up Next Card" track rows). */
+/** The newest tracks still waiting for a decision, playable in place (Figma "Up Next Card" track rows). */
 export function UpNext({ items }: { items: Item[] }) {
   const { current, playing, play } = usePlayer();
   const queue = items.map(toPlayer);

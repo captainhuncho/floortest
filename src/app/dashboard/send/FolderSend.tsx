@@ -4,7 +4,7 @@ import { Req } from "@/components/Req";
 import { useRef, useState } from "react";
 import { analyzeAudio } from "@/lib/analyze";
 import { fmtBytes } from "@/lib/format";
-import { MAX_RELEASE_TRACKS, MIX_STATUS } from "@/lib/plans";
+import { MAX_RELEASE_TRACKS } from "@/lib/plans";
 import { readTags, type Tags } from "@/lib/tags";
 import { Turnstile } from "@/components/Turnstile";
 import { CANCELLED, MAX_BYTES, sendArtwork, uploadTrack } from "../../[handle]/useTrackUpload";
@@ -12,6 +12,7 @@ import { TransferScreen } from "../../[handle]/TransferScreen";
 import { EmailCode, startEmailCheck } from "../../[handle]/EmailCode";
 import { SetsPermission } from "../../[handle]/SetsPermission";
 import { GenrePicker } from "../../[handle]/GenrePicker";
+import { AI_CHOICES, AI_HELP, Choice, MIX_CHOICES, RELEASE_CHOICES } from "../../[handle]/Choice";
 
 type Item = { file: File; tags: Tags; state: "waiting" | "sending" | "sent" | "failed"; progress: number; error?: string; genre?: string };
 type Kind = "ep" | "album";
@@ -403,46 +404,12 @@ export function FolderSend({
               <p className="text-xs text-mute">Choose a genre on each track above.</p>
             )}
           </fieldset>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block space-y-1.5">
-              <span className="label">Mix status<Req /></span>
-              <select value={mix} onChange={(e) => setMix(e.target.value)} disabled={running} required className="input">
-                <option value="" disabled>
-                  Choose one
-                </option>
-                {Object.entries(MIX_STATUS).map(([k, v]) => (
-                  <option key={k} value={k}>
-                    {v}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block space-y-1.5">
-              <span className="label">Release status<Req /></span>
-              <select value={releaseStatus} onChange={(e) => setReleaseStatus(e.target.value)} disabled={running} required className="input">
-                <option value="" disabled>
-                  Choose one
-                </option>
-                <option value="unsigned">Unreleased</option>
-                <option value="signed">Signed, forthcoming</option>
-                <option value="released">Already released</option>
-              </select>
-            </label>
-          </div>
+          <Choice id="folder-mix" name="folder_mix" label="Mix status" value={mix} onChange={setMix} options={MIX_CHOICES} disabled={running} />
+          <Choice id="folder-release" name="folder_release" label="Release status" value={releaseStatus} onChange={setReleaseStatus} options={RELEASE_CHOICES} disabled={running} />
+          <Choice id="folder-ai" name="folder_ai" label="Made with AI?" value={aiUse} onChange={setAiUse} options={AI_CHOICES} help={AI_HELP} disabled={running} />
           <label className="block space-y-1.5">
             <span className="label">Message (optional, sent with the release)</span>
             <textarea value={message} onChange={(e) => setMessage(e.target.value)} disabled={running} rows={3} maxLength={2000} className="input resize-y" />
-          </label>
-          <label className="block space-y-1.5">
-            <span className="label">Did you use AI to make these tracks?<Req /></span>
-            <select value={aiUse} onChange={(e) => setAiUse(e.target.value)} disabled={running} required className="input">
-              <option value="" disabled>
-                Choose one
-              </option>
-              <option value="none">No</option>
-              <option value="partial">Partly (e.g. AI vocals, stems or mastering)</option>
-              <option value="full">Fully AI-generated</option>
-            </select>
           </label>
           {trackArt && (
             <label className="block space-y-1.5">

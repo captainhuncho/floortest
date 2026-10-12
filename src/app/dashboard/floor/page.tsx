@@ -23,7 +23,7 @@ export const metadata = { title: "The Floor — FloorTest" };
 export default async function TheFloor({ searchParams }: { searchParams: Promise<{ welcome?: string }> }) {
   const user = await requireUser();
   // Everything below is independent, so it all goes to the database at once.
-  const [, sp, prefs, collections, active, cap, upNextRows, recentSends] = await Promise.all([
+  const [, sp, prefs, collections, active, cap, upNextRows, recentSends, oldestRow] = await Promise.all([
     trackUse(user.id, "floor"),
     searchParams,
     prefsForView(user.id),
@@ -32,7 +32,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
     capacityForView(user.id, user.plan),
     q.all<{ id: number; title: string; artist: string; genre: string; duration: number | null; peaks: string | null; played_at: number | null; created_at: number; sender: string }>(`SELECT t.id, t.title, t.artist, t.genre, t.duration, t.peaks, t.played_at, t.created_at, s.name AS sender FROM tracks t
          JOIN senders s ON s.id = t.sender_id WHERE t.user_id = ? AND t.deleted_at IS NULL AND t.decision IS NULL
-         ORDER BY t.created_at LIMIT 6`, user.id),
+         ORDER BY t.created_at DESC, t.id DESC LIMIT 6`, user.id),
     // FloorTest users you've sent music to from your account, most recent first.
     q.all<{ handle: string; name: string }>(
       `SELECT u.handle, u.name FROM senders s JOIN users u ON u.id = s.user_id
@@ -40,6 +40,8 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
        GROUP BY u.id, u.handle, u.name ORDER BY MAX(s.created_at) DESC LIMIT 6`,
       user.id,
     ),
+    // When the longest-waiting track arrived ("the oldest arrived 3 days ago"); Up next itself shows the newest.
+    q.get<{ at: number | null }>("SELECT MIN(created_at) AS at FROM tracks WHERE user_id = ? AND deleted_at IS NULL AND decision IS NULL", user.id),
   ]);
   const welcome = !!sp.welcome;
   const stats = await homeStats(user.id, prefs.tz);
@@ -47,7 +49,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   const link = `${APP_URL}/${user.handle}`;
   const upNext = upNextRows.map((t) => ({ ...t, peaks: t.peaks ? JSON.parse(t.peaks) : null, played: !!t.played_at }));
   const kept = collections.reduce((n, c) => n + c.kept, 0);
-  const oldest = upNextRows[0]?.created_at;
+  const oldest = oldestRow?.at ? Number(oldestRow.at) : undefined;
   // A desk that has never had a track: sharing the link is the first job, so the link comes first.
   const fresh = welcome || (!stats.waiting && !kept && stats.receivedWeek + stats.receivedPrev === 0 && !stats.listenedSample);
   // First visit only: a greeting by first name; the public name can be a stage name or just the username.
