@@ -147,8 +147,65 @@ export function TwoSides() {
   );
 }
 
+/** The small product pictures, one per line of the log. Bone only: the log's one light is Played out. */
+const Lock = () => (
+  <svg viewBox="0 0 16 16" className="size-3.5 text-bone" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+    <rect x="3" y="7" width="10" height="7" rx="1.5" />
+    <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" />
+  </svg>
+);
+const ART: React.ReactNode[] = [
+  <dl key="brief" className="tnum flex gap-1.5 text-[10px]">
+    {[["BPM", "120–124"], ["Genre", "Afro house"], ["Closes", "Fri"]].map(([k, v]) => (
+      <div key={k} className="rounded-md border border-line px-2 py-1.5">
+        <dt className="text-[8px] uppercase tracking-[0.12em] text-faint">{k}</dt>
+        <dd className="mt-0.5 text-bone">{v}</dd>
+      </div>
+    ))}
+  </dl>,
+  <p key="lands" className="stage-land flex max-w-64 items-center justify-between rounded-md border border-line-2 bg-ink-3 px-2.5 py-2 text-[11px]">
+    <span className="truncate text-bone">Nightbus (demo)</span>
+    <span className="text-[9px] uppercase tracking-[0.12em] text-faint">Up next</span>
+  </p>,
+  <div key="heard" className="max-w-64">
+    <div className="relative h-1 rounded-full bg-line">
+      <span className="stage-progress absolute inset-y-0 left-0 rounded-full bg-bone" />
+      <span className="absolute -top-1 left-[40%] h-3 w-px bg-mute" />
+    </div>
+    <p className="tnum mt-2 flex justify-between text-[10px] text-faint">
+      <span>0:00</span>
+      <span className="text-bone">0:30</span>
+      <span>6:12</span>
+    </p>
+  </div>,
+  <div key="keep" className="flex items-center gap-2.5">
+    <span className="flex items-center gap-2 rounded-md border border-line-2 px-2.5 py-1.5 text-[10px] font-bold uppercase text-bone">
+      Keep <Lock />
+    </span>
+    <span className="flex -space-x-1.5">
+      {["SD", "AK", "TO"].map((n) => (
+        <span key={n} className="grid size-6 place-items-center rounded-full border-2 border-ink bg-ink-4 text-[8px] font-bold text-bone">{n}</span>
+      ))}
+    </span>
+    <span className="whitespace-nowrap text-[10px] text-faint">★ Shortlisted</span>
+  </div>,
+  <div key="crate" className="flex items-end gap-2 pt-3">
+    {[0, 1, 2, 3].map((i) => (
+      <span key={i} className="stage-usb">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/brand/crest.svg" alt="" className="w-3 opacity-60 grayscale" />
+      </span>
+    ))}
+  </div>,
+  <ol key="out" className="flex items-center gap-2">
+    {SIGNALS.map((s, i) => (
+      <li key={s} className={`size-2 rounded-full ${i === 4 ? "bg-lime" : "bg-bone"}`} title={s} />
+    ))}
+  </ol>,
+];
+
 const LOG: [string, string, string, string | null][] = [
-  ["Tue 18:00", "Callout open", "120–124 BPM · Afro house · closes Fri", "Reads your brief"],
+  ["Tue 18:00", "Callout open", "Your brief, before anyone sends", "Reads your brief"],
   ["Wed 21:40", "Lands in Up next", "Sent from a studio in Lagos", "Delivered"],
   ["Thu 00:12", "30 seconds in", "Real playback, nothing less", "Listened"],
   ["Thu 00:13", "Keep", "Your crew stars it for Saturday", null],
@@ -166,20 +223,24 @@ export function SetLog() {
           <span className="tnum truncate text-mute">Nightbus (demo) · Sample Artist · 122 BPM</span>
           <Sample />
         </p>
-        <div className="hidden grid-cols-[7rem_minmax(0,1fr)_14rem] gap-6 border-y border-line py-2 text-[10px] uppercase tracking-[0.12em] text-faint sm:grid">
+        <div className="hidden grid-cols-[7rem_minmax(0,1fr)_14rem] gap-6 border-y border-line py-2 text-[10px] uppercase tracking-[0.12em] text-faint sm:grid lg:grid-cols-[7rem_minmax(0,1fr)_18rem_12rem]">
           <span>Time</span>
           <span>Your desk</span>
+          <span className="hidden lg:block" />
           <span>The sender sees</span>
         </div>
         <ol>
           {LOG.map(([time, what, detail, sender], i) => (
-            <li key={time} className="stage-log grid grid-cols-[5.5rem_minmax(0,1fr)] gap-x-4 gap-y-2 border-b border-line py-5 sm:grid-cols-[7rem_minmax(0,1fr)_14rem] sm:gap-6">
-              <span className="tnum pt-0.5 text-xs text-faint">{time}</span>
-              <span className="min-w-0">
+            <li key={time} className="stage-log grid grid-cols-[5.5rem_minmax(0,1fr)] items-center gap-x-4 gap-y-3 border-b border-line py-5 sm:grid-cols-[7rem_minmax(0,1fr)_14rem] sm:gap-6 lg:grid-cols-[7rem_minmax(0,1fr)_18rem_12rem]">
+              <span className="tnum col-start-1 row-start-1 self-start pt-0.5 text-xs text-faint">{time}</span>
+              <span className="col-start-2 row-start-1 min-w-0 self-start">
                 <span className="block text-base font-bold text-bone">{what}</span>
                 <span className="mt-1 block text-xs text-mute">{detail}</span>
               </span>
-              <span className={`col-start-2 text-xs sm:col-start-auto sm:pt-1 ${sender ? (i === LOG.length - 1 ? "text-lime" : "text-bone") : "text-faint"}`}>
+              <span aria-hidden className="col-start-2 row-start-2 min-w-0 lg:col-start-3 lg:row-start-1">
+                {ART[i]}
+              </span>
+              <span className={`col-start-2 row-start-3 text-xs sm:col-start-3 sm:row-start-1 sm:self-start sm:pt-1 lg:col-start-4 lg:self-center lg:pt-0 ${sender ? (i === LOG.length - 1 ? "text-lime" : "text-bone") : "text-faint"}`}>
                 <span className="mr-2 text-faint sm:hidden">Sender:</span>
                 {sender ?? "Nothing. Your call stays private."}
               </span>
