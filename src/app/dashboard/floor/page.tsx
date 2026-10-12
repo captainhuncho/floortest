@@ -13,6 +13,8 @@ import { SwitchCollection } from "./SwitchCollection";
 import { CopyLinkBox } from "./CopyLinkBox";
 import { SendMusicCard } from "./SendMusicCard";
 import { UpNext } from "./UpNext";
+import { PlayedOutCard } from "./PlayedOutCard";
+import { playedOutPrompt } from "@/lib/played-out-prompt";
 
 export const metadata = { title: "The Floor — FloorTest" };
 
@@ -48,6 +50,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   ]);
   const welcome = !!sp.welcome;
   const stats = await homeStats(user.id, prefs.tz);
+  const weekend = await playedOutPrompt({ ...user, tz: prefs.tz });
   const paused = isPaused(user);
   const link = `${APP_URL}/${user.handle}`;
   const upNext = upNextRows.map((t) => ({ ...t, peaks: t.peaks ? JSON.parse(t.peaks) : null, played: !!t.played_at }));
@@ -157,6 +160,8 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
           {problem.action}
         </div>
       )}
+
+      {weekend && <PlayedOutCard titles={weekend.tracks.map((t) => t.title)} />}
 
       {upNext.length > 0 && (
         <section aria-labelledby="next-h" className="flex flex-col gap-3">

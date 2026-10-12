@@ -69,6 +69,9 @@ Decided: a colleague is a **seat on an account** (label, radio, crew), not someo
 
 **Support process:** the owner answers support@floortest.app: takedowns and impersonation within 2 working days, everything else within 5.
 
+## Team decisions queued
+- **Should "evaluation only" exist at all?** (raised by the owner, 12 Oct) Sending to a DJ means you want it played: that's the point of FloorTest. Today the send form asks for DJ-set permission (`tracks.sets_ok`), the review panel shows "Evaluation only: ask before playing it out", and the Monday Played out prompt leaves those tracks out. For the full panel (DJ/A&R, label owner, sender/producer, privacy & legal, copy): drop the question so sending means "you may play it"; keep it only for works in progress ("not finished, don't play yet"); or keep it as is. Touches the send form, Terms and content rules (lawyer), receipts, the Monday prompt and existing tracks.
+
 ## After launch
 - Collection sharing switch-on (switch `sharing`, after the lawyer's wording; see Controlled collection sharing).
 - Stems as a paid feature.
@@ -95,6 +98,7 @@ Open items from `HANDOFF.md`, `CLAUDE_NEXT_WORK.md` and `docs/beta-launch-plan.m
 - Revisit Cloudflare Workers hosting only at tens of thousands of users (trial findings in `docs/beta-launch-plan.md`).
 
 ## Done (recent)
+- 12 Oct (preview, not shipped): the team's four picks from the overnight design review: one decision rail on phone and desktop (Keep the only lime, Not for me never red, room kept so nothing jumps); the receipt lights only the newest signal; Collections says where the link sends tracks and offers the fix when it's closed; the Monday "Did any of these get played?" prompt on DJ desks with a pick page (migration 0088, test in `tests/played-out-prompt.test.ts`). The Tuesday reminder email is next.
 - 12 Oct: positioning: category line "The receiving desk for new music", home headline "From the studio / to the floor." (released tracks arrive too; the core is exclusives and works in progress tested on the floor, hence the name); Played out is the payoff signal for senders (brand voice updated). Legal pages left for the lawyer.
 - 12 Oct (night, not shipped): team review of the night's work (DJ/A&R, label owner, sender, designer, engineer, ops, privacy): caption says "track" not "WAV"; the 5-day line in bone, not a second lime; scanner outages keep the sender's file and retry; scanner health in the uptime monitor; vault in the restore drill; the scanner's host flagged as a subprocessor decision.
 - 12 Oct: Floor "Your desk" line (team review: DJ/A&R, label owner, designer, engineer): approvals waiting, seats, active tracks of the limit, collections, contacts, each a link; lime only when it needs you. Lifetime "Decided" stays on Account. e2e in `teams.spec.ts`.

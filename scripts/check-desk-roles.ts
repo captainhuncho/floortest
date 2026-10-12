@@ -22,7 +22,7 @@ const ROLES: Record<string, Record<string, Need>> = {
   "desk.ts": { sendFeedback: "member", dismissOnboarding: "admin", lookupReceiver: "member", clearNotifications: "member", markNotificationsRead: "member", quickSearch: "member", pauseLink: "admin", resumeLink: "admin" },
   "links.ts": { createShareLink: "admin", resetShareLink: "admin", revokeShareLink: "admin", addLinkRecipients: "admin", removeLinkRecipient: "admin", answerLinkRequest: "admin", setLinkRequests: "admin" },
   "review.ts": {
-    decideTrack: "member", clearDecision: "member", undoDecision: "member", moveTrack: "member", deleteTrack: "admin", clearKept: "admin", playedOut: "member",
+    decideTrack: "member", clearDecision: "member", undoDecision: "member", moveTrack: "member", deleteTrack: "admin", clearKept: "admin", playedOut: "member", playedOutBatch: "admin", skipPlayedOutPrompt: "admin",
     getReplyTemplates: "member", saveReplyTemplate: "member", deleteReplyTemplate: "member", addNote: "member", replyToSender: "member", askForStems: "member",
     savePrep: "member", blockSender: "admin", decideRelease: "member",
   },

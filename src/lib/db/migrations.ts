@@ -1488,4 +1488,12 @@ create table if not exists vault_copies (
 alter table vault_copies enable row level security;
 `,
   },
+  {
+    // The Monday "Did any of these get played?" prompt on DJ desks: the Monday (local date) it was last answered, so
+    // marking tracks or "None this weekend" closes it until the next week.
+    id: "0088_played_out_prompt",
+    sql: `
+alter table users add column if not exists played_out_prompt_week text;
+`,
+  },
 ];

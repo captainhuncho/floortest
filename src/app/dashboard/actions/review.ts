@@ -13,6 +13,7 @@ import { audit, trackLabel } from "@/lib/audit";
 import { requestStems } from "@/lib/stems";
 import { parseCues } from "@/lib/cues";
 import { done, ownCollection } from "./common";
+import { closePlayedOutPrompt, playedOutPrompt } from "@/lib/played-out-prompt";
 
 export type UndoToken = { trackId: number; prev: { decision: Decision | null; decided_at: number | null }; eventId: number };
 
@@ -92,6 +93,34 @@ export async function playedOut(trackId: number, note: string) {
   if (ok) await audit(u.id, "played_out", trackLabel(t), t.id);
   done();
   return ok;
+}
+
+/** The Monday prompt: tells each chosen sender their kept track was played out, then closes the prompt for the week. */
+export async function playedOutBatch(trackIds: number[], note: string) {
+  const u = await requireRole("admin");
+  const prompt = await playedOutPrompt(u);
+  if (!prompt) return 0;
+  const allowed = new Set(prompt.tracks.map((t) => t.id));
+  let marked = 0;
+  for (const id of trackIds.slice(0, 50)) {
+    if (!allowed.has(id)) continue;
+    const t = await ownedTrack(u.id, id);
+    if (!t || !(await markPlayedOut(u, t, String(note || "")))) continue;
+    await audit(u.id, "played_out", trackLabel(t), t.id);
+    marked++;
+  }
+  await closePlayedOutPrompt(u.id, prompt.key);
+  if (marked) await trackUse(u.id, "played_out");
+  done();
+  return marked;
+}
+
+/** "None this weekend": closes the Monday prompt without telling anyone anything. */
+export async function skipPlayedOutPrompt() {
+  const u = await requireRole("admin");
+  const prompt = await playedOutPrompt(u);
+  if (prompt) await closePlayedOutPrompt(u.id, prompt.key);
+  done();
 }
 
 const templatesOf = async (userId: number) => {
