@@ -4,6 +4,8 @@
  * (globals.css, "Home stage"); every element's resting style is its final frame, so reduced motion shows the still.
  */
 
+import { Loop } from "./Loop";
+
 const Sample = () => <span className="stage-sample">Sample</span>;
 
 /** A CDJ jog wheel from above: the platter turns, the crest stays still in the centre cap, one cue light. */
@@ -74,26 +76,7 @@ const QUEUE = [
 function PhoneQueue() {
   return (
     <div className="stage-rise absolute -bottom-8 -right-2 w-[46%] min-w-[168px] rounded-[1.6rem] border border-line-2 bg-ink p-2 shadow-pop sm:-right-6">
-      <div className="rounded-[1.2rem] border border-line bg-ink-2 px-3 pb-3 pt-4">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-mute">Review</span>
-          <span className="tnum text-[10px] text-faint">3 waiting</span>
-        </div>
-        <ul className="mt-3 space-y-1.5">
-          {QUEUE.map(([t, a, bpm], i) => (
-            <li key={t} className={`rounded-md border px-2 py-1.5 ${i ? "border-line" : "border-line-2 bg-ink-3"}`}>
-              <p className="truncate text-[10px] font-bold text-bone">{t}</p>
-              <p className="tnum truncate text-[9px] text-faint">{a} · {bpm}</p>
-              {!i && <Bars className="mt-1.5 h-3" />}
-            </li>
-          ))}
-        </ul>
-        <div className="mt-2.5 grid grid-cols-2 gap-1.5 text-center text-[9px] font-bold uppercase">
-          <span className="rounded border border-line-2 py-1.5 text-bone">Keep</span>
-          <span className="rounded border border-line py-1.5 text-mute">Not for me</span>
-        </div>
-        <p className="mt-2 text-right"><Sample /></p>
-      </div>
+      <Loop name="m3-keep" label="A track swiped right to Keep, then Kept in the Friday crate" className="rounded-[1.2rem] border border-line" />
     </div>
   );
 }
@@ -150,27 +133,9 @@ export function TwoSides() {
             <div className="mx-[-3%] h-3 rounded-b-xl border border-line-2 bg-ink-3" />
             <figcaption className="mt-4 text-xs text-faint">The DJ&apos;s desk</figcaption>
           </figure>
-          <figure className="stage-fill stage-fill-late mx-auto w-full max-w-[260px]">
-            <div className="rounded-[2rem] border border-line-2 bg-ink p-2.5">
-              <div className="rounded-[1.5rem] border border-line bg-ink-2 px-4 pb-5 pt-6">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-mute">Private receipt</span>
-                  <Sample />
-                </div>
-                <p className="mt-4 text-base font-bold leading-tight text-bone">Sample DJ listened.</p>
-                <p className="tnum mt-1 text-[11px] text-faint">10 Oct, 01:12</p>
-                <p className="mt-3 truncate text-[11px] text-mute">Nightbus (demo) · Sample Artist</p>
-                <ol className="mt-4 space-y-2.5 border-t border-line pt-4 text-[11px]">
-                  {SIGNALS.map((s, i) => (
-                    <li key={s} className={`flex items-center gap-2.5 ${i === 1 ? "stage-tick" : ""} ${i < 2 ? "text-bone" : "text-faint"}`}>
-                      <span className={`size-2 rounded-full ${i < 2 ? "bg-bone" : "border border-line-2"}`} />
-                      {s}
-                    </li>
-                  ))}
-                </ol>
-              </div>
-            </div>
-            <figcaption className="mt-4 text-center text-xs text-faint">The sender&apos;s phone</figcaption>
+          <figure className="stage-fill stage-fill-late mx-auto w-full max-w-[300px]">
+            <Loop name="m2-receipt-listened" label="The sender's receipt changes from waiting to Sample DJ listened" className="rounded-[1.6rem]" />
+            <figcaption className="mt-4 text-center text-xs text-faint">The sender&apos;s receipt</figcaption>
           </figure>
         </div>
       </div>
@@ -194,10 +159,7 @@ const ART: React.ReactNode[] = [
       </div>
     ))}
   </dl>,
-  <p key="lands" className="stage-land flex max-w-64 items-center justify-between rounded-md border border-line-2 bg-ink-3 px-2.5 py-2 text-[11px]">
-    <span className="truncate text-bone">Nightbus (demo)</span>
-    <span className="text-[9px] uppercase tracking-[0.12em] text-faint">Up next</span>
-  </p>,
+  <Loop key="lands" name="m1-track-lands" label="A new track lands at the top of Up next" className="max-w-64 rounded-md border border-line" videoClass="h-28 object-cover object-top" />,
   <div key="heard" className="max-w-64">
     <div className="relative h-1 rounded-full bg-line">
       <span className="stage-progress absolute inset-y-0 left-0 rounded-full bg-bone" />

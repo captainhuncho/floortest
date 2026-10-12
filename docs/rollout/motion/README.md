@@ -8,10 +8,11 @@ Built from the product's own UI with sample data, in code. No AI video.
 | M2 · The receipt ticks to Listened | 5 s | Home receipts / two sides of the desk; sender-facing posts | `m2-receipt-listened.html`, `.webm`, `-poster.png` |
 | M3 · Keep | 3 s | "Cued up like a deck"; the 10-second Keep clip in the story kit | `m3-keep.html`, `.webm`, `-poster.png` |
 
-- 4:5, 1080 × 1350, muted, each one exact cycle (plus about half a second of the first frame at the start). All under 400 KB.
+- Two sizes. **Social** (here): 4:5, 1080 × 1350, muted, 300–480 KB. **Site** (`public/motion/`): 540 × 675, 126–220 KB, under the 400 KB budget; the home page plays them only on screen, with a pause button.
+- Each is one exact cycle plus about half a second of its first frame. The very first frame is blank (the recorder starts before the page draws): the site skips it; when converting for social, trim it with `-ss 0.1`.
 - Posters are the reduced-motion still: the loop's story frame (the track landed, Listened lit, Kept).
 - On the site, use the `.html` versions' CSS (lighter and sharper than video) or the `.webm` with the poster; play only in view, with a pause control.
 - One lime per loop: the new-track dot, the Listened dot, the Keep button.
-- MP4 (for Instagram and WhatsApp) needs ffmpeg, which isn't installed here: `ffmpeg -i m3-keep.webm -c:v libx264 -pix_fmt yuv420p -movflags +faststart m3-keep.mp4`.
+- MP4 (for Instagram and WhatsApp) needs ffmpeg, which isn't installed here: `ffmpeg -ss 0.1 -i m3-keep.webm -c:v libx264 -pix_fmt yuv420p -movflags +faststart m3-keep.mp4`.
 - Fonts: JetBrains Mono under the SIL Open Font License (`fonts/JetBrainsMono-OFL.txt`).
 - To re-record after an edit: open the `.html` files in a browser to check, then record each cycle with Playwright (`recordVideo`, 540 × 675 at 2×).
