@@ -170,7 +170,7 @@ Booth Black and Bone carry almost everything; Cue Lime is the one light.
 
 **Display Font:** JetBrains Mono (variable), with monospace fallback
 **Body Font:** JetBrains Mono
-**Accent Font:** Instrument Serif italic, home page only
+**Accent Font:** Instrument Serif italic, home page only (the headline's second line and the blurred "send me music" booth neon)
 
 **Character:** One mono face reads like gear: panel markings, readouts, tabular numbers. Hierarchy comes from size, weight and spacing, not from a second family.
 

@@ -19,6 +19,7 @@ const text = (label: string, start: string, more: Partial<Field> = {}) => f(labe
 
 /** Home page sections that can be reordered or hidden (the header, hero and footer always stay put). */
 export const HOME_SECTIONS = {
+  desk: "Two sides of the desk",
   preview: "Product preview",
   how: "How it works",
   journey: "Receipts",
@@ -42,7 +43,8 @@ export function sectionOrder(s: string): { id: HomeSection; hidden: boolean }[] 
       out.push({ id, hidden });
     }
   }
-  for (const id of SECTION_IDS) if (!seen.has(id)) out.push({ id, hidden: false });
+  // A section added after the order was saved goes in at its default place, not at the end.
+  for (const id of SECTION_IDS) if (!seen.has(id)) out.splice(Math.min(SECTION_IDS.indexOf(id), out.length), 0, { id, hidden: false });
   return out;
 }
 export const orderString = (o: { id: HomeSection; hidden: boolean }[]) => o.map((x) => `${x.hidden ? "-" : ""}${x.id}`).join(",");
@@ -52,7 +54,7 @@ export const SITE_PAGES = {
     label: "Home",
     path: "/",
     fields: {
-      sections: f("Section order", SECTION_IDS.join(","), { hint: "Easiest to change on the page itself (Edit on the page). A \"-\" in front hides a section." }),
+      sections: f("Section order", "desk,journey,private,plans,waitlist,faq,-how,-preview", { hint: "Easiest to change on the page itself (Edit on the page). A \"-\" in front hides a section." }),
       eyebrow: f("Line above the headline", "The receiving desk for new music"),
       headline: f("Headline", "From the studio"),
       headline_italic: f("Headline, second line (italic)", "to the floor."),
