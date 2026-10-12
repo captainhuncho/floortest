@@ -50,7 +50,7 @@ export function WaitlistForm({ host, botCheckKey }: { host: string; botCheckKey:
       <input name="link" className={field} placeholder="Instagram, SoundCloud or site (optional)" aria-label="Link" maxLength={200} />
       <div className="flex flex-wrap items-center gap-4 sm:col-span-2">
         <SourceField />
-        <div className="sm:col-span-2"><Turnstile siteKey={botCheckKey} /></div>
+        <div className="sm:col-span-2"><Turnstile action="waitlist" siteKey={botCheckKey} /></div>
         <button className="rounded-md bg-lime px-6 py-3.5 text-sm font-medium uppercase text-ink hover:brightness-95" disabled={pending}>
           {pending ? "Sending…" : "Request an invite →"}
         </button>

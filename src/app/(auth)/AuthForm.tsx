@@ -241,8 +241,8 @@ export function AuthForm({
         </p>
       )}
       {captureSource && <SourceField />}
-      <Turnstile siteKey={botCheckKey ?? null} />
-      {state?.challenge && !botCheckKey && <Turnstile key="challenge" siteKey={challengeKey ?? null} eager />}
+      <Turnstile action="auth" siteKey={botCheckKey ?? null} />
+      {state?.challenge && !botCheckKey && <Turnstile action="auth" key="challenge" siteKey={challengeKey ?? null} eager />}
       <button className="btn-lime min-h-11 w-full text-[14px] font-bold" disabled={pending}>
         {pending ? "One moment…" : submit}
       </button>

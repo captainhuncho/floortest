@@ -94,7 +94,7 @@ Findings in vendored dependencies should identify the affected direct dependency
 
 - Structural WAV/MP3 validation is not malware scanning. During the controlled beta, private storage, strict accepted formats, size limits, server-side validation and limited access reduce exposure. This limitation does not excuse parser, storage or content-serving vulnerabilities.
 - Some disaster-recovery, production load, real-device accessibility and operational exercises remain launch work. Existing backups, deletion queues, incidents and smoke/stress tests are compensating controls, not proof that recovery is complete.
-- Turnstile may be feature-controlled. Email confirmation and database-backed rate limits remain mandatory even when the bot check is unavailable.
+- A Turnstile token counts only for the form it was solved for and only when solved on FloorTest's own addresses (never localhost in production). Turnstile may be feature-controlled. Email confirmation and database-backed rate limits remain mandatory even when the bot check is unavailable.
 - Product Terms, Privacy, upload licensing, international transfers, collection-sharing consent and account-team responsibilities require professional legal review before broad launch (brief: `docs/legal/sharing-brief-2026-10-11.md`).
 
 ## Change and verification requirements

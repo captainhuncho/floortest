@@ -485,7 +485,7 @@ export function SubmitForm({
 
         {errorBox}
 
-        {!account && <Turnstile siteKey={botCheckKey} />}
+        {!account && <Turnstile action="send" siteKey={botCheckKey} />}
         <div className="flex flex-col gap-3">
           {issues.length > 0 && (
             <div role="alert" className={`rounded-lg border border-danger/40 bg-danger/10 px-3.5 py-2.5 text-[13px] text-danger ${ENTER}`}>

@@ -66,8 +66,10 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/collection-art/
   if (!isPublic && viewer?.id !== c.user_id) return new Response("Not found", { status: 404 });
   const store = await storage();
   const type = TYPES[c.art_key.split(".").pop() as keyof typeof TYPES] ?? "application/octet-stream";
-  const signed = await store.signedGetUrl(c.art_key, { contentType: type, expiresIn: 86_400 });
-  if (signed) return new Response(null, { status: 302, headers: { Location: signed, "Cache-Control": "private, max-age=3600" } });
+  // Private artwork: an hour-long link, like the audio, so access that ends (a teammate removed) ends within the hour.
+  // The redirect is kept for 10 minutes, well inside the link's life.
+  const signed = await store.signedGetUrl(c.art_key, { contentType: type, expiresIn: 3600 });
+  if (signed) return new Response(null, { status: 302, headers: { Location: signed, "Cache-Control": "private, max-age=600" } });
   const head = await store.head(c.art_key);
   if (!head) return new Response("Not found", { status: 404 });
   const { body } = await store.stream(c.art_key);
