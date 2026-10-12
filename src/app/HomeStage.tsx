@@ -146,3 +146,47 @@ export function TwoSides() {
     </section>
   );
 }
+
+const LOG: [string, string, string, string | null][] = [
+  ["Tue 18:00", "Callout open", "120–124 BPM · Afro house · closes Fri", "Reads your brief"],
+  ["Wed 21:40", "Lands in Up next", "Sent from a studio in Lagos", "Delivered"],
+  ["Thu 00:12", "30 seconds in", "Real playback, nothing less", "Listened"],
+  ["Thu 00:13", "Keep", "Your crew stars it for Saturday", null],
+  ["Sat 19:30", "Into the crate", "Folder, M3U8 and Rekordbox XML", "Downloaded"],
+  ["Sun 01:12", "On the floor", "You tap Played out", "Played out"],
+];
+
+/** The features as one track's week, set out like a set log: what happens on the desk, and what crosses to the sender. */
+export function SetLog() {
+  return (
+    <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+      <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">Sent Wednesday. Played Sunday.</h2>
+      <div className="mt-10 border-t border-line">
+        <p className="flex items-center justify-between gap-4 py-4 text-xs">
+          <span className="tnum truncate text-mute">Nightbus (demo) · Sample Artist · 122 BPM</span>
+          <Sample />
+        </p>
+        <div className="hidden grid-cols-[7rem_minmax(0,1fr)_14rem] gap-6 border-y border-line py-2 text-[10px] uppercase tracking-[0.12em] text-faint sm:grid">
+          <span>Time</span>
+          <span>Your desk</span>
+          <span>The sender sees</span>
+        </div>
+        <ol>
+          {LOG.map(([time, what, detail, sender], i) => (
+            <li key={time} className="stage-log grid grid-cols-[5.5rem_minmax(0,1fr)] gap-x-4 gap-y-2 border-b border-line py-5 sm:grid-cols-[7rem_minmax(0,1fr)_14rem] sm:gap-6">
+              <span className="tnum pt-0.5 text-xs text-faint">{time}</span>
+              <span className="min-w-0">
+                <span className="block text-base font-bold text-bone">{what}</span>
+                <span className="mt-1 block text-xs text-mute">{detail}</span>
+              </span>
+              <span className={`col-start-2 text-xs sm:col-start-auto sm:pt-1 ${sender ? (i === LOG.length - 1 ? "text-lime" : "text-bone") : "text-faint"}`}>
+                <span className="mr-2 text-faint sm:hidden">Sender:</span>
+                {sender ?? "Nothing. Your call stays private."}
+              </span>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
+  );
+}

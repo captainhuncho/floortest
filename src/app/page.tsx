@@ -10,7 +10,7 @@ import { siteEditor } from "@/lib/site-editor";
 import { SectionFrame, SectionList, SiteEditor } from "@/components/SiteEditor";
 import { mono, serif } from "./fonts";
 import { HomePreview } from "./HomePreview";
-import { JogWheel, TwoSides } from "./HomeStage";
+import { JogWheel, SetLog, TwoSides } from "./HomeStage";
 import { ClaimBox } from "./ClaimBox";
 import { WaitlistForm } from "./WaitlistForm";
 import { NewsletterForm } from "./NewsletterForm";
@@ -56,6 +56,7 @@ export default async function Home({
       : { href: "/signup", label: "Claim your link" };
 
   const SECTIONS: Record<HomeSection, React.ReactNode> = {
+    log: <SetLog />,
     desk: <TwoSides />,
     preview: (
       <section data-edit-image={editor ? "preview_image" : undefined} className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
