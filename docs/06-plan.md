@@ -1,6 +1,6 @@
 # 06 · Implementation plan
 
-**The one to-do list.** What gets built, in what order. Older lists (`CLAUDE_NEXT_WORK.md`, `HANDOFF.md`, `docs/beta-launch-plan.md` checklists) are history; new work goes here. Ship something → tick it and move it to Done in the same commit.
+**The one to-do list.** What gets built, in what order. Older lists (`docs/archive/CLAUDE_NEXT_WORK.md`, `docs/archive/HANDOFF.md`, `docs/beta-launch-plan.md` checklists) are history; new work goes here. Ship something → tick it and move it to Done in the same commit.
 
 ## Now: beta (invite-only, site gated)
 Core product is live: sending, review, collections, Prepare/downloads, plans by request, Google sign-in, ops with roles. Remaining beta work:
@@ -78,7 +78,7 @@ Decided: a colleague is a **seat on an account** (label, radio, crew), not someo
 - Rekordbox how-to video, footer legal placement, mobile footer redesign.
 
 ## Carried over from the old lists (checked against the code 11 Oct)
-Open items from `HANDOFF.md`, `CLAUDE_NEXT_WORK.md` and `docs/beta-launch-plan.md` that weren't in this plan. Everything else in those lists is built or superseded.
+Open items from `docs/archive/HANDOFF.md`, `docs/archive/CLAUDE_NEXT_WORK.md` and `docs/beta-launch-plan.md` that weren't in this plan. Everything else in those lists is built or superseded.
 
 **Safety and operations (before public launch):**
 - Recovery copy of audio: R2 versioning or replication, so a bad delete or leaked key can be undone (`docs/operations.md` lists it as a gap). Set it up on `floortest-audio-eu` after the move.
@@ -141,8 +141,8 @@ Open items from `HANDOFF.md`, `CLAUDE_NEXT_WORK.md` and `docs/beta-launch-plan.m
 
 ## Before 9 Oct
 This plan started on 9 Oct. Earlier work and decisions are in the archived lists (kept unchanged, history only):
-- `HANDOFF.md`: where things stood on 27 Sep, the sender-notification decision (2 Oct), the Codex reviews and audits of 1 Oct and Claude's fixes (backup before purge, the deletion queue, private receiver links, encrypted backups, alerts).
-- `CLAUDE_NEXT_WORK.md`: the 27 Sep queue: preview safety, copy and workflow rules, the ranked product additions, the admin specification and what not to build.
-- `CODEX_HANDOFF.md`: the 27 Sep compatibility and data-repair patch.
+- `docs/archive/HANDOFF.md`: where things stood on 27 Sep, the sender-notification decision (2 Oct), the Codex reviews and audits of 1 Oct and Claude's fixes (backup before purge, the deletion queue, private receiver links, encrypted backups, alerts).
+- `docs/archive/CLAUDE_NEXT_WORK.md`: the 27 Sep queue: preview safety, copy and workflow rules, the ranked product additions, the admin specification and what not to build.
+- `docs/archive/CODEX_HANDOFF.md`: the 27 Sep compatibility and data-repair patch.
 - `docs/beta-launch-plan.md`: beta phases, pitch prep, the 6 Oct hosting decision and parked revenue ideas.
 - Day by day: `git log --before=2026-10-09`.

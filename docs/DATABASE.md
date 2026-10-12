@@ -49,7 +49,7 @@ Inspect the current migration file before relying on a field name; this guide de
 - A migration must tolerate the deployment model and advisory-lock strategy already used by FloorTest.
 - Test against a clean local database and a realistic upgraded database.
 - Run `npm run db:migrate` explicitly for verification even though first-request migration support exists.
-- Record the migration result and deployment commit in `HANDOFF.md` for production releases.
+- Record the migration in the commit message and the shipped item under Done in `docs/06-plan.md`.
 
 ## Time, state and identifiers
 
