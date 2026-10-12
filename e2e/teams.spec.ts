@@ -37,6 +37,8 @@ test("a member switches to the team's desk, can't open owner settings, and their
   await page.goto("/dashboard/settings/security");
   await expect(page).toHaveURL(/\/dashboard\/settings\/team\?denied=1/);
   await expect(page.getByRole("link", { name: "Security" })).toHaveCount(0);
+  // Calling the link's cover route directly is refused too (the page that offers it is A&R / Admin only).
+  expect((await page.request.delete("/api/cover")).status()).toBe(403);
 
   // Review Together is part of the team desk: comment on a track for the team.
   await page.goto("/dashboard/review");

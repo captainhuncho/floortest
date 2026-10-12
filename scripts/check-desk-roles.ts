@@ -1,7 +1,7 @@
 /**
- * Build check for team desks: every dashboard server action states who may call it, and calls the matching guard.
- * Server actions can be called directly (without the button), so a missing `requireRole` would let a Member do an
- * Owner's thing. A new action fails this check until it's added to ROLES below on purpose.
+ * Build check for team desks: every dashboard server action, and every API route that works on the signed-in desk,
+ * states who may call it and calls the matching guard. Both can be called directly (without the button), so a missing
+ * check would let a Member do an Owner's thing. A new one fails this check until it's added below on purpose.
  * Run: tsx scripts/check-desk-roles.ts (part of `npm run check:perms`).
  *
  *   owner   requireRole("owner"): account security, billing, plan, deleting the account (only on your own desk)
@@ -65,8 +65,54 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith(".ts"))) {
   for (const name of Object.keys(listed)) if (!seen.has(name)) problems.push(`ROLES: ${file} ${name} isn't an action any more`);
 }
 
+/**
+ * API routes on the signed-in desk (`currentUser()`). "admin" handlers must refuse Members themselves:
+ * `!atLeast(user.role, "admin")` or `role === "member"`. "member" and "public" need nothing more.
+ */
+const ROUTES: Record<string, Record<string, "admin" | "member" | "public">> = {
+  "collection-art/[id]": { GET: "member", POST: "member", DELETE: "member" }, // like updateCollection
+  "collections/[id]/upload": { POST: "admin" },
+  "collections/[id]/upload/complete": { POST: "admin" },
+  "cover": { POST: "admin", DELETE: "admin" }, // part of the public page (updatePublicPage)
+  "export": { GET: "member" },
+  "offline/list": { GET: "member" },
+  "pulse": { GET: "member" },
+  "submit/[handle]": { POST: "member" }, // sending as the account is refused to members inside
+  "track-art/[ref]": { GET: "public", POST: "public" }, // the sender's receipt token
+  "tracks/[id]/analysis": { POST: "member" },
+  "tracks/[id]/audio": { GET: "member" },
+  "tracks/[id]/download": { GET: "member" },
+  "tracks/[id]/listened": { POST: "member" },
+  "tracks/[id]/stems/[stemId]": { GET: "member" },
+  "tracks/[id]/stems/zip": { GET: "member" },
+};
+const REFUSES_MEMBERS = /!atLeast\(\w+\.role, "admin"\)|\.role === "member"/;
+const api = join(__dirname, "../src/app/api");
+const routeFiles = (d: string): string[] =>
+  readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? routeFiles(join(d, e.name)) : e.name === "route.ts" ? [join(d, e.name)] : []));
+const seenRoutes = new Set<string>();
+for (const path of routeFiles(api)) {
+  const src = readFileSync(path, "utf8");
+  if (!/\bcurrentUser\(/.test(src)) continue;
+  const route = path.slice(api.length + 1, -"/route.ts".length);
+  seenRoutes.add(route);
+  const listed = ROUTES[route];
+  if (!listed) {
+    problems.push(`api/${route}: uses the signed-in desk but isn't in ROUTES (scripts/check-desk-roles.ts): decide who may call it`);
+    continue;
+  }
+  for (const part of src.split(/^(?=export async function )/m)) {
+    const method = part.match(/^export async function (GET|POST|PUT|PATCH|DELETE)\b/)?.[1];
+    if (!method) continue;
+    const need = listed[method];
+    if (!need) problems.push(`api/${route}: ${method} isn't in ROUTES: decide who may call it`);
+    else if (need === "admin" && !REFUSES_MEMBERS.test(part)) problems.push(`api/${route}: ${method} is "admin" so it must refuse Members (!atLeast(user.role, "admin"))`);
+  }
+}
+for (const route of Object.keys(ROUTES)) if (!seenRoutes.has(route)) problems.push(`ROUTES: api/${route} doesn't use the signed-in desk any more`);
+
 if (problems.length) {
   console.error("Desk role check failed:\n" + problems.map((p) => `  ${p}`).join("\n"));
   process.exit(1);
 }
-console.log("Desk role check: every dashboard action names who may call it and calls that guard.");
+console.log("Desk role check: every dashboard action and desk API route names who may call it and checks it.");
