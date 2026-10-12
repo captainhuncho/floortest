@@ -51,6 +51,8 @@ export async function sealUpload(store: Storage, key: string) {
 /* ───────────── Local ───────────── */
 
 const localRoot = () => path.join(dataDir(), "storage");
+/** Where a key lives on disk in local storage (for the local recovery copy, src/lib/vault.ts). */
+export const localStoragePath = (key: string) => localPath(key);
 function localPath(key: string) {
   const p = path.resolve(localRoot(), key);
   if (!p.startsWith(localRoot() + path.sep)) throw new Error("Invalid storage key");

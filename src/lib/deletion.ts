@@ -3,6 +3,7 @@ import { now, q, type Queryable } from "./db";
 import { accountKeys, drainDeletions, handOverFolderCovers, queueDeletion, STUCK_AFTER, trackKeys } from "./deletion-core";
 import { recordIncident } from "./incidents";
 import { storage } from "./storage";
+import { vaultDeleter } from "./vault";
 
 export { accountKeys, queueDeletion, trackKeys };
 
@@ -26,7 +27,8 @@ export async function discardFiles(keys: (string | null | undefined)[], reason: 
     () => [],
   );
   if (!list.length) return;
-  const store = await storage();
+  // Deletes the recovery copy too, when there is one.
+  const store = await vaultDeleter(await storage());
   for (const key of list)
     await store.delete(key).then(
       () => q.run("DELETE FROM storage_deletions WHERE file_key = ?", key),
@@ -36,7 +38,7 @@ export async function discardFiles(keys: (string | null | undefined)[], reason: 
 
 /** Deletes what's queued, now. Anything that fails stays queued for the nightly job; repeated failures raise an incident. */
 export async function drainNow(limit = 500) {
-  const r = await drainDeletions(q, await storage(), now(), limit);
+  const r = await drainDeletions(q, await vaultDeleter(await storage()), now(), limit);
   if (r.newlyStuck)
     await recordIncident(
       "server_error",

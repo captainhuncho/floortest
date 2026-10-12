@@ -3,6 +3,7 @@ import { gzipSync } from "node:zlib";
 import { now, q } from "./db";
 import { backupSecret, sealBackup } from "./backup-crypto";
 import { storage } from "./storage";
+import { vault } from "./vault";
 
 /** Kept this many days in the bucket, then deleted. */
 export const BACKUP_KEEP_DAYS = 14;
@@ -20,9 +21,9 @@ const SCRUB: Record<string, Record<string, unknown>> = {
 };
 
 /**
- * Nightly logical backup: every table as JSON, gzipped, into the private storage bucket.
- * A free safety net alongside (or instead of) the database host's own backups. Audio files aren't copied;
- * they already live in the bucket.
+ * Nightly logical backup: every table as JSON, gzipped and encrypted, into the recovery bucket (the vault) when it's set
+ * up, otherwise the private storage bucket. A free safety net alongside the database host's own backups. Audio files are
+ * copied to the vault separately (src/lib/vault.ts).
  */
 export async function runBackup(at = now()) {
   const tables = (
@@ -36,33 +37,43 @@ export async function runBackup(at = now()) {
     data[t] = SCRUB[t] ? rows.map((r) => ({ ...r, ...SCRUB[t] })) : rows;
   }
   const body = sealBackup(gzipSync(Buffer.from(JSON.stringify({ created_at: new Date(at).toISOString(), tables: data }))), backupSecret());
-  const store = await storage();
-  await store.put(keyFor(at), new Uint8Array(body), "application/octet-stream");
-  // Every backup ever written is listed in app_state, so anything past the cutoff is found and deleted however
-  // old it is or however many nights were missed. A failed delete stays on the list and is retried tomorrow.
-  const listed = await q.get<{ value: string }>("SELECT value FROM app_state WHERE key = 'backup_keys'");
+  const main = await storage();
+  const v = await vault();
+  const target = v ?? main;
+  await target.put(keyFor(at), new Uint8Array(body), "application/octet-stream");
+  // Every backup ever written is listed in app_state (one list per place), so anything past the cutoff is found and
+  // deleted however old it is or however many nights were missed. A failed delete stays listed and is retried tomorrow.
+  // Backups written to the main bucket before the vault existed keep ageing out there.
+  await ageOut(main, "backup_keys", v ? null : keyFor(at), at);
+  if (v) await ageOut(v, "vault_backup_keys", keyFor(at), at);
+  const rows = Object.values(data).reduce((n, r) => n + r.length, 0);
+  await q.run(
+    "INSERT INTO app_state (key, value, updated_at) VALUES ('last_backup', ?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
+    JSON.stringify({ at, key: keyFor(at), bytes: body.length, rows, tables: tables.length, vault: !!v }),
+    at,
+  );
+  return { key: keyFor(at), bytes: body.length, rows, vault: !!v };
+}
+
+/** Adds `fresh` to the list kept under `listKey`, then deletes listed backups older than BACKUP_KEEP_DAYS from `store`. */
+async function ageOut(store: { delete(key: string): Promise<void> }, listKey: string, fresh: string | null, at: number) {
+  const listed = await q.get<{ value: string }>("SELECT value FROM app_state WHERE key = ?", listKey);
   let keys: string[] = [];
   try {
     keys = JSON.parse(listed?.value ?? "[]");
   } catch {}
   const cutoff = dayKey(at - BACKUP_KEEP_DAYS * DAY);
   const keep: string[] = [];
-  for (const k of [...new Set([...keys, keyFor(at)])]) {
+  for (const k of [...new Set([...keys, ...(fresh ? [fresh] : [])])]) {
     if (k > cutoff) keep.push(k); // keys are date-named, so they sort by date
     else if (!(await store.delete(k).then(() => true, () => false))) keep.push(k);
   }
   await q.run(
-    "INSERT INTO app_state (key, value, updated_at) VALUES ('backup_keys', ?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
+    "INSERT INTO app_state (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
+    listKey,
     JSON.stringify(keep.sort()),
     at,
   );
-  const rows = Object.values(data).reduce((n, r) => n + r.length, 0);
-  await q.run(
-    "INSERT INTO app_state (key, value, updated_at) VALUES ('last_backup', ?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
-    JSON.stringify({ at, key: keyFor(at), bytes: body.length, rows, tables: tables.length }),
-    at,
-  );
-  return { key: keyFor(at), bytes: body.length, rows };
 }
 
 export async function lastBackup() {

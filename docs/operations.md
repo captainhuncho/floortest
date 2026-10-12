@@ -32,6 +32,7 @@ Production and Preview have separate values. Never paste values into chats or ti
 | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Bot check (on/off is a switch, below) |
 | `STAGING_EMAIL_TO` (previews only) | On staging, every email goes to this address instead of the real person. Unset means nothing is sent |
 | `BACKUP_KEY` (required) | Encrypts nightly backups. **Keep a copy outside Vercel and the bucket:** without it, backups can't be read |
+| `BACKUP_BUCKET`, `BACKUP_ACCESS_KEY_ID`, `BACKUP_SECRET_ACCESS_KEY` | The recovery copy ("vault"): a second private R2 bucket on the same account. The key needs write on that bucket and read on `S3_BUCKET`. Unset = off |
 | `ALERT_WEBHOOK_URL` (optional) | A Discord or Slack incoming-webhook URL. Urgent alerts go there as well as email, so you still hear about it if email itself is down |
 | `DB_AUTO_MIGRATE=true`, `DB_POOL_MAX=5` | Database behaviour |
 
@@ -66,7 +67,8 @@ Normal page visits also run light cleanup (sessions, rate limits, abandoned uplo
 - **Status:** Admin → Overview shows the last backup. It becomes a red to-do if none ran in 2 days.
 - **Restore drill** (run after schema changes and monthly): download a backup from R2, then run `BACKUP_KEY=… npx tsx scripts/restore-drill.ts path/to/db-….json.gz.enc` (use the same key as the server). It rebuilds a throwaway database and checks every table's row count. It never touches production.
 - **A real restore:** restore into a *new* Neon database (or branch) first, check it, then point `DATABASE_URL` at it and redeploy. Never overwrite production in place.
-- **Gaps (to do):** a separate bucket and credentials for backups, recovery copies of audio (R2 versioning or replication), and Neon point-in-time recovery beyond the free window (Neon Launch).
+- **Recovery copy (the vault, `src/lib/vault.ts`):** with `BACKUP_*` set, backups are written to the vault bucket (listed in `app_state.vault_backup_keys`, kept 14 days; older ones in the main bucket age out there), and every night after the backup each stored file not yet copied (audio, stems, artwork, covers, site images) is copied into it server-side, checked for size and recorded in `vault_copies`. A file deleted from storage is deleted from the vault too, through the deletion queue. Status: Admin → Storage & costs → Recovery copy. A restore from the vault: copy the files back with `scripts/copy-bucket.ts` (vault → main).
+- **Gaps (to do):** Neon point-in-time recovery beyond the free window (Neon Launch).
 
 ## Deleting things (privacy, retention, admin)
 
@@ -76,7 +78,7 @@ All file deletion goes through one queue (`storage_deletions`, `src/lib/deletion
 2. The files are then deleted immediately. A failure stays queued, with the error and attempt count.
 3. The nightly job retries. After 5 failed tries, an incident is raised.
 
-So a storage outage can delay a deletion but can never lose track of a file. Account deletion, sender erasure, receiver deletes, admin removals, takedowns and retention all use it. Files that are simply replaced or refused (a new profile cover or collection artwork, refused track artwork, a failed or discarded upload, the original of a sealed upload) go through `discardFiles()`: queued, deleted at once, retried if that fails. Nothing deletes from storage directly.
+So a storage outage can delay a deletion but can never lose track of a file. With the recovery copy on, the same queue deletes the vault's copy (a key stays queued until both are gone). Account deletion, sender erasure, receiver deletes, admin removals, takedowns and retention all use it. Files that are simply replaced or refused (a new profile cover or collection artwork, refused track artwork, a failed or discarded upload, the original of a sealed upload) go through `discardFiles()`: queued, deleted at once, retried if that fails. Nothing deletes from storage directly.
 
 ## Monitoring
 

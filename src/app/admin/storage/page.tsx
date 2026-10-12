@@ -7,6 +7,7 @@ import { RETAIN_PASSED_DAYS, RETAIN_UNREVIEWED_DAYS } from "@/lib/plans";
 import { env } from "@/lib/env";
 import { AUDIT_BUCKETS, expectedFiles, lastChecks } from "@/lib/storage-audit";
 import { backupNow, checkStorage } from "../actions";
+import { lastVaultCopy } from "@/lib/vault";
 
 const DAY = 86_400_000;
 /** Cloudflare R2 list price per GB-month. An estimate; the real bill is in Cloudflare. */
@@ -17,6 +18,7 @@ const cost = (b: number) => `$${(gb(b) * R2_PER_GB).toFixed(2)}`;
 /** What's stored, who stores most, what's about to be deleted, and how it's growing. */
 export default async function Storage() {
   await requireAdmin("storage");
+  const vaultRun = await lastVaultCopy();
   const t = Date.now();
   const n = async (sql: string, ...a: unknown[]) => Number((await q.get<{ n: string | number | null }>(sql, ...a))?.n ?? 0);
   const [live, stems, pending, files] = await Promise.all([
@@ -70,6 +72,22 @@ export default async function Storage() {
           </div>
         ))}
       </div>
+      <section aria-labelledby="vault-h" className="space-y-1.5 rounded-md border border-line p-4">
+        <h2 id="vault-h" className="text-lg font-semibold">Recovery copy</h2>
+        {env.storage.vault.bucket ? (
+          vaultRun ? (
+            <p className="text-sm text-mute">
+              On: <span className="text-bone">{env.storage.vault.bucket}</span>. Last night: {vaultRun.copied} copied, {vaultRun.failed} failed, {vaultRun.waiting} still to copy · {vaultRun.inVault} files in the copy. Database backups are written there too. Deleting a file deletes its copy.
+            </p>
+          ) : (
+            <p className="text-sm text-mute">On: <span className="text-bone">{env.storage.vault.bucket}</span>. The first copy runs with tonight&apos;s backup.</p>
+          )
+        ) : (
+          <p className="text-sm text-mute">
+            Off. Set <code>BACKUP_BUCKET</code>, <code>BACKUP_ACCESS_KEY_ID</code> and <code>BACKUP_SECRET_ACCESS_KEY</code> in Vercel (a second private R2 bucket; the key needs write there and read on <code>{env.storage.s3.bucket ?? "the main bucket"}</code>), then redeploy.
+          </p>
+        )}
+      </section>
       <section aria-labelledby="move-h" className="space-y-3 rounded-md border border-line p-4">
         <h2 id="move-h" className="text-lg font-semibold">Storage move check</h2>
         <p className="text-sm text-mute">

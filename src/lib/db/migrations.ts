@@ -1475,4 +1475,17 @@ alter table account_members add column if not exists notifications_seen_at bigin
 alter table account_members add column if not exists notifications_cleared_at bigint;
 `,
   },
+  {
+    // The recovery copy (the "vault": a second private bucket with its own key). One row per stored file already
+    // copied there, so the nightly copy only sends what's new, and a privacy deletion knows to delete the copy too.
+    id: "0087_vault_copies",
+    sql: `
+create table if not exists vault_copies (
+  file_key text primary key,
+  size bigint,
+  copied_at bigint not null
+);
+alter table vault_copies enable row level security;
+`,
+  },
 ];

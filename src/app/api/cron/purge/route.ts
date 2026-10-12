@@ -4,6 +4,7 @@ import { cleanupRecords, purgeExpired } from "@/lib/retention";
 import { cronAuthorized, recordRun } from "@/lib/cron";
 import { warnExpiring } from "@/lib/notify";
 import { runBackup } from "@/lib/backup";
+import { runVaultCopy } from "@/lib/vault";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -26,9 +27,18 @@ export async function GET(req: Request) {
       await recordRun("purge", started, false, { error: "backup failed; no tracks deleted", ...records });
       return NextResponse.json({ error: "Backup failed; nothing was deleted" }, { status: 500 });
     }
+    // The recovery copy of new files (when the vault is set up). A failure is reported but never blocks the rest.
+    let vault;
+    try {
+      vault = await runVaultCopy(90_000);
+      if (vault.on && vault.failed) await recordIncident("cron_failed", `${vault.failed} file(s) couldn't be copied to the recovery bucket`, "Retried next night. See Admin → Storage & costs.", "/api/cron/purge");
+    } catch (e) {
+      vault = { error: e instanceof Error ? e.message : String(e) };
+      await recordIncident("cron_failed", "Copying files to the recovery bucket failed", e instanceof Error ? `${e.message}\n${e.stack ?? ""}` : String(e), "/api/cron/purge");
+    }
     const warned = await warnExpiring();
     const purged = await purgeExpired({ force: true });
-    const result = { ...records, ...purged, ...warned, backup };
+    const result = { ...records, ...purged, ...warned, backup, vault };
     await recordRun("purge", started, true, result);
     return NextResponse.json(result);
   } catch (e) {

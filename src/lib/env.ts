@@ -38,6 +38,12 @@ export const env = {
       secretAccessKey: v("S3_SECRET_ACCESS_KEY"),
       forcePathStyle: v("S3_FORCE_PATH_STYLE") === "true",
     },
+    /** The recovery copy: a second private bucket on the same account, with its own key (read on the main bucket, write here). */
+    vault: {
+      bucket: v("BACKUP_BUCKET"),
+      accessKeyId: v("BACKUP_ACCESS_KEY_ID"),
+      secretAccessKey: v("BACKUP_SECRET_ACCESS_KEY"),
+    },
   },
   email: {
     resendKey: v("RESEND_API_KEY"),

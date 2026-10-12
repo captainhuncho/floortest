@@ -27,7 +27,7 @@ Files are never public: the app hands out short-lived signed links after checkin
 | Plans | `plans`, `plan_requests` | org name, link, notes |
 | Growth | `waitlist`, `invites`, `newsletter_subscribers`, `contact_messages`, `reopen_alerts` ("email me when it reopens": sender email + receiver, sent rows deleted after 30 days, unanswered after a year; in data copies and erasure) | name, email, links |
 | Ops | `ops_members`, `admin_sessions`, `admin_log`, `account_notes`, `partner_notes`, `incidents`, `job_runs`, `switches`, `site_content*` | staff emails, notes about users |
-| Abuse/safety | `rate_events`, `platform_blocks`, `takedowns`, `protected_names`, `email_suppressions`, `storage_deletions` | IPs, emails (rate events deleted within 3 days) |
+| Abuse/safety | `rate_events`, `platform_blocks`, `takedowns`, `protected_names`, `email_suppressions`, `storage_deletions`, `vault_copies` (which stored files are in the recovery bucket) | IPs, emails (rate events deleted within 3 days) |
 
 ## Who can see what
 
@@ -48,5 +48,5 @@ Ops reaching into the main site (on-page editing, read-only "View as") is bound 
 
 ## Retention and deletion
 - Undecided audio: 90 days. "Not for me": 30 days. Kept: until the receiver deletes. Artwork and stems go with their track; an EP/album cover passes to the folder's next remaining track instead (`handOverFolderCovers`), and goes when the last of them goes.
-- Deleting an account removes every file and row it owns; files are queued in `storage_deletions` and retried until gone; backups age out within 30 days.
+- Deleting an account removes every file and row it owns; files are queued in `storage_deletions` and retried until gone (with their copies in the recovery bucket); backups age out within 30 days.
 - Privacy requests (copy, erase) run from ops (super admin).
