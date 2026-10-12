@@ -57,7 +57,13 @@ test("a member switches to the team's desk, can't open owner settings, and their
 
 test("the owner approves the held reply from the Team page", async ({ page }) => {
   await logIn(page, "demo@floortest.test");
-  await page.goto("/dashboard/settings/team");
+  // The Floor's "Your desk" line says what needs the owner (the reply waiting) and how many seats are in use.
+  await page.goto("/dashboard/floor");
+  const desk = page.getByRole("region", { name: "Your desk" });
+  await expect(desk.getByRole("link", { name: "1 reply waiting for your approval" })).toBeVisible();
+  await expect(desk.getByRole("link", { name: /of \d+ seats/ })).toBeVisible();
+  await desk.getByRole("link", { name: "1 reply waiting for your approval" }).click();
+  await page.waitForURL(/\/dashboard\/settings\/team/);
   await expect(page.getByRole("heading", { name: "Waiting for approval (1)" })).toBeVisible();
   await expect(page.getByText(/Lena Listener → /)).toBeVisible();
   await page.getByRole("button", { name: "Approve and send" }).click();

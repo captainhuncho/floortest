@@ -4,6 +4,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { activeCollectionForView, capacityForView, collectionsForView, isClosed, isPaused } from "@/lib/desk";
 import { q } from "@/lib/db";
+import { atLeast, canApprove, heldReplies, seatsFor, seatsUsed, teamsOn } from "@/lib/account-members";
 import { ago, fmtDay } from "@/lib/format";
 import { APP_URL } from "@/lib/mail";
 import { localHour, prefsForView } from "@/lib/notify";
@@ -92,6 +93,27 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
     stats.decisionRate !== null ? `${stats.decisionRate}% of the last 30 days decided` : null,
   ].filter(Boolean);
 
+  // Your desk at a glance: only figures that mean exactly what they say, each a link to where it's managed. Capacity and
+  // approvals turn lime when they need something from you. (Link status isn't repeated: "Your link" below says it.)
+  const teamDesk = (await teamsOn()) && atLeast(user.role, "admin");
+  const [seats, used, held, approver, contacts] = await Promise.all([
+    teamDesk ? seatsFor(user.id) : 0,
+    teamDesk ? seatsUsed(user.id) : 0,
+    heldReplies(user),
+    canApprove(user),
+    q.get<{ n: number }>("SELECT COUNT(*) AS n FROM senders WHERE user_id = ?", user.id),
+  ]);
+  const nearLimit = cap.used >= cap.limit * 0.8;
+  const desk: { key: string; href: string; text: string; urgent?: boolean }[] = [
+    ...(held.length
+      ? [{ key: "held", href: "/dashboard/settings/team", urgent: true, text: approver ? `${held.length} repl${held.length === 1 ? "y" : "ies"} waiting for your approval` : `${held.length} of your repl${held.length === 1 ? "y is" : "ies are"} waiting for approval` }]
+      : []),
+    ...(teamDesk && seats > 1 ? [{ key: "seats", href: "/dashboard/settings/team", text: `${used} of ${seats} seats` }] : []),
+    { key: "cap", href: "/dashboard/account", urgent: nearLimit, text: `${cap.used.toLocaleString("en-GB")} of ${cap.limit.toLocaleString("en-GB")} active tracks` },
+    { key: "cols", href: "/dashboard/collections", text: `${collections.length} collection${collections.length === 1 ? "" : "s"}` },
+    { key: "contacts", href: "/dashboard/contacts", text: `${Number(contacts?.n ?? 0)} contact${Number(contacts?.n ?? 0) === 1 ? "" : "s"}` },
+  ];
+
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-8 px-4 py-5 sm:px-8 sm:py-8">
       {/* What needs you: the waiting count is the page title, and the one button is the daily job. */}
@@ -163,6 +185,23 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
         <section aria-labelledby="week-h" className="flex flex-col gap-1.5 border-t border-line pt-5">
           <h2 id="week-h" className="eyebrow">This week</h2>
           <p className="text-[13px] leading-6 text-mute">{facts.join(" · ")}.</p>
+        </section>
+      )}
+
+      {!fresh && (
+        <section aria-labelledby="desk-h" className="flex flex-col gap-1.5 border-t border-line pt-5">
+          <h2 id="desk-h" className="eyebrow">Your desk</h2>
+          <p className="text-[13px] leading-6 text-mute">
+            {desk.map((d, i) => (
+              <span key={d.key}>
+                {i > 0 && " · "}
+                <Link href={d.href} className={`tnum underline-offset-4 hover:underline ${d.urgent ? "font-semibold text-lime" : "hover:text-bone"}`}>
+                  {d.text}
+                </Link>
+              </span>
+            ))}
+            .
+          </p>
         </section>
       )}
 
