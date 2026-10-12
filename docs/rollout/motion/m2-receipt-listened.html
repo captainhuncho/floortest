@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>M2 · The receipt ticks to Listened</title>
+<link rel="stylesheet" href="motion.css">
+<style>
+  /* 5 s: the sender's receipt waits, then Listened lands: the headline settles in from just below, the Listened
+     step turns from dim to bright with its lime dot, the time appears. Holds, then back to waiting. */
+  .h { grid-area: 1 / 1; }
+  .wait { opacity: 0; animation: m2-wait 5s var(--ease) both; }
+  @keyframes m2-wait { 0%, 34% { opacity: 1; transform: none; } 40%, 94% { opacity: 0; transform: translateY(-6px); } 100% { opacity: 1; transform: none; } }
+  .heard { animation: m2-heard 5s var(--ease) both; }
+  @keyframes m2-heard { 0%, 38% { opacity: 0; transform: translateY(8px); } 46%, 92% { opacity: 1; transform: none; } 100% { opacity: 0; transform: none; } }
+  .step { display: flex; gap: 14px; align-items: flex-start; }
+  .dot { margin-top: 6px; width: 11px; height: 11px; border-radius: 50%; flex: none; }
+  .listened .dot { background: var(--lime); box-shadow: 0 0 12px rgb(213 255 72 / 0.5); animation: m2-dot 5s var(--ease) both; }
+  @keyframes m2-dot { 0%, 40% { background: transparent; box-shadow: 0 0 0 1px var(--line-2); } 48%, 92% { background: var(--lime); box-shadow: 0 0 12px rgb(213 255 72 / 0.5); } 100% { background: transparent; box-shadow: 0 0 0 1px var(--line-2); } }
+  .listened .label { color: var(--bone); font-weight: 700; animation: m2-label 5s linear both; }
+  @keyframes m2-label { 0%, 40% { color: var(--faint); } 46%, 92% { color: var(--bone); } 100% { color: var(--faint); } }
+  .listened .when { animation: m2-when 5s linear both; }
+  @keyframes m2-when { 0%, 42% { opacity: 0; } 50%, 92% { opacity: 1; } 100% { opacity: 0; } }
+  .phone { flex: 1; border: 1px solid var(--line-2); border-radius: 34px; background: #0b0c0a; padding: 10px; }
+  .screen { height: 100%; border: 1px solid var(--line); border-radius: 26px; background: var(--ink); padding: 34px 26px 24px; display: flex; flex-direction: column; gap: 24px; }
+</style>
+</head>
+<body>
+<main class="frame loop" style="padding: 36px 70px 40px">
+  <div class="phone">
+    <div class="screen">
+      <p class="eyebrow" style="margin: 0">Private receipt</p>
+      <div style="display: grid">
+        <div class="h wait"><p style="margin: 0; font-size: 26px; font-weight: 700; line-height: 1.15; color: var(--mute)">Waiting for Sample DJ to listen.</p><p style="margin: 8px 0 0; font-size: 12px; color: var(--mute)">Delivered 10 Oct, 21:40</p></div>
+        <div class="h heard"><p style="margin: 0; font-size: 26px; font-weight: 700; line-height: 1.15">Sample DJ listened.</p><p style="margin: 8px 0 0; font-size: 12px; color: var(--mute)">11 Oct, 01:12 · just now</p></div>
+      </div>
+      <p style="margin: 0; padding-top: 14px; border-top: 1px solid var(--line); font-size: 13px; font-weight: 700">Nightbus (demo) <span style="font-weight: 400; color: var(--mute)">· Sample Artist</span></p>
+      <div style="display: flex; flex-direction: column; gap: 16px">
+        <p class="eyebrow" style="margin: 0">What's happened</p>
+        <div class="step"><span class="dot" style="box-shadow: 0 0 0 1px var(--line-2)"></span><span><span style="font-size: 14px; color: var(--mute)">Delivered</span> <span style="font-size: 12px; color: var(--faint)">10 Oct, 21:40</span></span></div>
+        <div class="step listened"><span class="dot"></span><span><span class="label" style="font-size: 14px">Listened</span> <span class="when" style="font-size: 12px; color: var(--faint)">11 Oct, 01:12</span></span></div>
+        <div class="step"><span class="dot" style="box-shadow: 0 0 0 1px var(--line)"></span><span style="font-size: 13px; color: var(--faint)">Downloaded</span></div>
+        <div class="step"><span class="dot" style="box-shadow: 0 0 0 1px var(--line)"></span><span style="font-size: 13px; color: var(--faint)">Replied</span></div>
+        <div class="step"><span class="dot" style="box-shadow: 0 0 0 1px var(--line)"></span><span style="font-size: 13px; color: var(--faint)">Played out</span></div>
+      </div>
+    </div>
+  </div>
+  <span class="sample" style="right: 84px; bottom: 16px">SAMPLE</span>
+</main>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>M1 · A track lands</title>
+<link rel="stylesheet" href="motion.css">
+<style>
+  /* 4 s: the list is empty, a row lands (200 ms, opacity and a small scale), its dot pulses once, it holds, the list clears. */
+  .empty { animation: m1-empty 4s linear both; opacity: 0; }
+  @keyframes m1-empty { 0%, 12% { opacity: 1; } 15%, 92% { opacity: 0; } 100% { opacity: 1; } }
+  .landing { animation: m1-land 4s var(--ease) both; }
+  @keyframes m1-land { 0%, 14% { opacity: 0; transform: scale(0.97) translateY(6px); } 19%, 90% { opacity: 1; transform: none; } 100% { opacity: 0; transform: none; } }
+  .dot { position: relative; width: 9px; height: 9px; border-radius: 50%; background: var(--lime); flex: none; }
+  .dot::after { content: ""; position: absolute; inset: -3px; border-radius: 50%; border: 2px solid var(--lime); opacity: 0; animation: m1-pulse 4s ease-out both; }
+  @keyframes m1-pulse { 0%, 19% { opacity: 0.9; transform: scale(1); } 34% { opacity: 0; transform: scale(2.6); } 100% { opacity: 0; transform: scale(2.6); } }
+  .count { animation: m1-count 4s linear both; }
+  @keyframes m1-count { 0%, 15% { opacity: 0; } 19%, 92% { opacity: 1; } 100% { opacity: 0; } }
+  .older { opacity: 0.55; }
+</style>
+</head>
+<body>
+<main class="frame loop">
+  <div style="display: flex; justify-content: space-between; align-items: baseline">
+    <p class="eyebrow" style="margin: 0">Up next</p>
+    <p class="count" style="margin: 0; font-size: 12px; color: var(--mute)">1 new · just now</p>
+  </div>
+  <div style="position: relative; display: flex; flex-direction: column; gap: 10px">
+    <div class="empty row" style="position: absolute; inset: 0 0 auto; border-style: dashed; background: transparent; color: var(--faint); font-size: 13px; justify-content: center; height: 72px">Listening for tracks</div>
+    <div class="landing row" style="height: 72px; background: var(--ink-3); border-color: var(--line-2)">
+      <span class="play">▶</span>
+      <span><span class="title" style="display: block">Nightbus (demo)</span><span class="meta" style="display: block">Sample Artist · Afro House · 122 BPM</span></span>
+      <span class="dot" style="margin-left: auto"></span>
+    </div>
+    <div class="row older"><span class="play">▶</span><span><span class="title" style="display: block">Half Light</span><span class="meta" style="display: block">Sample Duo · 2 days ago</span></span><span class="len">7:03</span></div>
+    <div class="row older"><span class="play">▶</span><span><span class="title" style="display: block">Lekki Run</span><span class="meta" style="display: block">Sample Producer · 3 days ago</span></span><span class="len">5:40</span></div>
+  </div>
+  <p style="margin: auto 0 0; font-size: 13px; color: var(--mute)">It lands in Up next on its own. No reload.</p>
+  <span class="sample">SAMPLE</span>
+</main>
+</body>
+</html>

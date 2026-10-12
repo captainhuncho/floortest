@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>M3 · Keep</title>
+<link rel="stylesheet" href="motion.css">
+<style>
+  /* 3 s, transform and opacity only: a thumb drags the track right, the KEEP stamp follows the finger, past the line
+     it lets go, the card settles back as Kept and the next track moves up. */
+  .deck { position: relative; height: 300px; }
+  .card2 { position: absolute; inset: 22px 18px auto; height: 252px; border-radius: 24px; border: 1px solid var(--line); background: var(--ink-2); opacity: 0.6; }
+  .drag { position: absolute; inset: 0 0 auto; height: 270px; border-radius: 24px; border: 1px solid var(--line-2); background: var(--ink-3); padding: 22px; display: flex; flex-direction: column; gap: 14px; animation: m3-drag 3s var(--ease) both; }
+  @keyframes m3-drag {
+    0%, 12% { transform: none; }
+    42% { transform: translateX(150px) rotate(4deg); }
+    50% { transform: translateX(150px) rotate(4deg); }
+    62%, 100% { transform: none; }
+  }
+  .stamp { position: absolute; top: 22px; left: 22px; padding: 6px 12px; border: 2px solid var(--lime); border-radius: 8px; color: var(--lime); font-size: 18px; font-weight: 700; letter-spacing: 0.14em; transform: rotate(-10deg); opacity: 0; animation: m3-stamp 3s linear both; }
+  @keyframes m3-stamp { 0%, 14% { opacity: 0; } 40%, 50% { opacity: 1; } 58%, 100% { opacity: 0; } }
+  .kept { opacity: 1; animation: m3-kept 3s var(--ease) both; }
+  @keyframes m3-kept { 0%, 56% { opacity: 0; transform: scale(0.9); } 64%, 94% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+  .thumb { position: absolute; top: 150px; left: 120px; width: 46px; height: 46px; border-radius: 50%; background: rgb(241 241 235 / 0.16); border: 1px solid rgb(241 241 235 / 0.35); opacity: 0; animation: m3-thumb 3s var(--ease) both; }
+  @keyframes m3-thumb { 0%, 8% { opacity: 0; transform: none; } 12% { opacity: 1; transform: none; } 42%, 48% { opacity: 1; transform: translateX(150px); } 54%, 100% { opacity: 0; transform: translateX(150px); } }
+  .bars { display: flex; align-items: center; gap: 2px; height: 46px; }
+  .bars span { flex: 1; border-radius: 2px; }
+</style>
+</head>
+<body>
+<main class="frame loop">
+  <div style="display: flex; justify-content: space-between; align-items: baseline">
+    <p class="eyebrow" style="margin: 0">Review · 1 of 6</p>
+    <p style="margin: 0; font-size: 12px; color: var(--mute)">Friday callout</p>
+  </div>
+  <div class="deck">
+    <div class="card2"></div>
+    <div class="drag">
+      <span class="stamp">KEEP</span>
+      <div style="margin-top: 44px">
+        <p style="margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.02em">Nightbus (demo)</p>
+        <p style="margin: 6px 0 0; font-size: 13px; color: var(--mute)">Sample Artist · 122 BPM · 6:12</p>
+      </div>
+      <div class="bars" id="bars"></div>
+      <span class="kept" style="align-self: flex-start; padding: 5px 12px; border-radius: 999px; background: var(--bone); color: var(--ink); font-size: 12px; font-weight: 700">Kept ✓ · in the Friday crate</span>
+    </div>
+    <span class="thumb"></span>
+  </div>
+  <div style="display: grid; grid-template-columns: 1fr 1.25fr 1fr; gap: 10px">
+    <span style="min-height: 56px; display: grid; place-items: center; border-radius: 14px; border: 1px solid var(--line-2); font-size: 13px">Not for me</span>
+    <span style="min-height: 56px; display: grid; place-items: center; border-radius: 14px; background: var(--lime); color: var(--ink); font-size: 14px; font-weight: 700">Keep</span>
+    <span style="min-height: 56px; display: grid; place-items: center; border-radius: 14px; border: 1px solid var(--line-2); font-size: 13px">Reply</span>
+  </div>
+  <p style="margin: 0; text-align: center; font-size: 12px; color: var(--faint)">Swipe right to keep. Your call stays private.</p>
+  <span class="sample">SAMPLE</span>
+</main>
+<script>
+  // A fixed waveform, the same on every run.
+  const h = [30,52,44,70,62,88,76,94,68,82,58,74,90,66,48,72,84,60,96,78,54,70,86,64,42,58,80,92,70,56,74,62,88,50,66,82,72,46,60,40];
+  document.getElementById("bars").innerHTML = h.map((x, i) => `<span style="height:${x}%;background:${i < 14 ? "#f1f1eb" : "#3a3d37"}"></span>`).join("");
+</script>
+</body>
+</html>
