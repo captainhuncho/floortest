@@ -1496,4 +1496,11 @@ alter table vault_copies enable row level security;
 alter table users add column if not exists played_out_prompt_week text;
 `,
   },
+  {
+    // The Tuesday reminder for the same question, sent once per week (the Monday date it was sent for).
+    id: "0089_played_out_reminder",
+    sql: `
+alter table users add column if not exists played_out_reminded_week text;
+`,
+  },
 ];

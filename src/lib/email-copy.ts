@@ -55,6 +55,13 @@ export const EMAILS = {
     body: "Hi {first_name},\n\nYour link hasn't had a track yet. The quickest way to get the first one: post a callout with your link, for example:\n\n\"Sending me music? Send the track here: {link}. You'll know when I've listened.\"\n\n— FloorTest",
     vars: { first_name: "Receiver's first name", link: "Their link" },
   },
+  played_out_reminder: {
+    label: "Played any of these?",
+    to: "DJ receiver, Tuesday, if Monday's Floor question about last week's kept tracks wasn't answered",
+    subject: "Played any of these at the weekend?",
+    body: "Hi {first_name},\n\nYou kept {count} last week:\n{titles}\n\nIf any made your set, tick them and each sender sees Played out on their receipt: {prompt_url}\n\nNone this weekend? Say so there and we won't ask again until next week.\n\n— FloorTest",
+    vars: { first_name: "Receiver's first name", count: "How many tracks, e.g. \"3 tracks\"", titles: "Up to five tracks, one per line", prompt_url: "The pick page" },
+  },
   invite: {
     label: "Beta invite",
     to: "Invited person",
@@ -142,4 +149,7 @@ export const SAMPLE_VARS: Record<string, string> = {
   friend: "Ade",
   bonus: "10",
   referrals_url: `${U}/dashboard/referrals`,
+  count: "3 tracks",
+  titles: "• Nightbus (demo) · Sample Artist\n• Tin Roof · Sample Collective\n• Lekki Run · Sample Producer",
+  prompt_url: `${U}/dashboard/played-out`,
 };
