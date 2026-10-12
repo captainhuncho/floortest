@@ -2,6 +2,7 @@ import { audit } from "@/lib/audit";
 import { discardFiles } from "@/lib/deletion";
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
+import { atLeast } from "@/lib/account-members";
 import { currentUser, viewingAs } from "@/lib/auth";
 import { q } from "@/lib/db";
 import { storage } from "@/lib/storage";
@@ -16,6 +17,8 @@ export async function POST(req: Request) {
   // A support "view as" session is read-only.
   const user = (await viewingAs()) ? null : await currentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // The link's cover is part of the public page: the owner and A&R / Admin, never a Member (the page hides it; this is the guard).
+  if (!atLeast(user.role, "admin")) return NextResponse.json({ error: "Only the owner or an A&R / Admin can change the cover." }, { status: 403 });
   if (Number(req.headers.get("content-length") || 0) > MAX + 64 * 1024)
     return NextResponse.json({ error: "Images must be under 8 MB." }, { status: 413 });
   const form = await req.formData().catch(() => null);
@@ -40,6 +43,8 @@ export async function POST(req: Request) {
 export async function DELETE() {
   const user = (await viewingAs()) ? null : await currentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // The link's cover is part of the public page: the owner and A&R / Admin, never a Member (the page hides it; this is the guard).
+  if (!atLeast(user.role, "admin")) return NextResponse.json({ error: "Only the owner or an A&R / Admin can change the cover." }, { status: 403 });
   await q.run("UPDATE users SET cover_key = NULL WHERE id = ?", user.id);
   await discardFiles([user.cover_key], "cover removed");
   await audit(user.id, "cover_removed");
