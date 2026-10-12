@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/admin";
 import { q } from "@/lib/db";
 import { parsePeriod } from "@/lib/period";
 import { fmtDuration } from "@/lib/stats";
+import { DECIDE_WITHIN, northStar } from "@/lib/north-star";
 import { PeriodPicker } from "../PeriodPicker";
 
 const DAY = 86_400_000;
@@ -82,6 +83,14 @@ export default async function Metrics({ searchParams }: { searchParams: Promise<
     until,
   );
   const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)}%` : "–");
+  // The north star over the last 8 weeks whose tracks have all had their 7 days (whatever period is picked above).
+  const nsEnd = t - DECIDE_WITHIN;
+  const ns = await northStar(q, Array.from({ length: 8 }, (_, i) => nsEnd - (8 - i) * WEEK), nsEnd, t);
+  const nsSplit: [string, { tracks: number; decided: number }][] = [
+    ...Object.entries(ns.byPlan).sort(([a], [b]) => ["free", "pro", "team"].indexOf(a) - ["free", "pro", "team"].indexOf(b)).map(([plan, r]) => [plan[0].toUpperCase() + plan.slice(1), r] as [string, typeof r]),
+    ["Solo desks", ns.bySize.solo],
+    ["Team desks", ns.bySize.team],
+  ];
   const dur = (ms: number | null) => (ms == null ? "–" : fmtDuration(ms));
 
   const lower = period.key === "custom" ? period.label : period.label.toLowerCase();
@@ -100,6 +109,28 @@ export default async function Metrics({ searchParams }: { searchParams: Promise<
         <h1 className="text-3xl font-bold tracking-tight">Beta metrics</h1>
         <PeriodPicker path="/admin/metrics" period={period} />
       </div>
+      <section aria-labelledby="ns-h" data-area="growth" className="card area-card space-y-4 p-5">
+        <div>
+          <h2 id="ns-h" className="label flex items-center gap-2">
+            <span aria-hidden className="area-dot size-1.5 rounded-full" />
+            North star: decided within 7 days
+          </h2>
+          <p className="mt-2 text-3xl font-bold tnum">{pct(ns.total.decided, ns.total.tracks)}</p>
+          <p className="mt-1 text-sm text-mute">
+            {ns.total.decided} of {ns.total.tracks} tracks got Keep or Not for me within 7 days of arriving, last 8 full weeks. A track counts once its 7 days are over; one deleted without a decision counts as not decided. Plan is today&apos;s plan.
+          </p>
+        </div>
+        <ol className="grid grid-cols-4 gap-2 sm:grid-cols-8" aria-label="By week">
+          {ns.weeks.map((w) => (
+            <li key={w.from} className="rounded-md border border-line p-2 text-center">
+              <p className="text-xs text-mute">{new Date(w.from).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })}</p>
+              <p className="text-sm font-bold tnum">{pct(w.decided, w.tracks)}</p>
+              <p className="text-xs text-mute tnum">{w.tracks} tracks</p>
+            </li>
+          ))}
+        </ol>
+        <p className="text-sm text-mute">{nsSplit.map(([k, r]) => `${k} ${pct(r.decided, r.tracks)} (${r.tracks})`).join(" · ")}</p>
+      </section>
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map(([area, k, v, sub]) => (
           <li key={k} data-area={area} className="card area-card p-5">

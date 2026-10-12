@@ -3,7 +3,7 @@ import { Onboarding } from "./Onboarding";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { activeCollectionForView, capacityForView, collectionsForView, isClosed, isPaused } from "@/lib/desk";
-import { q } from "@/lib/db";
+import { now, q } from "@/lib/db";
 import { atLeast, canApprove, heldReplies, seatsFor, seatsUsed, teamsOn } from "@/lib/account-members";
 import { ago, fmtDay } from "@/lib/format";
 import { APP_URL } from "@/lib/mail";
@@ -24,7 +24,7 @@ export const metadata = { title: "The Floor — FloorTest" };
 export default async function TheFloor({ searchParams }: { searchParams: Promise<{ welcome?: string }> }) {
   const user = await requireUser();
   // Everything below is independent, so it all goes to the database at once.
-  const [, sp, prefs, collections, active, cap, upNextRows, recentSends, oldestRow] = await Promise.all([
+  const [, sp, prefs, collections, active, cap, upNextRows, recentSends, oldestRow, staleRow] = await Promise.all([
     trackUse(user.id, "floor"),
     searchParams,
     prefsForView(user.id),
@@ -43,6 +43,8 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
     ),
     // When the longest-waiting track arrived ("the oldest arrived 3 days ago"); Up next itself shows the newest.
     q.get<{ at: number | null }>("SELECT MIN(created_at) AS at FROM tracks WHERE user_id = ? AND deleted_at IS NULL AND decision IS NULL", user.id),
+    // Tracks close to the 7-day mark (the north star: a decision within 7 days of arriving).
+    q.get<{ n: number }>("SELECT COUNT(*) AS n FROM tracks WHERE user_id = ? AND deleted_at IS NULL AND decision IS NULL AND created_at < ?", user.id, now() - STALE_DAYS * 86_400_000),
   ]);
   const welcome = !!sp.welcome;
   const stats = await homeStats(user.id, prefs.tz);
@@ -51,6 +53,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   const upNext = upNextRows.map((t) => ({ ...t, peaks: t.peaks ? JSON.parse(t.peaks) : null, played: !!t.played_at }));
   const kept = collections.reduce((n, c) => n + c.kept, 0);
   const oldest = oldestRow?.at ? Number(oldestRow.at) : undefined;
+  const stale = Number(staleRow?.n ?? 0);
   // A desk that has never had a track: sharing the link is the first job, so the link comes first.
   const fresh = welcome || (!stats.waiting && !kept && stats.receivedWeek + stats.receivedPrev === 0 && !stats.listenedSample);
   // First visit only: a greeting by first name; the public name can be a stage name or just the username.
@@ -109,7 +112,8 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
       ? [{ key: "held", href: "/dashboard/settings/team", urgent: true, text: approver ? `${held.length} repl${held.length === 1 ? "y" : "ies"} waiting for your approval` : `${held.length} of your repl${held.length === 1 ? "y is" : "ies are"} waiting for approval` }]
       : []),
     ...(teamDesk && seats > 1 ? [{ key: "seats", href: "/dashboard/settings/team", text: `${used} of ${seats} seats` }] : []),
-    { key: "cap", href: "/dashboard/account", urgent: nearLimit, text: `${cap.used.toLocaleString("en-GB")} of ${cap.limit.toLocaleString("en-GB")} active tracks` },
+    // Near the limit with kept tracks, the way out is downloading and clearing them (Prepare), before any upgrade.
+    { key: "cap", href: nearLimit && kept > 0 ? "/dashboard/prepare" : "/dashboard/account", urgent: nearLimit, text: `${cap.used.toLocaleString("en-GB")} of ${cap.limit.toLocaleString("en-GB")} active tracks` },
     { key: "cols", href: "/dashboard/collections", text: `${collections.length} collection${collections.length === 1 ? "" : "s"}` },
     { key: "contacts", href: "/dashboard/contacts", text: `${Number(contacts?.n ?? 0)} contact${Number(contacts?.n ?? 0) === 1 ? "" : "s"}` },
   ];
@@ -132,6 +136,11 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
                     ? `You're all caught up. ${kept} kept track${kept === 1 ? " is" : "s are"} ready for your set.`
                     : "You're all caught up. New tracks will show up here first."}
             </p>
+            {stale > 0 && (
+              <Link href="/dashboard/review?view=queue" className="w-fit text-[13px] font-semibold text-lime underline-offset-4 hover:underline">
+                {stale} track{stale === 1 ? " has" : "s have"} waited over {STALE_DAYS} days. The queue starts with {stale === 1 ? "it" : "them"} →
+              </Link>
+            )}
           </div>
           {stats.waiting > 0 && (
             <Link href="/dashboard/review?view=queue" className="btn-lime shrink-0">
@@ -173,7 +182,11 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
             <h2 id="set-h" className="text-[14px] font-semibold text-bone">
               {kept} kept track{kept === 1 ? "" : "s"} ready for your set
             </h2>
-            <p className="text-[12px] text-dim">Download them as a crate with a Rekordbox playlist.</p>
+            <p className="text-[12px] text-dim">
+              {nearLimit
+                ? `Your desk is nearly full (${cap.used} of ${cap.limit}). Download them, then clear kept to make room.`
+                : "Download them as a crate with a Rekordbox playlist."}
+            </p>
           </div>
           <Link href="/dashboard/prepare" className="btn-ghost btn-sm shrink-0">
             Prepare
@@ -232,6 +245,9 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
     </div>
   );
 }
+
+/** Waiting this long gets a nudge on the Floor, two days before the 7-day mark the desk aims for. */
+const STALE_DAYS = 5;
 
 /** "under an hour", "5 hours", "3 days": how long a first listen usually takes, in words. */
 function waitWords(ms: number) {

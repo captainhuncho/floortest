@@ -39,7 +39,7 @@ All drafts follow [brand-voice.md](brand-voice.md). Replace {braces}. Nothing he
 >
 > — FloorTest
 
-## 3. First-track nudge (7 days after sign-up, no tracks yet)
+## 3. First-track nudge (2 days after sign-up, no tracks yet; was 7 until 12 Oct)
 
 **Subject:** Nothing on your desk yet
 

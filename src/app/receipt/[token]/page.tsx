@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { gatePassword } from "@/lib/site-gate";
 import { Logo } from "@/components/Logo";
 import { siteEditor } from "@/lib/site-editor";
 import { EditablePage, editable } from "@/components/Editable";
@@ -24,13 +25,16 @@ export const metadata = { title: "Your receipt — FloorTest", robots: { index: 
  */
 export default async function Receipt({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const t = (await q.get<(Track & { receiver: string; receiver_plan: string; collection: string | null; sender_email: string; verified_at: number | null })>(`SELECT t.*, u.name AS receiver, u.plan AS receiver_plan, c.name AS collection, s.email AS sender_email, s.verified_at
+  const t = (await q.get<(Track & { receiver: string; receiver_plan: string; collection: string | null; sender_email: string; verified_at: number | null; sender_account: number | null })>(`SELECT t.*, u.name AS receiver, u.plan AS receiver_plan, c.name AS collection, s.email AS sender_email, s.verified_at, s.account_id AS sender_account
        FROM tracks t JOIN users u ON u.id = t.user_id JOIN senders s ON s.id = t.sender_id
        LEFT JOIN collections c ON c.id = t.collection_id
        WHERE t.token = ?`, token));
   if (!t) notFound();
 
-  const sharing = await switchOn("sharing");
+  const [sharing, signupOpen] = await Promise.all([switchOn("sharing"), switchOn("open_signup")]);
+  // The invitation shows once the site is public (behind the coming-soon password it would lead to a wall);
+  // with sign-up still invite-only it leads to the waitlist.
+  const invite = !gatePassword() && !t.sender_account && !t.deleted_at ? (signupOpen ? "/signup" : "/#waitlist") : null;
   const stemsOn = !!t.stems_requested_at && !t.deleted_at && (await featureOn("stems", { id: t.user_id, plan: t.receiver_plan }));
   const stems = stemsOn ? await stemsFor(t.id) : [];
   const [c, editor] = await Promise.all([siteCopy("receipt"), siteEditor()]);
@@ -173,7 +177,17 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
         </div>
       </details>
       <LivePulse url={`/api/pulse/receipt/${token}`} every={8000} />
-      <footer className="mt-auto flex justify-center pt-4">
+      <footer className="mt-auto flex flex-col items-center gap-3 pt-4">
+        {/* Senders are how FloorTest grows: one quiet invitation, only to senders without an account. */}
+        {invite && (
+          <p className="text-center text-[12px] leading-[18px] text-dim">
+            DJ too?{" "}
+            <Link href={invite} className="py-3 text-mute underline underline-offset-4 hover:text-bone">
+              Get your own link
+            </Link>
+            , so music sent to you arrives like this.
+          </p>
+        )}
         <Logo small />
       </footer>
     </main>

@@ -25,14 +25,17 @@ export async function sendWelcome(userId: number) {
   });
 }
 
-/** One nudge, 7 days after sign-up, to receivers whose link hasn't had a track yet. */
+/** Onboarding's one job is the first track within 48 hours (PRODUCT.md): one nudge, 2 days after sign-up, if the link hasn't had one. */
+export const FIRST_TRACK_NUDGE_DAYS = 2;
+
+/** One nudge, FIRST_TRACK_NUDGE_DAYS after sign-up, to receivers whose link hasn't had a track yet. */
 export async function runFirstTrackNudges(at = now()) {
   const users = await q.all<{ id: number; email: string; name: string; first_name: string; handle: string }>(
     `SELECT u.id, u.email, u.name, u.first_name, u.handle FROM users u
      WHERE u.first_track_nudged_at IS NULL AND u.created_at < ? AND u.suspended_at IS NULL AND u.notify_alerts = 1 AND u.email_verified_at IS NOT NULL
        AND NOT EXISTS (SELECT 1 FROM tracks t WHERE t.user_id = u.id)
      LIMIT 200`,
-    at - 7 * DAY,
+    at - FIRST_TRACK_NUDGE_DAYS * DAY,
   );
   let sent = 0;
   for (const u of users) {

@@ -2,14 +2,21 @@ import Link from "next/link";
 import { activeCollection } from "@/lib/desk";
 import { q, type User } from "@/lib/db";
 import { dismissOnboarding } from "../actions/desk";
+import { APP_URL } from "@/lib/mail";
+import { ShareKit } from "./ShareKit";
 
-/** First-week checklist: each step ticks itself off from what the receiver has actually done. */
+/**
+ * First-week checklist: each step ticks itself off from what the receiver has actually done. Until the first track arrives
+ * it shows only what gets that track (PRODUCT.md: onboarding's one job is the first track within 48 hours), with the
+ * share step opened up into a ready caption and QR; the rest appears once a track has landed.
+ */
 export async function Onboarding({ user }: { user: User }) {
   const row = await q.get<{ d: number | null }>("SELECT onboarding_dismissed_at AS d FROM users WHERE id = ?", user.id);
   if (row?.d) return null;
   const c = await activeCollection(user);
   const has = async (sql: string) => !!(await q.get(sql, user.id));
-  const steps = [
+  const firstTrack = await has("SELECT 1 FROM tracks WHERE user_id = ? LIMIT 1");
+  const all = [
     { done: !!user.email_verified_at, label: "Confirm your email", hint: "So resets and alerts reach you. Check your inbox.", href: null },
     {
       done: !!(c && (c.brief_wanted || c.genres || c.bpm_min || c.closes_at || c.brief_note)),
@@ -17,7 +24,7 @@ export async function Onboarding({ user }: { user: User }) {
       hint: "Genres, BPM and a closing date tell senders what you want.",
       href: "/dashboard/collections",
     },
-    { done: await has("SELECT 1 FROM tracks WHERE user_id = ? LIMIT 1"), label: "Share your link and get a first track", hint: "Post it in your bio, a callout or a DM. Use Copy link at the top.", href: null },
+    { done: firstTrack, label: "Share your link and get a first track", hint: "Post it in your bio, a story or a callout. Senders upload the original file; you'll get an email when it lands.", href: null, share: true },
     { done: await has("SELECT 1 FROM tracks WHERE user_id = ? AND decision IS NOT NULL LIMIT 1"), label: "Make your first decision", hint: "Play a track, then Keep or Not for me.", href: "/dashboard/review?view=queue" },
     {
       done: await has("SELECT 1 FROM account_log WHERE user_id = ? AND action IN ('exported','downloaded') LIMIT 1"),
@@ -27,6 +34,7 @@ export async function Onboarding({ user }: { user: User }) {
     },
     { done: !!user.totp_enabled_at, label: "Protect your account (optional)", hint: "Turn on two-factor sign-in.", href: "/dashboard/settings/security" },
   ];
+  const steps = firstTrack ? all : all.slice(0, 3);
   const doneCount = steps.filter((s) => s.done).length;
   if (doneCount === steps.length) return null;
 
@@ -58,6 +66,7 @@ export async function Onboarding({ user }: { user: User }) {
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <span className="text-xs font-bold text-bone">{s.label}</span>
                   <span className="text-[11px] text-faint">{s.hint}</span>
+                  {"share" in s && s.share && <ShareKit link={`${APP_URL}/${user.handle}`} handle={user.handle} />}
                 </span>
               )}
             </>

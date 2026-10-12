@@ -65,7 +65,7 @@ Decided: a colleague is a **seat on an account** (label, radio, crew), not someo
 
 **Within two weeks after launch:** audio previews (server ffmpeg → 256 kbps AAC; download stays original; needs Pro) · Google Workspace email (support@ and legal addresses; DMARC to quarantine after two clean weeks) · accessibility pass with a real screen reader + INP on a real phone.
 
-**Product work from the grilling (no accounts needed):** the 5-day waiting nudge on the Floor · onboarding for the first track in 48 hours (share first, caption + QR; nudge at 48 h) · "clear kept" pointing to Prepare at 80% on Free · "Get your own link" on the receipt · the north-star metric in ops.
+**Product work from the grilling:** ✅ built 12 Oct (on `mobile-next`): the 5-day waiting nudge on the Floor · onboarding for the first track (first-track steps only, caption + QR; the email at 2 days) · "clear kept" pointing to Prepare at 80% · "Get your own link" on the receipt (once the site is public) · the north-star metric in ops.
 
 **Support process:** the owner answers support@floortest.app: takedowns and impersonation within 2 working days, everything else within 5.
 
