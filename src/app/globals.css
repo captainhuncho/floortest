@@ -319,8 +319,9 @@ nav[data-pending] ~ .review-list { opacity: 0.45; pointer-events: none; }
 
 .stage-land { animation: stage-land 4s var(--ease-out) infinite; }
 @keyframes stage-land { 0% { opacity: 0; scale: 0.97; } 8%, 100% { opacity: 1; scale: 1; } }
-.stage-progress { width: 40%; animation: stage-progress 5s linear infinite; }
-@keyframes stage-progress { from { width: 0; } 60%, to { width: 40%; } }
+/* The bar runs a little past the 0:30 mark before it holds, so the listen reads as counted, not as stopping there. */
+.stage-progress { width: 52%; animation: stage-progress 6s linear infinite; }
+@keyframes stage-progress { from { width: 0; } 70%, to { width: 52%; } }
 .stage-usb { position: relative; display: grid; place-items: center; width: 22px; height: 46px; border-radius: 4px 4px 6px 6px; background: linear-gradient(#262823, #1a1b18); box-shadow: 0 0 0 1px var(--color-line-2); }
 .stage-usb::before { content: ""; position: absolute; top: -10px; width: 12px; height: 10px; border-radius: 2px 2px 0 0; background: #8d9087; box-shadow: inset 0 0 0 1px #5e6159; }
 /* The set log lights each line as it reaches the middle of the screen. */
