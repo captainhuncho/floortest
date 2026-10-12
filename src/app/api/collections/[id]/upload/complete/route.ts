@@ -4,6 +4,9 @@ import { q } from "@/lib/db";
 import { completeUpload, IntakeError } from "@/lib/intake";
 import { readAnalysis } from "@/lib/submission";
 
+/** Room for the virus check of a large file (src/lib/scan.ts) on top of the usual checks. */
+export const maxDuration = 60;
+
 export const runtime = "nodejs";
 
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status });

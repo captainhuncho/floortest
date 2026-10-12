@@ -5,6 +5,9 @@ import { recordIncident } from "@/lib/incidents";
 import { completeUpload, IntakeError } from "@/lib/intake";
 import { readAnalysis } from "@/lib/submission";
 
+/** Room for the virus check of a large file (src/lib/scan.ts) on top of the usual checks. */
+export const maxDuration = 60;
+
 export const runtime = "nodejs";
 
 /** Step 2: the file is in storage. { to, uploadId, duration?, bpm?, peaks? }. Checks the file and puts the track on the desk. */

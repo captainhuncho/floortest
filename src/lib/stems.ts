@@ -9,6 +9,8 @@ import { featureOn } from "./features";
 import { recentCount, record } from "./ratelimit";
 import { sealUpload, storage } from "./storage";
 import { validateAudio } from "./validate";
+import { scanStored, SCAN_REFUSED, SCAN_UNAVAILABLE } from "./scan";
+import { recordIncident } from "./incidents";
 
 export type Stem = { id: number; track_id: number; file_key: string; name: string; mime: string; size: number; created_at: number };
 
@@ -115,6 +117,18 @@ export async function completeStemUpload(token: string, uploadId: string) {
   if (!check.ok) {
     await discard();
     throw new IntakeError(check.reason, 415);
+  }
+  // Virus check on our own scanner (off until SCAN_URL is set); nothing flagged or unchecked reaches the desk.
+  const scan = await scanStored(fileKey);
+  if (scan.verdict === "infected" || scan.verdict === "unavailable") {
+    await discard();
+    await recordIncident(
+      scan.verdict === "infected" ? "upload_rejected" : "upload_failed",
+      scan.verdict === "infected" ? "Virus check flagged an upload" : "Virus check unavailable; an upload was refused",
+      scan.verdict === "infected" ? `${scan.signature} · receiver #${t.user_id}` : scan.error,
+      "stem upload",
+    );
+    throw new IntakeError(scan.verdict === "infected" ? SCAN_REFUSED : SCAN_UNAVAILABLE, scan.verdict === "infected" ? 422 : 503);
   }
   const previous = (await q.get<{ at: number | null }>("SELECT MAX(created_at) AS at FROM stems WHERE track_id = ?", t.id))?.at ?? null;
   const stem = (await q.get<Stem>(

@@ -14,6 +14,8 @@ import { folderLimit } from "./plan-store";
 import { allow } from "./ratelimit";
 import { sealUpload, storage } from "./storage";
 import { validateAudio } from "./validate";
+import { scanStored, SCAN_REFUSED, SCAN_UNAVAILABLE } from "./scan";
+import { recordIncident } from "./incidents";
 import { activeCollection, capacity, isClosed, isFull, isPaused, pausedMessage, rewardReferral } from "./desk";
 
 const HOUR = 3_600_000;
@@ -224,6 +226,18 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
   if (!check.ok) {
     await discard();
     throw new IntakeError(check.reason, 415);
+  }
+  // Virus check on our own scanner (off until SCAN_URL is set); nothing flagged or unchecked reaches the desk.
+  const scan = await scanStored(fileKey);
+  if (scan.verdict === "infected" || scan.verdict === "unavailable") {
+    await discard();
+    await recordIncident(
+      scan.verdict === "infected" ? "upload_rejected" : "upload_failed",
+      scan.verdict === "infected" ? "Virus check flagged an upload" : "Virus check unavailable; an upload was refused",
+      scan.verdict === "infected" ? `${scan.signature} · receiver #${receiver.id}` : scan.error,
+      "upload",
+    );
+    throw new IntakeError(scan.verdict === "infected" ? SCAN_REFUSED : SCAN_UNAVAILABLE, scan.verdict === "infected" ? 422 : 503);
   }
 
   const meta = JSON.parse(up.meta) as SubmissionMeta;

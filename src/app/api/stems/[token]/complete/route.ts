@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { IntakeError } from "@/lib/intake";
 import { completeStemUpload } from "@/lib/stems";
 
+/** Room for the virus check of a large file (src/lib/scan.ts) on top of the usual checks. */
+export const maxDuration = 60;
+
 export const runtime = "nodejs";
 
 /** Step 2: the stem is in storage. Validate it and attach it to the track. Body: { uploadId }. */
