@@ -561,12 +561,13 @@ export async function linkDataFor(email: string, userId: number | null) {
  * link's activity. One-way: to share it again the receiver has to ask the artist.
  */
 export async function stopSharingByReceipt(token: string) {
-  const t = await q.get<{ id: number; collection_id: number | null }>(
-    "UPDATE tracks SET share_ok = 0 WHERE token = ? AND share_ok = 1 AND deleted_at IS NULL RETURNING id, collection_id",
+  // Works the same once the track has left the desk (it's in no share link by then), so the receipt doesn't tell.
+  const t = await q.get<{ id: number; collection_id: number | null; deleted_at: number | null }>(
+    "UPDATE tracks SET share_ok = 0 WHERE token = ? AND share_ok = 1 RETURNING id, collection_id, deleted_at",
     String(token).slice(0, 100),
   );
   if (!t) return false;
-  if (t.collection_id)
+  if (t.collection_id && !t.deleted_at)
     for (const l of await q.all<{ id: number }>("SELECT id FROM collection_links WHERE collection_id = ? AND revoked_at IS NULL", t.collection_id))
       await logLinkEvent(l.id, "sender_stopped", {}, t.id);
   return true;

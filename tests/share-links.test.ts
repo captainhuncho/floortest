@@ -197,6 +197,14 @@ test("retention, account deletion and the artist's stop switch", async () => {
   assert.equal(await L.stopSharingByReceipt(shared.token), false, "once");
   assert.ok(await q.get("SELECT 1 FROM link_events WHERE link_id = ? AND kind = 'sender_stopped' AND track_id = ?", link.id, shared.id));
 
+  // Once the track has left the desk the switch answers the same, so the receipt doesn't give the removal away.
+  const gone = (await q.get<{ id: number; token: string }>(
+    "INSERT INTO tracks (user_id, sender_id, collection_id, title, artist, token, file_key, original_name, mime, size, created_at, share_ok, share_terms, deleted_at) SELECT user_id, sender_id, collection_id, 'Gone', 'A', 'tok-Gone', file_key, original_name, mime, size, created_at, 1, 'test', ? FROM tracks WHERE id = ? RETURNING id, token",
+    Date.now(), shared.id,
+  ))!;
+  assert.equal(await L.stopSharingByReceipt(gone.token), true);
+  assert.equal(await q.get("SELECT 1 FROM link_events WHERE track_id = ?", gone.id), undefined);
+
   // Account deletion: off other people's lists, and their visits and activity gone.
   const mate = (await q.get<{ id: number; email: string }>("SELECT id, email FROM users WHERE handle = 'mate'"))!;
   await L.addRecipients(o, link.id, "@mate", "listen");

@@ -21,6 +21,16 @@ export async function stemsFor(trackId: number) {
   return q.all<Stem>("SELECT * FROM stems WHERE track_id = ? ORDER BY name", trackId);
 }
 
+/** What the sender's receipt lists: every stem they sent, whether or not the track is still on the desk. */
+export function stemsSent(t: Pick<Track, "stems_sent">): string[] {
+  try {
+    const list = JSON.parse(t.stems_sent || "[]");
+    return Array.isArray(list) ? list.filter((n): n is string => typeof n === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
 /** The receiver asks for stems: marks the track and emails the sender a link to their receipt. */
 export async function requestStems(user: User, t: Track) {
   if (!(await featureOn("stems", user))) return;
@@ -44,9 +54,14 @@ export async function requestStems(user: User, t: Track) {
   });
 }
 
+/**
+ * The receipt's stems request stays open after the track leaves the desk: closing it then would tell the sender the
+ * track was removed (Not for me leaves after 30 days, undecided after 90). Stems sent to a removed track are checked
+ * like any other, then discarded; the receipt lists them as sent.
+ */
 async function trackForStems(token: string) {
   const t = await q.get<Track>("SELECT * FROM tracks WHERE token = ?", token);
-  if (!t || t.deleted_at) throw new IntakeError("This track is no longer available.", 404);
+  if (!t) throw new IntakeError("This track is no longer available.", 404);
   if (!t.stems_requested_at) throw new IntakeError("Stems weren't requested for this track.", 403);
   const plan = (await q.get<{ plan: string }>("SELECT plan FROM users WHERE id = ?", t.user_id))?.plan ?? "free";
   if (!(await featureOn("stems", { id: t.user_id, plan }))) throw new IntakeError("Not found", 404);
@@ -60,8 +75,7 @@ export async function startStemUpload(token: string, fileName: string, size: num
   if (!ext) throw new IntakeError("Stems must be WAV or MP3 files.", 400);
   if (!Number.isSafeInteger(size) || size <= 0) throw new IntakeError("Choose a WAV or MP3 file.", 400);
   if (size > MAX_UPLOAD_BYTES) throw new IntakeError("That stem is too large (max 250 MB).", 413);
-  const count = (await q.get<{ n: number }>("SELECT COUNT(*) AS n FROM stems WHERE track_id = ?", t.id))!.n;
-  if (count >= MAX_STEMS) throw new IntakeError(`That's the maximum of ${MAX_STEMS} stems for this track.`, 409);
+  if (stemsSent(t).length >= MAX_STEMS) throw new IntakeError(`That's the maximum of ${MAX_STEMS} stems for this track.`, 409);
   if ((await recentCount("stem_ip", `${t.id}:${ip}`, HOUR)) >= MAX_STEMS * 2) throw new IntakeError("Too many uploads. Try again in an hour.", 429);
   await record("stem_ip", `${t.id}:${ip}`);
 
@@ -116,17 +130,25 @@ export async function completeStemUpload(token: string, uploadId: string) {
     await discard();
     throw new IntakeError(check.reason, 415);
   }
+  const name = meta.name || "Stem";
+  const sent = () => q.run("UPDATE tracks SET stems_sent = (COALESCE(stems_sent, '[]')::jsonb || to_jsonb(?::text))::text WHERE id = ?", name, t.id);
+  if (t.deleted_at) {
+    await discard();
+    await sent();
+    return { name, size: head.size };
+  }
   const previous = (await q.get<{ at: number | null }>("SELECT MAX(created_at) AS at FROM stems WHERE track_id = ?", t.id))?.at ?? null;
   const stem = (await q.get<Stem>(
     "INSERT INTO stems (track_id, file_key, name, mime, size, created_at) VALUES (?,?,?,?,?,?) RETURNING *",
     t.id,
     fileKey,
-    meta.name || "Stem",
+    name,
     check.kind === "wav" ? "audio/wav" : "audio/mpeg",
     head.size,
     now(),
   ))!;
   await q.run("DELETE FROM uploads WHERE id = ?", up.id);
+  await sent();
 
   // One email per batch: only when nothing else arrived for this track in the last half hour.
   if (!previous || now() - previous > HOUR / 2) {

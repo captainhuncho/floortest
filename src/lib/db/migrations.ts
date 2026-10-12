@@ -1475,4 +1475,14 @@ alter table account_members add column if not exists notifications_seen_at bigin
 alter table account_members add column if not exists notifications_cleared_at bigint;
 `,
   },
+  {
+    // The names of the stems a sender uploaded, kept apart from the stem files: the files leave with the track, the
+    // sender's receipt keeps its list, so it never shows that the track left the desk.
+    id: "0090_stems_sent",
+    sql: `
+alter table tracks add column if not exists stems_sent text;
+update tracks t set stems_sent = (select json_agg(s.name order by s.created_at)::text from stems s where s.track_id = t.id)
+  where exists (select 1 from stems s where s.track_id = t.id);
+`,
+  },
 ];
