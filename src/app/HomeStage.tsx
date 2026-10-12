@@ -13,9 +13,9 @@ export function JogWheel() {
       <div className="stage-deck relative aspect-square rounded-[2rem] border border-line bg-ink-2 p-[9%]">
         <span className="stage-readout left-[7%] top-[5%]">122.0 BPM</span>
         <span className="stage-readout right-[7%] top-[5%]">−03:41</span>
-        <span className="absolute bottom-[4.2%] left-[7%] flex items-center gap-3.5">
+        <span className="absolute bottom-[4.2%] left-[7%] flex items-center gap-2.5">
           <span className="stage-cue" />
-          <span className="stage-readout static">CUE</span>
+          <span className="text-[10px] tracking-[0.12em] text-faint">CUE</span>
         </span>
         <div className="stage-platter relative size-full rounded-full">
           <div className="stage-spin absolute inset-0 rounded-full">
@@ -30,6 +30,37 @@ export function JogWheel() {
       </div>
       <PhoneQueue />
     </div>
+  );
+}
+
+/** Under the hero: what happens after the link. The deck and the phone, with one line and three readouts. */
+export function DeckSection() {
+  return (
+    <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+      <div className="grid grid-cols-1 items-center gap-14 lg:grid-cols-[minmax(0,1fr)_440px]">
+        <div>
+          <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">Cued up like a deck.</h2>
+          <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-mute">
+            Every track sent to your link waits in one queue, oldest first. Play, keep, next, on your phone in the booth or at your desk.
+          </p>
+          <dl className="mt-10 grid max-w-xl grid-cols-3 border-y border-line">
+            {[
+              ["Order", "Oldest first"],
+              ["Listened", "30 s"],
+              ["Keep", "→ crate"],
+            ].map(([k, v], i) => (
+              <div key={k} className={`py-4 ${i ? "border-l border-line pl-4" : ""}`}>
+                <dt className="text-[10px] uppercase tracking-[0.12em] text-faint">{k}</dt>
+                <dd className="mt-1.5 text-[15px] font-bold text-bone">{v}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+        <div className="pb-10">
+          <JogWheel />
+        </div>
+      </div>
+    </section>
   );
 }
 

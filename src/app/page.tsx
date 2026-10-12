@@ -10,7 +10,7 @@ import { siteEditor } from "@/lib/site-editor";
 import { SectionFrame, SectionList, SiteEditor } from "@/components/SiteEditor";
 import { mono, serif } from "./fonts";
 import { HomePreview } from "./HomePreview";
-import { JogWheel, SetLog, TwoSides } from "./HomeStage";
+import { DeckSection, SetLog, TwoSides } from "./HomeStage";
 import { ClaimBox } from "./ClaimBox";
 import { WaitlistForm } from "./WaitlistForm";
 import { NewsletterForm } from "./NewsletterForm";
@@ -56,6 +56,7 @@ export default async function Home({
       : { href: "/signup", label: "Claim your link" };
 
   const SECTIONS: Record<HomeSection, React.ReactNode> = {
+    deck: <DeckSection />,
     log: <SetLog />,
     desk: <TwoSides />,
     preview: (
@@ -289,7 +290,7 @@ export default async function Home({
       {/* Hero */}
       <section className="relative overflow-hidden">
         <div className="relative mx-auto max-w-6xl px-4 pb-10 pt-16 sm:px-6 sm:pt-24">
-          <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-center">
+          <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-center">
             <div>
               <p className="flex items-center gap-3 text-sm text-lime">
                 <span aria-hidden className="h-px w-8 bg-lime" /> <E k="eyebrow" />
@@ -303,27 +304,54 @@ export default async function Home({
               <p className="mt-8 max-w-2xl text-[15px] leading-relaxed text-mute">
                 <E k="intro" />
               </p>
-              <div className="mt-10 max-w-md">
-                {user ? (
-                  <Link href={cta.href} className="inline-block rounded-md bg-lime px-6 py-4 text-sm font-medium uppercase text-ink hover:brightness-95">
-                    {cta.label} →
-                  </Link>
-                ) : (
-                  <ClaimBox host={HOST} inviteOnly={inviteOnly} />
-                )}
+              <div className="mt-10 flex flex-wrap items-center gap-6">
+                <Link
+                  href={cta.href}
+                  className="rounded-md bg-lime px-6 py-4 text-sm font-medium uppercase text-ink hover:brightness-95"
+                >
+                  {cta.label} →
+                </Link>
+                <Link
+                  href={DEMO}
+                  className="text-sm text-bone hover:text-bone"
+                >
+                  See an example link <span className="text-dim">(example: /maxwell)</span> →
+                </Link>
               </div>
-              <Link href={DEMO} className="mt-2 inline-block text-sm text-bone">
-                See an example link <span className="text-dim">(example: /maxwell)</span> →
-              </Link>
-              {!user && inviteOnly && (
+              {!user && (
                 <p className="mt-4 text-xs text-dim">
-                  <Link href="/signup" className="underline underline-offset-4 hover:text-bone">Have an invite? Claim your link</Link>
+                  Private beta · invites go out in small batches to DJs, curators and labels
+                  {inviteOnly && (
+                    <>
+                      {" "}· <Link href="/signup" className="underline underline-offset-4 hover:text-bone">Have an invite? Claim your link</Link>
+                    </>
+                  )}
                 </p>
               )}
             </div>
-            {/* The deck at 2am: the crest in the centre cap, one cue light, the Review Queue rising beside it. */}
-            <div className="min-w-0 pb-10">
-              <JogWheel />
+            {/* The one link, and where it routes: the product in a card. */}
+            <div className="min-w-0 rounded-lg border border-white/10 bg-ink-2 p-6 sm:p-8">
+              {user ? (
+                <>
+                  <p className="home-label">Your link</p>
+                  <p className="mt-4 break-all text-xl sm:text-2xl">
+                    {HOST}/<wbr /><span className="text-lime">{user.handle}</span>
+                  </p>
+                </>
+              ) : (
+                <ClaimBox host={HOST} inviteOnly={inviteOnly} />
+              )}
+              <p className="home-label mt-6 normal-case tracking-normal">Same link. You choose where it routes.</p>
+              <div className="mt-3 space-y-2">
+                <div className="flex items-center justify-between rounded-md border border-white/10 px-4 py-2.5 text-xs text-mute">
+                  <span>Yesterday</span>
+                  <span>Friday residency</span>
+                </div>
+                <div className="flex items-center justify-between rounded-md border border-lime/50 bg-lime/[0.08] px-4 py-2.5 text-xs">
+                  <span className="text-mute">Today</span>
+                  <span className="font-semibold text-lime">Radio show callout</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

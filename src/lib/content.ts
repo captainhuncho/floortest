@@ -19,6 +19,7 @@ const text = (label: string, start: string, more: Partial<Field> = {}) => f(labe
 
 /** Home page sections that can be reordered or hidden (the header, hero and footer always stay put). */
 export const HOME_SECTIONS = {
+  deck: "Cued up like a deck",
   log: "One track's week",
   desk: "Two sides of the desk",
   preview: "Product preview",
@@ -55,7 +56,7 @@ export const SITE_PAGES = {
     label: "Home",
     path: "/",
     fields: {
-      sections: f("Section order", "log,desk,private,plans,waitlist,faq,-journey,-how,-preview", { hint: "Easiest to change on the page itself (Edit on the page). A \"-\" in front hides a section." }),
+      sections: f("Section order", "deck,log,desk,private,plans,waitlist,faq,-journey,-how,-preview", { hint: "Easiest to change on the page itself (Edit on the page). A \"-\" in front hides a section." }),
       eyebrow: f("Line above the headline", "The receiving desk for new music"),
       headline: f("Headline", "From the studio"),
       headline_italic: f("Headline, second line (italic)", "to the floor."),
