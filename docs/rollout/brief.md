@@ -18,10 +18,11 @@ A **creator's** home for work-in-progress music (organise, share links and see w
 ## Ground rules for everyone
 - Short. A heading of a few words and at most one line under it. No paragraphs of explanation.
 - Images carry the meaning: say what the image *shows* (scene, subject, light, composition, what's on screen), so a photographer or designer could shoot or build it.
-- Honest signals: never claim more than the product does (no "verified artist", no invented stats, testimonials, logos or press: none exist yet). Use placeholders like "[first partner quote]" if needed.
+- Honest signals: never claim more than the product does (no "verified artist", no invented stats, testimonials, logos or press: none exist yet). Use placeholders like "{first partner quote}" if needed.
 - Real scenes: London and Lagos (Afro house, amapiano, house), booths, laptops between gigs, phones in a club, a producer's bedroom studio. Diverse, real people; no stock-photo poses.
 - Brand voice rules are binding (no exclamation marks, no hype words, "track" not "song", "Keep / Not for me").
 - Number your ideas so the owner can say "do 3 and 7".
+- **No square brackets in our language or branding.** Bracketed words (`[untitled]`, `[membership]`) are untitled's signature; FloorTest never uses them, not even as decoration. Placeholders are written `{date}`.
 
 ## untitled.stream on a phone (owner's 16 screenshots, 12 Oct; not stored in the repo)
 How they sell: a **pinned top** (headline + one App Store button stay fixed while everything scrolls under them); **one object hero** (an iridescent CD engraved "[untitled] · Brooklyn, New York", turning, the phone rising out of it); then **13 feature cards**: a live, moving crop of the real app on a slightly lighter dark panel, a sentence-case heading, one grey line. Warmth comes from **personal snapshots used as artwork** (a cat, a piano on a lawn, a city at night); the UI stays neutral. **Mono readouts** as detail (00:05.15 · G Maj · 120 BPM · 44.1kHz 16-bit · VARISPEED). One accent per card but a **different colour on each** (yellow, red, blue, green). Security card makes vague claims ("a world-class cybersecurity firm", "on par with Dropbox").

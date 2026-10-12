@@ -48,6 +48,6 @@
 > Senders get a private receipt that says what actually happened. Free for your first 20 tracks.
 
 ## 6. Never say or show
-1. **A signal or claim bigger than the truth:** no "verified artist", no "heard by" for a 5-second skip, no invented user counts, quotes, logos or press. Use "[first partner quote]" until one exists.
+1. **A signal or claim bigger than the truth:** no "verified artist", no "heard by" for a 5-second skip, no invented user counts, quotes, logos or press. Use "{first partner quote}" until one exists.
 2. **That a sender is being rejected or ignored:** no "passed", no mocking demos, no "never answer another DM" jokes at artists' expense.
 3. **Hype and leak imagery:** no exclamation marks, "game-changer", party crowds with hands up, or anything that suggests tracks are public, shared or streamable by others.

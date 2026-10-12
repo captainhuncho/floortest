@@ -16,15 +16,15 @@ Numbered so the owner can say "do 7 and 15".
 ## 2. Concepts per public page
 
 **Home hero**
-7. *The phone in the booth.* Close-up from over the shoulder of a DJ in a London booth, phone held low beside the CDJ. On screen is the Review Queue in Night theme, with one row playing and the Keep button lit lime. The CDJ cue light sits soft in the background. 4:5 crop, mood: focused at 2am. **[product on device]**
+7. *The phone in the booth.* Close-up from over the shoulder of a DJ in a London booth, phone held low beside the CDJ. On screen is the Review Queue in Night theme, with one row playing and the Keep button lit lime. The CDJ cue light sits soft in the background. 4:5 crop, mood: focused at 2am. **(product on device)**
 8. *Alternative:* a Lagos producer's hand on a laptop trackpad on a flight case, with the desk on screen. Wide, mostly black, the screen the only light.
 
 **Home: How it works ("Share once. Decide fast.")**
 9. Three tiles, each a cropped screen with no frame: (a) your link with a QR code, (b) a track landing in Up next, (c) Keep / Not for me. These are designed from screenshots alone.
-10. A photo for the share step: the DJ's own Instagram story showing the QR code, on a phone resting on a mixer. **[product on device]**
+10. A photo for the share step: the DJ's own Instagram story showing the QR code, on a phone resting on a mixer. **(product on device)**
 
 **Home: Receipts ("Know what happened next.")**
-11. *"Listened" on the producer's phone.* A bedroom studio at night (Lagos ideally, London on the first shoot). The producer sits on the edge of the bed, face lit by the phone. On screen is the receipt: "Sample DJ listened. 10 Oct, 01:12". Framing is medium, with the monitors out of focus. Mood: quiet relief. **[product on device]**
+11. *"Listened" on the producer's phone.* A bedroom studio at night (Lagos ideally, London on the first shoot). The producer sits on the edge of the bed, face lit by the phone. On screen is the receipt: "Sample DJ listened. 10 Oct, 01:12". Framing is medium, with the monitors out of focus. Mood: quiet relief. **(product on device)**
 
 **Home: Privacy ("Music stays between the people you choose.")**
 12. A closed laptop on a flight case, with headphones folded on top and one small lime LED. No people and no screen. It says "private" without any words.

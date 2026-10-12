@@ -2,7 +2,7 @@
 
 Prices per Launch Decisions: Free 20 tracks · Pro $6.99/mo · Team $19.99/mo, 5 seats, $4 per extra seat. Note: `docs/01-product.md` Plans row still says Team $12.99; fix before any of this goes out.
 
-Ground rule: no invented logos, quotes or numbers. Placeholders like [first label quote] until real ones exist.
+Ground rule: no invented logos, quotes or numbers. Placeholders like {first label quote} until real ones exist.
 
 ## 1. Who buys Team
 
@@ -37,9 +37,9 @@ Signed by the owner, plain text, one link. Stop as soon as they answer.
 3. **Subject: Callouts with a brief**
    Ask for what you want: BPM, genres, deadline, a note. Senders see the brief before they upload, so you get fewer tracks that miss.
 4. **Subject: 10 minutes, on a real desk**
-   I can show you a desk with real tracks: review, keep, prepare a crate, a sender's receipt. Pick a time: [link].
+   I can show you a desk with real tracks: review, keep, prepare a crate, a sender's receipt. Pick a time: {link}.
 5. **Subject: Closing the loop**
-   I won't email again. If timing changes, Free covers 20 tracks and Team is $19.99 a month for 5 people. [link]
+   I won't email again. If timing changes, Free covers 20 tracks and Team is $19.99 a month for 5 people. {link}
 
 ## 3. Ten-minute demo (real desk, sample tracks)
 
@@ -68,8 +68,8 @@ Before you start: a demo desk with 8 to 10 sample tracks from consenting produce
 - Team: "When more than one person listens: $4 a head, and $4 for each extra seat."
 
 **Telling beta users (dated email, sent before billing goes on)**
-> Subject: FloorTest plans from [date]
-> Billing starts on [date]. Your [plan] stays free until [date + 6 months]. After that it's 50% off for 12 months: [$x] a month, until [date + 18 months]. Then the normal price. You don't need to do anything now, and we'll email you 14 days before anything is charged. Free stays free (20 tracks). Questions: support@floortest.app
+> Subject: FloorTest plans from {date}
+> Billing starts on {date}. Your {plan} stays free until {date + 6 months}. After that it's 50% off for 12 months: {$x} a month, until {date + 18 months}. Then the normal price. You don't need to do anything now, and we'll email you 14 days before anything is charged. Free stays free (20 tracks). Questions: support@floortest.app
 > — FloorTest
 
 Rules: real dates, not "soon". Name the exact amount. No "exclusive". Repeat it on the Plans page for beta accounts.
@@ -87,7 +87,7 @@ Rules: real dates, not "soon". Name the exact amount. No "exclusive". Repeat it 
 2. **Community and student radio stations.** They get a Team desk for the station and a callout page for listeners who produce. We get a shared desk that new presenters see on day one. Offer: beta terms, a case study only if they want one.
 3. **Distributors and label services.** They get a recommended way for their labels to receive and sort tracks, plus an onboarding page for their roster. We get labels as Team buyers. No data sharing either way.
 4. **Music-tech and scene newsletters.** They get a short, honest piece on how receipts work (one signal, one meaning) and a reader code for Pro. We get the reach. No paid placement presented as editorial.
-5. **Venues and club nights (London, Lagos, Accra).** They get a callout per night ("send Afro house for [night]") with a deadline, and their residents share one desk. We get a link on a flyer and a story QR in the room.
+5. **Venues and club nights (London, Lagos, Accra).** They get a callout per night ("send Afro house for {night}") with a deadline, and their residents share one desk. We get a link on a flyer and a story QR in the room.
 
 ## 6. Sender/producer advisor
 
