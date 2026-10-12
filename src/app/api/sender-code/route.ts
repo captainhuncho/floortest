@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   const ip = ipFrom(req.headers);
   try {
     if (body.action === "send") {
-      if (!(await passedTurnstile(body.turnstile, ip))) return bad(BOT_MESSAGE, 403);
+      if (!(await passedTurnstile(body.turnstile, ip, "send"))) return bad(BOT_MESSAGE, 403);
       await sendCode(email, ip);
     } else if (body.action === "resend") {
       if (!(await canResend(email))) return bad("Start again to get a new code.", 403);

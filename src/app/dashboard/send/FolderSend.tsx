@@ -427,7 +427,7 @@ export function FolderSend({
           {error}
         </p>
       )}
-      {items.length > 0 && !account && <Turnstile siteKey={botCheckKey} />}
+      {items.length > 0 && !account && <Turnstile action="send" siteKey={botCheckKey} />}
       {items.length > 0 && (
         <p className="text-xs text-mute">
           <span className="text-danger">*</span> Required. By sending you confirm you own or control these tracks, your answer about AI is accurate, and you&apos;re 18 or over.{" "}

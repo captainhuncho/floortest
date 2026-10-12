@@ -18,7 +18,7 @@ export async function recentFailures(emailBucket: string, ipBucket: string, emai
  */
 export async function humanCheck(failures: number, form: FormData, ip: string): Promise<{ ok: true } | { ok: false; challenge: boolean }> {
   if (failures < HUMAN_CHECK_AFTER || !(await botCheckKey())) return { ok: true };
-  return (await passedTurnstile(form.get("cf-turnstile-response"), ip)) ? { ok: true } : { ok: false, challenge: true };
+  return (await passedTurnstile(form.get("cf-turnstile-response"), ip, "auth")) ? { ok: true } : { ok: false, challenge: true };
 }
 
 export const HUMAN_MESSAGE = "Too many wrong tries. Confirm you're human below, then try again.";

@@ -2,9 +2,10 @@
 
 import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
+import type { BotAction } from "@/lib/turnstile";
 
 type TurnstileApi = {
-  render: (el: HTMLElement, opts: { sitekey: string; theme: string; size: string; execution: "render" | "execute"; appearance: "always" | "execute" | "interaction-only" }) => string;
+  render: (el: HTMLElement, opts: { sitekey: string; action: string; theme: string; size: string; execution: "render" | "execute"; appearance: "always" | "execute" | "interaction-only" }) => string;
   execute: (el: HTMLElement | string) => void;
   reset: (id: string) => void;
   remove: (id: string) => void;
@@ -16,9 +17,10 @@ const api = () => (window as unknown as { turnstile?: TurnstileApi }).turnstile;
  * Nothing loads from Cloudflare until someone starts using the form (focus or tap): visitors who only read
  * the page never contact it, privacy blockers have nothing to flag, and every check that runs gets verified.
  * It stays invisible unless Cloudflare needs a click. A token works once, so it's renewed after every submit.
+ * `action` names the form; the server refuses a check solved for another one.
  * Renders nothing when `siteKey` is null (switched off or not configured).
  */
-export function Turnstile({ siteKey, theme = "dark", eager = false }: { siteKey: string | null; theme?: "dark" | "light" | "auto"; /** Start the check straight away (it appeared because one is needed now). */ eager?: boolean }) {
+export function Turnstile({ siteKey, action, theme = "dark", eager = false }: { siteKey: string | null; action: BotAction; theme?: "dark" | "light" | "auto"; /** Start the check straight away (it appeared because one is needed now). */ eager?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const [started, setStarted] = useState(eager);
 
@@ -45,7 +47,7 @@ export function Turnstile({ siteKey, theme = "dark", eager = false }: { siteKey:
     const tryRender = () => {
       const t = api();
       if (!t || id) return !!id;
-      id = t.render(el, { sitekey: siteKey, theme, size: "flexible", execution: "execute", appearance: "interaction-only" });
+      id = t.render(el, { sitekey: siteKey, action, theme, size: "flexible", execution: "execute", appearance: "interaction-only" });
       t.execute(id);
       return true;
     };
@@ -64,7 +66,7 @@ export function Turnstile({ siteKey, theme = "dark", eager = false }: { siteKey:
       form?.removeEventListener("submit", refresh);
       if (id) api()?.remove(id);
     };
-  }, [siteKey, theme, started]);
+  }, [siteKey, action, theme, started]);
 
   if (!siteKey) return null;
   return (

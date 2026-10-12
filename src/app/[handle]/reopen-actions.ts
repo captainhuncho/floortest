@@ -17,7 +17,7 @@ export async function askReopenAlert(_: ReopenState, form: FormData): Promise<Re
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Enter a valid email." };
   const ip = await requestIp();
   if (!(await allow("reopen_alert_ip", ip, 5, 3_600_000))) return { error: "Too many requests. Try again later." };
-  if (!(await passedTurnstile(form.get("cf-turnstile-response"), ip))) return { error: BOT_MESSAGE };
+  if (!(await passedTurnstile(form.get("cf-turnstile-response"), ip, "reopen"))) return { error: BOT_MESSAGE };
   const receiver = await userByHandle(String(form.get("handle") || "").slice(0, 30));
   if (receiver) await requestReopenAlert(receiver.id, email);
   return { ok: true };

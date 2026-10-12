@@ -168,7 +168,7 @@ export async function signup(_: FormState, form: FormData): Promise<FormState> {
   const name = fromForm(form, "name", 80) || handle;
   const password = String(form.get("password") || "");
   if (form.get("agree") !== "on") return { error: "Please confirm you're 18 or over and agree to the Terms to create an account." };
-  if (!(await passedTurnstile(form.get("cf-turnstile-response"), await requestIp()))) return { error: BOT_MESSAGE };
+  if (!(await passedTurnstile(form.get("cf-turnstile-response"), await requestIp(), "auth"))) return { error: BOT_MESSAGE };
   if (!password) return { error: "Choose a password." };
   const strength = passwordStrength(password, [name, firstName, lastName, email, handle]);
   if (!strength.ok) return { error: strength.tip ?? "Choose a stronger password." };

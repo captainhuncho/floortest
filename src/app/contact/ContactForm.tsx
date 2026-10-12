@@ -43,7 +43,7 @@ export function ContactForm({ name, email, topic, message, botCheckKey }: { name
           {state.error}
         </p>
       )}
-      <Turnstile siteKey={botCheckKey} />
+      <Turnstile action="contact" siteKey={botCheckKey} />
       <button className="btn-lime" disabled={pending}>
         {pending ? "Sending…" : "Send message"}
       </button>

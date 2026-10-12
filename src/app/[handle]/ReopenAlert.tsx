@@ -35,7 +35,7 @@ export function ReopenAlert({ handle, receiverName, botCheckKey }: { handle: str
           {pending ? "Sending…" : "Tell me"}
         </button>
       </div>
-      <Turnstile siteKey={botCheckKey} />
+      <Turnstile action="reopen" siteKey={botCheckKey} />
       {state?.error && (
         <p role="alert" className="text-[12px] text-danger">
           {state.error}
