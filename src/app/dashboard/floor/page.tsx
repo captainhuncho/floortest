@@ -137,7 +137,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
                     : "You're all caught up. New tracks will show up here first."}
             </p>
             {stale > 0 && (
-              <Link href="/dashboard/review?view=queue" className="w-fit text-[13px] font-semibold text-lime underline-offset-4 hover:underline">
+              <Link href="/dashboard/review?view=queue" className="w-fit text-[13px] font-semibold text-bone underline underline-offset-4">
                 {stale} track{stale === 1 ? " has" : "s have"} waited over {STALE_DAYS} days. The queue starts with {stale === 1 ? "it" : "them"} →
               </Link>
             )}

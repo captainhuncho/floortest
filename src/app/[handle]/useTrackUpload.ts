@@ -65,16 +65,23 @@ export async function uploadTrack(
         error:
           put === 0 ? NET : "The upload didn't go through. Please try again.",
       };
-    const done = await fetch(`/api/submit/${handle}/complete`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        uploadId: started.uploadId,
-        duration: analysis?.duration,
-        bpm: analysis?.bpm,
-        peaks: analysis?.peaks,
-      }),
-    });
+    const finish = () =>
+      fetch(`/api/submit/${handle}/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uploadId: started.uploadId,
+          duration: analysis?.duration,
+          bpm: analysis?.bpm,
+          peaks: analysis?.peaks,
+        }),
+      });
+    // Retry-After: the virus check couldn't run just now and the file was kept, so ask again a few times before giving up.
+    let done = await finish();
+    for (let i = 0; done.status === 503 && done.headers.has("Retry-After") && i < 3 && !signal?.aborted; i++) {
+      await new Promise((r) => setTimeout(r, 10_000));
+      done = await finish();
+    }
     const finished = await json(done);
     if (!done.ok || !finished.token)
       return {

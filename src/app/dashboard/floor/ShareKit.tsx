@@ -8,7 +8,7 @@ import { useToast } from "@/components/Toast";
  */
 export function ShareKit({ link, handle }: { link: string; handle: string }) {
   const toast = useToast();
-  const caption = `Sending me music? Upload the WAV here: ${link}. You'll know when I've listened.`;
+  const caption = `Sending me music? Send the track here: ${link}. You'll know when I've listened.`;
   async function copy() {
     try {
       await navigator.clipboard.writeText(caption);

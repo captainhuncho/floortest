@@ -11,8 +11,14 @@ The file never goes to a third-party service and is never written to disk here.
 - Signatures: one update at start-up (the first takes a few minutes), then `freshclam` keeps them current.
 
 The app side is `src/lib/scan.ts`. It's **off until `SCAN_URL` is set**. When on, it **fails closed**: if the scanner
-can't be reached, the upload is refused with "try again in a few minutes", and ops gets an incident. Nothing unscanned
-reaches a desk.
+can't be reached, nothing unscanned reaches a desk. The sender's file is **kept**, and their browser asks again three times
+over about 30 seconds (`Retry-After`), so a short outage doesn't make them upload 250 MB twice. Only then are they asked
+to try again later. Ops gets an incident either way.
+
+**Before turning it on (privacy):** wherever the scanner runs reads unreleased audio, so that provider is a
+subprocessor. Fly.io would be a **new** one: add it to Subprocessors and Privacy, and ask the lawyer, before setting
+`SCAN_URL`. Running the same container on **Cloudflare Containers** would add no new subprocessor (Cloudflare already holds
+the audio). Which host to use is the owner's call.
 
 > **Status, 12 Oct:** the protocol code is tested against a fake ClamAV (`tests/scan.test.ts`). The container itself
 > hasn't been built or run yet: do steps 2–3 below on a Mac with Docker before deploying.
@@ -39,5 +45,6 @@ reaches a desk.
 5. **Turn it on in the app:** in Vercel (Production), set `SCAN_URL=https://floortest-scanner.fly.dev` and
    `SCAN_SECRET` (the same secret as step 4), then redeploy. Send a test track and check it arrives. Then check the scan
    appears in `fly logs` (folder and verdict only, never the file name).
+6. **Monitoring:** add `https://floortest-scanner.fly.dev/health` to the uptime monitor (UptimeRobot) next to `/api/health`.
 
 To turn scanning off quickly, remove `SCAN_URL` in Vercel and redeploy.

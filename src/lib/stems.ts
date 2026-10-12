@@ -121,7 +121,9 @@ export async function completeStemUpload(token: string, uploadId: string) {
   // Virus check on our own scanner (off until SCAN_URL is set); nothing flagged or unchecked reaches the desk.
   const scan = await scanStored(fileKey);
   if (scan.verdict === "infected" || scan.verdict === "unavailable") {
-    await discard();
+    // A flagged file goes. When the scanner can't be reached, the sealed file stays with its upload, so the sender's
+    // browser can ask again without sending it twice (the abandoned-upload clean-up removes it if they never do).
+    if (scan.verdict === "infected") await discard();
     await recordIncident(
       scan.verdict === "infected" ? "upload_rejected" : "upload_failed",
       scan.verdict === "infected" ? "Virus check flagged an upload" : "Virus check unavailable; an upload was refused",

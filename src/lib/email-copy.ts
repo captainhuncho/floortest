@@ -52,7 +52,7 @@ export const EMAILS = {
     label: "No tracks yet",
     to: "Receiver, 2 days after sign-up with no tracks",
     subject: "Nothing on your desk yet",
-    body: "Hi {first_name},\n\nYour link hasn't had a track yet. The quickest way to get the first one: post a callout with your link, for example:\n\n\"Sending me music? Upload the WAV here: {link}. You'll know when I've listened.\"\n\n— FloorTest",
+    body: "Hi {first_name},\n\nYour link hasn't had a track yet. The quickest way to get the first one: post a callout with your link, for example:\n\n\"Sending me music? Send the track here: {link}. You'll know when I've listened.\"\n\n— FloorTest",
     vars: { first_name: "Receiver's first name", link: "Their link" },
   },
   invite: {
