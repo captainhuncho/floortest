@@ -11,7 +11,7 @@ import { q, type Track } from "@/lib/db";
 import { ago, fmtDate, fmtDay, fmtTime } from "@/lib/format";
 import { RETAIN_UNREVIEWED_DAYS, SIGNALS, unheardAfterWindow } from "@/lib/plans";
 import { featureOn } from "@/lib/features";
-import { MAX_STEMS, stemsFor } from "@/lib/stems";
+import { MAX_STEMS, stemsSent } from "@/lib/stems";
 import { StemUpload } from "./StemUpload";
 import { StatusHeadline } from "./StatusHeadline";
 import { switchOn } from "@/lib/switches";
@@ -35,8 +35,8 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
   // The invitation shows once the site is public (behind the coming-soon password it would lead to a wall);
   // with sign-up still invite-only it leads to the waitlist.
   const invite = !gatePassword() && !t.sender_account ? (signupOpen ? "/signup" : "/#waitlist") : null;
-  const stemsOn = !!t.stems_requested_at && !t.deleted_at && (await featureOn("stems", { id: t.user_id, plan: t.receiver_plan }));
-  const stems = stemsOn ? await stemsFor(t.id) : [];
+  // Neither the stems request nor the share switch changes when the file leaves the desk: that would give a Not for me away.
+  const stemsOn = !!t.stems_requested_at && (await featureOn("stems", { id: t.user_id, plan: t.receiver_plan }));
   const [c, editor] = await Promise.all([siteCopy("receipt"), siteEditor()]);
   const { E, panel } = editable(c, !!editor);
   const who = t.receiver;
@@ -93,7 +93,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
       {todo && (
         <section aria-labelledby="todo-h" className="flex flex-col gap-3">
           <h2 id="todo-h" className="eyebrow">For you</h2>
-          {stemsOn && <StemUpload token={token} receiver={who.split(/\s+/)[0]} existing={stems.map((x) => x.name)} max={MAX_STEMS} />}
+          {stemsOn && <StemUpload token={token} receiver={who.split(/\s+/)[0]} existing={stemsSent(t)} max={MAX_STEMS} />}
           {!t.verified_at && (
             <p className="text-[13px] text-mute">
               Confirm your email from the delivery email, so {who} sees you as verified. Updates go to <span className="text-bone">{t.sender_email}</span>.
@@ -102,7 +102,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
         </section>
       )}
       {/* Collection share links: the artist can stop private sharing of this track at any time. */}
-      {sharing && !t.deleted_at && !!t.share_ok && !!t.share_terms && t.share_terms !== "owner" && <StopSharing token={token} receiver={who.split(/\s+/)[0]} />}
+      {sharing && !!t.share_ok && !!t.share_terms && t.share_terms !== "owner" && <StopSharing token={token} receiver={who.split(/\s+/)[0]} />}
 
       <section aria-labelledby="history-h" className="flex flex-col gap-3">
         <h2 id="history-h" className="eyebrow">What&apos;s happened</h2>

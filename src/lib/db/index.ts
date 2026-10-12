@@ -144,6 +144,8 @@ export type Track = {
   set_cleared_at: number | null;
   created_at: number;
   stems_requested_at: number | null;
+  /** JSON list of the stem names the sender uploaded; outlives the files so the receipt doesn't change on deletion. */
+  stems_sent: string | null;
   share_ok: number;
   energy: number | null;
   /** JSON: [{ at: seconds, label }] */

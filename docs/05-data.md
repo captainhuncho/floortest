@@ -47,6 +47,6 @@ The mobile app signs in as an `app` row in `sessions` (refresh token stored hash
 Ops reaching into the main site (on-page editing, read-only "View as") is bound to the exact ops session that started it: signing out of ops or its timeout ends it at once.
 
 ## Retention and deletion
-- Undecided audio: 90 days. "Not for me": 30 days. Kept: until the receiver deletes. Artwork and stems go with their track; an EP/album cover passes to the folder's next remaining track instead (`handOverFolderCovers`), and goes when the last of them goes.
+- Undecided audio: 90 days. "Not for me": 30 days. Kept: until the receiver deletes. Artwork and stems go with their track (the sender's receipt keeps only the stem names, `tracks.stems_sent`, so it doesn't change when the track goes); an EP/album cover passes to the folder's next remaining track instead (`handOverFolderCovers`), and goes when the last of them goes.
 - Deleting an account removes every file and row it owns; files are queued in `storage_deletions` and retried until gone (with their copies in the recovery bucket); backups age out within 30 days.
 - Privacy requests (copy, erase) run from ops (super admin).
