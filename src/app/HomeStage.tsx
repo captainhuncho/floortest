@@ -217,7 +217,7 @@ const LOG: [string, string, string, string | null][] = [
 export function SetLog() {
   return (
     <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
-      <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">Sent Wednesday. Played Sunday.</h2>
+      <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">Sent during the week. Played during the weekend.</h2>
       <div className="mt-10 border-t border-line">
         <p className="flex items-center justify-between gap-4 py-4 text-xs">
           <span className="tnum truncate text-mute">Nightbus (demo) · Sample Artist · 122 BPM</span>
