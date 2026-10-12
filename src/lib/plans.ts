@@ -25,6 +25,13 @@ export const listenThreshold = (duration: number | null | undefined) =>
 export const RETAIN_UNREVIEWED_DAYS = 90;
 export const RETAIN_PASSED_DAYS = 30;
 const DAY = 86_400_000;
+/**
+ * What a sender's receipt says when nothing was heard. Driven by time since delivery, never by the file's deletion:
+ * "Not for me" files leave sooner than undecided ones, so showing when a file left would tell the sender the decision.
+ */
+export function unheardAfterWindow(t: { played_at: number | null; created_at: number }, now = Date.now()) {
+  return !t.played_at && now >= t.created_at + RETAIN_UNREVIEWED_DAYS * DAY;
+}
 export function deletesAt(t: { decision: string | null; decided_at: number | null; created_at: number }) {
   if (t.decision === "kept") return null;
   if (t.decision === "passed") return (t.decided_at ?? t.created_at) + RETAIN_PASSED_DAYS * DAY;

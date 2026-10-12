@@ -9,7 +9,7 @@ import { fill, siteCopy } from "@/lib/content";
 import { Waveform } from "@/components/Waveform";
 import { q, type Track } from "@/lib/db";
 import { ago, fmtDate, fmtDay, fmtTime } from "@/lib/format";
-import { RETAIN_UNREVIEWED_DAYS, SIGNALS } from "@/lib/plans";
+import { RETAIN_UNREVIEWED_DAYS, SIGNALS, unheardAfterWindow } from "@/lib/plans";
 import { featureOn } from "@/lib/features";
 import { MAX_STEMS, stemsFor } from "@/lib/stems";
 import { StemUpload } from "./StemUpload";
@@ -34,7 +34,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
   const [sharing, signupOpen] = await Promise.all([switchOn("sharing"), switchOn("open_signup")]);
   // The invitation shows once the site is public (behind the coming-soon password it would lead to a wall);
   // with sign-up still invite-only it leads to the waitlist.
-  const invite = !gatePassword() && !t.sender_account && !t.deleted_at ? (signupOpen ? "/signup" : "/#waitlist") : null;
+  const invite = !gatePassword() && !t.sender_account ? (signupOpen ? "/signup" : "/#waitlist") : null;
   const stemsOn = !!t.stems_requested_at && !t.deleted_at && (await featureOn("stems", { id: t.user_id, plan: t.receiver_plan }));
   const stems = stemsOn ? await stemsFor(t.id) : [];
   const [c, editor] = await Promise.all([siteCopy("receipt"), siteEditor()]);
@@ -53,9 +53,10 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
     { key: "replied", label: "Replied", at: t.replied_at, meaningful: true, note: "The message is in your email.", means: SIGNALS.replied + "." },
     { key: "played_out", label: "Played out", at: t.played_out_at, meaningful: true, note: t.played_out_note || undefined, means: SIGNALS.playedOut + "." },
   ];
-  if (t.deleted_at) steps.push({ key: "removed", label: "Removed", at: t.deleted_at, meaningful: false, note: "The file is no longer on the desk.", means: "" });
+  // When the file left the desk is never shown: "Not for me" files leave sooner than undecided ones, so the date would give the decision away.
   const happened = steps.filter((s) => s.at).sort((a, b) => a.at! - b.at!);
-  const pending = steps.filter((s) => !s.at && s.key !== "removed" && !t.deleted_at);
+  const unheard = unheardAfterWindow(t);
+  const pending = unheard ? [] : steps.filter((s) => !s.at);
 
   // The headline is the strongest thing that has happened.
   const when = (at: number) => `${fmtDate(at)} · ${ago(at)}`;
@@ -67,8 +68,8 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
         ? { status: "downloaded", strong: true, title: `${who} downloaded it.`, detail: `Listened ${t.played_at ? ago(t.played_at) : "earlier"}, downloaded ${when(t.downloaded_at)}` }
         : t.played_at
           ? { status: "listened", strong: true, title: `${who} listened.`, detail: when(t.played_at) }
-          : t.deleted_at
-            ? { status: "removed", strong: false, title: "The file has been removed.", detail: `Removed ${when(t.deleted_at)}. It was never listened to.` }
+          : unheard
+            ? { status: "unheard", strong: false, title: `Not listened to in ${RETAIN_UNREVIEWED_DAYS} days.`, detail: `Delivered ${fmtDay(t.created_at)}. Files leave the desk after ${RETAIN_UNREVIEWED_DAYS} days unless they're kept.` }
             : { status: "waiting", strong: false, title: `Waiting for ${who} to listen.`, detail: `Delivered ${when(t.created_at)}. We'll email you the moment it's listened to.` };
 
   const todo = !t.verified_at || stemsOn;
@@ -159,9 +160,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
             <span {...panel("private_note", "Keep {receiver} as it is: the page fills in the receiver's name.")}>{fill(c.private_note, { receiver: who })}</span>
           </p>
           <p>
-            {t.deleted_at
-              ? `The file was deleted on ${fmtDay(t.deleted_at)}.`
-              : `Files are deleted within ${RETAIN_UNREVIEWED_DAYS} days of delivery unless ${who} keeps them.`}
+            {`Files are deleted within ${RETAIN_UNREVIEWED_DAYS} days of delivery unless ${who} keeps them.`}
           </p>
           <p {...panel("footer", "Words in [square brackets] link to the sender's history page.")}>
             {c.footer.split(/(\[[^\]]+\])/).map((part, i) =>

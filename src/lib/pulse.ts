@@ -17,10 +17,10 @@ export async function deskPulse(userId: number) {
   return r ? `${r.e}.${r.v}.${r.s}.${r.a}` : "0";
 }
 
-/** What a sender's private receipt shows: the track's steps. */
+/** What a sender's private receipt shows: the track's steps. Not the file's deletion, whose timing would give a "Not for me" away. */
 export async function receiptPulse(token: string) {
   const r = await q.get<{ p: string }>(
-    `SELECT CONCAT_WS('.', t.played_at, t.downloaded_at, t.replied_at, t.played_out_at, t.deleted_at, t.share_ok) AS p
+    `SELECT CONCAT_WS('.', t.played_at, t.downloaded_at, t.replied_at, t.played_out_at, t.share_ok) AS p
      FROM tracks t WHERE t.token = ?`,
     token,
   );
