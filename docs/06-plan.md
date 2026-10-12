@@ -54,16 +54,20 @@ Owner keeps control; sharing never makes music public or moves ownership. Behind
 ## Account teams (built 11 Oct · switch `teams` on in production since 11 Oct)
 Decided: a colleague is a **seat on an account** (label, radio, crew), not someone a track is shared with. Seats: Free 1, Pro 2, Team 5, extra seats as add-ons; seats get the plan's benefits only on that desk; Owner / Admin (override, two-step) / Member (review, notes, replies); the owner or an admin chooses whether members' replies need approval and by whom. Left: add-on seats self-serve once Paddle is live (today ops sets them); the app API works on your own desk only; lawyer: teams in the Terms/Privacy (who sees what, the owner's responsibility for their team).
 
-## Before public launch (in order)
-1. **Paid infrastructure:** Vercel Pro, Neon Launch, paid UptimeRobot, Resend upgrade; `ALERT_WEBHOOK_URL`. Delete old Supabase (from 13 Oct).
-2. **Vercel Firewall rate-limit rule** on `/api/*` and auth pages (needs Pro).
-3. **Audio previews:** server-side ffmpeg → 256 kbps AAC preview after upload; desk plays preview, download stays original; nightly retry + backfill. (Needs Pro.)
-4. **Payments:** Paddle (monthly + yearly), checkout replaces the request form when switch `billing` is on.
-5. **Legal:** lawyer redlines (incl. Q23 and the Google sign-in privacy section), remove "draft" banners, operator details, registrations (Ghana DPC, DMCA agent, UK/EU rep if advised).
-6. **Email domain:** Google Workspace → legal/reply-to addresses; DMARC to quarantine after two clean weeks.
-7. **Accessibility pass** with a real screen reader + INP on a real phone.
-8. **Antivirus scanning** of uploads.
-9. **Launch switches:** remove `SITE_PASSWORD`, turn on `open_signup` (Google sign-up then works without a code).
+## Before public launch (the gate, agreed 12 Oct; see PRODUCT.md Launch Decisions)
+**Hard gate (launch waits for all of these):**
+1. **Legal:** lawyer redlines (incl. Q23, the Google sign-in privacy section, teams in Terms/Privacy), remove "draft" banners, operator details, registrations (Ghana DPC; UK/EU rep if advised; DMCA agent before marketing in the US).
+2. **Payments:** Paddle (monthly + yearly), checkout replaces the request form when switch `billing` is on. New prices: Team $19.99/mo ($199/yr), add-on seats $4/mo (set in the ops plan editor when Paddle is ready). Beta users: dated email, 6 months free then 50% off for a year.
+3. **Paid infrastructure:** Vercel Pro (+ the Firewall rate-limit rule on `/api/*` and auth pages), Neon Launch, paid UptimeRobot, Resend upgrade; `ALERT_WEBHOOK_URL`. Delete old Supabase (from 13 Oct).
+4. **Antivirus scanning on our own infrastructure:** self-hosted ClamAV (small container, London), reading new uploads from R2 with its own read-only key; a failed file is quarantined and never reaches the desk. No third-party scanning API.
+5. **Recovery copy:** a separate backup bucket with its own key for the database backups, and a nightly copy of new audio into it.
+6. **Launch switches:** remove `SITE_PASSWORD`, turn on `open_signup` (Google sign-up then works without a code).
+
+**Within two weeks after launch:** audio previews (server ffmpeg → 256 kbps AAC; download stays original; needs Pro) · Google Workspace email (support@ and legal addresses; DMARC to quarantine after two clean weeks) · accessibility pass with a real screen reader + INP on a real phone.
+
+**Product work from the grilling (no accounts needed):** the 5-day waiting nudge on the Floor · onboarding for the first track in 48 hours (share first, caption + QR; nudge at 48 h) · "clear kept" pointing to Prepare at 80% on Free · "Get your own link" on the receipt · the north-star metric in ops.
+
+**Support process:** the owner answers support@floortest.app: takedowns and impersonation within 2 working days, everything else within 5.
 
 ## After launch
 - Collection sharing switch-on (switch `sharing`, after the lawyer's wording; see Controlled collection sharing).
