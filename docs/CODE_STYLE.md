@@ -85,7 +85,7 @@ This guide records how FloorTest is currently built. Prefer consistency with the
 
 - Comments explain intent, invariants or a non-obvious trade-off—not syntax.
 - Document security-sensitive token, storage and state-transition behavior.
-- Update the relevant guide and `HANDOFF.md` when an architectural or product contract changes.
+- Update the matching doc (`docs/01`–`06`) in the same commit when an architectural or product contract changes.
 - Do not leave stale feature claims in `README.md`, product copy or screenshots.
 
 ## Verification

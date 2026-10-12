@@ -2,7 +2,7 @@
 
 # Claude next-work brief — 27 Sep 2026
 
-This is the consolidated implementation queue referenced by `CODEX_HANDOFF.md`. Re-check current code before changing anything: sender-account, upload, review-panel and navigation work is already present but uncommitted.
+This is the consolidated implementation queue referenced by `docs/archive/CODEX_HANDOFF.md`. Re-check current code before changing anything: sender-account, upload, review-panel and navigation work is already present but uncommitted.
 
 ## P0 — make Preview safe and testable
 

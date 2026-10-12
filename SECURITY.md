@@ -101,4 +101,4 @@ Findings in vendored dependencies should identify the affected direct dependency
 
 Security-sensitive work must include the smallest relevant automated tests and a manual end-to-end check. Before release, run type checking, lint, the complete automated test suite (unit and end-to-end), the ops permission check and a production build. Keep production dependencies free of known high-severity advisories (`npm audit --omit=dev`). Verify anonymous upload, receipt access, authenticated playback/download, share links, team roles, deletion, email, admin authorization and mobile behavior when the change touches those paths.
 
-Do not commit secrets, production data, private audio or reusable tokens. Do not publish vulnerability details before remediation. Record security decisions and remaining operational work in `HANDOFF.md`.
+Do not commit secrets, production data, private audio or reusable tokens. Do not publish vulnerability details before remediation. Record security decisions and remaining operational work in `docs/06-plan.md` (and `docs/operations.md` for runbooks).
