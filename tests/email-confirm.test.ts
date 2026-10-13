@@ -25,7 +25,8 @@ test("an email confirmation link only counts for the person signed in to that ac
   // Someone created an account with the victim's email; the confirmation link reaches the victim.
   const squatter = await make("squat", "victim@x.io", false);
   const other = await make("other", "other@x.io", true);
-  await q.run("UPDATE users SET email_verify_token = 'tok-verify-1' WHERE id = ?", squatter);
+  const { hashToken } = await import("../src/lib/token-hash");
+  await q.run("UPDATE users SET email_verify_token = ? WHERE id = ?", hashToken("tok-verify-1"), squatter);
   assert.equal(await confirmEmail("tok-verify-1", null), undefined, "a click with nobody signed in confirms nothing");
   assert.equal(await confirmEmail("tok-verify-1", other), undefined, "nor does someone signed in to another account");
   assert.equal((await q.get<{ v: number | null }>("SELECT email_verified_at AS v FROM users WHERE id = ?", squatter))!.v, null);
@@ -37,7 +38,10 @@ test("an email change only completes for the person signed in to that account", 
   const { requestEmailChange, confirmEmailChange } = await import("../src/lib/accounts");
   const me = await make("changer", "changer@x.io", true);
   assert.equal(await requestEmailChange(me, "stranger@x.io", "user"), null);
-  const token = (await q.get<{ t: string }>("SELECT pending_email_token AS t FROM users WHERE id = ?", me))!.t;
+  // The link as the email carried it (the database holds only its hash).
+  const { hashToken } = await import("../src/lib/token-hash");
+  const token = "tok-change-1";
+  await q.run("UPDATE users SET pending_email_token = ? WHERE id = ?", hashToken(token), me);
   assert.equal(await confirmEmailChange(token, null), null, "the stranger's click alone does nothing");
   assert.equal((await q.get<{ e: string }>("SELECT email AS e FROM users WHERE id = ?", me))!.e, "changer@x.io");
   assert.equal((await confirmEmailChange(token, me))?.to, "stranger@x.io", "the account holder's own click completes it");

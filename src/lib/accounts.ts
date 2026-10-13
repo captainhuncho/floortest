@@ -4,6 +4,7 @@ import { now, q } from "./db";
 import { isProtectedHandle } from "./identity";
 import { APP_URL, sendMail } from "./mail";
 import { RESERVED_HANDLES } from "./plans";
+import { hashToken } from "./token-hash";
 
 const DAY = 86_400_000;
 const isUniqueViolation = (e: unknown) => (e as { code?: string })?.code === "23505";
@@ -115,7 +116,7 @@ export async function requestEmailChange(userId: number, next: string, by: "user
   if (u.email === email) return "That's already the email on this account.";
   if (await q.get("SELECT 1 FROM users WHERE lower(email) = ?", email)) return "Another account already uses that email.";
   const token = crypto.randomBytes(24).toString("base64url");
-  await q.run("UPDATE users SET pending_email = ?, pending_email_token = ?, pending_email_at = ? WHERE id = ?", email, token, now(), userId);
+  await q.run("UPDATE users SET pending_email = ?, pending_email_token = ?, pending_email_at = ? WHERE id = ?", email, hashToken(token), now(), userId);
   const first = u.name.split(/\s+/)[0];
   await sendMail({
     userId,
@@ -146,7 +147,7 @@ export async function confirmEmail(token: string, personId: number | null) {
   return q.get<{ id: number }>(
     "UPDATE users SET email_verified_at = COALESCE(email_verified_at, ?), email_verify_token = NULL WHERE email_verify_token = ? AND id = ? RETURNING id",
     now(),
-    token,
+    hashToken(token),
     personId,
   );
 }
@@ -155,7 +156,7 @@ export async function pendingEmailFor(token: string) {
   if (!token || token.length > 100) return undefined;
   return q.get<{ id: number; email: string; pending_email: string; pending_email_at: number }>(
     "SELECT id, email, pending_email, pending_email_at FROM users WHERE pending_email_token = ? AND pending_email_at > ?",
-    token,
+    hashToken(token),
     now() - EMAIL_CHANGE_HOURS * 3_600_000,
   );
 }
@@ -171,7 +172,7 @@ export async function confirmEmailChange(token: string, personId: number | null)
   try {
     const r = await q.run(
       "UPDATE users SET email = pending_email, email_verified_at = ?, email_verify_token = NULL, pending_email = NULL, pending_email_token = NULL, pending_email_at = NULL WHERE id = ? AND pending_email_token = ?",
-      now(), p.id, token,
+      now(), p.id, hashToken(token),
     );
     if (!r.changes) return null;
   } catch (e) {
