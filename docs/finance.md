@@ -69,12 +69,13 @@ Guardrails no voice may override, from `PRODUCT.md`: senders are never charged, 
 3. **Launch month.** The model assumes billing starts in January 2027. Confirm or move it.
 4. **Books.** Pick where the books live from the first payout (a spreadsheet is fine until there are 50 paying desks; after that a bookkeeping tool and an accountant in Ghana).
 5. **Refund and failed-payment rules** as written above: agree or amend before checkout copy is written.
+6. **Cancel Cloudflare Workers Paid.** The 6 Oct hosting trial left a $5 a month Workers subscription running (invoice IN 82507574, $3.33 pro-rata). R2, Turnstile and the domain do not need it. Cancel under Billing → Subscriptions.
 
 ## Monthly close log
 
 | Month | Accounts | Paying | Paid share | MRR (net) | Bills | Cost per desk | Notes |
 |---|---|---|---|---|---|---|---|
-| Oct 2026 | | | | $0 | about $3 | | Beta; billing off; Hobby and free tiers |
+| Oct 2026 | | | | $0 | about $3 + $3.33 Cloudflare | | Beta; billing off; Hobby and free tiers. Cloudflare invoice IN 82507574 (6 Oct): $3.33 pro-rata Workers Paid left over from the hosting trial; cancel it. Billed to the owner personally at a London address, not the company |
 
 ## Decision log
 
