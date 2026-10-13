@@ -55,6 +55,11 @@ test("a member switches to the team's desk, can't open owner settings, and their
   await page.goto("/dashboard/settings/team");
   await expect(page.getByRole("heading", { name: "Your replies waiting for approval" })).toBeVisible();
   await expect(page.getByText("Big tune. Can you send the extended mix?")).toBeVisible();
+
+  // The desk's log shows what was done on it, but never the owner's own sign-ins or security settings.
+  await page.goto("/dashboard/activity");
+  await expect(page.getByText("The account holder's own sign-ins and settings aren't shown.")).toBeVisible();
+  await expect(page.getByText("Signed in", { exact: true })).toHaveCount(0);
 });
 
 test("the owner approves the held reply from the Team page", async ({ page }) => {
@@ -73,4 +78,7 @@ test("the owner approves the held reply from the Team page", async ({ page }) =>
   // The member's comment is on the owner's desk, signed by them.
   await page.goto("/dashboard/review");
   await expect(page.getByRole("region", { name: "Review together" }).first().getByText("Lena Listener")).toBeVisible();
+  // The account log names who did each thing: the held reply was the member's.
+  await page.goto("/dashboard/activity");
+  await expect(page.getByText("by Lena Listener").first()).toBeVisible();
 });

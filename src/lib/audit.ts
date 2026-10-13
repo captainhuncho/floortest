@@ -65,7 +65,8 @@ export const AUDIT_LABELS = {
 } as const;
 export type AuditAction = keyof typeof AUDIT_LABELS;
 
-export type AuditRow = { id: number; action: AuditAction; detail: string; track_id: number | null; created_at: number };
+/** `actor_name`: on a team desk, the teammate who did it (null when it was the account holder). */
+export type AuditRow = { id: number; action: AuditAction; detail: string; track_id: number | null; created_at: number; actor_name: string | null };
 
 /** Records one thing the account holder did. Never throws: the audit trail must not break the action. */
 export async function audit(userId: number, action: AuditAction, detail = "", trackId: number | null = null) {
@@ -79,8 +80,25 @@ export async function audit(userId: number, action: AuditAction, detail = "", tr
   }
 }
 
-export const recentAudit = (userId: number, limit = 50) =>
-  q.all<AuditRow>("SELECT id, action, detail, track_id, created_at FROM account_log WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT ?", userId, limit);
+/** The account holder's own business (how they sign in, their plan, their alerts): never shown to teammates. */
+export const PERSONAL_ACTIONS: readonly AuditAction[] = [
+  "signed_in", "signed_out", "password_reset", "password_changed", "signed_out_others", "two_factor_on", "two_factor_off",
+  "google_connected", "google_disconnected", "signin_alerts_on", "signin_alerts_off", "plan_changed", "plan_requested",
+  "plan_request_withdrawn", "identity_submitted", "notifications_updated", "digest_sent",
+];
+
+/**
+ * The account's log, newest first, each teammate's actions with their name. `teammate`: someone on the team looking at
+ * the desk, who sees what was done on it but not the holder's personal entries.
+ */
+export const recentAudit = (userId: number, limit = 50, { teammate = false } = {}) =>
+  q.all<AuditRow>(
+    `SELECT l.id, l.action, l.detail, l.track_id, l.created_at, a.name AS actor_name FROM account_log l LEFT JOIN users a ON a.id = l.actor_id AND l.actor_id <> l.user_id
+     WHERE l.user_id = ? ${teammate ? `AND l.action NOT IN (${PERSONAL_ACTIONS.map(() => "?").join(",")})` : ""} ORDER BY l.created_at DESC, l.id DESC LIMIT ?`,
+    userId,
+    ...(teammate ? PERSONAL_ACTIONS : []),
+    limit,
+  );
 
 export const trackLabel = (t: { artist: string; title: string }) => `${t.artist} – ${t.title}`;
 

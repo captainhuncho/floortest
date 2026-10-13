@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AUDIT_LABELS, type AuditRow } from "@/lib/audit";
 import { fmtDate } from "@/lib/format";
 
-/** The account holder's own actions, newest first. */
+/** What was done in the account, newest first; on a team desk each teammate's actions carry their name. */
 export function AccountLog({ rows }: { rows: AuditRow[] }) {
   if (!rows.length) return <p className="text-sm text-mute">Nothing yet. What you do on your desk shows up here.</p>;
   return (
@@ -23,7 +23,10 @@ export function AccountLog({ rows }: { rows: AuditRow[] }) {
                   <span className="text-mute"> {r.detail}</span>
                 ))}
             </p>
-            <p className="text-sm text-mute">{fmtDate(r.created_at)}</p>
+            <p className="text-sm text-mute">
+              {fmtDate(r.created_at)}
+              {r.actor_name && <> · by {r.actor_name}</>}
+            </p>
           </div>
         </li>
       ))}
