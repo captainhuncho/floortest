@@ -42,8 +42,6 @@ FAQ: keep, but collapsed and max 4 questions (account needed? files? who hears i
 - Beta banner (while billing is off): **In beta: invite only.** Paid plans are free until billing starts. ★ Option B: **Beta desks ride free.** 6 months free after launch, then 50% off a year.
 - Image: none beside cards; one small strip of the Floor's "17 of 20 active tracks" line.
 
-Flag: `docs/01-product.md` still says Team $12.99 / $144.99. Owner's 12 Oct decision is $19.99 / $199; the doc needs fixing.
-
 ---
 
 ## 3. Claim your link `/signup`

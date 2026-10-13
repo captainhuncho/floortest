@@ -1,6 +1,6 @@
 # Sales and partnerships (12 Oct 2026)
 
-Prices per Launch Decisions: Free 20 tracks · Pro $6.99/mo · Team $19.99/mo, 5 seats, $4 per extra seat. Note: `docs/01-product.md` Plans row still says Team $12.99; fix before any of this goes out.
+Prices per Launch Decisions: Free 20 tracks · Pro $6.99/mo · Team $19.99/mo, 5 seats, $4 per extra seat.
 
 Ground rule: no invented logos, quotes or numbers. Placeholders like {first label quote} until real ones exist.
 
