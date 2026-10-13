@@ -40,7 +40,7 @@ Last updated 13 Oct 2026.
 ## Contacts used on the site
 
 - Support, privacy, data requests and takedowns: **support@floortest.app**. The contact form sends here (Vercel `SUPPORT_EMAIL`).
-- FloorTest's own emails come from **team@floortest.app**, and replies go there (`MAIL_FROM`, `MAIL_REPLY_TO`).
+- FloorTest's own emails come from **team@floortest.app**, and replies go there (`MAIL_FROM`; `MAIL_REPLY_TO` is unset on purpose).
 - Operator named in Terms and Privacy: **FloorTest Labs**, being registered in Ghana. Change it in `src/lib/legal.ts`.
 
 ## Where each setting lives
@@ -53,7 +53,7 @@ Last updated 13 Oct 2026.
 | `APP_SECRET` | own value | own value |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | set | set |
 | `APP_URL` | `https://floortest.app` | `https://floortest.vercel.app` |
-| `RESEND_API_KEY`, `MAIL_FROM`, `MAIL_REPLY_TO`, `RESEND_WEBHOOK_SECRET` | set | not set: preview emails are only logged |
+| `RESEND_API_KEY`, `MAIL_FROM`, `RESEND_WEBHOOK_SECRET` | set | not set: preview emails are only logged |
 | `SUPPORT_EMAIL` | support@floortest.app | not set |
 | `SIGNUP_MODE` | invite | open |
 | `ADMIN_EMAILS`, `OPS_URL`, `CRON_SECRET`, `BACKUP_KEY`, `TURNSTILE_*`, `SITE_PASSWORD` | set | not set |
