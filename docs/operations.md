@@ -60,7 +60,7 @@ Normal page visits also run light cleanup (sessions, rate limits, abandoned uplo
 
 ## Backups and restore
 
-- **What's covered:** every table except short-lived ones (sessions, rate limits, pending uploads, password resets). Live email-confirmation tokens and email bodies are blanked. Audio files are **not** in the database backup; they live in R2.
+- **What's covered:** every table except short-lived ones: every kind of sign-in session and one-time code (account, ops, share-link listeners, view-as, password resets, sign-in and email codes), rate limits (the only place IP addresses are kept, besides pending uploads), pending uploads and speed timings. A backup holds no live way in, and a restore brings no session back. Live email-confirmation tokens and email bodies are blanked. Audio files are **not** in the database backup; they live in R2.
 - **Encrypted** (AES-256-GCM) with `BACKUP_KEY`. Rotating it makes older backups unreadable unless you keep the old key. Each run gets its own file (`db-YYYY-MM-DDTHHMM.json.gz.enc`), so a manual rerun never replaces the night's backup.
 - **Kept** 14 days. Every backup is listed in `app_state.backup_keys`, so older ones are always deleted, even after missed nights.
 - **Status:** Admin → Overview shows the last backup. It becomes a red to-do if none ran in 2 days.
