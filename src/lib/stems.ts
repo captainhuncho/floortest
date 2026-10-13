@@ -43,6 +43,7 @@ export async function requestStems(user: User, t: Track) {
     userId: user.id,
     audience: "sender",
     to: s.email,
+    secrets: [t.token],
     subject: `${user.name} asked for the stems of "${t.title}"`,
     body: [
       `${user.name} liked "${t.title}" and asked for the stems.`,

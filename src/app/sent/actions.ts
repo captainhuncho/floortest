@@ -14,12 +14,14 @@ export async function requestSenderLink(_: SentState, form: FormData): Promise<S
   if (!(await allow("sent_ip", await requestIp(), 5, 3_600_000)) || !(await allow("sent_email", email, 3, 3_600_000)))
     return { error: "Too many requests. Try again in an hour." };
   if (await q.get("SELECT 1 FROM senders WHERE lower(email) = ?", email)) {
+    const link = signSenderLink(email);
     await sendMail({
       userId: null,
       audience: "sender",
       to: email,
+      secrets: [link],
       subject: "Your FloorTest sends",
-      body: `Here's your private link to every track you've sent through FloorTest. It works for 24 hours:\n${APP_URL}/sent/${signSenderLink(email)}\n\nIf you didn't ask for this, ignore this email.\n\n— FloorTest`,
+      body: `Here's your private link to every track you've sent through FloorTest. It works for 24 hours:\n${APP_URL}/sent/${link}\n\nIf you didn't ask for this, ignore this email.\n\n— FloorTest`,
     });
   }
   return { ok: true };

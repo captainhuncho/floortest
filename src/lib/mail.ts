@@ -37,7 +37,17 @@ export function sendMailLater(opts: Parameters<typeof sendMail>[0]) {
   }
 }
 
-export async function sendMail(opts: { userId: number | null; to: string; subject: string; body: string; audience?: Audience; unsubscribe?: UnsubKind }) {
+/** Stands in for a sign-in code or private link in the stored copy of an email. */
+export const HIDDEN = "•••••• (hidden)";
+
+/**
+ * `secrets`: sign-in codes, tokens and private links in this email. The email goes out with them; the outbox copy
+ * (read by ops staff and on Settings → Notifications) and any failure incident show them as HIDDEN, so reading the
+ * Email log never hands anyone a way into an account or a receipt.
+ */
+export async function sendMail(opts: { userId: number | null; to: string; subject: string; body: string; audience?: Audience; unsubscribe?: UnsubKind; secrets?: (string | null | undefined)[] }) {
+  const secrets = (opts.secrets ?? []).filter((s): s is string => !!s && s.length >= 4);
+  const hide = (s: string) => secrets.reduce((out, x) => out.split(x).join(HIDDEN), s);
   let status = "logged";
   let providerId: string | null = null;
   // An address that bounced for good gets nothing more; one that reported us as spam still gets what it asks for
@@ -80,13 +90,13 @@ export async function sendMail(opts: { userId: number | null; to: string; subjec
       console.error("[mail] delivery failed", e);
     }
   }
-  if (status.startsWith("failed")) await recordIncident("email_failed", `Email to ${opts.to.replace(/^(.{2}).*@/, "$1…@")} ${status}`, opts.subject);
+  if (status.startsWith("failed")) await recordIncident("email_failed", `Email to ${opts.to.replace(/^(.{2}).*@/, "$1…@")} ${status}`, hide(opts.subject));
   await q.run(
     "INSERT INTO outbox (user_id, to_email, subject, body, status, audience, created_at, provider_id) VALUES (?,?,?,?,?,?,?,?)",
     opts.userId,
     opts.to,
-    opts.subject,
-    opts.body,
+    hide(opts.subject),
+    hide(opts.body),
     status,
     opts.audience ?? "sender",
     now(),

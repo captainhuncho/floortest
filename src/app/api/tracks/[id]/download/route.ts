@@ -3,6 +3,7 @@ import { audit, trackLabel } from "@/lib/audit";
 import { markDownloaded } from "@/lib/review";
 import { ownedTrack } from "@/lib/desk";
 import { crateFileName } from "@/lib/crate";
+import { OTHER_SITE, fromThisSite } from "@/lib/same-site";
 import { storage } from "@/lib/storage";
 
 export const runtime = "nodejs";
@@ -12,7 +13,9 @@ export const maxDuration = 300;
  * The original file, streamed through the app (not redirected) so "Downloaded" is recorded only
  * once the last byte has gone out, per the published definition.
  */
-export async function GET(_req: Request, ctx: RouteContext<"/api/tracks/[id]/download">) {
+export async function GET(req: Request, ctx: RouteContext<"/api/tracks/[id]/download">) {
+  // A link on another site still carries the session cookie: refuse it, or it could make Downloaded happen.
+  if (!fromThisSite(req.headers)) return new Response(OTHER_SITE, { status: 403 });
   const user = await currentUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
   const t = await ownedTrack(user.id, Number((await ctx.params).id));

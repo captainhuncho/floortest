@@ -18,7 +18,7 @@ import { redirect } from "next/navigation";
 import { issueViewTicket } from "@/lib/ops";
 import { APP_URL } from "@/lib/mail";
 import { env } from "@/lib/env";
-import { sendMail } from "@/lib/mail";
+import { HIDDEN, sendMail } from "@/lib/mail";
 import { isAdminEmail, logAdmin, requireAdminAction } from "@/lib/admin";
 import { PERMS, ROLE_PERMS, ROLES, type Perm, type Role } from "@/lib/ops-perms";
 import type { PlanRequest } from "@/lib/plan-requests";
@@ -245,6 +245,8 @@ export async function resendEmail(outboxId: number) {
     outboxId,
   );
   if (!m) return fail("Email not found");
+  // A sign-in code or private link was hidden in the stored copy: resending it would send the placeholder.
+  if (m.subject.includes(HIDDEN) || m.body.includes(HIDDEN)) return fail("This email held a sign-in code or private link, so it can't be resent. Ask them to request a new one.");
   const status = await sendMail({ userId: m.user_id, to: m.to_email, subject: m.subject, body: m.body, audience: m.audience });
   await logAdmin(a.id, "resent email", m.subject, status);
   await done(status.startsWith("failed") ? `Resend failed: ${status}` : `Resent to ${m.to_email}`);

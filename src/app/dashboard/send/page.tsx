@@ -3,6 +3,7 @@ import Link from "next/link";
 import { requireRole } from "@/lib/auth";
 import { sentBy } from "@/lib/sent";
 import { APP_URL } from "@/lib/mail";
+import { unheardAfterWindow } from "@/lib/plans";
 import { SendComposer } from "./SendComposer";
 
 export const metadata = { title: "Send — FloorTest" };
@@ -21,9 +22,9 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
   };
   // The most recent thing that happened, in words.
   const latest = (r: Sent) => {
-    if (r.deleted_at) return `Removed ${ago(r.deleted_at)}`;
     const ev = ([["Played out", r.played_out_at], ["Replied", r.replied_at], ["Downloaded", r.downloaded_at], ["Listened", r.played_at]] as const).filter(([, at]) => at).sort((x, y) => Number(y[1]) - Number(x[1]))[0];
-    return ev ? `${ev[0]} ${ago(Number(ev[1]))}` : `Delivered ${ago(r.created_at)} · not played yet`;
+    if (ev) return `${ev[0]} ${ago(Number(ev[1]))}`;
+    return unheardAfterWindow(r, t) ? "Not listened to in 90 days" : `Delivered ${ago(r.created_at)} · not played yet`;
   };
 
   // The last 10 days stay open; anything older folds under "Older than 10 days".
@@ -49,14 +50,10 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
                     Track <span aria-hidden className="transition-transform group-hover:translate-x-0.5">→</span>
                   </span>
                 </span>
-                {r.deleted_at ? (
-                  <span className="mt-2 inline-block rounded-full border border-line px-2 py-0.5 text-[11px] text-mute">Removed by the receiver</span>
-                ) : (
-                  <span className={`mt-2 flex items-center gap-2 text-[12px] ${r.played_at ? "font-semibold text-bone" : "text-dim"}`}>
-                    <span aria-hidden className={`size-2 rounded-full ${r.played_at ? "bg-lime" : "border border-line-2"}`} />
-                    {latest(r)}
-                  </span>
-                )}
+                <span className={`mt-2 flex items-center gap-2 text-[12px] ${r.played_at ? "font-semibold text-bone" : "text-dim"}`}>
+                  <span aria-hidden className={`size-2 rounded-full ${r.played_at ? "bg-lime" : "border border-line-2"}`} />
+                  {latest(r)}
+                </span>
               </Link>
             </li>
   );

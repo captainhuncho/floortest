@@ -3,12 +3,16 @@ import { body, fail, json, unauthorized } from "@/lib/api-v1";
 import { userByHandle } from "@/lib/desk";
 import { IntakeError, startUpload } from "@/lib/intake";
 import { ipFrom } from "@/lib/ratelimit";
+import { unheardAfterWindow } from "@/lib/plans";
 import { sentBy } from "@/lib/sent";
 import { readSubmission } from "@/lib/submission";
 
 export const runtime = "nodejs";
 
-/** What you've sent and how far each one got. The receiver's keep/pass decision is private and never included. */
+/**
+ * What you've sent and how far each one got. The receiver's keep/pass decision is private and never included, and neither
+ * is when a file left the desk (it would give the decision away); `notListened` turns on 90 days after an unplayed send.
+ */
 export async function GET(req: Request) {
   const u = await appUser(req);
   if (!u) return unauthorized();
@@ -16,7 +20,7 @@ export async function GET(req: Request) {
   return json({
     sends: rows.map((r) => ({
       token: r.token, title: r.title, artist: r.artist, receiver: r.receiver, handle: r.handle, sentAt: r.created_at,
-      listenedAt: r.played_at, downloadedAt: r.downloaded_at, repliedAt: r.replied_at, playedOutAt: r.played_out_at, removedAt: r.deleted_at,
+      listenedAt: r.played_at, downloadedAt: r.downloaded_at, repliedAt: r.replied_at, playedOutAt: r.played_out_at, notListened: unheardAfterWindow(r),
     })),
   });
 }

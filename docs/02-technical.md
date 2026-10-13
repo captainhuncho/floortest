@@ -14,7 +14,7 @@ What FloorTest is built on, so nobody guesses. Change a tool, service or limit â
 | Email | **Resend** (sending + delivery webhook `/api/webhooks/resend`) | outbox table; suppression list; account emails capped per hour platform-wide |
 | Auth | Own sessions (hashed tokens, HttpOnly cookie); scrypt passwords; TOTP two-factor; Google OAuth (state + PKCE, `sub` pinned) | `src/lib/auth.ts`, `security.ts`, `google-auth.ts` |
 | Bot check | Cloudflare Turnstile on public forms (switch `bot_check`), and on sign-in after 3 wrong tries in 15 min per account or connection (log-in, email codes, ops) â€” enforced on the server (`src/lib/human-check.ts`). Each widget names its form (`auth`, `send`, `contact`, `waitlist`, `reopen`) and the server accepts a token only for that form, solved on the site's own addresses (app, ops, this deployment; localhost only in development) (`src/lib/turnstile.ts`). Private artwork links (track art, collection art) last an hour, like audio | |
-| Monitoring | Sentry (`/api/monitoring` tunnel), Vercel Analytics, own incidents + job runs in ops | |
+| Monitoring | Sentry (`/api/monitoring` tunnel), Vercel Analytics, own incidents + job runs in ops; private link keys replaced by `[token]` first (`src/lib/redact-url.ts`) | |
 | Images | sharp: covers, collection art, site images resized to WebP. Track artwork is **not** re-encoded | `src/lib/image-optimize.ts` |
 | Audio analysis | In the browser (duration, BPM, waveform peaks); tags via music-metadata | |
 | Site editing | Draft mode + signed preview cookie bound to the ops session (token hash); `src/lib/site-editor.ts` (permission), `/api/site-edit` (+ `/image`), `src/components/SiteEditor.tsx`, shared save in `src/lib/content-write.ts` | |
