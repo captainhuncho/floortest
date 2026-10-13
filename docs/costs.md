@@ -49,7 +49,7 @@ Paddle takes 5% + $0.50 per checkout, with no monthly fee, as merchant of record
 
 **Flag for the owner:** Paddle's pricing page says orders under $10 need custom pricing agreed with Paddle. Pro monthly ($6.99) and add-on seats ($4) are under $10. Ask Paddle before building checkout, or bill seats with the plan rather than as separate orders. Yearly plans carry the lowest fee share, which is a reason to show them first.
 
-Rough break-even: the launch stack ($110–170) is covered by 18–28 Pro monthly subscribers, or 8–10 Team monthly. Beta users pay nothing for the first 6 months after billing starts, so the first paying customers are new sign-ups.
+Rough break-even: the launch stack ($110–170) is covered by 18–28 Pro monthly subscribers, or 8–10 Team monthly. Month by month in `docs/revenue-model.md`. Beta users pay nothing for the first 6 months after billing starts, so the first paying customers are new sign-ups.
 
 ## One-offs
 

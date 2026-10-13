@@ -11,7 +11,7 @@ Open only what the task touches. The docs stay true; if a doc and the code disag
 |---|---|
 | What a feature does, screen by screen | `docs/01-product.md` |
 | Stack, services, env, deploys | `docs/02-technical.md`, `docs/services.md` |
-| What it costs to run, per service and per sale | `docs/costs.md` |
+| What it costs to run, what a subscriber is worth, break-even | `docs/costs.md`, `docs/revenue-model.md` |
 | What happens on each click | `docs/03-app-flow.md` |
 | Colours, type, layout, components | `DESIGN.md`, `docs/04-design.md` |
 | Tables, who can see what, retention | `docs/05-data.md`, `docs/DATABASE.md` |
