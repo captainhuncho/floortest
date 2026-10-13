@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "tsx scripts/check-admin-perms.ts && next build",
-    "check:perms": "tsx scripts/check-admin-perms.ts && tsx scripts/check-desk-roles.ts",
+    "check:perms": "tsx scripts/check-admin-perms.ts && tsx scripts/check-desk-roles.ts && tsx scripts/check-rls.ts",
     "vercel-build": "tsx scripts/check-admin-perms.ts && npm run db:migrate && next build",
     "start": "next start",
     "seed": "tsx scripts/seed.ts",

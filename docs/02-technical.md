@@ -36,6 +36,7 @@ What FloorTest is built on, so nobody guesses. Change a tool, service or limit â
 - Upload 250 MB per file, 3 tracks per send, 12 per folder; artwork 25 MB.
 - Rate limits: per IP on public forms (incl. "Email me when it reopens", 5/hour), per email on email-sending forms, per user on signed-in actions (`src/lib/ratelimit.ts`, table `rate_events`). Platform cap on account emails per hour (`ACCOUNT_EMAIL_CAP`, default 300).
 - Every ops page/action names a permission or the build fails (`scripts/check-admin-perms.ts`).
+- Every table has row-level security on, with no policies: only the app's own connection (the table owner) can read or write, any other role sees nothing. `scripts/check-rls.ts` (in `npm run check:perms`) applies every migration to an in-memory Postgres and fails if a table is missing it, so a migration that adds a table also adds `alter table <name> enable row level security;`.
 
 ## Settings (Vercel environment variables)
 `DATABASE_URL`, `APP_URL`, `APP_SECRET`, `OPS_URL`, `ADMIN_EMAILS`, `S3_*`, `STORAGE_DRIVER`, `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `MAIL_FROM`, `SUPPORT_EMAIL`, `TURNSTILE_*`, `GOOGLE_CLIENT_ID/SECRET`, `CRON_SECRET`, `BACKUP_KEY`, `SITE_PASSWORD`, `BETA_INVITE_CODES`, `DB_POOL_MAX`, `NEXT_PUBLIC_SENTRY_DSN`, optional `ACCOUNT_EMAIL_CAP`. Values never go in the repo or chat.
