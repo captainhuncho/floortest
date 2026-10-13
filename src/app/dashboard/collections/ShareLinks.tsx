@@ -156,12 +156,12 @@ function NewLink({ collectionId }: { collectionId: number }) {
   );
 }
 
-function LinkCard({ link }: { link: ShareLinkView }) {
+function LinkCard({ link, at }: { link: ShareLinkView; at: number }) {
   const toast = useToast();
   const [fresh, setFresh] = useState<string | null>(null);
   const [busy, start] = useTransition();
   const [addState, add, adding] = useActionState<LinkState, FormData>(addLinkRecipients.bind(null, link.id), null);
-  const dead = !!link.revoked_at || (!!link.expires_at && link.expires_at < Date.now());
+  const dead = !!link.revoked_at || (!!link.expires_at && link.expires_at < at);
   return (
     <li className={`rounded-md border border-line p-3 text-[12px] ${dead ? "opacity-60" : ""}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -169,7 +169,7 @@ function LinkCard({ link }: { link: ShareLinkView }) {
           {link.label || "Share link"} <span className="font-normal text-mute">· {PERM[link.permission]}</span>
         </p>
         <p className="text-[11px] text-faint">
-          {link.revoked_at ? `Revoked ${day(link.revoked_at)}` : link.expires_at ? `${link.expires_at < Date.now() ? "Expired" : "Works until"} ${day(link.expires_at)}` : "Until you revoke it"}
+          {link.revoked_at ? `Revoked ${day(link.revoked_at)}` : link.expires_at ? `${link.expires_at < at ? "Expired" : "Works until"} ${day(link.expires_at)}` : "Until you revoke it"}
         </p>
       </div>
       {fresh && <FreshUrl url={fresh} />}
@@ -339,7 +339,7 @@ function LinkCard({ link }: { link: ShareLinkView }) {
  * Share links for this collection: separate from your submission link, each with its own address, permission, expiry
  * and named people. Nobody listens anonymously; people not on the list can ask (if you allow it).
  */
-export function ShareLinks({ collectionId, links, sharedTracks }: { collectionId: number; links: ShareLinkView[]; sharedTracks: number }) {
+export function ShareLinks({ collectionId, links, sharedTracks, at }: { collectionId: number; links: ShareLinkView[]; /** When the page was made: which links have expired. */ at: number; sharedTracks: number }) {
   return (
     <section aria-labelledby="links-h" className="card p-3.5 md:px-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -357,7 +357,7 @@ export function ShareLinks({ collectionId, links, sharedTracks }: { collectionId
       {links.length > 0 && (
         <ul className="mt-3 flex flex-col gap-2">
           {links.map((l) => (
-            <LinkCard key={l.id} link={l} />
+            <LinkCard key={l.id} link={l} at={at} />
           ))}
         </ul>
       )}

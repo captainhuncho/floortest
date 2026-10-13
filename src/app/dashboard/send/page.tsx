@@ -1,3 +1,4 @@
+import { now } from "@/lib/db";
 import { trackUse } from "@/lib/usage";
 import Link from "next/link";
 import { requireRole } from "@/lib/auth";
@@ -15,7 +16,7 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
   const to = ((await searchParams).to || "").trim().replace(/[?#].*$/, "").replace(/\/+$/, "").split("/").pop()!.replace(/^@/, "").toLowerCase().replace(/[^a-z0-9-_]/g, "").slice(0, 30);
   const sent = await sentBy(user);
   type Sent = (typeof sent)[number];
-  const t = Date.now();
+  const t = now();
   const ago = (ms: number) => {
     const m = Math.max(1, Math.floor((t - ms) / 60_000));
     return m < 60 ? `${m}m ago` : m < 1440 ? `${Math.floor(m / 60)}h ago` : `${Math.floor(m / 1440)}d ago`;
@@ -28,7 +29,7 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
   };
 
   // The last 10 days stay open; anything older folds under "Older than 10 days".
-  const cutoff = Date.now() - 10 * 86_400_000;
+  const cutoff = now() - 10 * 86_400_000;
   const recent = sent.filter((r) => Number(r.created_at) >= cutoff);
   const older = sent.filter((r) => Number(r.created_at) < cutoff);
   const row = (r: Sent) => (

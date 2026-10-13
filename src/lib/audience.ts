@@ -26,12 +26,30 @@ export function readAudience(get: (k: string) => unknown): Audience {
 export function audienceWhere(a: Audience, at = Date.now(), withSuspended = false) {
   const where = withSuspended ? ["TRUE"] : ["u.suspended_at IS NULL"];
   const args: unknown[] = [];
-  if (a.plan) (where.push("u.plan = ?"), args.push(a.plan));
-  if (a.kind) (where.push("u.kind = ?"), args.push(a.kind));
-  if (a.tag) (where.push("(',' || u.admin_tags || ',') LIKE ?"), args.push(`%,${a.tag},%`));
-  if (a.joined) (where.push("u.created_at >= ?"), args.push(at - a.joined * DAY));
-  if (a.activity === "active") (where.push("u.last_active_at >= ?"), args.push(at - 30 * DAY));
-  if (a.activity === "inactive") (where.push("(u.last_active_at IS NULL OR u.last_active_at < ?)"), args.push(at - 30 * DAY));
+  if (a.plan) {
+    where.push("u.plan = ?");
+    args.push(a.plan);
+  }
+  if (a.kind) {
+    where.push("u.kind = ?");
+    args.push(a.kind);
+  }
+  if (a.tag) {
+    where.push("(',' || u.admin_tags || ',') LIKE ?");
+    args.push(`%,${a.tag},%`);
+  }
+  if (a.joined) {
+    where.push("u.created_at >= ?");
+    args.push(at - a.joined * DAY);
+  }
+  if (a.activity === "active") {
+    where.push("u.last_active_at >= ?");
+    args.push(at - 30 * DAY);
+  }
+  if (a.activity === "inactive") {
+    where.push("(u.last_active_at IS NULL OR u.last_active_at < ?)");
+    args.push(at - 30 * DAY);
+  }
   return { sql: where.join(" AND "), args };
 }
 

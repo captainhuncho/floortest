@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import { acceptNotice, askToJoin, checkCode, sendCode, type GateState } from "./actions";
 
 /**
@@ -14,10 +14,13 @@ export function Gate({ secret, ownerName, notice, initial, initialEmail }: { sec
   const [accepted, accept, accepting] = useActionState(acceptNotice.bind(null, secret), null);
   const [asked, ask, asking] = useActionState(askToJoin.bind(null, secret), null);
   // Each answer from the server moves the door to its next step.
-  useEffect(() => void (sent && setState(sent)), [sent]);
-  useEffect(() => void (checked && setState(checked)), [checked]);
-  useEffect(() => void (accepted && setState(accepted)), [accepted]);
-  useEffect(() => void (asked && setState(asked)), [asked]);
+  const answers = [sent, checked, accepted, asked];
+  const [seen, setSeen] = useState(answers);
+  if (answers.some((a, i) => a !== seen[i])) {
+    const next = answers.find((a, i) => a && a !== seen[i]);
+    setSeen(answers);
+    if (next) setState(next);
+  }
 
   const box = "mt-6 flex flex-col gap-3";
   const error = state.error && (

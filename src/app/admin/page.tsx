@@ -5,7 +5,7 @@ import { partnerRows } from "@/lib/partners";
 import { switchOn } from "@/lib/switches";
 import Link from "next/link";
 import { configProblems, env } from "@/lib/env";
-import { q } from "@/lib/db";
+import { now as clock, q } from "@/lib/db";
 import { fmtBytes } from "@/lib/format";
 import { ALLOWANCE_WARN, allowances } from "@/lib/allowance";
 import { lastBackup } from "@/lib/backup";
@@ -28,7 +28,7 @@ export default async function AdminOverview({ searchParams }: { searchParams: Pr
   const withAdmin = withAdminParam && me.access.super;
   // Each person sees only the items and tiles for areas they can open.
   const ok = (href: string) => href.startsWith("#") || can(me.access, needFor(href.split(/[?#]/)[0]));
-  const t = Date.now();
+  const t = clock();
   const w0 = t - 7 * DAY;
   const w1 = t - 14 * DAY;
   // One failing query hides its own panel, not the whole page.

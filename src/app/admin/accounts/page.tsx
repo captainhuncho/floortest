@@ -3,7 +3,7 @@ import Link from "next/link";
 import { audienceWhere, readAudience } from "@/lib/audience";
 import { allPlans } from "@/lib/plan-store";
 import { AudienceFields } from "../AudienceFields";
-import { KIND_LABEL } from "@/lib/db";
+import { KIND_LABEL, now } from "@/lib/db";
 import { likeContains, q } from "@/lib/db";
 
 /** Users: receivers (accounts with a link) and senders (people who've sent tracks, identified by email). */
@@ -13,7 +13,7 @@ export default async function Users({ searchParams }: { searchParams: Promise<Re
   const search = (sp.q || "").trim().slice(0, 100);
   if (sp.view === "senders") return <Senders search={search} />;
   const aud = readAudience((k) => sp[k]);
-  const w = audienceWhere(aud, Date.now(), true);
+  const w = audienceWhere(aud, now(), true);
   const plans = await allPlans();
   const query = new URLSearchParams(Object.entries({ ...aud, joined: aud.joined ? String(aud.joined) : "", q: search }).filter(([, v]) => v) as [string, string][]).toString();
   const rows = await q.all<{

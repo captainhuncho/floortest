@@ -1,5 +1,5 @@
 import { currentSessionHash, requireRole } from "@/lib/auth";
-import { q } from "@/lib/db";
+import { q, now } from "@/lib/db";
 import { EmailForm } from "../EmailForm";
 import { SecurityForm } from "../SecurityForm";
 import { TwoFactor } from "../TwoFactor";
@@ -16,10 +16,10 @@ export default async function Security({ searchParams }: { searchParams: Promise
   const otherSessions = await q.count(
     "SELECT COUNT(*) AS n FROM sessions WHERE user_id = ? AND expires_at > ? AND token_hash <> ?",
     user.id,
-    Date.now(),
+    now(),
     (await currentSessionHash()) ?? "",
   );
-  const pendingEmail = (await q.get<{ e: string | null }>("SELECT pending_email AS e FROM users WHERE id = ? AND pending_email_at > ?", user.id, Date.now() - 48 * 3_600_000))?.e ?? null;
+  const pendingEmail = (await q.get<{ e: string | null }>("SELECT pending_email AS e FROM users WHERE id = ? AND pending_email_at > ?", user.id, now() - 48 * 3_600_000))?.e ?? null;
   return (
     <>
       <PageTitle title="Security" sub="How you sign in, and keeping your account yours." />

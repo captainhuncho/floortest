@@ -25,9 +25,18 @@ export default async function Feedback({ searchParams }: { searchParams: Promise
 
   const where = ["m.topic LIKE 'Feedback%'"];
   const args: (string | number)[] = [];
-  if (status !== "all") (where.push("m.feedback_status = ?"), args.push(status));
-  if (type) (where.push("m.topic = ?"), args.push(`Feedback · ${type}`));
-  if (user) (where.push("m.user_id = ?"), args.push(user));
+  if (status !== "all") {
+    where.push("m.feedback_status = ?");
+    args.push(status);
+  }
+  if (type) {
+    where.push("m.topic = ?");
+    args.push(`Feedback · ${type}`);
+  }
+  if (user) {
+    where.push("m.user_id = ?");
+    args.push(user);
+  }
   const rows = await q.all<Row>(
     `SELECT m.id, m.user_id, u.handle, m.name, m.topic, m.message, m.page, m.feedback_status, m.created_at
      FROM contact_messages m LEFT JOIN users u ON u.id = m.user_id WHERE ${where.join(" AND ")} ORDER BY m.created_at DESC LIMIT 300`,

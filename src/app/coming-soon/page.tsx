@@ -9,6 +9,7 @@ export default async function ComingSoon({ searchParams }: { searchParams: Promi
   return (
     <main id="main" className="mx-auto flex min-h-dvh max-w-xl flex-col justify-center px-5 py-16">
       <div className="flex items-center gap-4">
+        {/* eslint-disable-next-line @next/next/no-img-element -- the crest is an SVG; Next's image optimizer doesn't process SVGs */}
         <img src="/brand/crest.svg" alt="" aria-hidden className="size-14 shrink-0 sm:size-16" />
         <span className="text-[34px] font-extrabold tracking-[-1px] sm:text-[44px]">FloorTest</span>
       </div>

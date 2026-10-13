@@ -18,10 +18,22 @@ export default async function AdminLog({ searchParams }: { searchParams: Promise
 
   const where: string[] = [];
   const args: (string | number)[] = [];
-  if (adminId) (where.push("l.admin_id = ?"), args.push(adminId));
-  if (action) (where.push("l.action = ?"), args.push(action));
-  if (search) (where.push("(l.target ILIKE ? OR l.detail ILIKE ? OR l.action ILIKE ?)"), args.push(...Array(3).fill(likeContains(search))));
-  if (before) (where.push("l.id < ?"), args.push(before));
+  if (adminId) {
+    where.push("l.admin_id = ?");
+    args.push(adminId);
+  }
+  if (action) {
+    where.push("l.action = ?");
+    args.push(action);
+  }
+  if (search) {
+    where.push("(l.target ILIKE ? OR l.detail ILIKE ? OR l.action ILIKE ?)");
+    args.push(...Array(3).fill(likeContains(search)));
+  }
+  if (before) {
+    where.push("l.id < ?");
+    args.push(before);
+  }
   const rows = await q.all<Row>(
     `SELECT l.id, l.action, l.target, l.detail, l.created_at, l.admin_id, u.email AS admin FROM admin_log l LEFT JOIN users u ON u.id = l.admin_id
      ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY l.id DESC LIMIT ${PAGE + 1}`,

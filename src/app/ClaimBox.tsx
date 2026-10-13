@@ -18,13 +18,14 @@ const HELP = {
  */
 export function ClaimBox({ host, inviteOnly }: { host: string; inviteOnly: boolean }) {
   const [name, setName] = useState("");
-  const [status, setStatus] = useState<keyof typeof HELP | null>(null);
+  // The check's answer, kept with the name it was for: a newer name shows nothing until its own answer arrives.
+  const [answer, setAnswer] = useState<{ name: string; status: keyof typeof HELP | null } | null>(null);
+  const status = answer?.name === name ? answer.status : null;
   const router = useRouter();
 
   useEffect(() => {
-    setStatus(null);
     if (name.length < 2) return;
-    const t = setTimeout(async () => setStatus(await checkHandle(name)), 400);
+    const t = setTimeout(async () => setAnswer({ name, status: await checkHandle(name) }), 400);
     return () => clearTimeout(t);
   }, [name]);
 

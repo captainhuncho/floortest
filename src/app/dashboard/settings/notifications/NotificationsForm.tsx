@@ -1,9 +1,10 @@
 "use client";
 
 import { useActionForm } from "@/components/useActionForm";
-import {useEffect, useState, useTransition} from "react";
+import { useState, useTransition } from "react";
 import { useToast } from "@/components/Toast";
 import { sendDigestNow, updateNotifications } from "../../actions/settings";
+import { browserTimeZone, useBrowserValue } from "@/components/useBrowserValue";
 
 type Prefs = { mode: "instant" | "digest" | "off"; digestHour: number; quietStart: number | null; quietEnd: number | null; alerts: boolean; product: boolean; marketing: boolean; tz: string };
 
@@ -37,12 +38,10 @@ export function NotificationsForm({ prefs, pending }: { prefs: Prefs; pending: n
   const [product, setProduct] = useState(prefs.product);
   const [marketing, setMarketing] = useState(prefs.marketing);
   const [quiet, setQuiet] = useState(prefs.quietStart != null);
-  const [tz, setTz] = useState(prefs.tz);
+  // Use the browser's timezone so "9:00" means 9:00 where the receiver is.
+  const tz = useBrowserValue(browserTimeZone(prefs.tz), prefs.tz);
   const [sending, start] = useTransition();
   const toast = useToast();
-
-  // Use the browser's timezone so "9:00" means 9:00 where the receiver is.
-  useEffect(() => setTz(Intl.DateTimeFormat().resolvedOptions().timeZone || prefs.tz), [prefs.tz]);
 
   return (
     <form onSubmit={onSubmit} className="space-y-7">

@@ -142,23 +142,25 @@ export async function addRecipients(owner: Pick<User, "id">, linkId: number, raw
   for (const part of raw.split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean).slice(0, 100)) {
     let kind: Recipient["kind"];
     let value: string;
-    if (EMAIL.test(part)) (kind = "email"), (value = cleanEmail(part));
-    else if (/^@?[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(part)) {
+    if (EMAIL.test(part)) {
+      kind = "email";
+      value = cleanEmail(part);
+    } else if (/^@?[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(part)) {
       value = part.replace(/^@/, "").toLowerCase();
       if (PUBLIC_DOMAINS.has(value)) {
         problems.push(`${part}: a personal email provider can't be a company domain; add the person's address instead`);
         continue;
       }
       kind = "domain";
-    }
-    else if (/^@?[a-z0-9_-]{2,30}$/i.test(part)) {
+    } else if (/^@?[a-z0-9_-]{2,30}$/i.test(part)) {
       const u = await q.get<{ id: number }>("SELECT id FROM users WHERE handle = ? AND suspended_at IS NULL", part.replace(/^@/, "").toLowerCase());
       if (!u) {
         problems.push(`${part}: no FloorTest account with that username`);
         continue;
       }
       if (u.id === owner.id) continue;
-      (kind = "user"), (value = String(u.id));
+      kind = "user";
+      value = String(u.id);
     } else {
       problems.push(`${part}: not an email, @domain or @username`);
       continue;

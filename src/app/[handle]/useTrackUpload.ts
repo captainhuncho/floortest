@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { analyzeAudio, type Analysis } from "@/lib/analyze";
 import { readTags, type Tags } from "@/lib/tags";
 import { MAX_BATCH_TRACKS } from "@/lib/plans";
+import { stored, useBrowserValue } from "@/components/useBrowserValue";
 
 export const MAX_BYTES = 250 * 1024 * 1024;
 const SENDER_KEY = "floortest.sender";
@@ -137,15 +138,18 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
   const [batch, setBatch] = useState(newId);
 
   // Name, email and profiles are captured once and remembered on this device, so the next send is just the file.
-  useEffect(() => {
+  const saved = useBrowserValue(() => stored(SENDER_KEY), "");
+  const [loaded, setLoaded] = useState("");
+  if (saved !== loaded) {
+    setLoaded(saved);
     try {
-      const s = JSON.parse(localStorage.getItem(SENDER_KEY) || "null");
+      const s = JSON.parse(saved || "null");
       if (s?.name || s?.email) {
         setSender({ name: s.name || "", email: s.email || "", instagram: s.instagram || "", streaming: s.streaming || "" });
         setRemembered(!!(s.name && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.email || "") && (s.instagram || s.streaming)));
       }
     } catch {}
-  }, []);
+  }
 
   const patch = (id: string, p: Partial<Item>) => setItems((list) => list.map((it) => (it.id === id ? { ...it, ...p } : it)));
 

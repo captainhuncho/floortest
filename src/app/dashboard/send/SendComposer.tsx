@@ -14,7 +14,9 @@ import { lookupReceiver, type ReceiverLookup } from "../actions/desk";
 export function SendComposer({ host, account, initial }: { host: string; account: { name: string; email: string }; initial: string }) {
   const [handle, setHandle] = useState(initial);
   const [mode, setMode] = useState<"tracks" | "folder">("tracks");
-  const [found, setFound] = useState<ReceiverLookup | null>(null);
+  // The lookup's answer, kept with the link name it was for: a newer name shows nothing until its own answer arrives.
+  const [lookup, setLookup] = useState<{ handle: string; found: ReceiverLookup } | null>(null);
+  const found = lookup && lookup.handle === handle.trim() ? lookup.found : null;
   const [pending, start] = useTransition();
   // In the app: files shared in from another app, waiting to be sent.
   const [shared, setShared] = useState<SharedFile[]>([]);
@@ -36,8 +38,8 @@ export function SendComposer({ host, account, initial }: { host: string; account
 
   useEffect(() => {
     const h = handle.trim();
-    if (!h) return setFound(null);
-    const t = setTimeout(() => start(async () => setFound(await lookupReceiver(h))), 300);
+    if (!h) return;
+    const t = setTimeout(() => start(async () => setLookup({ handle: h, found: await lookupReceiver(h) })), 300);
     return () => clearTimeout(t);
   }, [handle]);
 
