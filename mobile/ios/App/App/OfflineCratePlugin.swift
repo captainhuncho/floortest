@@ -35,6 +35,18 @@ enum OfflineCrate {
     static func wipe() {
         try? FileManager.default.removeItem(at: folder)
     }
+
+    /// Bumped by clear(): a sync started before it stops, and leaves nothing behind.
+    static var generation = 0
+    static let lock = NSLock()
+
+    /// Cleared (signed out, or Remove from phone) since `gen` started: wipe whatever that sync put back.
+    static func stale(_ gen: Int) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        if gen == generation { return false }
+        wipe()
+        return true
+    }
 }
 
 @objc(OfflineCratePlugin)
@@ -58,10 +70,14 @@ public class OfflineCratePlugin: CAPPlugin, CAPBridgedPlugin {
         if syncing { return call.resolve(["started": false]) }
         syncing = true
         call.resolve(["started": true])
-        Task.detached { [weak self] in await self?.run(owner: owner, maxDays: maxDays, list: list) }
+        OfflineCrate.lock.lock()
+        let gen = OfflineCrate.generation
+        OfflineCrate.lock.unlock()
+        Task.detached { [weak self] in await self?.run(owner: owner, maxDays: maxDays, list: list, gen: gen) }
     }
 
-    private func run(owner: Int, maxDays: Double, list: [[String: Any]]) async {
+    private func run(owner: Int, maxDays: Double, list: [[String: Any]], gen: Int) async {
+        defer { syncing = false }
         // Another account's copy never mixes with this one.
         var current = OfflineCrate.manifest()
         if current?.owner != owner { OfflineCrate.wipe(); current = nil }
@@ -70,6 +86,7 @@ public class OfflineCratePlugin: CAPPlugin, CAPBridgedPlugin {
         done = 0
         total = list.count
         for item in list {
+            if OfflineCrate.stale(gen) { return }
             guard let id = item["id"] as? Int, let urlString = item["url"] as? String, let url = URL(string: urlString) else { continue }
             let title = item["title"] as? String ?? ""
             let artist = item["artist"] as? String ?? ""
@@ -82,13 +99,20 @@ public class OfflineCratePlugin: CAPPlugin, CAPBridgedPlugin {
             done += 1
             notifyListeners("progress", data: ["done": done, "total": total])
         }
-        // Anything not in Prepare any more leaves the phone.
+        // Anything not in Prepare any more leaves the phone. The manifest is written only if nothing cleared the copy
+        // meanwhile (checked under the same lock clear() takes).
+        OfflineCrate.lock.lock()
+        if gen != OfflineCrate.generation {
+            OfflineCrate.wipe()
+            OfflineCrate.lock.unlock()
+            return
+        }
         let keep = Set(kept.map(\.file) + ["manifest.json"])
         for f in (try? FileManager.default.contentsOfDirectory(atPath: OfflineCrate.folder.path)) ?? [] where !keep.contains(f) {
             try? FileManager.default.removeItem(at: OfflineCrate.folder.appendingPathComponent(f))
         }
         OfflineCrate.save(OfflineCrate.Manifest(owner: owner, syncedAt: Date().timeIntervalSince1970 * 1000, maxDays: maxDays, tracks: kept))
-        syncing = false
+        OfflineCrate.lock.unlock()
         notifyListeners("progress", data: ["done": done, "total": total, "finished": true, "saved": kept.count])
     }
 
@@ -119,7 +143,10 @@ public class OfflineCratePlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func clear(_ call: CAPPluginCall) {
+        OfflineCrate.lock.lock()
+        OfflineCrate.generation += 1
         OfflineCrate.wipe()
+        OfflineCrate.lock.unlock()
         call.resolve()
     }
 }

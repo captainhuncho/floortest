@@ -1,7 +1,7 @@
 import "server-only";
 import { discardFiles } from "@/lib/deletion";
 import crypto from "node:crypto";
-import { IntakeError } from "./intake";
+import { claimUpload, IntakeError, releaseUpload } from "./intake";
 import { now, q, type Sender, type Track, type User } from "./db";
 import { APP_URL, sendMail } from "./mail";
 import { MAX_UPLOAD_BYTES } from "./plans";
@@ -76,7 +76,9 @@ export async function startStemUpload(token: string, fileName: string, size: num
   if (!ext) throw new IntakeError("Stems must be WAV or MP3 files.", 400);
   if (!Number.isSafeInteger(size) || size <= 0) throw new IntakeError("Choose a WAV or MP3 file.", 400);
   if (size > MAX_UPLOAD_BYTES) throw new IntakeError("That stem is too large (max 250 MB).", 413);
-  if (stemsSent(t).length >= MAX_STEMS) throw new IntakeError(`That's the maximum of ${MAX_STEMS} stems for this track.`, 409);
+  // Stems still uploading count too, so starting many before finishing any can't get past the cap.
+  const open = await q.count("SELECT COUNT(*) AS n FROM uploads WHERE receiver_id = ? AND created_at > ? AND meta::jsonb->>'kind' = 'stem' AND (meta::jsonb->>'trackId')::bigint = ?", t.user_id, now() - UPLOAD_TTL, t.id);
+  if (stemsSent(t).length + open >= MAX_STEMS) throw new IntakeError(`That's the maximum of ${MAX_STEMS} stems for this track.`, 409);
   if ((await recentCount("stem_ip", `${t.id}:${ip}`, HOUR)) >= MAX_STEMS * 2) throw new IntakeError("Too many uploads. Try again in an hour.", 429);
   await record("stem_ip", `${t.id}:${ip}`);
 
@@ -101,24 +103,26 @@ export async function startStemUpload(token: string, fileName: string, size: num
 /** Step 2: the stem is in storage. Check it's the right size and real audio, then attach it to the track. */
 export async function completeStemUpload(token: string, uploadId: string) {
   const t = await trackForStems(token);
-  const up = await q.get<{ id: string; file_key: string; size: number; meta: string }>(
-    "SELECT id, file_key, size, meta FROM uploads WHERE id = ? AND receiver_id = ? AND created_at > ?",
-    uploadId,
-    t.user_id,
-    now() - UPLOAD_TTL,
-  );
-  const meta = up ? (JSON.parse(up.meta) as { kind?: string; trackId?: number; name?: string }) : null;
-  if (!up || meta?.kind !== "stem" || meta.trackId !== t.id) throw new IntakeError("This upload expired. Please try again.", 410);
+  // Claimed first: of two completes sent at the same moment, only one goes on.
+  const up = await claimUpload<{ id: string; file_key: string; size: number; meta: string }>(uploadId, t.user_id, "id, file_key, size, meta");
+  const meta = JSON.parse(up.meta) as { kind?: string; trackId?: number; name?: string };
+  if (meta?.kind !== "stem" || meta.trackId !== t.id) {
+    await releaseUpload(up.id);
+    throw new IntakeError("This upload expired. Please try again.", 410);
+  }
   const store = await storage();
   let fileKey = up.file_key;
   const discard = async () => {
-    await discardFiles([fileKey, up.file_key], "stem upload discarded");
+    await discardFiles([fileKey, up.file_key], "stem upload discarded", { linkLive: true });
     await q.run("DELETE FROM uploads WHERE id = ?", up.id);
   };
-  if (!(await store.head(up.file_key))) throw new IntakeError("The file didn't finish uploading. Please try again.", 400);
+  if (!(await store.head(up.file_key))) {
+    await releaseUpload(up.id);
+    throw new IntakeError("The file didn't finish uploading. Please try again.", 400);
+  }
   // Checked and kept as a sealed copy the sender's upload link can't overwrite.
   fileKey = await sealUpload(store, up.file_key);
-  await discardFiles([up.file_key], "upload sealed");
+  await discardFiles([up.file_key], "upload sealed", { linkLive: true });
   // If we crash before the track is saved, the abandoned-upload clean-up still finds (and deletes) the sealed copy.
   await q.run("UPDATE uploads SET file_key = ? WHERE id = ?", fileKey, up.id);
   const head = await store.head(fileKey);
@@ -132,24 +136,41 @@ export async function completeStemUpload(token: string, uploadId: string) {
     throw new IntakeError(check.reason, 415);
   }
   const name = meta.name || "Stem";
-  const sent = () => q.run("UPDATE tracks SET stems_sent = (COALESCE(stems_sent, '[]')::jsonb || to_jsonb(?::text))::text WHERE id = ?", name, t.id);
+  // Counted and added in one statement, so the cap holds however many finish at once.
+  const sent = (db: Pick<typeof q, "get"> = q) =>
+    db.get(
+      `UPDATE tracks SET stems_sent = (COALESCE(stems_sent, '[]')::jsonb || to_jsonb(?::text))::text
+       WHERE id = ? AND jsonb_array_length(COALESCE(stems_sent, '[]')::jsonb) < ? RETURNING id`,
+      name,
+      t.id,
+      MAX_STEMS,
+    );
+  const full = () => new IntakeError(`That's the maximum of ${MAX_STEMS} stems for this track.`, 409);
   if (t.deleted_at) {
     await discard();
-    await sent();
+    if (!(await sent())) throw full();
     return { name, size: head.size };
   }
   const previous = (await q.get<{ at: number | null }>("SELECT MAX(created_at) AS at FROM stems WHERE track_id = ?", t.id))?.at ?? null;
-  const stem = (await q.get<Stem>(
-    "INSERT INTO stems (track_id, file_key, name, mime, size, created_at) VALUES (?,?,?,?,?,?) RETURNING *",
-    t.id,
-    fileKey,
-    name,
-    check.kind === "wav" ? "audio/wav" : "audio/mpeg",
-    head.size,
-    now(),
-  ))!;
-  await q.run("DELETE FROM uploads WHERE id = ?", up.id);
-  await sent();
+  let stem: Stem;
+  try {
+    stem = await q.tx(async (db) => {
+      if (!(await sent(db))) throw full();
+      if (!(await db.run("DELETE FROM uploads WHERE id = ?", up.id)).changes) throw new IntakeError("This file was already saved.", 409);
+      return (await db.get<Stem>(
+        "INSERT INTO stems (track_id, file_key, name, mime, size, created_at) VALUES (?,?,?,?,?,?) RETURNING *",
+        t.id,
+        fileKey,
+        name,
+        check.kind === "wav" ? "audio/wav" : "audio/mpeg",
+        head.size,
+        now(),
+      ))!;
+    });
+  } catch (e) {
+    await discard();
+    throw e;
+  }
 
   // One email per batch: only when nothing else arrived for this track in the last half hour.
   if (!previous || now() - previous > HOUR / 2) {

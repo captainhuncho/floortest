@@ -5,6 +5,7 @@ import { currentUser } from "@/lib/auth";
 import { now, q, type Track } from "@/lib/db";
 import { imageKind, IMAGE_TYPES as TYPES, type ImageKind } from "@/lib/images";
 import { trackArtEnabled } from "@/lib/plan-store";
+import { allow } from "@/lib/ratelimit";
 import { storage } from "@/lib/storage";
 
 export const runtime = "nodejs";
@@ -37,12 +38,14 @@ export async function POST(req: Request, ctx: RouteContext<"/api/track-art/[ref]
     const ext = t.art_key.split(".").pop();
     if (!first || imageKind(first) !== ext || head!.size > MAX) {
       await q.run("UPDATE tracks SET art_key = NULL WHERE id = ?", t.id);
-      await discardFiles([t.art_key], "track artwork refused");
+      await discardFiles([t.art_key], "track artwork refused", { linkLive: true });
       return err("Use a JPG, PNG or WebP image under 25 MB.", 415);
     }
     return NextResponse.json({ ok: true });
   }
 
+  // Each try hands out an upload link; a handful an hour is plenty for one track's artwork.
+  if (!(await allow("track_art", String(t.id), 5, 3_600_000))) return err("Too many tries. Wait a little and try again.", 429);
   const kind = KINDS[String(body.type)];
   const size = Number(body.size);
   if (!kind) return err("Use a JPG, PNG or WebP image.", 415);

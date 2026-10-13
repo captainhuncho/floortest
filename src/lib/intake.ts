@@ -145,74 +145,121 @@ export async function startUpload(receiver: User, meta: SubmissionMeta, size: nu
   if (!ext || !ACCEPTED_EXT.includes(ext)) throw new IntakeError("Only WAV and MP3 files are accepted.", 400);
   if (!Number.isSafeInteger(size) || size <= 0) throw new IntakeError("Choose a WAV or MP3 file.", 400);
   if (size > MAX_UPLOAD_BYTES) throw new IntakeError("File is too large (max 250 MB).", 413);
-  // A release counts as one send: only its first track takes a rate-limit slot, and it holds at most MAX_RELEASE_TRACKS.
-  let firstOfRelease = true;
-  if (meta.release) {
-    const inRelease =
-      Number((await q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM tracks WHERE user_id = ? AND release_id = ?", receiver.id, meta.release.id))?.n ?? 0) +
-      Number((await q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM uploads WHERE receiver_id = ? AND meta::jsonb->'release'->>'id' = ?", receiver.id, meta.release.id))?.n ?? 0);
-    // Only the sender who started a release can add to it.
-    const owner = await q.get<{ email: string }>("SELECT s.email FROM releases r JOIN senders s ON s.id = r.sender_id WHERE r.id = ? AND r.user_id = ?", meta.release.id, receiver.id);
-    if (owner && owner.email !== meta.email) throw new IntakeError("That release belongs to someone else.", 403);
-    if (inRelease >= MAX_RELEASE_TRACKS) throw new IntakeError(`A release can have up to ${MAX_RELEASE_TRACKS} tracks.`, 413);
-    const cap = await folderLimit(receiver.plan);
-    const releaseBytes =
-      Number((await q.get<{ n: number }>("SELECT COALESCE(SUM(size), 0) AS n FROM tracks WHERE user_id = ? AND release_id = ?", receiver.id, meta.release.id))?.n ?? 0) +
-      Number((await q.get<{ n: number }>("SELECT COALESCE(SUM(size), 0) AS n FROM uploads WHERE receiver_id = ? AND meta::jsonb->'release'->>'id' = ?", receiver.id, meta.release.id))?.n ?? 0);
-    if (!cap) throw new IntakeError(`${receiver.name} can't receive folders. Send up to 3 tracks at a time.`, 403);
-    if (releaseBytes + size > cap) throw new IntakeError(`This folder is over ${Math.round(cap / 1073741824)} GB, the most ${receiver.name} can receive in one folder.`, 413);
-    firstOfRelease = inRelease === 0;
-  } else if (meta.batch) {
-    const sum = async (sql: string) => (await q.get<{ n: number; b: number }>(sql, receiver.id, meta.batch))!;
-    const done = await sum("SELECT COUNT(*)::int AS n, COALESCE(SUM(size), 0)::bigint AS b FROM tracks WHERE user_id = ? AND batch_id = ?");
-    const open = await sum("SELECT COUNT(*)::int AS n, COALESCE(SUM(size), 0)::bigint AS b FROM uploads WHERE receiver_id = ? AND meta::jsonb->>'batch' = ?");
-    // Only the sender who started a batch can add to it.
-    const owner = await q.get<{ email: string }>("SELECT s.email FROM tracks t JOIN senders s ON s.id = t.sender_id WHERE t.user_id = ? AND t.batch_id = ? LIMIT 1", receiver.id, meta.batch);
-    if (owner && owner.email !== meta.email) throw new IntakeError("That send belongs to someone else.", 403);
-    if (Number(done.n) + Number(open.n) >= MAX_BATCH_TRACKS) throw new IntakeError(`Up to ${MAX_BATCH_TRACKS} tracks at a time.`, 413);
-    if (Number(done.b) + Number(open.b) + size > MAX_UPLOAD_BYTES) throw new IntakeError("These tracks add up to more than 250 MB.", 413);
-    firstOfRelease = Number(done.n) + Number(open.n) === 0;
-  }
-  await checkIntake(receiver, meta.email, ip, firstOfRelease);
-
   const id = crypto.randomBytes(24).toString("base64url");
   const key = `audio/${receiver.id}/${crypto.randomUUID()}${ext}`;
-  await q.run(
-    "INSERT INTO uploads (id, receiver_id, file_key, ext, size, meta, ip, created_at) VALUES (?,?,?,?,?,?,?,?)",
-    id,
-    receiver.id,
-    key,
-    ext,
-    size,
-    JSON.stringify(meta),
-    ip,
-    now(),
-  );
+  // Tracks of one release or batch start one at a time (a lock on that group), so each sees the true count and size:
+  // starts sent at the same moment can't all get past the caps or all skip the send limits as "not the first".
+  const group = meta.release ? `release:${meta.release.id}` : meta.batch ? `batch:${meta.batch}` : null;
+  // Only this group's counts and the reservation happen under the lock; the rules that use other queries run after it,
+  // and a reservation refused by them is removed.
+  const firstOfRelease = await q.tx(async (db) => {
+    if (group) await db.get("SELECT pg_advisory_xact_lock(hashtext(?))", `${receiver.id}:${group}`);
+    // A release counts as one send: only its first track takes a rate-limit slot, and it holds at most MAX_RELEASE_TRACKS.
+    let firstOfRelease = true;
+    if (meta.release) {
+      const inRelease =
+        Number((await db.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM tracks WHERE user_id = ? AND release_id = ?", receiver.id, meta.release.id))?.n ?? 0) +
+        Number((await db.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM uploads WHERE receiver_id = ? AND meta::jsonb->'release'->>'id' = ?", receiver.id, meta.release.id))?.n ?? 0);
+      // Only the sender who started a release can add to it.
+      const owner = await db.get<{ email: string }>("SELECT s.email FROM releases r JOIN senders s ON s.id = r.sender_id WHERE r.id = ? AND r.user_id = ?", meta.release.id, receiver.id);
+      if (owner && owner.email !== meta.email) throw new IntakeError("That release belongs to someone else.", 403);
+      if (inRelease >= MAX_RELEASE_TRACKS) throw new IntakeError(`A release can have up to ${MAX_RELEASE_TRACKS} tracks.`, 413);
+      const cap = await folderLimit(receiver.plan);
+      const releaseBytes =
+        Number((await db.get<{ n: number }>("SELECT COALESCE(SUM(size), 0) AS n FROM tracks WHERE user_id = ? AND release_id = ?", receiver.id, meta.release.id))?.n ?? 0) +
+        Number((await db.get<{ n: number }>("SELECT COALESCE(SUM(size), 0) AS n FROM uploads WHERE receiver_id = ? AND meta::jsonb->'release'->>'id' = ?", receiver.id, meta.release.id))?.n ?? 0);
+      if (!cap) throw new IntakeError(`${receiver.name} can't receive folders. Send up to 3 tracks at a time.`, 403);
+      if (releaseBytes + size > cap) throw new IntakeError(`This folder is over ${Math.round(cap / 1073741824)} GB, the most ${receiver.name} can receive in one folder.`, 413);
+      // The first is the one that passed the send limits: a start still being checked (or refused) doesn't count.
+      firstOfRelease =
+        Number((await db.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM tracks WHERE user_id = ? AND release_id = ?", receiver.id, meta.release.id))?.n ?? 0) +
+          Number((await db.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM uploads WHERE receiver_id = ? AND meta::jsonb->'release'->>'id' = ? AND checked_at IS NOT NULL", receiver.id, meta.release.id))?.n ?? 0) ===
+        0;
+    } else if (meta.batch) {
+      const sum = async (sql: string) => (await db.get<{ n: number; b: number }>(sql, receiver.id, meta.batch))!;
+      const done = await sum("SELECT COUNT(*)::int AS n, COALESCE(SUM(size), 0)::bigint AS b FROM tracks WHERE user_id = ? AND batch_id = ?");
+      const open = await sum("SELECT COUNT(*)::int AS n, COALESCE(SUM(size), 0)::bigint AS b FROM uploads WHERE receiver_id = ? AND meta::jsonb->>'batch' = ?");
+      // Only the sender who started a batch can add to it.
+      const owner = await db.get<{ email: string }>("SELECT s.email FROM tracks t JOIN senders s ON s.id = t.sender_id WHERE t.user_id = ? AND t.batch_id = ? LIMIT 1", receiver.id, meta.batch);
+      if (owner && owner.email !== meta.email) throw new IntakeError("That send belongs to someone else.", 403);
+      if (Number(done.n) + Number(open.n) >= MAX_BATCH_TRACKS) throw new IntakeError(`Up to ${MAX_BATCH_TRACKS} tracks at a time.`, 413);
+      if (Number(done.b) + Number(open.b) + size > MAX_UPLOAD_BYTES) throw new IntakeError("These tracks add up to more than 250 MB.", 413);
+      const passed = await sum("SELECT COUNT(*)::int AS n, 0::bigint AS b FROM uploads WHERE receiver_id = ? AND meta::jsonb->>'batch' = ? AND checked_at IS NOT NULL");
+      firstOfRelease = Number(done.n) + Number(passed.n) === 0;
+    }
+    await db.run(
+      "INSERT INTO uploads (id, receiver_id, file_key, ext, size, meta, ip, created_at) VALUES (?,?,?,?,?,?,?,?)",
+      id,
+      receiver.id,
+      key,
+      ext,
+      size,
+      JSON.stringify(meta),
+      ip,
+      now(),
+    );
+    return firstOfRelease;
+  });
+  try {
+    await checkIntake(receiver, meta.email, ip, firstOfRelease);
+  } catch (e) {
+    await q.run("DELETE FROM uploads WHERE id = ?", id);
+    throw e;
+  }
+  await q.run("UPDATE uploads SET checked_at = ? WHERE id = ?", now(), id);
   const target = await (await storage()).uploadTarget(key, ext === ".wav" ? "audio/wav" : "audio/mpeg", size);
   return { uploadId: id, target };
 }
 
 type Upload = { id: string; receiver_id: number; file_key: string; ext: string; size: number; meta: string; created_at: number };
 
+/** How long a completion holds its claim on an upload; after that (a crash mid-way) a retry can take it again. */
+const CLAIM_MS = 10 * 60_000;
+
+/**
+ * Claims an upload for one completion, in one statement: of two completes sent at the same moment, only one gets it.
+ * Throws if it expired, is finished, or another completion is working on it.
+ */
+export async function claimUpload<T>(uploadId: string, receiverId: number, cols = "*") {
+  const t = now();
+  const up = await q.get<T>(
+    `UPDATE uploads SET claimed_at = ? WHERE id = ? AND receiver_id = ? AND created_at > ? AND (claimed_at IS NULL OR claimed_at < ?) RETURNING ${cols}`,
+    t,
+    uploadId,
+    receiverId,
+    t - UPLOAD_TTL,
+    t - CLAIM_MS,
+  );
+  if (up) return up;
+  if (await q.get("SELECT 1 FROM uploads WHERE id = ? AND receiver_id = ? AND created_at > ?", uploadId, receiverId, t - UPLOAD_TTL))
+    throw new IntakeError("This file is already being saved.", 409);
+  throw new IntakeError("This upload expired. Please send the track again.", 410);
+}
+
+/** Lets go of a claim when the file simply isn't there yet, so the sender's retry works. */
+export const releaseUpload = (uploadId: string) => q.run("UPDATE uploads SET claimed_at = NULL WHERE id = ?", uploadId);
+
 /**
  * Step 2: the browser has uploaded the file. Verify it's really there, the right size, and real
  * audio, then create the track and tell everyone.
  */
 export async function completeUpload(receiver: User, uploadId: string, analysis: { duration: number | null; bpm: number | null; peaks: number[] | null }) {
-  const up = await q.get<Upload>("SELECT * FROM uploads WHERE id = ? AND receiver_id = ? AND created_at > ?", uploadId, receiver.id, now() - UPLOAD_TTL);
-  if (!up) throw new IntakeError("This upload expired. Please send the track again.", 410);
+  const up = await claimUpload<Upload>(uploadId, receiver.id);
   const store = await storage();
   const sharing = await switchOn("sharing");
   let fileKey = up.file_key;
   const discard = async () => {
-    await discardFiles([fileKey, up.file_key], "upload discarded");
+    await discardFiles([fileKey, up.file_key], "upload discarded", { linkLive: true });
     await q.run("DELETE FROM uploads WHERE id = ?", up.id);
   };
 
-  if (!(await store.head(up.file_key))) throw new IntakeError("The file didn't finish uploading. Please try again.", 400);
+  if (!(await store.head(up.file_key))) {
+    await releaseUpload(up.id);
+    throw new IntakeError("The file didn't finish uploading. Please try again.", 400);
+  }
   // From here on the sender's upload link can't touch the file: everything below checks and keeps the sealed copy.
   fileKey = await sealUpload(store, up.file_key);
-  await discardFiles([up.file_key], "upload sealed");
+  await discardFiles([up.file_key], "upload sealed", { linkLive: true });
   // If we crash before the track is saved, the abandoned-upload clean-up still finds (and deletes) the sealed copy.
   await q.run("UPDATE uploads SET file_key = ? WHERE id = ?", fileKey, up.id);
   const head = await store.head(fileKey);
@@ -323,7 +370,8 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
         track.duplicate_of = dup.id;
       }
       await logEvent({ user_id: fresh.id, sender_id: sender.id, track_id: track.id, type: "submitted", detail: `${meta.ownerCollectionId ? "added by you " : ""}${collection ? `into ${collection.name}` : ""}`.trim() }, db);
-      await db.run("DELETE FROM uploads WHERE id = ?", up.id);
+      // Single use: if the upload is already gone, this completion made nothing (the transaction is undone).
+      if (!(await db.run("DELETE FROM uploads WHERE id = ?", up.id)).changes) throw new IntakeError("This file was already saved.", 409);
       return { track, sender, collection };
     });
   } catch (e) {

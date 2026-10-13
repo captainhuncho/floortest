@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -32,6 +33,9 @@ public class OfflineCratePlugin extends Plugin {
     private volatile boolean syncing = false;
     private volatile int done = 0;
     private volatile int total = 0;
+    /** Bumped by clear(): a sync started before it stops, and leaves nothing behind. */
+    private final AtomicInteger generation = new AtomicInteger();
+    private final Object lock = new Object();
 
     private File folder() {
         File f = new File(getContext().getNoBackupFilesDir(), "offline");
@@ -70,10 +74,20 @@ public class OfflineCratePlugin extends Plugin {
         syncing = true;
         r.put("started", true);
         call.resolve(r);
-        new Thread(() -> run(owner, maxDays, list)).start();
+        int gen = generation.get();
+        new Thread(() -> run(owner, maxDays, list, gen)).start();
     }
 
-    private void run(long owner, double maxDays, JSONArray list) {
+    /** Cleared (signed out, or Remove from phone) since this sync started: wipe whatever it put back, and stop. */
+    private boolean stale(int gen) {
+        synchronized (lock) {
+            if (gen == generation.get()) return false;
+            wipe();
+            return true;
+        }
+    }
+
+    private void run(long owner, double maxDays, JSONArray list, int gen) {
         try {
             JSONObject current = manifest();
             // Another account's copy never mixes with this one.
@@ -87,6 +101,7 @@ public class OfflineCratePlugin extends Plugin {
             done = 0;
             total = list.length();
             for (int i = 0; i < list.length(); i++) {
+                if (stale(gen)) return;
                 JSONObject t = list.getJSONObject(i);
                 long id = t.getLong("id");
                 String file = have.get(id);
@@ -101,14 +116,18 @@ public class OfflineCratePlugin extends Plugin {
                 p.put("total", total);
                 notifyListeners("progress", p);
             }
-            // Anything not in Prepare any more leaves the phone.
-            Set<String> keep = new HashSet<>();
-            keep.add("manifest.json");
-            for (int i = 0; i < kept.length(); i++) keep.add(kept.getJSONObject(i).getString("file"));
-            File[] files = folder().listFiles();
-            if (files != null) for (File f : files) if (!keep.contains(f.getName())) ShareInbox.deleteTree(f);
-            JSONObject m = new JSONObject().put("owner", owner).put("syncedAt", (double) System.currentTimeMillis()).put("maxDays", maxDays).put("tracks", kept);
-            Files.write(manifestFile().toPath(), m.toString().getBytes(StandardCharsets.UTF_8));
+            // Anything not in Prepare any more leaves the phone. The manifest is written only if nothing cleared the copy
+            // meanwhile (checked under the same lock clear() takes).
+            synchronized (lock) {
+                if (stale(gen)) return;
+                Set<String> keep = new HashSet<>();
+                keep.add("manifest.json");
+                for (int i = 0; i < kept.length(); i++) keep.add(kept.getJSONObject(i).getString("file"));
+                File[] files = folder().listFiles();
+                if (files != null) for (File f : files) if (!keep.contains(f.getName())) ShareInbox.deleteTree(f);
+                JSONObject m = new JSONObject().put("owner", owner).put("syncedAt", (double) System.currentTimeMillis()).put("maxDays", maxDays).put("tracks", kept);
+                Files.write(manifestFile().toPath(), m.toString().getBytes(StandardCharsets.UTF_8));
+            }
             JSObject fin = new JSObject();
             fin.put("done", done);
             fin.put("total", total);
@@ -184,7 +203,10 @@ public class OfflineCratePlugin extends Plugin {
 
     @PluginMethod
     public void clear(PluginCall call) {
-        wipe();
+        synchronized (lock) {
+            generation.incrementAndGet();
+            wipe();
+        }
         call.resolve();
     }
 }

@@ -68,12 +68,24 @@ final class ShareInbox {
         return out;
     }
 
+    /**
+     * Only a file another app hands over: a content:// address it gave us access to. A file:// path (or one of our own
+     * provider's addresses) would be read with FloorTest's own access, so another app could slip the offline crate's
+     * private tracks into the Send form.
+     */
+    static boolean fromAnotherApp(Context c, Uri u) {
+        if (u == null || !"content".equalsIgnoreCase(u.getScheme())) return false;
+        String authority = u.getAuthority();
+        return authority != null && !authority.startsWith(c.getPackageName());
+    }
+
     /** Copies WAV/MP3s into the inbox (up to 3). Returns how many were saved, or -1 if none were WAV or MP3. */
     static int save(Context c, List<Uri> uris) {
         int saved = 0;
         boolean refused = false;
         for (Uri u : uris) {
             if (saved >= 3) break;
+            if (!fromAnotherApp(c, u)) { refused = true; continue; }
             String name = displayName(c, u);
             String lower = name.toLowerCase();
             if (!lower.endsWith(".wav") && !lower.endsWith(".mp3")) { refused = true; continue; }

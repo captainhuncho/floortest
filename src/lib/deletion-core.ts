@@ -76,7 +76,7 @@ export async function accountKeys(db: Queryable, userId: number) {
 
 /** Tries every queued key. Success (or already gone) removes it from the queue; failure is kept with the error. */
 export async function drainDeletions(db: Queryable, store: Deleter, at: number, limit = 500) {
-  const rows = await db.all<{ file_key: string }>("SELECT file_key FROM storage_deletions ORDER BY created_at LIMIT ?", limit);
+  const rows = await db.all<{ file_key: string }>("SELECT file_key FROM storage_deletions WHERE not_before IS NULL OR not_before <= ? ORDER BY created_at LIMIT ?", at, limit);
   let deleted = 0;
   let failed = 0;
   let newlyStuck = 0; // reached 5 failed attempts on this run: reported once, not on every retry
