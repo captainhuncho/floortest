@@ -4,6 +4,7 @@ import { Logo } from "@/components/Logo";
 import { q } from "@/lib/db";
 import { sendWelcome } from "@/lib/onboarding";
 import { currentPerson } from "@/lib/auth";
+import { hashToken } from "@/lib/token-hash";
 import { confirmEmail } from "@/lib/accounts";
 
 export const metadata = { title: "Confirm your email — FloorTest", robots: { index: false } };
@@ -12,7 +13,7 @@ export const metadata = { title: "Confirm your email — FloorTest", robots: { i
 export default async function VerifyEmail({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<{ done?: string }> }) {
   const { token } = await params;
   const done = !!(await searchParams).done;
-  const pending = done ? null : await q.get<{ id: number; email: string }>("SELECT id, email FROM users WHERE email_verify_token = ?", token.slice(0, 100));
+  const pending = done ? null : await q.get<{ id: number; email: string }>("SELECT id, email FROM users WHERE email_verify_token = ?", hashToken(token.slice(0, 100)));
   const me = await currentPerson();
 
   async function confirm() {

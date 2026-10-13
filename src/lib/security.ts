@@ -9,6 +9,7 @@ import { env } from "./env";
 import { APP_URL, sendMail } from "./mail";
 import { requestIp } from "./ratelimit";
 import { hashRecovery, openSecret, verifyTotp } from "./totp";
+import { hashToken } from "./token-hash";
 
 /** "Chrome on macOS" from a user-agent string; good enough for an alert email. */
 export function deviceLabel(ua: string) {
@@ -102,7 +103,7 @@ export async function sendEmailVerification(userId: number) {
   const token = crypto.randomBytes(24).toString("base64url");
   const u = await q.get<{ email: string; name: string }>(
     "UPDATE users SET email_verify_token = ? WHERE id = ? AND email_verified_at IS NULL RETURNING email, name",
-    token,
+    hashToken(token),
     userId,
   );
   if (!u || !(await accountEmailAllowed())) return false;

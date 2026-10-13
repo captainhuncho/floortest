@@ -1523,4 +1523,14 @@ alter table released_handles enable row level security;
 alter table uploads add column checked_at bigint;
 alter table storage_deletions add column not_before bigint;`,
   },
+  {
+    // Email-change and email-confirmation links are stored as their SHA-256 (like reset and session tokens), so a copy
+    // of the database holds nothing that works as the link. Links already sent keep working: their stored values are
+    // hashed here the same way (a raw link is 32 characters, never 64 hex, so this runs once).
+    id: "0094_hash_email_tokens",
+    sql: `update users set email_verify_token = encode(sha256(convert_to(email_verify_token, 'UTF8')), 'hex')
+where email_verify_token is not null and email_verify_token !~ '^[a-f0-9]{64}$';
+update users set pending_email_token = encode(sha256(convert_to(pending_email_token, 'UTF8')), 'hex')
+where pending_email_token is not null and pending_email_token !~ '^[a-f0-9]{64}$';`,
+  },
 ];

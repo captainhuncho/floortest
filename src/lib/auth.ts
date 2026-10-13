@@ -15,7 +15,8 @@ const SESSION_MS = 1000 * 60 * 60 * 24 * 30;
 const RESET_MS = 1000 * 60 * 60;
 
 /** Tokens are stored hashed, so a database leak doesn't hand out live sessions or reset links. */
-export const hashToken = (t: string) => crypto.createHash("sha256").update(t).digest("hex");
+import { hashToken } from "./token-hash";
+export { hashToken };
 const newToken = () => crypto.randomBytes(32).toString("base64url");
 
 export function hashPassword(pw: string) {
