@@ -11,6 +11,7 @@ export function TwoFactor({ enabled, alerts }: { enabled: boolean; alerts: boole
   const [on, setOn] = useState(enabled);
   const [setup, setSetup] = useState<{ qr: string; secret: string } | null>(null);
   const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [codes, setCodes] = useState<string[] | null>(null);
   const [alertsOn, setAlertsOn] = useState(alerts);
@@ -60,8 +61,8 @@ export function TwoFactor({ enabled, alerts }: { enabled: boolean; alerts: boole
             <div className="space-y-3">
               <p className="text-sm">1. Scan this with your authenticator app, or type the key in by hand:</p>
               <p className="break-all rounded-sm bg-ink px-3 py-2 font-mono text-xs">{setup.secret.replace(/(.{4})/g, "$1 ").trim()}</p>
-              <p className="text-sm">2. Enter the 6-digit code it shows:</p>
-              <div className="flex gap-2">
+              <p className="text-sm">2. Enter the 6-digit code it shows, and your password:</p>
+              <div className="flex flex-wrap gap-2">
                 <input
                   className="input max-w-40 font-mono tracking-widest"
                   inputMode="numeric"
@@ -71,13 +72,23 @@ export function TwoFactor({ enabled, alerts }: { enabled: boolean; alerts: boole
                   onChange={(e) => setCode(e.target.value)}
                   aria-label="6-digit code"
                 />
+                <input
+                  className="input max-w-52"
+                  type="password"
+                  autoComplete="current-password"
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  aria-label="Password"
+                />
                 <button
                   className="btn-lime btn-sm"
-                  disabled={pending || code.replace(/\s/g, "").length !== 6}
+                  disabled={pending || code.replace(/\s/g, "").length !== 6 || !password}
                   onClick={() =>
                     start(async () => {
-                      const r = await confirmTwoFactor(code);
+                      const r = await confirmTwoFactor(code, password);
                       if (r.error) return setError(r.error);
+                      setPassword("");
                       setCodes(r.codes ?? []);
                       setOn(true);
                       setSetup(null);
@@ -96,6 +107,7 @@ export function TwoFactor({ enabled, alerts }: { enabled: boolean; alerts: boole
                   {error}
                 </p>
               )}
+              <p className="text-xs text-mute">No password yet (you sign in with Google or an email code)? Set one with &ldquo;Forgot your password?&rdquo; on the log-in page first.</p>
             </div>
           </div>
         )}

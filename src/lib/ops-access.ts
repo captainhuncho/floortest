@@ -29,3 +29,13 @@ export const can = (access: OpsAccess, need: Need) => access.super || (need !== 
 /** The first page someone can open: Overview for most, otherwise their first permitted area. */
 export const homeFor = (access: OpsAccess) => Object.keys(PAGE_NEEDS).find((p) => can(access, PAGE_NEEDS[p])) ?? "/admin/no-access";
 
+
+/**
+ * Why `caller` may not suspend someone with `target` ops access, or null if they may. Suspension also ends ops access,
+ * so it follows the Team page's rule: only the super admin changes ops staff, and the super admin can't be locked out.
+ */
+export function suspendRefusal(caller: OpsAccess, target: OpsAccess | null): string | null {
+  if (target?.super) return "The super admin can't be suspended.";
+  if (target && !caller.super) return "Only the super admin can suspend ops staff.";
+  return null;
+}

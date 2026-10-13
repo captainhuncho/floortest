@@ -48,18 +48,27 @@ export async function canResend(email: string) {
   return !!(await q.get("SELECT 1 FROM sender_codes WHERE email = ? AND created_at > ?", email, now() - 30 * 60_000));
 }
 
-/** Checks a typed code; right once, then it's used up. Wrong five times and a new code is needed. */
+/**
+ * Checks a typed code; right once, then it's used up. Wrong five times and a new code is needed. Each try is counted
+ * before the code is compared, in one statement, so guesses sent at the same moment can't all get past the limit.
+ */
 export async function checkCode(email: string, code: string) {
-  const row = await q.get<{ code_hash: string; expires_at: number; attempts: number }>("SELECT code_hash, expires_at, attempts FROM sender_codes WHERE email = ?", email);
-  if (!row || Number(row.expires_at) < now()) throw new CodeError("That code has expired. Send a new one.");
-  if (row.attempts >= MAX_ATTEMPTS) throw new CodeError("Too many wrong tries. Send a new code.");
+  const row = await q.get<{ code_hash: string; attempts: number }>(
+    "UPDATE sender_codes SET attempts = attempts + 1 WHERE email = ? AND expires_at >= ? AND attempts < ? RETURNING code_hash, attempts",
+    email,
+    now(),
+    MAX_ATTEMPTS,
+  );
+  if (!row) {
+    const used = await q.get("SELECT 1 FROM sender_codes WHERE email = ? AND expires_at >= ?", email, now());
+    throw new CodeError(used ? "Too many wrong tries. Send a new code." : "That code has expired. Send a new one.");
+  }
   const want = Buffer.from(row.code_hash);
   const got = Buffer.from(hash(email, code.replace(/\D/g, "")));
-  if (want.length !== got.length || !crypto.timingSafeEqual(want, got)) {
-    await q.run("UPDATE sender_codes SET attempts = attempts + 1 WHERE email = ?", email);
-    throw new CodeError("That code isn't right. Check the email and try again.");
-  }
-  await q.run("DELETE FROM sender_codes WHERE email = ?", email);
+  if (want.length !== got.length || !crypto.timingSafeEqual(want, got))
+    throw new CodeError(row.attempts >= MAX_ATTEMPTS ? "Too many wrong tries. Send a new code." : "That code isn't right. Check the email and try again.");
+  // Deleting it is what makes it single-use: of two right answers at once, only one gets through.
+  if (!(await q.run("DELETE FROM sender_codes WHERE email = ? AND code_hash = ?", email, row.code_hash)).changes) throw new CodeError("That code was already used. Send a new one.");
   const body = `${Buffer.from(email).toString("base64url")}.${Date.now() + REMEMBER}`;
   (await cookies()).set(COOKIE, `${body}.${sign(body)}`, { httpOnly: true, secure: env.appUrl.startsWith("https"), sameSite: "lax", path: "/", maxAge: REMEMBER / 1000 });
 }

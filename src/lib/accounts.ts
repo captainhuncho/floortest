@@ -23,9 +23,19 @@ export const EMAIL_CHANGE_HOURS = 48;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const mask = (e: string) => e.replace(/^(.{2}).*@/, "$1…@");
 
-/** An old handle someone else gave up recently: reserved, so nobody can grab a link that's still in bios. */
+/** How long a deleted account's link names stay reserved: links printed on flyers and in bios outlive a rename's. */
+export const DELETED_HANDLE_HOLD_DAYS = 365;
+
+/**
+ * An old handle someone else gave up recently, or one a deleted account used: reserved, so nobody can grab a link
+ * that's still in bios.
+ */
 export async function handleHeld(handle: string, forUserId = 0) {
-  return !!(await q.get("SELECT 1 FROM handle_history WHERE old_handle = ? AND expires_at > ? AND user_id <> ?", handle, now(), forUserId));
+  const t = now();
+  return !!(
+    (await q.get("SELECT 1 FROM handle_history WHERE old_handle = ? AND expires_at > ? AND user_id <> ?", handle, t, forUserId)) ||
+    (await q.get("SELECT 1 FROM released_handles WHERE handle = ? AND expires_at > ?", handle, t))
+  );
 }
 
 /** Where an old link points now, if it still forwards. */
@@ -37,6 +47,19 @@ export async function forwardedHandle(old: string) {
       now(),
     )
   )?.handle;
+}
+
+/**
+ * The Verified mark vouches for the name, link and profiles FloorTest checked. Changing any of them takes it away until
+ * it's checked again (the owner sees why under Profile and can send it again). True if it was verified.
+ */
+export async function resetVerified(db: Pick<typeof q, "run">, userId: number) {
+  const r = await db.run(
+    "UPDATE users SET identity_status = 'rejected', identity_verified_at = NULL, identity_note = ? WHERE id = ? AND identity_status = 'verified'",
+    "your page name, link or profiles changed after it was checked, so it needs checking again",
+    userId,
+  );
+  return r.changes > 0;
 }
 
 /**
@@ -64,6 +87,7 @@ export async function changeHandle(userId: number, next: string, { forward = tru
     await q.tx(async (db) => {
       await db.run("DELETE FROM handle_history WHERE old_handle = ?", handle); // taking back one of your own old links
       await db.run("UPDATE users SET handle = ? WHERE id = ?", handle, userId);
+      await resetVerified(db, userId);
       if (!undo) await db.run("UPDATE users SET handle_changed_at = ? WHERE id = ?", now(), userId);
       if (forward)
         await db.run(

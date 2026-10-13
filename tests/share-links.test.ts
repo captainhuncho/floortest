@@ -9,7 +9,10 @@ process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "ft-links-"));
 process.env.APP_SECRET ??= "test-secret-".padEnd(48, "x");
 delete process.env.DATABASE_URL;
 
-async function setup() {
+let ready: ReturnType<typeof makeSetup> | undefined;
+const setup = () => (ready ??= makeSetup());
+
+async function makeSetup() {
   const { q } = await import("../src/lib/db");
   const now = Date.now();
   await q.run("INSERT INTO switches (key, on_, updated_at) VALUES ('sharing', 1, ?) ON CONFLICT (key) DO UPDATE SET on_ = 1", now);
@@ -227,4 +230,21 @@ test("retention, account deletion and the artist's stop switch", async () => {
   assert.ok((await L.purgeLinkRecords(Date.now() + 400 * DAY)).links >= 1);
   assert.equal(await q.get("SELECT 1 FROM collection_links WHERE id = ?", link.id), undefined);
   assert.equal(await q.get("SELECT 1 FROM link_events WHERE link_id = ?", link.id), undefined);
+});
+
+test("guesses sent at the same moment can't get past five tries on a share-link code", async () => {
+  const L = await import("../src/lib/share-links");
+  const { q, owner, col } = await setup();
+  const { url } = await L.createLink(owner, col, { permission: "listen", days: 14, requests: true });
+  const live = (await L.linkBySecret(url.split("/c/")[1]))!;
+  await L.addRecipients(owner, live.id, "race@x.io", "listen");
+  let sent = "";
+  await L.sendLinkCode(live, "race@x.io", "2.2.2.2", async (_to, code) => void (sent = code));
+  const wrong = sent.replace(/./g, (d) => String((Number(d) + 1) % 10));
+  const results = await Promise.allSettled(Array.from({ length: 20 }, () => L.checkLinkCode(live, "race@x.io", wrong)));
+  const wrongTold = results.filter((r) => r.status === "rejected" && /isn't right/.test(String(r.reason?.message)));
+  assert.equal(wrongTold.length, 4, "tries 1 to 4 are compared and told; the fifth uses it up; the rest are turned away");
+  const row = (await q.get<{ attempts: number }>("SELECT attempts FROM link_codes WHERE link_id = ? AND email = 'race@x.io'", live.id))!;
+  assert.equal(row.attempts, 5, "never more than five tries counted");
+  await assert.rejects(L.checkLinkCode(live, "race@x.io", sent), /Too many wrong tries/, "the right code no longer works after five wrong ones");
 });

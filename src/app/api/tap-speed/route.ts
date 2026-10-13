@@ -20,8 +20,15 @@ function pageOf(path: string) {
 
 const clean = (s: unknown, n: number) => String(s ?? "").replace(/[^\w\s\-.:/'’&]/g, "").slice(0, n);
 
+/**
+ * Anyone can send timings, so the table is bounded: 10 beacons a minute per connection, and site-wide at most
+ * BEACONS_A_DAY (each up to 30 rows, kept 30 days), far above real use. Over either, beacons are dropped quietly.
+ */
+const BEACONS_A_DAY = 2000;
+
 export async function POST(req: Request) {
-  if (!(await allow("tap_speed", ipFrom(req.headers), 60, 60_000))) return new NextResponse(null, { status: 204 });
+  if (!(await allow("tap_speed", ipFrom(req.headers), 10, 60_000))) return new NextResponse(null, { status: 204 });
+  if (!(await allow("tap_speed_all", "all", BEACONS_A_DAY, 86_400_000))) return new NextResponse(null, { status: 204 });
   const body = (await req.json().catch(() => null)) as { device?: unknown; browser?: unknown; items?: unknown } | null;
   const items = Array.isArray(body?.items) ? body.items.slice(0, 30) : [];
   const device = ["phone", "tablet", "desktop"].includes(String(body?.device)) ? String(body?.device) : "";

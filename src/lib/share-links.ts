@@ -316,16 +316,24 @@ export async function sendLinkCode(link: Pick<Link, "id">, rawEmail: string, ip:
 /** Checks a typed code (right once, then used up; five wrong tries and a new code is needed). Returns the proven email. */
 export async function checkLinkCode(link: Pick<Link, "id">, rawEmail: string, code: string) {
   const email = cleanEmail(rawEmail);
-  const row = await q.get<{ code_hash: string; expires_at: number; attempts: number }>("SELECT code_hash, expires_at, attempts FROM link_codes WHERE link_id = ? AND email = ?", link.id, email);
-  if (!row || Number(row.expires_at) < now()) throw new LinkError("That code has expired. Send a new one.");
-  if (row.attempts >= MAX_CODE_ATTEMPTS) throw new LinkError("Too many wrong tries. Send a new code.");
+  // Counted before comparing, in one statement, so guesses sent at the same moment can't all get past the limit.
+  const row = await q.get<{ code_hash: string; attempts: number }>(
+    "UPDATE link_codes SET attempts = attempts + 1 WHERE link_id = ? AND email = ? AND expires_at >= ? AND attempts < ? RETURNING code_hash, attempts",
+    link.id,
+    email,
+    now(),
+    MAX_CODE_ATTEMPTS,
+  );
+  if (!row) {
+    const used = await q.get("SELECT 1 FROM link_codes WHERE link_id = ? AND email = ? AND expires_at >= ?", link.id, email, now());
+    throw new LinkError(used ? "Too many wrong tries. Send a new code." : "That code has expired. Send a new one.");
+  }
   const want = Buffer.from(row.code_hash);
   const got = Buffer.from(codeHash(link.id, email, String(code).replace(/\D/g, "")));
-  if (want.length !== got.length || !crypto.timingSafeEqual(want, got)) {
-    await q.run("UPDATE link_codes SET attempts = attempts + 1 WHERE link_id = ? AND email = ?", link.id, email);
-    throw new LinkError("That code isn't right. Check the email and try again.");
-  }
-  await q.run("DELETE FROM link_codes WHERE link_id = ? AND email = ?", link.id, email);
+  if (want.length !== got.length || !crypto.timingSafeEqual(want, got))
+    throw new LinkError(row.attempts >= MAX_CODE_ATTEMPTS ? "Too many wrong tries. Send a new code." : "That code isn't right. Check the email and try again.");
+  if (!(await q.run("DELETE FROM link_codes WHERE link_id = ? AND email = ? AND code_hash = ?", link.id, email, row.code_hash)).changes)
+    throw new LinkError("That code was already used. Send a new one.");
   return email;
 }
 

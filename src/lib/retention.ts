@@ -43,6 +43,7 @@ export async function cleanupRecords(t = now(), until = Date.now() + PURGE_BUDGE
   await q.run("DELETE FROM password_resets WHERE expires_at < ?", t - DAY);
   await q.run("DELETE FROM login_codes WHERE expires_at < ?", t);
   await q.run("DELETE FROM handle_history WHERE expires_at < ?", t);
+  await q.run("DELETE FROM released_handles WHERE expires_at < ?", t);
   await q.run("DELETE FROM tap_timings WHERE created_at < ?", t - 30 * DAY);
   // "Email me when it reopens": a sent request has done its job; one nobody answered in a year is stale.
   await q.run("DELETE FROM reopen_alerts WHERE (sent_at IS NOT NULL AND sent_at < ?) OR created_at < ?", t - 30 * DAY, t - 365 * DAY);

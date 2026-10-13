@@ -85,3 +85,22 @@ test("after 3 wrong passwords, log-in asks for the human check, and the server e
   await page.getByRole("button", { name: "Log in" }).click();
   await page.waitForURL(/\/dashboard\//, { timeout: 20_000 });
 });
+
+test("the newsletter sign-up runs the bot check, then sends the confirmation", async ({ page }) => {
+  await page.goto("/");
+  const form = page.locator("form").filter({ has: page.getByLabel("Email for the newsletter") }).locator("visible=true").first();
+  await form.getByLabel("Email for the newsletter").fill(`news+${Date.now().toString(36)}@example.test`);
+  // The check loads once someone starts using the form.
+  await form.getByTestId("turnstile").waitFor({ state: "attached" });
+  await form.getByRole("button", { name: "Subscribe" }).click();
+  await expect(page.getByText("Check your inbox: we've sent a link to confirm your sign-up.")).toBeVisible();
+});
+
+test("a newsletter sign-up without the bot check is refused", async ({ page }) => {
+  await page.route("https://challenges.cloudflare.com/turnstile/v0/api.js*", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
+  await page.goto("/");
+  const form = page.locator("form").filter({ has: page.getByLabel("Email for the newsletter") }).locator("visible=true").first();
+  await form.getByLabel("Email for the newsletter").fill(`bot+${Date.now().toString(36)}@example.test`);
+  await form.getByRole("button", { name: "Subscribe" }).click();
+  await expect(form.getByRole("alert")).toContainText("couldn't confirm you're human");
+});
