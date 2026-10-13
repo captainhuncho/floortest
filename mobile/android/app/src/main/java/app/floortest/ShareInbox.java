@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Build;
 import android.provider.OpenableColumns;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -59,13 +60,24 @@ final class ShareInbox {
         List<Uri> out = new ArrayList<>();
         if (intent == null || intent.getType() == null || !intent.getType().startsWith("audio/")) return out;
         if (Intent.ACTION_SEND.equals(intent.getAction())) {
-            Uri u = intent.getParcelableExtra(Intent.EXTRA_STREAM);
+            Uri u = streamOf(intent);
             if (u != null) out.add(u);
         } else if (Intent.ACTION_SEND_MULTIPLE.equals(intent.getAction())) {
-            ArrayList<Uri> list = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM);
+            List<Uri> list = streamsOf(intent);
             if (list != null) out.addAll(list);
         }
         return out;
+    }
+
+    /** Android 13 and later read the shared file with its type named; older versions only have the untyped call. */
+    @SuppressWarnings("deprecation")
+    private static Uri streamOf(Intent intent) {
+        return Build.VERSION.SDK_INT >= 33 ? intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri.class) : intent.getParcelableExtra(Intent.EXTRA_STREAM);
+    }
+
+    @SuppressWarnings("deprecation")
+    private static List<Uri> streamsOf(Intent intent) {
+        return Build.VERSION.SDK_INT >= 33 ? intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri.class) : intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM);
     }
 
     /**

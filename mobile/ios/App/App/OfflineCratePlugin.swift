@@ -42,10 +42,28 @@ enum OfflineCrate {
 
     /// Cleared (signed out, or Remove from phone) since `gen` started: wipe whatever that sync put back.
     static func stale(_ gen: Int) -> Bool {
-        lock.lock(); defer { lock.unlock() }
-        if gen == generation { return false }
-        wipe()
-        return true
+        lock.withLock {
+            if gen == generation { return false }
+            wipe()
+            return true
+        }
+    }
+
+    /// The end of a sync: drops what's no longer in Prepare and writes the manifest, only if nothing cleared the copy
+    /// meanwhile (checked under the same lock clear() takes). A plain function, so the lock is never held across an await.
+    static func finish(_ gen: Int, owner: Int, maxDays: Double, kept: [Track]) -> Bool {
+        lock.withLock {
+            if gen != generation {
+                wipe()
+                return false
+            }
+            let keep = Set(kept.map(\.file) + ["manifest.json"])
+            for f in (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? [] where !keep.contains(f) {
+                try? FileManager.default.removeItem(at: folder.appendingPathComponent(f))
+            }
+            save(Manifest(owner: owner, syncedAt: Date().timeIntervalSince1970 * 1000, maxDays: maxDays, tracks: kept))
+            return true
+        }
     }
 }
 
@@ -70,9 +88,7 @@ public class OfflineCratePlugin: CAPPlugin, CAPBridgedPlugin {
         if syncing { return call.resolve(["started": false]) }
         syncing = true
         call.resolve(["started": true])
-        OfflineCrate.lock.lock()
-        let gen = OfflineCrate.generation
-        OfflineCrate.lock.unlock()
+        let gen = OfflineCrate.lock.withLock { OfflineCrate.generation }
         Task.detached { [weak self] in await self?.run(owner: owner, maxDays: maxDays, list: list, gen: gen) }
     }
 
@@ -99,20 +115,8 @@ public class OfflineCratePlugin: CAPPlugin, CAPBridgedPlugin {
             done += 1
             notifyListeners("progress", data: ["done": done, "total": total])
         }
-        // Anything not in Prepare any more leaves the phone. The manifest is written only if nothing cleared the copy
-        // meanwhile (checked under the same lock clear() takes).
-        OfflineCrate.lock.lock()
-        if gen != OfflineCrate.generation {
-            OfflineCrate.wipe()
-            OfflineCrate.lock.unlock()
-            return
-        }
-        let keep = Set(kept.map(\.file) + ["manifest.json"])
-        for f in (try? FileManager.default.contentsOfDirectory(atPath: OfflineCrate.folder.path)) ?? [] where !keep.contains(f) {
-            try? FileManager.default.removeItem(at: OfflineCrate.folder.appendingPathComponent(f))
-        }
-        OfflineCrate.save(OfflineCrate.Manifest(owner: owner, syncedAt: Date().timeIntervalSince1970 * 1000, maxDays: maxDays, tracks: kept))
-        OfflineCrate.lock.unlock()
+        // Anything not in Prepare any more leaves the phone; nothing is written if the copy was cleared meanwhile.
+        guard OfflineCrate.finish(gen, owner: owner, maxDays: maxDays, kept: kept) else { return }
         notifyListeners("progress", data: ["done": done, "total": total, "finished": true, "saved": kept.count])
     }
 
@@ -143,10 +147,10 @@ public class OfflineCratePlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func clear(_ call: CAPPluginCall) {
-        OfflineCrate.lock.lock()
-        OfflineCrate.generation += 1
-        OfflineCrate.wipe()
-        OfflineCrate.lock.unlock()
+        OfflineCrate.lock.withLock {
+            OfflineCrate.generation += 1
+            OfflineCrate.wipe()
+        }
         call.resolve()
     }
 }
