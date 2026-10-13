@@ -69,7 +69,7 @@ Guardrails no voice may override, from `PRODUCT.md`: senders are never charged, 
 3. **Launch month.** The model assumes billing starts in January 2027. Confirm or move it.
 4. **Books.** Pick where the books live from the first payout (a spreadsheet is fine until there are 50 paying desks; after that a bookkeeping tool and an accountant in Ghana).
 5. **Refund and failed-payment rules** as written above: agree or amend before checkout copy is written.
-6. **Cancel Cloudflare Workers Paid.** The 6 Oct hosting trial left a $5 a month Workers subscription running (invoice IN 82507574, $3.33 pro-rata). R2, Turnstile and the domain do not need it. Cancel under Billing → Subscriptions.
+6. ✅ **Cancel Cloudflare Workers Paid.** Done 13 Oct; ends 26 Oct. R2 Paid stays (it is the metered R2 plan, $0 base). Images Stream Basic bills nothing while unused; cancel it for tidiness if you like.
 
 ## Monthly close log
 
