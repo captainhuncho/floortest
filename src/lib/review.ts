@@ -92,7 +92,16 @@ export async function undoDecision(user: User, t: Track, prev: { decision: unkno
   const decidedAt = decision && typeof prev.decided_at === "number" ? prev.decided_at : null;
   // Who made the restored call isn't in the undo token, so it comes back unlocked rather than credited to the undoer.
   await q.run("UPDATE tracks SET decision = ?, decided_at = ?, decided_by = NULL, decided_role = NULL, expiry_warned_at = NULL WHERE id = ?", decision, decidedAt, t.id);
-  if (Number.isSafeInteger(eventId)) await q.run("DELETE FROM events WHERE id = ? AND user_id = ? AND track_id = ?", eventId, user.id, t.id);
+  // Only the entry this undo is about: the undoer's own keep or not-for-me on this track, never a teammate's note or call
+  // (the event id comes back from the browser, so it's checked, not trusted).
+  if (Number.isSafeInteger(eventId))
+    await q.run(
+      "DELETE FROM events WHERE id = ? AND user_id = ? AND track_id = ? AND type IN ('kept', 'passed') AND COALESCE(actor_id, user_id) = ?",
+      eventId,
+      user.id,
+      t.id,
+      user.actor_id ?? user.id,
+    );
 }
 
 export async function clearDecision(t: Track) {

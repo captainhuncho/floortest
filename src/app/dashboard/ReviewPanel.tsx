@@ -44,8 +44,8 @@ export async function ReviewPanel({
   const stemsOn = await featureOn("stems", { id: t.user_id, plan: receiverPlan });
   // Independent lookups run together, so the next track opens quicker.
   const [events, senderAccount, release, stats, artFrom, team, comments, shortlist] = await Promise.all([
-    q.all<EventRow & { track_title: string | null }>(
-      `SELECT e.*, t.title AS track_title FROM events e LEFT JOIN tracks t ON t.id = e.track_id WHERE e.sender_id = ? ORDER BY e.created_at DESC LIMIT 3`,
+    q.all<EventRow & { track_title: string | null; actor_name: string | null }>(
+      `SELECT e.*, t.title AS track_title, (SELECT a.name FROM users a WHERE a.id = e.actor_id AND e.actor_id <> e.user_id) AS actor_name FROM events e LEFT JOIN tracks t ON t.id = e.track_id WHERE e.sender_id = ? ORDER BY e.created_at DESC LIMIT 3`,
       sender.id,
     ),
     // Sent from someone's FloorTest account: show who they are on the platform.

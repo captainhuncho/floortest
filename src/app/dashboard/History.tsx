@@ -23,7 +23,7 @@ export function History({
   currentTrackId,
   showSender,
 }: {
-  events: (EventRow & { track_title: string | null; sender_name?: string })[];
+  events: (EventRow & { track_title: string | null; sender_name?: string; actor_name?: string | null })[];
   currentTrackId?: number;
   showSender?: boolean;
 }) {
@@ -45,7 +45,10 @@ export function History({
             {(e.type === "note" || e.type === "reply") && (
               <p className="mt-1 whitespace-pre-wrap rounded-md bg-ink px-3 py-2 text-mute">{e.detail}</p>
             )}
-            <p className="text-sm text-mute">{fmtDate(e.created_at)}</p>
+            <p className="text-sm text-mute">
+              {fmtDate(e.created_at)}
+              {e.actor_name && <> · by {e.actor_name}</>}
+            </p>
           </div>
         </li>
       ))}

@@ -9,7 +9,7 @@ import { History } from "../History";
 export const metadata = { title: "Activity — FloorTest" };
 
 const FILTERS = [
-  ["you", "Your actions", null],
+  ["you", "Account log", null],
   ["all", "Desk events", null],
   ["decisions", "Decisions", ["kept", "passed"]],
   ["signals", "Signals to senders", ["played", "downloaded", "reply"]],
@@ -22,8 +22,9 @@ export default async function Activity({ searchParams }: { searchParams: Promise
   const f = (await searchParams).f;
   const filter = FILTERS.find(([k]) => k === f) ?? FILTERS[0];
   const types = filter[2];
-  const mine = filter[0] === "you" ? await recentAudit(user.id, 300) : [];
-  const events = filter[0] === "you" ? [] : (await q.all<EventRow & { track_title: string | null; sender_name: string }>(`SELECT e.*, t.title AS track_title, s.name AS sender_name FROM events e
+  const teammate = user.actor_id !== user.id;
+  const mine = filter[0] === "you" ? await recentAudit(user.id, 300, { teammate }) : [];
+  const events = filter[0] === "you" ? [] : (await q.all<EventRow & { track_title: string | null; sender_name: string; actor_name: string | null }>(`SELECT e.*, t.title AS track_title, s.name AS sender_name, (SELECT a.name FROM users a WHERE a.id = e.actor_id AND e.actor_id <> e.user_id) AS actor_name FROM events e
        LEFT JOIN tracks t ON t.id = e.track_id JOIN senders s ON s.id = e.sender_id
        WHERE e.user_id = ? ${types ? `AND e.type IN (${types.map(() => "?").join(",")})` : "AND e.type != 'note'"}
        ORDER BY e.created_at DESC LIMIT 200`, user.id, ...(types ?? [])));
@@ -37,7 +38,11 @@ export default async function Activity({ searchParams }: { searchParams: Promise
         <h1 className="text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">Activity</h1>
       </div>
       <p className="text-[12px] leading-[1.5] text-mute">
-        {filter[0] === "you" ? "Everything you did in your account, newest first. Only you can see this." : "What happened on your desk, including what senders did."}
+        {filter[0] === "you"
+          ? teammate
+            ? "Everything done on this desk, newest first, with the name of whoever did it. The account holder's own sign-ins and settings aren't shown."
+            : "Everything done in your account, newest first. Your teammates' actions show their name."
+          : "What happened on your desk, including what senders did."}
       </p>
       <nav className="-mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0 md:gap-6 md:border-b md:border-line" aria-label="Filter">
         {FILTERS.map(([k, label]) => (

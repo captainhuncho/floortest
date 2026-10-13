@@ -17,8 +17,11 @@ export async function createCollection(form: FormData) {
   const name = String(form.get("name") || "").trim().slice(0, 60);
   if (!name) return;
   const c = await q.get<{ id: number }>("INSERT INTO collections (user_id, name, created_at) VALUES (?,?,?) RETURNING id", u.id, name, now());
-  if (form.get("activate")) await q.run("UPDATE users SET active_collection_id = ? WHERE id = ?", c!.id, u.id);
   await audit(u.id, "collection_created", name);
+  if (form.get("activate")) {
+    await q.run("UPDATE users SET active_collection_id = ? WHERE id = ?", c!.id, u.id);
+    await audit(u.id, "collection_activated", name);
+  }
   done();
 }
 
@@ -54,6 +57,7 @@ export async function updateCollection(id: number, form: FormData) {
     const raw = JSON.parse(String(form.get("genres") || "[]"));
     if (Array.isArray(raw)) genres = [...new Set(raw.filter((g) => typeof g === "string").map(cleanGenre).filter(Boolean))].slice(0, MAX_COLLECTION_GENRES);
   } catch {}
+  const before = (await q.get<{ closes_at: number | null; max_tracks: number | null }>("SELECT closes_at, max_tracks FROM collections WHERE id = ?", id))!;
   await q.run(
     `UPDATE collections SET name = COALESCE(NULLIF(?, ''), name), closes_at = ?, brief_wanted = ?, bpm_min = ?, bpm_max = ?, brief_note = ?, genres = ?, allow_sharing = ?
      WHERE id = ?`,
@@ -67,14 +71,18 @@ export async function updateCollection(id: number, form: FormData) {
     (await switchOn("sharing")) ? (form.get("allow_sharing") === "on" ? 1 : 0) : 0,
     id,
   );
+  // What changed that decides whether the link takes tracks, named in the log (who did it shows beside it).
+  const changes: string[] = [];
+  if ((before.closes_at ?? null) !== closesAt) changes.push(closesAt ? `closes ${new Date(closesAt).toISOString().slice(0, 10)}` : "no close date");
   // Pro/Team track cap. Re-checked on every save: raising or clearing it reopens a full callout.
   if (canCapCallouts(u.plan)) {
     const n = Math.round(Number(form.get("max_tracks")));
     const max = form.get("max_tracks") && n >= 1 && n <= 100_000 ? n : null;
+    if ((before.max_tracks ?? null) !== max) changes.push(max ? `cap ${max} tracks` : "no cap");
     const received = Number((await q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM tracks WHERE collection_id = ? AND deleted_at IS NULL", id))?.n ?? 0);
     await q.run("UPDATE collections SET max_tracks = ?, full_at = CASE WHEN ? THEN COALESCE(full_at, ?) ELSE NULL END WHERE id = ?", max, !!max && received >= max, now(), id);
   }
-  await audit(u.id, "collection_updated", name || c.name);
+  await audit(u.id, "collection_updated", changes.length ? `${name || c.name}: ${changes.join(", ")}` : name || c.name);
   // A new closing date or a raised cap can reopen the link: senders who asked to hear about it get their email.
   if (u.active_collection_id === id) await sendReopenAlerts(u.id, { inRequest: true });
   done();
