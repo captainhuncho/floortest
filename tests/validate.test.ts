@@ -38,7 +38,10 @@ test("rejects disguised and truncated files", async () => {
 const join = (...parts: Uint8Array[]) => {
   const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
   let o = 0;
-  for (const p of parts) (out.set(p, o), (o += p.length));
+  for (const p of parts) {
+    out.set(p, o);
+    o += p.length;
+  }
   return out;
 };
 const junk = (n: number) => new Uint8Array(n).fill(0x4d); // stand-in for a hidden payload

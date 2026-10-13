@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { NavIcon } from "@/components/NavIcon";
 import type { FormState } from "./actions";
 import { PasswordStrength } from "@/components/PasswordStrength";
+import { browserTimeZone, useBrowserValue } from "@/components/useBrowserValue";
 
 type Field = {
   name: string;
@@ -66,13 +67,12 @@ export function AuthForm({
   challengeKey?: string | null;
 }) {
   const [state, onSubmit, pending] = useActionForm(action, undefined);
-  const [tz, setTz] = useState("UTC");
+  // The browser's timezone, so digests and dates default to local time.
+  const tz = useBrowserValue(browserTimeZone("UTC"), "UTC");
   const [values, setValues] = useState<Record<string, string>>({});
   const [shown, setShown] = useState<Record<string, boolean>>({});
   const [issue, setIssue] = useState<{ key: string; text: string } | null>(null);
   const alertRef = useRef<HTMLParagraphElement>(null);
-  // The browser's timezone, so digests and dates default to local time.
-  useEffect(() => setTz(Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"), []);
   useEffect(() => {
     if (state?.error) alertRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
   }, [state?.error]);

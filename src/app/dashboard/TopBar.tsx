@@ -276,8 +276,14 @@ function SearchDialog({ onClose }: { onClose: () => void }) {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "ArrowDown") (e.preventDefault(), setActive((a) => Math.min(options.length - 1, a + 1)));
-              if (e.key === "ArrowUp") (e.preventDefault(), setActive((a) => Math.max(0, a - 1)));
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setActive((a) => Math.min(options.length - 1, a + 1));
+              }
+              if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setActive((a) => Math.max(0, a - 1));
+              }
               if (e.key === "Enter" && options[active]) go(options[active]);
             }}
             placeholder="Tracks, artists or contacts"

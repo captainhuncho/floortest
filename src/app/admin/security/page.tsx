@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/lib/admin";
 import Link from "next/link";
-import { q } from "@/lib/db";
+import { q, now } from "@/lib/db";
 
 export const metadata = { title: "Security — FloorTest admin" };
 
@@ -33,9 +33,33 @@ type Top = { key: string; n: number; recent: number; last: number };
  * Sign-in failures, lockouts, failed bot checks and rate-limit activity, from the rate-limit records
  * (connection addresses and emails are deleted after 48 hours, so this only ever covers the last two days).
  */
+const time = (ms: number) => new Date(ms).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+
+function Table({ title, rows, who, lock }: { title: string; rows: Top[]; who: (r: Top) => React.ReactNode; lock: number }) {
+  return (
+    <section className="space-y-2">
+      <h2 className="text-lg font-semibold">{title}</h2>
+      <ul className="divide-y divide-line rounded-md border border-line">
+        {rows.map((r) => (
+          <li key={r.key} className="flex flex-wrap items-baseline justify-between gap-2 px-3 py-2 text-sm">
+            <span className="min-w-0 break-all">
+              {who(r)}
+              {r.recent >= lock && <span className="chip ml-2 border-danger/50 text-danger">Locked now</span>}
+            </span>
+            <span className="text-mute tnum">
+              {r.n} in 48 h · last {time(r.last)}
+            </span>
+          </li>
+        ))}
+        {!rows.length && <li className="px-3 py-4 text-mute">None in the last 48 hours.</li>}
+      </ul>
+    </section>
+  );
+}
+
 export default async function Security() {
   await requireAdmin("security");
-  const t = Date.now();
+  const t = now();
   const since = t - 48 * HOUR;
   const top = (bucket: string, limit = 10) =>
     q.all<Top>(
@@ -66,28 +90,6 @@ export default async function Security() {
       : []
     ).map((u) => [u.email, u]),
   );
-  const time = (ms: number) => new Date(ms).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-
-  const Table = ({ title, rows, who, lock }: { title: string; rows: Top[]; who: (r: Top) => React.ReactNode; lock: number }) => (
-    <section className="space-y-2">
-      <h2 className="text-lg font-semibold">{title}</h2>
-      <ul className="divide-y divide-line rounded-md border border-line">
-        {rows.map((r) => (
-          <li key={r.key} className="flex flex-wrap items-baseline justify-between gap-2 px-3 py-2 text-sm">
-            <span className="min-w-0 break-all">
-              {who(r)}
-              {r.recent >= lock && <span className="chip ml-2 border-danger/50 text-danger">Locked now</span>}
-            </span>
-            <span className="text-mute tnum">
-              {r.n} in 48 h · last {time(r.last)}
-            </span>
-          </li>
-        ))}
-        {!rows.length && <li className="px-3 py-4 text-mute">None in the last 48 hours.</li>}
-      </ul>
-    </section>
-  );
-
   return (
     <div className="space-y-8">
       <div>

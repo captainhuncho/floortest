@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useLayoutEffect, useRef, useState, useTransition } from "react";
+import { useLayoutEffect, useRef, useState, useTransition } from "react";
 
 type Tab = { key: string; label: string; count: number; href: string };
 
@@ -16,7 +16,11 @@ export function StatusTabs({ tabs, active }: { tabs: Tab[]; active: string }) {
   const [pending, start] = useTransition();
   const [chosen, setChosen] = useState(active);
   // The server's answer wins once it arrives.
-  useEffect(() => setChosen(active), [active]);
+  const [served, setServed] = useState(active);
+  if (served !== active) {
+    setServed(active);
+    setChosen(active);
+  }
 
   // Keep the tabs where they were on screen. On phones the review panel sits above them and changes height with the
   // new tab's first track; without this the tabs and list jump under the finger (iOS Safari has no scroll anchoring).

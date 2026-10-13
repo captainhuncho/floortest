@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useBrowserValue } from "@/components/useBrowserValue";
 
 const KEY = "floortest-source";
 
@@ -26,8 +27,7 @@ function firstTouch() {
 
 /** A hidden "source" field. Call RememberSource on landing pages so the first touch survives navigation. */
 export function SourceField() {
-  const [v, setV] = useState("");
-  useEffect(() => setV(firstTouch()), []);
+  const v = useBrowserValue(firstTouch, "");
   return <input type="hidden" name="source" value={v} />;
 }
 

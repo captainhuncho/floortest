@@ -3,11 +3,16 @@
 import { useRouter } from "next/navigation";
 import { VIEW_COOKIE } from "./view-cookie";
 
+/** Remembers the chosen layout for next time (a year). */
+function rememberView(v: "queue" | "list") {
+  document.cookie = `${VIEW_COOKIE}=${v}; path=/; max-age=31536000; samesite=lax`;
+}
+
 /** Switches the Review Queue between the focused Queue and the dense List; the choice is remembered. */
 export function ViewToggle({ view }: { view: "queue" | "list" }) {
   const router = useRouter();
   const go = (v: "queue" | "list") => {
-    document.cookie = `${VIEW_COOKIE}=${v}; path=/; max-age=31536000; samesite=lax`;
+    rememberView(v);
     router.push(`/dashboard/review?view=${v}`);
   };
   return (

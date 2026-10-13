@@ -2,8 +2,9 @@
 
 import * as Sentry from "@sentry/nextjs";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Logo } from "@/components/Logo";
+import { stored, useBrowserValue } from "@/components/useBrowserValue";
 
 /**
  * A page left open across an update still holds the old version's code: its buttons call server actions or load
@@ -12,10 +13,14 @@ import { Logo } from "@/components/Logo";
 const STALE = /server action|older or newer deployment|chunkloaderror|loading chunk|dynamically imported module|importing a module script failed|unexpected response was received from the server/i;
 const RELOADED = "ft_reloaded_at";
 
+/** Reload once by itself; if that already happened within a minute, show the screen instead of looping. Decided once. */
+let reloadDecision: boolean | undefined;
+const reloadOnce = () => (reloadDecision ??= Date.now() - Number(stored(RELOADED, "session") || 0) > 60_000);
+
 /** Last-resort error screen. The digest lets you find the matching server log line. */
 export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   const stale = STALE.test(`${error.name} ${error.message}`);
-  const [reloading, setReloading] = useState(false);
+  const reloading = useBrowserValue(() => stale && reloadOnce(), false);
 
   useEffect(() => {
     if (!stale) {
@@ -23,16 +28,12 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
       Sentry.captureException(error);
       return;
     }
-    // Reload once by itself; if it happens again within a minute, show the screen instead of looping.
+    if (!reloading) return;
     try {
-      const last = Number(sessionStorage.getItem(RELOADED) || 0);
-      if (Date.now() - last > 60_000) {
-        sessionStorage.setItem(RELOADED, String(Date.now()));
-        setReloading(true);
-        window.location.reload();
-      }
+      sessionStorage.setItem(RELOADED, String(Date.now()));
     } catch {}
-  }, [error, stale]);
+    window.location.reload();
+  }, [error, stale, reloading]);
 
   // On ops (admin/error.tsx re-exports this page) the admin menu already shows the silver crest.
   const onOps = usePathname()?.startsWith("/admin");

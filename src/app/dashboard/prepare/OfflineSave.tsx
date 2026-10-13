@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { clearOffline, offlineAvailable, offlineStatus, onOfflineProgress, syncOffline, type OfflineStatus } from "@/lib/native-offline";
+import { useBrowserValue } from "@/components/useBrowserValue";
 
 /**
  * Phone apps only: keep the kept tracks on this phone to play with no connection (the offline screen becomes a player).
  * Once on, opening Prepare brings the phone's copy in line: new keeps are saved, cleared or deleted tracks leave the phone.
  */
 export function OfflineSave({ count }: { count: number }) {
-  const [shown, setShown] = useState(false);
+  // Only inside the phone apps.
+  const shown = useBrowserValue(offlineAvailable, false);
   const [status, setStatus] = useState<OfflineStatus | null>(null);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState("");
@@ -16,7 +18,6 @@ export function OfflineSave({ count }: { count: number }) {
 
   useEffect(() => {
     if (!offlineAvailable()) return;
-    setShown(true);
     const stop = onOfflineProgress((p) => {
       setProgress(p.finished ? null : { done: p.done, total: p.total });
       if (p.finished) void offlineStatus().then(setStatus);

@@ -24,6 +24,47 @@ const initials = (name: string) =>
     .join("");
 
 /** Figma "10 Profile + Settings": your profile. Phones get one column; desktop splits it in two. */
+const card = "flex flex-col gap-2 rounded-panel border border-line bg-ink-2 p-3 md:gap-3 md:p-5";
+const label = "text-[11px] font-bold tracking-[0.5px] text-mute";
+const rule = <div className="h-px w-full bg-line" />;
+
+function Icon({ i }: { i?: string }) {
+  if (!i) return null;
+  return (
+    <span aria-hidden className="grid w-5 shrink-0 place-items-center text-[15px] leading-none text-mute">
+      {i}
+    </span>
+  );
+}
+
+/** One item: `sub` is the one-line explanation under it, shown on desktop. */
+function Row({ href, title, sub, value, external, icon }: { href: string; title: string; sub?: string; value?: React.ReactNode; external?: boolean; icon?: string }) {
+  return (
+    <Link href={href} target={external ? "_blank" : undefined} className="group flex items-center gap-3 py-0.5 md:py-1">
+      <Icon i={icon} />
+      <span className="min-w-0 flex-1">
+        <span className="block text-[13px] font-medium text-bone md:text-[14px]">{title}</span>
+        {sub && <span className="mt-0.5 hidden truncate text-[12px] text-faint md:block">{sub}</span>}
+      </span>
+      {value ?? <span aria-hidden className="text-sm text-mute transition group-hover:translate-x-0.5 group-hover:text-bone">{external ? "↗" : "→"}</span>}
+    </Link>
+  );
+}
+
+function Section({ title, rows }: { title: string; rows: React.ReactNode[] }) {
+  return (
+    <section className={card}>
+      <h2 className={label}>{title}</h2>
+      {rows.map((r, i) => (
+        <div key={i} className="flex flex-col gap-2 md:gap-3">
+          {i > 0 && rule}
+          {r}
+        </div>
+      ))}
+    </section>
+  );
+}
+
 export default async function Account() {
   const theme = await currentTheme();
   const user = await requireUser();
@@ -40,37 +81,6 @@ export default async function Account() {
   const link = `${APP_URL}/${user.handle}`;
   const since = fmtDay(user.created_at, user.tz);
 
-  const card = "flex flex-col gap-2 rounded-panel border border-line bg-ink-2 p-3 md:gap-3 md:p-5";
-  const label = "text-[11px] font-bold tracking-[0.5px] text-mute";
-  const rule = <div className="h-px w-full bg-line" />;
-  const Icon = ({ i }: { i?: string }) =>
-    i ? (
-      <span aria-hidden className="grid w-5 shrink-0 place-items-center text-[15px] leading-none text-mute">
-        {i}
-      </span>
-    ) : null;
-  // `sub`: the one-line explanation under each item, shown on desktop.
-  const Row = ({ href, title, sub, value, external, icon }: { href: string; title: string; sub?: string; value?: React.ReactNode; external?: boolean; icon?: string }) => (
-    <Link href={href} target={external ? "_blank" : undefined} className="group flex items-center gap-3 py-0.5 md:py-1">
-      <Icon i={icon} />
-      <span className="min-w-0 flex-1">
-        <span className="block text-[13px] font-medium text-bone md:text-[14px]">{title}</span>
-        {sub && <span className="mt-0.5 hidden truncate text-[12px] text-faint md:block">{sub}</span>}
-      </span>
-      {value ?? <span aria-hidden className="text-sm text-mute transition group-hover:translate-x-0.5 group-hover:text-bone">{external ? "↗" : "→"}</span>}
-    </Link>
-  );
-  const Section = ({ title, rows }: { title: string; rows: React.ReactNode[] }) => (
-    <section className={card}>
-      <h2 className={label}>{title}</h2>
-      {rows.map((r, i) => (
-        <div key={i} className="flex flex-col gap-2 md:gap-3">
-          {i > 0 && rule}
-          {r}
-        </div>
-      ))}
-    </section>
-  );
   const stats: [number, string][] = [
     [reviewed, "Decided"],
     [collections, "Collections"],

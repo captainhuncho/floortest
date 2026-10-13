@@ -6,7 +6,7 @@ import { readLinks } from "@/lib/socials";
 import Link from "next/link";
 import type { PlayerTrack } from "@/components/Player";
 import { deletesAt } from "@/lib/plans";
-import {q, type Collection, type EventRow, type Sender, type Track } from "@/lib/db";
+import {q, type Collection, type EventRow, type Sender, type Track, now } from "@/lib/db";
 import { fmtBytes, fmtDate, fmtDay } from "@/lib/format";
 import { MIX_STATUS, AI_USE, RELEASE_STATUS } from "@/lib/plans";
 import { featureOn } from "@/lib/features";
@@ -126,7 +126,7 @@ export async function ReviewPanel({
   const length = t.duration ? `${Math.floor(t.duration / 60)}:${String(Math.round(t.duration % 60)).padStart(2, "0")}` : null;
   const meta = [t.bpm && `${Math.round(t.bpm)} BPM`, t.musical_key, length, t.genre, t.mix_status && MIX_STATUS[t.mix_status as keyof typeof MIX_STATUS]].filter(Boolean).join(" · ");
   // The auto-delete date matters at decision time only when it's close.
-  const soon = removal && removal - Date.now() < 7 * 86_400_000 ? Math.max(0, Math.ceil((removal - Date.now()) / 86_400_000)) : null;
+  const soon = removal && removal - now() < 7 * 86_400_000 ? Math.max(0, Math.ceil((removal - now()) / 86_400_000)) : null;
   // Signals that change the decision stay visible: may it be played out, is it out already, made with AI, a duplicate, going soon.
   // Account teams: who made the call, when it wasn't the account itself (and that a member can't change it).
   const desk = await currentUser();

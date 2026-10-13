@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { opsSignOut } from "../ops-login/actions";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { stored, useDeviceState } from "@/components/useBrowserValue";
 
 export type IconName = "grid" | "pulse" | "alert" | "inbox" | "users" | "mail" | "list" | "ticket" | "shield" | "flag" | "log" | "chart" | "life" | "rocket" | "back" | "search" | "chevron";
 export type NavItem = { href: string; label: string; badge?: number; icon: IconName };
@@ -47,15 +48,14 @@ export function AdminNav({ groups, admin }: { groups: NavGroup[]; admin: { name:
   const path = usePathname();
   const router = useRouter();
   const isActive = (href: string) => (href === "/admin" ? path === "/admin" : path.startsWith(href));
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useDeviceState(() => stored(KEY) !== "closed", true);
   const [query, setQuery] = useState("");
-  useEffect(() => {
-    try {
-      setOpen(localStorage.getItem(KEY) !== "closed");
-    } catch {}
-  }, []);
   // Leaving a page (by picking a result or otherwise) ends the search.
-  useEffect(() => setQuery(""), [path]);
+  const [searchedOn, setSearchedOn] = useState(path);
+  if (searchedOn !== path) {
+    setSearchedOn(path);
+    setQuery("");
+  }
   const toggle = (next: boolean) => {
     setOpen(next);
     try {
@@ -95,6 +95,7 @@ export function AdminNav({ groups, admin }: { groups: NavGroup[]; admin: { name:
       <div className={`flex items-center gap-2.5 px-3 pb-3 pt-4 ${open ? "justify-between" : "flex-col"}`}>
         <Link href="/admin" className="flex items-center gap-2.5" aria-label="FloorTest admin">
           {/* Ops has its own brushed-silver crest, so it never looks like the main site. */}
+          {/* eslint-disable-next-line @next/next/no-img-element -- the crest is an SVG; Next's image optimizer doesn't process SVGs */}
           <img src="/brand/crest-ops.svg" alt="" aria-hidden className="crest-ops size-10 shrink-0" />
           {open && (
             <span className="flex flex-col leading-tight">

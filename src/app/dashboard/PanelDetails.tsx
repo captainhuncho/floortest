@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { stored, useDeviceState } from "@/components/useBrowserValue";
 
 const KEY = "ft:review-details";
 
@@ -10,12 +10,7 @@ const KEY = "ft:review-details";
  * find-in-page; open or closed is remembered on this device.
  */
 export function PanelDetails({ summary, children }: { summary: React.ReactNode; children: React.ReactNode }) {
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    try {
-      setOpen(localStorage.getItem(KEY) === "1");
-    } catch {}
-  }, []);
+  const [open, setOpen] = useDeviceState(() => stored(KEY) === "1", false);
   return (
     <details
       open={open}
