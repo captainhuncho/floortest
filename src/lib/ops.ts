@@ -47,8 +47,9 @@ export const currentOpsAdmin = cache(async (): Promise<User | null> => {
   if (!row) return null;
   // Keep the idle clock honest without writing on every request.
   if (t - Number(row.last_seen_at) > 60_000) await q.run("UPDATE admin_sessions SET last_seen_at = ? WHERE token_hash = ?", t, hashToken(token));
-  const { last_seen_at: _, ...user } = row;
-  return user as User;
+  const user: Partial<typeof row> = { ...row };
+  delete user.last_seen_at;
+  return user as unknown as User;
 });
 
 /** The current ops session's token hash (ops host only), for binding a preview to this exact session. */

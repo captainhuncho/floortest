@@ -82,7 +82,11 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
   const stopPicking = () => (setPicking(false), setPicked(new Set()));
 
   // Server data wins once it arrives.
-  useEffect(() => setDecisions({}), [rows]);
+  const [rowsSeen, setRowsSeen] = useState(rows);
+  if (rowsSeen !== rows) {
+    setRowsSeen(rows);
+    setDecisions({});
+  }
 
   const decisionOf = (r: ListRow) => (r.id in decisions ? decisions[r.id] : r.decision);
 
@@ -133,7 +137,10 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
       if (picking) {
-        if (e.key === "Escape") (setPicking(false), setPicked(new Set()));
+        if (e.key === "Escape") {
+          setPicking(false);
+          setPicked(new Set());
+        }
         return;
       }
       const i = rows.findIndex((r) => r.id === selected);
@@ -152,7 +159,10 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
       else if (k in JUMPS) {
         // 1–4: jump to 25 / 50 / 75 / 90% of the selected track (starts it if needed).
         if (player.current?.id === r.id) player.seek(JUMPS[k]);
-        else (player.play(toPlayer(r), queue), setTimeout(() => player.seek(JUMPS[k]), 250));
+        else {
+          player.play(toPlayer(r), queue);
+          setTimeout(() => player.seek(JUMPS[k]), 250);
+        }
       } else if (e.key === "ArrowRight") player.seekBy(10);
       else if (e.key === "ArrowLeft") player.seekBy(-10);
       else return;

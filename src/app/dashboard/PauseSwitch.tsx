@@ -1,11 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useToast } from "@/components/Toast";
 import { pauseLink, resumeLink } from "./actions/desk";
+import { useBrowserValue } from "@/components/useBrowserValue";
 
 export type PauseState = { on: boolean; until: string | null; untilTs: number | null; message: string; blocked: string | null };
+
+/** A timestamp as YYYY-MM-DD in this browser's time zone, or "" for none. */
+function localDate(ts: number | null) {
+  if (!ts) return "";
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 /** "Pause my link": the switch flips instantly; a note for senders and a reopen date are optional extras once paused. */
 /** `compact`: the desktop sidebar's small Figma card. */
@@ -13,15 +21,18 @@ export function PauseSwitch({ pause, compact = false }: { pause: PauseState; com
   const [paused, setPaused] = useState(pause.on);
   const [busy, start] = useTransition();
   const toast = useToast();
-  const [until, setUntil] = useState("");
-
   // Follow the server once it confirms (or if it changes elsewhere).
-  useEffect(() => setPaused(pause.on), [pause.on]);
-  useEffect(() => {
-    if (!pause.untilTs) return setUntil("");
-    const d = new Date(pause.untilTs);
-    setUntil(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
-  }, [pause.untilTs]);
+  const [serverOn, setServerOn] = useState(pause.on);
+  if (serverOn !== pause.on) {
+    setServerOn(pause.on);
+    setPaused(pause.on);
+  }
+  // The reopen date in the browser's own calendar (the server doesn't know the visitor's time zone); a date the person
+  // picks stays until the server's changes.
+  const saved = useBrowserValue(() => localDate(pause.untilTs), "");
+  const [picked, setPicked] = useState<{ for: number | null; value: string } | null>(null);
+  const until = picked && picked.for === pause.untilTs ? picked.value : saved;
+  const setUntil = (value: string) => setPicked({ for: pause.untilTs, value });
 
   const flip = () => {
     const next = !paused;

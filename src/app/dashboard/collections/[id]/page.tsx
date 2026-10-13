@@ -6,7 +6,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { collectionsFor, isClosed } from "@/lib/desk";
-import { q, type Track } from "@/lib/db";
+import { now, q, type Track } from "@/lib/db";
 import { fmtDay } from "@/lib/format";
 import { genresFor, MIX_STATUS } from "@/lib/plans";
 import { briefItems } from "@/lib/brief";
@@ -178,7 +178,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
         )}
         {links && (
           <div className="mx-4 mb-4 md:mx-0">
-            <ShareLinks collectionId={c.id} links={links as ShareLinkView[]} sharedTracks={sharedTracks} />
+            <ShareLinks collectionId={c.id} links={links as ShareLinkView[]} sharedTracks={sharedTracks} at={now()} />
           </div>
         )}
         {cards.length ? (

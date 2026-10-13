@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/admin";
 import Link from "next/link";
 import { NO_TRACK_DAYS, NOT_JOINED_DAYS, partnerRows, QUIET_DAYS, type PartnerRow } from "@/lib/partners";
 import { savePartnerNote } from "../actions";
+import { now as clock } from "@/lib/db";
 
 export const metadata = { title: "Beta partners — FloorTest admin" };
 
@@ -17,7 +18,7 @@ const STAGES: PartnerRow["stage"][] = ["Invited", "Joined", "Receiving", "Review
 export default async function Partners({ searchParams }: { searchParams: Promise<{ show?: string }> }) {
   await requireAdmin("partners.read");
   const show = (await searchParams).show;
-  const now = Date.now();
+  const now = clock();
   const all = await partnerRows(now);
   const rows = show === "stuck" ? all.filter((r) => r.flag) : STAGES.includes(show as PartnerRow["stage"]) ? all.filter((r) => r.stage === show) : all;
   const count = (s: PartnerRow["stage"]) => all.filter((r) => r.stage === s).length;

@@ -7,6 +7,7 @@ import { useToast } from "@/components/Toast";
 import { QuickReplies } from "./QuickReplies";
 import { ReplyTemplates } from "./ReplyTemplates";
 import { decideTrack, undoDecision } from "./actions/review";
+import { stored, useDeviceState } from "@/components/useBrowserValue";
 
 /** Number keys jump through the track: 1 = a quarter in, 4 = near the end. */
 const JUMPS: Record<string, number> = { "1": 0.25, "2": 0.5, "3": 0.75, "4": 0.9 };
@@ -27,17 +28,16 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
   const [busy, start] = useTransition();
   const [replying, setReplying] = useState(false);
   // The swipe hint shows until the first swipe on this device.
-  const [swiped, setSwiped] = useState(true);
-  useEffect(() => {
-    try {
-      setSwiped(localStorage.getItem("ft:swiped") === "1");
-    } catch {}
-  }, []);
+  const [swiped, setSwiped] = useDeviceState(() => stored("ft:swiped") === "1", true);
   const replyRef = useRef<HTMLTextAreaElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
   // Close the composer when moving to another track.
-  useEffect(() => setReplying(false), [track.id]);
+  const [replyFor, setReplyFor] = useState(track.id);
+  if (replyFor !== track.id) {
+    setReplyFor(track.id);
+    setReplying(false);
+  }
   useEffect(() => {
     if (replying) replyRef.current?.focus();
   }, [replying]);
@@ -95,7 +95,10 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
         // 1–4: jump to 25 / 50 / 75 / 90% (straight to the drop). Starts the track first if it isn't playing.
         const f = JUMPS[k];
         if (player.current?.id === track.id) player.seek(f);
-        else (player.play(track), setTimeout(() => player.seek(f), 250));
+        else {
+          player.play(track);
+          setTimeout(() => player.seek(f), 250);
+        }
       } else if (e.code === "Space") {
         if (e.target instanceof HTMLElement && e.target.closest("button, a, summary, [role=slider]")) return;
         if (player.current?.id === track.id) player.toggle();
@@ -176,7 +179,7 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
       zone.removeEventListener("touchcancel", end);
       paint(0);
     };
-  }, [decide]);
+  }, [decide, setSwiped]);
 
   // One rail on every screen: Not for me stays neutral (passing is never shown as danger), Keep is the one lime fill.
   const btn = "btn min-h-14 min-w-0 flex-1 flex-col gap-0.5 whitespace-normal px-1.5 py-3 border";

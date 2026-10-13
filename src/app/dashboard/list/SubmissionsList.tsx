@@ -39,11 +39,26 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
 
   const where = ["t.user_id = ?", "t.deleted_at IS NULL", status[2]];
   const args: (string | number)[] = [user.id];
-  if (collection) (where.push("t.collection_id = ?"), args.push(collection.id));
-  if (type) (where.push("t.release_status = ?"), args.push(type));
-  if (senderId) (where.push("t.sender_id = ?"), args.push(senderId));
-  if (genre) (where.push("t.genre = ?"), args.push(genre));
-  if (bpm) (where.push("t.bpm >= ? AND t.bpm < ?"), args.push(bpm[2], bpm[3]));
+  if (collection) {
+    where.push("t.collection_id = ?");
+    args.push(collection.id);
+  }
+  if (type) {
+    where.push("t.release_status = ?");
+    args.push(type);
+  }
+  if (senderId) {
+    where.push("t.sender_id = ?");
+    args.push(senderId);
+  }
+  if (genre) {
+    where.push("t.genre = ?");
+    args.push(genre);
+  }
+  if (bpm) {
+    where.push("t.bpm >= ? AND t.bpm < ?");
+    args.push(bpm[2], bpm[3]);
+  }
   if (verifiedOnly) where.push("s.verified_at IS NOT NULL");
   if (search) {
     where.push("(t.title ILIKE ? OR t.artist ILIKE ? OR s.name ILIKE ? OR t.genre ILIKE ?)");

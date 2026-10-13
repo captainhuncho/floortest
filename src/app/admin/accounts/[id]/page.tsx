@@ -1,6 +1,6 @@
 import { can, requireAdmin } from "@/lib/admin";
 import Link from "next/link";
-import { KIND_LABEL } from "@/lib/db";
+import { KIND_LABEL, now } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { AUDIT_LABELS, type AuditAction } from "@/lib/audit";
 import { activeCollection, capacity, isClosed, isPaused } from "@/lib/desk";
@@ -41,7 +41,7 @@ export default async function Account({ params }: { params: Promise<{ id: string
     id,
   );
   if (!u) notFound();
-  const t = Date.now();
+  const t = now();
   const pendingEmail = u.pending_email && (u.pending_email_at ?? 0) > t - 48 * 3_600_000 ? u.pending_email : null;
   const oldHandles = await q.all<{ old_handle: string; forward: number; expires_at: number }>("SELECT old_handle, forward, expires_at FROM handle_history WHERE user_id = ? AND expires_at > ? ORDER BY created_at DESC", id, t);
 

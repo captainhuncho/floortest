@@ -5,8 +5,13 @@ import { useEffect, useRef, useState, useTransition } from "react";
 /** Shows the latest admin flash for a few seconds, then clears it so a reload doesn't repeat it. */
 export function Toast({ flash }: { flash: { id: number; text: string; tone: "ok" | "error" } | null }) {
   const [shown, setShown] = useState(flash);
-  useEffect(() => {
+  // A new flash replaces the one on screen.
+  const [last, setLast] = useState(flash?.id);
+  if (last !== flash?.id) {
+    setLast(flash?.id);
     setShown(flash);
+  }
+  useEffect(() => {
     if (!flash) return;
     document.cookie = "ft_flash=; Max-Age=0; path=/admin";
     const t = setTimeout(() => setShown(null), flash.tone === "error" ? 8000 : 4000);

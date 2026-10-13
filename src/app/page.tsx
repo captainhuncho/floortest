@@ -42,7 +42,7 @@ export default async function Home({
   // All independent: one round trip's wait instead of four.
   const [user, sp, c, signupOpen, billing, botKey, editor] = await Promise.all([currentUser(), searchParams, siteCopy("home"), switchOn("open_signup"), switchOn("billing"), botCheckKey(), siteEditor()]);
   // Ops staff editing on the page get typeable text; everyone else gets plain text.
-  const E = ({ k }: { k: keyof typeof c }) => (editor ? <span data-edit={k}>{c[k]}</span> : <>{c[k]}</>);
+  const text = (k: keyof typeof c) => (editor ? <span data-edit={k}>{c[k]}</span> : c[k]);
   const order = sectionOrder(c.sections);
   const deleted = !!sp.deleted;
   const HOW = pairs(c.how_steps);
@@ -80,7 +80,7 @@ export default async function Home({
     how: (
       <section id="how" className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
         <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
-          <E k="how_title" />
+          {text("how_title")}
         </h2>
         <ol data-edit-panel={editor ? "how_steps" : undefined} className="mt-10 grid grid-cols-1 border-t border-white/10 sm:grid-cols-2">
           {HOW.map(([title, body], i) => (
@@ -103,10 +103,10 @@ export default async function Home({
         <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-end">
             <h2 className="text-[clamp(2.5rem,5.5vw,4.5rem)] font-bold leading-[0.95] tracking-[-0.04em]">
-              <E k="journey_title" />
+              {text("journey_title")}
             </h2>
             <p className="max-w-[65ch] text-sm leading-relaxed text-mute lg:pb-2">
-              <E k="journey_intro" />
+              {text("journey_intro")}
             </p>
           </div>
           <ol className="mt-10 grid grid-cols-1 overflow-hidden rounded-lg border border-white/10 sm:grid-cols-2 lg:grid-cols-4">
@@ -140,7 +140,7 @@ export default async function Home({
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
           <div>
             <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
-              <E k="private_title" />
+              {text("private_title")}
             </h2>
           </div>
           <dl className="divide-y divide-white/10 border-y border-white/10">
@@ -173,9 +173,9 @@ export default async function Home({
   ),
     plans: (
       <section className="mx-auto max-w-4xl px-4 py-20 text-center sm:px-6">
-        <p className="text-xs uppercase tracking-[0.2em] text-mute"><E k="plans_kicker" /></p>
-        <h2 className="mt-4 text-[clamp(1.75rem,3.6vw,2.75rem)] font-bold leading-[1.05] tracking-[-0.035em]"><E k={billing ? "plans_title_launch" : "plans_title"} /></h2>
-        <p className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-mute sm:text-base"><E k={billing ? "plans_intro_launch" : "plans_intro"} /></p>
+        <p className="text-xs uppercase tracking-[0.2em] text-mute">{text("plans_kicker")}</p>
+        <h2 className="mt-4 text-[clamp(1.75rem,3.6vw,2.75rem)] font-bold leading-[1.05] tracking-[-0.035em]">{text(billing ? "plans_title_launch" : "plans_title")}</h2>
+        <p className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-mute sm:text-base">{text(billing ? "plans_intro_launch" : "plans_intro")}</p>
         <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
           <Link href={cta.href} className="rounded-full bg-lime px-7 py-3 text-sm font-semibold text-ink hover:brightness-95">
             {user ? "Open your desk" : inviteOnly ? "Request an invite" : "Start free"}
@@ -203,7 +203,7 @@ export default async function Home({
     faq: (
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
         <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
-          <E k="faq_title" />
+          {text("faq_title")}
         </h2>
         <div data-edit-panel={editor ? "faq" : undefined} className="mt-10 border-t border-white/10">
           {FAQ.map(([q, a], i) => (
@@ -293,16 +293,16 @@ export default async function Home({
           <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-center">
             <div>
               <p className="flex items-center gap-3 text-sm text-lime">
-                <span aria-hidden className="h-px w-8 bg-lime" /> <E k="eyebrow" />
+                <span aria-hidden className="h-px w-8 bg-lime" /> {text("eyebrow")}
               </p>
               <h1 className="mt-6 text-[clamp(3rem,7.5vw,6.5rem)] font-bold leading-[0.9] tracking-[-0.045em]">
-                <E k="headline" />
+                {text("headline")}
                 <span className="block font-[family-name:var(--font-serif)] font-normal italic tracking-[-0.02em] text-mute">
-                  <E k="headline_italic" />
+                  {text("headline_italic")}
                 </span>
               </h1>
               <p className="mt-8 max-w-2xl text-[15px] leading-relaxed text-mute">
-                <E k="intro" />
+                {text("intro")}
               </p>
               <div className="mt-10 flex flex-wrap items-center gap-6">
                 <Link
@@ -371,7 +371,7 @@ export default async function Home({
         <div className="grid grid-cols-12 gap-8 border-t border-line pt-10">
           <div className="col-span-5">
             <Logo />
-            <p className="mt-3 max-w-xs"><E k="footer_line" /></p>
+            <p className="mt-3 max-w-xs">{text("footer_line")}</p>
             <div className="mt-8 max-w-md">
               <p className="mb-3 text-sm font-bold text-bone">Get the FloorTest newsletter</p>
               <NewsletterForm botCheckKey={botKey} />
@@ -418,7 +418,7 @@ export default async function Home({
       <footer className="mx-auto max-w-6xl px-4 pb-10 pt-12 text-sm text-mute sm:px-6 lg:hidden">
         <div className="flex flex-col gap-3 border-t border-line pt-10 sm:flex-row sm:items-center sm:justify-between">
           <Logo />
-          <p className="max-w-xs"><E k="footer_line" /></p>
+          <p className="max-w-xs">{text("footer_line")}</p>
         </div>
         <div className="mt-8 max-w-md">
           <p className="mb-3 text-sm font-bold text-bone">Get the FloorTest newsletter</p>

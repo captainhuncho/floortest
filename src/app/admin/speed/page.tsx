@@ -1,5 +1,5 @@
 import { requireAdmin } from "@/lib/admin";
-import { q } from "@/lib/db";
+import { q, now } from "@/lib/db";
 
 const DAY = 86_400_000;
 
@@ -20,7 +20,7 @@ export default async function Speed({ searchParams }: { searchParams: Promise<{ 
   await requireAdmin("speed");
   const device = (await searchParams).device;
   const dev = device === "phone" || device === "desktop" || device === "tablet" ? device : null;
-  const since = Date.now() - 7 * DAY;
+  const since = now() - 7 * DAY;
   const where = `kind = ? AND created_at > ?${dev ? " AND device = ?" : ""}`;
   const args = (k: Kind) => (dev ? [k, since, dev] : [k, since]);
 

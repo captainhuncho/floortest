@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { stored, useDeviceState } from "@/components/useBrowserValue";
 
 const KEY = "floortest.exportBase";
 
@@ -32,17 +33,10 @@ export function ExportButton({
   showCount?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const [base, setBase] = useState("");
+  // The music folder saved on this device, and Rekordbox XML on by default once there is one.
+  const [base, setBase] = useDeviceState(() => stored(KEY), "");
   const [name, setName] = useState("");
-  const [xml, setXml] = useState(false);
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(KEY) || "";
-      setBase(saved);
-      setXml(!!saved);
-    } catch {}
-  }, []);
+  const [xml, setXml] = useDeviceState(() => !!stored(KEY), false);
 
   // A fresh, dated name each time the panel opens: every download is its own new folder.
   const openPanel = () => {

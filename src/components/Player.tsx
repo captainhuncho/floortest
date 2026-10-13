@@ -50,6 +50,23 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   // Seconds actually heard (seeks excluded) for the published "Listened" definition.
   const listened = useRef({ id: 0, secs: 0, last: 0, reported: false, duration: 0 as number | null });
 
+  // Tracks uploaded without browser analysis get their waveform the first time the receiver plays them.
+  const backfill = useCallback(
+    async (t: PlayerTrack) => {
+      const blob = await fetch(`/api/tracks/${t.id}/audio`).then((r) => (r.ok ? r.blob() : null));
+      const res = blob && (await analyzeAudio(new File([blob], "track")));
+      if (!res) return;
+      setCurrent((c) => (c?.id === t.id ? { ...c, peaks: res.peaks, duration: c.duration ?? res.duration } : c));
+      await fetch(`/api/tracks/${t.id}/analysis`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(res),
+      });
+      router.refresh();
+    },
+    [router],
+  );
+
   const start = useCallback((t: PlayerTrack) => {
     const a = audio.current!;
     listened.current = { id: t.id, secs: 0, last: 0, reported: t.played, duration: t.duration };
@@ -65,20 +82,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     if (!t.peaks) void backfill(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Tracks uploaded without browser analysis get their waveform the first time the receiver plays them.
-  const backfill = async (t: PlayerTrack) => {
-    const blob = await fetch(`/api/tracks/${t.id}/audio`).then((r) => (r.ok ? r.blob() : null));
-    const res = blob && (await analyzeAudio(new File([blob], "track")));
-    if (!res) return;
-    setCurrent((c) => (c?.id === t.id ? { ...c, peaks: res.peaks, duration: c.duration ?? res.duration } : c));
-    await fetch(`/api/tracks/${t.id}/analysis`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(res),
-    });
-    router.refresh();
-  };
 
   useEffect(() => {
     const a = new Audio();

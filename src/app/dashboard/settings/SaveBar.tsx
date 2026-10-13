@@ -29,14 +29,19 @@ export function SaveBar({ pending, state, label = "Save", busyLabel = "Saving…
     };
   }, []);
 
-  useEffect(() => {
-    if (!state) return;
-    setShown(state);
-    if (state.ok) {
-      setDirty(false);
-      const t = setTimeout(() => setShown(undefined), 4000);
-      return () => clearTimeout(t);
+  // Each new answer from the server shows; a saved one clears the unsaved mark and fades after a few seconds.
+  const [answered, setAnswered] = useState(state);
+  if (answered !== state) {
+    setAnswered(state);
+    if (state) {
+      setShown(state);
+      if (state.ok) setDirty(false);
     }
+  }
+  useEffect(() => {
+    if (!state?.ok) return;
+    const t = setTimeout(() => setShown(undefined), 4000);
+    return () => clearTimeout(t);
   }, [state]);
 
   return (

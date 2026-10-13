@@ -37,10 +37,24 @@ export async function batchTracks(ids: number[], action: BatchAction): Promise<B
   let where = "";
   if (type === "kept" || type === "passed") {
     // An owner's or admin's call stands against a member's batch (counted as skipped).
-    for (const t of tracks) if (t.decision !== type) decisionLocked(u, t) ? locked++ : (await decide(u, t, type), changed++);
+    for (const t of tracks) {
+      if (t.decision === type) continue;
+      if (decisionLocked(u, t)) locked++;
+      else {
+        await decide(u, t, type);
+        changed++;
+      }
+    }
     await trackUse(u.id, "decide");
   } else if (type === "clear") {
-    for (const t of tracks) if (t.decision) decisionLocked(u, t) ? locked++ : (await clearDecision(t), changed++);
+    for (const t of tracks) {
+      if (!t.decision) continue;
+      if (decisionLocked(u, t)) locked++;
+      else {
+        await clearDecision(t);
+        changed++;
+      }
+    }
   } else if (type === "move") {
     const target = await ownCollection(u.id, Number((action as { collection: number }).collection));
     if (!target) return { done: 0, skipped: wanted.length, error: "Choose a collection." };
@@ -52,7 +66,10 @@ export async function batchTracks(ids: number[], action: BatchAction): Promise<B
     }
     where = ` to ${target.name}`;
   } else if (type === "delete") {
-    for (const t of tracks) (await deleteTrack(u, t), changed++);
+    for (const t of tracks) {
+      await deleteTrack(u, t);
+      changed++;
+    }
   } else {
     return { done: 0, skipped: wanted.length, error: "Unknown action." };
   }
