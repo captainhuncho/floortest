@@ -54,7 +54,7 @@ Before shipping: `typecheck`, `lint`, `test`, `check:perms`, and `e2e` when a ch
 | App | Next.js dev server | Vercel, London (`lhr1`); `main` deploys production, `mobile-next` is the working branch |
 | Database | PGlite in `./data` | Neon Postgres (London) via `DATABASE_URL`; migrations in `src/lib/db/migrations.ts` |
 | Files | `./data/storage` | Cloudflare R2, private bucket `floortest-audio-eu` (Western Europe); previews use `floortest-audio-preview` |
-| Email | Logged | Resend, from `hello@floortest.app` |
+| Email | Logged | Resend, from `team@floortest.app` |
 | Errors | Console | Sentry (through `/api/monitoring`) |
 | Jobs | Call the cron URLs by hand | Vercel Cron (`vercel.json`) |
 | Apps | `mobile/` | Capacitor 8 shells for iPhone and Android that load the website, plus native share, background playback and offline kept tracks |

@@ -6,7 +6,7 @@ The drafts at /terms and /privacy were rewritten on 29 Sep 2026 to close the gap
 
 - **Operator:** **FloorTest Labs**, a company being registered in **Ghana** (not the UK). Renamed from "FloorTest LTD" on 7 Oct 2026; the Terms and Privacy pages now use the new name. Governing law is set to Ghana. Complaints point to Ghana's Data Protection Commission and the user's local authority, such as the UK ICO. Add the registration number and address to `src/lib/legal.ts` once incorporated.
 - **Contact:** info@imullar.com for now; an @floortest.app support address once the company mailbox (Google Workspace) is set up.
-- **Website:** **floortest.app** (moved from floortest.imullar.com on 7 Oct 2026; old links redirect). Emails come from hello@floortest.app.
+- **Website:** **floortest.app** (moved from floortest.imullar.com on 7 Oct 2026; old links redirect). Emails come from team@floortest.app (hello@ until 13 Oct); support@floortest.app for help and takedowns.
 - **Minimum age:** 18+. Stated in both documents, on sign-up and on the send form.
 - **Sender licence:** the receiver may listen, download, evaluate and play the track in DJ sets, live performances and broadcasts. Releasing, distributing, selling, licensing or uploading it as a release on any platform needs a separate written agreement.
 - **Agreement points:** sign-up and the send form now show a line linking to both documents.
@@ -34,7 +34,7 @@ The drafts at /terms and /privacy were rewritten on 29 Sep 2026 to close the gap
 
 Already reflected in the live Terms, Privacy, Cookie and Sub-processors pages unless marked **(not yet in the policies)**.
 
-- **Company and website:** operator renamed **FloorTest Labs**; site moved to floortest.app; emails from hello@floortest.app.
+- **Company and website:** operator renamed **FloorTest Labs**; site moved to floortest.app; emails from team@floortest.app.
 - **Database provider:** moved from Supabase to **Neon** (still hosted in London). Privacy and Sub-processors updated.
 - **Senders confirm their email:** senders without an account get a 6-digit code by email before anything uploads. A cookie (`ft_sender`) remembers the confirmed address in that browser for 30 days. Listed in the Cookie Policy and Privacy Policy as strictly necessary.
 - **Senders must name a public profile:** an Instagram handle and/or a streaming profile (Spotify, Apple Music, SoundCloud, Beatport, Bandcamp, YouTube or TikTok), shown to the receiver labelled "not verified". **(not yet in the policies)**

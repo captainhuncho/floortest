@@ -11,8 +11,8 @@ Last updated 29 Sep 2026.
 | **Vercel** | Hosts the website and runs the code (London region). Also runs the daily scheduled jobs: digests, nudges, clean-up. | Team `maxwelladjavon-5776s-projects`, project **floortest** | vercel.com → floortest. Secrets: Settings → Environment Variables |
 | **Supabase** | The database (accounts, tracks, decisions, logs). | Org **FloorTest**. Live: **floortest** (`crghwblbuodxhsfgeppw`, London). Preview: **floortest-preview** (`azvsdmrnwunbpdyitoji`, London). Old: `culzghp…`, paused 29 Sep 2026; reminder set for 14 Dec 2026 to delete it. | supabase.com/dashboard |
 | **Cloudflare R2** | Stores the audio files and cover photos, privately. | Buckets: **floortest-audio** (live), **floortest-audio-preview** (tests only) | dash.cloudflare.com → R2 |
-| **Resend** | Sends every email: receipts, alerts, invites, digests. | Sending domain `floortest.app` (verified), from `hello@floortest.app` | resend.com |
-| **Google Workspace** | Receives mail for `support@` and `hello@floortest.app` (replies to FloorTest emails land in `hello@`). | `floortest.app` is a secondary domain on the owner's existing Workspace; both addresses are alternative addresses on the owner's user, nobody else gets one | admin.google.com |
+| **Resend** | Sends every email: receipts, alerts, invites, digests. | Sending domain `floortest.app` (verified), from `team@floortest.app` | resend.com |
+| **Google Workspace** | Two separate inboxes: `team@floortest.app` sends every FloorTest email and gets the replies; `support@floortest.app` (`SUPPORT_EMAIL`) takes help, takedowns and the contact form. `hello@` (the sender until 13 Oct) stays as an alias for late replies. | `floortest.app` is a secondary domain on the owner's existing Workspace: `team@` is its own user, `support@` and `hello@` are alternative addresses on the owner's user; nobody else gets an address | admin.google.com |
 
 ## Domain
 
