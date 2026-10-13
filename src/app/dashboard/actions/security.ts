@@ -5,7 +5,7 @@ import { allow } from "@/lib/ratelimit";
 import { stepUp } from "@/lib/step-up";
 import { passwordStrength } from "@/lib/password-strength";
 import { currentSessionHash, hashPassword, verifyPassword, requireRole } from "@/lib/auth";
-import { sendMail } from "@/lib/mail";
+import { APP_URL, sendMail } from "@/lib/mail";
 import QRCode from "qrcode";
 import { env } from "@/lib/env";
 import { hashRecovery, newRecoveryCodes, newTotpSecret, openSecret, otpauthUri, sealSecret, verifyTotp } from "@/lib/totp";
@@ -60,9 +60,15 @@ export async function startTwoFactor(): Promise<{ qr: string; secret: string } |
   return { qr, secret };
 }
 
-/** Step 2: the first code turns it on. Returns recovery codes, shown once. */
-export async function confirmTwoFactor(code: string): Promise<{ codes?: string[]; error?: string }> {
+/**
+ * Step 2: the password and the first code turn it on. Returns recovery codes, shown once. The password matters: with a
+ * borrowed session alone, someone could add their own authenticator and lock the owner out. Every other device is
+ * signed out and the owner gets an email, as when it's turned off.
+ */
+export async function confirmTwoFactor(code: string, password: string): Promise<{ codes?: string[]; error?: string }> {
   const u = await requireRole("owner");
+  const denied = await stepUp(u.id, String(password || ""), "");
+  if (denied) return { error: denied };
   const row = await q.get<{ totp_secret: string | null }>("SELECT totp_secret FROM users WHERE id = ? AND totp_enabled_at IS NULL", u.id);
   if (!row?.totp_secret) return { error: "Start again: set-up expired." };
   const step = verifyTotp(openSecret(row.totp_secret, env.secret), String(code || ""), null);
@@ -75,7 +81,15 @@ export async function confirmTwoFactor(code: string): Promise<{ codes?: string[]
     JSON.stringify(codes.map(hashRecovery)),
     u.id,
   );
+  await q.run("DELETE FROM sessions WHERE user_id = ? AND token_hash <> ?", u.id, (await currentSessionHash()) ?? "");
   await audit(u.id, "two_factor_on");
+  await sendMail({
+    userId: u.id,
+    audience: "receiver",
+    to: u.email,
+    subject: "Two-factor sign-in was turned on",
+    body: `Hi ${u.name.split(/\s+/)[0]},\n\nTwo-factor sign-in was just turned on for your FloorTest account, and every other device was signed out.\n\nIf this wasn't you, contact us straight away: ${APP_URL}/contact\n\n— FloorTest`,
+  });
   done();
   return { codes };
 }

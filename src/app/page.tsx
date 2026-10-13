@@ -374,7 +374,7 @@ export default async function Home({
             <p className="mt-3 max-w-xs"><E k="footer_line" /></p>
             <div className="mt-8 max-w-md">
               <p className="mb-3 text-sm font-bold text-bone">Get the FloorTest newsletter</p>
-              <NewsletterForm />
+              <NewsletterForm botCheckKey={botKey} />
             </div>
           </div>
           <nav aria-label="Footer" className="col-span-7 grid grid-cols-3 gap-x-6 pl-8">
@@ -422,7 +422,7 @@ export default async function Home({
         </div>
         <div className="mt-8 max-w-md">
           <p className="mb-3 text-sm font-bold text-bone">Get the FloorTest newsletter</p>
-          <NewsletterForm />
+          <NewsletterForm botCheckKey={botKey} />
         </div>
         <nav aria-label="Footer" className="mt-8 grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
           {footerGroups().map((g) => (

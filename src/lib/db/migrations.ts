@@ -1529,5 +1529,17 @@ where body ~ '/(receipt|reset|verify-email|confirm-email|join|sent|newsletter/co
 update incidents set detail = regexp_replace(detail, '^(\\[Staging → [^]]*\\] )?[0-9]{6}( is your FloorTest)', '\\1•••••• (hidden)\\2')
 where kind = 'email_failed' and detail ~ '[0-9]{6} is your FloorTest';
 `,
+  },  {
+    // A deleted account's link names stay reserved (with no account behind them), so nobody can take over a link
+    // that's still in bios and on flyers and receive music meant for someone else.
+    id: "0092_released_handles",
+    sql: `
+create table released_handles (
+  handle text primary key,
+  released_at bigint not null,
+  expires_at bigint not null
+);
+alter table released_handles enable row level security;
+`,
   },
 ];

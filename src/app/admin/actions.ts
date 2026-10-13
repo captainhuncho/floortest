@@ -20,6 +20,7 @@ import { APP_URL } from "@/lib/mail";
 import { env } from "@/lib/env";
 import { HIDDEN, sendMail } from "@/lib/mail";
 import { isAdminEmail, logAdmin, requireAdminAction } from "@/lib/admin";
+import { opsAccessFor, suspendRefusal } from "@/lib/ops-access";
 import { PERMS, ROLE_PERMS, ROLES, type Perm, type Role } from "@/lib/ops-perms";
 import type { PlanRequest } from "@/lib/plan-requests";
 import { flash } from "@/lib/flash";
@@ -41,6 +42,8 @@ export async function suspendAccount(userId: number, reason: string) {
   const a = await requireAdminAction("users.support");
   const u = await target(userId);
   if (!u || u.id === a.id) return fail("Couldn't suspend: account not found, or it's yours");
+  const refused = suspendRefusal(a.access, await opsAccessFor(u));
+  if (refused) return fail(refused);
   const why = String(reason || "").trim().slice(0, 200);
   const r = await q.tx(async (db) => {
     const r = await db.run("UPDATE users SET suspended_at = ?, suspended_reason = ? WHERE id = ? AND suspended_at IS NULL", now(), why, u.id);

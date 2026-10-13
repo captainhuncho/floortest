@@ -2,6 +2,7 @@ import "server-only";
 import { now, q } from "@/lib/db";
 import { accountKeys, drainNow, queueDeletion, trackKeys } from "@/lib/deletion";
 import { forgetLinkPerson, linkDataFor } from "@/lib/share-links";
+import { DELETED_HANDLE_HOLD_DAYS } from "@/lib/accounts";
 
 /**
  * Deletes an account and everything it owns. Every file (audio, stems, unfinished uploads, cover) is queued
@@ -12,6 +13,14 @@ export async function purgeAccount(userId: number) {
     await queueDeletion(db, await accountKeys(db, userId), `account #${userId} deleted`, now());
     const who = await db.get<{ email: string }>("SELECT email FROM users WHERE id = ?", userId);
     if (who) await forgetLinkPerson(db, userId, who.email);
+    // Its link, and old links it still held, stay reserved: the delete below cascades the old ones away.
+    const t = now();
+    await db.run(
+      `INSERT INTO released_handles (handle, released_at, expires_at)
+       SELECT handle, ?::bigint, ?::bigint FROM users WHERE id = ? UNION SELECT old_handle, ?::bigint, ?::bigint FROM handle_history WHERE user_id = ?
+       ON CONFLICT (handle) DO UPDATE SET released_at = excluded.released_at, expires_at = GREATEST(released_handles.expires_at, excluded.expires_at)`,
+      t, t + DELETED_HANDLE_HOLD_DAYS * 86_400_000, userId, t, t + DELETED_HANDLE_HOLD_DAYS * 86_400_000, userId,
+    );
     await db.run("DELETE FROM users WHERE id = ?", userId); // cascades to everything the account owns
   });
   await drainNow();

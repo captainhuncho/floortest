@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useActionForm } from "@/components/useActionForm";
 import { SourceField } from "@/components/SourceField";
+import { Turnstile } from "@/components/Turnstile";
 import { joinNewsletter } from "./newsletter/actions";
 
 /** Footer newsletter sign-up: email, an optional offers box, then a confirmation email (double opt-in). */
-export function NewsletterForm() {
+export function NewsletterForm({ botCheckKey }: { botCheckKey: string | null }) {
   const [state, onSubmit, pending] = useActionForm(joinNewsletter, undefined);
   if (state?.ok)
     return (
@@ -30,6 +31,7 @@ export function NewsletterForm() {
       <p className="text-xs text-dim">
         Product news and tips, about once a month. Unsubscribe any time. See our <Link href="/privacy" className="underline underline-offset-4 hover:text-bone">Privacy Policy</Link>.
       </p>
+      <Turnstile action="newsletter" siteKey={botCheckKey} />
       {state?.error && <p role="alert" className="text-sm text-danger">{state.error}</p>}
       <SourceField />
     </form>
