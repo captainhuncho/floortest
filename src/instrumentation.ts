@@ -1,5 +1,7 @@
 import * as Sentry from "@sentry/nextjs";
 
+import { redactUrl } from "./lib/redact-url";
+
 export async function register() {
   const { sentryOptions } = await import("./lib/sentry-options");
   Sentry.init(sentryOptions);
@@ -13,5 +15,5 @@ export async function onRequestError(err: unknown, request: Parameters<typeof Se
   Sentry.captureRequestError(err, request, context);
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
   const { recordIncident } = await import("./lib/incidents");
-  await recordIncident("server_error", e?.message || "Server error", `${e?.digest ? `digest ${e.digest}\n` : ""}${e?.stack ?? ""}`, `${request.method} ${request.path}`);
+  await recordIncident("server_error", e?.message || "Server error", `${e?.digest ? `digest ${e.digest}\n` : ""}${e?.stack ?? ""}`, `${request.method} ${redactUrl(request.path)}`);
 }

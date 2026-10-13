@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { q } from "@/lib/db";
 import { sendWelcome } from "@/lib/onboarding";
-import { confirmEmail } from "@/lib/security";
+import { currentPerson } from "@/lib/auth";
+import { confirmEmail } from "@/lib/accounts";
 
 export const metadata = { title: "Confirm your email — FloorTest", robots: { index: false } };
 
@@ -11,11 +12,12 @@ export const metadata = { title: "Confirm your email — FloorTest", robots: { i
 export default async function VerifyEmail({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<{ done?: string }> }) {
   const { token } = await params;
   const done = !!(await searchParams).done;
-  const pending = done ? null : await q.get<{ email: string }>("SELECT email FROM users WHERE email_verify_token = ?", token.slice(0, 100));
+  const pending = done ? null : await q.get<{ id: number; email: string }>("SELECT id, email FROM users WHERE email_verify_token = ?", token.slice(0, 100));
+  const me = await currentPerson();
 
   async function confirm() {
     "use server";
-    const ok = await confirmEmail(token);
+    const ok = await confirmEmail(token, (await currentPerson())?.id ?? null);
     if (ok) await sendWelcome(ok.id);
     redirect(ok ? `/verify-email/${encodeURIComponent(token)}?done=1` : `/verify-email/${encodeURIComponent(token)}`);
   }
@@ -35,6 +37,19 @@ export default async function VerifyEmail({ params, searchParams }: { params: Pr
         <>
           <h1 className="text-3xl font-bold tracking-tight">Link not recognised</h1>
           <p className="mt-3 text-mute">This link is invalid, already used, or was replaced by a newer one. You can send a fresh one from your desk.</p>
+        </>
+      ) : me?.id !== pending.id ? (
+        <>
+          <h1 className="text-3xl font-bold tracking-tight">Sign in to confirm</h1>
+          <p className="mt-3 text-mute">
+            Sign in to the FloorTest account for <span className="text-bone">{pending.email}</span> in this browser, then open this link again.
+          </p>
+          <p className="mt-3 text-mute">
+            Didn&apos;t make this account? Sign in with an email code instead: it confirms the address and signs out whoever made it.
+          </p>
+          <Link href="/login" className="btn-lime mt-8 inline-block">
+            Sign in
+          </Link>
         </>
       ) : (
         <form action={confirm}>

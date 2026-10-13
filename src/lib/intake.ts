@@ -259,7 +259,8 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
          -- Name and links change only on a send whose email is proven.
          ON CONFLICT (user_id, email) DO UPDATE SET name = CASE WHEN excluded.verified_at IS NOT NULL THEN excluded.name ELSE senders.name END,
            links = CASE WHEN excluded.verified_at IS NOT NULL AND excluded.links <> '[]' THEN excluded.links ELSE senders.links END,
-           account_id = COALESCE(excluded.account_id, senders.account_id),
+           -- Only a proven send links the sender history to an account (an unconfirmed one could claim someone's email).
+           account_id = CASE WHEN excluded.verified_at IS NOT NULL THEN COALESCE(excluded.account_id, senders.account_id) ELSE senders.account_id END,
            verified_at = COALESCE(senders.verified_at, excluded.verified_at)
          RETURNING *`,
         fresh.id,
@@ -354,6 +355,7 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
   sendMailLater({
     userId: receiver.id,
     to: sender.email,
+    secrets: [track.token],
     ...(await emailText("delivered", {
       sender: sName,
       receiver: receiver.name,

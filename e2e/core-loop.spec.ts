@@ -5,7 +5,8 @@ import type { Page } from "@playwright/test";
 import { expect, test, wav } from "./fixtures";
 
 /**
- * The money path, in a real browser: a sender signs up with an invite and sends a WAV to the demo receiver's link;
+ * The money path, in a real browser: a sender signs up with an invite (and can't send until the email is confirmed);
+ * a confirmed sender sends a WAV to the demo receiver's link;
  * the receiver finds it in the Review Queue, keeps it, and downloads it from Prepare for set as a named folder.
  */
 test.describe.configure({ mode: "serial" });
@@ -41,10 +42,13 @@ test("a new sender signs up with an invite code", async ({ page }) => {
   await page.getByRole("button", { name: "Create my link" }).click();
   await page.waitForURL(/\/dashboard\/floor/);
   await expect(page.getByRole("heading", { level: 1 })).toContainText(sender.first);
+  // Until the email is confirmed, a send from the account is refused before any upload.
+  const refused = await page.request.post("/api/submit/maxwell", { data: { asAccount: true, title: "x", artist: "x", genre: "House", fileName: "x.wav", size: 1000, release_status: "unsigned", mix_status: "mastered", ai_use: "none" } });
+  expect(refused.status()).toBe(403);
 });
 
 test("the sender sends a WAV to the receiver's link", async ({ page }) => {
-  await logIn(page, sender.email, sender.password);
+  await logIn(page, "sender@floortest.test", "floortest-demo");
   await page.goto("/dashboard/send?to=maxwell");
   await page.getByLabel("Choose WAV or MP3 files").setInputFiles(wavFile());
   await page.getByLabel("Track title").fill(title);
@@ -57,7 +61,7 @@ test("the sender sends a WAV to the receiver's link", async ({ page }) => {
   await page.getByRole("button", { name: /^Send to / }).click();
   // Generous: on a cold dev build the first upload compiles the whole send path.
   await expect(page.getByText(/We sent a receipt to/)).toBeVisible({ timeout: 80_000 });
-  await expect(page.getByRole("heading", { name: "Sent (1)" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^Sent \(\d+\)$/ })).toBeVisible();
 });
 
 test("the receiver keeps it and downloads it from Prepare for set", async ({ page }) => {

@@ -14,7 +14,7 @@
 - Resend: `floortest.app` verified (records on `send` and `resend._domainkey` at Hosting.com); `MAIL_FROM="FloorTest <hello@floortest.app>"`.
 - `SUPPORT_EMAIL` not set (contact form goes nowhere).
 - Virus scanning of uploads (ClamAV on a small server, ~$5–6/mo): parked.
-- Old Supabase project in the FloorTest org ("maxwelladjavon@gmail.com's Project") holds an earlier prototype plus an empty `schema_migrations` table from a failed connection: pause/delete when ready.
+- Old Supabase project in the FloorTest org (the default project named after the owner's email) holds an earlier prototype plus an empty `schema_migrations` table from a failed connection: pause/delete when ready.
 - Terms and Privacy are drafts: review with the legal plugin, then a lawyer.
 - Next: use the marketing, brand-voice and legal plugins on the home page copy, emails and legal pages.
 

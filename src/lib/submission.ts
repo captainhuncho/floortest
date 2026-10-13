@@ -37,6 +37,8 @@ export async function readSubmission(
   // Up to 3 tracks sent together share a batch (one send, 250 MB between them).
   const batch = !release && typeof body.batch === "string" && /^[A-Za-z0-9_-]{16,40}$/.test(body.batch) ? body.batch : null;
   if (account && account.id === receiver.id) return bad("That's your own link. Share it with others to receive music.");
+  // Sending as an account files the track under that email's sender history, so the account must have proved the email.
+  if (account && !account.email_verified_at) return bad("Confirm your email before sending from your account. Check your inbox for the link.", 403);
   const name = account ? account.name : str("name", 100);
   const email = account ? account.email.toLowerCase() : str("email", 200).toLowerCase();
   const title = str("title", 200);

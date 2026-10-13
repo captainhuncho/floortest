@@ -1513,4 +1513,21 @@ update tracks t set stems_sent = (select json_agg(s.name order by s.created_at):
   where exists (select 1 from stems s where s.track_id = t.id);
 `,
   },
+  {
+    // Emails already in the outbox keep their sign-in codes and private links (receipts, resets, invites, email
+    // confirmations, sender history). New ones are stored with them hidden (sendMail secrets); this hides the old ones
+    // the same way, so the Email log and Settings → Notifications never show a way into an account or a receipt.
+    id: "0091_outbox_hide_secrets",
+    sql: `
+update outbox set
+  body = regexp_replace(
+    regexp_replace(body, '/(receipt|reset|verify-email|confirm-email|join|sent|newsletter/confirm)/[A-Za-z0-9._~-]+', '/\\1/•••••• (hidden)', 'g'),
+    '(sign-in code is:|code to open a private FloorTest collection:|code to confirm your email and send your music:)(\\s+)[0-9]{6}', '\\1\\2•••••• (hidden)', 'g'),
+  subject = regexp_replace(subject, '^(\\[Staging → [^]]*\\] )?[0-9]{6}( is your FloorTest)', '\\1•••••• (hidden)\\2')
+where body ~ '/(receipt|reset|verify-email|confirm-email|join|sent|newsletter/confirm)/[A-Za-z0-9._~-]+'
+   or subject ~ '[0-9]{6} is your FloorTest';
+update incidents set detail = regexp_replace(detail, '^(\\[Staging → [^]]*\\] )?[0-9]{6}( is your FloorTest)', '\\1•••••• (hidden)\\2')
+where kind = 'email_failed' and detail ~ '[0-9]{6} is your FloorTest';
+`,
+  },
 ];

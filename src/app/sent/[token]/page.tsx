@@ -23,9 +23,9 @@ export default async function SenderHistory({ params }: { params: Promise<{ toke
     );
   const rows = await q.all<{
     token: string; title: string; artist: string; created_at: number; played_at: number | null; downloaded_at: number | null;
-    replied_at: number | null; played_out_at: number | null; deleted_at: number | null; receiver: string;
+    replied_at: number | null; played_out_at: number | null; receiver: string;
   }>(
-    `SELECT t.token, t.title, t.artist, t.created_at, t.played_at, t.downloaded_at, t.replied_at, t.played_out_at, t.deleted_at, u.name AS receiver
+    `SELECT t.token, t.title, t.artist, t.created_at, t.played_at, t.downloaded_at, t.replied_at, t.played_out_at, u.name AS receiver
      FROM tracks t JOIN senders s ON s.id = t.sender_id JOIN users u ON u.id = t.user_id
      WHERE lower(s.email) = ? AND u.suspended_at IS NULL ORDER BY t.created_at DESC LIMIT 300`,
     email,

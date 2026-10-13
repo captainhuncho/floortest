@@ -24,6 +24,7 @@ export async function subscribe(email: string, marketing: boolean, source: strin
     userId: null,
     audience: "support",
     to: email,
+    secrets: [row.token],
     subject: "Confirm your FloorTest newsletter sign-up",
     body: [
       "Hi,",

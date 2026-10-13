@@ -97,6 +97,7 @@ export async function requestEmailChange(userId: number, next: string, by: "user
     userId,
     audience: "support",
     to: email,
+    secrets: [token],
     subject: "Confirm your new email for FloorTest",
     body: `Hi ${first},\n\nConfirm this address to make it the email for your FloorTest account (sign-in, password resets and alerts):\n${APP_URL}/confirm-email/${token}\n\nThe link works for ${EMAIL_CHANGE_HOURS} hours. If you didn't ask for this, ignore it and nothing changes.\n\n— FloorTest`,
   });
@@ -110,6 +111,22 @@ export async function requestEmailChange(userId: number, next: string, by: "user
   return null;
 }
 
+/**
+ * Counts only for the person signed in to that account. Anyone can create an account with someone else's email, and the
+ * link goes to the real owner: if their click alone confirmed it, whoever made the account (and still holds its password
+ * and session) would get a confirmed identity in their name. The real owner who didn't make it can take it over with an
+ * email code instead, which resets the creator's password, two-factor and sessions.
+ */
+export async function confirmEmail(token: string, personId: number | null) {
+  if (!token || token.length > 100 || !personId) return undefined;
+  return q.get<{ id: number }>(
+    "UPDATE users SET email_verified_at = COALESCE(email_verified_at, ?), email_verify_token = NULL WHERE email_verify_token = ? AND id = ? RETURNING id",
+    now(),
+    token,
+    personId,
+  );
+}
+
 export async function pendingEmailFor(token: string) {
   if (!token || token.length > 100) return undefined;
   return q.get<{ id: number; email: string; pending_email: string; pending_email_at: number }>(
@@ -119,10 +136,14 @@ export async function pendingEmailFor(token: string) {
   );
 }
 
-/** The click from the new address. Swaps the email, marks it confirmed, and signs out other devices. */
-export async function confirmEmailChange(token: string) {
+/**
+ * The click from the new address, by the person signed in to that account. Swaps the email, marks it confirmed, and
+ * signs out other devices. Signed-in only: otherwise someone could request a change to a stranger's address, wait for
+ * them to click, and keep a confirmed account in their name with a password the stranger never set.
+ */
+export async function confirmEmailChange(token: string, personId: number | null) {
   const p = await pendingEmailFor(token);
-  if (!p) return null;
+  if (!p || !personId || p.id !== personId) return null;
   try {
     const r = await q.run(
       "UPDATE users SET email = pending_email, email_verified_at = ?, email_verify_token = NULL, pending_email = NULL, pending_email_token = NULL, pending_email_at = NULL WHERE id = ? AND pending_email_token = ?",

@@ -112,8 +112,9 @@ async function main() {
   if (process.env.SEED_SHARING === "1") {
     await db.run("INSERT INTO switches (key, on_, updated_at) VALUES ('sharing', 1, ?) ON CONFLICT (key) DO UPDATE SET on_ = 1", now);
     await db.run("UPDATE collections SET allow_sharing = 1 WHERE id = ?", villagers);
-    // Two listeners with confirmed emails (test-only accounts): one the owner adds, one who has to ask.
-    for (const [email, name, handle] of [["listener@floortest.test", "Lena Listener", "lena"], ["stranger@floortest.test", "Sam Stranger", "samx"]])
+    // Two listeners with confirmed emails (test-only accounts): one the owner adds, one who has to ask; and a confirmed
+    // sender, since a new account can't send until its email is confirmed.
+    for (const [email, name, handle] of [["listener@floortest.test", "Lena Listener", "lena"], ["stranger@floortest.test", "Sam Stranger", "samx"], ["sender@floortest.test", "Eddie Tester", "eddie"]])
       await db.run(
         "INSERT INTO users (email, password_hash, name, handle, plan, tz, email_verified_at, created_at) VALUES (?,?,?,?,?,?,?,?)",
         email,

@@ -63,6 +63,9 @@ Some routes must be reachable without a receiver session. That does not make the
 - Unsubscribe links are scoped to the destination address and preference being changed.
 - Collection share pages (`/c/<address>`, `/c/a.<id>` for listed accounts) show nothing playable before the listener is verified and has accepted the notice; a wrong, expired, reset or revoked address gives the same "not available" answer; pages are not indexed.
 - Team invite pages (`/join/<invite>`) accept only for the invited, confirmed email; an invite expires after 7 days and is used once.
+- Email confirmation links (`/verify-email/<token>`, `/confirm-email/<token>`) count only for the person signed in to that account, so whoever made an account with someone else's email can't get it confirmed by the real owner's click. An account whose email is unconfirmed can't send from it, and a sender's history joins an account only once its email is confirmed.
+- Export and download routes that mark a track Downloaded refuse requests started on another site (`src/lib/same-site.ts`), since session cookies still go with a top-level link.
+- Private link keys and sign-in codes never reach stored copies: the ops email log keeps those emails with them hidden (they can't be resent from ops), and Sentry, Vercel Analytics and the incident log see `/receipt/[token]`, never the key (`src/lib/redact-url.ts`).
 - Public health information must be minimal. Detailed operational health requires its configured authorization.
 
 Do not add permissive cross-origin access to internal routes. A future integration API must be separately versioned and designed with hashed, revocable keys, scopes, quotas, audit logs, webhook signing, documentation and explicit consent for private audio.

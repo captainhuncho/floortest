@@ -81,7 +81,11 @@ test("a sender sends a track from the app; it lands on the receiver's desk and i
   await page.getByRole("button", { name: "Create my link" }).click();
   await page.waitForURL(/\/dashboard\/floor/);
 
-  const sender = await (await request.post("/api/v1/auth/login", { data: { email, password } })).json();
+  // Until its email is confirmed, the new account can't send; the rest uses a confirmed sender.
+  const fresh = await (await request.post("/api/v1/auth/login", { data: { email, password } })).json();
+  const unconfirmed = { to: "maxwell", title: "x", artist: "x", genre: "House", mix_status: "mastered", release_status: "unsigned", ai_use: "none", fileName: "a.wav", size: 1000 };
+  expect((await request.post("/api/v1/sends", { headers: { Authorization: `Bearer ${fresh.accessToken}` }, data: unconfirmed })).status()).toBe(403);
+  const sender = await (await request.post("/api/v1/auth/login", { data: { email: "sender@floortest.test", password: "floortest-demo" } })).json();
   const auth = { Authorization: `Bearer ${sender.accessToken}` };
 
   const who = await (await request.get("/api/v1/receivers/maxwell", { headers: auth })).json();
@@ -93,7 +97,7 @@ test("a sender sends a track from the app; it lands on the receiver's desk and i
   const file = wav(3);
   // The same rules as the website: missing details and your own link are refused before any upload.
   expect((await request.post("/api/v1/sends", { headers: auth, data: { ...fields, title: "", fileName: "a.wav", size: file.length } })).status()).toBe(400);
-  expect((await request.post("/api/v1/sends", { headers: auth, data: { ...fields, to: `app${stamp}`, fileName: "a.wav", size: file.length } })).status()).toBe(400);
+  expect((await request.post("/api/v1/sends", { headers: auth, data: { ...fields, to: "eddie", fileName: "a.wav", size: file.length } })).status()).toBe(400);
 
   const start = await request.post("/api/v1/sends", { headers: auth, data: { ...fields, fileName: `${title}.wav`, size: file.length } });
   expect(start.status()).toBe(200);

@@ -274,6 +274,7 @@ export async function requestPasswordReset(_: FormState, form: FormData): Promis
       userId: user.id,
       audience: "receiver",
       to: email,
+      secrets: [token],
       subject: "Reset your FloorTest password",
       body: `Hi ${user.name.split(/\s+/)[0]},\n\nUse this link within an hour to choose a new password:\n${APP_URL}/reset/${token}\n\nIf you didn't ask for this, ignore this email. Your password hasn't changed.\n\n— FloorTest`,
     });
@@ -324,6 +325,7 @@ export async function requestLoginCode(_: FormState, form: FormData): Promise<Fo
       userId: user.id,
       audience: "receiver",
       to: email,
+      secrets: [code],
       subject: `${code} is your FloorTest sign-in code`,
       body: `Hi ${user.name.split(/\s+/)[0]},\n\nYour sign-in code is:\n\n${code}\n\nIt works once, for 10 minutes. If you didn't try to sign in, ignore this email. Nobody can get in without the code.\n\n— FloorTest`,
     });

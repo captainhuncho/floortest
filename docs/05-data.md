@@ -8,7 +8,7 @@ Table-by-table detail, query rules, migrations and backups: `docs/DATABASE.md`. 
 |---|---|---|---|
 | Accounts, tracks' details, decisions, messages, logs | Postgres (Neon) | London | until deleted (see retention) |
 | Audio, stems, covers, collection art, track artwork | Cloudflare R2, private bucket | EU/US edge | with its track/account |
-| Outgoing email copies | `outbox` table + Resend | Resend (US) | per Resend retention |
+| Outgoing email copies (sign-in codes and private links stored hidden) | `outbox` table + Resend | Resend (US) | per Resend retention |
 | Error reports | Sentry | US | 90 days |
 | Visit stats | Vercel Analytics (no cookies) | US | per Vercel |
 

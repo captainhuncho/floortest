@@ -1,6 +1,7 @@
 import { trackUse } from "@/lib/usage";
 import { currentUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
+import { OTHER_SITE, fromThisSite } from "@/lib/same-site";
 import { markDownloaded } from "@/lib/review";
 import { crateZip, safeName } from "@/lib/crate";
 import { q, type Collection, type Track } from "@/lib/db";
@@ -20,6 +21,9 @@ export const maxDuration = 300;
  * with ids, exactly those tracks (the List view's "Download" on a selection), whatever their decision.
  */
 export async function GET(req: Request) {
+  // A link on another site still carries the session cookie: refuse it, or it could mark every kept track Downloaded
+  // (and tell each sender it was kept).
+  if (!fromThisSite(req.headers)) return new Response(OTHER_SITE, { status: 403 });
   const user = await currentUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
   const url = new URL(req.url);

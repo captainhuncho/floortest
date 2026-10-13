@@ -110,17 +110,10 @@ export async function sendEmailVerification(userId: number) {
     userId,
     audience: "receiver",
     to: u.email,
+    secrets: [token],
     subject: "Confirm your email for FloorTest",
     body: `Hi ${u.name.split(/\s+/)[0]},\n\nConfirm this is your email so password resets and alerts reach you:\n${APP_URL}/verify-email/${token}\n\n— FloorTest`,
   });
   return true;
 }
 
-export async function confirmEmail(token: string) {
-  if (!token || token.length > 100) return null;
-  return q.get<{ id: number }>(
-    "UPDATE users SET email_verified_at = COALESCE(email_verified_at, ?), email_verify_token = NULL WHERE email_verify_token = ? RETURNING id",
-    now(),
-    token,
-  );
-}
