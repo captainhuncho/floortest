@@ -14,7 +14,7 @@ Last updated 13 Oct 2026.
 | **Cloudflare Turnstile** | The bot check on public forms and on sign-in after repeated wrong tries. | One widget; on/off is the `bot_check` switch in ops | dash.cloudflare.com → Turnstile |
 | **Google Cloud** | Sign in with Google (OAuth client). | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` set for Production and Preview; brand verification paused until launch (plan B1) | console.cloud.google.com → APIs & Services → Credentials |
 | **Resend** | Sends every email: receipts, alerts, invites, digests. | Sending domain `floortest.app` (verified), from `team@floortest.app` | resend.com |
-| **Google Workspace** | Two separate inboxes: `team@floortest.app` sends every FloorTest email and gets the replies; `support@floortest.app` (`SUPPORT_EMAIL`) takes help, takedowns and the contact form. `hello@` (the sender until 13 Oct) stays as an alias for late replies. | `floortest.app` is a secondary domain on the owner's existing Workspace: `team@` is its own user, `support@` and `hello@` are alternative addresses on the owner's user; nobody else gets an address | admin.google.com |
+| **Google Workspace** | Two separate inboxes: `team@floortest.app` sends every FloorTest email and gets the replies; `support@floortest.app` (`SUPPORT_EMAIL`) takes help, takedowns and the contact form. `hello@` (the sender until 13 Oct) stays as an alias for late replies. | `floortest.app` is a secondary domain on the owner's existing Workspace: `team@` is its own user; support@, legal@, privacy@, copyright@, security@ and hello@ are the owner's; nobody else gets an address | admin.google.com |
 
 ## Domain
 
@@ -39,7 +39,8 @@ Last updated 13 Oct 2026.
 
 ## Contacts used on the site
 
-- Support, privacy, data requests and takedowns: **support@floortest.app**. The contact form sends here (Vercel `SUPPORT_EMAIL`).
+- **support@floortest.app**: help and the contact form (Vercel `SUPPORT_EMAIL`).
+- **legal@**, **privacy@**, **copyright@**, **security@floortest.app**: legal notices, data requests, takedown notices, security reports. Created 13 Oct; the legal pages still show info@imullar.com until the lawyer says which address goes where (brief questions 30–33).
 - FloorTest's own emails come from **team@floortest.app**, and replies go there (`MAIL_FROM`; `MAIL_REPLY_TO` is unset on purpose).
 - Operator named in Terms and Privacy: **FloorTest Labs**, being registered in Ghana. Change it in `src/lib/legal.ts`.
 
