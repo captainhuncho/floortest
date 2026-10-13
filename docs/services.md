@@ -12,12 +12,13 @@ Last updated 29 Sep 2026.
 | **Supabase** | The database (accounts, tracks, decisions, logs). | Org **FloorTest**. Live: **floortest** (`crghwblbuodxhsfgeppw`, London). Preview: **floortest-preview** (`azvsdmrnwunbpdyitoji`, London). Old: `culzghp…`, paused 29 Sep 2026; reminder set for 14 Dec 2026 to delete it. | supabase.com/dashboard |
 | **Cloudflare R2** | Stores the audio files and cover photos, privately. | Buckets: **floortest-audio** (live), **floortest-audio-preview** (tests only) | dash.cloudflare.com → R2 |
 | **Resend** | Sends every email: receipts, alerts, invites, digests. | Sending domain `floortest.app` (verified), from `hello@floortest.app` | resend.com |
+| **Google Workspace** | Receives mail for `support@` and `hello@floortest.app` (replies to FloorTest emails land in `hello@`). | `floortest.app` is a secondary domain on the owner's existing Workspace; both addresses are alternative addresses on the owner's user, nobody else gets one | admin.google.com |
 
 ## Domain
 
 | Service | What it does | Details |
 | --- | --- | --- |
-| **Hosting.com** | Registrar and DNS (cPanel) for `floortest.app`, and DNS for the old `imullar.com`. | A records point `floortest.app` to Vercel (`216.198.79.1`, `64.29.17.1`); `www`, the old `floortest.imullar.com` and `floortest.vercel.app` redirect to it. The Resend records live here too. |
+| **Hosting.com** | Registrar and DNS (cPanel) for `floortest.app`, and DNS for the old `imullar.com`. | A records point `floortest.app` to Vercel (`216.198.79.1`, `64.29.17.1`); `www`, the old `floortest.imullar.com` and `floortest.vercel.app` redirect to it. The Resend and Google Workspace mail records live here too. |
 
 ## Monitoring
 
@@ -52,4 +53,3 @@ Last updated 29 Sep 2026.
 
 - **Virus scanning** for uploads: beta uses structural checks only (real WAV/MP3, nothing hidden after the audio). Before public launch, add our own ClamAV service (Fly.io or Render, about $13–25/mo for the 2–4 GB of RAM its signatures need; see `docs/costs.md`) that scans each upload before it can be played. Don't send files to third-party scanners (privacy).
 - **Lawyer** covering Ghana and UK/EU data protection. The brief is in `docs/legal-review.md`.
-- **Support mailbox on @floortest.app** (Google Workspace planned), to replace info@imullar.com.

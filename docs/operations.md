@@ -11,7 +11,7 @@ How the backend works, how to run it, and what to do when something goes wrong. 
 | Audio and files | Cloudflare R2, bucket `floortest-audio-eu`, Western Europe, since 11 Oct (preview: `floortest-audio-preview`; the old `floortest-audio` is kept until 18 Oct for rollback) | Original WAV/MP3s, stems, cover photos, unfinished uploads, nightly backups under `backups/` |
 | Email | Resend, from `hello@floortest.app` | Receipts, alerts, digests, invites, security emails |
 | Bot check | Cloudflare Turnstile (hostnames `floortest.app`, plus the old `floortest.imullar.com`) | Sign-up, waitlist, contact, anonymous uploads |
-| Domain and DNS | Hosting.com (cPanel) | `floortest.app` points at Vercel (A `216.198.79.1` + `64.29.17.1`; `www`/`ops` CNAME); Resend SPF/DKIM on `send` / `resend._domainkey`; DMARC `p=none` on `_dmarc.floortest.app`. Old `floortest.imullar.com` redirects to `floortest.app` |
+| Domain and DNS | Hosting.com (cPanel) | `floortest.app` points at Vercel (A `216.198.79.1` + `64.29.17.1`; `www`/`ops` CNAME); Resend SPF/DKIM on `send` / `resend._domainkey`; Google Workspace MX `1 smtp.google.com`, SPF on the root includes `_spf.google.com`; DMARC `p=none` on `_dmarc.floortest.app`. Old `floortest.imullar.com` redirects to `floortest.app` |
 
 Uploads never pass through the app: the browser gets a short-lived signed URL and sends the file straight to R2, then the app checks the file is real audio before creating the track.
 
