@@ -12,7 +12,7 @@ export default function Security() {
         [
           "Report a security problem",
           [
-            `If you think you've found a security vulnerability in FloorTest, email ${LEGAL.email} with "Security" in the subject. Include what you found, the steps to reproduce it, and what an attacker could do with it.`,
+            `If you think you've found a security vulnerability in FloorTest, email ${LEGAL.security} with "Security" in the subject. Include what you found, the steps to reproduce it, and what an attacker could do with it.`,
           ],
         ],
         [

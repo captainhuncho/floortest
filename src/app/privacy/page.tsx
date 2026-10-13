@@ -17,7 +17,7 @@ export default async function Privacy() {
         [
           "Who we are",
           [
-            `FloorTest is operated by ${LEGAL.operator}. We're the data controller for the personal data described here. Contact us about anything in this policy, including your rights, at ${LEGAL.email}.`,
+            `FloorTest is operated by ${LEGAL.operator}. We're the data controller for the personal data described here. Contact us about anything in this policy, including your rights, at ${LEGAL.privacy}.`,
           ],
         ],
         [
@@ -122,7 +122,7 @@ export default async function Privacy() {
         [
           "Your rights",
           [
-            `You can ask us for a copy of your data, to correct it, to delete it, to restrict or object to how we use it, or to receive it in a portable format. Receivers can delete their account and every stored file from Settings at any time. Senders and anyone else can email ${LEGAL.email}. We'll reply within one month.`,
+            `You can ask us for a copy of your data, to correct it, to delete it, to restrict or object to how we use it, or to receive it in a portable format. Receivers can delete their account and every stored file from Settings at any time. Senders and anyone else can email ${LEGAL.privacy}. We'll reply within one month.`,
             "If you're unhappy with how we handle your data you can complain to the Data Protection Commission of Ghana (dataprotection.org.gh), or to the data protection authority where you live, such as the Information Commissioner's Office (ico.org.uk) in the UK.",
           ],
         ],

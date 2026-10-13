@@ -59,7 +59,7 @@ export default async function Terms() {
         [
           "Copyright complaints",
           [
-            `If you believe music on FloorTest was sent without the rights holder's permission, email ${LEGAL.email} with the track, the receiver's link and why you hold the rights. We'll review it promptly and remove it where appropriate.`,
+            `If you believe music on FloorTest was sent without the rights holder's permission, email ${LEGAL.copyright} with the track, the receiver's link and why you hold the rights. We'll review it promptly and remove it where appropriate.`,
           ],
         ],
         [
