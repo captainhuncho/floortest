@@ -1,11 +1,13 @@
-# Brief for the lawyer (updated 7 Oct 2026)
+# Brief for the lawyer (updated 13 Oct 2026)
+
+> **13 Oct 2026: company email addresses.** FloorTest now has its own mailboxes on Google Workspace (domain `floortest.app`): **support@** (help, account and contact-form messages), **legal@** (legal notices and correspondence), **privacy@** (data protection requests), **copyright@** (copyright and takedown notices), **security@** (security reports), and **team@**, which sends FloorTest's own emails and receives the replies. The Terms, Privacy and Cookie pages still show `info@imullar.com`; we haven't changed them because they're your wording. Questions 30–33 below.
 
 > **11 Oct 2026: sharing brief.** Controlled collection sharing (phase 4) and the live Review Together feature have their own brief: [legal/sharing-brief-2026-10-11.md](legal/sharing-brief-2026-10-11.md) (sent as `legal/FloorTest-Labs-sharing-brief-2026-10-11.docx`). It replaces questions 11–15 and section 4 below (the 1 Oct colleague-sharing model, never switched on).
 
 The drafts at /terms and /privacy were rewritten on 29 Sep 2026 to close the gaps listed further down. Owner decisions so far:
 
 - **Operator:** **FloorTest Labs**, a company being registered in **Ghana** (not the UK). Renamed from "FloorTest LTD" on 7 Oct 2026; the Terms and Privacy pages now use the new name. Governing law is set to Ghana. Complaints point to Ghana's Data Protection Commission and the user's local authority, such as the UK ICO. Add the registration number and address to `src/lib/legal.ts` once incorporated.
-- **Contact:** info@imullar.com for now; an @floortest.app support address once the company mailbox (Google Workspace) is set up.
+- **Contact:** the legal pages still show info@imullar.com; the @floortest.app addresses exist since 13 Oct (see the note at the top) and replace it once you say which goes where.
 - **Website:** **floortest.app** (moved from floortest.imullar.com on 7 Oct 2026; old links redirect). Emails come from team@floortest.app (hello@ until 13 Oct); support@floortest.app for help and takedowns.
 - **Minimum age:** 18+. Stated in both documents, on sign-up and on the send form.
 - **Sender licence:** the receiver may listen, download, evaluate and play the track in DJ sets, live performances and broadcasts. Releasing, distributing, selling, licensing or uploading it as a release on any platform needs a separate written agreement.
@@ -58,7 +60,7 @@ Already reflected in the live Terms, Privacy, Cookie and Sub-processors pages un
 22. **Email confirmation cookie:** we treat the 30-day `ft_sender` cookie as strictly necessary (it replaces asking for a code on every send). Please confirm no consent banner is needed for it.
 23. **Staff roles (added 7 Oct 2026):** ops now has role-based staff access (Customer Care, Developer, Product Lead, Sales & Marketing), each limited to what the role needs; deletion, data export, takedowns and account-takeover powers stay with the super admin. Privacy Policy section on staff access updated to say so. Is that wording enough for UK/EU GDPR Art. 32 and the Ghana Data Protection Act, or do staff need a written confidentiality undertaking we should mention?
 
-**Still to confirm on the tech side:** the R2 bucket's jurisdiction, and that the @floortest.app support address actually receives mail.
+**Still to confirm on the tech side:** ~~the R2 bucket's jurisdiction~~ (Western Europe since 11 Oct, `floortest-audio-eu`), ~~that the @floortest.app support address actually receives mail~~ (done 13 Oct).
 
 ---
 
@@ -175,9 +177,16 @@ FloorTest will be registered in and operated from **Ghana**, serving users world
 28. **The word "Verified":** the public mark (design name "Cue Point") says "Verified by FloorTest: this account controls the linked profile", and the Terms say it isn't an endorsement or identity guarantee and can be removed. We only check that a code appears in the bio of a profile the account controls. Is "Verified" safe enough, or should it be softer (e.g. "Profile checked")? Any liability if an impersonator is verified?
 29. **Age:** the Terms say 18+. Is a self-declaration at sign-up enough?
 
+### Email addresses (added 13 Oct 2026)
+
+30. **Which address on which page:** we propose privacy@ in the Privacy and Cookie policies (data requests, complaints), legal@ as the operator's contact in the Terms, copyright@ for takedown notices in the Terms and Content rules, and support@ for everything else. Is that right, and should the Privacy Policy name one address only?
+31. **Takedowns:** should copyright@ be the address in the Ghana Copyright Act notice process and, later, the US DMCA designated agent registration? Anything the notice must say about what a complaint has to include?
+32. **Data requests:** privacy@ goes to the operator's own inbox. Is an email address enough as the route for access and deletion requests, alongside the contact form, or do we need a form or postal address too?
+33. **Security reports:** should security@ be published (for example in a `security.txt` file on the site), and does it need any wording on the site?
+
 ## 7. Before invites go out
 
-1. Set `SUPPORT_EMAIL` (and ideally a published privacy@ address).
+1. ~~Set `SUPPORT_EMAIL` (and ideally a published privacy@ address).~~ Done 13 Oct: `SUPPORT_EMAIL` is support@floortest.app; privacy@ exists, waiting on question 30 to appear on the pages.
 2. Fix the IP retention wording or run the purge more often.
 3. Confirm the R2 bucket jurisdiction.
 4. Add the operator name and contact to both pages.
