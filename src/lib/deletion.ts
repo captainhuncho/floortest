@@ -2,7 +2,7 @@ import "server-only";
 import { now, q, type Queryable } from "./db";
 import { accountKeys, drainDeletions, handOverFolderCovers, queueDeletion, STUCK_AFTER, trackKeys } from "./deletion-core";
 import { recordIncident } from "./incidents";
-import { storage } from "./storage";
+import { storage, UPLOAD_LINK_SECONDS } from "./storage";
 import { vaultDeleter } from "./vault";
 
 export { accountKeys, queueDeletion, trackKeys };
@@ -21,7 +21,7 @@ export async function retireTrackFiles(db: Queryable, trackIds: number[], reason
  * deleted straight away; one that fails stays queued for the nightly retry (and an incident if it keeps failing) instead
  * of being forgotten. Call it after the row that pointed to the file has changed. Never throws.
  */
-export async function discardFiles(keys: (string | null | undefined)[], reason: string) {
+export async function discardFiles(keys: (string | null | undefined)[], reason: string, { linkLive = false } = {}) {
   const list = await queueDeletion(q, keys, reason, now()).then(
     () => [...new Set(keys.filter((k): k is string => !!k))],
     () => [],
@@ -29,9 +29,15 @@ export async function discardFiles(keys: (string | null | undefined)[], reason: 
   if (!list.length) return;
   // Deletes the recovery copy too, when there is one.
   const store = await vaultDeleter(await storage());
+  // A sender's upload link (15 minutes) can put a file back after it's deleted: those stay queued, due again once the
+  // link has expired, so the nightly clean-up removes anything re-uploaded.
+  const again = now() + UPLOAD_LINK_SECONDS * 1000 + 60_000;
   for (const key of list)
     await store.delete(key).then(
-      () => q.run("DELETE FROM storage_deletions WHERE file_key = ?", key),
+      () =>
+        linkLive
+          ? q.run("UPDATE storage_deletions SET not_before = ?, attempts = 0 WHERE file_key = ?", again, key)
+          : q.run("DELETE FROM storage_deletions WHERE file_key = ?", key),
       () => {},
     );
 }

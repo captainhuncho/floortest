@@ -1541,5 +1541,14 @@ create table released_handles (
 );
 alter table released_handles enable row level security;
 `,
+  },  {
+    // An upload is finished once: completing claims it first, so two completes sent at the same moment can't each
+    // make a track (or a stem). A claim older than a few minutes (a crash mid-way) can be taken again.
+    // checked_at: the start passed the send limits, so it counts as a release's or batch's first track.
+    id: "0093_upload_claims",
+    // storage_deletions.not_before: a file whose upload link may still be live is deleted again once it has expired.
+    sql: `alter table uploads add column claimed_at bigint;
+alter table uploads add column checked_at bigint;
+alter table storage_deletions add column not_before bigint;`,
   },
 ];

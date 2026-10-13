@@ -83,3 +83,43 @@ test("stems: a broken or missing list reads as nothing sent", async () => {
   assert.deepEqual(stemsSent({ stems_sent: "not json" }), []);
   assert.deepEqual(stemsSent({ stems_sent: '["a.wav", 3]' }), ["a.wav"]);
 });
+
+test("stems: completes sent at the same moment save a stem once, and never past the 24-stem cap", async () => {
+  const { q } = await import("../src/lib/db");
+  const { storage } = await import("../src/lib/storage");
+  const S = await import("../src/lib/stems");
+  const store = await storage();
+  const t = Date.now();
+  const uid = (await q.get<{ id: number }>("INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at, email_verified_at) VALUES ('cap@x.io','h','C','capdesk','pro','UTC',?,?) RETURNING id", t, t))!.id;
+  await q.run("INSERT INTO feature_switches (feature, plans, users, updated_at) VALUES ('stems', '[]', ?, ?) ON CONFLICT (feature) DO UPDATE SET users = (feature_switches.users::jsonb || excluded.users::jsonb)::text", JSON.stringify([uid]), t);
+  const sender = (await q.get<{ id: number }>("INSERT INTO senders (user_id, email, name, created_at) VALUES (?, 'cs@x.io', 'S', ?) RETURNING id", uid, t))!.id;
+  await q.run(
+    "INSERT INTO tracks (user_id, sender_id, title, artist, token, file_key, original_name, mime, size, created_at, stems_requested_at) VALUES (?,?,'T','A','cap-track','audio/y.wav','y.wav','audio/wav',1,?,?)",
+    uid, sender, t, t,
+  );
+  const trackId = (await q.get<{ id: number }>("SELECT id FROM tracks WHERE token = 'cap-track'"))!.id;
+  const stems = () => q.count("SELECT COUNT(*) AS n FROM stems WHERE track_id = ?", trackId);
+
+  // One upload, completed twice at once: one stem.
+  const { uploadId } = await S.startStemUpload("cap-track", "bass.wav", wav().length, "3.3.3.3");
+  await store.put((await q.get<{ file_key: string }>("SELECT file_key FROM uploads WHERE id = ?", uploadId))!.file_key, wav(), "audio/wav");
+  const twice = await Promise.allSettled([S.completeStemUpload("cap-track", uploadId), S.completeStemUpload("cap-track", uploadId)]);
+  assert.equal(twice.filter((r) => r.status === "fulfilled").length, 1);
+  assert.equal(await stems(), 1);
+
+  // 22 already sent, 5 uploads open at once (started before the count caught up): only 2 more get in.
+  await q.run("UPDATE tracks SET stems_sent = ? WHERE id = ?", JSON.stringify(Array.from({ length: 22 }, (_, i) => `s${i}.wav`)), trackId);
+  const ids: string[] = [];
+  for (let i = 0; i < 5; i++) {
+    const id = `open-${i}`;
+    const key = `stems/${uid}/${trackId}/open-${i}.wav`;
+    await store.put(key, wav(), "audio/wav");
+    await q.run("INSERT INTO uploads (id, receiver_id, file_key, ext, size, meta, ip, created_at) VALUES (?,?,?,'.wav',?,?,'3.3.3.3',?)", id, uid, key, wav().length, JSON.stringify({ kind: "stem", trackId, name: `late${i}.wav` }), Date.now());
+    ids.push(id);
+  }
+  await assert.rejects(S.startStemUpload("cap-track", "more.wav", wav().length, "4.4.4.4"), /maximum of 24/, "open uploads count toward the cap");
+  const results = await Promise.allSettled(ids.map((id) => S.completeStemUpload("cap-track", id)));
+  assert.equal(results.filter((r) => r.status === "fulfilled").length, 2);
+  assert.equal(S.stemsSent((await q.get<{ stems_sent: string }>("SELECT stems_sent FROM tracks WHERE id = ?", trackId))!).length, 24);
+  assert.equal(await stems(), 3);
+});

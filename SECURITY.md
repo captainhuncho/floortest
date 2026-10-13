@@ -67,6 +67,7 @@ Some routes must be reachable without a receiver session. That does not make the
 - Export and download routes that mark a track Downloaded refuse requests started on another site (`src/lib/same-site.ts`), since session cookies still go with a top-level link.
 - Changing how an account signs in needs more than a session: password changes, email changes, turning two-factor on or off and disconnecting Google all ask for the password (and the two-step code when it's on).
 - One-time codes (sign-in, sender email, share-link) count each try before comparing it, in one statement, so guesses sent at once can't pass the five-try limit.
+- Uploads and stems are single-use: completing one claims it first, and caps (stems per track, tracks per batch or release) are checked so that requests sent at the same moment can't pass them.
 - A deleted account's link names stay reserved for a year, so nobody can take over a link still in bios and receive music meant for someone else.
 - Ops staff: only the super admin can suspend an ops team member, and the super admin can't be suspended.
 - Private link keys and sign-in codes never reach stored copies: the ops email log keeps those emails with them hidden (they can't be resent from ops), and Sentry, Vercel Analytics and the incident log see `/receipt/[token]`, never the key (`src/lib/redact-url.ts`).
