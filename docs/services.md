@@ -50,6 +50,6 @@ Last updated 29 Sep 2026.
 
 ## Planned, not yet connected
 
-- **Virus scanning** for uploads: beta uses structural checks only (real WAV/MP3, nothing hidden after the audio). Before public launch, add our own ClamAV service (Fly.io or Render, ~$5–7/mo) that scans each upload before it can be played. Don't send files to third-party scanners (privacy).
+- **Virus scanning** for uploads: beta uses structural checks only (real WAV/MP3, nothing hidden after the audio). Before public launch, add our own ClamAV service (Fly.io or Render, about $13–25/mo for the 2–4 GB of RAM its signatures need; see `docs/costs.md`) that scans each upload before it can be played. Don't send files to third-party scanners (privacy).
 - **Lawyer** covering Ghana and UK/EU data protection. The brief is in `docs/legal-review.md`.
 - **Support mailbox on @floortest.app** (Google Workspace planned), to replace info@imullar.com.
