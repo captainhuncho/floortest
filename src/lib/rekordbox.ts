@@ -70,8 +70,11 @@ function positionMarks(t: Track) {
   return `>\n${marks}\n    </TRACK>`;
 }
 
+/** One line per entry: a sender's title or artist can't start a new line, which a player would read as another track. */
+const oneLine = (s: string) => s.replace(/[\x00-\x1f\x7f\u2028\u2029]+/g, " ");
+
 export function m3u(tracks: Track[]) {
-  return ["#EXTM3U", ...tracks.flatMap((t) => [`#EXTINF:${Math.round(t.duration ?? -1)},${t.artist} - ${t.title}`, cratePath(t)])].join("\n") + "\n";
+  return ["#EXTM3U", ...tracks.flatMap((t) => [`#EXTINF:${Math.round(t.duration ?? -1)},${oneLine(`${t.artist} - ${t.title}`)}`, oneLine(cratePath(t))])].join("\n") + "\n";
 }
 
 export const textStream = (s: string) =>

@@ -3,6 +3,7 @@
 import crypto from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { localPath } from "@/lib/next-path";
 import { isProd } from "@/lib/env";
 import { allow, requestIp } from "@/lib/ratelimit";
 import { GATE_COOKIE, GATE_DAYS, gatePassword, gateToken } from "@/lib/site-gate";
@@ -16,5 +17,5 @@ export async function unlockSite(_: { error?: string } | undefined, form: FormDa
   if (!want.length || want.length !== got.length || !crypto.timingSafeEqual(want, got)) return { error: "That password isn't right." };
   (await cookies()).set(GATE_COOKIE, gateToken(), { httpOnly: true, secure: isProd, sameSite: "lax", path: "/", maxAge: GATE_DAYS * 86_400 });
   const next = String(form.get("next") ?? "/");
-  redirect(next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/coming-soon") ? next : "/");
+  redirect(localPath(next));
 }
