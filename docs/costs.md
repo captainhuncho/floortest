@@ -28,10 +28,10 @@ Beta sizes come from the beta targets in `beta-launch-plan.md`; launch sizes are
 | Sentry | $0 | $0–26 | Developer plan: 5,000 errors a month, free. Team is $26 for 50,000. Only needed if errors outgrow the free plan. |
 | Cloudflare Turnstile | $0 | $0 | Free. |
 | Virus scanning (own ClamAV) | $0 | $13–25 | A ClamAV daemon needs about 1.5 GB of RAM for its signatures. Fly.io shared-cpu-1x: 2 GB $12.70, 4 GB $24.70, plus a volume at $0.15 per GB. The earlier $5–7 estimate in `services.md` is too low. |
-| Domain (floortest.app) | $2 | $2 | About $20 a year at Hosting.com. |
+| Domain (floortest.app) | $3 | $3 | $101.97 paid for 3 years at Hosting.com (owner, 13 Oct): $34 a year, $2.83 a month. Next renewal is a one-off, not a monthly bill. |
 | Google Workspace (support mailbox) | $0 | $7–8 | Business Starter, 1 user: $7 a month billed yearly, $8.40 monthly. Planned for the two weeks after launch. |
 | GitHub, Figma, Vercel Analytics | $0 | $0 | Free tiers. Analytics events are $3 per 100,000 past the Pro allowance; not expected. |
-| **Total** | **$2 now, $22 once Resend is upgraded** | **$110–170** | Before payment fees and one-offs. |
+| **Total** | **$3 now, $23 once Resend is upgraded** | **$110–170** | Before payment fees and one-offs. |
 
 Old Supabase projects are on the free plan and cost nothing; deleting them (from 13 Oct) is housekeeping, not a saving.
 
