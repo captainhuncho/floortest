@@ -7,8 +7,15 @@ import { storage } from "./storage";
 /** Kept this many days in the bucket, then deleted. */
 export const BACKUP_KEEP_DAYS = 14;
 const DAY = 86_400_000;
-/** Short-lived or rebuildable: left out to keep backups small. */
-const SKIP = new Set(["sessions", "rate_events", "uploads", "password_resets", "login_codes", "schema_migrations", "tap_timings", "job_runs", "feature_use"]);
+/**
+ * Left out: short-lived or rebuildable (keeps backups small), and every sign-in session or one-time code (account,
+ * ops, share-link listener, view-as), so a backup holds no live way in and a restore brings no session back. IP
+ * addresses live only in rate_events and uploads, which are left out, so the 48-hour limit on them holds.
+ */
+export const SKIP = new Set([
+  "sessions", "admin_sessions", "link_sessions", "view_tickets", "password_resets", "login_codes", "sender_codes", "link_codes",
+  "rate_events", "uploads", "schema_migrations", "tap_timings", "job_runs", "feature_use",
+]);
 /** One file per run (date and time), so a manual rerun never replaces the night's good backup. */
 const keyFor = (t: number) => `backups/db-${new Date(t).toISOString().slice(0, 16).replace(":", "")}.json.gz.enc`;
 /** Day-level prefix for the age cutoff: keys sort by date, so anything below this is older than the cutoff. */
