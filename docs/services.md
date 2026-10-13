@@ -17,7 +17,7 @@ Last updated 29 Sep 2026.
 
 | Service | What it does | Details |
 | --- | --- | --- |
-| **Hosting.com** | Registrar and DNS (cPanel) for `floortest.app`, and DNS for the old `imullar.com`. | An A record points `floortest.app` to Vercel (`76.76.21.21`); `www`, the old `floortest.imullar.com` and `floortest.vercel.app` redirect to it. The Resend records live here too. |
+| **Hosting.com** | Registrar and DNS (cPanel) for `floortest.app`, and DNS for the old `imullar.com`. | A records point `floortest.app` to Vercel (`216.198.79.1`, `64.29.17.1`); `www`, the old `floortest.imullar.com` and `floortest.vercel.app` redirect to it. The Resend records live here too. |
 
 ## Monitoring
 
