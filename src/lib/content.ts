@@ -19,9 +19,6 @@ const text = (label: string, start: string, more: Partial<Field> = {}) => f(labe
 
 /** Home page sections that can be reordered or hidden (the header, hero and footer always stay put). */
 export const HOME_SECTIONS = {
-  deck: "Cued up like a deck",
-  log: "One track's week",
-  desk: "Two sides of the desk",
   preview: "Product preview",
   how: "How it works",
   journey: "Receipts",
@@ -45,8 +42,7 @@ export function sectionOrder(s: string): { id: HomeSection; hidden: boolean }[] 
       out.push({ id, hidden });
     }
   }
-  // A section added after the order was saved goes in at its default place, not at the end.
-  for (const id of SECTION_IDS) if (!seen.has(id)) out.splice(Math.min(SECTION_IDS.indexOf(id), out.length), 0, { id, hidden: false });
+  for (const id of SECTION_IDS) if (!seen.has(id)) out.push({ id, hidden: false });
   return out;
 }
 export const orderString = (o: { id: HomeSection; hidden: boolean }[]) => o.map((x) => `${x.hidden ? "-" : ""}${x.id}`).join(",");
@@ -56,10 +52,10 @@ export const SITE_PAGES = {
     label: "Home",
     path: "/",
     fields: {
-      sections: f("Section order", "deck,log,desk,private,plans,waitlist,faq,-journey,-how,-preview", { hint: "Easiest to change on the page itself (Edit on the page). A \"-\" in front hides a section." }),
-      eyebrow: f("Line above the headline", "The receiving desk for new music"),
-      headline: f("Headline", "From the studio"),
-      headline_italic: f("Headline, second line (italic)", "to the floor."),
+      sections: f("Section order", SECTION_IDS.join(","), { hint: "Easiest to change on the page itself (Edit on the page). A \"-\" in front hides a section." }),
+      eyebrow: f("Line above the headline", "The receiving desk for unreleased music"),
+      headline: f("Headline", "From private tracks"),
+      headline_italic: f("Headline, second line (italic)", "to the DJ set."),
       intro: text("Intro", "One receiving link for every track you're sent. Hear what's new in seconds, keep what's right for your set, and answer every sender without a single DM."),
       preview_image: f("Product preview image", "", { kind: "image", hint: "Replaces the clickable product preview below the receipts section. Leave empty to keep the clickable preview." }),
       preview_alt: f("Product preview image: description", "The FloorTest review queue", { hint: "Read aloud by screen readers." }),

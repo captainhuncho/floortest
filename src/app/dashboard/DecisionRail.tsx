@@ -181,45 +181,69 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
     };
   }, [decide, setSwiped]);
 
-  // One rail on every screen: Not for me stays neutral (passing is never shown as danger), Keep is the one lime fill.
-  const btn = "btn min-h-14 min-w-0 flex-1 flex-col gap-0.5 whitespace-normal px-1.5 py-3 border";
+  const btn = "btn flex-1 flex-col gap-0.5 py-3 border";
+  const pill = "rounded-full border border-line bg-ink-3 px-3.5 py-2 text-[11px] font-medium text-mute";
   return (
     <div>
-      {/* Phones: the download sits above the rail. */}
-      <div className="mb-3 md:hidden">
-        <a href={`/api/tracks/${track.id}/download`} className="rounded-full border border-line bg-ink-3 px-3.5 py-2 text-[11px] font-medium text-mute">
-          Download
-        </a>
+      {/* Phones: Figma "Decisions" pills + "DJ Decision Area" */}
+      <div className="md:hidden">
+        <div className="flex flex-wrap gap-[5px]">
+          <a href={`/api/tracks/${track.id}/download`} className={pill}>
+            DOWNLOAD
+          </a>
+          <button onClick={() => setReplying((r) => !r)} aria-expanded={replying} className={replying ? "rounded-full bg-bone px-3.5 py-2 text-[11px] font-bold text-ink" : pill}>
+            REPLY
+          </button>
+        </div>
+        <div className="flex gap-2 pt-3" role="group" aria-label="Decision">
+          <button
+            onClick={() => decide("passed")}
+            disabled={busy}
+            aria-pressed={track.decision === "passed"}
+            className={`flex-1 rounded-xl border border-[#ff5f57] p-3.5 text-[11px] font-bold ${track.decision === "passed" ? "bg-[#ff5f57] text-ink" : "bg-[rgba(255,95,87,0.1)] text-[#ff5f57]"}`}
+          >
+            ✕ NOT FOR ME
+          </button>
+          <button
+            onClick={() => decide("kept")}
+            disabled={busy}
+            aria-pressed={track.decision === "kept"}
+            className={`flex-1 rounded-xl p-3.5 text-[11px] font-bold ${track.decision === "kept" ? "bg-lime text-ink" : "bg-bone text-ink"}`}
+          >
+            {track.decision === "kept" ? "✓ KEPT" : "✓ KEEP"}
+          </button>
+        </div>
       </div>
-      <div className="flex gap-2" role="group" aria-label="Decision">
+
+      <div className="hidden gap-2 md:flex" role="group" aria-label="Decision">
         <button
           onClick={() => decide("passed")}
           disabled={busy}
           aria-pressed={track.decision === "passed"}
           aria-keyshortcuts="X"
-          className={`${btn} ${track.decision === "passed" ? "border-bone bg-bone/10" : "border-line-2 hover:border-mute hover:bg-ink-3"}`}
+          className={`${btn} ${track.decision === "passed" ? "border-bone bg-bone/10" : "border-line hover:border-mute hover:bg-ink-3"}`}
         >
-          <span className="whitespace-nowrap text-[13px] font-semibold md:text-base">{track.decision === "passed" ? "Not for me ✓" : "Not for me"}</span>
-          <span className="max-w-full truncate text-[11px] text-mute"><span className="hidden lg:inline">X · </span>private</span>
+          <span className="text-base font-semibold">Not for me</span>
+          <span className="hidden text-xs text-mute md:inline">X</span>
         </button>
         <button
           onClick={() => decide("kept")}
           disabled={busy}
           aria-pressed={track.decision === "kept"}
           aria-keyshortcuts="K"
-          className={`${btn} flex-[1.25] border-lime bg-lime text-ink hover:bg-[#e2ff7a]`}
+          className={`${btn} ${track.decision === "kept" ? "border-lime bg-lime text-ink" : "border-lime/60 text-lime hover:bg-lime hover:text-ink"}`}
         >
-          <span className="text-sm font-bold md:text-base">{track.decision === "kept" ? "Kept ✓" : "Keep"}</span>
-          <span className="max-w-full truncate text-[11px] text-ink/70"><span className="hidden lg:inline">K · </span>adds to crate</span>
+          <span className="text-base font-semibold">{track.decision === "kept" ? "Kept ✓" : "Keep"}</span>
+          <span className={`text-xs ${track.decision === "kept" ? "text-ink/70" : "opacity-70"}`}><span className="hidden md:inline">K · </span>adds to crate</span>
         </button>
         <button
           onClick={() => setReplying((r) => !r)}
           aria-expanded={replying}
           aria-keyshortcuts="R"
-          className={`${btn} ${replying ? "border-bone" : "border-line-2 hover:border-mute hover:bg-ink-3"}`}
+          className={`${btn} ${replying ? "border-bone" : "border-line hover:border-mute hover:bg-ink-3"}`}
         >
-          <span className="text-sm font-semibold md:text-base">Reply</span>
-          <span className="max-w-full truncate text-[11px] text-mute"><span className="hidden lg:inline">R · </span>by email</span>
+          <span className="text-base font-semibold">Reply</span>
+          <span className="hidden text-xs text-mute md:inline">R</span>
         </button>
       </div>
 

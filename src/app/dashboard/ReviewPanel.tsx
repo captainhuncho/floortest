@@ -183,8 +183,7 @@ export async function ReviewPanel({
         {tags}
         {releaseBlock}
         <MobileTransport track={player} prevHref={prevHref} nextHref={next?.href ?? null} />
-        {/* The rail mounts after the screen size is known (one rail, one set of shortcuts); its room is kept so nothing jumps. */}
-        <div className="mt-3.5 min-h-[100px]">
+        <div className="mt-3.5">
           <MobileOnly>
           <DecisionRail
             track={{ ...player, decision: t.decision }}
@@ -214,7 +213,7 @@ export async function ReviewPanel({
         <DetailPlayer track={player} />
       </div>
 
-      <div className="mt-5 min-h-[92px]">
+      <div className="mt-5">
         <DesktopOnly>
           <DecisionRail
             track={{ ...player, decision: t.decision }}

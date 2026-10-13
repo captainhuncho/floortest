@@ -10,7 +10,6 @@ import { siteEditor } from "@/lib/site-editor";
 import { SectionFrame, SectionList, SiteEditor } from "@/components/SiteEditor";
 import { mono, serif } from "./fonts";
 import { HomePreview } from "./HomePreview";
-import { DeckSection, SetLog, TwoSides } from "./HomeStage";
 import { ClaimBox } from "./ClaimBox";
 import { WaitlistForm } from "./WaitlistForm";
 import { NewsletterForm } from "./NewsletterForm";
@@ -56,9 +55,6 @@ export default async function Home({
       : { href: "/signup", label: "Claim your link" };
 
   const SECTIONS: Record<HomeSection, React.ReactNode> = {
-    deck: <DeckSection />,
-    log: <SetLog />,
-    desk: <TwoSides />,
     preview: (
       <section data-edit-image={editor ? "preview_image" : undefined} className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
         {c.preview_image ? (
@@ -68,7 +64,7 @@ export default async function Home({
           <>
             <div className="mb-4 flex items-center justify-between">
               <p className="text-xs uppercase tracking-[0.12em] text-lime">
-                Live product preview
+                [Live product preview]
               </p>
               <p className="home-label">Click a track</p>
             </div>
@@ -401,7 +397,7 @@ export default async function Home({
           </nav>
         </div>
         <div className="mt-10 flex items-center justify-between gap-3 border-t border-line pt-6 text-xs text-dim">
-          <p>© {new Date().getFullYear()} FloorTest Labs. Private beta. Web · iPhone and Android soon.</p>
+          <p>© {new Date().getFullYear()} FloorTest Labs. Private beta.</p>
           <ul className="flex flex-wrap gap-x-4">
             {(footerGroups().find((g) => g.title === "Legal")?.links.slice(LEGAL_MAIN) ?? []).map((l) => (
               <li key={l.label}>
@@ -447,7 +443,7 @@ export default async function Home({
             </div>
           ))}
         </nav>
-        <p className="mt-10 border-t border-line pt-6 text-xs text-dim">© {new Date().getFullYear()} FloorTest. Private beta. Web · iPhone and Android soon.</p>
+        <p className="mt-10 border-t border-line pt-6 text-xs text-dim">© {new Date().getFullYear()} FloorTest. Private beta.</p>
       </footer>
     </div>
   );
