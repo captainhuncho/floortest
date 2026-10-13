@@ -48,5 +48,5 @@ Ops reaching into the main site (on-page editing, read-only "View as") is bound 
 
 ## Retention and deletion
 - Undecided audio: 90 days. "Not for me": 30 days. Kept: until the receiver deletes. Artwork and stems go with their track (the sender's receipt keeps only the stem names, `tracks.stems_sent`, so it doesn't change when the track goes); an EP/album cover passes to the folder's next remaining track instead (`handOverFolderCovers`), and goes when the last of them goes.
-- Deleting an account removes every file and row it owns; files are queued in `storage_deletions` and retried until gone (with their copies in the recovery bucket; a discarded upload is deleted again once its 15-minute upload link has expired, in case it was put back); backups age out within 30 days.
+- Deleting an account removes every file and row it owns; files are queued in `storage_deletions` and retried until gone (with their copies in the recovery bucket; a discarded upload is deleted again once its 15-minute upload link has expired, in case it was put back); backups are kept 14 days (the privacy page promises within 30), encrypted, and hold no sessions, codes or IP addresses.
 - Privacy requests (copy, erase) run from ops (super admin).
