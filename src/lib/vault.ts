@@ -122,20 +122,30 @@ export async function runVaultCopy(budgetMs = 120_000, at = now()) {
   const v = await vault();
   if (!v) return { on: false as const };
   const until = Date.now() + budgetMs;
-  const copied = new Set((await q.all<{ file_key: string }>("SELECT file_key FROM vault_copies")).map((r) => r.file_key));
+  // A row with no size is a copy that started but never finished (a crash): it's tried again.
+  const copied = new Set((await q.all<{ file_key: string }>("SELECT file_key FROM vault_copies WHERE size IS NOT NULL")).map((r) => r.file_key));
   const todo = (await expectedFiles()).filter((f) => f.kind !== "database backup" && !copied.has(f.key));
   let done = 0;
   let failed = 0;
   for (const f of todo) {
     if (Date.now() > until) break;
+    // Recorded before copying, so a deletion that runs meanwhile sees it and removes the row (and the copy, if it got
+    // there first). A copy that finds its row gone deletes what it wrote: nothing deleted from the service stays in the
+    // vault.
+    await q.run("INSERT INTO vault_copies (file_key, size, copied_at) VALUES (?, NULL, ?) ON CONFLICT (file_key) DO UPDATE SET size = NULL, copied_at = excluded.copied_at", f.key, at);
     try {
       await v.copyFromMain(f.key);
       const h = await v.head(f.key);
       if (!h || (f.size !== null && h.size !== f.size)) throw new Error("copy didn't arrive at the right size");
-      await q.run("INSERT INTO vault_copies (file_key, size, copied_at) VALUES (?, ?, ?) ON CONFLICT (file_key) DO NOTHING", f.key, h.size, at);
+      if (!(await q.run("UPDATE vault_copies SET size = ? WHERE file_key = ?", h.size, f.key)).changes) {
+        await v.delete(f.key);
+        continue;
+      }
       done++;
     } catch {
       failed++;
+      await q.run("DELETE FROM vault_copies WHERE file_key = ? AND size IS NULL", f.key);
+      await v.delete(f.key).catch(() => {});
     }
   }
   const result = { on: true as const, copied: done, failed, waiting: todo.length - done - failed, inVault: copied.size + done };

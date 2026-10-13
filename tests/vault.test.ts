@@ -55,3 +55,38 @@ test("recovery copy: new files are copied once, backups go to the vault, and del
   assert.equal(await v.head("audio/1/keep.wav"), null);
   assert.equal((await q.all("SELECT 1 FROM vault_copies WHERE file_key = 'audio/1/keep.wav'")).length, 0);
 });
+
+test("recovery copy: a file deleted while the nightly copy is in flight doesn't stay in the vault", async () => {
+  const { q } = await import("../src/lib/db");
+  const { storage } = await import("../src/lib/storage");
+  const { vault, runVaultCopy } = await import("../src/lib/vault");
+  const { discardFiles } = await import("../src/lib/deletion");
+  const store = await storage();
+  const v = (await vault())!;
+  const t = Date.now();
+  const uid = (await q.get<{ id: number }>("INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at) VALUES ('race@x.io','h','R','racev','free','UTC',?) RETURNING id", t))!.id;
+  const sender = (await q.get<{ id: number }>("INSERT INTO senders (user_id, email, name, created_at) VALUES (?, 'rs@x.io', 'S', ?) RETURNING id", uid, t))!.id;
+  await q.run(
+    "INSERT INTO tracks (user_id, sender_id, title, artist, token, file_key, original_name, mime, size, created_at) VALUES (?,?,'R','A','tv-race','audio/1/race.wav','r.wav','audio/wav',4,?)",
+    uid, sender, t,
+  );
+  await store.put("audio/1/race.wav", new Uint8Array(4), "audio/wav");
+
+  // The copy reads the file; before it records anything, the track is removed and its file deleted.
+  const copy = v.copyFromMain.bind(v);
+  v.copyFromMain = async (key: string) => {
+    await copy(key);
+    if (key === "audio/1/race.wav") {
+      await q.run("DELETE FROM tracks WHERE token = 'tv-race'");
+      await discardFiles([key], "test: deleted mid-copy");
+    }
+  };
+  try {
+    await runVaultCopy(10_000);
+  } finally {
+    v.copyFromMain = copy;
+  }
+  assert.equal(await store.head("audio/1/race.wav"), null);
+  assert.equal(await v.head("audio/1/race.wav"), null, "the copy that landed after the delete is removed");
+  assert.equal((await q.all("SELECT 1 FROM vault_copies WHERE file_key = 'audio/1/race.wav'")).length, 0);
+});
