@@ -17,7 +17,7 @@ test("private links reach monitoring without their key", () => {
 
 test("Sentry events, transactions and spans are scrubbed before sending", () => {
   const event = {
-    request: { url: "https://floortest.app/join/inv-secret", query_string: "a=1" },
+    request: { url: "https://floortest.app/join/inv-secret", query_string: "a=1", headers: { Referer: "https://floortest.app/reset/r-secret" } },
     transaction: "/sent/send-secret",
     breadcrumbs: [{ message: "GET /api/stems/stem-secret", data: { url: "/c/coll-secret", to: "/verify-email/v-secret" } }],
     spans: [{ description: "GET /api/pulse/receipt/p-secret", data: { "http.url": "/unsubscribe/u-secret" } }],

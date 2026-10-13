@@ -35,3 +35,9 @@ test("Rekordbox XML carries cues as memory cues and energy in comments", async (
   assert.equal((xml.match(/<TRACK TrackID/g) ?? []).length, 2);
   assert.equal((xml.match(/<\/TRACK>/g) ?? []).length, 1); // only the track with cues has a closing tag
 });
+
+test("a title with line breaks can't add entries to the M3U playlist", async () => {
+  const { m3u } = await import("../src/lib/rekordbox");
+  const out = m3u([{ id: 1, artist: "A", title: "Song\nhttp://evil.example/x.mp3\r\n#EXTINF:1,Fake", duration: 60, original_name: "s.wav", token: "t" } as never]);
+  assert.equal(out.split("\n").filter(Boolean).length, 3, out);
+});
