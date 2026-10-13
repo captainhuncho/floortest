@@ -8,7 +8,7 @@ Core product is live: sending, review, collections, Prepare/downloads, plans by 
 | # | Item | Who | Status |
 |---|---|---|---|
 | B1 | Google brand verification: paused until launch (site stays private). Domain already verified. To resubmit: make legal pages public again + a short description on the home/gate page, then "I have fixed the issues" | Owner + dev | at launch |
-| B2 | DNS update to Vercel's new addresses (saved 9 Oct) → Refresh in Vercel | Owner | check |
+| B2 | DNS update to Vercel's new addresses (saved 9 Oct) → Refresh in Vercel | Owner | ✅ checked 13 Oct: Vercel reports no change needed for `floortest.app`, `www` and `ops` |
 | B3 | Strix security test against local/preview | Owner + dev | parked, needs AI key |
 | B4 | Delete the old audio bucket `floortest-audio` (Cloudflare → R2 → floortest-audio → Settings → Delete), only if nothing went wrong since the 11 Oct move. Permanent; the app uses `floortest-audio-eu`. Also cancel the stalled Data Migration and check the temporary token `bucket-move-temp` is deleted | Owner | **on/after 18 Oct** |
 
@@ -63,7 +63,7 @@ Decided: a colleague is a **seat on an account** (label, radio, crew), not someo
 5. **Recovery copy:** ✅ code ready 12 Oct (`src/lib/vault.ts`, off until set): backups go to the vault, a nightly copy of every stored file, deletions delete the copy too. **Owner:** create a second private R2 bucket (e.g. `floortest-vault`, Western Europe) and a key with write on it and read on `floortest-audio-eu`; set `BACKUP_BUCKET`, `BACKUP_ACCESS_KEY_ID`, `BACKUP_SECRET_ACCESS_KEY` in Vercel (Production) and redeploy; check Admin → Storage & costs → Recovery copy the next morning.
 6. **Launch switches:** remove `SITE_PASSWORD`, turn on `open_signup` (Google sign-up then works without a code).
 
-**Within two weeks after launch:** audio previews (server ffmpeg → 256 kbps AAC; download stays original; needs Pro) · Google Workspace email (support@ and legal addresses; DMARC to quarantine after two clean weeks) · accessibility pass with a real screen reader + INP on a real phone.
+**Within two weeks after launch:** audio previews (server ffmpeg → 256 kbps AAC; download stays original; needs Pro) · Google Workspace email (support@ and legal addresses; DMARC to quarantine after two clean weeks). 13 Oct: the Google verification TXT is live on `floortest.app`. Still to add when the mailbox goes live: MX `smtp.google.com` (priority 1, replacing the host's `0 floortest.app`), `include:_spf.google.com` in the SPF record, Google's DKIM key from the admin console · accessibility pass with a real screen reader + INP on a real phone.
 
 **Product work from the grilling:** ✅ built 12 Oct (on `mobile-next`): the 5-day waiting nudge on the Floor · onboarding for the first track (first-track steps only, caption + QR; the email at 2 days) · "clear kept" pointing to Prepare at 80% · "Get your own link" on the receipt (once the site is public) · the north-star metric in ops.
 
