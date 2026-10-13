@@ -30,7 +30,7 @@ What FloorTest is built on, so nobody guesses. Change a tool, service or limit �
 ## Hosts
 - `floortest.app` — product (everything behind the coming-soon password until launch, legal pages included).
 - `ops.floortest.app` — ops only, own sign-in with two-factor every time; proxy splits hosts (`src/proxy.ts`).
-- DNS at the domain's cPanel host (Zone Editor): A `216.198.79.1` + `64.29.17.1`, `www`/`ops` CNAME to Vercel. Mail records belong to the host and Resend: don't touch.
+- DNS at the domain's cPanel host (Zone Editor): A `216.198.79.1` + `64.29.17.1`, `www`/`ops` CNAME to Vercel. Mail records belong to Google Workspace (MX, root SPF, `google._domainkey`) and Resend (`send`, `resend._domainkey`): don't touch.
 
 ## Limits and guards
 - Upload 250 MB per file, 3 tracks per send, 12 per folder; artwork 25 MB.
