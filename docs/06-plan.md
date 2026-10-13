@@ -82,7 +82,7 @@ Open items from `docs/archive/HANDOFF.md`, `docs/archive/CLAUDE_NEXT_WORK.md` an
 
 **Safety and operations (before public launch):**
 - Recovery copy of audio: ✅ built as the vault (launch list item 5); the owner's token and two Vercel values are what's left.
-- Backups in their own bucket with their own key (today they sit in the audio bucket under `backups/`); streamed backups once the database grows.
+- Backups in their own bucket with their own key: ✅ with the vault on, backups are written only to `floortest-vault` with the vault key, and the copies in the audio bucket age out over 14 days; 13 Oct, a bucket lock on the vault's `backups/` prefix (`backups-14-days`) means no key can delete or overwrite a backup younger than 14 days, which is also when the nightly clean-up removes them. Still to do: streamed backups once the database grows.
 - Load test on Neon's pooled connection: many uploads, page loads and the nightly jobs at once.
 - Real-device upload test: large WAVs on slow and interrupted mobile data, expired upload links, seeking, downloads.
 - Email check in Gmail, Outlook and Apple Mail (receipt, alerts, reset, unsubscribe), and bounces not retried.
