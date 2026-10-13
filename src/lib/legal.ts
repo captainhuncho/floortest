@@ -9,6 +9,13 @@ export const SHARING_TERMS_VERSION = "2026-10-draft";
 
 export const LEGAL = {
   operator: "FloorTest Labs, a company being registered in Ghana",
-  email: "info@imullar.com",
+  /** Operator contact: the Terms, legal notices, authorities (DSA point of contact) and law enforcement. */
+  email: "legal@floortest.app",
+  /** Data protection: Privacy, Cookies, privacy choices, subprocessors. */
+  privacy: "privacy@floortest.app",
+  /** Copyright and takedown notices. */
+  copyright: "copyright@floortest.app",
+  /** Security vulnerability reports. */
+  security: "security@floortest.app",
   updated: "7 October 2026",
 };

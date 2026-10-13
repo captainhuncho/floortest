@@ -25,7 +25,7 @@ export default function PrivacyChoices() {
           "Your rights",
           [
             "Wherever you live, you can ask to access, correct, delete or get a copy of your data. California residents and residents of other US states with privacy laws have these rights too, and we won't treat you differently for using them. Make a request at /contact?topic=data or by email; you can also use an authorised agent.",
-            `${LEGAL.email}`,
+            `${LEGAL.privacy}`,
           ],
         ],
         [

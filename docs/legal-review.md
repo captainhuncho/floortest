@@ -1,13 +1,13 @@
 # Brief for the lawyer (updated 13 Oct 2026)
 
-> **13 Oct 2026: company email addresses.** FloorTest now has its own mailboxes on Google Workspace (domain `floortest.app`): **support@** (help, account and contact-form messages), **legal@** (legal notices and correspondence), **privacy@** (data protection requests), **copyright@** (copyright and takedown notices), **security@** (security reports), and **team@**, which sends FloorTest's own emails and receives the replies. The Terms, Privacy and Cookie pages still show `info@imullar.com`; we haven't changed them because they're your wording. Questions 30–33 below.
+> **13 Oct 2026: start here.** Sent as `legal/FloorTest-Labs-update-2026-10-13.docx`. A lot moved between 11 and 13 Oct, so the newest changes are in one place: [What changed 11–13 Oct](#what-changed-1113-oct-2026-please-review), questions 30–39. The legal pages now show the new floortest.app addresses instead of info@imullar.com; nothing else in your wording changed.
 
 > **11 Oct 2026: sharing brief.** Controlled collection sharing (phase 4) and the live Review Together feature have their own brief: [legal/sharing-brief-2026-10-11.md](legal/sharing-brief-2026-10-11.md) (sent as `legal/FloorTest-Labs-sharing-brief-2026-10-11.docx`). It replaces questions 11–15 and section 4 below (the 1 Oct colleague-sharing model, never switched on).
 
 The drafts at /terms and /privacy were rewritten on 29 Sep 2026 to close the gaps listed further down. Owner decisions so far:
 
 - **Operator:** **FloorTest Labs**, a company being registered in **Ghana** (not the UK). Renamed from "FloorTest LTD" on 7 Oct 2026; the Terms and Privacy pages now use the new name. Governing law is set to Ghana. Complaints point to Ghana's Data Protection Commission and the user's local authority, such as the UK ICO. Add the registration number and address to `src/lib/legal.ts` once incorporated.
-- **Contact:** the legal pages still show info@imullar.com; the @floortest.app addresses exist since 13 Oct (see the note at the top) and replace it once you say which goes where.
+- **Contact:** since 13 Oct the legal pages use legal@, privacy@, copyright@ and security@floortest.app instead of info@imullar.com (see What changed 11–13 Oct; question 30).
 - **Website:** **floortest.app** (moved from floortest.imullar.com on 7 Oct 2026; old links redirect). Emails come from team@floortest.app (hello@ until 13 Oct); support@floortest.app for help and takedowns.
 - **Minimum age:** 18+. Stated in both documents, on sign-up and on the send form.
 - **Sender licence:** the receiver may listen, download, evaluate and play the track in DJ sets, live performances and broadcasts. Releasing, distributing, selling, licensing or uploading it as a release on any platform needs a separate written agreement.
@@ -31,6 +31,25 @@ The drafts at /terms and /privacy were rewritten on 29 Sep 2026 to close the gap
 13. **Resolved:** downloads are fixed at send time by the receiver's plan, and the agreement line tells the sender which applies ("listen only" or "they can listen and download"). Please confirm the wording is clear enough.
 14. **Colleague data:** because colleagues sign in, FloorTest now records which account played or downloaded each shared track, and shows those names to the receiver who shared it (not to the sender). The Privacy Policy needs a line on this. Is showing the receiver who listened acceptable without separate consent?
 15. **Takedown:** if a sender withdraws consent or reports misuse, we can switch off every share link for a track. Should the Terms give senders a right to ask for that, and a timeframe?
+
+## What changed 11–13 Oct 2026 (please review)
+
+**Live now**
+
+- **Contact addresses on the legal pages.** FloorTest has its own mailboxes on Google Workspace. The pages now use: **legal@floortest.app** as the operator contact (Terms, Content rules incl. the DSA point of contact, Law enforcement); **privacy@floortest.app** (Privacy, Cookies, Your privacy choices, Sub-processors); **copyright@floortest.app** (Takedown page and the copyright line in the Terms); **security@floortest.app** (Security page). **support@floortest.app** takes help and the contact form; **team@floortest.app** sends FloorTest's emails and receives replies. Only the addresses changed. The "Last updated" dates stay as they were, because that date is also stored as the Terms version each person accepted, and an address isn't a change to the terms. Please confirm the mapping (question 30) and say if the dates should move anyway.
+- **Google now handles company email.** Support, privacy, takedown and legal correspondence sits in Google Workspace. The Sub-processors page doesn't list Google yet (question 34).
+- **Audio storage moved to Europe** on 11 Oct: Cloudflare R2, Western Europe region (it was Eastern North America). The Sub-processors page names Cloudflare (USA) without a location (question 34).
+- **Security fixes with a privacy side (12–13 Oct):** sign-in codes and private links are hidden in our own email log, old copies too; email-change and confirmation links are stored only as fingerprints, like passwords; private artwork links last an hour instead of a day; error reports and analytics get private links without their key; turning on two-step sign-in needs the password and emails the account holder; sender codes can't be guessed by sending many tries at once.
+- **New retention points:** a deleted account's link name (e.g. floortest.app/name) is kept reserved for a year so nobody can take it to impersonate the old owner; only the name and dates are kept (question 35). Receipts no longer show when a track left the receiver's desk, because the date gave away the decision. Stems a sender uploads after a track has left are checked and discarded; their file names are kept on the track.
+- **Positioning:** on 12 Oct FloorTest started describing itself as taking released tracks too, not only unreleased music. That wording was taken back off the live site on 13 Oct and waits on preview. The Terms, Takedown page and Content rules still say "unreleased music" (question 37).
+
+**Built, behind a switch or not yet on**
+
+- **Account teams** (switch `teams`): a label or crew shares one desk with seats (Owner, A&R / Admin, Member). The activity log names the teammate beside each action; teammates see the desk's log but never the holder's sign-ins, security, plan or alert settings (question 36).
+- **Virus scanning** of uploads, our own ClamAV service. It reads every uploaded audio file, so its host is a sub-processor. The owner chooses between Fly.io (London; a new sub-processor) and Cloudflare Containers (Cloudflare is already listed). Off until then (question 38).
+- **Recovery copy:** a second private Cloudflare bucket (`floortest-vault`, Western Europe) gets a nightly copy of every stored file; deleting a file deletes its copy too. Not running until the owner adds its key (question 39).
+
+**Open owner decision touching the Terms:** whether senders keep the "evaluation only: ask before playing it out" choice, or sending means the receiver may play it. You'll get the decision before any wording.
 
 ## What changed since 1 Oct 2026 (please review)
 
@@ -177,16 +196,22 @@ FloorTest will be registered in and operated from **Ghana**, serving users world
 28. **The word "Verified":** the public mark (design name "Cue Point") says "Verified by FloorTest: this account controls the linked profile", and the Terms say it isn't an endorsement or identity guarantee and can be removed. We only check that a code appears in the bio of a profile the account controls. Is "Verified" safe enough, or should it be softer (e.g. "Profile checked")? Any liability if an impersonator is verified?
 29. **Age:** the Terms say 18+. Is a self-declaration at sign-up enough?
 
-### Email addresses (added 13 Oct 2026)
+### Email addresses and 11–13 Oct changes (added 13 Oct 2026)
 
-30. **Which address on which page:** we propose privacy@ in the Privacy and Cookie policies (data requests, complaints), legal@ as the operator's contact in the Terms, copyright@ for takedown notices in the Terms and Content rules, and support@ for everything else. Is that right, and should the Privacy Policy name one address only?
+30. **Which address on which page:** now live as listed in "What changed 11–13 Oct". Is that mapping right, and should the Privacy Policy name one address only?
 31. **Takedowns:** should copyright@ be the address in the Ghana Copyright Act notice process and, later, the US DMCA designated agent registration? Anything the notice must say about what a complaint has to include?
 32. **Data requests:** privacy@ goes to the operator's own inbox. Is an email address enough as the route for access and deletion requests, alongside the contact form, or do we need a form or postal address too?
-33. **Security reports:** should security@ be published (for example in a `security.txt` file on the site), and does it need any wording on the site?
+33. **Security reports:** security@ is on the Security page. Should it also be published in a `security.txt` file, and does the page need more wording?
+34. **Sub-processors page:** add Google (Workspace: company email) and say Cloudflare stores files in Western Europe? Anything else the entries must say?
+35. **Reserved link names:** keeping a deleted account's link name (no other data) for a year to stop impersonation: is legitimate interest enough, and should the Privacy Policy mention it?
+36. **Teams:** before switching teams on, what do the Terms and Privacy need: the account owner's responsibility for their team, and teammates seeing who did what on the shared desk?
+37. **Released tracks:** if FloorTest takes released tracks as well as unreleased ones, what changes in the Terms, Takedown page and Content rules (already in the redline list)?
+38. **Scanner host:** if the owner picks Fly.io, what has to happen first (Sub-processors page, notice period to users, data processing agreement)?
+39. **Recovery copy:** does the Privacy Policy's backup wording cover a full nightly copy of stored files in a second bucket, deleted along with the original?
 
 ## 7. Before invites go out
 
-1. ~~Set `SUPPORT_EMAIL` (and ideally a published privacy@ address).~~ Done 13 Oct: `SUPPORT_EMAIL` is support@floortest.app; privacy@ exists, waiting on question 30 to appear on the pages.
+1. ~~Set `SUPPORT_EMAIL` (and ideally a published privacy@ address).~~ Done 13 Oct: `SUPPORT_EMAIL` is support@floortest.app; privacy@floortest.app is on the Privacy, Cookies, privacy choices and Sub-processors pages.
 2. Fix the IP retention wording or run the purge more often.
 3. Confirm the R2 bucket jurisdiction.
 4. Add the operator name and contact to both pages.

@@ -34,7 +34,7 @@ export default function Subprocessors() {
         [
           "Contact",
           [
-            `${LEGAL.email}`,
+            `${LEGAL.privacy}`,
           ],
         ],
       ]}

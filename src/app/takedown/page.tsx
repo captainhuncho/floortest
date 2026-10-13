@@ -59,7 +59,7 @@ export default function Takedown() {
         [
           "Contact",
           [
-            `${LEGAL.email}`,
+            `${LEGAL.copyright}`,
           ],
         ],
       ]}

@@ -55,7 +55,7 @@ export default async function Cookies() {
         ],
         [
           "Contact",
-          [`Questions about this policy: ${LEGAL.email}. See also our Privacy Policy.`],
+          [`Questions about this policy: ${LEGAL.privacy}. See also our Privacy Policy.`],
         ],
       ]}
     />
