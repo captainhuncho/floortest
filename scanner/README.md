@@ -31,10 +31,11 @@ always on: about $20 a month) and CPU only as used (a few dollars at beta size).
 > the bucket). First start failed because Cloudflare starts containers with an empty `/run`; `start.sh` now makes
 > `/run/clamav` itself, and the image moved to Alpine 3.22 (ClamAV 1.4.3; 1.2.2 was flagged outdated). EICAR on the
 > real bucket (`audio/test/eicar.wav`, read with the scanner's own read-only key) came back `Eicar-Test-Signature`;
-> test file deleted. Running in London (`lhr15`). Left: `SCAN_URL` and `SCAN_SECRET` in Vercel **Production only**
-> (preview uses its own bucket, which this key can't read, so preview uploads would be refused).
-> 14 Oct: on in production from 17:57 UTC. Between 16:14 and 17:57 a deploy had `SCAN_URL` but not yet `SCAN_SECRET`, so the
-> scanner answered 401 and uploads were refused (failed closed); see step 6.
+> test file deleted. Running in London (`lhr15`). **Live on floortest.app from 18:03 UTC:** `SCAN_URL` and `SCAN_SECRET`
+> in Vercel **Production only** (preview uses its own bucket, which this key can't read, so preview uploads would be
+> refused); a test track was scanned and reached the desk. The first tries answered 401: the secret pasted into Vercel
+> wasn't the one in the file. Set it from the file instead of the clipboard (step 6).
+> Before that, from 16:14 a deploy had `SCAN_URL` but no `SCAN_SECRET` yet, so uploads were refused (failed closed).
 
 ## Set up
 
@@ -55,9 +56,14 @@ always on: about $20 a month) and CPU only as used (a few dollars at beta size).
 5. **Prove it catches something on the real bucket:** upload the EICAR test string to `audio/test/eicar.wav`, call
    `/scan` with that key and the secret: the answer must be `{"clean":false,"signature":"Eicar-Test-Signature"}`. Delete
    the test file afterwards.
-6. **Turn it on in the app (owner):** in Vercel (Production), set `SCAN_SECRET` (the same secret) **first**, then `SCAN_URL`
-   (the workers.dev address), and redeploy only once both are in: a deploy with the address but no secret refuses every upload. Send a test track and check it arrives; `npx wrangler tail` shows the scan (folder
-   and verdict only, never the file name).
+6. **Turn it on in the app (owner):** set both values in Vercel **Production only**, `SCAN_SECRET` **before** `SCAN_URL`
+   (a deploy with the address but no secret refuses every upload), the secret straight from the file
+   so no clipboard is involved (a paste mismatch shows up in ops as `scanner answered 401`):
+   ```bash
+   tr -d '\n' < ~/floortest-scan-secret.txt | npx vercel env add SCAN_SECRET production
+   ```
+   `SCAN_URL` is the workers.dev address. Redeploy production and wait for Ready before testing (sends during the build
+   still run on the old deployment). Send a test track; it should reach the desk with no new incident in ops.
 7. **Monitoring:** add the `/health` address to the uptime monitor (UptimeRobot) next to `/api/health`.
 
 To turn scanning off quickly, remove `SCAN_URL` in Vercel and redeploy.
