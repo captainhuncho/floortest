@@ -46,6 +46,8 @@ export function proxy(req: NextRequest) {
 }
 
 export const config = {
-  // Everything except Next's own files and static assets.
-  matcher: ["/((?!_next/|favicon|icons/|fonts/|images/|.*\\.(?:png|jpg|jpeg|svg|webp|ico|txt|xml|woff2?)$).*)"],
+  // Everything except Next's own files and static assets, and the local-storage upload route (test copies only;
+  // it checks its own signed token). Requests through the proxy keep only the first 10 MB of a body, which cut
+  // bigger local uploads short; the live site uploads straight to Cloudflare and never comes through here.
+  matcher: ["/((?!_next/|favicon|icons/|fonts/|images/|api/storage/upload|.*\\.(?:png|jpg|jpeg|svg|webp|ico|txt|xml|woff2?)$).*)"],
 };
