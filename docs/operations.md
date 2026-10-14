@@ -102,7 +102,7 @@ So a storage outage can delay a deletion but can never lose track of a file. Wit
 - **Admin:** listed email, confirmed email and two-factor are all required, and every admin action is logged (**Admin → Admin log**). Two-factor resets need the user's handle typed in, plus a note on how you confirmed it's them.
 - **Abuse:** rate limits per connection and per email address on uploads, logins, contact and waitlist; Turnstile on public forms; IP addresses are kept at most 48 hours.
 - **Blocking abusers:** per receiver, by the receiver; platform-wide by email address or domain in **Admin → Sender blocks**.
-- **Uploads:** checked by file content (RIFF/MPEG structure, no trailing payloads), not by name. There's no antivirus scan yet, a known beta limitation.
+- **Uploads:** checked by file content (RIFF/MPEG structure, no trailing payloads), not by name. Every track and stem is then scanned by our own ClamAV service (`scanner/`, `src/lib/scan.ts`; live since 14 Oct): a flagged file is refused and discarded; if the scanner can't be reached the upload is refused with "try again" and the browser retries for about 30 s. Preview uploads aren't scanned.
 
 ## When something goes wrong
 
