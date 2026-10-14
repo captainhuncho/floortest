@@ -171,12 +171,12 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
     <>
     {!view && !user.email_verified_at && <VerifyBanner email={user.email} />}
     {/*
-      Two sides of the desk. Left: what needs you (the waiting count, the one lime button, anything wrong, the next
-      tracks, what's ready for a set). Right: the desk itself (your link, the week's readings, sending music). One
-      column below 1280px, left then right, with the readings before the link as they always were there.
+      One column at every width (owner, 14 Oct). First what needs you (the waiting count, the one lime button, anything
+      wrong, the next tracks, what's ready for a set); below it the desk itself, as it looks beside the work: your link,
+      the week's readings and the desk in one panel, sending music.
     */}
-    <div className="page-gutter flex flex-col gap-8 py-5 sm:py-8 xl:grid xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start xl:gap-x-12 2xl:grid-cols-[minmax(0,1fr)_24rem]">
-      <div className="page-narrow flex min-w-0 flex-col gap-8 xl:max-w-none">
+    <div className="page-gutter flex flex-col gap-8 py-5 sm:py-8">
+      <div className="page-narrow flex min-w-0 flex-col gap-8">
         {/* What needs you: the waiting count under the greeting, and the one button is the daily job. */}
         <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
           <div className="flex min-w-0 flex-col gap-1.5">
@@ -257,7 +257,10 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
         )}
       </div>
 
-      <div className="page-narrow flex min-w-0 flex-col gap-8 xl:max-w-none">
+      <div className="page-narrow flex min-w-0 flex-col gap-8">
+
+        {/* The link heads the desk part, under a rule that ends the work above. */}
+        {!fresh && <div className="border-t border-line pt-8">{linkSection}</div>}
 
         {/* The desk's readings: one panel, cells divided by 1px rules (not tiles). The week on top, the desk under it. */}
         {(week.length > 0 || !fresh) && (
@@ -266,9 +269,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
               <section aria-labelledby="week-h">
                 <h2 id="week-h" className="eyebrow px-4 pt-3.5 pb-2.5">This week</h2>
                 <dl
-                  className={`grid grid-cols-2 gap-px border-t border-line bg-line sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none xl:grid-flow-row xl:grid-cols-2 ${
-                    week.length % 2 ? "[&>div:last-child]:col-span-2 sm:[&>div:last-child]:col-span-1 xl:[&>div:last-child]:col-span-2" : ""
-                  }`}
+                  className={`grid grid-cols-2 gap-px border-t border-line bg-line ${week.length % 2 ? "[&>div:last-child]:col-span-2" : ""}`}
                 >
                   {week.map((w) => (
                     <div key={w.key} className="flex min-w-0 flex-col gap-2 bg-ink-3 px-4 py-3.5">
@@ -311,12 +312,9 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
           </div>
         )}
 
-        {/* Below 1280px the link follows the readings, as it always has; beside the work it heads the desk column. */}
-        {!fresh && <div className="border-t border-line pt-5 xl:order-first xl:border-t-0 xl:pt-0">{linkSection}</div>}
-
         {/* On a team desk, Members can't send as the account. */}
         {user.role !== "member" && (
-          <div className="border-t border-line pt-5 xl:border-t-0 xl:pt-0">
+          <div>
             <SendMusicCard recent={recentSends} host={APP_URL.replace(/^https?:\/\//, "")} />
           </div>
         )}
