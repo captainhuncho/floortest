@@ -36,7 +36,7 @@ A collection shared with your account (/c/a.<n>) remembers itself and is where s
 
 ## Receiver: daily loop
 ```
-Floor (waiting count ─► Start reviewing; Up next rows open the track) ─► Queue (phones: player first, list under it) ─► play ─► Keep (K) ──► Prepare ─► Download kept ─► name folder ─► ZIP
+Floor (waiting count ─► Start reviewing; Up next rows open the track) ─► Queue (phones: list first; a track opens with the rail docked at the bottom) ─► play ─► Keep (K) ──► Prepare ─► Download kept ─► name folder ─► ZIP
                               ├─ Not for me (X)    └─ Files only · Start a new batch (confirm) · Played it out (any day)
                               └─ Reply (R) ──► sender email
 Review panel: title · one meta line · tags (sets / release / AI / duplicate / deleting soon) ─► waveform (1–4 jump) ─► Keep · Not for me · Reply ─► next track plays
