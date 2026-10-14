@@ -25,6 +25,9 @@ Same format as the other panels: one or two lines per voice, one recommendation,
 5. Checks before every push; e2e when sending, review, downloads, receipts or auth change.
 6. Several sessions share one checkout: commit only your own changes, leave the rest.
 7. Secrets, deletions, sign-ins, dashboard settings and legal wording are the owner's.
+8. Before shipping, check what `main` already has: another session may have shipped it (14 Oct: batches 1–4 and the home went out from one session while another was building the same ship).
+9. Before editing, confirm which checkout you're in (`git rev-parse --show-toplevel`); never edit the shared checkout while another session has uncommitted work there.
+10. Don't delete branches, local or on GitHub, unless the owner asks, even merged ones.
 
 ## Round one, 14 Oct: how should the work run up to the beta?
 
@@ -98,3 +101,6 @@ What is on preview and not live: batch 1 (lime only for Keep and the one main ca
 - 14 Oct: beta moved to Monday 19 Oct (owner); the 17 Oct widening is dropped. Scanner host: Cloudflare Containers (owner).
 - 14 Oct: virus scanner live on floortest.app (Cloudflare Containers, London): test track scanned and on the desk at 18:03 UTC. One of the two beta blockers cleared; the lawyer's wording remains.
 - 14 Oct: product panel recommends shipping batch 1 + home copy before 17 Oct and holding batches 2 and 3 to beta week, pending the owner.
+- 14 Oct: batches 1–4 and the new home with the shorter copy shipped from another session (production `8159ac8`); the round two hold on batches 2 and 3 was overtaken by the owner's call.
+- 14 Oct: account types shipped (production `28941c4`, migration 0095): seven types, tools on by default and never locked, Played out the first tool. Product panel round in the session; owner chose split Artist / Curator, defaults, build now.
+- 14 Oct, slips on that ship, recorded so they don't repeat: `mobile-next` was pushed 32 s after `main` instead of 60; a merged branch (`scanner-cloudflare`) was deleted on GitHub without being asked; doc edits first landed in the shared checkout beside another session's uncommitted work and were moved out by hand. Rules 8–10 above come from this.
