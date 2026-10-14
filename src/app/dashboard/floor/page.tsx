@@ -274,14 +274,13 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
             {week.length > 0 && (
               <section aria-labelledby="week-h">
                 <h2 id="week-h" className="eyebrow px-4 pt-3.5 pb-2.5">This week</h2>
-                <dl
-                  className={`grid grid-cols-2 gap-px border-t border-line bg-line sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none ${week.length % 2 ? "[&>div:last-child]:col-span-2 sm:[&>div:last-child]:col-span-1" : ""}`}
-                >
+                {/* A phone reads it as a plain list (label left, figure right); from sm it's one row of four readings. */}
+                <dl className="grid grid-cols-1 gap-px border-t border-line bg-line sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none">
                   {week.map((w) => (
-                    <div key={w.key} className="flex min-w-0 flex-col gap-1 bg-ink-3 px-4 py-3">
-                      <dt className="eyebrow truncate">{w.label}</dt>
-                      <dd className="tnum text-[22px] font-bold leading-7 text-bone">{w.value}</dd>
-                      <dd className="text-[11px] leading-4 text-dim">{w.sub}</dd>
+                    <div key={w.key} className="flex min-w-0 items-baseline justify-between gap-3 bg-ink-3 px-4 py-2.5 sm:flex-col sm:items-start sm:justify-start sm:gap-1 sm:py-3">
+                      <dt className="truncate text-[13px] text-mute sm:eyebrow">{w.label}</dt>
+                      <dd className="tnum text-[15px] font-bold text-bone sm:text-[22px] sm:leading-7">{w.value}</dd>
+                      <dd className="hidden text-[11px] leading-4 text-dim sm:block">{w.sub}</dd>
                     </div>
                   ))}
                 </dl>
@@ -290,8 +289,8 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
             {!fresh && (
               <section aria-labelledby="desk-h" className={week.length ? "border-t border-line" : ""}>
                 <h2 id="desk-h" className="eyebrow px-4 pt-3.5 pb-2.5">Your desk</h2>
-                {/* One row of small cells from sm (two across on a phone), each a link to where it's managed. */}
-                <ul className={`grid grid-cols-2 gap-px border-t border-line bg-line sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none ${desk.length % 2 ? "[&>li:last-child]:col-span-2 sm:[&>li:last-child]:col-span-1" : ""}`}>
+                {/* One line each on a phone, a row of small cells from sm; each a link to where it's managed. */}
+                <ul className="grid grid-cols-1 gap-px border-t border-line bg-line sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none">
                   {desk.map((d) => {
                     // The figure leads in bone, like a readout; the link's name stays the whole sentence.
                     const [, n, rest] = /^([\d,]+)(.*)$/.exec(d.text) ?? [null, "", d.text];
