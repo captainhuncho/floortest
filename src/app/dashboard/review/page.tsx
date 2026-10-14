@@ -13,6 +13,7 @@ import { TrackList, type Row } from "../TrackList";
 import { ViewToggle } from "../ViewToggle";
 import { FilterMenu } from "../list/FilterMenu";
 import { StatusTabs } from "./StatusTabs";
+import { CaughtUp } from "./CaughtUp";
 import { VIEW_COOKIE } from "../view-cookie";
 
 export const metadata = { title: "Queue — FloorTest" };
@@ -117,6 +118,8 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
   const prevRow = idx > 0 ? rows[idx - 1] : undefined;
   // Opening a track (t in the URL) is full review on narrow screens: the list steps aside until "Back".
   const focused = !!sp.t && !!selected;
+  // Deciding this one leaves nothing waiting: the review lands on "All caught up." instead of a next track.
+  const lastWaiting = status === "review" && !!selected && rows.every((r) => r.id === selected.id);
 
   const totalActive = collections.reduce((n, c) => n + c.count, 0);
 
@@ -174,16 +177,14 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
           {totalActive === 0 && !search ? (
             <EmptyDesk link={`${APP_URL}/${user.handle}`} welcome={!!sp.welcome} />
           ) : rows.length === 0 ? (
-            <div className="rounded-xl border border-line py-16 text-center">
-              <p className="font-medium">
-                {search ? `Nothing matches “${search}”.` : status === "review" ? "Nothing waiting. You're all caught up." : "Nothing here yet."}
-              </p>
-              {status === "review" && counts.kept > 0 && (
-                <Link href={href({ s: "kept", t: undefined })} className="mt-3 inline-block text-lime underline underline-offset-4">
-                  Prepare your {counts.kept} kept track{counts.kept === 1 ? "" : "s"} for a set →
-                </Link>
-              )}
-            </div>
+            status === "review" && !search ? (
+              // The same state the one-by-one review lands on after the last waiting track is decided.
+              <CaughtUp kept={counts.kept} link={`${APP_URL}/${user.handle}`} />
+            ) : (
+              <div className="rounded-xl border border-line py-16 text-center">
+                <p className="font-medium">{search ? `Nothing matches “${search}”.` : "Nothing here yet."}</p>
+              </div>
+            )
           ) : (
             <TrackList
               rows={rows}
@@ -198,7 +199,10 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
       {selected && sender && (
         <aside
           aria-label="Review"
-          className={`${focused ? "" : "border-t max-md:order-first max-md:border-t-0 max-md:border-b"} border-line bg-ink-2/60 xl:sticky xl:top-[68px] xl:h-[calc(100dvh-68px)] xl:self-start xl:overflow-y-auto xl:border-t-0 xl:border-l`}
+          // Phones: the list comes first (title, status tabs, tracks); a track opens into full review with the decision
+          // rail docked at the bottom, so the tab bar and mini player step aside while it's open (globals.css).
+          data-review-open={focused ? "" : undefined}
+          className={`${focused ? "" : "border-t max-md:hidden"} border-line bg-ink-2/60 xl:sticky xl:top-[68px] xl:h-[calc(100dvh-68px)] xl:self-start xl:overflow-y-auto xl:border-t-0 xl:border-l`}
         >
           {focused && (
             // Phones: Figma "Header" (← QUEUE / Now reviewing); the transport below has previous and next.
@@ -243,6 +247,9 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
             selfHref={href({ t: String(selected.id) })}
             next={nextRow ? { href: href({ t: String(nextRow.id) }), track: toPlayer(nextRow) } : null}
             prevHref={prevRow ? href({ t: String(prevRow.id) }) : null}
+            queueHref={href({ t: undefined })}
+            lastWaiting={lastWaiting}
+            docked={focused}
           />
         </aside>
       )}

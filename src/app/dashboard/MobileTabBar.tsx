@@ -24,6 +24,7 @@ export function MobileTabBar({ needsReview }: { needsReview: number }) {
   return (
     <nav
       aria-label="Main"
+      data-tabbar
       className="keep-night fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-40 flex w-[min(21rem,calc(100%-3rem))] -translate-x-1/2 items-center justify-between gap-1 rounded-[28px] border border-white/[0.07] bg-gradient-to-b from-[#24261f] to-[#141512] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_2px_4px_rgba(0,0,0,0.5),0_14px_30px_-6px_rgba(0,0,0,0.75)] md:hidden"
     >
       {tabs.map((t) => (

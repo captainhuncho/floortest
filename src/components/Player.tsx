@@ -212,7 +212,7 @@ export function PlayerBar() {
   return (
     <>
       {/* Phones (Figma "Mini Player"): floats above the tab bar and stays put across screens. */}
-      <div className="fixed inset-x-4 bottom-[calc(max(1rem,env(safe-area-inset-bottom))+72px)] z-30 flex items-center gap-3 rounded-2xl border border-ink-4 bg-ink p-3 md:hidden">
+      <div data-mini-player className="fixed inset-x-4 bottom-[calc(max(1rem,env(safe-area-inset-bottom))+72px)] z-30 flex items-center gap-3 rounded-2xl border border-ink-4 bg-ink p-3 md:hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icons/mini-art.svg" alt="" className="size-11 shrink-0" />
         {/* The title opens the track; the waveform beside it only seeks, so one tap never does both. */}

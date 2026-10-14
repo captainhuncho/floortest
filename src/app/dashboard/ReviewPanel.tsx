@@ -24,6 +24,7 @@ import { History } from "./History";
 import { PanelDetails } from "./PanelDetails";
 import { commentsFor, shortlistOf, teamSize } from "@/lib/team";
 import { ReviewTogether } from "./ReviewTogether";
+import { ArrivalFocus, SwipeZone } from "./ReviewHandoff";
 
 export async function ReviewPanel({
   track: t,
@@ -32,6 +33,9 @@ export async function ReviewPanel({
   selfHref,
   next,
   prevHref,
+  queueHref,
+  lastWaiting,
+  docked,
 }: {
   track: Track;
   sender: Sender;
@@ -39,6 +43,12 @@ export async function ReviewPanel({
   selfHref: string;
   next: { href: string; track: PlayerTrack } | null;
   prevHref: string | null;
+  /** The Queue without a track open, where the review lands once nothing is waiting. */
+  queueHref: string;
+  /** Deciding this track leaves nothing waiting in the view. */
+  lastWaiting: boolean;
+  /** Phones, track open: the decision rail docks at the bottom of the screen. */
+  docked: boolean;
 }) {
   const receiverPlan = (await q.get<{ plan: string }>("SELECT plan FROM users WHERE id = ?", t.user_id))?.plan ?? "free";
   const stemsOn = await featureOn("stems", { id: t.user_id, plan: receiverPlan });
@@ -172,72 +182,79 @@ export async function ReviewPanel({
 
   const art = artFrom ? `/api/track-art/${artFrom.id}?v=${encodeURIComponent(artFrom.art_key)}` : null;
 
+  const rail = (dock: boolean) => (
+    <DecisionRail
+      docked={dock}
+      track={{ ...player, decision: t.decision }}
+      senderName={sender.name}
+      selfHref={selfHref}
+      next={next}
+      prevHref={prevHref}
+      queueHref={queueHref}
+      lastWaiting={lastWaiting}
+      onReply={replyToSender.bind(null, sender.id, t.id)}
+    />
+  );
+
   return (
-    <div className="p-4 sm:p-6" data-swipe-zone>
+    <div className="p-4 sm:p-6" data-review-panel>
+      <ArrivalFocus target={t.id} />
       {/* Phones: Figma "08 Full Player / DJ Review" */}
       <div className="md:hidden">
-        <div className="flex items-center gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={art ?? "/icons/review-art.svg"} alt="" className="size-[52px] shrink-0 rounded object-cover" />
-          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <h2 className="truncate text-base font-bold text-bone">{t.title}</h2>
-            <p className="truncate text-xs text-mute">
-              {t.artist}
-              {t.isrc && <span title="ISRC"> · {t.isrc}</span>}
-            </p>
+        <SwipeZone trackId={t.id}>
+          <div className="flex items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={art ?? "/icons/review-art.svg"} alt="" className="size-[52px] shrink-0 rounded object-cover" />
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <h2 data-track-title={t.id} tabIndex={-1} className="truncate text-base font-bold text-bone outline-none">{t.title}</h2>
+              <p className="truncate text-xs text-mute">
+                {t.artist}
+                {t.isrc && <span title="ISRC"> · {t.isrc}</span>}
+              </p>
+            </div>
           </div>
-        </div>
-        {meta && <p className="mt-3 text-[13px] font-bold text-bone tnum">{meta}</p>}
-        {tags}
-        {releaseBlock}
-        <MobileTransport track={player} prevHref={prevHref} nextHref={next?.href ?? null} />
-        {message}
-        {/* The rail mounts after the screen size is known (one rail, one set of shortcuts); its room is kept so nothing jumps. */}
-        <div className="mt-3.5 min-h-[100px]">
-          <MobileOnly>
-          <DecisionRail
-            track={{ ...player, decision: t.decision }}
-            senderName={sender.name}
-            selfHref={selfHref}
-            next={next}
-            prevHref={prevHref}
-            onReply={replyToSender.bind(null, sender.id, t.id)}
-          />
-          </MobileOnly>
-        </div>
+          {meta && <p className="mt-3 text-[13px] font-bold text-bone tnum">{meta}</p>}
+          {tags}
+          {releaseBlock}
+          <MobileTransport track={player} prevHref={prevHref} nextHref={next?.href ?? null} />
+        </SwipeZone>
+        {message && <div data-leave-fade>{message}</div>}
+        {docked && (
+          <>
+            {/* The rail mounts once the screen size is known (one rail, one set of shortcuts); this dark strip holds its
+                place at the bottom until then, so nothing jumps. */}
+            <div aria-hidden className="keep-night fixed inset-x-0 bottom-0 z-40 h-[calc(64px+max(0.75rem,env(safe-area-inset-bottom)))] bg-[#141512]" />
+            <MobileOnly>{rail(true)}</MobileOnly>
+          </>
+        )}
       </div>
 
       <div className="hidden md:block">
-      {art && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={art} alt={`Artwork for ${t.title}`} className="mb-4 size-40 rounded-md border border-line object-cover" />
-      )}
-      <p className="label">Now reviewing</p>
-      <h2 className="mt-2 text-2xl font-bold leading-tight tracking-tight">{t.title}</h2>
-      <p className="mt-1 text-mute">{t.artist}</p>
-      {meta && <p className="mt-1 font-bold tnum">{meta}</p>}
-      {tags}
-      {releaseBlock}
+        <SwipeZone trackId={t.id}>
+          {art && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={art} alt={`Artwork for ${t.title}`} className="mb-4 size-40 rounded-md border border-line object-cover" />
+          )}
+          <p className="label">Now reviewing</p>
+          <h2 data-track-title={t.id} tabIndex={-1} className="mt-2 text-2xl font-bold leading-tight tracking-tight outline-none">{t.title}</h2>
+          <p className="mt-1 text-mute">{t.artist}</p>
+          {meta && <p className="mt-1 font-bold tnum">{meta}</p>}
+          {tags}
+          {releaseBlock}
 
-      <div className="mt-5">
-        <DetailPlayer track={player} />
-      </div>
-      {message}
-
-      <div className="mt-5 min-h-[92px]">
-        <DesktopOnly>
-          <DecisionRail
-            track={{ ...player, decision: t.decision }}
-            senderName={sender.name}
-            selfHref={selfHref}
-            next={next}
-            prevHref={prevHref}
-            onReply={replyToSender.bind(null, sender.id, t.id)}
-          />
-        </DesktopOnly>
-      </div>
+          <div className="mt-5">
+            <DetailPlayer track={player} />
+          </div>
+        </SwipeZone>
+        <div data-leave-fade>
+          {message}
+          <div className="mt-5 min-h-[92px]">
+            <DesktopOnly>{rail(false)}</DesktopOnly>
+          </div>
+        </div>
       </div>
 
+      <div data-leave-fade>
       {t.decision === "kept" && (
         <>
           <div className="mt-4">
@@ -292,8 +309,7 @@ export async function ReviewPanel({
         </dl>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          {/* Phones already have Download on the decision rail. */}
-          <a href={`/api/tracks/${t.id}/download`} className="btn-ghost btn-sm hidden md:inline-flex">
+          <a href={`/api/tracks/${t.id}/download`} className="btn-ghost btn-sm">
             Download original
           </a>
           <form action={moveTrack.bind(null, t.id)} className="flex">
@@ -362,6 +378,7 @@ export async function ReviewPanel({
           </div>
         </section>
       </PanelDetails>
+      </div>
     </div>
   );
 }

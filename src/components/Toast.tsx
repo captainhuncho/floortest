@@ -111,7 +111,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ show, undoLatest }}>
       {children}
-      <div aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-24 z-40 flex justify-center px-4">
+      <div aria-live="polite" data-toast-region className="pointer-events-none fixed inset-x-0 bottom-24 z-40 flex justify-center px-4">
         {toast && (
           // One stable element: a new message swaps its text in place instead of replaying the entrance.
           <div
