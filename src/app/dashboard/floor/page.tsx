@@ -115,12 +115,19 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   // A quiet desk has nothing to report yet; the readout appears once something has happened. Same facts as ever, set
   // out as one strip of readings: the number is the point, the label says what it counts, the line under it its scope.
   const delta = stats.receivedWeek - stats.receivedPrev;
+  // Phones keep the Floor's earlier lines (owner, 14 Oct): the week's facts and the desk as one sentence each.
+  const facts = stats.receivedWeek + stats.receivedPrev + stats.keptWeek === 0 && !stats.listenedSample ? [] : [
+    `${stats.receivedWeek} received this week${stats.receivedWeek !== stats.receivedPrev ? ` (${stats.receivedWeek > stats.receivedPrev ? "up" : "down"} from ${stats.receivedPrev})` : ""}`,
+    `${stats.keptWeek} kept this week`,
+    stats.medianListenMs !== null ? `first listen usually within ${waitWords(stats.medianListenMs)}` : null,
+    stats.decisionRate !== null ? `${stats.decisionRate}% of the last 30 days decided` : null,
+  ].filter(Boolean);
   const week: { key: string; label: string; value: string; sub: string }[] =
     stats.receivedWeek + stats.receivedPrev + stats.keptWeek === 0 && !stats.listenedSample
       ? []
       : [
           { key: "in", label: "Received", value: String(stats.receivedWeek), sub: delta === 0 ? "Same as last week" : `${delta > 0 ? "+" : "−"}${Math.abs(delta)} on last week` },
-          { key: "kept", label: "Kept", value: String(stats.keptWeek), sub: "" },
+          { key: "kept", label: "Kept", value: String(stats.keptWeek), sub: "This week" },
           ...(stats.medianListenMs !== null ? [{ key: "listen", label: "First listen", value: waitShort(stats.medianListenMs), sub: "Typical, 30 days" }] : []),
           ...(stats.decisionRate !== null ? [{ key: "decided", label: "Decided", value: `${stats.decisionRate}%`, sub: "Last 30 days" }] : []),
         ];
@@ -155,7 +162,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
           {problem
             ? "Not taking uploads right now"
             : active
-              ? `To “${active.name}”${active.closes_at ? ` until ${fmtDay(active.closes_at)}` : ""}`
+              ? `Sends tracks to “${active.name}”${active.closes_at ? `, open until ${fmtDay(active.closes_at)}` : ""}`
               : "No collection selected"}
           {" · "}
           <Link href="/dashboard/collections" className="text-mute underline-offset-4 hover:text-bone hover:underline">
@@ -171,12 +178,12 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
     <>
     {!view && !user.email_verified_at && <VerifyBanner email={user.email} />}
     {/*
-      Two sides of the desk. Left: what needs you (the waiting count, the one lime button, anything wrong, the next
-      tracks, what's ready for a set). Right: the desk itself (your link, the week's readings, sending music). One
-      column below 1280px, left then right, with the readings before the link as they always were there.
+      One centred column at every width (owner, 14 Oct). First what needs you (the waiting count, the one lime button, anything
+      wrong, the next tracks, what's ready for a set); below it the desk itself, as it looks beside the work: your link,
+      the week's readings and the desk in one panel, sending music.
     */}
-    <div className="page-gutter flex flex-col gap-8 py-5 sm:py-8 xl:grid xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start xl:gap-x-12 2xl:grid-cols-[minmax(0,1fr)_24rem]">
-      <div className="page-narrow flex min-w-0 flex-col gap-8 xl:max-w-none">
+    <div className="page-gutter flex flex-col gap-8 py-5 sm:py-8">
+      <div className="page-narrow mx-auto flex w-full min-w-0 flex-col gap-8">
         {/* What needs you: the waiting count under the greeting, and the one button is the daily job. */}
         <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
           <div className="flex min-w-0 flex-col gap-1.5">
@@ -186,7 +193,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
                 welcome
                   ? "Your link is ready. Share it and the first track lands here."
                   : stats.waiting
-                    ? `${stats.waiting} track${stats.waiting === 1 ? "" : "s"} waiting${oldest ? ` · oldest ${ago(oldest)}` : ""}.`
+                    ? `${stats.waiting} track${stats.waiting === 1 ? " is" : "s are"} waiting for you${oldest ? `; the oldest arrived ${ago(oldest)}` : ""}.`
                     : kept
                       ? `You're all caught up. ${kept} kept track${kept === 1 ? " is" : "s are"} ready for your set.`
                       : "You're all caught up. New tracks will show up here first."
@@ -247,7 +254,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
               <p className="text-[12px] text-dim">
                 {nearLimit
                   ? `Your desk is nearly full (${cap.used} of ${cap.limit}). Download them, then delete the ones you're done with to make room.`
-                  : "With a Rekordbox playlist."}
+                  : "Download them as a crate with a Rekordbox playlist."}
               </p>
             </div>
             <Link href="/dashboard/prepare" className="btn-ghost btn-sm shrink-0">
@@ -257,24 +264,60 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
         )}
       </div>
 
-      <div className="page-narrow flex min-w-0 flex-col gap-8 xl:max-w-none">
+      <div className="page-narrow mx-auto flex w-full min-w-0 flex-col gap-8">
 
-        {/* The desk's readings: one panel, cells divided by 1px rules (not tiles). The week on top, the desk under it. */}
+        {/*
+          Phones: the Floor as it was before the 14 Oct design pass (owner, 14 Oct): This week and Your desk as one line
+          each, then Your link and Send music, each under a rule. From sm: the link and sending side by side, then the panel.
+        */}
+        {facts.length > 0 && (
+          <section aria-labelledby="week-m-h" className="flex flex-col gap-1.5 border-t border-line pt-5 sm:hidden">
+            <h2 id="week-m-h" className="eyebrow">This week</h2>
+            <p className="text-[13px] leading-6 text-mute">{facts.join(" · ")}.</p>
+          </section>
+        )}
+        {!fresh && (
+          <section aria-labelledby="desk-m-h" className="flex flex-col gap-1.5 border-t border-line pt-5 sm:hidden">
+            <h2 id="desk-m-h" className="eyebrow">Your desk</h2>
+            <p className="text-[13px] leading-6 text-mute">
+              {desk.map((d, i) => (
+                <span key={d.key}>
+                  {i > 0 && " · "}
+                  <Link href={d.href} className={`tnum underline-offset-4 hover:underline ${d.urgent ? "font-semibold text-lime" : "hover:text-bone"}`}>
+                    {d.text}
+                  </Link>
+                </span>
+              ))}
+              .
+            </p>
+          </section>
+        )}
+
+        {(!fresh || user.role !== "member") && (
+          <div className="grid grid-cols-1 gap-5 border-t border-line pt-5 sm:grid-cols-2 sm:gap-6 sm:pt-8">
+            {!fresh && linkSection}
+            {/* On a team desk, Members can't send as the account. */}
+            {user.role !== "member" && (
+              <div className={!fresh ? "border-t border-line pt-5 sm:border-t-0 sm:pt-0" : ""}>
+                <SendMusicCard recent={recentSends} host={APP_URL.replace(/^https?:\/\//, "")} />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* From sm, the desk's readings: one panel, cells divided by 1px rules (not tiles). The week on top, the desk under it. */}
         {(week.length > 0 || !fresh) && (
-          <div className="panel overflow-hidden">
+          <div className="panel hidden overflow-hidden sm:block">
             {week.length > 0 && (
               <section aria-labelledby="week-h">
                 <h2 id="week-h" className="eyebrow px-4 pt-3.5 pb-2.5">This week</h2>
-                <dl
-                  className={`grid grid-cols-2 gap-px border-t border-line bg-line sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none xl:grid-flow-row xl:grid-cols-2 ${
-                    week.length % 2 ? "[&>div:last-child]:col-span-2 sm:[&>div:last-child]:col-span-1 xl:[&>div:last-child]:col-span-2" : ""
-                  }`}
-                >
+                {/* One row of readings at every width, like the desk's readout. */}
+                <dl className="grid auto-cols-fr grid-flow-col gap-px border-t border-line bg-line">
                   {week.map((w) => (
-                    <div key={w.key} className="flex min-w-0 flex-col gap-2 bg-ink-3 px-4 py-3.5">
-                      <dt className="eyebrow truncate">{w.label}</dt>
-                      <dd className="tnum text-stat font-bold text-bone">{w.value}</dd>
-                      {w.sub && <dd className="text-[11px] leading-4 text-dim">{w.sub}</dd>}
+                    <div key={w.key} className="flex min-w-0 flex-col gap-1 bg-ink-3 px-3 py-3 sm:px-4">
+                      <dt className="eyebrow leading-[14px] sm:truncate">{w.label}</dt>
+                      <dd className="mt-auto tnum text-[20px] font-bold leading-7 text-bone sm:text-[22px]">{w.value}</dd>
+                      <dd className="text-[10px] leading-[14px] text-dim sm:text-[11px] sm:leading-4">{w.sub}</dd>
                     </div>
                   ))}
                 </dl>
@@ -282,16 +325,17 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
             )}
             {!fresh && (
               <section aria-labelledby="desk-h" className={week.length ? "border-t border-line" : ""}>
-                <h2 id="desk-h" className="eyebrow px-4 pt-3.5 pb-1">Your desk</h2>
-                <ul className="divide-y divide-line px-4 pb-1">
+                <h2 id="desk-h" className="eyebrow px-4 pt-3.5 pb-2.5">Your desk</h2>
+                {/* One line each on a phone, a row of small cells from sm; each a link to where it's managed. */}
+                <ul className="grid grid-cols-1 gap-px border-t border-line bg-line sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none">
                   {desk.map((d) => {
                     // The figure leads in bone, like a readout; the link's name stays the whole sentence.
                     const [, n, rest] = /^([\d,]+)(.*)$/.exec(d.text) ?? [null, "", d.text];
                     return (
-                      <li key={d.key}>
+                      <li key={d.key} className="bg-ink-3">
                         <Link
                           href={d.href}
-                          className={`group flex min-h-11 items-center gap-2.5 py-2 text-[13px] ${d.urgent ? "font-semibold text-lime" : "text-mute hover:text-bone"}`}
+                          className={`group flex min-h-11 items-center gap-2 px-4 py-2.5 text-[13px] ${d.urgent ? "font-semibold text-lime" : "text-mute hover:text-bone"}`}
                         >
                           {d.urgent && <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-lime" />}
                           <span className="min-w-0 flex-1">
@@ -311,15 +355,6 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
           </div>
         )}
 
-        {/* Below 1280px the link follows the readings, as it always has; beside the work it heads the desk column. */}
-        {!fresh && <div className="border-t border-line pt-5 xl:order-first xl:border-t-0 xl:pt-0">{linkSection}</div>}
-
-        {/* On a team desk, Members can't send as the account. */}
-        {user.role !== "member" && (
-          <div className="border-t border-line pt-5 xl:border-t-0 xl:pt-0">
-            <SendMusicCard recent={recentSends} host={APP_URL.replace(/^https?:\/\//, "")} />
-          </div>
-        )}
       </div>
     </div>
     </>
@@ -328,6 +363,15 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
 
 /** Waiting this long gets a nudge on the Floor, two days before the 7-day mark the desk aims for. */
 const STALE_DAYS = 5;
+
+/** "under an hour", "5 hours", "3 days": how long a first listen usually takes, in words (the phone line). */
+function waitWords(ms: number) {
+  const h = ms / 3_600_000;
+  if (h < 1) return "under an hour";
+  if (h < 24) return `${Math.round(h)} hour${Math.round(h) === 1 ? "" : "s"}`;
+  const d = Math.round(h / 24);
+  return `${d} day${d === 1 ? "" : "s"}`;
+}
 
 /** How long a first listen usually takes, as a readout: "<1h", "5h", "1d", "3d". */
 function waitShort(ms: number) {
