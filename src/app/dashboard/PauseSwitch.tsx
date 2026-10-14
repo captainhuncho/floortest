@@ -101,7 +101,7 @@ export function PauseSwitch({ pause, compact = false }: { pause: PauseState; com
               defaultValue={pause.message}
               key={pause.message}
               maxLength={280}
-              className="input min-h-16 resize-y text-sm"
+              className="input min-h-16 resize-y"
               placeholder="On tour until mid-October. Send the new stuff then."
             />
           </label>

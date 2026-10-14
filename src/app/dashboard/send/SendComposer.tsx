@@ -100,7 +100,7 @@ export function SendComposer({ host, account, initial }: { host: string; account
           <p className="label">Send music to</p>
           <p className="mt-1 text-2xl font-bold tracking-tight">
             {found.name}
-            {found.verified && <span className="chip ml-2 inline-flex items-center gap-1.5 align-middle border-lime/60 text-xs font-medium text-lime"><CuePoint size={16} /> Verified</span>}
+            {found.verified && <span className="chip ml-2 inline-flex items-center gap-1.5 align-middle border-lime/60 text-lime"><CuePoint size={16} /> Verified</span>}
           </p>
           {found.links.length > 0 && <ProfileLinks links={found.links} className="mt-3" />}
           {found.accepting && found.collection && (

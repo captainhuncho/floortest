@@ -22,7 +22,7 @@ export default async function Referrals() {
   return (
     <div className="max-w-3xl space-y-10 px-4 py-6 sm:px-8">
       <div>
-        <h1 className="text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">Referrals</h1>
+        <h1 className="page-title">Referrals</h1>
         <p className="mt-2 max-w-xl text-mute">
           Invite DJs and curators. When someone you invite receives their first track, you both get {REFERRAL_BONUS} extra active
           tracks, on any plan, for good.

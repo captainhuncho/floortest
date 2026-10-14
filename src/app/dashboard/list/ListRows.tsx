@@ -338,7 +338,7 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
                   <p className={`truncate text-[13px] ${waiting ? "font-bold text-bone" : "font-medium text-mute"}`}>
                     {waiting && <span className="sr-only">Needs review: </span>}
                     {r.artist} - {r.title}
-                    {r.duplicateOf && <span className="chip ml-2 align-middle border-danger/40 text-[11px] font-normal text-danger">Possible duplicate</span>}
+                    {r.duplicateOf && <span className="chip ml-2 align-middle border-danger/40 text-danger">Possible duplicate</span>}
                   </p>
                   <p className="mt-1 flex items-center gap-2 truncate text-[11px] text-faint">
                     <span className="truncate">{r.meta.join(" · ")}</span>

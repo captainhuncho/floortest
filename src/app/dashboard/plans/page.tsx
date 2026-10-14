@@ -33,12 +33,12 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
   const plans = (await allPlans()).filter((p) => !p.retired || p.id === user.plan);
 
   return (
-    <div id="plans-root" data-period={yearly ? "year" : "month"} className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-5 text-bone sm:px-8 md:py-8">
+    <div id="plans-root" data-period={yearly ? "year" : "month"} className="flex flex-col gap-6 px-4 py-5 text-bone sm:px-8 md:py-8">
       <Link href="/dashboard/account" className="text-[11px] font-medium text-faint hover:text-bone">
         ← Account
       </Link>
       <header className="flex flex-col items-center gap-3 text-center">
-        <h1 className="text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">Choose your plan</h1>
+        <h1 className="page-title">Choose your plan</h1>
         <p className="text-[15px] text-mute">The same receiving desk. The capacity that fits your music.</p>
         <BillingSwitch initial={yearly ? "year" : "month"} target="plans-root" />
       </header>

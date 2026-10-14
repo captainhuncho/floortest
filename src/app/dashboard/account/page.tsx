@@ -88,9 +88,9 @@ export default async function Account() {
   ];
 
   return (
-    <div className="mx-auto flex max-w-xl flex-col gap-4 px-4 py-3 md:max-w-6xl md:gap-6 md:px-8 md:py-8">
+    <div className="flex flex-col gap-4 px-4 py-3 md:gap-6 md:px-8 md:py-8">
       <div className="hidden items-center justify-between gap-4 md:flex">
-        <h1 className="text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">Account</h1>
+        <h1 className="page-title">Account</h1>
         <form action={logout}>
           <button className="btn-danger btn-sm">Sign out</button>
         </form>

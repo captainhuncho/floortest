@@ -40,7 +40,7 @@ export default async function Collections() {
   // Figma "03 Collections": a tile per callout, then a dashed tile to add one.
   return (
     <div className="max-w-5xl px-3 py-4 sm:px-8 sm:py-6">
-      <h1 className="text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">Collections</h1>
+      <h1 className="page-title">Collections</h1>
       <p className="mt-3.5 text-[11px] leading-[1.5] text-mute sm:text-sm">
         One per callout. Your link <span className="break-all text-lime">{APP_URL.replace(/^https?:\/\//, "")}/{user.handle}</span> sends new tracks to
         whichever collection is marked receiving. Reviewing happens in{" "}

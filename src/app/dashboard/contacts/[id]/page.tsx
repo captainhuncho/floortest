@@ -41,7 +41,7 @@ export default async function Contact({ params }: { params: Promise<{ id: string
         <Link href="/dashboard/contacts" className="text-sm text-mute hover:text-bone">
           ← Contacts
         </Link>
-        <h1 className="mt-3 flex flex-wrap items-center gap-2 text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">
+        <h1 className="mt-3 flex flex-wrap items-center gap-2 page-title">
           {s.name}
           {s.verified_at ? (
             <span className="chip border-line text-mute">

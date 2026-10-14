@@ -25,12 +25,12 @@ export default async function RequestPlan({ searchParams }: { searchParams: Prom
   const guess = user.kind === "label" ? "label" : user.kind ? "artist" : "";
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-5 text-bone sm:px-8 md:py-8">
+    <div className="flex max-w-2xl flex-col gap-6 px-4 py-5 text-bone sm:px-8 md:py-8">
       <Link href="/dashboard/plans" className="text-[11px] font-medium text-faint hover:text-bone">
         ← Plans
       </Link>
       <header className="space-y-2">
-        <h1 className="text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">Request {plan.name}</h1>
+        <h1 className="page-title">Request {plan.name}</h1>
         <p className="text-[15px] text-mute">
           During the beta we set plans up by hand, so everyone gets the room that fits how they work. Tell us a little about you and we&apos;ll be in touch,
           usually within two working days. It&apos;s free for the rest of the beta.

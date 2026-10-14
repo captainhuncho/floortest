@@ -107,7 +107,7 @@ export function PrepBox({ track, energy: initialEnergy, cues: initialCues }: { t
                   placeholder="Label (drop, break, mix out…)"
                   aria-label={`Label for the cue at ${fmtCue(c.at)}`}
                   onChange={(e) => change(energy, cues.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))}
-                  className="input min-w-0 flex-1 py-1 text-[11px]"
+                  className="input min-w-0 flex-1 py-1"
                 />
                 <button type="button" onClick={() => change(energy, cues.filter((_, j) => j !== i))} aria-label={`Remove the cue at ${fmtCue(c.at)}`} className="px-1 text-mute hover:text-danger">
                   ✕
