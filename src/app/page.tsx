@@ -438,7 +438,7 @@ export default async function Home({
             </div>
           ))}
         </nav>
-        <p className="mt-10 border-t border-line pt-6 text-xs text-dim">© {new Date().getFullYear()} FloorTest. Private beta. Web · iPhone and Android soon.</p>
+        <p className="mt-10 border-t border-line pt-6 text-xs text-dim">© {new Date().getFullYear()} FloorTest Labs. Private beta. Web · iPhone and Android soon.</p>
       </footer>
     </div>
   );
