@@ -29,7 +29,10 @@ always on: about $20 a month) and CPU only as used (a few dollars at beta size).
 > back clean, and `/scan` without the secret answers 401. `wrangler deploy --dry-run` builds the image and the Worker.
 > 14 Oct, deployed: `https://floortest-scanner.maxwelladjavon.workers.dev`, pinned to Western Europe (same region as
 > the bucket). First start failed because Cloudflare starts containers with an empty `/run`; `start.sh` now makes
-> `/run/clamav` itself, and the image moved to Alpine 3.22 (ClamAV 1.4.3; 1.2.2 was flagged outdated).
+> `/run/clamav` itself, and the image moved to Alpine 3.22 (ClamAV 1.4.3; 1.2.2 was flagged outdated). EICAR on the
+> real bucket (`audio/test/eicar.wav`, read with the scanner's own read-only key) came back `Eicar-Test-Signature`;
+> test file deleted. Running in London (`lhr15`). Left: `SCAN_URL` and `SCAN_SECRET` in Vercel **Production only**
+> (preview uses its own bucket, which this key can't read, so preview uploads would be refused).
 
 ## Set up
 
