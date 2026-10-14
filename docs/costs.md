@@ -20,7 +20,7 @@ Beta sizes come from the beta targets in `beta-launch-plan.md`; launch sizes are
 
 | Service | Beta today | Launch | Notes |
 |---|---|---|---|
-| Vercel | $0 (Hobby) | $20–30 | Pro is $20 with $20 of usage credit, 1 developer seat, 1 TB transfer, 10M CDN requests. Audio never passes through Vercel (browser → R2, signed links out), so usage stays low; crate ZIP downloads are the one stream that does. Firewall rate limiting is $0.50 per million allowed requests: under $1. Hobby forbids commercial use, so Pro comes on before billing. |
+| Vercel | $20 (Pro since 14 Oct) | $20–30 | Pro is $20 with $20 of usage credit, 1 developer seat, 1 TB transfer, 10M CDN requests. Audio never passes through Vercel (browser → R2, signed links out), so usage stays low; crate ZIP downloads are the one stream that does. Firewall rate limiting is $0.50 per million allowed requests: under $1. Hobby forbids commercial use, so Pro comes on before billing. |
 | Neon (database) | $0 (Free) | $25–35 | Launch plan has no base fee: $0.106 per CU-hour, $0.35 per GB-month, instant restore $0.20 per GB-month of history. A 0.25 CU database awake most of the day is $19 of compute; storage and 7-day restore add a few dollars. The Free plan now includes 1 GB per project (the admin allowance still says 0.5 GB). |
 | Cloudflare R2 (files) | $0 | $12 | $0.015 per GB-month after a free 10 GB; egress free. Launch: 400 GB audio + 400 GB vault copy = 800 GB → $12. Operations stay inside the free 1M writes / 10M reads. |
 | Resend (email) | $0 → $20 | $20 | Free stops at 100 a day, which invite days will hit, so Pro ($20, 50,000 a month) goes on before invites. The $35 tier (100,000) is for later. |

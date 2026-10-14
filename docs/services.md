@@ -8,7 +8,7 @@ Last updated 13 Oct 2026.
 
 | Service | What it does | Account / project | Where to manage it |
 | --- | --- | --- | --- |
-| **Vercel** | Hosts the website and runs the code (London region). Also runs the daily scheduled jobs: digests, nudges, clean-up. | Team `maxwelladjavon-5776s-projects`, project **floortest** | vercel.com → floortest. Secrets: Settings → Environment Variables |
+| **Vercel** | Hosts the website and runs the code (London region). Also runs the daily scheduled jobs: digests, nudges, clean-up. Pro plan since 14 Oct. | Team `maxwelladjavon-5776s-projects`, project **floortest** | vercel.com → floortest. Secrets: Settings → Environment Variables |
 | **Neon** | The database (accounts, tracks, decisions, logs): Postgres in London (AWS eu-west-2), next to Vercel's `lhr1`. Free plan now, Launch before launch. | Production and Preview each have their own database; the app uses the pooled connection | console.neon.tech |
 | **Cloudflare R2** | Stores the audio, stems, cover photos and nightly database backups, privately. | Buckets: **floortest-audio-eu** (live, Western Europe, since 11 Oct), **floortest-audio-preview** (previews only), **floortest-audio** (old, kept for rollback; the owner deletes it on/after 18 Oct) | dash.cloudflare.com → R2 |
 | **Cloudflare Turnstile** | The bot check on public forms and on sign-in after repeated wrong tries. | One widget; on/off is the `bot_check` switch in ops | dash.cloudflare.com → Turnstile |
