@@ -30,9 +30,10 @@ export default async function SenderHistory({ params }: { params: Promise<{ toke
      WHERE lower(s.email) = ? AND u.suspended_at IS NULL ORDER BY t.created_at DESC LIMIT 300`,
     email,
   );
-  // The strongest thing that has happened, and when. Listens and anything after are the bright ones.
+  // The strongest thing that has happened, and when. Lit (lime) from delivery on, like the receipt; only a track unheard for
+  // 90 days stays dim.
   const status = (r: (typeof rows)[number]): [string, boolean, number] =>
-    r.played_out_at ? ["Played out", true, r.played_out_at] : r.replied_at ? ["Replied", true, r.replied_at] : r.downloaded_at ? ["Downloaded", true, r.downloaded_at] : r.played_at ? ["Listened", true, r.played_at] : unheardAfterWindow(r) ? [`Not listened to in ${RETAIN_UNREVIEWED_DAYS} days`, false, r.created_at] : ["Delivered", false, r.created_at];
+    r.played_out_at ? ["Played out", true, r.played_out_at] : r.replied_at ? ["Replied", true, r.replied_at] : r.downloaded_at ? ["Downloaded", true, r.downloaded_at] : r.played_at ? ["Listened", true, r.played_at] : unheardAfterWindow(r) ? [`Not listened to in ${RETAIN_UNREVIEWED_DAYS} days`, false, r.created_at] : ["Delivered", true, r.created_at];
   const heard = rows.filter((r) => r.played_at).length;
 
   return (

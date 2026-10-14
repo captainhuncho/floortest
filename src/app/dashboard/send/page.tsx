@@ -30,6 +30,9 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
     return unheardAfterWindow(r, t) ? "Not listened to in 90 days" : `Delivered ${ago(r.created_at)} · not played yet`;
   };
 
+  // Lime from delivery on, like the receipt; a track unheard for 90 days stays dim.
+  const lit = (r: Sent) => !!r.played_at || !unheardAfterWindow(r, t);
+
   // The last 10 days stay open; anything older folds under "Older than 10 days".
   const cutoff = now() - 10 * 86_400_000;
   const recent = sent.filter((r) => Number(r.created_at) >= cutoff);
@@ -53,8 +56,8 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
                     Track <span aria-hidden className="transition-transform group-hover:translate-x-0.5">→</span>
                   </span>
                 </span>
-                <span className={`mt-2 flex items-center gap-2 text-[12px] ${r.played_at ? "font-semibold text-bone" : "text-dim"}`}>
-                  <span aria-hidden className={`size-2 rounded-full ${r.played_at ? "bg-lime" : "border border-line-2"}`} />
+                <span className={`mt-2 flex items-center gap-2 text-[12px] ${lit(r) ? "font-semibold text-bone" : "text-dim"}`}>
+                  <span aria-hidden className={`size-2 rounded-full ${lit(r) ? "bg-lime" : "border border-line-2"}`} />
                   {latest(r)}
                 </span>
               </Link>
@@ -97,7 +100,8 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
                   <li key={s} className="flex items-center gap-2">
                     {i > 0 && <span aria-hidden>→</span>}
                     <span className="flex items-center gap-1.5">
-                      <span aria-hidden className="size-1.5 rounded-full border border-current" />
+                      {/* A receipt starts lit: Delivered is the lime light until something happens. */}
+                      <span aria-hidden className={`size-1.5 rounded-full ${i === 0 ? "bg-lime" : "border border-current"}`} />
                       {s}
                     </span>
                   </li>
