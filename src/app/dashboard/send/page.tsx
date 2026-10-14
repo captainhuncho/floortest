@@ -64,7 +64,7 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
     <>
     {!view && !user.email_verified_at && <VerifyBanner email={user.email} />}
     <div className="max-w-3xl px-4 py-6 sm:px-8">
-      <h1 className="text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">Send</h1>
+      <h1 className="page-title">Send</h1>
       <p className="mt-2 text-mute">Send a track to anyone with a FloorTest link. Type the part after {APP_URL.replace(/^https?:\/\//, "")}/.</p>
       <div className="mt-8">
         <SendComposer host={APP_URL.replace(/^https?:\/\//, "")} account={{ name: user.name, email: user.email }} initial={to} />

@@ -1,3 +1,5 @@
+import { PageTitle as SharedPageTitle } from "@/components/PageTitle";
+
 /** One settings card: a title, an optional line under it, then the controls. */
 export function Section({ id, title, sub, tone, children }: { id: string; title: string; sub?: React.ReactNode; tone?: "danger"; children: React.ReactNode }) {
   return (
@@ -11,11 +13,7 @@ export function Section({ id, title, sub, tone, children }: { id: string; title:
   );
 }
 
+/** Settings pages' title: the shared PageTitle (one title size across the dashboard). */
 export function PageTitle({ title, sub }: { title: string; sub?: React.ReactNode }) {
-  return (
-    <div>
-      <h1 className="text-[28px] font-bold tracking-[-0.8px]">{title}</h1>
-      {sub && <p className="mt-1.5 text-sm text-mute">{sub}</p>}
-    </div>
-  );
+  return <SharedPageTitle sub={sub}>{title}</SharedPageTitle>;
 }

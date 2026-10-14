@@ -147,7 +147,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
       <header className="flex flex-col gap-3">
         <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
           <div className="flex min-w-0 flex-col gap-1.5">
-            <h1 className="text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone sm:text-[32px]">
+            <h1 className="page-title-display">
               {welcome ? `Welcome, ${first}.` : `${greeting}, ${first}.`}
             </h1>
             <p className="text-[13px] text-mute">

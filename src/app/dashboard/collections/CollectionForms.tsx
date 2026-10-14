@@ -372,7 +372,7 @@ export function CollectionDetailHeader({ c, receiving, closed, canManage = true 
             // eslint-disable-next-line @next/next/no-img-element
             <img src={c.art} alt="" className="size-9 shrink-0 rounded-md object-cover" />
           )}
-          <h1 className="min-w-0 truncate text-[20px] font-bold">{c.name}</h1>
+          <h1 className="page-title min-w-0 truncate">{c.name}</h1>
         </div>
         <button onClick={() => setMenu(true)} aria-haspopup="menu" aria-label={`Options for ${c.name}`} className="grid size-9 shrink-0 place-items-center text-lg font-bold leading-none">
           •••

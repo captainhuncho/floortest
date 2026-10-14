@@ -111,7 +111,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
         <Link href="/dashboard/floor" aria-label="Back to the Floor" className="-ml-2.5 grid size-11 place-items-center">
           <span aria-hidden className="size-4 bg-current [mask:url(/icons/arrow-left.svg)_center/contain_no-repeat]" />
         </Link>
-        <h1 className="text-[18px] font-bold">Contacts</h1>
+        <h1 className="page-title">Contacts</h1>
       </div>
       <nav aria-label="Contacts view" className="flex rounded-sheet border border-line bg-ink-3 p-0.5">
         {(
@@ -281,7 +281,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
     <div className="hidden max-w-6xl flex-col gap-5 px-8 py-6 text-bone md:flex">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">Contacts</h1>
+          <h1 className="page-title">Contacts</h1>
         </div>
         <nav aria-label="Contacts view" className="flex rounded-full border border-line bg-ink-3 p-0.5">
           {(

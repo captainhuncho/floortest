@@ -24,7 +24,7 @@ export default async function PlayedOutPick() {
         ← The Floor
       </Link>
       <div>
-        <h1 className="text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">What did you play?</h1>
+        <h1 className="page-title">What did you play?</h1>
         <p className="mt-1.5 text-[13px] text-mute">
           Kept in the last {PICK_DAYS} days · {fmtDay(picks.from)} to {fmtDay(picks.to)}
         </p>

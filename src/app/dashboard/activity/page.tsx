@@ -35,7 +35,7 @@ export default async function Activity({ searchParams }: { searchParams: Promise
         <Link href="/dashboard/account" aria-label="Back to Account" className="text-[18px] leading-none md:hidden">
           ‹
         </Link>
-        <h1 className="text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">Activity</h1>
+        <h1 className="page-title">Activity</h1>
       </div>
       <p className="text-[12px] leading-[1.5] text-mute">
         {filter[0] === "you"

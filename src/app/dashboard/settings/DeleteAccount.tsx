@@ -54,7 +54,7 @@ export function DeleteAccount({ handle, twoFactor }: { handle: string; twoFactor
         <button type="button" autoFocus className="btn-ghost btn-sm min-h-11" onClick={close}>
           Cancel
         </button>
-        <button className="btn btn-sm min-h-11 bg-danger font-semibold text-ink hover:bg-danger/90" disabled={pending || typed.trim().toLowerCase() !== handle}>
+        <button className="btn btn-sm min-h-11 bg-danger text-ink hover:bg-danger/90" disabled={pending || typed.trim().toLowerCase() !== handle}>
           {pending ? "Deleting…" : "Delete everything"}
         </button>
       </div>

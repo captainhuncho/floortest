@@ -11,7 +11,7 @@ export const metadata = { title: "Sign in — FloorTest ops", robots: { index: f
 export default async function OpsLogin() {
   if (await currentOpsAdmin()) redirect("/admin");
   return (
-    <main id="main" className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-5 py-12">
+    <main id="main" className="app-ui mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-5 py-12">
       <Logo href="/ops-login" ops />
       <p className="mt-2 text-[12px] font-medium uppercase tracking-[0.5px] text-dim">Ops</p>
       <h1 className="mb-8 mt-8 text-2xl font-semibold">Sign in</h1>

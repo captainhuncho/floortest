@@ -12,6 +12,7 @@ import { FeedbackButton } from "./FeedbackButton";
 import { MobileTabBar } from "./MobileTabBar";
 import { TopBar } from "./TopBar";
 import { DeskBar } from "./DeskBar";
+import { PageFrame } from "./PageFrame";
 import { teamsFor } from "@/lib/account-members";
 import { currentTheme, themeClass } from "@/lib/theme";
 import { SkipLink } from "@/components/SkipLink";
@@ -85,7 +86,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
               />
             )}
             {/* The confirm-your-email banner lives on the Floor and Send pages only (they render VerifyBanner). */}
-            {children}
+            <PageFrame>{children}</PageFrame>
             {!view && <LivePulse url="/api/pulse" />}
           </main>
         </div>

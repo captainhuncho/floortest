@@ -31,12 +31,12 @@ export default async function Checkout({ searchParams }: { searchParams: Promise
   const renews = new Date(today.getFullYear(), today.getMonth() + 1, today.getDate()).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-5 text-bone sm:px-8 md:py-8">
+    <div className="flex max-w-4xl flex-col gap-6 px-4 py-5 text-bone sm:px-8 md:py-8">
       <div className="flex flex-col gap-1">
         <Link href="/dashboard/plans" className="text-[11px] font-medium text-faint hover:text-bone">
           ← Plans
         </Link>
-        <h1 className="text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">Upgrade to {p.name}</h1>
+        <h1 className="page-title">Upgrade to {p.name}</h1>
       </div>
 
       <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] md:items-start md:gap-6">

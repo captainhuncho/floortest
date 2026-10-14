@@ -324,7 +324,7 @@ export function FolderSend({
                         genres={genres}
                         value={it.genre ?? ""}
                         onChange={(g) => update(i, { genre: g })}
-                        inputClass="input py-1.5 text-sm"
+                        inputClass="input py-1.5"
                         labelClass="sr-only"
                         dropdown
                         name={`Genre for ${it.tags.title || it.file.name}`}

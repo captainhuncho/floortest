@@ -120,7 +120,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
             / <span className="text-bone">{c.name}</span>
           </p>
           <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
-            <h1 className="flex items-center gap-3 text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">
+            <h1 className="flex items-center gap-3 page-title">
               {c.name}
               {receiving && !isClosed(c) && (
                 <span className="flex items-center gap-1 rounded-md border border-white bg-white/10 px-2 py-1 text-[11px] font-bold tracking-[0.5px]">

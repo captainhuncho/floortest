@@ -156,7 +156,7 @@ export function AuthForm({
               ))}
             </select>
           ) : f.prefix ? (
-            <div className={`flex items-stretch overflow-hidden rounded-lg border bg-ink-2 focus-within:border-lime/70 ${issue?.key === f.name ? "border-danger/60" : "border-line"}`}>
+            <div className={`flex items-stretch overflow-hidden rounded-lg border bg-ink-2 focus-within:border-lime/70 ${issue?.key === f.name ? "border-danger/60" : "border-field"}`}>
               <span className="flex shrink-0 items-center pl-3 text-sm text-mute">{f.prefix}</span>
               <input
                 id={`f-${f.name}`}
@@ -167,7 +167,7 @@ export function AuthForm({
                 autoComplete={f.autoComplete}
                 autoCapitalize="none"
                 aria-invalid={issue?.key === f.name || undefined} aria-describedby={describe(f)}
-                className="tap-tall w-full min-w-0 bg-transparent py-2.5 pr-3 text-sm outline-none placeholder:text-dim"
+                className="tap-tall w-full min-w-0 bg-transparent py-2.5 pr-3 text-sm outline-none placeholder:text-faint"
               />
             </div>
           ) : f.type === "password" ? (
