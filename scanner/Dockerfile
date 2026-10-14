@@ -1,5 +1,5 @@
 # FloorTest virus scanner: ClamAV (clamd + freshclam for daily signatures) and a tiny Node service, on Alpine.
-FROM alpine:3.20
+FROM alpine:3.22
 
 RUN apk add --no-cache clamav clamav-daemon freshclam nodejs npm \
  && mkdir -p /run/clamav /var/lib/clamav \

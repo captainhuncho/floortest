@@ -2,6 +2,8 @@
 # 1. Signatures: one update now (the first takes a few minutes), then freshclam keeps them current in the background.
 # 2. clamd in the background on 127.0.0.1:3310. 3. The scan service once clamd answers.
 set -e
+# /run can be an empty tmpfs at start (Cloudflare Containers): clamd and freshclam keep their pid and socket files here.
+mkdir -p /run/clamav && chown clamav:clamav /run/clamav
 freshclam --stdout || echo "freshclam: first update failed; retrying in the background"
 freshclam -d --stdout
 clamd

@@ -27,7 +27,9 @@ always on: about $20 a month) and CPU only as used (a few dollars at beta size).
 > **Status, 14 Oct:** built and run locally (Docker, linux/amd64). Signatures are in the image, so it's ready in about
 > 12 seconds; it used about 1 GB of memory; the EICAR test string came back `Eicar-Test-Signature`, a clean 5 MB file came
 > back clean, and `/scan` without the secret answers 401. `wrangler deploy --dry-run` builds the image and the Worker.
-> Not yet deployed.
+> 14 Oct, deployed: `https://floortest-scanner.maxwelladjavon.workers.dev`, pinned to Western Europe (same region as
+> the bucket). First start failed because Cloudflare starts containers with an empty `/run`; `start.sh` now makes
+> `/run/clamav` itself, and the image moved to Alpine 3.22 (ClamAV 1.4.3; 1.2.2 was flagged outdated).
 
 ## Set up
 
