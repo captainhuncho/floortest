@@ -32,7 +32,7 @@ async function logIn(page: Page, email: string, password: string) {
 test("a new sender signs up with an invite code", async ({ page }) => {
   await page.goto("/signup");
   await page.getByLabel("Invite code").fill("E2E-INVITE");
-  await page.getByLabel("What best describes you?").selectOption("producer");
+  await page.getByLabel("What best describes you?").selectOption("producer_dj");
   await page.getByLabel("First name").fill(sender.first);
   await page.getByLabel("Surname").fill(sender.last);
   await page.getByLabel("Username").fill(sender.handle);
