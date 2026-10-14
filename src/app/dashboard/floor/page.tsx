@@ -115,6 +115,13 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   // A quiet desk has nothing to report yet; the readout appears once something has happened. Same facts as ever, set
   // out as one strip of readings: the number is the point, the label says what it counts, the line under it its scope.
   const delta = stats.receivedWeek - stats.receivedPrev;
+  // Phones keep the Floor's earlier lines (owner, 14 Oct): the week's facts and the desk as one sentence each.
+  const facts = stats.receivedWeek + stats.receivedPrev + stats.keptWeek === 0 && !stats.listenedSample ? [] : [
+    `${stats.receivedWeek} received this week${stats.receivedWeek !== stats.receivedPrev ? ` (${stats.receivedWeek > stats.receivedPrev ? "up" : "down"} from ${stats.receivedPrev})` : ""}`,
+    `${stats.keptWeek} kept this week`,
+    stats.medianListenMs !== null ? `first listen usually within ${waitWords(stats.medianListenMs)}` : null,
+    stats.decisionRate !== null ? `${stats.decisionRate}% of the last 30 days decided` : null,
+  ].filter(Boolean);
   const week: { key: string; label: string; value: string; sub: string }[] =
     stats.receivedWeek + stats.receivedPrev + stats.keptWeek === 0 && !stats.listenedSample
       ? []
@@ -259,18 +266,48 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
 
       <div className="page-narrow flex min-w-0 flex-col gap-8">
 
-        {/* The desk part, under a rule that ends the work above: the link and sending side by side, then one compact panel. */}
+        {/*
+          Phones: the Floor as it was before the 14 Oct design pass (owner, 14 Oct): This week and Your desk as one line
+          each, then Your link and Send music, each under a rule. From sm: the link and sending side by side, then the panel.
+        */}
+        {facts.length > 0 && (
+          <section aria-labelledby="week-m-h" className="flex flex-col gap-1.5 border-t border-line pt-5 sm:hidden">
+            <h2 id="week-m-h" className="eyebrow">This week</h2>
+            <p className="text-[13px] leading-6 text-mute">{facts.join(" · ")}.</p>
+          </section>
+        )}
+        {!fresh && (
+          <section aria-labelledby="desk-m-h" className="flex flex-col gap-1.5 border-t border-line pt-5 sm:hidden">
+            <h2 id="desk-m-h" className="eyebrow">Your desk</h2>
+            <p className="text-[13px] leading-6 text-mute">
+              {desk.map((d, i) => (
+                <span key={d.key}>
+                  {i > 0 && " · "}
+                  <Link href={d.href} className={`tnum underline-offset-4 hover:underline ${d.urgent ? "font-semibold text-lime" : "hover:text-bone"}`}>
+                    {d.text}
+                  </Link>
+                </span>
+              ))}
+              .
+            </p>
+          </section>
+        )}
+
         {(!fresh || user.role !== "member") && (
-          <div className="grid grid-cols-1 gap-8 border-t border-line pt-8 sm:grid-cols-2 sm:gap-6">
+          <div className="grid grid-cols-1 gap-5 border-t border-line pt-5 sm:grid-cols-2 sm:gap-6 sm:pt-8">
             {!fresh && linkSection}
             {/* On a team desk, Members can't send as the account. */}
-            {user.role !== "member" && <SendMusicCard recent={recentSends} host={APP_URL.replace(/^https?:\/\//, "")} />}
+            {user.role !== "member" && (
+              <div className={!fresh ? "border-t border-line pt-5 sm:border-t-0 sm:pt-0" : ""}>
+                <SendMusicCard recent={recentSends} host={APP_URL.replace(/^https?:\/\//, "")} />
+              </div>
+            )}
           </div>
         )}
 
-        {/* The desk's readings: one panel, cells divided by 1px rules (not tiles). The week on top, the desk under it. */}
+        {/* From sm, the desk's readings: one panel, cells divided by 1px rules (not tiles). The week on top, the desk under it. */}
         {(week.length > 0 || !fresh) && (
-          <div className="panel overflow-hidden">
+          <div className="panel hidden overflow-hidden sm:block">
             {week.length > 0 && (
               <section aria-labelledby="week-h">
                 <h2 id="week-h" className="eyebrow px-4 pt-3.5 pb-2.5">This week</h2>
@@ -326,6 +363,15 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
 
 /** Waiting this long gets a nudge on the Floor, two days before the 7-day mark the desk aims for. */
 const STALE_DAYS = 5;
+
+/** "under an hour", "5 hours", "3 days": how long a first listen usually takes, in words (the phone line). */
+function waitWords(ms: number) {
+  const h = ms / 3_600_000;
+  if (h < 1) return "under an hour";
+  if (h < 24) return `${Math.round(h)} hour${Math.round(h) === 1 ? "" : "s"}`;
+  const d = Math.round(h / 24);
+  return `${d} day${d === 1 ? "" : "s"}`;
+}
 
 /** How long a first listen usually takes, as a readout: "<1h", "5h", "1d", "3d". */
 function waitShort(ms: number) {
