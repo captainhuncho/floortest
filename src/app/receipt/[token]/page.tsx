@@ -14,6 +14,7 @@ import { featureOn } from "@/lib/features";
 import { MAX_STEMS, stemsSent } from "@/lib/stems";
 import { StemUpload } from "./StemUpload";
 import { StatusHeadline } from "./StatusHeadline";
+import { ReachedSteps, SignalDot } from "./SignalDot";
 import { switchOn } from "@/lib/switches";
 import { activeCollection, capacity, isClosed, isPaused, userByHandleForView } from "@/lib/desk";
 import { StopSharing } from "./StopSharing";
@@ -60,7 +61,10 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
   ];
   // When the file left the desk is never shown: "Not for me" files leave sooner than undecided ones, so the date would give the decision away.
   const happened = steps.filter((s) => s.at).sort((a, b) => a.at! - b.at!);
+  // One light: the newest step is lime, earlier ones bone, so the sender sees what's new. Until the receiver does
+  // something, that's Delivered: the track arrived, and the receipt says so (not after 90 days unheard: no good news).
   const unheard = unheardAfterWindow(t);
+  const newest = [...happened].reverse().find((s) => s.meaningful)?.key ?? (unheard ? undefined : "delivered");
   const pending = unheard ? [] : steps.filter((s) => !s.at);
 
   // The headline is the strongest thing that has happened.
@@ -109,17 +113,19 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
 
       <section aria-labelledby="history-h" className="flex flex-col gap-3">
         <h2 id="history-h" className="eyebrow">What&apos;s happened</h2>
+        {/* The live refresh above brings new steps in; one that arrives during this visit marks itself with a ring once. */}
+        <ReachedSteps reached={happened.map((s) => s.key)}>
         <ol className="flex flex-col">
           {happened.map((s, i) => (
             <li key={s.key} className="relative flex gap-3 pb-4 last:pb-0">
               {(i < happened.length - 1 || pending.length > 0) && <span aria-hidden className="absolute left-[5px] top-4 h-[calc(100%-8px)] w-px bg-line" />}
-              <span aria-hidden className={`mt-[7px] size-[11px] shrink-0 rounded-full ${s.meaningful ? "bg-lime" : "border border-line-2 bg-ink"}`} />
+              <SignalDot step={s.key} className={`mt-[7px] size-[11px] shrink-0 rounded-full ${s.key === newest ? "bg-lime" : "bg-bone"}`} />
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <p className={`text-[14px] leading-6 ${s.meaningful ? "font-bold text-bone" : "text-mute"}`}>
+                <p className={`text-[14px] leading-6 text-bone ${s.meaningful ? "font-bold" : ""}`}>
                   {s.label}
                   <span className="ml-2 text-[12px] font-normal text-dim tnum">{fmtDate(s.at!)}</span>
                 </p>
-                {s.note && <p className={`text-[12px] ${s.meaningful ? "text-mute" : "text-dim"}`}>{s.note}</p>}
+                {s.note && <p className="text-[12px] text-mute">{s.note}</p>}
               </div>
             </li>
           ))}
@@ -134,6 +140,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
             </li>
           ))}
         </ol>
+        </ReachedSteps>
         <details className="group text-[12px] text-dim">
           <summary className="inline-flex min-h-9 cursor-pointer list-none items-center gap-1.5 text-bone underline-offset-4 hover:underline [&::-webkit-details-marker]:hidden">
             <span aria-hidden className="text-lime transition-transform duration-150 group-open:rotate-45">+</span> What these mean
