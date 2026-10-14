@@ -144,16 +144,16 @@ export default async function Home({
           <dl className="divide-y divide-white/10 border-y border-white/10">
             {[
               [
-                "Your decisions stay yours",
-                "Senders see listens, downloads and replies. Keep and not-for-me calls are never shared.",
+                "Your calls stay private",
+                "Senders see listens, downloads and replies. Never Keep or Not for me.",
               ],
               [
                 "You control intake",
-                "Pause your link while touring, set closing dates per callout, and block anyone.",
+                "Pause your link, close a callout, block anyone.",
               ],
               [
                 "Clear retention",
-                "Undecided tracks are deleted after 90 days, tracks marked “Not for me” 30 days after you mark them. Kept tracks stay until you delete them.",
+                "Undecided tracks are deleted after 90 days, Not for me 30 days after you mark it. Kept tracks stay until you delete them.",
               ],
             ].map(([k, v]) => (
               <div key={k} className="py-5">
@@ -190,7 +190,7 @@ export default async function Home({
             <div>
               <h2 className="text-[clamp(2rem,4vw,3.25rem)] font-bold leading-[0.95] tracking-[-0.035em]">No invite yet?</h2>
               <p className="mt-4 text-sm leading-relaxed text-mute">
-                We&apos;re letting DJs, labels and curators in a few at a time. Leave your details and you&apos;ll get a personal invite by email.
+                Invites go out a few at a time. Leave your details and we&apos;ll email yours.
               </p>
             </div>
             <WaitlistForm host={HOST} botCheckKey={botKey} />
@@ -306,12 +306,12 @@ export default async function Home({
                   href={DEMO}
                   className="text-sm text-bone hover:text-bone"
                 >
-                  See an example link <span className="text-dim">(example: /maxwell)</span> →
+                  See an example <span className="text-dim">/maxwell</span> →
                 </Link>
               </div>
               {!user && (
                 <p className="mt-4 text-xs text-dim">
-                  Private beta · invites go out in small batches to DJs, curators and labels
+                  Private beta
                   {inviteOnly && (
                     <>
                       {" "}· <Link href="/signup" className="underline underline-offset-4 hover:text-bone">Have an invite? Claim your link</Link>
