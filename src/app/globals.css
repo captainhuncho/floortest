@@ -47,6 +47,8 @@
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  /* Tailwind's own transition utilities (transition, transition-colors…) use the same curve. */
+  --default-transition-timing-function: var(--ease-out);
 }
 
 html, body { background: var(--color-ink); color: var(--color-bone); }
@@ -75,13 +77,38 @@ body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
   transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
   @starting-style { opacity: 0; transform: scale(0.97); }
 }
+/* Native <dialog> modals (showModal): fade and scale from 0.97 at the centre, the backdrop fades with them. overlay and
+   display are discrete so the dialog stays in the top layer until its quicker exit (150ms) has played. */
+dialog {
+  opacity: 0; transform: scale(0.97);
+  transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out), overlay 150ms var(--ease-out) allow-discrete, display 150ms var(--ease-out) allow-discrete;
+}
+dialog[open] {
+  opacity: 1; transform: none; transition-duration: 200ms;
+  @starting-style { opacity: 0; transform: scale(0.97); }
+}
+dialog::backdrop { opacity: 0; transition: opacity 150ms var(--ease-out), overlay 150ms var(--ease-out) allow-discrete, display 150ms var(--ease-out) allow-discrete; }
+dialog[open]::backdrop {
+  opacity: 1; transition-duration: 200ms;
+  @starting-style { opacity: 0; }
+}
+/* The phone notifications sheet: its scrim fades with the panel instead of popping in under it. */
+[data-sheet] {
+  transition: opacity 200ms var(--ease-out);
+  @starting-style { opacity: 0; }
+}
+/* Opened from the keyboard (⌘K search): appears at once, every time. Keyboard actions never animate. */
+[data-instant], [data-instant] :is([role="menu"], [role="listbox"], [role="dialog"]) { transition: none; animation: none; }
 [data-toast] {
   transition: opacity 250ms var(--ease-drawer), transform 250ms var(--ease-drawer);
   @starting-style { opacity: 0; transform: translateY(16px); }
 }
 /* Leaving: a quick fade and drop before the toast unmounts (150ms, EXIT_MS in Toast.tsx). */
 [data-toast][data-leaving] { opacity: 0; transform: translateY(8px); transition-duration: 150ms; transition-timing-function: var(--ease-out); pointer-events: none; }
-button, .btn { -webkit-tap-highlight-color: transparent; transition-property: color, background-color, border-color, opacity, transform, translate, scale; transition-duration: 150ms; transition-timing-function: var(--ease-out); }
+/* In the base layer so a button's own transition utilities (transition-colors, duration-100…) win over it. */
+@layer base {
+  button, .btn { -webkit-tap-highlight-color: transparent; transition-property: color, background-color, border-color, opacity, transform, translate, scale; transition-duration: 150ms; transition-timing-function: var(--ease-out); }
+}
 button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
 .switch-thumb { transition: translate 200ms var(--ease-out), background-color 150ms var(--ease-out); }
 /* Tactile navigation (same material as the phone tab bar): a dark panel with a lit top edge, and the
@@ -108,9 +135,9 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
 [data-area="trust"] { --area: #ff8a7a; }
 /* Plans page Year/Month: both versions sit in one grid cell (so nothing moves) and cross-fade when data-period flips. */
 .period-stack { display: grid; }
-.period-stack > * { grid-area: 1 / 1; transition: opacity 260ms cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 0s; }
+.period-stack > * { grid-area: 1 / 1; transition: opacity 260ms var(--ease-out), visibility 0s linear 0s; }
 [data-period="year"] .period-stack > .period-month,
-[data-period="month"] .period-stack > .period-year { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 180ms ease-out, visibility 0s linear 180ms; }
+[data-period="month"] .period-stack > .period-year { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 180ms var(--ease-out), visibility 0s linear 180ms; }
 /* The silver ops crest is dark-on-dark at small sizes: lift it so it reads clearly. */
 .crest-ops { filter: brightness(1.6) contrast(1.15) drop-shadow(0 0 6px rgb(255 255 255 / 0.12)); }
 [data-area="product"] { --area: #b9a2ff; }
@@ -124,11 +151,40 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
 [data-area] .tactile-item[aria-current="page"] { box-shadow: inset 2px 0 0 var(--area), inset 0 1px 0 rgb(255 255 255 / 0.12), 0 2px 6px rgb(0 0 0 / 0.55); }
 .area-card { border-top: 2px solid var(--area); }
 .area-dot { background: var(--area); }
+/* Player buffering (Player.tsx BufferRing): a lit arc turning on a faint track. Hidden until the button has been
+   loading for 150ms, so a quick start never flashes it; leaving is immediate. */
+[data-buffer-ring] {
+  border: 2px solid color-mix(in oklab, currentColor 22%, transparent); border-top-color: currentColor;
+  opacity: 0; transition: opacity 150ms var(--ease-out);
+  animation: buffer-spin 700ms linear infinite; animation-play-state: paused;
+}
+[data-buffering] [data-buffer-ring] { opacity: 1; transition-delay: 150ms; animation-play-state: running; }
+@keyframes buffer-spin { to { rotate: 360deg; } }
+/* Queue badge (MobileTabBar.tsx): when the count changes, the old number rolls up and out as the new one rolls in. */
+[data-roll="out"] { animation: badge-out 160ms var(--ease-out) both; }
+[data-roll="in"] { animation: badge-in 160ms var(--ease-out) both; }
+@keyframes badge-out { to { opacity: 0; translate: 0 -60%; } }
+@keyframes badge-in { from { opacity: 0; translate: 0 60%; } }
+@keyframes badge-fade-out { to { opacity: 0; } }
+@keyframes badge-fade-in { from { opacity: 0; } }
+/* Loading skeletons (dashboard/loading.tsx, review/loading.tsx): nothing for the first 150ms, so a quick navigation
+   never flashes a skeleton; a slow one fades it in. */
+.skeleton-in {
+  animation: skeleton-in 150ms var(--ease-out) 150ms both;
+}
+@keyframes skeleton-in { from { opacity: 0; } }
 /* Reduced motion: keep fades and colour, drop movement. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; scale: none !important; scroll-behavior: auto !important; }
-  [role="menu"], [role="listbox"], [role="dialog"], [data-toast] { transition: opacity 150ms linear !important; }
+  [role="menu"], [role="listbox"], [role="dialog"], [data-toast], [data-sheet] { transition: opacity 150ms linear !important; }
+  dialog, dialog::backdrop { transform: none !important; transition: opacity 150ms linear, overlay 150ms allow-discrete, display 150ms allow-discrete !important; }
+  [data-instant], [data-instant] :is([role="menu"], [role="listbox"], [role="dialog"]) { transition: none !important; }
   [data-toast][data-leaving] { transform: none; }
+  /* The buffering ring holds still at half strength; the Queue badge cross-fades instead of rolling. */
+  [data-buffering] [data-buffer-ring] { opacity: 0.5; }
+  [data-roll="out"] { animation: badge-fade-out 120ms linear both !important; }
+  [data-roll="in"] { animation: badge-fade-in 120ms linear both !important; }
+  .skeleton-in { animation: skeleton-in 150ms linear 150ms both !important; }
 }
 ::selection { background: var(--color-lime); color: var(--color-ink); }
 
@@ -346,7 +402,7 @@ html:has(.theme-day), html:has(.theme-day) body { background: #fafaf6; }
 .native-app :is(input, textarea, [contenteditable="true"], [contenteditable="plaintext-only"], .selectable) { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
 
 /* Review Queue: while a status tab loads, the list steps back so the tap visibly registered. */
-.review-list { transition: opacity 0.15s ease; }
+.review-list { transition: opacity 150ms var(--ease-out); }
 nav[data-pending] ~ .review-list { opacity: 0.45; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { .review-list { transition: none; } }
 
@@ -361,7 +417,8 @@ nav[data-pending] ~ .review-list { opacity: 0.45; pointer-events: none; }
     repeating-radial-gradient(circle at 50% 50%, #151613 0 1px, #10110f 1px 3px);
   box-shadow: 0 0 0 1px var(--color-line-2), 0 0 0 7px #0b0c0a, 0 0 0 8px var(--color-line);
 }
-.stage-spin { animation: stage-turn 9s linear infinite; }
+/* Home loops come to rest (WCAG 2.2.2): one slow turn of the platter, then it holds where it started. */
+.stage-spin { animation: stage-turn 9s linear 1; }
 .stage-ticks {
   background: repeating-conic-gradient(from 0deg, rgb(241 241 235 / 0.16) 0 0.6deg, transparent 0.6deg 7.5deg);
   mask: radial-gradient(circle, transparent 0 62%, #000 62.5% 69%, transparent 69.5%);
@@ -387,11 +444,12 @@ nav[data-pending] ~ .review-list { opacity: 0.45; pointer-events: none; }
 @keyframes stage-fill { from { opacity: 0; translate: 0 32px; } }
 @keyframes stage-tick { from { color: var(--color-faint); } }
 
-.stage-land { animation: stage-land 4s var(--ease-out) infinite; }
+.stage-land { animation: stage-land 4s var(--ease-out) 3; }
 @keyframes stage-land { 0% { opacity: 0; scale: 0.97; } 8%, 100% { opacity: 1; scale: 1; } }
 /* The bar runs a little past the 0:30 mark before it holds, so the listen reads as counted, not as stopping there. */
-.stage-progress { width: 52%; animation: stage-progress 6s linear infinite; }
-@keyframes stage-progress { from { width: 0; } 70%, to { width: 52%; } }
+/* Scaled, not resized (no layout per frame); two passes (12s), then it rests at the full bar. */
+.stage-progress { width: 52%; transform-origin: left; animation: stage-progress 6s linear 2; }
+@keyframes stage-progress { from { scale: 0 1; } 70%, to { scale: 1 1; } }
 .stage-usb { position: relative; display: grid; place-items: center; width: 22px; height: 46px; border-radius: 4px 4px 6px 6px; background: linear-gradient(#262823, #1a1b18); box-shadow: 0 0 0 1px var(--color-line-2); }
 .stage-usb::before { content: ""; position: absolute; top: -10px; width: 12px; height: 10px; border-radius: 2px 2px 0 0; background: #8d9087; box-shadow: inset 0 0 0 1px #5e6159; }
 /* The set log lights each line as it reaches the middle of the screen. */

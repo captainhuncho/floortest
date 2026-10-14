@@ -21,6 +21,8 @@ export type PlayerTrack = {
 type Ctx = {
   current: PlayerTrack | null;
   playing: boolean;
+  /** Asked to play but waiting for audio (a big WAV on a slow line): the play button shows a ring, not just Pause. */
+  buffering: boolean;
   time: number;
   duration: number;
   play: (t: PlayerTrack, queue?: PlayerTrack[]) => void;
@@ -44,6 +46,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const audio = useRef<HTMLAudioElement | null>(null);
   const [current, setCurrent] = useState<PlayerTrack | null>(null);
   const [playing, setPlaying] = useState(false);
+  const [buffering, setBuffering] = useState(false);
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const queue = useRef<PlayerTrack[]>([]);
@@ -74,7 +77,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setTime(0);
     setDuration(t.duration ?? 0);
     a.src = `/api/tracks/${t.id}/audio`;
-    void a.play().catch(() => setPlaying(false));
+    // A new source always has to load first; "playing" clears this once sound actually starts.
+    setBuffering(true);
+    void a.play().catch(() => {
+      setPlaying(false);
+      setBuffering(false);
+    });
     if ("mediaSession" in navigator) {
       // Lock screen, Control Centre and headphones: title, artist and the FloorTest crest as artwork.
       navigator.mediaSession.metadata = new MediaMetadata({ title: t.title, artist: t.artist, album: "FloorTest", artwork: [{ src: "/icon.svg", sizes: "512x512", type: "image/svg+xml" }] });
@@ -115,6 +123,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     a.addEventListener("timeupdate", onTime);
     a.addEventListener("play", () => setPlaying(true));
     a.addEventListener("pause", () => setPlaying(false));
+    // "play" fires as soon as playback is asked for, before any sound; "waiting" means it's stalled on data.
+    a.addEventListener("waiting", () => setBuffering(true));
+    for (const ev of ["playing", "canplay", "pause", "ended", "error"]) a.addEventListener(ev, () => setBuffering(false));
     a.addEventListener("loadedmetadata", () => {
       setDuration(a.duration);
       if (!listened.current.duration) listened.current.duration = a.duration;
@@ -189,7 +200,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <PlayerContext.Provider value={{ current, playing, time, duration, play, toggle, seek, seekBy }}>{children}</PlayerContext.Provider>
+    <PlayerContext.Provider value={{ current, playing, buffering, time, duration, play, toggle, seek, seekBy }}>{children}</PlayerContext.Provider>
   );
 }
 
@@ -206,8 +217,16 @@ export function PlayIcon({ playing, className = "h-4 w-4" }: { playing: boolean;
   );
 }
 
+/**
+ * The buffering ring: a 2px arc turning around a play button while audio loads. It sits inside the button (which
+ * needs `relative` and `data-buffering` while loading) and fades in after 150ms, so a fast start never flashes it.
+ */
+export function BufferRing({ className = "-inset-1" }: { className?: string }) {
+  return <span aria-hidden data-buffer-ring className={`pointer-events-none absolute rounded-full ${className}`} />;
+}
+
 export function PlayerBar() {
-  const { current, playing, time, duration, toggle, seek } = usePlayer();
+  const { current, playing, buffering, time, duration, toggle, seek } = usePlayer();
   if (!current) return null;
   const d = duration || current.duration || 0;
   return (
@@ -231,9 +250,12 @@ export function PlayerBar() {
           onClick={toggle}
           className="-m-2 grid size-11 shrink-0 place-items-center"
           aria-label={playing ? `Pause ${current.title}` : `Play ${current.title}`}
+          aria-busy={buffering || undefined}
+          data-buffering={buffering ? "" : undefined}
         >
-          <span className="grid size-7 place-items-center rounded-panel bg-white text-ink">
+          <span className="relative grid size-7 place-items-center rounded-panel bg-white text-ink">
             <PlayIcon playing={playing} />
+            <BufferRing className="-inset-[5px] text-bone" />
           </span>
         </button>
       </div>
@@ -241,10 +263,13 @@ export function PlayerBar() {
       <div className="flex items-center gap-4 px-4 py-3">
         <button
           onClick={toggle}
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-lime text-ink"
+          className="relative grid h-11 w-11 shrink-0 place-items-center rounded-full bg-lime text-ink"
           aria-label={playing ? `Pause ${current.title}` : `Play ${current.title}`}
+          aria-busy={buffering || undefined}
+          data-buffering={buffering ? "" : undefined}
         >
           <PlayIcon playing={playing} />
+          <BufferRing className="-inset-[5px] text-lime" />
         </button>
         <Link href={`/dashboard/review?view=queue&s=all&t=${current.id}`} className="w-40 min-w-0 shrink-0 sm:w-56">
           <p className="truncate text-sm font-medium">{current.title}</p>
