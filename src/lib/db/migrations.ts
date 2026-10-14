@@ -1561,4 +1561,18 @@ where email_verify_token is not null and email_verify_token !~ '^[a-f0-9]{64}$';
 update users set pending_email_token = encode(sha256(convert_to(pending_email_token, 'UTF8')), 'hex')
 where pending_email_token is not null and pending_email_token !~ '^[a-f0-9]{64}$';`,
   },
+  {
+    // Seven account types instead of three (owner, 14 Oct): DJ, Producer / DJ, A&R, Label / Radio, Artist, Curator, Music
+    // professional. Existing accounts move to the nearest one (producer → Producer / DJ, label → Label / Radio). kind_note
+    // is an optional "what do you do"; tools holds the owner's on/off choices that differ from the type's defaults.
+    id: "0095_account_types",
+    sql: `
+alter table users drop constraint if exists users_kind_check;
+update users set kind = 'producer_dj' where kind = 'producer';
+update users set kind = 'label_radio' where kind = 'label';
+alter table users add constraint users_kind_check check (kind in ('dj', 'producer_dj', 'ar', 'label_radio', 'artist', 'curator', 'music_pro'));
+alter table users add column kind_note text not null default '';
+alter table users add column tools text;
+`,
+  },
 ];

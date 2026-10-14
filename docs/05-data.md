@@ -18,7 +18,7 @@ Files are never public: the app hands out short-lived signed links after checkin
 
 | Group | Tables | Personal data |
 |---|---|---|
-| Receivers | `users`, `sessions`, `login_codes`, `password_resets`, `handle_history`, `released_handles` (a deleted account's link names, reserved for a year, no account behind them), `account_log`, `account_actions` | name, email, password hash, two-factor secret (encrypted), Google account id, IPs in logs |
+| Receivers | `users` (incl. `kind` account type, `kind_note`, `tools` on/off choices), `sessions`, `login_codes`, `password_resets`, `handle_history`, `released_handles` (a deleted account's link names, reserved for a year, no account behind them), `account_log`, `account_actions` | name, email, password hash, two-factor secret (encrypted), Google account id, IPs in logs |
 | Senders | `senders`, `sender_codes`, `uploads`, `releases` | name, email, profile links |
 | Music | `tracks`, `stems`, `collections`, `track_comments` (team comments, signed by the person), `track_shortlist`, `events` | file keys, titles, messages, listening/decision history |
 | Retired (dropped) | the 1 Oct colleague-sharing and Review Together guest tables were dropped by migration `0085_drop_retired`; what they held is recorded in `docs/retired.md` | who listened/downloaded |

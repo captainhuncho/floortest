@@ -1,5 +1,6 @@
 import "server-only";
 import { getDb, type Queryable } from "./client";
+import { ACCOUNT_TYPES, type AccountType } from "../account-types";
 
 export { dataDir } from "./client";
 export type { Queryable } from "./client";
@@ -37,8 +38,12 @@ export type User = {
   last_name: string;
   /** Profile links, JSON; read with readLinks(). */
   links: string;
-  /** Who the account is for; null for accounts made before sign-up asked. */
-  kind: "dj" | "producer" | "label" | null;
+  /** Who the account is for (lib/account-types); null for accounts made before sign-up asked. */
+  kind: AccountType | null;
+  /** Optional "what do you do", e.g. manager or PR. */
+  kind_note: string;
+  /** Tool on/off choices that differ from the type's defaults, JSON; read with hasTool(). */
+  tools: string | null;
   email: string;
   name: string;
   handle: string;
@@ -70,7 +75,7 @@ export type User = {
 
 /** Columns that make up `User`. Never select password_hash into it. */
 export const USER_COLUMNS =
-  "id, email, name, first_name, last_name, kind, links, handle, plan, active_collection_id, role_line, cover_key, page_style, paused_at, pause_until, pause_message, tz, email_verified_at, totp_enabled_at, signin_alerts, identity_status, created_at";
+  "id, email, name, first_name, last_name, kind, kind_note, tools, links, handle, plan, active_collection_id, role_line, cover_key, page_style, paused_at, pause_until, pause_message, tz, email_verified_at, totp_enabled_at, signin_alerts, identity_status, created_at";
 
 export type Collection = {
   id: number;
@@ -189,6 +194,6 @@ export async function logEvent(e: Omit<EventRow, "id" | "created_at">, db: Query
   return r!.id;
 }
 
-/** Who an account is for, as asked at sign-up. */
-export const KINDS = ["dj", "producer", "label"];
-export const KIND_LABEL: Record<string, string> = { dj: "DJ / curator", producer: "Producer", label: "Label / A&R" };
+/** Who an account is for, as asked at sign-up (lib/account-types). */
+export const KINDS: string[] = Object.keys(ACCOUNT_TYPES);
+export const KIND_LABEL: Record<string, string> = ACCOUNT_TYPES;

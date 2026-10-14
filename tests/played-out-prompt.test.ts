@@ -26,5 +26,5 @@ test("Played out can be marked on any day by a DJ desk's owner or A&R / Admin; t
   assert.equal(canMarkPlayedOut({ kind: "dj" }), true);
   assert.equal(canMarkPlayedOut({ kind: "dj", role: "admin" }), true);
   assert.equal(canMarkPlayedOut({ kind: "dj", role: "member" }), false);
-  assert.equal(canMarkPlayedOut({ kind: "label" }), false);
+  assert.equal(canMarkPlayedOut({ kind: "label_radio" }), false);
 });
