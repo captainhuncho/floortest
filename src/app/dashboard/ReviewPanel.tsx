@@ -24,7 +24,6 @@ import { History } from "./History";
 import { PanelDetails } from "./PanelDetails";
 import { commentsFor, shortlistOf, teamSize } from "@/lib/team";
 import { ReviewTogether } from "./ReviewTogether";
-import { ArrivalFocus, SwipeZone } from "./ReviewHandoff";
 
 export async function ReviewPanel({
   track: t,
@@ -33,9 +32,6 @@ export async function ReviewPanel({
   selfHref,
   next,
   prevHref,
-  queueHref,
-  waiting,
-  docked,
 }: {
   track: Track;
   sender: Sender;
@@ -43,12 +39,6 @@ export async function ReviewPanel({
   selfHref: string;
   next: { href: string; track: PlayerTrack } | null;
   prevHref: string | null;
-  /** The Queue without a track open, where the review lands once nothing is waiting. */
-  queueHref: string;
-  /** In a Needs review view, the ids waiting there; null in other views. */
-  waiting: number[] | null;
-  /** Phones, track open: the decision rail docks at the bottom of the screen. */
-  docked: boolean;
 }) {
   const receiverPlan = (await q.get<{ plan: string }>("SELECT plan FROM users WHERE id = ?", t.user_id))?.plan ?? "free";
   const stemsOn = await featureOn("stems", { id: t.user_id, plan: receiverPlan });
@@ -154,10 +144,10 @@ export async function ReviewPanel({
           {desk && decisionLocked(desk, t) ? " · only the owner or an A&R / Admin can change it" : ""}
         </span>
       )}
-      <span className={`rounded-full border px-2.5 py-0.5 ${t.sets_ok ? "border-bone/30 text-bone" : "border-line text-mute"}`}>
+      <span className={`rounded-full border px-2.5 py-0.5 ${t.sets_ok ? "border-lime/50 text-lime" : "border-line text-mute"}`}>
         {t.sets_ok ? "Cleared for DJ sets" : "Evaluation only: ask before playing it out"}
       </span>
-      {shortlist && <span className="rounded-full border border-bone/30 px-2.5 py-0.5 text-bone">★ Shortlisted</span>}
+      {shortlist && <span className="rounded-full border border-lime/50 px-2.5 py-0.5 text-lime">★ Shortlisted</span>}
       {t.release_status && <span className="rounded-full border border-line px-2.5 py-0.5 text-mute">{RELEASE_STATUS[t.release_status as keyof typeof RELEASE_STATUS]}</span>}
       {t.ai_use && t.ai_use !== "none" && <span className="rounded-full border border-line-2 px-2.5 py-0.5 uppercase tracking-[0.5px] text-mute">{AI_USE[t.ai_use]}</span>}
       {soon !== null && <span className="rounded-full border border-danger/50 px-2.5 py-0.5 text-danger">{soon <= 1 ? "Deletes within a day" : `Deletes in ${soon} days`} unless you keep it</span>}
@@ -172,89 +162,71 @@ export async function ReviewPanel({
     </div>
   );
 
-  // The sender's message can carry the terms of the decision, so it sits above the rail, not below the fold.
-  const message = t.message ? (
-    <figure className="mt-4 rounded-lg border border-line bg-ink p-4">
-      <figcaption className="label mb-2">Message from {sender.name}</figcaption>
-      <blockquote className="whitespace-pre-wrap">{t.message}</blockquote>
-    </figure>
-  ) : null;
-
   const art = artFrom ? `/api/track-art/${artFrom.id}?v=${encodeURIComponent(artFrom.art_key)}` : null;
 
-  const rail = (dock: boolean) => (
-    <DecisionRail
-      docked={dock}
-      track={{ ...player, decision: t.decision }}
-      senderName={sender.name}
-      selfHref={selfHref}
-      next={next}
-      prevHref={prevHref}
-      queueHref={queueHref}
-      waiting={waiting}
-      onReply={replyToSender.bind(null, sender.id, t.id)}
-    />
-  );
-
   return (
-    <div className="p-4 sm:p-6" data-review-panel>
-      <ArrivalFocus target={t.id} />
+    <div className="p-4 sm:p-6" data-swipe-zone>
       {/* Phones: Figma "08 Full Player / DJ Review" */}
       <div className="md:hidden">
-        <SwipeZone trackId={t.id}>
-          <div className="flex items-center gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={art ?? "/icons/review-art.svg"} alt="" className="size-[52px] shrink-0 rounded object-cover" />
-            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <h2 data-track-title={t.id} tabIndex={-1} className="truncate text-base font-bold text-bone outline-none">{t.title}</h2>
-              <p className="truncate text-xs text-mute">
-                {t.artist}
-                {t.isrc && <span title="ISRC"> · {t.isrc}</span>}
-              </p>
-            </div>
+        <div className="flex items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={art ?? "/icons/review-art.svg"} alt="" className="size-[52px] shrink-0 rounded object-cover" />
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <h2 className="truncate text-base font-bold text-bone">{t.title}</h2>
+            <p className="truncate text-xs text-mute">
+              {t.artist}
+              {t.isrc && <span title="ISRC"> · {t.isrc}</span>}
+            </p>
           </div>
-          {meta && <p className="mt-3 text-[13px] font-bold text-bone tnum">{meta}</p>}
-          {tags}
-          {releaseBlock}
-          <MobileTransport track={player} prevHref={prevHref} nextHref={next?.href ?? null} />
-        </SwipeZone>
-        {message && <div data-leave-fade>{message}</div>}
-        {docked && (
-          <>
-            {/* The rail mounts once the screen size is known (one rail, one set of shortcuts); this dark strip holds its
-                place at the bottom until then, so nothing jumps. */}
-            <div aria-hidden data-rail-space className="keep-night fixed inset-x-0 bottom-0 z-40 h-[calc(64px+max(0.75rem,env(safe-area-inset-bottom)))] bg-[#141512]" />
-            <MobileOnly>{rail(true)}</MobileOnly>
-          </>
-        )}
-      </div>
-
-      <div className="hidden md:block">
-        <SwipeZone trackId={t.id}>
-          {art && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={art} alt={`Artwork for ${t.title}`} className="mb-4 size-40 rounded-md border border-line object-cover" />
-          )}
-          <p className="label">Now reviewing</p>
-          <h2 data-track-title={t.id} tabIndex={-1} className="mt-2 text-2xl font-bold leading-tight tracking-tight outline-none">{t.title}</h2>
-          <p className="mt-1 text-mute">{t.artist}</p>
-          {meta && <p className="mt-1 font-bold tnum">{meta}</p>}
-          {tags}
-          {releaseBlock}
-
-          <div className="mt-5">
-            <DetailPlayer track={player} />
-          </div>
-        </SwipeZone>
-        <div data-leave-fade>
-          {message}
-          <div className="mt-5 min-h-[92px]">
-            <DesktopOnly>{rail(false)}</DesktopOnly>
-          </div>
+        </div>
+        {meta && <p className="mt-3 text-[13px] font-bold text-bone tnum">{meta}</p>}
+        {tags}
+        {releaseBlock}
+        <MobileTransport track={player} prevHref={prevHref} nextHref={next?.href ?? null} />
+        <div className="mt-3.5">
+          <MobileOnly>
+          <DecisionRail
+            track={{ ...player, decision: t.decision }}
+            senderName={sender.name}
+            selfHref={selfHref}
+            next={next}
+            prevHref={prevHref}
+            onReply={replyToSender.bind(null, sender.id, t.id)}
+          />
+          </MobileOnly>
         </div>
       </div>
 
-      <div data-leave-fade>
+      <div className="hidden md:block">
+      {art && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={art} alt={`Artwork for ${t.title}`} className="mb-4 size-40 rounded-md border border-line object-cover" />
+      )}
+      <p className="label">Now reviewing</p>
+      <h2 className="mt-2 text-2xl font-bold leading-tight tracking-tight">{t.title}</h2>
+      <p className="mt-1 text-mute">{t.artist}</p>
+      {meta && <p className="mt-1 font-bold tnum">{meta}</p>}
+      {tags}
+      {releaseBlock}
+
+      <div className="mt-5">
+        <DetailPlayer track={player} />
+      </div>
+
+      <div className="mt-5">
+        <DesktopOnly>
+          <DecisionRail
+            track={{ ...player, decision: t.decision }}
+            senderName={sender.name}
+            selfHref={selfHref}
+            next={next}
+            prevHref={prevHref}
+            onReply={replyToSender.bind(null, sender.id, t.id)}
+          />
+        </DesktopOnly>
+      </div>
+      </div>
+
       {t.decision === "kept" && (
         <>
           <div className="mt-4">
@@ -276,16 +248,20 @@ export async function ReviewPanel({
         </div>
       )}
 
+      {t.message && (
+        <figure className="mt-6 rounded-lg border border-line bg-ink p-4">
+          <figcaption className="label mb-2">Message from {sender.name}</figcaption>
+          <blockquote className="whitespace-pre-wrap">{t.message}</blockquote>
+        </figure>
+      )}
+
       <p className="mt-6 text-sm">
         From{" "}
         <Link href={`/dashboard/contacts/${sender.id}`} className="font-medium underline-offset-4 hover:underline">
           {sender.name}
         </Link>{" "}
         {sender.verified_at ? (
-          <span className="chip ml-1 border-line text-mute">
-            <svg aria-hidden viewBox="0 0 12 12" className="size-3" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 6.25 5 8.75l4.5-5" /></svg>
-            Verified email
-          </span>
+          <span className="chip ml-1 border-lime/50 text-lime">Verified email</span>
         ) : (
           <span className="chip ml-1 border-line text-mute">Unverified email</span>
         )}
@@ -309,7 +285,8 @@ export async function ReviewPanel({
         </dl>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <a href={`/api/tracks/${t.id}/download`} className="btn-ghost btn-sm">
+          {/* Phones already have Download on the decision rail. */}
+          <a href={`/api/tracks/${t.id}/download`} className="btn-ghost btn-sm hidden md:inline-flex">
             Download original
           </a>
           <form action={moveTrack.bind(null, t.id)} className="flex">
@@ -378,7 +355,6 @@ export async function ReviewPanel({
           </div>
         </section>
       </PanelDetails>
-      </div>
     </div>
   );
 }
