@@ -10,6 +10,9 @@ import type { FormState } from "./actions";
 import { PasswordStrength } from "@/components/PasswordStrength";
 import { browserTimeZone, useBrowserValue } from "@/components/useBrowserValue";
 
+/** Smooth scrolling, unless the person has asked their device for less motion. */
+const scrollBehavior = (): ScrollBehavior => (matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth");
+
 type Field = {
   name: string;
   label: string;
@@ -74,7 +77,7 @@ export function AuthForm({
   const [issue, setIssue] = useState<{ key: string; text: string } | null>(null);
   const alertRef = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
-    if (state?.error) alertRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+    if (state?.error) alertRef.current?.scrollIntoView({ block: "center", behavior: scrollBehavior() });
   }, [state?.error]);
 
   if (state?.ok && success) return <div role="status" className={ENTER}>{success}</div>;
@@ -86,7 +89,7 @@ export function AuthForm({
       setIssue({ key, text });
       const el = document.getElementById(`f-${key}`);
       el?.focus({ preventScroll: true });
-      el?.scrollIntoView({ block: "center", behavior: "smooth" });
+      el?.scrollIntoView({ block: "center", behavior: scrollBehavior() });
       return false;
     };
     for (const f of fields) {
@@ -142,7 +145,7 @@ export function AuthForm({
             {f.label}
           </label>
           {f.choices ? (
-            <select id={`f-${f.name}`} name={f.name} required defaultValue={f.defaultValue ?? ""} aria-describedby={describe(f)} className={`input ${invalid(f.name)}`}>
+            <select id={`f-${f.name}`} name={f.name} required defaultValue={f.defaultValue ?? ""} aria-invalid={issue?.key === f.name || undefined} aria-describedby={describe(f)} className={`input ${invalid(f.name)}`}>
               <option value="" disabled>
                 Choose one
               </option>
@@ -163,7 +166,7 @@ export function AuthForm({
                 placeholder={f.placeholder}
                 autoComplete={f.autoComplete}
                 autoCapitalize="none"
-                aria-describedby={describe(f)}
+                aria-invalid={issue?.key === f.name || undefined} aria-describedby={describe(f)}
                 className="tap-tall w-full min-w-0 bg-transparent py-2.5 pr-3 text-sm outline-none placeholder:text-dim"
               />
             </div>
@@ -179,7 +182,7 @@ export function AuthForm({
                 defaultValue={f.defaultValue}
                 placeholder={f.placeholder}
                 autoComplete={f.autoComplete}
-                aria-describedby={describe(f)}
+                aria-invalid={issue?.key === f.name || undefined} aria-describedby={describe(f)}
               />
               <button
                 type="button"
@@ -203,7 +206,7 @@ export function AuthForm({
               defaultValue={f.defaultValue}
               placeholder={f.placeholder}
               autoComplete={f.autoComplete}
-              aria-describedby={describe(f)}
+              aria-invalid={issue?.key === f.name || undefined} aria-describedby={describe(f)}
             />
           )}
           {f.strength && <PasswordStrength value={values[f.name] ?? ""} context={["name", "email", "handle"].map((k) => values[k] ?? "")} />}
@@ -218,7 +221,7 @@ export function AuthForm({
       {consents?.filter((c) => c.required).map((c) => (
         <div key={c.name} className="flex flex-col gap-1.5">
           <label className="tap-tall flex cursor-pointer items-start gap-3 text-[13px] text-mute">
-            <input id={`f-${c.name}`} type="checkbox" name={c.name} required className="mt-0.5 size-5 shrink-0 accent-lime" />
+            <input id={`f-${c.name}`} type="checkbox" name={c.name} required aria-invalid={issue?.key === c.name || undefined} aria-describedby={issue?.key === c.name ? `f-${c.name}-issue` : undefined} className="mt-0.5 size-5 shrink-0 accent-lime" />
             <span>{c.label}</span>
           </label>
           {problem(c.name)}

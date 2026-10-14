@@ -15,6 +15,7 @@ import { MAX_STEMS, stemsSent } from "@/lib/stems";
 import { StemUpload } from "./StemUpload";
 import { StatusHeadline } from "./StatusHeadline";
 import { switchOn } from "@/lib/switches";
+import { activeCollection, capacity, isClosed, isPaused, userByHandleForView } from "@/lib/desk";
 import { StopSharing } from "./StopSharing";
 
 export const metadata = { title: "Your receipt — FloorTest", robots: { index: false } };
@@ -25,7 +26,7 @@ export const metadata = { title: "Your receipt — FloorTest", robots: { index: 
  */
 export default async function Receipt({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const t = (await q.get<(Track & { receiver: string; receiver_plan: string; collection: string | null; sender_email: string; verified_at: number | null; sender_account: number | null })>(`SELECT t.*, u.name AS receiver, u.plan AS receiver_plan, c.name AS collection, s.email AS sender_email, s.verified_at, s.account_id AS sender_account
+  const t = (await q.get<(Track & { receiver: string; receiver_plan: string; collection: string | null; sender_email: string; verified_at: number | null; sender_account: number | null; receiver_handle: string })>(`SELECT t.*, u.name AS receiver, u.handle AS receiver_handle, u.plan AS receiver_plan, c.name AS collection, s.email AS sender_email, s.verified_at, s.account_id AS sender_account
        FROM tracks t JOIN users u ON u.id = t.user_id JOIN senders s ON s.id = t.sender_id
        LEFT JOIN collections c ON c.id = t.collection_id
        WHERE t.token = ?`, token));
@@ -40,6 +41,10 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
   const [c, editor] = await Promise.all([siteCopy("receipt"), siteEditor()]);
   const { E, panel } = editable(c, !!editor);
   const who = t.receiver;
+  // "Send another" only while the receiver's link takes uploads: the same checks as their link page (not paused, the
+  // callout open, room on the desk). A suspended account isn't found at all.
+  const rcv = await userByHandleForView(t.receiver_handle);
+  const takingSends = !!rcv && !isPaused(rcv) && !isClosed(await activeCollection(rcv)) && !(await capacity(rcv)).full;
 
   /*
    * The lifecycle, from the track itself. "Meaningful" events are things the receiver did with the music;
@@ -178,6 +183,13 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
         </div>
       </details>
       <LivePulse url={`/api/pulse/receipt/${token}`} every={8000} />
+      {takingSends && (
+        <p className="text-[13px]">
+          <Link href={`/${t.receiver_handle}`} className="inline-flex min-h-11 items-center text-mute underline underline-offset-4 hover:text-bone">
+            Send another to {who}
+          </Link>
+        </p>
+      )}
       <footer className="mt-auto flex flex-col items-center gap-3 pt-4">
         {/* Senders are how FloorTest grows: one quiet invitation, only to senders without an account. */}
         {invite && (
