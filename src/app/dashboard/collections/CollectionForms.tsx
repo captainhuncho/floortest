@@ -501,7 +501,7 @@ export function DeleteCollection({ c, canDelete }: { c: { id: number; name: stri
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 id={`del-${c.id}`} className="text-sm font-bold">Delete this collection</h3>
-          <p className="text-xs text-mute">{canDelete ? "Its tracks stay in your Review Queue, unsorted. This can't be undone." : "You need at least one collection, so this one can't be deleted. Make another first."}</p>
+          <p className="text-xs text-mute">{canDelete ? "Its tracks stay in your Queue, unsorted. This can't be undone." : "You need at least one collection, so this one can't be deleted. Make another first."}</p>
         </div>
         {canDelete && !open && (
           <button type="button" onClick={() => setOpen(true)} className="btn-danger btn-sm">

@@ -111,7 +111,7 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
         const token = await decideTrack(r.id, next);
         if (token)
           toast.show({
-            message: `${next === "kept" ? `“${r.title}” added to Prepare for set` : `Not for me: “${r.title}”`}`,
+            message: `${next === "kept" ? `“${r.title}” added to Prepare` : `Not for me: “${r.title}”`}`,
             action: {
               label: "Undo",
               run: async () => {
@@ -197,7 +197,7 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
           </button>
         )}
       </div>
-      <ul ref={listRef} className="@container space-y-2.5 px-3 md:space-y-2 md:px-0" aria-label="Review Queue">
+      <ul ref={listRef} className="@container space-y-2.5 px-3 md:space-y-2 md:px-0" aria-label="Queue">
         {rows.map((r) => {
           const isCurrent = player.current?.id === r.id;
           const playing = isCurrent && player.playing;
@@ -461,7 +461,7 @@ function Expanded({ row: r, decision, onClose }: { row: ListRow; decision: Decis
             {r.sender}
           </Link>{" "}
           · {r.senderEmail}{" "}
-          <span className={`chip ${r.senderVerified ? "border-lime/50 text-lime" : "border-line text-mute"}`}>
+          <span className={`chip ${r.senderVerified ? "border-line text-bone" : "border-line text-mute"}`}>
             {r.senderVerified ? "Verified" : "Unverified"}
           </span>
         </p>
@@ -574,7 +574,7 @@ function DecisionButton({ kind, title, pressed, onClick }: { kind: "kept" | "pas
         keep
           ? pressed
             ? "border-lime bg-lime text-ink"
-            : "border-lime/50 text-lime hover:bg-lime hover:text-ink"
+            : "border-line text-bone hover:border-lime hover:bg-lime hover:text-ink"
           : pressed
             ? "border-bone bg-bone/10 text-bone"
             : "border-line text-mute hover:border-mute hover:text-bone"

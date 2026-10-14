@@ -36,12 +36,12 @@ A collection shared with your account (/c/a.<n>) remembers itself and is where s
 
 ## Receiver: daily loop
 ```
-Floor (waiting count ─► Start reviewing; Up next rows open the track) ─► Review Queue (phones: player first, list under it) ─► play ─► Keep (K) ──► Prepare for set ─► Download kept ─► name folder ─► ZIP
-                              ├─ Not for me (X)    └─ Files only · Clear kept (confirm)
+Floor (waiting count ─► Start reviewing; Up next rows open the track) ─► Queue (phones: player first, list under it) ─► play ─► Keep (K) ──► Prepare ─► Download kept ─► name folder ─► ZIP
+                              ├─ Not for me (X)    └─ Files only · Start a new batch (confirm) · Played it out (any day)
                               └─ Reply (R) ──► sender email
 Review panel: title · one meta line · tags (sets / release / AI / duplicate / deleting soon) ─► waveform (1–4 jump) ─► Keep · Not for me · Reply ─► next track plays
    Details (closed, remembered) ─► format & size · dates · Download · Move · Delete (confirm) · sender email, links, stats, note, last 3 events · Full history →
-Review Queue (List) ─► Select ─► tick tracks / Select all ─► bar: Keep · Not for me · Needs review · Move to… · Download · Delete ─► confirm ─► done (toast)
+Queue (List) ─► Select ─► tick tracks / Select all ─► bar: Keep · Not for me · Needs review · Move to… · Download · Delete ─► confirm ─► done (toast)
    Esc or Done leaves select mode; in select mode a tap on a row ticks it (never plays or opens it)
 Floor ─► Collections ─► New collection / Open collection ─► Add tracks (owner: choose WAV/MP3s, edit titles, rights tick, upload) ─► Edit collection · Download collection · Files only · Send new tracks here
 Nightly, only if Settings → Receiving → "When a callout closes" is on ─► a link on a collection past its close date ─► moves to the newest open collection ─► email to the receiver · bell: "Your link now goes to …" · activity: "Link moved on its own to"

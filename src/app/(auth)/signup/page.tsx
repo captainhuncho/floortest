@@ -51,7 +51,7 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
       )}
       {referrer && (
         <p className="mb-6 rounded-lg border border-lime/40 bg-lime/5 px-4 py-3 text-sm">
-          Invited by <span className="font-medium">{referrer.name}</span>. You both get 10 extra track slots once your first track arrives.
+          Invited by <span className="font-medium">{referrer.name}</span>. You both get 10 more active tracks once your first track arrives.
         </p>
       )}
       {googleConfig() && !isPreview && (

@@ -108,7 +108,7 @@ export function TwoSides() {
             <div className="rounded-t-xl border border-line-2 bg-ink p-2 pb-0">
               <div className="rounded-t-md border border-line bg-ink-2 p-4 sm:p-5">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-mute">Review Queue</span>
+                  <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-mute">Queue</span>
                   <Sample />
                 </div>
                 <ul className="mt-4 divide-y divide-line border-y border-line text-xs">

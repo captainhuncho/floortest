@@ -1,0 +1,291 @@
+<title>Desk Audit 13 Oct</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+/* Layout: one reading column like a set log; summary and the pick first, then batches, then every finding by lens. Tokens mirror FloorTest's globals.css (night first, day mode). */
+:root {
+  --ink: #10110f; --ink-2: #181916; --ink-3: #1f201c; --line: #2c2e29;
+  --bone: #f1f1eb; --mute: #a3a69b; --faint: #94978e; --lime: #d5ff48; --on-lime: #10110f; --danger: #ff6b5a;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  --ink: #fafaf6; --ink-2: #f2f3ec; --ink-3: #ffffff; --line: #e3e6d8;
+  --bone: #0d0e0b; --mute: #4c4f45; --faint: #66695e; --lime: #4a6400; --on-lime: #fafaf6; --danger: #c4321f; color-scheme: light; } }
+:root[data-theme="light"] {
+  --ink: #fafaf6; --ink-2: #f2f3ec; --ink-3: #ffffff; --line: #e3e6d8;
+  --bone: #0d0e0b; --mute: #4c4f45; --faint: #66695e; --lime: #4a6400; --on-lime: #fafaf6; --danger: #c4321f; color-scheme: light; }
+* { box-sizing: border-box; }
+body { background: var(--ink); color: var(--bone); font: 13px/1.6 var(--mono); }
+.wrap { max-width: 760px; margin: 0 auto; padding: 32px 16px 80px; display: grid; gap: 40px; }
+h1 { font-size: 28px; line-height: 1.1; letter-spacing: -0.5px; margin: 0; text-wrap: balance; }
+h2 { font-size: 17px; margin: 0; text-wrap: balance; }
+h3 { font-size: 13px; margin: 0; }
+p { margin: 0; }
+.eyebrow { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--mute); }
+.meta { font-size: 11px; color: var(--faint); }
+section { display: grid; gap: 16px; }
+.lede { color: var(--mute); max-width: 62ch; }
+.readout { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.readout div { padding: 12px 14px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); margin: 0 -1px -1px 0; }
+.readout b { display: block; font-size: 26px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.readout span { font-size: 11px; color: var(--faint); }
+.batch { border: 1px solid var(--line); border-radius: 12px; background: var(--ink-2); padding: 16px; display: grid; gap: 10px; }
+.batch.pick { border-color: var(--lime); }
+.batch header { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: baseline; justify-content: space-between; }
+.tag { font-size: 11px; border: 1px solid var(--line); border-radius: 6px; padding: 1px 7px; color: var(--mute); white-space: nowrap; }
+.tag.lime { background: var(--lime); color: var(--on-lime); border-color: var(--lime); font-weight: 700; }
+ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+li::marker { color: var(--faint); }
+.panel { display: grid; gap: 0; border-top: 1px solid var(--line); }
+.voice { display: grid; grid-template-columns: 140px 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.voice dt { color: var(--mute); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding-top: 2px; }
+.voice dd { margin: 0; }
+@media (max-width: 520px) { .voice { grid-template-columns: 1fr; gap: 2px; } }
+ol.q { padding-left: 22px; display: grid; gap: 10px; }
+ol.q li::marker { color: var(--bone); font-weight: 700; }
+details { border: 1px solid var(--line); border-radius: 12px; background: var(--ink-2); }
+summary { cursor: pointer; padding: 14px 16px; display: flex; justify-content: space-between; gap: 12px; list-style: none; }
+summary::-webkit-details-marker { display: none; }
+summary::after { content: "+"; color: var(--faint); }
+details[open] summary::after { content: "−"; }
+summary:focus-visible, a:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
+.rows { overflow-x: auto; padding: 0 16px 16px; }
+table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 12px; }
+th, td { text-align: left; vertical-align: top; padding: 8px 10px 8px 0; border-top: 1px solid var(--line); }
+th { font-weight: 500; color: var(--faint); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+td.n { font-variant-numeric: tabular-nums; color: var(--faint); width: 2.5em; }
+td.e { white-space: nowrap; color: var(--mute); width: 3em; }
+code { font-family: var(--mono); font-size: 11px; color: var(--mute); word-break: break-word; }
+.keep { display: grid; gap: 6px; }
+</style>
+
+<div class="wrap">
+
+<header style="display:grid;gap:12px">
+  <p class="eyebrow">FloorTest · design audit · 13 Oct 2026 · mobile-next</p>
+  <h1>Desk audit: what to fix before strangers send music</h1>
+  <p class="lede">Five reviewers went through every main screen at phone and laptop width: visual design, accessibility, UX flows, copy and motion. The 7-voice panel then sorted it into four batches. Nothing has been changed yet.</p>
+</header>
+
+<section aria-label="Totals">
+  <div class="readout">
+    <div><b>72</b><span>findings</span></div>
+    <div><b>0</b><span>blockers</span></div>
+    <div><b>6</b><span>serious (access)</span></div>
+    <div><b>~50</b><span>small fixes (under 1 h)</span></div>
+    <div><b>7</b><span>questions for you</span></div>
+  </div>
+  <p class="meta">Every colour token passes contrast in Night and Day. Focus rings, dialogs and the swipe's button fallback all hold. The design is sound; the drift is in the details.</p>
+</section>
+
+<section>
+  <p class="eyebrow">The pattern across all five</p>
+  <ul>
+    <li><b>Lime has spread.</b> Review shows about 8 lime marks at once, and the play button is lime next to Keep. Home uses lime as text colour.</li>
+    <li><b>One thing, several names and shapes.</b> "The Floor / Review Queue / Prepare for set" on laptop vs "Floor / Queue / Prepare" on phone. Three track-row designs. Six "selected" styles.</li>
+    <li><b>The phone review loop isn't finished.</b> The rail is mid-screen and scrolls away, the swipe snaps the old track back while saving, buttons dim to 40%, and clearing the queue ends on nothing.</li>
+    <li><b>Senders can lose a send.</b> The form lives only in memory while they fetch the email code; errors don't say whether anything was sent.</li>
+    <li><b>Keep:</b> the public send page (the bar for everything else), the home set pieces, the decision rail, the tactile sidebar, the Prepare rows, the mono type.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>The four batches</h2>
+
+  <article class="batch pick">
+    <header><h3>1 · One light, one name</h3><span class="tag lime">Panel pick · before 17 Oct</span></header>
+    <p class="meta">About 25 small fixes · 1–1.5 days · no layout changes</p>
+    <ul>
+      <li>Lime only on Keep and the one call to action: play buttons, tab underlines, selected rows, chips and home labels go bone or neutral.</li>
+      <li>One set of names: Floor · Queue · Collections · Prepare on both navs. "Submissions" becomes "Link open / Link paused".</li>
+      <li>"Clear kept" stops looking like a delete: ghost button, "Start a new batch", no red.</li>
+      <li>"Desk full" banner gives the limit and points to Prepare, not only to plans.</li>
+      <li>Home: one action label while invite-only ("Request invite"); the hero box says "Check it's free".</li>
+      <li>Senders: answers survive leaving for the email code, a leave warning during upload, "Keep this page open", errors that say "Nothing was sent".</li>
+      <li>Receipt gets "Send another to Maxwell". Played out email loses the emoji and explains the signal.</li>
+      <li>Access: Not for me rows readable, seek bar out of the link, upload screen stops reading every byte, scroll padding under fixed bars, tap targets to 44px, Undo toast pauses on touch.</li>
+      <li>Confirm-email banner only on Floor and Send.</li>
+    </ul>
+  </article>
+
+  <article class="batch">
+    <header><h3>2 · Review on the phone, finished</h3><span class="tag">week of 19 Oct</span></header>
+    <p class="meta">About 2 days · e2e on review · feel-check on a real phone via the app build</p>
+    <ul>
+      <li>Not for me · Keep · Reply docked at the bottom in thumb reach; tab bar hides while reviewing; Download moves into Details.</li>
+      <li>Swipe v2: decided track leaves and stays gone, the next slides in, a quick flick counts, buttons no longer dim.</li>
+      <li>The Keep stamp lands at the line with the haptic.</li>
+      <li>Clearing the queue ends on "All caught up. 2 kept ready" with Prepare one tap away.</li>
+      <li>Focus moves to the next track's title after a decision; the sender's message sits above the rail.</li>
+      <li>Queue list and title first on phone; tabs in one scrolling row.</li>
+    </ul>
+  </article>
+
+  <article class="batch">
+    <header><h3>3 · One system</h3><span class="tag">after beta starts</span></header>
+    <p class="meta">About 4–5 days · the bigger layout work</p>
+    <ul>
+      <li>One track row for Queue, Prepare, collections and Floor, built from the Prepare rows.</li>
+      <li>Collections as a crate list, one row per callout; no gradient tiles or stat tiles.</li>
+      <li>Floor as a desk: numbers in one readout strip; laptop gets the "two sides of the desk" two-column layout.</li>
+      <li>One selected style, one tabs style, one page width, one title size; shared form, card and button styles fixed at the source.</li>
+      <li>Activity laid out like the home page set log; Contacts as tight two-line rows with neutral avatars.</li>
+      <li>A visible field-border token; Day-mode waveform contrast; keyboard shortcuts switch in Settings.</li>
+    </ul>
+  </article>
+
+  <article class="batch">
+    <header><h3>4 · Small moments</h3><span class="tag">any time</span></header>
+    <p class="meta">About half a day · restrained</p>
+    <ul>
+      <li>A one-time ring on the receipt's dot when "Listened" arrives.</li>
+      <li>The send bar holds at 100%, then a tick draws itself.</li>
+      <li>Player shows a buffering ring instead of Pause over silence on big WAVs.</li>
+      <li>Upload bars move smoothly instead of jumping.</li>
+    </ul>
+  </article>
+</section>
+
+<section>
+  <h2>Panel round</h2>
+  <dl class="panel">
+    <div class="voice"><dt>DJ / A&amp;R</dt><dd>Batch 2 is what I'd feel most: the rail in thumb reach and a swipe that doesn't hang. Batch 1's lime fix means Keep is the only bright thing again. Wants Played out on any day, not only Mon/Tue.</dd></div>
+    <div class="voice"><dt>Label owner</dt><dd>One name per screen matters when teammates talk to each other ("check the Queue"). Fine with Collections as a list; the tiles read as decoration on a team desk.</dd></div>
+    <div class="voice"><dt>Sender / producer</dt><dd>Losing a 250 MB send because I went to get a code is the worst thing in the report. "Nothing was sent" in errors and "Send another" on the receipt both earn a place in batch 1.</dd></div>
+    <div class="voice"><dt>Designer</dt><dd>Agrees batch 1 first: it's cheap and makes batch 3 easier. Holds the line on no tile grids; the set log and crate list are the targets.</dd></div>
+    <div class="voice"><dt>Engineer</dt><dd>Batch 1 is safe for the 17th. Batch 2 changes review state, so e2e runs and a real-phone check before it ships; not the day before beta widens.</dd></div>
+    <div class="voice"><dt>Ops &amp; support</dt><dd>"Clear kept" reading as delete and vague upload errors are support tickets waiting to happen. Both in batch 1.</dd></div>
+    <div class="voice"><dt>Privacy &amp; legal</dt><dd>Objects to starting the upload before Send: that holds a file before consent; needs the lawyer and a retention rule, so it's out of all batches. The link-page line about sharing changes only with the lawyer's wording.</dd></div>
+  </dl>
+  <p class="meta">Changed because of the panel: the early-upload idea is parked; sender safety and "Clear kept" moved up into batch 1; batch 2 waits for a real-phone check.</p>
+</section>
+
+<section>
+  <h2>Your calls</h2>
+  <ol class="q">
+    <li><b>Go:</b> build batch 1 now on mobile-next for a preview before 17 Oct, then batch 2 the week of 19 Oct? <span class="meta">Panel recommends yes.</span></li>
+    <li><b>Played out on any day?</b> Add "Played it out" to each Prepare card and keep the Mon/Tue prompt as a nudge. <span class="meta">DJ / A&amp;R: yes.</span></li>
+    <li><b>Required profile on the send form:</b> keep it as an anti-impersonation rule (then it goes in the docs), or make it optional?</li>
+    <li><b>"Up next" on the Floor</b> lists the newest while the queue opens the oldest. Rename it "Just in", or list the oldest first?</li>
+    <li><b>"Clear kept" → "Start a new batch"?</b> Or another name you'd use in the booth.</li>
+    <li><b>Phone tab label</b> "Prepare" is cut to "PREPAR" at 390px. Shorten to "Prep", or tighten the label?</li>
+    <li><b>Keyboard shortcuts</b> (K, X, 1–4) are always on, an access fail. Add an on/off switch in Settings (on by default)?</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Every finding</h2>
+  <p class="meta">Effort: S under 1 h · M half a day · L more than a day. File references are in <code>src/app</code> unless noted.</p>
+
+  <details>
+    <summary><span><b>Visual design</b> · 15</span></summary>
+    <div class="rows"><table>
+      <tr><th>#</th><th>Finding and fix</th><th>Effort</th></tr>
+      <tr><td class="n">1</td><td>Lime as decoration: Review shows ~8 lime marks; the play button is lime next to Keep. Play, tab underline, selected row and chips go bone or neutral. <code>DetailPlayer.tsx:15 · TrackList.tsx:60,64,105 · StatusTabs.tsx:62 · ReviewPanel.tsx:265</code></td><td class="e">S</td></tr>
+      <tr><td class="n">2</td><td>Six "selected" styles. One segmented control (bone fill) and one tabs style (bone underline). <code>contacts/page.tsx:129,298 · BillingSwitch.tsx:37</code></td><td class="e">M</td></tr>
+      <tr><td class="n">3</td><td>Collections and detail are tile lineups with hard-coded gradients and stat tiles. Crate list, one row per callout; one readout line on detail. <code>CollectionForms.tsx:257 · collections/page.tsx:66,87</code></td><td class="e">M</td></tr>
+      <tr><td class="n">4</td><td>Three track-row designs; title/artist order flips; Keep becomes a heart. One TrackRow from the Prepare rows.</td><td class="e">L</td></tr>
+      <tr><td class="n">5</td><td>Floor stats are prose; the stat size is never used; laptop is a 704px column in 1190px. Readout strip; two columns at 1280px+.</td><td class="e">M</td></tr>
+      <tr><td class="n">6</td><td>Contacts: emerald "Sent this week" pill and rainbow avatars, no Day versions. Neutral chip, neutral initials. <code>contacts/page.tsx:98,210,400</code></td><td class="e">S</td></tr>
+      <tr><td class="n">7</td><td>Contacts stat tiles wrap and repeat the tab count; phone cards ~210px tall. One readout line; 72px rows.</td><td class="e">M</td></tr>
+      <tr><td class="n">8</td><td>Phone Review: ~950px of player before the title; tabs wrap. Header first, scrolling tabs.</td><td class="e">M</td></tr>
+      <tr><td class="n">9</td><td>Five page-title sizes, two label styles; "-15S". One title size; "−15s".</td><td class="e">S</td></tr>
+      <tr><td class="n">10</td><td>Page width and alignment change on every page. One container, 1088px, left-aligned.</td><td class="e">S</td></tr>
+      <tr><td class="n">11</td><td>Two near-identical greys (dim/faint); opacity on Not for me rows. Keep mute + faint.</td><td class="e">S</td></tr>
+      <tr><td class="n">12</td><td>Lime as text colour on Home, six lime buttons. Lime only on the one action per screen. <code>page.tsx:70,120,162,219,225,295</code></td><td class="e">S</td></tr>
+      <tr><td class="n">13</td><td>Home laptop mockup draws Keep as an outline; the app has it lime. Match the rail.</td><td class="e">S</td></tr>
+      <tr><td class="n">14</td><td>Shared input, card and button styles are only corrected inside the dashboard. Fix at the source. <code>globals.css:168-174</code></td><td class="e">M</td></tr>
+      <tr><td class="n">15</td><td>Thin Send and Activity empty states. Inline Continue; Activity as a set log.</td><td class="e">M</td></tr>
+    </table></div>
+  </details>
+
+  <details>
+    <summary><span><b>Accessibility</b> · 15 (6 serious)</span></summary>
+    <div class="rows"><table>
+      <tr><th>#</th><th>Finding and fix</th><th>Effort</th></tr>
+      <tr><td class="n">1</td><td>Serious · 2.1.4: single-letter shortcuts always on. Settings switch; only when focus is in review. <code>DecisionRail.tsx:78 · ListRows.tsx:140</code></td><td class="e">M</td></tr>
+      <tr><td class="n">2</td><td>Serious · 2.4.3: focus lost after Keep / Not for me. Focus the next track's title; toast names both tracks.</td><td class="e">M</td></tr>
+      <tr><td class="n">3</td><td>Serious · 4.1.3: upload screen announces every byte. Milestones only. <code>[handle]/TransferScreen.tsx:47</code></td><td class="e">S</td></tr>
+      <tr><td class="n">4</td><td>Serious · 4.1.2: mini player seek bar inside a link; seeking also navigates. <code>components/Player.tsx:218</code></td><td class="e">S</td></tr>
+      <tr><td class="n">5</td><td>Serious · 2.4.11: fixed bars hide focus; no scroll padding. Add scroll-padding.</td><td class="e">S</td></tr>
+      <tr><td class="n">6</td><td>Serious · 1.4.3: Not for me rows at 2.4–3.4:1 through opacity. Drop opacity. <code>ListRows.tsx:216</code></td><td class="e">S</td></tr>
+      <tr><td class="n">7</td><td>2.5.8: many phone targets 28–36px; "← Queue" and toast "×" under 24px.</td><td class="e">S</td></tr>
+      <tr><td class="n">8</td><td>1.4.11: field borders 1.05–1.38:1. Field-border token.</td><td class="e">M</td></tr>
+      <tr><td class="n">9</td><td>2.2.1: Undo toast gone after 7 s even while touched. Pause; 10 s with an action.</td><td class="e">S</td></tr>
+      <tr><td class="n">10</td><td>Sidebar labels 4.25:1 near the top. Use the faint grey.</td><td class="e">S</td></tr>
+      <tr><td class="n">11</td><td>Day mode waveform played vs unplayed 1.78:1.</td><td class="e">S</td></tr>
+      <tr><td class="n">12</td><td>Tab bar cuts "Prepare" at 390px.</td><td class="e">S</td></tr>
+      <tr><td class="n">13</td><td>Home CSS loops never stop for motion-sensitive users who haven't set reduced motion.</td><td class="e">S</td></tr>
+      <tr><td class="n">14</td><td>No field sets aria-invalid on error.</td><td class="e">S</td></tr>
+      <tr><td class="n">15</td><td>"−15S" button's spoken name doesn't match its text.</td><td class="e">S</td></tr>
+    </table></div>
+  </details>
+
+  <details>
+    <summary><span><b>UX flows</b> · 15</span></summary>
+    <div class="rows"><table>
+      <tr><th>#</th><th>Finding and fix</th><th>Effort</th></tr>
+      <tr><td class="n">1</td><td>Phone decision rail mid-screen, scrolls away; tab bar holds the thumb zone. Dock the rail at the bottom while reviewing. <code>ReviewPanel.tsx:185-197</code></td><td class="e">M</td></tr>
+      <tr><td class="n">2</td><td>Clearing the queue ends on the last track. "All caught up" with Prepare. <code>DecisionRail.tsx:45-52</code></td><td class="e">S</td></tr>
+      <tr><td class="n">3</td><td>Played out only Mon/Tue or four taps deep. Mark it from Prepare cards.</td><td class="e">M</td></tr>
+      <tr><td class="n">4</td><td>Sender's answers held only in memory while fetching the code; no leave warning. Save and restore; warn; "Keep this page open". <code>[handle]/SubmitForm.tsx:160</code></td><td class="e">S</td></tr>
+      <tr><td class="n">5</td><td>Upload starts only after the form and code. Parked by the panel (consent and retention).</td><td class="e">L</td></tr>
+      <tr><td class="n">6</td><td>Seven required sender answers, incl. an undocumented required profile. Your call.</td><td class="e">S</td></tr>
+      <tr><td class="n">7</td><td>Link page says "only Maxwell can hear" next to the sharing line, once sharing is on. Lawyer wording.</td><td class="e">S</td></tr>
+      <tr><td class="n">8</td><td>Confirm-email banner ~115px on every phone screen. Floor and Send only.</td><td class="e">S</td></tr>
+      <tr><td class="n">9</td><td>"Up next" lists the newest; the queue opens the oldest. Your call.</td><td class="e">S</td></tr>
+      <tr><td class="n">10</td><td>Row actions 36px with heart and thumbs-down icons. 44px, rail marks.</td><td class="e">S</td></tr>
+      <tr><td class="n">11</td><td>Plan and Receiving filed under "Privacy"; Send, Contacts, Activity two taps deep. Regroup.</td><td class="e">S</td></tr>
+      <tr><td class="n">12</td><td>Sender's message below Review Together. Move it above the rail.</td><td class="e">S</td></tr>
+      <tr><td class="n">13</td><td>Queue list below the fold on phone; status tabs wrap.</td><td class="e">S</td></tr>
+      <tr><td class="n">14</td><td>Swipe checks distance only; the whole long panel rotates.</td><td class="e">M</td></tr>
+      <tr><td class="n">15</td><td>Receipt is a dead end. "Send another to …".</td><td class="e">S</td></tr>
+    </table></div>
+  </details>
+
+  <details>
+    <summary><span><b>Copy</b> · 15</span></summary>
+    <div class="rows"><table>
+      <tr><th>#</th><th>Current → proposed</th><th>Effort</th></tr>
+      <tr><td class="n">1</td><td>Home: "Claim your link →" only checks the name → "Check it's free →"; one label "Request invite" while invite-only. <code>ClaimBox.tsx:65</code></td><td class="e">S</td></tr>
+      <tr><td class="n">2</td><td>"The Floor / Review Queue / Prepare for set" → Floor · Queue · Collections · Prepare; toggle "One by one | List".</td><td class="e">S</td></tr>
+      <tr><td class="n">3</td><td>"Taking submissions / Submissions paused" → "Link open / Link paused". <code>PauseSwitch.tsx:46</code></td><td class="e">S</td></tr>
+      <tr><td class="n">4</td><td>"Your desk is full…" + See plans → gives the limit; "Open Prepare" first.</td><td class="e">S</td></tr>
+      <tr><td class="n">5</td><td>"50% of the last 30 days decided" → "50% of the last 30 days' tracks decided".</td><td class="e">S</td></tr>
+      <tr><td class="n">6</td><td>"What senders are told" misses Played out; Replied in the sender's voice.</td><td class="e">S</td></tr>
+      <tr><td class="n">7</td><td>"Waiting to be heard" → "Delivered".</td><td class="e">S</td></tr>
+      <tr><td class="n">8</td><td>"another FloorTest user" → "anyone with a FloorTest link".</td><td class="e">S</td></tr>
+      <tr><td class="n">9</td><td>Red "Clear kept" + "You can't undo this" → "Start a new batch", ghost button.</td><td class="e">S</td></tr>
+      <tr><td class="n">10</td><td>"Grow when your inbox does" → "…your desk does"; "beta users" → "beta receivers".</td><td class="e">S</td></tr>
+      <tr><td class="n">11</td><td>Played out email: emoji out, one line on what the signal means.</td><td class="e">S</td></tr>
+      <tr><td class="n">12</td><td>Welcome email "I read every one. — FloorTest" → "the team reads every reply".</td><td class="e">S</td></tr>
+      <tr><td class="n">13</td><td>"track slots" → "active tracks" everywhere.</td><td class="e">S</td></tr>
+      <tr><td class="n">14</td><td>"Something went wrong" → "Couldn't start the upload. Nothing was sent. Your details are still here."</td><td class="e">S</td></tr>
+      <tr><td class="n">15</td><td>Banner: "…so alerts and password resets reach you." / "Resend email".</td><td class="e">S</td></tr>
+    </table></div>
+  </details>
+
+  <details>
+    <summary><span><b>Motion and feel</b> · 12</span></summary>
+    <div class="rows"><table>
+      <tr><th>#</th><th>Finding and fix</th><th>Effort</th></tr>
+      <tr><td class="n">1</td><td>After a swipe the old track snaps back for two round trips, then the next one jumps in. Advance first, slide in over 200 ms. <code>DecisionRail.tsx:157-169</code></td><td class="e">M</td></tr>
+      <tr><td class="n">2</td><td>Keep / Not for me dim to 40% on every decision. Drop <code>disabled</code>.</td><td class="e">S</td></tr>
+      <tr><td class="n">3</td><td>No flick commit. Commit on speed too.</td><td class="e">S</td></tr>
+      <tr><td class="n">4</td><td>Swipe restyles the whole panel each move; stamp is a pseudo-element. Real stamp element.</td><td class="e">S</td></tr>
+      <tr><td class="n">5</td><td>Touching mid snap-back makes the card jump.</td><td class="e">S</td></tr>
+      <tr><td class="n">6</td><td>Toast replays its entrance on every K/X; no exit.</td><td class="e">M</td></tr>
+      <tr><td class="n">7</td><td>⌘K search animates (keyboard actions shouldn't); scrims pop in.</td><td class="e">S</td></tr>
+      <tr><td class="n">8</td><td>Native dialogs (Clear kept, Delete account) pop in.</td><td class="e">S</td></tr>
+      <tr><td class="n">9</td><td>Player shows Pause over silence while a big WAV buffers.</td><td class="e">M</td></tr>
+      <tr><td class="n">10</td><td>Upload bars animate width and jump.</td><td class="e">S</td></tr>
+      <tr><td class="n">11</td><td>Loading skeleton flashes on fast pages.</td><td class="e">S</td></tr>
+      <tr><td class="n">12</td><td>A global button rule overrides per-button timing.</td><td class="e">S</td></tr>
+    </table></div>
+  </details>
+</section>
+
+<footer class="meta">Built from a seeded scratch copy (sample data only) at 390px and 1440px. Reviewers: impeccable, design-critique, design-systems, accessibility-review, interaction-design, journey-mapping, ux-writing, brand-voice, emil-design-eng. No repo code changed.</footer>
+
+</div>
