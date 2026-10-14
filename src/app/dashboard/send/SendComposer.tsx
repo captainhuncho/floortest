@@ -1,7 +1,7 @@
 "use client";
 
 import { CuePoint } from "@/components/CuePoint";
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 import { fmtBytes } from "@/lib/format";
 import { clearShared, sharedFiles, type SharedFile } from "@/lib/native-share";
 import { SubmitForm } from "../../[handle]/SubmitForm";
@@ -43,6 +43,31 @@ export function SendComposer({ host, account, initial }: { host: string; account
     return () => clearTimeout(t);
   }, [handle]);
 
+  // Continue (or Return): look the name up now rather than after the pause, then bring their send form into view.
+  const target = useRef<HTMLDivElement | null>(null);
+  const wantReveal = useRef(false);
+  const reveal = (el: HTMLElement | null) =>
+    el?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+  // The form block mounts when the answer arrives; if Continue asked for it, it scrolls itself into view.
+  const formRef = (el: HTMLDivElement | null) => {
+    target.current = el;
+    if (el && wantReveal.current) {
+      wantReveal.current = false;
+      reveal(el);
+    }
+  };
+  const go = (e: FormEvent) => {
+    e.preventDefault();
+    const h = handle.trim();
+    if (!h) return;
+    if (found) {
+      if (found.found) reveal(target.current);
+      return;
+    }
+    wantReveal.current = true;
+    start(async () => setLookup({ handle: h, found: await lookupReceiver(h) }));
+  };
+
   return (
     <div className="space-y-6">
       {shared.length > 0 && (
@@ -61,12 +86,14 @@ export function SendComposer({ host, account, initial }: { host: string; account
           </button>
         </div>
       )}
-      <div>
+      <form onSubmit={go} noValidate>
         <label htmlFor="send-to" className="label">
           Send to
         </label>
-        <div className="mt-1.5 flex items-stretch overflow-hidden rounded-md border border-line bg-ink-2 focus-within:border-lime/70">
-          <span className="flex items-center pl-3 font-mono text-sm text-mute">{host}/</span>
+        {/* The link field with its one action inside it. Continue is the page's light until their send form opens,
+            which brings its own lime Send button; from then on Continue steps back to a ghost. */}
+        <div className="mt-1.5 flex items-center gap-1 rounded-md border border-line bg-ink-2 py-1 pr-1 focus-within:border-lime/70">
+          <span className="max-w-[55%] shrink-0 truncate pl-3 font-mono text-base text-mute md:text-sm">{host}/</span>
           <input
             id="send-to"
             value={handle}
@@ -75,8 +102,14 @@ export function SendComposer({ host, account, initial }: { host: string; account
             autoComplete="off"
             autoCapitalize="none"
             spellCheck={false}
-            className="w-full bg-transparent py-2.5 pr-3 font-mono text-sm text-lime outline-none placeholder:text-dim"
+            enterKeyHint="go"
+            // The field's box carries the focus ring (globals.css), so the bare input inside draws none.
+            style={{ outline: "none" }}
+            className="min-w-0 flex-1 bg-transparent py-1.5 pr-2 font-mono text-base text-lime outline-none placeholder:text-dim md:text-sm"
           />
+          <button type="submit" disabled={!handle.trim()} className={`${found?.found ? "btn-ghost" : "btn-lime"} btn-sm shrink-0`}>
+            Continue
+          </button>
         </div>
         <div className="mt-2 min-h-6 text-sm" aria-live="polite">
           {pending && <span className="text-mute">Looking…</span>}
@@ -89,10 +122,10 @@ export function SendComposer({ host, account, initial }: { host: string; account
             </span>
           )}
         </div>
-      </div>
+      </form>
 
       {found?.found && (
-        <div key={found.handle} className="border-t border-line pt-5">
+        <div key={found.handle} ref={formRef} className="scroll-mt-24 border-t border-line pt-5">
           {found.photo && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={found.photo} alt="" width={64} height={64} className="mb-3 size-16 rounded-xl object-cover" />
