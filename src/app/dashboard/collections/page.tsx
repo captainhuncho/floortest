@@ -4,7 +4,7 @@ import { switchOn } from "@/lib/switches";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { collectionsFor, isClosed } from "@/lib/desk";
-import { fmtDay } from "@/lib/format";
+import { fmtDay, fmtShortDay } from "@/lib/format";
 import { genresFor } from "@/lib/plans";
 import { briefItems } from "@/lib/brief";
 import { APP_URL } from "@/lib/mail";
@@ -87,7 +87,7 @@ export default async function Collections() {
           return (
             <CollectionRow
               key={c.id}
-              c={{ id: c.id, name: c.name, closesAt: c.closes_at, closesLabel: c.closes_at ? fmtDay(c.closes_at) : null, count: c.count, needsReview: c.needs_review, kept: c.kept, briefWanted: c.brief_wanted, bpmMin: c.bpm_min, bpmMax: c.bpm_max, briefNote: c.brief_note, allowSharing: !!c.allow_sharing, sharingAvailable: sharing, genres, brief: briefItems(c, genres, user.tz), maxTracks: c.max_tracks, full: !!c.full_at, art: c.art_key ? `/api/collection-art/${c.id}?v=${encodeURIComponent(c.art_key)}` : null, canCap: canCapCallouts(user.plan) }}
+              c={{ id: c.id, name: c.name, closesAt: c.closes_at, closesLabel: c.closes_at ? fmtShortDay(c.closes_at) : null, count: c.count, needsReview: c.needs_review, kept: c.kept, briefWanted: c.brief_wanted, bpmMin: c.bpm_min, bpmMax: c.bpm_max, briefNote: c.brief_note, allowSharing: !!c.allow_sharing, sharingAvailable: sharing, genres, brief: briefItems(c, genres, user.tz), maxTracks: c.max_tracks, full: !!c.full_at, art: c.art_key ? `/api/collection-art/${c.id}?v=${encodeURIComponent(c.art_key)}` : null, canCap: canCapCallouts(user.plan) }}
               receiving={c.id === user.active_collection_id}
               closed={isClosed(c)}
               canManage={canManage}

@@ -23,7 +23,7 @@ colors:
   day-line: "#e3e6d8"
   day-ink: "#0d0e0b"
   day-mute: "#4c4f45"
-  day-dim: "#5f6257"
+  day-dim: "#66695e"
   day-faint: "#66695e"
   day-lime-text: "#4a6400"
   day-danger: "#c4321f"
@@ -155,7 +155,7 @@ Booth Black and Bone carry almost everything; Cue Lime is the one light.
 - **Booth Line** (`booth-line`) and **Booth Line Strong** (`booth-line-strong`): 1px borders and dividers. Day: `day-line`.
 - **Bone** (`bone`): main text, and "ink on this theme": a Bone fill flips dark by day. Day: `day-ink`.
 - **Mute** (`mute`): secondary text and section eyebrows. Day: `day-mute`.
-- **Dim** and **Faint** (`dim`, `faint`): meta, help text and labels. Day: `day-dim`, `day-faint`.
+- **Faint** (`faint`): meta, help text and labels; `dim` is now an alias of it. Day: `day-faint`. **Field** (`field`, #6b6e64, day #8d9184): text field edges.
 - **Olive** (`olive`): Day-theme accents and chart bars.
 - **Danger** (`danger`): destructive actions and errors only. Day: `day-danger`.
 
@@ -208,7 +208,7 @@ Flat by default, layered by tone. Surfaces step from Booth Black (page) to Booth
 
 ## Shapes
 
-Four corner radii, chosen by role: controls 8px (buttons, inputs), cards 12px (rows, tiles, toasts), panels 16px (sections, dialogs, menus), sheets 22px (phone sheets, the floating nav). Pills are fully round and used for chips, badges and tags. Borders are always 1px Booth Line. Icons are drawn line icons on a 24 grid with a 1.8 stroke.
+Four corner radii, chosen by role: controls 8px (buttons, inputs), cards 12px (rows, readout panels, toasts), panels 16px (sections, dialogs, menus), sheets 22px (phone sheets, the floating nav). Pills are fully round and used for chips, badges and tags. Borders are always 1px Booth Line. Icons are drawn line icons on a 24 grid with a 1.8 stroke.
 
 ## Components
 
@@ -235,7 +235,7 @@ Tactile and plain: they say what you get ("Download kept", "Clear kept").
 ### Inputs / Fields
 - **Style:** Booth Card fill (pure white by day), 1px Booth Line border, 8px radius, 10px × 12px padding.
 - **Focus:** the border turns Cue Lime at 70% with a soft 2px lime ring; every focusable element also gets a 2px Cue Lime outline with a 2px offset.
-- **Labels and help:** labels above in 11px caps; help text 11px Dim below; required fields marked "Req". On touch screens inputs are 16px text so phones don't zoom.
+- **Labels and help:** labels above in 11px caps; help text 11px Faint below; field borders use Field; required fields marked "Req". On touch screens inputs are 16px text so phones don't zoom.
 
 ### Navigation
 - **Desktop:** a dark tactile rail that stays dark in both themes; items in 12px uppercase with 0.5px tracking, icons at 18px, the current item raised with an inset highlight, lime count badges.

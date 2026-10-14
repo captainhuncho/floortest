@@ -227,7 +227,7 @@ export default async function Account() {
               rows={[
                 <Row key="p" href="/dashboard/settings/plan" icon="▤" title="Plan" sub="Usage and plans" />,
                 <Row key="d" href="/contact?topic=data" icon="⇩" title="Data export" sub="Ask for a copy of your data" />,
-                <Row key="a" href="/dashboard/settings/account" icon="⏻" title="Log out or delete account" sub="Leave this device, or remove everything" />,
+                <Row key="a" href="/dashboard/settings/account" icon="⏻" title="Shortcuts, log out or delete account" sub="Keyboard shortcuts, leave this device, or remove everything" />,
               ]}
             />
             </>
