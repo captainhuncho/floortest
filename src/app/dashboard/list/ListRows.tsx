@@ -574,7 +574,7 @@ function DecisionButton({ kind, title, pressed, onClick }: { kind: "kept" | "pas
         keep
           ? pressed
             ? "border-lime bg-lime text-ink"
-            : "border-lime/50 text-lime hover:bg-lime hover:text-ink"
+            : "border-line text-bone hover:border-lime hover:bg-lime hover:text-ink"
           : pressed
             ? "border-bone bg-bone/10 text-bone"
             : "border-line text-mute hover:border-mute hover:text-bone"
