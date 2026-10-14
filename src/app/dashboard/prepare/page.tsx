@@ -1,6 +1,7 @@
 import { trackUse } from "@/lib/usage";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
+import { PageTitle } from "@/components/PageTitle";
 import { DownloadActions } from "../DownloadActions";
 import { loadRows } from "../rows";
 import { ClearKept } from "./ClearKept";
@@ -17,13 +18,11 @@ export default async function PrepareForSet() {
 
   // Figma "06 Prepare for Set".
   return (
-    <div className="max-w-3xl px-3 py-3 sm:px-8 sm:py-6 md:max-w-6xl">
+    <div className="page-gutter py-3 sm:py-6">
       <div className="md:flex md:items-start md:justify-between md:gap-8">
-      <div>
-      <p className="text-[11px] font-medium tracking-[0.5px] text-bone md:hidden">BEFORE THE SET</p>
-      <h1 className="page-title">Prepare</h1>
-      <p className="mt-3 max-w-md text-xs leading-[1.4] text-mute">Every track you keep lands here. Download a crate with a Rekordbox XML and playlist, or just the files.</p>
-      </div>
+        <PageTitle sub="Every track you keep lands here. Download a crate with a Rekordbox XML and playlist, or just the files." className="max-w-md">
+          Prepare
+        </PageTitle>
       {/* Every option visible, same size: people use different ones. Starting a new batch is a quiet secondary action, and still confirms. */}
       <DownloadActions count={kept.length} extra={user.role !== "member" ? <ClearKept count={kept.length} /> : undefined} />
       </div>

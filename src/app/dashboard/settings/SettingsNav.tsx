@@ -11,7 +11,7 @@ export const SECTIONS = [
   { slug: "notifications", title: "Notifications", sub: "How and when we email you", min: "owner" },
   { slug: "plan", title: "Plan", sub: "Usage and plans", min: "owner" },
   { slug: "security", title: "Security", sub: "Email, password, two-step sign-in", min: "owner" },
-  { slug: "account", title: "Account", sub: "Log out or delete your account", min: "member" },
+  { slug: "account", title: "Account", sub: "Keyboard shortcuts, log out or delete your account", min: "member" },
 ] as const;
 const RANK = { member: 1, admin: 2, owner: 3 } as const;
 export const sectionsFor = (role: keyof typeof RANK, teams: boolean) =>
