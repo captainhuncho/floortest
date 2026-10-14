@@ -1,4 +1,5 @@
-# Fly.io (London). Deploy: `fly launch --no-deploy --copy-config` in this folder, set the secrets (README), `fly deploy`.
+# FALLBACK ONLY: the scanner runs on Cloudflare Containers (cloudflare/). Use this only if Cloudflare can't keep up, after
+# the legal step in the README's Fallback section. Fly.io (London): `fly launch --no-deploy --copy-config`, secrets, `fly deploy`.
 app = "floortest-scanner"
 primary_region = "lhr"
 

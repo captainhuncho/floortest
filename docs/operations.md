@@ -32,7 +32,7 @@ Production and Preview have separate values. Never paste values into chats or ti
 | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Bot check (on/off is a switch, below) |
 | `STAGING_EMAIL_TO` (previews only) | On staging, every email goes to this address instead of the real person. Unset means nothing is sent |
 | `BACKUP_KEY` (required) | Encrypts nightly backups. **Keep a copy outside Vercel and the bucket:** without it, backups can't be read |
-| `SCAN_URL`, `SCAN_SECRET` | The virus scanner (`scanner/`, our own ClamAV on Fly.io). Set = every track and stem upload is checked before it exists; fails closed if the scanner can't be reached. Unset = off |
+| `SCAN_URL`, `SCAN_SECRET` | The virus scanner (`scanner/`, our own ClamAV on Cloudflare Containers; Fly.io is only a written-down fallback). Set `SCAN_SECRET` before `SCAN_URL`, and redeploy once both are in. Set = every track and stem upload is checked before it exists; fails closed if the scanner can't be reached. Unset = off |
 | `BACKUP_BUCKET`, `BACKUP_ACCESS_KEY_ID`, `BACKUP_SECRET_ACCESS_KEY` | The recovery copy ("vault"): a second private R2 bucket on the same account. The key needs write on that bucket and read on `S3_BUCKET`. Unset = off |
 | `ALERT_WEBHOOK_URL` (optional) | A Discord or Slack incoming-webhook URL. Urgent alerts go there as well as email, so you still hear about it if email itself is down |
 | `DB_AUTO_MIGRATE=true`, `DB_POOL_MAX=5` | Database behaviour |

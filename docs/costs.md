@@ -65,4 +65,4 @@ Rough break-even: the launch stack ($110–170) is covered by 18–28 Pro monthl
 
 ## Sources
 
-List prices read on 13 Oct 2026: [Vercel](https://vercel.com/pricing), [Neon](https://neon.com/pricing), [Cloudflare R2](https://developers.cloudflare.com/r2/pricing/), [Resend](https://resend.com/pricing), [UptimeRobot](https://uptimerobot.com/pricing/), [Sentry](https://sentry.io/pricing/), [Paddle](https://www.paddle.com/pricing), [Fly.io](https://docs.fly.io/about/pricing). Vercel's billing API reports no charges for the team so far, which matches the Hobby plan.
+List prices read on 13 Oct 2026: [Vercel](https://vercel.com/pricing), [Neon](https://neon.com/pricing), [Cloudflare R2](https://developers.cloudflare.com/r2/pricing/), [Resend](https://resend.com/pricing), [UptimeRobot](https://uptimerobot.com/pricing/), [Sentry](https://sentry.io/pricing/), [Paddle](https://www.paddle.com/pricing), [Fly.io](https://docs.fly.io/about/pricing) (fallback scanner host only). Vercel's billing API reports no charges for the team so far, which matches the Hobby plan.
