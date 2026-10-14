@@ -1,8 +1,13 @@
 import { trackUse } from "@/lib/usage";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
-import { q, likeContains, now } from "@/lib/db";
+import { q, likeContains } from "@/lib/db";
 import { ago } from "@/lib/format";
+import { PageTitle } from "@/components/PageTitle";
+import { Tabs } from "@/components/Tabs";
+import { Segmented } from "@/components/Segmented";
+import { TrackTag } from "@/components/TrackRow";
+import { ContactMenu } from "./ContactMenu";
 
 export const metadata = { title: "Contacts — FloorTest" };
 
@@ -31,6 +36,29 @@ const SHOWS = [
   ["messages", "With messages", "lm.text IS NOT NULL"],
   ["blocked", "Blocked", "s.blocked_at IS NOT NULL"],
 ] as const;
+const FROMS = [
+  ["all", "All"],
+  ["them", "From them"],
+  ["you", "Your replies"],
+] as const;
+
+const initials = (n: string) =>
+  n
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]!.toUpperCase())
+    .join("");
+const short = (ts: number, timeZone?: string) => new Date(ts).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone });
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+function Avatar({ name, small = false }: { name: string; small?: boolean }) {
+  return (
+    <span aria-hidden className={`grid shrink-0 place-items-center rounded-full bg-ink-4 font-bold text-mute ${small ? "size-6 text-[11px]" : "size-9 text-xs"}`}>
+      {initials(name) || "?"}
+    </span>
+  );
+}
 
 export default async function Contacts({ searchParams }: { searchParams: Promise<{ sort?: string; show?: string; q?: string; tab?: string; from?: string }> }) {
   const user = await requireUser();
@@ -60,8 +88,8 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
        WHERE s.user_id = ? AND ${show[2]} ${search ? "AND (s.name ILIKE ? OR s.email ILIKE ?)" : ""}
        GROUP BY s.id, lm.text, lm.kind ORDER BY ${sort[2]}`, user.id, user.id, user.id, ...(search ? [likeContains(search), likeContains(search)] : [])));
 
-  // Phones: Figma "mobile-contacts-people" / "mobile-contacts-messages".
   const tab = sp.tab === "messages" ? "messages" : "people";
+  // The latest track from each sender: shown beside the row from 768px up, where there's room.
   const latest = await q.all<{ sender_id: number; title: string; collection: string | null; created_at: number }>(
     `SELECT DISTINCT ON (t.sender_id) t.sender_id, t.title, c.name AS collection, t.created_at
        FROM tracks t LEFT JOIN collections c ON c.id = t.collection_id
@@ -88,15 +116,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
     sent: rows.reduce((n, r) => n + Number(r.sent), 0),
     engaged: rows.filter((r) => Number(r.kept) > 0 || r.last_message_kind === "reply").length,
   };
-  const initials = (n: string) =>
-    n
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((w) => w[0]!.toUpperCase())
-      .join("");
-  const short = (ts: number) => new Date(ts).toLocaleDateString("en-GB", { day: "numeric", month: "short" }).toUpperCase();
-  const WEEK = 7 * 24 * 60 * 60 * 1000;
+  const tz = user.tz || undefined;
 
   const href = (patch: Record<string, string | undefined>) => {
     const p = new URLSearchParams();
@@ -105,118 +125,79 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
   };
 
   return (
-    <>
-    <div className="flex flex-col gap-4 px-4 pb-4 pt-1 text-bone md:hidden">
-      <div className="flex items-center gap-2">
-        <Link href="/dashboard/floor" aria-label="Back to the Floor" className="-ml-2.5 grid size-11 place-items-center">
-          <span aria-hidden className="size-4 bg-current [mask:url(/icons/arrow-left.svg)_center/contain_no-repeat]" />
-        </Link>
-        <h1 className="page-title">Contacts</h1>
-      </div>
-      <nav aria-label="Contacts view" className="flex rounded-sheet border border-line bg-ink-3 p-0.5">
-        {(
-          [
-            ["messages", `MESSAGES (${messages.length})`],
-            ["people", `PEOPLE (${totals.people})`],
-          ] as const
-        ).map(([k, label]) => (
-          <Link
-            key={k}
-            href={href({ tab: k === "people" ? undefined : k })}
-            aria-current={tab === k ? "page" : undefined}
-            className={`flex-1 rounded-2xl border-2 py-1.5 text-center text-[11px] ${
-              tab === k ? "border-bone/70 bg-ink-4 font-bold text-bone" : "border-transparent text-faint"
-            }`}
-          >
-            {label}
-          </Link>
-        ))}
-      </nav>
+    <div className="page-gutter flex flex-col gap-4 py-4 text-bone sm:py-6">
+      <PageTitle>Contacts</PageTitle>
+      <Tabs
+        label="Contacts view"
+        value={tab}
+        items={[
+          { key: "people", label: "People", count: totals.people, href: href({ tab: undefined }) },
+          { key: "messages", label: "Messages", count: messages.length, href: href({ tab: "messages" }) },
+        ]}
+      />
 
       {tab === "people" ? (
         <>
-          <dl className="grid grid-cols-3 gap-2">
-            {[
-              [totals.people, "People"],
-              [totals.sent, "Tracks sent"],
-              [totals.engaged, "Kept or replied"],
-            ].map(([v, k]) => (
-              <div key={k} className="flex flex-col-reverse gap-1 rounded-card border border-line bg-ink-2 p-3">
-                <dt className="text-[11px] font-bold text-faint">{k}</dt>
-                <dd className="text-[24px] font-extrabold">{v}</dd>
-              </div>
-            ))}
-          </dl>
-          <form action="/dashboard/contacts" role="search" className="flex gap-2.5">
-            {sp.show && <input type="hidden" name="show" value={sp.show} />}
-            <label className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg border border-line bg-ink-3 px-3.5 py-2.5">
-              <span aria-hidden className="size-3.5 shrink-0 bg-faint [mask:url(/icons/search.svg)_center/contain_no-repeat]" />
-              <span className="sr-only">Search contacts</span>
-              <input name="q" defaultValue={search} placeholder="Search names or emails" className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-faint" />
-            </label>
-          </form>
-          <div className="flex gap-2 overflow-x-auto">
-            {SHOWS.map(([k, label]) => (
-              <Link
-                key={k}
-                href={href({ show: k === "all" ? undefined : k })}
-                aria-current={show[0] === k ? "page" : undefined}
-                className={`shrink-0 rounded-md px-2.5 py-1 text-[11px] ${show[0] === k ? "border border-line bg-ink-3 font-bold" : "text-mute"}`}
-              >
-                {label.toLowerCase()}
-              </Link>
-            ))}
+          {/* One readout line instead of stat tiles: the numbers in bone, the words around them quiet. */}
+          <p className="text-xs text-mute tnum">
+            <b className="text-bone">{totals.sent}</b> {totals.sent === 1 ? "track" : "tracks"} from <b className="text-bone">{totals.people}</b>{" "}
+            {totals.people === 1 ? "person" : "people"} · <b className="text-bone">{totals.engaged}</b> kept or replied
+          </p>
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+            <form action="/dashboard/contacts" role="search" className="flex min-w-0 flex-1">
+              {sp.show && <input type="hidden" name="show" value={sp.show} />}
+              {sp.sort && <input type="hidden" name="sort" value={sp.sort} />}
+              <label className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 rounded-lg border border-line bg-ink-3 px-3.5 md:min-h-9">
+                <span aria-hidden className="size-3.5 shrink-0 bg-faint [mask:url(/icons/search.svg)_center/contain_no-repeat]" />
+                <span className="sr-only">Search contacts</span>
+                <input name="q" defaultValue={search} placeholder="Search names or emails" className="min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-faint" />
+              </label>
+            </form>
+            {/* Four filters can outgrow a phone: the track scrolls sideways inside the gutter, never the page. */}
+            <div className="-mx-4 overflow-x-auto px-4 [scrollbar-width:none] md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden">
+              <Segmented
+                label="Show"
+                value={show[0]}
+                items={SHOWS.map(([k, label]) => ({ key: k, label, href: href({ show: k === "all" ? undefined : k }) }))}
+              />
+            </div>
           </div>
           {rows.length === 0 ? (
-            <p className="py-10 text-center text-[12px] text-mute">{search ? `No contacts match “${search}”.` : "Contacts appear here after their first upload."}</p>
+            <p className="border-y border-line py-10 text-center text-xs text-mute">{search ? `No contacts match “${search}”.` : "Contacts appear here after their first upload."}</p>
           ) : (
-            <ul className="flex flex-col gap-3">
+            <ul aria-label="People" className="divide-y divide-line border-y border-line">
               {rows.map((r) => {
                 const last = latestBy.get(r.id);
+                const kept = Number(r.kept);
+                const downloaded = Number(r.downloaded);
                 return (
-                  <li key={r.id} className="flex flex-col gap-2.5 rounded-card border border-line bg-ink-3 p-3">
-                    <Link href={`/dashboard/contacts/${r.id}`} className="flex items-center gap-3">
-                      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-ink-4 text-[14px] font-bold text-mute">
-                        {r.name.trim()[0]?.toUpperCase()}
+                  <li key={r.id} className="flex min-h-[72px] items-center gap-3 pl-3 pr-1 transition-colors duration-150 hover:bg-ink-2">
+                    <Avatar name={r.name} />
+                    <Link href={`/dashboard/contacts/${r.id}`} className="flex min-w-0 flex-1 flex-col justify-center gap-1 self-stretch py-3">
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="truncate text-body font-bold text-bone">{r.name}</span>
+                        {r.blocked_at ? (
+                          <span className="inline-flex shrink-0 items-center rounded border border-danger/50 px-1.5 py-0.5 text-[11px] font-bold leading-none text-danger">Blocked</span>
+                        ) : r.verified_at ? (
+                          <TrackTag>Verified</TrackTag>
+                        ) : null}
                       </span>
-                      <span className="flex min-w-0 flex-1 flex-col gap-1">
-                        <span className="truncate text-[13px] font-bold">{r.name}</span>
-                        <span className="truncate text-[11px] text-faint">{r.email}</span>
-                        {(r.verified_at || r.blocked_at) && (
-                          <span className={`w-fit rounded border px-1.5 py-0.5 text-[11px] font-bold ${r.blocked_at ? "border-danger/50 text-danger" : "border-line text-mute"}`}>
-                            {r.blocked_at ? "blocked" : "verified"}
-                          </span>
-                        )}
+                      <span className="truncate text-xs text-faint tnum">
+                        {plural(Number(r.sent), "track")}
+                        <span className="hidden sm:inline">
+                          {kept > 0 && ` · ${kept} kept`}
+                          {downloaded > 0 && ` · ${downloaded} downloaded`}
+                        </span>
+                        {r.last_at && ` · last sent ${short(r.last_at, tz)}`}
                       </span>
                     </Link>
                     {last && (
-                      <div className="flex flex-col gap-1">
-                        <p className="truncate text-[13px] font-bold">{last.title}</p>
-                        <p className="text-[11px] tracking-[0.5px] text-faint">
-                          {last.collection ? `${last.collection.toUpperCase()} · ` : ""}
-                          {short(last.created_at)}
-                        </p>
-                      </div>
+                      <span className="hidden w-64 shrink-0 flex-col gap-1 text-right md:flex">
+                        <span className="truncate text-xs text-mute">{last.title}</span>
+                        <span className="truncate text-[11px] text-faint">{last.collection ?? "Unsorted"}</span>
+                      </span>
                     )}
-                    <div className="flex items-center gap-3">
-                      <div className="flex flex-col gap-1">
-                        <p className="text-[22px] font-extrabold leading-none">{r.sent}</p>
-                        <p className="text-[11px] text-faint">
-                          sent · {r.kept} kept · {r.downloaded} downloaded
-                        </p>
-                      </div>
-                      {r.last_at && now() - r.last_at < WEEK && (
-                        <span title="Sent in the last 7 days" className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1 whitespace-nowrap text-[11px] font-bold uppercase tracking-[1px] text-mute"><span aria-hidden className="size-1.5 rounded-full bg-mute" />Sent this week</span>
-                      )}
-                    </div>
-                    <div className="flex gap-1.5">
-                      <a href={`mailto:${r.email}`} className="btn-ghost btn-sm">
-                        ✉ <span className="font-bold">email</span>
-                      </a>
-                      <Link href={`/dashboard/contacts/${r.id}`} aria-label={`More about ${r.name}`} className="btn-ghost btn-sm">
-                        ···
-                      </Link>
-                    </div>
+                    <ContactMenu id={r.id} name={r.name} email={r.email} />
                   </li>
                 );
               })}
@@ -225,48 +206,32 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
         </>
       ) : (
         <>
-          <div className="flex gap-2">
-            {(
-              [
-                ["all", "all"],
-                ["them", "from them"],
-                ["you", "your replies"],
-              ] as const
-            ).map(([k, label]) => (
-              <Link
-                key={k}
-                href={href({ tab: "messages", from: k === "all" ? undefined : k })}
-                aria-current={from === k ? "page" : undefined}
-                className={`rounded-md px-2.5 py-1 text-[11px] ${from === k ? "border border-line bg-ink-3 font-bold" : "text-mute"}`}
-              >
-                {label}
-              </Link>
-            ))}
+          <div className="-mx-4 overflow-x-auto px-4 [scrollbar-width:none] md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden">
+            <Segmented
+              label="Messages from"
+              value={from}
+              items={FROMS.map(([k, label]) => ({ key: k, label, href: href({ tab: "messages", from: k === "all" ? undefined : k }) }))}
+            />
           </div>
           {messages.length === 0 ? (
-            <p className="py-10 text-center text-[12px] text-mute">Messages from senders, and your replies, show up here.</p>
+            <p className="border-y border-line py-10 text-center text-xs text-mute">Messages from senders, and your replies, show up here.</p>
           ) : (
-            <ul className="flex flex-col gap-3">
+            <ul aria-label="Messages" className="max-w-3xl divide-y divide-line border-y border-line">
               {messages.map((m, i) => (
                 <li key={i}>
-                  <Link href={`/dashboard/contacts/${m.sender_id}`} className="flex flex-col gap-3 rounded-card border border-line bg-ink-3 p-3">
-                    <span className="flex items-center justify-between gap-2">
+                  <Link href={`/dashboard/contacts/${m.sender_id}`} className="flex flex-col gap-1.5 px-3 py-3 transition-colors duration-150 hover:bg-ink-2">
+                    <span className="flex items-center justify-between gap-3">
                       <span className="flex min-w-0 items-center gap-2">
-                        <span className="grid size-6 shrink-0 place-items-center rounded-full bg-ink-4 text-[11px] font-bold text-mute">
-                          {initials(m.name)}
-                        </span>
-                        <span className="truncate text-[13px] font-bold">{m.kind === "reply" ? `You → ${m.name}` : m.name}</span>
+                        <Avatar name={m.name} small />
+                        <span className="truncate text-body font-bold">{m.kind === "reply" ? `You → ${m.name}` : m.name}</span>
                       </span>
-                      <span className="shrink-0 text-[11px] text-faint">{ago(m.at)}</span>
+                      <span className="shrink-0 text-[11px] text-faint tnum">{ago(m.at)}</span>
                     </span>
-                    <span className="line-clamp-3 text-[11px] italic leading-[1.4] text-mute">&ldquo;{m.text}&rdquo;</span>
+                    <span className="line-clamp-2 text-xs leading-relaxed text-mute">&ldquo;{m.text}&rdquo;</span>
                     {m.title && (
-                      <span className="flex items-center gap-2 rounded-md border border-line bg-ink p-2 text-[11px] font-bold">
-                        <span aria-hidden>♫</span>
-                        <span className="truncate">
-                          {m.title}
-                          {m.collection ? ` · ${m.collection}` : ""}
-                        </span>
+                      <span className="truncate text-[11px] text-faint">
+                        About {m.title}
+                        {m.collection ? ` · ${m.collection}` : ""}
                       </span>
                     )}
                   </Link>
@@ -277,208 +242,5 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
         </>
       )}
     </div>
-    {/* Desktop: Figma "desktop-contacts-people" / "desktop-contacts-messages" */}
-    <div className="hidden max-w-6xl flex-col gap-5 px-8 py-6 text-bone md:flex">
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <h1 className="page-title">Contacts</h1>
-        </div>
-        <nav aria-label="Contacts view" className="flex rounded-full border border-line bg-ink-3 p-0.5">
-          {(
-            [
-              ["messages", "MESSAGES", messages.length],
-              ["people", "PEOPLE", totals.people],
-            ] as const
-          ).map(([k, label, n]) => (
-            <Link
-              key={k}
-              href={href({ tab: k === "people" ? undefined : k })}
-              aria-current={tab === k ? "page" : undefined}
-              className={`flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-bold ${tab === k ? "border-bone/70 text-bone" : "border-transparent text-faint hover:text-bone"}`}
-            >
-              {label}
-              <span className={`rounded-full px-1.5 text-[11px] ${tab === k ? "bg-ink-4" : "bg-line"}`}>{n}</span>
-            </Link>
-          ))}
-        </nav>
-      </div>
-
-      {tab === "people" ? (
-        <>
-          <dl className="grid grid-cols-3 gap-3">
-            {[
-              [totals.people, "People who sent"],
-              [totals.sent, "Tracks sent"],
-              [totals.engaged, "Kept from or replied to"],
-            ].map(([v, k]) => (
-              <div key={k} className="flex flex-col-reverse gap-3 card p-4">
-                <dt className="text-[11px] font-bold text-faint">{k}</dt>
-                <dd className="text-[28px] font-extrabold leading-none">{v}</dd>
-              </div>
-            ))}
-          </dl>
-          <div className="flex gap-3">
-            <form action="/dashboard/contacts" role="search" className="flex min-w-0 flex-1">
-              {sp.show && <input type="hidden" name="show" value={sp.show} />}
-              <label className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg border border-line bg-ink-3 px-3.5 py-2.5">
-                <span aria-hidden className="size-3.5 shrink-0 bg-faint [mask:url(/icons/search.svg)_center/contain_no-repeat]" />
-                <span className="sr-only">Search contacts</span>
-                <input name="q" defaultValue={search} placeholder="Search names or emails" className="min-w-0 flex-1 bg-transparent text-[12px] outline-none placeholder:text-faint" />
-              </label>
-            </form>
-            <div className="flex gap-1">
-              {SHOWS.map(([k, label]) => (
-                <Link
-                  key={k}
-                  href={href({ show: k === "all" ? undefined : k })}
-                  aria-current={show[0] === k ? "page" : undefined}
-                  className={`rounded-lg border px-3 py-2.5 text-[11px] ${show[0] === k ? "border-line bg-ink-3 font-bold" : "border-transparent text-mute hover:text-bone"}`}
-                >
-                  {label}
-                </Link>
-              ))}
-            </div>
-          </div>
-          {rows.length === 0 ? (
-            <p className="card p-8 text-center text-[12px] text-mute">
-              {search ? `No contacts match “${search}”.` : "Contacts appear here after their first upload."}
-            </p>
-          ) : (
-            <table className="w-full overflow-hidden rounded-xl border border-line text-left">
-              <thead className="border-b border-line eyebrow text-faint">
-                <tr>
-                  <th className="px-4 py-3 font-bold">Sender</th>
-                  <th className="px-4 py-3 font-bold">Latest track</th>
-                  <th className="px-4 py-3 font-bold">Tracks sent</th>
-                  <th className="px-4 py-3 font-bold">Status</th>
-                  <th className="px-4 py-3 text-right font-bold">Manage</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
-                {rows.map((r) => {
-                  const last = latestBy.get(r.id);
-                  return (
-                    <tr key={r.id} className="hover:bg-ink-2">
-                      <td className="px-4 py-3.5">
-                        <Link href={`/dashboard/contacts/${r.id}`} className="flex items-center gap-3">
-                          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-ink-4 text-[12px] font-bold text-mute">
-                            {r.name.trim()[0]?.toUpperCase()}
-                          </span>
-                          <span className="min-w-0">
-                            <span className="block truncate text-[12px] font-bold">{r.name}</span>
-                            <span className="block truncate text-[11px] text-faint">{r.email}</span>
-                            {(r.verified_at || r.blocked_at) && (
-                              <span className={`mt-1 inline-block rounded border px-1.5 text-[11px] font-bold ${r.blocked_at ? "border-danger/50 text-danger" : "border-line text-mute"}`}>
-                                {r.blocked_at ? "blocked" : "verified"}
-                              </span>
-                            )}
-                          </span>
-                        </Link>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        {last ? (
-                          <>
-                            <p className="truncate text-[12px] font-bold">{last.title}</p>
-                            <p className="text-[11px] tracking-[0.5px] text-faint">
-                              {last.collection ? `${last.collection.toUpperCase()} · ` : ""}
-                              {short(last.created_at)}
-                            </p>
-                          </>
-                        ) : (
-                          <span className="text-faint">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <p className="text-[20px] font-extrabold leading-none">{r.sent}</p>
-                        <p className="mt-1 text-[11px] text-faint">
-                          {r.kept} kept · {r.downloaded} downloaded
-                        </p>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        {r.last_at && now() - r.last_at < WEEK ? (
-                          <span title="Sent in the last 7 days" className="inline-flex items-center gap-1.5 rounded-md border border-line px-2 py-1 whitespace-nowrap text-[11px] font-bold uppercase tracking-[1px] text-mute"><span aria-hidden className="size-1.5 rounded-full bg-mute" />Sent this week</span>
-                        ) : Number(r.kept) > 0 ? (
-                          <span title="You kept at least one of their tracks" className="rounded-md border border-line px-2 py-1 text-[11px] font-bold tracking-[1px] text-bone">KEPT</span>
-                        ) : (
-                          <span className="text-[11px] text-faint">{r.last_at ? ago(r.last_at) : "—"}</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <div className="flex justify-end gap-1.5">
-                          <a href={`mailto:${r.email}`} className="btn-ghost btn-sm">
-                            email
-                          </a>
-                          <Link href={`/dashboard/contacts/${r.id}`} aria-label={`More about ${r.name}`} className="btn-ghost btn-sm">
-                            ···
-                          </Link>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </>
-      ) : (
-        <>
-          <div className="flex gap-2 border-b border-line pb-4">
-            {(
-              [
-                ["all", "all"],
-                ["them", "from them"],
-                ["you", "your replies"],
-              ] as const
-            ).map(([k, label]) => (
-              <Link
-                key={k}
-                href={href({ tab: "messages", from: k === "all" ? undefined : k })}
-                aria-current={from === k ? "page" : undefined}
-                className={`rounded-md px-2.5 py-1 text-[11px] ${from === k ? "border border-line bg-ink-3 font-bold" : "text-mute hover:text-bone"}`}
-              >
-                {label}
-              </Link>
-            ))}
-          </div>
-          {messages.length === 0 ? (
-            <p className="card p-8 text-center text-[12px] text-mute">Messages from senders, and your replies, show up here.</p>
-          ) : (
-            <ul className="flex max-w-3xl flex-col gap-3">
-              {messages.map((m, i) => (
-                <li key={i} className="flex flex-col gap-3 card p-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="flex min-w-0 items-center gap-2.5">
-                      <span className="grid size-7 shrink-0 place-items-center rounded-full bg-ink-4 text-[11px] font-bold text-mute">
-                        {initials(m.name)}
-                      </span>
-                      <span className="truncate text-[13px] font-bold">{m.kind === "reply" ? `You → ${m.name}` : m.name}</span>
-                    </span>
-                    <span className="shrink-0 text-[11px] text-faint">{ago(m.at)}</span>
-                  </div>
-                  <p className="text-[12px] italic leading-[1.5] text-mute">&ldquo;{m.text}&rdquo;</p>
-                  {m.title && (
-                    <div className="flex items-center justify-between gap-3 rounded-lg border border-line bg-ink px-3 py-2.5">
-                      <span className="flex min-w-0 items-center gap-2.5">
-                        <span aria-hidden>♫</span>
-                        <span className="min-w-0">
-                          <span className="block truncate text-[12px] font-bold">{m.title}</span>
-                          <span className="block text-[11px] text-faint">attached submission{m.collection ? ` · ${m.collection}` : ""}</span>
-                        </span>
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex justify-end">
-                    <Link href={`/dashboard/contacts/${m.sender_id}`} className="btn-ghost btn-sm">
-                      Reply →
-                    </Link>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </>
-      )}
-    </div>
-    </>
   );
 }

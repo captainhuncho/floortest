@@ -6,7 +6,8 @@ import {q, type EventRow, type Track } from "@/lib/db";
 import { ago, fmtDate, fmtDay, fmtTime } from "@/lib/format";
 import { addNote, blockSender, replyToSender } from "../../actions/review";
 import { Composer, ConfirmButton } from "../../ClientBits";
-import { Status } from "../../TrackList";
+import { PageTitle } from "@/components/PageTitle";
+import { TrackRow, TrackTag } from "@/components/TrackRow";
 
 type Item =
   | { kind: "message"; at: number; text: string; track: string; trackId: number }
@@ -35,34 +36,34 @@ export default async function Contact({ params }: { params: Promise<{ id: string
   const kept = tracks.filter((t) => t.decision === "kept").length;
   const downloaded = tracks.filter((t) => t.downloaded_at).length;
 
-  return (
-    <div className="grid gap-10 px-4 py-6 sm:px-8 lg:grid-cols-[minmax(0,1fr)_340px]">
-      <div className="min-w-0 max-w-2xl">
-        <Link href="/dashboard/contacts" className="text-sm text-mute hover:text-bone">
-          ← Contacts
-        </Link>
-        <h1 className="mt-3 flex flex-wrap items-center gap-2 page-title">
-          {s.name}
-          {s.verified_at ? (
-            <span className="chip border-line text-mute">
-              <svg aria-hidden viewBox="0 0 12 12" className="size-3" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 6.25 5 8.75l4.5-5" /></svg>
-              Verified email
-            </span>
-          ) : (
-            <span className="chip border-line text-mute">Unverified email</span>
-          )}
-          {s.blocked_at && <span className="chip border-danger/50 text-danger">Blocked</span>}
-        </h1>
-        <p className="text-mute">{s.email}</p>
+  const n = (v: number) => <b className="font-bold text-bone">{v}</b>;
 
-        <h2 className="label mt-8">Conversation</h2>
+  return (
+    <div className="page-gutter grid gap-10 py-4 sm:py-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="min-w-0 max-w-2xl">
+        <Link href="/dashboard/contacts" className="tap-text -ml-0.5 inline-flex items-center gap-1.5 text-xs text-mute hover:text-bone">
+          <span aria-hidden className="size-3.5 bg-current [mask:url(/icons/arrow-left.svg)_center/contain_no-repeat]" />
+          Contacts
+        </Link>
+        <PageTitle className="mt-2">{s.name}</PageTitle>
+        <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs text-mute">
+          <span className="break-all">{s.email}</span>
+          <TrackTag>{s.verified_at ? "Verified email" : "Unverified email"}</TrackTag>
+          {s.blocked_at && <span className="inline-flex shrink-0 items-center rounded border border-danger/50 px-1.5 py-0.5 text-[11px] font-bold leading-none text-danger">Blocked</span>}
+        </p>
+        {/* One readout line for the stats. */}
+        <p className="mt-3 text-xs text-mute tnum">
+          {n(tracks.length)} sent · {n(kept)} kept · {n(downloaded)} downloaded · since {fmtDay(s.created_at, user.tz || undefined)}
+        </p>
+
+        <h2 className="eyebrow mt-8">Conversation</h2>
         <ol className="mt-4 space-y-4" aria-label="Messages">
           {thread.length === 0 && <li className="text-mute">No messages yet.</li>}
           {thread.map((m, i) => (
             <li key={i} className={`flex ${m.kind === "message" ? "justify-start" : "justify-end"}`}>
               <div
                 className={`max-w-[85%] rounded-xl px-4 py-3 ${
-                  m.kind === "message" ? "bg-ink-3" : m.kind === "reply" ? "bg-lime/10 ring-1 ring-lime/30" : "border border-dashed border-line"
+                  m.kind === "message" ? "bg-ink-3" : m.kind === "reply" ? "border border-line-2 bg-ink-2" : "border border-dashed border-line"
                 }`}
               >
                 <p className="mb-1 text-xs text-mute">
@@ -94,36 +95,34 @@ export default async function Contact({ params }: { params: Promise<{ id: string
       </div>
 
       <aside className="space-y-8">
-        <section>
-          <h2 className="label">Tracks from {s.name}</h2>
-          <p className="mt-1 text-sm text-mute">
-            {tracks.length} sent · {kept} kept · {downloaded} downloaded · since {fmtDay(s.created_at)}
-          </p>
-          <ul className="mt-3 divide-y divide-line rounded-xl border border-line">
-            {tracks.map((t) => (
-              <li key={t.id} className="px-4 py-3">
-                {t.deleted_at ? (
-                  <p className="truncate text-mute line-through">{t.title}</p>
-                ) : (
-                  <Link href={`/dashboard/review?view=queue&s=all&t=${t.id}`} className="block truncate font-medium hover:text-lime">
-                    {t.title}
-                  </Link>
-                )}
-                <p className="text-sm text-mute">
-                  {t.collection_name ?? "Unsorted"} · {fmtTime(t.duration)} · {ago(t.created_at)}
-                </p>
-                {!t.deleted_at && (
-                  <div className="mt-1.5 flex flex-wrap gap-1">
-                    <Status row={{ decision: t.decision, played: !!t.played_at, downloaded: !!t.downloaded_at }} />
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
+        <section aria-labelledby="tracks-h">
+          <h2 id="tracks-h" className="eyebrow">
+            Tracks from {s.name}
+          </h2>
+          {tracks.length === 0 ? (
+            <p className="mt-3 text-xs text-mute">No tracks yet.</p>
+          ) : (
+            <ul className="mt-3 divide-y divide-line border-y border-line">
+              {tracks.map((t) => (
+                <TrackRow
+                  key={t.id}
+                  surface="row"
+                  title={t.title}
+                  href={t.deleted_at ? undefined : `/dashboard/review?view=queue&s=all&t=${t.id}`}
+                  sub={[t.collection_name ?? "Unsorted", ago(t.created_at), t.deleted_at ? "deleted" : t.downloaded_at ? "downloaded" : t.played_at ? "listened" : null]
+                    .filter(Boolean)
+                    .join(" · ")}
+                  status={t.deleted_at ? undefined : t.decision === "kept" ? "Kept" : t.decision === "passed" ? "Not for me" : "Needs review"}
+                  columns={[{ key: "len", value: fmtTime(t.duration), width: "w-10", label: "Length" }]}
+                  className={t.deleted_at ? "opacity-60" : ""}
+                />
+              ))}
+            </ul>
+          )}
         </section>
         {user.role !== "member" && (
         <section>
-          <h2 className="label">Intake</h2>
+          <h2 className="eyebrow">Intake</h2>
           <p className="mt-1 text-sm text-mute">
             {s.blocked_at
               ? `Blocked on ${fmtDay(s.blocked_at)}. Uploads from ${s.email} are refused.`
