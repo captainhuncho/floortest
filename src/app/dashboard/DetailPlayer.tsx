@@ -12,7 +12,7 @@ export function DetailPlayer({ track }: { track: PlayerTrack }) {
     <div className="flex items-center gap-4">
       <button
         onClick={() => play(track)}
-        className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-lime text-ink transition hover:scale-105"
+        className="grid h-12 w-12 shrink-0 place-items-center play-dot rounded-full transition hover:scale-105"
         aria-label={isCurrent && playing ? "Pause" : "Play"}
       >
         <PlayIcon playing={isCurrent && playing} className="h-5 w-5" />

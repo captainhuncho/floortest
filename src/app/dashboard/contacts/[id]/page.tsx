@@ -44,7 +44,10 @@ export default async function Contact({ params }: { params: Promise<{ id: string
         <h1 className="mt-3 flex flex-wrap items-center gap-2 text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">
           {s.name}
           {s.verified_at ? (
-            <span className="chip border-lime/50 text-lime">Verified email</span>
+            <span className="chip border-line text-mute">
+              <svg aria-hidden viewBox="0 0 12 12" className="size-3" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 6.25 5 8.75l4.5-5" /></svg>
+              Verified email
+            </span>
           ) : (
             <span className="chip border-line text-mute">Unverified email</span>
           )}

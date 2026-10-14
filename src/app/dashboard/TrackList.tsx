@@ -57,11 +57,11 @@ export function TrackList({ rows, selectedId, hrefFor, showDecision = true }: { 
               selected ? "bg-ink-3" : "hover:bg-ink-2"
             } ${r.release ? "pl-6" : ""}`}
           >
-            {selected && <span aria-hidden className="absolute inset-y-2 left-0 w-1 rounded-r bg-lime" />}
+            {selected && <span aria-hidden className="absolute inset-y-2 left-0 w-1 rounded-r bg-bone/70" />}
             <button
               onClick={() => play(toPlayer(r), queue)}
               className={`grid h-10 w-10 place-items-center rounded-full border transition ${
-                isCurrent ? "border-lime bg-lime text-ink" : "border-line text-bone group-hover:border-mute"
+                isCurrent ? "play-dot border-transparent" : "border-line text-bone group-hover:border-mute"
               }`}
               aria-label={isCurrent && playing ? `Pause ${r.title}` : `Play ${r.title}`}
             >
@@ -102,7 +102,7 @@ export function Status({ row, decision = true }: { row: Pick<Row, "decision" | "
   return (
     <>
       {!decision ? null : row.decision === "kept" ? (
-        <span className="chip border-lime/60 text-lime">Kept</span>
+        <span className="chip border-line text-mute">Kept</span>
       ) : row.decision === "passed" ? (
         <span className="chip border-line text-mute">Not for me</span>
       ) : (

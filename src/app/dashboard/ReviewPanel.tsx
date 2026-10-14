@@ -144,10 +144,10 @@ export async function ReviewPanel({
           {desk && decisionLocked(desk, t) ? " · only the owner or an A&R / Admin can change it" : ""}
         </span>
       )}
-      <span className={`rounded-full border px-2.5 py-0.5 ${t.sets_ok ? "border-lime/50 text-lime" : "border-line text-mute"}`}>
+      <span className={`rounded-full border px-2.5 py-0.5 ${t.sets_ok ? "border-bone/30 text-bone" : "border-line text-mute"}`}>
         {t.sets_ok ? "Cleared for DJ sets" : "Evaluation only: ask before playing it out"}
       </span>
-      {shortlist && <span className="rounded-full border border-lime/50 px-2.5 py-0.5 text-lime">★ Shortlisted</span>}
+      {shortlist && <span className="rounded-full border border-bone/30 px-2.5 py-0.5 text-bone">★ Shortlisted</span>}
       {t.release_status && <span className="rounded-full border border-line px-2.5 py-0.5 text-mute">{RELEASE_STATUS[t.release_status as keyof typeof RELEASE_STATUS]}</span>}
       {t.ai_use && t.ai_use !== "none" && <span className="rounded-full border border-line-2 px-2.5 py-0.5 uppercase tracking-[0.5px] text-mute">{AI_USE[t.ai_use]}</span>}
       {soon !== null && <span className="rounded-full border border-danger/50 px-2.5 py-0.5 text-danger">{soon <= 1 ? "Deletes within a day" : `Deletes in ${soon} days`} unless you keep it</span>}
@@ -161,6 +161,14 @@ export async function ReviewPanel({
       )}
     </div>
   );
+
+  // The sender's message can carry the terms of the decision, so it sits above the rail, not below the fold.
+  const message = t.message ? (
+    <figure className="mt-4 rounded-lg border border-line bg-ink p-4">
+      <figcaption className="label mb-2">Message from {sender.name}</figcaption>
+      <blockquote className="whitespace-pre-wrap">{t.message}</blockquote>
+    </figure>
+  ) : null;
 
   const art = artFrom ? `/api/track-art/${artFrom.id}?v=${encodeURIComponent(artFrom.art_key)}` : null;
 
@@ -183,6 +191,7 @@ export async function ReviewPanel({
         {tags}
         {releaseBlock}
         <MobileTransport track={player} prevHref={prevHref} nextHref={next?.href ?? null} />
+        {message}
         {/* The rail mounts after the screen size is known (one rail, one set of shortcuts); its room is kept so nothing jumps. */}
         <div className="mt-3.5 min-h-[100px]">
           <MobileOnly>
@@ -213,6 +222,7 @@ export async function ReviewPanel({
       <div className="mt-5">
         <DetailPlayer track={player} />
       </div>
+      {message}
 
       <div className="mt-5 min-h-[92px]">
         <DesktopOnly>
@@ -249,20 +259,16 @@ export async function ReviewPanel({
         </div>
       )}
 
-      {t.message && (
-        <figure className="mt-6 rounded-lg border border-line bg-ink p-4">
-          <figcaption className="label mb-2">Message from {sender.name}</figcaption>
-          <blockquote className="whitespace-pre-wrap">{t.message}</blockquote>
-        </figure>
-      )}
-
       <p className="mt-6 text-sm">
         From{" "}
         <Link href={`/dashboard/contacts/${sender.id}`} className="font-medium underline-offset-4 hover:underline">
           {sender.name}
         </Link>{" "}
         {sender.verified_at ? (
-          <span className="chip ml-1 border-lime/50 text-lime">Verified email</span>
+          <span className="chip ml-1 border-line text-mute">
+            <svg aria-hidden viewBox="0 0 12 12" className="size-3" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 6.25 5 8.75l4.5-5" /></svg>
+            Verified email
+          </span>
         ) : (
           <span className="chip ml-1 border-line text-mute">Unverified email</span>
         )}

@@ -125,7 +125,7 @@ export function TwoSides() {
                   ))}
                 </ul>
                 <div className="mt-4 flex gap-2 text-[11px] font-bold uppercase">
-                  <span className="rounded-md border border-line-2 px-4 py-2 text-bone">Keep · K</span>
+                  <span className="rounded-md border border-transparent bg-lime px-4 py-2 text-ink">Keep · K</span>
                   <span className="rounded-md border border-line px-4 py-2 text-mute">Not for me · X</span>
                 </div>
               </div>

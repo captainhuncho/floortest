@@ -34,7 +34,7 @@ export function StatusTabs({ tabs, active }: { tabs: Tab[]; active: string }) {
   }, [active]);
 
   return (
-    <nav ref={nav} className="mt-6 flex flex-wrap gap-1 border-b border-line" aria-label="Status" data-pending={pending ? "" : undefined} aria-busy={pending || undefined}>
+    <nav ref={nav} className="mt-6 flex gap-1 overflow-x-auto shadow-[inset_0_-1px_0_var(--color-line)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Status" data-pending={pending ? "" : undefined} aria-busy={pending || undefined}>
       {tabs.map((t) => {
         const on = chosen === t.key;
         return (
@@ -58,8 +58,8 @@ export function StatusTabs({ tabs, active }: { tabs: Tab[]; active: string }) {
               topBefore.current = nav.current?.getBoundingClientRect().top ?? null;
               start(() => router.push(t.href, { scroll: false }));
             }}
-            className={`-mb-px border-b-2 px-3 py-2.5 text-sm font-medium transition-colors ${
-              on ? "border-lime text-bone" : "border-transparent text-mute hover:text-bone"
+            className={`shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors ${
+              on ? "border-bone text-bone" : "border-transparent text-mute hover:text-bone"
             }`}
           >
             {t.label} <span className="tnum text-mute">{t.count}</span>
