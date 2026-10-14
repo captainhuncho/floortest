@@ -13,11 +13,9 @@ import { TrackList, type Row } from "../TrackList";
 import { ViewToggle } from "../ViewToggle";
 import { FilterMenu } from "../list/FilterMenu";
 import { StatusTabs } from "./StatusTabs";
-import { CaughtUp } from "./CaughtUp";
-import { HandoffSweep } from "../ReviewHandoff";
 import { VIEW_COOKIE } from "../view-cookie";
 
-export const metadata = { title: "Queue — FloorTest" };
+export const metadata = { title: "Review Queue — FloorTest" };
 
 const STATUSES = TRACK_STATUSES;
 type StatusKey = TrackStatus;
@@ -119,18 +117,16 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
   const prevRow = idx > 0 ? rows[idx - 1] : undefined;
   // Opening a track (t in the URL) is full review on narrow screens: the list steps aside until "Back".
   const focused = !!sp.t && !!selected;
-  // Needs review: what is still waiting, so deciding the last one lands on "All caught up." instead of a next track.
-  const waiting = status === "review" ? rows.map((r) => r.id) : null;
 
   const totalActive = collections.reduce((n, c) => n + c.count, 0);
 
   return (
-    <div data-shortcuts className={`grid min-h-full ${selected || totalActive > 0 ? "xl:grid-cols-[minmax(0,1fr)_minmax(400px,460px)]" : ""}`}>
-      <section className={`page-gutter min-w-0 py-6 ${focused ? "hidden xl:block" : ""}`} aria-labelledby="submissions-h">
+    <div className={`grid min-h-full ${selected || totalActive > 0 ? "xl:grid-cols-[minmax(0,1fr)_minmax(400px,460px)]" : ""}`}>
+      <section className={`min-w-0 px-4 py-6 sm:px-8 ${focused ? "hidden xl:block" : ""}`} aria-labelledby="submissions-h">
         <header className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 id="submissions-h" className="page-title">
-              Queue
+            <h1 id="submissions-h" className="text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">
+              Review Queue
             </h1>
             <p className="mt-1 text-mute">
               {counts.review
@@ -178,14 +174,16 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
           {totalActive === 0 && !search ? (
             <EmptyDesk link={`${APP_URL}/${user.handle}`} welcome={!!sp.welcome} />
           ) : rows.length === 0 ? (
-            status === "review" && !search ? (
-              // The same state the one-by-one review lands on after the last waiting track is decided.
-              <CaughtUp kept={counts.kept} link={`${APP_URL}/${user.handle}`} />
-            ) : (
-              <div className="rounded-xl border border-line py-16 text-center">
-                <p className="font-medium">{search ? `Nothing matches “${search}”.` : "Nothing here yet."}</p>
-              </div>
-            )
+            <div className="rounded-xl border border-line py-16 text-center">
+              <p className="font-medium">
+                {search ? `Nothing matches “${search}”.` : status === "review" ? "Nothing waiting. You're all caught up." : "Nothing here yet."}
+              </p>
+              {status === "review" && counts.kept > 0 && (
+                <Link href={href({ s: "kept", t: undefined })} className="mt-3 inline-block text-lime underline underline-offset-4">
+                  Prepare your {counts.kept} kept track{counts.kept === 1 ? "" : "s"} for a set →
+                </Link>
+              )}
+            </div>
           ) : (
             <TrackList
               rows={rows}
@@ -200,17 +198,13 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
       {selected && sender && (
         <aside
           aria-label="Review"
-          // Phones: the list comes first (title, status tabs, tracks); a track opens into full review with the decision
-          // rail docked at the bottom, so the tab bar and mini player step aside while it's open (globals.css).
-          data-review-open={focused ? "" : undefined}
-          className={`${focused ? "" : "border-t max-md:hidden"} border-line bg-ink-2/60 xl:sticky xl:top-[68px] xl:h-[calc(100dvh-68px)] xl:self-start xl:overflow-y-auto xl:border-t-0 xl:border-l`}
+          className={`${focused ? "" : "border-t max-md:order-first max-md:border-t-0 max-md:border-b"} border-line bg-ink-2/60 xl:sticky xl:top-[68px] xl:h-[calc(100dvh-68px)] xl:self-start xl:overflow-y-auto xl:border-t-0 xl:border-l`}
         >
           {focused && (
             // Phones: Figma "Header" (← QUEUE / Now reviewing); the transport below has previous and next.
             <header className="flex items-end justify-between gap-3 px-4 pt-3 md:hidden">
               <div className="flex flex-col gap-[3px]">
-                {/* 44px tall tap target; the negative margin keeps the header's layout where it was. */}
-                <Link href={href({ t: undefined })} className="-my-3.5 -ml-2 inline-flex min-h-11 w-fit items-center px-2 text-[11px] font-medium text-mute">
+                <Link href={href({ t: undefined })} className="text-[11px] font-medium text-mute">
                   ← QUEUE
                 </Link>
                 <h1 className="text-[22px] font-extrabold text-bone">Now reviewing</h1>
@@ -221,7 +215,7 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
           {focused && (
             <nav aria-label="Review navigation" className="sticky top-[68px] z-30 hidden items-center gap-2 border-b border-line bg-ink/90 px-4 py-2.5 backdrop-blur sm:px-6 md:flex xl:hidden">
               <Link href={href({ t: undefined })} className="text-sm text-mute hover:text-bone">
-                ← Queue
+                ← Review Queue
               </Link>
               <span className="ml-auto font-mono text-xs text-mute tnum">{idx >= 0 ? `${idx + 1} of ${rows.length}` : ""}</span>
               {prevRow ? (
@@ -248,9 +242,6 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
             selfHref={href({ t: String(selected.id) })}
             next={nextRow ? { href: href({ t: String(nextRow.id) }), track: toPlayer(nextRow) } : null}
             prevHref={prevRow ? href({ t: String(prevRow.id) }) : null}
-            queueHref={href({ t: undefined })}
-            waiting={waiting}
-            docked={focused}
           />
         </aside>
       )}
@@ -260,7 +251,6 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
           <p className="max-w-56 text-center text-sm text-mute">Nothing to review in this view. Pick another tab or collection.</p>
         </aside>
       )}
-      <HandoffSweep at={JSON.stringify(sp)} />
     </div>
   );
 }
