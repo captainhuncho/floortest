@@ -18,7 +18,7 @@ export async function Onboarding({ user }: { user: User }) {
   const has = async (sql: string) => !!(await q.get(sql, user.id));
   const firstTrack = await has("SELECT 1 FROM tracks WHERE user_id = ? LIMIT 1");
   const all = [
-    { done: !!user.email_verified_at, label: "Confirm your email", hint: "So alerts and password resets reach you.", href: null, resend: true },
+    { done: !!user.email_verified_at, label: "Confirm your email", href: null, resend: true },
     {
       done: !!(c && (c.brief_wanted || c.genres || c.bpm_min || c.closes_at || c.brief_note)),
       label: "Set your callout brief",

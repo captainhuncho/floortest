@@ -28,7 +28,7 @@ export default async function Team({ searchParams }: { searchParams: Promise<{ d
     <>
       <PageTitle
         title="Team"
-        sub={`Everyone here works on ${user.name}'s desk with their own login, and gets everything ${user.name}'s plan includes, only on this desk.`}
+        sub={`Everyone here has their own login on ${user.name}'s desk and its plan.`}
       />
       {denied && (
         <p role="alert" className="rounded-lg border border-danger/40 px-4 py-3 text-sm">

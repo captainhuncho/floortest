@@ -83,7 +83,7 @@ export function PublicPageForm({ roleLine, links }: { roleLine: string; links: P
             + Add a profile
           </button>
         )}
-        <p className="text-sm text-mute">Up to {MAX_LINKS}. They show as icons under your name so senders know it&apos;s really you.</p>
+        <p className="text-sm text-mute">Up to {MAX_LINKS}.</p>
       </fieldset>
       <SaveBar pending={pending} state={state} />
     </form>

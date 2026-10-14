@@ -59,7 +59,7 @@ export default async function PlanPreview({ searchParams }: { searchParams: Prom
       <div id="plans-root" data-period="month" className="mx-auto flex max-w-5xl flex-col gap-6">
         <header className="flex flex-col items-center gap-3 text-center">
           <h1 className="text-[28px] tracking-[-0.5px] md:text-[36px]">Choose your plan</h1>
-          <p className="text-[15px] text-mute">The same receiving desk. The capacity that fits your music.</p>
+          <p className="text-[15px] text-mute">Same desk. Pick the room you need.</p>
           <BillingSwitch initial="month" target="plans-root" />
         </header>
         <PlanCards plans={plans} billing={billing} userPlan={null} currentPrice={0} preview sharing={sharing} teams />

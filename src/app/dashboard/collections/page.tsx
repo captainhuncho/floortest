@@ -49,7 +49,7 @@ export default async function Collections() {
         <NewCollection />
       </div>
       <p className="mt-2 max-w-2xl text-xs leading-relaxed text-mute sm:text-sm">
-        One per callout. Your link sends new tracks to whichever collection is receiving. Reviewing happens in{" "}
+        One per callout. Your link fills the one that&apos;s receiving. Review in{" "}
         <Link href="/dashboard/review" className="text-bone underline underline-offset-4">
           the Queue
         </Link>

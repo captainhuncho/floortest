@@ -348,8 +348,8 @@ export function ShareLinks({ collectionId, links, sharedTracks, at }: { collecti
             Share links
           </h2>
           <p className="mt-1 max-w-xl text-[12px] text-mute">
-            Let named people listen (or download) without sending them files. Separate from your submission link. Everyone verifies their email first;
-            you see who opened what. {sharedTracks} track{sharedTracks === 1 ? "" : "s"} here can be shared (their senders agreed when sending).
+            Let named people listen or download. They confirm their email first, and you see who opened what.{" "}
+            {sharedTracks} track{sharedTracks === 1 ? "" : "s"} here can be shared: their senders agreed.
           </p>
         </div>
         <NewLink collectionId={collectionId} />
