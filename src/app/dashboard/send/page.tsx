@@ -68,7 +68,7 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
     <>
     {!view && !user.email_verified_at && <VerifyBanner email={user.email} />}
     <div className="page-gutter page-narrow py-6">
-      <PageTitle sub={`Send a track to anyone with a FloorTest link. Type the part after ${APP_URL.replace(/^https?:\/\//, "")}/.`}>Send</PageTitle>
+      <PageTitle sub="Send a track to anyone with a FloorTest link.">Send</PageTitle>
       <div className="mt-8">
         <SendComposer host={APP_URL.replace(/^https?:\/\//, "")} account={{ name: user.name, email: user.email }} initial={to} />
       </div>
@@ -87,7 +87,7 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
           </>
         ) : (
           <>
-            <p className="mt-1 text-sm text-mute">Nothing sent yet. Each track you send gets a private receipt that says what happened to it, and nothing more.</p>
+            <p className="mt-1 text-sm text-mute">Nothing sent yet. Each track gets a private receipt.</p>
             {/* A sample row, faint and labelled, so the receipt's ladder is clear before there's a real one. Not a card. */}
             <figure className="mt-4 border-y border-dashed border-line py-3.5 text-faint">
               <figcaption className="sr-only">Sample receipt</figcaption>

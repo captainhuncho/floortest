@@ -25,7 +25,7 @@ export function SettingsForm({ name, firstName, lastName, handle, base, nextChan
           <input name="last_name" defaultValue={lastName} autoComplete="family-name" className="input" required />
         </label>
       </div>
-      <p className="-mt-2 text-xs text-mute">Kept private: for your account, billing and receipts. Never shown on your page.</p>
+      <p className="-mt-2 text-xs text-mute">Private. Never shown on your page.</p>
       <label className="block space-y-1.5">
         <span className="label">Professional name</span>
         <input name="name" defaultValue={name} className="input" placeholder="DJ, artist or label name" />
@@ -48,7 +48,7 @@ export function SettingsForm({ name, firstName, lastName, handle, base, nextChan
       </label>
       <fieldset className="space-y-1.5">
         <legend className="label mb-1.5 block">Tools</legend>
-        <p className="text-xs text-mute">Your type switches these on. Turn any of them on or off.</p>
+        <p className="text-xs text-mute">Your type switches these on.</p>
         {TOOL_IDS.map((t) => (
           <label key={t} className="flex max-w-lg min-h-11 cursor-pointer items-start gap-3 rounded-md border border-line bg-ink-2 px-3 py-2.5 text-sm">
             <input type="checkbox" checked={isOn(t)} onChange={(e) => setPicked((p) => ({ ...p, [t]: e.target.checked }))} className="mt-0.5 accent-lime" />

@@ -48,7 +48,7 @@ export default async function Receiving() {
           </ul>
         )}
       </Section>
-      <Section id="rules-h" title="How your desk works" sub="These apply to every link. Closing dates are set per collection on the Collections page.">
+      <Section id="rules-h" title="How your desk works" sub="Closing dates are set per collection.">
         <details className="group">
           <summary className="cursor-pointer list-none text-sm text-bone underline underline-offset-4 group-open:mb-4">Show the rules</summary>
           <ul className="list-disc space-y-1.5 pl-5 text-sm text-mute">

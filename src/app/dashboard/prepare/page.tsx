@@ -20,7 +20,7 @@ export default async function PrepareForSet() {
   return (
     <div className="page-gutter py-3 sm:py-6">
       <div className="md:flex md:items-start md:justify-between md:gap-8">
-        <PageTitle sub="Every track you keep lands here. Download a crate with a Rekordbox XML and playlist, or just the files." className="max-w-md">
+        <PageTitle sub="Every track you keep lands here, ready to download with a Rekordbox playlist." className="max-w-md">
           Prepare
         </PageTitle>
       {/* Every option visible, same size: people use different ones. Starting a new batch is a quiet secondary action, and still confirms. */}

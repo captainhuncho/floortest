@@ -107,8 +107,8 @@ export default async function Activity({ searchParams }: { searchParams: Promise
       <p className="text-[12px] leading-[1.5] text-mute">
         {key === "you"
           ? teammate
-            ? "Everything done on this desk, newest first, with the name of whoever did it. The account holder's own sign-ins and settings aren't shown."
-            : "Everything done in your account, newest first. Your teammates' actions show their name."
+            ? "Everything done on this desk, newest first. The account holder's sign-ins and settings aren't shown."
+            : "Everything done on your desk, newest first."
           : "What happened on your desk, including what senders did."}
       </p>
       <Tabs

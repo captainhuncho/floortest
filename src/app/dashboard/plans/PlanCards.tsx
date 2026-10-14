@@ -66,7 +66,7 @@ export function PlanCards({
       )}
 
       <ul className={`grid gap-4 ${planGrid(plans.length)}`}>
-        {plans.map((p) => {
+        {plans.map((p, i) => {
           const id = p.id;
           const isCurrent = userPlan === id;
           const tooSmall = !preview && capUsed > p.limit + capBonus;
@@ -156,8 +156,9 @@ export function PlanCards({
               </p>
 
               <div className="flex flex-col gap-3.5">
-                <p className="text-xs font-semibold text-mute">Included in every plan</p>
-                <ul className="flex flex-col gap-2.5 text-sm">
+                {/* The shared tools are listed once, on the first card; the others say what they add. */}
+                <p className="text-xs font-semibold text-mute">{i === 0 ? "Included in every plan" : `Everything in ${plans[0].name}${extras.length ? ", plus" : ""}`}</p>
+                <ul className={`flex flex-col gap-2.5 text-sm ${i === 0 ? "" : "hidden"}`}>
                   {SHARED.map((f) => (
                     <li key={f} className="flex items-center gap-2.5">
                       <svg aria-hidden viewBox="0 0 16 16" className="size-4 shrink-0 text-lime" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
@@ -169,7 +170,6 @@ export function PlanCards({
                 </ul>
                 {extras.length > 0 && (
                   <>
-                    <p className="pt-1 text-xs font-semibold text-mute">Also on {p.name}</p>
                     <ul className="flex flex-col gap-2.5 text-sm">
                       {extras.map((f) => (
                         <li key={f} className="flex items-center gap-2.5">
@@ -187,10 +187,10 @@ export function PlanCards({
       </ul>
 
       <div className="flex flex-col gap-1 text-xs text-mute sm:flex-row sm:justify-between">
-        <p>{sameTools ? "All plans include the same tools. Only active-track capacity changes." : "Every plan includes the core tools; bigger plans add room and a few extras."}</p>
+        <p>{sameTools ? "Only active-track room changes between plans." : ""}</p>
         <div className="period-stack sm:text-right">
-          <p className="period-month">{billing ? "Billed monthly." : "Prices shown apply after beta."}</p>
-          <p className="period-year">{yearlyUnset ? "Yearly pricing is not yet confirmed for every plan." : billing ? "Billed yearly." : "Prices shown apply after beta."}</p>
+          <p className="period-month">{billing ? "Billed monthly." : ""}</p>
+          <p className="period-year">{yearlyUnset ? "Yearly pricing is not yet confirmed for every plan." : billing ? "Billed yearly." : ""}</p>
         </div>
       </div>
     </>

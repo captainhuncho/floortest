@@ -51,7 +51,7 @@ export default async function Referrals() {
           People you invited
         </h2>
         {invited.length === 0 ? (
-          <p className="mt-2 text-mute">No one yet. Share your invite link in a DJ group chat or with a label you work with.</p>
+          <p className="mt-2 text-mute">No one yet.</p>
         ) : (
           <ul className="mt-3 divide-y divide-line rounded-xl border border-line">
             {invited.map((i, n) => (
@@ -71,14 +71,7 @@ export default async function Referrals() {
         )}
       </section>
 
-      <section className="text-sm text-mute">
-        <h2 className="font-semibold text-bone">How it works</h2>
-        <ul className="mt-2 list-disc space-y-1 pl-5">
-          <li>They sign up with your link.</li>
-          <li>The bonus unlocks when their link receives its first track, so only real desks count.</li>
-          <li>Bonus tracks add to your plan limit and stay if you change plans.</li>
-        </ul>
-      </section>
+      <p className="text-sm text-mute">Bonus tracks stay if you change plans.</p>
     </div>
   );
 }

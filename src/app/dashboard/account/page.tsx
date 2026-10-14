@@ -165,11 +165,11 @@ export default async function Account() {
           <Section
             title="YOUR DESK"
             rows={[
-              ...(user.role !== "member" ? [<Row key="s" href="/dashboard/send" icon="↑" title="Send music" sub="Send a track to another receiver" />] : []),
+              ...(user.role !== "member" ? [<Row key="s" href="/dashboard/send" icon="↑" title="Send music" />] : []),
               // Who can send to your link sits with the desk; team admins find it in their team section instead.
               ...(user.role === "owner" ? [<Row key="b" href="/dashboard/settings/receiving" icon="⊘" title="Receiving" sub="Blocked senders and desk rules" />] : []),
-              <Row key="c" href="/dashboard/contacts" icon="☰" title="Contacts" sub="Everyone who sent you music" />,
-              <Row key="a" href="/dashboard/activity" icon="◷" title="Activity" sub="Everything you did, newest first" />,
+              <Row key="c" href="/dashboard/contacts" icon="☰" title="Contacts" />,
+              <Row key="a" href="/dashboard/activity" icon="◷" title="Activity" />,
               <Row key="e" href="/dashboard/emails" icon="✉" title="Emails to senders" sub="Everything FloorTest told them" />,
               <Row key="r" href="/dashboard/referrals" icon="+" title="Referrals" sub="Invite DJs · get more active tracks" />,
             ]}
@@ -235,8 +235,8 @@ export default async function Account() {
           <Section
             title="ABOUT FLOORTEST"
             rows={[
-              <Row key="c" href="/contact" icon="✆" title="Contact us" sub="Questions, problems, anything" external />,
-              <Row key="f" href="/contact?topic=feedback" icon="✎" title="Send feedback" sub="Tell us what to fix or build" external />,
+              <Row key="c" href="/contact" icon="✆" title="Contact us" external />,
+              <Row key="f" href="/contact?topic=feedback" icon="✎" title="Send feedback" external />,
               <Row key="t" href="/trust" icon="✓" title="Trust & security" sub="How we keep music private" external />,
               <Row key="te" href="/terms" icon="§" title="Terms & conditions" external />,
               <Row key="l" href="/licenses" icon="¶" title="Legal" external />,

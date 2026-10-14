@@ -39,7 +39,7 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
       </Link>
       <header className="flex flex-col items-center gap-3 text-center">
         <h1 className="page-title">Choose your plan</h1>
-        <p className="text-[15px] text-mute">The same receiving desk. The capacity that fits your music.</p>
+        <p className="text-[15px] text-mute">Same desk. Pick the room you need.</p>
         <BillingSwitch initial={yearly ? "year" : "month"} target="plans-root" />
       </header>
 
@@ -75,8 +75,8 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
           <div className="h-full rounded-full bg-lime" style={{ width: `${pct}%` }} />
         </div>
         <p className="mt-2 text-[11px] text-dim">
-          Active tracks are everything on your desk: waiting, kept and not for me. Undecided tracks leave after {RETAIN_UNREVIEWED_DAYS} days, not for me after{" "}
-          {RETAIN_PASSED_DAYS}, and kept tracks stay until you delete them. Deleting a track frees its slot at once.
+          Active tracks: everything on your desk. Undecided tracks leave after {RETAIN_UNREVIEWED_DAYS} days, Not for me after{" "}
+          {RETAIN_PASSED_DAYS}, kept tracks when you delete them. Deleting frees the slot at once.
           {cap.bonus > 0 && ` Includes ${cap.bonus} extra slots from referrals.`}
         </p>
       </section>
