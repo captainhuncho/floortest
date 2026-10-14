@@ -14,6 +14,7 @@
   --color-mute: #a3a69b; /* ≈7:1 on ink, ≈6.5:1 on panels */
   --color-dim: #92958c; /* ≥4.5:1 on every surface, raised ink-4 included */
   --color-faint: #94978e; /* labels and meta only; ≥4.5:1 on every surface */
+  --color-wave: rgb(163 166 155 / 0.7); /* unplayed waveform bars: ≥3:1 against the played (lime) bars */
   --color-lime: #d5ff48;
   --color-olive: #536400;
   --color-danger: #ff6b5a;
@@ -48,6 +49,10 @@
 }
 
 html, body { background: var(--color-ink); color: var(--color-bone); }
+/* Keyboard focus and in-page jumps stop clear of the fixed bars: on phones the top bar (76px) and, at the bottom, the
+   tab bar plus mini player; from md up only the player bar (44px button + 24px padding + border) sits at the bottom. */
+html { scroll-padding-top: 76px; scroll-padding-bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 150px); }
+@media (min-width: 48rem) { html { scroll-padding-top: 16px; scroll-padding-bottom: 88px; } }
 body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
 /* Visible focus everywhere, for keyboard users only. */
 :focus-visible { outline: 2px solid var(--color-lime); outline-offset: 2px; border-radius: 4px; }
@@ -73,6 +78,8 @@ body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
   transition: opacity 250ms var(--ease-drawer), transform 250ms var(--ease-drawer);
   @starting-style { opacity: 0; transform: translateY(16px); }
 }
+/* Leaving: a quick fade and drop before the toast unmounts (150ms, EXIT_MS in Toast.tsx). */
+[data-toast][data-leaving] { opacity: 0; transform: translateY(8px); transition-duration: 150ms; transition-timing-function: var(--ease-out); pointer-events: none; }
 button, .btn { -webkit-tap-highlight-color: transparent; transition-property: color, background-color, border-color, opacity, transform, translate, scale; transition-duration: 150ms; transition-timing-function: var(--ease-out); }
 button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
 .switch-thumb { transition: translate 200ms var(--ease-out), background-color 150ms var(--ease-out); }
@@ -83,7 +90,7 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
   background: linear-gradient(to bottom, #24261f, #141512);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 2px 4px rgb(0 0 0 / 0.5), 0 14px 30px -6px rgb(0 0 0 / 0.75);
 }
-.tactile-item { color: #85887f; transition: background-color 120ms var(--ease-out), color 120ms var(--ease-out), box-shadow 120ms var(--ease-out); }
+.tactile-item { color: #94978e; transition: background-color 120ms var(--ease-out), color 120ms var(--ease-out), box-shadow 120ms var(--ease-out); }
 @media (hover: hover) and (pointer: fine) { .tactile-item:hover { color: #f1f1eb; background: rgb(255 255 255 / 0.04); } }
 .tactile-item:active { background: #1f211b; box-shadow: inset 0 2px 4px rgb(0 0 0 / 0.6); }
 .tactile-item[aria-current="page"] {
@@ -92,7 +99,7 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
   background: linear-gradient(to bottom, #353a2d, #23261e);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 2px 6px rgb(0 0 0 / 0.55);
 }
-.tactile-label { color: #85887f; }
+.tactile-label { color: #94978e; }
 /* Admin areas: each group of the admin menu has its own accent, carried onto the Overview numbers that belong to it. */
 [data-area="monitor"] { --area: #6ec8ff; }
 [data-area="support"] { --area: #ffb648; }
@@ -120,6 +127,7 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; scale: none !important; scroll-behavior: auto !important; }
   [role="menu"], [role="listbox"], [role="dialog"], [data-toast] { transition: opacity 150ms linear !important; }
+  [data-toast][data-leaving] { transform: none; }
 }
 ::selection { background: var(--color-lime); color: var(--color-ink); }
 
@@ -187,6 +195,7 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
   --color-mute: #4c4f45;
   --color-dim: #5f6257;
   --color-faint: #66695e;
+  --color-wave: #b9bdaa;
   --color-lime: #4a6400;
   --color-olive: #3d5200;
   --color-danger: #c4321f;
@@ -213,6 +222,7 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
   --color-mute: #4c4f45;
   --color-dim: #5f6257;
   --color-faint: #66695e;
+  --color-wave: #b9bdaa;
   --color-lime: #4a6400;
   --color-olive: #3d5200;
   --color-danger: #c4321f;
@@ -228,21 +238,27 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
 .theme-system :focus-visible { outline-color: #0a0a0a; }
 .theme-system #main .input, .theme-system .input { background: #ffffff; }
 }
-/* Day mode: round play buttons are lime (white vanishes on light cards); the live-status dot is the readable olive. */
+/* Day mode: chart marks and the live-status dot use the readable olive. */
 .theme-root { --chart-mark: var(--color-bone); }
 .theme-root.theme-day { --chart-mark: #5f8000; }
 
 @media (prefers-color-scheme: light) { .theme-root.theme-system { --chart-mark: #5f8000; } }
 .play-dot { background: #ffffff; color: #10110f; }
-.theme-day .play-dot { background: #d5ff48; }
-@media (prefers-color-scheme: light) { .theme-system .play-dot { background: #d5ff48; } }
+/* Day mode: neutral, not lime (lime is for Keep and the one main action). A dark ink dot with a light icon; the
+   play icons are dark-stroked SVG files, so they're inverted to read light on it. */
+.theme-day .play-dot { background: #10110f; color: #f1f1eb; }
+.theme-day .play-dot img { filter: invert(1); }
+@media (prefers-color-scheme: light) {
+  .theme-system .play-dot { background: #10110f; color: #f1f1eb; }
+  .theme-system .play-dot img { filter: invert(1); }
+}
 .live-dot { background: var(--color-lime); box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-lime) 22%, transparent); }
 
 /* Pieces designed as dark objects (the desktop sidebar, the floating phone tab bar) stay dark in Day mode. */
 .theme-root .keep-night {
   --color-ink: #10110f; --color-ink-2: #171815; --color-ink-3: #1e1f1b; --color-ink-4: #2a2e24;
   --color-line: #2c2e29; --color-line-2: #3a3d37;
-  --color-bone: #f1f1eb; --color-mute: #a3a69b; --color-dim: #92958c; --color-faint: #94978e;
+  --color-bone: #f1f1eb; --color-mute: #a3a69b; --color-dim: #92958c; --color-faint: #94978e; --color-wave: rgb(163 166 155 / 0.7);
   --color-lime: #d5ff48; --color-olive: #536400; --color-danger: #ff6b5a;
   color-scheme: dark;
 }

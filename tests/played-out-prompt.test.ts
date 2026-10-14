@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { promptWeek } from "../src/lib/played-out-prompt";
+import { canMarkPlayedOut, PICK_DAYS, promptWeek } from "../src/lib/played-out-prompt";
 
 const H = 3_600_000;
 
@@ -18,4 +18,13 @@ test("the Monday prompt follows the receiver's own week and time zone", () => {
   assert.equal(promptWeek("Europe/London", Date.UTC(2026, 9, 11, 23, 30)).open, true);
   // A bad time zone falls back to UTC instead of failing.
   assert.equal(promptWeek("Not/AZone", Date.UTC(2026, 9, 12, 9)).key, "2026-10-12");
+});
+
+test("Played out can be marked on any day by a DJ desk's owner or A&R / Admin; the pick page looks 14 days back", () => {
+  // The Floor's prompt still opens only on Monday and Tuesday (above); the pick page and Prepare don't depend on it.
+  assert.equal(PICK_DAYS, 14);
+  assert.equal(canMarkPlayedOut({ kind: "dj" }), true);
+  assert.equal(canMarkPlayedOut({ kind: "dj", role: "admin" }), true);
+  assert.equal(canMarkPlayedOut({ kind: "dj", role: "member" }), false);
+  assert.equal(canMarkPlayedOut({ kind: "label" }), false);
 });

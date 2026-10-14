@@ -1,6 +1,6 @@
 import "server-only";
 import { emailText } from "./email-copy";
-import { q, type User } from "./db";
+import { q, type Track, type User } from "./db";
 import { APP_URL, sendMail } from "./mail";
 
 const DAY = 86_400_000;
@@ -55,6 +55,50 @@ export async function playedOutPrompt(user: Pick<User, "id" | "kind" | "tz"> & {
   const tracks = rows.filter((r) => r.sets_ok).map(({ id, title, artist, bpm }) => ({ id, title, artist, bpm }));
   if (!tracks.length) return null;
   return { key: week.key, from: week.from, to: week.to, tracks, heldBack: rows.filter((r) => !r.sets_ok).map((r) => r.title) };
+}
+
+/** Who can tell senders "Played out" from the pick page and Prepare: DJ desks, the owner and A&R / Admin. */
+export const canMarkPlayedOut = (user: Pick<User, "kind"> & { role?: string }) => user.kind === "dj" && user.role !== "member";
+
+/** How far back the pick page looks, any day of the week. */
+export const PICK_DAYS = 14;
+
+/**
+ * The pick page's list, any day: tracks kept or downloaded in the last 14 days and not yet played out. As with the
+ * Monday prompt, tracks whose sender asked for evaluation only are held back by name.
+ */
+export async function playedOutPicks(user: Pick<User, "id" | "kind"> & { role?: string }, ts = Date.now()) {
+  if (!canMarkPlayedOut(user)) return null;
+  const from = ts - PICK_DAYS * DAY;
+  const rows = await q.all<PromptTrack & { sets_ok: number }>(
+    `SELECT id, title, artist, bpm, sets_ok FROM tracks
+     WHERE user_id = ? AND deleted_at IS NULL AND decision = 'kept' AND played_out_at IS NULL
+       AND (decided_at >= ? OR downloaded_at >= ?)
+     ORDER BY COALESCE(decided_at, downloaded_at) DESC LIMIT 50`,
+    user.id, from, from,
+  );
+  return {
+    from,
+    to: ts,
+    tracks: rows.filter((r) => r.sets_ok).map(({ id, title, artist, bpm }) => ({ id, title, artist, bpm })),
+    heldBack: rows.filter((r) => !r.sets_ok).map((r) => r.title),
+  };
+}
+
+/** A kept track the sender didn't mark evaluation-only, not yet played out: Prepare can offer "Played it out". */
+export const markableOnPrepare = (t: Pick<Track, "decision" | "sets_ok" | "played_out_at">) => t.decision === "kept" && !!t.sets_ok && !t.played_out_at;
+
+export type PlayedOutStatus = { at: number | null; note: string; setsOk: boolean };
+
+/** Played out status for a list of the desk's tracks (Prepare's kept cards). */
+export async function playedOutStatus(userId: number, ids: number[]): Promise<Record<number, PlayedOutStatus>> {
+  const list = ids.filter(Number.isInteger).slice(0, 500);
+  if (!list.length) return {};
+  const rows = await q.all<{ id: number; played_out_at: number | null; played_out_note: string | null; sets_ok: number }>(
+    `SELECT id, played_out_at, played_out_note, sets_ok FROM tracks WHERE user_id = ? AND id IN (${list.map(() => "?").join(",")})`,
+    userId, ...list,
+  );
+  return Object.fromEntries(rows.map((r) => [r.id, { at: r.played_out_at, note: r.played_out_note || "", setsOk: !!r.sets_ok }]));
 }
 
 export async function closePlayedOutPrompt(userId: number, key: string) {
