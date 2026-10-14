@@ -259,8 +259,14 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
 
       <div className="page-narrow flex min-w-0 flex-col gap-8">
 
-        {/* The link heads the desk part, under a rule that ends the work above. */}
-        {!fresh && <div className="border-t border-line pt-8">{linkSection}</div>}
+        {/* The desk part, under a rule that ends the work above: the link and sending side by side, then one compact panel. */}
+        {(!fresh || user.role !== "member") && (
+          <div className="grid grid-cols-1 gap-8 border-t border-line pt-8 sm:grid-cols-2 sm:gap-6">
+            {!fresh && linkSection}
+            {/* On a team desk, Members can't send as the account. */}
+            {user.role !== "member" && <SendMusicCard recent={recentSends} host={APP_URL.replace(/^https?:\/\//, "")} />}
+          </div>
+        )}
 
         {/* The desk's readings: one panel, cells divided by 1px rules (not tiles). The week on top, the desk under it. */}
         {(week.length > 0 || !fresh) && (
@@ -269,12 +275,12 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
               <section aria-labelledby="week-h">
                 <h2 id="week-h" className="eyebrow px-4 pt-3.5 pb-2.5">This week</h2>
                 <dl
-                  className={`grid grid-cols-2 gap-px border-t border-line bg-line ${week.length % 2 ? "[&>div:last-child]:col-span-2" : ""}`}
+                  className={`grid grid-cols-2 gap-px border-t border-line bg-line sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none ${week.length % 2 ? "[&>div:last-child]:col-span-2 sm:[&>div:last-child]:col-span-1" : ""}`}
                 >
                   {week.map((w) => (
-                    <div key={w.key} className="flex min-w-0 flex-col gap-2 bg-ink-3 px-4 py-3.5">
+                    <div key={w.key} className="flex min-w-0 flex-col gap-1 bg-ink-3 px-4 py-3">
                       <dt className="eyebrow truncate">{w.label}</dt>
-                      <dd className="tnum text-stat font-bold text-bone">{w.value}</dd>
+                      <dd className="tnum text-[22px] font-bold leading-7 text-bone">{w.value}</dd>
                       <dd className="text-[11px] leading-4 text-dim">{w.sub}</dd>
                     </div>
                   ))}
@@ -283,16 +289,17 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
             )}
             {!fresh && (
               <section aria-labelledby="desk-h" className={week.length ? "border-t border-line" : ""}>
-                <h2 id="desk-h" className="eyebrow px-4 pt-3.5 pb-1">Your desk</h2>
-                <ul className="divide-y divide-line px-4 pb-1">
+                <h2 id="desk-h" className="eyebrow px-4 pt-3.5 pb-2.5">Your desk</h2>
+                {/* One row of small cells from sm (two across on a phone), each a link to where it's managed. */}
+                <ul className={`grid grid-cols-2 gap-px border-t border-line bg-line sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none ${desk.length % 2 ? "[&>li:last-child]:col-span-2 sm:[&>li:last-child]:col-span-1" : ""}`}>
                   {desk.map((d) => {
                     // The figure leads in bone, like a readout; the link's name stays the whole sentence.
                     const [, n, rest] = /^([\d,]+)(.*)$/.exec(d.text) ?? [null, "", d.text];
                     return (
-                      <li key={d.key}>
+                      <li key={d.key} className="bg-ink-3">
                         <Link
                           href={d.href}
-                          className={`group flex min-h-11 items-center gap-2.5 py-2 text-[13px] ${d.urgent ? "font-semibold text-lime" : "text-mute hover:text-bone"}`}
+                          className={`group flex min-h-11 items-center gap-2 px-4 py-2.5 text-[13px] ${d.urgent ? "font-semibold text-lime" : "text-mute hover:text-bone"}`}
                         >
                           {d.urgent && <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-lime" />}
                           <span className="min-w-0 flex-1">
@@ -312,12 +319,6 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
           </div>
         )}
 
-        {/* On a team desk, Members can't send as the account. */}
-        {user.role !== "member" && (
-          <div>
-            <SendMusicCard recent={recentSends} host={APP_URL.replace(/^https?:\/\//, "")} />
-          </div>
-        )}
       </div>
     </div>
     </>
