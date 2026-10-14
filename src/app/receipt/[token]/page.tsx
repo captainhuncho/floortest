@@ -61,9 +61,10 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
   ];
   // When the file left the desk is never shown: "Not for me" files leave sooner than undecided ones, so the date would give the decision away.
   const happened = steps.filter((s) => s.at).sort((a, b) => a.at! - b.at!);
-  // One light: only the newest thing the receiver did is lime; earlier ones turn bone, so the sender sees what's new.
-  const newest = [...happened].reverse().find((s) => s.meaningful)?.key;
+  // One light: the newest step is lime, earlier ones bone, so the sender sees what's new. Until the receiver does
+  // something, that's Delivered: the track arrived, and the receipt says so (not after 90 days unheard: no good news).
   const unheard = unheardAfterWindow(t);
+  const newest = [...happened].reverse().find((s) => s.meaningful)?.key ?? (unheard ? undefined : "delivered");
   const pending = unheard ? [] : steps.filter((s) => !s.at);
 
   // The headline is the strongest thing that has happened.
@@ -118,13 +119,13 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
           {happened.map((s, i) => (
             <li key={s.key} className="relative flex gap-3 pb-4 last:pb-0">
               {(i < happened.length - 1 || pending.length > 0) && <span aria-hidden className="absolute left-[5px] top-4 h-[calc(100%-8px)] w-px bg-line" />}
-              <SignalDot step={s.key} className={`mt-[7px] size-[11px] shrink-0 rounded-full ${s.key === newest ? "bg-lime" : s.meaningful ? "bg-bone" : "border border-line-2 bg-ink"}`} />
+              <SignalDot step={s.key} className={`mt-[7px] size-[11px] shrink-0 rounded-full ${s.key === newest ? "bg-lime" : "bg-bone"}`} />
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <p className={`text-[14px] leading-6 ${s.meaningful ? "font-bold text-bone" : "text-mute"}`}>
+                <p className={`text-[14px] leading-6 text-bone ${s.meaningful ? "font-bold" : ""}`}>
                   {s.label}
                   <span className="ml-2 text-[12px] font-normal text-dim tnum">{fmtDate(s.at!)}</span>
                 </p>
-                {s.note && <p className={`text-[12px] ${s.meaningful ? "text-mute" : "text-dim"}`}>{s.note}</p>}
+                {s.note && <p className="text-[12px] text-mute">{s.note}</p>}
               </div>
             </li>
           ))}
