@@ -86,7 +86,7 @@ What is on preview and not live: batch 1 (lime only for Keep and the one main ca
 |---|---|---|
 | 1 | Pick which preview batches ship (or none) | by 16 Oct |
 | 2 | Evaluation-only decision (`06-plan.md`, Team decisions queued) | before beta week |
-| 3 | Scanner: deploy `scanner/` to Fly.io and set `SCAN_URL` (blocker) | before 17 Oct |
+| 3 | Scanner on Cloudflare Containers (blocker): Workers Paid back on, read-only R2 key, `wrangler login`, then `SCAN_URL` in Vercel (`scanner/README.md`) | by Fri 16 Oct, 18:00 |
 | 4 | Lawyer's wording on the legal pages (blocker) | before strangers send |
 | 5 | Vault R2 token; app R2 token scoped to `floortest-audio-eu`; Turnstile hostnames | this week |
 | 6 | Delete `floortest-audio` and its stalled migration | on/after 18 Oct |
@@ -95,4 +95,5 @@ What is on preview and not live: batch 1 (lime only for Keep and the one main ca
 ## Decision log
 
 - 14 Oct: council started; UI freeze from 16 Oct recommended, pending the owner.
+- 14 Oct: beta moved to Monday 19 Oct (owner); the 17 Oct widening is dropped. Scanner host: Cloudflare Containers (owner).
 - 14 Oct: product panel recommends shipping batch 1 + home copy before 17 Oct and holding batches 2 and 3 to beta week, pending the owner.
