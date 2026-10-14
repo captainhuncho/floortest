@@ -155,6 +155,21 @@ export function SubmitForm({
   }, [error]);
   const many = items.length > 1;
   const busy = phase === "uploading";
+  // The moment it's sent, the bar holds at full for 200ms before the done screen replaces it, so the sender sees it
+  // reach the end rather than vanish short of it.
+  const [prevPhase, setPrevPhase] = useState(phase);
+  const [holding, setHolding] = useState(false);
+  if (phase !== prevPhase) {
+    setPrevPhase(phase);
+    setHolding(prevPhase === "uploading" && phase === "done");
+  }
+  useEffect(() => {
+    if (!holding) return;
+    const t = setTimeout(() => setHolding(false), 200);
+    return () => clearTimeout(t);
+  }, [holding]);
+  const transferring = busy || holding;
+  const showDone = phase === "done" && !holding;
   const analyzing = items.some((it) => it.analyzing);
 
   // From the dashboard, refresh the page so the new tracks show in your Sent list.
@@ -165,10 +180,12 @@ export function SubmitForm({
       touched.current = false;
       writeDraft(handle, null);
       onSent?.();
-      // The page above folds away (data-picked on the done screen), so bring the confirmation to the top.
-      requestAnimationFrame(() => doneRef.current?.scrollIntoView({ block: "start", behavior: scrollBehavior() }));
     }
   }, [account, phase, router, onSent, handle]);
+  // The page above folds away (data-picked on the done screen), so bring the confirmation to the top once it shows.
+  useEffect(() => {
+    if (showDone) requestAnimationFrame(() => doneRef.current?.scrollIntoView({ block: "start", behavior: scrollBehavior() }));
+  }, [showDone]);
 
   // Files handed in from outside (Share to FloorTest) start in the form, once.
   const preloaded = useRef(false);
@@ -247,13 +264,14 @@ export function SubmitForm({
   const firstToken = items.find((it) => it.token)?.token;
 
   /* ── Done: what happened, what happens next, and the one link that matters. ── */
-  if (phase === "done" && firstToken) {
+  if (showDone && firstToken) {
     return (
       <section ref={doneRef} role="status" data-picked className={`flex scroll-mt-6 flex-col gap-5 ${ENTER}`}>
         <div className="flex items-start gap-3">
           <span aria-hidden className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-lime text-ink">
             <svg viewBox="0 0 16 16" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 8.5l3.2 3L13 4.5" />
+              {/* The tick draws itself once (300ms ease-out, after 100ms). Reduced motion: it's simply there. */}
+              <path d="M3 8.5l3.2 3L13 4.5" pathLength={1} strokeDasharray={1} className="[stroke-dashoffset:0] transition-[stroke-dashoffset] delay-100 duration-300 ease-[var(--ease-out)] starting:[stroke-dashoffset:1] motion-reduce:transition-none" />
             </svg>
           </span>
           <div className="min-w-0">
@@ -415,13 +433,13 @@ export function SubmitForm({
 
   return (
     <>
-      {busy && (
+      {transferring && (
         <TransferScreen
           receiverName={receiverName}
           handle={handle}
           callout={callout}
           startedAt={startedAt}
-          onCancel={cancel}
+          onCancel={holding ? () => {} : cancel}
           files={items.map((it) => ({ name: it.file.name, size: it.file.size, progress: it.progress, state: it.status === "done" ? "sent" : it.status === "uploading" ? "sending" : it.status === "error" ? "failed" : "waiting" }))}
         />
       )}
@@ -442,7 +460,7 @@ export function SubmitForm({
       <p role="status" className="sr-only">
         {busy ? uploadMilestone(items) : ""}
       </p>
-      <form onSubmit={submit} noValidate data-picked className={waiting || busy ? "hidden" : "flex flex-col gap-7"} onChange={() => (touched.current = true)} onClick={() => (touched.current = true)} {...dropProps}>
+      <form onSubmit={submit} noValidate data-picked className={waiting || transferring ? "hidden" : "flex flex-col gap-7"} onChange={() => (touched.current = true)} onClick={() => (touched.current = true)} {...dropProps}>
         {fileInput}
 
         <section aria-labelledby="tracks-h" className="flex flex-col gap-3">
