@@ -62,7 +62,7 @@ Last updated 13 Oct 2026.
 
 ## Planned, not yet connected
 
-- **Virus scanner** (`scanner/`, our own ClamAV): code ready 12 Oct, off until `SCAN_URL` / `SCAN_SECRET` are set. The owner picks the host (Fly.io London, a new subprocessor, or Cloudflare Containers); see plan item 4 and `scanner/README.md`. Files never go to a third-party scanner.
+- **Virus scanner** (`scanner/`, our own ClamAV): code ready 12 Oct, off until `SCAN_URL` / `SCAN_SECRET` are set. Host: Cloudflare Containers (owner, 14 Oct; no new subprocessor), about $25–30 a month with Workers Paid; deploy steps in `scanner/README.md`. Files never go to a third-party scanner.
 - **Recovery copy** (`src/lib/vault.ts`): code ready 12 Oct; bucket `floortest-vault` (WEUR, private) and `BACKUP_BUCKET` set 13 Oct; off until the owner sets `BACKUP_ACCESS_KEY_ID` and `BACKUP_SECRET_ACCESS_KEY` (plan item 5).
 - **Paddle** for payments, monthly and yearly (plan item 2).
 - **Apple Developer** and **Google Play** accounts for the phone apps (owner).

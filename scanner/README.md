@@ -15,36 +15,42 @@ can't be reached, nothing unscanned reaches a desk. The sender's file is **kept*
 over about 30 seconds (`Retry-After`), so a short outage doesn't make them upload 250 MB twice. Only then are they asked
 to try again later. Ops gets an incident either way.
 
-**Before turning it on (privacy):** wherever the scanner runs reads unreleased audio, so that provider is a
-subprocessor. Fly.io would be a **new** one: add it to Subprocessors and Privacy, and ask the lawyer, before setting
-`SCAN_URL`. Running the same container on **Cloudflare Containers** would add no new subprocessor (Cloudflare already holds
-the audio). Which host to use is the owner's call.
+**Host: Cloudflare Containers** (owner, 14 Oct). Wherever the scanner runs reads unreleased audio; Cloudflare already
+holds it in R2, so this adds no new subprocessor and no lawyer step. `cloudflare/` is a small Worker in front of the same
+image: it lets only `GET /health` and `POST /scan` through, keeps one instance running (ClamAV can't wait on a cold start
+during an upload) and wakes it every 5 minutes if it stopped. `fly.toml` stays as the fallback host; Fly.io would be a new
+subprocessor (Sub-processors page, Privacy, lawyer first).
 
-> **Status, 12 Oct:** the protocol code is tested against a fake ClamAV (`tests/scan.test.ts`). The container itself
-> hasn't been built or run yet: do steps 2–3 below on a Mac with Docker before deploying.
+Cost, from Cloudflare's price page on 14 Oct: Workers Paid $5 a month, plus memory billed as provisioned (1 vCPU, 3 GiB,
+always on: about $20 a month) and CPU only as used (a few dollars at beta size). About $25–30 a month in all.
+
+> **Status, 14 Oct:** built and run locally (Docker, linux/amd64). Signatures are in the image, so it's ready in about
+> 12 seconds; it used about 1 GB of memory; the EICAR test string came back `Eicar-Test-Signature`, a clean 5 MB file came
+> back clean, and `/scan` without the secret answers 401. `wrangler deploy --dry-run` builds the image and the Worker.
+> Not yet deployed.
 
 ## Set up
 
-1. **A read-only R2 key for the scanner.** Cloudflare → R2 → Manage API tokens → Create: **Object Read only**, limited
-   to `floortest-audio-eu`. Keep the Access Key ID and Secret for step 4; don't paste them into a chat.
-2. **Build and test locally** (Docker Desktop running), from this folder:
+1. **A read-only R2 key for the scanner (owner).** Cloudflare → R2 → Manage API tokens → Create: **Object Read only**,
+   limited to `floortest-audio-eu`. Keep the Access Key ID and Secret for step 4; don't paste them into a chat.
+2. **Workers Paid back on (owner).** Cloudflare → Workers & Pages → Plans. Containers need it.
+3. **Build and test locally** (Docker Desktop running), from this folder: `docker build --platform linux/amd64 -t floortest-scanner .`,
+   then run it with test values and check `curl localhost:8080/health` says `{"clamd":true}`.
+4. **Deploy** from `scanner/cloudflare` (Docker Desktop running): `npm install`, `npx wrangler login` (owner signs in),
+   then set the five secrets, each typed at the prompt, never on the command line or in chat:
    ```bash
-   docker build -t floortest-scanner .
+   npx wrangler secret put SCAN_SECRET
    ```
-   Then run it with the read-only key and a long random secret:
-   ```bash
-   docker run --rm -p 8080:8080 -e SCAN_SECRET="$(openssl rand -hex 32)" -e S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com -e S3_BUCKET=floortest-audio-eu -e SCAN_ACCESS_KEY_ID=… -e SCAN_SECRET_ACCESS_KEY=… floortest-scanner
-   ```
-   Wait for `scanner listening on 8080` (a few minutes the first time), then `curl localhost:8080/health` should say `{"clamd":true}`.
-3. **Prove it catches something** with the EICAR test file, the industry-standard harmless test string that every
-   antivirus reports as infected. Upload it to a test path in the bucket, e.g. `audio/test/eicar.wav`, then call `/scan` with that key: the answer
-   must be `{"clean":false,"signature":"Eicar-Test-Signature"}`. Delete the test file afterwards.
-4. **Deploy** to Fly.io (London) from this folder: `fly launch --no-deploy --copy-config`, then set the settings as
-   secrets (`fly secrets set SCAN_SECRET=… S3_ENDPOINT=… S3_BUCKET=floortest-audio-eu SCAN_ACCESS_KEY_ID=… SCAN_SECRET_ACCESS_KEY=…`)
-   and `fly deploy`. 2 GB of memory (ClamAV's signatures need about 1 GB); roughly $10–15 a month.
-5. **Turn it on in the app:** in Vercel (Production), set `SCAN_URL=https://floortest-scanner.fly.dev` and
-   `SCAN_SECRET` (the same secret as step 4), then redeploy. Send a test track and check it arrives. Then check the scan
-   appears in `fly logs` (folder and verdict only, never the file name).
-6. **Monitoring:** add `https://floortest-scanner.fly.dev/health` to the uptime monitor (UptimeRobot) next to `/api/health`.
+   and the same for `S3_ENDPOINT` (`https://<account-id>.r2.cloudflarestorage.com`), `S3_BUCKET` (`floortest-audio-eu`),
+   `SCAN_ACCESS_KEY_ID` and `SCAN_SECRET_ACCESS_KEY` (step 1). `SCAN_SECRET` is a long random value
+   (`openssl rand -hex 32`). Then `npx wrangler deploy`. The first deploy takes a few minutes to place the container;
+   `https://floortest-scanner.<workers-subdomain>.workers.dev/health` should then say `{"clamd":true}`.
+5. **Prove it catches something on the real bucket:** upload the EICAR test string to `audio/test/eicar.wav`, call
+   `/scan` with that key and the secret: the answer must be `{"clean":false,"signature":"Eicar-Test-Signature"}`. Delete
+   the test file afterwards.
+6. **Turn it on in the app (owner):** in Vercel (Production), set `SCAN_URL` to the workers.dev address and `SCAN_SECRET`
+   (the same secret), then redeploy. Send a test track and check it arrives; `npx wrangler tail` shows the scan (folder
+   and verdict only, never the file name).
+7. **Monitoring:** add the `/health` address to the uptime monitor (UptimeRobot) next to `/api/health`.
 
 To turn scanning off quickly, remove `SCAN_URL` in Vercel and redeploy.
