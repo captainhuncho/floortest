@@ -125,11 +125,11 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
   const totalActive = collections.reduce((n, c) => n + c.count, 0);
 
   return (
-    <div className={`grid min-h-full ${selected || totalActive > 0 ? "xl:grid-cols-[minmax(0,1fr)_minmax(400px,460px)]" : ""}`}>
-      <section className={`min-w-0 px-4 py-6 sm:px-8 ${focused ? "hidden xl:block" : ""}`} aria-labelledby="submissions-h">
+    <div data-shortcuts className={`grid min-h-full ${selected || totalActive > 0 ? "xl:grid-cols-[minmax(0,1fr)_minmax(400px,460px)]" : ""}`}>
+      <section className={`page-gutter min-w-0 py-6 ${focused ? "hidden xl:block" : ""}`} aria-labelledby="submissions-h">
         <header className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 id="submissions-h" className="text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">
+            <h1 id="submissions-h" className="page-title">
               Queue
             </h1>
             <p className="mt-1 text-mute">

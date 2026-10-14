@@ -8,6 +8,8 @@ import { QuickReplies } from "./QuickReplies";
 import { ReplyTemplates } from "./ReplyTemplates";
 import { decideTrack, undoDecision } from "./actions/review";
 import { stored, useDeviceState } from "@/components/useBrowserValue";
+import { isCharacterKey, shortcutsOn, shortcutTarget, useShortcutsOn } from "@/components/useShortcuts";
+import { ShortcutsSettingsLink } from "@/components/ShortcutsSettingsLink";
 import { EASE_OUT, handoff, isShown } from "./ReviewHandoff";
 
 /** Number keys jump through the track: 1 = a quarter in, 4 = near the end. */
@@ -224,6 +226,8 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, queu
     decideRef.current = decide;
   }, [decide]);
 
+  // Single-key shortcuts can be switched off in Settings → Account (per browser); Space and arrows stay.
+  const [keysOn] = useShortcutsOn();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -231,6 +235,7 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, queu
         if (e.key === "Escape") setReplying(false);
         return;
       }
+      if (!shortcutTarget(e) || (!shortcutsOn() && isCharacterKey(e))) return;
       const k = e.key.toLowerCase();
       if (k === "k") decide("kept", "key");
       else if (k === "x") decide("passed", "key");
@@ -353,30 +358,30 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, queu
         onPointerDown={(e) => void (lastPointer.current = e.pointerType)}
         onClick={(e) => decide("passed", e.detail === 0 ? "key" : lastPointer.current === "mouse" ? "pointer" : "touch")}
         aria-pressed={track.decision === "passed"}
-        aria-keyshortcuts="X"
+        aria-keyshortcuts={keysOn ? "X" : undefined}
         className={`${btn} ${track.decision === "passed" ? "border-bone bg-bone/10" : "border-line-2 hover:border-mute hover:bg-ink-3"}`}
       >
         <span className="whitespace-nowrap text-[13px] font-semibold md:text-base">{track.decision === "passed" ? "Not for me ✓" : "Not for me"}</span>
-        <span className="max-w-full truncate text-[11px] text-mute"><span className="hidden lg:inline">X · </span>private</span>
+        <span className="max-w-full truncate text-[11px] text-mute">{keysOn && <span className="hidden lg:inline">X · </span>}private</span>
       </button>
       <button
         onPointerDown={(e) => void (lastPointer.current = e.pointerType)}
         onClick={(e) => decide("kept", e.detail === 0 ? "key" : lastPointer.current === "mouse" ? "pointer" : "touch")}
         aria-pressed={track.decision === "kept"}
-        aria-keyshortcuts="K"
+        aria-keyshortcuts={keysOn ? "K" : undefined}
         className={`${btn} flex-[1.25] border-lime bg-lime text-ink hover:bg-[#e2ff7a]`}
       >
         <span className="text-sm font-bold md:text-base">{track.decision === "kept" ? "Kept ✓" : "Keep"}</span>
-        <span className="max-w-full truncate text-[11px] text-ink/70"><span className="hidden lg:inline">K · </span>adds to crate</span>
+        <span className="max-w-full truncate text-[11px] text-ink/70">{keysOn && <span className="hidden lg:inline">K · </span>}adds to crate</span>
       </button>
       <button
         onClick={() => setReplying((r) => !r)}
         aria-expanded={replying}
-        aria-keyshortcuts="R"
+        aria-keyshortcuts={keysOn ? "R" : undefined}
         className={`${btn} ${replying ? "border-bone" : "border-line-2 hover:border-mute hover:bg-ink-3"}`}
       >
         <span className="text-sm font-semibold md:text-base">Reply</span>
-        <span className="max-w-full truncate text-[11px] text-mute"><span className="hidden lg:inline">R · </span>by email</span>
+        <span className="max-w-full truncate text-[11px] text-mute">{keysOn && <span className="hidden lg:inline">R · </span>}by email</span>
       </button>
     </div>
   );
@@ -454,8 +459,17 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, queu
         <details className="mt-3 hidden text-xs text-mute md:block">
           <summary className="w-fit cursor-pointer list-none rounded border border-line px-1.5 py-0.5 hover:text-bone [&::-webkit-details-marker]:hidden">? Shortcuts</summary>
           <p className="mt-2">
-            {next ? "Keep or Not for me moves to the next track." : "Last track in this view."} K keep · X not for me · R reply · Space play · 1–4 jump to 25/50/75/90% ·
-            ←/→ 10s · ↑/↓ or J move · U undo
+            {keysOn ? (
+              <>
+                {next ? "Keep or Not for me moves to the next track." : "Last track in this view."} K keep · X not for me · R reply · Space play · 1–4
+                jump to 25/50/75/90% · ←/→ 10s · ↑/↓ or J move · U undo.
+              </>
+            ) : (
+              "Letter and number keys are off. Space play · ←/→ 10s · ↑/↓ move."
+            )}
+          </p>
+          <p className="mt-1">
+            <ShortcutsSettingsLink on={keysOn} />
           </p>
         </details>
       </div>

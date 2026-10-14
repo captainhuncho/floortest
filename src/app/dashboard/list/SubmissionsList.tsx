@@ -3,6 +3,7 @@ import Link from "next/link";
 import { collectionsFor } from "@/lib/desk";
 import { q, likeContains, type Track, type User } from "@/lib/db";
 import { MIX_STATUS, RELEASE_STATUS } from "@/lib/plans";
+import { PageTitle } from "@/components/PageTitle";
 import { ViewToggle } from "../ViewToggle";
 import { FilterMenu, type Option } from "./FilterMenu";
 import { ListRows, type ListRow } from "./ListRows";
@@ -23,7 +24,6 @@ const BPM = [
 const STATUS = (["all", "review", "kept", "passed"] as const).map((k) => TRACK_STATUSES.find(([key]) => key === k)!);
 
 const TYPE_SHORT: Record<string, string> = { unsigned: "Unreleased", signed: "Signed", released: "Released" };
-const MIX_SHORT: Record<string, string> = { raw: "Work in progress", mixed: "Unmastered", mastered: "Mastered" };
 
 /** Dense, scan-first Submissions: every track on one screen, decisions inline. */
 export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) {
@@ -88,14 +88,9 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
     senderId: t.sender_id,
     senderEmail: t.sender_email,
     senderVerified: !!t.sender_verified,
-    meta: [
-      t.sender_name !== t.artist ? `via ${t.sender_name}` : null,
-      TYPE_SHORT[t.release_status] ?? "Unreleased",
-      t.genre || null,
-      MIX_SHORT[t.mix_status],
-      t.bpm ? `${Math.round(t.bpm)} BPM` : null,
-      !collection ? t.collection_name : null,
-    ].filter(Boolean) as string[],
+    genre: t.genre || null,
+    bpm: t.bpm,
+    releaseLabel: TYPE_SHORT[t.release_status] ?? "Unreleased",
     mixLabel: MIX_STATUS[t.mix_status as keyof typeof MIX_STATUS] ?? null,
     duplicateOf: t.duplicate_of,
     message: t.message,
@@ -150,13 +145,13 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
   ];
 
   return (
-    <div className="flex min-h-full flex-col">
-      <header className="flex flex-wrap items-center justify-between gap-3 px-3 pb-2 pt-3 md:px-8 md:pb-4 md:pt-6">
-        <h1 className="page-title">Queue</h1>
+    <div data-shortcuts className="flex min-h-full flex-col">
+      <header className="page-gutter flex flex-wrap items-center justify-between gap-3 pb-2 pt-3 md:pb-4 md:pt-6">
+        <PageTitle>Queue</PageTitle>
       </header>
 
       {/* Phones: Figma "Filters-Scrollable" chips; desktop keeps the toolbar. */}
-      <div className="flex flex-wrap items-center gap-1.5 px-3 pb-3 md:gap-2 md:px-8 md:pb-5">
+      <div className="page-gutter flex flex-wrap items-center gap-1.5 pb-3 md:gap-2 md:pb-5">
         <Link
           href="/dashboard/review?view=list"
           className={`rounded-xl px-3 py-1.5 text-[11px] font-bold md:hidden ${sp.s || sp.c || sp.type || sp.sender || sp.genre || search ? "border border-line bg-ink-3 text-mute" : "bg-bone text-ink"}`}
@@ -182,7 +177,7 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
       {rows.length === 0 ? (
         <p className="px-6 py-20 text-center text-mute">{search || sp.s || sp.c || sp.type || sp.sender || sp.genre ? "Nothing matches these filters." : "No tracks yet. Share your link to start receiving."}</p>
       ) : (
-        <div className="md:px-8">
+        <div className="page-gutter pb-6">
           <ListRows rows={rows} collections={collections.map((c) => ({ id: c.id, name: c.name }))} />
         </div>
       )}
