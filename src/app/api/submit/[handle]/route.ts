@@ -39,6 +39,6 @@ export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]
   } catch (e) {
     if (e instanceof IntakeError) return bad(e.message, e.status);
     console.error("[submit:start]", e);
-    return bad("Something went wrong. Please try again.", 500);
+    return bad("Couldn't start the upload. Nothing was sent. Try again in a minute: your details are still here.", 500);
   }
 }

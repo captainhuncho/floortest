@@ -43,6 +43,6 @@ export async function POST(req: Request) {
   } catch (e) {
     if (e instanceof IntakeError) return fail(e.message, e.status);
     console.error("[v1:send:start]", e);
-    return fail("Something went wrong. Please try again.", 500);
+    return fail("Couldn't start the upload. Nothing was sent. Try again in a minute: your details are still here.", 500);
   }
 }

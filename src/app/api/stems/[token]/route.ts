@@ -14,6 +14,6 @@ export async function POST(req: Request, ctx: RouteContext<"/api/stems/[token]">
   } catch (e) {
     if (e instanceof IntakeError) return NextResponse.json({ error: e.message }, { status: e.status });
     console.error("[stems:start]", e);
-    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
+    return NextResponse.json({ error: "Couldn't start the upload. Nothing was sent. Try again." }, { status: 500 });
   }
 }

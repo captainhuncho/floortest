@@ -11,13 +11,40 @@ import { EmailCode, startEmailCheck } from "./EmailCode";
 import { GenrePicker } from "./GenrePicker";
 import { SetsPermission } from "./SetsPermission";
 import { TransferScreen } from "./TransferScreen";
-import { MAX_FILES, useTrackUpload, type Item } from "./useTrackUpload";
+import { MAX_FILES, SENDER_KEY, useTrackUpload, type Item } from "./useTrackUpload";
+import { stored, useBrowserValue } from "@/components/useBrowserValue";
 import { AI_CHOICES, AI_HELP, Choice, MIX_CHOICES, RELEASE_CHOICES } from "./Choice";
 
 /** Things that arrive on the page (a chosen track, a step, the result) settle in from just below. Reduced motion keeps only the fade. */
 const ENTER = "starting:opacity-0 motion-safe:starting:translate-y-1 transition-[opacity,translate] duration-200 ease-[var(--ease-out)]";
 const LABEL = "text-[11px] font-bold uppercase tracking-[1px] text-dim";
 const HELP = "text-[12px] text-dim";
+
+/** Smooth scrolling, unless the person has asked their device for less motion. */
+const scrollBehavior = (): ScrollBehavior => (matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth");
+
+/**
+ * The text answers, kept for this tab only (sessionStorage) while the sender fetches the emailed code, so a reload
+ * doesn't lose them. Never the files, the code or anything secret; cleared once the send goes through.
+ */
+type Draft = { genre?: string; mix?: string; release?: string; ai?: string; message?: string; sender?: { name: string; email: string; instagram: string; streaming: string } };
+const draftKey = (handle: string) => `floortest.draft.${handle.toLowerCase()}`;
+/**
+ * The draft as it was when the form opened, read once per mount: the form's own later saves must never be read back
+ * into the fields mid-typing. Forgotten on unmount, so coming back to the page reads the latest draft.
+ */
+const draftAtOpen = new Map<string, string>();
+function readDraftOnce(handle: string) {
+  const k = draftKey(handle);
+  if (!draftAtOpen.has(k)) draftAtOpen.set(k, stored(k, "session"));
+  return draftAtOpen.get(k)!;
+}
+function writeDraft(handle: string, d: Draft | null) {
+  try {
+    if (d) sessionStorage.setItem(draftKey(handle), JSON.stringify(d));
+    else sessionStorage.removeItem(draftKey(handle));
+  } catch {}
+}
 
 /** Something still needed: under its field it says what to do (`text`); above Send it's named in a word or two (`short`). */
 type Issue = { key: string; short: string; text: string };
@@ -76,6 +103,7 @@ export function SubmitForm({
   const [changeYou, setChangeYou] = useState(false);
   const [messageOpen, setMessageOpen] = useState(false);
   const [artOpen, setArtOpen] = useState(false);
+  const [message, setMessage] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   // Without an account: the form waiting while the sender types the emailed code.
   const [waiting, setWaiting] = useState<{ email: string; fd: FormData } | null>(null);
@@ -84,9 +112,46 @@ export function SubmitForm({
   const router = useRouter();
   const doneRef = useRef<HTMLElement>(null);
 
+  // Answers kept from before a reload in this tab come back once, straight after hydration.
+  const draft = useBrowserValue(() => readDraftOnce(handle), "");
+  useEffect(() => () => void draftAtOpen.delete(draftKey(handle)), [handle]);
+  const [draftSeen, setDraftSeen] = useState("");
+  // Answers came back but the files couldn't (browsers never keep them): say so once a file is needed.
+  const [restored, setRestored] = useState(false);
+  if (draft !== draftSeen) {
+    setDraftSeen(draft);
+    try {
+      const d = JSON.parse(draft || "null") as Draft | null;
+      if (d) {
+        if (d.genre) setGenre(d.genre);
+        if (d.mix) setMix(d.mix);
+        if (d.release) setRelease(d.release);
+        if (d.ai) setAi(d.ai);
+        if (d.message) {
+          setMessage(d.message);
+          setMessageOpen(true);
+        }
+        if (!account && d.sender && (d.sender.name || d.sender.email || d.sender.instagram || d.sender.streaming)) {
+          const { name = "", email = "", instagram = "", streaming = "" } = d.sender;
+          setSender({ name, email, instagram, streaming });
+          // Details typed before the reload that differ from the ones remembered on this device stay open to edit.
+          const kept = JSON.parse(stored(SENDER_KEY) || "null") as Partial<Draft["sender"]> | null;
+          if (!kept || kept.name !== name || kept.email !== email || (kept.instagram ?? "") !== instagram || (kept.streaming ?? "") !== streaming) setChangeYou(true);
+        }
+        setRestored(true);
+      }
+    } catch {}
+  }
+  // Saved only after the sender has touched the form, so a fresh page never writes over a draft before it's read back.
+  const touched = useRef(false);
+  useEffect(() => {
+    if (!touched.current || phase !== "idle") return;
+    writeDraft(handle, { genre: chosenGenre ?? undefined, mix, release, ai, message, sender: account ? undefined : sender });
+  }, [handle, account, phase, chosenGenre, mix, release, ai, message, sender]);
+
   // A problem with the send (network, server) is explained in one place, and that place comes into view.
   useEffect(() => {
-    if (error) alertRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+    if (error) alertRef.current?.scrollIntoView({ block: "center", behavior: scrollBehavior() });
   }, [error]);
   const many = items.length > 1;
   const busy = phase === "uploading";
@@ -96,11 +161,14 @@ export function SubmitForm({
   useEffect(() => {
     if (account && phase === "done") router.refresh();
     if (phase === "done") {
+      // Sent: nothing left to keep for this tab.
+      touched.current = false;
+      writeDraft(handle, null);
       onSent?.();
       // The page above folds away (data-picked on the done screen), so bring the confirmation to the top.
-      requestAnimationFrame(() => doneRef.current?.scrollIntoView({ block: "start", behavior: "smooth" }));
+      requestAnimationFrame(() => doneRef.current?.scrollIntoView({ block: "start", behavior: scrollBehavior() }));
     }
-  }, [account, phase, router, onSent]);
+  }, [account, phase, router, onSent, handle]);
 
   // Files handed in from outside (Share to FloorTest) start in the form, once.
   const preloaded = useRef(false);
@@ -119,14 +187,16 @@ export function SubmitForm({
     setSetsOk(false);
     setIssues([]);
     setMessageOpen(false);
+    setMessage("");
     setArtOpen(false);
+    setRestored(false);
   }
 
   /** Moves to a field that needs an answer; the browser's own bubbles never appear (noValidate). */
   function goTo(key: string) {
     const el = document.getElementById(key);
     el?.focus({ preventScroll: true });
-    el?.scrollIntoView({ block: "center", behavior: "smooth" });
+    el?.scrollIntoView({ block: "center", behavior: scrollBehavior() });
   }
   const issueFor = (key: string) => issues.find((i) => i.key === key);
   const clear = (key: string) => issueFor(key) && setIssues((list) => list.filter((i) => i.key !== key));
@@ -275,6 +345,7 @@ export function SubmitForm({
     ) : null;
   };
   const invalid = (key: string) => (issueFor(key) ? "border-danger/60" : "");
+  const isInvalid = (key: string) => (issueFor(key) ? true : undefined);
   const described = (key: string, help?: string) => (issueFor(key) ? `${key}-issue` : help);
 
   /* ── Step 1: the only thing asked for is the file. ── */
@@ -293,6 +364,7 @@ export function SubmitForm({
             or drop {MAX_FILES > 1 ? "them" : "it"} here · up to {MAX_FILES} tracks, 250 MB
           </p>
         </div>
+        {restored && <p className="text-[13px] text-mute">Pick your files again: your details are still here.</p>}
         {errorBox}
       </div>
     );
@@ -318,7 +390,7 @@ export function SubmitForm({
           <span className="text-[12px] text-lime">Sent</span>
         ) : (
           !busy && (
-            <button type="button" onClick={() => remove(it.id)} className="-my-2 inline-flex min-h-9 items-center px-1 text-[12px] text-dim underline underline-offset-4 hover:text-bone" aria-label={`Remove ${it.file.name}`}>
+            <button type="button" onClick={() => remove(it.id)} className="-my-3 -mr-2 inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-[12px] text-dim underline underline-offset-4 hover:text-bone" aria-label={`Remove ${it.file.name}`}>
               Remove
             </button>
           )
@@ -328,12 +400,12 @@ export function SubmitForm({
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block space-y-1.5" htmlFor={`title-${it.id}`}>
           <span className={LABEL}>Track title<Req /></span>
-          <input id={`title-${it.id}`} className={`input ${invalid(`title-${it.id}`)}`} required value={it.tags.title} disabled={it.status === "done"} aria-describedby={described(`title-${it.id}`)} onChange={(e) => (clear(`title-${it.id}`), edit(it.id, { title: e.target.value }))} />
+          <input id={`title-${it.id}`} className={`input ${invalid(`title-${it.id}`)}`} required value={it.tags.title} disabled={it.status === "done"} aria-invalid={isInvalid(`title-${it.id}`)} aria-describedby={described(`title-${it.id}`)} onChange={(e) => (clear(`title-${it.id}`), edit(it.id, { title: e.target.value }))} />
           {problem(`title-${it.id}`)}
         </label>
         <label className="block space-y-1.5" htmlFor={`artist-${it.id}`}>
           <span className={LABEL}>Artist<Req /></span>
-          <input id={`artist-${it.id}`} className={`input ${invalid(`artist-${it.id}`)}`} required value={it.tags.artist} disabled={it.status === "done"} aria-describedby={described(`artist-${it.id}`)} onChange={(e) => (clear(`artist-${it.id}`), edit(it.id, { artist: e.target.value }))} />
+          <input id={`artist-${it.id}`} className={`input ${invalid(`artist-${it.id}`)}`} required value={it.tags.artist} disabled={it.status === "done"} aria-invalid={isInvalid(`artist-${it.id}`)} aria-describedby={described(`artist-${it.id}`)} onChange={(e) => (clear(`artist-${it.id}`), edit(it.id, { artist: e.target.value }))} />
           {problem(`artist-${it.id}`)}
         </label>
       </div>
@@ -366,10 +438,11 @@ export function SubmitForm({
           onCancel={() => setWaiting(null)}
         />
       )}
+      {/* The one place screen readers hear upload progress: milestones only (which track, each quarter, each track sent). */}
       <p role="status" className="sr-only">
-        {busy ? `Uploading track ${Math.min(items.filter((it) => it.status === "done").length + 1, items.length)} of ${items.length}` : ""}
+        {busy ? uploadMilestone(items) : ""}
       </p>
-      <form onSubmit={submit} noValidate data-picked className={waiting || busy ? "hidden" : "flex flex-col gap-7"} {...dropProps}>
+      <form onSubmit={submit} noValidate data-picked className={waiting || busy ? "hidden" : "flex flex-col gap-7"} onChange={() => (touched.current = true)} onClick={() => (touched.current = true)} {...dropProps}>
         {fileInput}
 
         <section aria-labelledby="tracks-h" className="flex flex-col gap-3">
@@ -411,12 +484,12 @@ export function SubmitForm({
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block space-y-1.5" htmlFor="sender-name">
                 <span className={LABEL}>Your name<Req /></span>
-                <input id="sender-name" className={`input ${invalid("sender-name")}`} name="name" required autoComplete="name" value={sender.name} aria-describedby={described("sender-name")} onChange={(e) => (clear("sender-name"), setSender((s) => ({ ...s, name: e.target.value })))} />
+                <input id="sender-name" className={`input ${invalid("sender-name")}`} name="name" required autoComplete="name" value={sender.name} aria-invalid={isInvalid("sender-name")} aria-describedby={described("sender-name")} onChange={(e) => (clear("sender-name"), setSender((s) => ({ ...s, name: e.target.value })))} />
                 {problem("sender-name")}
               </label>
               <label className="block space-y-1.5" htmlFor="sender-email">
                 <span className={LABEL}>Your email<Req /></span>
-                <input id="sender-email" className={`input ${invalid("sender-email")}`} name="email" type="email" required autoComplete="email" value={sender.email} aria-describedby={described("sender-email", "sender-email-help")} onChange={(e) => (clear("sender-email"), setSender((s) => ({ ...s, email: e.target.value })))} />
+                <input id="sender-email" className={`input ${invalid("sender-email")}`} name="email" type="email" required autoComplete="email" value={sender.email} aria-invalid={isInvalid("sender-email")} aria-describedby={described("sender-email", "sender-email-help")} onChange={(e) => (clear("sender-email"), setSender((s) => ({ ...s, email: e.target.value })))} />
                 {problem("sender-email")}
               </label>
             </div>
@@ -424,12 +497,12 @@ export function SubmitForm({
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block space-y-1.5" htmlFor="sender-instagram">
                 <span className={LABEL}>Instagram</span>
-                <input id="sender-instagram" className={`input ${invalid("sender-instagram")}`} name="sender_instagram" autoComplete="off" maxLength={300} placeholder="@yourname" value={sender.instagram} aria-describedby={described("sender-instagram", "profiles-help")} onChange={(e) => (clear("sender-instagram"), setSender((s) => ({ ...s, instagram: e.target.value })))} />
+                <input id="sender-instagram" className={`input ${invalid("sender-instagram")}`} name="sender_instagram" autoComplete="off" maxLength={300} placeholder="@yourname" value={sender.instagram} aria-invalid={isInvalid("sender-instagram")} aria-describedby={described("sender-instagram", "profiles-help")} onChange={(e) => (clear("sender-instagram"), setSender((s) => ({ ...s, instagram: e.target.value })))} />
                 {problem("sender-instagram")}
               </label>
               <label className="block space-y-1.5" htmlFor="sender-streaming">
                 <span className={LABEL}>Streaming profile</span>
-                <input id="sender-streaming" className="input" name="sender_streaming" inputMode="url" autoComplete="url" maxLength={300} placeholder="open.spotify.com/artist/…" value={sender.streaming} aria-describedby="profiles-help" onChange={(e) => (clear("sender-instagram"), setSender((s) => ({ ...s, streaming: e.target.value })))} />
+                <input id="sender-streaming" className="input" name="sender_streaming" inputMode="url" autoComplete="url" maxLength={300} placeholder="open.spotify.com/artist/…" value={sender.streaming} aria-invalid={isInvalid("sender-instagram")} aria-describedby={described("sender-instagram", "profiles-help")} onChange={(e) => (clear("sender-instagram"), setSender((s) => ({ ...s, streaming: e.target.value })))} />
               </label>
             </div>
             {!issueFor("sender-instagram") && <p id="profiles-help" className={`-mt-1 ${HELP}`}>One of these, so {receiverName} knows who you are.</p>}
@@ -469,7 +542,7 @@ export function SubmitForm({
           {messageOpen && (
             <label className={`block space-y-1.5 ${ENTER}`} htmlFor="message">
               <span className={LABEL}>Message for {receiverName}</span>
-              <textarea id="message" className="input min-h-24 resize-y" name="message" maxLength={2000} autoFocus placeholder="What it is, where it fits, anything they should know. Travels privately with the track." />
+              <textarea id="message" className="input min-h-24 resize-y" name="message" maxLength={2000} value={message} onChange={(e) => setMessage(e.target.value)} autoFocus placeholder="What it is, where it fits, anything they should know. Travels privately with the track." />
             </label>
           )}
           {trackArt && artOpen && (
@@ -530,4 +603,16 @@ export function SubmitForm({
       </form>
     </>
   );
+}
+
+/** "Uploading track 2 of 3", then each quarter, and "Track 1 sent" as the next one starts. Changes only at milestones. */
+function uploadMilestone(items: Item[]) {
+  const done = items.filter((it) => it.status === "done").length;
+  const current = items.find((it) => it.status === "uploading");
+  const n = items.length;
+  if (!current) return done ? `Track ${done} sent` : "";
+  const which = n > 1 ? `track ${done + 1} of ${n}` : "your track";
+  const quarter = Math.floor(current.progress * 4) * 25;
+  if (quarter > 0) return `Uploading ${which}: ${quarter} percent`;
+  return `${done ? `Track ${done} sent. ` : ""}Uploading ${which}`;
 }
