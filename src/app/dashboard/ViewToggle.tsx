@@ -8,7 +8,7 @@ function rememberView(v: "queue" | "list") {
   document.cookie = `${VIEW_COOKIE}=${v}; path=/; max-age=31536000; samesite=lax`;
 }
 
-/** Switches the Queue between one-by-one review and the dense List; the choice is remembered. */
+/** Switches the Review Queue between the focused Queue and the dense List; the choice is remembered. */
 export function ViewToggle({ view }: { view: "queue" | "list" }) {
   const router = useRouter();
   const go = (v: "queue" | "list") => {
@@ -24,7 +24,7 @@ export function ViewToggle({ view }: { view: "queue" | "list" }) {
           aria-pressed={view === v}
           className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${view === v ? "bg-bone text-ink" : "text-mute hover:text-bone"}`}
         >
-          {v === "queue" ? "One by one" : "List"}
+          {v === "queue" ? "Queue" : "List"}
         </button>
       ))}
     </div>
