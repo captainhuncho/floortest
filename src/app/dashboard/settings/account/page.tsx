@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { logout } from "../../../(auth)/actions";
 import { DeleteAccount } from "../DeleteAccount";
+import { ShortcutsSwitch } from "../ShortcutsSwitch";
 import { PageTitle, Section } from "../Section";
 
 export const metadata = { title: "Account — FloorTest" };
@@ -11,6 +12,9 @@ export default async function AccountSettings() {
   return (
     <>
       <PageTitle title="Account" />
+      <Section id="shortcuts-h" title="Keyboard" sub="For this browser only.">
+        <ShortcutsSwitch />
+      </Section>
       <Section id="logout-h" title="Log out" sub="Signs you out on this device.">
         <form action={logout}>
           <button className="btn-ghost btn-sm min-h-11">Log out</button>

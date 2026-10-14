@@ -3,7 +3,7 @@ import { Logo } from "@/components/Logo";
 import { q } from "@/lib/db";
 import { ago, fmtDay } from "@/lib/format";
 import { readSenderLink } from "@/lib/senderLink";
-import { unheardAfterWindow } from "@/lib/plans";
+import { RETAIN_UNREVIEWED_DAYS, unheardAfterWindow } from "@/lib/plans";
 
 export const metadata = { title: "Your sends — FloorTest", robots: { index: false } };
 
@@ -32,7 +32,7 @@ export default async function SenderHistory({ params }: { params: Promise<{ toke
   );
   // The strongest thing that has happened, and when. Listens and anything after are the bright ones.
   const status = (r: (typeof rows)[number]): [string, boolean, number] =>
-    r.played_out_at ? ["Played out", true, r.played_out_at] : r.replied_at ? ["Replied", true, r.replied_at] : r.downloaded_at ? ["Downloaded", true, r.downloaded_at] : r.played_at ? ["Listened", true, r.played_at] : unheardAfterWindow(r) ? ["Not listened to", false, r.created_at] : ["Waiting to be heard", false, r.created_at];
+    r.played_out_at ? ["Played out", true, r.played_out_at] : r.replied_at ? ["Replied", true, r.replied_at] : r.downloaded_at ? ["Downloaded", true, r.downloaded_at] : r.played_at ? ["Listened", true, r.played_at] : unheardAfterWindow(r) ? [`Not listened to in ${RETAIN_UNREVIEWED_DAYS} days`, false, r.created_at] : ["Delivered", false, r.created_at];
   const heard = rows.filter((r) => r.played_at).length;
 
   return (

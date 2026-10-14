@@ -42,6 +42,9 @@ The biggest current problem is that the same thing has several names. Pick one a
 | **callout** / **collection** | folder, project, campaign | A callout is the ask ("send me Afro house for Villagers"). A collection is where those tracks land. |
 | **receiver** / **sender** | curator/artist as role names, user, submitter | In marketing, prefer the real people: "DJs, curators and labels" / "artists and producers". |
 | **Keep** / **Not for me** | pass, reject, decline, no | Always capitalised as buttons, lowercase in running text: "tracks you keep". |
+| **Floor** · **Queue** · **Collections** · **Prepare** | The Floor, Review Queue, Prepare for set | The four screen names, the same on phone and desktop (13 Oct audit). The Queue has two views: **One by one** and **List**. In Prepare, starting over is **Start a new batch** (never "clear", which reads as delete). |
+| **active tracks** | track slots, songs | The plan limit and referral rewards. |
+| **Link open** / **Link paused** | taking submissions, submissions paused | The receiver's switch for their link. |
 | **Delivered / Listened / Downloaded / Replied / Played out** | heard, used, opened, "spun" | These are defined signals. Never paraphrase them. **Played out** means the DJ marked it as played in a set: the floor test, and the payoff signal for senders (lead with it when it has happened; never imply it otherwise). |
 | **private receipt** | tracking page, status page | |
 | **FloorTest** | Floortest, Floor Test, FT | |

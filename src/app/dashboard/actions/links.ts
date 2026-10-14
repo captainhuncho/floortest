@@ -26,7 +26,7 @@ const daysOf = (v: FormDataEntryValue | null) => {
   const n = Number(v);
   return v === "none" ? null : [7, 14, 30, 90].includes(n) ? n : 14;
 };
-const fail = (e: unknown): LinkState => ({ error: e instanceof LinkError ? e.message : "Something went wrong. Please try again." });
+const fail = (e: unknown): LinkState => ({ error: e instanceof LinkError ? e.message : "Couldn't save that. Nothing changed. Try again." });
 
 /** A new link. Its full address is shown once, now; afterwards only Reset makes a new one. */
 export async function createShareLink(collectionId: number, _prev: LinkState, form: FormData): Promise<LinkState> {

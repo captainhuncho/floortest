@@ -4,7 +4,7 @@ import { afterDiscount, discountNow, planGrid, type Plan } from "@/lib/plan-stor
 import { setPlan } from "../actions/settings";
 
 /** The core tools every plan gets; plans differ in room (and, on paid plans, a few extras). */
-const SHARED = ["Permanent receiving link", "Private track submissions", "Listen and review", "Receipts and updates for senders", "Organise collections", "Prepare for your set", "Download tracks"];
+const SHARED = ["Permanent receiving link", "Private uploads, no sender account needed", "Listen and review", "Receipts and updates for senders", "Organise collections", "Prepare for your set", "Download tracks"];
 
 /**
  * The plan cards, notes and beta strip, shared by the plans page and the ops preview. In `preview` the buttons look

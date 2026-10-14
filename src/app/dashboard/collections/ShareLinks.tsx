@@ -81,7 +81,7 @@ function FreshUrl({ url }: { url: string }) {
       <p className="font-bold text-bone">Copy this link now</p>
       <p className="mt-1 text-mute">For safety it&apos;s shown only once. Lost it? Reset the link to make a new one (the old one stops working).</p>
       <div className="mt-2 flex gap-2">
-        <input readOnly value={url} aria-label="New share link" className="input min-w-0 flex-1 font-mono text-[11px]" onFocus={(e) => e.currentTarget.select()} />
+        <input readOnly value={url} aria-label="New share link" className="input min-w-0 flex-1 font-mono" onFocus={(e) => e.currentTarget.select()} />
         <button
           type="button"
           className="btn-lime btn-sm shrink-0"

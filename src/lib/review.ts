@@ -25,7 +25,7 @@ export async function markListened(user: User, t: Track, secondsHeard: number) {
     userId: user.id,
     to: s.email,
     secrets: [t.token],
-    ...(await emailText("listened", { sender: s.name, receiver: user.name, title: t.title, receipt_url: `${APP_URL}/receipt/${t.token}`, sent_url: `${APP_URL}/sent` })),
+    ...(await emailText("listened", { sender: s.name, receiver: user.name, title: t.title, artist: t.artist, receipt_url: `${APP_URL}/receipt/${t.token}`, sent_url: `${APP_URL}/sent` })),
   });
   return true;
 }
@@ -40,7 +40,7 @@ export async function markDownloaded(user: User, t: Track) {
     userId: user.id,
     to: s.email,
     secrets: [t.token],
-    ...(await emailText("downloaded", { sender: s.name, receiver: user.name, title: t.title, receipt_url: `${APP_URL}/receipt/${t.token}`, sent_url: `${APP_URL}/sent` })),
+    ...(await emailText("downloaded", { sender: s.name, receiver: user.name, title: t.title, artist: t.artist, receipt_url: `${APP_URL}/receipt/${t.token}`, sent_url: `${APP_URL}/sent` })),
   });
 }
 
@@ -55,7 +55,7 @@ export async function markPlayedOut(user: User, t: Track, note: string) {
     userId: user.id,
     to: s.email,
     secrets: [t.token],
-    ...(await emailText("played_out", { sender: s.name, receiver: user.name, title: t.title, receipt_url: `${APP_URL}/receipt/${t.token}`, sent_url: `${APP_URL}/sent`, note: clean ? ` (${clean})` : "" })),
+    ...(await emailText("played_out", { sender: s.name, receiver: user.name, title: t.title, artist: t.artist, receipt_url: `${APP_URL}/receipt/${t.token}`, sent_url: `${APP_URL}/sent`, note: clean ? ` (${clean})` : "" })),
   });
   return true;
 }

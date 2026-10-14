@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLayoutEffect, useRef, useState, useTransition } from "react";
+import { Tabs } from "@/components/Tabs";
 
 type Tab = { key: string; label: string; count: number; href: string };
 
@@ -34,38 +34,32 @@ export function StatusTabs({ tabs, active }: { tabs: Tab[]; active: string }) {
   }, [active]);
 
   return (
-    <nav ref={nav} className="mt-6 flex flex-wrap gap-1 border-b border-line" aria-label="Status" data-pending={pending ? "" : undefined} aria-busy={pending || undefined}>
-      {tabs.map((t) => {
-        const on = chosen === t.key;
-        return (
-          <Link
-            key={t.key}
-            href={t.href}
-            // Load every tab's full page in the background as soon as the tabs are on screen (live site only), so a
-            // switch shows content that's already here. Each request crosses the ocean (edge near the user → London), so
-            // waiting for the tap costs ~0.5–1 s; phones have no hover to warm it. Decisions refresh this cache.
-            prefetch={true}
-            scroll={false}
-            aria-current={on ? "page" : undefined}
-            onMouseEnter={() => router.prefetch(t.href)}
-            onFocus={() => router.prefetch(t.href)}
-            onClick={(e) => {
-              // New tab / window and other modified clicks behave like a normal link.
-              if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
-              e.preventDefault();
-              if (t.key === chosen) return;
-              setChosen(t.key);
-              topBefore.current = nav.current?.getBoundingClientRect().top ?? null;
-              start(() => router.push(t.href, { scroll: false }));
-            }}
-            className={`-mb-px border-b-2 px-3 py-2.5 text-sm font-medium transition-colors ${
-              on ? "border-lime text-bone" : "border-transparent text-mute hover:text-bone"
-            }`}
-          >
-            {t.label} <span className="tnum text-mute">{t.count}</span>
-          </Link>
-        );
+    <Tabs
+      ref={nav}
+      label="Status"
+      className="mt-6"
+      items={tabs}
+      value={chosen}
+      data-pending={pending ? "" : undefined}
+      aria-busy={pending || undefined}
+      linkProps={(t) => ({
+        // Load every tab's full page in the background as soon as the tabs are on screen (live site only), so a
+        // switch shows content that's already here. Each request crosses the ocean (edge near the user → London), so
+        // waiting for the tap costs ~0.5–1 s; phones have no hover to warm it. Decisions refresh this cache.
+        prefetch: true,
+        scroll: false,
+        onMouseEnter: () => router.prefetch(t.href!),
+        onFocus: () => router.prefetch(t.href!),
+        onClick: (e) => {
+          // New tab / window and other modified clicks behave like a normal link.
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+          e.preventDefault();
+          if (t.key === chosen) return;
+          setChosen(t.key);
+          topBefore.current = nav.current?.getBoundingClientRect().top ?? null;
+          start(() => router.push(t.href!, { scroll: false }));
+        },
       })}
-    </nav>
+    />
   );
 }

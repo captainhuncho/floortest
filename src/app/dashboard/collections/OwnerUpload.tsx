@@ -97,8 +97,10 @@ export function OwnerUpload({ collectionId, collectionName }: { collectionId: nu
                 <input value={it.artist} onChange={(e) => patch(i, { artist: e.target.value })} disabled={it.status !== "ready" && it.status !== "error"} aria-label={`Artist for ${it.file.name}`} placeholder="Artist" className="input text-[12px]" />
               </div>
               {it.status === "uploading" && (
-                <div className="mt-2 h-1 overflow-hidden rounded bg-line" role="progressbar" aria-valuenow={Math.round(it.progress * 100)} aria-valuemin={0} aria-valuemax={100}>
-                  <div className="h-full bg-lime transition-[width]" style={{ width: `${Math.round(it.progress * 100)}%` }} />
+                // The bar follows the exact fraction (a scaleX, so it stays on the compositor and never restarts its
+                // easing between progress events); the number read out is the floored percent.
+                <div className="mt-2 h-1 overflow-hidden rounded bg-line" role="progressbar" aria-label={`Uploading ${it.file.name}`} aria-valuenow={Math.floor(it.progress * 100)} aria-valuemin={0} aria-valuemax={100}>
+                  <div className="h-full w-full origin-left bg-lime transition-transform duration-200 ease-linear" style={{ transform: `scaleX(${Math.max(0.02, Math.min(1, it.progress))})` }} />
                 </div>
               )}
               {it.status === "done" && <p className="mt-1.5 text-lime">Added</p>}

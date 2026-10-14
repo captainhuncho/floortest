@@ -100,7 +100,7 @@ export default async function Partners({ searchParams }: { searchParams: Promise
                 <label htmlFor={`note-${r.email}`} className="sr-only">
                   Notes about {r.name ?? r.email}
                 </label>
-                <textarea id={`note-${r.email}`} name="note" defaultValue={r.note} rows={3} maxLength={4000} className="input resize-y text-sm" placeholder="What they said on the call, what to follow up…" />
+                <textarea id={`note-${r.email}`} name="note" defaultValue={r.note} rows={3} maxLength={4000} className="input resize-y" placeholder="What they said on the call, what to follow up…" />
                 <button className="btn-ghost btn-sm">Save notes</button>
               </form>
             </details>

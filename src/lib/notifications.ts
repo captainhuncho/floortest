@@ -109,7 +109,7 @@ export async function notificationsFor(user: User) {
   if (isPaused(user))
     alerts.push({
       id: "paused",
-      title: "Submissions are paused",
+      title: "Your link is paused",
       detail: user.pause_until ? `Reopens ${shortDate(user.pause_until, user.tz)}` : "Switch them back on in the sidebar.",
       href: "/dashboard/floor",
       at: user.paused_at!,

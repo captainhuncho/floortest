@@ -24,7 +24,7 @@ export const AUDIT_LABELS = {
   listened: "Listened to",
   downloaded: "Downloaded",
   exported: "Exported crate",
-  set_cleared: "Cleared Prepare for set",
+  set_cleared: "Started a new Prepare batch",
   moved: "Moved",
   deleted_track: "Deleted",
   replied: "Replied to",

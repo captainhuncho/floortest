@@ -7,7 +7,7 @@ export const metadata = { title: "FloorTest · Coming soon", robots: { index: fa
 export default async function ComingSoon({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const { next = "/" } = await searchParams;
   return (
-    <main id="main" className="mx-auto flex min-h-dvh max-w-xl flex-col justify-center px-5 py-16">
+    <main id="main" className="app-ui mx-auto flex min-h-dvh max-w-xl flex-col justify-center px-5 py-16">
       <div className="flex items-center gap-4">
         {/* eslint-disable-next-line @next/next/no-img-element -- the crest is an SVG; Next's image optimizer doesn't process SVGs */}
         <img src="/brand/crest.svg" alt="" aria-hidden className="size-14 shrink-0 sm:size-16" />

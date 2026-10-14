@@ -88,15 +88,15 @@ export default async function Account() {
   ];
 
   return (
-    <div className="mx-auto flex max-w-xl flex-col gap-4 px-4 py-3 md:max-w-6xl md:gap-6 md:px-8 md:py-8">
+    <div className="flex flex-col gap-4 px-4 py-3 md:gap-6 md:px-8 md:py-8">
       <div className="hidden items-center justify-between gap-4 md:flex">
-        <h1 className="text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">Account</h1>
+        <h1 className="page-title">Account</h1>
         <form action={logout}>
           <button className="btn-danger btn-sm">Sign out</button>
         </form>
       </div>
       <div className="flex h-12 items-center gap-2 md:hidden">
-        <Link href="/dashboard/floor" aria-label="Back" className="grid size-8 place-items-center">
+        <Link href="/dashboard/floor" aria-label="Back" className="-ml-3 grid size-11 place-items-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icons/arrow-left.svg" alt="" className="size-4" />
         </Link>
@@ -145,7 +145,7 @@ export default async function Account() {
 
       <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-6">
         <div className="flex flex-col gap-4 md:gap-6">
-          {/* Taking submissions lives here on phones, where the sidebar is hidden. */}
+          {/* The Link open switch lives here on phones, where the sidebar is hidden. */}
           <section className={card}>
             <h2 className={label}>YOUR LINK</h2>
             <LinkCard link={link} handle={user.handle} collections={cols} activeId={user.active_collection_id} canManage={user.role !== "member"} />
@@ -165,11 +165,13 @@ export default async function Account() {
           <Section
             title="YOUR DESK"
             rows={[
-              ...(user.role !== "member" ? [<Row key="s" href="/dashboard/send" icon="↑" title="Send music" sub="Send music to another FloorTest user" />] : []),
+              ...(user.role !== "member" ? [<Row key="s" href="/dashboard/send" icon="↑" title="Send music" sub="Send a track to another receiver" />] : []),
+              // Who can send to your link sits with the desk; team admins find it in their team section instead.
+              ...(user.role === "owner" ? [<Row key="b" href="/dashboard/settings/receiving" icon="⊘" title="Receiving" sub="Blocked senders and desk rules" />] : []),
               <Row key="c" href="/dashboard/contacts" icon="☰" title="Contacts" sub="Everyone who sent you music" />,
               <Row key="a" href="/dashboard/activity" icon="◷" title="Activity" sub="Everything you did, newest first" />,
               <Row key="e" href="/dashboard/emails" icon="✉" title="Emails to senders" sub="Everything FloorTest told them" />,
-              <Row key="r" href="/dashboard/referrals" icon="+" title="Referrals" sub="Invite DJs · earn track slots" />,
+              <Row key="r" href="/dashboard/referrals" icon="+" title="Referrals" sub="Invite DJs · get more active tracks" />,
             ]}
           />
         </div>
@@ -221,12 +223,11 @@ export default async function Account() {
               ]}
             />
             <Section
-              title="PRIVACY"
+              title="PLAN & DATA"
               rows={[
                 <Row key="p" href="/dashboard/settings/plan" icon="▤" title="Plan" sub="Usage and plans" />,
-                <Row key="b" href="/dashboard/settings/receiving" icon="⊘" title="Receiving" sub="Blocked senders and desk rules" />,
                 <Row key="d" href="/contact?topic=data" icon="⇩" title="Data export" sub="Ask for a copy of your data" />,
-                <Row key="a" href="/dashboard/settings/account" icon="⏻" title="Log out or delete account" sub="Leave this device, or remove everything" />,
+                <Row key="a" href="/dashboard/settings/account" icon="⏻" title="Shortcuts, log out or delete account" sub="Keyboard shortcuts, leave this device, or remove everything" />,
               ]}
             />
             </>

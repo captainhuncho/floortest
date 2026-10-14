@@ -20,7 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     // suppressHydrationWarning: the Android app writes its safe-area sizes onto <html> before React starts.
     <html lang="en" className={`${serif.variable} ${mono.variable}`} suppressHydrationWarning>
-      <body className="min-h-dvh">
+      <body className="site min-h-dvh">
         <NativeApp />
         {isPreview && (
           <p className="bg-lime px-4 py-1 text-center text-xs font-medium text-ink">Preview · test data only, separate from the live site</p>

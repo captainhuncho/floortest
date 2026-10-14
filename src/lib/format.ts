@@ -29,6 +29,13 @@ export function fmtDate(ts: number, timeZone?: string) {
   return d.toLocaleString("en-GB", { day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }), hour: "2-digit", minute: "2-digit", hour12: false, timeZone });
 }
 
+/** A short day for tight rows: "29 Sept" (the year only when it isn't this one). */
+export function fmtShortDay(ts: number, timeZone?: string) {
+  const d = new Date(ts);
+  const sameYear = d.getFullYear() === new Date().getFullYear();
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }), timeZone });
+}
+
 /** A day: "29 Sept 2026". */
 export function fmtDay(ts: number, timeZone?: string) {
   return new Date(ts).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone });

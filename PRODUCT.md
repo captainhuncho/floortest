@@ -33,7 +33,7 @@ Success: receivers clear their queue faster and find the tracks they play out; s
 
 ## Operating Context
 
-- Receivers: the Review Queue (play, Keep / Not for me, next), collections per callout with a brief, Prepare for set (named folders, Rekordbox XML, crate export), contacts with notes and replies, the bell for new tracks.
+- Receivers: the Queue (play, Keep / Not for me, next), collections per callout with a brief, Prepare (named folders, Rekordbox XML, crate export), contacts with notes and replies, the bell for new tracks.
 - Teams: one desk, switched to from the desk bar; comments and a shared shortlist (Review together); the owner or an A&R / Admin can override members' calls and can require approval before members' replies go to senders.
 - Senders: the receiver's public page `floortest.app/<handle>` (brief, send form with required details: artist, genre, mix and release status, AI-use declaration, DJ-sets permission), a 6-digit email code if they have no account, then a receipt page and emails.
 - Phones matter: review happens one-handed between gigs; the apps add sharing files in from other apps and offline kept tracks.
@@ -68,7 +68,7 @@ Agreed with the owner, question by question; the build follows these.
 - **North star:** the share of tracks that get a decision within 7 days of arriving. Shown in ops weekly, by plan and solo/team desk, counting only tracks old enough to have had their 7 days.
 - **Senders:** a channel, never a payer. Free, no account, private receipt; never paid boosts. A quiet "DJ too? Get your own link" line on the receipt after delivery.
 - **Decisions stay private.** No automatic "passed" notice; closing the loop is the receiver's choice through a reply (a respectful "not for me" quick reply exists).
-- **Order:** the Review Queue is oldest first (first come, first heard); Up next on the Floor is newest first; the Floor nudges when tracks have waited over 5 days.
+- **Order:** the Queue is oldest first (first come, first heard); Up next on the Floor is newest first; the Floor nudges when tracks have waited over 5 days.
 - **Onboarding's one job:** the first track received within 48 hours (share the link first, with a ready caption and QR; the first-track nudge at 48 hours).
 - **Retention unchanged** (90 days undecided, 30 not for me, kept stays). On Free near the limit (80%), the Floor points to Prepare → clear kept before Pro.
 - **Artist names aren't proven at launch:** the desk shows only what's true (email confirmed, profile links), never "verified artist".

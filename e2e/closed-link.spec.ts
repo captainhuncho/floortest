@@ -25,10 +25,10 @@ test.afterAll(async ({ browser }) => {
   const page = await ctx.newPage();
   await logIn(page);
   await page.goto("/dashboard/account");
-  const sw = page.getByRole("switch", { name: "Taking submissions" });
+  const sw = page.getByRole("switch", { name: "Link open" });
   if ((await sw.getAttribute("aria-checked")) === "false") {
     await sw.click();
-    await expect(page.getByText("Submissions reopened")).toBeVisible();
+    await expect(page.getByText("Link open again")).toBeVisible();
   }
   await ctx.close();
 });
@@ -36,10 +36,10 @@ test.afterAll(async ({ browser }) => {
 test("the receiver pauses their link", async ({ page }) => {
   await logIn(page);
   await page.goto("/dashboard/account");
-  const sw = page.getByRole("switch", { name: "Taking submissions" });
+  const sw = page.getByRole("switch", { name: "Link open" });
   await expect(sw).toHaveAttribute("aria-checked", "true");
   await sw.click();
-  await expect(page.getByText("Submissions paused")).toBeVisible();
+  await expect(page.getByText("Link paused")).toBeVisible();
 });
 
 test("a sender asks to hear when it reopens", async ({ page }) => {
@@ -56,17 +56,17 @@ test("a sender asks to hear when it reopens", async ({ page }) => {
 test("resuming the link sends the one email", async ({ page }) => {
   await logIn(page);
   await page.goto("/dashboard/account");
-  await page.getByRole("switch", { name: "Taking submissions" }).click();
-  await expect(page.getByText("Submissions reopened")).toBeVisible();
+  await page.getByRole("switch", { name: "Link open" }).click();
+  await expect(page.getByText("Link open again")).toBeVisible();
   await page.goto("/dashboard/emails");
   const row = page.locator("summary", { hasText: `to ${email}` });
   await expect(row).toContainText("is taking music again");
   // Reopening again later sends nothing more: the request was used up.
   await page.goto("/dashboard/account");
-  await page.getByRole("switch", { name: "Taking submissions" }).click();
-  await expect(page.getByText("Submissions paused")).toBeVisible();
-  await page.getByRole("switch", { name: "Taking submissions" }).click();
-  await expect(page.getByText("Submissions reopened")).toBeVisible();
+  await page.getByRole("switch", { name: "Link open" }).click();
+  await expect(page.getByText("Link paused")).toBeVisible();
+  await page.getByRole("switch", { name: "Link open" }).click();
+  await expect(page.getByText("Link open again")).toBeVisible();
   await page.goto("/dashboard/emails");
   await expect(page.locator("summary", { hasText: `to ${email}` })).toHaveCount(1);
 });

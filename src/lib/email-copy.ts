@@ -23,29 +23,29 @@ export const EMAILS = {
   listened: {
     label: "Listened",
     to: "Sender, after 30+ seconds of play",
-    subject: "Listened: {title}",
+    subject: "Listened: {artist} – {title}",
     body: `Hi {sender},\n\n{receiver} listened to "{title}".\n\nThis means it was played for at least 30 seconds (or a quarter of the track). It doesn't tell you whether it'll be played out.\n\n${RECEIPT}`,
-    vars: TRACK_VARS,
+    vars: { ...TRACK_VARS, artist: "Artist" },
   },
   downloaded: {
     label: "Downloaded",
     to: "Sender, when the original is downloaded",
-    subject: "Downloaded: {title}",
+    subject: "Downloaded: {artist} – {title}",
     body: `Hi {sender},\n\n{receiver} downloaded the original file of "{title}".\n\nDownloading usually means they want it on hand, but it isn't a promise.\n\n${RECEIPT}`,
-    vars: TRACK_VARS,
+    vars: { ...TRACK_VARS, artist: "Artist" },
   },
   played_out: {
     label: "Played out",
     to: "Sender, when their track is played in a set",
-    subject: "Played out: {title}",
-    body: `Hi {sender},\n\n{receiver} played "{title}" out in a set{note}. 🎛️\n\n${RECEIPT}`,
-    vars: { ...TRACK_VARS, note: '" (<the receiver\'s note>)" when they added one, else empty' },
+    subject: "Played out: {artist} – {title}",
+    body: `Hi {sender},\n\n{receiver} played "{title}" out in a set{note}.\n\nThis means {receiver} marked it as played in a set. FloorTest doesn't detect plays: the DJ tells us, so it's their word.\n\n${RECEIPT}`,
+    vars: { ...TRACK_VARS, artist: "Artist", note: '" (<the receiver\'s note>)" when they added one, else empty' },
   },
   welcome: {
     label: "Welcome",
     to: "Receiver, once their email is confirmed",
     subject: "Your link is live: {link_short}",
-    body: "Hi {first_name},\n\nYour receiving link is ready: {link}\n\nPut it in your bio or your next callout. Artists upload the original file and you'll get an email when tracks arrive (change how often in Notifications).\n\nOn your desk:\n• Space plays\n• K keeps, X marks not for me, and the next track starts\n• U undoes\n\nKept tracks download as a crate with a Rekordbox XML.\n\nReply to this email with anything that's broken or missing. During the beta, I read every one.\n\n— FloorTest",
+    body: "Hi {first_name},\n\nYour receiving link is ready: {link}\n\nPut it in your bio or your next callout. Artists upload the original file and you'll get an email when tracks arrive (change how often in Notifications).\n\nOn your desk:\n• Space plays\n• K keeps, X marks not for me, and the next track starts\n• U undoes\n\nKept tracks download as a crate with a Rekordbox XML.\n\nReply to this email with anything that's broken or missing. During the beta, the team reads every reply.\n\n— FloorTest",
     vars: { first_name: "Receiver's first name", link: "Their link", link_short: "Their link without https://" },
   },
   first_track_nudge: {
@@ -86,9 +86,9 @@ export const EMAILS = {
   referral: {
     label: "Referral bonus",
     to: "Receiver whose referral got their first track",
-    subject: "You both got {bonus} more track slots",
-    body: "{friend} just received their first track on FloorTest. You both get {bonus} extra active tracks.\n\nYour referrals: {referrals_url}",
-    vars: { friend: "The person they referred", bonus: "Extra track slots", referrals_url: "Their referrals page" },
+    subject: "You both get {bonus} more active tracks",
+    body: "Hi {first_name},\n\n{friend} just received their first track on FloorTest, so you both get {bonus} more active tracks on your desks.\n\nYour referrals: {referrals_url}\n\n— FloorTest",
+    vars: { first_name: "Receiver's first name", friend: "The person they referred", bonus: "How many more active tracks", referrals_url: "Their referrals page" },
   },
 } satisfies Record<string, EmailDef>;
 
@@ -150,6 +150,6 @@ export const SAMPLE_VARS: Record<string, string> = {
   bonus: "10",
   referrals_url: `${U}/dashboard/referrals`,
   count: "3 tracks",
-  titles: "• Nightbus (demo) · Sample Artist\n• Tin Roof · Sample Collective\n• Lekki Run · Sample Producer",
+  titles: "• Nightbus (sample) · Sample Artist\n• Tin Roof · Sample Collective\n• Lekki Run · Sample Producer",
   prompt_url: `${U}/dashboard/played-out`,
 };

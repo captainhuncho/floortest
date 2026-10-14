@@ -43,10 +43,10 @@ export function PauseSwitch({ pause, compact = false }: { pause: PauseState; com
           const fd = new FormData();
           fd.set("message", pause.message);
           await pauseLink(fd);
-          toast.show({ message: "Submissions paused" });
+          toast.show({ message: "Link paused" });
         } else {
           await resumeLink();
-          toast.show({ message: "Submissions reopened" });
+          toast.show({ message: "Link open again" });
         }
       } catch {
         setPaused(!next);
@@ -59,7 +59,7 @@ export function PauseSwitch({ pause, compact = false }: { pause: PauseState; com
     <div className={compact ? "card bg-ink-3 p-3" : "py-1"}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className={compact ? "text-[11px] font-bold" : "text-sm font-medium"}>{paused ? "Paused" : "Taking submissions"}</p>
+          <p className={compact ? "text-[11px] font-bold" : "text-sm font-medium"}>{paused ? "Paused" : "Link open"}</p>
           <p className={compact ? "mt-1 text-[11px] leading-snug text-faint" : "mt-0.5 text-xs leading-snug text-mute"}>
             {paused ? (pause.on && pause.until ? `Reopens ${pause.until}` : "Your link shows you're on a break") : pause.blocked ? null : "Switch off while touring or on a break"}
           </p>
@@ -72,7 +72,7 @@ export function PauseSwitch({ pause, compact = false }: { pause: PauseState; com
         <button
           role="switch"
           aria-checked={!paused}
-          aria-label="Taking submissions"
+          aria-label="Link open"
           aria-busy={busy}
           onClick={flip}
           className={`relative shrink-0 rounded-full transition-colors ${compact ? "h-4 w-7" : "mt-0.5 h-7 w-12"} ${paused ? "bg-line" : compact ? "bg-bone" : "bg-lime"}`}
@@ -101,7 +101,7 @@ export function PauseSwitch({ pause, compact = false }: { pause: PauseState; com
               defaultValue={pause.message}
               key={pause.message}
               maxLength={280}
-              className="input min-h-16 resize-y text-sm"
+              className="input min-h-16 resize-y"
               placeholder="On tour until mid-October. Send the new stuff then."
             />
           </label>

@@ -12,8 +12,9 @@
   /* Text, brightest first */
   --color-bone: #f1f1eb;
   --color-mute: #a3a69b; /* ≈7:1 on ink, ≈6.5:1 on panels */
-  --color-dim: #92958c; /* ≥4.5:1 on every surface, raised ink-4 included */
-  --color-faint: #94978e; /* labels and meta only; ≥4.5:1 on every surface */
+  --color-faint: #94978e; /* meta, help text and labels; ≥4.5:1 on every surface, raised ink-4 included */
+  --color-dim: var(--color-faint); /* old name, kept so existing text-dim classes work: same colour as faint. Use faint. */
+  --color-field: #6b6e64; /* field edges (inputs): ≥3:1 against every surface (WCAG 1.4.11) */
   --color-wave: rgb(163 166 155 / 0.7); /* unplayed waveform bars: ≥3:1 against the played (lime) bars */
   --color-lime: #d5ff48;
   --color-olive: #536400;
@@ -46,11 +47,13 @@
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  /* Tailwind's own transition utilities (transition, transition-colors…) use the same curve. */
+  --default-transition-timing-function: var(--ease-out);
 }
 
 html, body { background: var(--color-ink); color: var(--color-bone); }
 /* Keyboard focus and in-page jumps stop clear of the fixed bars: on phones the top bar (76px) and, at the bottom, the
-   tab bar plus mini player; from md up only the player bar (44px button + 24px padding + border) sits at the bottom. */
+   tab bar plus mini player (or the docked decision rail while a track is open, below); from md up only the player bar (44px button + 24px padding + border) sits at the bottom. */
 html { scroll-padding-top: 76px; scroll-padding-bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 150px); }
 @media (min-width: 48rem) { html { scroll-padding-top: 16px; scroll-padding-bottom: 88px; } }
 body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
@@ -74,13 +77,38 @@ body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
   transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
   @starting-style { opacity: 0; transform: scale(0.97); }
 }
+/* Native <dialog> modals (showModal): fade and scale from 0.97 at the centre, the backdrop fades with them. overlay and
+   display are discrete so the dialog stays in the top layer until its quicker exit (150ms) has played. */
+dialog {
+  opacity: 0; transform: scale(0.97);
+  transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out), overlay 150ms var(--ease-out) allow-discrete, display 150ms var(--ease-out) allow-discrete;
+}
+dialog[open] {
+  opacity: 1; transform: none; transition-duration: 200ms;
+  @starting-style { opacity: 0; transform: scale(0.97); }
+}
+dialog::backdrop { opacity: 0; transition: opacity 150ms var(--ease-out), overlay 150ms var(--ease-out) allow-discrete, display 150ms var(--ease-out) allow-discrete; }
+dialog[open]::backdrop {
+  opacity: 1; transition-duration: 200ms;
+  @starting-style { opacity: 0; }
+}
+/* The phone notifications sheet: its scrim fades with the panel instead of popping in under it. */
+[data-sheet] {
+  transition: opacity 200ms var(--ease-out);
+  @starting-style { opacity: 0; }
+}
+/* Opened from the keyboard (⌘K search): appears at once, every time. Keyboard actions never animate. */
+[data-instant], [data-instant] :is([role="menu"], [role="listbox"], [role="dialog"]) { transition: none; animation: none; }
 [data-toast] {
   transition: opacity 250ms var(--ease-drawer), transform 250ms var(--ease-drawer);
   @starting-style { opacity: 0; transform: translateY(16px); }
 }
 /* Leaving: a quick fade and drop before the toast unmounts (150ms, EXIT_MS in Toast.tsx). */
 [data-toast][data-leaving] { opacity: 0; transform: translateY(8px); transition-duration: 150ms; transition-timing-function: var(--ease-out); pointer-events: none; }
-button, .btn { -webkit-tap-highlight-color: transparent; transition-property: color, background-color, border-color, opacity, transform, translate, scale; transition-duration: 150ms; transition-timing-function: var(--ease-out); }
+/* In the base layer so a button's own transition utilities (transition-colors, duration-100…) win over it. */
+@layer base {
+  button, .btn { -webkit-tap-highlight-color: transparent; transition-property: color, background-color, border-color, opacity, transform, translate, scale; transition-duration: 150ms; transition-timing-function: var(--ease-out); }
+}
 button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
 .switch-thumb { transition: translate 200ms var(--ease-out), background-color 150ms var(--ease-out); }
 /* Tactile navigation (same material as the phone tab bar): a dark panel with a lit top edge, and the
@@ -107,9 +135,9 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
 [data-area="trust"] { --area: #ff8a7a; }
 /* Plans page Year/Month: both versions sit in one grid cell (so nothing moves) and cross-fade when data-period flips. */
 .period-stack { display: grid; }
-.period-stack > * { grid-area: 1 / 1; transition: opacity 260ms cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 0s; }
+.period-stack > * { grid-area: 1 / 1; transition: opacity 260ms var(--ease-out), visibility 0s linear 0s; }
 [data-period="year"] .period-stack > .period-month,
-[data-period="month"] .period-stack > .period-year { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 180ms ease-out, visibility 0s linear 180ms; }
+[data-period="month"] .period-stack > .period-year { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 180ms var(--ease-out), visibility 0s linear 180ms; }
 /* The silver ops crest is dark-on-dark at small sizes: lift it so it reads clearly. */
 .crest-ops { filter: brightness(1.6) contrast(1.15) drop-shadow(0 0 6px rgb(255 255 255 / 0.12)); }
 [data-area="product"] { --area: #b9a2ff; }
@@ -123,19 +151,81 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
 [data-area] .tactile-item[aria-current="page"] { box-shadow: inset 2px 0 0 var(--area), inset 0 1px 0 rgb(255 255 255 / 0.12), 0 2px 6px rgb(0 0 0 / 0.55); }
 .area-card { border-top: 2px solid var(--area); }
 .area-dot { background: var(--area); }
+/* Player buffering (Player.tsx BufferRing): a lit arc turning on a faint track. Hidden until the button has been
+   loading for 150ms, so a quick start never flashes it; leaving is immediate. */
+[data-buffer-ring] {
+  border: 2px solid color-mix(in oklab, currentColor 22%, transparent); border-top-color: currentColor;
+  opacity: 0; transition: opacity 150ms var(--ease-out);
+  animation: buffer-spin 700ms linear infinite; animation-play-state: paused;
+}
+[data-buffering] [data-buffer-ring] { opacity: 1; transition-delay: 150ms; animation-play-state: running; }
+@keyframes buffer-spin { to { rotate: 360deg; } }
+/* Queue badge (MobileTabBar.tsx): when the count changes, the old number rolls up and out as the new one rolls in. */
+[data-roll="out"] { animation: badge-out 160ms var(--ease-out) both; }
+[data-roll="in"] { animation: badge-in 160ms var(--ease-out) both; }
+@keyframes badge-out { to { opacity: 0; translate: 0 -60%; } }
+@keyframes badge-in { from { opacity: 0; translate: 0 60%; } }
+@keyframes badge-fade-out { to { opacity: 0; } }
+@keyframes badge-fade-in { from { opacity: 0; } }
+/* Loading skeletons (dashboard/loading.tsx, review/loading.tsx): nothing for the first 150ms, so a quick navigation
+   never flashes a skeleton; a slow one fades it in. */
+.skeleton-in {
+  animation: skeleton-in 150ms var(--ease-out) 150ms both;
+}
+@keyframes skeleton-in { from { opacity: 0; } }
 /* Reduced motion: keep fades and colour, drop movement. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; scale: none !important; scroll-behavior: auto !important; }
-  [role="menu"], [role="listbox"], [role="dialog"], [data-toast] { transition: opacity 150ms linear !important; }
+  [role="menu"], [role="listbox"], [role="dialog"], [data-toast], [data-sheet] { transition: opacity 150ms linear !important; }
+  dialog, dialog::backdrop { transform: none !important; transition: opacity 150ms linear, overlay 150ms allow-discrete, display 150ms allow-discrete !important; }
+  [data-instant], [data-instant] :is([role="menu"], [role="listbox"], [role="dialog"]) { transition: none !important; }
   [data-toast][data-leaving] { transform: none; }
+  /* The buffering ring holds still at half strength; the Queue badge cross-fades instead of rolling. */
+  [data-buffering] [data-buffer-ring] { opacity: 0.5; }
+  [data-roll="out"] { animation: badge-fade-out 120ms linear both !important; }
+  [data-roll="in"] { animation: badge-fade-in 120ms linear both !important; }
+  .skeleton-in { animation: skeleton-in 150ms linear 150ms both !important; }
 }
 ::selection { background: var(--color-lime); color: var(--color-ink); }
 
-@utility label { @apply text-xs font-medium uppercase tracking-[0.12em] text-mute; }
-@utility input {
-  @apply w-full rounded-md border border-line bg-ink-2 px-3 py-2.5 text-sm text-bone placeholder:text-dim outline-none transition focus:border-lime/70 focus:ring-2 focus:ring-lime/15;
+/* Shared controls. Each utility carries the signed-in app's values (dashboard, admin, ops sign-in, coming soon).
+   Public pages (home, the send page, receipts, sign-in) keep their roomier sizes: the root layout puts .site on <body>
+   and .site sets the --site-* values below; the app's roots (.theme-root, .app-ui) clear them again. */
+.site {
+  --site-label-size: 0.75rem; --site-label-leading: calc(1 / 0.75); --site-label-weight: 500; --site-label-tracking: 0.12em;
+  --site-btn-size: 0.875rem; --site-btn-weight: 500;
+  --site-input-size: 0.875rem; --site-field-bg: var(--color-ink-2);
+  --site-chip-size: 0.75rem; --site-chip-weight: 500;
+  --site-card-bg: var(--color-ink-2);
 }
-@utility btn { @apply inline-flex items-center justify-center gap-2 rounded-lg whitespace-nowrap px-4 py-2.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40; }
+.theme-root, .app-ui {
+  --site-label-size: initial; --site-label-leading: initial; --site-label-weight: initial; --site-label-tracking: initial;
+  --site-btn-size: initial; --site-btn-weight: initial;
+  --site-input-size: initial; --site-field-bg: initial;
+  --site-chip-size: initial; --site-chip-weight: initial;
+  --site-card-bg: initial;
+}
+/* Field labels: the same style as a section eyebrow (11px bold spaced caps, mute). One label style. */
+@utility label {
+  @apply uppercase text-mute;
+  font-size: var(--site-label-size, 11px);
+  line-height: var(--site-label-leading); /* unset in the app: inherits, like eyebrow */
+  font-weight: var(--site-label-weight, 700);
+  letter-spacing: var(--site-label-tracking, 1px);
+}
+/* Fields: the edge is --color-field (≥3:1, WCAG 1.4.11); focus turns it lime with a soft ring. */
+@utility input {
+  @apply w-full rounded-md border border-field px-3 py-2.5 text-bone placeholder:text-faint outline-none transition focus:border-lime/70 focus:ring-2 focus:ring-lime/15;
+  background-color: var(--site-field-bg, var(--color-ink-3));
+  font-size: var(--site-input-size, 12px);
+  line-height: var(--tw-leading, calc(1.25 / 0.875));
+}
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg whitespace-nowrap px-4 py-2.5 transition disabled:cursor-not-allowed disabled:opacity-40;
+  font-size: var(--site-btn-size, 12px);
+  line-height: var(--tw-leading, calc(1.25 / 0.875));
+  font-weight: var(--site-btn-weight, 700);
+}
 @utility btn-lime { @apply btn border border-transparent bg-lime text-ink hover:bg-[#e2ff7a]; }
 @utility btn-ghost { @apply btn border border-line text-bone hover:border-mute hover:bg-ink-3; }
 @utility btn-danger { @apply btn border border-danger/50 text-danger hover:bg-danger/10; }
@@ -147,18 +237,31 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
   .tap { min-height: 44px; min-width: 44px; } }
 /* iPhone Safari zooms into any field under 16px when tapped; keep fields at 16px on touch screens. */
 @media (pointer: coarse) { input:not([type=checkbox]):not([type=radio]):not([type=file]), select, textarea { font-size: 16px !important; } }
-@utility card { @apply rounded-xl border border-line bg-ink-2; }
+@utility card { @apply rounded-xl border border-line; background-color: var(--site-card-bg, var(--color-ink-3)); }
 /* A page section: bigger radius than a card, same surface. Padding is the section's own choice. */
 @utility panel { @apply rounded-2xl border border-line bg-ink-3; }
 /* Section and card titles: small, bold, spaced capitals. Only ever a title for a block, never above a page heading. */
 @utility eyebrow { @apply text-[11px] font-bold uppercase tracking-[1px] text-mute; }
+/* Page titles: one size on every dashboard page (28px bold tight, its own leading). Only the Floor greeting goes
+   bigger (page-title-display, 32px from sm up). Use the PageTitle component, or the class on a page's one <h1>. */
+@utility page-title { @apply text-title font-bold text-bone; text-wrap: balance; }
+@utility page-title-display { @apply page-title sm:text-[32px]; }
+/* The dashboard's content frame (dashboard/layout.tsx): 1088px of content plus the page's 16px / 32px gutters,
+   left-aligned. Pages that read narrow keep a 704px text column inside it with page-narrow. */
+@utility page-gutter { @apply px-4 md:px-8; }
+@utility page-narrow { @apply max-w-3xl; }
 /* Secondary line under a title or value. */
 @utility meta { @apply text-xs text-faint; }
 /* The box of a dialog, sheet or menu, and the scrim behind a modal one. Same shell everywhere. */
 @utility dialog-box { @apply rounded-2xl border border-line bg-ink-2 p-5 text-bone shadow-pop; }
 @utility scrim { @apply fixed inset-0 bg-black/70 backdrop-blur-[2px]; }
 @media (prefers-reduced-transparency: reduce) { .scrim { backdrop-filter: none; background: rgb(0 0 0 / 0.85); } }
-@utility chip { @apply inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap; }
+@utility chip {
+  @apply inline-flex items-center gap-1 rounded-full border px-2 py-0.5 whitespace-nowrap;
+  font-size: var(--site-chip-size, 11px);
+  line-height: var(--tw-leading, calc(1 / 0.75));
+  font-weight: var(--site-chip-weight, 700);
+}
 @utility tnum { font-variant-numeric: tabular-nums; }
 
 /* Home page: small uppercase mono labels. */
@@ -168,17 +271,8 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
   line-height: 1.4;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-dim);
+  color: var(--color-faint);
 }
-
-/* Dashboard: the older shared pieces (label, button, input, chip) in the Figma mono style,
-   so pages that use them match the redesigned ones. Scoped to the dashboard's <main>. */
-#main .label { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; color: var(--color-faint); }
-#main :is(.btn, .btn-lime, .btn-ghost, .btn-danger) { font-size: 12px; font-weight: 700; }
-#main .input { font-size: 12px; background: var(--color-ink-3); }
-#main .chip { font-size: 11px; font-weight: 700; }
-#main .card { background: var(--color-ink-3); }
-#main .btn-sm { font-size: 11px !important; }
 
 /* Day mode for the signed-in app (dashboard and admin). The same tokens, redefined light.
    Lime stays bright as a fill but turns olive as text and lines, so it's readable on white.
@@ -193,8 +287,9 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
   --color-line-2: #cfd3c0;
   --color-bone: #0d0e0b;
   --color-mute: #4c4f45;
-  --color-dim: #5f6257;
   --color-faint: #66695e;
+  --color-dim: var(--color-faint);
+  --color-field: #8d9184;
   --color-wave: #b9bdaa;
   --color-lime: #4a6400;
   --color-olive: #3d5200;
@@ -209,7 +304,7 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
 .theme-day .bg-bone.text-ink, .theme-day .bg-bone .text-ink { color: #f1f1eb; }
 .theme-day ::selection { background: #d5ff48; color: #10110f; }
 .theme-day :focus-visible { outline-color: #0a0a0a; }
-.theme-day #main .input, .theme-day .input { background: #ffffff; }
+.theme-day .input { background: #ffffff; }
 @media (prefers-color-scheme: light) {
 .theme-system {
   --color-ink: #fafaf6;
@@ -220,8 +315,9 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
   --color-line-2: #cfd3c0;
   --color-bone: #0d0e0b;
   --color-mute: #4c4f45;
-  --color-dim: #5f6257;
   --color-faint: #66695e;
+  --color-dim: var(--color-faint);
+  --color-field: #8d9184;
   --color-wave: #b9bdaa;
   --color-lime: #4a6400;
   --color-olive: #3d5200;
@@ -236,7 +332,7 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
 .theme-system .bg-bone.text-ink, .theme-system .bg-bone .text-ink { color: #f1f1eb; }
 .theme-system ::selection { background: #d5ff48; color: #10110f; }
 .theme-system :focus-visible { outline-color: #0a0a0a; }
-.theme-system #main .input, .theme-system .input { background: #ffffff; }
+.theme-system .input { background: #ffffff; }
 }
 /* Day mode: chart marks and the live-status dot use the readable olive. */
 .theme-root { --chart-mark: var(--color-bone); }
@@ -258,7 +354,7 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
 .theme-root .keep-night {
   --color-ink: #10110f; --color-ink-2: #171815; --color-ink-3: #1e1f1b; --color-ink-4: #2a2e24;
   --color-line: #2c2e29; --color-line-2: #3a3d37;
-  --color-bone: #f1f1eb; --color-mute: #a3a69b; --color-dim: #92958c; --color-faint: #94978e; --color-wave: rgb(163 166 155 / 0.7);
+  --color-bone: #f1f1eb; --color-mute: #a3a69b; --color-faint: #94978e; --color-dim: var(--color-faint); --color-field: #6b6e64; --color-wave: rgb(163 166 155 / 0.7);
   --color-lime: #d5ff48; --color-olive: #536400; --color-danger: #ff6b5a;
   color-scheme: dark;
 }
@@ -281,17 +377,83 @@ html:has(.theme-day), html:has(.theme-day) body { background: #fafaf6; }
 .site-editing [data-edit-panel], .site-editing [data-edit-image] { cursor: pointer; outline: 1px dashed color-mix(in oklab, var(--color-lime) 35%, transparent); outline-offset: 6px; }
 .site-editing [data-edit-panel]:hover, .site-editing [data-edit-image]:hover { outline-color: var(--color-lime); }
 
-/* Review on phones: the panel follows a swipe with a stamp on the trailing side, so it stays on screen (KEEP when dragging right, NOT FOR ME when dragging left). */
-[data-swipe-zone] { position: relative; touch-action: pan-y; will-change: transform; }
-[data-swipe-zone]::after { content: ""; position: absolute; top: 18px; padding: 4px 10px; border: 2px solid; border-radius: 8px; font: 800 16px var(--font-mono); letter-spacing: .04em; opacity: 0; pointer-events: none; }
-[data-swipe-zone][data-swipe="keep"]::after { content: "KEEP"; left: 18px; color: var(--color-lime); rotate: 8deg; opacity: var(--swipe-strength, 0); }
-[data-swipe-zone][data-swipe="pass"]::after { content: "NOT FOR ME"; right: 18px; color: var(--color-danger); rotate: -8deg; opacity: var(--swipe-strength, 0); }
+/* Review on touch screens: the top card (artwork, title, waveform; [data-swipe-zone]) follows a swipe; DecisionRail.tsx
+   writes its transform and the stamp's opacity directly. The stamp sits on the trailing side so it stays on screen
+   (KEEP when dragging right, NOT FOR ME when dragging left; Keep lime, Not for me neutral, never red). */
+[data-swipe-zone] { position: relative; touch-action: pan-y; }
+[data-stamp] { position: absolute; top: 18px; z-index: 1; padding: 4px 10px; border: 2px solid; border-radius: 8px; font: 800 16px var(--font-mono); letter-spacing: .04em; white-space: nowrap; opacity: 0; pointer-events: none; }
+[data-stamp][data-kind="keep"] { left: 18px; color: var(--color-lime); rotate: 8deg; }
+[data-stamp][data-kind="pass"] { right: 18px; color: var(--color-bone); rotate: -8deg; }
+/* After a touch decision the card flies out and stays gone; the rest of the panel fades until the next track renders. */
+[data-review-panel][data-leaving] [data-leave-fade] { opacity: 0; transition: opacity 150ms var(--ease-out); pointer-events: none; }
+/* Phones with a track open: the decision rail docks at the bottom (thumb reach) and owns that zone, so the tab bar
+   and mini player step aside (the review has its own transport). Focus jumps and toasts stop clear of the rail. */
+@media (max-width: 47.99rem) {
+  html:has([data-review-open]) :is([data-tabbar], [data-mini-player]) { display: none; }
+  html:has([data-review-open]) { scroll-padding-bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 96px); }
+  html:has([data-review-open]) [data-toast-region] { bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 88px); }
+  /* Typing a reply (or in any field): the on-screen keyboard needs the room (Android lifts fixed bars above it). */
+  html:has([data-review-open] :is(textarea, input, select):focus) :is([data-rail-dock], [data-rail-space]) { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { [data-swipe-zone] { transition-property: opacity !important; } }
 
 /* Inside the FloorTest phone app only: no long-press callouts or accidental text selection, except where you type. */
 .native-app { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
 .native-app :is(input, textarea, [contenteditable="true"], [contenteditable="plaintext-only"], .selectable) { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
 
 /* Review Queue: while a status tab loads, the list steps back so the tap visibly registered. */
-.review-list { transition: opacity 0.15s ease; }
+.review-list { transition: opacity 150ms var(--ease-out); }
 nav[data-pending] ~ .review-list { opacity: 0.45; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { .review-list { transition: none; } }
+
+/* Home stage (src/app/HomeStage.tsx). Resting styles are the final frame; animations only run from an earlier state,
+   so reduced motion (which drops every animation above) shows the still. One lime light per picture. */
+.stage-readout { position: absolute; font-size: 10px; letter-spacing: 0.12em; color: var(--color-faint); font-variant-numeric: tabular-nums; }
+.stage-sample { font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-faint); }
+.stage-deck { box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 30px 60px -20px rgb(0 0 0 / 0.8); }
+.stage-platter {
+  background:
+    radial-gradient(circle at 50% 50%, transparent 0 62%, rgb(255 255 255 / 0.05) 62.5% 63%, transparent 63.5%),
+    repeating-radial-gradient(circle at 50% 50%, #151613 0 1px, #10110f 1px 3px);
+  box-shadow: 0 0 0 1px var(--color-line-2), 0 0 0 7px #0b0c0a, 0 0 0 8px var(--color-line);
+}
+/* Home loops come to rest (WCAG 2.2.2): one slow turn of the platter, then it holds where it started. */
+.stage-spin { animation: stage-turn 9s linear 1; }
+.stage-ticks {
+  background: repeating-conic-gradient(from 0deg, rgb(241 241 235 / 0.16) 0 0.6deg, transparent 0.6deg 7.5deg);
+  mask: radial-gradient(circle, transparent 0 62%, #000 62.5% 69%, transparent 69.5%);
+}
+.stage-marker { position: absolute; left: 50%; top: 1.5%; width: 3px; height: 9%; translate: -50% 0; border-radius: 2px; background: var(--color-bone); }
+.stage-cap { background: radial-gradient(circle at 40% 35%, #2a2c27, #141512 70%); box-shadow: 0 0 0 1px var(--color-line-2), inset 0 2px 6px rgb(0 0 0 / 0.6); }
+.stage-cue { width: 12px; height: 12px; border-radius: 9999px; background: var(--color-lime); box-shadow: 0 0 10px 1px rgb(213 255 72 / 0.45); }
+@keyframes stage-turn { to { rotate: 360deg; } }
+.stage-rise { animation: stage-rise 1s var(--ease-out) 300ms both; }
+@keyframes stage-rise { from { opacity: 0; translate: 0 48px; } }
+
+/* The booth neon behind the two sides of the desk: handwritten, blurred, the section's one light. */
+.stage-neon {
+  position: absolute; inset: auto 0 18% 0; text-align: center; white-space: nowrap; pointer-events: none;
+  font-family: var(--font-serif), serif; font-style: italic; font-size: clamp(5rem, 16vw, 15rem); line-height: 1;
+  color: rgb(213 255 72 / 0.55); filter: blur(5px); text-shadow: 0 0 40px rgb(213 255 72 / 0.6); opacity: 0.35;
+}
+@supports (animation-timeline: view()) {
+  .stage-fill { animation: stage-fill linear both; animation-timeline: view(); animation-range: entry 10% cover 35%; }
+  .stage-fill-late { animation-range: entry 30% cover 45%; }
+  .stage-tick { animation: stage-tick linear both; animation-timeline: view(); animation-range: cover 30% cover 45%; }
+}
+@keyframes stage-fill { from { opacity: 0; translate: 0 32px; } }
+@keyframes stage-tick { from { color: var(--color-faint); } }
+
+.stage-land { animation: stage-land 4s var(--ease-out) 3; }
+@keyframes stage-land { 0% { opacity: 0; scale: 0.97; } 8%, 100% { opacity: 1; scale: 1; } }
+/* The bar runs a little past the 0:30 mark before it holds, so the listen reads as counted, not as stopping there. */
+/* Scaled, not resized (no layout per frame); two passes (12s), then it rests at the full bar. */
+.stage-progress { width: 52%; transform-origin: left; animation: stage-progress 6s linear 2; }
+@keyframes stage-progress { from { scale: 0 1; } 70%, to { scale: 1 1; } }
+.stage-usb { position: relative; display: grid; place-items: center; width: 22px; height: 46px; border-radius: 4px 4px 6px 6px; background: linear-gradient(#262823, #1a1b18); box-shadow: 0 0 0 1px var(--color-line-2); }
+.stage-usb::before { content: ""; position: absolute; top: -10px; width: 12px; height: 10px; border-radius: 2px 2px 0 0; background: #8d9087; box-shadow: inset 0 0 0 1px #5e6159; }
+/* The set log lights each line as it reaches the middle of the screen. */
+@supports (animation-timeline: view()) {
+  .stage-log { animation: stage-log linear both; animation-timeline: view(); animation-range: entry 60% cover 45%; }
+}
+@keyframes stage-log { from { opacity: 0.25; } }

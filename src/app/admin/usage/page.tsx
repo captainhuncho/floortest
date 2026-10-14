@@ -69,7 +69,7 @@ export default async function Usage() {
             </p>
           </>
         ) : (
-          <p className="text-sm text-mute">No one has opened the Review Queue in the last 30 days yet.</p>
+          <p className="text-sm text-mute">No one has opened the Queue in the last 30 days yet.</p>
         )}
       </section>
 

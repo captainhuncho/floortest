@@ -6,8 +6,8 @@ import { viewingAs } from "./auth";
 /** The parts of FloorTest we count, with the names Admin → Feature use shows. */
 export const FEATURES_USED = {
   floor: "The Floor",
-  review_queue: "Review Queue: Queue view",
-  review_list: "Review Queue: List view",
+  review_queue: "Queue: one by one",
+  review_list: "Queue: List view",
   decide: "Keep / Not for me",
   reply: "Reply to a sender",
   played_out: "Mark played out",
@@ -16,7 +16,7 @@ export const FEATURES_USED = {
   shared: "Shared collection (teammate)",
   vote: "Team vote",
   teammates: "Add a teammate",
-  prepare: "Prepare for set",
+  prepare: "Prepare",
   export: "Download crate / Rekordbox",
   send: "Send music",
   contacts: "Contacts",

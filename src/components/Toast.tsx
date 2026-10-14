@@ -2,7 +2,8 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 
-type Toast = { id: number; message: string; action?: { label: string; run: () => void | Promise<void> } };
+/** An action is undoable by default (U runs the latest one); `undoable: false` for one that isn't, like "Open it". */
+type Toast = { id: number; message: string; action?: { label: string; run: () => void | Promise<void>; undoable?: boolean } };
 type Ctx = { show: (t: Omit<Toast, "id">) => void; undoLatest: () => boolean };
 
 const ToastContext = createContext<Ctx | null>(null);
@@ -79,7 +80,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       if (exit.current) clearTimeout(exit.current);
       leavingRef.current = false;
       setLeaving(false);
-      if (t.action) lastAction.current = t.action;
+      if (t.action && t.action.undoable !== false) lastAction.current = t.action;
       setToast({ ...t, id: ++seq.current });
       const h = hold.current;
       // Already under the pointer or focus (a second toast while reading the first): stay paused.
@@ -111,7 +112,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ show, undoLatest }}>
       {children}
-      <div aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-24 z-40 flex justify-center px-4">
+      <div aria-live="polite" data-toast-region className="pointer-events-none fixed inset-x-0 bottom-24 z-40 flex justify-center px-4">
         {toast && (
           // One stable element: a new message swaps its text in place instead of replaying the entrance.
           <div
@@ -138,7 +139,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                   dismiss();
                 }}
               >
-                {toast.action.label} <span className="font-normal text-ink/60">(U)</span>
+                {toast.action.label}
+                {toast.action.undoable !== false && <span className="font-normal text-ink/60"> (U)</span>}
               </button>
             )}
             <button onClick={dismiss} aria-label="Dismiss" className="grid size-11 shrink-0 place-items-center rounded-md text-lg text-ink/60 hover:text-ink">

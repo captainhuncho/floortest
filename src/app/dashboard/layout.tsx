@@ -11,8 +11,8 @@ import { Sidebar } from "./Sidebar";
 import { FeedbackButton } from "./FeedbackButton";
 import { MobileTabBar } from "./MobileTabBar";
 import { TopBar } from "./TopBar";
-import { VerifyBanner } from "./VerifyBanner";
 import { DeskBar } from "./DeskBar";
+import { PageFrame } from "./PageFrame";
 import { teamsFor } from "@/lib/account-members";
 import { currentTheme, themeClass } from "@/lib/theme";
 import { SkipLink } from "@/components/SkipLink";
@@ -85,8 +85,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 teams={teams.map((t) => ({ id: t.id, name: t.name, role: t.role }))}
               />
             )}
-            {!view && !user.email_verified_at && <VerifyBanner email={user.email} />}
-            {children}
+            {/* The confirm-your-email banner lives on the Floor and Send pages only (they render VerifyBanner). */}
+            <PageFrame>{children}</PageFrame>
             {!view && <LivePulse url="/api/pulse" />}
           </main>
         </div>
