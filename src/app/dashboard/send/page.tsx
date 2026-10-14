@@ -7,6 +7,7 @@ import { sentBy } from "@/lib/sent";
 import { APP_URL } from "@/lib/mail";
 import { unheardAfterWindow } from "@/lib/plans";
 import { SendComposer } from "./SendComposer";
+import { PageTitle } from "@/components/PageTitle";
 
 export const metadata = { title: "Send — FloorTest" };
 
@@ -48,7 +49,7 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
                       to {r.receiver} <span className="font-mono">/{r.handle}</span> · {new Date(r.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                     </span>
                   </span>
-                  <span className="flex shrink-0 items-center gap-1 text-sm font-semibold text-lime">
+                  <span className="flex shrink-0 items-center gap-1 text-sm font-semibold text-mute group-hover:text-bone">
                     Track <span aria-hidden className="transition-transform group-hover:translate-x-0.5">→</span>
                   </span>
                 </span>
@@ -63,9 +64,8 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
   return (
     <>
     {!view && !user.email_verified_at && <VerifyBanner email={user.email} />}
-    <div className="max-w-3xl px-4 py-6 sm:px-8">
-      <h1 className="page-title">Send</h1>
-      <p className="mt-2 text-mute">Send a track to anyone with a FloorTest link. Type the part after {APP_URL.replace(/^https?:\/\//, "")}/.</p>
+    <div className="page-gutter page-narrow py-6">
+      <PageTitle sub={`Send a track to anyone with a FloorTest link. Type the part after ${APP_URL.replace(/^https?:\/\//, "")}/.`}>Send</PageTitle>
       <div className="mt-8">
         <SendComposer host={APP_URL.replace(/^https?:\/\//, "")} account={{ name: user.name, email: user.email }} initial={to} />
       </div>
@@ -74,14 +74,38 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
         <h2 id="sent-h" className="label">
           Sent ({sent.length})
         </h2>
-        <p className="mt-1 text-sm text-mute">Each send gets a private receipt. Tap one to see what&apos;s happened.</p>
-        <ul className="mt-3 divide-y divide-line overflow-hidden rounded-md border border-line">
-          {recent.map(row)}
-          {!recent.length && older.length > 0 && <li className="px-4 py-4 text-sm text-mute">Nothing sent in the last 10 days.</li>}
-          {!sent.length && (
-            <li className="px-4 py-6 text-sm text-mute">Nothing sent yet.</li>
-          )}
-        </ul>
+        {sent.length ? (
+          <>
+            <p className="mt-1 text-sm text-mute">Each send gets a private receipt. Tap one to see what&apos;s happened.</p>
+            <ul className="mt-3 divide-y divide-line overflow-hidden rounded-md border border-line">
+              {recent.map(row)}
+              {!recent.length && <li className="px-4 py-4 text-sm text-mute">Nothing sent in the last 10 days.</li>}
+            </ul>
+          </>
+        ) : (
+          <>
+            <p className="mt-1 text-sm text-mute">Nothing sent yet. Each track you send gets a private receipt that says what happened to it, and nothing more.</p>
+            {/* A sample row, faint and labelled, so the receipt's ladder is clear before there's a real one. Not a card. */}
+            <figure className="mt-4 border-y border-dashed border-line py-3.5 text-faint">
+              <figcaption className="sr-only">Sample receipt</figcaption>
+              <p className="flex items-baseline justify-between gap-4">
+                <span className="min-w-0 truncate text-sm">Sample Artist - Nightbus (demo)</span>
+                <span className="shrink-0 text-[11px] font-bold uppercase tracking-[1px]">Sample</span>
+              </p>
+              <ol aria-label="What a receipt can say, in order" className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]">
+                {["Delivered", "Listened", "Downloaded", "Replied", "Played out"].map((s, i) => (
+                  <li key={s} className="flex items-center gap-2">
+                    {i > 0 && <span aria-hidden>→</span>}
+                    <span className="flex items-center gap-1.5">
+                      <span aria-hidden className="size-1.5 rounded-full border border-current" />
+                      {s}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </figure>
+          </>
+        )}
         {older.length > 0 && (
           // Sends over 10 days old fold away so the page stays short; tap + to see them.
           <details className="group mt-3">
