@@ -156,14 +156,15 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     (t: PlayerTrack, q?: PlayerTrack[]) => {
       if (q) queue.current = q;
       const a = audio.current!;
-      if (current?.id === t.id) {
+      // The track loaded right now (a ref, so a play() from an older render, like a decision's rollback, sees it too).
+      if (listened.current.id === t.id) {
         if (a.paused) void a.play();
         else a.pause();
         return;
       }
       start(t);
     },
-    [current, start],
+    [start],
   );
 
   const toggle = useCallback(() => {

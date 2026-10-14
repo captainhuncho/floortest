@@ -296,6 +296,8 @@ html:has(.theme-day), html:has(.theme-day) body { background: #fafaf6; }
   html:has([data-review-open]) :is([data-tabbar], [data-mini-player]) { display: none; }
   html:has([data-review-open]) { scroll-padding-bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 96px); }
   html:has([data-review-open]) [data-toast-region] { bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 88px); }
+  /* Typing a reply (or in any field): the on-screen keyboard needs the room (Android lifts fixed bars above it). */
+  html:has([data-review-open] :is(textarea, input, select):focus) :is([data-rail-dock], [data-rail-space]) { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { [data-swipe-zone] { transition-property: opacity !important; } }
 

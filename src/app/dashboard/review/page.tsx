@@ -14,6 +14,7 @@ import { ViewToggle } from "../ViewToggle";
 import { FilterMenu } from "../list/FilterMenu";
 import { StatusTabs } from "./StatusTabs";
 import { CaughtUp } from "./CaughtUp";
+import { HandoffSweep } from "../ReviewHandoff";
 import { VIEW_COOKIE } from "../view-cookie";
 
 export const metadata = { title: "Queue — FloorTest" };
@@ -118,8 +119,8 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
   const prevRow = idx > 0 ? rows[idx - 1] : undefined;
   // Opening a track (t in the URL) is full review on narrow screens: the list steps aside until "Back".
   const focused = !!sp.t && !!selected;
-  // Deciding this one leaves nothing waiting: the review lands on "All caught up." instead of a next track.
-  const lastWaiting = status === "review" && !!selected && rows.every((r) => r.id === selected.id);
+  // Needs review: what is still waiting, so deciding the last one lands on "All caught up." instead of a next track.
+  const waiting = status === "review" ? rows.map((r) => r.id) : null;
 
   const totalActive = collections.reduce((n, c) => n + c.count, 0);
 
@@ -248,7 +249,7 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
             next={nextRow ? { href: href({ t: String(nextRow.id) }), track: toPlayer(nextRow) } : null}
             prevHref={prevRow ? href({ t: String(prevRow.id) }) : null}
             queueHref={href({ t: undefined })}
-            lastWaiting={lastWaiting}
+            waiting={waiting}
             docked={focused}
           />
         </aside>
@@ -259,6 +260,7 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
           <p className="max-w-56 text-center text-sm text-mute">Nothing to review in this view. Pick another tab or collection.</p>
         </aside>
       )}
+      <HandoffSweep at={JSON.stringify(sp)} />
     </div>
   );
 }
