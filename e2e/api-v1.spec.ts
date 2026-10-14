@@ -71,7 +71,7 @@ test("a sender sends a track from the app; it lands on the receiver's desk and i
   const password = "Correct-Horse-Battery-77";
   await page.goto("/signup");
   await page.getByLabel("Invite code").fill("E2E-INVITE");
-  await page.getByLabel("What best describes you?").selectOption("producer");
+  await page.getByLabel("What best describes you?").selectOption("producer_dj");
   await page.getByLabel("First name").fill("Appy");
   await page.getByLabel("Surname").fill("Sender");
   await page.getByLabel("Username").fill(`app${stamp}`);

@@ -97,6 +97,7 @@ Open items from `docs/archive/HANDOFF.md`, `docs/archive/CLAUDE_NEXT_WORK.md` an
 - Revisit Cloudflare Workers hosting only at tens of thousands of users (trial findings in `docs/beta-launch-plan.md`).
 
 ## Done (recent)
+- 14 Oct (preview): Delivered lights lime on the sender's lists too: `/sent` and the Send page's sent rows light from delivery on (dim only after 90 days unheard), and the Send page's sample receipt row starts with Delivered lit.
 - 14 Oct (shipped 14 Oct): **account types** (owner, 14 Oct; product panel): seven types instead of three (DJ, Producer / DJ, A&R, Label / Radio, Artist, Curator, Music professional), asked at sign-up and changed in Settings, with an optional "what you do" line. Types switch tools on by default and never lock them (Settings → Tools); Played out is the first tool (DJ, Producer / DJ, Curator). Existing accounts moved: producer → Producer / DJ, label → Label / Radio (migration 0095). Test `tests/account-types.test.ts`.
 - 14 Oct (preview): Delivered lights lime on the sender's lists too: `/sent` and the Send page's sent rows light from delivery on (dim only after 90 days unheard), and the Send page's sample receipt row starts with Delivered lit.
 - 14 Oct: the new home page shipped (owner, 14 Oct): the stage (deck and phone, two sides of the desk, the set log), the motion clips in `public/motion/`, the shorter copy, the site title "the receiving desk for new music", the Trust intro line. Fields already published in Admin → Site content keep their saved wording until changed there.
