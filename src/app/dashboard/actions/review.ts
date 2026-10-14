@@ -13,7 +13,7 @@ import { audit, trackLabel } from "@/lib/audit";
 import { requestStems } from "@/lib/stems";
 import { parseCues } from "@/lib/cues";
 import { done, ownCollection } from "./common";
-import { closePlayedOutPrompt, playedOutPrompt } from "@/lib/played-out-prompt";
+import { canMarkPlayedOut, closePlayedOutPrompt, markableOnPrepare, playedOutPicks, playedOutPrompt } from "@/lib/played-out-prompt";
 
 export type UndoToken = { trackId: number; prev: { decision: Decision | null; decided_at: number | null }; eventId: number };
 
@@ -95,21 +95,27 @@ export async function playedOut(trackId: number, note: string) {
   return ok;
 }
 
-/** The Monday prompt: tells each chosen sender their kept track was played out, then closes the prompt for the week. */
-export async function playedOutBatch(trackIds: number[], note: string) {
+/**
+ * The pick page (any day) and Prepare's "Played it out": tells each chosen sender their kept track was played out.
+ * DJ desks only, owner and A&R / Admin. From the pick page, only its list (kept in the last 14 days, not
+ * evaluation-only) can be marked, and an open Monday prompt closes for the week. From Prepare, any kept track the
+ * sender didn't mark evaluation-only.
+ */
+export async function playedOutBatch(trackIds: number[], note: string, from: "pick" | "prepare" = "pick") {
   const u = await requireRole("admin");
-  const prompt = await playedOutPrompt(u);
-  if (!prompt) return 0;
-  const allowed = new Set(prompt.tracks.map((t) => t.id));
+  if (!canMarkPlayedOut(u)) return 0;
+  const prompt = from === "pick" ? await playedOutPrompt(u) : null;
+  const picks = from === "pick" ? await playedOutPicks(u) : null;
+  const allowed = picks ? new Set(picks.tracks.map((t) => t.id)) : null;
   let marked = 0;
-  for (const id of trackIds.slice(0, 50)) {
-    if (!allowed.has(id)) continue;
+  for (const id of (Array.isArray(trackIds) ? trackIds : []).slice(0, 50)) {
+    if (allowed && !allowed.has(id)) continue;
     const t = await ownedTrack(u.id, id);
-    if (!t || !(await markPlayedOut(u, t, String(note || "")))) continue;
+    if (!t || !markableOnPrepare(t) || !(await markPlayedOut(u, t, String(note || "")))) continue;
     await audit(u.id, "played_out", trackLabel(t), t.id);
     marked++;
   }
-  await closePlayedOutPrompt(u.id, prompt.key);
+  if (prompt) await closePlayedOutPrompt(u.id, prompt.key);
   if (marked) await trackUse(u.id, "played_out");
   done();
   return marked;

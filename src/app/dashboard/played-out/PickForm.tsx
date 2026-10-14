@@ -6,8 +6,11 @@ import { useToast } from "@/components/Toast";
 import { playedOutBatch, skipPlayedOutPrompt } from "../actions/review";
 import type { PromptTrack } from "@/lib/played-out-prompt";
 
-/** Tick what you played, say where (optional), and each ticked sender sees Played out. Nothing is ticked for you. */
-export function PickForm({ tracks }: { tracks: PromptTrack[] }) {
+/**
+ * Tick what you played, say where (optional), and each ticked sender sees Played out. Nothing is ticked for you.
+ * `promptOpen`: the Monday question is open this week, so "None this weekend" can close it.
+ */
+export function PickForm({ tracks, promptOpen }: { tracks: PromptTrack[]; promptOpen: boolean }) {
   const [picked, setPicked] = useState<number[]>([]);
   const [note, setNote] = useState("");
   const [pending, start] = useTransition();
@@ -21,9 +24,13 @@ export function PickForm({ tracks }: { tracks: PromptTrack[] }) {
         e.preventDefault();
         if (!picked.length) return;
         start(async () => {
-          const n = await playedOutBatch(picked, note);
-          toast.show({ message: n ? `${n} sender${n === 1 ? "" : "s"} will see Played out` : "Nothing changed" });
-          router.push("/dashboard/floor");
+          try {
+            const n = await playedOutBatch(picked, note, "pick");
+            toast.show({ message: n ? `${n} sender${n === 1 ? "" : "s"} will see Played out` : "Nothing changed" });
+            router.push("/dashboard/floor");
+          } catch {
+            toast.show({ message: "Couldn't save that. Nothing changed. Try again." });
+          }
         });
       }}
     >
@@ -54,19 +61,21 @@ export function PickForm({ tracks }: { tracks: PromptTrack[] }) {
         <button className="btn-lime" disabled={pending || !picked.length}>
           {pending ? "Telling them…" : picked.length ? `Tell ${picked.length} sender${picked.length === 1 ? "" : "s"}: Played out` : "Tick what you played"}
         </button>
-        <button
-          type="button"
-          className="btn-ghost"
-          disabled={pending}
-          onClick={() =>
-            start(async () => {
-              await skipPlayedOutPrompt();
-              router.push("/dashboard/floor");
-            })
-          }
-        >
-          None this weekend
-        </button>
+        {promptOpen && (
+          <button
+            type="button"
+            className="btn-ghost"
+            disabled={pending}
+            onClick={() =>
+              start(async () => {
+                await skipPlayedOutPrompt();
+                router.push("/dashboard/floor");
+              })
+            }
+          >
+            None this weekend
+          </button>
+        )}
       </div>
     </form>
   );
