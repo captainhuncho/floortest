@@ -13,7 +13,7 @@ Receivers are the customer. Senders are the growth loop: every sender who has a 
 
 ## The one-line idea
 
-**The receiving desk for new music.** Use this as the category line everywhere. The hero line, *From the studio / to the floor.*, is the promise.
+**The receiving desk for new music.** Use this as the category line everywhere. On the home page, the small line above the headline says it to the reader: *The receiving desk for people who live on new music.* (owner, 14 Oct 2026). The hero line, *From the studio / to the floor.*, is the promise.
 
 ## Voice: four traits
 

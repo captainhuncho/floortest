@@ -57,7 +57,7 @@ export const SITE_PAGES = {
     path: "/",
     fields: {
       sections: f("Section order", "deck,log,desk,private,plans,waitlist,faq,-journey,-how,-preview", { hint: "Easiest to change on the page itself (Edit on the page). A \"-\" in front hides a section." }),
-      eyebrow: f("Line above the headline", "The receiving desk for new music"),
+      eyebrow: f("Line above the headline", "The receiving desk for people who live on new music."),
       headline: f("Headline", "From the studio"),
       headline_italic: f("Headline, second line (italic)", "to the floor."),
       intro: text("Intro", "One link for every track you're sent. Play it, keep it, answer the sender. No more DMs."),
@@ -77,7 +77,7 @@ export const SITE_PAGES = {
       plans_intro: text("Plans: intro (beta)", "Free for 20 active tracks. Pro and Team for bigger desks and crews."),
       plans_title_launch: f("Plans: headline (after launch)", "Free while you find your sound.", { hint: "Shown once the Billing switch is on." }),
       plans_intro_launch: text("Plans: intro (after launch)", "Free holds 20 tracks at a time, for good. Pro and Team make room for hundreds more and bring your crew in."),
-      footer_line: f("Footer: who it's for", "Built for DJs, producers and labels who live on new music."),
+      footer_line: f("Footer: who it's for", "Built for DJs, producers and labels."),
       faq_title: f("Questions: title", "Before the first track lands."),
       faq: text(
         "Questions and answers",

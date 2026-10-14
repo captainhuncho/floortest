@@ -283,7 +283,7 @@ export default async function Home({
         <div className="relative mx-auto max-w-6xl px-4 pb-10 pt-16 sm:px-6 sm:pt-24">
           <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-center">
             <div>
-              <p className="home-label flex items-center gap-3">
+              <p className="home-label flex items-center gap-3 normal-case tracking-normal">
                 <span aria-hidden className="h-px w-8 bg-line-2" /> {text("eyebrow")}
               </p>
               <h1 className="mt-6 text-[clamp(3rem,7.5vw,6.5rem)] font-bold leading-[0.9] tracking-[-0.045em]">
