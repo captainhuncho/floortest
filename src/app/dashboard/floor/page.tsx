@@ -178,12 +178,12 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
     <>
     {!view && !user.email_verified_at && <VerifyBanner email={user.email} />}
     {/*
-      One column at every width (owner, 14 Oct). First what needs you (the waiting count, the one lime button, anything
+      One centred column at every width (owner, 14 Oct). First what needs you (the waiting count, the one lime button, anything
       wrong, the next tracks, what's ready for a set); below it the desk itself, as it looks beside the work: your link,
       the week's readings and the desk in one panel, sending music.
     */}
     <div className="page-gutter flex flex-col gap-8 py-5 sm:py-8">
-      <div className="page-narrow flex min-w-0 flex-col gap-8">
+      <div className="page-narrow mx-auto flex w-full min-w-0 flex-col gap-8">
         {/* What needs you: the waiting count under the greeting, and the one button is the daily job. */}
         <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
           <div className="flex min-w-0 flex-col gap-1.5">
@@ -264,7 +264,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
         )}
       </div>
 
-      <div className="page-narrow flex min-w-0 flex-col gap-8">
+      <div className="page-narrow mx-auto flex w-full min-w-0 flex-col gap-8">
 
         {/*
           Phones: the Floor as it was before the 14 Oct design pass (owner, 14 Oct): This week and Your desk as one line
