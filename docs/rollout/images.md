@@ -2,7 +2,7 @@
 
 Numbered so the owner can say "do 7 and 15".
 
-**What untitled.stream gets right (approach, not look):** a fixed title line and one button while one big object fills the screen; then dark tiles where a cropped app screen explains and the copy is 2–4 words plus one line. Their pictures are objects (the maker's side); ours are people and places where music lands, with the product on a real device.
+**The approach (not a look to copy):** a fixed title line and one button while one big object fills the screen; then dark tiles where a cropped app screen explains and the copy is 2–4 words plus one line. Their pictures are objects (the maker's side); ours are people and places where music lands, with the product on a real device.
 
 ## 1. Photography direction
 
