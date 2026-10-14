@@ -173,9 +173,12 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, queu
         handoff.focus = null;
         if (zone?.isConnected) restore(zone);
         if (goes !== "next" || !next) return toast.show({ message: here });
-        const there = new URL(next.href, window.location.href);
-        if (window.location.pathname + window.location.search === there.pathname + there.search) {
-          // Still on the track it moved to: bring this one back (playing again if it was).
+        // Which track the address shows. A failed save can come back before the move to the next track has landed in
+        // the address bar (it may still show this track, or no ?t= for the first one), so all three count as "here".
+        const t = (href: string) => new URL(href, window.location.href).searchParams.get("t");
+        const at = t(window.location.href);
+        if (at === null || at === t(next.href) || at === t(selfHref)) {
+          // Bring this one back (playing again if it was); the replace also overrides a move still on its way.
           toast.show({ message: here });
           router.replace(selfHref, { scroll: false });
           if (wasPlaying) player.play(track);
