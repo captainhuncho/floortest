@@ -10,6 +10,7 @@ import { siteEditor } from "@/lib/site-editor";
 import { SectionFrame, SectionList, SiteEditor } from "@/components/SiteEditor";
 import { mono, serif } from "./fonts";
 import { HomePreview } from "./HomePreview";
+import { DeckSection, SetLog, TwoSides } from "./HomeStage";
 import { ClaimBox } from "./ClaimBox";
 import { WaitlistForm } from "./WaitlistForm";
 import { NewsletterForm } from "./NewsletterForm";
@@ -55,6 +56,9 @@ export default async function Home({
       : { href: "/signup", label: "Claim your link" };
 
   const SECTIONS: Record<HomeSection, React.ReactNode> = {
+    deck: <DeckSection />,
+    log: <SetLog />,
+    desk: <TwoSides />,
     preview: (
       <section data-edit-image={editor ? "preview_image" : undefined} className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
         {c.preview_image ? (
@@ -63,9 +67,7 @@ export default async function Home({
         ) : (
           <>
             <div className="mb-4 flex items-center justify-between">
-              <p className="text-xs uppercase tracking-[0.12em] text-lime">
-                [Live product preview]
-              </p>
+              <p className="home-label">Live product preview</p>
               <p className="home-label">Click a track</p>
             </div>
             <HomePreview host={HOST} />
@@ -109,11 +111,11 @@ export default async function Home({
             {JOURNEY.map(([icon, title, body], i) => (
               <li
                 key={title}
-                className={`flex gap-4 border-white/10 p-6 ${i ? "border-t sm:border-t-0 sm:border-l" : "bg-lime/[0.06]"} ${i === 2 ? "sm:border-l-0 sm:border-t lg:border-t-0 lg:border-l" : ""} ${i === 3 ? "sm:border-t lg:border-t-0" : ""}`}
+                className={`flex gap-4 border-white/10 p-6 ${i ? "border-t sm:border-t-0 sm:border-l" : "bg-ink-3"} ${i === 2 ? "sm:border-l-0 sm:border-t lg:border-t-0 lg:border-l" : ""} ${i === 3 ? "sm:border-t lg:border-t-0" : ""}`}
               >
                 <span
                   aria-hidden
-                  className={`text-xl ${i ? "text-dim" : "text-lime"}`}
+                  className={`text-xl ${i ? "text-dim" : "text-bone"}`}
                 >
                   {icon}
                 </span>
@@ -142,20 +144,20 @@ export default async function Home({
           <dl className="divide-y divide-white/10 border-y border-white/10">
             {[
               [
-                "Your decisions stay yours",
-                "Senders see listens, downloads and replies. Keep and not-for-me calls are never shared.",
+                "Your calls stay private",
+                "Senders see listens, downloads and replies. Never Keep or Not for me.",
               ],
               [
                 "You control intake",
-                "Pause your link while touring, set closing dates per callout, and block anyone.",
+                "Pause your link, close a callout, block anyone.",
               ],
               [
                 "Clear retention",
-                "Undecided tracks are deleted after 90 days, tracks marked “Not for me” 30 days after you mark them. Kept tracks stay until you delete them.",
+                "Undecided tracks are deleted after 90 days, Not for me 30 days after you mark it. Kept tracks stay until you delete them.",
               ],
             ].map(([k, v]) => (
               <div key={k} className="py-5">
-                <dt className="text-xs uppercase tracking-[0.1em] text-lime">
+                <dt className="text-xs uppercase tracking-[0.1em] text-bone">
                   {k}
                 </dt>
                 <dd className="mt-2 text-sm text-mute">
@@ -173,11 +175,11 @@ export default async function Home({
         <h2 className="mt-4 text-[clamp(1.75rem,3.6vw,2.75rem)] font-bold leading-[1.05] tracking-[-0.035em]">{text(billing ? "plans_title_launch" : "plans_title")}</h2>
         <p className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-mute sm:text-base">{text(billing ? "plans_intro_launch" : "plans_intro")}</p>
         <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-          <Link href={cta.href} className="rounded-full bg-lime px-7 py-3 text-sm font-semibold text-ink hover:brightness-95">
-            {user ? "Open your desk" : inviteOnly ? "Request an invite" : "Start free"}
+          <Link href={cta.href} className="rounded-full border border-line-2 bg-ink-2 px-7 py-3 text-sm font-semibold text-bone hover:border-mute">
+            {cta.label}
           </Link>
-          <Link href="/pricing" className="rounded-full border border-line-2 bg-ink-2 px-7 py-3 text-sm font-semibold text-bone hover:border-mute">
-            Compare all plans
+          <Link href="/pricing" className="px-2 py-3 text-sm text-mute underline-offset-4 hover:text-bone hover:underline">
+            Compare all plans →
           </Link>
         </div>
       </section>
@@ -188,7 +190,7 @@ export default async function Home({
             <div>
               <h2 className="text-[clamp(2rem,4vw,3.25rem)] font-bold leading-[0.95] tracking-[-0.035em]">No invite yet?</h2>
               <p className="mt-4 text-sm leading-relaxed text-mute">
-                We&apos;re letting DJs, labels and curators in a few at a time. Leave your details and you&apos;ll get a personal invite by email.
+                Invites go out a few at a time. Leave your details and we&apos;ll email yours.
               </p>
             </div>
             <WaitlistForm host={HOST} botCheckKey={botKey} />
@@ -212,13 +214,13 @@ export default async function Home({
                 {q}
                 <span
                   aria-hidden
-                  className="text-xl text-lime group-open:hidden"
+                  className="text-xl text-mute group-open:hidden"
                 >
                   +
                 </span>
                 <span
                   aria-hidden
-                  className="hidden text-xl text-lime group-open:inline"
+                  className="hidden text-xl text-mute group-open:inline"
                 >
                   −
                 </span>
@@ -255,8 +257,8 @@ export default async function Home({
           <Logo />
           <nav className="flex shrink-0 items-center gap-2 whitespace-nowrap">
             {user ? (
-              <Link href="/dashboard/floor" className="btn-lime btn-sm">
-                Open desk
+              <Link href="/dashboard/floor" className="btn-ghost btn-sm">
+                Open your desk
               </Link>
             ) : (
               <>
@@ -266,16 +268,9 @@ export default async function Home({
                 <Link href="/login" className="btn-ghost btn-sm">
                   Log in
                 </Link>
-                <Link href={cta.href} className="btn-lime btn-sm">
-                  {inviteOnly ? (
-                    <>
-                      {/* Narrow phones: the short label, so the header stays on one line. */}
-                      <span className="sm:hidden">Get invite</span>
-                      <span className="hidden sm:inline">Request an invite</span>
-                    </>
-                  ) : (
-                    "Get your link"
-                  )}
+                {/* The hero holds the page's one lime button; this one stays quiet. Short label so the header fits on a phone. */}
+                <Link href={cta.href} className="btn-ghost btn-sm">
+                  {inviteOnly ? "Request invite" : "Claim your link"}
                 </Link>
               </>
             )}
@@ -288,8 +283,8 @@ export default async function Home({
         <div className="relative mx-auto max-w-6xl px-4 pb-10 pt-16 sm:px-6 sm:pt-24">
           <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-center">
             <div>
-              <p className="flex items-center gap-3 text-sm text-lime">
-                <span aria-hidden className="h-px w-8 bg-lime" /> {text("eyebrow")}
+              <p className="home-label flex items-center gap-3">
+                <span aria-hidden className="h-px w-8 bg-line-2" /> {text("eyebrow")}
               </p>
               <h1 className="mt-6 text-[clamp(3rem,7.5vw,6.5rem)] font-bold leading-[0.9] tracking-[-0.045em]">
                 {text("headline")}
@@ -311,12 +306,12 @@ export default async function Home({
                   href={DEMO}
                   className="text-sm text-bone hover:text-bone"
                 >
-                  See an example link <span className="text-dim">(example: /maxwell)</span> →
+                  See an example <span className="text-dim">/maxwell</span> →
                 </Link>
               </div>
               {!user && (
                 <p className="mt-4 text-xs text-dim">
-                  Private beta · invites go out in small batches to DJs, curators and labels
+                  Private beta
                   {inviteOnly && (
                     <>
                       {" "}· <Link href="/signup" className="underline underline-offset-4 hover:text-bone">Have an invite? Claim your link</Link>
@@ -331,7 +326,7 @@ export default async function Home({
                 <>
                   <p className="home-label">Your link</p>
                   <p className="mt-4 break-all text-xl sm:text-2xl">
-                    {HOST}/<wbr /><span className="text-lime">{user.handle}</span>
+                    {HOST}/<wbr /><span className="text-bone">{user.handle}</span>
                   </p>
                 </>
               ) : (
@@ -343,9 +338,9 @@ export default async function Home({
                   <span>Yesterday</span>
                   <span>Friday residency</span>
                 </div>
-                <div className="flex items-center justify-between rounded-md border border-lime/50 bg-lime/[0.08] px-4 py-2.5 text-xs">
+                <div className="flex items-center justify-between rounded-md border border-line-2 bg-ink-3 px-4 py-2.5 text-xs">
                   <span className="text-mute">Today</span>
-                  <span className="font-semibold text-lime">Radio show callout</span>
+                  <span className="font-semibold text-bone">Radio show callout</span>
                 </div>
               </div>
             </div>
@@ -376,7 +371,7 @@ export default async function Home({
           <nav aria-label="Footer" className="col-span-7 grid grid-cols-3 gap-x-6 pl-8">
             {footerGroups().map((g) => (
               <div key={g.title}>
-                <h2 className="text-[11px] font-bold uppercase tracking-[1.5px] text-lime">{g.title}</h2>
+                <h2 className="text-[11px] font-bold uppercase tracking-[1.5px] text-bone">{g.title}</h2>
                 <ul className="mt-3 grid gap-y-1">
                   {(g.title === "Legal" ? g.links.slice(0, LEGAL_MAIN) : g.links).map((l) => (
                     <li key={l.label}>
@@ -397,7 +392,7 @@ export default async function Home({
           </nav>
         </div>
         <div className="mt-10 flex items-center justify-between gap-3 border-t border-line pt-6 text-xs text-dim">
-          <p>© {new Date().getFullYear()} FloorTest Labs. Private beta.</p>
+          <p>© {new Date().getFullYear()} FloorTest Labs. Private beta. Web · iPhone and Android soon.</p>
           <ul className="flex flex-wrap gap-x-4">
             {(footerGroups().find((g) => g.title === "Legal")?.links.slice(LEGAL_MAIN) ?? []).map((l) => (
               <li key={l.label}>
@@ -423,7 +418,7 @@ export default async function Home({
         <nav aria-label="Footer" className="mt-8 grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
           {footerGroups().map((g) => (
             <div key={g.title} className={g.title === "Legal" ? "col-span-2 sm:col-span-1" : ""}>
-              <h2 className="text-[11px] font-bold uppercase tracking-[1.5px] text-lime">{g.title}</h2>
+              <h2 className="text-[11px] font-bold uppercase tracking-[1.5px] text-bone">{g.title}</h2>
               {/* Legal is the long list: two columns on phones so it doesn't run down the screen. */}
               <ul className={`mt-3 grid gap-y-1 ${g.title === "Legal" ? "grid-cols-2 gap-x-6 sm:grid-cols-1" : ""}`}>
                 {g.links.map((l) => (
@@ -443,7 +438,7 @@ export default async function Home({
             </div>
           ))}
         </nav>
-        <p className="mt-10 border-t border-line pt-6 text-xs text-dim">© {new Date().getFullYear()} FloorTest. Private beta.</p>
+        <p className="mt-10 border-t border-line pt-6 text-xs text-dim">© {new Date().getFullYear()} FloorTest. Private beta. Web · iPhone and Android soon.</p>
       </footer>
     </div>
   );

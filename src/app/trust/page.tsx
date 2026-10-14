@@ -59,7 +59,7 @@ export default function Trust() {
     <main className="mx-auto max-w-2xl px-4 py-10 sm:py-16">
       <Logo className="mb-12" />
       <h1 className="text-4xl font-bold tracking-tight">Trust & Security</h1>
-      <p className="mt-3 text-mute">How FloorTest handles unreleased music today.</p>
+      <p className="mt-3 text-mute">How FloorTest handles the music sent to it today.</p>
       {sections.map(([h, items]) => (
         <section key={h} className="mt-10">
           <h2 className="text-lg font-semibold">{h}</h2>

@@ -20,7 +20,7 @@ export function NewsletterForm({ botCheckKey }: { botCheckKey: string | null }) 
       <input name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden />
       <div className="flex gap-2">
         <input name="email" type="email" required maxLength={200} placeholder="Your email" aria-label="Email for the newsletter" className="input min-w-0 flex-1" />
-        <button className="btn-lime btn-sm shrink-0" disabled={pending}>
+        <button className="btn-ghost btn-sm shrink-0" disabled={pending}>
           {pending ? "…" : "Subscribe"}
         </button>
       </div>
