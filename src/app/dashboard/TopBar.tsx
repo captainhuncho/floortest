@@ -257,9 +257,11 @@ function SearchDialog({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-start justify-center bg-black/60 px-4 pt-[12vh]" onMouseDown={onClose}>
+    // data-instant: opened from ⌘K as often as from the button, so it appears at once (globals.css).
+    <div data-instant className="fixed inset-0 z-[60] flex items-start justify-center bg-black/60 px-4 pt-[12vh]" onMouseDown={onClose}>
       <div
         ref={box}
+        data-instant
         role="dialog"
         aria-modal="true"
         aria-label="Search"
