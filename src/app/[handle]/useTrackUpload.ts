@@ -1,13 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { analyzeAudio, type Analysis } from "@/lib/analyze";
 import { readTags, type Tags } from "@/lib/tags";
 import { MAX_BATCH_TRACKS } from "@/lib/plans";
 import { stored, useBrowserValue } from "@/components/useBrowserValue";
 
 export const MAX_BYTES = 250 * 1024 * 1024;
-const SENDER_KEY = "floortest.sender";
+export const SENDER_KEY = "floortest.sender";
 
 export type Phase = "idle" | "uploading" | "done";
 
@@ -45,7 +45,7 @@ export async function uploadTrack(
     const started = await json(start);
     if (!start.ok || !started.uploadId || !started.target)
       return {
-        error: started.error || "Couldn't start the upload. Please try again.",
+        error: started.error || "Couldn't start the upload. Nothing was sent. Try again in a minute: your details are still here.",
       };
     const put = await new Promise<number>((resolve) => {
       const xhr = new XMLHttpRequest();
@@ -157,6 +157,17 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
       }
     } catch {}
   }
+
+  // Leaving or reloading mid-upload would drop the transfer: the browser asks first, until it's sent or has failed.
+  useEffect(() => {
+    if (phase !== "uploading") return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [phase]);
 
   const patch = (id: string, p: Partial<Item>) => setItems((list) => list.map((it) => (it.id === id ? { ...it, ...p } : it)));
 

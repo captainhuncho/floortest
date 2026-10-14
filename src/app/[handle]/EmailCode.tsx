@@ -41,7 +41,8 @@ export function EmailCode({ email, receiverName, sending, onConfirmed, onCancel 
 }) {
   const top = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    top.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+    // Smooth only for people who haven't asked their device for less motion.
+    top.current?.scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   }, []);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
@@ -53,7 +54,7 @@ export function EmailCode({ email, receiverName, sending, onConfirmed, onCancel 
     const r = await post({ action: "check", email, code });
     setBusy(false);
     if (r.ok) onConfirmed();
-    else setNote({ text: r.error || "That didn't work. Please try again.", error: true });
+    else setNote({ text: r.error || "That code didn't go through. Check the 6 digits, or send a new code.", error: true });
   }
 
   async function resend() {

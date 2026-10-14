@@ -32,7 +32,9 @@ export function GenrePicker({
   /** What the field is called for screen readers when its visible label is hidden (e.g. "Genre for Night Bloom"). */
   name?: string;
 }) {
-  const [other, setOther] = useState(false);
+  const [otherPicked, setOther] = useState(false);
+  // A genre typed earlier (e.g. answers restored after the page reloaded) that isn't on the list opens "Other".
+  const other = otherPicked || (!!value && !genres.includes(value));
   const selected = other ? OTHER : value;
   // A receiver's own short list (6 at most) reads best as tappable choices; the long default list stays a dropdown.
   if (genres.length <= 6 && !dropdown)
@@ -74,7 +76,7 @@ export function GenrePicker({
         {other && (
           <label className="block">
             <span className="sr-only">Your genre</span>
-            <input className={`${inputClass} ${invalid ? "border-danger/60" : ""}`} value={value} maxLength={40} autoFocus placeholder="Type your genre" onChange={(e) => onChange(e.target.value)} />
+            <input className={`${inputClass} ${invalid ? "border-danger/60" : ""}`} aria-invalid={invalid || undefined} aria-describedby={issue ? `${id}-issue` : undefined} value={value} maxLength={40} autoFocus placeholder="Type your genre" onChange={(e) => onChange(e.target.value)} />
           </label>
         )}
       </div>
@@ -86,6 +88,7 @@ export function GenrePicker({
         <select
           id={id}
           aria-describedby={issue ? `${id}-issue` : undefined}
+          aria-invalid={invalid || undefined}
           className={`${inputClass} ${invalid ? "border-danger/60" : ""}`}
           value={selected}
           required
@@ -116,6 +119,8 @@ export function GenrePicker({
           <span className="sr-only">Your genre</span>
           <input
             className={`${inputClass} ${invalid ? "border-danger/60" : ""}`}
+            aria-invalid={invalid || undefined}
+            aria-describedby={issue ? `${id}-issue` : undefined}
             value={value}
             maxLength={40}
             autoFocus
