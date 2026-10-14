@@ -2,7 +2,7 @@
 
 import { acceptInvite, acceptInviteForEmail, inviteBySecret, inviteForEmail } from "@/lib/account-members";
 import { passwordStrength } from "@/lib/password-strength";
-import { KINDS } from "@/lib/db";
+import { isAccountType } from "@/lib/account-types";
 
 import { switchOn } from "@/lib/switches";
 import { handleHeld } from "@/lib/accounts";
@@ -136,7 +136,7 @@ async function createAccount(form: FormData, a: NewAccount, opts: { googleEmail?
         invite.valid ? invite.code : null,
         validTz(String(form.get("tz") || "UTC")),
         String(form.get("source") || "").trim().slice(0, 200),
-        KINDS.includes(String(form.get("kind"))) ? String(form.get("kind")) : "dj",
+        isAccountType(form.get("kind")) ? form.get("kind") : null,
         now(),
         terms,
         form.get("updates") === "on" ? 1 : 0,

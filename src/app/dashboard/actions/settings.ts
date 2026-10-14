@@ -6,7 +6,7 @@ import { stepUp } from "@/lib/step-up";
 import { allow } from "@/lib/ratelimit";
 import { sendMail } from "@/lib/mail";
 import { MAX_LINKS, readLinks, slotLink, type ProfileLink } from "@/lib/socials";
-import { KINDS } from "@/lib/db";
+import { isAccountType, TOOL_IDS, toolOverrides, type Tool } from "@/lib/account-types";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { destroySession, requireRole } from "@/lib/auth";
@@ -82,8 +82,20 @@ export async function updateSettings(_: SettingsState, form: FormData): Promise<
   if (!firstName || !lastName) return { error: "Add your first name and surname." };
   const problem = await changeHandle(u.id, handle);
   if (problem) return { error: problem };
-  const kind = KINDS.includes(String(form.get("kind"))) ? String(form.get("kind")) : u.kind;
-  await q.run("UPDATE users SET name = ?, first_name = ?, last_name = ?, kind = ? WHERE id = ?", name, firstName, lastName, kind, u.id);
+  const picked = form.get("kind");
+  const kind = isAccountType(picked) ? picked : u.kind;
+  const kindNote = String(form.get("kind_note") ?? u.kind_note ?? "").trim().slice(0, 80);
+  // Tools: "on" / "off" from the form; stored only where they differ from the type's defaults.
+  const chosen: Partial<Record<Tool, boolean>> = {};
+  for (const t of TOOL_IDS) {
+    const v = form.get(`tool_${t}`);
+    if (v === "on" || v === "off") chosen[t] = v === "on";
+  }
+  const tools = TOOL_IDS.some((t) => t in chosen) ? toolOverrides(kind, chosen) : u.tools;
+  await q.run(
+    "UPDATE users SET name = ?, first_name = ?, last_name = ?, kind = ?, kind_note = ?, tools = ? WHERE id = ?",
+    name, firstName, lastName, kind, kindNote, tools, u.id,
+  );
   if (name !== u.name) await resetVerified(q, u.id);
   if (name !== u.name || handle !== u.handle) await audit(u.id, "settings_updated", handle !== u.handle ? `link is now /${handle}` : name);
   done();

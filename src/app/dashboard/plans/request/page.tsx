@@ -22,7 +22,7 @@ export default async function RequestPlan({ searchParams }: { searchParams: Prom
   // Once paid plans start, people choose and pay for themselves.
   if (billing) redirect(plan ? `/dashboard/checkout?plan=${plan.id}` : "/dashboard/plans");
   if (!plan || plan.price <= current.price) redirect("/dashboard/plans");
-  const guess = user.kind === "label" ? "label" : user.kind ? "artist" : "";
+  const guess = user.kind === "label_radio" || user.kind === "ar" ? "label" : user.kind === "music_pro" ? "management" : user.kind ? "artist" : "";
 
   return (
     <div className="flex max-w-2xl flex-col gap-6 px-4 py-5 text-bone sm:px-8 md:py-8">

@@ -10,6 +10,9 @@ import { googleConfig } from "@/lib/google-auth";
 import { AuthForm } from "../AuthForm";
 import { signup } from "../actions";
 import { inviteBySecret } from "@/lib/account-members";
+import { ACCOUNT_TYPES } from "@/lib/account-types";
+
+const TYPE_CHOICES = Object.entries(ACCOUNT_TYPES).map(([value, label]) => ({ value, label }));
 
 export const metadata = { title: "Claim your link — FloorTest" };
 
@@ -77,7 +80,7 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
           ...(inviteOnly && !referrer
             ? [{ name: "invite", label: "Invite code", placeholder: "From your invite", autoComplete: "off", defaultValue: inviteCode || ref || undefined }]
             : []),
-          { name: "kind", label: "What best describes you?", choices: [{ value: "dj", label: "DJ or curator" }, { value: "producer", label: "Producer" }, { value: "label", label: "Label or A&R" }] },
+          { name: "kind", label: "What best describes you?", choices: TYPE_CHOICES },
           { name: "first_name", label: "First name", placeholder: "Maxwell", autoComplete: "given-name" },
           { name: "last_name", label: "Surname", placeholder: "Adjavon", autoComplete: "family-name", hint: "Kept private: for your account, billing and receipts. Never shown on your page." },
           { name: "handle", label: "Username", prefix: `${host}/`, placeholder: "yourname", autoComplete: "off", hint: "Your link. You can add a stage or label name later in Profile.", defaultValue: (sp.handle || "").toLowerCase().replace(/[^a-z0-9-_]/g, "").slice(0, 30) || undefined },

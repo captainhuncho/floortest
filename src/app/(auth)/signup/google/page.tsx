@@ -8,6 +8,9 @@ import { AuthForm } from "../../AuthForm";
 import { inviteBySecret, inviteForEmail } from "@/lib/account-members";
 import { TEAM_INVITE_COOKIE } from "@/lib/next-path";
 import { signupWithGoogle } from "../../actions";
+import { ACCOUNT_TYPES } from "@/lib/account-types";
+
+const TYPE_CHOICES = Object.entries(ACCOUNT_TYPES).map(([value, label]) => ({ value, label }));
 
 export const metadata = { title: "Finish signing up — FloorTest" };
 
@@ -49,7 +52,7 @@ export default async function GoogleSignup() {
         submit="Create my link"
         fields={[
           ...(inviteOnly ? [{ name: "invite", label: "Invite code", placeholder: "From your invite", autoComplete: "off" }] : []),
-          { name: "kind", label: "What best describes you?", choices: [{ value: "dj", label: "DJ or curator" }, { value: "producer", label: "Producer" }, { value: "label", label: "Label or A&R" }] },
+          { name: "kind", label: "What best describes you?", choices: TYPE_CHOICES },
           { name: "first_name", label: "First name", autoComplete: "given-name", defaultValue: who.first || undefined },
           { name: "last_name", label: "Surname", autoComplete: "family-name", defaultValue: who.last || undefined, hint: "Kept private: for your account, billing and receipts. Never shown on your page." },
           { name: "handle", label: "Username", prefix: `${host}/`, placeholder: "yourname", autoComplete: "username" },

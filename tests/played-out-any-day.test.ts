@@ -14,7 +14,7 @@ const DAY = 86_400_000;
 // Wednesday 14 Oct 2026, noon UTC: the Monday prompt is closed, the pick page isn't.
 const WED = Date.UTC(2026, 9, 14, 12);
 
-async function desk(handle: string, kind: "dj" | "label") {
+async function desk(handle: string, kind: "dj" | "label_radio") {
   const { q } = await import("../src/lib/db");
   return (await q.get<{ id: number }>(
     "INSERT INTO users (email, password_hash, name, handle, plan, tz, kind, created_at, email_verified_at) VALUES (?, 'h', ?, ?, 'team', 'UTC', ?, ?, ?) RETURNING id",
@@ -49,8 +49,8 @@ test("the pick page lists the last 14 days' kept tracks on any day; the Monday p
 
   // Members and non-DJ desks don't mark Played out.
   assert.equal(await playedOutPicks({ id: dj, kind: "dj", role: "member" }, WED), null);
-  const label = await desk("label", "label");
-  assert.equal(await playedOutPicks({ id: label, kind: "label" }, WED), null);
+  const label = await desk("label", "label_radio");
+  assert.equal(await playedOutPicks({ id: label, kind: "label_radio" }, WED), null);
 });
 
 test("Prepare can mark any kept track the sender cleared for sets, once", async () => {
