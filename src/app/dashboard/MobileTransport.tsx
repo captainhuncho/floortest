@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { PlayIcon, usePlayer, type PlayerTrack } from "@/components/Player";
+import { BufferRing, PlayIcon, usePlayer, type PlayerTrack } from "@/components/Player";
 import { Waveform } from "@/components/Waveform";
 import { fmtTime } from "@/lib/format";
 
 /** Phones (Figma "Waveform Block" + "Review Controls"): big waveform, previous, -15s, play, +15s, next. */
 export function MobileTransport({ track, prevHref, nextHref }: { track: PlayerTrack; prevHref: string | null; nextHref: string | null }) {
-  const { current, playing, time, duration, play, toggle, seek, seekBy } = usePlayer();
+  const { current, playing, buffering, time, duration, play, toggle, seek, seekBy } = usePlayer();
   const on = current?.id === track.id;
   const d = (on && duration) || track.duration || 0;
   const skip = "grid size-11 place-items-center";
@@ -36,8 +36,9 @@ export function MobileTransport({ track, prevHref, nextHref }: { track: PlayerTr
         <button onClick={() => (on ? seekBy(-15) : play(track))} className={jump}>
           −15s<span className="sr-only">, back 15 seconds</span>
         </button>
-        <button onClick={() => (on ? toggle() : play(track))} className="play-dot grid size-14 place-items-center rounded-full" aria-label={on && playing ? "Pause" : "Play"}>
+        <button onClick={() => (on ? toggle() : play(track))} className="play-dot relative grid size-14 place-items-center rounded-full" aria-label={on && playing ? "Pause" : "Play"} aria-busy={on && buffering} data-buffering={on && buffering ? "" : undefined}>
           <PlayIcon playing={on && playing} className="size-5" />
+          <BufferRing className="-inset-[5px] text-bone" />
         </button>
         <button onClick={() => (on ? seekBy(15) : play(track))} className={jump}>
           +15s<span className="sr-only">, forward 15 seconds</span>
