@@ -10,7 +10,7 @@ Core product is live: sending, review, collections, Prepare/downloads, plans by 
 | B1 | Google brand verification: paused until launch (site stays private). Domain already verified. To resubmit: make legal pages public again + a short description on the home/gate page, then "I have fixed the issues" | Owner + dev | at launch |
 | B2 | DNS update to Vercel's new addresses (saved 9 Oct) → Refresh in Vercel | Owner | ✅ checked 13 Oct: Vercel reports no change needed for `floortest.app`, `www` and `ops` |
 | B3 | Strix security test against local/preview | Owner + dev | parked, needs AI key |
-| B4 | Delete the old audio bucket `floortest-audio` (Cloudflare → R2 → floortest-audio → Settings → Delete), only if nothing went wrong since the 11 Oct move. Permanent; the app uses `floortest-audio-eu`. Also cancel the stalled Data Migration and check the temporary token `bucket-move-temp` is deleted. Then dev: drop `floortest-audio` from `AUDIT_BUCKETS` in `src/lib/storage-audit.ts` so the ops storage check stops listing it | Owner, then dev | **on/after 18 Oct** |
+| B4 | ✅ 14 Oct: the old audio bucket `floortest-audio` emptied and deleted (three clean days after the move; the live bucket checked 32 of 32 after). Left: delete the temporary token `bucket-move-temp` and cancel the stalled Data Migration if still listed; then narrow the live R2 token to `floortest-audio-eu` and the preview token to `floortest-audio-preview` (the keys don't change) | Owner | token + scope |
 
 ## Mobile app (picked back up 9 Oct · planning)
 Plan + tappable prototype: claude.ai/artifact/5BVVpA3Zn9AxH71ut9hGFr (private), kept in step with these docs.
@@ -26,8 +26,8 @@ Plan + tappable prototype: claude.ai/artifact/5BVVpA3Zn9AxH71ut9hGFr (private), 
 - ✅ 9 Oct: Capacitor iOS shell prototype (`mobile/`) running on the iPhone simulator: opens on the desk/sign-in, safe-area fixed, FloorTest icon and splash.
 - Build (~4 weeks):  background player + lock screen, push, share-to-FloorTest, swipe review, tabs Floor · Queue · Collections · Prepare. Then test + store review (~2 weeks).
 
-## Audio bucket to Europe (moved 11 Oct · old bucket kept until 18 Oct)
-**Moved 11 Oct, 22:30 UTC:** the app uses `floortest-audio-eu` (Western Europe). Copied with `scripts/copy-bucket.ts` (Cloudflare Data Migration stalled); both buckets checked 27 of 27 before the switch; play and upload tried after it; catch-up copy found nothing to copy. **Left:** owner deletes the temporary R2 token now; owner deletes `floortest-audio` on/after 18 Oct if nothing went wrong (until then, rollback = `S3_BUCKET` back to `floortest-audio`; files uploaded since the switch would then need copying back with the same script); add R2 recovery (versioning/replication) on `floortest-audio-eu` (see Carried over).
+## Audio bucket to Europe (moved 11 Oct · old bucket deleted 14 Oct)
+**Moved 11 Oct, 22:30 UTC:** the app uses `floortest-audio-eu` (Western Europe). Copied with `scripts/copy-bucket.ts` (Cloudflare Data Migration stalled); both buckets checked 27 of 27 before the switch; play and upload tried after it; catch-up copy found nothing to copy. **Done 14 Oct:** `floortest-audio` emptied and deleted by the owner (no rollback to it any more; the recovery copy is the vault, `floortest-vault`). **Left:** delete the temporary token `bucket-move-temp`; narrow the live R2 token to `floortest-audio-eu`.
 
 Before the move: audio sat in `floortest-audio`, created in Eastern North America (ENAM), while the server, database and users are London/West Africa side; play start measured 0.9–1.5 s from Ghana. Done: ✅ `floortest-audio-eu` created (WEUR, Standard) · ✅ CORS copied · ✅ the live token covers all buckets (preview tokens stay on the preview bucket) · ✅ ops **Storage move check** (Admin → Storage & costs): back up now, the file list, and a per-bucket check, all in the admin log.
 
