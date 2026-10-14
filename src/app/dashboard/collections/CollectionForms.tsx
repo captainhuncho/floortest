@@ -8,7 +8,6 @@ import { createCollection, deleteCollection, setActiveCollection, updateCollecti
 import { DownloadActions } from "../DownloadActions";
 import { GenresField } from "./GenresField";
 import type { BriefItem } from "@/lib/brief";
-import { TrackTag } from "@/components/TrackRow";
 
 type C = {
   id: number;
@@ -187,10 +186,23 @@ export function CollectionCard({ c, receiving, closed, canManage = true, startEd
   );
 }
 
-/** "New collection": a ghost button (the page header, or the link strip when nothing is open); the form opens under it. */
-export function NewCollection() {
+/** "New collection": a dashed tile at the end of the grid, or a ghost button elsewhere; the form opens in its place. */
+export function NewCollection({ tile = false }: { tile?: boolean }) {
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
+  if (!open && tile)
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="flex aspect-[171/221] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-line bg-ink"
+      >
+        <span className="grid size-9 place-items-center rounded-full bg-ink-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icons/plus.svg" alt="" className="size-3.5" />
+        </span>
+        <span className="text-[11px] font-bold text-mute">New collection</span>
+      </button>
+    );
   if (!open)
     return (
       <button className="btn-ghost btn-sm" onClick={() => setOpen(true)}>
@@ -200,7 +212,7 @@ export function NewCollection() {
     );
   return (
     <form
-      className="flex w-full basis-full flex-wrap items-end gap-3 card p-4"
+      className={`flex w-full basis-full flex-wrap items-end gap-3 card p-4 ${tile ? "col-span-full" : ""}`}
       action={(fd) =>
         start(async () => {
           await createCollection(fd);
@@ -225,66 +237,67 @@ export function NewCollection() {
   );
 }
 
-/** Three dots, drawn: the row menu's trigger. */
-function MoreIcon() {
-  return (
-    <svg aria-hidden viewBox="0 0 24 24" className="size-4" fill="currentColor">
-      <circle cx="5" cy="12" r="1.6" />
-      <circle cx="12" cy="12" r="1.6" />
-      <circle cx="19" cy="12" r="1.6" />
-    </svg>
-  );
-}
+// Deterministic decorative waveform for a tile, so each collection keeps its own shape.
+const tileBars = (seed: number, n: number) =>
+  Array.from({ length: n }, (_, i) => 0.25 + 0.75 * Math.abs(Math.sin((i + 1) * 1.7 + seed) * Math.cos(i * 0.6 + seed * 0.3)));
 
-const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
-
-/**
- * One collection in the crate list: a status dot, the name (with a neutral Receiving / Closed / Full tag), then one
- * tabular readout line. The dot is the list's one light: lime only on the collection the link sends to, a quiet mute
- * dot on other open callouts, an empty ring once closed or full. The row opens the collection; ··· holds the rest
- * (send new tracks here, review, edit, download). Two lines on phones, every target 44px.
- */
-export function CollectionRow({ c, receiving, closed, canManage = true }: { c: C; receiving: boolean; closed: boolean; /** Owner or A&R / Admin: may change where the link sends tracks. */ canManage?: boolean }) {
+/** Figma "collection-tile": artwork, receiving badge, play, then name, count and a menu. */
+export function CollectionTile({ c, receiving, closed, canManage = true }: { c: C; receiving: boolean; closed: boolean; /** Owner or A&R / Admin: may change where the link sends tracks. */ canManage?: boolean }) {
   const [menu, setMenu] = useState(false);
   const [editing, setEditing] = useState(false);
-  const live = receiving && !closed;
-  const readout = [
-    c.maxTracks ? `${c.count} of ${plural(c.maxTracks, "track")}` : plural(c.count, "track"),
-    c.needsReview > 0 ? `${c.needsReview} new` : null,
-    c.kept > 0 ? `${c.kept} kept` : null,
-    c.closesLabel ? `${closed && !c.full ? "closed" : "closes"} ${c.closesLabel}` : null,
-  ].filter(Boolean);
-  return (
-    <li className="flex flex-col">
-      <div className="flex min-h-16 items-center gap-3 pl-3 pr-1 transition-colors duration-150 ease-out hover:bg-ink-2 sm:min-h-14">
-        <span aria-hidden className={`size-2 shrink-0 rounded-full ${live ? "live-dot" : closed ? "border border-faint" : "bg-mute"}`} />
-        <Link href={`/dashboard/collections/${c.id}`} className="flex min-w-0 flex-1 flex-col gap-1 self-stretch justify-center py-2.5">
-          <span className="flex min-w-0 items-center gap-2">
-            <span className={`truncate text-body font-bold ${closed ? "text-mute" : "text-bone"}`}>{c.name}</span>
-            {live && <TrackTag>Receiving</TrackTag>}
-            {closed && <TrackTag>{c.full ? "Full" : "Closed"}</TrackTag>}
-          </span>
-          <span className="truncate text-xs text-faint tnum">{readout.join(" · ")}</span>
-        </Link>
-        <button
-          onClick={() => setMenu(true)}
-          aria-haspopup="menu"
-          aria-label={`More for ${c.name}`}
-          className="grid size-11 shrink-0 place-items-center rounded-lg text-mute transition-colors duration-150 hover:bg-ink-3 hover:text-bone"
-        >
-          <MoreIcon />
+  if (editing)
+    return (
+      <div className="col-span-full">
+        <CollectionCard c={c} receiving={receiving} closed={closed} canManage={canManage} startEditing />
+        <button className="mt-2 text-sm text-mute hover:text-bone tap-text" onClick={() => setEditing(false)}>
+          Close
         </button>
       </div>
-      {editing && (
-        <div className="pb-4">
-          <CollectionCard c={c} receiving={receiving} closed={closed} canManage={canManage} startEditing />
-          <button className="mt-2 text-sm text-mute hover:text-bone tap-text" onClick={() => setEditing(false)}>
-            Close
+    );
+  const rows = [tileBars(c.id, 16), tileBars(c.id + 7, 16)];
+  return (
+    <div className="relative overflow-hidden panel">
+      <Link href={`/dashboard/collections/${c.id}`} className="relative flex aspect-square flex-col justify-end gap-1.5 bg-gradient-to-b from-[#1a2a0a] to-ink p-4" aria-label={`Open ${c.name}`}>
+        {c.art && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={c.art} alt="" className="absolute inset-0 size-full object-cover" />
+        )}
+        {!c.art && rows.map((bars, r) => (
+          <span key={r} aria-hidden className={`flex items-center gap-0.5 ${r ? "h-5" : "h-7"}`}>
+            {bars.map((h, i) => (
+              <span key={i} className={`w-0.5 rounded-[1px] ${i < (r ? 8 : 12) ? "bg-white" : "bg-faint"}`} style={{ height: `${Math.round(h * 100)}%`, opacity: i < (r ? 8 : 12) ? 0.5 + h / 2 : 0.2 }} />
+            ))}
+          </span>
+        ))}
+        {receiving && !closed && (
+          <span className="absolute left-2.5 top-2.5 flex items-center gap-1 rounded-md border border-white bg-black/60 px-2 py-1 text-[11px] font-bold tracking-[0.5px] text-white">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icons/receiving-dot.svg" alt="" className="size-[5px]" />
+            RECEIVING
+          </span>
+        )}
+        {closed && <span className="absolute left-2.5 top-2.5 rounded-md border border-faint bg-black/60 px-2 py-1 text-[11px] font-bold tracking-[0.5px] text-mute">{c.full ? "FULL" : "CLOSED"}</span>}
+      </Link>
+      <Link href={`/dashboard/review?view=queue&c=${c.id}`} aria-label={`Play ${c.name} in the queue`} className="absolute right-2.5 grid size-[30px] place-items-center rounded-lg bg-ink opacity-90" style={{ top: "calc(100% - 56px - 40px)" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/icons/tile-play.svg" alt="" className="size-3" />
+      </Link>
+      <div className="flex flex-col gap-[3px] px-2.5 pb-3 pt-2.5">
+        <Link href={`/dashboard/collections/${c.id}`} className="truncate text-[13px] font-bold text-bone">
+          {c.name}
+        </Link>
+        <div className="flex items-center justify-between text-mute">
+          <span className="text-[11px]">
+            {c.count} track{c.count === 1 ? "" : "s"}
+            {c.needsReview > 0 && ` · ${c.needsReview} new`}
+          </span>
+          <button onClick={() => setMenu((m) => !m)} aria-haspopup="menu" aria-label={`More for ${c.name}`} className="px-1 text-sm leading-none">
+            ···
           </button>
         </div>
-      )}
+      </div>
       {menu && <CollectionOptions c={c} receiving={receiving} canManage={canManage} onEdit={() => setEditing(true)} onClose={() => setMenu(false)} showOpen />}
-    </li>
+    </div>
   );
 }
 
