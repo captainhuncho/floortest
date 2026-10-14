@@ -14,6 +14,8 @@ export default async function Pricing() {
   const [user, plans, c, open, editor] = await Promise.all([currentUser(), offeredPlans(), siteCopy("pricing"), switchOn("open_signup"), siteEditor()]);
   const { E } = editable(c, !!editor);
   const href = user ? "/dashboard/floor" : open ? "/signup" : "/#waitlist";
+  // The same rule as the home page: Open your desk when signed in, Claim your link when sign-up is open, else an invite.
+  const label = user ? "Open your desk" : open ? "Claim your link" : "Request an invite";
   const billing = await switchOn("billing");
   return (
     <EditablePage editing={!!editor} page="pricing" label="Pricing" values={c}>
@@ -22,7 +24,7 @@ export default async function Pricing() {
         <header className="flex items-center justify-between gap-3 py-6">
           <Logo />
           <Link href={href} className="btn-lime btn-sm">
-            {user ? "Open desk" : open ? "Get your link" : "Request an invite"}
+            {label}
           </Link>
         </header>
         <main className="py-12">
@@ -47,7 +49,7 @@ export default async function Pricing() {
                   ))}
                 </ul>
                 <Link href={href} className="mt-8 w-fit rounded-md bg-lime px-5 py-3 text-xs font-medium uppercase text-ink">
-                  {user ? "Open your desk" : open ? "Get started" : "Request an invite"} →
+                  {label} →
                 </Link>
               </div>
             ))}

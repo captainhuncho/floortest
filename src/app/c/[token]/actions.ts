@@ -16,7 +16,7 @@ const GONE: GateState = { step: "denied", error: "This link isn't available." };
 const err = (e: unknown, step: NonNullable<GateState>["step"], email?: string): GateState => ({
   step,
   email,
-  error: e instanceof LinkError ? e.message : "Something went wrong. Please try again.",
+  error: e instanceof LinkError ? e.message : "Couldn't save that. Nothing changed. Try again.",
 });
 
 /** Who is at the door: a signed-in account with a confirmed email, or an address that just passed a code for this link. */

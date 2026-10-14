@@ -4,7 +4,10 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useToast } from "@/components/Toast";
 import { clearKept } from "../actions/review";
 
-/** Clears the current Prepare for set batch, after a clear warning. */
+/**
+ * "Start a new batch": empties Prepare so the next keeps start fresh, after a confirm. Nothing is deleted or un-kept
+ * (the tracks stay Kept in the Queue and their collections), so it's a quiet secondary action, not a red one.
+ */
 export function ClearKept({ count }: { count: number }) {
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
@@ -16,12 +19,14 @@ export function ClearKept({ count }: { count: number }) {
     else dialog.current?.close();
   }, [open]);
 
-  const n = `${count} kept track${count === 1 ? "" : "s"}`;
+  const n = `${count} track${count === 1 ? "" : "s"}`;
 
   return (
     <>
-      <button type="button" className="btn-danger w-full px-2! md:w-auto md:shrink-0 md:px-4! disabled:opacity-40" disabled={!count} onClick={() => setOpen(true)}>
-        Clear kept
+      <button type="button" className="btn-ghost w-full px-2! md:w-auto md:shrink-0 md:px-4! disabled:opacity-40" disabled={!count} onClick={() => setOpen(true)}>
+        {/* Phones fit three buttons across, so the short label there. */}
+        <span className="md:hidden">New batch</span>
+        <span className="hidden md:inline">Start a new batch</span>
       </button>
       <dialog
         ref={dialog}
@@ -30,14 +35,11 @@ export function ClearKept({ count }: { count: number }) {
         className="dialog-box m-auto w-[min(92vw,440px)] backdrop:bg-black/70"
       >
         <h2 id="clear-h" className="text-xl font-bold">
-          Clear {n}?
+          Start a new batch?
         </h2>
         <p className="mt-3 text-mute">
-          This empties Prepare for set so your next keeps start a fresh batch. The tracks aren&apos;t deleted: they stay Kept in the Review Queue and in their
-          collections.
-        </p>
-        <p className="mt-3 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-          You can&apos;t undo this. If you still need these files for a set, download them first.
+          Prepare empties so your next keeps start fresh. The {n} {count === 1 ? "stays" : "stay"} Kept in the Queue and {count === 1 ? "its collection" : "their collections"}.
+          Download {count === 1 ? "it" : "them"} first if you still need {count === 1 ? "it" : "them"} for a set.
         </p>
         <div className="mt-6 flex flex-wrap justify-end gap-2">
           {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- a file download, not a page */}
@@ -49,17 +51,17 @@ export function ClearKept({ count }: { count: number }) {
           </button>
           <button
             type="button"
-            className="btn btn-sm bg-danger font-bold text-ink"
+            className="btn-lime btn-sm"
             disabled={pending}
             onClick={() =>
               start(async () => {
                 await clearKept();
                 setOpen(false);
-                toast.show({ message: `Cleared ${n}. Your next keeps start a new batch.` });
+                toast.show({ message: `New batch started. The ${n} ${count === 1 ? "is" : "are"} still Kept.` });
               })
             }
           >
-            {pending ? "Clearing…" : `Clear ${count}`}
+            {pending ? "Starting…" : "Start new batch"}
           </button>
         </div>
       </dialog>

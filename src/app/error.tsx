@@ -58,7 +58,7 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
   return (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col justify-center px-4 py-12">
       {logo}
-      <h1 className="text-3xl font-bold tracking-tight">Something went wrong</h1>
+      <h1 className="text-3xl font-bold tracking-tight">This page didn&apos;t load</h1>
       <p className="mt-3 text-mute">
         Sorry about that. Try again, and if it keeps happening, let us know{error.digest ? ` and mention code ${error.digest}` : ""}.
       </p>

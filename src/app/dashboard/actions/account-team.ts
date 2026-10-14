@@ -22,7 +22,7 @@ import { reply } from "@/lib/review";
 import { done } from "./common";
 
 export type TeamState = { ok?: string; error?: string } | null;
-const fail = (e: unknown): TeamState => ({ error: e instanceof TeamError ? e.message : "Something went wrong. Please try again." });
+const fail = (e: unknown): TeamState => ({ error: e instanceof TeamError ? e.message : "Couldn't save that. Nothing changed. Try again." });
 
 export async function inviteTeammate(_prev: TeamState, form: FormData): Promise<TeamState> {
   const u = await requireUser();

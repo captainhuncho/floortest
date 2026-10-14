@@ -61,14 +61,15 @@ export default async function Receiving() {
           </ul>
         </details>
       </Section>
-      <Section id="signals-h" title="What senders are told" sub="Senders get an email and see these on their receipt. Your keep and not-for-me calls are never shared.">
+      <Section id="signals-h" title="What senders are told" sub="Senders get an email for each of these and see them on their receipt. Keep and Not for me stay private.">
         <dl className="divide-y divide-line rounded-lg border border-line text-sm">
           {[
             ["Delivered", "Their file reached your desk"],
             ["Listened", SIGNALS.listened],
             ["Downloaded", SIGNALS.downloaded],
-            ["Replied", SIGNALS.replied],
-            ["Kept, Not for me", "Private to you"],
+            ["Replied", "You replied by email"],
+            ["Played out", "You marked it as played in a set"],
+            ["Keep, Not for me", "Private to you"],
           ].map(([k, v]) => (
             <div key={k} className="grid gap-1 px-4 py-3 sm:grid-cols-[140px_1fr]">
               <dt className="font-medium">{k}</dt>
