@@ -274,13 +274,13 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
             {week.length > 0 && (
               <section aria-labelledby="week-h">
                 <h2 id="week-h" className="eyebrow px-4 pt-3.5 pb-2.5">This week</h2>
-                {/* A phone reads it as a plain list (label left, figure right); from sm it's one row of four readings. */}
-                <dl className="grid grid-cols-1 gap-px border-t border-line bg-line sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none">
+                {/* One row of readings at every width, like the desk's readout. */}
+                <dl className="grid auto-cols-fr grid-flow-col gap-px border-t border-line bg-line">
                   {week.map((w) => (
-                    <div key={w.key} className="flex min-w-0 items-baseline justify-between gap-3 bg-ink-3 px-4 py-2.5 sm:flex-col sm:items-start sm:justify-start sm:gap-1 sm:py-3">
-                      <dt className="truncate text-[13px] text-mute sm:eyebrow">{w.label}</dt>
-                      <dd className="tnum text-[15px] font-bold text-bone sm:text-[22px] sm:leading-7">{w.value}</dd>
-                      <dd className="hidden text-[11px] leading-4 text-dim sm:block">{w.sub}</dd>
+                    <div key={w.key} className="flex min-w-0 flex-col gap-1 bg-ink-3 px-3 py-3 sm:px-4">
+                      <dt className="eyebrow leading-[14px] sm:truncate">{w.label}</dt>
+                      <dd className="mt-auto tnum text-[20px] font-bold leading-7 text-bone sm:text-[22px]">{w.value}</dd>
+                      <dd className="text-[10px] leading-[14px] text-dim sm:text-[11px] sm:leading-4">{w.sub}</dd>
                     </div>
                   ))}
                 </dl>
