@@ -1,7 +1,8 @@
 import { trackUse } from "@/lib/usage";
 import { Onboarding } from "./Onboarding";
 import Link from "next/link";
-import { requireUser } from "@/lib/auth";
+import { requireUser, viewingAs } from "@/lib/auth";
+import { VerifyBanner } from "../VerifyBanner";
 import { activeCollectionForView, capacityForView, collectionsForView, isClosed, isPaused } from "@/lib/desk";
 import { now, q } from "@/lib/db";
 import { atLeast, canApprove, heldReplies, seatsFor, seatsUsed, teamsOn } from "@/lib/account-members";
@@ -16,7 +17,7 @@ import { UpNext } from "./UpNext";
 import { PlayedOutCard } from "./PlayedOutCard";
 import { playedOutPrompt } from "@/lib/played-out-prompt";
 
-export const metadata = { title: "The Floor — FloorTest" };
+export const metadata = { title: "Floor — FloorTest" };
 
 /**
  * The Floor answers "what needs my attention?" before anything else: what's waiting, anything wrong with the link,
@@ -26,7 +27,7 @@ export const metadata = { title: "The Floor — FloorTest" };
 export default async function TheFloor({ searchParams }: { searchParams: Promise<{ welcome?: string }> }) {
   const user = await requireUser();
   // Everything below is independent, so it all goes to the database at once.
-  const [, sp, prefs, collections, active, cap, upNextRows, recentSends, oldestRow, staleRow] = await Promise.all([
+  const [, sp, prefs, collections, active, cap, upNextRows, recentSends, oldestRow, staleRow, view] = await Promise.all([
     trackUse(user.id, "floor"),
     searchParams,
     prefsForView(user.id),
@@ -47,6 +48,8 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
     q.get<{ at: number | null }>("SELECT MIN(created_at) AS at FROM tracks WHERE user_id = ? AND deleted_at IS NULL AND decision IS NULL", user.id),
     // Tracks close to the 7-day mark (the north star: a decision within 7 days of arriving).
     q.get<{ n: number }>("SELECT COUNT(*) AS n FROM tracks WHERE user_id = ? AND deleted_at IS NULL AND decision IS NULL AND created_at < ?", user.id, now() - STALE_DAYS * 86_400_000),
+    // An admin viewing this desk doesn't get the confirm-your-email banner.
+    viewingAs(),
   ]);
   const welcome = !!sp.welcome;
   const stats = await homeStats(user.id, prefs.tz);
@@ -67,7 +70,15 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   // Link health: the one thing to fix, if anything.
   const openAlternative = collections.find((c) => !isClosed(c) && c.id !== active?.id);
   const problem: { text: string; action?: React.ReactNode } | null = paused
-    ? { text: `Submissions are paused${user.pause_until ? ` until ${fmtDay(user.pause_until)}` : ""}. Switch “Taking submissions” back on in the sidebar when you're ready.` }
+    ? // The Link open switch lives on Account (the sidebar only links there), so the fix points there.
+      {
+        text: `Your link is paused${user.pause_until ? ` until ${fmtDay(user.pause_until)}` : ""}. Turn it back on in Account when you're ready.`,
+        action: user.role === "member" ? undefined : (
+          <Link href="/dashboard/account" className="btn-ghost btn-sm">
+            Open Account
+          </Link>
+        ),
+      }
     : !active || isClosed(active)
       ? {
           text: active ? `Your link sends tracks to “${active.name}”, which closed on ${fmtDay(active.closes_at!)}. Nobody can send you music right now.` : "Your link isn't sending tracks anywhere.",
@@ -82,21 +93,28 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
         }
       : cap.full
         ? {
-            text: "Your desk is full, so your link has stopped taking uploads.",
+            // Every track that isn't deleted counts toward the limit (kept ones too, even after a new batch in Prepare),
+            // so room comes from deleting tracks you're done with, or a bigger plan.
+            text: `Your desk holds ${cap.limit.toLocaleString("en-GB")} active tracks and it's full, so your link has stopped taking new ones. Download what you need from Prepare, then delete tracks you're done with in the Queue to make room.`,
             action: (
-              <Link href="/dashboard/plans" className="btn-lime btn-sm">
-                See plans
-              </Link>
+              <span className="flex flex-wrap gap-2">
+                <Link href="/dashboard/prepare" className="btn-lime btn-sm">
+                  Open Prepare
+                </Link>
+                <Link href="/dashboard/plans" className="btn-ghost btn-sm">
+                  See plans
+                </Link>
+              </span>
             ),
           }
         : null;
 
   // A quiet desk has nothing to report yet; the line appears once something has happened.
   const facts = stats.receivedWeek + stats.receivedPrev + stats.keptWeek === 0 && !stats.listenedSample ? [] : [
-    `${stats.receivedWeek} received this week${stats.receivedWeek !== stats.receivedPrev ? ` (${stats.receivedWeek > stats.receivedPrev ? "up" : "down"} from ${stats.receivedPrev})` : ""}`,
-    `${stats.keptWeek} kept this week`,
-    stats.medianListenMs !== null ? `first listen usually within ${waitWords(stats.medianListenMs)}` : null,
-    stats.decisionRate !== null ? `${stats.decisionRate}% of the last 30 days decided` : null,
+    `${stats.receivedWeek} in this week${stats.receivedWeek !== stats.receivedPrev ? ` (${stats.receivedPrev} last week)` : ""}`,
+    `${stats.keptWeek} kept`,
+    stats.medianListenMs !== null ? `you usually listen ${waitWords(stats.medianListenMs)}` : null,
+    stats.decisionRate !== null ? `${stats.decisionRate}% of the last 30 days' tracks decided` : null,
   ].filter(Boolean);
 
   // Your desk at a glance: only figures that mean exactly what they say, each a link to where it's managed. Capacity and
@@ -122,6 +140,8 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   ];
 
   return (
+    <>
+    {!view && !user.email_verified_at && <VerifyBanner email={user.email} />}
     <div className="mx-auto flex max-w-3xl flex-col gap-8 px-4 py-5 sm:px-8 sm:py-8">
       {/* What needs you: the waiting count is the page title, and the one button is the daily job. */}
       <header className="flex flex-col gap-3">
@@ -189,7 +209,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
             </h2>
             <p className="text-[12px] text-dim">
               {nearLimit
-                ? `Your desk is nearly full (${cap.used} of ${cap.limit}). Download them, then clear kept to make room.`
+                ? `Your desk is nearly full (${cap.used} of ${cap.limit}). Download them, then delete the ones you're done with to make room.`
                 : "Download them as a crate with a Rekordbox playlist."}
             </p>
           </div>
@@ -248,17 +268,18 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
         </div>
       )}
     </div>
+    </>
   );
 }
 
 /** Waiting this long gets a nudge on the Floor, two days before the 7-day mark the desk aims for. */
 const STALE_DAYS = 5;
 
-/** "under an hour", "5 hours", "3 days": how long a first listen usually takes, in words. */
+/** "within the hour", "within 5 hours", "within a day", "within 3 days": how long a first listen usually takes. */
 function waitWords(ms: number) {
   const h = ms / 3_600_000;
-  if (h < 1) return "under an hour";
-  if (h < 24) return `${Math.round(h)} hour${Math.round(h) === 1 ? "" : "s"}`;
+  if (h < 1) return "within the hour";
+  if (h < 24) return Math.round(h) === 1 ? "within an hour" : `within ${Math.round(h)} hours`;
   const d = Math.round(h / 24);
-  return `${d} day${d === 1 ? "" : "s"}`;
+  return d === 1 ? "within a day" : `within ${d} days`;
 }

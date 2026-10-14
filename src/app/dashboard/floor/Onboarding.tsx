@@ -4,6 +4,7 @@ import { q, type User } from "@/lib/db";
 import { dismissOnboarding } from "../actions/desk";
 import { APP_URL } from "@/lib/mail";
 import { ShareKit } from "./ShareKit";
+import { ResendVerification } from "../VerifyBanner";
 
 /**
  * First-week checklist: each step ticks itself off from what the receiver has actually done. Until the first track arrives
@@ -17,7 +18,7 @@ export async function Onboarding({ user }: { user: User }) {
   const has = async (sql: string) => !!(await q.get(sql, user.id));
   const firstTrack = await has("SELECT 1 FROM tracks WHERE user_id = ? LIMIT 1");
   const all = [
-    { done: !!user.email_verified_at, label: "Confirm your email", hint: "So resets and alerts reach you. Check your inbox.", href: null },
+    { done: !!user.email_verified_at, label: "Confirm your email", hint: "So alerts and password resets reach you.", href: null, resend: true },
     {
       done: !!(c && (c.brief_wanted || c.genres || c.bpm_min || c.closes_at || c.brief_note)),
       label: "Set your callout brief",
@@ -25,11 +26,11 @@ export async function Onboarding({ user }: { user: User }) {
       href: "/dashboard/collections",
     },
     { done: firstTrack, label: "Share your link and get a first track", hint: "Post it in your bio, a story or a callout. Senders upload the original file; you'll get an email when it lands.", href: null, share: true },
-    { done: await has("SELECT 1 FROM tracks WHERE user_id = ? AND decision IS NOT NULL LIMIT 1"), label: "Make your first decision", hint: "Play a track, then Keep or Not for me.", href: "/dashboard/review?view=queue" },
+    { done: await has("SELECT 1 FROM tracks WHERE user_id = ? AND decision IS NOT NULL LIMIT 1"), label: "Decide on your first track", hint: "Play a track, then Keep or Not for me.", href: "/dashboard/review?view=queue" },
     {
       done: await has("SELECT 1 FROM account_log WHERE user_id = ? AND action IN ('exported','downloaded') LIMIT 1"),
       label: "Take kept tracks to your set",
-      hint: "Download a crate from Prepare for set.",
+      hint: "Download a crate from Prepare.",
       href: "/dashboard/prepare",
     },
     { done: !!user.totp_enabled_at, label: "Protect your account (optional)", hint: "Turn on two-factor sign-in.", href: "/dashboard/settings/security" },
@@ -66,7 +67,8 @@ export async function Onboarding({ user }: { user: User }) {
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <span className="text-xs font-bold text-bone">{s.label}</span>
                   <span className="text-[11px] text-faint">{s.hint}</span>
-                  {"share" in s && s.share && <ShareKit link={`${APP_URL}/${user.handle}`} handle={user.handle} />}
+                  {"resend" in s && s.resend && <ResendVerification className="text-[11px]" />}
+                  {"share" in s && s.share &&<ShareKit link={`${APP_URL}/${user.handle}`} handle={user.handle} />}
                 </span>
               )}
             </>

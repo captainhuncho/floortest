@@ -47,13 +47,13 @@ export async function rewardReferral(receiverId: number, senderEmail: string) {
     return r;
   });
   if (!u?.referred_by) return;
-  const referrer = await q.get<{ id: number; email: string }>("SELECT id, email FROM users WHERE id = ?", u.referred_by);
+  const referrer = await q.get<{ id: number; email: string; name: string; first_name: string | null }>("SELECT id, email, name, first_name FROM users WHERE id = ?", u.referred_by);
   if (referrer)
     await sendMail({
       userId: referrer.id,
       audience: "receiver",
       to: referrer.email,
-      ...(await emailText("referral", { friend: u.name, bonus: REFERRAL_BONUS, referrals_url: `${APP_URL}/dashboard/referrals` })),
+      ...(await emailText("referral", { first_name: referrer.first_name?.trim() || referrer.name.split(/\s+/)[0], friend: u.name, bonus: REFERRAL_BONUS, referrals_url: `${APP_URL}/dashboard/referrals` })),
     });
 }
 

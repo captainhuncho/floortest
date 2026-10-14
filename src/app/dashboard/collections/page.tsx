@@ -45,7 +45,7 @@ export default async function Collections() {
         One per callout. Your link <span className="break-all text-lime">{APP_URL.replace(/^https?:\/\//, "")}/{user.handle}</span> sends new tracks to
         whichever collection is marked receiving. Reviewing happens in{" "}
         <Link href="/dashboard/review" className="text-bone underline underline-offset-4">
-          Review Queue
+          the Queue
         </Link>
         .
       </p>

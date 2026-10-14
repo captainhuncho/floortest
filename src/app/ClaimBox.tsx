@@ -6,7 +6,7 @@ import { checkHandle } from "./waitlist/actions";
 
 const clean = (s: string) => s.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-_]/g, "").slice(0, 30);
 const HELP = {
-  free: "Free right now. Join the waitlist to request it.",
+  free: "Free right now. Add it to your invite request below.",
   taken: "Taken. Try another.",
   invalid: "Use 2–30 letters, numbers, - or _.",
   slow: "Too many checks. Try again in a bit.",
@@ -61,8 +61,9 @@ export function ClaimBox({ host, inviteOnly }: { host: string; inviteOnly: boole
           className="min-w-[6rem] flex-1 bg-transparent py-3 pr-2 text-sm text-lime outline-none placeholder:text-faint sm:text-base"
         />
       </div>
-      <button className="mt-3 w-full bg-lime px-4 py-3 text-sm font-medium uppercase text-ink hover:brightness-95">
-        Claim your link →
+      {/* Secondary (bone outline): the hero's own CTA is the one lime button. */}
+      <button className="mt-3 w-full border border-bone/70 px-4 py-3 text-sm font-medium uppercase text-bone hover:border-bone hover:bg-white/5">
+        {inviteOnly ? "Check it's free →" : "Claim your link →"}
       </button>
       <p className="mt-3 min-h-5 text-xs text-mute" aria-live="polite">
         {status ? (inviteOnly || status !== "free" ? HELP[status] : "Free right now.") : inviteOnly ? "Private beta · invite only" : ""}

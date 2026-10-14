@@ -152,7 +152,7 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
   return (
     <div className="flex min-h-full flex-col">
       <header className="flex flex-wrap items-center justify-between gap-3 px-3 pb-2 pt-3 md:px-8 md:pb-4 md:pt-6">
-        <h1 className="text-xl font-bold text-bone md:text-[32px]">Review Queue</h1>
+        <h1 className="text-xl font-bold text-bone md:text-[32px]">Queue</h1>
       </header>
 
       {/* Phones: Figma "Filters-Scrollable" chips; desktop keeps the toolbar. */}

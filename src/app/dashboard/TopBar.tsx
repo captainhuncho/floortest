@@ -154,13 +154,13 @@ function Notifications({ items, unread, onNavigate, sheet = false }: { items: No
               {clearing ? "Clearing…" : "Clear all"}
             </button>
           )}
-          <button type="button" onClick={onNavigate} aria-label="Close notifications" className="grid size-8 place-items-center rounded-full text-lg leading-none text-mute hover:bg-ink-3 hover:text-bone">
+          <button type="button" onClick={onNavigate} aria-label="Close notifications" className="grid size-11 place-items-center rounded-full text-lg leading-none text-mute hover:bg-ink-3 hover:text-bone">
             ✕
           </button>
         </div>
       </div>
       {list.length === 0 ? (
-        <p className="px-5 py-10 text-center text-mute">You&apos;re all caught up. New submissions show up here.</p>
+        <p className="px-5 py-10 text-center text-mute">You&apos;re all caught up. New tracks show up here.</p>
       ) : (
         <ul>
           {list.map((n, i) => (

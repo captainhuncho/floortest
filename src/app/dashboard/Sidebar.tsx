@@ -18,10 +18,10 @@ export function Sidebar({ needsReview, cap, pause, canSend = true }: Props) {
   const path = usePathname();
 
   const nav = [
-    { href: "/dashboard/floor", label: "The Floor", icon: "floor", active: path === "/dashboard/floor", tab: true },
-    { href: "/dashboard/review", label: "Review Queue", icon: "queue", active: path === "/dashboard/review", badge: needsReview, tab: true },
+    { href: "/dashboard/floor", label: "Floor", icon: "floor", active: path === "/dashboard/floor", tab: true },
+    { href: "/dashboard/review", label: "Queue", icon: "queue", active: path === "/dashboard/review", badge: needsReview, tab: true },
     { href: "/dashboard/collections", label: "Collections", icon: "collections", active: path.startsWith("/dashboard/collections"), tab: true },
-    { href: "/dashboard/prepare", label: "Prepare for set", icon: "prepare", active: path === "/dashboard/prepare" || path.startsWith("/dashboard/prepare/"), tab: true },
+    { href: "/dashboard/prepare", label: "Prepare", icon: "prepare", active: path === "/dashboard/prepare" || path.startsWith("/dashboard/prepare/"), tab: true },
     ...(canSend ? [{ href: "/dashboard/send", label: "Send", icon: "send", active: path.startsWith("/dashboard/send") }] : []),
     { href: "/dashboard/contacts", label: "Contacts", icon: "contacts", active: path.startsWith("/dashboard/contacts") },
     { href: "/dashboard/activity", label: "Activity", icon: "activity", active: path.startsWith("/dashboard/activity") },
@@ -55,12 +55,12 @@ export function Sidebar({ needsReview, cap, pause, canSend = true }: Props) {
       <div className="mt-auto p-4">
         {cap.full && (
           <Link href="/dashboard/plans" className="mb-3 block rounded-xl border border-danger/50 bg-danger/5 p-3 text-[11px] text-danger">
-            Your desk is full ({cap.used}/{cap.limit.toLocaleString("en-US")}), so your link is paused. Clear tracks or see plans →
+            Your desk is full ({cap.used}/{cap.limit.toLocaleString("en-US")}), so your link has stopped taking new tracks. Delete tracks you&apos;re done with, or see plans →
           </Link>
         )}
         {pause.on && !cap.full && (
           <Link href="/dashboard/account" className="mb-3 block card p-3 text-[11px] text-mute">
-            Submissions are paused. Turn them back on in your profile →
+            Your link is paused. Turn it back on in Account →
           </Link>
         )}
       </div>

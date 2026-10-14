@@ -7,7 +7,7 @@ import { expect, test, wav } from "./fixtures";
 /**
  * The money path, in a real browser: a sender signs up with an invite (and can't send until the email is confirmed);
  * a confirmed sender sends a WAV to the demo receiver's link;
- * the receiver finds it in the Review Queue, keeps it, and downloads it from Prepare for set as a named folder.
+ * the receiver finds it in the Queue, keeps it, and downloads it from Prepare as a named folder.
  */
 test.describe.configure({ mode: "serial" });
 

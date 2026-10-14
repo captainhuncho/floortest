@@ -1,7 +1,8 @@
 import { now } from "@/lib/db";
 import { trackUse } from "@/lib/usage";
 import Link from "next/link";
-import { requireRole } from "@/lib/auth";
+import { requireRole, viewingAs } from "@/lib/auth";
+import { VerifyBanner } from "../VerifyBanner";
 import { sentBy } from "@/lib/sent";
 import { APP_URL } from "@/lib/mail";
 import { unheardAfterWindow } from "@/lib/plans";
@@ -14,7 +15,7 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
   const user = await requireRole("admin");
   await trackUse(user.id, "send");
   const to = ((await searchParams).to || "").trim().replace(/[?#].*$/, "").replace(/\/+$/, "").split("/").pop()!.replace(/^@/, "").toLowerCase().replace(/[^a-z0-9-_]/g, "").slice(0, 30);
-  const sent = await sentBy(user);
+  const [sent, view] = await Promise.all([sentBy(user), viewingAs()]);
   type Sent = (typeof sent)[number];
   const t = now();
   const ago = (ms: number) => {
@@ -60,9 +61,11 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
   );
 
   return (
+    <>
+    {!view && !user.email_verified_at && <VerifyBanner email={user.email} />}
     <div className="max-w-3xl px-4 py-6 sm:px-8">
       <h1 className="text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">Send</h1>
-      <p className="mt-2 text-mute">Send your music to another FloorTest user. Add the name at the end of their link.</p>
+      <p className="mt-2 text-mute">Send a track to anyone with a FloorTest link. Type the part after {APP_URL.replace(/^https?:\/\//, "")}/.</p>
       <div className="mt-8">
         <SendComposer host={APP_URL.replace(/^https?:\/\//, "")} account={{ name: user.name, email: user.email }} initial={to} />
       </div>
@@ -71,7 +74,7 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
         <h2 id="sent-h" className="label">
           Sent ({sent.length})
         </h2>
-        <p className="mt-1 text-sm text-mute">Tap a send to follow it: when it&apos;s delivered, listened to, downloaded and replied to.</p>
+        <p className="mt-1 text-sm text-mute">Each send gets a private receipt. Tap one to see what&apos;s happened.</p>
         <ul className="mt-3 divide-y divide-line overflow-hidden rounded-md border border-line">
           {recent.map(row)}
           {!recent.length && older.length > 0 && <li className="px-4 py-4 text-sm text-mute">Nothing sent in the last 10 days.</li>}
@@ -96,5 +99,6 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
         )}
       </section>
     </div>
+    </>
   );
 }

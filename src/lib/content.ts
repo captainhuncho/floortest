@@ -66,14 +66,14 @@ export const SITE_PAGES = {
       how_title: f("How it works: title", "Share once. Decide fast."),
       how_steps: text(
         "How it works: steps",
-        "Share one link\nPut it in your bio or a callout. Senders upload the original WAV or MP3, no account needed.\n\nDecide fast\nPlay, keep or pass, and the next track is already up. Kept tracks export straight to Rekordbox.",
+        "Share one link\nPut it in your bio or a callout. Senders upload the original WAV or MP3, no account needed.\n\nDecide fast\nPlay, Keep or Not for me, and the next track is already up. Kept tracks export straight to Rekordbox.",
         { kind: "pairs", hint: "Each step: a title line, then its text. Leave a blank line between steps." },
       ),
       journey_title: f("Receipts: title", "Know what happened next."),
-      journey_intro: text("Receipts: intro", "Every sender gets a private receipt. FloorTest records the four moments that matter between sending a track and hearing back."),
+      journey_intro: text("Receipts: intro", "Every sender gets a private receipt. FloorTest records every step between sending a track and hearing back."),
       private_title: f("Privacy section: title", "Music stays between the people you choose."),
       plans_kicker: f("Plans: small label", "Plans"),
-      plans_title: f("Plans: headline (beta)", "Start free. Grow when your inbox does.", { hint: "Shown while the Billing switch is off." }),
+      plans_title: f("Plans: headline (beta)", "Start free. Grow when your desk does.", { hint: "Shown while the Billing switch is off." }),
       plans_intro: text("Plans: intro (beta)", "Free for 20 active tracks. Pro and Team for busy desks and whole crews."),
       plans_title_launch: f("Plans: headline (after launch)", "Free while you find your sound.", { hint: "Shown once the Billing switch is on." }),
       plans_intro_launch: text("Plans: intro (after launch)", "Free holds 20 tracks at a time, for good. Pro and Team make room for hundreds more and bring your crew in."),
@@ -81,7 +81,7 @@ export const SITE_PAGES = {
       faq_title: f("Questions: title", "Before the first track lands."),
       faq: text(
         "Questions and answers",
-        "Do senders need an account?\nNo. They send through a receiver's link with their name and email, confirm the email once, and get a private receipt link to follow the track.\n\nWhat files can be submitted?\nThe original WAV or MP3, up to 250 MB. No streaming or cloud links: the receiver gets the actual file.\n\nDoes your link change?\nNever. It stays the same while you route new tracks into whichever collection is receiving, or pause it while you're away.\n\nWhat counts as \"listened\"?\nAt least 30 seconds of real playback, or a quarter of a short track. Skipping around doesn't count, so the signal means something.\n\nIs it free?\nYes, for up to 20 active tracks, and free for good at that size. During the beta, Pro and Team are free too, and sign-up is by invite.",
+        "Do senders need an account?\nNo. They send through a receiver's link with their name and email, confirm the email once, and get a private receipt link to follow the track.\n\nWhat can senders send?\nThe original WAV or MP3, up to 250 MB. No streaming or cloud links: the receiver gets the actual file.\n\nDoes your link change?\nNever. It stays the same while you route new tracks into whichever collection is receiving, or pause it while you're away.\n\nWhat counts as \"listened\"?\nAt least 30 seconds of real playback, or a quarter of a short track. Skipping around doesn't count, so the signal means something.\n\nIs it free?\nYes, for up to 20 active tracks, and free for good at that size. During the beta, Pro and Team are free too, and sign-up is by invite.",
         { kind: "pairs", hint: "Each question on its own line, the answer below it. Leave a blank line between questions." },
       ),
     },
@@ -90,8 +90,8 @@ export const SITE_PAGES = {
     label: "Pricing",
     path: "/pricing",
     fields: {
-      pricing_title: f("Title", "Start free. Grow when your inbox does."),
-      pricing_intro: text("Intro", "Free for up to 20 active tracks, for good. Pro and Team are free during the beta. Paid plans come after it: beta users hear first, get at least 30 days' notice, and never lose tracks they already have."),
+      pricing_title: f("Title", "Start free. Grow when your desk does."),
+      pricing_intro: text("Intro", "Free for up to 20 active tracks, for good. Pro and Team are free during the beta. Paid plans come after it: beta receivers hear first, get at least 30 days' notice, and never lose tracks they already have."),
     },
   },
   auth: {
