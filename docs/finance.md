@@ -39,7 +39,7 @@ Guardrails no voice may override, from `PRODUCT.md`: senders are never charged, 
 **Rhythm**
 
 - Weekly, 10 minutes: Admin → Revenue & plans (paying accounts, share on paid, plan changes), Metrics (activated, weekly active), Storage & costs (allowance bars). Note anything odd in this file's log.
-- Monthly, the 1st, one hour: read every bill (Vercel, Neon, Cloudflare, Resend, UptimeRobot, Fly, domain); update `costs.md` if a price moved; record MRR, paid share, churn, cost per desk and cash in the table below; compare with `revenue-model.md`'s row for the month.
+- Monthly, the 1st, one hour: read every bill (Vercel, Neon, Cloudflare, Resend, UptimeRobot, domain); update `costs.md` if a price moved; record MRR, paid share, churn, cost per desk and cash in the table below; compare with `revenue-model.md`'s row for the month.
 - Quarterly: pricing and limits review with the product panel; rerun the model with real numbers.
 
 **Measures, and where each lives**
