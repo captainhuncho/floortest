@@ -6,7 +6,7 @@ import { clearKept } from "../actions/review";
 
 /**
  * "Start a new batch": empties Prepare so the next keeps start fresh, after a confirm. Nothing is deleted or un-kept
- * (the tracks stay Kept in the Queue and their collections), so it's a quiet secondary action, not a red one.
+ * (the tracks stay Kept in the Review Queue and their collections), so it's a quiet secondary action, not a red one.
  */
 export function ClearKept({ count }: { count: number }) {
   const [open, setOpen] = useState(false);
@@ -38,7 +38,7 @@ export function ClearKept({ count }: { count: number }) {
           Start a new batch?
         </h2>
         <p className="mt-3 text-mute">
-          Prepare empties so your next keeps start fresh. The {n} {count === 1 ? "stays" : "stay"} Kept in the Queue and {count === 1 ? "its collection" : "their collections"}.
+          Prepare empties so your next keeps start fresh. The {n} {count === 1 ? "stays" : "stay"} Kept in the Review Queue and {count === 1 ? "its collection" : "their collections"}.
           Download {count === 1 ? "it" : "them"} first if you still need {count === 1 ? "it" : "them"} for a set.
         </p>
         <div className="mt-6 flex flex-wrap justify-end gap-2">

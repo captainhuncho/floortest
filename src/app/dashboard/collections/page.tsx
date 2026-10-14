@@ -32,7 +32,7 @@ export default async function Collections() {
         One per callout. Your link <span className="break-all text-lime">{APP_URL.replace(/^https?:\/\//, "")}/{user.handle}</span> fills the one
         that&apos;s receiving. Review in{" "}
         <Link href="/dashboard/review" className="text-bone underline underline-offset-4">
-          the Queue
+          the Review Queue
         </Link>
         .
       </p>
