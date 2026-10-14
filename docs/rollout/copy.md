@@ -22,7 +22,7 @@ Rule: each block = heading (2–6 words) + at most one line. Image = a phrase fo
 | Tile 8 | **Private by default.** Your decisions never reach the sender. | Keep / Not for me buttons with a small lock |
 | Plans | **Start free.** 20 tracks, no card. → See pricing | — |
 | Close | **Your link is waiting.** · Claim your link → | Wide shot: crowd, booth light, phone glowing in the DJ's pocket |
-| Footer | For DJs, curators and labels who live on new music. | — |
+| Footer | Built for DJs, producers and labels. | — |
 
 FAQ: keep, but collapsed and max 4 questions (account needed? files? who hears it? what's deleted when?). One-line answers.
 
