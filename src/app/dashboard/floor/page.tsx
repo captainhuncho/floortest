@@ -120,7 +120,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
       ? []
       : [
           { key: "in", label: "Received", value: String(stats.receivedWeek), sub: delta === 0 ? "Same as last week" : `${delta > 0 ? "+" : "−"}${Math.abs(delta)} on last week` },
-          { key: "kept", label: "Kept", value: String(stats.keptWeek), sub: "" },
+          { key: "kept", label: "Kept", value: String(stats.keptWeek), sub: "This week" },
           ...(stats.medianListenMs !== null ? [{ key: "listen", label: "First listen", value: waitShort(stats.medianListenMs), sub: "Typical, 30 days" }] : []),
           ...(stats.decisionRate !== null ? [{ key: "decided", label: "Decided", value: `${stats.decisionRate}%`, sub: "Last 30 days" }] : []),
         ];
@@ -155,7 +155,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
           {problem
             ? "Not taking uploads right now"
             : active
-              ? `To “${active.name}”${active.closes_at ? ` until ${fmtDay(active.closes_at)}` : ""}`
+              ? `Sends tracks to “${active.name}”${active.closes_at ? `, open until ${fmtDay(active.closes_at)}` : ""}`
               : "No collection selected"}
           {" · "}
           <Link href="/dashboard/collections" className="text-mute underline-offset-4 hover:text-bone hover:underline">
@@ -186,7 +186,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
                 welcome
                   ? "Your link is ready. Share it and the first track lands here."
                   : stats.waiting
-                    ? `${stats.waiting} track${stats.waiting === 1 ? "" : "s"} waiting${oldest ? ` · oldest ${ago(oldest)}` : ""}.`
+                    ? `${stats.waiting} track${stats.waiting === 1 ? " is" : "s are"} waiting for you${oldest ? `; the oldest arrived ${ago(oldest)}` : ""}.`
                     : kept
                       ? `You're all caught up. ${kept} kept track${kept === 1 ? " is" : "s are"} ready for your set.`
                       : "You're all caught up. New tracks will show up here first."
@@ -247,7 +247,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
               <p className="text-[12px] text-dim">
                 {nearLimit
                   ? `Your desk is nearly full (${cap.used} of ${cap.limit}). Download them, then delete the ones you're done with to make room.`
-                  : "With a Rekordbox playlist."}
+                  : "Download them as a crate with a Rekordbox playlist."}
               </p>
             </div>
             <Link href="/dashboard/prepare" className="btn-ghost btn-sm shrink-0">
@@ -274,7 +274,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
                     <div key={w.key} className="flex min-w-0 flex-col gap-2 bg-ink-3 px-4 py-3.5">
                       <dt className="eyebrow truncate">{w.label}</dt>
                       <dd className="tnum text-stat font-bold text-bone">{w.value}</dd>
-                      {w.sub && <dd className="text-[11px] leading-4 text-dim">{w.sub}</dd>}
+                      <dd className="text-[11px] leading-4 text-dim">{w.sub}</dd>
                     </div>
                   ))}
                 </dl>
