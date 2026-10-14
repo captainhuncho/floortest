@@ -21,8 +21,8 @@ type Props = {
   prevHref: string | null;
   /** The Queue without a track open: where the review lands once nothing is waiting. */
   queueHref: string;
-  /** Deciding this track leaves nothing waiting in the view. */
-  lastWaiting: boolean;
+  /** In a Needs review view, the ids still waiting there (this track included); null in other views. */
+  waiting: number[] | null;
   /** Phones with a track open: the buttons dock at the bottom of the screen, in thumb reach. */
   docked?: boolean;
   onReply: (fd: FormData) => Promise<void>;
@@ -33,6 +33,12 @@ type How = "touch" | "pointer" | "key";
 
 /** A drag this far decides; a quick flick decides sooner (see the swipe handler). */
 const LINE = 90;
+
+/**
+ * How many tracks would still wait after this one, or null outside Needs review. Tracks decided a moment ago whose
+ * save hasn't refreshed the page yet don't count, so fast decisions still land on "All caught up.".
+ */
+const leftAfter = (ids: number[] | null, id: number) => (ids ? ids.filter((x) => x !== id && !handoff.decided.has(x)).length : null);
 
 const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const shownZone = () => [...document.querySelectorAll<HTMLElement>("[data-swipe-zone]")].find(isShown) ?? null;
@@ -79,7 +85,7 @@ function restore(zone: HTMLElement) {
   paint(zone, 0, true);
 }
 
-export function DecisionRail({ track, senderName, selfHref, next, prevHref, queueHref, lastWaiting, docked = false, onReply }: Props) {
+export function DecisionRail({ track, senderName, selfHref, next, prevHref, queueHref, waiting, docked = false, onReply }: Props) {
   const router = useRouter();
   const player = usePlayer();
   const toast = useToast();
@@ -89,9 +95,10 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, queu
   const [swiped, setSwiped] = useDeviceState(() => stored("ft:swiped") === "1", true);
   const replyRef = useRef<HTMLTextAreaElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
-  // One decision per track (the next track arrives with its own rail). A ref, not a pending state, so the buttons
-  // never dim while it saves.
+  // One decision per track (the next track arrives with its own rail). A ref, not a disabled state, so the buttons
+  // never dim while it saves; `saving` only marks the group busy for assistive tech.
   const deciding = useRef(false);
+  const [saving, setSaving] = useState(false);
   const lastPointer = useRef("mouse");
 
   // Close the composer when moving to another track.
@@ -113,60 +120,99 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, queu
     [next, router, player],
   );
 
+  const goCaughtUp = useCallback(() => {
+    handoff.focus = "caught-up";
+    router.replace(queueHref, { scroll: false });
+  }, [router, queueHref]);
+
+  // A decision that had nowhere to go (end of the view): once the page refreshes with nothing left waiting, it lands
+  // on "All caught up." too. Runs when the refreshed list arrives.
+  const checkCaughtUp = useRef(false);
+  useEffect(() => {
+    if (!checkCaughtUp.current || leftAfter(waiting, track.id) !== 0) return;
+    checkCaughtUp.current = false;
+    goCaughtUp();
+  }, [waiting, track.id, goCaughtUp]);
+
   /**
    * Optimistic, like the List view: the next track opens at once and the save runs alongside. The save is a plain
    * call rather than an async transition, because React holds every transition (the route change included) until a
-   * pending async one finishes. If it fails, the track comes back with the error toast.
+   * pending async one finishes. If it fails (or the call isn't this person's to change), the track comes back with a
+   * toast; if they've already moved on from the next track, the toast offers a way back instead of pulling them.
    */
   const decide = useCallback(
     (d: "kept" | "passed", how: How) => {
       if (deciding.current) return;
       deciding.current = true;
+      setSaving(true);
       const wasPlaying = player.current?.id === track.id && player.playing;
       const reduce = reducedMotion();
       const zone = how === "touch" ? shownZone() : null;
-      const goes = next ? "next" : lastWaiting ? "caught-up" : "stay";
+      const goes = leftAfter(waiting, track.id) === 0 ? "caught-up" : next ? "next" : "stay";
       if (zone) {
         if (goes === "stay") snapBack(zone, reduce);
         else flyOut(zone, d === "kept", reduce);
       }
+      const same = track.decision === d;
+      if (!same) handoff.decided.add(track.id);
       const outcome = d === "kept" ? `Kept “${track.title}”.` : `Not for me: “${track.title}”.`;
-      const message = next ? `${outcome} Now: “${next.track.title}”` : outcome;
-      if (next) {
+      const message = goes === "next" && next ? `${outcome} Now: “${next.track.title}”` : outcome;
+      // Set before the save: the refreshed page may already show "All caught up." when it returns.
+      if (goes === "caught-up") handoff.focus = "caught-up";
+      if (goes === "next" && next) {
         handoff.enter = zone ? { id: next.track.id, dir: d === "kept" ? "keep" : "pass" } : null;
         handoff.focus = next.track.id;
         advance(wasPlaying);
       }
-      const save = track.decision === d ? Promise.resolve(null) : decideTrack(track.id, d);
+
+      const fail = (here: string, away: string) => {
+        deciding.current = false;
+        setSaving(false);
+        handoff.decided.delete(track.id);
+        handoff.enter = null;
+        handoff.focus = null;
+        if (zone?.isConnected) restore(zone);
+        if (goes !== "next" || !next) return toast.show({ message: here });
+        const there = new URL(next.href, window.location.href);
+        if (window.location.pathname + window.location.search === there.pathname + there.search) {
+          // Still on the track it moved to: bring this one back (playing again if it was).
+          toast.show({ message: here });
+          router.replace(selfHref, { scroll: false });
+          if (wasPlaying) player.play(track);
+        } else toast.show({ message: away, action: { label: "Open it", undoable: false, run: () => router.push(selfHref) } });
+      };
+
+      const save = same ? Promise.resolve(null) : decideTrack(track.id, d);
       save.then(
         (token) => {
-          if (goes === "caught-up") {
-            handoff.focus = "caught-up";
-            router.replace(queueHref, { scroll: false });
-          } else if (goes === "stay") deciding.current = false;
+          // No token for a real change: an owner's or A&R / Admin's call stands against a member.
+          if (!same && !token) return fail("Only the owner or an A&R / Admin can change it.", `Only the owner or an A&R / Admin can change “${track.title}”.`);
+          setSaving(false);
+          // The refreshed page stops counting it by itself; until then it stays out of the waiting count.
+          if (!same) setTimeout(() => handoff.decided.delete(track.id), 5000);
+          // Focus was handed off before the save; the refreshed page may already have taken it.
+          if (goes === "caught-up") router.replace(queueHref, { scroll: false });
+          else if (goes === "stay") {
+            deciding.current = false;
+            checkCaughtUp.current = true;
+          }
           if (token)
             toast.show({
               message,
               action: {
                 label: "Undo",
                 run: async () => {
+                  handoff.decided.delete(track.id);
                   await undoDecision(token);
                   router.replace(selfHref, { scroll: false });
                 },
               },
             });
         },
-        () => {
-          deciding.current = false;
-          handoff.enter = null;
-          handoff.focus = null;
-          if (zone?.isConnected) restore(zone);
-          toast.show({ message: "Couldn't save that. Nothing changed. Try again." });
-          if (next) router.replace(selfHref, { scroll: false });
-        },
+        () => fail("Couldn't save that. Nothing changed. Try again.", `Couldn't save “${track.title}”. Nothing changed.`),
       );
     },
-    [player, track, next, lastWaiting, toast, router, selfHref, queueHref, advance],
+    [player, track, next, waiting, toast, router, selfHref, queueHref, advance],
   );
   // The swipe handler calls the latest decide() without re-binding (the player re-renders several times a second,
   // which used to reset a drag in progress).
@@ -219,7 +265,9 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, queu
     if (!zone) return;
     const stamp = zone.querySelector<HTMLElement>("[data-stamp]");
     const reduce = reducedMotion();
-    let x0 = 0, y0 = 0, t0 = 0, dx = 0, mode: "idle" | "maybe" | "drag" | "scroll" = "idle";
+    let x0 = 0, y0 = 0, grab = 0, dx = 0, mode: "idle" | "maybe" | "drag" | "scroll" = "idle";
+    // Recent positions, for the release velocity (the speed at the end of the gesture, not its average).
+    let samples: { t: number; x: number }[] = [];
     const haptic = () => {
       const cap = (window as unknown as { Capacitor?: { Plugins?: { Haptics?: { impact: (o: { style: string }) => Promise<void> } } } }).Capacitor;
       if (cap?.Plugins?.Haptics) void cap.Plugins.Haptics.impact({ style: "MEDIUM" }).catch(() => {});
@@ -236,8 +284,9 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, queu
       if (stamp) stamp.style.transition = "none";
       x0 = e.touches[0].clientX - at;
       y0 = e.touches[0].clientY;
-      t0 = performance.now();
+      grab = at;
       dx = at;
+      samples = [{ t: performance.now(), x: at }];
       mode = at ? "drag" : "maybe";
       if (at) paint(zone, at, reduce);
     };
@@ -258,15 +307,22 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, queu
         if (over && stamp && !reduce) stamp.animate([{ transform: "scale(1.12)" }, { transform: "scale(1)" }], { duration: 140, easing: EASE_OUT });
       }
       dx = x;
+      const now = performance.now();
+      samples.push({ t: now, x });
+      while (samples.length > 2 && now - samples[0].t > 150) samples.shift();
       paint(zone, dx, reduce);
     };
     const end = () => {
       const was = mode;
       mode = "idle";
       if (was !== "drag") return;
-      const a = Math.abs(dx);
-      // A quick flick decides too: over 30px at more than 0.11 px/ms.
-      if (a < LINE && !(a > 30 && a / Math.max(1, performance.now() - t0) > 0.11)) return snapBack(zone, reduce);
+      // A quick flick decides too: at least 30px moved since the grab and still going over 0.11 px/ms (over the last
+      // ~80ms) the same way when the finger lifts. A finger that stopped, or a tap mid snap-back, doesn't.
+      const now = performance.now();
+      const from = samples.find((s) => now - s.t <= 80) ?? samples[samples.length - 1];
+      const v = from ? (dx - from.x) / Math.max(1, now - from.t) : 0;
+      const flick = Math.abs(dx - grab) >= 30 && Math.abs(v) > 0.11 && Math.sign(v) === Math.sign(dx);
+      if (Math.abs(dx) < LINE && !flick) return snapBack(zone, reduce);
       setSwiped(true);
       try {
         localStorage.setItem("ft:swiped", "1");
@@ -289,7 +345,7 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, queu
   // A finger or pen tap on Keep / Not for me animates like a swipe; a mouse click or Enter / Space on a focused button doesn't.
   const btn = "btn min-h-14 min-w-0 flex-1 flex-col gap-0.5 whitespace-normal px-1.5 py-3 border";
   const buttons = (
-    <div className={`flex gap-2 ${docked ? "mx-auto max-w-md" : ""}`} role="group" aria-label="Decision">
+    <div className={`flex gap-2 ${docked ? "mx-auto max-w-md" : ""}`} role="group" aria-label="Decision" aria-busy={saving || undefined}>
       <button
         onPointerDown={(e) => void (lastPointer.current = e.pointerType)}
         onClick={(e) => decide("passed", e.detail === 0 ? "key" : lastPointer.current === "mouse" ? "pointer" : "touch")}

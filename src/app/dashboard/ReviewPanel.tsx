@@ -34,7 +34,7 @@ export async function ReviewPanel({
   next,
   prevHref,
   queueHref,
-  lastWaiting,
+  waiting,
   docked,
 }: {
   track: Track;
@@ -45,8 +45,8 @@ export async function ReviewPanel({
   prevHref: string | null;
   /** The Queue without a track open, where the review lands once nothing is waiting. */
   queueHref: string;
-  /** Deciding this track leaves nothing waiting in the view. */
-  lastWaiting: boolean;
+  /** In a Needs review view, the ids waiting there; null in other views. */
+  waiting: number[] | null;
   /** Phones, track open: the decision rail docks at the bottom of the screen. */
   docked: boolean;
 }) {
@@ -191,7 +191,7 @@ export async function ReviewPanel({
       next={next}
       prevHref={prevHref}
       queueHref={queueHref}
-      lastWaiting={lastWaiting}
+      waiting={waiting}
       onReply={replyToSender.bind(null, sender.id, t.id)}
     />
   );
@@ -223,7 +223,7 @@ export async function ReviewPanel({
           <>
             {/* The rail mounts once the screen size is known (one rail, one set of shortcuts); this dark strip holds its
                 place at the bottom until then, so nothing jumps. */}
-            <div aria-hidden className="keep-night fixed inset-x-0 bottom-0 z-40 h-[calc(64px+max(0.75rem,env(safe-area-inset-bottom)))] bg-[#141512]" />
+            <div aria-hidden data-rail-space className="keep-night fixed inset-x-0 bottom-0 z-40 h-[calc(64px+max(0.75rem,env(safe-area-inset-bottom)))] bg-[#141512]" />
             <MobileOnly>{rail(true)}</MobileOnly>
           </>
         )}
