@@ -66,7 +66,7 @@ export function ClaimBox({ host, inviteOnly }: { host: string; inviteOnly: boole
         {inviteOnly ? "Check it's free →" : "Claim your link →"}
       </button>
       <p className="mt-3 min-h-5 text-xs text-mute" aria-live="polite">
-        {status ? (inviteOnly || status !== "free" ? HELP[status] : "Free right now.") : inviteOnly ? "Private beta · invite only" : ""}
+        {status ? (inviteOnly || status !== "free" ? HELP[status] : "Free right now.") : ""}
       </p>
       {display && (
         <p className="mt-1 font-[family-name:var(--font-serif)] text-lg italic text-bone">

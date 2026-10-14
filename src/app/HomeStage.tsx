@@ -43,7 +43,7 @@ export function DeckSection() {
         <div>
           <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">Cued up like a deck.</h2>
           <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-mute">
-            Every track sent to your link waits in one queue, oldest first. Play, keep, next, on your phone in the booth or at your desk.
+            Play, keep, next. On your phone in the booth or at your desk.
           </p>
           <dl className="mt-10 grid max-w-xl grid-cols-3 border-y border-line">
             {[
@@ -197,13 +197,13 @@ const ART: React.ReactNode[] = [
   </ol>,
 ];
 
-const LOG: [string, string, string, string | null][] = [
-  ["Tue 18:00", "Callout open", "Your brief, before anyone sends", "Reads your brief"],
-  ["Wed 21:40", "Lands in Up next", "Sent from a studio in Lagos", "Delivered"],
-  ["Thu 00:12", "30 seconds in", "Real playback, nothing less", "Listened"],
-  ["Thu 00:13", "Keep", "Your crew stars it for Saturday", null],
-  ["Sat 19:30", "Into the crate", "Folder, M3U8 and Rekordbox XML", "Downloaded"],
-  ["Sun 01:12", "On the floor", "You tap Played out", "Played out"],
+const LOG: [string, string, string | null, string | null][] = [
+  ["Tue 18:00", "Callout open", null, "Reads your brief"],
+  ["Wed 21:40", "Lands in Up next", null, "Delivered"],
+  ["Thu 00:12", "30 seconds in", "Real playback only", "Listened"],
+  ["Thu 00:13", "Keep", null, null],
+  ["Sat 19:30", "Into the crate", "Rekordbox XML and M3U8", "Downloaded"],
+  ["Sun 01:12", "On the floor", null, "Played out"],
 ];
 
 /** The features as one track's week, set out like a set log: what happens on the desk, and what crosses to the sender. */
@@ -228,7 +228,7 @@ export function SetLog() {
               <span className="tnum col-start-1 row-start-1 self-start pt-0.5 text-xs text-faint">{time}</span>
               <span className="col-start-2 row-start-1 min-w-0 self-start">
                 <span className="block text-base font-bold text-bone">{what}</span>
-                <span className="mt-1 block text-xs text-mute">{detail}</span>
+                {detail && <span className="mt-1 block text-xs text-mute">{detail}</span>}
               </span>
               <span aria-hidden className="col-start-2 row-start-2 min-w-0 lg:col-start-3 lg:row-start-1">
                 {ART[i]}
