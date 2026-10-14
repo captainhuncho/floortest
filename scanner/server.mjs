@@ -68,7 +68,9 @@ http
       return send(res, 200, result);
     } catch (e) {
       console.error(JSON.stringify({ at: new Date().toISOString(), error: e instanceof Error ? e.message : String(e) }));
-      return send(res, 502, { error: "Scan failed" });
+      // The error's type only (e.g. AccessDenied, NoSuchKey, ECONNREFUSED): enough to fix a setting, nothing secret.
+      const reason = (e && (e.Code || e.name || e.code)) || "Error";
+      return send(res, 502, { error: "Scan failed", reason: String(reason).slice(0, 60) });
     }
   })
   .listen(Number(PORT), () => console.log(`scanner listening on ${PORT}`));

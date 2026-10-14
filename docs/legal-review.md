@@ -46,7 +46,7 @@ The drafts at /terms and /privacy were rewritten on 29 Sep 2026 to close the gap
 **Built, behind a switch or not yet on**
 
 - **Account teams** (switch `teams`): a label or crew shares one desk with seats (Owner, A&R / Admin, Member). The activity log names the teammate beside each action; teammates see the desk's log but never the holder's sign-ins, security, plan or alert settings (question 36).
-- **Virus scanning** of uploads, our own ClamAV service. It reads every uploaded audio file, so its host is a sub-processor. The owner chooses between Fly.io (London; a new sub-processor) and Cloudflare Containers (Cloudflare is already listed). Off until then (question 38).
+- **Virus scanning** of uploads, our own ClamAV service. It reads every uploaded audio file, so its host is a sub-processor. Host: Cloudflare Containers (owner, 14 Oct; Cloudflare is already listed), on in production from 14 Oct. Fly.io (London) is only a fallback, for if Cloudflare can't keep up; using it would first make it a new sub-processor (question 38).
 - **Recovery copy:** a second private Cloudflare bucket (`floortest-vault`, Western Europe) gets a nightly copy of every stored file; deleting a file deletes its copy too. Not running until the owner adds its key (question 39).
 
 **Open owner decision touching the Terms:** whether senders keep the "evaluation only: ask before playing it out" choice, or sending means the receiver may play it. You'll get the decision before any wording.
@@ -206,7 +206,7 @@ FloorTest will be registered in and operated from **Ghana**, serving users world
 35. **Reserved link names:** keeping a deleted account's link name (no other data) for a year to stop impersonation: is legitimate interest enough, and should the Privacy Policy mention it?
 36. **Teams:** before switching teams on, what do the Terms and Privacy need: the account owner's responsibility for their team, and teammates seeing who did what on the shared desk?
 37. **Released tracks:** if FloorTest takes released tracks as well as unreleased ones, what changes in the Terms, Takedown page and Content rules (already in the redline list)?
-38. **Scanner host:** if the owner picks Fly.io, what has to happen first (Sub-processors page, notice period to users, data processing agreement)?
+38. **Scanner host:** (moot from 14 Oct: the owner picked Cloudflare Containers, already a subprocessor) if the owner picks Fly.io, what has to happen first (Sub-processors page, notice period to users, data processing agreement)?
 39. **Recovery copy:** does the Privacy Policy's backup wording cover a full nightly copy of stored files in a second bucket, deleted along with the original?
 
 ## 7. Before invites go out

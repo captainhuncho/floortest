@@ -27,9 +27,9 @@ Beta sizes come from the beta targets in `beta-launch-plan.md`; launch sizes are
 | UptimeRobot | $0 | $10 | Free is for personal use only; Solo is $10 a month ($9 billed yearly), 60-second checks. |
 | Sentry | $0 | $0–26 | Developer plan: 5,000 errors a month, free. Team is $26 for 50,000. Only needed if errors outgrow the free plan. |
 | Cloudflare Turnstile | $0 | $0 | Free. |
-| Cloudflare Workers Paid | $0 from 26 Oct | $0 | Left over from the 6 Oct Workers trial (the hosting decision was Vercel). Invoice IN 82507574, 6 Oct 2026: $3.33 pro-rata for 6–25 Oct. Cancelled 13 Oct, ends 26 Oct; no further charge. |
+| Cloudflare Workers Paid | $5 | $5 | Left over from the 6 Oct Workers trial (invoice IN 82507574, 6 Oct 2026: $3.33 pro-rata for 6–25 Oct); cancelled 13 Oct to end 26 Oct, then needed again 14 Oct for the virus scanner on Cloudflare Containers, so it stays on (undo the cancellation, or subscribe again after 26 Oct). |
 | Cloudflare R2 Paid, Images Stream Basic | $0 | $0 | Both subscriptions are metered with no base fee. R2 Paid is the normal R2 plan ($0.015 per GB past the free 10 GB, counted in the R2 row above). Images and Stream are not used by FloorTest (images go through sharp into R2), so they bill nothing; cancelling Images Stream Basic is tidy, not a saving. |
-| Virus scanning (own ClamAV) | $0 | $13–25 | A ClamAV daemon needs about 1.5 GB of RAM for its signatures. Fly.io shared-cpu-1x: 2 GB $12.70, 4 GB $24.70, plus a volume at $0.15 per GB. The earlier $5–7 estimate in `services.md` is too low. |
+| Virus scanning (own ClamAV) | $20–25 | $20–25 | Cloudflare Containers (owner, 14 Oct), always on at 1 vCPU / 3 GiB / 4 GB disk. Memory is billed as provisioned: 3 GiB × 730 h less the 25 GiB-h included, at $0.0000025 per GiB-second, is about $19.50; disk about $0.70; CPU only as used ($0.000020 per vCPU-second past 375 minutes), a few dollars at beta size. Measured 14 Oct: about 1 GB in use. Fly.io (the fallback) was $12.70–24.70. |
 | Domain (floortest.app) | $3 | $3 | $101.97 paid for 3 years at Hosting.com (owner, 13 Oct): $34 a year, $2.83 a month. Next renewal is a one-off, not a monthly bill. |
 | Google Workspace (support mailbox) | $0 | $7–8 | Business Starter, 1 user: $7 a month billed yearly, $8.40 monthly. Planned for the two weeks after launch. |
 | GitHub, Figma, Vercel Analytics | $0 | $0 | Free tiers. Analytics events are $3 per 100,000 past the Pro allowance; not expected. |
@@ -65,4 +65,4 @@ Rough break-even: the launch stack ($110–170) is covered by 18–28 Pro monthl
 
 ## Sources
 
-List prices read on 13 Oct 2026: [Vercel](https://vercel.com/pricing), [Neon](https://neon.com/pricing), [Cloudflare R2](https://developers.cloudflare.com/r2/pricing/), [Resend](https://resend.com/pricing), [UptimeRobot](https://uptimerobot.com/pricing/), [Sentry](https://sentry.io/pricing/), [Paddle](https://www.paddle.com/pricing), [Fly.io](https://docs.fly.io/about/pricing). Vercel's billing API reports no charges for the team so far, which matches the Hobby plan.
+List prices read on 13 Oct 2026: [Vercel](https://vercel.com/pricing), [Neon](https://neon.com/pricing), [Cloudflare R2](https://developers.cloudflare.com/r2/pricing/), [Resend](https://resend.com/pricing), [UptimeRobot](https://uptimerobot.com/pricing/), [Sentry](https://sentry.io/pricing/), [Paddle](https://www.paddle.com/pricing), [Fly.io](https://docs.fly.io/about/pricing) (fallback scanner host only). Vercel's billing API reports no charges for the team so far, which matches the Hobby plan.

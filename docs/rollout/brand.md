@@ -1,7 +1,7 @@
 # Brand and positioning (12 Oct 2026)
 
 ## 1. Positioning
-1. **One line:** untitled.stream is where the maker keeps their music; FloorTest is where that music lands, gets heard and decided on, and the sender is told honestly what happened.
+1. **One line:** FloorTest is where new music lands, gets heard and decided on, and the sender is told honestly what happened.
 2. **Against file links, DMs, WeTransfer, Dropbox, promo pools:** those deliver a file and go quiet. FloorTest is a desk: one link that never changes, a queue, Keep / Not for me, a crate for the set, and a receipt for the sender.
 3. **What we own:** the receiving side, and honest signals ("Listened" means 30 seconds of real playback, and we say so).
 
