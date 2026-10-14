@@ -440,6 +440,7 @@ export function SubmitForm({
           callout={callout}
           startedAt={startedAt}
           onCancel={holding ? () => {} : cancel}
+          retry={items.find((it) => it.retry)?.retry}
           files={items.map((it) => ({ name: it.file.name, size: it.file.size, progress: it.progress, state: it.status === "done" ? "sent" : it.status === "uploading" ? "sending" : it.status === "error" ? "failed" : "waiting" }))}
         />
       )}
@@ -630,6 +631,7 @@ function uploadMilestone(items: Item[]) {
   const n = items.length;
   if (!current) return done ? `Track ${done} sent` : "";
   const which = n > 1 ? `track ${done + 1} of ${n}` : "your track";
+  if (current.retry) return `Signal dropped. Trying ${which} again, ${current.retry.attempt} of ${current.retry.of}`;
   const quarter = Math.floor(current.progress * 4) * 25;
   if (quarter > 0) return `Uploading ${which}: ${quarter} percent`;
   return `${done ? `Track ${done} sent. ` : ""}Uploading ${which}`;

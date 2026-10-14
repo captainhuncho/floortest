@@ -15,6 +15,54 @@ type Fields = Record<string, unknown>;
 export const CANCELLED = "Transfer cancelled.";
 const NET =
   "Network error. Your details are still here. Check your connection and try again.";
+const STALLED = "The upload stalled. Check your signal and press Send again: your details are still here.";
+
+/** No progress for this long and the upload counts as stalled (a phone between masts often hangs rather than failing). */
+export const STALL_MS = 30_000;
+/** Times a dropped or stalled file is tried again by itself before the sender is asked to. */
+export const RETRIES = 3;
+
+/** Waits until the browser says it's online (or right away if it already is), then a short pause. Gives up on abort. */
+function backOnline(waitMs: number, signal?: AbortSignal) {
+  return new Promise<void>((resolve) => {
+    const go = () => setTimeout(resolve, waitMs);
+    if (signal?.aborted) return resolve();
+    if (typeof navigator === "undefined" || navigator.onLine) return go();
+    const on = () => (window.removeEventListener("online", on), go());
+    window.addEventListener("online", on);
+    signal?.addEventListener("abort", () => (window.removeEventListener("online", on), resolve()), { once: true });
+  });
+}
+
+/**
+ * One PUT of the whole file, with a stall watchdog: if no bytes move for STALL_MS (and no answer comes back),
+ * the request is stopped and reported as stalled. Resolves the HTTP status, 0 for a network failure, -1 for a
+ * cancel and -2 for a stall.
+ */
+function putFile(target: { url: string; headers: Record<string, string> }, file: File, onProgress: (p: number) => void, signal?: AbortSignal) {
+  return new Promise<number>((resolve) => {
+    const xhr = new XMLHttpRequest();
+    let last = Date.now();
+    let stalled = false;
+    const watch = setInterval(() => {
+      if (Date.now() - last < STALL_MS) return;
+      stalled = true;
+      xhr.abort();
+    }, 2_000);
+    const end = (v: number) => (clearInterval(watch), resolve(v));
+    xhr.open("PUT", target.url);
+    for (const [k, v] of Object.entries(target.headers)) xhr.setRequestHeader(k, v);
+    xhr.upload.onprogress = (ev) => {
+      last = Date.now();
+      if (ev.lengthComputable) onProgress((ev.loaded / ev.total) * 0.97);
+    };
+    xhr.onload = () => end(xhr.status);
+    xhr.onerror = () => end(0);
+    xhr.onabort = () => end(stalled ? -2 : -1);
+    signal?.addEventListener("abort", () => xhr.abort(), { once: true });
+    xhr.send(file);
+  });
+}
 
 /**
  * One track, three steps: ask the server for an upload URL (it checks the rules first), PUT the file
@@ -28,6 +76,7 @@ export async function uploadTrack(
   fields: Fields,
   onProgress: (p: number) => void,
   signal?: AbortSignal,
+  onRetry?: (attempt: number, of: number) => void,
 ): Promise<{ token: string } | { error: string }> {
   const json = async (res: Response) =>
     (await res.json().catch(() => ({}))) as {
@@ -47,24 +96,21 @@ export async function uploadTrack(
       return {
         error: started.error || "Couldn't start the upload. Nothing was sent. Try again in a minute: your details are still here.",
       };
-    const put = await new Promise<number>((resolve) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open("PUT", started.target!.url);
-      for (const [k, v] of Object.entries(started.target!.headers))
-        xhr.setRequestHeader(k, v);
-      xhr.upload.onprogress = (ev) =>
-        ev.lengthComputable && onProgress((ev.loaded / ev.total) * 0.97);
-      xhr.onload = () => resolve(xhr.status);
-      xhr.onerror = () => resolve(0);
-      xhr.onabort = () => resolve(-1);
-      signal?.addEventListener("abort", () => xhr.abort(), { once: true });
-      xhr.send(file);
-    });
-    if (put === -1) return { error: CANCELLED };
+    // A dropped or stalled connection is tried again by itself (from the start of the file, with the same
+    // upload link, which stays valid for 15 minutes), once the phone is back online.
+    let put = await putFile(started.target, file, onProgress, signal);
+    for (let attempt = 1; (put === 0 || put === -2) && attempt <= RETRIES && !signal?.aborted; attempt++) {
+      onRetry?.(attempt, RETRIES);
+      await backOnline(attempt * 3_000, signal);
+      if (signal?.aborted) break;
+      onProgress(0);
+      put = await putFile(started.target, file, onProgress, signal);
+    }
+    onRetry?.(0, RETRIES);
+    if (put === -1 || signal?.aborted) return { error: CANCELLED };
     if (put < 200 || put >= 300)
       return {
-        error:
-          put === 0 ? NET : "The upload didn't go through. Please try again.",
+        error: put === -2 ? STALLED : put === 0 ? NET : "The upload didn't go through. Please try again.",
       };
     const finish = () =>
       fetch(`/api/submit/${handle}/complete`, {
@@ -122,6 +168,8 @@ export type Item = {
   tags: Tags;
   status: "ready" | "uploading" | "done" | "error";
   progress: number;
+  /** Set while a dropped or stalled upload is being tried again by itself: which try, out of how many. */
+  retry?: { attempt: number; of: number };
   token?: string;
   error?: string;
 };
@@ -224,6 +272,7 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
         { ...shared, batch, title: it.tags.title, artist: it.tags.artist, musical_key: it.tags.key, isrc: it.tags.isrc },
         (p) => patch(it.id, { progress: p }),
         abort.current.signal,
+        (attempt, of) => patch(it.id, { retry: attempt ? { attempt, of } : undefined }),
       );
       if ("error" in r && r.error === CANCELLED) {
         patch(it.id, { status: "ready", progress: 0 });

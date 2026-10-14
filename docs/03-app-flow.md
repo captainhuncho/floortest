@@ -61,7 +61,7 @@ Mobile tab bar: Floor · Queue · Collections · Prepare. Desktop sidebar adds S
 ```
 floortest.app/<handle> ─► choose files (or Send folders on Pro/Team)
    ─► details form (title/artist · you · about the track; "+ Add a message" / "+ Add artwork" on Team) ─► email ─► 6-digit code
-   ─► upload in place (one bar, time left, Cancel) ─► done: check, receipt email, Delivered → Listened → Downloaded → Replied ─► View receipt / Send another
+   ─► upload in place (one bar, time left, Cancel; a dropped or stalled upload (no progress for 30 s) is tried again by itself up to 3 times once the phone is back online, from the start of that file with the same 15-minute link, saying so on screen; after that "The upload stalled…" / "Network error…" with the answers kept) ─► done: check, receipt email, Delivered → Listened → Downloaded → Replied ─► View receipt / Send another
    Missing answers: each field says what to do and they're listed together above Send (each a link); nothing uploads until they're filled.
    A genre tapped in the receiver's brief arrives already chosen in the form.
 Link closed / paused / full ─► the page says why, no upload ─► "Email me when it reopens" ─► one email when the link takes uploads again
