@@ -1,4 +1,4 @@
-# FloorTest operations
+; Vercel → Firewall → Traffic for 403s from the rate rules# FloorTest operations
 
 How the backend works, how to run it, and what to do when something goes wrong. Keep this current when you change any of it.
 
@@ -100,7 +100,7 @@ So a storage outage can delay a deletion but can never lose track of a file. Wit
   - **Not available on Hobby:** an upload rate-limit rule (needs Pro; the app's own upload limits still apply) and the OWASP ruleset (Enterprise).
 
 - **Admin:** listed email, confirmed email and two-factor are all required, and every admin action is logged (**Admin → Admin log**). Two-factor resets need the user's handle typed in, plus a note on how you confirmed it's them.
-- **Abuse:** rate limits per connection and per email address on uploads, logins, contact and waitlist; Turnstile on public forms; IP addresses are kept at most 48 hours.
+- **Abuse:** rate limits per connection and per email address on uploads, logins, contact and waitlist; Turnstile on public forms; IP addresses are kept at most 48 hours. Above the app, the Vercel Firewall (Pro) denies an address with 403 for the rest of the minute after 300 requests to `/api/*` or 60 to the sign-in pages in a minute (rules "API ceiling" and "Sign-in pages", Vercel → floortest → Firewall; hits show under Firewall → Traffic).
 - **Blocking abusers:** per receiver, by the receiver; platform-wide by email address or domain in **Admin → Sender blocks**.
 - **Uploads:** checked by file content (RIFF/MPEG structure, no trailing payloads), not by name. Every track and stem is then scanned by our own ClamAV service (`scanner/`, `src/lib/scan.ts`; live since 14 Oct): a flagged file is refused and discarded; if the scanner can't be reached the upload is refused with "try again" and the browser retries for about 30 s. Preview uploads aren't scanned.
 
