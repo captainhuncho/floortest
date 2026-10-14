@@ -15,7 +15,7 @@ export function ShortcutsSwitch() {
       <div className="min-w-0 flex-1">
         <p className="font-medium">Keyboard shortcuts</p>
         <p className="text-sm text-mute">
-          In the Queue: K keep, X not for me, R reply, U undo, J next, 1–4 jump. Space and the arrow keys always work.
+          In the Review Queue: K keep, X not for me, R reply, U undo, J next, 1–4 jump. Space and the arrow keys always work.
         </p>
       </div>
       <button

@@ -98,7 +98,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
         ? {
             // Every track that isn't deleted counts toward the limit (kept ones too, even after a new batch in Prepare),
             // so room comes from deleting tracks you're done with, or a bigger plan.
-            text: `Your desk holds ${cap.limit.toLocaleString("en-GB")} active tracks and it's full, so your link has stopped taking new ones. Download what you need from Prepare, then delete tracks you're done with in the Queue to make room.`,
+            text: `Your desk holds ${cap.limit.toLocaleString("en-GB")} active tracks and it's full, so your link has stopped taking new ones. Download what you need from Prepare, then delete tracks you're done with in the Review Queue to make room.`,
             action: (
               <span className="flex flex-wrap gap-2">
                 <Link href="/dashboard/prepare" className="btn-lime btn-sm">
