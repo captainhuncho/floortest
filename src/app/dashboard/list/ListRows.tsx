@@ -213,7 +213,7 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
               data-row={r.id}
               aria-current={selected === r.id ? "true" : undefined}
               onClick={() => (picking ? toggle(r.id) : setSelected(r.id))}
-              className={`group transition ${decision === "passed" ? "opacity-60" : ""} ${picking ? "flex items-center gap-2" : ""}`}
+              className={`group transition ${picking ? "flex items-center gap-2" : ""}`}
             >
               {picking && (
                 <input
@@ -266,7 +266,7 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
                       {waiting && <span className="sr-only">Needs review: </span>}
                       {r.artist} - {r.title}
                     </span>
-                    <span className="truncate text-[11px] font-medium text-mute">{r.meta.join(" · ")}</span>
+                    <span className={`truncate text-[11px] font-medium ${decision === "passed" ? "text-faint" : "text-mute"}`}>{r.meta.join(" · ")}</span>
                   </button>
                   {statusTag ? (
                     <span
@@ -294,21 +294,15 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
                   />
                 </div>
                 <div className="flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
-                  <span title={r.played ? "Listened" : "Not listened yet"} className={`grid size-9 place-items-center ${r.played ? "text-bone" : "text-mute"}`}>
-                    <FigmaIcon name="headphones" />
-                    <span className="sr-only">{r.played ? "Listened" : "Not listened yet"}</span>
-                  </span>
-                  <button title="Keep (K)" aria-label={`Keep ${r.title}`} aria-pressed={decision === "kept"} onClick={() => decide(r, "kept", false)} className={`grid size-9 place-items-center ${decision === "kept" ? "text-bone" : "text-mute"}`}>
-                    <FigmaIcon name="heart" />
-                  </button>
-                  <button title="Not for me (X)" aria-label={`Not for me: ${r.title}`} aria-pressed={decision === "passed"} onClick={() => decide(r, "passed", false)} className={`grid size-9 place-items-center ${decision === "passed" ? "text-bone" : "text-mute"}`}>
-                    <FigmaIcon name="thumbs-down" />
-                  </button>
-                  <button title="Reply (R)" aria-label={`Reply to ${r.sender}`} aria-pressed={open} onClick={() => (setSelected(r.id), setExpanded(open ? null : r.id))} className={`relative grid size-9 place-items-center ${open ? "text-bone" : "text-mute"}`}>
+                  {/* A status, not a control: plain text. */}
+                  <span className="w-16 shrink-0 text-[11px] text-faint">{r.played ? "Listened" : ""}</span>
+                  <DecisionButton kind="kept" title={r.title} pressed={decision === "kept"} onClick={() => decide(r, "kept", false)} />
+                  <DecisionButton kind="passed" title={r.title} pressed={decision === "passed"} onClick={() => decide(r, "passed", false)} />
+                  <button title="Reply (R)" aria-label={`Reply to ${r.sender}`} aria-pressed={open} onClick={() => (setSelected(r.id), setExpanded(open ? null : r.id))} className={`relative grid size-11 place-items-center ${open ? "text-bone" : "text-mute"}`}>
                     <FigmaIcon name="message-square" />
-                    {r.replied && <span className="absolute right-2 top-2 size-1.5 rounded-full bg-lime" />}
+                    {r.replied && <span className="absolute right-2.5 top-2.5 size-1.5 rounded-full bg-lime" />}
                   </button>
-                  <a href={`/api/tracks/${r.id}/download`} title="Download original" aria-label={`Download original of ${r.title}`} className="grid size-9 place-items-center text-mute">
+                  <a href={`/api/tracks/${r.id}/download`} title="Download original" aria-label={`Download original of ${r.title}`} className="grid size-11 place-items-center text-mute">
                     <FigmaIcon name="download" />
                   </a>
                 </div>
@@ -381,12 +375,8 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
                       </span>
                     )}
                   </span>
-                  <ActionButton label={`Keep ${r.title}`} tip="Keep" hint="K" pressed={decision === "kept"} onClick={() => decide(r, "kept", false)}>
-                    <Icon.Heart filled={decision === "kept"} />
-                  </ActionButton>
-                  <ActionButton label={`Not for me: ${r.title}`} tip="Not for me" hint="X" pressed={decision === "passed"} onClick={() => decide(r, "passed", false)}>
-                    <Icon.ThumbDown filled={decision === "passed"} />
-                  </ActionButton>
+                  <DecisionButton kind="kept" title={r.title} pressed={decision === "kept"} onClick={() => decide(r, "kept", false)} />
+                  <DecisionButton kind="passed" title={r.title} pressed={decision === "passed"} onClick={() => decide(r, "passed", false)} />
                   <ActionButton label={`Reply to ${r.sender}`} tip="Reply" hint="R" pressed={open} onClick={() => (setSelected(r.id), setExpanded(open ? null : r.id))}>
                     <Icon.Bubble dot={r.replied} />
                   </ActionButton>
@@ -394,7 +384,7 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
                     href={`/api/tracks/${r.id}/download`}
                     title="Download original"
                     aria-label={`Download original of ${r.title}`}
-                    className="grid h-10 w-10 place-items-center rounded-md text-bone/80 transition hover:bg-ink-3 hover:text-bone"
+                    className="grid size-11 place-items-center rounded-md text-bone/80 transition hover:bg-ink-3 hover:text-bone"
                   >
                     <Icon.Download />
                   </a>
@@ -560,25 +550,43 @@ function ActionButton({
       aria-pressed={pressed}
       aria-keyshortcuts={hint}
       title={`${tip} (${hint})`}
-      className={`grid h-10 w-10 place-items-center rounded-md transition hover:bg-ink-3 ${pressed ? "text-bone" : "text-mute hover:text-bone"}`}
+      className={`grid size-11 place-items-center rounded-md transition hover:bg-ink-3 ${pressed ? "text-bone" : "text-mute hover:text-bone"}`}
     >
       {children}
     </button>
   );
 }
 
+/**
+ * Keep and Not for me in a row, worded as on the decision rail: Keep in lime, Not for me neutral (never red, never a
+ * thumbs-down). 44px tall.
+ */
+function DecisionButton({ kind, title, pressed, onClick }: { kind: "kept" | "passed"; title: string; pressed: boolean; onClick: () => void }) {
+  const keep = kind === "kept";
+  return (
+    <button
+      onClick={onClick}
+      aria-label={keep ? `Keep ${title}` : `Not for me: ${title}`}
+      aria-pressed={pressed}
+      aria-keyshortcuts={keep ? "K" : "X"}
+      title={keep ? "Keep (K)" : "Not for me (X)"}
+      className={`inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-md border px-2.5 text-[12px] font-semibold transition ${
+        keep
+          ? pressed
+            ? "border-lime bg-lime text-ink"
+            : "border-lime/50 text-lime hover:bg-lime hover:text-ink"
+          : pressed
+            ? "border-bone bg-bone/10 text-bone"
+            : "border-line text-mute hover:border-mute hover:text-bone"
+      }`}
+    >
+      {keep ? (pressed ? "Kept" : "Keep") : "Not for me"}
+    </button>
+  );
+}
+
 const svg = "h-[22px] w-[22px]";
 const Icon = {
-  Heart: ({ filled }: { filled: boolean }) => (
-    <svg viewBox="0 0 24 24" className={svg} fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" aria-hidden>
-      <path d="M12 20.5s-7.5-4.6-9.3-9.2C1.4 8 3.5 4.5 7 4.5c2 0 3.4 1.1 5 3 1.6-1.9 3-3 5-3 3.5 0 5.6 3.5 4.3 6.8-1.8 4.6-9.3 9.2-9.3 9.2Z" strokeLinejoin="round" />
-    </svg>
-  ),
-  ThumbDown: ({ filled }: { filled: boolean }) => (
-    <svg viewBox="0 0 24 24" className={svg} fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" aria-hidden strokeLinejoin="round">
-      <path d="M17 3.5h3v10h-3zM17 13.5l-4 7a2 2 0 0 1-2.8-2.3l1-3.7H5.4a2 2 0 0 1-2-2.4l1.4-6.5a2 2 0 0 1 2-1.6H17" />
-    </svg>
-  ),
   Bubble: ({ dot }: { dot: boolean }) => (
     <svg viewBox="0 0 24 24" className={svg} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden strokeLinejoin="round">
       <path d="M12 4c4.7 0 8.5 3.2 8.5 7.2s-3.8 7.2-8.5 7.2c-1 0-2-.1-2.9-.4L4.5 20l1.2-3.8a6.8 6.8 0 0 1-2.2-5C3.5 7.2 7.3 4 12 4Z" />

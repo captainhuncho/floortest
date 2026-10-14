@@ -62,7 +62,7 @@ export function Waveform({ peaks, progress = 0, height = 36, onSeek, label, clas
             width={2}
             height={h}
             rx={1}
-            className={i < cut ? "fill-lime" : dim ? "fill-dim" : "fill-mute/70"}
+            className={i < cut ? "fill-lime" : dim ? "fill-dim" : "fill-wave"}
           />
         );
       })}

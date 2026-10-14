@@ -53,7 +53,7 @@ function QrDialog({ handle, link, onClose }: { handle: string; link: string; onC
             </h2>
             <p className="mt-1 truncate text-[11px] text-mute">{link.replace(/^https?:\/\//, "")}</p>
           </div>
-          <button ref={close} onClick={onClose} aria-label="Close" className="grid size-8 shrink-0 place-items-center rounded-full text-lg leading-none text-mute hover:bg-ink-3 hover:text-bone">
+          <button ref={close} onClick={onClose} aria-label="Close" className="-m-1.5 grid size-11 shrink-0 place-items-center rounded-full text-lg leading-none text-mute hover:bg-ink-3 hover:text-bone">
             ✕
           </button>
         </div>

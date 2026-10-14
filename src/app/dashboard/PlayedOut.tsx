@@ -22,7 +22,7 @@ export function PlayedOut({ trackId, senderName, at, note }: { trackId: number; 
   if (!open)
     return (
       <button className="btn-ghost btn-sm" onClick={() => setOpen(true)}>
-        🎛️ Played it out
+        Played it out
       </button>
     );
   return (

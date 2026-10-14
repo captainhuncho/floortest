@@ -365,7 +365,7 @@ export function CollectionDetailHeader({ c, receiving, closed, canManage = true 
     <>
       <div className="flex h-12 items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
-          <Link href="/dashboard/collections" aria-label="Back to Collections" className="grid size-8 place-items-center">
+          <Link href="/dashboard/collections" aria-label="Back to Collections" className="-ml-1.5 grid size-11 shrink-0 place-items-center">
             <span aria-hidden className="size-4 bg-current [mask:url(/icons/arrow-left.svg)_center/contain_no-repeat]" />
           </Link>
           {c.art && (

@@ -215,19 +215,25 @@ export function PlayerBar() {
       <div className="fixed inset-x-4 bottom-[calc(max(1rem,env(safe-area-inset-bottom))+72px)] z-30 flex items-center gap-3 rounded-2xl border border-ink-4 bg-ink p-3 md:hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icons/mini-art.svg" alt="" className="size-11 shrink-0" />
-        <Link href={`/dashboard/review?view=queue&s=all&t=${current.id}`} className="flex min-w-0 flex-1 flex-col gap-2">
+        {/* The title opens the track; the waveform beside it only seeks, so one tap never does both. */}
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
           <span className="flex items-center justify-between gap-2">
-            <span className="truncate text-sm font-bold tracking-[-0.4px] text-bone">{current.title}</span>
+            <Link href={`/dashboard/review?view=queue&s=all&t=${current.id}`} className="truncate text-sm font-bold tracking-[-0.4px] text-bone">
+              {current.title}
+            </Link>
             <span className="shrink-0 text-[11px] text-faint tnum">{fmtTime(time)}</span>
           </span>
           <Waveform peaks={current.peaks} progress={d ? time / d : 0} duration={d} onSeek={seek} height={18} label={`Seek ${current.title}`} />
-        </Link>
+        </div>
+        {/* A 44px tap area around the 28px button; the negative margin keeps the layout as drawn. */}
         <button
           onClick={toggle}
-          className="grid size-7 shrink-0 place-items-center rounded-panel bg-white text-ink"
+          className="-m-2 grid size-11 shrink-0 place-items-center"
           aria-label={playing ? `Pause ${current.title}` : `Play ${current.title}`}
         >
-          <PlayIcon playing={playing} />
+          <span className="grid size-7 place-items-center rounded-panel bg-white text-ink">
+            <PlayIcon playing={playing} />
+          </span>
         </button>
       </div>
     <div className="fixed inset-x-0 bottom-0 z-30 hidden border-t border-line bg-ink/95 backdrop-blur md:block">
