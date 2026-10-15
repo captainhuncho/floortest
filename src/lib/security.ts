@@ -11,32 +11,8 @@ import { requestIp } from "./ratelimit";
 import { hashRecovery, openSecret, verifyTotp } from "./totp";
 import { hashToken } from "./token-hash";
 
-/** "Chrome on macOS" from a user-agent string; good enough for an alert email. */
-export function deviceLabel(ua: string) {
-  const browser = /Edg\//.test(ua)
-    ? "Edge"
-    : /OPR\//.test(ua)
-      ? "Opera"
-      : /Firefox\//.test(ua)
-        ? "Firefox"
-        : /Chrome\//.test(ua)
-          ? "Chrome"
-          : /Safari\//.test(ua)
-            ? "Safari"
-            : "A browser";
-  const os = /iPhone|iPad/.test(ua)
-    ? "iOS"
-    : /Android/.test(ua)
-      ? "Android"
-      : /Mac OS X/.test(ua)
-        ? "macOS"
-        : /Windows/.test(ua)
-          ? "Windows"
-          : /Linux/.test(ua)
-            ? "Linux"
-            : "an unknown system";
-  return `${browser} on ${os}`;
-}
+import { deviceLabel } from "./device-label";
+export { deviceLabel };
 
 /** The last step of every sign-in: session, audit trail, and the optional alert email. */
 export async function finishSignIn(userId: number, how: "password" | "two-factor" | "recovery code" | "reset" | "email code" | "Google") {

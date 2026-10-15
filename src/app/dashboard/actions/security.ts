@@ -6,6 +6,7 @@ import { stepUp } from "@/lib/step-up";
 import { passwordStrength } from "@/lib/password-strength";
 import { currentSessionHash, hashPassword, verifyPassword, requireRole } from "@/lib/auth";
 import { APP_URL, sendMail } from "@/lib/mail";
+import { endSession } from "@/lib/sessions";
 import QRCode from "qrcode";
 import { env } from "@/lib/env";
 import { hashRecovery, newRecoveryCodes, newTotpSecret, openSecret, otpauthUri, sealSecret, verifyTotp } from "@/lib/totp";
@@ -138,6 +139,18 @@ export async function disconnectGoogle(_: SettingsState, form: FormData): Promis
   const row = await q.get<{ password_hash: string }>("SELECT password_hash FROM users WHERE id = ?", u.id);
   if (!row || !(await verifyPassword(String(form.get("password") || ""), row.password_hash))) return { error: "Your password isn't right." };
   await unpinGoogle(u.id);
+  done();
+  return { ok: true };
+}
+
+/** Signs out one device from the list on the Security page. Not the current one: that's Sign out. */
+export async function signOutDevice(hash: string): Promise<{ ok: true } | { error: string }> {
+  const u = await requireRole("owner");
+  const h = String(hash || "");
+  if (!/^[a-f0-9]{64}$/.test(h)) return { error: "That device wasn't found." };
+  if (h === (await currentSessionHash())) return { error: "To sign out this device, use Sign out." };
+  if (!(await endSession(u.id, h))) return { error: "That device was already signed out." };
+  await audit(u.id, "signed_out", "one device, from Security");
   done();
   return { ok: true };
 }

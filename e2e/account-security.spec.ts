@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { currentStep, totpCode } from "../src/lib/totp";
-import { expect, test } from "./fixtures";
+import { expect, submitLogin, test } from "./fixtures";
 
 /** Changes to how an account signs in need more than a session: a borrowed or stolen cookie alone can't lock the owner out. */
 
@@ -19,6 +19,7 @@ async function signUp(page: Page, prefix: string) {
   await page.getByRole("checkbox", { name: /18 or over/ }).check();
   await page.getByRole("button", { name: "Create my link" }).click();
   await page.waitForURL(/\/dashboard\/floor/);
+  return `${prefix}+${stamp}@example.test`;
 }
 
 test("turning on two-factor needs the password, not just a session", async ({ page }) => {
@@ -40,4 +41,29 @@ test("turning on two-factor needs the password, not just a session", async ({ pa
   await password.fill(PASSWORD);
   await turnOn.click();
   await expect(page.getByText("Save your recovery codes")).toBeVisible();
+});
+
+test("the Security page lists every signed-in device, and signing one out ends it at once", async ({ page, browser }) => {
+  const email = await signUp(page, "devices");
+  // The same account signs in on a second browser.
+  const other = await browser.newContext();
+  const phone = await other.newPage();
+  await phone.goto("/login");
+  await submitLogin(phone, email, /\/dashboard\/floor/, PASSWORD);
+
+  await page.goto("/dashboard/settings/security");
+  const devices = page.getByRole("list", { name: "Devices signed in" }).getByRole("listitem");
+  await expect(devices).toHaveCount(2);
+  await expect(devices.filter({ hasText: "This device" })).toHaveCount(1);
+  await expect(page.getByText("Signed in on 1 other device.")).toBeVisible();
+
+  await devices.filter({ hasNotText: "This device" }).getByRole("button", { name: "Sign out" }).click();
+  await expect(devices).toHaveCount(1);
+  await expect(page.getByText("Only signed in on this device.")).toBeVisible();
+  // The other browser is out on its next request; this one keeps working.
+  await phone.goto("/dashboard/settings/security");
+  await phone.waitForURL(/\/login/);
+  await page.reload();
+  await expect(devices).toHaveCount(1);
+  await other.close();
 });

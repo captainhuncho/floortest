@@ -9,8 +9,17 @@ import { now, q, USER_COLUMNS, type User } from "./db";
 import { env, isProd } from "./env";
 import { opsSessionLive } from "./ops";
 import { GATE_COOKIE, GATE_DAYS, gatePassword, gateToken } from "./site-gate";
+import { deviceLabel } from "./device-label";
+import { touchSession, WEB_IDLE_MS } from "./sessions";
 
-const COOKIE = "floortest_session";
+/**
+ * The session cookie. On the live site it carries the `__Host-` prefix: the browser then sends it only over HTTPS, only
+ * to this exact host, and no subdomain can set or overwrite it. The old name is still read (never written) for a
+ * while, so the change (15 Oct 2026) signed nobody out.
+ */
+const COOKIE = isProd ? "__Host-floortest_session" : "floortest_session";
+const OLD_COOKIE = "floortest_session";
+const sessionToken = (jar: { get(name: string): { value: string } | undefined }) => jar.get(COOKIE)?.value ?? (COOKIE === OLD_COOKIE ? undefined : jar.get(OLD_COOKIE)?.value);
 const SESSION_MS = 1000 * 60 * 60 * 24 * 30;
 const RESET_MS = 1000 * 60 * 60;
 
@@ -39,7 +48,9 @@ export async function upgradePasswordHash(userId: number, password: string, stor
 export async function createSession(userId: number) {
   const token = newToken();
   const expires = now() + SESSION_MS;
-  await q.run("INSERT INTO sessions (token_hash, user_id, expires_at, created_at) VALUES (?,?,?,?)", hashToken(token), userId, expires, now());
+  // Which device, for the Security page's list and the sign-in alert; "last seen" starts now.
+  const device = deviceLabel((await headers()).get("user-agent") ?? "");
+  await q.run("INSERT INTO sessions (token_hash, user_id, expires_at, created_at, device, last_seen_at) VALUES (?,?,?,?,?,?)", hashToken(token), userId, expires, now(), device, now());
   (await cookies()).set(COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
@@ -54,15 +65,16 @@ export async function createSession(userId: number) {
 
 /** Hash of this browser's session token, or null when signed out. */
 export async function currentSessionHash() {
-  const token = (await cookies()).get(COOKIE)?.value;
+  const token = sessionToken(await cookies());
   return token ? hashToken(token) : null;
 }
 
 export async function destroySession() {
   const jar = await cookies();
-  const token = jar.get(COOKIE)?.value;
+  const token = sessionToken(jar);
   if (token) await q.run("DELETE FROM sessions WHERE token_hash = ?", hashToken(token));
   jar.delete(COOKIE);
+  if (COOKIE !== OLD_COOKIE) jar.delete(OLD_COOKIE);
 }
 
 export const VIEW_AS_COOKIE = "floortest_view_as";
@@ -137,15 +149,24 @@ export const currentPerson = cache(async (): Promise<User | null> => {
     const v = await q.get<User>(`SELECT ${cols} FROM users WHERE id = ?`, view.userId);
     return v ? self(v) : null;
   }
-  const token = (await cookies()).get(COOKIE)?.value;
+  const token = sessionToken(await cookies());
   if (!token) return null;
   const cols = USER_COLUMNS.split(", ").map((c) => `u.${c}`).join(", ");
-  const row = await q.get<User & { last_active_at?: number | null }>(
-    `SELECT ${cols}, u.last_active_at FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.kind = 'web' AND s.expires_at > ? AND u.suspended_at IS NULL`,
+  // A browser session nobody has used for WEB_IDLE_MS is over, even inside its 30 days.
+  const row = await q.get<User & { last_active_at?: number | null; session_hash?: string; session_seen?: number | null }>(
+    `SELECT ${cols}, u.last_active_at, s.token_hash AS session_hash, s.last_seen_at AS session_seen FROM sessions s JOIN users u ON u.id = s.user_id
+     WHERE s.token_hash = ? AND s.kind = 'web' AND s.expires_at > ? AND COALESCE(s.last_seen_at, s.created_at) > ? AND u.suspended_at IS NULL`,
     hashToken(token),
     now(),
+    now() - WEB_IDLE_MS,
   );
   if (!row) return null;
+  // "Last seen" on the session, written at most once an hour, after the response is sent.
+  const sessionHash = row.session_hash ?? "";
+  const seen = row.session_seen == null ? null : Number(row.session_seen);
+  delete row.session_hash;
+  delete row.session_seen;
+  after(() => touchSession(sessionHash, seen).catch(() => {}));
   // "Last active" for the admin's beta tracker: written at most once an hour, after the response is sent.
   const last = row.last_active_at;
   delete row.last_active_at;
