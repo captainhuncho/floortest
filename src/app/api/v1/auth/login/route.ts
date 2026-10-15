@@ -1,5 +1,5 @@
 import { audit } from "@/lib/audit";
-import { hashPassword, verifyPassword } from "@/lib/auth";
+import { hashPassword, verifyPassword, upgradePasswordHash } from "@/lib/auth";
 import { issueAppSession } from "@/lib/app-auth";
 import { body, fail, json } from "@/lib/api-v1";
 import { q } from "@/lib/db";
@@ -32,13 +32,14 @@ export async function POST(req: Request) {
     "SELECT id, password_hash, suspended_at, totp_enabled_at FROM users WHERE email = ?",
     email,
   );
-  const ok = verifyPassword(password, u?.password_hash ?? DUMMY);
+  const ok = await verifyPassword(password, u?.password_hash ?? (await DUMMY));
   if (!u || !ok) {
     await record("login_fail_ip", ip);
     await record("login_fail_email", email);
     return fail("Email or password is incorrect.", 401, { needsHuman: failures + 1 >= HUMAN_CHECK_AFTER });
   }
   if (u.suspended_at) return fail("This account is suspended.", 403);
+  await upgradePasswordHash(u.id, password, u.password_hash);
   if (u.totp_enabled_at) {
     const code = String(b.code ?? "").trim().slice(0, 20);
     if (!code) return fail("Enter the code from your authenticator app.", 401, { needsCode: true });

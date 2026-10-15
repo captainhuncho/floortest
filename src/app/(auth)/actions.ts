@@ -13,7 +13,7 @@ import { NEXT_COOKIE, safeNext, TEAM_INVITE_COOKIE } from "@/lib/next-path";
 import { termsVersion } from "@/lib/legal-sharing";
 import { redirect } from "next/navigation";
 import { audit } from "@/lib/audit";
-import { consumePasswordReset, createPasswordReset, createSession, currentPerson, destroySession, hashPassword, setDesk, verifyPassword } from "@/lib/auth";
+import { consumePasswordReset, createPasswordReset, createSession, currentPerson, destroySession, hashPassword, setDesk, verifyPassword, upgradePasswordHash } from "@/lib/auth";
 import { now, q } from "@/lib/db";
 import { env } from "@/lib/env";
 import { APP_URL, sendMail } from "@/lib/mail";
@@ -27,6 +27,7 @@ import { GOOGLE_LINK_COOKIE, GOOGLE_SIGNUP_COOKIE, readIdentity, readPendingLink
 import { pinGoogle } from "@/lib/google-link";
 import { accountEmailAllowed } from "@/lib/email-budget";
 import { HUMAN_CHECK_AFTER, HUMAN_MESSAGE, humanCheck, recentFailures } from "@/lib/human-check";
+import { breachedError } from "@/lib/breached";
 
 const CHALLENGE = "floortest_2fa";
 /** Set by a share link: where to land after signing in or up (see `safeNext`). */
@@ -57,7 +58,7 @@ export type FormState = { error?: string; ok?: boolean; challenge?: boolean } | 
 const HOUR = 3_600_000;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Keeps "no such account" and "wrong password" equally slow, so timing doesn't reveal which emails exist.
-const DUMMY_HASH = hashPassword("timing-equaliser");
+const DUMMY_HASH = hashPassword("timing-equaliser"); // a promise, made once; awaited where a missing account is checked
 
 /** Invite codes: an existing user's referral code, or one of BETA_INVITE_CODES. */
 async function resolveInvite(raw: string, email = "") {
@@ -171,7 +172,9 @@ export async function signup(_: FormState, form: FormData): Promise<FormState> {
   if (!password) return { error: "Choose a password." };
   const strength = passwordStrength(password, [name, firstName, lastName, email, handle]);
   if (!strength.ok) return { error: strength.tip ?? "Choose a stronger password." };
-  const r = await createAccount(form, { email, firstName, lastName, handle, name, passwordHash: hashPassword(password), verified: false });
+  const leaked = await breachedError(password);
+  if (leaked) return { error: leaked };
+  const r = await createAccount(form, { email, firstName, lastName, handle, name, passwordHash: await hashPassword(password), verified: false });
   if ("error" in r) return r;
   await createSession(r.id);
   // Joining a team: accept the invite and open the team's desk straight away.
@@ -197,7 +200,7 @@ export async function signupWithGoogle(_: FormState, form: FormData): Promise<Fo
     lastName: fromForm(form, "last_name", 60),
     handle,
     name: fromForm(form, "name", 80) || handle,
-    passwordHash: hashPassword(crypto.randomBytes(32).toString("base64url")),
+    passwordHash: await hashPassword(crypto.randomBytes(32).toString("base64url")),
     verified: true,
   }, { googleEmail: true });
   if ("error" in r) return r;
@@ -220,7 +223,7 @@ export async function approveGoogleLink(_: FormState, form: FormData): Promise<F
   if (!pending) return { error: "That took too long. Start again with Continue with Google." };
   if (!(await allow("google_link", String(pending.userId), 10, HOUR))) return { error: "Too many tries. Wait an hour and try again." };
   const row = await q.get<{ password_hash: string; suspended_at: number | null }>("SELECT password_hash, suspended_at FROM users WHERE id = ?", pending.userId);
-  if (!row || !verifyPassword(String(form.get("password") || ""), row.password_hash)) return { error: "That password isn't right." };
+  if (!row || !(await verifyPassword(String(form.get("password") || ""), row.password_hash))) return { error: "That password isn't right." };
   if (row.suspended_at) return { error: "This account is suspended. To appeal, go to the Contact page and choose Suspension appeal." };
   jar.delete(GOOGLE_LINK_COOKIE);
   if (!(await pinGoogle(pending.userId, pending.sub))) return { error: "That Google account can't be connected to this account. Log in with your password instead." };
@@ -241,13 +244,14 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
   const human = await humanCheck(failures, form, ip);
   if (!human.ok) return { error: HUMAN_MESSAGE, challenge: true };
   const row = await q.get<{ id: number; password_hash: string; suspended_at: number | null }>("SELECT id, password_hash, suspended_at FROM users WHERE email = ?", email);
-  const ok = verifyPassword(password, row?.password_hash ?? DUMMY_HASH);
+  const ok = await verifyPassword(password, row?.password_hash ?? (await DUMMY_HASH));
   if (!row || !ok) {
     await record("login_fail_ip", ip);
     await record("login_fail_email", email);
     return { error: "Email or password is incorrect.", challenge: failures + 1 >= HUMAN_CHECK_AFTER };
   }
   if (row.suspended_at) return { error: "This account is suspended. To appeal, go to the Contact page and choose Suspension appeal." };
+  await upgradePasswordHash(row.id, password, row.password_hash);
   await afterPassword(row.id, "password");
   return undefined;
 }
@@ -286,6 +290,8 @@ export async function resetPassword(token: string, _: FormState, form: FormData)
   const strength = passwordStrength(password);
   if (!strength.ok) return { error: strength.tip ?? "Choose a stronger password." };
   if (password !== String(form.get("confirm") || "")) return { error: "The two passwords don't match." };
+  const leaked = await breachedError(password); // before the link is used up, so they can pick another with it
+  if (leaked) return { error: leaked };
   const userId = await consumePasswordReset(token, password);
   if (!userId) return { error: "This reset link has expired or was already used. Request a new one." };
   await audit(userId, "password_reset");
@@ -363,7 +369,7 @@ export async function verifyLoginCode(_: FormState, form: FormData): Promise<For
       await db.run(
         "UPDATE users SET email_verified_at = ?, password_hash = ?, totp_secret = NULL, totp_enabled_at = NULL, totp_last_step = NULL, recovery_codes = '[]' WHERE id = ?",
         now(),
-        hashPassword(crypto.randomBytes(32).toString("base64url")),
+        await hashPassword(crypto.randomBytes(32).toString("base64url")),
         user.id,
       );
       await db.run("DELETE FROM sessions WHERE user_id = ?", user.id);

@@ -26,7 +26,7 @@ export function JogWheel() {
           </div>
           <div className="stage-cap absolute inset-[31%] grid place-items-center rounded-full">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/crest.svg" alt="" className="w-[46%] opacity-90 grayscale" />
+            <img draggable={false} src="/brand/crest.svg" alt="" className="w-[46%] opacity-90 grayscale" />
           </div>
         </div>
       </div>
@@ -186,7 +186,7 @@ const ART: React.ReactNode[] = [
     {[0, 1, 2, 3].map((i) => (
       <span key={i} className="stage-usb">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/brand/crest.svg" alt="" className="w-3 opacity-60 grayscale" />
+        <img draggable={false} src="/brand/crest.svg" alt="" className="w-3 opacity-60 grayscale" />
       </span>
     ))}
   </div>,
