@@ -45,8 +45,8 @@ export default async function Team({ searchParams }: { searchParams: Promise<{ d
         }>
         <ul className="divide-y divide-line rounded-lg border border-line">
           <li className="flex items-center justify-between gap-3 px-4 py-3">
-            <span className="min-w-0 truncate">
-              <span className="font-medium">{team.owner.name}</span> <span className="text-sm text-mute">· {team.owner.email}</span>
+            <span className="block min-w-0 flex-1 truncate">
+              <span className="font-medium">{team.owner.name}</span> <span className="block truncate text-sm text-mute sm:inline">· {team.owner.email}</span>
             </span>
             <span className="shrink-0 rounded-full border border-lime/50 px-2.5 py-0.5 text-[11px] font-bold text-lime">{ROLE_LABEL.owner}</span>
           </li>
