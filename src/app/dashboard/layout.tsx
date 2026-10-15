@@ -30,10 +30,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
     view ? Promise.resolve([]) : teamsFor(user.actor_id),
     currentPerson(),
   ]);
-  // Even with the switch on, uploads stop if the routed collection closed or the desk is full.
-  const blocked = !active
-    ? "No collection selected"
-    : isClosed(active)
+  // Even with the switch on, uploads stop if the routed collection closed or the desk is full. With no collection the
+  // link stays open and tracks land in the Review Queue, unsorted.
+  const blocked = active && isClosed(active)
       ? `But “${active.name}” is closed, so uploads are still off`
       : cap.full
         ? "But your desk is full, so uploads are still off"

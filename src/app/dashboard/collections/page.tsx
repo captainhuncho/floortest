@@ -30,8 +30,8 @@ export default async function Collections() {
     <div className="page-gutter py-4 sm:py-6">
       <PageTitle>Collections</PageTitle>
       <p className="mt-3.5 max-w-3xl text-xs leading-relaxed text-mute sm:text-sm">
-        One per callout. Your link <span className="break-all text-lime">{APP_URL.replace(/^https?:\/\//, "")}/{user.handle}</span> fills the one
-        that&apos;s receiving. Review in{" "}
+        One per callout. Your link <span className="break-all text-lime">{APP_URL.replace(/^https?:\/\//, "")}/{user.handle}</span>{" "}
+        {user.active_collection_id ? "fills the one that's receiving." : "sends tracks straight to your Review Queue until you make one."} Review in{" "}
         <Link href="/dashboard/review" className="text-bone underline underline-offset-4">
           the Review Queue
         </Link>

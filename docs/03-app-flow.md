@@ -19,6 +19,7 @@ Nothing about FloorTest is public before launch (legal pages too); the gate show
                  └─ account exists ──► sign-in path below
 * invite code only while switch open_signup is off; "No code? Join the waitlist" ──► /#waitlist
 ```
+A new desk has no collection (owner, 15 Oct), and its link is open anyway: tracks sent to it land straight in the Review Queue, unsorted (`tracks.collection_id` empty; intake only refuses a paused link, a closed or full collection, or a full desk). The Floor's Your link says "Sends tracks to your Review Queue", the checklist suggests a collection for the callout (a brief and a closing date), and Account's routing menu shows "Review Queue (no collection)". Making a collection ("Send new tracks here now", on by default) points the link at it; from then on a closed collection stops uploads as before.
 
 ## Receiver: sign-in
 ```

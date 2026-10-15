@@ -37,11 +37,17 @@ export function LinkCard({ link, handle, collections, activeId, canManage = true
           <select
             id="routes-to"
             name="id"
-            defaultValue={activeId ?? undefined}
+            defaultValue={activeId ?? ""}
             key={activeId}
             onChange={(e) => e.currentTarget.form?.requestSubmit()}
             className="input py-2 text-[12px]"
           >
+            {/* No collection: new tracks land in the Review Queue, unsorted. Picking a collection points the link at it. */}
+            {!activeId && (
+              <option value="" disabled>
+                Review Queue (no collection)
+              </option>
+            )}
             {collections.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -51,7 +57,7 @@ export function LinkCard({ link, handle, collections, activeId, canManage = true
           </select>
         </form>
       ) : (
-        <p className="text-[12px] text-mute">Sends new tracks to {collections.find((c) => c.id === activeId)?.name ?? "no collection yet"}.</p>
+        <p className="text-[12px] text-mute">Sends new tracks to {collections.find((c) => c.id === activeId)?.name ?? "the Review Queue"}.</p>
       )}
     </div>
   );
