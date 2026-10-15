@@ -55,7 +55,7 @@ export default async function Pricing() {
             ))}
           </div>
           <p className="mt-8 text-xs text-dim">
-            <Link href="/" className="underline underline-offset-4 hover:text-bone">← Back to home</Link>
+            <Link href="/" className="-my-1 inline-block py-1 underline underline-offset-4 hover:text-bone">← Back to home</Link>
           </p>
         </main>
       </div>

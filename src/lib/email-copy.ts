@@ -7,7 +7,13 @@ import { env } from "./env";
  * when the email is sent; a fill-in that ends up empty (an optional line) leaves no gap. Security and account emails
  * (sign-in codes, password and email changes, suspensions) keep fixed wording in code on purpose.
  */
-export type EmailDef = { label: string; to: string; subject: string; body: string; vars: Record<string, string> };
+import type { UnsubKind } from "./unsubscribe";
+
+/**
+ * `unsubscribe`: the email is optional and goes out with a one-click "Stop these emails" link (src/lib/mail.ts). Its
+ * senders pass this same value, and the editor's preview shows the line, so what's previewed matches what's sent.
+ */
+export type EmailDef = { label: string; to: string; subject: string; body: string; vars: Record<string, string>; unsubscribe?: UnsubKind };
 
 const RECEIPT = "Your receipt: {receipt_url}\nEverything you've sent: {sent_url}\n\n— FloorTest";
 const TRACK_VARS = { sender: "Sender's name", receiver: "Receiver's name", title: "Track title", receipt_url: "Receipt link", sent_url: "Sender's history link" };
@@ -54,6 +60,7 @@ export const EMAILS = {
     subject: "Nothing on your desk yet",
     body: "Hi {first_name},\n\nYour link hasn't had a track yet. The quickest way to get the first one: post a callout with your link, for example:\n\n\"Sending me music? Send the track here: {link}. You'll know when I've listened.\"\n\n— FloorTest",
     vars: { first_name: "Receiver's first name", link: "Their link" },
+    unsubscribe: "alerts",
   },
   played_out_reminder: {
     label: "Played any of these?",
@@ -61,6 +68,7 @@ export const EMAILS = {
     subject: "Played any of these at the weekend?",
     body: "Hi {first_name},\n\nYou kept {count} last week:\n{titles}\n\nIf any made your set, tick them and each sender sees Played out on their receipt: {prompt_url}\n\nNone this weekend? Say so there and we won't ask again until next week.\n\n— FloorTest",
     vars: { first_name: "Receiver's first name", count: "How many tracks, e.g. \"3 tracks\"", titles: "Up to five tracks, one per line", prompt_url: "The pick page" },
+    unsubscribe: "alerts",
   },
   invite: {
     label: "Beta invite",

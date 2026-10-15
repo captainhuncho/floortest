@@ -1,6 +1,6 @@
 import "server-only";
 import { hasTool, TOOLS } from "./account-types";
-import { emailText } from "./email-copy";
+import { EMAILS, emailText } from "./email-copy";
 import { q, type Track, type User } from "./db";
 import { APP_URL, sendMail } from "./mail";
 
@@ -132,7 +132,7 @@ export async function runPlayedOutReminders(ts = Date.now()) {
     const shown = prompt.tracks.slice(0, 5).map((t) => `• ${t.title} · ${t.artist}`);
     if (prompt.tracks.length > 5) shown.push(`and ${prompt.tracks.length - 5} more`);
     const status = await sendMail({
-      unsubscribe: "alerts",
+      unsubscribe: EMAILS.played_out_reminder.unsubscribe,
       userId: u.id,
       audience: "receiver",
       to: u.email,

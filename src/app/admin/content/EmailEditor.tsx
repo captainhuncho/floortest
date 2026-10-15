@@ -1,5 +1,5 @@
 import { q } from "@/lib/db";
-import { EMAILS, emailKey, emailTemplate, fillEmail, SAMPLE_VARS, type EmailId } from "@/lib/email-copy";
+import { EMAILS, emailKey, emailTemplate, fillEmail, SAMPLE_VARS, type EmailDef, type EmailId } from "@/lib/email-copy";
 import { fmtDate } from "@/lib/format";
 import Link from "next/link";
 import { discardDraft, restoreContent, saveEmail, sendTestEmail } from "../actions";
@@ -67,8 +67,12 @@ export async function EmailEditor({ want }: { want?: string }) {
           <h2 id="email-preview-h" className="text-lg font-semibold">Preview of the saved draft</h2>
           <div className="rounded-md border border-line bg-ink-2 p-5">
             <p className="text-xs text-mute">Subject</p>
-            <p className="font-bold">{fillEmail(draft.subject, SAMPLE_VARS)}</p>
-            <pre className="mt-4 whitespace-pre-wrap font-sans text-sm leading-relaxed">{fillEmail(draft.body, SAMPLE_VARS)}</pre>
+            {/* Same tidying and footer as the real send (emailText in email-copy.ts, sendMail in mail.ts). */}
+            <p className="font-bold">{fillEmail(draft.subject, SAMPLE_VARS).replace(/\s+/g, " ")}</p>
+            <pre className="mt-4 whitespace-pre-wrap font-sans text-sm leading-relaxed">
+              {fillEmail(draft.body, SAMPLE_VARS)}
+              {(EMAILS[id] as EmailDef).unsubscribe && "\n\n—\nStop these emails: (each person's own one-click link)"}
+            </pre>
           </div>
           <div className="flex flex-wrap gap-2">
             <ConfirmButton action={sendTestEmail.bind(null, id)} message="Send this draft, with example details, to your own email?" confirmLabel="Send test" className="btn-ghost btn-sm">

@@ -305,7 +305,7 @@ export default async function Home({
                 </Link>
                 <Link
                   href={DEMO}
-                  className="text-sm text-bone hover:text-bone"
+                  className="-my-0.5 inline-block py-0.5 text-sm text-bone hover:text-bone"
                 >
                   See an example <span className="text-dim">/maxwell</span> →
                 </Link>

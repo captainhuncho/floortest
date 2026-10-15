@@ -1,5 +1,5 @@
 import "server-only";
-import { emailText } from "./email-copy";
+import { EMAILS, emailText } from "./email-copy";
 import { now, q } from "./db";
 import { APP_URL, sendMail } from "./mail";
 
@@ -43,7 +43,7 @@ export async function runFirstTrackNudges(at = now()) {
     if (!claimed.changes) continue;
     const link = `${APP_URL}/${u.handle}`;
     const status = await sendMail({
-      unsubscribe: "alerts",
+      unsubscribe: EMAILS.first_track_nudge.unsubscribe,
       userId: u.id,
       audience: "receiver",
       to: u.email,
