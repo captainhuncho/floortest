@@ -78,8 +78,8 @@ Decided: a colleague is a **seat on an account** (label, radio, crew), not someo
 - Stems as a paid feature.
 - Rekordbox how-to video, footer legal placement, mobile footer redesign.
 
-## Label add-ons (decided by the owner 15 Oct · after the beta, not in it)
-Two paid add-ons for labels, bought on top of a plan. Both need payments (Paddle) live; until then ops can set them up by hand.
+## Label add-ons (idea agreed by the owner 15 Oct · not in the beta, not at launch)
+Two paid add-ons for labels, bought on top of a plan. Parked: neither goes live in the beta or at public launch; the owner will come back to them (prices, Terms, plans) later. Both need payments (Paddle) live.
 - **Roster (add-on B): a link per artist on the label's desk.** Creating an artist link (`floortest.app/<label>/<artist>`) creates that artist's collection; uploads through the link land in it. A **Roster** menu lists these collections under each artist's name, apart from the label's callouts, so the working desk stays clean. Who uploads through an artist link (owner, 15 Oct): the artist and the label (its team members). The artist sees the Roster place on their own normal FloorTest account: it confirms the label added them (verification) and gives them access to the collection they upload to. Roster collections don't count toward the beta's two-collection limit; their tracks count toward active tracks. Builds on collections, briefs, intake, receipts and teams; new: the per-artist address, routing uploads to its collection, the Roster menu.
 - **Artist desks (add-on A).** The label buys desks and gives one to each artist: the artist gets their own link, Review Queue and plan, and owns the desk and its music; the label pays and sees usage, not the music, unless the artist adds them to their team. New: a desk pool on the label account, claim invites, the paying label recorded on each artist desk, what happens when an artist leaves the label.
 - **Open:** prices for both (finance panel, `docs/finance.md`); the Terms on who pays for and who controls an account (lawyer); which plans can buy them.
