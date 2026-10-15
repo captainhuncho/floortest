@@ -51,6 +51,8 @@ test("the sender sends a WAV to the receiver's link", async ({ page }) => {
   await logIn(page, "sender@floortest.test", "floortest-demo");
   await page.goto("/dashboard/send?to=maxwell");
   await page.getByLabel("Choose WAV or MP3 files").setInputFiles(wavFile());
+  // Wait until the file is read (length and BPM shown), so typing isn't undone when its details fill in.
+  await expect(page.getByText(/WAV · \d+ KB · \d+:\d+/)).toBeVisible();
   await page.getByLabel("Track title").fill(title);
   await page.getByLabel("Artist").fill("E2E Artist");
   // Genre, mix, release and AI are tap choices: the visible label is what a sender taps.
