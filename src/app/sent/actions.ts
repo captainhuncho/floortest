@@ -1,9 +1,11 @@
 "use server";
 
+import { accountEmailAllowed } from "@/lib/email-budget";
 import { q } from "@/lib/db";
 import { APP_URL, sendMail } from "@/lib/mail";
 import { allow, requestIp } from "@/lib/ratelimit";
 import { signSenderLink } from "@/lib/senderLink";
+import { BOT_MESSAGE, passedTurnstile } from "@/lib/turnstile";
 
 export type SentState = { ok?: boolean; error?: string } | undefined;
 
@@ -11,8 +13,13 @@ export type SentState = { ok?: boolean; error?: string } | undefined;
 export async function requestSenderLink(_: SentState, form: FormData): Promise<SentState> {
   const email = String(form.get("email") || "").trim().toLowerCase().slice(0, 200);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Enter the email you send music from." };
-  if (!(await allow("sent_ip", await requestIp(), 5, 3_600_000)) || !(await allow("sent_email", email, 3, 3_600_000)))
+  const ip = await requestIp();
+  // It emails any address that has sent music, so the bot check and the site-wide hourly email budget (shared with
+  // sign-in codes and resets) apply, as on the other forms that send email.
+  if (!(await passedTurnstile(form.get("cf-turnstile-response"), ip, "sent"))) return { error: BOT_MESSAGE };
+  if (!(await allow("sent_ip", ip, 5, 3_600_000)) || !(await allow("sent_email", email, 3, 3_600_000)))
     return { error: "Too many requests. Try again in an hour." };
+  if (!(await accountEmailAllowed())) return { ok: true };
   if (await q.get("SELECT 1 FROM senders WHERE lower(email) = ?", email)) {
     const link = signSenderLink(email);
     await sendMail({
