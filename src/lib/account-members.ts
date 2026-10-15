@@ -25,6 +25,13 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export class TeamError extends Error {}
 
+/** Owners need two-step sign-in to manage their team (invite, roles, removal, reply approval), as A&R / Admins do for their powers (owner, 15 Oct 2026). */
+export const TWO_STEP_TO_MANAGE = "Turn on two-step sign-in (Settings → Security) to manage your team.";
+export const ownerNeedsTwoStep = (u: Pick<User, "role" | "totp_enabled_at">) => u.role === "owner" && !u.totp_enabled_at;
+const needTwoStep = (desk: Pick<User, "role" | "totp_enabled_at">) => {
+  if (ownerNeedsTwoStep(desk)) throw new TeamError(TWO_STEP_TO_MANAGE);
+};
+
 /**
  * Teams for everyone when the "teams" switch is on. While it's off (the beta, owner 15 Oct), teams still work on a desk
  * whose owner is an ops super admin (ADMIN_EMAILS), so the owner can test them with their own invitees. Pass the desk
@@ -104,9 +111,10 @@ export async function teamOf(accountId: number) {
 }
 
 /** Owners invite admins or members; admins invite members. Returns the invite secret (emailed, never stored). */
-export async function inviteToTeam(desk: Pick<User, "id" | "role" | "actor_id" | "email">, rawEmail: string, role: "admin" | "member") {
+export async function inviteToTeam(desk: Pick<User, "id" | "role" | "actor_id" | "email" | "totp_enabled_at">, rawEmail: string, role: "admin" | "member") {
   if (!(await teamsOn(desk.id))) throw new TeamError("Teams aren't available yet.");
   if (!atLeast(desk.role, "admin")) throw new TeamError("Only the owner or an A&R / Admin can invite people.");
+  needTwoStep(desk);
   if (role === "admin" && desk.role !== "owner") throw new TeamError("Only the owner can invite A&R / Admins.");
   const email = rawEmail.trim().toLowerCase().slice(0, 200);
   if (!EMAIL.test(email)) throw new TeamError("Enter a valid email.");
@@ -177,24 +185,27 @@ async function join<I extends { id: number; account_id: number; email: string; r
   return inv;
 }
 
-export async function revokeInvite(desk: Pick<User, "id" | "role">, inviteId: number) {
+export async function revokeInvite(desk: Pick<User, "id" | "role" | "totp_enabled_at">, inviteId: number) {
   if (!atLeast(desk.role, "admin")) throw new TeamError("Only the owner or an A&R / Admin can do that.");
+  needTwoStep(desk);
   await q.run("UPDATE account_invites SET revoked_at = ? WHERE id = ? AND account_id = ? AND accepted_at IS NULL", now(), inviteId, desk.id);
 }
 
 /** Owners remove anyone; admins remove members. Their access to this desk ends on their next click. */
-export async function removeFromTeam(desk: Pick<User, "id" | "role" | "actor_id">, memberId: number) {
+export async function removeFromTeam(desk: Pick<User, "id" | "role" | "actor_id" | "totp_enabled_at">, memberId: number) {
   const m = await q.get<{ user_id: number; role: "admin" | "member" }>("SELECT user_id, role FROM account_members WHERE id = ? AND account_id = ?", memberId, desk.id);
   if (!m) throw new TeamError("Not found");
   const self = m.user_id === desk.actor_id;
+  if (!self) needTwoStep(desk); // leaving is always allowed; removing others is management
   if (!self && !atLeast(desk.role, "admin")) throw new TeamError("Only the owner or an A&R / Admin can remove people.");
   if (!self && m.role === "admin" && desk.role !== "owner") throw new TeamError("Only the owner can remove an A&R / Admin.");
   await q.run("DELETE FROM account_members WHERE id = ?", memberId);
   return m;
 }
 
-export async function setTeamRole(desk: Pick<User, "id" | "role">, memberId: number, role: "admin" | "member") {
+export async function setTeamRole(desk: Pick<User, "id" | "role" | "totp_enabled_at">, memberId: number, role: "admin" | "member") {
   if (desk.role !== "owner") throw new TeamError("Only the owner can change roles.");
+  needTwoStep(desk);
   await q.run("UPDATE account_members SET role = ? WHERE id = ? AND account_id = ?", role, memberId, desk.id);
 }
 
@@ -212,8 +223,9 @@ export async function replyApproval(accountId: number) {
 }
 
 /** Owners and admins switch approval on (choosing the approver, who must be on the team) or off. */
-export async function setReplyApproval(desk: Pick<User, "id" | "role">, on: boolean, approverId: number) {
+export async function setReplyApproval(desk: Pick<User, "id" | "role" | "totp_enabled_at">, on: boolean, approverId: number) {
   if (!atLeast(desk.role, "admin")) throw new TeamError("Only the owner or an A&R / Admin can change this.");
+  needTwoStep(desk);
   const onTeam = approverId === desk.id || !!(await q.get("SELECT 1 FROM account_members WHERE account_id = ? AND user_id = ?", desk.id, approverId));
   if (!onTeam) throw new TeamError("Choose someone on the team.");
   await q.run("UPDATE users SET reply_approval = ?, reply_approver_id = ? WHERE id = ?", on ? 1 : 0, approverId, desk.id);

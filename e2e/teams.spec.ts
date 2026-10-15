@@ -1,4 +1,6 @@
-import { expect, logIn, test } from "./fixtures";
+import type { Page } from "@playwright/test";
+import { currentStep, totpCode } from "../src/lib/totp";
+import { expect, logIn, submitLogin, TEST_PASSWORD, test } from "./fixtures";
 
 /**
  * Account teams, end to end (switched on only in the test copy: SEED_TEAMS). The demo account (owner) has 3 seats
@@ -7,11 +9,41 @@ import { expect, logIn, test } from "./fixtures";
  */
 test.describe.configure({ mode: "serial" });
 
+// The owner turns on two-step sign-in in the first test (owners manage their team only with it on), so later tests
+// sign the owner in with a code. Two-step refuses a step it has already seen, so a code waits for a fresh step.
+let totpSecret = "";
+let lastStep = 0;
+async function freshCode() {
+  while (currentStep() <= lastStep) await new Promise((r) => setTimeout(r, 1000));
+  lastStep = currentStep();
+  return totpCode(totpSecret, lastStep);
+}
+async function logInWithTwoStep(page: Page) {
+  await page.goto("/login");
+  // submitLogin also answers the human check that earlier specs may have triggered for this account.
+  await submitLogin(page, "demo@floortest.test", /\/login\/verify/);
+  await page.getByLabel("Code").fill(await freshCode());
+  await page.getByRole("button", { name: "Verify" }).click();
+  await page.waitForURL(/\/dashboard\//);
+}
+
 test("the owner sees the team, turns on reply approval and invites someone", async ({ page }) => {
   await logIn(page, "demo@floortest.test");
   await page.goto("/dashboard/settings/team");
   await expect(page.getByRole("heading", { name: "People (2 of 3 seats)" })).toBeVisible();
   await expect(page.getByRole("region", { name: "People (2 of 3 seats)" }).getByText("Lena Listener")).toBeVisible();
+  // Owners manage their team only with two-step sign-in on (owner, 15 Oct): the invite form waits until then.
+  await expect(page.getByText("Two-step sign-in keeps the whole team safe.")).toBeVisible();
+  await expect(page.getByLabel("Email to invite")).toHaveCount(0);
+  await page.goto("/dashboard/settings/security");
+  await page.getByRole("button", { name: "Set up" }).click();
+  totpSecret = (await page.locator("p.font-mono").first().innerText()).replace(/\s/g, "");
+  await page.getByLabel("6-digit code").fill(await freshCode());
+  await page.getByLabel("Password", { exact: true }).fill(TEST_PASSWORD);
+  await page.getByRole("button", { name: "Turn on" }).click();
+  await expect(page.getByText("Save your recovery codes")).toBeVisible();
+  await page.goto("/dashboard/settings/team");
+  await expect(page.getByText("Two-step sign-in keeps the whole team safe.")).toHaveCount(0);
   await page.getByRole("checkbox", { name: /need approval before they.re sent/ }).check();
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByText("Saved.")).toBeVisible();
@@ -63,7 +95,7 @@ test("a member switches to the team's desk, can't open owner settings, and their
 });
 
 test("the owner approves the held reply from the Team page", async ({ page }) => {
-  await logIn(page, "demo@floortest.test");
+  await logInWithTwoStep(page);
   // The Floor's "Your desk" line says what needs the owner (the reply waiting) and how many seats are in use.
   await page.goto("/dashboard/floor");
   const desk = page.getByRole("region", { name: "Your desk" });

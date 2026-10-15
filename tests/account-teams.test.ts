@@ -23,7 +23,7 @@ test("account teams: seats by plan, invites, roles, removal, reply approval and 
   const label = await user("label", "pro");
   const ama = await user("ama", "free", true);
   const kofi = await user("kofi");
-  const desk = (role: "owner" | "admin" | "member", actor = label) => ({ id: label, role, actor_id: actor, email: "label@team.io" });
+  const desk = (role: "owner" | "admin" | "member", actor = label, twoStep = true) => ({ id: label, role, actor_id: actor, email: "label@team.io", totp_enabled_at: twoStep ? 1 : null });
   const person = async (id: number) => (await q.get<{ id: number; email: string; email_verified_at: number | null }>("SELECT id, email, email_verified_at FROM users WHERE id = ?", id))!;
 
   // Seats come from the plan: Free 1, Pro 2, Team 5, plus add-ons.
@@ -56,7 +56,7 @@ test("account teams: seats by plan, invites, roles, removal, reply approval and 
   const amaRow = team.members.find((m) => m.user_id === ama)!;
   const kofiRow = team.members.find((m) => m.user_id === kofi)!;
   await assert.rejects(T.removeFromTeam(desk("member", kofi), amaRow.id), /owner or an A&R \/ Admin/);
-  await assert.rejects(T.removeFromTeam({ id: label, role: "admin", actor_id: 999 }, amaRow.id), /Only the owner can remove an A&R \/ Admin/);
+  await assert.rejects(T.removeFromTeam({ id: label, role: "admin", actor_id: 999, totp_enabled_at: null }, amaRow.id), /Only the owner can remove an A&R \/ Admin/);
 
   // Reply approval: off by default; on with an approver, members' replies wait; the approver, owner and admins approve.
   assert.equal(await T.replyNeedsApproval(desk("member", kofi)), false);
@@ -129,4 +129,16 @@ test("account teams: seats by plan, invites, roles, removal, reply approval and 
   // Leaving ends access at once.
   await T.removeFromTeam(desk("member", kofi), kofiRow.id);
   assert.equal(await T.roleOn(label, kofi), null);
+});
+
+test("an owner manages the team only with two-step sign-in on", async () => {
+  const T = await import("../src/lib/account-members");
+  const { q } = await import("../src/lib/db");
+  const t = Date.now();
+  const owner = (await q.get<{ id: number }>("INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at, email_verified_at) VALUES ('nostep@team.io', 'h', 'No Step', 'nostep', 'team', 'UTC', ?, ?) RETURNING id", t, t))!.id;
+  const desk = (twoStep: boolean) => ({ id: owner, role: "owner" as const, actor_id: owner, email: "nostep@team.io", totp_enabled_at: twoStep ? t : null });
+  await assert.rejects(T.inviteToTeam(desk(false), "a@team.io", "member"), /two-step sign-in/, "no invites without two-step");
+  await assert.rejects(T.setReplyApproval(desk(false), true, owner), /two-step sign-in/);
+  const inv = await T.inviteToTeam(desk(true), "a@team.io", "member");
+  assert.ok(inv.secret, "with two-step on, the invite goes out");
 });

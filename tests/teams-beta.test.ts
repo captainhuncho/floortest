@@ -27,9 +27,9 @@ test("with the teams switch off, teams work only on a desk the super admin owns"
   assert.equal(await teamsOn(other), false, "anyone else's desk doesn't");
 
   // The owner can invite, and the invite opens; another receiver can't invite at all.
-  const { secret } = await inviteToTeam({ id: boss, role: "owner", actor_id: boss, email: "boss@x.io" }, "helper@x.io", "member");
+  const { secret } = await inviteToTeam({ id: boss, role: "owner", actor_id: boss, email: "boss@x.io", totp_enabled_at: 1 }, "helper@x.io", "member");
   assert.equal((await inviteBySecret(secret))?.account_id, boss);
-  await assert.rejects(inviteToTeam({ id: other, role: "owner", actor_id: other, email: "other@x.io" }, "helper@x.io", "member"), /aren't available/);
+  await assert.rejects(inviteToTeam({ id: other, role: "owner", actor_id: other, email: "other@x.io", totp_enabled_at: 1 }, "helper@x.io", "member"), /aren't available/);
 
   // A teammate sees the super admin's desk to switch to, but not a desk on someone else's account.
   await q.run("INSERT INTO account_members (account_id, user_id, role, created_at) VALUES (?,?,'member',?), (?,?,'member',?)", boss, helper, t, other, helper, t);
