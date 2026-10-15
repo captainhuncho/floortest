@@ -26,7 +26,9 @@ export async function Onboarding({ user }: { user: User }) {
           hint: "Genres, BPM and a closing date tell senders what you want.",
           href: "/dashboard/collections",
         }
-      : {
+      : firstTrack
+        ? null // Collections are optional: once tracks arrive without one, it isn't a step left to do.
+        : {
           done: false,
           label: "Make a collection for your callout",
           hint: "Tracks land in your Review Queue either way; a collection adds a brief and a closing date.",
@@ -41,7 +43,7 @@ export async function Onboarding({ user }: { user: User }) {
       href: "/dashboard/prepare",
     },
     { done: !!user.totp_enabled_at, label: "Protect your account (optional)", hint: "Turn on two-factor sign-in.", href: "/dashboard/settings/security" },
-  ];
+  ].filter((s) => s !== null);
   const steps = firstTrack ? all : all.slice(0, 3);
   const doneCount = steps.filter((s) => s.done).length;
   if (doneCount === steps.length) return null;

@@ -57,4 +57,8 @@ test("a track sent to it lands in the Review Queue, unsorted", async ({ page }) 
   await submitLogin(page, desk.email, /\/dashboard\//, desk.password);
   await page.goto("/dashboard/review?view=list");
   await expect(page.getByText(title).locator("visible=true").first()).toBeVisible();
+  // Collections are optional, so once a track has arrived the checklist stops asking for one.
+  await page.goto("/dashboard/floor");
+  await expect(page.getByText("Get your desk running", { exact: false })).toBeVisible();
+  await expect(page.getByText("Make a collection for your callout")).toHaveCount(0);
 });
