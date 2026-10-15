@@ -52,15 +52,15 @@ export async function logIn(page: Page, email: string) {
 }
 
 /** Fills the log-in form already on screen; if the human check appears (see the guards spec), logs in again with it. */
-export async function submitLogin(page: Page, email: string, landing: RegExp) {
+export async function submitLogin(page: Page, email: string, landing: RegExp, password = TEST_PASSWORD) {
   await page.getByLabel("Email").fill(email);
-  await page.getByRole("textbox", { name: "Password" }).fill(TEST_PASSWORD);
+  await page.getByRole("textbox", { name: "Password" }).fill(password);
   await page.getByRole("button", { name: "Log in" }).click();
   const dashboard = page.waitForURL(landing, { timeout: 60_000 }).then(() => "in" as const);
   const check = page.getByTestId("turnstile").waitFor({ state: "attached", timeout: 60_000 }).then(() => "check" as const, () => "none" as const);
   // The check may already be on screen with a token (then the first click got through): retry only if still here.
   if ((await Promise.race([dashboard, check])) === "check" && !(await page.waitForURL(landing, { timeout: 5_000 }).then(() => true, () => false))) {
-    await page.getByRole("textbox", { name: "Password" }).fill(TEST_PASSWORD);
+    await page.getByRole("textbox", { name: "Password" }).fill(password);
     await page.getByRole("button", { name: "Log in" }).click();
     await page.waitForURL(landing);
   }

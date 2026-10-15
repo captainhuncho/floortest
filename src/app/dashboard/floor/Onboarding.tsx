@@ -19,12 +19,19 @@ export async function Onboarding({ user }: { user: User }) {
   const firstTrack = await has("SELECT 1 FROM tracks WHERE user_id = ? LIMIT 1");
   const all = [
     { done: !!user.email_verified_at, label: "Confirm your email", hint: "So alerts and password resets reach you.", href: null, resend: true },
-    {
-      done: !!(c && (c.brief_wanted || c.genres || c.bpm_min || c.closes_at || c.brief_note)),
-      label: "Set your callout brief",
-      hint: "Genres, BPM and a closing date tell senders what you want.",
-      href: "/dashboard/collections",
-    },
+    c
+      ? {
+          done: !!(c.brief_wanted || c.genres || c.bpm_min || c.closes_at || c.brief_note),
+          label: "Set your callout brief",
+          hint: "Genres, BPM and a closing date tell senders what you want.",
+          href: "/dashboard/collections",
+        }
+      : {
+          done: false,
+          label: "Make a collection for your callout",
+          hint: "Tracks land in your Review Queue either way; a collection adds a brief and a closing date.",
+          href: "/dashboard/collections",
+        },
     { done: firstTrack, label: "Share your link and get a first track", hint: "Post it in your bio, a story or a callout. Senders upload the original file; you'll get an email when it lands.", href: null, share: true },
     { done: await has("SELECT 1 FROM tracks WHERE user_id = ? AND decision IS NOT NULL LIMIT 1"), label: "Decide on your first track", hint: "Play a track, then Keep or Not for me.", href: "/dashboard/review?view=queue" },
     {

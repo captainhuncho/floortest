@@ -74,7 +74,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   // Link health: the one thing to fix, if anything.
   const openAlternative = collections.find((c) => !isClosed(c) && c.id !== active?.id);
   const canSend = user.role !== "member" && (await switchOn("send_music"));
-  const canAdd = !openAlternative && (!active || isClosed(active)) ? await canAddCollection(user.id) : true;
+  const canAdd = !openAlternative && active && isClosed(active) ? await canAddCollection(user.id) : true;
   const problem: { text: string; action?: React.ReactNode } | null = paused
     ? // The Link open switch lives on Account (the sidebar only links there), so the fix points there.
       {
@@ -85,9 +85,10 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
           </Link>
         ),
       }
-    : !active || isClosed(active)
+    : // No collection is not a problem: the link stays open and tracks land in the Review Queue, unsorted (intake.ts).
+      active && isClosed(active)
       ? {
-          text: active ? `Your link sends tracks to “${active.name}”, which closed on ${fmtDay(active.closes_at!)}. Nobody can send you music right now.` : "Your link isn't sending tracks anywhere.",
+          text: `Your link sends tracks to “${active.name}”, which closed on ${fmtDay(active.closes_at!)}. Nobody can send you music right now.`,
           // Pointing the link elsewhere is for the owner and admins.
           action: user.role === "member" ? undefined : openAlternative ? (
             <SwitchCollection id={openAlternative.id} name={openAlternative.name} />
@@ -166,7 +167,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
             ? "Not taking uploads right now"
             : active
               ? `Sends tracks to “${active.name}”${active.closes_at ? `, open until ${fmtDay(active.closes_at)}` : ""}`
-              : "No collection selected"}
+              : "Sends tracks to your Review Queue"}
           {" · "}
           <Link href="/dashboard/collections" className="text-mute underline-offset-4 hover:text-bone hover:underline">
             Collections

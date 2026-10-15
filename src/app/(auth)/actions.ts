@@ -146,8 +146,7 @@ async function createAccount(form: FormData, a: NewAccount, opts: { googleEmail?
         a.verified ? now() : null,
         now(),
       ))!;
-      const c = (await db.get<{ id: number }>("INSERT INTO collections (user_id, name, created_at) VALUES (?,?,?) RETURNING id", u.id, "Inbox", now()))!;
-      await db.run("UPDATE users SET active_collection_id = ? WHERE id = ?", c.id, u.id);
+      // No collection is made for them: each receiver names and creates their own (owner, 15 Oct; two in the beta).
       return { id: u.id };
     });
   } catch (e) {
