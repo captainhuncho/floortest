@@ -8,13 +8,8 @@ Last updated 13 Oct 2026.
 
 | Service | What it does | Account / project | Where to manage it |
 | --- | --- | --- | --- |
-<<<<<<< HEAD
 | **Vercel** | Hosts the website and runs the code (London region). Also runs the daily scheduled jobs: digests, nudges, clean-up. Pro plan since 14 Oct. | Team `maxwelladjavon-5776s-projects`, project **floortest** | vercel.com → floortest. Secrets: Settings → Environment Variables |
-| **Neon** | The database (accounts, tracks, decisions, logs): Postgres in London (AWS eu-west-2), next to Vercel's `lhr1`. Free plan now, Launch before launch. | Production and Preview each have their own database; the app uses the pooled connection | console.neon.tech |
-=======
-| **Vercel** | Hosts the website and runs the code (London region). Also runs the daily scheduled jobs: digests, nudges, clean-up. | Team `maxwelladjavon-5776s-projects`, project **floortest** | vercel.com → floortest. Secrets: Settings → Environment Variables |
 | **Neon** | The database (accounts, tracks, decisions, logs): Postgres in London (AWS eu-west-2), next to Vercel's `lhr1`. Launch plan since 15 Oct (owner): a 7-day restore window, so any moment in the last week can be restored as a new branch (Branches → Restore), checked, then pointed at by `DATABASE_URL`; production is never overwritten in place. | Production and Preview each have their own database; the app uses the pooled connection | console.neon.tech |
->>>>>>> docs-neon-launch
 | **Cloudflare R2** | Stores the audio, stems, cover photos and nightly database backups, privately. | Buckets: **floortest-audio-eu** (live, Western Europe, since 11 Oct), **floortest-audio-preview** (previews only), **floortest-audio** (old, kept for rollback; the owner deletes it on/after 18 Oct) | dash.cloudflare.com → R2 |
 | **Cloudflare Turnstile** | The bot check on public forms and on sign-in after repeated wrong tries. | One widget; on/off is the `bot_check` switch in ops | dash.cloudflare.com → Turnstile |
 | **Google Cloud** | Sign in with Google (OAuth client). | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` set for Production and Preview; brand verification paused until launch (plan B1) | console.cloud.google.com → APIs & Services → Credentials |
