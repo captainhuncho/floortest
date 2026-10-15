@@ -1575,4 +1575,11 @@ alter table users add column kind_note text not null default '';
 alter table users add column tools text;
 `,
   },
+  {
+    // Sessions remember which device signed in (for the Security page's devices list) and when they were last used:
+    // a browser session idle for 14 days ends, and the list shows "last used".
+    id: "0095_session_devices",
+    sql: `alter table sessions add column last_seen_at bigint;
+alter table sessions add column device text not null default '';`,
+  },
 ];

@@ -2,6 +2,7 @@
 import { reopenCallouts } from "./desk";
 import "server-only";
 import { drainNow, queueDeletion, retireTrackFiles } from "./deletion";
+import { WEB_IDLE_MS } from "./sessions";
 import { now, q } from "./db";
 import { RETAIN_PASSED_DAYS, RETAIN_UNREVIEWED_DAYS } from "./plans";
 import { UPLOAD_TTL } from "./intake";
@@ -39,7 +40,8 @@ async function deleteInBatches(table: string, where: string, args: unknown[], un
 export async function cleanupRecords(t = now(), until = Date.now() + PURGE_BUDGET_MS) {
   // Rate limits look back at most 24h, so IP addresses aren't kept longer than 48h.
   await q.run("DELETE FROM rate_events WHERE created_at < ?", t - 2 * DAY);
-  await q.run("DELETE FROM sessions WHERE expires_at < ?", t);
+  // Expired sessions, and browser sessions nobody has used for WEB_IDLE_MS (the app's refresh tokens are exempt).
+  await q.run("DELETE FROM sessions WHERE expires_at < ? OR (kind = 'web' AND COALESCE(last_seen_at, created_at) < ?)", t, t - WEB_IDLE_MS);
   await q.run("DELETE FROM password_resets WHERE expires_at < ?", t - DAY);
   await q.run("DELETE FROM login_codes WHERE expires_at < ?", t);
   await q.run("DELETE FROM handle_history WHERE expires_at < ?", t);
