@@ -35,6 +35,16 @@ commit. Shipping an item from `06-plan.md` moves it to Done.
   push `main`, wait ~60 s, then push `mobile-next`; confirm the deploy).
 - `vercel-build` runs migrations: a new migration reaches production only when shipped.
 
+## Every session, every task (owner, 15 Oct; full text: `docs/working.md` rules 1–13)
+Many sessions share this repo. Before shipping, message the running sessions (ListAgents, SendMessage), wait for a
+"go", and check what `main` already has; ship from your own worktree on a branch off `main`, never the shared checkout;
+tell the sessions when production is READY. Never delete branches unless the owner asks. At most one grouped production
+release a day (security, data-loss or site-down fixes any time), each with a report in `docs/evidence/`. Follow the
+owner's twelve working principles (rule 12): understand first, preserve what works, finish whole journeys, keep it simple,
+measure before claiming speed, verify real behaviour, name the exact build in every report. Optimise: find out before
+asking, batch questions, exact-string edits, no merge markers, outcome first in reports. Use the installed skills when
+they fit the task. New work runs in cloud sessions; this Mac is for browser and device checks.
+
 ## Checks
 `npm run typecheck`, `npm run lint` (0 errors), `npm test`, `npm run check:perms` before every push; `npm run e2e` when a
 change touches sending, review, downloads, receipts or auth (port 3000 must be free).
