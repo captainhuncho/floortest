@@ -14,6 +14,7 @@ import { audit } from "@/lib/audit";
 import { done } from "./common";
 import { unpinGoogle } from "@/lib/google-link";
 import { type SettingsState } from "./settings";
+import { breachedError } from "@/lib/breached";
 
 /** Changes the password after checking the current one, and signs out every other device. */
 export async function changePassword(_: SettingsState, form: FormData): Promise<SettingsState> {
@@ -27,8 +28,10 @@ export async function changePassword(_: SettingsState, form: FormData): Promise<
   const strength = passwordStrength(next, [u.name, u.email, u.handle]);
   if (!strength.ok) return { error: strength.tip ?? "Choose a stronger password." };
   if (String(form.get("confirm") || "") !== next) return { error: "The two new passwords don't match." };
+  const leaked = await breachedError(next);
+  if (leaked) return { error: leaked };
   const keep = await currentSessionHash();
-  await q.run("UPDATE users SET password_hash = ? WHERE id = ?", hashPassword(next), u.id);
+  await q.run("UPDATE users SET password_hash = ? WHERE id = ?", await hashPassword(next), u.id);
   await q.run("DELETE FROM sessions WHERE user_id = ? AND token_hash <> ?", u.id, keep ?? "");
   await audit(u.id, "password_changed");
   await sendMail({
@@ -102,7 +105,7 @@ export async function disableTwoFactor(_: SettingsState, form: FormData): Promis
     "SELECT password_hash, totp_secret, totp_last_step, recovery_codes FROM users WHERE id = ?",
     u.id,
   );
-  if (!row || !verifyPassword(String(form.get("password") || ""), row.password_hash)) return { error: "Your password isn't right." };
+  if (!row || !(await verifyPassword(String(form.get("password") || ""), row.password_hash))) return { error: "Your password isn't right." };
   const code = String(form.get("code") || "");
   const ok =
     (row.totp_secret && verifyTotp(openSecret(row.totp_secret, env.secret), code, row.totp_last_step) != null) ||
@@ -133,7 +136,7 @@ export async function disconnectGoogle(_: SettingsState, form: FormData): Promis
   const u = await requireRole("owner");
   if (!(await allow("google_unlink", String(u.id), 10, 3_600_000))) return { error: "Too many tries. Wait an hour and try again." };
   const row = await q.get<{ password_hash: string }>("SELECT password_hash FROM users WHERE id = ?", u.id);
-  if (!row || !verifyPassword(String(form.get("password") || ""), row.password_hash)) return { error: "Your password isn't right." };
+  if (!row || !(await verifyPassword(String(form.get("password") || ""), row.password_hash))) return { error: "Your password isn't right." };
   await unpinGoogle(u.id);
   done();
   return { ok: true };

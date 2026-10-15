@@ -15,6 +15,7 @@ Last updated 13 Oct 2026.
 | **Google Cloud** | Sign in with Google (OAuth client). | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` set for Production and Preview; brand verification paused until launch (plan B1) | console.cloud.google.com → APIs & Services → Credentials |
 | **Resend** | Sends every email: receipts, alerts, invites, digests. | Sending domain `floortest.app` (verified), from `team@floortest.app` | resend.com |
 | **Google Workspace** | Two separate inboxes: `team@floortest.app` sends every FloorTest email and gets the replies; `support@floortest.app` (`SUPPORT_EMAIL`) takes help, takedowns and the contact form. `hello@` (the sender until 13 Oct) stays as an alias for late replies. | `floortest.app` is a secondary domain on the owner's existing Workspace: `team@` is its own user; support@, legal@, privacy@, copyright@, security@ and hello@ are the owner's; nobody else gets an address | admin.google.com |
+| **Have I Been Pwned** (Pwned Passwords) | Tells us whether a new password has appeared in a data breach, so it can be refused. | Free range API, no account or key. Only the first 5 characters of the password's SHA-1 are sent (k-anonymity, padded); the password never leaves the server. Off locally; `PWNED_CHECK=0` turns it off | haveibeenpwned.com/Passwords |
 
 ## Domain
 
