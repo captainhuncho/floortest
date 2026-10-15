@@ -28,6 +28,7 @@ Same format as the other panels: one or two lines per voice, one recommendation,
 8. Before shipping, check what `main` already has: another session may have shipped it (14 Oct: batches 1–4 and the home went out from one session while another was building the same ship).
 9. Before editing, confirm which checkout you're in (`git rev-parse --show-toplevel`); never edit the shared checkout while another session has uncommitted work there.
 10. Don't delete branches, local or on GitHub, unless the owner asks, even merged ones.
+11. "Optimise all the work I give you" (owner, 15 Oct): find out what can be found out before asking, and batch the few real asks into one message; prefer known, repeatable steps over guessing; exact-string edits (not perl or sed substitutions) on files with `|`, `$`, `#` or backticks, and no merge markers in any commit; one branch per deliverable from `main`, checks once, one merge to preview; reports lead with the outcome, numbers in a table, the next step in one line.
 
 ## Round one, 14 Oct: how should the work run up to the beta?
 
