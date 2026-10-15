@@ -83,17 +83,39 @@ What is on preview and not live: batch 1 (lime only for Keep and the one main ca
 
 **Recommendation, in order.** 1) Scanner live (owner deploys, dev checks); 2) batch 1 ship branch ready; 3) real-device upload and email checks; 4) evaluation-only decided; 5) batches 2 and 3 after the weekend. Mobile app, sharing switch-on and stems stay after launch.
 
+## Round four, 15 Oct: what goes live for the beta (Monday 19 Oct)
+
+State on 15 Oct: production has almost everything. Live: sending, review (phone review with the docked rail), collections, Prepare and downloads, receipts with Delivered, Played out any day, account types, teams, Google sign-in, the new home, plans by request, ops with roles, the virus scanner (Cloudflare, London), the recovery vault code with its keys set, sign-in hardening, Vercel Pro with rate limits. Not on production yet: one small fix (the setup checklist drops "Make a collection" once a track has arrived without one) plus docs. Beta stays invite-only behind the site password; Paddle, collection sharing, the phone app and audio previews are after launch.
+
+**Release manager.** Ship the checklist fix on Thursday from a branch off `main`; it's two files and has its e2e. After that, nothing new goes to `main` before Monday but fixes.
+
+**Session coordinator.** Several sessions shipped on 14 and 15 Oct. From Friday, one session owns `main` until Monday; the others stay on `mobile-next`.
+
+**QA.** The real-phone upload test and the Gmail / Outlook / Apple Mail check are still open. Friday, on the live site, with the owner's phone.
+
+**Docs keeper.** `docs/06-plan.md` Done is current; the owner's list below is updated.
+
+**Ops on call.** Freeze from Fri 16 Oct, as round one said. Check the vault actually ran (keys set 13 Oct, never confirmed) and that the uptime monitor watches the scanner's `/health`.
+
+**Owner's time.** Four things only the owner can do before Monday: the lawyer's date, the evaluation-only call (or leave it as is for the beta), the vault check, the invite list.
+
+**Scope guard.** Nothing new is built for the beta. Anything found in the weekend run is fixed; everything else waits for beta feedback.
+
+**Recommendation.** Monday's beta is what is live now plus the checklist fix. Freeze Friday; Friday is the phone and email checks; Sunday the invites. If the lawyer has no date by Friday, Monday's invites go only to people the owner knows.
+
 ## Owner's list (one place)
 
 | # | Item | When |
 |---|---|---|
-| 1 | Pick which preview batches ship (or none) | by 16 Oct |
-| 2 | Evaluation-only decision (`06-plan.md`, Team decisions queued) | before beta week |
+| 1 | ✅ Preview batches 1–4, the new home and account types shipped (14 Oct) | done |
+| 2 | Evaluation-only decision (`06-plan.md`, Team decisions queued): for the beta it stays as it is unless decided by Fri 16 Oct | Fri 16 Oct |
 | 3 | ✅ Scanner live on floortest.app (14 Oct, 18:03 UTC); mark the 401 incidents from the setup as handled in ops | done |
-| 4 | Lawyer's wording on the legal pages (blocker) | before strangers send |
+| 4 | Lawyer's wording on the legal pages: ask for a date by Fri 16 Oct; without it, Monday's invites go only to people the owner knows | Fri 16 Oct |
 | 5 | Vault R2 token; app R2 token scoped to `floortest-audio-eu`; Turnstile hostnames | this week |
-| 6 | Delete `floortest-audio` and its stalled migration | on/after 18 Oct |
+| 6 | ✅ `floortest-audio` deleted 14 Oct; left: delete the temporary token `bucket-move-temp` and cancel the stalled Data Migration | this week |
 | 7 | SPF to Google only, DMARC reports (DNS) | this week |
+| 8 | Check the vault ran: ops → Storage shows last night's copy and backup (keys set 13 Oct) | Fri 16 Oct |
+| 9 | Write and send Monday's invites (who, how many, the invite codes) | Sun 18 Oct |
 
 ## Decision log
 
@@ -104,3 +126,4 @@ What is on preview and not live: batch 1 (lime only for Keep and the one main ca
 - 14 Oct: batches 1–4 and the new home with the shorter copy shipped from another session (production `8159ac8`); the round two hold on batches 2 and 3 was overtaken by the owner's call.
 - 14 Oct: account types shipped (production `28941c4`, migration 0095): seven types, tools on by default and never locked, Played out the first tool. Product panel round in the session; owner chose split Artist / Curator, defaults, build now.
 - 14 Oct, slips on that ship, recorded so they don't repeat: `mobile-next` was pushed 32 s after `main` instead of 60; a merged branch (`scanner-cloudflare`) was deleted on GitHub without being asked; doc edits first landed in the shared checkout beside another session's uncommitted work and were moved out by hand. Rules 8–10 above come from this.
+- 15 Oct: beta scope set (round four): what's live plus the checklist fix; freeze Fri 16 Oct; invites Sun 18 Oct.
