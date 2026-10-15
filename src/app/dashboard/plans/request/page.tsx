@@ -18,6 +18,7 @@ const ERRORS: Record<string, string> = {
 export default async function RequestPlan({ searchParams }: { searchParams: Promise<{ plan?: string; error?: string }> }) {
   const user = await requireUser();
   const sp = await searchParams;
+  if (!(await switchOn("plan_requests"))) redirect("/dashboard/plans");
   const [billing, plan, current, open] = await Promise.all([switchOn("billing"), offeredPlan(String(sp.plan ?? "")), planOf(user.plan), pendingRequest(user.id)]);
   // Once paid plans start, people choose and pay for themselves.
   if (billing) redirect(plan ? `/dashboard/checkout?plan=${plan.id}` : "/dashboard/plans");

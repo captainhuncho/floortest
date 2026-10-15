@@ -2,7 +2,7 @@
 
 /** Collections: create, choose which one receives, edit and delete. */
 import { redirect } from "next/navigation";
-import { canCapCallouts } from "@/lib/desk";
+import { canAddCollection, canCapCallouts } from "@/lib/desk";
 import { revalidatePath } from "next/cache";
 import { requireUser, requireRole } from "@/lib/auth";
 import { now, q } from "@/lib/db";
@@ -16,6 +16,8 @@ export async function createCollection(form: FormData) {
   const u = await requireUser();
   const name = String(form.get("name") || "").trim().slice(0, 60);
   if (!name) return;
+  // Two collections per desk during the beta (the page hides New collection at two; this holds the line).
+  if (!(await canAddCollection(u.id))) return;
   const c = await q.get<{ id: number }>("INSERT INTO collections (user_id, name, created_at) VALUES (?,?,?) RETURNING id", u.id, name, now());
   await audit(u.id, "collection_created", name);
   if (form.get("activate")) {

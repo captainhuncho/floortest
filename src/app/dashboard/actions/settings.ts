@@ -150,7 +150,7 @@ export async function confirmBetaUpgrade(plan: string, form: FormData) {
   if (await switchOn("billing")) redirect(`/dashboard/checkout?plan=${next.id}`);
   // During the beta, bigger plans are given on request (see requestPlan), never picked straight from checkout.
   void form;
-  redirect(`/dashboard/plans/request?plan=${next.id}`);
+  redirect((await switchOn("plan_requests")) ? `/dashboard/plans/request?plan=${next.id}` : "/dashboard/plans");
 }
 
 /** Gives the account its bio code (created once, reused so it doesn't change under them). */
@@ -233,7 +233,7 @@ export async function setTheme(theme: string) {
  */
 export async function requestPlan(form: FormData) {
   const u = await requireRole("owner");
-  if (await switchOn("billing")) redirect("/dashboard/plans");
+  if ((await switchOn("billing")) || !(await switchOn("plan_requests"))) redirect("/dashboard/plans");
   const next = await offeredPlan(String(form.get("plan") || ""));
   if (!next || next.price <= (await planOf(u.plan)).price) redirect("/dashboard/plans");
   if (!(await allow("plan_request", String(u.id), 5, 86_400_000))) redirect(`/dashboard/plans/request?plan=${next.id}&error=limit`);

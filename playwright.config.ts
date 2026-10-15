@@ -25,6 +25,8 @@ const env = {
   SEED_SHARING: "1",
   // Account teams are tested too: teams switched on and a seeded team member (scripts/seed.ts).
   SEED_TEAMS: "1",
+  // The Send page is off in the beta (switch send_music); its tests switch it on (scripts/seed.ts).
+  SEED_SEND_MUSIC: "1",
   APP_URL: `http://localhost:${PORT}`,
   APP_SECRET: "e2e-only-secret-not-used-anywhere-else-000000",
 };

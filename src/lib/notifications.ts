@@ -124,7 +124,7 @@ export async function notificationsFor(user: User) {
     alerts.push({ id: "closing", title: `“${c.name}” closes soon`, detail: `Closes ${shortDate(c.closes_at, user.tz)}`, href: "/dashboard/collections", at: t, unread: t - DAY > seen, tone: "alert" });
 
   // Account teams: replies from members waiting for this person's approval.
-  if (user.actor_id !== undefined && (await teamsOn()) && (await canApprove(user))) {
+  if (user.actor_id !== undefined && (await teamsOn(user.id)) && (await canApprove(user))) {
     const waiting = Number((await q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM held_replies WHERE account_id = ? AND status = 'waiting'", user.id))?.n ?? 0);
     if (waiting) alerts.push({ id: "held", title: `${waiting} ${waiting === 1 ? "reply is" : "replies are"} waiting for approval`, detail: "From members, before they go to senders.", href: "/dashboard/settings/team", at: t, unread: true, tone: "alert" });
   }

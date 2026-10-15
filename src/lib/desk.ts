@@ -5,6 +5,7 @@ import crypto from "node:crypto";
 import { now, q, USER_COLUMNS, type Collection, type Queryable, type Sender, type Track, type User } from "./db";
 import { APP_URL, sendMail } from "./mail";
 import { planLimit } from "./plan-store";
+import { switchOn } from "./switches";
 import { cache } from "react";
 
 export async function activeCount(userId: number, db: Queryable = q) {
@@ -90,6 +91,16 @@ export async function reopenCallouts(db: Queryable = q) {
 }
 /** Whether this account's plan can cap callouts (Pro and Team). */
 export const canCapCallouts = (plan: string) => plan !== "free";
+
+/** Collections a desk can hold during the beta (owner, 15 Oct); the "more_collections" switch lifts it. */
+export const BETA_COLLECTIONS = 2;
+
+/** Whether this desk may start another collection: always with "more_collections" on, otherwise under two. */
+export async function canAddCollection(deskId: number, db: Queryable = q) {
+  if (await switchOn("more_collections")) return true;
+  const n = await db.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM collections WHERE user_id = ?", deskId);
+  return Number(n?.n ?? 0) < BETA_COLLECTIONS;
+}
 
 /** "Pause my link": the receiver is away. Ends on its own at pause_until, if one was set. */
 export const isPaused = (u: Pick<User, "paused_at" | "pause_until">, at = now()) => !!u.paused_at && (!u.pause_until || u.pause_until > at);

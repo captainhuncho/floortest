@@ -14,8 +14,8 @@ export const metadata = { title: "Team — FloorTest" };
  * roles. Owners and admins choose whether members' replies to senders need approval, and by whom.
  */
 export default async function Team({ searchParams }: { searchParams: Promise<{ denied?: string }> }) {
-  if (!(await teamsOn())) notFound();
   const user = await requireUser();
+  if (!(await teamsOn(user.id))) notFound();
   const { denied } = await searchParams;
   const team = await teamOf(user.id);
   const manage = atLeast(user.role, "admin");

@@ -1,5 +1,5 @@
 import { trackUse } from "@/lib/usage";
-import { canCapCallouts } from "@/lib/desk";
+import { BETA_COLLECTIONS, canAddCollection, canCapCallouts } from "@/lib/desk";
 import { switchOn } from "@/lib/switches";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
@@ -22,6 +22,7 @@ export default async function Collections() {
   const sharing = await switchOn("sharing");
   const viaLinks = await sharedLinksFor(user);
   const canManage = user.role !== "member";
+  const canAdd = await canAddCollection(user.id);
   // The receiving collection first, then open callouts (newest first), then closed ones (newest first).
   const rank = (c: (typeof collections)[number]) => (c.id === user.active_collection_id ? 0 : isClosed(c) ? 2 : 1);
   const ordered = [...collections].sort((a, b) => rank(a) - rank(b) || b.created_at - a.created_at);
@@ -52,7 +53,15 @@ export default async function Collections() {
         })}
         {canManage && (
           <li className="contents">
-            <NewCollection tile />
+            {canAdd ? (
+              <NewCollection tile />
+            ) : (
+              // Two per desk during the beta: the tile stays in place and says why there's no third.
+              <div className="flex aspect-[171/221] w-full flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-line bg-ink px-4 text-center">
+                <span className="text-[11px] font-bold text-mute">{BETA_COLLECTIONS} collections during the beta</span>
+                <span className="text-[11px] text-faint">Change one&apos;s name or close date to start a new callout.</span>
+              </div>
+            )}
           </li>
         )}
       </ul>

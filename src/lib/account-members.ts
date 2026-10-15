@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { now, q, type User } from "./db";
 import { allow } from "./ratelimit";
 import { switchOn } from "./switches";
+import { env } from "./env";
 
 /**
  * Account teams. A label, radio station or crew has one FloorTest account (its owner's) and invites the people who run
@@ -24,7 +25,17 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export class TeamError extends Error {}
 
-export const teamsOn = () => switchOn("teams");
+/**
+ * Teams for everyone when the "teams" switch is on. While it's off (the beta, owner 15 Oct), teams still work on a desk
+ * whose owner is an ops super admin (ADMIN_EMAILS), so the owner can test them with their own invitees. Pass the desk
+ * (account) id wherever one is known; without it, only the switch counts.
+ */
+export async function teamsOn(deskId?: number | null) {
+  if (await switchOn("teams")) return true;
+  if (!deskId || !env.adminEmails.length) return false;
+  const owner = await q.get<{ email: string }>("SELECT email FROM users WHERE id = ?", deskId);
+  return !!owner && env.adminEmails.includes(owner.email.toLowerCase());
+}
 
 /** Seats on an account: its plan's seats plus add-ons. The owner takes one. */
 export async function seatsFor(accountId: number) {
@@ -64,14 +75,13 @@ export async function roleOn(accountId: number, personId: number): Promise<TeamR
 
 /** The teams this person can switch to (not their own account, and not ones where their seat is paused). */
 export async function teamsFor(personId: number) {
-  if (!(await teamsOn())) return [];
   const rows = await q.all<{ id: number; name: string; handle: string; role: "admin" | "member" }>(
     `SELECT u.id, u.name, u.handle, m.role FROM account_members m JOIN users u ON u.id = m.account_id
      WHERE m.user_id = ? AND u.suspended_at IS NULL ORDER BY u.name`,
     personId,
   );
   const out = [];
-  for (const r of rows) if (await roleOn(r.id, personId)) out.push(r);
+  for (const r of rows) if ((await teamsOn(r.id)) && (await roleOn(r.id, personId))) out.push(r);
   return out;
 }
 
@@ -95,7 +105,7 @@ export async function teamOf(accountId: number) {
 
 /** Owners invite admins or members; admins invite members. Returns the invite secret (emailed, never stored). */
 export async function inviteToTeam(desk: Pick<User, "id" | "role" | "actor_id" | "email">, rawEmail: string, role: "admin" | "member") {
-  if (!(await teamsOn())) throw new TeamError("Teams aren't available yet.");
+  if (!(await teamsOn(desk.id))) throw new TeamError("Teams aren't available yet.");
   if (!atLeast(desk.role, "admin")) throw new TeamError("Only the owner or an A&R / Admin can invite people.");
   if (role === "admin" && desk.role !== "owner") throw new TeamError("Only the owner can invite A&R / Admins.");
   const email = rawEmail.trim().toLowerCase().slice(0, 200);
@@ -116,13 +126,14 @@ export async function inviteToTeam(desk: Pick<User, "id" | "role" | "actor_id" |
 
 /** A waiting invite by its secret, with the account's name. */
 export async function inviteBySecret(secret: string) {
-  if (!secret || secret.length > 100 || !(await teamsOn())) return undefined;
-  return q.get<{ id: number; account_id: number; email: string; role: "admin" | "member"; account_name: string; account_handle: string }>(
+  if (!secret || secret.length > 100) return undefined;
+  const invite = await q.get<{ id: number; account_id: number; email: string; role: "admin" | "member"; account_name: string; account_handle: string }>(
     `SELECT i.id, i.account_id, i.email, i.role, u.name AS account_name, u.handle AS account_handle FROM account_invites i JOIN users u ON u.id = i.account_id
      WHERE i.token_hash = ? AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > ? AND u.suspended_at IS NULL`,
     fingerprint(secret),
     now(),
   );
+  return invite && (await teamsOn(invite.account_id)) ? invite : undefined;
 }
 
 /**
@@ -130,13 +141,13 @@ export async function inviteBySecret(secret: string) {
  * confirmed it), so the person doesn't need the invite link in this browser.
  */
 export async function inviteForEmail(email: string) {
-  if (!(await teamsOn())) return undefined;
-  return q.get<{ id: number; account_id: number; email: string; role: "admin" | "member"; account_name: string; account_handle: string }>(
+  const invite = await q.get<{ id: number; account_id: number; email: string; role: "admin" | "member"; account_name: string; account_handle: string }>(
     `SELECT i.id, i.account_id, i.email, i.role, u.name AS account_name, u.handle AS account_handle FROM account_invites i JOIN users u ON u.id = i.account_id
      WHERE i.email = ? AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > ? AND u.suspended_at IS NULL ORDER BY i.created_at DESC LIMIT 1`,
     email.trim().toLowerCase(),
     now(),
   );
+  return invite && (await teamsOn(invite.account_id)) ? invite : undefined;
 }
 
 /** Accepts the live invite sent to this person's (proven) email, if there is one. */
@@ -210,7 +221,7 @@ export async function setReplyApproval(desk: Pick<User, "id" | "role">, on: bool
 
 /** A member's reply needs approval when it's switched on and they aren't the approver themselves. */
 export async function replyNeedsApproval(desk: Pick<User, "id" | "role" | "actor_id">) {
-  if (desk.role !== "member" || desk.actor_id === desk.id || !(await teamsOn())) return false;
+  if (desk.role !== "member" || desk.actor_id === desk.id || !(await teamsOn(desk.id))) return false;
   const a = await replyApproval(desk.id);
   return a.on && a.approver !== desk.actor_id;
 }
