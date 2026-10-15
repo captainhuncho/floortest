@@ -209,6 +209,14 @@ FloorTest will be registered in and operated from **Ghana**, serving users world
 38. **Scanner host:** (moot from 14 Oct: the owner picked Cloudflare Containers, already a subprocessor) if the owner picks Fly.io, what has to happen first (Sub-processors page, notice period to users, data processing agreement)?
 39. **Recovery copy:** does the Privacy Policy's backup wording cover a full nightly copy of stored files in a second bucket, deleted along with the original?
 
+### Sign-in changes, live 15 Oct 2026
+
+- **Leaked-password check.** When someone picks a new password (sign-up, reset, change), FloorTest asks Have I Been Pwned's Pwned Passwords service whether it appears in known breaches, and refuses it if so. Only the first 5 characters of the password's SHA-1 fingerprint are sent; the password, the rest of the fingerprint, and who it belongs to never leave our server. The service answers with every known fingerprint ending under that prefix and we compare here.
+- **Devices list and idle sign-out.** Each sign-in now records a short device label worked out from the browser (for example "Chrome on macOS") and when that session was last used (updated at most hourly). Account holders see their signed-in devices on the Security page and can sign any one out. A browser session nobody uses for 14 days ends by itself. The label and last-used time go when the session ends.
+
+40. **Leaked-password check:** we read the 5-character prefix as not personal data (it can't be tied to a person or a password). Does the Privacy Policy or the Sub-processors page need to name Have I Been Pwned?
+41. **Devices list:** the Privacy Policy mentions the sign-in log and sign-in alerts. Does it also need to say we keep a device label and last-used time for each signed-in session, and for how long?
+
 ## 7. Before invites go out
 
 1. ~~Set `SUPPORT_EMAIL` (and ideally a published privacy@ address).~~ Done 13 Oct: `SUPPORT_EMAIL` is support@floortest.app; privacy@floortest.app is on the Privacy, Cookies, privacy choices and Sub-processors pages.
