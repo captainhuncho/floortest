@@ -46,6 +46,22 @@ Same format as the other panels: one or two lines per voice, one recommendation,
     - **Evidence:** every ship gets one report in `docs/evidence/` (format in its README): the exact commit, each check marked passed, failed or blocked, and what's built, tested, live and unfinished. Screenshots sit beside it, small (PNG or JPG, under 300 KB each).
     - **Cloud first:** new work starts in a cloud session; this Mac is for browser and device checks (simulator, the owner's phone, local data) and for work that needs local tools. A session that can't reach the internet says so rather than guessing.
     - **Grouped releases:** at most one production release a day, grouped from what's reviewed on preview and named in the plan. Fixes for security, data loss or the site being down ship any time. Every release still follows rules 2–5, 8–10 and the session check-in before `main` is touched.
+14. The owner's skill areas (15 Oct), how each is done here, and the installed skills that carry it. Load the skill before doing that kind of work.
+
+    | Area | How it's done here | Skills |
+    |---|---|---|
+    | Product design | Compact, consistent, easy; each product keeps its own identity (FloorTest per `DESIGN.md`, `docs/04-design.md`) | `impeccable`, `emil-design-eng`, `apple-design`, `design:design-critique`, `design-skills:*` |
+    | Production audits | Security, permissions, payments, data recovery, accessibility, whole journeys; fix defects and retest | `security-review`, `ponytail-audit`, `ponytail-review`, `code-review`, `design:accessibility-review`, `backend-design:audit` |
+    | Deployment and recovery | Releases, database changes, live checks, rollback; confirm which build is actually running (deployment ID and commit) | `shipping-and-launch`, `deprecation-and-migration`, `backend-design:review-migration`, Vercel tools |
+    | Performance and simplification | Find unneeded code, dependencies and resource use; measure the bottleneck before optimising | `cloudflare:web-perf`, `ponytail-debt`, `simplify`, `backend-design:hunt-n-plus-one` |
+    | Government-system planning | Institutional responsibilities, legal approvals, data ownership, service delivery, rollout (other projects; not FloorTest) | `deep-research`, `operations:*`, `legal:*` |
+    | Email | Keep the approved layout, branding and tone (`src/lib/email-copy.ts`, `docs/brand-voice.md`); the email editor's preview in ops (Admin → Content) must match what actually gets sent, checked against Admin → Emails, the log of sent mail | `resend:react-email`, `resend:email-best-practices`, `brand-voice:enforce-voice` |
+    | Writing and editing | Proposals, messages and product copy clear, specific and human; in the owner's voice when written for them | `design:ux-copy`, `brand-voice:brand-voice-enforcement`, `docs/brand-voice.md` |
+    | Interface motion | Restrained; animation only where it explains what's happening (`docs/04-design.md` Motion) | `improve-animations`, `animate`, `emil-design-eng` |
+    | Research and source checking | Official sources, existing products, current requirements; say what's confirmed and what's assumed | `deep-research`, WebSearch, vendor docs tools (Vercel, Cloudflare, Neon) |
+    | Browser and device verification | Test the real product, keep evidence (`docs/evidence/`), and say whether a result is desktop, simulator or a real phone | `anthropic-skills:built-in-browser`, `run`, iOS simulator tools |
+    | Documents and visuals | Create and inspect PDFs, Word, slides, spreadsheets, diagrams, design assets | `anthropic-skills:pdf`, `docx`, `pptx`, `xlsx`, `artifact-diagramming`, `figma:*` |
+    | Infrastructure and integrations | GitHub, Cloudflare, APIs, databases, email delivery and services the owner has authorised; never outside that | `cloudflare:*`, `wrangler`, `neon-postgres`, `resend:resend`, Vercel tools, `gh` |
 
 ## Round one, 14 Oct: how should the work run up to the beta?
 
