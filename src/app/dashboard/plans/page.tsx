@@ -57,7 +57,7 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
           <div>
             <p className="text-[15px] font-bold">You&apos;re on {current.name} now.</p>
             <p className="mt-0.5 text-[13px] text-mute">
-              Room for {current.limit.toLocaleString("en")} active tracks{current.seats > 1 && (await teamsOn()) ? `, and ${current.seats} people on the account` : ""}.{" "}
+              Room for {current.limit.toLocaleString("en")} active tracks{current.seats > 1 && (await teamsOn(user.id)) ? `, and ${current.seats} people on the account` : ""}.{" "}
               {billing ? "Thanks for upgrading." : "Free for the rest of the beta."}
             </p>
           </div>
@@ -81,7 +81,7 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
         </p>
       </section>
 
-      <PlanCards teams={await teamsOn()} plans={plans} billing={billing} userPlan={user.plan} currentPrice={current.price} capUsed={cap.used} capBonus={cap.bonus} pendingPlan={pending?.plan ?? null} sharing={sharing} />
+      <PlanCards requests={await switchOn("plan_requests")} teams={await teamsOn(user.id)} plans={plans} billing={billing} userPlan={user.plan} currentPrice={current.price} capUsed={cap.used} capBonus={cap.bonus} pendingPlan={pending?.plan ?? null} sharing={sharing} />
 
       <section aria-labelledby="renewal-h" className="space-y-1.5 text-[11px] text-dim md:max-w-3xl">
         <h2 id="renewal-h" className="font-bold text-mute">

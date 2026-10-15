@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/auth";
+import { switchOn } from "@/lib/switches";
 import { capacity } from "@/lib/desk";
 import { planOf } from "@/lib/plan-store";
 import { PageTitle, Section } from "../Section";
@@ -29,9 +30,11 @@ export default async function Plan() {
           <Link href="/dashboard/plans" className={`${pct >= 80 ? "btn-lime" : "btn-ghost"} btn-sm min-h-11`}>
             See plans
           </Link>
-          <Link href="/dashboard/referrals" className="btn-ghost btn-sm min-h-11">
-            Invite DJs, earn slots
-          </Link>
+          {(await switchOn("referrals")) && (
+            <Link href="/dashboard/referrals" className="btn-ghost btn-sm min-h-11">
+              Invite DJs, earn slots
+            </Link>
+          )}
         </div>
       </Section>
     </>

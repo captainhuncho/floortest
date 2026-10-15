@@ -10,7 +10,7 @@ import { teamsOn } from "./account-members";
 
 /** How many people besides the owner work this desk (team tools show only when there are some). */
 export async function teamSize(accountId: number) {
-  if (!(await teamsOn())) return 0;
+  if (!(await teamsOn(accountId))) return 0;
   return Number((await q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM account_members WHERE account_id = ?", accountId))?.n ?? 0);
 }
 

@@ -1,5 +1,7 @@
 import { trackUse } from "@/lib/usage";
 import { requireRole } from "@/lib/auth";
+import { switchOn } from "@/lib/switches";
+import { redirect } from "next/navigation";
 import { capacity, REFERRAL_BONUS, referralCodeFor } from "@/lib/desk";
 import {q } from "@/lib/db";
 import { fmtDay } from "@/lib/format";
@@ -12,6 +14,7 @@ type Invitee = { name: string; created_at: number; referral_rewarded_at: number 
 
 export default async function Referrals() {
   const user = await requireRole("owner");
+  if (!(await switchOn("referrals"))) redirect("/dashboard/account");
   await trackUse(user.id, "referrals");
   const code = await referralCodeFor(user.id);
   const link = `${APP_URL}/signup?ref=${code}`;

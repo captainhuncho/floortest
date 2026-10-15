@@ -2,6 +2,8 @@ import { now } from "@/lib/db";
 import { trackUse } from "@/lib/usage";
 import Link from "next/link";
 import { requireRole, viewingAs } from "@/lib/auth";
+import { switchOn } from "@/lib/switches";
+import { redirect } from "next/navigation";
 import { VerifyBanner } from "../VerifyBanner";
 import { sentBy } from "@/lib/sent";
 import { APP_URL } from "@/lib/mail";
@@ -14,6 +16,7 @@ export const metadata = { title: "Send — FloorTest" };
 /** Send your own music to another user's link, and see what happened to everything you've sent. */
 export default async function Send({ searchParams }: { searchParams: Promise<{ to?: string }> }) {
   const user = await requireRole("admin");
+  if (!(await switchOn("send_music"))) redirect("/dashboard/floor");
   await trackUse(user.id, "send");
   const to = ((await searchParams).to || "").trim().replace(/[?#].*$/, "").replace(/\/+$/, "").split("/").pop()!.replace(/^@/, "").toLowerCase().replace(/[^a-z0-9-_]/g, "").slice(0, 30);
   const [sent, view] = await Promise.all([sentBy(user), viewingAs()]);

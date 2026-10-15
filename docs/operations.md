@@ -37,7 +37,7 @@ Production and Preview have separate values. Never paste values into chats or ti
 | `ALERT_WEBHOOK_URL` (optional) | A Discord or Slack incoming-webhook URL. Urgent alerts go there as well as email, so you still hear about it if email itself is down |
 | `DB_AUTO_MIGRATE=true`, `DB_POOL_MAX=5` | Database behaviour |
 
-**Switches (Admin → Feature switches, no deploy):** sharing with colleagues, bot check, open sign-up, and pause all uploads (maintenance). Stems is switched per plan or per account on the same page. Every flip is logged.
+**Switches (Admin → Feature switches, no deploy):** sharing with colleagues, bot check, open sign-up, account teams, and pause all uploads (maintenance). Beta scope (owner, 15 Oct; all off until switched on as weekly reveals): **More than two collections** (`more_collections`), **Send music between desks** (`send_music`), **Referrals page** (`referrals`), **Plan requests** (`plan_requests`). With **Account teams** off, teams still work on a desk owned by an ops super admin (ADMIN_EMAILS), so the owner can test them. Stems is switched per plan or per account on the same page. Every flip is logged.
 
 ## Releasing
 

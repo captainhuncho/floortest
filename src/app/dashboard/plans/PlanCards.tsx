@@ -20,6 +20,7 @@ export function PlanCards({
   preview = false,
   pendingPlan = null,
   sharing = false,
+  requests = true,
   teams = false,
 }: {
   plans: Plan[];
@@ -33,6 +34,8 @@ export function PlanCards({
   pendingPlan?: string | null;
   /** Colleague sharing is live (switch `sharing`); until then nothing about it is promised. */
   sharing?: boolean;
+  /** Plan requests are open (switch `plan_requests`); off in the beta, when FloorTest sets plans from ops. */
+  requests?: boolean;
   /** Account teams are live (switch `teams`): show each plan's seats. */
   teams?: boolean;
 }) {
@@ -132,6 +135,8 @@ export function PlanCards({
                   <p className="grid h-11 place-items-center rounded-lg border border-line text-[13px] font-semibold text-mute">You&apos;re on this plan</p>
                 ) : tooSmall ? (
                   <p className="grid min-h-11 place-items-center rounded-lg border border-line px-3 text-center text-[12px] text-mute">You have more tracks than this plan holds</p>
+                ) : upgrade && !billing && !requests ? (
+                  <p className="grid min-h-11 place-items-center rounded-lg border border-line px-3 text-center text-[12px] text-mute">Set by FloorTest during the beta</p>
                 ) : upgrade && !billing && pendingPlan === id ? (
                   <Link href={`/dashboard/plans/request?plan=${id}`} className="grid h-11 place-items-center rounded-lg border border-lime/50 bg-lime/5 text-[13px] font-semibold text-lime">
                     Requested · in review

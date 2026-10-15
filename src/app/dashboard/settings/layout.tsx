@@ -7,7 +7,7 @@ export default async function SettingsLayout({ children }: { children: React.Rea
   const user = await requireUser();
   return (
     <div className="px-4 py-3 md:grid md:grid-cols-[200px_minmax(0,1fr)] md:gap-10 md:px-8 md:py-8">
-      <SettingsNav role={user.role} teams={await teamsOn()} />
+      <SettingsNav role={user.role} teams={await teamsOn(user.id)} />
       <div className="min-w-0 max-w-3xl space-y-6 pb-10">{children}</div>
     </div>
   );

@@ -32,6 +32,26 @@ export const SWITCHES = {
     description: "Owners invite people onto their account (seats by plan: Free 1, Pro 2, Team 5, plus add-on seats); each person keeps their own login and switches desks from the sidebar.",
     initial: false,
   },
+  more_collections: {
+    label: "More than two collections",
+    description: "Off (the beta, owner 15 Oct): each desk holds two collections. On: as many as people want.",
+    initial: false,
+  },
+  send_music: {
+    label: "Send music between desks",
+    description: "Off (the beta): receivers don't send to other receivers from FloorTest; the Send page, its sidebar item, the Floor's Send music and Account's row are hidden. Senders still send through anyone's link.",
+    initial: false,
+  },
+  referrals: {
+    label: "Referrals page",
+    description: "Off (the beta): the Referrals page and its links are hidden. Invite codes and links people already have keep working.",
+    initial: false,
+  },
+  plan_requests: {
+    label: "Plan requests",
+    description: "Off (the beta): the Plans page shows the plans without Request buttons, and the request form is closed. FloorTest sets plans from ops.",
+    initial: false,
+  },
   uploads_paused: {
     label: "Pause all uploads",
     description: "Maintenance switch: every receiver's link stops taking new tracks, with a short notice to senders. Nothing is lost.",

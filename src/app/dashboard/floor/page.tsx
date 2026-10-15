@@ -2,8 +2,9 @@ import { trackUse } from "@/lib/usage";
 import { Onboarding } from "./Onboarding";
 import Link from "next/link";
 import { requireUser, viewingAs } from "@/lib/auth";
+import { switchOn } from "@/lib/switches";
 import { VerifyBanner } from "../VerifyBanner";
-import { activeCollectionForView, capacityForView, collectionsForView, isClosed, isPaused } from "@/lib/desk";
+import { activeCollectionForView, canAddCollection, capacityForView, collectionsForView, isClosed, isPaused } from "@/lib/desk";
 import { now, q } from "@/lib/db";
 import { atLeast, canApprove, heldReplies, seatsFor, seatsUsed, teamsOn } from "@/lib/account-members";
 import { ago, fmtDay } from "@/lib/format";
@@ -72,6 +73,8 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
 
   // Link health: the one thing to fix, if anything.
   const openAlternative = collections.find((c) => !isClosed(c) && c.id !== active?.id);
+  const canSend = user.role !== "member" && (await switchOn("send_music"));
+  const canAdd = !openAlternative && (!active || isClosed(active)) ? await canAddCollection(user.id) : true;
   const problem: { text: string; action?: React.ReactNode } | null = paused
     ? // The Link open switch lives on Account (the sidebar only links there), so the fix points there.
       {
@@ -90,7 +93,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
             <SwitchCollection id={openAlternative.id} name={openAlternative.name} />
           ) : (
             <Link href="/dashboard/collections" className="btn-lime btn-sm">
-              New collection
+              {canAdd ? "New collection" : "Open Collections"}
             </Link>
           ),
         }
@@ -134,7 +137,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
 
   // Your desk at a glance: only figures that mean exactly what they say, each a link to where it's managed. Capacity and
   // approvals turn lime when they need something from you. (Link status isn't repeated: "Your link" below says it.)
-  const teamDesk = (await teamsOn()) && atLeast(user.role, "admin");
+  const teamDesk = (await teamsOn(user.id)) && atLeast(user.role, "admin");
   const [seats, used, held, approver, contacts] = await Promise.all([
     teamDesk ? seatsFor(user.id) : 0,
     teamDesk ? seatsUsed(user.id) : 0,
@@ -293,11 +296,11 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
           </section>
         )}
 
-        {(!fresh || user.role !== "member") && (
-          <div className="grid grid-cols-1 gap-5 border-t border-line pt-5 sm:grid-cols-2 sm:gap-6 sm:pt-8">
+        {(!fresh || canSend) && (
+          <div className={`grid grid-cols-1 gap-5 border-t border-line pt-5 sm:gap-6 sm:pt-8 ${!fresh && canSend ? "sm:grid-cols-2" : ""}`}>
             {!fresh && linkSection}
-            {/* On a team desk, Members can't send as the account. */}
-            {user.role !== "member" && (
+            {/* On a team desk, Members can't send as the account; in the beta nobody sends from here (switch send_music). */}
+            {canSend && (
               <div className={!fresh ? "border-t border-line pt-5 sm:border-t-0 sm:pt-0" : ""}>
                 <SendMusicCard recent={recentSends} host={APP_URL.replace(/^https?:\/\//, "")} />
               </div>

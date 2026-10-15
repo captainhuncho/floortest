@@ -117,7 +117,7 @@ export const currentUser = cache(async (): Promise<User | null> => {
   const person = await currentPerson();
   if (!person || (await viewingAs())) return person;
   const desk = Number((await cookies()).get(DESK_COOKIE)?.value);
-  if (!Number.isSafeInteger(desk) || desk <= 0 || desk === person.id || !(await teamsOn())) return person;
+  if (!Number.isSafeInteger(desk) || desk <= 0 || desk === person.id || !(await teamsOn(desk))) return person;
   const role = await roleOn(desk, person.id);
   if (!role) return person;
   const account = await q.get<User>(`SELECT ${USER_COLUMNS} FROM users WHERE id = ? AND suspended_at IS NULL`, desk);
