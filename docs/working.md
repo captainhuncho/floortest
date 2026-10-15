@@ -62,6 +62,37 @@ Same format as the other panels: one or two lines per voice, one recommendation,
     | Browser and device verification | Test the real product, keep evidence (`docs/evidence/`), and say whether a result is desktop, simulator or a real phone | `anthropic-skills:built-in-browser`, `run`, iOS simulator tools |
     | Documents and visuals | Create and inspect PDFs, Word, slides, spreadsheets, diagrams, design assets | `anthropic-skills:pdf`, `docx`, `pptx`, `xlsx`, `artifact-diagramming`, `figma:*` |
     | Infrastructure and integrations | GitHub, Cloudflare, APIs, databases, email delivery and services the owner has authorised; never outside that | `cloudflare:*`, `wrangler`, `neon-postgres`, `resend:resend`, Vercel tools, `gh` |
+15. "No AI Slop" (owner, 15 Oct), for all writing, design and product work, including reports to the owner. It sits beside `docs/brand-voice.md` and `DESIGN.md`; where they're more specific, they win.
+
+    **Writing**
+    - Say the useful thing first.
+    - Use everyday words and natural sentences.
+    - Replace vague claims with specific facts or examples.
+    - Remove filler, repeated explanations and empty enthusiasm.
+    - Avoid clichés such as "seamless", "game-changing" and "in today's digital world".
+    - Don't force slang, jokes or personality.
+    - Match the audience and keep the writer's voice.
+    - Never invent evidence, results or certainty to make something sound stronger.
+    - Read it aloud. If it sounds like a corporate template, rewrite it.
+
+    **Design**
+    - Start with the user's task and the product's identity.
+    - Avoid oversized headings, too many cards, pills, random gradients and coloured shadows.
+    - Keep typography, spacing, alignment and component sizes consistent.
+    - Keep controls compact while text stays readable and touch targets comfortable.
+    - Use meaningful images and icons, not decoration that fills space.
+    - Give each screen one clear purpose; remove duplicate actions and explanations.
+    - Animate only when it improves feedback or understanding.
+    - Check real screens, long text, empty states, errors and phone layouts.
+
+    **Product quality**
+    - A visible button must do what it says.
+    - A polished preview doesn't count as working software.
+    - Don't add features to make the product look bigger.
+    - Keep useful existing work instead of redesigning it again and again.
+    - Judge quality by clarity, usefulness, consistency and verified behaviour.
+
+    **Final check:** Is it specific to this product? Is it easy to understand? Does it actually work? What can we remove without losing value?
 
 ## Round one, 14 Oct: how should the work run up to the beta?
 

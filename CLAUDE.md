@@ -35,7 +35,7 @@ commit. Shipping an item from `06-plan.md` moves it to Done.
   push `main`, wait ~60 s, then push `mobile-next`; confirm the deploy).
 - `vercel-build` runs migrations: a new migration reaches production only when shipped.
 
-## Every session, every task (owner, 15 Oct; full text: `docs/working.md` rules 1–14)
+## Every session, every task (owner, 15 Oct; full text: `docs/working.md` rules 1–15)
 Many sessions share this repo. Before shipping, message the running sessions (ListAgents, SendMessage), wait for a
 "go", and check what `main` already has; ship from your own worktree on a branch off `main`, never the shared checkout;
 tell the sessions when production is READY. Never delete branches unless the owner asks. At most one grouped production
@@ -44,7 +44,10 @@ owner's twelve working principles (rule 12): understand first, preserve what wor
 measure before claiming speed, verify real behaviour, name the exact build in every report. Optimise: find out before
 asking, batch questions, exact-string edits, no merge markers, outcome first in reports. Rule 14 lists the owner's skill
 areas (design, audits, deployment and recovery, performance, email, writing, motion, research, browser and device checks,
-documents, infrastructure) and the installed skill for each: load it before that kind of work. New work runs in cloud
+documents, infrastructure) and the installed skill for each: load it before that kind of work. Rule 15 is "No AI Slop":
+useful thing first, everyday words, specific facts, no clichés or invented certainty; no oversized headings, card piles,
+pills, random gradients or coloured shadows; every visible button works; a polished preview isn't working software.
+Final check: specific to this product, easy to understand, actually works, what can go. New work runs in cloud
 sessions; this Mac is for browser and device checks.
 
 ## Checks
