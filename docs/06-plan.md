@@ -97,6 +97,7 @@ Open items from `docs/archive/HANDOFF.md`, `docs/archive/CLAUDE_NEXT_WORK.md` an
 - Revisit Cloudflare Workers hosting only at tens of thousands of users (trial findings in `docs/beta-launch-plan.md`).
 
 ## Done (recent)
+- 14 Oct: the Floor's Send music box stacks at every width and fills its half of the row: on iPads and small laptops (768–1180px) its one-line layout with a fixed 380px field ran past its column and hid "Send to new contact". Checked at 16 widths from 320 to 2560px: nothing spills out or scrolls sideways.
 - 14 Oct (shipped 14 Oct): the screen is called **Review Queue** again (owner, 14 Oct): sidebar, page title and the lines that name it (Collections, the Floor's full-desk banner, Prepare's Start a new batch, keyboard shortcuts); the phone tab bar keeps the short "Queue".
 - 14 Oct: the Floor centres in the space beside the sidebar at every width (owner: "still ain't centred"); it had been centring inside the left-aligned page frame, so it drifted left on screens wider than about 1450px (452 px either side at 1920 now, was 192 / 712).
 - 14 Oct (shipped 14 Oct): the Queue is back as it was before the design pass (owner, 14 Oct): its list, the one-by-one panel and rail, the List view and the collection page's track list; the design pass's optimistic decisions, All caught up screen, docked phone rail and their test (`e2e/review-decisions.spec.ts`) are gone with it.
