@@ -457,3 +457,6 @@ nav[data-pending] ~ .review-list { opacity: 0.45; pointer-events: none; }
   .stage-log { animation: stage-log linear both; animation-timeline: view(); animation-range: entry 60% cover 45%; }
 }
 @keyframes stage-log { from { opacity: 0.25; } }
+
+/* Brand marks can't be dragged, long-pressed or saved: taps and clicks fall through to the link around them. */
+img[src^="/brand/"] { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; -webkit-user-drag: none; pointer-events: none; }

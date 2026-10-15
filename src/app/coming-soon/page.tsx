@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { GateForm } from "./GateForm";
 import { SignInDialog } from "./SignInDialog";
 
@@ -8,11 +9,11 @@ export default async function ComingSoon({ searchParams }: { searchParams: Promi
   const { next = "/" } = await searchParams;
   return (
     <main id="main" className="app-ui mx-auto flex min-h-dvh max-w-xl flex-col justify-center px-5 py-16">
-      <div className="flex items-center gap-4">
+      <Link href="/" className="tap flex w-fit items-center gap-4" aria-label="FloorTest home">
         {/* eslint-disable-next-line @next/next/no-img-element -- the crest is an SVG; Next's image optimizer doesn't process SVGs */}
-        <img src="/brand/crest.svg" alt="" aria-hidden className="size-14 shrink-0 sm:size-16" />
+        <img draggable={false} src="/brand/crest.svg" alt="" aria-hidden className="size-14 shrink-0 sm:size-16" />
         <span className="text-[34px] font-extrabold tracking-[-1px] sm:text-[44px]">FloorTest</span>
-      </div>
+      </Link>
       <h1 className="mt-8 inline-flex w-fit items-center gap-2 rounded-full border border-lime/50 bg-lime/10 px-4 py-1.5 text-sm font-bold text-lime">
         <span aria-hidden className="size-2 animate-pulse rounded-full bg-lime motion-reduce:animate-none" />
         Coming soon

@@ -96,7 +96,7 @@ export function AdminNav({ groups, admin }: { groups: NavGroup[]; admin: { name:
         <Link href="/admin" className="flex items-center gap-2.5" aria-label="FloorTest admin">
           {/* Ops has its own brushed-silver crest, so it never looks like the main site. */}
           {/* eslint-disable-next-line @next/next/no-img-element -- the crest is an SVG; Next's image optimizer doesn't process SVGs */}
-          <img src="/brand/crest-ops.svg" alt="" aria-hidden className="crest-ops size-10 shrink-0" />
+          <img draggable={false} src="/brand/crest-ops.svg" alt="" aria-hidden className="crest-ops size-10 shrink-0" />
           {open && (
             <span className="flex flex-col leading-tight">
               <span className="text-[16px] font-extrabold text-bone">FloorTest</span>
