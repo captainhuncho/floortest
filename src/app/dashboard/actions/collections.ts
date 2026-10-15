@@ -17,6 +17,7 @@ export async function createCollection(form: FormData) {
   const name = String(form.get("name") || "").trim().slice(0, 60);
   if (!name) return;
   // Two collections per desk during the beta (the page hides New collection at two; this holds the line).
+  // shortcut: check-then-insert, so two Creates at the same instant could make a third; lock the desk row if that matters.
   if (!(await canAddCollection(u.id))) return;
   const c = await q.get<{ id: number }>("INSERT INTO collections (user_id, name, created_at) VALUES (?,?,?) RETURNING id", u.id, name, now());
   await audit(u.id, "collection_created", name);
