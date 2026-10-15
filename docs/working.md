@@ -29,6 +29,19 @@ Same format as the other panels: one or two lines per voice, one recommendation,
 9. Before editing, confirm which checkout you're in (`git rev-parse --show-toplevel`); never edit the shared checkout while another session has uncommitted work there.
 10. Don't delete branches, local or on GitHub, unless the owner asks, even merged ones.
 11. "Optimise all the work I give you" (owner, 15 Oct): find out what can be found out before asking, and batch the few real asks into one message; prefer known, repeatable steps over guessing; exact-string edits (not perl or sed substitutions) on files with `|`, `$`, `#` or backticks, and no merge markers in any commit; one branch per deliverable from `main`, checks once, one merge to preview; reports lead with the outcome, numbers in a table, the next step in one line.
+12. The owner's twelve working principles (15 Oct), for every session:
+    1. **Understand before building:** read the latest code, the live product and earlier decisions; research existing services and official docs before choosing an approach.
+    2. **Preserve working features:** extend the project; protect saved data, integrations and approved designs; database changes backward-compatible, with a recovery path.
+    3. **Build complete workflows:** a screen or button isn't a feature; connect interface, API, database, permissions, errors and recovery, and test the whole journey.
+    4. **Keep the experience simple:** compact and easy for customers and staff; plain language, consistent layouts, accessible controls; no generic dashboard styling or clutter.
+    5. **Use the simplest reliable solution:** established tools and native features; no unneeded dependencies, duplicated systems or architecture without a shown need.
+    6. **Protect data and access:** validate requests and enforce permissions on the server; no duplicate charges or rewards; protect credentials; keep each user's records separate.
+    7. **Measure performance:** loading, response times, resource use, realistic demand; optimise measured problems; no speed or capacity claims without evidence.
+    8. **Verify actual behaviour:** automated checks, independent review, real browser tests; test failures, retries, reloads, interrupted work and recovery; screenshots alone don't prove it works.
+    9. **Keep testing evidence:** every report names the exact build (commit) and marks each check passed, failed or blocked; reports and screenshots saved together and reviewed before the next changes.
+    10. **Work efficiently:** cloud development by default, local browser or device evidence when needed; each worker owns clear areas so edits don't clash; test the affected areas, not unrelated checks over and over.
+    11. **Deliver substantial improvements:** one completion checklist (`docs/06-plan.md`); group related work into meaningful releases rather than endless small updates; fix defects found on the way; approval-dependent connections stay off until authorised.
+    12. **Publish safely and report honestly:** verify the published build before calling anything complete; keep a compatible rollback path; say plainly what's built, tested, live and unfinished; short, accurate, easy reports.
 
 ## Round one, 14 Oct: how should the work run up to the beta?
 
