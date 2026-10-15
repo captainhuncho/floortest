@@ -265,7 +265,8 @@ export default async function Home({
                 <Link href="/pricing" className="hidden px-2 text-sm text-mute hover:text-bone sm:inline">
                   Pricing
                 </Link>
-                <Link href="/login" className="btn-ghost btn-sm">
+                {/* Under 375px (iPhone SE, small Androids) the logo and two buttons don't fit: Log in moves to the line under the hero. */}
+                <Link href="/login" className="btn-ghost btn-sm max-[374px]:hidden">
                   Log in
                 </Link>
                 {/* The hero holds the page's one lime button; this one stays quiet. Short label so the header fits on a phone. */}
@@ -312,6 +313,9 @@ export default async function Home({
               {!user && (
                 <p className="mt-4 text-xs text-dim">
                   Private beta
+                  <span className="min-[375px]:hidden">
+                    {" "}· <Link href="/login" className="underline underline-offset-4 hover:text-bone">Log in</Link>
+                  </span>
                   {inviteOnly && (
                     <>
                       {" "}· <Link href="/signup" className="underline underline-offset-4 hover:text-bone">Have an invite? Claim your link</Link>
