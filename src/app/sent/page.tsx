@@ -1,9 +1,11 @@
 import { Logo } from "@/components/Logo";
 import { SentForm } from "./SentForm";
+import { botCheckKey } from "@/lib/turnstile";
 
 export const metadata = { title: "Your sends — FloorTest" };
 
-export default function Sent() {
+export default async function Sent() {
+  const botKey = await botCheckKey();
   return (
     <main className="mx-auto max-w-md px-4 py-10 sm:py-16">
       <Logo className="mb-12" />
@@ -12,7 +14,7 @@ export default function Sent() {
         See every track you&apos;ve sent through FloorTest and what happened to it. No account or password: we&apos;ll email you a private link.
       </p>
       <div className="mt-8">
-        <SentForm />
+        <SentForm botCheckKey={botKey} />
       </div>
     </main>
   );

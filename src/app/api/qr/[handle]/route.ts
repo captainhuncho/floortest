@@ -1,6 +1,7 @@
 import QRCode from "qrcode";
 import { userByHandle } from "@/lib/desk";
 import { APP_URL } from "@/lib/mail";
+import { allow, ipFrom } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
 
@@ -10,6 +11,8 @@ export const runtime = "nodejs";
  * ?format=svg (default) | png   &download=1 to save as a file.
  */
 export async function GET(req: Request, ctx: RouteContext<"/api/qr/[handle]">) {
+  // Public and cheap to ask for, but each PNG is rendered on request: a connection gets 30 a minute.
+  if (!(await allow("qr", ipFrom(req.headers), 30, 60_000))) return new Response("Too many requests", { status: 429 });
   const u = await userByHandle((await ctx.params).handle);
   if (!u) return new Response("Not found", { status: 404 });
   const url = new URL(req.url);
