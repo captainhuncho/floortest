@@ -18,7 +18,7 @@ export async function botCheckKey(): Promise<string | null> {
  * Which form a check was solved for. Each widget carries its form's name and the server refuses a token solved for
  * another one, so a check passed on one form can't be spent on another.
  */
-export type BotAction = "auth" | "send" | "contact" | "waitlist" | "reopen" | "newsletter";
+export type BotAction = "auth" | "send" | "contact" | "waitlist" | "reopen" | "newsletter" | "sent";
 
 /**
  * Where a check may have been solved: this site's own addresses (the app, ops, this deployment), and on a developer's

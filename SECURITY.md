@@ -61,6 +61,7 @@ Some routes must be reachable without a receiver session. That does not make the
 - Sender email confirmation proves control of an address for the submission flow; it is not artist-identity verification.
 - Receipt and stem-upload routes require their private capability token and reveal only the token's intended resource and actions.
 - Unsubscribe links are scoped to the destination address and preference being changed.
+- The sender-link form (`/sent`, "Everything you've sent") emails only addresses that have sent music, answers the same either way, and runs the bot check and the site-wide hourly email budget like every other public form that sends email.
 - Collection share pages (`/c/<address>`, `/c/a.<id>` for listed accounts) show nothing playable before the listener is verified and has accepted the notice; a wrong, expired, reset or revoked address gives the same "not available" answer; pages are not indexed.
 - Team invite pages (`/join/<invite>`) accept only for the invited, confirmed email; an invite expires after 7 days and is used once.
 - Email confirmation links (`/verify-email/<token>`, `/confirm-email/<token>`) count only for the person signed in to that account, so whoever made an account with someone else's email can't get it confirmed by the real owner's click. Both links are stored only as their hash (`src/lib/token-hash.ts`), so a copy of the database holds nothing that works as the link. An account whose email is unconfirmed can't send from it, and a sender's history joins an account only once its email is confirmed.

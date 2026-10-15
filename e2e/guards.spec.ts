@@ -104,3 +104,21 @@ test("a newsletter sign-up without the bot check is refused", async ({ page }) =
   await form.getByRole("button", { name: "Subscribe" }).click();
   await expect(form.getByRole("alert")).toContainText("couldn't confirm you're human");
 });
+
+test("the sender-link form runs the bot check, then answers the same for any address", async ({ page }) => {
+  await page.goto("/sent");
+  const form = page.locator("form").filter({ has: page.getByLabel("Your email") });
+  await form.getByLabel("Your email").fill(`nobody+${Date.now().toString(36)}@example.test`);
+  await form.getByTestId("turnstile").waitFor({ state: "attached" });
+  await form.getByRole("button", { name: "Email me my link" }).click();
+  await expect(page.getByRole("status")).toContainText("a link is on its way");
+});
+
+test("a sender-link request without the bot check is refused", async ({ page }) => {
+  await page.route("https://challenges.cloudflare.com/turnstile/v0/api.js*", (route) => route.fulfill({ contentType: "text/javascript", body: "" }));
+  await page.goto("/sent");
+  const form = page.locator("form").filter({ has: page.getByLabel("Your email") });
+  await form.getByLabel("Your email").fill(`bot+${Date.now().toString(36)}@example.test`);
+  await form.getByRole("button", { name: "Email me my link" }).click();
+  await expect(form.getByRole("alert")).toContainText("couldn't confirm you're human");
+});

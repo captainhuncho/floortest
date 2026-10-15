@@ -2,8 +2,9 @@
 
 import { useActionForm } from "@/components/useActionForm";
 import { requestSenderLink } from "./actions";
+import { Turnstile } from "@/components/Turnstile";
 
-export function SentForm() {
+export function SentForm({ botCheckKey }: { botCheckKey: string | null }) {
   const [state, onSubmit, pending] = useActionForm(requestSenderLink, undefined);
   if (state?.ok)
     return (
@@ -17,6 +18,7 @@ export function SentForm() {
         <span className="label">Your email</span>
         <input name="email" type="email" required autoComplete="email" className="input" placeholder="The one you send music from" />
       </label>
+      <Turnstile action="sent" siteKey={botCheckKey} />
       {state?.error && (
         <p role="alert" className="text-sm text-danger">
           {state.error}
