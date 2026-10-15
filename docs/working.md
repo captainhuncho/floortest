@@ -42,6 +42,10 @@ Same format as the other panels: one or two lines per voice, one recommendation,
     10. **Work efficiently:** cloud development by default, local browser or device evidence when needed; each worker owns clear areas so edits don't clash; test the affected areas, not unrelated checks over and over.
     11. **Deliver substantial improvements:** one completion checklist (`docs/06-plan.md`); group related work into meaningful releases rather than endless small updates; fix defects found on the way; approval-dependent connections stay off until authorised.
     12. **Publish safely and report honestly:** verify the published build before calling anything complete; keep a compatible rollback path; say plainly what's built, tested, live and unfinished; short, accurate, easy reports.
+13. How principles 9–11 run in practice (owner, 15 Oct: "all three, optimisation and efficiency is key"):
+    - **Evidence:** every ship gets one report in `docs/evidence/` (format in its README): the exact commit, each check marked passed, failed or blocked, and what's built, tested, live and unfinished. Screenshots sit beside it, small (PNG or JPG, under 300 KB each).
+    - **Cloud first:** new work starts in a cloud session; this Mac is for browser and device checks (simulator, the owner's phone, local data) and for work that needs local tools. A session that can't reach the internet says so rather than guessing.
+    - **Grouped releases:** at most one production release a day, grouped from what's reviewed on preview and named in the plan. Fixes for security, data loss or the site being down ship any time. Every release still follows rules 2–5, 8–10 and the session check-in before `main` is touched.
 
 ## Round one, 14 Oct: how should the work run up to the beta?
 
@@ -132,6 +136,8 @@ State on 15 Oct: production has almost everything. Live: sending, review (phone 
 | 9 | Write and send Monday's invites (who, how many, the invite codes) | Sun 18 Oct |
 
 ## Decision log
+
+- 15 Oct: the owner's twelve working principles adopted (rule 12), with evidence reports, cloud-first sessions and at most one grouped production release a day (rule 13); urgent fixes excepted.
 
 - 14 Oct: council started; UI freeze from 16 Oct recommended, pending the owner.
 - 14 Oct: beta moved to Monday 19 Oct (owner); the 17 Oct widening is dropped. Scanner host: Cloudflare Containers (owner).

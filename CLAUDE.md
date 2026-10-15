@@ -20,7 +20,8 @@ Open only what the task touches. The docs stay true; if a doc and the code disag
 | Words and tone | `docs/brand-voice.md` (no exclamation marks, no square brackets, "track", Keep / Not for me) |
 | Rollout, copy, images, motion | `docs/rollout/` |
 | Runbooks, incidents | `docs/operations.md` |
-| How the work runs: sessions, branches, checks, the owner's list | `docs/working.md` |
+| How the work runs: sessions, branches, checks, the owner's list, the twelve working principles | `docs/working.md` |
+| What each release was checked against (one report per ship) | `docs/evidence/` |
 
 `docs/archive/` is history only.
 
