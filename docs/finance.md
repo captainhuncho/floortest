@@ -20,7 +20,7 @@ Guardrails no voice may override, from `PRODUCT.md`: senders are never charged, 
 
 ## Round one: how do we run this effectively and make money?
 
-**CFO.** The servers cost about $55–60 a month from 15 Oct (Vercel Pro and the scanner went on 14 Oct) and $110–170 at launch size. Money is not the risk; attention is. Run a 10-minute weekly look and a 1-hour monthly close, and spend nothing on tooling until the first Paddle payout lands. The one number that decides the business is the paid share of desks: 4% Pro and 1% Team covers the servers by March 2027; 2% pushes it to April and halves what is left over.
+**CFO.** The servers cost about $55–60 a month from 15 Oct (Vercel Pro and the scanner went on 14 Oct) and $110–170 at launch size. Money is not the risk; attention is. Run a 10-minute weekly look and a 1-hour monthly close, and spend nothing on tooling until the first Paddle payout lands. The one number that decides the business is the paid share of desks: 4% Pro and 1% Team covers the servers by March 2027; 2% pushes it to April and cuts what is left after 18 months by 39%, from $8,027 to $4,891.
 
 **Pricing & packaging.** The prices are set and the model says they are fine; stop touching them. Pro yearly nets the same as monthly, so lead with it. The Free limit of 20 active tracks is the real pricing lever: it is what a working DJ hits in a fortnight, and the upgrade moment is the Floor saying "17 of 20". Watch how many desks reach 80% and 100% during the beta before changing anything.
 

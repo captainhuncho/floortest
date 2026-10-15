@@ -67,7 +67,7 @@ Base case: the servers are covered from March 2027, the launch spend is back by 
 | Base | 150 | March 2027 | $8,000 |
 | High (double) | 300 | February 2027 | $18,000 |
 
-The thing that moves the answer is not price or sign-ups but the paid share. At 2% Pro instead of 4%, base-case revenue falls by about a third and the servers are covered in April 2027, not March. Team at 1% of desks brings 40% of the revenue, so that share matters as much. The beta metric that predicts this is desks hitting the 20-track limit and exporting crates; count them before announcing prices.
+The thing that moves the answer is not price or sign-ups but the paid share. At 2% Pro instead of 4%, 18-month revenue falls 28% ($11,262 to $8,126), the amount ahead of running costs falls 39% ($8,027 to $4,891), and the servers are covered in April 2027, not March. Team at 1% of desks brings 40% of the revenue, so that share matters as much. The beta metric that predicts this is desks hitting the 20-track limit and exporting crates; count them before announcing prices.
 
 ## What this says to do
 
