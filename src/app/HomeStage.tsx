@@ -19,7 +19,7 @@ export function JogWheel() {
           <span className="stage-cue" />
           <span className="text-[10px] tracking-[0.12em] text-faint">CUE</span>
         </span>
-        <div className="stage-platter relative size-full rounded-full">
+        <div className="stage-platter relative size-full overflow-hidden rounded-full">
           <div className="stage-spin absolute inset-0 rounded-full">
             <span className="stage-ticks absolute inset-0 rounded-full" />
             <span className="stage-marker" />
@@ -171,7 +171,7 @@ const ART: React.ReactNode[] = [
       <span>6:12</span>
     </p>
   </div>,
-  <div key="keep" className="flex items-center gap-2.5">
+  <div key="keep" className="flex flex-wrap items-center gap-2.5">
     <span className="flex items-center gap-2 rounded-md border border-line-2 px-2.5 py-1.5 text-[10px] font-bold uppercase text-bone">
       Keep <Lock />
     </span>
@@ -209,11 +209,11 @@ const LOG: [string, string, string | null, string | null][] = [
 /** The features as one track's week, set out like a set log: what happens on the desk, and what crosses to the sender. */
 export function SetLog() {
   return (
-    <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+    <section className="mx-auto w-full min-w-0 max-w-6xl px-4 py-20 sm:px-6">
       <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">Sent during the week. Played during the weekend.</h2>
       <div className="mt-10 border-t border-line">
         <p className="flex items-center justify-between gap-4 py-4 text-xs">
-          <span className="tnum truncate text-mute">Nightbus (demo) · Sample Artist · 122 BPM</span>
+          <span className="tnum min-w-0 truncate text-mute">Nightbus (demo) · Sample Artist · 122 BPM</span>
           <Sample />
         </p>
         <div className="hidden grid-cols-[7rem_minmax(0,1fr)_14rem] gap-6 border-y border-line py-2 text-[10px] uppercase tracking-[0.12em] text-faint sm:grid lg:grid-cols-[7rem_minmax(0,1fr)_18rem_12rem]">
