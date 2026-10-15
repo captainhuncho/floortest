@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { atLeast, canApprove, heldReplies, replyApproval, ROLE_LABEL, teamOf, teamsOn } from "@/lib/account-members";
+import Link from "next/link";
+import { atLeast, canApprove, heldReplies, ownerNeedsTwoStep, replyApproval, ROLE_LABEL, teamOf, teamsOn } from "@/lib/account-members";
 import { fmtDate, fmtDay } from "@/lib/format";
 import { answerHeldReply, cancelTeamInvite, removeTeammate } from "../../actions/account-team";
 import { ConfirmButton } from "../../ClientBits";
@@ -18,7 +19,8 @@ export default async function Team({ searchParams }: { searchParams: Promise<{ d
   if (!(await teamsOn(user.id))) notFound();
   const { denied } = await searchParams;
   const team = await teamOf(user.id);
-  const manage = atLeast(user.role, "admin");
+  // Owners manage the team only with two-step sign-in on (owner, 15 Oct), as A&R / Admins need it for their powers.
+  const manage = atLeast(user.role, "admin") && !ownerNeedsTwoStep(user);
   const approval = await replyApproval(user.id);
   const approver = approval.approver === team.owner.id ? team.owner.name : team.members.find((m) => m.user_id === approval.approver)?.name;
   const held = await heldReplies(user);
@@ -101,6 +103,15 @@ export default async function Team({ searchParams }: { searchParams: Promise<{ d
             </li>
           ))}
         </ul>
+        {ownerNeedsTwoStep(user) && (
+          <p className="rounded-lg border border-line bg-ink-2 p-4 text-sm text-mute">
+            Two-step sign-in keeps the whole team safe.{" "}
+            <Link href="/dashboard/settings/security" className="underline underline-offset-4 hover:text-bone">
+              Turn it on under Security
+            </Link>{" "}
+            to invite people, change roles or reply approval.
+          </p>
+        )}
         {manage && <InviteForm canInviteAdmins={user.role === "owner"} full={team.used >= team.seats} />}
         <p className="mt-3 text-xs text-mute">
           Owner: everything. A&amp;R / Admin: everything except plan, billing, account security and deleting the account; can change members&apos; calls and approve
