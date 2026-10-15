@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { hashPassword, verifyPassword } from "@/lib/auth";
+import { hashPassword, verifyPassword, upgradePasswordHash } from "@/lib/auth";
 import { homeFor, logAdmin, opsAccessFor } from "@/lib/admin";
 import { q } from "@/lib/db";
 import { createOpsSession, currentOpsAdmin, destroyOpsSession } from "@/lib/ops";
@@ -35,11 +35,12 @@ export async function opsSignIn(_: FormState, form: FormData): Promise<FormState
     "SELECT id, password_hash, email_verified_at, totp_enabled_at, suspended_at FROM users WHERE email = ?",
     email,
   );
-  const passwordOk = verifyPassword(password, u?.password_hash ?? DUMMY);
+  const passwordOk = await verifyPassword(password, u?.password_hash ?? (await DUMMY));
   // The super admin, or an active ops team member; anyone else gets the same "didn't work" as a wrong password.
   const access = u && passwordOk ? await opsAccessFor({ id: u.id, email }) : null;
   if (!u || !passwordOk || !access || !u.email_verified_at || !u.totp_enabled_at || u.suspended_at) return fail();
   if (!(await checkSecondFactor(u.id, code))) return fail();
+  await upgradePasswordHash(u.id, password, u.password_hash);
   await createOpsSession(u.id);
   await logAdmin(u.id, "signed in to ops", "", ip);
   redirect(homeFor(access));

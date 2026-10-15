@@ -28,18 +28,21 @@ import { hashToken } from "./token-hash";
 export { hashToken };
 const newToken = () => crypto.randomBytes(32).toString("base64url");
 
-export function hashPassword(pw: string) {
-  const salt = crypto.randomBytes(16);
-  const hash = crypto.scryptSync(pw, salt, 64);
-  return `${salt.toString("hex")}:${hash.toString("hex")}`;
-}
+import { hashPassword, needsRehash, verifyPassword } from "./password-hash";
+export { hashPassword, needsRehash, verifyPassword };
 
-export function verifyPassword(pw: string, stored: string) {
-  const [salt, hash] = stored.split(":");
-  if (!salt || !hash) return false;
-  const test = crypto.scryptSync(pw, Buffer.from(salt, "hex"), 64);
-  const want = Buffer.from(hash, "hex");
-  return test.length === want.length && crypto.timingSafeEqual(test, want);
+/**
+ * After a password is proven at sign-in, bring an older, cheaper hash up to today's cost (src/lib/password-hash.ts).
+ * Only replaces the exact hash that was checked, so a password changed meanwhile is never overwritten. Never fails
+ * the sign-in: an error here is logged and the old hash keeps working.
+ */
+export async function upgradePasswordHash(userId: number, password: string, stored: string) {
+  if (!needsRehash(stored)) return;
+  try {
+    await q.run("UPDATE users SET password_hash = ? WHERE id = ? AND password_hash = ?", await hashPassword(password), userId, stored);
+  } catch (e) {
+    console.error("[auth] password hash upgrade failed", e);
+  }
 }
 
 export async function createSession(userId: number) {
@@ -216,6 +219,7 @@ export async function findPasswordReset(token: string) {
 
 /** Sets the new password and signs the account out everywhere. Returns the user id, or null if the link is no good. */
 export async function consumePasswordReset(token: string, newPassword: string) {
+  const newHash = await hashPassword(newPassword); // before the transaction, so the slow hash doesn't hold it open
   return q.tx(async (db) => {
     const r = await db.get<{ user_id: number }>(
       "UPDATE password_resets SET used_at = ? WHERE token_hash = ? AND used_at IS NULL AND expires_at > ? RETURNING user_id",
@@ -224,7 +228,7 @@ export async function consumePasswordReset(token: string, newPassword: string) {
       now(),
     );
     if (!r) return null;
-    await db.run("UPDATE users SET password_hash = ? WHERE id = ?", hashPassword(newPassword), r.user_id);
+    await db.run("UPDATE users SET password_hash = ? WHERE id = ?", newHash, r.user_id);
     await db.run("DELETE FROM sessions WHERE user_id = ?", r.user_id);
     return r.user_id;
   });
