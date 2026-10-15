@@ -20,7 +20,7 @@ Guardrails no voice may override, from `PRODUCT.md`: senders are never charged, 
 
 ## Round one: how do we run this effectively and make money?
 
-**CFO.** The servers cost about $3 a month today and $110–170 at launch size. Money is not the risk; attention is. Run a 10-minute weekly look and a 1-hour monthly close, and spend nothing on tooling until the first Paddle payout lands. The one number that decides the business is the paid share of desks: 4% Pro and 1% Team covers the servers by March 2027; 2% pushes it to April and halves what is left over.
+**CFO.** The servers cost about $55–60 a month from 15 Oct (Vercel Pro and the scanner went on 14 Oct) and $110–170 at launch size. Money is not the risk; attention is. Run a 10-minute weekly look and a 1-hour monthly close, and spend nothing on tooling until the first Paddle payout lands. The one number that decides the business is the paid share of desks: 4% Pro and 1% Team covers the servers by March 2027; 2% pushes it to April and halves what is left over.
 
 **Pricing & packaging.** The prices are set and the model says they are fine; stop touching them. Pro yearly nets the same as monthly, so lead with it. The Free limit of 20 active tracks is the real pricing lever: it is what a working DJ hits in a fortnight, and the upgrade moment is the Floor saying "17 of 20". Watch how many desks reach 80% and 100% during the beta before changing anything.
 
@@ -69,13 +69,13 @@ Guardrails no voice may override, from `PRODUCT.md`: senders are never charged, 
 3. **Launch month.** The model assumes billing starts in January 2027. Confirm or move it.
 4. **Books.** Pick where the books live from the first payout (a spreadsheet is fine until there are 50 paying desks; after that a bookkeeping tool and an accountant in Ghana).
 5. **Refund and failed-payment rules** as written above: agree or amend before checkout copy is written.
-6. ✅ **Cancel Cloudflare Workers Paid.** Done 13 Oct; ends 26 Oct. R2 Paid stays (it is the metered R2 plan, $0 base). Images Stream Basic bills nothing while unused; cancel it for tidiness if you like.
+6. **Keep Cloudflare Workers Paid on.** Reversed 15 Oct: cancelled 13 Oct as a trial leftover, but the virus scanner moved onto Cloudflare Containers on 14 Oct and Containers need Workers Paid. If the subscription still says "Ending 26 Oct", undo the cancellation, or the scanner stops and every upload is refused from 26 Oct (it fails closed). R2 Paid stays; Images Stream Basic bills nothing while unused.
 
 ## Monthly close log
 
 | Month | Accounts | Paying | Paid share | MRR (net) | Bills | Cost per desk | Notes |
 |---|---|---|---|---|---|---|---|
-| Oct 2026 | | | | $0 | about $3 + $3.33 Cloudflare | | Beta; billing off; Hobby and free tiers. Cloudflare invoice IN 82507574 (6 Oct): $3.33 pro-rata Workers Paid left over from the hosting trial; cancel it. Billed to the owner personally at a London address, not the company |
+| Oct 2026 | | | | $0 | $3 to 13 Oct, about $55–60 a month from 14 Oct | | Beta; billing off. Vercel Pro and the scanner on Cloudflare Containers (with Workers Paid) from 14 Oct; Workspace `team@` user from 13 Oct. Cloudflare invoice IN 82507574 (6 Oct): $3.33 pro-rata Workers Paid. Bills are to the owner personally at a London address, not the company |
 
 ## Decision log
 

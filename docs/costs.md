@@ -31,9 +31,9 @@ Beta sizes come from the beta targets in `beta-launch-plan.md`; launch sizes are
 | Cloudflare R2 Paid, Images Stream Basic | $0 | $0 | Both subscriptions are metered with no base fee. R2 Paid is the normal R2 plan ($0.015 per GB past the free 10 GB, counted in the R2 row above). Images and Stream are not used by FloorTest (images go through sharp into R2), so they bill nothing; cancelling Images Stream Basic is tidy, not a saving. |
 | Virus scanning (own ClamAV) | $20–25 | $20–25 | Cloudflare Containers (owner, 14 Oct), always on at 1 vCPU / 3 GiB / 4 GB disk. Memory is billed as provisioned: 3 GiB × 730 h less the 25 GiB-h included, at $0.0000025 per GiB-second, is about $19.50; disk about $0.70; CPU only as used ($0.000020 per vCPU-second past 375 minutes), a few dollars at beta size. Measured 14 Oct: about 1 GB in use. Fly.io (the fallback) was $12.70–24.70. |
 | Domain (floortest.app) | $3 | $3 | $101.97 paid for 3 years at Hosting.com (owner, 13 Oct): $34 a year, $2.83 a month. Next renewal is a one-off, not a monthly bill. |
-| Google Workspace (support mailbox) | $0 | $7–8 | Business Starter, 1 user: $7 a month billed yearly, $8.40 monthly. Planned for the two weeks after launch. |
+| Google Workspace (team@ user) | $7–8 | $7–8 | `floortest.app` is a secondary domain on the owner's existing Workspace; `team@` (the sender, since 13 Oct) is one added user: Business Starter is $7 a month billed yearly, $8.40 monthly. support@ and the other addresses are aliases, no extra cost. Check the exact rate on the Workspace invoice. |
 | GitHub, Figma, Vercel Analytics | $0 | $0 | Free tiers. Analytics events are $3 per 100,000 past the Pro allowance; not expected. |
-| **Total** | **$3 now, $23 once Resend is upgraded** | **$110–170** | Before payment fees and one-offs. |
+| **Total** | **about $55–60 now (15 Oct), $75–80 once Resend is upgraded** | **$110–170** | Before payment fees and one-offs. Now: Vercel Pro $20, scanner $20–25 plus Workers Paid $5, Workspace $7–8, domain $3; the rest free. |
 
 Old Supabase projects are on the free plan and cost nothing; deleting them (from 13 Oct) is housekeeping, not a saving.
 
