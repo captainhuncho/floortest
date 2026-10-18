@@ -19,6 +19,7 @@ Open only what the task touches. The docs stay true; if a doc and the code disag
 | Words and tone | `docs/brand-voice.md` (no exclamation marks, no square brackets, "track", Keep / Not for me) |
 | Rollout, copy, images, motion | `docs/rollout/` |
 | Runbooks, incidents | `docs/operations.md` |
+| The 15 standard docs (short index, owner's rule 18 Oct; keep in step with the docs they link to) | `docs/1. PRD.md` … `docs/15. Debugging.md` |
 
 `docs/archive/` is history only.
 
