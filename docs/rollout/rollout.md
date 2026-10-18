@@ -40,7 +40,7 @@
 
 ## 3. Channels, ranked
 
-1. **Instagram:** callout of the week cards, founding-DJ link-in-bio stories, 10-second Keep clips, launch-night reels.
+1. **Instagram** ([@floortest.app](https://www.instagram.com/floortest.app/), linked from the site footer under Follow): callout of the week cards, founding-DJ link-in-bio stories, 10-second Keep clips, launch-night reels.
 2. **WhatsApp (groups, Status, broadcast lists):** callout cards and links from DJs themselves; plain one-liners, never bulk sends from us.
 3. **In-person events:** launch nights and producer sessions, with QR codes on the tables and kept tracks played out loud.
 4. **Radio:** monthly segments where the host plays kept tracks, plus a credit line saying the show's link is on FloorTest.

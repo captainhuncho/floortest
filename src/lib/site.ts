@@ -5,6 +5,9 @@ const env = (k: string) => (process.env[k] || "").trim() || null;
 
 export const supportEmail = () => env("SUPPORT_EMAIL");
 
+/** FloorTest's own Instagram, @floortest.app. */
+export const INSTAGRAM_URL = "https://www.instagram.com/floortest.app/";
+
 export type FooterLink = { label: string; href: string; external: boolean };
 
 /** Footer links in groups, so a long list reads cleanly on phones. Empty groups (unset external links) are left out. */
@@ -28,6 +31,6 @@ export function footerGroups(): { title: string; links: FooterLink[] }[] {
         page("Third-party licenses", "/licenses"),
       ],
     },
-    { title: "Follow", links: [...ext("Shop", env("SHOP_URL")), ...ext("Instagram", env("INSTAGRAM_URL"))] },
+    { title: "Follow", links: [...ext("Shop", env("SHOP_URL")), ...ext("Instagram", INSTAGRAM_URL)] },
   ].filter((g) => g.links.length);
 }
