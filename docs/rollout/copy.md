@@ -106,6 +106,7 @@ Team version of line 1: Only {receiver} and their FloorTest team can hear or dow
 - Timeline: Delivered · Listened · Downloaded · Replied (done bright, to come dimmed)
 - Fold: **What these mean** · Listened = 30 seconds of real playback.
 - Fold: **Details** · Only {receiver} can hear or download it.
+- Again (while the link takes uploads): Send another to {receiver}
 - Foot (public site only): DJ too? Get your own link.
 - Image: none on the page; it *is* the image. Marketing shot: phone on a bedroom-studio desk showing "Maxwell listened."
 
@@ -134,7 +135,7 @@ Team version of line 1: Only {receiver} and their FloorTest team can hear or dow
 | 6 | **Stored in London.** Encrypted, with a separate recovery copy. | — |
 | 7 | **Something wrong?** support@floortest.app · takedowns within 2 working days | — |
 
-Flags: publish tile 5 only once the scanner is on (SCAN_URL set); tile 6's "separate recovery copy" only once BACKUP_BUCKET is on. "Encrypted" must be checked with engineering (R2 encrypts at rest; confirm before printing).
+Tile 5 is true: the scanner runs on Cloudflare and is live in production (checked 18 Oct: /health answers, SCAN_URL and SCAN_SECRET set). Flags: tile 6's "separate recovery copy" only once BACKUP_BUCKET is on. "Encrypted" must be checked with engineering (R2 encrypts at rest; confirm before printing).
 
 ## 11. Contact
 **Job:** one address, a real promise.
