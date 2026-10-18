@@ -23,7 +23,8 @@ const config: CapacitorConfig = {
     allowNavigation: ["floortest.app", "*.floortest.app", "localhost"],
   },
   ios: {
-    contentInset: "automatic",
+    // "never": the status bar keeps its own strip, so an automatic inset only left a gap where the page showed through above the header.
+    contentInset: "never",
     backgroundColor: "#10110f",
     limitsNavigationsToAppBoundDomains: false,
   },
