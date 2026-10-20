@@ -1,4 +1,5 @@
 import "server-only";
+import { scanConfigProblem } from "./scan";
 
 /**
  * All configuration, read from the environment. See .env.example for descriptions.
@@ -81,6 +82,8 @@ export function configProblems() {
   if (!env.email.resendKey) p.push("RESEND_API_KEY is not set: emails are only logged, never delivered.");
   if (!env.cronSecret) p.push("CRON_SECRET is not set: scheduled jobs are disabled.");
   if (!env.supportEmail) p.push("SUPPORT_EMAIL is not set: contact-form messages aren't delivered anywhere.");
+  const scan = scanConfigProblem();
+  if (scan) p.push(scan);
   
   return p;
 }
