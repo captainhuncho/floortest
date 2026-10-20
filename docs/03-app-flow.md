@@ -116,7 +116,7 @@ Account added by @username ─► email + bell ─► Collections → Shared wit
 Owner bell: first visit by each person · downloads · "may have your link" (10+ unknown addresses in an hour; emailed) · requests paused
 ```
 
-## Account teams (switch `teams`; off on the live site)
+## Account teams (switch `teams`; off on the live site, where teams work only on an ops super-admin's desk for the owner's testing)
 ```
 Owner/Admin: Settings → Team ─► Invite (email, role) ─► email with /join/<invite> (7 days)
 Invitee ─► /join/<invite> ─┬─ signed in with that email ─► Join ─► team desk opens

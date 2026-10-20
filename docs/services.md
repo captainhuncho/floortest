@@ -64,7 +64,7 @@ Last updated 13 Oct 2026.
 ## Planned, not yet connected
 
 - **Virus scanner** (`scanner/`, our own ClamAV): live on production since 14 Oct (`SCAN_URL` / `SCAN_SECRET`, Production only; preview uploads aren't scanned). Host: Cloudflare Containers, `floortest-scanner.maxwelladjavon.workers.dev`, London (owner, 14 Oct; no new subprocessor), about $25–30 a month with Workers Paid; deploy steps in `scanner/README.md`. Files never go to a third-party scanner.
-- **Recovery copy** (`src/lib/vault.ts`): code ready 12 Oct; bucket `floortest-vault` (WEUR, private) and `BACKUP_BUCKET` set 13 Oct; off until the owner sets `BACKUP_ACCESS_KEY_ID` and `BACKUP_SECRET_ACCESS_KEY` (plan item 5).
+- **Recovery copy** (`src/lib/vault.ts`): code ready 12 Oct; bucket `floortest-vault` (WEUR, private); `BACKUP_BUCKET`, `BACKUP_ACCESS_KEY_ID` and `BACKUP_SECRET_ACCESS_KEY` all set in Production by 14 Oct (checked 18 Oct). The first nightly file copy is still to be confirmed in Admin → Storage & costs (plan item 5); a half-set copy now fails the readiness check.
 - **Paddle** for payments, monthly and yearly (plan item 2).
 - **Apple Developer** and **Google Play** accounts for the phone apps (owner).
 - **Lawyer** covering Ghana and UK/EU data protection. The brief is in `docs/legal-review.md`.
