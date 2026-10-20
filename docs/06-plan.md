@@ -7,7 +7,7 @@ Core product is live: sending, review, collections, Prepare/downloads, plans by 
 
 | # | Item | Who | Status |
 |---|---|---|---|
-| B0 | Five-person pre-beta: each tester completes send → receipt and receive → listen → decide/reply/download on phone and desktop; capture blockers, failed emails/uploads and unclear steps in one test record. Re-test every blocker before widening access. | Owner + dev | before 1 Nov |
+| B0 | Five-person pre-beta: each tester completes send → receipt and receive → listen → decide/reply/download on phone and desktop; capture blockers, failed emails/uploads and unclear steps in one test record. Re-test every blocker before widening access. Run sheet, tester steps and record: [prebeta-run.md](prebeta-run.md). | Owner + dev | before 1 Nov |
 | B1 | Google brand verification: paused until launch (site stays private). Domain already verified. To resubmit: make legal pages public again + a short description on the home/gate page, then "I have fixed the issues" | Owner + dev | at launch |
 | B2 | DNS update to Vercel's new addresses (saved 9 Oct) → Refresh in Vercel | Owner | ✅ checked 13 Oct: Vercel reports no change needed for `floortest.app`, `www` and `ops` |
 | B3 | Strix security test against local/preview | Owner + dev | parked, needs AI key |
