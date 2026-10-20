@@ -23,7 +23,7 @@
 | Cookie banner shows on first visit; no third-party request, no Vercel Analytics, Sentry not started before a choice | live, `6fb606a` | passed |
 | "Not now" saved, nothing third-party after it, Sentry and Analytics stay off | local copy of `fb8e808` | passed |
 | `/api/health` | live, `6fb606a` | passed (`{"ok":true}`) |
-| Accept switches Analytics and Sentry on | live | blocked: needs the owner's go to click Accept in the test browser |
+| Accept switches Analytics and Sentry on: `ft_consent=accepted`, banner closes, Vercel Analytics loads from our own domain, browser Sentry starts, no request to another host | live, `6fb606a` (owner's go, 20 Oct) | passed |
 | Offline download on a phone after sign-out or team removal | phone app | blocked: needs a real phone with the app |
 | Short-track check-in (`e672a3d`) in a browser | — | blocked: unit tests and typecheck only |
 
@@ -36,4 +36,4 @@
 Last good deployment: `dpl_4Wr1Q8qLTE4HQe3vtvrjor2NwJX1` (`cacb29a`). Safe to promote: migration 0096 only adds a table the old code never reads. After a rollback the old player sends seconds again and Listened goes back to trusting the browser.
 
 ## Next
-The owner clicks Accept on the live banner (or says to), then the phone check of offline links.
+The phone check of offline links (sign-out and team removal stop a saved link).
