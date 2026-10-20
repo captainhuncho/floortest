@@ -1582,4 +1582,21 @@ alter table users add column tools text;
     sql: `alter table sessions add column last_seen_at bigint;
 alter table sessions add column device text not null default '';`,
   },
+  {
+    // "Listened" counted by the server (Codex review, 19 Oct): one row per person and track while it plays. The player
+    // checks in about every 10 s; each check-in is credited with no more than the real time since the last one (capped),
+    // so the browser can't claim a listen it didn't sit through. Tied to the sign-in it started from. Gone once the
+    // track counts as listened, or with the track.
+    id: "0096_listen_sessions",
+    sql: `create table listens (
+  track_id bigint not null references tracks(id) on delete cascade,
+  actor_id bigint not null references users(id) on delete cascade,
+  session_hash text not null,
+  started_at bigint not null,
+  last_beat_at bigint,
+  credited_ms bigint not null default 0 check (credited_ms >= 0),
+  primary key (track_id, actor_id)
+);
+alter table listens enable row level security;`,
+  },
 ];

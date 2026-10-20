@@ -5,16 +5,48 @@ import { drainNow, retireTrackFiles } from "./deletion";
 import { isDecision, logEvent, now, q, type Decision, type Sender, type Track, type User } from "./db";
 import { APP_URL, sendMailLater } from "./mail";
 import { alertIfFull } from "./notify";
-import { listenThreshold } from "./plans";
+import { LISTEN_BEAT_CAP_MS, listenThreshold } from "./plans";
 import { capacity, reopenCallouts } from "./desk";
 
 const senderOf = async (t: Track) => (await q.get<Sender>("SELECT * FROM senders WHERE id = ?", t.sender_id))!;
 
 /**
- * Listened: the client reports seconds actually heard (seeks excluded).
- * We only count it once it clears the published threshold.
+ * Listened, counted by the server (Codex review, 19 Oct). "play" starts (or resumes) this person's listen on this sign-in
+ * without crediting anything; each "beat" while playing adds the real time since the last check-in, capped at
+ * LISTEN_BEAT_CAP_MS. A listen started from another sign-in starts again from zero, and one row per person and track
+ * means extra tabs can't add up. The track counts as listened once the server's own total clears the published
+ * threshold. The browser still says whether audio is playing; it can no longer say how long. Returns true the first time.
  */
-export async function markListened(user: User, t: Track, secondsHeard: number) {
+export async function recordListen(user: User, t: Track, kind: "play" | "beat", session: string, at = now()) {
+  if (t.played_at) return false;
+  if (kind === "play") {
+    await q.run(
+      `INSERT INTO listens (track_id, actor_id, session_hash, started_at, last_beat_at, credited_ms) VALUES (?,?,?,?,?,0)
+       ON CONFLICT (track_id, actor_id) DO UPDATE SET
+         credited_ms = CASE WHEN listens.session_hash = excluded.session_hash THEN listens.credited_ms ELSE 0 END,
+         started_at = CASE WHEN listens.session_hash = excluded.session_hash THEN listens.started_at ELSE excluded.started_at END,
+         session_hash = excluded.session_hash, last_beat_at = excluded.last_beat_at`,
+      t.id, user.actor_id, session, at, at,
+    );
+    return false;
+  }
+  const row = await q.get<{ credited_ms: number }>(
+    `UPDATE listens SET credited_ms = credited_ms + LEAST(GREATEST(? - last_beat_at, 0), ?), last_beat_at = ?
+     WHERE track_id = ? AND actor_id = ? AND session_hash = ? AND last_beat_at IS NOT NULL AND last_beat_at <= ?
+     RETURNING credited_ms`,
+    at, LISTEN_BEAT_CAP_MS, at, t.id, user.actor_id, session, at,
+  );
+  if (!row) return false;
+  const first = await markListened(user, t, Number(row.credited_ms) / 1000);
+  if (first) await q.run("DELETE FROM listens WHERE track_id = ?", t.id);
+  return first;
+}
+
+/**
+ * Listened: called with seconds the server has credited (recordListen), never a number from the browser. Counts once it
+ * clears the published threshold.
+ */
+async function markListened(user: User, t: Track, secondsHeard: number) {
   if (t.played_at) return false;
   if (!(secondsHeard >= listenThreshold(t.duration) - 0.5)) return false;
   const r = await q.run("UPDATE tracks SET played_at = ? WHERE id = ? AND played_at IS NULL", now(), t.id);
