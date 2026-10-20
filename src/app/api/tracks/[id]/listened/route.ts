@@ -1,19 +1,28 @@
 import { NextResponse } from "next/server";
-import { currentUser } from "@/lib/auth";
+import { currentSessionHash, currentUser } from "@/lib/auth";
 import { audit, trackLabel } from "@/lib/audit";
-import { markListened } from "@/lib/review";
+import { recordListen } from "@/lib/review";
 import { ownedTrack } from "@/lib/desk";
+import { allow } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
 
-/** Body: { seconds } actually heard in this session, seeks excluded. */
+/**
+ * Body: { event: "play" | "beat" }. The player sends "play" when a track starts or resumes and "beat" about every 10 s
+ * while it plays; the server counts the time itself (src/lib/review.ts, recordListen). No number from the browser is
+ * trusted. Each request re-checks the sign-in and the person's place on the desk, so leaving the team ends the listen.
+ */
 export async function POST(req: Request, ctx: RouteContext<"/api/tracks/[id]/listened">) {
   const user = await currentUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await currentSessionHash();
+  if (!user || !session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const t = await ownedTrack(user.id, Number((await ctx.params).id));
   if (!t) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  const { seconds } = (await req.json().catch(() => ({}))) as { seconds?: number };
-  const first = await markListened(user, t, Number(seconds) || 0);
+  const { event } = (await req.json().catch(() => ({}))) as { event?: string };
+  if (event !== "play" && event !== "beat") return NextResponse.json({ error: "Bad request" }, { status: 400 });
+  // Ten check-ins a minute is more than any honest player sends (one every ~10 s, plus a play on each resume).
+  if (!(await allow("listen", `${user.actor_id}:${t.id}`, 20, 60_000))) return NextResponse.json({ first: false }, { status: 429 });
+  const first = await recordListen(user, t, event, session);
   // Once per track: the first qualifying listen, not every replay.
   if (first) await audit(user.id, "listened", trackLabel(t), t.id);
   return NextResponse.json({ first });

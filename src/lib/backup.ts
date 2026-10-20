@@ -15,7 +15,7 @@ const DAY = 86_400_000;
  */
 export const SKIP = new Set([
   "sessions", "admin_sessions", "link_sessions", "view_tickets", "password_resets", "login_codes", "sender_codes", "link_codes",
-  "rate_events", "uploads", "schema_migrations", "tap_timings", "job_runs", "feature_use",
+  "rate_events", "uploads", "schema_migrations", "tap_timings", "job_runs", "feature_use", "listens",
 ]);
 /** One file per run (date and time), so a manual rerun never replaces the night's good backup. */
 const keyFor = (t: number) => `backups/db-${new Date(t).toISOString().slice(0, 16).replace(":", "")}.json.gz.enc`;

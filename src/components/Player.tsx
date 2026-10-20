@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { analyzeAudio } from "@/lib/analyze";
 import { fmtTime } from "@/lib/format";
-import { listenThreshold } from "@/lib/plans";
+import { LISTEN_BEAT_MS } from "@/lib/plans";
 import { hideNowPlaying, onNowPlayingAction, showNowPlaying } from "@/lib/native-now-playing";
 import { Waveform } from "./Waveform";
 
@@ -50,8 +50,25 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const queue = useRef<PlayerTrack[]>([]);
-  // Seconds actually heard (seeks excluded) for the published "Listened" definition.
-  const listened = useRef({ id: 0, secs: 0, last: 0, reported: false, duration: 0 as number | null });
+  // "Listened" is counted by the server: the player says when a track starts or resumes ("play") and checks in about
+  // every 10 s of sound actually heard ("beat"; seeks excluded). The server credits real time only (src/lib/review.ts).
+  const listened = useRef({ id: 0, last: 0, sinceBeat: 0, reported: false });
+  const reportListen = useCallback(
+    (event: "play" | "beat") => {
+      const l = listened.current;
+      if (l.reported || !l.id) return;
+      fetch(`/api/tracks/${l.id}/listened`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ event }) })
+        .then((r) => r.json())
+        .then((r: { first?: boolean }) => {
+          if (r.first && listened.current === l) {
+            l.reported = true;
+            router.refresh();
+          }
+        })
+        .catch(() => {});
+    },
+    [router],
+  );
 
   // Tracks uploaded without browser analysis get their waveform the first time the receiver plays them.
   const backfill = useCallback(
@@ -72,7 +89,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   const start = useCallback((t: PlayerTrack) => {
     const a = audio.current!;
-    listened.current = { id: t.id, secs: 0, last: 0, reported: t.played, duration: t.duration };
+    listened.current = { id: t.id, last: 0, sinceBeat: 0, reported: t.played };
     setCurrent(t);
     setTime(0);
     setDuration(t.duration ?? 0);
@@ -99,19 +116,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       setTime(a.currentTime);
       const l = listened.current;
       const delta = a.currentTime - l.last;
-      if (delta > 0 && delta < 1.5) l.secs += delta;
+      if (delta > 0 && delta < 1.5) l.sinceBeat += delta;
       l.last = a.currentTime;
-      const threshold = listenThreshold(l.duration || a.duration);
-      if (!l.reported && l.secs >= threshold) {
-        l.reported = true;
-        fetch(`/api/tracks/${l.id}/listened`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ seconds: l.secs }),
-        })
-          .then((r) => r.json())
-          .then((r) => r.first && router.refresh())
-          .catch(() => (l.reported = false));
+      if (!l.reported && l.sinceBeat * 1000 >= LISTEN_BEAT_MS) {
+        l.sinceBeat = 0;
+        reportListen("beat");
       }
     };
     const onEnded = () => {
@@ -126,10 +135,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     // "play" fires as soon as playback is asked for, before any sound; "waiting" means it's stalled on data.
     a.addEventListener("waiting", () => setBuffering(true));
     for (const ev of ["playing", "canplay", "pause", "ended", "error"]) a.addEventListener(ev, () => setBuffering(false));
-    a.addEventListener("loadedmetadata", () => {
-      setDuration(a.duration);
-      if (!listened.current.duration) listened.current.duration = a.duration;
-    });
+    a.addEventListener("loadedmetadata", () => setDuration(a.duration));
+    // Sound has started (or resumed): the server starts the clock without crediting the pause before it.
+    a.addEventListener("playing", () => reportListen("play"));
     a.addEventListener("ended", onEnded);
     // Skip between tracks in the current queue from the lock screen.
     const step = (by: number) => {

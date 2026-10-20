@@ -46,3 +46,5 @@ What FloorTest is built on, so nobody guesses. Change a tool, service or limit â
 - `npm run dev` / `typecheck` / `lint` (ESLint: Next.js rules; React Compiler advice as warnings) / `test` / `check:perms`; run migrations or scripts against a scratch `DATA_DIR`, never `./data` while the dev server runs.
 - Deploy = merge `mobile-next` into `main` and push; confirm the production deploy is READY.
 - More: `docs/CODE_STYLE.md`, `docs/API_GUIDE.md`, `docs/DATABASE.md`, `docs/services.md`, `SECURITY.md`.
+
+**Listened is counted by the server** (Codex review, 19 Oct; `src/lib/review.ts` `recordListen`, migration `0096_listen_sessions`): the player posts `{ event: "play" }` when sound starts or resumes and `{ event: "beat" }` about every 10 s of sound heard to `POST /api/tracks/:id/listened`. Each beat is credited with the real time since the last one, at most 15 s, on the same sign-in; extra tabs share one row, and a paused tab earns nothing. No number from the browser is trusted, so a forged request can't mark a track Listened faster than real time. Test `tests/listened.test.ts`.
