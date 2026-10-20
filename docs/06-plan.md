@@ -2,15 +2,136 @@
 
 **The one to-do list.** What gets built, in what order. Older lists (`docs/archive/CLAUDE_NEXT_WORK.md`, `docs/archive/HANDOFF.md`, `docs/beta-launch-plan.md` checklists) are history; new work goes here. Ship something → tick it and move it to Done in the same commit.
 
-## Now: beta (invite-only, site gated)
-Core product is live: sending, review, collections, Prepare/downloads, plans by request, Google sign-in, ops with roles. Remaining beta work:
+## Now: pre-beta validation → private beta 1 November 2026 (invite-only, site gated)
+Core product is live: sending, review, collections, Prepare/downloads, plans by request, Google sign-in, ops with roles. Before the private beta opens on **1 November 2026**, run the complete product with a controlled group of **five testers**. This is a validation cohort, not the wider beta: fix defects and confusing journeys, but do not add scope from individual preferences until the five-person review is complete.
 
 | # | Item | Who | Status |
 |---|---|---|---|
+| B0 | Five-person pre-beta: each tester completes send → receipt and receive → listen → decide/reply/download on phone and desktop; capture blockers, failed emails/uploads and unclear steps in one test record. Re-test every blocker before widening access. | Owner + dev | before 1 Nov |
 | B1 | Google brand verification: paused until launch (site stays private). Domain already verified. To resubmit: make legal pages public again + a short description on the home/gate page, then "I have fixed the issues" | Owner + dev | at launch |
 | B2 | DNS update to Vercel's new addresses (saved 9 Oct) → Refresh in Vercel | Owner | ✅ checked 13 Oct: Vercel reports no change needed for `floortest.app`, `www` and `ops` |
 | B3 | Strix security test against local/preview | Owner + dev | parked, needs AI key |
 | B4 | ✅ 14 Oct: the old audio bucket `floortest-audio` emptied and deleted (three clean days after the move; the live bucket checked 32 of 32 after). Left: delete the temporary token `bucket-move-temp` and cancel the stalled Data Migration if still listed; then narrow the live R2 token to `floortest-audio-eu` and the preview token to `floortest-audio-preview` (the keys don't change) | Owner | token + scope |
+
+## Claude fix handoff — repository scan (19 Oct 2026)
+
+Source reviewed: `mobile-next` at `b5abd1e51e7cbbb3a7d2535b20b4bc87d46b2112`. This is the current fix packet; do not use the older audit in `docs/archive/HANDOFF.md` as a second checklist. No production settings or legal wording were changed during the scan.
+
+### Fix first
+
+**Claude action required before the five-person pre-beta cohort:** implement and verify all three P1 fixes below. Do not mark this handoff complete based on UI behavior or unit tests alone. Record the branch and commit, Preview deployment, migration/rollback notes where applicable, automated results and manual reproduction evidence under this section. Do not deploy to production or merge to `main` without the owner's explicit approval.
+
+- [ ] Offline access is bound to the requesting actor/session and becomes unusable immediately after sign-out, session revocation or team removal.
+- [ ] Sender-visible **Listened** is created only from server-validated elapsed playback and cannot be forged by a direct request, seeking, replaying heartbeats or parallel tabs.
+- [ ] Production upload scanning cannot silently become `off`; missing, invalid or unavailable scanner configuration is visible in readiness/operations and follows the documented fail-safe behavior.
+
+1. **P1 — revoke offline audio when a person loses access.** `/api/offline/list` creates a one-hour token with only `trackId`, the selected desk owner's `userId` and expiry (`src/app/api/offline/list/route.ts`, `src/lib/offline.ts`). `/api/offline/file/[token]` checks the token and track state but not the person who obtained it, their originating session or their current `account_members` row, then creates a fresh one-hour R2 URL. A removed teammate or signed-out client can therefore use a previously issued link until its expiry and extend access with the returned storage URL. Replace this with a revocable offline grant bound to actor, session, desk and track; re-check the live session and membership at redemption; revoke grants on sign-out and membership removal; never let the R2 URL outlive the grant. Tests: removal rejects immediately, session revocation rejects, owner access still works, expiry boundaries work, and a track leaving kept/Prepare is rejected.
+
+2. **P1 — make the sender-visible Listened signal truthful at the server.** `/api/tracks/[id]/listened` accepts `{ seconds }` from the browser and `markListened` writes `played_at`, records the event and queues the sender email once that number reaches the threshold. The seek and elapsed-time checks in `src/components/Player.tsx` are client-only and can be bypassed with a direct request. Introduce a server-issued playback session bound to actor, session, desk and track, with small rate-limited monotonic heartbeats that cannot advance faster than wall time or be replayed/parallel-inflated. Do not mark listened until validated elapsed playback reaches the threshold. If that assurance is deliberately not built, change the receipt/email claim so it does not imply verified listening. Tests: a first request claiming the full threshold fails, replay and time jumps fail, a valid continuous play records exactly once, and removal ends the playback session.
+
+3. **P1 operations — scanning must not silently turn off.** `scanStored()` returns `off` when `SCAN_URL` is missing, but `configProblems()` and `/api/health` do not report that as a production fault. Add scanner readiness to the detailed health/config checks and treat the missing URL or secret as a production problem when scanning is required. Add `SCAN_URL`, `SCAN_SECRET`, `BACKUP_BUCKET`, `BACKUP_ACCESS_KEY_ID`, `BACKUP_SECRET_ACCESS_KEY`, `OPS_URL`, `ADMIN_EMAILS` and any other currently used deployment variables to `.env.example` with descriptions but no values. Verify Preview/Production behavior deliberately: Preview may use an explicit safe exception because its scanner key cannot read the preview bucket; Production must not accept unscanned uploads by accidental omission.
+
+### Reconcile before calling the packet complete
+
+- Make the current docs agree with the actual database switches and deployment state. `docs/03-app-flow.md` says teams and sharing are off; this plan also says teams have been on since 11 Oct and later says teams are off for the beta except super-admin desks. Record the actual intended beta rule once. Do the same for scanner and recovery-vault readiness: remove old “left to set” wording only after checking live configuration.
+- Confirm, without copying secret values into docs or chat: the `sharing` and `teams` switch values; `SCAN_URL`/`SCAN_SECRET`; vault credentials and the first successful recovery-copy run; live/preview R2 token scopes; deletion of `bucket-move-temp`; SPF/DMARC state; uptime checks; and the external pentest status.
+- Keep the known mobile work explicit: push registration/service, Sign in with Apple, Apple/Google purchase verification and server-made audio previews are not finished.
+- Keep the remaining launch gates explicit: lawyer redlines, Paddle, Neon Launch/restore window, external pentest, R2 least privilege, email-client/bounce checks, VoiceOver and real-phone INP/upload testing.
+
+### Verification and release gate
+
+The 19 Oct source scan passed ESLint, non-incremental TypeScript, all 104 unit/integration tests, admin permissions, desk-role permissions and the RLS check (all 60 checked tables had RLS enabled). It did **not** run a production build, Playwright e2e, `npm audit --omit=dev`, or inspect live Vercel, Neon, Cloudflare, Resend or DNS state. Codex Security scan: `cd2fa3c5-108a-4e3d-9db9-1cae8306fd22`.
+
+Claude should implement the three fixes on a branch/worktree following `docs/working.md`, update the affected security/API/architecture/setup/testing docs in the same commit, and add focused regression tests. Because the work touches auth, downloads, receipts and uploads, completion requires `npm run typecheck`, `npm run lint`, `npm test`, `npm run check:perms`, `npm run e2e`, `npm audit --omit=dev` and a production build. Deploy only to Preview first; verify teammate removal, offline redemption, honest listening, scanner-off/misconfigured/scanner-down behavior and normal upload/playback. Do not ship to `main` without the owner's explicit “ship it”.
+
+### Claude decision request — dead-code pass (19 Oct 2026)
+
+Review these against the current product and classify every item **Keep**, **Remove**, or **Reconnect** before editing. This is deliberately a decision pass, not permission for a broad cleanup. Preserve public routes, database compatibility and any code required by the mobile shells. Work in a separate branch/worktree and do not ship without the owner's explicit approval.
+
+**Reconnect (recommended):** the Settings → Account keyboard-shortcut switch currently changes `ft:shortcuts`, but the Queue handlers in `src/app/dashboard/DecisionRail.tsx` and `src/app/dashboard/list/ListRows.tsx` never read it. Reuse `shortcutTarget`, `isCharacterKey` and `shortcutsOn` from `src/components/useShortcuts.ts` so K/X/R/U/J/1–4 respect the switch, while Space and arrow keys remain available as the copy promises. Keep the overlay/focus guard and add tests for switch off, switch on, typing, dialogs/menus, Space and arrows.
+
+**Remove if the repository-wide search remains empty:** `src/components/ShortcutsSettingsLink.tsx`; `reviewHref` in `src/app/dashboard/rows.ts`; `fmtShortDay` in `src/lib/format.ts`; `ACCEPTED_MIME` and `RELEASE_KINDS` in `src/lib/plans.ts`; `LOCKED_MESSAGE` in `src/lib/review.ts`; `PERMISSIONS` in `src/lib/share-links.ts`; `parseLinks` in `src/lib/socials.ts`; and `genreMix` in `src/lib/stats.ts`. These have no current imports or call sites. Delete only the unused export/file, not adjacent behavior, and confirm none are intentional near-term API surfaces documented elsewhere.
+
+**Remove after a visual/build reference check:** the old Figma assets `public/icons/bell.svg`, `check.svg`, `green-dot.svg`, `headphones.svg`, `heart.svg` and `thumbs-down.svg` appear unreferenced. Check CSS, manifests, email templates, tests and native mobile projects before deleting them.
+
+**Tidy, not product work:** rename or omit the unused `req` parameter in `src/app/api/unsubscribe/[token]/route.ts` and the unused `d` parameter in `tests/share-links.test.ts`. Do not weaken the test to silence the warning.
+
+Evidence from the scan: 439 TypeScript source files, 438 reachable from source entry points; no orphaned Next pages/API routes and no unused package dependencies were found. Run the normal typecheck, lint, tests and production build after the accepted cleanup. In the response below this section, record the classification and reason for each disputed item so future agents do not reintroduce or repeatedly flag it.
+
+### Claude backend handoff — what stays and what must change (19 Oct 2026)
+
+**Keep:** the current Next.js route/server-action boundary, PostgreSQL/PGlite database layer, direct-to-R2 uploads, encrypted database backup plus recovery bucket, Resend outbox/webhook model, hashed browser/app sessions, separate ops sessions with two-step admin actions, row-level security, retention/deletion queue and `/api/v1` mobile surface. The scan found no reason to replace these systems or introduce another backend for a five-person test or the 1 November beta.
+
+**Fix before inviting the five-person cohort:** complete the three P1 items in **Fix first** above. In addition, make `/api/health` distinguish liveness from readiness: its detailed result must not return `ok: true`/HTTP 200 when `configProblems()` contains a production blocker, and it must include scanner, cron, email, backup/vault and storage readiness without exposing credentials. `jobProblems()` must flag a scheduled job that has never run after its first expected window; today a missing `last_run_*` value is silently treated as no problem. Add regression tests for both cases.
+
+**Fix before 1 November:** bring `.env.example` into line with variables the backend actually uses, with descriptions and blank values only. At minimum reconcile scanner, vault, ops/admin, Resend webhook, Google sign-in, invite limit, mail quotas and any other variables found by a code-to-example check. Make the Monday admin digest record success only when delivery succeeds; today `runAdminDigest()` ignores `sendMail()`'s returned failure state and advances `admin_digest`, which can suppress the next report for almost a week after a failed send. Test the failure/retry path.
+
+**Do not remove as “dead backend code”:** cron routes, backup/vault code, deletion queues, webhook verification, mobile `/api/v1`, monitoring tunnel, feature switches or compatibility migrations may have few direct imports because they are deployment, external-callback or operational entry points. Remove a backend route or migration only with route inventory, production-log evidence, a compatibility decision and an explicit owner approval.
+
+**Five-person backend trial:** use test audio, not irreplaceable masters. For each tester record upload start/completion, email verification, receipt delivery, first valid listen, decision, reply and download; retry an interrupted upload; attempt a duplicate completion; sign out/revoke a session; and confirm no cross-account track, collection or receipt access. Separately trigger both cron jobs in the safe test environment, confirm the outbox/webhook state, create and verify an encrypted backup, exercise one deletion through the retry queue, and check the ops incident is visible. Do not shorten production retention to test it—advance time or use isolated test data.
+
+### Claude implementation brief — security and data integrity
+
+Use this as one coordinated hardening batch, not a series of unrelated patches. Preserve working URLs, mobile compatibility, existing data and the direct-to-R2 upload path. Use backward-compatible migrations with rollback notes, deploy to Preview first and do not merge to `main` without the owner's explicit approval.
+
+#### Phase A — required before the five-person test
+
+1. **Close the P1 findings.** Complete the offline-access, server-validated listening and fail-safe scanner work above, with the stated adversarial tests.
+2. **Make readiness honest.** Split public liveness from authorized readiness. Liveness may prove the process and database respond; readiness must fail when a required production dependency or configuration is absent, unhealthy or has never completed its first expected run. Cover database, R2, scanner, Resend, cron, encrypted backups and the recovery vault without returning credentials, bucket names or internal error details publicly.
+3. **Centralize file authorization incrementally.** Add one server-only policy function used by audio, download, offline and mobile file routes. Its input is the resolved actor/session, active desk, final track/file identity and requested action; its output is an allow/deny decision plus a bounded grant. Deny by default. Do not trust a user ID, desk ID, track ID or permission supplied by the client. Keep route-specific response shapes while moving the decision to the shared boundary.
+4. **Make delegated grants revocable.** Where a signed URL must survive the request, back it with a server-side grant containing a hashed random token, actor, session, desk, track/file, allowed action, generation, issue/expiry/revocation times. Redemption re-checks the live session, current team membership, resource state and generation before producing a storage URL whose expiry is no later than the grant. Sign-out, team removal, account suspension, link reset and track deletion revoke or invalidate the grant immediately.
+5. **Verify the release candidate.** Run typecheck, lint, all tests, permission/RLS checks, production build and relevant Playwright suites; then complete the five-person trial using test audio. Save the exact commit, Preview deployment and evidence. A screenshot alone is not proof.
+
+#### Phase B — required before the 1 November private beta
+
+1. **File-integrity chain.** Store a server-trusted SHA-256 digest and verified byte size for every accepted audio file, stem, cover and generated export where practical. Compute the audio digest at the trusted scanner/storage boundary, not from an untrusted browser claim. Verify it after upload acceptance, recovery copy and restore; quarantine and alert on mismatch. Backfill existing files in bounded batches without blocking playback, record unknown until verified and never invent a digest from metadata alone.
+2. **Idempotent mutations.** Require scoped idempotency keys or enforce an equivalent unique database invariant for upload completion, replies, downloads that create sender-visible signals, webhook processing and background jobs. The same request may return the first result but must not create a second track, message, event, email or deletion. Retain keys only as long as replay is meaningful.
+3. **Database invariants.** Add constraints and indexes for valid state values, non-negative sizes/counters, unique active membership/invites/grants and ownership relationships that the database can enforce. Keep authorization in application policy as well; RLS and constraints are defence in depth. Migrations must be additive first, validate/backfill existing rows, then enforce—never delete or rewrite production rows merely to make a constraint pass.
+4. **Reliable email outbox.** Queue transactional email intent in the same database transaction as the state change, then let a retryable worker deliver it and record provider state. Use a unique event/idempotency key so a crash between provider delivery and acknowledgement cannot produce uncontrolled duplicates. Security codes remain short-lived and secrets remain hidden from stored copies. Fix the admin-digest failure/retry issue in the same work.
+5. **Truthful event ledger.** Treat sender-visible Delivered, Listened, Downloaded, Replied and Played out records as append-only facts with the responsible actor/session or capability, source, authoritative server time and idempotency key. Corrections use a compensating event or an explicit invalidation; do not silently rewrite history. The receipt derives its current state from valid facts and never exposes internal actor identifiers.
+6. **Scheduled-job ownership.** Use a database lease or advisory lock so overlapping cron calls cannot run the same job concurrently. Record started, completed, failed and skipped/locked states. Alert on first-run absence, lateness, repeated failure and backlog rather than relying only on the most recent successful value.
+
+#### Phase C — before access expands beyond the trusted beta
+
+- Add optional passkeys; retain recovery and safe account-linking rules. Require two-step sign-in for owners, team administrators and every ops role with mutations.
+- Notify the account about new devices, password/email changes, team invitations, security-setting changes and unusual private-file downloads. Messages must not contain filenames, tokens or signed URLs.
+- Add CI gates for dependency audit, secret scanning, migration checks, permission/RLS checks and security-focused tests. No production secret or private audio may enter CI artifacts.
+- Detect repeated cross-account denials, scanner outages, abnormal download/upload volume, stalled deletion queues, backup failures and integrity mismatches. Use bounded labels and redact emails, filenames, message bodies, capability tokens and signed query strings.
+- Commission an external penetration test covering tenant isolation, file access, public intake, receipts, teams, share links, ops/admin and mobile tokens before untrusted or broad access.
+
+#### Recovery and integrity acceptance criteria
+
+- An encrypted backup restores into an isolated database with expected tables and counts, no live sessions/codes and documented restore time.
+- Every file expected by the restored database is present in the recovery bucket with matching trusted size and digest; missing, extra and mismatched files are reported without exposing their names outside ops.
+- A file or account deletion creates a durable queue record, retries safely after storage failure, removes the recovery copy and finishes exactly once.
+- Removing a teammate or revoking a session immediately blocks browser, mobile, offline and delegated file access already issued to that actor.
+- Retried uploads, webhook events, cron calls and email workers do not create duplicate tracks, signals, messages or email intent.
+- No test can read or mutate another account's track, collection, sender, receipt, export or team data by changing an identifier.
+
+#### Implementation constraints and rollback
+
+- Prefer the incremental shared-policy option over a new standalone authorization service during beta: it removes duplicated decisions without adding another deployed system. A separate service becomes reasonable only if multiple independent applications need the policy at scale.
+- Introduce new tables/columns and dual-read or dual-write only where necessary; keep old readers working until Preview and mobile compatibility pass, then remove compatibility code in a later approved change.
+- Never lengthen signed-URL or token lifetimes to work around failures. Roll back by disabling the new grant path through a documented server-side switch while retaining the stricter existing authorization checks; do not roll back database migrations by dropping captured security evidence.
+- Do not log or paste production secrets, raw tokens, private audio metadata or personal data in commits, docs, test evidence or chat.
+
+#### Second-pass additions for Claude
+
+These are additional source-level findings from the storage, artwork, webhook, backup and database-assurance paths. They supplement the phases above.
+
+**Before the five-person test**
+
+- [ ] **Make storage failures visible.** `src/lib/storage.ts` currently lets the S3 `head()` path convert every exception into `null`. Invalid credentials, network failure, wrong-bucket configuration and a missing object can therefore look identical; `/api/health` can report storage as healthy when the probe actually failed. Return `null` only for a verified not-found response and throw other errors. Readiness should use a known sentinel object or a safe isolated write/read/delete probe, with internal details redacted from public responses.
+- [ ] **Seal track artwork after validation.** The direct artwork flow records the destination key before upload completion and leaves the presigned PUT usable after the `done` check. A sender can replace the object while that URL remains valid, and an abandoned upload can leave `art_key` occupied. Upload to a temporary reservation, validate trusted bytes, copy/seal to a fresh final key, then atomically set `tracks.art_key`. Expire and clean abandoned reservations.
+
+**Before the 1 November private beta**
+
+- [ ] **Add durable upload reconciliation.** Cover, collection-art and site-image flows can create an object before the related database write succeeds, leaving untracked objects after a crash or abandoned request. Record upload reservations/manifests and run a reconciliation job that queues unreferenced objects after a conservative grace period. Do not delete from a raw bucket diff without ownership checks and a recovery window.
+- [ ] **Deduplicate verified webhook deliveries.** The Resend webhook verifies signatures and timestamps but has no durable event-ID claim. Store provider plus event ID in a unique `webhook_receipts` record before side effects, make processing retry-safe and ignore exact replays. This prevents repeat bounce/complaint incidents and alerts from one valid delivery.
+- [ ] **Version backup encryption keys.** The encrypted backup envelope has no key identifier, so rotating `BACKUP_KEY` can make older backups unrestorable unless the former key is retained manually. Add a non-secret key version/ID, support a controlled restore keyring, document rotation and retirement, and include an old-key restore in the recovery drill. Never log key material.
+- [ ] **Do not treat “RLS enabled” as proof of tenant isolation.** The current check confirms the flag on tables, while application authorization is intentionally enforced in server code and the application database owner can bypass ordinary RLS. Keep cross-account object-authorization tests as the release gate. If database roles change, deliberately introduce a restricted non-owner runtime role and evaluated policies/`FORCE ROW LEVEL SECURITY`; do not assume the existing flag alone provides that boundary.
+
+Backend verification on this checkout: production build passed; ESLint passed; non-incremental TypeScript passed; all **104** unit/integration tests passed; admin/desk permission checks passed; all **60** checked database tables had RLS enabled. Still required for the accepted fixes and the release candidate: Playwright e2e, five-person evidence, Preview smoke test, `npm audit --omit=dev`, live service/config checks and a restore drill. None of those are implied by the local green checks.
 
 ## Mobile app (picked back up 9 Oct · planning)
 Plan + tappable prototype: claude.ai/artifact/5BVVpA3Zn9AxH71ut9hGFr (private), kept in step with these docs.
