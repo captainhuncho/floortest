@@ -264,3 +264,14 @@ The heart of the desk: play button, title and artist, a waveform, the Listened t
 - **Don't** add a second accent colour or a gradient for decoration.
 - **Don't** repeat on the page what it already says (no status chip matching the selected tab, no stat shown twice).
 - **Don't** animate keyboard-driven actions (K, X, U, Space) or start anything from scale 0.
+
+## Privacy and consent (owner's rule, every app)
+
+No tracking pixel, analytics, session replay, ad tag, social or video embed, or other third-party script loads until the user clicks **Accept** on the cookie banner.
+
+- Before Accept: zero requests to analytics, ads or pixel hosts, and no non-essential cookies or storage IDs. These scripts are loaded only by the consent code, never hard-coded.
+- Reject, or closing the banner, loads nothing. The choice is saved; a "Cookie settings" link in the footer reopens it. Reject is as easy as Accept: same size, same screen.
+- Embeds (YouTube, Instagram, maps, booking widgets) show a placeholder that loads on click.
+- No user data goes to a third party server-side before consent either.
+- Only exception, strictly necessary: a bot check on the forms that need it, and the payment provider on checkout, loaded only on those pages and listed as strictly necessary in the cookie policy.
+- Check before shipping: private window, DevTools Network, cleared storage: nothing third-party before Accept, still nothing after Reject.
