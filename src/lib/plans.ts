@@ -20,6 +20,10 @@ export const LISTEN_MIN_SECONDS = 30;
 export const LISTEN_MIN_FRACTION = 0.25;
 export const listenThreshold = (duration: number | null | undefined) =>
   duration && duration > 0 ? Math.min(LISTEN_MIN_SECONDS, duration * LISTEN_MIN_FRACTION) : LISTEN_MIN_SECONDS;
+/** The player checks in about this often while a track plays; the server counts the time (src/lib/review.ts). */
+export const LISTEN_BEAT_MS = 10_000;
+/** The most one check-in can add, however long since the last: a paused or backgrounded tab earns nothing extra. */
+export const LISTEN_BEAT_CAP_MS = 15_000;
 
 /** Retention: kept tracks stay until the receiver deletes them. */
 export const RETAIN_UNREVIEWED_DAYS = 90;

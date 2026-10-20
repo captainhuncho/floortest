@@ -88,7 +88,7 @@ So a storage outage can delay a deletion but can never lose track of a file. Wit
 - **Alerts:** a failed nightly job or a stuck file deletion alerts the admins **straight away** (at most every 15 minutes). Anything else alerts when there are 5 or more incidents in an hour (at most once an hour). Alerts go by email, and to `ALERT_WEBHOOK_URL` when it's set.
 - **Overview → Configuration:** when the nightly cleanup and morning emails last ran (ok or failed, and how long they took), the last backup, and how many files are waiting to be deleted.
 - **Vercel → Logs / Observability:** raw runtime errors.
-- **Health check:** `/api/health` (database). With the cron secret, it also checks storage and configuration.
+- **Health check:** `/api/health` is liveness: `{"ok":true}` when the database answers (the uptime checks use it). With the cron secret (`Authorization: Bearer $CRON_SECRET`) it is readiness: it also checks storage, the virus scanner (`checks.scanner`: ok, down or off) and configuration, and answers 503 with `ok:false` while anything would break production, such as a live site with no `SCAN_URL`/`SCAN_SECRET` or a scanner that is down. On the live site uploads are refused while the scanner is missing or down (never accepted unscanned); each refusal shows as "Virus check unavailable" in Ops → Incidents.
 - **To add:** an external uptime monitor on `/` and `/api/health`.
 
 ## Security

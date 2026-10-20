@@ -5,7 +5,7 @@ import net from "node:net";
 import type { AddressInfo } from "node:net";
 // @ts-expect-error -- plain JS module shipped with the scanner container
 import { scanStream } from "../scanner/clamd.mjs";
-import { scanStored } from "../src/lib/scan";
+import { scanConfigProblem, scannerHealth, scanStored } from "../src/lib/scan";
 
 /** A fake clamd: reads the INSTREAM frames back into bytes, then answers like ClamAV would for those bytes. */
 function fakeClamd(answer: (bytes: Buffer) => string) {
@@ -78,5 +78,46 @@ test("app side: off without SCAN_URL; clean, infected and unavailable from the s
   // Nothing listening at all: unavailable, never "clean".
   process.env.SCAN_URL = "http://127.0.0.1:9";
   assert.equal((await scanStored("audio/1/ok.wav")).verdict, "unavailable");
+  delete process.env.SCAN_URL;
+});
+
+test("on the live site a missing scanner refuses uploads instead of letting them through unscanned", async () => {
+  delete process.env.SCAN_URL;
+  delete process.env.SCAN_SECRET;
+  try {
+    process.env.VERCEL_ENV = "preview";
+    assert.deepEqual(await scanStored("audio/1/a.wav"), { verdict: "off" }, "a preview runs without a scanner");
+    assert.equal(scanConfigProblem(), null);
+    process.env.VERCEL_ENV = "production";
+    assert.equal((await scanStored("audio/1/a.wav")).verdict, "unavailable", "the live site never accepts unscanned");
+    assert.match(scanConfigProblem() ?? "", /SCAN_URL is not set/);
+    assert.equal(await scannerHealth(), "off");
+    process.env.SCAN_URL = "http://127.0.0.1:9";
+    assert.equal((await scanStored("audio/1/a.wav")).verdict, "unavailable", "a URL without its secret is refused too");
+    assert.match(scanConfigProblem() ?? "", /SCAN_SECRET is not set/);
+  } finally {
+    delete process.env.VERCEL_ENV;
+    delete process.env.SCAN_URL;
+  }
+});
+
+test("the scanner's health check: ok, down when it answers wrongly, down when nothing answers", async () => {
+  let healthy = true;
+  const server = http.createServer((_req, res) => {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ clamd: healthy }));
+  });
+  await new Promise<void>((r) => server.listen(0, "127.0.0.1", () => r()));
+  process.env.SCAN_URL = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  try {
+    assert.equal(await scannerHealth(), "ok");
+    healthy = false;
+    assert.equal(await scannerHealth(), "down", "the container is up but ClamAV isn't");
+  } finally {
+    server.close();
+    server.closeAllConnections();
+  }
+  process.env.SCAN_URL = "http://127.0.0.1:9";
+  assert.equal(await scannerHealth(), "down");
   delete process.env.SCAN_URL;
 });
