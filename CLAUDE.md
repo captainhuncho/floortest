@@ -23,6 +23,7 @@ Open only what the task touches. The docs stay true; if a doc and the code disag
 | How the work runs: sessions, branches, checks, the owner's list, the twelve working principles | `docs/working.md` |
 | What each release was checked against (one report per ship) | `docs/evidence/` |
 | The 15 standard docs (short index, owner's rule 18 Oct; keep in step with the docs they link to) | `docs/1. PRD.md` … `docs/15. Debugging.md` |
+| Codebase map (graphify, 20 Oct: every module, route and doc as a graph; refresh with `graphify update .`) | `graphify-out/GRAPH_REPORT.md`, `graphify-out/graph.html` |
 
 `docs/archive/` is history only.
 
