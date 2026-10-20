@@ -54,6 +54,7 @@ Keep this file true to what is live. Any change to a feature updates its row her
 - Nothing is shared or released without the sender's permission; DJ-set use only if the sender ticks it.
 - **Account types** (14 Oct): DJ, Producer / DJ, A&R, Label / Radio, Artist, Curator, Music professional. A type switches on the tools that desk is likely to need and never locks anything: Settings → Profile → Tools turns any tool on or off. The type belongs to the account, so every seat on a team desk sees the same tools; only the owner changes it. Price and limits never depend on type. Tools so far: **Played out** (the Monday question, the Tuesday email, the pick page and Played it out on Prepare), on by default for DJ, Producer / DJ and Curator. New type-specific features add a tool in `src/lib/account-types.ts` and check it with `hasTool()`.
 - Sign-up and password reset never reveal whether an email has an account.
+- Consent before tracking (owner, 20 Oct): a cookie banner asks first; visit counts (Vercel Analytics) and browser crash reports (Sentry) run only after Accept. Not now is as easy as Accept, both are remembered, and Cookie settings (footer, sign-in pages) asks again.
 - Dates read one way everywhere: "29 Sept 2026" for days, "10 Oct, 17:04" for moments.
 
 ## Out of scope / held
