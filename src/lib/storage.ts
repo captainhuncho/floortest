@@ -17,6 +17,7 @@ export interface Storage {
   driver: "local" | "s3";
   /** Where the browser should PUT the file. */
   uploadTarget(key: string, contentType: string, size: number): Promise<{ url: string; headers: Record<string, string> }>;
+  /** The file's size, or null when it isn't there. Any other failure (keys, bucket, network) throws. */
   head(key: string): Promise<{ size: number } | null>;
   /** Bytes [start, end] inclusive. */
   read(key: string, start: number, end: number): Promise<Uint8Array>;
@@ -87,8 +88,9 @@ const local: Storage = {
   async head(key) {
     try {
       return { size: (await fs.promises.stat(localPath(key))).size };
-    } catch {
-      return null;
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === "ENOENT") return null;
+      throw e;
     }
   },
   async read(key, start, end) {
@@ -182,8 +184,11 @@ async function s3(): Promise<Storage> {
       try {
         const r = await client.send(new HeadObjectCommand({ Bucket, Key: key }));
         return { size: Number(r.ContentLength ?? 0) };
-      } catch {
-        return null;
+      } catch (e) {
+        // Only "not found" means missing. Wrong keys, a wrong bucket or a network failure throw, so they show up as
+        // errors (and in /api/health) instead of looking like a missing file (Codex review, 19 Oct).
+        if ((e as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode === 404) return null;
+        throw new Error(`Storage error: ${(e as Error).name || "error"}`);
       }
     },
     async read(key, start, end) {
