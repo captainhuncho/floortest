@@ -54,7 +54,7 @@ Database changes are numbered migrations in `src/lib/db/migrations.ts`. They run
 | When (UTC) | Job | What it does |
 |---|---|---|
 | 03:30 daily | `/api/cron/purge` | **1. Backup first.** Writes the whole database to R2 `backups/db-YYYY-MM-DD.json.gz`. If the backup fails, the job stops: nothing is deleted that night, an incident is raised, and it returns 500. **2.** Sends 7-day deletion warnings. **3.** Deletes tracks past retention (unreviewed 90 days, "not for me" 30 days), abandoned uploads, expired sessions and rate-limit records. **4.** Finalises share consents left past their 2-minute window. **5.** Retries queued file deletions |
-| 08:00 daily | `/api/cron/digest` | Receiver digests, 2-week nudges, and the Monday admin metrics email |
+| 08:00 daily | `/api/cron/digest` | Receiver digests, 2-week nudges, and the Monday admin metrics email (counted as sent only when every admin's copy went through; a failed copy is retried on the next daily run, to that admin only, for up to 6 days) |
 
 The email jobs mark each track before sending and give it back if the send fails, so a crash or a rerun can't send the same email twice, and a failed email is retried on the next run. One receiver's failed digest never stops the others.
 

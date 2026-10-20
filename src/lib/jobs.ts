@@ -48,11 +48,28 @@ export async function runNudges(at = now()) {
   return sent;
 }
 
-/** Monday metrics email to the admins. Runs from the daily job and sends at most once a week. */
+const setState = (key: string, value: string, at: number) =>
+  q.run("INSERT INTO app_state (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at", key, value, at);
+
+/**
+ * Monday metrics email to the admins. Runs from the daily job and sends at most once a week. It only counts as sent once
+ * every admin's copy went through: a failed copy is retried on the next daily run (for up to 6 days), and only to the
+ * admins who didn't get it (Codex review, 19 Oct). The round in progress is kept in app_state `admin_digest_round`.
+ */
 export async function runAdminDigest(at = now()) {
-  if (!env.adminEmails.length || new Date(at).getUTCDay() !== 1) return false;
+  if (!env.adminEmails.length) return false;
   const last = Number((await q.get<{ value: string }>("SELECT value FROM app_state WHERE key = 'admin_digest'"))?.value ?? 0);
-  if (at - last < 6 * DAY) return false;
+  let round: { started: number; done: string[] } | null = null;
+  try {
+    round = JSON.parse((await q.get<{ value: string }>("SELECT value FROM app_state WHERE key = 'admin_digest_round'"))?.value ?? "null");
+  } catch {
+    round = null;
+  }
+  if (round && at - round.started >= 6 * DAY) round = null;
+  if (!round) {
+    if (new Date(at).getUTCDay() !== 1 || at - last < 6 * DAY) return false;
+    round = { started: at, done: [] };
+  }
   const c = (sql: string, ...a: number[]) => q.count(sql, ...a);
   const week = at - 7 * DAY;
   const lines = [
@@ -66,18 +83,22 @@ export async function runAdminDigest(at = now()) {
     `New feedback: ${await c("SELECT COUNT(*) AS n FROM contact_messages WHERE topic LIKE 'Feedback%' AND feedback_status = 'new'")}`,
     `Incidents: ${await c("SELECT COUNT(*) AS n FROM incidents WHERE created_at >= ?", week)}`,
   ];
-  for (const to of env.adminEmails)
-    await sendMail({
+  for (const to of env.adminEmails) {
+    if (round.done.includes(to)) continue;
+    const status = await sendMail({
       userId: null,
       audience: "support",
       to,
       subject: "FloorTest this week",
       body: ["The last 7 days on FloorTest:", "", ...lines.map((l) => `• ${l}`), "", `Details: ${env.opsUrl}/admin/metrics`, "", "— FloorTest"].join("\n"),
     });
-  await q.run(
-    "INSERT INTO app_state (key, value, updated_at) VALUES ('admin_digest', ?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
-    String(at),
-    at,
-  );
+    if (!status.startsWith("failed")) round.done.push(to);
+  }
+  if (env.adminEmails.some((to) => !round.done.includes(to))) {
+    await setState("admin_digest_round", JSON.stringify(round), at);
+    return false;
+  }
+  await setState("admin_digest", String(round.started), at);
+  await q.run("DELETE FROM app_state WHERE key = 'admin_digest_round'");
   return true;
 }
