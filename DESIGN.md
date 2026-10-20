@@ -272,6 +272,7 @@ No tracking pixel, analytics, session replay, ad tag, social or video embed, or 
 - Before Accept: zero requests to analytics, ads or pixel hosts, and no non-essential cookies or storage IDs. These scripts are loaded only by the consent code, never hard-coded.
 - Reject, or closing the banner, loads nothing. The choice is saved; a "Cookie settings" link in the footer reopens it. Reject is as easy as Accept: same size, same screen.
 - Embeds (YouTube, Instagram, maps, booking widgets) show a placeholder that loads on click.
+- Fonts are self-hosted (served from our own domain, e.g. `next/font`): no Google Fonts, Adobe Fonts/Typekit or other font or CDN requests before consent. Same for icons, libraries and images from third-party CDNs.
 - No user data goes to a third party server-side before consent either.
 - Only exception, strictly necessary: a bot check on the forms that need it, and the payment provider on checkout, loaded only on those pages and listed as strictly necessary in the cookie policy.
 - Check before shipping: private window, DevTools Network, cleared storage: nothing third-party before Accept, still nothing after Reject.
