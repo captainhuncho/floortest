@@ -19,7 +19,9 @@ window.turnstile = {
 };`;
 
 export const test = base.extend({
-  page: async ({ page }, use) => {
+  page: async ({ page, baseURL }, use) => {
+    // A saved banner choice, so the cookie banner never covers what the tests click.
+    await page.context().addCookies([{ name: "ft_consent", value: "rejected", url: baseURL ?? "http://localhost:3000" }]);
     await page.route("https://challenges.cloudflare.com/turnstile/v0/api.js*", (route) => route.fulfill({ contentType: "text/javascript", body: FAKE_TURNSTILE }));
     await use(page);
   },

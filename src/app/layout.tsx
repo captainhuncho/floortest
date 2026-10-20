@@ -1,6 +1,7 @@
 import { TapSpeed } from "@/components/TapSpeed";
 import { NativeApp } from "@/components/NativeApp";
 import { PageViews } from "@/components/PageViews";
+import { ConsentBanner } from "@/components/ConsentBanner";
 import { mono, serif } from "./fonts";
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
@@ -26,8 +27,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <p className="bg-lime px-4 py-1 text-center text-xs font-medium text-ink">Preview · test data only, separate from the live site</p>
         )}
         {children}
-        {/* Cookie-free page-view counts (Vercel Web Analytics): no personal data, no consent banner needed; private links are counted without their key. */}
+        {/* Vercel Web Analytics and browser Sentry wait for Accept on the banner (owner's rule, 20 Oct 2026). */}
         <PageViews />
+        <ConsentBanner />
         {!isPreview && process.env.NODE_ENV === "production" && <TapSpeed />}
       </body>
     </html>

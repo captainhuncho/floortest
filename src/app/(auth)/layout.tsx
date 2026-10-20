@@ -14,6 +14,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <Link href="/terms" className="tap inline-flex items-center hover:text-bone">Terms</Link>
         <Link href="/privacy" className="tap inline-flex items-center hover:text-bone">Privacy</Link>
         <Link href="/cookies" className="tap inline-flex items-center hover:text-bone">Cookies</Link>
+        <a href="#cookie-settings" className="tap inline-flex items-center hover:text-bone">Cookie settings</a>
       </nav>
     </main>
   );

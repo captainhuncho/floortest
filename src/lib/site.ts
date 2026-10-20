@@ -21,6 +21,7 @@ export function footerGroups(): { title: string; links: FooterLink[] }[] {
         { label: "Terms of Use", href: env("TERMS_URL") ?? "/terms", external: !!env("TERMS_URL") },
         { label: "Privacy Policy", href: env("PRIVACY_URL") ?? "/privacy", external: !!env("PRIVACY_URL") },
         page("Cookie Policy", "/cookies"),
+        page("Cookie settings", "#cookie-settings"),
         page("Your Privacy Choices", "/privacy-choices"),
         page("Notice and Takedown", "/takedown"),
         page("Sub-processors", "/subprocessors"),
