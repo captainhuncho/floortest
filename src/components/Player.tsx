@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { analyzeAudio } from "@/lib/analyze";
 import { fmtTime } from "@/lib/format";
-import { LISTEN_BEAT_MS } from "@/lib/plans";
+import { LISTEN_BEAT_MS, listenThreshold } from "@/lib/plans";
 import { hideNowPlaying, onNowPlayingAction, showNowPlaying } from "@/lib/native-now-playing";
 import { Waveform } from "./Waveform";
 
@@ -52,7 +52,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const queue = useRef<PlayerTrack[]>([]);
   // "Listened" is counted by the server: the player says when a track starts or resumes ("play") and checks in about
   // every 10 s of sound actually heard ("beat"; seeks excluded). The server credits real time only (src/lib/review.ts).
-  const listened = useRef({ id: 0, last: 0, sinceBeat: 0, reported: false });
+  const listened = useRef({ id: 0, last: 0, sinceBeat: 0, reported: false, duration: 0 as number | null });
   const reportListen = useCallback(
     (event: "play" | "beat") => {
       const l = listened.current;
@@ -89,7 +89,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   const start = useCallback((t: PlayerTrack) => {
     const a = audio.current!;
-    listened.current = { id: t.id, last: 0, sinceBeat: 0, reported: t.played };
+    listened.current = { id: t.id, last: 0, sinceBeat: 0, reported: t.played, duration: t.duration };
     setCurrent(t);
     setTime(0);
     setDuration(t.duration ?? 0);
@@ -118,7 +118,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       const delta = a.currentTime - l.last;
       if (delta > 0 && delta < 1.5) l.sinceBeat += delta;
       l.last = a.currentTime;
-      if (!l.reported && l.sinceBeat * 1000 >= LISTEN_BEAT_MS) {
+      // Every 10 s, or sooner for a short track, so one that lasts under 10 s can still reach its threshold.
+      const every = Math.min(LISTEN_BEAT_MS, listenThreshold(l.duration || a.duration) * 1000);
+      if (!l.reported && l.sinceBeat * 1000 >= every) {
         l.sinceBeat = 0;
         reportListen("beat");
       }
