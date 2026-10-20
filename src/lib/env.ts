@@ -84,6 +84,10 @@ export function configProblems() {
   if (!env.supportEmail) p.push("SUPPORT_EMAIL is not set: contact-form messages aren't delivered anywhere.");
   const scan = scanConfigProblem();
   if (scan) p.push(scan);
+  if (!v("BACKUP_KEY")) p.push("BACKUP_KEY is not set: the nightly backup fails, and so does the clean-up that waits for it.");
+  const vault = env.storage.vault;
+  const vaultSet = [vault.bucket, vault.accessKeyId, vault.secretAccessKey].filter(Boolean).length;
+  if (vaultSet && vaultSet < 3) p.push("The recovery copy is half set up: BACKUP_BUCKET, BACKUP_ACCESS_KEY_ID and BACKUP_SECRET_ACCESS_KEY are needed together.");
   
   return p;
 }

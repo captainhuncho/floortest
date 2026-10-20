@@ -52,13 +52,18 @@ export async function lastRuns() {
   return { purge: get("last_run_purge"), digest: get("last_run_digest") };
 }
 
-/** Jobs that failed last time or haven't run when they should have (only once they've run at least once). */
+/**
+ * Jobs that failed last time or haven't run when they should have. A job that has never run counts too, once the app has
+ * been installed (its first migration) for longer than a day's window: a missing schedule mustn't look healthy
+ * (Codex review, 19 Oct).
+ */
 export async function jobProblems(at = Date.now()) {
   const runs = await lastRuns();
+  const installed = Number((await q.get<{ t: number | null }>("SELECT MIN(applied_at) AS t FROM schema_migrations"))?.t ?? at);
   return (Object.keys(JOBS) as JobName[])
     .map((j) => {
       const r = runs[j];
-      if (!r) return null;
+      if (!r) return at - installed > LATE_AFTER_MS ? `${JOBS[j].label} has never run` : null;
       if (!r.ok) return `${JOBS[j].label} failed on ${new Date(r.at).toLocaleString("en-GB")}`;
       if (at - r.at > LATE_AFTER_MS) return `${JOBS[j].label} hasn't run since ${new Date(r.at).toLocaleString("en-GB")}`;
       return null;
