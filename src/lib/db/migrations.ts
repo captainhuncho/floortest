@@ -1599,4 +1599,17 @@ alter table sessions add column device text not null default '';`,
 );
 alter table listens enable row level security;`,
   },
+  {
+    // Each provider webhook event is acted on once (Codex review, 19 Oct): its ID is recorded before anything changes,
+    // so a retried or replayed delivery report (and later Paddle events) does nothing twice. Kept 30 days.
+    id: "0097_webhook_receipts",
+    sql: `create table webhook_receipts (
+  provider text not null,
+  event_id text not null,
+  received_at bigint not null,
+  primary key (provider, event_id)
+);
+create index webhook_receipts_age on webhook_receipts(received_at);
+alter table webhook_receipts enable row level security;`,
+  },
 ];
