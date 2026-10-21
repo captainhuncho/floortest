@@ -40,6 +40,8 @@ async function deleteInBatches(table: string, where: string, args: unknown[], un
 export async function cleanupRecords(t = now(), until = Date.now() + PURGE_BUDGET_MS) {
   // Rate limits look back at most 24h, so IP addresses aren't kept longer than 48h.
   await q.run("DELETE FROM rate_events WHERE created_at < ?", t - 2 * DAY);
+  // Webhook event IDs only need to outlive the provider's retries (days), so 30 is plenty.
+  await q.run("DELETE FROM webhook_receipts WHERE received_at < ?", t - 30 * DAY);
   // Expired sessions, and browser sessions nobody has used for WEB_IDLE_MS (the app's refresh tokens are exempt).
   await q.run("DELETE FROM sessions WHERE expires_at < ? OR (kind = 'web' AND COALESCE(last_seen_at, created_at) < ?)", t, t - WEB_IDLE_MS);
   await q.run("DELETE FROM password_resets WHERE expires_at < ?", t - DAY);

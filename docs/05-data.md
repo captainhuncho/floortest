@@ -27,7 +27,7 @@ Files are never public: the app hands out short-lived signed links after checkin
 | Plans | `plans`, `plan_requests` | org name, link, notes |
 | Growth | `waitlist`, `invites`, `newsletter_subscribers`, `contact_messages`, `reopen_alerts` ("email me when it reopens": sender email + receiver, sent rows deleted after 30 days, unanswered after a year; in data copies and erasure) | name, email, links |
 | Ops | `ops_members`, `admin_sessions`, `admin_log`, `account_notes`, `partner_notes`, `incidents`, `job_runs`, `switches`, `site_content*` | staff emails, notes about users |
-| Abuse/safety | `rate_events`, `platform_blocks`, `takedowns`, `protected_names`, `email_suppressions`, `storage_deletions`, `vault_copies` (which stored files are in the recovery bucket) | IPs, emails (rate events deleted within 3 days) |
+| Abuse/safety | `webhook_receipts` (provider event IDs already acted on, 30 days, no personal data), `rate_events`, `platform_blocks`, `takedowns`, `protected_names`, `email_suppressions`, `storage_deletions`, `vault_copies` (which stored files are in the recovery bucket) | IPs, emails (rate events deleted within 3 days) |
 
 ## Who can see what
 
