@@ -89,7 +89,7 @@ So a storage outage can delay a deletion but can never lose track of a file. Wit
 - **Overview → Configuration:** when the nightly cleanup and morning emails last ran (ok or failed, and how long they took), the last backup, and how many files are waiting to be deleted.
 - **Vercel → Logs / Observability:** raw runtime errors.
 - **Health check:** `/api/health` is liveness: `{"ok":true}` when the database answers (the uptime checks use it). With the cron secret (`Authorization: Bearer $CRON_SECRET`) it is readiness: it also checks storage (a real storage error such as wrong keys or a wrong bucket, never just a missing file), the virus scanner (`checks.scanner`: ok, down or off), the scheduled jobs (`checks.jobs`: failed, late, or never run a day after install) and configuration (email, `BACKUP_KEY`, a half-set recovery copy, the scanner), and answers 503 with `ok:false` while anything would break production. On the live site uploads are refused while the scanner is missing or down (never accepted unscanned); each refusal shows as "Virus check unavailable" in Ops → Incidents.
-- **To add:** an external uptime monitor on `/` and `/api/health`.
+- **Uptime:** `.github/workflows/uptime.yml` checks `/` and `/api/health` every 30 minutes; a failed run emails the repository owner. A paid external monitor (UptimeRobot) is on the launch list.
 
 ## Security
 
