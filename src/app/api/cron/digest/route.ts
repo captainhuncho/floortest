@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { recordIncident } from "@/lib/incidents";
-import { cronAuthorized, recordRun } from "@/lib/cron";
+import { cronAuthorized, recordRun, withJobLease } from "@/lib/cron";
 import { runAdminDigest, runNudges } from "@/lib/jobs";
 import { runFirstTrackNudges } from "@/lib/onboarding";
 import { runDigests } from "@/lib/notify";
@@ -14,6 +14,12 @@ export const maxDuration = 300;
 export async function GET(req: Request) {
   if (!cronAuthorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const started = Date.now();
+  // Never two copies at once (a retry while the first still runs would send emails twice).
+  const out = await withJobLease("digest", () => runDigest(started));
+  return out ?? NextResponse.json({ skipped: "already running" });
+}
+
+async function runDigest(started: number) {
   try {
     // Links first: a link that moves off a closed collection may be the reopening a sender asked to hear about.
     const result = { linksRerouted: await rerouteClosedLinks(), reopenAlerts: await sweepReopenAlerts(), digestsSent: await runDigests(), nudges: await runNudges(), firstTrackNudges: await runFirstTrackNudges(), playedOutReminders: await runPlayedOutReminders(), adminDigest: await runAdminDigest() };
