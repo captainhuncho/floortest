@@ -1599,4 +1599,36 @@ alter table sessions add column device text not null default '';`,
 );
 alter table listens enable row level security;`,
   },
+  {
+    // Per-person rules (owner, 21 Oct): a second lock under the app's own checks. The app's login owns the tables, so
+    // row-level security doesn't apply to it; code that works for a signed-in person switches to `ft_person` for that
+    // transaction (`asPerson` in src/lib/db) with `ft.person` set to their id. As `ft_person` a row is visible only on a
+    // desk the person may work (their own, or a team account they're a member of). Tables not granted here refuse
+    // `ft_person` outright, so a path that needs them fails loudly instead of quietly seeing nothing.
+    id: "0097_person_rules",
+    sql: `do $$ begin if not exists (select 1 from pg_roles where rolname = 'ft_person') then create role ft_person nologin; end if; end $$;
+grant ft_person to current_user with set true;
+create or replace function ft_person_id() returns bigint language sql stable as $$ select nullif(current_setting('ft.person', true), '')::bigint $$;
+create or replace function ft_desk(desk bigint) returns boolean language sql stable security definer set search_path = public as $$ select desk = ft_person_id() or exists (select 1 from account_members m where m.account_id = desk and m.user_id = ft_person_id()) $$;
+create or replace function ft_sees_user(uid bigint) returns boolean language sql stable security definer set search_path = public as $$ select ft_desk(uid) or exists (select 1 from account_members m where m.user_id = uid and ft_desk(m.account_id)) $$;
+revoke all on function ft_desk(bigint) from public;
+revoke all on function ft_sees_user(bigint) from public;
+grant execute on function ft_person_id(), ft_desk(bigint), ft_sees_user(bigint) to ft_person;
+grant select, update on users to ft_person;
+grant select on account_members to ft_person;
+grant select, insert, update, delete on collections, tracks, senders, releases, events, stems, listens, track_comments, track_shortlist, held_replies to ft_person;
+create policy person_users_read on users for select to ft_person using (ft_sees_user(id));
+create policy person_users_own on users for update to ft_person using (id = ft_person_id()) with check (id = ft_person_id());
+create policy person_members on account_members for select to ft_person using (user_id = ft_person_id() or ft_desk(account_id));
+create policy person_collections on collections for all to ft_person using (ft_desk(user_id)) with check (ft_desk(user_id));
+create policy person_tracks on tracks for all to ft_person using (ft_desk(user_id)) with check (ft_desk(user_id));
+create policy person_senders on senders for all to ft_person using (ft_desk(user_id)) with check (ft_desk(user_id));
+create policy person_releases on releases for all to ft_person using (ft_desk(user_id)) with check (ft_desk(user_id));
+create policy person_events on events for all to ft_person using (ft_desk(user_id)) with check (ft_desk(user_id));
+create policy person_held_replies on held_replies for all to ft_person using (ft_desk(account_id)) with check (ft_desk(account_id));
+create policy person_stems on stems for all to ft_person using (exists (select 1 from tracks t where t.id = stems.track_id)) with check (exists (select 1 from tracks t where t.id = stems.track_id));
+create policy person_listens on listens for all to ft_person using (exists (select 1 from tracks t where t.id = listens.track_id)) with check (actor_id = ft_person_id() and exists (select 1 from tracks t where t.id = listens.track_id));
+create policy person_comments on track_comments for all to ft_person using (exists (select 1 from tracks t where t.id = track_comments.track_id)) with check (user_id = ft_person_id() and exists (select 1 from tracks t where t.id = track_comments.track_id));
+create policy person_shortlist on track_shortlist for all to ft_person using (exists (select 1 from tracks t where t.id = track_shortlist.track_id)) with check (exists (select 1 from tracks t where t.id = track_shortlist.track_id));`,
+  },
 ];

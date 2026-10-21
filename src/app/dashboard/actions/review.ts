@@ -20,7 +20,7 @@ export type UndoToken = { trackId: number; prev: { decision: Decision | null; de
 export async function decideTrack(trackId: number, decision: Decision): Promise<UndoToken | null> {
   const u = await requireUser();
   if (!isDecision(decision)) return null;
-  const t = await ownedTrack(u.id, trackId);
+  const t = await ownedTrack(u, trackId);
   if (!t) return null;
   // An owner's or admin's call stands against a member: refresh so the desk shows it as it is.
   if (decisionLocked(u, t)) return done(), null;
@@ -34,7 +34,7 @@ export async function decideTrack(trackId: number, decision: Decision): Promise<
 /** Back to Needs review. Used when a receiver toggles off Keep or Not for me. */
 export async function clearDecision(trackId: number) {
   const u = await requireUser();
-  const t = await ownedTrack(u.id, trackId);
+  const t = await ownedTrack(u, trackId);
   if (!t || decisionLocked(u, t)) return done();
   await clearTrackDecision(t);
   await audit(u.id, "decision_cleared", trackLabel(t), t.id);
@@ -43,7 +43,7 @@ export async function clearDecision(trackId: number) {
 
 export async function undoDecision(token: UndoToken) {
   const u = await requireUser();
-  const t = await ownedTrack(u.id, Number(token?.trackId));
+  const t = await ownedTrack(u, Number(token?.trackId));
   if (!t || decisionLocked(u, t)) return done();
   await restoreDecision(u, t, token.prev ?? {}, Number(token.eventId));
   await audit(u.id, "decision_undone", trackLabel(t), t.id);
@@ -52,7 +52,7 @@ export async function undoDecision(token: UndoToken) {
 
 export async function moveTrack(trackId: number, form: FormData) {
   const u = await requireUser();
-  const t = await ownedTrack(u.id, trackId);
+  const t = await ownedTrack(u, trackId);
   const target = await ownCollection(u.id, Number(form.get("collection")));
   if (!t || !target || t.collection_id === target.id) return;
   await q.run("UPDATE tracks SET collection_id = ? WHERE id = ?", target.id, t.id);
@@ -63,7 +63,7 @@ export async function moveTrack(trackId: number, form: FormData) {
 
 export async function deleteTrack(trackId: number, back: string) {
   const u = await requireRole("admin");
-  const t = await ownedTrack(u.id, trackId);
+  const t = await ownedTrack(u, trackId);
   if (!t) return;
   await removeTrack(u, t);
   await audit(u.id, "deleted_track", trackLabel(t));
@@ -86,7 +86,7 @@ export async function clearKept() {
 /** Kept tracks only: tells the sender it was played in a set. */
 export async function playedOut(trackId: number, note: string) {
   const u = await requireUser();
-  const t = await ownedTrack(u.id, trackId);
+  const t = await ownedTrack(u, trackId);
   if (!t || t.decision !== "kept") return false;
   await trackUse(u.id, "played_out");
   const ok = await markPlayedOut(u, t, String(note || ""));
@@ -110,7 +110,7 @@ export async function playedOutBatch(trackIds: number[], note: string, from: "pi
   let marked = 0;
   for (const id of (Array.isArray(trackIds) ? trackIds : []).slice(0, 50)) {
     if (allowed && !allowed.has(id)) continue;
-    const t = await ownedTrack(u.id, id);
+    const t = await ownedTrack(u, id);
     if (!t || !markableOnPrepare(t) || !(await markPlayedOut(u, t, String(note || "")))) continue;
     await audit(u.id, "played_out", trackLabel(t), t.id);
     marked++;
@@ -162,10 +162,10 @@ export async function deleteReplyTemplate(index: number): Promise<string[]> {
 export async function addNote(senderId: number, trackId: number | null, form: FormData) {
   const u = await requireUser();
   const body = String(form.get("body") || "").trim().slice(0, 4000);
-  const s = await ownedSender(u.id, senderId);
+  const s = await ownedSender(u, senderId);
   if (!body || !s) return;
   // The track must be this sender's, so a note can't be filed against someone else's music.
-  if (trackId && (await ownedTrack(u.id, trackId))?.sender_id !== s.id) return;
+  if (trackId && (await ownedTrack(u, trackId))?.sender_id !== s.id) return;
   await logEvent({ user_id: u.id, actor_id: u.actor_id, sender_id: senderId, track_id: trackId, type: "note", detail: body });
   await audit(u.id, "noted", s.name, trackId);
   done();
@@ -174,7 +174,7 @@ export async function addNote(senderId: number, trackId: number | null, form: Fo
 export async function replyToSender(senderId: number, trackId: number | null, form: FormData) {
   const u = await requireUser();
   await trackUse(u.id, "reply");
-  const s = await ownedSender(u.id, senderId);
+  const s = await ownedSender(u, senderId);
   const body = String(form.get("body") || "").trim().slice(0, 4000);
   if (!s || !body) return;
   // Replies are real email from our address: cap them so an account can't be used to mail people in bulk.
@@ -183,7 +183,7 @@ export async function replyToSender(senderId: number, trackId: number | null, fo
     return;
   }
   // Only this sender's own track: the reply email carries its private receipt link.
-  const t = trackId ? await ownedTrack(u.id, trackId) : undefined;
+  const t = trackId ? await ownedTrack(u, trackId) : undefined;
   if (trackId && t?.sender_id !== s.id) return;
   // On a team desk with approval on, a member's reply waits for the approver instead of going out.
   if (await replyNeedsApproval(u)) {
@@ -199,7 +199,7 @@ export async function replyToSender(senderId: number, trackId: number | null, fo
 /** Asks the sender for stems (emails them once) so they can upload them from their receipt page. */
 export async function askForStems(trackId: number) {
   const u = await requireUser();
-  const t = await ownedTrack(u.id, trackId);
+  const t = await ownedTrack(u, trackId);
   if (!t) return;
   await requestStems(u, t);
   await audit(u.id, "stems_requested", trackLabel(t), t.id);
@@ -209,7 +209,7 @@ export async function askForStems(trackId: number) {
 /** Set prep on a kept track: energy (1–5, or null) and labelled cue points. */
 export async function savePrep(trackId: number, energy: number | null, cues: { at: number; label: string }[]) {
   const u = await requireUser();
-  const t = await ownedTrack(u.id, trackId);
+  const t = await ownedTrack(u, trackId);
   if (!t) return;
   const e = energy && Number.isInteger(energy) && energy >= 1 && energy <= 5 ? energy : null;
   const clean = parseCues(JSON.stringify(cues), t.duration);
@@ -219,7 +219,7 @@ export async function savePrep(trackId: number, energy: number | null, cues: { a
 
 export async function blockSender(senderId: number, blocked: boolean) {
   const u = await requireRole("admin");
-  const s = await ownedSender(u.id, senderId);
+  const s = await ownedSender(u, senderId);
   if (!s) return;
   await setBlocked(u, s, !!blocked);
   await audit(u.id, blocked ? "blocked" : "unblocked", s.name);
@@ -236,7 +236,7 @@ export async function decideRelease(releaseId: string, decision: Decision) {
     releaseId,
   );
   for (const { id } of tracks) {
-    const t = await ownedTrack(u.id, id);
+    const t = await ownedTrack(u, id);
     if (t) await decide(u, t, decision);
   }
   await trackUse(u.id, "decide");

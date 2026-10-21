@@ -57,16 +57,16 @@ export function readAccessToken(token: string | null | undefined, at = now()) {
   return got.length === want.length && crypto.timingSafeEqual(got, want) ? { userId, session } : null;
 }
 
-/** The account behind a request's Bearer token, if that app session is still live. */
+/** The account behind a request's Bearer token, if that app session is still live. The app always works the person's
+ * own desk, so they are its owner and the one acting (as `currentUser()` gives for your own desk on the web). */
 export async function appUser(req: Request): Promise<User | null> {
   const t = readAccessToken(req.headers.get("authorization")?.replace(/^Bearer\s+/i, ""));
   if (!t) return null;
   const cols = USER_COLUMNS.split(", ").map((c) => `u.${c}`).join(", ");
-  return (
-    (await q.get<User>(
-      `SELECT ${cols} FROM sessions s JOIN users u ON u.id = s.user_id
-       WHERE s.token_hash = ? AND s.user_id = ? AND s.kind = 'app' AND s.expires_at > ? AND u.suspended_at IS NULL`,
-      t.session, t.userId, now(),
-    )) ?? null
+  const u = await q.get<Omit<User, "actor_id" | "actor_name" | "role">>(
+    `SELECT ${cols} FROM sessions s JOIN users u ON u.id = s.user_id
+     WHERE s.token_hash = ? AND s.user_id = ? AND s.kind = 'app' AND s.expires_at > ? AND u.suspended_at IS NULL`,
+    t.session, t.userId, now(),
   );
+  return u ? { ...u, actor_id: u.id, actor_name: u.name, role: "owner" } : null;
 }

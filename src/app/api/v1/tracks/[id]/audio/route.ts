@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 export async function GET(req: Request, ctx: RouteContext<"/api/v1/tracks/[id]/audio">) {
   const u = await appUser(req);
   if (!u) return unauthorized();
-  const t = await ownedTrack(u.id, Number((await ctx.params).id));
+  const t = await ownedTrack(u, Number((await ctx.params).id));
   if (!t?.file_key) return fail("Not found", 404);
   const store = await storage();
   const signed = await store.signedGetUrl(t.file_key, { contentType: t.mime, expiresIn: 3600 });
