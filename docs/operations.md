@@ -116,6 +116,8 @@ So a storage outage can delay a deletion but can never lose track of a file. Wit
 | Storage errors | Incidents "could not be deleted" / upload failures; Cloudflare R2 status | Queued deletions retry automatically once R2 is back |
 | Leaked admin access | Admin log | Remove the address from `ADMIN_EMAILS`, sign that account out everywhere, then rotate `APP_SECRET` |
 
+**After any incident users could see** (site down, lost or wrong data, emails to the wrong people, a security problem): write a short postmortem in `docs/evidence/YYYY-MM-DD-incident-<what>.md` within a week. Cover what happened and when (times in UTC), who was affected and for how long, how we found out, what fixed it, why it happened, and the one or two changes that stop it happening again, each added to `docs/06-plan.md`. Facts only: no blame, and no private links, tokens or personal data. Mark the incident handled in ops once it's written.
+
 ## Rotating secrets
 
 - **`APP_SECRET`:** breaks every unsubscribe link already sent, any upload in progress, and admin "view as" sessions. Do it deliberately, then redeploy. Use a fresh random value of 32+ characters. Keep Production and Preview different.
