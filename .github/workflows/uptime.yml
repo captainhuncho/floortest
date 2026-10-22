@@ -18,3 +18,10 @@ jobs:
           body=$(curl -fsS --max-time 20 --retry 2 --retry-delay 10 https://floortest.app/api/health)
           echo "$body"
           echo "$body" | grep -q '"ok":true'
+      # The virus scanner (scanner/, Cloudflare Containers, one instance): uploads are refused while it's down, and the
+      # app's own health check only covers it with the cron secret, so check its public /health here too.
+      - name: Virus scanner answers
+        run: |
+          body=$(curl -fsS --max-time 20 --retry 2 --retry-delay 10 https://floortest-scanner.maxwelladjavon.workers.dev/health)
+          echo "$body"
+          echo "$body" | grep -q '"clamd":true'
