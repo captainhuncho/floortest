@@ -24,6 +24,8 @@ type Event = { type?: string; data?: { email_id?: string; to?: string[] | string
 /**
  * Delivery reports from Resend: delivered, delayed, bounced or marked as spam. Each one updates its email on Admin → Emails.
  * A permanent bounce or a spam report stops further email to that address. Needs RESEND_WEBHOOK_SECRET.
+ * Each event (svix-id) is acted on once: it's recorded in the same transaction as its changes, so a retried or replayed
+ * report changes nothing and raises no second incident (Codex review, 19 Oct).
  */
 export async function POST(req: Request) {
   const secret = process.env.RESEND_WEBHOOK_SECRET;
@@ -42,30 +44,37 @@ export async function POST(req: Request) {
   const id = e.data?.email_id;
   if (!delivery || !id) return NextResponse.json({ ignored: true });
 
-  // A later "delayed" never overwrites a final result.
-  const row = await q.get<{ id: number; to_email: string; subject: string }>(
-    `UPDATE outbox SET delivery = ?, delivery_at = ? WHERE provider_id = ? AND (? <> 'delayed' OR delivery IN ('', 'delayed')) RETURNING id, to_email, subject`,
-    delivery,
-    now(),
-    id,
-    delivery,
-  );
-  const to = (row?.to_email ?? (Array.isArray(e.data?.to) ? e.data?.to[0] : e.data?.to) ?? "").trim().toLowerCase();
+  const to = (Array.isArray(e.data?.to) ? e.data?.to[0] : e.data?.to) ?? "";
   const permanent = delivery === "bounced" && (e.data?.bounce?.type ?? "Permanent").toLowerCase() !== "transient";
-  if (to && (permanent || delivery === "complained")) {
-    const reason = delivery === "complained" ? "complained" : "bounced";
-    await q.run(
-      "INSERT INTO email_suppressions (email, reason, detail, created_at) VALUES (?,?,?,?) ON CONFLICT (email) DO NOTHING",
-      to,
-      reason,
-      (e.data?.bounce?.message ?? "").slice(0, 300),
+  const reason = delivery === "complained" ? "complained" : permanent ? "bounced" : null;
+  const done = await q.tx(async (db) => {
+    const fresh = await db.get("INSERT INTO webhook_receipts (provider, event_id, received_at) VALUES ('resend', ?, ?) ON CONFLICT DO NOTHING RETURNING event_id", h.get("svix-id"), now());
+    if (!fresh) return null;
+    // A later "delayed" never overwrites a final result.
+    const row = await db.get<{ id: number; to_email: string; subject: string }>(
+      `UPDATE outbox SET delivery = ?, delivery_at = ? WHERE provider_id = ? AND (? <> 'delayed' OR delivery IN ('', 'delayed')) RETURNING id, to_email, subject`,
+      delivery,
       now(),
+      id,
+      delivery,
     );
+    const email = (row?.to_email ?? to).trim().toLowerCase();
+    if (email && reason)
+      await db.run(
+        "INSERT INTO email_suppressions (email, reason, detail, created_at) VALUES (?,?,?,?) ON CONFLICT (email) DO NOTHING",
+        email,
+        reason,
+        (e.data?.bounce?.message ?? "").slice(0, 300),
+        now(),
+      );
+    return { email, subject: row?.subject ?? "" };
+  });
+  if (!done) return NextResponse.json({ duplicate: true });
+  if (done.email && reason)
     await recordIncident(
       "email_failed",
-      `${reason === "complained" ? "Marked as spam" : "Bounced"}: ${to.replace(/^(.{2}).*@/, "$1…@")}. No more email goes to this address.`,
-      row?.subject ?? "",
+      `${reason === "complained" ? "Marked as spam" : "Bounced"}: ${done.email.replace(/^(.{2}).*@/, "$1…@")}. No more email goes to this address.`,
+      done.subject,
     );
-  }
   return NextResponse.json({ ok: true });
 }
