@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { roleOn, teamsOn } from "@/lib/account-members";
 import { now, q } from "@/lib/db";
 import { env } from "@/lib/env";
+import { fileAccess } from "@/lib/file-access";
 import { WEB_IDLE_MS } from "@/lib/sessions";
 
 /**
@@ -59,13 +60,9 @@ export async function offlineFile(token: string, at = now()): Promise<{ fileKey:
   );
   if (!live) return null;
   if (g.deskId !== g.actorId && !((await teamsOn(g.deskId)) && (await roleOn(g.deskId, g.actorId)))) return null;
-  const t = await q.get<{ file_key: string | null; mime: string }>(
-    `SELECT t.file_key, t.mime FROM tracks t JOIN users u ON u.id = t.user_id
-     WHERE t.id = ? AND t.user_id = ? AND t.deleted_at IS NULL AND t.decision = 'kept' AND t.set_cleared_at IS NULL AND u.suspended_at IS NULL`,
-    g.trackId,
-    g.deskId,
-  );
-  if (!t?.file_key) return null;
+  const desk = await q.get<{ id: number; plan: string }>("SELECT id, plan FROM users WHERE id = ? AND suspended_at IS NULL", g.deskId);
+  const f = await fileAccess(desk, "offline", g.trackId);
+  if (!f) return null;
   const left = Math.floor((g.expiresAt - at) / 1000);
-  return left > 0 ? { fileKey: t.file_key, mime: t.mime, expiresIn: Math.min(STORAGE_LINK_SECONDS, left) } : null;
+  return left > 0 ? { fileKey: f.key, mime: f.mime, expiresIn: Math.min(STORAGE_LINK_SECONDS, f.maxLinkSeconds, left) } : null;
 }

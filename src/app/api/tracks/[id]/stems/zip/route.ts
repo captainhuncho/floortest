@@ -14,7 +14,7 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/tracks/[id]/ste
   const user = await currentUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
   if (!(await featureOn("stems", user))) return new Response("Not found", { status: 404 });
-  const t = await ownedTrack(user.id, Number((await ctx.params).id));
+  const t = await ownedTrack(user, Number((await ctx.params).id));
   const stems = t ? await stemsFor(t.id) : [];
   if (!t || !stems.length) return new Response("Not found", { status: 404 });
   const folder = safeName(`${t.artist} - ${t.title} (stems)`);

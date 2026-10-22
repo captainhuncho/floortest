@@ -92,9 +92,9 @@ export async function answerHeldReply(heldId: number, send: boolean, form: FormD
   const u = await requireUser();
   const h = await decideHeld(u, heldId, send ? "sent" : "rejected").catch(() => undefined);
   if (!h) return done();
-  const s = await ownedSender(u.id, h.sender_id);
+  const s = await ownedSender(u, h.sender_id);
   if (send && s) {
-    const t = h.track_id ? await ownedTrack(u.id, h.track_id) : undefined;
+    const t = h.track_id ? await ownedTrack(u, h.track_id) : undefined;
     const body = String(form.get("body") || "").trim().slice(0, 4000) || h.body;
     await reply(u, s, t, body);
   }

@@ -12,7 +12,7 @@ export async function GET(req: Request, ctx: RouteContext<"/api/tracks/[id]/audi
   const user = await currentUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
   const id = Number((await ctx.params).id);
-  const t = await ownedTrack(user.id, id);
+  const t = await ownedTrack(user, id);
   if (!t?.file_key) return new Response("Not found", { status: 404 });
   const store = await storage();
 

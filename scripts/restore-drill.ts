@@ -2,19 +2,20 @@
  * Restore drill: loads a nightly backup into a brand-new, throwaway in-memory database (never production)
  * and checks every table comes back with the same row count.
  *   BACKUP_KEY=… npx tsx scripts/restore-drill.ts path/to/db-YYYY-MM-DDTHHMM.json.gz.enc
- * (BACKUP_KEY: the same key the server uses, from your password manager)
+ * (BACKUP_KEY: the same key the server uses, from your password manager; after a key change, the old one in
+ *  BACKUP_OLD_KEYS, comma-separated. The backup names the key it needs.)
  * Download the file from the backups/ folder in the storage bucket first. Run it after schema changes too.
  */
 import { readFileSync } from "node:fs";
 import { gunzipSync } from "node:zlib";
 import { PGlite } from "@electric-sql/pglite";
 import { MIGRATIONS } from "../src/lib/db/migrations";
-import { backupSecret, openBackup } from "../src/lib/backup-crypto";
+import { backupSecrets, openBackup } from "../src/lib/backup-crypto";
 
 async function main() {
   const file = process.argv[2];
   if (!file) throw new Error("Give the path to a backup .json.gz");
-  const dump = JSON.parse(gunzipSync(openBackup(readFileSync(file), backupSecret())).toString()) as { created_at: string; tables: Record<string, Record<string, unknown>[]> };
+  const dump = JSON.parse(gunzipSync(openBackup(readFileSync(file), backupSecrets())).toString()) as { created_at: string; tables: Record<string, Record<string, unknown>[]> };
 
   const pg = await PGlite.create();
   await pg.exec("create table schema_migrations (id text primary key, applied_at bigint not null)");

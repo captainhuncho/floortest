@@ -15,13 +15,13 @@ type Item =
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
-  const s = await ownedSender(user.id, Number((await params).id));
+  const s = await ownedSender(user, Number((await params).id));
   return { title: `${s?.name ?? "Contact"} — FloorTest` };
 }
 
 export default async function Contact({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
-  const s = await ownedSender(user.id, Number((await params).id));
+  const s = await ownedSender(user, Number((await params).id));
   if (!s) notFound();
   const tracks = (await q.all<Track & { collection_name: string | null }>(`SELECT t.*, c.name AS collection_name FROM tracks t LEFT JOIN collections c ON c.id = t.collection_id
        WHERE t.sender_id = ? ORDER BY t.created_at DESC`, s.id));

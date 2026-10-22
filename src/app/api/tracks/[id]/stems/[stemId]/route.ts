@@ -16,7 +16,7 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/tracks/[id]/ste
   if (!user) return new Response("Unauthorized", { status: 401 });
   if (!(await featureOn("stems", user))) return new Response("Not found", { status: 404 });
   const { id, stemId } = await ctx.params;
-  const t = await ownedTrack(user.id, Number(id));
+  const t = await ownedTrack(user, Number(id));
   const stem = t && (await q.get<Stem>("SELECT * FROM stems WHERE id = ? AND track_id = ?", Number(stemId), t.id));
   if (!stem) return new Response("Not found", { status: 404 });
   const { body, size } = await (await storage()).stream(stem.file_key);

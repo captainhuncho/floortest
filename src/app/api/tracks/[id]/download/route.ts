@@ -18,7 +18,7 @@ export async function GET(req: Request, ctx: RouteContext<"/api/tracks/[id]/down
   if (!fromThisSite(req.headers)) return new Response(OTHER_SITE, { status: 403 });
   const user = await currentUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
-  const t = await ownedTrack(user.id, Number((await ctx.params).id));
+  const t = await ownedTrack(user, Number((await ctx.params).id));
   if (!t?.file_key) return new Response("Not found", { status: 404 });
   const { body, size } = await (await storage()).stream(t.file_key);
 
