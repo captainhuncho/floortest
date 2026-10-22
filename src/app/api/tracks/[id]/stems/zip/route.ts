@@ -1,6 +1,5 @@
+import { fileAccess } from "@/lib/file-access";
 import { currentUser } from "@/lib/auth";
-import { ownedTrack } from "@/lib/desk";
-import { featureOn } from "@/lib/features";
 import { safeName } from "@/lib/crate";
 import { stemsFor } from "@/lib/stems";
 import { storage } from "@/lib/storage";
@@ -13,8 +12,8 @@ export const maxDuration = 300;
 export async function GET(_req: Request, ctx: RouteContext<"/api/tracks/[id]/stems/zip">) {
   const user = await currentUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
-  if (!(await featureOn("stems", user))) return new Response("Not found", { status: 404 });
-  const t = await ownedTrack(user, Number((await ctx.params).id));
+  const f = await fileAccess(user, "stems", Number((await ctx.params).id));
+  const t = f?.track;
   const stems = t ? await stemsFor(t.id) : [];
   if (!t || !stems.length) return new Response("Not found", { status: 404 });
   const folder = safeName(`${t.artist} - ${t.title} (stems)`);

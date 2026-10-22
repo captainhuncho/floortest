@@ -1,5 +1,5 @@
 import "server-only";
-import { q, type Track } from "@/lib/db";
+import { asPerson, q, type Track } from "@/lib/db";
 import { featureOn } from "@/lib/features";
 import { IMAGE_TYPES, type ImageKind } from "@/lib/images";
 
@@ -33,13 +33,15 @@ const PLAY_LINK_SECONDS = 3600;
 const OFFLINE_LINK_SECONDS = 300;
 
 export async function fileAccess(
-  desk: { id: number; plan: string } | null | undefined,
+  desk: { id: number; plan: string; actor_id?: number } | null | undefined,
   action: FileAction,
   trackId: number,
   stemId?: number,
 ): Promise<FileGrant | null> {
   if (!desk || !Number.isSafeInteger(trackId) || trackId <= 0) return null;
-  const track = await q.get<Track>("SELECT * FROM tracks WHERE id = ? AND user_id = ? AND deleted_at IS NULL", trackId, desk.id);
+  const find = () => q.get<Track>("SELECT * FROM tracks WHERE id = ? AND user_id = ? AND deleted_at IS NULL", trackId, desk.id);
+  // A signed-in person's request is also checked by the per-person database rules (migration 0097, `asPerson`).
+  const track = desk.actor_id ? await asPerson(desk.actor_id, find) : await find();
   if (!track) return null;
   switch (action) {
     case "play":
