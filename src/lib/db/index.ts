@@ -1,27 +1,63 @@
 import "server-only";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { getDb, type Queryable } from "./client";
 import { ACCOUNT_TYPES, type AccountType } from "../account-types";
 
 export { dataDir } from "./client";
 export type { Queryable } from "./client";
 
+/* Per-person rules (migration 0097): inside `asPerson`, every query (library code included) runs as the database role
+ * `ft_person` with the person's id set for that transaction, so the database itself only shows rows on desks they may
+ * work. Outside it, queries use the app's own login as before. */
+const personScope = new AsyncLocalStorage<{ person: number } | null>();
+
+/** Runs `fn` with every query in it limited by the per-person rules to what `person` (the signed-in person) may see. */
+export function asPerson<T>(person: number, fn: () => Promise<T>): Promise<T> {
+  if (!Number.isSafeInteger(person) || person <= 0) throw new Error("asPerson needs a signed-in person's id");
+  return personScope.run({ person }, fn);
+}
+
+/** Leaves the per-person rules for work that spans people (system jobs, emails to others, logs). Keep it narrow. */
+export function asSystem<T>(fn: () => Promise<T>): Promise<T> {
+  return personScope.run(null, fn);
+}
+
+const enterPerson = (t: Queryable, person: number) =>
+  t.run("SELECT set_config('role', 'ft_person', true), set_config('ft.person', ?, true)", String(person));
+
+async function scoped<T>(work: (db: Queryable) => Promise<T>): Promise<T> {
+  const db = await getDb();
+  const scope = personScope.getStore();
+  if (!scope) return work(db);
+  return db.tx(async (t) => {
+    await enterPerson(t, scope.person);
+    return work(t);
+  });
+}
+
 /** App-wide query helpers. Every call is async; the connection is opened and migrated lazily. */
 export const q = {
   async all<T>(sql: string, ...args: unknown[]) {
-    return (await getDb()).all<T>(sql, ...args);
+    return scoped((db) => db.all<T>(sql, ...args));
   },
   async get<T>(sql: string, ...args: unknown[]) {
-    return (await getDb()).get<T>(sql, ...args);
+    return scoped((db) => db.get<T>(sql, ...args));
   },
   async run(sql: string, ...args: unknown[]) {
-    return (await getDb()).run(sql, ...args);
+    return scoped((db) => db.run(sql, ...args));
   },
   async tx<T>(fn: (q: Queryable) => Promise<T>) {
-    return (await getDb()).tx(fn);
+    const db = await getDb();
+    const scope = personScope.getStore();
+    if (!scope) return db.tx(fn);
+    return db.tx(async (t) => {
+      await enterPerson(t, scope.person);
+      return fn(t);
+    });
   },
   /** Scalar COUNT(*) helper. */
   async count(sql: string, ...args: unknown[]) {
-    return (await (await getDb()).get<{ n: number }>(sql, ...args))?.n ?? 0;
+    return (await scoped((db) => db.get<{ n: number }>(sql, ...args)))?.n ?? 0;
   },
 };
 

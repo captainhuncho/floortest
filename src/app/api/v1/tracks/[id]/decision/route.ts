@@ -14,7 +14,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/v1/tracks/[id]/
   if (!(await allow("app_decision", String(u.id), 600, 3_600_000))) return fail("Too many changes. Try again shortly.", 429);
   const decision = (await body(req)).decision;
   if (!isDecision(decision)) return fail("Choose kept or passed.", 400);
-  const t = await ownedTrack(u.id, Number((await ctx.params).id));
+  const t = await ownedTrack(u, Number((await ctx.params).id));
   if (!t) return fail("Not found", 404);
   await decide(u, t, decision);
   return json({ ok: true });

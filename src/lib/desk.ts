@@ -2,7 +2,7 @@
 import "server-only";
 import { emailText } from "./email-copy";
 import crypto from "node:crypto";
-import { now, q, USER_COLUMNS, type Collection, type Queryable, type Sender, type Track, type User } from "./db";
+import { asPerson, now, q, USER_COLUMNS, type Collection, type Queryable, type Sender, type Track, type User } from "./db";
 import { APP_URL, sendMail } from "./mail";
 import { planLimit } from "./plan-store";
 import { switchOn } from "./switches";
@@ -110,14 +110,21 @@ export function pausedMessage(u: Pick<User, "name" | "pause_until" | "tz">) {
   return `${u.name} is taking a break from submissions${until}.`;
 }
 
-export async function ownedTrack(userId: number, trackId: number) {
+/** The desk being worked (`id`) and the signed-in person working it (`actor_id`), as `currentUser()` returns them. */
+type DeskActor = Pick<User, "id"> & { actor_id: number };
+
+/** A live track on this desk. Checked twice: by the query, and by the per-person rules as the signed-in person. */
+export async function ownedTrack(desk: DeskActor, trackId: number) {
   if (!Number.isSafeInteger(trackId)) return undefined;
-  return q.get<Track>("SELECT * FROM tracks WHERE id = ? AND user_id = ? AND deleted_at IS NULL", trackId, userId);
+  return asPerson(desk.actor_id, () =>
+    q.get<Track>("SELECT * FROM tracks WHERE id = ? AND user_id = ? AND deleted_at IS NULL", trackId, desk.id),
+  );
 }
 
-export async function ownedSender(userId: number, senderId: number) {
+/** A sender on this desk, checked the same two ways. */
+export async function ownedSender(desk: DeskActor, senderId: number) {
   if (!Number.isSafeInteger(senderId)) return undefined;
-  return q.get<Sender>("SELECT * FROM senders WHERE id = ? AND user_id = ?", senderId, userId);
+  return asPerson(desk.actor_id, () => q.get<Sender>("SELECT * FROM senders WHERE id = ? AND user_id = ?", senderId, desk.id));
 }
 
 /* ───────────────────────── Intake ───────────────────────── */
