@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { recordIncident } from "@/lib/incidents";
 import { cleanupRecords, purgeExpired } from "@/lib/retention";
-import { cronAuthorized, recordRun } from "@/lib/cron";
+import { cronAuthorized, recordRun, withJobLease } from "@/lib/cron";
 import { warnExpiring } from "@/lib/notify";
 import { runBackup } from "@/lib/backup";
 import { runVaultCopy } from "@/lib/vault";
@@ -16,6 +16,12 @@ export const maxDuration = 300;
 export async function GET(req: Request) {
   if (!cronAuthorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const started = Date.now();
+  // Never two copies at once (two backups, two deletion passes over the same rows).
+  const out = await withJobLease("purge", () => runPurge(started));
+  return out ?? NextResponse.json({ skipped: "already running" });
+}
+
+async function runPurge(started: number) {
   try {
     const records = await cleanupRecords();
     // Backup next. If it fails, no tracks are deleted tonight: retention waits for a night with a good backup.

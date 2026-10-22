@@ -40,6 +40,34 @@ export async function recordRun(job: JobName, startedAt: number, ok: boolean, re
     .catch((e) => console.error("[cron] could not record run", e));
 }
 
+/** Longer than any run can last (the routes' maxDuration is 300 s), so a lease outlives its run but not a crash by much. */
+export const LEASE_MS = 6 * 60_000;
+
+/**
+ * Runs `job` only if no other copy of it is running (Codex review, 19 Oct). The lease is a row in app_state that a second
+ * call can't take until the first one finishes or its lease runs out (a crashed run frees it after LEASE_MS). Returns
+ * null when another copy holds it; the caller reports "skipped" and records no run.
+ */
+export async function withJobLease<T>(job: JobName, run: () => Promise<T>, at = Date.now()): Promise<T | null> {
+  const owner = crypto.randomUUID();
+  const key = `lease_${job}`;
+  const got = await q.get(
+    `INSERT INTO app_state (key, value, updated_at) VALUES (?, ?, ?)
+     ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at WHERE app_state.updated_at < ?
+     RETURNING key`,
+    key,
+    owner,
+    at,
+    at - LEASE_MS,
+  );
+  if (!got) return null;
+  try {
+    return await run();
+  } finally {
+    await q.run("DELETE FROM app_state WHERE key = ? AND value = ?", key, owner).catch((e) => console.error("[cron] could not free lease", e));
+  }
+}
+
 export async function lastRuns() {
   const rows = await q.all<{ key: string; value: string }>("SELECT key, value FROM app_state WHERE key IN ('last_run_purge', 'last_run_digest')");
   const get = (k: string) => {
