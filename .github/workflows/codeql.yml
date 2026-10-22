@@ -1,0 +1,42 @@
+# Code scanning: GitHub's CodeQL reads the JavaScript/TypeScript source for security problems (injection, unsafe
+# redirects, path traversal and the like) on every push and pull request to main or mobile-next, and once a week so
+# new queries also cover code that hasn't changed. Findings appear under the repository's Security tab.
+# The repository is private, so results need a paid GitHub plan with Code Security, or a public repository (owner's
+# decision, docs/06-plan.md B5); without it the upload step fails. Actions are pinned to full commit SHAs; the tag is in the comment beside each one.
+name: CodeQL
+on:
+  push:
+    branches: [main, mobile-next]
+  pull_request:
+    branches: [main, mobile-next]
+  schedule:
+    - cron: "23 4 * * 1"
+  workflow_dispatch: {}
+permissions: {}
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  analyze:
+    name: Analyze (javascript-typescript)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          languages: javascript-typescript
+          build-mode: none
+          queries: security-extended
+      - name: Analyze
+        uses: github/codeql-action/analyze@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          category: /language:javascript-typescript

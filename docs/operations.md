@@ -91,7 +91,7 @@ So a storage outage can delay a deletion but can never lose track of a file. Wit
 - **Scheduled jobs never overlap:** each job takes a lease (`lease_<job>` in `app_state`, 6 minutes) before it runs; a second call while one runs answers `{"skipped":"already running"}` and records nothing. A crashed run frees its lease after 6 minutes.
 - **Webhooks act once:** each Resend delivery report is recorded by its `svix-id` in `webhook_receipts` in the same transaction as its changes; a retried or replayed report answers `{"duplicate":true}` and changes nothing (kept 30 days).
 - **Health check:** `/api/health` is liveness: `{"ok":true}` when the database answers (the uptime checks use it). With the cron secret (`Authorization: Bearer $CRON_SECRET`) it is readiness: it also checks storage (a real storage error such as wrong keys or a wrong bucket, never just a missing file), the virus scanner (`checks.scanner`: ok, down or off), the scheduled jobs (`checks.jobs`: failed, late, or never run a day after install) and configuration (email, `BACKUP_KEY`, a half-set recovery copy, the scanner), and answers 503 with `ok:false` while anything would break production. On the live site uploads are refused while the scanner is missing or down (never accepted unscanned); each refusal shows as "Virus check unavailable" in Ops → Incidents.
-- **To add:** an external uptime monitor on `/` and `/api/health`.
+- **Uptime:** `.github/workflows/uptime.yml` checks `/` and `/api/health` every 30 minutes; a failed run emails the repository owner. A paid external monitor (UptimeRobot) is on the launch list.
 
 ## Security
 
@@ -117,6 +117,8 @@ So a storage outage can delay a deletion but can never lose track of a file. Wit
 | Backup missing (red on Overview) | Admin → Incidents "Nightly database backup failed"; R2 credentials | Fix and rerun: in Vercel → Cron Jobs, run `/api/cron/purge` |
 | Storage errors | Incidents "could not be deleted" / upload failures; Cloudflare R2 status | Queued deletions retry automatically once R2 is back |
 | Leaked admin access | Admin log | Remove the address from `ADMIN_EMAILS`, sign that account out everywhere, then rotate `APP_SECRET` |
+
+**After any incident users could see** (site down, lost or wrong data, emails to the wrong people, a security problem): write a short postmortem in `docs/evidence/YYYY-MM-DD-incident-<what>.md` within a week. Cover what happened and when (times in UTC), who was affected and for how long, how we found out, what fixed it, why it happened, and the one or two changes that stop it happening again, each added to `docs/06-plan.md`. Facts only: no blame, and no private links, tokens or personal data. Mark the incident handled in ops once it's written.
 
 ## Rotating secrets
 
