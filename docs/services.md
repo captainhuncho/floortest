@@ -71,4 +71,4 @@ Last updated 13 Oct 2026.
 
 ## Old, to remove
 
-- **Supabase**: the database before Neon. Projects **floortest** (`crghwblbuodxhsfgeppw`), **floortest-preview** (`azvsdmrnwunbpdyitoji`) and an older one (`culzghp…`, paused 29 Sep) are no longer used and cost nothing; the owner deletes them (from 13 Oct).
+- **Supabase**: the database before Neon. Projects **floortest** (`crghwblbuodxhsfgeppw`) and **floortest-preview** (`azvsdmrnwunbpdyitoji`) deleted by the owner on 22 Oct. Preview's `DATABASE_URL` had still pointed at **floortest-preview**, so every Preview build failed at the migration step (`tenant/user postgres.azvsdmrnwunbpdyitoji not found`) until the owner set it to a Neon preview database the same day; that database started empty (tables from the migrations, testers sign up again). Before deleting any service, check every environment's settings (Production and Preview) for its address.
