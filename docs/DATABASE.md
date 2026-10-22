@@ -82,7 +82,8 @@ PostgreSQL stores metadata and private object keys. Storage contains audio, stem
 ## Connection and performance guidance
 
 - Production Vercel/serverless traffic uses Neon's pooled connection string.
-- Every table has row-level security on and no policies (the app connects as the owner, which RLS skips; any other role sees nothing). A new table's migration must enable it; `npm run check:perms` fails otherwise.
+- Every table has row-level security on (the app connects as the owner, which RLS skips; any other role sees nothing). A new table's migration must enable it; `npm run check:perms` fails otherwise.
+- Per-person policies for the role `ft_person` (migration `0097_person_rules`) on users, account_members, collections, tracks, senders, releases, events, stems, listens, track_comments, track_shortlist and held_replies: a person sees only rows on their own desk or a team desk they belong to. Code opts in with `asPerson` (`src/lib/db`); details in [02-technical.md](02-technical.md), Limits and guards. A table granted to `ft_person` needs a policy for it, or `check:perms` fails.
 - Do not create an unbounded connection per request.
 - Avoid N+1 queries on track, sender and collection lists.
 - Check query plans before adding indexes or denormalized counters.

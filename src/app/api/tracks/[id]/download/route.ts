@@ -1,7 +1,7 @@
-import { fileAccess } from "@/lib/file-access";
 import { currentUser } from "@/lib/auth";
 import { audit, trackLabel } from "@/lib/audit";
 import { markDownloaded } from "@/lib/review";
+import { ownedTrack } from "@/lib/desk";
 import { crateFileName } from "@/lib/crate";
 import { OTHER_SITE, fromThisSite } from "@/lib/same-site";
 import { storage } from "@/lib/storage";
@@ -18,10 +18,9 @@ export async function GET(req: Request, ctx: RouteContext<"/api/tracks/[id]/down
   if (!fromThisSite(req.headers)) return new Response(OTHER_SITE, { status: 403 });
   const user = await currentUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
-  const f = await fileAccess(user, "download", Number((await ctx.params).id));
-  if (!f) return new Response("Not found", { status: 404 });
-  const t = f.track;
-  const { body, size } = await (await storage()).stream(f.key);
+  const t = await ownedTrack(user, Number((await ctx.params).id));
+  if (!t?.file_key) return new Response("Not found", { status: 404 });
+  const { body, size } = await (await storage()).stream(t.file_key);
 
   const counted = body.pipeThrough(
     new TransformStream<Uint8Array, Uint8Array>({

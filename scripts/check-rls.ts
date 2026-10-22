@@ -21,6 +21,14 @@ async function main() {
       where n.nspname = 'public' and c.relkind in ('r', 'p')
       order by c.relname`,
   );
+  // Per-person rules (0097): every table the `ft_person` role may touch needs a policy for it, so a grant can't
+  // quietly open a table without saying whose rows are whose.
+  const { rows: granted } = await pg.query<{ name: string; policies: number }>(
+    `select g.table_name as name,
+            (select count(*)::int from pg_policies p where p.schemaname = 'public' and p.tablename = g.table_name and 'ft_person' = any(p.roles)) as policies
+       from (select distinct table_name from information_schema.role_table_grants where grantee = 'ft_person' and table_schema = 'public') g
+      order by 1`,
+  );
   await pg.close();
 
   const open = rows.filter((r) => !r.rls).map((r) => r.name);
@@ -29,7 +37,12 @@ async function main() {
     console.error("Add `alter table <name> enable row level security;` to the migration that creates each one.");
     process.exit(1);
   }
-  console.log(`Row-level security check: all ${rows.length} tables have it on.`);
+  const unruled = granted.filter((g) => g.policies === 0).map((g) => g.name);
+  if (!granted.length || unruled.length) {
+    console.error(granted.length ? `ft_person may use ${unruled.join(", ")} with no policy saying whose rows are whose.` : "ft_person has no tables: migration 0097 missing?");
+    process.exit(1);
+  }
+  console.log(`Row-level security check: all ${rows.length} tables have it on; per-person rules on ${granted.length}.`);
 }
 
 main().catch((e) => {
