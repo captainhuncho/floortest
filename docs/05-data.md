@@ -8,7 +8,7 @@ Table-by-table detail, query rules, migrations and backups: `docs/DATABASE.md`. 
 |---|---|---|---|
 | Accounts, tracks' details, decisions, messages, logs | Postgres (Neon) | London | until deleted (see retention) |
 | Audio, stems, covers, collection art, track artwork | Cloudflare R2, private bucket | EU/US edge | with its track/account |
-| Outgoing email copies (sign-in codes and private links stored hidden) | `outbox` table + Resend | Resend (US) | per Resend retention |
+| Outgoing email copies (sign-in codes and private links stored hidden; the real text of an email still waiting to send is kept sealed with a key from `APP_SECRET` and erased once it has gone or given up) | `outbox` table + Resend | Resend (US) | per Resend retention |
 | Error reports | Sentry (browser reports only after Accept on the cookie banner; server reports always, without IP or personal data) | US | 90 days |
 | Visit stats | Vercel Analytics (no cookies; only after Accept on the cookie banner) | US | per Vercel |
 
@@ -27,7 +27,7 @@ Files are never public: the app hands out short-lived signed links after checkin
 | Plans | `plans`, `plan_requests` | org name, link, notes |
 | Growth | `waitlist`, `invites`, `newsletter_subscribers`, `contact_messages`, `reopen_alerts` ("email me when it reopens": sender email + receiver, sent rows deleted after 30 days, unanswered after a year; in data copies and erasure) | name, email, links |
 | Ops | `ops_members`, `admin_sessions`, `admin_log`, `account_notes`, `partner_notes`, `incidents`, `job_runs`, `switches`, `site_content*` | staff emails, notes about users |
-| Abuse/safety | `webhook_receipts` (provider event IDs already acted on, 30 days, no personal data), `request_claims` (fingerprints of once-only actions such as replies, 24 hours, no message text), `rate_events`, `platform_blocks`, `takedowns`, `protected_names`, `email_suppressions`, `storage_deletions`, `vault_copies` (which stored files are in the recovery bucket) | IPs, emails (rate events deleted within 3 days) |
+| Abuse/safety | `webhook_receipts` (provider event IDs already acted on, 30 days, no personal data), `request_claims` (fingerprints of once-only actions such as replies, 24 hours, no message text), `file_digests` (each stored file's SHA-256, size, last check and status; a mismatch holds the file back), `file_reservations` (storage keys of cover, artwork and site-image uploads until the database points to them; checked nightly after a week, no personal data), `rate_events`, `platform_blocks`, `takedowns`, `protected_names`, `email_suppressions`, `storage_deletions`, `vault_copies` (which stored files are in the recovery bucket) | IPs, emails (rate events deleted within 3 days) |
 
 ## Who can see what
 

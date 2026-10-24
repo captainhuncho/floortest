@@ -8,6 +8,8 @@ import { activeCollection } from "@/lib/desk";
 import { imageKind, IMAGE_TYPES as TYPES } from "@/lib/images";
 import { optimizeImage } from "@/lib/image-optimize";
 import { storage } from "@/lib/storage";
+import { reserveFile, settleFile } from "@/lib/file-reservations";
+import { recordDigest } from "@/lib/file-digests";
 
 export const runtime = "nodejs";
 
@@ -37,8 +39,12 @@ export async function POST(req: Request, ctx: RouteContext<"/api/collection-art/
   if (!opt) return NextResponse.json({ error: "We couldn't read that image. Try another JPG, PNG or WebP." }, { status: 415 });
   const store = await storage();
   const key = `collection-art/${own.c.id}-${crypto.randomBytes(6).toString("hex")}.webp`;
+  // Written down first, so a crash before the database points to it can't leave a file nobody knows about.
+  await reserveFile(key, "collection_art");
   await store.put(key, opt, TYPES.webp);
+  await recordDigest(key, opt);
   await q.run("UPDATE collections SET art_key = ? WHERE id = ?", key, own.c.id);
+  await settleFile(key);
   await discardFiles([own.c.art_key], "collection artwork replaced");
   await audit(own.user.id, "collection_updated", `${own.c.name}: artwork`);
   return NextResponse.json({ ok: true });

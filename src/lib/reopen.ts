@@ -51,7 +51,7 @@ export async function sendReopenAlerts(userId: number, { inRequest = false } = {
     const claimed = await q.run("UPDATE reopen_alerts SET sent_at = ? WHERE id = ? AND sent_at IS NULL", now(), r.id);
     if (!claimed.changes) continue;
     const mail = { userId, audience: "sender" as const, to: r.email, ...copy };
-    if (inRequest) sendMailLater(mail);
+    if (inRequest) await sendMailLater(mail);
     else if ((await sendMail(mail)).startsWith("failed")) {
       await q.run("UPDATE reopen_alerts SET sent_at = NULL WHERE id = ?", r.id);
       continue;

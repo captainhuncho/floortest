@@ -53,12 +53,12 @@ Database changes are numbered migrations in `src/lib/db/migrations.ts`. They run
 
 | When (UTC) | Job | What it does |
 |---|---|---|
-| 03:30 daily | `/api/cron/purge` | **1. Backup first.** Writes the whole database to R2 `backups/db-YYYY-MM-DD.json.gz`. If the backup fails, the job stops: nothing is deleted that night, an incident is raised, and it returns 500. **2.** Sends 7-day deletion warnings. **3.** Deletes tracks past retention (unreviewed 90 days, "not for me" 30 days), abandoned uploads, expired sessions and rate-limit records. **4.** Finalises share consents left past their 2-minute window. **5.** Retries queued file deletions |
+| 03:30 daily | `/api/cron/purge` | **1. Backup first.** Writes the whole database to R2 `backups/db-YYYY-MM-DD.json.gz`. If the backup fails, the job stops: nothing is deleted that night, an incident is raised, and it returns 500. **2.** Sends 7-day deletion warnings. **3.** Deletes tracks past retention (unreviewed 90 days, "not for me" 30 days), abandoned uploads, expired sessions and rate-limit records, and queues cover photos, collection artwork and site images that nothing points to a week after upload (`file_reservations`); after the recovery copy, fingerprints new files and re-checks old ones for 60 seconds (`file_digests`; a changed or missing file is held back and raises an urgent incident); sends emails still waiting in the outbox. **4.** Finalises share consents left past their 2-minute window. **5.** Retries queued file deletions |
 | 08:00 daily | `/api/cron/digest` | Receiver digests, 2-week nudges, and the Monday admin metrics email (counted as sent only when every admin's copy went through; a failed copy is retried on the next daily run, to that admin only, for up to 6 days) |
 
 The email jobs mark each track before sending and give it back if the send fails, so a crash or a rerun can't send the same email twice, and a failed email is retried on the next run. One receiver's failed digest never stops the others.
 
-Normal page visits also run light cleanup (sessions, rate limits, abandoned uploads), at most every 10 minutes per server. Track retention only runs in the nightly job, after a good backup.
+Normal page visits also run light cleanup (sessions, rate limits, abandoned uploads, emails waiting to be retried), at most every 10 minutes per server. Track retention only runs in the nightly job, after a good backup.
 
 ## Backups and restore
 

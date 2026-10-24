@@ -91,7 +91,7 @@ export async function answerLinkRequest(requestId: number, decision: "approve" |
   const r = await decideRequest(u, requestId, decision, { permission: permissionOf(form.get("permission")), days: daysOf(form.get("days")) }).catch(() => null);
   // Tell the person who asked. A block reads like a decline: they're never told they were blocked.
   if (r)
-    sendMailLater({
+    await sendMailLater({
       userId: u.id,
       audience: "sender",
       to: r.email,
@@ -116,7 +116,7 @@ async function tellAccounts(ownerName: string, linkId: number, userIds: number[]
   for (const id of userIds) {
     const to = await q.get<{ email: string; first_name: string | null; name: string }>("SELECT email, first_name, name FROM users WHERE id = ? AND suspended_at IS NULL", id);
     if (!to) continue;
-    sendMailLater({
+    await sendMailLater({
       userId: id,
       audience: "receiver",
       to: to.email,
