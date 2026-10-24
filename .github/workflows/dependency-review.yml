@@ -2,7 +2,9 @@
 # if the change adds a package version with a known high or critical advisory. It doesn't scan what's already
 # installed; `npm audit --omit=dev` before each push covers that.
 # The repository is private, so this needs a paid GitHub plan with Code Security, or a public repository (owner's
-# decision, docs/06-plan.md B5); without it the run fails with "not supported". Actions are pinned to full commit SHAs; the tag is in the comment beside each one.
+# decision, docs/06-plan.md B5); without it the run fails with "not supported". Until then the job is skipped: it runs
+# only when the repository variable CODE_SECURITY is "on", which the owner sets after switching Code Security on.
+# Actions are pinned to full commit SHAs; the tag is in the comment beside each one.
 name: Dependency review
 on:
   pull_request:
@@ -10,6 +12,7 @@ on:
 permissions: {}
 jobs:
   dependency-review:
+    if: vars.CODE_SECURITY == 'on'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
