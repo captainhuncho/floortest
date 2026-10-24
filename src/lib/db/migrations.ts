@@ -1644,4 +1644,38 @@ create policy person_listens on listens for all to ft_person using (exists (sele
 create policy person_comments on track_comments for all to ft_person using (exists (select 1 from tracks t where t.id = track_comments.track_id)) with check (user_id = ft_person_id() and exists (select 1 from tracks t where t.id = track_comments.track_id));
 create policy person_shortlist on track_shortlist for all to ft_person using (exists (select 1 from tracks t where t.id = track_shortlist.track_id)) with check (exists (select 1 from tracks t where t.id = track_shortlist.track_id));`,
   },
+  {
+    // Integrity (Codex review, phase B items 2 and 3; 24 Oct). Additive only: new rules are NOT VALID, so they bind every
+    // new or changed row without rechecking history, and nothing here drops or rewrites data except closing duplicate
+    // live invites (the newest stays).
+    // - tracks.upload_ref: the fingerprint of the upload a track came from, unique, so a retried "complete" returns the
+    //   same track instead of making a second one (src/lib/intake.ts completeUpload).
+    // - request_claims: one row per action that must happen once (a reply), claimed before it runs (src/lib/once.ts).
+    // - Ownership the database can check: a track's sender and collection, an event's sender and a held reply's sender
+    //   are on the same desk as the row itself.
+    // - Sizes and lengths can't go below zero; one live invite per email per team.
+    id: "0098_integrity",
+    sql: `alter table tracks add column if not exists upload_ref text;
+create unique index if not exists tracks_upload_ref on tracks(upload_ref) where upload_ref is not null;
+create table if not exists request_claims (
+  scope text not null,
+  key text not null,
+  created_at bigint not null,
+  primary key (scope, key)
+);
+create index if not exists request_claims_age on request_claims(created_at);
+alter table request_claims enable row level security;
+alter table senders add constraint senders_id_desk unique (id, user_id);
+alter table collections add constraint collections_id_desk unique (id, user_id);
+alter table tracks add constraint tracks_sender_same_desk foreign key (sender_id, user_id) references senders(id, user_id) on delete cascade not valid;
+alter table tracks add constraint tracks_collection_same_desk foreign key (collection_id, user_id) references collections(id, user_id) on delete set null (collection_id) not valid;
+alter table events add constraint events_sender_same_desk foreign key (sender_id, user_id) references senders(id, user_id) on delete cascade not valid;
+alter table held_replies add constraint held_replies_sender_same_desk foreign key (sender_id, account_id) references senders(id, user_id) on delete cascade not valid;
+alter table uploads add constraint uploads_size_ok check (size >= 0) not valid;
+alter table stems add constraint stems_size_ok check (size >= 0) not valid;
+alter table tracks add constraint tracks_duration_ok check (duration is null or duration >= 0) not valid;
+update account_invites set revoked_at = created_at where accepted_at is null and revoked_at is null
+  and id not in (select max(id) from account_invites where accepted_at is null and revoked_at is null group by account_id, lower(email));
+create unique index if not exists account_invites_one_live on account_invites(account_id, lower(email)) where accepted_at is null and revoked_at is null;`,
+  },
 ];

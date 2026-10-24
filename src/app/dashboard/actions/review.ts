@@ -5,6 +5,7 @@ import { holdReply, replyNeedsApproval } from "@/lib/account-members";
 import { redirect } from "next/navigation";
 import { trackUse } from "@/lib/usage";
 import { allow } from "@/lib/ratelimit";
+import { claimOnce } from "@/lib/once";
 import { requireUser, requireRole } from "@/lib/auth";
 import { ownedSender, ownedTrack } from "@/lib/desk";
 import { clearDecision as clearTrackDecision, decide, decisionLocked, deleteTrack as removeTrack, markPlayedOut, reply, setBlocked, undoDecision as restoreDecision } from "@/lib/review";
@@ -171,6 +172,9 @@ export async function addNote(senderId: number, trackId: number | null, form: Fo
   done();
 }
 
+/** A word-for-word repeat of a reply inside this window is treated as the same reply. */
+const REPLY_REPEAT_MS = 10 * 60_000;
+
 export async function replyToSender(senderId: number, trackId: number | null, form: FormData) {
   const u = await requireUser();
   await trackUse(u.id, "reply");
@@ -185,6 +189,9 @@ export async function replyToSender(senderId: number, trackId: number | null, fo
   // Only this sender's own track: the reply email carries its private receipt link.
   const t = trackId ? await ownedTrack(u, trackId) : undefined;
   if (trackId && t?.sender_id !== s.id) return;
+  // A double tap or a retried form must not email the sender twice: the same reply from the same person to the same
+  // sender and track goes out once in REPLY_REPEAT_MS (Codex review, phase B item 2).
+  if (!(await claimOnce("reply", [u.id, u.actor_id ?? u.id, s.id, t?.id ?? null, body], REPLY_REPEAT_MS))) return done();
   // On a team desk with approval on, a member's reply waits for the approver instead of going out.
   if (await replyNeedsApproval(u)) {
     await holdReply(u, s.id, t?.id ?? null, body);

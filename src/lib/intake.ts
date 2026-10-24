@@ -238,6 +238,9 @@ export async function claimUpload<T>(uploadId: string, receiverId: number, cols 
   throw new IntakeError("This upload expired. Please send the track again.", 410);
 }
 
+/** The fingerprint of an upload id kept on the track it made (tracks.upload_ref), never the id itself. */
+const uploadRef = (uploadId: string) => crypto.createHash("sha256").update(`upload:${uploadId}`).digest("base64url");
+
 /** Lets go of a claim when the file simply isn't there yet, so the sender's retry works. */
 export const releaseUpload = (uploadId: string) => q.run("UPDATE uploads SET claimed_at = NULL WHERE id = ?", uploadId);
 
@@ -246,6 +249,12 @@ export const releaseUpload = (uploadId: string) => q.run("UPDATE uploads SET cla
  * audio, then create the track and tell everyone.
  */
 export async function completeUpload(receiver: User, uploadId: string, analysis: { duration: number | null; bpm: number | null; peaks: number[] | null }) {
+  // Once per upload (Codex review, phase B item 2): if the response to a finished completion was lost and the browser
+  // asks again, it gets the same track back, with no second track and no second "Delivered" email. The upload id is a
+  // secret the sender's browser holds, so only its fingerprint is kept on the track.
+  const ref = uploadRef(uploadId);
+  const made = await q.get<Track>("SELECT * FROM tracks WHERE upload_ref = ? AND user_id = ? AND created_at > ?", ref, receiver.id, now() - UPLOAD_TTL);
+  if (made) return made;
   const up = await claimUpload<Upload>(uploadId, receiver.id);
   const store = await storage();
   const sharing = await switchOn("sharing");
@@ -336,8 +345,8 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
         );
       const track = (await db.get<Track>(
         `INSERT INTO tracks (user_id, collection_id, sender_id, token, title, artist, message, release_status, mix_status, genre,
-                             file_key, original_name, mime, size, duration, bpm, peaks, created_at, share_ok, release_id, sets_ok, ai_use, track_no, musical_key, isrc, batch_id, share_terms)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING *`,
+                             file_key, original_name, mime, size, duration, bpm, peaks, created_at, share_ok, release_id, sets_ok, ai_use, track_no, musical_key, isrc, batch_id, share_terms, upload_ref)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING *`,
         fresh.id,
         collection?.id ?? null,
         sender.id,
@@ -366,6 +375,7 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
         meta.batch ?? null,
         // The wording the sender agreed to (the send form shows it whenever the collection allows sharing).
         sharing && collection?.allow_sharing ? (meta.ownerCollectionId ? "owner" : SHARING_TERMS_VERSION) : null,
+        ref,
       ))!;
       // Possible duplicate: the same file (byte size and length) already on this desk, or the same
       // sender re-sending the same title. Flagged for the receiver, never blocked.

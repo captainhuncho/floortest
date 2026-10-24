@@ -41,6 +41,9 @@ export const usePlayer = () => {
 export const isTyping = (el: EventTarget | null) =>
   el instanceof HTMLElement && !!el.closest("input, textarea, select, [contenteditable]");
 
+/** The shortest gap between two fresh-link retries after a playback error. */
+const RELOAD_GAP_MS = 20_000;
+
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const audio = useRef<HTMLAudioElement | null>(null);
@@ -141,6 +144,20 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     // Sound has started (or resumed): the server starts the clock without crediting the pause before it.
     a.addEventListener("playing", () => reportListen("play"));
     a.addEventListener("ended", onEnded);
+    // The storage link lasts 5 minutes (src/lib/file-access.ts). When it runs out mid-track (a long set, or paused a
+    // while), the next chunk fails: ask the app for a fresh link and carry on from the same spot. At most once every
+    // RELOAD_GAP_MS, so a track that's really gone (deleted, or access removed) stops instead of looping.
+    let lastReload = 0;
+    a.addEventListener("error", () => {
+      const id = listened.current.id;
+      if (!id || !a.error || Date.now() - lastReload < RELOAD_GAP_MS) return;
+      lastReload = Date.now();
+      const at = a.currentTime;
+      const resume = !a.paused;
+      a.src = `/api/tracks/${id}/audio`;
+      a.addEventListener("loadedmetadata", () => (a.currentTime = at), { once: true });
+      if (resume) void a.play().catch(() => setPlaying(false));
+    });
     // Skip between tracks in the current queue from the lock screen.
     const step = (by: number) => {
       const q = queue.current;

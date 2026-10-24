@@ -16,8 +16,8 @@ export async function GET(req: Request, ctx: RouteContext<"/api/tracks/[id]/audi
   const store = await storage();
 
   const signed = await store.signedGetUrl(f.key, { contentType: f.mime, expiresIn: f.maxLinkSeconds });
-  // The signed link lasts an hour so a long track can be scrubbed to the end, but the redirect itself isn't cached: every
-  // new play asks again, so someone removed from a team (or signed out) can't start another play from a cached link.
+  // The signed link lasts 5 minutes (file-access.ts) and the redirect itself isn't cached: every new play asks again,
+  // and when the link runs out mid-track the player asks here again (Player.tsx), so access ends soon after it's taken away.
   if (signed) return new Response(null, { status: 302, headers: { Location: signed, "Cache-Control": "private, no-store" } });
 
   const head = await store.head(f.key);

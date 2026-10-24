@@ -29,7 +29,13 @@ export type FileGrant = {
   name?: string;
 };
 
-const PLAY_LINK_SECONDS = 3600;
+/**
+ * Storage links can't be withdrawn once handed out, so they are short (Codex review, phase A item 4): 5 minutes, after
+ * which the player asks this check again for a fresh one. Signing out, being removed from a team, a suspension or a
+ * deleted track therefore cuts off playback within 5 minutes, not an hour. Downloads, stems and share-page audio
+ * stream through the app and are checked on every request.
+ */
+const PLAY_LINK_SECONDS = 300;
 const OFFLINE_LINK_SECONDS = 300;
 
 export async function fileAccess(

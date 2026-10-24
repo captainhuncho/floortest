@@ -20,11 +20,13 @@ test("one deny-by-default rule decides every private file: only the desk's own, 
     ))!;
   const mine = await user("mine");
   const theirs = await user("theirs");
-  const sender = (await q.get<{ id: number }>("INSERT INTO senders (user_id, email, name, created_at) VALUES (?, 's@x.io', 'S', ?) RETURNING id", mine.id, t))!.id;
+  // Each desk's own sender: the database refuses a track filed under another desk's sender (migration 0098).
+  const senderOf = async (owner: number) => (await q.get<{ id: number }>("INSERT INTO senders (user_id, email, name, created_at) VALUES (?, 's@x.io', 'S', ?) RETURNING id", owner, t))!.id;
+  const senders = new Map([[mine.id, await senderOf(mine.id)], [theirs.id, await senderOf(theirs.id)]]);
   const track = async (owner: number, token: string, decision: string | null = null, deletedAt: number | null = null) =>
     (await q.get<{ id: number }>(
       "INSERT INTO tracks (user_id, sender_id, title, artist, token, file_key, original_name, mime, size, created_at, decision, deleted_at) VALUES (?,?,'T','A',?,?,'a.wav','audio/wav',1,?,?,?) RETURNING id",
-      owner, sender, token, `audio/${token}.wav`, t, decision, deletedAt,
+      owner, senders.get(owner), token, `audio/${token}.wav`, t, decision, deletedAt,
     ))!.id;
   const kept = await track(mine.id, "kept", "kept");
   const fresh = await track(mine.id, "fresh");
