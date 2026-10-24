@@ -150,6 +150,14 @@ export async function writeLocalUpload(key: string, body: ReadableStream<Uint8Ar
 
 /* ───────────── S3-compatible ───────────── */
 
+/**
+ * Timeouts for every call to the bucket (plan B7 item 3, 24 Oct). Without them a hung connection to R2 holds a request
+ * until the platform kills it. There's deliberately no limit on a whole request: a 250 MB stream or a stems ZIP takes
+ * as long as it takes while data keeps moving. Only a connection that can't be made in 5 s, or one where nothing moves
+ * for 30 s, is given up (the SDK then retries it, up to 3 tries in all).
+ */
+export const R2_HTTP = { connectionTimeout: 5_000, socketTimeout: 30_000 } as const;
+
 let s3Impl: Storage | undefined;
 let s3Client: import("@aws-sdk/client-s3").S3Client | undefined;
 
@@ -167,6 +175,7 @@ async function s3(): Promise<Storage> {
     // for the real file (and browsers see it as a CORS failure).
     requestChecksumCalculation: "WHEN_REQUIRED",
     responseChecksumValidation: "WHEN_REQUIRED",
+    requestHandler: R2_HTTP,
   });
   s3Client = client;
   const Bucket = c.bucket!;
