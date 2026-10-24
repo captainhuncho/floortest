@@ -2,7 +2,9 @@
 # redirects, path traversal and the like) on every push and pull request to main or mobile-next, and once a week so
 # new queries also cover code that hasn't changed. Findings appear under the repository's Security tab.
 # The repository is private, so results need a paid GitHub plan with Code Security, or a public repository (owner's
-# decision, docs/06-plan.md B5); without it the upload step fails. Actions are pinned to full commit SHAs; the tag is in the comment beside each one.
+# decision, docs/06-plan.md B5); without it the upload step fails. Until then the job is skipped: it runs only when the
+# repository variable CODE_SECURITY is "on" (Settings, Secrets and variables, Actions, Variables), which the owner sets
+# after switching Code Security on. Actions are pinned to full commit SHAs; the tag is in the comment beside each one.
 name: CodeQL
 on:
   push:
@@ -19,6 +21,7 @@ concurrency:
 jobs:
   analyze:
     name: Analyze (javascript-typescript)
+    if: vars.CODE_SECURITY == 'on'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
