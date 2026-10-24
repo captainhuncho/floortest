@@ -1,0 +1,40 @@
+# Checks on GitHub: the same ones run before every push (typecheck, lint, unit tests, permission and RLS checks,
+# production-dependency audit), on every push and pull request to main or mobile-next. They need no secrets: the
+# tests and the RLS check use an in-memory database. e2e stays local (`npm run e2e`, needs port 3000/3210 and a
+# browser). Actions are pinned to full commit SHAs; the tag is in the comment beside each one.
+name: Checks
+on:
+  push:
+    branches: [main, mobile-next]
+  pull_request:
+    branches: [main, mobile-next]
+  workflow_dispatch: {}
+permissions: {}
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Route types
+        run: npx next typegen
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run check:perms
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high

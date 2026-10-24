@@ -30,6 +30,9 @@ if (process.env.NODE_ENV === "production")
       "frame-ancestors 'none'",
     ].join("; "),
   });
+// Development keeps no CSP (fast refresh needs eval) except the framing rule, so local and e2e runs send both
+// anti-framing headers too (owner's "No clickjacking" rule, 23 Oct; tests/framing-headers.test.ts, e2e/framing.spec.ts).
+else securityHeaders.push({ key: "Content-Security-Policy", value: "frame-ancestors 'none'" });
 
 const nextConfig: NextConfig = {
   // Native/WASM database drivers load at runtime rather than being bundled.

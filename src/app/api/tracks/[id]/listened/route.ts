@@ -16,7 +16,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/tracks/[id]/lis
   const user = await currentUser();
   const session = await currentSessionHash();
   if (!user || !session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const t = await ownedTrack(user.id, Number((await ctx.params).id));
+  const t = await ownedTrack(user, Number((await ctx.params).id));
   if (!t) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const { event } = (await req.json().catch(() => ({}))) as { event?: string };
   if (event !== "play" && event !== "beat") return NextResponse.json({ error: "Bad request" }, { status: 400 });
