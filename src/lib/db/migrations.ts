@@ -1720,4 +1720,52 @@ alter table outbox add column if not exists optional int not null default 0 chec
 create unique index if not exists outbox_idem_key on outbox(idem_key) where idem_key is not null;
 create index if not exists outbox_due on outbox(next_at) where payload is not null;`,
   },
+  {
+    // An index behind every foreign key (plan B7 item 1, 24 Oct): deleting a user, sender, track or collection, and
+    // joins on these columns, no longer scan whole tables as data grows. Additive only. tests/fk-indexes.test.ts fails
+    // if a later migration adds a foreign key without one.
+    id: "0102_fk_indexes",
+    sql: `create index if not exists fk_account_actions_admin_id on account_actions(admin_id);
+create index if not exists fk_account_invites_invited_by on account_invites(invited_by);
+create index if not exists fk_account_log_actor_id on account_log(actor_id);
+create index if not exists fk_account_members_invited_by on account_members(invited_by);
+create index if not exists fk_account_notes_admin_id on account_notes(admin_id);
+create index if not exists fk_admin_log_admin_id on admin_log(admin_id);
+create index if not exists fk_announcements_admin_id on announcements(admin_id);
+create index if not exists fk_collection_links_created_by on collection_links(created_by);
+create index if not exists fk_events_actor_id on events(actor_id);
+create index if not exists fk_events_sender_id_user_id on events(sender_id, user_id);
+create index if not exists fk_feature_switches_admin_id on feature_switches(admin_id);
+create index if not exists fk_held_replies_author_id on held_replies(author_id);
+create index if not exists fk_held_replies_decided_by on held_replies(decided_by);
+create index if not exists fk_held_replies_sender_id on held_replies(sender_id);
+create index if not exists fk_held_replies_sender_id_account_id on held_replies(sender_id, account_id);
+create index if not exists fk_held_replies_track_id on held_replies(track_id);
+create index if not exists fk_link_events_track_id on link_events(track_id);
+create index if not exists fk_link_events_user_id on link_events(user_id);
+create index if not exists fk_link_recipients_added_by on link_recipients(added_by);
+create index if not exists fk_link_requests_decided_by on link_requests(decided_by);
+create index if not exists fk_link_requests_user_id on link_requests(user_id);
+create index if not exists fk_link_sessions_recipient_id on link_sessions(recipient_id);
+create index if not exists fk_link_sessions_user_id on link_sessions(user_id);
+create index if not exists fk_listens_actor_id on listens(actor_id);
+create index if not exists fk_ops_members_invited_by on ops_members(invited_by);
+create index if not exists fk_partner_notes_admin_id on partner_notes(admin_id);
+create index if not exists fk_plan_requests_decided_by on plan_requests(decided_by);
+create index if not exists fk_platform_blocks_admin_id on platform_blocks(admin_id);
+create index if not exists fk_site_content_admin_id on site_content(admin_id);
+create index if not exists fk_site_content_versions_admin_id on site_content_versions(admin_id);
+create index if not exists fk_switches_admin_id on switches(admin_id);
+create index if not exists fk_takedowns_admin_id on takedowns(admin_id);
+create index if not exists fk_track_comments_user_id on track_comments(user_id);
+create index if not exists fk_track_shortlist_user_id on track_shortlist(user_id);
+create index if not exists fk_tracks_collection_id_user_id on tracks(collection_id, user_id);
+create index if not exists fk_tracks_decided_by on tracks(decided_by);
+create index if not exists fk_tracks_sender_id_user_id on tracks(sender_id, user_id);
+create index if not exists fk_users_active_collection_id on users(active_collection_id);
+create index if not exists fk_users_plan on users(plan);
+create index if not exists fk_users_reply_approver_id on users(reply_approver_id);
+create index if not exists fk_view_tickets_admin_id on view_tickets(admin_id);
+create index if not exists fk_view_tickets_user_id on view_tickets(user_id);`,
+  },
 ];
