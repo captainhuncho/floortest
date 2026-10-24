@@ -2,6 +2,7 @@ import { q } from "@/lib/db";
 import { gatedTrack } from "@/lib/link-gate";
 import { logLinkEvent } from "@/lib/share-links";
 import { storage } from "@/lib/storage";
+import { quarantined } from "@/lib/file-digests";
 
 export const runtime = "nodejs";
 
@@ -12,7 +13,8 @@ export const runtime = "nodejs";
 export async function GET(req: Request, ctx: RouteContext<"/api/c/[token]/tracks/[id]/audio">) {
   const { token, id } = await ctx.params;
   const g = await gatedTrack(token, Number(id));
-  if (!g) return new Response("Not found", { status: 404 });
+  // Held back if the file failed its fingerprint check (src/lib/file-digests.ts).
+  if (!g || (g.track.file_key && (await quarantined(g.track.file_key)))) return new Response("Not found", { status: 404 });
   const { link, session, track: t } = g;
   const store = await storage();
   const head = await store.head(t.file_key!);

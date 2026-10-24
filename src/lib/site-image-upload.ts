@@ -5,6 +5,7 @@ import { imageKind, IMAGE_TYPES } from "./images";
 import { optimizeImage } from "./image-optimize";
 import { storage } from "./storage";
 import { reserveFile } from "./file-reservations";
+import { recordDigest } from "./file-digests";
 
 const MAX = 5 * 1024 * 1024;
 
@@ -23,5 +24,6 @@ export async function uploadSiteImage(req: Request) {
   // the nightly check removes it a week on if an edit was abandoned (src/lib/file-reservations.ts).
   await reserveFile(key, "site_image");
   await (await storage()).put(key, opt, IMAGE_TYPES.webp);
+  await recordDigest(key, opt);
   return NextResponse.json({ key });
 }

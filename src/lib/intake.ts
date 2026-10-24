@@ -16,6 +16,7 @@ import { sealUpload, storage } from "./storage";
 import { validateAudio } from "./validate";
 import { scanStored, SCAN_REFUSED, SCAN_UNAVAILABLE } from "./scan";
 import { recordIncident } from "./incidents";
+import { recordStoredDigest } from "./file-digests";
 import { activeCollection, capacity, isClosed, isFull, isPaused, pausedMessage, rewardReferral } from "./desk";
 
 const HOUR = 3_600_000;
@@ -431,6 +432,8 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
       notifyNewSubmission(receiver.id, track.id),
       capacity(receiver).then((c) => alertIfFull(receiver.id, c)),
       rewardReferral(receiver.id, sender.email),
+      // The sealed file, read back from our own storage (src/lib/file-digests.ts); anything missed is done nightly.
+      recordStoredDigest(track.file_key!),
     ]);
     for (const r of results) if (r.status === "rejected") console.error("[intake] after-save step failed", r.reason);
   });

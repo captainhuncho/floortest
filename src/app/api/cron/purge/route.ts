@@ -5,6 +5,7 @@ import { cronAuthorized, recordRun, withJobLease } from "@/lib/cron";
 import { warnExpiring } from "@/lib/notify";
 import { runBackup } from "@/lib/backup";
 import { runVaultCopy } from "@/lib/vault";
+import { runDigests } from "@/lib/file-digests";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -42,9 +43,17 @@ async function runPurge(started: number) {
       vault = { error: e instanceof Error ? e.message : String(e) };
       await recordIncident("cron_failed", "Copying files to the recovery bucket failed", e instanceof Error ? `${e.message}\n${e.stack ?? ""}` : String(e), "/api/cron/purge");
     }
+    // File fingerprints: new files first, then re-checks (src/lib/file-digests.ts). A failure never blocks the rest.
+    let digests;
+    try {
+      digests = await runDigests(60_000);
+    } catch (e) {
+      digests = { error: e instanceof Error ? e.message : String(e) };
+      await recordIncident("cron_failed", "Checking file fingerprints failed", e instanceof Error ? `${e.message}\n${e.stack ?? ""}` : String(e), "/api/cron/purge");
+    }
     const warned = await warnExpiring();
     const purged = await purgeExpired({ force: true });
-    const result = { ...records, ...purged, ...warned, backup, vault };
+    const result = { ...records, ...purged, ...warned, backup, vault, digests };
     await recordRun("purge", started, true, result);
     return NextResponse.json(result);
   } catch (e) {

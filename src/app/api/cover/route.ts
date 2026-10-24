@@ -9,6 +9,7 @@ import { storage } from "@/lib/storage";
 import { imageKind, IMAGE_TYPES as TYPES } from "@/lib/images";
 import { optimizeImage } from "@/lib/image-optimize";
 import { reserveFile, settleFile } from "@/lib/file-reservations";
+import { recordDigest } from "@/lib/file-digests";
 
 export const runtime = "nodejs";
 
@@ -37,6 +38,7 @@ export async function POST(req: Request) {
   // Written down first, so a crash before the database points to it can't leave a file nobody knows about.
   await reserveFile(key, "cover");
   await store.put(key, opt, TYPES.webp);
+  await recordDigest(key, opt);
   await q.run("UPDATE users SET cover_key = ? WHERE id = ?", key, user.id);
   await settleFile(key);
   await discardFiles([user.cover_key], "cover replaced");

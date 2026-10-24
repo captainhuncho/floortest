@@ -84,6 +84,7 @@ export async function drainDeletions(db: Queryable, store: Deleter, at: number, 
     try {
       await store.delete(file_key);
       await db.run("DELETE FROM storage_deletions WHERE file_key = ?", file_key);
+      await db.run("DELETE FROM file_digests WHERE file_key = ?", file_key);
       deleted++;
     } catch (e) {
       failed++;

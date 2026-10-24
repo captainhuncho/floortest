@@ -1691,4 +1691,19 @@ create unique index if not exists account_invites_one_live on account_invites(ac
 create index if not exists file_reservations_age on file_reservations(created_at);
 alter table file_reservations enable row level security;`,
   },
+  {
+    // File fingerprints (Codex review, phase B item 1, 24 Oct): a SHA-256 and byte size per stored file, computed by the
+    // server from its own copy; status 'mismatch' or 'missing' holds the file back (src/lib/file-digests.ts). No row
+    // means not checked yet. Storage keys and hashes only, no personal data.
+    id: "0100_file_digests",
+    sql: `create table if not exists file_digests (
+  file_key text primary key,
+  sha256 text not null,
+  size bigint not null check (size >= 0),
+  checked_at bigint not null,
+  status text not null default 'ok' check (status in ('ok', 'mismatch', 'missing'))
+);
+create index if not exists file_digests_checked on file_digests(checked_at);
+alter table file_digests enable row level security;`,
+  },
 ];

@@ -2,6 +2,7 @@ import "server-only";
 import { asPerson, q, type Track } from "@/lib/db";
 import { featureOn } from "@/lib/features";
 import { IMAGE_TYPES, type ImageKind } from "@/lib/images";
+import { quarantined } from "@/lib/file-digests";
 
 /**
  * Who may fetch which private file, decided in one place (Codex review, 19 Oct). Every receiver file route asks here:
@@ -39,6 +40,17 @@ const PLAY_LINK_SECONDS = 300;
 const OFFLINE_LINK_SECONDS = 300;
 
 export async function fileAccess(
+  desk: { id: number; plan: string; actor_id?: number } | null | undefined,
+  action: FileAction,
+  trackId: number,
+  stemId?: number,
+): Promise<FileGrant | null> {
+  const grant = await grantFor(desk, action, trackId, stemId);
+  // A file that failed its fingerprint check (changed or gone, src/lib/file-digests.ts) is held back until ops looks.
+  return grant?.key && (await quarantined(grant.key)) ? null : grant;
+}
+
+async function grantFor(
   desk: { id: number; plan: string; actor_id?: number } | null | undefined,
   action: FileAction,
   trackId: number,
