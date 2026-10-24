@@ -7,6 +7,7 @@ import { now, q } from "./db";
 import { RETAIN_PASSED_DAYS, RETAIN_UNREVIEWED_DAYS } from "./plans";
 import { UPLOAD_TTL } from "./intake";
 import { CLAIM_KEEP_MS } from "./once";
+import { reconcileFiles } from "./file-reservations";
 import { purgeLinkRecords } from "./share-links";
 
 const HOUR = 3_600_000;
@@ -84,11 +85,13 @@ export async function purgeExpired({ force = false } = {}) {
       await queueDeletion(db, abandoned.map((u) => u.file_key), "upload abandoned", t);
       await db.run(`DELETE FROM uploads WHERE id IN (${abandoned.map(() => "?").join(",")})`, ...abandoned.map((u) => u.id));
     });
+  // Covers, collection artwork and site images that nothing points to a week after upload (src/lib/file-reservations.ts).
+  const unreferenced = await reconcileFiles(t);
 
   // Retention deletes people's tracks, so it only runs from the nightly job, right after a successful backup.
   if (!force) {
     await drainNow();
-    return { expired: 0, abandoned: abandoned.length, deletions: null };
+    return { expired: 0, abandoned: abandoned.length, unreferenced, deletions: null };
   }
   // Past retention, 200 at a time (one transaction each), until none are left or the time budget is used.
   const due = `deleted_at IS NULL AND ((decision IS NULL AND created_at < ?) OR (decision = 'passed' AND decided_at < ?))`;
@@ -115,5 +118,5 @@ export async function purgeExpired({ force = false } = {}) {
   const deletions = await drainNow();
   const left = await q.count(`SELECT COUNT(*) AS n FROM tracks WHERE ${due}`, ...dueArgs);
   // deletions: files removed from storage tonight; left: tracks past retention still waiting (only if time ran out)
-  return { expired, abandoned: abandoned.length, left, deletions };
+  return { expired, abandoned: abandoned.length, unreferenced, left, deletions };
 }

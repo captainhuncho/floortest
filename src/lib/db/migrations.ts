@@ -1678,4 +1678,17 @@ update account_invites set revoked_at = created_at where accepted_at is null and
   and id not in (select max(id) from account_invites where accepted_at is null and revoked_at is null group by account_id, lower(email));
 create unique index if not exists account_invites_one_live on account_invites(account_id, lower(email)) where accepted_at is null and revoked_at is null;`,
   },
+  {
+    // Leftover uploads (Codex review, 24 Oct): a cover photo, collection artwork or site image is written down here
+    // before it is stored and crossed off once the database points to it; the nightly job queues the ones nothing
+    // points to after a week (src/lib/file-reservations.ts). No personal data: storage keys only.
+    id: "0099_file_reservations",
+    sql: `create table if not exists file_reservations (
+  file_key text primary key,
+  kind text not null check (kind in ('cover', 'collection_art', 'site_image')),
+  created_at bigint not null
+);
+create index if not exists file_reservations_age on file_reservations(created_at);
+alter table file_reservations enable row level security;`,
+  },
 ];

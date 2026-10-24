@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { imageKind, IMAGE_TYPES } from "./images";
 import { optimizeImage } from "./image-optimize";
 import { storage } from "./storage";
+import { reserveFile } from "./file-reservations";
 
 const MAX = 5 * 1024 * 1024;
 
@@ -18,6 +19,9 @@ export async function uploadSiteImage(req: Request) {
   const opt = await optimizeImage(buf, 1920).catch(() => null);
   if (!opt) return NextResponse.json({ error: "We couldn't read that image. Try another JPG, PNG or WebP." }, { status: 415 });
   const key = `site/${crypto.randomBytes(9).toString("hex")}.webp`;
+  // Written down first. The image only counts as used once a saved draft, the live page or its history mentions it;
+  // the nightly check removes it a week on if an edit was abandoned (src/lib/file-reservations.ts).
+  await reserveFile(key, "site_image");
   await (await storage()).put(key, opt, IMAGE_TYPES.webp);
   return NextResponse.json({ key });
 }
