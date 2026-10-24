@@ -3,7 +3,7 @@ import "server-only";
 import { emailText } from "./email-copy";
 import { drainNow, retireTrackFiles } from "./deletion";
 import { isDecision, logEvent, now, q, type Decision, type Sender, type Track, type User } from "./db";
-import { APP_URL, sendMailLater } from "./mail";
+import { APP_URL, deliverLater, queueMail } from "./mail";
 import { alertIfFull } from "./notify";
 import { LISTEN_BEAT_CAP_MS, listenThreshold } from "./plans";
 import { capacity, reopenCallouts } from "./desk";
@@ -43,53 +43,48 @@ export async function recordListen(user: User, t: Track, kind: "play" | "beat", 
 }
 
 /**
+ * A signal the sender sees (Listened, Downloaded, Played out): the track change, its log entry and the sender's email
+ * happen in one transaction (Codex review, phase B item 4), so the email exists exactly when the change does, and is
+ * sent from the outbox queue after the response. `change` must only match once (`… IS NULL`): a repeat does nothing.
+ */
+async function signal(user: User, t: Track, type: "played" | "downloaded" | "played_out", detail: string, change: [string, ...unknown[]], email: (s: Sender) => Promise<{ subject: string; body: string }>) {
+  const s = await senderOf(t);
+  const text = await email(s);
+  const id = await q.tx(async (db) => {
+    if (!(await db.run(...change)).changes) return null;
+    await logEvent({ user_id: user.id, actor_id: user.actor_id, sender_id: s.id, track_id: t.id, type, detail }, db);
+    return queueMail({ userId: user.id, to: s.email, secrets: [t.token], ...text }, db);
+  });
+  if (id === null) return false;
+  deliverLater(id);
+  return true;
+}
+
+/**
  * Listened: called with seconds the server has credited (recordListen), never a number from the browser. Counts once it
  * clears the published threshold.
  */
 async function markListened(user: User, t: Track, secondsHeard: number) {
   if (t.played_at) return false;
   if (!(secondsHeard >= listenThreshold(t.duration) - 0.5)) return false;
-  const r = await q.run("UPDATE tracks SET played_at = ? WHERE id = ? AND played_at IS NULL", now(), t.id);
-  if (!r.changes) return false;
-  const s = await senderOf(t);
-  await logEvent({ user_id: user.id, actor_id: user.actor_id, sender_id: s.id, track_id: t.id, type: "played", detail: `${Math.round(secondsHeard)}s` });
-  sendMailLater({
-    userId: user.id,
-    to: s.email,
-    secrets: [t.token],
-    ...(await emailText("listened", { sender: s.name, receiver: user.name, title: t.title, artist: t.artist, receipt_url: `${APP_URL}/receipt/${t.token}`, sent_url: `${APP_URL}/sent` })),
-  });
-  return true;
+  return signal(user, t, "played", `${Math.round(secondsHeard)}s`, ["UPDATE tracks SET played_at = ? WHERE id = ? AND played_at IS NULL", now(), t.id], (s) =>
+    emailText("listened", { sender: s.name, receiver: user.name, title: t.title, artist: t.artist, receipt_url: `${APP_URL}/receipt/${t.token}`, sent_url: `${APP_URL}/sent` }),
+  );
 }
 
 /** Downloaded: called only once the original file has been fully sent. */
 export async function markDownloaded(user: User, t: Track) {
-  const r = await q.run("UPDATE tracks SET downloaded_at = ? WHERE id = ? AND downloaded_at IS NULL", now(), t.id);
-  if (!r.changes) return;
-  const s = await senderOf(t);
-  await logEvent({ user_id: user.id, actor_id: user.actor_id, sender_id: s.id, track_id: t.id, type: "downloaded", detail: "" });
-  sendMailLater({
-    userId: user.id,
-    to: s.email,
-    secrets: [t.token],
-    ...(await emailText("downloaded", { sender: s.name, receiver: user.name, title: t.title, artist: t.artist, receipt_url: `${APP_URL}/receipt/${t.token}`, sent_url: `${APP_URL}/sent` })),
-  });
+  await signal(user, t, "downloaded", "", ["UPDATE tracks SET downloaded_at = ? WHERE id = ? AND downloaded_at IS NULL", now(), t.id], (s) =>
+    emailText("downloaded", { sender: s.name, receiver: user.name, title: t.title, artist: t.artist, receipt_url: `${APP_URL}/receipt/${t.token}`, sent_url: `${APP_URL}/sent` }),
+  );
 }
 
 /** The best news a sender can get: their track was played in a set. Once per track; the note is optional. */
 export async function markPlayedOut(user: User, t: Track, note: string) {
   const clean = note.replace(/\s+/g, " ").trim().slice(0, 140);
-  const r = await q.run("UPDATE tracks SET played_out_at = ?, played_out_note = ? WHERE id = ? AND played_out_at IS NULL", now(), clean, t.id);
-  if (!r.changes) return false;
-  const s = await senderOf(t);
-  await logEvent({ user_id: user.id, actor_id: user.actor_id, sender_id: s.id, track_id: t.id, type: "played_out", detail: clean });
-  sendMailLater({
-    userId: user.id,
-    to: s.email,
-    secrets: [t.token],
-    ...(await emailText("played_out", { sender: s.name, receiver: user.name, title: t.title, artist: t.artist, receipt_url: `${APP_URL}/receipt/${t.token}`, sent_url: `${APP_URL}/sent`, note: clean ? ` (${clean})` : "" })),
-  });
-  return true;
+  return signal(user, t, "played_out", clean, ["UPDATE tracks SET played_out_at = ?, played_out_note = ? WHERE id = ? AND played_out_at IS NULL", now(), clean, t.id], (s) =>
+    emailText("played_out", { sender: s.name, receiver: user.name, title: t.title, artist: t.artist, receipt_url: `${APP_URL}/receipt/${t.token}`, sent_url: `${APP_URL}/sent`, note: clean ? ` (${clean})` : "" }),
+  );
 }
 
 /* ───────────────────────── Decisions ───────────────────────── */
@@ -141,15 +136,22 @@ export async function clearDecision(t: Track) {
 }
 
 export async function reply(user: User, s: Sender, t: Track | undefined, body: string) {
-  sendMailLater({
-    userId: user.id,
-    to: s.email,
-    secrets: [t?.token],
-    subject: t ? `${user.name} replied about "${t.title}"` : `Message from ${user.name}`,
-    body: `${body}\n\n— ${user.name}${t ? `\n\nYour receipt: ${APP_URL}/receipt/${t.token}` : ""}\n\nSent via FloorTest`,
+  // The email, the track's "replied" mark and the log entry together (Codex review, phase B item 4).
+  const id = await q.tx(async (db) => {
+    if (t) await db.run("UPDATE tracks SET replied_at = COALESCE(replied_at, ?) WHERE id = ?", now(), t.id);
+    await logEvent({ user_id: user.id, actor_id: user.actor_id, sender_id: s.id, track_id: t?.id ?? null, type: "reply", detail: body }, db);
+    return queueMail(
+      {
+        userId: user.id,
+        to: s.email,
+        secrets: [t?.token],
+        subject: t ? `${user.name} replied about "${t.title}"` : `Message from ${user.name}`,
+        body: `${body}\n\n— ${user.name}${t ? `\n\nYour receipt: ${APP_URL}/receipt/${t.token}` : ""}\n\nSent via FloorTest`,
+      },
+      db,
+    );
   });
-  if (t) await q.run("UPDATE tracks SET replied_at = COALESCE(replied_at, ?) WHERE id = ?", now(), t.id);
-  await logEvent({ user_id: user.id, actor_id: user.actor_id, sender_id: s.id, track_id: t?.id ?? null, type: "reply", detail: body });
+  deliverLater(id);
 }
 
 /* ───────────────────────── Removal & retention ───────────────────────── */

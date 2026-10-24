@@ -1706,4 +1706,18 @@ alter table file_reservations enable row level security;`,
 create index if not exists file_digests_checked on file_digests(checked_at);
 alter table file_digests enable row level security;`,
   },
+  {
+    // The outbox is the send queue (Codex review, phase B item 4; src/lib/mail.ts): `payload` holds the real text, sealed
+    // with a key from APP_SECRET, until the email has gone or given up; `idem_key` is the Resend idempotency key, so a
+    // retried send can't arrive twice; `optional` marks emails a spam complaint stops. Earlier rows are already final.
+    id: "0101_outbox_queue",
+    sql: `alter table outbox add column if not exists payload text;
+alter table outbox add column if not exists idem_key text;
+alter table outbox add column if not exists attempts int not null default 0 check (attempts >= 0);
+alter table outbox add column if not exists next_at bigint;
+alter table outbox add column if not exists last_attempt_at bigint;
+alter table outbox add column if not exists optional int not null default 0 check (optional in (0, 1));
+create unique index if not exists outbox_idem_key on outbox(idem_key) where idem_key is not null;
+create index if not exists outbox_due on outbox(next_at) where payload is not null;`,
+  },
 ];

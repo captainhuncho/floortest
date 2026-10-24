@@ -2,12 +2,12 @@
 import { SHARING_TERMS_VERSION } from "./legal";
 import { discardFiles } from "@/lib/deletion";
 import "server-only";
-import { emailText } from "./email-copy";
+import { emailTemplate, fillEmail } from "./email-copy";
 import { after } from "next/server";
 import { switchOn } from "./switches";
 import crypto from "node:crypto";
 import { logEvent, now, q, USER_COLUMNS, type Collection, type Queryable, type Sender, type Track, type User } from "./db";
-import { noLinks, APP_URL, sendMailLater } from "./mail";
+import { noLinks, APP_URL, deliverLater, queueMail } from "./mail";
 import { alertIfFull, notifyNewSubmission } from "./notify";
 import { ACCEPTED_EXT, MAX_BATCH_TRACKS, MAX_RELEASE_TRACKS, MAX_UPLOAD_BYTES, RATE_PER_EMAIL_PER_DAY, RATE_PER_IP_PER_HOUR } from "./plans";
 import { folderLimit } from "./plan-store";
@@ -301,7 +301,10 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
   }
 
   const meta = JSON.parse(up.meta) as SubmissionMeta;
-  let result: { track: Track; sender: Sender; collection: Collection | undefined };
+  // The sender's "Delivered" email is written in the same transaction as their track (Codex review, phase B item 4):
+  // its wording is loaded first, so the transaction only fills it in.
+  const delivered = meta.ownerCollectionId ? null : await emailTemplate("delivered");
+  let result: { track: Track; sender: Sender; collection: Collection | undefined; mailId: number | null };
   try {
     result = await q.tx(async (db) => {
       // Serialise concurrent completions for this receiver so capacity can't be overshot.
@@ -400,32 +403,30 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
       await logEvent({ user_id: fresh.id, sender_id: sender.id, track_id: track.id, type: "submitted", detail: `${meta.ownerCollectionId ? "added by you " : ""}${collection ? `into ${collection.name}` : ""}`.trim() }, db);
       // Single use: if the upload is already gone, this completion made nothing (the transaction is undone).
       if (!(await db.run("DELETE FROM uploads WHERE id = ?", up.id)).changes) throw new IntakeError("This file was already saved.", 409);
-      return { track, sender, collection };
+      // Everything the sender typed is shown without links: this email goes to whatever address they entered.
+      const vars = {
+        sender: noLinks(sender.name),
+        receiver: fresh.name,
+        title: noLinks(track.title),
+        artist: noLinks(track.artist),
+        for_collection: collection ? ` for ${collection.name}` : "",
+        receipt_url: `${APP_URL}/receipt/${track.token}`,
+        sent_url: `${APP_URL}/sent`,
+      };
+      const mailId = delivered
+        ? await queueMail({ userId: fresh.id, to: sender.email, secrets: [track.token], subject: fillEmail(delivered.subject, vars).replace(/\s+/g, " "), body: fillEmail(delivered.body, vars) }, db)
+        : null;
+      return { track, sender, collection, mailId };
     });
   } catch (e) {
     await discard();
     throw e;
   }
 
-  const { track, sender, collection } = result;
+  const { track, sender, mailId } = result;
   // The owner added it themselves: no "Delivered" email to themselves, no new-track alert, no referral reward.
-  if (meta.ownerCollectionId) return track;
-  // Everything the sender typed is shown without links: this email goes to whatever address they entered.
-  const [sName, sTitle, sArtist] = [noLinks(sender.name), noLinks(track.title), noLinks(track.artist)];
-  sendMailLater({
-    userId: receiver.id,
-    to: sender.email,
-    secrets: [track.token],
-    ...(await emailText("delivered", {
-      sender: sName,
-      receiver: receiver.name,
-      title: sTitle,
-      artist: sArtist,
-      for_collection: collection ? ` for ${collection.name}` : "",
-      receipt_url: `${APP_URL}/receipt/${track.token}`,
-      sent_url: `${APP_URL}/sent`,
-    })),
-  });
+  if (meta.ownerCollectionId || mailId === null) return track;
+  deliverLater(mailId);
   // The track is saved: everything else happens after the sender's response, and one failure can't block the others.
   after(async () => {
     const results = await Promise.allSettled([
