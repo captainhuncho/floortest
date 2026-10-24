@@ -6,6 +6,7 @@ import { WEB_IDLE_MS } from "./sessions";
 import { now, q } from "./db";
 import { RETAIN_PASSED_DAYS, RETAIN_UNREVIEWED_DAYS } from "./plans";
 import { UPLOAD_TTL } from "./intake";
+import { CLAIM_KEEP_MS } from "./once";
 import { purgeLinkRecords } from "./share-links";
 
 const HOUR = 3_600_000;
@@ -42,6 +43,8 @@ export async function cleanupRecords(t = now(), until = Date.now() + PURGE_BUDGE
   await q.run("DELETE FROM rate_events WHERE created_at < ?", t - 2 * DAY);
   // Webhook event IDs only need to outlive the provider's retries (days), so 30 is plenty.
   await q.run("DELETE FROM webhook_receipts WHERE received_at < ?", t - 30 * DAY);
+  // Once-only claims (replies) only need to outlive their repeat window.
+  await q.run("DELETE FROM request_claims WHERE created_at < ?", t - CLAIM_KEEP_MS);
   // Expired sessions, and browser sessions nobody has used for WEB_IDLE_MS (the app's refresh tokens are exempt).
   await q.run("DELETE FROM sessions WHERE expires_at < ? OR (kind = 'web' AND COALESCE(last_seen_at, created_at) < ?)", t, t - WEB_IDLE_MS);
   await q.run("DELETE FROM password_resets WHERE expires_at < ?", t - DAY);

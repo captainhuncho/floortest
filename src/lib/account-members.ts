@@ -123,12 +123,15 @@ export async function inviteToTeam(desk: Pick<User, "id" | "role" | "actor_id" |
     throw new TeamError("They're already on the team.");
   if (await seatsUsed(desk.id) >= (await seatsFor(desk.id))) throw new TeamError("All your seats are in use. Remove someone, or ask us for extra seats.");
   if (!(await allow("team_invite", String(desk.id), 20, DAY))) throw new TeamError("Too many invites today. Try again tomorrow.");
-  await q.run("UPDATE account_invites SET revoked_at = ? WHERE account_id = ? AND email = ? AND accepted_at IS NULL AND revoked_at IS NULL", now(), desk.id, email);
   const secret = crypto.randomBytes(24).toString("base64url");
-  await q.run(
-    "INSERT INTO account_invites (account_id, email, role, token_hash, invited_by, created_at, expires_at) VALUES (?,?,?,?,?,?,?)",
-    desk.id, email, role, fingerprint(secret), desk.actor_id, now(), now() + INVITE_DAYS * DAY,
-  );
+  // A new invite replaces any live one for this email, in one step: the database allows one live invite per email.
+  await q.tx(async (db) => {
+    await db.run("UPDATE account_invites SET revoked_at = ? WHERE account_id = ? AND lower(email) = ? AND accepted_at IS NULL AND revoked_at IS NULL", now(), desk.id, email);
+    await db.run(
+      "INSERT INTO account_invites (account_id, email, role, token_hash, invited_by, created_at, expires_at) VALUES (?,?,?,?,?,?,?)",
+      desk.id, email, role, fingerprint(secret), desk.actor_id, now(), now() + INVITE_DAYS * DAY,
+    );
+  });
   return { secret, email };
 }
 

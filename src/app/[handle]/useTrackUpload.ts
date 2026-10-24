@@ -112,7 +112,7 @@ export async function uploadTrack(
       return {
         error: put === -2 ? STALLED : put === 0 ? NET : "The upload didn't go through. Please try again.",
       };
-    const finish = () =>
+    const ask = () =>
       fetch(`/api/submit/${handle}/complete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -123,6 +123,18 @@ export async function uploadTrack(
           peaks: analysis?.peaks,
         }),
       });
+    // The connection dropped before the answer came back: ask again with the same upload, which the server answers with
+    // the track it already made (never a second one), so a phone losing signal here doesn't make the sender resend.
+    const finish = async () => {
+      for (let attempt = 1; ; attempt++) {
+        try {
+          return await ask();
+        } catch (e) {
+          if (attempt > RETRIES || signal?.aborted) throw e;
+          await backOnline(attempt * 3_000, signal);
+        }
+      }
+    };
     // Retry-After: the virus check couldn't run just now and the file was kept, so ask again a few times before giving up.
     let done = await finish();
     for (let i = 0; done.status === 503 && done.headers.has("Retry-After") && i < 3 && !signal?.aborted; i++) {
