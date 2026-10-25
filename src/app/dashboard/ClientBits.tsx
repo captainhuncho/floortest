@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { QuickReplies } from "./QuickReplies";
+import type { ReplyResult } from "./actions/review";
 
 export function ConfirmButton({
   action,
@@ -75,9 +76,11 @@ export function Composer({
 }: {
   senderName: string;
   onNote: (fd: FormData) => Promise<void>;
-  onReply: (fd: FormData) => Promise<void>;
+  onReply: (fd: FormData) => Promise<ReplyResult>;
 }) {
   const [mode, setMode] = useState<"reply" | "note">("reply");
+  // What happened to the last reply (sent, waiting for approval, already sent, or not sent and why).
+  const [notice, setNotice] = useState("");
   const [pending, start] = useTransition();
   const ref = useRef<HTMLFormElement>(null);
   const area = useRef<HTMLTextAreaElement>(null);
@@ -85,12 +88,21 @@ export function Composer({
   return (
     <form
       ref={ref}
-      action={(fd) =>
+      // A plain submit, not a form action: React clears a form after its action, and a refused reply must keep its text.
+      onSubmit={(e) => {
+        e.preventDefault();
+        const fd = new FormData(e.currentTarget);
         start(async () => {
-          await (mode === "note" ? onNote(fd) : onReply(fd));
+          setNotice("");
+          if (mode === "note") await onNote(fd);
+          else {
+            const r = await onReply(fd);
+            setNotice(r.message);
+            if (r.status === "refused") return; // keep the text to try again
+          }
           ref.current?.reset();
-        })
-      }
+        });
+      }}
     >
       <div className="flex gap-1 text-sm" role="tablist">
         {(["reply", "note"] as const).map((m) => (
@@ -132,6 +144,9 @@ export function Composer({
       <button className="btn-lime btn-sm mt-2" disabled={pending}>
         {pending ? "Saving…" : mode === "note" ? "Save note" : "Send email"}
       </button>
+      <p role="status" aria-live="polite" className="mt-2 min-h-5 text-[13px] text-mute">
+        {mode === "reply" ? notice : ""}
+      </p>
     </form>
   );
 }

@@ -175,32 +175,48 @@ export async function addNote(senderId: number, trackId: number | null, form: Fo
 /** A word-for-word repeat of a reply inside this window is treated as the same reply. */
 const REPLY_REPEAT_MS = 10 * 60_000;
 
-export async function replyToSender(senderId: number, trackId: number | null, form: FormData) {
+/** What happened to a reply, for the reply box to say (owner, 25 Oct: a limited or repeated reply used to look sent). */
+/** `refused`: nothing happened, so the text stays in the box to try again; the others close it. */
+export type ReplyResult = { status: "sent" | "held" | "repeat" | "refused"; message: string };
+
+export async function replyToSender(senderId: number, trackId: number | null, form: FormData): Promise<ReplyResult> {
   const u = await requireUser();
   await trackUse(u.id, "reply");
   const s = await ownedSender(u, senderId);
   const body = String(form.get("body") || "").trim().slice(0, 4000);
-  if (!s || !body) return;
+  if (!s) return { status: "refused", message: "Not sent: that sender isn't on this desk." };
+  if (!body) return { status: "refused", message: "Write a message first." };
   // Replies are real email from our address: cap them so an account can't be used to mail people in bulk.
-  if (!(await allow("reply_user", String(u.id), 60, 3_600_000)) || !(await allow("reply_to", `${u.id}:${s.id}`, 8, 86_400_000))) {
+  const hourOk = await allow("reply_user", String(u.id), 60, 3_600_000);
+  if (!hourOk || !(await allow("reply_to", `${u.id}:${s.id}`, 8, 86_400_000))) {
     await audit(u.id, "reply_limited", s.name, trackId);
-    return;
+    return {
+      status: "refused",
+      message: hourOk
+        ? `Not sent: that's 8 replies to ${s.name} today, the most a day. Try again tomorrow.`
+        : "Not sent: that's 60 replies this hour, the most in an hour. Try again later.",
+    };
   }
   // Only this sender's own track: the reply email carries its private receipt link.
   const t = trackId ? await ownedTrack(u, trackId) : undefined;
-  if (trackId && t?.sender_id !== s.id) return;
+  if (trackId && t?.sender_id !== s.id) return { status: "refused", message: "Not sent: that track isn't on this desk." };
   // A double tap or a retried form must not email the sender twice: the same reply from the same person to the same
   // sender and track goes out once in REPLY_REPEAT_MS (Codex review, phase B item 2).
-  if (!(await claimOnce("reply", [u.id, u.actor_id ?? u.id, s.id, t?.id ?? null, body], REPLY_REPEAT_MS))) return done();
+  if (!(await claimOnce("reply", [u.id, u.actor_id ?? u.id, s.id, t?.id ?? null, body], REPLY_REPEAT_MS))) {
+    done();
+    return { status: "repeat", message: `Already sent: ${s.name} got this exact reply in the last 10 minutes.` };
+  }
   // On a team desk with approval on, a member's reply waits for the approver instead of going out.
   if (await replyNeedsApproval(u)) {
     await holdReply(u, s.id, t?.id ?? null, body);
     await audit(u.id, "reply_held", s.name, trackId);
-    return done();
+    done();
+    return { status: "held", message: `Waiting for approval. It goes to ${s.name} once it's approved.` };
   }
   await reply(u, s, t, body);
   await audit(u.id, "replied", s.name, trackId);
   done();
+  return { status: "sent", message: `Reply emailed to ${s.name}.` };
 }
 
 /** Asks the sender for stems (emails them once) so they can upload them from their receipt page. */

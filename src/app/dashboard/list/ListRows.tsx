@@ -476,14 +476,19 @@ function Expanded({ row: r, decision, onClose }: { row: ListRow; decision: Decis
       </div>
       <form
         ref={form}
-        action={(fd) =>
+        // A plain submit, not a form action: React clears a form after its action, and a refused reply keeps its text.
+        onSubmit={(e) => {
+          e.preventDefault();
+          const fd = new FormData(e.currentTarget);
           start(async () => {
-            await replyToSender(r.senderId, r.id, fd);
+            // Says what really happened; a refused reply (a limit) stays open with its text.
+            const res = await replyToSender(r.senderId, r.id, fd);
+            toast.show({ message: res.message });
+            if (res.status === "refused") return;
             form.current?.reset();
-            toast.show({ message: `Reply emailed to ${r.sender}` });
             onClose();
-          })
-        }
+          });
+        }}
       >
         <label htmlFor={`reply-${r.id}`} className="label mb-1.5 block">
           Reply to {r.sender}

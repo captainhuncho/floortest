@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { dataDir, now, q } from "./db";
 import { env } from "./env";
-import { localStoragePath, type Storage } from "./storage";
+import { localStoragePath, R2_HTTP, type Storage } from "./storage";
 import { expectedFiles } from "./storage-audit";
 
 /**
@@ -41,6 +41,7 @@ export async function vault(): Promise<Vault | null> {
     credentials: { accessKeyId: c.accessKeyId, secretAccessKey: c.secretAccessKey },
     requestChecksumCalculation: "WHEN_REQUIRED",
     responseChecksumValidation: "WHEN_REQUIRED",
+    requestHandler: R2_HTTP,
   });
   const Bucket = c.bucket;
   return (cached = {
