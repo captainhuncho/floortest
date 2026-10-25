@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { isTyping, usePlayer, type PlayerTrack } from "@/components/Player";
 import { useToast } from "@/components/Toast";
+import type { ReplyResult } from "./actions/review";
 import { QuickReplies } from "./QuickReplies";
 import { ReplyTemplates } from "./ReplyTemplates";
 import { decideTrack, undoDecision } from "./actions/review";
@@ -18,7 +19,7 @@ type Props = {
   selfHref: string;
   next: { href: string; track: PlayerTrack } | null;
   prevHref: string | null;
-  onReply: (fd: FormData) => Promise<void>;
+  onReply: (fd: FormData) => Promise<ReplyResult>;
 };
 
 export function DecisionRail({ track, senderName, selfHref, next, prevHref, onReply }: Props) {
@@ -251,14 +252,19 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
         <form
           ref={formRef}
           className="mt-3"
-          action={(fd) =>
+          // A plain submit, not a form action: React clears a form after its action, and a refused reply keeps its text.
+          onSubmit={(e) => {
+            e.preventDefault();
+            const fd = new FormData(e.currentTarget);
             start(async () => {
-              await onReply(fd);
+              // Says what really happened; a refused reply (a limit) keeps its text so nothing typed is lost.
+              const r = await onReply(fd);
+              toast.show({ message: r.message });
+              if (r.status === "refused") return;
               formRef.current?.reset();
               setReplying(false);
-              toast.show({ message: `Reply emailed to ${senderName}` });
-            })
-          }
+            });
+          }}
         >
           <label className="sr-only" htmlFor="reply-body">
             Reply to {senderName}
