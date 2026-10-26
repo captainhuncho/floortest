@@ -34,10 +34,10 @@ function wav(seconds = 1) {
   return new Uint8Array(b);
 }
 
-test("virus check in uploads: unavailable keeps the file for a retry, flagged discards it, clean lets the track in", async () => {
+test("virus check in uploads: unavailable holds the file for the next batch, flagged discards it, clean lets the track in", async () => {
   const { q } = await import("../src/lib/db");
   const { storage } = await import("../src/lib/storage");
-  const { completeUpload, IntakeError } = await import("../src/lib/intake");
+  const { completeUpload, IntakeError, UploadHeld } = await import("../src/lib/intake");
   const { USER_COLUMNS } = await import("../src/lib/db");
   const store = await storage();
   const t = Date.now();
@@ -71,17 +71,18 @@ test("virus check in uploads: unavailable keeps the file for a retry, flagged di
   process.env.SCAN_DEADLINE_MS = "500";
   const analysis = { duration: 1, bpm: null, peaks: null };
   try {
-    // Scanner down: refused with 503, no track, and the (sealed) file is still there for the retry.
+    // Scanner down: held (not refused), no track, and the (sealed) file is still there for the batch.
     await upload("up1");
-    await assert.rejects(completeUpload(receiver as never, "up1", analysis), (e: unknown) => e instanceof IntakeError && e.status === 503);
+    await assert.rejects(completeUpload(receiver as never, "up1", analysis), (e: unknown) => e instanceof UploadHeld);
     const kept = await keyOf("up1");
     assert.ok(kept && (await store.head(kept)), "the file is kept while the scanner is down");
+    assert.ok((await q.get<{ held_at: number }>("SELECT held_at FROM uploads WHERE id = 'up1'"))?.held_at, "it's marked held");
     assert.equal((await q.all("SELECT 1 FROM tracks")).length, 0);
 
-    // The retry once the scanner is back: same upload, no second send, and the track arrives.
+    // The batch once the scanner is back: same upload, no second send, and the track arrives.
     answer = "clean";
     // completeUpload ends with Next's after() (follow-up emails), which needs a real request; the track is saved before it.
-    await completeUpload(receiver as never, "up1", analysis).catch((e: Error) => assert.match(e.message, /outside a request scope/));
+    await completeUpload(receiver as never, "up1", analysis, { from: "batch" }).catch((e: Error) => assert.match(e.message, /outside a request scope/));
     assert.equal((await q.all("SELECT 1 FROM tracks")).length, 1, "the retry let the track in");
 
     // A flagged file: refused (422) and gone.

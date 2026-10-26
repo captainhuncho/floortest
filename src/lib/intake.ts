@@ -14,7 +14,7 @@ import { folderLimit } from "./plan-store";
 import { allow } from "./ratelimit";
 import { sealUpload, storage } from "./storage";
 import { validateAudio } from "./validate";
-import { scanStored, SCAN_REFUSED, SCAN_UNAVAILABLE, wakeScannerSoon } from "./scan";
+import { scannerAwake, scanStored, SCAN_REFUSED, type ScanResult } from "./scan";
 import { recordIncident } from "./incidents";
 import { recordStoredDigest } from "./file-digests";
 import { activeCollection, capacity, isClosed, isFull, isPaused, pausedMessage, rewardReferral } from "./desk";
@@ -26,6 +26,23 @@ const DAY = 24 * HOUR;
 export const UPLOAD_TTL = 2 * HOUR;
 
 /** A refusal we can show the sender. Messages stay neutral so spammers learn little. */
+/**
+ * The file is stored and checked except for the virus scan, which runs in the next batch (src/lib/held-uploads.ts):
+ * the scanner was asleep or couldn't be reached. Nothing reaches the desk until it passes; the routes answer 202.
+ */
+export const UPLOAD_HELD =
+  "Received. We're checking it for viruses, which can take up to 15 minutes. It reaches the desk as soon as it passes, and your receipt follows by email.";
+export class UploadHeld extends Error {
+  constructor() {
+    super(UPLOAD_HELD);
+  }
+}
+
+/** How long a held upload waits for the scanner before the sender is told it wasn't sent. */
+export const HELD_TTL = 24 * HOUR;
+/** Longest an upload's own request waits for an awake scanner before holding the file instead. */
+const REQUEST_SCAN_MS = 45_000;
+
 export class IntakeError extends Error {
   constructor(
     message: string,
@@ -135,8 +152,6 @@ export async function startOwnerUpload(owner: User, collectionId: number, d: { f
   const id = crypto.randomBytes(24).toString("base64url");
   const key = `audio/${owner.id}/${crypto.randomUUID()}${ext}`;
   await q.run("INSERT INTO uploads (id, receiver_id, file_key, ext, size, meta, ip, created_at) VALUES (?,?,?,?,?,?,?,?)", id, owner.id, key, ext, d.size, JSON.stringify(meta), "owner", now());
-  // The virus scanner sleeps when idle: start waking it now, while the file uploads.
-  wakeScannerSoon();
   const target = await (await storage()).uploadTarget(key, ext === ".wav" ? "audio/wav" : "audio/mpeg", d.size);
   return { uploadId: id, target };
 }
@@ -212,13 +227,14 @@ export async function startUpload(receiver: User, meta: SubmissionMeta, size: nu
     throw e;
   }
   await q.run("UPDATE uploads SET checked_at = ? WHERE id = ?", now(), id);
-  // The virus scanner sleeps when idle: start waking it now, while the file uploads.
-  wakeScannerSoon();
   const target = await (await storage()).uploadTarget(key, ext === ".wav" ? "audio/wav" : "audio/mpeg", size);
   return { uploadId: id, target };
 }
 
 type Upload = { id: string; receiver_id: number; file_key: string; ext: string; size: number; meta: string; created_at: number };
+
+/** Another completion is working on this upload right now (the sender's retry, or the held-uploads batch). */
+export const BEING_SAVED = "This file is already being saved.";
 
 /** How long a completion holds its claim on an upload; after that (a crash mid-way) a retry can take it again. */
 const CLAIM_MS = 10 * 60_000;
@@ -230,16 +246,17 @@ const CLAIM_MS = 10 * 60_000;
 export async function claimUpload<T>(uploadId: string, receiverId: number, cols = "*") {
   const t = now();
   const up = await q.get<T>(
-    `UPDATE uploads SET claimed_at = ? WHERE id = ? AND receiver_id = ? AND created_at > ? AND (claimed_at IS NULL OR claimed_at < ?) RETURNING ${cols}`,
+    `UPDATE uploads SET claimed_at = ? WHERE id = ? AND receiver_id = ? AND (created_at > ? OR held_at > ?) AND (claimed_at IS NULL OR claimed_at < ?) RETURNING ${cols}`,
     t,
     uploadId,
     receiverId,
     t - UPLOAD_TTL,
+    t - HELD_TTL,
     t - CLAIM_MS,
   );
   if (up) return up;
-  if (await q.get("SELECT 1 FROM uploads WHERE id = ? AND receiver_id = ? AND created_at > ?", uploadId, receiverId, t - UPLOAD_TTL))
-    throw new IntakeError("This file is already being saved.", 409);
+  if (await q.get("SELECT 1 FROM uploads WHERE id = ? AND receiver_id = ? AND (created_at > ? OR held_at > ?)", uploadId, receiverId, t - UPLOAD_TTL, t - HELD_TTL))
+    throw new IntakeError(BEING_SAVED, 409);
   throw new IntakeError("This upload expired. Please send the track again.", 410);
 }
 
@@ -253,7 +270,13 @@ export const releaseUpload = (uploadId: string) => q.run("UPDATE uploads SET cla
  * Step 2: the browser has uploaded the file. Verify it's really there, the right size, and real
  * audio, then create the track and tell everyone.
  */
-export async function completeUpload(receiver: User, uploadId: string, analysis: { duration: number | null; bpm: number | null; peaks: number[] | null }) {
+export type Analysis = { duration: number | null; bpm: number | null; peaks: number[] | null };
+
+/**
+ * `from`: "request" (the sender's own request: a sleeping scanner isn't woken, the file is held for the next batch) or
+ * "batch" (the held-uploads job, which has woken the scanner and waits up to 150 s for it).
+ */
+export async function completeUpload(receiver: User, uploadId: string, analysis: Analysis, opts: { from?: "request" | "batch" } = {}) {
   // Once per upload (Codex review, phase B item 2): if the response to a finished completion was lost and the browser
   // asks again, it gets the same track back, with no second track and no second "Delivered" email. The upload id is a
   // secret the sender's browser holds, so only its fingerprint is kept on the track.
@@ -288,20 +311,29 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
     await discard();
     throw new IntakeError(check.reason, 415);
   }
-  // Virus check on our own scanner (off until SCAN_URL is set); nothing flagged or unchecked reaches the desk.
-  const scan = await scanStored(fileKey);
-  if (scan.verdict === "infected" || scan.verdict === "unavailable") {
-    // A flagged file goes. When the scanner can't be reached, the sealed file stays with its upload, so the sender's
-    // browser can ask again without sending it twice (the abandoned-upload clean-up removes it if they never do).
-    if (scan.verdict === "infected") await discard();
-    else await releaseUpload(up.id); // the retry has to be able to claim it again
-    await recordIncident(
-      scan.verdict === "infected" ? "upload_rejected" : "upload_failed",
-      scan.verdict === "infected" ? "Virus check flagged an upload" : "Virus check unavailable; an upload was refused",
-      scan.verdict === "infected" ? `${scan.signature} · receiver #${receiver.id}` : scan.error,
-      "upload",
+  // Virus check on our own scanner (off until SCAN_URL is set); nothing flagged or unchecked reaches the desk. A sleeping
+  // scanner isn't woken for one file: the upload is held and the next batch (every 10 minutes) checks it.
+  const from = opts.from ?? "request";
+  const asleep = from === "request" && (await scannerAwake()) === false;
+  const scan: ScanResult = asleep ? { verdict: "unavailable", error: "scanner asleep" } : await scanStored(fileKey, from === "request" ? { deadlineMs: REQUEST_SCAN_MS } : {});
+  if (scan.verdict === "infected") {
+    await discard();
+    await recordIncident("upload_rejected", "Virus check flagged an upload", `${scan.signature} · receiver #${receiver.id}`, "upload");
+    throw new IntakeError(SCAN_REFUSED, 422);
+  }
+  if (scan.verdict === "unavailable") {
+    // Held, not refused: the sealed file stays with its upload, so nobody sends it twice, and nothing reaches the desk
+    // until the batch's check passes. The claim is let go so the batch can take it.
+    await q.run(
+      "UPDATE uploads SET held_at = COALESCE(held_at, ?), held_analysis = ?, held_tries = held_tries + ?, claimed_at = NULL WHERE id = ?",
+      now(),
+      JSON.stringify(analysis),
+      from === "batch" ? 1 : 0,
+      up.id,
     );
-    throw new IntakeError(scan.verdict === "infected" ? SCAN_REFUSED : SCAN_UNAVAILABLE, scan.verdict === "infected" ? 422 : 503);
+    // Asleep is the normal case; anything else (down, too slow, misconfigured) is worth a look.
+    if (!asleep) await recordIncident("upload_failed", "Virus check unavailable; an upload is held for the next batch", scan.error, "upload");
+    throw new UploadHeld();
   }
 
   const meta = JSON.parse(up.meta) as SubmissionMeta;

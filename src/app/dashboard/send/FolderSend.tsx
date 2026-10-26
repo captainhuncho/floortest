@@ -16,8 +16,8 @@ import { AI_CHOICES, AI_HELP, Choice, MIX_CHOICES, RELEASE_CHOICES } from "../..
 
 type Item = {
   file: File; tags: Tags; state: "waiting" | "sending" | "sent" | "failed"; progress: number; error?: string; genre?: string;
-  /** The upload kept from a try whose virus check didn't finish: sending again only reruns the check. */
-  held?: string;
+  /** Received and stored, waiting for the next virus-check batch: the track and its receipt email follow. */
+  held?: boolean;
 };
 type Kind = "ep" | "album";
 
@@ -190,18 +190,19 @@ export function FolderSend({
         (p) => update(i, { progress: p }),
         abort.current.signal,
         undefined,
-        { onChecking: setScanning, heldUploadId: it.held },
+        { onChecking: setScanning },
       );
       if ("error" in r && r.error === CANCELLED) {
         update(i, { state: "waiting", progress: 0 });
         setError(sentCount > 0 ? "Transfer cancelled. Tracks already sent are on the desk; send again to finish the rest." : "Transfer cancelled. Nothing was sent.");
         break;
       }
-      update(i, "error" in r ? { state: "failed", error: r.error, held: r.heldUploadId } : { state: "sent", progress: 1, held: undefined });
+      update(i, "error" in r ? { state: "failed", error: r.error } : { state: "sent", progress: 1, held: "held" in r });
       if (!("error" in r)) {
         sentCount++;
-        // The release's cover rides on its first track that arrives; the desk shows it for the whole folder.
-        if (artwork && !artSent.current) {
+        // The release's cover rides on its first track that arrives; the desk shows it for the whole folder. A held
+        // track has no token yet, so the cover waits for the next one that arrives.
+        if ("token" in r && artwork && !artSent.current) {
           artSent.current = true;
           await sendArtwork(r.token, artwork);
         }
@@ -217,6 +218,12 @@ export function FolderSend({
           &ldquo;{release.title}&rdquo; ({items.length} tracks) sent to {receiverName}.
         </p>
         <p className="mt-2 text-sm text-mute">It arrives as one folder. Each track gets its own receipt and updates.</p>
+        {items.some((i) => i.held) && (
+          <p className="mt-2 text-sm text-mute">
+            {items.every((i) => i.held) ? "They're" : "Some are"} still being checked for viruses, which can take up to 15 minutes. Each one reaches the desk as
+            soon as it passes, and its receipt follows by email.
+          </p>
+        )}
       </div>
     );
 

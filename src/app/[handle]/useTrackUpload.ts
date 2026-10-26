@@ -17,10 +17,6 @@ const NET =
   "Network error. Your details are still here. Check your connection and try again.";
 const STALLED = "The upload stalled. Check your signal and press Send again: your details are still here.";
 
-/** The virus check didn't finish (the scanner was waking for too long): the file is kept, so Send again skips the upload. */
-export const HELD =
-  "Your file is uploaded, but our virus check is taking longer than usual, so it hasn't been sent yet. Press Send again in a minute or two: it won't upload again.";
-
 /** No progress for this long and the upload counts as stalled (a phone between masts often hangs rather than failing). */
 export const STALL_MS = 30_000;
 /** Times a dropped or stalled file is tried again by itself before the sender is asked to. */
@@ -70,11 +66,15 @@ function putFile(target: { url: string; headers: Record<string, string> }, file:
 
 /** Optional extras for one upload. */
 export type UploadOptions = {
-  /** True once the file has landed and the virus check is running (it can take up to a minute while the scanner wakes). */
+  /** True once the file has landed and the server is checking it (virus check included, usually a few seconds). */
   onChecking?: (checking: boolean) => void;
-  /** An earlier try's upload whose virus check didn't finish: the file is still stored, so only the check runs again. */
-  heldUploadId?: string;
 };
+
+/**
+ * What one upload ended as: a track (its receipt token), held (stored, waiting for the next virus-check batch while
+ * the scanner sleeps; the track and its receipt email follow within about 15 minutes), or an error to show.
+ */
+export type UploadResult = { token: string } | { held: true } | { error: string };
 
 /**
  * One track, three steps: ask the server for an upload URL (it checks the rules first), PUT the file
@@ -90,17 +90,18 @@ export async function uploadTrack(
   signal?: AbortSignal,
   onRetry?: (attempt: number, of: number) => void,
   opts: UploadOptions = {},
-): Promise<{ token: string } | { error: string; heldUploadId?: string }> {
+): Promise<UploadResult> {
   const json = async (res: Response) =>
     (await res.json().catch(() => ({}))) as {
       error?: string;
       token?: string;
+      held?: boolean;
       uploadId?: string;
       target?: { url: string; headers: Record<string, string> };
     };
 
-  /** Step 3: verify the stored file (virus check included) and make the track. `held` marks a retry of an earlier upload. */
-  const complete = async (uploadId: string, held: boolean): Promise<{ token: string } | { error: string; heldUploadId?: string } | null> => {
+  /** Step 3: verify the stored file (virus check included) and make the track. */
+  const complete = async (uploadId: string): Promise<UploadResult> => {
     const ask = () =>
       fetch(`/api/submit/${handle}/complete`, {
         method: "POST",
@@ -121,18 +122,11 @@ export async function uploadTrack(
     };
     opts.onChecking?.(true);
     try {
-      // The server already waits up to 150 s for a sleeping scanner; Retry-After means even that wasn't enough.
-      // Ask once more after a pause, then hold the file for the sender's next Send.
-      let done = await finish();
-      if (done.status === 503 && done.headers.has("Retry-After") && !signal?.aborted) {
-        await new Promise((r) => setTimeout(r, 10_000));
-        done = await finish();
-      }
+      const done = await finish();
       const finished = await json(done);
+      // 202: the virus scanner is asleep, so the stored file waits for the next check (src/lib/held-uploads.ts).
+      if (done.status === 202 && finished.held) return { held: true };
       if (done.ok && finished.token) return { token: finished.token };
-      if (done.status === 503 && done.headers.has("Retry-After")) return { error: HELD, heldUploadId: uploadId };
-      // A held upload that's gone (expired after 2 hours, or cleaned up): upload the file again instead.
-      if (held) return null;
       return { error: finished.error || "Upload failed. Your details are still here, so you can try again." };
     } finally {
       opts.onChecking?.(false);
@@ -140,10 +134,6 @@ export async function uploadTrack(
   };
 
   try {
-    if (opts.heldUploadId) {
-      const again = await complete(opts.heldUploadId, true);
-      if (again) return again;
-    }
     const start = await fetch(`/api/submit/${handle}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -170,7 +160,7 @@ export async function uploadTrack(
       return {
         error: put === -2 ? STALLED : put === 0 ? NET : "The upload didn't go through. Please try again.",
       };
-    return (await complete(started.uploadId, false)) ?? { error: "Upload failed. Your details are still here, so you can try again." };
+    return await complete(started.uploadId);
   } catch {
     return { error: NET };
   }
@@ -204,10 +194,10 @@ export type Item = {
   progress: number;
   /** Set while a dropped or stalled upload is being tried again by itself: which try, out of how many. */
   retry?: { attempt: number; of: number };
-  /** Set while the file has landed and the virus check is running. */
+  /** Set while the file has landed and the server is checking it. */
   checking?: boolean;
-  /** The upload kept from a try whose virus check didn't finish: the next Send only runs the check again. */
-  held?: string;
+  /** Received and stored, waiting for the next virus-check batch: the track and its receipt email follow. */
+  held?: boolean;
   token?: string;
   error?: string;
 };
@@ -304,14 +294,14 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
     let sentCount = items.filter((x) => x.status === "done").length;
     for (const it of items) {
       if (it.status === "done") continue;
-      patch(it.id, { status: "uploading", progress: it.held ? 0.97 : 0, error: undefined });
+      patch(it.id, { status: "uploading", progress: 0, error: undefined });
       const r = await uploadTrack(
         handle, it.file, it.analysis,
         { ...shared, batch, title: it.tags.title, artist: it.tags.artist, musical_key: it.tags.key, isrc: it.tags.isrc },
         (p) => patch(it.id, { progress: p }),
         abort.current.signal,
         (attempt, of) => patch(it.id, { retry: attempt ? { attempt, of } : undefined }),
-        { onChecking: (checking) => patch(it.id, { checking }), heldUploadId: it.held },
+        { onChecking: (checking) => patch(it.id, { checking }) },
       );
       if ("error" in r && r.error === CANCELLED) {
         patch(it.id, { status: "ready", progress: 0 });
@@ -320,12 +310,20 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
         return;
       }
       if ("error" in r) {
-        patch(it.id, { status: "error", error: r.error, held: r.heldUploadId });
+        patch(it.id, { status: "error", error: r.error });
         setError(`${it.tags.title || it.file.name}: ${r.error}`);
         setPhase("idle");
         return;
       }
-      patch(it.id, { status: "done", progress: 1, token: r.token, held: undefined });
+      if ("held" in r) {
+        // Stored and waiting for its virus check. Artwork needs the track, so it can't go with this one.
+        patch(it.id, { status: "done", progress: 1, held: true });
+        sentCount++;
+        const art = fd.get("artwork");
+        if (art instanceof File && art.size) setArtFailed(true);
+        continue;
+      }
+      patch(it.id, { status: "done", progress: 1, token: r.token });
       sentCount++;
       // Optional artwork goes with each track; the track is already sent, so a failed image never undoes that.
       const art = fd.get("artwork");

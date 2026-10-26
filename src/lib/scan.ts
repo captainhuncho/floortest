@@ -51,7 +51,9 @@ export async function scanStored(key: string, timing: ScanTiming = {}): Promise<
   const url = scanBase();
   if (scanConfigProblem()) return { verdict: "unavailable", error: "scanner not configured" };
   if (!url) return { verdict: "off" };
-  const deadline = Date.now() + (timing.deadlineMs ?? (Number(process.env.SCAN_DEADLINE_MS) || SCAN_DEADLINE_MS));
+  // SCAN_DEADLINE_MS (the local end-to-end copy) is a ceiling for every caller, the upload request's shorter wait included.
+  const ceiling = Number(process.env.SCAN_DEADLINE_MS) || SCAN_DEADLINE_MS;
+  const deadline = Date.now() + Math.min(timing.deadlineMs ?? ceiling, ceiling);
   const backoff = timing.backoffMs ?? WAKE_BACKOFF_MS;
   const pause = (attempt: number) => sleep(Math.min(backoff[Math.min(attempt, backoff.length - 1)], Math.max(0, deadline - Date.now())));
   let last = "scanner unreachable";
@@ -106,6 +108,26 @@ export async function wakeScanner(): Promise<void> {
     await r.body?.cancel().catch(() => {});
   } catch {
     // Waking is only a head start: the check itself still waits for the scanner.
+  }
+}
+
+/**
+ * Whether the scanner is running right now, asked without waking it (`/status`): true, false (asleep or stopping), or
+ * null when it can't tell (no scanner, an older scanner without /status, or no answer). An upload finished while it's
+ * asleep is held for the next batch instead of waking it (src/lib/held-uploads.ts).
+ */
+export async function scannerAwake(): Promise<boolean | null> {
+  const url = scanBase();
+  if (!url) return null;
+  try {
+    const r = await fetch(`${url}/status`, { signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS) });
+    const status = r.ok ? ((await r.json().catch(() => ({}))) as { container?: string }).container : undefined;
+    if (!r.ok) await r.body?.cancel().catch(() => {});
+    if (status === "running" || status === "healthy") return true;
+    if (status === "stopped" || status === "stopped_with_code" || status === "stopping") return false;
+    return null;
+  } catch {
+    return null;
   }
 }
 

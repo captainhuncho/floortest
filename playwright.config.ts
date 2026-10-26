@@ -33,6 +33,8 @@ const env = {
   SCAN_URL: `http://127.0.0.1:${SCANNER_PORT}`,
   SCAN_SECRET: "e2e-fake-scanner-secret-not-used-anywhere-else",
   SCAN_DEADLINE_MS: "6000",
+  // scanner-wake.spec.ts runs the held-uploads job (/api/cron/scan-held) itself, with this secret.
+  CRON_SECRET: "e2e-cron-secret-not-used-anywhere-else",
   APP_URL: `http://localhost:${PORT}`,
   APP_SECRET: "e2e-only-secret-not-used-anywhere-else-000000",
 };

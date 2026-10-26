@@ -261,10 +261,13 @@ export function SubmitForm({
   }
 
   const sentTitle = many ? `${items.length} tracks` : `“${items[0]?.tags.title}”`;
+  // Held: stored and waiting for the next virus-check batch while the scanner sleeps (src/lib/held-uploads.ts).
+  const heldCount = items.filter((it) => it.held).length;
+  const allHeld = heldCount > 0 && heldCount === items.length;
   const firstToken = items.find((it) => it.token)?.token;
 
   /* ── Done: what happened, what happens next, and the one link that matters. ── */
-  if (showDone && firstToken) {
+  if (showDone && (firstToken || heldCount > 0)) {
     return (
       <section ref={doneRef} role="status" data-picked className={`flex scroll-mt-6 flex-col gap-5 ${ENTER}`}>
         <div className="flex items-start gap-3">
@@ -276,24 +279,35 @@ export function SubmitForm({
           </span>
           <div className="min-w-0">
             <h2 className="text-[28px] font-bold leading-[1.1] tracking-[-0.5px] text-bone">
-              {sentTitle} {many ? "are" : "is"} on {receiverName}&apos;s desk.
+              {allHeld ? `${sentTitle} ${many ? "are" : "is"} received.` : <>{sentTitle} {many ? "are" : "is"} on {receiverName}&apos;s desk.</>}
             </h2>
-            <p className="mt-1.5 text-[13px] text-mute">
-              We sent {many ? "receipts" : "a receipt"} to <span className="text-bone">{account?.email ?? sender.email}</span>. Nothing else to do.
-            </p>
+            {allHeld ? (
+              <p className="mt-1.5 text-[13px] text-mute">
+                We&apos;re checking {many ? "them" : "it"} for viruses, which can take up to 15 minutes. {many ? "They reach" : "It reaches"} {receiverName}&apos;s desk as soon as {many ? "they pass" : "it passes"}, and we&apos;ll email {many ? "receipts" : "a receipt"} to <span className="text-bone">{account?.email ?? sender.email}</span>. Nothing else to do.
+              </p>
+            ) : (
+              <p className="mt-1.5 text-[13px] text-mute">
+                We sent {many ? "receipts" : "a receipt"} to <span className="text-bone">{account?.email ?? sender.email}</span>. Nothing else to do.
+                {heldCount > 0 && ` ${heldCount} ${heldCount === 1 ? "is" : "are"} still being checked for viruses (up to 15 minutes); ${heldCount === 1 ? "its receipt follows" : "their receipts follow"} by email.`}
+              </p>
+            )}
           </div>
         </div>
         <ol className="grid grid-cols-2 gap-2 border-y border-line py-3 text-[11px] font-bold uppercase tracking-[1px] sm:grid-cols-4">
           {(["Delivered", "Listened", "Downloaded", "Replied"] as const).map((step, i) => (
-            <li key={step} className={`flex items-center gap-1.5 ${i === 0 ? "text-lime" : "text-dim"}`}>
-              <span aria-hidden className={`size-1.5 rounded-full ${i === 0 ? "bg-lime" : "bg-line-2"}`} />
+            <li key={step} className={`flex items-center gap-1.5 ${i === 0 && !allHeld ? "text-lime" : "text-dim"}`}>
+              <span aria-hidden className={`size-1.5 rounded-full ${i === 0 && !allHeld ? "bg-lime" : "bg-line-2"}`} />
               {step}
-              {i === 0 && <span className="sr-only"> (done)</span>}
+              {i === 0 && !allHeld && <span className="sr-only"> (done)</span>}
             </li>
           ))}
         </ol>
         <p className={HELP}>You&apos;ll get an email at each step: when {many ? "they're" : "it's"} listened to, downloaded or replied to.</p>
-        {artFailed && <p className="text-[13px] text-mute">The artwork didn&apos;t upload. {many ? "The tracks were" : "The track was"} sent without it.</p>}
+        {artFailed && (
+          <p className="text-[13px] text-mute">
+            {heldCount > 0 ? "Artwork can't be added while a track is being checked, so it goes without it." : <>The artwork didn&apos;t upload. {many ? "The tracks were" : "The track was"} sent without it.</>}
+          </p>
+        )}
         {many && (
           <ul className="flex flex-col gap-1.5 text-[13px]" aria-label="Receipts">
             {items
@@ -308,7 +322,7 @@ export function SubmitForm({
           </ul>
         )}
         <div className="flex flex-wrap gap-2.5">
-          {!many && (
+          {!many && firstToken && (
             <Link href={`/receipt/${firstToken}`} className="btn-lime">
               View receipt
             </Link>
