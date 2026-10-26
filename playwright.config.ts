@@ -6,6 +6,7 @@ import { defineConfig, devices } from "@playwright/test";
  * Run: npm run e2e (stop any other dev server first: they'd share the .next folder).
  */
 const PORT = 3210;
+const SCANNER_PORT = 3211;
 const env = {
   DATA_DIR: ".e2e/data",
   DATABASE_URL: "",
@@ -27,6 +28,11 @@ const env = {
   SEED_TEAMS: "1",
   // The Send page is off in the beta (switch send_music); its tests switch it on (scripts/seed.ts).
   SEED_SEND_MUSIC: "1",
+  // A fake virus scanner (e2e/fake-scanner.mjs): every file is clean, but scanner-wake.spec.ts makes it sleep or stay
+  // down. The wait for a waking scanner is cut from 150 s to 6 s so those tests stay short.
+  SCAN_URL: `http://127.0.0.1:${SCANNER_PORT}`,
+  SCAN_SECRET: "e2e-fake-scanner-secret-not-used-anywhere-else",
+  SCAN_DEADLINE_MS: "6000",
   APP_URL: `http://localhost:${PORT}`,
   APP_SECRET: "e2e-only-secret-not-used-anywhere-else-000000",
 };
@@ -39,11 +45,19 @@ export default defineConfig({
   workers: 1,
   reporter: [["list"]],
   use: { baseURL: `http://localhost:${PORT}`, trace: "retain-on-failure", ...devices["Desktop Chrome"] },
-  webServer: {
-    command: `npx tsx scripts/seed.ts && npx next dev -p ${PORT}`,
-    url: `http://localhost:${PORT}/api/health`,
-    timeout: 180_000,
-    reuseExistingServer: false,
-    env,
-  },
+  webServer: [
+    {
+      command: "node e2e/fake-scanner.mjs",
+      url: `http://127.0.0.1:${SCANNER_PORT}/status`,
+      reuseExistingServer: false,
+      env: { FAKE_SCANNER_PORT: String(SCANNER_PORT), SCAN_SECRET: env.SCAN_SECRET },
+    },
+    {
+      command: `npx tsx scripts/seed.ts && npx next dev -p ${PORT}`,
+      url: `http://localhost:${PORT}/api/health`,
+      timeout: 180_000,
+      reuseExistingServer: false,
+      env,
+    },
+  ],
 });

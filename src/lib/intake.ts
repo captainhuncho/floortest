@@ -14,7 +14,7 @@ import { folderLimit } from "./plan-store";
 import { allow } from "./ratelimit";
 import { sealUpload, storage } from "./storage";
 import { validateAudio } from "./validate";
-import { scanStored, SCAN_REFUSED, SCAN_UNAVAILABLE } from "./scan";
+import { scanStored, SCAN_REFUSED, SCAN_UNAVAILABLE, wakeScannerSoon } from "./scan";
 import { recordIncident } from "./incidents";
 import { recordStoredDigest } from "./file-digests";
 import { activeCollection, capacity, isClosed, isFull, isPaused, pausedMessage, rewardReferral } from "./desk";
@@ -135,6 +135,8 @@ export async function startOwnerUpload(owner: User, collectionId: number, d: { f
   const id = crypto.randomBytes(24).toString("base64url");
   const key = `audio/${owner.id}/${crypto.randomUUID()}${ext}`;
   await q.run("INSERT INTO uploads (id, receiver_id, file_key, ext, size, meta, ip, created_at) VALUES (?,?,?,?,?,?,?,?)", id, owner.id, key, ext, d.size, JSON.stringify(meta), "owner", now());
+  // The virus scanner sleeps when idle: start waking it now, while the file uploads.
+  wakeScannerSoon();
   const target = await (await storage()).uploadTarget(key, ext === ".wav" ? "audio/wav" : "audio/mpeg", d.size);
   return { uploadId: id, target };
 }
@@ -210,6 +212,8 @@ export async function startUpload(receiver: User, meta: SubmissionMeta, size: nu
     throw e;
   }
   await q.run("UPDATE uploads SET checked_at = ? WHERE id = ?", now(), id);
+  // The virus scanner sleeps when idle: start waking it now, while the file uploads.
+  wakeScannerSoon();
   const target = await (await storage()).uploadTarget(key, ext === ".wav" ? "audio/wav" : "audio/mpeg", size);
   return { uploadId: id, target };
 }

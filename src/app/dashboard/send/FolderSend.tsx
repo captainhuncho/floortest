@@ -14,7 +14,11 @@ import { SetsPermission } from "../../[handle]/SetsPermission";
 import { GenrePicker } from "../../[handle]/GenrePicker";
 import { AI_CHOICES, AI_HELP, Choice, MIX_CHOICES, RELEASE_CHOICES } from "../../[handle]/Choice";
 
-type Item = { file: File; tags: Tags; state: "waiting" | "sending" | "sent" | "failed"; progress: number; error?: string; genre?: string };
+type Item = {
+  file: File; tags: Tags; state: "waiting" | "sending" | "sent" | "failed"; progress: number; error?: string; genre?: string;
+  /** The upload kept from a try whose virus check didn't finish: sending again only reruns the check. */
+  held?: string;
+};
 type Kind = "ep" | "album";
 
 const audio = (f: File) => /\.(wav|mp3)$/i.test(f.name);
@@ -91,6 +95,8 @@ export function FolderSend({
   const [releaseStatus, setReleaseStatus] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
+  // The current file has landed and its virus check is running (up to a minute while the scanner wakes).
+  const [scanning, setScanning] = useState(false);
   const [id] = useState(releaseId);
   const folderRef = useRef<HTMLInputElement>(null);
   const filesRef = useRef<HTMLInputElement>(null);
@@ -183,13 +189,15 @@ export function FolderSend({
         },
         (p) => update(i, { progress: p }),
         abort.current.signal,
+        undefined,
+        { onChecking: setScanning, heldUploadId: it.held },
       );
       if ("error" in r && r.error === CANCELLED) {
         update(i, { state: "waiting", progress: 0 });
         setError(sentCount > 0 ? "Transfer cancelled. Tracks already sent are on the desk; send again to finish the rest." : "Transfer cancelled. Nothing was sent.");
         break;
       }
-      update(i, "error" in r ? { state: "failed", error: r.error } : { state: "sent", progress: 1 });
+      update(i, "error" in r ? { state: "failed", error: r.error, held: r.heldUploadId } : { state: "sent", progress: 1, held: undefined });
       if (!("error" in r)) {
         sentCount++;
         // The release's cover rides on its first track that arrives; the desk shows it for the whole folder.
@@ -221,6 +229,7 @@ export function FolderSend({
         callout={callout}
         startedAt={startedAt}
         onCancel={() => abort.current?.abort()}
+        checking={scanning}
         files={items.map((it) => ({ name: it.file.name, size: it.file.size, progress: it.progress, state: it.state }))}
       />
     )}

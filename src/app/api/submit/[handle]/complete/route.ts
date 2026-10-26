@@ -5,8 +5,8 @@ import { userByHandle } from "@/lib/desk";
 import { recordIncident } from "@/lib/incidents";
 import { readAnalysis } from "@/lib/submission";
 
-/** Room for the virus check of a large file (src/lib/scan.ts) on top of the usual checks. */
-export const maxDuration = 60;
+/** Room for the virus check of a large file (src/lib/scan.ts), including waking a sleeping scanner (up to 150 s). */
+export const maxDuration = 180;
 
 export const runtime = "nodejs";
 

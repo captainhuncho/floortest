@@ -4,12 +4,14 @@ name: Uptime
 on:
   schedule:
     - cron: "*/30 * * * *"
+    # Once a day, also wake the virus scanner and check ClamAV itself (below).
+    - cron: "17 6 * * *"
   workflow_dispatch: {}
 permissions: {}
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 8
     steps:
       - name: Home page answers
         run: curl -fsS --max-time 20 --retry 2 --retry-delay 10 -o /dev/null -w "home %{http_code} in %{time_total}s\n" https://floortest.app/
@@ -19,9 +21,20 @@ jobs:
           echo "$body"
           echo "$body" | grep -q '"ok":true'
       # The virus scanner (scanner/, Cloudflare Containers, one instance): uploads are refused while it's down, and the
-      # app's own health check only covers it with the cron secret, so check its public /health here too.
-      - name: Virus scanner answers
+      # app's own health check only covers it with the cron secret, so check it here too. It sleeps after 10 idle
+      # minutes and an upload wakes it (owner, 26 Oct, to cut its cost), so the half-hourly check asks /status, which
+      # answers from the Worker without waking the container: a ping every 30 minutes would keep it awake a third of the
+      # time. Trade-off: between the daily checks, a broken image or signature load only shows on the next upload
+      # (refused and logged as an incident, never let through unscanned).
+      - name: Virus scanner reachable (without waking it)
         run: |
-          body=$(curl -fsS --max-time 20 --retry 2 --retry-delay 10 https://floortest-scanner.maxwelladjavon.workers.dev/health)
+          body=$(curl -fsS --max-time 20 --retry 2 --retry-delay 10 https://floortest-scanner.maxwelladjavon.workers.dev/status)
+          echo "$body"
+          echo "$body" | grep -q '"worker":true'
+      # Once a day (and on a manual run): wake it and wait for ClamAV, up to about 2 minutes for a cold start.
+      - name: Virus scanner wakes and ClamAV answers (daily)
+        if: github.event.schedule == '17 6 * * *' || github.event_name == 'workflow_dispatch'
+        run: |
+          body=$(curl -fsS --max-time 100 --retry 3 --retry-delay 10 --retry-all-errors https://floortest-scanner.maxwelladjavon.workers.dev/health)
           echo "$body"
           echo "$body" | grep -q '"clamd":true'

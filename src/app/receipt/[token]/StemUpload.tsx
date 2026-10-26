@@ -2,7 +2,8 @@
 
 import { useRef, useState } from "react";
 
-type Item = { name: string; status: "waiting" | "uploading" | "done" | "error"; progress: number; error?: string };
+// "checking": the file has landed and its virus check runs (up to a minute while the scanner wakes).
+type Item = { name: string; status: "waiting" | "uploading" | "checking" | "done" | "error"; progress: number; error?: string };
 
 /** The sender's side of a stems request: pick several WAV/MP3 files, each uploaded and checked in turn. */
 export function StemUpload({ token, receiver, existing, max }: { token: string; receiver: string; existing: string[]; max: number }) {
@@ -32,6 +33,7 @@ export function StemUpload({ token, receiver, existing, max }: { token: string; 
       xhr.send(file);
     });
     if (status < 200 || status >= 300) return patch(i, { status: "error", error: "The upload was interrupted." });
+    patch(i, { status: "checking" });
     const done = await post(`/api/stems/${token}/complete`, { uploadId: start.uploadId });
     patch(i, done.ok ? { status: "done", progress: 1 } : { status: "error", error: done.error || "Upload failed." });
   }
@@ -69,7 +71,7 @@ export function StemUpload({ token, receiver, existing, max }: { token: string; 
             <li key={i} className="flex items-center justify-between gap-3">
               <span className="min-w-0 truncate">{it.name}</span>
               <span className={`shrink-0 ${it.status === "error" ? "text-danger" : it.status === "done" ? "text-lime" : "text-mute"}`}>
-                {it.status === "done" ? "✓ Sent" : it.status === "error" ? it.error : it.status === "uploading" ? `${Math.round(it.progress * 100)}%` : "Waiting"}
+                {it.status === "done" ? "✓ Sent" : it.status === "error" ? it.error : it.status === "uploading" ? `${Math.round(it.progress * 100)}%` : it.status === "checking" ? "Checking for viruses, up to a minute" : "Waiting"}
               </span>
             </li>
           ))}

@@ -441,6 +441,7 @@ export function SubmitForm({
           startedAt={startedAt}
           onCancel={holding ? () => {} : cancel}
           retry={items.find((it) => it.retry)?.retry}
+          checking={items.some((it) => it.checking)}
           files={items.map((it) => ({ name: it.file.name, size: it.file.size, progress: it.progress, state: it.status === "done" ? "sent" : it.status === "uploading" ? "sending" : it.status === "error" ? "failed" : "waiting" }))}
         />
       )}
@@ -632,6 +633,7 @@ function uploadMilestone(items: Item[]) {
   if (!current) return done ? `Track ${done} sent` : "";
   const which = n > 1 ? `track ${done + 1} of ${n}` : "your track";
   if (current.retry) return `Signal dropped. Trying ${which} again, ${current.retry.attempt} of ${current.retry.of}`;
+  if (current.checking) return `Uploaded. Checking ${which} for viruses, this can take up to a minute`;
   const quarter = Math.floor(current.progress * 4) * 25;
   if (quarter > 0) return `Uploading ${which}: ${quarter} percent`;
   return `${done ? `Track ${done} sent. ` : ""}Uploading ${which}`;

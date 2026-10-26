@@ -67,6 +67,8 @@ test("virus check in uploads: unavailable keeps the file for a retry, flagged di
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", () => r()));
   process.env.SCAN_URL = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   process.env.SCAN_SECRET = "s".repeat(40);
+  // A scanner that stays down is waited for (it may be waking) until this deadline, then the upload is held.
+  process.env.SCAN_DEADLINE_MS = "500";
   const analysis = { duration: 1, bpm: null, peaks: null };
   try {
     // Scanner down: refused with 503, no track, and the (sealed) file is still there for the retry.
@@ -91,6 +93,7 @@ test("virus check in uploads: unavailable keeps the file for a retry, flagged di
     assert.equal((await q.all("SELECT 1 FROM tracks")).length, 1);
   } finally {
     delete process.env.SCAN_URL;
+    delete process.env.SCAN_DEADLINE_MS;
     server.close();
     server.closeAllConnections();
   }

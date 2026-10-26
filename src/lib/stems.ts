@@ -9,7 +9,7 @@ import { featureOn } from "./features";
 import { recentCount, record } from "./ratelimit";
 import { sealUpload, storage } from "./storage";
 import { validateAudio } from "./validate";
-import { scanStored, SCAN_REFUSED, SCAN_UNAVAILABLE } from "./scan";
+import { scanStored, SCAN_REFUSED, SCAN_UNAVAILABLE, wakeScannerSoon } from "./scan";
 import { recordIncident } from "./incidents";
 
 export type Stem = { id: number; track_id: number; file_key: string; name: string; mime: string; size: number; created_at: number };
@@ -98,6 +98,8 @@ export async function startStemUpload(token: string, fileName: string, size: num
     ip,
     now(),
   );
+  // The virus scanner sleeps when idle: start waking it now, while the file uploads.
+  wakeScannerSoon();
   const target = await (await storage()).uploadTarget(key, ext === ".wav" ? "audio/wav" : "audio/mpeg", size);
   return { uploadId: id, target };
 }
