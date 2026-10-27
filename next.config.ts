@@ -7,6 +7,9 @@ const securityHeaders = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
   { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
+  // A page we open in a new tab, or one that opens us, can't reach this window (window.opener). Google sign-in is a
+  // full-page redirect, not a popup, and Turnstile runs in an iframe, so nothing here relies on cross-window access.
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
 ];
 
 // The Content-Security-Policy (src/lib/csp.ts). Pages get it from src/proxy.ts with a fresh nonce per request, so no

@@ -17,6 +17,8 @@ test("production config sends X-Frame-Options DENY on every path and CSP frame-a
   const skipped = rules.find((r) => r.source === `/:path(${PROXY_SKIPS}.*)`);
   const csp = get(skipped, "Content-Security-Policy");
   assert.equal(csp.length, 1, "exactly one CSP for static files");
+  // Pages opened from FloorTest (or that open it) can't reach its window.
+  assert.deepEqual(get(all, "Cross-Origin-Opener-Policy"), ["same-origin"]);
   assert.match(csp[0], /(^|;\s*)frame-ancestors 'none'(;|$)/);
   assert.doesNotMatch(csp[0], /script-src[^;]*'unsafe-inline'/, "no inline scripts on static files either");
   // No rule anywhere opens framing up for a single path.
