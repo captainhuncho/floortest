@@ -205,6 +205,7 @@ Decided: a colleague is a **seat on an account** (label, radio, crew), not someo
 ## After launch
 - Collection sharing switch-on (switch `sharing`, after the lawyer's wording; see Controlled collection sharing).
 - Stems as a paid feature.
+- Targeted switches (owner, 27 Oct): built and checked on branch `targeted-switches` (migration 0104), held by the beta scope guard until the owner says "try it"; see [operations.md](operations.md), Switches.
 - Rekordbox how-to video, footer legal placement, mobile footer redesign.
 
 ## Label add-ons (idea agreed by the owner 15 Oct · not in the beta, not at launch)

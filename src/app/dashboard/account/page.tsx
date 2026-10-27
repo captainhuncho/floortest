@@ -166,13 +166,13 @@ export default async function Account() {
           <Section
             title="YOUR DESK"
             rows={[
-              ...(user.role !== "member" && (await switchOn("send_music")) ? [<Row key="s" href="/dashboard/send" icon="↑" title="Send music" />] : []),
+              ...(user.role !== "member" && (await switchOn("send_music", user)) ? [<Row key="s" href="/dashboard/send" icon="↑" title="Send music" />] : []),
               // Who can send to your link sits with the desk; team admins find it in their team section instead.
               ...(user.role === "owner" ? [<Row key="b" href="/dashboard/settings/receiving" icon="⊘" title="Receiving" sub="Blocked senders and desk rules" />] : []),
               <Row key="c" href="/dashboard/contacts" icon="☰" title="Contacts" />,
               <Row key="a" href="/dashboard/activity" icon="◷" title="Activity" />,
               <Row key="e" href="/dashboard/emails" icon="✉" title="Emails to senders" sub="Everything FloorTest told them" />,
-              ...((await switchOn("referrals")) ? [<Row key="r" href="/dashboard/referrals" icon="+" title="Referrals" sub="Invite DJs · get more active tracks" />] : []),
+              ...((await switchOn("referrals", user)) ? [<Row key="r" href="/dashboard/referrals" icon="+" title="Referrals" sub="Invite DJs · get more active tracks" />] : []),
             ]}
           />
         </div>

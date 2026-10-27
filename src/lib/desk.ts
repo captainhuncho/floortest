@@ -97,7 +97,7 @@ export const BETA_COLLECTIONS = 2;
 
 /** Whether this desk may start another collection: always with "more_collections" on, otherwise under two. */
 export async function canAddCollection(deskId: number, db: Queryable = q) {
-  if (await switchOn("more_collections")) return true;
+  if (await switchOn("more_collections", deskId)) return true;
   const n = await db.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM collections WHERE user_id = ?", deskId);
   return Number(n?.n ?? 0) < BETA_COLLECTIONS;
 }

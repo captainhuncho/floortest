@@ -1778,4 +1778,10 @@ alter table uploads add column if not exists held_analysis text;
 alter table uploads add column if not exists held_tries integer not null default 0;
 create index if not exists uploads_held on uploads(held_at) where held_at is not null;`,
   },
+  {
+    // Targeted switches (owner, 27 Oct): an optional "who sees it" rule on a feature switch (lib/switch-rules), JSON,
+    // null for everyone. Additive only: code without it reads key and on_ as before and its upsert leaves rule alone.
+    id: "0104_switch_rules",
+    sql: `alter table switches add column if not exists rule text;`,
+  },
 ];

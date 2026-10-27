@@ -38,7 +38,7 @@ const needTwoStep = (desk: Pick<User, "role" | "totp_enabled_at">) => {
  * (account) id wherever one is known; without it, only the switch counts.
  */
 export async function teamsOn(deskId?: number | null) {
-  if (await switchOn("teams")) return true;
+  if (await switchOn("teams", deskId ?? null)) return true;
   if (!deskId || !env.adminEmails.length) return false;
   const owner = await q.get<{ email: string }>("SELECT email FROM users WHERE id = ?", deskId);
   return !!owner && env.adminEmails.includes(owner.email.toLowerCase());

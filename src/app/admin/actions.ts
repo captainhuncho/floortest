@@ -24,7 +24,9 @@ import { opsAccessFor, suspendRefusal } from "@/lib/ops-access";
 import { PERMS, ROLE_PERMS, ROLES, type Perm, type Role } from "@/lib/ops-perms";
 import type { PlanRequest } from "@/lib/plan-requests";
 import { flash } from "@/lib/flash";
-import { setSwitch, SWITCHES, type SwitchKey } from "@/lib/switches";
+import { isTargeted, setSwitch, setSwitchRule, SWITCHES, type SwitchKey } from "@/lib/switches";
+import { clampPercent, describeRule, parseCountries, readRule, MAX_RULE_ACCOUNTS } from "@/lib/switch-rules";
+import { ACCOUNT_TYPES, isAccountType } from "@/lib/account-types";
 import { drainNow, retireTrackFiles } from "@/lib/deletion";
 import { cancelEmailChange, changeHandle, HANDLE_HOLD_DAYS, requestEmailChange } from "@/lib/accounts";
 import { logEvent, now, q, type Track } from "@/lib/db";
@@ -718,6 +720,47 @@ export async function flipSwitch(key: SwitchKey, on: boolean) {
   await setSwitch(key, on, a.id);
   await logAdmin(a.id, on ? "switched on" : "switched off", SWITCHES[key].label);
   await done(`${SWITCHES[key].label}: ${on ? "on" : "off"}`);
+  revalidatePath("/", "layout");
+}
+
+/**
+ * Sets "who sees it" on a targeted switch: named accounts (handles), account types, plans, countries and a percentage.
+ * On/off is unchanged; a rule with nothing in it clears the rule. Unknown handles are refused rather than dropped.
+ */
+export async function saveSwitchRule(key: SwitchKey, form: FormData) {
+  const a = await requireAdminAction("super");
+  if (!(key in SWITCHES) || !isTargeted(key)) return fail("That switch can't take a rule");
+  const handles = [...new Set(String(form.get("handles") || "").split(/[\s,]+/).map((h) => h.replace(/^@/, "").toLowerCase()).filter(Boolean))];
+  if (handles.length > MAX_RULE_ACCOUNTS) return fail(`At most ${MAX_RULE_ACCOUNTS} named accounts`);
+  const found = handles.length
+    ? await q.all<{ id: number; handle: string }>(`SELECT id, lower(handle) AS handle FROM users WHERE lower(handle) IN (${handles.map(() => "?").join(",")})`, ...handles)
+    : [];
+  const missing = handles.filter((h) => !found.some((f) => f.handle === h));
+  if (missing.length) return fail(`No account with ${missing.map((h) => `@${h}`).join(", ")}`);
+  const plans = await allPlans();
+  const rule = readRule(
+    JSON.stringify({
+      accounts: found.map((f) => Number(f.id)),
+      types: Object.keys(ACCOUNT_TYPES).filter((t) => isAccountType(t) && form.get(`type_${t}`) === "on"),
+      plans: plans.map((p) => p.id).filter((p) => form.get(`plan_${p}`) === "on"),
+      countries: parseCountries(String(form.get("countries") || "")),
+      percent: clampPercent(form.get("percent")),
+    }),
+  );
+  await setSwitchRule(key, rule, a.id);
+  const words = rule ? describeRule(rule, (id) => plans.find((p) => p.id === id)?.name ?? id) : "everyone";
+  await logAdmin(a.id, rule ? "set switch rule" : "cleared switch rule", SWITCHES[key].label, words);
+  await done(`${SWITCHES[key].label}: ${rule ? words : "for everyone when on"}`);
+  revalidatePath("/", "layout");
+}
+
+/** Clears a targeted switch's rule: when on, it is on for everyone again. */
+export async function clearSwitchRule(key: SwitchKey) {
+  const a = await requireAdminAction("super");
+  if (!(key in SWITCHES) || !isTargeted(key)) return fail("That switch can't take a rule");
+  await setSwitchRule(key, null, a.id);
+  await logAdmin(a.id, "cleared switch rule", SWITCHES[key].label, "everyone");
+  await done(`${SWITCHES[key].label}: for everyone when on`);
   revalidatePath("/", "layout");
 }
 
