@@ -29,6 +29,7 @@ import { drainNow, retireTrackFiles } from "@/lib/deletion";
 import { cancelEmailChange, changeHandle, HANDLE_HOLD_DAYS, requestEmailChange } from "@/lib/accounts";
 import { logEvent, now, q, type Track } from "@/lib/db";
 import { eraseSender, purgeAccount } from "@/lib/privacy";
+import { localPath } from "@/lib/safe-links";
 
 const refresh = () => revalidatePath("/admin", "layout");
 const done = (m: string) => flash(m);
@@ -593,8 +594,8 @@ export async function publishAnnouncement(form: FormData) {
   const email = !!list;
   const consent = list === "marketing" ? "u.notify_marketing = 1" : "u.notify_product = 1";
   const outside = email && form.get("subscribers") === "on";
-  // Links must stay on FloorTest: "/path" only, never "//host" or "/\host" (which browsers treat as another site).
-  if (!title || (href && (!href.startsWith("/") || href.startsWith("//") || href.includes("\\")))) return fail("Needs a title, and links must start with /");
+  // Links must stay on FloorTest: "/path" only, never "//host", "/\host" or javascript: (src/lib/safe-links.ts).
+  if (!title || (href && !localPath(href))) return fail("Needs a title, and links must start with /");
   const plans = await allPlans();
   const label = describeAudience(aud, (id) => plans.find((p) => p.id === id)?.name ?? id);
   const w = audienceWhere(aud);

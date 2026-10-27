@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { GATE_COOKIE, gatePassword, hasGatePass } from "@/lib/site-gate";
+import { contentSecurityPolicy, makeNonce } from "@/lib/csp";
+import { crossSiteWrite } from "@/lib/cross-site";
 
 /**
  * Keeps the admin area and the main site apart by host. With OPS_URL set (production): the ops host serves only the
@@ -23,10 +25,26 @@ const isOps = (path: string) => under(path, OPS_PATHS);
 // "/c": collection share links, which do their own checks (and say "not available" while sharing is switched off).
 // "/join": team invites (sign-up from one works during the beta, like an invite code).
 const GATE_OPEN = ["/coming-soon", "/login", "/forgot", "/reset", "/signed-out", "/c", "/join"];
-const notFound = (req: NextRequest) => NextResponse.rewrite(new URL("/_not-found", req.url), { status: 404 });
+const notFound = (req: NextRequest, request: { headers: Headers }) => NextResponse.rewrite(new URL("/_not-found", req.url), { status: 404, request });
 
+/**
+ * Every page gets a fresh script nonce in its CSP (src/lib/csp.ts). Next reads it from the request's CSP header and puts
+ * it on its own scripts, so the same policy goes on the request (for rendering) and on the response (for the browser).
+ */
 export function proxy(req: NextRequest) {
+  const csp = contentSecurityPolicy({ nonce: makeNonce(), dev: process.env.NODE_ENV !== "production" });
+  const request = { headers: new Headers(req.headers) };
+  request.headers.set("Content-Security-Policy", csp);
+  const res = route(req, request);
+  res.headers.set("Content-Security-Policy", csp);
+  return res;
+}
+
+function route(req: NextRequest, request: { headers: Headers }) {
   const path = req.nextUrl.pathname;
+  // Another site's page can't make a signed-in browser change anything here (src/lib/cross-site.ts).
+  if (path.startsWith("/api/") && crossSiteWrite(req.method, req.headers, req.nextUrl.origin))
+    return NextResponse.json({ error: "Open this from FloorTest." }, { status: 403 });
   const onOpsHost = !!OPS_HOST && req.headers.get("host") === OPS_HOST;
   // Coming-soon gate: every page on the main site shows the coming-soon page until the password is entered.
   // The API (webhooks, health, cron) and ops (its own sign-in) stay reachable.
@@ -34,20 +52,21 @@ export function proxy(req: NextRequest) {
     const url = req.nextUrl.clone();
     url.pathname = "/coming-soon";
     url.search = `?next=${encodeURIComponent(path + req.nextUrl.search)}`;
-    return NextResponse.rewrite(url);
+    return NextResponse.rewrite(url, { request });
   }
-  if (!OPS_HOST) return NextResponse.next();
+  if (!OPS_HOST) return NextResponse.next({ request });
   const onOps = req.headers.get("host") === OPS_HOST;
   if (onOps) {
     if (path === "/") return NextResponse.redirect(new URL("/admin", req.url));
-    return isOps(path) || under(path, SHARED) ? NextResponse.next() : notFound(req);
+    return isOps(path) || under(path, SHARED) ? NextResponse.next({ request }) : notFound(req, request);
   }
-  return isOps(path) ? notFound(req) : NextResponse.next();
+  return isOps(path) ? notFound(req, request) : NextResponse.next({ request });
 }
 
 export const config = {
   // Everything except Next's own files and static assets, and the local-storage upload route (test copies only;
   // it checks its own signed token). Requests through the proxy keep only the first 10 MB of a body, which cut
   // bigger local uploads short; the live site uploads straight to Cloudflare and never comes through here.
+  // Keep in step with PROXY_SKIPS in src/lib/csp.ts (next.config.ts gives these paths their CSP; tests/csp.test.ts).
   matcher: ["/((?!_next/|favicon|icons/|fonts/|images/|api/storage/upload|.*\\.(?:png|jpg|jpeg|svg|webp|ico|txt|xml|woff2?)$).*)"],
 };

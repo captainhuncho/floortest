@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { contentSecurityPolicy, PROXY_SKIPS } from "./src/lib/csp";
 
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
@@ -8,31 +9,11 @@ const securityHeaders = [
   { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
 ];
 
-// Audio, covers and uploads go straight to the storage bucket via signed URLs.
-const storage = process.env.S3_ENDPOINT ? new URL(process.env.S3_ENDPOINT).host : "";
-const store = storage ? `https://*.${storage} https://${storage}` : "";
-// Production only: dev needs eval for fast refresh. Next's inline bootstrap scripts need 'unsafe-inline'.
-if (process.env.NODE_ENV === "production")
-  securityHeaders.push({
-    key: "Content-Security-Policy",
-    value: [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
-      "frame-src https://challenges.cloudflare.com",
-      "style-src 'self' 'unsafe-inline'",
-      `img-src 'self' data: blob: ${store}`,
-      `media-src 'self' blob: ${store}`,
-      `connect-src 'self' ${store} https://challenges.cloudflare.com`,
-      "font-src 'self' data:",
-      "object-src 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-      "frame-ancestors 'none'",
-    ].join("; "),
-  });
-// Development keeps no CSP (fast refresh needs eval) except the framing rule, so local and e2e runs send both
-// anti-framing headers too (owner's "No clickjacking" rule, 23 Oct; tests/framing-headers.test.ts, e2e/framing.spec.ts).
-else securityHeaders.push({ key: "Content-Security-Policy", value: "frame-ancestors 'none'" });
+// The Content-Security-Policy (src/lib/csp.ts). Pages get it from src/proxy.ts with a fresh nonce per request, so no
+// script runs inline without it (audit 27 Oct; before, script-src had 'unsafe-inline'). The paths the proxy skips (static
+// files) get the same policy without a nonce here, so every response still refuses framing (owner's "No clickjacking"
+// rule, 23 Oct; tests/framing-headers.test.ts, e2e/framing.spec.ts). Development adds 'unsafe-eval' for React's overlays.
+const staticCsp = { key: "Content-Security-Policy", value: contentSecurityPolicy({ dev: process.env.NODE_ENV !== "production" }) };
 
 const nextConfig: NextConfig = {
   // Native/WASM database drivers load at runtime rather than being bundled.
@@ -43,7 +24,10 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // The Turnstile site key is public by design; this lets it be stored as TURNSTILE_SITE_KEY in Vercel.
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      { source: `/:path(${PROXY_SKIPS}.*)`, headers: [staticCsp] },
+    ];
   },
   async redirects() {
     return [

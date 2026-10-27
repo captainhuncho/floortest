@@ -122,3 +122,29 @@ test("a sender-link request without the bot check is refused", async ({ page }) 
   await form.getByRole("button", { name: "Email me my link" }).click();
   await expect(form.getByRole("alert")).toContainText("couldn't confirm you're human");
 });
+
+/**
+ * Rule 5 (audit 27 Oct): the API opens nothing to other sites (no CORS header), and a page on another site can't make
+ * a browser change anything here: the proxy refuses cross-site writes before any route runs (src/lib/cross-site.ts).
+ */
+test("the API sends no CORS opening and refuses writes started on another site", async ({ request }) => {
+  for (const path of ["/api/health", "/api/v1/me", "/api/v1/queue", "/api/sender-code?email=a@b.co"]) {
+    const res = await request.get(path, { headers: { Origin: "https://evil.example" } });
+    expect(res.headers()["access-control-allow-origin"], path).toBeUndefined();
+    expect(res.headers()["access-control-allow-credentials"], path).toBeUndefined();
+  }
+  const preflight = await request.fetch("/api/v1/tracks/1/decision", { method: "OPTIONS", headers: { Origin: "https://evil.example", "Access-Control-Request-Method": "POST" } });
+  expect(preflight.headers()["access-control-allow-origin"]).toBeUndefined();
+
+  for (const path of ["/api/v1/tracks/1/decision", "/api/tracks/1/listened", "/api/sender-code", "/api/cover"]) {
+    const REFUSED = { error: "Open this from FloorTest." };
+    const cross = await request.post(path, { headers: { Origin: "https://evil.example", "Sec-Fetch-Site": "cross-site" }, data: {} });
+    expect(cross.status(), path).toBe(403);
+    expect(await cross.json(), path).toEqual(REFUSED);
+    const oldBrowser = await request.post(path, { headers: { Origin: "https://evil.example" }, data: {} });
+    expect(oldBrowser.status(), `${path}, Origin only`).toBe(403);
+    // From our own pages it reaches the route, which then answers for itself (not signed in, no bot check, bad input).
+    const ours = await request.post(path, { headers: { Origin: "http://localhost:3210", "Sec-Fetch-Site": "same-origin" }, data: {} });
+    expect(await ours.text(), `${path}, same origin`).not.toContain(REFUSED.error);
+  }
+});
