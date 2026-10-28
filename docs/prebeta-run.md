@@ -44,15 +44,9 @@ Message 1, asking for the email:
 Ops → Invites → **Invite by email**. One send covers all five: paste the emails into the box, the note into
 "Personal note", then Send invites.
 
-Emails box (one per line, filled from the Who table as they arrive):
-
-```
-tester1@…
-tester2@…
-tester3@…
-tester4@…
-tester5@…
-```
+**The testers' emails never go in this repo.** The repository is public (since 28 Oct), so an address written here
+is published. Keep the replies where they arrived (text or WhatsApp) and paste them from there straight into the
+emails box, one per line. Don't paste them into a chat with Claude either.
 
 Personal note (the box takes 300 characters at most and cuts anything longer; this one is 267). It appears in quotes
 in the invite email, which already carries the sign-up link and the code:
@@ -73,6 +67,8 @@ With the site password message, add what the note leaves out: anyone a tester sh
 password too, pass it on privately, and send anything that breaks with a screenshot and the time.
 
 ## Who
+First name or initials only, never an email or phone number. "Email received" is the date their reply came in.
+
 | # | Tester | Usual role | Email received | Invited | Desk link | Phone | Computer |
 |---|---|---|---|---|---|---|---|
 | 1 | | DJ | | | | | |
