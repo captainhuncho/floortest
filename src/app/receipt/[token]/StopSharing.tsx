@@ -9,12 +9,12 @@ export function StopSharing({ token, receiver }: { token: string; receiver: stri
   const [done, setDone] = useState(false);
   if (done)
     return (
-      <p role="status" className="text-sm text-mute">
+      <p role="status" className="text-[13px] text-mute">
         Private sharing stopped. Nobody new can hear this track through {receiver}&apos;s share links.
       </p>
     );
   return (
-    <p className="text-sm text-mute">
+    <p className="text-[13px] text-mute">
       {receiver} may share this track privately with people they name, who must confirm their email first.{" "}
       <button
         type="button"

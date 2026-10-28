@@ -47,28 +47,28 @@ export function StemUpload({ token, receiver, existing, max }: { token: string; 
   }
 
   return (
-    <section aria-labelledby="stems-h" className="flex flex-col gap-3">
+    <section aria-labelledby="stems-h" className="flex flex-col gap-3 rounded-2xl border border-lime/30 bg-ink-2 p-4">
       <div>
-        <h3 id="stems-h" className="text-sm font-semibold text-bone">
+        <h2 id="stems-h" className="text-[12px] font-bold">
           {receiver} asked for the stems
-        </h3>
-        <p className="mt-1 text-[13px] text-mute">
+        </h2>
+        <p className="mt-1 text-[11px] text-faint">
           One WAV or MP3 per stem, up to {max}. Only {receiver} can hear or download them.
         </p>
       </div>
       {existing.length > 0 && (
-        <ul className="text-[13px] text-mute">
+        <ul className="text-[11px] text-mute">
           {existing.map((n) => (
             <li key={n}>✓ {n}</li>
           ))}
         </ul>
       )}
       {items.length > 0 && (
-        <ul className="flex flex-col gap-1.5 text-[13px]">
+        <ul className="flex flex-col gap-1.5 text-[11px]">
           {items.map((it, i) => (
             <li key={i} className="flex items-center justify-between gap-3">
               <span className="min-w-0 truncate">{it.name}</span>
-              <span className={`shrink-0 tnum ${it.status === "error" ? "text-danger" : it.status === "done" ? "text-bone" : "text-mute"}`}>
+              <span className={`shrink-0 ${it.status === "error" ? "text-danger" : it.status === "done" ? "text-lime" : "text-mute"}`}>
                 {it.status === "done" ? "✓ Sent" : it.status === "error" ? it.error : it.status === "uploading" ? `${Math.round(it.progress * 100)}%` : "Waiting"}
               </span>
             </li>
@@ -80,7 +80,7 @@ export function StemUpload({ token, receiver, existing, max }: { token: string; 
         type="button"
         disabled={busy || done >= max}
         onClick={() => input.current?.click()}
-        className="btn-ghost btn-sm w-fit"
+        className="w-fit rounded-full bg-lime px-4 py-2 text-[12px] font-bold uppercase text-ink disabled:opacity-50"
       >
         {busy ? "Uploading…" : done ? "Add more stems" : "Choose stem files"}
       </button>
