@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 
 /**
- * Every 10 minutes: virus-checks the uploads held while the scanner was asleep or down, in one batch, with one wake-up
+ * Every 5 minutes: virus-checks the uploads held while the scanner was asleep or down, in one batch, with one wake-up
  * (src/lib/held-uploads.ts). With nothing held it does nothing, and the scanner stays asleep.
  */
 export async function GET(req: Request) {

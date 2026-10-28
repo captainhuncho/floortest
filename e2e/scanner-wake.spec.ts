@@ -3,7 +3,7 @@ import { expect, logIn, test, wav } from "./fixtures";
 
 /**
  * Hold and scan (owner, 26 Oct). The virus scanner sleeps when idle. A track sent while it sleeps is received and held,
- * never refused and never on the desk unscanned; the every-10-minutes job wakes the scanner once for the batch and
+ * never refused and never on the desk unscanned; the every-5-minutes job wakes the scanner once for the batch and
  * delivers it. The scanner here is e2e/fake-scanner.mjs, the app waits 6 s for a waking scanner (SCAN_DEADLINE_MS in
  * playwright.config.ts) instead of 150 s, and the test runs the job itself.
  */
@@ -40,7 +40,7 @@ test("a sleeping scanner: the track is received and held without waking it, then
   await scannerMode(page, { asleepMs: 600_000 });
   await send(page, "Night Bus");
   await expect(page.getByRole("heading", { name: /“Night Bus” is received\./ })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText(/We're checking it for viruses, which can take up to 15 minutes/)).toBeVisible();
+  await expect(page.getByText(/We're checking it for viruses, which can take up to 10 minutes/)).toBeVisible();
   await expect(page.getByRole("link", { name: "View receipt" })).toHaveCount(0);
   expect(await seen(page)).not.toContain("POST /wake");
   expect(await seen(page)).not.toContain("POST /scan");

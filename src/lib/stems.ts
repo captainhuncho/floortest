@@ -145,7 +145,7 @@ export async function completeStemUpload(token: string, uploadId: string, opts: 
     throw new IntakeError(check.reason, 415);
   }
   // Virus check on our own scanner (off until SCAN_URL is set); nothing flagged or unchecked reaches the desk. A sleeping
-  // scanner isn't woken for one stem: it's held and the next batch (every 10 minutes) checks it, as for tracks.
+  // scanner isn't woken for one stem: it's held and the next batch (every 5 minutes) checks it, as for tracks.
   const from = opts.from ?? "request";
   const asleep = from === "request" && (await scannerAwake()) === false;
   const scan: ScanResult = asleep ? { verdict: "unavailable", error: "scanner asleep" } : await scanStored(fileKey, from === "request" ? { deadlineMs: 45_000 } : opts.scanDeadlineMs ? { deadlineMs: opts.scanDeadlineMs } : {});
