@@ -145,3 +145,53 @@ test("hold and scan: an asleep scanner holds the upload without waking; the batc
     delete process.env.SCAN_URL;
   }
 });
+
+test("hold and scan for stems: a stem sent while the scanner sleeps is held, then attached by the batch; a flagged one is refused and its sender emailed", async () => {
+  const { q } = await import("../src/lib/db");
+  const { storage } = await import("../src/lib/storage");
+  const { UploadHeld } = await import("../src/lib/intake");
+  const { scanHeldUploads } = await import("../src/lib/held-uploads");
+  const S = await import("../src/lib/stems");
+  const store = await storage();
+  await q.run("DELETE FROM uploads"); // what the first test left held
+  const t = Date.now();
+  const uid = (await q.get<{ id: number }>("INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at, email_verified_at) VALUES ('st@x.io','h','Sol','sol','pro','UTC',?,?) RETURNING id", t, t))!.id;
+  await q.run("INSERT INTO feature_switches (feature, plans, users, updated_at) VALUES ('stems', '[]', ?, ?) ON CONFLICT (feature) DO UPDATE SET users = excluded.users", JSON.stringify([uid]), t);
+  const sender = (await q.get<{ id: number }>("INSERT INTO senders (user_id, email, name, created_at) VALUES (?, 'stemsender@x.io', 'S', ?) RETURNING id", uid, t))!.id;
+  await q.run(
+    "INSERT INTO tracks (user_id, sender_id, title, artist, token, file_key, original_name, mime, size, created_at, stems_requested_at) VALUES (?,?,'T','A','stem-track','audio/x.wav','x.wav','audio/wav',1,?,?)",
+    uid, sender, t, t,
+  );
+  const trackId = (await q.get<{ id: number }>("SELECT id FROM tracks WHERE token = 'stem-track'"))!.id;
+  const file = wav();
+  const send = async (name: string) => {
+    const { uploadId } = await S.startStemUpload("stem-track", name, file.length, "2.2.2.2");
+    const key = (await q.get<{ file_key: string }>("SELECT file_key FROM uploads WHERE id = ?", uploadId))!.file_key;
+    await store.put(key, file, "audio/wav");
+    return S.completeStemUpload("stem-track", uploadId);
+  };
+  const fake = await fakeScanner();
+  try {
+    // Asleep: held, nothing attached, and neither starting nor finishing the upload woke the scanner.
+    await assert.rejects(send("drums.wav"), (e: unknown) => e instanceof UploadHeld);
+    assert.deepEqual(fake.state.seen, ["GET /status"]);
+    assert.equal((await S.stemsFor(trackId)).length, 0, "nothing unscanned on the track");
+
+    // The batch wakes it and attaches the stem; the receipt lists it.
+    assert.deepEqual(await scanHeldUploads(), { delivered: 1, refused: 0, gaveUp: 0, waiting: 0 });
+    assert.deepEqual((await S.stemsFor(trackId)).map((s) => s.name), ["drums.wav"]);
+    assert.deepEqual(S.stemsSent((await q.get<{ stems_sent: string | null }>("SELECT stems_sent FROM tracks WHERE id = ?", trackId))!), ["drums.wav"]);
+
+    // Flagged in the batch: not attached, and the sender (found through the track) is emailed.
+    fake.state.awake = false;
+    await assert.rejects(send("bad.wav"), (e: unknown) => e instanceof UploadHeld);
+    fake.state.answer = "infected";
+    assert.deepEqual(await scanHeldUploads(), { delivered: 0, refused: 1, gaveUp: 0, waiting: 0 });
+    assert.equal((await S.stemsFor(trackId)).length, 1);
+    const mail = await q.get<{ subject: string; body: string }>("SELECT subject, body FROM outbox WHERE to_email = 'stemsender@x.io' ORDER BY id DESC LIMIT 1");
+    assert.match(mail?.subject ?? "", /Your stem wasn't sent: bad\.wav/);
+  } finally {
+    fake.close();
+    delete process.env.SCAN_URL;
+  }
+});
