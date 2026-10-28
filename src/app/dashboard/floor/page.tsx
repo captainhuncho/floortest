@@ -1,4 +1,5 @@
 import { trackUse } from "@/lib/usage";
+import { CapacityStrip } from "@/components/CapacityStrip";
 import { Onboarding } from "./Onboarding";
 import Link from "next/link";
 import { requireUser, viewingAs } from "@/lib/auth";
@@ -338,21 +339,6 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
 }
 
 /** How many cells the capacity strip draws: one per track on the free plan (20), so each cell is 5% on bigger plans. */
-const CAP_CELLS = 20;
-
-/** The desk's capacity as a strip of cells: filled for tracks that count, striped for free room. Decorative; the figure above it is the reading. */
-function CapacityStrip({ used, limit }: { used: number; limit: number }) {
-  // Any track at all shows at least one filled cell, and only a full desk fills the last one.
-  const share = limit > 0 ? used / limit : 1;
-  const filled = used <= 0 ? 0 : used >= limit ? CAP_CELLS : Math.min(CAP_CELLS - 1, Math.max(1, Math.round(share * CAP_CELLS)));
-  return (
-    <div aria-hidden className="grid grid-cols-[repeat(20,minmax(0,1fr))] gap-[3px]">
-      {Array.from({ length: CAP_CELLS }, (_, i) => (
-        <span key={i} className={`h-4 rounded-[2px] border border-line ${i < filled ? "bg-bone" : "hatch"}`} />
-      ))}
-    </div>
-  );
-}
 
 /** Waiting this long gets a nudge on the Floor, two days before the 7-day mark the desk aims for. */
 const STALE_DAYS = 5;

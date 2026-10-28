@@ -84,89 +84,59 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
     brief: briefItems(c, genres.custom ? genres.list : [], user.tz),
   };
   const brief = editable.brief;
+  const closed = isClosed(c);
+  // Where it stands, in words (rule 15: no pills): Receiving with the lime dot, or Open / Closed / Full.
+  const state = receiving && !closed ? "Receiving" : closed ? (c.full_at ? "Full" : `Closed${c.closes_at ? ` ${fmtDay(c.closes_at)}` : ""}`) : "Not receiving";
+  const readout = [`${c.needs_review} to review`, `${c.kept} kept`, `${c.count} received`, !closed && c.closes_at ? `closes ${fmtDay(c.closes_at)}` : null].filter(Boolean).join(" · ");
+  const briefList = (
+    <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm sm:flex sm:flex-wrap sm:gap-x-8 sm:gap-y-3">
+      {brief.map((b) => (
+        <div key={b.key} className={`contents sm:block sm:min-w-0 ${b.key === "note" ? "sm:basis-full lg:basis-auto lg:flex-1" : ""}`}>
+          <dt className="text-xs font-semibold text-mute">{b.label}</dt>
+          <dd className={`text-bone sm:mt-1 ${b.key === "note" ? "italic" : ""}`}>{b.text}</dd>
+        </div>
+      ))}
+    </dl>
+  );
 
   return (
     <>
       <div className="flex flex-col gap-3 px-4 pb-4 pt-1 text-bone md:hidden">
         <CollectionDetailHeader c={editable} receiving={receiving} closed={isClosed(c)} canManage={admin} />
+        <p className="font-mono text-xs text-mute tnum">{readout}</p>
         {brief.length > 0 && (
-          <section aria-label="Brief" className="card p-3.5">
-            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-[12px]">
-              {brief.map((b) => (
-                <div key={b.key} className="contents">
-                  <dt className="text-[11px] font-bold uppercase text-faint">{b.label}</dt>
-                  <dd className={b.key === "note" ? "italic" : ""}>{b.text}</dd>
-                </div>
-              ))}
-            </dl>
+          <section aria-label="Brief" className="panel p-4">
+            {briefList}
           </section>
         )}
-        <p className="flex gap-2 text-[11px] font-bold">
-          <span className="text-mute">{c.needs_review} NEED REVIEW</span>
-          <span className="font-normal text-faint">·</span>
-          <span className="text-bone">{c.kept} KEPT</span>
-          <span className="font-normal text-faint">·</span>
-          <span>{c.count} TOTAL</span>
-        </p>
       </div>
 
       {/* Desktop: Figma "desktop-collection-detail" */}
       <div className="hidden max-w-6xl flex-col gap-5 px-8 pb-5 pt-6 text-bone md:flex">
         <div>
-          <p className="text-[11px] text-faint">
-            <Link href="/dashboard/collections" className="hover:text-bone">
-              ← Collections
-            </Link>{" "}
-            / <span className="text-bone">{c.name}</span>
-          </p>
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
-            <h1 className="flex items-center gap-3 text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">
-              {c.name}
-              {receiving && !isClosed(c) && (
-                <span className="flex items-center gap-1 rounded-md border border-white bg-white/10 px-2 py-1 text-[11px] font-bold tracking-[0.5px]">
-                  <span aria-hidden className="size-[5px] rounded-full bg-white" />
-                  RECEIVING
+          <Link href="/dashboard/collections" className="-my-2 inline-flex min-h-11 items-center text-sm text-mute hover:text-bone">
+            ← Collections
+          </Link>
+          <div className="mt-1 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h1 className="page-title">{c.name}</h1>
+              <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                <span className={`inline-flex items-center gap-2 font-semibold ${receiving && !closed ? "text-bone" : "text-mute"}`}>
+                  {receiving && !closed && <span aria-hidden className="size-2 rounded-full bg-lime" />}
+                  {state}
                 </span>
-              )}
-              {isClosed(c) && <span className="rounded-md border border-faint px-2 py-1 text-[11px] font-bold tracking-[0.5px] text-mute">{c.full_at ? "FULL" : "CLOSED"}</span>}
-            </h1>
+                <span className="font-mono text-xs text-mute tnum">{readout}</span>
+              </p>
+            </div>
             <div className="flex flex-wrap items-center gap-2">
               <EditCollectionInfo c={editable} receiving={receiving} closed={isClosed(c)} canManage={admin} />
               <DownloadActions collectionId={c.id} crateName={c.name} count={c.count} size="sm" />
             </div>
           </div>
         </div>
-        <section aria-label="Brief" className="card px-4 py-3.5">
-          {brief.length ? (
-            <dl className="flex flex-wrap gap-x-8 gap-y-3">
-              {brief.map((b) => (
-                <div key={b.key} className={`min-w-0 ${b.key === "note" ? "basis-full lg:basis-auto lg:flex-1" : ""}`}>
-                  <dt className="text-[11px] font-bold uppercase text-faint">{b.label}</dt>
-                  <dd className={`mt-1 text-[12px] ${b.key === "note" ? "italic" : ""}`}>{b.text}</dd>
-                </div>
-              ))}
-            </dl>
-          ) : (
-            <p className="text-[12px] text-mute">No brief yet. Use Edit collection to add BPM, genres, what you want and a note for senders.</p>
-          )}
+        <section aria-label="Brief" className="panel px-5 py-4">
+          {brief.length ? briefList : <p className="text-sm text-mute">No brief yet. Use Edit collection to add BPM, genres, what you want and a note for senders.</p>}
         </section>
-        <dl className="grid grid-cols-3 gap-4">
-          {[
-            ["Needs review", c.needs_review],
-            ["Kept", c.kept],
-            ["Total received", c.count],
-          ].map(([k, v]) => (
-            <div key={k} className="flex flex-col-reverse gap-1 card px-4 py-3">
-              <dt className="sr-only">{k}</dt>
-              <dd className="text-[16px] font-bold">
-                {v} track{v === 1 ? "" : "s"}
-              </dd>
-              <span aria-hidden className="text-[11px] font-bold uppercase text-faint">
-                {k}
-              </span>
-            </div>
-          ))}
-        </dl>
       </div>
 
       {/* One list for every screen size, so keyboard shortcuts and the player are registered once. */}
@@ -184,7 +154,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
         {cards.length ? (
           <ListRows rows={cards} statusTag collections={all.map((x) => ({ id: x.id, name: x.name }))} />
         ) : (
-          <p className="mx-4 card p-4 text-[12px] text-mute md:mx-0">This folder is empty. Tracks sent while it&apos;s receiving land here.</p>
+          <p className="mx-4 panel p-4 text-sm text-mute md:mx-0">This folder is empty. Tracks sent while it&apos;s receiving land here.</p>
         )}
         {admin && (
           <div className="mx-4 mt-8 md:mx-0">
