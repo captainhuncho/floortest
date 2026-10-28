@@ -175,7 +175,8 @@ test("timeout: a scanner that never wakes, or a scan that never finishes, is 'un
     const t0 = Date.now();
     const r = await scanStored("audio/1/ok.wav", { deadlineMs: 400, backoffMs: [50] });
     assert.equal(r.verdict, "unavailable");
-    assert.match((r as { error: string }).error, /scanner answered 503; gave up waiting/);
+    // The deadline lands between asks (gave up waiting) or, on a slow machine, during the last ask (TimeoutError).
+    assert.match((r as { error: string }).error, /^(scanner answered 503; gave up waiting|TimeoutError$)/);
     assert.ok(Date.now() - t0 < 1_500, "it gives up at the deadline instead of asking for ever");
   } finally {
     asleep.close();
