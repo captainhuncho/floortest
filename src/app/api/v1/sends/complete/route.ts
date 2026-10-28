@@ -13,7 +13,7 @@ export const runtime = "nodejs";
 /**
  * Step 2: the file is in storage. { to, uploadId, duration?, bpm?, peaks? }. Checks the file and puts the track on the
  * desk: 200 { token }. 202 { held: true, message } when the virus scanner is asleep or down: the file is kept and checked
- * within about 15 minutes, then the track arrives and the "Delivered" email goes out; nothing else to send.
+ * within about 10 minutes, then the track arrives and the "Delivered" email goes out; nothing else to send.
  */
 export async function POST(req: Request) {
   const u = await appUser(req);

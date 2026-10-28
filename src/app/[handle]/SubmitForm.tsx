@@ -283,12 +283,12 @@ export function SubmitForm({
             </h2>
             {allHeld ? (
               <p className="mt-1.5 text-[13px] text-mute">
-                We&apos;re checking {many ? "them" : "it"} for viruses, which can take up to 15 minutes. {many ? "They reach" : "It reaches"} {receiverName}&apos;s desk as soon as {many ? "they pass" : "it passes"}, and we&apos;ll email {many ? "receipts" : "a receipt"} to <span className="text-bone">{account?.email ?? sender.email}</span>. Nothing else to do.
+                We&apos;re checking {many ? "them" : "it"} for viruses, which can take up to 10 minutes. {many ? "They reach" : "It reaches"} {receiverName}&apos;s desk as soon as {many ? "they pass" : "it passes"}, and we&apos;ll email {many ? "receipts" : "a receipt"} to <span className="text-bone">{account?.email ?? sender.email}</span>. Nothing else to do.
               </p>
             ) : (
               <p className="mt-1.5 text-[13px] text-mute">
                 We sent {many ? "receipts" : "a receipt"} to <span className="text-bone">{account?.email ?? sender.email}</span>. Nothing else to do.
-                {heldCount > 0 && ` ${heldCount} ${heldCount === 1 ? "is" : "are"} still being checked for viruses (up to 15 minutes); ${heldCount === 1 ? "its receipt follows" : "their receipts follow"} by email.`}
+                {heldCount > 0 && ` ${heldCount} ${heldCount === 1 ? "is" : "are"} still being checked for viruses (up to 10 minutes); ${heldCount === 1 ? "its receipt follows" : "their receipts follow"} by email.`}
               </p>
             )}
           </div>
