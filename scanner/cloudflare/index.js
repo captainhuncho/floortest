@@ -1,4 +1,5 @@
 import { Container, getContainer } from "@cloudflare/containers";
+import { refusal } from "./routes.js";
 
 /**
  * FloorTest's virus scanner on Cloudflare Containers. The container is ../Dockerfile unchanged (ClamAV + server.mjs);
@@ -10,9 +11,11 @@ import { Container, getContainer } from "@cloudflare/containers";
  * wakes it as an upload starts (/wake) and its check waits through a wake-up (src/lib/scan.ts).
  *
  *   GET  /status  the container's state, without waking it (uptime monitor, the app's health report)
- *   GET  /health  ClamAV answers; wakes the container and waits for it (the daily uptime check)
+ *   GET  /health  ClamAV answers; wakes the container and waits for it (the daily uptime check); needs the secret
  *   POST /wake    starts the container and returns at once; needs the secret, so nobody else can keep it running
  *   POST /scan    waits for the container to be ready (up to 90 s), then scans; needs the secret
+ *
+ * Which routes need the secret: ./routes.js.
  */
 export class Scanner extends Container {
   defaultPort = 8080;
@@ -30,16 +33,6 @@ const scanner = (env) => getContainer(env.SCANNER);
 /** Port 8080 opens only once ClamAV has loaded its signatures (../start.sh), so "port ready" means "can scan". */
 const READY = { cancellationOptions: { portReadyTimeoutMS: 90_000 } };
 
-/** Same-length comparison without an early exit, so the answer time doesn't hint at the secret. */
-function authorized(request, env) {
-  const given = new TextEncoder().encode(request.headers.get("Authorization") ?? "");
-  const wanted = new TextEncoder().encode(`Bearer ${env.SCAN_SECRET ?? ""}`);
-  if (!env.SCAN_SECRET || given.length !== wanted.length) return false;
-  let diff = 0;
-  for (let i = 0; i < given.length; i++) diff |= given[i] ^ wanted[i];
-  return diff === 0;
-}
-
 const starting = () => Response.json({ error: "Scanner starting" }, { status: 503, headers: { "Retry-After": "10" } });
 
 const worker = {
@@ -51,8 +44,8 @@ const worker = {
       const state = await scanner(env).getState().catch(() => null);
       return Response.json({ worker: true, container: state?.status ?? "unknown" });
     }
-    if (route !== "GET /health" && route !== "POST /wake" && route !== "POST /scan") return Response.json({ error: "Not found" }, { status: 404 });
-    if (route !== "GET /health" && !authorized(request, env)) return Response.json({ error: "Unauthorized" }, { status: 401 });
+    const refused = refusal(route, request, env);
+    if (refused) return refused;
     if (route === "POST /wake") {
       ctx.waitUntil(scanner(env).startAndWaitForPorts(READY).catch(() => {}));
       return Response.json({ waking: true }, { status: 202 });

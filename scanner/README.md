@@ -7,7 +7,7 @@ The file never goes to a third-party service and is never written to disk here.
 - `POST /scan` with `{ "key": "audio/12/….wav" }` and `Authorization: Bearer <SCAN_SECRET>` →
   `{ "clean": true }` or `{ "clean": false, "signature": "…" }`. Only `audio/`, `stems/`, `track-art/` and `pending/` keys
   are accepted.
-- `GET /health` → 200 when ClamAV is up (the uptime monitor checks it).
+- `GET /health` → 200 when ClamAV is up (the uptime monitor checks it). On Cloudflare it needs the secret too (below).
 - Signatures: one update at start-up (the first takes a few minutes), then `freshclam` keeps them current.
 
 The app side is `src/lib/scan.ts`. It's **off until `SCAN_URL` is set**. When on, it **fails closed**: if the scanner
@@ -17,7 +17,9 @@ an incident either way.
 
 **Host: Cloudflare Containers** (owner, 14 Oct). Wherever the scanner runs reads unreleased audio; Cloudflare already
 holds it in R2, so this adds no new subprocessor and no lawyer step. `cloudflare/` is a small Worker in front of the same
-image: it lets only `GET /status`, `GET /health`, `POST /wake` and `POST /scan` through. **Sleeps after 10 idle minutes**
+image: it lets only `GET /status`, `GET /health`, `POST /wake` and `POST /scan` through, and all but `/status` need the
+secret (`cloudflare/routes.js`; `/health` too since 28 Oct, when the repository went public: an open `/health` let
+anyone keep the container awake and billed). **Sleeps after 10 idle minutes**
 (owner, 26 Oct; it cost about $20 a month always on): `/wake` (with the secret) starts it as an upload starts,
 `/scan` waits up to 90 s for it to be ready, `/status` says whether it's running without waking it. Cold start measured
 26 Oct: 16–18 s locally (amd64 image under emulation on an Apple Silicon Mac) plus 1–3 s for Cloudflare to place it. Fly.io is only a fallback, for if Cloudflare can't keep up
@@ -54,7 +56,8 @@ $20 a month always on; $1–3 at beta volume once it sleeps, see docs/costs.md) 
    and the same for `S3_ENDPOINT` (`https://<account-id>.r2.cloudflarestorage.com`), `S3_BUCKET` (`floortest-audio-eu`),
    `SCAN_ACCESS_KEY_ID` and `SCAN_SECRET_ACCESS_KEY` (step 1). `SCAN_SECRET` is a long random value
    (`openssl rand -hex 32`). Then `npx wrangler deploy`. The first deploy takes a few minutes to place the container;
-   `https://floortest-scanner.<workers-subdomain>.workers.dev/health` should then say `{"clamd":true}`.
+   `curl -H "Authorization: Bearer $(cat ~/floortest-scan-secret.txt)" https://floortest-scanner.<workers-subdomain>.workers.dev/health`
+   should then say `{"clamd":true}` (without the secret it answers 401).
 5. **Prove it catches something on the real bucket:** upload the EICAR test string to `audio/test/eicar.wav`, call
    `/scan` with that key and the secret: the answer must be `{"clean":false,"signature":"Eicar-Test-Signature"}`. Delete
    the test file afterwards.
@@ -67,7 +70,10 @@ $20 a month always on; $1–3 at beta volume once it sleeps, see docs/costs.md) 
    `SCAN_URL` is the workers.dev address. Redeploy production and wait for Ready before testing (sends during the build
    still run on the old deployment). Send a test track; it should reach the desk with no new incident in ops.
 7. **Monitoring:** `.github/workflows/uptime.yml` asks `/status` every 30 minutes (doesn't wake it) and `/health` once a
-   day (wakes it and checks ClamAV). Don't point another monitor at `/health`: frequent pings keep it awake and paid for.
+   day (wakes it and checks ClamAV, with the `SCAN_SECRET` repository secret; owner step, from the file so the value is
+   never typed or shown: `tr -d '\n' < ~/floortest-scan-secret.txt | gh secret set SCAN_SECRET --repo captainhuncho/floortest`;
+   without it that step is skipped with a notice). Don't point another monitor at `/health`: frequent pings keep it
+   awake and paid for.
 
 To turn scanning off quickly, remove `SCAN_URL` in Vercel and redeploy.
 
