@@ -7,7 +7,7 @@ import Link from "next/link";
 import type { PlayerTrack } from "@/components/Player";
 import { deletesAt } from "@/lib/plans";
 import {q, type Collection, type EventRow, type Sender, type Track, now } from "@/lib/db";
-import { fmtBytes, fmtDate, fmtDay } from "@/lib/format";
+import { ago, fmtBytes, fmtDate, fmtDay } from "@/lib/format";
 import { MIX_STATUS, AI_USE, RELEASE_STATUS } from "@/lib/plans";
 import { featureOn } from "@/lib/features";
 import { addNote, decideRelease, deleteTrack, moveTrack, replyToSender } from "./actions/review";
@@ -85,6 +85,7 @@ export async function ReviewPanel({
     played: !!t.played_at,
   };
   const removal = deletesAt(t);
+  const collectionName = collections.find((c) => c.id === t.collection_id)?.name ?? null;
 
   const releaseBlock = release && (
     <details className="group/rel mt-3 rounded-md border border-line">
@@ -136,23 +137,24 @@ export async function ReviewPanel({
       : t.decision && desk && desk.actor_id !== desk.id && t.decided_role === "owner"
         ? desk.name
         : null;
+  // Plain words, not pills (rule 15): mute for facts, red only for what needs attention before deciding.
   const tags = (
-    <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] font-bold">
+    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]">
       {caller && (
-        <span className="rounded-full border border-line px-2.5 py-0.5 text-mute">
+        <span className="text-mute">
           {t.decision === "kept" ? "Kept" : "Not for me"} by {caller}
           {desk && decisionLocked(desk, t) ? " · only the owner or an A&R / Admin can change it" : ""}
         </span>
       )}
-      <span className={`rounded-full border px-2.5 py-0.5 ${t.sets_ok ? "border-lime/50 text-lime" : "border-line text-mute"}`}>
+      <span className={t.sets_ok ? "text-bone" : "text-mute"}>
         {t.sets_ok ? "Cleared for DJ sets" : "Evaluation only: ask before playing it out"}
       </span>
-      {shortlist && <span className="rounded-full border border-lime/50 px-2.5 py-0.5 text-lime">★ Shortlisted</span>}
-      {t.release_status && <span className="rounded-full border border-line px-2.5 py-0.5 text-mute">{RELEASE_STATUS[t.release_status as keyof typeof RELEASE_STATUS]}</span>}
-      {t.ai_use && t.ai_use !== "none" && <span className="rounded-full border border-line-2 px-2.5 py-0.5 uppercase tracking-[0.5px] text-mute">{AI_USE[t.ai_use]}</span>}
-      {soon !== null && <span className="rounded-full border border-danger/50 px-2.5 py-0.5 text-danger">{soon <= 1 ? "Deletes within a day" : `Deletes in ${soon} days`} unless you keep it</span>}
+      {shortlist && <span className="text-bone">★ Shortlisted</span>}
+      {t.release_status && <span className="text-mute">{RELEASE_STATUS[t.release_status as keyof typeof RELEASE_STATUS]}</span>}
+      {t.ai_use && t.ai_use !== "none" && <span className="text-mute">{AI_USE[t.ai_use]}</span>}
+      {soon !== null && <span className="text-danger">{soon <= 1 ? "Deletes within a day" : `Deletes in ${soon} days`} unless you keep it</span>}
       {t.duplicate_of && (
-        <span className="rounded-full border border-danger/50 px-2.5 py-0.5 text-danger">
+        <span className="text-danger">
           Possible duplicate ·{" "}
           <Link href={`/dashboard/review?view=queue&s=all&t=${t.duplicate_of}`} className="underline underline-offset-2">
             Compare
@@ -179,7 +181,7 @@ export async function ReviewPanel({
             </p>
           </div>
         </div>
-        {meta && <p className="mt-3 text-[13px] font-bold text-bone tnum">{meta}</p>}
+        {meta && <p className="mt-3 font-mono text-xs text-mute tnum">{meta}</p>}
         {tags}
         {releaseBlock}
         <MobileTransport track={player} prevHref={prevHref} nextHref={next?.href ?? null} />
@@ -202,10 +204,12 @@ export async function ReviewPanel({
         // eslint-disable-next-line @next/next/no-img-element
         <img src={art} alt={`Artwork for ${t.title}`} className="mb-4 size-40 rounded-md border border-line object-cover" />
       )}
-      <p className="label">Now reviewing</p>
-      <h2 className="mt-2 text-2xl font-bold leading-tight tracking-tight">{t.title}</h2>
-      <p className="mt-1 text-mute">{t.artist}</p>
-      {meta && <p className="mt-1 font-bold tnum">{meta}</p>}
+      {/* Rule 15 Queue (28 Oct): title, who and where it came from, then the readout in mono. */}
+      <h2 className="text-2xl font-bold leading-tight tracking-[-0.3px] text-bone">{t.title}</h2>
+      <p className="mt-1.5 text-sm text-mute">
+        {[t.artist, collectionName && `for ${collectionName}`, `arrived ${ago(t.created_at)}`].filter(Boolean).join(" · ")}
+      </p>
+      {meta && <p className="mt-3 font-mono text-[13px] text-mute tnum">{meta}</p>}
       {tags}
       {releaseBlock}
 
@@ -226,6 +230,14 @@ export async function ReviewPanel({
         </DesktopOnly>
       </div>
       </div>
+
+      {/* The sender's note sits right under the decision (rule 15 Queue), a quote with a hairline edge. */}
+      {t.message && (
+        <figure className="mt-5 border-l-2 border-line py-0.5 pl-4">
+          <figcaption className="text-xs font-semibold text-mute">From {sender.name}</figcaption>
+          <blockquote className="mt-1.5 whitespace-pre-wrap text-[15px] leading-relaxed text-bone">{t.message}</blockquote>
+        </figure>
+      )}
 
       {t.decision === "kept" && (
         <>
@@ -248,23 +260,12 @@ export async function ReviewPanel({
         </div>
       )}
 
-      {t.message && (
-        <figure className="mt-6 rounded-lg border border-line bg-ink p-4">
-          <figcaption className="label mb-2">Message from {sender.name}</figcaption>
-          <blockquote className="whitespace-pre-wrap">{t.message}</blockquote>
-        </figure>
-      )}
-
       <p className="mt-6 text-sm">
         From{" "}
         <Link href={`/dashboard/contacts/${sender.id}`} className="font-medium underline-offset-4 hover:underline">
           {sender.name}
         </Link>{" "}
-        {sender.verified_at ? (
-          <span className="chip ml-1 border-lime/50 text-lime">Verified email</span>
-        ) : (
-          <span className="chip ml-1 border-line text-mute">Unverified email</span>
-        )}
+        <span className="text-mute">· {sender.verified_at ? "verified email" : "unverified email"}</span>
       </p>
 
       <PanelDetails summary={<span>Details <span className="hidden text-mute sm:inline">· file, dates, move, delete, sender</span></span>}>

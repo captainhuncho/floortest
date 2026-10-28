@@ -182,41 +182,41 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
     };
   }, [decide, setSwiped]);
 
-  const btn = "btn flex-1 flex-col gap-0.5 py-3 border";
-  const pill = "rounded-full border border-line bg-ink-3 px-3.5 py-2 text-[11px] font-medium text-mute";
+  const btn = "btn h-12 gap-2 border text-[15px] font-bold";
+  const key = "font-mono text-[11px] font-medium opacity-60";
   return (
     <div>
       {/* Phones: Figma "Decisions" pills + "DJ Decision Area" */}
+      {/* Phones, rule 15 Queue (28 Oct): the same three buttons as wide screens, Keep in lime; Download stays one tap away. */}
       <div className="md:hidden">
-        <div className="flex flex-wrap gap-[5px]">
-          <a href={`/api/tracks/${track.id}/download`} className={pill}>
-            DOWNLOAD
-          </a>
-          <button onClick={() => setReplying((r) => !r)} aria-expanded={replying} className={replying ? "rounded-full bg-bone px-3.5 py-2 text-[11px] font-bold text-ink" : pill}>
-            REPLY
-          </button>
-        </div>
-        <div className="flex gap-2 pt-3" role="group" aria-label="Decision">
+        <div className="grid grid-cols-[1fr_1.3fr_1fr] gap-2" role="group" aria-label="Decision">
           <button
             onClick={() => decide("passed")}
             disabled={busy}
             aria-pressed={track.decision === "passed"}
-            className={`flex-1 rounded-xl border border-[#ff5f57] p-3.5 text-[11px] font-bold ${track.decision === "passed" ? "bg-[#ff5f57] text-ink" : "bg-[rgba(255,95,87,0.1)] text-[#ff5f57]"}`}
+            className={`${btn} px-2 text-sm ${track.decision === "passed" ? "border-bone bg-bone/10" : "border-line"}`}
           >
-            ✕ NOT FOR ME
+            Not for me
           </button>
           <button
             onClick={() => decide("kept")}
             disabled={busy}
             aria-pressed={track.decision === "kept"}
-            className={`flex-1 rounded-xl p-3.5 text-[11px] font-bold ${track.decision === "kept" ? "bg-lime text-ink" : "bg-bone text-ink"}`}
+            className={`${btn} border-lime bg-lime text-ink`}
           >
-            {track.decision === "kept" ? "✓ KEPT" : "✓ KEEP"}
+            {track.decision === "kept" ? "Kept ✓" : "Keep"}
+          </button>
+          <button onClick={() => setReplying((r) => !r)} aria-expanded={replying} className={`${btn} px-2 text-sm ${replying ? "border-bone" : "border-line"}`}>
+            Reply
           </button>
         </div>
+        <a href={`/api/tracks/${track.id}/download`} className="mt-1 inline-flex min-h-11 items-center text-sm text-mute underline underline-offset-4">
+          Download original
+        </a>
       </div>
 
-      <div className="hidden gap-2 md:flex" role="group" aria-label="Decision">
+      {/* Rule 15 Queue (28 Oct): Keep is the page's one lime button; the shortcut sits beside each word. */}
+      <div className="hidden grid-cols-[1fr_1.3fr_1fr] gap-2.5 md:grid" role="group" aria-label="Decision">
         <button
           onClick={() => decide("passed")}
           disabled={busy}
@@ -224,18 +224,16 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
           aria-keyshortcuts="X"
           className={`${btn} ${track.decision === "passed" ? "border-bone bg-bone/10" : "border-line hover:border-mute hover:bg-ink-3"}`}
         >
-          <span className="text-base font-semibold">Not for me</span>
-          <span className="hidden text-xs text-mute md:inline">X</span>
+          Not for me <kbd className={key}>X</kbd>
         </button>
         <button
           onClick={() => decide("kept")}
           disabled={busy}
           aria-pressed={track.decision === "kept"}
           aria-keyshortcuts="K"
-          className={`${btn} ${track.decision === "kept" ? "border-lime bg-lime text-ink" : "border-lime/60 text-lime hover:bg-lime hover:text-ink"}`}
+          className={`${btn} border-lime bg-lime text-ink hover:bg-[#e2ff7a]`}
         >
-          <span className="text-base font-semibold">{track.decision === "kept" ? "Kept ✓" : "Keep"}</span>
-          <span className={`text-xs ${track.decision === "kept" ? "text-ink/70" : "opacity-70"}`}><span className="hidden md:inline">K · </span>adds to crate</span>
+          {track.decision === "kept" ? "Kept ✓" : "Keep"} <kbd className={key}>K</kbd>
         </button>
         <button
           onClick={() => setReplying((r) => !r)}
@@ -243,8 +241,7 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
           aria-keyshortcuts="R"
           className={`${btn} ${replying ? "border-bone" : "border-line hover:border-mute hover:bg-ink-3"}`}
         >
-          <span className="text-base font-semibold">Reply</span>
-          <span className="hidden text-xs text-mute md:inline">R</span>
+          Reply <kbd className={key}>R</kbd>
         </button>
       </div>
 

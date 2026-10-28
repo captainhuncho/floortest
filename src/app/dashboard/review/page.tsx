@@ -121,12 +121,13 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
   const totalActive = collections.reduce((n, c) => n + c.count, 0);
 
   return (
-    <div className={`grid min-h-full ${selected || totalActive > 0 ? "xl:grid-cols-[minmax(0,1fr)_minmax(400px,460px)]" : ""}`}>
-      <section className={`min-w-0 px-4 py-6 sm:px-8 ${focused ? "hidden xl:block" : ""}`} aria-labelledby="submissions-h">
+    // Rule 15 Queue (owner, 28 Oct): from 1280px the list is the narrow column and the open track gets the room.
+    <div className={`grid min-h-full ${selected || totalActive > 0 ? "xl:grid-cols-[minmax(360px,440px)_minmax(0,1fr)]" : ""}`}>
+      <section className={`min-w-0 px-4 py-6 sm:px-8 xl:px-6 ${focused ? "hidden xl:block" : ""}`} aria-labelledby="submissions-h">
         <header className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 id="submissions-h" className="text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">
-              Review Queue
+            <h1 id="submissions-h" className="page-title">
+              Review Queue {counts.review > 0 && <span className="font-mono text-mute tnum">{counts.review}</span>}
             </h1>
             <p className="mt-1 text-mute">
               {counts.review
@@ -179,7 +180,7 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
                 {search ? `Nothing matches “${search}”.` : status === "review" ? "Nothing waiting. You're all caught up." : "Nothing here yet."}
               </p>
               {status === "review" && counts.kept > 0 && (
-                <Link href={href({ s: "kept", t: undefined })} className="mt-3 inline-block text-lime underline underline-offset-4">
+                <Link href={href({ s: "kept", t: undefined })} className="mt-3 inline-block text-bone underline underline-offset-4">
                   Prepare your {counts.kept} kept track{counts.kept === 1 ? "" : "s"} for a set →
                 </Link>
               )}
@@ -192,6 +193,7 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
               hrefFor={Object.fromEntries(rows.map((r) => [r.id, href({ t: String(r.id) })]))}
             />
           )}
+          {rows.length > 0 && <p className="mt-3 text-xs text-faint">Decisions stay private. Senders see Listened, Downloaded, Played out and your replies.</p>}
         </div>
       </section>
 
