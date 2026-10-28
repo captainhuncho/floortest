@@ -77,7 +77,7 @@ export default async function ReceiverPage({ params }: Props) {
 
   return (
     <EditablePage editing={!!editor} page="link" label="Public link" values={c}>
-    <main className="group/page mx-auto flex min-h-dvh max-w-xl flex-col gap-6 bg-ink px-[18px] py-8 text-bone sm:py-12 lg:grid lg:max-w-5xl lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:content-start lg:gap-x-16 lg:gap-y-8 lg:px-8 lg:py-16">
+    <main className="group/page mx-auto flex min-h-dvh max-w-xl flex-col gap-6 bg-ink px-[18px] py-8 text-bone sm:py-12 lg:grid lg:max-w-5xl lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:grid-rows-[auto_1fr] lg:content-start lg:gap-x-16 lg:gap-y-8 lg:px-8 lg:py-16">
       {/* Once a file is picked, phones fold the profile to a short header so the form starts near the top; from 1024px
           the profile stays whole beside the form (owner, 28 Oct: "not presentable of what we want a profile to look like"). */}
       <div className="flex flex-col gap-3 lg:col-start-1 lg:row-start-1">
