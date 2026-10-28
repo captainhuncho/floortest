@@ -27,7 +27,7 @@
 - **Working:** nightly backups at 03:30 UTC are sealed with the new key and can be restored.
 - **Lost:** backups made before 28 Oct 10:00 UTC were sealed with the old key and can't be opened. They age out by 11 Nov. The live database is untouched; Neon's point-in-time restore and the vault's file copies don't depend on this key.
 - **Key keeping:** the new key is in the owner's password manager only, never in the repo, chat or logs. Keep a second copy outside Vercel.
-- **Seen on the way, not fixed here:** Ops → Security counts desk sign-in failures only; failed ops sign-ins (`ops_fail_email`, `ops_fail_ip`) aren't shown. The owner's authenticator codes for ops didn't match; a recovery code worked; set up two-step again.
+- **Seen on the way, not fixed here:** Ops → Security counts desk sign-in failures only; failed ops sign-ins (`ops_fail_email`, `ops_fail_ip`) aren't shown. An ops sign-in failed because the owner used an old authenticator entry; a recovery code worked, and two-step itself was fine (ops and desk share one code per account).
 
 ## Rollback
 
