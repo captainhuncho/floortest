@@ -4,6 +4,7 @@ import { PageViews } from "@/components/PageViews";
 import { ConsentBanner } from "@/components/ConsentBanner";
 import { mono, serif } from "./fonts";
 import type { Metadata, Viewport } from "next";
+import { connection } from "next/server";
 import "./globals.css";
 import { env, isPreview } from "@/lib/env";
 
@@ -17,7 +18,10 @@ export const metadata: Metadata = {
   openGraph: { siteName: "FloorTest", type: "website" },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Every page renders per request, so each gets the fresh script nonce from src/proxy.ts (src/lib/csp.ts). A page
+  // built ahead of time would carry no nonce and its scripts would be blocked (audit 27 Oct).
+  await connection();
   return (
     // suppressHydrationWarning: the Android app writes its safe-area sizes onto <html> before React starts.
     <html lang="en" className={`${serif.variable} ${mono.variable}`} suppressHydrationWarning>

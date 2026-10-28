@@ -1,4 +1,4 @@
-import { TRACK_STATUSES, type TrackStatus } from "@/lib/statuses";
+import { pickStatus, TRACK_STATUSES, type TrackStatus } from "@/lib/statuses";
 import { trackUse } from "@/lib/usage";
 import { cookies } from "next/headers";
 import Link from "next/link";
@@ -31,7 +31,7 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
   const view = sp.view === "list" || sp.view === "queue" ? sp.view : saved === "list" ? "list" : "queue";
   await trackUse(user.id, view === "list" ? "review_list" : "review_queue");
   if (view === "list") return <SubmissionsList user={user} sp={sp} />;
-  const status: StatusKey = STATUSES.some(([k]) => k === sp.s) ? (sp.s as StatusKey) : "review";
+  const status: StatusKey = pickStatus(sp.s);
   const collections = await collectionsFor(user.id);
   const collection = sp.c ? collections.find((c) => String(c.id) === sp.c) : undefined;
   const search = (sp.q || "").trim().slice(0, 100);

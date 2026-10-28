@@ -422,10 +422,19 @@ export async function requestAccess(link: Link, who: { email: string; userId: nu
   return { status: "sent" as const, paused };
 }
 
+/**
+ * What someone opening a share link may learn about a track: the one place another person's tracks reach a visitor,
+ * so the columns are named, never `*` (no sender, message, email or notes; audit 27 Oct, rule 2).
+ * file_key and mime are for streaming and downloading on the server; the page shows only the rest.
+ */
+export const LINK_TRACK_COLUMNS = ["id", "title", "artist", "genre", "bpm", "duration", "file_key", "mime"] as const;
+export type LinkTrack = Pick<Track, (typeof LINK_TRACK_COLUMNS)[number]>;
+const linkTrackColumns = LINK_TRACK_COLUMNS.join(", ");
+
 /** The tracks a link can play: this collection's live tracks whose sender agreed to sharing when they sent them. */
 export async function linkTracks(link: Pick<Link, "collection_id">) {
-  return q.all<Track>(
-    "SELECT * FROM tracks WHERE collection_id = ? AND deleted_at IS NULL AND file_key IS NOT NULL AND share_ok = 1 AND share_terms IS NOT NULL ORDER BY created_at DESC LIMIT 500",
+  return q.all<LinkTrack>(
+    `SELECT ${linkTrackColumns} FROM tracks WHERE collection_id = ? AND deleted_at IS NULL AND file_key IS NOT NULL AND share_ok = 1 AND share_terms IS NOT NULL ORDER BY created_at DESC LIMIT 500`,
     link.collection_id,
   );
 }
@@ -433,7 +442,7 @@ export async function linkTracks(link: Pick<Link, "collection_id">) {
 /** One track through a link, only if it's one of the link's tracks. */
 export async function linkTrack(link: Pick<Link, "collection_id">, trackId: number) {
   if (!Number.isSafeInteger(trackId)) return undefined;
-  return q.get<Track>("SELECT * FROM tracks WHERE id = ? AND collection_id = ? AND deleted_at IS NULL AND file_key IS NOT NULL AND share_ok = 1 AND share_terms IS NOT NULL", trackId, link.collection_id);
+  return q.get<LinkTrack>(`SELECT ${linkTrackColumns} FROM tracks WHERE id = ? AND collection_id = ? AND deleted_at IS NULL AND file_key IS NOT NULL AND share_ok = 1 AND share_terms IS NOT NULL`, trackId, link.collection_id);
 }
 
 /** The owner's view of a collection's links: each with its recipients, waiting requests and recent activity. */
