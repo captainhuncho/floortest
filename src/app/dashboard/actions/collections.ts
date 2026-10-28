@@ -9,6 +9,7 @@ import { now, q } from "@/lib/db";
 import { cleanGenre, MAX_COLLECTION_GENRES } from "@/lib/plans";
 import { switchOn } from "@/lib/switches";
 import { audit } from "@/lib/audit";
+import { removeCollection } from "@/lib/deletion";
 import { sendReopenAlerts } from "@/lib/reopen";
 import { done, ownCollection } from "./common";
 
@@ -99,13 +100,8 @@ export async function deleteCollection(id: number, confirm: string) {
   if (!c) return;
   if (confirm.trim() !== c.name.trim().toUpperCase()) return;
   if ((await q.count("SELECT COUNT(*) AS n FROM collections WHERE user_id = ?", u.id)) <= 1) return; // the link always needs somewhere to route
-  await q.tx(async (db) => {
-    // Tracks fall back to "unsorted" (collection_id NULL) rather than being deleted.
-    await db.run("UPDATE tracks SET collection_id = NULL WHERE collection_id = ?", id);
-    await db.run("DELETE FROM collections WHERE id = ?", id);
-    if (u.active_collection_id === id)
-      await db.run("UPDATE users SET active_collection_id = (SELECT id FROM collections WHERE user_id = ? ORDER BY created_at LIMIT 1) WHERE id = ?", u.id, u.id);
-  });
+  // Tracks fall back to "unsorted" (collection_id NULL) rather than being deleted; the artwork goes with it.
+  await removeCollection(u.id, id);
   await audit(u.id, "collection_deleted", c.name);
   done();
   redirect("/dashboard/collections");

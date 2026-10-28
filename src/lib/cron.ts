@@ -21,6 +21,8 @@ export const JOBS = {
   digest: { label: "Daily emails", schedule: "Every day at 08:00 UTC" },
   // Late after an hour, not a day: held uploads wait on it.
   scan: { label: "Held uploads virus check", schedule: "Every 10 minutes", lateAfterMs: 3_600_000 },
+  // Late after an hour: digests, reminders and email retries wait on it.
+  mail: { label: "Email queue", schedule: "Every 10 minutes", lateAfterMs: 3_600_000 },
 } as const;
 export type JobName = keyof typeof JOBS;
 /** Daily jobs: one that hasn't run for this long has missed at least one night. */

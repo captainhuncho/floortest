@@ -169,6 +169,8 @@ export const ACTION_NEEDS: Record<string, Need> = {
   saveSwitch: "switches",
   // Site-wide switches (open sign-up, billing, pause uploads) are business calls; per-feature rollouts are not.
   flipSwitch: "super",
+  saveSwitchRule: "super",
+  clearSwitchRule: "super",
   publishAnnouncement: "announcements",
   resolveIncident: "incidents.act",
   resolveAllIncidents: "incidents.act",

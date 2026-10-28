@@ -39,21 +39,15 @@ export async function batchTracks(ids: number[], action: BatchAction): Promise<B
     // An owner's or admin's call stands against a member's batch (counted as skipped).
     for (const t of tracks) {
       if (t.decision === type) continue;
-      if (decisionLocked(u, t)) locked++;
-      else {
-        await decide(u, t, type);
-        changed++;
-      }
+      if (decisionLocked(u, t) || !(await decide(u, t, type))) locked++;
+      else changed++;
     }
     await trackUse(u.id, "decide");
   } else if (type === "clear") {
     for (const t of tracks) {
       if (!t.decision) continue;
-      if (decisionLocked(u, t)) locked++;
-      else {
-        await clearDecision(t);
-        changed++;
-      }
+      if (decisionLocked(u, t) || !(await clearDecision(u, t))) locked++;
+      else changed++;
     }
   } else if (type === "move") {
     const target = await ownCollection(u.id, Number((action as { collection: number }).collection));

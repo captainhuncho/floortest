@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { now, q } from "./db";
-import { APP_URL, sendMail } from "./mail";
+import { APP_URL, deliverLater, queueMail, sendMail } from "./mail";
 import { recordIncident } from "./incidents";
 import { RETAIN_PASSED_DAYS, RETAIN_UNREVIEWED_DAYS } from "./plans";
 
@@ -57,21 +57,29 @@ export async function notifyNewSubmission(receiverId: number, trackId: number) {
      JOIN senders s ON s.id = t.sender_id LEFT JOIN collections c ON c.id = t.collection_id WHERE t.id = ?`,
     trackId,
   ))!;
-  await sendMail({
-      unsubscribe: "submissions",
-    userId: p.id,
-    audience: "receiver",
-    to: p.email,
-    subject: `New track: ${t.artist} – ${t.title}`,
-    body: [
-      `${t.sender} sent "${t.title}"${t.collection ? ` to ${t.collection}` : ""}.`,
-      t.message ? `\n"${t.message}"` : "",
-      `\nListen: ${APP_URL}/dashboard?view=queue&s=all&t=${trackId}`,
-      `\nChange how often you hear from us: ${APP_URL}/dashboard/settings/notifications`,
-      "\n— FloorTest",
-    ].join("\n"),
+  // Queued with the mark, then sent straight away: a failed send is retried by the queue, never lost or sent twice.
+  const id = await q.tx(async (db) => {
+    const claimed = await db.run("UPDATE tracks SET receiver_notified_at = ? WHERE id = ? AND receiver_notified_at IS NULL", now(), trackId);
+    if (!claimed.changes) return null;
+    return queueMail(
+      {
+        unsubscribe: "submissions",
+        userId: p.id,
+        audience: "receiver",
+        to: p.email,
+        subject: `New track: ${t.artist} – ${t.title}`,
+        body: [
+          `${t.sender} sent "${t.title}"${t.collection ? ` to ${t.collection}` : ""}.`,
+          t.message ? `\n"${t.message}"` : "",
+          `\nListen: ${APP_URL}/dashboard?view=queue&s=all&t=${trackId}`,
+          `\nChange how often you hear from us: ${APP_URL}/dashboard/settings/notifications`,
+          "\n— FloorTest",
+        ].join("\n"),
+      },
+      db,
+    );
   });
-  await q.run("UPDATE tracks SET receiver_notified_at = ? WHERE id = ?", now(), trackId);
+  if (id) deliverLater(id);
 }
 
 /**
@@ -135,36 +143,43 @@ export async function warnExpiring(at = now()) {
     const undecided = list.filter((r) => !r.decision).length;
     const ids = list.map((r) => r.id);
     const marks = ids.map(() => "?").join(",");
-    // Claim first so a crash or rerun can't warn twice; a failed send hands them back for tomorrow.
-    const claimed = await q.run(`UPDATE tracks SET expiry_warned_at = ? WHERE id IN (${marks}) AND expiry_warned_at IS NULL`, at, ...ids);
-    if (!claimed.changes) continue;
-    const status = await sendMail({
-      unsubscribe: "alerts",
-      userId,
-      audience: "receiver",
-      to: list[0].email,
-      subject: `${list.length} track${list.length === 1 ? "" : "s"} will be deleted in ${WARN_DAYS} days`,
-      body: [
-        `These tracks are deleted automatically in about ${WARN_DAYS} days:`,
-        "",
-        ...list.slice(0, 20).map((r) => `- ${r.artist} – ${r.title}${r.decision ? " (Not for me)" : ""}`),
-        list.length > 20 ? `…and ${list.length - 20} more.` : "",
-        "",
-        undecided
-          ? `Keep anything you want to hold on to: ${APP_URL}/dashboard?view=list&s=review`
-          : `Nothing to do if you're happy for them to go. Changed your mind? ${APP_URL}/dashboard?view=list&s=passed`,
-        "",
-        "— FloorTest",
-      ].join("\n"),
+    // Marked and queued together, so a crash or rerun can't warn twice; the queue retries a failed send.
+    await q.tx(async (db) => {
+      const claimed = await db.run(`UPDATE tracks SET expiry_warned_at = ? WHERE id IN (${marks}) AND expiry_warned_at IS NULL`, at, ...ids);
+      if (!claimed.changes) return;
+      await queueMail(
+        {
+          unsubscribe: "alerts",
+          userId,
+          audience: "receiver",
+          to: list[0].email,
+          subject: `${list.length} track${list.length === 1 ? "" : "s"} will be deleted in ${WARN_DAYS} days`,
+          body: [
+            `These tracks are deleted automatically in about ${WARN_DAYS} days:`,
+            "",
+            ...list.slice(0, 20).map((r) => `- ${r.artist} – ${r.title}${r.decision ? " (Not for me)" : ""}`),
+            list.length > 20 ? `…and ${list.length - 20} more.` : "",
+            "",
+            undecided
+              ? `Keep anything you want to hold on to: ${APP_URL}/dashboard?view=list&s=review`
+              : `Nothing to do if you're happy for them to go. Changed your mind? ${APP_URL}/dashboard?view=list&s=passed`,
+            "",
+            "— FloorTest",
+          ].join("\n"),
+        },
+        db,
+      );
     });
-    if (status.startsWith("failed")) await q.run(`UPDATE tracks SET expiry_warned_at = NULL WHERE id IN (${marks})`, ...ids);
   }
   return { warned: rows.length, receivers: byUser.size };
 }
 
 type Pending = { id: number; title: string; artist: string; sender: string };
 
-/** Sends one receiver's digest of tracks they haven't been emailed about. Returns how many tracks it covered. */
+/**
+ * Queues one receiver's digest of tracks they haven't been emailed about; the mail job sends it. Returns how many tracks it
+ * covered. The tracks are marked and the email queued in one transaction: one never exists without the other.
+ */
 export async function sendDigest(userId: number) {
   const p = await prefsFor(userId);
   const items = await q.all<Pending>(
@@ -177,31 +192,31 @@ export async function sendDigest(userId: number) {
     await q.run("UPDATE users SET last_digest_at = ? WHERE id = ?", now(), userId);
     return 0;
   }
-  // Claim the tracks before sending, so a crash or a second run can't email them twice.
   const marks = items.map(() => "?").join(",");
-  const claimed = await q.all<{ id: number }>(
-    `UPDATE tracks SET receiver_notified_at = ? WHERE id IN (${marks}) AND receiver_notified_at IS NULL RETURNING id`,
-    now(),
-    ...items.map((t) => t.id),
-  );
-  if (!claimed.length) return 0;
   const lines = items.slice(0, 25).map((t) => `• ${t.artist} – ${t.title} (from ${t.sender})`);
   if (items.length > 25) lines.push(`• …and ${items.length - 25} more`);
-  const status = await sendMail({
-    unsubscribe: "submissions",
-    userId,
-    audience: "receiver",
-    to: p.email,
-    subject: `${items.length} new track${items.length === 1 ? "" : "s"} waiting on FloorTest`,
-    body: [`Hi ${p.name.split(/\s+/)[0]},`, "", ...lines, "", `Start listening: ${APP_URL}/dashboard`, "", `Digest settings: ${APP_URL}/dashboard/settings/notifications`, "", "— FloorTest"].join("\n"),
+  return q.tx(async (db) => {
+    // Claimed in the same transaction, so a second run at the same moment can't email them twice.
+    const claimed = await db.all<{ id: number }>(
+      `UPDATE tracks SET receiver_notified_at = ? WHERE id IN (${marks}) AND receiver_notified_at IS NULL RETURNING id`,
+      now(),
+      ...items.map((t) => t.id),
+    );
+    if (!claimed.length) return 0;
+    await queueMail(
+      {
+        unsubscribe: "submissions",
+        userId,
+        audience: "receiver",
+        to: p.email,
+        subject: `${items.length} new track${items.length === 1 ? "" : "s"} waiting on FloorTest`,
+        body: [`Hi ${p.name.split(/\s+/)[0]},`, "", ...lines, "", `Start listening: ${APP_URL}/dashboard`, "", `Digest settings: ${APP_URL}/dashboard/settings/notifications`, "", "— FloorTest"].join("\n"),
+      },
+      db,
+    );
+    await db.run("UPDATE users SET last_digest_at = ? WHERE id = ?", now(), userId);
+    return items.length;
   });
-  if (status.startsWith("failed")) {
-    // Hand the tracks back so the next run tries again; the digest isn't marked as sent.
-    await q.run(`UPDATE tracks SET receiver_notified_at = NULL WHERE id IN (${claimed.map(() => "?").join(",")})`, ...claimed.map((c) => c.id));
-    return 0;
-  }
-  await q.run("UPDATE users SET last_digest_at = ? WHERE id = ?", now(), userId);
-  return items.length;
 }
 
 /**

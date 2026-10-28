@@ -110,7 +110,7 @@ test("account teams: seats by plan, invites, roles, removal, reply approval and 
   ))!.id;
   const track = async () => (await q.get<import("../src/lib/db").Track>("SELECT * FROM tracks WHERE id = ?", tid))!;
   const adminDesk = { ...(await q.get<import("../src/lib/db").User>("SELECT * FROM users WHERE id = ?", label))!, actor_id: ama, actor_name: "ama", role: "admin" as const };
-  const { prev, eventId } = await R.decide(adminDesk, await track(), "kept");
+  const { prev, eventId } = (await R.decide(adminDesk, await track(), "kept"))!;
   assert.equal(R.decisionLocked({ role: "member" }, await track()), true);
   await R.undoDecision(adminDesk, await track(), prev, eventId);
   const back = await track();

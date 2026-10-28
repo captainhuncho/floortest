@@ -146,6 +146,80 @@ test("hold and scan: an asleep scanner holds the upload without waking; the batc
   }
 });
 
+test("hold and scan: a database failure in the batch is never counted as delivered, and the time budget leaves the rest held", async () => {
+  const { q, USER_COLUMNS } = await import("../src/lib/db");
+  const { storage } = await import("../src/lib/storage");
+  const { completeUpload, UploadHeld } = await import("../src/lib/intake");
+  const { scanHeldUploads } = await import("../src/lib/held-uploads");
+  const { failOnce } = await import("./fail-once");
+  const store = await storage();
+  const t = Date.now();
+  const uid = (await q.get<{ id: number }>("INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at, email_verified_at) VALUES ('d@x.io','h','Dee','dee','pro','UTC',?,?) RETURNING id", t, t))!.id;
+  const col = (await q.get<{ id: number }>("INSERT INTO collections (user_id, name, created_at) VALUES (?, 'Open', ?) RETURNING id", uid, t))!.id;
+  await q.run("UPDATE users SET active_collection_id = ? WHERE id = ?", col, uid);
+  const receiver = (await q.get(`SELECT ${USER_COLUMNS} FROM users WHERE id = ?`, uid))!;
+  const file = wav();
+  const held = async (id: string) => {
+    const key = `audio/${uid}/${id}.wav`;
+    await store.put(key, file, "audio/wav");
+    const meta = { name: "S", email: `${id}@sender.io`, title: id, artist: "A", message: "", releaseStatus: "unsigned", aiUse: "none", mixStatus: "mastered", genre: "House", originalName: "t.wav", emailConfirmed: true };
+    await q.run("INSERT INTO uploads (id, receiver_id, file_key, ext, size, meta, ip, created_at) VALUES (?,?,?,?,?,?,?,?)", id, uid, key, ".wav", file.length, JSON.stringify(meta), "x", Date.now());
+    await assert.rejects(completeUpload(receiver as never, id, { duration: 61, bpm: 124, peaks: null }), (e: unknown) => e instanceof UploadHeld);
+  };
+  const tracks = () => q.count("SELECT COUNT(*) AS n FROM tracks WHERE user_id = ?", uid);
+  const incidents = () => q.count("SELECT COUNT(*) AS n FROM incidents WHERE kind = 'upload_failed'");
+  // Only this test's uploads: anything still held from the test above would be scanned first.
+  await q.run("DELETE FROM uploads");
+  const fake = await fakeScanner();
+  try {
+    // 1. The connection drops while the track is saved: not delivered, still held with its file, and an incident.
+    await held("d1");
+    const before = await incidents();
+    let restore = failOnce(q as never, /INSERT INTO tracks/);
+    let out;
+    try {
+      out = await scanHeldUploads();
+    } finally {
+      restore();
+    }
+    assert.equal(out.delivered, 0, "nothing was delivered");
+    assert.equal(await tracks(), 0);
+    const row = await q.get<{ file_key: string }>("SELECT file_key FROM uploads WHERE id = 'd1' AND held_at IS NOT NULL");
+    assert.ok(row && (await store.head(row.file_key)), "still held, file kept, for the next run");
+    assert.equal(await incidents(), before + 1);
+
+    // 2. The upload vanished and no track was made: counted as lost, with an incident and an email to the sender.
+    await q.run("UPDATE uploads SET claimed_at = NULL WHERE id = 'd1'");
+    restore = failOnce(q as never, /INSERT INTO tracks/);
+    const { run } = q;
+    q.run = async (sql: string, ...args: unknown[]) =>
+      /SET claimed_at = NULL WHERE id/.test(sql) ? run.call(q, "DELETE FROM uploads WHERE id = ?", ...args.slice(-1)) : run.call(q, sql, ...args);
+    try {
+      out = await scanHeldUploads();
+    } finally {
+      q.run = run;
+      restore();
+    }
+    assert.equal(out.delivered, 0, "a vanished upload with no track is not 'delivered'");
+    assert.equal(out.refused, 1);
+    assert.equal(await incidents(), before + 2);
+    assert.match((await q.get<{ subject: string }>("SELECT subject FROM outbox WHERE to_email = 'd1@sender.io' ORDER BY id DESC LIMIT 1"))?.subject ?? "", /wasn't sent: d1/);
+
+    // 3. Not enough time left in the run: nothing is started, the scanner isn't woken, both wait for the next run.
+    fake.state.awake = false;
+    await held("e1");
+    await held("e2");
+    fake.state.seen = [];
+    out = await scanHeldUploads(undefined, { until: Date.now() + 10_000 });
+    assert.deepEqual(out, { delivered: 0, refused: 0, gaveUp: 0, waiting: 2 });
+    assert.equal(fake.state.seen.filter((s) => s === "POST /wake").length, 0, "not woken for a run that can't finish");
+    assert.equal(await tracks(), 0);
+  } finally {
+    fake.close();
+    delete process.env.SCAN_URL;
+  }
+});
+
 test("hold and scan for stems: a stem sent while the scanner sleeps is held, then attached by the batch; a flagged one is refused and its sender emailed", async () => {
   const { q } = await import("../src/lib/db");
   const { storage } = await import("../src/lib/storage");

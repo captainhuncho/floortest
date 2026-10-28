@@ -1,7 +1,7 @@
 import "server-only";
 import { env } from "./env";
 import { now, q } from "./db";
-import { APP_URL, sendMail } from "./mail";
+import { APP_URL, queueMail, sendMail } from "./mail";
 
 const DAY = 86_400_000;
 
@@ -28,22 +28,24 @@ export async function runNudges(at = now()) {
     if (list.length > 10) lines.push(`• …and ${list.length - 10} more`);
     const ids = list.map((t) => t.id);
     const marks = ids.map(() => "?").join(",");
-    // Claim first so a crash or rerun can't remind twice; a failed send hands them back for the next run.
-    const claimed = await q.run(`UPDATE tracks SET nudged_at = ? WHERE id IN (${marks}) AND nudged_at IS NULL`, at, ...ids);
-    if (!claimed.changes) continue;
-    const status = await sendMail({
-      unsubscribe: "alerts",
-      userId,
-      audience: "receiver",
-      to: u.email,
-      subject: `${list.length} track${list.length === 1 ? "" : "s"} still waiting on FloorTest`,
-      body: [`Hi ${u.name.split(/\s+/)[0]},`, "", "These have been on your desk for two weeks without a listen:", "", ...lines, "", `Give them a spin: ${APP_URL}/dashboard?view=queue`, "", "You'll only be reminded once per track.", "", "— FloorTest"].join("\n"),
+    // Marked and queued together, so a crash or rerun can't remind twice; the queue retries a failed send.
+    const queued = await q.tx(async (db) => {
+      const claimed = await db.run(`UPDATE tracks SET nudged_at = ? WHERE id IN (${marks}) AND nudged_at IS NULL`, at, ...ids);
+      if (!claimed.changes) return false;
+      await queueMail(
+        {
+          unsubscribe: "alerts",
+          userId,
+          audience: "receiver",
+          to: u.email,
+          subject: `${list.length} track${list.length === 1 ? "" : "s"} still waiting on FloorTest`,
+          body: [`Hi ${u.name.split(/\s+/)[0]},`, "", "These have been on your desk for two weeks without a listen:", "", ...lines, "", `Give them a spin: ${APP_URL}/dashboard?view=queue`, "", "You'll only be reminded once per track.", "", "— FloorTest"].join("\n"),
+        },
+        db,
+      );
+      return true;
     });
-    if (status.startsWith("failed")) {
-      await q.run(`UPDATE tracks SET nudged_at = NULL WHERE id IN (${marks})`, ...ids);
-      continue;
-    }
-    sent++;
+    if (queued) sent++;
   }
   return sent;
 }

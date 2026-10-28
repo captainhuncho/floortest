@@ -73,7 +73,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
 
   // Link health: the one thing to fix, if anything.
   const openAlternative = collections.find((c) => !isClosed(c) && c.id !== active?.id);
-  const canSend = user.role !== "member" && (await switchOn("send_music"));
+  const canSend = user.role !== "member" && (await switchOn("send_music", user));
   const canAdd = !openAlternative && active && isClosed(active) ? await canAddCollection(user.id) : true;
   const problem: { text: string; action?: React.ReactNode } | null = paused
     ? // The Link open switch lives on Account (the sidebar only links there), so the fix points there.
