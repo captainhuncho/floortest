@@ -22,6 +22,8 @@ import { History } from "./History";
 import { PanelDetails } from "./PanelDetails";
 import { commentsFor, shortlistOf, teamSize } from "@/lib/team";
 import { ReviewTogether } from "./ReviewTogether";
+import { TrackStepper } from "./review/TrackStepper";
+import type { Step } from "./review/QueueState";
 
 export async function ReviewPanel({
   track: t,
@@ -29,15 +31,15 @@ export async function ReviewPanel({
   collections,
   selfHref,
   next,
-  prevHref,
+  prev,
   position,
 }: {
   track: Track;
   sender: Sender;
   collections: Collection[];
   selfHref: string;
-  next: { href: string; track: PlayerTrack } | null;
-  prevHref: string | null;
+  next: Step;
+  prev: Step;
   /** "1 of 3": where this track sits in the list on screen. */
   position?: string | null;
 }) {
@@ -177,7 +179,7 @@ export async function ReviewPanel({
   );
 
   return (
-    <div className="p-4 sm:p-6" data-swipe-zone>
+    <div className="p-4 sm:p-6">
       {/* Rule 15 Queue (28 Oct): one layout at every width, rendered with the page, so the buttons are there before
           any JavaScript runs (they used to mount after it, one copy per screen size). */}
       <div className="flex items-start gap-3 md:gap-4">
@@ -186,9 +188,9 @@ export async function ReviewPanel({
           <img src={art} alt={`Artwork for ${t.title}`} className="size-14 shrink-0 rounded-md border border-line object-cover md:size-20" />
         )}
         <div className="min-w-0 flex-1">
-          <div className="flex items-baseline justify-between gap-3">
+          <div className="flex items-start justify-between gap-3">
             <h2 className="min-w-0 text-xl font-bold leading-tight tracking-[-0.3px] text-bone md:text-2xl">{t.title}</h2>
-            {position && <span className="shrink-0 font-mono text-xs text-mute tnum">{position}</span>}
+            <TrackStepper fromId={t.id} prev={prev} next={next} position={position ?? null} />
           </div>
           <p className="mt-1 text-sm text-mute">
             {[t.artist, collectionName && `for ${collectionName}`, `arrived ${ago(t.created_at)}`].filter(Boolean).join(" · ")}
@@ -209,7 +211,7 @@ export async function ReviewPanel({
           senderName={sender.name}
           selfHref={selfHref}
           next={next}
-          prevHref={prevHref}
+          prev={prev}
           onReply={replyToSender.bind(null, sender.id, t.id)}
         />
       </div>

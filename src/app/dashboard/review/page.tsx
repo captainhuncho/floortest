@@ -177,6 +177,8 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
           <aside
             id="review-card"
             aria-label="Review"
+            // The whole card turns like a page on a swipe (DecisionRail); it stays mounted while tracks change.
+            data-swipe-zone
             className="panel mx-4 mt-4 overflow-hidden sm:mx-8 xl:sticky xl:top-[68px] xl:col-start-2 xl:row-span-2 xl:row-start-1 xl:m-0 xl:h-[calc(100dvh-68px)] xl:self-start xl:overflow-y-auto xl:rounded-none xl:border-0 xl:border-l xl:bg-ink-2/60"
           >
             <ShownPanel servedId={selected.id}>
@@ -187,7 +189,7 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
                 collections={collections}
                 selfHref={href({ t: String(selected.id) })}
                 next={nextRow ? { href: href({ t: String(nextRow.id) }), track: toPlayer(nextRow) } : null}
-                prevHref={prevRow ? href({ t: String(prevRow.id) }) : null}
+                prev={prevRow ? { href: href({ t: String(prevRow.id) }), track: toPlayer(prevRow) } : null}
                 position={idx >= 0 && rows.length > 1 ? `${idx + 1} of ${rows.length}` : null}
               />
             </ShownPanel>

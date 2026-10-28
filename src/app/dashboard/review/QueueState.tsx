@@ -1,7 +1,8 @@
 "use client";
 
-import { createContext, useContext, useState } from "react";
-import type { PlayerTrack } from "@/components/Player";
+import { useRouter } from "next/navigation";
+import { createContext, useCallback, useContext, useState } from "react";
+import { usePlayer, type PlayerTrack } from "@/components/Player";
 import { fmtTime } from "@/lib/format";
 import { DetailPlayer } from "../DetailPlayer";
 
@@ -29,6 +30,29 @@ const QueueCtx = createContext<Queue | null>(null);
 
 /** Null outside the Review Queue, so the list and the decision rail work the same anywhere else. */
 export const useQueue = () => useContext(QueueCtx);
+
+/** A neighbouring track in the list: where it lives and what the list already knows about it. */
+export type Step = { href: string; track: Glimpse } | null;
+
+/**
+ * Moves to the previous or next track (buttons, swipe, arrow keys): shows it at once, keeps the music going if the
+ * track being left was playing, and asks the server for its page.
+ */
+export function useStep(fromId: number) {
+  const queue = useQueue();
+  const router = useRouter();
+  const player = usePlayer();
+  return useCallback(
+    (to: Step) => {
+      if (!to) return;
+      const wasPlaying = player.current?.id === fromId && player.playing;
+      queue?.show(to.track);
+      if (wasPlaying) player.play(to.track);
+      router.replace(to.href, { scroll: false });
+    },
+    [fromId, queue, router, player],
+  );
+}
 
 /** Whether a decision takes the track out of the tab on screen (Needs review, Kept, Not for me; All keeps everything). */
 function leavesTab(status: string, d: Decision) {

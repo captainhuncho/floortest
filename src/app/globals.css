@@ -380,10 +380,10 @@ html:has(.theme-day), html:has(.theme-day) body { background: #fafaf6; }
 .site-editing [data-edit-panel], .site-editing [data-edit-image] { cursor: pointer; outline: 1px dashed color-mix(in oklab, var(--color-lime) 35%, transparent); outline-offset: 6px; }
 .site-editing [data-edit-panel]:hover, .site-editing [data-edit-image]:hover { outline-color: var(--color-lime); }
 
-/* Review on touch screens: the top card (artwork, title, waveform; [data-swipe-zone]) follows a swipe; DecisionRail.tsx
-   writes its transform and the stamp's opacity directly. The stamp sits on the trailing side so it stays on screen
-   (KEEP when dragging right, NOT FOR ME when dragging left; Keep lime, Not for me neutral, never red). */
-[data-swipe-zone] { position: relative; touch-action: pan-y; }
+/* Review on touch screens: the open-track card ([data-swipe-zone]) follows a sideways swipe to the next or previous
+   track (owner, 28 Oct); DecisionRail.tsx writes its transform. The [data-stamp] rules below are left from swipe to
+   decide and match nothing now. */
+[data-swipe-zone] { touch-action: pan-y; }
 [data-stamp] { position: absolute; top: 18px; z-index: 1; padding: 4px 10px; border: 2px solid; border-radius: 8px; font: 800 16px var(--font-mono); letter-spacing: .04em; white-space: nowrap; opacity: 0; pointer-events: none; }
 [data-stamp][data-kind="keep"] { left: 18px; color: var(--color-lime); rotate: 8deg; }
 [data-stamp][data-kind="pass"] { right: 18px; color: var(--color-bone); rotate: -8deg; }

@@ -9,7 +9,7 @@ import { QuickReplies } from "./QuickReplies";
 import { ReplyTemplates } from "./ReplyTemplates";
 import { decideTrack, undoDecision } from "./actions/review";
 import { stored, useDeviceState } from "@/components/useBrowserValue";
-import { useQueue } from "./review/QueueState";
+import { useQueue, useStep, type Step } from "./review/QueueState";
 
 /** Number keys jump through the track: 1 = a quarter in, 4 = near the end. */
 const JUMPS: Record<string, number> = { "1": 0.25, "2": 0.5, "3": 0.75, "4": 0.9 };
@@ -18,12 +18,12 @@ type Props = {
   track: PlayerTrack & { decision: "kept" | "passed" | null };
   senderName: string;
   selfHref: string;
-  next: { href: string; track: PlayerTrack } | null;
-  prevHref: string | null;
+  next: Step;
+  prev: Step;
   onReply: (fd: FormData) => Promise<ReplyResult>;
 };
 
-export function DecisionRail({ track, senderName, selfHref, next, prevHref, onReply }: Props) {
+export function DecisionRail({ track, senderName, selfHref, next, prev, onReply }: Props) {
   const router = useRouter();
   const player = usePlayer();
   const toast = useToast();
@@ -45,13 +45,8 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
   }, [replying]);
 
   const queue = useQueue();
-
-  // Moving on shows the next track at once from what the list knows (QueueState); the server's page follows.
-  const goNext = useCallback(() => {
-    if (!next) return;
-    queue?.show(next.track);
-    router.replace(next.href, { scroll: false });
-  }, [next, queue, router]);
+  // Previous / next show at once from what the list knows (QueueState); the server's page follows.
+  const step = useStep(track.id);
 
   const decide = useCallback(
     (d: "kept" | "passed") => {
@@ -104,8 +99,8 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
       else if (k === "x") decide("passed");
       else if (k === "r") setReplying(true);
       else if (k === "u") toast.undoLatest();
-      else if ((k === "j" || e.key === "ArrowDown") && next) goNext();
-      else if (e.key === "ArrowUp" && prevHref) router.replace(prevHref, { scroll: false });
+      else if ((k === "j" || e.key === "ArrowDown") && next) step(next);
+      else if (e.key === "ArrowUp" && prev) step(prev);
       else if (e.key === "ArrowRight") player.seekBy(10);
       else if (e.key === "ArrowLeft") player.seekBy(-10);
       else if (k in JUMPS) {
@@ -125,31 +120,35 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [decide, goNext, next, prevHref, player, router, toast, track]);
+  }, [decide, step, next, prev, player, toast, track]);
 
-  // Phones: drag the review panel right to keep, left for Not for me. The panel follows the finger with a stamp;
-  // let go past the line to decide (with a haptic tap in the app), or short of it to snap back.
+  // Phones (owner, 28 Oct): swipe the track card left for the next track, right for the previous one, like turning a
+  // page. The card follows the finger; past the line, or with a quick flick, it slides away and the neighbour slides
+  // in from the other side (shown at once, details follow). With nothing that way it resists and springs back.
+  // Deciding is the three buttons only. Vertical drags stay page scrolling (touch-action: pan-y).
   useEffect(() => {
     if (!window.matchMedia("(pointer: coarse)").matches) return;
     const zone = document.querySelector<HTMLElement>("[data-swipe-zone]");
     if (!zone) return;
     const LINE = 90;
+    const FLICK = 0.5; // px per ms
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let x0 = 0, y0 = 0, dx = 0, mode: "idle" | "maybe" | "drag" | "scroll" = "idle";
+    const ease = "transform .22s cubic-bezier(.23,1,.32,1)";
+    let x0 = 0, y0 = 0, t0 = 0, dx = 0, mode: "idle" | "maybe" | "drag" | "scroll" = "idle";
+    // While the neighbour slides in, this rail is already gone (the card shows the neighbour); don't cut the slide.
+    let sliding = false;
     const haptic = () => {
       const cap = (window as unknown as { Capacitor?: { Plugins?: { Haptics?: { impact: (o: { style: string }) => Promise<void> } } } }).Capacitor;
-      if (cap?.Plugins?.Haptics) void cap.Plugins.Haptics.impact({ style: "MEDIUM" }).catch(() => {});
-      else navigator.vibrate?.(12);
+      if (cap?.Plugins?.Haptics) void cap.Plugins.Haptics.impact({ style: "LIGHT" }).catch(() => {});
+      else navigator.vibrate?.(8);
     };
-    const paint = (x: number) => {
-      zone.style.transform = x ? `translateX(${x}px) rotate(${x / 40}deg)` : "";
-      zone.dataset.swipe = x > LINE / 3 ? "keep" : x < -LINE / 3 ? "pass" : "";
-      zone.style.setProperty("--swipe-strength", String(Math.min(1, Math.abs(x) / LINE)));
-    };
+    const target = (x: number) => (x < 0 ? next : prev);
+    const paint = (x: number) => (zone.style.transform = x ? `translateX(${x}px)` : "");
     const start = (e: TouchEvent) => {
-      if (isTyping(e.target) || (e.target instanceof HTMLElement && e.target.closest("[role=slider], input, textarea, button, a, summary, select"))) return void (mode = "idle");
+      if (e.touches.length > 1 || isTyping(e.target) || (e.target instanceof HTMLElement && e.target.closest("[role=slider], input, textarea, button, a, summary, select"))) return void (mode = "idle");
       x0 = e.touches[0].clientX;
       y0 = e.touches[0].clientY;
+      t0 = performance.now();
       dx = 0;
       mode = "maybe";
       zone.style.transition = "none";
@@ -164,26 +163,36 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
         else return;
       }
       e.preventDefault();
-      if ((Math.abs(dx) < LINE) !== (Math.abs(x) < LINE)) haptic(); // crossing the line
+      // No track that way: the card moves less the further it's pulled.
+      const pulled = target(x) ? x : Math.sign(x) * Math.sqrt(Math.abs(x)) * 4;
+      if (target(x) && (Math.abs(dx) < LINE) !== (Math.abs(x) < LINE)) haptic(); // crossing the line
       dx = x;
-      paint(dx);
+      paint(pulled);
     };
     const end = () => {
       if (mode !== "drag") return void (mode = "idle");
       mode = "idle";
-      zone.style.transition = reduce ? "none" : "transform .22s cubic-bezier(.2,.8,.2,1)";
-      if (Math.abs(dx) < LINE) return paint(0);
-      const keep = dx > 0;
-      paint(keep ? window.innerWidth : -window.innerWidth);
+      const to = target(dx);
+      const flick = Math.abs(dx) > 30 && Math.abs(dx) / (performance.now() - t0) > FLICK;
+      zone.style.transition = reduce ? "none" : ease;
+      if (!to || (Math.abs(dx) < LINE && !flick)) return paint(0);
+      const dir = Math.sign(dx);
+      paint(dir * window.innerWidth);
       setTimeout(() => {
-        zone.style.transition = "none";
-        paint(0);
         setSwiped(true);
         try {
           localStorage.setItem("ft:swiped", "1");
         } catch {}
-        decide(keep ? "kept" : "passed");
-      }, reduce ? 0 : 200);
+        sliding = true;
+        step(to);
+        // The neighbour comes in from the opposite side.
+        zone.style.transition = "none";
+        paint(reduce ? 0 : -dir * window.innerWidth * 0.3);
+        requestAnimationFrame(() => {
+          zone.style.transition = reduce ? "none" : ease;
+          paint(0);
+        });
+      }, reduce ? 0 : 160);
     };
     zone.addEventListener("touchstart", start, { passive: true });
     zone.addEventListener("touchmove", move, { passive: false });
@@ -194,9 +203,9 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
       zone.removeEventListener("touchmove", move);
       zone.removeEventListener("touchend", end);
       zone.removeEventListener("touchcancel", end);
-      paint(0);
+      if (!sliding) paint(0);
     };
-  }, [decide, setSwiped]);
+  }, [next, prev, step, setSwiped]);
 
   const btn = "btn h-12 gap-2 border text-[15px] font-bold";
   const key = "font-mono text-[11px] font-medium opacity-60";
@@ -317,7 +326,7 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
         </form>
       )}
 
-      {!swiped && <p className="mt-3 text-[11px] text-faint [@media(pointer:fine)]:hidden">Swipe right to keep · swipe left: not for me</p>}
+      {!swiped && <p className="mt-3 text-[11px] text-faint [@media(pointer:fine)]:hidden">Swipe left for the next track, right for the previous one</p>}
       {/* One faint line (rule 15 Queue, lighter panel); the full list opens from it. */}
       <details className="mt-2 hidden text-xs text-faint md:block">
         <summary className="inline-flex min-h-8 w-fit cursor-pointer list-none items-center hover:text-mute [&::-webkit-details-marker]:hidden">
