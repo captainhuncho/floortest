@@ -22,6 +22,7 @@ import { audit } from "@/lib/audit";
 import { cleanProfileLink, IDENTITY_HOSTS, newIdentityCode } from "@/lib/identity";
 import { done } from "./common";
 import { REQUEST_KINDS, VOLUMES, pendingRequest, type RequestKind } from "@/lib/plan-requests";
+import { httpsLink } from "@/lib/safe-links";
 
 export async function updateNotifications(_: SettingsState, form: FormData): Promise<SettingsState> {
   const u = await requireRole("owner");
@@ -240,10 +241,12 @@ export async function requestPlan(form: FormData) {
   const kind = String(form.get("kind") || "") as RequestKind;
   if (!(kind in REQUEST_KINDS)) redirect(`/dashboard/plans/request?plan=${next.id}&error=kind`);
   const org = String(form.get("org") || "").trim().slice(0, 120);
-  const link = String(form.get("link") || "").trim().slice(0, 300);
+  const rawLink = String(form.get("link") || "").trim().slice(0, 300);
+  // Shown to ops as a link: https only, never javascript: or data: (src/lib/safe-links.ts).
+  const link = rawLink ? httpsLink(rawLink) : "";
   const volume = (VOLUMES as readonly string[]).includes(String(form.get("volume"))) ? String(form.get("volume")) : "";
   const note = String(form.get("note") || "").trim().slice(0, 1000);
-  if (link && !/^https?:\/\/\S+\.\S+/i.test(link)) redirect(`/dashboard/plans/request?plan=${next.id}&error=link`);
+  if (link === null) redirect(`/dashboard/plans/request?plan=${next.id}&error=link`);
   await q.run("UPDATE plan_requests SET status = 'withdrawn' WHERE user_id = ? AND status = 'pending'", u.id);
   await q.run(
     "INSERT INTO plan_requests (user_id, plan, kind, org, link, volume, note, created_at) VALUES (?,?,?,?,?,?,?,?)",

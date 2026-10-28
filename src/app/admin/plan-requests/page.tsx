@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/admin";
 import { q } from "@/lib/db";
+import { httpsLink } from "@/lib/safe-links";
 import { allPlans } from "@/lib/plan-store";
 import { REQUEST_KINDS, type PlanRequest } from "@/lib/plan-requests";
 import { approvePlanRequest, declinePlanRequest } from "../actions";
@@ -60,7 +61,7 @@ export default async function PlanRequests() {
                 <div><dt className="label">Name or company</dt><dd>{r.org || <span className="text-mute">Not given</span>}</dd></div>
                 <div>
                   <dt className="label">Link</dt>
-                  <dd className="truncate">{r.link ? <a href={r.link} target="_blank" rel="noreferrer noopener" className="underline underline-offset-4">{r.link}</a> : <span className="text-mute">Not given</span>}</dd>
+                  <dd className="truncate">{r.link ? httpsLink(r.link) ? <a href={httpsLink(r.link)!} target="_blank" rel="noreferrer noopener" className="underline underline-offset-4">{r.link}</a> : r.link : <span className="text-mute">Not given</span>}</dd>
                 </div>
                 <div><dt className="label">Tracks a month</dt><dd>{r.volume || <span className="text-mute">Not sure</span>} <span className="text-mute">· {r.tracks} on their desk now</span></dd></div>
                 {r.note && <div className="sm:col-span-2"><dt className="label">Note</dt><dd className="whitespace-pre-wrap">{r.note}</dd></div>}

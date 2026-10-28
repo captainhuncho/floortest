@@ -23,6 +23,12 @@ export const test = base.extend({
     // A saved banner choice, so the cookie banner never covers what the tests click.
     await page.context().addCookies([{ name: "ft_consent", value: "rejected", url: baseURL ?? "http://localhost:3000" }]);
     await page.route("https://challenges.cloudflare.com/turnstile/v0/api.js*", (route) => route.fulfill({ contentType: "text/javascript", body: FAKE_TURNSTILE }));
+    // Every response sends Cross-Origin-Opener-Policy: same-origin, so the first visit from the blank tab moves the page
+    // to a new browser process, and Playwright's focus emulation doesn't follow it (document.hasFocus() turns false and
+    // focus events stop firing, so the bot check, which starts on focus, never loads). Make that move here, then give the
+    // page focus back. Real visitors keep their window's focus; this only affects the test browser.
+    await page.goto("/api/health");
+    await page.bringToFront();
     await use(page);
   },
 });
