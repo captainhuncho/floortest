@@ -19,9 +19,9 @@ Same format as the other panels: one or two lines per voice, one recommendation,
 ## Standing rules (from the owner, kept here in one place)
 
 1. New work goes to `mobile-next`; the owner reviews the Vercel preview link on the phone.
-2. Only the session the owner says "ship it" to touches `main`. A ship branch starts from `main`, never from `mobile-next`.
+2. Only the session the owner says "ship it" to merges into `main`. A ship branch starts from `main`, never from `mobile-next`.
 3. Fixes that must reach production are built on a branch from `main`, then merged into `mobile-next`.
-4. Ship: push `main`, wait ~60 s, push `mobile-next`, confirm the deploy.
+4. Ship: merge the release PR into `main` on GitHub (never push `main`; steps in the `owner-ship` skill), wait ~60 s, merge `main` into `mobile-next` and push `mobile-next`, confirm the deploy.
 5. Checks before every push; e2e when sending, review, downloads, receipts or auth change.
 6. Several sessions share one checkout: commit only your own changes, leave the rest.
 7. Secrets, deletions, sign-ins, dashboard settings and legal wording are the owner's.

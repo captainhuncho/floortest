@@ -33,8 +33,9 @@ commit. Shipping an item from `06-plan.md` moves it to Done.
 
 ## Branches, preview and production
 - Work on `mobile-next`. Pushing it builds a Vercel **preview** (its own database, the `floortest-audio-preview` bucket,
-  no email key): safe to show the owner. `main` is **production**: only on the owner's "ship it" (merge into `main`,
-  push `main`, wait ~60 s, then push `mobile-next`; confirm the deploy).
+  no email key): safe to show the owner. `main` is **production**: only on the owner's "ship it" (merge the release PR
+  into `main` on GitHub, never push `main`; wait ~60 s, merge `main` into `mobile-next` and push `mobile-next`; confirm
+  the deploy; steps in the `owner-ship` skill).
 - `vercel-build` runs migrations: a new migration reaches production only when shipped.
 
 ## Every session, every task (owner, 15 Oct; full text: `docs/working.md` rules 1–15)
