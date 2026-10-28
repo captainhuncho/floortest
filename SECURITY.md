@@ -4,7 +4,11 @@ This policy defines the security boundary and invariants for FloorTest. It appli
 
 It is guidance for maintainers and security reviewers. It does not replace incident response, legal review or production access controls.
 
-## System and scope
+Five sections, in the owner's order (global rule, 26 Oct 2026): 1 Security rules, 2 Sign-in and permissions, 3 Data, 4 Threat model, 5 Pre-launch checklist. Written from the code; anything not built yet is marked **Gap**, never as done. When this file and the code disagree, the code wins and this file is fixed. [docs/11. Authentication & Security.md](docs/11.%20Authentication%20%26%20Security.md) links here rather than repeating it.
+
+## 1. Security rules
+
+### What's protected
 
 FloorTest is a private music-receiving platform. DJs, performers, selectors, labels and other receivers create accounts and share permanent submission links. Senders may upload WAV or MP3 files without creating an account, receive a private receipt and be notified about permitted engagement signals. An account can have a team: people with their own logins who work that account's desk with a role (Owner, A&R / Admin, Member). A receiver can also open a collection to named listeners through a collection share link (held behind the `sharing` switch until the legal wording is approved).
 
@@ -20,9 +24,7 @@ The production boundary includes:
 
 The most sensitive assets are original audio, stems, sender identity and contact information, private messages and replies, receiver decisions and notes, receipts, collection share-link addresses and listener sessions, team invites, account sessions, password-reset and email-verification tokens, admin access, credentials, backups, audit records and deletion records.
 
-## Threat model and trust boundaries
-
-Assume that public visitors, anonymous senders, uploaded files, filenames, metadata, form fields, request headers, query parameters, capability tokens presented by clients, webhook payloads and all browser-controlled analysis values are attacker-controlled.
+### Who is trusted
 
 Authenticated users are trusted only for actions on resources they own or have explicitly been granted access to. Authentication alone never establishes authorization to another receiver's tracks, senders, collections, receipts, exports or settings.
 
@@ -30,7 +32,9 @@ FloorTest administrators are privileged but remain subject to role checks, two-f
 
 PostgreSQL (Neon), private object storage, Resend, Vercel and Cloudflare are external trust boundaries. Credentials for them are server-only. Signed storage URLs and capability links are temporary delegated authority and must be treated as secrets.
 
-## Security invariants
+Everyone else (public visitors, anonymous senders and everything they send) is untrusted: see Input handling below and section 4.
+
+### Rules that must stay true
 
 The following properties must remain true:
 
@@ -54,7 +58,18 @@ The following properties must remain true:
 18. **Scripts run only with the request's nonce.** Every page's Content-Security-Policy (`src/lib/csp.ts`, sent by `src/proxy.ts`) allows a script only if it carries that request's random nonce, plus what such a script loads (`'strict-dynamic'`: Turnstile, and Vercel Analytics and browser Sentry after Accept). `script-src` never has `'unsafe-inline'` (or `'unsafe-eval'` outside development), so injected markup can't run code. Pages are rendered per request for this (the root layout awaits `connection()`); a page built ahead of time would carry no nonce and stop working. Static files the proxy skips get the same policy without a nonce from `next.config.ts`. `style-src` still allows inline styles. Tests: `tests/csp.test.ts`, `e2e/csp.spec.ts`.
 19. **Other sites can't read or change anything through the API.** No route sends `Access-Control-Allow-Origin`. The proxy refuses (403) any POST, PUT, PATCH or DELETE to `/api/*` that a browser marks as started on another site (`Sec-Fetch-Site`, or `Origin` on older browsers; `src/lib/cross-site.ts`); requests with neither header (the phone app's native calls, webhooks, one-click unsubscribe) carry no browser cookies and pass. Server actions get Next's own Origin check. Tests: `tests/cross-site.test.ts`, `e2e/guards.spec.ts`.
 
-## Public and capability-based routes
+### Input handling
+
+Assume that public visitors, anonymous senders, uploaded files, filenames, metadata, form fields, request headers, query parameters, capability tokens presented by clients, webhook payloads and all browser-controlled analysis values are attacker-controlled.
+
+- **Database queries** use the shared `q` interface with parameter placeholders for every user-controlled value; receiver-owned queries are scoped by owner or membership (`docs/DATABASE.md`, Query rules). No second ORM.
+- **Files** are checked by content (RIFF/MPEG structure, no trailing payloads), never by name, extension, MIME type or browser-made waveform/BPM (invariants 4 and 5), then virus-scanned when `SCAN_URL` is set.
+- **Redirects** taken from a request go through one of two checks in `src/lib/next-path.ts`: `safeNext` (after sign-in, only `/c/a.<id>` or `/join/<invite>`) and `localPath` (a same-site path; refuses `//`, `/\` and control characters). Evidence: `tests/local-path.test.ts` (`localPath`) and `tests/safe-next.test.ts` (`safeNext` against `//`, `/\`, `\\`, other schemes including `javascript:` and `data:`, encoded `%2F%2F` and `%5C`, look-alikes with extra paths, queries or fragments, whitespace and control characters, and ordinary pages such as `/desk`).
+- **Cross-site requests:** export and download routes that record a Downloaded signal refuse requests started on another site (`src/lib/same-site.ts`, `tests/same-site.test.ts`). Server actions are same-origin by Next.js.
+- **Framing:** `X-Frame-Options: DENY` and CSP `frame-ancestors 'none'` on every route, production and development (`next.config.ts`; `tests/framing-headers.test.ts`, `e2e/framing.spec.ts`). HSTS, `nosniff`, `Referrer-Policy` and `Permissions-Policy` are set there too; the full CSP is production-only.
+- **Bots and floods:** Turnstile on public forms (section 2), database-backed rate limits (`src/lib/ratelimit.ts`) and the Vercel Firewall rules (`docs/operations.md`, Security).
+
+### Public and capability-based routes
 
 Some routes must be reachable without a receiver session. That does not make them unrestricted APIs.
 
@@ -80,7 +95,17 @@ Some routes must be reachable without a receiver session. That does not make the
 
 Do not add permissive cross-origin access to internal routes. A future integration API must be separately versioned and designed with hashed, revocable keys, scopes, quotas, audit logs, webhook signing, documentation and explicit consent for private audio.
 
-## Reportable findings and severity context
+### Secrets out of code
+
+- Every credential lives in Vercel environment variables, Production and Preview separate (list and purpose: `docs/operations.md`, Settings). Production refuses to run without `APP_SECRET`. `BACKUP_KEY` also has a copy outside Vercel and the bucket.
+- The only `NEXT_PUBLIC_` values are `NEXT_PUBLIC_SENTRY_DSN` and `NEXT_PUBLIC_VERCEL_ENV`, both public by design; the Turnstile site key is public by design too. No other secret reaches a client bundle (invariant 9).
+- Never in the repo, chat, logs, commit messages, issues or handoffs: secrets, production data, private audio, reusable tokens, connection strings. Private link keys are redacted before Sentry, Vercel Analytics and the incident log (`src/lib/redact-url.ts`).
+- `.gitignore` covers `.env*` (except `.env.example`, the committed template: setting names and placeholders only, never real values), `.mcp.json`, `skills-lock.json` and `.claude/settings.local.json`.
+- Rotation steps for each secret: `docs/operations.md`, Rotating secrets.
+
+### How to report
+
+Report a finding privately to the owner; do not publish vulnerability details before remediation. **Gap:** no dedicated security contact address or disclosure page is named yet (owner's choice).
 
 Report a finding when an attacker can realistically violate an invariant or materially weaken a boundary. Product-specific high-impact examples include:
 
@@ -97,21 +122,136 @@ Report a finding when an attacker can realistically violate an invariant or mate
 
 Severity depends on reachability, affected data, tenant scope, persistence, required user interaction, exploit reliability and recoverability. Cross-tenant original-audio access, usable production credentials and admin compromise should normally be treated as critical or high severity.
 
-## Out of scope and exclusions
+Out of scope and exclusions:
 
 There are no blanket vulnerability-class exclusions and no accepted vulnerabilities in this policy. Third-party service outages are not source-code vulnerabilities by themselves, but unsafe FloorTest behavior during an outage is in scope.
 
 Findings in vendored dependencies should identify the affected direct dependency, reachable FloorTest path and practical impact. Generated build output and local demo data are not primary source, but leakage into a deployment or repository remains reportable.
 
-## Known limitations and compensating controls
+## 2. Sign-in and permissions
+
+### How people sign in
+
+| Who | How | Where in code |
+|---|---|---|
+| Receivers and team members | Email and password (scrypt, N=2^15, r=8, p=3; older hashes upgraded on sign-in), breached-password check (Have I Been Pwned, k-anonymity), optional TOTP two-step, or Google (state + PKCE). Email confirmed by a one-time link stored as its hash | `src/lib/auth.ts`, `password-hash.ts`, `breached.ts`, `totp.ts`, `google-auth.ts`, `token-hash.ts` |
+| Mobile app | `/api/v1/auth/login` with the same password; gets a short access token and a refresh token (stored hashed as an `app` row in `sessions`). Holds no database or storage keys | `src/lib/app-auth.ts`, `e2e/api-v1.spec.ts` |
+| Ops staff | Separate sign-in (`ops.floortest.app`): an address in `ADMIN_EMAILS` or the ops team, a confirmed email and two-step every time; cookie `__Host-ft_ops` | `src/app/ops-login/actions.ts`, `src/lib/ops.ts` |
+| Senders | No account. A one-time email code proves the address for a submission; receipts open by private token or confirmed email | `src/lib/sender-code.ts`, `src/lib/sent.ts` |
+| Share-link listeners (held) | On the link's list, then a one-time email code or a signed-in confirmed account, then the access notice (invariant 17) | `src/lib/share-links.ts` |
+
+Turnstile guards sign-up, log-in after wrong tries, waitlist, contact, newsletter, sender link, anonymous uploads and reopen alerts (`src/lib/turnstile.ts`); a token counts only for its own form and FloorTest's own hostnames. One-time codes allow five tries, counted before comparing. Changing how an account signs in (password, email, two-step, Google) asks for the password and the two-step code when on. Wrong sign-in gives one message whether or not the account exists.
+
+**Gap (owner's per-user rule, 21 Oct):** an account whose email is unconfirmed can still open its own desk (a banner asks it to confirm; it can't send from the address, can't join ops, can't sign in with Google, and sender history joins only after confirmation). The rule says unconfirmed accounts get no access to private data; whether a receiver's own desk counts is the owner's call.
+
+### How long sessions and links last
+
+| What | Lifetime | Source |
+|---|---|---|
+| Browser session (`web`) | 30 days at most; ends after 14 days unused; `__Host-` cookie in production | `auth.ts` `SESSION_MS`, `sessions.ts` `WEB_IDLE_MS` |
+| App access token / refresh token | 15 minutes / 60 days | `app-auth.ts` |
+| Ops session | 1 hour idle, 8 hours at most | `ops.ts` |
+| Ops "View as" (read-only) | 30 minutes, bound to the ops session that started it | `auth.ts` `signViewAs` |
+| Password reset link | 1 hour | `auth.ts` `RESET_MS` |
+| Step-up (re-enter password / code) | 10 tries an hour | `step-up.ts` |
+| Sender and share-link email codes | 10 minutes | `sender-code.ts`, `share-links.ts` |
+| Share-link listener session | 12 hours at most, never past the link's or listener's end | `share-links.ts` |
+| Team invite | 7 days, used once | invariant 6, `/join/<invite>` |
+| Signed audio and download links | 1 hour at most | invariant 1 |
+| Direct-upload link | 15 minutes | `docs/05-data.md` |
+
+"Sign out everywhere", a password change and a suspension end every browser and app session. The Security page lists each browser session (device label and last use, never the IP) with its own Sign out.
+
+### Roles and what each may see or do
+
+- **Desk roles** (Owner, A&R / Admin, Member): invariant 16, enforced by `requireRole` (`src/lib/auth.ts`) and held to a stated role for every dashboard action and desk API route by `scripts/check-desk-roles.ts`. The desk worked on is resolved on the server from the session and a current `account_members` row; the `ft_desk` cookie only selects among desks the person already belongs to.
+- **Ops permissions** (Customer Care, Developer, Product Lead, Sales & Marketing, super admin): every ops page and action names its permission in `src/lib/ops-perms.ts`, and the build fails if one doesn't (`scripts/check-admin-perms.ts`). Only the super admin suspends ops staff, and the super admin can't be suspended.
+- **Senders** see their own receipts, never the receiver's notes or decisions (invariant 7).
+- **Share-link listeners** see only that collection's tracks sent under the sharing wording (invariant 17).
+- The full who-can-see-what table is in [docs/05-data.md](docs/05-data.md), Who can see what.
+
+## 3. Data
+
+### What sensitive data is collected
+
+Receivers' names, emails, password hashes, encrypted two-step secrets and Google account ids; senders' names, emails and profile links; original audio, stems and artwork; messages, replies, decisions, notes, team comments and listening history; share-link recipient emails; ops staff emails and notes about users; IP addresses in rate-limit records. Table by table, with where each store lives (Neon London, R2 Western Europe, Resend US, Sentry US, Vercel Analytics US): [docs/05-data.md](docs/05-data.md).
+
+### How it's protected
+
+- **Each person sees only their own data:** server-side ownership checks on every read and change (invariant 1); row-level security on every table, deny by default for any role but the app's owner role (`npm run check:perms` fails a table without it); per-person policies for `ft_person` on 12 tables (migration `0097_person_rules`); the database refuses a track, event or held reply pointing at another desk's sender or collection (migration `0098`). **Gap:** only file access and the track and sender ownership checks run as the person so far; the remaining desk reads and writes move over in plan item B8 (after the 1 Nov beta), and the share-link tables have no per-person policies yet.
+- **Files:** private bucket, short-lived signed links after an ownership check, no permanent public URLs (invariant 2); SHA-256 fingerprints re-checked nightly, a changed or missing file is held back (`file_digests`).
+- **Tokens:** sessions, resets, email-confirmation links, share links, listener sessions and team invites are stored only as hashes or fingerprints (invariant 6, `src/lib/token-hash.ts`).
+- **Email copies:** sign-in codes and private links are hidden in the ops log; an email still waiting to send is sealed with a key from `APP_SECRET` and erased once sent or given up.
+- **Error reports and stats:** browser Sentry and Vercel Analytics load only after Accept on the cookie banner; server Sentry carries no IP or personal data; private link keys are redacted.
+- **IP addresses** live only in rate-limit records (deleted after 48 hours, `src/lib/retention.ts`) and pending uploads.
+
+### How long it's kept and when it's deleted
+
+- Undecided audio 90 days; Not for me 30 days; Kept until the receiver deletes. Artwork and stems go with their track. A 7-day warning email goes first.
+- Deleting an account removes every file and row it owns through the durable queue (invariant 11, `src/lib/deletion.ts`), including the recovery-bucket copies. A deleted account's link names stay reserved for a year.
+- Short-lived records: sessions and codes by their lifetimes above; `webhook_receipts` 30 days; `request_claims` 24 hours; share-link codes 1 day, unknown-address notes 2 days, links ended over a year ago with everything on them (`LINK_KEEP_DAYS`, pending the lawyer).
+- Privacy requests (copy, erase) run from ops by the super admin.
+- Full retention list: [docs/05-data.md](docs/05-data.md), Retention and deletion.
+
+### Backups
+
+- Nightly at 03:30 UTC, before any retention deletes (invariant 12): the database, encrypted AES-256-GCM with `BACKUP_KEY`, kept 14 days (the privacy page promises within 30). Backups hold no sessions, codes or IP addresses; live email-confirmation tokens and email bodies are blanked. A failed backup stops that night's deletions and raises an incident.
+- Recovery copy (the vault, `src/lib/vault.ts`): a second private R2 bucket with every stored file and the backups; its `backups/` prefix has a 14-day bucket lock, so no key can delete a recent backup.
+- Restore: `scripts/restore-drill.ts` rebuilds a throwaway database and checks row counts; a real restore goes into a new Neon branch, never production in place (`docs/operations.md`, Backups and restore).
+- **Gap (B6, owner + dev, before 1 Nov):** the first confirmed vault run and a dated restore drill are not recorded in `docs/evidence/`; Neon Launch (7-day point-in-time restore) is on the owner's launch list. The central offsite backup system (`~/APP PROJECT/backups`) waits on the owner's setup steps.
+
+## 4. Threat model
+
+Every input listed under Input handling (section 1) is attacker-controlled. Where someone could attack, what could go wrong, and what stops it:
+
+| Where | What could go wrong | Protection | Evidence |
+|---|---|---|---|
+| Desk pages, server actions, `/api/*` and `/api/v1/*` | One receiver or team member reads or changes another desk's tracks, senders, collections or settings | Server ownership and membership checks, `requireRole`, `ft_person` policies, same answer as a missing id (invariants 1, 14, 16) | `e2e/isolation.spec.ts`, `tests/person-rules.test.ts`, `e2e/teams.spec.ts`, `check:perms` |
+| Audio, stems, artwork, exports | Private audio streamed or downloaded by someone else; a forged Downloaded signal | Private bucket, signed links ≤1 hour, no cached redirects, same-site check on download routes (invariants 2, 8) | `tests/file-access.test.ts`, `tests/same-site.test.ts` |
+| Public intake (`/<handle>`, submit, stems) | Floods, oversized or disguised files, malware, cap bypass by racing requests | Email confirmation, rate limits, Turnstile, size and format limits, content checks, virus scan failing closed, single-use claims (invariants 4, 5) | `tests/validate.test.ts`, `tests/scan-intake.test.ts`, `tests/upload-claim.test.ts`, `e2e/upload-resilience.spec.ts` |
+| Capability links (receipts, resets, invites, share links, unsubscribe) | Guessed, leaked or replayed links | High-entropy or signed, stored as hashes, scoped, expiring, redacted from logs (invariant 6) | `tests/email-tokens.test.ts`, `tests/redact-url.test.ts`, `tests/share-links.test.ts` |
+| Sign-in | Credential stuffing, code guessing, session theft, account takeover via someone else's email | scrypt, breached-password check, five counted tries, Firewall and app rate limits, `__Host-` HTTP-only cookies, 14-day idle end, confirmation counts only for the signed-in owner (invariant 9) | `tests/password-hash.test.ts`, `tests/sender-code-race.test.ts`, `tests/sessions.test.ts`, `tests/email-confirm.test.ts`, `e2e/account-security.spec.ts` |
+| Ops / admin | Admin takeover, silent destructive actions, "View as" used to change data | Listed email, confirmed email, two-step every time, step-up, permissions per page, read-only impersonation bound to the ops session, audit log (invariant 10) | `tests/ops-hardening.test.ts`, `tests/ops-suspend.test.ts`, `check:perms` |
+| Share links (held) | Anonymous or ex-listener access, leaking which collections exist | Named and verified listeners, 12-hour sessions tied to the link generation, same "not available" answer (invariant 17) | `e2e/sharing.spec.ts` |
+| Framing and redirects | Clickjacking; open redirect after sign-in | Both anti-framing headers; `safeNext` and `localPath` | `tests/framing-headers.test.ts`, `e2e/framing.spec.ts`, `tests/local-path.test.ts`, `tests/safe-next.test.ts` |
+| Cron and webhooks | Forged job calls or delivery reports; replays | `CRON_SECRET`; Resend signature on the raw body, `svix-id` recorded once (invariant 13) | `tests/ops-hardening.test.ts` (signed and replayed Resend webhooks) |
+| Deletion and retention | A promised deletion silently fails; data deleted without a backup | Transactional deletion queue with retries and incidents; backup first (invariants 11, 12) | `tests/deletion.test.ts`, `tests/backup.test.ts`, `tests/vault.test.ts` |
+| Dependencies and code | A vulnerable or look-alike package; a new injection pattern | Lockfile, `npm audit --omit=dev` in CI; CodeQL and dependency review when Code Security is on (**Gap**, B5) | `.github/workflows/ci.yml` |
+
+### Known limitations and compensating controls
 
 - Structural WAV/MP3 validation is not malware scanning. During the controlled beta, private storage, strict accepted formats, size limits, server-side validation and limited access reduce exposure. This limitation does not excuse parser, storage or content-serving vulnerabilities. Malware scanning: our own ClamAV service (`scanner/`, `src/lib/scan.ts`) checks every track and stem upload before it exists once `SCAN_URL` is set (a launch requirement); it reads from R2 with its own read-only key, never sends files to a third party, and fails closed. It sleeps when idle. An upload finished while it sleeps or is down is held (stored, sealed, not on any desk) until a batch job scans it; a held file becomes a track only after a clean scan, and is deleted if flagged or still unscanned after 24 hours. Never let through unscanned. Waking it (`/wake`) and scanning need the scanner secret; its public `/status` reveals only whether it is running.
 - Some disaster-recovery, production load, real-device accessibility and operational exercises remain launch work. Existing backups, deletion queues, incidents and smoke/stress tests are compensating controls, not proof that recovery is complete.
 - A Turnstile token counts only for the form it was solved for and only when solved on FloorTest's own addresses (never localhost in production). Turnstile may be feature-controlled. Email confirmation and database-backed rate limits remain mandatory even when the bot check is unavailable.
 - Product Terms, Privacy, upload licensing, international transfers, collection-sharing consent and account-team responsibilities require professional legal review before broad launch (brief: `docs/legal/sharing-brief-2026-10-11.md`).
 
-## Change and verification requirements
+## 5. Pre-launch checklist
 
-Security-sensitive work must include the smallest relevant automated tests and a manual end-to-end check. Before release, run type checking, lint, the complete automated test suite (unit and end-to-end), the ops permission check and a production build. Keep production dependencies free of known high-severity advisories (`npm audit --omit=dev`). On GitHub, CodeQL (`.github/workflows/codeql.yml`, `security-extended` queries for JavaScript/TypeScript) scans pull requests into `main` (docs-only ones skipped) and runs weekly; dependency review (`.github/workflows/dependency-review.yml`) fails any pull request that adds a dependency with a high or critical advisory. Both workflows use read-only permissions apart from CodeQL's `security-events: write`, and pin actions to full commit SHAs. `.github/workflows/ci.yml` runs typecheck, lint, unit tests, `check:perms` and the audit on pull requests into `main` and pushes to `mobile-next` (docs-only changes skipped, a newer push cancels the older run; owner, 28 Oct, after the free Actions minutes ran out). The repository is private, so CodeQL and dependency review need a paid GitHub plan with Code Security, or a public repository (`docs/06-plan.md` B5). Treat a new high or critical CodeQL finding like a failed check: fix it or record why it doesn't apply before release. Verify anonymous upload, receipt access, authenticated playback/download, share links, team roles, deletion, email, admin authorization and mobile behavior when the change touches those paths.
+Security-sensitive work must include the smallest relevant automated tests and a manual end-to-end check. Before release, run type checking, lint, the complete automated test suite (unit and end-to-end), the ops permission check and a production build. Keep production dependencies free of known high-severity advisories (`npm audit --omit=dev`). On GitHub, CodeQL (`.github/workflows/codeql.yml`, `security-extended` queries for JavaScript/TypeScript) scans pull requests into `main` (docs-only ones skipped) and runs weekly; dependency review (`.github/workflows/dependency-review.yml`) fails any pull request that adds a dependency with a high or critical advisory. Both workflows use read-only permissions apart from CodeQL's `security-events: write`, and pin actions to full commit SHAs. **Gap:** since 24 Oct both CodeQL and dependency review are skipped until the repository variable `CODE_SECURITY` is `on`, which needs Code Security on the private repository (owner, 24 Oct: skip for now; `docs/06-plan.md` B5), so neither scans today. `.github/workflows/ci.yml` runs typecheck, lint, unit tests, `check:perms` and the audit on pull requests into `main` and pushes to `mobile-next` (docs-only changes skipped, a newer push cancels the older run; owner, 28 Oct, after the free Actions minutes ran out). The repository is private, so CodeQL and dependency review need a paid GitHub plan with Code Security, or a public repository (`docs/06-plan.md` B5). Treat a new high or critical CodeQL finding like a failed check: fix it or record why it doesn't apply before release. Verify anonymous upload, receipt access, authenticated playback/download, share links, team roles, deletion, email, admin authorization and mobile behavior when the change touches those paths.
 
 Do not commit secrets, production data, private audio or reusable tokens. Do not publish vulnerability details before remediation. Record security decisions and remaining operational work in `docs/06-plan.md` (and `docs/operations.md` for runbooks).
+
+### Checklist
+
+Tick each before a launch or production release (working rules 5 and 13, `docs/working.md`). Record each as passed, failed or blocked, against the exact commit, in that release's `docs/evidence/` report.
+
+| # | Check | How to verify |
+|---|---|---|
+| 1 | Types and lint clean | `npm run typecheck`; `npm run lint` shows 0 errors |
+| 2 | Unit tests pass | `npm test` (includes `tests/person-rules.test.ts`, `framing-headers`, `local-path`, `same-site`, deletion, backup and token tests) |
+| 3 | Permission checks pass | `npm run check:perms`: every ops page names a permission, every desk action and route has a stated role, every table has RLS and every `ft_person` grant has a policy |
+| 4 | End-to-end journeys pass when sending, review, downloads, receipts, sharing, teams or auth changed | `npm run e2e` (port 3000 free); at least `e2e/isolation.spec.ts` (two-user test), `teams`, `account-security`, `guards`, `framing`, `upload-resilience`, `api-v1` |
+| 5 | Production build succeeds | `npx next build`; the Vercel preview says Ready |
+| 6 | No high or critical advisories | `npm audit --omit=dev`; any new dependency vetted (real publisher, no look-alike, no install script) before it's added |
+| 7 | CI green | GitHub Actions Checks (`.github/workflows/ci.yml`) passed on the commit. CodeQL and dependency review: **Gap**, skipped until Code Security is on (B5) |
+| 8 | No secrets committed | `git diff main...HEAD` reviewed for keys, tokens, connection strings and `.env` files; `git grep -n NEXT_PUBLIC_` shows only the Sentry DSN and Vercel env |
+| 9 | Headers live | `curl -sI https://floortest.app` shows HSTS, CSP with `frame-ancestors 'none'`, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`, `Permissions-Policy` (same on a receipt page and an `/api/*` route) |
+| 10 | Health and readiness | `https://floortest.app/api/health` returns `{"ok":true}`; with the cron secret, readiness shows storage, `checks.scanner` ok, jobs and configuration green |
+| 11 | Virus scanner on | readiness `checks.scanner` is ok and `SCAN_URL` is set in Production; a test upload reaches the desk |
+| 12 | Backups ran and restore | Admin → Overview shows last night's backup; Admin → Storage & costs → Recovery copy is current; a dated `scripts/restore-drill.ts` run is in `docs/evidence/` (**Gap**, B6) |
+| 13 | Consent before tracking | Private window, cleared storage: no Sentry browser or Vercel Analytics requests before Accept, none after Reject |
+| 14 | Bot check and Firewall | Turnstile hostnames are only `floortest.app` and `ops.floortest.app`; Vercel Firewall rules "API ceiling" and "Sign-in pages" are on (owner's dashboard) |
+| 15 | Manual end-to-end on touched paths | Anonymous upload, receipt, signed-in playback and download, share links, team roles, deletion, email, admin authorization and phone layout, as the change requires |
+| 16 | Release rules followed | Sessions checked in, `main` checked for what's already there, push `main`, wait ~60 s, push `mobile-next`, deployment READY (working rules 2–10) |
+| 17 | Load and recovery before wider access | `scripts/stress.ts` against a throwaway deployment and one rollback trial recorded (**Gap** for the stress run, B6; rollback trial: `docs/evidence/2026-10-24-preview-rollback-trial.md`) |
+| 18 | Legal wording approved | Terms, Privacy, upload licence, sharing consent and team responsibilities reviewed by a lawyer before broad launch (owner; **Gap** until then) |
