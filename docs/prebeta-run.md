@@ -13,7 +13,7 @@ Build under test: production `8fcd7ca` (security batch, live 28 Oct, [evidence](
 | Day | What |
 |---|---|
 | Wed 28 Oct | Owner asks each tester for the email they want their desk on (message 1 below). |
-| Thu 29 Oct | Owner sends the five invites (Ops → Invites, note below) and, privately, the site password. Testers sign up, set up their desks on phone and computer, and share their links with each other. |
+| Thu 29 Oct | Owner sends the five invites (Ops → Invites, list below) and, privately, the site password. Testers sign up, set up their desks on phone and computer, and share their links with each other. |
 | Fri 30 Oct | Testers send to each other's desks and review what arrives, on phone and computer; the wifi-off upload test; dev runs the backend checks below and fixes blockers on a branch. |
 | Sat 31 Oct | Re-test every blocker that was fixed; sign out everywhere; findings recorded and saved to `docs/evidence/`. |
 
@@ -21,7 +21,7 @@ The private beta opens Sun 1 Nov only if every blocker is fixed and re-tested; o
 
 ## How to invite (owner)
 1. **Ask for the email** (message 1, by text or WhatsApp, Wed 28 Oct).
-2. **Invite** (Thu 29 Oct): Ops → Invites → paste the five emails, with the note below. Each gets a personal invite that
+2. **Invite** (Thu 29 Oct): Ops → Invites → paste the five emails and the note from the invite list below. Each gets a personal invite that
    works once.
 3. **The site password:** everyone needs it while the site is behind the coming-soon page, and so does anyone a tester
    shares their link with. Send it yourself, privately, by message or call. Never in a FloorTest email, a document or
@@ -40,13 +40,37 @@ Message 1, asking for the email:
 >
 > If you're in, reply with the email you'd like the invite sent to. The site password comes in a separate message.
 
-Invite note for Ops → Invites:
+### Ops invite list (Thu 29 Oct)
+Ops → Invites → **Invite by email**. One send covers all five: paste the emails into the box, the note into
+"Personal note", then Send invites.
 
-> Thanks for testing FloorTest before the beta. Please set up your desk on your phone and your computer, then share
-> your link with the other testers and send a track to at least two of their desks. It runs Thursday 29 to Saturday 31
-> October. I'll send you the password for the site separately; anyone you share your link with needs it too, so pass it
-> on privately. Use test audio only: an old bounce or a draft, never an unreleased master. Anything that breaks or makes
-> you stop and think, send me a screenshot with the time.
+Emails box (one per line, filled from the Who table as they arrive):
+
+```
+tester1@…
+tester2@…
+tester3@…
+tester4@…
+tester5@…
+```
+
+Personal note (the box takes 300 characters at most and cuts anything longer; this one is 267). It appears in quotes
+in the invite email, which already carries the sign-up link and the code:
+
+> Thanks for testing before the beta, Thu 29 to Sat 31 Oct. Set up your desk on phone and computer, share your link
+> with the other testers, and send a track to at least two of their desks. Test audio only, never an unreleased master.
+> The site password comes separately.
+
+Before sending:
+- Each email is the exact address the tester gave. The code works only with that address, so a typo means a new invite.
+- Ops skips an address that already has an account or a pending invite. The banner says "Sent 5 invites"; if it says
+  skipped, check that row.
+
+After sending: each row shows **Pending**, then **Joined @handle** once the tester signs up. Copy the handle into the
+Who table's Desk link column. **Resend** emails the same code again; **Revoke** cancels an unused one (a typo).
+
+With the site password message, add what the note leaves out: anyone a tester shares their link with needs the
+password too, pass it on privately, and send anything that breaks with a screenshot and the time.
 
 ## Who
 | # | Tester | Usual role | Email received | Invited | Desk link | Phone | Computer |
