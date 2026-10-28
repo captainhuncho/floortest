@@ -85,24 +85,31 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
 
   return (
     <EditablePage editing={!!editor} page="receipt" label="Receipts" values={c}>
-    <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-8 bg-ink px-5 py-8 text-bone sm:py-12">
-      <header className="flex flex-col gap-5">
-        <p className="eyebrow"><E k="kicker" /></p>
+    {/* Rule 15 (28 Oct): the headline, then the track and its history as flat panels with hairline rows; dates in
+        mono; plain words, no capitals labels; lime only on the newest step. */}
+    <main className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-6 bg-ink px-4 py-8 text-bone sm:gap-8 sm:px-6 sm:py-12">
+      <header className="flex flex-col gap-3">
+        <p className="text-sm text-mute"><E k="kicker" /></p>
         <StatusHeadline status={headline.status} title={headline.title} detail={headline.detail} strong={headline.strong} />
-        <div className="flex flex-col gap-2 border-t border-line pt-4">
-          <p className="min-w-0 truncate text-[14px] font-semibold text-bone">
-            {t.title} <span className="font-normal text-mute">· {t.artist}{t.duration ? ` · ${fmtTime(t.duration)}` : ""}</span>
-          </p>
-          {t.peaks && <Waveform peaks={JSON.parse(t.peaks)} height={32} />}
-        </div>
       </header>
 
+      <section aria-label="Track" className="panel flex flex-col gap-4 p-4 sm:p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="truncate text-[15px] font-bold text-bone">{t.title}</p>
+            <p className="mt-0.5 truncate text-sm text-mute">{t.artist}</p>
+          </div>
+          {!!t.duration && <span className="shrink-0 pt-0.5 font-mono text-xs text-mute tnum">{fmtTime(t.duration)}</span>}
+        </div>
+        {t.peaks && <Waveform peaks={JSON.parse(t.peaks)} height={40} />}
+      </section>
+
       {todo && (
-        <section aria-labelledby="todo-h" className="flex flex-col gap-3">
-          <h2 id="todo-h" className="eyebrow">For you</h2>
+        <section aria-labelledby="todo-h" className="panel flex flex-col gap-3 p-4 sm:p-5">
+          <h2 id="todo-h" className="text-[15px] font-bold text-bone">For you</h2>
           {stemsOn && <StemUpload token={token} receiver={who.split(/\s+/)[0]} existing={stemsSent(t)} max={MAX_STEMS} />}
           {!t.verified_at && (
-            <p className="text-[13px] text-mute">
+            <p className="text-sm text-mute">
               Confirm your email from the delivery email, so {who} sees you as verified. Updates go to <span className="text-bone">{t.sender_email}</span>.
             </p>
           )}
@@ -111,62 +118,59 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
       {/* Collection share links: the artist can stop private sharing of this track at any time. */}
       {sharing && !!t.share_ok && !!t.share_terms && t.share_terms !== "owner" && <StopSharing token={token} receiver={who.split(/\s+/)[0]} />}
 
-      <section aria-labelledby="history-h" className="flex flex-col gap-3">
-        <h2 id="history-h" className="eyebrow">What&apos;s happened</h2>
-        {/* The live refresh above brings new steps in; one that arrives during this visit marks itself with a ring once. */}
+      <section aria-labelledby="history-h" className="panel overflow-hidden">
+        <h2 id="history-h" className="px-4 py-3 text-[15px] font-bold text-bone sm:px-5">What&apos;s happened</h2>
+        {/* The live refresh brings new steps in; one that arrives during this visit marks itself with a ring once. */}
         <ReachedSteps reached={happened.map((s) => s.key)}>
-        <ol className="flex flex-col">
-          {happened.map((s, i) => (
-            <li key={s.key} className="relative flex gap-3 pb-4 last:pb-0">
-              {(i < happened.length - 1 || pending.length > 0) && <span aria-hidden className="absolute left-[5px] top-4 h-[calc(100%-8px)] w-px bg-line" />}
-              <SignalDot step={s.key} className={`mt-[7px] size-[11px] shrink-0 rounded-full ${s.key === newest ? "bg-lime" : "bg-bone"}`} />
+        <ol>
+          {happened.map((s) => (
+            <li key={s.key} className="flex items-start gap-3 border-t border-line px-4 py-3 sm:px-5">
+              <SignalDot step={s.key} className={`mt-[6px] size-[10px] shrink-0 rounded-full ${s.key === newest ? "bg-lime" : "bg-bone"}`} />
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <p className={`text-[14px] leading-6 text-bone ${s.meaningful ? "font-bold" : ""}`}>
-                  {s.label}
-                  <span className="ml-2 text-[12px] font-normal text-dim tnum">{fmtDate(s.at!)}</span>
-                </p>
-                {s.note && <p className="text-[12px] text-mute">{s.note}</p>}
+                <p className={`text-sm leading-[22px] text-bone ${s.meaningful ? "font-bold" : ""}`}>{s.label}</p>
+                {s.note && <p className="text-[13px] text-mute">{s.note}</p>}
               </div>
+              <span className="shrink-0 font-mono text-xs leading-[22px] text-mute tnum">{fmtDate(s.at!)}</span>
             </li>
           ))}
-          {pending.map((s, i) => (
-            <li key={s.key} className="relative flex gap-3 pb-3 last:pb-0">
-              {i < pending.length - 1 && <span aria-hidden className="absolute left-[5px] top-4 h-[calc(100%-8px)] w-px bg-line" />}
-              <span aria-hidden className="mt-[7px] size-[11px] shrink-0 rounded-full border border-line bg-ink" />
-              <p className="text-[13px] leading-6 text-faint">
+          {pending.map((s) => (
+            <li key={s.key} className="flex items-start gap-3 border-t border-line px-4 py-3 sm:px-5">
+              <span aria-hidden className="mt-[6px] size-[10px] shrink-0 rounded-full border border-faint" />
+              <p className="flex-1 text-sm leading-[22px] text-faint">
                 {s.label}
                 <span className="sr-only"> (not yet)</span>
               </p>
+              <span aria-hidden className="font-mono text-xs leading-[22px] text-faint">Not yet</span>
             </li>
           ))}
         </ol>
         </ReachedSteps>
-        <details className="group text-[12px] text-dim">
-          <summary className="inline-flex min-h-9 cursor-pointer list-none items-center gap-1.5 text-bone underline-offset-4 hover:underline [&::-webkit-details-marker]:hidden">
-            <span aria-hidden className="text-lime transition-transform duration-150 group-open:rotate-45">+</span> What these mean
+        <details className="group border-t border-line px-4 sm:px-5">
+          <summary className={summary}>
+            <Chevron /> What these mean
           </summary>
-          <dl className="mt-2 flex flex-col gap-2 border-l border-line pl-3">
+          <dl className="flex flex-col gap-2 pb-4 text-[13px] text-mute">
             {steps.filter((s) => s.means).map((s) => (
               <div key={s.key}>
-                <dt className="font-semibold text-mute">{s.label}</dt>
+                <dt className="font-semibold text-bone">{s.label}</dt>
                 <dd>{s.means}</dd>
               </div>
             ))}
             <div>
-              <dt className="font-semibold text-mute">Kept or not</dt>
+              <dt className="font-semibold text-bone">Kept or not</dt>
               <dd>{SIGNALS.kept}.</dd>
             </div>
           </dl>
         </details>
       </section>
 
-      <details className="group text-[12px] text-dim">
-        <summary className="inline-flex min-h-9 cursor-pointer list-none items-center gap-1.5 text-bone underline-offset-4 hover:underline [&::-webkit-details-marker]:hidden">
-          <span aria-hidden className="text-lime transition-transform duration-150 group-open:rotate-45">+</span> Details
+      <details className="group">
+        <summary className={summary}>
+          <Chevron /> Details
         </summary>
-        <div className="mt-2 flex flex-col gap-2 border-l border-line pl-3">
+        <div className="flex flex-col gap-2 pb-2 text-[13px] text-mute">
           <p>
-            Updates go to <span className="text-mute">{t.sender_email}</span>{t.verified_at ? " (confirmed)." : "."}
+            Updates go to <span className="text-bone">{t.sender_email}</span>{t.verified_at ? " (confirmed)." : "."}
           </p>
           <p>
             <span {...panel("private_note", "Keep {receiver} as it is: the page fills in the receiver's name.")}>{fill(c.private_note, { receiver: who })}</span>
@@ -189,16 +193,14 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
       </details>
       <LivePulse url={`/api/pulse/receipt/${token}`} every={8000} />
       {takingSends && (
-        <p className="text-[13px]">
-          <Link href={`/${t.receiver_handle}`} className="inline-flex min-h-11 items-center text-mute underline underline-offset-4 hover:text-bone">
-            Send another to {who}
-          </Link>
-        </p>
+        <Link href={`/${t.receiver_handle}`} className="btn-ghost btn-sm w-fit">
+          Send another to {who}
+        </Link>
       )}
       <footer className="mt-auto flex flex-col items-center gap-3 pt-4">
         {/* Senders are how FloorTest grows: one quiet invitation, only to senders without an account. */}
         {invite && (
-          <p className="text-center text-[12px] leading-[18px] text-dim">
+          <p className="text-center text-[13px] leading-5 text-faint">
             DJ too?{" "}
             <Link href={invite} className="py-3 text-mute underline underline-offset-4 hover:text-bone">
               Get your own link
@@ -210,5 +212,15 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
       </footer>
     </main>
     </EditablePage>
+  );
+}
+
+const summary = "inline-flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm text-mute hover:text-bone [&::-webkit-details-marker]:hidden";
+
+function Chevron() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="size-3.5 transition-transform duration-150 group-open:rotate-90 motion-reduce:transition-none" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 6l6 6-6 6" />
+    </svg>
   );
 }
