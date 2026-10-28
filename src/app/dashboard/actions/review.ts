@@ -27,6 +27,7 @@ export async function decideTrack(trackId: number, decision: Decision): Promise<
   if (decisionLocked(u, t)) return done(), null;
   await trackUse(u.id, "decide");
   const r = await decide(u, t, decision);
+  if (!r) return done(), null; // an owner's or admin's call landed since the page loaded
   await audit(u.id, decision, trackLabel(t), t.id);
   done();
   return { trackId, ...r };
@@ -37,7 +38,7 @@ export async function clearDecision(trackId: number) {
   const u = await requireUser();
   const t = await ownedTrack(u, trackId);
   if (!t || decisionLocked(u, t)) return done();
-  await clearTrackDecision(t);
+  if (!(await clearTrackDecision(u, t))) return done();
   await audit(u.id, "decision_cleared", trackLabel(t), t.id);
   done();
 }

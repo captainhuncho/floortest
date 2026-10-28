@@ -42,6 +42,27 @@ export async function discardFiles(keys: (string | null | undefined)[], reason: 
     );
 }
 
+/**
+ * Deletes one collection: its tracks are kept, unsorted, the link moves to the oldest remaining collection if it pointed
+ * here, and the artwork is queued for deletion in the same transaction (it used to stay in storage: Batch C, 28 Oct).
+ */
+export async function removeCollection(userId: number, collectionId: number) {
+  await q.tx(async (db) => {
+    const c = await db.get<{ art_key: string | null; active: number }>(
+      "SELECT c.art_key, (u.active_collection_id = c.id)::int AS active FROM collections c JOIN users u ON u.id = c.user_id WHERE c.id = ? AND c.user_id = ?",
+      collectionId,
+      userId,
+    );
+    if (!c) return;
+    await queueDeletion(db, [c.art_key], "collection deleted", now());
+    await db.run("UPDATE tracks SET collection_id = NULL WHERE collection_id = ?", collectionId);
+    await db.run("DELETE FROM collections WHERE id = ?", collectionId);
+    if (Number(c.active))
+      await db.run("UPDATE users SET active_collection_id = (SELECT id FROM collections WHERE user_id = ? ORDER BY created_at, id LIMIT 1) WHERE id = ?", userId, userId);
+  });
+  await drainNow();
+}
+
 /** Deletes what's queued, now. Anything that fails stays queued for the nightly job; repeated failures raise an incident. */
 export async function drainNow(limit = 500) {
   const r = await drainDeletions(q, await vaultDeleter(await storage()), now(), limit);
