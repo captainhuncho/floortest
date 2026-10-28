@@ -5,6 +5,7 @@ import crypto from "node:crypto";
 import { now, q, type Queryable } from "./db";
 import { env, isPreview } from "./env";
 import { recordIncident } from "./incidents";
+import { MAIL_LIMITS, MAIL_WARN_AT } from "./mail-quota";
 
 export const APP_URL = env.appUrl;
 
@@ -37,6 +38,10 @@ type Payload = { to: string; subject: string; body: string; unsub: string | null
  *   sendMail       one attempt now, result returned (sign-in codes, and callers that decide themselves what to do next)
  *   sendMailLater  queued now, sent after the response, retried by `drainOutbox` with back-off if it fails
  *   queueMail      the same queue inside the caller's transaction, so the email exists only if the change it reports does
+ *
+ * The scheduled emails (digests, reminders, expiry warnings) are queued with the change that marks them sent and left to
+ * the queue (backend audit, Batch B, 28 Oct): a timeout is then retried under the same key instead of becoming a second
+ * email. `/api/cron/mail` drains the queue every 10 minutes; the nightly clean-up drains it too, as a backstop.
  */
 const MAX_ATTEMPTS = 5;
 const BACKOFF_MS = [60_000, 5 * 60_000, 15 * 60_000, 60 * 60_000];
@@ -110,20 +115,62 @@ export function deliverLater(id: number) {
   }
 }
 
+const startOfDay = (at: number) => {
+  const d = new Date(at);
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+};
+
+/**
+ * Resend stops sending for the day at the plan's cap (MAIL_DAILY_LIMIT). Once MAIL_WARN_AT of it is used, optional emails
+ * (digests, reminders, alerts: the ones with an unsubscribe link) wait until after midnight UTC, so the rest of the day
+ * is kept for sign-in codes, resets and senders' receipts.
+ */
+async function overOptionalShare(at: number) {
+  const today = await q.count("SELECT COUNT(*) AS n FROM outbox WHERE status = 'sent' AND last_attempt_at >= ?", startOfDay(at));
+  return today >= MAIL_LIMITS.day * MAIL_WARN_AT;
+}
+
+/** One notice a day that optional email is being held back. */
+async function reportDeferred(at: number) {
+  const day = new Date(startOfDay(at)).toISOString().slice(0, 10);
+  const first = await q.get(
+    `INSERT INTO app_state (key, value, updated_at) VALUES ('mail_deferred_day', ?, ?)
+     ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at WHERE app_state.value <> excluded.value RETURNING key`,
+    day,
+    at,
+  );
+  if (first)
+    await recordIncident(
+      "email_failed",
+      `Optional emails are waiting until tomorrow: ${Math.round(MAIL_WARN_AT * 100)}% of the daily send limit (${MAIL_LIMITS.day}) is used`,
+      "Sign-in codes, resets and receipts still go. Raise MAIL_DAILY_LIMIT after upgrading the Resend plan.",
+    );
+}
+
 /** Sends one queued email if it's due and nobody else is sending it. Returns its status. */
 export async function deliver(id: number, { retry = true } = {}): Promise<string> {
   const at = now();
+  // A send that crashed is picked up again only while it has attempts left; drainOutbox closes the rest.
   const row = await q.get<{ user_id: number | null; payload: string; idem_key: string; attempts: number; subject: string; optional: number }>(
     `UPDATE outbox SET status = 'sending', attempts = attempts + 1, last_attempt_at = ?
-     WHERE id = ? AND payload IS NOT NULL AND ((status = 'queued' AND next_at <= ?) OR (status = 'sending' AND last_attempt_at < ?))
+     WHERE id = ? AND payload IS NOT NULL AND ((status = 'queued' AND next_at <= ?) OR (status = 'sending' AND last_attempt_at < ? AND attempts < ?))
      RETURNING user_id, payload, idem_key, attempts, subject, optional`,
     at,
     id,
     at,
     at - STALE_SEND_MS,
+    MAX_ATTEMPTS,
   );
   if (!row) return (await q.get<{ status: string }>("SELECT status FROM outbox WHERE id = ?", id))?.status ?? "missing";
-  const p = JSON.parse(unseal(row.payload)) as Payload;
+  let p: Payload;
+  try {
+    p = JSON.parse(unseal(row.payload)) as Payload;
+  } catch (e) {
+    // Sealed with another APP_SECRET, or damaged: it can never be sent, so it mustn't hold up the queue.
+    await q.run("UPDATE outbox SET status = 'failed (unreadable)', payload = NULL, next_at = NULL WHERE id = ?", id);
+    await recordIncident("email_failed", "A queued email couldn't be read (was APP_SECRET changed?) and was dropped", `${row.subject}\n${e instanceof Error ? e.message : String(e)}`);
+    return "failed (unreadable)";
+  }
   let to = p.to;
   let subject = p.subject;
   let status = "logged";
@@ -139,8 +186,15 @@ export async function deliver(id: number, { retry = true } = {}): Promise<string
     to = stagingTo || p.to;
     if (!stagingTo) status = "logged (staging)";
   }
+  const willSend = !suppressed && !!env.email.resendKey && !(isPreview && !stagingTo);
+  if (willSend && row.optional && (await overOptionalShare(at))) {
+    // Waiting isn't a failed attempt: it goes back as it was, due just after midnight UTC.
+    await q.run("UPDATE outbox SET status = 'queued', attempts = attempts - 1, next_at = ? WHERE id = ?", startOfDay(at) + 86_400_000 + 5 * 60_000, id);
+    await reportDeferred(at);
+    return "queued (daily limit)";
+  }
   if (suppressed) status = `skipped (${suppressed.reason} before)`;
-  else if (env.email.resendKey && !(isPreview && !stagingTo)) {
+  else if (willSend) {
     try {
       const res = await fetch("https://api.resend.com/emails", {
         method: "POST",
@@ -175,17 +229,38 @@ export async function deliver(id: number, { retry = true } = {}): Promise<string
   return status;
 }
 
-/** Sends what's due in the queue (new, retries, sends a crash interrupted). Called by the cleanup jobs. */
-export async function drainOutbox(limit = 50) {
+/**
+ * Sends what's due in the queue (new, retries, sends a crash interrupted). Called by the mail job every 10 minutes and by
+ * the cleanup jobs. One email that throws never stops the rest; `until` (a Date.now() deadline) stops starting new sends.
+ */
+export async function drainOutbox(limit = 50, { until = Infinity } = {}) {
   const at = now();
+  // A send that crashed on its last attempt has none left: closed and reported instead of tried a sixth time.
+  const stuck = await q.all<{ subject: string }>(
+    `UPDATE outbox SET status = 'failed (stuck)', payload = NULL, next_at = NULL
+     WHERE status = 'sending' AND payload IS NOT NULL AND last_attempt_at < ? AND attempts >= ? RETURNING subject`,
+    at - STALE_SEND_MS,
+    MAX_ATTEMPTS,
+  );
+  for (const s of stuck) await recordIncident("email_failed", "An email was stuck mid-send after every attempt and was closed", s.subject);
   const due = await q.all<{ id: number }>(
-    `SELECT id FROM outbox WHERE payload IS NOT NULL AND ((status = 'queued' AND next_at <= ?) OR (status = 'sending' AND last_attempt_at < ?))
+    `SELECT id FROM outbox WHERE payload IS NOT NULL AND ((status = 'queued' AND next_at <= ?) OR (status = 'sending' AND last_attempt_at < ? AND attempts < ?))
      ORDER BY id LIMIT ?`,
     at,
     at - STALE_SEND_MS,
+    MAX_ATTEMPTS,
     limit,
   );
   let sent = 0;
-  for (const { id } of due) if ((await deliver(id)) === "sent") sent++;
-  return { due: due.length, sent };
+  let errors = 0;
+  for (const { id } of due) {
+    if (Date.now() >= until) break;
+    try {
+      if ((await deliver(id)) === "sent") sent++;
+    } catch (e) {
+      errors++;
+      console.error("[mail] couldn't deliver outbox email", id, e);
+    }
+  }
+  return { due: due.length, sent, ...(stuck.length ? { stuck: stuck.length } : {}), ...(errors ? { errors } : {}) };
 }

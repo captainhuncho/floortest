@@ -238,7 +238,7 @@ type Upload = { id: string; receiver_id: number; file_key: string; ext: string; 
 export const BEING_SAVED = "This file is already being saved.";
 
 /** How long a completion holds its claim on an upload; after that (a crash mid-way) a retry can take it again. */
-const CLAIM_MS = 10 * 60_000;
+export const CLAIM_MS = 10 * 60_000;
 
 /**
  * Claims an upload for one completion, in one statement: of two completes sent at the same moment, only one gets it.

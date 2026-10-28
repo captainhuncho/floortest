@@ -23,6 +23,20 @@ function wav() {
   return new Uint8Array(b);
 }
 
+test("the abandoned-upload clean-up leaves an upload that's being saved right now", async () => {
+  const { q } = await import("../src/lib/db");
+  const { purgeExpired } = await import("../src/lib/retention");
+  const t = Date.now();
+  const uid = (await q.get<{ id: number }>("INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at, email_verified_at) VALUES ('sweep@x.io','h','Sw','sweepdesk','pro','UTC',?,?) RETURNING id", t, t))!.id;
+  const old = t - 3 * 3_600_000;
+  await q.run("INSERT INTO uploads (id, receiver_id, file_key, ext, size, meta, ip, created_at, claimed_at) VALUES ('up-saving', ?, 'audio/x/saving.wav', '.wav', 1, '{}', '5.5.5.5', ?, ?)", uid, old, t);
+  await q.run("INSERT INTO uploads (id, receiver_id, file_key, ext, size, meta, ip, created_at) VALUES ('up-gone', ?, 'audio/x/gone.wav', '.wav', 1, '{}', '5.5.5.5', ?)", uid, old);
+  await purgeExpired({ force: true });
+  assert.ok(await q.get("SELECT 1 FROM uploads WHERE id = 'up-saving'"), "its save is still running");
+  assert.equal(await q.get("SELECT 1 FROM uploads WHERE id = 'up-gone'"), undefined, "an abandoned one still goes");
+  await q.run("DELETE FROM uploads WHERE id = 'up-saving'");
+});
+
 test("an upload completed twice at the same moment makes one track", async () => {
   const { q, USER_COLUMNS } = await import("../src/lib/db");
   const { storage } = await import("../src/lib/storage");

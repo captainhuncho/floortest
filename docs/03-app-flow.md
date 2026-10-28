@@ -66,7 +66,9 @@ floortest.app/<handle> ─► choose files (or Send folders on Pro/Team)
    Missing answers: each field says what to do and they're listed together above Send (each a link); nothing uploads until they're filled.
    A genre tapped in the receiver's brief arrives already chosen in the form.
 Link closed / paused / full ─► the page says why, no upload ─► "Email me when it reopens" ─► one email when the link takes uploads again
-   (after the receiver switches collection, moves the closing date or resumes: up to 50 sent just after the page answers, the rest nightly; nightly also for a pause that ended on its own or a re-route; a failed send is retried next night)
+   (after the receiver switches collection, moves the closing date or resumes: up to 50 sent just after the page answers, the rest nightly; nightly also for a pause that ended on its own or a re-route; a failed send is retried by the email queue every 10 minutes)
+
+Receiver emails ─► instant "New track" (sent at once; quiet hours hold it for the digest) · daily digest, 2-week nudge, first-track nudge, Played out reminder (written at 08:00 UTC, sent by the 10-minute email queue) ─► a failed send is retried with the same key, never sent twice ─► near the daily send limit these wait until after midnight UTC; sign-in codes, resets and receipts always go
 ```
 
 ## Offline kept tracks (iPhone and Android apps)
