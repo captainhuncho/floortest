@@ -4,7 +4,7 @@
 import { allow } from "@/lib/ratelimit";
 import { stepUp } from "@/lib/step-up";
 import { passwordStrength } from "@/lib/password-strength";
-import { currentSessionHash, hashPassword, verifyPassword, requireRole } from "@/lib/auth";
+import { changePasswordTo, currentSessionHash, verifyPassword, requireRole } from "@/lib/auth";
 import { APP_URL, sendMail } from "@/lib/mail";
 import { endSession } from "@/lib/sessions";
 import QRCode from "qrcode";
@@ -32,8 +32,8 @@ export async function changePassword(_: SettingsState, form: FormData): Promise<
   const leaked = await breachedError(next);
   if (leaked) return { error: leaked };
   const keep = await currentSessionHash();
-  await q.run("UPDATE users SET password_hash = ? WHERE id = ?", await hashPassword(next), u.id);
-  await q.run("DELETE FROM sessions WHERE user_id = ? AND token_hash <> ?", u.id, keep ?? "");
+  // Every other browser, the app and the ops area are signed out, and unused reset links stop working.
+  await changePasswordTo(u.id, next, keep);
   await audit(u.id, "password_changed");
   await sendMail({
     userId: u.id,
