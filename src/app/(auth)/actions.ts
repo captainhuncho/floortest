@@ -28,6 +28,7 @@ import { pinGoogle } from "@/lib/google-link";
 import { accountEmailAllowed } from "@/lib/email-budget";
 import { HUMAN_CHECK_AFTER, HUMAN_MESSAGE, humanCheck, recentFailures } from "@/lib/human-check";
 import { breachedError } from "@/lib/breached";
+import { revokeAllSessions } from "@/lib/sessions";
 
 const CHALLENGE = "floortest_2fa";
 /** Set by a share link: where to land after signing in or up (see `safeNext`). */
@@ -372,7 +373,7 @@ export async function verifyLoginCode(_: FormState, form: FormData): Promise<For
         await hashPassword(crypto.randomBytes(32).toString("base64url")),
         user.id,
       );
-      await db.run("DELETE FROM sessions WHERE user_id = ?", user.id);
+      await revokeAllSessions(user.id, { db });
     });
     const u = await q.get<{ email: string; name: string }>("SELECT email, name FROM users WHERE id = ?", user.id);
     if (u)
