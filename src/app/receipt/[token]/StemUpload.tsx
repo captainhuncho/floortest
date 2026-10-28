@@ -2,8 +2,9 @@
 
 import { useRef, useState } from "react";
 
-// "checking": the file has landed and its virus check runs (up to a minute while the scanner wakes).
-type Item = { name: string; status: "waiting" | "uploading" | "checking" | "done" | "error"; progress: number; error?: string };
+// "checking": the file has landed and is being checked. held: received while the virus scanner sleeps; it's attached
+// to the track after the next check, within about 15 minutes (src/lib/held-uploads.ts).
+type Item = { name: string; status: "waiting" | "uploading" | "checking" | "done" | "error"; progress: number; error?: string; held?: boolean };
 
 /** The sender's side of a stems request: pick several WAV/MP3 files, each uploaded and checked in turn. */
 export function StemUpload({ token, receiver, existing, max }: { token: string; receiver: string; existing: string[]; max: number }) {
@@ -19,7 +20,7 @@ export function StemUpload({ token, receiver, existing, max }: { token: string; 
     const post = (url: string, body: object) =>
       fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(async (r) => ({
         ok: r.ok,
-        ...((await r.json().catch(() => ({}))) as { error?: string; uploadId?: string; target?: { url: string; headers: Record<string, string> } }),
+        ...((await r.json().catch(() => ({}))) as { error?: string; held?: boolean; uploadId?: string; target?: { url: string; headers: Record<string, string> } }),
       }));
     const start = await post(`/api/stems/${token}`, { fileName: file.name, size: file.size });
     if (!start.ok || !start.uploadId || !start.target) return patch(i, { status: "error", error: start.error || "Couldn't start the upload." });
@@ -35,7 +36,7 @@ export function StemUpload({ token, receiver, existing, max }: { token: string; 
     if (status < 200 || status >= 300) return patch(i, { status: "error", error: "The upload was interrupted." });
     patch(i, { status: "checking" });
     const done = await post(`/api/stems/${token}/complete`, { uploadId: start.uploadId });
-    patch(i, done.ok ? { status: "done", progress: 1 } : { status: "error", error: done.error || "Upload failed." });
+    patch(i, done.ok ? { status: "done", progress: 1, held: !!done.held } : { status: "error", error: done.error || "Upload failed." });
   }
 
   async function pick(files: FileList | null) {
@@ -71,7 +72,7 @@ export function StemUpload({ token, receiver, existing, max }: { token: string; 
             <li key={i} className="flex items-center justify-between gap-3">
               <span className="min-w-0 truncate">{it.name}</span>
               <span className={`shrink-0 ${it.status === "error" ? "text-danger" : it.status === "done" ? "text-lime" : "text-mute"}`}>
-                {it.status === "done" ? "✓ Sent" : it.status === "error" ? it.error : it.status === "uploading" ? `${Math.round(it.progress * 100)}%` : it.status === "checking" ? "Checking for viruses, up to a minute" : "Waiting"}
+                {it.status === "done" ? (it.held ? "Received, checking for viruses (up to 15 minutes)" : "✓ Sent") : it.status === "error" ? it.error : it.status === "uploading" ? `${Math.round(it.progress * 100)}%` : it.status === "checking" ? "Checking" : "Waiting"}
               </span>
             </li>
           ))}

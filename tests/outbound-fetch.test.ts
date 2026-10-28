@@ -44,7 +44,8 @@ test("the Sentry tunnel forwards only our own project's reports, and only to Sen
 const KNOWN: Record<string, string[]> = {
   "src/app/api/monitoring/route.ts": ["`https://${ours.host}/api/${project}/envelope/`"], // our DSN's host (test above)
   "src/lib/incidents.ts": ["hook"], // ALERT_WEBHOOK_URL, the environment
-  "src/lib/scan.ts": ["`${url}/scan`", "`${url}/wake`", "`${url}/status`", "`${url}/status`", "`${url}/health`"], // SCAN_URL, the environment
+  // SCAN_URL, the environment, via scanBase() (/scan, /wake, /status in scannerHealth and scannerAwake, /health)
+  "src/lib/scan.ts": ["`${url}/scan`", "`${url}/wake`", "`${url}/status`", "`${url}/status`", "`${url}/health`"],
   "src/lib/google-auth.ts": ["TOKEN_URL"], // Google's fixed token address
 };
 
