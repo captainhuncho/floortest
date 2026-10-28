@@ -4,6 +4,37 @@ Plan item B0. Five testers use the live site (invite-only, behind the coming-soo
 computers. It checks the whole product before the beta opens; it is not the beta. Fix and re-test every blocker before
 inviting anyone else. Ideas that aren't defects go to a list for after the run, not into this build.
 
+## When (owner, 28 Oct)
+| Day | What |
+|---|---|
+| Thu 29 Oct | Owner sends the receivers' invites (Ops → Invites) and, privately, the site password and links. Receivers sign up and set up their desks; senders send their first tracks. |
+| Fri 30 Oct | Receivers review on phone and computer; senders watch their receipts; the wifi-off upload test; dev runs the backend checks below and fixes blockers on a branch. |
+| Sat 31 Oct | Re-test every blocker that was fixed; sign out everywhere; findings recorded and saved to `docs/evidence/`. |
+
+The private beta opens Sun 1 Nov only if every blocker is fixed and re-tested; otherwise it moves.
+
+## How to invite (owner)
+- **Receivers (1–3):** Ops → Invites → paste their three emails, with the note below. Each gets a personal invite that
+  works once.
+- **Senders (4–5):** no account needed. Send them the receivers' links once the desks exist, with the message below.
+- **The site password:** everyone needs it while the site is behind the coming-soon page (a receiver's link asks for it
+  too). Send it yourself, privately, by message or call. Never in a FloorTest email, a document or a chat with Claude.
+
+Invite note for Ops → Invites (receivers):
+
+> Thanks for testing FloorTest before the beta. Please set up your desk on your phone and your computer between
+> Thursday 29 and Saturday 31 October. I'll send you the password for the site separately. Use test audio only: an old
+> bounce or a draft, never an unreleased master. Anything that breaks or makes you stop and think, send me a
+> screenshot with the time.
+
+Message to senders (by message, once the desks exist):
+
+> Thanks for testing FloorTest before the beta. Between Thursday 29 and Saturday 31 October, please send a track to at
+> least two of these desks, once from your phone and once from your computer: (the three receivers' links). The site
+> password follows separately. Send test audio only: an old bounce or a draft, never an unreleased master. Watch your
+> receipt page and tell me what changes and when. Anything that breaks or makes you stop and think, send me a
+> screenshot with the time.
+
 ## Who
 | # | Tester | Role | Phone | Computer |
 |---|---|---|---|---|
