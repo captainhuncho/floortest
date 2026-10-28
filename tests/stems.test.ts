@@ -123,3 +123,31 @@ test("stems: completes sent at the same moment save a stem once, and never past 
   assert.equal(S.stemsSent((await q.get<{ stems_sent: string }>("SELECT stems_sent FROM tracks WHERE id = ?", trackId))!).length, 24);
   assert.equal(await stems(), 3);
 });
+
+test("stems: a failure right after sealing leaves the upload pointing at a file that exists", async () => {
+  const { q } = await import("../src/lib/db");
+  const { storage } = await import("../src/lib/storage");
+  const S = await import("../src/lib/stems");
+  const { failOnce, DROPPED } = await import("./fail-once");
+  const store = await storage();
+  const t = Date.now();
+  const uid = (await q.get<{ id: number }>("INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at, email_verified_at) VALUES ('seal@x.io','h','C','sealstems','pro','UTC',?,?) RETURNING id", t, t))!.id;
+  await q.run("INSERT INTO feature_switches (feature, plans, users, updated_at) VALUES ('stems', '[]', ?, ?) ON CONFLICT (feature) DO UPDATE SET users = (feature_switches.users::jsonb || excluded.users::jsonb)::text", JSON.stringify([uid]), t);
+  const sender = (await q.get<{ id: number }>("INSERT INTO senders (user_id, email, name, created_at) VALUES (?, 'ss@x.io', 'S', ?) RETURNING id", uid, t))!.id;
+  await q.run(
+    "INSERT INTO tracks (user_id, sender_id, title, artist, token, file_key, original_name, mime, size, created_at, stems_requested_at) VALUES (?,?,'T','A','seal-track','audio/z.wav','z.wav','audio/wav',1,?,?)",
+    uid, sender, t, t,
+  );
+  const { uploadId } = await S.startStemUpload("seal-track", "drums.wav", wav().length, "8.8.8.8");
+  await store.put((await q.get<{ file_key: string }>("SELECT file_key FROM uploads WHERE id = ?", uploadId))!.file_key, wav(), "audio/wav");
+
+  const restore = failOnce(q as never, /UPDATE uploads SET file_key/);
+  try {
+    await assert.rejects(S.completeStemUpload("seal-track", uploadId), new RegExp(DROPPED));
+  } finally {
+    restore();
+  }
+  const kept = await q.get<{ file_key: string }>("SELECT file_key FROM uploads WHERE id = ?", uploadId);
+  assert.ok(kept, "the upload is still there");
+  assert.ok(await store.head(kept.file_key), "the file it points at was not deleted");
+});

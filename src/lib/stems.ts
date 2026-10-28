@@ -1,7 +1,7 @@
 import "server-only";
 import { discardFiles } from "@/lib/deletion";
 import crypto from "node:crypto";
-import { claimUpload, IntakeError, releaseUpload } from "./intake";
+import { claimUpload, IntakeError, pointAtSealed, releaseUpload } from "./intake";
 import { now, q, type Sender, type Track, type User } from "./db";
 import { APP_URL, sendMail } from "./mail";
 import { MAX_UPLOAD_BYTES } from "./plans";
@@ -126,9 +126,11 @@ export async function completeStemUpload(token: string, uploadId: string) {
   }
   // Checked and kept as a sealed copy the sender's upload link can't overwrite.
   fileKey = await sealUpload(store, up.file_key);
-  await discardFiles([up.file_key], "upload sealed", { linkLive: true });
   // If we crash before the track is saved, the abandoned-upload clean-up still finds (and deletes) the sealed copy.
-  await q.run("UPDATE uploads SET file_key = ? WHERE id = ?", fileKey, up.id);
+  await pointAtSealed(up.id, up.file_key, fileKey).catch(async (e) => {
+    await releaseUpload(up.id);
+    throw e;
+  });
   const head = await store.head(fileKey);
   if (!head || head.size !== up.size) {
     await discard();
@@ -187,7 +189,9 @@ export async function completeStemUpload(token: string, uploadId: string) {
       ))!;
     });
   } catch (e) {
-    await discard();
+    // Only a refusal (cap reached, already saved) discards the stem; any other failure keeps it for the sender's retry.
+    if (e instanceof IntakeError) await discard();
+    else await releaseUpload(up.id).catch((err) => console.error("[stems] couldn't release an upload claim", err));
     throw e;
   }
 

@@ -1,7 +1,7 @@
 import "server-only";
 import { discardFiles } from "@/lib/deletion";
 import { now, q, USER_COLUMNS, type User } from "./db";
-import { BEING_SAVED, completeUpload, HELD_TTL, IntakeError, UploadHeld, type Analysis, type SubmissionMeta } from "./intake";
+import { BEING_SAVED, completeUpload, HELD_TTL, IntakeError, trackForUpload, UploadHeld, type Analysis, type SubmissionMeta } from "./intake";
 import { recordIncident } from "./incidents";
 import { APP_URL, sendMailLater } from "./mail";
 import { SCAN_REFUSED, wakeScanner } from "./scan";
@@ -20,6 +20,13 @@ import { SCAN_REFUSED, wakeScanner } from "./scan";
  * Nothing unscanned ever becomes a track: completeUpload runs the full check again, scan included.
  */
 export const HELD_BATCH = 20;
+/**
+ * The cron function is stopped at 300 s (maxDuration), and a stopped run records nothing. The batch plans for 260 s,
+ * starts no file with under 60 s left, and gives each scan only the time left minus 20 s to seal and save the track.
+ */
+export const HELD_BUDGET_MS = 260_000;
+const HELD_MIN_LEFT_MS = 60_000;
+const HELD_FINISH_MS = 20_000;
 
 type Held = { id: string; receiver_id: number; file_key: string; meta: string; held_analysis: string | null; held_at: number };
 
@@ -31,7 +38,7 @@ async function drop(up: Held, reason: string) {
   await q.run("DELETE FROM uploads WHERE id = ?", up.id);
 }
 
-export async function scanHeldUploads(at = now()) {
+export async function scanHeldUploads(at = now(), { until = Date.now() + HELD_BUDGET_MS } = {}) {
   const out = { delivered: 0, refused: 0, gaveUp: 0, waiting: 0 };
 
   // Held for a day: the scanner never came back. Tell the sender and let the file go.
@@ -57,9 +64,19 @@ export async function scanHeldUploads(at = now()) {
     HELD_BATCH,
   );
   if (!due.length) return out;
+  // Not enough of the run left to finish a file: wait for the next run rather than be cut off half-way.
+  const left = () => until - Date.now();
+  if (left() < HELD_MIN_LEFT_MS) {
+    out.waiting = due.length;
+    return out;
+  }
   // One wake-up for the whole batch; each check below still waits for it to be ready.
   await wakeScanner();
   for (const [i, up] of due.entries()) {
+    if (left() < HELD_MIN_LEFT_MS) {
+      out.waiting = due.length - i;
+      break;
+    }
     const meta = JSON.parse(up.meta) as Partial<SubmissionMeta>;
     const receiver = await q.get<User>(`SELECT ${USER_COLUMNS} FROM users WHERE id = ?`, up.receiver_id);
     if (!receiver) {
@@ -69,7 +86,8 @@ export async function scanHeldUploads(at = now()) {
     }
     const analysis = JSON.parse(up.held_analysis ?? "null") as Analysis | null;
     try {
-      await completeUpload(receiver, up.id, analysis ?? { duration: null, bpm: null, peaks: null }, { from: "batch" });
+      // A scan that runs into the end of the run counts as "no scanner": the file stays held, it isn't refused.
+      await completeUpload(receiver, up.id, analysis ?? { duration: null, bpm: null, peaks: null }, { from: "batch", scanDeadlineMs: left() - HELD_FINISH_MS });
       out.delivered++;
     } catch (e) {
       if (e instanceof UploadHeld) {
@@ -88,9 +106,17 @@ export async function scanHeldUploads(at = now()) {
         continue;
       }
       // A failure after the track was saved (its upload row is gone with it) still delivered the track.
-      if (!(await q.get("SELECT 1 FROM uploads WHERE id = ?", up.id))) {
+      if (await trackForUpload(receiver.id, up.id)) {
         console.error("[held-uploads] after-save step failed", e);
         out.delivered++;
+        continue;
+      }
+      // No track and no upload left: the file is lost. Never counted as delivered; the sender is told to send again.
+      if (!(await q.get("SELECT 1 FROM uploads WHERE id = ?", up.id))) {
+        const title = meta.title ?? "your track";
+        await mailSender(receiver, meta, `Your track wasn't sent: ${title}`, `"${title}" for ${receiver.name} wasn't sent. Please send it again: ${APP_URL}/${receiver.handle}`);
+        await recordIncident("upload_failed", "A held upload was lost before its track was made; its sender was told to send again", e instanceof Error ? `${e.message}\n${e.stack ?? ""}` : String(e), "held uploads");
+        out.refused++;
         continue;
       }
       // Anything unexpected: logged, and the upload stays held (its claim runs out and the next run tries again).
