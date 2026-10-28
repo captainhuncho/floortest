@@ -45,7 +45,7 @@ Production and Preview have separate values. Never paste values into chats or ti
 
 1. Work on branch `mobile-next`. Every push builds a preview.
 2. Check: `npm run typecheck`, `npm test`, and `npx next build` all pass. The preview build must say Ready in Vercel.
-3. Ship: fast-forward `main` to `mobile-next` and push. Production deploys in about 1–2 minutes.
+3. Ship: merge the release pull request into `main` on GitHub (never push `main`; steps in the `owner-ship` skill). Production deploys in about 1–2 minutes.
 4. After shipping, check `https://floortest.app/api/health` returns `{"ok":true}`. In Vercel, check that runtime logs show no 5xx.
 5. Rolling back: in Vercel → Deployments, promote the previous production deployment. It's instant, and database changes are additive, so old code still runs.
 
