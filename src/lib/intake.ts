@@ -32,7 +32,7 @@ export const UPLOAD_TTL = 2 * HOUR;
  * the scanner was asleep or couldn't be reached. Nothing reaches the desk until it passes; the routes answer 202.
  */
 export const UPLOAD_HELD =
-  "Received. We're checking it for viruses, which can take up to 15 minutes. It reaches the desk as soon as it passes, and your receipt follows by email.";
+  "Received. We're checking it for viruses, which can take up to 10 minutes. It reaches the desk as soon as it passes, and your receipt follows by email.";
 export class UploadHeld extends Error {
   constructor() {
     super(UPLOAD_HELD);
@@ -343,7 +343,7 @@ async function finishClaimed(receiver: User, up: Upload, ref: string, analysis: 
     throw new IntakeError(check.reason, 415);
   }
   // Virus check on our own scanner (off until SCAN_URL is set); nothing flagged or unchecked reaches the desk. A sleeping
-  // scanner isn't woken for one file: the upload is held and the next batch (every 10 minutes) checks it.
+  // scanner isn't woken for one file: the upload is held and the next batch (every 5 minutes) checks it.
   const from = opts.from ?? "request";
   const asleep = from === "request" && (await scannerAwake()) === false;
   const scan: ScanResult = asleep

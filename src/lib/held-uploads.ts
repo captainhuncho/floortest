@@ -9,7 +9,7 @@ import { completeStemUpload } from "./stems";
 
 /**
  * Hold and scan (plan B10 option 3, owner 26 Oct). The virus scanner sleeps when idle; an upload (a track, or a stem
- * sent from a receipt) finished while it's asleep (or down) is held instead of refused, and this job, every 10 minutes
+ * sent from a receipt) finished while it's asleep (or down) is held instead of refused, and this job, every 5 minutes
  * (`/api/cron/scan-held`), wakes the scanner once for the whole batch and finishes each held upload exactly as the
  * sender's own request would have.
  *

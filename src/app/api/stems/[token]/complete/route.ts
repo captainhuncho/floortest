@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 
 /**
  * Step 2: the stem is in storage. Validate it and attach it to the track. Body: { uploadId }. 202 { held: true } when the
- * virus scanner is asleep or down: the stem is kept and attached within about 15 minutes (src/lib/held-uploads.ts).
+ * virus scanner is asleep or down: the stem is kept and attached within about 10 minutes (src/lib/held-uploads.ts).
  */
 export async function POST(req: Request, ctx: RouteContext<"/api/stems/[token]/complete">) {
   const body = (await req.json().catch(() => ({}))) as { uploadId?: unknown };

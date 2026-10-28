@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 
 // "checking": the file has landed and is being checked. held: received while the virus scanner sleeps; it's attached
-// to the track after the next check, within about 15 minutes (src/lib/held-uploads.ts).
+// to the track after the next check, within about 10 minutes (src/lib/held-uploads.ts).
 type Item = { name: string; status: "waiting" | "uploading" | "checking" | "done" | "error"; progress: number; error?: string; held?: boolean };
 
 /** The sender's side of a stems request: pick several WAV/MP3 files, each uploaded and checked in turn. */
@@ -72,7 +72,7 @@ export function StemUpload({ token, receiver, existing, max }: { token: string; 
             <li key={i} className="flex items-center justify-between gap-3">
               <span className="min-w-0 truncate">{it.name}</span>
               <span className={`shrink-0 ${it.status === "error" ? "text-danger" : it.status === "done" ? "text-lime" : "text-mute"}`}>
-                {it.status === "done" ? (it.held ? "Received, checking for viruses (up to 15 minutes)" : "✓ Sent") : it.status === "error" ? it.error : it.status === "uploading" ? `${Math.round(it.progress * 100)}%` : it.status === "checking" ? "Checking" : "Waiting"}
+                {it.status === "done" ? (it.held ? "Received, checking for viruses (up to 10 minutes)" : "✓ Sent") : it.status === "error" ? it.error : it.status === "uploading" ? `${Math.round(it.progress * 100)}%` : it.status === "checking" ? "Checking" : "Waiting"}
               </span>
             </li>
           ))}
