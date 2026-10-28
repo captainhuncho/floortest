@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cronAuthorized, jobProblems } from "@/lib/cron";
 import { q } from "@/lib/db";
 import { configProblems, env } from "@/lib/env";
+import { heldUploads } from "@/lib/held-uploads";
 import { scannerHealth, scanRequired } from "@/lib/scan";
 import { storage } from "@/lib/storage";
 
@@ -37,7 +38,11 @@ export async function GET(req: Request) {
   }
   const jobs = detailed ? await jobProblems().catch(() => ["Scheduled jobs couldn't be checked."]) : [];
   if (detailed) checks.jobs = jobs.length ? "problem" : "ok";
-  const problems = detailed ? [...configProblems(), ...jobs] : [];
+  // Uploads waiting for their virus check (src/lib/held-uploads.ts): normal for up to 10 minutes, a problem after an hour.
+  const held = detailed ? await heldUploads().catch(() => null) : null;
+  if (held) checks.held = String(held.count);
+  const stuck = held?.oldest && Date.now() - held.oldest > 3_600_000 ? [`${held.count} upload(s) have waited over an hour for their virus check.`] : [];
+  const problems = detailed ? [...configProblems(), ...jobs, ...stuck] : [];
   const scannerFails = checks.scanner === "down" || (checks.scanner === "off" && scanRequired());
   const ok = checks.database === "ok" && checks.storage !== "error" && !problems.length && !scannerFails;
   return NextResponse.json({ ok, checks, ...(detailed ? { problems } : {}) }, { status: ok ? 200 : 503 });

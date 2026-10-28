@@ -11,18 +11,20 @@ The file never goes to a third-party service and is never written to disk here.
 - Signatures: one update at start-up (the first takes a few minutes), then `freshclam` keeps them current.
 
 The app side is `src/lib/scan.ts`. It's **off until `SCAN_URL` is set**. When on, it **fails closed**: if the scanner
-can't be reached, nothing unscanned reaches a desk. The sender's file is **kept**, and their browser asks again three times
-over about 30 seconds (`Retry-After`), so a short outage doesn't make them upload 250 MB twice. Only then are they asked
-to try again later. Ops gets an incident either way.
+can't be reached, nothing unscanned reaches a desk. The sender's file is **kept**: the app waits up to 150 s for a waking or restarting scanner, and if it
+still can't scan, the send form holds the file so Send again only reruns the check (no second 250 MB upload). Ops gets
+an incident either way.
 
 **Host: Cloudflare Containers** (owner, 14 Oct). Wherever the scanner runs reads unreleased audio; Cloudflare already
 holds it in R2, so this adds no new subprocessor and no lawyer step. `cloudflare/` is a small Worker in front of the same
-image: it lets only `GET /health` and `POST /scan` through, keeps one instance running (ClamAV can't wait on a cold start
-during an upload) and wakes it every 5 minutes if it stopped. Fly.io is only a fallback, for if Cloudflare can't keep up
+image: it lets only `GET /status`, `GET /health`, `POST /wake` and `POST /scan` through. **Sleeps after 10 idle minutes**
+(owner, 26 Oct; it cost about $20 a month always on): `/wake` (with the secret) starts it as an upload starts,
+`/scan` waits up to 90 s for it to be ready, `/status` says whether it's running without waking it. Cold start measured
+26 Oct: 16–18 s locally (amd64 image under emulation on an Apple Silicon Mac) plus 1–3 s for Cloudflare to place it. Fly.io is only a fallback, for if Cloudflare can't keep up
 (see the end of this file).
 
-Cost, from Cloudflare's price page on 14 Oct: Workers Paid $5 a month, plus memory billed as provisioned (1 vCPU, 3 GiB,
-always on: about $20 a month) and CPU only as used (a few dollars at beta size). About $25–30 a month in all.
+Cost: Workers Paid $5 a month, plus memory and disk billed as provisioned **only while it runs** (1 vCPU, 3 GiB: about
+$20 a month always on; $1–3 at beta volume once it sleeps, see docs/costs.md) and CPU only as used.
 
 > **Status, 14 Oct:** built and run locally (Docker, linux/amd64). Signatures are in the image, so it's ready in about
 > 12 seconds; it used about 1 GB of memory; the EICAR test string came back `Eicar-Test-Signature`, a clean 5 MB file came
@@ -64,7 +66,8 @@ always on: about $20 a month) and CPU only as used (a few dollars at beta size).
    ```
    `SCAN_URL` is the workers.dev address. Redeploy production and wait for Ready before testing (sends during the build
    still run on the old deployment). Send a test track; it should reach the desk with no new incident in ops.
-7. **Monitoring:** add the `/health` address to the uptime monitor (UptimeRobot) next to `/api/health`.
+7. **Monitoring:** `.github/workflows/uptime.yml` asks `/status` every 30 minutes (doesn't wake it) and `/health` once a
+   day (wakes it and checks ClamAV). Don't point another monitor at `/health`: frequent pings keep it awake and paid for.
 
 To turn scanning off quickly, remove `SCAN_URL` in Vercel and redeploy.
 

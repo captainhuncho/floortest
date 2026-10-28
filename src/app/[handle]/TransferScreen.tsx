@@ -22,10 +22,12 @@ function timeLeft(sent: number, total: number, startedAt: number) {
  * stays on the compositor) is the only animation, and it exists to show the system working between progress events.
  * Screen readers hear milestones from the form's one status line, not every byte counted here.
  */
-export function TransferScreen({ receiverName, callout, files, startedAt, onCancel, retry }: {
+export function TransferScreen({ receiverName, callout, files, startedAt, onCancel, retry, checking }: {
   receiverName: string;
   /** Set while a dropped or stalled upload is being tried again by itself. */
   retry?: { attempt: number; of: number };
+  /** True while the file has landed and the virus check runs (up to a minute when the scanner is waking). */
+  checking?: boolean;
   handle?: string;
   callout?: string | null;
   files: TransferFile[];
@@ -81,7 +83,11 @@ export function TransferScreen({ receiverName, callout, files, startedAt, onCanc
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-[13px] text-mute">
-          {retry ? `The signal dropped. Trying again by itself (${retry.attempt} of ${retry.of}), from the start of this file.` : "Keep this page open until it says sent."}
+          {retry
+            ? `The signal dropped. Trying again by itself (${retry.attempt} of ${retry.of}), from the start of this file.`
+            : checking
+              ? "Uploaded. Checking your file for viruses: this can take up to a minute. Keep this page open."
+              : "Keep this page open until it says sent."}
         </p>
         <button type="button" onClick={onCancel} className="btn-ghost btn-sm">
           Cancel

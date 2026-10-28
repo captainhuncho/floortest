@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { currentUser } from "@/lib/auth";
 import { q } from "@/lib/db";
-import { completeUpload, IntakeError } from "@/lib/intake";
+import { completeUpload, IntakeError, UploadHeld } from "@/lib/intake";
 import { readAnalysis } from "@/lib/submission";
 
-/** Room for the virus check of a large file (src/lib/scan.ts) on top of the usual checks. */
-export const maxDuration = 60;
+/** Room for the virus check of a large file (src/lib/scan.ts, up to 45 s in the request; a sleeping scanner means the file is held instead). */
+export const maxDuration = 90;
 
 export const runtime = "nodejs";
 
@@ -24,6 +24,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/collections/[id
     const track = await completeUpload(u, String(body.uploadId ?? ""), readAnalysis(body));
     return NextResponse.json({ id: track.id });
   } catch (e) {
+    if (e instanceof UploadHeld) return NextResponse.json({ held: true, message: e.message }, { status: 202 });
     if (e instanceof IntakeError) return bad(e.message, e.status);
     console.error("[owner-upload:complete]", e);
     return bad("Upload failed. Please try again.", 500);

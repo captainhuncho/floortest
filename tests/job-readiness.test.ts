@@ -14,10 +14,23 @@ test("a scheduled job that has never run is a problem once a day's window has pa
   const t = Date.now();
   assert.deepEqual(await jobProblems(t), [], "just installed: nothing is due yet");
   const later = t + LATE_AFTER_MS + 60_000;
-  assert.deepEqual(await jobProblems(later), ["Nightly backup and clean-up has never run", "Daily emails has never run"]);
+  assert.deepEqual(await jobProblems(later), ["Nightly backup and clean-up has never run", "Daily emails has never run", "Held uploads virus check has never run"]);
   await recordRun("purge", later, true, {});
   await recordRun("digest", later, false, { error: "x" });
+  await recordRun("scan", later, true, {}, { history: false });
   const after = await jobProblems(later + 1000);
   assert.equal(after.length, 1, "the backup ran fine; the emails failed");
   assert.match(after[0], /^Daily emails failed on /);
+});
+
+test("the every-10-minutes job is late after an hour, not a day", async () => {
+  const { jobProblems, recordRun } = await import("../src/lib/cron");
+  const t = Date.now() + 10 * 86_400_000;
+  await recordRun("purge", t, true, {});
+  await recordRun("digest", t, true, {});
+  await recordRun("scan", t, true, {}, { history: false });
+  assert.deepEqual(await jobProblems(t + 30 * 60_000), [], "half an hour since the last run is fine");
+  const late = await jobProblems(t + 61 * 60_000);
+  assert.equal(late.length, 1);
+  assert.match(late[0], /^Held uploads virus check hasn't run since /);
 });
