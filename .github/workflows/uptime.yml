@@ -43,10 +43,16 @@ jobs:
           body=$(curl -fsS --max-time 20 --retry 2 --retry-delay 10 https://floortest-scanner.maxwelladjavon.workers.dev/status)
           echo "$body"
           echo "$body" | grep -q '"worker":true'
-      # Once a day (and on a manual run): wake it and wait for ClamAV, up to about 2 minutes for a cold start.
+      # Once a day (and on a manual run): wake it and wait for ClamAV, up to about 2 minutes for a cold start. /health
+      # needs the scanner's secret (owner, 28 Oct: the repository is public, so an open /health let anyone keep the
+      # container awake and billed). Until the owner adds SCAN_SECRET as a repository secret, this step is skipped with
+      # a notice.
       - name: Virus scanner wakes and ClamAV answers (daily)
         if: github.event.schedule == '17 6 * * *' || github.event_name == 'workflow_dispatch'
+        env:
+          SCAN_SECRET: ${{ secrets.SCAN_SECRET }}
         run: |
-          body=$(curl -fsS --max-time 100 --retry 3 --retry-delay 10 --retry-all-errors https://floortest-scanner.maxwelladjavon.workers.dev/health)
+          if [ -z "$SCAN_SECRET" ]; then echo "::notice::SCAN_SECRET isn't set on GitHub, so the daily scanner wake-up was skipped."; exit 0; fi
+          body=$(curl -fsS --max-time 100 --retry 3 --retry-delay 10 --retry-all-errors -H "Authorization: Bearer $SCAN_SECRET" https://floortest-scanner.maxwelladjavon.workers.dev/health)
           echo "$body"
           echo "$body" | grep -q '"clamd":true'

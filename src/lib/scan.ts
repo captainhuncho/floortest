@@ -155,7 +155,11 @@ export async function scannerHealth(): Promise<"ok" | "asleep" | "down" | "off">
     const status = s.ok ? ((await s.json().catch(() => ({}))) as { container?: string }).container : undefined;
     if (status === "stopped" || status === "stopped_with_code") return "asleep";
     if (!s.ok) await s.body?.cancel().catch(() => {});
-    const r = await fetch(`${url}/health`, { signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS) });
+    // /health needs the secret since 28 Oct (scanner/cloudflare/routes.js), like /wake and /scan.
+    const r = await fetch(`${url}/health`, {
+      headers: { Authorization: `Bearer ${process.env.SCAN_SECRET ?? ""}` },
+      signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS),
+    });
     const body = r.ok ? ((await r.json()) as { clamd?: boolean }) : null;
     return body?.clamd === true ? "ok" : "down";
   } catch {
