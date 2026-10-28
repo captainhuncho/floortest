@@ -1768,4 +1768,20 @@ create index if not exists fk_users_reply_approver_id on users(reply_approver_id
 create index if not exists fk_view_tickets_admin_id on view_tickets(admin_id);
 create index if not exists fk_view_tickets_user_id on view_tickets(user_id);`,
   },
+  {
+    // Hold and scan (plan B10 option 3, owner 26 Oct): when the virus scanner is asleep or can't be reached, a finished
+    // upload waits here instead of being refused, and the every-10-minutes job wakes the scanner once for the whole
+    // batch. held_analysis is the browser's analysis (duration, bpm, peaks) for when the track is made. Additive only.
+    id: "0103_held_uploads",
+    sql: `alter table uploads add column if not exists held_at bigint;
+alter table uploads add column if not exists held_analysis text;
+alter table uploads add column if not exists held_tries integer not null default 0;
+create index if not exists uploads_held on uploads(held_at) where held_at is not null;`,
+  },
+  {
+    // Targeted switches (owner, 27 Oct): an optional "who sees it" rule on a feature switch (lib/switch-rules), JSON,
+    // null for everyone. Additive only: code without it reads key and on_ as before and its upsert leaves rule alone.
+    id: "0104_switch_rules",
+    sql: `alter table switches add column if not exists rule text;`,
+  },
 ];

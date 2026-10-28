@@ -1,6 +1,7 @@
 /** Intake: checks before a sender can send, the two-step upload, and confirming a sender's email. */
 import { SHARING_TERMS_VERSION } from "./legal";
 import { discardFiles } from "@/lib/deletion";
+import { queueDeletion } from "./deletion-core";
 import "server-only";
 import { emailTemplate, fillEmail } from "./email-copy";
 import { after } from "next/server";
@@ -14,7 +15,7 @@ import { folderLimit } from "./plan-store";
 import { allow } from "./ratelimit";
 import { sealUpload, storage } from "./storage";
 import { validateAudio } from "./validate";
-import { scanStored, SCAN_REFUSED, SCAN_UNAVAILABLE } from "./scan";
+import { scannerAwake, scanStored, SCAN_REFUSED, type ScanResult } from "./scan";
 import { recordIncident } from "./incidents";
 import { recordStoredDigest } from "./file-digests";
 import { activeCollection, capacity, isClosed, isFull, isPaused, pausedMessage, rewardReferral } from "./desk";
@@ -26,6 +27,23 @@ const DAY = 24 * HOUR;
 export const UPLOAD_TTL = 2 * HOUR;
 
 /** A refusal we can show the sender. Messages stay neutral so spammers learn little. */
+/**
+ * The file is stored and checked except for the virus scan, which runs in the next batch (src/lib/held-uploads.ts):
+ * the scanner was asleep or couldn't be reached. Nothing reaches the desk until it passes; the routes answer 202.
+ */
+export const UPLOAD_HELD =
+  "Received. We're checking it for viruses, which can take up to 15 minutes. It reaches the desk as soon as it passes, and your receipt follows by email.";
+export class UploadHeld extends Error {
+  constructor() {
+    super(UPLOAD_HELD);
+  }
+}
+
+/** How long a held upload waits for the scanner before the sender is told it wasn't sent. */
+export const HELD_TTL = 24 * HOUR;
+/** Longest an upload's own request waits for an awake scanner before holding the file instead. */
+const REQUEST_SCAN_MS = 45_000;
+
 export class IntakeError extends Error {
   constructor(
     message: string,
@@ -216,8 +234,11 @@ export async function startUpload(receiver: User, meta: SubmissionMeta, size: nu
 
 type Upload = { id: string; receiver_id: number; file_key: string; ext: string; size: number; meta: string; created_at: number };
 
+/** Another completion is working on this upload right now (the sender's retry, or the held-uploads batch). */
+export const BEING_SAVED = "This file is already being saved.";
+
 /** How long a completion holds its claim on an upload; after that (a crash mid-way) a retry can take it again. */
-const CLAIM_MS = 10 * 60_000;
+export const CLAIM_MS = 10 * 60_000;
 
 /**
  * Claims an upload for one completion, in one statement: of two completes sent at the same moment, only one gets it.
@@ -226,16 +247,17 @@ const CLAIM_MS = 10 * 60_000;
 export async function claimUpload<T>(uploadId: string, receiverId: number, cols = "*") {
   const t = now();
   const up = await q.get<T>(
-    `UPDATE uploads SET claimed_at = ? WHERE id = ? AND receiver_id = ? AND created_at > ? AND (claimed_at IS NULL OR claimed_at < ?) RETURNING ${cols}`,
+    `UPDATE uploads SET claimed_at = ? WHERE id = ? AND receiver_id = ? AND (created_at > ? OR held_at > ?) AND (claimed_at IS NULL OR claimed_at < ?) RETURNING ${cols}`,
     t,
     uploadId,
     receiverId,
     t - UPLOAD_TTL,
+    t - HELD_TTL,
     t - CLAIM_MS,
   );
   if (up) return up;
-  if (await q.get("SELECT 1 FROM uploads WHERE id = ? AND receiver_id = ? AND created_at > ?", uploadId, receiverId, t - UPLOAD_TTL))
-    throw new IntakeError("This file is already being saved.", 409);
+  if (await q.get("SELECT 1 FROM uploads WHERE id = ? AND receiver_id = ? AND (created_at > ? OR held_at > ?)", uploadId, receiverId, t - UPLOAD_TTL, t - HELD_TTL))
+    throw new IntakeError(BEING_SAVED, 409);
   throw new IntakeError("This upload expired. Please send the track again.", 410);
 }
 
@@ -246,17 +268,54 @@ const uploadRef = (uploadId: string) => crypto.createHash("sha256").update(`uplo
 export const releaseUpload = (uploadId: string) => q.run("UPDATE uploads SET claimed_at = NULL WHERE id = ?", uploadId);
 
 /**
+ * Points an upload at its sealed copy and queues the original for deletion in one step, then deletes the original.
+ * A crash before that step leaves the upload as it was (the retry seals again); after it, the original is already queued
+ * for the nightly clean-up. Never the other way round: the upload must never point at a deleted file.
+ */
+export async function pointAtSealed(uploadId: string, original: string, sealed: string) {
+  await q.tx(async (db) => {
+    await db.run("UPDATE uploads SET file_key = ? WHERE id = ?", sealed, uploadId);
+    await queueDeletion(db, [original], "upload sealed", now());
+  });
+  await discardFiles([original], "upload sealed", { linkLive: true });
+}
+
+/**
  * Step 2: the browser has uploaded the file. Verify it's really there, the right size, and real
  * audio, then create the track and tell everyone.
  */
-export async function completeUpload(receiver: User, uploadId: string, analysis: { duration: number | null; bpm: number | null; peaks: number[] | null }) {
+export type Analysis = { duration: number | null; bpm: number | null; peaks: number[] | null };
+
+/** The track an upload already made, if any (looked up by the upload's fingerprint). */
+export const trackForUpload = (receiverId: number, uploadId: string) =>
+  q.get<Track>("SELECT * FROM tracks WHERE upload_ref = ? AND user_id = ? AND created_at > ?", uploadRef(uploadId), receiverId, now() - UPLOAD_TTL);
+
+type CompleteOpts = { from?: "request" | "batch"; scanDeadlineMs?: number };
+
+/**
+ * `from`: "request" (the sender's own request: a sleeping scanner isn't woken, the file is held for the next batch) or
+ * "batch" (the held-uploads job, which has woken the scanner and waits up to 150 s for it, or `scanDeadlineMs` if less).
+ */
+export async function completeUpload(receiver: User, uploadId: string, analysis: Analysis, opts: CompleteOpts = {}) {
   // Once per upload (Codex review, phase B item 2): if the response to a finished completion was lost and the browser
   // asks again, it gets the same track back, with no second track and no second "Delivered" email. The upload id is a
   // secret the sender's browser holds, so only its fingerprint is kept on the track.
-  const ref = uploadRef(uploadId);
-  const made = await q.get<Track>("SELECT * FROM tracks WHERE upload_ref = ? AND user_id = ? AND created_at > ?", ref, receiver.id, now() - UPLOAD_TTL);
+  const made = await trackForUpload(receiver.id, uploadId);
   if (made) return made;
   const up = await claimUpload<Upload>(uploadId, receiver.id);
+  try {
+    return await finishClaimed(receiver, up, uploadRef(uploadId), analysis, opts);
+  } catch (e) {
+    // A refusal or a hold has already dealt with the file and the claim. Anything else (the database dropped, storage
+    // timed out) keeps the file and lets go of the claim, so the sender's retry or the next batch can finish it. If even
+    // that fails, the claim runs out by itself after CLAIM_MS.
+    if (!(e instanceof IntakeError || e instanceof UploadHeld))
+      await releaseUpload(up.id).catch((err) => console.error("[intake] couldn't release an upload claim", err));
+    throw e;
+  }
+}
+
+async function finishClaimed(receiver: User, up: Upload, ref: string, analysis: Analysis, opts: CompleteOpts) {
   const store = await storage();
   const sharing = await switchOn("sharing");
   let fileKey = up.file_key;
@@ -271,9 +330,8 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
   }
   // From here on the sender's upload link can't touch the file: everything below checks and keeps the sealed copy.
   fileKey = await sealUpload(store, up.file_key);
-  await discardFiles([up.file_key], "upload sealed", { linkLive: true });
   // If we crash before the track is saved, the abandoned-upload clean-up still finds (and deletes) the sealed copy.
-  await q.run("UPDATE uploads SET file_key = ? WHERE id = ?", fileKey, up.id);
+  await pointAtSealed(up.id, up.file_key, fileKey);
   const head = await store.head(fileKey);
   if (!head || head.size !== up.size || head.size > MAX_UPLOAD_BYTES) {
     await discard();
@@ -284,20 +342,31 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
     await discard();
     throw new IntakeError(check.reason, 415);
   }
-  // Virus check on our own scanner (off until SCAN_URL is set); nothing flagged or unchecked reaches the desk.
-  const scan = await scanStored(fileKey);
-  if (scan.verdict === "infected" || scan.verdict === "unavailable") {
-    // A flagged file goes. When the scanner can't be reached, the sealed file stays with its upload, so the sender's
-    // browser can ask again without sending it twice (the abandoned-upload clean-up removes it if they never do).
-    if (scan.verdict === "infected") await discard();
-    else await releaseUpload(up.id); // the retry has to be able to claim it again
-    await recordIncident(
-      scan.verdict === "infected" ? "upload_rejected" : "upload_failed",
-      scan.verdict === "infected" ? "Virus check flagged an upload" : "Virus check unavailable; an upload was refused",
-      scan.verdict === "infected" ? `${scan.signature} · receiver #${receiver.id}` : scan.error,
-      "upload",
+  // Virus check on our own scanner (off until SCAN_URL is set); nothing flagged or unchecked reaches the desk. A sleeping
+  // scanner isn't woken for one file: the upload is held and the next batch (every 10 minutes) checks it.
+  const from = opts.from ?? "request";
+  const asleep = from === "request" && (await scannerAwake()) === false;
+  const scan: ScanResult = asleep
+    ? { verdict: "unavailable", error: "scanner asleep" }
+    : await scanStored(fileKey, from === "request" ? { deadlineMs: REQUEST_SCAN_MS } : opts.scanDeadlineMs ? { deadlineMs: opts.scanDeadlineMs } : {});
+  if (scan.verdict === "infected") {
+    await discard();
+    await recordIncident("upload_rejected", "Virus check flagged an upload", `${scan.signature} · receiver #${receiver.id}`, "upload");
+    throw new IntakeError(SCAN_REFUSED, 422);
+  }
+  if (scan.verdict === "unavailable") {
+    // Held, not refused: the sealed file stays with its upload, so nobody sends it twice, and nothing reaches the desk
+    // until the batch's check passes. The claim is let go so the batch can take it.
+    await q.run(
+      "UPDATE uploads SET held_at = COALESCE(held_at, ?), held_analysis = ?, held_tries = held_tries + ?, claimed_at = NULL WHERE id = ?",
+      now(),
+      JSON.stringify(analysis),
+      from === "batch" ? 1 : 0,
+      up.id,
     );
-    throw new IntakeError(scan.verdict === "infected" ? SCAN_REFUSED : SCAN_UNAVAILABLE, scan.verdict === "infected" ? 422 : 503);
+    // Asleep is the normal case; anything else (down, too slow, misconfigured) is worth a look.
+    if (!asleep) await recordIncident("upload_failed", "Virus check unavailable; an upload is held for the next batch", scan.error, "upload");
+    throw new UploadHeld();
   }
 
   const meta = JSON.parse(up.meta) as SubmissionMeta;
@@ -419,7 +488,8 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
       return { track, sender, collection, mailId };
     });
   } catch (e) {
-    await discard();
+    // Only a refusal (desk full, closed, already saved) discards the file; any other failure keeps it (see completeUpload).
+    if (e instanceof IntakeError) await discard();
     throw e;
   }
 

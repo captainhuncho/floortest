@@ -10,7 +10,7 @@ import { audit } from "./audit";
 import { now, q, USER_COLUMNS, type Collection, type User } from "./db";
 import { activeCollection, capacity, isClosed, isPaused } from "./desk";
 import { emailText } from "./email-copy";
-import { APP_URL, sendMail, sendMailLater } from "./mail";
+import { APP_URL, deliverLater, queueMail, sendMailLater } from "./mail";
 
 type LinkUser = Pick<User, "id" | "name" | "handle" | "plan" | "paused_at" | "pause_until" | "active_collection_id">;
 
@@ -34,8 +34,8 @@ const IN_REQUEST = 50;
  * If the receiver's link takes uploads again, every pending request gets its one email. Called after the actions that
  * can reopen a link (switching collection, editing a closing date, resuming): there, `inRequest` sends at most 50,
  * after the page has answered, so the receiver's click never waits on email. Nightly (time-based reopenings, a
- * re-route, and anyone left over) sends up to 200 per receiver and waits for each. Each row is claimed before sending
- * so a retry can't email twice; a send that fails hands the row back for the next run.
+ * re-route, and anyone left over) queues up to 200 per receiver for the email queue. Each row is claimed with its email
+ * so a retry can't email twice; the email queue retries a send that fails.
  */
 export async function sendReopenAlerts(userId: number, { inRequest = false } = {}) {
   const u = await q.get<User>(`SELECT ${USER_COLUMNS} FROM users WHERE id = ? AND suspended_at IS NULL`, userId);
@@ -48,14 +48,13 @@ export async function sendReopenAlerts(userId: number, { inRequest = false } = {
   const copy = await emailText("link_reopened", { receiver: u.name, link: `${APP_URL}/${u.handle}` });
   let sent = 0;
   for (const r of pending) {
-    const claimed = await q.run("UPDATE reopen_alerts SET sent_at = ? WHERE id = ? AND sent_at IS NULL", now(), r.id);
-    if (!claimed.changes) continue;
-    const mail = { userId, audience: "sender" as const, to: r.email, ...copy };
-    if (inRequest) await sendMailLater(mail);
-    else if ((await sendMail(mail)).startsWith("failed")) {
-      await q.run("UPDATE reopen_alerts SET sent_at = NULL WHERE id = ?", r.id);
-      continue;
-    }
+    // Marked and queued together; the email queue retries a failed send with the same key (Batch B, 28 Oct).
+    const id = await q.tx(async (db) => {
+      const claimed = await db.run("UPDATE reopen_alerts SET sent_at = ? WHERE id = ? AND sent_at IS NULL", now(), r.id);
+      return claimed.changes ? queueMail({ userId, audience: "sender", to: r.email, ...copy }, db) : null;
+    });
+    if (!id) continue;
+    if (inRequest) deliverLater(id);
     sent++;
   }
   return sent;
@@ -93,7 +92,7 @@ export async function rerouteClosedLinks(at = now()) {
     const r = await q.run("UPDATE users SET active_collection_id = ? WHERE id = ? AND active_collection_id <> ?", next.id, u.id, next.id);
     if (!r.changes) continue;
     await audit(u.id, "link_rerouted", `${next.name} (${u.closed_name} closed)`);
-    await sendMail({
+    await sendMailLater({
       userId: u.id,
       audience: "receiver",
       to: u.email,
