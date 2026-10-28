@@ -29,13 +29,13 @@ colors:
   day-danger: "#c4321f"
 typography:
   display:
-    fontFamily: "JetBrains Mono, monospace"
+    fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, system-ui, sans-serif"
     fontSize: "34px"
     fontWeight: 700
     lineHeight: 1.1
     letterSpacing: "-0.5px"
   headline:
-    fontFamily: "JetBrains Mono, monospace"
+    fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, system-ui, sans-serif"
     fontSize: "28px"
     fontWeight: 700
     lineHeight: 1.1
@@ -47,12 +47,12 @@ typography:
     lineHeight: 1
     fontFeature: "tnum"
   body:
-    fontFamily: "JetBrains Mono, monospace"
+    fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, system-ui, sans-serif"
     fontSize: "13px"
     fontWeight: 400
     lineHeight: "1.25rem"
   label:
-    fontFamily: "JetBrains Mono, monospace"
+    fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, system-ui, sans-serif"
     fontSize: "11px"
     fontWeight: 700
     lineHeight: "1rem"
@@ -130,11 +130,11 @@ components:
 
 FloorTest looks like the inside of a DJ booth late in a set: near-black, warm, quiet, with one light that matters. Everything is ink and bone; a single lime accent marks the thing to do next, the way a cue light does on a deck. Nothing glows for decoration. The interface is a working surface for people deciding quickly, often on a phone between gigs, so it is dense, technical and calm rather than expressive.
 
-The whole product is set in one monospaced face, which gives every screen the feel of gear: counts line up, durations and BPM read like readouts, labels read like panel markings. Depth is quiet. Surfaces step up in tone, not in shadow, and only things that float (menus, dialogs, toasts) cast one. Day theme is the same booth with the lights on: warm off-white paper, olive where lime would be unreadable as text, lime fills kept for the main action.
+Words are set in the device's own sans and figures in a monospaced face, which gives every screen the feel of gear: counts line up, durations and BPM read like readouts. Depth is quiet. Surfaces step up in tone, not in shadow, and only things that float (menus, dialogs, toasts) cast one. Day theme is the same booth with the lights on: warm off-white paper, olive where lime would be unreadable as text, lime fills kept for the main action.
 
 **Key Characteristics:**
 - One accent, Cue Lime, reserved for the main action, live states and counts that need attention.
-- One typeface, JetBrains Mono, everywhere; Instrument Serif italic only as a home-page accent.
+- The system sans for words, JetBrains Mono for readouts (counts, durations, BPM); Instrument Serif italic only as a home-page accent.
 - Tonal layering for depth; shadows only on floating things.
 - Four corner radii by role, nothing in between.
 - Dense, scannable rows; decision-time actions always visible.
@@ -168,11 +168,12 @@ Booth Black and Bone carry almost everything; Cue Lime is the one light.
 
 ## Typography
 
-**Display Font:** JetBrains Mono (variable), with monospace fallback
-**Body Font:** JetBrains Mono
+**Display Font:** the system sans (-apple-system, Segoe UI, Roboto, system-ui), owner 28 Oct
+**Body Font:** the system sans
+**Readout Font:** JetBrains Mono (variable, self-hosted), for counts, durations and BPM (`font-mono`)
 **Accent Font:** Instrument Serif italic, home page only (the headline's second line and the blurred "send me music" booth neon)
 
-**Character:** One mono face reads like gear: panel markings, readouts, tabular numbers. Hierarchy comes from size, weight and spacing, not from a second family.
+**Character:** Plain words in the device's own face; figures in mono read like gear. Hierarchy comes from size, weight and spacing.
 
 ### Hierarchy
 - **Display** (700, 32–34px, 1.1, -0.5px): the Floor greeting only.

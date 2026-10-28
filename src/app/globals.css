@@ -19,8 +19,9 @@
   --color-lime: #d5ff48;
   --color-olive: #536400;
   --color-danger: #ff6b5a;
-  /* One website font: JetBrains Mono (loaded in app/fonts.ts). Instrument Serif italic is a home-page accent only. */
-  --font-sans: var(--font-stage-mono), monospace;
+  /* Words in the system sans (nothing to download, owner 28 Oct); JetBrains Mono (app/fonts.ts) for code, keys and
+     readouts that ask for font-mono. Instrument Serif italic is a home-page accent only. */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
   --font-mono: var(--font-stage-mono), monospace;
 
   /* ── Design system tokens (docs/04-design.md) ──
@@ -263,6 +264,8 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
   font-weight: var(--site-chip-weight, 700);
 }
 @utility tnum { font-variant-numeric: tabular-nums; }
+/* Free space, drawn as fine diagonal stripes (the Floor's capacity strip). Bone at 16%, so it reads in day mode too. */
+@utility hatch { background-image: repeating-linear-gradient(135deg, color-mix(in oklab, var(--color-bone) 16%, transparent) 0 1px, transparent 1px 6px); }
 
 /* Home page: small uppercase mono labels. */
 @utility home-label {
