@@ -1,6 +1,6 @@
 # Testing evidence
 
-One report per production release (working rule 13, principle 9). Read the latest before deciding the next changes.
+One report per production release (working rule 13, principle 9). Read the latest before deciding the next changes. A release that only adds reports here gets none of its own: the next release's report lists it in one line (PR, merge commit, deployment).
 
 **File name:** `YYYY-MM-DD-<short name>-<commit>.md`, the commit being the one production runs. Screenshots go beside it as `YYYY-MM-DD-<short name>-<what>.png` (or `.jpg`), under 300 KB each.
 
