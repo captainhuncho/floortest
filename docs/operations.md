@@ -71,6 +71,7 @@ Normal page visits also run light cleanup (sessions, rate limits, abandoned uplo
 ## Backups and restore
 
 - **What's covered:** every table except short-lived ones: every kind of sign-in session and one-time code (account, ops, share-link listeners, view-as, password resets, sign-in and email codes), rate limits (the only place IP addresses are kept, besides pending uploads), pending uploads and speed timings. A backup holds no live way in, and a restore brings no session back. Live email-confirmation tokens and email bodies are blanked. Audio files are **not** in the database backup; they live in R2.
+- **One moment:** every table is read in one read-only, repeatable-read transaction, so a backup never holds a track without its sender (tables were read one by one until 28 Oct, Batch C).
 - **Encrypted** (AES-256-GCM) with `BACKUP_KEY`. Each backup names the key that sealed it (a short fingerprint, not the key). To change the key: set the new `BACKUP_KEY`, put the old one in `BACKUP_OLD_KEYS` (comma-separated) and in the password manager, and remove it after 14 days, when the last backup made with it has gone; a restore picks the right key and says which one is missing. Each run gets its own file (`db-YYYY-MM-DDTHHMM.json.gz.enc`), so a manual rerun never replaces the night's backup.
 - **Kept** 14 days. Every backup is listed in `app_state.backup_keys`, so older ones are always deleted, even after missed nights.
 - **Status:** Admin → Overview shows the last backup. It becomes a red to-do if none ran in 2 days.

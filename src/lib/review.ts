@@ -97,18 +97,38 @@ export const decisionLocked = (user: Pick<User, "role">, t: Pick<Track, "decisio
   user.role === "member" && !!t.decision && (t.decided_role === "owner" || t.decided_role === "admin");
 export const LOCKED_MESSAGE = "The owner or an A&R / Admin made this call, so only they can change it.";
 
-/** Keep or "not for me" (stored as passed). Private to the receiver: senders are never told. Returns what undo needs. */
+/**
+ * `decisionLocked` checked on the row as it is now, not on the copy the page loaded, so an owner's or admin's call made
+ * in between survives a member's change (Batch C, 28 Oct). The parameter is the acting role.
+ */
+const UNLOCKED = "NOT (? = 'member' AND decision IS NOT NULL AND decided_role IN ('owner', 'admin'))";
+
+/**
+ * Keep or "not for me" (stored as passed). Private to the receiver: senders are never told. Returns what undo needs, or
+ * null when a member meets an owner's or admin's call.
+ */
 export async function decide(user: User, t: Track, decision: Decision) {
-  const prev = { decision: t.decision, decided_at: t.decided_at };
-  // Keeping (again) always puts the track in the current Prepare for set batch.
-  await q.run(
-    "UPDATE tracks SET decision = ?, decided_at = ?, decided_by = ?, decided_role = ?, set_cleared_at = NULL, expiry_warned_at = NULL WHERE id = ?",
-    decision,
-    now(),
-    user.actor_id ?? user.id,
-    user.role ?? "owner",
-    t.id,
-  );
+  const role = user.role ?? "owner";
+  // What undo restores is read in the same transaction as the change, so it's the row as it was, not the page's copy.
+  const prev = await q.tx(async (db) => {
+    const was = await db.get<{ decision: Decision | null; decided_at: number | null }>(
+      `SELECT decision, decided_at FROM tracks WHERE id = ? AND ${UNLOCKED} FOR UPDATE`,
+      t.id,
+      role,
+    );
+    if (!was) return null;
+    // Keeping (again) always puts the track in the current Prepare for set batch.
+    await db.run(
+      "UPDATE tracks SET decision = ?, decided_at = ?, decided_by = ?, decided_role = ?, set_cleared_at = NULL, expiry_warned_at = NULL WHERE id = ?",
+      decision,
+      now(),
+      user.actor_id ?? user.id,
+      role,
+      t.id,
+    );
+    return { decision: was.decision, decided_at: was.decided_at };
+  });
+  if (!prev) return null;
   const eventId = await logEvent({ user_id: user.id, actor_id: user.actor_id, sender_id: t.sender_id, track_id: t.id, type: decision, detail: "" });
   return { prev, eventId };
 }
@@ -118,7 +138,14 @@ export async function undoDecision(user: User, t: Track, prev: { decision: unkno
   const decision = isDecision(prev.decision) ? prev.decision : null;
   const decidedAt = decision && typeof prev.decided_at === "number" ? prev.decided_at : null;
   // Who made the restored call isn't in the undo token, so it comes back unlocked rather than credited to the undoer.
-  await q.run("UPDATE tracks SET decision = ?, decided_at = ?, decided_by = NULL, decided_role = NULL, expiry_warned_at = NULL WHERE id = ?", decision, decidedAt, t.id);
+  // Only while the track still holds the undoer's own call: one a teammate made since stands (Batch C, 28 Oct).
+  await q.run(
+    "UPDATE tracks SET decision = ?, decided_at = ?, decided_by = NULL, decided_role = NULL, expiry_warned_at = NULL WHERE id = ? AND decided_by = ?",
+    decision,
+    decidedAt,
+    t.id,
+    user.actor_id ?? user.id,
+  );
   // Only the entry this undo is about: the undoer's own keep or not-for-me on this track, never a teammate's note or call
   // (the event id comes back from the browser, so it's checked, not trusted).
   if (Number.isSafeInteger(eventId))
@@ -131,8 +158,14 @@ export async function undoDecision(user: User, t: Track, prev: { decision: unkno
     );
 }
 
-export async function clearDecision(t: Track) {
-  await q.run("UPDATE tracks SET decision = NULL, decided_at = NULL, decided_by = NULL, decided_role = NULL, expiry_warned_at = NULL WHERE id = ?", t.id);
+/** Clears a call. False when a member meets an owner's or admin's call, checked on the row as it is now. */
+export async function clearDecision(user: Pick<User, "role">, t: Pick<Track, "id">) {
+  const r = await q.run(
+    `UPDATE tracks SET decision = NULL, decided_at = NULL, decided_by = NULL, decided_role = NULL, expiry_warned_at = NULL WHERE id = ? AND ${UNLOCKED}`,
+    t.id,
+    user.role ?? "owner",
+  );
+  return r.changes > 0;
 }
 
 export async function reply(user: User, s: Sender, t: Track | undefined, body: string) {
