@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/admin";
 import Link from "next/link";
 import { ConfirmButton, ConfirmSubmit } from "../AdminUi";
 import { q } from "@/lib/db";
+import { httpsLink } from "@/lib/safe-links";
 import { inviteFromWaitlist, inviteOldestFromWaitlist, removeFromWaitlist } from "../actions";
 
 const PAGE = 200;
@@ -30,7 +31,8 @@ export default async function Waitlist({ searchParams }: { searchParams: Promise
   const total = count(tab);
   const more = total > rows.length;
   const href = (t: Tab, n?: number) => `/admin/waitlist?status=${t}${n ? `&n=${n}` : ""}`;
-  const safeLink = (l: string) => (/^https?:\/\//i.test(l) ? l : l ? `https://${l.replace(/^@/, "instagram.com/")}` : "");
+  // https only; "@name" is an Instagram handle. Anything else (javascript:, data:) gets no link (src/lib/safe-links.ts).
+  const safeLink = (l: string) => httpsLink(l.replace(/^@/, "instagram.com/"));
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -80,8 +82,9 @@ export default async function Waitlist({ searchParams }: { searchParams: Promise
                   {w.handle && <span className="block text-xs text-lime">/{w.handle}</span>}
                 </td>
                 <td className="max-w-48 truncate px-4 py-3">
-                  {w.link && (
-                    <a href={safeLink(w.link)} target="_blank" rel="noreferrer noopener" className="text-mute underline-offset-4 hover:text-bone hover:underline">
+                  {w.link && !safeLink(w.link) && <span className="text-mute">{w.link}</span>}
+                  {w.link && safeLink(w.link) && (
+                    <a href={safeLink(w.link)!} target="_blank" rel="noreferrer noopener" className="text-mute underline-offset-4 hover:text-bone hover:underline">
                       {w.link}
                     </a>
                   )}

@@ -2,6 +2,7 @@ import { trackUse } from "@/lib/usage";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { q, likeContains } from "@/lib/db";
+import { pickShow, pickSort, SHOWS } from "./filters";
 import { ago } from "@/lib/format";
 import { PageTitle } from "@/components/PageTitle";
 import { Tabs } from "@/components/Tabs";
@@ -25,17 +26,6 @@ type Row = {
   last_message_kind: "message" | "reply" | null;
 };
 
-const SORTS = [
-  ["recent", "Recent", "last_at DESC NULLS LAST"],
-  ["kept", "Most kept", "kept DESC, last_at DESC NULLS LAST"],
-  ["name", "A–Z", "lower(s.name) ASC"],
-] as const;
-const SHOWS = [
-  ["all", "Everyone", "1 = 1"],
-  ["verified", "Verified", "s.verified_at IS NOT NULL"],
-  ["messages", "With messages", "lm.text IS NOT NULL"],
-  ["blocked", "Blocked", "s.blocked_at IS NOT NULL"],
-] as const;
 const FROMS = [
   ["all", "All"],
   ["them", "From them"],
@@ -64,8 +54,8 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
   const user = await requireUser();
   await trackUse(user.id, "contacts");
   const sp = await searchParams;
-  const sort = SORTS.find(([k]) => k === sp.sort) ?? SORTS[0];
-  const show = SHOWS.find(([k]) => k === sp.show) ?? SHOWS[0];
+  const sort = pickSort(sp.sort);
+  const show = pickShow(sp.show);
   const search = (sp.q || "").trim().slice(0, 100);
 
   // Every sender, with their track stats and the latest message in either direction.

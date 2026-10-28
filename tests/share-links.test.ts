@@ -195,9 +195,11 @@ test("retention, account deletion and the artist's stop switch", async () => {
   const live = (await L.linkBySecret(url.split("/c/")[1]))!;
   const shared = (await L.linkTracks(live))[0];
   assert.ok(shared);
-  assert.equal(await L.stopSharingByReceipt(shared.token), true);
+  // The receipt key is the sender's, never handed to someone opening the link (LINK_TRACK_COLUMNS).
+  const { token } = (await q.get<{ token: string }>("SELECT token FROM tracks WHERE id = ?", shared.id))!;
+  assert.equal(await L.stopSharingByReceipt(token), true);
   assert.equal(await L.linkTrack(live, shared.id), undefined);
-  assert.equal(await L.stopSharingByReceipt(shared.token), false, "once");
+  assert.equal(await L.stopSharingByReceipt(token), false, "once");
   assert.ok(await q.get("SELECT 1 FROM link_events WHERE link_id = ? AND kind = 'sender_stopped' AND track_id = ?", link.id, shared.id));
 
   // Once the track has left the desk the switch answers the same, so the receipt doesn't give the removal away.
@@ -247,4 +249,23 @@ test("guesses sent at the same moment can't get past five tries on a share-link 
   const row = (await q.get<{ attempts: number }>("SELECT attempts FROM link_codes WHERE link_id = ? AND email = 'race@x.io'", live.id))!;
   assert.equal(row.attempts, 5, "never more than five tries counted");
   await assert.rejects(L.checkLinkCode(live, "race@x.io", sent), /Too many wrong tries/, "the right code no longer works after five wrong ones");
+});
+
+// Rule 2 (audit 27 Oct): a share link is the one path where one person's tracks reach someone else, so it returns
+// named columns only: nothing about the sender (name, email, message, receipt key) or the owner's notes.
+test("a share link hands over only the named track columns", async () => {
+  const L = await import("../src/lib/share-links");
+  const { q, owner, col } = await setup();
+  // A fresh shareable track (the test above stopped sharing the first one).
+  const shared = (await q.get<{ id: number }>(
+    "INSERT INTO tracks (user_id, sender_id, collection_id, title, artist, token, file_key, original_name, mime, size, created_at, share_ok, share_terms, message) SELECT user_id, sender_id, collection_id, 'Columns', 'A', 'tok-Columns', file_key, original_name, mime, size, created_at, 1, 'test', 'a private note' FROM tracks WHERE collection_id = ? LIMIT 1 RETURNING id",
+    col,
+  ))!.id;
+  const { url } = await L.createLink(owner, col, { permission: "listen", days: 14, requests: true });
+  const live = (await L.linkBySecret(url.split("/c/")[1]))!;
+  const want = ["artist", "bpm", "duration", "file_key", "genre", "id", "mime", "title"];
+  const listed = (await L.linkTracks(live)).find((t) => t.id === shared)!;
+  assert.deepEqual(Object.keys(listed).sort(), want);
+  assert.deepEqual(Object.keys((await L.linkTrack(live, shared))!).sort(), want);
+  assert.deepEqual([...L.LINK_TRACK_COLUMNS].sort(), want);
 });

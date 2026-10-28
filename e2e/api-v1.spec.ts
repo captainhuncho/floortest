@@ -126,3 +126,31 @@ test("a sender sends a track from the app; it lands on the receiver's desk and i
   // Someone else's collection is not found.
   expect((await request.get(`/api/v1/collections/${cols.collections[0].id}`, { headers: auth })).status()).toBe(404);
 });
+
+/**
+ * Rule 2 (audit 27 Oct): the app API hands over named fields only. A new column on tracks or senders never reaches the
+ * phone by accident: these are the exact keys, and nothing about the sender beyond their name.
+ */
+test("queue, collection and prepare answer with exactly these fields", async ({ request }) => {
+  const login = await (await request.post("/api/v1/auth/login", { data: { email: "demo@floortest.test", password: "floortest-demo" } })).json();
+  const auth = { Authorization: `Bearer ${login.accessToken}` };
+  const keys = (o: object) => Object.keys(o).sort();
+  const ROW = ["artist", "audio", "bpm", "collection", "createdAt", "cueCount", "decision", "downloaded", "duration", "energy", "genre", "hasMessage", "id", "peaks", "played", "sender", "title"];
+
+  const queue = await (await request.get("/api/v1/queue", { headers: auth })).json();
+  expect(keys(queue)).toEqual(["tracks"]);
+  expect(queue.tracks.length).toBeGreaterThan(0);
+  for (const t of queue.tracks) expect(keys(t)).toEqual(["artist", "audio", "bpm", "collection", "created_at", "duration", "genre", "id", "sender", "setsOk", "title"]);
+
+  const cols = await (await request.get("/api/v1/collections", { headers: auth })).json();
+  const col = await (await request.get(`/api/v1/collections/${cols.collections[0].id}`, { headers: auth })).json();
+  expect(keys(col)).toEqual(["collection", "tracks"]);
+  expect(keys(col.collection)).toEqual(["id", "name"]);
+  expect(col.tracks.length).toBeGreaterThan(0);
+  for (const t of col.tracks) expect(keys(t)).toEqual(ROW);
+
+  const prep = await (await request.get("/api/v1/prepare", { headers: auth })).json();
+  expect(keys(prep)).toEqual(["tracks"]);
+  expect(prep.tracks.length).toBeGreaterThan(0);
+  for (const t of prep.tracks) expect(keys(t)).toEqual(ROW);
+});
