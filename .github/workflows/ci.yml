@@ -1,13 +1,18 @@
 # Checks on GitHub: the same ones run before every push (typecheck, lint, unit tests, permission and RLS checks,
-# production-dependency audit), on every push and pull request to main or mobile-next. They need no secrets: the
+# production-dependency audit), once per change: on pull requests into main and on pushes to mobile-next (the
+# preview). A merge into main isn't checked again: its pull request already ran on the merged result. Docs-only
+# changes are skipped, and a newer push cancels the older run (owner, 28 Oct: the 2,000 free Actions minutes ran
+# out). Run it by hand from the Actions tab when needed. They need no secrets: the
 # tests and the RLS check use an in-memory database. e2e stays local (`npm run e2e`, needs port 3000/3210 and a
 # browser). Actions are pinned to full commit SHAs; the tag is in the comment beside each one.
 name: Checks
 on:
   push:
-    branches: [main, mobile-next]
+    branches: [mobile-next]
+    paths-ignore: ["docs/**", "**/*.md", "graphify-out/**"]
   pull_request:
-    branches: [main, mobile-next]
+    branches: [main]
+    paths-ignore: ["docs/**", "**/*.md", "graphify-out/**"]
   workflow_dispatch: {}
 permissions: {}
 concurrency:
