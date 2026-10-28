@@ -12,7 +12,6 @@ import { APP_URL } from "@/lib/mail";
 import { localHour, prefsForView } from "@/lib/notify";
 import { homeStats } from "@/lib/stats";
 import { SwitchCollection } from "./SwitchCollection";
-import { PageTitle } from "@/components/PageTitle";
 import { CopyLinkBox } from "./CopyLinkBox";
 import { SendMusicCard } from "./SendMusicCard";
 import { UpNext } from "./UpNext";
@@ -23,9 +22,9 @@ export const metadata = { title: "Floor — FloorTest" };
 
 /**
  * The Floor answers "what needs my attention?" before anything else: what's waiting, anything wrong with the link,
- * the next tracks to hear, what's ready for a set. The desk side holds the link, one readout panel (the week's
- * numbers and the desk's standing) and sending. From 1280px the two sit side by side. Nothing here repeats a page of
- * its own (Activity, Contacts).
+ * the next tracks to hear, what's ready for a set. The desk side holds one panel (how full the desk is, the week's
+ * numbers, the desk's links), the link and sending. From 1280px the two sit side by side. Nothing here repeats a page
+ * of its own (Activity, Contacts).
  */
 export default async function TheFloor({ searchParams }: { searchParams: Promise<{ welcome?: string }> }) {
   const user = await requireUser();
@@ -116,16 +115,9 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
           }
         : null;
 
-  // A quiet desk has nothing to report yet; the readout appears once something has happened. Same facts as ever, set
-  // out as one strip of readings: the number is the point, the label says what it counts, the line under it its scope.
+  // A quiet desk has nothing to report yet; the week appears once something has happened. The number is the point, the
+  // label says what it counts, the line under it its scope.
   const delta = stats.receivedWeek - stats.receivedPrev;
-  // Phones keep the Floor's earlier lines (owner, 14 Oct): the week's facts and the desk as one sentence each.
-  const facts = stats.receivedWeek + stats.receivedPrev + stats.keptWeek === 0 && !stats.listenedSample ? [] : [
-    `${stats.receivedWeek} received this week${stats.receivedWeek !== stats.receivedPrev ? ` (${stats.receivedWeek > stats.receivedPrev ? "up" : "down"} from ${stats.receivedPrev})` : ""}`,
-    `${stats.keptWeek} kept this week`,
-    stats.medianListenMs !== null ? `first listen usually within ${waitWords(stats.medianListenMs)}` : null,
-    stats.decisionRate !== null ? `${stats.decisionRate}% of the last 30 days decided` : null,
-  ].filter(Boolean);
   const week: { key: string; label: string; value: string; sub: string }[] =
     stats.receivedWeek + stats.receivedPrev + stats.keptWeek === 0 && !stats.listenedSample
       ? []
@@ -136,8 +128,8 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
           ...(stats.decisionRate !== null ? [{ key: "decided", label: "Decided", value: `${stats.decisionRate}%`, sub: "Last 30 days" }] : []),
         ];
 
-  // Your desk at a glance: only figures that mean exactly what they say, each a link to where it's managed. Capacity and
-  // approvals turn lime when they need something from you. (Link status isn't repeated: "Your link" below says it.)
+  // Your desk at a glance: only figures that mean exactly what they say, each a link to where it's managed. Approvals
+  // turn lime when they need something from you. Capacity has its own strip above the list.
   const teamDesk = (await teamsOn(user.id)) && atLeast(user.role, "admin");
   const [seats, used, held, approver, contacts] = await Promise.all([
     teamDesk ? seatsFor(user.id) : 0,
@@ -147,13 +139,13 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
     q.get<{ n: number }>("SELECT COUNT(*) AS n FROM senders WHERE user_id = ?", user.id),
   ]);
   const nearLimit = cap.used >= cap.limit * 0.8;
+  // Near the limit with kept tracks, the way out is downloading and clearing them (Prepare), before any upgrade.
+  const capHref = nearLimit && kept > 0 ? "/dashboard/prepare" : "/dashboard/account";
   const desk: { key: string; href: string; text: string; urgent?: boolean }[] = [
     ...(held.length
       ? [{ key: "held", href: "/dashboard/settings/team", urgent: true, text: approver ? `${held.length} repl${held.length === 1 ? "y" : "ies"} waiting for your approval` : `${held.length} of your repl${held.length === 1 ? "y is" : "ies are"} waiting for approval` }]
       : []),
     ...(teamDesk && seats > 1 ? [{ key: "seats", href: "/dashboard/settings/team", text: `${used} of ${seats} seats` }] : []),
-    // Near the limit with kept tracks, the way out is downloading and clearing them (Prepare), before any upgrade.
-    { key: "cap", href: nearLimit && kept > 0 ? "/dashboard/prepare" : "/dashboard/account", urgent: nearLimit, text: `${cap.used.toLocaleString("en-GB")} of ${cap.limit.toLocaleString("en-GB")} active tracks` },
     { key: "cols", href: "/dashboard/collections", text: `${collections.length} collection${collections.length === 1 ? "" : "s"}` },
     { key: "contacts", href: "/dashboard/contacts", text: `${Number(contacts?.n ?? 0)} contact${Number(contacts?.n ?? 0) === 1 ? "" : "s"}` },
   ];
@@ -178,33 +170,95 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
     </section>
   );
 
+  // The desk panel: how full the desk is, the week's readings and the desk's links, one panel divided by hairlines.
+  const deskPanel = !fresh && (
+    <div className="panel overflow-hidden">
+      <section aria-labelledby="cap-h" className="flex flex-col gap-2.5 px-4 py-4">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 id="cap-h" className="eyebrow">Active tracks</h2>
+          <Link href={capHref} className={`font-mono text-[13px] tnum underline-offset-4 hover:underline ${nearLimit ? "font-semibold text-lime" : "text-faint hover:text-bone"}`}>
+            <strong className={`text-[17px] ${nearLimit ? "" : "text-bone"}`}>{cap.used.toLocaleString("en-GB")}</strong> of {cap.limit.toLocaleString("en-GB")}
+          </Link>
+        </div>
+        <CapacityStrip used={cap.used} limit={cap.limit} />
+        <p className="text-[12px] text-faint">Striped slots are free. Waiting, kept and not-for-me tracks all count.</p>
+      </section>
+      {week.length > 0 && (
+        <section aria-labelledby="week-h" className="border-t border-line">
+          <h2 id="week-h" className="eyebrow px-4 pt-3.5 pb-2.5">This week</h2>
+          <dl className="grid grid-cols-2 gap-px border-t border-line bg-line sm:grid-cols-4 xl:grid-cols-2">
+            {week.map((w) => (
+              <div key={w.key} className="flex min-w-0 flex-col gap-0.5 bg-ink-3 px-4 py-3">
+                <dt className="text-[12px] font-semibold text-mute">{w.label}</dt>
+                <dd className="font-mono text-[20px] font-bold leading-7 text-bone tnum">{w.value}</dd>
+                <dd className="text-[11px] leading-4 text-faint">{w.sub}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
+      <section aria-labelledby="desk-h" className="border-t border-line">
+        <h2 id="desk-h" className="sr-only">Your desk</h2>
+        <ul className="divide-y divide-line">
+          {desk.map((d) => {
+            // The figure leads in bone, like a readout; the link's name stays the whole sentence.
+            const [, n, rest] = /^([\d,]+)(.*)$/.exec(d.text) ?? [null, "", d.text];
+            return (
+              <li key={d.key}>
+                <Link
+                  href={d.href}
+                  className={`group flex min-h-11 items-center gap-2 px-4 py-2.5 text-[13px] ${d.urgent ? "font-semibold text-lime" : "text-mute hover:text-bone"}`}
+                >
+                  {d.urgent && <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-lime" />}
+                  <span className="min-w-0 flex-1">
+                    <span className={`tnum font-bold ${d.urgent ? "" : "text-bone"}`}>{n}</span>
+                    {rest}
+                  </span>
+                  <span aria-hidden className="text-faint transition-transform duration-150 ease-out group-hover:translate-x-0.5">
+                    →
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    </div>
+  );
+
   return (
     <>
     {!view && !user.email_verified_at && <VerifyBanner email={user.email} />}
     {/*
-      One centred column at every width (owner, 14 Oct). First what needs you (the waiting count, the one lime button, anything
-      wrong, the next tracks, what's ready for a set); below it the desk itself, as it looks beside the work: your link,
-      the week's readings and the desk in one panel, sending music.
+      Rule 15 Floor (owner, 28 Oct: the mock's layout). One column on phones and tablets; from 1280px the work on the left
+      (Up next, setting up, what's ready for a set) and the desk on the right (how full it is, the week, the link, sending).
+      What needs you stays on top at every width: the waiting count, the one lime button, anything wrong.
     */}
-    <div className="page-gutter flex flex-col gap-8 py-5 sm:py-8">
-      <div className="page-narrow mx-auto flex w-full min-w-0 flex-col gap-8">
-        {/* What needs you: the waiting count under the greeting, and the one button is the daily job. */}
-        <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+    <div className="page-gutter py-5 sm:py-8">
+      <div className="mx-auto flex w-full max-w-3xl min-w-0 flex-col gap-7 xl:max-w-6xl">
+        <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
           <div className="flex min-w-0 flex-col gap-1.5">
-            <PageTitle
-              display
-              sub={
-                welcome
-                  ? "Your link is ready. Share it and the first track lands here."
-                  : stats.waiting
-                    ? `${stats.waiting} track${stats.waiting === 1 ? " is" : "s are"} waiting for you${oldest ? `; the oldest arrived ${ago(oldest)}` : ""}.`
-                    : kept
-                      ? `You're all caught up. ${kept} kept track${kept === 1 ? " is" : "s are"} ready for your set.`
-                      : "You're all caught up. New tracks will show up here first."
-              }
-            >
-              {welcome ? `Welcome, ${first}.` : `${greeting}, ${first}.`}
-            </PageTitle>
+            {!welcome && <p className="text-sm text-mute">{greeting}, {first}</p>}
+            <h1 className="page-title">
+              {welcome ? (
+                `Welcome, ${first}.`
+              ) : stats.waiting ? (
+                <>
+                  <span className="font-mono tnum">{stats.waiting}</span> track{stats.waiting === 1 ? "" : "s"} waiting
+                </>
+              ) : (
+                "You're all caught up"
+              )}
+            </h1>
+            <p className="text-sm text-mute">
+              {welcome
+                ? "Your link is ready. Share it and the first track lands here."
+                : stats.waiting
+                  ? `${oldest ? `The ${stats.waiting === 1 ? "track" : "oldest"} arrived ${ago(oldest)}. ` : ""}Senders see Listened once you play past 30 seconds.`
+                  : kept
+                    ? `${kept} kept track${kept === 1 ? " is" : "s are"} ready for your set.`
+                    : "New tracks will show up here first."}
+            </p>
             {stale > 0 && (
               <Link href="/dashboard/review?view=queue" className="w-fit text-[13px] font-semibold text-bone underline underline-offset-4">
                 {stale} track{stale === 1 ? " has" : "s have"} waited over {STALE_DAYS} days. The queue starts with {stale === 1 ? "it" : "them"} →
@@ -212,7 +266,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
             )}
           </div>
           {stats.waiting > 0 && (
-            <Link href="/dashboard/review?view=queue" className="btn-lime shrink-0">
+            <Link href="/dashboard/review?view=queue" className="btn-lime w-full shrink-0 sm:w-auto">
               Start reviewing
             </Link>
           )}
@@ -231,151 +285,77 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
 
         {weekend && <PlayedOutCard titles={weekend.tracks.map((t) => t.title)} />}
 
-        {upNext.length > 0 && (
-          <section aria-labelledby="next-h" className="flex flex-col gap-3">
-            <div className="flex items-baseline justify-between gap-3">
-              <h2 id="next-h" className="eyebrow">Up next</h2>
-              {stats.waiting > upNext.length && (
-                <Link href="/dashboard/review?view=queue" className="tnum text-[12px] font-bold text-mute hover:text-bone">
-                  All {stats.waiting} →
-                </Link>
-              )}
-            </div>
-            <UpNext items={upNext} />
-          </section>
-        )}
-
-        {/* The checklist helps a new desk; on a busy one the queue comes first. */}
-        {/* Setting up the account is for the owner and admins; members skip the checklist. */}
-        {user.role !== "member" && <Onboarding user={user} />}
-
-        {kept > 0 && (
-          <section aria-labelledby="set-h" className="flex items-center justify-between gap-4 border-t border-line pt-5">
-            <div className="min-w-0">
-              <h2 id="set-h" className="text-[14px] font-semibold text-bone">
-                <span className="tnum">{kept}</span> kept track{kept === 1 ? "" : "s"} ready for your set
-              </h2>
-              <p className="text-[12px] text-dim">
-                {nearLimit
-                  ? `Your desk is nearly full (${cap.used} of ${cap.limit}). Download them, then delete the ones you're done with to make room.`
-                  : "Download them as a crate with a Rekordbox playlist."}
-              </p>
-            </div>
-            <Link href="/dashboard/prepare" className="btn-ghost btn-sm shrink-0">
-              Prepare
-            </Link>
-          </section>
-        )}
-      </div>
-
-      <div className="page-narrow mx-auto flex w-full min-w-0 flex-col gap-8">
-
-        {/*
-          Phones: the Floor as it was before the 14 Oct design pass (owner, 14 Oct): This week and Your desk as one line
-          each, then Your link and Send music, each under a rule. From sm: the link and sending side by side, then the panel.
-        */}
-        {facts.length > 0 && (
-          <section aria-labelledby="week-m-h" className="flex flex-col gap-1.5 border-t border-line pt-5 sm:hidden">
-            <h2 id="week-m-h" className="eyebrow">This week</h2>
-            <p className="text-[13px] leading-6 text-mute">{facts.join(" · ")}.</p>
-          </section>
-        )}
-        {!fresh && (
-          <section aria-labelledby="desk-m-h" className="flex flex-col gap-1.5 border-t border-line pt-5 sm:hidden">
-            <h2 id="desk-m-h" className="eyebrow">Your desk</h2>
-            <p className="text-[13px] leading-6 text-mute">
-              {desk.map((d, i) => (
-                <span key={d.key}>
-                  {i > 0 && " · "}
-                  <Link href={d.href} className={`tnum underline-offset-4 hover:underline ${d.urgent ? "font-semibold text-lime" : "hover:text-bone"}`}>
-                    {d.text}
+        <div className="grid grid-cols-1 gap-7 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
+          <div className="flex min-w-0 flex-col gap-7">
+            {upNext.length > 0 && (
+              <section aria-labelledby="next-h" className="flex flex-col gap-3">
+                <div className="flex items-baseline justify-between gap-3">
+                  <h2 id="next-h" className="eyebrow">Up next</h2>
+                  <Link href="/dashboard/review?view=queue" className="-my-3 inline-flex min-h-11 items-center text-[13px] text-mute underline-offset-4 hover:text-bone hover:underline">
+                    {stats.waiting > upNext.length ? <span className="tnum">All {stats.waiting} →</span> : "Open the queue →"}
                   </Link>
-                </span>
-              ))}
-              .
-            </p>
-          </section>
-        )}
-
-        {(!fresh || canSend) && (
-          <div className={`grid grid-cols-1 gap-5 border-t border-line pt-5 sm:gap-6 sm:pt-8 ${!fresh && canSend ? "sm:grid-cols-2" : ""}`}>
-            {!fresh && linkSection}
-            {/* On a team desk, Members can't send as the account; in the beta nobody sends from here (switch send_music). */}
-            {canSend && (
-              <div className={!fresh ? "border-t border-line pt-5 sm:border-t-0 sm:pt-0" : ""}>
-                <SendMusicCard recent={recentSends} host={APP_URL.replace(/^https?:\/\//, "")} />
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* From sm, the desk's readings: one panel, cells divided by 1px rules (not tiles). The week on top, the desk under it. */}
-        {(week.length > 0 || !fresh) && (
-          <div className="panel hidden overflow-hidden sm:block">
-            {week.length > 0 && (
-              <section aria-labelledby="week-h">
-                <h2 id="week-h" className="eyebrow px-4 pt-3.5 pb-2.5">This week</h2>
-                {/* One row of readings at every width, like the desk's readout. */}
-                <dl className="grid auto-cols-fr grid-flow-col gap-px border-t border-line bg-line">
-                  {week.map((w) => (
-                    <div key={w.key} className="flex min-w-0 flex-col gap-1 bg-ink-3 px-3 py-3 sm:px-4">
-                      <dt className="eyebrow leading-[14px] sm:truncate">{w.label}</dt>
-                      <dd className="mt-auto tnum text-[20px] font-bold leading-7 text-bone sm:text-[22px]">{w.value}</dd>
-                      <dd className="text-[10px] leading-[14px] text-dim sm:text-[11px] sm:leading-4">{w.sub}</dd>
-                    </div>
-                  ))}
-                </dl>
+                </div>
+                <UpNext items={upNext} />
               </section>
             )}
-            {!fresh && (
-              <section aria-labelledby="desk-h" className={week.length ? "border-t border-line" : ""}>
-                <h2 id="desk-h" className="eyebrow px-4 pt-3.5 pb-2.5">Your desk</h2>
-                {/* One line each on a phone, a row of small cells from sm; each a link to where it's managed. */}
-                <ul className="grid grid-cols-1 gap-px border-t border-line bg-line sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none">
-                  {desk.map((d) => {
-                    // The figure leads in bone, like a readout; the link's name stays the whole sentence.
-                    const [, n, rest] = /^([\d,]+)(.*)$/.exec(d.text) ?? [null, "", d.text];
-                    return (
-                      <li key={d.key} className="bg-ink-3">
-                        <Link
-                          href={d.href}
-                          className={`group flex min-h-11 items-center gap-2 px-4 py-2.5 text-[13px] ${d.urgent ? "font-semibold text-lime" : "text-mute hover:text-bone"}`}
-                        >
-                          {d.urgent && <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-lime" />}
-                          <span className="min-w-0 flex-1">
-                            <span className={`tnum font-bold ${d.urgent ? "" : "text-bone"}`}>{n}</span>
-                            {rest}
-                          </span>
-                          <span aria-hidden className="text-faint transition-transform duration-150 ease-out group-hover:translate-x-0.5">
-                            →
-                          </span>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
+
+            {/* The checklist helps a new desk; on a busy one the queue comes first. */}
+            {/* Setting up the account is for the owner and admins; members skip the checklist. */}
+            {user.role !== "member" && <Onboarding user={user} />}
+
+            {kept > 0 && (
+              <section aria-labelledby="set-h" className="flex items-center justify-between gap-4 border-t border-line pt-5">
+                <div className="min-w-0">
+                  <h2 id="set-h" className="text-[14px] font-semibold text-bone">
+                    <span className="tnum">{kept}</span> kept track{kept === 1 ? "" : "s"} ready for your set
+                  </h2>
+                  <p className="text-[12px] text-dim">
+                    {nearLimit
+                      ? `Your desk is nearly full (${cap.used} of ${cap.limit}). Download them, then delete the ones you're done with to make room.`
+                      : "Download them as a crate with a Rekordbox playlist."}
+                  </p>
+                </div>
+                <Link href="/dashboard/prepare" className="btn-ghost btn-sm shrink-0">
+                  Prepare
+                </Link>
               </section>
             )}
           </div>
-        )}
 
+          {(!fresh || canSend) && (
+            <aside aria-label="Your desk" className="flex min-w-0 flex-col gap-7">
+              {deskPanel}
+              {!fresh && linkSection}
+              {/* On a team desk, Members can't send as the account; in the beta nobody sends from here (switch send_music). */}
+              {canSend && <SendMusicCard recent={recentSends} host={APP_URL.replace(/^https?:\/\//, "")} />}
+            </aside>
+          )}
+        </div>
       </div>
     </div>
     </>
   );
 }
 
+/** How many cells the capacity strip draws: one per track on the free plan (20), so each cell is 5% on bigger plans. */
+const CAP_CELLS = 20;
+
+/** The desk's capacity as a strip of cells: filled for tracks that count, striped for free room. Decorative; the figure above it is the reading. */
+function CapacityStrip({ used, limit }: { used: number; limit: number }) {
+  // Any track at all shows at least one filled cell, and only a full desk fills the last one.
+  const share = limit > 0 ? used / limit : 1;
+  const filled = used <= 0 ? 0 : used >= limit ? CAP_CELLS : Math.min(CAP_CELLS - 1, Math.max(1, Math.round(share * CAP_CELLS)));
+  return (
+    <div aria-hidden className="grid grid-cols-[repeat(20,minmax(0,1fr))] gap-[3px]">
+      {Array.from({ length: CAP_CELLS }, (_, i) => (
+        <span key={i} className={`h-4 rounded-[2px] border border-line ${i < filled ? "bg-bone" : "hatch"}`} />
+      ))}
+    </div>
+  );
+}
+
 /** Waiting this long gets a nudge on the Floor, two days before the 7-day mark the desk aims for. */
 const STALE_DAYS = 5;
-
-/** "under an hour", "5 hours", "3 days": how long a first listen usually takes, in words (the phone line). */
-function waitWords(ms: number) {
-  const h = ms / 3_600_000;
-  if (h < 1) return "under an hour";
-  if (h < 24) return `${Math.round(h)} hour${Math.round(h) === 1 ? "" : "s"}`;
-  const d = Math.round(h / 24);
-  return `${d} day${d === 1 ? "" : "s"}`;
-}
 
 /** How long a first listen usually takes, as a readout: "<1h", "5h", "1d", "3d". */
 function waitShort(ms: number) {

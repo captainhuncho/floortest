@@ -29,7 +29,7 @@ Charts: white bars at night, olive (#5f8000) by day. Round play buttons use the 
 - **Logs:** Activity is a set log (TIME · WHAT · WHO, tabular, 1px rules, day eyebrows).
 
 ## Type
-- One font: **JetBrains Mono** (variable), everywhere. Instrument Serif italic only as a home-page accent.
+- Words in the **system sans** (San Francisco, Segoe UI, Roboto: nothing to download; owner, 28 Oct). **JetBrains Mono** (variable, self-hosted) only where a screen asks for `font-mono`: readouts, durations, counts, code and keys. Instrument Serif italic only as a home-page accent.
 - Scale on dashboard pages: eyebrow labels 11px bold uppercase, letter-spacing 1px, `mute`; body 13px; meta 12px `faint`; page titles 28–34px bold, tight tracking; stat numbers 30px bold, tabular.
 
 ## Design system (tokens in `src/app/globals.css`, utilities next to them)
