@@ -406,7 +406,7 @@ html:has(.theme-day), html:has(.theme-day) body { background: #fafaf6; }
 
 /* Review Queue: while a status tab loads, the list steps back so the tap visibly registered. */
 .review-list { transition: opacity 150ms var(--ease-out); }
-nav[data-pending] ~ .review-list { opacity: 0.45; pointer-events: none; }
+nav[data-pending] ~ .review-list, :has(> nav[data-pending]) ~ .review-list { opacity: 0.45; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { .review-list { transition: none; } }
 
 /* Home stage (src/app/HomeStage.tsx). Resting styles are the final frame; animations only run from an earlier state,

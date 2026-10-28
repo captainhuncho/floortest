@@ -18,8 +18,6 @@ import { StemsBox } from "./StemsBox";
 import { PrepBox } from "./PrepBox";
 import { parseCues } from "@/lib/cues";
 import { DetailPlayer } from "./DetailPlayer";
-import { DesktopOnly, MobileOnly } from "./DesktopOnly";
-import { MobileTransport } from "./MobileTransport";
 import { History } from "./History";
 import { PanelDetails } from "./PanelDetails";
 import { commentsFor, shortlistOf, teamSize } from "@/lib/team";
@@ -32,6 +30,7 @@ export async function ReviewPanel({
   selfHref,
   next,
   prevHref,
+  position,
 }: {
   track: Track;
   sender: Sender;
@@ -39,6 +38,8 @@ export async function ReviewPanel({
   selfHref: string;
   next: { href: string; track: PlayerTrack } | null;
   prevHref: string | null;
+  /** "1 of 3": where this track sits in the list on screen. */
+  position?: string | null;
 }) {
   const receiverPlan = (await q.get<{ plan: string }>("SELECT plan FROM users WHERE id = ?", t.user_id))?.plan ?? "free";
   const stemsOn = await featureOn("stems", { id: t.user_id, plan: receiverPlan });
@@ -166,77 +167,61 @@ export async function ReviewPanel({
 
   const art = artFrom ? `/api/track-art/${artFrom.id}?v=${encodeURIComponent(artFrom.art_key)}` : null;
 
+  const from = (
+    <>
+      <Link href={`/dashboard/contacts/${sender.id}`} className="font-semibold text-bone underline-offset-4 hover:underline">
+        {sender.name}
+      </Link>{" "}
+      <span className="font-normal text-mute">· {sender.verified_at ? "verified email" : "unverified email"}</span>
+    </>
+  );
+
   return (
     <div className="p-4 sm:p-6" data-swipe-zone>
-      {/* Phones: Figma "08 Full Player / DJ Review" */}
-      <div className="md:hidden">
-        <div className="flex items-center gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={art ?? "/icons/review-art.svg"} alt="" className="size-[52px] shrink-0 rounded object-cover" />
-          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <h2 className="truncate text-base font-bold text-bone">{t.title}</h2>
-            <p className="truncate text-xs text-mute">
-              {t.artist}
-              {t.isrc && <span title="ISRC"> · {t.isrc}</span>}
-            </p>
+      {/* Rule 15 Queue (28 Oct): one layout at every width, rendered with the page, so the buttons are there before
+          any JavaScript runs (they used to mount after it, one copy per screen size). */}
+      <div className="flex items-start gap-3 md:gap-4">
+        {art && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={art} alt={`Artwork for ${t.title}`} className="size-14 shrink-0 rounded-md border border-line object-cover md:size-20" />
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="min-w-0 text-xl font-bold leading-tight tracking-[-0.3px] text-bone md:text-2xl">{t.title}</h2>
+            {position && <span className="shrink-0 font-mono text-xs text-mute tnum">{position}</span>}
           </div>
-        </div>
-        {meta && <p className="mt-3 font-mono text-xs text-mute tnum">{meta}</p>}
-        {tags}
-        {releaseBlock}
-        <MobileTransport track={player} prevHref={prevHref} nextHref={next?.href ?? null} />
-        <div className="mt-3.5">
-          <MobileOnly>
-          <DecisionRail
-            track={{ ...player, decision: t.decision }}
-            senderName={sender.name}
-            selfHref={selfHref}
-            next={next}
-            prevHref={prevHref}
-            onReply={replyToSender.bind(null, sender.id, t.id)}
-          />
-          </MobileOnly>
+          <p className="mt-1 text-sm text-mute">
+            {[t.artist, collectionName && `for ${collectionName}`, `arrived ${ago(t.created_at)}`].filter(Boolean).join(" · ")}
+          </p>
         </div>
       </div>
-
-      <div className="hidden md:block">
-      {art && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={art} alt={`Artwork for ${t.title}`} className="mb-4 size-40 rounded-md border border-line object-cover" />
-      )}
-      {/* Rule 15 Queue (28 Oct): title, who and where it came from, then the readout in mono. */}
-      <h2 className="text-2xl font-bold leading-tight tracking-[-0.3px] text-bone">{t.title}</h2>
-      <p className="mt-1.5 text-sm text-mute">
-        {[t.artist, collectionName && `for ${collectionName}`, `arrived ${ago(t.created_at)}`].filter(Boolean).join(" · ")}
-      </p>
-      {meta && <p className="mt-3 font-mono text-[13px] text-mute tnum">{meta}</p>}
+      {meta && <p className="mt-3 font-mono text-xs text-mute tnum md:text-[13px]">{meta}</p>}
       {tags}
       {releaseBlock}
 
-      <div className="mt-5">
+      <div className="mt-4 md:mt-5">
         <DetailPlayer track={player} />
       </div>
 
-      <div className="mt-5">
-        <DesktopOnly>
-          <DecisionRail
-            track={{ ...player, decision: t.decision }}
-            senderName={sender.name}
-            selfHref={selfHref}
-            next={next}
-            prevHref={prevHref}
-            onReply={replyToSender.bind(null, sender.id, t.id)}
-          />
-        </DesktopOnly>
-      </div>
+      <div className="mt-4 md:mt-5">
+        <DecisionRail
+          track={{ ...player, decision: t.decision }}
+          senderName={sender.name}
+          selfHref={selfHref}
+          next={next}
+          prevHref={prevHref}
+          onReply={replyToSender.bind(null, sender.id, t.id)}
+        />
       </div>
 
-      {/* The sender's note sits right under the decision (rule 15 Queue), a quote with a hairline edge. */}
-      {t.message && (
+      {/* The sender's note sits right under the decision, a quote with a hairline edge; its caption is the sender line. */}
+      {t.message ? (
         <figure className="mt-5 border-l-2 border-line py-0.5 pl-4">
-          <figcaption className="text-xs font-semibold text-mute">From {sender.name}</figcaption>
+          <figcaption className="text-sm">From {from}</figcaption>
           <blockquote className="mt-1.5 whitespace-pre-wrap text-[15px] leading-relaxed text-bone">{t.message}</blockquote>
         </figure>
+      ) : (
+        <p className="mt-5 text-sm text-mute">From {from}</p>
       )}
 
       {t.decision === "kept" && (
@@ -250,23 +235,13 @@ export async function ReviewPanel({
         </>
       )}
 
-
       {team > 0 && <ReviewTogether trackId={t.id} meId={desk?.actor_id ?? t.user_id} canModerate={desk?.role === "owner" || desk?.role === "admin"} comments={comments} shortlistedBy={shortlist?.name ?? null} />}
-
 
       {stemsOn && (
         <div className="mt-4">
           <StemsBox track={t} senderName={sender.name} />
         </div>
       )}
-
-      <p className="mt-6 text-sm">
-        From{" "}
-        <Link href={`/dashboard/contacts/${sender.id}`} className="font-medium underline-offset-4 hover:underline">
-          {sender.name}
-        </Link>{" "}
-        <span className="text-mute">· {sender.verified_at ? "verified email" : "unverified email"}</span>
-      </p>
 
       <PanelDetails summary={<span>Details <span className="hidden text-mute sm:inline">· file, dates, move, delete, sender</span></span>}>
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
@@ -286,8 +261,7 @@ export async function ReviewPanel({
         </dl>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          {/* Phones already have Download on the decision rail. */}
-          <a href={`/api/tracks/${t.id}/download`} className="btn-ghost btn-sm hidden md:inline-flex">
+          <a href={`/api/tracks/${t.id}/download`} className="btn-ghost btn-sm">
             Download original
           </a>
           <form action={moveTrack.bind(null, t.id)} className="flex">

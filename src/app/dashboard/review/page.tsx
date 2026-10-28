@@ -13,6 +13,7 @@ import { TrackList, type Row } from "../TrackList";
 import { ViewToggle } from "../ViewToggle";
 import { FilterMenu } from "../list/FilterMenu";
 import { StatusTabs } from "./StatusTabs";
+import { QueueState, ShownPanel } from "./QueueState";
 import { VIEW_COOKIE } from "../view-cookie";
 
 export const metadata = { title: "Review Queue — FloorTest" };
@@ -115,63 +116,92 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
   const idx = selected ? rows.findIndex((r) => r.id === selected.id) : -1;
   const nextRow = idx >= 0 ? rows[idx + 1] : rows.find((r) => r.id !== selected?.id);
   const prevRow = idx > 0 ? rows[idx - 1] : undefined;
-  // Opening a track (t in the URL) is full review on narrow screens: the list steps aside until "Back".
-  const focused = !!sp.t && !!selected;
-
   const totalActive = collections.reduce((n, c) => n + c.count, 0);
+  const twoColumns = !!selected || totalActive > 0;
 
   return (
-    // Rule 15 Queue (owner, 28 Oct): from 1280px the list is the narrow column and the open track gets the room.
-    <div className={`grid min-h-full ${selected || totalActive > 0 ? "xl:grid-cols-[minmax(360px,440px)_minmax(0,1fr)]" : ""}`}>
-      <section className={`min-w-0 px-4 py-6 sm:px-8 xl:px-6 ${focused ? "hidden xl:block" : ""}`} aria-labelledby="submissions-h">
-        <header className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 id="submissions-h" className="page-title">
-              Review Queue {counts.review > 0 && <span className="font-mono text-mute tnum">{counts.review}</span>}
-            </h1>
-            <p className="mt-1 text-mute">
-              {counts.review
-                ? `${counts.review} track${counts.review === 1 ? "" : "s"} need${counts.review === 1 ? "s" : ""} a decision`
-                : "You're all caught up"}
-              {collection ? ` in ${collection.name}` : ""}.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
+    // Rule 15 Queue (owner, 28 Oct). One order at every width: heading and tabs, the open track, then the rest of the
+    // list. Below 1280px that reads top to bottom, the open track as a card (its own row leaves the list); from
+    // 1280px the heading and list share the narrow left column and the open track gets the room on the right.
+    // QueueState shows a tapped or next track at once, before the server's page arrives.
+    <QueueState servedId={selected?.id ?? null} status={status}>
+      <div className={`grid min-h-full ${twoColumns ? "xl:grid-cols-[minmax(360px,440px)_minmax(0,1fr)] xl:grid-rows-[auto_1fr]" : ""}`}>
+        <section className="min-w-0 px-4 pt-6 sm:px-8 xl:col-start-1 xl:row-start-1 xl:px-6" aria-labelledby="submissions-h">
+          <header className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h1 id="submissions-h" className="page-title">
+                Review Queue {counts.review > 0 && <span className="font-mono text-mute tnum">{counts.review}</span>}
+              </h1>
+              {/* The heading already carries the number on a phone; the line stays for "all caught up" and a collection. */}
+              <p className={`mt-1 text-mute ${counts.review && !collection ? "max-sm:hidden" : ""}`}>
+                {counts.review
+                  ? `${counts.review} track${counts.review === 1 ? "" : "s"} need${counts.review === 1 ? "s" : ""} a decision`
+                  : "You're all caught up"}
+                {collection ? ` in ${collection.name}` : ""}.
+              </p>
+            </div>
             <ViewToggle view="queue" />
+          </header>
+
+          <StatusTabs
+            active={status}
+            tabs={STATUSES.map(([k, label]) => ({ key: k, label, count: counts[k], href: href({ s: k === "review" ? undefined : k, t: undefined }) }))}
+          />
+
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {collections.length > 1 && (
+              <FilterMenu
+                label="Collection"
+                options={[
+                  { label: "All collections", href: href({ c: undefined, t: undefined }), active: !collection },
+                  ...collections.map((c) => ({
+                    label: c.needs_review > 0 ? `${c.name} · ${c.needs_review} new` : c.name,
+                    href: href({ c: String(c.id), t: undefined }),
+                    active: c.id === collection?.id,
+                  })),
+                ]}
+              />
+            )}
+            <form action="/dashboard/review" className="ml-auto min-w-48 flex-1 sm:max-w-72" role="search">
+              {sp.c && <input type="hidden" name="c" value={sp.c} />}
+              {status !== "review" && <input type="hidden" name="s" value={status} />}
+              <label htmlFor="q" className="sr-only">
+                Search tracks
+              </label>
+              <input id="q" name="q" defaultValue={search} placeholder="Search title, artist or sender" className="input py-2" />
+            </form>
           </div>
-        </header>
+        </section>
 
-        <StatusTabs
-          active={status}
-          tabs={STATUSES.map(([k, label]) => ({ key: k, label, count: counts[k], href: href({ s: k === "review" ? undefined : k, t: undefined }) }))}
-        />
-
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          {collections.length > 1 && (
-            <FilterMenu
-              label="Collection"
-              options={[
-                { label: "All collections", href: href({ c: undefined, t: undefined }), active: !collection },
-                ...collections.map((c) => ({
-                  label: c.needs_review > 0 ? `${c.name} · ${c.needs_review} new` : c.name,
-                  href: href({ c: String(c.id), t: undefined }),
-                  active: c.id === collection?.id,
-                })),
-              ]}
-            />
-          )}
-          <form action="/dashboard/review" className="ml-auto min-w-48 flex-1 sm:max-w-72" role="search">
-            {sp.c && <input type="hidden" name="c" value={sp.c} />}
-            {status !== "review" && <input type="hidden" name="s" value={status} />}
-            <label htmlFor="q" className="sr-only">
-              Search tracks
-            </label>
-            <input id="q" name="q" defaultValue={search} placeholder="Search title, artist or sender" className="input py-2" />
-          </form>
-        </div>
+        {selected && sender && (
+          <aside
+            id="review-card"
+            aria-label="Review"
+            className="panel mx-4 mt-4 overflow-hidden sm:mx-8 xl:sticky xl:top-[68px] xl:col-start-2 xl:row-span-2 xl:row-start-1 xl:m-0 xl:h-[calc(100dvh-68px)] xl:self-start xl:overflow-y-auto xl:rounded-none xl:border-0 xl:border-l xl:bg-ink-2/60"
+          >
+            <ShownPanel servedId={selected.id}>
+              <ReviewPanel
+                key={selected.id}
+                track={selected}
+                sender={sender}
+                collections={collections}
+                selfHref={href({ t: String(selected.id) })}
+                next={nextRow ? { href: href({ t: String(nextRow.id) }), track: toPlayer(nextRow) } : null}
+                prevHref={prevRow ? href({ t: String(prevRow.id) }) : null}
+                position={idx >= 0 && rows.length > 1 ? `${idx + 1} of ${rows.length}` : null}
+              />
+            </ShownPanel>
+          </aside>
+        )}
+        {/* Wide screens keep the review column even when this tab is empty, so switching tabs never reflows the page. */}
+        {!selected && totalActive > 0 && (
+          <aside aria-label="Review" className="hidden border-line bg-ink-2/60 xl:sticky xl:top-[68px] xl:col-start-2 xl:row-span-2 xl:row-start-1 xl:flex xl:h-[calc(100dvh-68px)] xl:items-center xl:justify-center xl:self-start xl:border-l">
+            <p className="max-w-56 text-center text-sm text-mute">Nothing to review in this view. Pick another tab or collection.</p>
+          </aside>
+        )}
 
         {/* Fades while a tab change loads (see StatusTabs and globals.css). */}
-        <div className="review-list mt-4">
+        <section aria-label="Tracks in this view" className="review-list min-w-0 px-4 pt-4 pb-6 sm:px-8 xl:col-start-1 xl:row-start-2 xl:px-6">
           {totalActive === 0 && !search ? (
             <EmptyDesk link={`${APP_URL}/${user.handle}`} welcome={!!sp.welcome} />
           ) : rows.length === 0 ? (
@@ -186,74 +216,20 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
               )}
             </div>
           ) : (
-            <TrackList
-              rows={rows}
-              showDecision={status === "all"}
-              selectedId={selected?.id ?? null}
-              hrefFor={Object.fromEntries(rows.map((r) => [r.id, href({ t: String(r.id) })]))}
-            />
+            <>
+              {rows.length > 1 && <h2 className="mb-2 text-sm font-semibold text-mute xl:sr-only">{status === "review" ? "Next" : "In this view"}</h2>}
+              <TrackList
+                rows={rows}
+                showDecision={status === "all"}
+                selectedId={selected?.id ?? null}
+                hrefFor={Object.fromEntries(rows.map((r) => [r.id, href({ t: String(r.id) })]))}
+              />
+            </>
           )}
           {rows.length > 0 && <p className="mt-3 text-xs text-faint">Decisions stay private. Senders see Listened, Downloaded, Played out and your replies.</p>}
-        </div>
-      </section>
-
-      {selected && sender && (
-        <aside
-          aria-label="Review"
-          className={`${focused ? "" : "border-t max-md:order-first max-md:border-t-0 max-md:border-b"} border-line bg-ink-2/60 xl:sticky xl:top-[68px] xl:h-[calc(100dvh-68px)] xl:self-start xl:overflow-y-auto xl:border-t-0 xl:border-l`}
-        >
-          {focused && (
-            // Phones: Figma "Header" (← QUEUE / Now reviewing); the transport below has previous and next.
-            <header className="flex items-end justify-between gap-3 px-4 pt-3 md:hidden">
-              <div className="flex flex-col gap-[3px]">
-                <Link href={href({ t: undefined })} className="text-[11px] font-medium text-mute">
-                  ← QUEUE
-                </Link>
-                <h1 className="text-[22px] font-extrabold text-bone">Now reviewing</h1>
-              </div>
-              <span className="pb-1 text-[11px] text-faint tnum">{idx >= 0 ? `${idx + 1} of ${rows.length}` : ""}</span>
-            </header>
-          )}
-          {focused && (
-            <nav aria-label="Review navigation" className="sticky top-[68px] z-30 hidden items-center gap-2 border-b border-line bg-ink/90 px-4 py-2.5 backdrop-blur sm:px-6 md:flex xl:hidden">
-              <Link href={href({ t: undefined })} className="text-sm text-mute hover:text-bone">
-                ← Review Queue
-              </Link>
-              <span className="ml-auto font-mono text-xs text-mute tnum">{idx >= 0 ? `${idx + 1} of ${rows.length}` : ""}</span>
-              {prevRow ? (
-                <Link href={href({ t: String(prevRow.id) })} className="btn-ghost btn-sm" aria-label="Previous track">
-                  ‹ Prev
-                </Link>
-              ) : (
-                <span className="btn-ghost btn-sm pointer-events-none opacity-40">‹ Prev</span>
-              )}
-              {nextRow ? (
-                <Link href={href({ t: String(nextRow.id) })} className="btn-ghost btn-sm" aria-label="Next track">
-                  Next ›
-                </Link>
-              ) : (
-                <span className="btn-ghost btn-sm pointer-events-none opacity-40">Next ›</span>
-              )}
-            </nav>
-          )}
-          <ReviewPanel
-            key={selected.id}
-            track={selected}
-            sender={sender}
-            collections={collections}
-            selfHref={href({ t: String(selected.id) })}
-            next={nextRow ? { href: href({ t: String(nextRow.id) }), track: toPlayer(nextRow) } : null}
-            prevHref={prevRow ? href({ t: String(prevRow.id) }) : null}
-          />
-        </aside>
-      )}
-      {/* Wide screens keep the review column even when this tab is empty, so switching tabs never reflows the page. */}
-      {!selected && totalActive > 0 && (
-        <aside aria-label="Review" className="hidden border-line bg-ink-2/60 xl:sticky xl:top-[68px] xl:flex xl:h-[calc(100dvh-68px)] xl:items-center xl:justify-center xl:self-start xl:border-l">
-          <p className="max-w-56 text-center text-sm text-mute">Nothing to review in this view. Pick another tab or collection.</p>
-        </aside>
-      )}
-    </div>
+        </section>
+      </div>
+    </QueueState>
   );
 }
 

@@ -9,6 +9,7 @@ import { QuickReplies } from "./QuickReplies";
 import { ReplyTemplates } from "./ReplyTemplates";
 import { decideTrack, undoDecision } from "./actions/review";
 import { stored, useDeviceState } from "@/components/useBrowserValue";
+import { useQueue } from "./review/QueueState";
 
 /** Number keys jump through the track: 1 = a quarter in, 4 = near the end. */
 const JUMPS: Record<string, number> = { "1": 0.25, "2": 0.5, "3": 0.75, "4": 0.9 };
@@ -43,21 +44,36 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
     if (replying) replyRef.current?.focus();
   }, [replying]);
 
-  const advance = useCallback(
-    (wasPlaying: boolean) => {
-      if (!next) return;
-      router.replace(next.href, { scroll: false });
-      if (wasPlaying) player.play(next.track);
-    },
-    [next, router, player],
-  );
+  const queue = useQueue();
+
+  // Moving on shows the next track at once from what the list knows (QueueState); the server's page follows.
+  const goNext = useCallback(() => {
+    if (!next) return;
+    queue?.show(next.track);
+    router.replace(next.href, { scroll: false });
+  }, [next, queue, router]);
 
   const decide = useCallback(
     (d: "kept" | "passed") => {
       if (busy) return;
       const wasPlaying = player.current?.id === track.id && player.playing;
+      const changes = track.decision !== d;
+      // The screen moves on before the server answers: the decided track leaves the list and the next one is up.
+      if (changes) queue?.leave(track.id, d);
+      if (next) {
+        queue?.show(next.track);
+        if (wasPlaying) player.play(next.track);
+      }
       start(async () => {
-        const token = track.decision === d ? null : await decideTrack(track.id, d);
+        let token: Awaited<ReturnType<typeof decideTrack>> = null;
+        try {
+          token = changes ? await decideTrack(track.id, d) : null;
+        } catch {
+          // Not saved (connection dropped): say so and put this track back on screen.
+          toast.show({ message: `Couldn't save that for “${track.title}”. Try again.` });
+          router.replace(selfHref, { scroll: false });
+          return;
+        }
         if (token) {
           toast.show({
             message: `${d === "kept" ? `“${track.title}” added to Prepare for set` : `Not for me: “${track.title}”`}`,
@@ -70,10 +86,10 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
             },
           });
         }
-        advance(wasPlaying);
+        if (next) router.replace(next.href, { scroll: false });
       });
     },
-    [busy, player, track, toast, router, selfHref, advance],
+    [busy, player, track, toast, router, selfHref, next, queue],
   );
 
   useEffect(() => {
@@ -88,7 +104,7 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
       else if (k === "x") decide("passed");
       else if (k === "r") setReplying(true);
       else if (k === "u") toast.undoLatest();
-      else if ((k === "j" || e.key === "ArrowDown") && next) router.replace(next.href, { scroll: false });
+      else if ((k === "j" || e.key === "ArrowDown") && next) goNext();
       else if (e.key === "ArrowUp" && prevHref) router.replace(prevHref, { scroll: false });
       else if (e.key === "ArrowRight") player.seekBy(10);
       else if (e.key === "ArrowLeft") player.seekBy(-10);
@@ -109,7 +125,7 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [decide, next, prevHref, player, router, toast, track]);
+  }, [decide, goNext, next, prevHref, player, router, toast, track]);
 
   // Phones: drag the review panel right to keep, left for Not for me. The panel follows the finger with a stamp;
   // let go past the line to decide (with a haptic tap in the app), or short of it to snap back.
@@ -187,7 +203,7 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
   return (
     <div>
       {/* Phones: Figma "Decisions" pills + "DJ Decision Area" */}
-      {/* Phones, rule 15 Queue (28 Oct): the same three buttons as wide screens, Keep in lime; Download stays one tap away. */}
+      {/* Phones, rule 15 Queue (28 Oct): the same three buttons as wide screens, Keep in lime; Download sits in Details. */}
       <div className="md:hidden">
         <div className="grid grid-cols-[1fr_1.3fr_1fr] gap-2" role="group" aria-label="Decision">
           <button
@@ -210,9 +226,6 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
             Reply
           </button>
         </div>
-        <a href={`/api/tracks/${track.id}/download`} className="mt-1 inline-flex min-h-11 items-center text-sm text-mute underline underline-offset-4">
-          Download original
-        </a>
       </div>
 
       {/* Rule 15 Queue (28 Oct): Keep is the page's one lime button; the shortcut sits beside each word. */}
@@ -305,9 +318,12 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
       )}
 
       {!swiped && <p className="mt-3 text-[11px] text-faint [@media(pointer:fine)]:hidden">Swipe right to keep · swipe left: not for me</p>}
-      <details className="mt-3 hidden text-xs text-mute md:block">
-        <summary className="w-fit cursor-pointer list-none rounded border border-line px-1.5 py-0.5 hover:text-bone [&::-webkit-details-marker]:hidden">? Shortcuts</summary>
-        <p className="mt-2">
+      {/* One faint line (rule 15 Queue, lighter panel); the full list opens from it. */}
+      <details className="mt-2 hidden text-xs text-faint md:block">
+        <summary className="inline-flex min-h-8 w-fit cursor-pointer list-none items-center hover:text-mute [&::-webkit-details-marker]:hidden">
+          Space play · K keep · X not for me · R reply · more shortcuts
+        </summary>
+        <p className="mt-1 text-mute">
           {next ? "Keep or Not for me moves to the next track." : "Last track in this view."} K keep · X not for me · R reply · Space play · 1–4 jump to 25/50/75/90% ·
           ←/→ 10s · ↑/↓ or J move · U undo
         </p>

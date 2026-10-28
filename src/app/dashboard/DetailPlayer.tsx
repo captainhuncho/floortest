@@ -11,7 +11,15 @@ export function DetailPlayer({ track }: { track: PlayerTrack }) {
   return (
     // Rule 15 Queue (28 Oct): the waveform gets the full width; a bordered 44px play button and the time sit under it.
     <div className="flex flex-col gap-3">
-      <Waveform peaks={track.peaks} height={80} progress={isCurrent && d ? time / d : 0} duration={d} onSeek={isCurrent ? seek : undefined} />
+      {/* A tap anywhere on the waveform plays from there, playing or not (phones used to have this on their own transport). */}
+      <Waveform
+        peaks={track.peaks}
+        height={72}
+        progress={isCurrent && d ? time / d : 0}
+        duration={d}
+        onSeek={isCurrent ? seek : (f) => (play(track), setTimeout(() => seek(f), 250))}
+        label={`Seek ${track.title}`}
+      />
       <div className="flex items-center gap-3">
         <button
           onClick={() => play(track)}
