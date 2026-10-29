@@ -128,7 +128,9 @@ test("hold and scan: an asleep scanner holds the upload without waking; the batc
     await upload("c2", "Waiting Two");
     await hold("c1");
     await hold("c2");
+    const sealedC1First = await keyOf("c1");
     assert.deepEqual(await scanHeldUploads(), { delivered: 0, refused: 0, gaveUp: 0, waiting: 2 });
+    assert.equal(await keyOf("c1"), sealedC1First, "a held file is sealed once, not copied again on every try");
     assert.equal((await q.get<{ held_tries: number }>("SELECT held_tries FROM uploads WHERE id = 'c1'"))?.held_tries, 1);
     assert.equal((await tracks()).length, 2, "still nothing unscanned on the desk");
 

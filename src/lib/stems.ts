@@ -116,7 +116,11 @@ export async function startStemUpload(token: string, fileName: string, size: num
 export async function completeStemUpload(token: string, uploadId: string, opts: { from?: "request" | "batch"; scanDeadlineMs?: number } = {}) {
   const t = await trackForStems(token);
   // Claimed first: of two completes sent at the same moment, only one goes on.
-  const up = await claimUpload<{ id: string; file_key: string; size: number; meta: string }>(uploadId, t.user_id, "id, file_key, size, meta");
+  const up = await claimUpload<{ id: string; file_key: string; size: number; meta: string; held_at: number | null }>(
+    uploadId,
+    t.user_id,
+    "id, file_key, size, meta, held_at",
+  );
   const meta = JSON.parse(up.meta) as { kind?: string; trackId?: number; name?: string };
   if (meta?.kind !== "stem" || meta.trackId !== t.id) {
     await releaseUpload(up.id);
@@ -132,13 +136,15 @@ export async function completeStemUpload(token: string, uploadId: string, opts: 
     await releaseUpload(up.id);
     throw new IntakeError("The file didn't finish uploading. Please try again.", 400);
   }
-  // Checked and kept as a sealed copy the sender's upload link can't overwrite.
-  fileKey = await sealUpload(store, up.file_key);
-  // If we crash before the track is saved, the abandoned-upload clean-up still finds (and deletes) the sealed copy.
-  await pointAtSealed(up.id, up.file_key, fileKey).catch(async (e) => {
-    await releaseUpload(up.id);
-    throw e;
-  });
+  // Checked and kept as a sealed copy the sender's upload link can't overwrite. A held stem is sealed already.
+  if (up.held_at == null) {
+    fileKey = await sealUpload(store, up.file_key);
+    // If we crash before the track is saved, the abandoned-upload clean-up still finds (and deletes) the sealed copy.
+    await pointAtSealed(up.id, up.file_key, fileKey).catch(async (e) => {
+      await releaseUpload(up.id);
+      throw e;
+    });
+  }
   const head = await store.head(fileKey);
   if (!head || head.size !== up.size) {
     await discard();

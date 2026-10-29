@@ -237,7 +237,7 @@ export async function startUpload(receiver: User, meta: SubmissionMeta, size: nu
   return { uploadId: id, target };
 }
 
-type Upload = { id: string; receiver_id: number; file_key: string; ext: string; size: number; meta: string; created_at: number };
+type Upload = { id: string; receiver_id: number; file_key: string; ext: string; size: number; meta: string; created_at: number; held_at: number | null };
 
 /** Another completion is working on this upload right now (the sender's retry, or the held-uploads batch). */
 export const BEING_SAVED = "This file is already being saved.";
@@ -333,10 +333,13 @@ async function finishClaimed(receiver: User, up: Upload, ref: string, analysis: 
     await releaseUpload(up.id);
     throw new IntakeError("The file didn't finish uploading. Please try again.", 400);
   }
-  // From here on the sender's upload link can't touch the file: everything below checks and keeps the sealed copy.
-  fileKey = await sealUpload(store, up.file_key);
-  // If we crash before the track is saved, the abandoned-upload clean-up still finds (and deletes) the sealed copy.
-  await pointAtSealed(up.id, up.file_key, fileKey);
+  // From here on the sender's upload link can't touch the file: everything below checks and keeps the sealed copy. A
+  // held upload was sealed before it was held: sealing it again on every batch try would only pile up copies.
+  if (up.held_at == null) {
+    fileKey = await sealUpload(store, up.file_key);
+    // If we crash before the track is saved, the abandoned-upload clean-up still finds (and deletes) the sealed copy.
+    await pointAtSealed(up.id, up.file_key, fileKey);
+  }
   const head = await store.head(fileKey);
   if (!head || head.size !== up.size || head.size > MAX_UPLOAD_BYTES) {
     await discard();
