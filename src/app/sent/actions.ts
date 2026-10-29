@@ -19,7 +19,7 @@ export async function requestSenderLink(_: SentState, form: FormData): Promise<S
   if (!(await passedTurnstile(form.get("cf-turnstile-response"), ip, "sent"))) return { error: BOT_MESSAGE };
   if (!(await allow("sent_ip", ip, 5, 3_600_000)) || !(await allow("sent_email", email, 3, 3_600_000)))
     return { error: "Too many requests. Try again in an hour." };
-  if (!(await accountEmailAllowed())) return { ok: true };
+  if (!(await accountEmailAllowed("public"))) return { ok: true };
   if (await q.get("SELECT 1 FROM senders WHERE lower(email) = ?", email)) {
     const link = signSenderLink(email);
     await sendMail({

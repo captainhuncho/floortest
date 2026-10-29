@@ -17,7 +17,7 @@ export async function joinNewsletter(_: NewsletterState, form: FormData): Promis
   // and resets) apply, as on the other forms that send email to strangers.
   if (!(await passedTurnstile(form.get("cf-turnstile-response"), ip, "newsletter"))) return { error: BOT_MESSAGE };
   if (!(await allow("newsletter_ip", ip, 5, 3_600_000)) || !(await allow("newsletter_email", email, 3, 86_400_000))) return { ok: true };
-  if (!(await accountEmailAllowed())) return { ok: true };
+  if (!(await accountEmailAllowed("public"))) return { ok: true };
   await subscribe(email, form.get("offers") === "on", String(form.get("source") || "").slice(0, 200));
   return { ok: true };
 }

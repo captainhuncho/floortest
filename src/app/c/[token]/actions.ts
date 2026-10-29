@@ -33,7 +33,7 @@ export async function sendCode(secret: string, _prev: GateState, form: FormData)
   if (!link) return GONE;
   const email = String(form.get("email") || "").trim().toLowerCase();
   try {
-    if (!(await accountEmailAllowed())) throw new LinkError("We can't send codes right now. Please try again in a few minutes.");
+    if (!(await accountEmailAllowed("public"))) throw new LinkError("We can't send codes right now. Please try again in a few minutes.");
     await sendLinkCode(link, email, await requestIp(), async (to, code) => {
       await sendMail({
         userId: null,

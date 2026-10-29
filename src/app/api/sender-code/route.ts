@@ -20,10 +20,10 @@ export async function POST(req: Request) {
   try {
     if (body.action === "send") {
       if (!(await passedTurnstile(body.turnstile, ip, "send"))) return bad(BOT_MESSAGE, 403);
-      await sendCode(email, ip);
+      await sendCode(email, ip, "human");
     } else if (body.action === "resend") {
       if (!(await canResend(email))) return bad("Start again to get a new code.", 403);
-      await sendCode(email, ip);
+      await sendCode(email, ip, "resend");
     } else if (body.action === "check") {
       await checkCode(email, String(body.code ?? "").slice(0, 12));
     } else return bad("Unknown request.");
