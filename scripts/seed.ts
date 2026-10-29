@@ -79,7 +79,8 @@ async function main() {
   const id = async (sql: string, ...args: unknown[]) => (await db.get<{ id: number }>(sql + " RETURNING id", ...args))!.id;
 
   const uid = await id(
-    "INSERT INTO users (email, password_hash, name, handle, plan, role_line, tz, created_at) VALUES (?,?,?,?,?,?,?,?)",
+    // Confirmed email: two-factor and passkeys need one, and the teams test turns two-factor on for this owner.
+    "INSERT INTO users (email, password_hash, name, handle, plan, role_line, tz, email_verified_at, created_at) VALUES (?,?,?,?,?,?,?,?,?)",
     "demo@floortest.test",
     hash("floortest-demo"),
     "Maxwell Adjavon",
@@ -87,6 +88,7 @@ async function main() {
     "free",
     "DJ / Performer",
     "Africa/Accra",
+    now - 40 * DAY,
     now - 40 * DAY,
   );
   const col = (name: string, ago: number) => id("INSERT INTO collections (user_id, name, created_at) VALUES (?,?,?)", uid, name, now - ago * DAY);
@@ -114,8 +116,8 @@ async function main() {
     await db.run("UPDATE collections SET allow_sharing = 1 WHERE id = ?", villagers);
     // Two listeners with confirmed emails (test-only accounts): one the owner adds, one who has to ask; and a confirmed
     // sender, since a new account can't send until its email is confirmed; and a confirmed account of its own for the
-    // passkey tests (a passkey needs a confirmed email).
-    for (const [email, name, handle] of [["listener@floortest.test", "Lena Listener", "lena"], ["stranger@floortest.test", "Sam Stranger", "samx"], ["sender@floortest.test", "Eddie Tester", "eddie"], ["keys@floortest.test", "Kit Keys", "kitkeys"]])
+    // passkey tests and one for the two-factor test (a passkey or two-factor needs a confirmed email).
+    for (const [email, name, handle] of [["listener@floortest.test", "Lena Listener", "lena"], ["stranger@floortest.test", "Sam Stranger", "samx"], ["sender@floortest.test", "Eddie Tester", "eddie"], ["keys@floortest.test", "Kit Keys", "kitkeys"], ["tfa@floortest.test", "Tess Twostep", "tesstfa"]])
       await db.run(
         "INSERT INTO users (email, password_hash, name, handle, plan, tz, email_verified_at, created_at) VALUES (?,?,?,?,?,?,?,?)",
         email,

@@ -36,7 +36,7 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
         <E k="signup_intro" />
         {inviteOnly && (
           <>
-            {" "}FloorTest is invite-only during the beta: sign up with the email your invite went to.{" "}
+            {" "}FloorTest is invite-only during the beta: use the sign-up link in your invite email, with the email it went to.{" "}
             <Link href="/#waitlist" className="underline underline-offset-4 hover:text-bone">No invite? Join the waitlist</Link>
           </>
         )}
@@ -74,7 +74,7 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
         botCheckKey={await botCheckKey()}
         captureSource
         action={signup}
-        // No invite code to type: during the beta the email decides (src/lib/invites.ts); the link's code rides along.
+        // No invite code to type: the link's code rides along, and during the beta it must match the email (src/lib/invites.ts).
         hidden={team ? { team: sp.team! } : personal?.email ? { invite: inviteCode } : referrer && !inviteOnly ? { ref } : undefined}
         submit="Create my link"
         fields={[

@@ -11,7 +11,7 @@ process.env.BETA_INVITE_CODES = "SHARED-ENV";
 delete process.env.DATABASE_URL;
 delete process.env.RESEND_API_KEY;
 
-test("sign-up closed: only a personal invite for that exact email opens an account, with or without its code", async () => {
+test("sign-up closed: only a personal invite, with its emailed code, for that exact email opens an account", async () => {
   const { q } = await import("../src/lib/db");
   const { resolveInvite } = await import("../src/lib/invites");
   const t = Date.now();
@@ -19,8 +19,9 @@ test("sign-up closed: only a personal invite for that exact email opens an accou
   await q.run("INSERT INTO invites (code, max_uses, note, email, created_at) VALUES ('PERSONAL1', 1, '', 'ana@x.io', ?)", t);
   await q.run("INSERT INTO invites (code, max_uses, note, created_at) VALUES ('GROUP', 25, '', ?)", t);
 
-  assert.deepEqual(await resolveInvite("", "Ana@X.io", false), { valid: true, referrerId: null, code: "PERSONAL1" }, "the email alone is enough");
-  assert.equal((await resolveInvite("personal1", "ana@x.io", false)).valid, true, "the code from the invite link works too");
+  assert.equal((await resolveInvite("", "Ana@X.io", false)).valid, false, "the email alone isn't enough: anyone can type someone else's email");
+  assert.deepEqual(await resolveInvite("personal1", "Ana@X.io", false), { valid: true, referrerId: null, code: "PERSONAL1" }, "the code from the invite link opens it");
+  assert.equal((await resolveInvite("", "ana@x.io", false, { emailProven: true })).valid, true, "an email already proven (Google) needs no code");
   assert.equal((await resolveInvite("PERSONAL1", "bob@x.io", false)).valid, false, "someone else's invite code doesn't");
   assert.equal((await resolveInvite("", "bob@x.io", false)).valid, false, "no invite for this email");
   assert.equal((await resolveInvite("GROUP", "bob@x.io", false)).valid, false, "a shared Ops code doesn't");
@@ -28,9 +29,9 @@ test("sign-up closed: only a personal invite for that exact email opens an accou
   assert.equal((await resolveInvite("REFCODE", "bob@x.io", false)).valid, false, "a referral code doesn't");
 
   await q.run("INSERT INTO users (email, password_hash, name, handle, plan, tz, invite_code, created_at) VALUES ('ana@x.io', 'h', 'A', 'ana', 'free', 'UTC', 'PERSONAL1', ?)", t);
-  assert.equal((await resolveInvite("", "ana@x.io", false)).valid, false, "a used invite is used up");
+  assert.equal((await resolveInvite("PERSONAL1", "ana@x.io", false)).valid, false, "a used invite is used up");
   await q.run("INSERT INTO invites (code, max_uses, note, email, created_at, revoked_at) VALUES ('GONE', 1, '', 'cy@x.io', ?, ?)", t, t);
-  assert.equal((await resolveInvite("", "cy@x.io", false)).valid, false, "a revoked invite doesn't");
+  assert.equal((await resolveInvite("GONE", "cy@x.io", false)).valid, false, "a revoked invite doesn't");
 });
 
 test("sign-up open: codes still record who referred or invited the person", async () => {
