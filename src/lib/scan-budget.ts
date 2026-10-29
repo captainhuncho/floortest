@@ -66,7 +66,7 @@ export async function chargeScanner(scope: string, at = now()): Promise<ScanChar
     // Only the minutes this call adds: the scanner may already be running from an earlier charge.
     const adds = at + SCANNER_AWAKE_MS - Math.max(until, at);
     const over = (r: Row, wakes: number, minutes: number) => Number(r.wakes) + wake > wakes || Number(r.awake_ms) + adds > minutes * 60_000;
-    const out = over(all, lim.wakes, lim.minutes) ? "all" : over(mine, lim.senderWakes, lim.senderMinutes) ? "sender" : null;
+    const out: "all" | "sender" | null = over(all, lim.wakes, lim.minutes) ? "all" : over(mine, lim.senderWakes, lim.senderMinutes) ? "sender" : null;
     if (out) {
       const spent = out === "all" ? all : mine;
       await db.run("UPDATE scanner_budget SET spent_at = ? WHERE day = ? AND scope = ? AND spent_at IS NULL", at, day, out === "all" ? "all" : scope);
