@@ -72,6 +72,8 @@ floortest.app/<handle> ─► choose files (or Send folders on Pro/Team)
    ─► details form (title/artist · you · about the track; "+ Add a message" / "+ Add artwork" on Team) ─► email ─► 6-digit code
    ─► upload in place (one bar, time left, Cancel; a dropped or stalled upload (no progress for 30 s) is tried again by itself up to 3 times once the phone is back online, from the start of that file with the same 15-minute link, saying so on screen; after that "The upload stalled…" / "Network error…" with the answers kept) ─► done: check, receipt email, Delivered → Listened → Downloaded → Replied ─► View receipt / Send another. Several tracks in one send: each track is saved and waits (`tracks.receipt_due_at`); the request that saves the send's last track (the browser sends `send_size`) queues one "Delivered" email listing them all, each with its receipt link, and one "New tracks" email to the receiver, in the same transaction; if the rest never come (a refusal, Cancel, a closed tab), the 10-minute mail job sends what arrived 15 minutes after the latest track. A held track that arrives after its send's email gets its own. If the virus scanner is asleep or down (hold and scan, 26 Oct): done says "“Title” is received", it's being checked for viruses (up to 10 minutes), the receipt follows by email; no View receipt yet, artwork isn't attached; the 10-minute batch delivers it (or emails the sender if it's refused). A save that fails for any reason other than a refusal (database or storage hiccup) keeps the file; the sender's retry or the next batch finishes it
    Missing answers: each field says what to do and they're listed together above Send (each a link); nothing uploads until they're filled.
+   The code email: tried twice; if it still doesn't go, the code screen says so ("didn't go through", or "bounced before" for an
+   address that bounced) instead of waiting for an email that never comes (report, 29 Oct).
    A genre tapped in the receiver's brief arrives already chosen in the form.
 Link closed / paused / full ─► the page says why, no upload ─► "Email me when it reopens" ─► one email when the link takes uploads again
    (after the receiver switches collection, moves the closing date or resumes: up to 50 sent just after the page answers, the rest nightly; nightly also for a pause that ended on its own or a re-route; a failed send is retried by the email queue every 10 minutes)
@@ -99,9 +101,12 @@ Not WAV/MP3 ─► "FloorTest takes WAV and MP3 files." · Remove ─► inbox c
 ```
 ops → Site content → Edit on the page ↗ ─► 60-second pass ─► floortest.app/<page> in draft + edit mode
    ├─ click text ─► type          ├─ click a list ─► panel ─► Apply
+   ├─ text picked (tap, click or Tab) ─► size picker under it: Smaller · Default · Larger · Largest
+   │     (Esc in the text jumps to the picker and back; a list's panel has the same Size row)
    ├─ click product image ─► choose file (resized to WebP)
-   ├─ section bar: drag ⠿ / ↑ ↓ / Hide · Show
+   ├─ section bar, always shown above each home section in edit mode (no hover): drag ⠿ / ↑ ↓ / Hide · Show, 44px buttons
    └─ toolbar: Save draft · Publish (live + version) · Exit (ends preview, back to ops)
+Sizes save as the page's `sizes` field ("headline:lg,faq:sm"); the server keeps only the fixed steps (sm, lg, xl) for that page's own text fields and drops anything else (`cleanField`, src/lib/content-fields.ts). The public page shows them too.
 Edit mode is bound to the exact ops session that opened it (pass and cookie are signed with its token hash, 1-hour cookie): signing out of ops or that session timing out ends it at once. Saves 120/hour and uploads 30/hour per person; every draft save and publish is in the admin log.
 ```
 
