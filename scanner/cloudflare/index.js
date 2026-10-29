@@ -7,8 +7,9 @@ import { refusal } from "./routes.js";
  * SCAN_ACCESS_KEY_ID, SCAN_SECRET_ACCESS_KEY) handed to the container at start.
  *
  * The container sleeps after 10 minutes without a request (owner, 26 Oct: running all the time cost about $6.50 a
- * month in memory alone). Memory and disk are billed only while it runs. Waking takes about 15–30 seconds, so the app
- * wakes it as an upload starts (/wake) and its check waits through a wake-up (src/lib/scan.ts).
+ * month in memory alone). Memory and disk are billed only while it runs. Waking takes about 15–30 seconds: the app holds
+ * uploads finished while it sleeps and wakes it once per batch (/wake, within a daily budget: src/lib/scan-budget.ts),
+ * and its check waits through a wake-up (src/lib/scan.ts).
  *
  *   GET  /status  the container's state, without waking it (uptime monitor, the app's health report)
  *   GET  /health  ClamAV answers; wakes the container and waits for it (the daily uptime check); needs the secret
@@ -44,7 +45,7 @@ const worker = {
       const state = await scanner(env).getState().catch(() => null);
       return Response.json({ worker: true, container: state?.status ?? "unknown" });
     }
-    const refused = refusal(route, request, env);
+    const refused = await refusal(route, request, env);
     if (refused) return refused;
     if (route === "POST /wake") {
       ctx.waitUntil(scanner(env).startAndWaitForPorts(READY).catch(() => {}));

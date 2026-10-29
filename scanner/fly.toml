@@ -12,11 +12,14 @@ primary_region = "lhr"
   auto_stop_machines = "off"
   min_machines_running = 1
 
-  [[http_service.checks]]
+# /health needs the secret (server.mjs), which can't be written here, so Fly checks the port instead: start.sh opens it
+# only once ClamAV answers.
+[checks]
+  [checks.scanner]
+    type = "tcp"
+    port = 8080
     grace_period = "300s"
     interval = "30s"
-    method = "GET"
-    path = "/health"
     timeout = "5s"
 
 [[vm]]

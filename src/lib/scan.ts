@@ -1,5 +1,4 @@
 import "server-only";
-import { after } from "next/server";
 
 /**
  * Virus check of an upload, on our own scanner (ClamAV in a small container we run: `scanner/`). The scanner reads the
@@ -11,15 +10,20 @@ import { after } from "next/server";
  * scanner's key can read.
  *
  * The scanner sleeps after 10 idle minutes (owner, 26 Oct: it cost about $6.50 a month running all the time). Waking it
- * takes about 15–30 seconds (container start plus ClamAV loading its signatures), so an upload wakes it when it starts
- * (`wakeScannerSoon`), and the check waits through a wake-up: a "starting" answer or a refused connection is asked
- * again with growing pauses until the deadline. A scan that is running but slow is never cut short to retry it.
+ * takes about 15–30 seconds (container start plus ClamAV loading its signatures). Starting an upload doesn't wake it: an
+ * upload finished while it sleeps is held, and the held-uploads job (src/lib/held-uploads.ts) wakes it once per batch,
+ * within the day's budget (src/lib/scan-budget.ts). The check waits through a wake-up: a "starting" answer or a refused
+ * connection is asked again with growing pauses until the deadline. A scan that is running but slow is never cut short.
  *
  *   clean      → the upload carries on
  *   infected   → the upload is refused and discarded; the sender is told it couldn't be accepted
  *   unavailable → the upload is refused for now (fail closed): nothing unscanned reaches a desk while the scanner is on
  */
-export type ScanResult = { verdict: "clean" | "off" } | { verdict: "infected"; signature: string } | { verdict: "unavailable"; error: string };
+export type ScanResult =
+  | { verdict: "clean" | "off" }
+  | { verdict: "infected"; signature: string }
+  // `file`: the scanner is up but couldn't check this file (it couldn't read it, or ClamAV failed on it).
+  | { verdict: "unavailable"; error: string; file?: true };
 
 /** Longest one check may take in all, wake-up included. The upload routes allow 180 s (`maxDuration`). */
 const SCAN_DEADLINE_MS = 150_000;
@@ -77,6 +81,15 @@ export async function scanStored(key: string, timing: ScanTiming = {}): Promise<
       await pause(attempt);
       continue;
     }
+    // The container itself answered that this file failed (it couldn't read it, or ClamAV couldn't check it): asking
+    // again won't change that, so it's answered at once rather than waited on like a wake-up.
+    if (r.status === 502 && r.headers.get("content-type")?.includes("application/json")) {
+      const body = (await r.json().catch(() => ({}))) as { error?: string; reason?: string };
+      if (body.error === "Scan failed") return { verdict: "unavailable", error: `scan failed: ${String(body.reason ?? "unknown").slice(0, 60)}`, file: true };
+      last = "scanner answered 502";
+      await pause(attempt);
+      continue;
+    }
     // 502/503/504: the Worker is up but the container is still waking. Wait and ask again.
     if (r.status === 502 || r.status === 503 || r.status === 504) {
       last = `scanner answered ${r.status}`;
@@ -93,8 +106,8 @@ export async function scanStored(key: string, timing: ScanTiming = {}): Promise<
 }
 
 /**
- * Asks a sleeping scanner to start, without waiting for it. Called as an upload starts, so the scanner is usually
- * awake by the time the file has landed. Needs the secret, so nobody else can keep it running. Never throws.
+ * Asks a sleeping scanner to start, without waiting for it. Called by the held-uploads job before its first check, after
+ * charging the wake-up to the budget. Needs the secret, so nobody else can keep it running. Never throws.
  */
 export async function wakeScanner(): Promise<void> {
   const url = scanBase();
@@ -131,17 +144,6 @@ export async function scannerAwake(): Promise<boolean | null> {
   }
 }
 
-/** `wakeScanner` after the response has gone, so starting an upload is never slower for it. */
-export function wakeScannerSoon(): void {
-  if (!scanBase()) return;
-  try {
-    after(wakeScanner);
-  } catch {
-    // Outside a request (scripts, tests): just start it.
-    void wakeScanner();
-  }
-}
-
 /**
  * The scanner's own health check, for /api/health's detailed report: "ok", "asleep" (the Worker answers and the
  * container is stopped until the next upload wakes it: not a fault), "down", or "off" when there is none. Asking
@@ -169,4 +171,6 @@ export async function scannerHealth(): Promise<"ok" | "asleep" | "down" | "off">
 
 /** What senders are told (never the signature: that's for ops). */
 export const SCAN_REFUSED = "This file couldn't be accepted: our virus check flagged it. Export the track again and send the new file.";
+/** A file the scanner kept failing to check (src/lib/intake.ts HELD_MAX_TRIES): refused rather than held for a day. */
+export const SCAN_FAILED = "We couldn't run the virus check on this file, so it wasn't sent. Export the track again and send the new file.";
 export const SCAN_UNAVAILABLE = "We couldn't finish the virus check just now, so the file wasn't sent. Please try again in a few minutes.";
