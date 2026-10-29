@@ -140,20 +140,42 @@ public class OfflineCratePlugin extends Plugin {
         }
     }
 
+    /** Same cap as the share inbox: no single track fills the phone. */
+    static final long MAX_BYTES = ShareInbox.MAX_BYTES;
+
+    /** Only FloorTest's own offline links (the site the app runs, /api/offline/file/...), never another address a page passes. */
+    private boolean ownOfflineLink(URL u) {
+        try {
+            URL server = new URL(getBridge().getServerUrl());
+            return u.getProtocol().equals(server.getProtocol()) && u.getHost().equalsIgnoreCase(server.getHost())
+                && u.getPort() == server.getPort() && u.getUserInfo() == null
+                && u.getPath().startsWith("/api/offline/file/") && !u.getPath().contains("..");
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     private String download(String link, long id) {
         File tmp = new File(folder(), id + ".part");
         try {
-            HttpURLConnection c = (HttpURLConnection) new URL(link).openConnection();
+            URL url = new URL(link);
+            if (!ownOfflineLink(url)) return null;
+            HttpURLConnection c = (HttpURLConnection) url.openConnection();
             c.setInstanceFollowRedirects(true);
             c.setConnectTimeout(20_000);
             c.setReadTimeout(60_000);
-            if (c.getResponseCode() != 200) return null;
+            if (c.getResponseCode() != 200 || c.getContentLengthLong() > MAX_BYTES) return null;
             String type = c.getContentType() == null ? "" : c.getContentType();
             String name = id + (type.contains("mpeg") ? ".mp3" : ".wav");
             try (InputStream in = c.getInputStream(); OutputStream out = new FileOutputStream(tmp)) {
                 byte[] buf = new byte[1 << 16];
+                long got = 0;
                 int n;
-                while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                while ((n = in.read(buf)) > 0) {
+                    got += n;
+                    if (got > MAX_BYTES) throw new java.io.IOException("too big");
+                    out.write(buf, 0, n);
+                }
             }
             File dest = new File(folder(), name);
             //noinspection ResultOfMethodCallIgnored
