@@ -23,8 +23,9 @@ A new desk has no collection (owner, 15 Oct), and its link is open anyway: track
 
 ## Receiver: sign-in
 ```
-/login ─┬─ email + password ──► (two-factor on?) /login/verify ──► Floor
+/login ─┬─ email + password ──► (two-factor on?) /login/verify (code, recovery code, or "Use a passkey instead") ──► Floor
         │     after 3 wrong tries (15 min, per account or connection): Cloudflare human check appears and is required
+        ├─ Sign in with a passkey ──► the device asks for face, fingerprint or PIN ──► Floor (no code step: the passkey is both)
         ├─ Email me a sign-in code ──► /login/code ──► /login/code/enter ──► Floor
         ├─ Forgot your password? ──► /forgot ──► "If that address has an account…" ──► email ──► /reset/<token> ──► Floor
         └─ Continue with Google ──► Google ──► callback
@@ -33,6 +34,7 @@ A new desk has no collection (owner, 15 Oct), and its link is open anyway: track
               ├─ unconfirmed account / different Google account / not Gmail-Workspace ──► /login?google=<reason>
               └─ no account ──► /signup/google
 A collection shared with your account (/c/a.<n>) remembers itself and is where sign-in lands.
+Passkeys: Settings → Security → Add a passkey ──► password (+ two-step code if on) ──► the browser saves it ──► email "A passkey was added". Remove… ──► Remove ──► email. Website only; hidden in the apps.
 ```
 
 ## Receiver: daily loop

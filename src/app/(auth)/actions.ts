@@ -30,6 +30,7 @@ import { HUMAN_CHECK_AFTER, HUMAN_MESSAGE, humanCheck, recentFailures } from "@/
 import { breachedError } from "@/lib/breached";
 import { resolveInvite } from "@/lib/invites";
 import { revokeAllSessions } from "@/lib/sessions";
+import { checkPasskey, hasPasskey, secondStepOptions, signInOptions } from "@/lib/passkeys";
 
 const CHALLENGE = "floortest_2fa";
 /** Set by a share link: where to land after signing in or up (see `safeNext`). */
@@ -352,7 +353,7 @@ export async function verifyLoginCode(_: FormState, form: FormData): Promise<For
   jar.delete(CODE_EMAIL);
   // Receiving the code proves the address is theirs. The account was never confirmed, so whoever created it may not be
   // this person (someone can sign up with another's email and wait). Reset what the creator set up: sign out every
-  // other session, replace the password with an unusable one, and turn off two-factor. The owner sets their own.
+  // other session, replace the password with an unusable one, turn off two-factor and remove any passkeys. The owner sets their own.
   if (!user.email_verified_at) {
     await q.tx(async (db) => {
       await db.run(
@@ -361,6 +362,7 @@ export async function verifyLoginCode(_: FormState, form: FormData): Promise<For
         await hashPassword(crypto.randomBytes(32).toString("base64url")),
         user.id,
       );
+      await db.run("DELETE FROM passkeys WHERE user_id = ?", user.id);
       await revokeAllSessions(user.id, { db });
     });
     const u = await q.get<{ email: string; name: string }>("SELECT email, name FROM users WHERE id = ?", user.id);
@@ -370,7 +372,7 @@ export async function verifyLoginCode(_: FormState, form: FormData): Promise<For
         audience: "receiver",
         to: u.email,
         subject: "Your email is confirmed: set a password",
-        body: `Hi ${u.name.split(/\s+/)[0]},\n\nYou've confirmed your email by signing in with a code. To keep your account yours, we signed out every other device and cleared any password or two-factor sign-in set before the email was confirmed.\n\nTo set your own password, use "Forgot your password?" on the log-in page: ${APP_URL}/forgot\n\n— FloorTest`,
+        body: `Hi ${u.name.split(/\s+/)[0]},\n\nYou've confirmed your email by signing in with a code. To keep your account yours, we signed out every other device and cleared any password, two-factor sign-in or passkey set before the email was confirmed.\n\nTo set your own password, use "Forgot your password?" on the log-in page: ${APP_URL}/forgot\n\n— FloorTest`,
       });
     await sendWelcome(user.id);
   }
@@ -393,6 +395,58 @@ export async function verifySecondStep(_: FormState, form: FormData): Promise<Fo
   jar.delete(CHALLENGE);
   await finishSignIn(userId, result === "code" ? "two-factor" : "recovery code");
   redirect(await landing("/dashboard/floor"));
+}
+
+/** "Sign in with a passkey", step 1: a one-time challenge for the browser. Null when passkeys can't work at this address. */
+export async function passkeySignInStart() {
+  if (!(await allow("passkey_start_ip", await requestIp(), 30, 15 * 60_000))) return null;
+  return signInOptions();
+}
+
+/**
+ * Step 2: the passkey's answer. The device asked for a face, fingerprint or PIN before answering, so a passkey is the
+ * whole sign-in, two factors in one: no password and no code step.
+ */
+export async function passkeySignIn(answer: unknown): Promise<FormState> {
+  const ip = await requestIp();
+  if ((await recentCount("passkey_fail_ip", ip, 15 * 60_000)) >= 20) return { error: "Too many attempts. Wait 15 minutes, or log in with your password." };
+  const userId = await checkPasskey("signin", answer);
+  if (!userId) {
+    await record("passkey_fail_ip", ip);
+    return { error: "That passkey didn't work. Try again, or log in with your password." };
+  }
+  const row = await q.get<{ suspended_at: number | null }>("SELECT suspended_at FROM users WHERE id = ?", userId);
+  if (!row || row.suspended_at) return { error: "This account is suspended. To appeal, go to the Contact page and choose Suspension appeal." };
+  await finishSignIn(userId, "passkey");
+  redirect(await landing("/dashboard/floor"));
+}
+
+/** Two-step with a passkey instead of the code, step 1. Null when this account has no passkey. */
+export async function passkeySecondStepStart() {
+  const userId = readChallenge((await cookies()).get(CHALLENGE)?.value, env.secret);
+  return userId ? secondStepOptions(userId) : null;
+}
+
+/** Step 2: the passkey must belong to the account whose password (or email code) was just checked. */
+export async function passkeySecondStep(answer: unknown): Promise<FormState> {
+  const jar = await cookies();
+  const userId = readChallenge(jar.get(CHALLENGE)?.value, env.secret);
+  if (!userId) return { error: "That took too long. Log in again." };
+  const key = `user:${userId}`;
+  if ((await recentCount("twofa_fail", key, 15 * 60_000)) >= 8) return { error: "Too many wrong tries. Wait 15 minutes and log in again." };
+  if (!(await checkPasskey("second", answer, userId))) {
+    await record("twofa_fail", key);
+    return { error: "That passkey didn't work. Try again, or enter the code from your authenticator app." };
+  }
+  jar.delete(CHALLENGE);
+  await finishSignIn(userId, "passkey as two-step");
+  redirect(await landing("/dashboard/floor"));
+}
+
+/** For the two-step page: whether to offer "Use a passkey instead". */
+export async function secondStepHasPasskey() {
+  const userId = readChallenge((await cookies()).get(CHALLENGE)?.value, env.secret);
+  return userId ? hasPasskey(userId) : false;
 }
 
 /** From the dashboard banner: send the confirmation email again. */

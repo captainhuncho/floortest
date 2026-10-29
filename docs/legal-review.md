@@ -216,6 +216,7 @@ FloorTest will be registered in and operated from **Ghana**, serving users world
 
 40. **Leaked-password check:** we read the 5-character prefix as not personal data (it can't be tied to a person or a password). Does the Privacy Policy or the Sub-processors page need to name Have I Been Pwned?
 41. **Devices list:** the Privacy Policy mentions the sign-in log and sign-in alerts. Does it also need to say we keep a device label and last-used time for each signed-in session, and for how long?
+42. **Passkeys (29 Oct):** an account can add a passkey. We keep its public key, a device label (for example "Safari on macOS"), when it was added and last used, until the person removes it or deletes the account. The private key stays on their device or in their password manager and never reaches us. Does the Privacy Policy's sign-in wording cover this, or does it need a line?
 
 ## 7. Before invites go out
 
