@@ -26,6 +26,20 @@ export const EMAILS = {
     body: "Hi {sender},\n\n\"{title}\" was delivered to {receiver}{for_collection}.\nWe'll email you when it's listened to, when the original is downloaded, and if {receiver} replies.\n\nYour private receipt: {receipt_url}\nEverything you've sent, with what happened to each: {sent_url}\n\n— FloorTest",
     vars: { ...TRACK_VARS, artist: "Artist", for_collection: '" for <collection>" when sent to one, else empty' },
   },
+  delivered_many: {
+    label: "Delivered (several tracks)",
+    to: "Sender, once for a send of several tracks",
+    subject: "Delivered: {count} to {receiver}",
+    body: "Hi {sender},\n\nYour {count} were delivered to {receiver}{for_collection}:\n\n{tracks}\n\nWe'll email you when each one is listened to, when an original is downloaded, and if {receiver} replies.\n\nEverything you've sent, with what happened to each: {sent_url}\n\n— FloorTest",
+    vars: {
+      sender: "Sender's name",
+      receiver: "Receiver's name",
+      count: 'How many tracks, e.g. "3 tracks"',
+      tracks: "Each track (artist – title) with its private receipt link",
+      for_collection: '" for <collection>" when sent to one, else empty',
+      sent_url: "Sender's history link",
+    },
+  },
   listened: {
     label: "Listened",
     to: "Sender, after 30+ seconds of play",
@@ -160,4 +174,5 @@ export const SAMPLE_VARS: Record<string, string> = {
   count: "3 tracks",
   titles: "• Nightbus (sample) · Sample Artist\n• Tin Roof · Sample Collective\n• Lekki Run · Sample Producer",
   prompt_url: `${U}/dashboard/played-out`,
+  tracks: `• Ade – Night Bus (Extended Mix)\n  Receipt: ${U}/receipt/example\n\n• Ade – Tin Roof\n  Receipt: ${U}/receipt/example-2`,
 };
