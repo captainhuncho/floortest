@@ -41,6 +41,7 @@ test("a typed address only gets a confirmation; the alert is armed once its sing
   assert.equal(await confirmReopenAlert(token!), true);
   assert.equal(await confirmReopenAlert(token!), false, "single use");
   assert.equal(await sendReopenAlerts(uid), 1, "armed: the reopen email goes");
+  assert.equal(await sendReopenAlerts(uid), 0, "used up: reopening again later sends nothing more");
 });
 
 test("an expired confirmation link arms nothing", async () => {
