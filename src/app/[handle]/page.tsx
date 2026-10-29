@@ -77,56 +77,54 @@ export default async function ReceiverPage({ params }: Props) {
 
   return (
     <EditablePage editing={!!editor} page="link" label="Public link" values={c}>
-    <main className="group/page mx-auto flex min-h-dvh max-w-xl flex-col gap-6 bg-ink px-[18px] py-8 text-bone sm:py-12 lg:grid lg:max-w-5xl lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:grid-rows-[auto_1fr] lg:content-start lg:gap-x-16 lg:gap-y-8 lg:px-8 lg:py-16">
-      {/* Once a file is picked, phones fold the profile to a short header so the form starts near the top; from 1024px
-          the profile stays whole beside the form (owner, 28 Oct: "not presentable of what we want a profile to look like"). */}
-      <div className="flex flex-col gap-3 lg:col-start-1 lg:row-start-1">
+    {/* One column at every width (owner, 29 Oct): the receiver's photo, name and callout centred at the top and kept
+        there once a file is picked; the brief, the drop box or the form below, left-aligned. */}
+    <main className="group/page mx-auto flex min-h-dvh max-w-[600px] flex-col gap-7 bg-ink px-[18px] py-10 text-bone sm:py-14">
+      <header className="flex flex-col items-center gap-2.5 text-center">
         {receiver.cover_key && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={`/api/cover/${receiver.handle}?v=${encodeURIComponent(receiver.cover_key)}`}
             alt=""
-            width={112}
-            height={112}
-            className="mb-1 size-28 rounded-2xl object-cover max-lg:group-has-[[data-picked]]/page:hidden"
+            width={96}
+            height={96}
+            className="mb-1 size-24 rounded-[18px] object-cover"
           />
         )}
-        <p className="text-[11px] font-bold uppercase tracking-[1px] text-mute"><E k="kicker" /></p>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="break-words text-[clamp(2rem,12vw,3.5rem)] font-bold leading-none max-lg:group-has-[[data-picked]]/page:text-[28px] max-lg:group-has-[[data-picked]]/page:tracking-[-0.5px]">
-            {receiver.name}
-            {receiver.identity_status === "verified" && (
-              <CuePoint size={24} label="Verified by FloorTest: this account controls the linked profile" className="-mt-1 ml-2" />
-            )}
-          </h1>
-          {collection && !closedReason && (
-            <p className="inline-flex items-center gap-2 rounded-full border border-line bg-ink-2 px-2.5 py-1.5 text-[11px] font-bold">
-              {collection.art_key ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={`/api/collection-art/${collection.id}?v=${encodeURIComponent(collection.art_key)}`} alt="" className="-my-0.5 size-5 rounded object-cover" />
-              ) : (
-                <span aria-hidden className="size-1.5 rounded-full bg-lime" />
-              )}
-              Receiving for <span className="text-bone">{collection.name}</span>
-            </p>
+        <p className="font-mono text-sm text-mute"><E k="kicker" /></p>
+        <h1 className="break-words text-[30px] font-semibold leading-tight tracking-[-0.4px]">
+          {receiver.name}
+          {receiver.identity_status === "verified" && (
+            <CuePoint size={20} label="Verified by FloorTest: this account controls the linked profile" className="-mt-1 ml-2" />
           )}
-        </div>
-        <ProfileLinks links={readLinks(receiver.links)} className="max-lg:group-has-[[data-picked]]/page:hidden" />
-      </div>
-      <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1">
-        {closedReason ? (
-          <div className="rounded-2xl border border-line bg-ink-2 p-5" role="status">
-            <p className="font-bold">{closedReason}</p>
-            {note && <p className="mt-3 whitespace-pre-wrap border-l-2 border-lime pl-3 text-[13px]">{note}</p>}
-            <p className="mt-2 text-[12px] text-dim"><E k="closed_note" /></p>
-            <ReopenAlert handle={receiver.handle} receiverName={receiver.name} botCheckKey={botKey} />
-          </div>
-        ) : (
-          <SendModes folderBytes={folderBytes} brief={brief} bpmRange={bpmRange} promise={bullets.map(([, b]) => b)} botCheckKey={botKey} handle={receiver.handle} receiverName={receiver.name} callout={collection && !closedReason ? collection.name : null} genres={genres} allowSharing={sharing && !!collection?.allow_sharing} trackArt={trackArt} />
+        </h1>
+        {collection && !closedReason && (
+          <p className="mt-1 inline-flex items-center gap-2 rounded-full border border-line bg-ink-2 px-3.5 py-1.5 text-[13px] font-semibold">
+            {collection.art_key ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={`/api/collection-art/${collection.id}?v=${encodeURIComponent(collection.art_key)}`} alt="" className="-my-0.5 size-5 rounded object-cover" />
+            ) : (
+              <span aria-hidden className="size-1.5 rounded-full bg-lime" />
+            )}
+            <span className="font-medium text-mute">Receiving for</span> {collection.name}
+          </p>
         )}
-      </div>
+        <ProfileLinks links={readLinks(receiver.links)} size={20} className="mt-1 justify-center" />
+      </header>
+      <hr className="border-line" />
+      {closedReason ? (
+        <div className="rounded-2xl border border-line bg-ink-2 p-5" role="status">
+          <p className="font-bold">{closedReason}</p>
+          {note && <p className="mt-3 whitespace-pre-wrap border-l-2 border-lime pl-3 text-[13px]">{note}</p>}
+          <p className="mt-2 text-[12px] text-dim"><E k="closed_note" /></p>
+          <ReopenAlert handle={receiver.handle} receiverName={receiver.name} botCheckKey={botKey} />
+        </div>
+      ) : (
+        <SendModes folderBytes={folderBytes} brief={brief} bpmRange={bpmRange} promise={bullets.map(([, b]) => b)} botCheckKey={botKey} handle={receiver.handle} receiverName={receiver.name} callout={collection && !closedReason ? collection.name : null} genres={genres} allowSharing={sharing && !!collection?.allow_sharing} trackArt={trackArt} />
+      )}
+      {/* Once a file is picked the form repeats these above Send, so they step aside here. */}
       {!closedReason && (
-      <ul className="-mt-2 flex flex-col gap-2 max-lg:group-has-[[data-picked]]/page:hidden lg:col-start-1 lg:row-start-2 lg:mt-0 lg:self-start" aria-label="How your file is handled">
+      <ul className="-mt-1 flex flex-col gap-2 group-has-[[data-picked]]/page:hidden" aria-label="How your file is handled">
         {bullets.map(([k, b]) => (
           <li key={k} {...panel(k, "Keep {receiver} and {days} as they are: the page fills them in.")} className="flex gap-2.5 text-[13px] leading-5 text-mute">
             <span aria-hidden>→</span>
@@ -135,7 +133,7 @@ export default async function ReceiverPage({ params }: Props) {
         ))}
       </ul>
       )}
-      <footer className="mt-auto flex flex-col items-center gap-3 pt-4 lg:col-span-2 lg:mt-8">
+      <footer className="mt-auto flex flex-col items-center gap-3 pt-4">
         {receiver.identity_status !== "verified" && (
           <p className="text-center text-[12px] font-medium leading-[18px] text-dim">
             Not sure this is really {receiver.name}?{" "}
