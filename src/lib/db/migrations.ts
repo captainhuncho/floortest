@@ -1815,4 +1815,17 @@ create table if not exists passkey_challenges (
 create index if not exists fk_passkey_challenges_user_id on passkey_challenges(user_id);
 alter table passkey_challenges enable row level security;`,
   },
+  {
+    // App refresh tokens already swapped for new ones (lib/app-auth), kept until they would have expired. One coming back
+    // means it was copied, so that sign-in ends. Holds hashes only; not granted to ft_person, left out of backups.
+    id: "0106_app_refresh_spent",
+    sql: `create table if not exists app_refresh_spent (
+  token_hash text primary key,
+  user_id bigint not null references users(id) on delete cascade,
+  signed_in_at bigint not null,
+  expires_at bigint not null
+);
+create index if not exists fk_app_refresh_spent_user_id on app_refresh_spent(user_id);
+alter table app_refresh_spent enable row level security;`,
+  },
 ];
