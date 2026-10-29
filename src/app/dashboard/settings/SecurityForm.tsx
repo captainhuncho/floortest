@@ -5,8 +5,9 @@ import { useToast } from "@/components/Toast";
 import { useActionForm } from "@/components/useActionForm";
 import { changePassword, signOutDevice, signOutOtherDevices } from "../actions/security";
 import { PasswordStrength } from "@/components/PasswordStrength";
+import { ConfirmItsYou } from "./ConfirmItsYou";
 
-export type Device = { hash: string; device: string; app: boolean; current: boolean; signedIn: string; lastUsed: string | null };
+export type Device = { id: string; device: string; app: boolean; current: boolean; signedIn: string; lastUsed: string | null };
 
 export function SecurityForm({ devices, context = [], twoFactor }: { devices: Device[]; context?: string[]; twoFactor: boolean }) {
   const [pw, setPw] = useState("");
@@ -15,6 +16,8 @@ export function SecurityForm({ devices, context = [], twoFactor }: { devices: De
   const [busy, start] = useTransition();
   const toast = useToast();
   const others = list.filter((d) => !d.current).length;
+  const [confirmOthers, setConfirmOthers] = useState(false);
+  const [othersError, setOthersError] = useState<string | null>(null);
 
   return (
     <div className="space-y-6">
@@ -63,23 +66,35 @@ export function SecurityForm({ devices, context = [], twoFactor }: { devices: De
           <p className="text-sm text-mute">
             {others ? `Signed in on ${others} other device${others === 1 ? "" : "s"}.` : "Only signed in on this device."} A browser that isn&apos;t used for 14 days is signed out by itself.
           </p>
-          <button
-            className="btn-ghost btn-sm"
-            disabled={!others || busy}
-            onClick={() =>
-              start(async () => {
-                const n = await signOutOtherDevices();
-                setList((l) => l.filter((d) => d.current));
-                toast.show({ message: n ? `Signed out ${n} other device${n === 1 ? "" : "s"}` : "No other devices were signed in" });
-              })
-            }
-          >
+          <button className="btn-ghost btn-sm min-h-11" disabled={!others || busy || confirmOthers} onClick={() => setConfirmOthers(true)}>
             Sign out other devices
           </button>
         </div>
+        {confirmOthers && (
+          <ConfirmItsYou
+            twoFactor={twoFactor}
+            action="Sign out other devices"
+            pending={busy}
+            error={othersError}
+            onCancel={() => {
+              setConfirmOthers(false);
+              setOthersError(null);
+            }}
+            onConfirm={(password, code) =>
+              start(async () => {
+                const r = await signOutOtherDevices(password, code);
+                if ("error" in r) return setOthersError(r.error);
+                setConfirmOthers(false);
+                setOthersError(null);
+                setList((l) => l.filter((d) => d.current));
+                toast.show({ message: r.n ? `Signed out ${r.n} other device${r.n === 1 ? "" : "s"}` : "No other devices were signed in" });
+              })
+            }
+          />
+        )}
         <ul className="divide-y divide-line rounded-lg border border-line" aria-label="Devices signed in">
           {list.map((d) => (
-            <li key={d.hash} className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5">
+            <li key={d.id} className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5">
               <div className="min-w-0">
                 <p className="text-sm text-bone">
                   {d.device}
@@ -97,9 +112,9 @@ export function SecurityForm({ devices, context = [], twoFactor }: { devices: De
                   disabled={busy}
                   onClick={() =>
                     start(async () => {
-                      const r = await signOutDevice(d.hash);
+                      const r = await signOutDevice(d.id);
                       if ("error" in r) return toast.show({ message: r.error });
-                      setList((l) => l.filter((x) => x.hash !== d.hash));
+                      setList((l) => l.filter((x) => x.id !== d.id));
                       toast.show({ message: `Signed out ${d.device}` });
                     })
                   }

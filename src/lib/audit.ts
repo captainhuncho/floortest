@@ -11,6 +11,7 @@ export const AUDIT_LABELS = {
   password_reset: "Reset password",
   password_changed: "Changed password",
   signed_out_others: "Signed out other devices",
+  app_token_reused: "App sign-in ended: an old sign-in token was used again",
   two_factor_on: "Turned on two-factor sign-in",
   two_factor_off: "Turned off two-factor sign-in",
   passkey_added: "Added a passkey",
@@ -87,6 +88,7 @@ export const PERSONAL_ACTIONS: readonly AuditAction[] = [
   "signed_in", "signed_out", "password_reset", "password_changed", "signed_out_others", "two_factor_on", "two_factor_off",
   "google_connected", "google_disconnected", "signin_alerts_on", "signin_alerts_off", "plan_changed", "plan_requested",
   "plan_request_withdrawn", "identity_submitted", "notifications_updated", "digest_sent",
+  "app_token_reused",
 ];
 
 /**

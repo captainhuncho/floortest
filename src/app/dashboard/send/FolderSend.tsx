@@ -13,6 +13,7 @@ import { EmailCode, startEmailCheck } from "../../[handle]/EmailCode";
 import { SetsPermission } from "../../[handle]/SetsPermission";
 import { GenrePicker } from "../../[handle]/GenrePicker";
 import { AI_CHOICES, AI_HELP, Choice, MIX_CHOICES, RELEASE_CHOICES } from "../../[handle]/Choice";
+import { normalEmail } from "@/lib/email-normal";
 
 type Item = {
   file: File; tags: Tags; state: "waiting" | "sending" | "sent" | "failed"; progress: number; error?: string; genre?: string;
@@ -242,7 +243,7 @@ export function FolderSend({
     )}
     {waiting && (
       <EmailCode
-        email={who.email.trim().toLowerCase()}
+        email={normalEmail(who.email)}
         receiverName={receiverName}
         sending={[`${release.title} · ${items.length} tracks`]}
         onConfirmed={() => {

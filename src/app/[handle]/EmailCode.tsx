@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { normalEmail } from "@/lib/email-normal";
 
 type Result = { ok?: boolean; error?: string; confirmed?: boolean };
 const post = async (body: Record<string, unknown>): Promise<Result> => {
@@ -18,7 +19,7 @@ const post = async (body: Record<string, unknown>): Promise<Result> => {
  * Returns null when they can send now, "code" when a code was emailed, or an error message.
  */
 export async function startEmailCheck(email: string, turnstile: string): Promise<null | "code" | string> {
-  const e = email.trim().toLowerCase();
+  const e = normalEmail(email);
   try {
     const r = (await (await fetch(`/api/sender-code?email=${encodeURIComponent(e)}`, { cache: "no-store" })).json()) as Result;
     if (r.confirmed) return null;
