@@ -133,7 +133,7 @@ export async function startOwnerUpload(owner: User, collectionId: number, d: { f
   if (d.size > MAX_UPLOAD_BYTES) throw new IntakeError("File is too large (max 250 MB).", 413);
   if (!d.rights) throw new IntakeError("Confirm you're allowed to keep this file on FloorTest.", 400);
   if (!d.title.trim()) throw new IntakeError("Add a track title.", 400);
-  if ((await capacity(owner)).full) throw new IntakeError("Your desk is full. Clear some tracks or upgrade to add more.", 409);
+  if (await slotsTaken(owner)) throw new IntakeError("Your desk is full. Clear some tracks or upgrade to add more.", 409);
   if (!(await allow("owner_upload", String(owner.id), OWNER_UPLOADS_PER_HOUR, HOUR))) throw new IntakeError("Too many uploads. Try again in an hour.", 429);
   const meta: SubmissionMeta = {
     name: owner.name,
@@ -155,6 +155,22 @@ export async function startOwnerUpload(owner: User, collectionId: number, d: { f
   await q.run("INSERT INTO uploads (id, receiver_id, file_key, ext, size, meta, ip, created_at) VALUES (?,?,?,?,?,?,?,?)", id, owner.id, key, ext, d.size, JSON.stringify(meta), "owner", now());
   const target = await (await storage()).uploadTarget(key, ext === ".wav" ? "audio/wav" : "audio/mpeg", d.size);
   return { uploadId: id, target };
+}
+
+/**
+ * Whether the desk's tracks plus its uploads still in progress (started in the last UPLOAD_TTL, or held for their virus
+ * check) fill its capacity. Each open upload holds a slot, so bytes PUT for starts that are never finished can't pile up
+ * past what the desk could receive. `except` is the start being checked. Track artwork and stems don't take a slot.
+ */
+async function slotsTaken(receiver: User, except = "") {
+  const c = await capacity(receiver);
+  const open = await q.count(
+    "SELECT COUNT(*) AS n FROM uploads WHERE receiver_id = ? AND id <> ? AND meta::jsonb->>'kind' IS NULL AND (created_at > ? OR held_at IS NOT NULL)",
+    receiver.id,
+    except,
+    now() - UPLOAD_TTL,
+  );
+  return c.used + open >= c.limit;
 }
 
 /** The stored id of a release: the browser's id under this desk, so no other desk can reach the same row. */
@@ -230,6 +246,7 @@ export async function startUpload(receiver: User, input: SubmissionMeta, size: n
   });
   try {
     await checkIntake(receiver, meta.email, ip, firstOfRelease);
+    if (await slotsTaken(receiver, id)) throw new IntakeError(`${receiver.name} isn't accepting new tracks right now.`);
   } catch (e) {
     await q.run("DELETE FROM uploads WHERE id = ?", id);
     throw e;
