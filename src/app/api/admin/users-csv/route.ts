@@ -1,5 +1,6 @@
 import { requireAdminAction, logAdmin } from "@/lib/admin";
 import { audienceWhere, describeAudience, readAudience } from "@/lib/audience";
+import { csvCell } from "@/lib/csv";
 import { q, KIND_LABEL } from "@/lib/db";
 
 export const runtime = "nodejs";
@@ -14,13 +15,11 @@ export async function GET(req: Request) {
     `SELECT u.name, u.first_name, u.last_name, u.handle, u.email, u.kind, u.plan, u.admin_tags, u.notify_product, u.notify_marketing, u.created_at, u.last_active_at FROM users u WHERE ${w.sql} ORDER BY u.created_at DESC LIMIT 10000`,
     ...w.args,
   );
-  // Quote every cell; a leading = + - @ is neutralised so a spreadsheet can't run it as a formula.
-  const cell = (v: unknown) => `"${String(v ?? "").replace(/^[=+\-@\t\r]/, "'$&").replace(/"/g, '""')}"`;
   const day = (t: number | null) => (t ? new Date(t).toISOString().slice(0, 10) : "");
   const lines = [
     ["First name", "Surname", "Public name", "Link", "Email", "Type", "Plan", "Tags", "Newsletter", "Offers", "Joined", "Last active"],
     ...rows.map((r) => [r.first_name, r.last_name, r.name, r.handle, r.email, KIND_LABEL[r.kind ?? ""] ?? "", r.plan, r.admin_tags, r.notify_product ? "yes" : "no", r.notify_marketing ? "yes" : "no", day(r.created_at), day(r.last_active_at)]),
-  ].map((l) => l.map(cell).join(","));
+  ].map((l) => l.map(csvCell).join(","));
   await logAdmin(a.id, "exported users", describeAudience(aud), `${rows.length} rows`);
   return new Response(lines.join("\r\n"), {
     headers: {

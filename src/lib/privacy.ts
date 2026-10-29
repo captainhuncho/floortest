@@ -1,5 +1,5 @@
 import "server-only";
-import { now, q } from "@/lib/db";
+import { now, q, type Queryable } from "@/lib/db";
 import { accountKeys, drainNow, queueDeletion, trackKeys } from "@/lib/deletion";
 import { forgetLinkPerson, linkDataFor } from "@/lib/share-links";
 import { DELETED_HANDLE_HOLD_DAYS } from "@/lib/accounts";
@@ -8,12 +8,17 @@ import { normalEmail } from "./email-normal";
 /**
  * Deletes an account and everything it owns. Every file (audio, stems, unfinished uploads, cover) is queued
  * for deletion in the same transaction that removes the rows, so none is lost if storage is slow or down.
+ * What is held under its email address goes too, as when a sender is erased: messages it wrote in (before or after
+ * signing up), a partner note, waitlist, newsletter and reopen entries, and emails sent to it. An email still waiting
+ * to send stays, so the "your account was deleted" email goes out; the outbox clean-up removes it later. The
+ * unsubscribe list (email_suppressions) and the admin log stay.
  */
 export async function purgeAccount(userId: number) {
   await q.tx(async (db) => {
     await queueDeletion(db, await accountKeys(db, userId), `account #${userId} deleted`, now());
     const who = await db.get<{ email: string }>("SELECT email FROM users WHERE id = ?", userId);
     if (who) await forgetLinkPerson(db, userId, who.email);
+    if (who) await forgetAddress(db, normalEmail(who.email));
     // Its link, and old links it still held, stay reserved: the delete below cascades the old ones away.
     const t = now();
     await db.run(
@@ -25,6 +30,18 @@ export async function purgeAccount(userId: number) {
     await db.run("DELETE FROM users WHERE id = ?", userId); // cascades to everything the account owns
   });
   await drainNow();
+}
+
+/**
+ * Rows kept under an email address rather than an account: removed when that person's account is deleted. Staff notes
+ * about a partner (partner_notes) stay, as the business's own history of them (owner, 29 Oct).
+ */
+async function forgetAddress(db: Queryable, e: string) {
+  await db.run("DELETE FROM contact_messages WHERE lower(email) = ?", e);
+  await db.run("DELETE FROM waitlist WHERE lower(email) = ?", e);
+  await db.run("DELETE FROM newsletter_subscribers WHERE lower(email) = ?", e);
+  await db.run("DELETE FROM reopen_alerts WHERE lower(email) = ?", e);
+  await db.run("DELETE FROM outbox WHERE lower(to_email) = ? AND status NOT IN ('queued', 'sending')", e);
 }
 
 /** Everything held about one email address as a sender, an account, or a person who wrote in. */
