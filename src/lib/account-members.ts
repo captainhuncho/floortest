@@ -232,7 +232,8 @@ export async function replyApproval(accountId: number) {
 export async function setReplyApproval(desk: Pick<User, "id" | "role" | "totp_enabled_at">, on: boolean, approverId: number) {
   if (!atLeast(desk.role, "admin")) throw new TeamError("Only the owner or an A&R / Admin can change this.");
   needTwoStep(desk);
-  const onTeam = approverId === desk.id || !!(await q.get("SELECT 1 FROM account_members WHERE account_id = ? AND user_id = ?", desk.id, approverId));
+  // roleOn, not just a membership row: a paused seat can't open the desk, so replies would wait for no one.
+  const onTeam = Number.isSafeInteger(approverId) && !!(await roleOn(desk.id, approverId));
   if (!onTeam) throw new TeamError("Choose someone on the team.");
   await q.run("UPDATE users SET reply_approval = ?, reply_approver_id = ? WHERE id = ?", on ? 1 : 0, approverId, desk.id);
 }
