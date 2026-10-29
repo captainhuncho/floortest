@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { currentUser } from "@/lib/auth";
+import { currentDeskForChange } from "@/lib/auth";
 import { q } from "@/lib/db";
 import { completeUpload, IntakeError, UploadHeld } from "@/lib/intake";
 import { readAnalysis } from "@/lib/submission";
@@ -13,7 +13,8 @@ const bad = (error: string, status = 400) => NextResponse.json({ error }, { stat
 
 /** Owner upload, step 2: the file is in storage. Checked like any send (real audio, right size), then added to the collection. */
 export async function POST(req: Request, ctx: RouteContext<"/api/collections/[id]/upload/complete">) {
-  const u = await currentUser();
+  const u = await currentDeskForChange();
+  if (u instanceof Response) return u;
   if (!u) return bad("Sign in again.", 401);
   // On a team desk, adding tracks is for the owner and admins; members review.
   if (u.role === "member") return bad("Only the owner or an A&R / Admin can add tracks here.", 403);

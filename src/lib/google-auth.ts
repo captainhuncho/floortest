@@ -11,8 +11,8 @@ import { normalEmail } from "./email-normal";
  * - Two-factor still applies, and an unconfirmed account is never claimed.
  *
  * The hand-off uses a random `state` and a PKCE verifier in a short-lived, signed, HttpOnly cookie, matched exactly on
- * the way back and used once. The ID token comes straight from Google's token endpoint over TLS; its audience, issuer,
- * expiry and email_verified are still checked.
+ * the way back and used once. The ID token comes straight from Google's token endpoint over TLS, and its signature is
+ * still checked (RS256, against Google's published keys) before its audience, issuer, expiry and email_verified.
  */
 export const GOOGLE_COOKIE = "ft_google";
 export const GOOGLE_SIGNUP_COOKIE = "ft_google_signup";
@@ -24,6 +24,15 @@ const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const ISSUERS = ["https://accounts.google.com", "accounts.google.com"];
 const GMAIL = /@(gmail|googlemail)\.com$/;
+/** Google's signing keys for ID tokens. A fixed address: nothing from the request ever chooses where keys come from. */
+const JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs";
+const JWKS_TIMEOUT_MS = 5_000;
+const JWKS_MAX_BYTES = 64 * 1024;
+/** How long keys are kept when Google gives no max-age, and the most we'll keep them whatever it says. */
+const JWKS_DEFAULT_MS = 3_600_000;
+const JWKS_MAX_MS = 24 * 3_600_000;
+/** A token naming a key we don't hold refetches the keys (Google rotates them), at most this often. */
+const JWKS_REFETCH_MS = 60_000;
 
 export type GoogleIdentity = { email: string; sub: string; first: string; last: string };
 
@@ -100,6 +109,66 @@ export function identityFromClaims(c: Record<string, unknown>, clientId: string,
   return { email, sub, first: name("given_name"), last: name("family_name") };
 }
 
+type Jwk = { kid?: string; kty?: string; alg?: string; use?: string; n?: string; e?: string };
+let keyCache: { keys: Jwk[]; until: number; fetchedAt: number } | null = null;
+
+/** Forgets the cached keys (tests). */
+export const resetGoogleKeys = () => {
+  keyCache = null;
+};
+
+const maxAgeMs = (cacheControl: string | null) => {
+  const m = /(?:^|,)\s*max-age=(\d+)/i.exec(cacheControl ?? "");
+  return m ? Math.min(Number(m[1]) * 1000, JWKS_MAX_MS) : JWKS_DEFAULT_MS;
+};
+
+async function fetchKeys(f: typeof fetch, at: number): Promise<Jwk[] | null> {
+  try {
+    const res = await f(JWKS_URL, { redirect: "error", signal: AbortSignal.timeout(JWKS_TIMEOUT_MS) });
+    if (!res.ok) return null;
+    const text = await res.text();
+    if (text.length > JWKS_MAX_BYTES) return null;
+    const keys = (JSON.parse(text) as { keys?: unknown }).keys;
+    if (!Array.isArray(keys)) return null;
+    keyCache = { keys: keys as Jwk[], until: at + maxAgeMs(res.headers.get("cache-control")), fetchedAt: at };
+    return keyCache.keys;
+  } catch {
+    return null;
+  }
+}
+
+/** Google's key with this id: from the cache while fresh, otherwise (or for an id we don't hold yet) fetched again. */
+async function googleKey(kid: string, f: typeof fetch, at: number): Promise<Jwk | null> {
+  const find = (keys: Jwk[] | null | undefined) => keys?.find((k) => k.kid === kid && k.kty === "RSA" && (!k.alg || k.alg === "RS256") && (!k.use || k.use === "sig")) ?? null;
+  const fresh = keyCache && keyCache.until > at ? keyCache : null;
+  const hit = find(fresh?.keys);
+  if (hit) return hit;
+  if (fresh && at - fresh.fetchedAt < JWKS_REFETCH_MS) return null;
+  return find(await fetchKeys(f, at));
+}
+
+/**
+ * Who a Google ID token says signed in, only once its signature checks out: RS256 by one of Google's published keys
+ * (no other algorithm, never "none"). Then the same claim checks as always. Any failure is "bad".
+ */
+export async function verifyGoogleIdToken(token: string, clientId: string, o: { fetch?: typeof fetch; at?: number } = {}): Promise<GoogleIdentity | "bad" | "untrusted"> {
+  const at = o.at ?? Date.now();
+  const parts = String(token ?? "").split(".");
+  if (parts.length !== 3 || !parts[0] || !parts[1] || !parts[2]) return "bad";
+  try {
+    const header = JSON.parse(Buffer.from(parts[0], "base64url").toString()) as { alg?: unknown; kid?: unknown };
+    if (header.alg !== "RS256" || typeof header.kid !== "string" || !header.kid) return "bad";
+    const jwk = await googleKey(header.kid, o.fetch ?? fetch, at);
+    if (!jwk?.n || !jwk.e) return "bad";
+    const key = crypto.createPublicKey({ key: { kty: "RSA", n: jwk.n, e: jwk.e }, format: "jwk" });
+    const ok = crypto.verify("RSA-SHA256", Buffer.from(`${parts[0]}.${parts[1]}`), key, Buffer.from(parts[2], "base64url"));
+    if (!ok) return "bad";
+    return identityFromClaims(JSON.parse(Buffer.from(parts[1], "base64url").toString()), clientId, at);
+  } catch {
+    return "bad";
+  }
+}
+
 /** Swaps the one-time code (with the PKCE verifier) for who signed in. */
 export async function identityFromCode(cfg: { id: string; secret: string }, code: string, verifier: string, redirectUri: string): Promise<GoogleIdentity | "bad" | "untrusted"> {
   const res = await fetch(TOKEN_URL, {
@@ -109,13 +178,8 @@ export async function identityFromCode(cfg: { id: string; secret: string }, code
     signal: AbortSignal.timeout(10_000),
   }).catch(() => null);
   if (!res?.ok) return "bad";
-  const payload = String(((await res.json().catch(() => ({}))) as { id_token?: string }).id_token ?? "").split(".")[1];
-  if (!payload) return "bad";
-  try {
-    return identityFromClaims(JSON.parse(Buffer.from(payload, "base64url").toString()), cfg.id);
-  } catch {
-    return "bad";
-  }
+  const idToken = String(((await res.json().catch(() => ({}))) as { id_token?: string }).id_token ?? "");
+  return verifyGoogleIdToken(idToken, cfg.id);
 }
 
 /** Who Google confirmed, held for the sign-up form when no account matches. */

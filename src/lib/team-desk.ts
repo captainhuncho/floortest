@@ -15,3 +15,15 @@ export async function resolveDesk(person: User, desk: number): Promise<{ user: U
   if (!role || !account) return { user: person, stale: true };
   return { user: { ...account, actor_id: person.id, actor_name: person.name, role }, stale: false };
 }
+
+/** What a desk API route answers when a change comes from a team desk the person lost: one clear JSON error. */
+export const DESK_ENDED_ERROR = "You're no longer on that team's desk. Reload to go back to your own desk, then try again.";
+
+/**
+ * For API routes that change something: the desk to change, or a 409 when the desk cookie names a team desk the person
+ * lost. Reading may fall back to their own desk; a change never does (the same rule as requireUser for server actions).
+ */
+export function refuseStaleChange(desk: { user: User; stale: boolean }): User | Response {
+  if (!desk.stale) return desk.user;
+  return Response.json({ error: DESK_ENDED_ERROR, deskEnded: true }, { status: 409 });
+}

@@ -5,7 +5,7 @@ import crypto from "node:crypto";
 import { now, q, type Queryable } from "./db";
 import { env, isPreview } from "./env";
 import { recordIncident } from "./incidents";
-import { MAIL_LIMITS, MAIL_WARN_AT } from "./mail-quota";
+import { MAIL_LIMITS, MAIL_RESERVED_SHARE, MAIL_WARN_AT } from "./mail-quota";
 
 export const APP_URL = env.appUrl;
 
@@ -25,7 +25,12 @@ export function noLinks(s: string) {
 /** Stands in for a sign-in code or private link in the stored copy of an email. */
 export const HIDDEN = "•••••• (hidden)";
 
-type MailOpts = { userId: number | null; to: string; subject: string; body: string; audience?: Audience; unsubscribe?: UnsubKind; secrets?: (string | null | undefined)[] };
+/**
+ * `reserved`: an account email (sign-in code, password reset, email check, email change) or a security notice (password,
+ * two-step, passkey or Google sign-in changed, new sign-in, account deleted). Only these may use the part of
+ * the day's send limit kept back (MAIL_RESERVED_SHARE), so receipts and notifications can never starve them.
+ */
+type MailOpts = { userId: number | null; to: string; subject: string; body: string; audience?: Audience; unsubscribe?: UnsubKind; secrets?: (string | null | undefined)[]; reserved?: boolean };
 type Payload = { to: string; subject: string; body: string; unsub: string | null };
 
 /*
@@ -76,8 +81,8 @@ export async function queueMail(opts: MailOpts, db: Queryable = q): Promise<numb
   const payload: Payload = { to: opts.to, subject: opts.subject, body, unsub };
   const at = now();
   const row = await db.get<{ id: number }>(
-    `INSERT INTO outbox (user_id, to_email, subject, body, status, audience, created_at, payload, idem_key, attempts, next_at, optional)
-     VALUES (?,?,?,?,'queued',?,?,?,?,0,?,?) RETURNING id`,
+    `INSERT INTO outbox (user_id, to_email, subject, body, status, audience, created_at, payload, idem_key, attempts, next_at, optional, reserved)
+     VALUES (?,?,?,?,'queued',?,?,?,?,0,?,?,?) RETURNING id`,
     opts.userId,
     opts.to,
     hide(opts.subject),
@@ -88,6 +93,7 @@ export async function queueMail(opts: MailOpts, db: Queryable = q): Promise<numb
     crypto.randomUUID(),
     at,
     opts.unsubscribe ? 1 : 0,
+    opts.reserved ? 1 : 0,
   );
   return row!.id;
 }
@@ -105,14 +111,23 @@ export async function sendMailLater(opts: MailOpts) {
   deliverLater(await queueMail(opts));
 }
 
-/** Sends a queued email after the response (or straight away outside a request). */
-export function deliverLater(id: number) {
-  const run = () => deliver(id).then(() => undefined, (e) => console.error("[mail] send failed; the queue will retry", e));
+/**
+ * Runs `task` after the response has gone back (or straight away, not waited for, outside a request). Errors are logged.
+ * Public forms that email an address only if it belongs to someone use it for the whole lookup and send, so the answer
+ * takes the same time either way and can't tell a visitor whose address it is.
+ */
+export function afterResponse(task: () => Promise<unknown>, label = "[mail] send failed; the queue will retry") {
+  const run = () => task().then(() => undefined, (e) => console.error(label, e));
   try {
     after(run);
   } catch {
     void run();
   }
+}
+
+/** Sends a queued email after the response (or straight away outside a request). */
+export function deliverLater(id: number) {
+  afterResponse(() => deliver(id));
 }
 
 const startOfDay = (at: number) => {
@@ -121,13 +136,15 @@ const startOfDay = (at: number) => {
 };
 
 /**
- * Resend stops sending for the day at the plan's cap (MAIL_DAILY_LIMIT). Once MAIL_WARN_AT of it is used, optional emails
- * (digests, reminders, alerts: the ones with an unsubscribe link) wait until after midnight UTC, so the rest of the day
- * is kept for sign-in codes, resets and senders' receipts.
+ * Resend stops sending for the day at the plan's cap (MAIL_DAILY_LIMIT). The last MAIL_RESERVED_SHARE of it (30% by
+ * default) is kept for account emails (sign-in codes, resets, email checks): every other email (receipts, notifications,
+ * digests) waits until after midnight UTC once the rest is used. Optional emails (the ones with an unsubscribe link) stop
+ * at MAIL_WARN_AT if that comes first.
  */
-async function overOptionalShare(at: number) {
+async function overSharedPart(at: number, optional: boolean) {
+  const share = optional ? Math.min(MAIL_WARN_AT, 1 - MAIL_RESERVED_SHARE) : 1 - MAIL_RESERVED_SHARE;
   const today = await q.count("SELECT COUNT(*) AS n FROM outbox WHERE status = 'sent' AND last_attempt_at >= ?", startOfDay(at));
-  return today >= MAIL_LIMITS.day * MAIL_WARN_AT;
+  return today >= MAIL_LIMITS.day * share;
 }
 
 /** One notice a day that optional email is being held back. */
@@ -142,8 +159,8 @@ async function reportDeferred(at: number) {
   if (first)
     await recordIncident(
       "email_failed",
-      `Optional emails are waiting until tomorrow: ${Math.round(MAIL_WARN_AT * 100)}% of the daily send limit (${MAIL_LIMITS.day}) is used`,
-      "Sign-in codes, resets and receipts still go. Raise MAIL_DAILY_LIMIT after upgrading the Resend plan.",
+      `Emails are waiting until tomorrow: the daily send limit (${MAIL_LIMITS.day}) is used up to the part kept for sign-in codes and resets`,
+      `Receipts, notifications and digests wait for midnight UTC; sign-in codes, resets and email checks still go (the last ${Math.round(MAIL_RESERVED_SHARE * 100)}% of the day, MAIL_RESERVED_SHARE). Raise MAIL_DAILY_LIMIT after upgrading the Resend plan.`,
     );
 }
 
@@ -151,10 +168,10 @@ async function reportDeferred(at: number) {
 export async function deliver(id: number, { retry = true } = {}): Promise<string> {
   const at = now();
   // A send that crashed is picked up again only while it has attempts left; drainOutbox closes the rest.
-  const row = await q.get<{ user_id: number | null; payload: string; idem_key: string; attempts: number; subject: string; optional: number }>(
+  const row = await q.get<{ user_id: number | null; payload: string; idem_key: string; attempts: number; subject: string; optional: number; reserved: number }>(
     `UPDATE outbox SET status = 'sending', attempts = attempts + 1, last_attempt_at = ?
      WHERE id = ? AND payload IS NOT NULL AND ((status = 'queued' AND next_at <= ?) OR (status = 'sending' AND last_attempt_at < ? AND attempts < ?))
-     RETURNING user_id, payload, idem_key, attempts, subject, optional`,
+     RETURNING user_id, payload, idem_key, attempts, subject, optional, reserved`,
     at,
     id,
     at,
@@ -187,7 +204,7 @@ export async function deliver(id: number, { retry = true } = {}): Promise<string
     if (!stagingTo) status = "logged (staging)";
   }
   const willSend = !suppressed && !!env.email.resendKey && !(isPreview && !stagingTo);
-  if (willSend && row.optional && (await overOptionalShare(at))) {
+  if (willSend && !row.reserved && (await overSharedPart(at, !!row.optional))) {
     // Waiting isn't a failed attempt: it goes back as it was, due just after midnight UTC.
     await q.run("UPDATE outbox SET status = 'queued', attempts = attempts - 1, next_at = ? WHERE id = ?", startOfDay(at) + 86_400_000 + 5 * 60_000, id);
     await reportDeferred(at);

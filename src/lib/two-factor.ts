@@ -1,14 +1,17 @@
 import "server-only";
 import { now, q } from "./db";
 import { env } from "./env";
+import { revokeAllSessions } from "./sessions";
 import { hashRecovery, newRecoveryCodes, openSecret, verifyTotp } from "./totp";
 
 /**
  * Turns two-factor on with the first code from the authenticator. Returns the recovery codes (shown once) or the error.
  * Only for a confirmed email: until then whoever created the account may not own the address, and their authenticator
  * would stand in the real owner's way. Passkeys follow the same rule.
+ * Once it's on, every other way in ends as when the password changes: other browsers, the app, ops sessions and
+ * unused reset links. `keep` is the browser doing it; without it every session ends.
  */
-export async function turnOnTwoFactor(userId: number, code: string): Promise<{ codes: string[] } | { error: string }> {
+export async function turnOnTwoFactor(userId: number, code: string, o: { keep?: string | null } = {}): Promise<{ codes: string[] } | { error: string }> {
   const row = await q.get<{ totp_secret: string | null; email_verified_at: number | null }>(
     "SELECT totp_secret, email_verified_at FROM users WHERE id = ? AND totp_enabled_at IS NULL",
     userId,
@@ -27,5 +30,6 @@ export async function turnOnTwoFactor(userId: number, code: string): Promise<{ c
     userId,
   );
   if (!on.changes) return { error: "Start again: set-up expired." };
+  await revokeAllSessions(userId, { keep: o.keep ?? null });
   return { codes };
 }

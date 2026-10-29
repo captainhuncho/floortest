@@ -53,3 +53,46 @@ test("bot check hostnames: the app's own addresses; localhost only off the live 
     env.NODE_ENV = was;
   }
 });
+
+test("bot check: Cloudflare's test secrets work off the live site but are refused on the production deployment", async () => {
+  const { q } = await import("../src/lib/db");
+  const { passedTurnstile, turnstileAnswerOk } = await import("../src/lib/turnstile");
+  await q.run("INSERT INTO switches (key, on_, updated_at) VALUES ('bot_check', 1, ?) ON CONFLICT (key) DO UPDATE SET on_ = 1", Date.now());
+  const env = process.env as Record<string, string | undefined>;
+  const was = { node: env.NODE_ENV, vercel: env.VERCEL_ENV, secret: env.TURNSTILE_SECRET_KEY };
+  const real = globalThis.fetch;
+  let calls = 0;
+  // What Cloudflare answers for a test secret: success, a dummy hostname, no form name.
+  globalThis.fetch = (async () => {
+    calls++;
+    return new Response(JSON.stringify({ success: true, hostname: "example.com" }));
+  }) as typeof fetch;
+  const incidents = async () => Number((await q.get<{ n: number }>("SELECT COUNT(*) AS n FROM incidents WHERE message LIKE 'Bot check misconfigured%'"))!.n);
+  try {
+    for (const secret of ["1x0000000000000000000000000000000AA", "2x0000000000000000000000000000000AA", "3x0000000000000000000000000000000AA"]) {
+      env.TURNSTILE_SECRET_KEY = secret;
+      // Local, test and preview deployments keep using them (the e2e suite does).
+      env.NODE_ENV = "production";
+      env.VERCEL_ENV = "preview";
+      assert.equal(turnstileAnswerOk({ success: true, hostname: "example.com" }, "auth"), true, "preview accepts test keys");
+      assert.equal(await passedTurnstile("tok", "1.1.1.1", "auth"), true, "preview passes with a test key");
+      env.NODE_ENV = "test";
+      env.VERCEL_ENV = "production";
+      assert.equal(await passedTurnstile("tok", "1.1.1.1", "auth"), true, "not a production build: still fine");
+      // The real production deployment: a misconfiguration, recorded, and no token passes because of it.
+      env.NODE_ENV = "production";
+      env.VERCEL_ENV = "production";
+      const before = await incidents();
+      calls = 0;
+      assert.equal(turnstileAnswerOk({ success: true, hostname: "example.com" }, "auth"), false, `${secret.slice(0, 2)} answer not trusted on production`);
+      assert.equal(await passedTurnstile("tok", "1.1.1.1", "auth"), false, `${secret.slice(0, 2)} refused on production`);
+      assert.equal(calls, 0, "Cloudflare isn't asked with a test secret on production");
+      assert.equal(await incidents(), before + 1, "recorded as a misconfiguration");
+    }
+  } finally {
+    globalThis.fetch = real;
+    env.NODE_ENV = was.node;
+    env.VERCEL_ENV = was.vercel;
+    env.TURNSTILE_SECRET_KEY = was.secret;
+  }
+});

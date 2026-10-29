@@ -47,6 +47,9 @@ test("a new sender signs up", async ({ page }) => {
 });
 
 test("the sender sends a WAV to the receiver's link", async ({ page }) => {
+  // The first upload compiles the whole send path on a cold dev build, and other sessions' runs can load the machine:
+  // it timed out twice on 29 Oct at the 90 s default, so this test gets three times that.
+  test.slow();
   await logIn(page, "sender@floortest.test", "floortest-demo");
   await page.goto("/dashboard/send?to=maxwell");
   await page.getByLabel("Choose WAV or MP3 files").setInputFiles(wavFile());
@@ -61,7 +64,7 @@ test("the sender sends a WAV to the receiver's link", async ({ page }) => {
   await page.getByRole("group", { name: /^Made with AI/ }).getByText("No", { exact: true }).click();
   await page.getByRole("button", { name: /^Send to / }).click();
   // Generous: on a cold dev build the first upload compiles the whole send path.
-  await expect(page.getByText(/We sent a receipt to/)).toBeVisible({ timeout: 80_000 });
+  await expect(page.getByText(/We sent a receipt to/)).toBeVisible({ timeout: 180_000 });
   await expect(page.getByRole("heading", { name: /^Sent \(\d+\)$/ })).toBeVisible();
 });
 

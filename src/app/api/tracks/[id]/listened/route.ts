@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { currentSessionHash, currentUser } from "@/lib/auth";
+import { currentDeskForChange, currentSessionHash } from "@/lib/auth";
 import { audit, trackLabel } from "@/lib/audit";
 import { recordListen } from "@/lib/review";
 import { ownedTrack } from "@/lib/desk";
@@ -13,7 +13,8 @@ export const runtime = "nodejs";
  * trusted. Each request re-checks the sign-in and the person's place on the desk, so leaving the team ends the listen.
  */
 export async function POST(req: Request, ctx: RouteContext<"/api/tracks/[id]/listened">) {
-  const user = await currentUser();
+  const user = await currentDeskForChange();
+  if (user instanceof Response) return user;
   const session = await currentSessionHash();
   if (!user || !session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const t = await ownedTrack(user, Number((await ctx.params).id));

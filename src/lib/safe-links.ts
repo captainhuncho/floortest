@@ -35,7 +35,8 @@ export function localPath(raw: string): string | null {
   const base = "https://floortest.invalid";
   try {
     const u = new URL(text, base);
-    return u.origin === base ? text : null;
+    // "/..//evil.com" and "/%2e%2e//evil.com" resolve to the path "//evil.com": refused too.
+    return u.origin === base && !u.pathname.startsWith("//") ? text : null;
   } catch {
     return null;
   }

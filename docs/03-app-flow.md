@@ -12,6 +12,7 @@ Nothing about FloorTest is public before launch (legal pages too); the gate show
 invite stops opening it once its email has an account (owner, 29 Oct); team invites open it the same way via /join.
 The invite's pass lasts one day (signing up or in gives the usual 30), and only codes made since 29 Oct (FLOOR- plus 10
 characters) open it: an older invite still signs up with the password, or Ops resends it, which swaps in a new code.
+On /signup a wrong invite code counts: 5 an hour per email, 20 an hour per connection, then "Too many tries".
 ```
 
 ## Receiver: sign-up
@@ -30,6 +31,7 @@ A new desk has no collection (owner, 15 Oct), and its link is open anyway: track
 ```
 /login ─┬─ email + password ──► (two-factor on?) /login/verify (code, recovery code, or "Use a passkey instead") ──► Floor
         │     after 3 wrong tries (15 min, per account or connection): Cloudflare human check appears and is required
+        │     20 wrong from one connection, or 10 for one email from one connection (15 min) ──► "Too many attempts"
         ├─ Sign in with a passkey ──► the device asks for face, fingerprint or PIN ──► Floor (no code step: the passkey is both)
         ├─ Email me a sign-in code ──► /login/code ──► /login/code/enter ──► Floor
         ├─ Forgot your password? ──► /forgot ──► "If that address has an account…" ──► email ──► /reset/<token> ──► Floor
@@ -39,7 +41,11 @@ A new desk has no collection (owner, 15 Oct), and its link is open anyway: track
               ├─ unconfirmed account / different Google account / not Gmail-Workspace ──► /login?google=<reason>
               └─ no account ──► /signup/google
 A collection shared with your account (/c/a.<n>) remembers itself and is where sign-in lands.
-Passkeys: Settings → Security → Add a passkey ──► password (+ two-step code if on) ──► the browser saves it ──► email "A passkey was added". Remove… ──► Remove ──► email. Website only; hidden in the apps.
+Passkeys: Settings → Security → Add a passkey ──► password (+ two-step code if on) ──► the browser saves it ──► email "A passkey was added". Remove… ──► "First, confirm it's you" (password + two-step code if on) ──► Remove ──► email. Website only; hidden in the apps.
+Settings → Security, "confirm it's you" form (opens under the button; Cancel closes it; a wrong password or code shows there):
+   Remove a passkey · Sign out other devices (also ends ops sessions) · turn Sign-in alerts off ──► password (+ two-step code if on) ──► done
+   Turning alerts on needs nothing. Turning two-step on, adding a passkey or changing the email waits for a confirmed email.
+The ticket between the password (or email code, reset link, Google) and /login/verify is one-time and lasts 5 minutes; after it, sign in again.
 ```
 
 ## Receiver: daily loop
@@ -138,6 +144,8 @@ Invitee ─► /join/<invite> ─┬─ signed in with that email ─► Join �
                            ├─ signed out ─► Log in (comes back) / Create your login, with a password or Google (no invite code: the invite is remembered for an hour in `ft_team_invite`, and Google sign-up also finds a live invite sent to that Google-confirmed email, whichever button they started from) ─► joined
                            └─ other email ─► "sent to …, log in with that email"
 Desk bar ─► Switch desk ─► your own desk | each team (role shown)
+Lost the team desk (removed, seat paused, teams off, account suspended) ─► pages show your own desk
+   a change made from the old desk ─► refused ─► your own Floor with "You don't have access to that team's desk any more, so nothing was changed" (?desk=ended)
 Member reply ─► approval off ─► sent │ approval on ─► held ─► approver / owner / admin: edit ─► Approve and send | Don't send
 Member Keep / Not for me on an owner's or admin's call ─► refused (desk refreshes); owner/admin can change anyone's
 Owner-only or admin-only page as a member ─► Settings → Team (?denied)

@@ -5,7 +5,7 @@
  * No server imports: the browser uses it too.
  */
 const TOKEN_PATH =
-  /\/(receipt|reset|verify-email|confirm-email|c|join|sent|unsubscribe|newsletter\/confirm|newsletter\/unsubscribe|api\/c|api\/stems|api\/unsubscribe|api\/offline\/file|api\/pulse\/receipt|api\/track-art)\/(?!\[token\])[^/?#\s"')]+/g;
+  /\/(receipt|reset|verify-email|confirm-email|c|join|sent\/reopen|sent|unsubscribe|newsletter\/confirm|newsletter\/unsubscribe|api\/c|api\/stems|api\/unsubscribe|api\/offline\/file|api\/pulse\/receipt|api\/track-art)\/(?!\[token\])[^/?#\s"')]+/g;
 const SIGNED_QUERY = /\?[^#\s"')]*X-Amz-[^#\s"')]*/gi;
 
 export function redactUrl(s: string): string;

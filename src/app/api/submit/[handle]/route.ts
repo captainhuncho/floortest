@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { currentUser } from "@/lib/auth";
+import { currentDeskForChange } from "@/lib/auth";
 import { IntakeError, startUpload } from "@/lib/intake";
 import { userByHandle } from "@/lib/desk";
 import { readSubmission } from "@/lib/submission";
@@ -25,7 +25,8 @@ export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]
     return bad("Could not read the submission.");
   }
   // Sending from a FloorTest account: name and email come from the account, not the form.
-  const account = body.asAccount ? await currentUser() : null;
+  const account = body.asAccount ? await currentDeskForChange() : null;
+  if (account instanceof Response) return account;
   if (body.asAccount && !account) return bad("Sign in again to send from your account.", 401);
   // On a team desk, sending as the account is for its owner and admins.
   if (account && account.role === "member") return bad(`Only the owner or an A&R / Admin can send music as ${account.name}. Switch to your own desk to send as yourself.`, 403);

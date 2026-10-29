@@ -9,6 +9,20 @@ export const safeNext = (next: string) => /^\/c\/a\.\d{1,12}$/.test(next) || /^\
 
 /**
  * A path on this site to go back to (the coming-soon gate). Browsers read `\` as `/` and drop tabs and newlines, so
- * `/\evil.com` would become `//evil.com`, another site: anything with those is refused, as is a second leading slash.
+ * `/\evil.com` would become `//evil.com`, another site: anything with those is refused, as is a second leading slash
+ * or one that dot segments would make.
  */
-export const localPath = (next: string) => (/^\/(?![/\\])[^\\\x00-\x1f]*$/.test(next) && !next.startsWith("/coming-soon") ? next : "/");
+export const localPath = (next: string) =>
+  /^\/(?![/\\])[^\\\x00-\x1f]*$/.test(next) && !next.startsWith("/coming-soon") && !collapsesToHost(next) ? next : "/";
+
+/**
+ * True when dot segments ("/..//evil.com", "/%2e%2e//evil.com") resolve to a path starting "//". Harmless as a Location
+ * path on this origin, but refused anyway so nothing downstream can mistake it for another host.
+ */
+function collapsesToHost(path: string) {
+  try {
+    return new URL(path, "https://floortest.invalid").pathname.startsWith("//");
+  } catch {
+    return true;
+  }
+}

@@ -55,11 +55,18 @@ export async function cleanupRecords(t = now(), until = Date.now() + PURGE_BUDGE
   await q.run("DELETE FROM passkey_challenges WHERE expires_at < ?", t);
   await q.run("DELETE FROM app_refresh_spent WHERE expires_at < ?", t);
   await q.run("DELETE FROM two_step_tickets WHERE expires_at < ?", t);
+  await q.run("DELETE FROM sender_links WHERE expires_at < ?", t);
   await q.run("DELETE FROM handle_history WHERE expires_at < ?", t);
   await q.run("DELETE FROM released_handles WHERE expires_at < ?", t);
   await q.run("DELETE FROM tap_timings WHERE created_at < ?", t - 30 * DAY);
-  // "Email me when it reopens": a sent request has done its job; one nobody answered in a year is stale.
-  await q.run("DELETE FROM reopen_alerts WHERE (sent_at IS NOT NULL AND sent_at < ?) OR created_at < ?", t - 30 * DAY, t - 365 * DAY);
+  // "Email me when it reopens": a sent request has done its job; one nobody answered in a year is stale; one whose
+  // confirmation link expired unopened was never wanted.
+  await q.run(
+    "DELETE FROM reopen_alerts WHERE (sent_at IS NOT NULL AND sent_at < ?) OR created_at < ? OR (confirmed_at IS NULL AND confirm_expires_at < ?)",
+    t - 30 * DAY,
+    t - 365 * DAY,
+    t,
+  );
   await q.run("DELETE FROM job_runs WHERE started_at < ?", t - 90 * DAY);
   await q.run("DELETE FROM feature_use WHERE day < ?", new Date(t - 400 * DAY).toISOString().slice(0, 10));
   const removed = {

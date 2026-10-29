@@ -1,4 +1,4 @@
-; Vercel → Firewall → Traffic for 403s from the rate rules# FloorTest operations
+# FloorTest operations
 
 How the backend works, how to run it, and what to do when something goes wrong. Keep this current when you change any of it.
 
@@ -22,7 +22,7 @@ Production and Preview have separate values. Never paste values into chats or ti
 | Variable | Purpose |
 |---|---|
 | `DATABASE_URL` | Postgres connection (use the pooled string) |
-| `APP_SECRET` | Signs upload links, unsubscribe links and admin "view as". Production refuses to run without it |
+| `APP_SECRET` | Signs upload links, unsubscribe links, offline links, the app's access tokens and admin "view as"; seals two-step secrets and queued emails; keys recovery codes, passkey user handles and the Security page's device ids. Production refuses to run without it |
 | `APP_URL` | `https://floortest.app` |
 | `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `STORAGE_DRIVER=s3` | R2 storage |
 | `RESEND_API_KEY`, `MAIL_FROM`, `MAIL_REPLY_TO`, `SUPPORT_EMAIL` | Email |
@@ -31,7 +31,7 @@ Production and Preview have separate values. Never paste values into chats or ti
 | `BETA_INVITE_CODES` | Extra shared invite codes (sign-up itself is a switch, below) |
 | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Bot check (on/off is a switch, below) |
 | `STAGING_EMAIL_TO` (previews only) | On staging, every email goes to this address instead of the real person. Unset means nothing is sent |
-| `BACKUP_KEY` (required) | Encrypts nightly backups. **Keep a copy outside Vercel and the bucket:** without it, backups can't be read |
+| `BACKUP_KEY` (required) | Encrypts nightly backups. **Keep a copy outside Vercel and the bucket:** without it, backups can't be read. Make it with `openssl rand -hex 32`, never a passphrase: it's used through one SHA-256 with no stretching (`src/lib/backup-crypto.ts`) |
 | `SCAN_URL`, `SCAN_SECRET` | The virus scanner (`scanner/`, our own ClamAV on Cloudflare Containers; Fly.io is only a written-down fallback). Set `SCAN_SECRET` before `SCAN_URL`, and redeploy once both are in. Set = every track and stem upload is checked before it exists; fails closed if the scanner can't be reached. Unset = off |
 | `BACKUP_BUCKET`, `BACKUP_ACCESS_KEY_ID`, `BACKUP_SECRET_ACCESS_KEY` | The recovery copy ("vault"): a second private R2 bucket on the same account. The key needs write on that bucket and read on `S3_BUCKET`. Unset = off |
 | `ALERT_WEBHOOK_URL` (optional) | A Discord or Slack incoming-webhook URL. Urgent alerts go there as well as email, so you still hear about it if email itself is down |
@@ -76,9 +76,29 @@ Normal page visits also run light cleanup (sessions, rate limits, abandoned uplo
 - **Kept** 14 days. Every backup is listed in `app_state.backup_keys`, so older ones are always deleted, even after missed nights.
 - **Status:** Admin → Overview shows the last backup. It becomes a red to-do if none ran in 2 days.
 - **Restore drill** (run after schema changes and monthly; with the vault on, use a backup from the vault bucket and spot-check that a few audio files are in it too): download a backup from R2, then run `BACKUP_KEY=… npx tsx scripts/restore-drill.ts path/to/db-….json.gz.enc` (use the same key as the server). It rebuilds a throwaway database and checks every table's row count. It never touches production. Last drill: 29 Oct 2026, nightly vault backup `db-2026-10-29T0330`, 49 of 49 tables clean, 551 rows ([evidence](evidence/2026-10-29-restore-drill.md)); next due by 28 Nov.
-- **A real restore:** restore into a *new* Neon database (or branch) first, check it, then point `DATABASE_URL` at it and redeploy. Never overwrite production in place.
+- **A real restore:** restore into a *new* Neon database (or branch) first, check it, then point `DATABASE_URL` at it and redeploy. Never overwrite production in place. A restore takes the database back to the backup's moment (call it T), so deletions and sign-outs made after T come undone. Follow the steps below.
 - **Recovery copy (the vault, `src/lib/vault.ts`):** with `BACKUP_*` set, backups are written to the vault bucket (listed in `app_state.vault_backup_keys`, kept 14 days; older ones in the main bucket age out there), and every night after the backup each stored file not yet copied (audio, stems, artwork, covers, site images) is copied into it server-side, checked for size and recorded in `vault_copies`. A file deleted from storage is deleted from the vault too, through the deletion queue. Status: Admin → Storage & costs → Recovery copy. A restore from the vault: copy the files back with `scripts/copy-bucket.ts` (vault → main). The vault's `backups/` prefix carries an R2 bucket lock (`backups-14-days`, set 13 Oct): a backup can't be deleted or overwritten for 14 days by any key, so a leaked vault key can't wipe recent backups; the nightly age-out deletes only older ones. One effect: a second backup written in the same minute as another (same key) is refused, so wait a minute before pressing Back up now again.
 - **Point-in-time recovery:** the free plan keeps a short restore window; Neon Launch (owner, before public launch) raises it to 7 days. To rewind: Neon → Branches → Restore → the production branch at the moment before the damage; check the new branch (row counts, a few tracks), then set `DATABASE_URL` in Vercel to it and redeploy. Production is never restored in place. Files are separate: the vault holds their copies.
+
+### Production restore, step by step
+
+From the restore and deletion code (`src/lib/backup.ts`, `src/lib/privacy.ts`, `src/lib/deletion-core.ts`, `src/lib/mail.ts`). T is the moment of the backup or the point-in-time branch.
+
+1. **Pause uploads:** Admin → Feature switches → pause all uploads (`uploads_paused`). The switch is restored to its state at T, so set it again on the new database before going live.
+2. **Write down what happened after T**, from the current production database if it can still be read:
+   - accounts deleted since T: `released_handles` rows with `released_at` after T (every deleted account's link names go there; `purgeAccount`);
+   - privacy erasures since T: Admin log lines "deleted account (privacy request)", "erased sender (privacy request)" and "deleted invite". The log shortens the email, so take the full address from the request itself;
+   - files still waiting to be deleted: every `storage_deletions` row (`file_key`, `reason`).
+3. **Load the copy into a new database.** A Neon point-in-time branch needs nothing more. From a nightly backup file: **Gap**, no script loads a backup into real Postgres; `scripts/restore-drill.ts` loads only into an in-memory database. Its steps are the model (run the migrations, `SET session_replication_role = replica`, insert every table, set it back), plus resetting each id sequence as `scripts/copy-to-neon.ts` does. Write and test that script before it's needed.
+4. **End every sign-in on the new database.** A backup file holds no sign-in tables (`SKIP` in `src/lib/backup.ts`). A point-in-time branch does, including sessions that were ended after T, so empty them: `sessions`, `admin_sessions`, `link_sessions`, `view_tickets`, `password_resets`, `login_codes`, `sender_codes`, `link_codes`, `passkey_challenges`, `app_refresh_spent`, `two_step_tickets`. Everyone signs in again, the phone app included.
+5. **Reapply the deletions from step 2** on the new database: delete each account again from Ops (super admin; `adminDeleteAccount` runs `purgeAccount`, which queues its files and reserves its link names), erase each sender again, delete each invite again, and put the waiting file keys back: `INSERT INTO storage_deletions (file_key, reason, created_at) VALUES (…) ON CONFLICT (file_key) DO NOTHING`. The nightly purge deletes them.
+6. **Check the email queue before the mail job runs.** Rows queued at T come back `queued` with their sealed payload, and `/api/cron/mail` sends any `queued` row that is due. One already sent after T may go again (Resend's idempotency key doesn't last that long; not checked in code). Look at `SELECT id, subject, created_at FROM outbox WHERE status IN ('queued', 'sending')` and decide for each.
+7. **Switch over:** set `DATABASE_URL` in Vercel to the new database and redeploy (migrations run in `vercel-build`). Check `/api/health` with the cron secret.
+8. **After going live:**
+   - Tracks a receiver deleted after T are back with no file (the vault copy went through the same queue). The nightly fingerprint check holds each missing file back and raises an urgent incident; delete those tracks again. Retention deletes old ones by itself. Copy files back from the vault (`scripts/copy-bucket.ts`) only for files that are still there.
+   - Password, email, two-step and passkey changes made after T are undone. The code can't redo them: tell the people concerned (the old database's `account_log` lists what changed).
+   - Backups written after T aren't in the restored `app_state` lists (`backup_keys`, `vault_backup_keys`), so the nightly age-out won't delete them. Delete them by hand once their 14-day bucket lock ends.
+   - Turn uploads back on.
 
 ## Deleting things (privacy, retention, admin)
 
@@ -112,6 +132,8 @@ So a storage outage can delay a deletion but can never lose track of a file. Wit
 
 - **Admin:** listed email, confirmed email and two-factor are all required, and every admin action is logged (**Admin → Admin log**). Two-factor resets need the user's handle typed in, plus a note on how you confirmed it's them.
 - **Abuse:** rate limits per connection and per email address on uploads, logins, contact and waitlist; Turnstile on public forms; IP addresses are kept at most 48 hours. Above the app, the Vercel Firewall (Pro) denies an address with 403 for the rest of the minute after 300 requests to `/api/*` or 60 to the sign-in pages in a minute (rules "API ceiling" and "Sign-in pages", Vercel → floortest → Firewall; hits show under Firewall → Traffic).
+- **Signs in the account log (29 Oct):** `app_token_reused` means an app refresh token that had already been swapped came back, so it was copied; every app session of that sign-in has ended. Suggest the person changes their password. A wrong-password stop is per connection (20) and per email on one connection (10), so a stranger's tries don't lock the owner out; they see the human check instead.
+- **Previews (owner checks, audit H39, H42, H57):** every deploy, previews included, runs the migrations, preview uploads aren't virus-scanned, and on previews ops lives on the preview host. All three are safe only while Preview has its own `DATABASE_URL` and `S3_*` and previews require Vercel sign-in. Check both in Vercel after any settings change.
 - **Blocking abusers:** per receiver, by the receiver; platform-wide by email address or domain in **Admin → Sender blocks**.
 - **Uploads:** checked by file content (RIFF/MPEG structure, no trailing payloads), not by name. Every track and stem is then scanned by our own ClamAV service (`scanner/`, `src/lib/scan.ts`; live since 14 Oct): a flagged file is refused and discarded; the scanner sleeps after 10 idle minutes (owner, 26 Oct). An upload finished while it's awake is scanned there and then (up to 45 s). One finished while it sleeps, or can't be reached, is **held** (hold and scan, branch `hold-and-scan`): stored, sealed, not on the desk, and the sender is told it's received and being checked. Every 10 minutes `/api/cron/scan-held` wakes the scanner once for all held uploads and finishes them: clean ones arrive and the sender gets the usual "Delivered" email; flagged or refused ones are deleted and the sender is emailed; any still held after 24 hours are deleted and the sender is told to send again. Stem uploads from a receipt are held the same way: the sender sees "Received, checking for viruses", and the batch attaches the stem (the receiver gets the usual "Stems are arriving" email) or emails the sender if it's refused. Preview uploads aren't scanned. **When a file is deleted (28 Oct, Batch A):** only when the upload is refused (wrong size, not audio, flagged, desk full or closed) or held past 24 hours. Any other failure while a track or stem is saved (a dropped database connection, a storage timeout) keeps the file and lets go of the claim, so the sender's retry or the next batch finishes it. An upload always points at a file that exists: it's moved to its sealed copy before the original is deleted. Each scan-held run plans for 260 s of its 300 s limit and starts no file with under 60 s left; the rest wait for the next run. A held upload that vanished without making a track is never counted as delivered: an `upload_failed` incident is raised and the sender is told to send again.
 - **Held uploads:** `checks.held` in the detailed `/api/health` is how many are waiting; over an hour old is reported as a problem (503). Admin → Jobs shows "Held uploads virus check" runs that did something (empty runs only update its last-run time). To run it by hand: `curl -H "Authorization: Bearer $CRON_SECRET" https://floortest.app/api/cron/scan-held`. Waiting uploads show in the `uploads` table with `held_at` set; `held_tries` counts batches that found the scanner down.
@@ -133,7 +155,7 @@ So a storage outage can delay a deletion but can never lose track of a file. Wit
 
 ## Rotating secrets
 
-- **`APP_SECRET`:** breaks every unsubscribe link already sent, any upload in progress, and admin "view as" sessions. Do it deliberately, then redeploy. Use a fresh random value of 32+ characters. Keep Production and Preview different.
+- **`APP_SECRET`:** breaks every unsubscribe link already sent, any upload in progress, offline links, app access tokens (the app refreshes), queued emails (closed as `failed (unreadable)`) and admin "view as" sessions. It also seals every two-step secret and keys the recovery codes stored since 29 Oct, and nothing reads the old value: after a rotation, everyone with two-step on needs it reset by ops and set up again. (Passkey user handles are keyed with it too, but only when a passkey is added.) Do it only for a real leak, then redeploy. Use a fresh random value of 32+ characters. Keep Production and Preview different.
 - **R2, Resend, Turnstile and database keys:** create the new key, update Vercel, redeploy, check health, then revoke the old key.
 - **`CRON_SECRET`:** update it in Vercel and redeploy; Vercel's scheduler picks it up.
 

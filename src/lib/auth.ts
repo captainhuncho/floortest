@@ -1,6 +1,6 @@
 import { after } from "next/server";
 import { atLeast, type TeamRole } from "./account-members";
-import { resolveDesk } from "./team-desk";
+import { refuseStaleChange, resolveDesk } from "./team-desk";
 import "server-only";
 import crypto from "node:crypto";
 import { cookies, headers } from "next/headers";
@@ -204,6 +204,19 @@ export async function requireUser(): Promise<User> {
     redirect("/dashboard/floor?desk=ended");
   }
   return d.user;
+}
+
+/**
+ * The desk for an API route that changes something (POST, PUT, PATCH, DELETE): currentUser, except that a change from a
+ * team desk the person lost is refused with a 409 JSON error (refuseStaleChange) and the desk cookie is cleared, so it
+ * never lands on their own desk instead. Null when signed out. scripts/check-desk-roles.ts makes change handlers use it.
+ */
+export async function currentDeskForChange(): Promise<User | null | Response> {
+  const d = await currentDesk();
+  if (!d) return null;
+  const desk = refuseStaleChange(d);
+  if (desk instanceof Response) (await cookies()).delete(DESK_COOKIE);
+  return desk;
 }
 
 /** Reset links and password changes live in password-reset.ts (testable without a request); re-exported here. */

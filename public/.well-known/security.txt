@@ -1,4 +1,4 @@
-Contact: mailto:info@imullar.com
+Contact: mailto:security@floortest.app
 Expires: 2027-10-01T00:00:00.000Z
 Policy: https://floortest.app/security
 Preferred-Languages: en

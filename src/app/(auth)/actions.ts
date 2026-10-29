@@ -121,6 +121,7 @@ async function createAccount(form: FormData, a: NewAccount, opts: { googleEmail?
         userId: owner.id,
         audience: "receiver",
         to: a.email,
+        reserved: true,
         subject: "Someone tried to sign up with your email",
         body: `Hi ${owner.name.split(/\s+/)[0]},\n\nSomeone just tried to create a FloorTest account with this email address. You already have one, so nothing was created.\n\nIf it was you, log in here: ${APP_URL}/login (forgot your password? ${APP_URL}/forgot)\n\nIf it wasn't you, you don't need to do anything.\n\n— FloorTest`,
       });
@@ -277,6 +278,7 @@ export async function requestPasswordReset(_: FormState, form: FormData): Promis
   if (user && (await accountEmailAllowed())) {
     const token = await createPasswordReset(user.id);
     await sendMail({
+      reserved: true,
       userId: user.id,
       audience: "receiver",
       to: email,
@@ -329,6 +331,7 @@ export async function requestLoginCode(_: FormState, form: FormData): Promise<Fo
       now(),
     );
     await sendMail({
+      reserved: true,
       userId: user.id,
       audience: "receiver",
       to: email,
@@ -380,6 +383,7 @@ export async function verifyLoginCode(_: FormState, form: FormData): Promise<For
     const u = await q.get<{ email: string; name: string }>("SELECT email, name FROM users WHERE id = ?", user.id);
     if (u)
       await sendMail({
+        reserved: true,
         userId: user.id,
         audience: "receiver",
         to: u.email,

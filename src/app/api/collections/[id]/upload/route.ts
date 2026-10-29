@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { currentUser } from "@/lib/auth";
+import { currentDeskForChange } from "@/lib/auth";
 import { IntakeError, startOwnerUpload } from "@/lib/intake";
 
 export const runtime = "nodejs";
@@ -12,7 +12,8 @@ const bad = (error: string, status = 400) => NextResponse.json({ error }, { stat
  * everyone else sends through the owner's link.
  */
 export async function POST(req: Request, ctx: RouteContext<"/api/collections/[id]/upload">) {
-  const u = await currentUser();
+  const u = await currentDeskForChange();
+  if (u instanceof Response) return u;
   if (!u) return bad("Sign in again.", 401);
   // On a team desk, adding tracks is for the owner and admins; members review.
   if (u.role === "member") return bad("Only the owner or an A&R / Admin can add tracks here.", 403);

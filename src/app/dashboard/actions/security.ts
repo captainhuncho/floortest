@@ -41,6 +41,7 @@ export async function changePassword(_: SettingsState, form: FormData): Promise<
     userId: u.id,
     audience: "receiver",
     to: u.email,
+    reserved: true,
     subject: "Your FloorTest password was changed",
     body: `Hi ${u.name.split(/\s+/)[0]},\n\nYour FloorTest password was just changed and every other device was signed out.\n\nIf this wasn't you, reset your password now from the log-in page and contact us.\n\n— FloorTest`,
   });
@@ -80,15 +81,16 @@ export async function confirmTwoFactor(code: string, password: string): Promise<
   const u = await requireRole("owner");
   const denied = await stepUp(u.id, String(password || ""), "");
   if (denied) return { error: denied };
-  const on = await turnOnTwoFactor(u.id, code);
+  // Other browsers, the app and the ops area are signed out, and unused reset links stop working.
+  const on = await turnOnTwoFactor(u.id, code, { keep: await currentSessionHash() });
   if ("error" in on) return on;
   const { codes } = on;
-  await q.run("DELETE FROM sessions WHERE user_id = ? AND token_hash <> ?", u.id, (await currentSessionHash()) ?? "");
   await audit(u.id, "two_factor_on");
   await sendMail({
     userId: u.id,
     audience: "receiver",
     to: u.email,
+    reserved: true,
     subject: "Two-factor sign-in was turned on",
     body: `Hi ${u.name.split(/\s+/)[0]},\n\nTwo-factor sign-in was just turned on for your FloorTest account, and every other device was signed out.\n\nIf this wasn't you, contact us straight away: ${APP_URL}/contact\n\n— FloorTest`,
   });
@@ -111,6 +113,7 @@ export async function disableTwoFactor(_: SettingsState, form: FormData): Promis
     userId: u.id,
     audience: "receiver",
     to: u.email,
+    reserved: true,
     subject: "Two-factor sign-in was turned off",
     body: `Hi ${u.name.split(/\s+/)[0]},\n\nTwo-factor sign-in was just turned off for your FloorTest account.\n\nIf this wasn't you, reset your password now and turn it back on in Settings.\n\n— FloorTest`,
   });
