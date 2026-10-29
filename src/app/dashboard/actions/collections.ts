@@ -2,7 +2,7 @@
 
 /** Collections: create, choose which one receives, edit and delete. */
 import { redirect } from "next/navigation";
-import { canAddCollection, canCapCallouts } from "@/lib/desk";
+import { canAddCollection, canCapCallouts, routeToCollection } from "@/lib/desk";
 import { revalidatePath } from "next/cache";
 import { requireUser, requireRole } from "@/lib/auth";
 import { now, q } from "@/lib/db";
@@ -22,9 +22,11 @@ export async function createCollection(form: FormData) {
   if (!(await canAddCollection(u.id))) return;
   const c = await q.get<{ id: number }>("INSERT INTO collections (user_id, name, created_at) VALUES (?,?,?) RETURNING id", u.id, name, now());
   await audit(u.id, "collection_created", name);
-  if (form.get("activate")) {
-    await q.run("UPDATE users SET active_collection_id = ? WHERE id = ?", c!.id, u.id);
+  // "Make this the receiving one" is routing, an owner or admin power: for a member it's ignored and the collection is just added.
+  if (form.get("activate") && (await routeToCollection(u, c!.id))) {
     await audit(u.id, "collection_activated", name);
+    await sendReopenAlerts(u.id, { inRequest: true });
+    revalidatePath(`/${u.handle}`);
   }
   done();
 }
@@ -33,7 +35,7 @@ export async function setActiveCollection(id: number) {
   const u = await requireRole("admin");
   const c = await ownCollection(u.id, id);
   if (!c) return;
-  await q.run("UPDATE users SET active_collection_id = ? WHERE id = ?", id, u.id);
+  if (!(await routeToCollection(u, id))) return;
   await audit(u.id, "collection_activated", c.name);
   await sendReopenAlerts(u.id, { inRequest: true });
   done();

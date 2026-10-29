@@ -6,6 +6,7 @@ import { asPerson, now, q, USER_COLUMNS, type Collection, type Queryable, type S
 import { APP_URL, sendMail } from "./mail";
 import { planLimit } from "./plan-store";
 import { switchOn } from "./switches";
+import { atLeast } from "./account-members";
 import { cache } from "react";
 
 export async function activeCount(userId: number, db: Queryable = q) {
@@ -100,6 +101,19 @@ export async function canAddCollection(deskId: number, db: Queryable = q) {
   if (await switchOn("more_collections", deskId)) return true;
   const n = await db.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM collections WHERE user_id = ?", deskId);
   return Number(n?.n ?? 0) < BETA_COLLECTIONS;
+}
+
+/**
+ * Point the link at one of this desk's collections. Routing is an owner or admin power, so a member's call changes
+ * nothing (actions can be called without the button). True when it changed; the caller logs it and sends reopen alerts.
+ */
+export async function routeToCollection(desk: Pick<User, "id" | "role">, collectionId: number) {
+  if (!atLeast(desk.role, "admin") || !Number.isSafeInteger(collectionId)) return false;
+  const r = await q.run(
+    "UPDATE users SET active_collection_id = ? WHERE id = ? AND EXISTS (SELECT 1 FROM collections WHERE id = ? AND user_id = ?)",
+    collectionId, desk.id, collectionId, desk.id,
+  );
+  return r.changes > 0;
 }
 
 /** "Pause my link": the receiver is away. Ends on its own at pause_until, if one was set. */
