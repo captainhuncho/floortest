@@ -19,7 +19,7 @@ export function BetaTag({ small = false }: { small?: boolean }) {
 
 /**
  * The FloorTest crest and name, with the Beta tag while FloorTest is in beta. `ops` swaps in the brushed-silver crest used
- * only on the admin side (no tag there); `small` is the quiet sign-off at the foot of pages that lead with someone else's
+ * only on the admin side (no tag there), same size and no effects (owner, 29 Oct: one look everywhere); `small` is the quiet sign-off at the foot of pages that lead with someone else's
  * name (the public send page, the sender's receipt).
  */
 export function Logo({ href = "/", className = "", ops = false, small = false }: { href?: string; className?: string; ops?: boolean; small?: boolean }) {
@@ -35,7 +35,7 @@ export function Logo({ href = "/", className = "", ops = false, small = false }:
   return (
     <Link href={href} className={`tap inline-flex items-center gap-2 text-lg font-bold tracking-tight ${className}`}>
       {/* eslint-disable-next-line @next/next/no-img-element -- the crest is an SVG; Next's image optimizer doesn't process SVGs */}
-      <img draggable={false} src={ops ? "/brand/crest-ops.svg" : "/brand/crest.svg"} alt="" aria-hidden className={ops ? "crest-ops size-10 shrink-0" : "size-7 shrink-0"} />
+      <img draggable={false} src={ops ? "/brand/crest-ops.svg" : "/brand/crest.svg"} alt="" aria-hidden className="size-7 shrink-0" />
       FloorTest
       {!ops && <BetaTag />}
     </Link>
