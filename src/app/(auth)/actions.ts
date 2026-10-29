@@ -60,6 +60,8 @@ async function afterPassword(userId: number, how: "password" | "reset" | "email 
 export type FormState = { error?: string; ok?: boolean; challenge?: boolean } | undefined;
 
 const HOUR = 3_600_000;
+const INVITE_TRIES_EMAIL = 5;
+const INVITE_TRIES_IP = 20;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Keeps "no such account" and "wrong password" equally slow, so timing doesn't reveal which emails exist.
 const DUMMY_HASH = hashPassword("timing-equaliser"); // a promise, made once; awaited where a missing account is checked
@@ -85,6 +87,11 @@ type NewAccount = { email: string; firstName: string; lastName: string; handle: 
 async function createAccount(form: FormData, a: NewAccount, opts: { googleEmail?: boolean } = {}): Promise<{ id: number } | { error: string }> {
   if (form.get("agree") !== "on") return { error: "Please confirm you're 18 or over and agree to the Terms to create an account." };
   const open = await switchOn("open_signup");
+  // The invite code is what proves the email while sign-up is closed, so wrong guesses are counted (per email and per
+  // connection) and stop well before a code could be found by trying.
+  const ip = await requestIp();
+  if (!open && ((await recentCount("invite_fail_email", a.email, HOUR)) >= INVITE_TRIES_EMAIL || (await recentCount("invite_fail_ip", ip, HOUR)) >= INVITE_TRIES_IP))
+    return { error: "Too many tries. Wait an hour, then use the sign-up link in your invite email." };
   // Closed: only a personal Ops invite to this exact email, with its emailed code, opens an account (src/lib/invites.ts).
   const invite = await resolveInvite(String(form.get("ref") || form.get("invite") || ""), a.email, open, { emailProven: opts.googleEmail });
   // The code only ever went to that inbox, so using it proves the email.
@@ -93,13 +100,17 @@ async function createAccount(form: FormData, a: NewAccount, opts: { googleEmail?
   // With Google the email is already proven, so a live invite sent to it counts even without the invite link here.
   const team = (await teamInviteFor(form, a.email)) ?? (opts.googleEmail ? await inviteForEmail(a.email) : undefined);
   if (team) a.verified = true;
-  if (!open && !invite.valid && !team) return { error: "FloorTest is invite-only during the beta. Use the sign-up link in your invite email, with the email it went to." };
+  if (!open && !invite.valid && !team) {
+    await record("invite_fail_email", a.email);
+    await record("invite_fail_ip", ip);
+    return { error: "FloorTest is invite-only during the beta. Use the sign-up link in your invite email, with the email it went to." };
+  }
   if (!a.firstName || !a.lastName || !a.email || !a.handle) return { error: "Fill in your first name, surname, username and email." };
   if (!EMAIL.test(a.email)) return { error: "Enter a valid email." };
   if (!/^[a-z0-9][a-z0-9-_]{1,29}$/.test(a.handle)) return { error: "Link names use 2–30 letters, numbers, - or _." };
   if (RESERVED_HANDLES.has(a.handle)) return { error: "That link name is reserved." };
   if (await isProtectedHandle(a.handle)) return { error: "That name is protected for a well-known artist. If it's you, contact us and we'll set it up." };
-  if (!(await allow("signup_ip", await requestIp(), 10, HOUR))) return { error: "Too many sign-ups from this connection. Try again later." };
+  if (!(await allow("signup_ip", ip, 10, HOUR))) return { error: "Too many sign-ups from this connection. Try again later." };
   // Never say whether an email has an account: the real owner gets a quiet heads-up instead (at most once a day).
   const owner = await q.get<{ id: number; name: string }>("SELECT id, name FROM users WHERE email = ?", a.email);
   if (owner) {
