@@ -23,6 +23,7 @@ export async function pinGoogle(userId: number, sub: string): Promise<boolean> {
       userId,
       audience: "receiver",
       to: u.email,
+      reserved: true,
       subject: "Google sign-in was added to your account",
       body: `Hi ${first(u.name)},\n\nYou can now sign in to FloorTest with your Google account (${u.email}).\n\nIf this wasn't you, remove it in Settings → Security, change your password, and turn on two-step sign-in.\n\n— FloorTest`,
     });
@@ -40,6 +41,7 @@ export async function unpinGoogle(userId: number) {
       userId,
       audience: "receiver",
       to: u.email,
+      reserved: true,
       subject: "Google sign-in was removed from your account",
       body: `Hi ${first(u.name)},\n\nGoogle sign-in was just removed from your FloorTest account. You can still sign in with your password or an email code.\n\nIf this wasn't you, change your password now.\n\n— FloorTest`,
     });

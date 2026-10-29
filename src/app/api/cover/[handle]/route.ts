@@ -1,5 +1,6 @@
 import { userByHandle } from "@/lib/desk";
 import { quarantined } from "@/lib/file-digests";
+import { hiddenBehindGate } from "@/lib/gate-hidden";
 import { storage } from "@/lib/storage";
 
 export const runtime = "nodejs";
@@ -10,8 +11,9 @@ const TYPES: Record<string, string> = { jpg: "image/jpeg", png: "image/png", web
  * Public: the cover on a receiver's link. The URL carries ?v=<key> and each upload gets a new key,
  * so responses can be cached hard.
  */
-export async function GET(_req: Request, ctx: RouteContext<"/api/cover/[handle]">) {
-  const u = await userByHandle((await ctx.params).handle);
+export async function GET(req: Request, ctx: RouteContext<"/api/cover/[handle]">) {
+  // Before launch, only visitors past the gate (or signed in) can tell which handles exist.
+  const u = (await hiddenBehindGate(req)) ? undefined : await userByHandle((await ctx.params).handle);
   // A cover that failed its fingerprint check is held back, like every other stored file.
   if (!u?.cover_key || (await quarantined(u.cover_key))) return new Response("Not found", { status: 404 });
   const store = await storage();

@@ -53,20 +53,13 @@ test("a sender asks to hear when it reopens", async ({ page }) => {
   await expect(page.getByText(/one email when Maxwell/)).toBeVisible();
 });
 
-test("resuming the link sends the one email", async ({ page }) => {
+test("resuming the link emails no one who hasn't confirmed", async ({ page }) => {
+  // The request only sent a confirmation link (H76): until it's opened, a typed address gets no reopen email, so the
+  // form can't be used to mail strangers. Confirmed requests get exactly one (tests/reopen-confirm.test.ts).
   await logIn(page);
   await page.goto("/dashboard/account");
   await page.getByRole("switch", { name: "Link open" }).click();
   await expect(page.getByText("Link open again")).toBeVisible();
   await page.goto("/dashboard/emails");
-  const row = page.locator("summary", { hasText: `to ${email}` });
-  await expect(row).toContainText("is taking music again");
-  // Reopening again later sends nothing more: the request was used up.
-  await page.goto("/dashboard/account");
-  await page.getByRole("switch", { name: "Link open" }).click();
-  await expect(page.getByText("Link paused")).toBeVisible();
-  await page.getByRole("switch", { name: "Link open" }).click();
-  await expect(page.getByText("Link open again")).toBeVisible();
-  await page.goto("/dashboard/emails");
-  await expect(page.locator("summary", { hasText: `to ${email}` })).toHaveCount(1);
+  await expect(page.locator("summary", { hasText: `to ${email}` })).toHaveCount(0);
 });

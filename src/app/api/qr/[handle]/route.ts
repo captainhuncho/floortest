@@ -2,6 +2,7 @@ import QRCode from "qrcode";
 import { userByHandle } from "@/lib/desk";
 import { APP_URL } from "@/lib/mail";
 import { allow, ipFrom } from "@/lib/ratelimit";
+import { hiddenBehindGate } from "@/lib/gate-hidden";
 
 export const runtime = "nodejs";
 
@@ -13,7 +14,8 @@ export const runtime = "nodejs";
 export async function GET(req: Request, ctx: RouteContext<"/api/qr/[handle]">) {
   // Public and cheap to ask for, but each PNG is rendered on request: a connection gets 30 a minute.
   if (!(await allow("qr", ipFrom(req.headers), 30, 60_000))) return new Response("Too many requests", { status: 429 });
-  const u = await userByHandle((await ctx.params).handle);
+  // Before launch, only visitors past the gate (or signed in) can tell which handles exist.
+  const u = (await hiddenBehindGate(req)) ? undefined : await userByHandle((await ctx.params).handle);
   if (!u) return new Response("Not found", { status: 404 });
   const url = new URL(req.url);
   const png = url.searchParams.get("format") === "png";

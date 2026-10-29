@@ -1,4 +1,5 @@
 import "server-only";
+import { createHmac, randomBytes } from "node:crypto";
 import { gzipSync } from "node:zlib";
 import { now, q } from "./db";
 import { backupSecret, sealBackup } from "./backup-crypto";
@@ -14,18 +15,32 @@ const DAY = 86_400_000;
  * addresses live only in rate_events and uploads, which are left out, so the 48-hour limit on them holds.
  */
 export const SKIP = new Set([
-  "sessions", "admin_sessions", "link_sessions", "view_tickets", "password_resets", "login_codes", "sender_codes", "link_codes", "passkey_challenges", "app_refresh_spent", "two_step_tickets",
+  "sessions", "admin_sessions", "link_sessions", "view_tickets", "password_resets", "login_codes", "sender_codes", "link_codes", "passkey_challenges", "app_refresh_spent", "two_step_tickets", "sender_links",
   "rate_events", "uploads", "schema_migrations", "tap_timings", "job_runs", "feature_use", "listens", "webhook_receipts",
 ]);
 /** One file per run (date and time), so a manual rerun never replaces the night's good backup. */
 const keyFor = (t: number) => `backups/db-${new Date(t).toISOString().slice(0, 16).replace(":", "")}.json.gz.enc`;
 /** Day-level prefix for the age cutoff: keys sort by date, so anything below this is older than the cutoff. */
 const dayKey = (t: number) => `backups/db-${new Date(t).toISOString().slice(0, 10)}`;
-/** Live tokens and email bodies (they hold sign-in and unsubscribe links) are blanked: not needed to restore. */
-const SCRUB: Record<string, Record<string, unknown>> = {
-  users: { pending_email_token: null, email_verify_token: null },
-  outbox: { body: "" },
-};
+/**
+ * Live tokens and email bodies (they hold sign-in and unsubscribe links) are blanked: not needed to restore. Invite
+ * codes (they open an account) and receipt tokens (tracks.token, they open a sender's receipt page) are replaced: an
+ * invite code by the same stand-in on invites.code and users.invite_code (a keyed hash with a fresh key per backup, so
+ * use counts survive a restore but the code can't be read back or guessed), a receipt token by a new random one (the
+ * column is required and unique). After a restore, old invite codes and receipt links stop working. Password hashes and
+ * encrypted two-factor secrets stay: people need them to sign in after a restore.
+ */
+type Row = Record<string, unknown>;
+function scrubbers(): Record<string, (r: Row) => Row> {
+  const key = randomBytes(32);
+  const hideCode = (code: unknown) => (typeof code === "string" && code ? `hidden-${createHmac("sha256", key).update(code).digest("hex").slice(0, 24)}` : code);
+  return {
+    users: (r) => ({ ...r, pending_email_token: null, email_verify_token: null, invite_code: hideCode(r.invite_code) }),
+    invites: (r) => ({ ...r, code: hideCode(r.code) }),
+    tracks: (r) => ({ ...r, token: `restored-${randomBytes(24).toString("hex")}` }),
+    outbox: (r) => ({ ...r, body: "" }),
+  };
+}
 
 /**
  * Nightly logical backup: every table as JSON, gzipped and encrypted, into the recovery bucket (the vault) when it's set
@@ -43,9 +58,10 @@ export async function runBackup(at = now()) {
       .map((r) => r.t)
       .filter((t) => !SKIP.has(t) && /^[a-z_]+$/.test(t));
     const data: Record<string, unknown[]> = {};
+    const scrub = scrubbers();
     for (const t of tables) {
-      const rows = await db.all<Record<string, unknown>>(`SELECT * FROM "${t}"`);
-      data[t] = SCRUB[t] ? rows.map((r) => ({ ...r, ...SCRUB[t] })) : rows;
+      const rows = await db.all<Row>(`SELECT * FROM "${t}"`);
+      data[t] = scrub[t] ? rows.map(scrub[t]) : rows;
     }
     return { tables, data };
   });

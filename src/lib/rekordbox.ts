@@ -6,7 +6,11 @@ import type { Track } from "./db";
 export const xmlEsc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-export const safeName = (s: string) => s.replace(/[\\/:*?"<>|\u0000-\u001f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 120) || "Untitled";
+/** A file or folder name: no path characters, and never "." or "..", which would step up a folder in the ZIP. */
+export const safeName = (s: string) => {
+  const name = s.replace(/[\\/:*?"<>|\u0000-\u001f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 120);
+  return /^[.\s]*$/.test(name) ? "Untitled" : name;
+};
 
 export function crateFileName(t: Track) {
   const ext = t.mime === "audio/wav" ? "wav" : "mp3";

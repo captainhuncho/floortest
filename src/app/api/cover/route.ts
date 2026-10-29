@@ -3,7 +3,7 @@ import { discardFiles } from "@/lib/deletion";
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { atLeast } from "@/lib/account-members";
-import { currentUser, viewingAs } from "@/lib/auth";
+import { currentDeskForChange, viewingAs } from "@/lib/auth";
 import { q } from "@/lib/db";
 import { storage } from "@/lib/storage";
 import { imageKind, IMAGE_TYPES as TYPES } from "@/lib/images";
@@ -18,7 +18,8 @@ const MAX = 8 * 1024 * 1024;
 /** Upload or replace the receiver's cover photo (small, so it comes through the app). */
 export async function POST(req: Request) {
   // A support "view as" session is read-only.
-  const user = (await viewingAs()) ? null : await currentUser();
+  const user = (await viewingAs()) ? null : await currentDeskForChange();
+  if (user instanceof Response) return user;
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   // The link's cover is part of the public page: the owner and A&R / Admin, never a Member (the page hides it; this is the guard).
   if (!atLeast(user.role, "admin")) return NextResponse.json({ error: "Only the owner or an A&R / Admin can change the cover." }, { status: 403 });
@@ -48,7 +49,8 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE() {
-  const user = (await viewingAs()) ? null : await currentUser();
+  const user = (await viewingAs()) ? null : await currentDeskForChange();
+  if (user instanceof Response) return user;
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   // The link's cover is part of the public page: the owner and A&R / Admin, never a Member (the page hides it; this is the guard).
   if (!atLeast(user.role, "admin")) return NextResponse.json({ error: "Only the owner or an A&R / Admin can change the cover." }, { status: 403 });

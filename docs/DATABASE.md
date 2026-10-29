@@ -83,7 +83,7 @@ PostgreSQL stores metadata and private object keys. Storage contains audio, stem
 
 - Production Vercel/serverless traffic uses Neon's pooled connection string.
 - Every table has row-level security on (the app connects as the owner, which RLS skips; any other role sees nothing). A new table's migration must enable it; `npm run check:perms` fails otherwise.
-- Per-person policies for the role `ft_person` (migration `0097_person_rules`) on users, account_members, collections, tracks, senders, releases, events, stems, listens, track_comments, track_shortlist and held_replies: a person sees only rows on their own desk or a team desk they belong to. Code opts in with `asPerson` (`src/lib/db`); details in [02-technical.md](02-technical.md), Limits and guards. A table granted to `ft_person` needs a policy for it, or `check:perms` fails.
+- Per-person policies for the role `ft_person` (migration `0097_person_rules`) on users, account_members, collections, tracks, senders, releases, events, stems, listens, track_comments, track_shortlist and held_replies: a person sees only rows on their own desk or a team desk they belong to (not one FloorTest has suspended, migration `0109`). On `users` it may read only the columns in `USER_COLUMNS` and change only its own profile fields (migration `0108`); `check:perms` fails if it can touch a column holding a sign-in secret. Code opts in with `asPerson` (`src/lib/db`); details in [02-technical.md](02-technical.md), Limits and guards. A table granted to `ft_person` needs a policy for it, or `check:perms` fails.
 - Do not create an unbounded connection per request.
 - Avoid N+1 queries on track, sender and collection lists.
 - Check query plans before adding indexes or denormalized counters.
@@ -98,6 +98,8 @@ PostgreSQL stores metadata and private object keys. Storage contains audio, stem
 - Expire every object older than the retention cutoff, not only the object from one exact date.
 - Run restore drills against a non-production database and verify table counts and essential relationships.
 - Record recovery point and recovery time expectations before calling the service production-ready.
+- Production restore steps (what to reapply after a restore: deletions and sign-ins): [operations.md](operations.md), Backups and restore.
+- Sign-in tables are never backed up (`SKIP` in `src/lib/backup.ts`), including `two_step_tickets` and `app_refresh_spent`; add any new session or one-time-code table there.
 
 ## Safe local work
 

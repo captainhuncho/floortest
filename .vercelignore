@@ -3,7 +3,9 @@ data
 node_modules
 .claude
 *.tsbuildinfo
-.env*.local
+# Never upload a local .env file as deployment source; only the example.
+.env*
+!.env.example
 
 # The iPhone/Android app project; not part of the website
 mobile/

@@ -47,3 +47,39 @@ test("backups are encrypted, hold no sessions, codes or IPs, blank live tokens, 
 
   assert.equal(await store.head(old.key), null, "a backup older than 14 days is deleted");
 });
+
+// H79: an invite code opens an account and a receipt token opens a sender's receipt page, so neither may sit in a
+// backup. Password hashes and encrypted two-factor secrets stay: a restore needs them to let people sign in.
+test("a backup holds no invite code or receipt token, but keeps what a restore needs", async () => {
+  const { q } = await import("../src/lib/db");
+  const { storage } = await import("../src/lib/storage");
+  const { runBackup } = await import("../src/lib/backup");
+  const { openBackup } = await import("../src/lib/backup-crypto");
+  const t = Date.now();
+  await q.run("INSERT INTO invites (code, max_uses, note, created_at) VALUES ('LIVE-INVITE-7Q', 25, '', ?)", t);
+  const uid = (await q.get<{ id: number }>(
+    "INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at, invite_code, totp_secret) VALUES ('inv@x.io','pw-hash-kept','I','invdesk','pro','UTC',?, 'LIVE-INVITE-7Q', 'sealed-totp-kept') RETURNING id",
+    t,
+  ))!.id;
+  const sender = (await q.get<{ id: number }>("INSERT INTO senders (user_id, email, name, created_at) VALUES (?, 's@x.io', 'S', ?) RETURNING id", uid, t))!.id;
+  await q.run(
+    "INSERT INTO tracks (user_id, sender_id, title, artist, token, file_key, original_name, mime, size, created_at) VALUES (?,?,'T','A','live-receipt-token-9z','audio/b.wav','b.wav','audio/wav',1,?)",
+    uid, sender, t,
+  );
+
+  const { key } = await runBackup(t + 60_000);
+  const file = Buffer.from(await new Response((await (await storage()).stream(key)).body).arrayBuffer());
+  const dump = JSON.parse(gunzipSync(openBackup(file, process.env.BACKUP_KEY!)).toString()) as { tables: Record<string, Record<string, unknown>[]> };
+  const text = JSON.stringify(dump);
+  assert.ok(!text.includes("LIVE-INVITE-7Q"), "no invite code anywhere");
+  assert.ok(!text.includes("live-receipt-token-9z"), "no receipt token anywhere");
+
+  const user = dump.tables.users.find((u) => u.email === "inv@x.io")!;
+  assert.equal(user.password_hash, "pw-hash-kept", "password hashes stay, so people can sign in after a restore");
+  assert.equal(user.totp_secret, "sealed-totp-kept", "encrypted two-factor secrets stay");
+  const invite = dump.tables.invites.find((i) => i.code === user.invite_code);
+  assert.ok(invite, "the account still points at its (hidden) invite, so invite use counts survive a restore");
+  const track = dump.tables.tracks.find((r) => r.user_id === uid)!;
+  assert.equal(typeof track.token, "string", "the column stays filled (it's required and unique)");
+  assert.ok((track.token as string).length >= 32);
+});
