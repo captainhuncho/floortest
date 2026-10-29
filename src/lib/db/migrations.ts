@@ -1815,4 +1815,17 @@ create table if not exists passkey_challenges (
 create index if not exists fk_passkey_challenges_user_id on passkey_challenges(user_id);
 alter table passkey_challenges enable row level security;`,
   },
+  {
+    // Per-person rules, tighter (security audit, 29 Oct). 0097 let `ft_person` read and change every column of users,
+    // and a person may see their teammates' rows, so a query run as a person could have read a teammate's password
+    // hash, two-step secret, recovery codes or Google id. Now `ft_person` may read only the columns the app reads about
+    // a person (USER_COLUMNS in src/lib/db) and change only their own profile fields; anything else is refused outright.
+    // A team desk that FloorTest has suspended is also shut to its teammates here, as currentUser() already does.
+    // The "teams" switch stays an app check (lib/account-members teamsOn): it depends on ADMIN_EMAILS, the request's
+    // country and the switch's rule, none of which the database holds.
+    id: "0106_person_columns",
+    sql: `revoke select, update on users from ft_person;
+grant select (id, email, name, first_name, last_name, kind, kind_note, tools, links, handle, plan, active_collection_id, role_line, cover_key, page_style, paused_at, pause_until, pause_message, tz, email_verified_at, totp_enabled_at, signin_alerts, identity_status, created_at) on users to ft_person;
+grant update (name, first_name, last_name, kind, kind_note, tools, links, role_line, cover_key, page_style, paused_at, pause_until, pause_message, tz, active_collection_id) on users to ft_person;`,
+  },
 ];
