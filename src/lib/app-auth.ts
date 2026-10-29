@@ -59,9 +59,15 @@ export async function refreshAppSession(refresh: string) {
   return live ? issueAppSession(old.user_id, old.label, signedInAt) : null;
 }
 
-/** Ends one app session (sign out on this phone). */
-export async function endAppSession(refresh: string, userId: number) {
-  const r = await q.run("DELETE FROM sessions WHERE token_hash = ? AND kind = 'app'", hashToken(String(refresh).slice(0, 200)));
+/**
+ * Sign out on this phone: ends the session the Bearer token belongs to (`session`), even when no refresh token is sent,
+ * and the refresh token's session if it is the same account's. Another account's token is left alone.
+ */
+export async function endAppSession(refresh: string, userId: number, session: string) {
+  const r = await q.run(
+    "DELETE FROM sessions WHERE user_id = ? AND kind = 'app' AND token_hash IN (?, ?)",
+    userId, session, hashToken(String(refresh).slice(0, 200)),
+  );
   if (r.changes) await audit(userId, "signed_out", "app");
 }
 
