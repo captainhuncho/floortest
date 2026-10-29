@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { createCollection, deleteCollection, setActiveCollection, updateCollection } from "../actions/collections";
 import { DownloadActions } from "../DownloadActions";
 import { GenresField } from "./GenresField";
+import { CapacityStrip } from "@/components/CapacityStrip";
 import type { BriefItem } from "@/lib/brief";
 
 type C = {
@@ -192,16 +193,12 @@ export function NewCollection({ tile = false }: { tile?: boolean }) {
   const [pending, start] = useTransition();
   if (!open && tile)
     return (
-      <button
-        onClick={() => setOpen(true)}
-        className="flex aspect-[171/221] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-line bg-ink"
-      >
-        <span className="grid size-9 place-items-center rounded-full bg-ink-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icons/plus.svg" alt="" className="size-3.5" />
-        </span>
-        <span className="text-[11px] font-bold text-mute">New collection</span>
-      </button>
+      <Folder tab="New" dashed>
+        <button onClick={() => setOpen(true)} className="flex min-h-11 flex-1 items-center justify-center gap-2 text-sm font-semibold text-bone after:absolute after:inset-0">
+          <span aria-hidden className="size-3 bg-current [mask:url(/icons/plus.svg)_center/contain_no-repeat]" />
+          New collection
+        </button>
+      </Folder>
     );
   if (!open)
     return (
@@ -237,67 +234,100 @@ export function NewCollection({ tile = false }: { tile?: boolean }) {
   );
 }
 
-// Deterministic decorative waveform for a tile, so each collection keeps its own shape.
-const tileBars = (seed: number, n: number) =>
-  Array.from({ length: n }, (_, i) => 0.25 + 0.75 * Math.abs(Math.sin((i + 1) * 1.7 + seed) * Math.cos(i * 0.6 + seed * 0.3)));
+/**
+ * A folder with a tab (rule 15 Collections, 28 Oct): the tab says where the callout stands, the body carries its name
+ * and numbers. The receiving one is outlined in bone; dashed folders are for "New" and the beta limit.
+ */
+export function Folder({ tab, current = false, dashed = false, hatched = false, children }: { tab: React.ReactNode; current?: boolean; dashed?: boolean; hatched?: boolean; children: React.ReactNode }) {
+  const edge = current ? "border-bone" : "border-line";
+  const style = dashed ? "border-dashed" : "";
+  return (
+    <div className="relative mt-7 flex flex-col">
+      <span className={`absolute -top-[29px] -left-px flex h-7 items-center gap-2 rounded-t-lg border border-b-0 bg-ink-3 px-3.5 text-xs font-semibold ${edge} ${style} ${current ? "text-bone" : "text-mute"}`}>
+        {tab}
+      </span>
+      <div className={`relative flex flex-1 flex-col gap-3 rounded-r-xl sm:min-h-[150px] sm:gap-4 rounded-bl-xl border bg-ink-3 p-4 sm:p-5 ${edge} ${style} ${hatched ? "hatch" : ""}`}>{children}</div>
+    </div>
+  );
+}
 
-/** Figma "collection-tile": artwork, receiving badge, play, then name, count and a menu. */
+/** One callout as a folder: the whole folder opens it; ··· has the options (send here, review, edit, download). */
 export function CollectionTile({ c, receiving, closed, canManage = true }: { c: C; receiving: boolean; closed: boolean; /** Owner or A&R / Admin: may change where the link sends tracks. */ canManage?: boolean }) {
   const [menu, setMenu] = useState(false);
   const [editing, setEditing] = useState(false);
   if (editing)
     return (
-      <div className="col-span-full">
+      <div className="col-span-full mt-7">
         <CollectionCard c={c} receiving={receiving} closed={closed} canManage={canManage} startEditing />
         <button className="mt-2 text-sm text-mute hover:text-bone tap-text" onClick={() => setEditing(false)}>
           Close
         </button>
       </div>
     );
-  const rows = [tileBars(c.id, 16), tileBars(c.id + 7, 16)];
+  const live = receiving && !closed;
+  const tab = live ? (
+    <>
+      <span aria-hidden className="size-2 rounded-full bg-lime" />
+      Receiving
+    </>
+  ) : closed ? (
+    c.full ? "Full" : `Closed${c.closesLabel ? ` ${c.closesLabel}` : ""}`
+  ) : (
+    "Open"
+  );
+  const bpm = c.bpmMin || c.bpmMax ? [c.bpmMin, c.bpmMax].filter(Boolean).join("–") : null;
+  const figures: [string, string | number][] = [
+    ["tracks", c.count],
+    closed ? ["kept", c.kept] : ["to review", c.needsReview],
+    ...(bpm ? [["BPM", bpm] as [string, string]] : []),
+  ];
   return (
-    <div className="relative overflow-hidden panel">
-      <Link href={`/dashboard/collections/${c.id}`} className="relative flex aspect-square flex-col justify-end gap-1.5 bg-gradient-to-b from-[#1a2a0a] to-ink p-4" aria-label={`Open ${c.name}`}>
+    <Folder tab={tab} current={live}>
+      <div className="flex items-start gap-3">
         {c.art && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={c.art} alt="" className="absolute inset-0 size-full object-cover" />
+          <img src={c.art} alt="" className="size-10 shrink-0 rounded-md border border-line object-cover" />
         )}
-        {!c.art && rows.map((bars, r) => (
-          <span key={r} aria-hidden className={`flex items-center gap-0.5 ${r ? "h-5" : "h-7"}`}>
-            {bars.map((h, i) => (
-              <span key={i} className={`w-0.5 rounded-[1px] ${i < (r ? 8 : 12) ? "bg-white" : "bg-faint"}`} style={{ height: `${Math.round(h * 100)}%`, opacity: i < (r ? 8 : 12) ? 0.5 + h / 2 : 0.2 }} />
-            ))}
-          </span>
-        ))}
-        {receiving && !closed && (
-          <span className="absolute left-2.5 top-2.5 flex items-center gap-1 rounded-md border border-white bg-black/60 px-2 py-1 text-[11px] font-bold tracking-[0.5px] text-white">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icons/receiving-dot.svg" alt="" className="size-[5px]" />
-            RECEIVING
-          </span>
-        )}
-        {closed && <span className="absolute left-2.5 top-2.5 rounded-md border border-faint bg-black/60 px-2 py-1 text-[11px] font-bold tracking-[0.5px] text-mute">{c.full ? "FULL" : "CLOSED"}</span>}
-      </Link>
-      <Link href={`/dashboard/review?view=queue&c=${c.id}`} aria-label={`Play ${c.name} in the queue`} className="absolute right-2.5 grid size-[30px] place-items-center rounded-lg bg-ink opacity-90" style={{ top: "calc(100% - 56px - 40px)" }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/icons/tile-play.svg" alt="" className="size-3" />
-      </Link>
-      <div className="flex flex-col gap-[3px] px-2.5 pb-3 pt-2.5">
-        <Link href={`/dashboard/collections/${c.id}`} className="truncate text-[13px] font-bold text-bone">
-          {c.name}
-        </Link>
-        <div className="flex items-center justify-between text-mute">
-          <span className="text-[11px]">
-            {c.count} track{c.count === 1 ? "" : "s"}
-            {c.needsReview > 0 && ` · ${c.needsReview} new`}
-          </span>
-          <button onClick={() => setMenu((m) => !m)} aria-haspopup="menu" aria-label={`More for ${c.name}`} className="px-1 text-sm leading-none">
-            ···
-          </button>
+        <div className="min-w-0 flex-1">
+          <Link href={`/dashboard/collections/${c.id}`} className="block truncate text-lg font-bold text-bone after:absolute after:inset-0 after:rounded-r-xl after:rounded-bl-xl">
+            {c.name}
+          </Link>
+          {!closed && c.closesLabel && <p className="mt-0.5 text-xs text-mute">Closes {c.closesLabel}</p>}
         </div>
+        <button
+          onClick={() => setMenu((m) => !m)}
+          aria-haspopup="menu"
+          aria-label={`More for ${c.name}`}
+          className="relative z-10 -mt-2 -mr-2 grid size-11 shrink-0 place-items-center rounded-lg text-base leading-none text-mute hover:text-bone"
+        >
+          ···
+        </button>
       </div>
+      <dl className="flex gap-7">
+        {figures.map(([k, v]) => (
+          <div key={k} className="flex flex-col-reverse">
+            <dt className="text-xs font-semibold text-mute">{k}</dt>
+            <dd className="font-mono text-xl leading-tight font-bold text-bone tnum sm:text-[22px]">{v}</dd>
+          </div>
+        ))}
+      </dl>
+      {c.maxTracks ? (
+        <div className="mt-auto flex items-center gap-3">
+          <div className="flex-1">
+            <CapacityStrip used={c.count} limit={c.maxTracks} cells={25} small />
+          </div>
+          <span className="font-mono text-xs text-mute tnum">
+            {c.count} of {c.maxTracks}
+          </span>
+        </div>
+      ) : null}
+      {c.needsReview > 0 && !closed && (
+        <Link href={`/dashboard/review?view=queue&c=${c.id}`} className="relative z-10 -my-2 mt-auto inline-flex min-h-11 w-fit items-center text-sm text-bone underline underline-offset-4">
+          Review {c.needsReview} new
+        </Link>
+      )}
       {menu && <CollectionOptions c={c} receiving={receiving} canManage={canManage} onEdit={() => setEditing(true)} onClose={() => setMenu(false)} showOpen />}
-    </div>
+    </Folder>
   );
 }
 
@@ -383,15 +413,15 @@ export function CollectionDetailHeader({ c, receiving, closed, canManage = true 
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2">
         {receiving && !closed ? (
-          <span className="flex items-center gap-1 rounded-md border border-bone bg-bone/10 px-2 py-1 text-[11px] font-bold tracking-[0.5px] text-bone">
-            <span aria-hidden className="size-[5px] rounded-full bg-bone" />
-            RECEIVING
+          <span className="inline-flex items-center gap-2 text-sm font-semibold text-bone">
+            <span aria-hidden className="size-2 rounded-full bg-lime" />
+            Receiving
           </span>
         ) : (
-          <span className="text-[11px] font-bold tracking-[0.5px] text-faint">{closed ? (c.full ? "FULL" : "CLOSED") : "NOT RECEIVING"}</span>
+          <span className="text-sm font-semibold text-mute">{closed ? (c.full ? "Full" : `Closed${c.closesLabel ? ` ${c.closesLabel}` : ""}`) : "Not receiving"}</span>
         )}
         {!editing && (
-          <button onClick={() => setEditing(true)} className="rounded-md border border-line bg-ink-3 px-3 py-1.5 text-[11px] font-bold text-bone">
+          <button onClick={() => setEditing(true)} className="btn-ghost btn-sm">
             Edit collection
           </button>
         )}

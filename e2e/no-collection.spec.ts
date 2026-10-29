@@ -30,7 +30,7 @@ test("a new desk has no collection, and its link is open", async ({ page }) => {
   await expect(page.getByText("Sends tracks to your Review Queue")).toBeVisible();
   await page.goto("/dashboard/collections");
   await expect(page.getByRole("button", { name: "New collection" })).toBeVisible();
-  await expect(page.getByText("RECEIVING", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Receiving", { exact: true })).toHaveCount(0);
   await expect(page.getByText(/sends tracks straight to your Review Queue/)).toBeVisible();
 });
 

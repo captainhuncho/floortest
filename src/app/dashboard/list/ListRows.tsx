@@ -50,13 +50,6 @@ function age(ts: number) {
   return mo < 12 ? `${mo}mo` : `${Math.round(mo / 12)}y`;
 }
 
-const initials = (s: string) =>
-  s
-    .split(/[\s&,]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]!.toUpperCase())
-    .join("");
 
 /** `statusTag` swaps the age for a Needs review / Kept / Not for me tag (Figma collection detail). */
 export function ListRows({ rows, statusTag = false, collections = [] }: { rows: ListRow[]; statusTag?: boolean; collections?: { id: number; name: string }[] }) {
@@ -231,7 +224,7 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
               {/* Phones: Figma "track-card" */}
               <div
                 className={`flex flex-col gap-2.5 rounded-panel border p-3 md:hidden ${
-                  waiting ? "border-line border-l-[3px] border-l-lime bg-ink-3" : "border-line bg-ink-2"
+                  waiting ? "border-line border-l-2 border-l-bone bg-ink-3" : "border-line bg-ink-2"
                 }`}
               >
                 <div className="flex items-center gap-2.5">
@@ -241,17 +234,10 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
                       setSelected(r.id);
                       player.play(toPlayer(r), queue);
                     }}
-                    className="play-dot grid size-7 shrink-0 place-items-center rounded-full text-[11px] font-bold"
+                    className={`grid size-11 shrink-0 place-items-center rounded-lg border text-bone ${isCurrent ? "border-bone" : "border-line"}`}
                     aria-label={playing ? `Pause ${r.title}` : `Play ${r.title}`}
                   >
-                    {playing ? (
-                      <PlayIcon playing className="size-3" />
-                    ) : isCurrent ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src="/icons/card-play.svg" alt="" className="size-3" />
-                    ) : (
-                      initials(r.artist)
-                    )}
+                    <PlayIcon playing={playing} className="size-3.5" />
                   </button>
                   <button
                     onClick={(e) => {
@@ -269,15 +255,11 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
                     <span className={`truncate text-[11px] font-medium ${decision === "passed" ? "text-faint" : "text-mute"}`}>{r.meta.join(" · ")}</span>
                   </button>
                   {statusTag ? (
-                    <span
-                      className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-bold uppercase ${
-                        decision === "kept" ? "bg-bone/10 text-bone" : "bg-line text-mute"
-                      }`}
-                    >
+                    <span className={`shrink-0 text-xs ${decision === "kept" ? "text-bone" : "text-mute"}`}>
                       {decisionLabel(decision)}
                     </span>
                   ) : outcome ? (
-                    <span className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-bold uppercase ${decision === "kept" ? "bg-white/10 text-bone" : "bg-line text-mute"}`}>{outcome}</span>
+                    <span className={`shrink-0 text-xs ${decision === "kept" ? "text-bone" : "text-mute"}`}>{outcome}</span>
                   ) : (
                     <span className="shrink-0 text-[11px] font-medium text-faint" suppressHydrationWarning>
                       {age(r.createdAt)}
@@ -300,7 +282,7 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
                   <DecisionButton kind="passed" title={r.title} pressed={decision === "passed"} onClick={() => decide(r, "passed", false)} />
                   <button title="Reply (R)" aria-label={`Reply to ${r.sender}`} aria-pressed={open} onClick={() => (setSelected(r.id), setExpanded(open ? null : r.id))} className={`relative grid size-11 place-items-center ${open ? "text-bone" : "text-mute"}`}>
                     <FigmaIcon name="message-square" />
-                    {r.replied && <span className="absolute right-2.5 top-2.5 size-1.5 rounded-full bg-lime" />}
+                    {r.replied && <span className="absolute right-2.5 top-2.5 size-1.5 rounded-full bg-bone" />}
                   </button>
                   <a href={`/api/tracks/${r.id}/download`} title="Download original" aria-label={`Download original of ${r.title}`} className="grid size-11 place-items-center text-mute">
                     <FigmaIcon name="download" />
@@ -308,22 +290,17 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
                 </div>
               </div>
 
-              <div className={`hidden grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 rounded-xl border px-4 py-3 transition md:grid @4xl:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_auto] ${waiting ? "border-l-[3px] border-l-lime" : ""} ${selected === r.id ? "border-mute/60 bg-ink-4" : waiting ? "border-line bg-ink-3 hover:border-line-2" : "border-line bg-ink-2 hover:border-line-2"}`}>
+              <div className={`hidden grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 rounded-xl border px-4 py-3 transition md:grid @4xl:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_auto] ${waiting ? "border-l-2 border-l-bone" : ""} ${selected === r.id ? "border-mute/60 bg-ink-4" : waiting ? "border-line bg-ink-3 hover:border-line-2" : "border-line bg-ink-2 hover:border-line-2"}`}>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelected(r.id);
                     player.play(toPlayer(r), queue);
                   }}
-                  className="relative grid size-9 shrink-0 place-items-center overflow-hidden rounded-full bg-bone text-[11px] font-bold text-ink"
+                  className={`grid size-11 shrink-0 place-items-center rounded-lg border text-bone transition ${isCurrent ? "border-bone" : "border-line hover:border-mute"}`}
                   aria-label={playing ? `Pause ${r.title}` : `Play ${r.title}`}
                 >
-                  <span className={`transition ${isCurrent ? "opacity-0" : "group-hover:opacity-0"}`}>{initials(r.artist)}</span>
-                  <span
-                    className={`absolute inset-0 grid place-items-center bg-bone transition ${isCurrent ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
-                  >
-                    <PlayIcon playing={playing} className="h-4 w-4 text-ink" />
-                  </span>
+                  <PlayIcon playing={playing} className="size-3.5" />
                 </button>
 
                 <button
@@ -338,12 +315,12 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
                   <p className={`truncate text-[13px] ${waiting ? "font-bold text-bone" : "font-medium text-mute"}`}>
                     {waiting && <span className="sr-only">Needs review: </span>}
                     {r.artist} - {r.title}
-                    {r.duplicateOf && <span className="chip ml-2 align-middle border-danger/40 text-[11px] font-normal text-danger">Possible duplicate</span>}
+                    {r.duplicateOf && <span className="ml-2 text-xs font-normal text-danger">· Possible duplicate</span>}
                   </p>
                   <p className="mt-1 flex items-center gap-2 truncate text-[11px] text-faint">
                     <span className="truncate">{r.meta.join(" · ")}</span>
                     {(statusTag || outcome) && (
-                      <span className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-bold uppercase ${decision === "kept" ? "bg-bone/10 text-bone" : "bg-line text-mute"}`}>
+                      <span className={`shrink-0 text-xs ${decision === "kept" ? "text-bone" : "text-mute"}`}>
                         {outcome ?? "Needs review"}
                       </span>
                     )}
@@ -563,8 +540,8 @@ function ActionButton({
 }
 
 /**
- * Keep and Not for me in a row, worded as on the decision rail: Keep in lime, Not for me neutral (never red, never a
- * thumbs-down). 44px tall.
+ * Keep and Not for me in a row, worded as on the decision rail: both neutral, Kept marked in bone (rule 15: lime is
+ * the page's one main action, not a state repeated down a list). Never red, never a thumbs-down. 44px tall.
  */
 function DecisionButton({ kind, title, pressed, onClick }: { kind: "kept" | "passed"; title: string; pressed: boolean; onClick: () => void }) {
   const keep = kind === "kept";
@@ -578,8 +555,8 @@ function DecisionButton({ kind, title, pressed, onClick }: { kind: "kept" | "pas
       className={`inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-md border px-2.5 text-[12px] font-semibold transition ${
         keep
           ? pressed
-            ? "border-lime bg-lime text-ink"
-            : "border-line text-bone hover:border-lime hover:bg-lime hover:text-ink"
+            ? "border-bone bg-bone/10 text-bone"
+            : "border-line text-bone hover:border-mute hover:bg-ink-4"
           : pressed
             ? "border-bone bg-bone/10 text-bone"
             : "border-line text-mute hover:border-mute hover:text-bone"
