@@ -7,7 +7,7 @@ import { checkSecondFactor } from "@/lib/security";
 import { passwordStrength } from "@/lib/password-strength";
 import { changePasswordTo, currentSessionHash, verifyPassword, requireRole } from "@/lib/auth";
 import { APP_URL, sendMail } from "@/lib/mail";
-import { endSession, revokeAllSessions } from "@/lib/sessions";
+import { deviceId, endSession, revokeAllSessions } from "@/lib/sessions";
 import QRCode from "qrcode";
 import { env } from "@/lib/env";
 import { hashRecovery, newRecoveryCodes, newTotpSecret, openSecret, otpauthUri, sealSecret, verifyTotp } from "@/lib/totp";
@@ -151,12 +151,13 @@ export async function disconnectGoogle(_: SettingsState, form: FormData): Promis
 }
 
 /** Signs out one device from the list on the Security page. Not the current one: that's Sign out. */
-export async function signOutDevice(hash: string): Promise<{ ok: true } | { error: string }> {
+export async function signOutDevice(id: string): Promise<{ ok: true } | { error: string }> {
   const u = await requireRole("owner");
-  const h = String(hash || "");
-  if (!/^[a-f0-9]{64}$/.test(h)) return { error: "That device wasn't found." };
-  if (h === (await currentSessionHash())) return { error: "To sign out this device, use Sign out." };
-  if (!(await endSession(u.id, h))) return { error: "That device was already signed out." };
+  const d = String(id || "");
+  if (!/^[a-f0-9]{32}$/.test(d)) return { error: "That device wasn't found." };
+  const current = await currentSessionHash();
+  if (current && d === deviceId(current)) return { error: "To sign out this device, use Sign out." };
+  if (!(await endSession(u.id, d))) return { error: "That device was already signed out." };
   await audit(u.id, "signed_out", "one device, from Security");
   done();
   return { ok: true };

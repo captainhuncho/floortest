@@ -7,7 +7,7 @@ import { changePassword, signOutDevice, signOutOtherDevices } from "../actions/s
 import { PasswordStrength } from "@/components/PasswordStrength";
 import { ConfirmItsYou } from "./ConfirmItsYou";
 
-export type Device = { hash: string; device: string; app: boolean; current: boolean; signedIn: string; lastUsed: string | null };
+export type Device = { id: string; device: string; app: boolean; current: boolean; signedIn: string; lastUsed: string | null };
 
 export function SecurityForm({ devices, context = [], twoFactor }: { devices: Device[]; context?: string[]; twoFactor: boolean }) {
   const [pw, setPw] = useState("");
@@ -94,7 +94,7 @@ export function SecurityForm({ devices, context = [], twoFactor }: { devices: De
         )}
         <ul className="divide-y divide-line rounded-lg border border-line" aria-label="Devices signed in">
           {list.map((d) => (
-            <li key={d.hash} className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5">
+            <li key={d.id} className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5">
               <div className="min-w-0">
                 <p className="text-sm text-bone">
                   {d.device}
@@ -112,9 +112,9 @@ export function SecurityForm({ devices, context = [], twoFactor }: { devices: De
                   disabled={busy}
                   onClick={() =>
                     start(async () => {
-                      const r = await signOutDevice(d.hash);
+                      const r = await signOutDevice(d.id);
                       if ("error" in r) return toast.show({ message: r.error });
-                      setList((l) => l.filter((x) => x.hash !== d.hash));
+                      setList((l) => l.filter((x) => x.id !== d.id));
                       toast.show({ message: `Signed out ${d.device}` });
                     })
                   }
