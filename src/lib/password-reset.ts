@@ -1,7 +1,9 @@
 import "server-only";
 import crypto from "node:crypto";
 import { now, q } from "./db";
+import { breachedError } from "./breached";
 import { hashPassword } from "./password-hash";
+import { allow } from "./ratelimit";
 import { revokeAllSessions } from "./sessions";
 import { hashToken } from "./token-hash";
 
@@ -24,6 +26,22 @@ export async function findPasswordReset(token: string) {
     hashToken(token),
     now(),
   );
+}
+
+const EXPIRED = "This reset link has expired or was already used. Request a new one.";
+const SUBMITS_PER_HOUR = 20;
+
+/**
+ * The reset form, sent. The link and a per-connection limit are checked first, so a made-up or spent link costs no
+ * breach lookup and no slow hash. `leaked` is the breach check (swapped in tests).
+ */
+export async function resetWithLink(token: string, newPassword: string, ip: string, leaked: (p: string) => Promise<string | null> = breachedError): Promise<{ userId: number } | { error: string }> {
+  if (!(await allow("reset_submit_ip", ip, SUBMITS_PER_HOUR, RESET_MS))) return { error: "Too many tries. Wait an hour and try again." };
+  if (!(await findPasswordReset(token))) return { error: EXPIRED };
+  const bad = await leaked(newPassword); // before the link is used up, so they can pick another with it
+  if (bad) return { error: bad };
+  const userId = await consumePasswordReset(token, newPassword);
+  return userId ? { userId } : { error: EXPIRED };
 }
 
 /**

@@ -79,3 +79,20 @@ test("a reset link on an unconfirmed account confirms the email and clears what 
   assert.equal(await consumePasswordReset(await createPasswordReset(owner), "another new long password"), owner);
   assert.ok((await q.get<{ on: number | null }>("SELECT totp_enabled_at AS on FROM users WHERE id = ?", owner))!.on, "a confirmed account keeps its two-factor");
 });
+
+test("a reset submission with a bad link is refused before the breach check or the hash, and is rate limited", async () => {
+  await setup();
+  const { resetWithLink } = await import("../src/lib/password-reset");
+  let checked = 0;
+  const leaked = async () => {
+    checked++;
+    return null;
+  };
+  const r = await resetWithLink("not-a-real-token", "a long enough new password", "203.0.113.9", leaked);
+  assert.deepEqual(r, { error: "This reset link has expired or was already used. Request a new one." });
+  assert.equal(checked, 0, "no outside lookup (and no hash) for a link that doesn't work");
+  for (let i = 0; i < 30; i++) await resetWithLink(`bogus-${i}`, "a long enough new password", "203.0.113.9", leaked);
+  const limited = await resetWithLink("bogus-last", "a long enough new password", "203.0.113.9", leaked);
+  assert.match("error" in limited ? limited.error : "", /Too many/);
+  assert.equal(checked, 0);
+});
