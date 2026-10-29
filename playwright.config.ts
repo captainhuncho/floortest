@@ -57,7 +57,9 @@ export default defineConfig({
       env: { FAKE_SCANNER_PORT: String(SCANNER_PORT), SCAN_SECRET: env.SCAN_SECRET },
     },
     {
-      command: `npx tsx scripts/seed.ts && npx next dev -p ${PORT}`,
+      // The dev cache (.next/dev) is cleared first: after a branch switch a stale one made the dev server reload every
+      // page, so forms never sent and the sign-up tests failed (29 Oct). The seeded data is fresh each run anyway.
+      command: `node -e "require('fs').rmSync('.next/dev',{recursive:true,force:true})" && npx tsx scripts/seed.ts && npx next dev -p ${PORT}`,
       url: `http://localhost:${PORT}/api/health`,
       timeout: 180_000,
       reuseExistingServer: false,
