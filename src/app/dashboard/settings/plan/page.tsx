@@ -30,7 +30,7 @@ export default async function Plan() {
           <Link href="/dashboard/plans" className={`${pct >= 80 ? "btn-lime" : "btn-ghost"} btn-sm min-h-11`}>
             See plans
           </Link>
-          {(await switchOn("referrals")) && (
+          {(await switchOn("referrals", user)) && (
             <Link href="/dashboard/referrals" className="btn-ghost btn-sm min-h-11">
               Invite DJs, earn slots
             </Link>

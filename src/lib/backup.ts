@@ -33,16 +33,22 @@ const SCRUB: Record<string, Record<string, unknown>> = {
  * copied to the vault separately (src/lib/vault.ts).
  */
 export async function runBackup(at = now()) {
-  const tables = (
-    await q.all<{ t: string }>("SELECT table_name AS t FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name")
-  )
-    .map((r) => r.t)
-    .filter((t) => !SKIP.has(t) && /^[a-z_]+$/.test(t));
-  const data: Record<string, unknown[]> = {};
-  for (const t of tables) {
-    const rows = await q.all<Record<string, unknown>>(`SELECT * FROM "${t}"`);
-    data[t] = SCRUB[t] ? rows.map((r) => ({ ...r, ...SCRUB[t] })) : rows;
-  }
+  // Every table is read in one read-only, repeatable-read transaction, so the backup shows a single moment: a track saved
+  // mid-run is either there with its sender or not there at all (tables used to be read one by one: Batch C, 28 Oct).
+  const { tables, data } = await q.tx(async (db) => {
+    await db.run("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY");
+    const tables = (
+      await db.all<{ t: string }>("SELECT table_name AS t FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name")
+    )
+      .map((r) => r.t)
+      .filter((t) => !SKIP.has(t) && /^[a-z_]+$/.test(t));
+    const data: Record<string, unknown[]> = {};
+    for (const t of tables) {
+      const rows = await db.all<Record<string, unknown>>(`SELECT * FROM "${t}"`);
+      data[t] = SCRUB[t] ? rows.map((r) => ({ ...r, ...SCRUB[t] })) : rows;
+    }
+    return { tables, data };
+  });
   const body = sealBackup(gzipSync(Buffer.from(JSON.stringify({ created_at: new Date(at).toISOString(), tables: data }))), backupSecret());
   const main = await storage();
   const v = await vault();

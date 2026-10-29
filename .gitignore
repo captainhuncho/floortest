@@ -6,12 +6,15 @@ next-env.d.ts
 .env*.local
 .vercel
 .env*
+# The template: names and placeholders only, never real values
+!.env.example
 .DS_Store
 .neon
 
 # Local AI tool config (never commit)
 .mcp.json
 skills-lock.json
+.claude/settings.local.json
 
 # End-to-end test data and reports
 .e2e/

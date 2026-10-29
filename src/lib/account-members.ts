@@ -38,7 +38,7 @@ const needTwoStep = (desk: Pick<User, "role" | "totp_enabled_at">) => {
  * (account) id wherever one is known; without it, only the switch counts.
  */
 export async function teamsOn(deskId?: number | null) {
-  if (await switchOn("teams")) return true;
+  if (await switchOn("teams", deskId ?? null)) return true;
   if (!deskId || !env.adminEmails.length) return false;
   const owner = await q.get<{ email: string }>("SELECT email FROM users WHERE id = ?", deskId);
   return !!owner && env.adminEmails.includes(owner.email.toLowerCase());
@@ -191,7 +191,9 @@ async function join<I extends { id: number; account_id: number; email: string; r
 export async function revokeInvite(desk: Pick<User, "id" | "role" | "totp_enabled_at">, inviteId: number) {
   if (!atLeast(desk.role, "admin")) throw new TeamError("Only the owner or an A&R / Admin can do that.");
   needTwoStep(desk);
-  await q.run("UPDATE account_invites SET revoked_at = ? WHERE id = ? AND account_id = ? AND accepted_at IS NULL", now(), inviteId, desk.id);
+  // Nothing changed (no such open invite on this desk): say so, so it's never logged as done (Batch C, 28 Oct).
+  const r = await q.run("UPDATE account_invites SET revoked_at = ? WHERE id = ? AND account_id = ? AND accepted_at IS NULL AND revoked_at IS NULL", now(), inviteId, desk.id);
+  if (!r.changes) throw new TeamError("Not found");
 }
 
 /** Owners remove anyone; admins remove members. Their access to this desk ends on their next click. */
@@ -209,7 +211,8 @@ export async function removeFromTeam(desk: Pick<User, "id" | "role" | "actor_id"
 export async function setTeamRole(desk: Pick<User, "id" | "role" | "totp_enabled_at">, memberId: number, role: "admin" | "member") {
   if (desk.role !== "owner") throw new TeamError("Only the owner can change roles.");
   needTwoStep(desk);
-  await q.run("UPDATE account_members SET role = ? WHERE id = ? AND account_id = ?", role, memberId, desk.id);
+  const r = await q.run("UPDATE account_members SET role = ? WHERE id = ? AND account_id = ?", role, memberId, desk.id);
+  if (!r.changes) throw new TeamError("Not found");
 }
 
 /** Ops: add-on seats for an account (bought separately while card payments aren't live). */

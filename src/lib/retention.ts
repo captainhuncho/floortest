@@ -5,7 +5,7 @@ import { drainNow, queueDeletion, retireTrackFiles } from "./deletion";
 import { WEB_IDLE_MS } from "./sessions";
 import { now, q } from "./db";
 import { RETAIN_PASSED_DAYS, RETAIN_UNREVIEWED_DAYS } from "./plans";
-import { UPLOAD_TTL } from "./intake";
+import { CLAIM_MS, HELD_TTL, UPLOAD_TTL } from "./intake";
 import { CLAIM_KEEP_MS } from "./once";
 import { reconcileFiles } from "./file-reservations";
 import { drainOutbox } from "./mail";
@@ -80,7 +80,15 @@ export async function purgeExpired({ force = false } = {}) {
   // cleanupRecords before its backup, so it isn't repeated there.
   if (!force) await cleanupRecords(t, until);
 
-  const abandoned = await q.all<{ id: string; file_key: string }>("SELECT id, file_key FROM uploads WHERE created_at < ? LIMIT 500", t - UPLOAD_TTL);
+  // A held upload (waiting for its virus check) isn't abandoned: the held-uploads job tells its sender and removes it
+  // after HELD_TTL; this only catches one that job somehow missed, an hour later. One being saved right now (a live
+  // claim) isn't abandoned either: its file would be deleted under the save.
+  const abandoned = await q.all<{ id: string; file_key: string }>(
+    "SELECT id, file_key FROM uploads WHERE created_at < ? AND (held_at IS NULL OR held_at < ?) AND (claimed_at IS NULL OR claimed_at < ?) LIMIT 500",
+    t - UPLOAD_TTL,
+    t - HELD_TTL - 3_600_000,
+    t - CLAIM_MS,
+  );
   if (abandoned.length)
     await q.tx(async (db) => {
       await queueDeletion(db, abandoned.map((u) => u.file_key), "upload abandoned", t);

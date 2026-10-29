@@ -10,18 +10,16 @@ import { env, isProd } from "./env";
 import { opsSessionLive } from "./ops";
 import { GATE_COOKIE, GATE_DAYS, gatePassword, gateToken } from "./site-gate";
 import { deviceLabel } from "./device-label";
-import { touchSession, WEB_IDLE_MS } from "./sessions";
+import { OLD_SESSION_COOKIE, readSessionToken, sessionCookie, touchSession, WEB_IDLE_MS } from "./sessions";
 
 /**
- * The session cookie. On the live site it carries the `__Host-` prefix: the browser then sends it only over HTTPS, only
- * to this exact host, and no subdomain can set or overwrite it. The old name is still read (never written) for a
- * while, so the change (15 Oct 2026) signed nobody out.
+ * The session cookie (`__Host-` prefixed on the live site; names and the old-name cut-off in sessions.ts). The old
+ * name is still read (never written) until 15 Nov 2026, so the change (15 Oct 2026) signed nobody out.
  */
-const COOKIE = isProd ? "__Host-floortest_session" : "floortest_session";
-const OLD_COOKIE = "floortest_session";
-const sessionToken = (jar: { get(name: string): { value: string } | undefined }) => jar.get(COOKIE)?.value ?? (COOKIE === OLD_COOKIE ? undefined : jar.get(OLD_COOKIE)?.value);
+const COOKIE = sessionCookie(isProd);
+const OLD_COOKIE = OLD_SESSION_COOKIE;
+const sessionToken = (jar: { get(name: string): { value: string } | undefined }) => readSessionToken(jar, isProd);
 const SESSION_MS = 1000 * 60 * 60 * 24 * 30;
-const RESET_MS = 1000 * 60 * 60;
 
 /** Tokens are stored hashed, so a database leak doesn't hand out live sessions or reset links. */
 import { hashToken } from "./token-hash";
@@ -202,34 +200,5 @@ export async function requireUser(): Promise<User> {
   return u;
 }
 
-/** A one-hour, single-use reset link. Returns the raw token, which is only ever emailed. */
-export async function createPasswordReset(userId: number) {
-  const token = newToken();
-  await q.run("INSERT INTO password_resets (token_hash, user_id, expires_at, created_at) VALUES (?,?,?,?)", hashToken(token), userId, now() + RESET_MS, now());
-  return token;
-}
-
-export async function findPasswordReset(token: string) {
-  return q.get<{ user_id: number }>(
-    "SELECT user_id FROM password_resets WHERE token_hash = ? AND used_at IS NULL AND expires_at > ?",
-    hashToken(token),
-    now(),
-  );
-}
-
-/** Sets the new password and signs the account out everywhere. Returns the user id, or null if the link is no good. */
-export async function consumePasswordReset(token: string, newPassword: string) {
-  const newHash = await hashPassword(newPassword); // before the transaction, so the slow hash doesn't hold it open
-  return q.tx(async (db) => {
-    const r = await db.get<{ user_id: number }>(
-      "UPDATE password_resets SET used_at = ? WHERE token_hash = ? AND used_at IS NULL AND expires_at > ? RETURNING user_id",
-      now(),
-      hashToken(token),
-      now(),
-    );
-    if (!r) return null;
-    await db.run("UPDATE users SET password_hash = ? WHERE id = ?", newHash, r.user_id);
-    await db.run("DELETE FROM sessions WHERE user_id = ?", r.user_id);
-    return r.user_id;
-  });
-}
+/** Reset links and password changes live in password-reset.ts (testable without a request); re-exported here. */
+export { changePasswordTo, consumePasswordReset, createPasswordReset, findPasswordReset } from "./password-reset";

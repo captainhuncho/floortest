@@ -45,11 +45,17 @@ export async function inviteTeammate(_prev: TeamState, form: FormData): Promise<
   }
 }
 
-export async function cancelTeamInvite(inviteId: number) {
+/** A refused or already-gone invite says so on the page, and only a real cancel goes in the account log (Batch C, 28 Oct). */
+export async function cancelTeamInvite(inviteId: number): Promise<TeamState> {
   const u = await requireUser();
-  await revokeInvite(u, inviteId).catch(() => {});
-  await audit(u.id, "team_invite_revoked", `invite ${inviteId}`);
-  done();
+  try {
+    await revokeInvite(u, inviteId);
+    await audit(u.id, "team_invite_revoked", `invite ${inviteId}`);
+    done();
+    return { ok: "Invite cancelled." };
+  } catch (e) {
+    return fail(e);
+  }
 }
 
 /** Owners remove anyone, admins remove members, anyone can remove themselves (leave). */
@@ -67,11 +73,16 @@ export async function removeTeammate(memberId: number) {
   done();
 }
 
-export async function changeTeamRole(memberId: number, role: "admin" | "member") {
+export async function changeTeamRole(memberId: number, role: "admin" | "member"): Promise<TeamState> {
   const u = await requireUser();
-  await setTeamRole(u, memberId, role === "admin" ? "admin" : "member").catch(() => {});
-  await audit(u.id, "team_role", `member ${memberId} → ${role}`);
-  done();
+  try {
+    await setTeamRole(u, memberId, role === "admin" ? "admin" : "member");
+    await audit(u.id, "team_role", `member ${memberId} → ${role}`);
+    done();
+    return { ok: "Saved." };
+  } catch (e) {
+    return fail(e);
+  }
 }
 
 export async function saveReplyApproval(_prev: TeamState, form: FormData): Promise<TeamState> {

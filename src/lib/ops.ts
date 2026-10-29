@@ -13,8 +13,12 @@ const hashToken = (t: string) => crypto.createHash("sha256").update(t).digest("h
  * (host-only, strict), and short-lived. Being signed in on floortest.app grants nothing here, and the other way round.
  */
 const COOKIE = isProd ? "__Host-ft_ops" : "ft_ops";
-const IDLE_MS = 60 * 60_000;
-const MAX_MS = 8 * 60 * 60_000;
+/** An ops session nobody has used for this long ends (owner's rule: staff and admin about 30 minutes idle). */
+export const OPS_IDLE_MS = 30 * 60_000;
+const IDLE_MS = OPS_IDLE_MS;
+/** And it ends this long after sign-in, used or not. */
+export const OPS_MAX_MS = 8 * 60 * 60_000;
+const MAX_MS = OPS_MAX_MS;
 
 export const OPS_URL = env.opsUrl;
 
@@ -33,7 +37,7 @@ export async function destroyOpsSession() {
   jar.delete(COOKIE);
 }
 
-/** The admin signed in on ops, if the session is live (used in the last hour, under 8 hours old). Memoised per request. */
+/** The admin signed in on ops, if the session is live (used in the last 30 minutes, under 8 hours old). Memoised per request. */
 export const currentOpsAdmin = cache(async (): Promise<User | null> => {
   const token = (await cookies()).get(COOKIE)?.value;
   if (!token) return null;

@@ -73,10 +73,14 @@ export async function dataFor(email: string) {
         )
       : [],
   };
-  return { email: e, account, sent, messages, emails, waitlist, reopenAlerts, comments, shareLinks, teams };
+  const newsletter = await q.get<Record<string, unknown>>("SELECT email, marketing, source, created_at FROM newsletter_subscribers WHERE lower(email) = ?", e);
+  return { email: e, account, sent, messages, emails, waitlist, newsletter, reopenAlerts, comments, shareLinks, teams };
 }
 
-/** Erases someone as a sender: their sender records and the tracks they sent (files and stems), plus their messages and waitlist entry. */
+/**
+ * Erases someone as a sender: their sender records and the tracks they sent (files and stems), plus their messages,
+ * waitlist and newsletter entries, reopen requests and every email to them.
+ */
 export async function eraseSender(email: string) {
   const e = email.trim().toLowerCase();
   const r = await q.tx(async (db) => {
@@ -86,6 +90,10 @@ export async function eraseSender(email: string) {
     await db.run("DELETE FROM contact_messages WHERE lower(email) = ?", e);
     await db.run("DELETE FROM waitlist WHERE lower(email) = ?", e);
     await db.run("DELETE FROM reopen_alerts WHERE lower(email) = ?", e);
+    // Their emails (queued or sent) and their newsletter entry went too (Batch C, 28 Oct). The unsubscribe list
+    // (email_suppressions) stays: it is what keeps us from emailing them again.
+    await db.run("DELETE FROM outbox WHERE lower(to_email) = ?", e);
+    await db.run("DELETE FROM newsletter_subscribers WHERE lower(email) = ?", e);
     return { senders: gone.changes, files };
   });
   await drainNow();

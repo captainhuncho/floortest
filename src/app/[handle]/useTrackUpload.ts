@@ -64,6 +64,18 @@ function putFile(target: { url: string; headers: Record<string, string> }, file:
   });
 }
 
+/** Optional extras for one upload. */
+export type UploadOptions = {
+  /** True once the file has landed and the server is checking it (virus check included, usually a few seconds). */
+  onChecking?: (checking: boolean) => void;
+};
+
+/**
+ * What one upload ended as: a track (its receipt token), held (stored, waiting for the next virus-check batch while
+ * the scanner sleeps; the track and its receipt email follow within about 10 minutes), or an error to show.
+ */
+export type UploadResult = { token: string } | { held: true } | { error: string };
+
 /**
  * One track, three steps: ask the server for an upload URL (it checks the rules first), PUT the file
  * straight to storage with progress, then ask the server to verify it and create the track.
@@ -77,14 +89,50 @@ export async function uploadTrack(
   onProgress: (p: number) => void,
   signal?: AbortSignal,
   onRetry?: (attempt: number, of: number) => void,
-): Promise<{ token: string } | { error: string }> {
+  opts: UploadOptions = {},
+): Promise<UploadResult> {
   const json = async (res: Response) =>
     (await res.json().catch(() => ({}))) as {
       error?: string;
       token?: string;
+      held?: boolean;
       uploadId?: string;
       target?: { url: string; headers: Record<string, string> };
     };
+
+  /** Step 3: verify the stored file (virus check included) and make the track. */
+  const complete = async (uploadId: string): Promise<UploadResult> => {
+    const ask = () =>
+      fetch(`/api/submit/${handle}/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uploadId, duration: analysis?.duration, bpm: analysis?.bpm, peaks: analysis?.peaks }),
+      });
+    // The connection dropped before the answer came back: ask again with the same upload, which the server answers with
+    // the track it already made (never a second one), so a phone losing signal here doesn't make the sender resend.
+    const finish = async () => {
+      for (let attempt = 1; ; attempt++) {
+        try {
+          return await ask();
+        } catch (e) {
+          if (attempt > RETRIES || signal?.aborted) throw e;
+          await backOnline(attempt * 3_000, signal);
+        }
+      }
+    };
+    opts.onChecking?.(true);
+    try {
+      const done = await finish();
+      const finished = await json(done);
+      // 202: the virus scanner is asleep, so the stored file waits for the next check (src/lib/held-uploads.ts).
+      if (done.status === 202 && finished.held) return { held: true };
+      if (done.ok && finished.token) return { token: finished.token };
+      return { error: finished.error || "Upload failed. Your details are still here, so you can try again." };
+    } finally {
+      opts.onChecking?.(false);
+    }
+  };
+
   try {
     const start = await fetch(`/api/submit/${handle}`, {
       method: "POST",
@@ -112,43 +160,7 @@ export async function uploadTrack(
       return {
         error: put === -2 ? STALLED : put === 0 ? NET : "The upload didn't go through. Please try again.",
       };
-    const ask = () =>
-      fetch(`/api/submit/${handle}/complete`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          uploadId: started.uploadId,
-          duration: analysis?.duration,
-          bpm: analysis?.bpm,
-          peaks: analysis?.peaks,
-        }),
-      });
-    // The connection dropped before the answer came back: ask again with the same upload, which the server answers with
-    // the track it already made (never a second one), so a phone losing signal here doesn't make the sender resend.
-    const finish = async () => {
-      for (let attempt = 1; ; attempt++) {
-        try {
-          return await ask();
-        } catch (e) {
-          if (attempt > RETRIES || signal?.aborted) throw e;
-          await backOnline(attempt * 3_000, signal);
-        }
-      }
-    };
-    // Retry-After: the virus check couldn't run just now and the file was kept, so ask again a few times before giving up.
-    let done = await finish();
-    for (let i = 0; done.status === 503 && done.headers.has("Retry-After") && i < 3 && !signal?.aborted; i++) {
-      await new Promise((r) => setTimeout(r, 10_000));
-      done = await finish();
-    }
-    const finished = await json(done);
-    if (!done.ok || !finished.token)
-      return {
-        error:
-          finished.error ||
-          "Upload failed. Your details are still here, so you can try again.",
-      };
-    return { token: finished.token };
+    return await complete(started.uploadId);
   } catch {
     return { error: NET };
   }
@@ -182,6 +194,10 @@ export type Item = {
   progress: number;
   /** Set while a dropped or stalled upload is being tried again by itself: which try, out of how many. */
   retry?: { attempt: number; of: number };
+  /** Set while the file has landed and the server is checking it. */
+  checking?: boolean;
+  /** Received and stored, waiting for the next virus-check batch: the track and its receipt email follow. */
+  held?: boolean;
   token?: string;
   error?: string;
 };
@@ -285,6 +301,7 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
         (p) => patch(it.id, { progress: p }),
         abort.current.signal,
         (attempt, of) => patch(it.id, { retry: attempt ? { attempt, of } : undefined }),
+        { onChecking: (checking) => patch(it.id, { checking }) },
       );
       if ("error" in r && r.error === CANCELLED) {
         patch(it.id, { status: "ready", progress: 0 });
@@ -297,6 +314,14 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
         setError(`${it.tags.title || it.file.name}: ${r.error}`);
         setPhase("idle");
         return;
+      }
+      if ("held" in r) {
+        // Stored and waiting for its virus check. Artwork needs the track, so it can't go with this one.
+        patch(it.id, { status: "done", progress: 1, held: true });
+        sentCount++;
+        const art = fd.get("artwork");
+        if (art instanceof File && art.size) setArtFailed(true);
+        continue;
       }
       patch(it.id, { status: "done", progress: 1, token: r.token });
       sentCount++;

@@ -1,7 +1,7 @@
 import "server-only";
 import { EMAILS, emailText } from "./email-copy";
 import { now, q } from "./db";
-import { APP_URL, sendMail } from "./mail";
+import { APP_URL, queueMail, sendMail } from "./mail";
 
 const DAY = 86_400_000;
 /** How emails greet someone: their first name, or their public name for accounts made before we asked. */
@@ -39,18 +39,15 @@ export async function runFirstTrackNudges(at = now()) {
   );
   let sent = 0;
   for (const u of users) {
-    const claimed = await q.run("UPDATE users SET first_track_nudged_at = ? WHERE id = ? AND first_track_nudged_at IS NULL", at, u.id);
-    if (!claimed.changes) continue;
-    const link = `${APP_URL}/${u.handle}`;
-    const status = await sendMail({
-      unsubscribe: EMAILS.first_track_nudge.unsubscribe,
-      userId: u.id,
-      audience: "receiver",
-      to: u.email,
-      ...(await emailText("first_track_nudge", { first_name: first(u), link })),
+    const text = await emailText("first_track_nudge", { first_name: first(u), link: `${APP_URL}/${u.handle}` });
+    // Marked and queued together, so a rerun can't nudge twice; the queue retries a failed send.
+    const queued = await q.tx(async (db) => {
+      const claimed = await db.run("UPDATE users SET first_track_nudged_at = ? WHERE id = ? AND first_track_nudged_at IS NULL", at, u.id);
+      if (!claimed.changes) return false;
+      await queueMail({ unsubscribe: EMAILS.first_track_nudge.unsubscribe, userId: u.id, audience: "receiver", to: u.email, ...text }, db);
+      return true;
     });
-    if (status.startsWith("failed")) await q.run("UPDATE users SET first_track_nudged_at = NULL WHERE id = ?", u.id);
-    else sent++;
+    if (queued) sent++;
   }
   return sent;
 }

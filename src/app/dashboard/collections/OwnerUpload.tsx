@@ -5,7 +5,8 @@ import { useRef, useState } from "react";
 import { analyzeAudio } from "@/lib/analyze";
 import { readTags } from "@/lib/tags";
 
-type Item = { file: File; title: string; artist: string; status: "ready" | "uploading" | "done" | "error"; progress: number; error?: string };
+// held: stored and waiting for the next virus-check batch while the scanner sleeps; it's added within about 10 minutes.
+type Item = { file: File; title: string; artist: string; status: "ready" | "uploading" | "done" | "error"; progress: number; error?: string; held?: boolean };
 
 /**
  * The owner adds their own files to this collection (promos that came by email, a USB stick…). Same safe path as a
@@ -51,7 +52,7 @@ export function OwnerUpload({ collectionId, collectionName }: { collectionId: nu
     const analysis = await analyzeAudio(it.file).catch(() => null);
     const done = await post(`/api/collections/${collectionId}/upload/complete`, { uploadId: start.data.uploadId, ...(analysis ?? {}) });
     if (!done.ok) return patch(i, { status: "error", error: done.data.error || "Upload failed." });
-    patch(i, { status: "done", progress: 1 });
+    patch(i, { status: "done", progress: 1, held: !!done.data.held });
   }
 
   async function sendAll() {
@@ -103,7 +104,7 @@ export function OwnerUpload({ collectionId, collectionName }: { collectionId: nu
                   <div className="h-full w-full origin-left bg-lime transition-transform duration-200 ease-linear" style={{ transform: `scaleX(${Math.max(0.02, Math.min(1, it.progress))})` }} />
                 </div>
               )}
-              {it.status === "done" && <p className="mt-1.5 text-lime">Added</p>}
+              {it.status === "done" && <p className="mt-1.5 text-lime">{it.held ? "Received. Checking for viruses; it appears here within 10 minutes." : "Added"}</p>}
               {it.error && <p className="mt-1.5 text-danger">{it.error}</p>}
             </li>
           ))}

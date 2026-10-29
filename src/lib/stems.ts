@@ -1,7 +1,7 @@
 import "server-only";
 import { discardFiles } from "@/lib/deletion";
 import crypto from "node:crypto";
-import { claimUpload, IntakeError, releaseUpload } from "./intake";
+import { claimUpload, IntakeError, pointAtSealed, releaseUpload, UploadHeld } from "./intake";
 import { now, q, type Sender, type Track, type User } from "./db";
 import { APP_URL, sendMail } from "./mail";
 import { MAX_UPLOAD_BYTES } from "./plans";
@@ -9,7 +9,7 @@ import { featureOn } from "./features";
 import { recentCount, record } from "./ratelimit";
 import { sealUpload, storage } from "./storage";
 import { validateAudio } from "./validate";
-import { scanStored, SCAN_REFUSED, SCAN_UNAVAILABLE } from "./scan";
+import { scannerAwake, scanStored, SCAN_REFUSED, type ScanResult } from "./scan";
 import { recordIncident } from "./incidents";
 
 export type Stem = { id: number; track_id: number; file_key: string; name: string; mime: string; size: number; created_at: number };
@@ -103,7 +103,12 @@ export async function startStemUpload(token: string, fileName: string, size: num
 }
 
 /** Step 2: the stem is in storage. Check it's the right size and real audio, then attach it to the track. */
-export async function completeStemUpload(token: string, uploadId: string) {
+/**
+ * `from`: "request" (the sender's own request: a sleeping scanner isn't woken, the stem is held for the next batch) or
+ * "batch" (the held-uploads job, src/lib/held-uploads.ts, which has woken the scanner and waits for it, up to
+ * `scanDeadlineMs` when given).
+ */
+export async function completeStemUpload(token: string, uploadId: string, opts: { from?: "request" | "batch"; scanDeadlineMs?: number } = {}) {
   const t = await trackForStems(token);
   // Claimed first: of two completes sent at the same moment, only one goes on.
   const up = await claimUpload<{ id: string; file_key: string; size: number; meta: string }>(uploadId, t.user_id, "id, file_key, size, meta");
@@ -124,9 +129,11 @@ export async function completeStemUpload(token: string, uploadId: string) {
   }
   // Checked and kept as a sealed copy the sender's upload link can't overwrite.
   fileKey = await sealUpload(store, up.file_key);
-  await discardFiles([up.file_key], "upload sealed", { linkLive: true });
   // If we crash before the track is saved, the abandoned-upload clean-up still finds (and deletes) the sealed copy.
-  await q.run("UPDATE uploads SET file_key = ? WHERE id = ?", fileKey, up.id);
+  await pointAtSealed(up.id, up.file_key, fileKey).catch(async (e) => {
+    await releaseUpload(up.id);
+    throw e;
+  });
   const head = await store.head(fileKey);
   if (!head || head.size !== up.size) {
     await discard();
@@ -137,20 +144,26 @@ export async function completeStemUpload(token: string, uploadId: string) {
     await discard();
     throw new IntakeError(check.reason, 415);
   }
-  // Virus check on our own scanner (off until SCAN_URL is set); nothing flagged or unchecked reaches the desk.
-  const scan = await scanStored(fileKey);
-  if (scan.verdict === "infected" || scan.verdict === "unavailable") {
-    // A flagged file goes. When the scanner can't be reached, the sealed file stays with its upload, so the sender's
-    // browser can ask again without sending it twice (the abandoned-upload clean-up removes it if they never do).
-    if (scan.verdict === "infected") await discard();
-    else await releaseUpload(up.id); // the retry has to be able to claim it again
-    await recordIncident(
-      scan.verdict === "infected" ? "upload_rejected" : "upload_failed",
-      scan.verdict === "infected" ? "Virus check flagged an upload" : "Virus check unavailable; an upload was refused",
-      scan.verdict === "infected" ? `${scan.signature} · receiver #${t.user_id}` : scan.error,
-      "stem upload",
+  // Virus check on our own scanner (off until SCAN_URL is set); nothing flagged or unchecked reaches the desk. A sleeping
+  // scanner isn't woken for one stem: it's held and the next batch (every 5 minutes) checks it, as for tracks.
+  const from = opts.from ?? "request";
+  const asleep = from === "request" && (await scannerAwake()) === false;
+  const scan: ScanResult = asleep ? { verdict: "unavailable", error: "scanner asleep" } : await scanStored(fileKey, from === "request" ? { deadlineMs: 45_000 } : opts.scanDeadlineMs ? { deadlineMs: opts.scanDeadlineMs } : {});
+  if (scan.verdict === "infected") {
+    await discard();
+    await recordIncident("upload_rejected", "Virus check flagged an upload", `${scan.signature} · receiver #${t.user_id}`, "stem upload");
+    throw new IntakeError(SCAN_REFUSED, 422);
+  }
+  if (scan.verdict === "unavailable") {
+    // Held, not refused: the sealed stem stays with its upload and is attached only after the batch's check passes.
+    await q.run(
+      "UPDATE uploads SET held_at = COALESCE(held_at, ?), held_tries = held_tries + ?, claimed_at = NULL WHERE id = ?",
+      now(),
+      from === "batch" ? 1 : 0,
+      up.id,
     );
-    throw new IntakeError(scan.verdict === "infected" ? SCAN_REFUSED : SCAN_UNAVAILABLE, scan.verdict === "infected" ? 422 : 503);
+    if (!asleep) await recordIncident("upload_failed", "Virus check unavailable; a stem upload is held for the next batch", scan.error, "stem upload");
+    throw new UploadHeld();
   }
   const name = meta.name || "Stem";
   // Counted and added in one statement, so the cap holds however many finish at once.
@@ -185,7 +198,9 @@ export async function completeStemUpload(token: string, uploadId: string) {
       ))!;
     });
   } catch (e) {
-    await discard();
+    // Only a refusal (cap reached, already saved) discards the stem; any other failure keeps it for the sender's retry.
+    if (e instanceof IntakeError) await discard();
+    else await releaseUpload(up.id).catch((err) => console.error("[stems] couldn't release an upload claim", err));
     throw e;
   }
 

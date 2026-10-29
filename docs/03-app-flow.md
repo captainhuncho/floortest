@@ -62,11 +62,13 @@ Mobile tab bar: Floor · Queue · Collections · Prepare. Desktop sidebar adds S
 ```
 floortest.app/<handle> ─► choose files (or Send folders on Pro/Team)
    ─► details form (title/artist · you · about the track; "+ Add a message" / "+ Add artwork" on Team) ─► email ─► 6-digit code
-   ─► upload in place (one bar, time left, Cancel; a dropped or stalled upload (no progress for 30 s) is tried again by itself up to 3 times once the phone is back online, from the start of that file with the same 15-minute link, saying so on screen; after that "The upload stalled…" / "Network error…" with the answers kept) ─► done: check, receipt email, Delivered → Listened → Downloaded → Replied ─► View receipt / Send another
+   ─► upload in place (one bar, time left, Cancel; a dropped or stalled upload (no progress for 30 s) is tried again by itself up to 3 times once the phone is back online, from the start of that file with the same 15-minute link, saying so on screen; after that "The upload stalled…" / "Network error…" with the answers kept) ─► done: check, receipt email, Delivered → Listened → Downloaded → Replied ─► View receipt / Send another. If the virus scanner is asleep or down (hold and scan, 26 Oct): done says "“Title” is received", it's being checked for viruses (up to 10 minutes), the receipt follows by email; no View receipt yet, artwork isn't attached; the 10-minute batch delivers it (or emails the sender if it's refused). A save that fails for any reason other than a refusal (database or storage hiccup) keeps the file; the sender's retry or the next batch finishes it
    Missing answers: each field says what to do and they're listed together above Send (each a link); nothing uploads until they're filled.
    A genre tapped in the receiver's brief arrives already chosen in the form.
 Link closed / paused / full ─► the page says why, no upload ─► "Email me when it reopens" ─► one email when the link takes uploads again
-   (after the receiver switches collection, moves the closing date or resumes: up to 50 sent just after the page answers, the rest nightly; nightly also for a pause that ended on its own or a re-route; a failed send is retried next night)
+   (after the receiver switches collection, moves the closing date or resumes: up to 50 sent just after the page answers, the rest nightly; nightly also for a pause that ended on its own or a re-route; a failed send is retried by the email queue every 10 minutes)
+
+Receiver emails ─► instant "New track" (sent at once; quiet hours hold it for the digest) · daily digest, 2-week nudge, first-track nudge, Played out reminder (written at 08:00 UTC, sent by the 10-minute email queue) ─► a failed send is retried with the same key, never sent twice ─► near the daily send limit these wait until after midnight UTC; sign-in codes, resets and receipts always go
 ```
 
 ## Offline kept tracks (iPhone and Android apps)

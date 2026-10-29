@@ -25,6 +25,8 @@ async function main() {
 
   let problems = 0;
   for (const [table, rows] of Object.entries(dump.tables)) {
+    // Migrations seed some tables (the default plans); the backup holds those rows too, so start each table empty.
+    await pg.exec(`DELETE FROM ${table}`);
     for (const row of rows) {
       const cols = Object.keys(row);
       const vals = cols.map((c) => (row[c] !== null && typeof row[c] === "object" ? JSON.stringify(row[c]) : row[c]));

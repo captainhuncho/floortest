@@ -149,7 +149,7 @@ export default async function AdminOverview({ searchParams }: { searchParams: Pr
     safe("jobs", jobProblems(t), [] as string[]),
     safe("email quota", mailUsage(), null),
     safe("backups", lastBackup(), null),
-    safe("job runs", lastRuns(), { purge: null, digest: null }),
+    safe("job runs", lastRuns(), { purge: null, digest: null, scan: null, mail: null }),
     safe("storage", allowances(), []),
     safe("sign-up mode", switchOn("open_signup"), false),
   ]);

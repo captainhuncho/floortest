@@ -19,17 +19,23 @@ export type JobRun = { at: number; ms: number; ok: boolean; result: unknown };
 export const JOBS = {
   purge: { label: "Nightly backup and clean-up", schedule: "Every day at 03:30 UTC" },
   digest: { label: "Daily emails", schedule: "Every day at 08:00 UTC" },
+  // Late after an hour, not a day: held uploads wait on it.
+  scan: { label: "Held uploads virus check", schedule: "Every 5 minutes", lateAfterMs: 3_600_000 },
+  // Late after an hour: digests, reminders and email retries wait on it.
+  mail: { label: "Email queue", schedule: "Every 10 minutes", lateAfterMs: 3_600_000 },
 } as const;
 export type JobName = keyof typeof JOBS;
 /** Daily jobs: one that hasn't run for this long has missed at least one night. */
 export const LATE_AFTER_MS = 26 * 3_600_000;
 
 /** Remembers each job's run (when, how long, ok or not, what it did): the latest for Admin → Overview, all of them for Admin → Jobs. */
-export async function recordRun(job: JobName, startedAt: number, ok: boolean, result: unknown) {
+export async function recordRun(job: JobName, startedAt: number, ok: boolean, result: unknown, { history = true } = {}) {
   const run: JobRun = { at: startedAt, ms: Date.now() - startedAt, ok, result };
-  await q
-    .run("INSERT INTO job_runs (job, started_at, ms, ok, result) VALUES (?,?,?,?,?)", job, startedAt, run.ms, ok ? 1 : 0, JSON.stringify(result ?? "").slice(0, 4000))
-    .catch((e) => console.error("[cron] could not record run history", e));
+  // `history: false` for a frequent job's empty runs: the latest run is kept (so it isn't reported late), the log isn't filled.
+  if (history)
+    await q
+      .run("INSERT INTO job_runs (job, started_at, ms, ok, result) VALUES (?,?,?,?,?)", job, startedAt, run.ms, ok ? 1 : 0, JSON.stringify(result ?? "").slice(0, 4000))
+      .catch((e) => console.error("[cron] could not record run history", e));
   await q
     .run(
       "INSERT INTO app_state (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
@@ -69,7 +75,8 @@ export async function withJobLease<T>(job: JobName, run: () => Promise<T>, at = 
 }
 
 export async function lastRuns() {
-  const rows = await q.all<{ key: string; value: string }>("SELECT key, value FROM app_state WHERE key IN ('last_run_purge', 'last_run_digest')");
+  const names = Object.keys(JOBS) as JobName[];
+  const rows = await q.all<{ key: string; value: string }>(`SELECT key, value FROM app_state WHERE key IN (${names.map(() => "?").join(",")})`, ...names.map((j) => `last_run_${j}`));
   const get = (k: string) => {
     try {
       return JSON.parse(rows.find((r) => r.key === k)?.value ?? "null") as JobRun | null;
@@ -77,7 +84,7 @@ export async function lastRuns() {
       return null;
     }
   };
-  return { purge: get("last_run_purge"), digest: get("last_run_digest") };
+  return Object.fromEntries(names.map((j) => [j, get(`last_run_${j}`)])) as Record<JobName, JobRun | null>;
 }
 
 /**
@@ -91,9 +98,10 @@ export async function jobProblems(at = Date.now()) {
   return (Object.keys(JOBS) as JobName[])
     .map((j) => {
       const r = runs[j];
+      const late = (JOBS[j] as { lateAfterMs?: number }).lateAfterMs ?? LATE_AFTER_MS;
       if (!r) return at - installed > LATE_AFTER_MS ? `${JOBS[j].label} has never run` : null;
       if (!r.ok) return `${JOBS[j].label} failed on ${new Date(r.at).toLocaleString("en-GB")}`;
-      if (at - r.at > LATE_AFTER_MS) return `${JOBS[j].label} hasn't run since ${new Date(r.at).toLocaleString("en-GB")}`;
+      if (at - r.at > late) return `${JOBS[j].label} hasn't run since ${new Date(r.at).toLocaleString("en-GB")}`;
       return null;
     })
     .filter((x): x is string => !!x);

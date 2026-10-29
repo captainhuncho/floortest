@@ -81,7 +81,7 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
         </p>
       </section>
 
-      <PlanCards requests={await switchOn("plan_requests")} teams={await teamsOn(user.id)} plans={plans} billing={billing} userPlan={user.plan} currentPrice={current.price} capUsed={cap.used} capBonus={cap.bonus} pendingPlan={pending?.plan ?? null} sharing={sharing} />
+      <PlanCards requests={await switchOn("plan_requests", user)} teams={await teamsOn(user.id)} plans={plans} billing={billing} userPlan={user.plan} currentPrice={current.price} capUsed={cap.used} capBonus={cap.bonus} pendingPlan={pending?.plan ?? null} sharing={sharing} />
 
       <section aria-labelledby="renewal-h" className="space-y-1.5 text-[11px] text-dim md:max-w-3xl">
         <h2 id="renewal-h" className="font-bold text-mute">

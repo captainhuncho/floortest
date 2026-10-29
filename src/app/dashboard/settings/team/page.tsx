@@ -3,10 +3,10 @@ import { requireUser } from "@/lib/auth";
 import Link from "next/link";
 import { atLeast, canApprove, heldReplies, ownerNeedsTwoStep, replyApproval, ROLE_LABEL, teamOf, teamsOn } from "@/lib/account-members";
 import { fmtDate, fmtDay } from "@/lib/format";
-import { answerHeldReply, cancelTeamInvite, removeTeammate } from "../../actions/account-team";
+import { answerHeldReply, removeTeammate } from "../../actions/account-team";
 import { ConfirmButton } from "../../ClientBits";
 import { PageTitle, Section } from "../Section";
-import { ApprovalForm, InviteForm, RoleSelect } from "./TeamForms";
+import { ApprovalForm, CancelInviteForm, InviteForm, RoleSelect } from "./TeamForms";
 
 export const metadata = { title: "Team — FloorTest" };
 
@@ -96,9 +96,7 @@ export default async function Team({ searchParams }: { searchParams: Promise<{ d
                 {i.email} · invited as {ROLE_LABEL[i.role].toLowerCase()} · expires {fmtDay(i.expires_at)}
               </span>
               {manage && (
-                <form action={cancelTeamInvite.bind(null, i.id)}>
-                  <button className="btn-ghost btn-sm h-9">Cancel invite</button>
-                </form>
+                <CancelInviteForm inviteId={i.id} />
               )}
             </li>
           ))}

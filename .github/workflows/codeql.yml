@@ -1,5 +1,5 @@
 # Code scanning: GitHub's CodeQL reads the JavaScript/TypeScript source for security problems (injection, unsafe
-# redirects, path traversal and the like) on every push and pull request to main or mobile-next, and once a week so
+# redirects, path traversal and the like) on pull requests into main (docs-only ones skipped), and once a week so
 # new queries also cover code that hasn't changed. Findings appear under the repository's Security tab.
 # The repository is private, so results need a paid GitHub plan with Code Security, or a public repository (owner's
 # decision, docs/06-plan.md B5); without it the upload step fails. Until then the job is skipped: it runs only when the
@@ -7,10 +7,9 @@
 # after switching Code Security on. Actions are pinned to full commit SHAs; the tag is in the comment beside each one.
 name: CodeQL
 on:
-  push:
-    branches: [main, mobile-next]
   pull_request:
-    branches: [main, mobile-next]
+    branches: [main]
+    paths-ignore: ["docs/**", "**/*.md", "graphify-out/**"]
   schedule:
     - cron: "23 4 * * 1"
   workflow_dispatch: {}

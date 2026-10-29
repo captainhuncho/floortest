@@ -30,8 +30,9 @@ commit. Shipping an item from `06-plan.md` moves it to Done.
 
 ## Branches, preview and production
 - Work on `mobile-next`. Pushing it builds a Vercel **preview** (its own database, the `floortest-audio-preview` bucket,
-  no email key): safe to show the owner. `main` is **production**: only on the owner's "ship it" (merge into `main`,
-  push `main`, wait ~60 s, then push `mobile-next`; confirm the deploy).
+  no email key): safe to show the owner. `main` is **production**: only on the owner's "ship it" (merge the release PR
+  into `main` on GitHub, never push `main`; wait ~60 s, merge `main` into `mobile-next` and push `mobile-next`; confirm
+  the deploy; steps in the `owner-ship` skill).
 - `vercel-build` runs migrations: a new migration reaches production only when shipped.
 
 ## Checks
@@ -49,7 +50,7 @@ deleting buckets, databases or accounts (the owner does that); changing producti
 
 <!-- BEGIN:nextjs-agent-rules -->
 
-# This is NOT the Next.js you know
+## This is NOT the Next.js you know
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
 

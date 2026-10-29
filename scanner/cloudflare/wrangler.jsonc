@@ -7,14 +7,16 @@
   "workers_dev": true,
   "preview_urls": false,
   "observability": { "enabled": true },
-  // Every 5 minutes: wake the scanner if it stopped (deploy, host move, crash) so an upload never waits on a cold start.
-  "triggers": { "crons": ["*/5 * * * *"] },
+  // No wake-up cron (owner, 26 Oct): the container sleeps after 10 idle minutes (index.js) and an upload wakes it.
+  // An empty list, not a missing key, so the deploy also removes the old every-5-minutes trigger.
+  "triggers": { "crons": [] },
   "containers": [
     {
       "class_name": "Scanner",
       "image": "../Dockerfile",
-      // ClamAV holds about 1 GB of signatures, briefly twice that while it reloads them after an update. Memory is billed
-      // as provisioned and CPU only as used, so the smallest custom size: 1 vCPU, 3 GiB (the minimum per vCPU), 4 GB disk.
+      // ClamAV holds about 1 GB of signatures, briefly twice that while it reloads them after an update. Memory and disk
+      // are billed as provisioned while the container runs (nothing while it sleeps) and CPU only as used, so the
+      // smallest custom size: 1 vCPU, 3 GiB (the minimum per vCPU), 4 GB disk.
       "instance_type": { "vcpu": 1, "memory_mib": 3072, "disk_mb": 4000 },
       "max_instances": 1,
       // Same region as the audio bucket (floortest-audio-eu, Western Europe): files are scanned where they are stored.
