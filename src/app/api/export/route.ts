@@ -3,8 +3,8 @@ import { currentUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { OTHER_SITE, fromThisSite } from "@/lib/same-site";
 import { markDownloaded } from "@/lib/review";
-import { crateZip, safeName } from "@/lib/crate";
-import { q, type Collection, type Track } from "@/lib/db";
+import { crateTracks, crateZip, safeName } from "@/lib/crate";
+import { q, type Collection } from "@/lib/db";
 import { BATCH_MAX } from "@/lib/batch";
 
 export const runtime = "nodejs";
@@ -38,23 +38,7 @@ export async function GET(req: Request) {
   const whole = !!collection && url.searchParams.get("all") === "1";
   const ids = [...new Set((url.searchParams.get("ids") || "").split(",").map(Number).filter((n) => Number.isSafeInteger(n) && n > 0))].slice(0, BATCH_MAX);
 
-  const tracks = ids.length
-    ? await q.all<Track>(
-        `SELECT tracks.*, CASE WHEN r.title <> '' THEN r.title END AS release_folder
-         FROM tracks LEFT JOIN releases r ON r.id = tracks.release_id
-         WHERE tracks.user_id = ? AND tracks.deleted_at IS NULL AND tracks.file_key IS NOT NULL AND tracks.id IN (${ids.map(() => "?").join(",")})
-         ORDER BY tracks.created_at`,
-        user.id,
-        ...ids,
-      )
-    : await q.all<Track>(
-    // EPs and albums carry their release name, so the crate keeps them together in their own folder.
-    `SELECT tracks.*, CASE WHEN r.title <> '' THEN r.title END AS release_folder
-     FROM tracks LEFT JOIN releases r ON r.id = tracks.release_id
-     WHERE tracks.user_id = ? AND tracks.deleted_at IS NULL AND tracks.file_key IS NOT NULL ${whole ? "" : "AND tracks.decision = 'kept'"} ${collection ? "" : "AND tracks.set_cleared_at IS NULL"}
-     ${collection ? "AND tracks.collection_id = ?" : ""} ORDER BY ${whole ? "tracks.created_at" : "tracks.decided_at"}`,
-    ...(collection ? [user.id, collection.id] : [user.id]),
-  );
+  const tracks = await crateTracks(user.id, { ids, collection, whole });
   if (!tracks.length) return new Response(ids.length ? "None of those tracks can be downloaded." : whole ? "This collection is empty." : "Keep some tracks first.", { status: 400 });
   // One download has to finish inside the server's 5-minute limit, and a plain ZIP can't go past 4 GB.
   const bytes = tracks.reduce((n, t) => n + (t.size ?? 0), 0);
