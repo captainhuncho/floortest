@@ -191,7 +191,7 @@ test("timeout: a scanner that never wakes, or a scan that never finishes, is 'un
   }
 });
 
-test("waking: an upload start asks the scanner to wake with the secret; health says 'asleep' without waking it", async () => {
+test("waking: the held-uploads batch asks the scanner to wake with the secret; health says 'asleep' without waking it", async () => {
   const fake = await sleepyScanner({ wakeAfter: 0 });
   try {
     await wakeScanner();

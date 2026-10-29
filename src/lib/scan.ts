@@ -1,5 +1,4 @@
 import "server-only";
-import { after } from "next/server";
 
 /**
  * Virus check of an upload, on our own scanner (ClamAV in a small container we run: `scanner/`). The scanner reads the
@@ -11,9 +10,10 @@ import { after } from "next/server";
  * scanner's key can read.
  *
  * The scanner sleeps after 10 idle minutes (owner, 26 Oct: it cost about $6.50 a month running all the time). Waking it
- * takes about 15–30 seconds (container start plus ClamAV loading its signatures), so an upload wakes it when it starts
- * (`wakeScannerSoon`), and the check waits through a wake-up: a "starting" answer or a refused connection is asked
- * again with growing pauses until the deadline. A scan that is running but slow is never cut short to retry it.
+ * takes about 15–30 seconds (container start plus ClamAV loading its signatures). Starting an upload doesn't wake it: an
+ * upload finished while it sleeps is held, and the held-uploads job (src/lib/held-uploads.ts) wakes it once per batch,
+ * within the day's budget (src/lib/scan-budget.ts). The check waits through a wake-up: a "starting" answer or a refused
+ * connection is asked again with growing pauses until the deadline. A scan that is running but slow is never cut short.
  *
  *   clean      → the upload carries on
  *   infected   → the upload is refused and discarded; the sender is told it couldn't be accepted
@@ -106,8 +106,8 @@ export async function scanStored(key: string, timing: ScanTiming = {}): Promise<
 }
 
 /**
- * Asks a sleeping scanner to start, without waiting for it. Called as an upload starts, so the scanner is usually
- * awake by the time the file has landed. Needs the secret, so nobody else can keep it running. Never throws.
+ * Asks a sleeping scanner to start, without waiting for it. Called by the held-uploads job before its first check, after
+ * charging the wake-up to the budget. Needs the secret, so nobody else can keep it running. Never throws.
  */
 export async function wakeScanner(): Promise<void> {
   const url = scanBase();
@@ -141,17 +141,6 @@ export async function scannerAwake(): Promise<boolean | null> {
     return null;
   } catch {
     return null;
-  }
-}
-
-/** `wakeScanner` after the response has gone, so starting an upload is never slower for it. */
-export function wakeScannerSoon(): void {
-  if (!scanBase()) return;
-  try {
-    after(wakeScanner);
-  } catch {
-    // Outside a request (scripts, tests): just start it.
-    void wakeScanner();
   }
 }
 

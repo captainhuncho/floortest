@@ -20,7 +20,7 @@ holds it in R2, so this adds no new subprocessor and no lawyer step. `cloudflare
 image: it lets only `GET /status`, `GET /health`, `POST /wake` and `POST /scan` through, and all but `/status` need the
 secret (`cloudflare/routes.js`; `/health` too since 28 Oct, when the repository went public: an open `/health` let
 anyone keep the container awake and billed). **Sleeps after 10 idle minutes**
-(owner, 26 Oct; it cost about $20 a month always on): `/wake` (with the secret) starts it as an upload starts,
+(owner, 26 Oct; it cost about $20 a month always on): `/wake` (with the secret) starts it for the app's batch of held uploads (within a daily budget, `src/lib/scan-budget.ts`),
 `/scan` waits up to 90 s for it to be ready, `/status` says whether it's running without waking it. Cold start measured
 26 Oct: 16–18 s locally (amd64 image under emulation on an Apple Silicon Mac) plus 1–3 s for Cloudflare to place it. Fly.io is only a fallback, for if Cloudflare can't keep up
 (see the end of this file).
