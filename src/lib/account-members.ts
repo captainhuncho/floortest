@@ -4,6 +4,7 @@ import { now, q, type Queryable, type User } from "./db";
 import { allow } from "./ratelimit";
 import { switchOn } from "./switches";
 import { env } from "./env";
+import { normalEmail } from "./email-normal";
 
 /**
  * Account teams. A label, radio station or crew has one FloorTest account (its owner's) and invites the people who run
@@ -157,7 +158,7 @@ export async function inviteForEmail(email: string) {
   const invite = await q.get<{ id: number; account_id: number; email: string; role: "admin" | "member"; account_name: string; account_handle: string }>(
     `SELECT i.id, i.account_id, i.email, i.role, u.name AS account_name, u.handle AS account_handle FROM account_invites i JOIN users u ON u.id = i.account_id
      WHERE i.email = ? AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > ? AND u.suspended_at IS NULL ORDER BY i.created_at DESC LIMIT 1`,
-    email.trim().toLowerCase(),
+    normalEmail(email),
     now(),
   );
   return invite && (await teamsOn(invite.account_id)) ? invite : undefined;

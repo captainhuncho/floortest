@@ -19,10 +19,12 @@ import { env } from "@/lib/env";
 import { APP_URL, sendMail } from "@/lib/mail";
 import { RESERVED_HANDLES } from "@/lib/plans";
 import { allow, recentCount, record, requestIp } from "@/lib/ratelimit";
+import { loginLocked, recordLoginFailure } from "@/lib/login-limits";
+import { normalEmail } from "@/lib/email-normal";
 import { isProtectedHandle } from "@/lib/identity";
 import { sendWelcome } from "@/lib/onboarding";
 import { checkSecondFactor, finishSignIn, sendEmailVerification } from "@/lib/security";
-import { readChallenge, signChallenge } from "@/lib/totp";
+import { issueTicket, TICKET_MS, ticketUser, spendTicket } from "@/lib/two-step-ticket";
 import { GOOGLE_LINK_COOKIE, GOOGLE_SIGNUP_COOKIE, readIdentity, readPendingLink } from "@/lib/google-auth";
 import { pinGoogle } from "@/lib/google-link";
 import { accountEmailAllowed } from "@/lib/email-budget";
@@ -49,7 +51,7 @@ async function landing(fallback: string) {
 async function afterPassword(userId: number, how: "password" | "reset" | "email code" | "Google") {
   const twoFactor = await q.get("SELECT 1 FROM users WHERE id = ? AND totp_enabled_at IS NOT NULL", userId);
   if (twoFactor) {
-    (await cookies()).set(CHALLENGE, signChallenge(userId, env.secret), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 300 });
+    (await cookies()).set(CHALLENGE, await issueTicket(userId), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: TICKET_MS / 1000 });
     redirect("/login/verify");
   }
   await finishSignIn(userId, how);
@@ -166,7 +168,7 @@ const fromForm = (form: FormData, k: string, max: number) => String(form.get(k) 
 export async function signup(_: FormState, form: FormData): Promise<FormState> {
   const firstName = fromForm(form, "first_name", 60);
   const lastName = fromForm(form, "last_name", 60);
-  const email = fromForm(form, "email", 200).toLowerCase();
+  const email = normalEmail(fromForm(form, "email", 200));
   const handle = String(form.get("handle") || "").trim().toLowerCase();
   // Public name: their professional name, or the username when they leave it empty.
   const name = fromForm(form, "name", 80) || handle;
@@ -236,13 +238,11 @@ export async function approveGoogleLink(_: FormState, form: FormData): Promise<F
 }
 
 export async function login(_: FormState, form: FormData): Promise<FormState> {
-  const email = String(form.get("email") || "").trim().toLowerCase().slice(0, 200);
+  const email = normalEmail(String(form.get("email") || "")).slice(0, 200);
   const password = String(form.get("password") || "").slice(0, 200);
   const ip = await requestIp();
-  // Failed attempts only, both per connection and per account, so normal logins never lock anyone out.
-  const WINDOW = 15 * 60_000;
-  if ((await recentCount("login_fail_ip", ip, WINDOW)) >= 20 || (await recentCount("login_fail_email", email, WINDOW)) >= 10)
-    return { error: "Too many attempts. Wait 15 minutes, or reset your password." };
+  // Failed attempts only, per connection and per account on that connection (lib/login-limits).
+  if (await loginLocked(email, ip)) return { error: "Too many attempts. Wait 15 minutes, or reset your password." };
   // After a few wrong tries, prove you're human first (Cloudflare). Checked here on the server, so it can't be skipped.
   const failures = await recentFailures("login_fail_email", "login_fail_ip", email, ip);
   const human = await humanCheck(failures, form, ip);
@@ -250,8 +250,7 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
   const row = await q.get<{ id: number; password_hash: string; suspended_at: number | null }>("SELECT id, password_hash, suspended_at FROM users WHERE email = ?", email);
   const ok = await verifyPassword(password, row?.password_hash ?? (await DUMMY_HASH));
   if (!row || !ok) {
-    await record("login_fail_ip", ip);
-    await record("login_fail_email", email);
+    await recordLoginFailure(email, ip);
     return { error: "Email or password is incorrect.", challenge: failures + 1 >= HUMAN_CHECK_AFTER };
   }
   if (row.suspended_at) return { error: "This account is suspended. To appeal, go to the Contact page and choose Suspension appeal." };
@@ -269,7 +268,7 @@ export async function logout() {
 
 /** Always answers the same way, so it can't be used to discover which emails have accounts. */
 export async function requestPasswordReset(_: FormState, form: FormData): Promise<FormState> {
-  const email = String(form.get("email") || "").trim().toLowerCase().slice(0, 200);
+  const email = normalEmail(String(form.get("email") || "")).slice(0, 200);
   if (!EMAIL.test(email)) return { error: "Enter the email you signed up with." };
   const ip = await requestIp();
   if (!(await allow("reset_ip", ip, 5, HOUR)) || !(await allow("reset_email", email, 3, HOUR)))
@@ -310,7 +309,7 @@ const codeHash = (userId: number, code: string) => crypto.createHmac("sha256", e
 
 /** Emails a 6-digit sign-in code. Always moves on to the code page, so it can't reveal which emails have accounts. */
 export async function requestLoginCode(_: FormState, form: FormData): Promise<FormState> {
-  const email = String(form.get("email") || "").trim().toLowerCase().slice(0, 200);
+  const email = normalEmail(String(form.get("email") || "")).slice(0, 200);
   if (!EMAIL.test(email)) return { error: "Enter the email you signed up with." };
   const ip = await requestIp();
   // Asking for codes again and again: prove you're human first.
@@ -396,7 +395,8 @@ export async function verifyLoginCode(_: FormState, form: FormData): Promise<For
 /** Second sign-in step: a 6-digit authenticator code or a one-time recovery code. */
 export async function verifySecondStep(_: FormState, form: FormData): Promise<FormState> {
   const jar = await cookies();
-  const userId = readChallenge(jar.get(CHALLENGE)?.value, env.secret);
+  const ticket = jar.get(CHALLENGE)?.value;
+  const userId = await ticketUser(ticket);
   if (!userId) return { error: "That took too long. Log in again." };
   const key = `user:${userId}`;
   if ((await recentCount("twofa_fail", key, 15 * 60_000)) >= 8) return { error: "Too many wrong codes. Wait 15 minutes and log in again." };
@@ -406,6 +406,7 @@ export async function verifySecondStep(_: FormState, form: FormData): Promise<Fo
     return { error: "That code didn't work. Check your authenticator app and try again." };
   }
   jar.delete(CHALLENGE);
+  if (!(await spendTicket(ticket, userId))) return { error: "That took too long. Log in again." };
   await finishSignIn(userId, result === "code" ? "two-factor" : "recovery code");
   redirect(await landing("/dashboard/floor"));
 }
@@ -436,14 +437,15 @@ export async function passkeySignIn(answer: unknown): Promise<FormState> {
 
 /** Two-step with a passkey instead of the code, step 1. Null when this account has no passkey. */
 export async function passkeySecondStepStart() {
-  const userId = readChallenge((await cookies()).get(CHALLENGE)?.value, env.secret);
+  const userId = await ticketUser((await cookies()).get(CHALLENGE)?.value);
   return userId ? secondStepOptions(userId) : null;
 }
 
 /** Step 2: the passkey must belong to the account whose password (or email code) was just checked. */
 export async function passkeySecondStep(answer: unknown): Promise<FormState> {
   const jar = await cookies();
-  const userId = readChallenge(jar.get(CHALLENGE)?.value, env.secret);
+  const ticket = jar.get(CHALLENGE)?.value;
+  const userId = await ticketUser(ticket);
   if (!userId) return { error: "That took too long. Log in again." };
   const key = `user:${userId}`;
   if ((await recentCount("twofa_fail", key, 15 * 60_000)) >= 8) return { error: "Too many wrong tries. Wait 15 minutes and log in again." };
@@ -452,13 +454,14 @@ export async function passkeySecondStep(answer: unknown): Promise<FormState> {
     return { error: "That passkey didn't work. Try again, or enter the code from your authenticator app." };
   }
   jar.delete(CHALLENGE);
+  if (!(await spendTicket(ticket, userId))) return { error: "That took too long. Log in again." };
   await finishSignIn(userId, "passkey as two-step");
   redirect(await landing("/dashboard/floor"));
 }
 
 /** For the two-step page: whether to offer "Use a passkey instead". */
 export async function secondStepHasPasskey() {
-  const userId = readChallenge((await cookies()).get(CHALLENGE)?.value, env.secret);
+  const userId = await ticketUser((await cookies()).get(CHALLENGE)?.value);
   return userId ? hasPasskey(userId) : false;
 }
 
@@ -475,7 +478,7 @@ async function teamInviteFor(form: FormData, email: string) {
   const secret = String(form.get("team") || "");
   if (!secret) return undefined;
   const inv = await inviteBySecret(secret);
-  return inv && inv.email === email.trim().toLowerCase() ? inv : undefined;
+  return inv && inv.email === normalEmail(email) ? inv : undefined;
 }
 
 /** After a sign-up from a team invite: join the team and switch to its desk. */

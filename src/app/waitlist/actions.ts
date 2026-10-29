@@ -5,13 +5,14 @@ import { isProtectedHandle } from "@/lib/identity";
 import { RESERVED_HANDLES } from "@/lib/plans";
 import { allow, requestIp } from "@/lib/ratelimit";
 import { BOT_MESSAGE, passedTurnstile } from "@/lib/turnstile";
+import { normalEmail } from "@/lib/email-normal";
 
 export type WaitlistState = { ok?: boolean; error?: string } | undefined;
 
 /** Public "request an invite". Quiet about duplicates so it can't be used to probe who's on the list. */
 export async function joinWaitlist(_: WaitlistState, form: FormData): Promise<WaitlistState> {
   if (String(form.get("website") || "")) return { ok: true }; // bots fill the hidden field
-  const email = String(form.get("email") || "").trim().toLowerCase().slice(0, 200);
+  const email = normalEmail(String(form.get("email") || "")).slice(0, 200);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Enter a valid email." };
   if (!(await allow("waitlist_ip", await requestIp(), 5, 3_600_000))) return { error: "Too many requests. Try again later." };
   if (!(await passedTurnstile(form.get("cf-turnstile-response"), await requestIp(), "waitlist"))) return { error: BOT_MESSAGE };
