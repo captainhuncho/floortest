@@ -31,7 +31,7 @@ async function setup() {
 
 test("the devices list shows live sessions, newest use first, and leaves out a browser idle for 14 days", async () => {
   const { user, session, t } = await setup();
-  const { listSessions, WEB_IDLE_MS } = await import("../src/lib/sessions");
+  const { deviceId, listSessions, WEB_IDLE_MS } = await import("../src/lib/sessions");
   const me = await user("devices");
   const laptop = await session(me, "laptop", { device: "Chrome on macOS", createdAgo: 10 * DAY, seenAgo: 1 * DAY });
   const phoneApp = await session(me, "phone", { kind: "app", label: "Tess's iPhone", createdAgo: 2 * DAY, seenAgo: null });
@@ -46,16 +46,18 @@ test("the devices list shows live sessions, newest use first, and leaves out a b
     ],
     "the idle browser and the forgotten one are gone; the app session stays (it refreshes itself)",
   );
-  assert.equal(list[0].hash, laptop);
-  assert.equal(list[1].hash, phoneApp);
+  // The page gets an opaque id per device, never the session's lookup key (app access tokens carry that one).
+  assert.equal(list[0].id, deviceId(laptop));
+  assert.equal(list[1].id, deviceId(phoneApp));
+  assert.ok(list.every((s) => !JSON.stringify(s).includes(laptop) && !JSON.stringify(s).includes(phoneApp)), "no token hash in the list");
 });
 
 test("a device can be signed out only by its own account", async () => {
   const { user, session } = await setup();
-  const { endSession, listSessions } = await import("../src/lib/sessions");
+  const { deviceId, endSession, listSessions } = await import("../src/lib/sessions");
   const me = await user("owner1");
   const other = await user("other1");
-  const h = await session(me, "mine", { device: "Edge on Windows" });
+  const h = deviceId(await session(me, "mine", { device: "Edge on Windows" }));
   assert.equal(await endSession(other, h), false, "someone else's account can't end it");
   assert.equal((await listSessions(me, null)).length, 1);
   assert.equal(await endSession(me, h), true);

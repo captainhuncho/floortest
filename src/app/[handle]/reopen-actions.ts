@@ -4,6 +4,7 @@ import { userByHandle } from "@/lib/desk";
 import { allow, requestIp } from "@/lib/ratelimit";
 import { requestReopenAlert } from "@/lib/reopen";
 import { BOT_MESSAGE, passedTurnstile } from "@/lib/turnstile";
+import { normalEmail } from "@/lib/email-normal";
 
 export type ReopenState = { ok?: boolean; error?: string } | undefined;
 
@@ -13,7 +14,7 @@ export type ReopenState = { ok?: boolean; error?: string } | undefined;
  */
 export async function askReopenAlert(_: ReopenState, form: FormData): Promise<ReopenState> {
   if (String(form.get("website") || "")) return { ok: true }; // bots fill the hidden field
-  const email = String(form.get("email") || "").trim().toLowerCase().slice(0, 200);
+  const email = normalEmail(String(form.get("email") || "")).slice(0, 200);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Enter a valid email." };
   const ip = await requestIp();
   if (!(await allow("reopen_alert_ip", ip, 5, 3_600_000))) return { error: "Too many requests. Try again later." };

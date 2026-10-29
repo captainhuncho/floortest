@@ -4,6 +4,7 @@ import type { User } from "@/lib/db";
 import type { SubmissionMeta } from "@/lib/intake";
 import { folderLimit } from "@/lib/plan-store";
 import { cleanGenre, MIX_STATUS, AI_USE, RELEASE_STATUS } from "@/lib/plans";
+import { normalEmail } from "./email-normal";
 
 type Problem = { error: string; status: number };
 
@@ -40,7 +41,7 @@ export async function readSubmission(
   // Sending as an account files the track under that email's sender history, so the account must have proved the email.
   if (account && !account.email_verified_at) return bad("Confirm your email before sending from your account. Check your inbox for the link.", 403);
   const name = account ? account.name : str("name", 100);
-  const email = account ? account.email.toLowerCase() : str("email", 200).toLowerCase();
+  const email = account ? account.email.toLowerCase() : normalEmail(str("email", 200));
   const title = str("title", 200);
   const genre = cleanGenre(String(body.genre ?? ""));
   const fileName = str("fileName", 255);

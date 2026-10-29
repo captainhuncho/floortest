@@ -19,7 +19,7 @@ export default async function Security({ searchParams }: { searchParams: Promise
   // Every device signed in to this account, for the list under Password and devices.
   const when = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: user.tz || "UTC" });
   const devices = (await listSessions(user.id, await currentSessionHash())).map((s) => ({
-    hash: s.hash,
+    id: s.id,
     device: s.device,
     app: s.kind === "app",
     current: s.current,

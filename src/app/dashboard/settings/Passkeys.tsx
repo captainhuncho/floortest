@@ -6,6 +6,7 @@ import { useBrowserValue } from "@/components/useBrowserValue";
 import { useToast } from "@/components/Toast";
 import { passkeyProblem, passkeysHere } from "@/lib/passkey-browser";
 import { deletePasskey, finishAddPasskey, startAddPasskey } from "../actions/passkeys";
+import { ConfirmItsYou } from "./ConfirmItsYou";
 
 type Key = { id: number; name: string; added: string; lastUsed: string | null; synced: boolean };
 
@@ -20,6 +21,7 @@ export function Passkeys({ keys, twoFactor, max }: { keys: Key[]; twoFactor: boo
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [removing, setRemoving] = useState<number | null>(null);
+  const [removeError, setRemoveError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
   const add = () =>
@@ -58,29 +60,35 @@ export function Passkeys({ keys, twoFactor, max }: { keys: Key[]; twoFactor: boo
                   {k.synced ? " · synced to your other devices" : ""}
                 </p>
               </div>
-              {removing === k.id ? (
-                <span className="flex gap-2">
-                  <button
-                    className="btn-ghost btn-sm min-h-11 border-danger/60 text-danger"
-                    disabled={pending}
-                    onClick={() =>
-                      start(async () => {
-                        const r = await deletePasskey(k.id);
-                        setRemoving(null);
-                        toast.show({ message: "error" in r ? r.error : `Removed ${k.name}.` });
-                      })
-                    }
-                  >
-                    Remove
-                  </button>
-                  <button className="btn-ghost btn-sm min-h-11" onClick={() => setRemoving(null)}>
-                    Keep
-                  </button>
-                </span>
-              ) : (
-                <button className="btn-ghost btn-sm min-h-11" onClick={() => setRemoving(k.id)} aria-label={`Remove ${k.name}`}>
+              {removing !== k.id && (
+                <button
+                  className="btn-ghost btn-sm min-h-11"
+                  onClick={() => {
+                    setRemoving(k.id);
+                    setRemoveError(null);
+                  }}
+                  aria-label={`Remove ${k.name}`}
+                >
                   Remove…
                 </button>
+              )}
+              {removing === k.id && (
+                <ConfirmItsYou
+                  className="basis-full"
+                  twoFactor={twoFactor}
+                  action={`Remove ${k.name}`}
+                  pending={pending}
+                  error={removeError}
+                  onCancel={() => setRemoving(null)}
+                  onConfirm={(password, code) =>
+                    start(async () => {
+                      const r = await deletePasskey(k.id, password, code);
+                      if ("error" in r) return setRemoveError(r.error);
+                      setRemoving(null);
+                      toast.show({ message: `Removed ${k.name}.` });
+                    })
+                  }
+                />
               )}
             </li>
           ))}

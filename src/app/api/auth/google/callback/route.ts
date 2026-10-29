@@ -7,7 +7,7 @@ import { env } from "@/lib/env";
 import { checkFlow, GOOGLE_COOKIE, GOOGLE_LINK_COOKIE, GOOGLE_SIGNUP_COOKIE, googleConfig, identityFromCode, LINK_MS, signIdentity, signPendingLink, SIGNUP_MS } from "@/lib/google-auth";
 import { pinGoogle } from "@/lib/google-link";
 import { finishSignIn } from "@/lib/security";
-import { signChallenge } from "@/lib/totp";
+import { issueTicket, TICKET_MS } from "@/lib/two-step-ticket";
 
 export const runtime = "nodejs";
 
@@ -67,7 +67,7 @@ export async function GET(req: Request) {
     return go("/login/google");
   }
   if (user.totp_enabled_at) {
-    jar.set(CHALLENGE, signChallenge(user.id, env.secret), { httpOnly: true, sameSite: "lax", secure, path: "/", maxAge: 300 });
+    jar.set(CHALLENGE, await issueTicket(user.id), { httpOnly: true, sameSite: "lax", secure, path: "/", maxAge: TICKET_MS / 1000 });
     return go("/login/verify");
   }
   await finishSignIn(user.id, "Google");

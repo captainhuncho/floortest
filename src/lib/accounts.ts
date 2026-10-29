@@ -4,6 +4,7 @@ import { now, q } from "./db";
 import { isProtectedHandle } from "./identity";
 import { APP_URL, sendMail } from "./mail";
 import { RESERVED_HANDLES } from "./plans";
+import { revokeAllSessions } from "./sessions";
 import { hashToken } from "./token-hash";
 
 const DAY = 86_400_000;
@@ -182,7 +183,8 @@ export async function confirmEmailChange(token: string, personId: number | null)
     if (isUniqueViolation(e)) return null; // someone else took that address in the meantime
     throw e;
   }
-  await q.run("DELETE FROM sessions WHERE user_id = ?", p.id);
+  // Every browser, app and ops session ends, and reset links sent to the old address stop working.
+  await revokeAllSessions(p.id);
   return { id: p.id, from: p.email, to: p.pending_email };
 }
 

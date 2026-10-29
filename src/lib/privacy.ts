@@ -3,6 +3,7 @@ import { now, q } from "@/lib/db";
 import { accountKeys, drainNow, queueDeletion, trackKeys } from "@/lib/deletion";
 import { forgetLinkPerson, linkDataFor } from "@/lib/share-links";
 import { DELETED_HANDLE_HOLD_DAYS } from "@/lib/accounts";
+import { normalEmail } from "./email-normal";
 
 /**
  * Deletes an account and everything it owns. Every file (audio, stems, unfinished uploads, cover) is queued
@@ -28,7 +29,7 @@ export async function purgeAccount(userId: number) {
 
 /** Everything held about one email address as a sender, an account, or a person who wrote in. */
 export async function dataFor(email: string) {
-  const e = email.trim().toLowerCase();
+  const e = normalEmail(email);
   const account = await q.get<Record<string, unknown>>(
     "SELECT id, name, handle, email, plan, created_at, email_verified_at, tz, suspended_at, suspended_reason FROM users WHERE lower(email) = ?",
     e,
@@ -82,7 +83,7 @@ export async function dataFor(email: string) {
  * waitlist and newsletter entries, reopen requests and every email to them.
  */
 export async function eraseSender(email: string) {
-  const e = email.trim().toLowerCase();
+  const e = normalEmail(email);
   const r = await q.tx(async (db) => {
     const ids = (await db.all<{ id: number }>("SELECT t.id FROM tracks t JOIN senders s ON s.id = t.sender_id WHERE lower(s.email) = ?", e)).map((x) => x.id);
     const files = await queueDeletion(db, await trackKeys(db, ids), "sender erased", now());
