@@ -246,7 +246,7 @@ export function Folder({ tab, current = false, dashed = false, hatched = false, 
       <span className={`absolute -top-[29px] -left-px flex h-7 items-center gap-2 rounded-t-lg border border-b-0 bg-ink-3 px-3.5 text-xs font-semibold ${edge} ${style} ${current ? "text-bone" : "text-mute"}`}>
         {tab}
       </span>
-      <div className={`relative flex flex-1 flex-col gap-3 rounded-r-xl sm:min-h-[150px] sm:gap-4 rounded-bl-xl border bg-ink-3 p-4 sm:p-5 ${edge} ${style} ${hatched ? "hatch" : ""}`}>{children}</div>
+      <div className={`relative flex flex-1 flex-col gap-4 rounded-r-xl sm:min-h-[150px] rounded-bl-xl border bg-ink-3 p-5 ${edge} ${style} ${hatched ? "hatch" : ""}`}>{children}</div>
     </div>
   );
 }
