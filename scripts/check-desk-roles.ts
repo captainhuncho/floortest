@@ -67,8 +67,11 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith(".ts"))) {
 }
 
 /**
- * API routes on the signed-in desk (`currentUser()`). "admin" handlers must refuse Members themselves:
- * `!atLeast(user.role, "admin")` or `role === "member"`. "member" and "public" need nothing more.
+ * API routes on the signed-in desk (`currentUser()`, or `currentDeskForChange()` for changes). "admin" handlers must
+ * refuse Members themselves: `!atLeast(user.role, "admin")` or `role === "member"`. "member" and "public" need nothing
+ * more. Only GET (and HEAD) may read the desk with `currentUser()`: anything that changes something, and any helper
+ * outside a handler, uses `currentDeskForChange()`, which refuses a team desk the person lost (409) instead of
+ * quietly working on their own desk.
  */
 const ROUTES: Record<string, Record<string, "admin" | "member" | "public">> = {
   "collection-art/[id]": { GET: "member", POST: "member", DELETE: "member" }, // like updateCollection
@@ -94,7 +97,7 @@ const routeFiles = (d: string): string[] =>
 const seenRoutes = new Set<string>();
 for (const path of routeFiles(api)) {
   const src = readFileSync(path, "utf8");
-  if (!/\bcurrentUser\(/.test(src)) continue;
+  if (!/\b(currentUser|currentDeskForChange)\(/.test(src)) continue;
   const route = path.slice(api.length + 1, -"/route.ts".length);
   seenRoutes.add(route);
   const listed = ROUTES[route];
@@ -103,7 +106,9 @@ for (const path of routeFiles(api)) {
     continue;
   }
   for (const part of src.split(/^(?=export async function )/m)) {
-    const method = part.match(/^export async function (GET|POST|PUT|PATCH|DELETE)\b/)?.[1];
+    const method = part.match(/^export async function (GET|HEAD|POST|PUT|PATCH|DELETE)\b/)?.[1];
+    if (method !== "GET" && method !== "HEAD" && /\bcurrentUser\(/.test(part))
+      problems.push(`api/${route}: ${method ?? "a helper"} changes the desk with currentUser(): use currentDeskForChange() (refuses a lost team desk)`);
     if (!method) continue;
     const need = listed[method];
     if (!need) problems.push(`api/${route}: ${method} isn't in ROUTES: decide who may call it`);

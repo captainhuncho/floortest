@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { discardFiles } from "@/lib/deletion";
 import { NextResponse } from "next/server";
 import { audit } from "@/lib/audit";
-import { currentUser, viewingAs } from "@/lib/auth";
+import { currentDeskForChange, currentUser, viewingAs } from "@/lib/auth";
 import { q, type Collection } from "@/lib/db";
 import { activeCollection } from "@/lib/desk";
 import { imageKind, IMAGE_TYPES as TYPES } from "@/lib/images";
@@ -17,10 +17,11 @@ export const runtime = "nodejs";
 const MAX = 8 * 1024 * 1024;
 const collectionOf = async (raw: string) => q.get<Collection>("SELECT * FROM collections WHERE id = ?", Number(raw) || 0);
 
-/** The owner's collection, for changing its artwork (never during a read-only support "view as"). */
+/** The owner's collection, for changing its artwork (never during a read-only support "view as", never from a lost team desk). */
 async function ownCollection(raw: string) {
   if (await viewingAs()) return null;
-  const user = await currentUser();
+  const user = await currentDeskForChange();
+  if (user instanceof Response) return user;
   const c = user ? await collectionOf(raw) : undefined;
   return user && c && c.user_id === user.id ? { user, c } : null;
 }
@@ -28,6 +29,7 @@ async function ownCollection(raw: string) {
 /** Upload or replace a collection's artwork (JPG, PNG or WebP, up to 8 MB, checked by its bytes). */
 export async function POST(req: Request, ctx: RouteContext<"/api/collection-art/[id]">) {
   const own = await ownCollection((await ctx.params).id);
+  if (own instanceof Response) return own;
   if (!own) return NextResponse.json({ error: "Not found" }, { status: 404 });
   // The form is read with a hard cap, so a body bigger than an image can't be buffered first.
   const form = await readFormUpTo(req, MAX + 64 * 1024);
@@ -55,6 +57,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/collection-art/
 
 export async function DELETE(_req: Request, ctx: RouteContext<"/api/collection-art/[id]">) {
   const own = await ownCollection((await ctx.params).id);
+  if (own instanceof Response) return own;
   if (!own) return NextResponse.json({ error: "Not found" }, { status: 404 });
   await q.run("UPDATE collections SET art_key = NULL WHERE id = ?", own.c.id);
   await discardFiles([own.c.art_key], "collection artwork removed");

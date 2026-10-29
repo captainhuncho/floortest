@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { currentUser } from "@/lib/auth";
+import { currentDeskForChange } from "@/lib/auth";
 import { ownedTrack } from "@/lib/desk";
 import { q } from "@/lib/db";
 
@@ -7,7 +7,8 @@ export const runtime = "nodejs";
 
 /** Backfills waveform/BPM for tracks whose sender's browser couldn't analyse the audio. Only fills empty fields. */
 export async function POST(req: Request, ctx: RouteContext<"/api/tracks/[id]/analysis">) {
-  const user = await currentUser();
+  const user = await currentDeskForChange();
+  if (user instanceof Response) return user;
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const t = await ownedTrack(user, Number((await ctx.params).id));
   if (!t) return NextResponse.json({ error: "Not found" }, { status: 404 });
