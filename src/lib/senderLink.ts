@@ -2,6 +2,7 @@ import "server-only";
 import crypto from "node:crypto";
 import { now, q } from "./db";
 import { normalEmail } from "./email-normal";
+import { afterResponse, APP_URL, sendMailLater } from "./mail";
 import { hashToken } from "./token-hash";
 
 /**
@@ -36,4 +37,23 @@ export async function revokeSenderLink(id: string) {
 export async function revokeSenderLinksFor(email: string) {
   const r = await q.run("UPDATE sender_links SET revoked_at = ? WHERE lower(email) = ? AND revoked_at IS NULL AND expires_at > ?", now(), normalEmail(email), now());
   return r.changes;
+}
+
+/**
+ * Emails the /sent link if this address has sent music, after the response. The lookup happens then too, so the form
+ * answers in the same time whether or not the address is a sender.
+ */
+export function sendSenderLinkLater(email: string) {
+  afterResponse(async () => {
+    if (!(await q.get("SELECT 1 FROM senders WHERE lower(email) = ?", email))) return;
+    const link = await createSenderLink(email);
+    await sendMailLater({
+      userId: null,
+      audience: "sender",
+      to: email,
+      secrets: [link],
+      subject: "Your FloorTest sends",
+      body: `Here's your private link to every track you've sent through FloorTest. It works for 24 hours:\n${APP_URL}/sent/${link}\n\nIf you didn't ask for this, ignore this email.\n\n— FloorTest`,
+    });
+  }, "[sent] couldn't email a sender link");
 }

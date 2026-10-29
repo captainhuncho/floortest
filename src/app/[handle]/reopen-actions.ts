@@ -22,6 +22,6 @@ export async function askReopenAlert(_: ReopenState, form: FormData): Promise<Re
   if (!(await allow("reopen_alert_ip", ip, 5, 3_600_000))) return { error: "Too many requests. Try again later." };
   if (!(await passedTurnstile(form.get("cf-turnstile-response"), ip, "reopen"))) return { error: BOT_MESSAGE };
   const receiver = await userByHandle(String(form.get("handle") || "").slice(0, 30));
-  if (receiver && (await accountEmailAllowed())) await requestReopenAlert(receiver.id, email);
+  if (receiver && (await accountEmailAllowed("public"))) await requestReopenAlert(receiver.id, email);
   return { ok: true };
 }

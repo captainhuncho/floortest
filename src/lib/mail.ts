@@ -110,14 +110,23 @@ export async function sendMailLater(opts: MailOpts) {
   deliverLater(await queueMail(opts));
 }
 
-/** Sends a queued email after the response (or straight away outside a request). */
-export function deliverLater(id: number) {
-  const run = () => deliver(id).then(() => undefined, (e) => console.error("[mail] send failed; the queue will retry", e));
+/**
+ * Runs `task` after the response has gone back (or straight away, not waited for, outside a request). Errors are logged.
+ * Public forms that email an address only if it belongs to someone use it for the whole lookup and send, so the answer
+ * takes the same time either way and can't tell a visitor whose address it is.
+ */
+export function afterResponse(task: () => Promise<unknown>, label = "[mail] send failed; the queue will retry") {
+  const run = () => task().then(() => undefined, (e) => console.error(label, e));
   try {
     after(run);
   } catch {
     void run();
   }
+}
+
+/** Sends a queued email after the response (or straight away outside a request). */
+export function deliverLater(id: number) {
+  afterResponse(() => deliver(id));
 }
 
 const startOfDay = (at: number) => {
