@@ -80,10 +80,10 @@ export async function confirmTwoFactor(code: string, password: string): Promise<
   const u = await requireRole("owner");
   const denied = await stepUp(u.id, String(password || ""), "");
   if (denied) return { error: denied };
-  const on = await turnOnTwoFactor(u.id, code);
+  // Other browsers, the app and the ops area are signed out, and unused reset links stop working.
+  const on = await turnOnTwoFactor(u.id, code, { keep: await currentSessionHash() });
   if ("error" in on) return on;
   const { codes } = on;
-  await q.run("DELETE FROM sessions WHERE user_id = ? AND token_hash <> ?", u.id, (await currentSessionHash()) ?? "");
   await audit(u.id, "two_factor_on");
   await sendMail({
     userId: u.id,
