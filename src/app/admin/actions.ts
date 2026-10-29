@@ -32,6 +32,7 @@ import { cancelEmailChange, changeHandle, HANDLE_HOLD_DAYS, requestEmailChange }
 import { logEvent, now, q, type Track } from "@/lib/db";
 import { eraseSender, purgeAccount } from "@/lib/privacy";
 import { localPath } from "@/lib/safe-links";
+import { GATE_CODE_MIN_LENGTH } from "@/lib/invites";
 
 const refresh = () => revalidatePath("/admin", "layout");
 const done = (m: string) => flash(m);
@@ -314,9 +315,15 @@ export async function resendInvite(code: string) {
   const a = await requireAdminAction("invites");
   const inv = await q.get<{ email: string | null; note: string }>("SELECT email, note FROM invites WHERE code = ? AND revoked_at IS NULL", code);
   if (!inv?.email) return fail("Couldn't resend: the invite is revoked or has no email");
-  if ((await mailInvite(code, inv.email, a.name, inv.note)).startsWith("failed")) return fail("The email failed to send. Check the Email log, then try again.");
-  await q.run("UPDATE invites SET sent_at = ? WHERE code = ?", now(), code);
-  await logAdmin(a.id, "resent invite", inv.email, code);
+  // An old short code can't open the coming-soon gate (src/lib/invites.ts): resending swaps in a new long one.
+  const send = code.length < GATE_CODE_MIN_LENGTH ? newCode() : code;
+  if (send !== code) {
+    await q.run("INSERT INTO invites (code, max_uses, note, email, created_at) SELECT ?, max_uses, note, email, ? FROM invites WHERE code = ?", send, now(), code);
+    await q.run("UPDATE invites SET revoked_at = ? WHERE code = ?", now(), code);
+  }
+  if ((await mailInvite(send, inv.email, a.name, inv.note)).startsWith("failed")) return fail("The email failed to send. Check the Email log, then try again.");
+  await q.run("UPDATE invites SET sent_at = ? WHERE code = ?", now(), send);
+  await logAdmin(a.id, "resent invite", inv.email, send);
   await done(`Invite resent to ${inv.email}`);
   refresh();
 }

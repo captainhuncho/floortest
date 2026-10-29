@@ -10,6 +10,8 @@ beta invite email ──► /signup?invite=CODE ──► /invite/CODE ──liv
                                                           └─ wrong, used, revoked, shared code, or 20 tries in 10 min ──► /coming-soon
 Nothing about FloorTest is public before launch (legal pages too); the gate shows only "Coming soon". A personal
 invite stops opening it once its email has an account (owner, 29 Oct); team invites open it the same way via /join.
+The invite's pass lasts one day (signing up or in gives the usual 30), and only codes made since 29 Oct (FLOOR- plus 10
+characters) open it: an older invite still signs up with the password, or Ops resends it, which swaps in a new code.
 ```
 
 ## Receiver: sign-up
