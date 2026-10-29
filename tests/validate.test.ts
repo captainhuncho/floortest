@@ -57,11 +57,66 @@ test("rejects files with a payload hidden after real audio", async () => {
 
 test("allows normal trailing metadata and streaming WAV headers", async () => {
   assert.deepEqual(await validateAudio(reader(join(wav(), junk(4096)))), { ok: true, kind: "wav" });
-  const streaming = wav();
+  // A streaming recorder leaves the sizes open and the audio runs to the end of the file.
+  const streaming = wav().slice(0, 44);
   new DataView(streaming.buffer).setUint32(4, 0xffffffff, true);
+  new DataView(streaming.buffer).setUint32(40, 0xffffffff, true);
   assert.deepEqual(await validateAudio(reader(join(streaming, junk(400 * 1024)))), { ok: true, kind: "wav" });
+  // Or it leaves only the RIFF length open; the data chunk still ends near the end of the file.
+  const openRiff = wav();
+  new DataView(openRiff.buffer).setUint32(4, 0xffffffff, true);
+  assert.deepEqual(await validateAudio(reader(join(openRiff, junk(4096)))), { ok: true, kind: "wav" });
   const frames = new Uint8Array(417 * 3000);
   for (let i = 0; i < 3000; i++) frames.set([0xff, 0xfb, 0x90, 0x00], i * 417);
   const id3v1 = new TextEncoder().encode("TAG" + " ".repeat(125));
   assert.deepEqual(await validateAudio(reader(join(frames, id3v1))), { ok: true, kind: "mp3" });
+});
+
+/** A long run of real frames, then whatever the caller adds after them. */
+const twoFramesThen = (total: number) => {
+  const b = new Uint8Array(total).fill(0x41);
+  b.set([0xff, 0xfb, 0x90, 0x00], 0);
+  b.set([0xff, 0xfb, 0x90, 0x00], 417);
+  return b;
+};
+
+test("a 'TAG' suffix does not hide a payload after two MP3 frames", async () => {
+  const b = twoFramesThen(2 * 1024 * 1024);
+  b.set(new TextEncoder().encode("TAG"), b.length - 3);
+  assert.equal((await validateAudio(reader(b))).ok, false);
+});
+
+test("small MP3 files get the end-of-file check too", async () => {
+  assert.equal((await validateAudio(reader(twoFramesThen(1024 * 1024)))).ok, false);
+  assert.equal((await validateAudio(reader(join(mp3(), junk(4096))))).ok, false);
+});
+
+test("a streaming WAV header with an empty or short data chunk cannot carry a payload", async () => {
+  const header = wav().slice(0, 44);
+  const view = new DataView(header.buffer);
+  view.setUint32(4, 0xffffffff, true);
+  view.setUint32(40, 0, true);
+  assert.equal((await validateAudio(reader(join(header, new Uint8Array(2 * 1024 * 1024 - 44).fill(0x41))))).ok, false);
+  const short = wav();
+  new DataView(short.buffer).setUint32(4, 0xffffffff, true);
+  assert.equal((await validateAudio(reader(join(short, junk(400 * 1024))))).ok, false);
+  // A real RIFF length does not excuse an empty data chunk followed by more bytes.
+  const empty = wav().slice(0, 44);
+  new DataView(empty.buffer).setUint32(40, 0, true);
+  const declared = join(empty, junk(4096));
+  new DataView(declared.buffer).setUint32(4, declared.length - 8, true);
+  assert.equal((await validateAudio(reader(declared))).ok, false);
+});
+
+test("allows APE and Lyrics3 tags of their declared size before an ID3v1 tag", async () => {
+  const frames = new Uint8Array(417 * 300);
+  for (let i = 0; i < 300; i++) frames.set([0xff, 0xfb, 0x90, 0x00], i * 417);
+  const ape = new Uint8Array(32 + 40);
+  ape.set(new TextEncoder().encode("APETAGEX"), 40);
+  new DataView(ape.buffer).setUint32(40 + 12, 72, true); // items + footer
+  const lyrics = new TextEncoder().encode("LYRICSBEGIN" + "x".repeat(20) + "000031LYRICS200");
+  const id3v1 = new TextEncoder().encode("TAG" + " ".repeat(125));
+  assert.deepEqual(await validateAudio(reader(join(frames, ape, lyrics, id3v1))), { ok: true, kind: "mp3" });
+  assert.deepEqual(await validateAudio(reader(join(mp3(), id3v1))), { ok: true, kind: "mp3" });
+  assert.equal((await validateAudio(reader(join(frames, junk(500), id3v1)))).ok, false);
 });
