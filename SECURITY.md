@@ -274,7 +274,7 @@ Notes from the 29 Oct audit that are not bugs to fix in code today. Each is eith
 - **H71, `needsCode` on the app login.** After a correct password the app API answers `needsCode: true`, which says two-step is on. The website's redirect to `/login/verify` says the same, so it gives an attacker nothing new; it does confirm the password was right.
 - **H75, country rules trust a header.** Switch rules by country read `x-vercel-ip-country` (`src/lib/switches.ts`), which only Vercel sets. Off Vercel the header could be forged; never use a country rule as a security boundary.
 - **H81, caret ranges.** `package.json` uses `^` ranges; the lockfile pins exact versions and the release evidence records `npm audit` at 0. Install with `npm ci`.
-- **H82, git history not scanned.** The audit read a snapshot of the code only. A secret scan of the full git history is a separate owner task.
+- **H82, git history scanned (29 Oct).** A read-only pattern scan of every commit on every branch (1,175 commits) found no real secret: no provider keys, private keys, tokens or password-bearing database URLs, and no `.env` or key file ever committed; the only matches were test values. A pattern scan can miss unusual formats; a gitleaks run (`gitleaks detect --log-opts="--all"`) would be the fuller check.
 
 ## 5. Pre-launch checklist
 
