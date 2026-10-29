@@ -120,3 +120,42 @@ test("allows APE and Lyrics3 tags of their declared size before an ID3v1 tag", a
   assert.deepEqual(await validateAudio(reader(join(mp3(), id3v1))), { ok: true, kind: "mp3" });
   assert.equal((await validateAudio(reader(join(frames, junk(500), id3v1)))).ok, false);
 });
+
+test("a never-finished WAV (RIFF and data sizes both left at 0) is audio to the end", async () => {
+  const header = wav().slice(0, 44);
+  new DataView(header.buffer).setUint32(4, 0, true);
+  new DataView(header.buffer).setUint32(40, 0, true);
+  assert.deepEqual(await validateAudio(reader(join(header, junk(400 * 1024)))), { ok: true, kind: "wav" });
+});
+
+/** A WAV whose RIFF length covers the data chunk and the given chunks after it. */
+function wavWith(...after: Uint8Array[]) {
+  const b = join(wav(), ...after);
+  new DataView(b.buffer).setUint32(4, b.length - 8, true);
+  return b;
+}
+const chunk = (id: string, n: number) => {
+  const c = new Uint8Array(8 + n + (n % 2));
+  c.set(new TextEncoder().encode(id));
+  new DataView(c.buffer).setUint32(4, n, true);
+  return c;
+};
+
+test("after the data chunk of a WAV, only well-formed chunks may fill the declared RIFF length", async () => {
+  assert.equal((await validateAudio(reader(wavWith(junk(500 * 1024))))).ok, false);
+  // DJ software (Traktor, Serato) writes large tag chunks after the audio.
+  assert.deepEqual(await validateAudio(reader(wavWith(chunk("LIST", 31), chunk("id3 ", 600 * 1024)))), { ok: true, kind: "wav" });
+  assert.equal((await validateAudio(reader(wavWith(chunk("id3 ", 1000), junk(5000))))).ok, false);
+});
+
+test("an MP3 may end in a little zero padding, and tags can't claim huge sizes", async () => {
+  const frames = new Uint8Array(417 * 300);
+  for (let i = 0; i < 300; i++) frames.set([0xff, 0xfb, 0x90, 0x00], i * 417);
+  assert.deepEqual(await validateAudio(reader(join(frames, new Uint8Array(512)))), { ok: true, kind: "mp3" });
+  assert.equal((await validateAudio(reader(join(frames, new Uint8Array(2048))))).ok, false);
+  const ape = new Uint8Array(32);
+  ape.set(new TextEncoder().encode("APETAGEX"));
+  new DataView(ape.buffer).setUint32(12, 2 * 1024 * 1024, true);
+  const big = join(new Uint8Array(417 * 6000).map((_, i) => (i % 417 === 0 ? 0xff : i % 417 === 1 ? 0xfb : i % 417 === 2 ? 0x90 : 0)), ape);
+  assert.equal((await validateAudio(reader(big))).ok, false);
+});
