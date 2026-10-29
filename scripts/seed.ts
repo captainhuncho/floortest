@@ -79,7 +79,8 @@ async function main() {
   const id = async (sql: string, ...args: unknown[]) => (await db.get<{ id: number }>(sql + " RETURNING id", ...args))!.id;
 
   const uid = await id(
-    "INSERT INTO users (email, password_hash, name, handle, plan, role_line, tz, created_at) VALUES (?,?,?,?,?,?,?,?)",
+    // Confirmed email: two-factor and passkeys need one, and the teams test turns two-factor on for this owner.
+    "INSERT INTO users (email, password_hash, name, handle, plan, role_line, tz, email_verified_at, created_at) VALUES (?,?,?,?,?,?,?,?,?)",
     "demo@floortest.test",
     hash("floortest-demo"),
     "Maxwell Adjavon",
@@ -87,6 +88,7 @@ async function main() {
     "free",
     "DJ / Performer",
     "Africa/Accra",
+    now - 40 * DAY,
     now - 40 * DAY,
   );
   const col = (name: string, ago: number) => id("INSERT INTO collections (user_id, name, created_at) VALUES (?,?,?)", uid, name, now - ago * DAY);
