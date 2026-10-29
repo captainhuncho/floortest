@@ -25,8 +25,8 @@ export interface Storage {
   /** A short-lived URL the browser can fetch directly, or null when the app must stream the file itself. */
   signedGetUrl(key: string, opts?: { filename?: string; contentType?: string; expiresIn?: number }): Promise<string | null>;
   put(key: string, data: Uint8Array, contentType: string): Promise<void>;
-  /** Server-side copy within the bucket. */
-  copy(from: string, to: string): Promise<void>;
+  /** Server-side copy within the bucket; with `contentType`, the copy's Content-Type is set to it, not copied. */
+  copy(from: string, to: string, contentType?: string): Promise<void>;
   delete(key: string): Promise<void>;
 }
 
@@ -40,12 +40,16 @@ export const UPLOAD_LINK_SECONDS = 15 * 60;
  * Moves an upload out of reach of its upload link: copies it to a new random key (in the same folder) that no link
  * points at. The caller discards the original (discardFiles), so a failed delete is retried rather than lost.
  * Check the file *after* sealing, so what was checked is what's kept.
+ *
+ * The sealed copy's Content-Type is set here, from the extension, never kept from the upload: a presigned upload link
+ * doesn't bind Content-Type, so the sender could have stored any type with the original.
  */
+const SEALED_TYPES: Record<string, string> = { ".wav": "audio/wav", ".mp3": "audio/mpeg", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp" };
 export async function sealUpload(store: Storage, key: string) {
   const slash = key.lastIndexOf("/");
   const ext = key.slice(key.lastIndexOf(".")).toLowerCase();
   const sealed = `${key.slice(0, slash + 1)}${crypto.randomUUID()}${/^\.[a-z0-9]{1,5}$/.test(ext) ? ext : ""}`;
-  await store.copy(key, sealed);
+  await store.copy(key, sealed, SEALED_TYPES[ext] ?? "application/octet-stream");
   return sealed;
 }
 
@@ -226,8 +230,9 @@ async function s3(): Promise<Storage> {
     async put(key, data, contentType) {
       await client.send(new PutObjectCommand({ Bucket, Key: key, Body: data, ContentType: contentType }));
     },
-    async copy(from, to) {
-      await client.send(new CopyObjectCommand({ Bucket, Key: to, CopySource: `${Bucket}/${from.split("/").map(encodeURIComponent).join("/")}` }));
+    async copy(from, to, contentType) {
+      const CopySource = `${Bucket}/${from.split("/").map(encodeURIComponent).join("/")}`;
+      await client.send(new CopyObjectCommand({ Bucket, Key: to, CopySource, ...(contentType ? { MetadataDirective: "REPLACE", ContentType: contentType } : {}) }));
     },
     async delete(key) {
       await client.send(new DeleteObjectCommand({ Bucket, Key: key }));
