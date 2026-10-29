@@ -18,6 +18,7 @@ import { completeStemUpload } from "./stems";
  *   flagged           the file is discarded; the sender is emailed that it couldn't be accepted
  *   refused           anything else that stops it (the desk closed or filled up meanwhile): discarded, sender emailed why
  *   still no scanner  stays held; the rest of the batch waits for the next run instead of each waiting 150 s
+ *   can't be checked  the scanner is up but fails on this file: tried again next run, refused after HELD_MAX_TRIES
  *   budget spent      (src/lib/scan-budget.ts) stays held for the next day's budget; the scanner isn't woken for it
  *   held a day        (HELD_TTL) the sender is told it wasn't sent, and the file is deleted
  *
@@ -128,8 +129,9 @@ export async function scanHeldUploads(at = now(), { until = Date.now() + HELD_BU
       out.delivered++;
     } catch (e) {
       if (e instanceof UploadHeld) {
-        // This sender's budget is spent: only their file waits for tomorrow.
-        if (e.reason === "budget") {
+        // This sender's budget is spent (their file waits for tomorrow), or the scanner failed on this file only (it's
+        // tried again next run): the rest of the batch goes on.
+        if (e.reason === "budget" || e.reason === "file") {
           out.waiting++;
           continue;
         }

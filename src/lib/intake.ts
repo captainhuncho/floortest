@@ -15,7 +15,7 @@ import { folderLimit } from "./plan-store";
 import { allow } from "./ratelimit";
 import { sealUpload, storage } from "./storage";
 import { validateAudio } from "./validate";
-import { scannerAwake, scanStored, SCAN_REFUSED, type ScanResult } from "./scan";
+import { scannerAwake, scanStored, SCAN_FAILED, SCAN_REFUSED, type ScanResult } from "./scan";
 import { chargeScanner, senderScope } from "./scan-budget";
 import { recordIncident } from "./incidents";
 import { recordStoredDigest } from "./file-digests";
@@ -35,17 +35,20 @@ export const UPLOAD_TTL = 2 * HOUR;
 export const UPLOAD_HELD =
   "Received. We're checking it for viruses, which can take up to 10 minutes. It reaches the desk as soon as it passes, and your receipt follows by email.";
 /**
- * Why it's held: "scanner" (asleep, down or too slow: the rest of a batch waits too), or "budget" / "budget_all" (this
- * sender's or everyone's daily scanner budget is spent, src/lib/scan-budget.ts: it waits for the next day's).
+ * Why it's held: "scanner" (asleep, down or too slow: the rest of a batch waits too), "file" (the scanner is up but
+ * couldn't check this file: tried again, up to HELD_MAX_TRIES), or "budget" / "budget_all" (this sender's or everyone's
+ * daily scanner budget is spent, src/lib/scan-budget.ts: it waits for the next day's).
  */
 export class UploadHeld extends Error {
-  constructor(readonly reason: "scanner" | "budget" | "budget_all" = "scanner") {
+  constructor(readonly reason: "scanner" | "file" | "budget" | "budget_all" = "scanner") {
     super(UPLOAD_HELD);
   }
 }
 
 /** How long a held upload waits for the scanner before the sender is told it wasn't sent. */
 export const HELD_TTL = 24 * HOUR;
+/** How many times a running scanner may fail to check one file before it's refused (uploads.held_tries). */
+export const HELD_MAX_TRIES = 3;
 /** Longest an upload's own request waits for an awake scanner before holding the file instead. */
 const REQUEST_SCAN_MS = 45_000;
 
@@ -237,7 +240,7 @@ export async function startUpload(receiver: User, meta: SubmissionMeta, size: nu
   return { uploadId: id, target };
 }
 
-type Upload = { id: string; receiver_id: number; file_key: string; ext: string; size: number; meta: string; created_at: number; held_at: number | null };
+type Upload = { id: string; receiver_id: number; file_key: string; ext: string; size: number; meta: string; created_at: number; held_at: number | null; held_tries: number };
 
 /** Another completion is working on this upload right now (the sender's retry, or the held-uploads batch). */
 export const BEING_SAVED = "This file is already being saved.";
@@ -368,20 +371,26 @@ async function finishClaimed(receiver: User, up: Upload, ref: string, analysis: 
     throw new IntakeError(SCAN_REFUSED, 422);
   }
   if (scan.verdict === "unavailable") {
+    // A file the running scanner couldn't check counts a try; after HELD_MAX_TRIES it's refused, not held for a day.
+    if (scan.file && Number(up.held_tries ?? 0) + 1 >= HELD_MAX_TRIES) {
+      await discard();
+      await recordIncident("upload_failed", "The virus check kept failing on one upload; it was refused", `${scan.error} · receiver #${receiver.id}`, "upload");
+      throw new IntakeError(SCAN_FAILED, 400);
+    }
     // Held, not refused: the sealed file stays with its upload, so nobody sends it twice, and nothing reaches the desk
     // until the batch's check passes. The claim is let go so the batch can take it.
     await q.run(
       "UPDATE uploads SET held_at = COALESCE(held_at, ?), held_analysis = ?, held_tries = held_tries + ?, claimed_at = NULL WHERE id = ?",
       now(),
       JSON.stringify(analysis),
-      from === "batch" ? 1 : 0,
+      scan.file ? 1 : 0,
       up.id,
     );
     // Asleep is the normal case and a spent budget has its own incident; anything else (down, too slow, misconfigured)
     // is worth a look.
     if (charge && !charge.ok) throw new UploadHeld(charge.scope === "all" ? "budget_all" : "budget");
     if (!asleep) await recordIncident("upload_failed", "Virus check unavailable; an upload is held for the next batch", scan.error, "upload");
-    throw new UploadHeld();
+    throw new UploadHeld(scan.file ? "file" : "scanner");
   }
 
   const meta = JSON.parse(up.meta) as SubmissionMeta;

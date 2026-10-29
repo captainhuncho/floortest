@@ -1,7 +1,7 @@
 import "server-only";
 import { discardFiles } from "@/lib/deletion";
 import crypto from "node:crypto";
-import { claimUpload, IntakeError, pointAtSealed, releaseUpload, UploadHeld } from "./intake";
+import { claimUpload, HELD_MAX_TRIES, IntakeError, pointAtSealed, releaseUpload, UploadHeld } from "./intake";
 import { now, q, type Sender, type Track, type User } from "./db";
 import { APP_URL, sendMail } from "./mail";
 import { MAX_UPLOAD_BYTES } from "./plans";
@@ -9,7 +9,7 @@ import { featureOn } from "./features";
 import { recentCount, record } from "./ratelimit";
 import { sealUpload, storage } from "./storage";
 import { validateAudio } from "./validate";
-import { scannerAwake, scanStored, SCAN_REFUSED, type ScanResult } from "./scan";
+import { scannerAwake, scanStored, SCAN_FAILED, SCAN_REFUSED, type ScanResult } from "./scan";
 import { chargeScanner, senderScope } from "./scan-budget";
 import { recordIncident } from "./incidents";
 
@@ -116,10 +116,10 @@ export async function startStemUpload(token: string, fileName: string, size: num
 export async function completeStemUpload(token: string, uploadId: string, opts: { from?: "request" | "batch"; scanDeadlineMs?: number } = {}) {
   const t = await trackForStems(token);
   // Claimed first: of two completes sent at the same moment, only one goes on.
-  const up = await claimUpload<{ id: string; file_key: string; size: number; meta: string; held_at: number | null }>(
+  const up = await claimUpload<{ id: string; file_key: string; size: number; meta: string; held_at: number | null; held_tries: number }>(
     uploadId,
     t.user_id,
-    "id, file_key, size, meta, held_at",
+    "id, file_key, size, meta, held_at, held_tries",
   );
   const meta = JSON.parse(up.meta) as { kind?: string; trackId?: number; name?: string };
   if (meta?.kind !== "stem" || meta.trackId !== t.id) {
@@ -172,16 +172,22 @@ export async function completeStemUpload(token: string, uploadId: string, opts: 
     throw new IntakeError(SCAN_REFUSED, 422);
   }
   if (scan.verdict === "unavailable") {
+    // A stem the running scanner couldn't check counts a try; after HELD_MAX_TRIES it's refused, as for tracks.
+    if (scan.file && Number(up.held_tries ?? 0) + 1 >= HELD_MAX_TRIES) {
+      await discard();
+      await recordIncident("upload_failed", "The virus check kept failing on one stem upload; it was refused", `${scan.error} · receiver #${t.user_id}`, "stem upload");
+      throw new IntakeError(SCAN_FAILED, 400);
+    }
     // Held, not refused: the sealed stem stays with its upload and is attached only after the batch's check passes.
     await q.run(
       "UPDATE uploads SET held_at = COALESCE(held_at, ?), held_tries = held_tries + ?, claimed_at = NULL WHERE id = ?",
       now(),
-      from === "batch" ? 1 : 0,
+      scan.file ? 1 : 0,
       up.id,
     );
     if (charge && !charge.ok) throw new UploadHeld(charge.scope === "all" ? "budget_all" : "budget");
     if (!asleep) await recordIncident("upload_failed", "Virus check unavailable; a stem upload is held for the next batch", scan.error, "stem upload");
-    throw new UploadHeld();
+    throw new UploadHeld(scan.file ? "file" : "scanner");
   }
   const name = meta.name || "Stem";
   // Counted and added in one statement, so the cap holds however many finish at once.
