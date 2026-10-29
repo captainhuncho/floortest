@@ -84,13 +84,15 @@ type NewAccount = { email: string; firstName: string; lastName: string; handle: 
 async function createAccount(form: FormData, a: NewAccount, opts: { googleEmail?: boolean } = {}): Promise<{ id: number } | { error: string }> {
   if (form.get("agree") !== "on") return { error: "Please confirm you're 18 or over and agree to the Terms to create an account." };
   const open = await switchOn("open_signup");
-  // Closed: only a personal Ops invite to this exact email opens an account (src/lib/invites.ts).
-  const invite = await resolveInvite(String(form.get("ref") || form.get("invite") || ""), a.email, open);
+  // Closed: only a personal Ops invite to this exact email, with its emailed code, opens an account (src/lib/invites.ts).
+  const invite = await resolveInvite(String(form.get("ref") || form.get("invite") || ""), a.email, open, { emailProven: opts.googleEmail });
+  // The code only ever went to that inbox, so using it proves the email.
+  if (!open && invite.valid) a.verified = true;
   // A team invite sent to this email also opens sign-up during the beta (and proves the email: it came from the link).
   // With Google the email is already proven, so a live invite sent to it counts even without the invite link here.
   const team = (await teamInviteFor(form, a.email)) ?? (opts.googleEmail ? await inviteForEmail(a.email) : undefined);
   if (team) a.verified = true;
-  if (!open && !invite.valid && !team) return { error: "FloorTest is invite-only during the beta. Sign up with the email your invite went to." };
+  if (!open && !invite.valid && !team) return { error: "FloorTest is invite-only during the beta. Use the sign-up link in your invite email, with the email it went to." };
   if (!a.firstName || !a.lastName || !a.email || !a.handle) return { error: "Fill in your first name, surname, username and email." };
   if (!EMAIL.test(a.email)) return { error: "Enter a valid email." };
   if (!/^[a-z0-9][a-z0-9-_]{1,29}$/.test(a.handle)) return { error: "Link names use 2–30 letters, numbers, - or _." };

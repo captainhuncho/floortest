@@ -26,7 +26,11 @@ export async function findPasswordReset(token: string) {
   );
 }
 
-/** Sets the new password and signs the account out everywhere. Returns the user id, or null if the link is no good. */
+/**
+ * Sets the new password and signs the account out everywhere. Returns the user id, or null if the link is no good.
+ * The link reached the inbox, so it also confirms the email. If the account wasn't confirmed, whoever created it may not
+ * be this person: like the email sign-in code, it clears the two-factor and passkeys they set up.
+ */
 export async function consumePasswordReset(token: string, newPassword: string) {
   const newHash = await hashPassword(newPassword); // before the transaction, so the slow hash doesn't hold it open
   return q.tx(async (db) => {
@@ -37,6 +41,12 @@ export async function consumePasswordReset(token: string, newPassword: string) {
       now(),
     );
     if (!r) return null;
+    const unconfirmed = await db.get(
+      "UPDATE users SET email_verified_at = ?, totp_secret = NULL, totp_enabled_at = NULL, totp_last_step = NULL, recovery_codes = '[]' WHERE id = ? AND email_verified_at IS NULL RETURNING id",
+      now(),
+      r.user_id,
+    );
+    if (unconfirmed) await db.run("DELETE FROM passkeys WHERE user_id = ?", r.user_id);
     await db.run("UPDATE users SET password_hash = ? WHERE id = ?", newHash, r.user_id);
     await revokeAllSessions(r.user_id, { db });
     return r.user_id;
