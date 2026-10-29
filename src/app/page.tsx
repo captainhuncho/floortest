@@ -8,6 +8,7 @@ import { footerGroups } from "@/lib/site";
 import { HOME_SECTIONS, pairs, sectionOrder, siteCopy, siteImageUrl, type HomeSection } from "@/lib/content";
 import { siteEditor } from "@/lib/site-editor";
 import { SectionFrame, SectionList, SiteEditor } from "@/components/SiteEditor";
+import { editable } from "@/components/Editable";
 import { mono, serif } from "./fonts";
 import { HomePreview } from "./HomePreview";
 import { DeckSection, SetLog, TwoSides } from "./HomeStage";
@@ -22,12 +23,8 @@ export const metadata = { alternates: { canonical: "/" } };
 const HOST = APP_URL.replace(/^https?:\/\//, "");
 const DEMO = "/maxwell";
 
-const JOURNEY = [
-  ["✓", "Delivered", "Original audio received safely"],
-  ["♪", "Listened", "Played for 30+ seconds"],
-  ["↓", "Downloaded", "The original file was downloaded"],
-  ["↩", "Replied", "A message came back"],
-];
+/** The receipt steps' icons, in order; their words come from Site content (journey_steps). */
+const JOURNEY_ICONS = ["✓", "♪", "↓", "↩"];
 
 
 
@@ -41,12 +38,15 @@ export default async function Home({
 }) {
   // All independent: one round trip's wait instead of four.
   const [user, sp, c, signupOpen, billing, botKey, editor] = await Promise.all([currentUser(), searchParams, siteCopy("home"), switchOn("open_signup"), switchOn("billing"), botCheckKey(), siteEditor()]);
-  // Ops staff editing on the page get typeable text; everyone else gets plain text.
-  const text = (k: keyof typeof c) => (editor ? <span data-edit={k}>{c[k]}</span> : c[k]);
+  // Ops staff editing on the page get typeable text; everyone else gets plain text (at any size picked in the editor).
+  const ed = editable(c, !!editor);
+  const { E, panel } = ed;
   const order = sectionOrder(c.sections);
   const deleted = !!sp.deleted;
   const HOW = pairs(c.how_steps);
   const FAQ = pairs(c.faq);
+  const JOURNEY = pairs(c.journey_steps);
+  const PRIVATE = pairs(c.private_points);
   // Invite-only: most visitors have no code, so the main button leads to the waitlist.
   const inviteOnly = !signupOpen;
   const cta = user
@@ -56,9 +56,9 @@ export default async function Home({
       : { href: "/signup", label: "Claim your link" };
 
   const SECTIONS: Record<HomeSection, React.ReactNode> = {
-    deck: <DeckSection />,
-    log: <SetLog />,
-    desk: <TwoSides />,
+    deck: <DeckSection c={c} {...ed} />,
+    log: <SetLog c={c} {...ed} />,
+    desk: <TwoSides c={c} {...ed} />,
     preview: (
       <section data-edit-image={editor ? "preview_image" : undefined} className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
         {c.preview_image ? (
@@ -67,8 +67,8 @@ export default async function Home({
         ) : (
           <>
             <div className="mb-4 flex items-center justify-between">
-              <p className="home-label">Live product preview</p>
-              <p className="home-label">Click a track</p>
+              <p className="home-label"><E k="preview_label" /></p>
+              <p className="home-label"><E k="preview_hint" /></p>
             </div>
             <HomePreview host={HOST} />
           </>
@@ -78,9 +78,9 @@ export default async function Home({
     how: (
       <section id="how" className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
         <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
-          {text("how_title")}
+          <E k="how_title" />
         </h2>
-        <ol data-edit-panel={editor ? "how_steps" : undefined} className="mt-10 grid grid-cols-1 border-t border-white/10 sm:grid-cols-2">
+        <ol {...panel("how_steps", "Each step: a title line, then its text. Leave a blank line between steps.")} className="mt-10 grid grid-cols-1 border-t border-white/10 sm:grid-cols-2">
           {HOW.map(([title, body], i) => (
             <li
               key={title}
@@ -101,14 +101,14 @@ export default async function Home({
         <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-end">
             <h2 className="text-[clamp(2.5rem,5.5vw,4.5rem)] font-bold leading-[0.95] tracking-[-0.04em]">
-              {text("journey_title")}
+              <E k="journey_title" />
             </h2>
             <p className="max-w-[65ch] text-sm leading-relaxed text-mute lg:pb-2">
-              {text("journey_intro")}
+              <E k="journey_intro" />
             </p>
           </div>
-          <ol className="mt-10 grid grid-cols-1 overflow-hidden rounded-lg border border-white/10 sm:grid-cols-2 lg:grid-cols-4">
-            {JOURNEY.map(([icon, title, body], i) => (
+          <ol {...panel("journey_steps", "Each step: a title line, then its text. Leave a blank line between steps. The icons stay in order (four).")} className="mt-10 grid grid-cols-1 overflow-hidden rounded-lg border border-white/10 sm:grid-cols-2 lg:grid-cols-4">
+            {JOURNEY.map(([title, body], i) => (
               <li
                 key={title}
                 className={`flex gap-4 border-white/10 p-6 ${i ? "border-t sm:border-t-0 sm:border-l" : "bg-ink-3"} ${i === 2 ? "sm:border-l-0 sm:border-t lg:border-t-0 lg:border-l" : ""} ${i === 3 ? "sm:border-t lg:border-t-0" : ""}`}
@@ -117,7 +117,7 @@ export default async function Home({
                   aria-hidden
                   className={`text-xl ${i ? "text-dim" : "text-bone"}`}
                 >
-                  {icon}
+                  {JOURNEY_ICONS[i] ?? "·"}
                 </span>
                 <span>
                   <span className="block text-sm uppercase">
@@ -138,24 +138,11 @@ export default async function Home({
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
           <div>
             <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
-              {text("private_title")}
+              <E k="private_title" />
             </h2>
           </div>
-          <dl className="divide-y divide-white/10 border-y border-white/10">
-            {[
-              [
-                "Your calls stay private",
-                "Senders see listens, downloads and replies. Never Keep or Not for me.",
-              ],
-              [
-                "You control intake",
-                "Pause your link, close a callout, block anyone.",
-              ],
-              [
-                "Clear retention",
-                "Undecided tracks are deleted after 90 days, Not for me 30 days after you mark it. Kept tracks stay until you delete them.",
-              ],
-            ].map(([k, v]) => (
+          <dl {...panel("private_points", "Each point: a title line, then its text. Leave a blank line between points.")} className="divide-y divide-white/10 border-y border-white/10">
+            {PRIVATE.map(([k, v]) => (
               <div key={k} className="py-5">
                 <dt className="text-xs uppercase tracking-[0.1em] text-bone">
                   {k}
@@ -171,15 +158,15 @@ export default async function Home({
   ),
     plans: (
       <section className="mx-auto max-w-4xl px-4 py-20 text-center sm:px-6">
-        <p className="text-xs uppercase tracking-[0.2em] text-mute">{text("plans_kicker")}</p>
-        <h2 className="mt-4 text-[clamp(1.75rem,3.6vw,2.75rem)] font-bold leading-[1.05] tracking-[-0.035em]">{text(billing ? "plans_title_launch" : "plans_title")}</h2>
-        <p className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-mute sm:text-base">{text(billing ? "plans_intro_launch" : "plans_intro")}</p>
+        <p className="text-xs uppercase tracking-[0.2em] text-mute"><E k="plans_kicker" /></p>
+        <h2 className="mt-4 text-[clamp(1.75rem,3.6vw,2.75rem)] font-bold leading-[1.05] tracking-[-0.035em]"><E k={billing ? "plans_title_launch" : "plans_title"} /></h2>
+        <p className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-mute sm:text-base"><E k={billing ? "plans_intro_launch" : "plans_intro"} /></p>
         <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
           <Link href={cta.href} className="rounded-full border border-line-2 bg-ink-2 px-7 py-3 text-sm font-semibold text-bone hover:border-mute">
             {cta.label}
           </Link>
           <Link href="/pricing" className="px-2 py-3 text-sm text-mute underline-offset-4 hover:text-bone hover:underline">
-            Compare all plans →
+            <E k="plans_compare" />
           </Link>
         </div>
       </section>
@@ -188,9 +175,9 @@ export default async function Home({
       <section id="waitlist" className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
           <div className="grid grid-cols-1 gap-10 rounded-lg border border-white/10 bg-ink-2 p-6 sm:p-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
             <div>
-              <h2 className="text-[clamp(2rem,4vw,3.25rem)] font-bold leading-[0.95] tracking-[-0.035em]">No invite yet?</h2>
+              <h2 className="text-[clamp(2rem,4vw,3.25rem)] font-bold leading-[0.95] tracking-[-0.035em]"><E k="waitlist_title" /></h2>
               <p className="mt-4 text-sm leading-relaxed text-mute">
-                Invites go out a few at a time. Leave your details and we&apos;ll email yours.
+                <E k="waitlist_intro" />
               </p>
             </div>
             <WaitlistForm host={HOST} botCheckKey={botKey} />
@@ -201,9 +188,9 @@ export default async function Home({
     faq: (
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
         <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
-          {text("faq_title")}
+          <E k="faq_title" />
         </h2>
-        <div data-edit-panel={editor ? "faq" : undefined} className="mt-10 border-t border-white/10">
+        <div {...panel("faq", "Each question on its own line, the answer below it. Leave a blank line between questions.")} className="mt-10 border-t border-white/10">
           {FAQ.map(([q, a], i) => (
             <details
               key={q}
@@ -285,16 +272,16 @@ export default async function Home({
           <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-center">
             <div>
               <p className="home-label flex items-center gap-3 normal-case tracking-normal">
-                <span aria-hidden className="h-px w-8 bg-line-2" /> {text("eyebrow")}
+                <span aria-hidden className="h-px w-8 bg-line-2" /> <E k="eyebrow" />
               </p>
               <h1 className="mt-6 text-[clamp(3rem,7.5vw,6.5rem)] font-bold leading-[0.9] tracking-[-0.045em]">
-                {text("headline")}
+                <E k="headline" />
                 <span className="block font-[family-name:var(--font-serif)] font-normal italic tracking-[-0.02em] text-mute">
-                  {text("headline_italic")}
+                  <E k="headline_italic" />
                 </span>
               </h1>
               <p className="mt-8 max-w-2xl text-[15px] leading-relaxed text-mute">
-                {text("intro")}
+                <E k="intro" />
               </p>
               <div className="mt-10 flex flex-wrap items-center gap-6">
                 <Link
@@ -307,18 +294,18 @@ export default async function Home({
                   href={DEMO}
                   className="-my-0.5 inline-block py-0.5 text-sm text-bone hover:text-bone"
                 >
-                  See an example <span className="text-dim">/maxwell</span> →
+                  <E k="hero_example" /> <span className="text-dim">/maxwell</span> →
                 </Link>
               </div>
               {!user && (
                 <p className="mt-4 text-xs text-dim">
-                  Private beta
+                  <E k="hero_beta" />
                   <span className="min-[375px]:hidden">
                     {" "}· <Link href="/login" className="underline underline-offset-4 hover:text-bone">Log in</Link>
                   </span>
                   {inviteOnly && (
                     <>
-                      {" "}· <Link href="/signup" className="underline underline-offset-4 hover:text-bone">Have an invite? Claim your link</Link>
+                      {" "}· <Link href="/signup" className="underline underline-offset-4 hover:text-bone"><E k="hero_invite_link" /></Link>
                     </>
                   )}
                 </p>
@@ -328,7 +315,7 @@ export default async function Home({
             <div className="min-w-0 rounded-lg border border-white/10 bg-ink-2 p-6 sm:p-8">
               {user ? (
                 <>
-                  <p className="home-label">Your link</p>
+                  <p className="home-label"><E k="hero_your_link" /></p>
                   <p className="mt-4 break-all text-xl sm:text-2xl">
                     {HOST}/<wbr /><span className="text-bone">{user.handle}</span>
                   </p>
@@ -336,7 +323,7 @@ export default async function Home({
               ) : (
                 <ClaimBox host={HOST} inviteOnly={inviteOnly} />
               )}
-              <p className="home-label mt-6 normal-case tracking-normal">Same link. You choose where it routes.</p>
+              <p className="home-label mt-6 normal-case tracking-normal"><E k="hero_route_label" /></p>
               <div className="mt-3 space-y-2">
                 <div className="flex items-center justify-between rounded-md border border-white/10 px-4 py-2.5 text-xs text-mute">
                   <span>Yesterday</span>
@@ -366,9 +353,9 @@ export default async function Home({
         <div className="grid grid-cols-12 gap-8 border-t border-line pt-10">
           <div className="col-span-5">
             <Logo />
-            <p className="mt-3 max-w-xs">{text("footer_line")}</p>
+            <p className="mt-3 max-w-xs"><E k="footer_line" /></p>
             <div className="mt-8 max-w-md">
-              <p className="mb-3 text-sm font-bold text-bone">Get the FloorTest newsletter</p>
+              <p className="mb-3 text-sm font-bold text-bone"><E k="newsletter_title" /></p>
               <NewsletterForm botCheckKey={botKey} />
             </div>
           </div>
@@ -396,7 +383,7 @@ export default async function Home({
           </nav>
         </div>
         <div className="mt-10 flex items-center justify-between gap-3 border-t border-line pt-6 text-xs text-dim">
-          <p>© {new Date().getFullYear()} FloorTest Labs. Private beta. Web · iPhone and Android soon.</p>
+          <p>© {new Date().getFullYear()} FloorTest Labs. <E k="footer_note" /></p>
           <ul className="flex flex-wrap gap-x-4">
             {(footerGroups().find((g) => g.title === "Legal")?.links.slice(LEGAL_MAIN) ?? []).map((l) => (
               <li key={l.label}>
@@ -413,10 +400,10 @@ export default async function Home({
       <footer className="mx-auto max-w-6xl px-4 pb-10 pt-12 text-sm text-mute sm:px-6 lg:hidden">
         <div className="flex flex-col gap-3 border-t border-line pt-10 sm:flex-row sm:items-center sm:justify-between">
           <Logo />
-          <p className="max-w-xs">{text("footer_line")}</p>
+          <p className="max-w-xs"><E k="footer_line" /></p>
         </div>
         <div className="mt-8 max-w-md">
-          <p className="mb-3 text-sm font-bold text-bone">Get the FloorTest newsletter</p>
+          <p className="mb-3 text-sm font-bold text-bone"><E k="newsletter_title" /></p>
           <NewsletterForm botCheckKey={botKey} />
         </div>
         <nav aria-label="Footer" className="mt-8 grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
@@ -442,7 +429,7 @@ export default async function Home({
             </div>
           ))}
         </nav>
-        <p className="mt-10 border-t border-line pt-6 text-xs text-dim">© {new Date().getFullYear()} FloorTest Labs. Private beta. Web · iPhone and Android soon.</p>
+        <p className="mt-10 border-t border-line pt-6 text-xs text-dim">© {new Date().getFullYear()} FloorTest Labs. <E k="footer_note" /></p>
       </footer>
     </div>
   );

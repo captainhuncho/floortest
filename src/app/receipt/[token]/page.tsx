@@ -99,7 +99,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
 
       {todo && (
         <section aria-labelledby="todo-h" className="flex flex-col gap-3">
-          <h2 id="todo-h" className="eyebrow">For you</h2>
+          <h2 id="todo-h" className="eyebrow"><E k="todo_title" /></h2>
           {stemsOn && <StemUpload token={token} receiver={who.split(/\s+/)[0]} existing={stemsSent(t)} max={MAX_STEMS} />}
           {!t.verified_at && (
             <p className="text-[13px] text-mute">
@@ -112,7 +112,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
       {sharing && !!t.share_ok && !!t.share_terms && t.share_terms !== "owner" && <StopSharing token={token} receiver={who.split(/\s+/)[0]} />}
 
       <section aria-labelledby="history-h" className="flex flex-col gap-3">
-        <h2 id="history-h" className="eyebrow">What&apos;s happened</h2>
+        <h2 id="history-h" className="eyebrow"><E k="history_title" /></h2>
         {/* The live refresh above brings new steps in; one that arrives during this visit marks itself with a ring once. */}
         <ReachedSteps reached={happened.map((s) => s.key)}>
         <ol className="flex flex-col">
@@ -143,7 +143,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
         </ReachedSteps>
         <details className="group text-[12px] text-dim">
           <summary className="inline-flex min-h-9 cursor-pointer list-none items-center gap-1.5 text-bone underline-offset-4 hover:underline [&::-webkit-details-marker]:hidden">
-            <span aria-hidden className="text-lime transition-transform duration-150 group-open:rotate-45">+</span> What these mean
+            <span aria-hidden className="text-lime transition-transform duration-150 group-open:rotate-45">+</span> <E k="means_title" />
           </summary>
           <dl className="mt-2 flex flex-col gap-2 border-l border-line pl-3">
             {steps.filter((s) => s.means).map((s) => (
@@ -162,7 +162,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
 
       <details className="group text-[12px] text-dim">
         <summary className="inline-flex min-h-9 cursor-pointer list-none items-center gap-1.5 text-bone underline-offset-4 hover:underline [&::-webkit-details-marker]:hidden">
-          <span aria-hidden className="text-lime transition-transform duration-150 group-open:rotate-45">+</span> Details
+          <span aria-hidden className="text-lime transition-transform duration-150 group-open:rotate-45">+</span> <E k="details_title" />
         </summary>
         <div className="mt-2 flex flex-col gap-2 border-l border-line pl-3">
           <p>
@@ -172,7 +172,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
             <span {...panel("private_note", "Keep {receiver} as it is: the page fills in the receiver's name.")}>{fill(c.private_note, { receiver: who })}</span>
           </p>
           <p>
-            {`Files are deleted within ${RETAIN_UNREVIEWED_DAYS} days of delivery unless ${who} keeps them.`}
+            <span {...panel("retention_note", "Keep {days} and {receiver} as they are: the page fills them in.")}>{fill(c.retention_note, { days: RETAIN_UNREVIEWED_DAYS, receiver: who })}</span>
           </p>
           <p {...panel("footer", "Words in [square brackets] link to the sender's history page.")}>
             {c.footer.split(/(\[[^\]]+\])/).map((part, i) =>
@@ -199,11 +199,11 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
         {/* Senders are how FloorTest grows: one quiet invitation, only to senders without an account. */}
         {invite && (
           <p className="text-center text-[12px] leading-[18px] text-dim">
-            DJ too?{" "}
+            <E k="invite_prompt" />{" "}
             <Link href={invite} className="py-3 text-mute underline underline-offset-4 hover:text-bone">
-              Get your own link
+              <E k="invite_link" />
             </Link>
-            , so music sent to you arrives like this.
+            <E k="invite_after" />
           </p>
         )}
         <Logo small />

@@ -36,8 +36,8 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
         <E k="signup_intro" />
         {inviteOnly && (
           <>
-            {" "}FloorTest is invite-only during the beta: use the sign-up link in your invite email, with the email it went to.{" "}
-            <Link href="/#waitlist" className="underline underline-offset-4 hover:text-bone">No invite? Join the waitlist</Link>
+            {" "}<E k="signup_invite_only" />{" "}
+            <Link href="/#waitlist" className="underline underline-offset-4 hover:text-bone"><E k="signup_waitlist_link" /></Link>
           </>
         )}
       </p>
