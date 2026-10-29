@@ -23,7 +23,7 @@ export async function turnOnTwoFactor(userId: number, code: string): Promise<{ c
     "UPDATE users SET totp_enabled_at = ?, totp_last_step = ?, recovery_codes = ? WHERE id = ? AND totp_enabled_at IS NULL AND email_verified_at IS NOT NULL",
     now(),
     step,
-    JSON.stringify(codes.map(hashRecovery)),
+    JSON.stringify(codes.map((c) => hashRecovery(c, env.secret))),
     userId,
   );
   if (!on.changes) return { error: "Start again: set-up expired." };

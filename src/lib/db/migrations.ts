@@ -1856,4 +1856,30 @@ grant update (name, first_name, last_name, kind, kind_note, tools, links, role_l
 revoke all on function ft_desk(bigint) from public;
 grant execute on function ft_desk(bigint) to ft_person;`,
   },
+  {
+    // App refresh tokens already swapped for new ones (lib/app-auth), kept until they would have expired. One coming back
+    // means it was copied, so that sign-in ends. Holds hashes only; not granted to ft_person, left out of backups.
+    id: "0111_app_refresh_spent",
+    sql: `create table if not exists app_refresh_spent (
+  token_hash text primary key,
+  user_id bigint not null references users(id) on delete cascade,
+  signed_in_at bigint not null,
+  expires_at bigint not null
+);
+create index if not exists fk_app_refresh_spent_user_id on app_refresh_spent(user_id);
+alter table app_refresh_spent enable row level security;`,
+  },
+  {
+    // The ticket between the two sign-in steps (lib/two-step-ticket) becomes a one-time row, like passkey_challenges:
+    // the cookie holds a random id, this holds its hash for 5 minutes, and the second step deletes it. Not granted to
+    // ft_person, left out of backups.
+    id: "0112_two_step_tickets",
+    sql: `create table if not exists two_step_tickets (
+  id_hash text primary key,
+  user_id bigint not null references users(id) on delete cascade,
+  expires_at bigint not null
+);
+create index if not exists fk_two_step_tickets_user_id on two_step_tickets(user_id);
+alter table two_step_tickets enable row level security;`,
+  },
 ];

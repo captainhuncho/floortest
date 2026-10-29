@@ -32,6 +32,7 @@ import { cancelEmailChange, changeHandle, HANDLE_HOLD_DAYS, requestEmailChange }
 import { logEvent, now, q, type Track } from "@/lib/db";
 import { eraseSender, purgeAccount } from "@/lib/privacy";
 import { localPath } from "@/lib/safe-links";
+import { normalEmail } from "@/lib/email-normal";
 import { deleteRevokedInvite, GATE_CODE_MIN_LENGTH, restoreRevokedInvite } from "@/lib/invites";
 
 const refresh = () => revalidatePath("/admin", "layout");
@@ -310,7 +311,7 @@ async function mailInvite(code: string, email: string, inviter: string, note: st
 export async function inviteByEmail(form: FormData) {
   const a = await requireAdminAction("invites");
   const note = String(form.get("note") || "").trim().slice(0, 300);
-  const emails = [...new Set(String(form.get("emails") || "").split(/[\s,;]+/).map((e) => e.trim().toLowerCase()).filter(Boolean))].slice(0, 50);
+  const emails = [...new Set(String(form.get("emails") || "").split(/[\s,;]+/).map(normalEmail).filter(Boolean))].slice(0, 50);
   let sent = 0;
   let skipped = 0;
   for (const email of emails) {
@@ -526,7 +527,7 @@ export async function removePlatformBlock(id: number) {
 export async function openTakedown(form: FormData) {
   const a = await requireAdminAction("super");
   const claimant = String(form.get("claimant") || "").trim().slice(0, 120);
-  const claimantEmail = String(form.get("claimant_email") || "").trim().toLowerCase().slice(0, 200);
+  const claimantEmail = normalEmail(String(form.get("claimant_email") || "")).slice(0, 200);
   const ref = String(form.get("track") || "").trim().slice(0, 100);
   if (!claimant || !claimantEmail.includes("@") || !ref) return fail("Fill in the claimant, a valid email and the track");
   const t = await q.get<{ id: number; title: string; artist: string; handle: string }>(
@@ -589,8 +590,8 @@ export async function adminDeleteAccount(userId: number, form: FormData) {
 
 export async function adminEraseSender(form: FormData) {
   const a = await requireAdminAction("super");
-  const email = String(form.get("email") || "").trim().toLowerCase();
-  if (!EMAIL_RE.test(email) || String(form.get("confirm") || "").trim().toLowerCase() !== email) return fail("Nothing erased: the email you typed didn't match");
+  const email = normalEmail(String(form.get("email") || ""));
+  if (!EMAIL_RE.test(email) || normalEmail(String(form.get("confirm") || "")) !== email) return fail("Nothing erased: the email you typed didn't match");
   const r = await eraseSender(email);
   await logAdmin(a.id, "erased sender (privacy request)", email.replace(/^(.{2}).*@/, "$1…@"), `${r.senders} sender records, ${r.files} files`);
   refresh();
@@ -796,7 +797,7 @@ export async function clearSwitchRule(key: SwitchKey) {
 /** Lets email go to an address again after a bounce or spam report (for example, once they've fixed their mailbox). */
 export async function liftSuppression(email: string) {
   const a = await requireAdminAction("users.support");
-  await q.run("DELETE FROM email_suppressions WHERE email = ?", email.trim().toLowerCase());
+  await q.run("DELETE FROM email_suppressions WHERE email = ?", normalEmail(email));
   await logAdmin(a.id, "lifted email block", email);
   await done(`Email to ${email} allowed again`);
   refresh();
@@ -806,7 +807,7 @@ export async function liftSuppression(email: string) {
 
 export async function savePartnerNote(email: string, form: FormData) {
   const a = await requireAdminAction("partners.act");
-  const key = email.trim().toLowerCase().slice(0, 200);
+  const key = normalEmail(email).slice(0, 200);
   if (!key) return;
   const note = String(form.get("note") || "").slice(0, 4000);
   await q.run(
@@ -1036,7 +1037,7 @@ function grantsAndDenials(role: Role, form: FormData) {
 
 export async function addOpsMember(form: FormData) {
   const a = await requireAdminAction("super");
-  const email = String(form.get("email") || "").trim().toLowerCase().slice(0, 200);
+  const email = normalEmail(String(form.get("email") || "")).slice(0, 200);
   const role = roleOf(form.get("role"));
   if (!role) return fail("Pick a role.");
   const u = await q.get<{ id: number; handle: string; email_verified_at: number | null; suspended_at: number | null }>("SELECT id, handle, email_verified_at, suspended_at FROM users WHERE email = ?", email);

@@ -4,6 +4,7 @@ import { now, q, type Collection, type Queryable, type Track, type User } from "
 import { env } from "./env";
 import { allow } from "./ratelimit";
 import { switchOn } from "./switches";
+import { normalEmail } from "./email-normal";
 
 /**
  * Collection share links (sharing phase 2). A link is its own thing: a random ID (only a fingerprint stored),
@@ -55,7 +56,7 @@ export class LinkError extends Error {}
 const fingerprint = (secret: string) => crypto.createHash("sha256").update(secret, "utf8").digest("hex");
 const newSecret = () => crypto.randomBytes(24).toString("base64url");
 const codeHash = (linkId: number, email: string, code: string) => crypto.createHmac("sha256", env.secret).update(`link-code:${linkId}:${email}:${code}`).digest("base64url");
-const cleanEmail = (e: string) => e.trim().toLowerCase().slice(0, 200);
+const cleanEmail = (e: string) => normalEmail(e).slice(0, 200);
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /** Personal email providers can't be added as a "company domain": that would let almost anyone in. */
 const PUBLIC_DOMAINS = new Set(["gmail.com", "googlemail.com", "yahoo.com", "yahoo.co.uk", "outlook.com", "hotmail.com", "hotmail.co.uk", "live.com", "msn.com", "icloud.com", "me.com", "mac.com", "aol.com", "proton.me", "protonmail.com", "gmx.com", "gmx.de", "mail.com", "yandex.com", "zoho.com"]);
