@@ -1882,4 +1882,12 @@ alter table app_refresh_spent enable row level security;`,
 create index if not exists fk_two_step_tickets_user_id on two_step_tickets(user_id);
 alter table two_step_tickets enable row level security;`,
   },
+  {
+    // One send, one email (owner, 29 Oct): a track sent with others waits here for its sender's receipt, so every track
+    // of the send goes out in one "Delivered" email (lib/send-receipts). Set when the track is saved, cleared when that
+    // email is queued; the mail job sends anything still waiting 15 minutes after the send's last track.
+    id: "0113_send_receipts",
+    sql: `alter table tracks add column if not exists receipt_due_at bigint;
+create index if not exists tracks_receipt_due on tracks(receipt_due_at) where receipt_due_at is not null;`,
+  },
 ];

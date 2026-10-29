@@ -7,6 +7,50 @@ import { canApprove, teamsOn } from "./account-members";
 export type Notice = { id: string; title: string; detail: string; href: string; at: number; unread: boolean; tone: "info" | "alert" };
 
 const DAY = 86_400_000;
+/** One bell row's source: a "submitted" or "expired" event, with the send its track came in (batch or folder). */
+export type BellEvent = { id: number; type: string; track_id: number; created_at: number; title: string; sender: string; collection: string | null; send: string | null };
+
+/**
+ * The bell's track rows. Tracks that came in one send (owner, 29 Oct: "send them as one") make one row listing them;
+ * a track sent on its own, and every auto-deletion, keeps its own row.
+ */
+export function bellRows(events: BellEvent[], seen: number): Notice[] {
+  const sends = new Map<string, BellEvent[]>();
+  for (const e of events) if (e.type === "submitted" && e.send) sends.set(e.send, [...(sends.get(e.send) ?? []), e]);
+  const rows: Notice[] = [];
+  const done = new Set<string>();
+  for (const e of events) {
+    const group = e.type === "submitted" && e.send ? sends.get(e.send)! : [e];
+    if (group.length > 1) {
+      if (done.has(e.send!)) continue;
+      done.add(e.send!);
+      // Oldest first, as they were sent; the row sits at the newest one's time.
+      const list = [...group].sort((a, b) => a.created_at - b.created_at || a.id - b.id);
+      const last = list[list.length - 1];
+      rows.push({
+        id: `e${list[0].id}`,
+        title: `${list.length} new tracks from ${last.sender}`,
+        detail: `${list.map((x) => x.title).join(", ")}${last.collection ? ` · ${last.collection}` : ""}`,
+        href: `/dashboard/review?view=queue&s=all&t=${list[0].track_id}`,
+        at: last.created_at,
+        unread: last.created_at > seen,
+        tone: "info",
+      });
+      continue;
+    }
+    rows.push({
+      id: `e${e.id}`,
+      title: e.type === "submitted" ? `New track: ${e.title}` : `Auto-deleted: ${e.title}`,
+      detail: e.type === "submitted" ? `from ${e.sender}${e.collection ? ` · ${e.collection}` : ""}` : "Not kept within the retention period",
+      href: e.type === "submitted" ? `/dashboard/review?view=queue&s=all&t=${e.track_id}` : "/dashboard/activity?f=intake",
+      at: e.created_at,
+      unread: e.created_at > seen,
+      tone: "info",
+    });
+  }
+  return rows;
+}
+
 const shortDate = (ts: number, tz: string) => new Date(ts).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: tz });
 
 /** New submissions and auto-deletions since the bell was last opened, plus live alerts about the link. */
@@ -14,8 +58,9 @@ export async function notificationsFor(user: User) {
   const row = await bellState(user);
   const seen = row?.s ?? 0;
   const cleared = row?.c ?? 0;
-  const events = await q.all<{ id: number; type: string; track_id: number; created_at: number; title: string; sender: string; collection: string | null }>(
-    `SELECT e.id, e.type, e.track_id, e.created_at, t.title, s.name AS sender, c.name AS collection
+  const events = await q.all<BellEvent>(
+    `SELECT e.id, e.type, e.track_id, e.created_at, t.title, s.name AS sender, c.name AS collection,
+       COALESCE('r:' || t.release_id, 'b:' || t.batch_id) AS send
      FROM events e JOIN senders s ON s.id = e.sender_id LEFT JOIN tracks t ON t.id = e.track_id
      LEFT JOIN collections c ON c.id = t.collection_id
      WHERE e.user_id = ? AND e.created_at > ? AND e.type IN ('submitted', 'expired') ORDER BY e.created_at DESC LIMIT 20`,
@@ -91,15 +136,7 @@ export async function notificationsFor(user: User) {
   // Share links, the recipient's side: collections newly shared with this account.
   for (const l of (linksOn ? await sharedLinksFor(user) : []).filter((l) => l.added_at > cleared))
     items.push({ id: `s${l.id}`, title: `${l.owner_name} shared ${l.collection_name} with you`, detail: "Private: listen while signed in", href: l.href, at: l.added_at, unread: l.added_at > seen, tone: "info" });
-  items.push(...events.map((e) => ({
-    id: `e${e.id}`,
-    title: e.type === "submitted" ? `New track: ${e.title}` : `Auto-deleted: ${e.title}`,
-    detail: e.type === "submitted" ? `from ${e.sender}${e.collection ? ` · ${e.collection}` : ""}` : "Not kept within the retention period",
-    href: e.type === "submitted" ? `/dashboard/review?view=queue&s=all&t=${e.track_id}` : "/dashboard/activity?f=intake",
-    at: e.created_at,
-    unread: e.created_at > seen,
-    tone: "info" as const,
-  })));
+  items.push(...bellRows(events, seen));
   items.sort((a, b) => b.at - a.at);
 
   // Live alerts: shown while true.

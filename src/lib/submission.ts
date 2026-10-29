@@ -3,7 +3,7 @@ import { senderProfiles } from "@/lib/socials";
 import type { User } from "@/lib/db";
 import type { SubmissionMeta } from "@/lib/intake";
 import { folderLimit } from "@/lib/plan-store";
-import { cleanGenre, MIX_STATUS, AI_USE, RELEASE_STATUS } from "@/lib/plans";
+import { cleanGenre, MIX_STATUS, AI_USE, RELEASE_STATUS, MAX_BATCH_TRACKS, MAX_RELEASE_TRACKS } from "@/lib/plans";
 import { normalEmail } from "./email-normal";
 
 type Problem = { error: string; status: number };
@@ -77,6 +77,10 @@ export async function readSubmission(
       originalName: fileName,
       setsOk: body.sets_ok === true,
       ...(release ? { release } : batch ? { batch } : {}),
+      // How many tracks this send holds, so they go out in one receipt email (src/lib/send-receipts.ts).
+      ...((release || batch) && Number.isInteger(body.send_size) && Number(body.send_size) >= 2
+        ? { sendSize: Math.min(Number(body.send_size), release ? MAX_RELEASE_TRACKS : MAX_BATCH_TRACKS) }
+        : {}),
       trackNo: Number.isInteger(Number(body.track_no)) && Number(body.track_no) >= 1 && Number(body.track_no) <= 99 ? Number(body.track_no) : null,
       musicalKey: str("musical_key", 12),
       isrc: /^[A-Z]{2}[A-Z0-9]{3}\d{7}$/.test(isrc) ? isrc : "",
