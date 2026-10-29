@@ -29,9 +29,10 @@ export const HIDDEN = "•••••• (hidden)";
  * `reserved`: an account email (sign-in code, password reset, email check, email change) or a security notice (password,
  * two-step, passkey or Google sign-in changed, new sign-in, account deleted). Only these may use the part of
  * the day's send limit kept back (MAIL_RESERVED_SHARE), so receipts and notifications can never starve them.
+ * `expires`: worthless by tomorrow (a 10-minute code). Past the day's shared part it's dropped, not held for midnight.
  */
-type MailOpts = { userId: number | null; to: string; subject: string; body: string; audience?: Audience; unsubscribe?: UnsubKind; secrets?: (string | null | undefined)[]; reserved?: boolean };
-type Payload = { to: string; subject: string; body: string; unsub: string | null };
+type MailOpts = { userId: number | null; to: string; subject: string; body: string; audience?: Audience; unsubscribe?: UnsubKind; secrets?: (string | null | undefined)[]; reserved?: boolean; expires?: boolean };
+type Payload = { to: string; subject: string; body: string; unsub: string | null; expires?: boolean };
 
 /*
  * The outbox is also the send queue (Codex review, phase B item 4; 24 Oct). Every email is written to `outbox` before
@@ -78,7 +79,7 @@ export async function queueMail(opts: MailOpts, db: Queryable = q): Promise<numb
   // Optional emails carry a one-click unsubscribe (header for Gmail/Yahoo, plus a link in the text).
   const unsub = opts.unsubscribe && opts.userId ? unsubToken(opts.userId, opts.unsubscribe, opts.to) : null;
   const body = unsub ? `${opts.body}\n\n—\nStop these emails: ${APP_URL}/unsubscribe/${unsub}` : opts.body;
-  const payload: Payload = { to: opts.to, subject: opts.subject, body, unsub };
+  const payload: Payload = { to: opts.to, subject: opts.subject, body, unsub, ...(opts.expires ? { expires: true } : {}) };
   const at = now();
   const row = await db.get<{ id: number }>(
     `INSERT INTO outbox (user_id, to_email, subject, body, status, audience, created_at, payload, idem_key, attempts, next_at, optional, reserved)
@@ -205,6 +206,12 @@ export async function deliver(id: number, { retry = true } = {}): Promise<string
   }
   const willSend = !suppressed && !!env.email.resendKey && !(isPreview && !stagingTo);
   if (willSend && !row.reserved && (await overSharedPart(at, !!row.optional))) {
+    if (p.expires) {
+      // A code that would arrive after it stopped working: drop it now, so nothing dead goes out tomorrow.
+      await q.run("UPDATE outbox SET status = 'dropped (daily limit)', payload = NULL, next_at = NULL WHERE id = ?", id);
+      await reportDeferred(at);
+      return "dropped (daily limit)";
+    }
     // Waiting isn't a failed attempt: it goes back as it was, due just after midnight UTC.
     await q.run("UPDATE outbox SET status = 'queued', attempts = attempts - 1, next_at = ? WHERE id = ?", startOfDay(at) + 86_400_000 + 5 * 60_000, id);
     await reportDeferred(at);
