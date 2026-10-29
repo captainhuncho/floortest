@@ -7,7 +7,7 @@ import Link from "next/link";
 import type { PlayerTrack } from "@/components/Player";
 import { deletesAt } from "@/lib/plans";
 import {q, type Collection, type EventRow, type Sender, type Track, now } from "@/lib/db";
-import { fmtBytes, fmtDate, fmtDay } from "@/lib/format";
+import { ago, fmtBytes, fmtDate, fmtDay } from "@/lib/format";
 import { MIX_STATUS, AI_USE, RELEASE_STATUS } from "@/lib/plans";
 import { featureOn } from "@/lib/features";
 import { addNote, decideRelease, deleteTrack, moveTrack, replyToSender } from "./actions/review";
@@ -18,12 +18,12 @@ import { StemsBox } from "./StemsBox";
 import { PrepBox } from "./PrepBox";
 import { parseCues } from "@/lib/cues";
 import { DetailPlayer } from "./DetailPlayer";
-import { DesktopOnly, MobileOnly } from "./DesktopOnly";
-import { MobileTransport } from "./MobileTransport";
 import { History } from "./History";
 import { PanelDetails } from "./PanelDetails";
 import { commentsFor, shortlistOf, teamSize } from "@/lib/team";
 import { ReviewTogether } from "./ReviewTogether";
+import { TrackStepper } from "./review/TrackStepper";
+import type { Step } from "./review/QueueState";
 
 export async function ReviewPanel({
   track: t,
@@ -31,14 +31,17 @@ export async function ReviewPanel({
   collections,
   selfHref,
   next,
-  prevHref,
+  prev,
+  position,
 }: {
   track: Track;
   sender: Sender;
   collections: Collection[];
   selfHref: string;
-  next: { href: string; track: PlayerTrack } | null;
-  prevHref: string | null;
+  next: Step;
+  prev: Step;
+  /** "1 of 3": where this track sits in the list on screen. */
+  position?: string | null;
 }) {
   const receiverPlan = (await q.get<{ plan: string }>("SELECT plan FROM users WHERE id = ?", t.user_id))?.plan ?? "free";
   const stemsOn = await featureOn("stems", { id: t.user_id, plan: receiverPlan });
@@ -85,6 +88,7 @@ export async function ReviewPanel({
     played: !!t.played_at,
   };
   const removal = deletesAt(t);
+  const collectionName = collections.find((c) => c.id === t.collection_id)?.name ?? null;
 
   const releaseBlock = release && (
     <details className="group/rel mt-3 rounded-md border border-line">
@@ -136,23 +140,24 @@ export async function ReviewPanel({
       : t.decision && desk && desk.actor_id !== desk.id && t.decided_role === "owner"
         ? desk.name
         : null;
+  // Plain words, not pills (rule 15): mute for facts, red only for what needs attention before deciding.
   const tags = (
-    <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] font-bold">
+    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]">
       {caller && (
-        <span className="rounded-full border border-line px-2.5 py-0.5 text-mute">
+        <span className="text-mute">
           {t.decision === "kept" ? "Kept" : "Not for me"} by {caller}
           {desk && decisionLocked(desk, t) ? " · only the owner or an A&R / Admin can change it" : ""}
         </span>
       )}
-      <span className={`rounded-full border px-2.5 py-0.5 ${t.sets_ok ? "border-lime/50 text-lime" : "border-line text-mute"}`}>
+      <span className={t.sets_ok ? "text-bone" : "text-mute"}>
         {t.sets_ok ? "Cleared for DJ sets" : "Evaluation only: ask before playing it out"}
       </span>
-      {shortlist && <span className="rounded-full border border-lime/50 px-2.5 py-0.5 text-lime">★ Shortlisted</span>}
-      {t.release_status && <span className="rounded-full border border-line px-2.5 py-0.5 text-mute">{RELEASE_STATUS[t.release_status as keyof typeof RELEASE_STATUS]}</span>}
-      {t.ai_use && t.ai_use !== "none" && <span className="rounded-full border border-line-2 px-2.5 py-0.5 uppercase tracking-[0.5px] text-mute">{AI_USE[t.ai_use]}</span>}
-      {soon !== null && <span className="rounded-full border border-danger/50 px-2.5 py-0.5 text-danger">{soon <= 1 ? "Deletes within a day" : `Deletes in ${soon} days`} unless you keep it</span>}
+      {shortlist && <span className="text-bone">★ Shortlisted</span>}
+      {t.release_status && <span className="text-mute">{RELEASE_STATUS[t.release_status as keyof typeof RELEASE_STATUS]}</span>}
+      {t.ai_use && t.ai_use !== "none" && <span className="text-mute">{AI_USE[t.ai_use]}</span>}
+      {soon !== null && <span className="text-danger">{soon <= 1 ? "Deletes within a day" : `Deletes in ${soon} days`} unless you keep it</span>}
       {t.duplicate_of && (
-        <span className="rounded-full border border-danger/50 px-2.5 py-0.5 text-danger">
+        <span className="text-danger">
           Possible duplicate ·{" "}
           <Link href={`/dashboard/review?view=queue&s=all&t=${t.duplicate_of}`} className="underline underline-offset-2">
             Compare
@@ -164,68 +169,62 @@ export async function ReviewPanel({
 
   const art = artFrom ? `/api/track-art/${artFrom.id}?v=${encodeURIComponent(artFrom.art_key)}` : null;
 
+  const from = (
+    <>
+      <Link href={`/dashboard/contacts/${sender.id}`} className="font-semibold text-bone underline-offset-4 hover:underline">
+        {sender.name}
+      </Link>{" "}
+      <span className="font-normal text-mute">· {sender.verified_at ? "verified email" : "unverified email"}</span>
+    </>
+  );
+
   return (
-    <div className="p-4 sm:p-6" data-swipe-zone>
-      {/* Phones: Figma "08 Full Player / DJ Review" */}
-      <div className="md:hidden">
-        <div className="flex items-center gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={art ?? "/icons/review-art.svg"} alt="" className="size-[52px] shrink-0 rounded object-cover" />
-          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <h2 className="truncate text-base font-bold text-bone">{t.title}</h2>
-            <p className="truncate text-xs text-mute">
-              {t.artist}
-              {t.isrc && <span title="ISRC"> · {t.isrc}</span>}
-            </p>
+    <div className="p-4 sm:p-6">
+      {/* Rule 15 Queue (28 Oct): one layout at every width, rendered with the page, so the buttons are there before
+          any JavaScript runs (they used to mount after it, one copy per screen size). */}
+      <div className="flex items-start gap-3 md:gap-4">
+        {art && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={art} alt={`Artwork for ${t.title}`} className="size-14 shrink-0 rounded-md border border-line object-cover md:size-20" />
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <h2 className="min-w-0 text-xl font-bold leading-tight tracking-[-0.3px] text-bone md:text-2xl">{t.title}</h2>
+            <TrackStepper fromId={t.id} prev={prev} next={next} position={position ?? null} />
           </div>
-        </div>
-        {meta && <p className="mt-3 text-[13px] font-bold text-bone tnum">{meta}</p>}
-        {tags}
-        {releaseBlock}
-        <MobileTransport track={player} prevHref={prevHref} nextHref={next?.href ?? null} />
-        <div className="mt-3.5">
-          <MobileOnly>
-          <DecisionRail
-            track={{ ...player, decision: t.decision }}
-            senderName={sender.name}
-            selfHref={selfHref}
-            next={next}
-            prevHref={prevHref}
-            onReply={replyToSender.bind(null, sender.id, t.id)}
-          />
-          </MobileOnly>
+          <p className="mt-1 text-sm text-mute">
+            {[t.artist, collectionName && `for ${collectionName}`, `arrived ${ago(t.created_at)}`].filter(Boolean).join(" · ")}
+          </p>
         </div>
       </div>
-
-      <div className="hidden md:block">
-      {art && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={art} alt={`Artwork for ${t.title}`} className="mb-4 size-40 rounded-md border border-line object-cover" />
-      )}
-      <p className="label">Now reviewing</p>
-      <h2 className="mt-2 text-2xl font-bold leading-tight tracking-tight">{t.title}</h2>
-      <p className="mt-1 text-mute">{t.artist}</p>
-      {meta && <p className="mt-1 font-bold tnum">{meta}</p>}
+      {meta && <p className="mt-3 font-mono text-xs text-mute tnum md:text-[13px]">{meta}</p>}
       {tags}
       {releaseBlock}
 
-      <div className="mt-5">
+      <div className="mt-4 md:mt-5">
         <DetailPlayer track={player} />
       </div>
 
-      <div className="mt-5">
-        <DesktopOnly>
-          <DecisionRail
-            track={{ ...player, decision: t.decision }}
-            senderName={sender.name}
-            selfHref={selfHref}
-            next={next}
-            prevHref={prevHref}
-            onReply={replyToSender.bind(null, sender.id, t.id)}
-          />
-        </DesktopOnly>
+      <div className="mt-4 md:mt-5">
+        <DecisionRail
+          track={{ ...player, decision: t.decision }}
+          senderName={sender.name}
+          selfHref={selfHref}
+          next={next}
+          prev={prev}
+          onReply={replyToSender.bind(null, sender.id, t.id)}
+        />
       </div>
-      </div>
+
+      {/* The sender's note sits right under the decision, a quote with a hairline edge; its caption is the sender line. */}
+      {t.message ? (
+        <figure className="mt-5 border-l-2 border-line py-0.5 pl-4">
+          <figcaption className="text-sm">From {from}</figcaption>
+          <blockquote className="mt-1.5 whitespace-pre-wrap text-[15px] leading-relaxed text-bone">{t.message}</blockquote>
+        </figure>
+      ) : (
+        <p className="mt-5 text-sm text-mute">From {from}</p>
+      )}
 
       {t.decision === "kept" && (
         <>
@@ -238,34 +237,13 @@ export async function ReviewPanel({
         </>
       )}
 
-
       {team > 0 && <ReviewTogether trackId={t.id} meId={desk?.actor_id ?? t.user_id} canModerate={desk?.role === "owner" || desk?.role === "admin"} comments={comments} shortlistedBy={shortlist?.name ?? null} />}
-
 
       {stemsOn && (
         <div className="mt-4">
           <StemsBox track={t} senderName={sender.name} />
         </div>
       )}
-
-      {t.message && (
-        <figure className="mt-6 rounded-lg border border-line bg-ink p-4">
-          <figcaption className="label mb-2">Message from {sender.name}</figcaption>
-          <blockquote className="whitespace-pre-wrap">{t.message}</blockquote>
-        </figure>
-      )}
-
-      <p className="mt-6 text-sm">
-        From{" "}
-        <Link href={`/dashboard/contacts/${sender.id}`} className="font-medium underline-offset-4 hover:underline">
-          {sender.name}
-        </Link>{" "}
-        {sender.verified_at ? (
-          <span className="chip ml-1 border-lime/50 text-lime">Verified email</span>
-        ) : (
-          <span className="chip ml-1 border-line text-mute">Unverified email</span>
-        )}
-      </p>
 
       <PanelDetails summary={<span>Details <span className="hidden text-mute sm:inline">· file, dates, move, delete, sender</span></span>}>
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
@@ -285,8 +263,7 @@ export async function ReviewPanel({
         </dl>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          {/* Phones already have Download on the decision rail. */}
-          <a href={`/api/tracks/${t.id}/download`} className="btn-ghost btn-sm hidden md:inline-flex">
+          <a href={`/api/tracks/${t.id}/download`} className="btn-ghost btn-sm">
             Download original
           </a>
           <form action={moveTrack.bind(null, t.id)} className="flex">

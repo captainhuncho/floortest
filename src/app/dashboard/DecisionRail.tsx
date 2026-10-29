@@ -1,9 +1,6 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-// The router's own option for a full prefetch (typed in AppRouterInstance.prefetch); a plain prefetch of this dynamic
-// page only loads the loading screen.
-import { PrefetchKind } from "next/dist/client/components/router-reducer/router-reducer-types";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { isTyping, usePlayer, type PlayerTrack } from "@/components/Player";
 import { useToast } from "@/components/Toast";
@@ -12,6 +9,7 @@ import { QuickReplies } from "./QuickReplies";
 import { ReplyTemplates } from "./ReplyTemplates";
 import { decideTrack, undoDecision } from "./actions/review";
 import { stored, useDeviceState } from "@/components/useBrowserValue";
+import { useQueue, useStep, type Step } from "./review/QueueState";
 
 /** Number keys jump through the track: 1 = a quarter in, 4 = near the end. */
 const JUMPS: Record<string, number> = { "1": 0.25, "2": 0.5, "3": 0.75, "4": 0.9 };
@@ -20,12 +18,12 @@ type Props = {
   track: PlayerTrack & { decision: "kept" | "passed" | null };
   senderName: string;
   selfHref: string;
-  next: { href: string; track: PlayerTrack } | null;
-  prevHref: string | null;
+  next: Step;
+  prev: Step;
   onReply: (fd: FormData) => Promise<ReplyResult>;
 };
 
-export function DecisionRail({ track, senderName, selfHref, next, prevHref, onReply }: Props) {
+export function DecisionRail({ track, senderName, selfHref, next, prev, onReply }: Props) {
   const router = useRouter();
   const player = usePlayer();
   const toast = useToast();
@@ -46,34 +44,31 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
     if (replying) replyRef.current?.focus();
   }, [replying]);
 
-  // Next and previous load in full while this track is open, so moving on shows a page that's already here instead
-  // of waiting on London (~0.4 s from Ghana before any work). Loaded again whenever a decision refreshes the desk.
-  const nextHref = next?.href ?? null;
-  useEffect(() => {
-    let live = true;
-    const warm = (href: string) => router.prefetch(href, { kind: PrefetchKind.FULL, onInvalidate: () => live && warm(href) });
-    if (nextHref) warm(nextHref);
-    if (prevHref) warm(prevHref);
-    return () => {
-      live = false;
-    };
-  }, [nextHref, prevHref, router]);
-
-  const advance = useCallback(
-    (wasPlaying: boolean) => {
-      if (!next) return;
-      router.replace(next.href, { scroll: false });
-      if (wasPlaying) player.play(next.track);
-    },
-    [next, router, player],
-  );
+  const queue = useQueue();
+  // Previous / next show at once from what the list knows (QueueState); the server's page follows.
+  const step = useStep(track.id);
 
   const decide = useCallback(
     (d: "kept" | "passed") => {
       if (busy) return;
       const wasPlaying = player.current?.id === track.id && player.playing;
+      const changes = track.decision !== d;
+      // The screen moves on before the server answers: the decided track leaves the list and the next one is up.
+      if (changes) queue?.leave(track.id, d);
+      if (next) {
+        queue?.show(next.track);
+        if (wasPlaying) player.play(next.track);
+      }
       start(async () => {
-        const token = track.decision === d ? null : await decideTrack(track.id, d);
+        let token: Awaited<ReturnType<typeof decideTrack>> = null;
+        try {
+          token = changes ? await decideTrack(track.id, d) : null;
+        } catch {
+          // Not saved (connection dropped): say so and put this track back on screen.
+          toast.show({ message: `Couldn't save that for “${track.title}”. Try again.` });
+          router.replace(selfHref, { scroll: false });
+          return;
+        }
         if (token) {
           toast.show({
             message: `${d === "kept" ? `“${track.title}” added to Prepare for set` : `Not for me: “${track.title}”`}`,
@@ -86,10 +81,10 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
             },
           });
         }
-        advance(wasPlaying);
+        if (next) router.replace(next.href, { scroll: false });
       });
     },
-    [busy, player, track, toast, router, selfHref, advance],
+    [busy, player, track, toast, router, selfHref, next, queue],
   );
 
   useEffect(() => {
@@ -104,8 +99,8 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
       else if (k === "x") decide("passed");
       else if (k === "r") setReplying(true);
       else if (k === "u") toast.undoLatest();
-      else if ((k === "j" || e.key === "ArrowDown") && next) router.replace(next.href, { scroll: false });
-      else if (e.key === "ArrowUp" && prevHref) router.replace(prevHref, { scroll: false });
+      else if ((k === "j" || e.key === "ArrowDown") && next) step(next);
+      else if (e.key === "ArrowUp" && prev) step(prev);
       else if (e.key === "ArrowRight") player.seekBy(10);
       else if (e.key === "ArrowLeft") player.seekBy(-10);
       else if (k in JUMPS) {
@@ -125,31 +120,35 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [decide, next, prevHref, player, router, toast, track]);
+  }, [decide, step, next, prev, player, toast, track]);
 
-  // Phones: drag the review panel right to keep, left for Not for me. The panel follows the finger with a stamp;
-  // let go past the line to decide (with a haptic tap in the app), or short of it to snap back.
+  // Phones (owner, 28 Oct): swipe the track card left for the next track, right for the previous one, like turning a
+  // page. The card follows the finger; past the line, or with a quick flick, it slides away and the neighbour slides
+  // in from the other side (shown at once, details follow). With nothing that way it resists and springs back.
+  // Deciding is the three buttons only. Vertical drags stay page scrolling (touch-action: pan-y).
   useEffect(() => {
     if (!window.matchMedia("(pointer: coarse)").matches) return;
     const zone = document.querySelector<HTMLElement>("[data-swipe-zone]");
     if (!zone) return;
     const LINE = 90;
+    const FLICK = 0.5; // px per ms
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let x0 = 0, y0 = 0, dx = 0, mode: "idle" | "maybe" | "drag" | "scroll" = "idle";
+    const ease = "transform .22s cubic-bezier(.23,1,.32,1)";
+    let x0 = 0, y0 = 0, t0 = 0, dx = 0, mode: "idle" | "maybe" | "drag" | "scroll" = "idle";
+    // While the neighbour slides in, this rail is already gone (the card shows the neighbour); don't cut the slide.
+    let sliding = false;
     const haptic = () => {
       const cap = (window as unknown as { Capacitor?: { Plugins?: { Haptics?: { impact: (o: { style: string }) => Promise<void> } } } }).Capacitor;
-      if (cap?.Plugins?.Haptics) void cap.Plugins.Haptics.impact({ style: "MEDIUM" }).catch(() => {});
-      else navigator.vibrate?.(12);
+      if (cap?.Plugins?.Haptics) void cap.Plugins.Haptics.impact({ style: "LIGHT" }).catch(() => {});
+      else navigator.vibrate?.(8);
     };
-    const paint = (x: number) => {
-      zone.style.transform = x ? `translateX(${x}px) rotate(${x / 40}deg)` : "";
-      zone.dataset.swipe = x > LINE / 3 ? "keep" : x < -LINE / 3 ? "pass" : "";
-      zone.style.setProperty("--swipe-strength", String(Math.min(1, Math.abs(x) / LINE)));
-    };
+    const target = (x: number) => (x < 0 ? next : prev);
+    const paint = (x: number) => (zone.style.transform = x ? `translateX(${x}px)` : "");
     const start = (e: TouchEvent) => {
-      if (isTyping(e.target) || (e.target instanceof HTMLElement && e.target.closest("[role=slider], input, textarea, button, a, summary, select"))) return void (mode = "idle");
+      if (e.touches.length > 1 || isTyping(e.target) || (e.target instanceof HTMLElement && e.target.closest("[role=slider], input, textarea, button, a, summary, select"))) return void (mode = "idle");
       x0 = e.touches[0].clientX;
       y0 = e.touches[0].clientY;
+      t0 = performance.now();
       dx = 0;
       mode = "maybe";
       zone.style.transition = "none";
@@ -164,26 +163,36 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
         else return;
       }
       e.preventDefault();
-      if ((Math.abs(dx) < LINE) !== (Math.abs(x) < LINE)) haptic(); // crossing the line
+      // No track that way: the card moves less the further it's pulled.
+      const pulled = target(x) ? x : Math.sign(x) * Math.sqrt(Math.abs(x)) * 4;
+      if (target(x) && (Math.abs(dx) < LINE) !== (Math.abs(x) < LINE)) haptic(); // crossing the line
       dx = x;
-      paint(dx);
+      paint(pulled);
     };
     const end = () => {
       if (mode !== "drag") return void (mode = "idle");
       mode = "idle";
-      zone.style.transition = reduce ? "none" : "transform .22s cubic-bezier(.2,.8,.2,1)";
-      if (Math.abs(dx) < LINE) return paint(0);
-      const keep = dx > 0;
-      paint(keep ? window.innerWidth : -window.innerWidth);
+      const to = target(dx);
+      const flick = Math.abs(dx) > 30 && Math.abs(dx) / (performance.now() - t0) > FLICK;
+      zone.style.transition = reduce ? "none" : ease;
+      if (!to || (Math.abs(dx) < LINE && !flick)) return paint(0);
+      const dir = Math.sign(dx);
+      paint(dir * window.innerWidth);
       setTimeout(() => {
-        zone.style.transition = "none";
-        paint(0);
         setSwiped(true);
         try {
           localStorage.setItem("ft:swiped", "1");
         } catch {}
-        decide(keep ? "kept" : "passed");
-      }, reduce ? 0 : 200);
+        sliding = true;
+        step(to);
+        // The neighbour comes in from the opposite side.
+        zone.style.transition = "none";
+        paint(reduce ? 0 : -dir * window.innerWidth * 0.3);
+        requestAnimationFrame(() => {
+          zone.style.transition = reduce ? "none" : ease;
+          paint(0);
+        });
+      }, reduce ? 0 : 160);
     };
     zone.addEventListener("touchstart", start, { passive: true });
     zone.addEventListener("touchmove", move, { passive: false });
@@ -194,45 +203,42 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
       zone.removeEventListener("touchmove", move);
       zone.removeEventListener("touchend", end);
       zone.removeEventListener("touchcancel", end);
-      paint(0);
+      if (!sliding) paint(0);
     };
-  }, [decide, setSwiped]);
+  }, [next, prev, step, setSwiped]);
 
-  const btn = "btn flex-1 flex-col gap-0.5 py-3 border";
-  const pill = "rounded-full border border-line bg-ink-3 px-3.5 py-2 text-[11px] font-medium text-mute";
+  const btn = "btn h-12 gap-2 border text-[15px] font-bold";
+  const key = "font-mono text-[11px] font-medium opacity-60";
   return (
     <div>
       {/* Phones: Figma "Decisions" pills + "DJ Decision Area" */}
+      {/* Phones, rule 15 Queue (28 Oct): the same three buttons as wide screens, Keep in lime; Download sits in Details. */}
       <div className="md:hidden">
-        <div className="flex flex-wrap gap-[5px]">
-          <a href={`/api/tracks/${track.id}/download`} className={pill}>
-            DOWNLOAD
-          </a>
-          <button onClick={() => setReplying((r) => !r)} aria-expanded={replying} className={replying ? "rounded-full bg-bone px-3.5 py-2 text-[11px] font-bold text-ink" : pill}>
-            REPLY
-          </button>
-        </div>
-        <div className="flex gap-2 pt-3" role="group" aria-label="Decision">
+        <div className="grid grid-cols-[1fr_1.3fr_1fr] gap-2" role="group" aria-label="Decision">
           <button
             onClick={() => decide("passed")}
             disabled={busy}
             aria-pressed={track.decision === "passed"}
-            className={`flex-1 rounded-xl border border-[#ff5f57] p-3.5 text-[11px] font-bold ${track.decision === "passed" ? "bg-[#ff5f57] text-ink" : "bg-[rgba(255,95,87,0.1)] text-[#ff5f57]"}`}
+            className={`${btn} px-2 text-sm ${track.decision === "passed" ? "border-bone bg-bone/10" : "border-line"}`}
           >
-            ✕ NOT FOR ME
+            Not for me
           </button>
           <button
             onClick={() => decide("kept")}
             disabled={busy}
             aria-pressed={track.decision === "kept"}
-            className={`flex-1 rounded-xl p-3.5 text-[11px] font-bold ${track.decision === "kept" ? "bg-lime text-ink" : "bg-bone text-ink"}`}
+            className={`${btn} border-lime bg-lime text-ink`}
           >
-            {track.decision === "kept" ? "✓ KEPT" : "✓ KEEP"}
+            {track.decision === "kept" ? "Kept ✓" : "Keep"}
+          </button>
+          <button onClick={() => setReplying((r) => !r)} aria-expanded={replying} className={`${btn} px-2 text-sm ${replying ? "border-bone" : "border-line"}`}>
+            Reply
           </button>
         </div>
       </div>
 
-      <div className="hidden gap-2 md:flex" role="group" aria-label="Decision">
+      {/* Rule 15 Queue (28 Oct): Keep is the page's one lime button; the shortcut sits beside each word. */}
+      <div className="hidden grid-cols-[1fr_1.3fr_1fr] gap-2.5 md:grid" role="group" aria-label="Decision">
         <button
           onClick={() => decide("passed")}
           disabled={busy}
@@ -240,18 +246,16 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
           aria-keyshortcuts="X"
           className={`${btn} ${track.decision === "passed" ? "border-bone bg-bone/10" : "border-line hover:border-mute hover:bg-ink-3"}`}
         >
-          <span className="text-base font-semibold">Not for me</span>
-          <span className="hidden text-xs text-mute md:inline">X</span>
+          Not for me <kbd className={key}>X</kbd>
         </button>
         <button
           onClick={() => decide("kept")}
           disabled={busy}
           aria-pressed={track.decision === "kept"}
           aria-keyshortcuts="K"
-          className={`${btn} ${track.decision === "kept" ? "border-lime bg-lime text-ink" : "border-lime/60 text-lime hover:bg-lime hover:text-ink"}`}
+          className={`${btn} border-lime bg-lime text-ink hover:bg-[#e2ff7a]`}
         >
-          <span className="text-base font-semibold">{track.decision === "kept" ? "Kept ✓" : "Keep"}</span>
-          <span className={`text-xs ${track.decision === "kept" ? "text-ink/70" : "opacity-70"}`}><span className="hidden md:inline">K · </span>adds to crate</span>
+          {track.decision === "kept" ? "Kept ✓" : "Keep"} <kbd className={key}>K</kbd>
         </button>
         <button
           onClick={() => setReplying((r) => !r)}
@@ -259,8 +263,7 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
           aria-keyshortcuts="R"
           className={`${btn} ${replying ? "border-bone" : "border-line hover:border-mute hover:bg-ink-3"}`}
         >
-          <span className="text-base font-semibold">Reply</span>
-          <span className="hidden text-xs text-mute md:inline">R</span>
+          Reply <kbd className={key}>R</kbd>
         </button>
       </div>
 
@@ -323,10 +326,13 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
         </form>
       )}
 
-      {!swiped && <p className="mt-3 text-[11px] text-faint [@media(pointer:fine)]:hidden">Swipe right to keep · swipe left: not for me</p>}
-      <details className="mt-3 hidden text-xs text-mute md:block">
-        <summary className="w-fit cursor-pointer list-none rounded border border-line px-1.5 py-0.5 hover:text-bone [&::-webkit-details-marker]:hidden">? Shortcuts</summary>
-        <p className="mt-2">
+      {!swiped && <p className="mt-3 text-[11px] text-faint [@media(pointer:fine)]:hidden">Swipe left for the next track, right for the previous one</p>}
+      {/* One faint line (rule 15 Queue, lighter panel); the full list opens from it. */}
+      <details className="mt-2 hidden text-xs text-faint md:block">
+        <summary className="inline-flex min-h-8 w-fit cursor-pointer list-none items-center hover:text-mute [&::-webkit-details-marker]:hidden">
+          Space play · K keep · X not for me · R reply · more shortcuts
+        </summary>
+        <p className="mt-1 text-mute">
           {next ? "Keep or Not for me moves to the next track." : "Last track in this view."} K keep · X not for me · R reply · Space play · 1–4 jump to 25/50/75/90% ·
           ←/→ 10s · ↑/↓ or J move · U undo
         </p>

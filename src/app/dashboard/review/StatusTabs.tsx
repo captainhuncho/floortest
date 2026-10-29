@@ -34,7 +34,7 @@ export function StatusTabs({ tabs, active }: { tabs: Tab[]; active: string }) {
   }, [active]);
 
   return (
-    <nav ref={nav} className="mt-6 flex flex-wrap gap-1 border-b border-line" aria-label="Status" data-pending={pending ? "" : undefined} aria-busy={pending || undefined}>
+    <nav ref={nav} className="mt-6 flex flex-wrap border-b border-line sm:gap-1" aria-label="Status" data-pending={pending ? "" : undefined} aria-busy={pending || undefined}>
       {tabs.map((t) => {
         const on = chosen === t.key;
         return (
@@ -58,11 +58,11 @@ export function StatusTabs({ tabs, active }: { tabs: Tab[]; active: string }) {
               topBefore.current = nav.current?.getBoundingClientRect().top ?? null;
               start(() => router.push(t.href, { scroll: false }));
             }}
-            className={`-mb-px border-b-2 px-3 py-2.5 text-sm font-medium transition-colors ${
-              on ? "border-lime text-bone" : "border-transparent text-mute hover:text-bone"
+            className={`-mb-px inline-flex min-h-11 items-center gap-1 border-b-2 px-2 text-sm sm:px-3 font-medium transition-colors ${
+              on ? "border-bone font-semibold text-bone" : "border-transparent text-mute hover:text-bone"
             }`}
           >
-            {t.label} <span className="tnum text-mute">{t.count}</span>
+            {t.label} <span className="font-mono text-xs tnum text-mute">{t.count}</span>
           </Link>
         );
       })}

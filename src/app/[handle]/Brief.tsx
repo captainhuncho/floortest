@@ -24,7 +24,7 @@ export function Brief({
 }) {
   if (!genres.length && !items.length && !shareNote) return null;
   return (
-    <section aria-label="What they're looking for" className="flex flex-col gap-3 border-t border-line pt-4 group-has-[[data-picked]]/page:hidden lg:border-t-0 lg:pt-0">
+    <section aria-label="What they're looking for" className="flex flex-col gap-3 group-has-[[data-picked]]/page:hidden">
       <p className="eyebrow">{heading}</p>
       {genres.length > 0 && (
         <div role="group" aria-label="Genre of your track" className="flex flex-wrap gap-1.5">
