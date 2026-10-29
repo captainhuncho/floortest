@@ -42,3 +42,20 @@ test("sign-up open: codes still record who referred or invited the person", asyn
   assert.equal((await resolveInvite("SHARED-ENV", "dee@x.io", true)).valid, true);
   assert.equal((await resolveInvite("", "dee@x.io", true)).valid, false, "no code: nothing to record");
 });
+
+test("the coming-soon gate opens only for a live personal invite code", async () => {
+  const { liveInviteCode } = await import("../src/lib/invites");
+  const { q } = await import("../src/lib/db");
+  await q.run("INSERT INTO invites (code, max_uses, note, email, created_at) VALUES ('FRESH1', 1, '', 'eve@x.io', ?)", Date.now());
+  assert.equal(await liveInviteCode("fresh1"), true, "a sent, unused personal invite");
+  assert.equal(await liveInviteCode("PERSONAL1"), false, "used up");
+  assert.equal(await liveInviteCode("GONE"), false, "revoked");
+  assert.equal(await liveInviteCode("GROUP"), false, "a shared Ops code");
+  assert.equal(await liveInviteCode("SHARED-ENV"), false, "a code from BETA_INVITE_CODES");
+  assert.equal(await liveInviteCode("REFCODE"), false, "a referral code");
+  assert.equal(await liveInviteCode("NOPE"), false, "unknown");
+  await q.run("INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at) VALUES ('Eve@X.io', 'h', 'E', 'eve', 'free', 'UTC', ?)", Date.now());
+  assert.equal(await liveInviteCode("FRESH1"), false, "expired once its email has an account, however they signed up");
+  assert.equal(await liveInviteCode("' OR 1=1 --"), false, "injection-shaped input");
+  assert.equal(await liveInviteCode(""), false, "empty");
+});

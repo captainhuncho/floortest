@@ -23,8 +23,8 @@ The private beta opens Sun 1 Nov only if every blocker is fixed and re-tested; o
 1. **Ask for the email** (message 1, by text or WhatsApp, Wed 28 Oct).
 2. **Invite** (Thu 29 Oct): Ops → Invites → paste the five emails and the note from the invite list below. Each gets a personal invite that
    works once.
-3. **The site password:** everyone needs it while the site is behind the coming-soon page, and so does anyone a tester
-   shares their link with. Send it yourself, privately, by message or call. Never in a FloorTest email, a document or
+3. **The site password:** invited testers don't need it to sign up (the link in their invite email opens sign-up, and
+   signing in opens the rest; owner, 29 Oct), but anyone a tester shares their link with does. Send it yourself, privately, by message or call. Never in a FloorTest email, a document or
    a chat with Claude. Testers pass it on privately; if you'd rather it went no further than five people, ask them to
    share their links only with the other testers.
 
