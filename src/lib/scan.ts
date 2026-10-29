@@ -19,7 +19,11 @@ import { after } from "next/server";
  *   infected   → the upload is refused and discarded; the sender is told it couldn't be accepted
  *   unavailable → the upload is refused for now (fail closed): nothing unscanned reaches a desk while the scanner is on
  */
-export type ScanResult = { verdict: "clean" | "off" } | { verdict: "infected"; signature: string } | { verdict: "unavailable"; error: string };
+export type ScanResult =
+  | { verdict: "clean" | "off" }
+  | { verdict: "infected"; signature: string }
+  // `file`: the scanner is up but couldn't check this file (it couldn't read it, or ClamAV failed on it).
+  | { verdict: "unavailable"; error: string; file?: true };
 
 /** Longest one check may take in all, wake-up included. The upload routes allow 180 s (`maxDuration`). */
 const SCAN_DEADLINE_MS = 150_000;
@@ -74,6 +78,15 @@ export async function scanStored(key: string, timing: ScanTiming = {}): Promise<
       if (name === "TimeoutError" || name === "AbortError") return { verdict: "unavailable", error: name };
       // Refused or dropped connection: the scanner is starting or restarting. Wait and ask again.
       last = name;
+      await pause(attempt);
+      continue;
+    }
+    // The container itself answered that this file failed (it couldn't read it, or ClamAV couldn't check it): asking
+    // again won't change that, so it's answered at once rather than waited on like a wake-up.
+    if (r.status === 502 && r.headers.get("content-type")?.includes("application/json")) {
+      const body = (await r.json().catch(() => ({}))) as { error?: string; reason?: string };
+      if (body.error === "Scan failed") return { verdict: "unavailable", error: `scan failed: ${String(body.reason ?? "unknown").slice(0, 60)}`, file: true };
+      last = "scanner answered 502";
       await pause(attempt);
       continue;
     }
