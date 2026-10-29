@@ -8,6 +8,8 @@ class ShareViewController: UIViewController {
     private let lime = UIColor(red: 213 / 255, green: 1, blue: 72 / 255, alpha: 1)
     private let message = UILabel()
     private let button = UIButton(type: .system)
+    /// Same cap as Android (ShareInbox.MAX_BYTES): bigger files aren't copied in.
+    private static let maxBytes = 250 * 1024 * 1024
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -58,6 +60,8 @@ class ShareViewController: UIViewController {
         await withCheckedContinuation { done in
             _ = p.loadFileRepresentation(forTypeIdentifier: UTType.audio.identifier) { url, _ in
                 guard let url else { return done.resume(returning: nil) }
+                let size = (try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0
+                guard size <= ShareViewController.maxBytes else { return done.resume(returning: nil) }
                 // The system deletes `url` when this returns, so copy it somewhere of ours first.
                 let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
                 let copy = tmp.appendingPathComponent(url.lastPathComponent)
