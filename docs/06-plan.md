@@ -101,7 +101,7 @@ Use this as one coordinated hardening batch, not a series of unrelated patches. 
 
 #### Phase C — before access expands beyond the trusted beta
 
-- Add optional passkeys; retain recovery and safe account-linking rules. Require two-step sign-in for owners, team administrators and every ops role with mutations.
+- Add optional passkeys; retain recovery and safe account-linking rules. 🔧 built 29 Oct on branch `passkeys` (desk accounts, website only: sign in with a passkey, or use one as the two-step step; ops and the apps later). Require two-step sign-in for owners, team administrators and every ops role with mutations.
 - Notify the account about new devices, password/email changes, team invitations, security-setting changes and unusual private-file downloads. Messages must not contain filenames, tokens or signed URLs.
 - Add CI gates for dependency audit, secret scanning, migration checks, permission/RLS checks and security-focused tests. No production secret or private audio may enter CI artifacts.
 - Detect repeated cross-account denials, scanner outages, abnormal download/upload volume, stalled deletion queues, backup failures and integrity mismatches. Use bounded labels and redact emails, filenames, message bodies, capability tokens and signed query strings.
