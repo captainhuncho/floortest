@@ -1,5 +1,4 @@
 import crypto from "node:crypto";
-import { env } from "./env";
 
 /**
  * Authenticator-app codes (RFC 6238: 30-second steps, 6 digits, HMAC-SHA1), which is what
@@ -104,10 +103,12 @@ export function newRecoveryCodes(n = 10) {
 const cleanRecovery = (code: string) => code.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
 
 /** How a recovery code is stored: keyed with the app secret, so a copy of the database alone can't be brute-forced. */
-export const hashRecovery = (code: string) => crypto.createHmac("sha256", env.secret).update(`recovery:${cleanRecovery(code)}`).digest("hex");
+export const hashRecovery = (code: string, appSecret: string) =>
+  crypto.createHmac("sha256", appSecret).update(`recovery:${cleanRecovery(code)}`).digest("hex");
 
 /** Codes issued before 29 Oct 2026 were stored as plain SHA-256. Still accepted (once each) until they're used or replaced. */
 const legacyRecoveryHash = (code: string) => crypto.createHash("sha256").update(cleanRecovery(code)).digest("hex");
 
 /** Which stored hash (new or old form) this typed recovery code matches, if any: the caller removes that one. */
-export const matchRecovery = (stored: string[], code: string) => [hashRecovery(code), legacyRecoveryHash(code)].find((h) => stored.includes(h)) ?? null;
+export const matchRecovery = (stored: string[], code: string, appSecret: string) =>
+  [hashRecovery(code, appSecret), legacyRecoveryHash(code)].find((h) => stored.includes(h)) ?? null;

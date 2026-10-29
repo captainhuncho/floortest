@@ -88,7 +88,7 @@ export async function confirmTwoFactor(code: string, password: string): Promise<
     "UPDATE users SET totp_enabled_at = ?, totp_last_step = ?, recovery_codes = ? WHERE id = ?",
     now(),
     step,
-    JSON.stringify(codes.map(hashRecovery)),
+    JSON.stringify(codes.map((c) => hashRecovery(c, env.secret))),
     u.id,
   );
   await q.run("DELETE FROM sessions WHERE user_id = ? AND token_hash <> ?", u.id, (await currentSessionHash()) ?? "");

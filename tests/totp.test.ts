@@ -48,5 +48,5 @@ test("sealed secrets only open with the same app secret", () => {
 test("recovery codes are unique and hash the same however they're typed", () => {
   const codes = newRecoveryCodes();
   assert.equal(new Set(codes).size, 10);
-  assert.equal(hashRecovery(codes[0]), hashRecovery(` ${codes[0].toUpperCase().replace("-", "")} `));
+  assert.equal(hashRecovery(codes[0], "k"), hashRecovery(` ${codes[0].toUpperCase().replace("-", "")} `, "k"));
 });
