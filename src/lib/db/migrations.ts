@@ -1821,4 +1821,15 @@ alter table passkey_challenges enable row level security;`,
     sql: `alter table contact_messages add column if not exists actor_id bigint references users(id) on delete set null;
 create index if not exists fk_contact_messages_actor_id on contact_messages(actor_id);`,
   },
+  {
+    // A draft-preview pass from ops works once (lib/draft-preview redeemPass): spent passes, by signature hash, until
+    // they'd have expired anyway (60 s). Not granted to ft_person: only the app's own connection reads it.
+    id: "0107_preview_passes_used",
+    sql: `create table if not exists preview_passes_used (
+  sig_hash text primary key,
+  expires_at bigint not null
+);
+create index if not exists preview_passes_used_expiry on preview_passes_used(expires_at);
+alter table preview_passes_used enable row level security;`,
+  },
 ];
