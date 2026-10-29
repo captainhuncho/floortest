@@ -15,7 +15,6 @@ const title = `No Collection ${stamp}`;
 
 test("a new desk has no collection, and its link is open", async ({ page }) => {
   await page.goto("/signup");
-  await page.getByLabel("Invite code").fill("E2E-INVITE");
   await page.getByLabel("What best describes you?").selectOption("dj");
   await page.getByLabel("First name").fill("Nia");
   await page.getByLabel("Surname").fill("Fresh");

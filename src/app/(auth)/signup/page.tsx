@@ -34,10 +34,10 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
       <h1 className="mb-3 text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone"><E k="signup_title" /></h1>
       <p className="mb-8 text-[13px] text-mute">
         <E k="signup_intro" />
-        {inviteOnly && !referrer && (
+        {inviteOnly && (
           <>
-            {" "}FloorTest is invite-only during the beta.{" "}
-            <Link href="/#waitlist" className="underline underline-offset-4 hover:text-bone">No code? Join the waitlist</Link>
+            {" "}FloorTest is invite-only during the beta: sign up with the email your invite went to.{" "}
+            <Link href="/#waitlist" className="underline underline-offset-4 hover:text-bone">No invite? Join the waitlist</Link>
           </>
         )}
       </p>
@@ -52,7 +52,7 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
           You&apos;re invited. Sign up with <span className="font-medium">{personal.email}</span> to use it.
         </p>
       )}
-      {referrer && (
+      {referrer && !inviteOnly && (
         <p className="mb-6 rounded-lg border border-lime/40 bg-lime/5 px-4 py-3 text-sm">
           Invited by <span className="font-medium">{referrer.name}</span>. You both get 10 more active tracks once your first track arrives.
         </p>
@@ -74,12 +74,10 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
         botCheckKey={await botCheckKey()}
         captureSource
         action={signup}
-        hidden={team ? { team: sp.team! } : referrer ? { ref } : undefined}
+        // No invite code to type: during the beta the email decides (src/lib/invites.ts); the link's code rides along.
+        hidden={team ? { team: sp.team! } : personal?.email ? { invite: inviteCode } : referrer && !inviteOnly ? { ref } : undefined}
         submit="Create my link"
         fields={[
-          ...(inviteOnly && !referrer
-            ? [{ name: "invite", label: "Invite code", placeholder: "From your invite", autoComplete: "off", defaultValue: inviteCode || ref || undefined }]
-            : []),
           { name: "kind", label: "What best describes you?", choices: TYPE_CHOICES },
           { name: "first_name", label: "First name", placeholder: "Maxwell", autoComplete: "given-name" },
           { name: "last_name", label: "Surname", placeholder: "Adjavon", autoComplete: "family-name", hint: "Kept private: for your account, billing and receipts. Never shown on your page." },
