@@ -20,7 +20,7 @@ invite stops opening it once its email has an account (owner, 29 Oct); team invi
          └─ Sign up with Google ──► Google ──► /api/auth/google/callback
                  ├─ no account ──► /signup/google (details, Terms)* ──► Floor
                  └─ account exists ──► sign-in path below
-* while switch open_signup is off, only a personal Ops invite to that exact email opens an account (no code to type; the invite link's code rides along); "No invite? Join the waitlist" ──► /#waitlist
+* while switch open_signup is off, only a personal Ops invite opens an account: the sign-up link in the invite email, with the email it went to (no code to type; the link carries it, and it confirms the email). Without the link, or with another email, sign-up says it's invite-only. Google sign-up with that email needs no link (Google proved the email); "No invite? Join the waitlist" ──► /#waitlist
 ```
 A new desk has no collection (owner, 15 Oct), and its link is open anyway: tracks sent to it land straight in the Review Queue, unsorted (`tracks.collection_id` empty; intake only refuses a paused link, a closed or full collection, or a full desk). The Floor's Your link says "Sends tracks to your Review Queue", the checklist suggests a collection for the callout (a brief and a closing date), and Account's routing menu shows "Review Queue (no collection)". Making a collection ("Send new tracks here now", on by default) points the link at it; from then on a closed collection stops uploads as before.
 
