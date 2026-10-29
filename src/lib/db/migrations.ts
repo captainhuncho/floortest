@@ -1823,7 +1823,7 @@ alter table passkey_challenges enable row level security;`,
     // A team desk that FloorTest has suspended is also shut to its teammates here, as currentUser() already does.
     // The "teams" switch stays an app check (lib/account-members teamsOn): it depends on ADMIN_EMAILS, the request's
     // country and the switch's rule, none of which the database holds.
-    id: "0106_person_columns",
+    id: "0108_person_columns",
     sql: `revoke select, update on users from ft_person;
 grant select (id, email, name, first_name, last_name, kind, kind_note, tools, links, handle, plan, active_collection_id, role_line, cover_key, page_style, paused_at, pause_until, pause_message, tz, email_verified_at, totp_enabled_at, signin_alerts, identity_status, created_at) on users to ft_person;
 grant update (name, first_name, last_name, kind, kind_note, tools, links, role_line, cover_key, page_style, paused_at, pause_until, pause_message, tz, active_collection_id) on users to ft_person;`,
@@ -1834,7 +1834,7 @@ grant update (name, first_name, last_name, kind, kind_note, tools, links, role_l
     // unchanged (a suspended person can't sign in). The "teams" switch stays an app check only (teamsOn in
     // lib/account-members): it depends on ADMIN_EMAILS, the request's country and the switch's rule, none of which the
     // database holds, so a copy here would disagree with the app.
-    id: "0107_person_suspended_desks",
+    id: "0109_person_suspended_desks",
     sql: `create or replace function ft_desk(desk bigint) returns boolean language sql stable security definer set search_path = public as $$ select desk = ft_person_id() or exists (select 1 from account_members m join users u on u.id = m.account_id where m.account_id = desk and m.user_id = ft_person_id() and u.suspended_at is null) $$;
 revoke all on function ft_desk(bigint) from public;
 grant execute on function ft_desk(bigint) to ft_person;`,
