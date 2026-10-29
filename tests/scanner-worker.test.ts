@@ -10,16 +10,17 @@ const ask = (method: string, path: string, auth?: string) =>
 
 test("every route that wakes the scanner refuses a caller without the secret", async () => {
   for (const [method, path] of [["GET", "/health"], ["POST", "/wake"], ["POST", "/scan"]]) {
-    assert.equal(ask(method, path)?.status, 401, `${method} ${path} with no secret`);
-    assert.equal(ask(method, path, "Bearer wrong")?.status, 401, `${method} ${path} with a wrong secret`);
-    assert.equal(ask(method, path, `Bearer ${env.SCAN_SECRET}`), null, `${method} ${path} with the secret`);
+    assert.equal((await ask(method, path))?.status, 401, `${method} ${path} with no secret`);
+    assert.equal((await ask(method, path, "Bearer wrong"))?.status, 401, `${method} ${path} with a wrong secret`);
+    assert.equal((await ask(method, path, `Bearer ${env.SCAN_SECRET}x`))?.status, 401, `${method} ${path} with a longer secret`);
+    assert.equal(await ask(method, path, `Bearer ${env.SCAN_SECRET}`), null, `${method} ${path} with the secret`);
   }
 });
 
-test("/status stays open, unknown routes are not found, and an unset secret lets nobody in", () => {
-  assert.equal(ask("GET", "/status"), null);
-  assert.equal(ask("GET", "/admin")?.status, 404);
-  assert.equal(ask("POST", "/health", `Bearer ${env.SCAN_SECRET}`)?.status, 404);
-  const none = refusal("GET /health", new Request("https://scanner.example/health", { headers: { Authorization: "Bearer " } }), {});
+test("/status stays open, unknown routes are not found, and an unset secret lets nobody in", async () => {
+  assert.equal(await ask("GET", "/status"), null);
+  assert.equal((await ask("GET", "/admin"))?.status, 404);
+  assert.equal((await ask("POST", "/health", `Bearer ${env.SCAN_SECRET}`))?.status, 404);
+  const none = await refusal("GET /health", new Request("https://scanner.example/health", { headers: { Authorization: "Bearer " } }), {});
   assert.equal(none?.status, 401);
 });

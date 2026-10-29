@@ -5,6 +5,7 @@ import { BEING_SAVED, completeUpload, HELD_TTL, IntakeError, trackForUpload, Upl
 import { recordIncident } from "./incidents";
 import { APP_URL, sendMailLater } from "./mail";
 import { SCAN_REFUSED, wakeScanner } from "./scan";
+import { chargeScanner, senderScope } from "./scan-budget";
 import { completeStemUpload } from "./stems";
 
 /**
@@ -17,6 +18,8 @@ import { completeStemUpload } from "./stems";
  *   flagged           the file is discarded; the sender is emailed that it couldn't be accepted
  *   refused           anything else that stops it (the desk closed or filled up meanwhile): discarded, sender emailed why
  *   still no scanner  stays held; the rest of the batch waits for the next run instead of each waiting 150 s
+ *   can't be checked  the scanner is up but fails on this file: tried again next run, refused after HELD_MAX_TRIES
+ *   budget spent      (src/lib/scan-budget.ts) stays held for the next day's budget; the scanner isn't woken for it
  *   held a day        (HELD_TTL) the sender is told it wasn't sent, and the file is deleted
  *
  * Nothing unscanned ever becomes a track: completeUpload runs the full check again, scan included.
@@ -89,11 +92,12 @@ export async function scanHeldUploads(at = now(), { until = Date.now() + HELD_BU
     out.waiting = due.length;
     return out;
   }
-  // One wake-up for the whole batch; each check below still waits for it to be ready.
-  await wakeScanner();
+  // One wake-up for the whole batch, sent just before the first file whose sender has budget left and charged to them,
+  // so held files nobody may scan today never wake the scanner. Each check below still waits for it to be ready.
+  let woken = false;
   for (const [i, up] of due.entries()) {
     if (left() < HELD_MIN_LEFT_MS) {
-      out.waiting = due.length - i;
+      out.waiting += due.length - i;
       break;
     }
     const receiver = await q.get<User>(`SELECT ${USER_COLUMNS} FROM users WHERE id = ?`, up.receiver_id);
@@ -102,6 +106,19 @@ export async function scanHeldUploads(at = now(), { until = Date.now() + HELD_BU
       await drop(up, "held upload for a removed account or track");
       out.refused++;
       continue;
+    }
+    if (!woken) {
+      const charge = await chargeScanner(senderScope(d.email, receiver.id));
+      if (!charge.ok && charge.scope === "all") {
+        out.waiting += due.length - i;
+        break;
+      }
+      if (!charge.ok) {
+        out.waiting++;
+        continue;
+      }
+      await wakeScanner();
+      woken = true;
     }
     const analysis = JSON.parse(up.held_analysis ?? "null") as Analysis | null;
     try {
@@ -112,8 +129,14 @@ export async function scanHeldUploads(at = now(), { until = Date.now() + HELD_BU
       out.delivered++;
     } catch (e) {
       if (e instanceof UploadHeld) {
-        // Still no scanner after waiting for it: the rest stay held for the next run.
-        out.waiting = due.length - i;
+        // This sender's budget is spent (their file waits for tomorrow), or the scanner failed on this file only (it's
+        // tried again next run): the rest of the batch goes on.
+        if (e.reason === "budget" || e.reason === "file") {
+          out.waiting++;
+          continue;
+        }
+        // Still no scanner after waiting for it, or everyone's budget is spent: the rest stay held for the next run.
+        out.waiting += due.length - i;
         break;
       }
       // The sender's own retry got there first: leave it to that request.

@@ -1,7 +1,9 @@
 # FloorTest virus scanner: ClamAV (clamd + freshclam for daily signatures) and a tiny Node service, on Alpine.
 FROM alpine:3.22
 
-RUN apk add --no-cache clamav clamav-daemon freshclam nodejs npm \
+# The scan service runs as its own unprivileged user (start.sh drops to it with su-exec); clamd runs as clamav.
+RUN apk add --no-cache clamav clamav-daemon freshclam nodejs npm su-exec \
+ && addgroup -S scanner && adduser -S -D -H -G scanner scanner \
  && mkdir -p /run/clamav /var/lib/clamav \
  && chown -R clamav:clamav /run/clamav /var/lib/clamav
 WORKDIR /app
