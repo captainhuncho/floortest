@@ -2,24 +2,26 @@ import crypto from "node:crypto";
 import { discardFiles } from "@/lib/deletion";
 import { NextResponse } from "next/server";
 import { audit } from "@/lib/audit";
-import { currentUser, viewingAs } from "@/lib/auth";
+import { currentDeskForChange, currentUser, viewingAs } from "@/lib/auth";
 import { q, type Collection } from "@/lib/db";
 import { activeCollection } from "@/lib/desk";
 import { imageKind, IMAGE_TYPES as TYPES } from "@/lib/images";
 import { optimizeImage } from "@/lib/image-optimize";
+import { readFormUpTo } from "@/lib/bounded-form";
 import { storage } from "@/lib/storage";
 import { reserveFile, settleFile } from "@/lib/file-reservations";
-import { recordDigest } from "@/lib/file-digests";
+import { quarantined, recordDigest } from "@/lib/file-digests";
 
 export const runtime = "nodejs";
 
 const MAX = 8 * 1024 * 1024;
 const collectionOf = async (raw: string) => q.get<Collection>("SELECT * FROM collections WHERE id = ?", Number(raw) || 0);
 
-/** The owner's collection, for changing its artwork (never during a read-only support "view as"). */
+/** The owner's collection, for changing its artwork (never during a read-only support "view as", never from a lost team desk). */
 async function ownCollection(raw: string) {
   if (await viewingAs()) return null;
-  const user = await currentUser();
+  const user = await currentDeskForChange();
+  if (user instanceof Response) return user;
   const c = user ? await collectionOf(raw) : undefined;
   return user && c && c.user_id === user.id ? { user, c } : null;
 }
@@ -27,9 +29,12 @@ async function ownCollection(raw: string) {
 /** Upload or replace a collection's artwork (JPG, PNG or WebP, up to 8 MB, checked by its bytes). */
 export async function POST(req: Request, ctx: RouteContext<"/api/collection-art/[id]">) {
   const own = await ownCollection((await ctx.params).id);
+  if (own instanceof Response) return own;
   if (!own) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (Number(req.headers.get("content-length") || 0) > MAX + 64 * 1024) return NextResponse.json({ error: "Images must be under 8 MB." }, { status: 413 });
-  const file = (await req.formData().catch(() => null))?.get("file");
+  // The form is read with a hard cap, so a body bigger than an image can't be buffered first.
+  const form = await readFormUpTo(req, MAX + 64 * 1024);
+  if (form === "too-large") return NextResponse.json({ error: "Images must be under 8 MB." }, { status: 413 });
+  const file = form?.get("file");
   if (!(file instanceof File) || !file.size) return NextResponse.json({ error: "Choose an image." }, { status: 400 });
   if (file.size > MAX) return NextResponse.json({ error: "Images must be under 8 MB." }, { status: 413 });
   const buf = new Uint8Array(await file.arrayBuffer());
@@ -52,6 +57,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/collection-art/
 
 export async function DELETE(_req: Request, ctx: RouteContext<"/api/collection-art/[id]">) {
   const own = await ownCollection((await ctx.params).id);
+  if (own instanceof Response) return own;
   if (!own) return NextResponse.json({ error: "Not found" }, { status: 404 });
   await q.run("UPDATE collections SET art_key = NULL WHERE id = ?", own.c.id);
   await discardFiles([own.c.art_key], "collection artwork removed");
@@ -70,6 +76,8 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/collection-art/
   const viewer = await currentUser();
   const isPublic = !!owner && (await activeCollection(owner))?.id === c.id;
   if (!isPublic && viewer?.id !== c.user_id) return new Response("Not found", { status: 404 });
+  // Artwork that failed its fingerprint check is held back, like every other stored file.
+  if (await quarantined(c.art_key)) return new Response("Not found", { status: 404 });
   const store = await storage();
   const type = TYPES[c.art_key.split(".").pop() as keyof typeof TYPES] ?? "application/octet-stream";
   // Private artwork: an hour-long link, like the audio, so access that ends (a teammate removed) ends within the hour.

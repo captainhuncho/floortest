@@ -8,7 +8,7 @@ import { now, q } from "./db";
 import { env } from "./env";
 import { APP_URL, sendMail } from "./mail";
 import { requestIp } from "./ratelimit";
-import { hashRecovery, openSecret, verifyTotp } from "./totp";
+import { matchRecovery, openSecret, verifyTotp } from "./totp";
 import { hashToken } from "./token-hash";
 
 import { deviceLabel } from "./device-label";
@@ -30,6 +30,7 @@ export async function finishSignIn(userId: number, how: "password" | "two-factor
     userId,
     audience: "receiver",
     to: u.email,
+    reserved: true,
     subject: "New sign-in to FloorTest",
     body: [
       `Hi ${u.name.split(/\s+/)[0]},`,
@@ -67,8 +68,8 @@ export async function checkSecondFactor(userId: number, input: string): Promise<
     return r.changes ? "code" : null;
   }
   const codes: string[] = JSON.parse(row.recovery_codes || "[]");
-  const h = hashRecovery(input);
-  if (!codes.includes(h)) return null;
+  const h = matchRecovery(codes, input, env.secret);
+  if (!h) return null;
   const r = await q.run("UPDATE users SET recovery_codes = ? WHERE id = ? AND recovery_codes = ?", JSON.stringify(codes.filter((c) => c !== h)), userId, row.recovery_codes);
   return r.changes ? "recovery" : null;
 }
@@ -84,6 +85,7 @@ export async function sendEmailVerification(userId: number) {
   );
   if (!u || !(await accountEmailAllowed())) return false;
   await sendMail({
+    reserved: true,
     userId,
     audience: "receiver",
     to: u.email,

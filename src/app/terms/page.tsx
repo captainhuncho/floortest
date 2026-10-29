@@ -1,6 +1,6 @@
 import { LegalPage } from "@/components/LegalPage";
 import { LEGAL } from "@/lib/legal";
-import { SHARING_LEGAL, sharingWording } from "@/lib/legal-sharing";
+import { SHARED_RESPONSIBILITY, SHARING_LEGAL, sharingWording } from "@/lib/legal-sharing";
 
 export const metadata = { title: "Terms of Use (draft) — FloorTest" };
 
@@ -50,6 +50,7 @@ export default async function Terms() {
           ],
         ],
         ...(sharing ? ([["If someone shares a collection with you", S.recipients]] as [string, string[]][]) : []),
+        ["Shared desks and collections", SHARED_RESPONSIBILITY],
         [
           "Acceptable use",
           [

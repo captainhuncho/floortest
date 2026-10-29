@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/admin";
 import { q } from "@/lib/db";
 import { httpsLink } from "@/lib/safe-links";
 import { allPlans } from "@/lib/plan-store";
-import { REQUEST_KINDS, type PlanRequest } from "@/lib/plan-requests";
+import { grantablePlan, REQUEST_KINDS, type PlanRequest } from "@/lib/plan-requests";
 import { approvePlanRequest, declinePlanRequest } from "../actions";
 import { ConfirmSubmit } from "../AdminUi";
 
@@ -72,7 +72,7 @@ export default async function PlanRequests() {
                     <label className="block space-y-1.5">
                       <span className="label">Give them</span>
                       <select name="plan" defaultValue={r.plan} className="input py-1.5">
-                        {offered.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        {offered.filter((p) => grantablePlan(plans, p.id, r.plan, r.current)).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                       </select>
                     </label>
                     <button className="btn-lime btn-sm">Approve</button>

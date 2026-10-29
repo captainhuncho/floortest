@@ -9,7 +9,7 @@ import { browserTimeZone, useBrowserValue } from "@/components/useBrowserValue";
 type Prefs = { mode: "instant" | "digest" | "off"; digestHour: number; quietStart: number | null; quietEnd: number | null; alerts: boolean; product: boolean; marketing: boolean; tz: string };
 
 const MODES = [
-  { id: "instant", title: "Every new track", sub: "An email as each track arrives (held during quiet hours)." },
+  { id: "instant", title: "Every new track", sub: "An email as tracks arrive, one per send (held during quiet hours)." },
   { id: "digest", title: "Daily digest", sub: "One email a day listing new tracks." },
   { id: "off", title: "No track emails", sub: "No emails about new tracks. Check the bell instead." },
 ] as const;

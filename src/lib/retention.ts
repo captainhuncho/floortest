@@ -9,6 +9,7 @@ import { CLAIM_MS, HELD_TTL, UPLOAD_TTL } from "./intake";
 import { CLAIM_KEEP_MS } from "./once";
 import { reconcileFiles } from "./file-reservations";
 import { drainOutbox } from "./mail";
+import { sendDueReceipts } from "./send-receipts";
 import { purgeLinkRecords } from "./share-links";
 
 const HOUR = 3_600_000;
@@ -52,11 +53,20 @@ export async function cleanupRecords(t = now(), until = Date.now() + PURGE_BUDGE
   await q.run("DELETE FROM password_resets WHERE expires_at < ?", t - DAY);
   await q.run("DELETE FROM login_codes WHERE expires_at < ?", t);
   await q.run("DELETE FROM passkey_challenges WHERE expires_at < ?", t);
+  await q.run("DELETE FROM app_refresh_spent WHERE expires_at < ?", t);
+  await q.run("DELETE FROM two_step_tickets WHERE expires_at < ?", t);
+  await q.run("DELETE FROM sender_links WHERE expires_at < ?", t);
   await q.run("DELETE FROM handle_history WHERE expires_at < ?", t);
   await q.run("DELETE FROM released_handles WHERE expires_at < ?", t);
   await q.run("DELETE FROM tap_timings WHERE created_at < ?", t - 30 * DAY);
-  // "Email me when it reopens": a sent request has done its job; one nobody answered in a year is stale.
-  await q.run("DELETE FROM reopen_alerts WHERE (sent_at IS NOT NULL AND sent_at < ?) OR created_at < ?", t - 30 * DAY, t - 365 * DAY);
+  // "Email me when it reopens": a sent request has done its job; one nobody answered in a year is stale; one whose
+  // confirmation link expired unopened was never wanted.
+  await q.run(
+    "DELETE FROM reopen_alerts WHERE (sent_at IS NOT NULL AND sent_at < ?) OR created_at < ? OR (confirmed_at IS NULL AND confirm_expires_at < ?)",
+    t - 30 * DAY,
+    t - 365 * DAY,
+    t,
+  );
   await q.run("DELETE FROM job_runs WHERE started_at < ?", t - 90 * DAY);
   await q.run("DELETE FROM feature_use WHERE day < ?", new Date(t - 400 * DAY).toISOString().slice(0, 10));
   const removed = {
@@ -97,7 +107,9 @@ export async function purgeExpired({ force = false } = {}) {
     });
   // Covers, collection artwork and site images that nothing points to a week after upload (src/lib/file-reservations.ts).
   const unreferenced = await reconcileFiles(t);
-  // Emails still waiting: retries, and any whose send a crash or a closed connection cut off (src/lib/mail.ts).
+  // Emails still waiting: sends whose receipt never went (src/lib/send-receipts.ts), retries, and any whose send a crash
+  // or a closed connection cut off (src/lib/mail.ts).
+  await sendDueReceipts(t).catch((e) => console.error("[retention] send receipts", e));
   const outbox = await drainOutbox().catch((e) => ({ error: e instanceof Error ? e.message : String(e) }));
 
   // Retention deletes people's tracks, so it only runs from the nightly job, right after a successful backup.

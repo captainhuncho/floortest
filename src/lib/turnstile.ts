@@ -43,11 +43,27 @@ export function botHostnames() {
  */
 const TEST_SECRETS = new Set(["1x0000000000000000000000000000000AA", "2x0000000000000000000000000000000AA", "3x0000000000000000000000000000000AA"]);
 
+/** The real live site: a production build on Vercel's production deployment (not a preview, not a local build). */
+const isLiveSite = () => process.env.NODE_ENV === "production" && process.env.VERCEL_ENV === "production";
+
+/**
+ * A test secret on the live site is a misconfiguration: with it every token passes. Locally, in tests and on preview
+ * deployments it is fine (the e2e suite uses one).
+ */
+export const testSecretOnLiveSite = () => isLiveSite() && TEST_SECRETS.has(process.env.TURNSTILE_SECRET_KEY ?? "");
+
 /** Siteverify's answer passes only for the expected form, solved on one of this site's own addresses. */
 export function turnstileAnswerOk(out: { success?: boolean; action?: string; hostname?: string }, action: BotAction, hosts = botHostnames()) {
+  if (testSecretOnLiveSite()) return false;
   if (TEST_SECRETS.has(process.env.TURNSTILE_SECRET_KEY ?? "")) return !!out.success;
   return !!out.success && out.action === action && !!out.hostname && hosts.has(out.hostname);
 }
+
+/**
+ * Forms that email an address a stranger typed. If Cloudflare can't answer, these refuse rather than let a bot through:
+ * the visitor tries again in a moment. Sign-in stays open, so an outage never locks people out of their accounts.
+ */
+const FAIL_CLOSED: ReadonlySet<BotAction> = new Set(["sent", "newsletter", "reopen", "contact", "send"]);
 
 export async function passedTurnstile(token: unknown, ip: string | undefined, action: BotAction) {
   if (!(await botCheckKey())) return true;
@@ -57,6 +73,11 @@ export async function passedTurnstile(token: unknown, ip: string | undefined, ac
     return false;
   };
   if (typeof token !== "string" || !token || token.length > 2048) return failed();
+  // A test secret on the live site would let every token through: refuse, and raise it like any other bad secret.
+  if (testSecretOnLiveSite()) {
+    await recordIncident("server_error", "Bot check misconfigured; refused a form (test secret on the live site)", "TURNSTILE_SECRET_KEY is a Cloudflare test secret");
+    return failed();
+  }
   try {
     const body = new URLSearchParams({ secret: process.env.TURNSTILE_SECRET_KEY!, response: token });
     if (ip && ip !== "unknown") body.set("remoteip", ip);
@@ -65,17 +86,24 @@ export async function passedTurnstile(token: unknown, ip: string | undefined, ac
     if (turnstileAnswerOk(out, action)) return true;
     if (out.success) return failed(); // solved, but for another form or on another site
     // Our own setup is wrong (bad or missing secret): don't punish visitors for it. Let them through and raise it.
-    const ours = (out["error-codes"] ?? []).filter((c) => c.includes("secret") || c === "internal-error");
+    const codes = out["error-codes"] ?? [];
+    if (codes.includes("internal-error") && FAIL_CLOSED.has(action)) {
+      await recordIncident("server_error", "Bot check unavailable; refused a form that emails strangers", "internal-error");
+      return false;
+    }
+    const ours = codes.filter((c) => c.includes("secret") || c === "internal-error");
     if (ours.length) {
       await recordIncident("server_error", "Bot check misconfigured; let a form through unchecked", ours.join(", "));
       return true;
     }
     return failed();
   } catch (e) {
-    // Cloudflare unreachable: let people through (rate limits still hold), but record it so outages and abuse show up.
+    // Cloudflare unreachable: sign-in lets people through (rate limits still hold); forms that email strangers refuse.
+    // Either way it's recorded, so outages and abuse show up.
     console.error("[turnstile] verify failed", e);
-    await recordIncident("server_error", "Bot check unavailable; let a form through unchecked", e instanceof Error ? e.message : String(e));
-    return true;
+    const closed = FAIL_CLOSED.has(action);
+    await recordIncident("server_error", closed ? "Bot check unavailable; refused a form that emails strangers" : "Bot check unavailable; let a form through unchecked", e instanceof Error ? e.message : String(e));
+    return !closed;
   }
 }
 

@@ -13,6 +13,7 @@ import { EmailCode, startEmailCheck } from "../../[handle]/EmailCode";
 import { SetsPermission } from "../../[handle]/SetsPermission";
 import { GenrePicker } from "../../[handle]/GenrePicker";
 import { AI_CHOICES, AI_HELP, Choice, MIX_CHOICES, RELEASE_CHOICES } from "../../[handle]/Choice";
+import { normalEmail } from "@/lib/email-normal";
 
 type Item = {
   file: File; tags: Tags; state: "waiting" | "sending" | "sent" | "failed"; progress: number; error?: string; genre?: string;
@@ -183,6 +184,8 @@ export function FolderSend({
           ...(account ? {} : { name: who.name.trim(), email: who.email.trim(), sender_instagram: who.instagram, sender_streaming: who.streaming }),
           sets_ok: setsOk,
           release: { id, title: release.title.trim(), artist: release.artist.trim(), kind: release.kind },
+          // The folder's tracks share one receipt email, sent once the last one is saved.
+          send_size: items.length,
           track_no: it.tags.trackNo ?? i + 1,
           musical_key: it.tags.key,
           isrc: it.tags.isrc,
@@ -242,7 +245,7 @@ export function FolderSend({
     )}
     {waiting && (
       <EmailCode
-        email={who.email.trim().toLowerCase()}
+        email={normalEmail(who.email)}
         receiverName={receiverName}
         sending={[`${release.title} · ${items.length} tracks`]}
         onConfirmed={() => {

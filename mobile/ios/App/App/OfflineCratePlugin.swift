@@ -20,6 +20,15 @@ enum OfflineCrate {
         return base
     }
     static var manifestURL: URL { folder.appendingPathComponent("manifest.json") }
+    /// Same cap as the share inbox (and Android): no single track fills the phone.
+    static let maxBytes: Int64 = 250 * 1024 * 1024
+
+    /// Only FloorTest's own offline links (the site the app runs, /api/offline/file/...), never another address a page passes.
+    static func ownOfflineLink(_ url: URL, server: URL?) -> Bool {
+        guard let server, url.scheme == server.scheme, url.host?.lowercased() == server.host?.lowercased(),
+              url.port == server.port, url.user == nil, url.password == nil else { return false }
+        return url.path.hasPrefix("/api/offline/file/") && !url.path.contains("..")
+    }
 
     /// The current copy, or nil (and wiped) if there is none or it's past its check-in date.
     static func manifest() -> Manifest? {
@@ -121,8 +130,14 @@ public class OfflineCratePlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     private func download(_ url: URL, id: Int) async -> String? {
+        guard OfflineCrate.ownOfflineLink(url, server: bridge?.config.serverURL) else { return nil }
         guard let (tmp, res) = try? await URLSession.shared.download(from: url),
               let http = res as? HTTPURLResponse, http.statusCode == 200 else { return nil }
+        let size = ((try? FileManager.default.attributesOfItem(atPath: tmp.path))?[.size] as? NSNumber)?.int64Value ?? 0
+        guard http.expectedContentLength <= OfflineCrate.maxBytes, size <= OfflineCrate.maxBytes else {
+            try? FileManager.default.removeItem(at: tmp)
+            return nil
+        }
         let ext = (http.mimeType ?? "").contains("mpeg") ? "mp3" : "wav"
         let name = "\(id).\(ext)"
         let dest = OfflineCrate.folder.appendingPathComponent(name)

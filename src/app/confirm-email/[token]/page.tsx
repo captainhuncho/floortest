@@ -21,6 +21,7 @@ export default async function ConfirmEmail({ params, searchParams }: { params: P
     if (r) {
       await audit(r.id, "settings_updated", "email changed");
       await sendMail({
+        reserved: true,
         userId: r.id,
         audience: "support",
         to: r.from,

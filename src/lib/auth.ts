@@ -1,5 +1,6 @@
 import { after } from "next/server";
-import { atLeast, roleOn, teamsOn, type TeamRole } from "./account-members";
+import { atLeast, type TeamRole } from "./account-members";
+import { refuseStaleChange, resolveDesk } from "./team-desk";
 import "server-only";
 import crypto from "node:crypto";
 import { cookies, headers } from "next/headers";
@@ -126,15 +127,14 @@ const self = (u: Omit<User, "actor_id" | "actor_name" | "role">): User => ({ ...
  * this, so a teammate works on the team's desk with its plan. Person-only things (sign-in, security, the /c share
  * pages, sending as yourself) use `currentPerson()` instead.
  */
-export const currentUser = cache(async (): Promise<User | null> => {
+export const currentUser = cache(async (): Promise<User | null> => (await currentDesk())?.user ?? null);
+
+/** currentUser, plus whether the desk cookie names a team desk the person lost (src/lib/team-desk.ts). Memoised per request. */
+const currentDesk = cache(async (): Promise<{ user: User; stale: boolean } | null> => {
   const person = await currentPerson();
-  if (!person || (await viewingAs())) return person;
-  const desk = Number((await cookies()).get(DESK_COOKIE)?.value);
-  if (!Number.isSafeInteger(desk) || desk <= 0 || desk === person.id || !(await teamsOn(desk))) return person;
-  const role = await roleOn(desk, person.id);
-  if (!role) return person;
-  const account = await q.get<User>(`SELECT ${USER_COLUMNS} FROM users WHERE id = ? AND suspended_at IS NULL`, desk);
-  return account ? { ...account, actor_id: person.id, actor_name: person.name, role } : person;
+  if (!person) return null;
+  if (await viewingAs()) return { user: person, stale: false };
+  return resolveDesk(person, Number((await cookies()).get(DESK_COOKIE)?.value));
 });
 
 /** The signed-in person themselves, whatever desk they're working on. Memoised per request. */
@@ -193,11 +193,30 @@ export async function requirePerson(): Promise<User> {
 }
 
 export async function requireUser(): Promise<User> {
-  const u = await currentUser();
+  const d = await currentDesk();
   // In a read-only admin view, a blocked change goes back to the desk, not to the login page.
-  if (!u && (await viewingAs())) redirect("/dashboard/floor?readonly=1");
-  if (!u) redirect("/login");
-  return u;
+  if (!d && (await viewingAs())) redirect("/dashboard/floor?readonly=1");
+  if (!d) redirect("/login");
+  // A change from a team desk they lost (removed, seat paused) is stopped, not made on their own desk instead:
+  // back to their own desk with a note. Pages just show their own desk.
+  if (d.stale && (await headers()).get("next-action")) {
+    (await cookies()).delete(DESK_COOKIE);
+    redirect("/dashboard/floor?desk=ended");
+  }
+  return d.user;
+}
+
+/**
+ * The desk for an API route that changes something (POST, PUT, PATCH, DELETE): currentUser, except that a change from a
+ * team desk the person lost is refused with a 409 JSON error (refuseStaleChange) and the desk cookie is cleared, so it
+ * never lands on their own desk instead. Null when signed out. scripts/check-desk-roles.ts makes change handlers use it.
+ */
+export async function currentDeskForChange(): Promise<User | null | Response> {
+  const d = await currentDesk();
+  if (!d) return null;
+  const desk = refuseStaleChange(d);
+  if (desk instanceof Response) (await cookies()).delete(DESK_COOKIE);
+  return desk;
 }
 
 /** Reset links and password changes live in password-reset.ts (testable without a request); re-exported here. */

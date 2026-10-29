@@ -10,6 +10,7 @@ import crypto from "node:crypto";
 import { logEvent, now, q, USER_COLUMNS, type Collection, type Queryable, type Sender, type Track, type User } from "./db";
 import { noLinks, APP_URL, deliverLater, queueMail } from "./mail";
 import { alertIfFull, notifyNewSubmission } from "./notify";
+import { holdForSend, receiptTemplates, type SendGroup } from "./send-receipts";
 import { ACCEPTED_EXT, MAX_BATCH_TRACKS, MAX_RELEASE_TRACKS, MAX_UPLOAD_BYTES, RATE_PER_EMAIL_PER_DAY, RATE_PER_IP_PER_HOUR } from "./plans";
 import { folderLimit } from "./plan-store";
 import { allow } from "./ratelimit";
@@ -20,6 +21,7 @@ import { chargeScanner, senderScope } from "./scan-budget";
 import { recordIncident } from "./incidents";
 import { recordStoredDigest } from "./file-digests";
 import { activeCollection, capacity, isClosed, isFull, isPaused, pausedMessage, rewardReferral } from "./desk";
+import { normalEmail } from "./email-normal";
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -73,7 +75,7 @@ async function checkOpen(receiver: User, db: Queryable = q) {
 
 /** Blocked across every link by FloorTest, by exact address or by domain. */
 export async function platformBlocked(email: string) {
-  const e = email.trim().toLowerCase();
+  const e = normalEmail(email);
   const domain = e.split("@")[1] || "";
   return !!(await q.get("SELECT 1 FROM platform_blocks WHERE (kind = 'email' AND value = ?) OR (kind = 'domain' AND value = ?)", e, domain));
 }
@@ -115,6 +117,8 @@ export type SubmissionMeta = {
   release?: { id: string; title: string; artist: string; kind: "ep" | "album" };
   /** Up to MAX_BATCH_TRACKS tracks sent together (not a folder): one send, MAX_UPLOAD_BYTES between them. */
   batch?: string;
+  /** How many tracks the sender's browser is sending in this batch or release: they share one receipt email. */
+  sendSize?: number;
   trackNo?: number | null;
   musicalKey?: string;
   isrc?: string;
@@ -141,7 +145,7 @@ export async function startOwnerUpload(owner: User, collectionId: number, d: { f
   if (d.size > MAX_UPLOAD_BYTES) throw new IntakeError("File is too large (max 250 MB).", 413);
   if (!d.rights) throw new IntakeError("Confirm you're allowed to keep this file on FloorTest.", 400);
   if (!d.title.trim()) throw new IntakeError("Add a track title.", 400);
-  if ((await capacity(owner)).full) throw new IntakeError("Your desk is full. Clear some tracks or upgrade to add more.", 409);
+  if (await slotsTaken(owner)) throw new IntakeError("Your desk is full. Clear some tracks or upgrade to add more.", 409);
   if (!(await allow("owner_upload", String(owner.id), OWNER_UPLOADS_PER_HOUR, HOUR))) throw new IntakeError("Too many uploads. Try again in an hour.", 429);
   const meta: SubmissionMeta = {
     name: owner.name,
@@ -166,10 +170,31 @@ export async function startOwnerUpload(owner: User, collectionId: number, d: { f
 }
 
 /**
+ * Whether the desk's tracks plus its uploads still in progress (started in the last UPLOAD_TTL, or held for their virus
+ * check) fill its capacity. Each open upload holds a slot, so bytes PUT for starts that are never finished can't pile up
+ * past what the desk could receive. `except` is the start being checked. Track artwork and stems don't take a slot.
+ */
+async function slotsTaken(receiver: User, except = "") {
+  const c = await capacity(receiver);
+  const open = await q.count(
+    "SELECT COUNT(*) AS n FROM uploads WHERE receiver_id = ? AND id <> ? AND meta::jsonb->>'kind' IS NULL AND (created_at > ? OR held_at IS NOT NULL)",
+    receiver.id,
+    except,
+    now() - UPLOAD_TTL,
+  );
+  return c.used + open >= c.limit;
+}
+
+/** The stored id of a release: the browser's id under this desk, so no other desk can reach the same row. */
+const deskReleaseId = (receiverId: number, id: string) => `${receiverId}-${id}`;
+
+/**
  * Step 1 of a submission: check the rules, then authorise a direct upload to storage.
  * The file never passes through the app server.
  */
-export async function startUpload(receiver: User, meta: SubmissionMeta, size: number, ip: string) {
+export async function startUpload(receiver: User, input: SubmissionMeta, size: number, ip: string) {
+  // A release id comes from the sender's browser. It is scoped to this desk, so two desks never share a release row.
+  const meta = input.release ? { ...input, release: { ...input.release, id: deskReleaseId(receiver.id, input.release.id) } } : input;
   const ext = meta.originalName.toLowerCase().match(/\.(wav|mp3)$/)?.[0];
   if (!ext || !ACCEPTED_EXT.includes(ext)) throw new IntakeError("Only WAV and MP3 files are accepted.", 400);
   if (!Number.isSafeInteger(size) || size <= 0) throw new IntakeError("Choose a WAV or MP3 file.", 400);
@@ -189,11 +214,12 @@ export async function startUpload(receiver: User, meta: SubmissionMeta, size: nu
       const inRelease =
         Number((await db.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM tracks WHERE user_id = ? AND release_id = ?", receiver.id, meta.release.id))?.n ?? 0) +
         Number((await db.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM uploads WHERE receiver_id = ? AND meta::jsonb->'release'->>'id' = ?", receiver.id, meta.release.id))?.n ?? 0);
-      // Only the sender who started a release can add to it.
+      // Only the sender who started a release can add to it, including before its first track is saved.
       const owner = await db.get<{ email: string }>("SELECT s.email FROM releases r JOIN senders s ON s.id = r.sender_id WHERE r.id = ? AND r.user_id = ?", meta.release.id, receiver.id);
-      if (owner && owner.email !== meta.email) throw new IntakeError("That release belongs to someone else.", 403);
+      const otherOpen = await db.get("SELECT 1 FROM uploads WHERE receiver_id = ? AND meta::jsonb->'release'->>'id' = ? AND meta::jsonb->>'email' <> ? LIMIT 1", receiver.id, meta.release.id, meta.email);
+      if ((owner && owner.email !== meta.email) || otherOpen) throw new IntakeError("That release belongs to someone else.", 403);
       if (inRelease >= MAX_RELEASE_TRACKS) throw new IntakeError(`A release can have up to ${MAX_RELEASE_TRACKS} tracks.`, 413);
-      const cap = await folderLimit(receiver.plan);
+      const cap = await folderLimit(receiver.plan, db);
       const releaseBytes =
         Number((await db.get<{ n: number }>("SELECT COALESCE(SUM(size), 0) AS n FROM tracks WHERE user_id = ? AND release_id = ?", receiver.id, meta.release.id))?.n ?? 0) +
         Number((await db.get<{ n: number }>("SELECT COALESCE(SUM(size), 0) AS n FROM uploads WHERE receiver_id = ? AND meta::jsonb->'release'->>'id' = ?", receiver.id, meta.release.id))?.n ?? 0);
@@ -208,9 +234,10 @@ export async function startUpload(receiver: User, meta: SubmissionMeta, size: nu
       const sum = async (sql: string) => (await db.get<{ n: number; b: number }>(sql, receiver.id, meta.batch))!;
       const done = await sum("SELECT COUNT(*)::int AS n, COALESCE(SUM(size), 0)::bigint AS b FROM tracks WHERE user_id = ? AND batch_id = ?");
       const open = await sum("SELECT COUNT(*)::int AS n, COALESCE(SUM(size), 0)::bigint AS b FROM uploads WHERE receiver_id = ? AND meta::jsonb->>'batch' = ?");
-      // Only the sender who started a batch can add to it.
+      // Only the sender who started a batch can add to it, including before its first track is saved.
       const owner = await db.get<{ email: string }>("SELECT s.email FROM tracks t JOIN senders s ON s.id = t.sender_id WHERE t.user_id = ? AND t.batch_id = ? LIMIT 1", receiver.id, meta.batch);
-      if (owner && owner.email !== meta.email) throw new IntakeError("That send belongs to someone else.", 403);
+      const otherOpen = await db.get("SELECT 1 FROM uploads WHERE receiver_id = ? AND meta::jsonb->>'batch' = ? AND meta::jsonb->>'email' <> ? LIMIT 1", receiver.id, meta.batch, meta.email);
+      if ((owner && owner.email !== meta.email) || otherOpen) throw new IntakeError("That send belongs to someone else.", 403);
       if (Number(done.n) + Number(open.n) >= MAX_BATCH_TRACKS) throw new IntakeError(`Up to ${MAX_BATCH_TRACKS} tracks at a time.`, 413);
       if (Number(done.b) + Number(open.b) + size > MAX_UPLOAD_BYTES) throw new IntakeError("These tracks add up to more than 250 MB.", 413);
       const passed = await sum("SELECT COUNT(*)::int AS n, 0::bigint AS b FROM uploads WHERE receiver_id = ? AND meta::jsonb->>'batch' = ? AND checked_at IS NOT NULL");
@@ -231,6 +258,7 @@ export async function startUpload(receiver: User, meta: SubmissionMeta, size: nu
   });
   try {
     await checkIntake(receiver, meta.email, ip, firstOfRelease);
+    if (await slotsTaken(receiver, id)) throw new IntakeError(`${receiver.name} isn't accepting new tracks right now.`);
   } catch (e) {
     await q.run("DELETE FROM uploads WHERE id = ?", id);
     throw e;
@@ -397,7 +425,17 @@ async function finishClaimed(receiver: User, up: Upload, ref: string, analysis: 
   // The sender's "Delivered" email is written in the same transaction as their track (Codex review, phase B item 4):
   // its wording is loaded first, so the transaction only fills it in.
   const delivered = meta.ownerCollectionId ? null : await emailTemplate("delivered");
-  let result: { track: Track; sender: Sender; collection: Collection | undefined; mailId: number | null };
+  // A track sent with others waits for them: the send gets one email each way (src/lib/send-receipts.ts).
+  const group: SendGroup | null =
+    meta.ownerCollectionId || (meta.sendSize ?? 1) < 2
+      ? null
+      : meta.release
+        ? { userId: receiver.id, column: "release_id", id: meta.release.id }
+        : meta.batch
+          ? { userId: receiver.id, column: "batch_id", id: meta.batch }
+          : null;
+  const together = group ? await receiptTemplates() : null;
+  let result: { track: Track; sender: Sender; collection: Collection | undefined; mailIds: number[] };
   try {
     result = await q.tx(async (db) => {
       // Serialise concurrent completions for this receiver so capacity can't be overshot.
@@ -506,10 +544,12 @@ async function finishClaimed(receiver: User, up: Upload, ref: string, analysis: 
         receipt_url: `${APP_URL}/receipt/${track.token}`,
         sent_url: `${APP_URL}/sent`,
       };
-      const mailId = delivered
-        ? await queueMail({ userId: fresh.id, to: sender.email, secrets: [track.token], subject: fillEmail(delivered.subject, vars).replace(/\s+/g, " "), body: fillEmail(delivered.body, vars) }, db)
-        : null;
-      return { track, sender, collection, mailId };
+      // One of several in a send: its emails go with the rest of the send's (straight away if it's the last one).
+      if (group && together) return { track, sender, collection, mailIds: await holdForSend(db, group, track.id, meta.sendSize!, together) };
+      const mailIds = delivered
+        ? [await queueMail({ userId: fresh.id, to: sender.email, secrets: [track.token], subject: fillEmail(delivered.subject, vars).replace(/\s+/g, " "), body: fillEmail(delivered.body, vars) }, db)]
+        : [];
+      return { track, sender, collection, mailIds };
     });
   } catch (e) {
     // Only a refusal (desk full, closed, already saved) discards the file; any other failure keeps it (see completeUpload).
@@ -517,21 +557,28 @@ async function finishClaimed(receiver: User, up: Upload, ref: string, analysis: 
     throw e;
   }
 
-  const { track, sender, mailId } = result;
+  const { track, sender, mailIds } = result;
   // The owner added it themselves: no "Delivered" email to themselves, no new-track alert, no referral reward.
-  if (meta.ownerCollectionId || mailId === null) return track;
-  deliverLater(mailId);
+  if (meta.ownerCollectionId) return track;
+  for (const id of mailIds) deliverLater(id);
   // The track is saved: everything else happens after the sender's response, and one failure can't block the others.
-  after(async () => {
+  const afterSave = async () => {
     const results = await Promise.allSettled([
-      notifyNewSubmission(receiver.id, track.id),
+      // A track of a send of several is in its send's one "New tracks" email instead.
+      group ? null : notifyNewSubmission(receiver.id, track.id),
       capacity(receiver).then((c) => alertIfFull(receiver.id, c)),
       rewardReferral(receiver.id, sender.email),
       // The sealed file, read back from our own storage (src/lib/file-digests.ts); anything missed is done nightly.
       recordStoredDigest(track.file_key!),
     ]);
     for (const r of results) if (r.status === "rejected") console.error("[intake] after-save step failed", r.reason);
-  });
+  };
+  // After the response; outside a request (scripts, tests) straight away, as deliverLater does.
+  try {
+    after(afterSave);
+  } catch {
+    await afterSave();
+  }
   return track;
 }
 

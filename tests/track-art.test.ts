@@ -11,7 +11,14 @@ delete process.env.DATABASE_URL;
 delete process.env.S3_BUCKET;
 delete process.env.STORAGE_DRIVER;
 
-const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4]);
+/** Only the PNG signature and a few bytes: right magic, but not an image anything can decode. */
+const FAKE_PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4]);
+/** A real 64x64 PNG. */
+const realPng = async () => {
+  const sharp = (await import("sharp")).default;
+  return new Uint8Array(await sharp({ create: { width: 64, height: 64, channels: 3, background: { r: 200, g: 40, b: 90 } } }).png().toBuffer());
+};
+const isWebp = (b: Uint8Array) => String.fromCharCode(...b.slice(0, 4)) === "RIFF" && String.fromCharCode(...b.slice(8, 12)) === "WEBP";
 
 async function track(token: string) {
   const { q } = await import("../src/lib/db");
@@ -39,6 +46,7 @@ test("artwork is checked on a sealed copy: writing to the upload link afterwards
   const { storage } = await import("../src/lib/storage");
   const store = await storage();
   const { call, artKey, pending } = await track("tok-art");
+  const PNG = await realPng();
 
   assert.equal((await call({ type: "image/png", size: PNG.length })).status, 200);
   const staging = (await pending())!;
@@ -53,7 +61,7 @@ test("artwork is checked on a sealed copy: writing to the upload link afterwards
 
   // The sender's upload link may still be valid: writing to it again can't touch the sealed artwork.
   await store.put(staging, new Uint8Array([1, 2, 3]), "image/png");
-  assert.deepEqual([...(await store.read(art, 0, 3))], [0x89, 0x50, 0x4e, 0x47], "still the checked PNG");
+  assert.ok(isWebp(await store.read(art, 0, 11)), "still the checked (re-encoded) image");
   assert.equal((await call({ type: "image/png", size: PNG.length })).status, 409, "only the first artwork sticks");
 });
 
@@ -65,4 +73,31 @@ test("a file that isn't the declared image is refused and leaves nothing behind"
   assert.equal((await call({ done: true })).status, 415);
   assert.equal(await artKey(), null);
   assert.equal(await pending(), undefined);
+});
+
+test("artwork is decoded and re-encoded, so nothing rides along behind a valid image header", async () => {
+  const { storage } = await import("../src/lib/storage");
+  const store = await storage();
+
+  // Right magic bytes, but not an image: refused, nothing kept.
+  const fake = await track("tok-art3");
+  await fake.call({ type: "image/png", size: FAKE_PNG.length });
+  await store.put((await fake.pending())!, FAKE_PNG, "image/png");
+  assert.equal((await fake.call({ done: true })).status, 415);
+  assert.equal(await fake.artKey(), null);
+  assert.equal(await fake.pending(), undefined);
+
+  // A real image with a payload after it: what is kept is a fresh WebP, not the bytes sent.
+  const payload = new Uint8Array(200 * 1024).fill(0x4d);
+  const sent = new Uint8Array([...(await realPng()), ...payload]);
+  const real = await track("tok-art4");
+  await real.call({ type: "image/png", size: sent.length });
+  const staging = (await real.pending())!;
+  await store.put(staging, sent, "image/png");
+  assert.equal((await real.call({ done: true })).status, 200);
+  const art = (await real.artKey())!;
+  assert.match(art, /\.webp$/);
+  const head = (await store.head(art))!;
+  assert.ok(head.size < 10 * 1024, "the appended payload is gone");
+  assert.ok(isWebp(await store.read(art, 0, 11)));
 });

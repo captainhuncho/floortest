@@ -9,6 +9,7 @@ import { recentCount, record, requestIp } from "@/lib/ratelimit";
 import { checkSecondFactor } from "@/lib/security";
 import { HUMAN_CHECK_AFTER, HUMAN_MESSAGE, humanCheck, recentFailures } from "@/lib/human-check";
 import type { FormState } from "../(auth)/actions";
+import { normalEmail } from "@/lib/email-normal";
 
 const DUMMY = hashPassword("not-a-real-password");
 
@@ -17,7 +18,7 @@ const DUMMY = hashPassword("not-a-real-password");
  * One answer for every failure, so nothing here reveals which part was wrong or which addresses are admins.
  */
 export async function opsSignIn(_: FormState, form: FormData): Promise<FormState> {
-  const email = String(form.get("email") || "").trim().toLowerCase().slice(0, 200);
+  const email = normalEmail(String(form.get("email") || "")).slice(0, 200);
   const password = String(form.get("password") || "").slice(0, 200);
   const code = String(form.get("code") || "").trim().slice(0, 20);
   const ip = await requestIp();

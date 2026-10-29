@@ -9,6 +9,7 @@ import { accountEmailAllowed } from "@/lib/email-budget";
 import { allow, requestIp } from "@/lib/ratelimit";
 import { checkLinkCode, linkByKey, LinkError, noteUnlistedCode, recipientFor, requestAccess, sendLinkCode, startLinkSession } from "@/lib/share-links";
 import { provenEmail, setLinkSession, setProvenEmail } from "@/lib/link-cookies";
+import { normalEmail } from "@/lib/email-normal";
 
 export type GateState = { step: "email" | "code" | "notice" | "request" | "sent" | "waiting" | "denied"; email?: string; error?: string } | null;
 
@@ -31,9 +32,9 @@ async function visitor(linkId: number) {
 export async function sendCode(secret: string, _prev: GateState, form: FormData): Promise<GateState> {
   const link = await linkByKey(secret, await currentPerson());
   if (!link) return GONE;
-  const email = String(form.get("email") || "").trim().toLowerCase();
+  const email = normalEmail(String(form.get("email") || ""));
   try {
-    if (!(await accountEmailAllowed())) throw new LinkError("We can't send codes right now. Please try again in a few minutes.");
+    if (!(await accountEmailAllowed("public"))) throw new LinkError("We can't send codes right now. Please try again in a few minutes.");
     await sendLinkCode(link, email, await requestIp(), async (to, code) => {
       await sendMail({
         userId: null,
@@ -41,6 +42,9 @@ export async function sendCode(secret: string, _prev: GateState, form: FormData)
         to,
         secrets: [code],
         subject: `${code} is your FloorTest code`,
+        // Dropped, not held for midnight, past the day's shared part. No error here: the answer must be the same
+        // whether or not the address is on the list.
+        expires: true,
         body: `Your code to open a private FloorTest collection:\n\n${code}\n\nIt works for 10 minutes. If you didn't try to open a FloorTest link, ignore this email.\n\n— FloorTest`,
       });
     });

@@ -5,6 +5,7 @@ import { analyzeAudio, type Analysis } from "@/lib/analyze";
 import { readTags, type Tags } from "@/lib/tags";
 import { MAX_BATCH_TRACKS } from "@/lib/plans";
 import { stored, useBrowserValue } from "@/components/useBrowserValue";
+import { recallSender, rememberSender } from "@/lib/sender-memory";
 
 export const MAX_BYTES = 250 * 1024 * 1024;
 export const SENDER_KEY = "floortest.sender";
@@ -221,18 +222,26 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
   const [batch, setBatch] = useState(newId);
 
   // Name, email and profiles are captured once and remembered on this device, so the next send is just the file.
-  const saved = useBrowserValue(() => stored(SENDER_KEY), "");
-  const [loaded, setLoaded] = useState("");
+  // Only for a while (src/lib/sender-memory.ts), so the next person on a shared computer doesn't find them.
+  const saved = useBrowserValue(() => JSON.stringify(recallSender(stored(SENDER_KEY))), "null");
+  const [loaded, setLoaded] = useState("null");
   if (saved !== loaded) {
     setLoaded(saved);
     try {
-      const s = JSON.parse(saved || "null");
+      const s = JSON.parse(saved);
       if (s?.name || s?.email) {
         setSender({ name: s.name || "", email: s.email || "", instagram: s.instagram || "", streaming: s.streaming || "" });
         setRemembered(!!(s.name && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.email || "") && (s.instagram || s.streaming)));
       }
     } catch {}
   }
+
+  // Details past their time limit are cleared from the device, not just ignored.
+  useEffect(() => {
+    try {
+      if (stored(SENDER_KEY) && !recallSender(stored(SENDER_KEY))) localStorage.removeItem(SENDER_KEY);
+    } catch {}
+  }, []);
 
   // Leaving or reloading mid-upload would drop the transfer: the browser asks first, until it's sent or has failed.
   useEffect(() => {
@@ -279,7 +288,7 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
     if (!items.length) return setError("Choose a WAV or MP3 file.");
     const field = (k: string) => String(fd.get(k) ?? "");
     try {
-      if (!opts.asAccount) localStorage.setItem(SENDER_KEY, JSON.stringify({ name: field("name"), email: field("email"), instagram: field("sender_instagram"), streaming: field("sender_streaming") }));
+      if (!opts.asAccount) localStorage.setItem(SENDER_KEY, rememberSender({ name: field("name"), email: field("email"), instagram: field("sender_instagram"), streaming: field("sender_streaming") }));
     } catch {}
     setError(null);
     setArtFailed(false);
@@ -297,7 +306,8 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
       patch(it.id, { status: "uploading", progress: 0, error: undefined });
       const r = await uploadTrack(
         handle, it.file, it.analysis,
-        { ...shared, batch, title: it.tags.title, artist: it.tags.artist, musical_key: it.tags.key, isrc: it.tags.isrc },
+        // send_size: the send's tracks share one receipt email, sent once the last one is saved.
+        { ...shared, batch, send_size: items.length, title: it.tags.title, artist: it.tags.artist, musical_key: it.tags.key, isrc: it.tags.isrc },
         (p) => patch(it.id, { progress: p }),
         abort.current.signal,
         (attempt, of) => patch(it.id, { retry: attempt ? { attempt, of } : undefined }),

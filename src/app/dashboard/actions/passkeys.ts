@@ -1,6 +1,6 @@
 "use server";
 
-/** Passkeys on Settings → Security: add one (after the password check), remove one. Desk owners only. */
+/** Passkeys on Settings → Security: add one or remove one, each after the password check. Desk owners only. */
 import { requireRole } from "@/lib/auth";
 import { allow } from "@/lib/ratelimit";
 import { stepUp } from "@/lib/step-up";
@@ -34,6 +34,7 @@ export async function finishAddPasskey(answer: unknown): Promise<{ ok: true } | 
     userId: u.id,
     audience: "receiver",
     to: u.email,
+    reserved: true,
     subject: "A passkey was added to your FloorTest account",
     body: `Hi ${u.name.split(/\s+/)[0]},\n\nA passkey (${r.name}) was just added to your FloorTest account. It can sign you in without a password.\n\nIf this wasn't you, remove it in Settings → Security, change your password and contact us.\n\n— FloorTest`,
   });
@@ -41,8 +42,11 @@ export async function finishAddPasskey(answer: unknown): Promise<{ ok: true } | 
   return { ok: true };
 }
 
-export async function deletePasskey(id: number): Promise<{ ok: true } | { error: string }> {
+/** Removing one needs the same check as adding one, so a borrowed session can't quietly take away the owner's way in. */
+export async function deletePasskey(id: number, password: string, code: string): Promise<{ ok: true } | { error: string }> {
   const u = await requireRole("owner");
+  const denied = await stepUp(u.id, String(password || "").slice(0, 200), String(code || "").slice(0, 40));
+  if (denied) return { error: denied };
   const name = Number.isSafeInteger(id) ? await removePasskey(u.id, id) : null;
   if (!name) return { error: "That passkey was already removed." };
   await audit(u.id, "passkey_removed", name);
@@ -50,6 +54,7 @@ export async function deletePasskey(id: number): Promise<{ ok: true } | { error:
     userId: u.id,
     audience: "receiver",
     to: u.email,
+    reserved: true,
     subject: "A passkey was removed from your FloorTest account",
     body: `Hi ${u.name.split(/\s+/)[0]},\n\nThe passkey ${name} was just removed from your FloorTest account. It can no longer sign you in.\n\nIf this wasn't you, change your password now and contact us.\n\n— FloorTest`,
   });

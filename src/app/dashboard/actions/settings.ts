@@ -23,6 +23,7 @@ import { cleanProfileLink, IDENTITY_HOSTS, newIdentityCode } from "@/lib/identit
 import { done } from "./common";
 import { REQUEST_KINDS, VOLUMES, pendingRequest, type RequestKind } from "@/lib/plan-requests";
 import { httpsLink } from "@/lib/safe-links";
+import { normalEmail } from "@/lib/email-normal";
 
 export async function updateNotifications(_: SettingsState, form: FormData): Promise<SettingsState> {
   const u = await requireRole("owner");
@@ -192,6 +193,7 @@ export async function deleteAccount(_: SettingsState, form: FormData): Promise<S
     userId: null,
     audience: "support",
     to: u.email,
+    reserved: true,
     subject: "Your FloorTest account was deleted",
     body: `Hi ${u.name.split(/\s+/)[0]},\n\nYour FloorTest account (${u.handle}) and everything on it were deleted just now, at your request from Settings.\n\nIf this wasn't you, reply to this email straight away.\n\n— FloorTest`,
   });
@@ -205,7 +207,7 @@ export async function changeMyEmail(_: SettingsState, form: FormData): Promise<S
   const u = await requireRole("owner");
   const denied = await stepUp(u.id, String(form.get("password") || ""), String(form.get("code") || ""));
   if (denied) return { error: denied };
-  const email = String(form.get("email") || "").trim().toLowerCase();
+  const email = normalEmail(String(form.get("email") || ""));
   // Each change emails the new address: limited, so this can't be used to flood someone's inbox.
   if (!(await allow("email_change_to", email, 3, 24 * 3_600_000))) return { error: "Too many confirmation emails to that address today. Try again tomorrow." };
   const problem = await requestEmailChange(u.id, email, "user");

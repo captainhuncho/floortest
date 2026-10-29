@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { now, q } from "./db";
+import { now, q, type Queryable } from "./db";
 import { APP_URL, deliverLater, queueMail, sendMail } from "./mail";
 import { recordIncident } from "./incidents";
 import { RETAIN_PASSED_DAYS, RETAIN_UNREVIEWED_DAYS } from "./plans";
@@ -24,8 +24,8 @@ export type NotifyPrefs = {
 
 export const prefsForView = cache((userId: number) => prefsFor(userId));
 
-export async function prefsFor(userId: number) {
-  return (await q.get<NotifyPrefs>(
+export async function prefsFor(userId: number, db: Queryable = q) {
+  return (await db.get<NotifyPrefs>(
     `SELECT id, email, name, notify_submissions, digest_hour, quiet_start, quiet_end, notify_alerts, notify_product, notify_marketing, tz, last_digest_at, alert_full_sent_at
      FROM users WHERE id = ?`,
     userId,
@@ -48,37 +48,60 @@ export function inQuietHours(p: Pick<NotifyPrefs, "quiet_start" | "quiet_end" | 
   return p.quiet_start < p.quiet_end ? h >= p.quiet_start && h < p.quiet_end : h >= p.quiet_start || h < p.quiet_end;
 }
 
-/** Called after a track is delivered. Instant mode emails now unless it's quiet hours; otherwise the digest picks it up. */
+/** One new track, or several from one send, as the receiver's "new track" email. */
+export type NewTrack = { id: number; title: string; artist: string; message: string; sender: string; collection: string | null };
+
+/** The receiver's email about new tracks: one track keeps its own wording; a send of several lists them in one email. */
+export function newTracksMail(p: Pick<NotifyPrefs, "id" | "email">, tracks: NewTrack[]) {
+  const [t] = tracks;
+  const many = tracks.length > 1;
+  const to = t.collection ? ` to ${t.collection}` : "";
+  return {
+    unsubscribe: "submissions" as const,
+    userId: p.id,
+    audience: "receiver" as const,
+    to: p.email,
+    subject: many ? `New tracks: ${t.sender} sent ${tracks.length}` : `New track: ${t.artist} – ${t.title}`,
+    body: [
+      many ? `${t.sender} sent ${tracks.length} tracks${to}:\n\n${tracks.map((x) => `• ${x.artist} – ${x.title}`).join("\n")}` : `${t.sender} sent "${t.title}"${to}.`,
+      t.message ? `\n"${t.message}"` : "",
+      `\nListen: ${APP_URL}/dashboard?view=queue&s=all&t=${t.id}`,
+      `\nChange how often you hear from us: ${APP_URL}/dashboard/settings/notifications`,
+      "\n— FloorTest",
+    ].join("\n"),
+  };
+}
+
+/**
+ * Inside the caller's transaction: claims the tracks the receiver hasn't been emailed about and queues one email for
+ * them, if they hear about tracks straight away and it isn't quiet hours (otherwise the digest picks them up).
+ * Returns the queued email's id, or null.
+ */
+export async function queueNewTracksNotice(db: Queryable, receiverId: number, trackIds: number[]) {
+  if (!trackIds.length) return null;
+  const p = await prefsFor(receiverId, db);
+  if (p.notify_submissions !== "instant" || inQuietHours(p)) return null;
+  const marks = trackIds.map(() => "?").join(",");
+  const claimed = await db.all<{ id: number }>(
+    `UPDATE tracks SET receiver_notified_at = ? WHERE id IN (${marks}) AND user_id = ? AND receiver_notified_at IS NULL RETURNING id`,
+    now(),
+    ...trackIds,
+    receiverId,
+  );
+  if (!claimed.length) return null;
+  const ids = new Set(claimed.map((c) => c.id));
+  const rows = await db.all<NewTrack>(
+    `SELECT t.id, t.title, t.artist, t.message, s.name AS sender, c.name AS collection FROM tracks t
+     JOIN senders s ON s.id = t.sender_id LEFT JOIN collections c ON c.id = t.collection_id WHERE t.id IN (${marks}) ORDER BY t.track_no NULLS LAST, t.created_at, t.id`,
+    ...trackIds,
+  );
+  return queueMail(newTracksMail(p, rows.filter((r) => ids.has(r.id))), db);
+}
+
+/** Called after a single track is delivered. Instant mode emails now unless it's quiet hours; otherwise the digest picks it up. */
 export async function notifyNewSubmission(receiverId: number, trackId: number) {
-  const p = await prefsFor(receiverId);
-  if (p.notify_submissions !== "instant" || inQuietHours(p)) return;
-  const t = (await q.get<{ title: string; artist: string; message: string; sender: string; collection: string | null }>(
-    `SELECT t.title, t.artist, t.message, s.name AS sender, c.name AS collection FROM tracks t
-     JOIN senders s ON s.id = t.sender_id LEFT JOIN collections c ON c.id = t.collection_id WHERE t.id = ?`,
-    trackId,
-  ))!;
   // Queued with the mark, then sent straight away: a failed send is retried by the queue, never lost or sent twice.
-  const id = await q.tx(async (db) => {
-    const claimed = await db.run("UPDATE tracks SET receiver_notified_at = ? WHERE id = ? AND receiver_notified_at IS NULL", now(), trackId);
-    if (!claimed.changes) return null;
-    return queueMail(
-      {
-        unsubscribe: "submissions",
-        userId: p.id,
-        audience: "receiver",
-        to: p.email,
-        subject: `New track: ${t.artist} – ${t.title}`,
-        body: [
-          `${t.sender} sent "${t.title}"${t.collection ? ` to ${t.collection}` : ""}.`,
-          t.message ? `\n"${t.message}"` : "",
-          `\nListen: ${APP_URL}/dashboard?view=queue&s=all&t=${trackId}`,
-          `\nChange how often you hear from us: ${APP_URL}/dashboard/settings/notifications`,
-          "\n— FloorTest",
-        ].join("\n"),
-      },
-      db,
-    );
-  });
+  const id = await q.tx((db) => queueNewTracksNotice(db, receiverId, [trackId]));
   if (id) deliverLater(id);
 }
 

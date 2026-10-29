@@ -6,6 +6,7 @@ import { asPerson, now, q, USER_COLUMNS, type Collection, type Queryable, type S
 import { APP_URL, sendMail } from "./mail";
 import { planLimit } from "./plan-store";
 import { switchOn } from "./switches";
+import { atLeast } from "./account-members";
 import { cache } from "react";
 
 export async function activeCount(userId: number, db: Queryable = q) {
@@ -100,6 +101,33 @@ export async function canAddCollection(deskId: number, db: Queryable = q) {
   if (await switchOn("more_collections", deskId)) return true;
   const n = await db.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM collections WHERE user_id = ?", deskId);
   return Number(n?.n ?? 0) < BETA_COLLECTIONS;
+}
+
+/**
+ * Start a collection if the desk has room. The desk row is locked while it's counted, so two Creates at the same
+ * instant can't make a third in the beta. Returns the new collection's id, or undefined when there's no room.
+ */
+export async function addCollection(deskId: number, name: string) {
+  const unlimited = await switchOn("more_collections", deskId); // read before the transaction: it uses its own connection
+  return q.tx(async (db) => {
+    await db.get("SELECT id FROM users WHERE id = ? FOR UPDATE", deskId);
+    const n = await db.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM collections WHERE user_id = ?", deskId);
+    if (!unlimited && Number(n?.n ?? 0) >= BETA_COLLECTIONS) return undefined;
+    return (await db.get<{ id: number }>("INSERT INTO collections (user_id, name, created_at) VALUES (?,?,?) RETURNING id", deskId, name, now()))!.id;
+  });
+}
+
+/**
+ * Point the link at one of this desk's collections. Routing is an owner or admin power, so a member's call changes
+ * nothing (actions can be called without the button). True when it changed; the caller logs it and sends reopen alerts.
+ */
+export async function routeToCollection(desk: Pick<User, "id" | "role">, collectionId: number) {
+  if (!atLeast(desk.role, "admin") || !Number.isSafeInteger(collectionId)) return false;
+  const r = await q.run(
+    "UPDATE users SET active_collection_id = ? WHERE id = ? AND EXISTS (SELECT 1 FROM collections WHERE id = ? AND user_id = ?)",
+    collectionId, desk.id, collectionId, desk.id,
+  );
+  return r.changes > 0;
 }
 
 /** "Pause my link": the receiver is away. Ends on its own at pause_until, if one was set. */

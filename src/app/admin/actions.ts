@@ -22,7 +22,7 @@ import { HIDDEN, sendMail } from "@/lib/mail";
 import { isAdminEmail, logAdmin, requireAdminAction } from "@/lib/admin";
 import { opsAccessFor, suspendRefusal } from "@/lib/ops-access";
 import { PERMS, ROLE_PERMS, ROLES, type Perm, type Role } from "@/lib/ops-perms";
-import type { PlanRequest } from "@/lib/plan-requests";
+import { grantablePlan, type PlanRequest } from "@/lib/plan-requests";
 import { flash } from "@/lib/flash";
 import { isTargeted, setSwitch, setSwitchRule, SWITCHES, type SwitchKey } from "@/lib/switches";
 import { clampPercent, describeRule, parseCountries, readRule, MAX_RULE_ACCOUNTS } from "@/lib/switch-rules";
@@ -32,6 +32,8 @@ import { cancelEmailChange, changeHandle, HANDLE_HOLD_DAYS, requestEmailChange }
 import { logEvent, now, q, type Track } from "@/lib/db";
 import { eraseSender, purgeAccount } from "@/lib/privacy";
 import { localPath } from "@/lib/safe-links";
+import { normalEmail } from "@/lib/email-normal";
+import { deleteRevokedInvite, GATE_CODE_MIN_LENGTH, restoreRevokedInvite } from "@/lib/invites";
 
 const refresh = () => revalidatePath("/admin", "layout");
 const done = (m: string) => flash(m);
@@ -201,6 +203,27 @@ export async function revokeInvite(code: string) {
   refresh();
 }
 
+/** Revoked list → Restore: the invite works again (refused if its email has an account or another live invite). */
+export async function restoreInvite(code: string) {
+  const a = await requireAdminAction("invites");
+  const r = await restoreRevokedInvite(code);
+  if (!r.ok) return fail(r.reason);
+  await logAdmin(a.id, "restored invite", r.email ?? r.code, r.code);
+  await done(`Restored ${r.code}${r.email ? ` for ${r.email}` : ""}`);
+  refresh();
+}
+
+/** Revoked list → Delete for good: the invite and its invite emails go; Ops log lines that mention it stay. */
+export async function deleteInvite(code: string) {
+  const a = await requireAdminAction("invites");
+  const r = await deleteRevokedInvite(code);
+  if (!r.ok) return fail(r.reason);
+  const logged = await q.count("SELECT COUNT(*) AS n FROM admin_log WHERE strpos(target, ?) > 0 OR strpos(detail, ?) > 0", r.code, r.code);
+  await logAdmin(a.id, "deleted invite", r.email ?? r.code, `${r.code} · ${r.emails} email${r.emails === 1 ? "" : "s"} removed`);
+  await done(`Deleted ${r.code}${r.email ? ` for ${r.email}` : ""} and ${r.emails} invite email${r.emails === 1 ? "" : "s"}. ${logged} Ops log line${logged === 1 ? "" : "s"} still mention it.`);
+  refresh();
+}
+
 /** Takes down an abusive upload: file gone from storage, track gone from the receiver's desk. */
 export async function removeTrackAsAdmin(trackId: number, reason: string) {
   const a = await requireAdminAction("moderation");
@@ -270,7 +293,8 @@ export async function setContactHandled(id: number, handled: boolean) {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const newCode = () => {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  return `FLOOR-${Array.from(crypto.randomBytes(6), (b) => alphabet[b % alphabet.length]).join("")}`;
+  // 10 characters from 32 (50 bits): the code is what proves the email while sign-up is closed.
+  return `FLOOR-${Array.from(crypto.randomBytes(10), (b) => alphabet[b % alphabet.length]).join("")}`;
 };
 
 async function mailInvite(code: string, email: string, inviter: string, note: string, handle = "") {
@@ -287,7 +311,7 @@ async function mailInvite(code: string, email: string, inviter: string, note: st
 export async function inviteByEmail(form: FormData) {
   const a = await requireAdminAction("invites");
   const note = String(form.get("note") || "").trim().slice(0, 300);
-  const emails = [...new Set(String(form.get("emails") || "").split(/[\s,;]+/).map((e) => e.trim().toLowerCase()).filter(Boolean))].slice(0, 50);
+  const emails = [...new Set(String(form.get("emails") || "").split(/[\s,;]+/).map(normalEmail).filter(Boolean))].slice(0, 50);
   let sent = 0;
   let skipped = 0;
   for (const email of emails) {
@@ -313,9 +337,15 @@ export async function resendInvite(code: string) {
   const a = await requireAdminAction("invites");
   const inv = await q.get<{ email: string | null; note: string }>("SELECT email, note FROM invites WHERE code = ? AND revoked_at IS NULL", code);
   if (!inv?.email) return fail("Couldn't resend: the invite is revoked or has no email");
-  if ((await mailInvite(code, inv.email, a.name, inv.note)).startsWith("failed")) return fail("The email failed to send. Check the Email log, then try again.");
-  await q.run("UPDATE invites SET sent_at = ? WHERE code = ?", now(), code);
-  await logAdmin(a.id, "resent invite", inv.email, code);
+  // An old short code can't open the coming-soon gate (src/lib/invites.ts): resending swaps in a new long one.
+  const send = code.length < GATE_CODE_MIN_LENGTH ? newCode() : code;
+  if (send !== code) {
+    await q.run("INSERT INTO invites (code, max_uses, note, email, created_at) SELECT ?, max_uses, note, email, ? FROM invites WHERE code = ?", send, now(), code);
+    await q.run("UPDATE invites SET revoked_at = ? WHERE code = ?", now(), code);
+  }
+  if ((await mailInvite(send, inv.email, a.name, inv.note)).startsWith("failed")) return fail("The email failed to send. Check the Email log, then try again.");
+  await q.run("UPDATE invites SET sent_at = ? WHERE code = ?", now(), send);
+  await logAdmin(a.id, "resent invite", inv.email, send);
   await done(`Invite resent to ${inv.email}`);
   refresh();
 }
@@ -497,7 +527,7 @@ export async function removePlatformBlock(id: number) {
 export async function openTakedown(form: FormData) {
   const a = await requireAdminAction("super");
   const claimant = String(form.get("claimant") || "").trim().slice(0, 120);
-  const claimantEmail = String(form.get("claimant_email") || "").trim().toLowerCase().slice(0, 200);
+  const claimantEmail = normalEmail(String(form.get("claimant_email") || "")).slice(0, 200);
   const ref = String(form.get("track") || "").trim().slice(0, 100);
   if (!claimant || !claimantEmail.includes("@") || !ref) return fail("Fill in the claimant, a valid email and the track");
   const t = await q.get<{ id: number; title: string; artist: string; handle: string }>(
@@ -560,8 +590,8 @@ export async function adminDeleteAccount(userId: number, form: FormData) {
 
 export async function adminEraseSender(form: FormData) {
   const a = await requireAdminAction("super");
-  const email = String(form.get("email") || "").trim().toLowerCase();
-  if (!EMAIL_RE.test(email) || String(form.get("confirm") || "").trim().toLowerCase() !== email) return fail("Nothing erased: the email you typed didn't match");
+  const email = normalEmail(String(form.get("email") || ""));
+  if (!EMAIL_RE.test(email) || normalEmail(String(form.get("confirm") || "")) !== email) return fail("Nothing erased: the email you typed didn't match");
   const r = await eraseSender(email);
   await logAdmin(a.id, "erased sender (privacy request)", email.replace(/^(.{2}).*@/, "$1…@"), `${r.senders} sender records, ${r.files} files`);
   refresh();
@@ -767,7 +797,7 @@ export async function clearSwitchRule(key: SwitchKey) {
 /** Lets email go to an address again after a bounce or spam report (for example, once they've fixed their mailbox). */
 export async function liftSuppression(email: string) {
   const a = await requireAdminAction("users.support");
-  await q.run("DELETE FROM email_suppressions WHERE email = ?", email.trim().toLowerCase());
+  await q.run("DELETE FROM email_suppressions WHERE email = ?", normalEmail(email));
   await logAdmin(a.id, "lifted email block", email);
   await done(`Email to ${email} allowed again`);
   refresh();
@@ -777,7 +807,7 @@ export async function liftSuppression(email: string) {
 
 export async function savePartnerNote(email: string, form: FormData) {
   const a = await requireAdminAction("partners.act");
-  const key = email.trim().toLowerCase().slice(0, 200);
+  const key = normalEmail(email).slice(0, 200);
   if (!key) return;
   const note = String(form.get("note") || "").slice(0, 4000);
   await q.run(
@@ -1007,7 +1037,7 @@ function grantsAndDenials(role: Role, form: FormData) {
 
 export async function addOpsMember(form: FormData) {
   const a = await requireAdminAction("super");
-  const email = String(form.get("email") || "").trim().toLowerCase().slice(0, 200);
+  const email = normalEmail(String(form.get("email") || "")).slice(0, 200);
   const role = roleOf(form.get("role"));
   if (!role) return fail("Pick a role.");
   const u = await q.get<{ id: number; handle: string; email_verified_at: number | null; suspended_at: number | null }>("SELECT id, handle, email_verified_at, suspended_at FROM users WHERE email = ?", email);
@@ -1065,8 +1095,8 @@ export async function approvePlanRequest(id: number, form: FormData) {
   const a = await requireAdminAction("planRequests");
   const r = await openRequest(id);
   if (!r) return fail("That request was already dealt with.");
-  const plan = (await allPlans()).find((p) => p.id === String(form.get("plan") || r.plan) && !p.retired);
-  if (!plan) return fail("Pick a plan that's offered.");
+  const plan = grantablePlan(await allPlans(), String(form.get("plan") || r.plan), r.plan, r.current);
+  if (!plan) return fail("Pick the plan they asked for, or one at or above their current plan.");
   const note = String(form.get("note") || "").trim().slice(0, 500);
   await q.tx(async (db) => {
     await db.run("UPDATE users SET plan = ? WHERE id = ?", plan.id, r.user_id);

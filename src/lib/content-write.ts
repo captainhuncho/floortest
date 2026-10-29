@@ -1,19 +1,8 @@
 import "server-only";
 import { revalidatePath } from "next/cache";
 import { logAdmin } from "./admin";
-import { contentRow, orderString, sectionOrder, SITE_PAGES, type Field, type SitePage } from "./content";
+import { cleanField as clean, contentRow, SITE_PAGES, type Field, type SitePage } from "./content";
 import { now, q } from "./db";
-
-const IMAGE_KEY = /^site\/[a-f0-9]{18}\.(jpg|png|webp)$/;
-
-/** One field, cleaned the same way wherever it was edited (the ops form or on the page). */
-function clean(page: SitePage, key: string, fld: Field, raw: unknown) {
-  let v = String(raw ?? "").replace(/\r\n/g, "\n").trim().slice(0, 4000);
-  if (fld.kind === "image") return v && IMAGE_KEY.test(v) ? v : "";
-  if (page === "home" && key === "sections") return orderString(sectionOrder(v || fld.start));
-  if (!v) v = fld.start;
-  return v;
-}
 
 /**
  * Saves a page's wording as a draft, and publishes it when asked (keeping a version to roll back to).

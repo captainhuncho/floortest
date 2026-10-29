@@ -13,21 +13,24 @@ import { NEXT_COOKIE, safeNext, TEAM_INVITE_COOKIE } from "@/lib/next-path";
 import { termsVersion } from "@/lib/legal-sharing";
 import { redirect } from "next/navigation";
 import { audit } from "@/lib/audit";
-import { consumePasswordReset, createPasswordReset, createSession, currentPerson, destroySession, hashPassword, setDesk, verifyPassword, upgradePasswordHash } from "@/lib/auth";
+import { createPasswordReset, createSession, currentPerson, destroySession, hashPassword, setDesk, verifyPassword, upgradePasswordHash } from "@/lib/auth";
 import { now, q } from "@/lib/db";
 import { env } from "@/lib/env";
 import { APP_URL, sendMail } from "@/lib/mail";
 import { RESERVED_HANDLES } from "@/lib/plans";
 import { allow, recentCount, record, requestIp } from "@/lib/ratelimit";
+import { loginLocked, recordLoginFailure } from "@/lib/login-limits";
+import { normalEmail } from "@/lib/email-normal";
 import { isProtectedHandle } from "@/lib/identity";
 import { sendWelcome } from "@/lib/onboarding";
 import { checkSecondFactor, finishSignIn, sendEmailVerification } from "@/lib/security";
-import { readChallenge, signChallenge } from "@/lib/totp";
+import { issueTicket, TICKET_MS, ticketUser, spendTicket } from "@/lib/two-step-ticket";
 import { GOOGLE_LINK_COOKIE, GOOGLE_SIGNUP_COOKIE, readIdentity, readPendingLink } from "@/lib/google-auth";
 import { pinGoogle } from "@/lib/google-link";
 import { accountEmailAllowed } from "@/lib/email-budget";
 import { HUMAN_CHECK_AFTER, HUMAN_MESSAGE, humanCheck, recentFailures } from "@/lib/human-check";
 import { breachedError } from "@/lib/breached";
+import { resetWithLink } from "@/lib/password-reset";
 import { resolveInvite } from "@/lib/invites";
 import { revokeAllSessions } from "@/lib/sessions";
 import { checkPasskey, hasPasskey, secondStepOptions, signInOptions } from "@/lib/passkeys";
@@ -48,7 +51,7 @@ async function landing(fallback: string) {
 async function afterPassword(userId: number, how: "password" | "reset" | "email code" | "Google") {
   const twoFactor = await q.get("SELECT 1 FROM users WHERE id = ? AND totp_enabled_at IS NOT NULL", userId);
   if (twoFactor) {
-    (await cookies()).set(CHALLENGE, signChallenge(userId, env.secret), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 300 });
+    (await cookies()).set(CHALLENGE, await issueTicket(userId), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: TICKET_MS / 1000 });
     redirect("/login/verify");
   }
   await finishSignIn(userId, how);
@@ -59,6 +62,8 @@ async function afterPassword(userId: number, how: "password" | "reset" | "email 
 export type FormState = { error?: string; ok?: boolean; challenge?: boolean } | undefined;
 
 const HOUR = 3_600_000;
+const INVITE_TRIES_EMAIL = 5;
+const INVITE_TRIES_IP = 20;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Keeps "no such account" and "wrong password" equally slow, so timing doesn't reveal which emails exist.
 const DUMMY_HASH = hashPassword("timing-equaliser"); // a promise, made once; awaited where a missing account is checked
@@ -84,19 +89,30 @@ type NewAccount = { email: string; firstName: string; lastName: string; handle: 
 async function createAccount(form: FormData, a: NewAccount, opts: { googleEmail?: boolean } = {}): Promise<{ id: number } | { error: string }> {
   if (form.get("agree") !== "on") return { error: "Please confirm you're 18 or over and agree to the Terms to create an account." };
   const open = await switchOn("open_signup");
-  // Closed: only a personal Ops invite to this exact email opens an account (src/lib/invites.ts).
-  const invite = await resolveInvite(String(form.get("ref") || form.get("invite") || ""), a.email, open);
+  // The invite code is what proves the email while sign-up is closed, so wrong guesses are counted (per email and per
+  // connection) and stop well before a code could be found by trying.
+  const ip = await requestIp();
+  if (!open && ((await recentCount("invite_fail_email", a.email, HOUR)) >= INVITE_TRIES_EMAIL || (await recentCount("invite_fail_ip", ip, HOUR)) >= INVITE_TRIES_IP))
+    return { error: "Too many tries. Wait an hour, then use the sign-up link in your invite email." };
+  // Closed: only a personal Ops invite to this exact email, with its emailed code, opens an account (src/lib/invites.ts).
+  const invite = await resolveInvite(String(form.get("ref") || form.get("invite") || ""), a.email, open, { emailProven: opts.googleEmail });
+  // The code only ever went to that inbox, so using it proves the email.
+  if (!open && invite.valid) a.verified = true;
   // A team invite sent to this email also opens sign-up during the beta (and proves the email: it came from the link).
   // With Google the email is already proven, so a live invite sent to it counts even without the invite link here.
   const team = (await teamInviteFor(form, a.email)) ?? (opts.googleEmail ? await inviteForEmail(a.email) : undefined);
   if (team) a.verified = true;
-  if (!open && !invite.valid && !team) return { error: "FloorTest is invite-only during the beta. Sign up with the email your invite went to." };
+  if (!open && !invite.valid && !team) {
+    await record("invite_fail_email", a.email);
+    await record("invite_fail_ip", ip);
+    return { error: "FloorTest is invite-only during the beta. Use the sign-up link in your invite email, with the email it went to." };
+  }
   if (!a.firstName || !a.lastName || !a.email || !a.handle) return { error: "Fill in your first name, surname, username and email." };
   if (!EMAIL.test(a.email)) return { error: "Enter a valid email." };
   if (!/^[a-z0-9][a-z0-9-_]{1,29}$/.test(a.handle)) return { error: "Link names use 2–30 letters, numbers, - or _." };
   if (RESERVED_HANDLES.has(a.handle)) return { error: "That link name is reserved." };
   if (await isProtectedHandle(a.handle)) return { error: "That name is protected for a well-known artist. If it's you, contact us and we'll set it up." };
-  if (!(await allow("signup_ip", await requestIp(), 10, HOUR))) return { error: "Too many sign-ups from this connection. Try again later." };
+  if (!(await allow("signup_ip", ip, 10, HOUR))) return { error: "Too many sign-ups from this connection. Try again later." };
   // Never say whether an email has an account: the real owner gets a quiet heads-up instead (at most once a day).
   const owner = await q.get<{ id: number; name: string }>("SELECT id, name FROM users WHERE email = ?", a.email);
   if (owner) {
@@ -105,6 +121,7 @@ async function createAccount(form: FormData, a: NewAccount, opts: { googleEmail?
         userId: owner.id,
         audience: "receiver",
         to: a.email,
+        reserved: true,
         subject: "Someone tried to sign up with your email",
         body: `Hi ${owner.name.split(/\s+/)[0]},\n\nSomeone just tried to create a FloorTest account with this email address. You already have one, so nothing was created.\n\nIf it was you, log in here: ${APP_URL}/login (forgot your password? ${APP_URL}/forgot)\n\nIf it wasn't you, you don't need to do anything.\n\n— FloorTest`,
       });
@@ -152,7 +169,7 @@ const fromForm = (form: FormData, k: string, max: number) => String(form.get(k) 
 export async function signup(_: FormState, form: FormData): Promise<FormState> {
   const firstName = fromForm(form, "first_name", 60);
   const lastName = fromForm(form, "last_name", 60);
-  const email = fromForm(form, "email", 200).toLowerCase();
+  const email = normalEmail(fromForm(form, "email", 200));
   const handle = String(form.get("handle") || "").trim().toLowerCase();
   // Public name: their professional name, or the username when they leave it empty.
   const name = fromForm(form, "name", 80) || handle;
@@ -222,13 +239,11 @@ export async function approveGoogleLink(_: FormState, form: FormData): Promise<F
 }
 
 export async function login(_: FormState, form: FormData): Promise<FormState> {
-  const email = String(form.get("email") || "").trim().toLowerCase().slice(0, 200);
+  const email = normalEmail(String(form.get("email") || "")).slice(0, 200);
   const password = String(form.get("password") || "").slice(0, 200);
   const ip = await requestIp();
-  // Failed attempts only, both per connection and per account, so normal logins never lock anyone out.
-  const WINDOW = 15 * 60_000;
-  if ((await recentCount("login_fail_ip", ip, WINDOW)) >= 20 || (await recentCount("login_fail_email", email, WINDOW)) >= 10)
-    return { error: "Too many attempts. Wait 15 minutes, or reset your password." };
+  // Failed attempts only, per connection and per account on that connection (lib/login-limits).
+  if (await loginLocked(email, ip)) return { error: "Too many attempts. Wait 15 minutes, or reset your password." };
   // After a few wrong tries, prove you're human first (Cloudflare). Checked here on the server, so it can't be skipped.
   const failures = await recentFailures("login_fail_email", "login_fail_ip", email, ip);
   const human = await humanCheck(failures, form, ip);
@@ -236,8 +251,7 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
   const row = await q.get<{ id: number; password_hash: string; suspended_at: number | null }>("SELECT id, password_hash, suspended_at FROM users WHERE email = ?", email);
   const ok = await verifyPassword(password, row?.password_hash ?? (await DUMMY_HASH));
   if (!row || !ok) {
-    await record("login_fail_ip", ip);
-    await record("login_fail_email", email);
+    await recordLoginFailure(email, ip);
     return { error: "Email or password is incorrect.", challenge: failures + 1 >= HUMAN_CHECK_AFTER };
   }
   if (row.suspended_at) return { error: "This account is suspended. To appeal, go to the Contact page and choose Suspension appeal." };
@@ -255,7 +269,7 @@ export async function logout() {
 
 /** Always answers the same way, so it can't be used to discover which emails have accounts. */
 export async function requestPasswordReset(_: FormState, form: FormData): Promise<FormState> {
-  const email = String(form.get("email") || "").trim().toLowerCase().slice(0, 200);
+  const email = normalEmail(String(form.get("email") || "")).slice(0, 200);
   if (!EMAIL.test(email)) return { error: "Enter the email you signed up with." };
   const ip = await requestIp();
   if (!(await allow("reset_ip", ip, 5, HOUR)) || !(await allow("reset_email", email, 3, HOUR)))
@@ -264,6 +278,7 @@ export async function requestPasswordReset(_: FormState, form: FormData): Promis
   if (user && (await accountEmailAllowed())) {
     const token = await createPasswordReset(user.id);
     await sendMail({
+      reserved: true,
       userId: user.id,
       audience: "receiver",
       to: email,
@@ -280,10 +295,9 @@ export async function resetPassword(token: string, _: FormState, form: FormData)
   const strength = passwordStrength(password);
   if (!strength.ok) return { error: strength.tip ?? "Choose a stronger password." };
   if (password !== String(form.get("confirm") || "")) return { error: "The two passwords don't match." };
-  const leaked = await breachedError(password); // before the link is used up, so they can pick another with it
-  if (leaked) return { error: leaked };
-  const userId = await consumePasswordReset(token, password);
-  if (!userId) return { error: "This reset link has expired or was already used. Request a new one." };
+  const r = await resetWithLink(token, password, await requestIp());
+  if ("error" in r) return r;
+  const { userId } = r;
   await audit(userId, "password_reset");
   await afterPassword(userId, "reset");
   return undefined;
@@ -297,7 +311,7 @@ const codeHash = (userId: number, code: string) => crypto.createHmac("sha256", e
 
 /** Emails a 6-digit sign-in code. Always moves on to the code page, so it can't reveal which emails have accounts. */
 export async function requestLoginCode(_: FormState, form: FormData): Promise<FormState> {
-  const email = String(form.get("email") || "").trim().toLowerCase().slice(0, 200);
+  const email = normalEmail(String(form.get("email") || "")).slice(0, 200);
   if (!EMAIL.test(email)) return { error: "Enter the email you signed up with." };
   const ip = await requestIp();
   // Asking for codes again and again: prove you're human first.
@@ -317,6 +331,7 @@ export async function requestLoginCode(_: FormState, form: FormData): Promise<Fo
       now(),
     );
     await sendMail({
+      reserved: true,
       userId: user.id,
       audience: "receiver",
       to: email,
@@ -368,6 +383,7 @@ export async function verifyLoginCode(_: FormState, form: FormData): Promise<For
     const u = await q.get<{ email: string; name: string }>("SELECT email, name FROM users WHERE id = ?", user.id);
     if (u)
       await sendMail({
+        reserved: true,
         userId: user.id,
         audience: "receiver",
         to: u.email,
@@ -383,7 +399,8 @@ export async function verifyLoginCode(_: FormState, form: FormData): Promise<For
 /** Second sign-in step: a 6-digit authenticator code or a one-time recovery code. */
 export async function verifySecondStep(_: FormState, form: FormData): Promise<FormState> {
   const jar = await cookies();
-  const userId = readChallenge(jar.get(CHALLENGE)?.value, env.secret);
+  const ticket = jar.get(CHALLENGE)?.value;
+  const userId = await ticketUser(ticket);
   if (!userId) return { error: "That took too long. Log in again." };
   const key = `user:${userId}`;
   if ((await recentCount("twofa_fail", key, 15 * 60_000)) >= 8) return { error: "Too many wrong codes. Wait 15 minutes and log in again." };
@@ -393,6 +410,7 @@ export async function verifySecondStep(_: FormState, form: FormData): Promise<Fo
     return { error: "That code didn't work. Check your authenticator app and try again." };
   }
   jar.delete(CHALLENGE);
+  if (!(await spendTicket(ticket, userId))) return { error: "That took too long. Log in again." };
   await finishSignIn(userId, result === "code" ? "two-factor" : "recovery code");
   redirect(await landing("/dashboard/floor"));
 }
@@ -423,14 +441,15 @@ export async function passkeySignIn(answer: unknown): Promise<FormState> {
 
 /** Two-step with a passkey instead of the code, step 1. Null when this account has no passkey. */
 export async function passkeySecondStepStart() {
-  const userId = readChallenge((await cookies()).get(CHALLENGE)?.value, env.secret);
+  const userId = await ticketUser((await cookies()).get(CHALLENGE)?.value);
   return userId ? secondStepOptions(userId) : null;
 }
 
 /** Step 2: the passkey must belong to the account whose password (or email code) was just checked. */
 export async function passkeySecondStep(answer: unknown): Promise<FormState> {
   const jar = await cookies();
-  const userId = readChallenge(jar.get(CHALLENGE)?.value, env.secret);
+  const ticket = jar.get(CHALLENGE)?.value;
+  const userId = await ticketUser(ticket);
   if (!userId) return { error: "That took too long. Log in again." };
   const key = `user:${userId}`;
   if ((await recentCount("twofa_fail", key, 15 * 60_000)) >= 8) return { error: "Too many wrong tries. Wait 15 minutes and log in again." };
@@ -439,13 +458,14 @@ export async function passkeySecondStep(answer: unknown): Promise<FormState> {
     return { error: "That passkey didn't work. Try again, or enter the code from your authenticator app." };
   }
   jar.delete(CHALLENGE);
+  if (!(await spendTicket(ticket, userId))) return { error: "That took too long. Log in again." };
   await finishSignIn(userId, "passkey as two-step");
   redirect(await landing("/dashboard/floor"));
 }
 
 /** For the two-step page: whether to offer "Use a passkey instead". */
 export async function secondStepHasPasskey() {
-  const userId = readChallenge((await cookies()).get(CHALLENGE)?.value, env.secret);
+  const userId = await ticketUser((await cookies()).get(CHALLENGE)?.value);
   return userId ? hasPasskey(userId) : false;
 }
 
@@ -462,7 +482,7 @@ async function teamInviteFor(form: FormData, email: string) {
   const secret = String(form.get("team") || "");
   if (!secret) return undefined;
   const inv = await inviteBySecret(secret);
-  return inv && inv.email === email.trim().toLowerCase() ? inv : undefined;
+  return inv && inv.email === normalEmail(email) ? inv : undefined;
 }
 
 /** After a sign-up from a team invite: join the team and switch to its desk. */

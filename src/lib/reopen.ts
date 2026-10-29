@@ -6,11 +6,15 @@
  * closing date has passed, onto the receiver's newest open one, so a link never sits dead by accident.
  */
 import "server-only";
+import crypto from "node:crypto";
 import { audit } from "./audit";
 import { now, q, USER_COLUMNS, type Collection, type User } from "./db";
 import { activeCollection, capacity, isClosed, isPaused } from "./desk";
 import { emailText } from "./email-copy";
-import { APP_URL, deliverLater, queueMail, sendMailLater } from "./mail";
+import { APP_URL, deliverLater, noLinks, queueMail, sendMailLater } from "./mail";
+import { normalEmail } from "./email-normal";
+import { allow } from "./ratelimit";
+import { hashToken } from "./token-hash";
 
 type LinkUser = Pick<User, "id" | "name" | "handle" | "plan" | "paused_at" | "pause_until" | "active_collection_id">;
 
@@ -22,9 +26,61 @@ export async function linkAccepting(u: LinkUser) {
   return !(await capacity(u)).full;
 }
 
-/** A sender asks to hear when this receiver's link reopens. Quiet about duplicates. */
-export async function requestReopenAlert(userId: number, email: string) {
-  await q.run("INSERT INTO reopen_alerts (user_id, email, created_at) VALUES (?,?,?) ON CONFLICT DO NOTHING", userId, email.trim().toLowerCase(), now());
+/** How long the "confirm it's you" link works. */
+const CONFIRM_MS = 24 * 3_600_000;
+
+/**
+ * A sender asks to hear when this receiver's link reopens. The address was only typed in, so the first email just asks
+ * it to confirm (H76): the request is armed only when that single-use link is opened. Quiet about duplicates: an
+ * address already confirmed gets nothing new; an unconfirmed one gets a fresh link (at most 3 a day). Returns the
+ * link's key when a confirmation email was queued (for tests), else null.
+ */
+export async function requestReopenAlert(userId: number, email: string): Promise<string | null> {
+  const to = normalEmail(email);
+  const token = crypto.randomBytes(24).toString("base64url");
+  const at = now();
+  const row = await q.get<{ id: number }>(
+    `INSERT INTO reopen_alerts (user_id, email, created_at, confirm_hash, confirm_expires_at) VALUES (?,?,?,?,?)
+     ON CONFLICT (user_id, email) WHERE sent_at IS NULL DO UPDATE SET confirm_hash = excluded.confirm_hash, confirm_expires_at = excluded.confirm_expires_at
+     WHERE reopen_alerts.confirmed_at IS NULL RETURNING id`,
+    userId,
+    to,
+    at,
+    hashToken(token),
+    at + CONFIRM_MS,
+  );
+  if (!row || !(await allow("reopen_confirm_email", to, 3, 24 * 3_600_000))) return null;
+  const receiver = await q.get<{ name: string }>("SELECT name FROM users WHERE id = ?", userId);
+  await sendMailLater({
+    userId: null,
+    audience: "sender",
+    to,
+    secrets: [token],
+    subject: "Confirm your FloorTest reopen alert",
+    body: [
+      "Hi,",
+      "",
+      `Someone (hopefully you) asked for one email when ${noLinks(receiver?.name ?? "a receiver")}'s FloorTest link takes music again. Confirm here:`,
+      `${APP_URL}/sent/reopen/${token}`,
+      "",
+      "The link works once, for 24 hours. If it wasn't you, ignore this email and you won't hear from us.",
+      "",
+      "— FloorTest",
+    ].join("\n"),
+  });
+  return token;
+}
+
+/** The confirmation link was opened: the request is armed. False for an unknown, used or expired link. */
+export async function confirmReopenAlert(token: string) {
+  if (!token || token.length > 64) return false;
+  const r = await q.run(
+    "UPDATE reopen_alerts SET confirmed_at = ?, confirm_hash = NULL WHERE confirm_hash = ? AND confirm_expires_at > ? AND sent_at IS NULL AND confirmed_at IS NULL",
+    now(),
+    hashToken(token),
+    now(),
+  );
+  return r.changes > 0;
 }
 
 /** How many reopen emails a receiver's own click sends (after the page has answered); the nightly run sends the rest. */
@@ -41,7 +97,7 @@ export async function sendReopenAlerts(userId: number, { inRequest = false } = {
   const u = await q.get<User>(`SELECT ${USER_COLUMNS} FROM users WHERE id = ? AND suspended_at IS NULL`, userId);
   if (!u || !(await linkAccepting(u))) return 0;
   const pending = await q.all<{ id: number; email: string }>(
-    "SELECT id, email FROM reopen_alerts WHERE user_id = ? AND sent_at IS NULL ORDER BY created_at LIMIT ?",
+    "SELECT id, email FROM reopen_alerts WHERE user_id = ? AND sent_at IS NULL AND confirmed_at IS NOT NULL ORDER BY created_at LIMIT ?",
     userId,
     inRequest ? IN_REQUEST : 200,
   );
@@ -50,7 +106,7 @@ export async function sendReopenAlerts(userId: number, { inRequest = false } = {
   for (const r of pending) {
     // Marked and queued together; the email queue retries a failed send with the same key (Batch B, 28 Oct).
     const id = await q.tx(async (db) => {
-      const claimed = await db.run("UPDATE reopen_alerts SET sent_at = ? WHERE id = ? AND sent_at IS NULL", now(), r.id);
+      const claimed = await db.run("UPDATE reopen_alerts SET sent_at = ? WHERE id = ? AND sent_at IS NULL AND confirmed_at IS NOT NULL", now(), r.id);
       return claimed.changes ? queueMail({ userId, audience: "sender", to: r.email, ...copy }, db) : null;
     });
     if (!id) continue;
@@ -62,7 +118,7 @@ export async function sendReopenAlerts(userId: number, { inRequest = false } = {
 
 /** Nightly: every receiver with pending requests whose link is open again gets them sent. */
 export async function sweepReopenAlerts() {
-  const users = await q.all<{ user_id: number }>("SELECT DISTINCT user_id FROM reopen_alerts WHERE sent_at IS NULL LIMIT 500");
+  const users = await q.all<{ user_id: number }>("SELECT DISTINCT user_id FROM reopen_alerts WHERE sent_at IS NULL AND confirmed_at IS NOT NULL LIMIT 500");
   let sent = 0;
   for (const { user_id } of users) sent += await sendReopenAlerts(user_id);
   return sent;
