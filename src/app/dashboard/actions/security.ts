@@ -3,6 +3,7 @@
 /** Security: password, other devices, two-factor and sign-in alerts. */
 import { allow } from "@/lib/ratelimit";
 import { stepUp } from "@/lib/step-up";
+import { checkSecondFactor } from "@/lib/security";
 import { passwordStrength } from "@/lib/password-strength";
 import { changePasswordTo, currentSessionHash, verifyPassword, requireRole } from "@/lib/auth";
 import { APP_URL, sendMail } from "@/lib/mail";
@@ -102,16 +103,11 @@ export async function confirmTwoFactor(code: string, password: string): Promise<
 export async function disableTwoFactor(_: SettingsState, form: FormData): Promise<SettingsState> {
   const u = await requireRole("owner");
   if (!(await allow("twofa_disable", String(u.id), 10, 3_600_000))) return { error: "Too many tries. Wait an hour and try again." };
-  const row = await q.get<{ password_hash: string; totp_secret: string | null; totp_last_step: number | null; recovery_codes: string }>(
-    "SELECT password_hash, totp_secret, totp_last_step, recovery_codes FROM users WHERE id = ?",
-    u.id,
-  );
+  const row = await q.get<{ password_hash: string }>("SELECT password_hash FROM users WHERE id = ?", u.id);
   if (!row || !(await verifyPassword(String(form.get("password") || ""), row.password_hash))) return { error: "Your password isn't right." };
-  const code = String(form.get("code") || "");
-  const ok =
-    (row.totp_secret && verifyTotp(openSecret(row.totp_secret, env.secret), code, row.totp_last_step) != null) ||
-    (JSON.parse(row.recovery_codes || "[]") as string[]).includes(hashRecovery(code));
-  if (!ok) return { error: "That code didn't work." };
+  // The same check as the sign-in step: the code's time step is recorded and a recovery code is used up, so neither
+  // can be used again.
+  if (!(await checkSecondFactor(u.id, String(form.get("code") || "").slice(0, 40)))) return { error: "That code didn't work." };
   await q.run("UPDATE users SET totp_enabled_at = NULL, totp_secret = NULL, totp_last_step = NULL, recovery_codes = '[]' WHERE id = ?", u.id);
   await audit(u.id, "two_factor_off");
   await sendMail({
