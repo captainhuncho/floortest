@@ -5,26 +5,27 @@
  */
 
 import { DeckPhone } from "@/components/DeckPhone";
+import type { editable } from "@/components/Editable";
+import { pairs, rows, type Copy } from "@/lib/content-fields";
 import { Loop } from "./Loop";
+
+/** The home page's wording (Site content) and its on-page editing helpers, from page.tsx. */
+export type HomeEd = { c: Copy<"home"> } & ReturnType<typeof editable<Copy<"home">>>;
 
 const Sample = () => <span className="stage-sample">Sample</span>;
 
 /** Under the hero: what happens after the link. The deck and the phone, with one line and three readouts. */
-export function DeckSection() {
+export function DeckSection({ c, E, panel }: HomeEd) {
   return (
     <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
       <div className="grid grid-cols-1 items-center gap-14 lg:grid-cols-[minmax(0,1fr)_440px]">
         <div>
-          <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">Cued up like a deck.</h2>
+          <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]"><E k="deck_title" /></h2>
           <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-mute">
-            Play, keep, next. On your phone in the booth or at your desk.
+            <E k="deck_intro" />
           </p>
-          <dl className="mt-10 grid max-w-xl grid-cols-3 border-y border-line">
-            {[
-              ["Order", "Oldest first"],
-              ["Listened", "30 s"],
-              ["Keep", "→ crate"],
-            ].map(([k, v], i) => (
+          <dl {...panel("deck_readouts", "Each readout: a label line, then its value. Leave a blank line between readouts. Three fit best.")} className="mt-10 grid max-w-xl grid-cols-3 border-y border-line">
+            {pairs(c.deck_readouts).map(([k, v], i) => (
               <div key={k} className={`py-4 ${i ? "border-l border-line pl-4" : ""}`}>
                 <dt className="text-[10px] uppercase tracking-[0.12em] text-faint">{k}</dt>
                 <dd className="mt-1.5 text-[15px] font-bold text-bone">{v}</dd>
@@ -61,13 +62,13 @@ function Bars({ className = "" }: { className?: string }) {
 const SIGNALS = ["Delivered", "Listened", "Downloaded", "Replied", "Played out"];
 
 /** The receiver's laptop and the sender's phone, side by side, in front of the booth neon. */
-export function TwoSides() {
+export function TwoSides({ E }: HomeEd) {
   return (
     <section className="relative overflow-hidden border-y border-line bg-ink-2">
-      <p aria-hidden className="stage-neon">send me music</p>
+      <p aria-hidden className="stage-neon"><E k="desk_neon" /></p>
       <div className="relative mx-auto max-w-6xl px-4 py-20 sm:px-6">
-        <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">Two sides of one desk.</h2>
-        <p className="mt-4 max-w-xl text-sm text-mute">You decide. The sender knows what happened, and nothing more.</p>
+        <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]"><E k="desk_title" /></h2>
+        <p className="mt-4 max-w-xl text-sm text-mute"><E k="desk_intro" /></p>
         <div className="mt-12 grid grid-cols-1 items-end gap-10 lg:grid-cols-[minmax(0,1fr)_260px]">
           <figure className="stage-fill min-w-0">
             <div className="rounded-t-xl border border-line-2 bg-ink p-2 pb-0">
@@ -96,11 +97,11 @@ export function TwoSides() {
               </div>
             </div>
             <div className="mx-[-3%] h-3 rounded-b-xl border border-line-2 bg-ink-3" />
-            <figcaption className="mt-4 text-xs text-faint">The DJ&apos;s desk</figcaption>
+            <figcaption className="mt-4 text-xs text-faint"><E k="desk_caption_dj" /></figcaption>
           </figure>
           <figure className="stage-fill stage-fill-late mx-auto w-full max-w-[300px]">
             <Loop name="m2-receipt-listened" label="The sender's receipt changes from waiting to Sample DJ listened" className="rounded-[1.6rem]" />
-            <figcaption className="mt-4 text-center text-xs text-faint">The sender&apos;s receipt</figcaption>
+            <figcaption className="mt-4 text-center text-xs text-faint"><E k="desk_caption_sender" /></figcaption>
           </figure>
         </div>
       </div>
@@ -162,20 +163,13 @@ const ART: React.ReactNode[] = [
   </ol>,
 ];
 
-const LOG: [string, string, string | null, string | null][] = [
-  ["Tue 18:00", "Callout open", null, "Reads your brief"],
-  ["Wed 21:40", "Lands in Up next", null, "Delivered"],
-  ["Thu 00:12", "30 seconds in", "Real playback only", "Listened"],
-  ["Thu 00:13", "Keep", null, null],
-  ["Sat 19:30", "Into the crate", "Rekordbox XML and M3U8", "Downloaded"],
-  ["Sun 01:12", "On the floor", null, "Played out"],
-];
-
 /** The features as one track's week, set out like a set log: what happens on the desk, and what crosses to the sender. */
-export function SetLog() {
+export function SetLog({ c, E, panel }: HomeEd) {
+  // The rows come from Site content ("time | what | detail | sender"); each keeps its picture by position.
+  const LOG = rows(c.log_rows);
   return (
     <section className="mx-auto w-full min-w-0 max-w-6xl px-4 py-20 sm:px-6">
-      <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">Sent during the week. Played during the weekend.</h2>
+      <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]"><E k="log_title" /></h2>
       <div className="mt-10 border-t border-line">
         <p className="flex items-center justify-between gap-4 py-4 text-xs">
           <span className="tnum min-w-0 truncate text-mute">Nightbus (demo) · Sample Artist · 122 BPM</span>
@@ -187,9 +181,9 @@ export function SetLog() {
           <span className="hidden lg:block" />
           <span>The sender sees</span>
         </div>
-        <ol>
+        <ol {...panel("log_rows", "One row per line: time | what happens | small detail | what the sender sees. Leave a part empty to skip it. Each row keeps its picture by position (six pictures).")}>
           {LOG.map(([time, what, detail, sender], i) => (
-            <li key={time} className="stage-log grid grid-cols-[5.5rem_minmax(0,1fr)] items-center gap-x-4 gap-y-3 border-b border-line py-5 sm:grid-cols-[7rem_minmax(0,1fr)_14rem] sm:gap-6 lg:grid-cols-[7rem_minmax(0,1fr)_18rem_12rem]">
+            <li key={`${i}-${time}`} className="stage-log grid grid-cols-[5.5rem_minmax(0,1fr)] items-center gap-x-4 gap-y-3 border-b border-line py-5 sm:grid-cols-[7rem_minmax(0,1fr)_14rem] sm:gap-6 lg:grid-cols-[7rem_minmax(0,1fr)_18rem_12rem]">
               <span className="tnum col-start-1 row-start-1 self-start pt-0.5 text-xs text-faint">{time}</span>
               <span className="col-start-2 row-start-1 min-w-0 self-start">
                 <span className="block text-base font-bold text-bone">{what}</span>
@@ -200,7 +194,7 @@ export function SetLog() {
               </span>
               <span className={`col-start-2 row-start-3 text-xs sm:col-start-3 sm:row-start-1 sm:self-start sm:pt-1 lg:col-start-4 lg:self-center lg:pt-0 ${sender ? (i === LOG.length - 1 ? "text-lime" : "text-bone") : "text-faint"}`}>
                 <span className="mr-2 text-faint sm:hidden">Sender:</span>
-                {sender ?? "Nothing. Your call stays private."}
+                {sender ?? <E k="log_private" />}
               </span>
             </li>
           ))}

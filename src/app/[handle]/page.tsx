@@ -117,7 +117,7 @@ export default async function ReceiverPage({ params }: Props) {
             ) : (
               <span aria-hidden className="size-1.5 rounded-full bg-(--color-lime)" />
             )}
-            <span className="font-medium text-mute">Receiving for</span> {collection.name}
+            <span className="font-medium text-mute"><E k="receiving_for" /></span> {collection.name}
           </p>
         )}
         <ProfileLinks links={readLinks(receiver.links)} size={20} className="mt-1 justify-center" />
@@ -148,9 +148,9 @@ export default async function ReceiverPage({ params }: Props) {
       <footer className="mt-auto flex flex-col items-center gap-3 pt-4">
         {receiver.identity_status !== "verified" && (
           <p className="text-center text-[12px] font-medium leading-[18px] text-dim">
-            Not sure this is really {receiver.name}?{" "}
+            <span {...panel("impersonation_prompt", "Keep {receiver} as it is: the page fills in the receiver's name.")}>{fill(c.impersonation_prompt, vars)}</span>{" "}
             <a href={`/contact?report=${receiver.handle}`} className="py-3 underline hover:text-bone">
-              Report impersonation
+              <E k="impersonation_link" />
             </a>
           </p>
         )}
