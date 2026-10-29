@@ -24,7 +24,7 @@ export const SWITCHES = {
   },
   open_signup: {
     label: "Open sign-up",
-    description: "Anyone can create an account. Off means an invite code is needed (the beta).",
+    description: "Anyone can create an account. Off (the beta): only a personal invite sent from Ops to that exact email opens an account; shared and referral codes don't.",
     initial: false,
   },
   billing: {

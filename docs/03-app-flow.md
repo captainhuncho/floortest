@@ -11,13 +11,13 @@ Nothing about FloorTest is public before launch (legal pages too); the gate show
 
 ## Receiver: sign-up
 ```
-/signup ─┬─ form (invite code*, type, names, username, email, password, Terms; a missing field is pointed at, one at a time)
+/signup ─┬─ form (type, names, username, email, password, Terms; a missing field is pointed at, one at a time)
          │     ├─ ok ──► /dashboard/floor?welcome=1 (+ confirm-email email)
          │     └─ email already used ──► neutral error; owner gets a quiet email
          └─ Sign up with Google ──► Google ──► /api/auth/google/callback
-                 ├─ no account ──► /signup/google (invite code*, details, Terms) ──► Floor
+                 ├─ no account ──► /signup/google (details, Terms)* ──► Floor
                  └─ account exists ──► sign-in path below
-* invite code only while switch open_signup is off; "No code? Join the waitlist" ──► /#waitlist
+* while switch open_signup is off, only a personal Ops invite to that exact email opens an account (no code to type; the invite link's code rides along); "No invite? Join the waitlist" ──► /#waitlist
 ```
 A new desk has no collection (owner, 15 Oct), and its link is open anyway: tracks sent to it land straight in the Review Queue, unsorted (`tracks.collection_id` empty; intake only refuses a paused link, a closed or full collection, or a full desk). The Floor's Your link says "Sends tracks to your Review Queue", the checklist suggests a collection for the callout (a brief and a closing date), and Account's routing menu shows "Review Queue (no collection)". Making a collection ("Send new tracks here now", on by default) points the link at it; from then on a closed collection stops uploads as before.
 
@@ -37,7 +37,7 @@ A collection shared with your account (/c/a.<n>) remembers itself and is where s
 
 ## Receiver: daily loop
 ```
-Floor (waiting count ─► Start with the oldest; Up next rows open the track) ─► Queue (phones: list first; a track opens with the rail docked at the bottom) ─► play ─► Keep (K) ──► Prepare ─► Download kept ─► name folder ─► ZIP
+Floor (waiting count ─► Start with the oldest; Up next rows open the track) ─► Queue (phones: the open track as a card above the list, ‹ › or a sideways swipe to the next one) ─► play ─► Keep (K) ──► Prepare ─► Download kept ─► name folder ─► ZIP
                               ├─ Not for me (X)    └─ Files only · Start a new batch (confirm) · Played it out (any day)
                               └─ Reply (R) ──► sender email
 Review panel: title · one meta line · tags (sets / release / AI / duplicate / deleting soon) ─► waveform (1–4 jump) ─► Keep · Not for me · Reply ─► next track plays

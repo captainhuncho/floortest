@@ -32,8 +32,8 @@ export default async function GoogleSignup() {
         No FloorTest account uses this Google email yet. Fill in the rest to claim your link.
         {inviteOnly && (
           <>
-            {" "}FloorTest is invite-only during the beta.{" "}
-            <Link href="/#waitlist" className="underline underline-offset-4 hover:text-bone">No code? Join the waitlist</Link>
+            {" "}FloorTest is invite-only during the beta: your invite must have gone to this email.{" "}
+            <Link href="/#waitlist" className="underline underline-offset-4 hover:text-bone">No invite? Join the waitlist</Link>
           </>
         )}
       </p>
@@ -51,7 +51,6 @@ export default async function GoogleSignup() {
         hidden={inv && team?.id === inv.id ? { team: teamSecret } : undefined}
         submit="Create my link"
         fields={[
-          ...(inviteOnly ? [{ name: "invite", label: "Invite code", placeholder: "From your invite", autoComplete: "off" }] : []),
           { name: "kind", label: "What best describes you?", choices: TYPE_CHOICES },
           { name: "first_name", label: "First name", autoComplete: "given-name", defaultValue: who.first || undefined },
           { name: "last_name", label: "Surname", autoComplete: "family-name", defaultValue: who.last || undefined, hint: "Kept private: for your account, billing and receipts. Never shown on your page." },

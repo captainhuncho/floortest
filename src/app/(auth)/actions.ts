@@ -28,6 +28,7 @@ import { pinGoogle } from "@/lib/google-link";
 import { accountEmailAllowed } from "@/lib/email-budget";
 import { HUMAN_CHECK_AFTER, HUMAN_MESSAGE, humanCheck, recentFailures } from "@/lib/human-check";
 import { breachedError } from "@/lib/breached";
+import { resolveInvite } from "@/lib/invites";
 import { revokeAllSessions } from "@/lib/sessions";
 
 const CHALLENGE = "floortest_2fa";
@@ -61,21 +62,6 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Keeps "no such account" and "wrong password" equally slow, so timing doesn't reveal which emails exist.
 const DUMMY_HASH = hashPassword("timing-equaliser"); // a promise, made once; awaited where a missing account is checked
 
-/** Invite codes: an existing user's referral code, or one of BETA_INVITE_CODES. */
-async function resolveInvite(raw: string, email = "") {
-  const code = raw.trim().toUpperCase().slice(0, 32);
-  if (!code) return { valid: false, referrerId: null as number | null, code };
-  const referrer = await q.get<{ id: number }>("SELECT id FROM users WHERE referral_code = ?", code);
-  if (referrer) return { valid: true, referrerId: referrer.id, code };
-  // Codes created in the admin area, each with its own cap and a revoke switch.
-  const inv = await q.get<{ max_uses: number; email: string | null }>("SELECT max_uses, email FROM invites WHERE code = ? AND revoked_at IS NULL", code);
-  if (inv?.email && inv.email !== email.trim().toLowerCase()) return { valid: false, referrerId: null as number | null, code };
-  if (inv) return { valid: (await q.count("SELECT COUNT(*) AS n FROM users WHERE invite_code = ?", code)) < inv.max_uses, referrerId: null as number | null, code };
-  // Beta codes are shared, so each one only opens a limited number of accounts.
-  const valid = env.inviteCodes.includes(code) && (await q.count("SELECT COUNT(*) AS n FROM users WHERE invite_code = ?", code)) < env.inviteLimit;
-  return { valid, referrerId: null as number | null, code };
-}
-
 const validTz = (tz: string) => {
   try {
     new Intl.DateTimeFormat("en", { timeZone: tz });
@@ -96,12 +82,14 @@ type NewAccount = { email: string; firstName: string; lastName: string; handle: 
  */
 async function createAccount(form: FormData, a: NewAccount, opts: { googleEmail?: boolean } = {}): Promise<{ id: number } | { error: string }> {
   if (form.get("agree") !== "on") return { error: "Please confirm you're 18 or over and agree to the Terms to create an account." };
-  const invite = await resolveInvite(String(form.get("ref") || form.get("invite") || ""), a.email);
+  const open = await switchOn("open_signup");
+  // Closed: only a personal Ops invite to this exact email opens an account (src/lib/invites.ts).
+  const invite = await resolveInvite(String(form.get("ref") || form.get("invite") || ""), a.email, open);
   // A team invite sent to this email also opens sign-up during the beta (and proves the email: it came from the link).
   // With Google the email is already proven, so a live invite sent to it counts even without the invite link here.
   const team = (await teamInviteFor(form, a.email)) ?? (opts.googleEmail ? await inviteForEmail(a.email) : undefined);
   if (team) a.verified = true;
-  if (!(await switchOn("open_signup")) && !invite.valid && !team) return { error: "That invite code is not valid, has been used, or was sent to a different email. Use the email your invite went to." };
+  if (!open && !invite.valid && !team) return { error: "FloorTest is invite-only during the beta. Sign up with the email your invite went to." };
   if (!a.firstName || !a.lastName || !a.email || !a.handle) return { error: "Fill in your first name, surname, username and email." };
   if (!EMAIL.test(a.email)) return { error: "Enter a valid email." };
   if (!/^[a-z0-9][a-z0-9-_]{1,29}$/.test(a.handle)) return { error: "Link names use 2–30 letters, numbers, - or _." };

@@ -4,36 +4,10 @@
  * (globals.css, "Home stage"); every element's resting style is its final frame, so reduced motion shows the still.
  */
 
+import { DeckPhone } from "@/components/DeckPhone";
 import { Loop } from "./Loop";
 
 const Sample = () => <span className="stage-sample">Sample</span>;
-
-/** A CDJ jog wheel from above: the platter turns, the crest stays still in the centre cap, one cue light. */
-export function JogWheel() {
-  return (
-    <div className="relative mx-auto w-full max-w-[440px]" aria-hidden>
-      <div className="stage-deck relative aspect-square rounded-[2rem] border border-line bg-ink-2 p-[9%]">
-        <span className="stage-readout left-[7%] top-[5%]">122.0 BPM</span>
-        <span className="stage-readout right-[7%] top-[5%]">−03:41</span>
-        <span className="absolute bottom-[4.2%] left-[7%] flex items-center gap-2.5">
-          <span className="stage-cue" />
-          <span className="text-[10px] tracking-[0.12em] text-faint">CUE</span>
-        </span>
-        <div className="stage-platter relative size-full overflow-hidden rounded-full">
-          <div className="stage-spin absolute inset-0 rounded-full">
-            <span className="stage-ticks absolute inset-0 rounded-full" />
-            <span className="stage-marker" />
-          </div>
-          <div className="stage-cap absolute inset-[31%] grid place-items-center rounded-full">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img draggable={false} src="/brand/crest.svg" alt="" className="w-[46%] opacity-90 grayscale" />
-          </div>
-        </div>
-      </div>
-      <PhoneQueue />
-    </div>
-  );
-}
 
 /** Under the hero: what happens after the link. The deck and the phone, with one line and three readouts. */
 export function DeckSection() {
@@ -59,7 +33,7 @@ export function DeckSection() {
           </dl>
         </div>
         <div className="pb-10">
-          <JogWheel />
+          <DeckPhone />
         </div>
       </div>
     </section>
@@ -71,15 +45,6 @@ const QUEUE = [
   ["Lekki Run", "Sample Producer", "113", "5:40"],
   ["Half Light", "Sample Duo", "124", "7:03"],
 ];
-
-/** The phone rising beside the deck: the Review Queue, first row playing. */
-function PhoneQueue() {
-  return (
-    <div className="stage-rise absolute -bottom-8 -right-2 w-[46%] min-w-[168px] rounded-[1.6rem] border border-line-2 bg-ink p-2 shadow-pop sm:-right-6">
-      <Loop name="m3-keep" label="A track swiped right to Keep, then Kept in the Friday crate" className="rounded-[1.2rem] border border-line" />
-    </div>
-  );
-}
 
 /** A small waveform: fixed heights, so the server and the browser draw the same thing. */
 function Bars({ className = "" }: { className?: string }) {
