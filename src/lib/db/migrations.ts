@@ -1890,4 +1890,10 @@ alter table two_step_tickets enable row level security;`,
     sql: `alter table tracks add column if not exists receipt_due_at bigint;
 create index if not exists tracks_receipt_due on tracks(receipt_due_at) where receipt_due_at is not null;`,
   },
+  {
+    // Account emails (sign-in codes, resets, email checks, email changes) are marked when queued (lib/mail): only they may
+    // use the last MAIL_RESERVED_SHARE of the day's send limit, so receipts and notifications can't starve them.
+    id: "0114_outbox_reserved",
+    sql: `alter table outbox add column if not exists reserved int not null default 0 check (reserved in (0, 1));`,
+  },
 ];

@@ -277,6 +277,7 @@ export async function requestPasswordReset(_: FormState, form: FormData): Promis
   if (user && (await accountEmailAllowed())) {
     const token = await createPasswordReset(user.id);
     await sendMail({
+      reserved: true,
       userId: user.id,
       audience: "receiver",
       to: email,
@@ -329,6 +330,7 @@ export async function requestLoginCode(_: FormState, form: FormData): Promise<Fo
       now(),
     );
     await sendMail({
+      reserved: true,
       userId: user.id,
       audience: "receiver",
       to: email,
@@ -380,6 +382,7 @@ export async function verifyLoginCode(_: FormState, form: FormData): Promise<For
     const u = await q.get<{ email: string; name: string }>("SELECT email, name FROM users WHERE id = ?", user.id);
     if (u)
       await sendMail({
+        reserved: true,
         userId: user.id,
         audience: "receiver",
         to: u.email,

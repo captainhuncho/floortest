@@ -11,6 +11,12 @@ export const MAIL_LIMITS = {
 };
 /** Warn at this share of either limit. */
 export const MAIL_WARN_AT = 0.8;
+/**
+ * The share of the daily limit kept for account email (sign-in codes, resets, email checks and email changes): every
+ * other email stops once the rest of the day is used. MAIL_RESERVED_SHARE, 0.1 to 0.9, default 0.3 (the same setting the
+ * public-form budget in lib/email-budget reads, so the two agree).
+ */
+export const MAIL_RESERVED_SHARE = Math.min(0.9, Math.max(0.1, Number(process.env.MAIL_RESERVED_SHARE) || 0.3));
 
 /** Emails actually handed to Resend today (UTC) and this calendar month, against the plan's caps. */
 export async function mailUsage(at = Date.now()) {

@@ -84,6 +84,7 @@ export async function sendEmailVerification(userId: number) {
   );
   if (!u || !(await accountEmailAllowed())) return false;
   await sendMail({
+    reserved: true,
     userId,
     audience: "receiver",
     to: u.email,
