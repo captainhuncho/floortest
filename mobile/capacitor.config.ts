@@ -7,7 +7,7 @@ import { appSite } from "./scripts/site.ts";
  * FLOORTEST_URL picks the site at sync time: floortest.app for real builds, or your local copy while prototyping (with
  * FLOORTEST_DEV=1; see scripts/site.ts).
  */
-const { site, hosts } = appSite(process.env);
+const { site, hosts, release } = appSite(process.env);
 // The app opens on the desk (signed-out people are sent to log in), never the marketing home page.
 const url = `${site}/dashboard/floor`;
 
@@ -28,7 +28,10 @@ const config: CapacitorConfig = {
     // "never": the status bar keeps its own strip, so an automatic inset only left a gap where the page showed through above the header.
     contentInset: "never",
     backgroundColor: "#10110f",
-    limitsNavigationsToAppBoundDomains: false,
+    // A release build: the web view itself only goes to the app-bound domains in ios/App/App/Info.plist
+    // (WKAppBoundDomains: floortest.app), on top of allowNavigation. Off for a dev build (FLOORTEST_DEV=1), whose site
+    // is another host. The Info.plist list is the same for every build (Capacitor can't vary it).
+    limitsNavigationsToAppBoundDomains: release,
   },
   plugins: {
     SplashScreen: { launchShowDuration: 600, backgroundColor: "#10110f", showSpinner: false },
