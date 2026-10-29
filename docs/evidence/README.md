@@ -1,12 +1,12 @@
 # Testing evidence
 
-One report per production release (working rule 13, principle 9). Read the latest before deciding the next changes. A release whose whole change is inside this folder gets no report of its own (any other file, even docs or tests, still counts): the next release's report lists it in one line (PR, merge commit, deployment).
+One report per production release (working rule 13, principle 9), written by the release desk inside the release PR, so it ships with the release. The next day's report adds the previous release's merge commit and deployment. Read the latest before deciding the next changes. A release whose whole change is inside this folder gets no report of its own (any other file, even docs or tests, still counts): the next release's report lists it in one line (PR, merge commit, deployment).
 
-**File name:** `YYYY-MM-DD-<short name>-<commit>.md`, the commit being the one production runs. Screenshots go beside it as `YYYY-MM-DD-<short name>-<what>.png` (or `.jpg`), under 300 KB each.
+**File name:** `YYYY-MM-DD-<short name>-<commit>.md`, the commit being the release branch's checked head (the merge commit doesn't exist yet when the report is written). Screenshots go beside it as `YYYY-MM-DD-<short name>-<what>.png` (or `.jpg`), under 300 KB each.
 
 **Each report has, in this order:**
 
-1. **Build:** the production commit, the preview commit if different, and the deployment ID.
+1. **Build:** the release branch head and its preview deployment; then the previous release's merge commit and production deployment, now known.
 2. **What shipped:** one line per change, with its commit.
 3. **Checks:** a table; every row is `passed`, `failed` or `blocked` (with why). Name the build each check ran on.
 4. **Status:** what is built, tested, live and still unfinished, each said plainly.

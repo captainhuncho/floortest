@@ -19,7 +19,7 @@ Same format as the other panels: one or two lines per voice, one recommendation,
 ## Standing rules (from the owner, kept here in one place)
 
 1. New work goes to `mobile-next`; the owner reviews the Vercel preview link on the phone.
-2. Only the session the owner says "ship it" to merges into `main`. A ship branch starts from `main`, never from `mobile-next`.
+2. One release desk (owner, 29 Oct): only the desk session merges into `main`, writes the release report and merges `main` into `mobile-next`. The owner says "ship it" and "roll back" to the desk. Other sessions never merge into `main` and never open a PR from `mobile-next` into `main`; when a PR is ready they send the desk one line: "ready: PR, head commit, checks passed". A ship branch starts from `main`, never from `mobile-next`.
 3. Fixes that must reach production are built on a branch from `main`, then merged into `mobile-next`.
 4. Ship: merge the release PR into `main` on GitHub (never push `main`; steps in the `owner-ship` skill), wait ~60 s, merge `main` into `mobile-next` and push `mobile-next`, confirm the deploy.
 5. Checks before every push; e2e when sending, review, downloads, receipts or auth change.
@@ -43,9 +43,10 @@ Same format as the other panels: one or two lines per voice, one recommendation,
     11. **Deliver substantial improvements:** one completion checklist (`docs/06-plan.md`); group related work into meaningful releases rather than endless small updates; fix defects found on the way; approval-dependent connections stay off until authorised.
     12. **Publish safely and report honestly:** verify the published build before calling anything complete; keep a compatible rollback path; say plainly what's built, tested, live and unfinished; short, accurate, easy reports.
 13. How principles 9–11 run in practice (owner, 15 Oct: "all three, optimisation and efficiency is key"):
-    - **Evidence:** every ship gets one report in `docs/evidence/` (format in its README): the exact commit, each check marked passed, failed or blocked, and what's built, tested, live and unfinished. Screenshots sit beside it, small (PNG or JPG, under 300 KB each). A ship whose whole change is inside `docs/evidence/` gets no report of its own (owner, 28 Oct; any other file, even docs or tests, still counts as a release): the next release's report lists it in one line (PR, merge commit, deployment).
+    - **Evidence:** every ship gets one report in `docs/evidence/` (format in its README), written by the desk inside the release PR itself, so no report needs a PR of its own; the next day's release adds the merge commit and deployment of the one before. The report holds the exact commit, each check marked passed, failed or blocked, and what's built, tested, live and unfinished. Screenshots sit beside it, small (PNG or JPG, under 300 KB each). A ship whose whole change is inside `docs/evidence/` gets no report of its own (owner, 28 Oct; any other file, even docs or tests, still counts as a release): the next release's report lists it in one line (PR, merge commit, deployment).
     - **Cloud first:** new work starts in a cloud session; this Mac is for browser and device checks (simulator, the owner's phone, local data) and for work that needs local tools. A session that can't reach the internet says so rather than guessing.
-    - **Grouped releases:** at most one production release a day, grouped from what's reviewed on preview and named in the plan. Fixes for security, data loss or the site being down ship any time. Every release still follows rules 2–5, 8–10 and the session check-in before `main` is touched.
+    - **Grouped releases:** one production release a day at 18:00 the owner's time (owner, 29 Oct). The desk builds one release branch from `main` with every PR sent to it as ready and named in the plan, runs the checks once on that branch (e2e when sending, review, downloads, receipts or auth change), merges it on the owner's "ship it" and confirms the deploy. Work that misses 18:00 waits for the next day. Fixes for security, data loss or the site being down ship any time, still through the desk. Every release follows rules 2–5 and 8–10.
+    - **Three sessions (owner, 29 Oct):** **Desk** (releases, reports, `mobile-next`, coordination), **Build** (product and design: screens, copy, try-its on `mobile-next`) and **Safety** (security, code scanning, backend, data). A new session joins one of the three; each owns its own branches, and work that crosses areas goes through the desk.
 14. The owner's skill areas (15 Oct), how each is done here, and the installed skills that carry it. Load the skill before doing that kind of work.
 
     | Area | How it's done here | Skills |
@@ -184,6 +185,7 @@ State on 15 Oct: production has almost everything. Live: sending, review (phone 
 
 ## Decision log
 
+- 29 Oct: one release desk merges into `main`; three sessions (Desk, Build, Safety) instead of six; one release a day at 18:00 with its report inside the release PR (owner, after a day of nine production deploys, about fifty ship-check messages and two stray `mobile-next` PRs into `main`, #55 and #59).
 - 28 Oct: a ship whose whole change is inside `docs/evidence/` gets no report of its own; the next release's report lists it (owner, after #43, #45 and #46 each needed one).
 - 15 Oct: the owner's twelve working principles adopted (rule 12), with evidence reports, cloud-first sessions and at most one grouped production release a day (rule 13); urgent fixes excepted.
 
