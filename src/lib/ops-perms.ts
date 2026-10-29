@@ -148,6 +148,8 @@ export const ACTION_NEEDS: Record<string, Need> = {
   revokeInvite: "invites",
   inviteByEmail: "invites",
   resendInvite: "invites",
+  restoreInvite: "invites",
+  deleteInvite: "invites",
   approvePlanRequest: "planRequests",
   declinePlanRequest: "planRequests",
   inviteFromWaitlist: "waitlist",
