@@ -33,14 +33,21 @@ export async function sendCode(email: string, ip: string) {
     email, hash(email, code), now() + CODE_TTL, now(),
   );
   if (!(await accountEmailAllowed())) throw new CodeError("We can't send codes right now. Please try again in a few minutes.");
-  await sendMail({
+  const mail: Parameters<typeof sendMail>[0] = {
     userId: null,
     audience: "sender",
     to: email,
     secrets: [code],
     subject: `${code} is your FloorTest code`,
     body: `Your code to confirm your email and send your music:\n\n${code}\n\nIt works for 10 minutes. If you didn't try to send music on FloorTest, ignore this email.\n\n— FloorTest`,
-  });
+  };
+  // The sender is waiting on this screen, so a code that didn't go must say so (a report on 29 Oct: "no code came").
+  // One more try for a passing failure; the same code both times, so a late first email still works.
+  let status = await sendMail(mail);
+  if (status.startsWith("failed")) status = await sendMail(mail);
+  if (status.startsWith("skipped"))
+    throw new CodeError("Emails to this address bounced before, so the code can't reach it. Check the address, or use another one.");
+  if (status.startsWith("failed")) throw new CodeError("The code email didn't go through. Check the address, then try again in a minute.");
 }
 
 /** A resend only follows a code this email asked for recently (so it can't skip the bot check). */
