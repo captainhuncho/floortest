@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { currentStep, totpCode } from "../src/lib/totp";
-import { expect, submitLogin, test } from "./fixtures";
+import { expect, logIn, submitLogin, test, TEST_PASSWORD } from "./fixtures";
 
 /** Changes to how an account signs in need more than a session: a borrowed or stolen cookie alone can't lock the owner out. */
 
@@ -21,11 +21,24 @@ async function signUp(page: Page, prefix: string) {
   return `${prefix}+${stamp}@example.test`;
 }
 
-test("turning on two-factor needs the password, not just a session", async ({ page }) => {
+test("turning on two-factor needs a confirmed email and the password, not just a session", async ({ page, context }) => {
+  // A new account's email isn't confirmed: whoever made it may not own the address, so two-factor waits.
   await signUp(page, "tfa");
   await page.goto("/dashboard/settings/security");
   await page.getByRole("button", { name: "Set up" }).click();
-  const key = (await page.locator("p.font-mono").first().innerText()).replace(/\s/g, "");
+  let key = (await page.locator("p.font-mono").first().innerText()).replace(/\s/g, "");
+  await page.getByLabel("6-digit code").fill(totpCode(key, currentStep()));
+  await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
+  await page.getByRole("button", { name: "Turn on" }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "Confirm your email first" })).toBeVisible();
+  await expect(page.getByText("Save your recovery codes")).toHaveCount(0);
+
+  // A confirmed account turns it on, but only with its password.
+  await context.clearCookies();
+  await logIn(page, "tfa@floortest.test");
+  await page.goto("/dashboard/settings/security");
+  await page.getByRole("button", { name: "Set up" }).click();
+  key = (await page.locator("p.font-mono").first().innerText()).replace(/\s/g, "");
   const code = page.getByLabel("6-digit code");
   const password = page.getByLabel("Password", { exact: true });
   const turnOn = page.getByRole("button", { name: "Turn on" });
@@ -37,7 +50,7 @@ test("turning on two-factor needs the password, not just a session", async ({ pa
   await expect(page.getByRole("alert").filter({ hasText: "password isn't right" })).toBeVisible();
   await expect(page.getByText("Save your recovery codes")).toHaveCount(0);
 
-  await password.fill(PASSWORD);
+  await password.fill(TEST_PASSWORD);
   await turnOn.click();
   await expect(page.getByText("Save your recovery codes")).toBeVisible();
 });

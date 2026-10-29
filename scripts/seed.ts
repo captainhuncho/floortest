@@ -114,8 +114,8 @@ async function main() {
     await db.run("UPDATE collections SET allow_sharing = 1 WHERE id = ?", villagers);
     // Two listeners with confirmed emails (test-only accounts): one the owner adds, one who has to ask; and a confirmed
     // sender, since a new account can't send until its email is confirmed; and a confirmed account of its own for the
-    // passkey tests (a passkey needs a confirmed email).
-    for (const [email, name, handle] of [["listener@floortest.test", "Lena Listener", "lena"], ["stranger@floortest.test", "Sam Stranger", "samx"], ["sender@floortest.test", "Eddie Tester", "eddie"], ["keys@floortest.test", "Kit Keys", "kitkeys"]])
+    // passkey tests and one for the two-factor test (a passkey or two-factor needs a confirmed email).
+    for (const [email, name, handle] of [["listener@floortest.test", "Lena Listener", "lena"], ["stranger@floortest.test", "Sam Stranger", "samx"], ["sender@floortest.test", "Eddie Tester", "eddie"], ["keys@floortest.test", "Kit Keys", "kitkeys"], ["tfa@floortest.test", "Tess Twostep", "tesstfa"]])
       await db.run(
         "INSERT INTO users (email, password_hash, name, handle, plan, tz, email_verified_at, created_at) VALUES (?,?,?,?,?,?,?,?)",
         email,
