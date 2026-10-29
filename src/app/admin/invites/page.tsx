@@ -2,7 +2,8 @@ import { requireAdmin } from "@/lib/admin";
 import { ConfirmButton } from "../AdminUi";
 import { q } from "@/lib/db";
 import { env } from "@/lib/env";
-import { createInvite, inviteByEmail, resendInvite, revokeInvite } from "../actions";
+import { GATE_CODE_MIN_LENGTH } from "@/lib/invites";
+import { createInvite, deleteInvite, inviteByEmail, resendInvite, restoreInvite, revokeInvite } from "../actions";
 
 export default async function Invites({ searchParams }: { searchParams: Promise<{ sent?: string; skipped?: string }> }) {
   await requireAdmin("invites");
@@ -17,8 +18,10 @@ export default async function Invites({ searchParams }: { searchParams: Promise<
   const legacy = await Promise.all(
     env.inviteCodes.map(async (code) => ({ code, used: await q.count("SELECT COUNT(*) AS n FROM users WHERE invite_code = ?", code) })),
   );
-  const personal = rows.filter((r) => r.email);
-  const shared = rows.filter((r) => !r.email);
+  // Revoked invites (cancelled by hand, or swapped for a new code by Resend) move to their own list under each table.
+  const personal = rows.filter((r) => r.email && !r.revoked_at);
+  const shared = rows.filter((r) => !r.email && !r.revoked_at);
+  const revoked = rows.filter((r) => r.revoked_at);
 
   return (
     <div className="space-y-10">
@@ -56,12 +59,10 @@ export default async function Invites({ searchParams }: { searchParams: Promise<
               </thead>
               <tbody className="divide-y divide-line">
                 {personal.map((r) => (
-                  <tr key={r.code} className={r.revoked_at ? "text-mute" : ""}>
+                  <tr key={r.code}>
                     <td className="px-4 py-3">{r.email}</td>
                     <td className="px-4 py-3">
-                      {r.revoked_at ? (
-                        <span className="chip border-line">Revoked</span>
-                      ) : r.used ? (
+                      {r.used ? (
                         <span className="chip border-lime/50 text-lime">Joined @{r.joined}</span>
                       ) : (
                         <span className="chip border-line text-mute">Pending</span>
@@ -70,7 +71,7 @@ export default async function Invites({ searchParams }: { searchParams: Promise<
                     <td className="px-4 py-3 text-mute">{r.code}</td>
                     <td className="px-4 py-3 text-mute">{new Date(r.sent_at ?? r.created_at).toLocaleDateString("en-GB")}</td>
                     <td className="space-x-3 whitespace-nowrap px-4 py-3 text-right">
-                      {!r.revoked_at && !r.used && (
+                      {!r.used && (
                         <>
                           <ConfirmButton action={resendInvite.bind(null, r.code)} message={`Email the invite to ${r.email} again?`} className="text-sm text-mute hover:text-bone">
                             Resend
@@ -116,17 +117,15 @@ export default async function Invites({ searchParams }: { searchParams: Promise<
             </thead>
             <tbody className="divide-y divide-line">
               {shared.map((r) => (
-                <tr key={r.code} className={r.revoked_at ? "text-mute" : ""}>
-                  <td className="px-4 py-3">{r.code}{r.revoked_at && <span className="chip ml-2 border-line">Revoked</span>}</td>
+                <tr key={r.code}>
+                  <td className="px-4 py-3">{r.code}</td>
                   <td className="px-4 py-3 tnum">{r.used} / {r.max_uses}</td>
                   <td className="px-4 py-3">{r.note}</td>
                   <td className="px-4 py-3 text-mute">{new Date(r.created_at).toLocaleDateString("en-GB")}</td>
                   <td className="px-4 py-3 text-right">
-                    {!r.revoked_at && (
-                      <ConfirmButton action={revokeInvite.bind(null, r.code)} message={`Revoke ${r.code}? Nobody new can sign up with it.`} className="text-sm text-danger hover:underline">
-                        Revoke
-                      </ConfirmButton>
-                    )}
+                    <ConfirmButton action={revokeInvite.bind(null, r.code)} message={`Revoke ${r.code}? Nobody new can sign up with it.`} className="text-sm text-danger hover:underline">
+                      Revoke
+                    </ConfirmButton>
                   </td>
                 </tr>
               ))}
@@ -144,6 +143,53 @@ export default async function Invites({ searchParams }: { searchParams: Promise<
           {!shared.length && !legacy.length && <p className="p-6 text-mute">No shared codes yet.</p>}
         </div>
       </section>
+
+      {revoked.length > 0 && (
+        <details className="group rounded-md border border-line">
+          <summary className="flex min-h-11 cursor-pointer items-center justify-between px-5 py-3 text-sm font-semibold">
+            Revoked ({revoked.length})
+            <span className="text-mute group-open:hidden">Show</span>
+            <span className="hidden text-mute group-open:inline">Hide</span>
+          </summary>
+          <p className="px-5 pb-3 text-sm text-mute">Cancelled invites, and old codes Resend replaced with a new one. They can&apos;t open an account or the coming-soon page. Restore one to make it work again (not if that email already has an account or another invite waiting), or delete it for good with its invite emails.</p>
+          <div className="overflow-x-auto border-t border-line">
+            <table className="w-full text-left text-sm text-mute">
+              <thead className="border-b border-line">
+                <tr>{["Email or note", "Code", "Revoked", ""].map((h) => <th key={h} className="px-4 py-2.5 font-medium">{h}</th>)}</tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {revoked.map((r) => (
+                  <tr key={r.code}>
+                    <td className="px-4 py-3">{r.email ?? r.note}</td>
+                    <td className="px-4 py-3">{r.code}</td>
+                    <td className="px-4 py-3">{new Date(r.revoked_at!).toLocaleDateString("en-GB")}</td>
+                    <td className="whitespace-nowrap px-4 py-1 text-right">
+                      <ConfirmButton
+                        action={restoreInvite.bind(null, r.code)}
+                        message={`Restore ${r.code}${r.email ? ` for ${r.email}` : ""}? It works again for sign-up.${r.email && r.code.length < GATE_CODE_MIN_LENGTH ? " It's an old short code, so it still can't open the coming-soon page; Resend it afterwards to send a new long code." : ""}`}
+                        confirmLabel="Restore"
+                        className="inline-flex min-h-11 min-w-11 items-center px-2 text-sm text-bone underline-offset-2 hover:underline"
+                      >
+                        Restore
+                      </ConfirmButton>
+                      {!r.used && (
+                        <ConfirmButton
+                          action={deleteInvite.bind(null, r.code)}
+                          message={`Delete ${r.code}${r.email ? ` for ${r.email}` : ""} for good? The invite and its invite emails are removed from Ops. This can't be undone. Ops log lines stay.`}
+                          confirmLabel="Delete for good"
+                          className="inline-flex min-h-11 min-w-11 items-center px-2 text-sm text-danger underline-offset-2 hover:underline"
+                        >
+                          Delete
+                        </ConfirmButton>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      )}
     </div>
   );
 }

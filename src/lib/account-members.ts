@@ -1,9 +1,10 @@
 import "server-only";
 import crypto from "node:crypto";
-import { now, q, type User } from "./db";
+import { now, q, type Queryable, type User } from "./db";
 import { allow } from "./ratelimit";
 import { switchOn } from "./switches";
 import { env } from "./env";
+import { normalEmail } from "./email-normal";
 
 /**
  * Account teams. A label, radio station or crew has one FloorTest account (its owner's) and invites the people who run
@@ -45,8 +46,8 @@ export async function teamsOn(deskId?: number | null) {
 }
 
 /** Seats on an account: its plan's seats plus add-ons. The owner takes one. */
-export async function seatsFor(accountId: number) {
-  const r = await q.get<{ seats: number; extra: number }>(
+export async function seatsFor(accountId: number, db: Queryable = q) {
+  const r = await db.get<{ seats: number; extra: number }>(
     "SELECT COALESCE(p.seats, 1) AS seats, u.extra_seats AS extra FROM users u LEFT JOIN plans p ON p.id = u.plan WHERE u.id = ?",
     accountId,
   );
@@ -54,8 +55,8 @@ export async function seatsFor(accountId: number) {
 }
 
 /** Seats in use: the owner, every member, and every invite still waiting. */
-export async function seatsUsed(accountId: number) {
-  const r = await q.get<{ m: number; i: number }>(
+export async function seatsUsed(accountId: number, db: Queryable = q) {
+  const r = await db.get<{ m: number; i: number }>(
     `SELECT (SELECT COUNT(*)::int FROM account_members WHERE account_id = ?) AS m,
             (SELECT COUNT(*)::int FROM account_invites WHERE account_id = ? AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > ?) AS i`,
     accountId, accountId, now(),
@@ -121,11 +122,13 @@ export async function inviteToTeam(desk: Pick<User, "id" | "role" | "actor_id" |
   if (email === desk.email.toLowerCase()) throw new TeamError("That's the account's own email.");
   if (await q.get("SELECT 1 FROM account_members m JOIN users u ON u.id = m.user_id WHERE m.account_id = ? AND lower(u.email) = ?", desk.id, email))
     throw new TeamError("They're already on the team.");
-  if (await seatsUsed(desk.id) >= (await seatsFor(desk.id))) throw new TeamError("All your seats are in use. Remove someone, or ask us for extra seats.");
   if (!(await allow("team_invite", String(desk.id), 20, DAY))) throw new TeamError("Too many invites today. Try again tomorrow.");
   const secret = crypto.randomBytes(24).toString("base64url");
   // A new invite replaces any live one for this email, in one step: the database allows one live invite per email.
+  // The desk row is locked while the seats are counted, so two invites at once can't both take the last seat.
   await q.tx(async (db) => {
+    await db.get("SELECT id FROM users WHERE id = ? FOR UPDATE", desk.id);
+    if (await seatsUsed(desk.id, db) >= (await seatsFor(desk.id, db))) throw new TeamError("All your seats are in use. Remove someone, or ask us for extra seats.");
     await db.run("UPDATE account_invites SET revoked_at = ? WHERE account_id = ? AND lower(email) = ? AND accepted_at IS NULL AND revoked_at IS NULL", now(), desk.id, email);
     await db.run(
       "INSERT INTO account_invites (account_id, email, role, token_hash, invited_by, created_at, expires_at) VALUES (?,?,?,?,?,?,?)",
@@ -155,7 +158,7 @@ export async function inviteForEmail(email: string) {
   const invite = await q.get<{ id: number; account_id: number; email: string; role: "admin" | "member"; account_name: string; account_handle: string }>(
     `SELECT i.id, i.account_id, i.email, i.role, u.name AS account_name, u.handle AS account_handle FROM account_invites i JOIN users u ON u.id = i.account_id
      WHERE i.email = ? AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > ? AND u.suspended_at IS NULL ORDER BY i.created_at DESC LIMIT 1`,
-    email.trim().toLowerCase(),
+    normalEmail(email),
     now(),
   );
   return invite && (await teamsOn(invite.account_id)) ? invite : undefined;
@@ -232,7 +235,8 @@ export async function replyApproval(accountId: number) {
 export async function setReplyApproval(desk: Pick<User, "id" | "role" | "totp_enabled_at">, on: boolean, approverId: number) {
   if (!atLeast(desk.role, "admin")) throw new TeamError("Only the owner or an A&R / Admin can change this.");
   needTwoStep(desk);
-  const onTeam = approverId === desk.id || !!(await q.get("SELECT 1 FROM account_members WHERE account_id = ? AND user_id = ?", desk.id, approverId));
+  // roleOn, not just a membership row: a paused seat can't open the desk, so replies would wait for no one.
+  const onTeam = Number.isSafeInteger(approverId) && !!(await roleOn(desk.id, approverId));
   if (!onTeam) throw new TeamError("Choose someone on the team.");
   await q.run("UPDATE users SET reply_approval = ?, reply_approver_id = ? WHERE id = ?", on ? 1 : 0, approverId, desk.id);
 }

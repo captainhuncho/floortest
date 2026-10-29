@@ -15,6 +15,7 @@ import { MAX_FILES, SENDER_KEY, useTrackUpload, type Item } from "./useTrackUplo
 import { stored, useBrowserValue } from "@/components/useBrowserValue";
 import { recallSender } from "@/lib/sender-memory";
 import { AI_CHOICES, AI_HELP, Choice, MIX_CHOICES, RELEASE_CHOICES } from "./Choice";
+import { normalEmail } from "@/lib/email-normal";
 
 /** Things that arrive on the page (a chosen track, a step, the result) settle in from just below. Reduced motion keeps only the fade. */
 const ENTER = "starting:opacity-0 motion-safe:starting:translate-y-1 transition-[opacity,translate] duration-200 ease-[var(--ease-out)]";
@@ -252,7 +253,7 @@ export function SubmitForm({
     setIssues([]);
     if (!complete(fd)) return;
     if (account) return send(fd);
-    const email = String(fd.get("email") ?? "").trim().toLowerCase();
+    const email = normalEmail(String(fd.get("email") ?? ""));
     setChecking(true);
     const r = await startEmailCheck(email, String(fd.get("cf-turnstile-response") ?? ""));
     setChecking(false);

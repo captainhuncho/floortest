@@ -1815,4 +1815,71 @@ create table if not exists passkey_challenges (
 create index if not exists fk_passkey_challenges_user_id on passkey_challenges(user_id);
 alter table passkey_challenges enable row level security;`,
   },
+  {
+    // Feedback from a team desk is signed by the teammate who sent it (lib/feedback); user_id stays the desk.
+    id: "0106_feedback_actor",
+    sql: `alter table contact_messages add column if not exists actor_id bigint references users(id) on delete set null;
+create index if not exists fk_contact_messages_actor_id on contact_messages(actor_id);`,
+  },
+  {
+    // A draft-preview pass from ops works once (lib/draft-preview redeemPass): spent passes, by signature hash, until
+    // they'd have expired anyway (60 s). Not granted to ft_person: only the app's own connection reads it.
+    id: "0107_preview_passes_used",
+    sql: `create table if not exists preview_passes_used (
+  sig_hash text primary key,
+  expires_at bigint not null
+);
+create index if not exists preview_passes_used_expiry on preview_passes_used(expires_at);
+alter table preview_passes_used enable row level security;`,
+  },
+  {
+    // Per-person rules, tighter (security audit, 29 Oct). 0097 let `ft_person` read and change every column of users,
+    // and a person may see their teammates' rows, so a query run as a person could have read a teammate's password
+    // hash, two-step secret, recovery codes or Google id. Now `ft_person` may read only the columns the app reads about
+    // a person (USER_COLUMNS in src/lib/db) and change only their own profile fields; anything else is refused outright.
+    // A team desk that FloorTest has suspended is also shut to its teammates here, as currentUser() already does.
+    // The "teams" switch stays an app check (lib/account-members teamsOn): it depends on ADMIN_EMAILS, the request's
+    // country and the switch's rule, none of which the database holds.
+    id: "0108_person_columns",
+    sql: `revoke select, update on users from ft_person;
+grant select (id, email, name, first_name, last_name, kind, kind_note, tools, links, handle, plan, active_collection_id, role_line, cover_key, page_style, paused_at, pause_until, pause_message, tz, email_verified_at, totp_enabled_at, signin_alerts, identity_status, created_at) on users to ft_person;
+grant update (name, first_name, last_name, kind, kind_note, tools, links, role_line, cover_key, page_style, paused_at, pause_until, pause_message, tz, active_collection_id) on users to ft_person;`,
+  },
+  {
+    // Per-person rules and suspended desks (security audit H25, 29 Oct): a team desk that FloorTest has suspended is
+    // shut to its teammates in the database too, as currentUser() already does in the app. The person's own desk is
+    // unchanged (a suspended person can't sign in). The "teams" switch stays an app check only (teamsOn in
+    // lib/account-members): it depends on ADMIN_EMAILS, the request's country and the switch's rule, none of which the
+    // database holds, so a copy here would disagree with the app.
+    id: "0109_person_suspended_desks",
+    sql: `create or replace function ft_desk(desk bigint) returns boolean language sql stable security definer set search_path = public as $$ select desk = ft_person_id() or exists (select 1 from account_members m join users u on u.id = m.account_id where m.account_id = desk and m.user_id = ft_person_id() and u.suspended_at is null) $$;
+revoke all on function ft_desk(bigint) from public;
+grant execute on function ft_desk(bigint) to ft_person;`,
+  },
+  {
+    // App refresh tokens already swapped for new ones (lib/app-auth), kept until they would have expired. One coming back
+    // means it was copied, so that sign-in ends. Holds hashes only; not granted to ft_person, left out of backups.
+    id: "0111_app_refresh_spent",
+    sql: `create table if not exists app_refresh_spent (
+  token_hash text primary key,
+  user_id bigint not null references users(id) on delete cascade,
+  signed_in_at bigint not null,
+  expires_at bigint not null
+);
+create index if not exists fk_app_refresh_spent_user_id on app_refresh_spent(user_id);
+alter table app_refresh_spent enable row level security;`,
+  },
+  {
+    // The ticket between the two sign-in steps (lib/two-step-ticket) becomes a one-time row, like passkey_challenges:
+    // the cookie holds a random id, this holds its hash for 5 minutes, and the second step deletes it. Not granted to
+    // ft_person, left out of backups.
+    id: "0112_two_step_tickets",
+    sql: `create table if not exists two_step_tickets (
+  id_hash text primary key,
+  user_id bigint not null references users(id) on delete cascade,
+  expires_at bigint not null
+);
+create index if not exists fk_two_step_tickets_user_id on two_step_tickets(user_id);
+alter table two_step_tickets enable row level security;`,
+  },
 ];

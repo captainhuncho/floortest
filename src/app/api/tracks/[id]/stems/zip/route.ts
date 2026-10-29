@@ -1,7 +1,6 @@
 import { fileAccess } from "@/lib/file-access";
 import { currentUser } from "@/lib/auth";
 import { safeName } from "@/lib/crate";
-import { stemsFor } from "@/lib/stems";
 import { storage } from "@/lib/storage";
 import { zipStream } from "@/lib/zip";
 
@@ -13,8 +12,9 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/tracks/[id]/ste
   const user = await currentUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
   const f = await fileAccess(user, "stems", Number((await ctx.params).id));
+  // The grant lists only stems that passed the fingerprint hold; none left means not found.
   const t = f?.track;
-  const stems = t ? await stemsFor(t.id) : [];
+  const stems = f?.stems ?? [];
   if (!t || !stems.length) return new Response("Not found", { status: 404 });
   const folder = safeName(`${t.artist} - ${t.title} (stems)`);
   const seen = new Set<string>();

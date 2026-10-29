@@ -3,6 +3,8 @@ package app.floortest;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
 import android.widget.Toast;
 import androidx.activity.OnBackPressedCallback;
@@ -10,8 +12,13 @@ import androidx.webkit.WebViewCompat;
 import androidx.webkit.WebViewFeature;
 import java.lang.reflect.Method;
 import java.util.Collections;
+import com.getcapacitor.Bridge;
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.BridgeWebViewClient;
+import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.IOException;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -41,7 +48,40 @@ public class MainActivity extends BridgeActivity {
             }
         });
         bridgeOnOfflineScreen();
+        offlineFilesOnly();
         takeShare(getIntent());
+    }
+
+    /**
+     * Capacitor answers /_capacitor_file_/<any path> (and /_capacitor_content_/) on the app's pages straight from the
+     * phone's storage, with no folder limit. The only files a page ever needs that way are the offline tracks, so
+     * everything else (the cookie store, settings, the share inbox) is refused here, before Capacitor sees the request.
+     */
+    private void offlineFilesOnly() {
+        if (getBridge() == null) return;
+        final File offline = new File(getNoBackupFilesDir(), "offline");
+        getBridge().setWebViewClient(new BridgeWebViewClient(getBridge()) {
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                String path = request.getUrl().getPath();
+                boolean file = path != null && path.startsWith(Bridge.CAPACITOR_FILE_START);
+                boolean content = path != null && path.startsWith(Bridge.CAPACITOR_CONTENT_START);
+                if (content || (file && !inside(offline, path))) {
+                    return new WebResourceResponse("text/plain", "utf-8", 403, "Forbidden", new HashMap<>(), new ByteArrayInputStream(new byte[0]));
+                }
+                return super.shouldInterceptRequest(view, request);
+            }
+        });
+    }
+
+    /** The file Capacitor would open for this path (same rule as its AndroidProtocolHandler.openFile) is inside `folder`. */
+    static boolean inside(File folder, String path) {
+        try {
+            String real = new File(path.replace(Bridge.CAPACITOR_FILE_START, "")).getCanonicalPath();
+            return real.startsWith(folder.getCanonicalPath() + File.separator);
+        } catch (IOException e) {
+            return false;
+        }
     }
 
     /**

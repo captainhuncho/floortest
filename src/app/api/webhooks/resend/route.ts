@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { readLimited } from "@/lib/body-limit";
 import { now, q } from "@/lib/db";
 import { recordIncident } from "@/lib/incidents";
+import { normalEmail } from "@/lib/email-normal";
 
 export const runtime = "nodejs";
 
@@ -62,7 +63,7 @@ export async function POST(req: Request) {
       id,
       delivery,
     );
-    const email = (row?.to_email ?? to).trim().toLowerCase();
+    const email = normalEmail(row?.to_email ?? to);
     if (email && reason)
       await db.run(
         "INSERT INTO email_suppressions (email, reason, detail, created_at) VALUES (?,?,?,?) ON CONFLICT (email) DO NOTHING",

@@ -142,7 +142,6 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
 [data-period="year"] .period-stack > .period-month,
 [data-period="month"] .period-stack > .period-year { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 180ms var(--ease-out), visibility 0s linear 180ms; }
 /* The silver ops crest is dark-on-dark at small sizes: lift it so it reads clearly. */
-.crest-ops { filter: brightness(1.6) contrast(1.15) drop-shadow(0 0 6px rgb(255 255 255 / 0.12)); }
 [data-area="product"] { --area: #b9a2ff; }
 [data-area="admin"] { --area: #a8ac9f; }
 [data-area="overview"] { --area: #d5ff48; }

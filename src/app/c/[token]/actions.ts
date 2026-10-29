@@ -9,6 +9,7 @@ import { accountEmailAllowed } from "@/lib/email-budget";
 import { allow, requestIp } from "@/lib/ratelimit";
 import { checkLinkCode, linkByKey, LinkError, noteUnlistedCode, recipientFor, requestAccess, sendLinkCode, startLinkSession } from "@/lib/share-links";
 import { provenEmail, setLinkSession, setProvenEmail } from "@/lib/link-cookies";
+import { normalEmail } from "@/lib/email-normal";
 
 export type GateState = { step: "email" | "code" | "notice" | "request" | "sent" | "waiting" | "denied"; email?: string; error?: string } | null;
 
@@ -31,7 +32,7 @@ async function visitor(linkId: number) {
 export async function sendCode(secret: string, _prev: GateState, form: FormData): Promise<GateState> {
   const link = await linkByKey(secret, await currentPerson());
   if (!link) return GONE;
-  const email = String(form.get("email") || "").trim().toLowerCase();
+  const email = normalEmail(String(form.get("email") || ""));
   try {
     if (!(await accountEmailAllowed())) throw new LinkError("We can't send codes right now. Please try again in a few minutes.");
     await sendLinkCode(link, email, await requestIp(), async (to, code) => {

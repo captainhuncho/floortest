@@ -4,6 +4,7 @@ import { now, q } from "./db";
 import { isProtectedHandle } from "./identity";
 import { APP_URL, sendMail } from "./mail";
 import { RESERVED_HANDLES } from "./plans";
+import { revokeAllSessions } from "./sessions";
 import { hashToken } from "./token-hash";
 
 const DAY = 86_400_000;
@@ -111,8 +112,11 @@ export async function changeHandle(userId: number, next: string, { forward = tru
 export async function requestEmailChange(userId: number, next: string, by: "user" | "admin"): Promise<string | null> {
   const email = next.trim().toLowerCase();
   if (!EMAIL_RE.test(email) || email.length > 200) return "Enter a valid email address.";
-  const u = await q.get<{ email: string; name: string }>("SELECT email, name FROM users WHERE id = ?", userId);
+  const u = await q.get<{ email: string; name: string; email_verified_at: number | null }>("SELECT email, name, email_verified_at FROM users WHERE id = ?", userId);
   if (!u) return "Account not found.";
+  // Until the current email is confirmed, whoever created the account may not own it: moving it to an address they
+  // control would make it theirs for good. Ops checks the person another way, so only the person's own change waits.
+  if (by === "user" && !u.email_verified_at) return "Confirm your current email first. Check your inbox for the confirmation link.";
   if (u.email === email) return "That's already the email on this account.";
   if (await q.get("SELECT 1 FROM users WHERE lower(email) = ?", email)) return "Another account already uses that email.";
   const token = crypto.randomBytes(24).toString("base64url");
@@ -179,7 +183,8 @@ export async function confirmEmailChange(token: string, personId: number | null)
     if (isUniqueViolation(e)) return null; // someone else took that address in the meantime
     throw e;
   }
-  await q.run("DELETE FROM sessions WHERE user_id = ?", p.id);
+  // Every browser, app and ops session ends, and reset links sent to the old address stop working.
+  await revokeAllSessions(p.id);
   return { id: p.id, from: p.email, to: p.pending_email };
 }
 

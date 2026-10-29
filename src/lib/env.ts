@@ -1,5 +1,6 @@
 import "server-only";
 import { scanConfigProblem } from "./scan";
+import { normalEmail } from "./email-normal";
 
 /**
  * All configuration, read from the environment. See .env.example for descriptions.
@@ -61,7 +62,7 @@ export const env = {
   /** Accounts (by email) that can open /admin. They must also have two-factor sign-in on. */
   adminEmails: (v("ADMIN_EMAILS") ?? "")
     .split(",")
-    .map((e) => e.trim().toLowerCase())
+    .map(normalEmail)
     .filter(Boolean),
   /** Sign-ups allowed per BETA_INVITE_CODES code, so a leaked code cannot open the doors. */
   inviteLimit: Math.max(1, Number(v("BETA_INVITE_LIMIT") ?? 25) || 25),

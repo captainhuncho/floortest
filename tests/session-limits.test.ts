@@ -44,7 +44,8 @@ test("an app sign-in carries its first sign-in time through every refresh and st
   const signedIn = Number((await row()).created_at);
   const second = await refreshAppSession(first.refreshToken);
   assert.ok(second, "a fresh sign-in refreshes");
-  assert.equal(await refreshAppSession(first.refreshToken), null, "the old refresh token stops working");
+  // Presenting the old one again would end the whole sign-in (tests/refresh-reuse.test.ts), so here just check it is gone.
+  assert.equal(await count("SELECT COUNT(*) AS n FROM sessions WHERE user_id = ?", me), 1, "the old refresh token's row is replaced");
   assert.equal(Number((await row()).created_at), signedIn, "the first sign-in time is carried, not reset");
   // 85 days in: still refreshes, but the new token can't outlive day 90.
   await q.run("UPDATE sessions SET created_at = ? WHERE user_id = ? AND kind = 'app'", Date.now() - 85 * DAY, me);

@@ -30,5 +30,16 @@ export type PlanRequest = {
   created_at: number;
 };
 
+/**
+ * The plan ops may give for a request: the one asked for, or another offered plan at or above the person's current one.
+ * Never a step down they didn't ask for: changing someone's plan otherwise is a super admin's (SUPER_ONLY, ops-perms).
+ */
+export function grantablePlan<P extends { id: string; position: number; retired: boolean }>(plans: P[], chosen: string, asked: string, current: string) {
+  const plan = plans.find((p) => p.id === chosen && !p.retired);
+  if (!plan || plan.id === asked) return plan;
+  const now = plans.find((p) => p.id === current);
+  return !now || plan.position >= now.position ? plan : undefined;
+}
+
 /** This person's open request, if any. */
 export const pendingRequest = (userId: number) => q.get<PlanRequest>("SELECT * FROM plan_requests WHERE user_id = ? AND status = 'pending'", userId);

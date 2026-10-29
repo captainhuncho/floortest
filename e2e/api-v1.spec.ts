@@ -38,11 +38,16 @@ test("app sign-in, queue, keep, token refresh and sign-out", async ({ request })
   expect((await request.post("/api/v1/auth/refresh", { data: { refreshToken: t.refreshToken } })).status()).toBe(401);
   // The old access token's session is gone too.
   expect((await request.get("/api/v1/me", { headers: auth })).status()).toBe(401);
+  // A spent refresh token coming back means it was copied, so that whole sign-in ends, the new pair included.
+  expect((await request.get("/api/v1/me", { headers: { Authorization: `Bearer ${t2.accessToken}` } })).status()).toBe(401);
+  expect((await request.post("/api/v1/auth/refresh", { data: { refreshToken: t2.refreshToken } })).status()).toBe(401);
 
   // Sign out ends the session at once.
-  const auth2 = { Authorization: `Bearer ${t2.accessToken}` };
-  expect((await request.post("/api/v1/auth/logout", { headers: auth2, data: { refreshToken: t2.refreshToken } })).status()).toBe(200);
-  expect((await request.get("/api/v1/me", { headers: auth2 })).status()).toBe(401);
+  const t3 = await (await request.post("/api/v1/auth/login", { data: { email: "demo@floortest.test", password: "floortest-demo", device: "E2E phone" } })).json();
+  const auth3 = { Authorization: `Bearer ${t3.accessToken}` };
+  expect((await request.get("/api/v1/me", { headers: auth3 })).status()).toBe(200);
+  expect((await request.post("/api/v1/auth/logout", { headers: auth3, data: { refreshToken: t3.refreshToken } })).status()).toBe(200);
+  expect((await request.get("/api/v1/me", { headers: auth3 })).status()).toBe(401);
 });
 
 test("no token, a forged token, or someone else's track gets nothing", async ({ request }) => {
