@@ -270,7 +270,8 @@ export async function setContactHandled(id: number, handled: boolean) {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const newCode = () => {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  return `FLOOR-${Array.from(crypto.randomBytes(6), (b) => alphabet[b % alphabet.length]).join("")}`;
+  // 10 characters from 32 (50 bits): the code is what proves the email while sign-up is closed.
+  return `FLOOR-${Array.from(crypto.randomBytes(10), (b) => alphabet[b % alphabet.length]).join("")}`;
 };
 
 async function mailInvite(code: string, email: string, inviter: string, note: string, handle = "") {
