@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
+import { readLimited } from "@/lib/body-limit";
 import { now, q } from "@/lib/db";
 import { recordIncident } from "@/lib/incidents";
 
@@ -7,6 +8,7 @@ export const runtime = "nodejs";
 
 /** Resend signs webhooks the Svix way; reports older than this are refused, so a captured one can't be replayed later. */
 const TOLERANCE_S = 5 * 60;
+const MAX_BYTES = 256_000;
 
 function verified(secret: string, id: string, timestamp: string, body: string, signatures: string) {
   const ts = Number(timestamp);
@@ -30,7 +32,9 @@ type Event = { type?: string; data?: { email_id?: string; to?: string[] | string
 export async function POST(req: Request) {
   const secret = process.env.RESEND_WEBHOOK_SECRET;
   if (!secret) return new NextResponse(null, { status: 404 });
-  const body = await req.text();
+  // Delivery reports are a few KB; anything far bigger isn't one, so it isn't read in full first.
+  const body = await readLimited(req, MAX_BYTES);
+  if (body === null) return new NextResponse(null, { status: 413 });
   const h = req.headers;
   if (!verified(secret, h.get("svix-id") ?? "", h.get("svix-timestamp") ?? "", body, h.get("svix-signature") ?? "")) return new NextResponse(null, { status: 401 });
 

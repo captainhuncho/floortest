@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readLimited } from "@/lib/body-limit";
 import { allow, ipFrom } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
@@ -13,8 +14,8 @@ export async function POST(req: Request) {
   const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
   if (!dsn) return new NextResponse(null, { status: 204 });
   if (!(await allow("sentry_tunnel", ipFrom(req.headers), 120, 60_000))) return new NextResponse(null, { status: 429 });
-  const body = await req.text();
-  if (!body || body.length > MAX_BYTES) return new NextResponse(null, { status: 413 });
+  const body = await readLimited(req, MAX_BYTES);
+  if (!body) return new NextResponse(null, { status: 413 });
   try {
     const ours = new URL(dsn);
     const header = JSON.parse(body.slice(0, body.indexOf("\n"))) as { dsn?: string };
