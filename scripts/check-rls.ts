@@ -9,6 +9,9 @@
 import { PGlite } from "@electric-sql/pglite";
 import { MIGRATIONS } from "../src/lib/db/migrations";
 
+/** Column names that hold sign-in secrets, as a Postgres regular expression. */
+const SECRET_COLUMNS = "password|secret|recovery_codes|google_sub|totp_last_step|identity_code|_token$|token_hash$|code_hash$";
+
 async function main() {
   const pg = await PGlite.create();
   // The app creates this table itself before migrating (src/lib/db/client.ts); 0002 locks it.
@@ -29,6 +32,18 @@ async function main() {
        from (select distinct table_name from information_schema.role_table_grants where grantee = 'ft_person' and table_schema = 'public') g
       order by 1`,
   );
+  // Sign-in secrets (security audit, 29 Oct): ft_person may never read or change a password hash, two-step secret,
+  // recovery code, Google id, token or code hash, on any table, whether granted table-wide or column by column.
+  const { rows: secrets } = await pg.query<{ name: string }>(
+    `select c.relname || '.' || a.attname as name
+       from pg_attribute a join pg_class c on c.oid = a.attrelid join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public' and c.relkind in ('r', 'p', 'v', 'm') and a.attnum > 0 and not a.attisdropped
+        and a.attname ~ '${SECRET_COLUMNS}'
+        and (has_column_privilege('ft_person', c.oid, a.attnum, 'SELECT')
+          or has_column_privilege('ft_person', c.oid, a.attnum, 'INSERT')
+          or has_column_privilege('ft_person', c.oid, a.attnum, 'UPDATE'))
+      order by 1`,
+  );
   await pg.close();
 
   const open = rows.filter((r) => !r.rls).map((r) => r.name);
@@ -42,7 +57,12 @@ async function main() {
     console.error(granted.length ? `ft_person may use ${unruled.join(", ")} with no policy saying whose rows are whose.` : "ft_person has no tables: migration 0097 missing?");
     process.exit(1);
   }
-  console.log(`Row-level security check: all ${rows.length} tables have it on; per-person rules on ${granted.length}.`);
+  if (secrets.length) {
+    console.error(`ft_person may use sign-in secret column(s): ${secrets.map((r) => r.name).join(", ")}.`);
+    console.error("Grant ft_person only the columns it needs (see migration 0106), never these.");
+    process.exit(1);
+  }
+  console.log(`Row-level security check: all ${rows.length} tables have it on; per-person rules on ${granted.length}, no secret columns.`);
 }
 
 main().catch((e) => {

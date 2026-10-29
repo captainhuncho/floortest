@@ -2,13 +2,19 @@ import "server-only";
 import crypto from "node:crypto";
 import { discardFiles } from "@/lib/deletion";
 import { now, q, type Track } from "@/lib/db";
+import { optimizeImage } from "@/lib/image-optimize";
 import { imageKind, IMAGE_TYPES as TYPES, type ImageKind } from "@/lib/images";
 import { trackArtEnabled } from "@/lib/plan-store";
 import { allow } from "@/lib/ratelimit";
 import { sealUpload, storage } from "@/lib/storage";
 
-/** Artwork is kept exactly as sent (no resizing or re-encoding), so it goes straight to storage like the audio. */
+/**
+ * Artwork goes straight to storage like the audio, then is decoded and re-encoded like covers (WebP, metadata
+ * stripped), so only a real picture is kept, never bytes riding along behind an image header.
+ */
 const MAX = 25 * 1024 * 1024;
+/** Longest side of stored artwork; plenty for the review screen and the phone app. */
+const ART_SIDE = 2000;
 /** Artwork can be attached only just after sending, with the track's receipt token. */
 const WINDOW_MS = 60 * 60_000;
 type Reply = { status: number; body: Record<string, unknown> };
@@ -24,7 +30,7 @@ const sentTrack = (token: string) =>
  *
  * The upload link only ever points at a temporary copy, recorded in `uploads` (kind "track_art"), so an abandoned upload
  * is cleaned up with the others. On `done` the server copies it to a new key (sealed), checks that copy and only then
- * makes it the track's artwork: a sender can't swap the picture after it's been checked (Codex review, 19 Oct).
+ * makes a re-encoded copy of it the track's artwork: a sender can't swap the picture after it's been checked (Codex review, 19 Oct).
  */
 export async function attachTrackArt(ref: string, body: { type?: string; size?: number; done?: boolean }): Promise<Reply> {
   const t = await sentTrack(ref);
@@ -47,15 +53,23 @@ export async function attachTrackArt(ref: string, body: { type?: string; size?: 
     await q.run("UPDATE uploads SET file_key = ? WHERE id = ?", sealed, up.id);
     const head = await store.head(sealed);
     const first = head ? new Uint8Array(await new Response((await store.stream(sealed, { start: 0, end: 15 })).body).arrayBuffer()) : null;
+    let kept = sealed;
     const refuse = async (error: string, status: number) => {
-      await discardFiles([sealed], "track artwork refused", { linkLive: false });
+      await discardFiles([kept], "track artwork refused", { linkLive: false });
       await q.run("DELETE FROM uploads WHERE id = ?", up.id);
       return err(error, status);
     };
     if (!head || !first || imageKind(first) !== up.ext || head.size !== Number(up.size) || head.size > MAX) return refuse("Use a JPG, PNG or WebP image under 25 MB.", 415);
+    const art = await optimizeImage(new Uint8Array(await new Response((await store.stream(sealed)).body).arrayBuffer()), ART_SIDE).catch(() => null);
+    if (!art) return refuse("We couldn't read that image. Try another JPG, PNG or WebP.", 415);
+    // The upload record moves to the new key first, so a crash at any later point still leaves every file accounted for.
+    kept = `${sealed.slice(0, sealed.lastIndexOf("/") + 1)}${crypto.randomUUID()}.webp`;
+    await q.run("UPDATE uploads SET file_key = ? WHERE id = ?", kept, up.id);
+    await discardFiles([sealed], "track artwork re-encoded", { linkLive: false });
+    await store.put(kept, art, TYPES.webp);
     // Only the first artwork sticks, even if two arrive at once.
     const set = await q.tx(async (db) => {
-      const row = await db.get<{ id: number }>("UPDATE tracks SET art_key = ? WHERE id = ? AND art_key IS NULL RETURNING id", sealed, t.id);
+      const row = await db.get<{ id: number }>("UPDATE tracks SET art_key = ? WHERE id = ? AND art_key IS NULL RETURNING id", kept, t.id);
       if (row) await db.run("DELETE FROM uploads WHERE id = ?", up.id);
       return row;
     });
