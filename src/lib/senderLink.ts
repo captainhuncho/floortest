@@ -1,17 +1,39 @@
 import "server-only";
 import crypto from "node:crypto";
-import { env } from "./env";
+import { now, q } from "./db";
+import { normalEmail } from "./email-normal";
+import { hashToken } from "./token-hash";
 
-/** A 24-hour, signed "this is the owner of <email>" link for the sender history page. */
-export function signSenderLink(email: string, ttlMs = 24 * 3_600_000) {
-  const body = `${Buffer.from(email.toLowerCase()).toString("base64url")}.${Date.now() + ttlMs}`;
-  return `${body}.${crypto.createHmac("sha256", env.secret).update(`sent:${body}`).digest("base64url")}`;
+/**
+ * The private link to a sender's history page (/sent/<id>). The id is random and says nothing about who it is for; only
+ * its hash is kept, with the email and an expiry, in sender_links (H78, 29 Oct), so it can be ended early. Links made
+ * before this carried the email in the URL; they are refused and show the "expired" page, which offers a new one.
+ */
+const TTL_MS = 24 * 3_600_000;
+
+export async function createSenderLink(email: string, ttlMs = TTL_MS) {
+  const id = crypto.randomBytes(24).toString("base64url");
+  const at = now();
+  await q.run("INSERT INTO sender_links (id_hash, email, created_at, expires_at) VALUES (?,?,?,?)", hashToken(id), normalEmail(email), at, at + ttlMs);
+  return id;
 }
 
-export function readSenderLink(token: string): string | null {
-  const [e, exp, mac] = token.split(".");
-  if (!e || !exp || !mac) return null;
-  const want = crypto.createHmac("sha256", env.secret).update(`sent:${e}.${exp}`).digest("base64url");
-  if (want.length !== mac.length || !crypto.timingSafeEqual(Buffer.from(want), Buffer.from(mac)) || Number(exp) < Date.now()) return null;
-  return Buffer.from(e, "base64url").toString("utf8");
+/** The email a live link is for, or null (unknown, ended, expired, or an old-style link). */
+export async function readSenderLink(id: string): Promise<string | null> {
+  if (!/^[A-Za-z0-9_-]{32}$/.test(id)) return null;
+  const row = await q.get<{ email: string }>("SELECT email FROM sender_links WHERE id_hash = ? AND revoked_at IS NULL AND expires_at > ?", hashToken(id), now());
+  return row?.email ?? null;
+}
+
+/** Ends one link now ("End this link" on the page). */
+export async function revokeSenderLink(id: string) {
+  if (!/^[A-Za-z0-9_-]{32}$/.test(id)) return false;
+  const r = await q.run("UPDATE sender_links SET revoked_at = ? WHERE id_hash = ? AND revoked_at IS NULL", now(), hashToken(id));
+  return r.changes > 0;
+}
+
+/** Ends every live link for an address (support, or a sender whose inbox was exposed). */
+export async function revokeSenderLinksFor(email: string) {
+  const r = await q.run("UPDATE sender_links SET revoked_at = ? WHERE lower(email) = ? AND revoked_at IS NULL AND expires_at > ?", now(), normalEmail(email), now());
+  return r.changes;
 }

@@ -14,7 +14,7 @@ const DAY = 86_400_000;
  * addresses live only in rate_events and uploads, which are left out, so the 48-hour limit on them holds.
  */
 export const SKIP = new Set([
-  "sessions", "admin_sessions", "link_sessions", "view_tickets", "password_resets", "login_codes", "sender_codes", "link_codes", "passkey_challenges", "app_refresh_spent", "two_step_tickets",
+  "sessions", "admin_sessions", "link_sessions", "view_tickets", "password_resets", "login_codes", "sender_codes", "link_codes", "passkey_challenges", "app_refresh_spent", "two_step_tickets", "sender_links",
   "rate_events", "uploads", "schema_migrations", "tap_timings", "job_runs", "feature_use", "listens", "webhook_receipts",
 ]);
 /** One file per run (date and time), so a manual rerun never replaces the night's good backup. */

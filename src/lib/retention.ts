@@ -55,6 +55,7 @@ export async function cleanupRecords(t = now(), until = Date.now() + PURGE_BUDGE
   await q.run("DELETE FROM passkey_challenges WHERE expires_at < ?", t);
   await q.run("DELETE FROM app_refresh_spent WHERE expires_at < ?", t);
   await q.run("DELETE FROM two_step_tickets WHERE expires_at < ?", t);
+  await q.run("DELETE FROM sender_links WHERE expires_at < ?", t);
   await q.run("DELETE FROM handle_history WHERE expires_at < ?", t);
   await q.run("DELETE FROM released_handles WHERE expires_at < ?", t);
   await q.run("DELETE FROM tap_timings WHERE created_at < ?", t - 30 * DAY);

@@ -4,7 +4,7 @@ import { accountEmailAllowed } from "@/lib/email-budget";
 import { q } from "@/lib/db";
 import { APP_URL, sendMail } from "@/lib/mail";
 import { allow, requestIp } from "@/lib/ratelimit";
-import { signSenderLink } from "@/lib/senderLink";
+import { createSenderLink } from "@/lib/senderLink";
 import { BOT_MESSAGE, passedTurnstile } from "@/lib/turnstile";
 import { normalEmail } from "@/lib/email-normal";
 
@@ -22,7 +22,7 @@ export async function requestSenderLink(_: SentState, form: FormData): Promise<S
     return { error: "Too many requests. Try again in an hour." };
   if (!(await accountEmailAllowed())) return { ok: true };
   if (await q.get("SELECT 1 FROM senders WHERE lower(email) = ?", email)) {
-    const link = signSenderLink(email);
+    const link = await createSenderLink(email);
     await sendMail({
       userId: null,
       audience: "sender",

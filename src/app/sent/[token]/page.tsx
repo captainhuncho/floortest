@@ -2,20 +2,28 @@ import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { q } from "@/lib/db";
 import { ago, fmtDay } from "@/lib/format";
-import { readSenderLink } from "@/lib/senderLink";
+import { redirect } from "next/navigation";
+import { readSenderLink, revokeSenderLink } from "@/lib/senderLink";
 import { RETAIN_UNREVIEWED_DAYS, unheardAfterWindow } from "@/lib/plans";
 
 export const metadata = { title: "Your sends — FloorTest", robots: { index: false } };
 
 /** Every track a sender has sent, across receivers. Only the signals senders are promised; decisions stay private. */
 export default async function SenderHistory({ params }: { params: Promise<{ token: string }> }) {
-  const email = readSenderLink((await params).token);
+  const token = (await params).token;
+  const email = await readSenderLink(token);
+  // Anyone holding the link can end it early (a forwarded email, a shared screen); it then shows as expired.
+  async function endLink() {
+    "use server";
+    await revokeSenderLink(token);
+    redirect(`/sent/${encodeURIComponent(token)}`);
+  }
   if (!email)
     return (
       <main className="mx-auto max-w-md px-4 py-10 sm:py-16">
         <Logo className="mb-12" />
         <h1 className="text-3xl font-bold tracking-tight">This link has expired</h1>
-        <p className="mt-3 text-mute">Links work for 24 hours.</p>
+        <p className="mt-3 text-mute">Links work for 24 hours, or until they&apos;re ended.</p>
         <Link href="/sent" className="btn-lime mt-8 inline-block">
           Email me a new link
         </Link>
@@ -67,6 +75,10 @@ export default async function SenderHistory({ params }: { params: Promise<{ toke
         })}
         {!rows.length && <li className="py-6 text-mute">Nothing sent yet. Send a track through a receiver&apos;s link and it will show here.</li>}
       </ul>
+      <form action={endLink} className="mt-8">
+        <button className="btn-ghost btn-sm">End this link now</button>
+        <p className="mt-2 text-[12px] text-dim">It stops working straight away. You can always email yourself a new one.</p>
+      </form>
     </main>
   );
 }
