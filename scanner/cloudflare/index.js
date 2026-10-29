@@ -45,7 +45,7 @@ const worker = {
       const state = await scanner(env).getState().catch(() => null);
       return Response.json({ worker: true, container: state?.status ?? "unknown" });
     }
-    const refused = refusal(route, request, env);
+    const refused = await refusal(route, request, env);
     if (refused) return refused;
     if (route === "POST /wake") {
       ctx.waitUntil(scanner(env).startAndWaitForPorts(READY).catch(() => {}));
