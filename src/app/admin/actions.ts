@@ -32,7 +32,7 @@ import { cancelEmailChange, changeHandle, HANDLE_HOLD_DAYS, requestEmailChange }
 import { logEvent, now, q, type Track } from "@/lib/db";
 import { eraseSender, purgeAccount } from "@/lib/privacy";
 import { localPath } from "@/lib/safe-links";
-import { GATE_CODE_MIN_LENGTH } from "@/lib/invites";
+import { deleteRevokedInvite, GATE_CODE_MIN_LENGTH, restoreRevokedInvite } from "@/lib/invites";
 
 const refresh = () => revalidatePath("/admin", "layout");
 const done = (m: string) => flash(m);
@@ -199,6 +199,27 @@ export async function revokeInvite(code: string) {
   await q.run("UPDATE invites SET revoked_at = ? WHERE code = ? AND revoked_at IS NULL", now(), code);
   await logAdmin(a.id, "revoked invite", code);
   await done(`Revoked ${code}`);
+  refresh();
+}
+
+/** Revoked list → Restore: the invite works again (refused if its email has an account or another live invite). */
+export async function restoreInvite(code: string) {
+  const a = await requireAdminAction("invites");
+  const r = await restoreRevokedInvite(code);
+  if (!r.ok) return fail(r.reason);
+  await logAdmin(a.id, "restored invite", r.email ?? r.code, r.code);
+  await done(`Restored ${r.code}${r.email ? ` for ${r.email}` : ""}`);
+  refresh();
+}
+
+/** Revoked list → Delete for good: the invite and its invite emails go; Ops log lines that mention it stay. */
+export async function deleteInvite(code: string) {
+  const a = await requireAdminAction("invites");
+  const r = await deleteRevokedInvite(code);
+  if (!r.ok) return fail(r.reason);
+  const logged = await q.count("SELECT COUNT(*) AS n FROM admin_log WHERE strpos(target, ?) > 0 OR strpos(detail, ?) > 0", r.code, r.code);
+  await logAdmin(a.id, "deleted invite", r.email ?? r.code, `${r.code} · ${r.emails} email${r.emails === 1 ? "" : "s"} removed`);
+  await done(`Deleted ${r.code}${r.email ? ` for ${r.email}` : ""} and ${r.emails} invite email${r.emails === 1 ? "" : "s"}. ${logged} Ops log line${logged === 1 ? "" : "s"} still mention it.`);
   refresh();
 }
 
