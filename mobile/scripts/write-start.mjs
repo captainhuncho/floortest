@@ -1,7 +1,9 @@
 // Writes the offline screen's start address (same rule as capacitor.config.ts) and the crest straight into
 // www/index.html, so the page needs no other files: Android shows it at the site's address, where relative files don't exist.
 import { readFileSync, writeFileSync, rmSync } from "node:fs";
-const site = (process.env.FLOORTEST_URL ?? "https://floortest.app").replace(/\/$/, "");
+import { appSite } from "./site.ts";
+// Stops here (before anything is written) if FLOORTEST_URL isn't allowed for this build.
+const { site } = appSite(process.env);
 const start = `${site}/dashboard/floor`;
 const page = new URL("../www/index.html", import.meta.url);
 const crest = readFileSync(new URL("../../public/brand/crest.svg", import.meta.url)).toString("base64");
