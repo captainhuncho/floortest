@@ -7,20 +7,24 @@
 const OPEN = "GET /status";
 const WITH_SECRET = new Set(["GET /health", "POST /wake", "POST /scan"]);
 
-/** Same-length comparison without an early exit, so the answer time doesn't hint at the secret. */
-function authorized(request, env) {
-  const given = new TextEncoder().encode(request.headers.get("Authorization") ?? "");
-  const wanted = new TextEncoder().encode(`Bearer ${env.SCAN_SECRET ?? ""}`);
-  if (!env.SCAN_SECRET || given.length !== wanted.length) return false;
+const sha256 = async (text) => new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)));
+
+/**
+ * Compares SHA-256 digests of the two values: always 32 bytes and with no early exit, so the answer time hints at
+ * neither the secret nor its length.
+ */
+async function authorized(request, env) {
+  if (!env.SCAN_SECRET) return false;
+  const [given, wanted] = await Promise.all([sha256(request.headers.get("Authorization") ?? ""), sha256(`Bearer ${env.SCAN_SECRET}`)]);
   let diff = 0;
-  for (let i = 0; i < given.length; i++) diff |= given[i] ^ wanted[i];
+  for (let i = 0; i < wanted.length; i++) diff |= given[i] ^ wanted[i];
   return diff === 0;
 }
 
 /** The answer to refuse this request with, or null to let it through. */
-export function refusal(route, request, env) {
+export async function refusal(route, request, env) {
   if (route === OPEN) return null;
   if (!WITH_SECRET.has(route)) return Response.json({ error: "Not found" }, { status: 404 });
-  if (!authorized(request, env)) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await authorized(request, env))) return Response.json({ error: "Unauthorized" }, { status: 401 });
   return null;
 }

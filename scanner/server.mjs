@@ -7,7 +7,8 @@ import { scanStream } from "./clamd.mjs";
 /**
  * FloorTest's virus scanner. One job: POST /scan { key } (Bearer SCAN_SECRET) reads that file from the audio bucket with
  * this service's own read-only key, streams it through clamd, and answers { clean } or { clean: false, signature }.
- * Files never go to a third party and are never written to disk here. GET /health answers when clamd is up.
+ * Files never go to a third party and are never written to disk here. GET /health (Bearer SCAN_SECRET too) answers when
+ * clamd is up: open, anyone could keep a running scanner busy or awake with it.
  *
  * Env: SCAN_SECRET, S3_ENDPOINT, S3_BUCKET, SCAN_ACCESS_KEY_ID, SCAN_SECRET_ACCESS_KEY (read-only on S3_BUCKET), PORT.
  */
@@ -30,8 +31,9 @@ const authorised = (h = "") => {
   const b = Buffer.from(`Bearer ${SCAN_SECRET}`);
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 };
-// Only the app's own storage keys: audio, stems and artwork paths, no "..", no leading slash.
-const validKey = (k) => typeof k === "string" && k.length < 300 && /^(audio|stems|track-art|pending)\/[A-Za-z0-9/_.-]+$/.test(k) && !k.includes("..");
+// Only the folders the app stores uploads in (audio, stems, artwork), no "..", no leading slash: the read-only key can
+// reach nothing else through this service.
+const validKey = (k) => typeof k === "string" && k.length < 300 && /^(audio|stems|track-art)\/[A-Za-z0-9/_.-]+$/.test(k) && !k.includes("..");
 
 const ping = () =>
   new Promise((resolve) => {
@@ -51,9 +53,13 @@ const send = (res, status, body) => {
 http
   .createServer(async (req, res) => {
     try {
-      if (req.method === "GET" && req.url === "/health") return send(res, (await ping()) ? 200 : 503, { clamd: await ping() });
-      if (req.method !== "POST" || req.url !== "/scan") return send(res, 404, { error: "Not found" });
+      const health = req.method === "GET" && req.url === "/health";
+      if (!health && (req.method !== "POST" || req.url !== "/scan")) return send(res, 404, { error: "Not found" });
       if (!authorised(req.headers.authorization)) return send(res, 401, { error: "Unauthorized" });
+      if (health) {
+        const up = await ping();
+        return send(res, up ? 200 : 503, { clamd: up });
+      }
       let raw = "";
       for await (const c of req) {
         raw += c;
