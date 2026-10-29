@@ -29,7 +29,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
     <EditablePage editing={!!editor} page="auth" label="Sign-up and log-in" values={c}>
     <>
       <h1 className="text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone"><E k="login_title" /></h1>
-      <p className="mb-8 mt-2 text-[13px] text-mute">Sign in to your music desk.</p>
+      <p className="mb-8 mt-2 text-[13px] text-mute"><E k="login_intro" /></p>
       {googleError && (
         <p role="alert" className="mb-6 rounded-lg border border-danger/40 bg-danger/10 px-4 py-3 text-sm">
           {googleError}
@@ -73,9 +73,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <PasskeyButton label="Sign in with a passkey" begin={passkeySignInStart} finish={passkeySignIn} />
       </div>
       <p className="mt-6 text-center text-sm text-mute">
-        No password?{" "}
+        <E k="login_code_prompt" />{" "}
         <Link href="/login/code" className="text-bone underline underline-offset-4">
-          Email me a sign-in code
+          <E k="login_code_link" />
         </Link>
       </p>
     </>

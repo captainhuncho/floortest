@@ -99,9 +99,12 @@ Not WAV/MP3 ─► "FloorTest takes WAV and MP3 files." · Remove ─► inbox c
 ```
 ops → Site content → Edit on the page ↗ ─► 60-second pass ─► floortest.app/<page> in draft + edit mode
    ├─ click text ─► type          ├─ click a list ─► panel ─► Apply
+   ├─ text picked (tap, click or Tab) ─► size picker under it: Smaller · Default · Larger · Largest
+   │     (Esc in the text jumps to the picker and back; a list's panel has the same Size row)
    ├─ click product image ─► choose file (resized to WebP)
-   ├─ section bar: drag ⠿ / ↑ ↓ / Hide · Show
+   ├─ section bar, always shown above each home section in edit mode (no hover): drag ⠿ / ↑ ↓ / Hide · Show, 44px buttons
    └─ toolbar: Save draft · Publish (live + version) · Exit (ends preview, back to ops)
+Sizes save as the page's `sizes` field ("headline:lg,faq:sm"); the server keeps only the fixed steps (sm, lg, xl) for that page's own text fields and drops anything else (`cleanField`, src/lib/content-fields.ts). The public page shows them too.
 Edit mode is bound to the exact ops session that opened it (pass and cookie are signed with its token hash, 1-hour cookie): signing out of ops or that session timing out ends it at once. Saves 120/hour and uploads 30/hour per person; every draft save and publish is in the admin log.
 ```
 

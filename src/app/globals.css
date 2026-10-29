@@ -380,6 +380,20 @@ html:has(.theme-day), html:has(.theme-day) body { background: #fafaf6; }
 .site-editing .site-editable:focus { outline-style: solid; outline-color: var(--color-lime); }
 .site-editing [data-edit-panel], .site-editing [data-edit-image] { cursor: pointer; outline: 1px dashed color-mix(in oklab, var(--color-lime) 35%, transparent); outline-offset: 6px; }
 .site-editing [data-edit-panel]:hover, .site-editing [data-edit-image]:hover { outline-color: var(--color-lime); }
+.site-editing .site-selected { outline-style: solid; outline-color: var(--color-lime); }
+
+/* Site text sizes (src/lib/text-size.ts): a step picked in the on-page editor, relative to the text's own designed size,
+   so the type scale holds on every screen. data-ts scales a run of text; data-tz scales a whole list (zoom, so the
+   list's own sizes keep their proportions). Headings stop growing at 15vw, so Largest can't overflow a 320px phone. */
+[data-ts="sm"] { font-size: 0.85em; }
+[data-ts="lg"] { font-size: 1.2em; }
+[data-ts="xl"] { font-size: 1.4em; }
+:is(h1, h2) [data-ts="lg"] { font-size: max(1em, min(1.2em, 15vw)); }
+:is(h1, h2) [data-ts="xl"] { font-size: max(1em, min(1.4em, 15vw)); }
+:is(h1, h2) :is([data-ts="lg"], [data-ts="xl"]) { overflow-wrap: anywhere; }
+[data-tz="sm"] { zoom: 0.85; }
+[data-tz="lg"] { zoom: 1.2; }
+[data-tz="xl"] { zoom: 1.4; }
 
 /* Review on touch screens: the open-track card ([data-swipe-zone]) follows a sideways swipe to the next or previous
    track (owner, 28 Oct); DecisionRail.tsx writes its transform. */
