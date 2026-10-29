@@ -10,6 +10,7 @@ import { recentCount, record } from "./ratelimit";
 import { sealUpload, storage } from "./storage";
 import { validateAudio } from "./validate";
 import { scannerAwake, scanStored, SCAN_REFUSED, type ScanResult } from "./scan";
+import { chargeScanner, senderScope } from "./scan-budget";
 import { recordIncident } from "./incidents";
 
 export type Stem = { id: number; track_id: number; file_key: string; name: string; mime: string; size: number; created_at: number };
@@ -62,6 +63,10 @@ export async function requestStems(user: User, t: Track) {
  * track was removed (Not for me leaves after 30 days, undecided after 90). Stems sent to a removed track are checked
  * like any other, then discarded; the receipt lists them as sent.
  */
+/** Stems are charged to the track's sender: the same budget as their tracks, and the email held-uploads.ts charges. */
+export const stemSenderEmail = async (t: Pick<Track, "sender_id">) =>
+  t.sender_id ? (await q.get<{ email: string | null }>("SELECT email FROM senders WHERE id = ?", t.sender_id))?.email : null;
+
 async function trackForStems(token: string) {
   const t = await q.get<Track>("SELECT * FROM tracks WHERE token = ?", token);
   if (!t) throw new IntakeError("This track is no longer available.", 404);
@@ -148,7 +153,13 @@ export async function completeStemUpload(token: string, uploadId: string, opts: 
   // scanner isn't woken for one stem: it's held and the next batch (every 5 minutes) checks it, as for tracks.
   const from = opts.from ?? "request";
   const asleep = from === "request" && (await scannerAwake()) === false;
-  const scan: ScanResult = asleep ? { verdict: "unavailable", error: "scanner asleep" } : await scanStored(fileKey, from === "request" ? { deadlineMs: 45_000 } : opts.scanDeadlineMs ? { deadlineMs: opts.scanDeadlineMs } : {});
+  // Charged to the scanner's daily budget first, as for tracks (src/lib/scan-budget.ts): over it, the stem is held.
+  const charge = asleep ? null : await chargeScanner(senderScope(await stemSenderEmail(t), t.user_id));
+  const scan: ScanResult = asleep
+    ? { verdict: "unavailable", error: "scanner asleep" }
+    : charge && !charge.ok
+      ? { verdict: "unavailable", error: "scanner budget spent" }
+      : await scanStored(fileKey, from === "request" ? { deadlineMs: 45_000 } : opts.scanDeadlineMs ? { deadlineMs: opts.scanDeadlineMs } : {});
   if (scan.verdict === "infected") {
     await discard();
     await recordIncident("upload_rejected", "Virus check flagged an upload", `${scan.signature} · receiver #${t.user_id}`, "stem upload");
@@ -162,6 +173,7 @@ export async function completeStemUpload(token: string, uploadId: string, opts: 
       from === "batch" ? 1 : 0,
       up.id,
     );
+    if (charge && !charge.ok) throw new UploadHeld(charge.scope === "all" ? "budget_all" : "budget");
     if (!asleep) await recordIncident("upload_failed", "Virus check unavailable; a stem upload is held for the next batch", scan.error, "stem upload");
     throw new UploadHeld();
   }

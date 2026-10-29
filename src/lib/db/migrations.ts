@@ -1815,4 +1815,20 @@ create table if not exists passkey_challenges (
 create index if not exists fk_passkey_challenges_user_id on passkey_challenges(user_id);
 alter table passkey_challenges enable row level security;`,
   },
+  {
+    // The virus scanner's daily budget (audit, 29 Oct; lib/scan-budget): wake-ups and running minutes charged per UTC
+    // day to the whole platform ('all') and to each sender (a hash of their mailbox, never the email). Only the app's
+    // own connection reads it.
+    id: "0106_scanner_budget",
+    sql: `create table if not exists scanner_budget (
+  day text not null,
+  scope text not null,
+  wakes integer not null default 0,
+  awake_ms bigint not null default 0,
+  awake_until bigint not null default 0,
+  spent_at bigint,
+  primary key (day, scope)
+);
+alter table scanner_budget enable row level security;`,
+  },
 ];

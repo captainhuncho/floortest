@@ -16,6 +16,7 @@ import { allow } from "./ratelimit";
 import { sealUpload, storage } from "./storage";
 import { validateAudio } from "./validate";
 import { scannerAwake, scanStored, SCAN_REFUSED, type ScanResult } from "./scan";
+import { chargeScanner, senderScope } from "./scan-budget";
 import { recordIncident } from "./incidents";
 import { recordStoredDigest } from "./file-digests";
 import { activeCollection, capacity, isClosed, isFull, isPaused, pausedMessage, rewardReferral } from "./desk";
@@ -33,8 +34,12 @@ export const UPLOAD_TTL = 2 * HOUR;
  */
 export const UPLOAD_HELD =
   "Received. We're checking it for viruses, which can take up to 10 minutes. It reaches the desk as soon as it passes, and your receipt follows by email.";
+/**
+ * Why it's held: "scanner" (asleep, down or too slow: the rest of a batch waits too), or "budget" / "budget_all" (this
+ * sender's or everyone's daily scanner budget is spent, src/lib/scan-budget.ts: it waits for the next day's).
+ */
 export class UploadHeld extends Error {
-  constructor() {
+  constructor(readonly reason: "scanner" | "budget" | "budget_all" = "scanner") {
     super(UPLOAD_HELD);
   }
 }
@@ -346,9 +351,14 @@ async function finishClaimed(receiver: User, up: Upload, ref: string, analysis: 
   // scanner isn't woken for one file: the upload is held and the next batch (every 5 minutes) checks it.
   const from = opts.from ?? "request";
   const asleep = from === "request" && (await scannerAwake()) === false;
+  // Every scan keeps the billed scanner running: it's charged to the day's budget first, or the upload is held for the
+  // next day's (src/lib/scan-budget.ts). Never accepted unscanned either way.
+  const charge = asleep ? null : await chargeScanner(senderScope((JSON.parse(up.meta) as Partial<SubmissionMeta>).email, receiver.id));
   const scan: ScanResult = asleep
     ? { verdict: "unavailable", error: "scanner asleep" }
-    : await scanStored(fileKey, from === "request" ? { deadlineMs: REQUEST_SCAN_MS } : opts.scanDeadlineMs ? { deadlineMs: opts.scanDeadlineMs } : {});
+    : charge && !charge.ok
+      ? { verdict: "unavailable", error: "scanner budget spent" }
+      : await scanStored(fileKey, from === "request" ? { deadlineMs: REQUEST_SCAN_MS } : opts.scanDeadlineMs ? { deadlineMs: opts.scanDeadlineMs } : {});
   if (scan.verdict === "infected") {
     await discard();
     await recordIncident("upload_rejected", "Virus check flagged an upload", `${scan.signature} · receiver #${receiver.id}`, "upload");
@@ -364,7 +374,9 @@ async function finishClaimed(receiver: User, up: Upload, ref: string, analysis: 
       from === "batch" ? 1 : 0,
       up.id,
     );
-    // Asleep is the normal case; anything else (down, too slow, misconfigured) is worth a look.
+    // Asleep is the normal case and a spent budget has its own incident; anything else (down, too slow, misconfigured)
+    // is worth a look.
+    if (charge && !charge.ok) throw new UploadHeld(charge.scope === "all" ? "budget_all" : "budget");
     if (!asleep) await recordIncident("upload_failed", "Virus check unavailable; an upload is held for the next batch", scan.error, "upload");
     throw new UploadHeld();
   }
