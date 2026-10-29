@@ -46,13 +46,18 @@ export async function changePassword(_: SettingsState, form: FormData): Promise<
   return { ok: true };
 }
 
-/** Ends every session except this one: lost phone, shared laptop. */
-export async function signOutOtherDevices(): Promise<number> {
+/**
+ * Ends every session except this one: lost phone, shared laptop. The password (and two-step code) first, so a
+ * borrowed session can't quietly sign the owner out everywhere else.
+ */
+export async function signOutOtherDevices(password: string, code: string): Promise<{ n: number } | { error: string }> {
   const u = await requireRole("owner");
+  const denied = await stepUp(u.id, String(password || "").slice(0, 200), String(code || "").slice(0, 40));
+  if (denied) return { error: denied };
   // Browsers, the app and the ops area alike, so a borrowed ops session can't outlive it.
   const n = await revokeAllSessions(u.id, { keep: await currentSessionHash() });
   await audit(u.id, "signed_out_others", `${n} device${n === 1 ? "" : "s"}`);
-  return n;
+  return { n };
 }
 
 /** Step 1: a fresh secret, held (encrypted) but not active until a code proves the app has it. */
@@ -121,11 +126,17 @@ export async function disableTwoFactor(_: SettingsState, form: FormData): Promis
   return { ok: true };
 }
 
-export async function setSigninAlerts(on: boolean) {
+/** Turning alerts off needs the password (and two-step code), like removing any other protection. Turning on doesn't. */
+export async function setSigninAlerts(on: boolean, password = "", code = ""): Promise<{ ok: true } | { error: string }> {
   const u = await requireRole("owner");
+  if (!on) {
+    const denied = await stepUp(u.id, String(password || "").slice(0, 200), String(code || "").slice(0, 40));
+    if (denied) return { error: denied };
+  }
   await q.run("UPDATE users SET signin_alerts = ? WHERE id = ?", on ? 1 : 0, u.id);
   await audit(u.id, on ? "signin_alerts_on" : "signin_alerts_off");
   done();
+  return { ok: true };
 }
 
 /** Removes Google sign-in after checking the password (so a borrowed session can't quietly change how you sign in). */

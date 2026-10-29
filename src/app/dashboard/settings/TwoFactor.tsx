@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useToast } from "@/components/Toast";
 import { useActionForm } from "@/components/useActionForm";
 import { confirmTwoFactor, disableTwoFactor, setSigninAlerts, startTwoFactor } from "../actions/security";
+import { ConfirmItsYou } from "./ConfirmItsYou";
 
 /** Optional account protections the holder chooses: authenticator-app sign-in and sign-in alerts. */
 export function TwoFactor({ enabled, alerts }: { enabled: boolean; alerts: boolean }) {
@@ -18,6 +19,8 @@ export function TwoFactor({ enabled, alerts }: { enabled: boolean; alerts: boole
   const [pending, start] = useTransition();
   const [offState, submitOff, offPending] = useActionForm(disableTwoFactor, undefined);
   const [confirmOff, setConfirmOff] = useState(false);
+  const [alertsOff, setAlertsOff] = useState(false);
+  const [alertsError, setAlertsError] = useState<string | null>(null);
 
   if (offState?.ok && on) setOn(false);
 
@@ -181,18 +184,44 @@ export function TwoFactor({ enabled, alerts }: { enabled: boolean; alerts: boole
           role="switch"
           aria-checked={alertsOn}
           aria-label="Sign-in alerts"
-          disabled={pending}
-          onClick={() =>
+          disabled={pending || alertsOff}
+          onClick={() => {
+            // Turning them off asks for the password first (below); turning them on doesn't.
+            if (alertsOn) return setAlertsOff(true);
             start(async () => {
-              await setSigninAlerts(!alertsOn);
-              setAlertsOn(!alertsOn);
-              toast.show({ message: `Sign-in alerts ${!alertsOn ? "on" : "off"}` });
-            })
-          }
+              const r = await setSigninAlerts(true);
+              if ("error" in r) return toast.show({ message: r.error });
+              setAlertsOn(true);
+              toast.show({ message: "Sign-in alerts on" });
+            });
+          }}
           className={`relative h-7 w-12 shrink-0 rounded-full transition before:absolute before:-inset-2 before:content-[''] ${alertsOn ? "bg-lime" : "bg-line"}`}
         >
           <span className={`switch-thumb absolute left-1 top-1 h-5 w-5 rounded-full bg-ink ${alertsOn ? "translate-x-5" : ""}`} />
         </button>
+        {alertsOff && (
+          <ConfirmItsYou
+            className="basis-full"
+            twoFactor={on}
+            action="Turn off alerts"
+            pending={pending}
+            error={alertsError}
+            onCancel={() => {
+              setAlertsOff(false);
+              setAlertsError(null);
+            }}
+            onConfirm={(pw, c) =>
+              start(async () => {
+                const r = await setSigninAlerts(false, pw, c);
+                if ("error" in r) return setAlertsError(r.error);
+                setAlertsOff(false);
+                setAlertsError(null);
+                setAlertsOn(false);
+                toast.show({ message: "Sign-in alerts off" });
+              })
+            }
+          />
+        )}
       </div>
     </div>
   );
