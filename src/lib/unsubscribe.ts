@@ -2,6 +2,7 @@ import "server-only";
 import crypto from "node:crypto";
 import { q } from "./db";
 import { env } from "./env";
+import { normalEmail } from "./email-normal";
 
 /** Kinds of optional email a person can switch off from the email itself, without signing in. */
 export const UNSUB_KINDS = {
@@ -14,7 +15,7 @@ export type UnsubKind = keyof typeof UNSUB_KINDS;
 
 const sign = (payload: string) => crypto.createHmac("sha256", env.secret).update(`unsub:${payload}`).digest("base64url").slice(0, 22);
 
-const emailTag = (email: string) => crypto.createHash("sha256").update(email.trim().toLowerCase()).digest("base64url").slice(0, 8);
+const emailTag = (email: string) => crypto.createHash("sha256").update(normalEmail(email)).digest("base64url").slice(0, 8);
 
 /**
  * A link token that can only switch off one kind of email for one account, at the address it was sent to.

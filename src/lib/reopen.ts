@@ -11,6 +11,7 @@ import { now, q, USER_COLUMNS, type Collection, type User } from "./db";
 import { activeCollection, capacity, isClosed, isPaused } from "./desk";
 import { emailText } from "./email-copy";
 import { APP_URL, deliverLater, queueMail, sendMailLater } from "./mail";
+import { normalEmail } from "./email-normal";
 
 type LinkUser = Pick<User, "id" | "name" | "handle" | "plan" | "paused_at" | "pause_until" | "active_collection_id">;
 
@@ -24,7 +25,7 @@ export async function linkAccepting(u: LinkUser) {
 
 /** A sender asks to hear when this receiver's link reopens. Quiet about duplicates. */
 export async function requestReopenAlert(userId: number, email: string) {
-  await q.run("INSERT INTO reopen_alerts (user_id, email, created_at) VALUES (?,?,?) ON CONFLICT DO NOTHING", userId, email.trim().toLowerCase(), now());
+  await q.run("INSERT INTO reopen_alerts (user_id, email, created_at) VALUES (?,?,?) ON CONFLICT DO NOTHING", userId, normalEmail(email), now());
 }
 
 /** How many reopen emails a receiver's own click sends (after the page has answered); the nightly run sends the rest. */

@@ -20,6 +20,7 @@ import { APP_URL, sendMail } from "@/lib/mail";
 import { RESERVED_HANDLES } from "@/lib/plans";
 import { allow, recentCount, record, requestIp } from "@/lib/ratelimit";
 import { loginLocked, recordLoginFailure } from "@/lib/login-limits";
+import { normalEmail } from "@/lib/email-normal";
 import { isProtectedHandle } from "@/lib/identity";
 import { sendWelcome } from "@/lib/onboarding";
 import { checkSecondFactor, finishSignIn, sendEmailVerification } from "@/lib/security";
@@ -153,7 +154,7 @@ const fromForm = (form: FormData, k: string, max: number) => String(form.get(k) 
 export async function signup(_: FormState, form: FormData): Promise<FormState> {
   const firstName = fromForm(form, "first_name", 60);
   const lastName = fromForm(form, "last_name", 60);
-  const email = fromForm(form, "email", 200).toLowerCase();
+  const email = normalEmail(fromForm(form, "email", 200));
   const handle = String(form.get("handle") || "").trim().toLowerCase();
   // Public name: their professional name, or the username when they leave it empty.
   const name = fromForm(form, "name", 80) || handle;
@@ -223,7 +224,7 @@ export async function approveGoogleLink(_: FormState, form: FormData): Promise<F
 }
 
 export async function login(_: FormState, form: FormData): Promise<FormState> {
-  const email = String(form.get("email") || "").trim().toLowerCase().slice(0, 200);
+  const email = normalEmail(String(form.get("email") || "")).slice(0, 200);
   const password = String(form.get("password") || "").slice(0, 200);
   const ip = await requestIp();
   // Failed attempts only, per connection and per account on that connection (lib/login-limits).
@@ -253,7 +254,7 @@ export async function logout() {
 
 /** Always answers the same way, so it can't be used to discover which emails have accounts. */
 export async function requestPasswordReset(_: FormState, form: FormData): Promise<FormState> {
-  const email = String(form.get("email") || "").trim().toLowerCase().slice(0, 200);
+  const email = normalEmail(String(form.get("email") || "")).slice(0, 200);
   if (!EMAIL.test(email)) return { error: "Enter the email you signed up with." };
   const ip = await requestIp();
   if (!(await allow("reset_ip", ip, 5, HOUR)) || !(await allow("reset_email", email, 3, HOUR)))
@@ -295,7 +296,7 @@ const codeHash = (userId: number, code: string) => crypto.createHmac("sha256", e
 
 /** Emails a 6-digit sign-in code. Always moves on to the code page, so it can't reveal which emails have accounts. */
 export async function requestLoginCode(_: FormState, form: FormData): Promise<FormState> {
-  const email = String(form.get("email") || "").trim().toLowerCase().slice(0, 200);
+  const email = normalEmail(String(form.get("email") || "")).slice(0, 200);
   if (!EMAIL.test(email)) return { error: "Enter the email you signed up with." };
   const ip = await requestIp();
   // Asking for codes again and again: prove you're human first.
@@ -460,7 +461,7 @@ async function teamInviteFor(form: FormData, email: string) {
   const secret = String(form.get("team") || "");
   if (!secret) return undefined;
   const inv = await inviteBySecret(secret);
-  return inv && inv.email === email.trim().toLowerCase() ? inv : undefined;
+  return inv && inv.email === normalEmail(email) ? inv : undefined;
 }
 
 /** After a sign-up from a team invite: join the team and switch to its desk. */

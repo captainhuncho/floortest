@@ -19,6 +19,7 @@ import { scannerAwake, scanStored, SCAN_REFUSED, type ScanResult } from "./scan"
 import { recordIncident } from "./incidents";
 import { recordStoredDigest } from "./file-digests";
 import { activeCollection, capacity, isClosed, isFull, isPaused, pausedMessage, rewardReferral } from "./desk";
+import { normalEmail } from "./email-normal";
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -65,7 +66,7 @@ async function checkOpen(receiver: User, db: Queryable = q) {
 
 /** Blocked across every link by FloorTest, by exact address or by domain. */
 export async function platformBlocked(email: string) {
-  const e = email.trim().toLowerCase();
+  const e = normalEmail(email);
   const domain = e.split("@")[1] || "";
   return !!(await q.get("SELECT 1 FROM platform_blocks WHERE (kind = 'email' AND value = ?) OR (kind = 'domain' AND value = ?)", e, domain));
 }
