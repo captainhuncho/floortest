@@ -17,7 +17,7 @@ const cost = (b: number) => `$${(gb(b) * R2_PER_GB).toFixed(2)}`;
 
 /** What's stored, who stores most, what's about to be deleted, and how it's growing. */
 export default async function Storage() {
-  await requireAdmin("storage");
+  const admin = await requireAdmin("storage");
   const vaultRun = await lastVaultCopy();
   const t = Date.now();
   const n = async (sql: string, ...a: unknown[]) => Number((await q.get<{ n: string | number | null }>(sql, ...a))?.n ?? 0);
@@ -102,10 +102,13 @@ export default async function Storage() {
           <form action={backupNow}>
             <button className="btn-ghost btn-sm">1. Back up the database now</button>
           </form>
-          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- a file download */}
-          <a href="/api/admin/storage-manifest" className="btn-ghost btn-sm">
-            2. Download the file list (CSV)
-          </a>
+          {/* Every account's file list: the super admin's alone (api/admin/storage-manifest). */}
+          {admin.access.super && (
+            // eslint-disable-next-line @next/next/no-html-link-for-pages -- a file download
+            <a href="/api/admin/storage-manifest" className="btn-ghost btn-sm">
+              2. Download the file list (CSV)
+            </a>
+          )}
           <form action={checkStorage} className="flex items-center gap-2">
             <label className="sr-only" htmlFor="check-bucket">
               Bucket to check

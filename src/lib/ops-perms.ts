@@ -69,6 +69,7 @@ export const SUPER_ONLY = [
   "Changing someone's email or handle, two-step reset, signing them out everywhere",
   "View as",
   "Users CSV export",
+  "Storage file list download",
 ];
 
 /** "x.act" includes "x.read"; "users.support" includes "users.read". */
