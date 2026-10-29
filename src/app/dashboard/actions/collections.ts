@@ -2,7 +2,7 @@
 
 /** Collections: create, choose which one receives, edit and delete. */
 import { redirect } from "next/navigation";
-import { canAddCollection, canCapCallouts, routeToCollection } from "@/lib/desk";
+import { addCollection, canCapCallouts, routeToCollection } from "@/lib/desk";
 import { revalidatePath } from "next/cache";
 import { requireUser, requireRole } from "@/lib/auth";
 import { now, q } from "@/lib/db";
@@ -17,13 +17,12 @@ export async function createCollection(form: FormData) {
   const u = await requireUser();
   const name = String(form.get("name") || "").trim().slice(0, 60);
   if (!name) return;
-  // Two collections per desk during the beta (the page hides New collection at two; this holds the line).
-  // shortcut: check-then-insert, so two Creates at the same instant could make a third; lock the desk row if that matters.
-  if (!(await canAddCollection(u.id))) return;
-  const c = await q.get<{ id: number }>("INSERT INTO collections (user_id, name, created_at) VALUES (?,?,?) RETURNING id", u.id, name, now());
+  // Two collections per desk during the beta (the page hides New collection at two; addCollection holds the line, atomically).
+  const id = await addCollection(u.id, name);
+  if (!id) return;
   await audit(u.id, "collection_created", name);
   // "Make this the receiving one" is routing, an owner or admin power: for a member it's ignored and the collection is just added.
-  if (form.get("activate") && (await routeToCollection(u, c!.id))) {
+  if (form.get("activate") && (await routeToCollection(u, id))) {
     await audit(u.id, "collection_activated", name);
     await sendReopenAlerts(u.id, { inRequest: true });
     revalidatePath(`/${u.handle}`);

@@ -104,6 +104,20 @@ export async function canAddCollection(deskId: number, db: Queryable = q) {
 }
 
 /**
+ * Start a collection if the desk has room. The desk row is locked while it's counted, so two Creates at the same
+ * instant can't make a third in the beta. Returns the new collection's id, or undefined when there's no room.
+ */
+export async function addCollection(deskId: number, name: string) {
+  const unlimited = await switchOn("more_collections", deskId); // read before the transaction: it uses its own connection
+  return q.tx(async (db) => {
+    await db.get("SELECT id FROM users WHERE id = ? FOR UPDATE", deskId);
+    const n = await db.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM collections WHERE user_id = ?", deskId);
+    if (!unlimited && Number(n?.n ?? 0) >= BETA_COLLECTIONS) return undefined;
+    return (await db.get<{ id: number }>("INSERT INTO collections (user_id, name, created_at) VALUES (?,?,?) RETURNING id", deskId, name, now()))!.id;
+  });
+}
+
+/**
  * Point the link at one of this desk's collections. Routing is an owner or admin power, so a member's call changes
  * nothing (actions can be called without the button). True when it changed; the caller logs it and sends reopen alerts.
  */
