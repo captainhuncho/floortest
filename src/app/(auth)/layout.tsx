@@ -8,7 +8,7 @@ import { Logo } from "@/components/Logo";
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col px-4 pb-8 pt-8 sm:pt-14">
-      <Logo href="/" className="mb-10 self-start" />
+      <Logo href="/" beta className="mb-10 self-start" />
       <div className="flex-1">{children}</div>
       <nav aria-label="Legal" className="mt-12 flex gap-6 text-[12px] text-dim">
         <Link href="/terms" className="tap inline-flex items-center hover:text-bone">Terms</Link>
