@@ -26,7 +26,8 @@ const isOps = (path: string) => under(path, OPS_PATHS);
 // "/join": team invites (sign-up from one works during the beta, like an invite code).
 // "/manifest.webmanifest": the home-screen name and icons; browsers fetch it without cookies, so behind the gate it
 // would get the coming-soon page and phones would lose the icon.
-const GATE_OPEN = ["/coming-soon", "/login", "/forgot", "/reset", "/signed-out", "/c", "/join", "/manifest.webmanifest"];
+// "/invite": beta invite links, which let a live personal invite through to sign-up (src/app/invite/[code]/route.ts).
+const GATE_OPEN = ["/coming-soon", "/login", "/forgot", "/reset", "/signed-out", "/c", "/join", "/manifest.webmanifest", "/invite"];
 const notFound = (req: NextRequest, request: { headers: Headers }) => NextResponse.rewrite(new URL("/_not-found", req.url), { status: 404, request });
 
 /**
@@ -51,6 +52,13 @@ function route(req: NextRequest, request: { headers: Headers }) {
   // Coming-soon gate: every page on the main site shows the coming-soon page until the password is entered.
   // The API (webhooks, health, cron) and ops (its own sign-in) stay reachable.
   if (gatePassword() && !onOpsHost && !path.startsWith("/api/") && !under(path, GATE_OPEN) && !hasGatePass(req.cookies.get(GATE_COOKIE)?.value)) {
+    // Invite emails link to /signup?invite=CODE: the invite route checks the code and opens the gate for a live one.
+    const invite = path === "/signup" ? req.nextUrl.searchParams.get("invite") : null;
+    if (invite) {
+      const url = req.nextUrl.clone();
+      url.pathname = `/invite/${encodeURIComponent(invite)}`;
+      return NextResponse.redirect(url);
+    }
     const url = req.nextUrl.clone();
     url.pathname = "/coming-soon";
     url.search = `?next=${encodeURIComponent(path + req.nextUrl.search)}`;

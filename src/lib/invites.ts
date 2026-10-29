@@ -38,3 +38,21 @@ export async function resolveInvite(raw: string, email: string, open: boolean): 
   if (inv) return { valid: (await used(code)) < inv.max_uses, referrerId: null, code };
   return { valid: env.inviteCodes.includes(code) && (await used(code)) < env.inviteLimit, referrerId: null, code };
 }
+
+/**
+ * Whether a code from an invite link is a live personal invite: sent to someone's email, not revoked, not used up, and
+ * that email has no account yet. An invite expires once its email finishes signing up, by any route (owner, 29 Oct).
+ * While the site is behind the coming-soon password, a live one lets the invited person through to sign-up (owner,
+ * 29 Oct); shared and referral codes don't, so a leaked code can't open the site.
+ */
+export async function liveInviteCode(raw: string) {
+  const code = raw.trim().toUpperCase().slice(0, 32);
+  if (!code) return false;
+  const inv = await q.get<{ code: string }>(
+    `SELECT code FROM invites i WHERE i.code = ? AND i.email IS NOT NULL AND i.revoked_at IS NULL
+       AND (SELECT COUNT(*) FROM users u WHERE u.invite_code = i.code) < i.max_uses
+       AND NOT EXISTS (SELECT 1 FROM users u WHERE lower(u.email) = lower(i.email))`,
+    code,
+  );
+  return !!inv;
+}

@@ -6,7 +6,10 @@ What happens when someone clicks, and which page comes next. Change a route or r
 ```
 floortest.app ──(no gate pass)──► /coming-soon ──password──► the page they wanted
                                      └─ Sign in ──► /login
-Nothing about FloorTest is public before launch (legal pages too); the gate shows only "Coming soon".
+beta invite email ──► /signup?invite=CODE ──► /invite/CODE ──live personal invite──► gate pass + /signup (invite shown)
+                                                          └─ wrong, used, revoked, shared code, or 20 tries in 10 min ──► /coming-soon
+Nothing about FloorTest is public before launch (legal pages too); the gate shows only "Coming soon". A personal
+invite stops opening it once its email has an account (owner, 29 Oct); team invites open it the same way via /join.
 ```
 
 ## Receiver: sign-up
