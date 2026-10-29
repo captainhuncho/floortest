@@ -157,11 +157,16 @@ export async function startOwnerUpload(owner: User, collectionId: number, d: { f
   return { uploadId: id, target };
 }
 
+/** The stored id of a release: the browser's id under this desk, so no other desk can reach the same row. */
+const deskReleaseId = (receiverId: number, id: string) => `${receiverId}-${id}`;
+
 /**
  * Step 1 of a submission: check the rules, then authorise a direct upload to storage.
  * The file never passes through the app server.
  */
-export async function startUpload(receiver: User, meta: SubmissionMeta, size: number, ip: string) {
+export async function startUpload(receiver: User, input: SubmissionMeta, size: number, ip: string) {
+  // A release id comes from the sender's browser. It is scoped to this desk, so two desks never share a release row.
+  const meta = input.release ? { ...input, release: { ...input.release, id: deskReleaseId(receiver.id, input.release.id) } } : input;
   const ext = meta.originalName.toLowerCase().match(/\.(wav|mp3)$/)?.[0];
   if (!ext || !ACCEPTED_EXT.includes(ext)) throw new IntakeError("Only WAV and MP3 files are accepted.", 400);
   if (!Number.isSafeInteger(size) || size <= 0) throw new IntakeError("Choose a WAV or MP3 file.", 400);
@@ -181,11 +186,12 @@ export async function startUpload(receiver: User, meta: SubmissionMeta, size: nu
       const inRelease =
         Number((await db.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM tracks WHERE user_id = ? AND release_id = ?", receiver.id, meta.release.id))?.n ?? 0) +
         Number((await db.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM uploads WHERE receiver_id = ? AND meta::jsonb->'release'->>'id' = ?", receiver.id, meta.release.id))?.n ?? 0);
-      // Only the sender who started a release can add to it.
+      // Only the sender who started a release can add to it, including before its first track is saved.
       const owner = await db.get<{ email: string }>("SELECT s.email FROM releases r JOIN senders s ON s.id = r.sender_id WHERE r.id = ? AND r.user_id = ?", meta.release.id, receiver.id);
-      if (owner && owner.email !== meta.email) throw new IntakeError("That release belongs to someone else.", 403);
+      const otherOpen = await db.get("SELECT 1 FROM uploads WHERE receiver_id = ? AND meta::jsonb->'release'->>'id' = ? AND meta::jsonb->>'email' <> ? LIMIT 1", receiver.id, meta.release.id, meta.email);
+      if ((owner && owner.email !== meta.email) || otherOpen) throw new IntakeError("That release belongs to someone else.", 403);
       if (inRelease >= MAX_RELEASE_TRACKS) throw new IntakeError(`A release can have up to ${MAX_RELEASE_TRACKS} tracks.`, 413);
-      const cap = await folderLimit(receiver.plan);
+      const cap = await folderLimit(receiver.plan, db);
       const releaseBytes =
         Number((await db.get<{ n: number }>("SELECT COALESCE(SUM(size), 0) AS n FROM tracks WHERE user_id = ? AND release_id = ?", receiver.id, meta.release.id))?.n ?? 0) +
         Number((await db.get<{ n: number }>("SELECT COALESCE(SUM(size), 0) AS n FROM uploads WHERE receiver_id = ? AND meta::jsonb->'release'->>'id' = ?", receiver.id, meta.release.id))?.n ?? 0);
@@ -200,9 +206,10 @@ export async function startUpload(receiver: User, meta: SubmissionMeta, size: nu
       const sum = async (sql: string) => (await db.get<{ n: number; b: number }>(sql, receiver.id, meta.batch))!;
       const done = await sum("SELECT COUNT(*)::int AS n, COALESCE(SUM(size), 0)::bigint AS b FROM tracks WHERE user_id = ? AND batch_id = ?");
       const open = await sum("SELECT COUNT(*)::int AS n, COALESCE(SUM(size), 0)::bigint AS b FROM uploads WHERE receiver_id = ? AND meta::jsonb->>'batch' = ?");
-      // Only the sender who started a batch can add to it.
+      // Only the sender who started a batch can add to it, including before its first track is saved.
       const owner = await db.get<{ email: string }>("SELECT s.email FROM tracks t JOIN senders s ON s.id = t.sender_id WHERE t.user_id = ? AND t.batch_id = ? LIMIT 1", receiver.id, meta.batch);
-      if (owner && owner.email !== meta.email) throw new IntakeError("That send belongs to someone else.", 403);
+      const otherOpen = await db.get("SELECT 1 FROM uploads WHERE receiver_id = ? AND meta::jsonb->>'batch' = ? AND meta::jsonb->>'email' <> ? LIMIT 1", receiver.id, meta.batch, meta.email);
+      if ((owner && owner.email !== meta.email) || otherOpen) throw new IntakeError("That send belongs to someone else.", 403);
       if (Number(done.n) + Number(open.n) >= MAX_BATCH_TRACKS) throw new IntakeError(`Up to ${MAX_BATCH_TRACKS} tracks at a time.`, 413);
       if (Number(done.b) + Number(open.b) + size > MAX_UPLOAD_BYTES) throw new IntakeError("These tracks add up to more than 250 MB.", 413);
       const passed = await sum("SELECT COUNT(*)::int AS n, 0::bigint AS b FROM uploads WHERE receiver_id = ? AND meta::jsonb->>'batch' = ? AND checked_at IS NOT NULL");
