@@ -34,7 +34,7 @@ test("deleting an account removes its messages, partner note, waitlist, newslett
   await q.run("INSERT INTO outbox (user_id, to_email, subject, body, status, audience, created_at) VALUES (NULL, ?, 'Old code', 'b', 'failed', 'support', ?)", e, t);
   // The "your account was deleted" email is queued just before the purge and must still go out.
   await q.run("INSERT INTO outbox (user_id, to_email, subject, body, status, audience, created_at) VALUES (NULL, ?, 'Your FloorTest account was deleted', 'b', 'queued', 'support', ?)", e, t);
-  // Records that stay: the unsubscribe list, and other people's rows.
+  // Records that stay: the unsubscribe list, the staff note about this person, and other people's rows.
   await q.run("INSERT INTO email_suppressions (email, reason, created_at) VALUES (?, 'bounced', ?)", e, t);
   await q.run("INSERT INTO outbox (user_id, to_email, subject, body, status, audience, created_at) VALUES (?, 'other@erase.io', 'Hi', 'b', 'sent', 'sender', ?)", other, t);
   await q.run("INSERT INTO partner_notes (email, note, updated_at) VALUES ('other@erase.io', 'keep', ?)", t);
@@ -43,7 +43,7 @@ test("deleting an account removes its messages, partner note, waitlist, newslett
 
   const left = (sql: string) => q.count(sql, e);
   assert.equal(await left("SELECT COUNT(*) AS n FROM contact_messages WHERE lower(email) = ?"), 0, "messages");
-  assert.equal(await left("SELECT COUNT(*) AS n FROM partner_notes WHERE lower(email) = ?"), 0, "partner note");
+  assert.equal(await left("SELECT COUNT(*) AS n FROM partner_notes WHERE lower(email) = ?"), 1, "the staff note about them stays, as history (owner, 29 Oct)");
   assert.equal(await left("SELECT COUNT(*) AS n FROM waitlist WHERE lower(email) = ?"), 0, "waitlist");
   assert.equal(await left("SELECT COUNT(*) AS n FROM newsletter_subscribers WHERE lower(email) = ?"), 0, "newsletter");
   assert.equal(await left("SELECT COUNT(*) AS n FROM reopen_alerts WHERE lower(email) = ?"), 0, "reopen alerts");

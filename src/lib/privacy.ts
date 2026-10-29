@@ -31,10 +31,12 @@ export async function purgeAccount(userId: number) {
   await drainNow();
 }
 
-/** Rows kept under an email address rather than an account: removed when that person's account is deleted. */
+/**
+ * Rows kept under an email address rather than an account: removed when that person's account is deleted. Staff notes
+ * about a partner (partner_notes) stay, as the business's own history of them (owner, 29 Oct).
+ */
 async function forgetAddress(db: Queryable, e: string) {
   await db.run("DELETE FROM contact_messages WHERE lower(email) = ?", e);
-  await db.run("DELETE FROM partner_notes WHERE lower(email) = ?", e);
   await db.run("DELETE FROM waitlist WHERE lower(email) = ?", e);
   await db.run("DELETE FROM newsletter_subscribers WHERE lower(email) = ?", e);
   await db.run("DELETE FROM reopen_alerts WHERE lower(email) = ?", e);
