@@ -64,6 +64,27 @@ export async function quarantined(key: string) {
   return !!(await q.get("SELECT 1 FROM file_digests WHERE file_key = ? AND status <> 'ok'", key));
 }
 
+/**
+ * The same hold for a read of many files at once (a crate download, a track's stems ZIP): returns the items whose file
+ * is not held back. Every path that serves more than one file filters through here before streaming anything.
+ */
+export async function withoutHeld<T>(items: T[], keyOf: (item: T) => string | null | undefined): Promise<T[]> {
+  const keys = [...new Set(items.map(keyOf).filter((k): k is string => !!k))];
+  const held = new Set<string>();
+  for (let i = 0; i < keys.length; i += 500) {
+    const part = keys.slice(i, i + 500);
+    const rows = await q.all<{ file_key: string }>(
+      `SELECT file_key FROM file_digests WHERE status <> 'ok' AND file_key IN (${part.map(() => "?").join(",")})`,
+      ...part,
+    );
+    for (const r of rows) held.add(r.file_key);
+  }
+  return items.filter((item) => {
+    const k = keyOf(item);
+    return !!k && !held.has(k);
+  });
+}
+
 /** Nightly: fingerprint what has none, then re-check the longest-unchecked. Returns counts for the job log. */
 export async function runDigests(budgetMs = 60_000, at = now()) {
   const until = Date.now() + budgetMs;

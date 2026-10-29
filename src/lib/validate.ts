@@ -2,7 +2,8 @@
  * Structural validation of uploaded audio. This is not antivirus scanning: it rejects anything
  * that isn't a well-formed WAV or MPEG audio stream, which covers disguised executables, archives
  * and documents. It also checks the end of the file, so nothing can ride along after real audio
- * (a "polyglot" file). Files are only ever served as audio attachments, never executed.
+ * (a "polyglot" file): an MP3 must end in audio frames or tags of their exact size, and a WAV
+ * may only have a bounded trailer after its data. Files are only ever served as audio, never executed.
  */
 type Reader = { size: number; read(start: number, end: number): Promise<Uint8Array> };
 
@@ -16,7 +17,8 @@ export async function validateAudio(file: Reader): Promise<{ ok: true; kind: "wa
     const riffEnd = 8 + view.getUint32(4, true);
     const declared = view.getUint32(4, true);
     // Some recorders leave the length as 0 or 0xFFFFFFFF while streaming; only trust a real value.
-    if (declared > 36 && declared !== 0xffffffff && file.size > riffEnd + TRAILER_ALLOWANCE) return { ok: false, reason: "This WAV file has unexpected data after the audio." };
+    const streaming = !(declared > 36 && declared !== 0xffffffff);
+    if (!streaming && file.size > riffEnd + TRAILER_ALLOWANCE) return { ok: false, reason: WAV_TRAILER };
     let off = 12;
     let fmtOk = false;
     while (off + 8 <= head.length) {
@@ -39,8 +41,20 @@ export async function validateAudio(file: Reader): Promise<{ ok: true; kind: "wa
       }
       if (id === "data") {
         if (!fmtOk) return { ok: false, reason: "This WAV file is missing its format header." };
-        if (off + 8 + size > file.size + 1) return { ok: false, reason: "This WAV file looks incomplete or damaged." };
-        return { ok: true, kind: "wav" };
+        // A streaming recorder may also leave the data size open (0xFFFFFFFF, or 0 when it never went back to fill in
+        // either size); then the audio runs to the end of the file.
+        if (streaming && (size === 0xffffffff || (declared === 0 && size === 0))) return { ok: true, kind: "wav" };
+        const dataEnd = off + 8 + size;
+        if (dataEnd > file.size + 1) return { ok: false, reason: "This WAV file looks incomplete or damaged." };
+        if (streaming) {
+          // Without a real RIFF length, the data chunk itself must reach (nearly) the end of the file. An empty data
+          // chunk under a 0xFFFFFFFF length holds no audio, only whatever follows it.
+          if (file.size > dataEnd + TRAILER_ALLOWANCE || (size === 0 && file.size > dataEnd)) return { ok: false, reason: WAV_TRAILER };
+          return { ok: true, kind: "wav" };
+        }
+        // With a real RIFF length, whatever follows the audio up to that length must be well-formed chunks (DJ software
+        // writes large tag chunks there), and only the bounded allowance may sit past it (checked above).
+        return (await chunksReachEnd(file, dataEnd + (size % 2), Math.min(riffEnd, file.size))) ? { ok: true, kind: "wav" } : { ok: false, reason: WAV_TRAILER };
       }
       off += 8 + size + (size % 2);
     }
@@ -56,24 +70,106 @@ export async function validateAudio(file: Reader): Promise<{ ok: true; kind: "wa
     if (off + 8192 > head.length) {
       const more = await file.read(off, Math.min(file.size, off + 64 * 1024) - 1);
       if (!findFrames(more, 0)) return { ok: false, reason: "That file doesn't look like MP3 audio." };
-      return (await mp3TailOk(file)) ? { ok: true, kind: "mp3" } : { ok: false, reason: "This MP3 has unexpected data after the audio." };
+      return (await mp3TailOk(file, head, off)) ? { ok: true, kind: "mp3" } : { ok: false, reason: MP3_TRAILER };
     }
   }
   if (!findFrames(head, off)) return { ok: false, reason: "That file doesn't look like WAV or MP3 audio." };
-  return (await mp3TailOk(file)) ? { ok: true, kind: "mp3" } : { ok: false, reason: "This MP3 has unexpected data after the audio." };
+  return (await mp3TailOk(file, head, off)) ? { ok: true, kind: "mp3" } : { ok: false, reason: MP3_TRAILER };
 }
 
 /** Room for padding and trailing metadata chunks (ID3, bext) after the declared audio. */
 const TRAILER_ALLOWANCE = 256 * 1024;
 
-/** The last part of an MP3 must still be audio frames or a known tag, not something appended. */
-async function mp3TailOk(file: Reader) {
-  if (file.size <= 1024 * 1024) return true; // already covered by the head read
-  const start = Math.max(0, file.size - 64 * 1024);
-  const tail = await file.read(start, file.size - 1);
-  const text = String.fromCharCode(...tail.slice(-8192));
-  if (/TAG|APETAGEX|LYRICS200|ID3/.test(text)) return true;
-  return findFrames(tail, 0);
+/** Most chunks we walk after a WAV's audio; real files have a handful (LIST, id3, bext, cue). */
+const MAX_TRAILING_CHUNKS = 64;
+
+/** True if the bytes from `off` to `end` are a run of chunks, each with a printable 4-character id and a size that fits. */
+async function chunksReachEnd(file: Reader, off: number, end: number) {
+  for (let n = 0; n < MAX_TRAILING_CHUNKS; n++) {
+    if (off >= end - 1) return off <= end + 1;
+    if (off + 8 > end) return false;
+    const h = await file.read(off, off + 7);
+    if (h.length < 8 || ![...h.slice(0, 4)].every((c) => c >= 0x20 && c <= 0x7e)) return false;
+    const size = new DataView(h.buffer, h.byteOffset, 8).getUint32(4, true);
+    off += 8 + size + (size % 2);
+    if (off > end + 1) return false;
+  }
+  return false;
+}
+
+const WAV_TRAILER = "This WAV file has unexpected data after the audio.";
+const MP3_TRAILER = "This MP3 has unexpected data after the audio.";
+/** The longest Layer III frame (MPEG-1, 320 kbps, 32 kHz). A real frame starts within this many bytes of any point. */
+const MAX_FRAME = 1441;
+/** Largest APEv2 or Lyrics3 tag we take off the end; artwork in an APE tag stays well under this. */
+const MAX_TAG = 1024 * 1024;
+/** Some encoders pad the end with zero bytes; allow a little of it. */
+const MAX_ZERO_PAD = 1024;
+
+/**
+ * The end of an MP3 must be audio frames running right up to the last byte, optionally followed by
+ * tags of their exact size (APEv2 and Lyrics3 by their stated length, ID3v1 as the final 128 bytes).
+ * Runs for every size; small files reuse the bytes already read for the head.
+ */
+async function mp3TailOk(file: Reader, head: Uint8Array, audioStart: number) {
+  const bytes = (s: number, e: number) => (e <= head.length ? Promise.resolve(head.slice(s, e)) : file.read(s, e - 1));
+  const end = await stripTags(file.size, audioStart, bytes);
+  if (end < 0) return false;
+  const start = Math.max(audioStart, end - 64 * 1024);
+  return framesReachEnd(await bytes(start, end));
+}
+
+/** Where the audio ends once the trailing tags are taken off, or -1 if a tag claims more than there is. */
+async function stripTags(size: number, audioStart: number, bytes: (s: number, e: number) => Promise<Uint8Array>) {
+  const text = (b: Uint8Array, s: number, e: number) => String.fromCharCode(...b.slice(s, e));
+  let end = size;
+  for (let round = 0; round < 4; round++) {
+    if (end - audioStart >= 128 && text(await bytes(end - 128, end - 125), 0, 3) === "TAG") {
+      end -= 128;
+      continue;
+    }
+    if (end - audioStart >= 32) {
+      const footer = await bytes(end - 32, end);
+      if (text(footer, 0, 8) === "APETAGEX") {
+        const view = new DataView(footer.buffer, footer.byteOffset, 32);
+        const total = view.getUint32(12, true) + (view.getUint32(20, true) & 0x80000000 ? 32 : 0);
+        if (total < 32 || total > MAX_TAG || total > end - audioStart) return -1;
+        end -= total;
+        continue;
+      }
+    }
+    if (end - audioStart >= 15) {
+      const footer = await bytes(end - 15, end);
+      const digits = text(footer, 0, 6);
+      if (text(footer, 6, 15) === "LYRICS200" && /^\d{6}$/.test(digits)) {
+        const total = Number(digits) + 15;
+        if (total > MAX_TAG || total > end - audioStart || text(await bytes(end - total, end - total + 11), 0, 11) !== "LYRICSBEGIN") return -1;
+        end -= total;
+        continue;
+      }
+    }
+    break;
+  }
+  return end;
+}
+
+/** True if a chain of at least two frames, starting near the front of `b`, ends exactly at its last byte (or in a cut-off final frame, or a little zero padding). */
+function framesReachEnd(b: Uint8Array) {
+  for (let i = 0; i < Math.min(b.length, MAX_FRAME); i++) {
+    let j = i;
+    let count = 0;
+    for (let len = frameLength(b, j); len > 0 && j + len <= b.length; len = frameLength(b, j)) {
+      j += len;
+      count++;
+    }
+    if (count < 2) continue;
+    if (j === b.length) return true;
+    // Some encoders pad the end with a few zero bytes.
+    if (b.length - j <= MAX_ZERO_PAD && b.subarray(j).every((x) => x === 0)) return true;
+    // The encoder may have been stopped mid-frame: allow a final frame whose header is valid but whose body is cut off.
+    if (frameLength(b, j) > 0) return true;
+  }
+  return false;
 }
 
 const BITRATES_V1_L3 = [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320];

@@ -10,13 +10,14 @@ import { APP_URL, sendMail } from "@/lib/mail";
 import { deviceId, endSession, revokeAllSessions } from "@/lib/sessions";
 import QRCode from "qrcode";
 import { env } from "@/lib/env";
-import { hashRecovery, newRecoveryCodes, newTotpSecret, openSecret, otpauthUri, sealSecret, verifyTotp } from "@/lib/totp";
-import { now, q } from "@/lib/db";
+import { newTotpSecret, openSecret, otpauthUri, sealSecret, verifyTotp } from "@/lib/totp";
+import { q } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { done } from "./common";
 import { unpinGoogle } from "@/lib/google-link";
 import { type SettingsState } from "./settings";
 import { breachedError } from "@/lib/breached";
+import { turnOnTwoFactor } from "@/lib/two-factor";
 
 /** Changes the password after checking the current one, and signs out every other device. */
 export async function changePassword(_: SettingsState, form: FormData): Promise<SettingsState> {
@@ -79,18 +80,9 @@ export async function confirmTwoFactor(code: string, password: string): Promise<
   const u = await requireRole("owner");
   const denied = await stepUp(u.id, String(password || ""), "");
   if (denied) return { error: denied };
-  const row = await q.get<{ totp_secret: string | null }>("SELECT totp_secret FROM users WHERE id = ? AND totp_enabled_at IS NULL", u.id);
-  if (!row?.totp_secret) return { error: "Start again: set-up expired." };
-  const step = verifyTotp(openSecret(row.totp_secret, env.secret), String(code || ""), null);
-  if (step == null) return { error: "That code didn't match. Check the time on your phone and try the newest code." };
-  const codes = newRecoveryCodes();
-  await q.run(
-    "UPDATE users SET totp_enabled_at = ?, totp_last_step = ?, recovery_codes = ? WHERE id = ?",
-    now(),
-    step,
-    JSON.stringify(codes.map((c) => hashRecovery(c, env.secret))),
-    u.id,
-  );
+  const on = await turnOnTwoFactor(u.id, code);
+  if ("error" in on) return on;
+  const { codes } = on;
   await q.run("DELETE FROM sessions WHERE user_id = ? AND token_hash <> ?", u.id, (await currentSessionHash()) ?? "");
   await audit(u.id, "two_factor_on");
   await sendMail({

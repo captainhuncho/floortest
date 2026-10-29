@@ -1,5 +1,5 @@
 import { fileAccess } from "@/lib/file-access";
-import { currentUser } from "@/lib/auth";
+import { currentUser, viewingAs } from "@/lib/auth";
 import { audit, trackLabel } from "@/lib/audit";
 import { markDownloaded } from "@/lib/review";
 import { crateFileName } from "@/lib/crate";
@@ -16,6 +16,9 @@ export const maxDuration = 300;
 export async function GET(req: Request, ctx: RouteContext<"/api/tracks/[id]/download">) {
   // A link on another site still carries the session cookie: refuse it, or it could make Downloaded happen.
   if (!fromThisSite(req.headers)) return new Response(OTHER_SITE, { status: 403 });
+  // Read-only ops "view as" never downloads: it would mark tracks Downloaded and email their senders. Its cookie
+  // is limited to /dashboard today; this holds even if that ever changes.
+  if (await viewingAs()) return new Response("Downloads are off while viewing an account.", { status: 403 });
   const user = await currentUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
   const f = await fileAccess(user, "download", Number((await ctx.params).id));

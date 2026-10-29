@@ -10,17 +10,18 @@ const used = (code: string) => q.count("SELECT COUNT(*) AS n FROM users WHERE in
  * Whether an invite opens an account, and what to record on it (users.invite_code, users.referred_by).
  *
  * Sign-up closed (the beta, owner 29 Oct): only a personal invite from Ops opens an account: one sent to this exact
- * email, not revoked, not used. The email is what counts, so the code is optional; a code from the invite link must
- * still belong to this email. Shared codes (Ops or BETA_INVITE_CODES) and referral codes don't open anything, so a
- * leaked code can't let a stranger in.
+ * email, not revoked, not used, and with its code from the invite email. Anyone can type someone else's email, so the
+ * code is what shows the invite reached this person; a valid one here also confirms the email. `emailProven` (Google
+ * sign-up) skips the code, since the email is already proven. Shared codes (Ops or BETA_INVITE_CODES) and referral
+ * codes don't open anything, so a leaked code can't let a stranger in.
  *
  * Sign-up open: anyone gets in, and a code only records who referred or invited them.
  */
-export async function resolveInvite(raw: string, email: string, open: boolean): Promise<InviteCheck> {
+export async function resolveInvite(raw: string, email: string, open: boolean, opts: { emailProven?: boolean } = {}): Promise<InviteCheck> {
   const code = raw.trim().toUpperCase().slice(0, 32);
   const who = email.trim().toLowerCase();
   if (!open) {
-    if (!who) return NONE;
+    if (!who || (!code && !opts.emailProven)) return NONE;
     const inv = await q.get<{ code: string }>(
       `SELECT code FROM invites i WHERE lower(i.email) = ? AND i.revoked_at IS NULL ${code ? "AND i.code = ?" : ""}
          AND (SELECT COUNT(*) FROM users u WHERE u.invite_code = i.code) < i.max_uses
@@ -37,4 +38,28 @@ export async function resolveInvite(raw: string, email: string, open: boolean): 
   if (inv?.email && inv.email.toLowerCase() !== who) return { ...NONE, code };
   if (inv) return { valid: (await used(code)) < inv.max_uses, referrerId: null, code };
   return { valid: env.inviteCodes.includes(code) && (await used(code)) < env.inviteLimit, referrerId: null, code };
+}
+
+/**
+ * Shortest code that can open the coming-soon gate: personal invites since 29 Oct are FLOOR- plus 10 characters. Older
+ * ones (FLOOR- plus 5 or 6) still sign up with the password, and resending one from Ops swaps in a long code.
+ */
+export const GATE_CODE_MIN_LENGTH = 16;
+
+/**
+ * Whether a code from an invite link is a live personal invite: sent to someone's email, not revoked, not used up, and
+ * that email has no account yet. An invite expires once its email finishes signing up, by any route (owner, 29 Oct).
+ * While the site is behind the coming-soon password, a live one lets the invited person through to sign-up (owner,
+ * 29 Oct); shared and referral codes don't, so a leaked code can't open the site.
+ */
+export async function liveInviteCode(raw: string) {
+  const code = raw.trim().toUpperCase().slice(0, 32);
+  if (code.length < GATE_CODE_MIN_LENGTH) return false;
+  const inv = await q.get<{ code: string }>(
+    `SELECT code FROM invites i WHERE i.code = ? AND i.email IS NOT NULL AND i.revoked_at IS NULL
+       AND (SELECT COUNT(*) FROM users u WHERE u.invite_code = i.code) < i.max_uses
+       AND NOT EXISTS (SELECT 1 FROM users u WHERE lower(u.email) = lower(i.email))`,
+    code,
+  );
+  return !!inv;
 }

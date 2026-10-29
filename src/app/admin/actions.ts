@@ -22,7 +22,7 @@ import { HIDDEN, sendMail } from "@/lib/mail";
 import { isAdminEmail, logAdmin, requireAdminAction } from "@/lib/admin";
 import { opsAccessFor, suspendRefusal } from "@/lib/ops-access";
 import { PERMS, ROLE_PERMS, ROLES, type Perm, type Role } from "@/lib/ops-perms";
-import type { PlanRequest } from "@/lib/plan-requests";
+import { grantablePlan, type PlanRequest } from "@/lib/plan-requests";
 import { flash } from "@/lib/flash";
 import { isTargeted, setSwitch, setSwitchRule, SWITCHES, type SwitchKey } from "@/lib/switches";
 import { clampPercent, describeRule, parseCountries, readRule, MAX_RULE_ACCOUNTS } from "@/lib/switch-rules";
@@ -33,6 +33,7 @@ import { logEvent, now, q, type Track } from "@/lib/db";
 import { eraseSender, purgeAccount } from "@/lib/privacy";
 import { localPath } from "@/lib/safe-links";
 import { normalEmail } from "@/lib/email-normal";
+import { GATE_CODE_MIN_LENGTH } from "@/lib/invites";
 
 const refresh = () => revalidatePath("/admin", "layout");
 const done = (m: string) => flash(m);
@@ -271,7 +272,8 @@ export async function setContactHandled(id: number, handled: boolean) {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const newCode = () => {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  return `FLOOR-${Array.from(crypto.randomBytes(6), (b) => alphabet[b % alphabet.length]).join("")}`;
+  // 10 characters from 32 (50 bits): the code is what proves the email while sign-up is closed.
+  return `FLOOR-${Array.from(crypto.randomBytes(10), (b) => alphabet[b % alphabet.length]).join("")}`;
 };
 
 async function mailInvite(code: string, email: string, inviter: string, note: string, handle = "") {
@@ -314,9 +316,15 @@ export async function resendInvite(code: string) {
   const a = await requireAdminAction("invites");
   const inv = await q.get<{ email: string | null; note: string }>("SELECT email, note FROM invites WHERE code = ? AND revoked_at IS NULL", code);
   if (!inv?.email) return fail("Couldn't resend: the invite is revoked or has no email");
-  if ((await mailInvite(code, inv.email, a.name, inv.note)).startsWith("failed")) return fail("The email failed to send. Check the Email log, then try again.");
-  await q.run("UPDATE invites SET sent_at = ? WHERE code = ?", now(), code);
-  await logAdmin(a.id, "resent invite", inv.email, code);
+  // An old short code can't open the coming-soon gate (src/lib/invites.ts): resending swaps in a new long one.
+  const send = code.length < GATE_CODE_MIN_LENGTH ? newCode() : code;
+  if (send !== code) {
+    await q.run("INSERT INTO invites (code, max_uses, note, email, created_at) SELECT ?, max_uses, note, email, ? FROM invites WHERE code = ?", send, now(), code);
+    await q.run("UPDATE invites SET revoked_at = ? WHERE code = ?", now(), code);
+  }
+  if ((await mailInvite(send, inv.email, a.name, inv.note)).startsWith("failed")) return fail("The email failed to send. Check the Email log, then try again.");
+  await q.run("UPDATE invites SET sent_at = ? WHERE code = ?", now(), send);
+  await logAdmin(a.id, "resent invite", inv.email, send);
   await done(`Invite resent to ${inv.email}`);
   refresh();
 }
@@ -1066,8 +1074,8 @@ export async function approvePlanRequest(id: number, form: FormData) {
   const a = await requireAdminAction("planRequests");
   const r = await openRequest(id);
   if (!r) return fail("That request was already dealt with.");
-  const plan = (await allPlans()).find((p) => p.id === String(form.get("plan") || r.plan) && !p.retired);
-  if (!plan) return fail("Pick a plan that's offered.");
+  const plan = grantablePlan(await allPlans(), String(form.get("plan") || r.plan), r.plan, r.current);
+  if (!plan) return fail("Pick the plan they asked for, or one at or above their current plan.");
   const note = String(form.get("note") || "").trim().slice(0, 500);
   await q.tx(async (db) => {
     await db.run("UPDATE users SET plan = ? WHERE id = ?", plan.id, r.user_id);

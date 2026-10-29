@@ -2,7 +2,8 @@ import "server-only";
 import { asPerson, q, type Track } from "@/lib/db";
 import { featureOn } from "@/lib/features";
 import { IMAGE_TYPES, type ImageKind } from "@/lib/images";
-import { quarantined } from "@/lib/file-digests";
+import { quarantined, withoutHeld } from "@/lib/file-digests";
+import { stemsFor, type Stem } from "@/lib/stems";
 
 /**
  * Who may fetch which private file, decided in one place (Codex review, 19 Oct). Every receiver file route asks here:
@@ -16,7 +17,7 @@ import { quarantined } from "@/lib/file-digests";
  *   download  the same; the route also refuses requests started on another site
  *   offline   the audio of a track still kept and in Prepare
  *   stem      one stem of a track on the desk, with stems switched on for the desk
- *   stems     all of a track's stems, same rule
+ *   stems     all of a track's stems, same rule; the grant lists the ones that may be served (held ones left out)
  *   art       the track's artwork
  */
 export type FileAction = "play" | "download" | "offline" | "stem" | "stems" | "art";
@@ -28,6 +29,8 @@ export type FileGrant = {
   /** Longest a storage link handed out for this file may last. */
   maxLinkSeconds: number;
   name?: string;
+  /** For `stems`: the stems to put in the ZIP, each one past the same fingerprint hold as a single file. */
+  stems?: Stem[];
 };
 
 /**
@@ -78,8 +81,12 @@ async function grantFor(
       const stem = await q.get<{ file_key: string; mime: string; name: string }>("SELECT file_key, mime, name FROM stems WHERE id = ? AND track_id = ?", stemId, track.id);
       return stem ? { track, key: stem.file_key, mime: stem.mime, name: stem.name, maxLinkSeconds: PLAY_LINK_SECONDS } : null;
     }
-    case "stems":
-      return (await featureOn("stems", desk)) ? { track, key: "", mime: "application/zip", maxLinkSeconds: PLAY_LINK_SECONDS } : null;
+    case "stems": {
+      if (!(await featureOn("stems", desk))) return null;
+      // Many files, so no single key for the hold in fileAccess: each stem is checked here instead.
+      const stems = await withoutHeld(await stemsFor(track.id), (s) => s.file_key);
+      return stems.length ? { track, key: "", mime: "application/zip", maxLinkSeconds: PLAY_LINK_SECONDS, stems } : null;
+    }
     default:
       return null;
   }
