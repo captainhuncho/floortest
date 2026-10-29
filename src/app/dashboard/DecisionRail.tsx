@@ -1,6 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+// The router's own option for a full prefetch (typed in AppRouterInstance.prefetch); a plain prefetch of this dynamic
+// page only loads the loading screen.
+import { PrefetchKind } from "next/dist/client/components/router-reducer/router-reducer-types";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { isTyping, usePlayer, type PlayerTrack } from "@/components/Player";
 import { useToast } from "@/components/Toast";
@@ -42,6 +45,19 @@ export function DecisionRail({ track, senderName, selfHref, next, prevHref, onRe
   useEffect(() => {
     if (replying) replyRef.current?.focus();
   }, [replying]);
+
+  // Next and previous load in full while this track is open, so moving on shows a page that's already here instead
+  // of waiting on London (~0.4 s from Ghana before any work). Loaded again whenever a decision refreshes the desk.
+  const nextHref = next?.href ?? null;
+  useEffect(() => {
+    let live = true;
+    const warm = (href: string) => router.prefetch(href, { kind: PrefetchKind.FULL, onInvalidate: () => live && warm(href) });
+    if (nextHref) warm(nextHref);
+    if (prevHref) warm(prevHref);
+    return () => {
+      live = false;
+    };
+  }, [nextHref, prevHref, router]);
 
   const advance = useCallback(
     (wasPlaying: boolean) => {
