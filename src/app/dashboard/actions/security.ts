@@ -6,7 +6,7 @@ import { stepUp } from "@/lib/step-up";
 import { passwordStrength } from "@/lib/password-strength";
 import { changePasswordTo, currentSessionHash, verifyPassword, requireRole } from "@/lib/auth";
 import { APP_URL, sendMail } from "@/lib/mail";
-import { endSession } from "@/lib/sessions";
+import { endSession, revokeAllSessions } from "@/lib/sessions";
 import QRCode from "qrcode";
 import { env } from "@/lib/env";
 import { hashRecovery, newRecoveryCodes, newTotpSecret, openSecret, otpauthUri, sealSecret, verifyTotp } from "@/lib/totp";
@@ -48,10 +48,10 @@ export async function changePassword(_: SettingsState, form: FormData): Promise<
 /** Ends every session except this one: lost phone, shared laptop. */
 export async function signOutOtherDevices(): Promise<number> {
   const u = await requireRole("owner");
-  const keep = await currentSessionHash();
-  const r = await q.run("DELETE FROM sessions WHERE user_id = ? AND token_hash <> ?", u.id, keep ?? "");
-  await audit(u.id, "signed_out_others", `${r.changes} device${r.changes === 1 ? "" : "s"}`);
-  return r.changes;
+  // Browsers, the app and the ops area alike, so a borrowed ops session can't outlive it.
+  const n = await revokeAllSessions(u.id, { keep: await currentSessionHash() });
+  await audit(u.id, "signed_out_others", `${n} device${n === 1 ? "" : "s"}`);
+  return n;
 }
 
 /** Step 1: a fresh secret, held (encrypted) but not active until a code proves the app has it. */
