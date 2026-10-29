@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { cookies } from "next/headers";
 import { now, q } from "./db";
 import { env } from "./env";
+import { codeMailProblem } from "./code-mail";
 import { sendMail } from "./mail";
 import { accountEmailAllowed } from "./email-budget";
 import { allow, record } from "./ratelimit";
@@ -61,17 +62,16 @@ export async function sendCode(email: string, ip: string, how: "human" | "resend
     to: email,
     secrets: [code],
     subject: `${code} is your FloorTest code`,
+    expires: true,
     body: `Your code to confirm your email and send your music:\n\n${code}\n\nIt works for 10 minutes. If you didn't try to send music on FloorTest, ignore this email.\n\n— FloorTest`,
   };
   // The sender is waiting on this screen, so a code that didn't go must say so (a report on 29 Oct: "no code came").
   // One more try for a passing failure; the same code both times, so a late first email still works.
   let status = await sendMail(mail);
   if (status.startsWith("failed")) status = await sendMail(mail);
-  // Past the day's shared email allowance a code waits for midnight UTC; the sender can't wait that long.
-  if (status.startsWith("queued (daily limit)")) throw new CodeError("We can't send codes right now. Please try again in a few minutes.");
-  if (status.startsWith("skipped"))
-    throw new CodeError("Emails to this address bounced before, so the code can't reach it. Check the address, or use another one.");
-  if (status.startsWith("failed")) throw new CodeError("The code email didn't go through. Check the address, then try again in a minute.");
+  // Past the day's shared email allowance the code is dropped (it would arrive dead); the sender is told now.
+  const problem = codeMailProblem(status);
+  if (problem) throw new CodeError(problem);
 }
 
 /** A resend only follows a code this email asked for recently, and only a few times per bot check. */
