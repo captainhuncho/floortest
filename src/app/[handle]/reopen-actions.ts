@@ -1,6 +1,7 @@
 "use server";
 
 import { userByHandle } from "@/lib/desk";
+import { accountEmailAllowed } from "@/lib/email-budget";
 import { allow, requestIp } from "@/lib/ratelimit";
 import { requestReopenAlert } from "@/lib/reopen";
 import { BOT_MESSAGE, passedTurnstile } from "@/lib/turnstile";
@@ -10,7 +11,8 @@ export type ReopenState = { ok?: boolean; error?: string } | undefined;
 
 /**
  * "Email me when it reopens" on a closed, full or paused link. Quiet about duplicates (and about whether the link
- * exists), rate-limited per network, bot-checked like every other public form.
+ * exists), rate-limited per network, bot-checked like every other public form. It emails a typed address (only to ask
+ * it to confirm), so the site-wide budget for those emails applies too.
  */
 export async function askReopenAlert(_: ReopenState, form: FormData): Promise<ReopenState> {
   if (String(form.get("website") || "")) return { ok: true }; // bots fill the hidden field
@@ -20,6 +22,6 @@ export async function askReopenAlert(_: ReopenState, form: FormData): Promise<Re
   if (!(await allow("reopen_alert_ip", ip, 5, 3_600_000))) return { error: "Too many requests. Try again later." };
   if (!(await passedTurnstile(form.get("cf-turnstile-response"), ip, "reopen"))) return { error: BOT_MESSAGE };
   const receiver = await userByHandle(String(form.get("handle") || "").slice(0, 30));
-  if (receiver) await requestReopenAlert(receiver.id, email);
+  if (receiver && (await accountEmailAllowed())) await requestReopenAlert(receiver.id, email);
   return { ok: true };
 }

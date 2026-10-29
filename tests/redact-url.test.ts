@@ -7,6 +7,7 @@ test("private links reach monitoring without their key", () => {
   assert.equal(redactUrl("https://floortest.app/receipt/AbC_12-x"), "https://floortest.app/receipt/[token]");
   assert.equal(redactUrl("/reset/tok123?x=1"), "/reset/[token]?x=1");
   assert.equal(redactUrl("/newsletter/unsubscribe/n-tok"), "/newsletter/unsubscribe/[token]");
+  assert.equal(redactUrl("/sent/reopen/r-tok"), "/sent/reopen/[token]", "the reopen confirm link too");
   assert.equal(redactUrl("/api/offline/file/f.tok/next"), "/api/offline/file/[token]/next");
   assert.equal(redactUrl("GET /api/c/inv-tok/tracks"), "GET /api/c/[token]/tracks");
   assert.equal(redactUrl("/receipt/[token]"), "/receipt/[token]", "already a route pattern");
