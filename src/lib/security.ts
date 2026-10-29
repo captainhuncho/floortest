@@ -15,7 +15,7 @@ import { deviceLabel } from "./device-label";
 export { deviceLabel };
 
 /** The last step of every sign-in: session, audit trail, and the optional alert email. */
-export async function finishSignIn(userId: number, how: "password" | "two-factor" | "recovery code" | "reset" | "email code" | "Google") {
+export async function finishSignIn(userId: number, how: "password" | "two-factor" | "recovery code" | "reset" | "email code" | "Google" | "passkey" | "passkey as two-step") {
   await createSession(userId);
   await audit(userId, "signed_in", how === "password" ? "" : `with ${how}`);
   const u = await q.get<{ email: string; name: string; tz: string; signin_alerts: number }>(
