@@ -51,3 +51,13 @@ export async function clearShared(ids: string[]) {
   if (!box) return;
   for (const id of ids) await box.remove({ id }).catch(() => {});
 }
+
+/** Empties the inbox (on sign-out), so a file shared on this phone never waits for the next account's Send form. */
+export async function clearAllShared() {
+  const box = inbox();
+  if (!box) return;
+  try {
+    const { files } = await box.list();
+    await clearShared(files.map((f) => f.id));
+  } catch {}
+}
