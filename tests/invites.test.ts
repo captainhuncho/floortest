@@ -47,8 +47,10 @@ test("sign-up open: codes still record who referred or invited the person", asyn
 test("the coming-soon gate opens only for a live personal invite code", async () => {
   const { liveInviteCode } = await import("../src/lib/invites");
   const { q } = await import("../src/lib/db");
-  await q.run("INSERT INTO invites (code, max_uses, note, email, created_at) VALUES ('FRESH1', 1, '', 'eve@x.io', ?)", Date.now());
-  assert.equal(await liveInviteCode("fresh1"), true, "a sent, unused personal invite");
+  await q.run("INSERT INTO invites (code, max_uses, note, email, created_at) VALUES ('FLOOR-FRESH23456', 1, '', 'eve@x.io', ?)", Date.now());
+  await q.run("INSERT INTO invites (code, max_uses, note, email, created_at) VALUES ('FLOOR-OLD234', 1, '', 'old@x.io', ?)", Date.now());
+  assert.equal(await liveInviteCode("floor-fresh23456"), true, "a sent, unused personal invite");
+  assert.equal(await liveInviteCode("FLOOR-OLD234"), false, "an old short code, still live, doesn't open the gate");
   assert.equal(await liveInviteCode("PERSONAL1"), false, "used up");
   assert.equal(await liveInviteCode("GONE"), false, "revoked");
   assert.equal(await liveInviteCode("GROUP"), false, "a shared Ops code");
@@ -56,7 +58,7 @@ test("the coming-soon gate opens only for a live personal invite code", async ()
   assert.equal(await liveInviteCode("REFCODE"), false, "a referral code");
   assert.equal(await liveInviteCode("NOPE"), false, "unknown");
   await q.run("INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at) VALUES ('Eve@X.io', 'h', 'E', 'eve', 'free', 'UTC', ?)", Date.now());
-  assert.equal(await liveInviteCode("FRESH1"), false, "expired once its email has an account, however they signed up");
+  assert.equal(await liveInviteCode("FLOOR-FRESH23456"), false, "expired once its email has an account, however they signed up");
   assert.equal(await liveInviteCode("' OR 1=1 --"), false, "injection-shaped input");
   assert.equal(await liveInviteCode(""), false, "empty");
 });

@@ -41,6 +41,12 @@ export async function resolveInvite(raw: string, email: string, open: boolean, o
 }
 
 /**
+ * Shortest code that can open the coming-soon gate: personal invites since 29 Oct are FLOOR- plus 10 characters. Older
+ * ones (FLOOR- plus 5 or 6) still sign up with the password, and resending one from Ops swaps in a long code.
+ */
+export const GATE_CODE_MIN_LENGTH = 16;
+
+/**
  * Whether a code from an invite link is a live personal invite: sent to someone's email, not revoked, not used up, and
  * that email has no account yet. An invite expires once its email finishes signing up, by any route (owner, 29 Oct).
  * While the site is behind the coming-soon password, a live one lets the invited person through to sign-up (owner,
@@ -48,7 +54,7 @@ export async function resolveInvite(raw: string, email: string, open: boolean, o
  */
 export async function liveInviteCode(raw: string) {
   const code = raw.trim().toUpperCase().slice(0, 32);
-  if (!code) return false;
+  if (code.length < GATE_CODE_MIN_LENGTH) return false;
   const inv = await q.get<{ code: string }>(
     `SELECT code FROM invites i WHERE i.code = ? AND i.email IS NOT NULL AND i.revoked_at IS NULL
        AND (SELECT COUNT(*) FROM users u WHERE u.invite_code = i.code) < i.max_uses
