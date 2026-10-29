@@ -75,6 +75,9 @@ export function DecisionRail({ track, senderName, selfHref, next, prev, onReply 
       if (next) {
         queue?.show(next.track);
         if (wasPlaying) player.play(next.track);
+        // Move to the next track's page first (usually already loaded, see above), then save: the decision's answer
+        // carries the refreshed page for where we now are, so a decision is one trip to London instead of two.
+        router.replace(next.href, { scroll: false });
       }
       start(async () => {
         let token: Awaited<ReturnType<typeof decideTrack>> = null;
@@ -82,10 +85,13 @@ export function DecisionRail({ track, senderName, selfHref, next, prev, onReply 
           token = changes ? await decideTrack(track.id, d) : null;
         } catch {
           // Not saved (connection dropped): say so and put this track back on screen.
+          queue?.settle(track.id);
           toast.show({ message: `Couldn't save that for “${track.title}”. Try again.` });
           router.replace(selfHref, { scroll: false });
           return;
         }
+        // Saved: the page that came back with the answer has the true list, so stop hiding the track ourselves.
+        queue?.settle(track.id);
         if (token) {
           toast.show({
             message: `${d === "kept" ? `“${track.title}” added to Prepare for set` : `Not for me: “${track.title}”`}`,
@@ -98,7 +104,6 @@ export function DecisionRail({ track, senderName, selfHref, next, prev, onReply 
             },
           });
         }
-        if (next) router.replace(next.href, { scroll: false });
       });
     },
     [busy, player, track, toast, router, selfHref, next, queue],
