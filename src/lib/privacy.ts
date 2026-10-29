@@ -18,7 +18,7 @@ export async function purgeAccount(userId: number) {
     await queueDeletion(db, await accountKeys(db, userId), `account #${userId} deleted`, now());
     const who = await db.get<{ email: string }>("SELECT email FROM users WHERE id = ?", userId);
     if (who) await forgetLinkPerson(db, userId, who.email);
-    if (who) await forgetAddress(db, who.email.trim().toLowerCase());
+    if (who) await forgetAddress(db, normalEmail(who.email));
     // Its link, and old links it still held, stay reserved: the delete below cascades the old ones away.
     const t = now();
     await db.run(
