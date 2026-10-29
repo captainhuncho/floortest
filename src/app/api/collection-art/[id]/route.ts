@@ -10,7 +10,7 @@ import { optimizeImage } from "@/lib/image-optimize";
 import { readFormUpTo } from "@/lib/bounded-form";
 import { storage } from "@/lib/storage";
 import { reserveFile, settleFile } from "@/lib/file-reservations";
-import { recordDigest } from "@/lib/file-digests";
+import { quarantined, recordDigest } from "@/lib/file-digests";
 
 export const runtime = "nodejs";
 
@@ -73,6 +73,8 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/collection-art/
   const viewer = await currentUser();
   const isPublic = !!owner && (await activeCollection(owner))?.id === c.id;
   if (!isPublic && viewer?.id !== c.user_id) return new Response("Not found", { status: 404 });
+  // Artwork that failed its fingerprint check is held back, like every other stored file.
+  if (await quarantined(c.art_key)) return new Response("Not found", { status: 404 });
   const store = await storage();
   const type = TYPES[c.art_key.split(".").pop() as keyof typeof TYPES] ?? "application/octet-stream";
   // Private artwork: an hour-long link, like the audio, so access that ends (a teammate removed) ends within the hour.
