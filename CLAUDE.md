@@ -39,10 +39,12 @@ commit. Shipping an item from `06-plan.md` moves it to Done.
 - `vercel-build` runs migrations: a new migration reaches production only when shipped.
 
 ## Every session, every task (owner, 15 Oct; full text: `docs/working.md` rules 1–15)
-Many sessions share this repo. Before shipping, message the running sessions (ListAgents, SendMessage), wait for a
-"go", and check what `main` already has; ship from your own worktree on a branch off `main`, never the shared checkout;
-tell the sessions when production is READY. Never delete branches unless the owner asks. At most one grouped production
-release a day (security, data-loss or site-down fixes any time), each with a report in `docs/evidence/`. Follow the
+Three sessions share this repo (owner, 29 Oct): Desk, Build and Safety. Only the Desk merges into `main`, writes the
+release report and merges `main` into `mobile-next`; Build and Safety work on their own branches off `main` (never the
+shared checkout), may put work on `mobile-next` for the owner to try, and send the Desk "ready: PR, head commit, checks
+passed". Never open a PR from `mobile-next` into `main`. Never delete branches unless the owner asks. One grouped
+production release a day at 18:00 the owner's time (security, data-loss or site-down fixes any time, through the Desk),
+its report in `docs/evidence/` inside the release PR. Follow the
 owner's twelve working principles (rule 12): understand first, preserve what works, finish whole journeys, keep it simple,
 measure before claiming speed, verify real behaviour, name the exact build in every report. Optimise: find out before
 asking, batch questions, exact-string edits, no merge markers, outcome first in reports. Rule 14 lists the owner's skill

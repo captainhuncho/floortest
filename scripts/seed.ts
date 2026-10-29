@@ -183,6 +183,8 @@ async function main() {
     const lena = await db.get<{ id: number }>("SELECT id FROM users WHERE email = 'listener@floortest.test'");
     if (lena) await db.run("INSERT INTO account_members (account_id, user_id, role, created_at) VALUES (?, ?, 'member', ?)", uid, lena.id, now);
   }
+  // Sign-up tests (SEED_OPEN_SIGNUP=1, test runs only): fresh accounts without a personal invite each.
+  if (process.env.SEED_OPEN_SIGNUP === "1") await db.run("INSERT INTO switches (key, on_, updated_at) VALUES ('open_signup', 1, ?) ON CONFLICT (key) DO UPDATE SET on_ = 1", now);
   // Send page tests (SEED_SEND_MUSIC=1, test runs only): the Send page is off in the beta but its tests stay, for when it's back.
   if (process.env.SEED_SEND_MUSIC === "1") await db.run("INSERT INTO switches (key, on_, updated_at) VALUES ('send_music', 1, ?) ON CONFLICT (key) DO UPDATE SET on_ = 1", now);
   // Sharing tests: the Villagers tracks were sent while the callout allowed sharing.
