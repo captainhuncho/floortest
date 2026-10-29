@@ -63,3 +63,52 @@ export async function liveInviteCode(raw: string) {
   );
   return !!inv;
 }
+
+export type InviteChange = { ok: true; code: string; email: string | null; emails: number } | { ok: false; reason: string };
+
+const cleanCode = (raw: unknown) => String(raw ?? "").trim().toUpperCase().slice(0, 32);
+
+/**
+ * Puts a revoked invite back (Ops → Invites → Revoked, owner 29 Oct). A personal invite comes back only while its email
+ * has no account and no other live invite, so one person never holds two working codes. Shared codes come back freely.
+ */
+export async function restoreRevokedInvite(raw: unknown): Promise<InviteChange> {
+  const code = cleanCode(raw);
+  return q.tx(async (db) => {
+    const inv = await db.get<{ code: string; email: string | null }>("SELECT code, email FROM invites WHERE code = ? AND revoked_at IS NOT NULL FOR UPDATE", code);
+    if (!inv) return { ok: false, reason: "Couldn't restore: that invite isn't in the Revoked list." };
+    if (inv.email) {
+      if (await db.get("SELECT 1 FROM users WHERE lower(email) = lower(?)", inv.email))
+        return { ok: false, reason: `Couldn't restore: ${inv.email} already has an account.` };
+      const other = await db.get(
+        `SELECT 1 FROM invites i WHERE lower(i.email) = lower(?) AND i.code <> ? AND i.revoked_at IS NULL
+           AND NOT EXISTS (SELECT 1 FROM users u WHERE u.invite_code = i.code)`,
+        inv.email,
+        inv.code,
+      );
+      if (other) return { ok: false, reason: `Couldn't restore: ${inv.email} already has another invite waiting. Revoke that one first.` };
+    }
+    await db.run("UPDATE invites SET revoked_at = NULL WHERE code = ? AND revoked_at IS NOT NULL", inv.code);
+    return { ok: true, code: inv.code, email: inv.email, emails: 0 };
+  });
+}
+
+/**
+ * Deletes a revoked invite for good (owner, 29 Oct): the invite row and the invite emails that carry its code (the
+ * stored copy in the outbox, and the sealed text if it hadn't gone yet), in one transaction. Refused while anyone has
+ * signed up with the code, since their account records it. Ops log lines stay: removing those needs the owner's own yes.
+ */
+export async function deleteRevokedInvite(raw: unknown): Promise<InviteChange> {
+  const code = cleanCode(raw);
+  return q.tx(async (db) => {
+    const inv = await db.get<{ code: string; email: string | null }>("SELECT code, email FROM invites WHERE code = ? AND revoked_at IS NOT NULL FOR UPDATE", code);
+    if (!inv) return { ok: false, reason: "Couldn't delete: only an invite in the Revoked list can be deleted." };
+    if (await db.get("SELECT 1 FROM users WHERE invite_code = ?", inv.code))
+      return { ok: false, reason: `Couldn't delete ${inv.code}: an account signed up with it and keeps it on record.` };
+    const emails = inv.email
+      ? (await db.run("DELETE FROM outbox WHERE lower(to_email) = lower(?) AND strpos(body, ?) > 0", inv.email, inv.code)).changes
+      : 0;
+    await db.run("DELETE FROM invites WHERE code = ? AND revoked_at IS NOT NULL", inv.code);
+    return { ok: true, code: inv.code, email: inv.email, emails };
+  });
+}
