@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BetaTag } from "@/components/Logo";
 import { GateForm } from "./GateForm";
 import { SignInDialog } from "./SignInDialog";
 
@@ -13,6 +14,7 @@ export default async function ComingSoon({ searchParams }: { searchParams: Promi
         {/* eslint-disable-next-line @next/next/no-img-element -- the crest is an SVG; Next's image optimizer doesn't process SVGs */}
         <img draggable={false} src="/brand/crest.svg" alt="" aria-hidden className="size-14 shrink-0 sm:size-16" />
         <span className="text-[34px] font-extrabold tracking-[-1px] sm:text-[44px]">FloorTest</span>
+        <BetaTag />
       </Link>
       <h1 className="mt-8 inline-flex w-fit items-center gap-2 rounded-full border border-lime/50 bg-lime/10 px-4 py-1.5 text-sm font-bold text-lime">
         <span aria-hidden className="size-2 animate-pulse rounded-full bg-lime motion-reduce:animate-none" />
