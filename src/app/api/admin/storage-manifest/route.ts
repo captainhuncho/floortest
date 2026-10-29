@@ -3,9 +3,12 @@ import { expectedFiles } from "@/lib/storage-audit";
 
 export const runtime = "nodejs";
 
-/** Ops → Storage → Download file list: every file the database expects in storage, with sizes, as the move's "before" record. */
+/**
+ * Ops → Storage → Download file list: every file the database expects in storage, with sizes, as the move's "before"
+ * record. It's every account's file inventory, so it's the super admin's alone (like the users CSV).
+ */
 export async function GET() {
-  const a = await requireAdminAction("storage");
+  const a = await requireAdminAction("super");
   const files = await expectedFiles();
   const cell = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const lines = [["Kind", "Key", "Size (bytes)"], ...files.map((f) => [f.kind, f.key, f.size ?? ""])].map((l) => l.map(cell).join(","));

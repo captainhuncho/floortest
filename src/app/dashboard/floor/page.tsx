@@ -27,7 +27,7 @@ export const metadata = { title: "Floor — FloorTest" };
  * numbers, the desk's links), the link and sending. From 1280px the two sit side by side. Nothing here repeats a page
  * of its own (Activity, Contacts).
  */
-export default async function TheFloor({ searchParams }: { searchParams: Promise<{ welcome?: string }> }) {
+export default async function TheFloor({ searchParams }: { searchParams: Promise<{ welcome?: string; desk?: string }> }) {
   const user = await requireUser();
   // Everything below is independent, so it all goes to the database at once.
   const [, sp, prefs, collections, active, cap, upNextRows, recentSends, oldestRow, staleRow, view] = await Promise.all([
@@ -239,6 +239,11 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
       <div className="mx-auto flex w-full max-w-3xl min-w-0 flex-col gap-7 xl:max-w-6xl">
         {/* The count is the headline: one big number, its unit beside it, one sentence on how long they've waited,
             and one button that says where it starts (the queue plays oldest first). */}
+        {sp.desk === "ended" && (
+          <p role="alert" className="rounded-lg border border-danger/40 px-4 py-3 text-sm">
+            You don&apos;t have access to that team&apos;s desk any more, so nothing was changed. This is your own desk.
+          </p>
+        )}
         <header className="flex flex-col items-stretch gap-5 sm:items-start">
           <div className="flex min-w-0 flex-col gap-2">
             {!welcome && <p className="text-sm text-mute">{greeting}, {first}</p>}

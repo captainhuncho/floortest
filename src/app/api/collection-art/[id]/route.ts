@@ -7,9 +7,10 @@ import { q, type Collection } from "@/lib/db";
 import { activeCollection } from "@/lib/desk";
 import { imageKind, IMAGE_TYPES as TYPES } from "@/lib/images";
 import { optimizeImage } from "@/lib/image-optimize";
+import { readFormUpTo } from "@/lib/bounded-form";
 import { storage } from "@/lib/storage";
 import { reserveFile, settleFile } from "@/lib/file-reservations";
-import { recordDigest } from "@/lib/file-digests";
+import { quarantined, recordDigest } from "@/lib/file-digests";
 
 export const runtime = "nodejs";
 
@@ -28,8 +29,10 @@ async function ownCollection(raw: string) {
 export async function POST(req: Request, ctx: RouteContext<"/api/collection-art/[id]">) {
   const own = await ownCollection((await ctx.params).id);
   if (!own) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (Number(req.headers.get("content-length") || 0) > MAX + 64 * 1024) return NextResponse.json({ error: "Images must be under 8 MB." }, { status: 413 });
-  const file = (await req.formData().catch(() => null))?.get("file");
+  // The form is read with a hard cap, so a body bigger than an image can't be buffered first.
+  const form = await readFormUpTo(req, MAX + 64 * 1024);
+  if (form === "too-large") return NextResponse.json({ error: "Images must be under 8 MB." }, { status: 413 });
+  const file = form?.get("file");
   if (!(file instanceof File) || !file.size) return NextResponse.json({ error: "Choose an image." }, { status: 400 });
   if (file.size > MAX) return NextResponse.json({ error: "Images must be under 8 MB." }, { status: 413 });
   const buf = new Uint8Array(await file.arrayBuffer());
@@ -70,6 +73,8 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/collection-art/
   const viewer = await currentUser();
   const isPublic = !!owner && (await activeCollection(owner))?.id === c.id;
   if (!isPublic && viewer?.id !== c.user_id) return new Response("Not found", { status: 404 });
+  // Artwork that failed its fingerprint check is held back, like every other stored file.
+  if (await quarantined(c.art_key)) return new Response("Not found", { status: 404 });
   const store = await storage();
   const type = TYPES[c.art_key.split(".").pop() as keyof typeof TYPES] ?? "application/octet-stream";
   // Private artwork: an hour-long link, like the audio, so access that ends (a teammate removed) ends within the hour.

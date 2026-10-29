@@ -1,4 +1,5 @@
 import { userByHandle } from "@/lib/desk";
+import { quarantined } from "@/lib/file-digests";
 import { storage } from "@/lib/storage";
 
 export const runtime = "nodejs";
@@ -11,7 +12,8 @@ const TYPES: Record<string, string> = { jpg: "image/jpeg", png: "image/png", web
  */
 export async function GET(_req: Request, ctx: RouteContext<"/api/cover/[handle]">) {
   const u = await userByHandle((await ctx.params).handle);
-  if (!u?.cover_key) return new Response("Not found", { status: 404 });
+  // A cover that failed its fingerprint check is held back, like every other stored file.
+  if (!u?.cover_key || (await quarantined(u.cover_key))) return new Response("Not found", { status: 404 });
   const store = await storage();
   const type = TYPES[u.cover_key.split(".").pop() ?? ""] ?? "application/octet-stream";
   const signed = await store.signedGetUrl(u.cover_key, { contentType: type, expiresIn: 86_400 });

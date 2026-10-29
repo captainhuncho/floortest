@@ -7,25 +7,14 @@ import { receiverLookup } from "@/lib/receiver-lookup";
 import { requireUser, requireRole } from "@/lib/auth";
 import { likeContains, now, q } from "@/lib/db";
 import { audit } from "@/lib/audit";
+import { fileFeedback } from "@/lib/feedback";
 import { sendReopenAlerts } from "@/lib/reopen";
 import { done } from "./common";
 
-/** Beta feedback lands in the admin inbox, tagged with the page it came from. */
+/** Beta feedback, signed by the person who sent it (src/lib/feedback.ts). */
 export async function sendFeedback(kind: string, message: string, path: string) {
   const u = await requireUser();
-  const body = String(message || "").trim().slice(0, 3000);
-  if (!body) return;
-  const topic = ["Idea", "Bug", "Confusing", "Love it"].includes(kind) ? `Feedback · ${kind}` : "Feedback";
-  await q.run(
-    "INSERT INTO contact_messages (user_id, name, email, topic, message, page, created_at) VALUES (?,?,?,?,?,?,?)",
-    u.id,
-    u.name,
-    u.email,
-    topic,
-    body,
-    String(path || "").slice(0, 200),
-    now(),
-  );
+  await fileFeedback(u, kind, message, path);
 }
 
 export async function dismissOnboarding() {
