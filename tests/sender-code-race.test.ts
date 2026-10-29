@@ -36,18 +36,18 @@ test("a sender is told when their code email didn't go, instead of waiting for n
   };
   try {
     answer(true);
-    await sendCode("ok@x.io", "10.0.0.1");
+    await sendCode("ok@x.io", "10.0.0.1", "human");
     assert.equal(calls, 1, "a code that goes is sent once");
 
     calls = 0;
     answer(false);
-    await assert.rejects(sendCode("down@x.io", "10.0.0.2"), /didn't go through/);
+    await assert.rejects(sendCode("down@x.io", "10.0.0.2", "human"), /didn't go through/);
     assert.equal(calls, 2, "one more try before telling them");
 
     calls = 0;
     await q.run("INSERT INTO email_suppressions (email, reason, created_at) VALUES ('gone@x.io', 'bounced', ?)", Date.now());
     answer(true);
-    await assert.rejects(sendCode("gone@x.io", "10.0.0.3"), /bounced before/);
+    await assert.rejects(sendCode("gone@x.io", "10.0.0.3", "human"), /bounced before/);
     assert.equal(calls, 0, "a bounced address isn't emailed");
   } finally {
     globalThis.fetch = realFetch;
