@@ -5,8 +5,8 @@ exists. It reads the file straight from the R2 audio bucket with its **own read-
 The file never goes to a third-party service and is never written to disk here.
 
 - `POST /scan` with `{ "key": "audio/12/….wav" }` and `Authorization: Bearer <SCAN_SECRET>` →
-  `{ "clean": true }` or `{ "clean": false, "signature": "…" }`. Only `audio/`, `stems/`, `track-art/` and `pending/` keys
-  are accepted.
+  `{ "clean": true }` or `{ "clean": false, "signature": "…" }`. Only `audio/`, `stems/` and `track-art/` keys (the folders
+  the app stores uploads in) are accepted.
 - `GET /health` → 200 when ClamAV is up (the uptime monitor checks it). On Cloudflare it needs the secret too (below).
 - Signatures: one update at start-up (the first takes a few minutes), then `freshclam` keeps them current.
 

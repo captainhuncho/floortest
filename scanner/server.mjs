@@ -30,8 +30,9 @@ const authorised = (h = "") => {
   const b = Buffer.from(`Bearer ${SCAN_SECRET}`);
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 };
-// Only the app's own storage keys: audio, stems and artwork paths, no "..", no leading slash.
-const validKey = (k) => typeof k === "string" && k.length < 300 && /^(audio|stems|track-art|pending)\/[A-Za-z0-9/_.-]+$/.test(k) && !k.includes("..");
+// Only the folders the app stores uploads in (audio, stems, artwork), no "..", no leading slash: the read-only key can
+// reach nothing else through this service.
+const validKey = (k) => typeof k === "string" && k.length < 300 && /^(audio|stems|track-art)\/[A-Za-z0-9/_.-]+$/.test(k) && !k.includes("..");
 
 const ping = () =>
   new Promise((resolve) => {
