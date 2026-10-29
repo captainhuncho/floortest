@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { clearOffline } from "@/lib/native-offline";
+import { clearAllShared } from "@/lib/native-share";
 
 type Cap = { isNativePlatform?: () => boolean };
 const LAST = "ft:last-place";
@@ -11,7 +12,8 @@ const DAY = 24 * 3_600_000;
 /**
  * Only inside the FloorTest phone app (Capacitor): marks the page so app-only styles apply (no long-press callouts or
  * accidental text selection outside fields), remembers where you were on the desk, and takes you back there when the
- * app is reopened within a day, and wipes tracks saved for offline when you reach sign-in. Does nothing in an ordinary browser.
+ * app is reopened within a day, wipes tracks saved for offline when you reach sign-in, and empties the share inbox when you
+ * sign out. Does nothing in an ordinary browser.
  */
 export function NativeApp() {
   const path = usePathname();
@@ -23,6 +25,9 @@ export function NativeApp() {
     document.documentElement.classList.add("native-app");
     // Signed out (or about to sign in as someone): tracks saved for offline leave the phone.
     if (["/signed-out", "/login", "/signup"].some((p) => path === p || path.startsWith(`${p}/`))) void clearOffline();
+    // Signed out on purpose: files shared into the app leave too, so they can't prefill the next account's Send form.
+    // (Not on /login: someone who shares a file while signed out signs in and then sends it.)
+    if (path === "/signed-out") void clearAllShared();
     try {
       if (path === "/dashboard/floor" && !sessionStorage.getItem("ft:restored")) {
         sessionStorage.setItem("ft:restored", "1");

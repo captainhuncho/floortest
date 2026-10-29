@@ -7,3 +7,5 @@ node_modules
 
 # The iPhone/Android app project; not part of the website
 mobile/
+# Its test loads mobile/ (above), so it can't be type-checked in the website build
+tests/mobile-shell.test.ts
