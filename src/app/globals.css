@@ -54,7 +54,7 @@
 
 html, body { background: var(--color-ink); color: var(--color-bone); }
 /* Keyboard focus and in-page jumps stop clear of the fixed bars: on phones the top bar (76px) and, at the bottom, the
-   tab bar plus mini player (or the docked decision rail while a track is open, below); from md up only the player bar (44px button + 24px padding + border) sits at the bottom. */
+   tab bar plus mini player; from md up only the player bar (44px button + 24px padding + border) sits at the bottom. */
 html { scroll-padding-top: 76px; scroll-padding-bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 150px); }
 @media (min-width: 48rem) { html { scroll-padding-top: 16px; scroll-padding-bottom: 88px; } }
 /* The send page's profile bar (48px, fixed at the top once the profile scrolls away): focused fields stop below it. */
@@ -383,23 +383,8 @@ html:has(.theme-day), html:has(.theme-day) body { background: #fafaf6; }
 .site-editing [data-edit-panel]:hover, .site-editing [data-edit-image]:hover { outline-color: var(--color-lime); }
 
 /* Review on touch screens: the open-track card ([data-swipe-zone]) follows a sideways swipe to the next or previous
-   track (owner, 28 Oct); DecisionRail.tsx writes its transform. The [data-stamp] rules below are left from swipe to
-   decide and match nothing now. */
+   track (owner, 28 Oct); DecisionRail.tsx writes its transform. */
 [data-swipe-zone] { touch-action: pan-y; }
-[data-stamp] { position: absolute; top: 18px; z-index: 1; padding: 4px 10px; border: 2px solid; border-radius: 8px; font: 800 16px var(--font-mono); letter-spacing: .04em; white-space: nowrap; opacity: 0; pointer-events: none; }
-[data-stamp][data-kind="keep"] { left: 18px; color: var(--color-lime); rotate: 8deg; }
-[data-stamp][data-kind="pass"] { right: 18px; color: var(--color-bone); rotate: -8deg; }
-/* After a touch decision the card flies out and stays gone; the rest of the panel fades until the next track renders. */
-[data-review-panel][data-leaving] [data-leave-fade] { opacity: 0; transition: opacity 150ms var(--ease-out); pointer-events: none; }
-/* Phones with a track open: the decision rail docks at the bottom (thumb reach) and owns that zone, so the tab bar
-   and mini player step aside (the review has its own transport). Focus jumps and toasts stop clear of the rail. */
-@media (max-width: 47.99rem) {
-  html:has([data-review-open]) :is([data-tabbar], [data-mini-player]) { display: none; }
-  html:has([data-review-open]) { scroll-padding-bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 96px); }
-  html:has([data-review-open]) [data-toast-region] { bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 88px); }
-  /* Typing a reply (or in any field): the on-screen keyboard needs the room (Android lifts fixed bars above it). */
-  html:has([data-review-open] :is(textarea, input, select):focus) :is([data-rail-dock], [data-rail-space]) { display: none; }
-}
 @media (prefers-reduced-motion: reduce) { [data-swipe-zone] { transition-property: opacity !important; } }
 
 /* Inside the FloorTest phone app only: no long-press callouts or accidental text selection, except where you type. */
