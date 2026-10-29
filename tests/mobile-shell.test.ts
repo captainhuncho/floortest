@@ -69,12 +69,13 @@ test("signing out empties the share inbox, so a shared file can't wait for the n
 
 // Audit 29 Oct (iOS app-bound domains): on iPhone the web view itself only lets floortest.app in (WKAppBoundDomains),
 // on top of allowNavigation. Only a release build turns the limit on: a dev build (FLOORTEST_DEV=1) may run another
-// host, which the limit would block.
-test("iOS: floortest.app is the only app-bound domain, and a release build is limited to it", () => {
+// host, which the limit would block. localhost is the app's own capacitor://localhost origin (the offline screen and
+// the native plugins); Capacitor 8 needs it in the list too, or plugins stop working once the list exists.
+test("iOS: the app-bound domains are floortest.app and the app's own localhost, and a release build is limited to them", () => {
   const plist = fs.readFileSync(path.join(MOBILE, "ios", "App", "App", "Info.plist"), "utf8");
   const bound = plist.match(/<key>WKAppBoundDomains<\/key>\s*<array>([\s\S]*?)<\/array>/);
   assert.ok(bound, "Info.plist lists WKAppBoundDomains");
-  assert.deepEqual([...bound[1].matchAll(/<string>([^<]*)<\/string>/g)].map((m) => m[1]), ["floortest.app"]);
+  assert.deepEqual([...bound[1].matchAll(/<string>([^<]*)<\/string>/g)].map((m) => m[1]), ["floortest.app", "localhost"]);
 
   const release = loadConfig({});
   assert.ok(release.ok, release.err);
