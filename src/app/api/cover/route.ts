@@ -8,6 +8,7 @@ import { q } from "@/lib/db";
 import { storage } from "@/lib/storage";
 import { imageKind, IMAGE_TYPES as TYPES } from "@/lib/images";
 import { optimizeImage } from "@/lib/image-optimize";
+import { readFormUpTo } from "@/lib/bounded-form";
 import { reserveFile, settleFile } from "@/lib/file-reservations";
 import { recordDigest } from "@/lib/file-digests";
 
@@ -21,9 +22,9 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   // The link's cover is part of the public page: the owner and A&R / Admin, never a Member (the page hides it; this is the guard).
   if (!atLeast(user.role, "admin")) return NextResponse.json({ error: "Only the owner or an A&R / Admin can change the cover." }, { status: 403 });
-  if (Number(req.headers.get("content-length") || 0) > MAX + 64 * 1024)
-    return NextResponse.json({ error: "Images must be under 8 MB." }, { status: 413 });
-  const form = await req.formData().catch(() => null);
+  // The form is read with a hard cap, so a body bigger than an image can't be buffered first.
+  const form = await readFormUpTo(req, MAX + 64 * 1024);
+  if (form === "too-large") return NextResponse.json({ error: "Images must be under 8 MB." }, { status: 413 });
   const file = form?.get("file");
   if (!(file instanceof File) || !file.size) return NextResponse.json({ error: "Choose an image." }, { status: 400 });
   if (file.size > MAX) return NextResponse.json({ error: "Images must be under 8 MB." }, { status: 413 });
