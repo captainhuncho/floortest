@@ -4,7 +4,6 @@ import { expect, test } from "./fixtures";
 
 test("sign-up never says whether an email already has an account", async ({ page }) => {
   await page.goto("/signup");
-  await page.getByLabel("Invite code").fill("E2E-INVITE");
   await page.getByLabel("What best describes you?").selectOption("dj");
   await page.getByLabel("First name").fill("Someone");
   await page.getByLabel("Surname").fill("Else");

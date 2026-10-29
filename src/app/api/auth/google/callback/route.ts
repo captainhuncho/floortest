@@ -51,7 +51,7 @@ export async function GET(req: Request) {
   const pinned = await q.get<Account>(`SELECT ${COLS} FROM users WHERE google_sub = ?`, who.sub);
   const user = pinned ?? (await q.get<Account>(`SELECT ${COLS} FROM users WHERE lower(email) = ?`, who.email));
 
-  // No account yet: on to the sign-up form, which still asks for an invite code during the beta.
+  // No account yet: on to the sign-up form; during the beta only an invite sent to this email lets them in.
   if (!user) {
     jar.set(GOOGLE_SIGNUP_COOKIE, signIdentity(who, env.secret), { httpOnly: true, sameSite: "lax", secure, path: "/", maxAge: SIGNUP_MS / 1000 });
     return go("/signup/google");

@@ -9,7 +9,6 @@ const PASSWORD = "Correct-Horse-Battery-77";
 async function signUp(page: Page, prefix: string) {
   const stamp = Date.now().toString(36);
   await page.goto("/signup");
-  await page.getByLabel("Invite code").fill("E2E-INVITE");
   await page.getByLabel("What best describes you?").selectOption("dj");
   await page.getByLabel("First name").fill("Tess");
   await page.getByLabel("Surname").fill("Twostep");

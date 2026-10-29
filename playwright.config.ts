@@ -21,7 +21,9 @@ const env = {
   GOOGLE_CLIENT_SECRET: "",
   NEXT_PUBLIC_SENTRY_DSN: "",
   OPS_URL: "",
-  BETA_INVITE_CODES: "E2E-INVITE",
+  // Sign-up is invite-only in the beta (switch open_signup; the invite rules are tests/invites.test.ts). The test copy
+  // opens it so each test can make fresh accounts (scripts/seed.ts).
+  SEED_OPEN_SIGNUP: "1",
   // Collection share links are tested here, so the test copy has sharing switched on (scripts/seed.ts).
   SEED_SHARING: "1",
   // Account teams are tested too: teams switched on and a seeded team member (scripts/seed.ts).

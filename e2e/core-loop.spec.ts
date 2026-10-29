@@ -5,7 +5,7 @@ import type { Page } from "@playwright/test";
 import { expect, test, wav } from "./fixtures";
 
 /**
- * The money path, in a real browser: a sender signs up with an invite (and can't send until the email is confirmed);
+ * The money path, in a real browser: a sender signs up (and can't send until the email is confirmed);
  * a confirmed sender sends a WAV to the demo receiver's link;
  * the receiver finds it in the Queue, keeps it, and downloads it from Prepare as a named folder.
  */
@@ -29,9 +29,8 @@ async function logIn(page: Page, email: string, password: string) {
   await page.waitForURL(/\/dashboard\//);
 }
 
-test("a new sender signs up with an invite code", async ({ page }) => {
+test("a new sender signs up", async ({ page }) => {
   await page.goto("/signup");
-  await page.getByLabel("Invite code").fill("E2E-INVITE");
   await page.getByLabel("What best describes you?").selectOption("producer_dj");
   await page.getByLabel("First name").fill(sender.first);
   await page.getByLabel("Surname").fill(sender.last);

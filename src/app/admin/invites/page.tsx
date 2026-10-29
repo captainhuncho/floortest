@@ -92,7 +92,7 @@ export default async function Invites({ searchParams }: { searchParams: Promise<
       <section aria-labelledby="codes-h" className="space-y-4">
         <div>
           <h2 id="codes-h" className="text-lg font-semibold">Shared codes</h2>
-          <p className="mt-1 text-sm text-mute">One code for a group, like a collective or a class, with a cap on sign-ups.</p>
+          <p className="mt-1 text-sm text-mute">One code for a group, like a collective or a class, with a cap on sign-ups. While Open sign-up is off, shared codes (and referral codes) don&apos;t open accounts: only a personal invite to that email does.</p>
         </div>
         <form action={createInvite} className="grid gap-3 rounded-md border border-line p-5 sm:grid-cols-[1fr_120px_1fr_auto] sm:items-end">
           <label className="block space-y-1.5">
