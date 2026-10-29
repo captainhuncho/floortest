@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { imageKind, IMAGE_TYPES } from "./images";
 import { optimizeImage } from "./image-optimize";
+import { readFormUpTo } from "./bounded-form";
 import { storage } from "./storage";
 import { reserveFile } from "./file-reservations";
 import { recordDigest } from "./file-digests";
@@ -11,8 +12,10 @@ const MAX = 5 * 1024 * 1024;
 
 /** Stores an uploaded site image (resized to WebP) and answers with its key; callers check permission first. */
 export async function uploadSiteImage(req: Request) {
-  if (Number(req.headers.get("content-length") || 0) > MAX + 64 * 1024) return NextResponse.json({ error: "Images must be under 5 MB." }, { status: 413 });
-  const file = (await req.formData().catch(() => null))?.get("file");
+  // The form is read with a hard cap, so a body bigger than an image can't be buffered first.
+  const form = await readFormUpTo(req, MAX + 64 * 1024);
+  if (form === "too-large") return NextResponse.json({ error: "Images must be under 5 MB." }, { status: 413 });
+  const file = form?.get("file");
   if (!(file instanceof File) || !file.size) return NextResponse.json({ error: "Choose an image." }, { status: 400 });
   if (file.size > MAX) return NextResponse.json({ error: "Images must be under 5 MB." }, { status: 413 });
   const buf = new Uint8Array(await file.arrayBuffer());

@@ -41,7 +41,7 @@ export async function GET(req: Request) {
   const tracks = ids.length
     ? await q.all<Track>(
         `SELECT tracks.*, CASE WHEN r.title <> '' THEN r.title END AS release_folder
-         FROM tracks LEFT JOIN releases r ON r.id = tracks.release_id
+         FROM tracks LEFT JOIN releases r ON r.id = tracks.release_id AND r.user_id = tracks.user_id
          WHERE tracks.user_id = ? AND tracks.deleted_at IS NULL AND tracks.file_key IS NOT NULL AND tracks.id IN (${ids.map(() => "?").join(",")})
          ORDER BY tracks.created_at`,
         user.id,
@@ -50,7 +50,7 @@ export async function GET(req: Request) {
     : await q.all<Track>(
     // EPs and albums carry their release name, so the crate keeps them together in their own folder.
     `SELECT tracks.*, CASE WHEN r.title <> '' THEN r.title END AS release_folder
-     FROM tracks LEFT JOIN releases r ON r.id = tracks.release_id
+     FROM tracks LEFT JOIN releases r ON r.id = tracks.release_id AND r.user_id = tracks.user_id
      WHERE tracks.user_id = ? AND tracks.deleted_at IS NULL AND tracks.file_key IS NOT NULL ${whole ? "" : "AND tracks.decision = 'kept'"} ${collection ? "" : "AND tracks.set_cleared_at IS NULL"}
      ${collection ? "AND tracks.collection_id = ?" : ""} ORDER BY ${whole ? "tracks.created_at" : "tracks.decided_at"}`,
     ...(collection ? [user.id, collection.id] : [user.id]),

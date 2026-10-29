@@ -48,7 +48,7 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
     base.push("(t.title ILIKE ? OR t.artist ILIKE ? OR s.name ILIKE ? OR s.email ILIKE ? OR t.genre ILIKE ?)");
     args.push(...Array(5).fill(likeContains(search)));
   }
-  const from = "FROM tracks t JOIN senders s ON s.id = t.sender_id LEFT JOIN collections c ON c.id = t.collection_id LEFT JOIN releases r ON r.id = t.release_id";
+  const from = "FROM tracks t JOIN senders s ON s.id = t.sender_id LEFT JOIN collections c ON c.id = t.collection_id LEFT JOIN releases r ON r.id = t.release_id AND r.user_id = t.user_id";
   const cond = STATUSES.find(([k]) => k === status)![2];
   // Needs review plays oldest-first like a queue; decided views show the latest decisions first.
   const order = status === "review" ? "t.created_at ASC" : status === "all" ? "t.created_at DESC" : "t.decided_at DESC";
