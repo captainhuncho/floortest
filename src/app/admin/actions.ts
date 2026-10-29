@@ -22,7 +22,7 @@ import { HIDDEN, sendMail } from "@/lib/mail";
 import { isAdminEmail, logAdmin, requireAdminAction } from "@/lib/admin";
 import { opsAccessFor, suspendRefusal } from "@/lib/ops-access";
 import { PERMS, ROLE_PERMS, ROLES, type Perm, type Role } from "@/lib/ops-perms";
-import type { PlanRequest } from "@/lib/plan-requests";
+import { grantablePlan, type PlanRequest } from "@/lib/plan-requests";
 import { flash } from "@/lib/flash";
 import { isTargeted, setSwitch, setSwitchRule, SWITCHES, type SwitchKey } from "@/lib/switches";
 import { clampPercent, describeRule, parseCountries, readRule, MAX_RULE_ACCOUNTS } from "@/lib/switch-rules";
@@ -1066,8 +1066,8 @@ export async function approvePlanRequest(id: number, form: FormData) {
   const a = await requireAdminAction("planRequests");
   const r = await openRequest(id);
   if (!r) return fail("That request was already dealt with.");
-  const plan = (await allPlans()).find((p) => p.id === String(form.get("plan") || r.plan) && !p.retired);
-  if (!plan) return fail("Pick a plan that's offered.");
+  const plan = grantablePlan(await allPlans(), String(form.get("plan") || r.plan), r.plan, r.current);
+  if (!plan) return fail("Pick the plan they asked for, or one at or above their current plan.");
   const note = String(form.get("note") || "").trim().slice(0, 500);
   await q.tx(async (db) => {
     await db.run("UPDATE users SET plan = ? WHERE id = ?", plan.id, r.user_id);

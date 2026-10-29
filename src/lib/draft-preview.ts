@@ -38,6 +38,21 @@ function check(kind: string, token: string | undefined | null): Previewer | null
 export const previewPass = (p: Previewer) => make("pass", p, PASS_MS);
 export const passHolder = (token: string | null) => check("pass", token);
 
+/**
+ * Opens the preview with a pass, once. A genuine pass is recorded as spent (by the hash of its signature, kept until it
+ * would have expired), so a copied or replayed link is refused, like a view-as ticket.
+ */
+export async function redeemPass(token: string | null) {
+  const holder = passHolder(token);
+  if (!holder) return null;
+  const { q } = await import("./db");
+  const [, , exp, sig] = String(token).split(".");
+  const used = crypto.createHash("sha256").update(sig).digest("hex");
+  await q.run("DELETE FROM preview_passes_used WHERE expires_at < ?", Date.now());
+  const r = await q.run("INSERT INTO preview_passes_used (sig_hash, expires_at) VALUES (?, ?) ON CONFLICT (sig_hash) DO NOTHING", used, Number(exp));
+  return r.changes ? holder : null;
+}
+
 /** The cookie floortest.app keeps while someone previews drafts. */
 export const previewCookie = (p: Previewer) => make("cookie", p, PREVIEW_MS);
 export const previewer = (token: string | undefined) => check("cookie", token);

@@ -39,9 +39,13 @@ for (const file of walk(join(root, "src/app/admin")).filter((f) => f.endsWith(`$
   if (!src.includes(`requireAdmin("${need}")`)) problems.push(`${route}: must call requireAdmin("${need}")`);
 }
 
-// 3. Admin API routes: each checks a named permission.
+// 3. Admin API routes: each checks a named permission. Whole-site exports (every account's people or files) are super only.
+const SUPER_ROUTES = ["users-csv", "storage-manifest"];
 for (const file of walk(join(root, "src/app/api/admin")).filter((f) => f.endsWith("route.ts"))) {
-  if (!/requireAdmin(Action)?\("[\w.]+"\)/.test(readFileSync(file, "utf8"))) problems.push(`${relative(root, file)}: must call requireAdmin("…") or requireAdminAction("…")`);
+  const src = readFileSync(file, "utf8");
+  if (!/requireAdmin(Action)?\("[\w.]+"\)/.test(src)) problems.push(`${relative(root, file)}: must call requireAdmin("…") or requireAdminAction("…")`);
+  const name = relative(join(root, "src/app/api/admin"), file).split(sep)[0];
+  if (SUPER_ROUTES.includes(name) && !src.includes('requireAdminAction("super")')) problems.push(`${relative(root, file)}: must call requireAdminAction("super")`);
 }
 
 if (problems.length) {
