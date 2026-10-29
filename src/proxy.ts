@@ -24,7 +24,9 @@ const isOps = (path: string) => under(path, OPS_PATHS);
 // FloorTest is public before launch; Google's sign-in review (which needs public legal pages) waits until then.
 // "/c": collection share links, which do their own checks (and say "not available" while sharing is switched off).
 // "/join": team invites (sign-up from one works during the beta, like an invite code).
-const GATE_OPEN = ["/coming-soon", "/login", "/forgot", "/reset", "/signed-out", "/c", "/join"];
+// "/manifest.webmanifest": the home-screen name and icons; browsers fetch it without cookies, so behind the gate it
+// would get the coming-soon page and phones would lose the icon.
+const GATE_OPEN = ["/coming-soon", "/login", "/forgot", "/reset", "/signed-out", "/c", "/join", "/manifest.webmanifest"];
 const notFound = (req: NextRequest, request: { headers: Headers }) => NextResponse.rewrite(new URL("/_not-found", req.url), { status: 404, request });
 
 /**
