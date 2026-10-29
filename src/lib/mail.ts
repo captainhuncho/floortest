@@ -5,6 +5,7 @@ import crypto from "node:crypto";
 import { now, q, type Queryable } from "./db";
 import { env, isPreview } from "./env";
 import { recordIncident } from "./incidents";
+import { emailHtml } from "./email-html";
 import { MAIL_LIMITS, MAIL_RESERVED_SHARE, MAIL_WARN_AT } from "./mail-quota";
 
 export const APP_URL = env.appUrl;
@@ -221,6 +222,7 @@ export async function deliver(id: number, { retry = true } = {}): Promise<string
           to,
           subject,
           text: p.body,
+          html: emailHtml(p.subject, p.body, { optional: !!row.optional, reserved: !!row.reserved }),
           ...(env.email.replyTo ? { reply_to: env.email.replyTo } : {}),
           ...(p.unsub
             ? { headers: { "List-Unsubscribe": `<${APP_URL}/api/unsubscribe/${p.unsub}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } }
