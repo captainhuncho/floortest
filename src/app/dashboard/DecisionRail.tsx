@@ -1,6 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+// The router's own option for a full prefetch (typed in AppRouterInstance.prefetch); a plain prefetch of this dynamic
+// page only loads the loading screen.
+import { PrefetchKind } from "next/dist/client/components/router-reducer/router-reducer-types";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { isTyping, usePlayer, type PlayerTrack } from "@/components/Player";
 import { useToast } from "@/components/Toast";
@@ -47,6 +50,20 @@ export function DecisionRail({ track, senderName, selfHref, next, prev, onReply 
   const queue = useQueue();
   // Previous / next show at once from what the list knows (QueueState); the server's page follows.
   const step = useStep(track.id);
+
+  // Next and previous also load in full while this track is open, so their details (message, sender, tags) are
+  // already here when you move on instead of waiting on London. Loaded again whenever a decision refreshes the desk.
+  const nextHref = next?.href ?? null;
+  const prevHref = prev?.href ?? null;
+  useEffect(() => {
+    let live = true;
+    const warm = (href: string) => router.prefetch(href, { kind: PrefetchKind.FULL, onInvalidate: () => live && warm(href) });
+    if (nextHref) warm(nextHref);
+    if (prevHref) warm(prevHref);
+    return () => {
+      live = false;
+    };
+  }, [nextHref, prevHref, router]);
 
   const decide = useCallback(
     (d: "kept" | "passed") => {
