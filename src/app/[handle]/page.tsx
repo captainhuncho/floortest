@@ -1,3 +1,4 @@
+import { ProfileBar } from "./ProfileBar";
 import { briefItems } from "@/lib/brief";
 import { Logo } from "@/components/Logo";
 import { siteEditor } from "@/lib/site-editor";
@@ -80,6 +81,7 @@ export default async function ReceiverPage({ params }: Props) {
     {/* One column at every width (owner, 29 Oct): the receiver's photo, name and callout centred at the top and kept
         there once a file is picked; the brief, the drop box or the form below, left-aligned. */}
     <main className="group/page mx-auto flex min-h-dvh max-w-[600px] flex-col gap-7 bg-ink px-[18px] py-10 text-bone sm:py-14">
+      <ProfileBar cover={receiver.cover_key ? `/api/cover/${receiver.handle}?v=${encodeURIComponent(receiver.cover_key)}` : null} name={receiver.name} callout={collection && !closedReason ? collection.name : null}>
       <header className="flex flex-col items-center gap-2.5 text-center">
         {receiver.cover_key && (
           // eslint-disable-next-line @next/next/no-img-element
@@ -111,6 +113,7 @@ export default async function ReceiverPage({ params }: Props) {
         )}
         <ProfileLinks links={readLinks(receiver.links)} size={20} className="mt-1 justify-center" />
       </header>
+      </ProfileBar>
       <hr className="border-line" />
       {closedReason ? (
         <div className="rounded-2xl border border-line bg-ink-2 p-5" role="status">

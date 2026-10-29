@@ -57,6 +57,8 @@ html, body { background: var(--color-ink); color: var(--color-bone); }
    tab bar plus mini player (or the docked decision rail while a track is open, below); from md up only the player bar (44px button + 24px padding + border) sits at the bottom. */
 html { scroll-padding-top: 76px; scroll-padding-bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 150px); }
 @media (min-width: 48rem) { html { scroll-padding-top: 16px; scroll-padding-bottom: 88px; } }
+/* The send page's profile bar (48px, fixed at the top once the profile scrolls away): focused fields stop below it. */
+html:has([data-profile-bar]) { scroll-padding-top: 64px; }
 body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
 /* Visible focus everywhere, for keyboard users only. */
 :focus-visible { outline: 2px solid var(--color-lime); outline-offset: 2px; border-radius: 4px; }
