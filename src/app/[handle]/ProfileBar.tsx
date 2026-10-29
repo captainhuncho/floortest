@@ -34,7 +34,7 @@ export function ProfileBar({ cover, name, callout, children }: { cover: string |
           <span className="shrink-0 font-semibold text-bone">{name}</span>
           {callout && (
             <span className="min-w-0 truncate text-[13px] text-mute">
-              <span aria-hidden className="mr-1.5 inline-block size-1.5 -translate-y-px rounded-full bg-lime" />
+              <span aria-hidden className="mr-1.5 inline-block size-1.5 -translate-y-px rounded-full bg-(--color-lime)" />
               Receiving for {callout}
             </span>
           )}
