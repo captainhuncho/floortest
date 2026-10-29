@@ -6,12 +6,13 @@ import { APP_URL, sendMail } from "@/lib/mail";
 import { allow, requestIp } from "@/lib/ratelimit";
 import { signSenderLink } from "@/lib/senderLink";
 import { BOT_MESSAGE, passedTurnstile } from "@/lib/turnstile";
+import { normalEmail } from "@/lib/email-normal";
 
 export type SentState = { ok?: boolean; error?: string } | undefined;
 
 /** Emails a sign-in link. Answers the same either way, so it can't reveal who has sent music. */
 export async function requestSenderLink(_: SentState, form: FormData): Promise<SentState> {
-  const email = String(form.get("email") || "").trim().toLowerCase().slice(0, 200);
+  const email = normalEmail(String(form.get("email") || "")).slice(0, 200);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Enter the email you send music from." };
   const ip = await requestIp();
   // It emails any address that has sent music, so the bot check and the site-wide hourly email budget (shared with

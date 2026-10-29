@@ -3,12 +3,13 @@ import Link from "next/link";
 import { q } from "@/lib/db";
 import { dataFor } from "@/lib/privacy";
 import { adminDeleteAccount, adminEraseSender } from "../actions";
+import { normalEmail } from "@/lib/email-normal";
 
 /** Privacy requests (access and erasure) for anyone: account holders, senders without an account, people who wrote in. */
 export default async function Privacy({ searchParams }: { searchParams: Promise<{ email?: string; done?: string }> }) {
   await requireAdmin("super");
   const sp = await searchParams;
-  const email = (sp.email || "").trim().toLowerCase().slice(0, 200);
+  const email = normalEmail(sp.email || "").slice(0, 200);
   const d = email.includes("@") ? await dataFor(email) : null;
   const requests = await q.all<{ id: number; email: string; message: string; created_at: number; handled_at: number | null }>(
     "SELECT id, email, message, created_at, handled_at FROM contact_messages WHERE topic = 'Privacy request' ORDER BY handled_at IS NULL DESC, created_at DESC LIMIT 20",

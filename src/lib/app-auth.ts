@@ -48,20 +48,50 @@ export async function issueAppSession(userId: number, label: string, signedInAt 
  * is older than APP_SESSION_MAX_MS (the old row is removed either way).
  */
 export async function refreshAppSession(refresh: string) {
-  const old = await q.get<{ user_id: number; label: string; created_at: number }>(
-    "DELETE FROM sessions WHERE token_hash = ? AND kind = 'app' AND expires_at > ? RETURNING user_id, label, created_at",
-    hashToken(String(refresh).slice(0, 200)), now(),
+  const hash = hashToken(String(refresh).slice(0, 200));
+  const old = await q.get<{ user_id: number; label: string; created_at: number; expires_at: number }>(
+    "DELETE FROM sessions WHERE token_hash = ? AND kind = 'app' AND expires_at > ? RETURNING user_id, label, created_at, expires_at",
+    hash, now(),
   );
-  if (!old) return null;
+  if (!old) {
+    await spentCameBack(hash);
+    return null;
+  }
+  // Remembered until it would have expired, so it coming back again can be recognised.
+  await q.run(
+    "INSERT INTO app_refresh_spent (token_hash, user_id, signed_in_at, expires_at) VALUES (?,?,?,?) ON CONFLICT (token_hash) DO NOTHING",
+    hash, old.user_id, old.created_at, old.expires_at,
+  );
   const signedInAt = Number(old.created_at);
   if (!(now() - signedInAt < APP_SESSION_MAX_MS)) return null;
   const live = await q.get("SELECT 1 FROM users WHERE id = ? AND suspended_at IS NULL", old.user_id);
   return live ? issueAppSession(old.user_id, old.label, signedInAt) : null;
 }
 
-/** Ends one app session (sign out on this phone). */
-export async function endAppSession(refresh: string, userId: number) {
-  const r = await q.run("DELETE FROM sessions WHERE token_hash = ? AND kind = 'app'", hashToken(String(refresh).slice(0, 200)));
+/**
+ * A refresh token that was already swapped is back: someone has a copy (or the app retried after a lost answer). We
+ * can't tell whose copy is whose, so that sign-in ends on every row of its chain (same account, same first sign-in
+ * time) and the account log says so. Other sign-ins on other devices are left alone.
+ */
+async function spentCameBack(hash: string) {
+  const spent = await q.get<{ user_id: number; signed_in_at: number }>(
+    "DELETE FROM app_refresh_spent WHERE token_hash = ? RETURNING user_id, signed_in_at",
+    hash,
+  );
+  if (!spent) return;
+  const r = await q.run("DELETE FROM sessions WHERE user_id = ? AND kind = 'app' AND created_at = ?", spent.user_id, spent.signed_in_at);
+  await audit(spent.user_id, "app_token_reused", `${r.changes} app session${r.changes === 1 ? "" : "s"} ended`);
+}
+
+/**
+ * Sign out on this phone: ends the session the Bearer token belongs to (`session`), even when no refresh token is sent,
+ * and the refresh token's session if it is the same account's. Another account's token is left alone.
+ */
+export async function endAppSession(refresh: string, userId: number, session: string) {
+  const r = await q.run(
+    "DELETE FROM sessions WHERE user_id = ? AND kind = 'app' AND token_hash IN (?, ?)",
+    userId, session, hashToken(String(refresh).slice(0, 200)),
+  );
   if (r.changes) await audit(userId, "signed_out", "app");
 }
 

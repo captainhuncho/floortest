@@ -3,13 +3,14 @@
 /** Security: password, other devices, two-factor and sign-in alerts. */
 import { allow } from "@/lib/ratelimit";
 import { stepUp } from "@/lib/step-up";
+import { checkSecondFactor } from "@/lib/security";
 import { passwordStrength } from "@/lib/password-strength";
 import { changePasswordTo, currentSessionHash, verifyPassword, requireRole } from "@/lib/auth";
 import { APP_URL, sendMail } from "@/lib/mail";
-import { endSession } from "@/lib/sessions";
+import { deviceId, endSession, revokeAllSessions } from "@/lib/sessions";
 import QRCode from "qrcode";
 import { env } from "@/lib/env";
-import { hashRecovery, newTotpSecret, openSecret, otpauthUri, sealSecret, verifyTotp } from "@/lib/totp";
+import { newTotpSecret, openSecret, otpauthUri, sealSecret, verifyTotp } from "@/lib/totp";
 import { q } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { done } from "./common";
@@ -46,13 +47,18 @@ export async function changePassword(_: SettingsState, form: FormData): Promise<
   return { ok: true };
 }
 
-/** Ends every session except this one: lost phone, shared laptop. */
-export async function signOutOtherDevices(): Promise<number> {
+/**
+ * Ends every session except this one: lost phone, shared laptop. The password (and two-step code) first, so a
+ * borrowed session can't quietly sign the owner out everywhere else.
+ */
+export async function signOutOtherDevices(password: string, code: string): Promise<{ n: number } | { error: string }> {
   const u = await requireRole("owner");
-  const keep = await currentSessionHash();
-  const r = await q.run("DELETE FROM sessions WHERE user_id = ? AND token_hash <> ?", u.id, keep ?? "");
-  await audit(u.id, "signed_out_others", `${r.changes} device${r.changes === 1 ? "" : "s"}`);
-  return r.changes;
+  const denied = await stepUp(u.id, String(password || "").slice(0, 200), String(code || "").slice(0, 40));
+  if (denied) return { error: denied };
+  // Browsers, the app and the ops area alike, so a borrowed ops session can't outlive it.
+  const n = await revokeAllSessions(u.id, { keep: await currentSessionHash() });
+  await audit(u.id, "signed_out_others", `${n} device${n === 1 ? "" : "s"}`);
+  return { n };
 }
 
 /** Step 1: a fresh secret, held (encrypted) but not active until a code proves the app has it. */
@@ -94,16 +100,11 @@ export async function confirmTwoFactor(code: string, password: string): Promise<
 export async function disableTwoFactor(_: SettingsState, form: FormData): Promise<SettingsState> {
   const u = await requireRole("owner");
   if (!(await allow("twofa_disable", String(u.id), 10, 3_600_000))) return { error: "Too many tries. Wait an hour and try again." };
-  const row = await q.get<{ password_hash: string; totp_secret: string | null; totp_last_step: number | null; recovery_codes: string }>(
-    "SELECT password_hash, totp_secret, totp_last_step, recovery_codes FROM users WHERE id = ?",
-    u.id,
-  );
+  const row = await q.get<{ password_hash: string }>("SELECT password_hash FROM users WHERE id = ?", u.id);
   if (!row || !(await verifyPassword(String(form.get("password") || ""), row.password_hash))) return { error: "Your password isn't right." };
-  const code = String(form.get("code") || "");
-  const ok =
-    (row.totp_secret && verifyTotp(openSecret(row.totp_secret, env.secret), code, row.totp_last_step) != null) ||
-    (JSON.parse(row.recovery_codes || "[]") as string[]).includes(hashRecovery(code));
-  if (!ok) return { error: "That code didn't work." };
+  // The same check as the sign-in step: the code's time step is recorded and a recovery code is used up, so neither
+  // can be used again.
+  if (!(await checkSecondFactor(u.id, String(form.get("code") || "").slice(0, 40)))) return { error: "That code didn't work." };
   await q.run("UPDATE users SET totp_enabled_at = NULL, totp_secret = NULL, totp_last_step = NULL, recovery_codes = '[]' WHERE id = ?", u.id);
   await audit(u.id, "two_factor_off");
   await sendMail({
@@ -117,11 +118,17 @@ export async function disableTwoFactor(_: SettingsState, form: FormData): Promis
   return { ok: true };
 }
 
-export async function setSigninAlerts(on: boolean) {
+/** Turning alerts off needs the password (and two-step code), like removing any other protection. Turning on doesn't. */
+export async function setSigninAlerts(on: boolean, password = "", code = ""): Promise<{ ok: true } | { error: string }> {
   const u = await requireRole("owner");
+  if (!on) {
+    const denied = await stepUp(u.id, String(password || "").slice(0, 200), String(code || "").slice(0, 40));
+    if (denied) return { error: denied };
+  }
   await q.run("UPDATE users SET signin_alerts = ? WHERE id = ?", on ? 1 : 0, u.id);
   await audit(u.id, on ? "signin_alerts_on" : "signin_alerts_off");
   done();
+  return { ok: true };
 }
 
 /** Removes Google sign-in after checking the password (so a borrowed session can't quietly change how you sign in). */
@@ -136,12 +143,13 @@ export async function disconnectGoogle(_: SettingsState, form: FormData): Promis
 }
 
 /** Signs out one device from the list on the Security page. Not the current one: that's Sign out. */
-export async function signOutDevice(hash: string): Promise<{ ok: true } | { error: string }> {
+export async function signOutDevice(id: string): Promise<{ ok: true } | { error: string }> {
   const u = await requireRole("owner");
-  const h = String(hash || "");
-  if (!/^[a-f0-9]{64}$/.test(h)) return { error: "That device wasn't found." };
-  if (h === (await currentSessionHash())) return { error: "To sign out this device, use Sign out." };
-  if (!(await endSession(u.id, h))) return { error: "That device was already signed out." };
+  const d = String(id || "");
+  if (!/^[a-f0-9]{32}$/.test(d)) return { error: "That device wasn't found." };
+  const current = await currentSessionHash();
+  if (current && d === deviceId(current)) return { error: "To sign out this device, use Sign out." };
+  if (!(await endSession(u.id, d))) return { error: "That device was already signed out." };
   await audit(u.id, "signed_out", "one device, from Security");
   done();
   return { ok: true };

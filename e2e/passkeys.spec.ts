@@ -53,8 +53,15 @@ test("a passkey is added behind the password, signs in on its own, and stops wor
 
   // Removed on the Security page, the same passkey no longer opens the account.
   await page.goto("/dashboard/settings/security");
+  // Removing it asks for the password first: the wrong one removes nothing.
   await section.getByRole("button", { name: /^Remove / }).click();
-  await section.getByRole("button", { name: "Remove", exact: true }).click();
+  const confirm = section.locator("form", { hasText: "confirm it's you" });
+  await confirm.getByLabel("Password").fill("not-my-password");
+  await confirm.getByRole("button", { name: /^Remove / }).click();
+  await expect(confirm.getByRole("alert")).toBeVisible();
+  await expect(section.getByRole("listitem")).toHaveCount(1);
+  await confirm.getByLabel("Password").fill(PASSWORD);
+  await confirm.getByRole("button", { name: /^Remove / }).click();
   await expect(section.getByRole("listitem")).toHaveCount(0);
   await context.clearCookies();
   await page.goto("/login");

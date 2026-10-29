@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { normalEmail } from "./email-normal";
 
 /**
  * "Continue with Google". Google confirms who someone is; we decide what that's worth:
@@ -90,7 +91,7 @@ export function checkFlow(cookie: string | undefined, state: string | null, secr
 export function identityFromClaims(c: Record<string, unknown>, clientId: string, at = Date.now()): GoogleIdentity | "bad" | "untrusted" {
   if (c.aud !== clientId || !ISSUERS.includes(String(c.iss)) || !(Number(c.exp) * 1000 > at)) return "bad";
   if (c.email_verified !== true && c.email_verified !== "true") return "bad";
-  const email = String(c.email ?? "").trim().toLowerCase();
+  const email = normalEmail(String(c.email ?? ""));
   const sub = String(c.sub ?? "");
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !/^\d{5,64}$/.test(sub)) return "bad";
   const hd = String(c.hd ?? "").toLowerCase();

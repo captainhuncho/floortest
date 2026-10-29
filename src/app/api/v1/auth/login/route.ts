@@ -6,6 +6,7 @@ import { q } from "@/lib/db";
 import { HUMAN_CHECK_AFTER, HUMAN_MESSAGE, humanCheck, recentFailures } from "@/lib/human-check";
 import { recentCount, record, requestIp } from "@/lib/ratelimit";
 import { checkSecondFactor } from "@/lib/security";
+import { normalEmail } from "@/lib/email-normal";
 
 export const runtime = "nodejs";
 
@@ -19,7 +20,7 @@ const WINDOW = 15 * 60_000;
  */
 export async function POST(req: Request) {
   const b = await body(req);
-  const email = String(b.email ?? "").trim().toLowerCase().slice(0, 200);
+  const email = normalEmail(String(b.email ?? "")).slice(0, 200);
   const password = String(b.password ?? "").slice(0, 200);
   const ip = await requestIp();
   if ((await recentCount("login_fail_ip", ip, WINDOW)) >= 20 || (await recentCount("login_fail_email", email, WINDOW)) >= 10)
