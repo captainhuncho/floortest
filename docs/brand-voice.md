@@ -75,7 +75,7 @@ The biggest current problem is that the same thing has several names. Pick one a
 ## Channel notes
 
 - **Site:** big claims only if a number backs them. Every section should answer "what happens to my track?"
-- **Transactional email:** subject = the signal + the track. Body: one fact, one link, one line that explains what the signal does and doesn't mean. Plain text is on-brand; keep it.
+- **Transactional email:** subject = the signal + the track. Body: one fact, one link, one line that explains what the signal does and doesn't mean. Write it as plain text: the designed HTML version (29 Oct) is drawn from that text, so plain sentences and a "Label: link" line are all an email needs.
 - **Invites (receiver to receiver):** sound like a DJ passing on a tip, not a referral scheme.
 - **Social:** show the product doing one thing (a 10-second clip of Keep → next track beats any slogan). Scene words are welcome; hashtags max two.
 
