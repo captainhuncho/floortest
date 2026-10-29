@@ -10,7 +10,7 @@ import crypto from "node:crypto";
 import { logEvent, now, q, USER_COLUMNS, type Collection, type Queryable, type Sender, type Track, type User } from "./db";
 import { noLinks, APP_URL, deliverLater, queueMail } from "./mail";
 import { alertIfFull, notifyNewSubmission } from "./notify";
-import { holdForSend, receiptTemplates, type SendGroup } from "./send-receipts";
+import { holdForSend, receiptDetails, receiptTemplates, type SendGroup } from "./send-receipts";
 import { ACCEPTED_EXT, MAX_BATCH_TRACKS, MAX_RELEASE_TRACKS, MAX_UPLOAD_BYTES, RATE_PER_EMAIL_PER_DAY, RATE_PER_IP_PER_HOUR } from "./plans";
 import { folderLimit } from "./plan-store";
 import { allow } from "./ratelimit";
@@ -523,7 +523,19 @@ async function finishClaimed(receiver: User, up: Upload, ref: string, analysis: 
       // One of several in a send: its emails go with the rest of the send's (straight away if it's the last one).
       if (group && together) return { track, sender, collection, mailIds: await holdForSend(db, group, track.id, meta.sendSize!, together) };
       const mailIds = delivered
-        ? [await queueMail({ userId: fresh.id, to: sender.email, secrets: [track.token], subject: fillEmail(delivered.subject, vars).replace(/\s+/g, " "), body: fillEmail(delivered.body, vars) }, db)]
+        ? [
+            await queueMail(
+              {
+                userId: fresh.id,
+                to: sender.email,
+                secrets: [track.token],
+                subject: fillEmail(delivered.subject, vars).replace(/\s+/g, " "),
+                body: fillEmail(delivered.body, vars),
+                details: receiptDetails([track], fresh.name, collection?.name),
+              },
+              db,
+            ),
+          ]
         : [];
       return { track, sender, collection, mailIds };
     });
