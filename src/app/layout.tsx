@@ -16,6 +16,7 @@ export const metadata: Metadata = {
   title: "FloorTest — the receiving desk for new music",
   description: "One receiving link for every callout, and it never changes. Senders upload the original. FloorTest tells them what happens next.",
   openGraph: { siteName: "FloorTest", type: "website" },
+  twitter: { card: "summary_large_image" },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

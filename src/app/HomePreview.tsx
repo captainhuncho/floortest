@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BetaTag } from "@/components/Logo";
 
 import { useState } from "react";
 
@@ -35,6 +36,7 @@ export function HomePreview({ host }: { host: string }) {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img draggable={false} src="/brand/crest.svg" alt="" aria-hidden className="size-7 shrink-0" />
           FloorTest
+          <BetaTag />
         </Link>
         <div className="flex items-center gap-1 overflow-x-auto">
           <span className="home-label mr-2 hidden sm:inline">Collections</span>
