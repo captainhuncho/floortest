@@ -25,21 +25,62 @@ export interface Db extends Queryable {
   close(): Promise<void>;
 }
 
-/** `?` → `$n`, skipping quoted strings and identifiers. */
+/**
+ * `?` → `$n`, skipping quoted strings and identifiers, E'' strings, dollar quotes and comments, so a `?` in any of them
+ * never shifts the parameters. The jsonb `?`, `?|` and `?&` operators can't be told apart from a placeholder: use
+ * jsonb_exists(), jsonb_exists_any() or jsonb_exists_all() instead.
+ */
 export function toPositional(sql: string) {
   let n = 0;
   let out = "";
-  let quote: string | null = null;
-  for (const ch of sql) {
-    if (quote) {
-      if (ch === quote) quote = null;
-      out += ch;
-    } else if (ch === "'" || ch === '"') {
-      quote = ch;
-      out += ch;
+  let i = 0;
+  // Copies sql[i..end) unchanged and moves past it.
+  const copy = (end: number) => {
+    out += sql.slice(i, end);
+    i = end;
+  };
+  while (i < sql.length) {
+    const ch = sql[i];
+    const next = sql[i + 1];
+    if (ch === "'" || ch === '"') {
+      // E'...' strings let a backslash escape the quote; in the others a quote is escaped by doubling it.
+      const backslash = ch === "'" && /[eE]/.test(sql[i - 1] ?? "") && !/[\w$]/.test(sql[i - 2] ?? "");
+      let j = i + 1;
+      while (j < sql.length) {
+        if (backslash && sql[j] === "\\") j += 2;
+        else if (sql[j] === ch && sql[j + 1] === ch) j += 2;
+        else if (sql[j] === ch) break;
+        else j++;
+      }
+      copy(Math.min(j + 1, sql.length));
+    } else if (ch === "-" && next === "-") {
+      const end = sql.indexOf("\n", i);
+      copy(end < 0 ? sql.length : end);
+    } else if (ch === "/" && next === "*") {
+      // Postgres block comments nest.
+      let depth = 0;
+      let j = i;
+      while (j < sql.length) {
+        if (sql[j] === "/" && sql[j + 1] === "*") {
+          depth++;
+          j += 2;
+        } else if (sql[j] === "*" && sql[j + 1] === "/") {
+          j += 2;
+          if (--depth === 0) break;
+        } else j++;
+      }
+      copy(j);
+    } else if (ch === "$" && !/[\w$]/.test(sql[i - 1] ?? "")) {
+      // A dollar quote ($$...$$ or $tag$...$tag$); "$1" or a "$" inside a name is not one.
+      const tag = /^\$(?:[A-Za-z_][\w]*)?\$/.exec(sql.slice(i))?.[0];
+      if (tag) {
+        const end = sql.indexOf(tag, i + tag.length);
+        copy(end < 0 ? sql.length : end + tag.length);
+      } else copy(i + 1);
     } else if (ch === "?") {
       out += `$${++n}`;
-    } else out += ch;
+      i++;
+    } else copy(i + 1);
   }
   return out;
 }
