@@ -49,7 +49,8 @@ export default async function Collections() {
         One per callout. Your link <span className="font-mono break-all text-bone">{APP_URL.replace(/^https?:\/\//, "")}/{user.handle}</span>{" "}
         {user.active_collection_id ? "sends new tracks to the one that's receiving." : "sends tracks straight to your Review Queue until you make one."}
       </p>
-      <ul className="mt-2 grid gap-x-5 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
+      {/* gap-y-6: each folder's tab needs clear air above it, or it reads as part of the card before. */}
+      <ul className="mt-4 grid gap-x-5 gap-y-6 sm:grid-cols-2 lg:grid-cols-3">
         {ordered.map((c) => {
           const genres = genresFor(c).custom ? genresFor(c).list : [];
           return (

@@ -237,38 +237,36 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
     */}
     <div className="page-gutter py-5 sm:py-8">
       <div className="mx-auto flex w-full max-w-3xl min-w-0 flex-col gap-7 xl:max-w-6xl">
-        <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
-          <div className="flex min-w-0 flex-col gap-1.5">
+        {/* The count is the headline: one big number, its unit beside it, one sentence on how long they've waited,
+            and one button that says where it starts (the queue plays oldest first). */}
+        <header className="flex flex-col items-stretch gap-5 sm:items-start">
+          <div className="flex min-w-0 flex-col gap-2">
             {!welcome && <p className="text-sm text-mute">{greeting}, {first}</p>}
-            <h1 className="page-title">
-              {welcome ? (
-                `Welcome, ${first}.`
-              ) : stats.waiting ? (
-                <>
-                  <span className="font-mono tnum">{stats.waiting}</span> track{stats.waiting === 1 ? "" : "s"} waiting
-                </>
-              ) : (
-                "You're all caught up"
-              )}
-            </h1>
-            <p className="text-sm text-mute">
+            {welcome || !stats.waiting ? (
+              <h1 className="page-title">{welcome ? `Welcome, ${first}.` : "You're all caught up"}</h1>
+            ) : (
+              <h1 className="flex flex-wrap items-baseline gap-x-3 font-bold text-bone">
+                <span className="tnum text-[56px] leading-[0.9] tracking-[-0.04em] sm:text-[72px]">{stats.waiting}</span>
+                <span className="text-title">track{stats.waiting === 1 ? "" : "s"} waiting</span>
+              </h1>
+            )}
+            <p className="max-w-[46ch] text-[15px] leading-snug text-bone">
               {welcome
                 ? "Your link is ready. Share it and the first track lands here."
                 : stats.waiting
-                  ? `${oldest ? `The ${stats.waiting === 1 ? "track" : "oldest"} arrived ${ago(oldest)}. ` : ""}Senders see Listened once you play past 30 seconds.`
+                  ? waitLine(stats.waiting, stale, oldest)
                   : kept
                     ? `${kept} kept track${kept === 1 ? " is" : "s are"} ready for your set.`
                     : "New tracks will show up here first."}
             </p>
-            {stale > 0 && (
-              <Link href="/dashboard/review?view=queue" className="w-fit text-[13px] font-semibold text-bone underline underline-offset-4">
-                {stale} track{stale === 1 ? " has" : "s have"} waited over {STALE_DAYS} days. The queue starts with {stale === 1 ? "it" : "them"} →
-              </Link>
-            )}
+            {stats.waiting > 0 && <p className="text-[13px] text-mute">Senders see Listened once you play past 30 seconds.</p>}
           </div>
           {stats.waiting > 0 && (
-            <Link href="/dashboard/review?view=queue" className="btn-lime w-full shrink-0 sm:w-auto">
-              Start reviewing
+            <Link
+              href="/dashboard/review?view=queue"
+              className="btn-lime min-h-12 w-full shrink-0 px-6 text-[15px]! transition-transform duration-100 active:scale-[0.97] motion-reduce:active:scale-100 sm:w-auto"
+            >
+              {stats.waiting === 1 ? "Listen now" : "Start with the oldest"}
             </Link>
           )}
         </header>
@@ -342,6 +340,15 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
 
 /** Waiting this long gets a nudge on the Floor, two days before the 7-day mark the desk aims for. */
 const STALE_DAYS = 5;
+
+/** The one sentence under the count: how many have waited too long, and when the oldest came in. */
+function waitLine(waiting: number, stale: number, oldest: number | undefined) {
+  const arrived = oldest ? ago(oldest) : "";
+  if (waiting === 1) return arrived ? `It arrived ${arrived}.` : "It's ready when you are.";
+  const late = stale === waiting ? `All ${stale}` : `${stale}`;
+  const lateLine = stale > 0 ? `${late} ${stale === 1 ? "has" : "have"} waited over ${STALE_DAYS} days. ` : "";
+  return `${lateLine}${arrived ? `The oldest arrived ${arrived}.` : ""}`.trim();
+}
 
 /** How long a first listen usually takes, as a readout: "<1h", "5h", "1d", "3d". */
 function waitShort(ms: number) {

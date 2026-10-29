@@ -8,7 +8,7 @@ import { ProfileLinks } from "@/components/ProfileLinks";
 import { readLinks } from "@/lib/socials";
 import { fill, siteCopy } from "@/lib/content";
 import { teamSize } from "@/lib/team";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { forwardedHandle } from "@/lib/accounts";
 import { activeCollection, capacity, isClosed, isPaused, pausedMessage, userByHandleForView } from "@/lib/desk";
@@ -23,6 +23,14 @@ import { SendModes } from "./SendModes";
 type Props = { params: Promise<{ handle: string }>; };
 
 /** Link previews for when a DJ shares their link on socials or in DMs. */
+// The browser bar matches the page in either mode.
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fafaf6" },
+    { media: "(prefers-color-scheme: dark)", color: "#10110f" },
+  ],
+};
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const u = await userByHandleForView((await params).handle);
   if (!u) return { title: "FloorTest" };
@@ -78,9 +86,10 @@ export default async function ReceiverPage({ params }: Props) {
 
   return (
     <EditablePage editing={!!editor} page="link" label="Public link" values={c}>
+    {/* Light or dark with the visitor's device (theme-system, the dashboard's "System" setting; owner, 29 Oct). */}
     {/* One column at every width (owner, 29 Oct): the receiver's photo, name and callout centred at the top and kept
         there once a file is picked; the brief, the drop box or the form below, left-aligned. */}
-    <main className="group/page mx-auto flex min-h-dvh max-w-[600px] flex-col gap-7 bg-ink px-[18px] py-10 text-bone sm:py-14">
+    <main className="theme-system group/page mx-auto flex min-h-dvh max-w-[600px] flex-col gap-7 bg-ink px-[18px] py-10 text-bone sm:py-14">
       <ProfileBar cover={receiver.cover_key ? `/api/cover/${receiver.handle}?v=${encodeURIComponent(receiver.cover_key)}` : null} name={receiver.name} callout={collection && !closedReason ? collection.name : null}>
       <header className="flex flex-col items-center gap-2.5 text-center">
         {receiver.cover_key && (
@@ -106,7 +115,7 @@ export default async function ReceiverPage({ params }: Props) {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={`/api/collection-art/${collection.id}?v=${encodeURIComponent(collection.art_key)}`} alt="" className="-my-0.5 size-5 rounded object-cover" />
             ) : (
-              <span aria-hidden className="size-1.5 rounded-full bg-lime" />
+              <span aria-hidden className="size-1.5 rounded-full bg-(--color-lime)" />
             )}
             <span className="font-medium text-mute">Receiving for</span> {collection.name}
           </p>
