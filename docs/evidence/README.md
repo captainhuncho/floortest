@@ -1,6 +1,6 @@
 # Testing evidence
 
-One report per production release (working rule 13, principle 9). Read the latest before deciding the next changes.
+One report per production release (working rule 13, principle 9). Read the latest before deciding the next changes. A release whose whole change is inside this folder gets no report of its own (any other file, even docs or tests, still counts): the next release's report lists it in one line (PR, merge commit, deployment).
 
 **File name:** `YYYY-MM-DD-<short name>-<commit>.md`, the commit being the one production runs. Screenshots go beside it as `YYYY-MM-DD-<short name>-<what>.png` (or `.jpg`), under 300 KB each.
 
