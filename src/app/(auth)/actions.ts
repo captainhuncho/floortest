@@ -24,7 +24,7 @@ import { normalEmail } from "@/lib/email-normal";
 import { isProtectedHandle } from "@/lib/identity";
 import { sendWelcome } from "@/lib/onboarding";
 import { checkSecondFactor, finishSignIn, sendEmailVerification } from "@/lib/security";
-import { readChallenge, signChallenge } from "@/lib/totp";
+import { issueTicket, TICKET_MS, ticketUser, spendTicket } from "@/lib/two-step-ticket";
 import { GOOGLE_LINK_COOKIE, GOOGLE_SIGNUP_COOKIE, readIdentity, readPendingLink } from "@/lib/google-auth";
 import { pinGoogle } from "@/lib/google-link";
 import { accountEmailAllowed } from "@/lib/email-budget";
@@ -50,7 +50,7 @@ async function landing(fallback: string) {
 async function afterPassword(userId: number, how: "password" | "reset" | "email code" | "Google") {
   const twoFactor = await q.get("SELECT 1 FROM users WHERE id = ? AND totp_enabled_at IS NOT NULL", userId);
   if (twoFactor) {
-    (await cookies()).set(CHALLENGE, signChallenge(userId, env.secret), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 300 });
+    (await cookies()).set(CHALLENGE, await issueTicket(userId), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: TICKET_MS / 1000 });
     redirect("/login/verify");
   }
   await finishSignIn(userId, how);
@@ -382,7 +382,8 @@ export async function verifyLoginCode(_: FormState, form: FormData): Promise<For
 /** Second sign-in step: a 6-digit authenticator code or a one-time recovery code. */
 export async function verifySecondStep(_: FormState, form: FormData): Promise<FormState> {
   const jar = await cookies();
-  const userId = readChallenge(jar.get(CHALLENGE)?.value, env.secret);
+  const ticket = jar.get(CHALLENGE)?.value;
+  const userId = await ticketUser(ticket);
   if (!userId) return { error: "That took too long. Log in again." };
   const key = `user:${userId}`;
   if ((await recentCount("twofa_fail", key, 15 * 60_000)) >= 8) return { error: "Too many wrong codes. Wait 15 minutes and log in again." };
@@ -392,6 +393,7 @@ export async function verifySecondStep(_: FormState, form: FormData): Promise<Fo
     return { error: "That code didn't work. Check your authenticator app and try again." };
   }
   jar.delete(CHALLENGE);
+  if (!(await spendTicket(ticket, userId))) return { error: "That took too long. Log in again." };
   await finishSignIn(userId, result === "code" ? "two-factor" : "recovery code");
   redirect(await landing("/dashboard/floor"));
 }
@@ -422,14 +424,15 @@ export async function passkeySignIn(answer: unknown): Promise<FormState> {
 
 /** Two-step with a passkey instead of the code, step 1. Null when this account has no passkey. */
 export async function passkeySecondStepStart() {
-  const userId = readChallenge((await cookies()).get(CHALLENGE)?.value, env.secret);
+  const userId = await ticketUser((await cookies()).get(CHALLENGE)?.value);
   return userId ? secondStepOptions(userId) : null;
 }
 
 /** Step 2: the passkey must belong to the account whose password (or email code) was just checked. */
 export async function passkeySecondStep(answer: unknown): Promise<FormState> {
   const jar = await cookies();
-  const userId = readChallenge(jar.get(CHALLENGE)?.value, env.secret);
+  const ticket = jar.get(CHALLENGE)?.value;
+  const userId = await ticketUser(ticket);
   if (!userId) return { error: "That took too long. Log in again." };
   const key = `user:${userId}`;
   if ((await recentCount("twofa_fail", key, 15 * 60_000)) >= 8) return { error: "Too many wrong tries. Wait 15 minutes and log in again." };
@@ -438,13 +441,14 @@ export async function passkeySecondStep(answer: unknown): Promise<FormState> {
     return { error: "That passkey didn't work. Try again, or enter the code from your authenticator app." };
   }
   jar.delete(CHALLENGE);
+  if (!(await spendTicket(ticket, userId))) return { error: "That took too long. Log in again." };
   await finishSignIn(userId, "passkey as two-step");
   redirect(await landing("/dashboard/floor"));
 }
 
 /** For the two-step page: whether to offer "Use a passkey instead". */
 export async function secondStepHasPasskey() {
-  const userId = readChallenge((await cookies()).get(CHALLENGE)?.value, env.secret);
+  const userId = await ticketUser((await cookies()).get(CHALLENGE)?.value);
   return userId ? hasPasskey(userId) : false;
 }
 

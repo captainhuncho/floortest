@@ -6,9 +6,7 @@ import {
   hashRecovery,
   newRecoveryCodes,
   openSecret,
-  readChallenge,
   sealSecret,
-  signChallenge,
   totpCode,
   verifyTotp,
 } from "../src/lib/totp";
@@ -48,12 +46,4 @@ test("recovery codes are unique and hash the same however they're typed", () => 
   const codes = newRecoveryCodes();
   assert.equal(new Set(codes).size, 10);
   assert.equal(hashRecovery(codes[0]), hashRecovery(` ${codes[0].toUpperCase().replace("-", "")} `));
-});
-
-test("2FA challenge tickets are signed and expire", () => {
-  const t = signChallenge(42, "s".repeat(40));
-  assert.equal(readChallenge(t, "s".repeat(40)), 42);
-  assert.equal(readChallenge(t, "x".repeat(40)), null);
-  assert.equal(readChallenge(t.replace(/^42/, "43"), "s".repeat(40)), null);
-  assert.equal(readChallenge(signChallenge(42, "s".repeat(40), -1), "s".repeat(40)), null);
 });

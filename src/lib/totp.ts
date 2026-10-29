@@ -102,21 +102,3 @@ export function newRecoveryCodes(n = 10) {
 
 export const hashRecovery = (code: string) =>
   crypto.createHash("sha256").update(code.trim().toLowerCase().replace(/[^a-z0-9]/g, "")).digest("hex");
-
-/* The short-lived "password was right, now show a code" ticket between the two sign-in steps. */
-
-export function signChallenge(userId: number, appSecret: string, ttlMs = 5 * 60_000) {
-  const body = `${userId}.${Date.now() + ttlMs}`;
-  const mac = crypto.createHmac("sha256", appSecret).update(`2fa:${body}`).digest("base64url");
-  return `${body}.${mac}`;
-}
-
-export function readChallenge(token: string | undefined, appSecret: string): number | null {
-  if (!token) return null;
-  const [id, exp, mac] = token.split(".");
-  if (!id || !exp || !mac) return null;
-  const want = crypto.createHmac("sha256", appSecret).update(`2fa:${id}.${exp}`).digest("base64url");
-  if (want.length !== mac.length || !crypto.timingSafeEqual(Buffer.from(want), Buffer.from(mac))) return null;
-  if (Number(exp) < Date.now()) return null;
-  return Number(id);
-}
