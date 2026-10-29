@@ -41,7 +41,7 @@ Floor (waiting count ─► Start reviewing; Up next rows open the track) ─►
                               ├─ Not for me (X)    └─ Files only · Start a new batch (confirm) · Played it out (any day)
                               └─ Reply (R) ──► sender email
 Review panel: title · one meta line · tags (sets / release / AI / duplicate / deleting soon) ─► waveform (1–4 jump) ─► Keep · Not for me · Reply ─► next track plays
-   While a track is open, the next and previous tracks load in full in the background (DecisionRail), so moving to them shows their details at once; a decision refreshes them
+   While a track is open, the next and previous tracks load in full in the background (DecisionRail), so moving to them shows their details at once; a decision refreshes them. Keep / Not for me move to the next track's page first and save after, so the save's answer carries that page (one trip to the server, not two); the decided track stays out of the list until the save answers
    Details (closed, remembered) ─► format & size · dates · Download · Move · Delete (confirm) · sender email, links, stats, note, last 3 events · Full history →
 Queue (List) ─► Select ─► tick tracks / Select all ─► bar: Keep · Not for me · Needs review · Move to… · Download · Delete ─► confirm ─► done (toast)
    Esc or Done leaves select mode; in select mode a tap on a row ticks it (never plays or opens it)

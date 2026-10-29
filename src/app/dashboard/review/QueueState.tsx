@@ -8,7 +8,8 @@ import { DetailPlayer } from "../DetailPlayer";
 
 /**
  * The Review Queue answers a tap at once (owner, 28 Oct: "slow to respond to clicks"). Opening a track or deciding
- * one still asks the server for the full page (about 0.5–1 s from West Africa to London, twice for a decision), but
+ * one still asks the server for the full page (about 0.5–1 s from West Africa to London; once for a decision, which
+ * moves to the next track's page first and saves after, so the answer carries that page), but
  * the screen no longer waits for it: the list already knows each track's title, artist and waveform, so the picked
  * or next track shows straight away and its details (message, sender, tags) fill in when the server answers.
  */
@@ -21,9 +22,11 @@ type Queue = {
   /** The track on screen ahead of the server, or null when the server's panel is current. */
   shown: Glimpse | null;
   show: (t: Glimpse) => void;
-  /** Tracks just decided out of this tab, hidden from the list until the server's own list arrives. */
+  /** Tracks just decided out of this tab, hidden from the list until the server has answered the decision. */
   gone: ReadonlySet<number>;
   leave: (id: number, decision: Decision) => void;
+  /** The server answered the decision (saved, or failed): the list on screen is the truth again for this track. */
+  settle: (id: number) => void;
 };
 
 const QueueCtx = createContext<Queue | null>(null);
@@ -62,12 +65,12 @@ function leavesTab(status: string, d: Decision) {
 export function QueueState({ servedId, status, children }: { servedId: number | null; status: string; children: React.ReactNode }) {
   const [shown, setShown] = useState<Glimpse | null>(null);
   const [gone, setGone] = useState<ReadonlySet<number>>(() => new Set());
-  // A new page from the server replaces the guesses: its list is the truth, and once it shows the track on screen
-  // the stand-in steps aside. (A quicker second tap keeps its own track on screen until that one arrives.)
+  // Once a page from the server shows the track on screen, the stand-in steps aside. (A quicker second tap keeps its
+  // own track on screen until that one arrives.) A decided track stays hidden until its decision is answered: the
+  // next track's page is often one loaded before the decision, whose list still has it.
   const [served, setServed] = useState(servedId);
   if (served !== servedId) {
     setServed(servedId);
-    setGone(new Set());
     if (!shown || shown.id === servedId) setShown(null);
   }
   const value: Queue = {
@@ -77,6 +80,13 @@ export function QueueState({ servedId, status, children }: { servedId: number | 
     leave: (id, d) => {
       if (leavesTab(status, d)) setGone((g) => new Set(g).add(id));
     },
+    settle: (id) =>
+      setGone((g) => {
+        if (!g.has(id)) return g;
+        const rest = new Set(g);
+        rest.delete(id);
+        return rest;
+      }),
   };
   return <QueueCtx.Provider value={value}>{children}</QueueCtx.Provider>;
 }
