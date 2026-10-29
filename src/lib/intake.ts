@@ -10,6 +10,7 @@ import crypto from "node:crypto";
 import { logEvent, now, q, USER_COLUMNS, type Collection, type Queryable, type Sender, type Track, type User } from "./db";
 import { noLinks, APP_URL, deliverLater, queueMail } from "./mail";
 import { alertIfFull, notifyNewSubmission } from "./notify";
+import { holdForSend, receiptTemplates, type SendGroup } from "./send-receipts";
 import { ACCEPTED_EXT, MAX_BATCH_TRACKS, MAX_RELEASE_TRACKS, MAX_UPLOAD_BYTES, RATE_PER_EMAIL_PER_DAY, RATE_PER_IP_PER_HOUR } from "./plans";
 import { folderLimit } from "./plan-store";
 import { allow } from "./ratelimit";
@@ -107,6 +108,8 @@ export type SubmissionMeta = {
   release?: { id: string; title: string; artist: string; kind: "ep" | "album" };
   /** Up to MAX_BATCH_TRACKS tracks sent together (not a folder): one send, MAX_UPLOAD_BYTES between them. */
   batch?: string;
+  /** How many tracks the sender's browser is sending in this batch or release: they share one receipt email. */
+  sendSize?: number;
   trackNo?: number | null;
   musicalKey?: string;
   isrc?: string;
@@ -397,7 +400,17 @@ async function finishClaimed(receiver: User, up: Upload, ref: string, analysis: 
   // The sender's "Delivered" email is written in the same transaction as their track (Codex review, phase B item 4):
   // its wording is loaded first, so the transaction only fills it in.
   const delivered = meta.ownerCollectionId ? null : await emailTemplate("delivered");
-  let result: { track: Track; sender: Sender; collection: Collection | undefined; mailId: number | null };
+  // A track sent with others waits for them: the send gets one email each way (src/lib/send-receipts.ts).
+  const group: SendGroup | null =
+    meta.ownerCollectionId || (meta.sendSize ?? 1) < 2
+      ? null
+      : meta.release
+        ? { userId: receiver.id, column: "release_id", id: meta.release.id }
+        : meta.batch
+          ? { userId: receiver.id, column: "batch_id", id: meta.batch }
+          : null;
+  const together = group ? await receiptTemplates() : null;
+  let result: { track: Track; sender: Sender; collection: Collection | undefined; mailIds: number[] };
   try {
     result = await q.tx(async (db) => {
       // Serialise concurrent completions for this receiver so capacity can't be overshot.
@@ -506,10 +519,12 @@ async function finishClaimed(receiver: User, up: Upload, ref: string, analysis: 
         receipt_url: `${APP_URL}/receipt/${track.token}`,
         sent_url: `${APP_URL}/sent`,
       };
-      const mailId = delivered
-        ? await queueMail({ userId: fresh.id, to: sender.email, secrets: [track.token], subject: fillEmail(delivered.subject, vars).replace(/\s+/g, " "), body: fillEmail(delivered.body, vars) }, db)
-        : null;
-      return { track, sender, collection, mailId };
+      // One of several in a send: its emails go with the rest of the send's (straight away if it's the last one).
+      if (group && together) return { track, sender, collection, mailIds: await holdForSend(db, group, track.id, meta.sendSize!, together) };
+      const mailIds = delivered
+        ? [await queueMail({ userId: fresh.id, to: sender.email, secrets: [track.token], subject: fillEmail(delivered.subject, vars).replace(/\s+/g, " "), body: fillEmail(delivered.body, vars) }, db)]
+        : [];
+      return { track, sender, collection, mailIds };
     });
   } catch (e) {
     // Only a refusal (desk full, closed, already saved) discards the file; any other failure keeps it (see completeUpload).
@@ -517,21 +532,28 @@ async function finishClaimed(receiver: User, up: Upload, ref: string, analysis: 
     throw e;
   }
 
-  const { track, sender, mailId } = result;
+  const { track, sender, mailIds } = result;
   // The owner added it themselves: no "Delivered" email to themselves, no new-track alert, no referral reward.
-  if (meta.ownerCollectionId || mailId === null) return track;
-  deliverLater(mailId);
+  if (meta.ownerCollectionId) return track;
+  for (const id of mailIds) deliverLater(id);
   // The track is saved: everything else happens after the sender's response, and one failure can't block the others.
-  after(async () => {
+  const afterSave = async () => {
     const results = await Promise.allSettled([
-      notifyNewSubmission(receiver.id, track.id),
+      // A track of a send of several is in its send's one "New tracks" email instead.
+      group ? null : notifyNewSubmission(receiver.id, track.id),
       capacity(receiver).then((c) => alertIfFull(receiver.id, c)),
       rewardReferral(receiver.id, sender.email),
       // The sealed file, read back from our own storage (src/lib/file-digests.ts); anything missed is done nightly.
       recordStoredDigest(track.file_key!),
     ]);
     for (const r of results) if (r.status === "rejected") console.error("[intake] after-save step failed", r.reason);
-  });
+  };
+  // After the response; outside a request (scripts, tests) straight away, as deliverLater does.
+  try {
+    after(afterSave);
+  } catch {
+    await afterSave();
+  }
   return track;
 }
 

@@ -183,6 +183,8 @@ export function FolderSend({
           ...(account ? {} : { name: who.name.trim(), email: who.email.trim(), sender_instagram: who.instagram, sender_streaming: who.streaming }),
           sets_ok: setsOk,
           release: { id, title: release.title.trim(), artist: release.artist.trim(), kind: release.kind },
+          // The folder's tracks share one receipt email, sent once the last one is saved.
+          send_size: items.length,
           track_no: it.tags.trackNo ?? i + 1,
           musical_key: it.tags.key,
           isrc: it.tags.isrc,

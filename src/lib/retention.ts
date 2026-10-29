@@ -9,6 +9,7 @@ import { CLAIM_MS, HELD_TTL, UPLOAD_TTL } from "./intake";
 import { CLAIM_KEEP_MS } from "./once";
 import { reconcileFiles } from "./file-reservations";
 import { drainOutbox } from "./mail";
+import { sendDueReceipts } from "./send-receipts";
 import { purgeLinkRecords } from "./share-links";
 
 const HOUR = 3_600_000;
@@ -97,7 +98,9 @@ export async function purgeExpired({ force = false } = {}) {
     });
   // Covers, collection artwork and site images that nothing points to a week after upload (src/lib/file-reservations.ts).
   const unreferenced = await reconcileFiles(t);
-  // Emails still waiting: retries, and any whose send a crash or a closed connection cut off (src/lib/mail.ts).
+  // Emails still waiting: sends whose receipt never went (src/lib/send-receipts.ts), retries, and any whose send a crash
+  // or a closed connection cut off (src/lib/mail.ts).
+  await sendDueReceipts(t).catch((e) => console.error("[retention] send receipts", e));
   const outbox = await drainOutbox().catch((e) => ({ error: e instanceof Error ? e.message : String(e) }));
 
   // Retention deletes people's tracks, so it only runs from the nightly job, right after a successful backup.

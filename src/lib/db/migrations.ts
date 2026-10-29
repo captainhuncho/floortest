@@ -1856,4 +1856,12 @@ grant update (name, first_name, last_name, kind, kind_note, tools, links, role_l
 revoke all on function ft_desk(bigint) from public;
 grant execute on function ft_desk(bigint) to ft_person;`,
   },
+  {
+    // One send, one email (owner, 29 Oct): a track sent with others waits here for its sender's receipt, so every track
+    // of the send goes out in one "Delivered" email (lib/send-receipts). Set when the track is saved, cleared when that
+    // email is queued; the mail job sends anything still waiting 15 minutes after the send's last track.
+    id: "0110_send_receipts",
+    sql: `alter table tracks add column if not exists receipt_due_at bigint;
+create index if not exists tracks_receipt_due on tracks(receipt_due_at) where receipt_due_at is not null;`,
+  },
 ];

@@ -297,7 +297,8 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
       patch(it.id, { status: "uploading", progress: 0, error: undefined });
       const r = await uploadTrack(
         handle, it.file, it.analysis,
-        { ...shared, batch, title: it.tags.title, artist: it.tags.artist, musical_key: it.tags.key, isrc: it.tags.isrc },
+        // send_size: the send's tracks share one receipt email, sent once the last one is saved.
+        { ...shared, batch, send_size: items.length, title: it.tags.title, artist: it.tags.artist, musical_key: it.tags.key, isrc: it.tags.isrc },
         (p) => patch(it.id, { progress: p }),
         abort.current.signal,
         (attempt, of) => patch(it.id, { retry: attempt ? { attempt, of } : undefined }),
