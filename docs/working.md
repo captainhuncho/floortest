@@ -19,7 +19,7 @@ Same format as the other panels: one or two lines per voice, one recommendation,
 ## Standing rules (from the owner, kept here in one place)
 
 1. New work goes to `mobile-next`; the owner reviews the Vercel preview link on the phone.
-2. One release desk (owner, 29 Oct): only the desk session merges into `main`, writes the release report and merges `main` into `mobile-next`. The owner says "ship it" and "roll back" to the desk. Other sessions never merge into `main` and never open a PR from `mobile-next` into `main`; when a PR is ready they send the desk one line: "ready: PR, head commit, checks passed". A ship branch starts from `main`, never from `mobile-next`.
+2. One release desk (owner, 29 Oct): only the desk session merges into `main`, writes the release report and merges `main` into `mobile-next`. The owner says "ship it" and "roll back" to the desk. Other sessions never merge into `main` and never open a PR from `mobile-next` into `main`; when a PR is ready they send the desk one line: "ready: PR, head commit, checks passed". A ship branch starts from `main`, never from `mobile-next`. GitHub closes any PR from `mobile-next` into `main` by itself (`.github/workflows/no-mobile-next-to-main.yml`, owner, 29 Oct).
 3. Fixes that must reach production are built on a branch from `main`, then merged into `mobile-next`.
 4. Ship: merge the release PR into `main` on GitHub (never push `main`; steps in the `owner-ship` skill), wait ~60 s, merge `main` into `mobile-next` and push `mobile-next`, confirm the deploy.
 5. Checks before every push; e2e when sending, review, downloads, receipts or auth change.

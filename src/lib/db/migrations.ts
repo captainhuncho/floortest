@@ -1784,4 +1784,35 @@ create index if not exists uploads_held on uploads(held_at) where held_at is not
     id: "0104_switch_rules",
     sql: `alter table switches add column if not exists rule text;`,
   },
+  {
+    // Passkeys (owner, 29 Oct): desk accounts sign in with a passkey, or use one as the two-step step (lib/passkeys).
+    // Only the public key is kept; the private key never leaves the person's device or password manager.
+    // passkey_challenges holds each one-time challenge for 5 minutes, keyed by the hash of a random id in a cookie;
+    // using one deletes it. Neither table is granted to ft_person: only the app's own connection reads them.
+    id: "0105_passkeys",
+    sql: `create table if not exists passkeys (
+  id bigserial primary key,
+  user_id bigint not null references users(id) on delete cascade,
+  credential_id text not null unique,
+  public_key text not null,
+  counter bigint not null default 0,
+  transports text not null default '[]',
+  device_type text not null default 'singleDevice',
+  backed_up boolean not null default false,
+  name text not null default 'Passkey',
+  created_at bigint not null,
+  last_used_at bigint
+);
+create index if not exists passkeys_user on passkeys(user_id);
+alter table passkeys enable row level security;
+create table if not exists passkey_challenges (
+  id_hash text primary key,
+  challenge text not null,
+  user_id bigint references users(id) on delete cascade,
+  purpose text not null,
+  expires_at bigint not null
+);
+create index if not exists fk_passkey_challenges_user_id on passkey_challenges(user_id);
+alter table passkey_challenges enable row level security;`,
+  },
 ];

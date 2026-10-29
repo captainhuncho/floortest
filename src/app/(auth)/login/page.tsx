@@ -3,7 +3,8 @@ import { siteEditor } from "@/lib/site-editor";
 import { EditablePage, editable } from "@/components/Editable";
 import Link from "next/link";
 import { AuthForm } from "../AuthForm";
-import { login } from "../actions";
+import { login, passkeySignIn, passkeySignInStart } from "../actions";
+import { PasskeyButton } from "../PasskeyButton";
 import { siteCopy } from "@/lib/content";
 import { isPreview } from "@/lib/env";
 import { googleConfig } from "@/lib/google-auth";
@@ -68,6 +69,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         ]}
         footer={{ text: "New to FloorTest?", href: "/signup", link: "Claim your link" }}
       />
+      <div className="mt-4">
+        <PasskeyButton label="Sign in with a passkey" begin={passkeySignInStart} finish={passkeySignIn} />
+      </div>
       <p className="mt-6 text-center text-sm text-mute">
         No password?{" "}
         <Link href="/login/code" className="text-bone underline underline-offset-4">
