@@ -123,6 +123,7 @@ export async function requestEmailChange(userId: number, next: string, by: "user
   await q.run("UPDATE users SET pending_email = ?, pending_email_token = ?, pending_email_at = ? WHERE id = ?", email, hashToken(token), now(), userId);
   const first = u.name.split(/\s+/)[0];
   await sendMail({
+    reserved: true,
     userId,
     audience: "support",
     to: email,
@@ -131,6 +132,7 @@ export async function requestEmailChange(userId: number, next: string, by: "user
     body: `Hi ${first},\n\nConfirm this address to make it the email for your FloorTest account (sign-in, password resets and alerts):\n${APP_URL}/confirm-email/${token}\n\nThe link works for ${EMAIL_CHANGE_HOURS} hours. If you didn't ask for this, ignore it and nothing changes.\n\n— FloorTest`,
   });
   await sendMail({
+    reserved: true,
     userId,
     audience: "support",
     to: u.email,

@@ -1890,4 +1890,32 @@ alter table two_step_tickets enable row level security;`,
     sql: `alter table tracks add column if not exists receipt_due_at bigint;
 create index if not exists tracks_receipt_due on tracks(receipt_due_at) where receipt_due_at is not null;`,
   },
+  {
+    // Account emails (sign-in codes, resets, email checks, email changes) are marked when queued (lib/mail): only they may
+    // use the last MAIL_RESERVED_SHARE of the day's send limit, so receipts and notifications can't starve them.
+    id: "0114_outbox_reserved",
+    sql: `alter table outbox add column if not exists reserved int not null default 0 check (reserved in (0, 1));`,
+  },
+  {
+    // Confirm first (H76, 29 Oct): "Email me when it reopens" emails a typed address only to ask it to confirm. The
+    // link's key is kept as a hash for 24 hours and works once; an unconfirmed request never gets the reopen email.
+    // Requests made before this have no confirmation and stay unsent (the yearly clean-up removes them).
+    // sender_links (H78): the /sent link is a random id kept as a hash, so the URL carries no email and a link can be
+    // ended early. Holds hashes only; not granted to ft_person, left out of backups.
+    id: "0115_reopen_confirm_sender_links",
+    sql: `alter table reopen_alerts add column if not exists confirm_hash text;
+alter table reopen_alerts add column if not exists confirm_expires_at bigint;
+alter table reopen_alerts add column if not exists confirmed_at bigint;
+create unique index if not exists reopen_alerts_confirm on reopen_alerts(confirm_hash) where confirm_hash is not null;
+create table if not exists sender_links (
+  id_hash text primary key,
+  email text not null,
+  created_at bigint not null,
+  expires_at bigint not null,
+  revoked_at bigint
+);
+create index if not exists sender_links_email on sender_links(lower(email));
+create index if not exists sender_links_expires on sender_links(expires_at);
+alter table sender_links enable row level security;`,
+  },
 ];

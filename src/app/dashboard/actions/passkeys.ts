@@ -34,6 +34,7 @@ export async function finishAddPasskey(answer: unknown): Promise<{ ok: true } | 
     userId: u.id,
     audience: "receiver",
     to: u.email,
+    reserved: true,
     subject: "A passkey was added to your FloorTest account",
     body: `Hi ${u.name.split(/\s+/)[0]},\n\nA passkey (${r.name}) was just added to your FloorTest account. It can sign you in without a password.\n\nIf this wasn't you, remove it in Settings → Security, change your password and contact us.\n\n— FloorTest`,
   });
@@ -53,6 +54,7 @@ export async function deletePasskey(id: number, password: string, code: string):
     userId: u.id,
     audience: "receiver",
     to: u.email,
+    reserved: true,
     subject: "A passkey was removed from your FloorTest account",
     body: `Hi ${u.name.split(/\s+/)[0]},\n\nThe passkey ${name} was just removed from your FloorTest account. It can no longer sign you in.\n\nIf this wasn't you, change your password now and contact us.\n\n— FloorTest`,
   });

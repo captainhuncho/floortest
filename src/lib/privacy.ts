@@ -108,6 +108,7 @@ export async function eraseSender(email: string) {
     await db.run("DELETE FROM contact_messages WHERE lower(email) = ?", e);
     await db.run("DELETE FROM waitlist WHERE lower(email) = ?", e);
     await db.run("DELETE FROM reopen_alerts WHERE lower(email) = ?", e);
+    await db.run("DELETE FROM sender_links WHERE lower(email) = ?", e);
     // Their emails (queued or sent) and their newsletter entry went too (Batch C, 28 Oct). The unsubscribe list
     // (email_suppressions) stays: it is what keeps us from emailing them again.
     await db.run("DELETE FROM outbox WHERE lower(to_email) = ?", e);

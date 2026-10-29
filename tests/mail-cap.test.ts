@@ -41,8 +41,8 @@ test("near the daily send limit, optional email waits for tomorrow and sign-in c
   assert.ok(row.next_at >= Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1), "not before midnight UTC");
   assert.equal(sent.length, 0);
 
-  const code = await queueMail({ userId: uid, to: "cap@x.io", subject: "Your sign-in code", body: "123456", audience: "receiver", secrets: ["123456"] });
-  assert.equal(await deliver(code), "sent", "codes, resets and receipts always go");
+  const code = await queueMail({ userId: uid, to: "cap@x.io", subject: "Your sign-in code", body: "123456", audience: "receiver", secrets: ["123456"], reserved: true });
+  assert.equal(await deliver(code), "sent", "sign-in codes and resets always go");
 
   const nudge = await queueMail({ userId: uid, to: "cap@x.io", subject: "Reminder", body: "n", audience: "receiver", unsubscribe: "alerts" });
   assert.equal(await deliver(nudge), "queued (daily limit)");

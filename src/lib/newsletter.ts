@@ -1,7 +1,7 @@
 import "server-only";
 import crypto from "node:crypto";
 import { now, q } from "./db";
-import { APP_URL, sendMail } from "./mail";
+import { afterResponse, APP_URL, sendMail } from "./mail";
 
 /**
  * Newsletter for people without an account. Double opt-in: nothing is sent except the confirmation email until
@@ -37,6 +37,14 @@ export async function subscribe(email: string, marketing: boolean, source: strin
       "— FloorTest",
     ].join("\n"),
   });
+}
+
+/**
+ * The footer form's sign-up, run after the response: a new address gets a confirmation email and a confirmed one gets
+ * nothing, so doing it later keeps the answer's timing from saying which it was.
+ */
+export function subscribeLater(email: string, marketing: boolean, source: string) {
+  afterResponse(() => subscribe(email, marketing, source), "[newsletter] sign-up failed");
 }
 
 export async function confirmSubscription(token: string) {

@@ -30,6 +30,7 @@ export async function finishSignIn(userId: number, how: "password" | "two-factor
     userId,
     audience: "receiver",
     to: u.email,
+    reserved: true,
     subject: "New sign-in to FloorTest",
     body: [
       `Hi ${u.name.split(/\s+/)[0]},`,
@@ -84,6 +85,7 @@ export async function sendEmailVerification(userId: number) {
   );
   if (!u || !(await accountEmailAllowed())) return false;
   await sendMail({
+    reserved: true,
     userId,
     audience: "receiver",
     to: u.email,

@@ -59,6 +59,12 @@ export function turnstileAnswerOk(out: { success?: boolean; action?: string; hos
   return !!out.success && out.action === action && !!out.hostname && hosts.has(out.hostname);
 }
 
+/**
+ * Forms that email an address a stranger typed. If Cloudflare can't answer, these refuse rather than let a bot through:
+ * the visitor tries again in a moment. Sign-in stays open, so an outage never locks people out of their accounts.
+ */
+const FAIL_CLOSED: ReadonlySet<BotAction> = new Set(["sent", "newsletter", "reopen", "contact", "send"]);
+
 export async function passedTurnstile(token: unknown, ip: string | undefined, action: BotAction) {
   if (!(await botCheckKey())) return true;
   // Failed checks go on Admin → Security (by connection, kept 48 hours like every rate-limit record).
@@ -80,17 +86,24 @@ export async function passedTurnstile(token: unknown, ip: string | undefined, ac
     if (turnstileAnswerOk(out, action)) return true;
     if (out.success) return failed(); // solved, but for another form or on another site
     // Our own setup is wrong (bad or missing secret): don't punish visitors for it. Let them through and raise it.
-    const ours = (out["error-codes"] ?? []).filter((c) => c.includes("secret") || c === "internal-error");
+    const codes = out["error-codes"] ?? [];
+    if (codes.includes("internal-error") && FAIL_CLOSED.has(action)) {
+      await recordIncident("server_error", "Bot check unavailable; refused a form that emails strangers", "internal-error");
+      return false;
+    }
+    const ours = codes.filter((c) => c.includes("secret") || c === "internal-error");
     if (ours.length) {
       await recordIncident("server_error", "Bot check misconfigured; let a form through unchecked", ours.join(", "));
       return true;
     }
     return failed();
   } catch (e) {
-    // Cloudflare unreachable: let people through (rate limits still hold), but record it so outages and abuse show up.
+    // Cloudflare unreachable: sign-in lets people through (rate limits still hold); forms that email strangers refuse.
+    // Either way it's recorded, so outages and abuse show up.
     console.error("[turnstile] verify failed", e);
-    await recordIncident("server_error", "Bot check unavailable; let a form through unchecked", e instanceof Error ? e.message : String(e));
-    return true;
+    const closed = FAIL_CLOSED.has(action);
+    await recordIncident("server_error", closed ? "Bot check unavailable; refused a form that emails strangers" : "Bot check unavailable; let a form through unchecked", e instanceof Error ? e.message : String(e));
+    return !closed;
   }
 }
 

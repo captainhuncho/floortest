@@ -10,7 +10,7 @@ export function ReopenAlert({ handle, receiverName, botCheckKey }: { handle: str
   if (state?.ok)
     return (
       <p role="status" className="mt-4 rounded-lg border border-lime/40 bg-lime/[0.06] px-4 py-3 text-[13px]">
-        Noted. You&apos;ll get one email when {receiverName}&apos;s link is open again.
+        Check your inbox: confirm your address there and you&apos;ll get one email when {receiverName}&apos;s link is open again.
       </p>
     );
   return (
@@ -41,7 +41,7 @@ export function ReopenAlert({ handle, receiverName, botCheckKey }: { handle: str
           {state.error}
         </p>
       )}
-      <p className="text-[11px] text-dim">One email, nothing else. Your address isn&apos;t shown to {receiverName}.</p>
+      <p className="text-[11px] text-dim">We&apos;ll ask you to confirm, then send one email, nothing else. Your address isn&apos;t shown to {receiverName}.</p>
     </form>
   );
 }

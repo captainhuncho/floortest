@@ -193,6 +193,7 @@ export async function deleteAccount(_: SettingsState, form: FormData): Promise<S
     userId: null,
     audience: "support",
     to: u.email,
+    reserved: true,
     subject: "Your FloorTest account was deleted",
     body: `Hi ${u.name.split(/\s+/)[0]},\n\nYour FloorTest account (${u.handle}) and everything on it were deleted just now, at your request from Settings.\n\nIf this wasn't you, reply to this email straight away.\n\n— FloorTest`,
   });
