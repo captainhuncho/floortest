@@ -8,13 +8,19 @@ import { switchOn } from "./switches";
  * the "sharing" switch is on, in place of the 1 Oct colleague wording. Paste the lawyer's redlines here and set
  * `updated` to their date before switching sharing on; that date becomes the Terms version new accounts accept.
  */
+/** The owner's wording for shared desks and what people choose to share (approved 29 Oct 2026), on the Terms always. */
+export const SHARED_RESPONSIBILITY = [
+  "Shared desks and collections. On FloorTest, a desk's owner is primarily responsible for the desk, its collections and everything in them. Anyone the owner adds to a team desk, or gives access to a collection by any means, including a share link, is also responsible for what they do with that desk, its collections and their contents, including any tracks they download, share or pass on. These terms apply to every person with access, not only the owner.",
+  "Information you choose to share. FloorTest Labs is not responsible for what happens to your data, tracks or files after you choose to give them to someone else, for example by adding them to your team desk, sharing a link, or sending a file outside FloorTest. FloorTest Labs remains responsible for keeping the data it holds secure, as the law requires.",
+];
+
 export const SHARING_LEGAL = {
   updated: "11 October 2026",
   terms: {
     senderSharing:
       "Private sharing. If the receiver's collection allows private sharing when you send, the receiver may let people they choose hear your track through a private FloorTest link. These can be people they add by email address, by company email domain or by FloorTest username, and people who ask and are approved. Each person must confirm their email address and accept FloorTest's rules before listening. The receiver decides whether each person can only listen or can also download the original file, and for how long (up to 90 days, or until the receiver ends it). Private sharing never makes your track public. Nobody given access may release, sell, distribute, upload or publish it without a signed agreement with you. The receiver can end anyone's access at any time, and you can stop private sharing of your track from your receipt. Tracks you sent before private sharing existed are never shared this way.",
     senderTeam:
-      "The receiver's team. If the receiver uses FloorTest's team review, people they invite to their team (FloorTest account holders) may listen to tracks sent to that collection, comment on them and help the receiver decide. They can't download them or contact you through FloorTest.",
+      "The receiver's team. If the receiver uses FloorTest's team review, people they invite to their team (FloorTest account holders) may listen to tracks sent to that collection, comment on them, help the receiver decide and download tracks in the team's shared collections. They can also contact you through FloorTest. They are bound by these terms in the same way as the receiver.",
     receiver:
       "Sharing what you receive. Share received music only through FloorTest's share links or team review, and only with people you know and trust to keep it private, for listening and evaluation. You're responsible for who you add, including everyone at a company domain you add. Don't post a share link publicly. If you think a link has spread, reset or revoke it. Remove access promptly when a sender asks.",
     recipients: [
