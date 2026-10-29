@@ -7,7 +7,8 @@ The file never goes to a third-party service and is never written to disk here.
 - `POST /scan` with `{ "key": "audio/12/….wav" }` and `Authorization: Bearer <SCAN_SECRET>` →
   `{ "clean": true }` or `{ "clean": false, "signature": "…" }`. Only `audio/`, `stems/` and `track-art/` keys (the folders
   the app stores uploads in) are accepted.
-- `GET /health` → 200 when ClamAV is up (the uptime monitor checks it). On Cloudflare it needs the secret too (below).
+- `GET /health` with `Authorization: Bearer <SCAN_SECRET>` → 200 when ClamAV is up (the uptime monitor checks it). The
+  container asks for the secret itself, so it is needed on Cloudflare and on the Fly.io fallback alike.
 - Signatures: one update at start-up (the first takes a few minutes), then `freshclam` keeps them current.
 
 The app side is `src/lib/scan.ts`. It's **off until `SCAN_URL` is set**. When on, it **fails closed**: if the scanner
@@ -47,7 +48,7 @@ $20 a month always on; $1–3 at beta volume once it sleeps, see docs/costs.md) 
    limited to `floortest-audio-eu`. Keep the Access Key ID and Secret for step 4; don't paste them into a chat.
 2. **Workers Paid back on (owner).** Cloudflare → Workers & Pages → Plans. Containers need it.
 3. **Build and test locally** (Docker Desktop running), from this folder: `docker build --platform linux/amd64 -t floortest-scanner .`,
-   then run it with test values and check `curl localhost:8080/health` says `{"clamd":true}`.
+   then run it with test values and check `curl -H "Authorization: Bearer <the test SCAN_SECRET>" localhost:8080/health` says `{"clamd":true}`.
 4. **Deploy** from `scanner/cloudflare` (Docker Desktop running): `npm install`, `npx wrangler login` (owner signs in),
    then set the five secrets, each typed at the prompt, never on the command line or in chat:
    ```bash
@@ -86,6 +87,6 @@ coming back, `/health` failing, or scans too slow for real upload volume, and a 
    Sub-processors page and Privacy, and users get the notice period, **before** any file goes there.
 2. **Deploy** from this folder with `fly.toml` (London, 2 GB): `fly launch --no-deploy --copy-config`, then
    `fly secrets set` with the same five settings as step 4 (typed at the prompt, never in chat), then `fly deploy`.
-   About $10–15 a month. Check `https://floortest-scanner.fly.dev/health` says `{"clamd":true}` and repeat the EICAR test.
+   About $10–15 a month. Check `curl -H "Authorization: Bearer $(cat ~/floortest-scan-secret.txt)" https://floortest-scanner.fly.dev/health` says `{"clamd":true}` and repeat the EICAR test.
 3. **Switch:** in Vercel (Production) change `SCAN_URL` to the fly.dev address (same `SCAN_SECRET`), redeploy, send a
    test track. Point the uptime monitor at the new `/health`. Keep the Cloudflare Worker until the switch is proven.
