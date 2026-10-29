@@ -41,6 +41,7 @@ export async function changePassword(_: SettingsState, form: FormData): Promise<
     userId: u.id,
     audience: "receiver",
     to: u.email,
+    reserved: true,
     subject: "Your FloorTest password was changed",
     body: `Hi ${u.name.split(/\s+/)[0]},\n\nYour FloorTest password was just changed and every other device was signed out.\n\nIf this wasn't you, reset your password now from the log-in page and contact us.\n\n— FloorTest`,
   });
@@ -89,6 +90,7 @@ export async function confirmTwoFactor(code: string, password: string): Promise<
     userId: u.id,
     audience: "receiver",
     to: u.email,
+    reserved: true,
     subject: "Two-factor sign-in was turned on",
     body: `Hi ${u.name.split(/\s+/)[0]},\n\nTwo-factor sign-in was just turned on for your FloorTest account, and every other device was signed out.\n\nIf this wasn't you, contact us straight away: ${APP_URL}/contact\n\n— FloorTest`,
   });
@@ -111,6 +113,7 @@ export async function disableTwoFactor(_: SettingsState, form: FormData): Promis
     userId: u.id,
     audience: "receiver",
     to: u.email,
+    reserved: true,
     subject: "Two-factor sign-in was turned off",
     body: `Hi ${u.name.split(/\s+/)[0]},\n\nTwo-factor sign-in was just turned off for your FloorTest account.\n\nIf this wasn't you, reset your password now and turn it back on in Settings.\n\n— FloorTest`,
   });

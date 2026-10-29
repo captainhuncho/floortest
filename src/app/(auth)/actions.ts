@@ -121,6 +121,7 @@ async function createAccount(form: FormData, a: NewAccount, opts: { googleEmail?
         userId: owner.id,
         audience: "receiver",
         to: a.email,
+        reserved: true,
         subject: "Someone tried to sign up with your email",
         body: `Hi ${owner.name.split(/\s+/)[0]},\n\nSomeone just tried to create a FloorTest account with this email address. You already have one, so nothing was created.\n\nIf it was you, log in here: ${APP_URL}/login (forgot your password? ${APP_URL}/forgot)\n\nIf it wasn't you, you don't need to do anything.\n\n— FloorTest`,
       });

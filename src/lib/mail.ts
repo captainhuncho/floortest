@@ -26,7 +26,8 @@ export function noLinks(s: string) {
 export const HIDDEN = "•••••• (hidden)";
 
 /**
- * `reserved`: an account email (sign-in code, password reset, email check, email change). Only these may use the part of
+ * `reserved`: an account email (sign-in code, password reset, email check, email change) or a security notice (password,
+ * two-step, passkey or Google sign-in changed, new sign-in, account deleted). Only these may use the part of
  * the day's send limit kept back (MAIL_RESERVED_SHARE), so receipts and notifications can never starve them.
  */
 type MailOpts = { userId: number | null; to: string; subject: string; body: string; audience?: Audience; unsubscribe?: UnsubKind; secrets?: (string | null | undefined)[]; reserved?: boolean };
