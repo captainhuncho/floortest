@@ -19,6 +19,7 @@ import { env } from "@/lib/env";
 import { APP_URL, sendMail } from "@/lib/mail";
 import { RESERVED_HANDLES } from "@/lib/plans";
 import { allow, recentCount, record, requestIp } from "@/lib/ratelimit";
+import { loginLocked, recordLoginFailure } from "@/lib/login-limits";
 import { isProtectedHandle } from "@/lib/identity";
 import { sendWelcome } from "@/lib/onboarding";
 import { checkSecondFactor, finishSignIn, sendEmailVerification } from "@/lib/security";
@@ -225,10 +226,8 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
   const email = String(form.get("email") || "").trim().toLowerCase().slice(0, 200);
   const password = String(form.get("password") || "").slice(0, 200);
   const ip = await requestIp();
-  // Failed attempts only, both per connection and per account, so normal logins never lock anyone out.
-  const WINDOW = 15 * 60_000;
-  if ((await recentCount("login_fail_ip", ip, WINDOW)) >= 20 || (await recentCount("login_fail_email", email, WINDOW)) >= 10)
-    return { error: "Too many attempts. Wait 15 minutes, or reset your password." };
+  // Failed attempts only, per connection and per account on that connection (lib/login-limits).
+  if (await loginLocked(email, ip)) return { error: "Too many attempts. Wait 15 minutes, or reset your password." };
   // After a few wrong tries, prove you're human first (Cloudflare). Checked here on the server, so it can't be skipped.
   const failures = await recentFailures("login_fail_email", "login_fail_ip", email, ip);
   const human = await humanCheck(failures, form, ip);
@@ -236,8 +235,7 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
   const row = await q.get<{ id: number; password_hash: string; suspended_at: number | null }>("SELECT id, password_hash, suspended_at FROM users WHERE email = ?", email);
   const ok = await verifyPassword(password, row?.password_hash ?? (await DUMMY_HASH));
   if (!row || !ok) {
-    await record("login_fail_ip", ip);
-    await record("login_fail_email", email);
+    await recordLoginFailure(email, ip);
     return { error: "Email or password is incorrect.", challenge: failures + 1 >= HUMAN_CHECK_AFTER };
   }
   if (row.suspended_at) return { error: "This account is suspended. To appeal, go to the Contact page and choose Suspension appeal." };
