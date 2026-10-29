@@ -1,0 +1,25 @@
+# Closes any pull request from `mobile-next` into `main` (owner, 29 Oct). Releases go through a desk release branch from
+# `main` (docs/working.md rule 2); a `mobile-next` → `main` PR would carry everything held on the preview, finished or
+# not. GitHub's "Compare & pull request" banner opened five of these on 28–29 Oct (#55, #59, #63, #65, #67).
+# Runs on `pull_request_target` so the token may close the PR; it never checks out or runs the PR's code.
+name: No mobile-next into main
+on:
+  pull_request_target:
+    types: [opened, reopened]
+    branches: [main]
+permissions: {}
+jobs:
+  close:
+    if: github.event.pull_request.head.ref == 'mobile-next' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Close the pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh pr close "$PR" --repo "$REPO" --comment "Closed automatically: pull requests from mobile-next into main aren't used. Releases go through the release desk, on a release branch from main (docs/working.md rule 2)."
