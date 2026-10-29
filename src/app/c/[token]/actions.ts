@@ -42,6 +42,9 @@ export async function sendCode(secret: string, _prev: GateState, form: FormData)
         to,
         secrets: [code],
         subject: `${code} is your FloorTest code`,
+        // Dropped, not held for midnight, past the day's shared part. No error here: the answer must be the same
+        // whether or not the address is on the list.
+        expires: true,
         body: `Your code to open a private FloorTest collection:\n\n${code}\n\nIt works for 10 minutes. If you didn't try to open a FloorTest link, ignore this email.\n\n— FloorTest`,
       });
     });

@@ -191,7 +191,7 @@ test("timeout: a scanner that never wakes, or a scan that never finishes, is 'un
   }
 });
 
-test("waking: an upload start asks the scanner to wake with the secret; health says 'asleep' without waking it", async () => {
+test("waking: the held-uploads batch asks the scanner to wake with the secret; health says 'asleep' without waking it", async () => {
   const fake = await sleepyScanner({ wakeAfter: 0 });
   try {
     await wakeScanner();
@@ -207,4 +207,29 @@ test("waking: an upload start asks the scanner to wake with the secret; health s
   process.env.SCAN_URL = "http://127.0.0.1:9";
   await wakeScanner();
   delete process.env.SCAN_URL;
+});
+
+test("a scan that failed on the file itself (502 'Scan failed' from the container) is answered at once, not waited on like a wake-up", async () => {
+  let asks = 0;
+  const server = http.createServer((req, res) => {
+    req.resume();
+    req.on("end", () => {
+      asks++;
+      res.writeHead(502, { "Content-Type": "application/json" }).end(JSON.stringify({ error: "Scan failed", reason: "NoSuchKey" }));
+    });
+  });
+  await new Promise<void>((r) => server.listen(0, "127.0.0.1", () => r()));
+  process.env.SCAN_URL = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  process.env.SCAN_SECRET = "s".repeat(40);
+  try {
+    const started = Date.now();
+    const r = await scanStored("audio/1/gone.wav", { deadlineMs: 5_000, backoffMs: [200] });
+    assert.deepEqual(r, { verdict: "unavailable", error: "scan failed: NoSuchKey", file: true });
+    assert.equal(asks, 1, "asked once");
+    assert.ok(Date.now() - started < 1_000, "no waiting for a wake-up");
+  } finally {
+    server.close();
+    server.closeAllConnections();
+    delete process.env.SCAN_URL;
+  }
 });

@@ -1918,4 +1918,20 @@ create index if not exists sender_links_email on sender_links(lower(email));
 create index if not exists sender_links_expires on sender_links(expires_at);
 alter table sender_links enable row level security;`,
   },
+  {
+    // The virus scanner's daily budget (audit, 29 Oct; lib/scan-budget): wake-ups and running minutes charged per UTC
+    // day to the whole platform ('all') and to each sender (a hash of their mailbox, never the email). Only the app's
+    // own connection reads it.
+    id: "0116_scanner_budget",
+    sql: `create table if not exists scanner_budget (
+  day text not null,
+  scope text not null,
+  wakes integer not null default 0,
+  awake_ms bigint not null default 0,
+  awake_until bigint not null default 0,
+  spent_at bigint,
+  primary key (day, scope)
+);
+alter table scanner_budget enable row level security;`,
+  },
 ];
