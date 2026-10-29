@@ -11,6 +11,9 @@ import {
   verifyTotp,
 } from "../src/lib/totp";
 
+// Recovery codes are keyed with the app secret (read when a code is hashed).
+process.env.APP_SECRET ??= "test-secret-".padEnd(48, "x");
+
 // RFC 6238 appendix B, SHA-1 key "12345678901234567890".
 const RFC = base32Encode(Buffer.from("12345678901234567890"));
 
