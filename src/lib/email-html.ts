@@ -12,6 +12,7 @@
  *   any other address                    → a link showing that address
  *   "— FloorTest" at the end             → dropped (the brand line sits at the top)
  *   "Stop these emails: …" (added by mail.ts) → the footer link
+ *   `details` passed with the email (Delivered: Track, Artist, Sent to, File, Sent) → receipt rows above the button (or after a send's track list)
  */
 import { env } from "./env";
 
@@ -146,11 +147,32 @@ const DARK_CSS = (() => {
   return `@media (prefers-color-scheme:dark){${css("")}}${css("[data-ogsc] ")}`;
 })();
 
-/** The HTML part for an email whose text part is `body`. */
-export function emailHtml(subject: string, body: string, kind: Kind) {
+/** Receipt lines (Track, Artist, Sent to…): label left, value right, a hairline under each. */
+function renderDetails(details: [string, string][]) {
+  const rows = details.map(
+    ([label, value]) =>
+      `<tr><td class="ft-line ft-mute" style="padding:10px 16px 10px 0;border-bottom:1px solid ${L.line};width:104px;vertical-align:top;font-size:14px;line-height:20px;color:${L.mute}">${escapeHtml(label)}</td>` +
+      `<td class="ft-line ft-text" style="padding:10px 0;border-bottom:1px solid ${L.line};vertical-align:top;font-size:14px;line-height:20px;color:${L.text}">${escapeHtml(value)}</td></tr>`,
+  );
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="ft-line" style="margin:8px 0 24px;border-top:1px solid ${L.line}">${rows.join("")}</table>`;
+}
+
+/** The HTML part for an email whose text part is `body`. `details`, if any, sit above the button or after the list. */
+export function emailHtml(subject: string, body: string, kind: Kind, details?: [string, string][]) {
   const { blocks, unsub } = parseBody(body);
+  const parts = blocks.map(renderBlock);
+  if (details?.length) {
+    // Above the button; with no button, straight after the first list (a send's tracks); else at the end.
+    const button = blocks.findIndex((b) => b.kind === "button");
+    const list = blocks.findIndex((b) => b.kind === "list");
+    parts.splice(button >= 0 ? button : list >= 0 ? list + 1 : parts.length, 0, renderDetails(details));
+  }
   const preheader = blocks.find((b) => b.kind === "p" && !/^(Hi|Hello)\b[^.]*,$/.test(b.lines[0]))?.lines.join(" ").slice(0, 140) ?? "";
-  const headline = subject.replace(/\s+[—–-]\s+FloorTest$/, "");
+  // A code shown in its own block isn't repeated in the headline. Code subjects no longer carry the code (owner, 29 Oct:
+  // no repetition, and no code on lock screens), but an email already queued with "123456 is your…" still reads right.
+  const code = blocks.find((b) => b.kind === "code")?.lines[0];
+  let headline = subject.replace(/\s+[—–-]\s+FloorTest$/, "");
+  if (code && headline.includes(code)) headline = headline.replace(`${code} is your `, "Your ").replace(code, "").replace(/\s{2,}/g, " ").trim();
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark"><title>${escapeHtml(subject)}</title><style>${DARK_CSS}</style></head>` +
     `<body class="ft-body" style="margin:0;padding:0;background:${L.bg};font-family:${FONT};-webkit-text-size-adjust:100%">` +
     `<div style="display:none;max-height:0;overflow:hidden;opacity:0">${escapeHtml(preheader)}</div>` +
@@ -158,7 +180,7 @@ export function emailHtml(subject: string, body: string, kind: Kind) {
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px"><tr><td align="left" class="ft-text" style="font-family:${FONT};color:${L.text}">` +
     `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 32px"><tr><td style="padding-right:8px"><img src="${APP_URL}/brand/icon-192.png" width="24" height="24" alt="FloorTest" style="display:block;border:0;border-radius:6px"></td><td class="ft-text" style="font-size:15px;line-height:20px;font-weight:600;color:${L.text}">FloorTest</td></tr></table>` +
     `<h1 style="margin:0 0 12px;font-size:22px;line-height:28px;font-weight:600;letter-spacing:-0.3px;color:${L.text}" class="ft-text">${escapeHtml(headline)}</h1>` +
-    blocks.map(renderBlock).join("") +
+    parts.join("") +
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:20px"><tr><td class="ft-line ft-faint" style="border-top:1px solid ${L.line};padding-top:20px;font-size:12px;line-height:18px;color:${L.faint}">${footerLine(kind, unsub)}<br>FloorTest Labs · <a href="${APP_URL}" class="ft-faint" style="color:${L.faint};text-decoration:none">${escapeHtml(shown(APP_URL))}</a></td></tr></table>` +
     `</td></tr></table></td></tr></table></body></html>`;
 }

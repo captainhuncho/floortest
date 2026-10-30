@@ -336,7 +336,7 @@ export async function requestLoginCode(_: FormState, form: FormData): Promise<Fo
       audience: "receiver",
       to: email,
       secrets: [code],
-      subject: `${code} is your FloorTest sign-in code`,
+      subject: "Your FloorTest sign-in code",
       body: `Hi ${user.name.split(/\s+/)[0]},\n\nYour sign-in code is:\n\n${code}\n\nIt works once, for 10 minutes. If you didn't try to sign in, ignore this email. Nobody can get in without the code.\n\n— FloorTest`,
     });
   }

@@ -61,7 +61,7 @@ export async function sendCode(email: string, ip: string, how: "human" | "resend
     audience: "sender",
     to: email,
     secrets: [code],
-    subject: `${code} is your FloorTest code`,
+    subject: "Your FloorTest code to send music",
     expires: true,
     body: `Your code to confirm your email and send your music:\n\n${code}\n\nIt works for 10 minutes. If you didn't try to send music on FloorTest, ignore this email.\n\n— FloorTest`,
   };

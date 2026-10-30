@@ -41,7 +41,7 @@ export async function sendCode(secret: string, _prev: GateState, form: FormData)
         audience: "sender",
         to,
         secrets: [code],
-        subject: `${code} is your FloorTest code`,
+        subject: "Your code to open a FloorTest collection",
         // Dropped, not held for midnight, past the day's shared part. No error here: the answer must be the same
         // whether or not the address is on the list.
         expires: true,

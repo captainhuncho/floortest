@@ -49,6 +49,8 @@ test("a code on its own line becomes the code block; a sentence with a link is n
   const { emailHtml } = await import("../src/lib/email-html");
   const code = emailHtml("482913 is your FloorTest sign-in code", "Hi Max,\n\nYour sign-in code is:\n\n482913\n\nIt works once, for 10 minutes.\n\n— FloorTest", { optional: false, reserved: true });
   assert.match(code, /class="ft-panel"[^>]*>482913<\/td>/);
+  assert.match(code, /<h1[^>]*>Your FloorTest sign-in code<\/h1>/, "the code is in its box, not repeated in the headline");
+  assert.equal(code.match(/482913/g)?.length, 2, "the code shows once in the email (plus the <title>)");
   assert.match(code, /Security emails can't be turned off/);
   const welcome = emailHtml("Your link is live", `Hi Max,\n\nYour receiving link is ready: ${U}/max\n\nOn your desk:\n• Space plays\n• U undoes\n\n— FloorTest`, { optional: false, reserved: false });
   assert.doesNotMatch(welcome, /class="ft-btn-text"/, "\"Your receiving link is ready\" is a sentence, not a button label");
@@ -72,4 +74,33 @@ test("deliver sends the designed HTML next to the unchanged text, and optional m
   assert.match(m.text, /Stop these emails: https:\/\/floortest\.app\/unsubscribe\//);
   assert.match(m.html, /<a href="https:\/\/floortest\.app\/unsubscribe\/[^"]+"[^>]*>Stop these emails<\/a>/);
   assert.ok(m.headers?.["List-Unsubscribe"], "the one-click unsubscribe header stays");
+});
+
+test("Delivered emails carry receipt rows above the button, escaped, and the text part stays as written", async () => {
+  const { emailHtml } = await import("../src/lib/email-html");
+  const { receiptDetails } = await import("../src/lib/send-receipts");
+  const at = Date.UTC(2026, 9, 29, 14, 2);
+  const one = receiptDetails([{ title: "Low <b>Orbit</b>", artist: "Nova www.evil.com", original_name: "low orbit.wav", duration: 402, created_at: at }], "Maxwell", "Peak time");
+  assert.deepEqual(one.map(([l]) => l), ["Track", "Artist", "Sent to", "File", "Sent"]);
+  assert.equal(one.find(([l]) => l === "File")![1], "WAV · 6:42");
+  assert.equal(one.find(([l]) => l === "Sent to")![1], "Maxwell · Peak time");
+  assert.match(one.find(([l]) => l === "Sent")![1], /29 Oct.*14:02 UTC$/);
+  assert.match(one.find(([l]) => l === "Artist")![1], /\[link removed\]/, "links a sender typed are removed here too");
+  const html = emailHtml("Delivered: Nova – Low Orbit", DELIVERED, { optional: false, reserved: false }, one);
+  assert.ok(html.indexOf(">Track</td>") < html.indexOf('class="ft-btn-text"'), "the rows come before the button");
+  assert.match(html, /Low &lt;b&gt;Orbit&lt;\/b&gt;/);
+  assert.doesNotMatch(html, /<b>Orbit/);
+  const many = receiptDetails([{ title: "A", artist: "B", original_name: null, duration: null, created_at: at }, { title: "C", artist: "D", original_name: null, duration: null, created_at: at + 60_000 }], "Maxwell");
+  assert.deepEqual(many, [["Sent to", "Maxwell"], ["Tracks", "2"], ["Sent", many[2][1]]]);
+  assert.match(many[2][1], /14:03 UTC$/, "a send is dated by its last track");
+  const noFile = receiptDetails([{ title: "A", artist: "B", original_name: null, duration: null, created_at: at }], "Maxwell");
+  assert.ok(!noFile.some(([l]) => l === "File"), "no File row when neither the format nor the length is known");
+});
+
+test("deliver passes the rows through the sealed outbox copy to the designed version only", async () => {
+  const { sendMail } = await import("../src/lib/mail");
+  assert.equal(await sendMail({ userId: null, to: "rows@x.io", subject: "Delivered: X", body: DELIVERED, details: [["Track", "Low Orbit"]] }), "sent");
+  const m = sent.at(-1)!;
+  assert.match(m.html, />Track<\/td><td[^>]*>Low Orbit<\/td>/);
+  assert.equal(m.text, DELIVERED, "the text part has no rows added");
 });
