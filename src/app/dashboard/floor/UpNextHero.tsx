@@ -6,8 +6,8 @@ import { toPlayer } from "@/lib/player-track";
 
 type Hero = { id: number; title: string; artist: string; peaks: number[] | null; duration: number | null; played: boolean };
 
-/** How many bars the big waveform draws: thick, rounded bars like the mock, not the thin seek strip of the player bar. */
-const BARS = 64;
+/** How many bars the waveform draws: rounded bars like the mock, kept short (owner, 30 Oct: small, not much space). */
+const BARS = 56;
 
 /** The track's peaks folded into BARS values (the loudest in each slice), so any length draws the same width. */
 function bars(peaks: number[] | null) {
@@ -20,8 +20,8 @@ function bars(peaks: number[] | null) {
 }
 
 /**
- * The oldest track still waiting, big (owner, 30 Oct: the Floor's hero card): its waveform with the play button on top,
- * and where it is in the track under it. Playing it hands the rest of Up next to the player as the queue; while it
+ * The oldest track still waiting (owner, 30 Oct: the Floor's hero card): the play button beside a short waveform, and
+ * where it is in the track under it. Playing it hands the rest of Up next to the player as the queue; while it
  * plays, a tap or the arrow keys on the waveform move through it.
  */
 export function UpNextHero({ track, queue }: { track: Hero; queue: Hero[] }) {
@@ -32,7 +32,16 @@ export function UpNextHero({ track, queue }: { track: Hero; queue: Hero[] }) {
   const shape = bars(track.peaks);
   const start = () => (on ? toggle() : play(toPlayer(track), [track, ...queue.filter((q) => q.id !== track.id)].map(toPlayer)));
   return (
-    <div className="relative">
+    <div className="flex items-center gap-3">
+      <button
+        type="button"
+        onClick={start}
+        aria-label={on && playing ? `Pause ${track.title}` : `Play ${track.title}`}
+        className="grid size-11 shrink-0 place-items-center rounded-full bg-lime text-ink transition-transform duration-100 active:scale-95 motion-reduce:active:scale-100"
+      >
+        <PlayIcon playing={on && (playing || buffering)} className="size-4" />
+      </button>
+      <div className="min-w-0 flex-1">
       <div
         role={on ? "slider" : undefined}
         tabIndex={on ? 0 : undefined}
@@ -55,23 +64,16 @@ export function UpNextHero({ track, queue }: { track: Hero; queue: Hero[] }) {
           else return;
           e.preventDefault();
         }}
-        className={`flex h-[88px] items-center gap-[2px] ${on ? "cursor-pointer" : ""}`}
+        className={`flex h-9 items-center gap-[2px] ${on ? "cursor-pointer" : ""}`}
       >
         {shape.map((p, i) => (
           <span key={i} className={`flex-1 rounded-[2px] ${i / BARS < progress ? "bg-lime" : "bg-line-2"}`} style={{ height: `${Math.round(p * 100)}%` }} />
         ))}
       </div>
-      <button
-        type="button"
-        onClick={start}
-        aria-label={on && playing ? `Pause ${track.title}` : `Play ${track.title}`}
-        className="absolute left-1/2 top-[44px] grid size-12 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-lime text-ink shadow-[0_0_0_5px_var(--color-card)] transition-transform duration-100 active:scale-95 motion-reduce:active:scale-100"
-      >
-        <PlayIcon playing={on && (playing || buffering)} className="size-4" />
-      </button>
-      <div className="mt-1.5 flex justify-between text-[11px] text-faint tnum">
+      <div className="mt-1 flex justify-between text-[11px] text-faint tnum">
         <span>{fmtTime(on ? time : 0)}</span>
         <span>{fmtTime(length || null)}</span>
+      </div>
       </div>
     </div>
   );
