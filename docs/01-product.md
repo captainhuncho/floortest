@@ -31,6 +31,16 @@ Keep this file true to what is live. Any change to a feature updates its row her
 | Plans | In the beta (switch `plan_requests` off) the cards show "Set by FloorTest during the beta" instead of Request buttons and the request form opens the Plans page. Paid via Paddle on the web; in the (planned) app via Apple/Google in-app purchase — one plan per account either way. Free (20 tracks), Pro ($6.99/mo, $77.99/yr, 500 tracks, folders 1 GB), Team ($19.99/mo, $199/yr, 2000 tracks, folders 3 GB, track artwork). The cards' "Also on" lines come from what each plan really enables (folders, artwork) plus ops' own lines, minus anything about held features. Discounts set in ops, shown only when billing is on. "Active tracks" is defined on the page (waiting + kept + not for me). Beta: Pro/Team by request (form), free. After beta: self-serve subscription | `/dashboard/plans`, `/request`, `/checkout` |
 | Referrals | **Off in the beta** (switch `referrals`): the page and its links are hidden; invite links already shared still work. Bonus track slots for both sides once the friend's first track arrives | `/dashboard/referrals` |
 
+**Page redesign (owner, 30 Oct: "redesign everything else to match the mocks").** Review Queue, Collections, a collection, Prepare, Send, Contacts, Activity and Account (with the Settings frame) use the Floor's look from `src/components/Kit.tsx`: a small label over each page title, one card surface, an icon box beside section titles, chips, spec-sheet rows and segmented tabs. Where this and the rows above differ, this wins. What changed in use:
+- **Review Queue:** the decision row is Not for me (X) and Keep (K); the Reply button is gone. The reply box is always open in its own card under the track: R moves into it, Esc steps out, Cancel clears it. From 1280px the list is a 380px column on the left. The open track's cards are the player, From, Reply, then Played out, Set prep, Review together and Stems, and the closed Details card. "Deletes in N days" is amber.
+- **Collections:** each collection is a card with its state chip (Receiving, Open, Closed, Full), To review / Kept / Tracks, the link on the receiving one and one next step. Edit always opens in a pop-up. A collection's page has one header at every width and a details card (beside the tracks from 1024px).
+- **Prepare:** three tiles (Kept, Downloaded, Prepped: tracks with energy or cues), a crate card with Download kept, Files only and Start a new batch, and the kept list.
+- **Send:** a Send to card and a Sent card (beside it from 1280px, with "N this week").
+- **Contacts:** People / Messages as a segmented switch; each person's row shows sent, kept and (wider screens) downloaded as chips. A contact's page: the person card, the conversation, then their tracks and Intake.
+- **Activity:** each day is a card; each entry has an icon, what happened, who, and the time on the right.
+- **Account:** profile and plan cards, then setting groups as cards in two columns on desktop. Sign out is one button at the bottom of the page at every width (no longer top right on desktop).
+Left out of the mocks because the app has no data for them yet: Activity's "This week" and "Arrived today" tiles, Prepare's crate size and musical key, a contact's streaming links, Account's passkey count and sign-in alerts.
+
 ## Features (sender)
 
 | Area | What it does | Where |
