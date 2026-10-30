@@ -1,7 +1,7 @@
 import { LegalPage } from "@/components/LegalPage";
 import { LEGAL } from "@/lib/legal";
 
-export const metadata = { title: "Your Privacy Choices (draft) — FloorTest" };
+export const metadata = { title: "Your Privacy Choices — FloorTest" };
 
 export default function PrivacyChoices() {
   return (
@@ -24,7 +24,7 @@ export default function PrivacyChoices() {
         [
           "Your rights",
           [
-            "Wherever you live, you can ask to access, correct, delete or get a copy of your data. California residents and residents of other US states with privacy laws have these rights too, and we won't treat you differently for using them. Make a request at /contact?topic=data or by email; you can also use an authorised agent.",
+            "Wherever you live, you can ask to access, correct, delete or get a copy of your data. California residents and residents of other US states with privacy laws have these rights too, and we won't treat you differently for using them. Make a request through our contact page at /contact or by email; you can also use an authorised agent.",
             `${LEGAL.privacy}`,
           ],
         ],

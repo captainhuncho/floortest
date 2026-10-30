@@ -4,7 +4,7 @@ import { APP_URL } from "@/lib/mail";
 
 const HOST = APP_URL.replace(/^https?:\/\//, "");
 
-export const metadata = { title: "Information for Law Enforcement (draft) — FloorTest" };
+export const metadata = { title: "Information for Law Enforcement — FloorTest" };
 
 export default function LawEnforcement() {
   return (
@@ -22,7 +22,7 @@ export default function LawEnforcement() {
         [
           "What we hold",
           [
-            "Account details, track details and files, activity records, and IP addresses for at most 48 hours. Unreviewed tracks are deleted after 90 days and declined ones after 30. Deleted data may stay in encrypted backups for up to 14 days.",
+            "Account details, track details and files, activity records, IP addresses used to limit abuse for up to 3 days, and copies of emails we sent (which include sign-in alerts and their network address) for 90 days. Unreviewed tracks are deleted after 90 days and declined ones after 30. Deleted data may stay in encrypted backups for up to 14 days.",
           ],
         ],
         [
