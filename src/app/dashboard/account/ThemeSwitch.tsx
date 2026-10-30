@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { SEG, segTab } from "@/components/Kit";
 import { setTheme } from "../actions/settings";
 
 const OPTIONS = [
@@ -13,7 +14,7 @@ const OPTIONS = [
 export function ThemeSwitch({ current }: { current: string }) {
   const [pending, start] = useTransition();
   return (
-    <div role="radiogroup" aria-label="Appearance" className="flex rounded-lg border border-line bg-ink-3 p-0.5">
+    <div role="radiogroup" aria-label="Appearance" className={SEG}>
       {OPTIONS.map((o) => (
         <button
           key={o.id}
@@ -22,7 +23,7 @@ export function ThemeSwitch({ current }: { current: string }) {
           aria-checked={current === o.id}
           disabled={pending}
           onClick={() => start(() => setTheme(o.id))}
-          className={`rounded-md px-2.5 py-1 text-[11px] font-bold transition ${current === o.id ? "bg-bone text-ink" : "text-mute hover:text-bone"}`}
+          className={`${segTab(current === o.id)} pointer-coarse:min-h-11 disabled:opacity-60`}
         >
           {o.label}
         </button>
