@@ -6,6 +6,7 @@ import { useToast } from "@/components/Toast";
 import { pauseLink, resumeLink } from "./actions/desk";
 import { useBrowserValue } from "@/components/useBrowserValue";
 import { IconBox } from "@/components/Kit";
+import { FIELD_LABEL, GHOST } from "./kitButtons";
 
 export type PauseState = { on: boolean; until: string | null; untilTs: number | null; message: string; blocked: string | null };
 
@@ -57,16 +58,16 @@ export function PauseSwitch({ pause, compact = false }: { pause: PauseState; com
   };
 
   return (
-    <div className={compact ? "card bg-ink-3 p-3" : "py-1"}>
+    <div className={compact ? "rounded-[13px] border border-line bg-well p-3" : "py-1"}>
       <div className="flex items-start justify-between gap-3">
         {!compact && <IconBox name="link" small />}
         <div className="min-w-0 flex-1">
-          <p className={compact ? "text-[11px] font-bold" : "text-[13px] font-semibold"}>{paused ? "Paused" : "Link open"}</p>
-          <p className={compact ? "mt-1 text-[11px] leading-snug text-faint" : "mt-0.5 text-[11.5px] leading-snug text-mute"}>
+          <p className={compact ? "text-[12px] font-semibold text-bone" : "text-[13px] font-semibold"}>{paused ? "Paused" : "Link open"}</p>
+          <p className={compact ? "mt-0.5 text-[11.5px] leading-snug text-mute" : "mt-0.5 text-[11.5px] leading-snug text-mute"}>
             {paused ? (pause.on && pause.until ? `Reopens ${pause.until}` : "Your link shows you're on a break") : pause.blocked ? null : "Switch off while touring or on a break"}
           </p>
           {!paused && pause.blocked && (
-            <Link href="/dashboard/collections" className="block text-xs leading-snug text-danger underline-offset-2 hover:underline">
+            <Link href="/dashboard/collections" className="block text-[11.5px] leading-snug text-danger underline-offset-2 hover:underline">
               {pause.blocked} →
             </Link>
           )}
@@ -77,7 +78,7 @@ export function PauseSwitch({ pause, compact = false }: { pause: PauseState; com
           aria-label="Link open"
           aria-busy={busy}
           onClick={flip}
-          className={`relative shrink-0 rounded-full transition-colors ${compact ? "h-4 w-7" : "mt-0.5 h-7 w-12"} ${paused ? "bg-line" : compact ? "bg-bone" : "bg-lime"}`}
+          className={`relative shrink-0 rounded-full transition-colors ${compact ? "h-4 w-7 before:absolute before:-inset-3.5 before:content-['']" : "mt-0.5 h-7 w-12"} ${paused ? "bg-line" : compact ? "bg-bone" : "bg-lime"}`}
         >
           <span
             aria-hidden
@@ -97,7 +98,7 @@ export function PauseSwitch({ pause, compact = false }: { pause: PauseState; com
           }
         >
           <label className="block space-y-1.5">
-            <span className="label">Message on your link</span>
+            <span className={FIELD_LABEL}>Message on your link</span>
             <textarea
               name="message"
               defaultValue={pause.message}
@@ -108,10 +109,10 @@ export function PauseSwitch({ pause, compact = false }: { pause: PauseState; com
             />
           </label>
           <label className="block space-y-1.5">
-            <span className="label">Reopen on (optional)</span>
-            <input name="until" type="date" value={until} onChange={(e) => setUntil(e.target.value)} className="input [color-scheme:dark]" />
+            <span className={FIELD_LABEL}>Reopen on (optional)</span>
+            <input name="until" type="date" value={until} onChange={(e) => setUntil(e.target.value)} className="input" />
           </label>
-          <button className="btn-ghost btn-sm" disabled={busy}>
+          <button className={GHOST} disabled={busy}>
             {busy ? "Saving…" : "Save"}
           </button>
         </form>

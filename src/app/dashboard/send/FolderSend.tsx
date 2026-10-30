@@ -15,6 +15,7 @@ import { GenrePicker } from "../../[handle]/GenrePicker";
 import { AI_CHOICES, AI_HELP, Choice, MIX_CHOICES, RELEASE_CHOICES } from "../../[handle]/Choice";
 import { normalEmail } from "@/lib/email-normal";
 import { Chip, Icon, SEG, segTab } from "@/components/Kit";
+import { FIELD_LABEL } from "../kitButtons";
 
 type Item = {
   file: File; tags: Tags; state: "waiting" | "sending" | "sent" | "failed"; progress: number; error?: string; genre?: string;
@@ -299,11 +300,11 @@ export function FolderSend({
         <>
           <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)]">
             <label className="block space-y-1.5">
-              <span className="label">Folder name<Req /></span>
+              <span className={FIELD_LABEL}>Folder name<Req /></span>
               <input value={release.title} disabled={running} required onChange={(e) => setRelease((r) => ({ ...r, title: e.target.value }))} maxLength={200} className="input" />
             </label>
             <label className="block space-y-1.5">
-              <span className="label">Artist<Req /></span>
+              <span className={FIELD_LABEL}>Artist<Req /></span>
               <input value={release.artist} disabled={running} required onChange={(e) => setRelease((r) => ({ ...r, artist: e.target.value }))} maxLength={200} className="input" />
             </label>
           </div>
@@ -368,33 +369,33 @@ export function FolderSend({
           {!account && (
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block space-y-1.5">
-                <span className="label">Your name<Req /></span>
+                <span className={FIELD_LABEL}>Your name<Req /></span>
                 <input value={who.name} onChange={(e) => setWho((w) => ({ ...w, name: e.target.value }))} disabled={running} autoComplete="name" maxLength={100} required className="input" />
               </label>
               <label className="block space-y-1.5">
-                <span className="label">Your email<Req /></span>
+                <span className={FIELD_LABEL}>Your email<Req /></span>
                 <input type="email" value={who.email} onChange={(e) => setWho((w) => ({ ...w, email: e.target.value }))} disabled={running} autoComplete="email" maxLength={200} required className="input" />
               </label>
               <fieldset className="space-y-2 sm:col-span-2">
-                <legend className="label mb-1.5">
-                  Your profiles<Req /> <span className="normal-case tracking-normal text-mute">(at least one)</span>
+                <legend className={`${FIELD_LABEL} mb-1.5`}>
+                  Your profiles<Req /> <span>(at least one)</span>
                 </legend>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="block space-y-1">
-                    <span className="block text-xs text-mute">Instagram</span>
+                    <span className={FIELD_LABEL}>Instagram</span>
                     <input value={who.instagram} onChange={(e) => setWho((w) => ({ ...w, instagram: e.target.value }))} disabled={running} maxLength={300} placeholder="@yourname" className="input" />
                   </label>
                   <label className="block space-y-1">
-                    <span className="block text-xs text-mute">Streaming profile</span>
+                    <span className={FIELD_LABEL}>Streaming profile</span>
                     <input value={who.streaming} onChange={(e) => setWho((w) => ({ ...w, streaming: e.target.value }))} disabled={running} inputMode="url" maxLength={300} placeholder="open.spotify.com/artist/…" className="input" />
                   </label>
                 </div>
-                <span className="block text-xs text-mute">Spotify, Apple Music, SoundCloud, Beatport, Bandcamp, YouTube or TikTok. Helps {receiverName} know who you are.</span>
+                <span className="block text-[11.5px] text-mute">Spotify, Apple Music, SoundCloud, Beatport, Bandcamp, YouTube or TikTok. Helps {receiverName} know who you are.</span>
               </fieldset>
             </div>
           )}
           <fieldset className="space-y-2.5" disabled={running}>
-            <legend className="label mb-1.5">
+            <legend className={`${FIELD_LABEL} mb-1.5`}>
               Genre<Req />
             </legend>
             <div role="group" aria-label="How the genre applies" className={`${SEG} flex w-full sm:inline-flex sm:w-auto`}>
@@ -429,12 +430,12 @@ export function FolderSend({
           <Choice id="folder-release" name="folder_release" label="Release status" value={releaseStatus} onChange={setReleaseStatus} options={RELEASE_CHOICES} disabled={running} />
           <Choice id="folder-ai" name="folder_ai" label="Made with AI?" value={aiUse} onChange={setAiUse} options={AI_CHOICES} help={AI_HELP} disabled={running} />
           <label className="block space-y-1.5">
-            <span className="label">Message (optional, sent with the release)</span>
+            <span className={FIELD_LABEL}>Message (optional, sent with the release)</span>
             <textarea value={message} onChange={(e) => setMessage(e.target.value)} disabled={running} rows={3} maxLength={2000} className="input resize-y" />
           </label>
           {trackArt && (
             <label className="block space-y-1.5">
-              <span className="label">Artwork (optional)</span>
+              <span className={FIELD_LABEL}>Artwork (optional)</span>
               <input type="file" accept="image/jpeg,image/png,image/webp" disabled={running} onChange={(e) => setArtwork(e.target.files?.[0] ?? null)} className="input file:mr-3 file:rounded file:border-0 file:bg-ink-3 file:px-3 file:py-1 file:text-bone" />
               <span className="block text-xs text-mute">One cover for the whole release. JPG, PNG or WebP, up to 25 MB. Sent at full quality.</span>
             </label>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { DEFAULT_GENRES, MAX_COLLECTION_GENRES, MAX_GENRE_LENGTH } from "@/lib/plans";
+import { GHOST } from "../kitButtons";
 
 /** Chips editor for a collection's genre list (up to MAX_COLLECTION_GENRES). Empty means senders see the standard list. */
 export function GenresField({ initial }: { initial: string[] }) {
@@ -18,17 +19,17 @@ export function GenresField({ initial }: { initial: string[] }) {
     <div className="space-y-3">
       <input type="hidden" name="genres" value={JSON.stringify(list)} />
       <div className="flex flex-wrap gap-2" aria-label="Genres senders can pick">
-        {list.length === 0 && <span className="text-sm text-mute">None set: senders pick from the standard list.</span>}
+        {list.length === 0 && <span className="text-[12px] text-mute">None set: senders pick from the standard list.</span>}
         {list.map((g) => (
-          <span key={g} className="inline-flex items-center gap-1.5 rounded-full border border-lime/50 bg-lime/10 py-1 pl-3 pr-1.5 text-sm text-lime">
+          <span key={g} className="inline-flex items-center gap-1 rounded-[10px] border border-lime/50 bg-lime/10 py-0.5 pl-3 pr-0.5 text-[12px] font-semibold text-lime">
             {g}
-            <button type="button" onClick={() => setList(list.filter((x) => x !== g))} aria-label={`Remove ${g}`} className="grid h-5 w-5 place-items-center rounded-full hover:bg-lime/20">
+            <button type="button" onClick={() => setList(list.filter((x) => x !== g))} aria-label={`Remove ${g}`} className="grid size-7 place-items-center rounded-[8px] hover:bg-lime/20 pointer-coarse:size-9">
               ×
             </button>
           </span>
         ))}
       </div>
-      <p className="text-xs text-mute tnum">
+      <p className="text-[11.5px] text-mute tnum">
         {list.length} of {MAX_COLLECTION_GENRES}
         {full && " · remove one to add another"}
       </p>
@@ -52,16 +53,16 @@ export function GenresField({ initial }: { initial: string[] }) {
           placeholder="Type a genre and press Enter"
           className="input"
         />
-        <button type="button" className="btn-ghost btn-sm" onClick={() => (add(draft), setDraft(""))}>
+        <button type="button" className={GHOST} onClick={() => (add(draft), setDraft(""))}>
           Add
         </button>
       </div>
       )}
       {!full && suggestions.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          <span className="py-1 text-sm text-mute">Quick add:</span>
+          <span className="self-center text-[11.5px] text-mute">Quick add:</span>
           {suggestions.map((g) => (
-            <button key={g} type="button" onClick={() => add(g)} className="rounded-full border border-line px-2.5 py-1 text-sm text-mute hover:border-mute hover:text-bone">
+            <button key={g} type="button" onClick={() => add(g)} className={GHOST}>
               + {g}
             </button>
           ))}
