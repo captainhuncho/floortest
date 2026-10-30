@@ -134,7 +134,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
         <DownloadActions collectionId={c.id} crateName={c.name} count={c.count} />
       </div>
       <div className="flex flex-wrap gap-2 [&>button]:min-h-11 [&>button]:min-w-0 [&>button]:flex-1">
-        <EditCollectionInfo c={editable} receiving={receiving} closed={closed} canManage={admin} className="btn-ghost" />
+        <EditCollectionInfo c={editable} receiving={receiving} closed={closed} canManage={admin} />
         {admin && <OwnerUpload collectionId={c.id} collectionName={c.name} />}
       </div>
     </section>

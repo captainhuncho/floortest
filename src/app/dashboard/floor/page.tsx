@@ -20,6 +20,7 @@ import { PlayedOutCard } from "./PlayedOutCard";
 import { playedOutPrompt } from "@/lib/played-out-prompt";
 import { Chip, DeskStrip, FloorIcon, IconBox, InfoRow, Legend, StatTile } from "./FloorBits";
 import { LinkRow, WeekChart } from "./FloorClient";
+import { GHOST, LIME_SM } from "../kitButtons";
 
 export const metadata = { title: "Floor — FloorTest" };
 
@@ -91,7 +92,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
       {
         text: `Your link is paused${user.pause_until ? ` until ${fmtDay(user.pause_until)}` : ""}. Turn it back on in Account when you're ready.`,
         action: user.role === "member" ? undefined : (
-          <Link href="/dashboard/account" className="btn-ghost btn-sm">
+          <Link href="/dashboard/account" className={GHOST}>
             Open Account
           </Link>
         ),
@@ -104,7 +105,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
           action: user.role === "member" ? undefined : openAlternative ? (
             <SwitchCollection id={openAlternative.id} name={openAlternative.name} />
           ) : (
-            <Link href="/dashboard/collections" className="btn-lime btn-sm">
+            <Link href="/dashboard/collections" className={LIME_SM}>
               {canAdd ? "New collection" : "Open Collections"}
             </Link>
           ),
@@ -116,10 +117,10 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
             text: `Your desk holds ${cap.limit.toLocaleString("en-GB")} active tracks and it's full, so your link has stopped taking new ones. Download what you need from Prepare, then delete tracks you're done with in the Review Queue to make room.`,
             action: (
               <span className="flex flex-wrap gap-2">
-                <Link href="/dashboard/prepare" className="btn-lime btn-sm">
+                <Link href="/dashboard/prepare" className={LIME_SM}>
                   Open Prepare
                 </Link>
-                <Link href="/dashboard/plans" className="btn-ghost btn-sm">
+                <Link href="/dashboard/plans" className={GHOST}>
                   See plans
                 </Link>
               </span>
@@ -216,15 +217,15 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
         </ul>
       )}
       <div className="grid grid-cols-3 border-y border-dashed border-line-2 py-1.5 text-center">
-        <Link href="/dashboard/collections" className="flex min-h-11 flex-col items-center justify-center rounded-lg hover:bg-well">
+        <Link href="/dashboard/collections" className="flex min-h-11 flex-col items-center justify-center rounded-[10px] hover:bg-well">
           <span className="text-[11.5px] text-mute">Collections</span>
           <span className="text-[14px] font-semibold text-bone tnum">{collections.length}</span>
         </Link>
-        <Link href="/dashboard/contacts" className="flex min-h-11 flex-col items-center justify-center rounded-lg hover:bg-well">
+        <Link href="/dashboard/contacts" className="flex min-h-11 flex-col items-center justify-center rounded-[10px] hover:bg-well">
           <span className="text-[11.5px] text-mute">Contacts</span>
           <span className="text-[14px] font-semibold text-bone tnum">{contactCount}</span>
         </Link>
-        <Link href="/dashboard/plans" className="flex min-h-11 flex-col items-center justify-center rounded-lg hover:bg-well">
+        <Link href="/dashboard/plans" className="flex min-h-11 flex-col items-center justify-center rounded-[10px] hover:bg-well">
           <span className="text-[11.5px] text-mute">Plan</span>
           <span className="text-[14px] font-semibold text-bone">{plan.name}</span>
         </Link>
@@ -262,7 +263,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
     <div className="page-gutter py-4 sm:py-7">
       <div className="mx-auto flex w-full max-w-3xl min-w-0 flex-col gap-4 sm:gap-5 xl:max-w-6xl">
         {sp.desk === "ended" && (
-          <p role="alert" className="rounded-lg border border-danger/40 px-4 py-3 text-sm">
+          <p role="alert" className="rounded-[13px] border border-danger/40 bg-danger/10 px-4 py-3 text-[13px] text-bone">
             You don&apos;t have access to that team&apos;s desk any more, so nothing was changed. This is your own desk.
           </p>
         )}
@@ -303,7 +304,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
                     <IconBox name="wave" small />
                     <h2 id="next-h" className="text-[15px] font-semibold text-bone">Up next</h2>
                   </div>
-                  <Link href="/dashboard/review?view=queue" className="btn-ghost btn-sm gap-1">
+                  <Link href="/dashboard/review?view=queue" className={GHOST}>
                     {stats.waiting > 1 ? <span className="tnum">All {stats.waiting}</span> : "Open the queue"}
                     <FloorIcon name="chev" className="size-3.5" />
                   </Link>
@@ -362,7 +363,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
                     </p>
                   </div>
                 </div>
-                <Link href="/dashboard/prepare" className="btn-ghost btn-sm shrink-0">
+                <Link href="/dashboard/prepare" className={GHOST}>
                   Prepare
                 </Link>
               </section>

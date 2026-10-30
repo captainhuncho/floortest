@@ -3,6 +3,7 @@
 import { useActionState, useState, useTransition } from "react";
 import { CARD, SectionHead } from "@/components/Kit";
 import { useToast } from "@/components/Toast";
+import { DANGER, FIELD_LABEL, GHOST, GHOST_ON_WELL, LIME, LIME_SM } from "../kitButtons";
 import { fmtDate } from "@/lib/format";
 import {
   addLinkRecipients,
@@ -78,14 +79,14 @@ const EVENT: Record<string, string> = {
 function FreshUrl({ url }: { url: string }) {
   const toast = useToast();
   return (
-    <div className="mt-3 rounded-md border border-lime/40 bg-lime/[0.06] p-3 text-[12px]">
-      <p className="font-bold text-bone">Copy this link now</p>
+    <div className="mt-3 rounded-[11px] border border-lime/40 bg-lime/[0.06] p-3 text-[12px]">
+      <p className="font-semibold text-bone">Copy this link now</p>
       <p className="mt-1 text-mute">For safety it&apos;s shown only once. Lost it? Reset the link to make a new one (the old one stops working).</p>
       <div className="mt-2 flex gap-2">
         <input readOnly value={url} aria-label="New share link" className="input min-w-0 flex-1 font-mono" onFocus={(e) => e.currentTarget.select()} />
         <button
           type="button"
-          className="btn-lime btn-sm shrink-0"
+          className={`${LIME_SM} shrink-0`}
           onClick={() => navigator.clipboard.writeText(url).then(() => toast.show({ message: "Link copied" }), () => toast.show({ message: url }))}
         >
           Copy
@@ -100,7 +101,7 @@ function NewLink({ collectionId }: { collectionId: number }) {
   const [open, setOpen] = useState(false);
   if (!open && !state?.url)
     return (
-      <button type="button" onClick={() => setOpen(true)} className="btn-ghost btn-sm">
+      <button type="button" onClick={() => setOpen(true)} className={GHOST}>
         New share link
       </button>
     );
@@ -114,18 +115,18 @@ function NewLink({ collectionId }: { collectionId: number }) {
       ) : (
         <form action={create} className="grid gap-2.5 text-[12px] sm:grid-cols-2">
           <label className="flex flex-col gap-1">
-            <span className="text-mute">Name (listeners never see it)</span>
+            <span className={FIELD_LABEL}>Name (listeners never see it)</span>
             <input name="label" maxLength={60} placeholder="e.g. Label A&R" className="input text-[12px]" />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-mute">What people can do</span>
+            <span className={FIELD_LABEL}>What people can do</span>
             <select name="permission" defaultValue="listen" className="input text-[12px]">
               <option value="listen">Listen (recommended for unreleased music)</option>
               <option value="download">Listen + Download</option>
             </select>
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-mute">Works for</span>
+            <span className={FIELD_LABEL}>Works for</span>
             <select name="days" defaultValue="14" className="input text-[12px]">
               <option value="7">7 days</option>
               <option value="14">14 days (recommended)</option>
@@ -134,15 +135,15 @@ function NewLink({ collectionId }: { collectionId: number }) {
               <option value="none">Until I revoke it</option>
             </select>
           </label>
-          <label className="flex items-center gap-2 self-end">
+          <label className="flex min-h-11 items-center gap-2 self-end text-mute">
             <input type="checkbox" name="requests" defaultChecked className="size-4 accent-lime" />
             <span>People not on the list can ask to join</span>
           </label>
           <div className="flex gap-2 sm:col-span-2">
-            <button disabled={pending} className="btn-lime btn-sm">
+            <button disabled={pending} className={LIME}>
               {pending ? "Making…" : "Make link"}
             </button>
-            <button type="button" onClick={() => setOpen(false)} className="btn-ghost btn-sm">
+            <button type="button" onClick={() => setOpen(false)} className={GHOST_ON_WELL.replace("min-h-9", "min-h-11")}>
               Cancel
             </button>
           </div>
@@ -166,7 +167,7 @@ function LinkCard({ link, at }: { link: ShareLinkView; at: number }) {
   return (
     <li className={`rounded-[13px] border border-line bg-well p-3 text-[12px] ${dead ? "opacity-60" : ""}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="font-bold text-bone">
+        <p className="text-[13px] font-semibold text-bone">
           {link.label || "Share link"} <span className="font-normal text-mute">· {PERM[link.permission]}</span>
         </p>
         <p className="text-[11px] text-faint">
@@ -178,9 +179,9 @@ function LinkCard({ link, at }: { link: ShareLinkView; at: number }) {
       {!dead && (
         <>
           {/* Who may open it */}
-          <p className="mt-3 text-[11px] font-bold uppercase text-faint">People ({link.recipients.length})</p>
+          <p className="mt-3 text-[11.5px] font-semibold text-mute">People ({link.recipients.length})</p>
           {link.recipients.length > 0 && (
-            <ul className="mt-1.5 divide-y divide-line rounded-md border border-line">
+            <ul className="mt-1.5 divide-y divide-line rounded-[11px] border border-line bg-card">
               {link.recipients.map((r) => (
                 <li key={r.id} className="flex items-center justify-between gap-3 px-2.5 py-1.5">
                   <span className="min-w-0">
@@ -213,7 +214,7 @@ function LinkCard({ link, at }: { link: ShareLinkView; at: number }) {
                         toast.show({ message: "Removed. Their access has ended." });
                       })
                     }
-                    className="tap-text shrink-0 text-[11px] font-bold text-mute hover:text-danger"
+                    className="tap-text shrink-0 text-[12px] font-semibold text-mute hover:text-danger"
                   >
                     Remove
                   </button>
@@ -229,7 +230,7 @@ function LinkCard({ link, at }: { link: ShareLinkView; at: number }) {
                 <option value="download">Listen + Download</option>
               </select>
             )}
-            <button disabled={adding} className="btn-ghost btn-sm shrink-0">
+            <button disabled={adding} className={GHOST_ON_WELL}>
               Add
             </button>
           </form>
@@ -245,12 +246,12 @@ function LinkCard({ link, at }: { link: ShareLinkView; at: number }) {
           {/* Requests to join */}
           {link.requests.length > 0 && (
             <>
-              <p className="mt-3 text-[11px] font-bold uppercase text-faint">Asking to join ({link.requests.length})</p>
+              <p className="mt-3 text-[11.5px] font-semibold text-mute">Asking to join ({link.requests.length})</p>
               <ul className="mt-1.5 flex flex-col gap-2">
                 {link.requests.map((q) => (
-                  <li key={q.id} className="rounded-md border border-line p-2.5">
+                  <li key={q.id} className="rounded-[11px] border border-line bg-card p-2.5">
                     <p>
-                      <span className="font-bold text-bone">{q.name || q.email}</span>
+                      <span className="font-semibold text-bone">{q.name || q.email}</span>
                       {q.handle && <span className="text-faint"> @{q.handle}</span>}
                       {q.verified === "verified" && <span className="ml-1 text-lime">Verified</span>}
                       <span className="text-faint"> · {q.email} · via this link · {fmtDate(q.created_at)}</span>
@@ -266,13 +267,13 @@ function LinkCard({ link, at }: { link: ShareLinkView; at: number }) {
                         <option value="14">14 days</option>
                         <option value="30">30 days</option>
                       </select>
-                      <button formAction={answerLinkRequest.bind(null, q.id, "approve")} className="btn-lime btn-sm">
+                      <button formAction={answerLinkRequest.bind(null, q.id, "approve")} className={LIME_SM}>
                         Approve
                       </button>
-                      <button formAction={answerLinkRequest.bind(null, q.id, "decline")} className="btn-ghost btn-sm">
+                      <button formAction={answerLinkRequest.bind(null, q.id, "decline")} className={GHOST}>
                         Decline
                       </button>
-                      <button formAction={answerLinkRequest.bind(null, q.id, "block")} className="text-[11px] font-bold text-mute hover:text-danger tap-text">
+                      <button formAction={answerLinkRequest.bind(null, q.id, "block")} className="tap-text px-1 text-[12px] font-semibold text-mute hover:text-danger">
                         Block
                       </button>
                     </form>
@@ -282,7 +283,7 @@ function LinkCard({ link, at }: { link: ShareLinkView; at: number }) {
             </>
           )}
           {link.requests_paused_at && (
-            <p className="mt-2 rounded-md border border-danger/40 px-2.5 py-2 text-danger">
+            <p className="mt-2 rounded-[11px] border border-danger/40 bg-danger/10 px-2.5 py-2 text-danger">
               This link is getting a lot of requests. It may have been shared publicly. Reset it, or turn requests back on.
             </p>
           )}
@@ -298,18 +299,18 @@ function LinkCard({ link, at }: { link: ShareLinkView; at: number }) {
                   if (r?.url) setFresh(r.url);
                 })
               }
-              className="btn-ghost btn-sm"
+              className={GHOST_ON_WELL}
             >
               Reset link
             </button>
-            <button type="button" disabled={busy} onClick={() => start(() => setLinkRequests(link.id, !(link.requests_on && !link.requests_paused_at)))} className="btn-ghost btn-sm">
+            <button type="button" disabled={busy} onClick={() => start(() => setLinkRequests(link.id, !(link.requests_on && !link.requests_paused_at)))} className={GHOST_ON_WELL}>
               {link.requests_on && !link.requests_paused_at ? "Turn off requests" : "Allow requests"}
             </button>
             <button
               type="button"
               disabled={busy}
               onClick={() => start(async () => void (confirm("Revoke this link for everyone? It can't be undone; the music stays in your collection.") && (await revokeShareLink(link.id))))}
-              className="btn btn-sm text-danger hover:bg-danger/10"
+              className={DANGER}
             >
               Revoke
             </button>
@@ -319,7 +320,7 @@ function LinkCard({ link, at }: { link: ShareLinkView; at: number }) {
 
       {link.events.length > 0 && (
         <details className="mt-3">
-          <summary className="cursor-pointer text-[11px] font-bold uppercase text-faint">Activity</summary>
+          <summary className="cursor-pointer py-3.5 text-[11.5px] font-semibold text-mute hover:text-bone">Activity</summary>
           <ul className="mt-1.5 space-y-0.5 text-mute">
             {link.events.map((e, i) => (
               <li key={i}>

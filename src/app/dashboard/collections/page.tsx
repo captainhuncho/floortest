@@ -12,6 +12,7 @@ import { CapTicks, CollectionTile, Folder, NewCollection } from "./CollectionFor
 import { q } from "@/lib/db";
 import { sharedLinksFor } from "@/lib/share-links";
 import { CARD, Chip, Icon, PageHead, SectionHead } from "@/components/Kit";
+import { GHOST } from "../kitButtons";
 
 export const metadata = { title: "Collections — FloorTest" };
 
@@ -127,7 +128,7 @@ function Inside({ c, rows }: { c: { id: number; name: string; count: number; max
         id="inside-h"
         title={`In ${c.name}`}
         aside={
-          <Link href={`/dashboard/collections/${c.id}`} className="btn-ghost btn-sm gap-1">
+          <Link href={`/dashboard/collections/${c.id}`} className={GHOST}>
             Open
             <Icon name="chev" className="size-3.5" />
           </Link>
