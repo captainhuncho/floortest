@@ -35,8 +35,6 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Route types
-        run: npx next typegen
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
