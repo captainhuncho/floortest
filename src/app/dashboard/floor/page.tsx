@@ -151,21 +151,27 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
     { key: "contacts", href: "/dashboard/contacts", text: `${Number(contacts?.n ?? 0)} contact${Number(contacts?.n ?? 0) === 1 ? "" : "s"}` },
   ];
 
+  // Where the link sends, and the way to change it: under the link in the desk column, beside its heading on a new desk.
+  const linkWhere = (
+    <>
+      {problem
+        ? "Not taking uploads right now"
+        : active
+          ? `Sends tracks to “${active.name}”${active.closes_at ? `, open until ${fmtDay(active.closes_at)}` : ""}`
+          : "Sends tracks to your Review Queue"}
+      {" · "}
+      <Link href="/dashboard/collections" className="text-mute underline-offset-4 hover:text-bone hover:underline">
+        Collections
+      </Link>
+    </>
+  );
+
+  // A new desk's link, on its own above the checklist.
   const linkSection = (
     <section aria-labelledby="link-h" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 id="link-h" className="eyebrow">Your link</h2>
-        <p className="text-[12px] text-dim">
-          {problem
-            ? "Not taking uploads right now"
-            : active
-              ? `Sends tracks to “${active.name}”${active.closes_at ? `, open until ${fmtDay(active.closes_at)}` : ""}`
-              : "Sends tracks to your Review Queue"}
-          {" · "}
-          <Link href="/dashboard/collections" className="text-mute underline-offset-4 hover:text-bone hover:underline">
-            Collections
-          </Link>
-        </p>
+        <p className="text-[12px] text-dim">{linkWhere}</p>
       </div>
       <CopyLinkBox link={link} />
     </section>
@@ -329,9 +335,18 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
           {(!fresh || canSend) && (
             <aside aria-label="Your desk" className="flex min-w-0 flex-col gap-7">
               {deskPanel}
-              {!fresh && linkSection}
-              {/* On a team desk, Members can't send as the account; in the beta nobody sends from here (switch send_music). */}
-              {canSend && <SendMusicCard recent={recentSends} host={APP_URL.replace(/^https?:\/\//, "")} />}
+              {/* The link and sending sit in a panel like the desk's (owner, 30 Oct: they felt out of place loose below it). */}
+              <div className="panel overflow-hidden">
+                {!fresh && (
+                  <section aria-labelledby="link-h" className="flex flex-col gap-2.5 px-4 py-4">
+                    <h2 id="link-h" className="eyebrow">Your link</h2>
+                    <CopyLinkBox link={link} />
+                    <p className="text-[12px] text-faint">{linkWhere}</p>
+                  </section>
+                )}
+                {/* On a team desk, Members can't send as the account; in the beta nobody sends from here (switch send_music). */}
+                {canSend && <SendMusicCard recent={recentSends} host={APP_URL.replace(/^https?:\/\//, "")} />}
+              </div>
             </aside>
           )}
         </div>
