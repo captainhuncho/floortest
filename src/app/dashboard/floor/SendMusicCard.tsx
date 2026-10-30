@@ -9,8 +9,8 @@ export function SendMusicCard({ recent, host }: { recent: { handle: string; name
   return (
     <section aria-labelledby="send-h" className="border-t border-line first:border-t-0">
       <div className="flex flex-col gap-2.5 px-4 py-4">
-        <h2 id="send-h" className="eyebrow">Send music</h2>
-        <form action="/dashboard/send" className="flex w-full min-w-0 items-center gap-2 rounded-xl border border-line bg-ink p-1 pl-3">
+        <h2 id="send-h" className="text-[15px] font-semibold text-bone">Send music</h2>
+        <form action="/dashboard/send" className="flex w-full min-w-0 items-center gap-2 rounded-xl border border-line bg-well p-1 pl-3">
           <label htmlFor="send-to-q" className="sr-only">
             Their link name
           </label>
