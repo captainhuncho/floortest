@@ -4,7 +4,7 @@ import { APP_URL } from "@/lib/mail";
 
 const HOST = APP_URL.replace(/^https?:\/\//, "");
 
-export const metadata = { title: "Notice and Takedown Policy (draft) — FloorTest" };
+export const metadata = { title: "Notice and Takedown Policy — FloorTest" };
 
 export default function Takedown() {
   return (
@@ -24,7 +24,7 @@ export default function Takedown() {
             "Use our contact form with the topic \"Copyright claim\" at /contact?takedown=1, or email us. Please include:",
             "1. Your name, address, phone and email, and whether you're the rights holder or acting for them.",
             "2. The work you own (title, artist, and a link or ISRC if released).",
-            `3. Where it is on FloorTest: the sender's link (${HOST}/name), the track title and artist as shown, and roughly when it was sent.`,
+            `3. Where it is on FloorTest: the receiver's link it was sent to (${HOST}/name), the track title and artist as shown, and roughly when it was sent.`,
             "4. A statement that you believe in good faith the use isn't authorised by the rights holder, its agent or the law.",
             "5. A statement that the information in your notice is accurate and, under penalty of perjury, that you are the rights holder or authorised to act for them.",
             "6. Your physical or electronic signature (typing your full name is fine).",
@@ -33,7 +33,7 @@ export default function Takedown() {
         [
           "What we do",
           [
-            "We review every complete notice, usually within 2 working days. If it's valid we remove or disable the track, tell the person who sent it, and keep a record. Repeat infringers lose their account.",
+            "We review every complete notice, usually within 2 working days. If it's valid we remove or disable the track, tell the person who sent it, and keep a record. Repeat infringers are blocked from sending, and lose their account if they have one.",
             "We may forward your notice, including your name and contact details, to the person who sent the track, so they can respond.",
           ],
         ],
@@ -47,7 +47,7 @@ export default function Takedown() {
         [
           "United States (DMCA)",
           [
-            "For US users this policy follows the Digital Millennium Copyright Act, 17 U.S.C. \u00a7 512. Our designated agent's details will be listed here once registered with the US Copyright Office.",
+            `For US users this policy follows the Digital Millennium Copyright Act, 17 U.S.C. \u00a7 512. Send US notices to ${LEGAL.copyright}.`,
           ],
         ],
         [
