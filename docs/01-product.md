@@ -40,6 +40,7 @@ Keep this file true to what is live. Any change to a feature updates its row her
 - **Contacts:** People / Messages as a segmented switch; each person's row shows sent, kept and (wider screens) downloaded as chips. A contact's page: the person card, the conversation, then their tracks and Intake.
 - **Activity:** each day is a card; each entry has an icon, what happened, who, and the time on the right.
 - **Account:** profile and plan cards, then setting groups as cards in two columns on desktop. Sign out is one button at the bottom of the page at every width (no longer top right on desktop).
+- **Top bar (every desk page):** search, the bell and the profile sit in one small box; notifications, search (⌘K) and the feedback form open as cards in the same look (day headings, 44px rows, kind chips in search, Idea / Bug / Confusing / Love it as segmented tabs). On phones the notifications sheet and search keep clear of the notch, home bar and keyboard. The loading screen between pages shows card-shaped blocks, still under reduced motion.
 Left out of the mocks because the app has no data for them yet: Activity's "This week" and "Arrived today" tiles, Prepare's crate size and musical key, a contact's streaming links, Account's passkey count and sign-in alerts.
 
 ## Features (sender)
