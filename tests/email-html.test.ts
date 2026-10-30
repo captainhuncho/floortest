@@ -58,6 +58,22 @@ test("a code on its own line becomes the code block; a sentence with a link is n
   assert.equal(welcome.match(/<tr><td class="ft-line ft-text"/g)?.length, 2, "the bullets become list rows");
 });
 
+test("the footer links the legal pages, Contact and Instagram, with Instagram left off security emails", async () => {
+  const { emailHtml } = await import("../src/lib/email-html");
+  const follow = /<a href="https:\/\/www\.instagram\.com\/floortest\.app\/"[^>]*>Instagram<\/a>/;
+  const delivered = emailHtml("Delivered: Nova – Low Orbit", DELIVERED, { optional: false, reserved: false });
+  for (const [path, label] of [["/privacy", "Privacy Policy"], ["/terms", "Terms of Use"], ["/privacy-choices", "Your Privacy Choices"], ["/contact", "Contact us"]])
+    assert.match(delivered, new RegExp(`<a href="${U}${path}"[^>]*>${label}</a>`));
+  assert.match(delivered, /© \d{4} FloorTest Labs/);
+  assert.match(delivered, follow);
+  assert.equal(delivered.match(/<img /g)?.length, 1, "a text link, no social icons");
+  assert.equal(delivered.match(/class="ft-btn-text"/g)?.length, 1, "still one button");
+  assert.match(emailHtml("New tracks", "Hi,\n\nTwo new tracks.\n\n—\nStop these emails: https://floortest.app/stop/x", { optional: true, reserved: false }), follow);
+  const code = emailHtml("Your FloorTest sign-in code", "Hi Max,\n\nYour sign-in code is:\n\n482913\n\n— FloorTest", { optional: false, reserved: true });
+  assert.doesNotMatch(code, /instagram/i, "sign-in codes and other security emails stay free of outside links");
+  assert.match(code, /<a href="https:\/\/floortest\.app\/privacy"/, "the legal links stay on security emails");
+});
+
 test("links elsewhere never become the button", async () => {
   const { emailHtml } = await import("../src/lib/email-html");
   const html = emailHtml("Hi", "Hi,\n\nDetails: https://evil.example/login\n\n— FloorTest", { optional: false, reserved: false });

@@ -12,9 +12,12 @@
  *   any other address                    → a link showing that address
  *   "— FloorTest" at the end             → dropped (the brand line sits at the top)
  *   "Stop these emails: …" (added by mail.ts) → the footer link
+ *   (always)                             → the footer: why it came, Privacy · Terms · Privacy choices · Contact ·
+ *                                          Instagram (not on security emails), © FloorTest Labs
  *   `details` passed with the email (Delivered: Track, Artist, Sent to, File, Sent) → receipt rows above the button (or after a send's track list)
  */
 import { env } from "./env";
+import { INSTAGRAM_URL, footerGroups } from "./site";
 
 const APP_URL = env.appUrl;
 
@@ -126,7 +129,29 @@ function footerLine({ optional, reserved }: Kind, unsub: string | null) {
   if (unsub) return `You're getting this because of your FloorTest email settings. <a href="${escapeHtml(unsub)}" class="ft-faint" style="color:${L.faint};text-decoration:underline">Stop these emails</a>`;
   if (reserved) return "Sent to the email on your FloorTest account. Security emails can't be turned off.";
   if (optional) return "You're getting this because of your FloorTest email settings.";
-  return "Sent by FloorTest.";
+  return "";
+}
+
+/** The footer's links (owner, 30 Oct): the legal pages from the site footer (so hosted Terms or Privacy URLs follow), Contact, and
+ * Instagram to follow us. Security emails leave Instagram out: a sign-in code mail links nowhere but FloorTest. */
+const FOOTER_PAGES = ["Privacy Policy", "Terms of Use", "Your Privacy Choices", "Contact us"];
+function footerLinks({ reserved }: Kind) {
+  const all = footerGroups().flatMap((g) => g.links);
+  const links = FOOTER_PAGES.flatMap((label) => all.filter((l) => l.label === label)).map((l) => ({ label: l.label, href: l.external ? l.href : APP_URL + l.href }));
+  if (!reserved) links.push({ label: "Instagram", href: INSTAGRAM_URL });
+  return links
+    .map((l) => `<a href="${escapeHtml(l.href)}" class="ft-mute" style="color:${L.mute};text-decoration:underline;white-space:nowrap">${escapeHtml(l.label)}</a>`)
+    .join(`<span class="ft-faint" style="color:${L.faint}"> &nbsp;·&nbsp; </span>`);
+}
+
+function footer(kind: Kind, unsub: string | null) {
+  const why = footerLine(kind, unsub);
+  const row = (html: string, top = 0) => `<tr><td class="ft-faint" style="padding-top:${top}px;font-size:12px;line-height:18px;color:${L.faint}">${html}</td></tr>`;
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="ft-line" style="margin-top:28px;border-top:1px solid ${L.line}">` +
+    (why ? row(why, 20) : "") +
+    row(footerLinks(kind), why ? 12 : 20) +
+    row(`© ${new Date().getUTCFullYear()} FloorTest Labs · <a href="${APP_URL}" class="ft-faint" style="color:${L.faint};text-decoration:none">${escapeHtml(shown(APP_URL))}</a>`, 12) +
+    `</table>`;
 }
 
 const DARK_CSS = (() => {
@@ -181,6 +206,6 @@ export function emailHtml(subject: string, body: string, kind: Kind, details?: [
     `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 32px"><tr><td style="padding-right:8px"><img src="${APP_URL}/brand/icon-192.png" width="24" height="24" alt="FloorTest" style="display:block;border:0;border-radius:6px"></td><td class="ft-text" style="font-size:15px;line-height:20px;font-weight:600;color:${L.text}">FloorTest</td></tr></table>` +
     `<h1 style="margin:0 0 12px;font-size:22px;line-height:28px;font-weight:600;letter-spacing:-0.3px;color:${L.text}" class="ft-text">${escapeHtml(headline)}</h1>` +
     parts.join("") +
-    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:20px"><tr><td class="ft-line ft-faint" style="border-top:1px solid ${L.line};padding-top:20px;font-size:12px;line-height:18px;color:${L.faint}">${footerLine(kind, unsub)}<br>FloorTest Labs · <a href="${APP_URL}" class="ft-faint" style="color:${L.faint};text-decoration:none">${escapeHtml(shown(APP_URL))}</a></td></tr></table>` +
+    footer(kind, unsub) +
     `</td></tr></table></td></tr></table></body></html>`;
 }
