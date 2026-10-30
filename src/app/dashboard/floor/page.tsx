@@ -176,7 +176,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   const linkSection = (
     <section aria-labelledby="link-h" className="flex flex-col gap-2.5 rounded-[18px] border border-line bg-card p-3 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
       <h2 id="link-h" className="text-[15px] font-semibold text-bone">Your link</h2>
-      <p className="text-[11.5px] text-mute">{linkWhere.replace(/^Your link · s/, "S")}</p>
+      <p className="text-[11.5px] text-mute">{linkWhere.replace(/^Your link · sends to/, "Sends tracks to").replace(/^Your link · n/, "N")}</p>
       <LinkRow link={link} />
     </section>
   );
