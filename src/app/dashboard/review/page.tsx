@@ -15,6 +15,7 @@ import { FilterMenu } from "../list/FilterMenu";
 import { StatusTabs } from "./StatusTabs";
 import { QueueState, ShownPanel } from "./QueueState";
 import { VIEW_COOKIE } from "../view-cookie";
+import { CARD, Icon, SectionHead } from "@/components/Kit";
 
 export const metadata = { title: "Review Queue — FloorTest" };
 
@@ -119,141 +120,161 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
   const totalActive = collections.reduce((n, c) => n + c.count, 0);
   const twoColumns = !!selected || totalActive > 0;
 
+  const tabLabel = STATUSES.find(([k]) => k === status)![1];
+  // Says how the list is sorted, matching the query's ORDER BY above.
+  const orderWords = status === "review" ? "Oldest first" : status === "all" ? "Newest first" : "Latest decisions first";
+
   return (
-    // Rule 15 Queue (owner, 28 Oct). One order at every width: heading and tabs, the open track, then the rest of the
-    // list. Below 1280px that reads top to bottom, the open track as a card (its own row leaves the list); from
-    // 1280px the heading and list share the narrow left column and the open track gets the room on the right.
+    // Redesign (owner, 30 Oct): the head, tabs and filters run across the top; below them the list card sits in a narrow
+    // left column and the open track's cards take the room on the right from 1280px. One order at every width: on a
+    // phone the open track comes first, then the rest of the list (the open row steps aside, so it reads as Next).
     // QueueState shows a tapped or next track at once, before the server's page arrives.
     <QueueState servedId={selected?.id ?? null} status={status}>
-      <div className={`grid min-h-full ${twoColumns ? "xl:grid-cols-[minmax(360px,440px)_minmax(0,1fr)] xl:grid-rows-[auto_1fr]" : ""}`}>
-        <section className="min-w-0 px-4 pt-6 sm:px-8 xl:col-start-1 xl:row-start-1 xl:px-6" aria-labelledby="submissions-h">
-          <header className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <h1 id="submissions-h" className="page-title">
-                Review Queue {counts.review > 0 && <span className="font-mono text-mute tnum">{counts.review}</span>}
-              </h1>
-              {/* The heading already carries the number on a phone; the line stays for "all caught up" and a collection. */}
-              <p className={`mt-1 text-mute ${counts.review && !collection ? "max-sm:hidden" : ""}`}>
-                {counts.review
-                  ? `${counts.review} track${counts.review === 1 ? "" : "s"} need${counts.review === 1 ? "s" : ""} a decision`
-                  : "You're all caught up"}
-                {collection ? ` in ${collection.name}` : ""}.
-              </p>
-            </div>
-            <ViewToggle view="queue" />
-          </header>
+      <div className="page-gutter py-4 sm:py-6">
+        <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-3.5 xl:max-w-[1360px]">
+          <section className="flex min-w-0 flex-col gap-3" aria-labelledby="submissions-h">
+            <header className="flex flex-wrap items-end justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11.5px] text-mute">
+                  {counts.review
+                    ? `${counts.review} waiting${status === "review" ? " · oldest first" : ""}`
+                    : "You're all caught up"}
+                  {collection ? ` · ${collection.name}` : ""}
+                </p>
+                <h1 id="submissions-h" className="text-[22px] font-semibold leading-tight tracking-[-0.025em] text-bone">
+                  Review Queue
+                </h1>
+              </div>
+              <ViewToggle view="queue" />
+            </header>
 
-          <StatusTabs
-            active={status}
-            tabs={STATUSES.map(([k, label]) => ({ key: k, label, count: counts[k], href: href({ s: k === "review" ? undefined : k, t: undefined }) }))}
-          />
-
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            {collections.length > 1 && (
-              <FilterMenu
-                label="Collection"
-                options={[
-                  { label: "All collections", href: href({ c: undefined, t: undefined }), active: !collection },
-                  ...collections.map((c) => ({
-                    label: c.needs_review > 0 ? `${c.name} · ${c.needs_review} new` : c.name,
-                    href: href({ c: String(c.id), t: undefined }),
-                    active: c.id === collection?.id,
-                  })),
-                ]}
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
+              <StatusTabs
+                active={status}
+                tabs={STATUSES.map(([k, label]) => ({ key: k, label, count: counts[k], href: href({ s: k === "review" ? undefined : k, t: undefined }) }))}
               />
+              <div className="flex min-w-0 items-center gap-2 lg:max-w-[520px] lg:flex-1">
+                {collections.length > 1 && (
+                  <FilterMenu
+                    label="Collection"
+                    icon
+                    options={[
+                      { label: "All collections", href: href({ c: undefined, t: undefined }), active: !collection },
+                      ...collections.map((c) => ({
+                        label: c.needs_review > 0 ? `${c.name} · ${c.needs_review} new` : c.name,
+                        href: href({ c: String(c.id), t: undefined }),
+                        active: c.id === collection?.id,
+                      })),
+                    ]}
+                  />
+                )}
+                <form action="/dashboard/review" className="relative min-w-0 flex-1" role="search">
+                  {sp.c && <input type="hidden" name="c" value={sp.c} />}
+                  {status !== "review" && <input type="hidden" name="s" value={status} />}
+                  <label htmlFor="q" className="sr-only">
+                    Search tracks
+                  </label>
+                  <span className="pointer-events-none absolute inset-y-0 left-3 grid place-items-center text-mute">
+                    <Icon name="search" className="size-4" />
+                  </span>
+                  <input
+                    id="q"
+                    name="q"
+                    defaultValue={search}
+                    placeholder="Search title, artist or sender"
+                    className="input min-h-11 rounded-xl! bg-well! pl-9 max-sm:text-base sm:text-[13px]"
+                  />
+                </form>
+              </div>
+            </div>
+          </section>
+
+          <div className={`grid min-w-0 gap-4 ${twoColumns ? "xl:grid-cols-[380px_minmax(0,1fr)] xl:items-start" : ""}`}>
+            {selected && sender && (
+              <aside
+                id="review-card"
+                aria-label="Review"
+                // The whole column turns like a page on a swipe (DecisionRail); it stays mounted while tracks change.
+                data-swipe-zone
+                className="min-w-0 xl:col-start-2 xl:row-start-1"
+              >
+                <ShownPanel servedId={selected.id}>
+                  <ReviewPanel
+                    key={selected.id}
+                    track={selected}
+                    sender={sender}
+                    collections={collections}
+                    selfHref={href({ t: String(selected.id) })}
+                    next={nextRow ? { href: href({ t: String(nextRow.id) }), track: toPlayer(nextRow) } : null}
+                    prev={prevRow ? { href: href({ t: String(prevRow.id) }), track: toPlayer(prevRow) } : null}
+                    position={idx >= 0 && rows.length > 1 ? `${idx + 1} of ${rows.length}` : null}
+                  />
+                </ShownPanel>
+              </aside>
             )}
-            <form action="/dashboard/review" className="ml-auto min-w-48 flex-1 sm:max-w-72" role="search">
-              {sp.c && <input type="hidden" name="c" value={sp.c} />}
-              {status !== "review" && <input type="hidden" name="s" value={status} />}
-              <label htmlFor="q" className="sr-only">
-                Search tracks
-              </label>
-              <input id="q" name="q" defaultValue={search} placeholder="Search title, artist or sender" className="input py-2" />
-            </form>
-          </div>
-        </section>
+            {/* Wide screens keep the review column even when this tab is empty, so switching tabs never reflows the page. */}
+            {!selected && totalActive > 0 && (
+              <aside aria-label="Review" className={`${CARD} hidden min-h-64 items-center justify-center p-6 xl:col-start-2 xl:row-start-1 xl:flex`}>
+                <p className="max-w-56 text-center text-[13px] text-mute">Nothing to review in this view. Pick another tab or collection.</p>
+              </aside>
+            )}
 
-        {selected && sender && (
-          <aside
-            id="review-card"
-            aria-label="Review"
-            // The whole card turns like a page on a swipe (DecisionRail); it stays mounted while tracks change.
-            data-swipe-zone
-            className="panel mx-4 mt-4 overflow-hidden sm:mx-8 xl:sticky xl:top-[68px] xl:col-start-2 xl:row-span-2 xl:row-start-1 xl:m-0 xl:h-[calc(100dvh-68px)] xl:self-start xl:overflow-y-auto xl:rounded-none xl:border-0 xl:border-l xl:bg-ink-2/60"
-          >
-            <ShownPanel servedId={selected.id}>
-              <ReviewPanel
-                key={selected.id}
-                track={selected}
-                sender={sender}
-                collections={collections}
-                selfHref={href({ t: String(selected.id) })}
-                next={nextRow ? { href: href({ t: String(nextRow.id) }), track: toPlayer(nextRow) } : null}
-                prev={prevRow ? { href: href({ t: String(prevRow.id) }), track: toPlayer(prevRow) } : null}
-                position={idx >= 0 && rows.length > 1 ? `${idx + 1} of ${rows.length}` : null}
-              />
-            </ShownPanel>
-          </aside>
-        )}
-        {/* Wide screens keep the review column even when this tab is empty, so switching tabs never reflows the page. */}
-        {!selected && totalActive > 0 && (
-          <aside aria-label="Review" className="hidden border-line bg-ink-2/60 xl:sticky xl:top-[68px] xl:col-start-2 xl:row-span-2 xl:row-start-1 xl:flex xl:h-[calc(100dvh-68px)] xl:items-center xl:justify-center xl:self-start xl:border-l">
-            <p className="max-w-56 text-center text-sm text-mute">Nothing to review in this view. Pick another tab or collection.</p>
-          </aside>
-        )}
-
-        {/* Fades while a tab change loads (see StatusTabs and globals.css). */}
-        <section aria-label="Tracks in this view" className="review-list min-w-0 px-4 pt-4 pb-6 sm:px-8 xl:col-start-1 xl:row-start-2 xl:px-6">
-          {totalActive === 0 && !search ? (
-            <EmptyDesk link={`${APP_URL}/${user.handle}`} welcome={!!sp.welcome} />
-          ) : rows.length === 0 ? (
-            <div className="rounded-xl border border-line py-16 text-center">
-              <p className="font-medium">
-                {search ? `Nothing matches “${search}”.` : status === "review" ? "Nothing waiting. You're all caught up." : "Nothing here yet."}
-              </p>
-              {status === "review" && counts.kept > 0 && (
-                <Link href={href({ s: "kept", t: undefined })} className="mt-3 inline-block text-bone underline underline-offset-4">
-                  Prepare your {counts.kept} kept track{counts.kept === 1 ? "" : "s"} for a set →
-                </Link>
+            {/* Fades while a tab change loads (see StatusTabs and globals.css). */}
+            <section aria-label="Tracks in this view" className="review-list min-w-0 xl:col-start-1 xl:row-start-1">
+              {totalActive === 0 && !search ? (
+                <EmptyDesk link={`${APP_URL}/${user.handle}`} welcome={!!sp.welcome} />
+              ) : rows.length === 0 ? (
+                <div className={`${CARD} px-4 py-14 text-center`}>
+                  <p className="text-[13px] font-semibold text-bone">
+                    {search ? `Nothing matches “${search}”.` : status === "review" ? "Nothing waiting. You're all caught up." : "Nothing here yet."}
+                  </p>
+                  {status === "review" && counts.kept > 0 && (
+                    <Link href={href({ s: "kept", t: undefined })} className="mt-3 inline-flex min-h-11 items-center text-[13px] text-bone underline underline-offset-4">
+                      Prepare your {counts.kept} kept track{counts.kept === 1 ? "" : "s"} for a set →
+                    </Link>
+                  )}
+                </div>
+              ) : (
+                <div className={`${CARD} p-3 pt-2`}>
+                  <div className="px-0.5 pt-1 pb-2">
+                    <SectionHead title={tabLabel} aside={orderWords} />
+                  </div>
+                  <TrackList
+                    rows={rows}
+                    showDecision={status === "all"}
+                    selectedId={selected?.id ?? null}
+                    hrefFor={Object.fromEntries(rows.map((r) => [r.id, href({ t: String(r.id) })]))}
+                  />
+                  <p className="mt-2.5 flex items-start gap-1.5 border-t border-dashed border-line px-0.5 pt-2.5 text-[11.5px] text-mute">
+                    <Icon name="lock" className="mt-px size-3" />
+                    Decisions stay private. Senders see Listened, Downloaded, Played out and your replies.
+                  </p>
+                </div>
               )}
-            </div>
-          ) : (
-            <>
-              {rows.length > 1 && <h2 className="mb-2 text-sm font-semibold text-mute xl:sr-only">{status === "review" ? "Next" : "In this view"}</h2>}
-              <TrackList
-                rows={rows}
-                showDecision={status === "all"}
-                selectedId={selected?.id ?? null}
-                hrefFor={Object.fromEntries(rows.map((r) => [r.id, href({ t: String(r.id) })]))}
-              />
-            </>
-          )}
-          {rows.length > 0 && <p className="mt-3 text-xs text-faint">Decisions stay private. Senders see Listened, Downloaded, Played out and your replies.</p>}
-        </section>
+            </section>
+          </div>
+        </div>
       </div>
     </QueueState>
   );
 }
 
 function EmptyDesk({ link, welcome }: { link: string; welcome: boolean }) {
+  const steps = ["Press play", "Keep, Not for me, or reply. The next track comes up automatically", "Prepare your kept tracks for a set"];
   return (
-    <div className="card p-8">
-      <p className="label text-lime">{welcome ? "Your desk is ready" : "No tracks yet"}</p>
-      <h2 className="mt-3 text-2xl font-bold">Share your link in your next callout.</h2>
-      <p className="mt-2 max-w-lg text-mute">
+    <div className={`${CARD} p-4 sm:p-6`}>
+      <p className="text-[11.5px] font-semibold text-lime">{welcome ? "Your desk is ready" : "No tracks yet"}</p>
+      <h2 className="mt-1.5 text-[18px] font-semibold leading-snug tracking-[-0.02em] text-bone">Share your link in your next callout.</h2>
+      <p className="mt-1.5 max-w-lg text-[13px] text-mute">
         Senders pick a WAV or MP3, confirm their email and send. No account needed. New tracks land here, ready to play.
       </p>
-      <p className="mt-6 w-fit rounded-md border border-line bg-ink px-4 py-3 font-mono">{link}</p>
-      <ol className="mt-8 grid gap-3 sm:grid-cols-3">
-        <li className="rounded-md border border-line p-4">
-          <span className="text-lime">1</span> Press play
-        </li>
-        <li className="rounded-md border border-line p-4">
-          <span className="text-lime">2</span> Keep, Not for me, or reply. The next track comes up automatically
-        </li>
-        <li className="rounded-md border border-line p-4">
-          <span className="text-lime">3</span> Prepare your kept tracks for a set
-        </li>
+      <p className="mt-4 w-fit max-w-full break-all rounded-[11px] border border-line bg-well px-3 py-2.5 font-mono text-[12.5px] text-bone">{link}</p>
+      <ol className="mt-5 grid gap-2 sm:grid-cols-3">
+        {steps.map((step, i) => (
+          <li key={step} className="flex gap-2 rounded-[11px] border border-line bg-well p-3 text-[13px] text-bone">
+            <span className="font-semibold text-lime tnum">{i + 1}</span> {step}
+          </li>
+        ))}
       </ol>
     </div>
   );

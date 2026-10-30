@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { CARD } from "@/components/Kit";
 
 /** Each page with the least team role that can open it (on your own desk you're the owner, so you see all of them). */
 export const SECTIONS = [
@@ -17,23 +18,24 @@ const RANK = { member: 1, admin: 2, owner: 3 } as const;
 export const sectionsFor = (role: keyof typeof RANK, teams: boolean) =>
   SECTIONS.filter((s) => RANK[role] >= RANK[s.min] && (s.slug !== "team" || teams));
 
-/** Desktop: a left rail of the six settings pages. Phones: a back link to the Account menu and this page's name. */
+/** Desktop: a left rail of the settings pages. Phones: a back link to the Account menu. */
 export function SettingsNav({ role, teams }: { role: keyof typeof RANK; teams: boolean }) {
   const path = usePathname();
   const sections = sectionsFor(role, teams);
   const current = SECTIONS.find((s) => path.startsWith(`/dashboard/settings/${s.slug}`));
   return (
     <>
-      <div className="flex h-12 items-center gap-2 md:hidden">
-        <Link href="/dashboard/account" aria-label="Back to Account" className="grid size-11 place-items-center">
+      {/* Phones: the way back to the Account menu (the page's own title says where you are). */}
+      <div className="mb-1 flex h-11 items-center md:hidden">
+        <Link href="/dashboard/account" aria-label="Back to Account" className="-ml-2 flex min-h-11 items-center gap-1.5 rounded-[11px] px-2 text-[12px] text-mute hover:text-bone">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icons/arrow-left.svg" alt="" className="size-4" />
+          Account
         </Link>
-        <span className="text-[11px] font-bold uppercase tracking-[0.5px] text-mute">{current?.title ?? "Settings"}</span>
       </div>
-      <nav aria-label="Settings" className="hidden md:block">
-        <p className="mb-3 px-3 text-[11px] font-bold uppercase tracking-[0.5px] text-mute">Settings</p>
-        <ul className="space-y-0.5">
+      <nav aria-label="Settings" className={`${CARD} hidden p-2 md:sticky md:top-6 md:block`}>
+        <p className="px-2.5 pb-1.5 pt-1 text-[11.5px] font-semibold text-mute">Settings</p>
+        <ul className="flex flex-col gap-0.5">
           {sections.map((s) => {
             const on = current?.slug === s.slug;
             return (
@@ -41,7 +43,7 @@ export function SettingsNav({ role, teams }: { role: keyof typeof RANK; teams: b
                 <Link
                   href={`/dashboard/settings/${s.slug}`}
                   aria-current={on ? "page" : undefined}
-                  className={`block rounded-lg px-3 py-2.5 text-sm ${on ? "bg-ink-3 font-semibold text-bone" : "text-mute hover:bg-ink-2 hover:text-bone"}`}
+                  className={`flex min-h-10 items-center rounded-[11px] px-2.5 text-[13px] ${on ? "bg-lime/12 font-semibold text-lime" : "text-mute hover:bg-well hover:text-bone"}`}
                 >
                   {s.title}
                 </Link>

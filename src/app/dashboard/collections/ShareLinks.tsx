@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
+import { CARD, SectionHead } from "@/components/Kit";
 import { useToast } from "@/components/Toast";
 import { fmtDate } from "@/lib/format";
 import {
@@ -104,7 +105,7 @@ function NewLink({ collectionId }: { collectionId: number }) {
       </button>
     );
   return (
-    <div className="rounded-md border border-line p-3">
+    <div className="w-full rounded-[13px] border border-line bg-well p-3">
       {state?.url ? (
         <>
           <FreshUrl url={state.url} />
@@ -163,7 +164,7 @@ function LinkCard({ link, at }: { link: ShareLinkView; at: number }) {
   const [addState, add, adding] = useActionState<LinkState, FormData>(addLinkRecipients.bind(null, link.id), null);
   const dead = !!link.revoked_at || (!!link.expires_at && link.expires_at < at);
   return (
-    <li className={`rounded-md border border-line p-3 text-[12px] ${dead ? "opacity-60" : ""}`}>
+    <li className={`rounded-[13px] border border-line bg-well p-3 text-[12px] ${dead ? "opacity-60" : ""}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="font-bold text-bone">
           {link.label || "Share link"} <span className="font-normal text-mute">· {PERM[link.permission]}</span>
@@ -341,13 +342,11 @@ function LinkCard({ link, at }: { link: ShareLinkView; at: number }) {
  */
 export function ShareLinks({ collectionId, links, sharedTracks, at }: { collectionId: number; links: ShareLinkView[]; /** When the page was made: which links have expired. */ at: number; sharedTracks: number }) {
   return (
-    <section aria-labelledby="links-h" className="card p-3.5 md:px-4">
+    <section aria-labelledby="links-h" className={`${CARD} p-3`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <h2 id="links-h" className="text-[11px] font-bold uppercase text-faint">
-            Share links
-          </h2>
-          <p className="mt-1 max-w-xl text-[12px] text-mute">
+        <div className="min-w-0">
+          <SectionHead id="links-h" icon="share" title="Share links" />
+          <p className="mt-1.5 max-w-xl text-[12px] text-mute">
             Let named people listen or download. They confirm their email first, and you see who opened what.{" "}
             {sharedTracks} track{sharedTracks === 1 ? "" : "s"} here can be shared: their senders agreed.
           </p>

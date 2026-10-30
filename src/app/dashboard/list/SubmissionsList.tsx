@@ -5,6 +5,7 @@ import { q, likeContains, type Track, type User } from "@/lib/db";
 import { MIX_STATUS, RELEASE_STATUS } from "@/lib/plans";
 import { ViewToggle } from "../ViewToggle";
 import { FilterMenu, type Option } from "./FilterMenu";
+import { CARD, Icon } from "@/components/Kit";
 import { ListRows, type ListRow } from "./ListRows";
 
 type Search = { c?: string; s?: string; q?: string; type?: string; sender?: string; genre?: string; bpm?: string; verified?: string };
@@ -150,23 +151,27 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
   ];
 
   return (
-    <div className="flex min-h-full flex-col">
-      <header className="flex flex-wrap items-center justify-between gap-3 px-3 pb-2 pt-3 md:px-8 md:pb-4 md:pt-6">
-        <h1 className="text-xl font-bold text-bone md:text-[32px]">Review Queue</h1>
+    <div className="page-gutter flex min-h-full flex-col gap-3.5 py-4 sm:py-6">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11.5px] text-mute">Every track, one row each</p>
+          <h1 className="text-[22px] font-semibold leading-tight tracking-[-0.025em] text-bone">Review Queue</h1>
+        </div>
+        <ViewToggle view="list" />
       </header>
 
-      {/* Phones: Figma "Filters-Scrollable" chips; desktop keeps the toolbar. */}
-      <div className="flex flex-wrap items-center gap-1.5 px-3 pb-3 md:gap-2 md:px-8 md:pb-5">
+      {/* Filters as small menus; on phones "All Queue" clears them in one tap. */}
+      <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
         <Link
           href="/dashboard/review?view=list"
-          className={`rounded-xl px-3 py-1.5 text-[11px] font-bold md:hidden ${sp.s || sp.c || sp.type || sp.sender || sp.genre || search ? "border border-line bg-ink-3 text-mute" : "bg-bone text-ink"}`}
+          className={`inline-flex min-h-9 items-center rounded-[10px] px-2.5 text-[11.5px] font-semibold md:hidden ${sp.s || sp.c || sp.type || sp.sender || sp.genre || search ? "border border-line bg-well text-mute" : "bg-lime/12 text-lime"}`}
         >
           All Queue
         </Link>
         {menus.map((m) => (
           <FilterMenu key={m.label} label={m.label} options={m.options} />
         ))}
-        <form action="/dashboard/review" role="search" className="ml-auto flex items-center gap-2">
+        <form action="/dashboard/review" role="search" className="relative ml-auto flex items-center">
           <input type="hidden" name="view" value="list" />
           {Object.entries(sp).map(([k, v]) =>
             v && ["c", "s", "type", "sender", "genre"].includes(k) ? <input key={k} type="hidden" name={k} value={v} /> : null,
@@ -174,15 +179,17 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
           <label htmlFor="list-q" className="sr-only">
             Search
           </label>
-          <input id="list-q" name="q" defaultValue={search} placeholder="Search tracks…" className="input w-36 py-1.5 text-[12px] md:w-52" />
+          <span className="pointer-events-none absolute inset-y-0 left-2.5 grid place-items-center text-mute">
+            <Icon name="search" className="size-[15px]" />
+          </span>
+          <input id="list-q" name="q" defaultValue={search} placeholder="Search tracks…" className="input min-h-9 w-40 rounded-[10px]! bg-well! py-1.5 pl-8 max-sm:text-base sm:text-[12px] md:w-56" />
         </form>
-        <ViewToggle view="list" />
       </div>
 
       {rows.length === 0 ? (
-        <p className="px-6 py-20 text-center text-mute">{search || sp.s || sp.c || sp.type || sp.sender || sp.genre ? "Nothing matches these filters." : "No tracks yet. Share your link to start receiving."}</p>
+        <p className={`${CARD} px-6 py-16 text-center text-[13px] text-mute`}>{search || sp.s || sp.c || sp.type || sp.sender || sp.genre ? "Nothing matches these filters." : "No tracks yet. Share your link to start receiving."}</p>
       ) : (
-        <div className="md:px-8">
+        <div>
           <ListRows rows={rows} collections={collections.map((c) => ({ id: c.id, name: c.name }))} />
         </div>
       )}

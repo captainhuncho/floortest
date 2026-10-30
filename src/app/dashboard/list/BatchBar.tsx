@@ -43,7 +43,7 @@ export function BatchBar({
     <div
       role="region"
       aria-label="Selected tracks"
-      className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+92px)] z-40 mx-auto max-w-3xl rounded-xl border border-line-2 bg-ink-3 p-3 shadow-pop md:bottom-6"
+      className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+92px)] z-40 mx-auto max-w-3xl rounded-[18px] border border-line-2 bg-card p-3 shadow-pop md:bottom-6"
     >
       {confirming ? (
         <div className="flex flex-wrap items-center gap-2">
