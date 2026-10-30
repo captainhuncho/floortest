@@ -5,7 +5,18 @@ import { useEffect, useRef, useState } from "react";
 import type { BotAction } from "@/lib/turnstile";
 
 type TurnstileApi = {
-  render: (el: HTMLElement, opts: { sitekey: string; action: string; theme: string; size: string; execution: "render" | "execute"; appearance: "always" | "execute" | "interaction-only" }) => string;
+  render: (
+    el: HTMLElement,
+    opts: {
+      sitekey: string;
+      action: string;
+      theme: string;
+      size: string;
+      execution: "render" | "execute";
+      appearance: "always" | "execute" | "interaction-only";
+      "error-callback": (code: string) => boolean;
+    },
+  ) => string;
   execute: (el: HTMLElement | string) => void;
   reset: (id: string) => void;
   remove: (id: string) => void;
@@ -47,7 +58,10 @@ export function Turnstile({ siteKey, action, theme = "dark", eager = false }: { 
     const tryRender = () => {
       const t = api();
       if (!t || id) return !!id;
-      id = t.render(el, { sitekey: siteKey, action, theme, size: "flexible", execution: "execute", appearance: "interaction-only" });
+      // Without an error callback Cloudflare throws every failed check as a page crash (seen in Sentry when a send
+      // page sat open for hours and the background renewal failed). Handled here: Cloudflare retries on its own, the
+      // next submit renews the check anyway, and the server still refuses a send without a valid token.
+      id = t.render(el, { sitekey: siteKey, action, theme, size: "flexible", execution: "execute", appearance: "interaction-only", "error-callback": () => true });
       t.execute(id);
       return true;
     };
