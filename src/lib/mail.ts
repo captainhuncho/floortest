@@ -31,9 +31,11 @@ export const HIDDEN = "•••••• (hidden)";
  * two-step, passkey or Google sign-in changed, new sign-in, account deleted). Only these may use the part of
  * the day's send limit kept back (MAIL_RESERVED_SHARE), so receipts and notifications can never starve them.
  * `expires`: worthless by tomorrow (a 10-minute code). Past the day's shared part it's dropped, not held for midnight.
+ * `details`: receipt lines ([label, value]) for the designed version only (src/lib/email-html.ts); the text is unchanged.
  */
-type MailOpts = { userId: number | null; to: string; subject: string; body: string; audience?: Audience; unsubscribe?: UnsubKind; secrets?: (string | null | undefined)[]; reserved?: boolean; expires?: boolean };
-type Payload = { to: string; subject: string; body: string; unsub: string | null; expires?: boolean };
+export type Details = [string, string][];
+type MailOpts = { userId: number | null; to: string; subject: string; body: string; audience?: Audience; unsubscribe?: UnsubKind; secrets?: (string | null | undefined)[]; reserved?: boolean; expires?: boolean; details?: Details };
+type Payload = { to: string; subject: string; body: string; unsub: string | null; expires?: boolean; details?: Details };
 
 /*
  * The outbox is also the send queue (Codex review, phase B item 4; 24 Oct). Every email is written to `outbox` before
@@ -80,7 +82,7 @@ export async function queueMail(opts: MailOpts, db: Queryable = q): Promise<numb
   // Optional emails carry a one-click unsubscribe (header for Gmail/Yahoo, plus a link in the text).
   const unsub = opts.unsubscribe && opts.userId ? unsubToken(opts.userId, opts.unsubscribe, opts.to) : null;
   const body = unsub ? `${opts.body}\n\n—\nStop these emails: ${APP_URL}/unsubscribe/${unsub}` : opts.body;
-  const payload: Payload = { to: opts.to, subject: opts.subject, body, unsub, ...(opts.expires ? { expires: true } : {}) };
+  const payload: Payload = { to: opts.to, subject: opts.subject, body, unsub, ...(opts.expires ? { expires: true } : {}), ...(opts.details?.length ? { details: opts.details } : {}) };
   const at = now();
   const row = await db.get<{ id: number }>(
     `INSERT INTO outbox (user_id, to_email, subject, body, status, audience, created_at, payload, idem_key, attempts, next_at, optional, reserved)
@@ -229,7 +231,7 @@ export async function deliver(id: number, { retry = true } = {}): Promise<string
           to,
           subject,
           text: p.body,
-          html: emailHtml(p.subject, p.body, { optional: !!row.optional, reserved: !!row.reserved }),
+          html: emailHtml(p.subject, p.body, { optional: !!row.optional, reserved: !!row.reserved }, p.details),
           ...(env.email.replyTo ? { reply_to: env.email.replyTo } : {}),
           ...(p.unsub
             ? { headers: { "List-Unsubscribe": `<${APP_URL}/api/unsubscribe/${p.unsub}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } }

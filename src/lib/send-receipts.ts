@@ -27,6 +27,29 @@ export type SendGroup = { userId: number; column: "batch_id" | "release_id"; id:
 
 type Templates = { one: { subject: string; body: string }; many: { subject: string; body: string } };
 
+type DetailTrack = { title: string; artist: string; original_name: string | null; duration: number | null; created_at: number };
+
+const SENT_AT = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+const minutes = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
+/** "WAV · 6:42" from the file's name and length; just the one that's known, or nothing. */
+function fileLine(t: DetailTrack) {
+  const ext = t.original_name?.match(/\.([a-z0-9]{2,5})$/i)?.[1].toUpperCase();
+  return [ext, t.duration ? minutes(t.duration) : null].filter(Boolean).join(" · ");
+}
+
+/**
+ * The receipt lines under a "Delivered" email's opening (designed version only; the text keeps the editable wording):
+ * what was sent, to whom and when. Times are UTC, as the sender's own time zone isn't known.
+ */
+export function receiptDetails(tracks: DetailTrack[], receiver: string, collection?: string): [string, string][] {
+  const to = collection ? `${receiver} · ${collection}` : receiver;
+  const sent = `${SENT_AT.format(new Date(Math.max(...tracks.map((t) => t.created_at))))} UTC`;
+  if (tracks.length > 1) return [["Sent to", to], ["Tracks", String(tracks.length)], ["Sent", sent]];
+  const [t] = tracks;
+  const file = fileLine(t);
+  return [["Track", noLinks(t.title)], ["Artist", noLinks(t.artist)], ["Sent to", to], ...(file ? [["File", file] as [string, string]] : []), ["Sent", sent]];
+}
+
 /** The two "Delivered" wordings, loaded before a transaction so it only fills them in. */
 export const receiptTemplates = async (): Promise<Templates> => ({ one: await emailTemplate("delivered"), many: await emailTemplate("delivered_many") });
 
@@ -46,7 +69,7 @@ export async function holdForSend(db: Queryable, g: SendGroup, trackId: number, 
   return saved >= expected ? queueSendEmails(db, g, t) : [];
 }
 
-type Waiting = { id: number; token: string; title: string; artist: string; sender_id: number; collection_id: number | null; deleted_at: number | null; decision: string | null; track_no: number | null; created_at: number };
+type Waiting = { id: number; token: string; title: string; artist: string; sender_id: number; collection_id: number | null; deleted_at: number | null; decision: string | null; track_no: number | null; created_at: number; original_name: string | null; duration: number | null };
 
 /**
  * Claims every track of this send still waiting and queues one "Delivered" email to the sender listing them (with each
@@ -56,7 +79,7 @@ type Waiting = { id: number; token: string; title: string; artist: string; sende
 export async function queueSendEmails(db: Queryable, g: SendGroup, t: Templates) {
   const claimed = await db.all<Waiting>(
     `UPDATE tracks SET receipt_due_at = NULL WHERE user_id = ? AND ${g.column} = ? AND receipt_due_at IS NOT NULL
-     RETURNING id, token, title, artist, sender_id, collection_id, deleted_at, decision, track_no, created_at`,
+     RETURNING id, token, title, artist, sender_id, collection_id, deleted_at, decision, track_no, created_at, original_name, duration`,
     g.userId,
     g.id,
   );
@@ -82,7 +105,14 @@ export async function queueSendEmails(db: Queryable, g: SendGroup, t: Templates)
   const words = tracks.length === 1 ? t.one : t.many;
   const ids = [
     await queueMail(
-      { userId: g.userId, to: sender.email, secrets: tracks.map((x) => x.token), subject: fillEmail(words.subject, vars).replace(/\s+/g, " "), body: fillEmail(words.body, vars) },
+      {
+        userId: g.userId,
+        to: sender.email,
+        secrets: tracks.map((x) => x.token),
+        subject: fillEmail(words.subject, vars).replace(/\s+/g, " "),
+        body: fillEmail(words.body, vars),
+        details: receiptDetails(tracks, receiver.name, collection?.name),
+      },
       db,
     ),
   ];
