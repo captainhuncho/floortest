@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useToast } from "@/components/Toast";
 import { clearKept } from "../actions/review";
+import { GHOST_BTN } from "./buttons";
 
 /**
  * "Start a new batch": empties Prepare so the next keeps start fresh, after a confirm. Nothing is deleted or un-kept
@@ -23,10 +24,10 @@ export function ClearKept({ count }: { count: number }) {
 
   return (
     <>
-      <button type="button" className="btn-ghost w-full px-2! md:w-auto md:shrink-0 md:px-4! disabled:opacity-40" disabled={!count} onClick={() => setOpen(true)}>
-        {/* Phones fit three buttons across, so the short label there. */}
-        <span className="md:hidden">New batch</span>
-        <span className="hidden md:inline">Start a new batch</span>
+      <button type="button" className={`${GHOST_BTN} disabled:opacity-40`} disabled={!count} onClick={() => setOpen(true)}>
+        {/* It shares a row with Files only: the short label where that row is narrow. */}
+        <span className="sm:hidden">New batch</span>
+        <span className="hidden sm:inline">Start a new batch</span>
       </button>
       <dialog
         ref={dialog}

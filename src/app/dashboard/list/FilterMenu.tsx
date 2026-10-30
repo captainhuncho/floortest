@@ -2,11 +2,15 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { Icon } from "@/components/Kit";
 
 export type Option = { label: string; href: string; active: boolean; count?: number };
 
-/** A compact dropdown filter, styled after the reference's "Type ⌄  Genre ⌄" bar. */
-export function FilterMenu({ label, options }: { label: string; options: Option[] }) {
+/**
+ * A compact dropdown filter ("Type ⌄  Genre ⌄"). `icon` puts a folder in front and makes it field-sized, for the
+ * Review Queue's collection filter beside the search.
+ */
+export function FilterMenu({ label, options, icon = false }: { label: string; options: Option[]; icon?: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const current = options.find((o) => o.active);
@@ -31,8 +35,11 @@ export function FilterMenu({ label, options }: { label: string; options: Option[
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-haspopup="menu"
-        className={`flex items-center gap-1.5 rounded-md border border-line bg-ink-3 px-3 py-1.5 text-[11px] font-medium transition hover:text-bone md:px-2.5 md:py-1.5 md:text-[11px] ${filtered ? "text-bone" : "text-mute"}`}
+        className={`flex items-center gap-1.5 border border-line bg-well font-medium transition hover:text-bone ${
+          icon ? "min-h-11 rounded-xl px-3 text-[13px]" : "min-h-9 rounded-[10px] px-2.5 text-[11.5px]"
+        } ${filtered ? "text-bone" : "text-mute"}`}
       >
+        {icon && <Icon name="folder" className="size-4" />}
         {label}
         {filtered && <span className="max-w-32 truncate text-lime">: {current.label}</span>}
         <svg aria-hidden viewBox="0 0 12 12" className={`h-3 w-3 transition ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -40,7 +47,7 @@ export function FilterMenu({ label, options }: { label: string; options: Option[
         </svg>
       </button>
       {open && (
-        <div role="menu" className="absolute left-0 top-full z-30 mt-1 max-h-80 min-w-52 overflow-y-auto rounded-lg border border-line bg-ink-2 p-1 shadow-pop">
+        <div role="menu" className="absolute left-0 top-full z-30 mt-1 max-h-80 min-w-52 overflow-y-auto rounded-[13px] border border-line bg-card p-1 shadow-pop">
           {options.map((o) => (
             <Link
               key={o.href}
@@ -48,7 +55,7 @@ export function FilterMenu({ label, options }: { label: string; options: Option[
               aria-checked={o.active}
               href={o.href}
               onClick={() => setOpen(false)}
-              className={`flex items-center justify-between gap-4 rounded-md px-3 py-2 text-sm hover:bg-ink-3 ${o.active ? "text-bone" : "text-mute"}`}
+              className={`flex min-h-11 items-center justify-between gap-4 rounded-[10px] px-3 py-2 text-[13px] hover:bg-well ${o.active ? "text-bone" : "text-mute"}`}
             >
               <span className="truncate">
                 {o.active && <span aria-hidden className="text-lime">✓ </span>}

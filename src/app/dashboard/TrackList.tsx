@@ -7,6 +7,7 @@ import { Waveform } from "@/components/Waveform";
 import { ago, fmtTime } from "@/lib/format";
 import { toPlayer } from "@/lib/player-track";
 import { useQueue } from "./review/QueueState";
+import { Chip } from "@/components/Kit";
 
 export type Row = {
   id: number;
@@ -50,42 +51,45 @@ export function TrackList({ rows, selectedId, hrefFor, showDecision = true }: { 
   };
 
   return (
-    <ul className="@container panel divide-y divide-line overflow-hidden" aria-label="Tracks">
+    <ul className="@container flex flex-col" aria-label="Tracks">
       {shownRows.map((r, i) => {
         const header = r.release && r.release.id !== shownRows[i - 1]?.release?.id;
         const isCurrent = current?.id === r.id;
         const selected = openId === r.id;
         const d = duration || r.duration || 0;
+        const words = statusWords(r, showDecision);
         return (
           <Fragment key={r.id}>
           {header && (
-            <li className="flex items-baseline gap-2 bg-ink-2 px-4 py-2 text-sm">
-              <span className="text-xs font-semibold text-mute">Folder</span>
-              <span className="min-w-0 truncate font-semibold">{r.release!.title}</span>
-              <span className="shrink-0 font-mono text-xs text-mute tnum">· {r.release!.count} tracks</span>
+            <li className="mt-1 flex items-baseline gap-2 rounded-[10px] bg-well px-2.5 py-1.5 text-[12px]">
+              <span className="text-[11px] font-semibold text-mute">Folder</span>
+              <span className="min-w-0 truncate font-semibold text-bone">{r.release!.title}</span>
+              <span className="shrink-0 text-[11px] text-mute tnum">· {r.release!.count} tracks</span>
             </li>
           )}
-          {/* Rule 15 Queue (28 Oct): one flat panel, a hairline between rows; the open track has a 2px bone edge, lime stays for Keep.
-              The whole row opens the track (the play button sits above that); below 1280px the open track is the card
-              above the list, so its row steps aside and the list reads as what's next. */}
+          {/* Redesign (30 Oct): list rows with a hairline between them; the open track sits on a raised fill with a lime
+              edge. The whole row opens the track (the play button sits above that); below 1280px the open track is the
+              card above the list, so its row steps aside and the list reads as what's next. */}
           <li
             aria-current={selected ? "true" : undefined}
-            className={`group relative grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-l-2 px-3 py-2.5 transition-colors active:bg-ink-3 sm:px-4 @3xl:grid-cols-[auto_minmax(0,14rem)_minmax(0,1fr)_auto] ${
-              selected ? `border-l-bone bg-ink-4 ${state ? "max-xl:hidden" : ""}` : "border-l-transparent hover:bg-ink-2"
-            } ${r.release ? "pl-6 sm:pl-6" : ""}`}
+            className={`group relative grid min-h-11 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5 border-t py-2 transition-colors first:border-t-transparent @3xl:grid-cols-[auto_minmax(0,14rem)_minmax(0,1fr)_auto] ${
+              selected
+                ? `rounded-xl border-t-transparent bg-well px-2 shadow-[inset_2px_0_0_var(--color-lime)] ${state ? "max-xl:hidden" : ""}`
+                : "border-line px-0.5 hover:bg-well/60"
+            } ${selected ? "" : "[[aria-current]+&]:border-t-transparent"} ${r.release ? "pl-4" : ""}`}
           >
             <button
               onClick={() => play(toPlayer(r), queue)}
-              className={`relative z-10 grid size-11 place-items-center rounded-lg border transition ${
-                isCurrent ? "border-bone text-bone" : "border-line text-bone group-hover:border-mute"
+              className={`relative z-10 grid size-11 place-items-center rounded-[11px] border transition-colors ${
+                isCurrent ? "border-lime/50 bg-lime/12 text-lime" : "border-line bg-well text-bone group-hover:border-line-2"
               }`}
               aria-label={isCurrent && playing ? `Pause ${r.title}` : `Play ${r.title}`}
             >
               <PlayIcon playing={isCurrent && playing} className="size-3.5" />
             </button>
             <Link href={hrefFor[r.id]} scroll={false} onClick={(e) => pick(e, r)} className="flex min-w-0 flex-col gap-0.5 rounded-sm after:absolute after:inset-0">
-              <span className="truncate text-[15px] font-semibold text-bone">{r.title}</span>
-              <span className="truncate text-[13px] text-mute">
+              <span className="truncate text-[13px] font-semibold text-bone">{r.title}</span>
+              <span className="truncate text-[11.5px] text-mute">
                 {r.sender !== r.artist ? `${r.artist} · via ${r.sender}` : r.artist}
                 {r.genre ? ` · ${r.genre}` : ""}
                 {r.collection ? ` · ${r.collection}` : ""}
@@ -94,13 +98,14 @@ export function TrackList({ rows, selectedId, hrefFor, showDecision = true }: { 
             <div className={`hidden min-w-0 @3xl:block ${isCurrent ? "relative z-10" : ""}`}>
               <Waveform peaks={r.peaks} height={28} progress={isCurrent && d ? time / d : 0} duration={d} onSeek={isCurrent ? seek : undefined} dim={!!r.decision && !isCurrent} />
             </div>
-            <div className="flex items-center gap-3 text-xs text-mute">
-              <span className="hidden @xl:inline">{statusWords(r, showDecision)}</span>
-              <span className="hidden w-16 text-right font-mono tnum @3xl:block">{r.bpm ? `${Math.round(r.bpm)} BPM` : ""}</span>
-              <span className="w-10 text-right font-mono text-faint tnum">{fmtTime(r.duration)}</span>
-              <span className="hidden w-16 text-right @4xl:block" suppressHydrationWarning>
-                {ago(r.createdAt)}
-              </span>
+            <div className="flex items-center gap-2.5 text-[11px] text-mute">
+              {words && <span className="hidden @xl:inline">{words}</span>}
+              <span className="hidden w-16 text-right tnum @3xl:block">{r.bpm ? `${Math.round(r.bpm)} BPM` : ""}</span>
+              <span className="hidden w-10 text-right text-faint tnum @sm:block">{fmtTime(r.duration)}</span>
+              {/* How long it has waited: lime until it's been played or decided, flat after. */}
+              <Chip tone={!r.played && !r.decision ? "acc" : "flat"}>
+                <span suppressHydrationWarning>{ago(r.createdAt).replace(/ ago$/, "")}</span>
+              </Chip>
             </div>
           </li>
           </Fragment>

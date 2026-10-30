@@ -6,9 +6,9 @@ import { SettingsNav } from "./SettingsNav";
 export default async function SettingsLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
   return (
-    <div className="px-4 py-3 md:grid md:grid-cols-[200px_minmax(0,1fr)] md:gap-10 md:px-8 md:py-8">
+    <div className="page-gutter py-4 sm:py-7 md:grid md:grid-cols-[200px_minmax(0,1fr)] md:items-start md:gap-8">
       <SettingsNav role={user.role} teams={await teamsOn(user.id)} />
-      <div className="min-w-0 max-w-3xl space-y-6 pb-10">{children}</div>
+      <div className="flex min-w-0 max-w-3xl flex-col gap-4 pb-10 sm:gap-5">{children}</div>
     </div>
   );
 }

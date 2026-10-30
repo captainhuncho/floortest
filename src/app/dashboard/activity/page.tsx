@@ -2,9 +2,9 @@ import { trackUse } from "@/lib/usage";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { q, type EventRow } from "@/lib/db";
-import { AUDIT_LABELS, recentAudit } from "@/lib/audit";
+import { AUDIT_LABELS, recentAudit, type AuditAction } from "@/lib/audit";
 import { prefsForView } from "@/lib/notify";
-import { Tabs } from "@/components/Tabs";
+import { CARD, Icon, PageHead, SEG, segTab, type IconName } from "@/components/Kit";
 import { SetLog, type LogEntry } from "./SetLog";
 
 export const metadata = { title: "Activity — FloorTest" };
@@ -37,6 +37,64 @@ const EVENT: Record<EventRow["type"], string> = {
   played_out: "Played out",
   shared: "Shared with a colleague",
 };
+
+/** Each desk event's icon; a keep is good news (green), a reply our own words (lime). */
+const EVENT_ICON: Record<EventRow["type"], { icon: IconName; tone?: LogEntry["tone"] }> = {
+  submitted: { icon: "inbox" },
+  played: { icon: "head" },
+  downloaded: { icon: "dl" },
+  kept: { icon: "heart", tone: "up" },
+  passed: { icon: "x" },
+  note: { icon: "tag" },
+  reply: { icon: "reply", tone: "acc" },
+  deleted: { icon: "x" },
+  expired: { icon: "clock" },
+  moved: { icon: "folder" },
+  blocked: { icon: "shield" },
+  unblocked: { icon: "shield" },
+  played_out: { icon: "star" },
+  shared: { icon: "share" },
+};
+
+/** Your own actions' icons, by what kind of thing they touched; anything not listed gets the plain activity line. */
+function auditIcon(action: AuditAction): { icon: IconName; tone?: LogEntry["tone"] } {
+  if (action === "kept") return { icon: "heart", tone: "up" };
+  if (action === "replied" || action === "reply_approved") return { icon: "reply", tone: "acc" };
+  const byPrefix: [string, IconName][] = [
+    ["signin_alerts", "shield"],
+    ["sign", "lock"],
+    ["password", "lock"],
+    ["passkey", "lock"],
+    ["two_factor", "lock"],
+    ["google", "lock"],
+    ["app_token", "lock"],
+    ["reply", "reply"],
+    ["passed", "x"],
+    ["decision", "clock"],
+    ["listened", "head"],
+    ["downloaded", "dl"],
+    ["exported", "dl"],
+    ["set_", "prep"],
+    ["moved", "folder"],
+    ["deleted", "x"],
+    ["played_out", "star"],
+    ["noted", "tag"],
+    ["blocked", "shield"],
+    ["unblocked", "shield"],
+    ["link_", "link"],
+    ["collection_activated", "link"],
+    ["collection", "folder"],
+    ["team", "contacts"],
+    ["share", "share"],
+    ["stems", "music"],
+    ["plan", "card"],
+    ["identity", "user"],
+    ["notifications", "bell"],
+    ["digest", "mail"],
+  ];
+  const hit = byPrefix.find(([p]) => action.startsWith(p));
+  return { icon: hit ? hit[1] : action.endsWith("_updated") || action.startsWith("cover") ? "gear" : "activity" };
+}
 
 /** Empty: one sentence on what will appear, and the one thing that makes it appear. */
 const EMPTY: Record<Key, { text: string; action: string; href: string }> = {
@@ -82,6 +140,7 @@ export default async function Activity({ searchParams }: { searchParams: Promise
           object: r.detail || null,
           href: r.detail ? trackHref(r.track_id) : null,
           who: r.actor_name ?? holder,
+          ...auditIcon(r.action),
         }))
       : events.map((e) => ({
           key: `e${e.id}`,
@@ -93,40 +152,55 @@ export default async function Activity({ searchParams }: { searchParams: Promise
           quote: e.type === "note" || e.type === "reply" ? e.detail : null,
           // Arrivals are the sender's doing, auto-deletes the desk's own rules; the rest someone on the desk did.
           who: e.type === "submitted" ? e.sender_name : e.type === "expired" ? "Automatic" : (e.actor_name ?? holder),
+          ...EVENT_ICON[e.type],
         }));
   const empty = EMPTY[key];
 
   return (
-    <div className="page-gutter flex max-w-4xl flex-col gap-4 py-4 text-bone sm:py-6">
-      <div className="flex items-center gap-3 border-b border-line pb-4 md:border-0 md:pb-0">
-        <Link href="/dashboard/account" aria-label="Back to Account" className="text-[18px] leading-none md:hidden">
-          ‹
+    <div className="page-gutter py-4 sm:py-7">
+      <div className="mx-auto flex w-full max-w-3xl min-w-0 flex-col gap-4">
+        <Link href="/dashboard/account" className="tap-text -ml-0.5 inline-flex w-fit items-center gap-1.5 text-[12px] text-mute hover:text-bone md:hidden">
+          <Icon name="chev" className="size-3.5 rotate-180" />
+          <span>
+            <span className="sr-only">Back to </span>Account
+          </span>
         </Link>
-        <h1 className="page-title">Activity</h1>
+        <PageHead
+          title="Activity"
+          label={
+            key === "you"
+              ? teammate
+                ? "Everything done on this desk, newest first. The account holder's sign-ins and settings aren't shown."
+                : "Everything done on your desk, newest first."
+              : "What happened on your desk, including what senders did."
+          }
+        />
+        {/* Five filters outgrow a phone: the track scrolls sideways inside the gutter, never the page. */}
+        <nav aria-label="Filter" className="-mx-4 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden">
+          <div className={SEG}>
+            {FILTERS.map(([k, label]) => (
+              <Link
+                key={k}
+                href={k === "you" ? "/dashboard/activity" : `/dashboard/activity?f=${k}`}
+                aria-current={k === key ? "page" : undefined}
+                className={`${segTab(k === key)} pointer-coarse:min-h-11`}
+              >
+                {label}
+              </Link>
+            ))}
+          </div>
+        </nav>
+        {entries.length ? (
+          <SetLog entries={entries} tz={prefs.tz} />
+        ) : (
+          <div className={`${CARD} flex flex-col items-start gap-3 p-3`}>
+            <p className="max-w-prose text-[13px] text-mute">{empty.text}</p>
+            <Link href={empty.href} className="btn-lime btn-sm">
+              {empty.action}
+            </Link>
+          </div>
+        )}
       </div>
-      <p className="text-[12px] leading-[1.5] text-mute">
-        {key === "you"
-          ? teammate
-            ? "Everything done on this desk, newest first. The account holder's sign-ins and settings aren't shown."
-            : "Everything done on your desk, newest first."
-          : "What happened on your desk, including what senders did."}
-      </p>
-      <Tabs
-        label="Filter"
-        value={key}
-        className="-mx-4 px-4 sm:mx-0 sm:px-0"
-        items={FILTERS.map(([k, label]) => ({ key: k, label, href: k === "you" ? "/dashboard/activity" : `/dashboard/activity?f=${k}` }))}
-      />
-      {entries.length ? (
-        <SetLog entries={entries} tz={prefs.tz} />
-      ) : (
-        <div className="flex flex-col items-start gap-4 pt-4">
-          <p className="max-w-prose text-[13px] text-mute">{empty.text}</p>
-          <Link href={empty.href} className="btn-lime btn-sm">
-            {empty.action}
-          </Link>
-        </div>
-      )}
     </div>
   );
 }
