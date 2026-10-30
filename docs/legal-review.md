@@ -35,7 +35,7 @@ The drafts at /terms and /privacy were rewritten on 29 Sep 2026 to close the gap
 ## What changed 30 Oct 2026 (please review)
 
 The owner asked for the public pages to match the product and to lose internal notes. All pages now say "Last updated 30 October 2026". Changes:
-- The red "Draft for the private beta, not yet reviewed by a lawyer" box and "(draft)" in page titles are gone. The pages are still awaiting your review.
+- The red draft box stays but no longer says "not yet reviewed by a lawyer" (owner, 30 Oct): it reads "Draft for the private beta. It describes how FloorTest works today and will be replaced by a final version before public launch." "(draft)" is gone from page titles. The pages are still awaiting your review.
 - Virus scanning: Terms and Trust now say every upload is scanned (live since 14 Oct, fail-closed) instead of "not scanned yet". Sub-processors lists the scanner under Cloudflare.
 - Retired colleague sharing (tables dropped, 11 Oct) removed from Terms and Privacy when the sharing switch is off.
 - Cookies: the consent banner (live since 20 Oct) is described; analytics and browser crash reports only after Accept. Every cookie the code sets is listed with its lifetime (session cookie name, 14-day idle end, passkey, email code, Google, team invite, desk, gate, consent); staff-only cookies grouped as never set for users.
