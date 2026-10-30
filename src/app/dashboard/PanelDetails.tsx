@@ -1,6 +1,7 @@
 "use client";
 
 import { stored, useDeviceState } from "@/components/useBrowserValue";
+import { CARD, Icon } from "@/components/Kit";
 
 const KEY = "ft:review-details";
 
@@ -21,16 +22,15 @@ export function PanelDetails({ summary, children }: { summary: React.ReactNode; 
           localStorage.setItem(KEY, now ? "1" : "0");
         } catch {}
       }}
-      className="group mt-6 rounded-lg border border-line"
+      className={`group ${CARD} p-3.5 sm:p-4`}
     >
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm [&::-webkit-details-marker]:hidden">
-        <span className="min-w-0">{summary}</span>
-        <span aria-hidden className="grid size-6 shrink-0 place-items-center rounded-md border border-line text-base leading-none">
-          <span className="group-open:hidden">+</span>
-          <span className="hidden group-open:inline">−</span>
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-[11px] [&::-webkit-details-marker]:hidden">
+        <span className="min-w-0 flex-1">{summary}</span>
+        <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-[10px] border border-line bg-well text-mute">
+          <Icon name="down" className="size-4 transition-transform group-open:rotate-180 motion-reduce:transition-none" />
         </span>
       </summary>
-      <div className="border-t border-line px-4 pb-4 pt-3">{children}</div>
+      <div className="mt-3">{children}</div>
     </details>
   );
 }
