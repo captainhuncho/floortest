@@ -30,7 +30,7 @@ export default async function Cookies() {
             "ft_desk: remembers which desk you're working on, if you're on a team. Strictly necessary. Lasts 1 year.",
             "ft_sender: remembers that this browser confirmed your email with a 6-digit code, so you aren't asked again each time you send music without an account. Strictly necessary. Lasts 30 days.",
             "ft_gate: lets you through while the site is open by invitation only. Strictly necessary. Lasts 30 days.",
-            "ft_consent: remembers whether you chose Accept or Reject on the cookie banner. Strictly necessary. Lasts 1 year.",
+            "ft_consent: remembers whether you chose Accept or Not now on the cookie banner. Strictly necessary. Lasts 1 year.",
             "ft_theme: remembers whether you chose Night, Day or match your device. A setting you asked for. Lasts 1 year.",
             "ft_submissions_view: remembers whether you prefer the Queue or List layout in your Review Queue. A setting you asked for. Lasts 1 year.",
             "__Host-ft_ops, ft_flash, floortest_view_as, ft_preview: used only by FloorTest staff in their admin area. Never set for users.",
@@ -56,7 +56,7 @@ export default async function Cookies() {
           "Your choices",
           [
             "You can block or delete cookies in your browser settings. If you block the strictly necessary ones, you won't be able to sign in. Deleting the setting cookies just resets your theme and layout.",
-            "Reject, or closing the banner, keeps analytics and browser crash reports off. You can change your choice from Cookie settings at the bottom of every page; it applies from the next page you open.",
+            "Not now, or closing the banner, keeps analytics and browser crash reports off. You can change your choice from Cookie settings at the bottom of every page; it applies from the next page you open.",
             "If we add anything else that isn't strictly necessary or a setting you chose, we'll ask first and update this page.",
           ],
         ],
