@@ -28,7 +28,7 @@ function QueueBadge({ count }: { count: number }) {
   }
   if (!count) return null;
   return (
-    <span className="absolute right-1 top-0.5 grid min-w-4 overflow-hidden rounded-full bg-lime px-1 text-center text-[11px] font-bold leading-4 text-ink tnum">
+    <span className="absolute right-[calc(50%-1.4rem)] top-1 grid min-w-4 overflow-hidden rounded-full bg-lime px-1 text-center text-[11px] font-bold leading-4 text-ink tnum">
       <span className="sr-only">, {count} need review</span>
       {roll && (
         <span key={`out${roll.n}`} aria-hidden data-roll="out" className="[grid-area:1/1]" onAnimationEnd={() => setRoll(null)}>
@@ -42,7 +42,7 @@ function QueueBadge({ count }: { count: number }) {
   );
 }
 
-/** Phones only (Figma "Tab Bar"): the four places a DJ lives, one thumb away. */
+/** Phones only: the four places a DJ lives, one thumb away, as separate floating pills (owner, 30 Oct redesign). */
 export function MobileTabBar({ needsReview }: { needsReview: number }) {
   const path = usePathname();
   const tabs = [
@@ -55,19 +55,19 @@ export function MobileTabBar({ needsReview }: { needsReview: number }) {
     <nav
       aria-label="Main"
       data-tabbar
-      className="keep-night fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-40 flex w-[min(21rem,calc(100%-3rem))] -translate-x-1/2 items-center justify-between gap-1 rounded-[28px] border border-white/[0.07] bg-gradient-to-b from-[#24261f] to-[#141512] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_2px_4px_rgba(0,0,0,0.5),0_14px_30px_-6px_rgba(0,0,0,0.75)] md:hidden"
+      className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-40 flex w-[calc(100%-1.75rem)] max-w-[26rem] -translate-x-1/2 items-center gap-1.5 md:hidden"
     >
       {tabs.map((t) => (
         <Link
           key={t.href}
           href={t.href}
           aria-current={t.active ? "page" : undefined}
-          // Tabs size to their label (flex-auto), so "Collections" takes the room it needs and "Prepare" is never cut;
-          // all four fit from 320px (mono at 11px with tight tracking ≈ 6.4px a letter, 28 letters + padding ≈ 230px).
-          className={`relative flex h-12 flex-auto flex-col items-center justify-center gap-[3px] whitespace-nowrap rounded-[22px] px-1.5 py-1.5 text-[11px] uppercase tracking-[-0.02em] transition duration-100 active:translate-y-px active:scale-95 ${
+          // Separate floating pills (owner, 30 Oct mock): frosted, equal width, the label in sentence case under the icon.
+          className={`relative flex h-[54px] flex-1 flex-col items-center justify-center gap-[3px] whitespace-nowrap rounded-[27px] border text-[10.5px] font-semibold shadow-[0_10px_26px_-14px_rgba(0,0,0,0.45)] backdrop-blur-xl backdrop-saturate-150 transition duration-100 active:scale-95 motion-reduce:active:scale-100 ${
             t.active
-              ? "bg-gradient-to-b from-[#353a2d] to-[#23261e] font-bold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_2px_6px_rgba(0,0,0,0.55)]"
-              : "font-medium text-dim active:bg-[#1f211b] active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)]"
+              ? // Soft lime, so the page's one lime button stays the loudest thing on screen.
+                "border-lime/40 bg-[color-mix(in_oklab,var(--color-lime)_16%,var(--color-ink-2))] text-lime"
+              : "border-line bg-card/80 text-mute"
           }`}
         >
           <Icon name={t.icon} />
