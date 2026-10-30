@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { useToast } from "@/components/Toast";
 import { pauseLink, resumeLink } from "./actions/desk";
 import { useBrowserValue } from "@/components/useBrowserValue";
+import { IconBox } from "@/components/Kit";
 
 export type PauseState = { on: boolean; until: string | null; untilTs: number | null; message: string; blocked: string | null };
 
@@ -58,9 +59,10 @@ export function PauseSwitch({ pause, compact = false }: { pause: PauseState; com
   return (
     <div className={compact ? "card bg-ink-3 p-3" : "py-1"}>
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className={compact ? "text-[11px] font-bold" : "text-sm font-medium"}>{paused ? "Paused" : "Link open"}</p>
-          <p className={compact ? "mt-1 text-[11px] leading-snug text-faint" : "mt-0.5 text-xs leading-snug text-mute"}>
+        {!compact && <IconBox name="link" small />}
+        <div className="min-w-0 flex-1">
+          <p className={compact ? "text-[11px] font-bold" : "text-[13px] font-semibold"}>{paused ? "Paused" : "Link open"}</p>
+          <p className={compact ? "mt-1 text-[11px] leading-snug text-faint" : "mt-0.5 text-[11.5px] leading-snug text-mute"}>
             {paused ? (pause.on && pause.until ? `Reopens ${pause.until}` : "Your link shows you're on a break") : pause.blocked ? null : "Switch off while touring or on a break"}
           </p>
           {!paused && pause.blocked && (

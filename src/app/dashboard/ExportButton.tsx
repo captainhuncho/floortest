@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Icon, type IconName } from "@/components/Kit";
 import { stored, useDeviceState } from "@/components/useBrowserValue";
 
 const KEY = "floortest.exportBase";
@@ -16,6 +17,7 @@ export function ExportButton({
   crateName,
   align = "right",
   showCount = true,
+  icon,
 }: {
   collectionId: number | null;
   count: number;
@@ -31,6 +33,8 @@ export function ExportButton({
   align?: "right" | "start";
   /** Off where the count is already on the page. */
   showCount?: boolean;
+  /** An icon before the label (Prepare's download button). */
+  icon?: IconName;
 }) {
   const [open, setOpen] = useState(false);
   // The music folder saved on this device, and Rekordbox XML on by default once there is one.
@@ -56,6 +60,7 @@ export function ExportButton({
   return (
     <div className={buttonClassName?.includes("w-full") ? "relative w-full md:w-auto md:shrink-0" : "relative"}>
       <button className={buttonClassName ?? `${variant === "lime" ? "btn-lime" : "btn-ghost"} btn-sm`} disabled={!count} onClick={openPanel} aria-expanded={open}>
+        {icon && <Icon name={icon} className="size-4" />}
         {label ?? "Prepare for set"}{showCount ? ` (${count})` : ""}
       </button>
       {open && (

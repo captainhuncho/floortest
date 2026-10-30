@@ -50,6 +50,7 @@ export default async function PrepareForSet() {
               collectionId={null}
               count={n}
               label="Download kept"
+              icon="dl"
               align="start"
               showCount={false}
               buttonClassName="btn-lime w-full min-h-11 rounded-[13px]"

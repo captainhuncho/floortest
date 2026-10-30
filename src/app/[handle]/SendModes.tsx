@@ -5,6 +5,7 @@ import type { BriefItem } from "@/lib/brief";
 import { FolderSend } from "../dashboard/send/FolderSend";
 import { Brief } from "./Brief";
 import { SubmitForm } from "./SubmitForm";
+import { SEG, segTab } from "@/components/Kit";
 
 type FormProps = React.ComponentProps<typeof SubmitForm>;
 
@@ -46,14 +47,14 @@ export function SendModes({
 export function SendModeTabs({ mode, setMode, className = "" }: { mode: "tracks" | "folder"; setMode: (m: "tracks" | "folder") => void; className?: string }) {
   return (
     <div className={className}>
-      <div role="group" aria-label="What to send" className="inline-flex rounded-full border border-line bg-ink-2 p-1 text-sm">
+      <div role="group" aria-label="What to send" className={SEG}>
         {(["tracks", "folder"] as const).map((m) => (
           <button
             key={m}
             type="button"
             aria-pressed={mode === m}
             onClick={() => setMode(m)}
-            className={`tap-tall rounded-full px-4 py-1.5 transition ${mode === m ? "bg-bone font-semibold text-ink" : "text-mute hover:text-bone"}`}
+            className={`tap-tall ${segTab(mode === m)}`}
           >
             {m === "tracks" ? "Up to 3 tracks" : "A folder (EP, album)"}
           </button>
