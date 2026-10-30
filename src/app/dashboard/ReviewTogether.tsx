@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef, useTransition } from "react";
 import { fmtDate } from "@/lib/format";
 import { commentOnTrack, deleteComment, shortlistTrack } from "./actions/team";
+import { CARD } from "@/components/Kit";
 
 type Comment = { id: number; user_id: number; name: string; body: string; created_at: number };
 
@@ -38,9 +39,9 @@ export function ReviewTogether({
   }, [comments.length]);
 
   return (
-    <section aria-label="Review together" className="mt-4 card p-3.5">
+    <section aria-label="Review together" className={`${CARD} p-3.5 sm:p-4`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-[11px] font-bold uppercase text-faint">Review together</h2>
+        <h2 className="text-[15px] font-semibold tracking-[-0.015em] text-bone">Review together</h2>
         <button
           type="button"
           disabled={busy}
@@ -55,7 +56,7 @@ export function ReviewTogether({
       {comments.length > 0 && (
         <ul className="mt-3 space-y-2">
           {comments.map((c) => (
-            <li key={c.id} className="rounded-md border border-line bg-ink px-3 py-2 text-[12px]">
+            <li key={c.id} className="rounded-[11px] border border-line bg-well px-3 py-2 text-[12px]">
               <p className="flex flex-wrap items-baseline justify-between gap-2">
                 <span className="font-bold text-bone">{c.name}</span>
                 <span className="text-[11px] text-faint">
@@ -77,7 +78,7 @@ export function ReviewTogether({
         <label className="sr-only" htmlFor={`comment-${trackId}`}>
           Comment for the team
         </label>
-        <textarea id={`comment-${trackId}`} name="body" required rows={1} maxLength={1000} placeholder="Comment for the team" className="input min-h-10 min-w-0 flex-1 text-[12px]" />
+        <textarea id={`comment-${trackId}`} name="body" required rows={1} maxLength={1000} placeholder="Comment for the team" className="input min-h-11 min-w-0 flex-1 rounded-xl! bg-well! max-sm:text-base sm:text-[12px]" />
         <button disabled={posting} className="btn-ghost btn-sm shrink-0">
           {posting ? "Posting…" : "Comment"}
         </button>

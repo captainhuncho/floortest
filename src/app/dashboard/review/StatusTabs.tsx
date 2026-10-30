@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLayoutEffect, useRef, useState, useTransition } from "react";
+import { SEG, segTab } from "@/components/Kit";
 
 type Tab = { key: string; label: string; count: number; href: string };
 
@@ -34,7 +35,11 @@ export function StatusTabs({ tabs, active }: { tabs: Tab[]; active: string }) {
   }, [active]);
 
   return (
-    <nav ref={nav} className="mt-6 flex flex-wrap border-b border-line sm:gap-1" aria-label="Status" data-pending={pending ? "" : undefined} aria-busy={pending || undefined}>
+    <nav
+      ref={nav}
+      // Segmented tabs (redesign, 30 Oct): full width on a phone, each tab a fair share; scrolls sideways before it squashes.
+      className={`${SEG} w-full max-w-full overflow-x-auto lg:w-auto lg:min-w-[440px] lg:max-w-[560px] lg:flex-1`}
+      aria-label="Status" data-pending={pending ? "" : undefined} aria-busy={pending || undefined}>
       {tabs.map((t) => {
         const on = chosen === t.key;
         return (
@@ -58,11 +63,9 @@ export function StatusTabs({ tabs, active }: { tabs: Tab[]; active: string }) {
               topBefore.current = nav.current?.getBoundingClientRect().top ?? null;
               start(() => router.push(t.href, { scroll: false }));
             }}
-            className={`-mb-px inline-flex min-h-11 items-center gap-1 border-b-2 px-2 text-sm sm:px-3 font-medium transition-colors ${
-              on ? "border-bone font-semibold text-bone" : "border-transparent text-mute hover:text-bone"
-            }`}
+            className={`${segTab(on)} min-h-11! flex-1 gap-1 px-2 transition-colors sm:text-[12.5px]`}
           >
-            {t.label} <span className="font-mono text-xs tnum text-mute">{t.count}</span>
+            {t.label} <span className={`text-[11px] font-semibold tnum ${on ? "" : "opacity-80"}`}>{t.count}</span>
           </Link>
         );
       })}

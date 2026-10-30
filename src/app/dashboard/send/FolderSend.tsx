@@ -14,6 +14,7 @@ import { SetsPermission } from "../../[handle]/SetsPermission";
 import { GenrePicker } from "../../[handle]/GenrePicker";
 import { AI_CHOICES, AI_HELP, Choice, MIX_CHOICES, RELEASE_CHOICES } from "../../[handle]/Choice";
 import { normalEmail } from "@/lib/email-normal";
+import { Chip, Icon, SEG, segTab } from "@/components/Kit";
 
 type Item = {
   file: File; tags: Tags; state: "waiting" | "sending" | "sent" | "failed"; progress: number; error?: string; genre?: string;
@@ -216,13 +217,13 @@ export function FolderSend({
 
   if (done)
     return (
-      <div role="status" className="card p-6">
-        <p className="font-medium">
+      <div role="status" className="rounded-[14px] border border-line bg-well p-4 text-[13px]">
+        <p className="font-semibold text-bone">
           &ldquo;{release.title}&rdquo; ({items.length} tracks) sent to {receiverName}.
         </p>
-        <p className="mt-2 text-sm text-mute">It arrives as one folder. Each track gets its own receipt and updates.</p>
+        <p className="mt-2 text-[12px] text-mute">It arrives as one folder. Each track gets its own receipt and updates.</p>
         {items.some((i) => i.held) && (
-          <p className="mt-2 text-sm text-mute">
+          <p className="mt-2 text-[12px] text-mute">
             {items.every((i) => i.held) ? "They're" : "Some are"} still being checked for viruses, which can take up to 10 minutes. Each one reaches the desk as
             soon as it passes, and its receipt follows by email.
           </p>
@@ -278,18 +279,19 @@ export function FolderSend({
             setDrag(false);
             choose(await droppedFiles(e.dataTransfer));
           }}
-          className={`card border-dashed p-8 text-center transition ${drag ? "border-lime bg-lime/5" : ""}`}
+          className={`flex flex-col items-center gap-2 rounded-[14px] border-[1.5px] border-dashed p-5 text-center transition-colors motion-reduce:transition-none ${drag ? "border-lime bg-lime/5" : "border-line-2 bg-well"}`}
         >
-          <button type="button" disabled={running} onClick={() => folderRef.current?.click()} className="btn-lime">
+          <button type="button" disabled={running} onClick={() => folderRef.current?.click()} className="btn-lime inline-flex min-h-11 items-center gap-2 rounded-[13px] px-5 text-[13px] font-semibold">
+            <Icon name="folder" className="size-4" />
             Choose a folder
           </button>
-          <p className="mt-3 text-sm text-mute">
+          <p className="text-[12px] text-mute">
             or drag it here ·{" "}
-            <button type="button" onClick={() => filesRef.current?.click()} className="inline-flex min-h-11 items-center underline underline-offset-4">
+            <button type="button" onClick={() => filesRef.current?.click()} className="inline-flex min-h-11 items-center font-semibold text-bone underline underline-offset-4">
               pick files
             </button>
           </p>
-          <p className="mt-1 text-xs text-mute">Up to {MAX_RELEASE_TRACKS} tracks and {fmtBytes(folderBytes)}. Titles, track order, BPM and key are read from your files.</p>
+          <p className="max-w-[46ch] text-[11.5px] text-mute">Up to {MAX_RELEASE_TRACKS} tracks and {fmtBytes(folderBytes)}. Titles, track order, BPM and key are read from your files.</p>
         </div>
       )}
 
@@ -306,19 +308,19 @@ export function FolderSend({
             </label>
           </div>
           <div className="space-y-1.5">
-            <div className="flex justify-between text-sm text-mute tnum">
+            <div className="flex justify-between text-[11.5px] text-mute tnum">
               <span>{items.length} of {MAX_RELEASE_TRACKS} tracks</span>
               <span>
                 {fmtBytes(total)} of {fmtBytes(folderBytes)}
               </span>
             </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-ink-3" role="progressbar" aria-label="Folder size" aria-valuenow={Math.round((total / folderBytes) * 100)} aria-valuemin={0} aria-valuemax={100}>
+            <div className="h-1.5 overflow-hidden rounded-full bg-ink-4" role="progressbar" aria-label="Folder size" aria-valuenow={Math.round((total / folderBytes) * 100)} aria-valuemin={0} aria-valuemax={100}>
               <div className={`h-full rounded-full ${total > folderBytes ? "bg-danger" : "bg-lime"}`} style={{ width: `${Math.min(100, (total / folderBytes) * 100)}%` }} />
             </div>
           </div>
-          <ol className="divide-y divide-line rounded-md border border-line">
+          <ol className="divide-y divide-line rounded-[13px] border border-line bg-well">
             {items.map((it, i) => (
-              <li key={it.file.name + i} className="flex items-center gap-3 px-3 py-2.5 text-sm">
+              <li key={it.file.name + i} className="flex min-h-11 items-center gap-3 px-3 py-2 text-[13px]">
                 <span className="w-5 shrink-0 text-right text-mute tnum">{it.tags.trackNo ?? i + 1}</span>
                 <span className="min-w-0 flex-1">
                   <input
@@ -326,13 +328,13 @@ export function FolderSend({
                     value={it.tags.title}
                     disabled={running || it.state === "sent"}
                     onChange={(e) => editTags(i, { title: e.target.value })}
-                    className="tap-tall w-full bg-transparent font-medium text-bone outline-none"
+                    className="tap-tall w-full bg-transparent text-base font-semibold text-bone outline-none md:text-[13px]"
                   />
-                  <span className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-mute">
+                  <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11.5px] text-mute">
                     <span className="truncate">{it.tags.artist || it.file.name}</span>
                     {[it.tags.bpm && `${it.tags.bpm} BPM`, it.tags.key, it.tags.isrc].filter(Boolean).map((c) => (
-                      <span key={String(c)} className="rounded border border-line px-1.5 py-px tnum">
-                        {c}
+                      <span key={String(c)} className="tnum">
+                        <Chip>{c}</Chip>
                       </span>
                     ))}
                   </span>
@@ -395,7 +397,7 @@ export function FolderSend({
             <legend className="label mb-1.5">
               Genre<Req />
             </legend>
-            <div role="group" aria-label="How the genre applies" className="inline-flex rounded-full border border-line bg-ink-2 p-1 text-sm">
+            <div role="group" aria-label="How the genre applies" className={`${SEG} flex w-full sm:inline-flex sm:w-auto`}>
               {(
                 [
                   ["same", "One genre for all tracks"],
@@ -411,7 +413,7 @@ export function FolderSend({
                     if (m === "each" && genre) setItems((all) => all.map((it) => (it.genre ? it : { ...it, genre })));
                     setGenreMode(m);
                   }}
-                  className={`tap-tall rounded-full px-3.5 py-1.5 transition ${genreMode === m ? "bg-bone font-semibold text-ink" : "text-mute hover:text-bone"}`}
+                  className={`tap-tall flex-1 sm:flex-none ${segTab(genreMode === m)}`}
                 >
                   {label}
                 </button>
@@ -420,7 +422,7 @@ export function FolderSend({
             {genreMode === "same" ? (
               <GenrePicker id="folder-genre" genres={genres} value={genre} onChange={setGenre} inputClass="input" labelClass="sr-only" />
             ) : (
-              <p className="text-xs text-mute">Choose a genre on each track above.</p>
+              <p className="text-[11.5px] text-mute">Choose a genre on each track above.</p>
             )}
           </fieldset>
           <Choice id="folder-mix" name="folder_mix" label="Mix status" value={mix} onChange={setMix} options={MIX_CHOICES} disabled={running} />
@@ -442,19 +444,20 @@ export function FolderSend({
       )}
 
       {error && (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-[12.5px] text-danger">
           {error}
         </p>
       )}
       {items.length > 0 && !account && <Turnstile action="send" siteKey={botCheckKey} />}
       {items.length > 0 && (
-        <p className="text-xs text-mute">
+        <p className="text-[11.5px] leading-[1.45] text-mute">
           <span className="text-danger">*</span> Required. By sending you confirm you own or control these tracks, your answer about AI is accurate, and you&apos;re 18 or over.{" "}
           <a href="/terms" target="_blank" className="underline underline-offset-4">Terms</a>
         </p>
       )}
       {items.length > 0 && (
-        <button type="submit" disabled={running || checking} className="btn-lime min-h-11 w-full">
+        <button type="submit" disabled={running || checking} className="btn-lime inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[13px] text-[13px] font-semibold">
+          <Icon name="send" className="size-4" />
           {checking ? "Checking your email…" : running ? "Sending…" : items.some((i) => i.state === "failed") ? "Retry the failed tracks" : `Send folder (${items.length} tracks)`}
         </button>
       )}

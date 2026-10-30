@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { VIEW_COOKIE } from "./view-cookie";
+import { SEG, segTab } from "@/components/Kit";
 
 /** Remembers the chosen layout for next time (a year). */
 function rememberView(v: "queue" | "list") {
@@ -16,13 +17,13 @@ export function ViewToggle({ view }: { view: "queue" | "list" }) {
     router.push(`/dashboard/review?view=${v}`);
   };
   return (
-    <div className="flex rounded-lg border border-line p-0.5" role="group" aria-label="Layout">
+    <div className={SEG} role="group" aria-label="Layout">
       {(["queue", "list"] as const).map((v) => (
         <button
           key={v}
           onClick={() => go(v)}
           aria-pressed={view === v}
-          className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${view === v ? "bg-bone text-ink" : "text-mute hover:text-bone"}`}
+          className={`${segTab(view === v)} min-h-10! px-3 transition-colors`}
         >
           {v === "queue" ? "Queue" : "List"}
         </button>

@@ -4,15 +4,13 @@ import { useRouter } from "next/navigation";
 // The router's own option for a full prefetch (typed in AppRouterInstance.prefetch); a plain prefetch of this dynamic
 // page only loads the loading screen.
 import { PrefetchKind } from "next/dist/client/components/router-reducer/router-reducer-types";
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useTransition } from "react";
 import { isTyping, usePlayer, type PlayerTrack } from "@/components/Player";
 import { useToast } from "@/components/Toast";
-import type { ReplyResult } from "./actions/review";
-import { QuickReplies } from "./QuickReplies";
-import { ReplyTemplates } from "./ReplyTemplates";
 import { decideTrack, undoDecision } from "./actions/review";
 import { stored, useDeviceState } from "@/components/useBrowserValue";
 import { useQueue, useStep, type Step } from "./review/QueueState";
+import { Icon } from "@/components/Kit";
 
 /** Number keys jump through the track: 1 = a quarter in, 4 = near the end. */
 const JUMPS: Record<string, number> = { "1": 0.25, "2": 0.5, "3": 0.75, "4": 0.9 };
@@ -23,29 +21,19 @@ type Props = {
   selfHref: string;
   next: Step;
   prev: Step;
-  onReply: (fd: FormData) => Promise<ReplyResult>;
 };
 
-export function DecisionRail({ track, senderName, selfHref, next, prev, onReply }: Props) {
+/**
+ * Keep and Not for me, their shortcuts, and the swipe between tracks. The reply box is its own card now
+ * (review/ReplyCard, redesign 30 Oct), and R jumps into it from there.
+ */
+export function DecisionRail({ track, selfHref, next, prev }: Props) {
   const router = useRouter();
   const player = usePlayer();
   const toast = useToast();
   const [busy, start] = useTransition();
-  const [replying, setReplying] = useState(false);
   // The swipe hint shows until the first swipe on this device.
   const [swiped, setSwiped] = useDeviceState(() => stored("ft:swiped") === "1", true);
-  const replyRef = useRef<HTMLTextAreaElement>(null);
-  const formRef = useRef<HTMLFormElement>(null);
-
-  // Close the composer when moving to another track.
-  const [replyFor, setReplyFor] = useState(track.id);
-  if (replyFor !== track.id) {
-    setReplyFor(track.id);
-    setReplying(false);
-  }
-  useEffect(() => {
-    if (replying) replyRef.current?.focus();
-  }, [replying]);
 
   const queue = useQueue();
   // Previous / next show at once from what the list knows (QueueState); the server's page follows.
@@ -112,14 +100,10 @@ export function DecisionRail({ track, senderName, selfHref, next, prev, onReply 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (isTyping(e.target)) {
-        if (e.key === "Escape") setReplying(false);
-        return;
-      }
+      if (isTyping(e.target)) return;
       const k = e.key.toLowerCase();
       if (k === "k") decide("kept");
       else if (k === "x") decide("passed");
-      else if (k === "r") setReplying(true);
       else if (k === "u") toast.undoLatest();
       else if ((k === "j" || e.key === "ArrowDown") && next) step(next);
       else if (e.key === "ArrowUp" && prev) step(prev);
@@ -147,7 +131,7 @@ export function DecisionRail({ track, senderName, selfHref, next, prev, onReply 
   // Phones (owner, 28 Oct): swipe the track card left for the next track, right for the previous one, like turning a
   // page. The card follows the finger; past the line, or with a quick flick, it slides away and the neighbour slides
   // in from the other side (shown at once, details follow). With nothing that way it resists and springs back.
-  // Deciding is the three buttons only. Vertical drags stay page scrolling (touch-action: pan-y).
+  // Deciding is the buttons only. Vertical drags stay page scrolling (touch-action: pan-y).
   useEffect(() => {
     if (!window.matchMedia("(pointer: coarse)").matches) return;
     const zone = document.querySelector<HTMLElement>("[data-swipe-zone]");
@@ -229,45 +213,21 @@ export function DecisionRail({ track, senderName, selfHref, next, prev, onReply 
     };
   }, [next, prev, step, setSwiped]);
 
-  const btn = "btn h-12 gap-2 border text-[15px] font-bold";
-  const key = "font-mono text-[11px] font-medium opacity-60";
+  // Redesign (30 Oct): two big buttons, Keep the page's one lime button; the shortcut sits beside each word where
+  // there's a keyboard.
+  const btn = "inline-flex min-h-13 items-center justify-center gap-2 rounded-[15px] px-3 text-[14.5px] font-semibold transition-colors disabled:opacity-40";
+  const key = "rounded-[5px] border border-current px-1.5 font-mono text-[10px] font-semibold opacity-55 [@media(pointer:coarse)]:hidden";
   return (
-    <div>
-      {/* Phones: Figma "Decisions" pills + "DJ Decision Area" */}
-      {/* Phones, rule 15 Queue (28 Oct): the same three buttons as wide screens, Keep in lime; Download sits in Details. */}
-      <div className="md:hidden">
-        <div className="grid grid-cols-[1fr_1.3fr_1fr] gap-2" role="group" aria-label="Decision">
-          <button
-            onClick={() => decide("passed")}
-            disabled={busy}
-            aria-pressed={track.decision === "passed"}
-            className={`${btn} px-2 text-sm ${track.decision === "passed" ? "border-bone bg-bone/10" : "border-line"}`}
-          >
-            Not for me
-          </button>
-          <button
-            onClick={() => decide("kept")}
-            disabled={busy}
-            aria-pressed={track.decision === "kept"}
-            className={`${btn} border-lime bg-lime text-ink`}
-          >
-            {track.decision === "kept" ? "Kept ✓" : "Keep"}
-          </button>
-          <button onClick={() => setReplying((r) => !r)} aria-expanded={replying} className={`${btn} px-2 text-sm ${replying ? "border-bone" : "border-line"}`}>
-            Reply
-          </button>
-        </div>
-      </div>
-
-      {/* Rule 15 Queue (28 Oct): Keep is the page's one lime button; the shortcut sits beside each word. */}
-      <div className="hidden grid-cols-[1fr_1.3fr_1fr] gap-2.5 md:grid" role="group" aria-label="Decision">
+    <div className="flex flex-col gap-2.5">
+      <div className="grid grid-cols-2 gap-2" role="group" aria-label="Decision">
         <button
           onClick={() => decide("passed")}
           disabled={busy}
           aria-pressed={track.decision === "passed"}
           aria-keyshortcuts="X"
-          className={`${btn} ${track.decision === "passed" ? "border-bone bg-bone/10" : "border-line hover:border-mute hover:bg-ink-3"}`}
+          className={`${btn} border text-bone ${track.decision === "passed" ? "border-bone bg-bone/10" : "border-line-2 bg-well hover:border-mute"}`}
         >
+          <Icon name="x" className="size-4" />
           Not for me <kbd className={key}>X</kbd>
         </button>
         <button
@@ -275,88 +235,24 @@ export function DecisionRail({ track, senderName, selfHref, next, prev, onReply 
           disabled={busy}
           aria-pressed={track.decision === "kept"}
           aria-keyshortcuts="K"
-          className={`${btn} border-lime bg-lime text-ink hover:bg-[#e2ff7a]`}
+          className={`${btn} border border-transparent bg-lime text-ink hover:bg-[#e2ff7a]`}
         >
+          <Icon name="heart" className="size-4" />
           {track.decision === "kept" ? "Kept ✓" : "Keep"} <kbd className={key}>K</kbd>
-        </button>
-        <button
-          onClick={() => setReplying((r) => !r)}
-          aria-expanded={replying}
-          aria-keyshortcuts="R"
-          className={`${btn} ${replying ? "border-bone" : "border-line hover:border-mute hover:bg-ink-3"}`}
-        >
-          Reply <kbd className={key}>R</kbd>
         </button>
       </div>
 
-      {replying && (
-        <form
-          ref={formRef}
-          className="mt-3"
-          // A plain submit, not a form action: React clears a form after its action, and a refused reply keeps its text.
-          onSubmit={(e) => {
-            e.preventDefault();
-            const fd = new FormData(e.currentTarget);
-            start(async () => {
-              // Says what really happened; a refused reply (a limit) keeps its text so nothing typed is lost.
-              const r = await onReply(fd);
-              toast.show({ message: r.message });
-              if (r.status === "refused") return;
-              formRef.current?.reset();
-              setReplying(false);
-            });
-          }}
-        >
-          <label className="sr-only" htmlFor="reply-body">
-            Reply to {senderName}
-          </label>
-          <QuickReplies
-            senderName={senderName}
-            onPick={(t) => {
-              if (replyRef.current) replyRef.current.value = t;
-              replyRef.current?.focus();
-            }}
-          />
-          <textarea
-            id="reply-body"
-            ref={replyRef}
-            name="body"
-            required
-            maxLength={4000}
-            className="input min-h-24 resize-y"
-            placeholder={`Emailed to ${senderName} from FloorTest.`}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) formRef.current?.requestSubmit();
-            }}
-          />
-          <div className="mt-2 flex items-center gap-2">
-            <button className="btn-lime btn-sm" disabled={busy}>
-              {busy ? "Sending…" : "Send reply"}
-            </button>
-            <ReplyTemplates
-              onPick={(t) => {
-                if (replyRef.current) replyRef.current.value = t;
-                replyRef.current?.focus();
-              }}
-              current={() => replyRef.current?.value ?? ""}
-            />
-            <button type="button" className="btn-ghost btn-sm" onClick={() => setReplying(false)}>
-              Cancel
-            </button>
-            <span className="ml-auto text-xs text-mute">⌘/Ctrl + Enter to send · Esc to close</span>
-          </div>
-        </form>
-      )}
-
-      {!swiped && <p className="mt-3 text-[11px] text-faint [@media(pointer:fine)]:hidden">Swipe left for the next track, right for the previous one</p>}
-      {/* One faint line (rule 15 Queue, lighter panel); the full list opens from it. */}
-      <details className="mt-2 hidden text-xs text-faint md:block">
+      <p className="text-center text-[11.5px] text-mute">
+        {next ? "Keep or Not for me moves to the next track." : "Last track in this view."}
+        {!swiped && <span className="[@media(pointer:fine)]:hidden"> Swipe left for the next track, right for the previous one.</span>}
+      </p>
+      {/* One faint line; the full list of shortcuts opens from it. */}
+      <details className="hidden text-center text-[11px] text-faint [@media(pointer:fine)]:block">
         <summary className="inline-flex min-h-8 w-fit cursor-pointer list-none items-center hover:text-mute [&::-webkit-details-marker]:hidden">
           Space play · K keep · X not for me · R reply · more shortcuts
         </summary>
         <p className="mt-1 text-mute">
-          {next ? "Keep or Not for me moves to the next track." : "Last track in this view."} K keep · X not for me · R reply · Space play · 1–4 jump to 25/50/75/90% ·
-          ←/→ 10s · ↑/↓ or J move · U undo
+          K keep · X not for me · R reply · Space play · 1–4 jump to 25/50/75/90% · ←/→ 10s · ↑/↓ or J move · U undo
         </p>
       </details>
     </div>

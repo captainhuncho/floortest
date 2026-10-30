@@ -19,14 +19,14 @@ export function ReplyTemplates({ onPick, current }: { onPick: (text: string) => 
         Templates{list.length ? ` (${list.length})` : ""}
       </button>
       {open && (
-        <div className="card absolute bottom-full left-0 z-30 mb-2 w-80 p-2 shadow-pop">
+        <div className="absolute bottom-full left-0 z-30 mb-2 w-[min(20rem,calc(100vw-2rem))] rounded-[13px] border border-line bg-card p-2 shadow-pop">
           {list.length ? (
             <ul className="max-h-64 space-y-1 overflow-y-auto">
               {list.map((t, i) => (
-                <li key={i} className="group flex items-start gap-2 rounded-md hover:bg-ink-3">
+                <li key={i} className="flex items-start gap-2 rounded-[10px] hover:bg-well">
                   <button
                     type="button"
-                    className="min-w-0 flex-1 px-2 py-1.5 text-left text-sm"
+                    className="min-w-0 flex-1 px-2 py-1.5 text-left text-[13px]"
                     onClick={() => {
                       onPick(t);
                       setOpen(false);
@@ -37,7 +37,7 @@ export function ReplyTemplates({ onPick, current }: { onPick: (text: string) => 
                   <button
                     type="button"
                     aria-label="Delete template"
-                    className="px-2 py-1.5 text-mute opacity-0 hover:text-danger group-hover:opacity-100"
+                    className="grid min-h-9 min-w-9 place-items-center text-faint hover:text-danger"
                     onClick={() => start(async () => setList(await deleteReplyTemplate(i)))}
                   >
                     ×
@@ -50,7 +50,7 @@ export function ReplyTemplates({ onPick, current }: { onPick: (text: string) => 
           )}
           <button
             type="button"
-            className="mt-1 w-full rounded-md border-t border-line px-2 py-2 text-left text-sm text-lime hover:bg-ink-3 disabled:text-mute"
+            className="mt-1 w-full rounded-[10px] border-t border-line px-2 py-2 text-left text-[13px] text-lime hover:bg-well disabled:text-mute"
             disabled={pending || list.length >= 10}
             onClick={() => {
               const text = current().trim();

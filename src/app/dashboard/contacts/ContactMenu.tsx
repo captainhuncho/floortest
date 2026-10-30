@@ -26,7 +26,7 @@ export function ContactMenu({ id, name, email }: { id: number; name: string; ema
     };
   }, [open]);
 
-  const item = "flex min-h-11 items-center rounded-md px-3 text-sm text-bone hover:bg-ink-3 focus-visible:bg-ink-3";
+  const item = "flex min-h-11 items-center rounded-[10px] px-3 text-[13px] text-bone hover:bg-well focus-visible:bg-well";
   return (
     <div ref={ref} className="relative shrink-0">
       <button
@@ -36,7 +36,7 @@ export function ContactMenu({ id, name, email }: { id: number; name: string; ema
         aria-expanded={open}
         aria-haspopup="menu"
         aria-label={`More for ${name}`}
-        className="grid size-11 place-items-center rounded-lg text-mute transition-colors duration-150 hover:bg-ink-3 hover:text-bone"
+        className="grid size-11 place-items-center rounded-[11px] text-mute transition-colors duration-150 hover:bg-well hover:text-bone motion-reduce:transition-none"
       >
         <svg aria-hidden viewBox="0 0 24 24" className="size-4" fill="currentColor">
           <circle cx="5" cy="12" r="1.6" />
@@ -45,10 +45,10 @@ export function ContactMenu({ id, name, email }: { id: number; name: string; ema
         </svg>
       </button>
       {open && (
-        <div role="menu" aria-label={name} className="absolute right-0 top-full z-30 mt-1 w-64 rounded-lg border border-line bg-ink-2 p-1 shadow-pop">
+        <div role="menu" aria-label={name} className="absolute right-0 top-full z-30 mt-1 w-64 rounded-[13px] border border-line bg-card p-1 shadow-pop">
           <a role="menuitem" href={`mailto:${email}`} onClick={() => setOpen(false)} className={`${item} flex-col items-start justify-center gap-0.5 py-1.5`}>
             <span>Email</span>
-            <span className="max-w-full truncate text-xs text-faint">{email}</span>
+            <span className="max-w-full truncate text-[11.5px] text-mute">{email}</span>
           </a>
           <Link role="menuitem" href={`/dashboard/contacts/${id}`} onClick={() => setOpen(false)} className={item}>
             Open contact

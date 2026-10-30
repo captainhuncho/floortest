@@ -45,16 +45,16 @@ export function SaveBar({ pending, state, label = "Save", busyLabel = "Saving…
   }, [state]);
 
   return (
-    <div ref={ref} className="flex flex-col gap-2 border-t border-line pt-4 sm:flex-row sm:items-center sm:gap-4">
-      <button className="btn-lime btn-sm min-h-11 w-full sm:w-auto sm:px-6" disabled={pending || !dirty}>
+    <div ref={ref} className="flex flex-col gap-2 border-t border-line pt-3 sm:flex-row sm:items-center sm:gap-4">
+      <button className="btn-lime btn-sm min-h-11 w-full rounded-[13px] text-[13.5px]! font-semibold sm:w-auto sm:px-6" disabled={pending || !dirty}>
         {pending ? busyLabel : label}
       </button>
       {shown?.error && (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-[12.5px] text-danger">
           {shown.error}
         </p>
       )}
-      <p role="status" className={shown?.ok ? "text-sm text-lime" : "sr-only"}>
+      <p role="status" className={shown?.ok ? "text-[12.5px] font-semibold text-lime" : "sr-only"}>
         {shown?.ok ? `✓ ${savedText}` : ""}
       </p>
     </div>
