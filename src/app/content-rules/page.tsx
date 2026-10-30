@@ -1,7 +1,7 @@
 import { LegalPage } from "@/components/LegalPage";
 import { LEGAL } from "@/lib/legal";
 
-export const metadata = { title: "Content Rules and Moderation (draft) — FloorTest" };
+export const metadata = { title: "Content Rules and Moderation — FloorTest" };
 
 export default function ContentRules() {
   return (

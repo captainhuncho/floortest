@@ -1,7 +1,7 @@
 import { LegalPage } from "@/components/LegalPage";
 import { LEGAL } from "@/lib/legal";
 
-export const metadata = { title: "Responsible Disclosure (draft) — FloorTest" };
+export const metadata = { title: "Responsible Disclosure — FloorTest" };
 
 export default function Security() {
   return (
@@ -38,7 +38,7 @@ export default function Security() {
         [
           "Rewards",
           [
-            "We don't run a paid bug bounty yet.",
+            "We don't offer payment for reports.",
           ],
         ],
       ]}

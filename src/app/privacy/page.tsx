@@ -3,7 +3,7 @@ import { RETAIN_PASSED_DAYS, RETAIN_UNREVIEWED_DAYS } from "@/lib/plans";
 import { LEGAL } from "@/lib/legal";
 import { SHARING_LEGAL, sharingWording } from "@/lib/legal-sharing";
 
-export const metadata = { title: "Privacy Policy (draft) — FloorTest" };
+export const metadata = { title: "Privacy Policy — FloorTest" };
 
 export default async function Privacy() {
   // Private sharing and team review: the new wording replaces the 1 Oct colleague wording when sharing is switched on.
@@ -46,7 +46,7 @@ export default async function Privacy() {
           "Senders",
           [
             "When you send a track we store your name, email, the audio file, the details you enter (title, artist, message, release and mix status) and an analysis of the audio (waveform, length, estimated BPM). If you send from your FloorTest account, we link the track to that account.",
-            sharing ? S.sender : "Your name, email and track are shared with the receiver you sent it to. If their brief said sharing with colleagues was allowed when you sent it, the receiver may also let colleagues with FloorTest accounts hear your track (and download it, if you were told so before sending). Colleagues see the track title and artist, not your email. The receiver decides what to do with your track and is responsible for how they use your contact details.",
+            sharing ? S.sender : "Your name, email and track are shared with the receiver you sent it to. The receiver decides what to do with your track and is responsible for how they use your contact details.",
             "We use your details to deliver your track and to send you the receipt and updates you're promised (lawful basis: our legitimate interest in running the service you chose to use, and yours in knowing what happened to your music).",
             "If you ask for your sender history, we email a private link that works for 24 hours. It shows your tracks and the signals you were promised (delivered, listened, downloaded, replied, played out), never a receiver's private decisions.",
           ],
@@ -56,14 +56,7 @@ export default async function Privacy() {
               ["If someone shares a collection with you", S.recipients],
               ["Team review", [S.team]],
             ]
-          : [
-              [
-                "Shared tracks (colleagues)",
-                [
-                  "When a receiver shares a track with you, you need a FloorTest account to listen. We record which account played or downloaded it and when, and show this to the receiver who shared it, so they know who heard their shared track (lawful basis: legitimate interest in protecting unreleased music).",
-                ],
-              ],
-            ]) as [string, string[]][]),
+          : []) as [string, string[]][]),
         [
           "Preventing abuse",
           [
@@ -73,7 +66,8 @@ export default async function Privacy() {
         [
           "Account security",
           [
-            "We keep a log of sign-ins and account changes so you can review them under Activity. If you turn on sign-in alerts, each alert email includes the time, the type of device and browser, and the network address it came from.",
+            "We keep a log of sign-ins and account changes so you can review them under Activity. Sign-in alerts are on unless you turn them off; each alert email includes the time, the type of device and browser, and the network address it came from.",
+            "If you add a passkey, we store only its public key, the name you give it and when it was last used. If you sign in with a code we email you, the code is stored only as a one-way hash and works for 10 minutes.",
             "If you turn on two-factor sign-in, we store your authenticator key encrypted, and your recovery codes only as one-way hashes.",
             "If you ask to be verified, we store the public profile links you give us and a short code you place in one bio. FloorTest staff look at those public profiles to check it's you. We don't ask for ID documents.",
           ],
@@ -109,14 +103,14 @@ export default async function Privacy() {
         [
           "Cookies and local storage",
           [
-            "We use a cookie to keep you signed in, a short-lived cookie during the two-factor step of signing in, one to remember your preferred Review Queue layout, and one for your Day or Night appearance. The upload page remembers your name and email in your own browser so you don't retype them. If you send music without an account, we email a 6-digit code to confirm your address, and a cookie remembers that this browser confirmed it for 30 days. These are all needed for features you ask for, so we don't show a cookie banner. Each one is listed, with how long it lasts, in our Cookie Policy at /cookies. We don't use advertising or tracking cookies. We count page visits with Vercel Web Analytics, which sets no cookies and doesn't identify you. We count which parts of FloorTest each account uses and how often, by day (for example, Queue or List view), to learn what's useful, and delete those counts after about 13 months. We also measure how quickly pages load and respond to taps (the page, the kind of button and the time in milliseconds, with no account, IP address or content), and delete those records after 30 days. When a page crashes or runs slowly, a technical report (what broke or how long each step took, without your IP address or what you typed) goes to Sentry so we can fix it.",
+            "We use a cookie to keep you signed in, a short-lived cookie during the two-factor step of signing in, one to remember your preferred Review Queue layout, and one for your Day or Night appearance. The upload page remembers your name and email in your own browser so you don't retype them. If you send music without an account, we email a 6-digit code to confirm your address, and a cookie remembers that this browser confirmed it for 30 days. Each cookie is listed, with how long it lasts, in our Cookie Policy at /cookies. We don't use advertising or tracking cookies. If you choose Accept on our cookie banner, we count page visits with Vercel Web Analytics, which sets no cookies and doesn't identify you; Reject keeps it off. We count which parts of FloorTest each account uses and how often, by day (for example, Queue or List view), to learn what's useful, and delete those counts after about 13 months. We also measure how quickly pages load and respond to taps (the page, the kind of button and the time in milliseconds, with no account, IP address or content), and delete those records after 30 days. When a page crashes or runs slowly, a technical report (what broke or how long each step took, without your IP address or what you typed) goes to Sentry so we can fix it; reports from your browser are sent only if you choose Accept.",
           ],
         ],
         [
           "Who processes data for us",
           [
             "FloorTest runs on providers acting on our instructions: Vercel (hosting, run from London), Neon (database, London), Cloudflare R2 (audio files and cover photos, private storage) and Resend (email delivery). Files are only ever served through short-lived, signed links. The full list, including Sentry, is on our Sub-processors page at /subprocessors.",
-            "Vercel, Cloudflare and Resend are US companies, so some data may be handled in the United States. Data about UK and EU users can also be handled outside those regions. Where it goes to the US we rely on the UK–US data bridge or the standard contractual safeguards those providers offer.",
+            "Vercel, Neon, Cloudflare, Resend and Sentry are US companies, so some data may be handled in the United States. Data about UK and EU users can also be handled outside those regions. Where it goes to the US we rely on the UK–US data bridge or the standard contractual safeguards those providers offer.",
           ],
         ],
         [

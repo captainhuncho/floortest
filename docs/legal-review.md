@@ -32,6 +32,19 @@ The drafts at /terms and /privacy were rewritten on 29 Sep 2026 to close the gap
 14. **Colleague data:** because colleagues sign in, FloorTest now records which account played or downloaded each shared track, and shows those names to the receiver who shared it (not to the sender). The Privacy Policy needs a line on this. Is showing the receiver who listened acceptable without separate consent?
 15. **Takedown:** if a sender withdraws consent or reports misuse, we can switch off every share link for a track. Should the Terms give senders a right to ask for that, and a timeframe?
 
+## What changed 30 Oct 2026 (please review)
+
+The owner asked for the public pages to match the product and to lose internal notes. All pages now say "Last updated 30 October 2026". Changes:
+- The red "Draft for the private beta, not yet reviewed by a lawyer" box and "(draft)" in page titles are gone. The pages are still awaiting your review.
+- Virus scanning: Terms and Trust now say every upload is scanned (live since 14 Oct, fail-closed) instead of "not scanned yet". Sub-processors lists the scanner under Cloudflare.
+- Retired colleague sharing (tables dropped, 11 Oct) removed from Terms and Privacy when the sharing switch is off.
+- Cookies: the consent banner (live since 20 Oct) is described; analytics and browser crash reports only after Accept. Every cookie the code sets is listed with its lifetime (session cookie name, 14-day idle end, passkey, email code, Google, team invite, desk, gate, consent); staff-only cookies grouped as never set for users.
+- Privacy: sign-in alerts are on by default; passkeys and emailed sign-in codes described; Neon and Sentry added to the US companies.
+- Law enforcement: IP retention corrected (abuse limits up to 3 days; email copies with sign-in alerts 90 days), was "48 hours".
+- Takedown: "the receiver's link it was sent to" (was "the sender's link"); repeat infringers blocked from sending; US notices to copyright@ (DMCA agent still to register, question open).
+- Responsible disclosure: "We don't offer payment for reports" (was "no paid bug bounty yet").
+- Still open for you: whether Google Workspace (privacy@, copyright@, support@ mailboxes) belongs on the sub-processor list; the operator line still reads "a company being registered in Ghana"; DMCA designated agent registration.
+
 ## What changed 11–13 Oct 2026 (please review)
 
 **Live now**
@@ -119,7 +132,7 @@ Original assumed setup (now superseded: the operator is a Ghana company): operat
 | **Copyright complaints** | No notice-and-takedown process for someone whose music was uploaded without permission. Add a contact and a process. |
 | **Operator and law** | No legal entity, governing law (England and Wales), or disputes clause. |
 | **Liability** | "Provided as is" alone isn't enough, and UK consumer law limits what can be excluded. Needs a proper cap and carve-outs. |
-| **Malware** | Uploads aren't antivirus-scanned (the Trust page says so). The Terms should tell receivers to open files at their own risk until scanning ships. |
+| **Malware** | Done 14 Oct: every upload is virus-scanned on our own ClamAV scanner, fail-closed. Terms and Trust say so since 30 Oct. |
 | **Termination and suspension** | Say what happens to data when an account is suspended or closed. |
 | **Referral bonus** | Say bonus slots can be changed or withdrawn after the beta. |
 | **Beta and pricing** | Good that it promises notice before charging. Add how much notice (for example 30 days) and that beta users can leave without charge. |

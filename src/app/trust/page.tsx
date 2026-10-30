@@ -19,7 +19,7 @@ export default function Trust() {
       [
         "Only the receiver you sent a track to can play or download it. Files are never listed publicly or shared with anyone else.",
         `Files are checked for valid WAV or MP3 structure before they're accepted, up to ${MAX_UPLOAD_BYTES / 1024 / 1024} MB. Anything else is rejected.`,
-        "Uploads aren't yet scanned by an antivirus engine. That's planned before general availability.",
+        "Every upload is scanned for viruses on our own scanner before it reaches a desk; the file never goes to an outside scanning service. A file that fails the scan is refused, and if the scanner can't check a file, the upload is held or refused, never accepted unscanned.",
       ],
     ],
     [

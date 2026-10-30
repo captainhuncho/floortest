@@ -43,7 +43,6 @@ export const SHARING_LEGAL = {
   cookies: [
     "ft_lp_<link>: remembers the email address you just confirmed with a code, for one shared collection only. Strictly necessary. Lasts 10 minutes.",
     "ft_ls_<link>: keeps your verified visit to a shared collection. Strictly necessary. Lasts up to 12 hours.",
-    "floortest_next: brings you back to a shared page after you log in. Strictly necessary. Lasts 1 hour.",
   ],
 };
 
