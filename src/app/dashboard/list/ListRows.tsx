@@ -14,6 +14,10 @@ import { QuickReplies } from "../QuickReplies";
 import { ReplyTemplates } from "../ReplyTemplates";
 import { BatchBar } from "./BatchBar";
 import { BATCH_MAX } from "@/lib/batch";
+import { CARD, Chip, Icon as KitIcon } from "@/components/Kit";
+
+/** The quiet button in the list's head (Select / Done). */
+const GHOST = "inline-flex min-h-9 items-center rounded-[10px] border border-line bg-well px-3 text-[12px] font-semibold text-bone transition hover:border-line-2 pointer-coarse:min-h-11";
 
 export type ListRow = {
   id: number;
@@ -51,8 +55,22 @@ function age(ts: number) {
 }
 
 
-/** `statusTag` swaps the age for a Needs review / Kept / Not for me tag (Figma collection detail). */
-export function ListRows({ rows, statusTag = false, collections = [] }: { rows: ListRow[]; statusTag?: boolean; collections?: { id: number; name: string }[] }) {
+/**
+ * One card of track rows: a compact line per track on phones (the row opens the track in the Queue), the full row with
+ * Keep, Not for me, reply and download on desktop. `statusTag` shows Needs review instead of the age (collection detail).
+ */
+export function ListRows({
+  rows,
+  statusTag = false,
+  collections = [],
+  title,
+}: {
+  rows: ListRow[];
+  statusTag?: boolean;
+  collections?: { id: number; name: string }[];
+  /** The list's heading inside its card (the List view's status, "All tracks"); without it the card shows the count. */
+  title?: string;
+}) {
   const player = usePlayer();
   const toast = useToast();
   const [selected, setSelected] = useState<number | null>(null);
@@ -165,189 +183,156 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
     return () => window.removeEventListener("keydown", onKey);
   }, [rows, selected, select, decide, player, queue, toast, picking]);
 
+  // The open track in the Queue, where a phone listens and decides (owner, 30 Oct: phones scan here, decide there).
+  const queueHref = (id: number) => `/dashboard/review?view=queue&s=all&t=${id}`;
+  // The age chip is lime while a track is unheard and undecided, like the Queue's list; decided tracks show the outcome.
+  const tag = (r: ListRow, decision: Decision | null) =>
+    decision ? (
+      <Chip tone={decision === "kept" ? "up" : "flat"}>{decisionLabel(decision)}</Chip>
+    ) : statusTag ? (
+      <Chip tone="warn">Needs review</Chip>
+    ) : (
+      <span suppressHydrationWarning>
+        <Chip tone={r.played ? "flat" : "acc"}>{age(r.createdAt)}</Chip>
+      </span>
+    );
+
   return (
-    <>
-      <div className="mb-2 flex items-center justify-end gap-2 px-3 md:px-0">
+    <section aria-label={title ? undefined : "Tracks"} aria-labelledby={title ? "list-h" : undefined} className={`${CARD} flex flex-col p-1.5 md:p-2`}>
+      <div className="flex min-h-11 items-center justify-between gap-2 px-2">
         {picking ? (
-          <>
-            <label className="mr-auto flex items-center gap-2 text-xs text-mute">
-              <input
-                type="checkbox"
-                className="size-4 accent-lime"
-                aria-label="Select all tracks"
-                checked={allPicked}
-                onChange={() => setPicked(allPicked ? new Set() : new Set(rows.slice(0, BATCH_MAX).map((r) => r.id)))}
-              />
-              Select all{rows.length > BATCH_MAX ? ` (first ${BATCH_MAX})` : ` (${rows.length})`}
-            </label>
-            <button type="button" className="btn btn-sm btn-ghost" onClick={stopPicking}>
-              Done
-            </button>
-          </>
+          <label className="flex min-h-11 items-center gap-2.5 text-[12px] text-mute">
+            <input
+              type="checkbox"
+              className="size-5 accent-lime"
+              aria-label="Select all tracks"
+              checked={allPicked}
+              onChange={() => setPicked(allPicked ? new Set() : new Set(rows.slice(0, BATCH_MAX).map((r) => r.id)))}
+            />
+            Select all{rows.length > BATCH_MAX ? ` (first ${BATCH_MAX})` : ` (${rows.length})`}
+          </label>
+        ) : title ? (
+          <h2 id="list-h" className="flex items-baseline gap-1.5 text-[15px] font-semibold tracking-[-0.015em] text-bone">
+            {title}
+            <span className="text-[11.5px] font-normal text-mute tnum">{rows.length}</span>
+          </h2>
         ) : (
-          <button type="button" className="btn btn-sm btn-ghost" onClick={() => setPicking(true)}>
-            Select
-          </button>
+          <span className="text-[11.5px] text-mute tnum">{fmtCount(rows.length)}</span>
         )}
+        <button type="button" className={GHOST} onClick={() => (picking ? stopPicking() : setPicking(true))}>
+          {picking ? "Done" : "Select"}
+        </button>
       </div>
-      <ul ref={listRef} className="@container space-y-2.5 px-3 md:space-y-2 md:px-0" aria-label="Review Queue">
-        {rows.map((r) => {
+      <ul ref={listRef} className="@container flex flex-col" aria-label="Review Queue">
+        {rows.map((r, i) => {
           const isCurrent = player.current?.id === r.id;
           const playing = isCurrent && player.playing;
           const d = player.duration || r.duration || 0;
           const decision = decisionOf(r);
           const open = expanded === r.id;
-          // Waiting for a decision stands out (lime edge, bright title); decided tracks step back with their outcome shown.
           const waiting = !decision;
-          const outcome = decision ? decisionLabel(decision) : null;
+          const ticked = picked.has(r.id);
+          const sub = [r.artist, ...r.meta].join(" · ");
+          const play = (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelected(r.id);
+                player.play(toPlayer(r), queue);
+              }}
+              className={`grid size-11 shrink-0 place-items-center rounded-[11px] border bg-well transition ${isCurrent ? "border-lime/50 text-lime" : "border-line text-bone hover:border-line-2"}`}
+              aria-label={playing ? `Pause ${r.title}` : `Play ${r.title}`}
+            >
+              <PlayIcon playing={playing} className="size-3.5" />
+            </button>
+          );
+          const name = (
+            <>
+              <span className={`truncate text-[13px] ${waiting ? "font-semibold text-bone" : "font-medium text-mute"}`}>
+                {waiting && <span className="sr-only">Needs review: </span>}
+                {r.title}
+                {r.duplicateOf && <span className="ml-2 text-[11.5px] font-normal text-danger">· Possible duplicate</span>}
+              </span>
+              <span className="truncate text-[11.5px] text-mute">{sub}</span>
+            </>
+          );
           return (
             <li
               key={r.id}
               data-row={r.id}
               aria-current={selected === r.id ? "true" : undefined}
               onClick={() => (picking ? toggle(r.id) : setSelected(r.id))}
-              className={`group transition ${picking ? "flex items-center gap-2" : ""}`}
+              className={`relative ${i ? "border-t border-line" : ""} ${selected === r.id && !picking ? "rounded-[12px] border-t-transparent bg-well shadow-[inset_2px_0_0_var(--color-lime)] [&+li]:border-t-transparent" : ""} ${ticked ? "rounded-[12px] border-t-transparent bg-lime/8 [&+li]:border-t-transparent" : ""}`}
             >
-              {picking && (
-                <input
-                  type="checkbox"
-                  className="size-5 shrink-0 accent-lime"
-                  checked={picked.has(r.id)}
-                  onChange={() => toggle(r.id)}
-                  onClick={(e) => e.stopPropagation()}
-                  aria-label={`Select ${r.artist} - ${r.title}`}
-                />
-              )}
-              <div className={picking ? `relative min-w-0 flex-1 rounded-[14px] ${picked.has(r.id) ? "ring-2 ring-lime/60" : ""}` : "contents"}>
               {/* Select mode: the whole row ticks the track, so a stray tap never plays, keeps or opens it. */}
-              {picking && <button type="button" tabIndex={-1} aria-hidden className="absolute inset-0 z-10 cursor-pointer rounded-[14px]" onClick={(e) => (e.stopPropagation(), toggle(r.id))} />}
-              {/* Phones: Figma "track-card" */}
-              <div
-                className={`flex flex-col gap-2.5 rounded-[14px] border p-3 md:hidden ${
-                  waiting ? "border-line border-l-2 border-l-bone bg-card" : "border-line bg-well"
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelected(r.id);
-                      player.play(toPlayer(r), queue);
-                    }}
-                    className={`grid size-11 shrink-0 place-items-center rounded-[11px] border bg-well text-bone ${isCurrent ? "border-lime/50 text-lime" : "border-line"}`}
-                    aria-label={playing ? `Pause ${r.title}` : `Play ${r.title}`}
-                  >
-                    <PlayIcon playing={playing} className="size-3.5" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelected(r.id);
-                      setExpanded((x) => (x === r.id ? null : r.id));
-                    }}
-                    aria-expanded={open}
-                    className="flex min-w-0 flex-1 flex-col gap-0.5 text-left"
-                  >
-                    <span className={`truncate text-[13px] ${waiting ? "font-bold text-bone" : "font-medium text-mute"}`}>
-                      {waiting && <span className="sr-only">Needs review: </span>}
-                      {r.artist} - {r.title}
-                    </span>
-                    <span className={`truncate text-[11px] font-medium ${decision === "passed" ? "text-faint" : "text-mute"}`}>{r.meta.join(" · ")}</span>
-                  </button>
-                  {statusTag ? (
-                    <span className={`shrink-0 text-xs ${decision === "kept" ? "text-bone" : "text-mute"}`}>
-                      {decisionLabel(decision)}
-                    </span>
-                  ) : outcome ? (
-                    <span className={`shrink-0 text-xs ${decision === "kept" ? "text-bone" : "text-mute"}`}>{outcome}</span>
-                  ) : (
-                    <span className="shrink-0 text-[11px] font-medium text-faint" suppressHydrationWarning>
-                      {age(r.createdAt)}
-                    </span>
-                  )}
-                </div>
-                <div onClick={(e) => e.stopPropagation()}>
-                  <Waveform
-                    peaks={r.peaks}
-                    height={24}
-                    progress={isCurrent && d ? player.time / d : 0}
-                    onSeek={isCurrent ? player.seek : (f) => (player.play(toPlayer(r), queue), setTimeout(() => player.seek(f), 250))}
-                    label={`Seek ${r.title}`}
+              {picking && <button type="button" tabIndex={-1} aria-hidden className="absolute inset-0 z-10 cursor-pointer rounded-[12px]" onClick={(e) => (e.stopPropagation(), toggle(r.id))} />}
+
+              {/* Phones: one compact line per track to scan; the row opens the track in the Queue to listen and decide. */}
+              <div className="flex min-h-14 items-center gap-2.5 px-2 py-1.5 md:hidden">
+                {picking ? (
+                  <input
+                    type="checkbox"
+                    className="relative z-20 m-3 size-5 shrink-0 accent-lime"
+                    checked={ticked}
+                    onChange={() => toggle(r.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label={`Select ${r.artist} - ${r.title}`}
                   />
-                </div>
-                <div className="flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
-                  {/* A status, not a control: plain text. */}
-                  <span className="w-16 shrink-0 text-[11px] text-faint">{r.played ? "Listened" : ""}</span>
-                  <DecisionButton kind="kept" title={r.title} pressed={decision === "kept"} onClick={() => decide(r, "kept", false)} />
-                  <DecisionButton kind="passed" title={r.title} pressed={decision === "passed"} onClick={() => decide(r, "passed", false)} />
-                  <button title="Reply (R)" aria-label={`Reply to ${r.sender}`} aria-pressed={open} onClick={() => (setSelected(r.id), setExpanded(open ? null : r.id))} className={`relative grid size-11 place-items-center ${open ? "text-bone" : "text-mute"}`}>
-                    <FigmaIcon name="message-square" />
-                    {r.replied && <span className="absolute right-2.5 top-2.5 size-1.5 rounded-full bg-bone" />}
-                  </button>
-                  <a href={`/api/tracks/${r.id}/download`} title="Download original" aria-label={`Download original of ${r.title}`} className="grid size-11 place-items-center text-mute">
-                    <FigmaIcon name="download" />
-                  </a>
-                </div>
+                ) : (
+                  play
+                )}
+                <Link href={queueHref(r.id)} className="flex min-w-0 flex-1 flex-col gap-0.5" onClick={(e) => e.stopPropagation()}>
+                  {name}
+                </Link>
+                <span className="shrink-0">{tag(r, decision)}</span>
               </div>
 
-              <div className={`hidden grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 rounded-[14px] border px-4 py-2.5 transition md:grid @4xl:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_auto] ${waiting ? "border-l-2 border-l-bone" : ""} ${selected === r.id ? "border-mute/60 bg-ink-4" : waiting ? "border-line bg-card hover:border-line-2" : "border-line bg-well hover:border-line-2"}`}>
+              {/* Desktop: the fast view, deciding on the row with the keyboard or a click. */}
+              <div className="hidden items-center gap-3 px-2 py-1.5 md:flex">
+                {picking && (
+                  <input
+                    type="checkbox"
+                    className="relative z-20 size-5 shrink-0 accent-lime"
+                    checked={ticked}
+                    onChange={() => toggle(r.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label={`Select ${r.artist} - ${r.title}`}
+                  />
+                )}
+                {play}
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelected(r.id);
-                    player.play(toPlayer(r), queue);
-                  }}
-                  className={`grid size-11 shrink-0 place-items-center rounded-[11px] border bg-well text-bone transition ${isCurrent ? "border-lime/50 text-lime" : "border-line hover:border-line-2"}`}
-                  aria-label={playing ? `Pause ${r.title}` : `Play ${r.title}`}
-                >
-                  <PlayIcon playing={playing} className="size-3.5" />
-                </button>
-
-                <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelected(r.id);
                     setExpanded((x) => (x === r.id ? null : r.id));
                   }}
                   aria-expanded={open}
-                  className="min-w-0 text-left"
+                  className="flex min-w-0 flex-1 flex-col gap-0.5 text-left"
                 >
-                  <p className={`truncate text-[13px] ${waiting ? "font-bold text-bone" : "font-medium text-mute"}`}>
-                    {waiting && <span className="sr-only">Needs review: </span>}
-                    {r.artist} - {r.title}
-                    {r.duplicateOf && <span className="ml-2 text-xs font-normal text-danger">· Possible duplicate</span>}
-                  </p>
-                  <p className="mt-1 flex items-center gap-2 truncate text-[11px] text-faint">
-                    <span className="truncate">{r.meta.join(" · ")}</span>
-                    {(statusTag || outcome) && (
-                      <span className={`shrink-0 text-xs ${decision === "kept" ? "text-bone" : "text-mute"}`}>
-                        {outcome ?? "Needs review"}
-                      </span>
-                    )}
-                  </p>
+                  {name}
                 </button>
-
-                <div className="hidden min-w-0 @4xl:block" onClick={(e) => e.stopPropagation()}>
+                <div className="hidden w-[min(28%,240px)] min-w-0 @4xl:block" onClick={(e) => e.stopPropagation()}>
                   <Waveform
                     peaks={r.peaks}
-                    height={44}
+                    height={30}
                     progress={isCurrent && d ? player.time / d : 0}
                     onSeek={isCurrent ? player.seek : (f) => (player.play(toPlayer(r), queue), setTimeout(() => player.seek(f), 250))}
                     label={`Seek ${r.title}`}
                   />
                 </div>
-
-                <div className="flex items-center gap-0.5 sm:gap-1" onClick={(e) => e.stopPropagation()}>
-                  <span className="hidden w-16 items-center justify-end gap-2 text-mute @2xl:flex">
+                <div className="flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                  <span className="hidden w-10 items-center justify-end gap-1.5 text-faint @2xl:flex">
                     {r.played && (
                       <span title="Listened">
-                        <Icon.Headphones />
+                        <KitIcon name="head" className="size-[15px]" />
                         <span className="sr-only">Listened</span>
                       </span>
                     )}
                     {r.downloaded && (
                       <span title="Downloaded">
-                        <Icon.Downloaded />
+                        <KitIcon name="dl" className="size-[15px]" />
                         <span className="sr-only">Downloaded</span>
                       </span>
                     )}
@@ -355,28 +340,28 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
                   <DecisionButton kind="kept" title={r.title} pressed={decision === "kept"} onClick={() => decide(r, "kept", false)} />
                   <DecisionButton kind="passed" title={r.title} pressed={decision === "passed"} onClick={() => decide(r, "passed", false)} />
                   <ActionButton label={`Reply to ${r.sender}`} tip="Reply" hint="R" pressed={open} onClick={() => (setSelected(r.id), setExpanded(open ? null : r.id))}>
-                    <Icon.Bubble dot={r.replied} />
+                    <Bubble dot={r.replied} />
                   </ActionButton>
                   <a
                     href={`/api/tracks/${r.id}/download`}
                     title="Download original"
                     aria-label={`Download original of ${r.title}`}
-                    className="grid size-11 place-items-center rounded-md text-bone/80 transition hover:bg-card hover:text-bone"
+                    className="grid size-9 place-items-center rounded-[10px] text-mute transition hover:bg-well hover:text-bone pointer-coarse:size-11"
                   >
-                    <Icon.Download />
+                    <KitIcon name="dl" className="size-[18px]" />
                   </a>
-                  <span className="hidden w-12 text-right text-[11px] text-faint tnum sm:block" title={new Date(r.createdAt).toLocaleString()} suppressHydrationWarning>
-                    {age(r.createdAt)}
+                  {/* The buttons already say Kept or Not for me, so desktop ends on the age (lime while unheard). */}
+                  <span className="flex w-10 justify-end" title={new Date(r.createdAt).toLocaleString()} suppressHydrationWarning>
+                    <Chip tone={!decision && !r.played ? "acc" : "flat"}>{age(r.createdAt)}</Chip>
                   </span>
                 </div>
               </div>
 
               {open && !picking && (
-                <div className="mt-2 overflow-hidden rounded-[14px] md:mt-0 md:rounded-none">
+                <div className="hidden md:block">
                   <Expanded row={r} decision={decision} onClose={() => setExpanded(null)} />
                 </div>
               )}
-              </div>
             </li>
           );
         })}
@@ -389,27 +374,24 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
           onDecide={(d) => setDecisions((m) => ({ ...m, ...Object.fromEntries([...picked].map((id) => [id, d])) }))}
         />
       )}
-      <div className="mt-4 hidden items-center justify-between gap-4 rounded-[14px] border border-line bg-well px-4 py-3 text-[11px] text-faint md:flex">
-        <p className="flex flex-wrap gap-x-4 gap-y-1">
-          {[
-            ["↑/↓", "select"],
-            ["Space", "play"],
-            ["K", "keep"],
-            ["X", "not for me"],
-            ["R", "reply"],
-            ["Enter", "details"],
-            ["1–4", "jump"],
-            ["←/→", "10s"],
-            ["U", "undo"],
-          ].map(([k, v]) => (
-            <span key={k}>
-              <span className="font-bold text-bone">{k}</span> {v}
-            </span>
-          ))}
-        </p>
-        <span className="shrink-0 text-mute">{fmtCount(rows.length)}</span>
-      </div>
-    </>
+      <p className="mt-1.5 hidden flex-wrap gap-x-4 gap-y-1 border-t border-dashed border-line-2 px-2 pt-2.5 pb-1 text-[11px] text-faint md:flex">
+        {[
+          ["↑/↓", "select"],
+          ["Space", "play"],
+          ["K", "keep"],
+          ["X", "not for me"],
+          ["R", "reply"],
+          ["Enter", "details"],
+          ["1–4", "jump"],
+          ["←/→", "10s"],
+          ["U", "undo"],
+        ].map(([k, v]) => (
+          <span key={k}>
+            <span className="font-semibold text-mute">{k}</span> {v}
+          </span>
+        ))}
+      </p>
+    </section>
   );
 }
 
@@ -423,10 +405,10 @@ function Expanded({ row: r, decision, onClose }: { row: ListRow; decision: Decis
   useEffect(() => area.current?.focus(), []);
 
   return (
-    <div className="grid gap-5 border-t border-line/60 bg-ink/40 px-4 py-5 sm:px-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:pl-[88px]">
+    <div className="mx-2 mb-2 grid gap-5 rounded-[12px] border border-line bg-well p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
       <div className="space-y-3 text-sm">
         {r.message ? (
-          <figure className="rounded-lg border border-line bg-well p-3">
+          <figure className="rounded-[11px] border border-line bg-card p-3">
             <figcaption className="label mb-1">Message from {r.sender}</figcaption>
             <blockquote className="whitespace-pre-wrap text-[15px] text-bone">{r.message}</blockquote>
           </figure>
@@ -483,7 +465,7 @@ function Expanded({ row: r, decision, onClose }: { row: ListRow; decision: Decis
           name="body"
           required
           maxLength={4000}
-          className="input mt-2 min-h-24 resize-y rounded-xl! bg-well! max-sm:text-base"
+          className="input mt-2 min-h-24 resize-y rounded-xl! bg-card! max-sm:text-base"
           placeholder="Sent by email"
           onKeyDown={(e) => {
             if (e.key === "Escape") onClose();
@@ -491,7 +473,7 @@ function Expanded({ row: r, decision, onClose }: { row: ListRow; decision: Decis
           }}
         />
         <div className="mt-2 flex items-center gap-2">
-          <button className="btn-lime btn-sm" disabled={pending}>
+          <button className="btn-lime min-h-9 rounded-[10px]" disabled={pending}>
             {pending ? "Sending…" : "Send reply"}
           </button>
           <ReplyTemplates
@@ -532,7 +514,7 @@ function ActionButton({
       aria-pressed={pressed}
       aria-keyshortcuts={hint}
       title={`${tip} (${hint})`}
-      className={`grid size-11 place-items-center rounded-md transition hover:bg-card ${pressed ? "text-bone" : "text-mute hover:text-bone"}`}
+      className={`grid size-9 place-items-center rounded-[10px] transition hover:bg-well pointer-coarse:size-11 ${pressed ? "bg-well text-bone" : "text-mute hover:text-bone"}`}
     >
       {children}
     </button>
@@ -540,8 +522,8 @@ function ActionButton({
 }
 
 /**
- * Keep and Not for me in a row, worded as on the decision rail: both neutral, Kept marked in bone (rule 15: lime is
- * the page's one main action, not a state repeated down a list). Never red, never a thumbs-down. 44px tall.
+ * Keep and Not for me on a desktop row, worded as on the decision rail. Kept takes the green the Kept tag uses; Not for
+ * me stays plain. Lime stays the page's one main action. Never red, never a thumbs-down. 36px, 44px on touch screens.
  */
 function DecisionButton({ kind, title, pressed, onClick }: { kind: "kept" | "passed"; title: string; pressed: boolean; onClick: () => void }) {
   const keep = kind === "kept";
@@ -552,14 +534,12 @@ function DecisionButton({ kind, title, pressed, onClick }: { kind: "kept" | "pas
       aria-pressed={pressed}
       aria-keyshortcuts={keep ? "K" : "X"}
       title={keep ? "Keep (K)" : "Not for me (X)"}
-      className={`inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-md border px-2.5 text-[12px] font-semibold transition ${
-        keep
-          ? pressed
-            ? "border-bone bg-bone/10 text-bone"
-            : "border-line text-bone hover:border-mute hover:bg-ink-4"
-          : pressed
-            ? "border-bone bg-bone/10 text-bone"
-            : "border-line text-mute hover:border-mute hover:text-bone"
+      className={`inline-flex min-h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-[10px] border px-2.5 text-[12px] font-semibold transition pointer-coarse:min-h-11 ${
+        pressed
+          ? keep
+            ? "border-transparent bg-[color-mix(in_oklab,#9be15d_14%,transparent)] text-[#6aa636]"
+            : "border-line-2 bg-ink-4 text-bone"
+          : `border-line bg-well hover:border-line-2 ${keep ? "text-bone" : "text-mute hover:text-bone"}`
       }`}
     >
       {keep ? (pressed ? "Kept" : "Keep") : "Not for me"}
@@ -567,38 +547,12 @@ function DecisionButton({ kind, title, pressed, onClick }: { kind: "kept" | "pas
   );
 }
 
-const svg = "h-[22px] w-[22px]";
-const Icon = {
-  Bubble: ({ dot }: { dot: boolean }) => (
-    <svg viewBox="0 0 24 24" className={svg} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden strokeLinejoin="round">
+/** The reply icon, with a lime dot once you've replied. */
+function Bubble({ dot }: { dot: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" className="size-[18px]" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden strokeLinejoin="round">
       <path d="M12 4c4.7 0 8.5 3.2 8.5 7.2s-3.8 7.2-8.5 7.2c-1 0-2-.1-2.9-.4L4.5 20l1.2-3.8a6.8 6.8 0 0 1-2.2-5C3.5 7.2 7.3 4 12 4Z" />
       {dot && <circle cx="18.5" cy="5.5" r="3" fill="var(--color-lime)" stroke="none" />}
     </svg>
-  ),
-  Download: () => (
-    <svg viewBox="0 0 24 24" className={svg} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M4.5 16.5v2a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5v-2" />
-    </svg>
-  ),
-  Downloaded: () => (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M4.5 19.5h15" />
-    </svg>
-  ),
-  Headphones: () => (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden strokeLinejoin="round">
-      <path d="M4 15v-3a8 8 0 0 1 16 0v3M4 15h3v5H5a1 1 0 0 1-1-1v-4Zm16 0h-3v5h2a1 1 0 0 0 1-1v-4Z" />
-    </svg>
-  ),
-};
-
-/** Icon exported from the Figma design, tinted with the current text colour. */
-function FigmaIcon({ name }: { name: string }) {
-  return (
-    <span
-      aria-hidden
-      className="block size-3.5 bg-current"
-      style={{ mask: `url(/icons/${name}.svg) center / contain no-repeat`, WebkitMask: `url(/icons/${name}.svg) center / contain no-repeat` }}
-    />
   );
 }
