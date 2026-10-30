@@ -1,4 +1,5 @@
 import { ExportButton } from "./ExportButton";
+import { GHOST, GHOST_TALL, LIME, LIME_SM } from "./kitButtons";
 
 /**
  * The same download choices wherever tracks can be downloaded (Prepare for set, a collection page, collection cards):
@@ -19,10 +20,10 @@ export function DownloadActions({
   size?: "md" | "sm";
   extra?: React.ReactNode;
 }) {
-  // Phones fit three across in a grid, so the regular size trims its side padding there.
-  const box = size === "md" ? "px-2! md:px-4!" : "btn-sm";
+  // The kit's buttons. Phones fit three across in a grid, so the regular size trims its side padding there.
+  const box = size === "md" ? "px-2! md:px-4!" : "";
   const filesHref = `/api/export?files=1${collectionId ? `&collection=${collectionId}&all=1` : ""}`;
-  const files = `btn-ghost w-full md:w-auto md:shrink-0 ${box}`;
+  const files = `${size === "md" ? GHOST_TALL : GHOST} w-full md:w-auto ${box}`;
   return (
     <div className={size === "md" ? "grid grid-cols-3 items-start gap-2 md:flex md:shrink-0 md:justify-end" : "flex flex-wrap items-center gap-2"}>
       <ExportButton
@@ -33,7 +34,7 @@ export function DownloadActions({
         label={collectionId ? "Download collection" : "Download kept"}
         align="start"
         showCount={false}
-        buttonClassName={`btn-lime w-full ${box}`}
+        buttonClassName={`${size === "md" ? LIME : LIME_SM} w-full ${box}`}
       />
       {count > 0 ? (
         <a href={filesHref} className={files} title="The original audio files, no playlist or XML">
