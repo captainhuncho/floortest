@@ -10,7 +10,7 @@ export function PlayedOutCard({ titles }: { titles: string[] }) {
   const n = titles.length;
   return (
     <section aria-labelledby="po-h" className="flex flex-col gap-3.5 rounded-2xl border border-line-2 bg-ink-2 p-5">
-      <p className="eyebrow">After the weekend</p>
+      <p className="text-[11.5px] text-mute">After the weekend</p>
       <h2 id="po-h" className="text-[22px] font-bold leading-tight tracking-[-0.4px] text-bone">Did any of these get played?</h2>
       <p className="text-[13px] text-mute">
         {n} track{n === 1 ? "" : "s"} you kept last week

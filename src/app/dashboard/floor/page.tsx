@@ -13,13 +13,13 @@ import { localHour, prefsForView } from "@/lib/notify";
 import { homeStats } from "@/lib/stats";
 import { planOf } from "@/lib/plan-store";
 import { SwitchCollection } from "./SwitchCollection";
-import { CopyLinkBox } from "./CopyLinkBox";
 import { SendMusicCard } from "./SendMusicCard";
 import { UpNext } from "./UpNext";
 import { UpNextHero } from "./UpNextHero";
 import { PlayedOutCard } from "./PlayedOutCard";
 import { playedOutPrompt } from "@/lib/played-out-prompt";
-import { Chip, DeskStrip, FloorIcon, IconBox, InfoRow, Legend, StatTile, WeekChart } from "./FloorBits";
+import { Chip, DeskStrip, FloorIcon, IconBox, InfoRow, Legend, StatTile } from "./FloorBits";
+import { LinkRow, WeekChart } from "./FloorClient";
 
 export const metadata = { title: "Floor — FloorTest" };
 
@@ -165,107 +165,89 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
     ...(teamDesk && seats > 1 ? [{ key: "seats", href: "/dashboard/settings/team", text: `${used} of ${seats} seats` }] : []),
   ];
 
-  // Where the link sends, and the way to change it: under the link in the desk card, beside its heading on a new desk.
-  const linkWhere = (
-    <>
-      {problem
-        ? "Not taking uploads right now"
-        : active
-          ? `Sends tracks to “${active.name}”${active.closes_at ? `, open until ${fmtDay(active.closes_at)}` : ""}`
-          : "Sends tracks to your Review Queue"}
-      {" · "}
-      <Link href="/dashboard/collections" className="text-mute underline-offset-4 hover:text-bone hover:underline">
-        Collections
-      </Link>
-    </>
-  );
+  // Where the link sends, as the label over it (owner, 30 Oct mock: "Your link · sends to “Friday residency”").
+  const linkWhere = problem
+    ? "Your link · not taking uploads right now"
+    : active
+      ? `Your link · sends to “${active.name}”${active.closes_at ? `, open until ${fmtDay(active.closes_at)}` : ""}`
+      : "Your link · sends to your Review Queue";
 
   // A new desk's link, on its own above the checklist.
   const linkSection = (
-    <section aria-labelledby="link-h" className="flex flex-col gap-3 rounded-[18px] border border-line bg-ink-3 p-3">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 id="link-h" className="text-[15px] font-semibold text-bone">Your link</h2>
-        <p className="text-[12px] text-faint">{linkWhere}</p>
-      </div>
-      <CopyLinkBox link={link} />
+    <section aria-labelledby="link-h" className="flex flex-col gap-2.5 rounded-[18px] border border-line bg-card p-3 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
+      <h2 id="link-h" className="text-[15px] font-semibold text-bone">Your link</h2>
+      <p className="text-[11.5px] text-mute">{linkWhere.replace(/^Your link · s/, "S")}</p>
+      <LinkRow link={link} />
     </section>
   );
 
-  // The desk card: how full it is, what needs you, its figures and the link.
+  // The desk card (the mock's "Your desk"): how full it is as ticks, what needs you, its figures and the link.
   const deskCard = !fresh && (
-    <div className="flex flex-col gap-3 rounded-[18px] border border-line bg-ink-3 p-3">
-      <section aria-labelledby="cap-h" className="flex flex-col gap-2.5">
-        <div className="flex items-baseline justify-between gap-3">
-          <h2 id="cap-h" className="text-[15px] font-semibold text-bone">Active tracks</h2>
-          <Link href={capHref} className={`text-[12px] tnum underline-offset-4 hover:underline ${nearLimit ? "font-semibold text-lime" : "text-mute hover:text-bone"}`}>
-            <strong className={`text-[16px] font-semibold ${nearLimit ? "" : "text-bone"}`}>{cap.used.toLocaleString("en-GB")}</strong> of {cap.limit.toLocaleString("en-GB")}
-          </Link>
-        </div>
-        <DeskStrip waiting={stats.waiting} kept={kept} passed={passed} limit={cap.limit} />
-        <Legend
-          items={[
-            { label: `Waiting ${stats.waiting}`, tone: "bg-lime" },
-            { label: `Kept ${kept}`, tone: "bg-[color-mix(in_oklab,var(--color-lime)_45%,var(--color-line-2))]" },
-            ...(passed ? [{ label: `Not for me ${passed}`, tone: "bg-mute/55" }] : []),
-            { label: `Free ${free}`, tone: "bg-line-2" },
-          ]}
-        />
-      </section>
-      <section aria-labelledby="desk-h" className="flex flex-col gap-2">
-        <h2 id="desk-h" className="sr-only">Your desk</h2>
-        {deskLinks.length > 0 && (
-          <ul className="flex flex-col gap-1.5">
-            {deskLinks.map((d) => (
-              <li key={d.key}>
-                <Link
-                  href={d.href}
-                  className={`group flex min-h-11 items-center gap-2 rounded-[11px] border px-2.5 text-[12.5px] ${d.urgent ? "border-lime/40 font-semibold text-lime" : "border-line bg-ink-2 text-mute hover:text-bone"}`}
-                >
-                  {d.urgent && <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-lime" />}
-                  <span className="min-w-0 flex-1">{d.text}</span>
-                  <FloorIcon name="chev" className="size-4 text-faint transition-transform duration-150 ease-out group-hover:translate-x-0.5" />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="grid grid-cols-3 border-y border-dashed border-line-2 py-2 text-center">
-          <Link href="/dashboard/collections" className="flex min-h-11 flex-col items-center justify-center rounded-lg hover:bg-ink-2">
-            <span className="text-[11.5px] text-mute">Collections</span>
-            <span className="text-[14px] font-semibold text-bone tnum">{collections.length}</span>
-          </Link>
-          <Link href="/dashboard/contacts" className="flex min-h-11 flex-col items-center justify-center rounded-lg hover:bg-ink-2">
-            <span className="text-[11.5px] text-mute">Contacts</span>
-            <span className="text-[14px] font-semibold text-bone tnum">{contactCount}</span>
-          </Link>
-          <Link href="/dashboard/plans" className="flex min-h-11 flex-col items-center justify-center rounded-lg hover:bg-ink-2">
-            <span className="text-[11.5px] text-mute">Plan</span>
-            <span className="text-[14px] font-semibold text-bone">{plan.name}</span>
-          </Link>
-        </div>
-      </section>
-      <section aria-labelledby="link-h" className="flex flex-col gap-2">
-        <h2 id="link-h" className="text-[11.5px] text-mute">Your link</h2>
-        <CopyLinkBox link={link} />
-        <p className="text-[12px] text-faint">{linkWhere}</p>
-      </section>
-    </div>
+    <section aria-labelledby="desk-h" className="flex flex-col gap-3 rounded-[18px] border border-line bg-card p-3 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 id="desk-h" className="text-[15px] font-semibold text-bone">Your desk</h2>
+        <Link href={capHref} className={`text-[12px] tnum underline-offset-4 hover:underline ${nearLimit ? "font-semibold text-lime" : "text-mute hover:text-bone"}`}>
+          <strong className={`text-[16px] font-semibold ${nearLimit ? "" : "text-bone"}`}>{cap.used.toLocaleString("en-GB")}</strong> of {cap.limit.toLocaleString("en-GB")} tracks
+        </Link>
+      </div>
+      <DeskStrip waiting={stats.waiting} kept={kept} passed={passed} limit={cap.limit} />
+      <Legend
+        items={[
+          { label: `Waiting ${stats.waiting}`, tone: "bg-lime" },
+          { label: `Kept ${kept}`, tone: "bg-[color-mix(in_oklab,var(--color-lime)_45%,var(--color-line-2))]" },
+          ...(passed ? [{ label: `Not for me ${passed}`, tone: "bg-mute/55" }] : []),
+          { label: `Free ${free}`, tone: "bg-line-2" },
+        ]}
+      />
+      {deskLinks.length > 0 && (
+        <ul className="flex flex-col gap-1.5">
+          {deskLinks.map((d) => (
+            <li key={d.key}>
+              <Link
+                href={d.href}
+                className={`group flex min-h-11 items-center gap-2 rounded-[11px] border px-2.5 text-[12.5px] ${d.urgent ? "border-lime/40 font-semibold text-lime" : "border-line bg-well text-mute hover:text-bone"}`}
+              >
+                {d.urgent && <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-lime" />}
+                <span className="min-w-0 flex-1">{d.text}</span>
+                <FloorIcon name="chev" className="size-4 text-faint transition-transform duration-150 ease-out group-hover:translate-x-0.5" />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="grid grid-cols-3 border-y border-dashed border-line-2 py-1.5 text-center">
+        <Link href="/dashboard/collections" className="flex min-h-11 flex-col items-center justify-center rounded-lg hover:bg-well">
+          <span className="text-[11.5px] text-mute">Collections</span>
+          <span className="text-[14px] font-semibold text-bone tnum">{collections.length}</span>
+        </Link>
+        <Link href="/dashboard/contacts" className="flex min-h-11 flex-col items-center justify-center rounded-lg hover:bg-well">
+          <span className="text-[11.5px] text-mute">Contacts</span>
+          <span className="text-[14px] font-semibold text-bone tnum">{contactCount}</span>
+        </Link>
+        <Link href="/dashboard/plans" className="flex min-h-11 flex-col items-center justify-center rounded-lg hover:bg-well">
+          <span className="text-[11.5px] text-mute">Plan</span>
+          <span className="text-[14px] font-semibold text-bone">{plan.name}</span>
+        </Link>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <h3 id="link-h" className="text-[11.5px] text-mute">{linkWhere}</h3>
+        <LinkRow link={link} />
+      </div>
+    </section>
   );
 
-  // The week: received per day with the kept part in lime, and the totals in words beside it.
+  // The week: a Received / Kept / Listened switch over the last seven days, the totals in the chip.
   const week = stats.daily.slice(-7);
   const receivedDelta = stats.receivedWeek - stats.receivedPrev;
   const weekCard = !fresh && stats.receivedWeek + stats.receivedPrev + stats.keptWeek > 0 && (
-    <section aria-labelledby="week-h" className="flex flex-col gap-3 rounded-[18px] border border-line bg-ink-3 p-3">
+    <section aria-labelledby="week-h" className="flex flex-col gap-3 rounded-[18px] border border-line bg-card p-3 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id="week-h" className="text-[15px] font-semibold text-bone">This week</h2>
-        <Chip tone={receivedDelta > 0 ? "up" : "flat"}>{receivedDelta === 0 ? "Same as last week" : `${receivedDelta > 0 ? "+" : "−"}${Math.abs(receivedDelta)} on last week`}</Chip>
+        <Chip tone={receivedDelta > 0 ? "up" : "flat"}>
+          {stats.receivedWeek} received · {receivedDelta === 0 ? "same as last week" : receivedDelta > 0 ? `${receivedDelta} more` : `${-receivedDelta} fewer`}
+        </Chip>
       </div>
-      <p className="text-[12.5px] text-mute">
-        <span className="font-semibold text-bone tnum">{stats.receivedWeek}</span> received, <span className="font-semibold text-bone tnum">{stats.keptWeek}</span> kept in the last 7 days.
-      </p>
       <WeekChart days={week} />
-      <Legend items={[{ label: "Kept", tone: "bg-lime" }, { label: "Received", tone: "bg-line-2" }]} />
     </section>
   );
 
@@ -315,7 +297,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
         <div className="grid grid-cols-1 gap-4 sm:gap-5 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
           <div className="flex min-w-0 flex-col gap-4 sm:gap-5">
             {oldest && (
-              <section aria-labelledby="next-h" className="flex flex-col gap-3 rounded-[18px] border border-line bg-ink-3 p-3">
+              <section aria-labelledby="next-h" className="flex flex-col gap-3 rounded-[18px] border border-line bg-card p-3 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <IconBox name="wave" small />
@@ -366,7 +348,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
             {user.role !== "member" && <Onboarding user={user} />}
 
             {kept > 0 && (
-              <section aria-labelledby="set-h" className="flex items-center justify-between gap-4 rounded-[18px] border border-line bg-ink-3 p-3">
+              <section aria-labelledby="set-h" className="flex items-center justify-between gap-4 rounded-[18px] border border-line bg-card p-3 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
                 <div className="flex min-w-0 items-center gap-2.5">
                   <IconBox name="heart" />
                   <div className="min-w-0">
@@ -393,7 +375,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
               {weekCard}
               {/* On a team desk, Members can't send as the account; in the beta nobody sends from here (switch send_music). */}
               {canSend && (
-                <div className="overflow-hidden rounded-[18px] border border-line bg-ink-3">
+                <div className="overflow-hidden rounded-[18px] border border-line bg-card shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
                   <SendMusicCard recent={recentSends} host={APP_URL.replace(/^https?:\/\//, "")} />
                 </div>
               )}

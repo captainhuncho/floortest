@@ -37,7 +37,7 @@ export function Chip({ tone = "flat", children }: { tone?: "warn" | "up" | "flat
 /** The icon box the tiles and section titles share. */
 export function IconBox({ name, small }: { name: FloorIconName; small?: boolean }) {
   return (
-    <span aria-hidden className={`grid shrink-0 place-items-center border border-line bg-ink-2 text-bone ${small ? "size-8 rounded-[10px]" : "size-9 rounded-[11px]"}`}>
+    <span aria-hidden className={`grid shrink-0 place-items-center border border-line bg-well text-bone ${small ? "size-8 rounded-[10px]" : "size-9 rounded-[11px]"}`}>
       <FloorIcon name={name} className={small ? "size-4" : "size-[18px]"} />
     </span>
   );
@@ -46,7 +46,7 @@ export function IconBox({ name, small }: { name: FloorIconName; small?: boolean 
 /** One number with its label: the label says what it counts, the chip its scope or change. */
 export function StatTile({ icon, label, value, chip }: { icon: FloorIconName; label: string; value: string; chip?: React.ReactNode }) {
   return (
-    <div className="flex min-w-0 items-center gap-2.5 rounded-2xl border border-line bg-ink-3 p-2.5">
+    <div className="flex min-w-0 items-center gap-2.5 rounded-2xl border border-line bg-card p-2.5 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
       <IconBox name={icon} />
       <dl className="min-w-0">
         <dt className="truncate text-[11.5px] text-mute">{label}</dt>
@@ -62,7 +62,7 @@ export function StatTile({ icon, label, value, chip }: { icon: FloorIconName; la
 /** A spec-sheet row: what it is on the left, the value on the right. */
 export function InfoRow({ icon, label, children }: { icon: FloorIconName; label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2 rounded-[11px] border border-line bg-ink-2 px-2.5 py-2 text-[12px]">
+    <div className="flex items-center gap-2 rounded-[11px] border border-line bg-well px-2.5 py-2 text-[12px]">
       <dt className="flex min-w-0 flex-1 items-center gap-2 text-mute">
         <FloorIcon name={icon} className="size-[15px]" />
         {label}
@@ -97,33 +97,5 @@ export function Legend({ items }: { items: { label: string; tone: string }[] }) 
         </li>
       ))}
     </ul>
-  );
-}
-
-/** The last seven days: received as grey bars, the kept part of each in lime. The numbers are in the text beside it. */
-export function WeekChart({ days }: { days: { weekday: string; count: number; kept: number; today: boolean }[] }) {
-  const top = Math.max(1, ...days.map((d) => Math.max(d.count, d.kept)));
-  return (
-    <div aria-hidden className="flex flex-col gap-1.5">
-      <div className="grid h-24 grid-cols-7 items-end gap-2 border-b border-dashed border-line-2">
-        {days.map((d, i) => {
-          const kept = Math.min(d.kept, Math.max(d.count, d.kept));
-          const rest = Math.max(0, d.count - kept);
-          return (
-            <div key={i} className="flex h-full flex-col justify-end gap-0.5">
-              {rest > 0 && <span className="block rounded-[5px] bg-line-2" style={{ height: `${(rest / top) * 100}%` }} />}
-              {kept > 0 && <span className="block rounded-[5px] bg-lime" style={{ height: `${(kept / top) * 100}%` }} />}
-            </div>
-          );
-        })}
-      </div>
-      <div className="grid grid-cols-7 gap-2 text-center text-[11px] text-faint">
-        {days.map((d, i) => (
-          <span key={i} className={d.today ? "font-semibold text-bone" : ""}>
-            {d.weekday.slice(0, 1)}
-          </span>
-        ))}
-      </div>
-    </div>
   );
 }

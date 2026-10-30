@@ -28,18 +28,19 @@ export function Sidebar({ needsReview, cap, pause, canSend = true }: Props) {
   ];
 
   return (
-    <aside className="keep-night hidden flex-col border-b border-line bg-ink-2 text-bone md:flex md:h-dvh md:overflow-y-auto md:border-b-0 md:border-r">
+    <aside className="hidden flex-col border-b border-line bg-ink text-bone md:flex md:h-dvh md:overflow-y-auto md:border-b-0 md:border-r">
       <div className="flex items-center justify-between gap-3 px-4 pt-4 md:pb-2">
         <Logo href="/" />
       </div>
 
-      <nav aria-label="Main" className="tactile-panel mx-3 mt-3 flex flex-col gap-1 rounded-[22px] p-1.5">
+      {/* Plain rows, the current one on a card (owner, 30 Oct redesign; it was a dark tactile panel with capitals). */}
+      <nav aria-label="Main" className="mx-3 mt-4 flex flex-col gap-0.5">
         {nav.map((n) => (
           <Link
             key={n.href}
             href={n.href}
             aria-current={n.active ? "page" : undefined}
-            className="tactile-item relative flex items-center gap-3 rounded-[16px] px-3 py-2.5 text-[12px] font-medium uppercase tracking-[0.5px]"
+            className={`relative flex min-h-10 items-center gap-2.5 rounded-[11px] border px-2.5 text-[13px] transition-colors duration-100 ${n.active ? "border-line bg-card font-semibold text-bone" : "border-transparent text-mute hover:bg-card hover:text-bone"}`}
           >
             <NavIcon name={n.icon as NavIconName} />
             <span className="min-w-0 flex-1 truncate">{n.label}</span>

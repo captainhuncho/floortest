@@ -60,7 +60,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <main id="main" className="min-w-0 pb-48 md:overflow-y-auto md:pb-24">
             {/* Phones: the logo floats on top in a frosted bar, always in view (owner, 30 Oct); desktop keeps the slim bar. */}
             <div className="sticky top-0 z-40 bg-gradient-to-b from-ink from-60% to-transparent px-3 pb-3 pt-[max(0.5rem,env(safe-area-inset-top))] md:bg-none md:p-0">
-              <div className="flex h-14 items-center justify-end gap-2 rounded-[20px] border border-line bg-ink-2/80 pl-3 pr-1.5 shadow-[0_10px_30px_-16px_rgba(0,0,0,0.55)] backdrop-blur-xl backdrop-saturate-150 sm:gap-3 md:h-14 md:rounded-none md:border-0 md:bg-ink/70 md:px-6 md:shadow-none">
+              <div className="flex h-14 items-center justify-end gap-2 rounded-[20px] border border-line bg-card/80 pl-3 pr-1.5 shadow-[0_10px_30px_-16px_rgba(0,0,0,0.55)] backdrop-blur-xl backdrop-saturate-150 sm:gap-3 md:h-14 md:rounded-none md:border-0 md:bg-ink/70 md:px-6 md:shadow-none">
                 <Logo href="/" className="mr-auto md:hidden" />
                 <span className="mr-auto hidden md:block" />
                 <div className="hidden md:block">
