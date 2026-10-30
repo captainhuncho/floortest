@@ -1,6 +1,7 @@
 "use client";
 
 import { CuePoint } from "@/components/CuePoint";
+import { Chip, Icon, IconBox } from "@/components/Kit";
 import { useFocusTrap } from "@/components/useFocusTrap";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -50,15 +51,13 @@ export function TopBar(p: Props) {
   }, [open]);
 
   const toggle = (k: Exclude<Open, null>) => setOpen((o) => (o === k ? null : k));
-  const round = "tap grid size-9 place-items-center rounded-full border border-ink-4 bg-ink-3 text-mute transition hover:border-mute sm:size-11 sm:border-line sm:bg-ink-2 sm:text-bone";
+  // The redesign's pair box: search, bell and profile share one small raised box, each a 44px square.
+  const round = "relative grid size-11 place-items-center rounded-[11px] text-bone transition-colors hover:bg-well aria-expanded:bg-well";
 
   return (
-    <div ref={root} className="relative flex items-center justify-end gap-2">
+    <div ref={root} className="relative flex items-center justify-end gap-0.5 rounded-[14px] border border-line bg-card p-[3px]">
       <button className={round} onClick={() => toggle("search")} aria-label="Search (⌘K)" aria-expanded={open === "search"}>
-        <svg viewBox="0 0 20 20" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-          <circle cx="8.5" cy="8.5" r="5.5" />
-          <path d="m13 13 4 4" strokeLinecap="round" />
-        </svg>
+        <Icon name="search" />
       </button>
 
       <div className="relative">
@@ -68,11 +67,9 @@ export function TopBar(p: Props) {
           aria-expanded={open === "bell"}
           aria-label={p.notices.unread ? `Notifications, ${p.notices.unread} new` : "Notifications"}
         >
-          <svg viewBox="0 0 20 20" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden strokeLinejoin="round">
-            <path d="M5 14V9a5 5 0 0 1 10 0v5l1.5 1.5h-13L5 14ZM8 17.5a2 2 0 0 0 4 0" />
-          </svg>
+          <Icon name="bell" />
           {p.notices.unread > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-lime px-1 text-xs font-bold text-ink tnum">
+            <span className="absolute right-1 top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-lime px-1 text-[10.5px] font-bold text-ink ring-2 ring-card tnum">
               {p.notices.unread > 9 ? "9+" : p.notices.unread}
             </span>
           )}
@@ -90,16 +87,14 @@ export function TopBar(p: Props) {
       <div className="relative">
         <button
           onClick={() => router.push("/dashboard/account")}
-          className="tap flex items-center gap-3 rounded-full border border-ink-4 bg-ink-3 transition hover:border-mute sm:border-line sm:bg-ink-2 sm:py-1 sm:pl-5 sm:pr-1"
+          className="flex min-h-11 items-center gap-2 rounded-[11px] transition-colors hover:bg-well sm:pl-3"
         >
-          <span className="hidden items-center gap-1.5 text-[15px] sm:inline-flex">
+          <span className="hidden items-center gap-1.5 text-[13px] font-semibold text-bone sm:inline-flex">
             {p.user.handle}
             {p.user.verified && <CuePoint size={16} label="Verified" />}
           </span>
-          <svg aria-hidden viewBox="0 0 12 12" className="hidden h-3 w-3 -rotate-90 text-mute sm:block" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M3 4.5 6 7.5 9 4.5" />
-          </svg>
-          <span className="grid size-9 place-items-center rounded-full text-[11px] font-bold text-bone sm:bg-bone sm:font-sans sm:text-sm sm:text-ink">{initials(p.user.name)}</span>
+          <Icon name="chev" className="hidden size-3.5 text-mute sm:block" />
+          <span className="grid size-11 place-items-center rounded-[11px] bg-ink-4 text-[13px] font-bold text-bone">{initials(p.user.name)}</span>
           <span className="sr-only">Your profile</span>
         </button>
       </div>
@@ -114,7 +109,7 @@ function Panel({ children, className = "" }: { children: React.ReactNode; classN
   return (
     <div
       // Never wider than the main column (the sidebar is 248px): the main area scrolls, so it clips anything past its edge.
-      className={`absolute right-0 top-full z-50 mt-3 max-h-[calc(100dvh-90px)] w-[min(400px,calc(100vw-24px))] overflow-y-auto rounded-2xl border border-line bg-ink-2 shadow-pop md:w-[min(400px,calc(100vw-248px-48px))] ${className}`}
+      className={`absolute right-0 top-full z-50 mt-3 max-h-[calc(100dvh-90px)] w-[min(400px,calc(100vw-24px))] overflow-y-auto rounded-[18px] border border-line bg-card text-bone shadow-pop md:w-[min(400px,calc(100vw-248px-48px))] ${className}`}
     >
       {children}
     </div>
@@ -133,11 +128,14 @@ function Notifications({ items, unread, onNavigate, sheet = false }: { items: No
   const clearable = list.some((n) => n.tone !== "alert");
   const body = (
     <>
-      <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
-        <p className="font-semibold">
-          Notifications {unread > 0 && <span className="ml-1 font-mono text-xs uppercase text-lime">{unread} new</span>}
-        </p>
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-2 border-b border-line py-2 pl-3 pr-1.5">
+        <div className="flex min-w-0 items-center gap-2">
+          <IconBox name="bell" small />
+          <p className="flex items-center gap-1.5 text-[15px] font-semibold tracking-[-0.015em]">
+            Notifications {unread > 0 && <Chip tone="acc">{unread} new</Chip>}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
           {clearable && (
             <button
               type="button"
@@ -149,43 +147,43 @@ function Notifications({ items, unread, onNavigate, sheet = false }: { items: No
                   router.refresh();
                 })
               }
-              className="text-sm text-mute underline-offset-4 hover:text-bone hover:underline disabled:opacity-50"
+              className="inline-flex min-h-9 items-center rounded-[11px] border border-line bg-well px-3 text-[12px] font-semibold text-bone transition-colors hover:border-line-2 disabled:opacity-50 pointer-coarse:min-h-11"
             >
               {clearing ? "Clearing…" : "Clear all"}
             </button>
           )}
-          <button type="button" onClick={onNavigate} aria-label="Close notifications" className="grid size-11 place-items-center rounded-full text-lg leading-none text-mute hover:bg-ink-3 hover:text-bone">
-            ✕
+          <button type="button" onClick={onNavigate} aria-label="Close notifications" className="grid size-11 place-items-center rounded-[11px] text-mute transition-colors hover:bg-well hover:text-bone">
+            <Icon name="x" className="size-4" />
           </button>
         </div>
       </div>
       {list.length === 0 ? (
-        <p className="px-5 py-10 text-center text-mute">You&apos;re all caught up. New tracks show up here.</p>
+        <p className="px-4 py-10 text-center text-[13px] text-mute">You&apos;re all caught up. New tracks show up here.</p>
       ) : (
         <ul>
           {list.map((n, i) => (
             <li key={n.id} className="border-b border-line last:border-b-0">
               {dayLabel(n.at) !== (i > 0 ? dayLabel(list[i - 1].at) : null) && (
-                <p className="bg-ink-2 px-5 py-1.5 eyebrow text-faint">{dayLabel(n.at)}</p>
+                <p className="bg-well px-4 py-1.5 text-[11.5px] text-mute">{dayLabel(n.at)}</p>
               )}
-              <Link href={n.href} onClick={onNavigate} className="flex gap-3 px-5 py-3.5 hover:bg-ink-3">
+              <Link href={n.href} onClick={onNavigate} className="flex min-h-11 gap-2.5 px-4 py-2.5 transition-colors hover:bg-well">
                 <span
                   aria-hidden
-                  className={`mt-2 h-2 w-2 shrink-0 rounded-full ${n.tone === "alert" ? "bg-danger" : n.unread ? "bg-lime" : "bg-transparent"}`}
+                  className={`mt-1.5 size-1.5 shrink-0 rounded-full ${n.tone === "alert" ? "bg-danger" : n.unread ? "bg-lime" : "bg-transparent"}`}
                 />
                 <span className="min-w-0">
-                  <span className={`block truncate ${n.unread ? "font-medium" : "text-mute"}`}>
+                  <span className={`block truncate text-[13px] ${n.unread ? "font-semibold text-bone" : "text-mute"}`}>
                     {n.title}
                     {n.unread && <span className="sr-only"> (new)</span>}
                   </span>
-                  <span className="block truncate text-sm text-mute">{n.detail}</span>
+                  <span className="block truncate text-[11.5px] text-mute">{n.detail}</span>
                 </span>
               </Link>
             </li>
           ))}
         </ul>
       )}
-      <Link href="/dashboard/settings/notifications" onClick={onNavigate} className="block border-t border-line px-5 py-3 text-center text-sm text-mute hover:text-bone">
+      <Link href="/dashboard/settings/notifications" onClick={onNavigate} className="flex min-h-11 items-center justify-center border-t border-line px-4 text-[12px] font-semibold text-mute transition-colors hover:text-bone">
         Email settings
       </Link>
     </>
@@ -207,7 +205,12 @@ function NotificationsSheet({ onNavigate, children }: { onNavigate: () => void; 
   const box = useRef<HTMLDivElement>(null);
   useFocusTrap(box);
   return (
-    <div data-sheet className="fixed inset-0 z-[60] flex items-start justify-center bg-black/60 px-3 pt-20 backdrop-blur-[2px]" onClick={onNavigate}>
+    // Clear of the notch at the top and the home bar at the bottom.
+    <div
+      data-sheet
+      className="fixed inset-0 z-[60] flex items-start justify-center bg-black/60 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[calc(env(safe-area-inset-top)+5rem)] backdrop-blur-[2px]"
+      onClick={onNavigate}
+    >
       <div
         ref={box}
         tabIndex={-1}
@@ -215,7 +218,7 @@ function NotificationsSheet({ onNavigate, children }: { onNavigate: () => void; 
         aria-modal="true"
         aria-label="Notifications"
         onClick={(e) => e.stopPropagation()}
-        className="max-h-[calc(100dvh-7rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-line bg-ink-2 text-bone shadow-pop"
+        className="max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-6.5rem)] w-full max-w-md overflow-y-auto rounded-[18px] border border-line bg-card text-bone shadow-pop"
       >
         {children}
       </div>
@@ -258,21 +261,19 @@ function SearchDialog({ onClose }: { onClose: () => void }) {
 
   return (
     // data-instant: opened from ⌘K as often as from the button, so it appears at once (globals.css).
-    <div data-instant className="fixed inset-0 z-[60] flex items-start justify-center bg-black/60 px-4 pt-[12vh]" onMouseDown={onClose}>
+    // Phones: below the notch, with the results kept short so the field and the first results sit above the keyboard.
+    <div data-instant className="fixed inset-0 z-[60] flex items-start justify-center bg-black/60 px-3 pt-[max(12dvh,calc(env(safe-area-inset-top)+1rem))] sm:px-4" onMouseDown={onClose}>
       <div
         ref={box}
         data-instant
         role="dialog"
         aria-modal="true"
         aria-label="Search"
-        className="w-full max-w-xl overflow-hidden rounded-2xl border border-line bg-ink-2 shadow-pop"
+        className="w-full max-w-xl overflow-hidden rounded-[18px] border border-line bg-card text-bone shadow-pop"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-3 border-b border-line px-5">
-          <svg viewBox="0 0 20 20" className="h-5 w-5 text-mute" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-            <circle cx="8.5" cy="8.5" r="5.5" />
-            <path d="m13 13 4 4" strokeLinecap="round" />
-          </svg>
+        <div className="flex items-center gap-2.5 border-b border-line px-3">
+          <IconBox name="search" small />
           <input
             ref={input}
             value={q}
@@ -291,30 +292,32 @@ function SearchDialog({ onClose }: { onClose: () => void }) {
             placeholder="Tracks, artists or contacts"
             aria-label="Search tracks, artists or contacts"
             aria-activedescendant={options[active] ? `hit-${active}` : undefined}
-            className="w-full bg-transparent py-4 text-lg outline-none placeholder:text-mute"
+            className="min-h-14 w-full bg-transparent text-base text-bone outline-none placeholder:text-mute sm:text-[15px]"
           />
-          <kbd className="rounded border border-line px-1.5 py-0.5 font-mono text-xs text-mute">Esc</kbd>
+          <kbd className="hidden rounded-md border border-line bg-well px-1.5 py-0.5 font-sans text-[10.5px] font-semibold text-mute sm:inline">Esc</kbd>
         </div>
         {options.length > 0 && (
-          <ul role="listbox" className="max-h-96 overflow-y-auto p-2">
+          <ul role="listbox" className="max-h-[min(24rem,38dvh)] overflow-y-auto overscroll-contain p-1.5 sm:max-h-96">
             {options.map((h, i) => (
               <li key={`${h.kind}${h.id}`} id={`hit-${i}`} role="option" aria-selected={i === active}>
                 <button
                   onMouseEnter={() => setActive(i)}
                   onClick={() => go(h)}
-                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left ${i === active ? "bg-ink-3" : ""}`}
+                  className={`flex min-h-11 w-full items-center gap-2.5 rounded-[11px] px-2.5 py-2 text-left ${i === active ? "bg-well" : ""}`}
                 >
-                  <span className="w-16 shrink-0 font-mono text-xs uppercase text-mute">{h.id < 0 ? "All" : h.kind === "track" ? "Track" : "Contact"}</span>
+                  <span className="w-16 shrink-0">
+                    <Chip tone={h.id < 0 ? "acc" : "flat"}>{h.id < 0 ? "All" : h.kind === "track" ? "Track" : "Contact"}</Chip>
+                  </span>
                   <span className="min-w-0">
-                    <span className="block truncate">{h.title}</span>
-                    {h.detail && <span className="block truncate text-sm text-mute">{h.detail}</span>}
+                    <span className="block truncate text-[13px] font-semibold text-bone">{h.title}</span>
+                    {h.detail && <span className="block truncate text-[11.5px] text-mute">{h.detail}</span>}
                   </span>
                 </button>
               </li>
             ))}
           </ul>
         )}
-        {!q && <p className="px-5 py-6 text-sm text-mute">Start typing. ↑/↓ to move, Enter to open.</p>}
+        {!q && <p className="px-4 py-5 text-[12px] text-mute">Start typing. ↑/↓ to move, Enter to open.</p>}
       </div>
     </div>
   );
