@@ -45,14 +45,17 @@ export function GenrePicker({
             Genre
             <Req />
           </legend>
-          <div className="flex flex-wrap gap-1.5">
+          {/* Compact chips (owner, 30 Oct): 36px to look at, a 44px tap area, two rows at phone width. */}
+          <div className="flex flex-wrap gap-x-1.5 gap-y-2">
             {[...genres, OTHER].map((g, i) => {
               const on = g === OTHER ? other : !other && value === g;
               return (
                 <label
                   key={g}
-                  className={`tap-tall inline-flex cursor-pointer items-center rounded-full border px-3.5 py-2 text-[13px] font-semibold transition-colors duration-150 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-lime ${
-                    on ? "border-bone bg-bone text-ink" : `bg-ink-2 text-bone hover:border-line-2 ${invalid ? "border-danger/60" : "border-line"}`
+                  className={`relative inline-flex h-9 cursor-pointer items-center whitespace-nowrap rounded-[10px] border px-3 text-[13px] font-semibold transition-colors duration-150 before:absolute before:-inset-x-[3px] before:-inset-y-1 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-lime ${
+                    on
+                      ? "border-lime/45 bg-lime/12 text-lime"
+                      : `bg-well hover:border-line-2 ${g === OTHER ? "border-dashed text-mute" : "text-bone"} ${invalid ? "border-danger/60" : "border-line"}`
                   }`}
                 >
                   <input
@@ -66,7 +69,7 @@ export function GenrePicker({
                     }}
                     className="sr-only"
                   />
-                  {g === OTHER ? "Something else" : g}
+                  {g === OTHER ? "Other…" : g}
                 </label>
               );
             })}
