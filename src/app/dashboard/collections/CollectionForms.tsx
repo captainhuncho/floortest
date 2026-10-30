@@ -2,12 +2,13 @@
 
 import { useFocusTrap } from "@/components/useFocusTrap";
 import Link from "next/link";
-import { useEffect, useState, useTransition, useRef } from "react";
+import { useEffect, useId, useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createCollection, deleteCollection, setActiveCollection, updateCollection } from "../actions/collections";
 import { DownloadActions } from "../DownloadActions";
 import { GenresField } from "./GenresField";
-import { CapacityStrip } from "@/components/CapacityStrip";
+import { CARD, Chip, Cover, Icon, IconBox, initials } from "@/components/Kit";
+import { LinkRow } from "../floor/FloorClient";
 import type { BriefItem } from "@/lib/brief";
 
 type C = {
@@ -44,47 +45,97 @@ const toDateInput = (ts: number | null) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
+/** Small field labels, as the mocks draw them: sentence case, muted. */
+const FIELD = "text-[11.5px] text-mute";
+
+/** Where a callout stands, as a chip: lime with a dot while it's receiving, flat otherwise. */
+function StateChip({ live, closed, full, closesLabel, idle }: { live: boolean; closed: boolean; full: boolean; closesLabel: string | null; idle: string }) {
+  if (live)
+    return (
+      <Chip tone="acc">
+        <span aria-hidden className="mr-0.5 size-1.5 rounded-full bg-lime" />
+        Receiving
+      </Chip>
+    );
+  return <Chip>{closed ? (full ? "Full" : `Closed${closesLabel ? ` ${closesLabel}` : ""}`) : idle}</Chip>;
+}
+
+/** The ··· on a card or page head; Kit has no "more" icon, so it's drawn here. */
+function MoreIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden className="size-4" fill="currentColor">
+      <circle cx="6" cy="12" r="1.6" />
+      <circle cx="12" cy="12" r="1.6" />
+      <circle cx="18" cy="12" r="1.6" />
+    </svg>
+  );
+}
+
+/** The collection's artwork, or its initials on a cover square when it has none. */
+function CollectionCover({ c }: { c: Pick<C, "name" | "art"> }) {
+  if (!c.art) return <Cover text={initials(c.name)} />;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={c.art} alt="" className="size-[38px] shrink-0 rounded-[10px] border border-line object-cover" />;
+}
+
+/**
+ * How full a capped callout is, as a row of ticks (the mock's capacity strip), with the numbers in text beside it.
+ * Any track at all fills one tick, and only a full callout fills the last.
+ */
+export function CapTicks({ used, limit, cells = 25 }: { used: number; limit: number; cells?: number }) {
+  const filled = used <= 0 ? 0 : used >= limit ? cells : Math.min(cells - 1, Math.max(1, Math.round((used / limit) * cells)));
+  return (
+    <div className="flex items-center gap-2">
+      <div aria-hidden className="flex h-3.5 flex-1 gap-[2px]">
+        {Array.from({ length: cells }, (_, i) => (
+          <span key={i} className={`flex-1 rounded-[2px] ${i < filled ? "bg-lime" : "bg-line-2"}`} />
+        ))}
+      </div>
+      <span className="shrink-0 font-mono text-[11px] text-mute tnum">
+        {used} of {limit}
+      </span>
+    </div>
+  );
+}
+
 export function CollectionCard({ c, receiving, closed, canManage = true, startEditing = false }: { c: C; receiving: boolean; closed: boolean; canManage?: boolean; startEditing?: boolean }) {
   const [editing, setEditing] = useState(startEditing);
   const [pending, start] = useTransition();
 
   return (
-    <div className={`card p-5 ${receiving ? "border-lime/50" : ""}`}>
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <div className={`${CARD} p-3 sm:p-4 ${receiving && !closed ? "border-lime/55" : ""}`}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="text-lg font-semibold">
-            <Link href={`/dashboard/collections/${c.id}`} className="hover:underline">
+          <h2 className="flex flex-wrap items-center gap-2 text-[15px] font-semibold tracking-[-0.015em] text-bone">
+            <Link href={`/dashboard/collections/${c.id}`} className="underline-offset-4 hover:underline">
               {c.name}
-            </Link>{" "}
-            {receiving && !closed && <span className="chip ml-1 border-lime/60 text-lime">Receiving</span>}
-            {closed && <span className="chip ml-1 border-line text-mute">{c.full ? "Full" : "Closed"}</span>}
+            </Link>
+            {(receiving || closed) && <StateChip live={receiving && !closed} closed={closed} full={c.full} closesLabel={null} idle="" />}
           </h2>
-          <p className="mt-1 text-sm text-mute">
+          <p className="mt-1 text-[12px] text-mute">
             <Link href={`/dashboard/collections/${c.id}`} className="hover:text-bone">
-              <b className="text-lime tnum">{c.needsReview}</b> need review · <b className="text-bone tnum">{c.kept}</b> kept · <b className="text-bone tnum">{c.count}</b> total · Open folder →
+              <b className="font-semibold text-lime tnum">{c.needsReview}</b> need review · <b className="font-semibold text-bone tnum">{c.kept}</b> kept · <b className="font-semibold text-bone tnum">{c.count}</b> total · Open folder →
             </Link>
             {c.closesLabel && ` · ${closed ? "closed" : "closes"} ${c.closesLabel}`}
           </p>
           {/* The deadline is already in the line above, so the card's brief leaves it out. */}
           {c.brief.some((b) => b.key !== "deadline") && (
-            <div className="mt-3 border-l-2 border-lime/60 pl-3">
-              <p className="text-[11px] font-bold uppercase tracking-[1.5px] text-bone underline decoration-lime/60 underline-offset-4">Brief</p>
-              <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm">
+            <div className="mt-3">
+              <p className={FIELD}>Brief</p>
+              <dl className="mt-1.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-[12px]">
                 {c.brief
                   .filter((b) => b.key !== "deadline")
                   .map((b) => (
                     <div key={b.key} className="contents">
-                      <dt className="font-bold uppercase tracking-[0.5px] text-bone">{b.label}</dt>
+                      <dt className="text-mute">{b.label}</dt>
                       {b.chips ? (
-                        <dd className="flex flex-wrap gap-1.5">
+                        <dd className="flex flex-wrap gap-1">
                           {b.chips.map((g) => (
-                            <span key={g} className="rounded-full border border-line px-2 py-0.5 text-xs text-mute">
-                              {g}
-                            </span>
+                            <Chip key={g}>{g}</Chip>
                           ))}
                         </dd>
                       ) : (
-                        <dd className={`text-mute ${b.key === "note" ? "italic" : "tnum"}`}>{b.text}</dd>
+                        <dd className={b.key === "note" ? "italic text-bone" : "font-semibold text-bone tnum"}>{b.text}</dd>
                       )}
                     </div>
                   ))}
@@ -109,7 +160,7 @@ export function CollectionCard({ c, receiving, closed, canManage = true, startEd
       </div>
       {editing && (
         <form
-          className="mt-5 grid gap-4 border-t border-line pt-5 sm:grid-cols-[1fr_auto_auto] sm:items-end"
+          className="mt-4 grid gap-3.5 border-t border-dashed border-line-2 pt-4 sm:grid-cols-[1fr_auto_auto] sm:items-end"
           action={(fd) =>
             start(async () => {
               fd.set("tz", String(new Date().getTimezoneOffset()));
@@ -119,61 +170,62 @@ export function CollectionCard({ c, receiving, closed, canManage = true, startEd
           }
         >
           <label className="block space-y-1.5 sm:col-span-3">
-            <span className="label">Name</span>
+            <span className={FIELD}>Name</span>
             <input name="name" defaultValue={c.name} className="input" maxLength={60} required />
           </label>
           <label className="block space-y-1.5">
-            <span className="label">Closes after (optional)</span>
-            <input name="closes" type="date" defaultValue={toDateInput(c.closesAt)} className="input [color-scheme:dark]" />
+            <span className={FIELD}>Closes after (optional)</span>
+            {/* No colour-scheme override: the page's own (light or dark) styles the date picker. */}
+            <input name="closes" type="date" defaultValue={toDateInput(c.closesAt)} className="input" />
           </label>
           {c.canCap && (
             <label className="block space-y-1.5">
-              <span className="label">Stop at (optional)</span>
+              <span className={FIELD}>Stop at (optional)</span>
               <span className="flex items-center gap-2">
                 <input name="max_tracks" type="number" inputMode="numeric" min={1} max={100000} defaultValue={c.maxTracks ?? ""} placeholder="No limit" className="input w-32" />
-                <span className="text-sm text-mute">tracks</span>
+                <span className="text-[12px] text-mute">tracks</span>
               </span>
             </label>
           )}
           <div className="flex gap-2">
-            <button className="btn-lime" disabled={pending}>
+            <button className="btn-lime min-h-11" disabled={pending}>
               Save
             </button>
           </div>
-          <p className="text-sm text-mute sm:col-span-3">
+          <p className="text-[12px] text-mute sm:col-span-3">
             After the closing date your link shows “callout closed” and stops taking uploads. Clear the date to reopen.
             {c.canCap && " With a track limit, it shows “callout full” once that many have arrived. Raise or clear the limit to reopen."}
           </p>
-          <fieldset className="grid gap-4 border-t border-line pt-5 sm:col-span-3 sm:grid-cols-[1fr_auto]">
-            <legend className="mb-1 font-medium">Brief for senders</legend>
+          <fieldset className="grid gap-3.5 border-t border-dashed border-line-2 pt-4 sm:col-span-3 sm:grid-cols-[1fr_auto]">
+            <legend className="mb-1 text-[13px] font-semibold text-bone">Brief for senders</legend>
             <div className="space-y-1.5 sm:col-span-2">
-              <span className="label">Genres senders can choose</span>
+              <span className={FIELD}>Genres senders can choose</span>
               <GenresField initial={c.genres} />
             </div>
             <label className="block space-y-1.5">
-              <span className="label">“Wanted” line on the Stage page (optional)</span>
+              <span className={FIELD}>“Wanted” line on the Stage page (optional)</span>
               <input name="brief_wanted" defaultValue={c.briefWanted} maxLength={120} className="input" placeholder="Defaults to your genres" />
             </label>
             <div className="flex items-end gap-2">
               <label className="block w-24 space-y-1.5">
-                <span className="label">BPM from</span>
+                <span className={FIELD}>BPM from</span>
                 <input name="bpm_min" type="number" min={40} max={250} defaultValue={c.bpmMin ?? ""} className="input" />
               </label>
               <label className="block w-24 space-y-1.5">
-                <span className="label">to</span>
+                <span className={FIELD}>to</span>
                 <input name="bpm_max" type="number" min={40} max={250} defaultValue={c.bpmMax ?? ""} className="input" />
               </label>
             </div>
             <label className="block space-y-1.5 sm:col-span-2">
-              <span className="label">Vibe note</span>
+              <span className={FIELD}>Vibe note</span>
               <input name="brief_note" defaultValue={c.briefNote} maxLength={200} className="input" placeholder="Percussive, warm and built for late-night rooms" />
             </label>
             {c.sharingAvailable && (
             <label className="flex items-start gap-3 sm:col-span-2">
               <input type="checkbox" name="allow_sharing" defaultChecked={c.allowSharing} className="mt-1 h-4 w-4 accent-lime" />
               <span>
-                <span className="block text-sm font-medium">Let me share tracks privately</span>
-                <span className="block text-xs text-mute">
+                <span className="block text-[13px] font-semibold text-bone">Let me share tracks privately</span>
+                <span className="block text-[12px] text-mute">
                   Senders see this in your brief and agree to it when they send. Only tracks sent while it&apos;s on can be shared, through share links to people you name.
                 </span>
               </span>
@@ -187,29 +239,44 @@ export function CollectionCard({ c, receiving, closed, canManage = true, startEd
   );
 }
 
-/** "New collection": a dashed tile at the end of the grid, or a ghost button elsewhere; the form opens in its place. */
+/**
+ * "New collection". As a tile it's the lime button at the top on phones and a dashed tile at the end of the grid from
+ * md up (the mock); elsewhere a ghost button. The form opens in its place.
+ */
 export function NewCollection({ tile = false }: { tile?: boolean }) {
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
+  const hint = useId();
   if (!open && tile)
     return (
-      <Folder tab="New" dashed>
-        <button onClick={() => setOpen(true)} className="flex min-h-11 flex-1 items-center justify-center gap-2 text-sm font-semibold text-bone after:absolute after:inset-0">
-          <span aria-hidden className="size-3 bg-current [mask:url(/icons/plus.svg)_center/contain_no-repeat]" />
+      <>
+        <button onClick={() => setOpen(true)} className="btn-lime order-first min-h-11 w-full gap-1.5 text-[13px]! md:hidden">
+          <Icon name="plus" className="size-4" />
           New collection
         </button>
-      </Folder>
+        <button
+          onClick={() => setOpen(true)}
+          aria-describedby={hint}
+          className="hidden min-h-[150px] flex-col items-center justify-center gap-1.5 rounded-[18px] border border-dashed border-line-2 p-3 text-center transition-colors hover:bg-well md:flex"
+        >
+          <IconBox name="plus" small />
+          <span className="text-[13px] font-semibold text-bone">New collection</span>
+          <span id={hint} className="text-[11.5px] text-mute">
+            One per callout
+          </span>
+        </button>
+      </>
     );
   if (!open)
     return (
       <button className="btn-ghost btn-sm" onClick={() => setOpen(true)}>
-        <span aria-hidden className="size-3 bg-current [mask:url(/icons/plus.svg)_center/contain_no-repeat]" />
+        <Icon name="plus" className="size-3.5" />
         New collection
       </button>
     );
   return (
     <form
-      className={`flex w-full basis-full flex-wrap items-end gap-3 card p-4 ${tile ? "col-span-full" : ""}`}
+      className={`flex w-full basis-full flex-wrap items-end gap-3 ${CARD} p-3 ${tile ? "order-first col-span-full md:order-none" : ""}`}
       action={(fd) =>
         start(async () => {
           await createCollection(fd);
@@ -217,117 +284,109 @@ export function NewCollection({ tile = false }: { tile?: boolean }) {
         })
       }
     >
-      <label className="block min-w-60 flex-1 space-y-1.5">
-        <span className="label">Name</span>
+      <label className="block min-w-0 flex-1 basis-60 space-y-1.5">
+        <span className={FIELD}>Name</span>
         <input name="name" className="input" placeholder="e.g. Villagers callout" autoFocus required maxLength={60} />
       </label>
-      <label className="flex items-center gap-2 py-2.5 text-sm text-mute">
+      <label className="flex min-h-11 items-center gap-2 text-[12px] text-mute">
         <input type="checkbox" name="activate" defaultChecked className="h-4 w-4 accent-lime" /> Send new tracks here now
       </label>
-      <button className="btn-lime" disabled={pending}>
+      <button className="btn-lime min-h-11" disabled={pending}>
         Create
       </button>
-      <button type="button" className="btn text-mute" onClick={() => setOpen(false)}>
+      <button type="button" className="btn min-h-11 text-mute hover:text-bone" onClick={() => setOpen(false)}>
         Cancel
       </button>
     </form>
   );
 }
 
-/**
- * A folder with a tab (rule 15 Collections, 28 Oct): the tab says where the callout stands, the body carries its name
- * and numbers. The receiving one is outlined in bone; dashed folders are for "New" and the beta limit.
- */
-export function Folder({ tab, current = false, dashed = false, hatched = false, children }: { tab: React.ReactNode; current?: boolean; dashed?: boolean; hatched?: boolean; children: React.ReactNode }) {
-  const edge = current ? "border-bone" : "border-line";
-  const style = dashed ? "border-dashed" : "";
+/** A dashed placeholder tile in the grid (the beta limit): a small label on top, its message below. */
+export function Folder({ tab, hatched = false, children }: { tab: React.ReactNode; hatched?: boolean; children: React.ReactNode }) {
   return (
-    <div className="relative mt-7 flex flex-col">
-      <span className={`absolute -top-[29px] -left-px flex h-7 items-center gap-2 rounded-t-lg border border-b-0 bg-ink-3 px-3.5 text-xs font-semibold ${edge} ${style} ${current ? "text-bone" : "text-mute"}`}>
-        {tab}
-      </span>
-      <div className={`relative flex flex-1 flex-col gap-4 rounded-r-xl sm:min-h-[150px] rounded-bl-xl border bg-ink-3 p-5 ${edge} ${style} ${hatched ? "hatch" : ""}`}>{children}</div>
+    <div className={`flex min-h-[150px] flex-col gap-2 rounded-[18px] border border-dashed border-line-2 p-3 ${hatched ? "hatch" : ""}`}>
+      <span className="text-[11.5px] font-semibold text-mute">{tab}</span>
+      {children}
     </div>
   );
 }
 
-/** One callout as a folder: the whole folder opens it; ··· has the options (send here, review, edit, download). */
-export function CollectionTile({ c, receiving, closed, canManage = true }: { c: C; receiving: boolean; closed: boolean; /** Owner or A&R / Admin: may change where the link sends tracks. */ canManage?: boolean }) {
+/**
+ * One callout as a card (the mock): cover, name and where it stands; to review, kept and tracks; how full it is if
+ * capped; the link while it's receiving; then the one next step. The whole card opens it; ··· has every option.
+ */
+export function CollectionTile({ c, receiving, closed, canManage = true, link }: { c: C; receiving: boolean; closed: boolean; /** Owner or A&R / Admin: may change where the link sends tracks. */ canManage?: boolean; /** The desk's public link, shown on the receiving card. */ link?: string }) {
   const [menu, setMenu] = useState(false);
   const [editing, setEditing] = useState(false);
-  if (editing)
-    return (
-      <div className="col-span-full mt-7">
-        <CollectionCard c={c} receiving={receiving} closed={closed} canManage={canManage} startEditing />
-        <button className="mt-2 text-sm text-mute hover:text-bone tap-text" onClick={() => setEditing(false)}>
-          Close
-        </button>
-      </div>
-    );
+  const [pending, start] = useTransition();
   const live = receiving && !closed;
-  const tab = live ? (
-    <>
-      <span aria-hidden className="size-2 rounded-full bg-lime" />
-      Receiving
-    </>
-  ) : closed ? (
-    c.full ? "Full" : `Closed${c.closesLabel ? ` ${c.closesLabel}` : ""}`
-  ) : (
-    "Open"
-  );
   const bpm = c.bpmMin || c.bpmMax ? [c.bpmMin, c.bpmMax].filter(Boolean).join("–") : null;
-  const figures: [string, string | number][] = [
-    ["tracks", c.count],
-    closed ? ["kept", c.kept] : ["to review", c.needsReview],
-    ...(bpm ? [["BPM", bpm] as [string, string]] : []),
+  const figures: [string, number][] = [
+    ["To review", c.needsReview],
+    ["Kept", c.kept],
+    ["Tracks", c.count],
   ];
   return (
-    <Folder tab={tab} current={live}>
-      <div className="flex items-start gap-3">
-        {c.art && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={c.art} alt="" className="size-10 shrink-0 rounded-md border border-line object-cover" />
-        )}
+    <div className={`relative flex flex-col gap-2.5 ${CARD} p-3 ${live ? "border-lime/55" : ""}`}>
+      <div className="flex items-start gap-2.5">
+        <CollectionCover c={c} />
         <div className="min-w-0 flex-1">
-          <Link href={`/dashboard/collections/${c.id}`} className="block truncate text-lg font-bold text-bone after:absolute after:inset-0 after:rounded-r-xl after:rounded-bl-xl">
+          <Link
+            href={`/dashboard/collections/${c.id}`}
+            className="block truncate text-[15px] font-semibold tracking-[-0.015em] text-bone after:absolute after:inset-0 after:rounded-[18px]"
+          >
             {c.name}
           </Link>
-          {!closed && c.closesLabel && <p className="mt-0.5 text-xs text-mute">Closes {c.closesLabel}</p>}
+          <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11.5px] text-mute">
+            <StateChip live={live} closed={closed} full={c.full} closesLabel={c.closesLabel} idle="Open" />
+            {!closed && c.closesLabel && <span>Closes {c.closesLabel}</span>}
+          </p>
         </div>
         <button
           onClick={() => setMenu((m) => !m)}
           aria-haspopup="menu"
           aria-label={`More for ${c.name}`}
-          className="relative z-10 -mt-2 -mr-2 grid size-11 shrink-0 place-items-center rounded-lg text-base leading-none text-mute hover:text-bone"
+          className="relative z-10 grid size-11 shrink-0 place-items-center rounded-[12px] border border-line bg-well text-mute hover:text-bone"
         >
-          ···
+          <MoreIcon />
         </button>
       </div>
-      <dl className="flex gap-7">
+      <dl className="grid grid-cols-3 text-center">
         {figures.map(([k, v]) => (
-          <div key={k} className="flex flex-col-reverse">
-            <dt className="text-xs font-semibold text-mute">{k}</dt>
-            <dd className="font-mono text-xl leading-tight font-bold text-bone tnum sm:text-[22px]">{v}</dd>
+          <div key={k} className="flex flex-col">
+            <dt className="text-[11.5px] text-mute">{k}</dt>
+            <dd className="text-[16px] font-semibold leading-tight text-bone tnum">{v}</dd>
           </div>
         ))}
       </dl>
-      {c.maxTracks ? (
-        <div className="mt-auto flex items-center gap-3">
-          <div className="flex-1">
-            <CapacityStrip used={c.count} limit={c.maxTracks} cells={25} small />
-          </div>
-          <span className="font-mono text-xs text-mute tnum">
-            {c.count} of {c.maxTracks}
-          </span>
+      {c.maxTracks ? <CapTicks used={c.count} limit={c.maxTracks} /> : null}
+      {live && link && (
+        <div className="relative z-10 flex flex-col gap-1.5">
+          <p className="text-[11.5px] text-mute">Your link sends here</p>
+          <LinkRow link={link} />
         </div>
-      ) : null}
-      {c.needsReview > 0 && !closed && (
-        <Link href={`/dashboard/review?view=queue&c=${c.id}`} className="relative z-10 -my-2 mt-auto inline-flex min-h-11 w-fit items-center text-sm text-bone underline underline-offset-4">
-          Review {c.needsReview} new
-        </Link>
       )}
+      <div className="mt-auto flex flex-wrap items-center justify-between gap-2">
+        {c.needsReview > 0 && !closed ? (
+          <Link href={`/dashboard/review?view=queue&c=${c.id}`} className="btn-ghost btn-sm relative z-10 gap-1.5">
+            <Icon name="inbox" className="size-[15px]" />
+            Review {c.needsReview} new
+          </Link>
+        ) : (
+          <span className="text-[11.5px] text-mute">{closed ? "No longer taking tracks" : live ? "Nothing new to review" : "Not receiving"}</span>
+        )}
+        {!live && !closed && canManage ? (
+          <button className="btn-ghost btn-sm relative z-10 gap-1.5" disabled={pending} onClick={() => start(() => setActiveCollection(c.id))}>
+            <Icon name="send" className="size-[15px]" />
+            Send new tracks here
+          </button>
+        ) : bpm ? (
+          <span className="text-[11.5px] text-mute tnum">{bpm} BPM</span>
+        ) : null}
+      </div>
       {menu && <CollectionOptions c={c} receiving={receiving} canManage={canManage} onEdit={() => setEditing(true)} onClose={() => setMenu(false)} showOpen />}
-    </Folder>
+      {editing && <EditDialog c={c} receiving={receiving} closed={closed} canManage={canManage} onClose={() => setEditing(false)} />}
+    </div>
   );
 }
 
@@ -341,17 +400,17 @@ function OptionsSheet({ title, onClose, children }: { title: string; onClose: ()
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 pb-8 backdrop-blur-[2px] sm:items-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 pb-[max(2rem,env(safe-area-inset-bottom))] backdrop-blur-[2px] sm:items-center" onClick={onClose}>
       <div
         ref={box}
         tabIndex={-1}
         role="menu"
         aria-label={title}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-sm overflow-hidden rounded-2xl border border-line bg-ink-2 text-[13px] text-bone shadow-pop"
+        className="w-full max-w-sm overflow-hidden rounded-[18px] border border-line bg-card text-[13px] text-bone shadow-pop"
       >
-        <p className="truncate border-b border-line px-4 py-3 eyebrow">{title}</p>
-        <div className="flex flex-col divide-y divide-line [&>*]:block [&>*]:w-full [&>*]:px-4 [&>*]:py-3.5 [&>*]:text-left">{children}</div>
+        <p className="truncate border-b border-line px-4 py-3 text-[11.5px] font-semibold text-mute">{title}</p>
+        <div className="flex flex-col divide-y divide-line [&>*]:block [&>*]:min-h-11 [&>*]:w-full [&>*]:px-4 [&>*]:py-3.5 [&>*]:text-left [&>*]:hover:bg-well">{children}</div>
       </div>
     </div>
   );
@@ -390,81 +449,70 @@ function CollectionOptions({ c, receiving, canManage, onEdit, onClose, showOpen 
   );
 }
 
-/** Figma "04 Collection Detail" header: back, name, ••• options, receiving badge and Edit Info. */
+/** A collection page's head, every screen size: back to Collections, cover, name, where it stands, and ··· options. */
 export function CollectionDetailHeader({ c, receiving, closed, canManage = true }: { c: C; receiving: boolean; closed: boolean; /** Owner or A&R / Admin: may change where the link sends tracks. */ canManage?: boolean }) {
   const [menu, setMenu] = useState(false);
   const [editing, setEditing] = useState(false);
   return (
-    <>
-      <div className="flex h-12 items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <Link href="/dashboard/collections" aria-label="Back to Collections" className="-ml-1.5 grid size-11 shrink-0 place-items-center">
-            <span aria-hidden className="size-4 bg-current [mask:url(/icons/arrow-left.svg)_center/contain_no-repeat]" />
-          </Link>
-          {c.art && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={c.art} alt="" className="size-9 shrink-0 rounded-md object-cover" />
-          )}
-          <h1 className="page-title min-w-0 truncate">{c.name}</h1>
+    <header className="flex flex-col gap-1.5">
+      <Link href="/dashboard/collections" aria-label="Back to Collections" className="-my-2 inline-flex min-h-11 w-fit items-center gap-1 text-[12px] text-mute hover:text-bone">
+        <Icon name="chev" className="size-3.5 rotate-180" />
+        Collections
+      </Link>
+      <div className="flex items-center gap-2.5">
+        <CollectionCover c={c} />
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-[22px] font-semibold leading-tight tracking-[-0.025em] text-bone">{c.name}</h1>
+          <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11.5px] text-mute">
+            <StateChip live={receiving && !closed} closed={closed} full={c.full} closesLabel={c.closesLabel} idle="Not receiving" />
+            {!closed && c.closesLabel && <span>Closes {c.closesLabel}</span>}
+          </p>
         </div>
-        <button onClick={() => setMenu(true)} aria-haspopup="menu" aria-label={`Options for ${c.name}`} className="grid size-9 shrink-0 place-items-center text-lg font-bold leading-none">
-          •••
+        <button
+          onClick={() => setMenu(true)}
+          aria-haspopup="menu"
+          aria-label={`Options for ${c.name}`}
+          className="grid size-11 shrink-0 place-items-center rounded-[12px] border border-line bg-well text-mute hover:text-bone"
+        >
+          <MoreIcon />
         </button>
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        {receiving && !closed ? (
-          <span className="inline-flex items-center gap-2 text-sm font-semibold text-bone">
-            <span aria-hidden className="size-2 rounded-full bg-lime" />
-            Receiving
-          </span>
-        ) : (
-          <span className="text-sm font-semibold text-mute">{closed ? (c.full ? "Full" : `Closed${c.closesLabel ? ` ${c.closesLabel}` : ""}`) : "Not receiving"}</span>
-        )}
-        {!editing && (
-          <button onClick={() => setEditing(true)} className="btn-ghost btn-sm">
-            Edit collection
-          </button>
-        )}
-      </div>
-      {editing && (
-        <div className="w-full">
-          <CollectionCard c={c} receiving={receiving} closed={closed} canManage={canManage} startEditing />
-          <button className="mt-2 text-sm text-mute hover:text-bone tap-text" onClick={() => setEditing(false)}>
-            Close
-          </button>
-        </div>
-      )}
       {menu && <CollectionOptions c={c} receiving={receiving} canManage={canManage} onEdit={() => setEditing(true)} onClose={() => setMenu(false)} showOpen={false} />}
-    </>
+      {editing && <EditDialog c={c} receiving={receiving} closed={closed} canManage={canManage} onClose={() => setEditing(false)} />}
+    </header>
   );
 }
 
-/** Desktop "Edit Collection": the edit form in a pop-up over the page. Tap outside or ✕ to close. */
-export function EditCollectionInfo({ c, receiving, closed, canManage = true }: { c: C; receiving: boolean; closed: boolean; /** Owner or A&R / Admin: may change where the link sends tracks. */ canManage?: boolean }) {
-  const [open, setOpen] = useState(false);
+/** The edit form in a pop-up over the page. Tap outside, Escape or ✕ to close. */
+function EditDialog({ c, receiving, closed, canManage, onClose }: { c: C; receiving: boolean; closed: boolean; canManage: boolean; onClose: () => void }) {
   const box = useRef<HTMLDivElement>(null);
-  useFocusTrap(box, open);
+  useFocusTrap(box);
   useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+  }, [onClose]);
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto overscroll-contain bg-black/60 p-4 pt-16 backdrop-blur-[2px] sm:pt-20" onClick={onClose}>
+      <div ref={box} tabIndex={-1} role="dialog" aria-modal="true" aria-label={`Edit ${c.name}`} onClick={(e) => e.stopPropagation()} className="relative w-full max-w-xl pb-[env(safe-area-inset-bottom)]">
+        <button onClick={onClose} aria-label="Close" className="absolute -top-12 right-0 z-10 grid size-11 place-items-center rounded-full border border-line bg-card text-mute hover:text-bone">
+          <Icon name="x" className="size-4" />
+        </button>
+        <CollectionCard c={c} receiving={receiving} closed={closed} canManage={canManage} startEditing />
+      </div>
+    </div>
+  );
+}
+
+/** "Edit collection" as a button that opens the edit form in a pop-up. */
+export function EditCollectionInfo({ c, receiving, closed, canManage = true, className = "btn-ghost btn-sm" }: { c: C; receiving: boolean; closed: boolean; /** Owner or A&R / Admin: may change where the link sends tracks. */ canManage?: boolean; className?: string }) {
+  const [open, setOpen] = useState(false);
   return (
     <>
-      <button onClick={() => setOpen(true)} className="rounded-md border border-line bg-ink-3 px-3 py-1.5 text-[11px] font-bold text-bone hover:border-mute">
+      <button onClick={() => setOpen(true)} className={className}>
         Edit collection
       </button>
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 pt-20 backdrop-blur-[2px]" onClick={() => setOpen(false)}>
-          <div ref={box} tabIndex={-1} role="dialog" aria-modal="true" aria-label={`Edit ${c.name}`} onClick={(e) => e.stopPropagation()} className="relative w-full max-w-xl">
-            <button onClick={() => setOpen(false)} aria-label="Close" className="absolute right-3 top-3 z-10 grid size-8 place-items-center rounded-full text-lg text-mute hover:bg-ink-3 hover:text-bone">
-              ✕
-            </button>
-            <CollectionCard c={c} receiving={receiving} closed={closed} canManage={canManage} startEditing />
-          </div>
-        </div>
-      )}
+      {open && <EditDialog c={c} receiving={receiving} closed={closed} canManage={canManage} onClose={() => setOpen(false)} />}
     </>
   );
 }
@@ -486,8 +534,8 @@ function ArtUpload({ id, name, art }: { id: number; name: string; art: string | 
     else router.refresh();
   }
   return (
-    <div className="mt-5 flex items-center gap-4 border-t border-line pt-5">
-      <div className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-xl border border-line bg-ink">
+    <div className="mt-4 flex items-center gap-4 border-t border-dashed border-line-2 pt-4">
+      <div className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-[13px] border border-line bg-well">
         {art ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={art} alt={`Artwork for ${name}`} className="size-full object-cover" />
@@ -496,8 +544,8 @@ function ArtUpload({ id, name, art }: { id: number; name: string; art: string | 
         )}
       </div>
       <div className="min-w-0">
-        <p className="label">Artwork (optional)</p>
-        <p className="mt-1 text-sm text-mute">Square works best. JPG, PNG or WebP, up to 8 MB. Shown on your link while this collection is receiving.</p>
+        <p className="text-[13px] font-semibold text-bone">Artwork (optional)</p>
+        <p className="mt-1 text-[12px] text-mute">Square works best. JPG, PNG or WebP, up to 8 MB. Shown on your link while this collection is receiving.</p>
         <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" aria-label={`Choose artwork for ${name}`} tabIndex={-1} className="sr-only" onChange={(e) => e.target.files?.[0] && send("POST", e.target.files[0])} />
         <div className="mt-2 flex gap-2">
           <button type="button" disabled={busy} onClick={() => input.current?.click()} className="btn-ghost btn-sm min-h-11">
@@ -510,7 +558,7 @@ function ArtUpload({ id, name, art }: { id: number; name: string; art: string | 
           )}
         </div>
         {error && (
-          <p role="alert" className="mt-2 text-sm text-danger">
+          <p role="alert" className="mt-2 text-[12px] text-danger">
             {error}
           </p>
         )}
@@ -530,11 +578,11 @@ export function DeleteCollection({ c, canDelete }: { c: { id: number; name: stri
   const want = c.name.trim().toUpperCase();
   const match = typed.trim() === want;
   return (
-    <section aria-labelledby={`del-${c.id}`} className="rounded-lg border border-danger/30 p-4">
+    <section aria-labelledby={`del-${c.id}`} className="rounded-[18px] border border-danger/30 p-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 id={`del-${c.id}`} className="text-sm font-bold">Delete this collection</h3>
-          <p className="text-xs text-mute">{canDelete ? "Its tracks stay in your Queue, unsorted. This can't be undone." : "You need at least one collection, so this one can't be deleted. Make another first."}</p>
+          <h2 id={`del-${c.id}`} className="text-[13px] font-semibold text-bone">Delete this collection</h2>
+          <p className="text-[11.5px] text-mute">{canDelete ? "Its tracks stay in your Queue, unsorted. This can't be undone." : "You need at least one collection, so this one can't be deleted. Make another first."}</p>
         </div>
         {canDelete && !open && (
           <button type="button" onClick={() => setOpen(true)} className="btn-danger btn-sm">
@@ -551,7 +599,7 @@ export function DeleteCollection({ c, canDelete }: { c: { id: number; name: stri
           }}
         >
           <label className="block space-y-1.5">
-            <span className="text-xs text-mute">
+            <span className="text-[11.5px] text-mute">
               Type <span className="font-mono font-bold text-bone">{want}</span> to confirm
             </span>
             <input value={typed} onChange={(e) => setTyped(e.target.value)} autoFocus autoComplete="off" spellCheck={false} className="input font-mono" aria-invalid={typed !== "" && !match} />

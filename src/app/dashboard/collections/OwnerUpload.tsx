@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { analyzeAudio } from "@/lib/analyze";
 import { readTags } from "@/lib/tags";
+import { Icon } from "@/components/Kit";
 
 // held: stored and waiting for the next virus-check batch while the scanner sleeps; it's added within about 10 minutes.
 type Item = { file: File; title: string; artist: string; status: "ready" | "uploading" | "done" | "error"; progress: number; error?: string; held?: boolean };
@@ -67,17 +68,18 @@ export function OwnerUpload({ collectionId, collectionName }: { collectionId: nu
 
   if (!open)
     return (
-      <button type="button" onClick={() => setOpen(true)} className="btn-ghost btn-sm">
+      <button type="button" onClick={() => setOpen(true)} className="btn-ghost btn-sm gap-1.5">
+        <Icon name="plus" className="size-3.5" />
         Add tracks
       </button>
     );
 
   const waiting = items.filter((it) => it.status !== "done").length;
   return (
-    <section aria-label="Add your own tracks" className="mt-3 w-full card p-3.5 md:px-4">
+    <section aria-label="Add your own tracks" className="w-full basis-full border-t border-dashed border-line-2 pt-3">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-[11px] font-bold uppercase text-faint">Add your own tracks to {collectionName}</h2>
+          <h3 className="text-[13px] font-semibold text-bone">Add your own tracks to {collectionName}</h3>
           <p className="mt-1 text-[12px] text-mute">For files you already have (promos by email, a USB stick). Senders and labels send through your link instead.</p>
         </div>
         <button type="button" onClick={() => (setOpen(false), setItems([]))} disabled={busy} className="tap-text text-[11px] font-bold text-mute hover:text-bone">
@@ -91,7 +93,7 @@ export function OwnerUpload({ collectionId, collectionName }: { collectionId: nu
       {items.length > 0 && (
         <ul className="mt-3 flex flex-col gap-2">
           {items.map((it, i) => (
-            <li key={i} className="rounded-md border border-line p-2.5 text-[12px]">
+            <li key={i} className="rounded-[11px] border border-line bg-well p-2.5 text-[12px]">
               <p className="truncate text-faint">{it.file.name}</p>
               <div className="mt-1.5 grid gap-2 sm:grid-cols-2">
                 <input value={it.title} onChange={(e) => patch(i, { title: e.target.value })} disabled={it.status !== "ready" && it.status !== "error"} aria-label={`Title for ${it.file.name}`} placeholder="Title" className="input text-[12px]" />

@@ -8,17 +8,16 @@ import { fmtDay } from "@/lib/format";
 import { genresFor } from "@/lib/plans";
 import { briefItems } from "@/lib/brief";
 import { APP_URL } from "@/lib/mail";
-import { CollectionTile, Folder, NewCollection } from "./CollectionForms";
+import { CapTicks, CollectionTile, Folder, NewCollection } from "./CollectionForms";
 import { q } from "@/lib/db";
-import { CapacityStrip } from "@/components/CapacityStrip";
 import { sharedLinksFor } from "@/lib/share-links";
-import { PageTitle } from "@/components/PageTitle";
+import { CARD, Chip, Icon, PageHead, SectionHead } from "@/components/Kit";
 
 export const metadata = { title: "Collections — FloorTest" };
 
 /**
- * A folder per callout (rule 15 Collections, owner 28 Oct): the tab says Receiving / Open / Closed, the body carries the
- * name and numbers; then a dashed folder to add one (or the beta limit), and what's in the receiving callout.
+ * A card per callout (owner, 30 Oct: the redesign mock): where it stands, its numbers and the next step; a dashed tile to
+ * add one (or the beta limit); then what's in the receiving callout, and collections shared with you.
  */
 export default async function Collections() {
   const user = await requireUser();
@@ -42,117 +41,120 @@ export default async function Collections() {
         receiving.id,
       )
     : [];
+  const host = APP_URL.replace(/^https?:\/\//, "");
   return (
-    <div className="page-gutter max-w-6xl py-4 sm:py-6">
-      <PageTitle>Collections</PageTitle>
-      <p className="mt-2 max-w-3xl text-sm text-mute">
-        One per callout. Your link <span className="font-mono break-all text-bone">{APP_URL.replace(/^https?:\/\//, "")}/{user.handle}</span>{" "}
-        {user.active_collection_id ? "sends new tracks to the one that's receiving." : "sends tracks straight to your Review Queue until you make one."}
-      </p>
-      {/* gap-y-6: each folder's tab needs clear air above it, or it reads as part of the card before. */}
-      <ul className="mt-4 grid gap-x-5 gap-y-6 sm:grid-cols-2 lg:grid-cols-3">
-        {ordered.map((c) => {
-          const genres = genresFor(c).custom ? genresFor(c).list : [];
-          return (
-            <li key={c.id} className="contents">
-              <CollectionTile
-                c={{ id: c.id, name: c.name, closesAt: c.closes_at, closesLabel: c.closes_at ? fmtDay(c.closes_at) : null, count: c.count, needsReview: c.needs_review, kept: c.kept, briefWanted: c.brief_wanted, bpmMin: c.bpm_min, bpmMax: c.bpm_max, briefNote: c.brief_note, allowSharing: !!c.allow_sharing, sharingAvailable: sharing, genres, brief: briefItems(c, genres, user.tz), maxTracks: c.max_tracks, full: !!c.full_at, art: c.art_key ? `/api/collection-art/${c.id}?v=${encodeURIComponent(c.art_key)}` : null, canCap: canCapCallouts(user.plan) }}
-                receiving={c.id === user.active_collection_id}
-                closed={isClosed(c)}
-                canManage={canManage}
-              />
-            </li>
-          );
-        })}
-        {canManage && (
-          <li className="contents">
-            {canAdd ? (
-              <NewCollection tile />
-            ) : (
-              // Two per desk during the beta: the folder stays in place and says why there's no third.
-              <Folder tab={<span className="font-mono tnum">{collections.length} of {BETA_COLLECTIONS}</span>} dashed hatched>
-                <div className="m-auto max-w-64 text-center">
-                  <p className="text-sm font-semibold text-mute">Two collections per desk during the beta</p>
-                  <p className="mt-1 text-xs text-faint">Change one&apos;s name or close date to start a new callout.</p>
-                </div>
-              </Folder>
-            )}
-          </li>
-        )}
-      </ul>
-      {receiving && inside.length > 0 && <Inside c={receiving} rows={inside} />}
-      {viaLinks.length > 0 && (
-        <section aria-labelledby="links-shared-h" className="mt-8">
-          <h2 id="links-shared-h" className="text-[15px] font-bold text-bone">
-            Shared with you to listen
-          </h2>
-          <p className="mt-1 text-xs text-mute sm:text-sm">Private collections other people opened to you. Your access is personal: please don&apos;t share the music.</p>
-          <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {viaLinks.map((l) => (
-              <li key={l.id}>
-                <Link href={l.href} className="flex h-full flex-col gap-1 card p-3.5 text-bone hover:border-faint">
-                  <span className="truncate text-[14px] font-bold">{l.collection_name}</span>
-                  <span className="truncate text-[11px] text-mute">from {l.owner_name}</span>
-                  <span className="mt-auto pt-2 text-[11px] font-bold tnum">
-                    {l.count} {l.count === 1 ? "track" : "tracks"}{" "}
-                    <span className="font-normal text-faint">
-                      · {l.permission === "download" ? "Listen + Download" : "Listen"}
-                      {l.expires_at ? ` · until ${fmtDay(l.expires_at)}` : ""}
-                    </span>
-                  </span>
-                </Link>
+    <div className="page-gutter py-4 sm:py-7">
+      <div className="mx-auto flex w-full max-w-6xl min-w-0 flex-col gap-4 sm:gap-5">
+        <div className="flex flex-col gap-1.5">
+          <PageHead label="One per callout" title="Collections" />
+          <p className="max-w-3xl text-[12px] leading-snug text-mute">
+            Your link <span className="break-all font-mono text-bone">{host}/{user.handle}</span>{" "}
+            {user.active_collection_id ? "sends new tracks to the one that's receiving." : "sends tracks straight to your Review Queue until you make one."}
+          </p>
+        </div>
+        {/* Cards in one column on phones, two from sm, three from xl. The New collection button sits on top on phones. */}
+        <ul className="grid items-start gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {ordered.map((c) => {
+            const genres = genresFor(c).custom ? genresFor(c).list : [];
+            return (
+              <li key={c.id} className="contents">
+                <CollectionTile
+                  c={{ id: c.id, name: c.name, closesAt: c.closes_at, closesLabel: c.closes_at ? fmtDay(c.closes_at) : null, count: c.count, needsReview: c.needs_review, kept: c.kept, briefWanted: c.brief_wanted, bpmMin: c.bpm_min, bpmMax: c.bpm_max, briefNote: c.brief_note, allowSharing: !!c.allow_sharing, sharingAvailable: sharing, genres, brief: briefItems(c, genres, user.tz), maxTracks: c.max_tracks, full: !!c.full_at, art: c.art_key ? `/api/collection-art/${c.id}?v=${encodeURIComponent(c.art_key)}` : null, canCap: canCapCallouts(user.plan) }}
+                  receiving={c.id === user.active_collection_id}
+                  closed={isClosed(c)}
+                  canManage={canManage}
+                  link={`${APP_URL}/${user.handle}`}
+                />
               </li>
-            ))}
-          </ul>
-        </section>
-      )}
+            );
+          })}
+          {canManage && (
+            <li className="contents">
+              {canAdd ? (
+                <NewCollection tile />
+              ) : (
+                // Two per desk during the beta: the tile stays in place and says why there's no third.
+                <Folder tab={<span className="font-mono tnum">{collections.length} of {BETA_COLLECTIONS}</span>} hatched>
+                  <div className="m-auto max-w-64 text-center">
+                    <p className="text-[13px] font-semibold text-mute">Two collections per desk during the beta</p>
+                    <p className="mt-1 text-[11.5px] text-faint">Change one&apos;s name or close date to start a new callout.</p>
+                  </div>
+                </Folder>
+              )}
+            </li>
+          )}
+        </ul>
+        {receiving && inside.length > 0 && <Inside c={receiving} rows={inside} />}
+        {viaLinks.length > 0 && (
+          <section aria-labelledby="links-shared-h" className="flex flex-col gap-3">
+            <div>
+              <SectionHead id="links-shared-h" icon="head" title="Shared with you to listen" />
+              <p className="mt-1.5 text-[12px] text-mute">Private collections other people opened to you. Your access is personal: please don&apos;t share the music.</p>
+            </div>
+            <ul className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+              {viaLinks.map((l) => (
+                <li key={l.id}>
+                  <Link href={l.href} className={`flex h-full min-h-11 flex-col gap-1 ${CARD} p-3 text-bone transition-colors hover:border-line-2`}>
+                    <span className="truncate text-[13px] font-semibold">{l.collection_name}</span>
+                    <span className="truncate text-[11.5px] text-mute">from {l.owner_name}</span>
+                    <span className="mt-auto pt-2 text-[11.5px] font-semibold tnum">
+                      {l.count} {l.count === 1 ? "track" : "tracks"}{" "}
+                      <span className="font-normal text-faint">
+                        · {l.permission === "download" ? "Listen + Download" : "Listen"}
+                        {l.expires_at ? ` · until ${fmtDay(l.expires_at)}` : ""}
+                      </span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </div>
     </div>
   );
 }
 
 type InsideRow = { id: number; title: string; sender_name: string; genre: string; bpm: number | null; musical_key: string | null; decision: string | null; played_at: number | null };
 
-/** The receiving callout's newest tracks as rows (rule 15 Collections): track and sender, genre, BPM · key, status. */
+/** The receiving callout's newest tracks as rows (the mock's "In …" card): track, sender · genre · BPM · key, status. */
 function Inside({ c, rows }: { c: { id: number; name: string; count: number; max_tracks: number | null }; rows: InsideRow[] }) {
-  const status = (r: InsideRow) => (r.decision === "kept" ? "Kept" : r.decision === "passed" ? "Not for me" : r.played_at ? "Listened" : "Needs review");
-  const cols = "sm:grid sm:grid-cols-[minmax(0,1fr)_9rem_7rem_6.5rem] sm:items-center sm:gap-4";
+  const status = (r: InsideRow) =>
+    r.decision === "kept" ? <Chip tone="up">Kept</Chip> : r.decision === "passed" ? <Chip>Not for me</Chip> : r.played_at ? <Chip>Listened</Chip> : <Chip tone="warn">Needs review</Chip>;
   return (
-    <section aria-labelledby="inside-h" className="panel mt-8 overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3 sm:px-5">
-        <h2 id="inside-h" className="text-[15px] font-bold text-bone">
-          In {c.name}
-        </h2>
-        <div className="flex min-w-48 flex-1 items-center justify-end gap-3 sm:max-w-sm">
-          {c.max_tracks ? (
-            <div className="flex-1">
-              <CapacityStrip used={c.count} limit={c.max_tracks} cells={25} small />
-            </div>
-          ) : null}
-          <span className="font-mono text-xs text-mute tnum">{c.max_tracks ? `${c.count} of ${c.max_tracks}` : `${c.count} track${c.count === 1 ? "" : "s"}`}</span>
-          <Link href={`/dashboard/collections/${c.id}`} className="-my-3 inline-flex min-h-11 items-center text-sm text-mute hover:text-bone">
-            Open →
+    <section aria-labelledby="inside-h" className={`flex flex-col gap-2 ${CARD} p-3`}>
+      <SectionHead
+        id="inside-h"
+        title={`In ${c.name}`}
+        aside={
+          <Link href={`/dashboard/collections/${c.id}`} className="btn-ghost btn-sm gap-1">
+            Open
+            <Icon name="chev" className="size-3.5" />
           </Link>
-        </div>
-      </div>
-      <div aria-hidden className={`hidden border-t border-line px-5 py-2 text-xs font-semibold text-mute ${cols}`}>
-        <span>Track</span>
-        <span>Genre</span>
-        <span>BPM · key</span>
-        <span className="text-right">Status</span>
-      </div>
+        }
+      />
+      {c.max_tracks ? (
+        <CapTicks used={c.count} limit={c.max_tracks} />
+      ) : (
+        <p className="font-mono text-[11px] text-mute tnum">
+          {c.count} track{c.count === 1 ? "" : "s"}
+        </p>
+      )}
       <ul>
-        {rows.map((r) => (
-          <li key={r.id} className="border-t border-line">
-            <Link href={`/dashboard/review?view=queue&s=all&t=${r.id}`} className={`flex min-h-11 items-center gap-3 px-4 py-3 text-sm hover:bg-ink-4 sm:px-5 ${cols}`}>
-              <span className="min-w-0 flex-1 truncate">
-                <span className="font-semibold text-bone">{r.title}</span> <span className="text-mute">· {r.sender_name}</span>
-              </span>
-              <span className="hidden truncate text-mute sm:block">{r.genre}</span>
-              <span className="hidden font-mono text-xs text-faint tnum sm:block">{[r.bpm ? Math.round(r.bpm) : null, r.musical_key].filter(Boolean).join(" · ")}</span>
-              <span className="shrink-0 text-right text-xs text-mute">{status(r)}</span>
-            </Link>
-          </li>
-        ))}
+        {rows.map((r) => {
+          const sub = [r.sender_name, r.genre || null, [r.bpm ? Math.round(r.bpm) : null, r.musical_key].filter(Boolean).join(" · ") || null].filter(Boolean).join(" · ");
+          return (
+            <li key={r.id} className="border-t border-line first:border-t-0">
+              <Link href={`/dashboard/review?view=queue&s=all&t=${r.id}`} className="-mx-1.5 flex min-h-11 items-center gap-3 rounded-[10px] px-1.5 py-2 hover:bg-well">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13px] font-semibold text-bone">{r.title}</span>
+                  <span className="block truncate text-[11.5px] text-mute tnum">{sub}</span>
+                </span>
+                <span className="shrink-0">{status(r)}</span>
+              </Link>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
