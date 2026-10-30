@@ -42,17 +42,27 @@ export async function homeStats(userId: number, tz: string) {
   };
 }
 
-/** Tracks received per local calendar day, oldest first, including empty days. */
+/** Tracks received, and tracks kept, per local calendar day, oldest first, including empty days. */
 async function dailyReceived(userId: number, tz: string, days: number) {
   const key = (ts: number) => new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(ts);
   const label = (ts: number) => new Intl.DateTimeFormat("en-GB", { timeZone: tz, day: "numeric", month: "short" }).format(ts);
+  const weekday = (ts: number) => new Intl.DateTimeFormat("en-GB", { timeZone: tz, weekday: "short" }).format(ts);
   const t = now();
-  const rows = await q.all<{ created_at: number }>("SELECT created_at FROM tracks WHERE user_id = ? AND created_at >= ?", userId, t - (days + 1) * DAY);
-  const counts = new Map<string, number>();
-  for (const r of rows) counts.set(key(r.created_at), (counts.get(key(r.created_at)) ?? 0) + 1);
+  const from = t - (days + 1) * DAY;
+  const [rows, keptRows] = await Promise.all([
+    q.all<{ created_at: number }>("SELECT created_at FROM tracks WHERE user_id = ? AND created_at >= ?", userId, from),
+    q.all<{ decided_at: number }>("SELECT decided_at FROM tracks WHERE user_id = ? AND decision = 'kept' AND decided_at >= ?", userId, from),
+  ]);
+  const tally = (list: number[]) => {
+    const m = new Map<string, number>();
+    for (const ts of list) m.set(key(ts), (m.get(key(ts)) ?? 0) + 1);
+    return m;
+  };
+  const counts = tally(rows.map((r) => Number(r.created_at)));
+  const kept = tally(keptRows.map((r) => Number(r.decided_at)));
   return Array.from({ length: days }, (_, i) => {
     const ts = t - (days - 1 - i) * DAY;
-    return { day: label(ts), count: counts.get(key(ts)) ?? 0, today: i === days - 1 };
+    return { day: label(ts), weekday: weekday(ts), count: counts.get(key(ts)) ?? 0, kept: kept.get(key(ts)) ?? 0, today: i === days - 1 };
   });
 }
 

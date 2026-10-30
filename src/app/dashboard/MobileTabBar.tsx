@@ -66,7 +66,8 @@ export function MobileTabBar({ needsReview }: { needsReview: number }) {
           // all four fit from 320px (mono at 11px with tight tracking ≈ 6.4px a letter, 28 letters + padding ≈ 230px).
           className={`relative flex h-12 flex-auto flex-col items-center justify-center gap-[3px] whitespace-nowrap rounded-[22px] px-1.5 py-1.5 text-[11px] uppercase tracking-[-0.02em] transition duration-100 active:translate-y-px active:scale-95 ${
             t.active
-              ? "bg-gradient-to-b from-[#353a2d] to-[#23261e] font-bold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_2px_6px_rgba(0,0,0,0.55)]"
+              ? // Soft lime, so the page's one lime button stays the loudest thing on screen (owner, 30 Oct redesign).
+                "bg-lime/15 font-bold text-lime shadow-[inset_0_0_0_1px_rgba(213,255,72,0.35)]"
               : "font-medium text-dim active:bg-[#1f211b] active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)]"
           }`}
         >
