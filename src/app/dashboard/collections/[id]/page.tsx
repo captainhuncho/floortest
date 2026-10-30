@@ -153,12 +153,10 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
             {links && <ShareLinks collectionId={c.id} links={links as ShareLinkView[]} sharedTracks={sharedTracks} at={now()} />}
             <section aria-labelledby="tracks-h" className="flex flex-col gap-2">
               <SectionHead id="tracks-h" icon="music" title="Tracks" aside={<span className="tnum">{c.count}</span>} />
-              {/* One list for every screen size, so keyboard shortcuts and the player are registered once. Its own phone
-                  padding is 12px, so it steps out 12px to line up with the cards. */}
+              {/* One list for every screen size, so keyboard shortcuts and the player are registered once. It's its own
+                  card, lined up with the others. */}
               {cards.length ? (
-                <div className="-mx-3 md:mx-0">
-                  <ListRows rows={cards} statusTag collections={all.map((x) => ({ id: x.id, name: x.name }))} />
-                </div>
+                <ListRows rows={cards} statusTag collections={all.map((x) => ({ id: x.id, name: x.name }))} />
               ) : (
                 <p className={`${CARD} p-3 text-[12px] text-mute`}>This folder is empty. Tracks sent while it&apos;s receiving land here.</p>
               )}
