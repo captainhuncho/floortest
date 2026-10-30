@@ -6,9 +6,10 @@ import { clearShared, sharedFiles, type SharedFile } from "@/lib/native-share";
 import { SubmitForm } from "../../[handle]/SubmitForm";
 import { FolderSend } from "./FolderSend";
 import { SendModeTabs } from "../../[handle]/SendModes";
+import { CuePoint } from "@/components/CuePoint";
 import { ProfileLinks } from "@/components/ProfileLinks";
 import { lookupReceiver, type ReceiverLookup } from "../actions/desk";
-import { CARD, Chip, Cover, Icon, IconBox, InfoRow, SectionHead, initials } from "@/components/Kit";
+import { CARD, Cover, IconBox, InfoRow, SectionHead, initials } from "@/components/Kit";
 
 /** Type someone's link name, see who they are, then send them a track from your account. */
 export function SendComposer({ host, account, initial }: { host: string; account: { name: string; email: string }; initial: string }) {
@@ -148,12 +149,8 @@ export function SendComposer({ host, account, initial }: { host: string; account
                 <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
                   <span className="sr-only">Send music to </span>
                   <span className="truncate text-[13px] font-semibold text-bone">{found.name}</span>
-                  {found.verified && (
-                    <Chip tone="acc">
-                      <Icon name="check" className="size-3" />
-                      Verified
-                    </Chip>
-                  )}
+                  {/* FloorTest's own verified mark, the Cue Point tick (owner, 30 Oct: not a text chip). */}
+                  {found.verified && <CuePoint size={16} label="Verified by FloorTest: this account controls the linked profile" />}
                 </p>
                 {found.roleLine && <p className="truncate text-[11.5px] text-mute">{found.roleLine}</p>}
               </div>
