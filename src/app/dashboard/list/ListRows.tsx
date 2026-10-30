@@ -218,13 +218,13 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
                   aria-label={`Select ${r.artist} - ${r.title}`}
                 />
               )}
-              <div className={picking ? `relative min-w-0 flex-1 rounded-panel ${picked.has(r.id) ? "ring-2 ring-lime/60" : ""}` : "contents"}>
+              <div className={picking ? `relative min-w-0 flex-1 rounded-[14px] ${picked.has(r.id) ? "ring-2 ring-lime/60" : ""}` : "contents"}>
               {/* Select mode: the whole row ticks the track, so a stray tap never plays, keeps or opens it. */}
-              {picking && <button type="button" tabIndex={-1} aria-hidden className="absolute inset-0 z-10 cursor-pointer rounded-panel" onClick={(e) => (e.stopPropagation(), toggle(r.id))} />}
+              {picking && <button type="button" tabIndex={-1} aria-hidden className="absolute inset-0 z-10 cursor-pointer rounded-[14px]" onClick={(e) => (e.stopPropagation(), toggle(r.id))} />}
               {/* Phones: Figma "track-card" */}
               <div
-                className={`flex flex-col gap-2.5 rounded-panel border p-3 md:hidden ${
-                  waiting ? "border-line border-l-2 border-l-bone bg-ink-3" : "border-line bg-ink-2"
+                className={`flex flex-col gap-2.5 rounded-[14px] border p-3 md:hidden ${
+                  waiting ? "border-line border-l-2 border-l-bone bg-card" : "border-line bg-well"
                 }`}
               >
                 <div className="flex items-center gap-2.5">
@@ -234,7 +234,7 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
                       setSelected(r.id);
                       player.play(toPlayer(r), queue);
                     }}
-                    className={`grid size-11 shrink-0 place-items-center rounded-lg border text-bone ${isCurrent ? "border-bone" : "border-line"}`}
+                    className={`grid size-11 shrink-0 place-items-center rounded-[11px] border bg-well text-bone ${isCurrent ? "border-lime/50 text-lime" : "border-line"}`}
                     aria-label={playing ? `Pause ${r.title}` : `Play ${r.title}`}
                   >
                     <PlayIcon playing={playing} className="size-3.5" />
@@ -248,7 +248,7 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
                     aria-expanded={open}
                     className="flex min-w-0 flex-1 flex-col gap-0.5 text-left"
                   >
-                    <span className={`truncate text-sm ${waiting ? "font-bold text-bone" : "font-medium text-mute"}`}>
+                    <span className={`truncate text-[13px] ${waiting ? "font-bold text-bone" : "font-medium text-mute"}`}>
                       {waiting && <span className="sr-only">Needs review: </span>}
                       {r.artist} - {r.title}
                     </span>
@@ -290,14 +290,14 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
                 </div>
               </div>
 
-              <div className={`hidden grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 rounded-xl border px-4 py-3 transition md:grid @4xl:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_auto] ${waiting ? "border-l-2 border-l-bone" : ""} ${selected === r.id ? "border-mute/60 bg-ink-4" : waiting ? "border-line bg-ink-3 hover:border-line-2" : "border-line bg-ink-2 hover:border-line-2"}`}>
+              <div className={`hidden grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 rounded-[14px] border px-4 py-2.5 transition md:grid @4xl:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_auto] ${waiting ? "border-l-2 border-l-bone" : ""} ${selected === r.id ? "border-mute/60 bg-ink-4" : waiting ? "border-line bg-card hover:border-line-2" : "border-line bg-well hover:border-line-2"}`}>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelected(r.id);
                     player.play(toPlayer(r), queue);
                   }}
-                  className={`grid size-11 shrink-0 place-items-center rounded-lg border text-bone transition ${isCurrent ? "border-bone" : "border-line hover:border-mute"}`}
+                  className={`grid size-11 shrink-0 place-items-center rounded-[11px] border bg-well text-bone transition ${isCurrent ? "border-lime/50 text-lime" : "border-line hover:border-line-2"}`}
                   aria-label={playing ? `Pause ${r.title}` : `Play ${r.title}`}
                 >
                   <PlayIcon playing={playing} className="size-3.5" />
@@ -361,7 +361,7 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
                     href={`/api/tracks/${r.id}/download`}
                     title="Download original"
                     aria-label={`Download original of ${r.title}`}
-                    className="grid size-11 place-items-center rounded-md text-bone/80 transition hover:bg-ink-3 hover:text-bone"
+                    className="grid size-11 place-items-center rounded-md text-bone/80 transition hover:bg-card hover:text-bone"
                   >
                     <Icon.Download />
                   </a>
@@ -372,7 +372,7 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
               </div>
 
               {open && !picking && (
-                <div className="mt-2 overflow-hidden rounded-panel md:mt-0 md:rounded-none">
+                <div className="mt-2 overflow-hidden rounded-[14px] md:mt-0 md:rounded-none">
                   <Expanded row={r} decision={decision} onClose={() => setExpanded(null)} />
                 </div>
               )}
@@ -389,7 +389,7 @@ export function ListRows({ rows, statusTag = false, collections = [] }: { rows: 
           onDecide={(d) => setDecisions((m) => ({ ...m, ...Object.fromEntries([...picked].map((id) => [id, d])) }))}
         />
       )}
-      <div className="mt-4 hidden items-center justify-between gap-4 rounded-xl border border-line bg-ink-2 px-4 py-3 text-[11px] text-faint md:flex">
+      <div className="mt-4 hidden items-center justify-between gap-4 rounded-[14px] border border-line bg-well px-4 py-3 text-[11px] text-faint md:flex">
         <p className="flex flex-wrap gap-x-4 gap-y-1">
           {[
             ["↑/↓", "select"],
@@ -426,7 +426,7 @@ function Expanded({ row: r, decision, onClose }: { row: ListRow; decision: Decis
     <div className="grid gap-5 border-t border-line/60 bg-ink/40 px-4 py-5 sm:px-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:pl-[88px]">
       <div className="space-y-3 text-sm">
         {r.message ? (
-          <figure className="rounded-lg border border-line bg-ink-2 p-3">
+          <figure className="rounded-lg border border-line bg-well p-3">
             <figcaption className="label mb-1">Message from {r.sender}</figcaption>
             <blockquote className="whitespace-pre-wrap text-[15px] text-bone">{r.message}</blockquote>
           </figure>
@@ -483,7 +483,7 @@ function Expanded({ row: r, decision, onClose }: { row: ListRow; decision: Decis
           name="body"
           required
           maxLength={4000}
-          className="input min-h-24 resize-y"
+          className="input mt-2 min-h-24 resize-y rounded-xl! bg-well! max-sm:text-base"
           placeholder="Sent by email"
           onKeyDown={(e) => {
             if (e.key === "Escape") onClose();
@@ -532,7 +532,7 @@ function ActionButton({
       aria-pressed={pressed}
       aria-keyshortcuts={hint}
       title={`${tip} (${hint})`}
-      className={`grid size-11 place-items-center rounded-md transition hover:bg-ink-3 ${pressed ? "text-bone" : "text-mute hover:text-bone"}`}
+      className={`grid size-11 place-items-center rounded-md transition hover:bg-card ${pressed ? "text-bone" : "text-mute hover:text-bone"}`}
     >
       {children}
     </button>

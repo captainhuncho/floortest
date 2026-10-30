@@ -3,18 +3,19 @@
 import { useStep, type Step } from "./QueueState";
 
 /**
- * Back and forward through the tracks in this view (owner, 28 Oct), beside "2 of 5". Below 1280px only; wide screens
- * have the list beside the track and the arrow keys. The card also turns on a sideways swipe (DecisionRail).
+ * Back and forward through the tracks in this view (owner, 28 Oct), beside "2 of 5". At every width now (redesign,
+ * 30 Oct), as the mock has it; wide screens also have the list beside the track and the arrow keys. The card also
+ * turns on a sideways swipe (DecisionRail).
  */
 export function TrackStepper({ fromId, prev, next, position }: { fromId: number; prev: Step; next: Step; position: string | null }) {
   const step = useStep(fromId);
-  const btn = "grid size-11 place-items-center rounded-lg border border-line text-bone disabled:opacity-30 xl:hidden";
+  const btn = "grid size-11 place-items-center rounded-[11px] border border-line bg-well text-bone transition-colors hover:border-line-2 disabled:text-faint disabled:opacity-50";
   return (
-    <div className="-mt-1 -mr-1 flex shrink-0 items-center gap-1 xl:m-0">
+    <div className="flex shrink-0 items-center gap-0.5">
       <button type="button" className={btn} aria-label="Previous track" disabled={!prev} onClick={() => step(prev)}>
         <Chevron back />
       </button>
-      {position && <span className="min-w-12 text-center font-mono text-xs text-mute tnum">{position}</span>}
+      {position && <span className="min-w-11 px-1 text-center text-[11px] whitespace-nowrap text-mute tnum">{position}</span>}
       <button type="button" className={btn} aria-label="Next track" disabled={!next} onClick={() => step(next)}>
         <Chevron />
       </button>

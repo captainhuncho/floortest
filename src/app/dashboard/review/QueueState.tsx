@@ -5,6 +5,7 @@ import { createContext, useCallback, useContext, useState } from "react";
 import { usePlayer, type PlayerTrack } from "@/components/Player";
 import { fmtTime } from "@/lib/format";
 import { DetailPlayer } from "../DetailPlayer";
+import { CARD, Cover, initials } from "@/components/Kit";
 
 /**
  * The Review Queue answers a tap at once (owner, 28 Oct: "slow to respond to clicks"). Opening a track or deciding
@@ -96,20 +97,22 @@ export function ShownPanel({ servedId, children }: { servedId: number; children:
   const shown = useQueue()?.shown;
   if (!shown || shown.id === servedId) return <>{children}</>;
   const meta = [shown.bpm && `${Math.round(shown.bpm)} BPM`, shown.duration && fmtTime(shown.duration), shown.genre].filter(Boolean).join(" · ");
-  const btn = "btn h-12 border border-line text-[15px] font-bold";
+  const btn = "inline-flex min-h-13 items-center justify-center rounded-[15px] border text-[14.5px] font-semibold opacity-40";
   return (
-    <div className="p-4 sm:p-6" aria-busy="true">
-      <h2 className="text-xl font-bold leading-tight tracking-[-0.3px] text-bone md:text-2xl">{shown.title}</h2>
-      <p className="mt-1 text-sm text-mute">{shown.artist}</p>
-      {meta && <p className="mt-3 font-mono text-xs text-mute tnum md:text-[13px]">{meta}</p>}
-      <div className="mt-4 md:mt-5">
-        <DetailPlayer track={shown} />
+    <div className={`${CARD} flex flex-col gap-3 p-3.5 sm:p-4`} aria-busy="true">
+      <div className="flex items-center gap-3">
+        <Cover text={initials(shown.title)} size="size-[46px]" />
+        <div className="min-w-0 flex-1">
+          <h2 className="line-clamp-2 text-[18px] font-semibold leading-tight tracking-[-0.02em] text-bone">{shown.title}</h2>
+          <p className="mt-0.5 truncate text-[11.5px] text-mute">{shown.artist}</p>
+        </div>
       </div>
+      {meta && <p className="font-mono text-[11.5px] text-mute tnum">{meta}</p>}
+      <DetailPlayer track={shown} />
       {/* Same place and size as the real buttons, so nothing moves when they arrive a moment later. */}
-      <div className="mt-4 grid grid-cols-[1fr_1.3fr_1fr] gap-2 md:mt-5 md:gap-2.5" aria-hidden="true">
-        <span className={`${btn} opacity-40`}>Not for me</span>
-        <span className={`${btn} border-lime bg-lime text-ink opacity-40`}>Keep</span>
-        <span className={`${btn} opacity-40`}>Reply</span>
+      <div className="grid grid-cols-2 gap-2" aria-hidden="true">
+        <span className={`${btn} border-line-2 bg-well text-bone`}>Not for me</span>
+        <span className={`${btn} border-transparent bg-lime text-ink`}>Keep</span>
       </div>
     </div>
   );

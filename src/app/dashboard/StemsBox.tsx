@@ -2,15 +2,16 @@ import type { Track } from "@/lib/db";
 import { fmtBytes, fmtDay } from "@/lib/format";
 import { stemsFor } from "@/lib/stems";
 import { askForStems } from "./actions/review";
+import { CARD } from "@/components/Kit";
 
 /** Stems for a track: ask the sender for them, then download them one by one or as a ZIP. */
 export async function StemsBox({ track: t, senderName }: { track: Track; senderName: string }) {
   const stems = await stemsFor(t.id);
   const first = senderName.split(/\s+/)[0];
   return (
-    <section aria-labelledby={`stems-${t.id}`} className="rounded-xl border border-line bg-ink-2 p-4">
+    <section aria-labelledby={`stems-${t.id}`} className={`${CARD} p-3.5 sm:p-4`}>
       <div className="flex items-center justify-between gap-3">
-        <h3 id={`stems-${t.id}`} className="eyebrow">
+        <h3 id={`stems-${t.id}`} className="text-[15px] font-semibold tracking-[-0.015em] text-bone">
           Stems{stems.length ? ` (${stems.length})` : ""}
         </h3>
         {stems.length > 0 && (

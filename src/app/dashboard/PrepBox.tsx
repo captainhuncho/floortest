@@ -5,6 +5,7 @@ import { usePlayer, type PlayerTrack } from "@/components/Player";
 import { useToast } from "@/components/Toast";
 import { fmtCue, MAX_CUES, type Cue } from "@/lib/cues";
 import { savePrep } from "./actions/review";
+import { CARD } from "@/components/Kit";
 
 /** Set prep on a kept track: energy 1–5 and labelled cue points. Both go into the Rekordbox export. */
 export function PrepBox({ track, energy: initialEnergy, cues: initialCues }: { track: PlayerTrack; energy: number | null; cues: Cue[] }) {
@@ -33,9 +34,9 @@ export function PrepBox({ track, energy: initialEnergy, cues: initialCues }: { t
   };
 
   return (
-    <section aria-label="Set prep" className="rounded-xl border border-line bg-ink-2 p-4">
+    <section aria-label="Set prep" className={`${CARD} p-3.5 sm:p-4`}>
       <div className="flex items-center justify-between gap-3">
-        <h3 className="eyebrow">Set prep</h3>
+        <h3 className="text-[15px] font-semibold tracking-[-0.015em] text-bone">Set prep</h3>
         {dirty && (
           <button
             type="button"
