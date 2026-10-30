@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { SEG, segTab } from "@/components/Kit";
 import { QuickReplies } from "./QuickReplies";
 import type { ReplyResult } from "./actions/review";
 
@@ -104,7 +105,7 @@ export function Composer({
         });
       }}
     >
-      <div className="flex gap-1 text-sm" role="tablist">
+      <div className={SEG} role="tablist">
         {(["reply", "note"] as const).map((m) => (
           <button
             key={m}
@@ -112,7 +113,7 @@ export function Composer({
             role="tab"
             aria-selected={mode === m}
             onClick={() => setMode(m)}
-            className={`rounded-t-md border border-b-0 px-3 py-2 ${mode === m ? "border-line bg-ink text-bone" : "border-transparent text-mute hover:text-bone"}`}
+            className={`${segTab(mode === m)} pointer-coarse:min-h-11`}
           >
             {m === "reply" ? `Email ${senderName}` : "Private note"}
           </button>
@@ -127,7 +128,7 @@ export function Composer({
         name="body"
         required
         maxLength={4000}
-        className="input min-h-24 resize-y rounded-tl-none"
+        className="input mt-2 min-h-24 resize-y"
         placeholder={mode === "note" ? "Private: the sender never sees this." : `Sent to ${senderName} by email.`}
       />
       {mode === "reply" && (
@@ -141,7 +142,7 @@ export function Composer({
           />
         </div>
       )}
-      <button className="btn-lime btn-sm mt-2" disabled={pending}>
+      <button className="btn-lime mt-2 min-h-11 rounded-[13px]" disabled={pending}>
         {pending ? "Saving…" : mode === "note" ? "Save note" : "Send email"}
       </button>
       <p role="status" aria-live="polite" className="mt-2 min-h-5 text-[13px] text-mute">

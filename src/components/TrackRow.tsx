@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { fmtTime } from "@/lib/format";
+import { Chip } from "./Kit";
 import { PlayIcon } from "./Player";
 
 /** A right-aligned readout after the title (BPM, length, age). Tabular, so a column of rows lines up. */
@@ -44,8 +45,9 @@ export type TrackRowProps = {
   /** A waveform (or any wide picture of the track): shown only from 1024px up, where there's room. */
   waveform?: ReactNode;
   /**
-   * A neutral text tag: "Kept", "Not for me", "Played out", "Needs review". Plain words, never an icon or a colour.
-   * Several tags as an array (empty entries are skipped).
+   * A status tag in words: "Kept", "Not for me", "Played out", "Needs review". The words carry the meaning; the chip's
+   * tint follows the redesign (green kept, lime played out, amber needs review, plain otherwise). Several tags as an
+   * array (empty entries are skipped).
    */
   status?: ReactNode | ReactNode[];
   /** Buttons or a menu at the end of the row. */
@@ -92,9 +94,11 @@ export function trackColumns(
   return cols;
 }
 
-/** The neutral status tag on a TrackRow (and anywhere a track's state is named in words). */
+const TAG_TONE: Record<string, "up" | "acc" | "warn"> = { Kept: "up", "Played out": "acc", "Needs review": "warn" };
+
+/** The status tag on a TrackRow (and anywhere a track's state is named in words): the kit's chip, tinted by the word. */
 export function TrackTag({ children }: { children: ReactNode }) {
-  return <span className="inline-flex shrink-0 items-center rounded border border-line-2 px-1.5 py-0.5 text-[11px] font-bold leading-none text-bone">{children}</span>;
+  return <Chip tone={typeof children === "string" ? (TAG_TONE[children] ?? "flat") : "flat"}>{children}</Chip>;
 }
 
 const FROM = {
@@ -153,9 +157,9 @@ export function TrackRow({
             <span className="sr-only">Needs review: </span>
           </>
         )}
-        <span className="truncate text-body font-bold text-bone">{title}</span>
+        <span className="truncate text-[13px] font-semibold text-bone">{title}</span>
       </span>
-      {line ? <span className="truncate text-xs text-faint">{line}</span> : null}
+      {line ? <span className="truncate text-[11.5px] text-mute">{line}</span> : null}
     </>
   );
   const box =
