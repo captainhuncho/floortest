@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { analyzeAudio } from "@/lib/analyze";
 import { readTags } from "@/lib/tags";
 import { Icon } from "@/components/Kit";
+import { GHOST, LIME } from "../kitButtons";
 
 // held: stored and waiting for the next virus-check batch while the scanner sleeps; it's added within about 10 minutes.
 type Item = { file: File; title: string; artist: string; status: "ready" | "uploading" | "done" | "error"; progress: number; error?: string; held?: boolean };
@@ -68,7 +69,7 @@ export function OwnerUpload({ collectionId, collectionName }: { collectionId: nu
 
   if (!open)
     return (
-      <button type="button" onClick={() => setOpen(true)} className="btn-ghost btn-sm gap-1.5">
+      <button type="button" onClick={() => setOpen(true)} className={GHOST}>
         <Icon name="plus" className="size-3.5" />
         Add tracks
       </button>
@@ -87,7 +88,7 @@ export function OwnerUpload({ collectionId, collectionName }: { collectionId: nu
         </button>
       </div>
       <input ref={input} type="file" accept=".wav,.mp3,audio/wav,audio/mpeg" multiple hidden aria-label="Choose WAV or MP3 files to add" onChange={(e) => (pick(e.target.files), (e.target.value = ""))} />
-      <button type="button" onClick={() => input.current?.click()} disabled={busy} className="mt-3 btn-ghost btn-sm">
+      <button type="button" onClick={() => input.current?.click()} disabled={busy} className={`${GHOST} mt-3`}>
         Choose WAV or MP3 files
       </button>
       {items.length > 0 && (
@@ -122,7 +123,7 @@ export function OwnerUpload({ collectionId, collectionName }: { collectionId: nu
         </p>
       )}
       {items.length > 0 && (
-        <button type="button" onClick={sendAll} disabled={busy || !waiting} className="mt-3 btn-lime btn-sm">
+        <button type="button" onClick={sendAll} disabled={busy || !waiting} className={`${LIME} mt-3`}>
           {busy ? "Adding…" : waiting ? `Add ${waiting} track${waiting === 1 ? "" : "s"}` : "All added"}
         </button>
       )}

@@ -9,6 +9,7 @@ import { DownloadActions } from "../DownloadActions";
 import { GenresField } from "./GenresField";
 import { CARD, Chip, Cover, Icon, IconBox, initials } from "@/components/Kit";
 import { LinkRow } from "../floor/FloorClient";
+import { DANGER, GHOST, GHOST_TALL, LIME } from "../kitButtons";
 import type { BriefItem } from "@/lib/brief";
 
 type C = {
@@ -144,16 +145,16 @@ export function CollectionCard({ c, receiving, closed, canManage = true, startEd
           )}
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href={`/dashboard/collections/${c.id}`} className="btn-ghost btn-sm">
+          <Link href={`/dashboard/collections/${c.id}`} className={GHOST}>
             Open collection
           </Link>
           <DownloadActions collectionId={c.id} crateName={c.name} count={c.count} size="sm" />
           {!receiving && canManage && (
-            <button className="btn-ghost btn-sm" disabled={pending} onClick={() => start(() => setActiveCollection(c.id))}>
+            <button className={GHOST} disabled={pending} onClick={() => start(() => setActiveCollection(c.id))}>
               Send new tracks here
             </button>
           )}
-          <button className="btn-ghost btn-sm" onClick={() => setEditing((e) => !e)} aria-expanded={editing}>
+          <button className={GHOST} onClick={() => setEditing((e) => !e)} aria-expanded={editing}>
             Edit
           </button>
         </div>
@@ -188,7 +189,7 @@ export function CollectionCard({ c, receiving, closed, canManage = true, startEd
             </label>
           )}
           <div className="flex gap-2">
-            <button className="btn-lime min-h-11" disabled={pending}>
+            <button className={LIME} disabled={pending}>
               Save
             </button>
           </div>
@@ -250,7 +251,7 @@ export function NewCollection({ tile = false }: { tile?: boolean }) {
   if (!open && tile)
     return (
       <>
-        <button onClick={() => setOpen(true)} className="btn-lime order-first min-h-11 w-full gap-1.5 text-[13px]! md:hidden">
+        <button onClick={() => setOpen(true)} className={`${LIME} order-first w-full gap-1.5 md:hidden`}>
           <Icon name="plus" className="size-4" />
           New collection
         </button>
@@ -269,7 +270,7 @@ export function NewCollection({ tile = false }: { tile?: boolean }) {
     );
   if (!open)
     return (
-      <button className="btn-ghost btn-sm" onClick={() => setOpen(true)}>
+      <button className={GHOST} onClick={() => setOpen(true)}>
         <Icon name="plus" className="size-3.5" />
         New collection
       </button>
@@ -291,10 +292,10 @@ export function NewCollection({ tile = false }: { tile?: boolean }) {
       <label className="flex min-h-11 items-center gap-2 text-[12px] text-mute">
         <input type="checkbox" name="activate" defaultChecked className="h-4 w-4 accent-lime" /> Send new tracks here now
       </label>
-      <button className="btn-lime min-h-11" disabled={pending}>
+      <button className={LIME} disabled={pending}>
         Create
       </button>
-      <button type="button" className="btn min-h-11 text-mute hover:text-bone" onClick={() => setOpen(false)}>
+      <button type="button" className={GHOST_TALL} onClick={() => setOpen(false)}>
         Cancel
       </button>
     </form>
@@ -368,7 +369,7 @@ export function CollectionTile({ c, receiving, closed, canManage = true, link }:
       )}
       <div className="mt-auto flex flex-wrap items-center justify-between gap-2">
         {c.needsReview > 0 && !closed ? (
-          <Link href={`/dashboard/review?view=queue&c=${c.id}`} className="btn-ghost btn-sm relative z-10 gap-1.5">
+          <Link href={`/dashboard/review?view=queue&c=${c.id}`} className={`${GHOST} relative z-10`}>
             <Icon name="inbox" className="size-[15px]" />
             Review {c.needsReview} new
           </Link>
@@ -376,7 +377,7 @@ export function CollectionTile({ c, receiving, closed, canManage = true, link }:
           <span className="text-[11.5px] text-mute">{closed ? "No longer taking tracks" : live ? "Nothing new to review" : "Not receiving"}</span>
         )}
         {!live && !closed && canManage ? (
-          <button className="btn-ghost btn-sm relative z-10 gap-1.5" disabled={pending} onClick={() => start(() => setActiveCollection(c.id))}>
+          <button className={`${GHOST} relative z-10`} disabled={pending} onClick={() => start(() => setActiveCollection(c.id))}>
             <Icon name="send" className="size-[15px]" />
             Send new tracks here
           </button>
@@ -505,7 +506,7 @@ function EditDialog({ c, receiving, closed, canManage, onClose }: { c: C; receiv
 }
 
 /** "Edit collection" as a button that opens the edit form in a pop-up. */
-export function EditCollectionInfo({ c, receiving, closed, canManage = true, className = "btn-ghost btn-sm" }: { c: C; receiving: boolean; closed: boolean; /** Owner or A&R / Admin: may change where the link sends tracks. */ canManage?: boolean; className?: string }) {
+export function EditCollectionInfo({ c, receiving, closed, canManage = true, className = GHOST }: { c: C; receiving: boolean; closed: boolean; /** Owner or A&R / Admin: may change where the link sends tracks. */ canManage?: boolean; className?: string }) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -548,11 +549,11 @@ function ArtUpload({ id, name, art }: { id: number; name: string; art: string | 
         <p className="mt-1 text-[12px] text-mute">Square works best. JPG, PNG or WebP, up to 8 MB. Shown on your link while this collection is receiving.</p>
         <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" aria-label={`Choose artwork for ${name}`} tabIndex={-1} className="sr-only" onChange={(e) => e.target.files?.[0] && send("POST", e.target.files[0])} />
         <div className="mt-2 flex gap-2">
-          <button type="button" disabled={busy} onClick={() => input.current?.click()} className="btn-ghost btn-sm min-h-11">
+          <button type="button" disabled={busy} onClick={() => input.current?.click()} className={GHOST_TALL}>
             {busy ? "Working…" : art ? "Replace" : "Upload"}
           </button>
           {art && (
-            <button type="button" disabled={busy} onClick={() => send("DELETE")} className="btn btn-sm min-h-11 text-mute hover:text-bone">
+            <button type="button" disabled={busy} onClick={() => send("DELETE")} className="tap-text min-h-11 px-2 text-[12px] font-semibold text-mute hover:text-bone">
               Remove
             </button>
           )}
@@ -585,7 +586,7 @@ export function DeleteCollection({ c, canDelete }: { c: { id: number; name: stri
           <p className="text-[11.5px] text-mute">{canDelete ? "Its tracks stay in your Queue, unsorted. This can't be undone." : "You need at least one collection, so this one can't be deleted. Make another first."}</p>
         </div>
         {canDelete && !open && (
-          <button type="button" onClick={() => setOpen(true)} className="btn-danger btn-sm">
+          <button type="button" onClick={() => setOpen(true)} className={DANGER}>
             Delete…
           </button>
         )}
@@ -605,10 +606,10 @@ export function DeleteCollection({ c, canDelete }: { c: { id: number; name: stri
             <input value={typed} onChange={(e) => setTyped(e.target.value)} autoFocus autoComplete="off" spellCheck={false} className="input font-mono" aria-invalid={typed !== "" && !match} />
           </label>
           <div className="flex flex-wrap gap-2">
-            <button disabled={!match || pending} className="btn btn-sm bg-danger font-bold text-ink disabled:cursor-not-allowed disabled:opacity-40">
+            <button disabled={!match || pending} className="inline-flex min-h-11 items-center justify-center rounded-[13px] bg-danger px-4 text-[13px] font-semibold text-ink transition disabled:cursor-not-allowed disabled:opacity-40">
               {pending ? "Deleting…" : "Delete collection"}
             </button>
-            <button type="button" onClick={() => { setOpen(false); setTyped(""); }} className="btn-ghost btn-sm">
+            <button type="button" onClick={() => { setOpen(false); setTyped(""); }} className={GHOST_TALL}>
               Cancel
             </button>
           </div>

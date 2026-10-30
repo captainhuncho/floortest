@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { GHOST_ON_WELL } from "../kitButtons";
 
 /**
  * Send music, as part of the Floor's link panel (owner, 30 Oct: it felt out of place as loose bubbles under the desk
@@ -25,7 +26,7 @@ export function SendMusicCard({ recent, host }: { recent: { handle: string; name
             className="-ml-2 min-w-[4rem] flex-1 bg-transparent text-base text-bone outline-none placeholder:text-faint md:text-xs"
             style={{ outline: "none" }}
           />
-          <button type="submit" className="btn-ghost btn-sm shrink-0">
+          <button type="submit" className={GHOST_ON_WELL}>
             Go
           </button>
         </form>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Icon, type IconName } from "@/components/Kit";
 import { stored, useDeviceState } from "@/components/useBrowserValue";
+import { FIELD_LABEL, GHOST, GHOST_TALL, LIME, LIME_SM } from "./kitButtons";
 
 const KEY = "floortest.exportBase";
 
@@ -59,36 +60,36 @@ export function ExportButton({
 
   return (
     <div className={buttonClassName?.includes("w-full") ? "relative w-full md:w-auto md:shrink-0" : "relative"}>
-      <button className={buttonClassName ?? `${variant === "lime" ? "btn-lime" : "btn-ghost"} btn-sm`} disabled={!count} onClick={openPanel} aria-expanded={open}>
+      <button className={buttonClassName ?? (variant === "lime" ? LIME_SM : GHOST)} disabled={!count} onClick={openPanel} aria-expanded={open}>
         {icon && <Icon name={icon} className="size-4" />}
         {label ?? "Prepare for set"}{showCount ? ` (${count})` : ""}
       </button>
       {open && (
-        <div className={`card absolute ${align === "start" ? "left-0 md:left-auto md:right-0" : "right-0"} top-full z-20 mt-2 w-80 max-w-[calc(100vw-2rem)] space-y-4 p-4 shadow-pop`}>
+        <div className={`absolute rounded-[18px] border border-line-2 bg-card text-bone ${align === "start" ? "left-0 md:left-auto md:right-0" : "right-0"} top-full z-20 mt-2 w-80 max-w-[calc(100vw-2rem)] space-y-4 p-4 shadow-pop`}>
           <div>
-            <p className="font-medium">
+            <p className="text-[13px] font-semibold">
               Download {count} {whole ? "" : "kept "}track{count === 1 ? "" : "s"}
             </p>
-            <p className="mt-1 text-xs text-mute">The original files and a playlist (M3U8) in a new folder. Senders are told their original was downloaded.</p>
+            <p className="mt-1 text-[11.5px] text-mute">The original files and a playlist (M3U8) in a new folder. Senders are told their original was downloaded.</p>
           </div>
           <label className="block space-y-1.5">
-            <span className="label">Name the new folder</span>
-            <input className="input py-2 text-sm" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} autoFocus />
+            <span className={FIELD_LABEL}>Name the new folder</span>
+            <input className="input py-2 text-[13px]" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} autoFocus />
           </label>
           <div className="space-y-2">
-            <label className="flex items-start gap-2.5 text-sm">
+            <label className="flex items-start gap-2.5 text-[13px]">
               <input type="checkbox" checked={xml} onChange={(e) => setXml(e.target.checked)} className="mt-0.5 size-4 accent-lime" />
               <span>
                 Add a Rekordbox XML
-                <span className="block text-xs text-mute">Rekordbox needs to know where you&apos;ll unzip the folder.</span>
+                <span className="block text-[11.5px] text-mute">Rekordbox needs to know where you&apos;ll unzip the folder.</span>
               </span>
             </label>
             {xml && (
-              <input className="input py-2 font-mono text-xs" value={base} onChange={(e) => setBase(e.target.value)} placeholder="/Users/you/Music" aria-label="Where you'll unzip the folder" />
+              <input className="input py-2 font-mono text-[12px]" value={base} onChange={(e) => setBase(e.target.value)} placeholder="/Users/you/Music" aria-label="Where you'll unzip the folder" />
             )}
           </div>
           <div className="flex gap-2">
-            <button type="button" className="btn-ghost btn-sm flex-1" onClick={() => setOpen(false)}>
+            <button type="button" className={`${GHOST_TALL} flex-1`} onClick={() => setOpen(false)}>
               Cancel
             </button>
             <a
@@ -99,7 +100,7 @@ export function ExportButton({
                 } catch {}
                 setTimeout(() => setOpen(false), 300);
               }}
-              className={`btn-lime btn-sm flex-1 ${ready ? "" : "pointer-events-none opacity-40"}`}
+              className={`${LIME} flex-1 ${ready ? "" : "pointer-events-none opacity-40"}`}
             >
               Download
             </a>
