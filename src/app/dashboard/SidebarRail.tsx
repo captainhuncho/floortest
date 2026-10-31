@@ -5,14 +5,14 @@ import { stored, useDeviceState } from "@/components/useBrowserValue";
 
 /** How long the pointer rests on the rail before it opens, and how long it may wander off before it folds (no flicker). */
 const OPEN_DELAY_MS = 120;
-const CLOSE_DELAY_MS = 200;
+const CLOSE_DELAY_MS = 300;
 /** "Pin menu open", remembered on this device (not "Keep …": the Queue's e2e finds its Keep button by /^Keep/). */
 const PIN_KEY = "ft-rail-pinned";
 
 /**
- * The desk menu's open state on desktop (owner, 31 Oct): folded to an icon rail, it opens over the page while a mouse
- * rests on it, while keyboard focus is inside it, or after a tap on the Menu button (touch screens, which can't hover).
- * Pinned, it stays open and the page makes room for it. `path` closes a tap-opened rail once a link is followed.
+ * The desk menu's open state on desktop (owner, 31 Oct): folded to an icon rail, it opens while a mouse rests on it,
+ * while keyboard focus is inside it, or after a tap on the Menu button (touch screens, which can't hover); the page
+ * makes room for it. Pinned, it stays open. `path` closes a tap-opened rail once a link is followed.
  */
 export function useRail(path: string) {
   const [pinned, setPinnedState] = useDeviceState(() => stored(PIN_KEY) === "1", false);

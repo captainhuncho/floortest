@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BetaTag } from "@/components/Logo";
+import { Logo } from "@/components/Logo";
 import { NavIcon, type NavIconName } from "@/components/NavIcon";
 import type { PauseState } from "./PauseSwitch";
 import { useRail } from "./SidebarRail";
@@ -59,35 +59,30 @@ export function Sidebar({ needsReview, cap, pause, canSend = true }: Props) {
       : null;
 
   return (
-    // The rail keeps its folded width in the page grid; opening slides the panel over the page, so nothing reflows.
-    // Pinned open, the page makes room for the full width instead.
-    <aside className={`relative hidden h-dvh md:block ${pinned ? "w-60" : "w-18"}`}>
+    // The rail is the page grid's first column: opening widens it and the page makes room (owner, 31 Oct: the menu never
+    // covers the page). Only the column's width animates; the page scrolls in its own box, so its scroll position stays.
+    <aside
+      className={`hidden h-dvh flex-col transition-[width] duration-200 ease-out motion-reduce:transition-none md:flex ${expanded ? "w-60" : "w-18"}`}
+    >
+      {/* The full wordmark never folds: it sits in the top bar's row, starting at the rail's edge and running into the
+          bar's empty left side when the rail is narrow (above the bar, so its frosted fill doesn't cover it). */}
+      <div className="relative h-14 shrink-0">
+        <Logo href="/" className="absolute left-[1.375rem] top-1/2 z-[45] -translate-y-1/2 whitespace-nowrap" />
+      </div>
       <div
         {...panelProps}
         id="desk-menu"
-        className={`absolute inset-y-0 left-0 flex flex-col overflow-y-auto overflow-x-hidden border-r border-line bg-ink pb-[clamp(0.5rem,2dvh,1.25rem)] pt-[clamp(0.75rem,2.5dvh,1.5rem)] text-bone [scrollbar-width:none] transition-[width] duration-200 ease-out motion-reduce:transition-none [&::-webkit-scrollbar]:hidden [body:has([data-mini-player])_&]:pb-20 ${
-          expanded ? "w-60" : "w-18"
-        } ${expanded && !pinned ? "z-50 shadow-[0.5rem_0_1.5rem_-0.75rem_rgb(0_0_0/0.5)]" : ""}`}
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden border-r border-line bg-ink pb-[clamp(0.5rem,2dvh,1.25rem)] text-bone [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [body:has([data-mini-player])_&]:pb-20"
       >
-        {/* Top: the mark, and on touch screens (no hover) a Menu button that opens the labels. */}
-        <div className="mx-3 flex shrink-0 flex-col gap-1">
-          <Link href="/" className={`${ROW} h-[clamp(2.75rem,6dvh,3rem)] items-center gap-3 border-transparent pl-[0.5rem] text-[1.125rem] font-bold tracking-tight text-bone`}>
-            {/* eslint-disable-next-line @next/next/no-img-element -- the crest is an SVG; Next's image optimizer doesn't process SVGs */}
-            <img draggable={false} src="/brand/crest.svg" alt="" aria-hidden className="size-8 shrink-0" />
-            <span className={`flex items-center gap-2 ${label}`}>
-              FloorTest
-              <BetaTag />
-            </span>
-          </Link>
-          {!pinned && (
-            <div className="hidden [@media(hover:none)]:block">
-              <button type="button" onClick={toggleTap} aria-expanded={expanded} aria-controls="desk-menu" className={`${ITEM} ${IDLE} w-full`}>
-                <RailIcon name="menu" />
-                <span className={label}>{tapOpen ? "Close menu" : "Menu"}</span>
-              </button>
-            </div>
-          )}
-        </div>
+        {/* Touch screens (no hover): a Menu button that opens the labels. */}
+        {!pinned && (
+          <div className="mx-3 mt-2 hidden shrink-0 [@media(hover:none)]:block">
+            <button type="button" onClick={toggleTap} aria-expanded={expanded} aria-controls="desk-menu" className={`${ITEM} ${IDLE} w-full`}>
+              <RailIcon name="menu" />
+              <span className={label}>{tapOpen ? "Close menu" : "Menu"}</span>
+            </button>
+          </div>
+        )}
 
         {/* Middle: the places, as one group centred in the height left over, spaced by the screen's height. */}
         <nav aria-label="Main" className="mx-3 flex flex-1 flex-col justify-center gap-[clamp(0.125rem,1.4dvh,1rem)] py-[clamp(0.5rem,2dvh,1.5rem)]">
