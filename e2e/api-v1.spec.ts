@@ -1,4 +1,4 @@
-import { expect, test, wav } from "./fixtures";
+import { expect, test, wav, signUp } from "./fixtures";
 
 /** The mobile app's API, end to end: sign in, read the queue, decide, refresh, sign out — and the guards around it. */
 test.describe.configure({ mode: "serial" });
@@ -74,16 +74,7 @@ test("a sender sends a track from the app; it lands on the receiver's desk and i
   const stamp = Date.now().toString(36);
   const email = `app+${stamp}@example.test`;
   const password = "Correct-Horse-Battery-77";
-  await page.goto("/signup");
-  await page.getByLabel("What best describes you?").selectOption("producer_dj");
-  await page.getByLabel("First name").fill("Appy");
-  await page.getByLabel("Surname").fill("Sender");
-  await page.getByLabel("Username").fill(`app${stamp}`);
-  await page.getByLabel("Email").fill(email);
-  await page.getByRole("textbox", { name: "Password" }).fill(password);
-  await page.getByRole("checkbox", { name: /18 or over/ }).check();
-  await page.getByRole("button", { name: "Create my link" }).click();
-  await page.waitForURL(/\/dashboard\/floor/);
+  await signUp(page, { kind: "Producer / DJ", first: "Appy", last: "Sender", handle: `app${stamp}`, email: email, password: password });
 
   // Until its email is confirmed, the new account can't send; the rest uses a confirmed sender.
   const fresh = await (await request.post("/api/v1/auth/login", { data: { email, password } })).json();

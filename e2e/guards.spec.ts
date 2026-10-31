@@ -1,20 +1,19 @@
-import { expect, test } from "./fixtures";
+import { expect, test, signUp } from "./fixtures";
 
 /** Security behaviour a visitor can see from outside, checked in a real browser. */
 
 test("sign-up never says whether an email already has an account", async ({ page }) => {
-  await page.goto("/signup");
-  await page.getByLabel("What best describes you?").selectOption("dj");
-  await page.getByLabel("First name").fill("Someone");
-  await page.getByLabel("Surname").fill("Else");
-  await page.getByLabel("Username").fill(`taken${Date.now().toString(36)}`);
-  await page.getByLabel("Email").fill("demo@floortest.test"); // the seeded receiver's email
-  await page.getByRole("textbox", { name: "Password" }).fill("Correct-Horse-Battery-77");
-  await page.getByRole("checkbox", { name: /18 or over/ }).check();
-  await page.getByRole("button", { name: "Create my link" }).click();
+  // demo@floortest.test is the seeded receiver's email.
+  const handle = `taken${Date.now().toString(36)}`;
+  await signUp(page, { kind: "DJ", first: "Someone", last: "Else", handle, email: "demo@floortest.test", password: "Correct-Horse-Battery-77" }, { finish: false });
   const message = page.getByRole("alert").filter({ hasText: /\S/ }).first();
   await expect(message).toContainText("We couldn't create an account with those details");
   await expect(message).not.toContainText(/exists|already registered/i);
+  // The answer stays on the last step (it never says which detail it was), and the earlier answers are kept.
+  await expect(page.getByRole("heading", { name: "Email and password" })).toBeVisible();
+  await page.getByRole("button", { name: "Back" }).click();
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(page.getByLabel("Username")).toHaveValue(handle);
 });
 
 test("the on-page site editor refuses anyone without a live ops session", async ({ request }) => {

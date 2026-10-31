@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { expect, logIn, submitLogin, test, wav } from "./fixtures";
+import { expect, logIn, submitLogin, test, wav, signUp } from "./fixtures";
 
 /**
  * A new desk starts with no collection (owner, 15 Oct): its link is open anyway, and what's sent lands straight in the
@@ -14,16 +14,7 @@ const desk = { handle: `nc${stamp}`, email: `nc+${stamp}@example.test`, password
 const title = `No Collection ${stamp}`;
 
 test("a new desk has no collection, and its link is open", async ({ page }) => {
-  await page.goto("/signup");
-  await page.getByLabel("What best describes you?").selectOption("dj");
-  await page.getByLabel("First name").fill("Nia");
-  await page.getByLabel("Surname").fill("Fresh");
-  await page.getByLabel("Username").fill(desk.handle);
-  await page.getByLabel("Email").fill(desk.email);
-  await page.getByRole("textbox", { name: "Password" }).fill(desk.password);
-  await page.getByRole("checkbox", { name: /18 or over/ }).check();
-  await page.getByRole("button", { name: "Create my link" }).click();
-  await page.waitForURL(/\/dashboard\/floor/);
+  await signUp(page, { kind: "DJ", first: "Nia", last: "Fresh", handle: desk.handle, email: desk.email, password: desk.password });
   // No warning banner: nothing is wrong with a desk that hasn't made a collection yet.
   await expect(page.locator("main").getByRole("alert")).toHaveCount(0);
   await expect(page.getByText("Sends tracks to your Review Queue")).toBeVisible();
