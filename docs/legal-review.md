@@ -32,6 +32,10 @@ The drafts at /terms and /privacy were rewritten on 29 Sep 2026 to close the gap
 14. **Colleague data:** because colleagues sign in, FloorTest now records which account played or downloaded each shared track, and shows those names to the receiver who shared it (not to the sender). The Privacy Policy needs a line on this. Is showing the receiver who listened acceptable without separate consent?
 15. **Takedown:** if a sender withdraws consent or reports misuse, we can switch off every share link for a track. Should the Terms give senders a right to ask for that, and a timeframe?
 
+## What changed 31 Oct 2026 (please review)
+
+- Consent banner wording (owner, 31 Oct): the banner no longer names the providers. It now reads "Can we count visits and collect crash reports so we can fix problems? Neither runs unless you say yes." with the link to the Cookie Policy. Before, it read "Can we count visits with Vercel Analytics and send crash reports to Sentry? …". The Cookie Policy still names Vercel Analytics and Sentry and what each does; nothing loads before Accept, and Not now loads nothing. Please confirm this layered approach (purposes in the banner, providers one click away) is enough for valid consent under UK/EU rules.
+
 ## What changed 30 Oct 2026 (please review)
 
 The owner asked for the public pages to match the product and to lose internal notes. All pages now say "Last updated 30 October 2026". Changes:
