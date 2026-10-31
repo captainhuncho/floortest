@@ -158,3 +158,15 @@ Member Keep / Not for me on an owner's or admin's call ─► refused (desk refr
 Owner-only or admin-only page as a member ─► Settings → Team (?denied)
 ```
 
+## Email links and errors (owner, 31 Oct)
+```
+Email link ─► page with one message and one action
+   valid ─► the step (Confirm my email | Confirm new email | Unsubscribe | Join … | Email me a code) ─► done page
+   signed in as someone else ─► "Sign in to confirm" | invite: Sign out, then open the invite again
+   invalid, expired, used or switched off ─► one answer ("Link not recognised" / "That link didn't work" / "This link isn't available")
+Page fails ─► public page: "This page didn't load" ─► Try again | Go to FloorTest
+            desk page: same message inside the desk menu ─► Try again | Back to the Floor
+            after an update: reloads once by itself, then "FloorTest was just updated" ─► Reload
+            root layout fails: global-error ─► Reload
+No such page ─► "Nothing on this link" (Go to FloorTest | Your desk) · desk: "Nothing here" (Back to the Floor) · receipt: Email me my sends
+```
