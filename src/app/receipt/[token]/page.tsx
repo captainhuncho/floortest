@@ -18,6 +18,8 @@ import { ReachedSteps, SignalDot } from "./SignalDot";
 import { switchOn } from "@/lib/switches";
 import { activeCollection, capacity, isClosed, isPaused, userByHandleForView } from "@/lib/desk";
 import { StopSharing } from "./StopSharing";
+import { CARD, Cover, Icon, initials } from "@/components/Kit";
+import { CuePoint } from "@/components/CuePoint";
 
 export const metadata = { title: "Your receipt — FloorTest", robots: { index: false } };
 
@@ -27,7 +29,7 @@ export const metadata = { title: "Your receipt — FloorTest", robots: { index: 
  */
 export default async function Receipt({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const t = (await q.get<(Track & { receiver: string; receiver_plan: string; collection: string | null; sender_email: string; verified_at: number | null; sender_account: number | null; receiver_handle: string })>(`SELECT t.*, u.name AS receiver, u.handle AS receiver_handle, u.plan AS receiver_plan, c.name AS collection, s.email AS sender_email, s.verified_at, s.account_id AS sender_account
+  const t = (await q.get<(Track & { receiver: string; receiver_plan: string; collection: string | null; sender_email: string; verified_at: number | null; sender_account: number | null; receiver_handle: string; receiver_status: string | null })>(`SELECT t.*, u.name AS receiver, u.handle AS receiver_handle, u.identity_status AS receiver_status, u.plan AS receiver_plan, c.name AS collection, s.email AS sender_email, s.verified_at, s.account_id AS sender_account
        FROM tracks t JOIN users u ON u.id = t.user_id JOIN senders s ON s.id = t.sender_id
        LEFT JOIN collections c ON c.id = t.collection_id
        WHERE t.token = ?`, token));
@@ -85,54 +87,81 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
 
   return (
     <EditablePage editing={!!editor} page="receipt" label="Receipts" values={c}>
-    <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-8 bg-ink px-5 py-8 text-bone sm:py-12">
-      <header className="flex flex-col gap-5">
-        <p className="eyebrow"><E k="kicker" /></p>
+    {/* Light or dark with the visitor's device, like the link page; one ~600px column of cards in the desk's look (owner, 30 Oct). */}
+    <main className="theme-system mx-auto flex min-h-dvh max-w-[600px] flex-col gap-3 bg-ink px-3.5 pb-8 pt-[max(1.25rem,env(safe-area-inset-top))] text-bone sm:px-6 sm:pt-10">
+      <header className={`${CARD} flex flex-col gap-3 p-3`}>
+        <p className="flex items-center gap-1.5 text-[11.5px] text-mute">
+          <Icon name="lock" className="size-[15px]" />
+          <E k="kicker" />
+        </p>
         <StatusHeadline status={headline.status} title={headline.title} detail={headline.detail} strong={headline.strong} />
-        <div className="flex flex-col gap-2 border-t border-line pt-4">
-          <p className="min-w-0 truncate text-[14px] font-semibold text-bone">
-            {t.title} <span className="font-normal text-mute">· {t.artist}{t.duration ? ` · ${fmtTime(t.duration)}` : ""}</span>
-          </p>
+        <div className="flex flex-col gap-2.5 border-t border-dashed border-line-2 pt-3">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <Cover text={initials(t.title)} />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[13px] font-semibold text-bone">{t.title}</p>
+              <p className="text-[11.5px] leading-[1.4] text-mute">
+                {t.artist}
+                {t.duration ? ` · ${fmtTime(t.duration)}` : ""} · to {who}
+                {t.receiver_status === "verified" && <CuePoint size={16} label="Verified by FloorTest: this account controls the linked profile" className="-mt-0.5 ml-1" />}
+                {t.collection ? ` for ${t.collection}` : ""}
+              </p>
+            </div>
+          </div>
           {t.peaks && <Waveform peaks={JSON.parse(t.peaks)} height={32} />}
         </div>
       </header>
 
       {todo && (
-        <section aria-labelledby="todo-h" className="flex flex-col gap-3">
-          <h2 id="todo-h" className="eyebrow"><E k="todo_title" /></h2>
+        <section aria-labelledby="todo-h" className={`${CARD} flex flex-col gap-2.5 p-3`}>
+          <h2 id="todo-h" className="flex items-center gap-2 text-[15px] font-semibold tracking-[-0.015em]">
+            <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-[10px] border border-line bg-well text-[#d98a2b]">
+              <Icon name="mail" className="size-4" />
+            </span>
+            <E k="todo_title" />
+          </h2>
           {stemsOn && <StemUpload token={token} receiver={who.split(/\s+/)[0]} existing={stemsSent(t)} max={MAX_STEMS} />}
           {!t.verified_at && (
-            <p className="text-[13px] text-mute">
+            <p className="text-[13px] leading-5 text-mute">
               Confirm your email from the delivery email, so {who} sees you as verified. Updates go to <span className="text-bone">{t.sender_email}</span>.
             </p>
           )}
         </section>
       )}
       {/* Collection share links: the artist can stop private sharing of this track at any time. */}
-      {sharing && !!t.share_ok && !!t.share_terms && t.share_terms !== "owner" && <StopSharing token={token} receiver={who.split(/\s+/)[0]} />}
+      {sharing && !!t.share_ok && !!t.share_terms && t.share_terms !== "owner" && (
+        <div className={`${CARD} p-3`}>
+          <StopSharing token={token} receiver={who.split(/\s+/)[0]} />
+        </div>
+      )}
 
-      <section aria-labelledby="history-h" className="flex flex-col gap-3">
-        <h2 id="history-h" className="eyebrow"><E k="history_title" /></h2>
+      <section aria-labelledby="history-h" className={`${CARD} flex flex-col gap-3 p-3`}>
+        <h2 id="history-h" className="flex items-center gap-2 text-[15px] font-semibold tracking-[-0.015em]">
+          <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-[10px] border border-line bg-well">
+            <Icon name="activity" className="size-4" />
+          </span>
+          <E k="history_title" />
+        </h2>
         {/* The live refresh above brings new steps in; one that arrives during this visit marks itself with a ring once. */}
         <ReachedSteps reached={happened.map((s) => s.key)}>
         <ol className="flex flex-col">
           {happened.map((s, i) => (
             <li key={s.key} className="relative flex gap-3 pb-4 last:pb-0">
-              {(i < happened.length - 1 || pending.length > 0) && <span aria-hidden className="absolute left-[5px] top-4 h-[calc(100%-8px)] w-px bg-line" />}
-              <SignalDot step={s.key} className={`mt-[7px] size-[11px] shrink-0 rounded-full ${s.key === newest ? "bg-lime" : "bg-bone"}`} />
+              {(i < happened.length - 1 || pending.length > 0) && <span aria-hidden className="absolute left-[5.5px] top-4 h-[calc(100%-8px)] w-px bg-line-2" />}
+              <SignalDot step={s.key} className={`mt-[6px] size-3 shrink-0 rounded-full ${s.key === newest ? "bg-(--color-lime) shadow-[0_0_0_4px_color-mix(in_oklab,var(--color-lime)_14%,transparent)]" : "bg-bone"}`} />
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <p className={`text-[14px] leading-6 text-bone ${s.meaningful ? "font-bold" : ""}`}>
+                <p className={`text-[13.5px] leading-6 text-bone ${s.meaningful ? "font-semibold" : "font-medium"}`}>
                   {s.label}
-                  <span className="ml-2 text-[12px] font-normal text-dim tnum">{fmtDate(s.at!)}</span>
+                  <span className="ml-2 text-[11.5px] font-normal text-dim tnum">{fmtDate(s.at!)}</span>
                 </p>
-                {s.note && <p className="text-[12px] text-mute">{s.note}</p>}
+                {s.note && <p className="text-[12px] leading-[1.45] text-mute">{s.note}</p>}
               </div>
             </li>
           ))}
           {pending.map((s, i) => (
             <li key={s.key} className="relative flex gap-3 pb-3 last:pb-0">
-              {i < pending.length - 1 && <span aria-hidden className="absolute left-[5px] top-4 h-[calc(100%-8px)] w-px bg-line" />}
-              <span aria-hidden className="mt-[7px] size-[11px] shrink-0 rounded-full border border-line bg-ink" />
+              {i < pending.length - 1 && <span aria-hidden className="absolute left-[5.5px] top-4 h-[calc(100%-8px)] w-px bg-line-2" />}
+              <span aria-hidden className="mt-[6px] size-3 shrink-0 rounded-full border-[1.5px] border-line-2 bg-ink" />
               <p className="text-[13px] leading-6 text-faint">
                 {s.label}
                 <span className="sr-only"> (not yet)</span>
@@ -141,11 +170,12 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
           ))}
         </ol>
         </ReachedSteps>
-        <details className="group text-[12px] text-dim">
-          <summary className="inline-flex min-h-9 cursor-pointer list-none items-center gap-1.5 text-bone underline-offset-4 hover:underline [&::-webkit-details-marker]:hidden">
-            <span aria-hidden className="text-lime transition-transform duration-150 group-open:rotate-45">+</span> <E k="means_title" />
+        <details className="group border-t border-dashed border-line-2 pt-1 text-[12px] text-dim">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-[12.5px] font-semibold text-bone [&::-webkit-details-marker]:hidden">
+            <E k="means_title" />
+            <Icon name="plus" className="size-4 text-mute transition-transform duration-150 group-open:rotate-45 motion-reduce:transition-none" />
           </summary>
-          <dl className="mt-2 flex flex-col gap-2 border-l border-line pl-3">
+          <dl className="mb-1 flex flex-col gap-2 border-l border-line-2 pl-3">
             {steps.filter((s) => s.means).map((s) => (
               <div key={s.key}>
                 <dt className="font-semibold text-mute">{s.label}</dt>
@@ -160,11 +190,12 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
         </details>
       </section>
 
-      <details className="group text-[12px] text-dim">
-        <summary className="inline-flex min-h-9 cursor-pointer list-none items-center gap-1.5 text-bone underline-offset-4 hover:underline [&::-webkit-details-marker]:hidden">
-          <span aria-hidden className="text-lime transition-transform duration-150 group-open:rotate-45">+</span> <E k="details_title" />
+      <details className={`${CARD} group px-3 py-1 text-[12px] text-dim`}>
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-[12.5px] font-semibold text-bone [&::-webkit-details-marker]:hidden">
+          <E k="details_title" />
+          <Icon name="plus" className="size-4 text-mute transition-transform duration-150 group-open:rotate-45 motion-reduce:transition-none" />
         </summary>
-        <div className="mt-2 flex flex-col gap-2 border-l border-line pl-3">
+        <div className="mb-2.5 flex flex-col gap-2 border-l border-line-2 pl-3 leading-[1.45]">
           <p>
             Updates go to <span className="text-mute">{t.sender_email}</span>{t.verified_at ? " (confirmed)." : "."}
           </p>
@@ -189,13 +220,12 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
       </details>
       <LivePulse url={`/api/pulse/receipt/${token}`} every={8000} />
       {takingSends && (
-        <p className="text-[13px]">
-          <Link href={`/${t.receiver_handle}`} className="inline-flex min-h-11 items-center text-mute underline underline-offset-4 hover:text-bone">
-            Send another to {who}
-          </Link>
-        </p>
+        <Link href={`/${t.receiver_handle}`} className="flex min-h-12 items-center justify-center gap-2 rounded-[13px] border border-line-2 bg-card px-4 text-[13.5px] font-semibold text-bone hover:bg-well">
+          <Icon name="send" className="size-4" />
+          Send another to {who}
+        </Link>
       )}
-      <footer className="mt-auto flex flex-col items-center gap-3 pt-4">
+      <footer className="mt-auto flex flex-col items-center gap-3 pt-6">
         {/* Senders are how FloorTest grows: one quiet invitation, only to senders without an account. */}
         {invite && (
           <p className="text-center text-[12px] leading-[18px] text-dim">
