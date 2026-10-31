@@ -17,8 +17,15 @@ On /signup a wrong invite code counts: 5 an hour per email, 20 an hour per conne
 
 ## Receiver: sign-up
 ```
-/signup ─┬─ form (type, names, username, email, password, Terms; a missing field is pointed at, one at a time)
-         │     ├─ ok ──► /dashboard/floor?welcome=1 (+ confirm-email email)
+/signup ─┬─ one question per screen (owner, 31 Oct; ?step= in the URL, so the phone's Back works):
+         │   1 welcome: Claim your link → / I already have one (no invite: Join the waitlist →)
+         │   2 first name, surname ─► 3 username (live check, checkHandle) ─► 4 account type (tap rows)
+         │   5 email (locked to the invite's), password, 18+/Terms, optional emails ─► Create my link
+         │   (answers kept in memory and sessionStorage, never the password; one post of the same signup action;
+         │    a server answer reopens the step with the wrong field, the "couldn't create" answer stays on 5)
+         │     ├─ ok ──► /signup/ready: 6 check your email (the link; carry on) ─► 7 add a photo (POST /api/cover,
+         │     │         or Skip) ─► 8 your link is ready (Copy / Share) ─► /dashboard/floor?welcome=1
+         │     │         (6 is skipped when the invite already proved the email; a share link's landing still wins)
          │     └─ email already used ──► neutral error; owner gets a quiet email
          └─ Sign up with Google ──► Google ──► /api/auth/google/callback
                  ├─ no account ──► /signup/google (details, Terms)* ──► Floor

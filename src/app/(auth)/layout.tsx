@@ -1,20 +1,22 @@
 import Link from "next/link";
-import { Logo } from "@/components/Logo";
+import "./auth.css";
 
 /**
- * Sign in, sign up, recovery and signed out: one calm column at every width. The form is the page; nothing sits
- * beside it. The crest at the top says where you are, the legal links at the bottom stay out of the way.
+ * Sign in, sign up, recovery and signed out (owner, 31 Oct, the guided sign-up look): each page draws its own
+ * AuthFrame (the column on phones, a card on tablets, the glass frame over the scene on desktop); the layout holds
+ * the scene and one quiet row of legal links under it. Light or dark with the visitor's device. The scene's image
+ * slot is `--af-photo` in auth.css.
  */
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col px-4 pb-8 pt-8 sm:pt-14">
-      <Logo href="/" className="mb-10 self-start" />
-      <div className="flex-1">{children}</div>
-      <nav aria-label="Legal" className="mt-12 flex gap-6 text-[12px] text-dim">
-        <Link href="/terms" className="tap inline-flex items-center hover:text-bone">Terms</Link>
-        <Link href="/privacy" className="tap inline-flex items-center hover:text-bone">Privacy</Link>
-        <Link href="/cookies" className="tap inline-flex items-center hover:text-bone">Cookies</Link>
-        <a href="#cookie-settings" className="tap inline-flex items-center hover:text-bone">Cookie settings</a>
+    <main className="af-page theme-system">
+      <div className="af-scene" aria-hidden />
+      {children}
+      <nav aria-label="Legal" className="af-legal">
+        <Link href="/terms">Terms</Link>
+        <Link href="/privacy">Privacy</Link>
+        <Link href="/cookies">Cookies</Link>
+        <a href="#cookie-settings">Cookie settings</a>
       </nav>
     </main>
   );

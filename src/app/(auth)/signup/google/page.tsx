@@ -9,6 +9,7 @@ import { inviteBySecret, inviteForEmail } from "@/lib/account-members";
 import { TEAM_INVITE_COOKIE } from "@/lib/next-path";
 import { signupWithGoogle } from "../../actions";
 import { ACCOUNT_TYPES } from "@/lib/account-types";
+import { AuthFrame } from "../../AuthFrame";
 
 const TYPE_CHOICES = Object.entries(ACCOUNT_TYPES).map(([value, label]) => ({ value, label }));
 
@@ -26,23 +27,23 @@ export default async function GoogleSignup() {
   const inviteOnly = !(await switchOn("open_signup")) && !team;
   const host = env.appUrl.replace(/^https?:\/\//, "");
   return (
-    <>
-      <h1 className="mb-3 text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">Finish signing up</h1>
-      <p className="mb-6 text-sm text-mute">
+    <AuthFrame>
+      <h1 className="af-h">Finish signing up</h1>
+      <p className="af-sub mb-7">
         No FloorTest account uses this Google email yet. Fill in the rest to claim your link.
         {inviteOnly && (
-          <>
+          <AuthFrame>
             {" "}FloorTest is invite-only during the beta: your invite must have gone to this email.{" "}
             <Link href="/#waitlist" className="underline underline-offset-4 hover:text-bone">No invite? Join the waitlist</Link>
-          </>
+          </AuthFrame>
         )}
       </p>
       {team && (
-        <p className="mb-6 rounded-lg border border-lime/40 bg-lime/5 px-4 py-3 text-sm">
+        <p className="mb-6 af-notice">
           You&apos;re joining <span className="font-medium">{team.account_name}</span> on FloorTest.
         </p>
       )}
-      <p className="mb-6 rounded-lg border border-line bg-ink-2 px-4 py-3 text-sm">
+      <p className="mb-6 af-notice">
         Signing up as <span className="font-medium text-bone">{who.email}</span> <span className="text-mute">(from Google, already confirmed)</span>
       </p>
       <AuthForm
@@ -63,17 +64,17 @@ export default async function GoogleSignup() {
             name: "agree",
             required: true,
             label: (
-              <>
+              <AuthFrame>
                 I&apos;m 18 or over, and I agree to the{" "}
                 <a href="/terms" target="_blank" className="text-bone underline underline-offset-4">Terms of Use</a> and have read the{" "}
                 <a href="/privacy" target="_blank" className="text-bone underline underline-offset-4">Privacy Policy</a>.
-              </>
+              </AuthFrame>
             ),
           },
           { name: "updates", label: "The FloorTest newsletter: product news and tips" },
           { name: "offers", label: "Offers and promotions from FloorTest" },
         ]}
       />
-    </>
+    </AuthFrame>
   );
 }

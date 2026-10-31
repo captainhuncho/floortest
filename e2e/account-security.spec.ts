@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { currentStep, totpCode } from "../src/lib/totp";
-import { expect, logIn, submitLogin, test, TEST_PASSWORD } from "./fixtures";
+import { expect, logIn, submitLogin, test, TEST_PASSWORD, signUp as guidedSignUp } from "./fixtures";
 
 /** Changes to how an account signs in need more than a session: a borrowed or stolen cookie alone can't lock the owner out. */
 
@@ -8,16 +8,7 @@ const PASSWORD = "Correct-Horse-Battery-77";
 
 async function signUp(page: Page, prefix: string) {
   const stamp = Date.now().toString(36);
-  await page.goto("/signup");
-  await page.getByLabel("What best describes you?").selectOption("dj");
-  await page.getByLabel("First name").fill("Tess");
-  await page.getByLabel("Surname").fill("Twostep");
-  await page.getByLabel("Username").fill(`${prefix}${stamp}`);
-  await page.getByLabel("Email").fill(`${prefix}+${stamp}@example.test`);
-  await page.getByRole("textbox", { name: "Password" }).fill(PASSWORD);
-  await page.getByRole("checkbox", { name: /18 or over/ }).check();
-  await page.getByRole("button", { name: "Create my link" }).click();
-  await page.waitForURL(/\/dashboard\/floor/);
+  await guidedSignUp(page, { kind: "DJ", first: "Tess", last: "Twostep", handle: `${prefix}${stamp}`, email: `${prefix}+${stamp}@example.test`, password: PASSWORD });
   return `${prefix}+${stamp}@example.test`;
 }
 

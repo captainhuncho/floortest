@@ -5,6 +5,7 @@ import { env } from "@/lib/env";
 import { GOOGLE_LINK_COOKIE, readPendingLink } from "@/lib/google-auth";
 import { AuthForm } from "../../AuthForm";
 import { approveGoogleLink } from "../../actions";
+import { AuthFrame } from "../../AuthFrame";
 
 export const metadata = { title: "Connect Google — FloorTest" };
 
@@ -13,9 +14,9 @@ export default async function ConnectGoogle() {
   const pending = readPendingLink((await cookies()).get(GOOGLE_LINK_COOKIE)?.value, env.secret);
   if (!pending) redirect("/login");
   return (
-    <>
-      <h1 className="mb-3 text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">Connect Google</h1>
-      <p className="mb-6 text-sm text-mute">
+    <AuthFrame>
+      <h1 className="af-h">Connect Google</h1>
+      <p className="af-sub mb-7">
         <span className="text-bone">{pending.email}</span> already has a FloorTest account. Enter its password once to connect Google; after that, Google signs you straight in. We&apos;ll email you to confirm.
       </p>
       <AuthForm
@@ -30,6 +31,6 @@ export default async function ConnectGoogle() {
         </Link>
         , then connect Google in Settings → Security.
       </p>
-    </>
+    </AuthFrame>
   );
 }
