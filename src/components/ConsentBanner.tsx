@@ -53,7 +53,7 @@ export function ConsentBanner() {
     >
       <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
         <p id="consent-heading" className="text-sm text-mute">
-          Can we count visits with Vercel Analytics and send crash reports to Sentry? Neither runs unless you say yes.{" "}
+          Can we count visits and collect crash reports so we can fix problems? Neither runs unless you say yes.{" "}
           <Link href="/cookies" className="underline hover:text-bone">
             Cookie Policy
           </Link>
