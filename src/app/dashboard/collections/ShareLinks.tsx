@@ -1,8 +1,10 @@
 "use client";
 
+import { FormError } from "@/components/Feedback";
 import { useActionState, useState, useTransition } from "react";
 import { CARD, SectionHead } from "@/components/Kit";
 import { useToast } from "@/components/Toast";
+import { useConfirm } from "@/components/Dialog";
 import { DANGER, FIELD_LABEL, GHOST, GHOST_ON_WELL, LIME, LIME_SM } from "../kitButtons";
 import { fmtDate } from "@/lib/format";
 import {
@@ -87,7 +89,7 @@ function FreshUrl({ url }: { url: string }) {
         <button
           type="button"
           className={`${LIME_SM} shrink-0`}
-          onClick={() => navigator.clipboard.writeText(url).then(() => toast.show({ message: "Link copied" }), () => toast.show({ message: url }))}
+          onClick={() => navigator.clipboard.writeText(url).then(() => toast.show({ message: "Link copied" }), () => toast.show({ message: `Couldn't copy. The link is ${url}`, tone: "error" }))}
         >
           Copy
         </button>
@@ -147,11 +149,7 @@ function NewLink({ collectionId }: { collectionId: number }) {
               Cancel
             </button>
           </div>
-          {state?.error && (
-            <p role="alert" className="text-danger sm:col-span-2">
-              {state.error}
-            </p>
-          )}
+          <FormError className="sm:col-span-2">{state?.error}</FormError>
         </form>
       )}
     </div>
@@ -160,6 +158,7 @@ function NewLink({ collectionId }: { collectionId: number }) {
 
 function LinkCard({ link, at }: { link: ShareLinkView; at: number }) {
   const toast = useToast();
+  const [ask, confirmDialog] = useConfirm();
   const [fresh, setFresh] = useState<string | null>(null);
   const [busy, start] = useTransition();
   const [addState, add, adding] = useActionState<LinkState, FormData>(addLinkRecipients.bind(null, link.id), null);
@@ -206,14 +205,20 @@ function LinkCard({ link, at }: { link: ShareLinkView; at: number }) {
                     type="button"
                     disabled={busy}
                     aria-label={`Remove ${r.kind === "user" ? `@${r.handle}` : r.kind === "domain" ? `@${r.value}` : r.value}`}
-                    onClick={() =>
+                    onClick={async () => {
+                      const who = r.kind === "user" ? r.name || `@${r.handle}` : r.kind === "domain" ? `everyone at @${r.value}` : r.value;
+                      const ok = await ask({
+                        title: `Remove ${who}?`,
+                        body: "Their access ends now, even mid-listen. Everyone else on this link keeps theirs.",
+                        confirmLabel: "Remove",
+                        danger: true,
+                      });
+                      if (!ok) return;
                       start(async () => {
-                        const who = r.kind === "user" ? r.name || `@${r.handle}` : r.kind === "domain" ? `everyone at @${r.value}` : r.value;
-                        if (!confirm(`Remove ${who}? Their access ends now, even mid-listen. Everyone else keeps theirs.`)) return;
                         await removeLinkRecipient(r.id);
                         toast.show({ message: "Removed. Their access has ended." });
-                      })
-                    }
+                      });
+                    }}
                     className="tap-text shrink-0 text-[12px] font-semibold text-mute hover:text-danger"
                   >
                     Remove
@@ -292,13 +297,18 @@ function LinkCard({ link, at }: { link: ShareLinkView; at: number }) {
             <button
               type="button"
               disabled={busy}
-              onClick={() =>
+              onClick={async () => {
+                const ok = await ask({
+                  title: "Reset this link?",
+                  body: "The current address stops working and everyone using it is signed out. You get a new address to share with the people you still want.",
+                  confirmLabel: "Reset link",
+                });
+                if (!ok) return;
                 start(async () => {
-                  if (!confirm("Reset this link? The current address stops working and everyone using it is signed out. You'll get a new address to share.")) return;
                   const r = await resetShareLink(link.id);
                   if (r?.url) setFresh(r.url);
-                })
-              }
+                });
+              }}
               className={GHOST_ON_WELL}
             >
               Reset link
@@ -309,7 +319,15 @@ function LinkCard({ link, at }: { link: ShareLinkView; at: number }) {
             <button
               type="button"
               disabled={busy}
-              onClick={() => start(async () => void (confirm("Revoke this link for everyone? It can't be undone; the music stays in your collection.") && (await revokeShareLink(link.id))))}
+              onClick={async () => {
+                const ok = await ask({
+                  title: "Revoke this link for everyone?",
+                  body: "Nobody can open it again, and this can't be undone. The music stays in your collection.",
+                  confirmLabel: "Revoke link",
+                  danger: true,
+                });
+                if (ok) start(() => revokeShareLink(link.id));
+              }}
               className={DANGER}
             >
               Revoke
@@ -333,6 +351,7 @@ function LinkCard({ link, at }: { link: ShareLinkView; at: number }) {
           </ul>
         </details>
       )}
+      {confirmDialog}
     </li>
   );
 }

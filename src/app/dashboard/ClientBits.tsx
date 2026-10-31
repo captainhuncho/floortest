@@ -1,32 +1,49 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { ConfirmDialog, splitQuestion } from "@/components/Dialog";
 import { SEG, segTab } from "@/components/Kit";
 import { QuickReplies } from "./QuickReplies";
 import type { ReplyResult } from "./actions/review";
 
+/**
+ * A button that asks first, in the app's own dialog (never the browser's grey box). `message` is the question and what
+ * happens, e.g. "Delete this file now? The slot returns." The part up to the "?" becomes the dialog's title.
+ */
 export function ConfirmButton({
   action,
   message,
   className,
   children,
+  confirmLabel,
+  danger,
 }: {
   action: () => Promise<void>;
   message: string;
   className?: string;
   children: React.ReactNode;
+  confirmLabel?: string;
+  /** Destructive: solid red final yes. Guessed from the words when not given. */
+  danger?: boolean;
 }) {
-  const [pending, start] = useTransition();
+  const [open, setOpen] = useState(false);
+  const { title, body } = splitQuestion(message);
+  const destructive = danger ?? /\b(delete|remove|block|revoke|erase|can't be undone)/i.test(message);
   return (
-    <button
-      className={className}
-      disabled={pending}
-      onClick={() => {
-        if (confirm(message)) start(() => action());
-      }}
-    >
-      {children}
-    </button>
+    <>
+      <button type="button" className={className} onClick={() => setOpen(true)} aria-haspopup="dialog">
+        {children}
+      </button>
+      <ConfirmDialog
+        open={open}
+        onClose={() => setOpen(false)}
+        onConfirm={action}
+        title={title}
+        body={body}
+        danger={destructive}
+        confirmLabel={confirmLabel ?? (typeof children === "string" ? children : "Confirm")}
+      />
+    </>
   );
 }
 
