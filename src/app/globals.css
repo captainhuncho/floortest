@@ -287,8 +287,8 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
    bigger (page-title-display, 32px from sm up). Use the PageTitle component, or the class on a page's one <h1>. */
 @utility page-title { @apply text-title font-bold text-bone; text-wrap: balance; }
 @utility page-title-display { @apply page-title sm:text-[32px]; }
-/* The dashboard's content frame (dashboard/layout.tsx): 1088px of content plus the page's 16px / 32px gutters,
-   left-aligned. Pages that read narrow keep a 704px text column inside it with page-narrow. */
+/* Dashboard pages (dashboard/PageFrame.tsx): each page carries the 16px / 32px gutters and one column centred in the
+   space beside the sidebar (mx-auto plus its max width). Pages that read narrow keep a 768px text column (page-narrow). */
 @utility page-gutter { @apply px-4 md:px-8; }
 @utility page-narrow { @apply max-w-3xl; }
 /* Secondary line under a title or value. */
