@@ -21,15 +21,17 @@ export default async function SenderHistory({ params }: { params: Promise<{ toke
   }
   if (!email)
     return (
-      <main className="theme-system mx-auto flex min-h-dvh max-w-[600px] flex-col gap-3 bg-ink px-3.5 pb-8 pt-[max(1.25rem,env(safe-area-inset-top))] text-bone sm:px-6 sm:pt-10">
-        <Logo className="mb-3" />
-        <section className={`${CARD} flex flex-col gap-3 p-3`}>
+      <main className="theme-system flex min-h-dvh flex-col items-center justify-center bg-ink px-3.5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))] text-bone sm:px-6">
+        <div className="flex w-full max-w-[520px] flex-col items-center gap-5">
+        <Logo />
+        <section className={`${CARD} flex w-full flex-col gap-3 p-4`}>
           <h1 className="text-[24px] font-semibold leading-tight tracking-[-0.03em]">This link has expired</h1>
           <p className="text-[13px] leading-5 text-mute">Links work for 24 hours, or until they&apos;re ended.</p>
           <Link href="/sent" className="btn-lime min-h-12 w-fit rounded-[13px] px-5 text-[13.5px]">
             Email me a new link
           </Link>
         </section>
+        </div>
       </main>
     );
   const rows = await q.all<{
@@ -49,8 +51,8 @@ export default async function SenderHistory({ params }: { params: Promise<{ toke
 
   return (
     // Light or dark with the visitor's device, one ~600px column of cards (owner, 30 Oct).
-    <main className="theme-system mx-auto flex min-h-dvh max-w-[600px] flex-col gap-3 bg-ink px-3.5 pb-8 pt-[max(1.25rem,env(safe-area-inset-top))] text-bone sm:px-6 sm:pt-10">
-      <Logo className="mb-3" />
+    <main className="theme-system mx-auto flex min-h-dvh w-full max-w-[600px] flex-col gap-3 bg-ink px-3.5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2.5rem,env(safe-area-inset-top))] text-bone sm:px-6 sm:pt-16">
+      <Logo className="mb-2 self-center" />
       <section aria-labelledby="history-h" className={`${CARD} flex flex-col p-3`}>
         <p className="flex items-center gap-1.5 text-[11.5px] text-mute">
           <Icon name="lock" className="size-[15px]" />

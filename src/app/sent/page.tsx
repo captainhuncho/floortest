@@ -8,10 +8,12 @@ export const metadata = { title: "Your sends — FloorTest" };
 export default async function Sent() {
   const botKey = await botCheckKey();
   return (
-    // Light or dark with the visitor's device, one ~600px column of cards (owner, 30 Oct).
-    <main className="theme-system mx-auto flex min-h-dvh max-w-[600px] flex-col gap-3 bg-ink px-3.5 pb-8 pt-[max(1.25rem,env(safe-area-inset-top))] text-bone sm:px-6 sm:pt-10">
-      <Logo className="mb-3" />
-      <section aria-labelledby="sent-h" className={`${CARD} flex flex-col gap-3.5 p-3`}>
+    // Light or dark with the visitor's device; the card sits centred in the screen, the mark just above it (owner, 31 Oct).
+    // min-height, not a fixed height, so the page still scrolls when a phone keyboard opens.
+    <main className="theme-system flex min-h-dvh flex-col items-center justify-center bg-ink px-3.5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))] text-bone sm:px-6">
+      <div className="flex w-full max-w-[520px] flex-col items-center gap-5">
+      <Logo />
+      <section aria-labelledby="sent-h" className={`${CARD} flex w-full flex-col gap-3.5 p-4`}>
         <div>
           <h1 id="sent-h" className="text-[24px] font-semibold leading-tight tracking-[-0.03em] sm:text-[28px]">Everything you&apos;ve sent</h1>
           <p className="mt-1.5 text-[13px] leading-5 text-mute">
@@ -20,6 +22,7 @@ export default async function Sent() {
         </div>
         <SentForm botCheckKey={botKey} />
       </section>
+      </div>
     </main>
   );
 }

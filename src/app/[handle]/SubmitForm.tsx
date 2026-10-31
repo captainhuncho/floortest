@@ -279,16 +279,23 @@ export function SubmitForm({
   /* ── Done: what happened, what happens next, and the one link that matters. ── */
   if (showDone && (firstToken || heldCount > 0)) {
     return (
-      <section ref={doneRef} role="status" data-picked className={`${box} scroll-mt-6 gap-4 ${ENTER}`}>
-        <div className="flex items-start gap-3">
-          <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-xl bg-lime text-ink">
+      // Centred with room around it (owner, 31 Oct): on the public page it fills the space below the receiver, in the
+      // desk's Send card it sits clear of the heading.
+      <section
+        ref={doneRef}
+        role="status"
+        data-picked
+        className={`${box} scroll-mt-6 items-center gap-5 text-center ${account ? "mt-2 px-2 pb-4 pt-6!" : "min-h-[min(62dvh,560px)] justify-center px-4! py-8!"} ${ENTER}`}
+      >
+        <div className="flex max-w-[440px] flex-col items-center gap-3">
+          <span aria-hidden className="grid size-11 shrink-0 place-items-center rounded-xl bg-lime text-ink">
             <svg viewBox="0 0 16 16" className="size-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               {/* The tick draws itself once (300ms ease-out, after 100ms). Reduced motion: it's simply there. */}
               <path d="M3 8.5l3.2 3L13 4.5" pathLength={1} strokeDasharray={1} className="[stroke-dashoffset:0] transition-[stroke-dashoffset] delay-100 duration-300 ease-[var(--ease-out)] starting:[stroke-dashoffset:1] motion-reduce:transition-none" />
             </svg>
           </span>
           <div className="min-w-0">
-            <h2 className="text-[24px] font-semibold leading-[1.12] tracking-[-0.03em] text-bone">
+            <h2 className="text-balance text-[24px] font-semibold leading-[1.12] tracking-[-0.03em] text-bone">
               {allHeld ? `${sentTitle} ${many ? "are" : "is"} received.` : <>{sentTitle} {many ? "are" : "is"} on {receiverName}&apos;s desk.</>}
             </h2>
             {allHeld ? (
@@ -303,20 +310,20 @@ export function SubmitForm({
             )}
           </div>
         </div>
-        {/* The four steps a sender hears about, as small tiles; Delivered is lit once it's on the desk. */}
-        <ol className="grid grid-cols-4 gap-1.5 text-[11px] font-semibold">
+        {/* The four steps a sender hears about, as a small stepper joined by a thin line; Delivered is lit once it's on the desk. */}
+        <ol className="grid w-full max-w-[400px] grid-cols-4 text-[11.5px] font-semibold">
           {(["Delivered", "Listened", "Downloaded", "Replied"] as const).map((step, i) => (
             <li
               key={step}
-              className={`flex min-w-0 flex-col items-center gap-1.5 rounded-xl border px-1 py-2.5 text-center ${i === 0 && !allHeld ? "border-lime/40 bg-lime/12 text-lime" : "border-line bg-well text-dim"}`}
+              className={`relative flex min-w-0 flex-col items-center gap-2 before:absolute before:top-[5px] before:right-1/2 before:h-px before:w-full before:bg-line-2 first:before:hidden ${i === 0 && !allHeld ? "text-lime" : "text-dim"}`}
             >
-              <Icon name={(["check", "head", "dl", "reply"] as const)[i]} className="size-4" />
+              <span aria-hidden className={`relative size-[11px] rounded-full ${i === 0 && !allHeld ? "bg-(--color-lime) shadow-[0_0_0_4px_color-mix(in_oklab,var(--color-lime)_16%,transparent)]" : "border-[1.5px] border-line-2 bg-card"}`} />
               <span className="max-w-full truncate">{step}</span>
               {i === 0 && !allHeld && <span className="sr-only"> (done)</span>}
             </li>
           ))}
         </ol>
-        <p className={HELP}>You&apos;ll get an email at each step: when {many ? "they're" : "it's"} listened to, downloaded or replied to.</p>
+        <p className={`max-w-[400px] ${HELP}`}>You&apos;ll get an email at each step: when {many ? "they're" : "it's"} listened to, downloaded or replied to.</p>
         {artFailed && (
           <p className="text-[13px] text-mute">
             {heldCount > 0 ? "Artwork can't be added while a track is being checked, so it goes without it." : <>The artwork didn&apos;t upload. {many ? "The tracks were" : "The track was"} sent without it.</>}
@@ -335,7 +342,7 @@ export function SubmitForm({
               ))}
           </ul>
         )}
-        <div className="grid auto-cols-fr grid-flow-col gap-2">
+        <div className="grid w-full max-w-[400px] auto-cols-fr grid-flow-col gap-2">
           {!many && firstToken && (
             <Link href={`/receipt/${firstToken}`} className="btn-lime min-h-12 rounded-[13px] text-[13.5px]">
               View receipt
