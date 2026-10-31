@@ -7,7 +7,7 @@ import { notFound } from "next/navigation";
 import { LivePulse } from "@/components/LivePulse";
 import { fill, siteCopy } from "@/lib/content";
 import { Waveform } from "@/components/Waveform";
-import { q, type Track } from "@/lib/db";
+import { receiptByToken } from "@/lib/receipt";
 import { ago, fmtDate, fmtDay, fmtTime } from "@/lib/format";
 import { RETAIN_UNREVIEWED_DAYS, SIGNALS, unheardAfterWindow } from "@/lib/plans";
 import { featureOn } from "@/lib/features";
@@ -29,10 +29,7 @@ export const metadata = { title: "Your receipt — FloorTest", robots: { index: 
  */
 export default async function Receipt({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const t = (await q.get<(Track & { receiver: string; receiver_plan: string; collection: string | null; sender_email: string; verified_at: number | null; sender_account: number | null; receiver_handle: string; receiver_status: string | null })>(`SELECT t.*, u.name AS receiver, u.handle AS receiver_handle, u.identity_status AS receiver_status, u.plan AS receiver_plan, c.name AS collection, s.email AS sender_email, s.verified_at, s.account_id AS sender_account
-       FROM tracks t JOIN users u ON u.id = t.user_id JOIN senders s ON s.id = t.sender_id
-       LEFT JOIN collections c ON c.id = t.collection_id
-       WHERE t.token = ?`, token));
+  const t = await receiptByToken(token);
   if (!t) notFound();
 
   const [sharing, signupOpen] = await Promise.all([switchOn("sharing"), switchOn("open_signup")]);
