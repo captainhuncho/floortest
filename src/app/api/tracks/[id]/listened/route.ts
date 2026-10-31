@@ -16,7 +16,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/tracks/[id]/lis
   const user = await currentDeskForChange();
   if (user instanceof Response) return user;
   const session = await currentSessionHash();
-  if (!user || !session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user || !session) return NextResponse.json({ error: "Sign in again." }, { status: 401 });
   const t = await ownedTrack(user, Number((await ctx.params).id));
   if (!t) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const { event } = (await req.json().catch(() => ({}))) as { event?: string };

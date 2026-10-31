@@ -173,4 +173,4 @@ export async function scannerHealth(): Promise<"ok" | "asleep" | "down" | "off">
 export const SCAN_REFUSED = "This file couldn't be accepted: our virus check flagged it. Export the track again and send the new file.";
 /** A file the scanner kept failing to check (src/lib/intake.ts HELD_MAX_TRIES): refused rather than held for a day. */
 export const SCAN_FAILED = "We couldn't run the virus check on this file, so it wasn't sent. Export the track again and send the new file.";
-export const SCAN_UNAVAILABLE = "We couldn't finish the virus check just now, so the file wasn't sent. Please try again in a few minutes.";
+export const SCAN_UNAVAILABLE = "We couldn't finish the virus check just now, so the file wasn't sent. Try again in a few minutes.";

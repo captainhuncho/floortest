@@ -1,3 +1,4 @@
+import { EmptyState } from "@/components/Feedback";
 import { trackUse } from "@/lib/usage";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
@@ -89,13 +90,9 @@ export default async function PrepareForSet() {
             {n ? (
               <KeptCards rows={kept} canMark={canMark} />
             ) : (
-              <p className="py-2 text-[12px] leading-[1.45] text-mute">
-                Nothing ready for your set yet. Press Keep while reviewing in{" "}
-                <Link href="/dashboard/review" className="text-bone underline underline-offset-4">
-                  Queue
-                </Link>{" "}
-                and tracks show up here.
-              </p>
+              <EmptyState action={{ href: "/dashboard/review", label: "Open the Review Queue" }}>
+                Nothing ready for your set yet. Tracks you keep in the Review Queue show up here.
+              </EmptyState>
             )}
           </section>
 

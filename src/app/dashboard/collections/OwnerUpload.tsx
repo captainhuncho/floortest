@@ -1,5 +1,6 @@
 "use client";
 
+import { FormError } from "@/components/Feedback";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { analyzeAudio } from "@/lib/analyze";
@@ -61,10 +62,10 @@ export function OwnerUpload({ collectionId, collectionName }: { collectionId: nu
       xhr.onerror = () => resolve(0);
       xhr.send(it.file);
     });
-    if (status < 200 || status >= 300) return patch(i, { status: "error", error: "The upload didn't go through. Try again." });
+    if (status < 200 || status >= 300) return patch(i, { status: "error", error: "The upload didn't go through. Check your connection and try again." });
     const analysis = await analyzeAudio(it.file).catch(() => null);
     const done = await post(`/api/collections/${collectionId}/upload/complete`, { uploadId: start.data.uploadId, ...(analysis ?? {}) });
-    if (!done.ok) return patch(i, { status: "error", error: done.data.error || "Upload failed." });
+    if (!done.ok) return patch(i, { status: "error", error: done.data.error || "The file didn't save, so nothing was added. Try again." });
     patch(i, { status: "done", progress: 1, held: !!done.data.held });
   }
 
@@ -119,7 +120,7 @@ export function OwnerUpload({ collectionId, collectionName }: { collectionId: nu
                 </div>
               )}
               {it.status === "done" && <p className="mt-1.5 text-lime">{it.held ? "Received. Checking for viruses; it appears here within 10 minutes." : "Added"}</p>}
-              {it.error && <p className="mt-1.5 text-danger">{it.error}</p>}
+              <FormError className="mt-1.5">{it.error}</FormError>
             </li>
           ))}
         </ul>

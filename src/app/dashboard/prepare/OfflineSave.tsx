@@ -1,5 +1,6 @@
 "use client";
 
+import { FormError } from "@/components/Feedback";
 import { useEffect, useState } from "react";
 import { clearOffline, offlineAvailable, offlineStatus, onOfflineProgress, syncOffline, type OfflineStatus } from "@/lib/native-offline";
 import { CARD, IconBox } from "@/components/Kit";
@@ -36,7 +37,7 @@ export function OfflineSave({ count, className = "" }: { count: number; classNam
 
   async function turnOn() {
     setError("");
-    if (!(await syncOffline())) return setError("Couldn't start saving. Check your connection and try again.");
+    if (!(await syncOffline())) return setError("Couldn't start saving to this phone. Check your connection and try again.");
     setProgress({ done: 0, total: count });
   }
 
@@ -72,7 +73,7 @@ export function OfflineSave({ count, className = "" }: { count: number; classNam
             ? `${status!.count} ${status!.count === 1 ? "track" : "tracks"} on this phone. Play them with no connection; they update when you open Prepare.`
             : "Keep your kept tracks on this phone to play with no signal, like in the booth. Removed when you sign out."}
       </p>
-      {error && <p className="text-[11.5px] text-danger">{error}</p>}
+      <FormError>{error}</FormError>
     </section>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { FormError } from "@/components/Feedback";
 import { useActionState, useEffect, useRef, useTransition } from "react";
 import { fmtDate } from "@/lib/format";
 import { commentOnTrack, deleteComment, shortlistTrack } from "./actions/team";
@@ -83,11 +84,7 @@ export function ReviewTogether({
           {posting ? "Posting…" : "Comment"}
         </button>
       </form>
-      {error && (
-        <p role="alert" className="mt-2 text-[12px] text-danger">
-          {error}
-        </p>
-      )}
+      <FormError className="mt-2">{error}</FormError>
       <p className="mt-2 text-[11px] text-faint">Only you and the team see comments and the shortlist.</p>
     </section>
   );

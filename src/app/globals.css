@@ -23,6 +23,8 @@
   --color-lime: #d5ff48;
   --color-olive: #536400;
   --color-danger: #ff6b5a;
+  /* Text on a solid danger fill (a confirm dialog's final yes): dark at night, white by day. */
+  --color-on-danger: #10110f;
   /* Words in the system sans (nothing to download, owner 28 Oct); JetBrains Mono (app/fonts.ts) for code, keys and
      readouts that ask for font-mono. Instrument Serif italic is a home-page accent only. */
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
@@ -98,6 +100,39 @@ dialog::backdrop { opacity: 0; transition: opacity 150ms var(--ease-out), overla
 dialog[open]::backdrop {
   opacity: 1; transition-duration: 200ms;
   @starting-style { opacity: 0; }
+}
+/* Dialogs (src/components/Dialog.tsx): one shell for every pop-up. A centred box from 640px, scaling in from 0.97 like
+   every native dialog; on phones a bottom sheet that rises from the bottom edge and sinks back the same way, with the
+   home bar's safe area inside it. The panel scrolls if the content is taller than the screen. */
+.ft-dialog {
+  margin: auto; padding: 0; border: 1px solid var(--color-line); border-radius: var(--radius-panel);
+  width: min(calc(100vw - 2rem), 28rem); max-width: none; max-height: calc(100dvh - 2rem); overflow: hidden;
+  background: var(--color-ink-2); color: var(--color-bone); box-shadow: var(--shadow-pop);
+}
+.ft-dialog[data-wide] { width: min(calc(100vw - 2rem), 36rem); }
+.ft-dialog::backdrop { background: rgb(0 0 0 / 0.6); backdrop-filter: blur(2px); }
+.ft-dialog-panel { max-height: inherit; overflow-y: auto; overscroll-behavior: contain; padding: 0.5rem 1.25rem 1.25rem; }
+@media (max-width: 39.99rem) {
+  .ft-dialog {
+    margin: auto 0 0; width: 100%; max-height: calc(100dvh - max(1rem, env(safe-area-inset-top)));
+    border-width: 1px 0 0; border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+    transform: translateY(100%);
+    transition-timing-function: var(--ease-drawer); transition-duration: 200ms;
+  }
+  .ft-dialog[open] { transform: none; transition-duration: 300ms; @starting-style { transform: translateY(100%); opacity: 1; } }
+  .ft-dialog-panel { padding: 0.5rem 1rem calc(1rem + env(safe-area-inset-bottom)); }
+}
+@media (prefers-reduced-transparency: reduce) { .ft-dialog::backdrop { backdrop-filter: none; background: rgb(0 0 0 / 0.8); } }
+/* Toasts (src/components/Toast.tsx): bottom centre, clear of whatever floats at the bottom. Phones: above the tab bar,
+   and above the mini player or the batch bar when they're up. Desktop: above the player bar or the batch bar. */
+[data-toast-region] { bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 76px); }
+html:has([data-mini-player]) [data-toast-region] { bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 148px); }
+html:has([data-batch-bar]) [data-toast-region] { bottom: calc(env(safe-area-inset-bottom) + 172px); }
+@media (min-width: 48rem) {
+  [data-toast-region], html:has([data-mini-player]) [data-toast-region] { bottom: 1.5rem; }
+  html:has([data-player-bar]) [data-toast-region] { bottom: 5.5rem; }
+  html:has([data-batch-bar]) [data-toast-region] { bottom: 6.5rem; }
+  html:has([data-batch-bar]):has([data-player-bar]) [data-toast-region] { bottom: 6.5rem; }
 }
 /* The phone notifications sheet: its scrim fades with the panel instead of popping in under it. */
 [data-sheet] {
@@ -183,7 +218,7 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; scale: none !important; scroll-behavior: auto !important; }
   [role="menu"], [role="listbox"], [role="dialog"], [data-toast], [data-sheet] { transition: opacity 150ms linear !important; }
-  dialog, dialog::backdrop { transform: none !important; transition: opacity 150ms linear, overlay 150ms allow-discrete, display 150ms allow-discrete !important; }
+  dialog, dialog::backdrop, .ft-dialog[open] { transform: none !important; transition: opacity 150ms linear, overlay 150ms allow-discrete, display 150ms allow-discrete !important; }
   [data-instant], [data-instant] :is([role="menu"], [role="listbox"], [role="dialog"]) { transition: none !important; }
   [data-toast][data-leaving] { transform: none; }
   /* The buffering ring holds still at half strength; the Queue badge cross-fades instead of rolling. */
@@ -304,6 +339,7 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
   --color-lime: #4a6400;
   --color-olive: #3d5200;
   --color-danger: #c4321f;
+  --color-on-danger: #ffffff;
   color-scheme: light;
 }
 .theme-day .bg-lime, .theme-day .btn-lime { background-color: #d5ff48; }
@@ -334,6 +370,7 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
   --color-lime: #4a6400;
   --color-olive: #3d5200;
   --color-danger: #c4321f;
+  --color-on-danger: #ffffff;
   color-scheme: light;
 }
 .theme-system .bg-lime, .theme-system .btn-lime { background-color: #d5ff48; }

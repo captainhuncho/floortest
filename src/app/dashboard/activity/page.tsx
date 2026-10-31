@@ -1,3 +1,4 @@
+import { EmptyState } from "@/components/Feedback";
 import { trackUse } from "@/lib/usage";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
@@ -193,11 +194,10 @@ export default async function Activity({ searchParams }: { searchParams: Promise
         {entries.length ? (
           <SetLog entries={entries} tz={prefs.tz} />
         ) : (
-          <div className={`${CARD} flex flex-col items-start gap-3 p-3`}>
-            <p className="max-w-prose text-[13px] text-mute">{empty.text}</p>
-            <Link href={empty.href} className="btn-lime btn-sm">
-              {empty.action}
-            </Link>
+          <div className={`${CARD} px-3`}>
+            <EmptyState icon="activity" action={{ href: empty.href, label: empty.action }}>
+              {empty.text}
+            </EmptyState>
           </div>
         )}
       </div>

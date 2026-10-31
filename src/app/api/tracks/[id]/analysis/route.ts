@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 export async function POST(req: Request, ctx: RouteContext<"/api/tracks/[id]/analysis">) {
   const user = await currentDeskForChange();
   if (user instanceof Response) return user;
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: "Sign in again." }, { status: 401 });
   const t = await ownedTrack(user, Number((await ctx.params).id));
   if (!t) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const body = (await req.json().catch(() => ({}))) as { peaks?: unknown; duration?: unknown; bpm?: unknown };

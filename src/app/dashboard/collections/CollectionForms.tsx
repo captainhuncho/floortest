@@ -1,5 +1,6 @@
 "use client";
 
+import { FormError } from "@/components/Feedback";
 import { useFocusTrap } from "@/components/useFocusTrap";
 import Link from "next/link";
 import { useEffect, useId, useState, useTransition, useRef } from "react";
@@ -531,7 +532,7 @@ function ArtUpload({ id, name, art }: { id: number; name: string; art: string | 
     if (file) body!.set("file", file);
     const res = await fetch(`/api/collection-art/${id}`, { method, body });
     setBusy(false);
-    if (!res.ok) setError(((await res.json().catch(() => ({}))) as { error?: string }).error || "That didn't work. Try again.");
+    if (!res.ok) setError(((await res.json().catch(() => ({}))) as { error?: string }).error || "The artwork didn't save. Try again with a JPG, PNG or WebP under 8 MB.");
     else router.refresh();
   }
   return (
@@ -558,11 +559,7 @@ function ArtUpload({ id, name, art }: { id: number; name: string; art: string | 
             </button>
           )}
         </div>
-        {error && (
-          <p role="alert" className="mt-2 text-[12px] text-danger">
-            {error}
-          </p>
-        )}
+        <FormError className="mt-2">{error}</FormError>
       </div>
     </div>
   );
