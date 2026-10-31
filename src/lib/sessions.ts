@@ -8,21 +8,16 @@ import { env } from "./env";
  * HTTPS, only to this exact host, and no subdomain can set or overwrite it. Locally it has the plain name.
  */
 export const sessionCookie = (prod: boolean) => (prod ? "__Host-floortest_session" : "floortest_session");
-/** The live site's name before 15 Oct 2026. Still read (never written) until OLD_COOKIE_UNTIL, so the rename signed nobody out. */
-export const OLD_SESSION_COOKIE = "floortest_session";
 /**
- * After this the old name is ignored. The rename went live on 15 Oct 2026 (about 02:40 UTC) and a browser session
- * lasts at most 30 days from sign-in, so every session issued under the old name has expired by 14 Nov; one more day
- * of margin. After this date the fallback can be deleted outright.
+ * The live site's name before 15 Oct 2026. Never read on the live site: any `*.floortest.app` subdomain could plant
+ * it, unlike the `__Host-` one. The old fallback that still read it was removed on 31 Oct 2026; the name is kept only
+ * so sign-in and sign-out clear it from old browsers.
  */
-export const OLD_COOKIE_UNTIL = Date.UTC(2026, 10, 15);
+export const OLD_SESSION_COOKIE = "floortest_session";
 
-/** The session token a browser sent: the current cookie, or (on the live site, until the cut-off) the old one. */
-export function readSessionToken(jar: { get(name: string): { value: string } | undefined }, prod: boolean, at = now()) {
-  const name = sessionCookie(prod);
-  const current = jar.get(name)?.value;
-  if (current || name === OLD_SESSION_COOKIE || at >= OLD_COOKIE_UNTIL) return current;
-  return jar.get(OLD_SESSION_COOKIE)?.value;
+/** The session token a browser sent: only ever the current cookie name. */
+export function readSessionToken(jar: { get(name: string): { value: string } | undefined }, prod: boolean) {
+  return jar.get(sessionCookie(prod))?.value;
 }
 
 /**
