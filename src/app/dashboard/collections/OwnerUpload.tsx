@@ -4,7 +4,7 @@ import { FormError } from "@/components/Feedback";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { analyzeAudio } from "@/lib/analyze";
-import { readTags } from "@/lib/tags";
+import { fillFromFile, readTags } from "@/lib/tags";
 import { Icon } from "@/components/Kit";
 import { GHOST, LIME } from "../kitButtons";
 
@@ -32,7 +32,18 @@ export function OwnerUpload({ collectionId, collectionName }: { collectionId: nu
     const fresh: Item[] = chosen.map((file) => ({ file, title: file.name.replace(/\.(wav|mp3)$/i, ""), artist: "", status: "ready", progress: 0 }));
     const start = items.length;
     setItems((list) => [...list, ...fresh]);
-    fresh.forEach((it, k) => readTags(it.file).then((t) => patch(start + k, { ...(t.title ? { title: t.title } : {}), ...(t.artist ? { artist: t.artist } : {}) })));
+    // Fills only what the owner hasn't changed while the file was being read (src/lib/tags.ts fillFromFile).
+    fresh.forEach((it, k) =>
+      readTags(it.file).then((read) =>
+        setItems((list) =>
+          list.map((x, j) => {
+            if (j !== start + k) return x;
+            const { title, artist } = fillFromFile({ ...read, title: x.title, artist: x.artist }, { ...read, title: it.title, artist: it.artist }, read);
+            return { ...x, title, artist };
+          }),
+        ),
+      ),
+    );
   }
 
   async function upload(i: number, it: Item) {
