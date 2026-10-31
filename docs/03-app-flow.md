@@ -5,6 +5,7 @@ What happens when someone clicks, and which page comes next. Change a route or r
 ## Visitor (site gated until launch)
 ```
 floortest.app ──(no gate pass)──► /coming-soon ──password──► the page they wanted
+                                     ├─ Join the waitlist ──► pop-up (email, name, role, link wanted) ──► waitlist (Ops → Waitlist)
                                      └─ Sign in ──► /login
 beta invite email ──► /signup?invite=CODE ──► /invite/CODE ──live personal invite──► gate pass + /signup (invite shown)
                                                           └─ wrong, used, revoked, shared code, or 20 tries in 10 min ──► /coming-soon
