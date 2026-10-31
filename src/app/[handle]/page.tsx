@@ -18,7 +18,7 @@ import { folderLimit, trackArtEnabled } from "@/lib/plan-store";
 import { switchOn } from "@/lib/switches";
 import { botCheckKey } from "@/lib/turnstile";
 import { ReopenAlert } from "./ReopenAlert";
-import { CARD, Cover, Icon, initials } from "@/components/Kit";
+import { CARD, Icon } from "@/components/Kit";
 import { SendModes } from "./SendModes";
 
 type Props = { params: Promise<{ handle: string }>; };
@@ -97,35 +97,29 @@ export default async function ReceiverPage({ params }: Props) {
         kept (smaller) once a file is picked; the brief, the drop box or the form below. */}
     <main className="theme-system group/page mx-auto flex min-h-dvh max-w-[600px] flex-col gap-3 bg-ink px-3.5 pb-8 pt-[max(1.25rem,env(safe-area-inset-top))] text-bone sm:px-6 sm:pt-10">
       <ProfileBar cover={cover} name={receiver.name} callout={collection && !closedReason ? collection.name : null}>
-      <header className={`${CARD} flex flex-col gap-2.5 p-3`}>
-        <div className="flex items-center gap-3">
-          {cover ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={cover} alt="" width={64} height={64} className="size-16 shrink-0 rounded-2xl object-cover group-has-[[data-picked]]/page:size-11 group-has-[[data-picked]]/page:rounded-xl" />
-          ) : (
-            <Cover text={initials(receiver.name)} size="size-16 text-[19px]! rounded-2xl! group-has-[[data-picked]]/page:size-11 group-has-[[data-picked]]/page:text-[14px]! group-has-[[data-picked]]/page:rounded-xl!" />
-          )}
-          <div className="min-w-0 flex-1">
-            <p className="text-[11.5px] text-mute"><E k="kicker" /></p>
-            <h1 className="mt-0.5 break-words text-[19px] font-semibold leading-tight tracking-[-0.025em] group-has-[[data-picked]]/page:text-[17px]">
-              {receiver.name}
-              {verified && <CuePoint size={20} label="Verified by FloorTest: this account controls the linked profile" className="-mt-0.5 ml-1.5" />}
-            </h1>
-          </div>
-        </div>
+      {/* The receiver's section is the previous version (owner, 31 Oct): photo, name and callout centred, no card. */}
+      <header className="mb-3 flex flex-col items-center gap-2.5 text-center">
+        {cover && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={cover} alt="" width={96} height={96} className="mb-1 size-24 rounded-[18px] object-cover" />
+        )}
+        <p className="font-mono text-sm text-mute"><E k="kicker" /></p>
+        <h1 className="break-words text-[30px] font-semibold leading-tight tracking-[-0.4px]">
+          {receiver.name}
+          {verified && <CuePoint size={20} label="Verified by FloorTest: this account controls the linked profile" className="-mt-1 ml-2" />}
+        </h1>
         {collection && !closedReason && (
-          <p className="flex min-w-0 items-center gap-2 rounded-xl bg-lime/12 px-3 py-2 text-[12.5px]">
+          <p className="mt-1 inline-flex items-center gap-2 rounded-full border border-line bg-ink-2 px-3.5 py-1.5 text-[13px] font-semibold">
             {collection.art_key ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={`/api/collection-art/${collection.id}?v=${encodeURIComponent(collection.art_key)}`} alt="" className="-my-0.5 size-5 shrink-0 rounded object-cover" />
+              <img src={`/api/collection-art/${collection.id}?v=${encodeURIComponent(collection.art_key)}`} alt="" className="-my-0.5 size-5 rounded object-cover" />
             ) : (
-              <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-(--color-lime)" />
+              <span aria-hidden className="size-1.5 rounded-full bg-(--color-lime)" />
             )}
-            <span className="text-mute"><E k="receiving_for" /></span>
-            <span className="min-w-0 truncate font-semibold">{collection.name}</span>
+            <span className="font-medium text-mute"><E k="receiving_for" /></span> {collection.name}
           </p>
         )}
-        <ProfileLinks links={readLinks(receiver.links)} size={20} className="group-has-[[data-picked]]/page:hidden" />
+        <ProfileLinks links={readLinks(receiver.links)} size={20} className="mt-1 justify-center" />
       </header>
       </ProfileBar>
       {closedReason ? (
