@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { BTN, Notice } from "./ui";
 
 /**
  * The one way settings save: a Save button that wakes up when something in its form changes, with the result right
@@ -45,18 +46,21 @@ export function SaveBar({ pending, state, label = "Save", busyLabel = "Saving…
   }, [state]);
 
   return (
-    <div ref={ref} className="flex flex-col gap-2 border-t border-line pt-3 sm:flex-row sm:items-center sm:gap-4">
-      <button className="btn-lime btn-sm min-h-11 w-full rounded-[13px] text-[13.5px]! font-semibold sm:w-auto sm:px-6" disabled={pending || !dirty}>
-        {pending ? busyLabel : label}
-      </button>
+    <div ref={ref} className="flex flex-col gap-3 border-t border-line pt-4">
       {shown?.error && (
-        <p role="alert" className="text-[12.5px] text-danger">
+        <Notice tone="error" next="Nothing was saved. Change that and save again.">
           {shown.error}
-        </p>
+        </Notice>
       )}
-      <p role="status" className={shown?.ok ? "text-[12.5px] font-semibold text-lime" : "sr-only"}>
-        {shown?.ok ? `✓ ${savedText}` : ""}
-      </p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+        <button className={`${BTN} w-full sm:w-auto sm:px-6!`} disabled={pending || !dirty}>
+          {pending ? busyLabel : label}
+        </button>
+        <p role="status" className={shown?.ok ? "flex items-center gap-1.5 text-[12.5px] font-semibold text-[#6aa636]" : "sr-only"}>
+          {shown?.ok ? `✓ ${savedText}` : ""}
+        </p>
+        {!shown && dirty && !pending && <p className="text-[12px] text-mute">Unsaved changes</p>}
+      </div>
     </div>
   );
 }

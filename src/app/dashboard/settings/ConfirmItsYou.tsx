@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { BTN_DANGER, BTN_GHOST, HELP, Notice, WELL } from "./ui";
 
 /**
  * The password (and the two-step code when it's on) before removing a way in or an alert: the same check as adding
@@ -27,16 +28,16 @@ export function ConfirmItsYou({
   const [code, setCode] = useState("");
   return (
     <form
-      className={`space-y-3 rounded-md border border-line p-4 ${className}`}
+      className={`${WELL} flex flex-col gap-3 p-3.5 sm:p-4 ${className}`}
       onSubmit={(e) => {
         e.preventDefault();
         onConfirm(password, code);
       }}
     >
-      <p className="text-sm">First, confirm it&apos;s you.</p>
-      <div className="flex flex-wrap gap-2">
+      <p className="text-[13px] font-semibold text-bone">First, confirm it&apos;s you.</p>
+      <div className="flex flex-col gap-2 sm:flex-row">
         <input
-          className="input max-w-60"
+          className="input sm:max-w-60"
           type="password"
           autoComplete="current-password"
           placeholder="Password"
@@ -47,7 +48,7 @@ export function ConfirmItsYou({
         />
         {twoFactor && (
           <input
-            className="input max-w-44 font-mono tracking-widest"
+            className="input font-mono tracking-widest sm:max-w-44"
             inputMode="numeric"
             autoComplete="one-time-code"
             placeholder="Two-step code"
@@ -60,18 +61,19 @@ export function ConfirmItsYou({
         )}
       </div>
       {error && (
-        <p role="alert" className="text-sm text-danger">
+        <Notice tone="error" next={twoFactor ? "Nothing changed. Check your password and use a fresh code, then try again." : "Nothing changed. Check your password and try again."}>
           {error}
-        </p>
+        </Notice>
       )}
-      <div className="flex gap-2">
-        <button className="btn-danger btn-sm min-h-11" disabled={pending}>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <button className={BTN_DANGER} disabled={pending}>
           {action}
         </button>
-        <button type="button" className="btn-ghost btn-sm min-h-11" onClick={onCancel}>
+        <button type="button" className={BTN_GHOST} onClick={onCancel}>
           Cancel
         </button>
       </div>
+      <p className={HELP}>No password yet? Set one with &ldquo;Forgot your password?&rdquo; on the log-in page first.</p>
     </form>
   );
 }

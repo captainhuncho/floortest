@@ -7,6 +7,8 @@ import { useToast } from "@/components/Toast";
 import { passkeyProblem, passkeysHere } from "@/lib/passkey-browser";
 import { deletePasskey, finishAddPasskey, startAddPasskey } from "../actions/passkeys";
 import { ConfirmItsYou } from "./ConfirmItsYou";
+import { Chip, Icon } from "@/components/Kit";
+import { BTN, BTN_GHOST, HELP, Notice, ROW, WELL } from "./ui";
 
 type Key = { id: number; name: string; added: string; lastUsed: string | null; synced: boolean };
 
@@ -44,25 +46,33 @@ export function Passkeys({ keys, twoFactor, max }: { keys: Key[]; twoFactor: boo
     });
 
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-mute">
+    <div className="flex flex-col gap-4">
+      <p className="max-w-[62ch] text-[12.5px] leading-snug text-mute">
         Sign in with your face, fingerprint or device PIN instead of a password. A passkey also counts as your two-step
         sign-in. It lives on your device or in your password manager (iCloud Keychain, Google Password Manager, 1Password).
       </p>
       {keys.length > 0 && (
-        <ul className="divide-y divide-line rounded-md border border-line">
+        <ul className={WELL}>
           {keys.map((k) => (
-            <li key={k.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-              <div className="min-w-0">
-                <p className="font-medium">{k.name}</p>
-                <p className="text-xs text-mute">
-                  Added {k.added} · {k.lastUsed ? `last used ${k.lastUsed}` : "not used yet"}
-                  {k.synced ? " · synced to your other devices" : ""}
-                </p>
+            <li key={k.id} className={ROW}>
+              <div className="flex min-w-0 flex-1 basis-52 items-center gap-2.5">
+                <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-[10px] border border-line bg-card text-mute">
+                  <Icon name="lock" className="size-4" />
+                </span>
+                <div className="min-w-0">
+                  <p className="flex flex-wrap items-center gap-1.5 text-[13px] font-semibold text-bone">
+                    {k.name}
+                    {k.synced && <Chip>Synced</Chip>}
+                  </p>
+                  <p className="text-[11.5px] text-mute">
+                    Added {k.added}, {k.lastUsed ? `last used ${k.lastUsed}` : "not used yet"}
+                    {k.synced ? ". Works on your other devices too" : ""}
+                  </p>
+                </div>
               </div>
               {removing !== k.id && (
                 <button
-                  className="btn-ghost btn-sm min-h-11"
+                  className={BTN_GHOST}
                   onClick={() => {
                     setRemoving(k.id);
                     setRemoveError(null);
@@ -94,25 +104,33 @@ export function Passkeys({ keys, twoFactor, max }: { keys: Key[]; twoFactor: boo
           ))}
         </ul>
       )}
-      {supported === false && <p className="text-sm text-mute">This browser or app can&apos;t make passkeys. Open FloorTest in Safari, Chrome, Edge or Firefox to add one.</p>}
+      {supported === false && (
+        <Notice tone="info" next="Open FloorTest in Safari, Chrome, Edge or Firefox to add one.">
+          This browser or app can&apos;t make passkeys.
+        </Notice>
+      )}
       {supported && !adding && keys.length < max && (
-        <button className="btn-lime btn-sm min-h-11" onClick={() => setAdding(true)}>
+        <button className={`${BTN} w-full sm:w-fit`} onClick={() => setAdding(true)}>
           Add a passkey
         </button>
       )}
-      {supported && keys.length >= max && <p className="text-sm text-mute">You have {max} passkeys, the most an account can have. Remove one to add another.</p>}
+      {supported && keys.length >= max && (
+        <Notice tone="info" next="Remove one to add another.">
+          You have {max} passkeys, the most an account can have.
+        </Notice>
+      )}
       {adding && (
         <form
-          className="space-y-3 rounded-md border border-line p-4"
+          className={`${WELL} flex flex-col gap-3 p-3.5 sm:p-4`}
           onSubmit={(e) => {
             e.preventDefault();
             add();
           }}
         >
-          <p className="text-sm">First, confirm it&apos;s you. Then your browser asks where to save the passkey.</p>
-          <div className="flex flex-wrap gap-2">
+          <p className="text-[13px] text-bone">First, confirm it&apos;s you. Then your browser asks where to save the passkey.</p>
+          <div className="flex flex-col gap-2 sm:flex-row">
             <input
-              className="input max-w-60"
+              className="input sm:max-w-60"
               type="password"
               autoComplete="current-password"
               placeholder="Password"
@@ -123,7 +141,7 @@ export function Passkeys({ keys, twoFactor, max }: { keys: Key[]; twoFactor: boo
             />
             {twoFactor && (
               <input
-                className="input max-w-44 font-mono tracking-widest"
+                className="input font-mono tracking-widest sm:max-w-44"
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 placeholder="Two-step code"
@@ -136,17 +154,17 @@ export function Passkeys({ keys, twoFactor, max }: { keys: Key[]; twoFactor: boo
             )}
           </div>
           {error && (
-            <p role="alert" className="text-sm text-danger">
+            <Notice tone="error" next="No passkey was added. Fix that and press Continue again.">
               {error}
-            </p>
+            </Notice>
           )}
-          <div className="flex gap-2">
-            <button className="btn-lime btn-sm min-h-11" disabled={pending}>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button className={BTN} disabled={pending}>
               {pending ? "Waiting for your passkey…" : "Continue"}
             </button>
             <button
               type="button"
-              className="btn-ghost btn-sm min-h-11"
+              className={BTN_GHOST}
               onClick={() => {
                 setAdding(false);
                 setError(null);
@@ -155,7 +173,7 @@ export function Passkeys({ keys, twoFactor, max }: { keys: Key[]; twoFactor: boo
               Cancel
             </button>
           </div>
-          <p className="text-xs text-mute">No password? Set one with &ldquo;Forgot your password?&rdquo; on the log-in page first.</p>
+          <p className={HELP}>No password? Set one with &ldquo;Forgot your password?&rdquo; on the log-in page first.</p>
         </form>
       )}
     </div>
