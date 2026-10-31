@@ -9,6 +9,7 @@ import { APP_URL } from "@/lib/mail";
 import { planOf } from "@/lib/plan-store";
 import { VERSION } from "@/lib/site";
 import { CARD, Chip, Icon, IconBox, PageHead, SectionHead, initials, type IconName } from "@/components/Kit";
+import { CuePoint } from "@/components/CuePoint";
 import { PauseSwitch } from "../PauseSwitch";
 import { LinkCard } from "./LinkCard";
 import { ThemeSwitch } from "./ThemeSwitch";
@@ -88,12 +89,8 @@ export default async function Account() {
         <div className="flex min-w-0 flex-1 flex-col">
           <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
             <span className="truncate text-[15px] font-semibold tracking-[-0.015em] text-bone">{user.name}</span>
-            {user.identity_status === "verified" && (
-              <Chip tone="acc">
-                <Icon name="check" className="size-3" />
-                Verified
-              </Chip>
-            )}
+            {/* FloorTest's own verified mark, the Cue Point tick (owner, 30 Oct: not a text chip). */}
+            {user.identity_status === "verified" && <CuePoint size={16} label="Verified by FloorTest: this account controls the linked profile" />}
           </p>
           <p className="truncate text-[11.5px] text-mute">{user.email}</p>
           <p className="text-[11px] text-faint">Member since {since}</p>
