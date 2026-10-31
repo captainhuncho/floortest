@@ -42,9 +42,11 @@ commit. Shipping an item from `06-plan.md` moves it to Done.
 Three sessions share this repo (owner, 29 Oct): Desk, Build and Safety. Only the Desk merges into `main`, writes the
 release report and merges `main` into `mobile-next`; Build and Safety work on their own branches off `main` (never the
 shared checkout), may put work on `mobile-next` for the owner to try, and send the Desk "ready: PR, head commit, checks
-passed". Never open a PR from `mobile-next` into `main`. Never delete branches unless the owner asks. One grouped
-production release a day at 18:00 the owner's time (security, data-loss or site-down fixes any time, through the Desk),
-its report in `docs/evidence/` inside the release PR. Follow the
+passed". Never open a PR from `mobile-next` into `main`. Never delete branches unless the owner asks. Every PR carries a
+release lane label (owner, 31 Oct; `docs/working.md` rule 13): `lane:standard` (release branch, full checks, report in
+the release PR), `lane:fast` (look-only; the Desk merges the PR directly once its exact head passed every check incl.
+e2e; one evening report) or `lane:urgent` (security, data loss, site down; any time). The Desk merges all of them, only
+on the owner's word in the Desk. Follow the
 owner's twelve working principles (rule 12): understand first, preserve what works, finish whole journeys, keep it simple,
 measure before claiming speed, verify real behaviour, name the exact build in every report. Optimise: find out before
 asking, batch questions, exact-string edits, no merge markers, outcome first in reports. Rule 14 lists the owner's skill
