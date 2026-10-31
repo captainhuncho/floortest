@@ -113,8 +113,9 @@
   display: grid;
   grid-template-rows: auto 1fr;
   min-height: 100dvh;
-  padding-left: max(var(--af-gut), env(safe-area-inset-left));
-  padding-right: max(var(--af-gut), env(safe-area-inset-right));
+  /* The body already clears the side safe areas (globals.css); the gutter adds to that. */
+  padding-left: var(--af-gut);
+  padding-right: var(--af-gut);
 }
 .af-view { display: none; }
 
