@@ -7,7 +7,8 @@ import { expect, logIn, test, wav } from "./fixtures";
  * delivers it. The scanner here is e2e/fake-scanner.mjs, the app waits 6 s for a waking scanner (SCAN_DEADLINE_MS in
  * playwright.config.ts) instead of 150 s, and the test runs the job itself.
  */
-const SCANNER = "http://127.0.0.1:3211";
+// The fake scanner's port follows playwright.config.ts (E2E_SCANNER_PORT, default 3211).
+const SCANNER = `http://127.0.0.1:${process.env.E2E_SCANNER_PORT || 3211}`;
 const CRON = { Authorization: "Bearer e2e-cron-secret-not-used-anywhere-else" };
 
 // Its own connection address (a documentation IP; the local copy reads it from this header, Vercel never does), so its

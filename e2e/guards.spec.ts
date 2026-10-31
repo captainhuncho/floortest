@@ -143,7 +143,7 @@ test("the API sends no CORS opening and refuses writes started on another site",
     const oldBrowser = await request.post(path, { headers: { Origin: "https://evil.example" }, data: {} });
     expect(oldBrowser.status(), `${path}, Origin only`).toBe(403);
     // From our own pages it reaches the route, which then answers for itself (not signed in, no bot check, bad input).
-    const ours = await request.post(path, { headers: { Origin: "http://localhost:3210", "Sec-Fetch-Site": "same-origin" }, data: {} });
+    const ours = await request.post(path, { headers: { Origin: `http://localhost:${process.env.E2E_PORT || 3210}`, "Sec-Fetch-Site": "same-origin" }, data: {} });
     expect(await ours.text(), `${path}, same origin`).not.toContain(REFUSED.error);
   }
 });
