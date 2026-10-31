@@ -65,7 +65,7 @@ export async function batchTracks(ids: number[], action: BatchAction): Promise<B
       changed++;
     }
   } else {
-    return { done: 0, skipped: wanted.length, error: "Unknown action." };
+    return { done: 0, skipped: wanted.length, error: "That action isn't available. Reload the page and try again." };
   }
   // One line in the activity log for the whole batch.
   const kind = ({ kept: "kept", passed: "passed", clear: "decision_cleared", move: "moved", delete: "deleted_track" } as const)[type];

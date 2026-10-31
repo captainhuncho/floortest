@@ -30,7 +30,7 @@ export function PickForm({ tracks, promptOpen }: { tracks: PromptTrack[]; prompt
             toast.show({ message: n ? `${n} sender${n === 1 ? "" : "s"} will see Played out` : "Nothing changed" });
             router.push("/dashboard/floor");
           } catch {
-            toast.show({ message: "Couldn't save that. Nothing changed. Try again." });
+            toast.show({ message: "Couldn't tell the senders, so nothing changed. Try again.", tone: "error" });
           }
         });
       }}

@@ -28,6 +28,6 @@ export async function POST(req: Request, ctx: RouteContext<"/api/collections/[id
     if (e instanceof UploadHeld) return NextResponse.json({ held: true, message: e.message }, { status: 202 });
     if (e instanceof IntakeError) return bad(e.message, e.status);
     console.error("[owner-upload:complete]", e);
-    return bad("Upload failed. Please try again.", 500);
+    return bad("The file arrived but couldn't be saved, so nothing was added. Upload it again.", 500);
   }
 }

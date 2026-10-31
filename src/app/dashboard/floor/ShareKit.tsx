@@ -15,7 +15,7 @@ export function ShareKit({ link, handle }: { link: string; handle: string }) {
       await navigator.clipboard.writeText(caption);
       toast.show({ message: "Caption copied. Paste it in your bio, a story or a callout." });
     } catch {
-      toast.show({ message: "Couldn't copy. Select the caption and copy it." });
+      toast.show({ message: "Couldn't copy. Select the caption and copy it yourself.", tone: "error" });
     }
   }
   return (

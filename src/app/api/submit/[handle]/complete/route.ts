@@ -14,12 +14,12 @@ const bad = (error: string, status = 400) => NextResponse.json({ error }, { stat
 /** Step 2: the file is in storage. Validate it and create the track. Body: { uploadId, duration?, bpm?, peaks? }. */
 export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]/complete">) {
   const receiver = await userByHandle((await ctx.params).handle);
-  if (!receiver) return bad("Receiver not found", 404);
+  if (!receiver) return bad("No one has this link. Check the address with the person who shared it.", 404);
   let body: Record<string, unknown>;
   try {
     body = await req.json();
   } catch {
-    return bad("Could not read the request.");
+    return bad("The upload didn't finish properly. Reload the page and press Send again.");
   }
   try {
     const track = await completeUpload(receiver, String(body.uploadId ?? ""), readAnalysis(body));
@@ -34,6 +34,6 @@ export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]
     }
     console.error("[submit:complete]", e);
     await recordIncident("upload_failed", `Upload to @${receiver.handle} failed`, e instanceof Error ? `${e.message}\n${e.stack ?? ""}` : String(e), "/api/submit/complete");
-    return bad("Upload failed. Please try again.", 500);
+    return bad("Your track arrived but couldn't be saved, so nothing was sent. Press Send again: your details are still here.", 500);
   }
 }

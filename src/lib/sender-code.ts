@@ -55,7 +55,7 @@ export async function sendCode(email: string, ip: string, how: "human" | "resend
      ON CONFLICT (email) DO UPDATE SET code_hash = excluded.code_hash, expires_at = excluded.expires_at, attempts = 0, created_at = excluded.created_at`,
     email, hash(email, code), now() + CODE_TTL, now(),
   );
-  if (!(await accountEmailAllowed("public"))) throw new CodeError("We can't send codes right now. Please try again in a few minutes.");
+  if (!(await accountEmailAllowed("public"))) throw new CodeError("We can't send codes right now. Try again in a few minutes.");
   const mail: Parameters<typeof sendMail>[0] = {
     userId: null,
     audience: "sender",

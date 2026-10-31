@@ -442,7 +442,7 @@ function Expanded({ row: r, decision, onClose }: { row: ListRow; decision: Decis
           start(async () => {
             // Says what really happened; a refused reply (a limit) stays open with its text.
             const res = await replyToSender(r.senderId, r.id, fd);
-            toast.show({ message: res.message });
+            toast.show({ message: res.message, tone: res.status === "refused" ? "error" : "done" });
             if (res.status === "refused") return;
             form.current?.reset();
             onClose();

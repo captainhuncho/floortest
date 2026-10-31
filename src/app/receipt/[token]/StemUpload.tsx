@@ -33,10 +33,10 @@ export function StemUpload({ token, receiver, existing, max }: { token: string; 
       xhr.onerror = () => resolve(0);
       xhr.send(file);
     });
-    if (status < 200 || status >= 300) return patch(i, { status: "error", error: "The upload was interrupted." });
+    if (status < 200 || status >= 300) return patch(i, { status: "error", error: "The upload was interrupted. Check your signal and try again." });
     patch(i, { status: "checking" });
     const done = await post(`/api/stems/${token}/complete`, { uploadId: start.uploadId });
-    patch(i, done.ok ? { status: "done", progress: 1, held: !!done.held } : { status: "error", error: done.error || "Upload failed." });
+    patch(i, done.ok ? { status: "done", progress: 1, held: !!done.held } : { status: "error", error: done.error || "The stem didn't save, so nothing was sent. Try again." });
   }
 
   async function pick(files: FileList | null) {

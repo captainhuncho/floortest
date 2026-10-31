@@ -16,13 +16,13 @@ const bad = (error: string, status = 400) => NextResponse.json({ error }, { stat
  */
 export async function POST(req: Request, ctx: RouteContext<"/api/submit/[handle]">) {
   const receiver = await userByHandle((await ctx.params).handle);
-  if (!receiver) return bad("Receiver not found", 404);
+  if (!receiver) return bad("No one has this link. Check the address with the person who shared it.", 404);
 
   let body: Record<string, unknown>;
   try {
     body = await req.json();
   } catch {
-    return bad("Could not read the submission.");
+    return bad("Your details didn't come through. Reload the page and press Send again.");
   }
   // Sending from a FloorTest account: name and email come from the account, not the form.
   const account = body.asAccount ? await currentDeskForChange() : null;

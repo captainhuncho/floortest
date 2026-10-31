@@ -15,7 +15,7 @@ export type Phase = "idle" | "uploading" | "done";
 type Fields = Record<string, unknown>;
 export const CANCELLED = "Transfer cancelled.";
 const NET =
-  "Network error. Your details are still here. Check your connection and try again.";
+  "You're offline or the connection dropped. Your details are still here: reconnect and press Send again.";
 const STALLED = "The upload stalled. Check your signal and press Send again: your details are still here.";
 
 /** No progress for this long and the upload counts as stalled (a phone between masts often hangs rather than failing). */
@@ -128,7 +128,7 @@ export async function uploadTrack(
       // 202: the virus scanner is asleep, so the stored file waits for the next check (src/lib/held-uploads.ts).
       if (done.status === 202 && finished.held) return { held: true };
       if (done.ok && finished.token) return { token: finished.token };
-      return { error: finished.error || "Upload failed. Your details are still here, so you can try again." };
+      return { error: finished.error || "The upload didn't finish. Your details are still here: press Send again." };
     } finally {
       opts.onChecking?.(false);
     }
@@ -159,7 +159,7 @@ export async function uploadTrack(
     if (put === -1 || signal?.aborted) return { error: CANCELLED };
     if (put < 200 || put >= 300)
       return {
-        error: put === -2 ? STALLED : put === 0 ? NET : "The upload didn't go through. Please try again.",
+        error: put === -2 ? STALLED : put === 0 ? NET : "The upload didn't go through. Press Send again: your details are still here.",
       };
     return await complete(started.uploadId);
   } catch {
@@ -264,7 +264,7 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
     const bad = chosen.find((f) => !/\.(wav|mp3)$/i.test(f.name));
     if (bad) return setError(`"${bad.name}" isn't a WAV or MP3.`);
     const big = chosen.find((f) => f.size > MAX_BYTES);
-    if (big) return setError(`"${big.name}" is over 250 MB.`);
+    if (big) return setError(`"${big.name}" is over 250 MB. Send an MP3 or a smaller WAV.`);
     const room = MAX_FILES - items.length;
     if (chosen.length > room) return setError(`Up to ${MAX_FILES} tracks at a time.`);
     const total = [...items.map((i) => i.file), ...chosen].reduce((n, f) => n + f.size, 0);

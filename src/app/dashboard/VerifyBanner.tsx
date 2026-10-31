@@ -14,7 +14,7 @@ export function ResendVerification({ className = "" }: { className?: string }) {
       disabled={pending || sent === true}
       onClick={() => start(async () => setSent(await resendEmailVerification()))}
     >
-      {sent === true ? "Sent. Check your email." : sent === false ? "Try again later" : "Resend email"}
+      {sent === true ? "Sent. Check your email." : sent === false ? "Not sent. Try again in a minute" : "Resend email"}
     </button>
   );
 }

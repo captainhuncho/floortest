@@ -66,7 +66,7 @@ function KeptRow({
 
   const fail = () => {
     setAt(null);
-    toast.show({ message: "Couldn't save that. Nothing changed. Try again." });
+    toast.show({ message: "Couldn't save that. Nothing changed. Try again.", tone: "error" });
   };
   const mark = () => {
     setAt(Date.now());

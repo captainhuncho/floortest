@@ -20,6 +20,6 @@ export async function POST(req: Request, ctx: RouteContext<"/api/stems/[token]/c
     if (e instanceof UploadHeld) return NextResponse.json({ held: true, message: e.message }, { status: 202 });
     if (e instanceof IntakeError) return NextResponse.json({ error: e.message }, { status: e.status });
     console.error("[stems:complete]", e);
-    return NextResponse.json({ error: "Upload failed. Please try again." }, { status: 500 });
+    return NextResponse.json({ error: "The stem arrived but couldn't be saved, so nothing was sent. Upload it again." }, { status: 500 });
   }
 }

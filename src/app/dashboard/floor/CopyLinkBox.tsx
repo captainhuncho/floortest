@@ -11,7 +11,7 @@ export function CopyLinkBox({ link }: { link: string }) {
       await navigator.clipboard.writeText(link);
       toast.show({ message: "Your link is copied. Paste it anywhere." });
     } catch {
-      toast.show({ message: `Couldn't copy. Your link is ${pretty}` });
+      toast.show({ message: `Couldn't copy. Your link is ${pretty}`, tone: "error" });
     }
   }
   return (

@@ -46,7 +46,7 @@ export async function attachTrackArt(ref: string, body: { type?: string; size?: 
       t.id,
     );
     if (!up) return err("Not found", 404);
-    if (!(await store.head(up.file_key))) return err("The image didn't finish uploading. Please try again.", 400);
+    if (!(await store.head(up.file_key))) return err("The image didn't finish uploading. Check your signal and try again.", 400);
     const sealed = await sealUpload(store, up.file_key);
     await discardFiles([up.file_key], "track artwork sealed", { linkLive: true });
     // If we stop here, the abandoned-upload clean-up still finds (and deletes) the sealed copy.
