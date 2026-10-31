@@ -2,28 +2,38 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { cancelTeamInvite, changeTeamRole, inviteTeammate, saveReplyApproval, type TeamState } from "../../actions/account-team";
+import { BTN, BTN_GHOST, FIELD, HELP, Notice } from "../ui";
 
 export function InviteForm({ canInviteAdmins, full }: { canInviteAdmins: boolean; full: boolean }) {
   const [state, act, pending] = useActionState<TeamState, FormData>(inviteTeammate, null);
   return (
-    <form action={act} className="mt-4 flex flex-col gap-2 sm:flex-row">
-      <label htmlFor="team-email" className="sr-only">
-        Email to invite
-      </label>
-      <input id="team-email" name="email" type="email" required disabled={full} placeholder="name@label.com" className="input min-w-0 flex-1" />
-      {canInviteAdmins && (
-        <select name="role" defaultValue="member" aria-label="Role" className="input sm:w-36">
-          <option value="member">Member</option>
-          <option value="admin">A&amp;R / Admin</option>
-        </select>
+    <form action={act} className="mt-4 flex flex-col gap-2">
+      <span className={FIELD}>Invite someone</span>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <label htmlFor="team-email" className="sr-only">
+          Email to invite
+        </label>
+        <input id="team-email" name="email" type="email" required disabled={full} placeholder="name@label.com" className="input min-w-0 flex-1" />
+        {canInviteAdmins && (
+          <select name="role" defaultValue="member" aria-label="Role" className="input sm:w-40">
+            <option value="member">Member</option>
+            <option value="admin">A&amp;R / Admin</option>
+          </select>
+        )}
+        <button disabled={pending || full} className={`${BTN} shrink-0`}>
+          {pending ? "Sending…" : "Invite"}
+        </button>
+      </div>
+      {full && <p className={HELP}>Every seat is taken, so inviting waits until someone leaves or you add seats.</p>}
+      {state?.error && (
+        <Notice tone="error" next="No invite was sent. Fix that and try again.">
+          {state.error}
+        </Notice>
       )}
-      <button disabled={pending || full} className="btn-lime btn-sm min-h-11 shrink-0">
-        {pending ? "Sending…" : "Invite"}
-      </button>
-      {state && (
-        <p role={state.error ? "alert" : "status"} className={`text-sm sm:basis-full ${state.error ? "text-danger" : "text-mute"}`}>
-          {state.error ?? state.ok}
-        </p>
+      {state?.ok && (
+        <Notice tone="ok" next="They get an email with a link to join. It shows below until they accept.">
+          {state.ok}
+        </Notice>
       )}
     </form>
   );
@@ -32,13 +42,13 @@ export function InviteForm({ canInviteAdmins, full }: { canInviteAdmins: boolean
 export function ApprovalForm({ on, approver, people }: { on: boolean; approver: number; people: { user_id: number; name: string }[] }) {
   const [state, act, pending] = useActionState<TeamState, FormData>(saveReplyApproval, null);
   return (
-    <form action={act} className="flex flex-col gap-3 text-sm">
-      <label className="flex items-center gap-2">
-        <input type="checkbox" name="approval" defaultChecked={on} className="size-4 accent-lime" />
+    <form action={act} className="flex flex-col gap-4">
+      <label className="flex min-h-11 cursor-pointer items-center gap-3 text-[13px] text-bone">
+        <input type="checkbox" name="approval" defaultChecked={on} className="size-5 accent-lime" />
         Members&apos; replies need approval before they&apos;re sent
       </label>
-      <label className="flex flex-col gap-1">
-        <span className="text-mute">Who approves (the owner and A&amp;R / Admins can always approve too)</span>
+      <label className="flex flex-col gap-1.5">
+        <span className={FIELD}>Who approves</span>
         <select name="approver" defaultValue={approver} className="input sm:w-72">
           {people.map((p) => (
             <option key={p.user_id} value={p.user_id}>
@@ -46,12 +56,22 @@ export function ApprovalForm({ on, approver, people }: { on: boolean; approver: 
             </option>
           ))}
         </select>
+        <span className={HELP}>The owner and A&amp;R / Admins can always approve too.</span>
       </label>
-      <div className="flex items-center gap-3">
-        <button disabled={pending} className="btn-ghost btn-sm min-h-11">
+      {state?.error && (
+        <Notice tone="error" next="Nothing was saved. Fix that and save again.">
+          {state.error}
+        </Notice>
+      )}
+      <div className="flex flex-col gap-2 border-t border-line pt-4 sm:flex-row sm:items-center sm:gap-4">
+        <button disabled={pending} className={`${BTN_GHOST} sm:px-6!`}>
           {pending ? "Saving…" : "Save"}
         </button>
-        {state && <span className={state.error ? "text-danger" : "text-mute"}>{state.error ?? state.ok}</span>}
+        {state?.ok && (
+          <p role="status" className="text-[12.5px] font-semibold text-[#6aa636]">
+            {state.ok}
+          </p>
+        )}
       </div>
     </form>
   );
@@ -80,14 +100,14 @@ export function RoleSelect({ memberId, name, role }: { memberId: number; name: s
             }
           });
         }}
-        className="input h-9 w-auto py-0 pr-8 text-[12px]"
+        className="input min-h-11 w-auto py-0 pr-8 text-[12px]"
       >
         <option value="member">Member</option>
         <option value="admin">A&amp;R / Admin</option>
       </select>
       {error && (
-        <span role="alert" className="text-[12px] text-danger">
-          {error}
+        <span role="alert" className="max-w-56 text-right text-[11.5px] text-danger">
+          {error} Their role hasn&apos;t changed.
         </span>
       )}
     </span>
@@ -99,12 +119,12 @@ export function CancelInviteForm({ inviteId }: { inviteId: number }) {
   const [state, act, pending] = useActionState<TeamState>(cancelTeamInvite.bind(null, inviteId), null);
   return (
     <form action={act} className="flex flex-col items-end gap-1">
-      <button disabled={pending} className="btn-ghost btn-sm h-9">
+      <button disabled={pending} className={BTN_GHOST}>
         {pending ? "Cancelling…" : "Cancel invite"}
       </button>
       {state?.error && (
-        <span role="alert" className="text-[12px] text-danger">
-          {state.error}
+        <span role="alert" className="max-w-56 text-right text-[11.5px] text-danger">
+          {state.error} Reload the page to see where it stands.
         </span>
       )}
     </form>
