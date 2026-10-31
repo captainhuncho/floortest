@@ -7,7 +7,8 @@ import { changePassword, signOutDevice, signOutOtherDevices } from "../actions/s
 import { PasswordStrength } from "@/components/PasswordStrength";
 import { ConfirmItsYou } from "./ConfirmItsYou";
 import { Chip, Icon } from "@/components/Kit";
-import { BTN, BTN_GHOST, FIELD, Notice, ROW, SettingLine, WELL } from "./ui";
+import { BTN, BTN_GHOST, FIELD, Notice, ROW, SettingLine } from "./ui";
+import { Fold } from "./Fold";
 
 export type Device = { id: string; device: string; app: boolean; current: boolean; signedIn: string; lastUsed: string | null };
 
@@ -67,7 +68,7 @@ export function SecurityForm({ devices, context = [], twoFactor }: { devices: De
 
       <div className="flex flex-col gap-3 border-t border-line pt-5">
         <SettingLine
-          title="Signed-in devices"
+          title="Other devices"
           sub={
             <>
               {others ? `Signed in on ${others} other device${others === 1 ? "" : "s"}.` : "Only signed in on this device."} A browser that isn&apos;t used for 14 days is signed out by itself.
@@ -100,7 +101,8 @@ export function SecurityForm({ devices, context = [], twoFactor }: { devices: De
             }
           />
         )}
-        <ul className={WELL} aria-label="Devices signed in">
+        <Fold title="Signed-in devices" count={list.length} lead={list.find((d) => d.current) ? `This device: ${list.find((d) => d.current)!.device}` : undefined}>
+        <ul aria-label="Devices signed in">
           {list.map((d) => (
             <li key={d.id} className={`${ROW} flex-nowrap!`}>
               <div className="flex min-w-0 flex-1 items-center gap-2.5">
@@ -138,6 +140,7 @@ export function SecurityForm({ devices, context = [], twoFactor }: { devices: De
             </li>
           ))}
         </ul>
+        </Fold>
       </div>
     </div>
   );

@@ -8,6 +8,7 @@ import { blockSender } from "../../actions/review";
 import { setRerouteClosed } from "../../actions/settings";
 import { PageTitle, Section } from "../Section";
 import { BTN_GHOST, ROW, SettingLine, WELL } from "../ui";
+import { Fold } from "../Fold";
 
 export const metadata = { title: "Receiving — FloorTest" };
 
@@ -43,7 +44,8 @@ export default async function Receiving() {
       </Section>
       <Section id="blocked-h" icon="x" title="Blocked senders" sub={blocked.length ? "They can't send to your link. Unblock to let them back in." : undefined}>
         {blocked.length > 0 ? (
-          <ul className={WELL}>
+          <Fold title="Blocked" count={blocked.length} lead={`Latest: ${blocked[0]?.name ?? ""}`}>
+          <ul>
             {blocked.map((s) => (
               <li key={s.id} className={ROW}>
                 <div className="flex min-w-0 flex-1 basis-52 items-center gap-2.5">
@@ -63,6 +65,7 @@ export default async function Receiving() {
               </li>
             ))}
           </ul>
+          </Fold>
         ) : (
           <p className={`${WELL} px-3.5 py-3 text-[12.5px] text-mute`}>
             Nobody is blocked. To block someone, open them in{" "}
