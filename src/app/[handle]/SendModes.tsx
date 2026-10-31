@@ -25,12 +25,12 @@ export function SendModes({
   const [picked, setPicked] = useState("");
   const tracks = <SubmitForm {...form} presetGenre={picked} />;
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-3">
       {brief && <Brief {...brief} picked={picked} onPick={setPicked} />}
       {!folderBytes ? (
         tracks
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           <SendModeTabs mode={mode} setMode={setMode} className="group-has-[[data-picked]]/page:hidden" />
           {mode === "tracks" ? (
             tracks

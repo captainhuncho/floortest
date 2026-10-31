@@ -17,12 +17,12 @@ export function SetsPermission({ receiverName, many, checked, onChange, disabled
   const it = many ? "these tracks" : "this track";
   const id = useId();
   return (
-    <label className="flex cursor-pointer items-start justify-between gap-4 border-t border-line pt-5">
+    <label className="flex cursor-pointer items-start justify-between gap-4 border-t border-dashed border-line-2 pt-3">
       <span className="min-w-0 flex-1">
-        <span id={`${id}-q`} className="block text-[14px] font-semibold text-bone">
+        <span id={`${id}-q`} className="block text-[13.5px] font-semibold leading-snug text-bone">
           Can {receiverName} play {it} in DJ sets and broadcasts?
         </span>
-        <span id={`${id}-a`} className={`mt-1 block text-[12px] ${checked ? "text-lime" : "text-dim"}`} aria-live="polite">
+        <span id={`${id}-a`} className={`mt-1 block text-[11.5px] ${checked ? "text-lime" : "text-dim"}`} aria-live="polite">
           {checked ? `Yes. ${receiverName} can play ${it} out.` : `No. Listening and feedback only.`}
         </span>
       </span>
