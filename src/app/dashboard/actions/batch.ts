@@ -6,7 +6,7 @@ import { allow } from "@/lib/ratelimit";
 import { trackUse } from "@/lib/usage";
 import { BATCH_MAX } from "@/lib/batch";
 import { audit } from "@/lib/audit";
-import { logEvent, q, type Track } from "@/lib/db";
+import { logEvents, q, type Track } from "@/lib/db";
 import { clearDecision, decide, decisionLocked, deleteTrack } from "@/lib/review";
 import { done, ownCollection } from "./common";
 
@@ -52,12 +52,15 @@ export async function batchTracks(ids: number[], action: BatchAction): Promise<B
   } else if (type === "move") {
     const target = await ownCollection(u.id, Number((action as { collection: number }).collection));
     if (!target) return { done: 0, skipped: wanted.length, error: "Choose a collection." };
-    for (const t of tracks) {
-      if (t.collection_id === target.id) continue;
-      await q.run("UPDATE tracks SET collection_id = ? WHERE id = ?", target.id, t.id);
-      await logEvent({ user_id: u.id, actor_id: u.actor_id, sender_id: t.sender_id, track_id: t.id, type: "moved", detail: `to ${target.name}` });
-      changed++;
+    // One update and one activity insert for the lot, together or not at all.
+    const moving = tracks.filter((t) => t.collection_id !== target.id);
+    if (moving.length) {
+      await q.tx(async (db) => {
+        await db.run(`UPDATE tracks SET collection_id = ? WHERE user_id = ? AND id IN (${moving.map(() => "?").join(",")})`, target.id, u.id, ...moving.map((t) => t.id));
+        await logEvents(moving.map((t) => ({ user_id: u.id, actor_id: u.actor_id, sender_id: t.sender_id, track_id: t.id, type: "moved", detail: `to ${target.name}` })), db);
+      });
     }
+    changed = moving.length;
     where = ` to ${target.name}`;
   } else if (type === "delete") {
     for (const t of tracks) {

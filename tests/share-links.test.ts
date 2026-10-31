@@ -269,3 +269,33 @@ test("a share link hands over only the named track columns", async () => {
   assert.deepEqual(Object.keys((await L.linkTrack(live, shared))!).sort(), want);
   assert.deepEqual([...L.LINK_TRACK_COLUMNS].sort(), want);
 });
+
+test("the owner's link list groups each link's people, requests and latest 12 events, in four queries for all links", async () => {
+  const L = await import("../src/lib/share-links");
+  const { q, owner, col } = await setup();
+  const a = (await L.createLink(owner, col, { permission: "listen", days: 14, requests: true, label: "A" })).link;
+  const b = (await L.createLink(owner, col, { permission: "download", days: 14, requests: true, label: "B" })).link;
+  await L.addRecipients(owner, a.id, "one@a.io", "listen");
+  await L.addRecipients(owner, b.id, "two@b.io, three@b.io", "download");
+  const ask = (linkId: number, email: string) =>
+    q.run("INSERT INTO link_requests (link_id, collection_id, email, name, note, status, created_at) VALUES (?,?,?, '', '', 'pending', ?)", linkId, col, email, Date.now());
+  await ask(a.id, "ask@a.io");
+  await ask(b.id, "ask1@b.io");
+  await ask(b.id, "ask2@b.io");
+  for (let i = 0; i < 15; i++) await L.logLinkEvent(a.id, "listened", { email: "one@a.io", userId: null }, null);
+  await L.logLinkEvent(b.id, "downloaded", { email: "two@b.io", userId: null }, null);
+
+  const view = await L.linksFor(owner, col);
+  const va = view.find((l) => l.id === a.id)!;
+  const vb = view.find((l) => l.id === b.id)!;
+  assert.deepEqual(va.recipients.map((r) => r.value), ["one@a.io"]);
+  assert.deepEqual(vb.recipients.map((r) => r.value).sort(), ["three@b.io", "two@b.io"]);
+  assert.deepEqual(va.requests.map((r) => r.email), ["ask@a.io"]);
+  assert.deepEqual(vb.requests.map((r) => r.email), ["ask1@b.io", "ask2@b.io"]);
+  assert.equal(va.events.filter((e) => e.kind === "listened").length, 12, "only the latest 12 per link");
+  assert.deepEqual(vb.events.filter((e) => e.kind === "downloaded").map((e) => e.email), ["two@b.io"], "one link's events never show on another");
+  assert.ok(!("link_id" in va.requests[0]) && !("link_id" in va.events[0]));
+
+  // Someone else's collection: nothing.
+  assert.deepEqual(await L.linksFor({ id: owner.id + 999 }, col), []);
+});
