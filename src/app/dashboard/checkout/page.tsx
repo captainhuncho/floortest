@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/auth";
 import { afterDiscount, discountNow, offeredPlan, planOf } from "@/lib/plan-store";
 import { switchOn } from "@/lib/switches";
 import { confirmBetaUpgrade } from "../actions/settings";
+import { CARD, Icon, PageHead, SectionHead } from "@/components/Kit";
 
 export const metadata = { title: "Checkout — FloorTest" };
 
@@ -31,21 +32,18 @@ export default async function Checkout({ searchParams }: { searchParams: Promise
   const renews = new Date(today.getFullYear(), today.getMonth() + 1, today.getDate()).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
   return (
-    <div className="flex max-w-4xl flex-col gap-6 px-4 py-5 text-bone sm:px-8 md:py-8">
-      <div className="flex flex-col gap-1">
-        <Link href="/dashboard/plans" className="text-[11px] font-medium text-faint hover:text-bone">
-          ← Plans
-        </Link>
-        <h1 className="page-title">Upgrade to {p.name}</h1>
-      </div>
+    <div className="page-gutter py-4 text-bone sm:py-7">
+      <div className="mx-auto flex w-full min-w-0 max-w-4xl flex-col gap-4 sm:gap-5">
+      <Link href="/dashboard/plans" className="tap-text -my-2 w-fit text-[11.5px] font-medium text-faint hover:text-bone">
+        ← Plans
+      </Link>
+      <PageHead label="Checkout" title={`Upgrade to ${p.name}`} />
 
-      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] md:items-start md:gap-6">
-        <section aria-labelledby="summary-h" className="rounded-xl border border-line bg-ink-2 p-4 md:p-5">
-          <h2 id="summary-h" className="label">
-            Order summary
-          </h2>
+      <div className="grid gap-4 sm:gap-5 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] md:items-start">
+        <section aria-labelledby="summary-h" className={`${CARD} p-3 sm:p-4`}>
+          <SectionHead id="summary-h" icon="card" title="Order summary" />
           <div className="mt-3 flex items-baseline justify-between gap-3">
-            <p className="text-[15px] font-bold">FloorTest {p.name}</p>
+            <p className="text-[14px] font-semibold">FloorTest {p.name}</p>
             <p className="tnum">
               {price}
               <span className="text-[12px] text-mute"> / month</span>
@@ -53,15 +51,13 @@ export default async function Checkout({ searchParams }: { searchParams: Promise
           </div>
           <ul className="mt-3 space-y-1.5 text-[13px] text-mute">
             {p.features.map((f) => (
-              <li key={f} className="flex gap-2">
-                <span aria-hidden className="text-lime">
-                  ✓
-                </span>
+              <li key={f} className="flex items-start gap-2">
+                <Icon name="check" className="mt-0.5 size-4 text-mute" />
                 {f}
               </li>
             ))}
           </ul>
-          <dl className="mt-4 space-y-1.5 border-t border-line pt-4 text-[13px]">
+          <dl className="mt-4 space-y-1.5 border-t border-dashed border-line-2 pt-3.5 text-[13px]">
             <div className="flex justify-between">
               <dt className="text-mute">{p.name}, monthly</dt>
               <dd className="tnum">{price}</dd>
@@ -80,21 +76,19 @@ export default async function Checkout({ searchParams }: { searchParams: Promise
                 <dd className="tnum">−{usd(offered)}</dd>
               </div>
             )}
-            <div className="flex justify-between border-t border-line pt-2 text-[15px] font-bold">
+            <div className="flex justify-between border-t border-line pt-2 text-[15px] font-semibold">
               <dt>Due today</dt>
               <dd className="tnum">{usd(due)}</dd>
             </div>
           </dl>
-          <p className="mt-2 text-[11px] text-dim">{billing ? "Prices in US dollars. Any tax due where you live is shown before you pay." : "The beta discount applied automatically. No card needed."}</p>
+          <p className="mt-2 text-[11.5px] text-faint">{billing ? "Prices in US dollars. Any tax due where you live is shown before you pay." : "The beta discount applied automatically. No card needed."}</p>
         </section>
 
-        <section aria-labelledby="pay-h" className="rounded-xl border border-line bg-ink-2 p-4 md:p-5">
-          <h2 id="pay-h" className="label">
-            {billing ? "Payment" : "Confirm"}
-          </h2>
+        <section aria-labelledby="pay-h" className={`${CARD} p-3 sm:p-4`}>
+          <SectionHead id="pay-h" icon="lock" title={billing ? "Payment" : "Confirm"} />
 
           <div className="mt-3 space-y-2 text-[12px] text-mute">
-            <h3 className="font-bold text-bone">How renewal works</h3>
+            <h3 className="text-[12.5px] font-semibold text-bone">How renewal works</h3>
             {billing ? (
               <ul className="list-disc space-y-1 pl-4">
                 <li>
@@ -119,14 +113,14 @@ export default async function Checkout({ searchParams }: { searchParams: Promise
 
           {billing ? (
             <>
-              <div className="mt-4 rounded-md border border-dashed border-line px-4 py-6 text-center text-[13px] text-mute">Card payments aren&apos;t connected yet.</div>
-              <button disabled className="btn-lime mt-4 w-full">
+              <div className="mt-4 rounded-[11px] border border-dashed border-line-2 bg-well px-4 py-6 text-center text-[13px] text-mute">Card payments aren&apos;t connected yet.</div>
+              <button disabled className="btn-lime mt-4 min-h-11 w-full rounded-[13px]">
                 Pay {price} and upgrade
               </button>
             </>
           ) : (
             <form action={confirmBetaUpgrade.bind(null, id)} className="mt-4 space-y-4">
-              <label className="flex items-start gap-2.5 text-[12px]">
+              <label className="flex min-h-11 items-start gap-2.5 rounded-[11px] border border-line bg-well px-3 py-2.5 text-[12px]">
                 <input type="checkbox" name="agree" required className="mt-0.5 size-4 accent-lime" />
                 <span>
                   I agree to the{" "}
@@ -141,10 +135,11 @@ export default async function Checkout({ searchParams }: { searchParams: Promise
                   Tick the box to confirm.
                 </p>
               )}
-              <button className="btn-lime w-full">Confirm upgrade · {usd(0)}</button>
+              <button className="btn-lime min-h-11 w-full rounded-[13px]">Confirm upgrade · {usd(0)}</button>
             </form>
           )}
         </section>
+      </div>
       </div>
     </div>
   );

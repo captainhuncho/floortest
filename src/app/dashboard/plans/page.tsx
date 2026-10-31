@@ -9,6 +9,7 @@ import { switchOn } from "@/lib/switches";
 import { BillingSwitch } from "./BillingSwitch";
 import { PlanCards } from "./PlanCards";
 import { pendingRequest } from "@/lib/plan-requests";
+import { CARD, Icon, PageHead, SectionHead } from "@/components/Kit";
 
 export const metadata = { title: "Plans — FloorTest" };
 
@@ -33,30 +34,30 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
   const plans = (await allPlans()).filter((p) => !p.retired || p.id === user.plan);
 
   return (
-    <div id="plans-root" data-period={yearly ? "year" : "month"} className="flex flex-col gap-6 px-4 py-5 text-bone sm:px-8 md:py-8">
-      <Link href="/dashboard/account" className="text-[11px] font-medium text-faint hover:text-bone">
+    <div id="plans-root" data-period={yearly ? "year" : "month"} className="page-gutter py-4 text-bone sm:py-7">
+      <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-4 sm:gap-5 xl:max-w-6xl">
+      <Link href="/dashboard/account" className="tap-text -my-2 w-fit text-[11.5px] font-medium text-faint hover:text-bone">
         ← Account
       </Link>
-      <header className="flex flex-col items-center gap-3 text-center">
-        <h1 className="page-title">Choose your plan</h1>
-        <p className="text-[15px] text-mute">Same desk. Pick the room you need.</p>
+      <PageHead label="Same desk. Pick the room you need." title="Choose your plan">
         <BillingSwitch initial={yearly ? "year" : "month"} target="plans-root" />
-      </header>
+      </PageHead>
 
       {sp.requested && pending && (
-        <p role="status" className="rounded-lg border border-lime/40 bg-lime/5 px-4 py-3 text-sm">
+        <p role="status" className={`${CARD} flex items-start gap-2.5 p-3 text-[13px] leading-5`}>
+          <span aria-hidden className="mt-1.5 size-2 shrink-0 rounded-full bg-lime" />
           Request sent. We&apos;ll look at it and email you, usually within two working days.
         </p>
       )}
 
       {welcomed && (
-        <div role="status" className="flex items-start gap-3 rounded-xl border border-lime/50 bg-lime/10 p-4 md:p-5">
-          <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-full bg-lime text-[15px] font-bold text-ink">
-            ✓
+        <div role="status" className={`${CARD} flex items-start gap-3 border-lime/40 p-3 sm:p-4`}>
+          <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-[11px] bg-lime text-ink">
+            <Icon name="check" className="size-[18px]" />
           </span>
           <div>
-            <p className="text-[15px] font-bold">You&apos;re on {current.name} now.</p>
-            <p className="mt-0.5 text-[13px] text-mute">
+            <p className="text-[15px] font-semibold tracking-[-0.015em]">You&apos;re on {current.name} now.</p>
+            <p className="mt-0.5 text-[12.5px] leading-5 text-mute">
               Room for {current.limit.toLocaleString("en")} active tracks{current.seats > 1 && (await teamsOn(user.id)) ? `, and ${current.seats} people on the account` : ""}.{" "}
               {billing ? "Thanks for upgrading." : "Free for the rest of the beta."}
             </p>
@@ -64,17 +65,12 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
         </div>
       )}
 
-      <section aria-labelledby="usage-h" className="rounded-lg border border-line bg-ink-2 p-4 md:p-5">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 id="usage-h" className="text-[13px] font-bold">
-            {current.name} plan · {cap.used} of {cap.limit.toLocaleString("en")} tracks
-          </h2>
-          <span className="text-[11px] text-mute tnum">{pct}% used</span>
-        </div>
-        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-line" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label="Tracks used">
+      <section aria-labelledby="usage-h" className={`${CARD} flex flex-col gap-2.5 p-3 sm:p-4`}>
+        <SectionHead id="usage-h" icon="card" title={`${current.name} plan · ${cap.used} of ${cap.limit.toLocaleString("en")} tracks`} aside={<span className="tnum">{pct}% used</span>} />
+        <div className="h-1.5 overflow-hidden rounded-full bg-line-2" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label="Tracks used">
           <div className="h-full rounded-full bg-lime" style={{ width: `${pct}%` }} />
         </div>
-        <p className="mt-2 text-[11px] text-dim">
+        <p className="text-[11.5px] leading-[1.5] text-faint">
           Active tracks: everything on your desk. Undecided tracks leave after {RETAIN_UNREVIEWED_DAYS} days, Not for me after{" "}
           {RETAIN_PASSED_DAYS}, kept tracks when you delete them. Deleting frees the slot at once.
           {cap.bonus > 0 && ` Includes ${cap.bonus} extra slots from referrals.`}
@@ -83,8 +79,8 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
 
       <PlanCards requests={await switchOn("plan_requests", user)} teams={await teamsOn(user.id)} plans={plans} billing={billing} userPlan={user.plan} currentPrice={current.price} capUsed={cap.used} capBonus={cap.bonus} pendingPlan={pending?.plan ?? null} sharing={sharing} />
 
-      <section aria-labelledby="renewal-h" className="space-y-1.5 text-[11px] text-dim md:max-w-3xl">
-        <h2 id="renewal-h" className="font-bold text-mute">
+      <section aria-labelledby="renewal-h" className={`${CARD} flex flex-col gap-1.5 p-3 text-[11.5px] leading-[1.5] text-faint sm:p-4`}>
+        <h2 id="renewal-h" className="text-[12.5px] font-semibold text-bone">
           Renewal and billing
         </h2>
         {billing ? (
@@ -113,6 +109,7 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
           .
         </p>
       </section>
+      </div>
     </div>
   );
 }

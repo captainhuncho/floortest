@@ -61,7 +61,7 @@ export default async function Pricing() {
                 <ul className="flex flex-1 flex-col gap-2 text-[13px] leading-5">
                   {p.features.map((f) => (
                     <li key={f} className="flex gap-2">
-                      <Icon name="check" className="mt-px size-4 text-lime" />
+                      <Icon name="check" className="mt-px size-4 text-mute" />
                       {f}
                     </li>
                   ))}
