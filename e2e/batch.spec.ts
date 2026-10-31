@@ -74,7 +74,7 @@ test("the review panel keeps the decision in view and folds the rest into Detail
 test("the owner adds a WAV to their own collection; strangers and other collections are refused", async ({ page, browser }) => {
   // Signed out: refused.
   const anon = await browser.newContext();
-  expect((await anon.request.post("http://localhost:3210/api/collections/2/upload", { data: { fileName: "x.wav", size: 10, title: "X", rights: true } })).status()).toBe(401);
+  expect((await anon.request.post(`http://localhost:${process.env.E2E_PORT || 3210}/api/collections/2/upload`, { data: { fileName: "x.wav", size: 10, title: "X", rights: true } })).status()).toBe(401);
   await anon.close();
 
   await page.goto("/login");
