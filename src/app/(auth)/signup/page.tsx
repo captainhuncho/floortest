@@ -31,8 +31,8 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
   return (
     <EditablePage editing={!!editor} page="auth" label="Sign-up and log-in" values={c}>
     <>
-      <h1 className="mb-3 text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone"><E k="signup_title" /></h1>
-      <p className="mb-8 text-[13px] text-mute">
+      <h1 className="mb-3 text-[24px] font-semibold leading-[1.15] tracking-[-0.03em] text-bone"><E k="signup_title" /></h1>
+      <p className="mb-5 text-[13px] leading-5 text-mute">
         <E k="signup_intro" />
         {inviteOnly && (
           <>
@@ -42,30 +42,30 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
         )}
       </p>
       {team && (
-        <p className="mb-6 rounded-lg border border-lime/40 bg-lime/5 px-4 py-3 text-sm">
+        <p className="mb-6 rounded-xl bg-lime/12 px-3.5 py-3 text-[13px] leading-5">
           You&apos;re joining <span className="font-medium">{team.account_name}</span> on FloorTest. Create your own login with{" "}
           <span className="font-medium">{team.email}</span>; you&apos;ll get your own link too.
         </p>
       )}
       {personal?.email && (
-        <p className="mb-6 rounded-lg border border-lime/40 bg-lime/5 px-4 py-3 text-sm">
+        <p className="mb-6 rounded-xl bg-lime/12 px-3.5 py-3 text-[13px] leading-5">
           You&apos;re invited. Sign up with <span className="font-medium">{personal.email}</span> to use it.
         </p>
       )}
       {referrer && !inviteOnly && (
-        <p className="mb-6 rounded-lg border border-lime/40 bg-lime/5 px-4 py-3 text-sm">
+        <p className="mb-6 rounded-xl bg-lime/12 px-3.5 py-3 text-[13px] leading-5">
           Invited by <span className="font-medium">{referrer.name}</span>. You both get 10 more active tracks once your first track arrives.
         </p>
       )}
       {googleConfig() && !isPreview && (
         <>
           {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-          <a href="/api/auth/google" className="btn-ghost flex w-full items-center justify-center gap-3 py-3 text-sm font-semibold">
+          <a href="/api/auth/google" className="flex min-h-12 w-full items-center justify-center gap-3 rounded-[13px] border border-line bg-well text-[14px] font-semibold text-bone transition-colors hover:border-line-2 hover:bg-ink-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/icons/google.svg" alt="" className="size-[18px]" />
             Sign up with Google
           </a>
-          <div className="my-6 flex items-center gap-3 text-xs text-dim">
+          <div className="my-5 flex items-center gap-3 text-xs text-dim">
             <span className="h-px flex-1 bg-line" /> or <span className="h-px flex-1 bg-line" />
           </div>
         </>

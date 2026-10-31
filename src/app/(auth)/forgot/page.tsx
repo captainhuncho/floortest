@@ -7,8 +7,8 @@ export const metadata = { title: "Reset your password — FloorTest" };
 export default function ForgotPage() {
   return (
     <>
-      <h1 className="mb-2 text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">Reset your password</h1>
-      <p className="mb-8 text-sm text-mute">We&apos;ll email you a link to choose a new one.</p>
+      <h1 className="mb-2 text-[24px] font-semibold leading-[1.15] tracking-[-0.03em] text-bone">Reset your password</h1>
+      <p className="mb-5 text-[13px] leading-5 text-mute">We&apos;ll email you a link to choose a new one.</p>
       <AuthForm
         action={requestPasswordReset}
         submit="Email me a reset link"

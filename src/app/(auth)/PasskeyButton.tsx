@@ -16,7 +16,7 @@ export function PasskeyButton({
   label,
   begin,
   finish,
-  className = "btn-ghost flex w-full items-center justify-center gap-3 py-3 text-sm font-semibold",
+  className = "flex min-h-12 w-full items-center justify-center gap-3 rounded-[13px] border border-line bg-well text-[14px] font-semibold text-bone transition-colors hover:border-line-2 hover:bg-ink-4",
 }: {
   label: string;
   begin: () => Promise<PublicKeyCredentialRequestOptionsJSON | null>;

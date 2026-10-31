@@ -1,21 +1,20 @@
-import Link from "next/link";
 import { Logo } from "@/components/Logo";
+import { CARD } from "@/components/Kit";
+import { SiteFooter } from "./SiteFooter";
 
 /**
- * Sign in, sign up, recovery and signed out: one calm column at every width. The form is the page; nothing sits
- * beside it. The crest at the top says where you are, the legal links at the bottom stay out of the way.
+ * Sign in, sign up, recovery and signed out: one calm, centred column (owner, 31 Oct). The FloorTest mark, then the
+ * form in a card, centred in the screen on tall screens (min-height, never a fixed height, so a phone keyboard can
+ * push it up and the page still scrolls); the site's own footer below. Light or dark with the visitor's device.
  */
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col px-4 pb-8 pt-8 sm:pt-14">
-      <Logo href="/" className="mb-10 self-start" />
-      <div className="flex-1">{children}</div>
-      <nav aria-label="Legal" className="mt-12 flex gap-6 text-[12px] text-dim">
-        <Link href="/terms" className="tap inline-flex items-center hover:text-bone">Terms</Link>
-        <Link href="/privacy" className="tap inline-flex items-center hover:text-bone">Privacy</Link>
-        <Link href="/cookies" className="tap inline-flex items-center hover:text-bone">Cookies</Link>
-        <a href="#cookie-settings" className="tap inline-flex items-center hover:text-bone">Cookie settings</a>
-      </nav>
-    </main>
+    <div className="theme-system flex min-h-dvh flex-col bg-ink px-3.5 text-bone sm:px-6">
+      <main className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-[460px] flex-col items-center justify-center gap-5 pb-6 pt-[max(2rem,env(safe-area-inset-top))]">
+        <Logo href="/" />
+        <div className={`${CARD} w-full p-4 sm:p-5`}>{children}</div>
+      </main>
+      <SiteFooter />
+    </div>
   );
 }

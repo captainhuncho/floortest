@@ -34,7 +34,15 @@ type Field = {
 
 /** Things that arrive (a problem line, the server's answer) settle in from just below; reduced motion keeps the fade. */
 const ENTER = "starting:opacity-0 motion-safe:starting:translate-y-1 transition-[opacity,translate] duration-200 ease-[var(--ease-out)]";
-const LABEL = "text-[11px] font-bold uppercase tracking-[0.5px] text-dim";
+const LABEL = "text-[11.5px] font-semibold text-mute";
+/**
+ * A quiet field (owner, 31 Oct): its border brightens on focus, no lime ring or outline. The brighter border is the
+ * focus mark, for keyboard users too. 16px text on phones, so iPhone Safari doesn't zoom.
+ */
+const FIELD =
+  "block min-h-11 w-full rounded-[12px] border bg-well px-3 py-2.5 text-base text-bone transition-colors placeholder:text-faint focus:border-mute sm:text-[14px]";
+/** The site-wide lime focus outline is unlayered CSS, so only an inline style turns it off for these fields. */
+const QUIET = { outline: "none" } as const;
 
 /**
  * One form for every sign-in and sign-up screen. Problems are found here first, one at a time, under the field
@@ -133,7 +141,7 @@ export function AuthForm({
           if (issue?.key === el.name) setIssue(null);
         }
       }}
-      className="flex flex-col gap-5"
+      className="flex flex-col gap-4"
     >
       <input type="hidden" name="tz" value={tz} />
       {Object.entries(hidden ?? {}).map(([k, v]) => (
@@ -145,7 +153,8 @@ export function AuthForm({
             {f.label}
           </label>
           {f.choices ? (
-            <select id={`f-${f.name}`} name={f.name} required defaultValue={f.defaultValue ?? ""} aria-invalid={issue?.key === f.name || undefined} aria-describedby={describe(f)} className={`input ${invalid(f.name)}`}>
+            <div className="relative">
+            <select id={`f-${f.name}`} name={f.name} required defaultValue={f.defaultValue ?? ""} aria-invalid={issue?.key === f.name || undefined} aria-describedby={describe(f)} className={`${FIELD} appearance-none pr-10 ${invalid(f.name) || "border-line"}`} style={QUIET}>
               <option value="" disabled>
                 Choose one
               </option>
@@ -155,9 +164,11 @@ export function AuthForm({
                 </option>
               ))}
             </select>
+            <svg aria-hidden viewBox="0 0 24 24" className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-mute" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+            </div>
           ) : f.prefix ? (
-            <div className={`flex items-stretch overflow-hidden rounded-lg border bg-ink-2 focus-within:border-lime/70 ${issue?.key === f.name ? "border-danger/60" : "border-field"}`}>
-              <span className="flex shrink-0 items-center pl-3 text-sm text-mute">{f.prefix}</span>
+            <div className={`flex items-stretch overflow-hidden rounded-[12px] border bg-well transition-colors focus-within:border-mute ${issue?.key === f.name ? "border-danger/60" : "border-line"}`}>
+              <span className="flex shrink-0 items-center pl-3 font-mono text-[13px] text-faint">{f.prefix}</span>
               <input
                 id={`f-${f.name}`}
                 name={f.name}
@@ -167,14 +178,16 @@ export function AuthForm({
                 autoComplete={f.autoComplete}
                 autoCapitalize="none"
                 aria-invalid={issue?.key === f.name || undefined} aria-describedby={describe(f)}
-                className="tap-tall w-full min-w-0 bg-transparent py-2.5 pr-3 text-sm outline-none placeholder:text-faint"
+                className="min-h-11 w-full min-w-0 bg-transparent py-2.5 pr-3 text-base text-bone placeholder:text-faint sm:text-[14px]"
+                style={QUIET}
               />
             </div>
           ) : f.type === "password" ? (
             <div className="relative">
               <input
                 id={`f-${f.name}`}
-                className={`input pr-12 ${invalid(f.name)}`}
+                className={`${FIELD} pr-12 ${invalid(f.name) || "border-line"}`}
+                style={QUIET}
                 name={f.name}
                 type={shown[f.name] ? "text" : "password"}
                 required
@@ -189,7 +202,7 @@ export function AuthForm({
                 onClick={() => setShown((v) => ({ ...v, [f.name]: !v[f.name] }))}
                 aria-label={shown[f.name] ? "Hide password" : "Show password"}
                 aria-pressed={!!shown[f.name]}
-                className="absolute inset-y-0 right-0 grid w-12 place-items-center text-mute hover:text-bone"
+                className="absolute inset-y-0 right-0 grid w-12 place-items-center rounded-r-[12px] text-mute hover:text-bone"
               >
                 <NavIcon name={shown[f.name] ? "eyeOff" : "eye"} className="size-[18px]" />
               </button>
@@ -197,7 +210,8 @@ export function AuthForm({
           ) : (
             <input
               id={`f-${f.name}`}
-              className={`input ${invalid(f.name)}`}
+              className={`${FIELD} ${invalid(f.name) || "border-line"}`}
+              style={QUIET}
               name={f.name}
               type={f.type || "text"}
               inputMode={f.inputMode}
@@ -212,7 +226,7 @@ export function AuthForm({
           {f.strength && <PasswordStrength value={values[f.name] ?? ""} context={["name", "email", "handle"].map((k) => values[k] ?? "")} />}
           {problem(f.name)}
           {f.hint && issue?.key !== f.name && (
-            <div id={`f-${f.name}-hint`} className="text-[12px] text-dim">
+            <div id={`f-${f.name}-hint`} className="text-[11.5px] leading-[1.45] text-dim">
               {f.hint}
             </div>
           )}
@@ -246,7 +260,7 @@ export function AuthForm({
       {captureSource && <SourceField />}
       <Turnstile action="auth" siteKey={botCheckKey ?? null} />
       {state?.challenge && !botCheckKey && <Turnstile action="auth" key="challenge" siteKey={challengeKey ?? null} eager />}
-      <button className="btn-lime min-h-11 w-full text-[14px] font-bold" disabled={pending}>
+      <button className="btn-lime min-h-12 w-full rounded-[13px] text-[14.5px] font-bold" disabled={pending}>
         {pending ? "One moment…" : submit}
       </button>
       {footer && (

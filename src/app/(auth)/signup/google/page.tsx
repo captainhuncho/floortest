@@ -27,7 +27,7 @@ export default async function GoogleSignup() {
   const host = env.appUrl.replace(/^https?:\/\//, "");
   return (
     <>
-      <h1 className="mb-3 text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">Finish signing up</h1>
+      <h1 className="mb-3 text-[24px] font-semibold leading-[1.15] tracking-[-0.03em] text-bone">Finish signing up</h1>
       <p className="mb-6 text-sm text-mute">
         No FloorTest account uses this Google email yet. Fill in the rest to claim your link.
         {inviteOnly && (
@@ -38,11 +38,11 @@ export default async function GoogleSignup() {
         )}
       </p>
       {team && (
-        <p className="mb-6 rounded-lg border border-lime/40 bg-lime/5 px-4 py-3 text-sm">
+        <p className="mb-6 rounded-xl bg-lime/12 px-3.5 py-3 text-[13px] leading-5">
           You&apos;re joining <span className="font-medium">{team.account_name}</span> on FloorTest.
         </p>
       )}
-      <p className="mb-6 rounded-lg border border-line bg-ink-2 px-4 py-3 text-sm">
+      <p className="mb-6 rounded-xl border border-line bg-well px-3.5 py-3 text-[13px] leading-5">
         Signing up as <span className="font-medium text-bone">{who.email}</span> <span className="text-mute">(from Google, already confirmed)</span>
       </p>
       <AuthForm
