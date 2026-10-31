@@ -9,8 +9,8 @@ export default async function VerifySignIn() {
   const passkey = await secondStepHasPasskey();
   return (
     <>
-      <h1 className="mb-2 text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">One more step</h1>
-      <p className="mb-8 text-[13px] text-mute">Enter the 6-digit code from your authenticator app{passkey ? ", or use your passkey" : ""}.</p>
+      <h1 className="mb-2 text-[24px] font-semibold leading-[1.15] tracking-[-0.03em] text-bone">One more step</h1>
+      <p className="mb-5 text-[13px] leading-5 text-mute">Enter the 6-digit code from your authenticator app{passkey ? ", or use your passkey" : ""}.</p>
       {passkey && (
         <div className="mb-6">
           <PasskeyButton label="Use a passkey instead" begin={passkeySecondStepStart} finish={passkeySecondStep} />
