@@ -446,49 +446,77 @@ export async function linkTrack(link: Pick<Link, "collection_id">, trackId: numb
   return q.get<LinkTrack>(`SELECT ${linkTrackColumns} FROM tracks WHERE id = ? AND collection_id = ? AND deleted_at IS NULL AND file_key IS NOT NULL AND share_ok = 1 AND share_terms IS NOT NULL`, trackId, link.collection_id);
 }
 
-/** The owner's view of a collection's links: each with its recipients, waiting requests and recent activity. */
+/**
+ * The owner's view of a collection's links: each with its recipients, waiting requests and recent activity. Four queries
+ * for all the links together (not four per link), grouped here.
+ */
 export async function linksFor(owner: Pick<User, "id">, collectionId: number) {
   const links = await q.all<Link>(
     "SELECT l.* FROM collection_links l JOIN collections c ON c.id = l.collection_id WHERE l.collection_id = ? AND c.user_id = ? ORDER BY l.revoked_at NULLS FIRST, l.created_at DESC",
     collectionId,
     owner.id,
   );
-  return Promise.all(
-    links.map(async (l) => ({
-      ...l,
-      recipients: await recipientsWithActivity(l.id),
-      requests: await q.all<{ id: number; email: string; name: string; note: string; created_at: number; handle: string | null; verified: string | null }>(
-        `SELECT r.id, r.email, r.name, r.note, r.created_at, u.handle, u.identity_status AS verified FROM link_requests r LEFT JOIN users u ON u.id = r.user_id
-         WHERE r.link_id = ? AND r.status = 'pending' ORDER BY r.created_at`,
-        l.id,
-      ),
-      events: await q.all<{ kind: string; email: string | null; created_at: number; title: string | null }>(
-        `SELECT e.kind, COALESCE(e.email, u.email) AS email, e.created_at, t.title FROM link_events e LEFT JOIN users u ON u.id = e.user_id LEFT JOIN tracks t ON t.id = e.track_id
-         WHERE e.link_id = ? AND e.kind <> 'code_unlisted' ORDER BY e.created_at DESC LIMIT 12`,
-        l.id,
-      ),
-    })),
-  );
+  if (!links.length) return [];
+  const ids = links.map((l) => l.id);
+  const marks = ids.map(() => "?").join(",");
+  const [recipients, requests, events] = await Promise.all([
+    recipientsWithActivity(ids),
+    q.all<{ link_id: number; id: number; email: string; name: string; note: string; created_at: number; handle: string | null; verified: string | null }>(
+      `SELECT r.link_id, r.id, r.email, r.name, r.note, r.created_at, u.handle, u.identity_status AS verified FROM link_requests r LEFT JOIN users u ON u.id = r.user_id
+       WHERE r.link_id IN (${marks}) AND r.status = 'pending' ORDER BY r.created_at`,
+      ...ids,
+    ),
+    // The latest 12 per link.
+    q.all<{ link_id: number; kind: string; email: string | null; created_at: number; title: string | null }>(
+      `SELECT link_id, kind, email, created_at, title FROM (
+         SELECT e.link_id, e.kind, COALESCE(e.email, u.email) AS email, e.created_at, t.title,
+           ROW_NUMBER() OVER (PARTITION BY e.link_id ORDER BY e.created_at DESC, e.id DESC) AS n
+         FROM link_events e LEFT JOIN users u ON u.id = e.user_id LEFT JOIN tracks t ON t.id = e.track_id
+         WHERE e.link_id IN (${marks}) AND e.kind <> 'code_unlisted'
+       ) x WHERE n <= 12 ORDER BY created_at DESC, link_id`,
+      ...ids,
+    ),
+  ]);
+  const requestsBy = byLink(requests);
+  const eventsBy = byLink(events);
+  return links.map((l) => ({
+    ...l,
+    recipients: recipients.filter((r) => r.link_id === l.id),
+    requests: requestsBy.get(l.id) ?? [],
+    events: eventsBy.get(l.id) ?? [],
+  }));
+}
+
+/** Rows grouped by their link, in the order they came, without the link id. */
+function byLink<T extends { link_id: number }>(rows: T[]) {
+  const by = new Map<number, Omit<T, "link_id">[]>();
+  for (const { link_id, ...row } of rows) by.set(link_id, [...(by.get(link_id) ?? []), row]);
+  return by;
 }
 
 /**
- * Who's on a link and what each has done: visits (verified sessions), when last seen, tracks played, downloads, and
+ * Who's on each link and what each has done: visits (verified sessions), when last seen, tracks played, downloads, and
  * for a company domain, which addresses came in through it.
  */
-async function recipientsWithActivity(linkId: number) {
-  const rows = await q.all<Recipient & { name: string | null; handle: string | null; visits: number; last_seen: number | null }>(
-    `SELECT r.*, u.name, u.handle, COUNT(s.id)::int AS visits, MAX(COALESCE(s.last_seen_at, s.created_at)) AS last_seen
-     FROM link_recipients r LEFT JOIN users u ON r.kind = 'user' AND CAST(u.id AS text) = r.value LEFT JOIN link_sessions s ON s.recipient_id = r.id
-     WHERE r.link_id = ? AND r.removed_at IS NULL GROUP BY r.id, u.name, u.handle ORDER BY r.added_at`,
-    linkId,
-  );
-  const acts = await q.all<{ recipient_id: number; email: string; listened: number; downloaded: number }>(
-    `SELECT s.recipient_id, s.email,
-       (SELECT COUNT(DISTINCT e.track_id)::int FROM link_events e WHERE e.link_id = ? AND e.kind = 'listened' AND e.email = s.email) AS listened,
-       (SELECT COUNT(*)::int FROM link_events e WHERE e.link_id = ? AND e.kind = 'downloaded' AND e.email = s.email) AS downloaded
-     FROM (SELECT DISTINCT recipient_id, email FROM link_sessions WHERE link_id = ?) s`,
-    linkId, linkId, linkId,
-  );
+async function recipientsWithActivity(linkIds: number[]) {
+  const marks = linkIds.map(() => "?").join(",");
+  const [rows, acts] = await Promise.all([
+    q.all<Recipient & { name: string | null; handle: string | null; visits: number; last_seen: number | null }>(
+      `SELECT r.*, u.name, u.handle, COUNT(s.id)::int AS visits, MAX(COALESCE(s.last_seen_at, s.created_at)) AS last_seen
+       FROM link_recipients r LEFT JOIN users u ON r.kind = 'user' AND CAST(u.id AS text) = r.value LEFT JOIN link_sessions s ON s.recipient_id = r.id
+       WHERE r.link_id IN (${marks}) AND r.removed_at IS NULL GROUP BY r.id, u.name, u.handle ORDER BY r.added_at`,
+      ...linkIds,
+    ),
+    q.all<{ recipient_id: number; email: string; listened: number; downloaded: number }>(
+      `SELECT s.recipient_id, s.email,
+         COUNT(DISTINCT e.track_id) FILTER (WHERE e.kind = 'listened')::int AS listened,
+         COUNT(e.id) FILTER (WHERE e.kind = 'downloaded')::int AS downloaded
+       FROM (SELECT DISTINCT link_id, recipient_id, email FROM link_sessions WHERE link_id IN (${marks})) s
+       LEFT JOIN link_events e ON e.link_id = s.link_id AND e.email = s.email AND e.kind IN ('listened', 'downloaded')
+       GROUP BY s.recipient_id, s.email`,
+      ...linkIds,
+    ),
+  ]);
   return rows.map((r) => {
     const mine = acts.filter((a) => a.recipient_id === r.id);
     return {

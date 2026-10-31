@@ -230,6 +230,16 @@ export async function logEvent(e: Omit<EventRow, "id" | "created_at">, db: Query
   return r!.id;
 }
 
+/** Several activity rows in one insert (a batch action), stamped with the same time. */
+export async function logEvents(rows: Omit<EventRow, "id" | "created_at">[], db: Queryable = q) {
+  if (!rows.length) return;
+  const at = now();
+  await db.run(
+    `INSERT INTO events (user_id, sender_id, track_id, type, detail, created_at, actor_id) VALUES ${rows.map(() => "(?,?,?,?,?,?,?)").join(",")}`,
+    ...rows.flatMap((e) => [e.user_id, e.sender_id, e.track_id, e.type, e.detail, at, e.actor_id && e.actor_id !== e.user_id ? e.actor_id : null]),
+  );
+}
+
 /** Who an account is for, as asked at sign-up (lib/account-types). */
 export const KINDS: string[] = Object.keys(ACCOUNT_TYPES);
 export const KIND_LABEL: Record<string, string> = ACCOUNT_TYPES;
