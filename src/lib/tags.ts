@@ -51,3 +51,13 @@ export function parseFilename(name: string): Tags {
   const empty = { album: "", bpm: null, key: "", isrc: "", trackNo };
   return m ? { ...empty, artist: m[1].trim(), title: m[2].trim() } : { ...empty, artist: "", title: base };
 }
+
+/**
+ * The file's details arrive after the form is on screen (the tag reader loads on first use, which can take seconds), so
+ * they fill only the fields still as they started: anything the sender typed or picked meanwhile is kept. Before this
+ * (31 Oct), a late read replaced the whole set and wiped a just-typed artist, so the send stopped at "One thing left".
+ */
+export function fillFromFile(current: Tags, initial: Tags, read: Tags): Tags {
+  const keep = <K extends keyof Tags>(k: K): Tags[K] => (current[k] === initial[k] ? read[k] : current[k]);
+  return { title: keep("title"), artist: keep("artist"), album: keep("album"), trackNo: keep("trackNo"), bpm: keep("bpm"), key: keep("key"), isrc: keep("isrc") };
+}

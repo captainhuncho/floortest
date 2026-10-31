@@ -48,18 +48,17 @@ test("a track sent to it lands in the Review Queue, unsorted", async ({ page }) 
   await page.getByRole("group", { name: /^Mix status/ }).getByText("Mixed, not mastered").click();
   await page.getByRole("group", { name: /^Release status/ }).getByText("Unreleased").click();
   await page.getByRole("group", { name: /^Made with AI/ }).getByText("No", { exact: true }).click();
+  // The file's own details arrive late on a cold dev server; they must not wipe what was typed (fillFromFile, 31 Oct).
+  await expect(page.getByLabel("Artist")).toHaveValue("E2E Artist");
   await page.getByRole("button", { name: /^Send to / }).click();
+  // The receipt shows only once the track is saved on the desk (a held upload says "is received" instead).
   await expect(page.getByText(/We sent a receipt to/)).toBeVisible({ timeout: 80_000 });
 
   await page.context().clearCookies();
   await page.goto("/login");
   await submitLogin(page, desk.email, /\/dashboard\//, desk.password);
-  // The track reaches the desk once the (fake) virus scan clears, which a slow run can push past one page load, so
-  // reload the list until it shows (twice flaky at 15 s, 30–31 Oct).
-  await expect(async () => {
-    await page.goto("/dashboard/review?view=list");
-    await expect(page.getByText(title).locator("visible=true").first()).toBeVisible({ timeout: 5_000 });
-  }).toPass({ timeout: 60_000 });
+  await page.goto("/dashboard/review?view=list");
+  await expect(page.getByText(title).locator("visible=true").first()).toBeVisible();
   // Collections are optional, so once a track has arrived the checklist stops asking for one.
   await page.goto("/dashboard/floor");
   await expect(page.getByText("Get your desk running", { exact: false })).toBeVisible();
