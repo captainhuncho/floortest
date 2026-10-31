@@ -20,7 +20,7 @@ export function DeckSection({ c, E, panel }: HomeEd) {
     <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
       <div className="grid grid-cols-1 items-center gap-14 lg:grid-cols-[minmax(0,1fr)_440px]">
         <div>
-          <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]"><E k="deck_title" /></h2>
+          <h2 className="text-[clamp(1.75rem,3.4vw,2.5rem)] font-semibold leading-[1.05] tracking-[-0.035em]"><E k="deck_title" /></h2>
           <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-mute">
             <E k="deck_intro" />
           </p>
@@ -67,7 +67,7 @@ export function TwoSides({ E }: HomeEd) {
     <section className="relative overflow-hidden border-y border-line bg-ink-2">
       <p aria-hidden className="stage-neon"><E k="desk_neon" /></p>
       <div className="relative mx-auto max-w-6xl px-4 py-20 sm:px-6">
-        <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]"><E k="desk_title" /></h2>
+        <h2 className="text-[clamp(1.75rem,3.4vw,2.5rem)] font-semibold leading-[1.05] tracking-[-0.035em]"><E k="desk_title" /></h2>
         <p className="mt-4 max-w-xl text-sm text-mute"><E k="desk_intro" /></p>
         <div className="mt-12 grid grid-cols-1 items-end gap-10 lg:grid-cols-[minmax(0,1fr)_260px]">
           <figure className="stage-fill min-w-0">
@@ -169,7 +169,7 @@ export function SetLog({ c, E, panel }: HomeEd) {
   const LOG = rows(c.log_rows);
   return (
     <section className="mx-auto w-full min-w-0 max-w-6xl px-4 py-20 sm:px-6">
-      <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]"><E k="log_title" /></h2>
+      <h2 className="text-[clamp(1.75rem,3.4vw,2.5rem)] font-semibold leading-[1.05] tracking-[-0.035em]"><E k="log_title" /></h2>
       <div className="mt-10 border-t border-line">
         <p className="flex items-center justify-between gap-4 py-4 text-xs">
           <span className="tnum min-w-0 truncate text-mute">Nightbus (demo) · Sample Artist · 122 BPM</span>

@@ -30,8 +30,8 @@ export function HomePreview({ host }: { host: string }) {
   const t = TRACKS[sel];
 
   return (
-    <div className="overflow-hidden rounded-lg border border-white/10 bg-ink-2 shadow-2xl shadow-black/60">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-4 sm:px-7">
+    <div className="overflow-hidden rounded-lg border border-line bg-ink-2 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-4 sm:px-7">
         <Link href="/" className="tap inline-flex items-center gap-2 text-lg font-bold tracking-tight" aria-label="FloorTest home">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img draggable={false} src="/brand/crest.svg" alt="" aria-hidden className="size-7 shrink-0" />
@@ -46,7 +46,7 @@ export function HomePreview({ host }: { host: string }) {
               type="button"
               onClick={() => setCol(i)}
               className={`shrink-0 rounded-md px-3.5 py-1.5 text-xs ${
-                col === i ? "border border-white/15 bg-white/10 text-bone" : "text-mute hover:text-bone"
+                col === i ? "border border-line-2 bg-ink-4 text-bone" : "text-mute hover:text-bone"
               }`}
             >
               {c.name} <span className="ml-1 opacity-60">{c.count}</span>
@@ -66,14 +66,14 @@ export function HomePreview({ host }: { host: string }) {
           </p>
         </div>
 
-        <ul className="mt-4 divide-y divide-white/10 border-y border-white/10">
+        <ul className="mt-4 divide-y divide-line border-y border-line">
           {TRACKS.map((r, i) => (
             <li key={r.title}>
               <button
                 type="button"
                 onClick={() => setSel(i)}
                 aria-pressed={sel === i}
-                className={`flex w-full items-center gap-4 py-3.5 pl-3 pr-2 text-left transition ${sel === i ? "border-l-2 border-lime bg-white/[0.03]" : "border-l-2 border-transparent hover:bg-white/[0.02]"}`}
+                className={`flex w-full items-center gap-4 py-3.5 pl-3 pr-2 text-left transition ${sel === i ? "border-l-2 border-lime bg-well" : "border-l-2 border-transparent hover:bg-well"}`}
               >
                 <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-md bg-gradient-to-br ${r.art} text-[11px] font-medium text-white`}>
                   <span className="rounded bg-ink/70 px-1">PLAY</span>
@@ -86,7 +86,7 @@ export function HomePreview({ host }: { host: string }) {
                 </span>
                 <span aria-hidden className="hidden h-8 flex-1 items-center gap-[3px] md:flex">
                   {bars(i).map((h, j) => (
-                    <span key={j} className={`w-full rounded-sm ${sel === i ? "bg-lime/70" : "bg-white/25"}`} style={{ height: `${Math.round(h * 100)}%` }} />
+                    <span key={j} className={`w-full rounded-sm ${sel === i ? "bg-lime/70" : "bg-line-2"}`} style={{ height: `${Math.round(h * 100)}%` }} />
                   ))}
                 </span>
                 <span className="ml-auto w-24 shrink-0 text-right text-[11px] uppercase text-dim">{r.status}</span>
@@ -95,7 +95,7 @@ export function HomePreview({ host }: { host: string }) {
           ))}
         </ul>
 
-        <div className="mt-5 border-t border-white/10 pt-5">
+        <div className="mt-5 border-t border-line pt-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="home-label text-lime">Selected track</p>
@@ -106,13 +106,13 @@ export function HomePreview({ host }: { host: string }) {
             </div>
             <div className="flex flex-wrap gap-2">
               {["Keep", "Not for me", "Download", "Reply"].map((b) => (
-                <span key={b} className="rounded-md border border-white/15 px-3 py-2 text-[11px] uppercase text-bone">
+                <span key={b} className="rounded-md border border-line-2 px-3 py-2 text-[11px] uppercase text-bone">
                   {b}
                 </span>
               ))}
             </div>
           </div>
-          <div className="mt-5 flex items-center justify-between border-t border-white/10 pt-4">
+          <div className="mt-5 flex items-center justify-between border-t border-line pt-4">
             <p className="home-label">Sender receipt</p>
             <p className="home-label">
               {t.signals} of {RECEIPT.length} signals
@@ -121,14 +121,14 @@ export function HomePreview({ host }: { host: string }) {
           <ol className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {RECEIPT.map((s, i) => (
               <li key={s}>
-                <span className={`block h-1 rounded-sm ${i < t.signals ? "bg-lime" : "bg-white/10"}`} />
+                <span className={`block h-1 rounded-sm ${i < t.signals ? "bg-lime" : "bg-ink-4"}`} />
                 <span className={`mt-2 block text-[11px] uppercase ${i < t.signals ? "text-bone" : "text-dim"}`}>{s}</span>
               </li>
             ))}
           </ol>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-3 text-xs">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3 text-xs">
           <span className="text-mute">Your link · {host}/maxwell</span>
           <span className="uppercase text-lime">Routing to {COLLECTIONS[col].name}</span>
         </div>
