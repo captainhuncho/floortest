@@ -90,7 +90,7 @@ export default async function PrepareForSet() {
             {n ? (
               <KeptCards rows={kept} canMark={canMark} />
             ) : (
-              <EmptyState icon="heart" action={{ href: "/dashboard/review", label: "Open the Review Queue" }}>
+              <EmptyState action={{ href: "/dashboard/review", label: "Open the Review Queue" }}>
                 Nothing ready for your set yet. Tracks you keep in the Review Queue show up here.
               </EmptyState>
             )}

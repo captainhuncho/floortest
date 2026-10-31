@@ -50,7 +50,7 @@ export default async function Emails() {
         <section aria-labelledby="mails-h" className={`${CARD} flex flex-col gap-1 p-3`}>
           <SectionHead id="mails-h" icon="mail" title="Sent" aside={mails.length ? <span className="tnum">{mails.length}</span> : undefined} />
           {mails.length === 0 ? (
-            <EmptyState icon="mail" action={{ href: "/dashboard/review", label: "Open the Review Queue" }}>
+            <EmptyState action={{ href: "/dashboard/review", label: "Open the Review Queue" }}>
               Nothing sent yet. When you keep, reply to or play out a track, the sender&apos;s email shows here.
             </EmptyState>
           ) : (

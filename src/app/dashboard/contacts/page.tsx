@@ -161,11 +161,11 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
               <SectionHead id="people-h" icon="contacts" title="People" aside={<span>Sorted by {sort[1] === "A–Z" ? "name" : sort[1].toLowerCase()}</span>} />
               {rows.length === 0 ? (
                 search ? (
-                  <EmptyState icon="search" action={{ href: "/dashboard/contacts", label: "Clear the search" }}>
+                  <EmptyState action={{ href: "/dashboard/contacts", label: "Clear the search" }}>
                     No contacts match “{search}”. Try part of a name or an email address.
                   </EmptyState>
                 ) : (
-                  <EmptyState icon="contacts">Everyone who sends you a track shows up here, with what they sent and what you did with it.</EmptyState>
+                  <EmptyState>Everyone who sends you a track shows up here, with what they sent and what you did with it.</EmptyState>
                 )
               ) : (
                 <ul aria-label="People" className="flex flex-col">
