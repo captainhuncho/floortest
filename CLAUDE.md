@@ -39,8 +39,8 @@ commit. Shipping an item from `06-plan.md` moves it to Done.
 - `vercel-build` runs migrations: a new migration reaches production only when shipped.
 
 ## Every session, every task (owner, 15 Oct; full text: `docs/working.md` rules 1–15)
-Three sessions share this repo (owner, 29 Oct): Desk, Build and Safety. Only the Desk merges into `main`, writes the
-release report and merges `main` into `mobile-next`; Build and Safety work on their own branches off `main` (never the
+Four sessions share this repo (owner, 29 Oct; BACKEND added 31 Oct): Desk, Build, Safety and Backend. Only the Desk merges
+into `main`, writes the release report and merges `main` into `mobile-next`; Build, Safety and Backend work on their own branches off `main` (never the
 shared checkout), may put work on `mobile-next` for the owner to try, and send the Desk "ready: PR, head commit, checks
 passed". Never open a PR from `mobile-next` into `main`. Never delete branches unless the owner asks. Every PR carries a
 release lane label (owner, 31 Oct; `docs/working.md` rule 13): `lane:standard` (release branch, full checks, report in
