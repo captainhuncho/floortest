@@ -16,7 +16,7 @@ export function PasskeyButton({
   label,
   begin,
   finish,
-  className = "btn-ghost flex w-full items-center justify-center gap-3 py-3 text-sm font-semibold",
+  className = "af-btn",
 }: {
   label: string;
   begin: () => Promise<PublicKeyCredentialRequestOptionsJSON | null>;
@@ -58,7 +58,7 @@ export function PasskeyButton({
         {pending ? "Waiting for your passkey…" : label}
       </button>
       {error && (
-        <p role="alert" className="mt-2 text-center text-sm text-danger">
+        <p role="alert" className="af-issue text-center">
           {error}
         </p>
       )}

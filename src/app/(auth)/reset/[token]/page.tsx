@@ -2,6 +2,7 @@ import Link from "next/link";
 import { findPasswordReset } from "@/lib/auth";
 import { AuthForm } from "../../AuthForm";
 import { resetPassword } from "../../actions";
+import { AuthFrame } from "../../AuthFrame";
 
 export const metadata = { title: "Choose a new password — FloorTest", robots: { index: false } };
 
@@ -9,17 +10,17 @@ export default async function ResetPage({ params }: { params: Promise<{ token: s
   const { token } = await params;
   if (!(await findPasswordReset(token)))
     return (
-      <>
-        <h1 className="mb-2 text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">This link has expired</h1>
-        <p className="mb-6 text-sm text-mute">Reset links work once, for one hour.</p>
-        <Link href="/forgot" className="btn-lime">
+      <AuthFrame>
+        <h1 className="af-h">This link has expired</h1>
+        <p className="af-sub mb-7">Reset links work once, for one hour.</p>
+        <Link href="/forgot" className="af-btn af-prime">
           Send a new link
         </Link>
-      </>
+      </AuthFrame>
     );
   return (
-    <>
-      <h1 className="mb-8 text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone">Choose a new password</h1>
+    <AuthFrame>
+      <h1 className="af-h">Choose a new password</h1>
       <AuthForm
         action={resetPassword.bind(null, token)}
         submit="Save and log in"
@@ -29,6 +30,6 @@ export default async function ResetPage({ params }: { params: Promise<{ token: s
         ]}
       />
       <p className="mt-4 text-sm text-mute">This signs you out on every other device.</p>
-    </>
+    </AuthFrame>
   );
 }

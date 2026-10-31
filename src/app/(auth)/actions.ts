@@ -188,7 +188,9 @@ export async function signup(_: FormState, form: FormData): Promise<FormState> {
   const joined = await joinTeamAfterSignup(form, r.id);
   if (joined) redirect("/dashboard/floor");
   await sendEmailVerification(r.id);
-  redirect(await landing("/dashboard/floor?welcome=1"));
+  // The guided sign-up carries on after the account exists: check your email, add a photo, your link is ready
+  // (/signup/ready, which ends on /dashboard/floor?welcome=1). A share link's landing still wins.
+  redirect(await landing("/signup/ready"));
 }
 
 /**

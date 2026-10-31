@@ -1,4 +1,4 @@
-import { test as base, type Page } from "@playwright/test";
+import { expect, test as base, type Page } from "@playwright/test";
 
 /**
  * Stands in for Cloudflare's Turnstile script (the test machine may not reach Cloudflare): renders the widget's
@@ -73,4 +73,37 @@ export async function submitLogin(page: Page, email: string, landing: RegExp, pa
     await page.waitForURL(landing);
   }
   await dashboard.catch(() => {});
+}
+
+/** What the guided sign-up asks, one screen at a time. `kind` is the role's label as shown ("DJ", "Producer / DJ"). */
+export type NewAccount = { kind: string; first: string; last: string; handle: string; email: string; password: string };
+
+/**
+ * Walks the guided sign-up (/signup): welcome, name, link, role, email and password, then "Create my link". With
+ * `finish` (the default) it also goes through check-your-email, skips the photo and opens the desk; without it, it
+ * stops after "Create my link" so a test can read the answer.
+ */
+export async function signUp(page: Page, a: NewAccount, { finish = true }: { finish?: boolean } = {}) {
+  await page.goto("/signup");
+  await page.getByRole("button", { name: "Claim your link" }).click();
+  await page.getByLabel("First name").fill(a.first);
+  await page.getByLabel("Surname").fill(a.last);
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Username").fill(a.handle);
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("radio", { name: a.kind, exact: true }).check();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Email").fill(a.email);
+  await page.getByRole("textbox", { name: "Password" }).fill(a.password);
+  await page.getByRole("checkbox", { name: /18 or over/ }).check();
+  await page.getByRole("button", { name: "Create my link" }).click();
+  if (!finish) return;
+  await page.waitForURL(/\/signup\/ready/);
+  // An invite's code proves the email, so "Check your email" only shows when there's a link to tap.
+  await expect(page.getByRole("heading", { name: /Check your email|Add your photo/ })).toBeVisible();
+  if (await page.getByRole("heading", { name: "Check your email" }).isVisible()) await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "Skip for now" }).click();
+  await expect(page.getByRole("heading", { name: "Your link is ready." })).toBeVisible();
+  await page.getByRole("link", { name: "Go to your desk" }).click();
+  await page.waitForURL(/\/dashboard\/floor\?welcome=1/);
 }

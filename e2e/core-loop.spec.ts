@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { Page } from "@playwright/test";
-import { expect, test, wav } from "./fixtures";
+import { expect, test, wav, signUp } from "./fixtures";
 
 /**
  * The money path, in a real browser: a sender signs up (and can't send until the email is confirmed);
@@ -30,16 +30,7 @@ async function logIn(page: Page, email: string, password: string) {
 }
 
 test("a new sender signs up", async ({ page }) => {
-  await page.goto("/signup");
-  await page.getByLabel("What best describes you?").selectOption("producer_dj");
-  await page.getByLabel("First name").fill(sender.first);
-  await page.getByLabel("Surname").fill(sender.last);
-  await page.getByLabel("Username").fill(sender.handle);
-  await page.getByLabel("Email").fill(sender.email);
-  await page.getByRole("textbox", { name: "Password" }).fill(sender.password);
-  await page.getByRole("checkbox", { name: /18 or over/ }).check();
-  await page.getByRole("button", { name: "Create my link" }).click();
-  await page.waitForURL(/\/dashboard\/floor/);
+  await signUp(page, { kind: "Producer / DJ", first: sender.first, last: sender.last, handle: sender.handle, email: sender.email, password: sender.password });
   await expect(page.getByRole("heading", { level: 1 })).toContainText(sender.first);
   // Until the email is confirmed, a send from the account is refused before any upload.
   const refused = await page.request.post("/api/submit/maxwell", { data: { asAccount: true, title: "x", artist: "x", genre: "House", fileName: "x.wav", size: 1000, release_status: "unsigned", mix_status: "mastered", ai_use: "none" } });

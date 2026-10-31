@@ -6,7 +6,8 @@ import { AuthForm } from "../AuthForm";
 import { login, passkeySignIn, passkeySignInStart } from "../actions";
 import { PasskeyButton } from "../PasskeyButton";
 import { siteCopy } from "@/lib/content";
-import { isPreview } from "@/lib/env";
+import { env, isPreview } from "@/lib/env";
+import { AuthFrame, LinkCard } from "../AuthFrame";
 import { googleConfig } from "@/lib/google-auth";
 
 const GOOGLE_ERRORS: Record<string, string> = {
@@ -25,60 +26,55 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const { E } = editable(c, !!editor);
   const google = !!googleConfig() && !isPreview;
   const googleError = GOOGLE_ERRORS[String(sp.google ?? "")];
+  const host = env.appUrl.replace(/^https?:\/\//, "");
   return (
     <EditablePage editing={!!editor} page="auth" label="Sign-up and log-in" values={c}>
-    <>
-      <h1 className="text-[28px] font-bold leading-[1.15] tracking-[-0.5px] text-bone"><E k="login_title" /></h1>
-      <p className="mb-8 mt-2 text-[13px] text-mute"><E k="login_intro" /></p>
-      {googleError && (
-        <p role="alert" className="mb-6 rounded-lg border border-danger/40 bg-danger/10 px-4 py-3 text-sm">
-          {googleError}
-        </p>
-      )}
-      {google && (
-        <>
-          {/* A plain link: the route sets up the protected hand-off to Google. */}
-          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-          <a href="/api/auth/google" className="btn-ghost flex w-full items-center justify-center gap-3 py-3 text-sm font-semibold">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icons/google.svg" alt="" className="size-[18px]" />
-            Continue with Google
-          </a>
-          <div className="my-6 flex items-center gap-3 text-xs text-dim">
-            <span className="h-px flex-1 bg-line" /> or <span className="h-px flex-1 bg-line" />
-          </div>
-        </>
-      )}
-      <AuthForm
-        action={login}
-        challengeKey={await botCheckKey()}
-        submit="Log in"
-        fields={[
-          { name: "email", label: "Email", type: "email", autoComplete: "email" },
-          {
-            name: "password",
-            label: "Password",
-            type: "password",
-            autoComplete: "current-password",
-            hint: (
-              <Link href="/forgot" className="underline-offset-4 hover:text-bone hover:underline">
-                Forgot your password?
-              </Link>
-            ),
-          },
-        ]}
-        footer={{ text: "New to FloorTest?", href: "/signup", link: "Claim your link" }}
-      />
-      <div className="mt-4">
-        <PasskeyButton label="Sign in with a passkey" begin={passkeySignInStart} finish={passkeySignIn} />
-      </div>
-      <p className="mt-6 text-center text-sm text-mute">
-        <E k="login_code_prompt" />{" "}
-        <Link href="/login/code" className="text-bone underline underline-offset-4">
-          <E k="login_code_link" />
-        </Link>
-      </p>
-    </>
+      <AuthFrame aside={<LinkCard label="Your link" name="Maxwell Adjavon" role="DJ" handle="maxwell" host={host} initials="MA" note="Every track sent to it lands on your desk." />}>
+        <h1 className="af-h"><E k="login_title" /></h1>
+        <p className="af-sub"><E k="login_intro" /></p>
+        {googleError && (
+          <p role="alert" className="af-alert af-first">
+            {googleError}
+          </p>
+        )}
+        <div className="af-gap af-first">
+          {google && (
+            <>
+              {/* A plain link: the route sets up the protected hand-off to Google. */}
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+              <a href="/api/auth/google" className="af-btn">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/icons/google.svg" alt="" className="size-[18px]" />
+                Continue with Google
+              </a>
+              <div className="af-or">or</div>
+            </>
+          )}
+          <AuthForm
+            action={login}
+            challengeKey={await botCheckKey()}
+            submit="Log in"
+            fields={[
+              { name: "email", label: "Email", type: "email", autoComplete: "email" },
+              {
+                name: "password",
+                label: "Password",
+                type: "password",
+                autoComplete: "current-password",
+                hint: (
+                  // Two ways in without the password, side by side so the screen fits a small phone.
+                  <span className="af-links">
+                    <Link href="/forgot" className="af-lnk">Forgot your password?</Link>
+                    <Link href="/login/code" className="af-lnk"><E k="login_code_link" /></Link>
+                  </span>
+                ),
+              },
+            ]}
+            extra={<PasskeyButton label="Sign in with a passkey" begin={passkeySignInStart} finish={passkeySignIn} />}
+            footer={{ text: "New to FloorTest?", href: "/signup", link: "Claim your link" }}
+          />
+        </div>
+      </AuthFrame>
     </EditablePage>
   );
 }

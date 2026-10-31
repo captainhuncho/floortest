@@ -5,7 +5,7 @@ import { SourceField } from "@/components/SourceField";
 import { useActionForm } from "@/components/useActionForm";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { NavIcon } from "@/components/NavIcon";
+import { AuthIcon } from "./AuthFrame";
 import type { FormState } from "./actions";
 import { PasswordStrength } from "@/components/PasswordStrength";
 import { browserTimeZone, useBrowserValue } from "@/components/useBrowserValue";
@@ -34,7 +34,12 @@ type Field = {
 
 /** Things that arrive (a problem line, the server's answer) settle in from just below; reduced motion keeps the fade. */
 const ENTER = "starting:opacity-0 motion-safe:starting:translate-y-1 transition-[opacity,translate] duration-200 ease-[var(--ease-out)]";
-const LABEL = "text-[11px] font-bold uppercase tracking-[0.5px] text-dim";
+const LABEL = "af-lab";
+/**
+ * A quiet field (owner, 31 Oct; auth.css `af-fld`): 52px, 12px corners, its edge turns bone on focus, no lime ring.
+ * The bone edge is the focus mark, for keyboard users too. 16px text, so iPhone Safari doesn't zoom.
+ */
+const FIELD = "af-fld";
 
 /**
  * One form for every sign-in and sign-up screen. Problems are found here first, one at a time, under the field
@@ -52,6 +57,7 @@ export function AuthForm({
   captureSource = false,
   consents,
   challengeKey,
+  extra,
 }: {
   action: (s: FormState, f: FormData) => Promise<FormState>;
   fields: Field[];
@@ -68,6 +74,8 @@ export function AuthForm({
   consents?: { name: string; label: React.ReactNode; required?: boolean }[];
   /** Turnstile site key for a check that appears only when the server asks (after repeated wrong tries). */
   challengeKey?: string | null;
+  /** Quiet actions under the main button (a passkey sign-in). */
+  extra?: React.ReactNode;
 }) {
   const [state, onSubmit, pending] = useActionForm(action, undefined);
   // The browser's timezone, so digests and dates default to local time.
@@ -110,11 +118,11 @@ export function AuthForm({
 
   const problem = (key: string) =>
     issue?.key === key ? (
-      <p id={`f-${key}-issue`} role="alert" className={`text-[12px] text-danger ${ENTER}`}>
+      <p id={`f-${key}-issue`} role="alert" className={`af-issue ${ENTER}`}>
         {issue.text}
       </p>
     ) : null;
-  const invalid = (key: string) => (issue?.key === key ? "border-danger/60" : "");
+  const invalid = (key: string) => (issue?.key === key ? "af-bad" : "");
   const describe = (f: Field) => (issue?.key === f.name ? `f-${f.name}-issue` : f.hint ? `f-${f.name}-hint` : undefined);
 
   return (
@@ -133,19 +141,20 @@ export function AuthForm({
           if (issue?.key === el.name) setIssue(null);
         }
       }}
-      className="flex flex-col gap-5"
+      className="af-gap"
     >
       <input type="hidden" name="tz" value={tz} />
       {Object.entries(hidden ?? {}).map(([k, v]) => (
         <input key={k} type="hidden" name={k} value={v} />
       ))}
       {fields.map((f) => (
-        <div key={f.name} className="flex flex-col gap-1.5">
+        <div key={f.name}>
           <label htmlFor={`f-${f.name}`} className={LABEL}>
             {f.label}
           </label>
           {f.choices ? (
-            <select id={`f-${f.name}`} name={f.name} required defaultValue={f.defaultValue ?? ""} aria-invalid={issue?.key === f.name || undefined} aria-describedby={describe(f)} className={`input ${invalid(f.name)}`}>
+            <div className="relative">
+            <select id={`f-${f.name}`} name={f.name} required defaultValue={f.defaultValue ?? ""} aria-invalid={issue?.key === f.name || undefined} aria-describedby={describe(f)} className={`${FIELD} appearance-none pr-10 ${invalid(f.name)}`}>
               <option value="" disabled>
                 Choose one
               </option>
@@ -155,9 +164,11 @@ export function AuthForm({
                 </option>
               ))}
             </select>
+            <svg aria-hidden viewBox="0 0 24 24" className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-mute" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+            </div>
           ) : f.prefix ? (
-            <div className={`flex items-stretch overflow-hidden rounded-lg border bg-ink-2 focus-within:border-lime/70 ${issue?.key === f.name ? "border-danger/60" : "border-field"}`}>
-              <span className="flex shrink-0 items-center pl-3 text-sm text-mute">{f.prefix}</span>
+            <div className={`${FIELD} ${invalid(f.name)}`}>
+              <span className="af-pre">{f.prefix}</span>
               <input
                 id={`f-${f.name}`}
                 name={f.name}
@@ -167,14 +178,12 @@ export function AuthForm({
                 autoComplete={f.autoComplete}
                 autoCapitalize="none"
                 aria-invalid={issue?.key === f.name || undefined} aria-describedby={describe(f)}
-                className="tap-tall w-full min-w-0 bg-transparent py-2.5 pr-3 text-sm outline-none placeholder:text-faint"
               />
             </div>
           ) : f.type === "password" ? (
-            <div className="relative">
+            <div className={`${FIELD} ${invalid(f.name)}`}>
               <input
                 id={`f-${f.name}`}
-                className={`input pr-12 ${invalid(f.name)}`}
                 name={f.name}
                 type={shown[f.name] ? "text" : "password"}
                 required
@@ -189,15 +198,15 @@ export function AuthForm({
                 onClick={() => setShown((v) => ({ ...v, [f.name]: !v[f.name] }))}
                 aria-label={shown[f.name] ? "Hide password" : "Show password"}
                 aria-pressed={!!shown[f.name]}
-                className="absolute inset-y-0 right-0 grid w-12 place-items-center text-mute hover:text-bone"
+                className="af-eye"
               >
-                <NavIcon name={shown[f.name] ? "eyeOff" : "eye"} className="size-[18px]" />
+                <AuthIcon name={shown[f.name] ? "eyeOff" : "eye"} />
               </button>
             </div>
           ) : (
             <input
               id={`f-${f.name}`}
-              className={`input ${invalid(f.name)}`}
+              className={`${FIELD} ${invalid(f.name)}`}
               name={f.name}
               type={f.type || "text"}
               inputMode={f.inputMode}
@@ -209,54 +218,55 @@ export function AuthForm({
               aria-invalid={issue?.key === f.name || undefined} aria-describedby={describe(f)}
             />
           )}
-          {f.strength && <PasswordStrength value={values[f.name] ?? ""} context={["name", "email", "handle"].map((k) => values[k] ?? "")} />}
+          {f.strength && <div className="af-meter"><PasswordStrength quiet value={values[f.name] ?? ""} context={["name", "email", "handle"].map((k) => values[k] ?? "")} /></div>}
           {problem(f.name)}
           {f.hint && issue?.key !== f.name && (
-            <div id={`f-${f.name}-hint`} className="text-[12px] text-dim">
+            <div id={`f-${f.name}-hint`} className="af-note mt-2">
               {f.hint}
             </div>
           )}
         </div>
       ))}
       {consents?.filter((c) => c.required).map((c) => (
-        <div key={c.name} className="flex flex-col gap-1.5">
-          <label className="tap-tall flex cursor-pointer items-start gap-3 text-[13px] text-mute">
-            <input id={`f-${c.name}`} type="checkbox" name={c.name} required aria-invalid={issue?.key === c.name || undefined} aria-describedby={issue?.key === c.name ? `f-${c.name}-issue` : undefined} className="mt-0.5 size-5 shrink-0 accent-lime" />
+        <div key={c.name}>
+          <label className="af-cbr">
+            <input id={`f-${c.name}`} type="checkbox" name={c.name} required aria-invalid={issue?.key === c.name || undefined} aria-describedby={issue?.key === c.name ? `f-${c.name}-issue` : undefined} />
             <span>{c.label}</span>
           </label>
           {problem(c.name)}
         </div>
       ))}
       {consents?.some((c) => !c.required) && (
-        <fieldset className="flex flex-col gap-1">
-          <legend className={`${LABEL} mb-1.5`}>Emails (optional)</legend>
+        <fieldset className="af-cbs">
+          <legend className={`${LABEL} af-opt`}>Emails (optional)</legend>
           {consents.filter((c) => !c.required).map((c) => (
-            <label key={c.name} className="tap-tall flex cursor-pointer items-start gap-3 py-1 text-[13px] text-mute">
-              <input type="checkbox" name={c.name} className="mt-0.5 size-5 shrink-0 accent-lime" />
+            <label key={c.name} className="af-cbr">
+              <input type="checkbox" name={c.name} />
               <span>{c.label}</span>
             </label>
           ))}
         </fieldset>
       )}
       {state?.error && (
-        <p ref={alertRef} role="alert" className={`rounded-lg border border-danger/40 bg-danger/10 px-3.5 py-2.5 text-[13px] text-danger ${ENTER}`}>
+        <p ref={alertRef} role="alert" className={`af-alert ${ENTER}`}>
           {state.error}
         </p>
       )}
       {captureSource && <SourceField />}
       <Turnstile action="auth" siteKey={botCheckKey ?? null} />
       {state?.challenge && !botCheckKey && <Turnstile action="auth" key="challenge" siteKey={challengeKey ?? null} eager />}
-      <button className="btn-lime min-h-11 w-full text-[14px] font-bold" disabled={pending}>
-        {pending ? "One moment…" : submit}
-      </button>
-      {footer && (
-        <p className="text-center text-[13px] text-mute">
-          {footer.text}{" "}
-          <Link href={footer.href} className="text-bone underline underline-offset-4">
-            {footer.link}
-          </Link>
-        </p>
-      )}
+      <div className="af-ft">
+        <button className="af-btn af-prime" disabled={pending}>
+          {pending ? "One moment…" : submit}
+        </button>
+        {extra}
+        {footer && (
+          <p className="af-row">
+            {footer.text}
+            <Link href={footer.href}>{footer.link}</Link>
+          </p>
+        )}
+      </div>
     </form>
   );
 }
