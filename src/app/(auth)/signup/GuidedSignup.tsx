@@ -358,7 +358,8 @@ export function GuidedSignup({
         {problem("kind")}
       </div>
 
-      <div className="af-step" data-step="5" hidden={step !== 5}>
+      {/* No pull to refresh on the password step: a refresh would lose the password (kept only in memory). */}
+      <div className="af-step" data-step="5" hidden={step !== 5} data-no-pull={step === 5 || undefined}>
         <h1 className="af-h" tabIndex={-1}>Email and password</h1>
         <div className="af-gap af-first">
           <div>
