@@ -22,7 +22,9 @@ export function Gate({ secret, ownerName, notice, initial, initialEmail }: { sec
     if (next) setState(next);
   }
 
-  const box = "mt-6 flex flex-col gap-3";
+  const box = "mt-2 flex w-full flex-col gap-3";
+  // Full width inside the gate's column, on every screen: the step is a form, and its one action closes it.
+  const go = "btn-lime min-h-12 w-full rounded-[13px] text-[14px]";
   const error = state.error && (
     <p role="alert" className="text-[13px] text-danger">
       {state.error}
@@ -38,7 +40,7 @@ export function Gate({ secret, ownerName, notice, initial, initialEmail }: { sec
         </label>
         <input id="g-email" name="email" type="email" required autoComplete="email" defaultValue={state.email} placeholder="you@example.com" className="input" />
         {error}
-        <button disabled={sending} className="btn-lime">
+        <button disabled={sending} className={go}>
           {sending ? "Sending…" : "Email me a code"}
         </button>
       </form>
@@ -54,7 +56,7 @@ export function Gate({ secret, ownerName, notice, initial, initialEmail }: { sec
         </label>
         <input id="g-code" name="code" inputMode="numeric" autoComplete="one-time-code" required maxLength={6} placeholder="123456" className="input tnum tracking-[0.3em]" />
         {error}
-        <button disabled={checking} className="btn-lime">
+        <button disabled={checking} className={go}>
           {checking ? "Checking…" : "Continue"}
         </button>
         <button type="button" className="text-[13px] text-mute underline underline-offset-4 tap-text" onClick={() => setState({ step: "email", email: state.email })}>
@@ -66,7 +68,7 @@ export function Gate({ secret, ownerName, notice, initial, initialEmail }: { sec
   if (state.step === "notice")
     return (
       <form action={accept} className={box}>
-        <div className="rounded-lg border border-line bg-ink-2 p-4 text-[13px] leading-relaxed text-bone">
+        <div className="rounded-[13px] border border-line bg-well p-4 text-[13px] leading-relaxed text-bone">
           {notice}{" "}
           <a href="/privacy" target="_blank" className="underline underline-offset-4">
             Privacy Policy
@@ -77,7 +79,7 @@ export function Gate({ secret, ownerName, notice, initial, initialEmail }: { sec
           <span>I understand and agree.</span>
         </label>
         {error}
-        <button disabled={accepting} className="btn-lime">
+        <button disabled={accepting} className={go}>
           {accepting ? "Opening…" : "Open the collection"}
         </button>
       </form>
@@ -96,7 +98,7 @@ export function Gate({ secret, ownerName, notice, initial, initialEmail }: { sec
           <input name="note" maxLength={300} placeholder="e.g. Sam, A&R at Defected" className="input" />
         </label>
         {error}
-        <button disabled={asking} className="btn-lime">
+        <button disabled={asking} className={go}>
           {asking ? "Sending…" : "Ask for access"}
         </button>
       </form>
@@ -104,13 +106,13 @@ export function Gate({ secret, ownerName, notice, initial, initialEmail }: { sec
 
   if (state.step === "sent" || state.step === "waiting")
     return (
-      <p role="status" className="mt-6 rounded-lg border border-lime/40 bg-lime/[0.06] p-4 text-[14px]">
+      <p role="status" className="mt-2 rounded-[13px] border border-lime/40 bg-lime/[0.06] p-4 text-[14px]">
         {state.step === "sent" ? `Request sent. We'll email ${state.email} when ${ownerName} answers.` : `Your request is waiting for ${ownerName}. We'll email you when they answer.`}
       </p>
     );
 
   return (
-    <div className="mt-6 flex flex-col gap-3">
+    <div className="mt-2 flex flex-col gap-3">
       <p role="status" className="text-[14px] text-mute">
         {state.error || "You don't have access to this collection."}
       </p>

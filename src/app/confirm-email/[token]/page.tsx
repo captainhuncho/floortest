@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Logo } from "@/components/Logo";
+import { MessagePage, PRIMARY } from "@/app/_ui/MessagePage";
 import { confirmEmailChange, pendingEmailFor } from "@/lib/accounts";
 import { audit } from "@/lib/audit";
 import { currentPerson } from "@/lib/auth";
@@ -32,40 +32,61 @@ export default async function ConfirmEmail({ params, searchParams }: { params: P
     redirect(r ? `/confirm-email/${encodeURIComponent(token)}?done=1` : `/confirm-email/${encodeURIComponent(token)}`);
   }
 
-  return (
-    <main className="mx-auto max-w-xl px-4 py-8 sm:py-12">
-      <Logo className="mb-12" />
-      {done ? (
-        <>
-          <h1 className="text-3xl font-bold tracking-tight">Email changed</h1>
-          <p className="mt-3 text-mute">Sign in with your new email. For safety, you&apos;ve been signed out everywhere.</p>
-          <Link href="/login" className="btn-lime mt-8 inline-block">Sign in</Link>
-        </>
-      ) : !pending ? (
-        <>
-          <h1 className="text-3xl font-bold tracking-tight">Link not recognised</h1>
-          <p className="mt-3 text-mute">This link is invalid, expired, already used, or the address was taken by another account. Start the change again from Settings.</p>
-        </>
-      ) : me?.id !== pending.id ? (
-        <>
-          <h1 className="text-3xl font-bold tracking-tight">Sign in to confirm</h1>
-          <p className="mt-3 text-mute">
-            Sign in to the FloorTest account that asked for this change (it still uses <span className="text-bone">{pending.email.replace(/^(.{2}).*@/, "$1…@")}</span>) in this browser, then open this link again.
-          </p>
-          <p className="mt-3 text-mute">Didn&apos;t ask for this? Ignore it and nothing changes.</p>
-          <Link href="/login" className="btn-lime mt-8 inline-block">
+  const masked = (e: string) => e.replace(/^(.{2}).*@/, "$1…@");
+  if (done)
+    return (
+      <MessagePage
+        icon="check"
+        tone="ok"
+        title="Email changed"
+        actions={
+          <Link href="/login" className={PRIMARY}>
             Sign in
           </Link>
-        </>
-      ) : (
-        <form action={confirm}>
-          <h1 className="text-3xl font-bold tracking-tight">Confirm your new email</h1>
-          <p className="mt-3 text-mute">
-            Make <span className="text-bone">{pending.pending_email}</span> the email for your FloorTest account. You&apos;ll be signed out everywhere and sign in with it next time.
-          </p>
-          <button className="btn-lime mt-8">Confirm new email</button>
-        </form>
-      )}
-    </main>
+        }
+      >
+        <p>Sign in with your new email. For safety, you&apos;ve been signed out everywhere.</p>
+      </MessagePage>
+    );
+  if (!pending)
+    return (
+      <MessagePage
+        icon="link"
+        tone="off"
+        title="Link not recognised"
+        actions={
+          <Link href="/dashboard/settings/security" className={PRIMARY}>
+            Open Settings
+          </Link>
+        }
+      >
+        <p>This link is invalid, expired, already used, or the address was taken by another account. Start the change again from Settings.</p>
+      </MessagePage>
+    );
+  if (me?.id !== pending.id)
+    return (
+      <MessagePage
+        icon="lock"
+        title="Sign in to confirm"
+        actions={
+          <Link href="/login" className={PRIMARY}>
+            Sign in
+          </Link>
+        }
+      >
+        <p>
+          Sign in to the FloorTest account that asked for this change (it still uses <span className="text-bone">{masked(pending.email)}</span>) in this browser, then open this link again.
+        </p>
+        <p>Didn&apos;t ask for this? Ignore it and nothing changes.</p>
+      </MessagePage>
+    );
+  return (
+    <form action={confirm}>
+      <MessagePage icon="mail" title="Confirm your new email" actions={<button className={PRIMARY}>Confirm new email</button>}>
+        <p>
+          Make <span className="text-bone">{pending.pending_email}</span> the email for your FloorTest account. You&apos;ll be signed out everywhere and sign in with it next time.
+        </p>
+      </MessagePage>
+    </form>
   );
 }
