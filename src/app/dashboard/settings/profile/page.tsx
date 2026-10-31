@@ -27,22 +27,23 @@ export default async function Profile() {
         sub={
           <>
             What senders see on your link.{" "}
-            <Link href={`/${user.handle}`} target="_blank" className="text-bone underline underline-offset-4">
-              View your page ↗
+            <Link href={`/${user.handle}`} target="_blank" className="inline-flex min-h-11 items-center gap-1 text-bone underline underline-offset-4 hover:text-lime">
+              View your page
+            <span className="sr-only">(opens in a new tab)</span>
             </Link>
           </>
         }
       />
-      <Section id="photo-h" title="Profile photo" sub="Shown at the top of your page and when people send to you from FloorTest.">
+      <Section id="photo-h" icon="user" title="Profile photo" sub="Shown at the top of your page and when people send to you from FloorTest.">
         <CoverUpload handle={user.handle} cover={user.cover_key} />
       </Section>
-      <Section id="link-h" title="Name and link">
+      <Section id="link-h" icon="link" title="Name and link">
         <SettingsForm kind={user.kind} kindNote={user.kind_note} tools={user.tools} firstName={user.first_name} lastName={user.last_name} name={user.name} handle={user.handle} base={APP_URL} nextChange={nextLink ? new Date(nextLink).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : null} />
       </Section>
-      <Section id="page-h" title="Role line and profiles" sub="Your profiles show as icons under your name, so senders know it's really you.">
+      <Section id="page-h" icon="share" title="Role line and profiles" sub="Your profiles show as icons under your name, so senders know it's really you.">
         <PublicPageForm roleLine={user.role_line} links={readLinks(user.links)} />
       </Section>
-      <Section id="identity-h" title="Verified mark" sub="Tells senders they've found the real you, not an impersonator.">
+      <Section id="identity-h" icon="shield" title="Verified mark" sub="Tells senders they've found the real you, not an impersonator.">
         <IdentityForm status={identity?.status ?? "none"} links={identity ? JSON.parse(identity.links || "[]") : []} note={identity?.note ?? ""} />
       </Section>
     </>

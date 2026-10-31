@@ -5,6 +5,8 @@ import { useToast } from "@/components/Toast";
 import { useActionForm } from "@/components/useActionForm";
 import { confirmTwoFactor, disableTwoFactor, setSigninAlerts, startTwoFactor } from "../actions/security";
 import { ConfirmItsYou } from "./ConfirmItsYou";
+import { Chip } from "@/components/Kit";
+import { BTN, BTN_DANGER, BTN_GHOST, FIELD, HELP, Notice, SettingLine, Switch, WELL } from "./ui";
 
 /** Optional account protections the holder chooses: authenticator-app sign-in and sign-in alerts. */
 export function TwoFactor({ enabled, alerts }: { enabled: boolean; alerts: boolean }) {
@@ -25,20 +27,20 @@ export function TwoFactor({ enabled, alerts }: { enabled: boolean; alerts: boole
   if (offState?.ok && on) setOn(false);
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       {/* Two-factor */}
-      <div>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="font-medium">
-              Two-factor sign-in{" "}
-              <span className={`chip ml-1 ${on ? "border-lime/60 text-lime" : "border-line text-mute"}`}>{on ? "On" : "Off"}</span>
-            </p>
-            <p className="text-sm text-mute">A code from an authenticator app (Google Authenticator, 1Password, Authy) after your password.</p>
-          </div>
+      <div className="flex flex-col gap-4">
+        <SettingLine
+          title={
+            <>
+              Two-factor sign-in {on ? <Chip tone="up">On</Chip> : <Chip>Off</Chip>}
+            </>
+          }
+          sub="A code from an authenticator app (Google Authenticator, 1Password, Authy) after your password."
+        >
           {!on && !setup && (
             <button
-              className="btn-lime btn-sm"
+              className={`${BTN} w-full sm:w-auto`}
               disabled={pending}
               onClick={() =>
                 start(async () => {
@@ -51,23 +53,28 @@ export function TwoFactor({ enabled, alerts }: { enabled: boolean; alerts: boole
             </button>
           )}
           {on && !codes && !confirmOff && (
-            <button className="btn-ghost btn-sm" onClick={() => setConfirmOff(true)}>
+            <button className={`${BTN_GHOST} w-full sm:w-auto`} onClick={() => setConfirmOff(true)}>
               Turn off…
             </button>
           )}
-        </div>
+        </SettingLine>
 
         {setup && !codes && (
-          <div className="mt-4 grid gap-5 rounded-md border border-line p-4 sm:grid-cols-[auto_1fr]">
+          <div className={`${WELL} grid gap-5 p-4 sm:grid-cols-[auto_1fr] sm:p-5`}>
+            {/* The QR stays on white so every authenticator app can read it, in either theme. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={setup.qr} alt="QR code for your authenticator app" width={180} height={180} className="rounded-sm" />
-            <div className="space-y-3">
-              <p className="text-sm">1. Scan this with your authenticator app, or type the key in by hand:</p>
-              <p className="break-all rounded-sm bg-ink px-3 py-2 font-mono text-xs">{setup.secret.replace(/(.{4})/g, "$1 ").trim()}</p>
-              <p className="text-sm">2. Enter the 6-digit code it shows, and your password:</p>
-              <div className="flex flex-wrap gap-2">
+            <img src={setup.qr} alt="QR code for your authenticator app" width={180} height={180} className="justify-self-center rounded-[12px] bg-white p-2 sm:justify-self-start" />
+            <div className="flex min-w-0 flex-col gap-3">
+              <p className="text-[13px] text-bone">
+                <span className="font-semibold">Step 1.</span> Scan this with your authenticator app, or type the key in by hand:
+              </p>
+              <p className="break-all rounded-[10px] border border-line bg-card px-3 py-2 font-mono text-[12px] text-bone">{setup.secret.replace(/(.{4})/g, "$1 ").trim()}</p>
+              <p className="text-[13px] text-bone">
+                <span className="font-semibold">Step 2.</span> Enter the 6-digit code it shows, and your password:
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                 <input
-                  className="input max-w-40 font-mono tracking-widest"
+                  className="input font-mono tracking-widest sm:max-w-40"
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   maxLength={7}
@@ -76,7 +83,7 @@ export function TwoFactor({ enabled, alerts }: { enabled: boolean; alerts: boole
                   aria-label="6-digit code"
                 />
                 <input
-                  className="input max-w-52"
+                  className="input sm:max-w-52"
                   type="password"
                   autoComplete="current-password"
                   placeholder="Password"
@@ -84,8 +91,15 @@ export function TwoFactor({ enabled, alerts }: { enabled: boolean; alerts: boole
                   onChange={(e) => setPassword(e.target.value)}
                   aria-label="Password"
                 />
+              </div>
+              {error && (
+                <Notice tone="error" next="Two-factor is still off. Check the code in your app and your password, then press Turn on again.">
+                  {error}
+                </Notice>
+              )}
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <button
-                  className="btn-lime btn-sm"
+                  className={BTN}
                   disabled={pending || code.replace(/\s/g, "").length !== 6 || !password}
                   onClick={() =>
                     start(async () => {
@@ -101,37 +115,32 @@ export function TwoFactor({ enabled, alerts }: { enabled: boolean; alerts: boole
                 >
                   Turn on
                 </button>
-                <button className="btn-ghost btn-sm" onClick={() => setSetup(null)}>
+                <button className={BTN_GHOST} onClick={() => setSetup(null)}>
                   Cancel
                 </button>
               </div>
-              {error && (
-                <p role="alert" className="text-sm text-danger">
-                  {error}
-                </p>
-              )}
-              <p className="text-xs text-mute">No password yet (you sign in with Google or an email code)? Set one with &ldquo;Forgot your password?&rdquo; on the log-in page first.</p>
+              <p className={HELP}>No password yet (you sign in with Google or an email code)? Set one with &ldquo;Forgot your password?&rdquo; on the log-in page first.</p>
             </div>
           </div>
         )}
 
         {codes && (
-          <div className="mt-4 rounded-md border border-lime/40 bg-lime/[0.05] p-4">
-            <p className="font-medium">Save your recovery codes</p>
-            <p className="mt-1 text-sm text-mute">
+          <div className="rounded-[13px] border border-lime/35 bg-lime/[0.05] p-4 sm:p-5">
+            <p className="text-[14px] font-semibold text-bone">Save your recovery codes</p>
+            <p className="mt-1 text-[12.5px] leading-snug text-mute">
               If you lose your phone, each of these works once instead of a code. They won&apos;t be shown again, so store them in your password
               manager.
             </p>
-            <ul className="mt-3 grid grid-cols-2 gap-2 font-mono text-sm sm:grid-cols-5">
+            <ul className="mt-3 grid grid-cols-2 gap-2 font-mono text-[13px] sm:grid-cols-5">
               {codes.map((c) => (
-                <li key={c} className="rounded-sm bg-ink px-2 py-1.5 text-center">
+                <li key={c} className="rounded-[9px] border border-line bg-well px-2 py-1.5 text-center text-bone">
                   {c}
                 </li>
               ))}
             </ul>
-            <div className="mt-3 flex gap-2">
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
               <button
-                className="btn-ghost btn-sm"
+                className={BTN_GHOST}
                 onClick={() => {
                   navigator.clipboard?.writeText(codes.join("\n"));
                   toast.show({ message: "Recovery codes copied" });
@@ -139,7 +148,7 @@ export function TwoFactor({ enabled, alerts }: { enabled: boolean; alerts: boole
               >
                 Copy codes
               </button>
-              <button className="btn-lime btn-sm" onClick={() => setCodes(null)}>
+              <button className={BTN} onClick={() => setCodes(null)}>
                 I&apos;ve saved them
               </button>
             </div>
@@ -147,61 +156,53 @@ export function TwoFactor({ enabled, alerts }: { enabled: boolean; alerts: boole
         )}
 
         {on && confirmOff && (
-          <form onSubmit={submitOff} className="mt-4 grid gap-3 rounded-md border border-line p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-            <label className="block space-y-1.5">
-              <span className="label">Password</span>
+          <form onSubmit={submitOff} className={`${WELL} grid gap-3 p-3.5 sm:grid-cols-[1fr_1fr_auto] sm:items-end sm:p-4`}>
+            <label className="flex flex-col gap-1.5">
+              <span className={FIELD}>Password</span>
               <input className="input" type="password" name="password" required autoComplete="current-password" />
             </label>
-            <label className="block space-y-1.5">
-              <span className="label">Code or recovery code</span>
+            <label className="flex flex-col gap-1.5">
+              <span className={FIELD}>Code or recovery code</span>
               <input className="input font-mono" name="code" required autoComplete="one-time-code" />
             </label>
             <div className="flex gap-2">
-              <button className="btn-danger btn-sm" disabled={offPending}>
+              <button className={`${BTN_DANGER} flex-1 sm:flex-none`} disabled={offPending}>
                 Turn off
               </button>
-              <button type="button" className="btn-ghost btn-sm" onClick={() => setConfirmOff(false)}>
+              <button type="button" className={`${BTN_GHOST} flex-1 sm:flex-none`} onClick={() => setConfirmOff(false)}>
                 Cancel
               </button>
             </div>
             {offState?.error && (
-              <p role="alert" className="text-sm text-danger sm:col-span-3">
+              <Notice tone="error" className="sm:col-span-3" next="Two-factor is still on. Use a fresh code from your app or one of your recovery codes.">
                 {offState.error}
-              </p>
+              </Notice>
             )}
           </form>
         )}
       </div>
 
       {/* Sign-in alerts */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5">
-        <div>
-          <p className="font-medium">Sign-in alerts</p>
-          <p className="text-sm text-mute">An email each time your account is signed in to, with the device and time.</p>
-        </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={alertsOn}
-          aria-label="Sign-in alerts"
-          disabled={pending || alertsOff}
-          onClick={() => {
-            // Turning them off asks for the password first (below); turning them on doesn't.
-            if (alertsOn) return setAlertsOff(true);
-            start(async () => {
-              const r = await setSigninAlerts(true);
-              if ("error" in r) return toast.show({ message: r.error });
-              setAlertsOn(true);
-              toast.show({ message: "Sign-in alerts on" });
-            });
-          }}
-          className={`relative h-7 w-12 shrink-0 rounded-full transition before:absolute before:-inset-2 before:content-[''] ${alertsOn ? "bg-lime" : "bg-line"}`}
-        >
-          <span className={`switch-thumb absolute left-1 top-1 h-5 w-5 rounded-full bg-ink ${alertsOn ? "translate-x-5" : ""}`} />
-        </button>
+      <div className="flex flex-col gap-3 border-t border-line pt-5">
+        <SettingLine title="Sign-in alerts" sub="An email each time your account is signed in to, with the device and time.">
+          <Switch
+            on={alertsOn}
+            label="Sign-in alerts"
+            disabled={pending || alertsOff}
+            onClick={() => {
+              // Turning them off asks for the password first (below); turning them on doesn't.
+              if (alertsOn) return setAlertsOff(true);
+              start(async () => {
+                const r = await setSigninAlerts(true);
+                if ("error" in r) return toast.show({ message: r.error });
+                setAlertsOn(true);
+                toast.show({ message: "Sign-in alerts on" });
+              });
+            }}
+          />
+        </SettingLine>
         {alertsOff && (
           <ConfirmItsYou
-            className="basis-full"
             twoFactor={on}
             action="Turn off alerts"
             pending={pending}

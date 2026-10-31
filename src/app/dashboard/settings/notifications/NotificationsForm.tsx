@@ -3,8 +3,10 @@
 import { useActionForm } from "@/components/useActionForm";
 import { useState, useTransition } from "react";
 import { useToast } from "@/components/Toast";
+import { Icon } from "@/components/Kit";
 import { sendDigestNow, updateNotifications } from "../../actions/settings";
 import { browserTimeZone, useBrowserValue } from "@/components/useBrowserValue";
+import { BTN, BTN_GHOST, FIELD, HELP, Notice, WELL } from "../ui";
 
 type Prefs = { mode: "instant" | "digest" | "off"; digestHour: number; quietStart: number | null; quietEnd: number | null; alerts: boolean; product: boolean; marketing: boolean; tz: string };
 
@@ -16,10 +18,13 @@ const MODES = [
 
 const hourLabel = (h: number) => `${String(h).padStart(2, "0")}:00`;
 
+/** A group's title inside the form. */
+const LEGEND = "mb-2.5 text-[13px] font-semibold text-bone";
+
 function HourSelect({ name, value, label }: { name: string; value: number; label: string }) {
   return (
-    <label className="block space-y-1.5">
-      <span className="label">{label}</span>
+    <label className="flex flex-col gap-1.5">
+      <span className={FIELD}>{label}</span>
       <select name={name} defaultValue={value} className="input w-32">
         {Array.from({ length: 24 }, (_, h) => (
           <option key={h} value={h}>
@@ -27,6 +32,27 @@ function HourSelect({ name, value, label }: { name: string; value: number; label
           </option>
         ))}
       </select>
+    </label>
+  );
+}
+
+/** One choice row: the control's mark on the left, title and line beside it. Selected rows get a lime edge. */
+function Choice({ type, name, value, checked, onChange, title, sub }: { type: "radio" | "checkbox"; name: string; value?: string; checked: boolean; onChange: (on: boolean) => void; title: string; sub: string }) {
+  return (
+    <label
+      className={`flex min-h-11 cursor-pointer items-start gap-3 border-t border-line px-3.5 py-3 first:border-t-0 has-[:focus-visible]:outline-2 has-[:focus-visible]:-outline-offset-2 has-[:focus-visible]:outline-lime ${checked ? "bg-lime/[0.05]" : "hover:bg-card"}`}
+    >
+      <input type={type} name={name} value={value} checked={checked} onChange={(e) => onChange(e.target.checked)} className="sr-only" />
+      <span
+        aria-hidden
+        className={`mt-0.5 grid size-5 shrink-0 place-items-center border transition-colors motion-reduce:transition-none ${type === "radio" ? "rounded-full" : "rounded-[6px]"} ${checked ? "border-lime bg-lime text-ink" : "border-line-2 bg-card"}`}
+      >
+        {checked && <Icon name="check" className="size-4 [&_circle]:hidden" />}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[13px] font-semibold text-bone">{title}</span>
+        <span className="block text-[12px] leading-snug text-mute">{sub}</span>
+      </span>
     </label>
   );
 }
@@ -44,109 +70,77 @@ export function NotificationsForm({ prefs, pending }: { prefs: Prefs; pending: n
   const toast = useToast();
 
   return (
-    <form onSubmit={onSubmit} className="space-y-7">
+    <form onSubmit={onSubmit} className="flex flex-col gap-7">
       <input type="hidden" name="tz" value={tz} />
       <fieldset>
-        <legend className="font-semibold">New tracks</legend>
-        <div className="mt-3 grid gap-2">
+        <legend className={LEGEND}>New tracks</legend>
+        <div className={`${WELL} overflow-hidden`}>
           {MODES.map((m) => (
-            <label
-              key={m.id}
-              className="flex cursor-pointer flex-col gap-1.5 rounded-2xl border border-line bg-ink-2 px-3.5 py-3 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-lime"
-            >
-              <input type="radio" name="notify_submissions" value={m.id} checked={mode === m.id} onChange={() => setMode(m.id)} className="sr-only" />
-              <span className="flex items-center justify-between">
-                <span className={`text-[11px] font-bold uppercase tracking-[0.6px] ${mode === m.id ? "text-lime" : "text-faint"}`}>{mode === m.id ? "On" : "Off"}</span>
-                <span aria-hidden className={`grid size-5 shrink-0 place-items-center rounded-full ${mode === m.id ? "bg-line text-lime" : "border border-line"}`}>
-                  {mode === m.id ? "✓" : <span className="size-1.5 rounded-full bg-line" />}
-                </span>
-              </span>
-              <span className="text-[15px] font-bold">{m.title}</span>
-              <span className="text-[11px] text-mute">{m.sub}</span>
-            </label>
+            <Choice key={m.id} type="radio" name="notify_submissions" value={m.id} checked={mode === m.id} onChange={() => setMode(m.id)} title={m.title} sub={m.sub} />
           ))}
         </div>
         {mode === "digest" && (
           <div className="mt-4 flex flex-wrap items-end gap-4">
             <HourSelect name="digest_hour" value={prefs.digestHour} label="Send at" />
-            <p className="pb-3 text-sm text-mute">Your time ({tz}). Skipped on days with nothing new.</p>
+            <p className="pb-3 text-[12px] text-mute">Your time ({tz}). Skipped on days with nothing new.</p>
           </div>
         )}
       </fieldset>
 
       <div>
-      <fieldset disabled={mode !== "instant"} className="disabled:opacity-50">
-        <legend className="font-semibold">Quiet hours</legend>
-        <label className="tap-tall mt-3 flex cursor-pointer items-center gap-3">
-          <input type="checkbox" name="quiet" checked={quiet} onChange={(e) => setQuiet(e.target.checked)} className="size-6 accent-lime" />
-          <span>Hold new-track emails overnight or during sets</span>
-        </label>
-        {quiet && (
-          <div className="mt-4 flex flex-wrap items-end gap-4">
-            <HourSelect name="quiet_start" value={prefs.quietStart ?? 23} label="From" />
-            <HourSelect name="quiet_end" value={prefs.quietEnd ?? 9} label="Until" />
-            <p className="pb-3 text-sm text-mute">Anything that arrives is sent as one email when quiet hours end.</p>
-          </div>
-        )}
-      </fieldset>
-      {mode !== "instant" && <p className="mt-2 text-sm text-mute">Quiet hours only apply to “Every new track”.</p>}
+        <fieldset disabled={mode !== "instant"} className="disabled:opacity-50">
+          <legend className={LEGEND}>Quiet hours</legend>
+          <label className="flex min-h-11 cursor-pointer items-center gap-3 text-[13px] text-bone">
+            <input type="checkbox" name="quiet" checked={quiet} onChange={(e) => setQuiet(e.target.checked)} className="size-5 accent-lime" />
+            <span>Hold new-track emails overnight or during sets</span>
+          </label>
+          {quiet && (
+            <div className="mt-3 flex flex-wrap items-end gap-4">
+              <HourSelect name="quiet_start" value={prefs.quietStart ?? 23} label="From" />
+              <HourSelect name="quiet_end" value={prefs.quietEnd ?? 9} label="Until" />
+              <p className="basis-full text-[12px] text-mute sm:basis-auto sm:pb-3">Anything that arrives is sent as one email when quiet hours end.</p>
+            </div>
+          )}
+        </fieldset>
+        {mode !== "instant" && <p className={`mt-1 ${HELP}`}>Quiet hours only apply to “Every new track”.</p>}
       </div>
 
       <fieldset>
-        <legend className="font-semibold">Alerts</legend>
-        <label className="mt-3 flex cursor-pointer flex-col gap-1.5 rounded-2xl border border-line bg-ink-2 px-3.5 py-3 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-lime">
-          <input type="checkbox" name="notify_alerts" checked={alerts} onChange={(e) => setAlerts(e.target.checked)} className="sr-only" />
-          <span className="flex items-center justify-between">
-            <span className={`text-[11px] font-bold uppercase tracking-[0.6px] ${alerts ? "text-lime" : "text-faint"}`}>{alerts ? "On" : "Off"}</span>
-            <span aria-hidden className={`grid size-5 shrink-0 place-items-center rounded-full ${alerts ? "bg-line text-lime" : "border border-line"}`}>
-                  {alerts ? "✓" : <span className="size-1.5 rounded-full bg-line" />}
-                </span>
-          </span>
-          <span className="text-[15px] font-bold">Storage warning</span>
-          <span className="text-[11px] text-mute">At 80% full, when your link pauses, and a week before tracks are auto-deleted</span>
-        </label>
-        <label className="mt-3 flex cursor-pointer flex-col gap-1.5 rounded-2xl border border-line bg-ink-2 px-3.5 py-3 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-lime">
-          <input type="checkbox" name="notify_product" checked={product} onChange={(e) => setProduct(e.target.checked)} className="sr-only" />
-          <span className="flex items-center justify-between">
-            <span className={`text-[11px] font-bold uppercase tracking-[0.6px] ${product ? "text-lime" : "text-faint"}`}>{product ? "On" : "Off"}</span>
-            <span aria-hidden className={`grid size-5 shrink-0 place-items-center rounded-full ${product ? "bg-line text-lime" : "border border-line"}`}>
-                  {product ? "✓" : <span className="size-1.5 rounded-full bg-line" />}
-                </span>
-          </span>
-          <span className="text-[15px] font-bold">Newsletter</span>
-          <span className="text-[11px] text-mute">Product news and tips. No more than once a month</span>
-        </label>
-        <label className="mt-3 flex cursor-pointer flex-col gap-1.5 rounded-2xl border border-line bg-ink-2 px-3.5 py-3 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-lime">
-          <input type="checkbox" name="notify_marketing" checked={marketing} onChange={(e) => setMarketing(e.target.checked)} className="sr-only" />
-          <span className="flex items-center justify-between">
-            <span className={`text-[11px] font-bold uppercase tracking-[0.6px] ${marketing ? "text-lime" : "text-faint"}`}>{marketing ? "On" : "Off"}</span>
-            <span aria-hidden className={`grid size-5 shrink-0 place-items-center rounded-full ${marketing ? "bg-line text-lime" : "border border-line"}`}>
-                  {marketing ? "✓" : <span className="size-1.5 rounded-full bg-line" />}
-                </span>
-          </span>
-          <span className="text-[15px] font-bold">Offers and promotions</span>
-          <span className="text-[11px] text-mute">Discounts, plan offers and partner events from FloorTest</span>
-        </label>
+        <legend className={LEGEND}>Alerts and news</legend>
+        <div className={`${WELL} overflow-hidden`}>
+          <Choice type="checkbox" name="notify_alerts" checked={alerts} onChange={setAlerts} title="Storage warning" sub="At 80% full, when your link pauses, and a week before tracks are auto-deleted" />
+          <Choice type="checkbox" name="notify_product" checked={product} onChange={setProduct} title="Newsletter" sub="Product news and tips. No more than once a month" />
+          <Choice type="checkbox" name="notify_marketing" checked={marketing} onChange={setMarketing} title="Offers and promotions" sub="Discounts, plan offers and partner events from FloorTest" />
+        </div>
       </fieldset>
 
-      <div className="flex flex-wrap items-center gap-3 border-t border-line pt-5">
-        <button className="btn-lime btn-sm" disabled={saving}>
-          {saving ? "Saving…" : "Save"}
-        </button>
-        <button
-          type="button"
-          className="btn-ghost btn-sm"
-          disabled={sending}
-          onClick={() =>
-            start(async () => {
-              const n = await sendDigestNow();
-              toast.show({ message: n ? `Digest sent: ${n} track${n === 1 ? "" : "s"}` : "Nothing new to send" });
-            })
-          }
-        >
-          {sending ? "Sending…" : `Send digest now${pending ? ` (${pending})` : ""}`}
-        </button>
-        {state?.ok && <span className="text-sm text-lime">Saved.</span>}
+      <div className="flex flex-col gap-3 border-t border-line pt-4">
+        {state?.error && (
+          <Notice tone="error" next="Nothing was saved. Fix that and save again.">
+            {state.error}
+          </Notice>
+        )}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+          <button className={`${BTN} sm:px-6!`} disabled={saving}>
+            {saving ? "Saving…" : "Save"}
+          </button>
+          <button
+            type="button"
+            className={BTN_GHOST}
+            disabled={sending}
+            onClick={() =>
+              start(async () => {
+                const n = await sendDigestNow();
+                toast.show({ message: n ? `Digest sent: ${n} track${n === 1 ? "" : "s"}` : "Nothing new to send" });
+              })
+            }
+          >
+            {sending ? "Sending…" : `Send digest now${pending ? ` (${pending})` : ""}`}
+          </button>
+          <p role="status" className={state?.ok ? "text-[12.5px] font-semibold text-[#6aa636]" : "sr-only"}>
+            {state?.ok ? "✓ Saved. Your next emails follow these choices." : ""}
+          </p>
+        </div>
       </div>
     </form>
   );
