@@ -84,8 +84,10 @@ export function Sidebar({ needsReview, cap, pause, canSend = true }: Props) {
           </div>
         )}
 
-        {/* Middle: the places, as one group centred in the height left over, spaced by the screen's height. */}
-        <nav aria-label="Main" className="mx-3 flex flex-1 flex-col justify-center gap-[clamp(0.125rem,1.4dvh,1rem)] py-[clamp(0.5rem,2dvh,1.5rem)]">
+        {/* The places start level with the page's first content (owner, 31 Oct: 10rem from the top, where the Floor's tiles,
+            the Queue's tabs and the Collections cards begin), not centred in the height; on short screens they move up so
+            nothing scrolls. Touch screens subtract the Menu button above. */}
+        <nav aria-label="Main" className={`mx-3 flex flex-1 flex-col justify-start gap-[clamp(0.125rem,1.2dvh,0.875rem)] pb-[clamp(0.5rem,2dvh,1.5rem)] pt-[clamp(1rem,calc(100dvh-36rem),6.5rem)] ${pinned ? "" : "[@media(hover:none)]:pt-[clamp(0.5rem,calc(100dvh-39.5rem),3rem)]"}`}>
           {nav.map((n) => (
             <Link
               key={n.href}
