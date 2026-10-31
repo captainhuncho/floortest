@@ -8,12 +8,12 @@ export const runtime = "nodejs";
 export async function PUT(req: Request) {
   if (env.storage.driver !== "local") return NextResponse.json({ error: "Not found" }, { status: 404 });
   const auth = verifyUploadToken(new URL(req.url).searchParams.get("token") ?? "");
-  if (!auth) return NextResponse.json({ error: "Upload link expired" }, { status: 403 });
-  if (!req.body) return NextResponse.json({ error: "Empty upload" }, { status: 400 });
+  if (!auth) return NextResponse.json({ error: "This upload link expired. Start the upload again." }, { status: 403 });
+  if (!req.body) return NextResponse.json({ error: "Nothing arrived. Choose the file again." }, { status: 400 });
   try {
     await writeLocalUpload(auth.key, req.body, auth.size);
     return new Response(null, { status: 200 });
   } catch {
-    return NextResponse.json({ error: "Upload rejected" }, { status: 413 });
+    return NextResponse.json({ error: "That file is too large to upload." }, { status: 413 });
   }
 }

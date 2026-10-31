@@ -82,7 +82,7 @@ export async function startStemUpload(token: string, fileName: string, size: num
   const ext = fileName.toLowerCase().match(/\.(wav|mp3)$/)?.[0];
   if (!ext) throw new IntakeError("Stems must be WAV or MP3 files.", 400);
   if (!Number.isSafeInteger(size) || size <= 0) throw new IntakeError("Choose a WAV or MP3 file.", 400);
-  if (size > MAX_UPLOAD_BYTES) throw new IntakeError("That stem is too large (max 250 MB).", 413);
+  if (size > MAX_UPLOAD_BYTES) throw new IntakeError("That stem is over 250 MB. Send an MP3 or a smaller WAV.", 413);
   // Stems still uploading count too, so starting many before finishing any can't get past the cap.
   const open = await q.count("SELECT COUNT(*) AS n FROM uploads WHERE receiver_id = ? AND created_at > ? AND meta::jsonb->>'kind' = 'stem' AND (meta::jsonb->>'trackId')::bigint = ?", t.user_id, now() - UPLOAD_TTL, t.id);
   if (stemsSent(t).length + open >= MAX_STEMS) throw new IntakeError(`That's the maximum of ${MAX_STEMS} stems for this track.`, 409);
@@ -124,7 +124,7 @@ export async function completeStemUpload(token: string, uploadId: string, opts: 
   const meta = JSON.parse(up.meta) as { kind?: string; trackId?: number; name?: string };
   if (meta?.kind !== "stem" || meta.trackId !== t.id) {
     await releaseUpload(up.id);
-    throw new IntakeError("This upload expired. Please try again.", 410);
+    throw new IntakeError("This upload took too long and expired. Upload the stem again.", 410);
   }
   const store = await storage();
   let fileKey = up.file_key;
@@ -134,7 +134,7 @@ export async function completeStemUpload(token: string, uploadId: string, opts: 
   };
   if (!(await store.head(up.file_key))) {
     await releaseUpload(up.id);
-    throw new IntakeError("The file didn't finish uploading. Please try again.", 400);
+    throw new IntakeError("The file didn't finish uploading. Check your signal and upload it again.", 400);
   }
   // Checked and kept as a sealed copy the sender's upload link can't overwrite. A held stem is sealed already.
   if (up.held_at == null) {
@@ -148,7 +148,7 @@ export async function completeStemUpload(token: string, uploadId: string, opts: 
   const head = await store.head(fileKey);
   if (!head || head.size !== up.size) {
     await discard();
-    throw new IntakeError("The uploaded file doesn't match what was expected. Please try again.", 400);
+    throw new IntakeError("The file that arrived doesn't match the one you chose, so it wasn't saved. Upload it again.", 400);
   }
   const check = await validateAudio({ size: head.size, read: (s, e) => store.read(fileKey, s, e) });
   if (!check.ok) {

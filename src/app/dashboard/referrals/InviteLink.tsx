@@ -6,11 +6,11 @@ export function InviteLink({ link, code }: { link: string; code: string }) {
   const toast = useToast();
   return (
     <div>
-      <p className="label">Your invite link</p>
+      <p className="text-[11.5px] font-semibold text-mute">Your invite link</p>
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <input readOnly value={link} aria-label="Invite link" className="input min-w-0 flex-1 font-mono" onFocus={(e) => e.currentTarget.select()} />
         <button
-          className="btn-lime btn-sm"
+          className="btn-lime min-h-11 rounded-[13px] px-4"
           onClick={async () => {
             if (navigator.share) {
               try {
@@ -25,7 +25,7 @@ export function InviteLink({ link, code }: { link: string; code: string }) {
           Share invite
         </button>
       </div>
-      <p className="mt-2 text-sm text-mute">
+      <p className="mt-2 text-[11.5px] text-mute">
         Code <span className="font-mono text-bone">{code}</span>
       </p>
     </div>

@@ -95,8 +95,9 @@ test("Reset ends the old address at once", async ({ browser, page }) => {
 
   await logIn(page, "demo@floortest.test");
   await openVillagers(page);
-  page.once("dialog", (d) => d.accept());
   await page.getByRole("button", { name: "Reset link" }).click();
+  // The app's own confirm dialog, not the browser's.
+  await page.getByRole("dialog", { name: "Reset this link?" }).getByRole("button", { name: "Reset link" }).click();
   await expect(page.getByRole("textbox", { name: "New share link" })).toBeVisible();
 
   await listener.page.goto(path);
@@ -119,7 +120,7 @@ test("an account on the list finds it under Shared with you, even after a reset,
 
   // Signed out, the same address asks for sign-in and comes back after it.
   await page.goto(accountPath);
-  await expect(page.getByRole("heading", { name: "Log in to open this collection." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Log in to open this collection" })).toBeVisible();
   await page.getByRole("link", { name: "Log in" }).click();
   await page.waitForURL(/\/login/);
   await submitLogin(page, "listener@floortest.test", new RegExp(`${accountPath.replace(/\./g, "\\.")}$`));
@@ -137,8 +138,8 @@ test("the owner sees what each person has done and removes one with a confirmati
   await openVillagers(page);
   const lena = page.getByRole("listitem").filter({ has: page.getByRole("button", { name: "Remove @lena" }) }).first();
   await expect(lena).toContainText(/visits? · 1 played/);
-  page.once("dialog", (d) => d.accept());
   await page.getByRole("button", { name: "Remove @lena" }).first().click();
+  await page.getByRole("dialog", { name: /^Remove / }).getByRole("button", { name: "Remove", exact: true }).click();
   await expect(page.getByText("Removed. Their access has ended.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Remove @lena" })).toHaveCount(0);
 });

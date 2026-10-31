@@ -14,7 +14,7 @@ export async function joinWaitlist(_: WaitlistState, form: FormData): Promise<Wa
   if (String(form.get("website") || "")) return { ok: true }; // bots fill the hidden field
   const email = normalEmail(String(form.get("email") || "")).slice(0, 200);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Enter a valid email." };
-  if (!(await allow("waitlist_ip", await requestIp(), 5, 3_600_000))) return { error: "Too many requests. Try again later." };
+  if (!(await allow("waitlist_ip", await requestIp(), 5, 3_600_000))) return { error: "Too many tries from this connection. Try again in an hour." };
   if (!(await passedTurnstile(form.get("cf-turnstile-response"), await requestIp(), "waitlist"))) return { error: BOT_MESSAGE };
   const str = (k: string, max: number) => String(form.get(k) || "").trim().slice(0, max);
   await q.run(

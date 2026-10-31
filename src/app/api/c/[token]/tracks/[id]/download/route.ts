@@ -17,7 +17,7 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/c/[token]/track
   const g = await gatedTrack(token, Number(id));
   // Held back if the file failed its fingerprint check (src/lib/file-digests.ts).
   if (!g || g.session.permission !== "download" || (g.track.file_key && (await quarantined(g.track.file_key)))) return new Response("Not found", { status: 404 });
-  if (!(await allow("link_download", `${g.link.id}:${g.session.email}`, 60, 3_600_000))) return new Response("Too many downloads. Try again later.", { status: 429 });
+  if (!(await allow("link_download", `${g.link.id}:${g.session.email}`, 60, 3_600_000))) return new Response("Too many downloads from this link in the last hour. Try again in a little while.", { status: 429 });
   const { link, session, track: t } = g;
   const { body, size } = await (await storage()).stream(t.file_key!);
   await logLinkEvent(link.id, "downloaded", { email: session.email, userId: session.user_id }, t.id);

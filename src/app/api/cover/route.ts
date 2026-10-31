@@ -20,7 +20,7 @@ export async function POST(req: Request) {
   // A support "view as" session is read-only.
   const user = (await viewingAs()) ? null : await currentDeskForChange();
   if (user instanceof Response) return user;
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: "Sign in again." }, { status: 401 });
   // The link's cover is part of the public page: the owner and A&R / Admin, never a Member (the page hides it; this is the guard).
   if (!atLeast(user.role, "admin")) return NextResponse.json({ error: "Only the owner or an A&R / Admin can change the cover." }, { status: 403 });
   // The form is read with a hard cap, so a body bigger than an image can't be buffered first.
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
 export async function DELETE() {
   const user = (await viewingAs()) ? null : await currentDeskForChange();
   if (user instanceof Response) return user;
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: "Sign in again." }, { status: 401 });
   // The link's cover is part of the public page: the owner and A&R / Admin, never a Member (the page hides it; this is the guard).
   if (!atLeast(user.role, "admin")) return NextResponse.json({ error: "Only the owner or an A&R / Admin can change the cover." }, { status: 403 });
   await q.run("UPDATE users SET cover_key = NULL WHERE id = ?", user.id);

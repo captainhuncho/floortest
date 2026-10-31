@@ -30,7 +30,7 @@ async function ownCollection(raw: string) {
 export async function POST(req: Request, ctx: RouteContext<"/api/collection-art/[id]">) {
   const own = await ownCollection((await ctx.params).id);
   if (own instanceof Response) return own;
-  if (!own) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!own) return NextResponse.json({ error: "That collection isn't on your desk any more. Reload the page." }, { status: 404 });
   // The form is read with a hard cap, so a body bigger than an image can't be buffered first.
   const form = await readFormUpTo(req, MAX + 64 * 1024);
   if (form === "too-large") return NextResponse.json({ error: "Images must be under 8 MB." }, { status: 413 });
@@ -58,7 +58,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/collection-art/
 export async function DELETE(_req: Request, ctx: RouteContext<"/api/collection-art/[id]">) {
   const own = await ownCollection((await ctx.params).id);
   if (own instanceof Response) return own;
-  if (!own) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!own) return NextResponse.json({ error: "That collection isn't on your desk any more. Reload the page." }, { status: 404 });
   await q.run("UPDATE collections SET art_key = NULL WHERE id = ?", own.c.id);
   await discardFiles([own.c.art_key], "collection artwork removed");
   await audit(own.user.id, "collection_updated", `${own.c.name}: artwork removed`);

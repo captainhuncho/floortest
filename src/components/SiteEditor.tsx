@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Dialog, DIALOG_MAIN, DIALOG_QUIET, useConfirm } from "@/components/Dialog";
 import { parseSizes, SIZE_CHOICES, sizesString, type SizeStep, type Sizes } from "@/lib/text-size";
 
 /**
@@ -70,6 +71,7 @@ export function SiteEditor({
   const [panel, setPanel] = useState<{ field: string; text: string; hint?: string } | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [ask, confirmDialog] = useConfirm();
   const [sizes, setSizes] = useState<Sizes>(() => parseSizes(values.sizes));
   // The text whose size picker is showing, and where to draw it (under the text, kept on screen).
   const [picked, setPicked] = useState<{ field: string; el: HTMLElement } | null>(null);
@@ -220,9 +222,9 @@ export function SiteEditor({
     setStatus("Uploading image…");
     const body = new FormData();
     body.append("file", file);
-    const r = await fetch("/api/site-edit/image", { method: "POST", body }).then((x) => x.json()).catch(() => ({ error: "Upload failed." }));
+    const r = await fetch("/api/site-edit/image", { method: "POST", body }).then((x) => x.json()).catch(() => ({ error: "The image didn't upload. Check your connection and try again." }));
     setBusy(false);
-    if (!r.key) return setStatus(r.error || "Upload failed.");
+    if (!r.key) return setStatus(r.error || "The image didn't upload. Try again, or use a JPG, PNG or WebP under 5 MB.");
     set(field, r.key);
     const img = document.querySelector<HTMLElement>(`[data-edit-image="${field}"] img`);
     if (img) (img as HTMLImageElement).src = URL.createObjectURL(file);
@@ -236,7 +238,7 @@ export function SiteEditor({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ page, values: changes, publish }),
-    }).then((x) => x.json()).catch(() => ({ error: "Couldn't save. Check your connection." }));
+    }).then((x) => x.json()).catch(() => ({ error: "Couldn't save, so nothing changed. Check your connection and try again." }));
     setBusy(false);
     if (!r.ok) return setStatus(r.error || "Couldn't save.");
     setChanges({});
@@ -278,24 +280,50 @@ export function SiteEditor({
         <button type="button" className="btn-ghost btn-sm" disabled={busy || !count} onClick={() => save(false)}>Save draft</button>
         <button type="button" className="btn-lime btn-sm" disabled={busy} onClick={() => save(true)}>Publish</button>
         {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- a route handler that ends draft mode, so a full navigation */}
-        <a href="/api/draft-preview?off" className="btn-ghost btn-sm" onClick={(e) => { if (count && !confirm("Leave without saving your changes?")) e.preventDefault(); }}>Exit</a>
+        <a href="/api/draft-preview?off" className="btn-ghost btn-sm" onClick={(e) => {
+          if (!count) return;
+          e.preventDefault();
+          const href = e.currentTarget.href;
+          void ask({ title: "Leave without saving?", body: `Your ${count} unsaved change${count === 1 ? "" : "s"} will be lost. Save a draft first to keep ${count === 1 ? "it" : "them"}.`, confirmLabel: "Leave without saving", danger: true }).then((ok) => ok && window.location.assign(href));
+        }}>Exit</a>
         {status && <p role="status" className="w-full px-1 text-xs text-mute">{status}</p>}
       </div>
-      {panel && (
-        <div data-site-editor-ui className="keep-night fixed inset-0 z-[110] grid place-items-center bg-black/70 p-4" onClick={() => setPanel(null)}>
-          <div role="dialog" aria-modal="true" aria-label="Edit this text" className="max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-xl border border-line bg-ink-2 p-5 text-bone" onClick={(e) => e.stopPropagation()}>
-            <p className="font-bold">Edit this text</p>
-            <p className="mt-1 text-xs text-mute">{panel.hint ?? "Each item: a title line, then its text. Leave a blank line between items."}</p>
-            <textarea value={panel.text} onChange={(e) => setPanel({ ...panel, text: e.target.value })} rows={14} className="input mt-3 w-full font-mono text-xs" />
-            <p className="mt-3 text-xs font-bold">Size</p>
-            <SizePicker className="mt-1.5" value={sizes[panel.field] ?? ""} onPick={(s) => pickSize(panel.field, s)} />
-            <div className="mt-3 flex justify-end gap-2">
-              <button type="button" className="btn-ghost btn-sm" onClick={() => setPanel(null)}>Cancel</button>
-              <button type="button" className="btn-lime btn-sm" onClick={() => { set(panel.field, panel.text); setPanel(null); setStatus("Updated. Save to see it on the page."); }}>Apply</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <div data-site-editor-ui className="keep-night">
+        <Dialog
+          open={!!panel}
+          onClose={() => setPanel(null)}
+          wide
+          title="Edit this text"
+          description={panel?.hint ?? "Each item: a title line, then its text. Leave a blank line between items."}
+          actions={
+            <>
+              <button type="button" className={DIALOG_QUIET} onClick={() => setPanel(null)}>Cancel</button>
+              <button
+                type="button"
+                className={DIALOG_MAIN}
+                onClick={() => {
+                  if (!panel) return;
+                  set(panel.field, panel.text);
+                  setPanel(null);
+                  setStatus("Updated. Save to see it on the page.");
+                }}
+              >
+                Apply
+              </button>
+            </>
+          }
+        >
+          {panel && (
+            <>
+              <label className="sr-only" htmlFor="site-edit-text">Text</label>
+              <textarea id="site-edit-text" value={panel.text} onChange={(e) => setPanel({ ...panel, text: e.target.value })} rows={14} className="input w-full font-mono text-xs max-sm:text-base" />
+              <p className="mt-3 text-xs font-bold">Size</p>
+              <SizePicker className="mt-1.5" value={sizes[panel.field] ?? ""} onPick={(s) => pickSize(panel.field, s)} />
+            </>
+          )}
+        </Dialog>
+        {confirmDialog}
+      </div>
     </EditorCtx.Provider>
   );
 }

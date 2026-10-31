@@ -74,7 +74,7 @@ export function DecisionRail({ track, selfHref, next, prev }: Props) {
         } catch {
           // Not saved (connection dropped): say so and put this track back on screen.
           queue?.settle(track.id);
-          toast.show({ message: `Couldn't save that for “${track.title}”. Try again.` });
+          toast.show({ message: `Couldn't save that for “${track.title}”. Nothing changed. Try again.`, tone: "error" });
           router.replace(selfHref, { scroll: false });
           return;
         }

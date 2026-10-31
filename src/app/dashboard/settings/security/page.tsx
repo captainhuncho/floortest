@@ -38,20 +38,20 @@ export default async function Security({ searchParams }: { searchParams: Promise
   return (
     <>
       <PageTitle title="Security" sub="How you sign in, and keeping your account yours." />
-      <Section id="email-h" title="Email">
+      <Section id="email-h" icon="mail" title="Email">
         <EmailForm email={user.email} pending={pendingEmail} twoFactor={!!user.totp_enabled_at} />
       </Section>
-      <Section id="security-h" title="Password and devices" sub="Changing your password signs out every other device and emails you a notice.">
+      <Section id="security-h" icon="lock" title="Password and devices" sub="Changing your password signs out every other device and emails you a notice.">
         <SecurityForm devices={devices} context={[user.name, user.email, user.handle]} twoFactor={!!user.totp_enabled_at} />
       </Section>
-      <Section id="passkeys-h" title="Passkeys">
+      <Section id="passkeys-h" icon="user" title="Passkeys">
         <Passkeys keys={keys} twoFactor={!!user.totp_enabled_at} max={MAX_PASSKEYS} />
       </Section>
-      <Section id="twofactor-h" title="Two-step sign-in">
+      <Section id="twofactor-h" icon="shield" title="Two-step sign-in">
         <TwoFactor enabled={!!user.totp_enabled_at} alerts={!!user.signin_alerts} />
       </Section>
       {googleConfig() && !isPreview && (
-        <Section id="google-h" title="Google sign-in">
+        <Section id="google-h" icon="link" title="Google sign-in">
           <GoogleSignIn
             connectedAt={user.google_linked_at ? new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: user.tz || "UTC" }).format(Number(user.google_linked_at)) : null}
             note={sp.google}

@@ -1,5 +1,6 @@
 import { botCheckKey } from "@/lib/turnstile";
-import { Logo } from "@/components/Logo";
+import { DocHead, PublicShell } from "@/components/LegalPage";
+import { CARD, Icon } from "@/components/Kit";
 import { currentPerson } from "@/lib/auth";
 import { ContactForm } from "./ContactForm";
 import { APP_URL } from "@/lib/mail";
@@ -15,10 +16,11 @@ export default async function Contact({ searchParams }: { searchParams: Promise<
   const takedown = !!sp.takedown;
   const report = ((sp).report || "").toLowerCase().replace(/[^a-z0-9-_]/g, "").slice(0, 30);
   return (
-    <main className="mx-auto max-w-xl px-4 py-10 sm:py-16">
-      <Logo className="mb-12" />
-      <h1 className="text-4xl font-bold tracking-tight">Contact us</h1>
-      <p className="mb-8 mt-3 text-mute">Questions, problems with a track, or something to report. A person reads every message.</p>
+    <PublicShell>
+      <DocHead label={<><Icon name="mail" className="size-[15px]" />We reply by email</>} title="Contact us">
+        <p className="text-[13.5px] leading-6 text-mute">Questions, problems with a track, or something to report. A person reads every message.</p>
+      </DocHead>
+      <section aria-label="Message" className={`${CARD} p-4 sm:p-6`}>
       <ContactForm
         botCheckKey={await botCheckKey()}
         name={user?.name ?? ""}
@@ -26,6 +28,7 @@ export default async function Contact({ searchParams }: { searchParams: Promise<
         topic={appeal ? "Suspension appeal" : takedown ? "Copyright claim" : report ? "Impersonation" : undefined}
         message={appeal ? "Account email: \nWhy I think the suspension is a mistake: " : takedown ? "My work (title, artist):\nWhere it is on FloorTest (link, track title):\nI'm the rights holder / acting for: \nI believe in good faith this use isn't authorised, and this notice is accurate. Signed: " : report ? `I think ${HOST}/${report} is pretending to be someone else, because: ` : undefined}
       />
-    </main>
+      </section>
+    </PublicShell>
   );
 }

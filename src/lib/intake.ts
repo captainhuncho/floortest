@@ -65,7 +65,7 @@ export class IntakeError extends Error {
 
 /** Link-level rules: paused, closed, full. */
 async function checkOpen(receiver: User, db: Queryable = q) {
-  if (await switchOn("uploads_paused", db)) throw new IntakeError("FloorTest is taking a short break for maintenance. Please try again in a little while.", 503);
+  if (await switchOn("uploads_paused", db)) throw new IntakeError("FloorTest is paused for maintenance, so nothing was sent. Try again in a little while.", 503);
   if (isPaused(receiver)) throw new IntakeError(pausedMessage(receiver));
   const active = await activeCollection(receiver, db);
   if (isFull(active)) throw new IntakeError(`This callout is full. ${receiver.name} isn't accepting tracks for it right now.`);
@@ -142,7 +142,7 @@ export async function startOwnerUpload(owner: User, collectionId: number, d: { f
   const ext = d.fileName.toLowerCase().match(/\.(wav|mp3)$/)?.[0];
   if (!ext || !ACCEPTED_EXT.includes(ext)) throw new IntakeError("Only WAV and MP3 files are accepted.", 400);
   if (!Number.isSafeInteger(d.size) || d.size <= 0) throw new IntakeError("Choose a WAV or MP3 file.", 400);
-  if (d.size > MAX_UPLOAD_BYTES) throw new IntakeError("File is too large (max 250 MB).", 413);
+  if (d.size > MAX_UPLOAD_BYTES) throw new IntakeError("That file is over 250 MB. Send an MP3 or a smaller WAV.", 413);
   if (!d.rights) throw new IntakeError("Confirm you're allowed to keep this file on FloorTest.", 400);
   if (!d.title.trim()) throw new IntakeError("Add a track title.", 400);
   if (await slotsTaken(owner)) throw new IntakeError("Your desk is full. Clear some tracks or upgrade to add more.", 409);
@@ -198,7 +198,7 @@ export async function startUpload(receiver: User, input: SubmissionMeta, size: n
   const ext = meta.originalName.toLowerCase().match(/\.(wav|mp3)$/)?.[0];
   if (!ext || !ACCEPTED_EXT.includes(ext)) throw new IntakeError("Only WAV and MP3 files are accepted.", 400);
   if (!Number.isSafeInteger(size) || size <= 0) throw new IntakeError("Choose a WAV or MP3 file.", 400);
-  if (size > MAX_UPLOAD_BYTES) throw new IntakeError("File is too large (max 250 MB).", 413);
+  if (size > MAX_UPLOAD_BYTES) throw new IntakeError("That file is over 250 MB. Send an MP3 or a smaller WAV.", 413);
   const id = crypto.randomBytes(24).toString("base64url");
   const key = `audio/${receiver.id}/${crypto.randomUUID()}${ext}`;
   // Tracks of one release or batch start one at a time (a lock on that group), so each sees the true count and size:
@@ -294,7 +294,7 @@ export async function claimUpload<T>(uploadId: string, receiverId: number, cols 
   if (up) return up;
   if (await q.get("SELECT 1 FROM uploads WHERE id = ? AND receiver_id = ? AND (created_at > ? OR held_at > ?)", uploadId, receiverId, t - UPLOAD_TTL, t - HELD_TTL))
     throw new IntakeError(BEING_SAVED, 409);
-  throw new IntakeError("This upload expired. Please send the track again.", 410);
+  throw new IntakeError("This upload took too long and expired, so nothing was sent. Send the track again.", 410);
 }
 
 /** The fingerprint of an upload id kept on the track it made (tracks.upload_ref), never the id itself. */
@@ -362,7 +362,7 @@ async function finishClaimed(receiver: User, up: Upload, ref: string, analysis: 
 
   if (!(await store.head(up.file_key))) {
     await releaseUpload(up.id);
-    throw new IntakeError("The file didn't finish uploading. Please try again.", 400);
+    throw new IntakeError("The file didn't finish uploading. Check your signal and send it again.", 400);
   }
   // From here on the sender's upload link can't touch the file: everything below checks and keeps the sealed copy. A
   // held upload was sealed before it was held: sealing it again on every batch try would only pile up copies.
@@ -374,7 +374,7 @@ async function finishClaimed(receiver: User, up: Upload, ref: string, analysis: 
   const head = await store.head(fileKey);
   if (!head || head.size !== up.size || head.size > MAX_UPLOAD_BYTES) {
     await discard();
-    throw new IntakeError("The uploaded file doesn't match what was expected. Please try again.", 400);
+    throw new IntakeError("The file that arrived doesn't match the one you chose, so it wasn't saved. Send it again.", 400);
   }
   const check = await validateAudio({ size: head.size, read: (s, e) => store.read(fileKey, s, e) });
   if (!check.ok) {
@@ -440,7 +440,7 @@ async function finishClaimed(receiver: User, up: Upload, ref: string, analysis: 
     result = await q.tx(async (db) => {
       // Serialise concurrent completions for this receiver so capacity can't be overshot.
       const fresh = await db.get<User>(`SELECT ${USER_COLUMNS} FROM users WHERE id = ? FOR UPDATE`, receiver.id);
-      if (!fresh) throw new IntakeError("Receiver not found", 404);
+      if (!fresh) throw new IntakeError("No one has this link any more, so nothing was sent.", 404);
       if (meta.ownerCollectionId) {
         // Owner upload: only into their own collection, and only while the desk has room.
         if (!(await db.get("SELECT 1 FROM collections WHERE id = ? AND user_id = ?", meta.ownerCollectionId, fresh.id))) throw new IntakeError("Not found", 404);

@@ -6,6 +6,8 @@ import {useRef, useState} from "react";
 import { MAX_LINKS, PLATFORMS, type ProfileLink } from "@/lib/socials";
 import { updatePublicPage } from "../actions/settings";
 import { SaveBar } from "./SaveBar";
+import { BTN, BTN_GHOST, FIELD, HELP, Notice } from "./ui";
+import { Icon } from "@/components/Kit";
 
 const PLACEHOLDER: Record<string, string> = {
   instagram: "@yourname or a link",
@@ -28,16 +30,16 @@ export function PublicPageForm({ roleLine, links }: { roleLine: string; links: P
   const nextKey = useRef(rows.length);
   const used = new Set(rows.map((r) => r.platform));
   return (
-    <form onSubmit={onSubmit} className="space-y-5">
-      <label className="block space-y-1.5">
-        <span className="label">Role line</span>
+    <form onSubmit={onSubmit} className="flex flex-col gap-5">
+      <label className="flex flex-col gap-1.5">
+        <span className={FIELD}>Role line</span>
         <input name="role_line" defaultValue={roleLine} maxLength={60} className="input" placeholder="DJ / Performer" />
-        <span className="block text-sm text-mute">Shown in link previews when you share your link.</span>
+        <span className={HELP}>Shown in link previews when you share your link.</span>
       </label>
-      <fieldset className="space-y-2">
-        <legend className="label mb-1.5">Your profiles</legend>
+      <fieldset className="flex flex-col gap-2">
+        <legend className={`${FIELD} mb-2`}>Your profiles</legend>
         {rows.map((r, i) => (
-          <div key={r.key} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 rounded-lg border border-line p-2 sm:flex sm:rounded-none sm:border-0 sm:p-0">
+          <div key={r.key} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 rounded-[13px] border border-line bg-well p-2 sm:flex sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0">
             <select
               name="platform"
               aria-label={`Platform ${i + 1}`}
@@ -65,9 +67,9 @@ export function PublicPageForm({ roleLine, links }: { roleLine: string; links: P
               type="button"
               aria-label={`Remove ${PLATFORMS.find((p) => p.key === r.platform)?.label ?? "website"} profile`}
               onClick={() => setRows((all) => (all.length > 1 ? all.filter((x) => x.key !== r.key) : [{ ...all[0], url: "" }]))}
-              className="btn-ghost btn-sm row-start-1 col-start-2 min-h-11 min-w-11 shrink-0 px-3 sm:order-last"
+              className="row-start-1 col-start-2 grid min-h-11 min-w-11 shrink-0 place-items-center rounded-[12px] border border-line text-mute hover:border-line-2 hover:text-bone sm:order-last"
             >
-              ×
+              <Icon name="x" className="size-4" />
             </button>
           </div>
         ))}
@@ -78,12 +80,13 @@ export function PublicPageForm({ roleLine, links }: { roleLine: string; links: P
               const platform = [...PLATFORMS.map((p) => p.key as string), "website"].find((k) => !used.has(k)) ?? "website";
               setRows((all) => [...all, { key: nextKey.current++, platform, url: "" }]);
             }}
-            className="btn-ghost btn-sm min-h-11"
+            className={`${BTN_GHOST} w-fit gap-1.5`}
           >
-            + Add a profile
+            <Icon name="plus" className="size-4" />
+            Add a profile
           </button>
         )}
-        <p className="text-sm text-mute">Up to {MAX_LINKS}.</p>
+        <p className={HELP}>Up to {MAX_LINKS}.</p>
       </fieldset>
       <SaveBar pending={pending} state={state} />
     </form>
@@ -117,34 +120,34 @@ export function CoverUpload({ handle, cover }: { handle: string; cover: string |
   }
 
   return (
-    <div className="flex items-center gap-4">
-      <div className="grid size-24 shrink-0 place-items-center overflow-hidden rounded-2xl border border-line bg-ink">
+    <div className="flex flex-wrap items-center gap-4 sm:gap-5">
+      <div className="grid size-24 shrink-0 place-items-center overflow-hidden rounded-[18px] border border-line bg-well">
         {cover ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={`/api/cover/${handle}?v=${encodeURIComponent(cover)}`} alt="Current profile photo" className="h-full w-full object-cover" />
         ) : (
-          <span className="px-2 text-center text-xs text-mute">No photo</span>
+          <span className="flex flex-col items-center gap-1 px-2 text-center text-[11.5px] text-mute"><Icon name="user" className="size-6 text-faint" />No photo</span>
         )}
       </div>
-      <div>
-        <p className="text-sm text-mute">Square works best. JPG, PNG or WebP, up to 8 MB.</p>
+      <div className="min-w-0 flex-1 basis-52">
+        <p className="text-[12px] text-mute">Square works best. JPG, PNG or WebP, up to 8 MB.</p>
         <input ref={input} type="file"
       aria-label="Choose a profile photo"
       tabIndex={-1} accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => upload(e.target.files?.[0])} />
-        <div className="mt-2 flex gap-2">
-          <button type="button" className="btn-lime btn-sm min-h-11" disabled={busy} onClick={() => input.current?.click()}>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button type="button" className={BTN} disabled={busy} onClick={() => input.current?.click()}>
             {busy ? "Working…" : cover ? "Replace" : "Upload"}
           </button>
           {cover && (
-            <button type="button" className="btn btn-sm min-h-11 text-mute hover:text-bone" disabled={busy} onClick={remove}>
+            <button type="button" className={BTN_GHOST} disabled={busy} onClick={remove}>
               Remove
             </button>
           )}
         </div>
         {error && (
-          <p role="alert" className="mt-2 text-sm text-danger">
+          <Notice tone="error" className="mt-3" next="Try a square JPG, PNG or WebP under 8 MB.">
             {error}
-          </p>
+          </Notice>
         )}
       </div>
     </div>

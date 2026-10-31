@@ -315,7 +315,8 @@ export async function ReviewPanel({
             <div className="mt-1.5 flex justify-end">
               <ConfirmButton
                 action={deleteTrack.bind(null, t.id, next?.href ?? "/dashboard/review")}
-                message="Delete this file now? The slot returns. Sender history is kept."
+                message="Delete this file now? It's removed for good and its slot comes back. The sender's history stays on this desk."
+                confirmLabel="Delete file"
                 className="btn btn-sm text-danger hover:bg-danger/10"
               >
                 Delete

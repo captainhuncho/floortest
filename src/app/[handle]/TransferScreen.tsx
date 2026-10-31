@@ -75,7 +75,7 @@ export function TransferScreen({ receiverName, callout, files, startedAt, onCanc
             <li key={`${i}-${f.name}`} className="flex items-center justify-between gap-3 py-2.5">
               <span className={`truncate ${f.state === "sent" ? "text-mute" : "text-bone"}`}>{f.name}</span>
               <span className={`shrink-0 text-[12px] ${f.state === "sent" ? "text-lime" : f.state === "failed" ? "text-danger" : "text-dim"}`}>
-                {f.state === "sent" ? "Sent" : f.state === "sending" ? `${Math.floor(f.progress * 100)}%` : f.state === "failed" ? "Failed" : "Waiting"}
+                {f.state === "sent" ? "Sent" : f.state === "sending" ? `${Math.floor(f.progress * 100)}%` : f.state === "failed" ? "Not sent" : "Waiting"}
               </span>
             </li>
           ))}

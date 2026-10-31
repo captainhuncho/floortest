@@ -46,7 +46,7 @@ export function ClaimBox({ host, inviteOnly }: { host: string; inviteOnly: boole
       <label htmlFor="claim-name" className="home-label">
         Your link
       </label>
-      <div className="mt-4 flex items-stretch border border-white/20 bg-black/30 focus-within:border-lime/70">
+      <div className="mt-3 flex items-stretch rounded-[11px] border border-field bg-well focus-within:border-lime/70">
         <span className="min-w-0 max-w-[60%] shrink self-center truncate pl-3 text-sm text-dim sm:text-base">{host}/</span>
         <input
           id="claim-name"
@@ -62,7 +62,7 @@ export function ClaimBox({ host, inviteOnly }: { host: string; inviteOnly: boole
         />
       </div>
       {/* Secondary (bone outline): the hero's own CTA is the one lime button. */}
-      <button className="mt-3 w-full border border-bone/70 px-4 py-3 text-sm font-medium uppercase text-bone hover:border-bone hover:bg-white/5">
+      <button className="mt-3 min-h-11 w-full rounded-[13px] border border-line-2 px-4 text-[13px] font-semibold text-bone hover:border-bone">
         {inviteOnly ? "Check it's free →" : "Claim your link →"}
       </button>
       <p className="mt-3 min-h-5 text-xs text-mute" aria-live="polite">

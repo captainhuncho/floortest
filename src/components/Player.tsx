@@ -7,6 +7,7 @@ import { analyzeAudio } from "@/lib/analyze";
 import { fmtTime } from "@/lib/format";
 import { LISTEN_BEAT_MS, listenThreshold } from "@/lib/plans";
 import { hideNowPlaying, onNowPlayingAction, showNowPlaying } from "@/lib/native-now-playing";
+import { useToast } from "./Toast";
 import { Waveform } from "./Waveform";
 
 export type PlayerTrack = {
@@ -29,6 +30,8 @@ type Ctx = {
   toggle: () => void;
   seek: (fraction: number) => void;
   seekBy: (seconds: number) => void;
+  /** Goes up by one each time a track won't play (no connection, or the file is gone), so the bar can say so. */
+  failures: number;
 };
 
 const PlayerContext = createContext<Ctx | null>(null);
@@ -52,6 +55,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [buffering, setBuffering] = useState(false);
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [failures, setFailures] = useState(0);
+  // A play() refused for a real reason (not the browser's autoplay rule, not a newer track replacing this one).
+  const refused = useCallback((e: unknown) => {
+    const name = e instanceof DOMException ? e.name : "";
+    if (name !== "NotAllowedError" && name !== "AbortError") setFailures((n) => n + 1);
+  }, []);
   const queue = useRef<PlayerTrack[]>([]);
   // "Listened" is counted by the server: the player says when a track starts or resumes ("play") and checks in about
   // every 10 s of sound actually heard ("beat"; seeks excluded). The server credits real time only (src/lib/review.ts).
@@ -99,9 +108,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     a.src = `/api/tracks/${t.id}/audio`;
     // A new source always has to load first; "playing" clears this once sound actually starts.
     setBuffering(true);
-    void a.play().catch(() => {
+    void a.play().catch((e) => {
       setPlaying(false);
       setBuffering(false);
+      refused(e);
     });
     if ("mediaSession" in navigator) {
       // Lock screen, Control Centre and headphones: title, artist and the FloorTest crest as artwork.
@@ -150,7 +160,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     let lastReload = 0;
     a.addEventListener("error", () => {
       const id = listened.current.id;
-      if (!id || !a.error || Date.now() - lastReload < RELOAD_GAP_MS) return;
+      if (!id || !a.error) return;
+      // Already tried a fresh link moments ago: the track really won't play. Say so instead of stopping silently.
+      if (Date.now() - lastReload < RELOAD_GAP_MS) return setFailures((n) => n + 1);
       lastReload = Date.now();
       const at = a.currentTime;
       const resume = !a.paused;
@@ -196,21 +208,21 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       const a = audio.current!;
       // The track loaded right now (a ref, so a play() from an older render, like a decision's rollback, sees it too).
       if (listened.current.id === t.id) {
-        if (a.paused) void a.play();
+        if (a.paused) void a.play().catch(refused);
         else a.pause();
         return;
       }
       start(t);
     },
-    [start],
+    [start, refused],
   );
 
   const toggle = useCallback(() => {
     const a = audio.current;
     if (!a || !current) return;
-    if (a.paused) void a.play();
+    if (a.paused) void a.play().catch(refused);
     else a.pause();
-  }, [current]);
+  }, [current, refused]);
 
   const seek = useCallback((f: number) => {
     const a = audio.current;
@@ -227,7 +239,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <PlayerContext.Provider value={{ current, playing, buffering, time, duration, play, toggle, seek, seekBy }}>{children}</PlayerContext.Provider>
+    <PlayerContext.Provider value={{ current, playing, buffering, time, duration, play, toggle, seek, seekBy, failures }}>{children}</PlayerContext.Provider>
   );
 }
 
@@ -253,7 +265,12 @@ export function BufferRing({ className = "-inset-1" }: { className?: string }) {
 }
 
 export function PlayerBar() {
-  const { current, playing, buffering, time, duration, toggle, seek } = usePlayer();
+  const { current, playing, buffering, time, duration, toggle, seek, failures } = usePlayer();
+  const toast = useToast();
+  useEffect(() => {
+    if (failures) toast.show({ message: "This track won't play right now. Check your connection, then press play again.", tone: "error" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per failure, not when the toast API changes
+  }, [failures]);
   if (!current) return null;
   const d = duration || current.duration || 0;
   return (
@@ -286,7 +303,7 @@ export function PlayerBar() {
           </span>
         </button>
       </div>
-    <div className="fixed inset-x-0 bottom-0 z-30 hidden border-t border-line bg-ink/95 backdrop-blur md:block">
+    <div data-player-bar className="fixed inset-x-0 bottom-0 z-30 hidden border-t border-line bg-ink/95 backdrop-blur md:block">
       <div className="flex items-center gap-4 px-4 py-3">
         <button
           onClick={toggle}

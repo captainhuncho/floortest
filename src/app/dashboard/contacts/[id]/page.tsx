@@ -100,7 +100,7 @@ export default async function Contact({ params }: { params: Promise<{ id: string
             <section aria-labelledby="conversation-h" className={`${CARD} flex flex-col gap-3 p-3`}>
               <SectionHead id="conversation-h" icon="reply" title="Conversation" />
               <ol className="flex flex-col gap-1.5" aria-label="Messages">
-                {thread.length === 0 && <li className="text-[12px] text-mute">No messages yet.</li>}
+                {thread.length === 0 && <li className="text-[12px] leading-[1.5] text-mute">No messages yet. Email {s.name} below, or keep a private note only you can see.</li>}
                 {thread.map((m, i) => (
                   <li
                     key={i}
@@ -137,7 +137,7 @@ export default async function Contact({ params }: { params: Promise<{ id: string
             <section aria-labelledby="tracks-h" className={`${CARD} flex flex-col gap-1 p-3`}>
               <SectionHead id="tracks-h" icon="music" title={`Tracks from ${s.name}`} />
               {tracks.length === 0 ? (
-                <p className="py-3 text-[12px] text-mute">No tracks yet.</p>
+                <p className="py-3 text-[12px] leading-[1.5] text-mute">No tracks from {s.name} on this desk any more. What you said to each other stays in the conversation.</p>
               ) : (
                 <ul className="flex flex-col">
                   {tracks.map((t) => {
@@ -189,7 +189,9 @@ export default async function Contact({ params }: { params: Promise<{ id: string
                 </p>
                 <ConfirmButton
                   action={blockSender.bind(null, s.id, !s.blocked_at)}
-                  message={s.blocked_at ? `Unblock ${s.name}?` : `Block ${s.name}? They won't be told.`}
+                  message={s.blocked_at ? `Unblock ${s.name}? They can send to your link again.` : `Block ${s.name}? They can't send to your link any more, and they won't be told. You can unblock them here.`}
+                  confirmLabel={s.blocked_at ? "Unblock" : "Block sender"}
+                  danger={!s.blocked_at}
                   className={`btn btn-sm gap-1.5 border bg-well ${s.blocked_at ? "border-line text-bone hover:border-mute" : "border-line text-danger hover:border-danger/50 hover:bg-danger/10"}`}
                 >
                   {!s.blocked_at && <Icon name="x" className="size-4" />}

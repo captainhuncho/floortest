@@ -32,7 +32,7 @@ export async function readSubmission(
         kind: (String(rel.kind) === "album" ? "album" : "ep") as "ep" | "album",
       }
     : null;
-  if (body.release && !release) return bad("Something's wrong with this release. Please start again.");
+  if (body.release && !release) return bad("This release can't be found any more. Start the send again.");
   // EPs and albums go only to receivers whose plan accepts folders (Pro and Team); the size cap is checked at upload.
   if (release && !(await folderLimit(receiver.plan))) return bad(`${receiver.name} can receive up to 3 tracks at a time. Send the tracks one by one.`, 403);
   // Up to 3 tracks sent together share a batch (one send, 250 MB between them).

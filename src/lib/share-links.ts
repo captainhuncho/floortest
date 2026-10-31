@@ -406,7 +406,7 @@ export async function requestAccess(link: Link, who: { email: string; userId: nu
   );
   if (decided?.status === "blocked" || (decided && decided.decided_at > now() - REQUEST_COOLDOWN_DAYS * DAY)) throw new LinkError("You can't request this collection right now.");
   if (await q.get("SELECT 1 FROM link_requests WHERE link_id = ? AND email = ? AND status = 'pending'", link.id, email)) return { status: "waiting" as const };
-  if (!(await allow("link_request_ip", `${link.collection_id}:${who.ip}`, REQUESTS_PER_NETWORK_PER_HOUR, HOUR))) throw new LinkError("Too many requests. Try again later.");
+  if (!(await allow("link_request_ip", `${link.collection_id}:${who.ip}`, REQUESTS_PER_NETWORK_PER_HOUR, HOUR))) throw new LinkError("Too many requests from this connection. Try again in an hour.");
   if (!(await allow("link_request_email", email, REQUESTS_PER_EMAIL_PER_DAY, DAY))) throw new LinkError("Too many requests. Try again tomorrow.");
   await q.run(
     "INSERT INTO link_requests (link_id, collection_id, email, user_id, name, note, status, created_at) VALUES (?,?,?,?,?,?, 'pending', ?)",
