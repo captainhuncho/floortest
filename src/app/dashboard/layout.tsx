@@ -50,7 +50,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <SkipLink />
     <PlayerProvider>
       <ToastProvider>
-        <div className="md:grid md:h-dvh md:grid-cols-[248px_1fr]">
+        <div className="md:grid md:h-dvh md:grid-cols-[auto_1fr]">
           <Sidebar
             needsReview={collections.reduce((n, c) => n + c.needs_review, 0)}
             cap={cap}
