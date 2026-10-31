@@ -32,6 +32,6 @@ export async function POST(req: Request) {
     }
     console.error("[v1:send:complete]", e);
     await recordIncident("upload_failed", `App upload to @${receiver.handle} failed`, e instanceof Error ? `${e.message}\n${e.stack ?? ""}` : String(e), "/api/v1/sends/complete");
-    return fail("Upload failed. Please try again.", 500);
+    return fail("Your track arrived but couldn't be saved, so nothing was sent. Send it again.", 500);
   }
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { FormError } from "@/components/Feedback";
 import { Req } from "@/components/Req";
 import { useRef, useState } from "react";
 import { analyzeAudio } from "@/lib/analyze";
@@ -114,7 +115,7 @@ export function FolderSend({
     if (!files.length) return setError("That folder has no WAV or MP3 files.");
     if (files.length > MAX_RELEASE_TRACKS) return setError(`A folder can have up to ${MAX_RELEASE_TRACKS} tracks.`);
     const big = files.find((f) => f.size > MAX_BYTES);
-    if (big) return setError(`"${big.name}" is over 250 MB.`);
+    if (big) return setError(`"${big.name}" is over 250 MB. Send an MP3 or a smaller WAV.`);
     const size = files.reduce((n, f) => n + f.size, 0);
     if (size > folderBytes) return setError(`That's ${fmtBytes(size)}. ${receiverName} can receive up to ${fmtBytes(folderBytes)} in one folder.`);
     const read = await Promise.all(files.map(async (file) => ({ file, tags: await readTags(file), state: "waiting" as const, progress: 0 })));
@@ -361,7 +362,7 @@ export function FolderSend({
                   </button>
                 )}
                 <span className="shrink-0 text-xs text-mute tnum">
-                  {it.state === "sent" ? "Sent" : it.state === "sending" ? `${Math.round(it.progress * 100)}%` : it.state === "failed" ? "Failed" : fmtBytes(it.file.size)}
+                  {it.state === "sent" ? "Sent" : it.state === "sending" ? `${Math.round(it.progress * 100)}%` : it.state === "failed" ? "Not sent" : fmtBytes(it.file.size)}
                 </span>
               </li>
             ))}
@@ -444,11 +445,7 @@ export function FolderSend({
         </>
       )}
 
-      {error && (
-        <p role="alert" className="text-[12.5px] text-danger">
-          {error}
-        </p>
-      )}
+      <FormError>{error}</FormError>
       {items.length > 0 && !account && <Turnstile action="send" siteKey={botCheckKey} />}
       {items.length > 0 && (
         <p className="text-[11.5px] leading-[1.45] text-mute">

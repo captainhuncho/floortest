@@ -52,7 +52,7 @@ export function PauseSwitch({ pause, compact = false }: { pause: PauseState; com
         }
       } catch {
         setPaused(!next);
-        toast.show({ message: "Couldn't change that. Try again." });
+        toast.show({ message: "Your link didn't change. Check your connection and try again.", tone: "error" });
       }
     });
   };

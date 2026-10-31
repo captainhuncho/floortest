@@ -50,7 +50,7 @@ export function ReplyCard({ senderName, onReply }: { senderName: string; onReply
         start(async () => {
           // Says what really happened; a refused reply (a limit) keeps its text so nothing typed is lost.
           const r = await onReply(fd);
-          toast.show({ message: r.message });
+          toast.show({ message: r.message, tone: r.status === "refused" ? "error" : "done" });
           if (r.status === "refused") return;
           formRef.current?.reset();
           replyRef.current?.blur();

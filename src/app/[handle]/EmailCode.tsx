@@ -10,7 +10,7 @@ const post = async (body: Record<string, unknown>): Promise<Result> => {
     const r = await fetch("/api/sender-code", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     return (await r.json().catch(() => ({}))) as Result;
   } catch {
-    return { error: "Network error. Check your connection and try again." };
+    return { error: "You're offline or the connection dropped. Reconnect and try again." };
   }
 };
 
@@ -26,7 +26,7 @@ export async function startEmailCheck(email: string, turnstile: string): Promise
     if (r.confirmed) return null;
   } catch {}
   const sent = await post({ action: "send", email: e, turnstile });
-  return sent.ok ? "code" : sent.error || "Couldn't send the code. Please try again.";
+  return sent.ok ? "code" : sent.error || "The code didn't send. Check the email address and try again.";
 }
 
 /**

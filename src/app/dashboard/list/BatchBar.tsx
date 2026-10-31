@@ -31,7 +31,7 @@ export function BatchBar({
       if (action.type === "kept" || action.type === "passed") onDecide(action.type);
       if (action.type === "clear") onDecide(null);
       const r = await batchTracks(ids, action);
-      if (r.error) return void toast.show({ message: r.error });
+      if (r.error) return void toast.show({ message: r.error, tone: "error" });
       toast.show({ message: said(r.done) + (r.skipped ? ` (${r.skipped} skipped)` : "") });
       setConfirming(false);
       onDone();
@@ -45,6 +45,7 @@ export function BatchBar({
     <div
       role="region"
       aria-label="Selected tracks"
+      data-batch-bar
       className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+92px)] z-40 mx-auto max-w-3xl rounded-[18px] border border-line-2 bg-card p-2.5 shadow-pop md:bottom-6"
     >
       {confirming ? (

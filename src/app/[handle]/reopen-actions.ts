@@ -19,7 +19,7 @@ export async function askReopenAlert(_: ReopenState, form: FormData): Promise<Re
   const email = normalEmail(String(form.get("email") || "")).slice(0, 200);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Enter a valid email." };
   const ip = await requestIp();
-  if (!(await allow("reopen_alert_ip", ip, 5, 3_600_000))) return { error: "Too many requests. Try again later." };
+  if (!(await allow("reopen_alert_ip", ip, 5, 3_600_000))) return { error: "Too many tries from this connection. Try again in an hour." };
   if (!(await passedTurnstile(form.get("cf-turnstile-response"), ip, "reopen"))) return { error: BOT_MESSAGE };
   const receiver = await userByHandle(String(form.get("handle") || "").slice(0, 30));
   if (receiver && (await accountEmailAllowed("public"))) await requestReopenAlert(receiver.id, email);
