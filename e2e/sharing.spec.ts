@@ -119,7 +119,7 @@ test("an account on the list finds it under Shared with you, even after a reset,
 
   // Signed out, the same address asks for sign-in and comes back after it.
   await page.goto(accountPath);
-  await expect(page.getByRole("heading", { name: "Log in to open this collection." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Log in to open this collection" })).toBeVisible();
   await page.getByRole("link", { name: "Log in" }).click();
   await page.waitForURL(/\/login/);
   await submitLogin(page, "listener@floortest.test", new RegExp(`${accountPath.replace(/\./g, "\\.")}$`));

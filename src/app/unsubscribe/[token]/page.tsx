@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Logo } from "@/components/Logo";
+import { MessagePage, PRIMARY, SECONDARY } from "@/app/_ui/MessagePage";
 import { applyUnsubscribe, checkUnsubToken, UNSUB_KINDS } from "@/lib/unsubscribe";
 
 export const metadata = { title: "Unsubscribe — FloorTest", robots: { index: false } };
@@ -17,27 +17,41 @@ export default async function Unsubscribe({ params, searchParams }: { params: Pr
     redirect(`/unsubscribe/${encodeURIComponent(token)}?done=1`);
   }
 
+  if (!t)
+    return (
+      <MessagePage
+        icon="link"
+        tone="off"
+        title="Link not recognised"
+        actions={
+          <Link href="/dashboard/settings/notifications" className={PRIMARY}>
+            Open Notifications
+          </Link>
+        }
+      >
+        <p>It may be from an address that&apos;s no longer on the account. Manage your emails from Notifications in your FloorTest account instead.</p>
+      </MessagePage>
+    );
+  if (done)
+    return (
+      <MessagePage
+        icon="check"
+        tone="ok"
+        title="You're unsubscribed"
+        actions={
+          <Link href="/dashboard/settings/notifications" className={SECONDARY}>
+            Change email settings
+          </Link>
+        }
+      >
+        <p>We won&apos;t send you {UNSUB_KINDS[t.kind].label} any more. You&apos;ll still get emails you need, like sign-in and security notices.</p>
+      </MessagePage>
+    );
   return (
-    <main className="mx-auto max-w-xl px-4 py-8 sm:py-12">
-      <Logo className="mb-12" />
-      {!t ? (
-        <>
-          <h1 className="text-3xl font-bold tracking-tight">Link not recognised</h1>
-          <p className="mt-3 text-mute">It may be from an address that&apos;s no longer on the account. Manage your emails from Notifications in your FloorTest account instead.</p>
-        </>
-      ) : done ? (
-        <>
-          <h1 className="text-3xl font-bold tracking-tight">You&apos;re unsubscribed</h1>
-          <p className="mt-3 text-mute">We won&apos;t send you {UNSUB_KINDS[t.kind].label} any more. You&apos;ll still get emails you need, like sign-in and security notices.</p>
-          <Link href="/dashboard/settings/notifications" className="btn-ghost mt-8 inline-block">Change email settings</Link>
-        </>
-      ) : (
-        <form action={confirm}>
-          <h1 className="text-3xl font-bold tracking-tight">Stop {UNSUB_KINDS[t.kind].label}?</h1>
-          <p className="mt-3 text-mute">You can turn them back on any time from Notifications.</p>
-          <button className="btn-lime mt-8">Unsubscribe</button>
-        </form>
-      )}
-    </main>
+    <form action={confirm}>
+      <MessagePage icon="mail" title={`Stop ${UNSUB_KINDS[t.kind].label}?`} actions={<button className={PRIMARY}>Unsubscribe</button>}>
+        <p>You can turn them back on any time from Notifications.</p>
+      </MessagePage>
+    </form>
   );
 }
