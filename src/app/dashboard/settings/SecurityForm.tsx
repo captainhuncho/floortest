@@ -6,6 +6,8 @@ import { useActionForm } from "@/components/useActionForm";
 import { changePassword, signOutDevice, signOutOtherDevices } from "../actions/security";
 import { PasswordStrength } from "@/components/PasswordStrength";
 import { ConfirmItsYou } from "./ConfirmItsYou";
+import { Chip, Icon } from "@/components/Kit";
+import { BTN, BTN_GHOST, FIELD, Notice, ROW, SettingLine, WELL } from "./ui";
 
 export type Device = { id: string; device: string; app: boolean; current: boolean; signedIn: string; lastUsed: string | null };
 
@@ -20,56 +22,62 @@ export function SecurityForm({ devices, context = [], twoFactor }: { devices: De
   const [othersError, setOthersError] = useState<string | null>(null);
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       <form
         onSubmit={(e) => {
           onSubmit(e);
         }}
-        className="grid gap-4 sm:grid-cols-3"
+        className="grid gap-4 sm:grid-cols-3 sm:items-start"
       >
-        <label className="block space-y-1.5">
-          <span className="label">Current password</span>
+        <label className="flex flex-col gap-1.5">
+          <span className={FIELD}>Current password</span>
           <input className="input" type="password" name="current" required autoComplete="current-password" />
         </label>
-        <label className="block space-y-1.5">
-          <span className="label">New password</span>
+        <label className="flex flex-col gap-1.5">
+          <span className={FIELD}>New password</span>
           <input className="input" type="password" name="password" required minLength={8} autoComplete="new-password" onChange={(e) => setPw(e.target.value)} />
           <PasswordStrength value={pw} context={context} />
         </label>
-        <label className="block space-y-1.5">
-          <span className="label">Repeat new password</span>
+        <label className="flex flex-col gap-1.5">
+          <span className={FIELD}>Repeat new password</span>
           <input className="input" type="password" name="confirm" required minLength={8} autoComplete="new-password" />
         </label>
-        {twoFactor && <label className="block space-y-1.5">
-          <span className="label">Two-step code</span>
-          <input name="code" required inputMode="numeric" autoComplete="one-time-code" placeholder="6-digit or recovery code" className="input" />
-        </label>}
-        <div className="flex items-center gap-3 sm:col-span-3">
-          <button className="btn-lime btn-sm min-h-11" disabled={pending}>
-            {pending ? "Saving…" : "Change password"}
-          </button>
+        {twoFactor && (
+          <label className="flex flex-col gap-1.5">
+            <span className={FIELD}>Two-step code</span>
+            <input name="code" required inputMode="numeric" autoComplete="one-time-code" placeholder="6-digit or recovery code" className="input" />
+          </label>
+        )}
+        <div className="flex flex-col gap-3 sm:col-span-3">
           {state?.error && (
-            <p role="alert" className="text-sm text-danger">
+            <Notice tone="error" next="Your password hasn't changed. Fix that and try again.">
               {state.error}
-            </p>
+            </Notice>
           )}
           {state?.ok && (
-            <p role="status" className="text-sm text-lime">
+            <Notice tone="ok" next="Use the new password next time you sign in on another device.">
               Password changed. Other devices were signed out.
-            </p>
+            </Notice>
           )}
+          <button className={`${BTN} w-full sm:w-fit`} disabled={pending}>
+            {pending ? "Saving…" : "Change password"}
+          </button>
         </div>
       </form>
 
-      <div className="space-y-3 border-t border-line pt-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-mute">
-            {others ? `Signed in on ${others} other device${others === 1 ? "" : "s"}.` : "Only signed in on this device."} A browser that isn&apos;t used for 14 days is signed out by itself.
-          </p>
-          <button className="btn-ghost btn-sm min-h-11" disabled={!others || busy || confirmOthers} onClick={() => setConfirmOthers(true)}>
+      <div className="flex flex-col gap-3 border-t border-line pt-5">
+        <SettingLine
+          title="Signed-in devices"
+          sub={
+            <>
+              {others ? `Signed in on ${others} other device${others === 1 ? "" : "s"}.` : "Only signed in on this device."} A browser that isn&apos;t used for 14 days is signed out by itself.
+            </>
+          }
+        >
+          <button className={`${BTN_GHOST} w-full sm:w-auto`} disabled={!others || busy || confirmOthers} onClick={() => setConfirmOthers(true)}>
             Sign out other devices
           </button>
-        </div>
+        </SettingLine>
         {confirmOthers && (
           <ConfirmItsYou
             twoFactor={twoFactor}
@@ -92,23 +100,28 @@ export function SecurityForm({ devices, context = [], twoFactor }: { devices: De
             }
           />
         )}
-        <ul className="divide-y divide-line rounded-lg border border-line" aria-label="Devices signed in">
+        <ul className={WELL} aria-label="Devices signed in">
           {list.map((d) => (
-            <li key={d.id} className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5">
-              <div className="min-w-0">
-                <p className="text-sm text-bone">
-                  {d.device}
-                  {d.app && <span className="ml-2 rounded-sm bg-ink px-1.5 py-0.5 text-[11px] text-mute">FloorTest app</span>}
-                  {d.current && <span className="ml-2 rounded-sm bg-lime/15 px-1.5 py-0.5 text-[11px] text-lime">This device</span>}
-                </p>
-                <p className="text-xs text-mute">
-                  Signed in {d.signedIn}
-                  {d.lastUsed && d.lastUsed !== d.signedIn ? ` · last used ${d.lastUsed}` : ""}
-                </p>
+            <li key={d.id} className={`${ROW} flex-nowrap!`}>
+              <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-[10px] border border-line bg-card text-mute">
+                  <Icon name={d.app ? "music" : "grid"} className="size-4" />
+                </span>
+                <div className="min-w-0">
+                  <p className="flex flex-wrap items-center gap-1.5 text-[13px] font-semibold text-bone">
+                    {d.device}
+                    {d.app && <Chip>FloorTest app</Chip>}
+                    {d.current && <Chip tone="acc">This device</Chip>}
+                  </p>
+                  <p className="text-[11.5px] text-mute">
+                    Signed in {d.signedIn}
+                    {d.lastUsed && d.lastUsed !== d.signedIn ? `, last used ${d.lastUsed}` : ""}
+                  </p>
+                </div>
               </div>
               {!d.current && (
                 <button
-                  className="btn-ghost btn-sm"
+                  className={BTN_GHOST}
                   disabled={busy}
                   onClick={() =>
                     start(async () => {
