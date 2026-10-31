@@ -9,8 +9,9 @@ import { connection } from "next/server";
 import "./globals.css";
 import { env, isPreview } from "@/lib/env";
 
-/** Zoom is never locked (WCAG 1.4.4). iOS Safari's zoom-on-focus is avoided by 16px fields on touch screens instead (globals.css). */
-export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#10110f" };
+/** Zoom is never locked (WCAG 1.4.4). iOS Safari's zoom-on-focus is avoided by 16px fields on touch screens instead (globals.css).
+ *  viewportFit cover: without it iOS reports every env(safe-area-inset-*) as 0 and the notch and home-bar paddings do nothing. */
+export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#10110f" };
 
 export const metadata: Metadata = {
   metadataBase: new URL(env.appUrl),

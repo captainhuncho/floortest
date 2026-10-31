@@ -65,7 +65,8 @@ html { scroll-padding-top: 76px; scroll-padding-bottom: calc(max(1rem, env(safe-
 @media (min-width: 48rem) { html { scroll-padding-top: 16px; scroll-padding-bottom: 88px; } }
 /* The send page's profile bar (48px, fixed at the top once the profile scrolls away): focused fields stop below it. */
 html:has([data-profile-bar]) { scroll-padding-top: 64px; }
-body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+/* viewport-fit=cover (layout.tsx) gives the page the landscape notch area too: keep content clear of it on both sides. */
+body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
 /* Visible focus everywhere, for keyboard users only. */
 :focus-visible { outline: 2px solid var(--color-lime); outline-offset: 2px; border-radius: 4px; }
 /* Inputs styled without their own outline (inside a pill or search box): ring the box instead. */
