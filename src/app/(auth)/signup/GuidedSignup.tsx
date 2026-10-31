@@ -280,6 +280,7 @@ export function GuidedSignup({
       aside={aside}
       footer={footer}
       form={{ noValidate: true, onSubmit, "aria-busy": pending }}
+      photo={step === 1}
     >
       <input type="hidden" name="tz" value={tz} />
       {Object.entries(hidden ?? {}).map(([k, v]) => (

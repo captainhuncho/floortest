@@ -193,7 +193,7 @@ export function ReadySteps({
     );
 
   return (
-    <AuthFrame step={7} center aside={aside} footer={<Link href="/dashboard/floor?welcome=1" className="af-btn af-prime">Go to your desk</Link>}>
+    <AuthFrame step={7} center photo aside={aside} footer={<Link href="/dashboard/floor?welcome=1" className="af-btn af-prime">Go to your desk</Link>}>
       {photo && (
         <div className="af-pic af-small af-done">
           {/* eslint-disable-next-line @next/next/no-img-element -- a local preview (blob:) or the cover route */}

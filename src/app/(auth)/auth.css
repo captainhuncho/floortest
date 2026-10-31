@@ -12,13 +12,14 @@
 
 /* ── The background image slot ──────────────────────────────────────────────────────────────────────────────────
  * ONE place to swap the photo behind the desktop frame (and, heavily toned, behind the phone's first and last
- * screens): set these to images under public/, each with a tiny blurred copy that shows first. The CSS scene (--af-scene) stays underneath as the fallback.
+ * screens): the owner's club photo, self-hosted in public/auth/. Each has a tiny blurred copy that shows first.
+ * Swap the files, or point these variables at others. The CSS scene (--af-scene) stays underneath as the fallback.
  * CSS backgrounds load after the page's own files and only where they're shown, so the form paints first. */
 .af-page {
-  --af-photo-night: none;
-  --af-photo-night-blur: none;
-  --af-photo-day: none;
-  --af-photo-day-blur: none;
+  --af-photo-night: url("/auth/bg-night.webp");
+  --af-photo-night-blur: url("/auth/bg-night-blur.webp");
+  --af-photo-day: url("/auth/bg-day.webp");
+  --af-photo-day-blur: url("/auth/bg-day-blur.webp");
   --af-photo: var(--af-photo-night);
   --af-photo-blur: var(--af-photo-night-blur);
   /* the beam and the DJ booth sit centre-right, so they show through the frame's open right half */
