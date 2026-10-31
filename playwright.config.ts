@@ -3,10 +3,12 @@ import { defineConfig, devices } from "@playwright/test";
 /**
  * End-to-end tests: a real browser against a throwaway local copy of FloorTest (fresh seeded data in .e2e/, local file
  * storage, no email sending, Cloudflare's always-pass test keys for the bot check, no site password). Nothing here can touch the live database, R2 or Resend.
- * Run: npm run e2e (stop any other dev server first: they'd share the .next folder).
+ * Run: npm run e2e (stop any other dev server in the same folder first: they'd share the .next folder).
+ * Two runs in different worktrees can go side by side on their own ports (owner, 31 Oct):
+ * E2E_PORT=3220 E2E_SCANNER_PORT=3221 npm run e2e. The defaults stay 3210 and 3211.
  */
-const PORT = 3210;
-const SCANNER_PORT = 3211;
+const PORT = Number(process.env.E2E_PORT || 3210);
+const SCANNER_PORT = Number(process.env.E2E_SCANNER_PORT || 3211);
 const env = {
   DATA_DIR: ".e2e/data",
   DATABASE_URL: "",
