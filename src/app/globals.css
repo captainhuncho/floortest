@@ -287,8 +287,8 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
    bigger (page-title-display, 32px from sm up). Use the PageTitle component, or the class on a page's one <h1>. */
 @utility page-title { @apply text-title font-bold text-bone; text-wrap: balance; }
 @utility page-title-display { @apply page-title sm:text-[32px]; }
-/* The dashboard's content frame (dashboard/layout.tsx): 1088px of content plus the page's 16px / 32px gutters,
-   left-aligned. Pages that read narrow keep a 704px text column inside it with page-narrow. */
+/* Dashboard pages (dashboard/PageFrame.tsx): each page carries the 16px / 32px gutters and one column centred in the
+   space beside the sidebar (mx-auto plus its max width). Pages that read narrow keep a 768px text column (page-narrow). */
 @utility page-gutter { @apply px-4 md:px-8; }
 @utility page-narrow { @apply max-w-3xl; }
 /* Secondary line under a title or value. */
@@ -509,3 +509,42 @@ nav[data-pending] ~ .review-list, :has(> nav[data-pending]) ~ .review-list { opa
 
 /* Brand marks can't be dragged, long-pressed or saved: taps and clicks fall through to the link around them. */
 img[src^="/brand/"] { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; -webkit-user-drag: none; pointer-events: none; }
+
+/* Pull to refresh (src/components/PullToRefresh.tsx, owner's rule). The browser's own pull to refresh and top bounce
+   stay out of the way so the two never double up; the page's own stretch replaces them. The ring sits in the gap the
+   stretched page leaves at the top; the trackpad's Refresh button drops in from the top edge. Night by default, day
+   colours wherever the page is in day mode. */
+html { overscroll-behavior-y: contain; }
+.ptr-ring {
+  --ptr-track: #3a3d37; --ptr-fill: #d5ff48; --ptr-arrow: #a3a69b;
+  position: fixed; left: 50%; z-index: 70; width: 30px; height: 30px; margin-left: -15px; pointer-events: none;
+  opacity: 0; transition: opacity 0.2s var(--ease-out);
+}
+.ptr-ring[data-shown] { opacity: 1; }
+.ptr-ring svg { display: block; }
+.ptr-ring circle { fill: none; stroke-width: 3; }
+.ptr-track { stroke: var(--ptr-track); }
+.ptr-fill { stroke: var(--ptr-fill); stroke-linecap: round; }
+.ptr-arrow { fill: none; stroke: var(--ptr-arrow); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transform-origin: 15px 15px; transition: transform 0.2s var(--ease-out); }
+.ptr-arrow[data-flipped] { transform: rotate(180deg); }
+.ptr-ring[data-spinning] svg { animation: ptr-spin 0.8s linear infinite; }
+@keyframes ptr-spin { to { transform: rotate(360deg); } }
+.ptr-pill {
+  position: fixed; top: 0; left: 50%; z-index: 70; min-height: 44px; padding: 0 18px; border-radius: 9999px;
+  background: #d5ff48; color: #10110f; font: 600 14px var(--font-sans); box-shadow: var(--shadow-pop); cursor: pointer;
+  transform: translate(-50%, -128px); visibility: hidden; transition: transform 0.25s var(--ease-out), visibility 0s 0.25s;
+}
+.ptr-pill[data-shown] { transform: translate(-50%, calc(env(safe-area-inset-top) + 16px)); visibility: visible; transition: transform 0.25s var(--ease-out); }
+.ptr-pill:focus-visible { outline: 2px solid #10110f; outline-offset: 2px; }
+html:has(.theme-day) .ptr-ring { --ptr-track: #cfd3c0; --ptr-fill: #4a6400; --ptr-arrow: #4c4f45; }
+@media (prefers-color-scheme: light) {
+  html:has(.theme-system) .ptr-ring { --ptr-track: #cfd3c0; --ptr-fill: #4a6400; --ptr-arrow: #4c4f45; }
+}
+/* Reduced motion: no stretch (the component skips it), no spin, no slide: the ring and button only fade. */
+@media (prefers-reduced-motion: reduce) {
+  .ptr-ring[data-spinning] svg { animation: none; }
+  .ptr-arrow { transition: none; }
+  .ptr-pill { transform: translate(-50%, calc(env(safe-area-inset-top) + 16px)); opacity: 0; transition: opacity 0.2s, visibility 0s 0.2s; }
+  .ptr-pill[data-shown] { opacity: 1; transition: opacity 0.2s; }
+}
+@media print { .ptr-ring, .ptr-pill { display: none; } }

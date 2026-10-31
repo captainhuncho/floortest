@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
+import { REFRESH_EVENT } from "./PullToRefresh";
 
 /**
  * Keeps an open page current without a reload: every ten seconds while the tab is visible (and at once when it comes back into view), it asks `url` for a
@@ -39,8 +40,14 @@ export function LivePulse({ url, every = 10_000 }: { url: string; every?: number
       }
     };
     const onBlur = () => due.current && setTimeout(() => !typing() && due.current && refresh(), 0);
+    // A pull to refresh just reloaded the page: take the current marker without refreshing again.
+    const onPulled = () => {
+      last.current = null;
+      void check();
+    };
     check();
     const id = setInterval(check, every);
+    window.addEventListener(REFRESH_EVENT, onPulled);
     document.addEventListener("visibilitychange", check);
     document.addEventListener("focusout", onBlur);
     return () => {
@@ -48,6 +55,7 @@ export function LivePulse({ url, every = 10_000 }: { url: string; every?: number
       clearInterval(id);
       document.removeEventListener("visibilitychange", check);
       document.removeEventListener("focusout", onBlur);
+      window.removeEventListener(REFRESH_EVENT, onPulled);
     };
   }, [url, every, router]);
 
