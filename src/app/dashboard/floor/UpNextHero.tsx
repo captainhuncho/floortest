@@ -32,12 +32,13 @@ export function UpNextHero({ track, queue }: { track: Hero; queue: Hero[] }) {
   const shape = bars(track.peaks);
   const start = () => (on ? toggle() : play(toPlayer(track), [track, ...queue.filter((q) => q.id !== track.id)].map(toPlayer)));
   return (
-    <div className="flex items-center gap-3">
+    // The play button centres on the waveform bar (36px), not on the bar plus the times under it (owner, 31 Oct).
+    <div className="flex items-start gap-3">
       <button
         type="button"
         onClick={start}
         aria-label={on && playing ? `Pause ${track.title}` : `Play ${track.title}`}
-        className="grid size-11 shrink-0 place-items-center rounded-full bg-lime text-ink transition-transform duration-100 active:scale-95 motion-reduce:active:scale-100"
+        className="-mt-1 grid size-11 shrink-0 place-items-center rounded-full bg-lime text-ink transition-transform duration-100 active:scale-95 motion-reduce:active:scale-100"
       >
         <PlayIcon playing={on && (playing || buffering)} className="size-4" />
       </button>

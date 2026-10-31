@@ -272,7 +272,7 @@ function SearchDialog({ onClose }: { onClose: () => void }) {
         className="w-full max-w-xl overflow-hidden rounded-[18px] border border-line bg-card text-bone shadow-pop"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-2.5 border-b border-line px-3">
+        <div className="flex items-center gap-2.5 border-b border-line px-3 py-2.5">
           <IconBox name="search" small />
           <input
             ref={input}
@@ -292,7 +292,9 @@ function SearchDialog({ onClose }: { onClose: () => void }) {
             placeholder="Tracks, artists or contacts"
             aria-label="Search tracks, artists or contacts"
             aria-activedescendant={options[active] ? `hit-${active}` : undefined}
-            className="min-h-14 w-full bg-transparent text-base text-bone outline-none placeholder:text-mute sm:text-[15px]"
+            // A plain box around the text, no lime (owner, 31 Oct): the field is the dialog's only control and already
+            // has focus, so its edge just brightens while you type instead of the app-wide focus outline.
+            className="min-h-11 w-full rounded-[12px] border border-line bg-well px-3 text-base text-bone transition-colors placeholder:text-mute focus:border-line-2 focus-visible:outline-none sm:text-[15px]"
           />
           <kbd className="hidden rounded-md border border-line bg-well px-1.5 py-0.5 font-sans text-[10.5px] font-semibold text-mute sm:inline">Esc</kbd>
         </div>
