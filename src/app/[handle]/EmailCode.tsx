@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { normalEmail } from "@/lib/email-normal";
+import { CARD } from "@/components/Kit";
 
 type Result = { ok?: boolean; error?: string; confirmed?: boolean };
 const post = async (body: Record<string, unknown>): Promise<Result> => {
@@ -67,20 +68,20 @@ export function EmailCode({ email, receiverName, sending, onConfirmed, onCancel 
   }
 
   return (
-    <div ref={top} role="group" aria-labelledby="email-code-title" className="scroll-mt-6 space-y-5">
-      <button type="button" onClick={onCancel} disabled={busy} className="inline-flex min-h-11 items-center text-sm text-mute hover:text-bone">
+    <div ref={top} role="group" aria-labelledby="email-code-title" className={`${CARD} scroll-mt-6 space-y-4 p-3`}>
+      <button type="button" onClick={onCancel} disabled={busy} className="-my-1.5 inline-flex min-h-11 items-center text-[13px] text-mute hover:text-bone">
         ← Back to your details
       </button>
       <div>
-        <p className="eyebrow">One last step</p>
-        <h2 id="email-code-title" className="mt-1 text-2xl font-bold">Check your email</h2>
-        <p className="mt-2 text-sm text-mute">
+        <p className="text-[11.5px] text-mute">One last step</p>
+        <h2 id="email-code-title" className="mt-0.5 text-[24px] font-semibold leading-tight tracking-[-0.03em]">Check your email</h2>
+        <p className="mt-1.5 text-[13px] leading-5 text-mute">
           We sent a 6-digit code to <span className="break-all text-bone">{email}</span>. Enter it to send to {receiverName}. This browser remembers your email for 30 days.
         </p>
       </div>
-      <ul className="divide-y divide-line rounded-xl border border-line bg-ink-2 text-sm">
+      <ul className="flex flex-col gap-1.5 text-[13px] font-semibold">
         {sending.map((t, i) => (
-          <li key={i} className="truncate px-4 py-2.5">
+          <li key={i} className="truncate rounded-[11px] border border-line bg-well px-3 py-2.5">
             {t}
           </li>
         ))}
@@ -95,9 +96,9 @@ export function EmailCode({ email, receiverName, sending, onConfirmed, onCancel 
           autoComplete="one-time-code"
           autoFocus
           placeholder="123456"
-          className="input w-full text-center text-2xl tracking-[0.4em] tnum"
+          className="input min-h-14 w-full rounded-[13px] text-center text-2xl! font-semibold tracking-[0.4em] tnum"
         />
-        <button type="button" onClick={confirm} disabled={busy} className="btn-lime min-h-12 w-full font-bold">
+        <button type="button" onClick={confirm} disabled={busy} className="btn-lime min-h-[52px] w-full rounded-[15px] text-[14.5px] font-bold">
           {busy ? "Checking…" : `Confirm and send to ${receiverName}`}
         </button>
         {note && (
@@ -105,7 +106,7 @@ export function EmailCode({ email, receiverName, sending, onConfirmed, onCancel 
             {note.text}
           </p>
         )}
-        <p className="text-sm text-mute">
+        <p className="text-center text-[13px] text-mute">
           No email?{" "}
           <button type="button" onClick={resend} disabled={busy} className="inline-flex min-h-11 items-center underline underline-offset-4 hover:text-bone">
             Send a new code

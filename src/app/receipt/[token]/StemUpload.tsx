@@ -50,9 +50,9 @@ export function StemUpload({ token, receiver, existing, max }: { token: string; 
   }
 
   return (
-    <section aria-labelledby="stems-h" className="flex flex-col gap-3 rounded-2xl border border-lime/30 bg-ink-2 p-4">
+    <section aria-labelledby="stems-h" className="flex flex-col gap-3 rounded-xl border border-lime/30 bg-well p-3">
       <div>
-        <h2 id="stems-h" className="text-[12px] font-bold">
+        <h2 id="stems-h" className="text-[13px] font-semibold">
           {receiver} asked for the stems
         </h2>
         <p className="mt-1 text-[11px] text-faint">
@@ -83,7 +83,7 @@ export function StemUpload({ token, receiver, existing, max }: { token: string; 
         type="button"
         disabled={busy || done >= max}
         onClick={() => input.current?.click()}
-        className="w-fit rounded-full bg-lime px-4 py-2 text-[12px] font-bold uppercase text-ink disabled:opacity-50"
+        className="inline-flex min-h-11 w-fit items-center rounded-[12px] bg-lime px-4 text-[13px] font-semibold text-ink disabled:opacity-50"
       >
         {busy ? "Uploading…" : done ? "Add more stems" : "Choose stem files"}
       </button>
