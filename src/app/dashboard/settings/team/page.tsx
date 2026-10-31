@@ -9,6 +9,7 @@ import { PageTitle, Section } from "../Section";
 import { Chip, initials } from "@/components/Kit";
 import { BTN, BTN_GHOST, Notice, ROW, WELL } from "../ui";
 import { ApprovalForm, CancelInviteForm, InviteForm, RoleSelect } from "./TeamForms";
+import { Fold } from "../Fold";
 
 export const metadata = { title: "Team — FloorTest" };
 
@@ -59,7 +60,8 @@ export default async function Team({ searchParams }: { searchParams: Promise<{ d
               : undefined
         }
       >
-        <ul className={WELL}>
+        <Fold title="People" count={1 + team.members.length + team.invites.length} lead={`${team.owner.name} (${ROLE_LABEL.owner})${team.members.length ? ` and ${team.members.length} more` : ""}${team.invites.length ? `, ${team.invites.length} waiting to join` : ""}`}>
+        <ul>
           <li className={ROW}>
             <span className="flex min-w-0 flex-1 items-center gap-2.5">
               <Avatar name={team.owner.name} owner />
@@ -119,6 +121,7 @@ export default async function Team({ searchParams }: { searchParams: Promise<{ d
             </li>
           ))}
         </ul>
+        </Fold>
         {ownerNeedsTwoStep(user) && (
           <Notice
             tone="info"

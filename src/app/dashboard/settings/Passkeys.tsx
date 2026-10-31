@@ -9,6 +9,7 @@ import { deletePasskey, finishAddPasskey, startAddPasskey } from "../actions/pas
 import { ConfirmItsYou } from "./ConfirmItsYou";
 import { Chip, Icon } from "@/components/Kit";
 import { BTN, BTN_GHOST, HELP, Notice, ROW, WELL } from "./ui";
+import { Fold } from "./Fold";
 
 type Key = { id: number; name: string; added: string; lastUsed: string | null; synced: boolean };
 
@@ -52,7 +53,8 @@ export function Passkeys({ keys, twoFactor, max }: { keys: Key[]; twoFactor: boo
         sign-in. It lives on your device or in your password manager (iCloud Keychain, Google Password Manager, 1Password).
       </p>
       {keys.length > 0 && (
-        <ul className={WELL}>
+        <Fold title="Your passkeys" count={keys.length} lead={keys.map((k) => k.name).join(", ")}>
+        <ul>
           {keys.map((k) => (
             <li key={k.id} className={ROW}>
               <div className="flex min-w-0 flex-1 basis-52 items-center gap-2.5">
@@ -103,6 +105,7 @@ export function Passkeys({ keys, twoFactor, max }: { keys: Key[]; twoFactor: boo
             </li>
           ))}
         </ul>
+        </Fold>
       )}
       {supported === false && (
         <Notice tone="info" next="Open FloorTest in Safari, Chrome, Edge or Firefox to add one.">

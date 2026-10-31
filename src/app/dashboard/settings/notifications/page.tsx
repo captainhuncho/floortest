@@ -7,6 +7,7 @@ import { NotificationsForm } from "./NotificationsForm";
 import { PageTitle, Section } from "../Section";
 import { Icon } from "@/components/Kit";
 import { Notice, WELL } from "../ui";
+import { Fold } from "../Fold";
 
 export const metadata = { title: "Notifications — FloorTest" };
 
@@ -56,7 +57,8 @@ export default async function Notifications() {
         {mails.length === 0 ? (
           <p className={`${WELL} px-3.5 py-3 text-[12.5px] text-mute`}>None yet. When a track arrives or your storage fills up, the email shows here too.</p>
         ) : (
-          <ul className={`${WELL} overflow-hidden`}>
+          <Fold title="Emails" count={mails.length} lead={`Newest: ${mails[0].subject}, ${fmtDate(mails[0].created_at)}`}>
+          <ul>
             {mails.map((m) => (
               <li key={m.id} className="border-t border-line first:border-t-0">
                 <details className="group">
@@ -70,6 +72,7 @@ export default async function Notifications() {
               </li>
             ))}
           </ul>
+          </Fold>
         )}
       </Section>
     </>
