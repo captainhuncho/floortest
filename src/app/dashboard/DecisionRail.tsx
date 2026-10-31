@@ -10,6 +10,7 @@ import { useToast } from "@/components/Toast";
 import { decideTrack, undoDecision } from "./actions/review";
 import { stored, useDeviceState } from "@/components/useBrowserValue";
 import { useQueue, useStep, type Step } from "./review/QueueState";
+import { isCharacterKey, shortcutsOn } from "@/components/useShortcuts";
 import { Icon } from "@/components/Kit";
 
 /** Number keys jump through the track: 1 = a quarter in, 4 = near the end. */
@@ -101,6 +102,8 @@ export function DecisionRail({ track, selfHref, next, prev }: Props) {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (isTyping(e.target)) return;
+      // Settings → Account can switch the letter and number keys off; Space and the arrows stay.
+      if (isCharacterKey(e) && !shortcutsOn()) return;
       const k = e.key.toLowerCase();
       if (k === "k") decide("kept");
       else if (k === "x") decide("passed");

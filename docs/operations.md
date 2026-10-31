@@ -35,7 +35,7 @@ Production and Preview have separate values. Never paste values into chats or ti
 | `SCAN_URL`, `SCAN_SECRET` | The virus scanner (`scanner/`, our own ClamAV on Cloudflare Containers; Fly.io is only a written-down fallback). Set `SCAN_SECRET` before `SCAN_URL`, and redeploy once both are in. Set = every track and stem upload is checked before it exists; fails closed if the scanner can't be reached. Unset = off |
 | `BACKUP_BUCKET`, `BACKUP_ACCESS_KEY_ID`, `BACKUP_SECRET_ACCESS_KEY` | The recovery copy ("vault"): a second private R2 bucket on the same account. The key needs write on that bucket and read on `S3_BUCKET`. Unset = off |
 | `ALERT_WEBHOOK_URL` (optional) | A Discord or Slack incoming-webhook URL. Urgent alerts go there as well as email, so you still hear about it if email itself is down |
-| `DB_AUTO_MIGRATE=true`, `DB_POOL_MAX=5` | Database behaviour |
+| `DB_AUTO_MIGRATE=false`, `DB_POOL_MAX=2` | Database behaviour, as set on Production and Preview (checked 31 Oct): migrations run in `vercel-build`, not when a function starts; each function instance opens at most two connections. The code's defaults (on, 5) are for local runs |
 
 **Switches (Admin → Feature switches, no deploy):** sharing with colleagues, bot check, open sign-up, account teams, and pause all uploads (maintenance). Beta scope (owner, 15 Oct; all off until switched on as weekly reveals): **More than two collections** (`more_collections`), **Send music between desks** (`send_music`), **Referrals page** (`referrals`), **Plan requests** (`plan_requests`). With **Account teams** off, teams still work on a desk owned by an ops super admin (ADMIN_EMAILS), so the owner can test them. Stems is switched per plan or per account on the same page. Every flip is logged.
 
@@ -126,7 +126,7 @@ So a storage outage can delay a deletion but can never lose track of a file. Wit
 
 - **Vercel Firewall (edge, before the app runs):** set up 2026-10-03 in Vercel → floortest → Firewall → Rules.
   - **Block common attack paths:** WordPress, `.env`, `.git`, phpMyAdmin, xmlrpc, cgi-bin and `.php` requests get a 403.
-  - **Rate limit authentication endpoints:** POSTs to `/login`, `/login/code`, `/login/code/enter`, `/signup` and `/forgot` above 20 a minute per IP get a 403. Hobby allows only one rate-limit rule.
+  - **Rate limits:** since the Pro plan (14 Oct), the rules "API ceiling" and "Sign-in pages" (under Abuse below) replace the Hobby rule that allowed 20 sign-in POSTs a minute per IP.
   - **Bot Protection:** in **Log** mode. Check Firewall → Traffic for a few days, and switch to Challenge only if no real senders appear in it.
   - **Not available on Hobby:** an upload rate-limit rule (needs Pro; the app's own upload limits still apply) and the OWASP ruleset (Enterprise).
 
