@@ -6,7 +6,7 @@ import { joinWaitlist } from "./waitlist/actions";
 import { Turnstile } from "@/components/Turnstile";
 import { SourceField } from "@/components/SourceField";
 
-const field = "w-full rounded-md border border-white/15 bg-black/30 px-4 py-3 text-sm text-bone outline-none placeholder:text-dim focus:border-lime/70";
+const field = "w-full rounded-[11px] border border-field bg-well px-3.5 py-3 text-sm text-bone outline-none placeholder:text-dim focus:border-lime/70";
 
 export function WaitlistForm({ host, botCheckKey }: { host: string; botCheckKey: string | null }) {
   const [state, onSubmit, pending] = useActionForm(joinWaitlist, undefined);
@@ -50,8 +50,8 @@ export function WaitlistForm({ host, botCheckKey }: { host: string; botCheckKey:
       <input name="link" className={field} placeholder="Instagram, SoundCloud or site (optional)" aria-label="Link" maxLength={200} />
       <div className="flex flex-wrap items-center gap-4 sm:col-span-2">
         <SourceField />
-        <div className="sm:col-span-2"><Turnstile action="waitlist" siteKey={botCheckKey} /></div>
-        <button className="rounded-md bg-lime px-6 py-3.5 text-sm font-medium uppercase text-ink hover:brightness-95" disabled={pending}>
+        <div className="basis-full empty:hidden has-[>div:empty]:hidden"><Turnstile action="waitlist" siteKey={botCheckKey} /></div>
+        <button className="inline-flex min-h-11 items-center rounded-[13px] bg-lime px-5 text-[13.5px] font-semibold text-ink hover:brightness-95" disabled={pending}>
           {pending ? "Sending…" : "Request an invite →"}
         </button>
         {state?.error && (

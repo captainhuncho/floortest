@@ -6,14 +6,14 @@ import { unlockSite } from "./actions";
 export function GateForm({ next }: { next: string }) {
   const [state, action, pending] = useActionState(unlockSite, undefined);
   return (
-    <form action={action} className="mt-8 w-full max-w-sm space-y-3">
+    <form action={action} className="mt-4 w-full space-y-2">
       <input type="hidden" name="next" value={next} />
       <label htmlFor="gate-pw" className="label block">
         Have the password?
       </label>
       <div className="flex gap-2">
         <input id="gate-pw" name="password" type="password" required autoComplete="current-password" className="input min-w-0 flex-1" />
-        <button className="btn-lime min-h-11 shrink-0 px-5" disabled={pending}>
+        <button className="btn-lime min-h-11 shrink-0 rounded-[13px] px-5" disabled={pending}>
           {pending ? "…" : "Enter"}
         </button>
       </div>

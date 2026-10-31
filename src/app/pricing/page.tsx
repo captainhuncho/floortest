@@ -2,6 +2,7 @@ import { siteEditor } from "@/lib/site-editor";
 import { EditablePage, editable } from "@/components/Editable";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
+import { CARD, Chip, Icon } from "@/components/Kit";
 import { currentUser } from "@/lib/auth";
 import { siteCopy } from "@/lib/content";
 import { afterDiscount, discountNow, offeredPlans, planGrid } from "@/lib/plan-store";
@@ -17,48 +18,68 @@ export default async function Pricing() {
   // The same rule as the home page: Open your desk when signed in, Claim your link when sign-up is open, else an invite.
   const label = user ? "Open your desk" : open ? "Claim your link" : "Request an invite";
   const billing = await switchOn("billing");
+  const lime = (plans.find((p) => p.featured) ?? plans[0])?.id;
   return (
     <EditablePage editing={!!editor} page="pricing" label="Pricing" values={c}>
-    <div className="bg-ink text-bone">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        <header className="flex items-center justify-between gap-3 py-6">
-          <Logo />
-          <Link href={href} className="btn-lime btn-sm">
-            {label}
-          </Link>
+    {/* Day or night with the device, in the desk's card language. One lime button: the featured plan's (or the first). */}
+    <div className="theme-system flex min-h-dvh flex-col bg-ink text-bone">
+      <header className="mx-auto flex w-full max-w-[1040px] items-center justify-between gap-3 px-4 pb-2 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:pt-6">
+        <Logo />
+        <Link href={href} className="inline-flex min-h-11 items-center rounded-[11px] border border-line bg-well px-3.5 text-[12.5px] font-semibold text-bone hover:border-line-2">
+          {label}
+        </Link>
+      </header>
+      <main id="main" className="mx-auto flex w-full max-w-[1040px] flex-1 flex-col gap-4 px-4 pb-12 pt-4 sm:gap-5 sm:px-6 sm:pt-8">
+        <header className={`${CARD} flex flex-col gap-2 p-4 sm:p-6`}>
+          <p className="flex items-center gap-1.5 text-[11.5px] text-mute">
+            <Icon name="card" className="size-[15px]" />
+            {billing ? "Plans and prices" : "Free during the beta"}
+          </p>
+          <h1 className="text-[24px] font-semibold leading-tight tracking-[-0.03em] sm:text-[28px]"><E k="pricing_title" /></h1>
+          <p className="max-w-[65ch] text-[13.5px] leading-6 text-mute"><E k="pricing_intro" /></p>
         </header>
-        <main className="py-12">
-          <h1 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]"><E k="pricing_title" /></h1>
-          <p className="mt-4 max-w-[65ch] text-sm text-mute"><E k="pricing_intro" /></p>
-          <div className={`mt-10 grid grid-cols-1 gap-4 ${planGrid(plans.length)}`}>
-            {plans.map((p) => (
-              <div key={p.id} className={`flex flex-col rounded-lg border bg-ink-2 p-7 ${p.featured ? "border-lime/40" : "border-white/10"}`}>
-                <p className="text-xs uppercase tracking-[0.1em] text-lime">{p.name}</p>
-                <p className="mt-8 text-4xl font-bold">
-                  {billing && p.price > 0 ? (discountNow(p) ? <>${afterDiscount(p.price, discountNow(p))} <s className="text-base font-normal text-dim">${p.price}</s></> : `$${p.price}`) : "Free"}
-                  <span className="ml-2 text-xs font-normal text-dim">{p.price > 0 ? (billing ? "/ month" : "during the beta") : "for good"}</span>
+        <ul className={`grid grid-cols-1 gap-4 sm:gap-5 ${planGrid(plans.length)}`}>
+          {plans.map((p) => {
+            const lit = p.id === lime;
+            return (
+              <li key={p.id} className={`${CARD} flex flex-col gap-3 p-4 sm:p-5 ${p.featured ? "border-lime/40" : ""}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-[15px] font-semibold tracking-[-0.015em]">{p.name}</h2>
+                  {p.featured && <Chip tone="acc">More room</Chip>}
+                </div>
+                <p className="flex flex-wrap items-baseline gap-x-2">
+                  <span className="text-[34px] font-semibold leading-none tracking-[-0.035em] tnum">
+                    {billing && p.price > 0 ? (discountNow(p) ? <>${afterDiscount(p.price, discountNow(p))} <s className="text-[14px] font-normal text-faint">${p.price}</s></> : `$${p.price}`) : "Free"}
+                  </span>
+                  <span className="text-[12px] text-mute">{p.price > 0 ? (billing ? "/ month" : "during the beta") : "for good"}</span>
                 </p>
-                <p className="mt-6 text-lg">{p.limit.toLocaleString("en")} active tracks</p>
-                <p className="mt-1 text-sm text-mute">{p.blurb}</p>
-                <ul className="mt-5 flex-1 space-y-1.5 text-sm">
+                <dl className="flex flex-col gap-1 border-t border-dashed border-line-2 pt-3">
+                  <dt className="sr-only">Room</dt>
+                  <dd className="text-[13px] font-semibold tnum">{p.limit.toLocaleString("en")} active tracks</dd>
+                  {p.blurb && <dd className="text-[12px] leading-5 text-mute">{p.blurb}</dd>}
+                </dl>
+                <ul className="flex flex-1 flex-col gap-2 text-[13px] leading-5">
                   {p.features.map((f) => (
                     <li key={f} className="flex gap-2">
-                      <span aria-hidden className="text-lime">✓</span>
+                      <Icon name="check" className="mt-px size-4 text-mute" />
                       {f}
                     </li>
                   ))}
                 </ul>
-                <Link href={href} className="mt-8 w-fit rounded-md bg-lime px-5 py-3 text-xs font-medium uppercase text-ink">
-                  {label} →
+                <Link
+                  href={href}
+                  className={`mt-1 inline-flex min-h-11 items-center justify-center rounded-[13px] px-4 text-[13px] font-semibold ${lit ? "bg-lime text-ink hover:brightness-95" : "border border-line bg-well text-bone hover:border-line-2"}`}
+                >
+                  {label}
                 </Link>
-              </div>
-            ))}
-          </div>
-          <p className="mt-8 text-xs text-dim">
-            <Link href="/" className="-my-1 inline-block py-1 underline underline-offset-4 hover:text-bone"><E k="pricing_back" /></Link>
-          </p>
-        </main>
-      </div>
+              </li>
+            );
+          })}
+        </ul>
+        <p className="text-[12px] text-faint">
+          <Link href="/" className="tap-text underline underline-offset-4 hover:text-bone"><E k="pricing_back" /></Link>
+        </p>
+      </main>
     </div>
     </EditablePage>
   );
