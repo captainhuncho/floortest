@@ -54,8 +54,12 @@ test("a track sent to it lands in the Review Queue, unsorted", async ({ page }) 
   await page.context().clearCookies();
   await page.goto("/login");
   await submitLogin(page, desk.email, /\/dashboard\//, desk.password);
-  await page.goto("/dashboard/review?view=list");
-  await expect(page.getByText(title).locator("visible=true").first()).toBeVisible();
+  // The track reaches the desk once the (fake) virus scan clears, which a slow run can push past one page load, so
+  // reload the list until it shows (twice flaky at 15 s, 30–31 Oct).
+  await expect(async () => {
+    await page.goto("/dashboard/review?view=list");
+    await expect(page.getByText(title).locator("visible=true").first()).toBeVisible({ timeout: 5_000 });
+  }).toPass({ timeout: 60_000 });
   // Collections are optional, so once a track has arrived the checklist stops asking for one.
   await page.goto("/dashboard/floor");
   await expect(page.getByText("Get your desk running", { exact: false })).toBeVisible();
