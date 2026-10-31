@@ -5,7 +5,7 @@ import { Turnstile } from "@/components/Turnstile";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Waveform } from "@/components/Waveform";
+import { CARD, Icon } from "@/components/Kit";
 import { fmtBytes, fmtTime } from "@/lib/format";
 import { EmailCode, startEmailCheck } from "./EmailCode";
 import { GenrePicker } from "./GenrePicker";
@@ -19,8 +19,10 @@ import { normalEmail } from "@/lib/email-normal";
 
 /** Things that arrive on the page (a chosen track, a step, the result) settle in from just below. Reduced motion keeps only the fade. */
 const ENTER = "starting:opacity-0 motion-safe:starting:translate-y-1 transition-[opacity,translate] duration-200 ease-[var(--ease-out)]";
-const LABEL = "text-[11px] font-bold uppercase tracking-[1px] text-dim";
-const HELP = "text-[12px] text-dim";
+const LABEL = "text-[11.5px] font-semibold text-mute";
+/** A card's title: short and plain (The track, About it, You). */
+const CARD_TITLE = "text-[15px] font-semibold tracking-[-0.015em] text-bone";
+const HELP = "text-[11.5px] text-dim";
 
 /** Smooth scrolling, unless the person has asked their device for less motion. */
 const scrollBehavior = (): ScrollBehavior => (matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth");
@@ -65,6 +67,7 @@ export function SubmitForm({
   presetGenre = "",
   bpmRange = null,
   promise = [],
+  receiverFirstName,
 }: {
   handle: string;
   receiverName: string;
@@ -89,6 +92,8 @@ export function SubmitForm({
   bpmRange?: [number, number] | null;
   /** What happens to the file (who hears it, deletion, receipt), repeated above Send. */
   promise?: string[];
+  /** The receiver's first name, for "Add a message for …" (falls back to the first word of their name). */
+  receiverFirstName?: string;
 }) {
   const { items, phase, error, setError, sender, setSender, remembered, artFailed, add, remove, edit, send, reset: resetUpload, cancel, startedAt } = useTrackUpload(handle, { asAccount: !!account });
   const [drag, setDrag] = useState(false);
@@ -267,11 +272,14 @@ export function SubmitForm({
   const heldCount = items.filter((it) => it.held).length;
   const allHeld = heldCount > 0 && heldCount === items.length;
   const firstToken = items.find((it) => it.token)?.token;
+  // On the public link each part is its own card; inside the desk's Send card (signed in) they're plain sections.
+  const box = account ? "flex flex-col border-t border-dashed border-line-2 pt-3" : `${CARD} flex flex-col p-3`;
+  const first = receiverFirstName || receiverName.split(/\s+/)[0];
 
   /* ── Done: what happened, what happens next, and the one link that matters. ── */
   if (showDone && (firstToken || heldCount > 0)) {
     return (
-      <section ref={doneRef} role="status" data-picked className={`flex scroll-mt-6 flex-col gap-5 ${ENTER}`}>
+      <section ref={doneRef} role="status" data-picked className={`${box} scroll-mt-6 gap-4 ${ENTER}`}>
         <div className="flex items-start gap-3">
           <span aria-hidden className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-lime text-ink">
             <svg viewBox="0 0 16 16" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -385,13 +393,15 @@ export function SubmitForm({
   /* ── Step 1: the only thing asked for is the file. ── */
   if (!items.length) {
     return (
-      <div className="flex flex-col gap-3">
+      <section aria-labelledby="pick-h" className={`${box} gap-2.5`}>
+        {!account && <h2 id="pick-h" className={CARD_TITLE}>Your track</h2>}
         <div
           {...dropProps}
-          className={`flex flex-col items-center gap-3 rounded-panel border border-dashed px-4 py-9 text-center transition-colors duration-150 ${drag ? "border-lime bg-lime/5" : "border-line-2"}`}
+          className={`flex flex-col items-center gap-2.5 rounded-2xl border-[1.5px] border-dashed px-4 py-6 text-center transition-colors duration-150 ${drag ? "border-lime bg-lime/5" : "border-line-2 bg-well"}`}
         >
           {fileInput}
-          <button type="button" onClick={() => inputRef.current?.click()} className="btn-lime px-6 py-3.5 text-[14px] font-bold">
+          <button type="button" onClick={() => inputRef.current?.click()} className="btn-lime min-h-12 gap-2 rounded-[14px] px-6 text-[14px] font-bold">
+            <Icon name="up" className="size-4" />
             Choose WAV or MP3
           </button>
           <p className={HELP}>
@@ -400,53 +410,60 @@ export function SubmitForm({
         </div>
         {restored && <p className="text-[13px] text-mute">Pick your files again: your details are still here.</p>}
         {errorBox}
-      </div>
+      </section>
     );
   }
-
   /* ── Step 2: confirm what we read from the file, then the essentials. ── */
-  const row = (it: Item, i: number) => (
-    <li key={it.id} id={`track-${it.id}`} className={`flex flex-col gap-3 ${many ? "py-4 first:pt-0 last:pb-0" : ""} ${ENTER}`}>
-      <div className="flex items-center gap-3">
-        {many && <span className="w-4 shrink-0 text-[12px] text-dim tnum">{i + 1}</span>}
-        <p className="min-w-0 flex-1 truncate text-[12px] text-dim">
-          {it.file.name} · {/\.wav$/i.test(it.file.name) ? "WAV" : "MP3"} · {fmtBytes(it.file.size)}
-          {it.analysis && ` · ${fmtTime(it.analysis.duration)}`}
-          {(it.tags.bpm ?? it.analysis?.bpm) && ` · ${Math.round((it.tags.bpm ?? it.analysis?.bpm)!)} BPM`}
-          {bpmRange && (it.tags.bpm ?? it.analysis?.bpm) && (() => {
-            const bpm = Math.round((it.tags.bpm ?? it.analysis?.bpm)!);
-            const inside = bpm >= bpmRange[0] && bpm <= bpmRange[1];
-            return <span className={inside ? "text-bone" : undefined}>{` (${inside ? "in" : "outside"} the ${bpmRange[0]}–${bpmRange[1]} asked for)`}</span>;
-          })()}
-          {it.tags.key && ` · ${it.tags.key}`}
-        </p>
-        {it.status === "done" ? (
-          <span className="text-[12px] text-lime">Sent</span>
-        ) : (
-          !busy && (
-            <button type="button" onClick={() => remove(it.id)} className="-my-3 -mr-2 inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-[12px] text-dim underline underline-offset-4 hover:text-bone" aria-label={`Remove ${it.file.name}`}>
-              Remove
-            </button>
-          )
-        )}
-      </div>
-      {!many && <Waveform peaks={it.analysis?.peaks ?? null} progress={0} height={44} dim={it.analyzing} />}
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block space-y-1.5" htmlFor={`title-${it.id}`}>
-          <span className={LABEL}>Track title<Req /></span>
-          <input id={`title-${it.id}`} className={`input ${invalid(`title-${it.id}`)}`} required value={it.tags.title} disabled={it.status === "done"} aria-invalid={isInvalid(`title-${it.id}`)} aria-describedby={described(`title-${it.id}`)} onChange={(e) => (clear(`title-${it.id}`), edit(it.id, { title: e.target.value }))} />
-          {problem(`title-${it.id}`)}
-        </label>
-        <label className="block space-y-1.5" htmlFor={`artist-${it.id}`}>
-          <span className={LABEL}>Artist<Req /></span>
-          <input id={`artist-${it.id}`} className={`input ${invalid(`artist-${it.id}`)}`} required value={it.tags.artist} disabled={it.status === "done"} aria-invalid={isInvalid(`artist-${it.id}`)} aria-describedby={described(`artist-${it.id}`)} onChange={(e) => (clear(`artist-${it.id}`), edit(it.id, { artist: e.target.value }))} />
-          {problem(`artist-${it.id}`)}
-        </label>
-      </div>
-      {many && it.error && <p className="text-[12px] text-danger">{it.error}</p>}
-    </li>
-  );
-
+  const row = (it: Item, i: number) => {
+    const bpm = it.tags.bpm ?? it.analysis?.bpm;
+    const inside = bpmRange && bpm ? Math.round(bpm) >= bpmRange[0] && Math.round(bpm) <= bpmRange[1] : null;
+    return (
+      <li key={it.id} id={`track-${it.id}`} className={`flex flex-col gap-2.5 ${many ? "py-3 first:pt-0 last:pb-0" : ""} ${ENTER}`}>
+        <div className="flex items-center gap-2.5">
+          {many ? (
+            <span className="w-4 shrink-0 text-[12px] text-dim tnum">{i + 1}</span>
+          ) : (
+            <span aria-hidden className={`grid size-8 shrink-0 place-items-center rounded-[10px] border border-line bg-well ${it.analyzing ? "text-dim" : "text-bone"}`}>
+              <Icon name="wave" className="size-4" />
+            </span>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[13px] font-semibold text-bone">{it.file.name}</p>
+            <p className="text-[11.5px] leading-[1.4] text-mute tnum">
+              {/\.wav$/i.test(it.file.name) ? "WAV" : "MP3"} · {fmtBytes(it.file.size)}
+              {it.analysis && ` · ${fmtTime(it.analysis.duration)}`}
+              {it.tags.key && ` · ${it.tags.key}`}
+              {bpm && ` · ${Math.round(bpm)} BPM`}
+              {bpmRange && bpm && <span className={inside ? "font-semibold text-lime" : undefined}>{` (${inside ? "in" : "outside"} the ${bpmRange[0]}–${bpmRange[1]} asked for)`}</span>}
+            </p>
+          </div>
+          {it.status === "done" ? (
+            <span className="text-[12px] text-lime">Sent</span>
+          ) : (
+            !busy && (
+              <button type="button" onClick={() => remove(it.id)} className="-my-3 -mr-2 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center px-2 text-[12px] text-dim underline underline-offset-4 hover:text-bone" aria-label={`Remove ${it.file.name}`}>
+                Remove
+              </button>
+            )
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <label className="block min-w-0 space-y-1.5" htmlFor={`title-${it.id}`}>
+            <span className={LABEL}>Track title<Req /></span>
+            <input id={`title-${it.id}`} className={`input w-full ${invalid(`title-${it.id}`)}`} required value={it.tags.title} disabled={it.status === "done"} aria-invalid={isInvalid(`title-${it.id}`)} aria-describedby={described(`title-${it.id}`)} onChange={(e) => (clear(`title-${it.id}`), edit(it.id, { title: e.target.value }))} />
+            {problem(`title-${it.id}`)}
+          </label>
+          <label className="block min-w-0 space-y-1.5" htmlFor={`artist-${it.id}`}>
+            <span className={LABEL}>Artist<Req /></span>
+            <input id={`artist-${it.id}`} className={`input w-full ${invalid(`artist-${it.id}`)}`} required value={it.tags.artist} disabled={it.status === "done"} aria-invalid={isInvalid(`artist-${it.id}`)} aria-describedby={described(`artist-${it.id}`)} onChange={(e) => (clear(`artist-${it.id}`), edit(it.id, { artist: e.target.value }))} />
+            {problem(`artist-${it.id}`)}
+          </label>
+        </div>
+        {many && it.error && <p className="text-[12px] text-danger">{it.error}</p>}
+      </li>
+    );
+  };
+  const plus = <Icon name="plus" className="size-4 text-lime" />;
   return (
     <>
       {transferring && (
@@ -478,75 +495,20 @@ export function SubmitForm({
       <p role="status" className="sr-only">
         {busy ? uploadMilestone(items) : ""}
       </p>
-      <form onSubmit={submit} noValidate data-picked className={waiting || transferring ? "hidden" : "flex flex-col gap-7"} onChange={() => (touched.current = true)} onClick={() => (touched.current = true)} {...dropProps}>
+      {/* Three short cards (owner, 30 Oct): the track, about it, you. Required answers always in view; extras folded. */}
+      <form onSubmit={submit} noValidate data-picked className={waiting || transferring ? "hidden" : "flex flex-col gap-3"} onChange={() => (touched.current = true)} onClick={() => (touched.current = true)} {...dropProps}>
         {fileInput}
-
-        <section aria-labelledby="tracks-h" className="flex flex-col gap-3">
-          <h2 id="tracks-h" className="eyebrow">{many ? `Your ${items.length} tracks` : "Your track"}</h2>
+        <section aria-labelledby="tracks-h" className={`${box} gap-2.5`}>
+          <h2 id="tracks-h" className={CARD_TITLE}>{many ? `The tracks (${items.length})` : "The track"}</h2>
           <ol className={many ? "divide-y divide-line" : ""}>{items.map(row)}</ol>
           {items.length < MAX_FILES && (
-            <button type="button" onClick={() => inputRef.current?.click()} className="inline-flex min-h-9 w-fit items-center gap-1.5 text-[13px] font-semibold text-bone underline-offset-4 hover:underline">
-              <span aria-hidden className="text-lime">+</span> Add another track <span className="font-normal text-dim">({MAX_FILES - items.length} more)</span>
+            <button type="button" onClick={() => inputRef.current?.click()} className="-my-1 inline-flex min-h-11 w-fit items-center gap-1.5 text-[12.5px] font-semibold text-bone underline-offset-4 hover:underline">
+              {plus} Add another track <span className="font-normal text-dim">({MAX_FILES - items.length} more)</span>
             </button>
           )}
         </section>
-
-        {account ? (
-          <p className="text-[12px] text-dim">
-            Sending as <span className="text-bone">{account.name}</span> ({account.email}). Updates go to your FloorTest account.
-            <input type="hidden" name="name" value={account.name} />
-            <input type="hidden" name="email" value={account.email} />
-          </p>
-        ) : remembered && !changeYou ? (
-          <section aria-labelledby="you-h" className="flex flex-col gap-2">
-            <h2 id="you-h" className="eyebrow">You</h2>
-            <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-mute">
-              <span className="min-w-0 break-words">
-                Sending as <span className="font-semibold text-bone">{sender.name}</span> · {sender.email}
-                {sender.instagram ? ` · ${sender.instagram}` : sender.streaming ? " · streaming profile" : ""}
-              </span>
-              <button type="button" onClick={() => setChangeYou(true)} className="inline-flex min-h-9 items-center text-[13px] font-semibold text-bone underline underline-offset-4">
-                Change
-              </button>
-            </p>
-            <input type="hidden" name="name" value={sender.name} />
-            <input type="hidden" name="email" value={sender.email} />
-            <input type="hidden" name="sender_instagram" value={sender.instagram} />
-            <input type="hidden" name="sender_streaming" value={sender.streaming} />
-          </section>
-        ) : (
-          <section aria-labelledby="you-h" className="flex flex-col gap-3">
-            <h2 id="you-h" className="eyebrow">You</h2>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block space-y-1.5" htmlFor="sender-name">
-                <span className={LABEL}>Your name<Req /></span>
-                <input id="sender-name" className={`input ${invalid("sender-name")}`} name="name" required autoComplete="name" value={sender.name} aria-invalid={isInvalid("sender-name")} aria-describedby={described("sender-name")} onChange={(e) => (clear("sender-name"), setSender((s) => ({ ...s, name: e.target.value })))} />
-                {problem("sender-name")}
-              </label>
-              <label className="block space-y-1.5" htmlFor="sender-email">
-                <span className={LABEL}>Your email<Req /></span>
-                <input id="sender-email" className={`input ${invalid("sender-email")}`} name="email" type="email" required autoComplete="email" value={sender.email} aria-invalid={isInvalid("sender-email")} aria-describedby={described("sender-email", "sender-email-help")} onChange={(e) => (clear("sender-email"), setSender((s) => ({ ...s, email: e.target.value })))} />
-                {problem("sender-email")}
-              </label>
-            </div>
-            {!issueFor("sender-email") && <p id="sender-email-help" className={`-mt-1 ${HELP}`}>For your receipt and updates only. Never shown to anyone.</p>}
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block space-y-1.5" htmlFor="sender-instagram">
-                <span className={LABEL}>Instagram</span>
-                <input id="sender-instagram" className={`input ${invalid("sender-instagram")}`} name="sender_instagram" autoComplete="off" maxLength={300} placeholder="@yourname" value={sender.instagram} aria-invalid={isInvalid("sender-instagram")} aria-describedby={described("sender-instagram", "profiles-help")} onChange={(e) => (clear("sender-instagram"), setSender((s) => ({ ...s, instagram: e.target.value })))} />
-                {problem("sender-instagram")}
-              </label>
-              <label className="block space-y-1.5" htmlFor="sender-streaming">
-                <span className={LABEL}>Streaming profile</span>
-                <input id="sender-streaming" className="input" name="sender_streaming" inputMode="url" autoComplete="url" maxLength={300} placeholder="open.spotify.com/artist/…" value={sender.streaming} aria-invalid={isInvalid("sender-instagram")} aria-describedby={described("sender-instagram", "profiles-help")} onChange={(e) => (clear("sender-instagram"), setSender((s) => ({ ...s, streaming: e.target.value })))} />
-              </label>
-            </div>
-            {!issueFor("sender-instagram") && <p id="profiles-help" className={`-mt-1 ${HELP}`}>One of these, so {receiverName} knows who you are.</p>}
-          </section>
-        )}
-
-        <section aria-labelledby="about-h" className="flex flex-col gap-3">
-          <h2 id="about-h" className="eyebrow">About {many ? "these tracks" : "this track"}</h2>
+        <section aria-labelledby="about-h" className={`${box} gap-3`}>
+          <h2 id="about-h" className={CARD_TITLE}>About {many ? "these tracks" : "it"}</h2>
           <GenrePicker id="genre" genres={genres} value={genre} onChange={(g) => (clear("genre"), setGenre(g))} inputClass="input" labelClass={LABEL} invalid={!!issueFor("genre")} issue={problem("genre")} />
           <input type="hidden" name="genre" value={genre} />
           <Choice id="mix_status" name="mix_status" label="Mix status" value={mix} onChange={(v) => (clear("mix_status"), setMix(v))} issue={problem("mix_status")} options={MIX_CHOICES} />
@@ -561,41 +523,95 @@ export function SubmitForm({
             options={AI_CHOICES}
             help={AI_HELP}
           />
-
+          <SetsPermission receiverName={receiverName} many={many} checked={setsOk} onChange={setSetsOk} disabled={busy} />
           {/* Optional extras stay out of the way until asked for. */}
-          <div className="flex flex-wrap gap-x-5 gap-y-1">
-            {!messageOpen && (
-              <button type="button" onClick={() => setMessageOpen(true)} className="inline-flex min-h-9 items-center text-[13px] font-semibold text-bone underline-offset-4 hover:underline">
-                <span aria-hidden className="mr-1.5 text-lime">+</span> Add a message for {receiverName}
-              </button>
-            )}
-            {trackArt && !artOpen && (
-              <button type="button" onClick={() => setArtOpen(true)} className="inline-flex min-h-9 items-center text-[13px] font-semibold text-bone underline-offset-4 hover:underline">
-                <span aria-hidden className="mr-1.5 text-lime">+</span> Add artwork
-              </button>
-            )}
-          </div>
+          {(!messageOpen || (trackArt && !artOpen)) && (
+            <div className="-my-1.5 flex flex-wrap gap-x-5">
+              {!messageOpen && (
+                <button type="button" onClick={() => setMessageOpen(true)} className="inline-flex min-h-11 items-center gap-1.5 text-[12.5px] font-semibold text-bone underline-offset-4 hover:underline">
+                  {plus} Add a message for {first}
+                </button>
+              )}
+              {trackArt && !artOpen && (
+                <button type="button" onClick={() => setArtOpen(true)} className="inline-flex min-h-11 items-center gap-1.5 text-[12.5px] font-semibold text-bone underline-offset-4 hover:underline">
+                  {plus} Add artwork
+                </button>
+              )}
+            </div>
+          )}
           {messageOpen && (
             <label className={`block space-y-1.5 ${ENTER}`} htmlFor="message">
               <span className={LABEL}>Message for {receiverName}</span>
-              <textarea id="message" className="input min-h-24 resize-y" name="message" maxLength={2000} value={message} onChange={(e) => setMessage(e.target.value)} autoFocus placeholder="What it is, where it fits, anything they should know. Travels privately with the track." />
+              <textarea id="message" className="input min-h-24 w-full resize-y" name="message" maxLength={2000} value={message} onChange={(e) => setMessage(e.target.value)} autoFocus placeholder="What it is, where it fits, anything they should know. Travels privately with the track." />
             </label>
           )}
           {trackArt && artOpen && (
             <label className={`block space-y-1.5 ${ENTER}`} htmlFor="artwork">
               <span className={LABEL}>Artwork</span>
-              <input id="artwork" type="file" name="artwork" accept="image/jpeg,image/png,image/webp" disabled={busy} className="input file:mr-3 file:rounded file:border-0 file:bg-ink-3 file:px-3 file:py-1 file:text-bone" />
+              <input id="artwork" type="file" name="artwork" accept="image/jpeg,image/png,image/webp" disabled={busy} className="input w-full file:mr-3 file:rounded file:border-0 file:bg-ink-3 file:px-3 file:py-1 file:text-bone" />
               <span className={`block ${HELP}`}>JPG, PNG or WebP, up to 25 MB. Sent at full quality. {many ? "Goes with every track in this send." : ""}</span>
             </label>
           )}
         </section>
-
-        <SetsPermission receiverName={receiverName} many={many} checked={setsOk} onChange={setSetsOk} disabled={busy} />
-
+        {account ? (
+          <p className="px-1 text-[12px] text-dim">
+            Sending as <span className="text-bone">{account.name}</span> ({account.email}). Updates go to your FloorTest account.
+            <input type="hidden" name="name" value={account.name} />
+            <input type="hidden" name="email" value={account.email} />
+          </p>
+        ) : remembered && !changeYou ? (
+          <section aria-labelledby="you-h" className={`${box} flex-row! items-center gap-3`}>
+            <div className="min-w-0 flex-1">
+              <h2 id="you-h" className={CARD_TITLE}>You</h2>
+              <p className="mt-0.5 truncate text-[12px] text-mute">
+                Sending as <span className="font-semibold text-bone">{sender.name}</span> · {sender.email}
+                {sender.instagram ? ` · ${sender.instagram}` : sender.streaming ? " · streaming profile" : ""}
+              </p>
+            </div>
+            <button type="button" onClick={() => setChangeYou(true)} className="inline-flex min-h-11 shrink-0 items-center rounded-[11px] border border-line bg-well px-3.5 text-[12.5px] font-semibold text-bone hover:bg-ink-4">
+              Change
+            </button>
+            <input type="hidden" name="name" value={sender.name} />
+            <input type="hidden" name="email" value={sender.email} />
+            <input type="hidden" name="sender_instagram" value={sender.instagram} />
+            <input type="hidden" name="sender_streaming" value={sender.streaming} />
+          </section>
+        ) : (
+          <section aria-labelledby="you-h" className={`${box} gap-2.5`}>
+            <h2 id="you-h" className={CARD_TITLE}>You</h2>
+            <div className="grid gap-2.5 sm:grid-cols-2">
+              <label className="block min-w-0 space-y-1.5" htmlFor="sender-name">
+                <span className={LABEL}>Your name<Req /></span>
+                <input id="sender-name" className={`input w-full ${invalid("sender-name")}`} name="name" required autoComplete="name" value={sender.name} aria-invalid={isInvalid("sender-name")} aria-describedby={described("sender-name")} onChange={(e) => (clear("sender-name"), setSender((s) => ({ ...s, name: e.target.value })))} />
+                {problem("sender-name")}
+              </label>
+              <label className="block min-w-0 space-y-1.5" htmlFor="sender-email">
+                <span className={LABEL}>Your email<Req /></span>
+                <input id="sender-email" className={`input w-full ${invalid("sender-email")}`} name="email" type="email" required autoComplete="email" value={sender.email} aria-invalid={isInvalid("sender-email")} aria-describedby={described("sender-email", "sender-email-help")} onChange={(e) => (clear("sender-email"), setSender((s) => ({ ...s, email: e.target.value })))} />
+                {problem("sender-email")}
+              </label>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="block min-w-0 space-y-1.5" htmlFor="sender-instagram">
+                <span className={LABEL}>Instagram</span>
+                <input id="sender-instagram" className={`input w-full ${invalid("sender-instagram")}`} name="sender_instagram" autoComplete="off" maxLength={300} placeholder="@yourname" value={sender.instagram} aria-invalid={isInvalid("sender-instagram")} aria-describedby={described("sender-instagram", "profiles-help")} onChange={(e) => (clear("sender-instagram"), setSender((s) => ({ ...s, instagram: e.target.value })))} />
+              </label>
+              <label className="block min-w-0 space-y-1.5" htmlFor="sender-streaming">
+                <span className={LABEL}>Streaming profile</span>
+                <input id="sender-streaming" className="input w-full" name="sender_streaming" inputMode="url" autoComplete="url" maxLength={300} placeholder="open.spotify.com/artist/…" value={sender.streaming} aria-invalid={isInvalid("sender-instagram")} aria-describedby={described("sender-instagram", "profiles-help")} onChange={(e) => (clear("sender-instagram"), setSender((s) => ({ ...s, streaming: e.target.value })))} />
+              </label>
+            </div>
+            {problem("sender-instagram")}
+            {/* One helper line for the card: what the email is for, and why one profile. */}
+            <p className={`-mt-0.5 ${HELP}`}>
+              {!issueFor("sender-email") && <span id="sender-email-help">For your receipt and updates only. Never shown to anyone. </span>}
+              {!issueFor("sender-instagram") && <span id="profiles-help">One of these, so {receiverName} knows who you are.</span>}
+            </p>
+          </section>
+        )}
         {errorBox}
-
         {!account && <Turnstile action="send" siteKey={botCheckKey} />}
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 px-1">
           {issues.length > 0 && (
             <div role="alert" className={`rounded-lg border border-danger/40 bg-danger/10 px-3.5 py-2.5 text-[13px] text-danger ${ENTER}`}>
               {issues.length === 1 ? "One thing left: " : `${issues.length} things left: `}
@@ -611,18 +627,19 @@ export function SubmitForm({
             </div>
           )}
           {promise.length > 0 && (
-            <ul aria-label="What happens to your file" className="flex flex-col gap-1.5 text-[13px] leading-5 text-mute">
-              {promise.map((line) => (
+            <ul aria-label="What happens to your file" className="flex flex-col gap-1.5 text-[12.5px] leading-5 text-mute">
+              {promise.map((line, i) => (
                 <li key={line} className="flex gap-2.5">
-                  <span aria-hidden>→</span>
+                  <Icon name={(["lock", "clock", "mail"] as const)[i] ?? "mail"} className="mt-0.5 size-[15px] text-bone" />
                   {line}
                 </li>
               ))}
             </ul>
           )}
           {/* On phones the send button stays within reach at the bottom of the screen while the form scrolls. */}
-          <div className="max-sm:sticky max-sm:bottom-0 max-sm:z-10 max-sm:-mx-[18px] max-sm:border-t max-sm:border-line max-sm:bg-ink max-sm:px-[18px] max-sm:pt-3 max-sm:pb-[max(12px,env(safe-area-inset-bottom))]">
-            <button className="btn-lime w-full py-3.5 text-[14px] font-bold" disabled={busy || analyzing || checking}>
+          <div className="max-sm:sticky max-sm:bottom-0 max-sm:z-10 max-sm:-mx-[18px] max-sm:border-t max-sm:border-line max-sm:bg-ink/95 max-sm:px-[18px] max-sm:pt-2.5 max-sm:pb-[max(12px,env(safe-area-inset-bottom))] max-sm:backdrop-blur-sm">
+            <button className="btn-lime min-h-[52px] w-full gap-2 rounded-[15px] text-[14.5px] font-bold" disabled={busy || analyzing || checking}>
+              <Icon name="send" className="size-4" />
               {checking ? "Checking your email…" : analyzing ? "Reading audio…" : many ? `Send ${items.length} tracks to ${receiverName}` : `Send to ${receiverName}`}
             </button>
           </div>

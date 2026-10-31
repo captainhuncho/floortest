@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { fmtBytes } from "@/lib/format";
+import { CARD } from "@/components/Kit";
 
 export type TransferFile = { name: string; size: number; progress: number; state: "waiting" | "sending" | "sent" | "failed" };
 
@@ -51,10 +52,10 @@ export function TransferScreen({ receiverName, callout, files, startedAt, onCanc
   const doneCount = files.filter((f) => f.state === "sent").length;
 
   return (
-    <section aria-label="Upload progress" className="motion-safe:starting:translate-y-1 flex flex-col gap-5 transition-[opacity,translate] duration-200 ease-[var(--ease-out)] starting:opacity-0">
+    <section aria-label="Upload progress" className={`${CARD} motion-safe:starting:translate-y-1 flex flex-col gap-4 p-3 transition-[opacity,translate] duration-200 ease-[var(--ease-out)] starting:opacity-0`}>
       <div className="flex flex-col gap-1">
-        <p className="eyebrow">Sending to {receiverName}{callout ? ` · ${callout}` : ""}</p>
-        <h2 className="truncate text-[28px] font-bold leading-[1.1] tracking-[-0.5px] text-bone">{current?.name}</h2>
+        <p className="text-[11.5px] text-mute">Sending to {receiverName}{callout ? ` · ${callout}` : ""}</p>
+        <h2 className="mt-0.5 truncate text-[21px] font-semibold leading-[1.15] tracking-[-0.03em] text-bone">{current?.name}</h2>
         <p className="text-[13px] text-mute">{many ? `Track ${Math.min(doneCount + 1, files.length)} of ${files.length} · ` : ""}{fmtBytes(sent)} of {fmtBytes(total)}</p>
       </div>
 
@@ -89,7 +90,7 @@ export function TransferScreen({ receiverName, callout, files, startedAt, onCanc
               ? "Uploaded. Checking your file for viruses: this can take up to a minute. Keep this page open."
               : "Keep this page open until it says sent."}
         </p>
-        <button type="button" onClick={onCancel} className="btn-ghost btn-sm">
+        <button type="button" onClick={onCancel} className="inline-flex min-h-11 items-center rounded-[11px] border border-line bg-well px-3.5 text-[12.5px] font-semibold text-bone hover:bg-ink-4">
           Cancel
         </button>
       </div>
