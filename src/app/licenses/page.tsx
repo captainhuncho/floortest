@@ -1,4 +1,5 @@
-import { Logo } from "@/components/Logo";
+import { DocHead, PublicShell } from "@/components/LegalPage";
+import { CARD, Icon } from "@/components/Kit";
 
 export const metadata = { title: "Third-party licenses — FloorTest" };
 
@@ -14,23 +15,23 @@ const LICENSES = [
 
 export default function Licenses() {
   return (
-    <main className="mx-auto max-w-2xl px-4 py-10 sm:py-16">
-      <Logo className="mb-12" />
-      <h1 className="text-4xl font-bold tracking-tight">Third-party licenses</h1>
-      <p className="mt-3 text-mute">FloorTest is built on these open-source projects.</p>
-      <ul className="mt-8 divide-y divide-line rounded-xl border border-line">
-        {LICENSES.map(([name, owner, license, url]) => (
-          <li key={name} className="flex flex-wrap items-baseline justify-between gap-2 px-5 py-4">
-            <div>
-              <p className="font-medium">{name}</p>
-              <p className="text-sm text-mute">© {owner}</p>
+    <PublicShell>
+      <DocHead label={<><Icon name="shield" className="size-[15px]" />Legal</>} title="Third-party licenses">
+        <p className="text-[13.5px] leading-6 text-mute">FloorTest is built on these open-source projects.</p>
+      </DocHead>
+      <ul className={`${CARD} flex flex-col px-4 sm:px-6`}>
+        {LICENSES.map(([name, owner, license, url], i) => (
+          <li key={name} className={`flex min-h-14 flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3 ${i ? "border-t border-line" : ""}`}>
+            <div className="min-w-0">
+              <p className="text-[13px] font-semibold text-bone">{name}</p>
+              <p className="text-[11.5px] text-mute">© {owner}</p>
             </div>
-            <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm underline underline-offset-4 hover:text-lime">
+            <a href={url} target="_blank" rel="noopener noreferrer" className="tap-text text-[12px] text-mute underline underline-offset-4 hover:text-bone">
               {license} ↗
             </a>
           </li>
         ))}
       </ul>
-    </main>
+    </PublicShell>
   );
 }

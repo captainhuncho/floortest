@@ -1,4 +1,4 @@
-import { Logo } from "@/components/Logo";
+import { LegalPage } from "@/components/LegalPage";
 import {
   LISTEN_MIN_SECONDS,
   MAX_UPLOAD_BYTES,
@@ -55,21 +55,6 @@ export default function Trust() {
       ],
     ],
   ];
-  return (
-    <main className="mx-auto max-w-2xl px-4 py-10 sm:py-16">
-      <Logo className="mb-12" />
-      <h1 className="text-4xl font-bold tracking-tight">Trust & Security</h1>
-      <p className="mt-3 text-mute">How FloorTest handles the music sent to it today.</p>
-      {sections.map(([h, items]) => (
-        <section key={h} className="mt-10">
-          <h2 className="text-lg font-semibold">{h}</h2>
-          <ul className="mt-3 list-disc space-y-2 pl-5 text-mute">
-            {items.map((i) => (
-              <li key={i}>{i}</li>
-            ))}
-          </ul>
-        </section>
-      ))}
-    </main>
-  );
+  // The same reading frame as the legal pages, with each section's facts as a list. No draft note: these are the rules the app runs on.
+  return <LegalPage label="How FloorTest works" title="Trust & Security" intro="How FloorTest handles the music sent to it today." note={null} bullets sections={sections} />;
 }
