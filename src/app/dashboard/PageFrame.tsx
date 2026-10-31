@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation";
 /**
  * Screens that lay out against the whole content area: the Queue (its list sits beside a review column docked to
  * the right edge) and the Floor (one column centred in the space beside the sidebar, at every width; inside the
- * left-aligned frame it drifted left on wide screens).
+ * left-aligned frame it drifted left on wide screens). Account centres itself the same way (owner, 31 Oct).
  */
-const FULL_BLEED = ["/dashboard/review", "/dashboard/floor"];
+const FULL_BLEED = ["/dashboard/review", "/dashboard/floor", "/dashboard/account"];
 
 /**
  * The one content frame for every dashboard page: left-aligned, 1088px of content plus the page's own gutters
