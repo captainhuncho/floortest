@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import type { Page } from "@playwright/test";
 import { currentStep, totpCode } from "../src/lib/totp";
 import { expect, logIn, submitLogin, TEST_PASSWORD, test } from "./fixtures";
@@ -11,6 +13,9 @@ test.describe.configure({ mode: "serial" });
 
 // The owner turns on two-step sign-in in the first test (owners manage their team only with it on), so later tests
 // sign the owner in with a code. Two-step refuses a step it has already seen, so a code waits for a fresh step.
+// The secret is kept in the throwaway test copy's folder too (fresh each run), so a rerun of the first test in the same
+// run (--repeat-each, or after a failure restarts the worker) signs in with the code instead of waiting for the desk.
+const SECRET_FILE = path.join(".e2e", "teams-totp-secret");
 let totpSecret = "";
 let lastStep = 0;
 async function freshCode() {
@@ -22,27 +27,56 @@ async function logInWithTwoStep(page: Page) {
   await page.goto("/login");
   // submitLogin also answers the human check that earlier specs may have triggered for this account.
   await submitLogin(page, "demo@floortest.test", /\/login\/verify/);
+  await enterCode(page);
+}
+async function enterCode(page: Page) {
   await page.getByLabel("Code").fill(await freshCode());
   await page.getByRole("button", { name: "Verify" }).click();
   await page.waitForURL(/\/dashboard\//);
 }
 
 test("the owner sees the team, turns on reply approval and invites someone", async ({ page }) => {
-  await logIn(page, "demo@floortest.test");
+  // A rerun in the same run finds two-step already on from the first go: sign in with the code it saved.
+  await page.goto("/login");
+  await submitLogin(page, "demo@floortest.test", /\/dashboard\/|\/login\/verify/);
+  const rerun = /\/login\/verify/.test(page.url());
+  if (rerun) {
+    totpSecret ||= fs.readFileSync(SECRET_FILE, "utf8");
+    // A restarted worker forgets the last step used: wait for a new one, since the first go's last code is spent.
+    lastStep = Math.max(lastStep, currentStep());
+    await enterCode(page);
+  }
   await page.goto("/dashboard/settings/team");
+  if (rerun) {
+    // The first go's invite holds the last seat (and folds the list away): cancel it so the run starts as seeded.
+    const showAll = page.getByRole("button", { name: /Show all/ });
+    if (await showAll.count()) {
+      await showAll.first().click();
+      await expect(page.getByRole("button", { name: /Hide/ }).first()).toBeVisible();
+    }
+    const leftover = page.getByRole("button", { name: "Cancel invite" });
+    if (await leftover.count()) {
+      await leftover.first().click();
+      await expect(leftover).toHaveCount(0);
+    }
+    await page.reload();
+  }
   await expect(page.getByRole("heading", { name: "People (2 of 3 seats)" })).toBeVisible();
-  await expect(page.getByRole("region", { name: "People (2 of 3 seats)" }).getByText("Lena Listener")).toBeVisible();
-  // Owners manage their team only with two-step sign-in on (owner, 15 Oct): the invite form waits until then.
-  await expect(page.getByText("Two-step sign-in keeps the whole team safe.")).toBeVisible();
-  await expect(page.getByLabel("Email to invite")).toHaveCount(0);
-  await page.goto("/dashboard/settings/security");
-  await page.getByRole("button", { name: "Set up" }).click();
-  totpSecret = (await page.locator("p.font-mono").first().innerText()).replace(/\s/g, "");
-  await page.getByLabel("6-digit code").fill(await freshCode());
-  await page.getByLabel("Password", { exact: true }).fill(TEST_PASSWORD);
-  await page.getByRole("button", { name: "Turn on" }).click();
-  await expect(page.getByText("Save your recovery codes")).toBeVisible();
-  await page.goto("/dashboard/settings/team");
+  await expect(page.getByRole("region", { name: "People (2 of 3 seats)" }).getByText("Lena Listener", { exact: true })).toBeVisible();
+  if (!rerun) {
+    // Owners manage their team only with two-step sign-in on (owner, 15 Oct): the invite form waits until then.
+    await expect(page.getByText("Two-step sign-in keeps the whole team safe.")).toBeVisible();
+    await expect(page.getByLabel("Email to invite")).toHaveCount(0);
+    await page.goto("/dashboard/settings/security");
+    await page.getByRole("button", { name: "Set up" }).click();
+    totpSecret = (await page.locator("p.font-mono").first().innerText()).replace(/\s/g, "");
+    fs.writeFileSync(SECRET_FILE, totpSecret);
+    await page.getByLabel("6-digit code").fill(await freshCode());
+    await page.getByLabel("Password", { exact: true }).fill(TEST_PASSWORD);
+    await page.getByRole("button", { name: "Turn on" }).click();
+    await expect(page.getByText("Save your recovery codes")).toBeVisible();
+    await page.goto("/dashboard/settings/team");
+  }
   await expect(page.getByText("Two-step sign-in keeps the whole team safe.")).toHaveCount(0);
   await page.getByRole("checkbox", { name: /need approval before they.re sent/ }).check();
   await page.getByRole("button", { name: "Save" }).click();
@@ -63,7 +97,9 @@ test("a member switches to the team's desk, can't open owner settings, and their
   await expect(page.getByRole("link", { name: /^Send$/i })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Hide this" })).toHaveCount(0);
   await page.goto("/dashboard/review");
-  await expect(page.getByRole("button", { name: "Delete", exact: true })).toHaveCount(0);
+  // Members can't delete tracks. (Deleting their own Review Together comment, left by an earlier go, is theirs to do.)
+  const trackDelete = page.getByRole("button", { name: "Delete", exact: true }).and(page.locator(':not([aria-label="Review together"] *)'));
+  await expect(trackDelete).toHaveCount(0);
 
   // Owner-only and admin-only pages send members to the Team page instead.
   await page.goto("/dashboard/settings/security");
@@ -77,17 +113,19 @@ test("a member switches to the team's desk, can't open owner settings, and their
   const together = page.getByRole("region", { name: "Review together" }).first();
   await together.getByRole("textbox", { name: "Comment for the team" }).fill("Strong groove, check the mixdown");
   await together.getByRole("button", { name: "Comment" }).click();
-  await expect(together.getByText("Strong groove, check the mixdown")).toBeVisible();
+  await expect(together.getByText("Strong groove, check the mixdown").first()).toBeVisible();
 
-  // The team's contacts are here; a reply from a member is held.
+  // The team's contacts are here; a reply from a member is held. Each go sends its own words: the same reply to the same
+  // person within 10 minutes is refused as already sent.
+  const reply = `Big tune. Can you send the extended mix? (${Date.now().toString(36)})`;
   await page.goto("/dashboard/contacts");
   await page.getByRole("link", { name: /Ama/ }).first().click();
-  await page.getByRole("textbox", { name: /Message to/ }).fill("Big tune. Can you send the extended mix?");
+  await page.getByRole("textbox", { name: /Message to/ }).fill(reply);
   await page.getByRole("button", { name: "Send email" }).click();
   await expect(page.getByRole("status").filter({ hasText: /Waiting for approval/ })).toBeVisible();
   await page.goto("/dashboard/settings/team");
   await expect(page.getByRole("heading", { name: "Your replies waiting for approval" })).toBeVisible();
-  await expect(page.getByText("Big tune. Can you send the extended mix?")).toBeVisible();
+  await expect(page.getByText(reply)).toBeVisible();
 
   // The desk's log shows what was done on it, but never the owner's own sign-ins or security settings.
   await page.goto("/dashboard/activity");
@@ -105,12 +143,12 @@ test("the owner approves the held reply from the Team page", async ({ page }) =>
   await desk.getByRole("link", { name: "1 reply waiting for your approval" }).click();
   await page.waitForURL(/\/dashboard\/settings\/team/);
   await expect(page.getByRole("heading", { name: "Waiting for approval (1)" })).toBeVisible();
-  await expect(page.getByText(/Lena Listener → /)).toBeVisible();
+  await expect(page.getByText(/Lena Listener → /).first()).toBeVisible();
   await page.getByRole("button", { name: "Approve and send" }).click();
   await expect(page.getByRole("heading", { name: "Waiting for approval (0)" })).toBeVisible();
   // The member's comment is on the owner's desk, signed by them.
   await page.goto("/dashboard/review");
-  await expect(page.getByRole("region", { name: "Review together" }).first().getByText("Lena Listener")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Review together" }).first().getByText("Lena Listener").first()).toBeVisible();
   // The account log names who did each thing: the held reply was the member's.
   await page.goto("/dashboard/activity");
   await expect(page.getByText("by Lena Listener").first()).toBeVisible();
