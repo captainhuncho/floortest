@@ -47,6 +47,11 @@
     "tsx": "^4.23.15",
     "typescript": "^5.9.3"
   },
+  "overrides": {
+    "@sentry/bundler-plugins": {
+      "glob": "14.0.3"
+    }
+  },
   "engines": {
     "node": ">=22.5"
   }
