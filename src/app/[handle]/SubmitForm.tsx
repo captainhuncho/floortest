@@ -317,7 +317,7 @@ export function SubmitForm({
               key={step}
               className={`relative flex min-w-0 flex-col items-center gap-2 before:absolute before:top-[5px] before:right-1/2 before:h-px before:w-full before:bg-line-2 first:before:hidden ${i === 0 && !allHeld ? "text-lime" : "text-dim"}`}
             >
-              <span aria-hidden className={`relative size-[11px] rounded-full ${i === 0 && !allHeld ? "bg-(--color-lime) shadow-[0_0_0_4px_color-mix(in_oklab,var(--color-lime)_16%,transparent)]" : "border-[1.5px] border-line-2 bg-card"}`} />
+              <span aria-hidden className={`relative z-[1] size-[11px] rounded-full ${i === 0 && !allHeld ? "bg-(--color-lime) shadow-[0_0_0_4px_color-mix(in_oklab,var(--color-lime)_16%,transparent)]" : "border-[1.5px] border-line-2 bg-card"}`} />
               <span className="max-w-full truncate">{step}</span>
               {i === 0 && !allHeld && <span className="sr-only"> (done)</span>}
             </li>
