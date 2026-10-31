@@ -1,3 +1,4 @@
+import { EmptyState } from "@/components/Feedback";
 import { trackUse } from "@/lib/usage";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
@@ -159,7 +160,13 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
             <section aria-labelledby="people-h" className={`${CARD} flex flex-col gap-1 p-3`}>
               <SectionHead id="people-h" icon="contacts" title="People" aside={<span>Sorted by {sort[1] === "A–Z" ? "name" : sort[1].toLowerCase()}</span>} />
               {rows.length === 0 ? (
-                <p className="py-8 text-center text-[12px] text-mute">{search ? `No contacts match “${search}”.` : "Contacts appear here after their first upload."}</p>
+                search ? (
+                  <EmptyState icon="search" action={{ href: "/dashboard/contacts", label: "Clear the search" }}>
+                    No contacts match “{search}”. Try part of a name or an email address.
+                  </EmptyState>
+                ) : (
+                  <EmptyState icon="contacts">Everyone who sends you a track shows up here, with what they sent and what you did with it.</EmptyState>
+                )
               ) : (
                 <ul aria-label="People" className="flex flex-col">
                   {rows.map((r) => {
