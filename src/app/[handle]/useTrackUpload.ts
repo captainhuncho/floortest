@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { analyzeAudio, type Analysis } from "@/lib/analyze";
-import { readTags, type Tags } from "@/lib/tags";
+import { fillFromFile, readTags, type Tags } from "@/lib/tags";
 import { MAX_BATCH_TRACKS } from "@/lib/plans";
 import { stored, useBrowserValue } from "@/components/useBrowserValue";
 import { recallSender, rememberSender } from "@/lib/sender-memory";
@@ -275,7 +275,8 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
     }));
     setItems((list) => [...list, ...fresh]);
     for (const it of fresh) {
-      readTags(it.file).then((tags) => patch(it.id, { tags }));
+      // Fills only what the sender hasn't changed while the file was being read (src/lib/tags.ts fillFromFile).
+      readTags(it.file).then((read) => setItems((list) => list.map((x) => (x.id === it.id ? { ...x, tags: fillFromFile(x.tags, it.tags, read) } : x))));
       analyzeAudio(it.file).then((analysis) => patch(it.id, { analysis, analyzing: false }), () => patch(it.id, { analyzing: false }));
     }
   }

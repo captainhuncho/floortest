@@ -48,7 +48,10 @@ test("a track sent to it lands in the Review Queue, unsorted", async ({ page }) 
   await page.getByRole("group", { name: /^Mix status/ }).getByText("Mixed, not mastered").click();
   await page.getByRole("group", { name: /^Release status/ }).getByText("Unreleased").click();
   await page.getByRole("group", { name: /^Made with AI/ }).getByText("No", { exact: true }).click();
+  // The file's own details arrive late on a cold dev server; they must not wipe what was typed (fillFromFile, 31 Oct).
+  await expect(page.getByLabel("Artist")).toHaveValue("E2E Artist");
   await page.getByRole("button", { name: /^Send to / }).click();
+  // The receipt shows only once the track is saved on the desk (a held upload says "is received" instead).
   await expect(page.getByText(/We sent a receipt to/)).toBeVisible({ timeout: 80_000 });
 
   await page.context().clearCookies();
