@@ -14,6 +14,7 @@ import { QuickReplies } from "../QuickReplies";
 import { ReplyTemplates } from "../ReplyTemplates";
 import { BatchBar } from "./BatchBar";
 import { BATCH_MAX } from "@/lib/batch";
+import { isCharacterKey, shortcutsOn } from "@/components/useShortcuts";
 import { CARD, Chip, Icon as KitIcon } from "@/components/Kit";
 
 /** The quiet button in the list's head (Select / Done). */
@@ -154,6 +155,8 @@ export function ListRows({
         }
         return;
       }
+      // Settings → Account can switch the letter and number keys off; Space, Enter and the arrows stay.
+      if (isCharacterKey(e) && !shortcutsOn()) return;
       const i = rows.findIndex((r) => r.id === selected);
       const r = rows[i];
       const k = e.key.toLowerCase();

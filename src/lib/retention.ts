@@ -87,9 +87,9 @@ export async function purgeExpired({ force = false } = {}) {
   if (!force && g.__floortestPurgeAt && t - g.__floortestPurgeAt < 10 * 60_000) return { expired: 0, abandoned: 0 };
   g.__floortestPurgeAt = t;
 
-  // Opportunistic runs (and the start of the nightly one) clear the cheap stuff; the nightly route already ran
-  // cleanupRecords before its backup, so it isn't repeated there.
-  if (!force) await cleanupRecords(t, until);
+  // Old records (cleanupRecords) are cleared only by the nightly route, before its backup: an opportunistic run starts
+  // after a dashboard page and shares that instance's few database connections with the next clicks, so it stays
+  // short. Expiry never waits for this: sessions, codes and links are checked against their expiry when read.
 
   // A held upload (waiting for its virus check) isn't abandoned: the held-uploads job tells its sender and removes it
   // after HELD_TTL; this only catches one that job somehow missed, an hour later. One being saved right now (a live

@@ -21,7 +21,14 @@ type Row = {
   last_at: number | null;
   last_message: string | null;
   last_message_kind: "message" | "reply" | null;
+  total_people: number;
+  total_sent: number;
+  total_engaged: number;
 };
+
+/** People shown at first, and how many more each "Show more" adds; the most a link can ask for. */
+const PAGE = 100;
+const MAX_SHOWN = 2000;
 
 const FROMS = [
   ["all", "All"],
@@ -49,7 +56,7 @@ function SegLinks({ label, value, items }: { label: string; value: string; items
 /** A list row in a card: 44px or more, a hairline between rows. */
 const LI = "flex min-h-11 items-center gap-2.5 border-t border-line py-2 first:border-t-0";
 
-export default async function Contacts({ searchParams }: { searchParams: Promise<{ sort?: string; show?: string; q?: string; tab?: string; from?: string }> }) {
+export default async function Contacts({ searchParams }: { searchParams: Promise<{ sort?: string; show?: string; q?: string; tab?: string; from?: string; n?: string }> }) {
   const user = await requireUser();
   await trackUse(user.id, "contacts");
   const sp = await searchParams;
@@ -57,7 +64,10 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
   const show = pickShow(sp.show);
   const search = (sp.q || "").trim().slice(0, 100);
 
-  // Every sender, with their track stats and the latest message in either direction.
+  const shown = Math.min(MAX_SHOWN, Math.max(PAGE, Math.ceil((Number(sp.n) || PAGE) / PAGE) * PAGE));
+
+  // Senders, with their track stats and the latest message in either direction: the first `shown` of them, plus the
+  // totals over everyone who matches (worked out before the limit).
   const rows = (await q.all<Row>(`WITH msgs AS (
          SELECT sender_id, created_at AS at, message AS text, 'message' AS kind FROM tracks WHERE user_id = ? AND message != ''
          UNION ALL
@@ -70,21 +80,28 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
               COUNT(CASE WHEN t.decision = 'kept' THEN 1 END) AS kept,
               COUNT(t.downloaded_at) AS downloaded,
               MAX(t.created_at) AS last_at,
-              lm.text AS last_message, lm.kind AS last_message_kind
+              lm.text AS last_message, lm.kind AS last_message_kind,
+              COUNT(*) OVER () AS total_people,
+              SUM(COUNT(t.id)) OVER () AS total_sent,
+              SUM(CASE WHEN COUNT(CASE WHEN t.decision = 'kept' THEN 1 END) > 0 OR lm.kind = 'reply' THEN 1 ELSE 0 END) OVER () AS total_engaged
        FROM senders s
        LEFT JOIN tracks t ON t.sender_id = s.id
        LEFT JOIN lm ON lm.sender_id = s.id AND lm.rn = 1
        WHERE s.user_id = ? AND ${show[2]} ${search ? "AND (s.name ILIKE ? OR s.email ILIKE ?)" : ""}
-       GROUP BY s.id, lm.text, lm.kind ORDER BY ${sort[2]}`, user.id, user.id, user.id, ...(search ? [likeContains(search), likeContains(search)] : [])));
+       GROUP BY s.id, lm.text, lm.kind ORDER BY ${sort[2]} LIMIT ?`, user.id, user.id, user.id, ...(search ? [likeContains(search), likeContains(search)] : []), shown));
 
   const tab = sp.tab === "messages" ? "messages" : "people";
-  // The latest track from each sender: shown beside the row from 768px up, where there's room.
-  const latest = await q.all<{ sender_id: number; title: string; collection: string | null; created_at: number }>(
-    `SELECT DISTINCT ON (t.sender_id) t.sender_id, t.title, c.name AS collection, t.created_at
-       FROM tracks t LEFT JOIN collections c ON c.id = t.collection_id
-       WHERE t.user_id = ? ORDER BY t.sender_id, t.created_at DESC`,
-    user.id,
-  );
+  // The latest track from each sender on screen: shown beside the row from 768px up, where there's room.
+  const ids = rows.map((r) => r.id);
+  const latest = ids.length
+    ? await q.all<{ sender_id: number; title: string; collection: string | null; created_at: number }>(
+        `SELECT DISTINCT ON (t.sender_id) t.sender_id, t.title, c.name AS collection, t.created_at
+           FROM tracks t LEFT JOIN collections c ON c.id = t.collection_id
+           WHERE t.user_id = ? AND t.sender_id IN (${ids.map(() => "?").join(",")}) ORDER BY t.sender_id, t.created_at DESC`,
+        user.id,
+        ...ids,
+      )
+    : [];
   const latestBy = new Map(latest.map((l) => [l.sender_id, l]));
   const from = sp.from === "them" || sp.from === "you" ? sp.from : "all";
   const messages = await q.all<{ sender_id: number; name: string; at: number; text: string; kind: "message" | "reply"; title: string; collection: string | null }>(
@@ -101,9 +118,9 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
     user.id,
   );
   const totals = {
-    people: rows.length,
-    sent: rows.reduce((n, r) => n + Number(r.sent), 0),
-    engaged: rows.filter((r) => Number(r.kept) > 0 || r.last_message_kind === "reply").length,
+    people: Number(rows[0]?.total_people ?? 0),
+    sent: Number(rows[0]?.total_sent ?? 0),
+    engaged: Number(rows[0]?.total_engaged ?? 0),
   };
   const tz = user.tz || undefined;
 
@@ -214,6 +231,14 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
                     );
                   })}
                 </ul>
+              )}
+              {totals.people > rows.length && (
+                <Link
+                  href={`${href({ tab: undefined, n: String(shown + PAGE) })}#people-h`}
+                  className="mt-1 flex min-h-11 items-center justify-center rounded-[10px] border-t border-line text-[12.5px] font-semibold text-mute transition-colors duration-150 hover:bg-well hover:text-bone motion-reduce:transition-none"
+                >
+                  Show more ({rows.length} of {totals.people})
+                </Link>
               )}
             </section>
           </>
