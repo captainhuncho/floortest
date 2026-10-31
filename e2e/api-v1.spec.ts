@@ -62,7 +62,7 @@ test("no token, a forged token, or someone else's track gets nothing", async ({ 
 test("an app refresh token can't be used as a browser session", async ({ browser, request }) => {
   const login = await (await request.post("/api/v1/auth/login", { data: { email: "demo@floortest.test", password: "floortest-demo" } })).json();
   const ctx = await browser.newContext();
-  await ctx.addCookies([{ name: "floortest_session", value: login.refreshToken, url: "http://localhost:3210" }]);
+  await ctx.addCookies([{ name: "floortest_session", value: login.refreshToken, url: `http://localhost:${process.env.E2E_PORT || 3210}` }]);
   const page = await ctx.newPage();
   await page.goto("/dashboard/floor");
   await expect(page).toHaveURL(/\/login/);
