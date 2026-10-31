@@ -16,6 +16,7 @@ import { ClaimBox } from "./ClaimBox";
 import { WaitlistForm } from "./WaitlistForm";
 import { NewsletterForm } from "./NewsletterForm";
 import { RememberSource } from "@/components/SourceField";
+import { CARD, Icon } from "@/components/Kit";
 
 /** The one address search engines should use for the home page. */
 export const metadata = { alternates: { canonical: "/" } };
@@ -63,7 +64,7 @@ export default async function Home({
       <section data-edit-image={editor ? "preview_image" : undefined} className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
         {c.preview_image ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={siteImageUrl(c.preview_image)} alt={c.preview_alt} loading="lazy" decoding="async" className="w-full rounded-lg border border-white/10" />
+          <img src={siteImageUrl(c.preview_image)} alt={c.preview_alt} loading="lazy" decoding="async" className="w-full rounded-[18px] border border-line" />
         ) : (
           <>
             <div className="mb-4 flex items-center justify-between">
@@ -76,19 +77,19 @@ export default async function Home({
       </section>
   ),
     how: (
-      <section id="how" className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-        <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
+      <section id="how" className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-16">
+        <h2 className="text-[clamp(1.75rem,3.4vw,2.5rem)] font-semibold leading-[1.05] tracking-[-0.035em]">
           <E k="how_title" />
         </h2>
-        <ol {...panel("how_steps", "Each step: a title line, then its text. Leave a blank line between steps.")} className="mt-10 grid grid-cols-1 border-t border-white/10 sm:grid-cols-2">
+        <ol {...panel("how_steps", "Each step: a title line, then its text. Leave a blank line between steps.")} className={`${CARD} mt-8 grid grid-cols-1 overflow-hidden sm:grid-cols-2`}>
           {HOW.map(([title, body], i) => (
             <li
               key={title}
-              className={`border-white/10 py-8 pr-6 ${i ? "sm:border-l sm:pl-6" : ""}`}
+              className={`border-line p-5 sm:p-6 ${i ? "border-t sm:border-l sm:border-t-0" : ""}`}
             >
               <p className="home-label">0{i + 1}</p>
-              <p className="mt-8 text-xl">{title}</p>
-              <p className="mt-3 max-w-[65ch] text-sm leading-relaxed text-mute">
+              <p className="mt-4 text-[17px] font-semibold tracking-[-0.015em]">{title}</p>
+              <p className="mt-2 max-w-[65ch] text-[13.5px] leading-6 text-mute">
                 {body}
               </p>
             </li>
@@ -97,33 +98,33 @@ export default async function Home({
       </section>
   ),
     journey: (
-      <section className="border-y border-white/10 bg-ink-2">
+      <section className="border-y border-line bg-ink-2">
         <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-end">
-            <h2 className="text-[clamp(2.5rem,5.5vw,4.5rem)] font-bold leading-[0.95] tracking-[-0.04em]">
+            <h2 className="text-[clamp(1.75rem,3.4vw,2.5rem)] font-semibold leading-[1.05] tracking-[-0.035em]">
               <E k="journey_title" />
             </h2>
             <p className="max-w-[65ch] text-sm leading-relaxed text-mute lg:pb-2">
               <E k="journey_intro" />
             </p>
           </div>
-          <ol {...panel("journey_steps", "Each step: a title line, then its text. Leave a blank line between steps. The icons stay in order (four).")} className="mt-10 grid grid-cols-1 overflow-hidden rounded-lg border border-white/10 sm:grid-cols-2 lg:grid-cols-4">
+          <ol {...panel("journey_steps", "Each step: a title line, then its text. Leave a blank line between steps. The icons stay in order (four).")} className={`${CARD} mt-8 grid grid-cols-1 overflow-hidden sm:grid-cols-2 lg:grid-cols-4`}>
             {JOURNEY.map(([title, body], i) => (
               <li
                 key={title}
-                className={`flex gap-4 border-white/10 p-6 ${i ? "border-t sm:border-t-0 sm:border-l" : "bg-ink-3"} ${i === 2 ? "sm:border-l-0 sm:border-t lg:border-t-0 lg:border-l" : ""} ${i === 3 ? "sm:border-t lg:border-t-0" : ""}`}
+                className={`flex gap-3.5 border-line p-5 sm:p-6 ${i ? "border-t sm:border-t-0 sm:border-l" : "bg-well"} ${i === 2 ? "sm:border-l-0 sm:border-t lg:border-t-0 lg:border-l" : ""} ${i === 3 ? "sm:border-t lg:border-t-0" : ""}`}
               >
                 <span
                   aria-hidden
-                  className={`text-xl ${i ? "text-dim" : "text-bone"}`}
+                  className={`grid size-9 shrink-0 place-items-center rounded-[11px] border border-line bg-well text-[15px] ${i ? "text-faint" : "text-lime"}`}
                 >
                   {JOURNEY_ICONS[i] ?? "·"}
                 </span>
                 <span>
-                  <span className="block text-sm uppercase">
+                  <span className="block text-[13px] font-semibold text-bone">
                     {title}
                   </span>
-                  <span className="mt-1 block text-xs text-mute">
+                  <span className="mt-1 block text-[12px] leading-5 text-mute">
                     {body}
                   </span>
                 </span>
@@ -137,17 +138,17 @@ export default async function Home({
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
           <div>
-            <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
+            <h2 className="text-[clamp(1.75rem,3.4vw,2.5rem)] font-semibold leading-[1.05] tracking-[-0.035em]">
               <E k="private_title" />
             </h2>
           </div>
-          <dl {...panel("private_points", "Each point: a title line, then its text. Leave a blank line between points.")} className="divide-y divide-white/10 border-y border-white/10">
+          <dl {...panel("private_points", "Each point: a title line, then its text. Leave a blank line between points.")} className={`${CARD} divide-y divide-line px-5 sm:px-6`}>
             {PRIVATE.map(([k, v]) => (
               <div key={k} className="py-5">
-                <dt className="text-xs uppercase tracking-[0.1em] text-bone">
+                <dt className="text-[13px] font-semibold text-bone">
                   {k}
                 </dt>
-                <dd className="mt-2 text-sm text-mute">
+                <dd className="mt-1 text-[13px] leading-6 text-mute">
                   {v}
                 </dd>
               </div>
@@ -158,24 +159,24 @@ export default async function Home({
   ),
     plans: (
       <section className="mx-auto max-w-4xl px-4 py-20 text-center sm:px-6">
-        <p className="text-xs uppercase tracking-[0.2em] text-mute"><E k="plans_kicker" /></p>
-        <h2 className="mt-4 text-[clamp(1.75rem,3.6vw,2.75rem)] font-bold leading-[1.05] tracking-[-0.035em]"><E k={billing ? "plans_title_launch" : "plans_title"} /></h2>
-        <p className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-mute sm:text-base"><E k={billing ? "plans_intro_launch" : "plans_intro"} /></p>
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-          <Link href={cta.href} className="rounded-full border border-line-2 bg-ink-2 px-7 py-3 text-sm font-semibold text-bone hover:border-mute">
+        <p className="home-label"><E k="plans_kicker" /></p>
+        <h2 className="mt-3 text-[clamp(1.75rem,3.4vw,2.5rem)] font-semibold leading-[1.05] tracking-[-0.035em]"><E k={billing ? "plans_title_launch" : "plans_title"} /></h2>
+        <p className="mx-auto mt-4 max-w-xl text-[14px] leading-6 text-mute"><E k={billing ? "plans_intro_launch" : "plans_intro"} /></p>
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <Link href={cta.href} className="inline-flex min-h-11 items-center rounded-[13px] border border-line bg-well px-5 text-[13px] font-semibold text-bone hover:border-line-2">
             {cta.label}
           </Link>
-          <Link href="/pricing" className="px-2 py-3 text-sm text-mute underline-offset-4 hover:text-bone hover:underline">
+          <Link href="/pricing" className="inline-flex min-h-11 items-center px-2 text-[13px] text-mute underline-offset-4 hover:text-bone hover:underline">
             <E k="plans_compare" />
           </Link>
         </div>
       </section>
   ),
     waitlist: !user ? (
-      <section id="waitlist" className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-          <div className="grid grid-cols-1 gap-10 rounded-lg border border-white/10 bg-ink-2 p-6 sm:p-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+      <section id="waitlist" className="mx-auto max-w-6xl scroll-mt-24 px-4 py-14 sm:px-6 sm:py-16">
+          <div className={`${CARD} grid grid-cols-1 gap-8 p-5 sm:p-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:gap-10`}>
             <div>
-              <h2 className="text-[clamp(2rem,4vw,3.25rem)] font-bold leading-[0.95] tracking-[-0.035em]"><E k="waitlist_title" /></h2>
+              <h2 className="text-[clamp(1.6rem,3vw,2.25rem)] font-semibold leading-[1.05] tracking-[-0.03em]"><E k="waitlist_title" /></h2>
               <p className="mt-4 text-sm leading-relaxed text-mute">
                 <E k="waitlist_intro" />
               </p>
@@ -187,32 +188,21 @@ export default async function Home({
 ,
     faq: (
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-        <h2 className="text-[clamp(2.25rem,5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">
+        <h2 className="text-[clamp(1.75rem,3.4vw,2.5rem)] font-semibold leading-[1.05] tracking-[-0.035em]">
           <E k="faq_title" />
         </h2>
-        <div {...panel("faq", "Each question on its own line, the answer below it. Leave a blank line between questions.")} className="mt-10 border-t border-white/10">
+        <div {...panel("faq", "Each question on its own line, the answer below it. Leave a blank line between questions.")} className={`${CARD} mt-8 px-5 sm:px-6`}>
           {FAQ.map(([q, a], i) => (
             <details
               key={q}
               open={i === 0}
-              className="group border-b border-white/10"
+              className={`group ${i ? "border-t border-line" : ""}`}
             >
-              <summary className="flex cursor-pointer list-none items-center justify-between py-5 font-semibold">
+              <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 py-3 text-[14px] font-semibold [&::-webkit-details-marker]:hidden">
                 {q}
-                <span
-                  aria-hidden
-                  className="text-xl text-mute group-open:hidden"
-                >
-                  +
-                </span>
-                <span
-                  aria-hidden
-                  className="hidden text-xl text-mute group-open:inline"
-                >
-                  −
-                </span>
+                <Icon name="plus" className="size-4 text-mute transition-transform duration-150 group-open:rotate-45 motion-reduce:transition-none" />
               </summary>
-              <p className="max-w-[65ch] pb-6 text-sm leading-relaxed text-mute">
+              <p className="max-w-[65ch] pb-5 text-[13.5px] leading-6 text-mute">
                 {a}
               </p>
             </details>
@@ -224,14 +214,14 @@ export default async function Home({
 
   const page = (
     <div
-      className={`${serif.variable} ${mono.variable} bg-ink text-bone`}
+      className={`${serif.variable} ${mono.variable} theme-system bg-ink text-bone`}
     >
       <RememberSource />
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         {deleted && (
           <p
             role="status"
-            className="mt-6 rounded-lg border border-line bg-ink-2 px-4 py-3 text-sm"
+            className={`${CARD} mt-6 px-4 py-3 text-[13px]`}
           >
             Your account and everything in it have been deleted. Thanks for
             trying FloorTest.
@@ -239,8 +229,8 @@ export default async function Home({
         )}
       </div>
       {/* Stays at the top while scrolling. */}
-      <div className="sticky top-0 z-40 border-b border-white/5 bg-ink/85 backdrop-blur">
-        <header className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
+      <div className="sticky top-0 z-40 border-b border-line bg-ink/85 pt-[env(safe-area-inset-top)] backdrop-blur">
+        <header className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <Logo />
           <nav className="flex shrink-0 items-center gap-2 whitespace-nowrap">
             {user ? (
@@ -249,7 +239,7 @@ export default async function Home({
               </Link>
             ) : (
               <>
-                <Link href="/pricing" className="hidden px-2 text-sm text-mute hover:text-bone sm:inline">
+                <Link href="/pricing" className="hidden min-h-11 items-center px-2 text-[13px] text-mute hover:text-bone sm:inline-flex">
                   Pricing
                 </Link>
                 {/* Under 375px (iPhone SE, small Androids) the logo and two buttons don't fit: Log in moves to the line under the hero. */}
@@ -268,31 +258,31 @@ export default async function Home({
 
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <div className="relative mx-auto max-w-6xl px-4 pb-10 pt-16 sm:px-6 sm:pt-24">
-          <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-center">
+        <div className="relative mx-auto max-w-6xl px-4 pb-10 pt-12 sm:px-6 sm:pt-20">
+          <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-center lg:gap-14">
             <div>
               <p className="home-label flex items-center gap-3 normal-case tracking-normal">
                 <span aria-hidden className="h-px w-8 bg-line-2" /> <E k="eyebrow" />
               </p>
-              <h1 className="mt-6 text-[clamp(3rem,7.5vw,6.5rem)] font-bold leading-[0.9] tracking-[-0.045em]">
+              <h1 className="mt-5 text-[clamp(2.4rem,5.2vw,4.25rem)] font-semibold leading-[1] tracking-[-0.045em]">
                 <E k="headline" />
                 <span className="block font-[family-name:var(--font-serif)] font-normal italic tracking-[-0.02em] text-mute">
                   <E k="headline_italic" />
                 </span>
               </h1>
-              <p className="mt-8 max-w-2xl text-[15px] leading-relaxed text-mute">
+              <p className="mt-6 max-w-xl text-[15px] leading-7 text-mute">
                 <E k="intro" />
               </p>
-              <div className="mt-10 flex flex-wrap items-center gap-6">
+              <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
                 <Link
                   href={cta.href}
-                  className="rounded-md bg-lime px-6 py-4 text-sm font-medium uppercase text-ink hover:brightness-95"
+                  className="inline-flex min-h-12 items-center rounded-[13px] bg-lime px-5 text-[14px] font-semibold text-ink hover:brightness-95"
                 >
                   {cta.label} →
                 </Link>
                 <Link
                   href={DEMO}
-                  className="-my-0.5 inline-block py-0.5 text-sm text-bone hover:text-bone"
+                  className="inline-flex min-h-11 items-center gap-1 text-[13.5px] text-bone hover:underline hover:underline-offset-4"
                 >
                   <E k="hero_example" /> <span className="text-dim">/maxwell</span> →
                 </Link>
@@ -312,7 +302,7 @@ export default async function Home({
               )}
             </div>
             {/* The one link, and where it routes: the product in a card. */}
-            <div className="min-w-0 rounded-lg border border-white/10 bg-ink-2 p-6 sm:p-8">
+            <div className={`${CARD} min-w-0 p-5 sm:p-6`}>
               {user ? (
                 <>
                   <p className="home-label"><E k="hero_your_link" /></p>
@@ -323,13 +313,13 @@ export default async function Home({
               ) : (
                 <ClaimBox host={HOST} inviteOnly={inviteOnly} />
               )}
-              <p className="home-label mt-6 normal-case tracking-normal"><E k="hero_route_label" /></p>
+              <p className="home-label mt-5 border-t border-dashed border-line-2 pt-4 normal-case tracking-normal"><E k="hero_route_label" /></p>
               <div className="mt-3 space-y-2">
-                <div className="flex items-center justify-between rounded-md border border-white/10 px-4 py-2.5 text-xs text-mute">
+                <div className="flex min-h-11 items-center justify-between rounded-[11px] border border-line px-3.5 text-[12px] text-mute">
                   <span>Yesterday</span>
                   <span>Friday residency</span>
                 </div>
-                <div className="flex items-center justify-between rounded-md border border-line-2 bg-ink-3 px-4 py-2.5 text-xs">
+                <div className="flex min-h-11 items-center justify-between rounded-[11px] border border-line-2 bg-well px-3.5 text-[12px]">
                   <span className="text-mute">Today</span>
                   <span className="font-semibold text-bone">Radio show callout</span>
                 </div>

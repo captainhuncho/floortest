@@ -7,6 +7,7 @@ import {q } from "@/lib/db";
 import { fmtDay } from "@/lib/format";
 import { APP_URL } from "@/lib/mail";
 import { InviteLink } from "./InviteLink";
+import { CARD, Chip, PageHead, SectionHead, StatTile, type IconName } from "@/components/Kit";
 
 export const metadata = { title: "Referrals — FloorTest" };
 
@@ -22,59 +23,54 @@ export default async function Referrals() {
   const active = invited.filter((i) => i.referral_rewarded_at).length;
   const { bonus } = await capacity(user);
 
+  const stats: [string, string, IconName][] = [
+    ["Signed up", String(invited.length), "user"],
+    ["Active", String(active), "check"],
+    ["Tracks earned", `+${bonus}`, "music"],
+  ];
+
   return (
-    <div className="max-w-3xl space-y-10 px-4 py-6 sm:px-8">
-      <div>
-        <h1 className="page-title">Referrals</h1>
-        <p className="mt-2 max-w-xl text-mute">
+    <div className="page-gutter py-4 sm:py-7">
+      <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-4 sm:gap-5">
+      <header className="flex flex-col gap-2">
+        <PageHead label="Invite DJs and curators" title="Referrals" />
+        <p className="max-w-xl text-[13.5px] leading-6 text-mute">
           Invite DJs and curators. When someone you invite receives their first track, you both get {REFERRAL_BONUS} extra active
           tracks, on any plan, for good.
         </p>
-      </div>
+      </header>
 
-      <section className="card p-6">
+      <section aria-label="Your invite link" className={`${CARD} p-3 sm:p-4`}>
         <InviteLink link={link} code={code} />
       </section>
 
-      <dl className="grid gap-3 sm:grid-cols-3">
-        {[
-          ["Signed up", invited.length],
-          ["Active", active],
-          ["Tracks earned", `+${bonus}`],
-        ].map(([k, v]) => (
-          <div key={k} className="card p-5">
-            <dt className="label">{k}</dt>
-            <dd className="mt-2 text-3xl font-bold tnum">{v}</dd>
-          </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {stats.map(([k, v, icon]) => (
+          <StatTile key={k} icon={icon} label={k} value={v} />
         ))}
-      </dl>
+      </div>
 
-      <section aria-labelledby="invited-h">
-        <h2 id="invited-h" className="text-lg font-semibold">
-          People you invited
-        </h2>
+      <section aria-labelledby="invited-h" className={`${CARD} flex flex-col gap-1 p-3 sm:p-4`}>
+        <SectionHead id="invited-h" icon="contacts" title="People you invited" />
         {invited.length === 0 ? (
-          <p className="mt-2 text-mute">No one yet.</p>
+          <p className="pt-1 text-[13px] text-mute">No one yet.</p>
         ) : (
-          <ul className="mt-3 divide-y divide-line rounded-xl border border-line">
+          <ul className="flex flex-col">
             {invited.map((i, n) => (
-              <li key={n} className="flex items-center justify-between gap-4 px-4 py-3">
-                <div>
-                  <p className="font-medium">{i.name}</p>
-                  <p className="text-sm text-mute">Joined {fmtDay(i.created_at)}</p>
+              <li key={n} className={`flex min-h-11 items-center justify-between gap-3 py-2.5 ${n ? "border-t border-line" : ""}`}>
+                <div className="min-w-0">
+                  <p className="truncate text-[13px] font-semibold text-bone">{i.name}</p>
+                  <p className="text-[11.5px] text-mute">Joined {fmtDay(i.created_at)}</p>
                 </div>
-                {i.referral_rewarded_at ? (
-                  <span className="chip border-lime/60 text-lime">+{REFERRAL_BONUS} tracks each</span>
-                ) : (
-                  <span className="chip border-line text-mute">Waiting for their first track</span>
-                )}
+                {i.referral_rewarded_at ? <Chip tone="acc">+{REFERRAL_BONUS} tracks each</Chip> : <Chip>Waiting for their first track</Chip>}
               </li>
             ))}
           </ul>
         )}
       </section>
 
-      <p className="text-sm text-mute">Bonus tracks stay if you change plans.</p>
+      <p className="px-1 text-[11.5px] text-faint">Bonus tracks stay if you change plans.</p>
+      </div>
     </div>
   );
 }

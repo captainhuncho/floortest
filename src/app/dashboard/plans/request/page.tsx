@@ -5,6 +5,7 @@ import { offeredPlan, planOf } from "@/lib/plan-store";
 import { pendingRequest, REQUEST_KINDS, VOLUMES } from "@/lib/plan-requests";
 import { switchOn } from "@/lib/switches";
 import { requestPlan, withdrawPlanRequest } from "../../actions/settings";
+import { CARD, PageHead } from "@/components/Kit";
 
 export const metadata = { title: "Request a plan — FloorTest" };
 
@@ -26,20 +27,21 @@ export default async function RequestPlan({ searchParams }: { searchParams: Prom
   const guess = user.kind === "label_radio" || user.kind === "ar" ? "label" : user.kind === "music_pro" ? "management" : user.kind ? "artist" : "";
 
   return (
-    <div className="flex max-w-2xl flex-col gap-6 px-4 py-5 text-bone sm:px-8 md:py-8">
-      <Link href="/dashboard/plans" className="text-[11px] font-medium text-faint hover:text-bone">
+    <div className="page-gutter py-4 text-bone sm:py-7">
+      <div className="mx-auto flex w-full min-w-0 max-w-2xl flex-col gap-4 sm:gap-5">
+      <Link href="/dashboard/plans" className="tap-text -my-2 w-fit text-[11.5px] font-medium text-faint hover:text-bone">
         ← Plans
       </Link>
-      <header className="space-y-2">
-        <h1 className="page-title">Request {plan.name}</h1>
-        <p className="text-[15px] text-mute">
+      <header className="flex flex-col gap-2">
+        <PageHead label="Free for the rest of the beta" title={`Request ${plan.name}`} />
+        <p className="text-[13.5px] leading-6 text-mute">
           During the beta we set plans up by hand, so everyone gets the room that fits how they work. Tell us a little about you and we&apos;ll be in touch,
           usually within two working days. It&apos;s free for the rest of the beta.
         </p>
       </header>
 
       {open && (
-        <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-lime/40 bg-lime/5 px-4 py-3 text-sm">
+        <div role="status" className={`${CARD} flex flex-wrap items-center justify-between gap-3 px-3 py-2 text-[13px]`}>
           <span>You already asked for {open.plan === plan.id ? plan.name : open.plan}. Sending this replaces it.</span>
           <form action={withdrawPlanRequest}>
             <button className="text-xs text-mute underline underline-offset-4 hover:text-bone tap-text">Withdraw it</button>
@@ -47,18 +49,18 @@ export default async function RequestPlan({ searchParams }: { searchParams: Prom
         </div>
       )}
       {sp.error && ERRORS[sp.error] && (
-        <p role="alert" className="rounded-lg border border-danger/40 bg-danger/10 px-4 py-3 text-sm">
+        <p role="alert" className="rounded-[13px] border border-danger/40 bg-danger/10 px-3 py-2.5 text-[13px]">
           {ERRORS[sp.error]}
         </p>
       )}
 
-      <form action={requestPlan} className="space-y-5 rounded-lg border border-line bg-ink-2 p-5 md:p-6">
+      <form action={requestPlan} className={`${CARD} space-y-5 p-4 sm:p-5`}>
         <input type="hidden" name="plan" value={plan.id} />
         <fieldset className="space-y-2">
           <legend className="label mb-1">What are you?</legend>
           <div className="grid gap-2 sm:grid-cols-2">
             {Object.entries(REQUEST_KINDS).map(([k, label]) => (
-              <label key={k} className="flex min-h-11 items-center gap-3 rounded-md border border-line px-3 py-2 text-sm has-[:checked]:border-lime/60 has-[:checked]:bg-lime/5">
+              <label key={k} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-[11px] border border-line bg-well px-3 py-2 text-[13px] has-[:checked]:border-lime/60 has-[:checked]:bg-lime/10">
                 <input type="radio" name="kind" value={k} required defaultChecked={k === guess} className="size-4 accent-lime" />
                 {label}
               </label>
@@ -72,7 +74,7 @@ export default async function RequestPlan({ searchParams }: { searchParams: Prom
         <label className="block space-y-1.5">
           <span className="label">A link to your work</span>
           <input name="link" type="url" maxLength={300} placeholder="https://" className="input" />
-          <span className="block text-xs text-dim">Website, label page, Beatport, Spotify or Instagram</span>
+          <span className="block text-[11.5px] text-faint">Website, label page, Beatport, Spotify or Instagram</span>
         </label>
         <label className="block space-y-1.5">
           <span className="label">Tracks you receive</span>
@@ -88,12 +90,13 @@ export default async function RequestPlan({ searchParams }: { searchParams: Prom
           <textarea name="note" rows={3} maxLength={1000} className="input" />
         </label>
         <div className="flex flex-col-reverse gap-3 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <Link href="/dashboard/plans" className="text-sm text-mute hover:text-bone">
+          <Link href="/dashboard/plans" className="tap-text justify-center text-[13px] text-mute hover:text-bone">
             Cancel
           </Link>
-          <button className="btn-lime w-full sm:w-auto">Send request</button>
+          <button className="btn-lime min-h-11 w-full rounded-[13px] sm:w-auto">Send request</button>
         </div>
       </form>
+      </div>
     </div>
   );
 }
