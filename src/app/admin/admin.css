@@ -157,3 +157,61 @@
   .admin-side, .admin-press, .admin-lift { transition: none; }
   .admin-press:active, .admin-lift:hover { transform: none; }
 }
+
+/*
+ * Every other ops screen picks up the Overview's look without being rewritten (owner, 1 Nov): page headings, the
+ * bordered boxes they're built from, and their tables. Scoped to the admin area; unlayered, so it wins over utilities.
+ */
+.admin-canvas main h1.text-3xl {
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+.admin-canvas main h2.text-lg {
+  font-size: 16px;
+}
+.admin-canvas main :is(.rounded-md, .rounded-lg).border.border-line,
+.admin-canvas main .card {
+  border-color: transparent;
+  border-radius: 22px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-ink-2) 96%, white 4%), var(--color-ink-2));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-bone) 8%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--color-bone) 7%, transparent),
+    0 18px 40px -24px rgb(0 0 0 / 0.55);
+  animation: admin-rise 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+/* Boxes inside boxes become calm tiles with concentric corners, not panels on panels. */
+.admin-canvas main :is(.rounded-md, .rounded-lg).border.border-line :is(.rounded-md, .rounded-lg).border.border-line,
+.admin-canvas main .card .card {
+  border-radius: 14px;
+  background: var(--color-ink-3);
+  box-shadow: none;
+  animation: none;
+}
+.theme-day .admin-canvas main :is(.rounded-md, .rounded-lg).border.border-line,
+.theme-day .admin-canvas main .card {
+  background: var(--color-ink-3);
+  box-shadow: 0 0 0 1px var(--color-line), 0 14px 30px -22px rgb(20 24 10 / 0.25);
+}
+@media (prefers-color-scheme: light) {
+  .theme-system .admin-canvas main :is(.rounded-md, .rounded-lg).border.border-line,
+  .theme-system .admin-canvas main .card {
+    background: var(--color-ink-3);
+    box-shadow: 0 0 0 1px var(--color-line), 0 14px 30px -22px rgb(20 24 10 / 0.25);
+  }
+}
+.admin-canvas main table thead {
+  color: var(--color-faint);
+  font-size: 12.5px;
+}
+.admin-canvas main table tbody tr {
+  transition: background-color 150ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-canvas main :is(.rounded-md, .rounded-lg).border.border-line,
+  .admin-canvas main .card {
+    animation: admin-fade 120ms ease-out both;
+  }
+}
