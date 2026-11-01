@@ -60,7 +60,7 @@ test("Moderation Keep marks a track reviewed, in place", async ({ page }) => {
   await opsLogIn(page);
   await page.goto("/admin/moderation?q=Harmattan");
   await page.getByRole("list", { name: "Results" }).getByRole("link", { name: /Harmattan/ }).click();
-  await expect(page.getByText("Not yet")).toBeVisible();
+  // No "Not yet" check first: a rerun (--repeat-each) finds the track already kept, and Keep again is fine.
   await page.getByRole("button", { name: "Keep", exact: true }).click();
   await expect(page.getByRole("status").filter({ hasText: 'Kept "Harmattan": marked reviewed' })).toBeVisible();
   await expect(page.getByText(/Kept by @oluops/)).toBeVisible();
