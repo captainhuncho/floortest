@@ -38,6 +38,8 @@ test("retention dates follow the published policy", () => {
 
 test("genres: custom list or defaults, cleaned input", () => {
   assert.equal(genresFor({ genres: "" }).custom, false);
+  const defaults = genresFor({ genres: "" }).list;
+  assert.equal(defaults.indexOf("Gqom"), defaults.indexOf("Amapiano") + 1, "Gqom sits right after Amapiano (owner, 1 Nov)");
   assert.deepEqual(genresFor({ genres: '["Afro House"]' }).list, ["Afro House"]);
   assert.equal(cleanGenre("  Deep   House  "), "Deep House");
   assert.equal(cleanGenre("x".repeat(80)).length, 40);
