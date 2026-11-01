@@ -29,7 +29,9 @@ export default async function Moderation({ searchParams }: { searchParams: Promi
         like, like, like, like, search,
       )
     : [];
-  const pickedId = Number(sp.t) || tracks[0]?.id || 0;
+  // Whole numbers in range only, like the audio route: "?t=1.5" or a 15-digit id must not reach Postgres as an int.
+  const asked = Number(sp.t);
+  const pickedId = (Number.isInteger(asked) && asked >= 1 && asked <= 2_147_483_647 ? asked : 0) || tracks[0]?.id || 0;
   const picked = pickedId ? (tracks.find((t) => t.id === pickedId) ?? (await q.get<Found>(`SELECT ${COLS} ${FROM} WHERE t.id = ? AND t.deleted_at IS NULL`, pickedId))) : undefined;
   const chosen = !!sp.t && !!picked;
   const href = (t: number) => `/admin/moderation?${new URLSearchParams({ ...(search ? { q: search } : {}), t: String(t) })}`;

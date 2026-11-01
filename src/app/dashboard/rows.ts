@@ -15,10 +15,10 @@ export type ListTrack = Pick<Track, (typeof LIST_FIELDS)[number]>;
 export const LIST_COLUMNS = LIST_FIELDS.map((f) => `t.${f}`).join(", ");
 
 /**
- * Track rows for list views: every live track, optionally just one collection and/or just kept ones. With `actor` (the
- * signed-in person), the read runs under the per-person rules (B8) as well as the desk filter.
+ * Track rows for list views: every live track, optionally just one collection and/or just kept ones. The read runs as
+ * `actor` (the signed-in person) under the per-person rules (B8) as well as the desk filter.
  */
-export async function loadRows(userId: number, opts: { collectionId?: number; keptOnly?: boolean; inSet?: boolean; actor?: number } = {}): Promise<Row[]> {
+export async function loadRows(userId: number, opts: { collectionId?: number; keptOnly?: boolean; inSet?: boolean; actor: number }): Promise<Row[]> {
   const where = ["t.user_id = ?", "t.deleted_at IS NULL"];
   const args: number[] = [userId];
   if (opts.collectionId) {
@@ -34,7 +34,7 @@ export async function loadRows(userId: number, opts: { collectionId?: number; ke
        WHERE ${where.join(" AND ")} ORDER BY ${opts.keptOnly || opts.inSet ? "t.decided_at DESC" : "t.created_at DESC"} LIMIT 500`,
       ...args,
     );
-  const tracks = opts.actor ? await asPerson(opts.actor, read) : await read();
+  const tracks = await asPerson(opts.actor, read);
   return tracks.map((t) => ({
     id: t.id,
     title: t.title,

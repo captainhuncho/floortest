@@ -133,7 +133,7 @@ Edit mode is bound to the exact ops session that opened it (pass and cookie are 
    phones: bottom bar Home · Inbox · Users · Safety · More (More ─► full menu)
 Users ─► Filters (type, plan, tag, joined, activity, security) ─► chips (✕ removes one) ─► 50 a page
    tick rows (≤ 50) ─┬─ Add tag ─► tag added to each ─► admin log
-                     └─ Suspend… ─► reason ─► each: signed out, link offline, email with appeal ─► admin log
+                     └─ Suspend… (≤ 20) ─► reason ─► each: signed out, link offline, email with appeal ─► admin log
 Growth ─► Growth & decisions ─► findings · funnel · projection · sources · cohorts · pipeline
 Moderation ─► search ─► pick a track ─► Play (5-minute file link; admin log "played track")
    ─► Block sender for @them / Block everywhere / Remove track… (confirm)
