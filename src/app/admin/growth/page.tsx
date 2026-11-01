@@ -10,7 +10,7 @@ import {
   accountsShort,
   betaNumbers,
   betaRunning,
-  expectedByWeek,
+  expectedByNow,
   paceOf,
   betaWindowDays,
   decisions,
@@ -143,7 +143,7 @@ export default async function Growth() {
         <p className="mt-1 text-[15px] text-mute">From FloorTest&apos;s own numbers: people who joined in the last {WINDOW_DAYS} days, and the last {WEEKS} weeks of activity.</p>
       </header>
 
-      <BetaSection n={beta} windowDays={betaWindowDays(t)} />
+      <BetaSection n={beta} windowDays={betaWindowDays(t)} now={t} />
 
       {/* Findings first (decision cards), each with the counts behind it. */}
       <section aria-labelledby="dec-h" className={P} style={i(1)}>
@@ -323,7 +323,7 @@ async function loadBeta(): Promise<[BetaAccountRow[], BetaActivityRow[], BetaTra
 }
 
 /** The beta's three weekly targets (docs/beta-launch-plan.md), as three tiles. Small bases show the raw number only. */
-function BetaSection({ n, windowDays }: { n: BetaNumbers; windowDays: number | null }) {
+function BetaSection({ n, windowDays, now }: { n: BetaNumbers; windowDays: number | null; now: number }) {
   const share = showShare(n.accounts);
   // Under 5 accounts the base rule is raw count only: no share, no target, no bar, no pace.
   const of = (v: number, target: number) => (share ? `${pct(v, n.accounts)}% of ${n.accounts} beta accounts · target ${target} · ` : "");
@@ -353,7 +353,7 @@ function BetaSection({ n, windowDays }: { n: BetaNumbers; windowDays: number | n
           tone={n.weeklyActive >= BETA_TARGETS.weeklyActive ? "lime" : "violet"}
           caption={`${of(n.weeklyActive, BETA_TARGETS.weeklyActive)}kept or passed a track in the last 7 days`}
         >
-          {share && <TargetNotes value={n.weeklyActive} target={BETA_TARGETS.weeklyActive} week={n.week} accounts={n.accounts} verb="active" />}
+          {share && <TargetNotes value={n.weeklyActive} target={BETA_TARGETS.weeklyActive} now={now} accounts={n.accounts} verb="active" />}
         </MonoStat>
         <MonoStat
           i={2}
@@ -363,7 +363,7 @@ function BetaSection({ n, windowDays }: { n: BetaNumbers; windowDays: number | n
           tone={n.activated >= BETA_TARGETS.activated ? "lime" : "violet"}
           caption={`${of(n.activated, BETA_TARGETS.activated)}got a track from a sender and made a decision`}
         >
-          {share && <TargetNotes value={n.activated} target={BETA_TARGETS.activated} week={n.week} accounts={n.accounts} verb="activated" />}
+          {share && <TargetNotes value={n.activated} target={BETA_TARGETS.activated} now={now} accounts={n.accounts} verb="activated" />}
         </MonoStat>
         <MonoStat
           i={3}
@@ -373,7 +373,7 @@ function BetaSection({ n, windowDays }: { n: BetaNumbers; windowDays: number | n
           tone={perActive != null && perActive >= BETA_TARGETS.tracksPerActive ? "lime" : "violet"}
           caption={`${perShare ? `target ${BETA_TARGETS.tracksPerActive}+ a week · ` : ""}${n.recentTracks} ${n.recentTracks === 1 ? "track" : "tracks"} from senders in the last 7 days`}
         >
-          {perShare && perActive != null && <TargetNotes value={perActive} target={BETA_TARGETS.tracksPerActive} week={n.week} />}
+          {perShare && perActive != null && <TargetNotes value={perActive} target={BETA_TARGETS.tracksPerActive} now={now} />}
         </MonoStat>
         <MonoStat
           i={4}
@@ -395,17 +395,17 @@ function BetaSection({ n, windowDays }: { n: BetaNumbers; windowDays: number | n
 }
 
 /**
- * Under a target tile: where a straight line from 0 to the target at week 8 stands this week, and whether the
+ * Under a target tile: where a straight line from 0 to the target at week 8 stands today, and whether the
  * number is ahead, on pace or behind it; with `accounts`, also how many more accounts the target needs even if every
  * one counted. Plain words, no alarm colour.
  */
-function TargetNotes({ value, target, week, accounts, verb }: { value: number; target: number; week: number; accounts?: number; verb?: string }) {
-  const expected = expectedByWeek(target, week);
+function TargetNotes({ value, target, now, accounts, verb }: { value: number; target: number; now: number; accounts?: number; verb?: string }) {
+  const expected = expectedByNow(target, now);
   const short = accounts == null ? null : accountsShort(accounts, target);
   return (
     <>
       <p className="mt-2 text-[12.5px] text-mute">
-        By week {week} you&apos;d expect about <span className="tnum">{expected}</span> · <b className="font-semibold text-bone">{paceOf(value, expected)}</b>
+        By today you&apos;d expect about <span className="tnum">{expected}</span> · <b className="font-semibold text-bone">{paceOf(value, expected)}</b>
       </p>
       {short != null && (
         <p className="mt-1 text-[12.5px] text-faint">
