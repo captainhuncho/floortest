@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { OPS_RESULT_EVENT, type OpsResult } from "@/lib/ops-result";
 
-/** Shows the latest admin flash for a few seconds, then clears it so a reload doesn't repeat it. */
+/**
+ * Shows the latest admin message for a few seconds: a flash from an action not converted yet (then clears it so a
+ * reload doesn't repeat it), or a result an OpsForm announced.
+ */
 export function Toast({ flash }: { flash: { id: number; text: string; tone: "ok" | "error" } | null }) {
   const [shown, setShown] = useState(flash);
   // A new flash replaces the one on screen.
@@ -12,11 +16,21 @@ export function Toast({ flash }: { flash: { id: number; text: string; tone: "ok"
     setShown(flash);
   }
   useEffect(() => {
-    if (!flash) return;
-    document.cookie = "ft_flash=; Max-Age=0; path=/admin";
-    const t = setTimeout(() => setShown(null), flash.tone === "error" ? 8000 : 4000);
-    return () => clearTimeout(t);
+    if (flash) document.cookie = "ft_flash=; Max-Age=0; path=/admin";
   }, [flash?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const show = (e: Event) => {
+      const r = (e as CustomEvent<OpsResult>).detail;
+      setShown(r.ok ? { id: Date.now(), text: r.message, tone: "ok" } : { id: Date.now(), text: r.error, tone: "error" });
+    };
+    window.addEventListener(OPS_RESULT_EVENT, show);
+    return () => window.removeEventListener(OPS_RESULT_EVENT, show);
+  }, []);
+  useEffect(() => {
+    if (!shown) return;
+    const t = setTimeout(() => setShown(null), shown.tone === "error" ? 8000 : 4000);
+    return () => clearTimeout(t);
+  }, [shown]);
   return (
     <div aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-50 flex justify-center px-4 md:bottom-4">
       {shown && (
