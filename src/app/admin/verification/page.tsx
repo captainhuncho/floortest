@@ -3,8 +3,11 @@ import { CuePoint } from "@/components/CuePoint";
 import Link from "next/link";
 import { ConfirmButton, ConfirmSubmit } from "../AdminUi";
 import { q } from "@/lib/db";
-import { addProtectedName, approveIdentity, rejectIdentity, removeProtectedName, revokeIdentity } from "../actions";
-import { Avatar, PageHead, Stepper } from "../PinParts";
+import { addProtectedName, approveIdentity, approveProposal, declineProposal, rejectIdentity, removeProtectedName, revokeIdentity, withdrawProposal } from "../actions";
+import { powersOf, proposalsWaiting } from "@/lib/verification-proposals";
+import { ProposalBody } from "../ProposalParts";
+import { Avatar, PageHead, StatusPill, Stepper } from "../PinParts";
+import { DIRECT_SEARCH_MAX, findToVerify } from "@/lib/identity-direct";
 import { OpsForm } from "../OpsForm";
 
 const STEPS = ["Requested", "Code checked", "Verified"];
@@ -12,9 +15,14 @@ const STEPS = ["Requested", "Code checked", "Verified"];
 /**
  * Identity requests to review, each laid out like pin 89's tracker (owner, 1 Nov): requested, code checked, verified,
  * with the code to look for and the profiles to look in. Below: names nobody can claim without us, and who's verified.
+ * On top (owner, 1 Nov): staff proposals waiting for someone with "verification.approve", with their reason and proof.
  */
-export default async function Verification() {
-  await requireAdmin("verification");
+export default async function Verification({ searchParams }: { searchParams: Promise<{ find?: string }> }) {
+  const me = await requireAdmin("verification");
+  const powers = powersOf(me.access);
+  const proposals = await proposalsWaiting();
+  const find = String((await searchParams).find ?? "").trim().slice(0, 100);
+  const matches = find ? await findToVerify(find) : [];
   const pending = await q.all<{ id: number; name: string; handle: string; email: string; identity_code: string | null; identity_links: string; identity_submitted_at: number | null }>(
     "SELECT id, name, handle, email, identity_code, identity_links, identity_submitted_at FROM users WHERE identity_status = 'pending' ORDER BY identity_submitted_at",
   );
@@ -28,6 +36,66 @@ export default async function Verification() {
       <PageHead eyebrow="Safety" title="Verification">
         Open each profile and check the code is in the bio and the profile matches the name. Approve adds the Verified mark (Cue Point) to their page.
       </PageHead>
+
+      <section aria-labelledby="proposals-h" className="space-y-3">
+        <h2 id="proposals-h" className="flex items-center gap-2 text-[15px] font-semibold">
+          Proposals waiting
+          <span className="rounded-full bg-ink-4 px-2 text-[11.5px] font-semibold text-mute tnum">{proposals.length}</span>
+        </h2>
+        <p className="text-[13.5px] text-mute">
+          {powers.approve
+            ? "Staff who checked an account and want it verified. Open the proof, then approve (adds the mark and emails them) or decline with a note. You can't approve your own."
+            : "Proposals from staff, waiting for someone who approves verifications. You can withdraw your own."}
+        </p>
+        {!proposals.length && <p className="admin-panel p-6 text-[14px] text-mute">No proposals waiting.</p>}
+        <ul className="grid items-start gap-6 lg:grid-cols-2">
+          {proposals.map((p, i) => (
+            <li key={p.id} className="admin-panel admin-rise p-5" style={{ "--i": i + 1 } as React.CSSProperties}>
+              <div className="flex items-start gap-3">
+                <Avatar name={p.name || p.handle} size={40} />
+                <div className="min-w-0 flex-1">
+                  <Link href={`/admin/accounts/${p.user_id}`} className="block truncate text-[15px] font-semibold hover:underline">
+                    {p.name}
+                  </Link>
+                  <p className="truncate text-[12.5px] text-faint">@{p.handle}</p>
+                </div>
+              </div>
+              <div className="mt-4">
+                <ProposalBody p={p} />
+              </div>
+              <div className="mt-4 flex flex-wrap items-start gap-2">
+                {powers.approve && p.proposer_id !== me.id && (
+                  <>
+                    <OpsForm action={approveProposal.bind(null, p.id)}>
+                      <button className="admin-press inline-flex min-h-11 items-center rounded-full bg-lime px-5 text-[13.5px] font-semibold text-ink">Approve</button>
+                    </OpsForm>
+                    <details className="min-w-0 flex-1 basis-56">
+                      <summary className="inline-flex min-h-11 cursor-pointer list-none items-center rounded-full px-5 text-[13.5px] font-semibold text-danger ring-1 ring-danger/40 hover:bg-danger/10 [&::-webkit-details-marker]:hidden">
+                        Decline…
+                      </summary>
+                      <OpsForm action={declineProposal.bind(null, p.id)} className="mt-2 flex flex-wrap gap-2">
+                        <label className="min-w-0 flex-1 basis-48">
+                          <span className="sr-only">Why it&apos;s declined (for the proposer)</span>
+                          <input name="note" required minLength={2} maxLength={500} className="input min-h-11 w-full text-base sm:text-sm" placeholder="What's missing, for the proposer" />
+                        </label>
+                        <button className="admin-press inline-flex min-h-11 items-center rounded-full px-5 text-[13.5px] font-semibold text-danger ring-1 ring-danger/40 hover:bg-danger/10">Decline</button>
+                      </OpsForm>
+                    </details>
+                  </>
+                )}
+                {p.proposer_id === me.id && (
+                  <>
+                    {powers.approve && <p className="basis-full text-[12.5px] text-faint">You proposed this one, so someone else approves it.</p>}
+                    <OpsForm action={withdrawProposal.bind(null, p.id)}>
+                      <button className="admin-press inline-flex min-h-11 items-center rounded-full px-5 text-[13.5px] font-semibold ring-1 ring-line-2 hover:bg-ink-3">Withdraw</button>
+                    </OpsForm>
+                  </>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
 
       <section aria-labelledby="req-h" className="space-y-3">
         <h2 id="req-h" className="flex items-center gap-2 text-[15px] font-semibold">
@@ -67,9 +135,15 @@ export default async function Verification() {
                 </ul>
               </div>
               <div className="mt-4 flex flex-wrap items-center gap-2">
-                <OpsForm action={approveIdentity.bind(null, u.id)}>
-                  <button className="admin-press inline-flex min-h-11 items-center rounded-full bg-lime px-5 text-[13.5px] font-semibold text-ink">Approve</button>
-                </OpsForm>
+                {powers.direct || powers.approve ? (
+                  <OpsForm action={approveIdentity.bind(null, u.id)}>
+                    <button className="admin-press inline-flex min-h-11 items-center rounded-full bg-lime px-5 text-[13.5px] font-semibold text-ink">Approve</button>
+                  </OpsForm>
+                ) : (
+                  <Link href={`/admin/accounts/${u.id}#mark-h`} className="admin-press inline-flex min-h-11 items-center rounded-full bg-lime px-5 text-[13.5px] font-semibold text-ink">
+                    Forward for approval
+                  </Link>
+                )}
                 <OpsForm action={rejectIdentity.bind(null, u.id)} className="flex min-w-0 flex-1 flex-wrap gap-2">
                   <label className="min-w-0 flex-1 basis-48">
                     <span className="sr-only">Why not yet (sent to them)</span>
@@ -81,6 +155,44 @@ export default async function Verification() {
             </li>
           ))}
         </ul>
+      </section>
+
+      <section aria-labelledby="direct-h" className="admin-panel admin-rise p-5" style={{ "--i": 2 } as React.CSSProperties}>
+        <h2 id="direct-h" className="text-[16px] font-semibold">Verify someone directly</h2>
+        <p className="mt-1 text-[13.5px] text-mute">
+          For people you already know are real (a known label, a DJ you&apos;ve checked): find their account, then use {powers.direct ? "Verify profile" : "Propose verification"} on it, with your reason and proof. No request or bio code needed.
+        </p>
+        <form role="search" className="mt-4 flex flex-wrap gap-2">
+          <label className="min-w-0 flex-1 basis-56" htmlFor="direct-find">
+            <span className="sr-only">Handle or email</span>
+            <input id="direct-find" name="find" type="search" defaultValue={find} minLength={2} maxLength={100} className="input min-h-11 w-full" placeholder="@handle or email" autoComplete="off" />
+          </label>
+          <button className="admin-press inline-flex min-h-11 items-center rounded-full px-5 text-[13.5px] font-semibold ring-1 ring-line-2 hover:bg-ink-3">Find</button>
+        </form>
+        {find && (
+          <ul className="mt-4 overflow-hidden rounded-[16px] ring-1 ring-line">
+            {matches.map((m) => (
+              <li key={m.id} className="border-t border-line first:border-t-0">
+                <Link href={`/admin/accounts/${m.id}`} className="flex min-h-14 flex-wrap items-center justify-between gap-3 px-4 py-2.5 hover:bg-ink-3/50">
+                  <span className="flex min-w-0 items-center gap-3">
+                    <Avatar name={m.name || m.handle} />
+                    <span className="min-w-0">
+                      <span className="block truncate text-[14px] font-semibold">{m.name}</span>
+                      <span className="block truncate text-[12px] text-faint">
+                        @{m.handle} · {m.email}
+                      </span>
+                    </span>
+                  </span>
+                  <StatusPill tone={m.identity_status === "verified" ? "lime" : m.suspended_at ? "danger" : m.identity_status === "pending" ? "amber" : "mute"}>
+                    {m.identity_status === "verified" ? "Verified" : m.suspended_at ? "Suspended" : m.identity_status === "pending" ? "Request waiting" : !m.email_verified_at ? "Email unconfirmed" : "Not verified"}
+                  </StatusPill>
+                </Link>
+              </li>
+            ))}
+            {!matches.length && <li className="px-4 py-6 text-[14px] text-mute">No account matches &ldquo;{find}&rdquo;.</li>}
+          </ul>
+        )}
+        {matches.length >= DIRECT_SEARCH_MAX && <p className="mt-2 text-[12.5px] text-faint">Showing the first {DIRECT_SEARCH_MAX}. Type more of the handle or email to narrow it.</p>}
       </section>
 
       <section aria-labelledby="names-h" className="admin-panel admin-rise p-5" style={{ "--i": 3 } as React.CSSProperties}>
