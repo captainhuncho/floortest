@@ -23,7 +23,8 @@ import { redirect } from "next/navigation";
 import { issueViewTicket } from "@/lib/ops";
 import { APP_URL } from "@/lib/mail";
 import { env } from "@/lib/env";
-import { HIDDEN, sendMail } from "@/lib/mail";
+import { HIDDEN, sendMail, sendMailHeld } from "@/lib/mail";
+import { readUndo, signUndo, takeBack } from "@/lib/ops-undo";
 import { approvePendingIdentity } from "@/lib/identity-approve";
 import { isAdminEmail, logAdmin, requireAdminAction } from "@/lib/admin";
 import { opsAccessFor, suspendRefusal } from "@/lib/ops-access";
@@ -56,6 +57,11 @@ const ok = (message: string): OpsResult => {
 const no = (error: string): OpsResult => {
   refresh();
   return { ok: false, error };
+};
+/** A success that held an email: the token lets the same admin take it back (undoSend). */
+const okUndo = (message: string, undoToken: string): OpsResult => {
+  refresh();
+  return { ok: true, message, undoToken };
 };
 const target = async (id: number) => q.get<{ id: number; email: string; handle: string }>("SELECT id, email, handle FROM users WHERE id = ?", id);
 
@@ -375,20 +381,28 @@ export async function startViewAs(userId: number) {
   redirect(`${APP_URL}/dashboard/view-as?t=${encodeURIComponent(ticket)}`);
 }
 
+/** Ops sends that can be taken back: held a few seconds (undoSend stops them), then "sent" goes in the admin log. */
+const heldSend = (admin: number, what: string, detail: string, opts: Parameters<typeof sendMailHeld>[0], after?: (status: string) => Promise<unknown>) =>
+  sendMailHeld(opts, {
+    onSent: async (status) => {
+      await after?.(status);
+      await logAdmin(admin, "sent", what, `${detail}: ${status}`);
+    },
+  });
+
 /** Sends a logged email again, to the same address. */
-export async function resendEmail(outboxId: number) {
+export async function resendEmail(outboxId: number): Promise<OpsResult> {
   const a = await requireAdminAction("emails.act");
   const m = await q.get<{ user_id: number | null; to_email: string; subject: string; body: string; audience: "sender" | "receiver" | "support" }>(
     "SELECT user_id, to_email, subject, body, audience FROM outbox WHERE id = ?",
     outboxId,
   );
-  if (!m) return fail("Email not found");
+  if (!m) return no("Email not found");
   // A sign-in code or private link was hidden in the stored copy: resending it would send the placeholder.
-  if (m.subject.includes(HIDDEN) || m.body.includes(HIDDEN)) return fail("This email held a sign-in code or private link, so it can't be resent. Ask them to request a new one.");
-  const status = await sendMail({ userId: m.user_id, to: m.to_email, subject: m.subject, body: m.body, audience: m.audience });
-  await logAdmin(a.id, "resent email", m.subject, status);
-  await done(status.startsWith("failed") ? `Resend failed: ${status}` : `Resent to ${m.to_email}`);
-  refresh();
+  if (m.subject.includes(HIDDEN) || m.body.includes(HIDDEN)) return no("This email held a sign-in code or private link, so it can't be resent. Ask them to request a new one.");
+  const mail = await heldSend(a.id, "resent email", m.to_email, { userId: m.user_id, to: m.to_email, subject: m.subject, body: m.body, audience: m.audience });
+  await logAdmin(a.id, "resent email", m.subject, "held");
+  return okUndo(`Resending to ${m.to_email} in a few seconds`, signUndo({ kind: "email_resend", items: [], mail: [mail], admin: a.id }));
 }
 
 export async function setContactHandled(id: number, handled: boolean): Promise<OpsResult> {
@@ -406,13 +420,24 @@ const newCode = () => {
   return `FLOOR-${Array.from(crypto.randomBytes(10), (b) => alphabet[b % alphabet.length]).join("")}`;
 };
 
-async function mailInvite(code: string, email: string, inviter: string, note: string, handle = "") {
+async function inviteMail(code: string, email: string, inviter: string, note: string, handle = "") {
   const link = `${env.appUrl}/signup?invite=${encodeURIComponent(code)}${handle ? `&handle=${encodeURIComponent(handle)}` : ""}`;
-  return sendMail({
+  return {
     userId: null,
-    audience: "support",
+    audience: "support" as const,
     to: email,
     ...(await emailText("invite", { inviter, personal_note: note ? `\n"${note}"\n` : "", signup_url: link, code, email })),
+  };
+}
+
+async function mailInvite(code: string, email: string, inviter: string, note: string, handle = "") {
+  return sendMail(await inviteMail(code, email, inviter, note, handle));
+}
+
+/** An invite email held for Undo; the invite is marked sent only once the email has gone. */
+async function mailInviteHeld(admin: { id: number; name: string }, what: string, code: string, email: string, note: string, handle = "") {
+  return heldSend(admin.id, what, email, await inviteMail(code, email, admin.name, note, handle), async (status) => {
+    if (!status.startsWith("failed")) await q.run("UPDATE invites SET sent_at = ? WHERE code = ?", now(), code);
   });
 }
 
@@ -442,61 +467,67 @@ export async function inviteByEmail(form: FormData) {
   redirect(`/admin/invites?sent=${sent}&skipped=${skipped}`);
 }
 
-export async function resendInvite(code: string) {
+export async function resendInvite(code: string): Promise<OpsResult> {
   const a = await requireAdminAction("invites");
   const inv = await q.get<{ email: string | null; note: string }>("SELECT email, note FROM invites WHERE code = ? AND revoked_at IS NULL", code);
-  if (!inv?.email) return fail("Couldn't resend: the invite is revoked or has no email");
+  if (!inv?.email) return no("Couldn't resend: the invite is revoked or has no email");
   // An old short code can't open the coming-soon gate (src/lib/invites.ts): resending swaps in a new long one.
   const send = code.length < GATE_CODE_MIN_LENGTH ? newCode() : code;
   if (send !== code) {
     await q.run("INSERT INTO invites (code, max_uses, note, email, created_at) SELECT ?, max_uses, note, email, ? FROM invites WHERE code = ?", send, now(), code);
     await q.run("UPDATE invites SET revoked_at = ? WHERE code = ?", now(), code);
   }
-  if ((await mailInvite(send, inv.email, a.name, inv.note)).startsWith("failed")) return fail("The email failed to send. Check the Email log, then try again.");
-  await q.run("UPDATE invites SET sent_at = ? WHERE code = ?", now(), send);
+  const mail = await mailInviteHeld(a, "resent invite", send, inv.email, inv.note);
   await logAdmin(a.id, "resent invite", inv.email, send);
-  await done(`Invite resent to ${inv.email}`);
-  refresh();
+  return okUndo(`Resending the invite to ${inv.email} in a few seconds`, signUndo({ kind: "invite_resend", items: [{ code: send, prev: send !== code ? code : undefined }], mail: [mail], admin: a.id }));
 }
 
-/** Waitlist → personal invite in one click. */
-/** One waitlist invite: "sent", "joined" (already has an account), "invited" (already done), or "failed" (email didn't send). */
+/**
+ * One waitlist invite: "sent" (held, with its outbox id and code), "joined" (already has an account), or "invited"
+ * (already done). The entry leaves the waiting list at once; Undo (undoSend) puts it back and revokes the code.
+ */
 async function sendWaitlistInvite(id: number, a: { id: number; name: string }) {
   const w = await q.get<{ email: string; invited_at: number | null; handle: string }>("SELECT email, invited_at, handle FROM waitlist WHERE id = ?", id);
-  if (!w || w.invited_at) return "invited" as const;
+  if (!w || w.invited_at) return { r: "invited" as const };
   if (await q.get("SELECT 1 FROM users WHERE email = ?", w.email)) {
     await q.run("UPDATE waitlist SET invited_at = ? WHERE id = ?", now(), id);
-    return "joined" as const;
+    return { r: "joined" as const };
   }
   const code = newCode();
   await q.run("INSERT INTO invites (code, max_uses, note, email, created_at) VALUES (?,?,?,?,?)", code, 1, "From the waitlist", w.email, now());
-  if ((await mailInvite(code, w.email, a.name, "", w.handle)).startsWith("failed")) return "failed" as const;
-  await q.run("UPDATE invites SET sent_at = ? WHERE code = ?", now(), code);
   await q.run("UPDATE waitlist SET invited_at = ? WHERE id = ?", now(), id);
+  const mail = await mailInviteHeld(a, "invited from waitlist", code, w.email, "", w.handle);
   await logAdmin(a.id, "invited from waitlist", w.email, code);
-  return "sent" as const;
+  return { r: "sent" as const, mail, item: { ref: id, code } };
 }
 
-export async function inviteFromWaitlist(id: number) {
+/** Waitlist → personal invite in one click. */
+export async function inviteFromWaitlist(id: number): Promise<OpsResult> {
   const a = await requireAdminAction("waitlist");
-  const r = await sendWaitlistInvite(id, a);
-  if (r === "invited") return fail("Already invited");
-  if (r === "joined") return fail("They already have an account");
-  if (r === "failed") return fail("The invite email failed to send. It's saved; resend it from Invites.");
-  await done("Invite sent");
-  refresh();
+  const s = await sendWaitlistInvite(id, a);
+  if (s.r === "invited") return no("Already invited");
+  if (s.r === "joined") return no("They already have an account");
+  return okUndo("Invite goes in a few seconds", signUndo({ kind: "waitlist_invite", items: [s.item], mail: [s.mail], admin: a.id }));
 }
 
-/** Waitlist → "Invite the oldest N": first come, first served, one at a time so a failed email stops nothing else. */
-export async function inviteOldestFromWaitlist(form: FormData) {
+/** Waitlist → "Invite the oldest N": first come, first served, one at a time. One Undo takes back the whole batch. */
+export async function inviteOldestFromWaitlist(form: FormData): Promise<OpsResult> {
   const a = await requireAdminAction("waitlist");
   const n = Math.min(50, Math.max(1, Math.round(Number(form.get("n")) || 0)));
   const ids = await q.all<{ id: number }>("SELECT id FROM waitlist WHERE invited_at IS NULL ORDER BY created_at ASC LIMIT ?", n);
-  const tally = { sent: 0, joined: 0, invited: 0, failed: 0 };
-  for (const { id } of ids) tally[await sendWaitlistInvite(id, a)]++;
-  const extra = [tally.joined && `${tally.joined} already had an account`, tally.failed && `${tally.failed} emails failed (resend from Invites)`].filter(Boolean).join(" · ");
-  await (tally.failed ? fail : done)(`Invited ${tally.sent} from the waitlist${extra ? ` · ${extra}` : ""}`);
-  refresh();
+  const items: { ref: number; code: string }[] = [];
+  const mail: number[] = [];
+  let joined = 0;
+  for (const { id } of ids) {
+    const s = await sendWaitlistInvite(id, a);
+    if (s.r === "sent") {
+      items.push(s.item);
+      mail.push(s.mail);
+    } else if (s.r === "joined") joined++;
+  }
+  const extra = joined ? ` · ${joined} already had an account` : "";
+  if (!items.length) return ok(`Nobody new to invite${extra}`);
+  return okUndo(`Inviting ${items.length} from the waitlist in a few seconds${extra}`, signUndo({ kind: "waitlist_invite", items, mail, admin: a.id }));
 }
 
 export async function removeFromWaitlist(id: number) {
@@ -1252,13 +1283,14 @@ export async function approvePlanRequest(id: number, form: FormData): Promise<Op
     await db.run("UPDATE plan_requests SET status = 'approved', granted_plan = ?, decided_by = ?, decided_at = ?, decision_note = ? WHERE id = ?", plan.id, a.id, now(), note, id);
   });
   await logAdmin(a.id, "approved plan request", `@${r.handle}`, `${plan.name}${plan.id !== r.plan ? ` (asked for ${r.plan})` : ""}`);
-  await sendMail({
+  // Held a few seconds (undoSend can stop it and put the old plan back), then sent; a failure retries via the Email log.
+  const mail = await heldSend(a.id, "approved plan request", `@${r.handle}`, {
     userId: r.user_id,
     to: r.email,
     subject: `You're on ${plan.name} — FloorTest`,
     body: `Hi ${r.name.split(/\s+/)[0] || r.name},\n\nYou're on ${plan.name} now, free for the rest of the beta: room for ${plan.limit.toLocaleString("en")} active tracks.${plan.id !== r.plan ? ` (You asked for ${r.plan}; ${plan.name} fits how you work better for now. Reply if you think otherwise.)` : ""}${note ? `\n\n${note}` : ""}\n\nSee it: ${APP_URL}/dashboard/plans\n\n— FloorTest`,
-  }).catch(() => {});
-  return ok(`@${r.handle} is on ${plan.name} and has been emailed.`);
+  });
+  return okUndo(`@${r.handle} is on ${plan.name}; the email goes in a few seconds.`, signUndo({ kind: "plan_approve", items: [{ ref: id, user: r.user_id, prev: r.current }], mail: [mail], admin: a.id }));
 }
 
 export async function declinePlanRequest(id: number, form: FormData): Promise<OpsResult> {
@@ -1269,12 +1301,37 @@ export async function declinePlanRequest(id: number, form: FormData): Promise<Op
   if (!reason) return no("Give a short reason; it's sent to them.");
   await q.run("UPDATE plan_requests SET status = 'declined', decided_by = ?, decided_at = ?, decision_note = ? WHERE id = ?", a.id, now(), reason, id);
   await logAdmin(a.id, "declined plan request", `@${r.handle}`, reason.slice(0, 120));
-  await sendMail({
+  // Held a few seconds (undoSend can stop it and reopen the request), then sent; a failure retries via the Email log.
+  const mail = await heldSend(a.id, "declined plan request", `@${r.handle}`, {
     userId: r.user_id,
     to: r.email,
     subject: "About your FloorTest plan request",
     body: `Hi ${r.name.split(/\s+/)[0] || r.name},\n\nThanks for asking for ${r.plan}. We're not moving you for now:\n\n${reason}\n\nYou keep everything on your current plan, and you can ask again any time from Account → Plans.\n\n— FloorTest`,
-  }).catch(() => {});
-  return ok(`Declined @${r.handle}'s request; they've been emailed.`);
+  });
+  return okUndo(`Declined @${r.handle}'s request; the email goes in a few seconds.`, signUndo({ kind: "plan_decline", items: [{ ref: id }], mail: [mail], admin: a.id }));
+}
+
+const UNDO_WHAT = {
+  plan_approve: "approved plan request",
+  plan_decline: "declined plan request",
+  waitlist_invite: "invited from waitlist",
+  invite_resend: "resent invite",
+  email_resend: "resent email",
+} as const;
+
+/**
+ * Undo for an action that held its email (src/lib/ops-undo.ts): stops the emails not yet tried and puts back what the
+ * action changed for those, in one transaction (takeBack). Only the admin who did it, only within the hold; once every
+ * email has been tried it's too late.
+ */
+export async function undoSend(token: string): Promise<OpsResult> {
+  const a = await requireAdminAction("overview");
+  const u = readUndo(token, a.id);
+  if (!u) return no("Too late: it was sent");
+  const stopped = await takeBack(u);
+  if (!stopped) return no("Too late: it was sent");
+  const some = stopped < u.mail.length ? ` (${stopped} of ${u.mail.length}; the rest had gone)` : "";
+  await logAdmin(a.id, "cancelled", UNDO_WHAT[u.kind], `${stopped} email${stopped === 1 ? "" : "s"} not sent${some}`);
+  return ok(`Not sent${some}`);
 }
 
