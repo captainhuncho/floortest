@@ -18,7 +18,7 @@ Same format as the other panels: one or two lines per voice, one recommendation,
 
 ## Standing rules (from the owner, kept here in one place)
 
-1. New work goes to `mobile-next`; the owner reviews the Vercel preview link on the phone.
+1. New work goes to `mobile-next`; the owner reviews the Vercel preview link on the phone. The test link (`floortest-git-mobile-next-maxwelladjavon-5776s-projects.vercel.app`) is a Vercel project domain on Git branch `mobile-next` and moves with every `mobile-next` deploy. Never assign the test-link alias by hand. In every try-it report, confirm the test link is on the newest `mobile-next` deploy (sha) (owner's hub, 1 Nov).
 2. One release desk (owner, 29 Oct): only the desk session merges into `main`, writes the release report and merges `main` into `mobile-next`. The owner says "ship it" and "roll back" to the desk. Other sessions never merge into `main` and never open a PR from `mobile-next` into `main`; when a PR is ready they send the desk one line: "ready: PR, head commit, checks passed". A ship branch starts from `main`, never from `mobile-next`. GitHub closes any PR from `mobile-next` into `main` by itself (`.github/workflows/no-mobile-next-to-main.yml`, owner, 29 Oct).
 3. Fixes that must reach production are built on a branch from `main`, then merged into `mobile-next`.
 4. Ship: merge the release PR into `main` on GitHub (never push `main`; steps in the `owner-ship` skill), wait ~60 s, merge `main` into `mobile-next` and push `mobile-next`, confirm the deploy.
@@ -189,6 +189,7 @@ State on 15 Oct: production has almost everything. Live: sending, review (phone 
 
 ## Decision log
 
+- 1 Nov: the test link is a Vercel project domain that follows `mobile-next` (added by Build on the owner's yes); a hand alias assign had pinned it, so it missed the day's `mobile-next` pushes. Never assign it by hand; every try-it report confirms its sha.
 - 1 Nov: the owner's ship words go in the merge commit body and the next release's report, not in a new commit on the release PR, so the PR head doesn't change after CI passes and the merge doesn't wait for a second CI run (owner: "how can i make it faster?", then "yes, do 1 and 2"); Backend makes the unit tests run in parallel, each with its own test database, to shorten the CI job.
 - 31 Oct: a fourth session, Backend, takes server code, data and the production checklist from Safety; Safety keeps security and code scanning and reviews Backend's auth and permission changes (owner, in the Desk: "yes BACKEND is mine, add it to the session list"; the split chosen in the Backend session).
 - 31 Oct: three release lanes (standard, fast, urgent) replace the one 18:00 release a day; the desk still merges everything on the owner's word (owner: "things that are standard should go on a standard way. Things that needs to go urgent, we label them as urgent. And then things that should be fast should be labeled as fast"; confirmed in the desk: "yes to the lanes and the port change"). Build makes the e2e ports configurable so two e2e runs can go side by side. The desk starts a standard release's checks when the "ready" arrives, not on the ship word (owner: "yes, start checks when ready arrives").
