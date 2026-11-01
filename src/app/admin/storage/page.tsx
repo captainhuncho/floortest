@@ -8,6 +8,7 @@ import { env } from "@/lib/env";
 import { AUDIT_BUCKETS, expectedFiles, lastChecks } from "@/lib/storage-audit";
 import { backupNow, checkStorage } from "../actions";
 import { lastVaultCopy } from "@/lib/vault";
+import { MonoStat, PageHead } from "../PinParts";
 
 const DAY = 86_400_000;
 /** Cloudflare R2 list price per GB-month. An estimate; the real bill is in Cloudflare. */
@@ -54,23 +55,15 @@ export default async function Storage() {
   const kinds = Object.entries(expected.reduce<Record<string, number>>((m, f) => ((m[f.kind] = (m[f.kind] ?? 0) + 1), m), {}));
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Storage &amp; costs</h1>
-        <p className="mt-2 text-mute">Audio files in Cloudflare R2. Cost is estimated at R2&apos;s list price (${R2_PER_GB}/GB a month, first 10 GB free); the real bill is in Cloudflare.</p>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-4">
-        {[
-          ["Stored now", fmtBytes(total), `${files} tracks`],
-          ["Estimated monthly", cost(Math.max(0, total - 10 * 1024 ** 3)), `${cost(total)} before the free 10 GB`],
-          ["Stems + unfinished", fmtBytes(stems + pending), "Stems, and uploads not completed"],
-          ["Deleting in 7 days", fmtBytes(Number(due?.b ?? 0)), `${due?.n ?? 0} tracks past retention`],
-        ].map(([k, v, s]) => (
-          <div key={k} className="rounded-md border border-line p-4">
-            <p className="label">{k}</p>
-            <p className="mt-1 text-2xl font-bold tnum">{v}</p>
-            <p className="mt-1 text-xs text-mute">{s}</p>
-          </div>
-        ))}
+      <PageHead eyebrow="Platform" title="Storage & costs">
+        Audio files in Cloudflare R2. Cost is estimated at R2&apos;s list price (${R2_PER_GB}/GB a month, first 10 GB free); the real bill is in Cloudflare.
+      </PageHead>
+      {/* Pin 96's stat cards: a big mono figure, a bar for the share of what's stored, a caption. */}
+      <div className="grid items-start gap-6 sm:grid-cols-2 xl:grid-cols-4">
+        <MonoStat i={0} label="Stored now" value={fmtBytes(total)} pct={total ? (live / total) * 100 : 0} caption={`${files} tracks · ${total ? Math.round((live / total) * 100) : 0}% finished audio`} />
+        <MonoStat i={1} label="Estimated monthly" value={cost(Math.max(0, total - 10 * 1024 ** 3))} pct={Math.min(100, (gb(total) / 10) * 100)} tone={total > 10 * 1024 ** 3 ? "amber" : "violet"} caption={`${cost(total)} before the free 10 GB`} />
+        <MonoStat i={2} label="Stems + unfinished" value={fmtBytes(stems + pending)} pct={total ? ((stems + pending) / total) * 100 : 0} tone="violet" caption="Stems, and uploads not completed" />
+        <MonoStat i={3} label="Deleting in 7 days" value={fmtBytes(Number(due?.b ?? 0))} pct={total ? (Number(due?.b ?? 0) / total) * 100 : 0} tone="danger" caption={`${due?.n ?? 0} tracks past retention`} />
       </div>
       <section aria-labelledby="vault-h" className="space-y-1.5 rounded-md border border-line p-4">
         <h2 id="vault-h" className="text-lg font-semibold">Recovery copy</h2>
@@ -152,21 +145,19 @@ export default async function Storage() {
       </section>
       <section aria-labelledby="allow-h" className="space-y-3">
         <h2 id="allow-h" className="text-lg font-semibold">Allowance</h2>
-        <ul className="grid gap-3 sm:grid-cols-2">
-          {allow.map((a) => {
+        <ul className="grid items-start gap-6 sm:grid-cols-2">
+          {allow.map((a, i) => {
             const pct = Math.min(100, (a.used / a.limit) * 100);
-            const tone = pct >= 90 ? "bg-danger" : pct >= 80 ? "bg-[#ffb648]" : "bg-lime";
             return (
-              <li key={a.label} className="rounded-md border border-line p-4">
-                <div className="flex items-baseline justify-between gap-3">
-                  <p className="font-semibold">{a.label}</p>
-                  <p className="text-sm tnum">{pct < 1 && a.used > 0 ? "<1" : Math.round(pct)}% full</p>
-                </div>
-                <div className="mt-3 h-2 rounded-full bg-ink-3" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)} aria-label={`${a.label} used`}>
-                  <div className={`h-2 rounded-full ${tone}`} style={{ width: `${Math.max(pct, a.used ? 1 : 0)}%` }} />
-                </div>
-                <p className="mt-2 text-sm tnum">{fmtBytes(a.used)} of {fmtBytes(a.limit)}</p>
-                <p className="mt-1 text-xs text-mute">{a.note}</p>
+              <li key={a.label}>
+                <MonoStat
+                  i={i}
+                  label={a.label}
+                  value={`${pct < 1 && a.used > 0 ? "<1" : Math.round(pct)}% full`}
+                  pct={pct}
+                  tone={pct >= 90 ? "danger" : pct >= 80 ? "amber" : "lime"}
+                  caption={`${fmtBytes(a.used)} of ${fmtBytes(a.limit)} · ${a.note}`}
+                />
               </li>
             );
           })}
