@@ -40,24 +40,31 @@ export async function searchPeople(staff: { id: number; access: OpsAccess }, raw
   const term = peopleQuery(String(raw ?? ""));
   if (!term) return { ok: true, people: [] };
   if (!(await allow(BUCKET, String(staff.id), PALETTE_PER_MINUTE, WINDOW_MS))) return { ok: false, error: "Too many searches. Wait a minute and try again." };
-  return { ok: true, people: await findPeople(term, canSeeEmails(staff.access)) };
+  // With an "@" in what was typed, the whole address is searched as typed, "@" included: "@floortest" finds that
+  // domain, "ana@x" that address, and "@lena" still finds the handle by the name and handle match.
+  const typed = String(raw ?? "").trim().slice(0, 100);
+  const wholeEmail = typed.includes("@") ? typed : null;
+  return { ok: true, people: await findPeople(term, canSeeEmails(staff.access), wholeEmail) };
 }
 
-/** The bounded, parameterised query: named columns, at most eight rows; email neither read nor matched unless shown. */
-export async function findPeople(term: string, showEmail: boolean): Promise<PalettePerson[]> {
+/**
+ * The bounded, parameterised query: named columns, at most eight rows. Name and handle match anywhere. Email, only
+ * when the viewer may see it: without an "@" in the query just the part before the "@" (so "te" doesn't find everyone
+ * at a domain), with one the whole address. Exact @handle first, then names that start with the query, then the rest.
+ */
+export async function findPeople(term: string, showEmail: boolean, wholeEmail: string | null = null): Promise<PalettePerson[]> {
   const like = likeContains(term);
   const prefix = like.slice(1); // "term%": starts with
-  // Exact handle first, then handles and names that start with it, then the rest by name.
+  const emailMatch = !showEmail ? "" : wholeEmail ? " OR email ILIKE ?" : " OR split_part(lower(email), '@', 1) ILIKE ?";
   const rows = await q.all<{ id: number; name: string; handle: string; email?: string }>(
     `SELECT id, name, handle${showEmail ? ", email" : ""} FROM users
-     WHERE name ILIKE ? OR handle ILIKE ?${showEmail ? " OR email ILIKE ?" : ""}
-     ORDER BY (lower(handle) = lower(?)) DESC, (handle ILIKE ? OR name ILIKE ?) DESC, lower(name), id
+     WHERE name ILIKE ? OR handle ILIKE ?${emailMatch}
+     ORDER BY (lower(handle) = lower(?)) DESC, (name ILIKE ?) DESC, lower(name), id
      LIMIT ${PEOPLE_MAX_RESULTS}`,
     like,
     like,
-    ...(showEmail ? [like] : []),
+    ...(showEmail ? [wholeEmail ? likeContains(wholeEmail) : like] : []),
     term,
-    prefix,
     prefix,
   );
   return rows.map((r) => personResult(r, showEmail));

@@ -40,6 +40,29 @@ test("people search: permission, length, cap, email rules and the rate limit", a
   assert.ok(byEmail.ok);
   assert.equal(byEmail.people[0]?.handle, "anaruiz", "found by email when emails are shown");
 
+  // Email without an "@" in the query: the part before the "@" only, so a domain never matches everyone.
+  const te = await searchPeople(reader, "te");
+  assert.ok(te.ok);
+  assert.deepEqual(te.people.map((p) => p.handle), [], '"te" is only in the domain (pal.test), so nobody');
+  const dom = await searchPeople(reader, "@pal.test");
+  assert.ok(dom.ok);
+  assert.equal(dom.people.length, 8, "with an @ the whole address counts, domain included (capped at 8)");
+  assert.ok(dom.people.every((p) => p.email?.endsWith("@pal.test")));
+
+  // Ranking: the exact @handle first, then names that start with the query, then the rest.
+  const zr = await searchPeople(reader, "zed1");
+  assert.ok(zr.ok);
+  assert.equal(zr.people[0].handle, "zed1", "exact handle first, ahead of zed10 and zed11");
+  const named = await searchPeople(reader, "ruiz");
+  assert.ok(named.ok);
+  assert.deepEqual(named.people.map((p) => p.handle), ["anaruiz"]);
+  const { q } = await import("../src/lib/db");
+  await q.run("INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at) VALUES ('m1@pal.test', 'h', 'Abe Mora', 'abemora', 'free', 'UTC', ?)", Date.now());
+  await q.run("INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at) VALUES ('m2@pal.test', 'h', 'Mora Quinn', 'quinnm', 'free', 'UTC', ?)", Date.now());
+  const mora = await searchPeople(reader, "mora");
+  assert.ok(mora.ok);
+  assert.deepEqual(mora.people.map((p) => p.handle), ["quinnm", "abemora"], "a name that starts with it before one that only contains it");
+
   // A viewer who may not see emails: none in the results, and email isn't searched either.
   const hidden = await findPeople("zed", false);
   assert.ok(hidden.length > 0 && hidden.every((p) => !("email" in p)));

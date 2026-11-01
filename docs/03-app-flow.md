@@ -138,8 +138,9 @@ Edit mode is bound to the exact ops session that opened it (pass and cookie are 
    each page needs its permission, else ─► /admin/no-access
    phones: bottom bar Home · Inbox · Users · Safety · More (More ─► full menu)
 ⌘K / Ctrl+K (any ops page, not over another dialog; src/app/admin/kit/Palette.tsx)
-   ─► type ─┬─ people (Users (view) only; 2+ characters; name, @handle or email; ≤ 8; 60 searches a minute per staff
-            │    member; paletteSearch → src/lib/ops-palette.ts) ─► Enter ─► their account page, focus in the page
+   ─► type ─┬─ people (Users (view) only; 2+ characters; name, @handle or email: the part before the @ unless you
+            │    type an @, then the whole address; exact @handle first, then names starting with it; ≤ 8; 60 searches
+            │    a minute per staff member; paletteSearch → src/lib/ops-palette.ts) ─► Enter ─► their account page
             ├─ pages this person may open ─► Enter ─► the page
             └─ actions (Keyboard shortcuts) ─► Enter ─► runs
    ─► Esc ─► closes, focus back where it was; keys pressed while it closes do nothing
