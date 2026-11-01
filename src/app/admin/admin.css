@@ -131,6 +131,12 @@
 @keyframes admin-tick {
   from { opacity: 0.12; }
 }
+/* Seen this page already this session (AdminMotion.tsx): everything is simply there. Presses still respond. */
+.admin-still :is(.admin-rise, .admin-area, .admin-grow, .admin-grow-y, .admin-tick, .admin-panel) { animation: none; }
+.admin-still .admin-draw { animation: none; stroke-dashoffset: 0; }
+.admin-still .admin-fill { animation: none; opacity: 1; }
+.admin-still .admin-canvas main :is(.rounded-md, .rounded-lg).border.border-line,
+.admin-still .admin-canvas main .card { animation: none; }
 .admin-press { transition: transform 160ms cubic-bezier(0.32, 0.72, 0, 1), background-color 150ms, color 150ms; }
 .admin-press:active { transform: scale(0.97); }
 .admin-lift { transition: background-color 150ms, box-shadow 200ms, transform 260ms cubic-bezier(0.32, 0.72, 0, 1); }
