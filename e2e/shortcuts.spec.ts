@@ -55,9 +55,7 @@ test("the desk player takes the media keys, and Shift+↑/↓ and M set its volu
   });
   await page.goto("/dashboard/review?view=queue");
   const keep = page.getByRole("complementary", { name: "Review" }).getByRole("button", { name: /^Keep/ }).locator("visible=true").first();
-  await expect(keep).toBeVisible();
-  await expect.poll(() => keep.evaluate((el) => Object.keys(el).some((k) => k.startsWith("__reactProps")))).toBe(true);
-  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+  await hydrated(keep);
 
   const media = () => page.evaluate(() => (window as unknown as { __media: Record<string, boolean> }).__media);
   await expect.poll(async () => (await media()).seekto).toBe(true);
