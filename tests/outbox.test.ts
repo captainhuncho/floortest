@@ -1,11 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
+import { testDataDir } from "./test-db";
 
 // A throwaway local database and a fake email provider (fetch is stubbed: nothing is sent).
-process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "ft-outbox-"));
+process.env.DATA_DIR = testDataDir("ft-outbox-");
 process.env.APP_SECRET ??= "test-secret-".padEnd(48, "x");
 process.env.RESEND_API_KEY = "re_test_only";
 delete process.env.DATABASE_URL;

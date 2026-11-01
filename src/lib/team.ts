@@ -22,9 +22,12 @@ export async function reviewTrack(desk: Pick<User, "id">, trackId: number) {
 
 export type Comment = { id: number; user_id: number; name: string; body: string; created_at: number };
 
+/** Someone who has left the team: read as the person, their account is no longer visible, but what they said stays. */
+const FORMER = "Former teammate";
+
 export const commentsFor = (trackId: number) =>
   q.all<Comment>(
-    "SELECT c.id, c.user_id, u.name, c.body, c.created_at FROM track_comments c JOIN users u ON u.id = c.user_id WHERE c.track_id = ? ORDER BY c.created_at, c.id LIMIT 200",
+    `SELECT c.id, c.user_id, COALESCE(u.name, '${FORMER}') AS name, c.body, c.created_at FROM track_comments c LEFT JOIN users u ON u.id = c.user_id WHERE c.track_id = ? ORDER BY c.created_at, c.id LIMIT 200`,
     trackId,
   );
 
@@ -44,7 +47,7 @@ export async function removeComment(desk: Pick<User, "id" | "actor_id" | "role">
 
 export const shortlistOf = (trackId: number) =>
   q.get<{ user_id: number; name: string; created_at: number }>(
-    "SELECT s.user_id, u.name, s.created_at FROM track_shortlist s JOIN users u ON u.id = s.user_id WHERE s.track_id = ?",
+    `SELECT s.user_id, COALESCE(u.name, '${FORMER}') AS name, s.created_at FROM track_shortlist s LEFT JOIN users u ON u.id = s.user_id WHERE s.track_id = ?`,
     trackId,
   );
 

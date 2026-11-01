@@ -1,13 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
 import http from "node:http";
-import os from "node:os";
-import path from "node:path";
+import { testDataDir } from "./test-db";
 import type { AddressInfo } from "node:net";
 
 // A throwaway local database and storage folder for this test only, set before the app's modules load.
-process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "ft-scan-intake-"));
+process.env.DATA_DIR = testDataDir("ft-scan-intake-");
 process.env.APP_SECRET ??= "test-secret-".padEnd(48, "x");
 delete process.env.DATABASE_URL;
 delete process.env.S3_BUCKET;

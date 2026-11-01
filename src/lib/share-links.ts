@@ -1,6 +1,6 @@
 import "server-only";
 import crypto from "node:crypto";
-import { now, q, type Collection, type Queryable, type Track, type User } from "./db";
+import { asPerson, now, q, type Collection, type Queryable, type Track, type User } from "./db";
 import { env } from "./env";
 import { allow } from "./ratelimit";
 import { switchOn } from "./switches";
@@ -74,14 +74,28 @@ export async function logLinkEvent(linkId: number, kind: string, who: { email?: 
 
 /* ── The owner's side ── */
 
-async function ownedLink(owner: Pick<User, "id">, linkId: number) {
-  return q.get<Link>("SELECT l.* FROM collection_links l JOIN collections c ON c.id = l.collection_id WHERE l.id = ? AND c.user_id = ?", linkId, owner.id);
+/**
+ * Who manages a link: the desk (`id`) and the signed-in person (`actor_id`). Finding a link, a recipient or a request
+ * runs as the person under the per-person rules (B8) as well as the desk filter. The changes then run as the app on
+ * purpose: they sign listeners out (link_sessions), read their accounts and keep the link's history.
+ */
+type Owner = Pick<User, "id" | "actor_id">;
+const asOwner = <T,>(owner: Owner, fn: () => Promise<T>) => asPerson(owner.actor_id, fn);
+
+/** The link columns the desk reads: never the address's fingerprint (owner rule "send only the fields needed"). */
+const LINK_COLUMNS = ["id", "collection_id", "created_by", "label", "generation", "permission", "requests_on", "requests_paused_at", "expires_at", "revoked_at", "created_at"]
+  .map((c) => `l.${c}`)
+  .join(", ");
+
+async function ownedLink(owner: Owner, linkId: number) {
+  if (!Number.isSafeInteger(linkId)) return undefined;
+  return asOwner(owner, () => q.get<Link>(`SELECT ${LINK_COLUMNS} FROM collection_links l JOIN collections c ON c.id = l.collection_id WHERE l.id = ? AND c.user_id = ?`, linkId, owner.id));
 }
 
 /** A new link. The full address is returned once, now; only its fingerprint is kept. */
-export async function createLink(owner: Pick<User, "id">, collectionId: number, opts: { permission: Permission; days: number | null; requests: boolean; label?: string }) {
+export async function createLink(owner: Owner, collectionId: number, opts: { permission: Permission; days: number | null; requests: boolean; label?: string }) {
   if (!(await sharingOn())) throw new LinkError("Sharing isn't available yet.");
-  const c = await q.get<Collection>("SELECT * FROM collections WHERE id = ? AND user_id = ?", collectionId, owner.id);
+  const c = await asOwner(owner, () => q.get<Collection>("SELECT * FROM collections WHERE id = ? AND user_id = ?", collectionId, owner.id));
   if (!c) throw new LinkError("Not found");
   if (!(await allow("link_create", String(owner.id), 30, DAY))) throw new LinkError("Too many new links today. Try again tomorrow.");
   const secret = newSecret();
@@ -101,7 +115,7 @@ export async function createLink(owner: Pick<User, "id">, collectionId: number, 
 }
 
 /** Reset: a new address and generation. The old address stops working and everyone signed in through it is signed out. */
-export async function resetLink(owner: Pick<User, "id">, linkId: number) {
+export async function resetLink(owner: Owner, linkId: number) {
   const link = await ownedLink(owner, linkId);
   if (!link || link.revoked_at) throw new LinkError("Not found");
   const secret = newSecret();
@@ -114,7 +128,7 @@ export async function resetLink(owner: Pick<User, "id">, linkId: number) {
 }
 
 /** Revoke: the link stops working for everyone, for good. The collection and its music are untouched; history is kept. */
-export async function revokeLink(owner: Pick<User, "id">, linkId: number) {
+export async function revokeLink(owner: Owner, linkId: number) {
   const link = await ownedLink(owner, linkId);
   if (!link) throw new LinkError("Not found");
   await q.tx(async (db) => {
@@ -124,7 +138,7 @@ export async function revokeLink(owner: Pick<User, "id">, linkId: number) {
   await logLinkEvent(link.id, "revoked", { userId: owner.id });
 }
 
-export async function setRequests(owner: Pick<User, "id">, linkId: number, on: boolean) {
+export async function setRequests(owner: Owner, linkId: number, on: boolean) {
   const link = await ownedLink(owner, linkId);
   if (!link) throw new LinkError("Not found");
   await q.run("UPDATE collection_links SET requests_on = ?, requests_paused_at = NULL WHERE id = ?", on ? 1 : 0, link.id);
@@ -134,7 +148,7 @@ export async function setRequests(owner: Pick<User, "id">, linkId: number, on: b
  * Adds people, one per line or comma: an email, a company domain ("@label.com", anyone with a verified address there),
  * or a FloorTest username ("@sam"; access follows the account). Returns what couldn't be added.
  */
-export async function addRecipients(owner: Pick<User, "id">, linkId: number, raw: string, permission: Permission, days: number | null = null) {
+export async function addRecipients(owner: Owner, linkId: number, raw: string, permission: Permission, days: number | null = null) {
   const link = await ownedLink(owner, linkId);
   if (!link || link.revoked_at) throw new LinkError("Not found");
   const problems: string[] = [];
@@ -180,10 +194,12 @@ export async function addRecipients(owner: Pick<User, "id">, linkId: number, raw
 }
 
 /** Removes one person: their access ends at once, everyone else keeps theirs. */
-export async function removeRecipient(owner: Pick<User, "id">, recipientId: number) {
-  const r = await q.get<Recipient & { link_owner: number }>(
-    "SELECT r.*, c.user_id AS link_owner FROM link_recipients r JOIN collection_links l ON l.id = r.link_id JOIN collections c ON c.id = l.collection_id WHERE r.id = ?",
-    recipientId,
+export async function removeRecipient(owner: Owner, recipientId: number) {
+  const r = await asOwner(owner, () =>
+    q.get<Recipient & { link_owner: number }>(
+      "SELECT r.*, c.user_id AS link_owner FROM link_recipients r JOIN collection_links l ON l.id = r.link_id JOIN collections c ON c.id = l.collection_id WHERE r.id = ?",
+      recipientId,
+    ),
   );
   if (!r || r.link_owner !== owner.id) throw new LinkError("Not found");
   await q.tx(async (db) => {
@@ -194,10 +210,12 @@ export async function removeRecipient(owner: Pick<User, "id">, recipientId: numb
 }
 
 /** Approve (with what they get, never more than the link) or decline (30-day cooldown) or block (never again for this collection). */
-export async function decideRequest(owner: Pick<User, "id">, requestId: number, decision: "approve" | "decline" | "block", opts: { permission?: Permission; days?: number | null } = {}) {
-  const req = await q.get<{ id: number; link_id: number; email: string; user_id: number | null; status: string; owner_id: number; link_permission: Permission }>(
-    `SELECT r.*, c.user_id AS owner_id, l.permission AS link_permission FROM link_requests r JOIN collection_links l ON l.id = r.link_id JOIN collections c ON c.id = r.collection_id WHERE r.id = ?`,
-    requestId,
+export async function decideRequest(owner: Owner, requestId: number, decision: "approve" | "decline" | "block", opts: { permission?: Permission; days?: number | null } = {}) {
+  const req = await asOwner(owner, () =>
+    q.get<{ id: number; link_id: number; email: string; user_id: number | null; status: string; owner_id: number; link_permission: Permission }>(
+      `SELECT r.*, c.user_id AS owner_id, l.permission AS link_permission FROM link_requests r JOIN collection_links l ON l.id = r.link_id JOIN collections c ON c.id = r.collection_id WHERE r.id = ?`,
+      requestId,
+    ),
   );
   if (!req || req.owner_id !== owner.id) throw new LinkError("Not found");
   if (req.status !== "pending" && decision === "approve") throw new LinkError("This request was already answered.");
@@ -450,13 +468,17 @@ export async function linkTrack(link: Pick<Link, "collection_id">, trackId: numb
  * The owner's view of a collection's links: each with its recipients, waiting requests and recent activity. Four queries
  * for all the links together (not four per link), grouped here.
  */
-export async function linksFor(owner: Pick<User, "id">, collectionId: number) {
-  const links = await q.all<Link>(
-    "SELECT l.* FROM collection_links l JOIN collections c ON c.id = l.collection_id WHERE l.collection_id = ? AND c.user_id = ? ORDER BY l.revoked_at NULLS FIRST, l.created_at DESC",
-    collectionId,
-    owner.id,
+export async function linksFor(owner: Owner, collectionId: number) {
+  const links = await asOwner(owner, () =>
+    q.all<Link>(
+      `SELECT ${LINK_COLUMNS} FROM collection_links l JOIN collections c ON c.id = l.collection_id WHERE l.collection_id = ? AND c.user_id = ? ORDER BY l.revoked_at NULLS FIRST, l.created_at DESC`,
+      collectionId,
+      owner.id,
+    ),
   );
   if (!links.length) return [];
+  // Who's on each link and what they did: listeners' accounts and sessions, so the app reads them, only for links
+  // found as the person above.
   const ids = links.map((l) => l.id);
   const marks = ids.map(() => "?").join(",");
   const [recipients, requests, events] = await Promise.all([

@@ -1,11 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
+import { testDataDir } from "./test-db";
 
 // A throwaway local database for this test only, set before the app's modules load.
-process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "ft-turnstile-"));
+process.env.DATA_DIR = testDataDir("ft-turnstile-");
 process.env.APP_SECRET ??= "test-secret-".padEnd(48, "x");
 process.env.APP_URL = "https://floortest.app";
 process.env.TURNSTILE_SITE_KEY = "site";

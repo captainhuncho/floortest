@@ -1947,4 +1947,27 @@ alter table scanner_budget enable row level security;`,
     id: "0118_person_held_reply_ids",
     sql: `do $$ begin execute format('grant usage on sequence %s to ft_person', pg_get_serial_sequence('held_replies', 'id')); end $$;`,
   },
+  {
+    // Per-person rules (B8, 1 Nov): the desk finds its share links, their recipients and their requests as the person
+    // (lib/share-links.ts, the owner's side). Read only, and only on a collection the person may see (its own policy
+    // decides); never the link's fingerprint. Changes stay the app's: they sign listeners out and keep the history.
+    id: "0119_person_link_lookups",
+    sql: `grant select (id, collection_id, created_by, label, generation, permission, requests_on, requests_paused_at, expires_at, revoked_at, created_at) on collection_links to ft_person;
+grant select on link_recipients, link_requests to ft_person;
+create policy person_links_read on collection_links for select to ft_person using (exists (select 1 from collections c where c.id = collection_links.collection_id));
+create policy person_link_recipients_read on link_recipients for select to ft_person using (exists (select 1 from collection_links l where l.id = link_recipients.link_id));
+create policy person_link_requests_read on link_requests for select to ft_person using (exists (select 1 from collection_links l where l.id = link_requests.link_id));`,
+  },
+  {
+    // Hub review of 0119 (1 Nov): a team member sees the desk's collections, so 0119 let them read the desk's links,
+    // who they're shared with and the requests to join, though only the owner and admins manage links (the app's
+    // requireRole("admin")). Link reads now need ft_desk_admin: the desk's owner, or an admin on its team while the desk
+    // isn't suspended. Recipients and requests follow the link. A new migration, not an edit: 0119 may already have run on Preview.
+    id: "0120_person_links_admins_only",
+    sql: `create or replace function ft_desk_admin(desk bigint) returns boolean language sql stable security definer set search_path = public as $$ select desk = ft_person_id() or exists (select 1 from account_members m join users u on u.id = m.account_id where m.account_id = desk and m.user_id = ft_person_id() and m.role = 'admin' and u.suspended_at is null) $$;
+revoke all on function ft_desk_admin(bigint) from public;
+grant execute on function ft_desk_admin(bigint) to ft_person;
+drop policy if exists person_links_read on collection_links;
+create policy person_links_read on collection_links for select to ft_person using (exists (select 1 from collections c where c.id = collection_links.collection_id and ft_desk_admin(c.user_id)));`,
+  },
 ];
