@@ -260,6 +260,25 @@ night follow the theme.
   The bulk bar sticks to the bottom of the screen after the table, so it never covers the last row.
 - **Motion:** transform and opacity only, about 380 ms on the house curve; reduced motion keeps fades.
 
+### Ops shell (admin redesign B, step 2, 1 Nov; switch `ops_shell`)
+`src/app/admin/shell/` (layout in `shell.css`, model in `model.ts`, tested by `tests/ops-shell.test.ts` and
+`e2e/ops-shell.spec.ts`). Replaces the top tabs and sidebar when the switch is on; never both.
+- **Grid from 768px:** rail 64px | panel 256px | page. The panel docks from 1100px unless collapsed; narrower or
+  collapsed, a rail button opens it over the page (280px, a 35% dim on the page, Esc closes). Below 768px: the page
+  alone with the phone bar.
+- **Rail:** solid ink-2, 44px icon buttons with 13px corners, the current area on ink-4 with a lime icon, a lime count
+  badge (dark text) on areas with something waiting, the name as a tip on hover and focus. ⌘K and the initials at the
+  bottom; the initials open a small glass card with name, role and Sign out.
+- **Panel:** solid ink-2 (B fix 9), 44px page rows, the current one ink-4 with a lime icon; lime counts for what waits,
+  faint numbers for quiet counts. Next due is an ink-3 tile with an Open button; Today is two ink-3 figures, amber
+  when something is past the 3-hour target.
+- **Top bar:** the shell's one glass layer, a 16px-corner capsule floating 12px in: breadcrumb, ⌘K field (300px from
+  1024px), live dot and time. On phones it keeps the crest and the page's name.
+- **Phone bar:** a floating glass capsule 12px from the edges and 8px above the home bar, five 56px targets; More
+  opens the app's Dialog as a bottom sheet with every page (16px text).
+- **Motion:** the panel's pages rise once per view (admin-rise, 560ms); opening over the page slides 8px in 240ms;
+  reduced motion keeps fades; reduced transparency makes the glass solid.
+
 ### Review Row (signature)
 The heart of the desk: play button, title and artist, a waveform, the Listened tag, BPM and length in tabular mono, all in one dense row that scans like a crate. Selecting a row opens the review panel below with Keep / Not for me always in reach.
 

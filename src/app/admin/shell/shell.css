@@ -1,0 +1,91 @@
+/*
+ * The new ops shell (admin redesign B, step 2; switch ops_shell). Phones (below 768px): the page alone, with the
+ * floating bottom bar. From 768px: rail | panel | page. The panel docks from 1100px unless collapsed; otherwise it
+ * opens over the page from the rail. Rail and panel are solid; only the top bar and the phone bar are glass.
+ */
+.ops-shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+.ops-rail,
+.ops-panel {
+  display: none;
+}
+@media (min-width: 768px) {
+  .ops-shell {
+    display: grid;
+    grid-template-columns: 64px auto minmax(0, 1fr);
+  }
+  .ops-rail {
+    grid-column: 1;
+    display: flex;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    height: 100dvh;
+    z-index: 45; /* its name tips and the profile card show over the panel */
+  }
+  .ops-main {
+    grid-column: 3;
+  }
+  .ops-shell[data-peek] .ops-panel {
+    display: flex;
+    position: fixed;
+    left: 64px;
+    top: 0;
+    bottom: 0;
+    z-index: 40;
+    width: min(280px, calc(100vw - 64px));
+    box-shadow: 24px 0 48px -24px rgb(0 0 0 / 0.5);
+    animation: ops-panel-in 240ms cubic-bezier(0.22, 0.7, 0.2, 1) both;
+  }
+  .ops-scrim {
+    position: fixed;
+    inset: 0 0 0 64px;
+    z-index: 39;
+    background: rgb(0 0 0 / 0.35);
+  }
+}
+@media (min-width: 1100px) {
+  .ops-shell:not([data-collapsed]) .ops-panel {
+    grid-column: 2;
+    display: flex;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    height: 100dvh;
+    width: 256px;
+  }
+}
+/* "Show the side panel" sits in the rail only while the panel is collapsed on a screen wide enough to dock it. */
+.ops-expand {
+  display: none;
+}
+@media (min-width: 1100px) {
+  .ops-expand {
+    display: grid;
+  }
+}
+@keyframes ops-panel-in {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+}
+.ops-press {
+  transition: transform 160ms cubic-bezier(0.32, 0.72, 0, 1), background-color 150ms, color 150ms;
+}
+.ops-press:active {
+  transform: scale(0.94);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ops-shell[data-peek] .ops-panel {
+    animation: admin-fade 120ms ease-out both;
+  }
+  .ops-press {
+    transition: none;
+  }
+  .ops-press:active {
+    transform: none;
+  }
+}
