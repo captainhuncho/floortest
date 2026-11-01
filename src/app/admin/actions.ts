@@ -24,7 +24,7 @@ import { issueViewTicket } from "@/lib/ops";
 import { APP_URL } from "@/lib/mail";
 import { env } from "@/lib/env";
 import { HIDDEN, sendMail, sendMailHeld } from "@/lib/mail";
-import { readUndo, signUndo, takeBack } from "@/lib/ops-undo";
+import { readUndo, signUndo, takeBack, type UndoItem } from "@/lib/ops-undo";
 import { approvePendingIdentity } from "@/lib/identity-approve";
 import { isAdminEmail, logAdmin, requireAdminAction } from "@/lib/admin";
 import { opsAccessFor, suspendRefusal } from "@/lib/ops-access";
@@ -435,10 +435,6 @@ async function inviteMail(code: string, email: string, inviter: string, note: st
   };
 }
 
-async function mailInvite(code: string, email: string, inviter: string, note: string, handle = "") {
-  return sendMail(await inviteMail(code, email, inviter, note, handle));
-}
-
 /** An invite email held for Undo; the invite is marked sent only once the email has gone. */
 async function mailInviteHeld(admin: { id: number; name: string }, what: string, code: string, email: string, note: string, handle = "") {
   return heldSend(admin.id, what, email, await inviteMail(code, email, admin.name, note, handle), async (status) => {
@@ -446,12 +442,13 @@ async function mailInviteHeld(admin: { id: number; name: string }, what: string,
   });
 }
 
-/** Sends a personal, single-use invite to each address. Skips existing accounts and pending invites. */
-export async function inviteByEmail(form: FormData) {
+/** Sends a personal, single-use invite to each address, held for Undo. Skips existing accounts and pending invites. */
+export async function inviteByEmail(form: FormData): Promise<OpsResult> {
   const a = await requireAdminAction("invites");
   const note = String(form.get("note") || "").trim().slice(0, 300);
   const emails = [...new Set(String(form.get("emails") || "").split(/[\s,;]+/).map(normalEmail).filter(Boolean))].slice(0, 50);
-  let sent = 0;
+  const items: { code: string }[] = [];
+  const mail: number[] = [];
   let skipped = 0;
   for (const email of emails) {
     const taken =
@@ -464,12 +461,14 @@ export async function inviteByEmail(form: FormData) {
     }
     const code = newCode();
     await q.run("INSERT INTO invites (code, max_uses, note, email, created_at) VALUES (?,?,?,?,?)", code, 1, note, email, now());
-    if (!(await mailInvite(code, email, a.name, note)).startsWith("failed")) await q.run("UPDATE invites SET sent_at = ? WHERE code = ?", now(), code);
+    mail.push(await mailInviteHeld(a, "invited by email", code, email, note));
+    items.push({ code });
     await logAdmin(a.id, "invited by email", email, code);
-    sent++;
   }
-  refresh();
-  redirect(`/admin/invites?sent=${sent}&skipped=${skipped}`);
+  const extra = skipped ? ` · skipped ${skipped}: not a valid email, already has an account, or already has a pending invite` : "";
+  if (!items.length) return no(`Nobody to invite${extra}`);
+  const n = items.length;
+  return okUndo(`Sending ${n} invite${n === 1 ? "" : "s"} in a few seconds${extra}`, signUndo({ kind: "invite_email", items, mail, admin: a.id }));
 }
 
 export async function resendInvite(code: string): Promise<OpsResult> {
@@ -556,7 +555,14 @@ export async function approveIdentity(userId: number): Promise<OpsResult> {
   if (!powers.direct && !powers.approve) return no("Approving adds the Verified mark. Forward it for approval with your reason and proof instead.");
   // Only a request that is waiting (lib/identity-approve); any other account answers "not found".
   const r = await V.approveRequest(a, userId, () => approvePendingIdentity(userId));
-  return r.ok ? ok(`Verified @${r.handle} and emailed them`) : no(r.why);
+  return verified(a.id, r);
+}
+
+/** The answer to a verification that added the mark: its email is held, so Undo can take the mark back (kind "verify"). */
+function verified(adminId: number, r: { ok: true; handle: string; undo?: { mail: number; item: UndoItem } } | { ok: false; why: string }): OpsResult {
+  if (!r.ok) return no(r.why);
+  const message = `Verified @${r.handle}; the email goes in a few seconds`;
+  return r.undo ? okUndo(message, signUndo({ kind: "verify", items: [r.undo.item], mail: [r.undo.mail], admin: adminId })) : ok(message);
 }
 
 /** Reason, profile links and uploaded-proof tickets from a verification form (src/app/admin/ProofForm.tsx). */
@@ -574,7 +580,7 @@ export async function verifyDirectly(userId: number, form: FormData): Promise<Op
   const a = await requireAdminAction("verification.direct");
   const { verifyDirect } = await import("@/lib/verification-proposals");
   const r = await verifyDirect(a, userId, proofInput(form));
-  return r.ok ? ok(`Verified @${r.handle} and emailed them`) : no(r.why);
+  return verified(a.id, r);
 }
 
 /** "Propose verification…": reason and proof, then someone with approval decides. */
@@ -596,7 +602,7 @@ export async function approveProposal(proposalId: number): Promise<OpsResult> {
   const a = await requireAdminAction("verification.approve");
   const { approveProposal: approve } = await import("@/lib/verification-proposals");
   const r = await approve(a, proposalId);
-  return r.ok ? ok(`Verified @${r.handle} and emailed them`) : no(r.why);
+  return verified(a.id, r);
 }
 
 export async function declineProposal(proposalId: number, form: FormData): Promise<OpsResult> {
@@ -607,17 +613,26 @@ export async function declineProposal(proposalId: number, form: FormData): Promi
 }
 
 /** Takes the Verified mark back (e.g. the account changed hands or was verified by mistake). A reason is required and sent to them. */
-export async function revokeIdentity(userId: number, form: FormData) {
+export async function revokeIdentity(userId: number, form: FormData): Promise<OpsResult> {
   const a = await requireAdminAction("verification");
   const note = String(form.get("note") || "").trim().slice(0, 200);
-  if (!note) return fail("Give a reason; it's sent to them");
-  const u = await q.get<{ email: string; name: string; handle: string }>(
-    "UPDATE users SET identity_status = 'rejected', identity_verified_at = NULL, identity_note = ? WHERE id = ? AND identity_status = 'verified' RETURNING email, name, handle",
-    note,
-    userId,
-  );
-  if (!u) return fail("That account isn't verified");
-  await sendMail({
+  if (!note) return no("Give a reason; it's sent to them");
+  // What it was, read in the same transaction, so Undo can put the mark back as it was.
+  const u = await q.tx(async (db) => {
+    const before = await db.get<{ identity_verified_at: number | null; identity_note: string }>(
+      "SELECT identity_verified_at, identity_note FROM users WHERE id = ? AND identity_status = 'verified' FOR UPDATE",
+      userId,
+    );
+    if (!before) return null;
+    const row = await db.get<{ email: string; name: string; handle: string }>(
+      "UPDATE users SET identity_status = 'rejected', identity_verified_at = NULL, identity_note = ? WHERE id = ? AND identity_status = 'verified' RETURNING email, name, handle",
+      note,
+      userId,
+    );
+    return row ? { ...row, before } : null;
+  });
+  if (!u) return no("That account isn't verified");
+  const mail = await heldSend(a.id, "revoked verification", `@${u.handle}`, {
     userId,
     audience: "receiver",
     to: u.email,
@@ -625,19 +640,25 @@ export async function revokeIdentity(userId: number, form: FormData) {
     body: `Hi ${u.name.split(/\s+/)[0]},\n\nWe've removed the Verified mark from your FloorTest page: ${note}\n\nYou can apply again from Settings: ${env.appUrl}/dashboard/settings/profile#identity-h\n\nIf you think this is a mistake, reply to this email.\n\n— FloorTest`,
   });
   await logAdmin(a.id, "revoked verification", `@${u.handle}`, note);
-  await done(`Removed @${u.handle}'s verification and emailed them`);
+  const item = { user: userId, at: u.before.identity_verified_at, note: u.before.identity_note };
+  return okUndo(`Removed @${u.handle}'s verification; the email goes in a few seconds`, signUndo({ kind: "identity_revoke", items: [item], mail: [mail], admin: a.id }));
 }
 
 export async function rejectIdentity(userId: number, form: FormData): Promise<OpsResult> {
   const a = await requireAdminAction("verification");
   const note = String(form.get("note") || "").trim().slice(0, 200);
-  const u = await q.get<{ email: string; name: string; handle: string }>(
-    "UPDATE users SET identity_status = 'rejected', identity_note = ? WHERE id = ? RETURNING email, name, handle",
-    note,
-    userId,
-  );
+  const u = await q.tx(async (db) => {
+    const before = await db.get<{ identity_status: string; identity_note: string }>("SELECT identity_status, identity_note FROM users WHERE id = ? FOR UPDATE", userId);
+    if (!before) return null;
+    const row = await db.get<{ email: string; name: string; handle: string }>(
+      "UPDATE users SET identity_status = 'rejected', identity_note = ? WHERE id = ? RETURNING email, name, handle",
+      note,
+      userId,
+    );
+    return row ? { ...row, before } : null;
+  });
   if (!u) return no("Account not found");
-  await sendMail({
+  const mail = await heldSend(a.id, "rejected identity", `@${u.handle}`, {
     userId,
     audience: "receiver",
     to: u.email,
@@ -645,7 +666,8 @@ export async function rejectIdentity(userId: number, form: FormData): Promise<Op
     body: `Hi ${u.name.split(/\s+/)[0]},\n\nWe couldn't verify your profiles yet${note ? `: ${note}` : "."}\n\nYou can fix it and send it again from Settings: ${env.appUrl}/dashboard/settings/profile#identity-h\n\n— FloorTest`,
   });
   await logAdmin(a.id, "rejected identity", `@${u.handle}`, note);
-  return ok(`Rejected @${u.handle}'s verification and emailed them`);
+  const item = { user: userId, prev: u.before.identity_status, note: u.before.identity_note };
+  return okUndo(`Rejected @${u.handle}'s verification; the email goes in a few seconds`, signUndo({ kind: "identity_reject", items: [item], mail: [mail], admin: a.id }));
 }
 
 export async function addProtectedName(form: FormData) {
@@ -1333,6 +1355,10 @@ const UNDO_WHAT = {
   waitlist_invite: "invited from waitlist",
   invite_resend: "resent invite",
   email_resend: "resent email",
+  invite_email: "invited by email",
+  verify: "verified identity",
+  identity_reject: "rejected identity",
+  identity_revoke: "revoked verification",
 } as const;
 
 /**
