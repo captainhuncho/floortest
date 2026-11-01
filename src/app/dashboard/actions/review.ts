@@ -9,7 +9,7 @@ import { claimOnce } from "@/lib/once";
 import { requireUser, requireRole } from "@/lib/auth";
 import { ownedSender, ownedTrack } from "@/lib/desk";
 import { clearDecision as clearTrackDecision, decide, decisionLocked, deleteTrack as removeTrack, markPlayedOut, reply, setBlocked, undoDecision as restoreDecision } from "@/lib/review";
-import { isDecision, logEvent, now, q, type Decision } from "@/lib/db";
+import { asPerson, isDecision, logEvent, now, q, type Decision } from "@/lib/db";
 import { audit, trackLabel } from "@/lib/audit";
 import { requestStems } from "@/lib/stems";
 import { parseCues } from "@/lib/cues";
@@ -26,7 +26,8 @@ export async function decideTrack(trackId: number, decision: Decision): Promise<
   // An owner's or admin's call stands against a member: refresh so the desk shows it as it is.
   if (decisionLocked(u, t)) return done(), null;
   await trackUse(u.id, "decide");
-  const r = await decide(u, t, decision);
+  // The change itself runs under the per-person rules (B8); usage and the audit log stay the app's own.
+  const r = await asPerson(u.actor_id, () => decide(u, t, decision));
   if (!r) return done(), null; // an owner's or admin's call landed since the page loaded
   await audit(u.id, decision, trackLabel(t), t.id);
   done();
@@ -38,7 +39,7 @@ export async function clearDecision(trackId: number) {
   const u = await requireUser();
   const t = await ownedTrack(u, trackId);
   if (!t || decisionLocked(u, t)) return done();
-  if (!(await clearTrackDecision(u, t))) return done();
+  if (!(await asPerson(u.actor_id, () => clearTrackDecision(u, t)))) return done();
   await audit(u.id, "decision_cleared", trackLabel(t), t.id);
   done();
 }
@@ -47,7 +48,7 @@ export async function undoDecision(token: UndoToken) {
   const u = await requireUser();
   const t = await ownedTrack(u, Number(token?.trackId));
   if (!t || decisionLocked(u, t)) return done();
-  await restoreDecision(u, t, token.prev ?? {}, Number(token.eventId));
+  await asPerson(u.actor_id, () => restoreDecision(u, t, token.prev ?? {}, Number(token.eventId)));
   await audit(u.id, "decision_undone", trackLabel(t), t.id);
   done();
 }
