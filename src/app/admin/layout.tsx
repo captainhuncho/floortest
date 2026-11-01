@@ -8,8 +8,7 @@ import { AdminNav, AdminTopNav, type NavGroup } from "./AdminNav";
 import { Toast } from "./AdminUi";
 import { AdminMobileNav } from "./AdminMobileNav";
 import { SkipLink } from "@/components/SkipLink";
-import { cookies } from "next/headers";
-import { AdminMotion, MOTION_COOKIE } from "./AdminMotion";
+import { AdminMotion } from "./AdminMotion";
 
 export const metadata = { title: "Admin — FloorTest", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -99,10 +98,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     .map((w) => w[0]?.toUpperCase())
     .join("");
   const notice = await readFlash();
-  // After the session's first ops page has played its arrival, full loads and refreshes start still (AdminMotion.tsx).
-  const still = (await cookies()).has(MOTION_COOKIE);
   return (
-    <div id="theme-root" className={`${themeClass(await currentTheme())} md:flex${still ? " admin-still" : ""}`}>
+    <div id="theme-root" className={`${themeClass(await currentTheme())} md:flex`}>
       <AdminMotion />
       <SkipLink />
       <div className="sticky top-0 hidden h-dvh md:block">

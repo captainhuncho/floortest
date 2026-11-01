@@ -56,10 +56,15 @@ export async function undoDecision(token: UndoToken) {
 export async function moveTrack(trackId: number, form: FormData) {
   const u = await requireUser();
   const t = await ownedTrack(u, trackId);
-  const target = await ownCollection(u.id, Number(form.get("collection")));
+  const target = await asPerson(u.actor_id, () => ownCollection(u.id, Number(form.get("collection"))));
   if (!t || !target || t.collection_id === target.id) return;
-  await q.run("UPDATE tracks SET collection_id = ? WHERE id = ?", target.id, t.id);
-  await logEvent({ user_id: u.id, actor_id: u.actor_id, sender_id: t.sender_id, track_id: t.id, type: "moved", detail: `to ${target.name}` });
+  // The move and its activity line, together or not at all, as the person (B8), as the batch move does.
+  await asPerson(u.actor_id, () =>
+    q.tx(async (db) => {
+      await db.run("UPDATE tracks SET collection_id = ? WHERE id = ? AND user_id = ?", target.id, t.id, u.id);
+      await logEvent({ user_id: u.id, actor_id: u.actor_id, sender_id: t.sender_id, track_id: t.id, type: "moved", detail: `to ${target.name}` }, db);
+    }),
+  );
   await audit(u.id, "moved", `${trackLabel(t)} to ${target.name}`, t.id);
   done();
 }

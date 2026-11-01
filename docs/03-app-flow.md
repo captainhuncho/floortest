@@ -135,7 +135,7 @@ Users ─► Filters (type, plan, tag, joined, activity, security) ─► chips 
    tick rows (≤ 50) ─┬─ Add tag ─► tag added to each ─► admin log
                      └─ Suspend… (≤ 20) ─► reason ─► each: signed out, link offline, email with appeal ─► admin log
 Growth ─► Growth & decisions ─► findings · funnel · projection · sources · cohorts · pipeline
-Moderation ─► search ─► pick a track ─► Play (5-minute file link; admin log "played track")
+Moderation ─► search ─► pick a track ─► Play, only with an open takedown claim (5-minute file link; admin log "played track"; otherwise 404 + "refused play")
    ─► Block sender for @them / Block everywhere / Remove track… (confirm)
 ```
 

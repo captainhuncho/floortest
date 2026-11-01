@@ -2,15 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { ownedSender } from "@/lib/desk";
-import { q, type EventRow, type Track } from "@/lib/db";
+import { contactHistory, MAX_MESSAGES, MAX_TRACKS, TRACK_PAGE, tracksShown } from "@/lib/contact";
 import { ago, fmtDate, fmtDay, fmtTime } from "@/lib/format";
 import { addNote, blockSender, replyToSender } from "../../actions/review";
 import { Composer, ConfirmButton } from "../../ClientBits";
 import { CARD, Chip, Cover, Icon, InfoRow, SectionHead, initials } from "@/components/Kit";
-
-type Item =
-  | { kind: "message"; at: number; text: string; track: string; trackId: number }
-  | { kind: "reply" | "note"; at: number; text: string; track: string | null; trackId: number | null };
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
@@ -18,26 +14,14 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return { title: `${s?.name ?? "Contact"} — FloorTest` };
 }
 
-export default async function Contact({ params }: { params: Promise<{ id: string }> }) {
+export default async function Contact({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ n?: string }> }) {
   const user = await requireUser();
   const s = await ownedSender(user, Number((await params).id));
   if (!s) notFound();
-  const tracks = (await q.all<Track & { collection_name: string | null }>(`SELECT t.*, c.name AS collection_name FROM tracks t LEFT JOIN collections c ON c.id = t.collection_id
-       WHERE t.sender_id = ? ORDER BY t.created_at DESC`, s.id));
-  const events = (await q.all<EventRow & { track_title: string | null }>(`SELECT e.*, t.title AS track_title FROM events e LEFT JOIN tracks t ON t.id = e.track_id
-       WHERE e.sender_id = ? AND e.type IN ('reply', 'note') ORDER BY e.created_at`, s.id));
-
-  const thread: Item[] = [
-    ...tracks.filter((t) => t.message).map((t) => ({ kind: "message" as const, at: t.created_at, text: t.message, track: t.title, trackId: t.id })),
-    ...events.map((e) => ({ kind: e.type as "reply" | "note", at: e.created_at, text: e.detail, track: e.track_title, trackId: e.track_id })),
-  ].sort((a, b) => a.at - b.at);
-
-  const kept = tracks.filter((t) => t.decision === "kept").length;
-  const downloaded = tracks.filter((t) => t.downloaded_at).length;
+  const shown = tracksShown((await searchParams).n);
+  // The numbers count every track this person sent; the list and the conversation are the latest ones only (1 Nov).
+  const { sent, kept, downloaded, firstSent, lastSent, tracks, thread, olderMessages } = await contactHistory(s.id, shown);
   const tz = user.tz || undefined;
-  // Tracks come newest first: the first is the latest send, the last the first one.
-  const lastSent = tracks[0]?.created_at;
-  const firstSent = tracks[tracks.length - 1]?.created_at;
 
   return (
     <div className="page-gutter py-4 sm:py-7">
@@ -75,7 +59,7 @@ export default async function Contact({ params }: { params: Promise<{ id: string
               <dl className="grid grid-cols-3 border-b border-dashed border-line-2 pb-2.5 text-center tnum">
                 {(
                   [
-                    ["Sent", tracks.length],
+                    ["Sent", sent],
                     ["Kept", kept],
                     ["Downloaded", downloaded],
                   ] as const
@@ -88,7 +72,7 @@ export default async function Contact({ params }: { params: Promise<{ id: string
               </dl>
               <dl className="flex flex-col gap-1.5">
                 <InfoRow icon="user" label="Contact since">{fmtDay(s.created_at, tz)}</InfoRow>
-                {firstSent && tracks.length > 1 && <InfoRow icon="cal" label="First sent">{fmtDay(firstSent, tz)}</InfoRow>}
+                {firstSent && sent > 1 && <InfoRow icon="cal" label="First sent">{fmtDay(firstSent, tz)}</InfoRow>}
                 {lastSent && <InfoRow icon="clock" label="Last sent">{fmtDay(lastSent, tz)}</InfoRow>}
               </dl>
               <a href={`mailto:${s.email}`} className="btn-ghost btn-sm gap-1.5 bg-well">
@@ -99,6 +83,7 @@ export default async function Contact({ params }: { params: Promise<{ id: string
 
             <section aria-labelledby="conversation-h" className={`${CARD} flex flex-col gap-3 p-3`}>
               <SectionHead id="conversation-h" icon="reply" title="Conversation" />
+              {olderMessages && <p className="text-[11.5px] text-mute">Showing the latest {MAX_MESSAGES} messages.</p>}
               <ol className="flex flex-col gap-1.5" aria-label="Messages">
                 {thread.length === 0 && <li className="text-[12px] leading-[1.5] text-mute">No messages yet. Email {s.name} below, or keep a private note only you can see.</li>}
                 {thread.map((m, i) => (
@@ -177,6 +162,14 @@ export default async function Contact({ params }: { params: Promise<{ id: string
                     );
                   })}
                 </ul>
+              )}
+              {sent > tracks.length && tracks.length < MAX_TRACKS && (
+                <Link
+                  href={`/dashboard/contacts/${s.id}?n=${shown + TRACK_PAGE}#tracks-h`}
+                  className="mt-1 flex min-h-11 items-center justify-center rounded-[10px] border-t border-line text-[12.5px] font-semibold text-mute transition-colors duration-150 hover:bg-well hover:text-bone motion-reduce:transition-none"
+                >
+                  Show more ({tracks.length} of {sent})
+                </Link>
               )}
             </section>
             {user.role !== "member" && (
