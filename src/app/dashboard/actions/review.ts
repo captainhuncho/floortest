@@ -170,7 +170,8 @@ export async function addNote(senderId: number, trackId: number | null, form: Fo
   if (!body || !s) return;
   // The track must be this sender's, so a note can't be filed against someone else's music.
   if (trackId && (await ownedTrack(u, trackId))?.sender_id !== s.id) return;
-  await logEvent({ user_id: u.id, actor_id: u.actor_id, sender_id: senderId, track_id: trackId, type: "note", detail: body });
+  // Written as the person (B8): the database also checks the note lands on a desk they may work.
+  await asPerson(u.actor_id, () => logEvent({ user_id: u.id, actor_id: u.actor_id, sender_id: senderId, track_id: trackId, type: "note", detail: body }));
   await audit(u.id, "noted", s.name, trackId);
   done();
 }
@@ -211,12 +212,14 @@ export async function replyToSender(senderId: number, trackId: number | null, fo
   }
   // On a team desk with approval on, a member's reply waits for the approver instead of going out.
   if (await replyNeedsApproval(u)) {
-    await holdReply(u, s.id, t?.id ?? null, body);
+    await asPerson(u.actor_id, () => holdReply(u, s.id, t?.id ?? null, body));
     await audit(u.id, "reply_held", s.name, trackId);
     done();
     return { status: "held", message: `Waiting for approval. It goes to ${s.name} once it's approved.` };
   }
-  await reply(u, s, t, body);
+  // The sender and track were found as the person (ownedSender, ownedTrack). The email is queued in the same transaction
+  // as the track's "replied" mark, and the mail queue is the app's own, so this runs as the app on purpose.
+  await asSystem(() => reply(u, s, t, body));
   await audit(u.id, "replied", s.name, trackId);
   done();
   return { status: "sent", message: `Reply emailed to ${s.name}.` };
