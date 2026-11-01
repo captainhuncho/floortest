@@ -168,14 +168,15 @@ async function insertProofs(db: Queryable, proposalId: number, files: Proof[]) {
 
 /**
  * Adds the mark if the account can still have it. The WHERE repeats the checks, so two staff at once (or a change in
- * between) verify once and email once. Returns what the email needs, or null.
+ * between) verify once and email once. Returns what the email needs, or null. identity_note is cleared: the account's
+ * own settings read that column, so staff's reason lives only in verification_proposals (Safety review, 1 Nov).
  */
-const markVerified = (db: Queryable, userId: number, note: string) =>
+const markVerified = (db: Queryable, userId: number) =>
   db.get<{ email: string; name: string; handle: string }>(
-    `UPDATE users SET identity_status = 'verified', identity_verified_at = ?, identity_note = ?
+    `UPDATE users SET identity_status = 'verified', identity_verified_at = ?, identity_note = ''
      WHERE id = ? AND identity_status <> 'verified' AND suspended_at IS NULL AND email_verified_at IS NOT NULL
      RETURNING email, name, handle`,
-    now(), note, userId,
+    now(), userId,
   );
 
 class Refused extends Error {}
@@ -227,7 +228,7 @@ export async function verifyDirect(actor: Actor, userId: number, input: ProofInp
   let done: { id: number; row: { email: string; name: string; handle: string } };
   try {
     done = await q.tx(async (db) => {
-      const row = await markVerified(db, userId, checked.reason);
+      const row = await markVerified(db, userId);
       if (!row) throw new Refused(targetRefusal(await targetOf(userId)) ?? "That account is already verified");
       await db.run(
         "UPDATE verification_proposals SET status = 'declined', decided_by = ?, decided_at = ?, decision_note = 'Verified directly instead' WHERE user_id = ? AND status = 'pending'",
@@ -274,8 +275,7 @@ async function approveAs(actorId: number, proposalId: number): Promise<Result> {
         actor.id, now(), proposalId, actor.id,
       );
       if (!claimed) throw new Refused("That proposal has already been decided");
-      const reason = (await db.get<{ reason: string }>("SELECT reason FROM verification_proposals WHERE id = ?", proposalId))!.reason;
-      const r = await markVerified(db, p.user_id, reason);
+      const r = await markVerified(db, p.user_id);
       if (!r) throw new Refused(targetRefusal(await targetOf(p.user_id)) ?? "That account is already verified");
       return r;
     });
@@ -339,7 +339,9 @@ export async function approveRequest(actor: Actor, userId: number, approve = () 
   const links = requestLinks(u.identity_links);
   if (!links.length) return no("Their request has no profile link to check. Send it back with Not yet.");
   const forwarded = await pendingFor(userId);
-  if (forwarded) return approveAs(actor.id, forwarded.id);
+  // A colleague's forwarded proposal is approved only by someone who holds approve (Safety review, LOW): a direct-only
+  // holder verifies directly instead, so every "approved" record names someone allowed to approve.
+  if (forwarded) return powers.approve ? approveAs(actor.id, forwarded.id) : no("A colleague sent this for approval. Approve it in Proposals waiting if you can, or verify directly on their account.");
   // The guarded UPDATE (identity_status = 'pending' in its WHERE): two approvals at once verify and email once.
   const row = await approve();
   if (!row) return no("Account not found");

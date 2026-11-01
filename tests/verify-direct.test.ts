@@ -51,7 +51,19 @@ test("ops verify someone directly: needs a reason and proof, refuses verified, s
   const s = (await state(label))!;
   assert.equal(s.identity_status, "verified");
   assert.ok(s.identity_verified_at && s.identity_verified_at >= t);
-  assert.equal(s.identity_note, "known label, checked their Instagram");
+  assert.equal(s.identity_note, "", "the reason stays in verification_proposals, never on the account the artist reads");
+  // The artist's own settings data carries no staff wording (Safety review, 1 Nov).
+  const { identityForSettings } = await import("../src/lib/identity");
+  const settings = await identityForSettings(label);
+  assert.deepEqual(Object.keys(settings).sort(), ["links", "note", "status"]);
+  assert.equal(settings.status, "verified");
+  assert.equal(settings.note, "");
+  assert.doesNotMatch(JSON.stringify(settings), /Instagram|known label/i);
+  // A request sent back keeps its note: that one was emailed to them.
+  await q.run("UPDATE users SET identity_status = 'rejected', identity_note = 'code not in bio' WHERE id = ?", fresh);
+  assert.equal((await identityForSettings(fresh)).note, "code not in bio");
+  await q.run("UPDATE users SET identity_status = 'none', identity_note = 'staff only' WHERE id = ?", fresh);
+  assert.equal((await identityForSettings(fresh)).note, "", "only a sent-back request shows its note");
   const log = await q.all<{ admin_id: number; action: string; target: string; detail: string }>("SELECT admin_id, action, target, detail FROM admin_log WHERE target = '@knownlabel'");
   assert.deepEqual(log, [{ admin_id: staffId, action: "verified identity (no request)", target: "@knownlabel", detail: `proposal #${(r as { id: number }).id}: known label, checked their Instagram` }]);
   const mail = await q.all<{ subject: string; body: string }>("SELECT subject, body FROM outbox WHERE lower(to_email) = 'knownlabel@verify.io'");

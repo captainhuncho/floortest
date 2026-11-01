@@ -2,6 +2,27 @@ import "server-only";
 import crypto from "node:crypto";
 import { q } from "./db";
 
+/**
+ * The Verified mark section of the account's own Settings → Profile. The note is read only when the request was sent
+ * back ('rejected': the note was emailed to them); never for any other status, so staff wording can't reach the page.
+ */
+export async function identityForSettings(userId: number) {
+  const r = await q.get<{ status: "none" | "pending" | "verified" | "rejected"; links: string }>(
+    "SELECT identity_status AS status, identity_links AS links FROM users WHERE id = ?",
+    userId,
+  );
+  const status = r?.status ?? "none";
+  const note = status === "rejected" ? ((await q.get<{ note: string }>("SELECT identity_note AS note FROM users WHERE id = ? AND identity_status = 'rejected'", userId))?.note ?? "") : "";
+  let links: string[] = [];
+  try {
+    const parsed: unknown = JSON.parse(r?.links || "[]");
+    links = Array.isArray(parsed) ? parsed.filter((l): l is string => typeof l === "string") : [];
+  } catch {
+    links = [];
+  }
+  return { status, links, note };
+}
+
 /** Letters only, so "Black-Coffee", "blackcoffee1" and "black_coffee" compare equal. */
 export const normalizeName = (s: string) => s.toLowerCase().replace(/[^a-z]/g, "");
 

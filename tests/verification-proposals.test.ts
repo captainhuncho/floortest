@@ -151,7 +151,9 @@ test("proposals: proof required, real types, limits, four eyes, one at a time, a
   assert.match(why(await V.approveProposal(approver, id1)), /already been decided/);
   const u = (await q.get<{ identity_status: string; identity_note: string }>("SELECT identity_status, identity_note FROM users WHERE id = ?", artist))!;
   assert.equal(u.identity_status, "verified");
-  assert.equal(u.identity_note, reason);
+  assert.equal(u.identity_note, "", "the reason lives only in verification_proposals");
+  const { identityForSettings } = await import("../src/lib/identity");
+  assert.doesNotMatch(JSON.stringify(await identityForSettings(artist)), /Known label|Instagram bio/, "the artist's settings never see it");
   assert.equal(await q.count("SELECT COUNT(*)::int AS n FROM outbox WHERE lower(to_email) = 'artistone@vproof.io'"), 1);
   const decided = (await V.proposalsFor(artist))[0];
   assert.equal(decided.status, "approved");
@@ -180,6 +182,16 @@ test("proposals: proof required, real types, limits, four eyes, one at a time, a
     assert.notEqual((await q.get<{ identity_status: string }>("SELECT identity_status FROM users WHERE id = ?", id))!.identity_status, "verified");
   }
   assert.match(why(await V.approveRequest(approver, noLinks)), /no profile link/, "their links go through the same check as staff links");
+
+  // A request a colleague forwarded is approved only by someone with approve (Safety review, LOW).
+  const fwd = await user("forwarded", "pending");
+  const fp = await V.proposeVerification(care, fwd, { reason, links: "https://instagram.com/forwarded", tickets: [] });
+  assert.ok(fp.ok);
+  const directOnly = { id: await user("directonly"), access: access("verification", "verification.direct") };
+  assert.match(why(await V.approveRequest(directOnly, fwd)), /sent this for approval/);
+  assert.equal((await V.proposalsFor(fwd))[0].status, "pending");
+  assert.ok((await V.approveRequest(approver, fwd)).ok, "an approver can");
+  assert.equal((await V.proposalsFor(fwd))[0].decider, "approver");
 
   // A user's own request: plain "verification" can't approve it (it adds the mark), approvers can, and it's recorded.
   assert.match(why(await V.approveRequest(care, asker)), /Forward it for approval/);

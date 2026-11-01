@@ -3,7 +3,7 @@ import { trackUse } from "@/lib/usage";
 import { readLinks } from "@/lib/socials";
 import { nextHandleChange } from "@/lib/accounts";
 import { requireRole } from "@/lib/auth";
-import { q } from "@/lib/db";
+import { identityForSettings } from "@/lib/identity";
 import { APP_URL } from "@/lib/mail";
 import { CoverUpload, PublicPageForm } from "../PublicPageForm";
 import { IdentityForm } from "../IdentityForm";
@@ -16,10 +16,7 @@ export default async function Profile() {
   const user = await requireRole("admin");
   await trackUse(user.id, "settings");
   const nextLink = await nextHandleChange(user.id);
-  const identity = await q.get<{ status: "none" | "pending" | "verified" | "rejected"; links: string; note: string }>(
-    "SELECT identity_status AS status, identity_links AS links, identity_note AS note FROM users WHERE id = ?",
-    user.id,
-  );
+  const identity = await identityForSettings(user.id);
   return (
     <>
       <PageTitle
@@ -44,7 +41,7 @@ export default async function Profile() {
         <PublicPageForm roleLine={user.role_line} links={readLinks(user.links)} />
       </Section>
       <Section id="identity-h" icon="shield" title="Verified mark" sub="Tells senders they've found the real you, not an impersonator.">
-        <IdentityForm status={identity?.status ?? "none"} links={identity ? JSON.parse(identity.links || "[]") : []} note={identity?.note ?? ""} />
+        <IdentityForm status={identity.status} links={identity.links} note={identity.note} />
       </Section>
     </>
   );

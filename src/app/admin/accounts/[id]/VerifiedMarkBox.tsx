@@ -26,7 +26,8 @@ type Account = { id: number; handle: string; identity_status: string | null; ide
  */
 export async function VerifiedMarkBox({ me, u }: { me: { id: number; access: OpsAccess }; u: Account }) {
   const powers = powersOf(me.access);
-  const history = await proposalsFor(u.id);
+  // Read only for people with Verification: nobody else is shown any reason, proof or decision.
+  const history = powers.propose ? await proposalsFor(u.id) : [];
   const waiting = history.find((p) => p.status === "pending");
   const [label, tone] = MARK[u.identity_status ?? "none"] ?? MARK.none;
   const canAdd = u.identity_status !== "verified" && !waiting;
@@ -41,13 +42,12 @@ export async function VerifiedMarkBox({ me, u }: { me: { id: number; access: Ops
         </h3>
         <StatusPill tone={tone}>{label}</StatusPill>
       </div>
-      {u.identity_status === "verified" && u.identity_verified_at && (
-        <p className="break-words text-xs text-mute">
-          Since {day(u.identity_verified_at)}
-          {u.identity_note ? ` · ${u.identity_note}` : ""}
-        </p>
+      {u.identity_status === "verified" && u.identity_verified_at && <p className="text-xs text-mute">Since {day(u.identity_verified_at)}</p>}
+      {/* Reasons, notes and proof only for people with Verification; Users (view) alone sees the state and the date. */}
+      {powers.propose && u.identity_status === "verified" && history[0]?.status === "approved" && (
+        <p className="break-words text-xs text-mute">Why: {history[0].reason}</p>
       )}
-      {u.identity_status === "rejected" && u.identity_note && <p className="break-words text-xs text-mute">Last note: {u.identity_note}</p>}
+      {powers.propose && u.identity_status === "rejected" && u.identity_note && <p className="break-words text-xs text-mute">Last note: {u.identity_note}</p>}
       {u.identity_status === "pending" && powers.propose && (
         <Link href="/admin/verification" className="inline-flex min-h-11 items-center text-sm underline underline-offset-4">
           Review their request in Verification
