@@ -9,6 +9,9 @@ export function bulkIds(raw: string[]): number[] {
   return [...new Set(ids)].slice(0, BULK_MAX);
 }
 
+/** Suspending sends an email each, so a batch stays small enough to finish inside one request. */
+export const SUSPEND_MAX = 20;
+
 /** Users are listed this many to a page. */
 export const PAGE_SIZE = 50;
 

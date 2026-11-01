@@ -22,8 +22,11 @@ export async function GET(req: Request, ctx: RouteContext<"/api/admin/tracks/[id
   if (!t?.file_key) return new Response("Not found", { status: 404 });
 
   const range = req.headers.get("range")?.match(/bytes=(\d*)-(\d*)/);
-  // A play starts once; the browser's follow-up range requests for the same play aren't logged again.
-  if (!range || range[1] === "0") await logAdmin(admin.id, "played track", `${t.artist} – ${t.title}`, `#${t.id} on @${t.handle}`);
+  // Every play is logged. A browser's follow-up range requests for the same play are skipped only when this admin already
+  // has a play of this track logged in the last 10 minutes, so starting mid-file can't avoid the log (security review).
+  const detail = `#${t.id} on @${t.handle}`;
+  const fresh = range && range[1] !== "0" && (await q.get("SELECT 1 FROM admin_log WHERE admin_id = ? AND action = 'played track' AND detail = ? AND created_at > ?", admin.id, detail, Date.now() - 10 * 60_000));
+  if (!fresh) await logAdmin(admin.id, "played track", `${t.artist} – ${t.title}`, detail);
 
   const store = await storage();
   const signed = await store.signedGetUrl(t.file_key, { contentType: t.mime, expiresIn: LINK_SECONDS });
@@ -32,11 +35,13 @@ export async function GET(req: Request, ctx: RouteContext<"/api/admin/tracks/[id
   const head = await store.head(t.file_key);
   if (!head) return new Response("Not found", { status: 404 });
   const size = head.size;
-  const base = { "Content-Type": t.mime, "Accept-Ranges": "bytes", "Cache-Control": "private, no-store" };
+  // Only ever served as audio, and never sniffed as anything else.
+  const type = /^audio\/[\w.+-]+$/.test(t.mime) ? t.mime : "application/octet-stream";
+  const base = { "Content-Type": type, "Accept-Ranges": "bytes", "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" };
   if (range) {
     const start = Math.max(0, range[1] ? Number(range[1]) : size - Number(range[2]));
     const end = Math.min(size - 1, range[1] && range[2] ? Number(range[2]) : size - 1);
-    if (start > end) return new Response(null, { status: 416, headers: { "Content-Range": `bytes */${size}` } });
+    if (start > end) return new Response(null, { status: 416, headers: { "Content-Range": `bytes */${size}`, "Cache-Control": "private, no-store" } });
     const { body } = await store.stream(t.file_key, { start, end });
     return new Response(body, { status: 206, headers: { ...base, "Content-Range": `bytes ${start}-${end}/${size}`, "Content-Length": String(end - start + 1) } });
   }

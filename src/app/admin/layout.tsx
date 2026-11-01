@@ -3,7 +3,8 @@ import { needFor, ROLES } from "@/lib/ops-perms";
 import { q } from "@/lib/db";
 import { readFlash } from "@/lib/flash";
 import { currentTheme, themeClass } from "@/lib/theme";
-import { AdminNav, type NavGroup } from "./AdminNav";
+import "./admin.css";
+import { AdminNav, AdminTopNav, type NavGroup } from "./AdminNav";
 import { Toast } from "./AdminUi";
 import { AdminMobileNav } from "./AdminMobileNav";
 import { SkipLink } from "@/components/SkipLink";
@@ -89,7 +90,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     .map((g) => ({ ...g, sections: g.sections.map((sec) => ({ ...sec, items: sec.items.filter((i) => allowed(i.href)) })).filter((sec) => sec.items.length) }))
     .filter((g) => g.sections.length);
   const roleLabel = access.super ? "Super admin" : ROLES[access.role];
-  const first = admin.name.split(/\s+/)[0] || admin.name;
   const initials = admin.name
     .split(/\s+/)
     .slice(0, 2)
@@ -103,12 +103,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <AdminNav groups={groups} admin={{ name: admin.name, initials, role: roleLabel }} />
       </div>
       <AdminMobileNav groups={groups} />
-      <div className="min-w-0 flex-1">
-        <main id="main" className="mx-auto max-w-6xl px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 sm:px-8 md:py-8">
-          <p className="mb-6 flex flex-wrap items-center gap-2 text-sm text-mute">
-            Welcome back, <span className="font-bold text-bone">{first}</span>
-            <span className={`rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase tracking-[1px] ${access.super ? "border-lime/50 text-lime" : "border-line text-mute"}`}>{roleLabel}</span>
-          </p>
+      <div className="admin-canvas min-w-0 flex-1">
+        <AdminTopNav groups={groups} />
+        <main id="main" className="mx-auto max-w-[1240px] px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 sm:px-8 md:py-8">
           {children}
         </main>
       </div>
