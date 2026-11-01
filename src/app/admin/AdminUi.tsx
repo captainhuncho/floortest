@@ -20,7 +20,7 @@ export function ConfirmButton({
   confirmLabel = "Confirm",
   danger = false,
 }: {
-  action: () => Promise<void>;
+  action: () => Promise<unknown>;
   message: string;
   className?: string;
   children: React.ReactNode;
@@ -52,7 +52,7 @@ export function ConfirmButton({
               className={destructive ? "btn-sm rounded-md bg-danger px-4 font-bold text-ink" : "btn-lime btn-sm"}
               onClick={() => {
                 ref.current?.close();
-                start(() => action());
+                start(async () => void (await action()));
               }}
             >
               {confirmLabel}

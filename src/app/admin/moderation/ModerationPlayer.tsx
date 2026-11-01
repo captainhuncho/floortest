@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useImperativeHandle, useRef, useState } from "react";
 import { Waveform } from "@/components/Waveform";
 import { fmtTime } from "@/lib/format";
 import { useMediaSession } from "@/lib/use-media-session";
@@ -8,9 +8,26 @@ import { useMediaSession } from "@/lib/use-media-session";
 /**
  * Moderation → listen to a reported track (owner, 1 Nov 2026). Nothing loads until Play, so opening a track doesn't
  * count as listening; each play is written to the admin log by /api/admin/tracks/[id]/audio. Media keys and the lock
- * screen play, pause and seek it once it has played (no next / previous: one disputed track at a time).
+ * screen play, pause and seek it once it has played (no next / previous: one disputed track at a time). `handle` lets
+ * the new queue's space key play and pause it.
  */
-export function ModerationPlayer({ id, title, artist, peaks, duration }: { id: number; title: string; artist: string | null; peaks: number[] | null; duration: number | null }) {
+export type PlayerHandle = { toggle: () => void };
+
+export function ModerationPlayer({
+  id,
+  title,
+  artist,
+  peaks,
+  duration,
+  handle,
+}: {
+  id: number;
+  title: string;
+  artist: string | null;
+  peaks: number[] | null;
+  duration: number | null;
+  handle?: React.Ref<PlayerHandle>;
+}) {
   const audio = useRef<HTMLAudioElement | null>(null);
   const [element, setElement] = useState<HTMLAudioElement | null>(null);
   const attach = useCallback((el: HTMLAudioElement | null) => {
@@ -35,6 +52,7 @@ export function ModerationPlayer({ id, title, artist, peaks, duration }: { id: n
     else a.pause();
   };
   useMediaSession({ audio: element, meta: { title, artist }, play: start });
+  useImperativeHandle(handle, () => ({ toggle }));
   const seek = (f: number) => {
     const a = audio.current;
     if (!a || !len) return;
@@ -68,7 +86,7 @@ export function ModerationPlayer({ id, title, artist, peaks, duration }: { id: n
           )}
         </button>
         <p className={`text-[13px] ${failed ? "text-danger" : "text-mute"}`} role={failed ? "alert" : undefined}>
-          {failed ? "Couldn't play this file. It may have been removed." : "Listen to check a report. Each play goes in the admin log."}
+          {failed ? "Couldn't play this file. It may have been removed." : "Listen to check the claim. Each play goes in the admin log."}
         </p>
       </div>
       <audio
