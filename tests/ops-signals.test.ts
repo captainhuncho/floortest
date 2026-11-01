@@ -45,6 +45,8 @@ test("moderation signals: takedown, blocked sender, late scan; Keep clears, a ne
   ], "newest signal first; the blocked sender points at their newest track");
   assert.match(first.signals.find((s) => s.kind === "blocked_sender")!.subtitle, /blocked by 1 receiver · newest to @kofi/);
   assert.equal(first.signals.find((s) => s.kind === "late_scan")!.title, "Held late1");
+  // What the queue words each signal from: whose desk, who the signal names, how many blocks.
+  assert.deepEqual(first.signals.map((s) => [s.handle, s.who, s.count]), [["kofi", "s@x.io", 1], ["kofi", "spam@x.io", 1], ["ama", "Label X", 1]]);
 
   // Keep after the signal clears it; the queue drops both kept tracks.
   await q.run("UPDATE tracks SET ops_reviewed_at = ? WHERE id IN (?, ?)", t + 5_000, claimed, newest);
@@ -56,4 +58,5 @@ test("moderation signals: takedown, blocked sender, late scan; Keep clears, a ne
   const again = await moderationSignals(now);
   assert.deepEqual(again.signals.map((s) => s.kind), ["late_scan", "blocked_sender"]);
   assert.match(again.signals[1].subtitle, /blocked by 2 receivers/);
+  assert.equal(again.signals[1].count, 2);
 });
