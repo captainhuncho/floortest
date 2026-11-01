@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { Page } from "@playwright/test";
 import { currentStep, totpCode } from "../src/lib/totp";
-import { expect, logIn, submitLogin, TEST_PASSWORD, test } from "./fixtures";
+import { expect, hydrated, logIn, submitLogin, TEST_PASSWORD, test } from "./fixtures";
 
 /**
  * Account teams, end to end (switched on only in the test copy: SEED_TEAMS). The demo account (owner) has 3 seats
@@ -68,7 +68,10 @@ test("the owner sees the team, turns on reply approval and invites someone", asy
     await expect(page.getByText("Two-step sign-in keeps the whole team safe.")).toBeVisible();
     await expect(page.getByLabel("Email to invite")).toHaveCount(0);
     await page.goto("/dashboard/settings/security");
-    await page.getByRole("button", { name: "Set up" }).click();
+    // Under load "Set up" showed before React owned it and the click did nothing (1 Nov): wait for React first.
+    const setUp = page.getByRole("button", { name: "Set up" });
+    await hydrated(setUp);
+    await setUp.click();
     totpSecret = (await page.locator("p.font-mono").first().innerText()).replace(/\s/g, "");
     fs.writeFileSync(SECRET_FILE, totpSecret);
     await page.getByLabel("6-digit code").fill(await freshCode());
