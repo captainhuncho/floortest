@@ -12,6 +12,7 @@ import { after } from "next/server";
 import { FEATURES, type Feature } from "@/lib/features";
 import { allPlans, FREE_PLAN } from "@/lib/plan-store";
 import { audienceWhere, cleanTags, describeAudience, readAudience } from "@/lib/audience";
+import { bulkIds } from "@/lib/admin-bulk";
 import { SITE_PAGES, type SitePage } from "@/lib/content";
 import { writeContent } from "@/lib/content-write";
 import { redirect } from "next/navigation";
@@ -45,10 +46,47 @@ const target = async (id: number) => q.get<{ id: number; email: string; handle: 
 
 export async function suspendAccount(userId: number, reason: string) {
   const a = await requireAdminAction("users.support");
+  const r = await suspendOne(a, userId, reason);
+  if (!r.ok) return fail(r.why);
+  await done(`Suspended @${r.handle} and emailed them`);
+  refresh();
+}
+
+/** Users → select rows → Suspend…: the same as suspending each one, at most BULK_MAX at a time, with one reason. */
+export async function suspendAccounts(form: FormData) {
+  const a = await requireAdminAction("users.support");
+  const ids = readIds(form);
+  const reason = String(form.get("reason") || "").trim();
+  if (!ids.length) return fail("Pick at least one account");
+  if (!reason) return fail("Give a reason: it goes in the email and the log");
+  const results = [];
+  for (const id of ids) results.push(await suspendOne(a, id, reason));
+  const ok = results.filter((r) => r.ok).length;
+  const skipped = results.length - ok;
+  await logAdmin(a.id, "bulk suspended", `${ok} account${ok === 1 ? "" : "s"}`, reason);
+  await (ok ? done : fail)(`Suspended ${ok} account${ok === 1 ? "" : "s"}${skipped ? `, skipped ${skipped} (already suspended, yours, or not allowed)` : ""}`);
+  refresh();
+}
+
+/** Users → select rows → Add tag: adds one tag to each selected account, keeping the tags they have. */
+export async function tagAccounts(form: FormData) {
+  const a = await requireAdminAction("users.support");
+  const ids = readIds(form);
+  const tag = cleanTags(String(form.get("tag") || "")).split(",")[0];
+  if (!ids.length || !tag) return fail("Pick accounts and type a tag");
+  const rows = await q.all<{ id: number; admin_tags: string }>(`SELECT id, admin_tags FROM users WHERE id IN (${ids.map(() => "?").join(",")})`, ...ids);
+  for (const r of rows) await q.run("UPDATE users SET admin_tags = ? WHERE id = ?", cleanTags(`${r.admin_tags},${tag}`), r.id);
+  await logAdmin(a.id, "tagged accounts", `${rows.length} account${rows.length === 1 ? "" : "s"}`, tag);
+  await done(`Tagged ${rows.length} account${rows.length === 1 ? "" : "s"} ${tag}`);
+  refresh();
+}
+
+/** Suspends one account for an admin: the rules, the database change, the log and the email. */
+async function suspendOne(a: Awaited<ReturnType<typeof requireAdminAction>>, userId: number, reason: string): Promise<{ ok: true; handle: string } | { ok: false; why: string }> {
   const u = await target(userId);
-  if (!u || u.id === a.id) return fail("Couldn't suspend: account not found, or it's yours");
+  if (!u || u.id === a.id) return { ok: false, why: "Couldn't suspend: account not found, or it's yours" };
   const refused = suspendRefusal(a.access, await opsAccessFor(u));
-  if (refused) return fail(refused);
+  if (refused) return { ok: false, why: refused };
   const why = String(reason || "").trim().slice(0, 200);
   const r = await q.tx(async (db) => {
     const r = await db.run("UPDATE users SET suspended_at = ?, suspended_reason = ? WHERE id = ? AND suspended_at IS NULL", now(), why, u.id);
@@ -58,7 +96,7 @@ export async function suspendAccount(userId: number, reason: string) {
     await db.run("INSERT INTO admin_log (admin_id, action, target, detail, created_at) VALUES (?,?,?,?,?)", a.id, "suspended", `@${u.handle}`, why, now());
     return r;
   });
-  if (!r.changes) return fail("Already suspended");
+  if (!r.changes) return { ok: false, why: "Already suspended" };
   await sendMail({
     userId: u.id,
     audience: "support",
@@ -76,9 +114,11 @@ export async function suspendAccount(userId: number, reason: string) {
       "— FloorTest",
     ].join("\n"),
   }).catch(() => {});
-  await done(`Suspended @${u.handle} and emailed them`);
-  refresh();
+  return { ok: true, handle: u.handle };
 }
+
+/** Account ids picked on the Users list: whole numbers only, no repeats, at most BULK_MAX. */
+const readIds = (form: FormData) => bulkIds(form.getAll("ids").map(String));
 
 export async function unsuspendAccount(userId: number) {
   const a = await requireAdminAction("users.support");

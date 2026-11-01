@@ -18,7 +18,7 @@ export function Toast({ flash }: { flash: { id: number; text: string; tone: "ok"
     return () => clearTimeout(t);
   }, [flash?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <div aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center px-4">
+    <div aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-50 flex justify-center px-4 md:bottom-4">
       {shown && (
         <div
           role={shown.tone === "error" ? "alert" : "status"}
