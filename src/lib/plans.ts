@@ -59,6 +59,7 @@ export const MIX_STATUS = { raw: "Raw / work in progress", mixed: "Mixed, not ma
 export const DEFAULT_GENRES = [
   "Afro House",
   "Amapiano",
+  "Gqom",
   "Afrobeats",
   "House",
   "Deep House",
