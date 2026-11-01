@@ -2035,4 +2035,10 @@ alter table verification_proofs enable row level security;
 alter table file_reservations drop constraint if exists file_reservations_kind_check;
 alter table file_reservations add constraint file_reservations_kind_check check (kind in ('cover', 'collection_art', 'site_image', 'verification_proof'));`,
   },
+  {
+    // Ops → Moderation's signal queue (ops redesign B, 1 Nov) groups the senders some receiver has blocked: only blocked
+    // rows are in this index, so that read never walks every sender. Additive only.
+    id: "0125_senders_blocked",
+    sql: `create index if not exists senders_blocked on senders(blocked_at) where blocked_at is not null;`,
+  },
 ];
