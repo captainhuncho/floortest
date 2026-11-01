@@ -46,6 +46,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       title: "Growth",
       icon: "rocket",
       sections: [
+        { title: "Decide", items: [{ href: "/admin/growth", label: "Growth & decisions", icon: "chart" }] },
         { title: "Beta access", items: [{ href: "/admin/waitlist", label: "Waitlist", icon: "list", badge: waiting }, { href: "/admin/invites", label: "Invites", icon: "ticket" }, { href: "/admin/plan-requests", label: "Plan requests", icon: "rocket", badge: planAsks }] },
         { title: "Reach", items: [{ href: "/admin/announcements", label: "Announcements", icon: "mail" }] },
         { title: "Revenue", items: [{ href: "/admin/revenue", label: "Revenue", icon: "chart" }, { href: "/admin/plans", label: "Plans & prices", icon: "list" }] },
