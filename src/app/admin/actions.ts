@@ -14,6 +14,7 @@ import { allPlans, FREE_PLAN } from "@/lib/plan-store";
 import { audienceWhere, cleanTags, describeAudience, readAudience } from "@/lib/audience";
 import { BULK_MAX, bulkIds, SUSPEND_MAX } from "@/lib/admin-bulk";
 import type { OpsResult } from "@/lib/ops-result";
+import { searchPeople, type PeopleAnswer } from "@/lib/ops-palette";
 import { JOBS, withJobLease, type JobName } from "@/lib/cron";
 import { RUN_JOB, rerunRefusal } from "@/lib/cron-jobs";
 import { SITE_PAGES, type SitePage } from "@/lib/content";
@@ -67,37 +68,41 @@ export async function suspendAccount(userId: number, reason: string) {
 }
 
 /** Users → select rows → Suspend…: the same as suspending each one, at most BULK_MAX at a time, with one reason. */
-export async function suspendAccounts(form: FormData) {
+export async function suspendAccounts(form: FormData): Promise<OpsResult> {
   const a = await requireAdminAction("users.support");
   const ids = readIds(form);
   const reason = String(form.get("reason") || "").trim();
-  if (!ids) return fail(TOO_MANY);
-  if (!ids.length) return fail("Pick at least one account");
-  if (!reason) return fail("Give a reason: it goes in the email and the log");
-  if (ids.length > SUSPEND_MAX) return fail(`Suspend at most ${SUSPEND_MAX} accounts at a time`);
+  if (!ids) return no(TOO_MANY);
+  if (!ids.length) return no("Pick at least one account");
+  if (!reason) return no("Give a reason: it goes in the email and the log");
+  if (ids.length > SUSPEND_MAX) return no(`Suspend at most ${SUSPEND_MAX} accounts at a time`);
   const results = [];
   for (const id of ids) results.push(await suspendOne(a, id, reason));
-  const ok = results.filter((r) => r.ok).length;
-  const skipped = results.length - ok;
-  await logAdmin(a.id, "bulk suspended", `${ok} account${ok === 1 ? "" : "s"}`, reason);
-  await (ok ? done : fail)(`Suspended ${ok} account${ok === 1 ? "" : "s"}${skipped ? `, skipped ${skipped} (already suspended, yours, or not allowed)` : ""}`);
-  refresh();
+  const n = results.filter((r) => r.ok).length;
+  const skipped = results.length - n;
+  await logAdmin(a.id, "bulk suspended", `${n} account${n === 1 ? "" : "s"}`, reason);
+  return (n ? ok : no)(`Suspended ${n} account${n === 1 ? "" : "s"}${skipped ? `, skipped ${skipped} (already suspended, yours, or not allowed)` : ""}`);
 }
 
 /** Users → select rows → Add tag: adds one tag to each selected account, keeping the tags they have. */
-export async function tagAccounts(form: FormData) {
+export async function tagAccounts(form: FormData): Promise<OpsResult> {
   const a = await requireAdminAction("users.support");
   const ids = readIds(form);
   const tag = cleanTags(String(form.get("tag") || "")).split(",")[0];
-  if (!ids) return fail(TOO_MANY);
-  if (!ids.length || !tag) return fail("Pick accounts and type a tag");
+  if (!ids) return no(TOO_MANY);
+  if (!ids.length || !tag) return no("Pick accounts and type a tag");
   const rows = await q.all<{ id: number; admin_tags: string }>(`SELECT id, admin_tags FROM users WHERE id IN (${ids.map(() => "?").join(",")})`, ...ids);
   await q.tx(async (db) => {
     for (const r of rows) await db.run("UPDATE users SET admin_tags = ? WHERE id = ?", cleanTags(`${r.admin_tags},${tag}`), r.id);
   });
   await logAdmin(a.id, "tagged accounts", `${rows.length} account${rows.length === 1 ? "" : "s"}`, `${tag} · ids ${rows.map((r) => r.id).join(",")}`);
-  await done(`Tagged ${rows.length} account${rows.length === 1 ? "" : "s"} ${tag}`);
-  refresh();
+  return ok(`Tagged ${rows.length} account${rows.length === 1 ? "" : "s"} ${tag}`);
+}
+
+/** ⌘K → people: name, @handle or email (src/lib/ops-palette.ts holds the limits and the query). */
+export async function paletteSearch(query: string): Promise<PeopleAnswer> {
+  const a = await requireAdminAction("users.read");
+  return searchPeople(a, String(query ?? ""));
 }
 
 /** Suspends one account for an admin: the rules, the database change, the log and the email. */
@@ -968,13 +973,14 @@ export async function savePartnerNote(email: string, form: FormData) {
 
 const FEEDBACK_STATUSES = ["new", "planned", "fixed", "wontdo"] as const;
 
-export async function setFeedbackStatus(id: number, status: string) {
+/** Feedback → the status switch (through OpsButton): answers in place, with a plain reason when it can't. */
+export async function setFeedbackStatus(id: number, status: string): Promise<OpsResult> {
   const a = await requireAdminAction("feedback.act");
-  if (!(FEEDBACK_STATUSES as readonly string[]).includes(status) || !Number.isSafeInteger(id)) return;
-  await q.run("UPDATE contact_messages SET feedback_status = ?, handled_at = ? WHERE id = ? AND topic LIKE 'Feedback%'", status, status === "new" ? null : now(), id);
+  if (!(FEEDBACK_STATUSES as readonly string[]).includes(status) || !Number.isSafeInteger(id)) return no("That isn't a feedback status");
+  const r = await q.run("UPDATE contact_messages SET feedback_status = ?, handled_at = ? WHERE id = ? AND topic LIKE 'Feedback%'", status, status === "new" ? null : now(), id);
+  if (!r.changes) return no("That feedback is gone");
   await logAdmin(a.id, "feedback status", `#${id}`, status);
-  await done(status === "new" ? "Moved back to New" : `Marked ${status === "wontdo" ? "won't do" : status}`);
-  refresh();
+  return ok(status === "new" ? "Moved back to New" : `Marked ${status === "wontdo" ? "won't do" : status}`);
 }
 
 /** Biggest active-track count among a plan's accounts (bonus slots excluded), so a limit cut can't strand anyone. */

@@ -7,3 +7,5 @@ export const OPS_EMAIL = "ops@floortest.test";
 export const OPS_TOTP_SECRET = "E2EOPSTESTSECRETNOTUSEDANYWHERE2";
 /** The inbox message the spec marks handled and reopens. */
 export const OPS_INBOX_MESSAGE = "E2E: is the Inbox Handled button answering in place?";
+/** The feedback item e2e/ops-kit.spec.ts moves between statuses with the Feedback switch. */
+export const OPS_FEEDBACK_MESSAGE = "E2E: does the Feedback status switch answer in place?";

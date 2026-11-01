@@ -245,6 +245,21 @@ Tactile and plain: they say what you get ("Download kept", "Clear kept").
 ### Dialogs and Sheets
 One shell: Booth Panel, 16px radius, Pop shadow, a scrim behind modal ones. Escape closes, focus is trapped and starts on the first control. Phones get a bottom sheet, desktop a centred box.
 
+### Ops kit (admin redesign B, 1 Nov)
+The shared controls of the ops area, `src/app/admin/kit/` (look in `kit.css`, rules in `core.ts`, tested by
+`tests/ops-kit.test.ts`, `tests/ops-palette.test.ts` and `e2e/ops-kit.spec.ts`). They use the app's tokens, so day and
+night follow the theme.
+- **Glass only on what floats:** the ⌘K palette, toasts and the bulk bar (blur 22px, saturate 170%, a hairline edge).
+  Panels, the rail and dialogs stay solid. Only the newest toast is glass. Reduced transparency makes all of them solid.
+- **OpsButton:** presses scale to .97 with no delay; the label gives way to a spinner after 150 ms, then "✓ …" in the
+  same space for 1.2 s; a refusal shows under it in danger text with Retry. Its size never changes while it works.
+- **Toasts:** bottom centre (above the phone bar), up to three, newest last, Undo 44px with its ⌘Z hint.
+- **Confirm:** the Dialog shell with the affected names in a well, a reason field when asked, focus on Cancel.
+- **Palette:** 620px wide, 12% from the top, 52px input, 44px rows; the active row is raised with a 2px lime edge.
+- **Selection:** violet tint on picked rows, a 3px violet edge on the current one; checkboxes 20px in 44px targets.
+  The bulk bar sticks to the bottom of the screen after the table, so it never covers the last row.
+- **Motion:** transform and opacity only, about 380 ms on the house curve; reduced motion keeps fades.
+
 ### Review Row (signature)
 The heart of the desk: play button, title and artist, a waveform, the Listened tag, BPM and length in tabular mono, all in one dense row that scans like a crate. Selecting a row opens the review panel below with Keep / Not for me always in reach.
 

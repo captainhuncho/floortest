@@ -9,6 +9,9 @@ import { Toast } from "./AdminUi";
 import { AdminMobileNav } from "./AdminMobileNav";
 import { SkipLink } from "@/components/SkipLink";
 import { AdminMotion } from "./AdminMotion";
+import "./kit/kit.css";
+import { KeysProvider } from "./kit/Keys";
+import { Palette, type PaletteEntry } from "./kit/Palette";
 
 export const metadata = { title: "Admin — FloorTest", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -98,8 +101,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     .map((w) => w[0]?.toUpperCase())
     .join("");
   const notice = await readFlash();
+  // ⌘K: the pages this person can open (the same filtered list as the menu) and the kit's own actions.
+  const paletteEntries: PaletteEntry[] = [
+    ...groups.flatMap((g) => g.sections.flatMap((sec) => sec.items.map((i) => ({ id: i.href, label: i.label, href: i.href, group: "Pages" as const, hint: g.title || undefined, keywords: [g.title, sec.title].filter(Boolean) })))),
+    { id: "keys", label: "Keyboard shortcuts", group: "Actions", hint: "?", keywords: ["help", "keys"] },
+  ];
   return (
     <div id="theme-root" className={`${themeClass(await currentTheme())} md:flex`}>
+      <KeysProvider>
       <AdminMotion />
       <SkipLink />
       <div className="sticky top-0 hidden h-dvh md:block">
@@ -113,6 +122,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </main>
       </div>
       <Toast flash={notice} />
+      <Palette entries={paletteEntries} canPeople={can(access, "users.read")} />
+      </KeysProvider>
     </div>
   );
 }

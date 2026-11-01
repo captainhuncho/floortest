@@ -1,54 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
-import { OPS_RESULT_EVENT, type OpsResult } from "@/lib/ops-result";
+import { useRef, useState, useTransition } from "react";
+import { Toaster } from "./kit/Toaster";
 
 /**
- * Shows the latest admin message for a few seconds: a flash from an action not converted yet (then clears it so a
- * reload doesn't repeat it), or a result an OpsForm announced.
+ * The admin messages: a flash from an action not converted yet (then cleared so a reload doesn't repeat it), or a
+ * result an OpsForm or OpsButton announced. The ops kit's toast stack (src/app/admin/kit/Toaster.tsx) does the work.
  */
 export function Toast({ flash }: { flash: { id: number; text: string; tone: "ok" | "error" } | null }) {
-  const [shown, setShown] = useState(flash);
-  // A new flash replaces the one on screen.
-  const [last, setLast] = useState(flash?.id);
-  if (last !== flash?.id) {
-    setLast(flash?.id);
-    setShown(flash);
-  }
-  useEffect(() => {
-    if (flash) document.cookie = "ft_flash=; Max-Age=0; path=/admin";
-  }, [flash?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    const show = (e: Event) => {
-      const r = (e as CustomEvent<OpsResult>).detail;
-      setShown(r.ok ? { id: Date.now(), text: r.message, tone: "ok" } : { id: Date.now(), text: r.error, tone: "error" });
-    };
-    window.addEventListener(OPS_RESULT_EVENT, show);
-    return () => window.removeEventListener(OPS_RESULT_EVENT, show);
-  }, []);
-  useEffect(() => {
-    if (!shown) return;
-    const t = setTimeout(() => setShown(null), shown.tone === "error" ? 8000 : 4000);
-    return () => clearTimeout(t);
-  }, [shown]);
-  return (
-    <div aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-50 flex justify-center px-4 md:bottom-4">
-      {shown && (
-        <div
-          role={shown.tone === "error" ? "alert" : "status"}
-          className={`pointer-events-auto flex max-w-md items-center gap-3 rounded-xl border px-4 py-3 text-[12px] shadow-2xl ${
-            shown.tone === "error" ? "border-danger/50 bg-ink-3 text-bone" : "border-lime/40 bg-ink-3 text-bone"
-          }`}
-        >
-          <span aria-hidden className={`size-2 shrink-0 rounded-full ${shown.tone === "error" ? "bg-danger" : "bg-lime"}`} />
-          <span className="flex-1">{shown.text}</span>
-          <button type="button" onClick={() => setShown(null)} aria-label="Dismiss" className="text-faint hover:text-bone">
-            ✕
-          </button>
-        </div>
-      )}
-    </div>
-  );
+  return <Toaster flash={flash} />;
 }
 
 /** A confirm pop-up in FloorTest's style, instead of the browser's grey box. */

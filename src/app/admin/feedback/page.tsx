@@ -4,6 +4,7 @@ import { q } from "@/lib/db";
 import { ago } from "@/lib/format";
 import { setFeedbackStatus } from "../actions";
 import { Avatar, LevelPill, PageHead, type Tone } from "../PinParts";
+import { OpsButton } from "../kit/OpsButton";
 
 export const metadata = { title: "Feedback — FloorTest admin" };
 
@@ -199,7 +200,7 @@ export default async function Feedback({ searchParams }: { searchParams: Promise
   );
 }
 
-/** One piece of feedback: who sent it and when, its type, the message, the page it was sent from, and its status switch. */
+/** One piece of feedback: who sent it and when, its type, the message, the page it was sent from, and its status switch (OpsButtons: the change answers in place). */
 function Item({ r, i, canAct }: { r: Row; i: number; canAct: boolean }) {
   const kind = r.topic.replace("Feedback · ", "");
   const current = STATUSES.find(([k]) => k === r.feedback_status)?.[1] ?? r.feedback_status;
@@ -241,12 +242,16 @@ function Item({ r, i, canAct }: { r: Row; i: number; canAct: boolean }) {
             {STATUSES.map(([k, l]) => {
               const on = r.feedback_status === k;
               return (
-                <form key={k} action={setFeedbackStatus.bind(null, r.id, k)}>
-                  <button aria-pressed={on} className={`admin-press inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold ${on ? "bg-bone text-ink" : "text-mute hover:text-bone"}`}>
-                    {on && <span aria-hidden>✓</span>}
-                    {l}
-                  </button>
-                </form>
+                <OpsButton
+                  key={k}
+                  action={setFeedbackStatus.bind(null, r.id, k)}
+                  done={l}
+                  aria-pressed={on}
+                  className={`inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold ${on ? "bg-bone text-ink" : "text-mute hover:text-bone"}`}
+                >
+                  {on && <span aria-hidden>✓</span>}
+                  {l}
+                </OpsButton>
               );
             })}
           </div>
