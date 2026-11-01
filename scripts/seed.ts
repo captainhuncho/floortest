@@ -235,7 +235,7 @@ async function main() {
   // code every time; the secret is e2e/ops-account.ts's test value, sealed with the test copy's APP_SECRET) and one
   // Inbox message for it to handle. It is the super admin only because playwright.config.ts names it in ADMIN_EMAILS.
   if (process.env.SEED_OPS === "1") {
-    await db.run(
+    const opsId = await id(
       "INSERT INTO users (email, password_hash, name, handle, plan, tz, email_verified_at, totp_secret, totp_enabled_at, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
       OPS_EMAIL,
       hash("floortest-demo"),
@@ -249,6 +249,11 @@ async function main() {
       now - DAY,
     );
     await db.run("INSERT INTO contact_messages (name, email, topic, message, created_at) VALUES (?,?,?,?,?)", "Ina Inbox", "ina@example.com", "Something else", OPS_INBOX_MESSAGE, now - 3_600_000);
+    // Waiting on me across areas for the new Overview (e2e/ops-overview.spec.ts): a takedown past its two days (the
+    // oldest), an incident due within the hour and a plan request, besides the Inbox message above.
+    await db.run("INSERT INTO takedowns (track_label, claimant, claimant_email, created_at) VALUES (?,?,?,?)", "Paper Moons – Night Bus", "Atlas Publishing", "legal@atlas.example", now - 2 * DAY - 3_600_000);
+    await db.run("INSERT INTO incidents (kind, message, created_at) VALUES (?,?,?)", "cron_failed", "Uploads slow for EU senders", now - 1_800_000);
+    await db.run("INSERT INTO plan_requests (user_id, plan, kind, created_at) VALUES (?,?,?,?)", opsId, "team", "upgrade", now - 5 * 3_600_000);
     // And one beta feedback item for the Feedback status switch (e2e/ops-kit.spec.ts).
     await db.run("INSERT INTO contact_messages (name, email, topic, message, page, created_at) VALUES (?,?,?,?,?,?)", "Fay Feedback", "fay@example.com", "Feedback · Idea", OPS_FEEDBACK_MESSAGE, "/dashboard", now - 7_200_000);
   }

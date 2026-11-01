@@ -1,6 +1,6 @@
 import type { BrowserContext, Page } from "@playwright/test";
 import { currentStep, totpCode } from "../src/lib/totp";
-import { expect, logIn, submitLogin, test } from "./fixtures";
+import { expect, hydrated, logIn, submitLogin, test } from "./fixtures";
 
 /**
  * Passkeys with Chrome's virtual authenticator (a software passkey device that always says the person was verified):
@@ -74,6 +74,8 @@ test("with two-step on, a passkey works instead of the code after the password",
   await virtualPasskeyDevice(context, page);
   await logIn(page, EMAIL);
   await page.goto("/dashboard/settings/security");
+  // "Set up" can show before React owns it under load; a click then does nothing (1 Nov). Wait for React first.
+  await hydrated(page.getByRole("button", { name: "Set up" }));
   await page.getByRole("button", { name: "Set up" }).click();
   const key = (await page.locator("p.font-mono").first().innerText()).replace(/\s/g, "");
   await page.getByLabel("6-digit code").fill(totpCode(key, currentStep()));

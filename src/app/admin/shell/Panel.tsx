@@ -123,7 +123,7 @@ function Today({ today }: { today: AreaToday }) {
           <dd className="text-[17px] font-semibold text-bone tnum">{today.waiting}</dd>
         </div>
         <div className="rounded-[12px] bg-ink-3 px-3 py-2">
-          <dt className="text-[11.5px] text-mute">Past 3 h</dt>
+          <dt className="text-[11.5px] text-mute">Past due</dt>
           <dd className={`text-[17px] font-semibold tnum ${today.late ? "text-[var(--admin-amber)]" : "text-bone"}`}>
             {today.late}
             {today.lateMore && today.late ? "+" : ""}
