@@ -95,10 +95,24 @@ test("permissions: Customer Care sees its own queues, no Platform items, card or
   assert.equal(sales.kpis.find((k) => k.label === "A month at list price")?.note, "1 on paid plans");
 
   const dev = await role("developer");
+  // Kinds read as words, never slugs: the incident's kind and the plan's name.
+  assert.equal(dev.rows.find((r) => r.kind === "incident")?.subtitle, "Scheduled job failed");
+  const asker = await q.get<{ id: number }>("INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at) VALUES ('a@ov.io', 'h', 'Ask', 'asker', 'free', 'UTC', ?) RETURNING id", t);
+  const plan = await q.get<{ id: string; name: string }>("SELECT id, name FROM plans WHERE id <> 'free' ORDER BY position LIMIT 1");
+  await q.run("INSERT INTO plan_requests (user_id, plan, kind, created_at) VALUES (?, ?, 'upgrade', ?)", asker!.id, plan!.id, t);
+  assert.equal((await role("sales")).rows.find((r) => r.kind === "plan_request")?.subtitle, `Asks for ${plan!.name}`);
   assert.deepEqual([...new Set(dev.rows.map((r) => r.kind))].sort(), ["incident", "job_failed"]);
   assert.deepEqual(dev.areas, ["platform"]);
   assert.ok(dev.platform, "Developer sees the Platform card");
   assert.equal(dev.platform!.incident?.message, "Email queue job failed");
   assert.equal(dev.platform!.jobs?.failed, 1, "today's failed run, from the job log");
   assert.ok(!revenue(dev));
+});
+
+test("incident kinds read as plain words, an unknown one as its slug with spaces", async () => {
+  const { incidentKindLabel } = await import("../src/lib/incident-kinds");
+  assert.equal(incidentKindLabel("cron_failed"), "Scheduled job failed");
+  assert.equal(incidentKindLabel("email_failed"), "Email failed");
+  assert.equal(incidentKindLabel("server_error"), "Server error");
+  assert.equal(incidentKindLabel("disk_nearly_full"), "disk nearly full");
 });

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { can, requireAdmin } from "@/lib/admin";
+import { incidentKindLabel } from "@/lib/incident-kinds";
 import { needFor } from "@/lib/ops-perms";
 import { Icon } from "../AdminNav";
 import { overviewData, SPARK_DAYS, type Kpi, type Platform, type Tile } from "./data";
@@ -145,7 +146,7 @@ function PlatformCard({ p, allowed }: { p: Platform; allowed: (href: string) => 
           <div className="min-w-0 flex-1">
             <p className="text-[14px] font-semibold leading-snug [overflow-wrap:anywhere]">{p.incident.message}</p>
             <p className="text-[12.5px] text-mute">
-              {p.incident.kind.replace(/_/g, " ")} · opened {p.incident.age} ago
+              {incidentKindLabel(p.incident.kind)} · opened {p.incident.age} ago
             </p>
           </div>
           <Link href="/admin/incidents" className="admin-press inline-flex min-h-11 shrink-0 items-center rounded-[10px] bg-ink-4 px-3.5 text-[13px] font-semibold hover:bg-line-2">
