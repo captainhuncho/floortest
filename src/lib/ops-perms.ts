@@ -161,6 +161,7 @@ export const ACTION_NEEDS: Record<string, Need> = {
   deleteInvite: "invites",
   approvePlanRequest: "planRequests",
   declinePlanRequest: "planRequests",
+  undoSend: "overview",
   inviteFromWaitlist: "waitlist",
   inviteOldestFromWaitlist: "waitlist",
   removeFromWaitlist: "waitlist",
