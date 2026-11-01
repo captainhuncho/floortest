@@ -7,13 +7,30 @@ import type { Need } from "@/lib/ops-perms";
 /**
  * Ops → Overview → "Waiting on me" (ops redesign B, 1 Nov): everything across ops that is waiting for a person, in one
  * list. Only what this viewer may act on is read at all; each kind is read with named columns and its own LIMIT, then
- * the lot is sorted by when it's due (DUE_MS after it arrived), oldest first, and cut to LIMIT. The counts are the full
- * open counts per kind, for the rail's badges.
+ * the lot is sorted by when it's due (KIND_DUE_MS after it arrived), soonest first, and cut to LIMIT. The counts are the
+ * full open counts per kind, for the rail's badges.
  */
-export const DUE_MS = 3 * 3_600_000;
 export const LIMIT = 50;
 
 export type WaitingKind = "inbox" | "privacy" | "verification" | "verification_proposal" | "takedown" | "plan_request" | "incident" | "job_failed";
+
+const HOUR = 3_600_000;
+const DAY = 24 * HOUR;
+/**
+ * How long each kind may wait before it's late, the one source for the shell's "Next due" and the Overview. The same
+ * targets as the Overview's Act now (admin/page.tsx dueDays, 1 Nov): privacy 21 days (inside the legal month),
+ * takedowns 2 days, plan requests 2 days, inbox 3 days. Verification a day; incidents and failed jobs an hour.
+ */
+export const KIND_DUE_MS: Record<WaitingKind, number> = {
+  inbox: 3 * DAY,
+  privacy: 21 * DAY,
+  verification: DAY,
+  verification_proposal: DAY,
+  takedown: 2 * DAY,
+  plan_request: 2 * DAY,
+  incident: HOUR,
+  job_failed: HOUR,
+};
 export type Area = "support" | "safety" | "growth" | "platform";
 
 /** Where each kind sits in the rail, so the panel groups and filters without its own map. */
@@ -120,7 +137,7 @@ export async function waitingOnMe(access: OpsAccess): Promise<{ items: WaitingIt
   );
   const items = read
     .flatMap(({ k, rows }) =>
-      rows.map((r) => ({ kind: k, area: KIND_AREA[k], id: String(r.id), title: r.title, subtitle: r.subtitle, created_at: Number(r.created_at), due_at: Number(r.created_at) + DUE_MS, need: KIND_NEED[k], href: HREF[k] })),
+      rows.map((r) => ({ kind: k, area: KIND_AREA[k], id: String(r.id), title: r.title, subtitle: r.subtitle, created_at: Number(r.created_at), due_at: Number(r.created_at) + KIND_DUE_MS[k], need: KIND_NEED[k], href: HREF[k] })),
     )
     .sort((a, b) => a.due_at - b.due_at || a.created_at - b.created_at)
     .slice(0, LIMIT);
