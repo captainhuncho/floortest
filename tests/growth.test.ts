@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { accountsShort, BETA_START, betaNumbers, betaRunning, betaWeek, betaWindowDays, expectedByWeek, paceOf, biggestDrop, decisions, forecast, formatHours, funnel, isBetaAccount, isSelfSent, median, showShare, type BetaAccountRow } from "../src/lib/growth";
+import { accountsShort, BETA_START, betaNumbers, betaRunning, betaWeek, betaWindowDays, expectedByNow, expectedByWeek, paceOf, biggestDrop, decisions, forecast, formatHours, funnel, isBetaAccount, isSelfSent, median, showShare, type BetaAccountRow } from "../src/lib/growth";
 
 test("forecast follows a straight trend and widens its range further out", () => {
   const p = forecast([10, 12, 14, 16, 18, 20], 3);
@@ -243,4 +243,13 @@ test("during the beta the paying drop isn't the first finding; activation drops 
   assert.match(beta[beta.length - 1].title, /Kept a track → pays/, "kept, lower down");
   assert.equal(betaRunning(BETA_START + 8 * 7 * D - 1), true);
   assert.equal(betaRunning(BETA_START + 8 * 7 * D), false);
+});
+
+test("the pace line scales by the days gone, so day 1 doesn't read as behind", () => {
+  assert.equal(expectedByNow(15, BETA_START + H), 0, "a few hours in, nothing expected yet");
+  assert.equal(expectedByNow(15, BETA_START + 7 * D), 2, "end of week 1 matches the weekly line");
+  assert.equal(expectedByNow(25, BETA_START + 28 * D), 13, "halfway");
+  assert.equal(expectedByNow(15, BETA_START + 80 * D), 15, "never past the target");
+  assert.equal(expectedByNow(15, BETA_START - D), 0, "never below 0");
+  assert.equal(paceOf(0, expectedByNow(15, BETA_START + H)), "on pace");
 });
