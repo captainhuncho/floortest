@@ -34,50 +34,17 @@ export function Dialog({
   busy?: boolean;
   closeLabel?: string;
 }) {
-  const ref = useRef<HTMLDialogElement>(null);
-  const opener = useRef<HTMLElement | null>(null);
-  const busyRef = useRef(busy);
+  const { modalProps } = useModalDialog(open, onClose, busy);
   const titleId = useId();
   const descId = useId();
-  useEffect(() => {
-    busyRef.current = busy;
-  }, [busy]);
-
-  useEffect(() => {
-    const d = ref.current;
-    if (!d) return;
-    if (open && !d.open) {
-      opener.current = document.activeElement as HTMLElement | null;
-      d.showModal();
-    } else if (!open && d.open) {
-      d.close();
-    }
-  }, [open]);
-
-  // Unmounted while open (a page change): put focus back too.
-  useEffect(() => () => void (opener.current?.isConnected && opener.current.focus()), []);
 
   return (
     <dialog
-      ref={ref}
       aria-labelledby={titleId}
       aria-describedby={description ? descId : undefined}
       data-wide={wide ? "" : undefined}
       className="ft-dialog"
-      onCancel={(e) => {
-        e.preventDefault();
-        if (!busyRef.current) onClose();
-      }}
-      onClose={() => {
-        if (open) onClose();
-        const o = opener.current;
-        opener.current = null;
-        if (o?.isConnected) o.focus();
-      }}
-      // A click on the dialog element itself (not its panel) is a click on the dimmed page around it.
-      onClick={(e) => {
-        if (e.target === ref.current && !busyRef.current) onClose();
-      }}
+      {...modalProps}
     >
       <div className="ft-dialog-panel">
         <header className="flex items-start gap-3">
@@ -108,6 +75,86 @@ export function Dialog({
       </div>
     </dialog>
   );
+}
+
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * Keeps Tab inside an open modal. The browser's modal dialog makes the page behind it inert, but Tab can still leave
+ * for the address bar; this wraps from the last control to the first and back (ops kit, a11y review 1 Nov).
+ */
+export function trapTab(root: HTMLElement, e: Pick<KeyboardEvent, "key" | "shiftKey" | "preventDefault">) {
+  if (e.key !== "Tab") return;
+  const list = [...root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => !el.closest("[inert]") && el.getClientRects().length);
+  if (!list.length) return e.preventDefault();
+  const first = list[0];
+  const last = list[list.length - 1];
+  const now = document.activeElement;
+  if (e.shiftKey && (now === first || !root.contains(now))) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && (now === last || !root.contains(now))) {
+    e.preventDefault();
+    first.focus();
+  }
+}
+
+/**
+ * The behaviour every modal shares, for Dialog and for the ops ⌘K palette (src/app/admin/kit/Palette.tsx): opened with
+ * showModal (page behind inert), named modal for screen readers, Tab kept inside, Escape and a tap on the dimmed page
+ * close it unless busy, and focus goes back to whatever opened it. `returnFocusRef.current = false` skips that last step
+ * (the palette moves focus to the record it opened).
+ */
+export function useModalDialog(open: boolean, onClose: () => void, busy = false) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const opener = useRef<HTMLElement | null>(null);
+  const returnFocusRef = useRef(true);
+  const busyRef = useRef(busy);
+  const closeRef = useRef(onClose);
+  useEffect(() => {
+    busyRef.current = busy;
+    closeRef.current = onClose;
+  });
+
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (open && !d.open) {
+      opener.current = document.activeElement as HTMLElement | null;
+      returnFocusRef.current = true;
+      d.showModal();
+      // The browser starts on the first control (the close button); a control marked data-autofocus goes first.
+      d.querySelector<HTMLElement>("[data-autofocus]")?.focus();
+    } else if (!open && d.open) {
+      d.close();
+    }
+  }, [open]);
+
+  // Unmounted while open (a page change): put focus back too.
+  useEffect(() => () => void (returnFocusRef.current && opener.current?.isConnected && opener.current.focus()), []);
+
+  const modalProps = {
+    ref,
+    "aria-modal": true as const,
+    onCancel: (e: React.SyntheticEvent) => {
+      e.preventDefault();
+      if (!busyRef.current) closeRef.current();
+    },
+    onClose: () => {
+      if (open) closeRef.current();
+      const o = opener.current;
+      opener.current = null;
+      if (returnFocusRef.current && o?.isConnected) o.focus();
+    },
+    // A click on the dialog element itself (not its panel) is a click on the dimmed page around it.
+    onClick: (e: React.MouseEvent) => {
+      if (e.target === ref.current && !busyRef.current) closeRef.current();
+    },
+    onKeyDown: (e: React.KeyboardEvent) => {
+      if (ref.current) trapTab(ref.current, e);
+    },
+  };
+  return { ref, modalProps, returnFocusRef };
 }
 
 /** Dialog buttons: full width and 48px on phones, the app's regular size from 640px. */

@@ -1,0 +1,484 @@
+/*
+ * Ops kit (admin redesign B, step 1): the shared controls' look. Built on the app's own tokens (globals.css), so day
+ * and night follow the theme. Glass only on what floats (the ⌘K palette, toasts, the bulk bar); panels stay solid.
+ * Motion is transform and opacity only, and reduced motion keeps fades.
+ */
+#theme-root {
+  --kit-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --kit-dur: 380ms;
+  --kit-tap: 44px;
+  --kit-focus: var(--color-lime);
+  --kit-glass-fill: color-mix(in srgb, var(--color-ink-2) 86%, transparent);
+  --kit-glass-solid: var(--color-ink-3);
+  --kit-glass-edge: color-mix(in srgb, var(--color-bone) 14%, transparent);
+  --kit-glass-lit: color-mix(in srgb, var(--color-bone) 6%, transparent);
+  --kit-shadow: 0 18px 48px rgb(0 0 0 / 0.45), 0 2px 8px rgb(0 0 0 / 0.3);
+  --kit-danger-t: #ff7a6b;
+}
+#theme-root.theme-day {
+  --kit-glass-fill: color-mix(in srgb, #ffffff 86%, transparent);
+  --kit-glass-solid: #ffffff;
+  --kit-glass-edge: rgb(22 23 20 / 0.12);
+  --kit-glass-lit: rgb(255 255 255 / 0.7);
+  --kit-shadow: 0 18px 48px rgb(16 17 15 / 0.16), 0 2px 8px rgb(16 17 15 / 0.08);
+  --kit-danger-t: #b42318;
+}
+@media (prefers-color-scheme: light) {
+  #theme-root.theme-system {
+    --kit-glass-fill: color-mix(in srgb, #ffffff 86%, transparent);
+    --kit-glass-solid: #ffffff;
+    --kit-glass-edge: rgb(22 23 20 / 0.12);
+    --kit-glass-lit: rgb(255 255 255 / 0.7);
+    --kit-shadow: 0 18px 48px rgb(16 17 15 / 0.16), 0 2px 8px rgb(16 17 15 / 0.08);
+    --kit-danger-t: #b42318;
+  }
+}
+
+/* ---------- Glass: floating layers only ---------- */
+.kit-glass {
+  background: var(--kit-glass-fill);
+  -webkit-backdrop-filter: blur(22px) saturate(170%);
+  backdrop-filter: blur(22px) saturate(170%);
+  border: 1px solid var(--kit-glass-edge);
+  box-shadow: inset 0 1px 0 var(--kit-glass-lit), var(--kit-shadow);
+}
+.kit-floating:not(.kit-glass) {
+  background: var(--kit-glass-solid);
+  border: 1px solid var(--kit-glass-edge);
+  box-shadow: var(--kit-shadow);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .kit-glass {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    background: var(--kit-glass-solid) !important;
+  }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .kit-glass {
+    background: var(--kit-glass-solid);
+  }
+}
+kbd.kit-kbd {
+  font: 500 12px/1 var(--font-mono, ui-monospace, monospace);
+  padding: 3px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--color-line-2);
+  color: var(--color-mute);
+  background: var(--color-ink-3);
+}
+
+/* ---------- OpsButton ---------- */
+.kit-opsbtn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 100%;
+}
+.kit-press {
+  transition: transform 160ms var(--kit-ease), background-color 150ms, color 150ms;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+/* A press answers at once: no easing on the way down. */
+.kit-press:active:not([aria-disabled="true"]) {
+  transform: scale(0.97);
+  transition-duration: 0s;
+}
+.kit-press[aria-disabled="true"] {
+  cursor: default;
+}
+.kit-press:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.kit-btn-label {
+  display: inline-flex;
+  align-items: center;
+  gap: inherit;
+  transition: opacity 160ms var(--kit-ease);
+}
+.kit-btn-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+  white-space: nowrap;
+  transform: translateY(4px);
+  transition: opacity 160ms var(--kit-ease), transform var(--kit-dur) var(--kit-ease);
+}
+.kit-press:is([data-phase="working"], [data-phase="done"]) .kit-btn-label {
+  opacity: 0;
+}
+.kit-press:is([data-phase="working"], [data-phase="done"]) .kit-btn-state {
+  opacity: 1;
+  transform: none;
+}
+.kit-spin {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: kit-spin 0.7s linear infinite;
+}
+@keyframes kit-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.kit-btn-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin-top: 6px;
+  color: var(--color-danger);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.kit-retry {
+  min-height: var(--kit-tap);
+  padding: 0 12px;
+  border-radius: 10px;
+  color: var(--color-bone);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* A plain kit button (bulk bar). */
+.kit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--color-line-2);
+  background: var(--color-ink-3);
+  color: var(--color-bone);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.kit-btn--danger {
+  background: transparent;
+  color: var(--kit-danger-t);
+  border-color: color-mix(in srgb, var(--color-danger) 50%, transparent);
+}
+
+/* ---------- Toasts ---------- */
+.kit-toasts {
+  position: fixed;
+  z-index: 60;
+  left: 50%;
+  bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  transform: translate(-50%, calc(-1 * var(--kit-toast-lift, 0px)));
+  transition: transform var(--kit-dur) var(--kit-ease);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(440px, calc(100vw - 32px));
+  pointer-events: none;
+}
+@media (min-width: 768px) {
+  .kit-toasts {
+    bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+}
+.kit-toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 4px 4px 4px 16px;
+  border-radius: 14px;
+  color: var(--color-bone);
+  font-size: 13.5px;
+  line-height: 1.35;
+  animation: kit-toast-in var(--kit-dur) var(--kit-ease);
+}
+.kit-toast[data-tone="error"] {
+  border-color: color-mix(in srgb, var(--color-danger) 50%, transparent);
+}
+@keyframes kit-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+}
+.kit-toast-text {
+  flex: 1;
+  min-width: 0;
+}
+.kit-toast-count {
+  color: var(--color-mute);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.kit-undo,
+.kit-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--kit-tap);
+  min-width: var(--kit-tap);
+  border-radius: 10px;
+  font-weight: 600;
+}
+.kit-undo {
+  padding: 0 10px;
+  color: var(--color-lime);
+}
+.kit-x {
+  color: var(--color-mute);
+}
+.kit-x:hover,
+.kit-undo:hover {
+  background: color-mix(in srgb, var(--color-bone) 8%, transparent);
+}
+
+/* ---------- ⌘K palette ---------- */
+dialog.kit-palette {
+  margin: 12dvh auto auto;
+  width: min(620px, calc(100vw - 24px));
+  max-height: 70dvh;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  color: var(--color-bone);
+}
+dialog.kit-palette::backdrop {
+  background: rgb(6 6 5 / 0.55);
+}
+dialog.kit-palette[open] {
+  animation: kit-pop var(--kit-dur) var(--kit-ease);
+}
+@keyframes kit-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+.kit-pal-in {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--color-line);
+}
+.kit-pal-in:focus-within {
+  box-shadow: inset 0 -2px 0 var(--kit-focus);
+}
+.kit-pal-in input {
+  flex: 1;
+  min-width: 0;
+  min-height: 52px;
+  border: 0;
+  background: transparent;
+  color: var(--color-bone);
+  font-size: 16px;
+  font-weight: 500;
+  outline: none;
+}
+.kit-pal-in input::placeholder {
+  color: var(--color-mute);
+}
+.kit-pal-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  overflow: auto;
+  max-height: calc(70dvh - 60px);
+}
+.kit-pal-opt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--kit-tap);
+  padding: 0 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+}
+.kit-pal-opt[aria-selected="true"] {
+  background: var(--color-ink-4);
+  box-shadow: inset 2px 0 0 var(--kit-focus);
+}
+.kit-pal-icon {
+  width: 16px;
+  text-align: center;
+  color: var(--color-mute);
+}
+.kit-pal-sub {
+  margin-left: auto;
+  min-width: 0;
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-mute);
+  font: 400 12.5px var(--font-mono, ui-monospace, monospace);
+}
+.kit-pal-empty,
+.kit-pal-note {
+  padding: 14px 10px;
+  color: var(--color-mute);
+  font-size: 13.5px;
+}
+.kit-pal-note {
+  margin: 0;
+  border-top: 1px solid var(--color-line);
+}
+
+/* ---------- Selection and the bulk bar ---------- */
+.kit-check {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--admin-violet, #9b8cff);
+  cursor: pointer;
+}
+tr.kit-row[aria-selected="true"] > *,
+li.kit-row[data-selected] {
+  background: color-mix(in srgb, var(--admin-violet, #9b8cff) 14%, transparent);
+}
+tr.kit-row[data-current] > :first-child {
+  box-shadow: inset 3px 0 0 var(--admin-violet, #9b8cff);
+}
+tr.kit-row:focus-visible {
+  outline: 2px solid var(--kit-focus);
+  outline-offset: -2px;
+}
+.kit-bulkwrap {
+  position: relative;
+}
+.kit-bulkbar {
+  position: sticky;
+  bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  z-index: 40;
+  margin: 16px auto 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  max-width: calc(100% - 8px);
+  padding: 6px 6px 6px 16px;
+  border-radius: 16px;
+  color: var(--color-bone);
+  font-size: 14px;
+  font-weight: 600;
+  animation: kit-rise var(--kit-dur) var(--kit-ease);
+}
+@media (min-width: 768px) {
+  .kit-bulkbar {
+    bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+}
+@keyframes kit-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+.kit-bulk-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-right: 4px;
+}
+.kit-bulk-num {
+  display: inline-block;
+  min-width: 2ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  animation: kit-count var(--kit-dur) var(--kit-ease);
+}
+@keyframes kit-count {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.kit-bulk-input {
+  width: 10rem;
+  min-height: 40px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.kit-bulk-note {
+  color: var(--color-mute);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.kit-bulk-clear {
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  color: var(--color-mute);
+}
+.kit-bulk-clear:hover {
+  color: var(--color-bone);
+}
+@media (max-width: 767px), (pointer: coarse) {
+  .kit-bulkbar {
+    width: auto;
+    padding-left: 12px;
+  }
+  .kit-bulkbar .kit-btn,
+  .kit-bulk-clear,
+  .kit-bulk-input {
+    min-height: var(--kit-tap);
+  }
+  .kit-bulk-input {
+    font-size: 16px;
+    width: 9rem;
+  }
+}
+
+/* ---------- Reduced motion: fades only ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .kit-press,
+  .kit-press:active,
+  .kit-btn-state {
+    transform: none !important;
+    transition: opacity 120ms linear;
+  }
+  .kit-toasts {
+    transition: none;
+  }
+  .kit-toast,
+  dialog.kit-palette[open],
+  .kit-bulkbar {
+    animation: kit-fade-in 160ms linear;
+  }
+  .kit-bulk-num {
+    animation: none;
+  }
+  .kit-spin {
+    animation-duration: 2.4s;
+  }
+}
+@keyframes kit-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@media print {
+  .kit-toasts,
+  .kit-bulkbar,
+  dialog.kit-palette {
+    display: none !important;
+  }
+}

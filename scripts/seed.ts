@@ -6,7 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { dataDir, getDb } from "../src/lib/db/client";
 import { sealSecret } from "../src/lib/totp";
-import { OPS_EMAIL, OPS_INBOX_MESSAGE, OPS_TOTP_SECRET } from "../e2e/ops-account";
+import { OPS_EMAIL, OPS_FEEDBACK_MESSAGE, OPS_INBOX_MESSAGE, OPS_TOTP_SECRET } from "../e2e/ops-account";
 
 if (process.env.DATABASE_URL || process.env.S3_BUCKET || process.env.NODE_ENV === "production") {
   console.error("Refusing to seed: this script is for local development only (DATABASE_URL, S3_BUCKET or NODE_ENV=production is set).");
@@ -249,6 +249,8 @@ async function main() {
       now - DAY,
     );
     await db.run("INSERT INTO contact_messages (name, email, topic, message, created_at) VALUES (?,?,?,?,?)", "Ina Inbox", "ina@example.com", "Something else", OPS_INBOX_MESSAGE, now - 3_600_000);
+    // And one beta feedback item for the Feedback status switch (e2e/ops-kit.spec.ts).
+    await db.run("INSERT INTO contact_messages (name, email, topic, message, page, created_at) VALUES (?,?,?,?,?,?)", "Fay Feedback", "fay@example.com", "Feedback · Idea", OPS_FEEDBACK_MESSAGE, "/dashboard", now - 7_200_000);
   }
   // Sharing tests: the Villagers tracks were sent while the callout allowed sharing.
   if (process.env.SEED_SHARING === "1") await db.run("UPDATE tracks SET share_ok = 1, share_terms = ? WHERE collection_id = ?", "e2e", villagers);
