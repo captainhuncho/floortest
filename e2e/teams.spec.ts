@@ -49,14 +49,18 @@ test("the owner sees the team, turns on reply approval and invites someone", asy
   }
   await page.goto("/dashboard/settings/team");
   if (rerun) {
-    // The first go's invite holds the last seat (and folds the list away): cancel it so the run starts as seeded.
-    const showAll = page.getByRole("button", { name: /Show all/ });
-    if (await showAll.count()) {
-      await showAll.first().click();
-      await expect(page.getByRole("button", { name: /Hide/ }).first()).toBeVisible();
+    // The first go's invite holds the last seat and makes the People list long enough to fold (settings folds, 31 Oct):
+    // open the fold once React owns its button (a click before that does nothing), cancel the invite, and reload so
+    // the run starts as seeded, with two people and the list open again.
+    const people = page.getByRole("button", { name: /^People ·/ });
+    if ((await people.getAttribute("aria-expanded")) === "false") {
+      await hydrated(people);
+      await people.click();
+      await expect(people).toHaveAttribute("aria-expanded", "true");
     }
     const leftover = page.getByRole("button", { name: "Cancel invite" });
     if (await leftover.count()) {
+      await hydrated(leftover.first());
       await leftover.first().click();
       await expect(leftover).toHaveCount(0);
     }
@@ -131,11 +135,12 @@ test("a member switches to the team's desk, can't open owner settings, and their
   await expect(page.getByRole("status").filter({ hasText: /Waiting for approval/ })).toBeVisible();
   await page.goto("/dashboard/settings/team");
   await expect(page.getByRole("heading", { name: "Your replies waiting for approval" })).toBeVisible();
-  await expect(page.getByText(reply)).toBeVisible();
+  // .first(): during the page's refresh the reply can briefly show twice (old and new page), as the two-step notice did.
+  await expect(page.getByText(reply).first()).toBeVisible();
 
   // The desk's log shows what was done on it, but never the owner's own sign-ins or security settings.
   await page.goto("/dashboard/activity");
-  await expect(page.getByText("The account holder's sign-ins and settings aren't shown.")).toBeVisible();
+  await expect(page.getByText("The account holder's sign-ins and settings aren't shown.").first()).toBeVisible();
   await expect(page.getByText("Signed in", { exact: true })).toHaveCount(0);
 });
 
