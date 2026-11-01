@@ -1,7 +1,7 @@
 import { TRACK_STATUSES } from "@/lib/statuses";
 import Link from "next/link";
 import { collectionsFor } from "@/lib/desk";
-import { q, likeContains, type User } from "@/lib/db";
+import { asPerson, q, likeContains, type User } from "@/lib/db";
 import { MIX_STATUS, RELEASE_STATUS } from "@/lib/plans";
 import { ViewToggle } from "../ViewToggle";
 import { FilterMenu, type Option } from "./FilterMenu";
@@ -68,14 +68,16 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
     args.push(...Array(4).fill(likeContains(search)));
   }
 
-  const tracks = (await q.all<ListTrack & { sender_name: string; sender_email: string; sender_verified: number | null; collection_name: string | null }>(`SELECT ${LIST_COLUMNS}, s.name AS sender_name, s.email AS sender_email, s.verified_at AS sender_verified, c.name AS collection_name
+  // The list, sender and genre reads run under the per-person rules (B8) as well as the desk filter.
+  const asMe = <T,>(fn: () => Promise<T>) => asPerson(user.actor_id, fn);
+  const tracks = (await asMe(() => q.all<ListTrack & { sender_name: string; sender_email: string; sender_verified: number | null; collection_name: string | null }>(`SELECT ${LIST_COLUMNS}, s.name AS sender_name, s.email AS sender_email, s.verified_at AS sender_verified, c.name AS collection_name
        FROM tracks t JOIN senders s ON s.id = t.sender_id LEFT JOIN collections c ON c.id = t.collection_id
-       WHERE ${where.join(" AND ")} ORDER BY t.created_at DESC LIMIT 500`, ...args));
+       WHERE ${where.join(" AND ")} ORDER BY t.created_at DESC LIMIT 500`, ...args)));
 
-  const senders = (await q.all<{ id: number; name: string; n: number }>(`SELECT s.id, s.name, COUNT(t.id) AS n FROM senders s JOIN tracks t ON t.sender_id = s.id AND t.deleted_at IS NULL
-       WHERE s.user_id = ? GROUP BY s.id ORDER BY lower(s.name)`, user.id));
-  const genres = (await q.all<{ genre: string; n: number }>(`SELECT genre, COUNT(*) AS n FROM tracks WHERE user_id = ? AND deleted_at IS NULL AND genre != ''
-       GROUP BY genre ORDER BY n DESC, lower(genre)`, user.id));
+  const senders = (await asMe(() => q.all<{ id: number; name: string; n: number }>(`SELECT s.id, s.name, COUNT(t.id) AS n FROM senders s JOIN tracks t ON t.sender_id = s.id AND t.deleted_at IS NULL
+       WHERE s.user_id = ? GROUP BY s.id ORDER BY lower(s.name)`, user.id)));
+  const genres = (await asMe(() => q.all<{ genre: string; n: number }>(`SELECT genre, COUNT(*) AS n FROM tracks WHERE user_id = ? AND deleted_at IS NULL AND genre != ''
+       GROUP BY genre ORDER BY n DESC, lower(genre)`, user.id)));
 
   const href = (patch: Partial<Search>) => {
     const p = new URLSearchParams({ view: "list" });
