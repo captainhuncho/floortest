@@ -7,6 +7,7 @@ import { collectionsFor } from "@/lib/desk";
 import { q, likeContains, type Sender, type Track } from "@/lib/db";
 import { APP_URL } from "@/lib/mail";
 import { ReviewPanel } from "../ReviewPanel";
+import { LIST_COLUMNS, type ListTrack } from "../rows";
 import { toPlayer } from "@/lib/player-track";
 import { SubmissionsList } from "../list/SubmissionsList";
 import { TrackList, type Row } from "../TrackList";
@@ -68,8 +69,8 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
       `SELECT ${STATUSES.map(([k, , c]) => `COUNT(*) FILTER (WHERE ${c}) AS "${k}"`).join(", ")} ${from} WHERE ${base.join(" AND ")}`,
       ...args,
     ).then((r) => r!),
-    q.all<Track & { sender_name: string; collection_name: string | null; release_title: string | null }>(
-      `SELECT t.*, s.name AS sender_name, c.name AS collection_name, r.title AS release_title ${from}
+    q.all<ListTrack & { sender_name: string; collection_name: string | null; release_title: string | null }>(
+      `SELECT ${LIST_COLUMNS}, s.name AS sender_name, c.name AS collection_name, r.title AS release_title ${from}
        WHERE ${base.join(" AND ")} AND ${cond} ORDER BY ${order} LIMIT 500`,
       ...args,
     ),

@@ -1,13 +1,14 @@
 import { TRACK_STATUSES } from "@/lib/statuses";
 import Link from "next/link";
 import { collectionsFor } from "@/lib/desk";
-import { q, likeContains, type Track, type User } from "@/lib/db";
+import { q, likeContains, type User } from "@/lib/db";
 import { MIX_STATUS, RELEASE_STATUS } from "@/lib/plans";
 import { ViewToggle } from "../ViewToggle";
 import { FilterMenu, type Option } from "./FilterMenu";
 import { CARD, Icon, PageHead } from "@/components/Kit";
 import { FilterSheet } from "./FilterSheet";
 import { ListRows, type ListRow } from "./ListRows";
+import { LIST_COLUMNS, type ListTrack } from "../rows";
 
 type Search = { c?: string; s?: string; q?: string; type?: string; sender?: string; genre?: string; bpm?: string; verified?: string };
 
@@ -67,7 +68,7 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
     args.push(...Array(4).fill(likeContains(search)));
   }
 
-  const tracks = (await q.all<Track & { sender_name: string; sender_email: string; sender_verified: number | null; collection_name: string | null }>(`SELECT t.*, s.name AS sender_name, s.email AS sender_email, s.verified_at AS sender_verified, c.name AS collection_name
+  const tracks = (await q.all<ListTrack & { sender_name: string; sender_email: string; sender_verified: number | null; collection_name: string | null }>(`SELECT ${LIST_COLUMNS}, s.name AS sender_name, s.email AS sender_email, s.verified_at AS sender_verified, c.name AS collection_name
        FROM tracks t JOIN senders s ON s.id = t.sender_id LEFT JOIN collections c ON c.id = t.collection_id
        WHERE ${where.join(" AND ")} ORDER BY t.created_at DESC LIMIT 500`, ...args));
 
