@@ -74,7 +74,8 @@ Feedback (every desk page, phones too: the speech-bubble icon in the top bar) �
 Account ─► About FloorTest ─► Send feedback ─► the same form opens under the row (not the public contact page) ─► Send ─► ops → Feedback
 5th Keep / Not for me by a person (any desk, counted from their own activity) ─► the decision saves as usual ─► a card at the top of the page (in the page, not over it), once: "How's FloorTest working for you?" (no focus taken; shortcuts and the player carry on)
    ├─ Send ─► ops → Feedback ─► not asked again
-   └─ Not now · Don't ask again ─► closes ─► not asked again (users.feedback_asked_at, per person, every device)
+   ├─ Not now (first time) ─► closes ─► asked once more after 10 further decisions (users.feedback_snoozed_at)
+   └─ Don't ask again · a second Not now ─► closes ─► not asked again (users.feedback_asked_at, per person, every device)
 ```
 Mobile tab bar: Floor · Queue · Collections · Prepare. Desktop sidebar adds Send, Contacts, Activity.
 

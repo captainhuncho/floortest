@@ -7,7 +7,7 @@ import { receiverLookup } from "@/lib/receiver-lookup";
 import { requireUser, requireRole } from "@/lib/auth";
 import { likeContains, now, q } from "@/lib/db";
 import { audit } from "@/lib/audit";
-import { fileFeedback, markFeedbackAsked } from "@/lib/feedback";
+import { closeFeedbackAskFor, fileFeedback, markFeedbackAsked } from "@/lib/feedback";
 import { sendReopenAlerts } from "@/lib/reopen";
 import { done } from "./common";
 
@@ -18,10 +18,10 @@ export async function sendFeedback(kind: string, message: string, path: string, 
   if (fromAsk) await markFeedbackAsked(u.actor_id);
 }
 
-/** "Not now" or "Don't ask again" on the one-time feedback ask: either way it isn't asked again (lib/feedback-ask). */
-export async function closeFeedbackAsk() {
+/** "Not now" (asks once more after 10 decisions) or "Don't ask again" on the feedback ask (lib/feedback-ask). */
+export async function closeFeedbackAsk(choice: "later" | "never" = "never") {
   const u = await requireUser();
-  await markFeedbackAsked(u.actor_id);
+  await closeFeedbackAskFor(u.actor_id, choice === "later" ? "later" : "never");
 }
 
 export async function dismissOnboarding() {
