@@ -1987,7 +1987,7 @@ create index if not exists tracks_ops_reviewed_by on tracks(ops_reviewed_by) whe
     // person. One pending proposal per account (the partial unique index). Proof files live in the private bucket under
     // random keys (verification/…), served only through /api/admin/verification-proofs/[id]. Rows go with the account
     // (cascade; their files are queued by accountKeys). The app's own connection only: RLS on, no policies, no grants.
-    id: "0122_verification_proposals",
+    id: "0123_verification_proposals",
     sql: `create table if not exists verification_proposals (
   id bigint generated always as identity primary key,
   user_id bigint not null references users(id) on delete cascade,
