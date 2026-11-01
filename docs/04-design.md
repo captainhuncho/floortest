@@ -29,7 +29,7 @@ Charts: white bars at night, olive (#5f8000) by day. Round play buttons use the 
 - **Logs:** Activity is a set log (TIME · WHAT · WHO, tabular, 1px rules, day eyebrows).
 
 ## Type
-- Words in the **system sans** (San Francisco, Segoe UI, Roboto: nothing to download; owner, 28 Oct). **JetBrains Mono** (variable, self-hosted) only where a screen asks for `font-mono`: readouts, durations, counts, code and keys. Instrument Serif italic only as a home-page accent.
+- Words in the **system sans** (San Francisco, Segoe UI, Roboto: nothing to download; owner, 28 Oct). **JetBrains Mono** (variable, self-hosted: files in `src/app/fonts/` with Instrument Serif, `next/font/local`, never fetched from Google at build) only where a screen asks for `font-mono`: readouts, durations, counts, code and keys. Instrument Serif italic only as a home-page accent.
 - Public pages' text sizes can be stepped in the on-page site editor (owner, 29 Oct): Smaller 0.85×, Larger 1.2×, Largest 1.4× of the element's own designed size (`data-ts` in `em` for a run of text, `data-tz` zoom for a whole list; globals.css "Site text sizes"), never a free size. Inside `h1`/`h2` the larger steps stop at 15vw, so Largest can't overflow a 320px phone. Default is the design as drawn. In edit mode each home section has an always-visible bar above it (drag ⠿, ↑, ↓, Hide/Show, 44px targets).
 - Scale on dashboard pages: eyebrow labels 11px bold uppercase, letter-spacing 1px, `mute`; body 13px; meta 12px `faint`; page titles 28–34px bold, tight tracking; stat numbers 30px bold, tabular.
 

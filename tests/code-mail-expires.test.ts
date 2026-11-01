@@ -1,11 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
+import { testDataDir } from "./test-db";
 
 // A throwaway local database, a daily limit of 10 and a fake email provider (fetch is stubbed: nothing is sent).
-process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "ft-code-expires-"));
+process.env.DATA_DIR = testDataDir("ft-code-expires-");
 process.env.APP_SECRET ??= "test-secret-".padEnd(48, "x");
 process.env.RESEND_API_KEY = "re_test_only";
 process.env.MAIL_DAILY_LIMIT = "10";

@@ -1,12 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
+import { testDataDir } from "./test-db";
 
 // Rule 1 (audit 27 Oct; owner's SQL rule, 24 Oct): sort and filter values from the address only pick from fixed lists,
 // and search text is always a bound value with its wildcards escaped. A throwaway local database for the search check.
-process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "ft-sql-"));
+process.env.DATA_DIR = testDataDir("ft-sql-");
 process.env.APP_SECRET ??= "test-secret-".padEnd(48, "x");
 delete process.env.DATABASE_URL;
 

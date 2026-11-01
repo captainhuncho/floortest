@@ -25,11 +25,12 @@ async function main() {
       order by c.relname`,
   );
   // Per-person rules (0097): every table the `ft_person` role may touch needs a policy for it, so a grant can't
-  // quietly open a table without saying whose rows are whose.
+  // quietly open a table without saying whose rows are whose. Column-by-column grants count too (0119).
   const { rows: granted } = await pg.query<{ name: string; policies: number }>(
     `select g.table_name as name,
             (select count(*)::int from pg_policies p where p.schemaname = 'public' and p.tablename = g.table_name and 'ft_person' = any(p.roles)) as policies
-       from (select distinct table_name from information_schema.role_table_grants where grantee = 'ft_person' and table_schema = 'public') g
+       from (select table_name from information_schema.role_table_grants where grantee = 'ft_person' and table_schema = 'public'
+             union select table_name from information_schema.column_privileges where grantee = 'ft_person' and table_schema = 'public') g
       order by 1`,
   );
   // Sign-in secrets (security audit, 29 Oct): ft_person may never read or change a password hash, two-step secret,
