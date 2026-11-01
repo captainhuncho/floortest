@@ -76,6 +76,8 @@ export function OpsButton({
         return;
       }
       setDoneText(done ?? r.message);
+      // The size lock ends with the answer: the refreshed page may have changed the label (a ✓ on the chosen status).
+      setWidth(null);
       setPhase("done");
       if (announce) announceOps(r);
       else say(r.message);
