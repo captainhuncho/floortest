@@ -8,6 +8,7 @@ import {
   BETA_TARGETS,
   BETA_WEEKS,
   betaNumbers,
+  betaWindowDays,
   decisions,
   forecast,
   formatHours,
@@ -138,7 +139,7 @@ export default async function Growth() {
         <p className="mt-1 text-[15px] text-mute">From FloorTest&apos;s own numbers: people who joined in the last {WINDOW_DAYS} days, and the last {WEEKS} weeks of activity.</p>
       </header>
 
-      <BetaSection n={beta} />
+      <BetaSection n={beta} windowDays={betaWindowDays(t)} />
 
       {/* Findings first (decision cards), each with the counts behind it. */}
       <section aria-labelledby="dec-h" className={P} style={i(1)}>
@@ -169,7 +170,10 @@ export default async function Growth() {
                   <span className="tnum">
                     <b className="font-semibold">{s.n.toLocaleString("en-GB")}</b>
                     {n > 0 &&
-                      (s.ofPrev > 100 ? (
+                      (s.ofPrev == null ? (
+                        // The step before reached nobody, so there's no share to give.
+                        <span className="ml-2 text-[12px] text-faint" aria-label="no share: the step before reached nobody">—</span>
+                      ) : s.ofPrev > 100 ? (
                         // People can skip steps (sign up without the waitlist, pay without keeping a track).
                         <span className="ml-2 text-[12px] text-faint">more than the step before</span>
                       ) : (
@@ -315,7 +319,7 @@ async function loadBeta(): Promise<[BetaAccountRow[], BetaActivityRow[], BetaTra
 }
 
 /** The beta's three weekly targets (docs/beta-launch-plan.md), as three tiles. Small bases show the raw number only. */
-function BetaSection({ n }: { n: BetaNumbers }) {
+function BetaSection({ n, windowDays }: { n: BetaNumbers; windowDays: number | null }) {
   const share = showShare(n.accounts);
   // Under 5 accounts the base rule is raw count only: no share, no target, no bar.
   const of = (v: number, target: number) => (share ? `${pct(v, n.accounts)}% of ${n.accounts} beta accounts · target ${target} · ` : "");
@@ -360,6 +364,12 @@ function BetaSection({ n }: { n: BetaNumbers }) {
           caption={`${listenShare ? `target under ${BETA_TARGETS.firstListenHours} h · ` : ""}${n.listened} ${n.listened === 1 ? "track" : "tracks"} listened to · ${n.waiting} waiting for a first listen`}
         />
       </div>
+      {windowDays != null && (
+        // In the first week the 7-day window reaches back before the beta, so it's shorter than Overview's 7 days.
+        <p className="mt-3 text-[12.5px] text-faint">
+          Counting since 1 Nov, so this week covers {windowDays} {windowDays === 1 ? "day" : "days"}.
+        </p>
+      )}
     </section>
   );
 }

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { BETA_START, betaNumbers, betaWeek, biggestDrop, decisions, forecast, formatHours, funnel, isBetaAccount, isSelfSent, median, showShare, type BetaAccountRow } from "../src/lib/growth";
+import { BETA_START, betaNumbers, betaWeek, betaWindowDays, biggestDrop, decisions, forecast, formatHours, funnel, isBetaAccount, isSelfSent, median, showShare, type BetaAccountRow } from "../src/lib/growth";
 
 test("forecast follows a straight trend and widens its range further out", () => {
   const p = forecast([10, 12, 14, 16, 18, 20], 3);
@@ -177,4 +177,23 @@ test("a desk that only sent itself tracks and decided on one is not activated", 
   assert.equal(n.weeklyActive, 1, "the decision still makes them active");
   assert.equal(n.activated, 0, "no track from a real sender, so not activated");
   assert.equal(n.firstListenHours, null);
+});
+
+test("a step after one that reached nobody has no share", () => {
+  const f = funnel([
+    { label: "Waitlist", n: 3 },
+    { label: "Invited", n: 0 },
+    { label: "Signed up", n: 10 },
+  ]);
+  assert.deepEqual(f.map((s) => s.ofPrev), [100, 0, null]);
+  assert.equal(funnel([{ label: "A", n: 0 }])[0].ofPrev, null);
+  assert.equal(biggestDrop(f)?.label, "Invited", "the empty step is still the biggest drop; the step after it isn't judged");
+});
+
+test("the first week's window covers only the days since the start", () => {
+  assert.equal(betaWindowDays(BETA_START), 1, "at least 1");
+  assert.equal(betaWindowDays(BETA_START + 14 * H), 1);
+  assert.equal(betaWindowDays(BETA_START + D + 1), 2, "rounded up");
+  assert.equal(betaWindowDays(BETA_START + 7 * D - 1), 7);
+  assert.equal(betaWindowDays(BETA_START + 7 * D), null, "a full week in: no note");
 });
