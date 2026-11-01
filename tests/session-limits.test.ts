@@ -130,15 +130,3 @@ test("an ops session ends after 30 minutes without use", async () => {
   assert.equal(await opsSessionLive(fresh, me), true, "used 29 minutes ago: live");
   assert.equal(await opsSessionLive(idle, me), false, "used 31 minutes ago: over");
 });
-
-test("the old session cookie name is read only until the cut-off, and only on the live site", async () => {
-  const { OLD_COOKIE_UNTIL, readSessionToken } = await import("../src/lib/sessions");
-  const jar = (c: Record<string, string>) => ({ get: (n: string) => (n in c ? { value: c[n] } : undefined) });
-  const before = OLD_COOKIE_UNTIL - 1;
-  const after = OLD_COOKIE_UNTIL;
-  assert.equal(readSessionToken(jar({ "__Host-floortest_session": "new" }), true, after), "new", "the current name always works");
-  assert.equal(readSessionToken(jar({ floortest_session: "old" }), true, before), "old", "before the cut-off a live session under the old name still works");
-  assert.equal(readSessionToken(jar({ floortest_session: "old" }), true, after), undefined, "after it, the old name is no longer accepted");
-  assert.equal(readSessionToken(jar({ floortest_session: "old", "__Host-floortest_session": "new" }), true, before), "new", "the new name wins");
-  assert.equal(readSessionToken(jar({ floortest_session: "local" }), false, after), "local", "locally that is the current name");
-});

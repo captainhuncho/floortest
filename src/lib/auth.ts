@@ -14,8 +14,8 @@ import { deviceLabel } from "./device-label";
 import { OLD_SESSION_COOKIE, readSessionToken, sessionCookie, touchSession, WEB_IDLE_MS } from "./sessions";
 
 /**
- * The session cookie (`__Host-` prefixed on the live site; names and the old-name cut-off in sessions.ts). The old
- * name is still read (never written) until 15 Nov 2026, so the change (15 Oct 2026) signed nobody out.
+ * The session cookie (`__Host-` prefixed on the live site; names in sessions.ts). The old plain name is never read
+ * on the live site (a sibling subdomain could plant it); sign-in and sign-out only clear it from old browsers.
  */
 const COOKIE = sessionCookie(isProd);
 const OLD_COOKIE = OLD_SESSION_COOKIE;
@@ -50,13 +50,15 @@ export async function createSession(userId: number) {
   // Which device, for the Security page's list and the sign-in alert; "last seen" starts now.
   const device = deviceLabel((await headers()).get("user-agent") ?? "");
   await q.run("INSERT INTO sessions (token_hash, user_id, expires_at, created_at, device, last_seen_at) VALUES (?,?,?,?,?,?)", hashToken(token), userId, expires, now(), device, now());
-  (await cookies()).set(COOKIE, token, {
+  const jar = await cookies();
+  jar.set(COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
     secure: isProd,
     path: "/",
     expires: new Date(expires),
   });
+  if (COOKIE !== OLD_COOKIE) jar.delete(OLD_COOKIE);
   // While the site is behind the coming-soon gate, a real sign-in lets that browser through it.
   if (gatePassword())
     (await cookies()).set(GATE_COOKIE, gateToken(), { httpOnly: true, sameSite: "lax", secure: isProd, path: "/", maxAge: GATE_DAYS * 86_400 });
