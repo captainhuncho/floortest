@@ -7,14 +7,21 @@ import { receiverLookup } from "@/lib/receiver-lookup";
 import { requireUser, requireRole } from "@/lib/auth";
 import { likeContains, now, q } from "@/lib/db";
 import { audit } from "@/lib/audit";
-import { fileFeedback } from "@/lib/feedback";
+import { fileFeedback, markFeedbackAsked } from "@/lib/feedback";
 import { sendReopenAlerts } from "@/lib/reopen";
 import { done } from "./common";
 
 /** Beta feedback, signed by the person who sent it (src/lib/feedback.ts). */
-export async function sendFeedback(kind: string, message: string, path: string) {
+export async function sendFeedback(kind: string, message: string, path: string, fromAsk = false, viewport?: number) {
   const u = await requireUser();
-  await fileFeedback(u, kind, message, path);
+  await fileFeedback(u, kind, message, path, viewport);
+  if (fromAsk) await markFeedbackAsked(u.actor_id);
+}
+
+/** "Not now" or "Don't ask again" on the one-time feedback ask: either way it isn't asked again (lib/feedback-ask). */
+export async function closeFeedbackAsk() {
+  const u = await requireUser();
+  await markFeedbackAsked(u.actor_id);
 }
 
 export async function dismissOnboarding() {

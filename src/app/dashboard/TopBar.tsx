@@ -13,6 +13,8 @@ import { clearNotifications, markNotificationsRead, quickSearch, type SearchHit 
 type Props = {
   user: { name: string; handle: string; verified: boolean };
   notices: { items: Notice[]; unread: number };
+  /** First in the box: the Feedback button (dashboard/FeedbackButton), so the phone bar fits at 320px. */
+  lead?: React.ReactNode;
 };
 
 type Open = null | "search" | "bell";
@@ -56,6 +58,7 @@ export function TopBar(p: Props) {
 
   return (
     <div ref={root} className="relative flex items-center justify-end gap-0.5 rounded-[14px] border border-line bg-card p-[3px]">
+      {p.lead}
       <button className={round} onClick={() => toggle("search")} aria-label="Search (⌘K)" aria-expanded={open === "search"}>
         <Icon name="search" />
       </button>

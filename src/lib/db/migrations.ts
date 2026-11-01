@@ -1947,4 +1947,12 @@ alter table scanner_budget enable row level security;`,
     id: "0118_person_held_reply_ids",
     sql: `do $$ begin execute format('grant usage on sequence %s to ft_person', pg_get_serial_sequence('held_replies', 'id')); end $$;`,
   },
+  {
+    // The one-time feedback ask (1 Nov, lib/feedback-ask): when the person answered it, on their own row, so it's asked
+    // once per account on every device. Each feedback item also keeps the sender's window width in CSS px (owner, 1 Nov),
+    // shown on ops → Feedback beside the page. Additive only.
+    id: "0119_feedback_asked_at_viewport",
+    sql: `alter table users add column if not exists feedback_asked_at bigint;
+alter table contact_messages add column if not exists viewport int;`,
+  },
 ];

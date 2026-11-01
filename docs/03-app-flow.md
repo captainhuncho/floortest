@@ -70,6 +70,11 @@ Floor ─► Collections ─► New collection / Open collection ─► Add trac
 Nightly, only if Settings → Receiving → "When a callout closes" is on ─► a link on a collection past its close date ─► moves to the newest open collection ─► email to the receiver · bell: "Your link now goes to …" · activity: "Link moved on its own to"
 Floor ─► Send ─► their-link ─► upload ─► Sent list (≤10 days open, older folded) ─► Track → /receipt/<token>
 Avatar ─► Account ─► Settings (profile, receiving, notifications, plan, security) · Sign out ─► /signed-out
+Feedback (every desk page, phones too: the speech-bubble icon in the top bar) ─► Idea / Bug / Confusing / Love it · text ─► Send ─► ops → Feedback (with the page it came from and the window width, e.g. 390 px) · toast "Thanks. It went straight to the FloorTest team."
+Account ─► About FloorTest ─► Send feedback ─► the same form opens under the row (not the public contact page) ─► Send ─► ops → Feedback
+5th Keep / Not for me by a person (any desk, counted from their own activity) ─► the decision saves as usual ─► a card at the top of the page (in the page, not over it), once: "How's FloorTest working for you?" (no focus taken; shortcuts and the player carry on)
+   ├─ Send ─► ops → Feedback ─► not asked again
+   └─ Not now · Don't ask again ─► closes ─► not asked again (users.feedback_asked_at, per person, every device)
 ```
 Mobile tab bar: Floor · Queue · Collections · Prepare. Desktop sidebar adds Send, Contacts, Activity.
 

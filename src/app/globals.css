@@ -142,6 +142,12 @@ html:has([data-batch-bar]) [data-toast-region] { bottom: calc(env(safe-area-inse
 }
 /* Opened from the keyboard (⌘K search): appears at once, every time. Keyboard actions never animate. */
 [data-instant], [data-instant] :is([role="menu"], [role="listbox"], [role="dialog"]) { transition: none; animation: none; }
+/* The feedback form (dashboard/FeedbackButton: the top-bar panel and the one-time ask card) slides in a little;
+   reduced motion keeps only the fade. */
+[data-feedback-panel] {
+  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+  @starting-style { opacity: 0; transform: translateY(-6px); }
+}
 [data-toast] {
   transition: opacity 250ms var(--ease-drawer), transform 250ms var(--ease-drawer);
   @starting-style { opacity: 0; transform: translateY(16px); }
@@ -222,6 +228,7 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
   dialog, dialog::backdrop, .ft-dialog[open] { transform: none !important; transition: opacity 150ms linear, overlay 150ms allow-discrete, display 150ms allow-discrete !important; }
   [data-instant], [data-instant] :is([role="menu"], [role="listbox"], [role="dialog"]) { transition: none !important; }
   [data-toast][data-leaving] { transform: none; }
+  [data-feedback-panel] { transform: none; transition: opacity 150ms linear !important; }
   /* The buffering ring holds still at half strength; the Queue badge cross-fades instead of rolling. */
   [data-buffering] [data-buffer-ring] { opacity: 0.5; }
   [data-roll="out"] { animation: badge-fade-out 120ms linear both !important; }
