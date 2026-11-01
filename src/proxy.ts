@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { GATE_COOKIE, gatePassword, hasGatePass } from "@/lib/site-gate";
 import { contentSecurityPolicy, makeNonce } from "@/lib/csp";
 import { crossSiteWrite } from "@/lib/cross-site";
+import { NOINDEX, indexable } from "@/lib/search-index";
 
 /**
  * Keeps the admin area and the main site apart by host. With OPS_URL set (production): the ops host serves only the
@@ -42,6 +43,8 @@ export function proxy(req: NextRequest) {
   // Verification proof files send their own, stricter policy (default-src 'none', frame-ancestors 'none'; security
   // review M2): the page policy isn't laid over it. Host separation and the cross-site check above still apply.
   if (!OWN_CSP.some((p) => p.test(req.nextUrl.pathname))) res.headers.set("Content-Security-Policy", csp);
+  // Search engines list only the public pages; any other answer (pages, API, redirects, not-found) says noindex.
+  if (!indexable(req.nextUrl.pathname)) res.headers.set("X-Robots-Tag", NOINDEX);
   return res;
 }
 
