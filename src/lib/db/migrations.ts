@@ -1940,4 +1940,11 @@ alter table scanner_budget enable row level security;`,
     id: "0117_outbox_status_attempt",
     sql: `create index if not exists outbox_status_attempt on outbox(status, last_attempt_at);`,
   },
+  {
+    // Per-person rules (B8, 1 Nov): held_replies takes its id from a plain sequence, not an identity column, so
+    // ft_person could add the row but not draw its id ("permission denied for sequence"). A member's held reply now
+    // runs as the person, so the role may use that one sequence. Grant only; scripts/check-rls.ts fails on the next one.
+    id: "0118_person_held_reply_ids",
+    sql: `do $$ begin execute format('grant usage on sequence %s to ft_person', pg_get_serial_sequence('held_replies', 'id')); end $$;`,
+  },
 ];

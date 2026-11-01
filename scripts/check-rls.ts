@@ -44,6 +44,16 @@ async function main() {
           or has_column_privilege('ft_person', c.oid, a.attnum, 'UPDATE'))
       order by 1`,
   );
+  // A table ft_person may add rows to must let it draw the row's id: identity columns need nothing more, a plain
+  // sequence needs usage (migration 0118), or the insert fails only when that path first runs as the person.
+  const { rows: sequences } = await pg.query<{ name: string }>(
+    `select s.relname as name
+       from pg_class s join pg_depend d on d.objid = s.oid and d.deptype = 'a'
+      where s.relkind = 'S' and has_table_privilege('ft_person', d.refobjid, 'INSERT')
+        -- CASE, because Postgres may test the privilege before relkind and it errors on anything but a sequence.
+        and case when s.relkind = 'S' then not has_sequence_privilege('ft_person', s.oid, 'USAGE') else false end
+      order by 1`,
+  );
   await pg.close();
 
   const open = rows.filter((r) => !r.rls).map((r) => r.name);
@@ -62,7 +72,12 @@ async function main() {
     console.error("Grant ft_person only the columns it needs (see migration 0106), never these.");
     process.exit(1);
   }
-  console.log(`Row-level security check: all ${rows.length} tables have it on; per-person rules on ${granted.length}, no secret columns.`);
+  if (sequences.length) {
+    console.error(`ft_person may add rows but not draw their ids from: ${sequences.map((r) => r.name).join(", ")}.`);
+    console.error("Use an identity column, or grant usage on the sequence to ft_person (see migration 0118).");
+    process.exit(1);
+  }
+  console.log(`Row-level security check: all ${rows.length} tables have it on; per-person rules on ${granted.length}, no secret columns, every id drawable.`);
 }
 
 main().catch((e) => {
