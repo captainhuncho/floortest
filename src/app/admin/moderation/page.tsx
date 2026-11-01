@@ -7,6 +7,8 @@ import { blockEverywhere, blockSenderAsAdmin, keepTrack, removeTrackAsAdmin } fr
 import { OpsForm } from "../OpsForm";
 import { ModerationPlayer } from "./ModerationPlayer";
 import { staffMayPlay } from "@/lib/staff-listen";
+import { switchOn } from "@/lib/switches";
+import { Queue } from "./queue/Queue";
 
 type Found = {
   id: number; title: string; artist: string; size: number; created_at: number; handle: string; user_id: number; sender_id: number; sender: string; email: string; blocked_at: number | null;
@@ -21,9 +23,11 @@ const day = (ms: number) => new Date(ms).toLocaleDateString("en-GB", { day: "num
  * Find any track or sender across every account, for abuse reports and takedowns. Results on the left; the picked
  * track on the right (on phones, on its own with a way back) with a player, the sender's history and the actions.
  */
-export default async function Moderation({ searchParams }: { searchParams: Promise<{ q?: string; t?: string }> }) {
-  await requireAdmin("moderation");
+export default async function Moderation({ searchParams }: { searchParams: Promise<{ q?: string; t?: string; u?: string }> }) {
+  const admin = await requireAdmin("moderation");
   const sp = await searchParams;
+  // The new ops shell (switch ops_shell) gets the signal queue (admin redesign B, step 4); off, today's page as it was.
+  if (await switchOn("ops_shell")) return <Queue sp={sp} me={admin.handle} access={admin.access} />;
   const search = (sp.q || "").trim().slice(0, 100);
   const like = likeContains(search);
   const tracks = search

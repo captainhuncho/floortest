@@ -3,10 +3,13 @@ import { cache } from "react";
 import { q } from "@/lib/db";
 import type { OpsAccess } from "@/lib/ops-access";
 import { LIMIT, waitingOnMe, type WaitingItem } from "@/lib/ops-waiting";
+import { moderationSignals } from "@/lib/ops-signals";
 import { shellAreas, WAITING_AREA, type AreaId, type AreaToday, type NextDue, type ShellData } from "./model";
 
 /** Waiting on me, read once per request however many parts of the page ask (the shell now, the Overview later). */
 export const waitingFor = cache(waitingOnMe);
+/** Moderation's signals, read once per request: the rail's count and the queue itself come from the same read. */
+export const signalsNow = cache(() => moderationSignals());
 
 
 const ago = (ms: number) => {
@@ -38,12 +41,15 @@ export function nextAndLate(items: readonly WaitingItem[], now: number) {
  */
 export async function shellData(access: OpsAccess, allowed: (href: string) => boolean): Promise<ShellData> {
   const count = (href: string, sql: string) => (allowed(href) ? q.count(sql) : Promise.resolve(0));
-  const [waiting, feedback, waitlist] = await Promise.all([
+  const [waiting, feedback, waitlist, signals] = await Promise.all([
     waitingFor(access),
     count("/admin/feedback", "SELECT COUNT(*) AS n FROM contact_messages WHERE topic LIKE 'Feedback%' AND feedback_status = 'new'"),
     count("/admin/waitlist", "SELECT COUNT(*) AS n FROM waitlist WHERE invited_at IS NULL"),
+    allowed("/admin/moderation") ? signalsNow().then((s) => s.signals.length) : Promise.resolve(0),
   ]);
-  const areas = shellAreas(allowed, waiting.counts, { "/admin/feedback": feedback, "/admin/waitlist": waitlist });
+  // Tracks with a signal show quietly beside Moderation, and drop as soon as one is kept or removed (the actions
+  // refresh the whole admin layout).
+  const areas = shellAreas(allowed, waiting.counts, { "/admin/feedback": feedback, "/admin/waitlist": waitlist, "/admin/moderation": signals });
   const { next, late } = nextAndLate(waiting.items, Date.now());
   const total = areas.reduce((n, a) => n + a.waiting, 0);
   // Late counts come from the list, which stops at LIMIT items: past that, "or more".

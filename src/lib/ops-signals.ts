@@ -27,11 +27,17 @@ export type Signal = {
   subtitle: string;
   signal_at: number;
   href: string;
+  /** The receiver's handle: whose desk the track is on (or the held upload was sent to). */
+  handle: string;
+  /** Who the signal names: the claimant, the blocked sender's email, or the held upload's sender email. */
+  who: string;
+  /** How many receivers blocked the sender (1 for the other signals). */
+  count: number;
 };
 
 type TrackRow = { signal: string | number; track_id: number; title: string; artist: string; handle: string; detail: string; signal_at: number };
 
-const toSignal = (kind: SignalKind, r: TrackRow, subtitle: string): Signal => ({
+const toSignal = (kind: SignalKind, r: TrackRow, subtitle: string, count = 1): Signal => ({
   kind,
   id: String(r.signal),
   track_id: Number(r.track_id),
@@ -39,6 +45,9 @@ const toSignal = (kind: SignalKind, r: TrackRow, subtitle: string): Signal => ({
   subtitle,
   signal_at: Number(r.signal_at),
   href: `/admin/moderation?t=${r.track_id}`,
+  handle: r.handle,
+  who: r.detail,
+  count,
 });
 
 async function takedowns(): Promise<Signal[]> {
@@ -65,7 +74,7 @@ async function blockedSenders(): Promise<Signal[]> {
      SELECT email AS signal, track_id, title, artist, handle, email AS detail, at AS signal_at, blocks FROM newest
       WHERE ops_reviewed_at IS NULL OR ops_reviewed_at < at ORDER BY at DESC`,
   );
-  return rows.map((r) => toSignal("blocked_sender", r, `${r.detail} blocked by ${r.blocks} receiver${Number(r.blocks) === 1 ? "" : "s"} · newest to @${r.handle}`));
+  return rows.map((r) => toSignal("blocked_sender", r, `${r.detail} blocked by ${r.blocks} receiver${Number(r.blocks) === 1 ? "" : "s"} · newest to @${r.handle}`, Number(r.blocks)));
 }
 
 async function lateScans(at: number): Promise<Signal[]> {
@@ -87,6 +96,9 @@ async function lateScans(at: number): Promise<Signal[]> {
       subtitle: `Waiting for its virus check · from ${meta.email || "a sender"} to @${r.handle}`,
       signal_at: Number(r.held_at),
       href: "/admin/jobs",
+      handle: r.handle,
+      who: meta.email || "a sender",
+      count: 1,
     };
   });
 }

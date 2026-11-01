@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useImperativeHandle, useRef, useState } from "react";
 import { announceOps, type OpsResult } from "@/lib/ops-result";
 import { DONE_HOLD_MS, SPINNER_DELAY_MS } from "./core";
 import { announce as say } from "./live";
@@ -23,6 +23,7 @@ export function OpsButton({
   announce = true,
   onDone,
   className = "",
+  ref,
   ...rest
 }: {
   action: () => Promise<OpsResult | null>;
@@ -33,6 +34,8 @@ export function OpsButton({
   /** Runs after a success, e.g. to clear a selection. */
   onDone?: (r: OpsResult) => void;
   className?: string;
+  /** The button itself, e.g. for a shortcut key to press it. */
+  ref?: React.Ref<HTMLButtonElement>;
 } & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "onClick" | "type" | "children" | "className">) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +44,7 @@ export function OpsButton({
   const busy = useRef(false);
   const timers = useRef<number[]>([]);
   const btn = useRef<HTMLButtonElement>(null);
+  useImperativeHandle(ref, () => btn.current as HTMLButtonElement, []);
   useEffect(() => () => timers.current.forEach((t) => clearTimeout(t)), []);
 
   const run = () => {

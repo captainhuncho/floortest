@@ -173,6 +173,11 @@ Feedback ─► New / Planned / Fixed / Won't do (OpsButton) ─► spinner afte
 Growth ─► Growth & decisions ─► findings · funnel · projection · sources · cohorts · pipeline
 Moderation ─► search ─► pick a track ─► Play, only with an open takedown claim (5-minute file link; admin log "played track"; otherwise 404 + "refused play")
    ─► Keep ─► marked reviewed (tracks.ops_reviewed_at/by; "Kept by @x" on the track, a Reviewed chip in results; admin log "reviewed, kept")
+Moderation, ops_shell on ─► the signal queue (takedown claim · blocked sender · late scan, newest first) ─► pick a row (j/k)
+   ─► Keep (a) ─► reviewed by @you, row leaves, next row opens, rail count drops
+   ─► Remove (x) ─► reason asked ─► track and file gone, next row opens
+   ─► Block sender (b) / Block everywhere ─► asked first ─► stays on the row
+   ─► Play (Space) only with an open takedown claim; late scan ─► Jobs
 Jobs ─► Run now (per job, src/lib/cron-jobs.ts: the scheduled code, under the job's lease)
    ─► email queue, virus check: any time · daily emails, backup and clean-up: only after a failed or missed run, asks
    first; backup is the super admin's ─► toast; the run shows in Recent runs; admin log "ran job"
