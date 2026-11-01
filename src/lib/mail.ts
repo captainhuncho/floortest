@@ -76,7 +76,7 @@ function unseal(sealed: string) {
  * `secrets`: sign-in codes, tokens and private links in this email. The email goes out with them; the stored copy and
  * any failure incident show them as HIDDEN, so reading the Email log never hands anyone a way into an account or receipt.
  */
-export async function queueMail(opts: MailOpts, db: Queryable = q): Promise<number> {
+export async function queueMail(opts: MailOpts, db: Queryable = q, { holdMs = 0 }: { holdMs?: number } = {}): Promise<number> {
   const secrets = (opts.secrets ?? []).filter((s): s is string => !!s && s.length >= 4);
   const hide = (s: string) => secrets.reduce((out, x) => out.split(x).join(HIDDEN), s);
   // Optional emails carry a one-click unsubscribe (header for Gmail/Yahoo, plus a link in the text).
@@ -95,7 +95,7 @@ export async function queueMail(opts: MailOpts, db: Queryable = q): Promise<numb
     at,
     seal(JSON.stringify(payload)),
     crypto.randomUUID(),
-    at,
+    at + holdMs,
     opts.unsubscribe ? 1 : 0,
     opts.reserved ? 1 : 0,
   );
@@ -113,6 +113,43 @@ export async function sendMail(opts: MailOpts) {
  */
 export async function sendMailLater(opts: MailOpts) {
   deliverLater(await queueMail(opts));
+}
+
+/** Ops sends with Undo (ops server design §2, owner 1 Nov): how long such an email waits on the server before it goes. */
+export const SEND_HOLD_MS = 8_000;
+
+/**
+ * Queued to go SEND_HOLD_MS from now, then sent after the response. Every send path claims only queued rows whose next_at
+ * has come, so until then cancelHeldMail stops it, even if the tab is closed; if the server stops first, the mail job
+ * sends it on its next run. A failure is retried like any queued email and shows in the Email log. Returns the outbox id.
+ * `onSent` gets the delivery status once this process has tried it (not when cancelled, nor when the mail job sends it
+ * after a restart).
+ */
+export async function sendMailHeld(
+  opts: MailOpts,
+  { holdMs = SEND_HOLD_MS, onSent }: { holdMs?: number; onSent?: (status: string) => Promise<unknown> } = {},
+): Promise<number> {
+  const id = await queueMail(opts, q, { holdMs });
+  afterResponse(async () => {
+    await new Promise((done) => setTimeout(done, holdMs));
+    const status = await deliver(id);
+    if (onSent && status !== "cancelled") await onSent(status);
+  });
+  return id;
+}
+
+/**
+ * Stops held emails that were never tried (queued, no attempt yet); returns how many it stopped. A row queued again
+ * after a failed try (retry backoff, daily cap) may have reached the person anyway (the provider can accept it and
+ * still time out), so it can't be taken back. Pass `db` to cancel inside the transaction that undoes the action.
+ */
+export async function cancelHeldMail(ids: number[], db: Queryable = q): Promise<number> {
+  if (!ids.length) return 0;
+  const r = await db.run(
+    `UPDATE outbox SET status = 'cancelled', payload = NULL, next_at = NULL WHERE id IN (${ids.map(() => "?").join(",")}) AND status = 'queued' AND attempts = 0`,
+    ...ids,
+  );
+  return r.changes;
 }
 
 /**

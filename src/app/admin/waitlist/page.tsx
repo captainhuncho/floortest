@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/admin";
 import Link from "next/link";
 import { ConfirmButton, ConfirmSubmit } from "../AdminUi";
+import { OpsForm } from "../OpsForm";
 import { q } from "@/lib/db";
 import { httpsLink } from "@/lib/safe-links";
 import { inviteFromWaitlist, inviteOldestFromWaitlist, removeFromWaitlist } from "../actions";
@@ -59,15 +60,15 @@ export default async function Waitlist({ searchParams }: { searchParams: Promise
             ))}
           </nav>
           {tab === "waiting" && waiting > 0 && (
-            <form className="flex items-center gap-2">
+            <OpsForm action={inviteOldestFromWaitlist} className="flex flex-wrap items-center gap-2">
               <label className="flex items-center gap-2 text-[13px] text-mute">
                 Invite the oldest
                 <input name="n" type="number" min={1} max={50} defaultValue={Math.min(10, waiting)} required className="input min-h-11 w-20 rounded-full text-center" />
               </label>
-              <ConfirmSubmit formAction={inviteOldestFromWaitlist} message="Email personal invites to the oldest people on the waitlist?" className="admin-press inline-flex min-h-11 items-center gap-1.5 rounded-full bg-lime px-5 text-[13.5px] font-semibold text-ink">
+              <ConfirmSubmit message="Email personal invites to the oldest people on the waitlist?" className="admin-press inline-flex min-h-11 items-center gap-1.5 rounded-full bg-lime px-5 text-[13.5px] font-semibold text-ink">
                 <span aria-hidden className="text-[16px] leading-none">+</span> Send invites
               </ConfirmSubmit>
-            </form>
+            </OpsForm>
           )}
         </div>
 
@@ -129,9 +130,9 @@ export default async function Waitlist({ searchParams }: { searchParams: Promise
                         >
                           Remove
                         </ConfirmButton>
-                        <form action={inviteFromWaitlist.bind(null, w.id)}>
+                        <OpsForm action={inviteFromWaitlist.bind(null, w.id)}>
                           <button className="admin-press inline-flex min-h-11 items-center rounded-full bg-lime px-4 text-[12.5px] font-semibold text-ink">Invite</button>
-                        </form>
+                        </OpsForm>
                       </>
                     )}
                   </span>
