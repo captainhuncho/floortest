@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/admin";
 import Link from "next/link";
 import { now as clock, q } from "@/lib/db";
 import { setContactHandled } from "../actions";
+import { OpsForm } from "../OpsForm";
 
 const DAY = 86_400_000;
 /** Messages longer than this fold behind "Show the whole message". */
@@ -128,11 +129,11 @@ export default async function Inbox({ searchParams }: { searchParams: Promise<{ 
                     >
                       Reply by email
                     </a>
-                    <form action={setContactHandled.bind(null, m.id, !m.handled_at)}>
+                    <OpsForm action={setContactHandled.bind(null, m.id, !m.handled_at)}>
                       <button className="admin-press inline-flex min-h-11 items-center rounded-full px-5 text-[13.5px] font-semibold text-bone ring-1 ring-line-2 hover:bg-ink-3">
                         {m.handled_at ? "Reopen" : "Mark handled"}
                       </button>
-                    </form>
+                    </OpsForm>
                   </div>
                 </li>
               ))}

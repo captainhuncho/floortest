@@ -4,6 +4,7 @@ import { q } from "@/lib/db";
 import { ConfirmButton } from "../AdminUi";
 import { resolveAllIncidents, resolveIncident } from "../actions";
 import { LevelPill, LogTime, PageHead } from "../PinParts";
+import { OpsForm } from "../OpsForm";
 
 const KINDS: Record<string, string> = {
   server_error: "Server error",
@@ -107,9 +108,9 @@ export default async function Incidents({ searchParams }: { searchParams: Promis
                       {r.resolved_at ? (
                         <span className="text-[12.5px] text-mute">Handled</span>
                       ) : (
-                        <form action={resolveIncident.bind(null, r.id)}>
+                        <OpsForm action={resolveIncident.bind(null, r.id)}>
                           <button className="admin-press inline-flex min-h-11 items-center whitespace-nowrap rounded-full px-4 text-[13px] font-semibold ring-1 ring-line-2 hover:bg-ink-3">Mark handled</button>
-                        </form>
+                        </OpsForm>
                       )}
                     </span>
                   </div>
