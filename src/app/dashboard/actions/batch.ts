@@ -7,7 +7,7 @@ import { trackUse } from "@/lib/usage";
 import { BATCH_MAX } from "@/lib/batch";
 import { audit } from "@/lib/audit";
 import { logEvents, q, type Track } from "@/lib/db";
-import { clearDecision, decide, decisionLocked, deleteTrack } from "@/lib/review";
+import { clearDecisions, decideMany, deleteTracks } from "@/lib/review";
 import { done, ownCollection } from "./common";
 
 export type BatchAction = { type: "kept" | "passed" | "clear" } | { type: "move"; collection: number } | { type: "delete"; confirm: string };
@@ -36,19 +36,11 @@ export async function batchTracks(ids: number[], action: BatchAction): Promise<B
   let locked = 0;
   let where = "";
   if (type === "kept" || type === "passed") {
-    // An owner's or admin's call stands against a member's batch (counted as skipped).
-    for (const t of tracks) {
-      if (t.decision === type) continue;
-      if (decisionLocked(u, t) || !(await decide(u, t, type))) locked++;
-      else changed++;
-    }
+    // One update for the lot. An owner's or admin's call stands against a member's batch (counted as skipped).
+    ({ changed, locked } = await decideMany(u, tracks, type));
     await trackUse(u.id, "decide");
   } else if (type === "clear") {
-    for (const t of tracks) {
-      if (!t.decision) continue;
-      if (decisionLocked(u, t) || !(await clearDecision(u, t))) locked++;
-      else changed++;
-    }
+    ({ changed, locked } = await clearDecisions(u, tracks));
   } else if (type === "move") {
     const target = await ownCollection(u.id, Number((action as { collection: number }).collection));
     if (!target) return { done: 0, skipped: wanted.length, error: "Choose a collection." };
@@ -63,10 +55,8 @@ export async function batchTracks(ids: number[], action: BatchAction): Promise<B
     changed = moving.length;
     where = ` to ${target.name}`;
   } else if (type === "delete") {
-    for (const t of tracks) {
-      await deleteTrack(u, t);
-      changed++;
-    }
+    await deleteTracks(u, tracks);
+    changed = tracks.length;
   } else {
     return { done: 0, skipped: wanted.length, error: "That action isn't available. Reload the page and try again." };
   }
