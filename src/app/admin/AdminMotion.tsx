@@ -1,7 +1,8 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useLayoutEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
+import { REFRESH_EVENT } from "@/components/PullToRefresh";
 
 const SEEN = "floortest-admin-moved";
 /** The old "start still" cookie (1 Nov); cleared so a browser that has it doesn't keep it. */
@@ -42,5 +43,25 @@ export function AdminMotion() {
     const t = setTimeout(() => root.classList.add("admin-still"), ARRIVAL_MS);
     return () => clearTimeout(t);
   }, [path]);
+
+  // Pull to refresh plays it again too, the same as a browser refresh (hub, 1 Nov).
+  useEffect(() => {
+    let t = 0;
+    const replay = () => {
+      const root = document.getElementById("theme-root");
+      if (!root) return;
+      // Going still for one frame, then moving again, restarts every arrival animation from the start.
+      root.classList.add("admin-still");
+      void root.offsetWidth;
+      root.classList.remove("admin-still");
+      clearTimeout(t);
+      t = window.setTimeout(() => root.classList.add("admin-still"), ARRIVAL_MS);
+    };
+    window.addEventListener(REFRESH_EVENT, replay);
+    return () => {
+      window.removeEventListener(REFRESH_EVENT, replay);
+      clearTimeout(t);
+    };
+  }, []);
   return null;
 }
