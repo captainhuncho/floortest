@@ -62,7 +62,7 @@ test("the live feed answers ops with recent activity and nobody else", async ({ 
   await opsLogIn(page);
   const res = await page.request.get("/api/admin/feed");
   expect(res.status()).toBe(200);
-  expect(res.headers()["cache-control"]).toBe("private, max-age=30");
+  expect(res.headers()["cache-control"]).toBe("private, no-store");
   const { items } = (await res.json()) as { items: { kind: string; text: string; href: string }[] };
   expect(items.some((i) => i.kind === "signup")).toBe(true);
   expect(items.every((i) => !i.text.startsWith("signed in to ops"))).toBe(true);
