@@ -127,12 +127,14 @@ Edit mode is bound to the exact ops session that opened it (pass and cookie are 
 ## Ops (ops.floortest.app)
 ```
 /ops-login (password + two-factor every time) ─► /admin (Overview: verdict, act now, queues, health)
-   sidebar: Overview · Support · Growth · Product · Trust & safety · Platform · Admin
+   top bar: Overview · Support · Growth · Product · Trust & safety · Platform · Admin (picks the area)
+   sidebar: Essentials (Overview, Inbox, Users, Moderation) + the open area's pages
    each page needs its permission, else ─► /admin/no-access
    phones: bottom bar Home · Inbox · Users · Safety · More (More ─► full menu)
 Users ─► Filters (type, plan, tag, joined, activity, security) ─► chips (✕ removes one) ─► 50 a page
    tick rows (≤ 50) ─┬─ Add tag ─► tag added to each ─► admin log
                      └─ Suspend… ─► reason ─► each: signed out, link offline, email with appeal ─► admin log
+Growth ─► Growth & decisions ─► findings · funnel · projection · sources · cohorts · pipeline
 Moderation ─► search ─► pick a track ─► Play (5-minute file link; admin log "played track")
    ─► Block sender for @them / Block everywhere / Remove track… (confirm)
 ```

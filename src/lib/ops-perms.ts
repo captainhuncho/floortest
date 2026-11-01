@@ -86,6 +86,7 @@ export function has(perms: ReadonlySet<Perm>, need: Perm) {
 export const PAGE_NEEDS: Record<string, Need> = {
   "/admin": "overview",
   "/admin/metrics": "metrics",
+  "/admin/growth": "metrics",
   "/admin/usage": "usage",
   "/admin/revenue": "revenue",
   "/admin/storage": "storage",
