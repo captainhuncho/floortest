@@ -33,7 +33,8 @@ export type FunnelStep = Step & { ofFirst: number; ofPrev: number };
 
 /** Each step's share of the first step and of the one before it (0–100, whole numbers). */
 export function funnel(steps: Step[]): FunnelStep[] {
-  const first = steps[0]?.n || 0;
+  // The base is the first step anyone reached: with sign-up open and no waitlist, later steps still read as shares.
+  const first = steps.find((s) => s.n > 0)?.n || 0;
   return steps.map((s, i) => {
     const prev = i ? steps[i - 1].n : s.n;
     return { ...s, ofFirst: first ? Math.round((s.n / first) * 100) : 0, ofPrev: prev ? Math.round((s.n / prev) * 100) : 0 };

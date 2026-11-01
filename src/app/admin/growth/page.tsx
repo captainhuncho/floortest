@@ -135,7 +135,7 @@ export default async function Growth() {
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <section aria-labelledby="fun-h" className={P} style={i(3)}>
           <h2 id="fun-h" className="text-[16px] font-semibold">From waitlist to paying</h2>
-          <p className="text-[12.5px] text-faint">Last {WINDOW_DAYS} days · each bar is a share of the first step</p>
+          <p className="text-[12.5px] text-faint">Last {WINDOW_DAYS} days · each bar is a share of the first step anyone reached</p>
           <ol className="mt-4 space-y-3">
             {flow.map((s, n) => (
               <li key={s.label}>

@@ -182,7 +182,10 @@ export function AccountsTable({ rows, canAct }: { rows: AccountRow[]; canAct: bo
         onClose={() => setAsking(false)}
         busy={pending}
         title={`Suspend ${n} account${n === 1 ? "" : "s"}?`}
-        description="Each one is signed out, their link goes offline and they get an email with this reason and a way to appeal. Nothing is deleted, and you can restore them from their page."
+        description={`${rows
+          .filter((r) => picked.has(r.id))
+          .map((r) => `@${r.handle}`)
+          .join(", ")}. Each one is signed out, their link goes offline and they get an email with this reason and a way to appeal. Nothing is deleted, and you can restore them from their page.`}
         actions={
           <>
             <button type="button" className="btn-ghost btn-sm" onClick={() => setAsking(false)} disabled={pending}>

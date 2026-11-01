@@ -50,3 +50,12 @@ test("decisions say what they saw, ignore tiny groups and stay quiet without dat
   assert.ok(titles.includes("Sign-ups are slowing"));
   assert.deepEqual(decisions({ steps: [], sources: [], kinds: [], signups: [], next: [] }), []);
 });
+
+test("funnel uses the first step anyone reached as its base", () => {
+  const f = funnel([
+    { label: "Joined the waitlist", n: 0 },
+    { label: "Signed up", n: 40 },
+    { label: "Got a track", n: 10 },
+  ]);
+  assert.deepEqual(f.map((s) => s.ofFirst), [0, 100, 25]);
+});

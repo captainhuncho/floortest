@@ -24,7 +24,7 @@ export default async function Users({ searchParams }: { searchParams: Promise<Re
     const qs = new URLSearchParams(Object.entries({ ...params, ...change }).filter(([, v]) => v) as [string, string][]).toString();
     return `/admin/accounts${qs ? `?${qs}` : ""}`;
   };
-  const csv = new URLSearchParams(Object.entries({ ...aud, joined: params.joined, q: search }).filter(([, v]) => v) as [string, string][]).toString();
+  const csv = new URLSearchParams(Object.entries({ ...aud, joined: params.joined, security, q: search }).filter(([, v]) => v) as [string, string][]).toString();
   const where = `${w.sql} AND ${securityWhere(security)} ${search ? "AND (u.name ILIKE ? OR u.email ILIKE ? OR u.handle ILIKE ?)" : ""}`;
   const args = [...w.args, ...(search ? Array(3).fill(likeContains(search)) : [])];
   const [total, rows] = await Promise.all([
@@ -111,7 +111,9 @@ export default async function Users({ searchParams }: { searchParams: Promise<Re
         </span>
       </div>
       <div className="mt-4">
+        {/* Keyed on the filters and page: a soft navigation to other rows starts with nothing selected. */}
         <AccountsTable
+          key={`${link({})}#${page}`}
           canAct={can(admin.access, "users.support")}
           rows={rows.map((u) => ({
             id: u.id,
