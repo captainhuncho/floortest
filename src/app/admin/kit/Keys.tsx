@@ -2,13 +2,14 @@
 
 import { createContext, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Dialog, DIALOG_QUIET } from "@/components/Dialog";
-import { keyName, matchShortcut, shortcutAllowed } from "./core";
+import { keyLabel, keyName, matchShortcut, shortcutAllowed } from "./core";
 import { isDialogOpen, isField } from "./live";
 
 export type Shortcut = { label: string; run: () => unknown };
 type Registry = { set(owner: string, map: Record<string, Shortcut> | null): void; help(): void };
 
 const KeysContext = createContext<Registry | null>(null);
+const onControl = (t: EventTarget | null) => t instanceof Element && !!t.closest("button, a[href], summary, [role=button], [role=slider], [role=link], [role=tab], audio, video");
 const isMac = () => typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
 /**
@@ -33,7 +34,7 @@ export function KeysProvider({ children }: { children: React.ReactNode }) {
       },
       help() {
         const mac = isMac();
-        const own = [...maps.current.values()].flatMap((m) => Object.entries(m).map(([k, s]) => [k, s.label] as [string, string]));
+        const own = [...maps.current.values()].flatMap((m) => Object.entries(m).map(([k, s]) => [keyLabel(k), s.label] as [string, string]));
         setListed([["?", "Show this list"], [mac ? "⌘ K" : "Ctrl K", "Search people, pages and actions"], [mac ? "⌘ Z" : "Ctrl Z", "Undo the last action"], ...own]);
         setHelpOpen(true);
       },
@@ -56,7 +57,7 @@ export function KeysProvider({ children }: { children: React.ReactNode }) {
       running.current = false;
     }
     const onKey = (e: KeyboardEvent) => {
-      if (!shortcutAllowed({ key: e.key, metaKey: e.metaKey, ctrlKey: e.ctrlKey, altKey: e.altKey, inField: isField(e.target) || (e.target as HTMLElement)?.isContentEditable, dialogOpen: isDialogOpen(), defaultPrevented: e.defaultPrevented })) return;
+      if (!shortcutAllowed({ key: e.key, metaKey: e.metaKey, ctrlKey: e.ctrlKey, altKey: e.altKey, inField: isField(e.target) || (e.target as HTMLElement)?.isContentEditable, dialogOpen: isDialogOpen(), defaultPrevented: e.defaultPrevented, onControl: onControl(e.target) })) return;
       if (e.key === "?") {
         e.preventDefault();
         registry.help();

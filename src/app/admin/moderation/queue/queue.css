@@ -1,0 +1,217 @@
+/*
+ * The new Moderation (admin redesign B, step 4; switch ops_shell). Phones: the list alone; a row opens a sheet. From
+ * 768px: list | track. From 1280px: list | track | decision (B's rule; narrower, the decision opens as a dialog).
+ * Solid panes, the app's own tokens, so day and night follow the theme. Motion: transform and opacity only.
+ */
+.mq {
+  display: grid;
+  gap: 20px;
+  align-items: start;
+}
+@media (min-width: 768px) {
+  .mq {
+    grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  }
+}
+@media (min-width: 1280px) {
+  .mq {
+    grid-template-columns: minmax(240px, 280px) minmax(0, 1fr) minmax(260px, 288px);
+  }
+}
+.mq-list {
+  min-width: 0;
+}
+@media (min-width: 768px) {
+  .mq-list {
+    position: sticky;
+    top: 4.5rem;
+    max-height: calc(100dvh - 6rem);
+    display: flex;
+    flex-direction: column;
+  }
+  .mq-rows {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    min-height: 0;
+  }
+}
+.mq-head {
+  padding-bottom: 12px;
+}
+.mq-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--color-ink-2);
+  border: 1px solid var(--color-line);
+}
+@media (min-width: 768px) {
+  .mq-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.mq-tab {
+  min-height: 36px;
+  padding: 0 6px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-mute);
+  white-space: nowrap;
+}
+.mq-tab[aria-pressed="true"] {
+  background: var(--color-ink-4);
+  color: var(--color-bone);
+}
+@media (pointer: coarse) {
+  .mq-tab {
+    min-height: 44px;
+  }
+}
+.mq-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mq-row {
+  display: block;
+  min-height: 44px;
+  padding: 11px 12px;
+  border-radius: 14px;
+  transition: background-color 150ms;
+}
+.mq-row:hover {
+  background: var(--color-ink-3);
+}
+.mq-row[aria-current="true"] {
+  background: var(--color-ink-4);
+}
+.mq-sig {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  font-size: 12.5px;
+  color: var(--color-mute);
+}
+.mq-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-faint);
+}
+.mq-sig[data-kind="takedown"] {
+  color: var(--kit-danger-t);
+}
+.mq-sig[data-kind="takedown"] .mq-dot {
+  background: var(--color-danger);
+}
+.mq-sig[data-kind="blocked_sender"] .mq-dot {
+  background: #e0a526;
+}
+.mq-empty {
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--color-faint);
+}
+.mq-body {
+  min-width: 0;
+}
+@media (max-width: 767px) {
+  .mq-body {
+    display: none;
+  }
+}
+.mq-decide {
+  display: none;
+}
+@media (min-width: 768px) and (max-width: 1279px) {
+  .mq-decide {
+    display: inline-flex;
+  }
+}
+.mq-banner {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--color-ink-3);
+  border: 1px solid var(--color-line);
+  color: var(--color-faint);
+}
+.mq-banner[data-kind="takedown"] {
+  border-color: color-mix(in srgb, var(--color-danger) 45%, var(--color-line));
+  color: var(--kit-danger-t);
+}
+.mq-two {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+@media (min-width: 1024px) {
+  .mq-two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.mq-card {
+  min-width: 0;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--color-ink-2);
+  border: 1px solid var(--color-line);
+}
+.mq-kv {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 14px;
+  margin-top: 10px;
+  font-size: 13px;
+}
+.mq-kv dt {
+  color: var(--color-faint);
+  white-space: nowrap;
+}
+.mq-kv--text {
+  margin-top: 0;
+}
+.mq-kv--text dd {
+  color: var(--color-mute);
+}
+.mq-tl {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.mq-act {
+  position: sticky;
+  top: 4.5rem;
+  padding: 18px;
+  border-radius: 18px;
+  background: var(--color-ink-2);
+  border: 1px solid var(--color-line);
+}
+.mq-hints {
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+.mq-decision .kit-opsbtn {
+  width: 100%;
+}
+/* Key hints only where single keys act (not in the dialog) and where there is a keyboard to press them. */
+.mq-kbd {
+  display: none;
+}
+@media (min-width: 640px) and (hover: hover) {
+  .mq-decision[data-keys] .mq-kbd {
+    display: inline;
+  }
+  .mq-decision[data-keys] .mq-hints {
+    display: flex;
+  }
+}

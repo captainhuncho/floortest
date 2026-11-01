@@ -295,14 +295,17 @@ export async function deleteInvite(code: string) {
   refresh();
 }
 
-/** Takes down an abusive upload: file gone from storage, track gone from the receiver's desk. */
-export async function removeTrackAsAdmin(trackId: number, reason: string) {
+/**
+ * Takes down an abusive upload: file gone from storage, track gone from the receiver's desk. Today's Moderation answers
+ * with a flash; the new queue (switch ops_shell) passes `answer` and gets the result back instead, to show in place.
+ */
+export async function removeTrackAsAdmin(trackId: number, reason: string, answer = false): Promise<OpsResult | void> {
   const a = await requireAdminAction("moderation");
-  const t = await q.get<Track & { handle: string }>(
-    "SELECT t.*, u.handle FROM tracks t JOIN users u ON u.id = t.user_id WHERE t.id = ? AND t.deleted_at IS NULL",
-    trackId,
-  );
-  if (!t) return fail("That track is already gone");
+  const why = String(reason ?? "").trim().slice(0, 200);
+  const t = Number.isSafeInteger(trackId) && trackId > 0
+    ? await q.get<Track & { handle: string }>("SELECT t.*, u.handle FROM tracks t JOIN users u ON u.id = t.user_id WHERE t.id = ? AND t.deleted_at IS NULL", trackId)
+    : undefined;
+  if (!t) return answer ? no("That track is already gone") : fail("That track is already gone");
   await q.tx(async (db) => {
     await retireTrackFiles(db, [t.id], "removed by admin");
     await db.run("UPDATE tracks SET deleted_at = ?, file_key = NULL, art_key = NULL WHERE id = ?", now(), t.id);
@@ -310,7 +313,8 @@ export async function removeTrackAsAdmin(trackId: number, reason: string) {
   });
   await drainNow();
   await logEvent({ user_id: t.user_id, sender_id: t.sender_id, track_id: t.id, type: "deleted", detail: "removed by FloorTest" });
-  await logAdmin(a.id, "removed track", `${t.artist} – ${t.title}`, `from @${t.handle}${reason ? ` · ${reason}` : ""}`);
+  await logAdmin(a.id, "removed track", `${t.artist} – ${t.title}`, `from @${t.handle}${why ? ` · ${why}` : ""}`);
+  if (answer) return ok(`Removed "${t.title}" and its file`);
   await done(`Removed "${t.title}" and its file`);
   refresh();
 }
@@ -359,13 +363,14 @@ export async function runJobNow(job: string): Promise<OpsResult> {
   return out.ok ? ok(`${JOBS[name].label}: done`) : no(`${JOBS[name].label} ran but failed. See Incidents.`);
 }
 
-/** Blocks a sender email on one receiver's link (the same as the receiver blocking them). */
-export async function blockSenderAsAdmin(senderId: number) {
+/** Blocks a sender email on one receiver's link (the same as the receiver blocking them). `answer`: as removeTrackAsAdmin. */
+export async function blockSenderAsAdmin(senderId: number, answer = false): Promise<OpsResult | void> {
   const a = await requireAdminAction("moderation");
-  const s = await q.get<{ id: number; email: string; user_id: number }>("SELECT id, email, user_id FROM senders WHERE id = ?", senderId);
-  if (!s) return fail("Sender not found");
+  const s = Number.isSafeInteger(senderId) && senderId > 0 ? await q.get<{ id: number; email: string; user_id: number }>("SELECT id, email, user_id FROM senders WHERE id = ?", senderId) : undefined;
+  if (!s) return answer ? no("Sender not found") : fail("Sender not found");
   await q.run("UPDATE senders SET blocked_at = COALESCE(blocked_at, ?) WHERE id = ?", now(), s.id);
   await logAdmin(a.id, "blocked sender", s.email);
+  if (answer) return ok(`Blocked ${s.email} on that link`);
   await done(`Blocked ${s.email} on that link`);
   refresh();
 }
@@ -676,21 +681,32 @@ const cleanBlock = (raw: string) => {
 /** Stops an address, or a whole domain, sending to anyone on FloorTest. */
 export async function addPlatformBlock(form: FormData) {
   const a = await requireAdminAction("blocks");
-  const b = cleanBlock(String(form.get("value") || ""));
-  if (!b) return fail("Enter an email address or a domain like example.com");
-  const reason = String(form.get("reason") || "").trim().slice(0, 200);
-  await q.run("INSERT INTO platform_blocks (kind, value, reason, admin_id, created_at) VALUES (?,?,?,?,?) ON CONFLICT (value) DO NOTHING", b.kind, b.value, reason, a.id, now());
-  await logAdmin(a.id, `blocked ${b.kind} everywhere`, b.value, reason);
-  await done(`Blocked ${b.value} everywhere`);
+  const r = await platformBlock(a.id, String(form.get("value") || ""), String(form.get("reason") || ""));
+  if (!r.ok) return fail(r.error);
+  await done(r.message);
   refresh();
 }
 
-export async function blockEverywhere(email: string) {
-  await requireAdminAction("blocks");
-  const f = new FormData();
-  f.set("value", email);
-  f.set("reason", "from moderation");
-  await addPlatformBlock(f);
+async function platformBlock(adminId: number, value: string, reason: string): Promise<OpsResult> {
+  const b = cleanBlock(value);
+  if (!b) return { ok: false, error: "Enter an email address or a domain like example.com" };
+  const why = reason.trim().slice(0, 200);
+  await q.run("INSERT INTO platform_blocks (kind, value, reason, admin_id, created_at) VALUES (?,?,?,?,?) ON CONFLICT (value) DO NOTHING", b.kind, b.value, why, adminId, now());
+  await logAdmin(adminId, `blocked ${b.kind} everywhere`, b.value, why);
+  return { ok: true, message: `Blocked ${b.value} everywhere` };
+}
+
+/** Moderation → Block everywhere: the sender's email, as Sender blocks would. `answer`: as removeTrackAsAdmin. */
+export async function blockEverywhere(email: string, answer = false): Promise<OpsResult | void> {
+  const a = await requireAdminAction("blocks");
+  const r = await platformBlock(a.id, String(email ?? ""), "from moderation");
+  if (answer) {
+    refresh();
+    return r;
+  }
+  if (!r.ok) return fail(r.error);
+  await done(r.message);
+  refresh();
 }
 
 export async function removePlatformBlock(id: number) {

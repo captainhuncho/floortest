@@ -6,7 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { dataDir, getDb } from "../src/lib/db/client";
 import { sealSecret } from "../src/lib/totp";
-import { OPS_EMAIL, OPS_FEEDBACK_MESSAGE, OPS_INBOX_MESSAGE, OPS_TOTP_SECRET } from "../e2e/ops-account";
+import { OPS_BLOCKED, OPS_CLAIMED, OPS_EMAIL, OPS_FEEDBACK_MESSAGE, OPS_INBOX_MESSAGE, OPS_TOTP_SECRET } from "../e2e/ops-account";
 
 if (process.env.DATABASE_URL || process.env.S3_BUCKET || process.env.NODE_ENV === "production") {
   console.error("Refusing to seed: this script is for local development only (DATABASE_URL, S3_BUCKET or NODE_ENV=production is set).");
@@ -256,6 +256,25 @@ async function main() {
     await db.run("INSERT INTO plan_requests (user_id, plan, kind, created_at) VALUES (?,?,?,?)", opsId, "team", "upgrade", now - 5 * 3_600_000);
     // And one beta feedback item for the Feedback status switch (e2e/ops-kit.spec.ts).
     await db.run("INSERT INTO contact_messages (name, email, topic, message, page, created_at) VALUES (?,?,?,?,?,?)", "Fay Feedback", "fay@example.com", "Feedback · Idea", OPS_FEEDBACK_MESSAGE, "/dashboard", now - 7_200_000);
+    // And two tracks with a signal for Moderation's queue (e2e/ops-moderation.spec.ts), on the ops account's own desk so
+    // the demo desk the other specs count stays as it is: one with an open takedown claim (staff may play it), one from
+    // a sender its receiver blocked (staff may not).
+    const ops = (await db.get<{ id: number }>("SELECT id FROM users WHERE email = ?", OPS_EMAIL))!.id;
+    for (const [i, m] of [OPS_CLAIMED, OPS_BLOCKED].entries()) {
+      const sid = await id("INSERT INTO senders (user_id, email, name, created_at, blocked_at) VALUES (?,?,?,?,?)", ops, m.email, m.sender, now - 2 * DAY, m === OPS_BLOCKED ? now - 3_600_000 : null);
+      const audio = makeLoop(122, 50 + i * 5, 777 + i * 13);
+      const key = `audio/${ops}/${crypto.randomUUID()}.wav`;
+      const data = wav(audio);
+      putFile(key, data);
+      const tid = await id(
+        `INSERT INTO tracks (user_id, sender_id, token, title, artist, message, file_key, original_name, mime, size, duration, bpm, peaks, created_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        ops, sid, crypto.randomBytes(12).toString("base64url"), m.title, m.artist, "", key, `${m.title}.wav`, "audio/wav", data.length, 32, 122, JSON.stringify(peaks(audio.x)), now - DAY - i * 60_000,
+      );
+      await db.run("INSERT INTO events (user_id, sender_id, track_id, type, detail, created_at) VALUES (?,?,?,?,?,?)", ops, sid, tid, "submitted", "", now - DAY - i * 60_000);
+      if (m === OPS_CLAIMED)
+        await db.run("INSERT INTO takedowns (track_id, track_label, claimant, claimant_email, basis, created_at) VALUES (?,?,?,?,?,?)", tid, `${m.artist} – ${m.title}`, "Atlas Publishing", "claims@atlas.example", "Uses our sample", now - 2 * 3_600_000);
+    }
   }
   // Sharing tests: the Villagers tracks were sent while the callout allowed sharing.
   if (process.env.SEED_SHARING === "1") await db.run("UPDATE tracks SET share_ok = 1, share_terms = ? WHERE collection_id = ?", "e2e", villagers);
