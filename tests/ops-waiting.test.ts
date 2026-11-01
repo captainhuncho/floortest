@@ -12,7 +12,7 @@ delete process.env.DATABASE_URL;
 test("Waiting on me lists only what the viewer may act on, oldest first, capped, with full counts", async () => {
   const { q } = await import("../src/lib/db");
   const { recordRun } = await import("../src/lib/cron");
-  const { waitingOnMe, DUE_MS, LIMIT, KIND_AREA } = await import("../src/lib/ops-waiting");
+  const { waitingOnMe, KIND_DUE_MS, LIMIT, KIND_AREA } = await import("../src/lib/ops-waiting");
   const { ROLE_PERMS } = await import("../src/lib/ops-perms");
   const t = Date.now() - 86_400_000;
 
@@ -35,10 +35,11 @@ test("Waiting on me lists only what the viewer may act on, oldest first, capped,
   const all = await waitingOnMe(superAdmin);
   assert.deepEqual(
     all.items.map((i) => i.kind),
-    ["inbox", "privacy", "verification", "plan_request", "takedown", "incident", "job_failed"],
-    "every kind, oldest first; no feedback and no rejected upload",
+    ["incident", "job_failed", "verification", "plan_request", "takedown", "inbox", "privacy"],
+    "every kind, soonest due first (an hour for incidents and jobs … 21 days for privacy); no feedback and no rejected upload",
   );
-  assert.equal(all.items[0].due_at - all.items[0].created_at, DUE_MS);
+  for (const i of all.items) assert.equal(i.due_at - i.created_at, KIND_DUE_MS[i.kind]);
+  assert.equal(KIND_DUE_MS.privacy, 21 * 86_400_000, "privacy matches the Overview's 21 days, inside the legal month");
   assert.equal(all.items.find((i) => i.kind === "takedown")!.area, KIND_AREA.takedown);
   assert.equal(all.items.find((i) => i.kind === "job_failed")!.id, "mail");
   assert.deepEqual(all.counts, { inbox: 1, privacy: 1, verification: 1, verification_proposal: 0, takedown: 1, plan_request: 1, incident: 1, job_failed: 1 });
