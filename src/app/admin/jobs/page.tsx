@@ -76,7 +76,8 @@ export default async function Jobs() {
         <span className="rounded-full px-3 py-1 text-[10.5px] font-semibold uppercase tracking-[0.2em] text-bone ring-1 ring-line-2">Platform</span>
         <h1 className="mt-3 text-[34px] font-semibold leading-tight tracking-[-0.03em]">Jobs</h1>
         <p className="mt-1 max-w-2xl text-[15px] text-mute">
-          The jobs that run on a schedule. A failure, or a job not running for {LATE_AFTER_MS / 3_600_000} hours, shows on the Overview; failures also record an incident.
+          The jobs that run on a schedule. A failure, or a job not running for {LATE_AFTER_MS / 3_600_000} hours, shows on the Overview; failures also record an incident. Run now does a job's scheduled run straight away, never
+          alongside one already going.
         </p>
       </header>
 
@@ -150,7 +151,6 @@ export default async function Jobs() {
                     ) : (
                       <button className="btn-ghost btn-sm">Run now</button>
                     )}
-                    <span className="text-[12px] text-faint">Same as the scheduled run; never alongside one already going.</span>
                   </OpsForm>
                 )}
               </div>
