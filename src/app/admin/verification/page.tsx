@@ -4,7 +4,8 @@ import Link from "next/link";
 import { ConfirmButton, ConfirmSubmit } from "../AdminUi";
 import { q } from "@/lib/db";
 import { addProtectedName, approveIdentity, rejectIdentity, removeProtectedName, revokeIdentity } from "../actions";
-import { Avatar, PageHead, Stepper } from "../PinParts";
+import { Avatar, PageHead, StatusPill, Stepper } from "../PinParts";
+import { DIRECT_SEARCH_MAX, findToVerify } from "@/lib/identity-direct";
 
 const STEPS = ["Requested", "Code checked", "Verified"];
 
@@ -12,8 +13,10 @@ const STEPS = ["Requested", "Code checked", "Verified"];
  * Identity requests to review, each laid out like pin 89's tracker (owner, 1 Nov): requested, code checked, verified,
  * with the code to look for and the profiles to look in. Below: names nobody can claim without us, and who's verified.
  */
-export default async function Verification() {
+export default async function Verification({ searchParams }: { searchParams: Promise<{ find?: string }> }) {
   await requireAdmin("verification");
+  const find = String((await searchParams).find ?? "").trim().slice(0, 100);
+  const matches = find ? await findToVerify(find) : [];
   const pending = await q.all<{ id: number; name: string; handle: string; email: string; identity_code: string | null; identity_links: string; identity_submitted_at: number | null }>(
     "SELECT id, name, handle, email, identity_code, identity_links, identity_submitted_at FROM users WHERE identity_status = 'pending' ORDER BY identity_submitted_at",
   );
@@ -80,6 +83,44 @@ export default async function Verification() {
             </li>
           ))}
         </ul>
+      </section>
+
+      <section aria-labelledby="direct-h" className="admin-panel admin-rise p-5" style={{ "--i": 2 } as React.CSSProperties}>
+        <h2 id="direct-h" className="text-[16px] font-semibold">Verify someone directly</h2>
+        <p className="mt-1 text-[13.5px] text-mute">
+          For people you already know are real (a known label, a DJ you&apos;ve checked): find their account, then use Verify profile on it. No request or bio code needed.
+        </p>
+        <form role="search" className="mt-4 flex flex-wrap gap-2">
+          <label className="min-w-0 flex-1 basis-56" htmlFor="direct-find">
+            <span className="sr-only">Handle or email</span>
+            <input id="direct-find" name="find" type="search" defaultValue={find} minLength={2} maxLength={100} className="input min-h-11 w-full" placeholder="@handle or email" autoComplete="off" />
+          </label>
+          <button className="admin-press inline-flex min-h-11 items-center rounded-full px-5 text-[13.5px] font-semibold ring-1 ring-line-2 hover:bg-ink-3">Find</button>
+        </form>
+        {find && (
+          <ul className="mt-4 overflow-hidden rounded-[16px] ring-1 ring-line">
+            {matches.map((m) => (
+              <li key={m.id} className="border-t border-line first:border-t-0">
+                <Link href={`/admin/accounts/${m.id}`} className="flex min-h-14 flex-wrap items-center justify-between gap-3 px-4 py-2.5 hover:bg-ink-3/50">
+                  <span className="flex min-w-0 items-center gap-3">
+                    <Avatar name={m.name || m.handle} />
+                    <span className="min-w-0">
+                      <span className="block truncate text-[14px] font-semibold">{m.name}</span>
+                      <span className="block truncate text-[12px] text-faint">
+                        @{m.handle} · {m.email}
+                      </span>
+                    </span>
+                  </span>
+                  <StatusPill tone={m.identity_status === "verified" ? "lime" : m.suspended_at ? "danger" : m.identity_status === "pending" ? "amber" : "mute"}>
+                    {m.identity_status === "verified" ? "Verified" : m.suspended_at ? "Suspended" : m.identity_status === "pending" ? "Request waiting" : !m.email_verified_at ? "Email unconfirmed" : "Not verified"}
+                  </StatusPill>
+                </Link>
+              </li>
+            ))}
+            {!matches.length && <li className="px-4 py-6 text-[14px] text-mute">No account matches &ldquo;{find}&rdquo;.</li>}
+          </ul>
+        )}
+        {matches.length >= DIRECT_SEARCH_MAX && <p className="mt-2 text-[12.5px] text-faint">Showing the first {DIRECT_SEARCH_MAX}. Type more of the handle or email to narrow it.</p>}
       </section>
 
       <section aria-labelledby="names-h" className="admin-panel admin-rise p-5" style={{ "--i": 3 } as React.CSSProperties}>

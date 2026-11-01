@@ -163,6 +163,7 @@ export const ACTION_NEEDS: Record<string, Need> = {
   resendEmail: "emails.act",
   setContactHandled: "inbox.act",
   approveIdentity: "verification",
+  verifyDirectly: "verification",
   revokeIdentity: "verification",
   rejectIdentity: "verification",
   addProtectedName: "verification",

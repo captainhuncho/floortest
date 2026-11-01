@@ -1,11 +1,13 @@
 import "server-only";
 import { notFound, redirect } from "next/navigation";
 import { currentOpsAdmin } from "./ops";
-import { now, q, type User } from "./db";
+import type { User } from "./db";
 import { env } from "./env";
 import { flash } from "./flash";
 import type { Need } from "./ops-perms";
 import { can, opsAccessFor, type OpsAccess } from "./ops-access";
+import { logAdmin } from "./admin-log";
+export { logAdmin } from "./admin-log";
 export { can, homeFor, opsAccessFor, type OpsAccess } from "./ops-access";
 
 export const isAdminEmail = (email: string) => env.adminEmails.includes(email.toLowerCase());
@@ -40,6 +42,3 @@ export async function requireAdminAction(need: Need): Promise<User & { access: O
   return u;
 }
 
-export async function logAdmin(adminId: number, action: string, target = "", detail = "") {
-  await q.run("INSERT INTO admin_log (admin_id, action, target, detail, created_at) VALUES (?,?,?,?,?)", adminId, action, target, detail.slice(0, 300), now());
-}

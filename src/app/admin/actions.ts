@@ -454,15 +454,23 @@ export async function approveIdentity(userId: number) {
     userId,
   );
   if (!u) return fail("Account not found");
-  await sendMail({
-    userId,
-    audience: "receiver",
-    to: u.email,
-    subject: "You're verified on FloorTest",
-    body: `Hi ${u.name.split(/\s+/)[0]},\n\nYour FloorTest page now shows the Verified mark next to your name, so senders know it's really you: ${env.appUrl}/${u.handle}\n\nYou can remove the code from your bio now.\n\n— FloorTest`,
-  });
+  const { verifiedEmail } = await import("@/lib/identity-direct");
+  await sendMail({ userId, audience: "receiver", to: u.email, ...(await verifiedEmail(u, "request")) });
   await logAdmin(a.id, "verified identity", `@${u.handle}`);
   await done(`Verified @${u.handle} and emailed them`);
+  refresh();
+}
+
+/**
+ * Adds the Verified mark without a request from them (owner, 1 Nov): staff already know whose account it is. A note on
+ * how they checked is required; it's kept on the account and in the admin log. See src/lib/identity-direct.ts.
+ */
+export async function verifyDirectly(userId: number, form: FormData) {
+  const a = await requireAdminAction("verification");
+  const { verifyDirect } = await import("@/lib/identity-direct");
+  const r = await verifyDirect(a.id, userId, String(form.get("note") || ""));
+  if (!r.ok) return fail(r.why);
+  await done(`Verified @${r.handle} and emailed them`);
   refresh();
 }
 

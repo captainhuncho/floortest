@@ -137,6 +137,11 @@ Users ─► Filters (type, plan, tag, joined, activity, security) ─► chips 
 Growth ─► Growth & decisions ─► findings · funnel · projection · sources · cohorts · pipeline
 Moderation ─► search ─► pick a track ─► Play, only with an open takedown claim (5-minute file link; admin log "played track"; otherwise 404 + "refused play")
    ─► Block sender for @them / Block everywhere / Remove track… (confirm)
+Verification ─┬─ request waiting ─► check the code in their profile ─► Approve (email) / Not yet (reason emailed)
+              └─ Verify someone directly ─► @handle or email (≤ 10) ─► their account
+Account ─► Verified mark ─┬─ not verified ─► Verify profile… ─► how you checked (2–200) ─► confirm ─► Verified + email (no code) + admin log
+                          │     refused: already verified · suspended · email unconfirmed
+                          └─ verified ─► Remove verification… ─► reason ─► confirm ─► mark gone + reason emailed + admin log
 ```
 
 ## Collection share links (switch `sharing`; off on the live site)
