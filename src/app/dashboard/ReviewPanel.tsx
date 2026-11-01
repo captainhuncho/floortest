@@ -6,7 +6,7 @@ import { readLinks } from "@/lib/socials";
 import Link from "next/link";
 import type { PlayerTrack } from "@/components/Player";
 import { deletesAt } from "@/lib/plans";
-import {q, type Collection, type EventRow, type Sender, type Track, now } from "@/lib/db";
+import { asPerson, q, type Collection, type EventRow, type Sender, type Track, now } from "@/lib/db";
 import { ago, fmtBytes, fmtDate, fmtDay } from "@/lib/format";
 import { MIX_STATUS, AI_USE, RELEASE_STATUS } from "@/lib/plans";
 import { featureOn } from "@/lib/features";
@@ -47,6 +47,7 @@ export async function ReviewPanel({
 }) {
   const receiverPlan = (await q.get<{ plan: string }>("SELECT plan FROM users WHERE id = ?", t.user_id))?.plan ?? "free";
   const stemsOn = await featureOn("stems", { id: t.user_id, plan: receiverPlan });
+  const desk = await currentUser();
   // Independent lookups run together, so the next track opens quicker.
   const [events, senderAccount, release, stats, artFrom, team, comments, shortlist] = await Promise.all([
     q.all<EventRow & { track_title: string | null; actor_name: string | null }>(
@@ -72,8 +73,9 @@ export async function ReviewPanel({
         : Promise.resolve(undefined),
     // Review Together: only when the account has a team.
     teamSize(t.user_id),
-    commentsFor(t.id),
-    shortlistOf(t.id),
+    // The team's comments and shortlist read as the signed-in person under the per-person rules (B8).
+    desk ? asPerson(desk.actor_id, () => commentsFor(t.id)) : Promise.resolve([]),
+    desk ? asPerson(desk.actor_id, () => shortlistOf(t.id)) : Promise.resolve(undefined),
   ]);
   const releaseTracks = release
     ? await q.all<{ id: number; title: string; track_no: number | null; decision: string | null }>(
@@ -136,7 +138,6 @@ export async function ReviewPanel({
   const soon = removal && removal - now() < 7 * 86_400_000 ? Math.max(0, Math.ceil((removal - now()) / 86_400_000)) : null;
   // Signals that change the decision stay visible: may it be played out, is it out already, made with AI, a duplicate, going soon.
   // Account teams: who made the call, when it wasn't the account itself (and that a member can't change it).
-  const desk = await currentUser();
   const caller =
     t.decision && t.decided_by && t.decided_by !== t.user_id
       ? (await q.get<{ name: string }>("SELECT name FROM users WHERE id = ?", t.decided_by))?.name

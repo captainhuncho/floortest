@@ -1947,4 +1947,15 @@ alter table scanner_budget enable row level security;`,
     id: "0118_person_held_reply_ids",
     sql: `do $$ begin execute format('grant usage on sequence %s to ft_person', pg_get_serial_sequence('held_replies', 'id')); end $$;`,
   },
+  {
+    // Per-person rules (B8, 1 Nov): the desk finds its share links, their recipients and their requests as the person
+    // (lib/share-links.ts, the owner's side). Read only, and only on a collection the person may see (its own policy
+    // decides); never the link's fingerprint. Changes stay the app's: they sign listeners out and keep the history.
+    id: "0119_person_link_lookups",
+    sql: `grant select (id, collection_id, created_by, label, generation, permission, requests_on, requests_paused_at, expires_at, revoked_at, created_at) on collection_links to ft_person;
+grant select on link_recipients, link_requests to ft_person;
+create policy person_links_read on collection_links for select to ft_person using (exists (select 1 from collections c where c.id = collection_links.collection_id));
+create policy person_link_recipients_read on link_recipients for select to ft_person using (exists (select 1 from collection_links l where l.id = link_recipients.link_id));
+create policy person_link_requests_read on link_requests for select to ft_person using (exists (select 1 from collection_links l where l.id = link_requests.link_id));`,
+  },
 ];
