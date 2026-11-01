@@ -11,7 +11,7 @@ export type NavItem = { href: string; label: string; badge?: number; icon: IconN
 export type NavGroup = { id: string; title: string; icon: IconName; sections: { title: string; items: NavItem[] }[] };
 
 /** Thin line icons, drawn here so the admin needs no icon package. */
-function Icon({ name, className = "size-4" }: { name: IconName; className?: string }) {
+export function Icon({ name, className = "size-4" }: { name: IconName; className?: string }) {
   const p = {
     grid: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z",
     pulse: "M3 12h4l3-8 4 16 3-8h4",
@@ -44,7 +44,7 @@ const KEY = "floortest-admin-panel";
  * Admin sidebar: Overview, then pages grouped by job (Support, Growth, Product, Trust & safety, Platform, Admin),
  * with counts. Search filters the list (Enter searches users); the arrow collapses it to icons.
  */
-export function AdminNav({ groups, admin }: { groups: NavGroup[]; admin: { name: string; initials: string } }) {
+export function AdminNav({ groups, admin }: { groups: NavGroup[]; admin: { name: string; initials: string; role: string } }) {
   const path = usePathname();
   const router = useRouter();
   const isActive = (href: string) => (href === "/admin" ? path === "/admin" : path.startsWith(href));
@@ -155,7 +155,12 @@ export function AdminNav({ groups, admin }: { groups: NavGroup[]; admin: { name:
         <span title={admin.name} className="grid size-8 shrink-0 place-items-center rounded-full bg-ink-4 text-[11px] font-bold text-bone">
           {admin.initials}
         </span>
-        {open && <span className="min-w-0 flex-1 truncate text-[11px] text-mute">{admin.name}</span>}
+        {open && (
+          <span className="flex min-w-0 flex-1 flex-col leading-tight">
+            <span className="truncate text-[12px] font-semibold text-bone">{admin.name}</span>
+            <span className="truncate text-[10.5px] font-bold uppercase tracking-[1px] text-faint">{admin.role}</span>
+          </span>
+        )}
         <form action={opsSignOut}>
           <button title="Sign out of ops" className="flex items-center gap-1 rounded-md px-2 py-1.5 text-[11px] text-faint hover:bg-ink-3 hover:text-bone">
             <Icon name="back" className="size-3.5" />
