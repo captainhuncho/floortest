@@ -26,7 +26,7 @@ let cached: { at: number; rows: FeedItem[] } | null = null;
 export async function feedRows(now = Date.now()): Promise<FeedItem[]> {
   if (cached && now - cached.at < FEED_TTL_MS && now >= cached.at) return cached.rows;
   const rows = await q.all<{ kind: FeedKind; text: string; ref: string; created_at: number }>(
-    `SELECT * FROM (
+    `SELECT kind, text, ref, created_at FROM (
        (SELECT 'signup' AS kind, name || ' @' || handle AS text, CAST(id AS text) AS ref, created_at FROM users ORDER BY created_at DESC LIMIT ${FEED_LIMIT})
        UNION ALL (SELECT 'takedown', 'Takedown claim received', CAST(id AS text), created_at FROM takedowns ORDER BY created_at DESC LIMIT ${FEED_LIMIT})
        UNION ALL (SELECT 'first', u.name || ' received their first track', CAST(u.id AS text), f.at FROM users u
