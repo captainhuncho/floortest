@@ -33,8 +33,10 @@ test("the owner makes a share link and adds one listener", async ({ page }) => {
   await expect(box).toBeVisible();
   shareUrl = await box.inputValue();
   expect(shareUrl).toMatch(/\/c\/[A-Za-z0-9_-]{20,}$/);
-  await page.getByRole("textbox", { name: "Add people" }).fill("@lena");
-  await page.getByRole("button", { name: "Add", exact: true }).click();
+  // The new link is the one with nobody on it yet: on a rerun (--repeat-each) the first go's link is still listed.
+  const fresh = page.getByRole("listitem").filter({ has: page.getByRole("textbox", { name: "Add people" }) }).filter({ hasText: "People (0)" }).first();
+  await fresh.getByRole("textbox", { name: "Add people" }).fill("@lena");
+  await fresh.getByRole("button", { name: "Add", exact: true }).click();
   await expect(page.getByText("listener@floortest.test").or(page.getByText("@lena")).first()).toBeVisible();
 });
 
@@ -103,7 +105,9 @@ test("Reset ends the old address at once", async ({ browser, page }) => {
 
   await logIn(page, "demo@floortest.test");
   await openVillagers(page);
-  await page.getByRole("button", { name: "Reset link" }).click();
+  // Links are listed active first, newest first (lib/share-links.ts): the first Reset is this run's link, also on a
+  // rerun (--repeat-each) that still lists the first go's.
+  await page.getByRole("button", { name: "Reset link" }).first().click();
   // The app's own confirm dialog, not the browser's.
   await page.getByRole("dialog", { name: "Reset this link?" }).getByRole("button", { name: "Reset link" }).click();
   await expect(page.getByRole("textbox", { name: "New share link" })).toBeVisible();
