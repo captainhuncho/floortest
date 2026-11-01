@@ -12,7 +12,7 @@ import { after } from "next/server";
 import { FEATURES, type Feature } from "@/lib/features";
 import { allPlans, FREE_PLAN } from "@/lib/plan-store";
 import { audienceWhere, cleanTags, describeAudience, readAudience } from "@/lib/audience";
-import { bulkIds } from "@/lib/admin-bulk";
+import { bulkIds, SUSPEND_MAX } from "@/lib/admin-bulk";
 import { SITE_PAGES, type SitePage } from "@/lib/content";
 import { writeContent } from "@/lib/content-write";
 import { redirect } from "next/navigation";
@@ -59,6 +59,7 @@ export async function suspendAccounts(form: FormData) {
   const reason = String(form.get("reason") || "").trim();
   if (!ids.length) return fail("Pick at least one account");
   if (!reason) return fail("Give a reason: it goes in the email and the log");
+  if (ids.length > SUSPEND_MAX) return fail(`Suspend at most ${SUSPEND_MAX} accounts at a time`);
   const results = [];
   for (const id of ids) results.push(await suspendOne(a, id, reason));
   const ok = results.filter((r) => r.ok).length;
@@ -75,8 +76,10 @@ export async function tagAccounts(form: FormData) {
   const tag = cleanTags(String(form.get("tag") || "")).split(",")[0];
   if (!ids.length || !tag) return fail("Pick accounts and type a tag");
   const rows = await q.all<{ id: number; admin_tags: string }>(`SELECT id, admin_tags FROM users WHERE id IN (${ids.map(() => "?").join(",")})`, ...ids);
-  for (const r of rows) await q.run("UPDATE users SET admin_tags = ? WHERE id = ?", cleanTags(`${r.admin_tags},${tag}`), r.id);
-  await logAdmin(a.id, "tagged accounts", `${rows.length} account${rows.length === 1 ? "" : "s"}`, tag);
+  await q.tx(async (db) => {
+    for (const r of rows) await db.run("UPDATE users SET admin_tags = ? WHERE id = ?", cleanTags(`${r.admin_tags},${tag}`), r.id);
+  });
+  await logAdmin(a.id, "tagged accounts", `${rows.length} account${rows.length === 1 ? "" : "s"}`, `${tag} · ids ${rows.map((r) => r.id).join(",")}`);
   await done(`Tagged ${rows.length} account${rows.length === 1 ? "" : "s"} ${tag}`);
   refresh();
 }

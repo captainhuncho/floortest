@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { Dialog } from "@/components/Dialog";
-import { BULK_MAX } from "@/lib/admin-bulk";
+import { BULK_MAX, SUSPEND_MAX } from "@/lib/admin-bulk";
 import { suspendAccounts, tagAccounts } from "../actions";
 
 export type AccountRow = {
@@ -87,7 +87,8 @@ export function AccountsTable({ rows, canAct }: { rows: AccountRow[]; canAct: bo
               Add tag
             </button>
           </form>
-          <button type="button" onClick={() => setAsking(true)} disabled={pending} className="btn-sm ml-auto rounded-md border border-danger/50 px-3 font-semibold text-danger hover:bg-danger/10">
+          {n > SUSPEND_MAX && <span className="ml-auto text-[12px] text-faint">Suspend works on {SUSPEND_MAX} at a time</span>}
+          <button type="button" onClick={() => setAsking(true)} disabled={pending || n > SUSPEND_MAX} className={`btn-sm rounded-md border border-danger/50 px-3 font-semibold text-danger hover:bg-danger/10 disabled:opacity-50 ${n > SUSPEND_MAX ? "" : "ml-auto"}`}>
             Suspend…
           </button>
         </div>

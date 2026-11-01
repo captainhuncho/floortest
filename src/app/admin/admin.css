@@ -23,13 +23,13 @@
   position: relative;
   isolation: isolate;
   background:
-    radial-gradient(1200px 520px at 70% -120px, color-mix(in srgb, var(--admin-violet) 9%, transparent), transparent 70%),
+    radial-gradient(1200px 520px at 70% -120px, color-mix(in srgb, var(--admin-violet, #9b8cff) 9%, transparent), transparent 70%),
     radial-gradient(900px 420px at 0% -80px, color-mix(in srgb, var(--color-lime) 5%, transparent), transparent 70%),
     var(--color-ink);
 }
 .admin-canvas::before {
   content: "";
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
@@ -46,11 +46,25 @@
     filter: invert(1);
   }
 }
-/* Panels sit a little lifted off the texture so text stays on a calm surface. */
+/* Panels like machined plates: a hairline ring, light catching the top edge, a soft lift; tiles inside use smaller,
+   concentric corners (rounded-[16px] in a 22px panel). */
 .admin-panel {
-  background: color-mix(in srgb, var(--color-ink-2) 92%, transparent);
-  border: 1px solid var(--color-line);
-  border-radius: 14px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-ink-2) 96%, white 4%), var(--color-ink-2));
+  border-radius: 22px;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-bone) 8%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--color-bone) 7%, transparent),
+    0 18px 40px -24px rgb(0 0 0 / 0.55);
+}
+.theme-day .admin-panel {
+  background: var(--color-ink-3);
+  box-shadow: 0 0 0 1px var(--color-line), 0 14px 30px -22px rgb(20 24 10 / 0.25);
+}
+@media (prefers-color-scheme: light) {
+  .theme-system .admin-panel {
+    background: var(--color-ink-3);
+    box-shadow: 0 0 0 1px var(--color-line), 0 14px 30px -22px rgb(20 24 10 / 0.25);
+  }
 }
 
 /* The one loop: the live dot breathes once every 6 s. */
@@ -99,11 +113,28 @@
 @keyframes admin-grow {
   from { transform: scaleX(0); }
 }
-.admin-press { transition: transform 90ms ease-out, background-color 150ms, color 150ms; }
+/* Bars and blocks rise from the floor, one after another. */
+.admin-grow-y {
+  transform-origin: bottom;
+  animation: admin-grow-y 650ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(150ms + var(--i, 0) * 35ms);
+}
+@keyframes admin-grow-y {
+  from { transform: scaleY(0); }
+}
+/* Gauge ticks light up in order, like a level meter. */
+.admin-tick {
+  animation: admin-tick 220ms ease-out both;
+  animation-delay: calc(250ms + var(--i, 0) * 28ms);
+}
+@keyframes admin-tick {
+  from { opacity: 0.12; }
+}
+.admin-press { transition: transform 160ms cubic-bezier(0.32, 0.72, 0, 1), background-color 150ms, color 150ms; }
 .admin-press:active { transform: scale(0.97); }
-.admin-lift { transition: border-color 150ms, background-color 150ms, transform 150ms ease-out; }
+.admin-lift { transition: background-color 150ms, box-shadow 200ms, transform 260ms cubic-bezier(0.32, 0.72, 0, 1); }
 @media (hover: hover) {
-  .admin-lift:hover { border-color: var(--color-line-2); transform: translateY(-1px); }
+  .admin-lift:hover { transform: translateY(-2px); }
 }
 .admin-area { animation: admin-rise 200ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 .admin-side { transition: width 240ms cubic-bezier(0.3, 0.7, 0.2, 1); }
@@ -121,7 +152,7 @@
   .admin-rise, .admin-area { animation: admin-fade 120ms ease-out both; transform: none; }
   .admin-draw { animation: none; stroke-dashoffset: 0; }
   .admin-fill { animation: none; opacity: 1; }
-  .admin-grow { animation: none; }
+  .admin-grow, .admin-grow-y, .admin-tick { animation: none; }
   .admin-live::after { animation: none; display: none; }
   .admin-side, .admin-press, .admin-lift { transition: none; }
   .admin-press:active, .admin-lift:hover { transform: none; }

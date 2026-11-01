@@ -36,7 +36,8 @@ export function CountUp({ value, className }: { value: number; className?: strin
     };
   }, [value]);
   return (
-    <span ref={ref} className={className}>
+    // Keyed on the value, so a new number gets a fresh node React owns (the animation writes text directly).
+    <span key={value} ref={ref} className={className}>
       {value.toLocaleString("en-GB")}
     </span>
   );
