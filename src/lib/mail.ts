@@ -138,10 +138,17 @@ export async function sendMailHeld(
   return id;
 }
 
-/** Stops held emails that haven't gone yet (status queued); returns how many it stopped. */
-export async function cancelHeldMail(ids: number[]): Promise<number> {
+/**
+ * Stops held emails that were never tried (queued, no attempt yet); returns how many it stopped. A row queued again
+ * after a failed try (retry backoff, daily cap) may have reached the person anyway (the provider can accept it and
+ * still time out), so it can't be taken back. Pass `db` to cancel inside the transaction that undoes the action.
+ */
+export async function cancelHeldMail(ids: number[], db: Queryable = q): Promise<number> {
   if (!ids.length) return 0;
-  const r = await q.run(`UPDATE outbox SET status = 'cancelled', payload = NULL, next_at = NULL WHERE id IN (${ids.map(() => "?").join(",")}) AND status = 'queued'`, ...ids);
+  const r = await db.run(
+    `UPDATE outbox SET status = 'cancelled', payload = NULL, next_at = NULL WHERE id IN (${ids.map(() => "?").join(",")}) AND status = 'queued' AND attempts = 0`,
+    ...ids,
+  );
   return r.changes;
 }
 

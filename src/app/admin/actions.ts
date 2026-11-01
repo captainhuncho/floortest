@@ -23,8 +23,8 @@ import { redirect } from "next/navigation";
 import { issueViewTicket } from "@/lib/ops";
 import { APP_URL } from "@/lib/mail";
 import { env } from "@/lib/env";
-import { cancelHeldMail, HIDDEN, sendMail, sendMailHeld } from "@/lib/mail";
-import { readUndo, signUndo, type Undo, type UndoItem } from "@/lib/ops-undo";
+import { HIDDEN, sendMail, sendMailHeld } from "@/lib/mail";
+import { readUndo, signUndo, takeBack } from "@/lib/ops-undo";
 import { approvePendingIdentity } from "@/lib/identity-approve";
 import { isAdminEmail, logAdmin, requireAdminAction } from "@/lib/admin";
 import { opsAccessFor, suspendRefusal } from "@/lib/ops-access";
@@ -36,7 +36,7 @@ import { clampPercent, describeRule, parseCountries, readRule, MAX_RULE_ACCOUNTS
 import { ACCOUNT_TYPES, isAccountType } from "@/lib/account-types";
 import { drainNow, retireTrackFiles } from "@/lib/deletion";
 import { cancelEmailChange, changeHandle, HANDLE_HOLD_DAYS, requestEmailChange } from "@/lib/accounts";
-import { logEvent, now, q, type Queryable, type Track } from "@/lib/db";
+import { logEvent, now, q, type Track } from "@/lib/db";
 import { eraseSender, purgeAccount } from "@/lib/privacy";
 import { localPath } from "@/lib/safe-links";
 import { normalEmail } from "@/lib/email-normal";
@@ -1319,41 +1319,19 @@ const UNDO_WHAT = {
   email_resend: "resent email",
 } as const;
 
-/** Puts back what a held action changed, for the items whose email was stopped. */
-async function revert(db: Queryable, u: Undo, item: UndoItem) {
-  const reopen = "UPDATE plan_requests SET status = 'pending', granted_plan = NULL, decided_by = NULL, decided_at = NULL, decision_note = '' WHERE id = ? AND status = ?";
-  if (u.kind === "plan_approve") {
-    const back = await db.run(reopen, item.ref, "approved");
-    if (back.changes) await db.run("UPDATE users SET plan = ? WHERE id = ?", item.prev, item.user);
-  } else if (u.kind === "plan_decline") await db.run(reopen, item.ref, "declined");
-  else if (u.kind === "waitlist_invite") {
-    // The unsent code stops working (kept, revoked, like any revoked invite); the person is waiting again.
-    await db.run("UPDATE invites SET revoked_at = ? WHERE code = ? AND revoked_at IS NULL", now(), item.code);
-    await db.run("UPDATE waitlist SET invited_at = NULL WHERE id = ?", item.ref);
-  } else if (u.kind === "invite_resend" && item.prev) {
-    // The resend swapped an old short code for a new one: the old one comes back, the unsent new one is revoked.
-    await db.run("UPDATE invites SET revoked_at = ? WHERE code = ? AND revoked_at IS NULL", now(), item.code);
-    await db.run("UPDATE invites SET revoked_at = NULL WHERE code = ?", item.prev);
-  }
-}
-
 /**
- * Undo for an action that held its email (src/lib/ops-undo.ts): stops the emails that haven't gone and puts back what
- * the action changed for those. Only the admin who did it, only within the hold; once every email has gone it's too
- * late. Each item has one email, in the same order (email_resend has no items).
+ * Undo for an action that held its email (src/lib/ops-undo.ts): stops the emails not yet tried and puts back what the
+ * action changed for those, in one transaction (takeBack). Only the admin who did it, only within the hold; once every
+ * email has been tried it's too late.
  */
 export async function undoSend(token: string): Promise<OpsResult> {
   const a = await requireAdminAction("overview");
   const u = readUndo(token, a.id);
   if (!u) return no("Too late: it was sent");
-  const stopped: number[] = [];
-  for (const [i, id] of u.mail.entries()) if (await cancelHeldMail([id])) stopped.push(i);
-  if (!stopped.length) return no("Too late: it was sent");
-  await q.tx(async (db) => {
-    for (const i of stopped) if (u.items[i]) await revert(db, u, u.items[i]);
-  });
-  const some = stopped.length < u.mail.length ? ` (${stopped.length} of ${u.mail.length}; the rest had gone)` : "";
-  await logAdmin(a.id, "cancelled", UNDO_WHAT[u.kind], `${stopped.length} email${stopped.length === 1 ? "" : "s"} not sent${some}`);
+  const stopped = await takeBack(u);
+  if (!stopped) return no("Too late: it was sent");
+  const some = stopped < u.mail.length ? ` (${stopped} of ${u.mail.length}; the rest had gone)` : "";
+  await logAdmin(a.id, "cancelled", UNDO_WHAT[u.kind], `${stopped} email${stopped === 1 ? "" : "s"} not sent${some}`);
   return ok(`Not sent${some}`);
 }
 

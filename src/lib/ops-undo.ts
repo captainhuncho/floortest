@@ -1,7 +1,8 @@
 import "server-only";
 import crypto from "node:crypto";
+import { now, q, type Queryable } from "@/lib/db";
 import { env } from "@/lib/env";
-import { SEND_HOLD_MS } from "@/lib/mail";
+import { cancelHeldMail, SEND_HOLD_MS } from "@/lib/mail";
 
 /**
  * Undo for ops actions that hold an email (ops server design §2, owner 1 Nov). The action answers with a token signed
@@ -37,4 +38,39 @@ export function readUndo(token: string, adminId: number, at = Date.now()): Undo 
   } catch {
     return null;
   }
+}
+
+/** Puts back what a held action changed for one item whose email was stopped. */
+export async function revertItem(db: Queryable, u: Undo, item: UndoItem) {
+  const reopen = "UPDATE plan_requests SET status = 'pending', granted_plan = NULL, decided_by = NULL, decided_at = NULL, decision_note = '' WHERE id = ? AND status = ?";
+  if (u.kind === "plan_approve") {
+    const back = await db.run(reopen, item.ref, "approved");
+    if (back.changes) await db.run("UPDATE users SET plan = ? WHERE id = ?", item.prev, item.user);
+  } else if (u.kind === "plan_decline") await db.run(reopen, item.ref, "declined");
+  else if (u.kind === "waitlist_invite") {
+    // The unsent code stops working (kept, revoked, like any revoked invite); the person is waiting again.
+    await db.run("UPDATE invites SET revoked_at = ? WHERE code = ? AND revoked_at IS NULL", now(), item.code);
+    await db.run("UPDATE waitlist SET invited_at = NULL WHERE id = ?", item.ref);
+  } else if (u.kind === "invite_resend" && item.prev) {
+    // The resend swapped an old short code for a new one: the old one comes back, the unsent new one is revoked.
+    await db.run("UPDATE invites SET revoked_at = ? WHERE code = ? AND revoked_at IS NULL", now(), item.code);
+    await db.run("UPDATE invites SET revoked_at = NULL WHERE code = ?", item.prev);
+  }
+}
+
+/**
+ * Stops the emails not yet tried and puts back what changed for those, in one transaction: if putting back fails, the
+ * emails aren't stopped either, so nobody is left with the change and no email (or the reverse). Each item has one
+ * email, in the same order (email_resend has no items). Returns how many emails it stopped.
+ */
+export async function takeBack(u: Undo, revert: typeof revertItem = revertItem): Promise<number> {
+  return q.tx(async (db) => {
+    let stopped = 0;
+    for (const [i, id] of u.mail.entries()) {
+      if (!(await cancelHeldMail([id], db))) continue;
+      stopped++;
+      if (u.items[i]) await revert(db, u, u.items[i]);
+    }
+    return stopped;
+  });
 }
