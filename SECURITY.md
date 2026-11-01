@@ -92,6 +92,7 @@ Some routes must be reachable without a receiver session. That does not make the
 - A deleted account's link names stay reserved for a year, so nobody can take over a link still in bios and receive music meant for someone else.
 - Ops staff: only the super admin can suspend an ops team member, and the super admin can't be suspended.
 - Private link keys and sign-in codes never reach stored copies: the ops email log keeps those emails with them hidden (they can't be resent from ops), and Sentry, Vercel Analytics and the incident log see `/receipt/[token]`, never the key (`src/lib/redact-url.ts`).
+- Search engines list only the site's own public pages (owner, 1 Nov). `src/lib/search-index.ts` holds that list (the sitemap uses it); every other answer from the proxy (receivers' link pages, receipts, sender links, collections, invites, email and account links, the API, redirects, not-found) sends `X-Robots-Tag: noindex, nofollow, noarchive`, so a private link someone posts publicly is still never listed, and a new page is private until added to the list. `robots.txt` blocks only signed-in areas, the API, sign-in forms and email links that act on a visit (newsletter confirm and unsubscribe, reopen alerts); link pages stay open to crawlers on purpose, because a blocked page's noindex can't be seen and its bare link (token included) can still be listed. Test: `tests/search-index.test.ts`. If a private link ever shows up anyway: hide it with Google Search Console's Removals tool and end the link in FloorTest.
 - Public health information must be minimal. Detailed operational health requires its configured authorization.
 
 Do not add permissive cross-origin access to internal routes. A future integration API must be separately versioned and designed with hashed, revocable keys, scopes, quotas, audit logs, webhook signing, documentation and explicit consent for private audio.
@@ -294,7 +295,7 @@ Tick each before a launch or production release (working rules 5 and 13, `docs/w
 | # | Check | How to verify |
 |---|---|---|
 | 1 | Types and lint clean | `npm run typecheck`; `npm run lint` shows 0 errors |
-| 2 | Unit tests pass | `npm test` (includes `tests/person-rules.test.ts`, `framing-headers`, `local-path`, `same-site`, deletion, backup and token tests) |
+| 2 | Unit tests pass | `npm test` (includes `tests/person-rules.test.ts`, `framing-headers`, `search-index`, `local-path`, `same-site`, deletion, backup and token tests) |
 | 3 | Permission checks pass | `npm run check:perms`: every ops page names a permission, every desk action and route has a stated role, every table has RLS and every `ft_person` grant has a policy |
 | 4 | End-to-end journeys pass when sending, review, downloads, receipts, sharing, teams or auth changed | `npm run e2e` (port 3000 free); at least `e2e/isolation.spec.ts` (two-user test), `teams`, `account-security`, `guards`, `framing`, `upload-resilience`, `api-v1` |
 | 5 | Production build succeeds | `npx next build`; the Vercel preview says Ready |
