@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { fmtTime } from "@/lib/format";
 
 type Props = {
@@ -21,19 +21,28 @@ export function Waveform({ peaks, progress = 0, height = 36, onSeek, label, clas
   const n = data.length;
   const cut = progress * n;
   const interactive = !!onSeek;
+  // Mouse hover previews where a click would land: the bars up to the cursor light a little (owner, 1 Nov).
+  const [hover, setHover] = useState<number | null>(null);
+  const hoverCut = hover == null ? -1 : hover * n;
 
   return (
     <svg
       ref={ref}
       viewBox={`0 0 ${n * 3} ${height}`}
       preserveAspectRatio="none"
-      className={`block w-full rounded-sm ${interactive ? "cursor-pointer" : ""} ${className}`}
+      className={`block w-full rounded-sm outline-offset-4 focus-visible:outline-2 focus-visible:outline-lime ${interactive ? "cursor-pointer" : ""} ${className}`}
       style={{ height }}
       onClick={(e) => {
         if (!onSeek || !ref.current) return;
         const r = ref.current.getBoundingClientRect();
         onSeek(Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)));
       }}
+      onPointerMove={(e) => {
+        if (!interactive || e.pointerType !== "mouse" || !ref.current) return;
+        const r = ref.current.getBoundingClientRect();
+        setHover(Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)));
+      }}
+      onPointerLeave={() => setHover(null)}
       onKeyDown={(e) => {
         if (!onSeek) return;
         const step = e.shiftKey ? 0.1 : 0.02;
@@ -62,10 +71,13 @@ export function Waveform({ peaks, progress = 0, height = 36, onSeek, label, clas
             width={2}
             height={h}
             rx={1}
-            className={i < cut ? "fill-lime" : dim ? "fill-dim" : "fill-wave"}
+            className={`transition-[fill-opacity] duration-100 ${i < cut ? "fill-lime" : dim ? "fill-dim" : "fill-wave"}`}
+            fillOpacity={i >= cut && i < hoverCut ? 1 : i < cut ? 1 : 0.85}
           />
         );
       })}
+      {interactive && progress > 0 && progress < 1 && <rect x={Math.max(0, cut * 3 - 1)} y={0} width={1.5} height={height} rx={0.75} className="fill-bone" opacity={0.9} />}
+      {hover != null && <rect x={Math.max(0, hover * n * 3 - 0.75)} y={0} width={1} height={height} className="fill-bone" opacity={0.45} />}
     </svg>
   );
 }

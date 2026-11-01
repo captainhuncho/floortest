@@ -4,71 +4,169 @@ import { ConfirmButton } from "../AdminUi";
 import { likeContains, q } from "@/lib/db";
 import { fmtBytes } from "@/lib/format";
 import { blockEverywhere, blockSenderAsAdmin, removeTrackAsAdmin } from "../actions";
+import { ModerationPlayer } from "./ModerationPlayer";
 
-/** Find any track or sender across every account, for abuse reports and takedowns. */
-export default async function Moderation({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+type Found = { id: number; title: string; artist: string; size: number; created_at: number; handle: string; user_id: number; sender_id: number; sender: string; email: string; blocked_at: number | null };
+
+const COLS = "t.id, t.title, t.artist, t.size, t.created_at, u.handle, u.id AS user_id, s.id AS sender_id, s.name AS sender, s.email, s.blocked_at";
+const FROM = "FROM tracks t JOIN users u ON u.id = t.user_id JOIN senders s ON s.id = t.sender_id";
+const day = (ms: number) => new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+
+/**
+ * Find any track or sender across every account, for abuse reports and takedowns. Results on the left; the picked
+ * track on the right (on phones, on its own with a way back) with a player, the sender's history and the actions.
+ */
+export default async function Moderation({ searchParams }: { searchParams: Promise<{ q?: string; t?: string }> }) {
   await requireAdmin("moderation");
-  const search = ((await searchParams).q || "").trim().slice(0, 100);
+  const sp = await searchParams;
+  const search = (sp.q || "").trim().slice(0, 100);
   const like = likeContains(search);
   const tracks = search
-    ? await q.all<{ id: number; title: string; artist: string; size: number; created_at: number; handle: string; user_id: number; sender_id: number; sender: string; email: string; blocked_at: number | null }>(
-        `SELECT t.id, t.title, t.artist, t.size, t.created_at, u.handle, u.id AS user_id, s.id AS sender_id, s.name AS sender, s.email, s.blocked_at
-         FROM tracks t JOIN users u ON u.id = t.user_id JOIN senders s ON s.id = t.sender_id
+    ? await q.all<Found>(
+        `SELECT ${COLS} ${FROM}
          WHERE t.deleted_at IS NULL AND (t.title ILIKE ? OR t.artist ILIKE ? OR s.email ILIKE ? OR s.name ILIKE ? OR t.token = ?)
          ORDER BY t.created_at DESC LIMIT 100`,
         like, like, like, like, search,
       )
     : [];
+  // Whole numbers in range only, like the audio route: "?t=1.5" or a 15-digit id must not reach Postgres as an int.
+  const asked = Number(sp.t);
+  const pickedId = (Number.isInteger(asked) && asked >= 1 && asked <= 2_147_483_647 ? asked : 0) || tracks[0]?.id || 0;
+  const picked = pickedId ? (tracks.find((t) => t.id === pickedId) ?? (await q.get<Found>(`SELECT ${COLS} ${FROM} WHERE t.id = ? AND t.deleted_at IS NULL`, pickedId))) : undefined;
+  const chosen = !!sp.t && !!picked;
+  const href = (t: number) => `/admin/moderation?${new URLSearchParams({ ...(search ? { q: search } : {}), t: String(t) })}`;
+  const senderCount = new Set(tracks.map((t) => t.email.toLowerCase())).size;
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Moderation</h1>
-          <p className="mt-2 text-mute">Search every account by track, artist, sender name or email, or a receipt token.</p>
-        </div>
-        <form className="flex gap-2">
-          <input name="q" defaultValue={search} className="input w-72" placeholder="Search tracks and senders" aria-label="Search" />
-          <button className="btn-ghost btn-sm">Search</button>
-        </form>
+    <div className="space-y-5">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Moderation</h1>
+        <p className="mt-1 text-mute">Search every account by track, artist, sender name or email, or a receipt token.</p>
       </div>
-      {search && (
-        <div className="overflow-x-auto rounded-md border border-line">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-line text-mute">
-              <tr>{["Track", "Sender", "Receiver", "Received", ""].map((h) => <th key={h} className="px-4 py-2.5 font-medium">{h}</th>)}</tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {tracks.map((t) => (
-                <tr key={t.id}>
-                  <td className="px-4 py-3">{t.artist} – {t.title} <span className="text-mute">· {fmtBytes(t.size)}</span></td>
-                  <td className="px-4 py-3">{t.sender} <span className="text-mute">{t.email}</span>{t.blocked_at && <span className="chip ml-2 border-line text-mute">Blocked</span>}</td>
-                  <td className="px-4 py-3"><Link href={`/admin/accounts/${t.user_id}`} className="hover:underline">@{t.handle}</Link></td>
-                  <td className="px-4 py-3 text-mute">{new Date(t.created_at).toLocaleDateString("en-GB")}</td>
-                  <td className="space-x-3 whitespace-nowrap px-4 py-3 text-right">
-                    {!t.blocked_at && (
-                      <ConfirmButton action={blockSenderAsAdmin.bind(null, t.sender_id)} message={`Block ${t.email} from @${t.handle}'s link?`} className="text-sm text-mute hover:text-bone">
-                        Block sender
-                      </ConfirmButton>
-                    )}
-                    <ConfirmButton action={blockEverywhere.bind(null, t.email)} message={`Block ${t.email} from sending to anyone on FloorTest?`} className="text-sm text-mute hover:text-bone">
-                      Block everywhere
-                    </ConfirmButton>
-                    <span className="text-faint">#{t.id}</span>
-                    <ConfirmButton
-                      action={removeTrackAsAdmin.bind(null, t.id, "")}
-                      message={`Remove "${t.title}" from @${t.handle}'s desk and delete the file? This can't be undone.`}
-                      className="text-sm text-danger hover:underline"
-                    >
-                      Remove
-                    </ConfirmButton>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {!tracks.length && <p className="p-6 text-mute">Nothing matches.</p>}
+      <form className="flex flex-wrap items-center gap-2" role="search">
+        <input name="q" defaultValue={search} className="input min-w-0 flex-1 sm:max-w-lg" placeholder="Search tracks and senders" aria-label="Search" />
+        <button className="btn-lime btn-sm">Search</button>
+        {search && (
+          <span className="ml-auto text-sm text-faint tnum">
+            {tracks.length === 100 ? "Newest 100 tracks" : `${tracks.length} track${tracks.length === 1 ? "" : "s"}`} · {senderCount} sender{senderCount === 1 ? "" : "s"}
+          </span>
+        )}
+      </form>
+
+      {search && !tracks.length && <p className="rounded-[14px] border border-line p-6 text-mute">Nothing matches. Try part of an email, or the artist name.</p>}
+
+      {(tracks.length > 0 || picked) && (
+        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_26rem]">
+          <ul className={`overflow-hidden rounded-[14px] border border-line bg-ink-2 ${chosen ? "hidden lg:block" : ""}`} aria-label="Results">
+            {tracks.map((t) => (
+              <li key={t.id} className="border-b border-line last:border-b-0">
+                <Link href={href(t.id)} aria-current={t.id === picked?.id ? "true" : undefined} className={`flex items-center gap-3 px-4 py-3 ${t.id === picked?.id ? "bg-ink-4" : "hover:bg-ink-3"}`}>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-semibold">
+                      {t.artist} – {t.title}
+                    </span>
+                    <span className="block truncate text-[12.5px] text-mute">
+                      {t.email} → @{t.handle}
+                      {t.blocked_at && <span className="chip ml-2 border-line text-mute">Blocked</span>}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-right text-[12.5px] text-faint tnum">
+                    {day(t.created_at)}
+                    <br />
+                    {fmtBytes(t.size)}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {picked && <Detail t={picked} back={chosen ? `/admin/moderation${search ? `?q=${encodeURIComponent(search)}` : ""}` : null} />}
         </div>
       )}
     </div>
+  );
+}
+
+async function Detail({ t, back }: { t: Found; back: string | null }) {
+  const [meta, history, events] = await Promise.all([
+    q.get<{ peaks: string | null; duration: number | null; name: string }>("SELECT t.peaks, t.duration, u.name FROM tracks t JOIN users u ON u.id = t.user_id WHERE t.id = ?", t.id),
+    q.get<{ tracks: number; receivers: number; blocked: number }>(
+      `SELECT COUNT(t.id) AS tracks, COUNT(DISTINCT s.user_id) AS receivers, COUNT(DISTINCT s.id) FILTER (WHERE s.blocked_at IS NOT NULL) AS blocked
+       FROM senders s LEFT JOIN tracks t ON t.sender_id = s.id AND t.deleted_at IS NULL WHERE lower(s.email) = lower(?)`,
+      t.email,
+    ),
+    q.all<{ type: string; detail: string; created_at: number }>("SELECT type, detail, created_at FROM events WHERE track_id = ? ORDER BY created_at DESC LIMIT 5", t.id),
+  ]);
+  const peaks = meta?.peaks ? (JSON.parse(meta.peaks) as number[]) : null;
+  const sent = Number(history?.tracks ?? 0);
+  const receivers = Number(history?.receivers ?? 0);
+  const blocked = Number(history?.blocked ?? 0);
+  return (
+    <section aria-labelledby="mod-track" className="rounded-[14px] border border-line bg-ink-2 p-4 sm:p-5 lg:sticky lg:top-6">
+      {back && (
+        <Link href={back} className="mb-3 inline-flex min-h-11 items-center text-sm text-mute hover:text-bone lg:hidden">
+          ‹ All results
+        </Link>
+      )}
+      <p className="text-[11px] font-bold uppercase tracking-[1px] text-faint">Track</p>
+      <h2 id="mod-track" className="mt-1 text-[19px] font-bold tracking-tight">
+        {t.title}
+      </h2>
+      <p className="text-mute">{t.artist}</p>
+      <ModerationPlayer key={t.id} id={t.id} peaks={peaks} duration={meta?.duration ?? null} />
+      <dl className="mt-5 grid grid-cols-[6.5rem_minmax(0,1fr)] gap-x-3 gap-y-2 border-t border-line pt-4 text-[13px]">
+        <dt className="text-faint">Sender</dt>
+        <dd className="truncate">
+          {t.sender} <span className="text-mute">{t.email}</span>
+        </dd>
+        <dt className="text-faint">Sent to</dt>
+        <dd className="truncate">
+          <Link href={`/admin/accounts/${t.user_id}`} className="hover:underline">
+            @{t.handle}
+          </Link>{" "}
+          <span className="text-faint">{meta?.name}</span>
+        </dd>
+        <dt className="text-faint">Received</dt>
+        <dd>{new Date(t.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</dd>
+        <dt className="text-faint">File</dt>
+        <dd>{fmtBytes(t.size)}</dd>
+        <dt className="text-faint">Track id</dt>
+        <dd className="font-mono text-[12px]">#{t.id}</dd>
+        <dt className="text-faint">History</dt>
+        <dd>
+          {sent} track{sent === 1 ? "" : "s"} to {receivers} receiver{receivers === 1 ? "" : "s"}
+          {blocked > 0 && <span className="text-danger"> · blocked by {blocked}</span>}
+        </dd>
+      </dl>
+      <div className="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
+        {!t.blocked_at && (
+          <ConfirmButton action={blockSenderAsAdmin.bind(null, t.sender_id)} message={`Block ${t.email} from @${t.handle}'s link?`} className="btn-ghost btn-sm">
+            Block sender for @{t.handle}
+          </ConfirmButton>
+        )}
+        <ConfirmButton action={blockEverywhere.bind(null, t.email)} message={`Block ${t.email} from sending to anyone on FloorTest?`} className="btn-ghost btn-sm">
+          Block everywhere
+        </ConfirmButton>
+        <ConfirmButton
+          action={removeTrackAsAdmin.bind(null, t.id, "")}
+          message={`Remove "${t.title}" from @${t.handle}'s desk and delete the file? This can't be undone.`}
+          className="btn-sm rounded-md border border-danger/50 px-3 font-semibold text-danger hover:bg-danger/10 sm:ml-auto"
+        >
+          Remove track…
+        </ConfirmButton>
+      </div>
+      {events.length > 0 && (
+        <ol className="mt-5 space-y-1.5 border-t border-line pt-4 font-mono text-[12px] text-mute" aria-label="Recent activity">
+          {events.map((e, i) => (
+            <li key={i} className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-3">
+              <span className="text-faint tnum">{new Date(e.created_at).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+              <span className="truncate">
+                <span className="text-bone">{e.type}</span>
+                {e.detail && ` · ${e.detail}`}
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
   );
 }

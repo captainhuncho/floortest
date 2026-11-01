@@ -4,6 +4,7 @@ import { mailUsage } from "@/lib/mail-quota";
 import { partnerRows } from "@/lib/partners";
 import { switchOn } from "@/lib/switches";
 import Link from "next/link";
+import { CountUp } from "./CountUp";
 import { configProblems, env } from "@/lib/env";
 import { now as clock, q } from "@/lib/db";
 import { fmtBytes } from "@/lib/format";
@@ -16,6 +17,8 @@ const DAY = 86_400_000;
 const PCT_FROM = 10;
 /** Days shown in each weekly card's mini chart. */
 const SPARK_DAYS = 14;
+/** Recent activity shows this many rows; the rest fold away. */
+const FEED_SHOWN = 5;
 
 type Tone = "ok" | "warn" | "bad" | "idle";
 type Todo = { n: number; label: string; sub: string; href: string; area: string; urgent?: boolean; oldest?: number | null; dueDays?: number };
@@ -233,170 +236,333 @@ export default async function AdminOverview({ searchParams }: { searchParams: Pr
     { label: "Paid", value: share(paid, active), note: "active accounts on a paid plan", area: "growth", show: paid > 0 },
   ].filter((m) => m.show);
 
+  // Sign-ups and first tracks name people, so only roles that can open Users see them (security review, 1 Nov).
+  const feed = ok("/admin/accounts") ? activity : activity.filter((a) => a.kind !== "signup" && a.kind !== "first");
   const activityHref = (a: { kind: string; ref: string }) => (a.kind === "signup" || a.kind === "first" ? `/admin/accounts/${a.ref}` : a.kind === "takedown" ? "/admin/takedowns" : "/admin/log");
   const activityLabel: Record<string, string> = { signup: "Sign-up", first: "First track", takedown: "Takedown", admin: "Admin" };
 
-  const dot: Record<Tone, string> = { ok: "bg-lime", warn: "bg-[#e0a33a]", bad: "bg-danger", idle: "bg-faint" };
-  const banner: Record<Tone, string> = { ok: "border-lime/40 bg-lime/5", warn: "border-[#e0a33a]/50 bg-[#e0a33a]/10", bad: "border-danger/50 bg-danger/10", idle: "border-line" };
+  // Newest receivers as a row of faces (pin 151), only for people who can open Users.
+  const fresh = ok("/admin/accounts")
+    ? await q.all<{ id: number; name: string; handle: string; kind: string | null }>("SELECT id, name, handle, kind FROM users ORDER BY created_at DESC LIMIT 8").catch(() => [])
+    : [];
+
+  // The header says plainly how things are: broken, needs you today, or calm (owner's review, 1 Nov).
+  const soon = now.filter((x) => overdue(x) || (x.oldest != null && x.dueDays != null && (ageDays(x.oldest) ?? 0) >= x.dueDays - 1));
+  const head =
+    verdict.tone === "bad"
+      ? { tone: "bad" as Tone, title: verdict.text, line: [...problems.slice(0, 1), ...now.slice(0, 2).map((x) => `${x.n} ${x.label.toLowerCase()}`)].join(" · ") }
+      : now.length
+        ? { tone: "warn" as Tone, title: soon.length ? "Needs you today" : "Needs you", line: now.slice(0, 3).map((x) => `${x.n} ${x.label.toLowerCase()}`).join(" · ") }
+        : { tone: "ok" as Tone, title: "All calm", line: queue.length ? `Nothing urgent · ${queue.reduce((n, x) => n + x.n, 0)} in the queues` : "Nothing needs you right now" };
+  const toneDot: Record<Tone, string> = { ok: "bg-lime", warn: "bg-[var(--admin-amber)]", bad: "bg-danger", idle: "bg-faint" };
+  const toneWord: Record<Tone, string> = { ok: "OK", warn: "Warning", bad: "Problem", idle: "Not run yet" };
+  const checked = new Date(t).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+  // Health as one score (pin 119's arc): OK counts fully, a warning half, a problem not at all; "not run yet" is left out.
+  const scored = shownHealth.filter((h) => h.tone !== "idle");
+  const score = scored.length ? Math.round((scored.reduce((n, h) => n + (h.tone === "ok" ? 1 : h.tone === "warn" ? 0.5 : 0), 0) / scored.length) * 100) : 100;
+  const tracksNow = trend[1][1];
+  const tracksBefore = trend[1][2];
+  const kept = product.find((m) => m.label === "Kept");
+  const listen = product.find((m) => m.label === "Time to listen");
+  // Solid cards per kind of urgent item (pin 151): the colour says what sort of thing it is.
+  const cardTone: Record<string, string> = { trust: "bg-[#f7b6a8] text-[#2a1410]", monitor: "bg-[#ffd98a] text-[#2a2008]", support: "bg-lime text-ink", growth: "bg-[#c9c1ff] text-[#16123a]" };
+  const activityRow = (a: (typeof feed)[number], i: number) => (
+    <li key={`${a.kind}-${a.created_at}-${i}`} className="border-t border-line first:border-t-0">
+    <Link href={activityHref(a)} className="flex min-h-11 items-center gap-3 py-2 hover:text-bone">
+      <span className={`size-2 shrink-0 rounded-full ${a.kind === "takedown" ? "bg-danger" : a.kind === "admin" ? "bg-[var(--admin-violet)]" : "bg-lime"}`} aria-hidden />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[13.5px]">{a.text}</span>
+        <span className="block font-mono text-[11.5px] text-faint tnum">
+          {activityLabel[a.kind]} · {ago(t - Number(a.created_at))}
+        </span>
+      </span>
+    </Link>
+    </li>
+  );
+  const P = "admin-panel admin-rise";
+  const n = (i: number) => ({ "--i": i }) as React.CSSProperties;
 
   return (
-    <div className="space-y-8">
-      <h1 className="text-3xl font-bold tracking-tight">Overview</h1>
+    <div className="space-y-6">
+      {/* Headline row (pin 119): the status, then three big figures with their direction. */}
+      <header className="admin-rise grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+        <div className="min-w-0">
+          <p className="flex flex-wrap items-center gap-3 text-[13px] text-mute">
+            <span className="rounded-full px-3 py-1 text-[10.5px] font-semibold uppercase tracking-[0.2em] text-bone ring-1 ring-line-2">Overview</span>
+            <Link href="/admin" className="admin-press inline-flex min-h-11 items-center gap-1.5 hover:text-bone">
+              Checked {checked} UTC <span className="text-bone">↻</span>
+              <span className="sr-only">Refresh</span>
+            </Link>
+          </p>
+          <h1 className="flex items-center gap-3 text-[34px] font-semibold leading-tight tracking-[-0.03em] sm:text-[40px]">
+            <span aria-hidden className={`relative size-3 shrink-0 rounded-full ${toneDot[head.tone]} ${head.tone === "ok" ? "admin-live" : ""}`} />
+            <span role="status">{head.title}</span>
+          </h1>
+          <p className="mt-1 text-[15px] text-mute">{head.line}</p>
+          {unavailable.length > 0 && <p className="mt-1 text-[13px] text-danger">Couldn&apos;t load: {unavailable.join(", ")}</p>}
+        </div>
+        <dl className="grid grid-cols-3 gap-6 sm:gap-10">
+          <div>
+            <dt className="text-[12.5px] text-mute">Tracks this week</dt>
+            <dd className="mt-1 flex items-start gap-1 text-[30px] font-semibold leading-none tracking-[-0.03em] text-lime tnum sm:text-[38px]">
+              <CountUp value={tracksNow} />
+              {tracksNow !== tracksBefore && <span className="text-[16px]">{tracksNow > tracksBefore ? "↗" : "↘"}</span>}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-[12.5px] text-mute">Time to listen</dt>
+            <dd className="mt-1 text-[30px] font-semibold leading-none tracking-[-0.03em] text-lime tnum sm:text-[38px]">{listen?.value ?? "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-[12.5px] text-mute">Kept</dt>
+            <dd className="mt-1 text-[30px] font-semibold leading-none tracking-[-0.03em] text-lime tnum sm:text-[38px]">{kept?.value ?? "—"}</dd>
+          </div>
+        </dl>
+      </header>
 
-      <p role="status" className={`flex items-center gap-3 rounded-lg border px-4 py-3 text-lg font-bold ${banner[verdict.tone]}`}>
-        <span aria-hidden className={`size-2.5 shrink-0 rounded-full ${dot[verdict.tone]}`} />
-        {verdict.text}
-        {unavailable.length > 0 && <span className="text-sm font-normal text-mute">Couldn&apos;t load: {unavailable.join(", ")}</span>}
-      </p>
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <section aria-labelledby={now.length ? "now-h" : "queue-h"} className="space-y-3 lg:col-span-2">
-          {now.length > 0 && <h2 id="now-h" className="text-lg font-semibold">Act now</h2>}
-          {now.length > 0 && (
-            <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line">
-              {now.map((x) => {
+      {/* Act now: solid cards, overdue first. */}
+      {now.length > 0 && (
+        <section aria-labelledby="now-h" className={`${P} p-5`} style={n(1)}>
+          <div className="flex items-center justify-between gap-3">
+            <h2 id="now-h" className="text-[16px] font-semibold">Act now</h2>
+            <p className="flex flex-wrap gap-3 text-[12px] text-mute">
+              <span>
+                <span aria-hidden className="mr-1 inline-block size-1.5 rounded-full bg-danger align-middle" />
+                {now.filter(overdue).length} overdue
+              </span>
+              <span>{now.length} in all</span>
+            </p>
+          </div>
+          <ul className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {[...now]
+              .sort((a, b) => Number(overdue(b)) - Number(overdue(a)) || (ageDays(b.oldest) ?? 0) - (ageDays(a.oldest) ?? 0))
+              .map((x, i) => {
                 const age = ageDays(x.oldest);
+                const late = overdue(x);
+                const left = x.dueDays != null && age != null ? x.dueDays - age : null;
                 return (
-                  <li key={x.label} data-area={x.area}>
-                    <Link href={x.href} className="flex items-center gap-4 border-l-2 border-[var(--area)] px-4 py-3 hover:bg-ink-2">
-                      <span className="w-8 text-right text-xl font-bold tnum">{x.n}</span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block font-bold">{x.label}</span>
-                        {x.sub && <span className="block truncate text-sm text-mute">{x.sub}</span>}
+                  <li key={x.label} className="admin-rise" style={n(2 + i)}>
+                    <Link href={x.href} className={`admin-press admin-lift flex h-full min-h-[132px] flex-col justify-between rounded-[18px] p-4 ${cardTone[x.area] ?? "bg-ink-3 text-bone"}`}>
+                      <span className="flex items-start justify-between gap-2">
+                        <span className="text-[14px] font-semibold leading-snug">{x.label}</span>
+                        <span aria-hidden className="text-[18px] leading-none">↗</span>
                       </span>
-                      {age != null && (
-                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold tnum ${overdue(x) ? "bg-danger/15 text-danger" : "bg-ink-3 text-mute"}`}>
-                          oldest {age === 0 ? "today" : `${age}d`}
-                        </span>
-                      )}
-                      <span aria-hidden className="text-faint">→</span>
+                      <span className="flex items-end justify-between gap-2">
+                        <span className="text-[36px] font-semibold leading-none tracking-[-0.03em] tnum">{x.n}</span>
+                        {left != null && (
+                          <span className={`rounded-full px-2.5 py-1 text-[12px] font-bold tnum ${late ? "bg-[#2a1410] text-[#ffb3a6]" : "bg-black/15"}`}>
+                            {late ? `${-left || 0}d overdue` : left <= 0 ? "due today" : `due in ${left}d`}
+                          </span>
+                        )}
+                      </span>
                     </Link>
                   </li>
                 );
               })}
-            </ul>
-          )}
+          </ul>
+        </section>
+      )}
 
-          {queue.length > 0 && (
-            <>
-              {now.length ? <h3 id="queue-h" className="label pt-2">Queue</h3> : <h2 id="queue-h" className="text-lg font-semibold">Waiting on you</h2>}
-              <ul className="flex flex-wrap gap-2">
-                {queue.map((x) => {
-                  const age = ageDays(x.oldest);
-                  return (
-                    <li key={x.label} data-area={x.area}>
-                      <Link href={x.href} className="flex items-center gap-2 rounded-full border border-line bg-ink-2 px-3 py-1.5 text-sm hover:border-[var(--area)]">
-                        <span aria-hidden className="area-dot size-1.5 rounded-full" />
-                        <span className="font-bold tnum">{x.n}</span>
-                        {x.label}
-                        {age != null && age > 0 && <span className={`text-xs tnum ${overdue(x) ? "text-danger" : "text-faint"}`}>· {age}d</span>}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </>
-          )}
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+        {/* Daily tracks (pin 151): bars, today lit, last week as violet ghosts. */}
+        <section aria-labelledby="chart-h" className={`${P} p-5`} style={n(3)}>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 id="chart-h" className="text-[16px] font-semibold">Tracks received</h2>
+              <p className="text-[12.5px] text-faint">
+                {tracksNow.toLocaleString("en-GB")} this week · {tracksBefore.toLocaleString("en-GB")} the week before
+              </p>
+            </div>
+            <p className="flex gap-4 text-[12px] text-mute">
+              <span className="flex items-center gap-1.5">
+                <span aria-hidden className="size-2.5 rounded-[3px] bg-bone/70" />
+                This week
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span aria-hidden className="size-2.5 rounded-[3px] bg-[var(--admin-violet)]/45" />
+                Week before
+              </span>
+            </p>
+          </div>
+          <DayBars rows={series[1]} start={t - SPARK_DAYS * DAY} />
         </section>
 
-        <section id="health" aria-labelledby="health-h" className="space-y-3">
-          <h2 id="health-h" className="text-lg font-semibold">Health</h2>
-          <ul className="grid grid-cols-2 gap-2">
+        {/* Health as an arc of ticks (pin 119) with the six checks beside it. */}
+        <section id="health" aria-labelledby="health-h" className={`${P} p-5`} style={n(4)}>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 id="health-h" className="text-[16px] font-semibold">Health</h2>
+              <p className="text-[12.5px] text-faint">Jobs, backups, email and storage</p>
+            </div>
+          </div>
+          <Gauge value={score} tone={verdict.tone === "bad" ? "bad" : score < 100 ? "warn" : "ok"} />
+          <ul className="mt-1 grid grid-cols-2 gap-2">
             {shownHealth.map((h) => (
               <li key={h.label}>
-                <Link href={h.href} className="block h-full rounded-lg border border-line bg-ink-2 p-3 hover:border-line-2">
-                  <span className="label flex items-center gap-2">
-                    <span aria-hidden className={`size-2 rounded-full ${dot[h.tone]}`} />
-                    {h.label}
+                <Link href={h.href} className={`admin-lift flex h-full min-h-[56px] items-center gap-2.5 rounded-[14px] px-3 py-2 ${h.tone === "bad" ? "bg-danger/12 ring-1 ring-danger/40" : "bg-ink-3"}`}>
+                  <span aria-hidden className={`size-2 shrink-0 rounded-full ${toneDot[h.tone]}`} />
+                  <span className="min-w-0">
+                    <span className="block text-[13px] font-semibold">
+                      {h.label}
+                      <span className="sr-only">: {toneWord[h.tone]}</span>
+                    </span>
+                    <span className={`block truncate text-[12px] ${h.tone === "bad" ? "text-danger" : "text-faint"}`}>{h.value}</span>
                   </span>
-                  <span className={`mt-1 block text-sm font-semibold ${h.tone === "bad" ? "text-danger" : ""}`}>{h.value}</span>
                 </Link>
               </li>
             ))}
           </ul>
           {problems.length > 0 && (
-            <ul className="space-y-2">
-              {problems.map((p) => (
-                <li key={p} className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm">{p}</li>
-              ))}
-            </ul>
+            // Long lists fold (owner, 1 Nov): one line until opened.
+            <details className="group mt-3 rounded-[14px] bg-danger/10 ring-1 ring-danger/40">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 text-[13px] font-semibold [&::-webkit-details-marker]:hidden">
+                {problems.length} configuration problem{problems.length === 1 ? "" : "s"}
+                <span aria-hidden className="text-faint transition-transform duration-200 group-open:rotate-180">▾</span>
+              </summary>
+              <ul className="space-y-1.5 px-3 pb-3">
+                {problems.map((p) => (
+                  <li key={p} className="text-[13px] text-mute">{p}</li>
+                ))}
+              </ul>
+            </details>
           )}
         </section>
       </div>
 
-      <section aria-labelledby="week-h" className="space-y-3">
-        <h2 id="week-h" className="text-lg font-semibold">Last 7 days vs the 7 before</h2>
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          {trend.map(([k, cur, prev, area, lowerIsBetter], i) => {
+      {/* The week in five numbers, one panel with tiles inside (pin 119's nested cards). */}
+      <section aria-labelledby="week-h" className={`${P} p-5`} style={n(5)}>
+        <h2 id="week-h" className="text-[16px] font-semibold">
+          This week <span className="font-normal text-faint">vs the 7 days before</span>
+        </h2>
+        <ul className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
+          {trend.map(([k, cur, prev, , lowerIsBetter], i) => {
             const diff = cur - prev;
-            const good = lowerIsBetter ? diff <= 0 : diff >= 0;
-            const pct = prev >= PCT_FROM ? ` (${diff > 0 ? "+" : "−"}${Math.round((Math.abs(diff) / prev) * 100)}%)` : "";
+            const pct = prev >= PCT_FROM ? ` ${Math.round((Math.abs(diff) / prev) * 100)}%` : ` ${Math.abs(diff)}`;
+            const alarm = lowerIsBetter && cur > 0;
             return (
-              <li key={k} data-area={area} className="card area-card p-4">
-                <p className="label flex items-center gap-2">
-                  <span aria-hidden className="area-dot size-1.5 rounded-full" />
-                  {k}
+              <li key={k} className={`rounded-[16px] bg-ink-3 p-4 ${i === 4 ? "col-span-2 lg:col-span-1" : ""}`}>
+                <p className="text-[12.5px] text-mute">{k}</p>
+                <p className={`mt-2 text-[28px] font-semibold leading-none tracking-[-0.02em] tnum ${alarm ? "text-[var(--admin-amber)]" : ""}`}>
+                  <CountUp value={cur} />
                 </p>
-                <p className="mt-2 text-2xl font-bold tnum">{cur.toLocaleString("en")}</p>
-                <p className={`mt-1 text-sm tnum ${diff === 0 ? "text-mute" : good ? "text-lime" : "text-danger"}`}>
-                  {diff === 0 ? "Same as before" : `${diff > 0 ? "▲" : "▼"} ${Math.abs(diff)}${pct} vs ${prev}`}
-                </p>
-                <Spark rows={series[i]} label={k} start={t - SPARK_DAYS * DAY} />
+                <p className="mt-1.5 text-[12px] text-mute tnum">{diff === 0 ? "Same as before" : `${diff > 0 ? "▲" : "▼"}${pct} vs ${prev.toLocaleString("en-GB")}`}</p>
+                <Spark rows={series[i]} label={k} start={t - SPARK_DAYS * DAY} i={i} />
               </li>
             );
           })}
         </ul>
-        <p className="text-sm text-mute">
-          {num(usr?.active).toLocaleString("en")} active accounts · {num(usr?.paid)} on a paid plan · {fmtBytes(bytes)} in file storage ·{" "}
-          <Link href="/admin/metrics" className="underline">more in Metrics</Link>
-        </p>
       </section>
 
-      <section aria-labelledby="loop-h" className="space-y-3">
-        <h2 id="loop-h" className="text-lg font-semibold">Is it working?</h2>
-        <ul className="grid gap-3 sm:grid-cols-3 lg:grid-cols-[repeat(auto-fit,minmax(150px,1fr))]">
-          {product.map((m) => (
-            <li key={m.label} data-area={m.area} className="card p-4">
-              <p className="label flex items-center gap-2">
-                <span aria-hidden className="area-dot size-1.5 rounded-full" />
-                {m.label}
-              </p>
-              <p className="mt-2 text-2xl font-bold tnum">{m.value}</p>
-              <p className="mt-1 text-xs text-mute">{m.note}</p>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section aria-labelledby="act-h">
-        <div className="flex items-baseline justify-between gap-3">
-          <h2 id="act-h" className="text-lg font-semibold">Recent activity</h2>
-          {me.access.super && (
-            <Link href={withAdmin ? "/admin" : "/admin?activity=all"} className="text-sm text-mute underline hover:text-bone">
-              {withAdmin ? "Hide admin actions" : "Include admin actions"}
-            </Link>
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.1fr)]">
+        {/* Is it working: solid share blocks (pin 119's work model). */}
+        <section aria-labelledby="loop-h" className={`${P} p-5`} style={n(6)}>
+          <h2 id="loop-h" className="text-[16px] font-semibold">Is it working?</h2>
+          <p className="text-[12.5px] text-faint">This week</p>
+          {product.length ? (
+            <>
+              <ShareBlocks items={product.filter((m) => m.value.endsWith("%")).slice(0, 2)} />
+              <ul className="mt-3 grid grid-cols-2 gap-2">
+                {product
+                  .filter((m) => !m.value.endsWith("%") || product.filter((x) => x.value.endsWith("%")).indexOf(m) > 1)
+                  .map((m) => (
+                    <li key={m.label} className="rounded-[14px] bg-ink-3 px-3 py-2.5">
+                      <p className="text-[18px] font-semibold tracking-[-0.02em] tnum">{m.value}</p>
+                      <p className="text-[12px] text-mute">{m.label}</p>
+                    </li>
+                  ))}
+              </ul>
+            </>
+          ) : (
+            <p className="mt-3 text-[14px] text-mute">Nothing to measure yet. These fill in once receivers get tracks.</p>
           )}
-        </div>
-        {activity.length ? (
-          <ul className="mt-3 divide-y divide-line rounded-md border border-line">
-            {activity.map((a, i) => (
-              <li key={`${a.kind}-${a.created_at}-${i}`}>
-                <Link href={activityHref(a)} className="flex items-center gap-3 px-4 py-2.5 hover:bg-ink-2">
-                  <span className="w-20 shrink-0 text-xs font-bold uppercase tracking-[1px] text-faint">{activityLabel[a.kind]}</span>
-                  <span className="min-w-0 flex-1 truncate text-sm">{a.text}</span>
-                  <span className="shrink-0 text-xs text-mute tnum">{ago(t - Number(a.created_at))}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-3 text-sm text-mute">Nothing yet.</p>
-        )}
-      </section>
+        </section>
 
-      <p className="text-sm text-mute">
-        Sign-up: {signupOpen ? "open to anyone" : "invite only"} · Emails send from {env.email.from} · Files waiting to be deleted: {num(del?.queued)}
-        {stuck ? ` (${stuck} stuck)` : ""}
+        {/* Waiting on you, then the newest faces. */}
+        <section aria-labelledby="queue-h" className={`${P} p-5`} style={n(7)}>
+          <h2 id="queue-h" className="text-[16px] font-semibold">Waiting on you</h2>
+          {queue.length ? (
+            <ul className="mt-2">
+              {queue.map((x) => {
+                const age = ageDays(x.oldest);
+                return (
+                  <li key={x.label} className="border-t border-line first:border-t-0">
+                    <Link href={x.href} className="admin-press flex min-h-12 items-center gap-3 py-2 hover:text-bone">
+                      <span className="grid min-w-9 place-items-center rounded-[10px] bg-ink-3 px-2 py-1 text-[14px] font-bold tnum">{x.n}</span>
+                      <span className="min-w-0 flex-1 truncate text-[14px]">{x.label}</span>
+                      {age != null && age > 0 && <span className={`shrink-0 text-[12px] tnum ${overdue(x) ? "text-danger" : "text-faint"}`}>{age}d</span>}
+                      <span aria-hidden className="text-faint">›</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="mt-2 text-[14px] text-mute">Every queue is empty.</p>
+          )}
+          {fresh.length > 0 && (
+            <div className="mt-4 border-t border-line pt-4">
+              <p className="flex items-center justify-between text-[13px] font-semibold">
+                Newest receivers
+                <Link href="/admin/accounts" className="min-h-11 content-center text-[12px] font-normal text-mute hover:text-bone">
+                  All users ›
+                </Link>
+              </p>
+              <ul className="mt-1 flex -space-x-2">
+                {fresh.map((u, i) => (
+                  <li key={u.id}>
+                    <Link
+                      href={`/admin/accounts/${u.id}`}
+                      title={`${u.name} @${u.handle}`}
+                      className="admin-press grid size-11 place-items-center rounded-full border-2 border-ink-2 text-[12px] font-bold text-ink"
+                      style={{ background: ["#d5ff48", "#c9c1ff", "#f7b6a8", "#ffd98a", "#a8e6cf", "#f1f1eb"][i % 6] }}
+                    >
+                      {u.name.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("")}
+                      <span className="sr-only">
+                        {u.name} @{u.handle}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
+
+        {/* Recent activity, a mono time column like a log (pin 96). */}
+        <section aria-labelledby="act-h" className={`${P} p-5`} style={n(8)}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 id="act-h" className="text-[16px] font-semibold">Recent activity</h2>
+            {me.access.super && (
+              <Link href={withAdmin ? "/admin" : "/admin?activity=all"} className="admin-press min-h-11 content-center text-[12.5px] text-mute hover:text-bone">
+                {withAdmin ? "Hide admin actions" : "Include admin actions"}
+              </Link>
+            )}
+          </div>
+          {feed.length ? (
+            <>
+              <ul className="mt-1">{feed.slice(0, FEED_SHOWN).map(activityRow)}</ul>
+              {feed.length > FEED_SHOWN && (
+                <details className="group">
+                  <summary className="flex min-h-11 cursor-pointer list-none items-center border-t border-line text-[12.5px] text-mute hover:text-bone [&::-webkit-details-marker]:hidden">
+                    <span className="group-open:hidden">Show {feed.length - FEED_SHOWN} more</span>
+                    <span className="hidden group-open:inline">Show less</span>
+                  </summary>
+                  <ul>{feed.slice(FEED_SHOWN).map(activityRow)}</ul>
+                </details>
+              )}
+            </>
+          ) : (
+            <p className="mt-2 text-[14px] text-mute">Nothing yet.</p>
+          )}
+        </section>
+      </div>
+
+      <p className="text-[12.5px] text-faint">
+        {num(usr?.active).toLocaleString("en")} active accounts · {num(usr?.paid)} on a paid plan · {fmtBytes(bytes)} in file storage · Sign-up {signupOpen ? "open to anyone" : "invite only"} · Emails send from {env.email.from} · Files waiting to be deleted: {num(del?.queued)}
+        {stuck ? ` (${stuck} stuck)` : ""} ·{" "}
+        <Link href="/admin/metrics" className="underline">
+          more in Metrics
+        </Link>
       </p>
     </div>
   );
@@ -406,28 +572,112 @@ function tileOf([tone, value]: [Tone, string]) {
   return { tone, value };
 }
 
-/** A small bar per day for the last SPARK_DAYS days, in the card's area colour; the last 7 are brighter. */
-function Spark({ rows, label, start }: { rows: { d: number; n: number }[]; label: string; start: number }) {
+/** Daily tracks for 14 days as bars (pin 151): last week faint violet, this week bone, today lime with its number on top. */
+function DayBars({ rows, start }: { rows: { d: number; n: number }[]; start: number }) {
   const days = Array.from({ length: SPARK_DAYS }, (_, i) => Number(rows.find((r) => Number(r.d) === i)?.n ?? 0));
-  const peak = Math.max(1, ...days);
-  const day = (i: number) => new Date(start + i * DAY).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+  const top = Math.max(1, ...days);
+  const label = (i: number) => new Date(start + i * DAY).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
   return (
-    <div role="img" aria-label={`${label}, last ${SPARK_DAYS} days: ${days.join(", ")}`} className="mt-3">
-      <div className="flex h-8 items-end gap-[2px]">
-        {days.map((n, i) => (
-          <span
-            key={i}
-            title={`${day(i)}: ${n}`}
-            className={`flex-1 rounded-[1px] bg-[var(--area)] ${i < SPARK_DAYS - 7 ? "opacity-35" : "opacity-90"} ${i === SPARK_DAYS - 7 ? "ml-1" : ""}`}
-            style={{ height: `${Math.max(6, (n / peak) * 100)}%` }}
-          />
+    <figure className="mt-4">
+      <div className="flex h-[200px] items-end gap-1.5 sm:gap-2" role="img" aria-label={`Tracks received per day for 14 days, ${label(0)} to ${label(SPARK_DAYS - 1)}: ${days.join(", ")}. Today ${days[SPARK_DAYS - 1]}.`}>
+        {days.map((v, i) => {
+          const today = i === SPARK_DAYS - 1;
+          return (
+            <div key={i} className="relative flex h-full flex-1 flex-col justify-end">
+              {today && (
+                <span className="admin-fill absolute -top-1 left-1/2 -translate-x-1/2 -translate-y-full rounded-full bg-bone px-2 py-0.5 text-[11px] font-bold text-ink tnum">{v}</span>
+              )}
+              <span
+                className={`admin-grow-y block rounded-t-[8px] rounded-b-[3px] ${today ? "bg-lime" : i < 7 ? "bg-[var(--admin-violet)]/35" : "bg-bone/60"}`}
+                style={{ height: `${Math.max(3, (v / top) * 100)}%`, "--i": i } as React.CSSProperties}
+                title={`${label(i)}: ${v}`}
+              />
+            </div>
+          );
+        })}
+      </div>
+      <div aria-hidden className="mt-2 flex gap-1.5 text-[11px] text-faint sm:gap-2">
+        {days.map((_, i) => (
+          <span key={i} className="flex-1 text-center">
+            {i % 2 === 1 || i === SPARK_DAYS - 1 ? new Date(start + i * DAY).toLocaleDateString("en-GB", { day: "numeric", timeZone: "UTC" }) : ""}
+          </span>
         ))}
       </div>
-      <div className="mt-1 flex justify-between text-[10px] text-faint">
-        <span>2 weeks ago</span>
-        <span>this week</span>
+    </figure>
+  );
+}
+
+/** A half circle of ticks (pin 119): lit ticks up to the score, the number and a word in the middle. */
+function Gauge({ value, tone }: { value: number; tone: Tone }) {
+  const ticks = 26;
+  const lit = Math.round((value / 100) * ticks);
+  const colour = tone === "bad" ? "var(--color-danger)" : tone === "warn" ? "var(--admin-amber)" : "var(--color-lime)";
+  return (
+    <div className="relative mx-auto mt-2 h-[132px] w-[240px]" role="img" aria-label={`Health score ${value} out of 100`}>
+      <svg viewBox="0 0 240 132" className="absolute inset-0" aria-hidden>
+        {Array.from({ length: ticks }, (_, i) => {
+          const a = Math.PI - (i / (ticks - 1)) * Math.PI;
+          const x1 = 120 + Math.cos(a) * 82;
+          const y1 = 122 - Math.sin(a) * 82;
+          const x2 = 120 + Math.cos(a) * 112;
+          const y2 = 122 - Math.sin(a) * 112;
+          return (
+            <line
+              key={i}
+              x1={x1}
+              y1={y1}
+              x2={x2}
+              y2={y2}
+              stroke={i < lit ? colour : "var(--color-ink-4)"}
+              strokeWidth="9"
+              strokeLinecap="round"
+              className={i < lit ? "admin-tick" : ""}
+              style={{ "--i": i } as React.CSSProperties}
+            />
+          );
+        })}
+      </svg>
+      <div className="absolute inset-x-0 bottom-1 text-center">
+        <p className="text-[30px] font-semibold leading-none tracking-[-0.03em] tnum">{value}</p>
+        <p className="text-[12px] text-mute">health score</p>
       </div>
     </div>
+  );
+}
+
+/** Two shares side by side as solid blocks whose height is the share (pin 119): lime first, violet second. */
+function ShareBlocks({ items }: { items: { label: string; value: string; note: string }[] }) {
+  if (!items.length) return null;
+  return (
+    <div className="mt-3 flex h-[150px] items-end gap-3">
+      {items.map((m, i) => {
+        const pct = Number(m.value.slice(0, -1)) || 0;
+        return (
+          <div key={m.label} className="flex h-full flex-1 flex-col justify-end">
+            <div
+              className={`admin-grow-y flex flex-col justify-end rounded-[18px] p-3 ${i ? "bg-[var(--admin-violet)] text-[#120d33]" : "bg-lime text-ink"}`}
+              style={{ height: `${Math.max(38, pct)}%`, "--i": i } as React.CSSProperties}
+            >
+              <p className="text-[24px] font-semibold leading-none tracking-[-0.02em] tnum">{m.value}</p>
+              <p className="mt-1 text-[11.5px] font-semibold leading-tight opacity-80">{m.label}</p>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** The last SPARK_DAYS days as a quiet bone line that draws in once; the trend in words sits above it. */
+function Spark({ rows, label, start, i }: { rows: { d: number; n: number }[]; label: string; start: number; i: number }) {
+  const days = Array.from({ length: SPARK_DAYS }, (_, d) => Number(rows.find((r) => Number(r.d) === d)?.n ?? 0));
+  const peak = Math.max(1, ...days);
+  const pts = days.map((n, d) => `${((d / (SPARK_DAYS - 1)) * 100).toFixed(1)},${(30 - (n / peak) * 26).toFixed(1)}`).join(" ");
+  const from = new Date(start).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  return (
+    <svg viewBox="0 0 100 32" preserveAspectRatio="none" className="mt-4 block h-8 w-full" role="img" aria-label={`${label} per day since ${from}: ${days.join(", ")}`}>
+      <polyline points={pts} pathLength={1} fill="none" stroke="var(--color-bone)" strokeOpacity="0.55" strokeWidth="1.8" vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" className="admin-draw" style={{ "--i": i } as React.CSSProperties} />
+    </svg>
   );
 }
 

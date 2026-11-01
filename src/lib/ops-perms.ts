@@ -86,6 +86,7 @@ export function has(perms: ReadonlySet<Perm>, need: Perm) {
 export const PAGE_NEEDS: Record<string, Need> = {
   "/admin": "overview",
   "/admin/metrics": "metrics",
+  "/admin/growth": "metrics",
   "/admin/usage": "usage",
   "/admin/revenue": "revenue",
   "/admin/storage": "storage",
@@ -128,6 +129,8 @@ export function needFor(path: string): Need {
 /** What every admin action needs. The build check fails if an exported action is missing here. */
 export const ACTION_NEEDS: Record<string, Need> = {
   suspendAccount: "users.support",
+  suspendAccounts: "users.support",
+  tagAccounts: "users.support",
   unsuspendAccount: "users.support",
   liftSuppression: "users.support",
   saveTags: "users.support",
