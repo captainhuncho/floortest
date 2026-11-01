@@ -137,9 +137,21 @@ Edit mode is bound to the exact ops session that opened it (pass and cookie are 
    sidebar: Essentials (Overview, Inbox, Users, Moderation) + the open area's pages
    each page needs its permission, else ─► /admin/no-access
    phones: bottom bar Home · Inbox · Users · Safety · More (More ─► full menu)
+⌘K / Ctrl+K (any ops page, not over another dialog; src/app/admin/kit/Palette.tsx)
+   ─► type ─┬─ people (Users (view) only; 2+ characters; name, @handle or email: the part before the @ unless you
+            │    type an @, then the whole address; exact @handle first, then names starting with it; ≤ 8; 60 searches
+            │    a minute per staff member; paletteSearch → src/lib/ops-palette.ts) ─► Enter ─► their account page
+            ├─ pages this person may open ─► Enter ─► the page
+            └─ actions (Keyboard shortcuts) ─► Enter ─► runs
+   ─► Esc ─► closes, focus back where it was; keys pressed while it closes do nothing
+? ─► the shortcuts on this screen (single keys never act in a field or under a dialog)
 Users ─► Filters (type, plan, tag, joined, activity, security) ─► chips (✕ removes one) ─► 50 a page
-   tick rows (≤ 50) ─┬─ Add tag ─► tag added to each ─► admin log
-                     └─ Suspend… (≤ 20) ─► reason ─► each: signed out, link offline, email with appeal ─► admin log
+   tick rows (≤ 50; Shift-click a range; j/k, x, Shift+J/K, ⌘A, Esc) ─► floating bar "N selected"
+                     ┬─ Add tag ─► tag added to each ─► toast ─► admin log
+                     └─ Suspend… (≤ 20) ─► confirm naming them (starts on Cancel) ─► reason ─► each: signed out, link
+                        offline, email with appeal ─► toast ─► admin log
+Feedback ─► New / Planned / Fixed / Won't do (OpsButton) ─► spinner after 150 ms ─► ✓ in place + toast; a refusal
+   ("That isn't a feedback status", "That feedback is gone") under the switch with Retry
 Growth ─► Growth & decisions ─► findings · funnel · projection · sources · cohorts · pipeline
 Moderation ─► search ─► pick a track ─► Play, only with an open takedown claim (5-minute file link; admin log "played track"; otherwise 404 + "refused play")
    ─► Keep ─► marked reviewed (tracks.ops_reviewed_at/by; "Kept by @x" on the track, a Reviewed chip in results; admin log "reviewed, kept")

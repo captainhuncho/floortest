@@ -136,6 +136,7 @@ export const ACTION_NEEDS: Record<string, Need> = {
   suspendAccount: "users.support",
   suspendAccounts: "users.support",
   tagAccounts: "users.support",
+  paletteSearch: "users.read",
   unsuspendAccount: "users.support",
   liftSuppression: "users.support",
   saveTags: "users.support",
