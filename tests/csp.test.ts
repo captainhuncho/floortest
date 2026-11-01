@@ -60,3 +60,18 @@ test("every path gets exactly one CSP: the proxy's (with a nonce) or next.config
   for (const path of ["/", "/login", "/maxwell", "/api/health", "/api/v1/me", "/_next/static/chunks/a.js", "/robots.txt", "/icon.svg", "/fonts/x.woff2", "/api/storage/upload", "/favicon.ico", "/images/a.png", "/c/abc", "/dashboard/review"])
     assert.notEqual(byProxy.test(path), byConfig.test(path), path);
 });
+
+test("verification proof files keep their own stricter policy: the proxy doesn't lay the page policy over it", async () => {
+  Object.assign(process.env, { NODE_ENV: "production", SITE_PASSWORD: "", OPS_URL: "" });
+  const { NextRequest } = await import("next/server");
+  const { proxy, OWN_CSP } = await import("../src/proxy");
+  assert.deepEqual(OWN_CSP, ["/api/admin/verification-proofs/"]);
+  const proof = proxy(new NextRequest("https://floortest.app/api/admin/verification-proofs/12"));
+  assert.equal(proof.headers.get("content-security-policy"), null, "the route's own CSP stands (tests/verification-proposals.test.ts)");
+  for (const path of ["/api/admin/verification-proofs-x", "/api/admin/verification-proofs", "/admin/verification"]) {
+    const csp = proxy(new NextRequest(`https://floortest.app${path}`)).headers.get("content-security-policy") ?? "";
+    assert.match(csp, /frame-ancestors 'none'/, `${path} keeps the page policy`);
+  }
+  const src = fs.readFileSync(new URL("../src/lib/verification-proposals.ts", import.meta.url), "utf8");
+  assert.match(src, /"Content-Security-Policy": "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; frame-ancestors 'none'"/);
+});

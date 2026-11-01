@@ -112,6 +112,12 @@ test("proposals: proof required, real types, limits, four eyes, one at a time, a
   const theirs = await upload(care2.id, PNG);
   assert.match(why(await V.proposeVerification(care, artist, { reason, links: "", tickets: [theirs] })), /expired/);
 
+  // One upload can't be sent twice, in one send or after it was used (review L1).
+  const once = await upload(care.id, PNG);
+  assert.match(why(await V.proposeVerification(care, artist, { reason, links: "", tickets: [once, once] })), /added twice/);
+  assert.match(why(await V.proposeVerification(care, artist, { reason, links: "", tickets: [once] })), /already used/);
+  assert.equal(await q.count("SELECT COUNT(*)::int AS n FROM verification_proposals"), 0);
+
   // A real proposal: a PNG and a PDF, a link, a reason.
   const r1 = await V.proposeVerification(care, artist, { reason, links: "https://instagram.com/artistone", tickets: [await upload(care.id, PNG, "insta.png"), await upload(care.id, PDF, "contract.pdf")] });
   assert.ok(r1.ok, why(r1));
@@ -165,6 +171,16 @@ test("proposals: proof required, real types, limits, four eyes, one at a time, a
   assert.ok((await V.withdrawProposal(care, (r3 as { id: number }).id)).ok);
   assert.equal((await V.proposalsFor(other))[0].status, "withdrawn");
 
+  // Approving "their request" needs a request that's really waiting (review H1): approve-only can't verify any account.
+  const rejected = await user("wasrejected", "rejected");
+  const noLinks = await user("nolinks", "pending");
+  await q.run("UPDATE users SET identity_links = '[\"javascript:alert(1)\", \"http://x.com\"]' WHERE id = ?", noLinks);
+  for (const id of [other, rejected]) {
+    assert.equal(why(await V.approveRequest(approver, id)), "Account not found");
+    assert.notEqual((await q.get<{ identity_status: string }>("SELECT identity_status FROM users WHERE id = ?", id))!.identity_status, "verified");
+  }
+  assert.match(why(await V.approveRequest(approver, noLinks)), /no profile link/, "their links go through the same check as staff links");
+
   // A user's own request: plain "verification" can't approve it (it adds the mark), approvers can, and it's recorded.
   assert.match(why(await V.approveRequest(care, asker)), /Forward it for approval/);
   assert.equal((await q.get<{ identity_status: string }>("SELECT identity_status FROM users WHERE id = ?", asker))!.identity_status, "pending");
@@ -174,6 +190,8 @@ test("proposals: proof required, real types, limits, four eyes, one at a time, a
   assert.equal(rec.status, "approved");
   assert.match(rec.reason, /Their own request: the bio code FT-ABC123/);
   assert.equal(rec.links, "https://instagram.com/x");
+  assert.equal(rec.source, "own_request");
+  assert.equal(decided.source, "staff");
   assert.match((await q.get<{ body: string }>("SELECT body FROM outbox WHERE lower(to_email) = 'asker@vproof.io'"))!.body, /remove the code from your bio/);
 });
 
@@ -193,7 +211,14 @@ test("the proof route: 404 alike for no permission and missing; inline, typed, n
   assert.match(r.headers.get("content-disposition")!, /^inline; filename="proof-\d+\.png"$/);
   assert.equal(r.headers.get("x-content-type-options"), "nosniff");
   assert.equal(r.headers.get("cache-control"), "private, no-store");
+  assert.equal(r.headers.get("x-frame-options"), "DENY");
+  assert.match(r.headers.get("content-security-policy")!, /^default-src 'none';.*frame-ancestors 'none'/);
   assert.deepEqual(new Uint8Array(await r.arrayBuffer()), PNG);
+  // A PDF downloads instead of opening in the browser (review M1).
+  const pdf = (await q.get<{ id: number }>("SELECT id FROM verification_proofs WHERE mime = 'application/pdf' LIMIT 1"))!.id;
+  const rp = await V.proofResponse(access("verification"), String(pdf));
+  assert.equal(rp.headers.get("content-type"), "application/pdf");
+  assert.match(rp.headers.get("content-disposition")!, /^attachment; filename="proof-\d+\.pdf"$/);
 });
 
 test("erasing the account deletes its proposals, proofs and stored files", async () => {
@@ -216,4 +241,18 @@ test("erasing the account deletes its proposals, proofs and stored files", async
   await purgeAccount(care);
   const other = (await q.get<{ id: number }>("SELECT id FROM users WHERE handle = 'artisttwo'"))!.id;
   assert.equal(await q.count("SELECT COUNT(*)::int AS n FROM verification_proposals WHERE user_id = ? AND proposer_id IS NULL", other), 2);
+});
+
+test("open uploads per staff member are capped (review L2), and a copy that changed after the check is refused (M3)", async () => {
+  const { q } = await import("../src/lib/db");
+  const V = await import("../src/lib/verification-proposals");
+  const t = Date.now();
+  const staff = (await q.get<{ id: number }>("INSERT INTO users (email, password_hash, name, handle, plan, tz, email_verified_at, created_at) VALUES ('cap@vproof.io','h','Cap','capstaff','free','UTC',?,?) RETURNING id", t, t))!.id;
+  for (let i = 0; i < V.OPEN_UPLOADS_MAX; i++) assert.ok((await V.startProofUpload(staff, 100, "a.png")).ok);
+  const over = await V.startProofUpload(staff, 100, "a.png");
+  assert.equal(over.ok, false);
+  assert.match((over as unknown as { why: string }).why, /uploads not sent yet/);
+  assert.ok((await V.startProofUpload(staff + 1000, 100, "a.png")).ok, "counted per person");
+  const src = (await import("node:fs")).readFileSync(new URL("../src/lib/verification-proposals.ts", import.meta.url), "utf8");
+  assert.match(src, /await store\.copy\(t\.key, key, mime\);\n\s+\/\/[^\n]*\n\s+const kept = await store\.head\(key\);\n\s+if \(!kept \|\| kept\.size !== head\.size \|\| sniffProof\(await store\.read\(key, 0, 15\)\) !== mime\)/, "the kept copy is re-checked");
 });

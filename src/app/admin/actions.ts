@@ -23,6 +23,7 @@ import { issueViewTicket } from "@/lib/ops";
 import { APP_URL } from "@/lib/mail";
 import { env } from "@/lib/env";
 import { HIDDEN, sendMail } from "@/lib/mail";
+import { approvePendingIdentity } from "@/lib/identity-approve";
 import { isAdminEmail, logAdmin, requireAdminAction } from "@/lib/admin";
 import { opsAccessFor, suspendRefusal } from "@/lib/ops-access";
 import { PERMS, ROLE_PERMS, ROLES, type Perm, type Role } from "@/lib/ops-perms";
@@ -512,7 +513,8 @@ export async function approveIdentity(userId: number): Promise<OpsResult> {
   const V = await import("@/lib/verification-proposals");
   const powers = V.powersOf(a.access);
   if (!powers.direct && !powers.approve) return no("Approving adds the Verified mark. Forward it for approval with your reason and proof instead.");
-  const r = await V.approveRequest(a, userId);
+  // Only a request that is waiting (lib/identity-approve); any other account answers "not found".
+  const r = await V.approveRequest(a, userId, () => approvePendingIdentity(userId));
   return r.ok ? ok(`Verified @${r.handle} and emailed them`) : no(r.why);
 }
 

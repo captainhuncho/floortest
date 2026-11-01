@@ -154,8 +154,8 @@ Verification (owner, 1 Nov: reason and proof for every staff verification; src/l
    │     approver (not the proposer) ─► Approve ─► Verified + "verified" email once + decided by/at + admin log
    │                                 └► Decline… ─► note (required) ─► declined, kept in the history (no email)
    │     the proposer ─► Withdraw
-   ├─ request waiting ─► check the code in their profile ─► Approve (direct or approve holders: email, recorded as an
-   │     approved proposal) / Forward for approval (plain Verification: the account's Propose form) / Not yet (reason emailed)
+   ├─ request waiting ─► check the code in their profile ─► Approve (direct or approve holders, only while their request is waiting with an https link: email, recorded as an
+   │     approved proposal, source own_request) / Forward for approval (plain Verification: the account's Propose form) / Not yet (reason emailed)
    └─ Verify someone directly ─► @handle or email (≤ 10) ─► their account
 Account ─► Verified mark ─┬─ not verified ─┬─ direct (super, verification.direct) ─► Verify profile… ─► reason (10–500) + links
                           │                │     and/or files (PNG/JPEG/WebP/PDF, ≤ 5, ≤ 10 MB) ─► confirm ─► files to the private

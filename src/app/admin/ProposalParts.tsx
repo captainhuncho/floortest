@@ -22,7 +22,7 @@ export function ProposalBody({ p, decision = true }: { p: ProposalRow; decision?
   return (
     <div className="space-y-2.5 text-[13.5px]">
       <p className="text-[12.5px] text-faint">
-        {!p.proposer ? (p.reason.startsWith("Their own request") ? "Their own request" : "Proposed by a former staff member") : direct ? `Verified directly by @${p.proposer}` : `Proposed by @${p.proposer}`} ·{" "}
+        {p.source === "own_request" ? "Their own request" : !p.proposer ? "Proposed by a former staff member" : direct ? `Verified directly by @${p.proposer}` : `Proposed by @${p.proposer}`} ·{" "}
         {day(p.created_at)}
       </p>
       <p className="whitespace-pre-line break-words">{p.reason}</p>
@@ -43,8 +43,7 @@ export function ProposalBody({ p, decision = true }: { p: ProposalRow; decision?
             <li key={f.id}>
               <a
                 href={proofUrl(f.id)}
-                target="_blank"
-                rel="noopener"
+                {...(f.mime === "application/pdf" ? { download: "" } : { target: "_blank", rel: "noopener" })}
                 className="flex min-h-11 items-center gap-2 overflow-hidden rounded-[12px] bg-ink-3 pr-3 text-[12.5px] ring-1 ring-line hover:ring-line-2"
               >
                 {f.mime.startsWith("image/") ? (
@@ -55,7 +54,10 @@ export function ProposalBody({ p, decision = true }: { p: ProposalRow; decision?
                     PDF
                   </span>
                 )}
-                <span className="max-w-40 truncate">{f.original_name}</span>
+                <span className="min-w-0">
+                  <span className="block max-w-40 truncate">{f.original_name}</span>
+                  {f.mime === "application/pdf" && <span className="block text-[11.5px] text-faint">PDF, downloads</span>}
+                </span>
               </a>
             </li>
           ))}

@@ -9,6 +9,7 @@ import { storage } from "./storage";
 import { discardFiles } from "./deletion";
 import { reserveFile, settleFile } from "./file-reservations";
 import { verifiedEmail } from "./identity-direct";
+import { approvePendingIdentity } from "./identity-approve";
 import { cleanFileName, cleanLinks, cleanReason, isProofMime, PROOF_FILES_MAX, proofRefusal, sizeRefusal, sniffProof, type ProofMime } from "./verification-proof";
 
 /**
@@ -33,8 +34,10 @@ export const powersOf = (access: OpsAccess) => ({
 
 /* ───────────── Proof files ───────────── */
 
-const INCOMING = /^verification\/incoming\/[a-f0-9]{32}$/;
+const INCOMING = /^verification\/incoming\/(\d+)-[a-f0-9]{32}$/;
 const TICKET_SECONDS = 30 * 60;
+/** Uploads one staff member may have started and not yet sent or had cleared (security review L2). */
+export const OPEN_UPLOADS_MAX = 20;
 
 const sign = (body: string) => crypto.createHmac("sha256", env.secret).update(`vproof:${body}`).digest("base64url");
 
@@ -51,7 +54,7 @@ function readTicket(adminId: number, ticket: string): { key: string; size: numbe
   if (sig.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
   try {
     const t = JSON.parse(Buffer.from(body, "base64url").toString()) as { a: number; k: string; s: number; n: string; e: number };
-    if (t.a !== adminId || t.e < Date.now() || !INCOMING.test(t.k)) return null;
+    if (t.a !== adminId || t.e < Date.now() || INCOMING.exec(t.k)?.[1] !== String(adminId)) return null;
     return { key: t.k, size: t.s, name: t.n };
   } catch {
     return null;
@@ -65,7 +68,11 @@ function readTicket(adminId: number, ticket: string): { key: string; size: numbe
 export async function startProofUpload(adminId: number, size: number, rawName: string) {
   const bad = sizeRefusal(size);
   if (bad) return no(bad);
-  const key = `verification/incoming/${crypto.randomBytes(16).toString("hex")}`;
+  // The uploader's id leads the key (never anything they typed), so their open uploads can be counted.
+  const prefix = `verification/incoming/${adminId}-`;
+  const open = await q.count("SELECT COUNT(*)::int AS n FROM file_reservations WHERE kind = 'verification_proof' AND starts_with(file_key, ?)", prefix);
+  if (open >= OPEN_UPLOADS_MAX) return no(`You have ${OPEN_UPLOADS_MAX} uploads not sent yet. Send them, or try again tomorrow.`);
+  const key = `${prefix}${crypto.randomBytes(16).toString("hex")}`;
   // Written down first: an upload never sent with a proposal is removed by the nightly check a week on.
   await reserveFile(key, "verification_proof");
   const target = await (await storage()).uploadTarget(key, "application/octet-stream", size);
@@ -84,13 +91,23 @@ async function claimProofs(adminId: number, tickets: string[]): Promise<{ ok: tr
   const store = await storage();
   const files: Proof[] = [];
   const incoming: string[] = [];
+  const sealed: string[] = [];
+  // Upload slots are spent either way: queued for deletion (again once their links expire) and their reservations cleared.
+  const spend = async (reason: string) => {
+    await discardFiles(incoming, reason, { linkLive: true });
+    for (const k of incoming) await settleFile(k);
+  };
   const fail = async (why: string) => {
-    await discardFiles([...incoming, ...files.map((f) => f.key)], "verification proof refused");
+    await discardFiles(sealed, "verification proof refused");
+    await spend("verification proof refused");
     return no(why);
   };
   for (const raw of tickets) {
     const t = readTicket(adminId, raw);
     if (!t) return fail("An upload expired. Choose the files again.");
+    // The same upload twice in one send, or one already sent (its slot is queued for deletion), is refused (review L1).
+    if (incoming.includes(t.key)) return fail("The same file was added twice. Choose the files again.");
+    if (await q.get("SELECT 1 FROM storage_deletions WHERE file_key = ?", t.key)) return fail("An upload was already used. Choose the files again.");
     incoming.push(t.key);
     const head = await store.head(t.key);
     if (!head) return fail("A file didn't finish uploading. Choose it again.");
@@ -100,10 +117,14 @@ async function claimProofs(adminId: number, tickets: string[]): Promise<{ ok: tr
     if (!mime) return fail(`"${t.name}" isn't a PNG, JPG, WebP or PDF`);
     const key = `verification/${crypto.randomUUID()}`;
     await reserveFile(key, "verification_proof");
+    sealed.push(key);
     await store.copy(t.key, key, mime);
-    files.push({ key, mime, size: head.size, name: t.name });
+    // What's kept is checked again (review M3): the upload link could have replaced the file between check and copy.
+    const kept = await store.head(key);
+    if (!kept || kept.size !== head.size || sniffProof(await store.read(key, 0, 15)) !== mime) return fail("A file changed while uploading. Choose it again.");
+    files.push({ key, mime, size: kept.size, name: t.name });
   }
-  await discardFiles(incoming, "verification proof moved", { linkLive: true });
+  await spend("verification proof moved");
   return { ok: true, files };
 }
 
@@ -303,39 +324,47 @@ export async function withdrawProposal(actor: Actor, proposalId: number): Promis
  * proposal (four eyes apply). Otherwise the request itself is recorded as an approved proposal: the reason is the bio
  * code, the links are the profiles they gave.
  */
-export async function approveRequest(actor: Actor, userId: number): Promise<Result> {
+export async function approveRequest(actor: Actor, userId: number, approve = () => approvePendingIdentity(userId)): Promise<Result> {
   const powers = powersOf(actor.access);
   if (!powers.direct && !powers.approve) return no("Approving adds the Verified mark. Forward it for approval with your reason and proof instead.");
+  // Only a request that's really waiting (security review H1, and #330's lib/identity-approve): any other account,
+  // or a missing one, gets the same "Account not found". Never a way to verify an account with no reason or proof.
+  const u = await q.get<{ identity_status: string; identity_links: string; identity_code: string | null; suspended_at: number | null; email_verified_at: number | null }>(
+    "SELECT identity_status, identity_links, identity_code, suspended_at, email_verified_at FROM users WHERE id = ?",
+    userId,
+  );
+  if (!u || u.identity_status !== "pending") return no("Account not found");
+  if (u.suspended_at) return no("That account is suspended: restore it before verifying");
+  if (!u.email_verified_at) return no("They haven't confirmed their email yet, so it can't be verified");
+  const links = requestLinks(u.identity_links);
+  if (!links.length) return no("Their request has no profile link to check. Send it back with Not yet.");
   const forwarded = await pendingFor(userId);
   if (forwarded) return approveAs(actor.id, forwarded.id);
+  // The guarded UPDATE (identity_status = 'pending' in its WHERE): two approvals at once verify and email once.
+  const row = await approve();
+  if (!row) return no("Account not found");
   const t = now();
-  let row: { email: string; name: string; handle: string; id: number };
-  try {
-    row = await q.tx(async (db) => {
-      const u = await db.get<{ identity_links: string; identity_code: string | null }>("SELECT identity_links, identity_code FROM users WHERE id = ?", userId);
-      const reason = `Their own request: the bio code${u?.identity_code ? ` ${u.identity_code}` : ""} was found in a profile they linked.`;
-      const r = await markVerified(db, userId, "");
-      if (!r || !u) throw new Refused(targetRefusal(await targetOf(userId)) ?? "Account not found");
-      const links = (() => {
-        try {
-          return (JSON.parse(u.identity_links || "[]") as string[]).filter((l) => typeof l === "string" && l.startsWith("https://")).slice(0, 5);
-        } catch {
-          return [];
-        }
-      })();
-      const p = await db.get<{ id: number }>(
-        "INSERT INTO verification_proposals (user_id, proposer_id, reason, links, status, created_at, decided_by, decided_at) VALUES (?, NULL, ?, ?, 'approved', ?, ?, ?) RETURNING id",
-        userId, reason, links.join("\n"), t, actor.id, t,
-      );
-      return { ...r, id: p!.id };
-    });
-  } catch (e) {
-    if (e instanceof Refused) return no(e.message);
-    throw e;
-  }
+  const reason = `Their own request: the bio code${u.identity_code ? ` ${u.identity_code}` : ""} was found in a profile they linked.`;
+  const p = await q.get<{ id: number }>(
+    "INSERT INTO verification_proposals (user_id, proposer_id, source, reason, links, status, created_at, decided_by, decided_at) VALUES (?, NULL, 'own_request', ?, ?, 'approved', ?, ?, ?) RETURNING id",
+    userId, reason, links.join("\n"), t, actor.id, t,
+  );
   await sendMail({ userId, audience: "receiver", to: row.email, ...(await verifiedEmail(row, "request")) });
-  await logAdmin(actor.id, "verified identity", `@${row.handle}`, `proposal #${row.id}`);
-  return { ok: true, handle: row.handle, id: row.id };
+  await logAdmin(actor.id, "verified identity", `@${row.handle}`, `proposal #${p!.id}`);
+  return { ok: true, handle: row.handle, id: p!.id };
+}
+
+/** The profiles they gave with their request, through the same check as staff links (review L4). */
+function requestLinks(raw: string): string[] {
+  let list: unknown;
+  try {
+    list = JSON.parse(raw || "[]");
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(list)) return [];
+  const checked = cleanLinks(list.filter((l): l is string => typeof l === "string").slice(0, 5).join("\n"));
+  return checked.ok ? checked.value : [];
 }
 
 /* ───────────── Reading ───────────── */
@@ -348,6 +377,7 @@ export type ProposalRow = {
   name: string;
   proposer_id: number | null;
   proposer: string | null;
+  source: "staff" | "own_request";
   reason: string;
   links: string;
   status: "pending" | "approved" | "declined" | "withdrawn";
@@ -368,7 +398,7 @@ async function withProofs(rows: Omit<ProposalRow, "proofs">[]): Promise<Proposal
   return rows.map((r) => ({ ...r, proofs: proofs.filter((f) => Number(f.proposal_id) === Number(r.id)) }));
 }
 
-const PROPOSAL_COLS = `p.id, p.user_id, u.handle, u.name, p.proposer_id, pu.handle AS proposer, p.reason, p.links, p.status, p.created_at,
+const PROPOSAL_COLS = `p.id, p.user_id, u.handle, u.name, p.proposer_id, pu.handle AS proposer, p.source, p.reason, p.links, p.status, p.created_at,
   du.handle AS decider, p.decided_at, p.decision_note
   FROM verification_proposals p JOIN users u ON u.id = p.user_id
   LEFT JOIN users pu ON pu.id = p.proposer_id LEFT JOIN users du ON du.id = p.decided_by`;
@@ -386,7 +416,8 @@ export const proposalsFor = async (userId: number, limit = 30) =>
  * answer the same 404. Served as the type found when it was checked, inline for viewing, never sniffed or cached.
  */
 export async function proofResponse(access: OpsAccess | null, rawId: string): Promise<Response> {
-  const notFound = () => new Response("Not found", { status: 404, headers: { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" } });
+  const notFound = () =>
+    new Response("Not found", { status: 404, headers: { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff", "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'" } });
   if (!access || !can(access, "verification")) return notFound();
   const id = Number(rawId);
   if (!Number.isSafeInteger(id) || id < 1) return notFound();
@@ -400,7 +431,8 @@ export async function proofResponse(access: OpsAccess | null, rawId: string): Pr
     headers: {
       "Content-Type": f.mime,
       "Content-Length": String(head.size),
-      "Content-Disposition": `inline; filename="proof-${id}.${f.mime === "application/pdf" ? "pdf" : f.mime.split("/")[1]}"`,
+      // Images open in the browser; a PDF downloads (review M1), so no PDF viewer runs on the ops site.
+      "Content-Disposition": `${f.mime === "application/pdf" ? "attachment" : "inline"}; filename="proof-${id}.${f.mime === "application/pdf" ? "pdf" : f.mime.split("/")[1]}"`,
       "X-Content-Type-Options": "nosniff",
       "Cache-Control": "private, no-store",
       // Nothing in the file may load or run anything, or be framed by another site.
