@@ -2,7 +2,26 @@ import { can, requireAdmin } from "@/lib/admin";
 import Link from "next/link";
 import { KIND_LABEL, now as clock, q } from "@/lib/db";
 import { allPlans, FREE_PLAN } from "@/lib/plan-store";
-import { decisions, forecast, funnel, type Card, type Group, type Point } from "@/lib/growth";
+import { env } from "@/lib/env";
+import {
+  BETA_START,
+  BETA_TARGETS,
+  BETA_WEEKS,
+  betaNumbers,
+  decisions,
+  forecast,
+  formatHours,
+  funnel,
+  showShare,
+  type BetaAccountRow,
+  type BetaActivityRow,
+  type BetaNumbers,
+  type BetaTrackRow,
+  type Card,
+  type Group,
+  type Point,
+} from "@/lib/growth";
+import { MonoStat } from "../PinParts";
 
 export const metadata = { title: "Growth & decisions — FloorTest ops" };
 
@@ -30,6 +49,7 @@ export default async function Growth() {
   const since = t - WINDOW_DAYS * DAY;
   const cohortFrom = t - COHORTS * WEEK;
   const week = (col: string) => `FLOOR((${col} - ?) / ${WEEK})`;
+  const betaRows = loadBeta();
 
   const [signupWeeks, trackWeeks, steps, sourceRows, kindRows, cohortUsers, requests, plans, payers] = await Promise.all([
     q.all<{ w: number; n: number }>(`SELECT ${week("created_at")} AS w, COUNT(*) AS n FROM users WHERE created_at >= ? GROUP BY 1`, from, from),
@@ -70,6 +90,9 @@ export default async function Growth() {
     money ? allPlans() : Promise.resolve([]),
     money ? q.all<{ plan: string; n: number }>("SELECT plan, COUNT(*) AS n FROM users WHERE plan <> ? AND suspended_at IS NULL GROUP BY plan", FREE_PLAN) : Promise.resolve([]),
   ]);
+
+  const [betaAccounts, betaActivity, betaTracks] = await betaRows;
+  const beta = betaNumbers({ now: t, adminEmails: env.adminEmails, accounts: betaAccounts, activity: betaActivity, tracks: betaTracks });
 
   const series = (rows: { w: number; n: number }[]) => Array.from({ length: WEEKS }, (_, i) => num(rows.find((r) => num(r.w) === i)?.n));
   const signups = series(signupWeeks);
@@ -114,6 +137,8 @@ export default async function Growth() {
         <h1 className="mt-3 text-[34px] font-semibold leading-tight tracking-[-0.03em] sm:text-[40px]">What&apos;s working, and what to do next</h1>
         <p className="mt-1 text-[15px] text-mute">From FloorTest&apos;s own numbers: people who joined in the last {WINDOW_DAYS} days, and the last {WEEKS} weeks of activity.</p>
       </header>
+
+      <BetaSection n={beta} />
 
       {/* Findings first (decision cards), each with the counts behind it. */}
       <section aria-labelledby="dec-h" className={P} style={i(1)}>
@@ -247,6 +272,95 @@ export default async function Growth() {
         )}
       </section>
     </div>
+  );
+}
+
+/**
+ * The beta's rows in three queries: every account that could count (whenever it was made: invites went out before
+ * 1 Nov), then decision events (events_time) and tracks with the sender's email (tracks_created), both
+ * bounded to the beta start (1 Nov, UTC). Who counts and the maths are in lib/growth (betaNumbers), so they're tested
+ * apart from the database.
+ */
+async function loadBeta(): Promise<[BetaAccountRow[], BetaActivityRow[], BetaTrackRow[]]> {
+  const [accounts, activity, tracks] = await Promise.all([
+    q.all<BetaAccountRow>(
+      `SELECT u.id, lower(u.email) AS email, u.created_at, u.suspended_at,
+         EXISTS (SELECT 1 FROM ops_members o WHERE o.user_id = u.id) AS ops,
+         (COALESCE(u.invite_code, '') <> '' OR EXISTS (SELECT 1 FROM waitlist w WHERE w.invited_at IS NOT NULL AND lower(w.email) = lower(u.email))) AS invited,
+         ARRAY(SELECT lower(m.email) FROM account_members am JOIN users m ON m.id = am.user_id WHERE am.account_id = u.id) AS team_emails
+       FROM users u WHERE u.suspended_at IS NULL AND lower(u.email) NOT LIKE ? ORDER BY u.id LIMIT 50000`,
+      "%@floortest.test",
+    ),
+    q.all<BetaActivityRow>(
+      `SELECT e.user_id, e.type, COUNT(*) AS n, MAX(e.created_at) AS last_at
+       FROM events e
+       WHERE e.created_at >= ? AND e.type IN ('kept', 'passed')
+       GROUP BY e.user_id, e.type`,
+      BETA_START,
+    ),
+    q.all<BetaTrackRow>(
+      `SELECT t.user_id, t.created_at, t.played_at, t.deleted_at, lower(s.email) AS sender_email
+       FROM tracks t JOIN senders s ON s.id = t.sender_id
+       WHERE t.created_at >= ? LIMIT 50000`,
+      BETA_START,
+    ),
+  ]);
+  // Postgres bigints can arrive as strings; the maths wants numbers.
+  const n = (v: unknown) => (v == null ? null : Number(v));
+  return [
+    accounts.map((r) => ({ ...r, id: Number(r.id), created_at: Number(r.created_at), suspended_at: n(r.suspended_at), ops: !!r.ops, invited: !!r.invited, team_emails: (r.team_emails ?? []).map(String) })),
+    activity.map((r) => ({ user_id: Number(r.user_id), type: String(r.type), n: Number(r.n), last_at: Number(r.last_at) })),
+    tracks.map((r) => ({ ...r, user_id: Number(r.user_id), created_at: Number(r.created_at), played_at: n(r.played_at), deleted_at: n(r.deleted_at) })),
+  ];
+}
+
+/** The beta's three weekly targets (docs/beta-launch-plan.md), as three tiles. Small bases show the raw number only. */
+function BetaSection({ n }: { n: BetaNumbers }) {
+  const share = showShare(n.accounts);
+  // Under 5 accounts the base rule is raw count only: no share, no target, no bar.
+  const of = (v: number, target: number) => (share ? `${pct(v, n.accounts)}% of ${n.accounts} beta accounts · target ${target} · ` : "");
+  const toward = (v: number, target: number) => (share ? Math.min(100, (v / target) * 100) : undefined);
+  const hours = n.firstListenHours;
+  const fast = hours != null && hours < BETA_TARGETS.firstListenHours;
+  const listenShare = showShare(n.listenAccounts);
+  return (
+    <section aria-labelledby="beta-h" className="admin-panel admin-rise p-5" style={{ "--i": 0 } as React.CSSProperties}>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h2 id="beta-h" className="text-[16px] font-semibold">Beta numbers</h2>
+        <p className="text-[13px] text-mute tnum">
+          Beta week {n.week} of {BETA_WEEKS}
+        </p>
+      </div>
+      <p className="mt-1 text-[12.5px] text-faint tnum">
+        {n.accounts} beta {n.accounts === 1 ? "account" : "accounts"} · {n.invited} invited / {n.other} other · {n.joinedBefore} joined before 1 Nov / {n.joinedSince} since · activity counted from 1 Nov · not counting the owner, ops staff, test accounts or suspended accounts
+      </p>
+      <div className="mt-4 grid gap-4 md:grid-cols-3">
+        <MonoStat
+          i={1}
+          label="Weekly active receivers"
+          value={`${n.weeklyActive}`}
+          pct={toward(n.weeklyActive, BETA_TARGETS.weeklyActive)}
+          tone={n.weeklyActive >= BETA_TARGETS.weeklyActive ? "lime" : "violet"}
+          caption={`${of(n.weeklyActive, BETA_TARGETS.weeklyActive)}kept or passed a track in the last 7 days`}
+        />
+        <MonoStat
+          i={2}
+          label="Activated receivers"
+          value={`${n.activated}`}
+          pct={toward(n.activated, BETA_TARGETS.activated)}
+          tone={n.activated >= BETA_TARGETS.activated ? "lime" : "violet"}
+          caption={`${of(n.activated, BETA_TARGETS.activated)}got a track from a sender and made a decision`}
+        />
+        <MonoStat
+          i={3}
+          label="Time to first listen (median)"
+          value={formatHours(hours)}
+          pct={hours != null && listenShare ? Math.min(100, (hours / BETA_TARGETS.firstListenHours) * 100) : undefined}
+          tone={fast ? "lime" : "amber"}
+          caption={`${listenShare ? `target under ${BETA_TARGETS.firstListenHours} h · ` : ""}${n.listened} ${n.listened === 1 ? "track" : "tracks"} listened to · ${n.waiting} waiting for a first listen`}
+        />
+      </div>
+    </section>
   );
 }
 
