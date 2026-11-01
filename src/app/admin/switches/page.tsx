@@ -48,15 +48,20 @@ export default async function Switches() {
                 <p className="mt-1 text-sm text-mute">{SWITCHES[key].description}</p>
               </div>
               <div className="flex items-center gap-3">
-                <span className={`chip ${on ? "border-lime/50 text-lime" : "border-line text-mute"}`}>{on ? "On" : "Off"}</span>
+                <span className={`text-[13px] font-semibold ${on ? "text-lime" : "text-faint"}`}>{on ? "On" : "Off"}</span>
+                {/* A big switch (pins 17, 18): the track fills lime and the knob slides; it still asks before changing. */}
                 <ConfirmButton
                   action={flipSwitch.bind(null, key, !on)}
                   message={`Turn ${on ? "off" : "on"} "${SWITCHES[key].label}"? It takes effect straight away for everyone.`}
                   confirmLabel={on ? "Turn off" : "Turn on"}
                   danger={key === "uploads_paused" && !on}
-                  className="btn-ghost btn-sm"
+                  className={`admin-press relative h-11 w-[76px] shrink-0 rounded-full p-1 transition-colors duration-300 ${on ? "bg-lime" : "bg-ink-4 ring-1 ring-line-2"}`}
                 >
-                  {on ? "Turn off" : "Turn on"}
+                  <span className="sr-only">{`${on ? "Turn off" : "Turn on"} ${SWITCHES[key].label}`}</span>
+                  <span
+                    aria-hidden
+                    className={`block size-9 rounded-full shadow-[0_2px_6px_rgb(0_0_0/0.35)] transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${on ? "translate-x-8 bg-ink" : "translate-x-0 bg-bone"}`}
+                  />
                 </ConfirmButton>
               </div>
               {isTargeted(key) && <RuleForm switchKey={key} rule={rule} reach={reach} handles={handles} plans={plans} planName={planName} />}

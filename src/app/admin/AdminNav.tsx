@@ -131,10 +131,13 @@ export function AdminNav({ groups, admin }: { groups: NavGroup[]; admin: { name:
         href={i.href}
         aria-current={on ? "page" : undefined}
         aria-label={open ? undefined : `${i.label}${i.badge ? `, ${i.badge} waiting` : ""}`}
-        className={`group/nav relative flex min-h-9 items-center gap-2.5 rounded-[10px] px-2.5 text-[13.5px] transition-colors duration-150 ${open ? "" : "justify-center"} ${on ? "bg-ink-4 font-semibold text-bone" : "text-mute hover:bg-ink-3 hover:text-bone"}`}
+        className={`group/nav relative flex min-h-11 items-center gap-2.5 rounded-full px-1.5 text-[13.5px] transition-colors duration-150 ${open ? "" : "justify-center"} ${on ? "bg-ink-4 font-semibold text-bone" : "text-mute hover:bg-ink-3 hover:text-bone"}`}
       >
         {on && <span aria-hidden className="admin-nav-bar absolute -left-2 bottom-2 top-2 w-[3px] rounded-r bg-lime" />}
-        <Icon name={i.icon} className={`size-4 shrink-0 ${on ? "" : "opacity-75"}`} />
+        {/* Round icon buttons, the current one lit lime (pin 119's side rail). */}
+        <span aria-hidden className={`grid size-8 shrink-0 place-items-center rounded-full transition-colors duration-200 ${on ? "bg-lime text-ink" : "bg-ink-3 text-mute group-hover/nav:text-bone"}`}>
+          <Icon name={i.icon} className="size-4" />
+        </span>
         {open ? (
           <>
             <span className="min-w-0 flex-1 truncate">{i.label}</span>
