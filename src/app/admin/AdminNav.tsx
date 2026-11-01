@@ -40,14 +40,67 @@ export function Icon({ name, className = "size-4" }: { name: IconName; className
 
 const KEY = "floortest-admin-panel";
 
+/** Always in the sidebar, whichever area is open (owner, 1 Nov): the pages used every day. Shown only if this person can open them. */
+const ESSENTIALS = ["/admin", "/admin/inbox", "/admin/accounts", "/admin/moderation"];
+
+const isActiveFor = (path: string) => (href: string) => (href === "/admin" ? path === "/admin" : path === href || path.startsWith(`${href}/`));
+
+/** The area (top-bar tab) the current page belongs to; Overview when none matches. */
+export function currentArea(groups: NavGroup[], path: string) {
+  const active = isActiveFor(path);
+  return groups.find((g) => g.sections.some((s) => s.items.some((i) => active(i.href)))) ?? groups[0];
+}
+
+const areaLabel = (g: NavGroup) => g.title || "Overview";
+const areaHref = (g: NavGroup) => g.sections[0]?.items[0]?.href ?? "/admin";
+const areaBadge = (g: NavGroup) => g.sections.reduce((n, s) => n + s.items.reduce((m, i) => m + (i.badge ?? 0), 0), 0);
+
 /**
- * Admin sidebar: Overview, then pages grouped by job (Support, Growth, Product, Trust & safety, Platform, Admin),
- * with counts. Search filters the list (Enter searches users); the arrow collapses it to icons.
+ * The areas along the top (owner, 1 Nov: the sidebar was too crowded). Picking one opens its first page and shows its
+ * pages in the sidebar; the count is everything waiting in that area. Wide screens only; phones use AdminMobileNav.
+ */
+export function AdminTopNav({ groups }: { groups: NavGroup[] }) {
+  const path = usePathname();
+  const area = currentArea(groups, path);
+  return (
+    <nav aria-label="Admin areas" className="sticky top-0 z-20 hidden border-b border-line bg-ink/80 backdrop-blur md:block">
+      <ul className="flex gap-1 overflow-x-auto px-6 py-2 [scrollbar-width:none]">
+        {groups.map((g) => {
+          const on = g.id === area?.id;
+          const waiting = areaBadge(g);
+          return (
+            <li key={g.id} className="shrink-0">
+              <Link
+                href={areaHref(g)}
+                aria-current={on ? "true" : undefined}
+                className={`admin-press flex min-h-11 items-center gap-2 rounded-[10px] px-3.5 text-[13.5px] font-semibold transition-colors duration-150 ${on ? "bg-ink-4 text-bone" : "text-mute hover:bg-ink-3 hover:text-bone"}`}
+              >
+                <Icon name={g.icon} className={`size-4 ${on ? "text-lime" : ""}`} />
+                {areaLabel(g)}
+                {waiting > 0 && (
+                  <span className="rounded-md bg-ink-4 px-1.5 text-[11px] font-bold text-bone tnum">
+                    {waiting}
+                    <span className="sr-only"> waiting</span>
+                  </span>
+                )}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+}
+
+/**
+ * Admin sidebar (owner, 1 Nov): Essentials (Overview, Inbox, Users, Moderation) always, then only the pages of the area
+ * picked in the top bar. Search finds any page (Enter searches users); the arrow collapses it to icons, with each
+ * icon named on focus and hover.
  */
 export function AdminNav({ groups, admin }: { groups: NavGroup[]; admin: { name: string; initials: string; role: string } }) {
   const path = usePathname();
   const router = useRouter();
-  const isActive = (href: string) => (href === "/admin" ? path === "/admin" : path.startsWith(href));
+  const active = isActiveFor(path);
   const [open, setOpen] = useDeviceState(() => stored(KEY) !== "closed", true);
   const [query, setQuery] = useState("");
   // Leaving a page (by picking a result or otherwise) ends the search.
@@ -62,109 +115,131 @@ export function AdminNav({ groups, admin }: { groups: NavGroup[]; admin: { name:
       localStorage.setItem(KEY, next ? "open" : "closed");
     } catch {}
   };
+  const all = groups.flatMap((g) => g.sections.flatMap((s) => s.items));
+  const essentials = ESSENTIALS.map((h) => all.find((i) => i.href === h)).filter((i): i is NavItem => !!i);
+  const area = currentArea(groups, path);
   const q = query.trim().toLowerCase();
-  const shown = groups
-    .map((g) => ({ ...g, items: g.sections.flatMap((s) => s.items).filter((i) => !q || i.label.toLowerCase().includes(q) || g.title.toLowerCase().includes(q)) }))
-    .filter((g) => g.items.length);
+  const found = q ? all.filter((i) => i.label.toLowerCase().includes(q) || groups.some((g) => g.title.toLowerCase().includes(q) && g.sections.some((s) => s.items.includes(i)))) : [];
 
-  const link = (i: NavItem) => (
-    <Link
-      key={i.href}
-      href={i.href}
-      title={open ? undefined : i.label}
-      aria-current={isActive(i.href) ? "page" : undefined}
-      className={`tactile-item relative flex items-center gap-2.5 rounded-[12px] px-2.5 py-2.5 text-[13px] font-semibold ${open ? "" : "justify-center"}`}
-    >
-      <Icon name={i.icon} className="size-[18px] shrink-0" />
-      {open ? (
-        <>
-          <span className="min-w-0 flex-1 truncate">{i.label}</span>
-          {!!i.badge && <span className="rounded bg-lime px-1.5 text-[11px] font-bold text-ink tnum">{i.badge}</span>}
-        </>
-      ) : (
-        <>
-          <span className="sr-only">{i.label}</span>
-          {!!i.badge && <span aria-hidden className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-lime" />}
-        </>
-      )}
-    </Link>
-  );
+  const link = (i: NavItem) => {
+    const on = active(i.href);
+    // Lime count only where something needs a person; plain counts elsewhere.
+    const urgent = ["/admin/inbox", "/admin/takedowns", "/admin/incidents", "/admin/plan-requests"].includes(i.href);
+    return (
+      <Link
+        key={i.href}
+        href={i.href}
+        aria-current={on ? "page" : undefined}
+        aria-label={open ? undefined : `${i.label}${i.badge ? `, ${i.badge} waiting` : ""}`}
+        className={`group/nav relative flex min-h-9 items-center gap-2.5 rounded-[10px] px-2.5 text-[13.5px] transition-colors duration-150 ${open ? "" : "justify-center"} ${on ? "bg-ink-4 font-semibold text-bone" : "text-mute hover:bg-ink-3 hover:text-bone"}`}
+      >
+        {on && <span aria-hidden className="admin-nav-bar absolute -left-2 bottom-2 top-2 w-[3px] rounded-r bg-lime" />}
+        <Icon name={i.icon} className={`size-4 shrink-0 ${on ? "" : "opacity-75"}`} />
+        {open ? (
+          <>
+            <span className="min-w-0 flex-1 truncate">{i.label}</span>
+            {!!i.badge && <span className={`rounded-md px-1.5 text-[11px] font-bold tnum ${urgent ? "bg-lime text-ink" : "text-bone"}`}>{i.badge}</span>}
+          </>
+        ) : (
+          <>
+            {!!i.badge && <span aria-hidden className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-lime" />}
+            <span role="tooltip" className="pointer-events-none absolute left-full z-30 ml-3 hidden whitespace-nowrap rounded-md bg-bone px-2 py-1 text-[12px] font-semibold text-ink group-hover/nav:block group-focus-visible/nav:block">
+              {i.label}
+              {i.badge ? ` · ${i.badge} waiting` : ""}
+            </span>
+          </>
+        )}
+      </Link>
+    );
+  };
+  const label = (text: string) => open && <p className="px-2.5 pb-1 pt-3 text-[11px] font-bold uppercase tracking-[1px] text-faint">{text}</p>;
 
   return (
-    <aside className={`flex h-dvh shrink-0 flex-col border-r border-line bg-ink-2 ${open ? "w-64" : "w-16"}`}>
+    <aside className={`admin-side flex h-dvh shrink-0 flex-col border-r border-line bg-ink-2 ${open ? "w-64" : "w-16"}`}>
       <div className={`flex items-center gap-2.5 px-3 pb-3 pt-4 ${open ? "justify-between" : "flex-col"}`}>
         <Link href="/admin" className="flex items-center gap-2.5" aria-label="FloorTest admin">
           {/* Ops has its own brushed-silver crest, so it never looks like the main site. */}
           {/* eslint-disable-next-line @next/next/no-img-element -- the crest is an SVG; Next's image optimizer doesn't process SVGs */}
-          <img draggable={false} src="/brand/crest-ops.svg" alt="" aria-hidden className="size-7 shrink-0" />
+          <img draggable={false} src="/brand/crest-ops.svg" alt="" aria-hidden className="size-8 shrink-0" />
           {open && (
             <span className="flex flex-col leading-tight">
-              <span className="text-[16px] font-extrabold text-bone">FloorTest</span>
-              <span className="text-[11px] font-bold uppercase tracking-[1.5px] text-mute">Admin</span>
+              <span className="text-[15px] font-extrabold text-bone">FloorTest Ops</span>
+              <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[1px] text-lime">
+                <span aria-hidden className="admin-live relative size-1.5 rounded-full bg-lime" />
+                Live
+              </span>
             </span>
           )}
         </Link>
-        <button type="button" onClick={() => toggle(!open)} aria-label={open ? "Collapse menu" : "Expand menu"} className="grid size-7 place-items-center rounded-md text-faint hover:bg-ink-3 hover:text-bone">
-          <Icon name="chevron" className={`size-3.5 transition ${open ? "" : "rotate-180"}`} />
+        <button type="button" onClick={() => toggle(!open)} aria-label={open ? "Collapse menu" : "Expand menu"} className="grid size-11 place-items-center rounded-lg text-faint hover:bg-ink-3 hover:text-bone">
+          <Icon name="chevron" className={`size-3.5 transition-transform duration-200 ${open ? "" : "rotate-180"}`} />
         </button>
       </div>
       {open && (
         <form
           role="search"
-          className="mx-3 flex items-center gap-2 rounded-lg border border-line bg-ink-2 px-2.5 py-2"
+          className="mx-3 flex items-center gap-2 rounded-[10px] border border-line bg-ink px-2.5"
           onSubmit={(e) => {
             e.preventDefault();
-            if (query.trim()) router.push(`/admin/accounts?q=${encodeURIComponent(query.trim())}`);
+            if (found.length === 1) router.push(found[0].href);
+            else if (query.trim()) router.push(`/admin/accounts?q=${encodeURIComponent(query.trim())}`);
           }}
         >
           <Icon name="search" className="size-3.5 shrink-0 text-faint" />
           <label htmlFor="admin-q" className="sr-only">
-            Search the menu, or press Enter to search users
+            Find a page, or press Enter to search users
           </label>
           <input
             id="admin-q"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search pages, users…"
-            className="min-w-0 flex-1 bg-transparent text-[11px] text-bone outline-none placeholder:text-faint"
+            placeholder="Find a page or user…"
+            className="min-h-10 min-w-0 flex-1 bg-transparent text-[13px] text-bone outline-none placeholder:text-faint"
           />
         </form>
       )}
-      <nav aria-label="Admin" className="keep-night tactile-panel mx-2 mb-3 mt-3 flex-1 overflow-y-auto rounded-[20px] p-1.5">
-        {open ? (
+      <nav aria-label="Admin" className="mx-2 mb-3 mt-2 flex-1 overflow-y-auto px-1">
+        {q ? (
           <>
-            {shown.length === 0 && <p className="tactile-label px-2.5 py-3 text-[11px]">No pages match. Press Enter to search users.</p>}
-            {shown.map((g) => (
-              <div key={g.id} data-area={g.id} className="mb-3 last:mb-0">
-                {g.title && <p className="area-label px-2.5 pb-1 pt-1 text-[11px] font-bold uppercase tracking-[1px]">{g.title}</p>}
-                <div className="flex flex-col gap-0.5">{g.items.map(link)}</div>
-              </div>
-            ))}
+            {label("Pages")}
+            <div className="flex flex-col gap-0.5">{found.map(link)}</div>
+            {!found.length && <p className="px-2.5 py-3 text-[12px] text-faint">No pages match. Press Enter to search users.</p>}
           </>
         ) : (
-          <div className="flex flex-col gap-0.5">
-            {groups.map((g) => (
-              <div key={g.id} data-area={g.id} className="flex flex-col gap-0.5">
-                {g.sections.flatMap((x) => x.items).map(link)}
+          <>
+            {label("Essentials")}
+            <div className="flex flex-col gap-0.5">{essentials.map(link)}</div>
+            {area && area.id !== "overview" && (
+              <div key={area.id} className="admin-area mt-3 border-t border-line pt-1">
+                {open && <p className="px-2.5 pb-1 pt-3 text-[13px] font-bold text-bone">{areaLabel(area)}</p>}
+                {area.sections.map((s) => {
+                  const items = s.items.filter((i) => !ESSENTIALS.includes(i.href));
+                  return items.length > 0 ? (
+                    <div key={s.title || area.id}>
+                      {s.title && label(s.title)}
+                      <div className="flex flex-col gap-0.5">{items.map(link)}</div>
+                    </div>
+                  ) : null;
+                })}
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </nav>
       <div className={`flex items-center gap-2 border-t border-line p-3 ${open ? "" : "flex-col"}`}>
-        <span title={admin.name} className="grid size-8 shrink-0 place-items-center rounded-full bg-ink-4 text-[11px] font-bold text-bone">
+        <span title={admin.name} className="grid size-9 shrink-0 place-items-center rounded-full bg-ink-4 text-[11px] font-bold text-bone">
           {admin.initials}
         </span>
         {open && (
           <span className="flex min-w-0 flex-1 flex-col leading-tight">
-            <span className="truncate text-[12px] font-semibold text-bone">{admin.name}</span>
+            <span className="truncate text-[12.5px] font-semibold text-bone">{admin.name}</span>
             <span className="truncate text-[10.5px] font-bold uppercase tracking-[1px] text-faint">{admin.role}</span>
           </span>
         )}
         <form action={opsSignOut}>
-          <button title="Sign out of ops" className="flex items-center gap-1 rounded-md px-2 py-1.5 text-[11px] text-faint hover:bg-ink-3 hover:text-bone">
-            <Icon name="back" className="size-3.5" />
-            {open ? "Sign out" : <span className="sr-only">Sign out</span>}
+          <button title="Sign out of ops" className="grid size-11 place-items-center rounded-lg text-faint hover:bg-ink-3 hover:text-bone">
+            <Icon name="back" className="size-4" />
+            <span className="sr-only">Sign out</span>
           </button>
         </form>
       </div>

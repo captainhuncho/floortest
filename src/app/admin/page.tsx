@@ -4,6 +4,7 @@ import { mailUsage } from "@/lib/mail-quota";
 import { partnerRows } from "@/lib/partners";
 import { switchOn } from "@/lib/switches";
 import Link from "next/link";
+import { CountUp } from "./CountUp";
 import { configProblems, env } from "@/lib/env";
 import { now as clock, q } from "@/lib/db";
 import { fmtBytes } from "@/lib/format";
@@ -236,88 +237,117 @@ export default async function AdminOverview({ searchParams }: { searchParams: Pr
   const activityHref = (a: { kind: string; ref: string }) => (a.kind === "signup" || a.kind === "first" ? `/admin/accounts/${a.ref}` : a.kind === "takedown" ? "/admin/takedowns" : "/admin/log");
   const activityLabel: Record<string, string> = { signup: "Sign-up", first: "First track", takedown: "Takedown", admin: "Admin" };
 
-  const dot: Record<Tone, string> = { ok: "bg-lime", warn: "bg-[#e0a33a]", bad: "bg-danger", idle: "bg-faint" };
-  const banner: Record<Tone, string> = { ok: "border-lime/40 bg-lime/5", warn: "border-[#e0a33a]/50 bg-[#e0a33a]/10", bad: "border-danger/50 bg-danger/10", idle: "border-line" };
+  // The header says plainly how things are: broken, needs you today, or calm (owner's review, 1 Nov).
+  const soon = now.filter((x) => overdue(x) || (x.oldest != null && x.dueDays != null && (ageDays(x.oldest) ?? 0) >= x.dueDays - 1));
+  const head =
+    verdict.tone === "bad"
+      ? { tone: "bad" as Tone, title: verdict.text, line: [...problems.slice(0, 1), ...now.slice(0, 2).map((x) => `${x.n} ${x.label.toLowerCase()}`)].join(" · ") }
+      : now.length
+        ? { tone: "warn" as Tone, title: soon.length ? "Needs you today" : "Needs you", line: now.slice(0, 3).map((x) => `${x.n} ${x.label.toLowerCase()}`).join(" · ") }
+        : { tone: "ok" as Tone, title: "All calm", line: queue.length ? `Nothing urgent. ${queue.reduce((n, x) => n + x.n, 0)} things in the queues.` : "Nothing needs you right now." };
+  const toneDot: Record<Tone, string> = { ok: "bg-lime", warn: "bg-[var(--admin-amber)]", bad: "bg-danger", idle: "bg-faint" };
+  const toneWord: Record<Tone, string> = { ok: "OK", warn: "Warning", bad: "Problem", idle: "Not run yet" };
+  const checked = new Date(t).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+  const panel = "admin-panel admin-rise";
 
   return (
-    <div className="space-y-8">
-      <h1 className="text-3xl font-bold tracking-tight">Overview</h1>
+    <div className="space-y-6">
+      <header className="admin-rise flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[13px] text-mute">Overview</p>
+          <h1 className="mt-1 flex items-center gap-3 text-[28px] font-semibold tracking-[-0.02em]">
+            <span aria-hidden className={`relative size-2.5 shrink-0 rounded-full ${toneDot[head.tone]} ${head.tone === "ok" ? "admin-live" : ""}`} />
+            <span role="status">{head.title}</span>
+          </h1>
+          <p className="mt-1.5 text-[14px] text-mute">{head.line}</p>
+          {unavailable.length > 0 && <p className="mt-1 text-[13px] text-danger">Couldn&apos;t load: {unavailable.join(", ")}</p>}
+        </div>
+        <Link href="/admin" className="admin-press btn-ghost btn-sm flex min-h-11 items-center gap-2">
+          <span className="text-faint">Checked {checked} UTC</span> · Refresh
+        </Link>
+      </header>
 
-      <p role="status" className={`flex items-center gap-3 rounded-lg border px-4 py-3 text-lg font-bold ${banner[verdict.tone]}`}>
-        <span aria-hidden className={`size-2.5 shrink-0 rounded-full ${dot[verdict.tone]}`} />
-        {verdict.text}
-        {unavailable.length > 0 && <span className="text-sm font-normal text-mute">Couldn&apos;t load: {unavailable.join(", ")}</span>}
-      </p>
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <section aria-labelledby={now.length ? "now-h" : "queue-h"} className="space-y-3 lg:col-span-2">
-          {now.length > 0 && <h2 id="now-h" className="text-lg font-semibold">Act now</h2>}
-          {now.length > 0 && (
-            <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line">
-              {now.map((x) => {
+      {now.length > 0 && (
+        <section aria-labelledby="now-h" className={panel} style={{ "--i": 1 } as React.CSSProperties}>
+          <h2 id="now-h" className="flex items-center justify-between px-5 pb-2 pt-4 text-[15px] font-semibold">
+            Act now <span className="text-[12px] font-medium text-faint">Overdue first</span>
+          </h2>
+          <ul>
+            {[...now]
+              .sort((a, b) => Number(overdue(b)) - Number(overdue(a)) || (ageDays(b.oldest) ?? 0) - (ageDays(a.oldest) ?? 0))
+              .map((x) => {
                 const age = ageDays(x.oldest);
+                const late = overdue(x);
+                const left = x.dueDays != null && age != null ? x.dueDays - age : null;
                 return (
-                  <li key={x.label} data-area={x.area}>
-                    <Link href={x.href} className="flex items-center gap-4 border-l-2 border-[var(--area)] px-4 py-3 hover:bg-ink-2">
-                      <span className="w-8 text-right text-xl font-bold tnum">{x.n}</span>
+                  <li key={x.label} className="border-t border-line">
+                    <Link href={x.href} className="admin-press flex min-h-[60px] items-center gap-4 px-5 py-3 hover:bg-ink-3">
+                      <span className="grid size-9 shrink-0 place-items-center rounded-[10px] bg-danger/15 text-[15px] font-bold text-danger tnum">{x.n}</span>
                       <span className="min-w-0 flex-1">
-                        <span className="block font-bold">{x.label}</span>
-                        {x.sub && <span className="block truncate text-sm text-mute">{x.sub}</span>}
+                        <span className="block font-semibold">{x.label}</span>
+                        {x.sub && <span className="block truncate text-[13px] text-mute">{x.sub}</span>}
                       </span>
-                      {age != null && (
-                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold tnum ${overdue(x) ? "bg-danger/15 text-danger" : "bg-ink-3 text-mute"}`}>
-                          oldest {age === 0 ? "today" : `${age}d`}
+                      {left != null && (
+                        <span className={`shrink-0 rounded-md px-2 py-0.5 text-[12px] font-semibold tnum ${late ? "bg-danger/15 text-danger" : left <= 1 ? "bg-[var(--admin-amber)]/15 text-[var(--admin-amber)]" : "bg-ink-4 text-mute"}`}>
+                          {late ? `${-left || 0}d overdue` : left === 0 ? "due today" : `due in ${left}d`}
                         </span>
                       )}
-                      <span aria-hidden className="text-faint">→</span>
+                      <span className="hidden shrink-0 text-[13px] font-semibold text-bone sm:block">Open →</span>
+                    </Link>
+                  </li>
+                );
+              })}
+          </ul>
+        </section>
+      )}
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+        <section aria-labelledby="queue-h" className={panel} style={{ "--i": 2 } as React.CSSProperties}>
+          <h2 id="queue-h" className="px-5 pb-2 pt-4 text-[15px] font-semibold">Waiting on you</h2>
+          {queue.length ? (
+            <ul>
+              {queue.map((x) => {
+                const age = ageDays(x.oldest);
+                return (
+                  <li key={x.label} className="border-t border-line">
+                    <Link href={x.href} className="admin-press flex min-h-[52px] items-center gap-3 px-5 py-2.5 hover:bg-ink-3">
+                      <span className="w-9 shrink-0 text-right text-[15px] font-bold tnum">{x.n}</span>
+                      <span className="min-w-0 flex-1 truncate">{x.label}</span>
+                      {age != null && age > 0 && <span className={`shrink-0 text-[12px] tnum ${overdue(x) ? "text-danger" : "text-faint"}`}>oldest {age}d</span>}
+                      <span aria-hidden className="text-faint">›</span>
                     </Link>
                   </li>
                 );
               })}
             </ul>
-          )}
-
-          {queue.length > 0 && (
-            <>
-              {now.length ? <h3 id="queue-h" className="label pt-2">Queue</h3> : <h2 id="queue-h" className="text-lg font-semibold">Waiting on you</h2>}
-              <ul className="flex flex-wrap gap-2">
-                {queue.map((x) => {
-                  const age = ageDays(x.oldest);
-                  return (
-                    <li key={x.label} data-area={x.area}>
-                      <Link href={x.href} className="flex items-center gap-2 rounded-full border border-line bg-ink-2 px-3 py-1.5 text-sm hover:border-[var(--area)]">
-                        <span aria-hidden className="area-dot size-1.5 rounded-full" />
-                        <span className="font-bold tnum">{x.n}</span>
-                        {x.label}
-                        {age != null && age > 0 && <span className={`text-xs tnum ${overdue(x) ? "text-danger" : "text-faint"}`}>· {age}d</span>}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </>
+          ) : (
+            <p className="border-t border-line px-5 py-4 text-[14px] text-mute">Every queue is empty.</p>
           )}
         </section>
 
-        <section id="health" aria-labelledby="health-h" className="space-y-3">
-          <h2 id="health-h" className="text-lg font-semibold">Health</h2>
-          <ul className="grid grid-cols-2 gap-2">
+        <section id="health" aria-labelledby="health-h" className={`${panel} p-5`} style={{ "--i": 3 } as React.CSSProperties}>
+          <h2 id="health-h" className="text-[15px] font-semibold">Health</h2>
+          <p className="text-[12.5px] text-faint">The worst one sets the status at the top</p>
+          <ul className="mt-3 grid grid-cols-2 gap-2">
             {shownHealth.map((h) => (
               <li key={h.label}>
-                <Link href={h.href} className="block h-full rounded-lg border border-line bg-ink-2 p-3 hover:border-line-2">
-                  <span className="label flex items-center gap-2">
-                    <span aria-hidden className={`size-2 rounded-full ${dot[h.tone]}`} />
-                    {h.label}
+                <Link href={h.href} className={`admin-lift flex h-full min-h-[60px] items-center gap-3 rounded-[12px] border px-3 py-2.5 ${h.tone === "bad" ? "border-danger/50 bg-danger/10" : "border-line"}`}>
+                  <span aria-hidden className={`size-2.5 shrink-0 rounded-full ${toneDot[h.tone]}`} />
+                  <span className="min-w-0">
+                    <span className="block text-[13.5px] font-semibold">
+                      {h.label}
+                      <span className="sr-only">: {toneWord[h.tone]}</span>
+                    </span>
+                    <span className={`block truncate text-[12.5px] ${h.tone === "bad" ? "text-danger" : "text-faint"}`}>{h.value}</span>
                   </span>
-                  <span className={`mt-1 block text-sm font-semibold ${h.tone === "bad" ? "text-danger" : ""}`}>{h.value}</span>
                 </Link>
               </li>
             ))}
           </ul>
           {problems.length > 0 && (
-            <ul className="space-y-2">
+            <ul className="mt-3 space-y-2">
               {problems.map((p) => (
-                <li key={p} className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm">{p}</li>
+                <li key={p} className="rounded-[10px] border border-danger/40 bg-danger/10 px-3 py-2 text-[13px]">{p}</li>
               ))}
             </ul>
           )}
@@ -325,80 +355,188 @@ export default async function AdminOverview({ searchParams }: { searchParams: Pr
       </div>
 
       <section aria-labelledby="week-h" className="space-y-3">
-        <h2 id="week-h" className="text-lg font-semibold">Last 7 days vs the 7 before</h2>
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          {trend.map(([k, cur, prev, area, lowerIsBetter], i) => {
+        <h2 id="week-h" className="admin-rise text-[15px] font-semibold" style={{ "--i": 4 } as React.CSSProperties}>
+          This week <span className="font-normal text-faint">vs the 7 days before</span>
+        </h2>
+        <ul className={`${panel} grid divide-line overflow-hidden sm:grid-cols-2 sm:divide-x lg:grid-cols-5`} style={{ "--i": 5 } as React.CSSProperties}>
+          {trend.map(([k, cur, prev, , lowerIsBetter], i) => {
             const diff = cur - prev;
-            const good = lowerIsBetter ? diff <= 0 : diff >= 0;
-            const pct = prev >= PCT_FROM ? ` (${diff > 0 ? "+" : "−"}${Math.round((Math.abs(diff) / prev) * 100)}%)` : "";
+            const pct = prev >= PCT_FROM ? ` ${Math.round((Math.abs(diff) / prev) * 100)}%` : ` ${Math.abs(diff)}`;
+            // Failures above zero always want a look, even when there are fewer than last week.
+            const alarm = lowerIsBetter && cur > 0;
             return (
-              <li key={k} data-area={area} className="card area-card p-4">
-                <p className="label flex items-center gap-2">
-                  <span aria-hidden className="area-dot size-1.5 rounded-full" />
-                  {k}
+              <li key={k} className="border-t border-line p-5 first:border-t-0 sm:[&:nth-child(2)]:border-t-0 lg:border-t-0">
+                <p className="text-[13px] text-mute">{k}</p>
+                <p className={`mt-1.5 text-[32px] font-semibold leading-none tracking-[-0.02em] tnum ${alarm ? "text-[var(--admin-amber)]" : ""}`}>
+                  <CountUp value={cur} />
                 </p>
-                <p className="mt-2 text-2xl font-bold tnum">{cur.toLocaleString("en")}</p>
-                <p className={`mt-1 text-sm tnum ${diff === 0 ? "text-mute" : good ? "text-lime" : "text-danger"}`}>
-                  {diff === 0 ? "Same as before" : `${diff > 0 ? "▲" : "▼"} ${Math.abs(diff)}${pct} vs ${prev}`}
+                <p className="mt-2 text-[12.5px] text-mute tnum">
+                  {diff === 0 ? "Same as before" : `${diff > 0 ? "▲ up" : "▼ down"}${pct} vs ${prev.toLocaleString("en-GB")}`}
                 </p>
-                <Spark rows={series[i]} label={k} start={t - SPARK_DAYS * DAY} />
+                <Spark rows={series[i]} label={k} start={t - SPARK_DAYS * DAY} i={i} />
               </li>
             );
           })}
         </ul>
-        <p className="text-sm text-mute">
-          {num(usr?.active).toLocaleString("en")} active accounts · {num(usr?.paid)} on a paid plan · {fmtBytes(bytes)} in file storage ·{" "}
-          <Link href="/admin/metrics" className="underline">more in Metrics</Link>
-        </p>
       </section>
 
-      <section aria-labelledby="loop-h" className="space-y-3">
-        <h2 id="loop-h" className="text-lg font-semibold">Is it working?</h2>
-        <ul className="grid gap-3 sm:grid-cols-3 lg:grid-cols-[repeat(auto-fit,minmax(150px,1fr))]">
-          {product.map((m) => (
-            <li key={m.label} data-area={m.area} className="card p-4">
-              <p className="label flex items-center gap-2">
-                <span aria-hidden className="area-dot size-1.5 rounded-full" />
-                {m.label}
-              </p>
-              <p className="mt-2 text-2xl font-bold tnum">{m.value}</p>
-              <p className="mt-1 text-xs text-mute">{m.note}</p>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <section aria-labelledby="chart-h" className={`${panel} p-5`} style={{ "--i": 6 } as React.CSSProperties}>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 id="chart-h" className="text-[15px] font-semibold">Tracks received</h2>
+              <p className="text-[12.5px] text-faint">Each day this week, against the same day last week</p>
+            </div>
+            <p className="flex gap-4 text-[12px] text-mute">
+              <span className="flex items-center gap-1.5">
+                <span aria-hidden className="h-[2px] w-4 rounded bg-lime" />
+                This week
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span aria-hidden className="w-4 border-t-2 border-dashed border-[var(--admin-violet)]" />
+                Week before
+              </span>
+            </p>
+          </div>
+          <WeekChart rows={series[1]} start={t - SPARK_DAYS * DAY} />
+        </section>
 
-      <section aria-labelledby="act-h">
-        <div className="flex items-baseline justify-between gap-3">
-          <h2 id="act-h" className="text-lg font-semibold">Recent activity</h2>
+        <section aria-labelledby="loop-h" className={`${panel} p-5`} style={{ "--i": 7 } as React.CSSProperties}>
+          <h2 id="loop-h" className="text-[15px] font-semibold">Is it working?</h2>
+          <p className="text-[12.5px] text-faint">This week</p>
+          {product.length ? (
+            <ul className="mt-2 space-y-3.5">
+              {product.map((m, i) => {
+                const pct = m.value.endsWith("%") ? Number(m.value.slice(0, -1)) : null;
+                return (
+                  <li key={m.label}>
+                    <p className="flex items-baseline justify-between gap-3 text-[13.5px]">
+                      <span>{m.label}</span>
+                      <b className="font-semibold tnum">{m.value}</b>
+                    </p>
+                    {pct != null && (
+                      <span aria-hidden className="mt-1.5 block h-2 overflow-hidden rounded-full bg-ink-4">
+                        <span className="admin-grow block h-full rounded-full bg-[var(--admin-violet)]" style={{ width: `${Math.min(100, pct)}%`, "--i": i } as React.CSSProperties} />
+                      </span>
+                    )}
+                    <p className="mt-1 text-[12px] text-faint">{m.note}</p>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="mt-3 text-[14px] text-mute">Nothing to measure yet. These fill in once receivers get tracks.</p>
+          )}
+        </section>
+      </div>
+
+      <section aria-labelledby="act-h" className={`${panel} p-5`} style={{ "--i": 8 } as React.CSSProperties}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 id="act-h" className="text-[15px] font-semibold">Recent activity</h2>
           {me.access.super && (
-            <Link href={withAdmin ? "/admin" : "/admin?activity=all"} className="text-sm text-mute underline hover:text-bone">
+            <Link href={withAdmin ? "/admin" : "/admin?activity=all"} className="admin-press btn-ghost btn-sm min-h-11">
               {withAdmin ? "Hide admin actions" : "Include admin actions"}
             </Link>
           )}
         </div>
         {activity.length ? (
-          <ul className="mt-3 divide-y divide-line rounded-md border border-line">
+          <ul className="mt-2">
             {activity.map((a, i) => (
-              <li key={`${a.kind}-${a.created_at}-${i}`}>
-                <Link href={activityHref(a)} className="flex items-center gap-3 px-4 py-2.5 hover:bg-ink-2">
-                  <span className="w-20 shrink-0 text-xs font-bold uppercase tracking-[1px] text-faint">{activityLabel[a.kind]}</span>
-                  <span className="min-w-0 flex-1 truncate text-sm">{a.text}</span>
-                  <span className="shrink-0 text-xs text-mute tnum">{ago(t - Number(a.created_at))}</span>
+              <li key={`${a.kind}-${a.created_at}-${i}`} className="border-t border-line">
+                <Link href={activityHref(a)} className="flex min-h-11 items-center gap-3 py-2 hover:text-bone">
+                  <span className="w-16 shrink-0 font-mono text-[12px] text-faint tnum">{ago(t - Number(a.created_at))}</span>
+                  <span
+                    className={`w-24 shrink-0 rounded-[5px] border px-1.5 py-0.5 text-center text-[10.5px] font-bold uppercase tracking-[0.5px] ${a.kind === "takedown" ? "border-danger/40 text-danger" : a.kind === "admin" ? "border-[var(--admin-violet)]/50 text-[var(--admin-violet)]" : "border-line-2 text-lime"}`}
+                  >
+                    {activityLabel[a.kind]}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-[13.5px]">{a.text}</span>
                 </Link>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="mt-3 text-sm text-mute">Nothing yet.</p>
+          <p className="mt-3 text-[14px] text-mute">Nothing yet.</p>
         )}
       </section>
 
-      <p className="text-sm text-mute">
-        Sign-up: {signupOpen ? "open to anyone" : "invite only"} · Emails send from {env.email.from} · Files waiting to be deleted: {num(del?.queued)}
-        {stuck ? ` (${stuck} stuck)` : ""}
+      <p className="text-[13px] text-faint">
+        {num(usr?.active).toLocaleString("en")} active accounts · {num(usr?.paid)} on a paid plan · {fmtBytes(bytes)} in file storage · Sign-up {signupOpen ? "open to anyone" : "invite only"} · Emails send from {env.email.from} · Files waiting to be deleted: {num(del?.queued)}
+        {stuck ? ` (${stuck} stuck)` : ""} ·{" "}
+        <Link href="/admin/metrics" className="underline">
+          more in Metrics
+        </Link>
       </p>
     </div>
+  );
+}
+
+/** This week's daily tracks against the same weekday last week: lime line (drawn in once), violet dashed comparison. */
+function WeekChart({ rows, start }: { rows: { d: number; n: number }[]; start: number }) {
+  const days = Array.from({ length: SPARK_DAYS }, (_, i) => Number(rows.find((r) => Number(r.d) === i)?.n ?? 0));
+  const prev = days.slice(0, 7);
+  const cur = days.slice(7);
+  const W = 640;
+  const H = 220;
+  const top = Math.max(4, ...days);
+  const x = (i: number) => 36 + (i * (W - 52)) / 6;
+  const y = (v: number) => H - 28 - (v / top) * (H - 48);
+  const line = (a: number[]) => a.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  const day = (i: number) => new Date(start + (7 + i) * DAY).toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" });
+  const total = cur.reduce((a, b) => a + b, 0);
+  const before = prev.reduce((a, b) => a + b, 0);
+  return (
+    <figure className="mt-3">
+      <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full" role="img" aria-label={`Tracks received this week: ${total}, against ${before} the week before. Today: ${cur[6]}.`}>
+        <defs>
+          <linearGradient id="wk-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="var(--color-lime)" stopOpacity="0.18" />
+            <stop offset="1" stopColor="var(--color-lime)" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {[0, 0.5, 1].map((f) => (
+          <g key={f}>
+            <line x1={36} x2={W - 16} y1={y(top * f)} y2={y(top * f)} stroke="var(--color-line)" />
+            <text x={0} y={y(top * f) + 4} fontSize="12" fill="var(--color-faint)" className="tnum">
+              {Math.round(top * f)}
+            </text>
+          </g>
+        ))}
+        <path d={`${line(cur)} L${x(6)},${H - 28} L${x(0)},${H - 28} Z`} fill="url(#wk-fill)" className="admin-fill" />
+        <path d={line(prev)} pathLength={1} fill="none" stroke="var(--admin-violet)" strokeWidth="1.8" strokeDasharray="0.012 0.012" opacity="0.8" />
+        <path d={line(cur)} pathLength={1} fill="none" stroke="var(--color-lime)" strokeWidth="2.6" strokeLinejoin="round" strokeLinecap="round" className="admin-draw" />
+        {cur.map((v, i) => (
+          <circle key={i} cx={x(i)} cy={y(v)} r={i === 6 ? 5 : 3} fill={i === 6 ? "var(--color-lime)" : "var(--color-ink-2)"} stroke="var(--color-lime)" strokeWidth="2" className="admin-fill">
+            <title>{`${day(i)}: ${v} (last week ${prev[i]})`}</title>
+          </circle>
+        ))}
+        {cur.map((_, i) => (
+          <text key={i} x={x(i)} y={H - 6} fontSize="12" fill="var(--color-faint)" textAnchor="middle">
+            {day(i)}
+          </text>
+        ))}
+      </svg>
+      <figcaption className="sr-only">
+        <table>
+          <thead>
+            <tr>
+              <th>Day</th>
+              <th>This week</th>
+              <th>Week before</th>
+            </tr>
+          </thead>
+          <tbody>
+            {cur.map((v, i) => (
+              <tr key={i}>
+                <td>{day(i)}</td>
+                <td>{v}</td>
+                <td>{prev[i]}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </figcaption>
+    </figure>
   );
 }
 
@@ -406,28 +544,16 @@ function tileOf([tone, value]: [Tone, string]) {
   return { tone, value };
 }
 
-/** A small bar per day for the last SPARK_DAYS days, in the card's area colour; the last 7 are brighter. */
-function Spark({ rows, label, start }: { rows: { d: number; n: number }[]; label: string; start: number }) {
-  const days = Array.from({ length: SPARK_DAYS }, (_, i) => Number(rows.find((r) => Number(r.d) === i)?.n ?? 0));
+/** The last SPARK_DAYS days as a quiet bone line that draws in once; the trend in words sits above it. */
+function Spark({ rows, label, start, i }: { rows: { d: number; n: number }[]; label: string; start: number; i: number }) {
+  const days = Array.from({ length: SPARK_DAYS }, (_, d) => Number(rows.find((r) => Number(r.d) === d)?.n ?? 0));
   const peak = Math.max(1, ...days);
-  const day = (i: number) => new Date(start + i * DAY).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+  const pts = days.map((n, d) => `${((d / (SPARK_DAYS - 1)) * 100).toFixed(1)},${(30 - (n / peak) * 26).toFixed(1)}`).join(" ");
+  const from = new Date(start).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
   return (
-    <div role="img" aria-label={`${label}, last ${SPARK_DAYS} days: ${days.join(", ")}`} className="mt-3">
-      <div className="flex h-8 items-end gap-[2px]">
-        {days.map((n, i) => (
-          <span
-            key={i}
-            title={`${day(i)}: ${n}`}
-            className={`flex-1 rounded-[1px] bg-[var(--area)] ${i < SPARK_DAYS - 7 ? "opacity-35" : "opacity-90"} ${i === SPARK_DAYS - 7 ? "ml-1" : ""}`}
-            style={{ height: `${Math.max(6, (n / peak) * 100)}%` }}
-          />
-        ))}
-      </div>
-      <div className="mt-1 flex justify-between text-[10px] text-faint">
-        <span>2 weeks ago</span>
-        <span>this week</span>
-      </div>
-    </div>
+    <svg viewBox="0 0 100 32" preserveAspectRatio="none" className="mt-4 block h-8 w-full" role="img" aria-label={`${label} per day since ${from}: ${days.join(", ")}`}>
+      <polyline points={pts} pathLength={1} fill="none" stroke="var(--color-bone)" strokeOpacity="0.55" strokeWidth="1.8" vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" className="admin-draw" style={{ "--i": i } as React.CSSProperties} />
+    </svg>
   );
 }
 
