@@ -12,7 +12,7 @@ import { after } from "next/server";
 import { FEATURES, type Feature } from "@/lib/features";
 import { allPlans, FREE_PLAN } from "@/lib/plan-store";
 import { audienceWhere, cleanTags, describeAudience, readAudience } from "@/lib/audience";
-import { bulkIds, SUSPEND_MAX } from "@/lib/admin-bulk";
+import { BULK_MAX, bulkIds, SUSPEND_MAX } from "@/lib/admin-bulk";
 import { SITE_PAGES, type SitePage } from "@/lib/content";
 import { writeContent } from "@/lib/content-write";
 import { redirect } from "next/navigation";
@@ -57,6 +57,7 @@ export async function suspendAccounts(form: FormData) {
   const a = await requireAdminAction("users.support");
   const ids = readIds(form);
   const reason = String(form.get("reason") || "").trim();
+  if (!ids) return fail(TOO_MANY);
   if (!ids.length) return fail("Pick at least one account");
   if (!reason) return fail("Give a reason: it goes in the email and the log");
   if (ids.length > SUSPEND_MAX) return fail(`Suspend at most ${SUSPEND_MAX} accounts at a time`);
@@ -74,6 +75,7 @@ export async function tagAccounts(form: FormData) {
   const a = await requireAdminAction("users.support");
   const ids = readIds(form);
   const tag = cleanTags(String(form.get("tag") || "")).split(",")[0];
+  if (!ids) return fail(TOO_MANY);
   if (!ids.length || !tag) return fail("Pick accounts and type a tag");
   const rows = await q.all<{ id: number; admin_tags: string }>(`SELECT id, admin_tags FROM users WHERE id IN (${ids.map(() => "?").join(",")})`, ...ids);
   await q.tx(async (db) => {
@@ -120,8 +122,9 @@ async function suspendOne(a: Awaited<ReturnType<typeof requireAdminAction>>, use
   return { ok: true, handle: u.handle };
 }
 
-/** Account ids picked on the Users list: whole numbers only, no repeats, at most BULK_MAX. */
+/** Account ids picked on the Users list: whole numbers only, no repeats; null when more than BULK_MAX were sent. */
 const readIds = (form: FormData) => bulkIds(form.getAll("ids").map(String));
+const TOO_MANY = `Pick at most ${BULK_MAX} accounts at a time`;
 
 export async function unsuspendAccount(userId: number) {
   const a = await requireAdminAction("users.support");

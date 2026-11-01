@@ -3,10 +3,13 @@
 /** The most accounts one bulk action touches, so a slip can't suspend the whole list. */
 export const BULK_MAX = 50;
 
-/** Account ids from a form: whole positive numbers only, no repeats, at most BULK_MAX. */
-export function bulkIds(raw: string[]): number[] {
-  const ids = raw.filter((s) => /^\d{1,12}$/.test(s)).map(Number).filter((n) => n > 0);
-  return [...new Set(ids)].slice(0, BULK_MAX);
+/**
+ * Account ids from a form: whole positive numbers only, no repeats. Null when more than BULK_MAX were sent: the
+ * screen never sends that many, so the request is refused rather than quietly cut to the first BULK_MAX.
+ */
+export function bulkIds(raw: string[]): number[] | null {
+  const ids = [...new Set(raw.filter((s) => /^\d{1,12}$/.test(s)).map(Number).filter((n) => n > 0))];
+  return ids.length > BULK_MAX ? null : ids;
 }
 
 /** Suspending sends an email each, so a batch stays small enough to finish inside one request. */
