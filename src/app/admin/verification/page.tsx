@@ -256,7 +256,7 @@ export default async function Verification({ searchParams }: { searchParams: Pro
                     <span className="hidden group-open:inline">Close</span>
                   </span>
                 </summary>
-                <form action={revokeIdentity.bind(null, u.id)} className="flex flex-wrap gap-2 border-t border-line bg-ink-3/40 px-4 py-3">
+                <OpsForm action={revokeIdentity.bind(null, u.id)} className="flex flex-wrap gap-2 border-t border-line bg-ink-3/40 px-4 py-3">
                   <Link href={`/admin/accounts/${u.id}`} className="inline-flex min-h-11 items-center text-[13px] text-mute underline underline-offset-4 hover:text-bone">
                     Open account
                   </Link>
@@ -270,7 +270,7 @@ export default async function Verification({ searchParams }: { searchParams: Pro
                   >
                     Revoke
                   </ConfirmSubmit>
-                </form>
+                </OpsForm>
               </details>
             </li>
           ))}

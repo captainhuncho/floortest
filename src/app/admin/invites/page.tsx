@@ -1,13 +1,13 @@
 import { requireAdmin } from "@/lib/admin";
 import { ConfirmButton } from "../AdminUi";
+import { OpsForm } from "../OpsForm";
 import { q } from "@/lib/db";
 import { env } from "@/lib/env";
 import { GATE_CODE_MIN_LENGTH } from "@/lib/invites";
 import { createInvite, deleteInvite, inviteByEmail, resendInvite, restoreInvite, revokeInvite } from "../actions";
 
-export default async function Invites({ searchParams }: { searchParams: Promise<{ sent?: string; skipped?: string }> }) {
+export default async function Invites() {
   await requireAdmin("invites");
-  const sp = await searchParams;
   const rows = await q.all<{
     code: string; max_uses: number; note: string; email: string | null; sent_at: number | null; created_at: number; revoked_at: number | null; used: number; joined: string | null;
   }>(
@@ -27,19 +27,12 @@ export default async function Invites({ searchParams }: { searchParams: Promise<
     <div className="space-y-10">
       <h1 className="text-3xl font-bold tracking-tight">Invites</h1>
 
-      {sp.sent !== undefined && (
-        <p role="status" className="rounded-md border border-lime/40 bg-lime/5 px-4 py-3 text-sm">
-          Sent {sp.sent} invite{sp.sent === "1" ? "" : "s"}.
-          {Number(sp.skipped) > 0 && ` Skipped ${sp.skipped}: not a valid email, already has an account, or already has a pending invite.`}
-        </p>
-      )}
-
       <section aria-labelledby="email-h" className="space-y-4">
         <div>
           <h2 id="email-h" className="text-lg font-semibold">Invite by email</h2>
           <p className="mt-1 text-sm text-mute">Each person gets their own single-use code, which only works with their email address.</p>
         </div>
-        <form action={inviteByEmail} className="grid gap-3 rounded-md border border-line p-5">
+        <OpsForm action={inviteByEmail} className="grid gap-3 rounded-md border border-line p-5">
           <label className="block space-y-1.5">
             <span className="label">Emails (one per line, or separated by commas)</span>
             <textarea name="emails" required rows={3} className="input resize-y" placeholder={"dj@example.com\nlabel@example.com"} />
@@ -49,7 +42,7 @@ export default async function Invites({ searchParams }: { searchParams: Promise<
             <input name="note" className="input" placeholder="Loved your set at…" maxLength={300} />
           </label>
           <button className="btn-lime btn-sm w-fit">Send invites</button>
-        </form>
+        </OpsForm>
 
         {personal.length > 0 && (
           <div className="overflow-x-auto rounded-md border border-line">
