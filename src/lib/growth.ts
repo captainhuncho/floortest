@@ -96,11 +96,13 @@ export function decisions(input: { steps: FunnelStep[]; sources: Group[]; kinds:
 
 /* ------------------------------------------------------------------------------------------------------------------
  * Beta numbers (owner, 1 Nov 2026): the three weekly targets from docs/beta-launch-plan.md, shown at the top of
- * Admin → Growth. The page runs three bounded queries (accounts, events, tracks, all from the beta start on) and
- * hands the rows to betaNumbers(); everything that decides who counts lives here so it can be tested.
+ * Admin → Growth. The base is every account that isn't excluded, whenever it was made (invites went out before
+ * 1 Nov); activity (events and delivered tracks) counts only from the beta start. The page runs three queries
+ * (accounts, then events and tracks bounded to the start) and hands the rows to betaNumbers(); everything that
+ * decides who counts lives here so it can be tested.
  * ---------------------------------------------------------------------------------------------------------------- */
 
-/** The beta starts at midnight UTC on 1 Nov 2026. Accounts made before this instant are not beta accounts. */
+/** The beta starts at midnight UTC on 1 Nov 2026. Activity before this instant doesn't count; accounts made before it do. */
 export const BETA_START = Date.UTC(2026, 10, 1);
 /** The beta runs 8 weeks; after that the week number stays at 8. */
 export const BETA_WEEKS = 8;
@@ -142,18 +144,18 @@ export type BetaAccountRow = {
 };
 
 /**
- * Whether an account counts in the beta: made since the start (UTC), not suspended, and not the owner, ops staff or
+ * Whether an account counts in the beta, whenever it was made: not suspended, and not the owner, ops staff or
  * seed/test data. `adminEmails` is ADMIN_EMAILS as env.ts reads it (already lower case).
  */
-export function isBetaAccount(u: Pick<BetaAccountRow, "email" | "created_at" | "suspended_at" | "ops">, adminEmails: readonly string[], start = BETA_START): boolean {
+export function isBetaAccount(u: Pick<BetaAccountRow, "email" | "suspended_at" | "ops">, adminEmails: readonly string[]): boolean {
   const email = normalEmail(u.email);
-  if (u.created_at < start || u.suspended_at != null || u.ops) return false;
+  if (u.suspended_at != null || u.ops) return false;
   if (adminEmails.includes(email)) return false;
   return !email.endsWith("@floortest.test");
 }
 
-/** Per account, from events since the start: how many 'submitted' and decision ('kept'/'passed') events, and the last decision. */
-export type BetaActivityRow = { user_id: number; submitted: number; decided: number; last_decided: number | null };
+/** Per account and event type ('submitted', 'kept' or 'passed'): how many since the start, and the latest one. */
+export type BetaActivityRow = { user_id: number; type: string; n: number; last_at: number };
 
 /** A track on a beta account since the start, with its sender's email (lower case). */
 export type BetaTrackRow = { user_id: number; created_at: number; played_at: number | null; deleted_at: number | null; sender_email: string };
@@ -163,6 +165,9 @@ export type BetaNumbers = {
   accounts: number;
   invited: number;
   other: number;
+  /** Accounts made before the start (early invites) and since. */
+  joinedBefore: number;
+  joinedSince: number;
   weeklyActive: number;
   activated: number;
   /** Median hours from delivered to first listen, or null with no listens yet. */
@@ -188,17 +193,27 @@ export function isSelfSent(senderEmail: string, account: Pick<BetaAccountRow, "e
 /** The three beta numbers from the bounded rows. Pure: same rows and clock, same answer. */
 export function betaNumbers(input: { now: number; adminEmails: readonly string[]; accounts: BetaAccountRow[]; activity: BetaActivityRow[]; tracks: BetaTrackRow[]; start?: number }): BetaNumbers {
   const start = input.start ?? BETA_START;
-  const beta = new Map(input.accounts.filter((u) => isBetaAccount(u, input.adminEmails, start)).map((u) => [Number(u.id), u]));
+  const beta = new Map(input.accounts.filter((u) => isBetaAccount(u, input.adminEmails)).map((u) => [Number(u.id), u]));
+  const joinedBefore = [...beta.values()].filter((u) => Number(u.created_at) < start).length;
   const invited = [...beta.values()].filter((u) => u.invited).length;
   const weekAgo = input.now - WEEK_MS;
-  let weeklyActive = 0;
-  let activated = 0;
+  const submitted = new Set<number>();
+  const decided = new Set<number>();
+  const recent = new Set<number>();
   for (const a of input.activity) {
-    if (!beta.has(Number(a.user_id))) continue;
-    // The last 7 days include the moment exactly 7 days ago.
-    if (a.last_decided != null && Number(a.last_decided) >= weekAgo && Number(a.last_decided) <= input.now) weeklyActive++;
-    if (Number(a.submitted) > 0 && Number(a.decided) > 0) activated++;
+    const id = Number(a.user_id);
+    const last = Number(a.last_at);
+    // Activity before the beta start never counts (the query is bounded the same way).
+    if (!beta.has(id) || !(Number(a.n) > 0) || last < start) continue;
+    if (a.type === "submitted") submitted.add(id);
+    else if (a.type === "kept" || a.type === "passed") {
+      decided.add(id);
+      // The last 7 days include the moment exactly 7 days ago.
+      if (last >= weekAgo && last <= input.now) recent.add(id);
+    }
   }
+  const weeklyActive = recent.size;
+  const activated = [...decided].filter((id) => submitted.has(id)).length;
   const waits: number[] = [];
   const listenAccounts = new Set<number>();
   let waiting = 0;
@@ -216,6 +231,8 @@ export function betaNumbers(input: { now: number; adminEmails: readonly string[]
     accounts: beta.size,
     invited,
     other: beta.size - invited,
+    joinedBefore,
+    joinedSince: beta.size - joinedBefore,
     weeklyActive,
     activated,
     firstListenHours: mid == null ? null : mid / HOUR_MS,

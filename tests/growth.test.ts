@@ -88,15 +88,14 @@ test("small bases show the raw number only", () => {
   assert.equal(showShare(5), true);
 });
 
-test("owner, ops staff, seed, suspended and pre-beta accounts are not beta accounts", () => {
+test("owner, ops staff, seed and suspended accounts are not beta accounts; when they joined doesn't matter", () => {
   const admins = ["owner@example.com"];
   assert.equal(isBetaAccount(acct(1, "dj@example.com"), admins), true);
   assert.equal(isBetaAccount(acct(2, "Owner@Example.com"), admins), false, "ADMIN_EMAILS, any case");
   assert.equal(isBetaAccount(acct(3, "care@example.com", { ops: true }), admins), false, "ops staff");
   assert.equal(isBetaAccount(acct(4, "demo@floortest.test"), admins), false, "seed data");
   assert.equal(isBetaAccount(acct(5, "gone@example.com", { suspended_at: BETA_START + D }), admins), false, "suspended");
-  assert.equal(isBetaAccount(acct(6, "early@example.com", { created_at: BETA_START - 30 * 60_000 }), admins), false, "23:30Z on 31 Oct is before the beta");
-  assert.equal(isBetaAccount(acct(7, "midnight@example.com", { created_at: BETA_START }), admins), true, "00:00Z on 1 Nov counts");
+  assert.equal(isBetaAccount(acct(6, "early@example.com", { created_at: BETA_START - 20 * D }), admins), true, "invited in October still counts");
 });
 
 test("a track sent from the account's own email or a teammate's is self-sent", () => {
@@ -106,31 +105,35 @@ test("a track sent from the account's own email or a teammate's is self-sent", (
   assert.equal(isSelfSent("artist@example.com", a), false);
 });
 
+const ev = (user_id: number, type: string, last_at: number, n = 1) => ({ user_id, type, n, last_at });
+
 test("beta numbers: who counts, the 7-day edge, activation and time to first listen", () => {
   const now = BETA_START + 20 * D;
   const accounts = [
     acct(1, "a@example.com", { invited: true, team_emails: ["mate@example.com"] }),
     acct(2, "b@example.com"),
-    acct(3, "c@example.com", { invited: true }),
+    acct(3, "c@example.com", { invited: true, created_at: BETA_START - 10 * D }),
     acct(4, "owner@example.com"),
     acct(5, "staff@example.com", { ops: true }),
     acct(6, "seed@floortest.test"),
     acct(7, "gone@example.com", { suspended_at: now - D }),
-    acct(8, "early@example.com", { created_at: BETA_START - 30 * 60_000 }),
+    acct(8, "early@example.com", { created_at: BETA_START - 20 * D }),
+    acct(9, "quiet@example.com", { created_at: BETA_START - 5 * D }),
   ];
   const activity = [
     // Decided exactly 7 days ago: inside the window. Its track was deleted, but the submitted event still counts.
-    { user_id: 1, submitted: 1, decided: 1, last_decided: now - 7 * D },
+    ev(1, "submitted", now - 9 * D),
+    ev(1, "kept", now - 7 * D),
     // Decided 7 days and 1 ms ago: outside the window, still activated.
-    { user_id: 2, submitted: 2, decided: 1, last_decided: now - 7 * D - 1 },
-    // Decided but nothing ever arrived (a self-added track would still log 'submitted'): active, not activated.
-    { user_id: 3, submitted: 0, decided: 1, last_decided: now - D },
+    ev(2, "submitted", now - 10 * D, 2),
+    ev(2, "passed", now - 7 * D - 1),
+    // Joined in October, active after 1 Nov: counts. Nothing arrived, so not activated.
+    ev(3, "kept", now - D),
+    // Joined in October and active only in October (23:30Z on 31 Oct is still October): doesn't count.
+    ev(8, "submitted", BETA_START - 30 * 60_000),
+    ev(8, "kept", BETA_START - 30 * 60_000),
     // Excluded accounts never count, however busy.
-    { user_id: 4, submitted: 5, decided: 5, last_decided: now - H },
-    { user_id: 5, submitted: 5, decided: 5, last_decided: now - H },
-    { user_id: 6, submitted: 5, decided: 5, last_decided: now - H },
-    { user_id: 7, submitted: 5, decided: 5, last_decided: now - H },
-    { user_id: 8, submitted: 5, decided: 5, last_decided: now - H },
+    ...[4, 5, 6, 7].flatMap((u) => [ev(u, "submitted", now - H, 5), ev(u, "kept", now - H, 5)]),
   ];
   const tracks = [
     { user_id: 1, created_at: BETA_START + D, played_at: BETA_START + D + 2 * H, deleted_at: null, sender_email: "artist@example.com" },
@@ -139,14 +142,19 @@ test("beta numbers: who counts, the 7-day edge, activation and time to first lis
     { user_id: 2, created_at: BETA_START + D, played_at: BETA_START + D + 10 * H, deleted_at: BETA_START + 3 * D, sender_email: "artist@example.com" },
     { user_id: 2, created_at: BETA_START + D, played_at: null, deleted_at: null, sender_email: "artist2@example.com" },
     { user_id: 2, created_at: BETA_START + D, played_at: null, deleted_at: BETA_START + 2 * D, sender_email: "artist3@example.com" },
+    // Delivered in October: not part of the beta's time to first listen.
+    { user_id: 8, created_at: BETA_START - 30 * 60_000, played_at: BETA_START + 99 * H, deleted_at: null, sender_email: "artist@example.com" },
     { user_id: 4, created_at: BETA_START + D, played_at: BETA_START + D + 100 * H, deleted_at: null, sender_email: "artist@example.com" },
   ];
   const n = betaNumbers({ now, adminEmails: ["owner@example.com"], accounts, activity, tracks });
   assert.equal(n.week, 3);
-  assert.deepEqual([n.accounts, n.invited, n.other], [3, 2, 1]);
-  assert.equal(n.weeklyActive, 2, "accounts 1 (exactly 7 days) and 3");
-  assert.equal(n.activated, 2, "accounts 1 and 2");
-  assert.equal(n.firstListenHours, 6, "median of 2 h and 10 h; self-sent and owner tracks left out");
+  assert.deepEqual([n.accounts, n.invited, n.other], [5, 2, 3], "accounts 1, 2, 3, 8 and 9");
+  assert.deepEqual([n.joinedBefore, n.joinedSince], [3, 2]);
+  assert.equal(n.invited + n.other, n.accounts, "the invited split adds up");
+  assert.equal(n.joinedBefore + n.joinedSince, n.accounts, "the joined split adds up");
+  assert.equal(n.weeklyActive, 2, "accounts 1 (exactly 7 days) and 3 (joined in October)");
+  assert.equal(n.activated, 2, "accounts 1 and 2; October activity of account 8 doesn't count");
+  assert.equal(n.firstListenHours, 6, "median of 2 h and 10 h; self-sent, October and owner tracks left out");
   assert.equal(n.listened, 2);
   assert.equal(n.listenAccounts, 2);
   assert.equal(n.waiting, 1, "the deleted unplayed track is not waiting");
