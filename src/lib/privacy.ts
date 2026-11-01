@@ -92,10 +92,11 @@ export async function dataFor(email: string) {
       : [],
   };
   const newsletter = await q.get<Record<string, unknown>>("SELECT email, marketing, source, created_at FROM newsletter_subscribers WHERE lower(email) = ?", e);
-  // Staff verification (owner, 1 Nov): each proposal about this account, its reason, links and proof file names.
+  // Staff verification (owner, 1 Nov): each proposal about this account as its status, dates and proof file names
+  // only. Staff's reasons and decision notes stay out of data copies (owner, 1 Nov).
   const verification = account
     ? await q.all<Record<string, unknown>>(
-        `SELECT p.reason, p.links, p.status, p.created_at, p.decided_at, p.decision_note,
+        `SELECT p.status, p.created_at, p.decided_at,
            (SELECT string_agg(f.original_name, ', ' ORDER BY f.id) FROM verification_proofs f WHERE f.proposal_id = p.id) AS proof_files
          FROM verification_proposals p WHERE p.user_id = ? ORDER BY p.created_at`,
         account.id,

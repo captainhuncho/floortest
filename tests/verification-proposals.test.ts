@@ -212,6 +212,14 @@ test("the proof route: 404 alike for no permission and missing; inline, typed, n
   assert.equal(r.headers.get("x-content-type-options"), "nosniff");
   assert.equal(r.headers.get("cache-control"), "private, no-store");
   assert.equal(r.headers.get("x-frame-options"), "DENY");
+  // Data copies show status, dates and proof file names, never staff's reason or decision note (owner, 1 Nov).
+  const { dataFor } = await import("../src/lib/privacy");
+  const copy = await dataFor("artisttwo@vproof.io");
+  assert.ok(copy.verification.length >= 2);
+  for (const row of copy.verification) assert.deepEqual(Object.keys(row).sort(), ["created_at", "decided_at", "proof_files", "status"]);
+  const text = JSON.stringify(copy);
+  assert.doesNotMatch(text, /Known label; their Instagram/, "no staff reason");
+  assert.doesNotMatch(text, /Need a screenshot of the bio/, "no decision note");
   assert.match(r.headers.get("content-security-policy")!, /^default-src 'none';.*frame-ancestors 'none'/);
   assert.deepEqual(new Uint8Array(await r.arrayBuffer()), PNG);
   // A PDF downloads instead of opening in the browser (review M1).
