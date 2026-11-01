@@ -9,7 +9,7 @@ import { claimOnce } from "@/lib/once";
 import { requireUser, requireRole } from "@/lib/auth";
 import { ownedSender, ownedTrack } from "@/lib/desk";
 import { clearDecision as clearTrackDecision, decide, decisionLocked, deleteTrack as removeTrack, markPlayedOut, reply, setBlocked, undoDecision as restoreDecision } from "@/lib/review";
-import { asPerson, isDecision, logEvent, now, q, type Decision } from "@/lib/db";
+import { asPerson, asSystem, isDecision, logEvent, now, q, type Decision } from "@/lib/db";
 import { audit, trackLabel } from "@/lib/audit";
 import { requestStems } from "@/lib/stems";
 import { parseCues } from "@/lib/cues";
@@ -68,7 +68,8 @@ export async function deleteTrack(trackId: number, back: string) {
   const u = await requireRole("admin");
   const t = await ownedTrack(u, trackId);
   if (!t) return;
-  await removeTrack(u, t);
+  // The track was found as the person (ownedTrack); retiring its files needs the app's own connection, on purpose.
+  await asSystem(() => removeTrack(u, t));
   await audit(u.id, "deleted_track", trackLabel(t));
   done();
   redirect(back.startsWith("/dashboard") ? back : "/dashboard/review");
