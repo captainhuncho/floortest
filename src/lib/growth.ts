@@ -31,7 +31,8 @@ export function forecast(series: number[], ahead = 4): Point[] {
 }
 
 export type Step = { label: string; n: number };
-export type FunnelStep = Step & { ofFirst: number; ofPrev: number };
+/** `ofPrev` is null when the step before reached nobody: a share of zero people means nothing. */
+export type FunnelStep = Step & { ofFirst: number; ofPrev: number | null };
 
 /** Each step's share of the first step and of the one before it (0–100, whole numbers). */
 export function funnel(steps: Step[]): FunnelStep[] {
@@ -39,14 +40,14 @@ export function funnel(steps: Step[]): FunnelStep[] {
   const first = steps.find((s) => s.n > 0)?.n || 0;
   return steps.map((s, i) => {
     const prev = i ? steps[i - 1].n : s.n;
-    return { ...s, ofFirst: first ? Math.round((s.n / first) * 100) : 0, ofPrev: prev ? Math.round((s.n / prev) * 100) : 0 };
+    return { ...s, ofFirst: first ? Math.round((s.n / first) * 100) : 0, ofPrev: prev ? Math.round((s.n / prev) * 100) : null };
   });
 }
 
 /** The step (after the first) that loses the biggest share of the people who reached the one before it. */
 export function biggestDrop(steps: FunnelStep[]): FunnelStep | null {
   const later = steps.slice(1).filter((s, i) => steps[i].n > 0 && s.n <= steps[i].n);
-  return later.length ? later.reduce((worst, s) => (s.ofPrev < worst.ofPrev ? s : worst)) : null;
+  return later.length ? later.reduce((worst, s) => ((s.ofPrev ?? 0) < (worst.ofPrev ?? 0) ? s : worst)) : null;
 }
 
 export type Group = { name: string; people: number; activated: number; paid: number };
@@ -64,7 +65,7 @@ const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0);
 export function decisions(input: { steps: FunnelStep[]; sources: Group[]; kinds: Group[]; signups: number[]; next: Point[] }): Card[] {
   const cards: Card[] = [];
   const drop = biggestDrop(input.steps);
-  if (drop && drop.ofPrev < 60) {
+  if (drop && drop.ofPrev != null && drop.ofPrev < 60) {
     const before = input.steps[input.steps.indexOf(drop) - 1];
     cards.push({ title: `Biggest drop: ${before.label.toLowerCase()} → ${drop.label.toLowerCase()}`, detail: `Only ${drop.ofPrev}% make that step (${drop.n} of ${before.n}). Fixing this step moves every number after it.`, tone: "act" });
   }
@@ -117,6 +118,15 @@ const HOUR_MS = 3_600_000;
 /** "Beta week X of 8": week 1 is the first 7 days from the start, capped at 8 (and never below 1). */
 export function betaWeek(now: number, start = BETA_START): number {
   return Math.min(BETA_WEEKS, Math.max(1, Math.floor((now - start) / WEEK_MS) + 1));
+}
+
+/**
+ * While the 7-day window still reaches back before the start, how many days it really covers (since the start,
+ * rounded up, at least 1); null once a full week of the beta has passed.
+ */
+export function betaWindowDays(now: number, start = BETA_START): number | null {
+  if (now - WEEK_MS >= start) return null;
+  return Math.max(1, Math.ceil((now - start) / DAY_MS));
 }
 
 /** The middle value (the mean of the two middle values for an even count), or null when there are none. */
