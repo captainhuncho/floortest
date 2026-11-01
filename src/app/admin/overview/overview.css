@@ -1,0 +1,12 @@
+/*
+ * The new Overview's sparklines (admin redesign B, step 3). Once drawn (or seen before, or with reduced motion) the
+ * line drops its dash: with non-scaling strokes Chrome measures the one-unit dash on screen, which left a gap mid-line.
+ */
+.admin-still .ops-ov-spark {
+  stroke-dasharray: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ops-ov-spark {
+    stroke-dasharray: none;
+  }
+}

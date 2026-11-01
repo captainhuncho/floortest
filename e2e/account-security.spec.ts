@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { currentStep, totpCode } from "../src/lib/totp";
-import { expect, logIn, submitLogin, test, TEST_PASSWORD, signUp as guidedSignUp } from "./fixtures";
+import { expect, hydrated, logIn, submitLogin, test, TEST_PASSWORD, signUp as guidedSignUp } from "./fixtures";
 
 /** Changes to how an account signs in need more than a session: a borrowed or stolen cookie alone can't lock the owner out. */
 
@@ -16,6 +16,8 @@ test("turning on two-factor needs a confirmed email and the password, not just a
   // A new account's email isn't confirmed: whoever made it may not own the address, so two-factor waits.
   await signUp(page, "tfa");
   await page.goto("/dashboard/settings/security");
+  // "Set up" can show before React owns it under load; a click then does nothing (1 Nov). Wait for React first.
+  await hydrated(page.getByRole("button", { name: "Set up" }));
   await page.getByRole("button", { name: "Set up" }).click();
   let key = (await page.locator("p.font-mono").first().innerText()).replace(/\s/g, "");
   await page.getByLabel("6-digit code").fill(totpCode(key, currentStep()));
@@ -28,6 +30,8 @@ test("turning on two-factor needs a confirmed email and the password, not just a
   await context.clearCookies();
   await logIn(page, "tfa@floortest.test");
   await page.goto("/dashboard/settings/security");
+  // "Set up" can show before React owns it under load; a click then does nothing (1 Nov). Wait for React first.
+  await hydrated(page.getByRole("button", { name: "Set up" }));
   await page.getByRole("button", { name: "Set up" }).click();
   key = (await page.locator("p.font-mono").first().innerText()).replace(/\s/g, "");
   const code = page.getByLabel("6-digit code");
