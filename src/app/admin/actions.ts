@@ -23,7 +23,8 @@ import { redirect } from "next/navigation";
 import { issueViewTicket } from "@/lib/ops";
 import { APP_URL } from "@/lib/mail";
 import { env } from "@/lib/env";
-import { HIDDEN, sendMail } from "@/lib/mail";
+import { cancelHeldMail, HIDDEN, sendMail, sendMailHeld } from "@/lib/mail";
+import { readUndo, signUndo } from "@/lib/ops-undo";
 import { approvePendingIdentity } from "@/lib/identity-approve";
 import { isAdminEmail, logAdmin, requireAdminAction } from "@/lib/admin";
 import { opsAccessFor, suspendRefusal } from "@/lib/ops-access";
@@ -1252,13 +1253,14 @@ export async function approvePlanRequest(id: number, form: FormData): Promise<Op
     await db.run("UPDATE plan_requests SET status = 'approved', granted_plan = ?, decided_by = ?, decided_at = ?, decision_note = ? WHERE id = ?", plan.id, a.id, now(), note, id);
   });
   await logAdmin(a.id, "approved plan request", `@${r.handle}`, `${plan.name}${plan.id !== r.plan ? ` (asked for ${r.plan})` : ""}`);
-  await sendMail({
+  // Held a few seconds (undoSend can stop it and put the old plan back), then sent; a failure retries via the Email log.
+  const mail = await sendMailHeld({
     userId: r.user_id,
     to: r.email,
     subject: `You're on ${plan.name} — FloorTest`,
     body: `Hi ${r.name.split(/\s+/)[0] || r.name},\n\nYou're on ${plan.name} now, free for the rest of the beta: room for ${plan.limit.toLocaleString("en")} active tracks.${plan.id !== r.plan ? ` (You asked for ${r.plan}; ${plan.name} fits how you work better for now. Reply if you think otherwise.)` : ""}${note ? `\n\n${note}` : ""}\n\nSee it: ${APP_URL}/dashboard/plans\n\n— FloorTest`,
-  }).catch(() => {});
-  return ok(`@${r.handle} is on ${plan.name} and has been emailed.`);
+  });
+  return { ...ok(`@${r.handle} is on ${plan.name}; the email goes in a few seconds.`), undoToken: signUndo({ kind: "plan_approve", ref: id, user: r.user_id, prev: r.current, mail: [mail], admin: a.id }) } as OpsResult;
 }
 
 export async function declinePlanRequest(id: number, form: FormData): Promise<OpsResult> {
@@ -1269,12 +1271,33 @@ export async function declinePlanRequest(id: number, form: FormData): Promise<Op
   if (!reason) return no("Give a short reason; it's sent to them.");
   await q.run("UPDATE plan_requests SET status = 'declined', decided_by = ?, decided_at = ?, decision_note = ? WHERE id = ?", a.id, now(), reason, id);
   await logAdmin(a.id, "declined plan request", `@${r.handle}`, reason.slice(0, 120));
-  await sendMail({
+  // Held a few seconds (undoSend can stop it and reopen the request), then sent; a failure retries via the Email log.
+  const mail = await sendMailHeld({
     userId: r.user_id,
     to: r.email,
     subject: "About your FloorTest plan request",
     body: `Hi ${r.name.split(/\s+/)[0] || r.name},\n\nThanks for asking for ${r.plan}. We're not moving you for now:\n\n${reason}\n\nYou keep everything on your current plan, and you can ask again any time from Account → Plans.\n\n— FloorTest`,
-  }).catch(() => {});
-  return ok(`Declined @${r.handle}'s request; they've been emailed.`);
+  });
+  return { ...ok(`Declined @${r.handle}'s request; the email goes in a few seconds.`), undoToken: signUndo({ kind: "plan_decline", ref: id, user: r.user_id, prev: "", mail: [mail], admin: a.id }) } as OpsResult;
+}
+
+/**
+ * Undo for an action that held its email (src/lib/ops-undo.ts): stops the email if it hasn't gone and puts back what the
+ * action changed. Only the admin who did it, only within the hold; once the email has gone it's too late.
+ */
+export async function undoSend(token: string): Promise<OpsResult> {
+  const a = await requireAdminAction("overview");
+  const u = readUndo(token, a.id);
+  if (!u) return no("Too late to undo");
+  if (!(await cancelHeldMail(u.mail))) return no("Too late: the email has gone");
+  await q.tx(async (db) => {
+    const reopen = "UPDATE plan_requests SET status = 'pending', granted_plan = NULL, decided_by = NULL, decided_at = NULL, decision_note = '' WHERE id = ? AND status = ?";
+    if (u.kind === "plan_approve") {
+      const back = await db.run(reopen, u.ref, "approved");
+      if (back.changes) await db.run("UPDATE users SET plan = ? WHERE id = ?", u.prev, u.user);
+    } else await db.run(reopen, u.ref, "declined");
+  });
+  await logAdmin(a.id, "undid", u.kind === "plan_approve" ? "approved plan request" : "declined plan request", `#${u.ref}, email not sent`);
+  return ok("Undone: the email wasn't sent");
 }
 
