@@ -94,32 +94,54 @@ export default async function Emails({ searchParams }: { searchParams: Promise<{
           </ul>
         </section>
       )}
-      <ul className="mt-6 space-y-2">
-        {rows.map((m) => (
-          <li key={m.id}>
-            <details className="rounded-md border border-line">
-              <summary className="flex cursor-pointer list-none flex-wrap items-baseline justify-between gap-2 px-4 py-3">
-                <span className="min-w-0">
-                  <span className={`chip mr-2 ${m.status === "sent" ? "border-lime/50 text-lime" : m.status.startsWith("failed") ? "border-danger/50 text-danger" : "border-line text-mute"}`}>{m.status}</span>
-                  {DELIVERY[m.delivery] && <span className={`chip mr-2 ${DELIVERY[m.delivery][1]}`}>{DELIVERY[m.delivery][0]}</span>}
-                  {m.subject} <span className="text-mute">→ {m.to_email}</span>
+      {/* A timeline of sends (pin 90): a date block on a line, the email's card beside it, opening to the body. */}
+      <ol className="relative mt-6 space-y-3 before:absolute before:bottom-4 before:left-[27px] before:top-4 before:w-px before:bg-line">
+        {rows.map((m, i) => {
+          const d = new Date(m.created_at);
+          const failed = m.status.startsWith("failed");
+          return (
+            <li key={m.id} className="admin-rise relative flex gap-4" style={{ "--i": Math.min(i, 12) } as React.CSSProperties}>
+              <span className={`relative z-[1] grid h-14 w-14 shrink-0 place-items-center rounded-[16px] text-center leading-none ${failed ? "bg-danger/15 text-danger" : i === 0 ? "bg-lime text-ink" : "bg-ink-3 text-bone ring-1 ring-line"}`}>
+                <span>
+                  <span className="block text-[20px] font-semibold tnum">{d.getUTCDate()}</span>
+                  <span className="mt-0.5 block text-[10.5px] font-semibold uppercase tracking-[1px] opacity-75">{d.toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" })}</span>
                 </span>
-                <span className="text-sm text-mute">
-                  {m.handle && <Link href={`/admin/accounts/${m.user_id}`} className="mr-2 hover:text-bone">@{m.handle}</Link>}
-                  {m.audience} · {new Date(m.created_at).toLocaleString("en-GB")}
-                </span>
-              </summary>
-              <div className="border-t border-line px-4 py-3">
-                <pre className="whitespace-pre-wrap text-sm text-mute">{m.body}</pre>
-                <ConfirmButton action={resendEmail.bind(null, m.id)} message={`Send "${m.subject}" to ${m.to_email} again?`} className="btn-ghost btn-sm mt-3">
-                  Resend
-                </ConfirmButton>
-              </div>
-            </details>
-          </li>
-        ))}
-        {!rows.length && <li className="rounded-md border border-line px-4 py-6 text-mute">No emails match.</li>}
-      </ul>
+              </span>
+              <details className="admin-panel group min-w-0 flex-1">
+                <summary className="flex min-h-14 cursor-pointer list-none flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-3 [&::-webkit-details-marker]:hidden">
+                  <span className="min-w-0">
+                    <span className="block truncate text-[14.5px] font-semibold">{m.subject}</span>
+                    <span className="block truncate text-[12.5px] text-mute">
+                      → {m.to_email}
+                      {m.handle && (
+                        <Link href={`/admin/accounts/${m.user_id}`} className="ml-2 hover:text-bone">
+                          @{m.handle}
+                        </Link>
+                      )}
+                      <span className="text-faint">
+                        {" "}
+                        · {m.audience} · {d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    </span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2">
+                    {DELIVERY[m.delivery] && <span className={`chip ${DELIVERY[m.delivery][1]}`}>{DELIVERY[m.delivery][0]}</span>}
+                    <span className={`rounded-full px-2.5 py-0.5 text-[12px] font-semibold ${m.status === "sent" ? "bg-lime/15 text-lime" : failed ? "bg-danger/15 text-danger" : "bg-ink-4 text-mute"}`}>{m.status}</span>
+                    <span aria-hidden className="text-faint transition-transform duration-200 group-open:rotate-180">▾</span>
+                  </span>
+                </summary>
+                <div className="border-t border-line px-4 py-3">
+                  <pre className="whitespace-pre-wrap rounded-[12px] bg-ink-3 p-3 text-[13px] text-mute">{m.body}</pre>
+                  <ConfirmButton action={resendEmail.bind(null, m.id)} message={`Send "${m.subject}" to ${m.to_email} again?`} className="btn-ghost btn-sm mt-3">
+                    Resend
+                  </ConfirmButton>
+                </div>
+              </details>
+            </li>
+          );
+        })}
+        {!rows.length && <li className="admin-panel px-4 py-6 text-mute">No emails match.</li>}
+      </ol>
     </div>
   );
 }
