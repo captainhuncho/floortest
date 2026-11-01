@@ -32,6 +32,9 @@ const env = {
   SEED_TEAMS: "1",
   // The Send page is off in the beta (switch send_music); its tests switch it on (scripts/seed.ts).
   SEED_SEND_MUSIC: "1",
+  // Ops is tested too: a seeded ops account with two-step on (scripts/seed.ts, e2e/ops-account.ts), the super admin here only.
+  SEED_OPS: "1",
+  ADMIN_EMAILS: "ops@floortest.test",
   // A fake virus scanner (e2e/fake-scanner.mjs): every file is clean, but scanner-wake.spec.ts makes it sleep or stay
   // down. The wait for a waking scanner is cut from 150 s to 6 s so those tests stay short.
   SCAN_URL: `http://127.0.0.1:${SCANNER_PORT}`,
