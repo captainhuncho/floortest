@@ -3,9 +3,9 @@
 import { usePathname } from "next/navigation";
 import { useLayoutEffect } from "react";
 
-/** Set once the first ops page of a browser session has played its arrival, so later full loads start still. */
-export const MOTION_COOKIE = "ft_ops_still";
 const SEEN = "floortest-admin-moved";
+/** The old "start still" cookie (1 Nov); cleared so a browser that has it doesn't keep it. */
+const OLD_COOKIE = "ft_ops_still";
 const ARRIVAL_MS = 2500;
 let hydrated = false;
 const remember = (paths: string[]) => {
@@ -15,9 +15,11 @@ const remember = (paths: string[]) => {
 };
 
 /**
- * Arrival motion plays once per page per browser session (hub, 1 Nov: staff open these pages all day). A page seen
- * before, a refresh, a filter or a tab switch starts still. Only adds or removes a class on #theme-root, so it never
- * blocks a click or a key; reduced motion is handled in admin.css.
+ * When the arrival motion plays. A full load or a browser refresh always plays it, so you can see the page refresh
+ * (owner, 1 Nov: "when you hit the refresh or reload on the browser, the pages need to refresh"). Moving inside ops
+ * plays it the first time you open each page in a session; a page seen before, a filter or a tab switch starts still
+ * (hub, 1 Nov: staff open these pages all day). Only a class on #theme-root changes, so it never blocks a click or a
+ * key; reduced motion is handled in admin.css.
  */
 export function AdminMotion() {
   const path = usePathname();
@@ -28,18 +30,15 @@ export function AdminMotion() {
     try {
       seen = JSON.parse(sessionStorage.getItem(SEEN) ?? "[]");
     } catch {}
-    // A full load the server already rendered still has painted by now: starting the motion here would replay it late.
-    const paintedStill = !hydrated && root.classList.contains("admin-still");
+    const fullLoad = !hydrated;
     hydrated = true;
-    if (paintedStill || seen.includes(path)) {
+    if (fullLoad) document.cookie = `${OLD_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
+    if (!fullLoad && seen.includes(path)) {
       root.classList.add("admin-still");
-      if (!seen.includes(path)) remember([...seen, path]);
       return;
     }
     root.classList.remove("admin-still");
-    remember([...seen, path]);
-    // A session cookie (no expiry, UI only): the server renders later full loads still, so a refresh doesn't replay.
-    document.cookie = `${MOTION_COOKIE}=1; Path=/; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`;
+    if (!seen.includes(path)) remember([...seen, path]);
     const t = setTimeout(() => root.classList.add("admin-still"), ARRIVAL_MS);
     return () => clearTimeout(t);
   }, [path]);
