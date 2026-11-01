@@ -148,6 +148,8 @@ export function ListRows({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
+      // Shift+↑ / Shift+↓ are the player's volume (Player.tsx), not a move between tracks.
+      if (e.shiftKey && e.key.startsWith("Arrow")) return;
       if (picking) {
         if (e.key === "Escape") {
           setPicking(false);
@@ -201,7 +203,7 @@ export function ListRows({
     );
 
   return (
-    <section aria-label={title ? undefined : "Tracks"} aria-labelledby={title ? "list-h" : undefined} className={`${CARD} flex flex-col p-1.5 md:p-2`}>
+    <section data-player-keys aria-label={title ? undefined : "Tracks"} aria-labelledby={title ? "list-h" : undefined} className={`${CARD} flex flex-col p-1.5 md:p-2`}>
       <div className="flex min-h-11 items-center justify-between gap-2 px-2">
         {picking ? (
           <label className="flex min-h-11 items-center gap-2.5 text-[12px] text-mute">
