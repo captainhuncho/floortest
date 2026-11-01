@@ -13,6 +13,9 @@ import { FEATURES, type Feature } from "@/lib/features";
 import { allPlans, FREE_PLAN } from "@/lib/plan-store";
 import { audienceWhere, cleanTags, describeAudience, readAudience } from "@/lib/audience";
 import { BULK_MAX, bulkIds, SUSPEND_MAX } from "@/lib/admin-bulk";
+import type { OpsResult } from "@/lib/ops-result";
+import { JOBS, withJobLease, type JobName } from "@/lib/cron";
+import { RUN_JOB, rerunRefusal } from "@/lib/cron-jobs";
 import { SITE_PAGES, type SitePage } from "@/lib/content";
 import { writeContent } from "@/lib/content-write";
 import { redirect } from "next/navigation";
@@ -41,6 +44,16 @@ const done = (m: string) => flash(m);
 const fail = async (m: string) => {
   await flash(m, "error");
   refresh();
+};
+// Converted actions (src/lib/ops-result.ts) answer the screen directly through OpsForm instead of with a flash; the
+// page still refreshes so its lists catch up.
+const ok = (message: string): OpsResult => {
+  refresh();
+  return { ok: true, message };
+};
+const no = (error: string): OpsResult => {
+  refresh();
+  return { ok: false, error };
 };
 const target = async (id: number) => q.get<{ id: number; email: string; handle: string }>("SELECT id, email, handle FROM users WHERE id = ?", id);
 
@@ -290,6 +303,50 @@ export async function removeTrackAsAdmin(trackId: number, reason: string) {
   refresh();
 }
 
+/** Moderation → Keep: a staff member reviewed the track and is leaving it up. Recorded on the track and in the log. */
+export async function keepTrack(trackId: number): Promise<OpsResult> {
+  const a = await requireAdminAction("moderation");
+  if (!Number.isSafeInteger(trackId) || trackId < 1) return no("That track isn't there");
+  const t = await q.get<{ title: string; artist: string; handle: string }>(
+    `UPDATE tracks t SET ops_reviewed_at = ?, ops_reviewed_by = ? FROM users u
+     WHERE t.id = ? AND t.deleted_at IS NULL AND u.id = t.user_id RETURNING t.title, t.artist, u.handle`,
+    now(),
+    a.id,
+    trackId,
+  );
+  if (!t) return no("That track is already gone");
+  await logAdmin(a.id, "reviewed, kept", `${t.artist} – ${t.title}`, `on @${t.handle}`);
+  return ok(`Kept "${t.title}": marked reviewed`);
+}
+
+/**
+ * Jobs → Run now: one job straight away, through the same code as its schedule (src/lib/cron-jobs.ts) and under its
+ * lease, so it never runs alongside a copy already going. The daily ones only make up a failed or missed run
+ * (rerunRefusal), and the backup and clean-up is the super admin's.
+ */
+export async function runJobNow(job: string): Promise<OpsResult> {
+  const a = await requireAdminAction("jobs");
+  if (!(job in JOBS)) return no("That isn't a job");
+  const name = job as JobName;
+  if (name === "purge" && !a.access.super) {
+    await logAdmin(a.id, "denied", "run job", name);
+    return no("Only the super admin can run the backup and clean-up");
+  }
+  const refused = await rerunRefusal(name);
+  if (refused) return no(refused);
+  const started = Date.now();
+  let out;
+  try {
+    out = await withJobLease(name, () => RUN_JOB[name](started));
+  } catch (e) {
+    await logAdmin(a.id, "ran job", JOBS[name].label, "failed");
+    return no(`${JOBS[name].label} failed: ${e instanceof Error ? e.message : String(e)}. See Incidents.`);
+  }
+  if (!out) return no(`${JOBS[name].label} is already running`);
+  await logAdmin(a.id, "ran job", JOBS[name].label, out.ok ? "done" : "failed");
+  return out.ok ? ok(`${JOBS[name].label}: done`) : no(`${JOBS[name].label} ran but failed. See Incidents.`);
+}
+
 /** Blocks a sender email on one receiver's link (the same as the receiver blocking them). */
 export async function blockSenderAsAdmin(senderId: number) {
   const a = await requireAdminAction("moderation");
@@ -328,12 +385,12 @@ export async function resendEmail(outboxId: number) {
   refresh();
 }
 
-export async function setContactHandled(id: number, handled: boolean) {
+export async function setContactHandled(id: number, handled: boolean): Promise<OpsResult> {
   const a = await requireAdminAction("inbox.act");
-  await q.run("UPDATE contact_messages SET handled_at = ? WHERE id = ?", handled ? now() : null, id);
+  const r = await q.run("UPDATE contact_messages SET handled_at = ? WHERE id = ?", handled ? now() : null, id);
+  if (!r.changes) return no("That message is gone");
   await logAdmin(a.id, handled ? "handled message" : "reopened message", `#${id}`);
-  await done(handled ? "Marked handled" : "Reopened");
-  refresh();
+  return ok(handled ? "Marked handled" : "Reopened");
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -446,19 +503,18 @@ export async function removeFromWaitlist(id: number) {
 
 /* Identity verification and protected names */
 
-export async function approveIdentity(userId: number) {
+export async function approveIdentity(userId: number): Promise<OpsResult> {
   const a = await requireAdminAction("verification");
   const u = await q.get<{ email: string; name: string; handle: string }>(
     "UPDATE users SET identity_status = 'verified', identity_verified_at = ?, identity_note = '' WHERE id = ? RETURNING email, name, handle",
     now(),
     userId,
   );
-  if (!u) return fail("Account not found");
+  if (!u) return no("Account not found");
   const { verifiedEmail } = await import("@/lib/identity-direct");
   await sendMail({ userId, audience: "receiver", to: u.email, ...(await verifiedEmail(u, "request")) });
   await logAdmin(a.id, "verified identity", `@${u.handle}`);
-  await done(`Verified @${u.handle} and emailed them`);
-  refresh();
+  return ok(`Verified @${u.handle} and emailed them`);
 }
 
 /**
@@ -496,7 +552,7 @@ export async function revokeIdentity(userId: number, form: FormData) {
   await done(`Removed @${u.handle}'s verification and emailed them`);
 }
 
-export async function rejectIdentity(userId: number, form: FormData) {
+export async function rejectIdentity(userId: number, form: FormData): Promise<OpsResult> {
   const a = await requireAdminAction("verification");
   const note = String(form.get("note") || "").trim().slice(0, 200);
   const u = await q.get<{ email: string; name: string; handle: string }>(
@@ -504,7 +560,7 @@ export async function rejectIdentity(userId: number, form: FormData) {
     note,
     userId,
   );
-  if (!u) return fail("Account not found");
+  if (!u) return no("Account not found");
   await sendMail({
     userId,
     audience: "receiver",
@@ -513,8 +569,7 @@ export async function rejectIdentity(userId: number, form: FormData) {
     body: `Hi ${u.name.split(/\s+/)[0]},\n\nWe couldn't verify your profiles yet${note ? `: ${note}` : "."}\n\nYou can fix it and send it again from Settings: ${env.appUrl}/dashboard/settings/profile#identity-h\n\n— FloorTest`,
   });
   await logAdmin(a.id, "rejected identity", `@${u.handle}`, note);
-  await done(`Rejected @${u.handle}'s verification and emailed them`);
-  refresh();
+  return ok(`Rejected @${u.handle}'s verification and emailed them`);
 }
 
 export async function addProtectedName(form: FormData) {
@@ -778,12 +833,11 @@ export async function adminCancelEmailChange(userId: number) {
 }
 
 /** Marks an incident as dealt with, so it leaves the Overview to-do list. */
-export async function resolveIncident(id: number) {
+export async function resolveIncident(id: number): Promise<OpsResult> {
   const a = await requireAdminAction("incidents.act");
   const r = await q.run("UPDATE incidents SET resolved_at = ? WHERE id = ? AND resolved_at IS NULL", now(), id);
   if (r.changes) await logAdmin(a.id, "resolved incident", `#${id}`);
-  await done("Marked handled");
-  refresh();
+  return ok(r.changes ? "Marked handled" : "Already handled");
 }
 
 /** Clears every open incident (of one kind, or all). For stale ones after a fix has shipped. */
@@ -1145,12 +1199,12 @@ async function openRequest(id: number) {
   );
 }
 
-export async function approvePlanRequest(id: number, form: FormData) {
+export async function approvePlanRequest(id: number, form: FormData): Promise<OpsResult> {
   const a = await requireAdminAction("planRequests");
   const r = await openRequest(id);
-  if (!r) return fail("That request was already dealt with.");
+  if (!r) return no("That request was already dealt with.");
   const plan = grantablePlan(await allPlans(), String(form.get("plan") || r.plan), r.plan, r.current);
-  if (!plan) return fail("Pick the plan they asked for, or one at or above their current plan.");
+  if (!plan) return no("Pick the plan they asked for, or one at or above their current plan.");
   const note = String(form.get("note") || "").trim().slice(0, 500);
   await q.tx(async (db) => {
     await db.run("UPDATE users SET plan = ? WHERE id = ?", plan.id, r.user_id);
@@ -1163,16 +1217,15 @@ export async function approvePlanRequest(id: number, form: FormData) {
     subject: `You're on ${plan.name} — FloorTest`,
     body: `Hi ${r.name.split(/\s+/)[0] || r.name},\n\nYou're on ${plan.name} now, free for the rest of the beta: room for ${plan.limit.toLocaleString("en")} active tracks.${plan.id !== r.plan ? ` (You asked for ${r.plan}; ${plan.name} fits how you work better for now. Reply if you think otherwise.)` : ""}${note ? `\n\n${note}` : ""}\n\nSee it: ${APP_URL}/dashboard/plans\n\n— FloorTest`,
   }).catch(() => {});
-  await done(`@${r.handle} is on ${plan.name} and has been emailed.`);
-  refresh();
+  return ok(`@${r.handle} is on ${plan.name} and has been emailed.`);
 }
 
-export async function declinePlanRequest(id: number, form: FormData) {
+export async function declinePlanRequest(id: number, form: FormData): Promise<OpsResult> {
   const a = await requireAdminAction("planRequests");
   const r = await openRequest(id);
-  if (!r) return fail("That request was already dealt with.");
+  if (!r) return no("That request was already dealt with.");
   const reason = String(form.get("reason") || "").trim().slice(0, 500);
-  if (!reason) return fail("Give a short reason; it's sent to them.");
+  if (!reason) return no("Give a short reason; it's sent to them.");
   await q.run("UPDATE plan_requests SET status = 'declined', decided_by = ?, decided_at = ?, decision_note = ? WHERE id = ?", a.id, now(), reason, id);
   await logAdmin(a.id, "declined plan request", `@${r.handle}`, reason.slice(0, 120));
   await sendMail({
@@ -1181,7 +1234,6 @@ export async function declinePlanRequest(id: number, form: FormData) {
     subject: "About your FloorTest plan request",
     body: `Hi ${r.name.split(/\s+/)[0] || r.name},\n\nThanks for asking for ${r.plan}. We're not moving you for now:\n\n${reason}\n\nYou keep everything on your current plan, and you can ask again any time from Account → Plans.\n\n— FloorTest`,
   }).catch(() => {});
-  await done(`Declined @${r.handle}'s request; they've been emailed.`);
-  refresh();
+  return ok(`Declined @${r.handle}'s request; they've been emailed.`);
 }
 

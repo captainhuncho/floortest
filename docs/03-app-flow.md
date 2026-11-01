@@ -136,6 +136,13 @@ Users ─► Filters (type, plan, tag, joined, activity, security) ─► chips 
                      └─ Suspend… (≤ 20) ─► reason ─► each: signed out, link offline, email with appeal ─► admin log
 Growth ─► Growth & decisions ─► findings · funnel · projection · sources · cohorts · pipeline
 Moderation ─► search ─► pick a track ─► Play, only with an open takedown claim (5-minute file link; admin log "played track"; otherwise 404 + "refused play")
+   ─► Keep ─► marked reviewed (tracks.ops_reviewed_at/by; "Kept by @x" on the track, a Reviewed chip in results; admin log "reviewed, kept")
+Jobs ─► Run now (per job, src/lib/cron-jobs.ts: the scheduled code, under the job's lease)
+   ─► email queue, virus check: any time · daily emails, backup and clean-up: only after a failed or missed run, asks
+   first; backup is the super admin's ─► toast; the run shows in Recent runs; admin log "ran job"
+Queue buttons (Inbox handled/reopen, Verification approve/not yet, Plan request approve/decline, Incident handled)
+   ─► the action answers in place (src/lib/ops-result.ts, OpsForm): no reload, buttons locked while it
+   works, success in the toast, a refusal under the form
    ─► Block sender for @them / Block everywhere / Remove track… (confirm)
 Verification ─┬─ request waiting ─► check the code in their profile ─► Approve (email) / Not yet (reason emailed)
               └─ Verify someone directly ─► @handle or email (≤ 10) ─► their account

@@ -160,6 +160,8 @@ export const ACTION_NEEDS: Record<string, Need> = {
   removeFromWaitlist: "waitlist",
   removeTrackAsAdmin: "moderation",
   blockSenderAsAdmin: "moderation",
+  keepTrack: "moderation",
+  runJobNow: "jobs",
   resendEmail: "emails.act",
   setContactHandled: "inbox.act",
   approveIdentity: "verification",

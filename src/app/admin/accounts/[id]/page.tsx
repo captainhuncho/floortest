@@ -12,6 +12,7 @@ import { ConfirmButton, ConfirmSubmit } from "../../AdminUi";
 import { StatusPill, type Tone } from "../../PinParts";
 import { CuePoint } from "@/components/CuePoint";
 import { DIRECT_NOTE_MAX, DIRECT_NOTE_MIN } from "@/lib/identity-direct";
+import { OpsForm } from "../../OpsForm";
 import {
   adminCancelEmailChange,
   adminChangeEmail,
@@ -237,9 +238,9 @@ export default async function Account({ params }: { params: Promise<{ id: string
                       </span>
                       <span className="flex items-center gap-3 text-mute">
                         {day(m.created_at)}
-                        <form action={setContactHandled.bind(null, m.id, !m.handled_at)}>
+                        <OpsForm action={setContactHandled.bind(null, m.id, !m.handled_at)}>
                           <button className="text-sm text-bone underline">{m.handled_at ? "Reopen" : "Mark handled"}</button>
-                        </form>
+                        </OpsForm>
                       </span>
                     </div>
                     <p className="line-clamp-3 whitespace-pre-wrap text-mute">{m.message}</p>
