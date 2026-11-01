@@ -9,7 +9,9 @@ process.env.DATA_DIR = testDataDir("ft-scan-budget-");
 process.env.APP_SECRET ??= "test-secret-".padEnd(48, "x");
 delete process.env.DATABASE_URL;
 delete process.env.S3_BUCKET;
-process.env.SCAN_DEADLINE_MS = "400";
+// Long enough for a scan under a full parallel run (400 ms failed once there: a1 was held as "scanner"). Nothing here
+// waits for the deadline to pass: the fake scanner answers at once, and held or budget cases never call it.
+process.env.SCAN_DEADLINE_MS = "10000";
 
 /** A small valid 16-bit mono WAV. */
 function wav() {

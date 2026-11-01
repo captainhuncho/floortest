@@ -120,9 +120,11 @@ async function main() {
     // sender, since a new account can't send until its email is confirmed; and a confirmed account of its own for the
     // passkey tests and one for the two-factor test (a passkey or two-factor needs a confirmed email). Six confirmed
     // senders for e2e/scanner-wake.spec.ts, one per repeat, so its sends never meet the five-a-day limit per sender or
-    // use up sender@'s (1 Nov).
+    // use up sender@'s (1 Nov). Five more strangers for e2e/sharing.spec.ts, one per repeat, so asking for access never
+    // meets the two-a-day limit per email (1 Nov: the third repeat was refused "Too many requests").
     const scanners = Array.from({ length: 6 }, (_, i) => [`scan${i + 1}@floortest.test`, `Scan Tester ${i + 1}`, `scantest${i + 1}`]);
-    for (const [email, name, handle] of [["listener@floortest.test", "Lena Listener", "lena"], ["stranger@floortest.test", "Sam Stranger", "samx"], ["sender@floortest.test", "Eddie Tester", "eddie"], ["keys@floortest.test", "Kit Keys", "kitkeys"], ["tfa@floortest.test", "Tess Twostep", "tesstfa"], ...scanners])
+    const strangers = Array.from({ length: 5 }, (_, i) => [`stranger${i + 2}@floortest.test`, `Sam Stranger ${i + 2}`, `samx${i + 2}`]);
+    for (const [email, name, handle] of [["listener@floortest.test", "Lena Listener", "lena"], ["stranger@floortest.test", "Sam Stranger", "samx"], ["sender@floortest.test", "Eddie Tester", "eddie"], ["keys@floortest.test", "Kit Keys", "kitkeys"], ["tfa@floortest.test", "Tess Twostep", "tesstfa"], ...scanners, ...strangers])
       await db.run(
         "INSERT INTO users (email, password_hash, name, handle, plan, tz, email_verified_at, created_at) VALUES (?,?,?,?,?,?,?,?)",
         email,
