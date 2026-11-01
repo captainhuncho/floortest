@@ -14,7 +14,11 @@ import { OPS_EMAIL, OPS_INBOX_MESSAGE, OPS_TOTP_SECRET } from "./ops-account";
 // kept in the test copy's folder (fresh each run), as teams.spec.ts keeps its secret: each repeat loads this file anew.
 const STEP_FILE = path.join(".e2e", "ops-totp-step");
 async function freshCode() {
-  const last = Number(fs.existsSync(STEP_FILE) ? fs.readFileSync(STEP_FILE, "utf8") : 0);
+  // Read straight away, not check-then-read (CodeQL js/file-system-race): no file yet means no step used yet.
+  let last = 0;
+  try {
+    last = Number(fs.readFileSync(STEP_FILE, "utf8")) || 0;
+  } catch {}
   while (currentStep() <= last) await new Promise((r) => setTimeout(r, 1000));
   const step = currentStep();
   fs.writeFileSync(STEP_FILE, String(step));
