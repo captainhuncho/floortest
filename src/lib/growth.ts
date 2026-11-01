@@ -127,6 +127,15 @@ export const betaRunning = (now: number, start = BETA_START) => now < start + BE
 /** Where a straight line from 0 at the start to `target` at week 8 stands in `week`: ceil(target × week / 8). */
 export const expectedByWeek = (target: number, week: number) => Math.ceil((target * Math.min(BETA_WEEKS, Math.max(0, week))) / BETA_WEEKS);
 
+/**
+ * Where that line stands today, by the days gone (owner, 1 Nov: a full week's share on day 1 read as "behind" too
+ * soon): round(target × days / 56), so day 1 expects 0 of 15 and the end of week 1 expects 2.
+ */
+export const expectedByNow = (target: number, now: number, start = BETA_START) => {
+  const days = Math.min(BETA_WEEKS * 7, Math.max(0, (now - start) / 86_400_000));
+  return Math.round((target * days) / (BETA_WEEKS * 7));
+};
+
 export type Pace = "ahead" | "on pace" | "behind";
 /** Against that line: behind only when below it, on pace when level, ahead when above. */
 export const paceOf = (n: number, expected: number): Pace => (n < expected ? "behind" : n > expected ? "ahead" : "on pace");

@@ -1,6 +1,15 @@
 import { requireAdmin } from "@/lib/admin";
 import { now as clock, q } from "@/lib/db";
 import { JOBS, LATE_AFTER_MS, type JobName } from "@/lib/cron";
+import { rerunRefusal } from "@/lib/cron-jobs";
+import { runJobNow } from "../actions";
+import { ConfirmSubmit } from "../AdminUi";
+import { OpsForm } from "../OpsForm";
+
+// Run now runs a job inside this page's request: as long as the cron routes allow.
+export const maxDuration = 300;
+/** The daily jobs ask before Run now; the queue drains (scan, mail) don't need to. */
+const DAILY = new Set<JobName>(["purge", "digest"]);
 
 export const metadata = { title: "Jobs — FloorTest admin" };
 
@@ -32,9 +41,15 @@ const when = (ms: number) => new Date(ms).toLocaleString("en-GB", { day: "numeri
  * from the last run toward "late", and its recent runs as dots; below, the runs as finished-task notices.
  */
 export default async function Jobs() {
-  await requireAdmin("jobs");
+  const admin = await requireAdmin("jobs");
   const now = clock();
   const runs = await q.all<Run>("SELECT id, job, started_at, ms, ok, result FROM job_runs ORDER BY started_at DESC LIMIT 200");
+  // Run now: why it isn't offered for a job right now (a daily job that already ran fine, or the backup for anyone but
+  // the super admin), shown in words instead of a button that can't work.
+  const names = Object.keys(JOBS) as JobName[];
+  const notNow = Object.fromEntries(
+    await Promise.all(names.map(async (j) => [j, j === "purge" && !admin.access.super ? "Only the super admin can run the backup and clean-up." : await rerunRefusal(j, now)] as const)),
+  ) as Record<JobName, string | null>;
   const runRow = (r: Run) => (
     <li key={r.id} className="flex items-start gap-3 border-t border-line py-3 first:border-t-0">
       <span aria-hidden className={`grid size-9 shrink-0 place-items-center rounded-full text-[14px] font-bold ${r.ok ? "bg-lime text-ink" : "bg-danger/20 text-danger"}`}>
@@ -61,7 +76,8 @@ export default async function Jobs() {
         <span className="rounded-full px-3 py-1 text-[10.5px] font-semibold uppercase tracking-[0.2em] text-bone ring-1 ring-line-2">Platform</span>
         <h1 className="mt-3 text-[34px] font-semibold leading-tight tracking-[-0.03em]">Jobs</h1>
         <p className="mt-1 max-w-2xl text-[15px] text-mute">
-          The jobs that run on a schedule. A failure, or a job not running for {LATE_AFTER_MS / 3_600_000} hours, shows on the Overview; failures also record an incident.
+          The jobs that run on a schedule. A failure, or a job not running for {LATE_AFTER_MS / 3_600_000} hours, shows on the Overview; failures also record an incident. Run now does a job’s scheduled run straight away, never
+          alongside one already going.
         </p>
       </header>
 
@@ -123,6 +139,21 @@ export default async function Jobs() {
                   <span className="text-[12px] text-faint">Runs will show here as dots.</span>
                 )}
               </p>
+              <div className="mt-4 border-t border-line pt-4">
+                {notNow[j] ? (
+                  <p className="text-[12.5px] text-mute">{notNow[j]}</p>
+                ) : (
+                  <OpsForm action={runJobNow.bind(null, j)} className="flex flex-wrap items-center gap-3">
+                    {DAILY.has(j) ? (
+                      <ConfirmSubmit message={`Run "${JOBS[j].label}" now? It makes up the failed or missed run; it won't run again today once this works.`} className="btn-ghost btn-sm">
+                        Run now
+                      </ConfirmSubmit>
+                    ) : (
+                      <button className="btn-ghost btn-sm">Run now</button>
+                    )}
+                  </OpsForm>
+                )}
+              </div>
             </li>
           );
         })}

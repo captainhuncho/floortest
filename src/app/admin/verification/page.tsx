@@ -5,6 +5,7 @@ import { ConfirmButton, ConfirmSubmit } from "../AdminUi";
 import { q } from "@/lib/db";
 import { addProtectedName, approveIdentity, rejectIdentity, removeProtectedName, revokeIdentity } from "../actions";
 import { Avatar, PageHead, Stepper } from "../PinParts";
+import { OpsForm } from "../OpsForm";
 
 const STEPS = ["Requested", "Code checked", "Verified"];
 
@@ -66,16 +67,16 @@ export default async function Verification() {
                 </ul>
               </div>
               <div className="mt-4 flex flex-wrap items-center gap-2">
-                <form action={approveIdentity.bind(null, u.id)}>
+                <OpsForm action={approveIdentity.bind(null, u.id)}>
                   <button className="admin-press inline-flex min-h-11 items-center rounded-full bg-lime px-5 text-[13.5px] font-semibold text-ink">Approve</button>
-                </form>
-                <form action={rejectIdentity.bind(null, u.id)} className="flex min-w-0 flex-1 flex-wrap gap-2">
+                </OpsForm>
+                <OpsForm action={rejectIdentity.bind(null, u.id)} className="flex min-w-0 flex-1 flex-wrap gap-2">
                   <label className="min-w-0 flex-1 basis-48">
                     <span className="sr-only">Why not yet (sent to them)</span>
                     <input name="note" className="input min-h-11 w-full" placeholder="Why (sent to them), e.g. code not in bio" />
                   </label>
                   <button className="admin-press inline-flex min-h-11 items-center rounded-full px-5 text-[13.5px] font-semibold text-danger ring-1 ring-danger/40 hover:bg-danger/10">Not yet</button>
-                </form>
+                </OpsForm>
               </div>
             </li>
           ))}
