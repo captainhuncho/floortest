@@ -1,3 +1,5 @@
+import { normalEmail } from "./email-normal";
+
 /**
  * Growth & decisions (owner, 1 Nov 2026): the maths behind the ops page, kept pure so it can be tested.
  * Everything here works from FloorTest's own counts; no outside analytics needed.
@@ -90,4 +92,142 @@ export function decisions(input: { steps: FunnelStep[]; sources: Group[]; kinds:
     cards.push({ title: `About ${total} sign-ups in the next 4 weeks`, detail: `Likely between ${input.next.reduce((a, p) => a + p.low, 0)} and ${input.next.reduce((a, p) => a + p.high, 0)}, if the last weeks are a fair guide. A projection, not a promise.`, tone: "watch" });
   }
   return cards;
+}
+
+/* ------------------------------------------------------------------------------------------------------------------
+ * Beta numbers (owner, 1 Nov 2026): the three weekly targets from docs/beta-launch-plan.md, shown at the top of
+ * Admin → Growth. The page runs three bounded queries (accounts, events, tracks, all from the beta start on) and
+ * hands the rows to betaNumbers(); everything that decides who counts lives here so it can be tested.
+ * ---------------------------------------------------------------------------------------------------------------- */
+
+/** The beta starts at midnight UTC on 1 Nov 2026. Accounts made before this instant are not beta accounts. */
+export const BETA_START = Date.UTC(2026, 10, 1);
+/** The beta runs 8 weeks; after that the week number stays at 8. */
+export const BETA_WEEKS = 8;
+/** Below this many accounts in a metric's base, show the raw number only: no percentage and no target bar. */
+export const SMALL_BASE = 5;
+export const BETA_TARGETS = { weeklyActive: 15, activated: 25, firstListenHours: 48 } as const;
+
+const DAY_MS = 86_400_000;
+const WEEK_MS = 7 * DAY_MS;
+const HOUR_MS = 3_600_000;
+
+/** "Beta week X of 8": week 1 is the first 7 days from the start, capped at 8 (and never below 1). */
+export function betaWeek(now: number, start = BETA_START): number {
+  return Math.min(BETA_WEEKS, Math.max(1, Math.floor((now - start) / WEEK_MS) + 1));
+}
+
+/** The middle value (the mean of the two middle values for an even count), or null when there are none. */
+export function median(values: number[]): number | null {
+  if (!values.length) return null;
+  const s = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+}
+
+/** Whether a metric's base is big enough to show a share and a target bar. */
+export const showShare = (base: number) => base >= SMALL_BASE;
+
+export type BetaAccountRow = {
+  id: number;
+  email: string;
+  created_at: number;
+  suspended_at: number | null;
+  /** Has a row in ops_members (any role, active or not). */
+  ops: boolean;
+  /** users.invite_code set, or a waitlist row with invited_at set and the same email (lower case). */
+  invited: boolean;
+  /** Emails (lower case) of the people on this account's team (account_members), for the self-sent rule. */
+  team_emails: string[];
+};
+
+/**
+ * Whether an account counts in the beta: made since the start (UTC), not suspended, and not the owner, ops staff or
+ * seed/test data. `adminEmails` is ADMIN_EMAILS as env.ts reads it (already lower case).
+ */
+export function isBetaAccount(u: Pick<BetaAccountRow, "email" | "created_at" | "suspended_at" | "ops">, adminEmails: readonly string[], start = BETA_START): boolean {
+  const email = normalEmail(u.email);
+  if (u.created_at < start || u.suspended_at != null || u.ops) return false;
+  if (adminEmails.includes(email)) return false;
+  return !email.endsWith("@floortest.test");
+}
+
+/** Per account, from events since the start: how many 'submitted' and decision ('kept'/'passed') events, and the last decision. */
+export type BetaActivityRow = { user_id: number; submitted: number; decided: number; last_decided: number | null };
+
+/** A track on a beta account since the start, with its sender's email (lower case). */
+export type BetaTrackRow = { user_id: number; created_at: number; played_at: number | null; deleted_at: number | null; sender_email: string };
+
+export type BetaNumbers = {
+  week: number;
+  accounts: number;
+  invited: number;
+  other: number;
+  weeklyActive: number;
+  activated: number;
+  /** Median hours from delivered to first listen, or null with no listens yet. */
+  firstListenHours: number | null;
+  /** Tracks behind the median (delivered by a sender and listened to). */
+  listened: number;
+  /** Tracks delivered by a sender, still there and not listened to yet. */
+  waiting: number;
+  /** Accounts behind the median (beta accounts with at least one listened track). */
+  listenAccounts: number;
+};
+
+/**
+ * Inferred rule (no stored flag says who sent a track): a track counts as delivered by a sender unless the sender's
+ * email is the receiving account's own email or the email of someone on that account's team. Those are tracks the
+ * desk added itself, or a teammate sent in, so they say nothing about how fast a receiver listens.
+ */
+export function isSelfSent(senderEmail: string, account: Pick<BetaAccountRow, "email" | "team_emails">): boolean {
+  const s = normalEmail(senderEmail);
+  return s === normalEmail(account.email) || account.team_emails.some((e) => normalEmail(e) === s);
+}
+
+/** The three beta numbers from the bounded rows. Pure: same rows and clock, same answer. */
+export function betaNumbers(input: { now: number; adminEmails: readonly string[]; accounts: BetaAccountRow[]; activity: BetaActivityRow[]; tracks: BetaTrackRow[]; start?: number }): BetaNumbers {
+  const start = input.start ?? BETA_START;
+  const beta = new Map(input.accounts.filter((u) => isBetaAccount(u, input.adminEmails, start)).map((u) => [Number(u.id), u]));
+  const invited = [...beta.values()].filter((u) => u.invited).length;
+  const weekAgo = input.now - WEEK_MS;
+  let weeklyActive = 0;
+  let activated = 0;
+  for (const a of input.activity) {
+    if (!beta.has(Number(a.user_id))) continue;
+    // The last 7 days include the moment exactly 7 days ago.
+    if (a.last_decided != null && Number(a.last_decided) >= weekAgo && Number(a.last_decided) <= input.now) weeklyActive++;
+    if (Number(a.submitted) > 0 && Number(a.decided) > 0) activated++;
+  }
+  const waits: number[] = [];
+  const listenAccounts = new Set<number>();
+  let waiting = 0;
+  for (const t of input.tracks) {
+    const account = beta.get(Number(t.user_id));
+    if (!account || Number(t.created_at) < start || isSelfSent(t.sender_email, account)) continue;
+    if (t.played_at != null) {
+      waits.push(Math.max(0, Number(t.played_at) - Number(t.created_at)));
+      listenAccounts.add(Number(t.user_id));
+    } else if (t.deleted_at == null) waiting++;
+  }
+  const mid = median(waits);
+  return {
+    week: betaWeek(input.now, start),
+    accounts: beta.size,
+    invited,
+    other: beta.size - invited,
+    weeklyActive,
+    activated,
+    firstListenHours: mid == null ? null : mid / HOUR_MS,
+    listened: waits.length,
+    waiting,
+    listenAccounts: listenAccounts.size,
+  };
+}
+
+/** Hours as people read them: "—" with none, minutes under an hour, one decimal under 10 h, whole hours above. */
+export function formatHours(h: number | null): string {
+  if (h == null) return "—";
+  if (h < 1) return `${Math.round(h * 60)} min`;
+  return h < 10 ? `${h.toFixed(1)} h` : `${Math.round(h)} h`;
 }

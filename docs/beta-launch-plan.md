@@ -15,6 +15,8 @@ Prove that DJs with weekly callouts **keep using** the desk, and that senders **
 | Sender → receiver conversion | Senders who later sign up | 5% |
 | Kept → exported | Share of kept tracks downloaded in a crate | Tracks whether the "to the DJ set" promise is real |
 
+Weekly active receivers, activated receivers and time to first listen are shown live at the top of Admin → Growth (beta week, invited / other split, small bases as raw numbers).
+
 ## Phases
 
 **Week 0: ready (this week)**
