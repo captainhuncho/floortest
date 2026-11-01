@@ -51,8 +51,8 @@ test("per-person rules: the desk lists read as the person show only desks they w
   // Another desk, even with the desk filter fooled: nothing comes back.
   assert.deepEqual(await queue(efua, kofi), []);
   assert.deepEqual(await loadRows(kofi, { inSet: true, actor: efua }), []);
-  // Without an actor, loadRows behaves as before (the app API callers until their own step).
-  assert.equal((await loadRows(kofi, { inSet: true })).length, 1);
+  // The desk's owner reads their own list, as the app and the phone's offline sync do.
+  assert.equal((await loadRows(kofi, { inSet: true, actor: kofi })).length, 1);
 });
 
 test("the desk list pages read through the person scope", () => {
@@ -64,4 +64,15 @@ test("the desk list pages read through the person scope", () => {
     assert.doesNotMatch(src, /await q\.(all|get|count)/, `${file}: a query outside the person scope`);
   }
   assert.match(read("prepare/page.tsx"), /loadRows\(user\.id, \{ inSet: true, actor: user\.actor_id \}\)/);
+});
+
+test("the app and offline lists read through the person scope", () => {
+  const read = (p: string) => fs.readFileSync(new URL(`../src/app/api/${p}`, import.meta.url), "utf8");
+  for (const file of ["v1/prepare/route.ts", "offline/list/route.ts"]) {
+    assert.match(read(file), /loadRows\(u\.id, \{ inSet: true, actor: u\.actor_id \}\)/, file);
+  }
+  const one = read("v1/collections/[id]/route.ts");
+  assert.match(one, /asPerson\(u\.actor_id, \(\) => q\.get/);
+  assert.match(one, /loadRows\(u\.id, \{ collectionId: c\.id, actor: u\.actor_id \}\)/);
+  assert.doesNotMatch(one, /await q\./, "a query outside the person scope");
 });
