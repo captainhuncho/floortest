@@ -9,9 +9,11 @@ import { queueDeletion } from "./deletion-core";
  * points to it (`settleFile`). Every night `reconcileFiles` looks at reservations older than RESERVATION_GRACE_MS: if
  * the file is in use it just crosses it off, and only if nothing points to it is the file queued for deletion. Nothing
  * is ever deleted from a raw bucket listing, and a file is kept at least a week (the recovery window).
+ * Verification proof (src/lib/verification-proposals.ts) is reserved the same way: a proof uploaded for a proposal that
+ * was never sent is removed a week on.
  * Sender audio and track artwork have their own record, `uploads` (src/lib/intake.ts, src/lib/track-art.ts).
  */
-export type FileKind = "cover" | "collection_art" | "site_image";
+export type FileKind = "cover" | "collection_art" | "site_image" | "verification_proof";
 
 export const RESERVATION_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -30,6 +32,7 @@ export const settleFile = (key: string) =>
 async function inUse(db: Queryable, key: string, kind: FileKind) {
   if (kind === "cover") return !!(await db.get("SELECT 1 FROM users WHERE cover_key = ?", key));
   if (kind === "collection_art") return !!(await db.get("SELECT 1 FROM collections WHERE art_key = ?", key));
+  if (kind === "verification_proof") return !!(await db.get("SELECT 1 FROM verification_proofs WHERE file_key = ?", key));
   const name = key.slice(key.lastIndexOf("/") + 1);
   return !!(
     (await db.get("SELECT 1 FROM site_content WHERE strpos(draft, ?) > 0 OR strpos(published, ?) > 0", name, name)) ||

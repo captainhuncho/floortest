@@ -152,6 +152,22 @@ Queue buttons (Inbox handled/reopen, Verification approve/not yet, Plan request 
    ─► Verification approve works only while that person's request is waiting (identity_status 'pending'); any other
       account answers "Account not found" (src/lib/identity-approve.ts)
    ─► Block sender for @them / Block everywhere / Remove track… (confirm)
+Verification (owner, 1 Nov: reason and proof for every staff verification; src/lib/verification-proposals.ts)
+   ├─ Proposals waiting ─► account, proposer, reason, links, proof (thumbnails / PDF names ─► /api/admin/verification-proofs/[id])
+   │     approver (not the proposer) ─► Approve ─► Verified + "verified" email once + decided by/at + admin log
+   │                                 └► Decline… ─► note (required) ─► declined, kept in the history (no email)
+   │     the proposer ─► Withdraw
+   ├─ request waiting ─► check the code in their profile ─► Approve (direct or approve holders, only while their request is waiting with an https link: email, recorded as an
+   │     approved proposal, source own_request) / Forward for approval (plain Verification: the account's Propose form) / Not yet (reason emailed)
+   └─ Verify someone directly ─► @handle or email (≤ 10) ─► their account
+Account ─► Verified mark ─┬─ not verified ─┬─ direct (super, verification.direct) ─► Verify profile… ─► reason (10–500) + links
+                          │                │     and/or files (PNG/JPEG/WebP/PDF, ≤ 5, ≤ 10 MB) ─► confirm ─► files to the private
+                          │                │     bucket (signed upload) ─► checked by size and first bytes ─► Verified + email + approved proposal
+                          │                └─ Verification only ─► Propose verification… ─► same fields ─► Send for approval ─► pending
+                          │     refused: already verified · suspended · email unconfirmed · a proposal already waiting · no proof
+                          ├─ proposal waiting ─► shown with its proof; Withdraw (its proposer) / approve in Verification
+                          ├─ verified ─► Remove verification… ─► reason ─► confirm ─► mark gone + reason emailed + admin log
+                          └─ History (fold) ─► every proposal: who, when, reason, links, proof, decision
 ```
 
 ## Collection share links (switch `sharing`; off on the live site)

@@ -112,7 +112,24 @@ export const EMAILS = {
     body: "Hi {first_name},\n\n{friend} just received their first track on FloorTest, so you both get {bonus} more active tracks on your desks.\n\nYour referrals: {referrals_url}\n\n— FloorTest",
     vars: { first_name: "Receiver's first name", friend: "The person they referred", bonus: "How many more active tracks", referrals_url: "Their referrals page" },
   },
+  verified: {
+    label: "Verified",
+    to: "Receiver, when ops adds the Verified mark",
+    subject: "You're verified on FloorTest",
+    body: "Hi {first_name},\n\nYour FloorTest page now shows the Verified mark next to your name. Senders see it when they open your link, so they know their music is reaching the real you.\n\n{how_line}\n\nSee your page: {link}\n\nIf anything here looks wrong, reply to this email and the team will sort it.\n\n— FloorTest",
+    vars: {
+      first_name: "Receiver's first name",
+      link: "Their page",
+      how_line: '"You can remove the code from your bio now." after a request; "You didn\'t need to do anything. The FloorTest team checked your profile and added it." when ops verified them directly',
+    },
+  },
 } satisfies Record<string, EmailDef>;
+
+/** The verified email's {how_line}: after their request, or when ops added the mark without one. */
+export const VERIFIED_HOW = {
+  request: "You can remove the code from your bio now.",
+  direct: "You didn't need to do anything. The FloorTest team checked your profile and added it.",
+} as const;
 
 export type EmailId = keyof typeof EMAILS;
 export const emailKey = (id: EmailId) => `email_${id}`;
@@ -174,5 +191,6 @@ export const SAMPLE_VARS: Record<string, string> = {
   count: "3 tracks",
   titles: "• Nightbus (sample) · Sample Artist\n• Tin Roof · Sample Collective\n• Lekki Run · Sample Producer",
   prompt_url: `${U}/dashboard/played-out`,
+  how_line: "You didn't need to do anything. The FloorTest team checked your profile and added it.",
   tracks: `• Ade – Night Bus (Extended Mix)\n  Receipt: ${U}/receipt/example\n\n• Ade – Tin Roof\n  Receipt: ${U}/receipt/example-2`,
 };

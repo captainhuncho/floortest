@@ -39,9 +39,18 @@ export function proxy(req: NextRequest) {
   const request = { headers: new Headers(req.headers) };
   request.headers.set("Content-Security-Policy", csp);
   const res = route(req, request);
-  res.headers.set("Content-Security-Policy", csp);
+  // Verification proof files send their own, stricter policy (default-src 'none', frame-ancestors 'none'; security
+  // review M2): the page policy isn't laid over it. Host separation and the cross-site check above still apply.
+  if (!OWN_CSP.some((p) => p.test(req.nextUrl.pathname))) res.headers.set("Content-Security-Policy", csp);
   return res;
 }
+
+/**
+ * Routes that set their own Content-Security-Policy, matched exactly: a proof file by its number only, so the upload
+ * route beside it (and anything else under that path) keeps the page policy and its frame-ancestors 'none'. Each
+ * also sends X-Frame-Options DENY and nosniff itself.
+ */
+export const OWN_CSP = [/^\/api\/admin\/verification-proofs\/\d+$/];
 
 function route(req: NextRequest, request: { headers: Headers }) {
   const path = req.nextUrl.pathname;
