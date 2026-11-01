@@ -5,8 +5,9 @@ import { currentStep, totpCode } from "../src/lib/totp";
 import { expect, hydrated, logIn, submitLogin, TEST_PASSWORD, test } from "./fixtures";
 
 /**
- * Account teams, end to end (switched on only in the test copy: SEED_TEAMS). The demo account (owner) has 3 seats
- * (Free 1 + 2 add-ons); Lena is on its team as a member. Members switch desks, work the team's desk, can't open the
+ * Account teams, end to end (switched on only in the test copy: SEED_TEAMS). Its own owner, Tia (teams@), has 3 seats
+ * (Free 1 + 2 add-ons), a callout with tracks waiting, and Lena on her team as a member; the spec turns two-step sign-in
+ * on for Tia, so it never changes the demo account other specs use (1 Nov). Members switch desks, work the team's desk, can't open the
  * owner's settings, comment for the team (Review Together), and their replies wait for approval when the owner turns that on.
  */
 test.describe.configure({ mode: "serial" });
@@ -26,7 +27,7 @@ async function freshCode() {
 async function logInWithTwoStep(page: Page) {
   await page.goto("/login");
   // submitLogin also answers the human check that earlier specs may have triggered for this account.
-  await submitLogin(page, "demo@floortest.test", /\/login\/verify/);
+  await submitLogin(page, "teams@floortest.test", /\/login\/verify/);
   await enterCode(page);
 }
 async function enterCode(page: Page) {
@@ -38,7 +39,7 @@ async function enterCode(page: Page) {
 test("the owner sees the team, turns on reply approval and invites someone", async ({ page }) => {
   // A rerun in the same run finds two-step already on from the first go: sign in with the code it saved.
   await page.goto("/login");
-  await submitLogin(page, "demo@floortest.test", /\/dashboard\/|\/login\/verify/);
+  await submitLogin(page, "teams@floortest.test", /\/dashboard\/|\/login\/verify/);
   const rerun = /\/login\/verify/.test(page.url());
   if (rerun) {
     totpSecret ||= fs.readFileSync(SECRET_FILE, "utf8");
@@ -94,8 +95,8 @@ test("a member switches to the team's desk, can't open owner settings, and their
   await logIn(page, "listener@floortest.test");
   await expect(page.getByText("Your own desk")).toBeVisible();
   await page.getByText("Switch desk").click();
-  await page.getByRole("button", { name: /Maxwell Adjavon/ }).click();
-  await expect(page.getByText(/On Maxwell Adjavon.s desk as a member/)).toBeVisible();
+  await page.getByRole("button", { name: /Tia Teams/ }).click();
+  await expect(page.getByText(/On Tia Teams.s desk as a member/)).toBeVisible();
   // Members can't send as the account, so Send isn't offered; nor are the owner's setup checklist or link controls.
   await expect(page.getByRole("link", { name: /^Send$/i })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Hide this" })).toHaveCount(0);
@@ -122,7 +123,7 @@ test("a member switches to the team's desk, can't open owner settings, and their
   // person within 10 minutes is refused as already sent.
   const reply = `Big tune. Can you send the extended mix? (${Date.now().toString(36)})`;
   await page.goto("/dashboard/contacts");
-  await page.getByRole("link", { name: /Ama/ }).first().click();
+  await page.getByRole("link", { name: /Femi/ }).first().click();
   await page.getByRole("textbox", { name: /Message to/ }).fill(reply);
   await page.getByRole("button", { name: "Send email" }).click();
   await expect(page.getByRole("status").filter({ hasText: /Waiting for approval/ })).toBeVisible();

@@ -79,7 +79,7 @@ async function main() {
   const id = async (sql: string, ...args: unknown[]) => (await db.get<{ id: number }>(sql + " RETURNING id", ...args))!.id;
 
   const uid = await id(
-    // Confirmed email: two-factor and passkeys need one, and the teams test turns two-factor on for this owner.
+    // Confirmed email: two-factor and passkeys need one. The teams test has its own owner (SEED_TEAMS below).
     "INSERT INTO users (email, password_hash, name, handle, plan, role_line, tz, email_verified_at, created_at) VALUES (?,?,?,?,?,?,?,?,?)",
     "demo@floortest.test",
     hash("floortest-demo"),
@@ -181,13 +181,49 @@ async function main() {
     if (t.keep) await ev(sid, tid, "kept", decidedAt!);
     if (t.pass) await ev(sid, tid, "passed", decidedAt!);
   }
-  // Account-team tests (SEED_TEAMS=1, test runs only): teams switched on, the demo account has two add-on seats, and
-  // the test listener Lena is already on its team as a member (invite emails can't be read in a test run).
+  // Account-team tests (SEED_TEAMS=1, test runs only): teams switched on, and a desk of its own for e2e/teams.spec.ts:
+  // Tia's, with two add-on seats, a callout, three tracks waiting and the test listener Lena already on its team as a
+  // member (invite emails can't be read in a test run). Its own account because the spec turns two-step sign-in on for
+  // the owner, and the demo account has to stay as the other specs expect it whatever order they run in (1 Nov).
   if (process.env.SEED_TEAMS === "1") {
     await db.run("INSERT INTO switches (key, on_, updated_at) VALUES ('teams', 1, ?) ON CONFLICT (key) DO UPDATE SET on_ = 1", now);
-    await db.run("UPDATE users SET extra_seats = 2 WHERE id = ?", uid);
+    const team = await id(
+      "INSERT INTO users (email, password_hash, name, handle, plan, role_line, tz, email_verified_at, created_at, extra_seats) VALUES (?,?,?,?,?,?,?,?,?,?)",
+      "teams@floortest.test",
+      hash("floortest-demo"),
+      "Tia Teams",
+      "tiateams",
+      "free",
+      "DJ / Selector",
+      "Europe/London",
+      now - 20 * DAY,
+      now - 20 * DAY,
+      2,
+    );
+    const callout = await id("INSERT INTO collections (user_id, name, created_at) VALUES (?,?,?)", team, "Team callout", now - 5 * DAY);
+    await db.run("UPDATE users SET active_collection_id = ? WHERE id = ?", callout, team);
+    const waiting: [string, string, string, number][] = [
+      ["Femi Ade", "femi@example.com", "Harbour Lights", 122],
+      ["Zola Nkosi", "zola@example.com", "Sundown Theory", 124],
+      ["Kwame Asare", "kwame@example.com", "Red Earth", 120],
+    ];
+    for (const [i, [name, email, title, bpm]] of waiting.entries()) {
+      const sid = await id("INSERT INTO senders (user_id, email, name, created_at) VALUES (?,?,?,?)", team, email, name, now - (4 - i) * DAY);
+      const audio = makeLoop(bpm, 50 + i * 4, 4321 + i * 91);
+      const key = `audio/${team}/${crypto.randomUUID()}.wav`;
+      const data = wav(audio);
+      putFile(key, data);
+      const created = now - (3 - i) * DAY;
+      const tid = await id(
+        `INSERT INTO tracks (user_id, collection_id, sender_id, token, title, artist, message, release_status, genre, file_key, original_name, mime, size, duration, bpm, peaks, created_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        team, callout, sid, crypto.randomBytes(12).toString("base64url"), title, name, "", "unsigned", "Afro House", key, `${title}.wav`, "audio/wav",
+        data.length, 32, bpm, JSON.stringify(peaks(audio.x)), created,
+      );
+      await db.run("INSERT INTO events (user_id, sender_id, track_id, type, detail, created_at) VALUES (?,?,?,?,?,?)", team, sid, tid, "submitted", "into Team callout", created);
+    }
     const lena = await db.get<{ id: number }>("SELECT id FROM users WHERE email = 'listener@floortest.test'");
-    if (lena) await db.run("INSERT INTO account_members (account_id, user_id, role, created_at) VALUES (?, ?, 'member', ?)", uid, lena.id, now);
+    if (lena) await db.run("INSERT INTO account_members (account_id, user_id, role, created_at) VALUES (?, ?, 'member', ?)", team, lena.id, now);
   }
   // Sign-up tests (SEED_OPEN_SIGNUP=1, test runs only): fresh accounts without a personal invite each.
   if (process.env.SEED_OPEN_SIGNUP === "1") await db.run("INSERT INTO switches (key, on_, updated_at) VALUES ('open_signup', 1, ?) ON CONFLICT (key) DO UPDATE SET on_ = 1", now);
