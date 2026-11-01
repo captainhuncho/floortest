@@ -1958,4 +1958,16 @@ create policy person_links_read on collection_links for select to ft_person usin
 create policy person_link_recipients_read on link_recipients for select to ft_person using (exists (select 1 from collection_links l where l.id = link_recipients.link_id));
 create policy person_link_requests_read on link_requests for select to ft_person using (exists (select 1 from collection_links l where l.id = link_requests.link_id));`,
   },
+  {
+    // Hub review of 0119 (1 Nov): a team member sees the desk's collections, so 0119 let them read the desk's links,
+    // who they're shared with and the requests to join, though only the owner and admins manage links (the app's
+    // requireRole("admin")). Link reads now need ft_desk_admin: the desk's owner, or an admin on its team while the desk
+    // isn't suspended. Recipients and requests follow the link. A new migration, not an edit: 0119 may already have run on Preview.
+    id: "0120_person_links_admins_only",
+    sql: `create or replace function ft_desk_admin(desk bigint) returns boolean language sql stable security definer set search_path = public as $$ select desk = ft_person_id() or exists (select 1 from account_members m join users u on u.id = m.account_id where m.account_id = desk and m.user_id = ft_person_id() and m.role = 'admin' and u.suspended_at is null) $$;
+revoke all on function ft_desk_admin(bigint) from public;
+grant execute on function ft_desk_admin(bigint) to ft_person;
+drop policy if exists person_links_read on collection_links;
+create policy person_links_read on collection_links for select to ft_person using (exists (select 1 from collections c where c.id = collection_links.collection_id and ft_desk_admin(c.user_id)));`,
+  },
 ];

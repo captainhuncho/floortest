@@ -59,6 +59,23 @@ test("per-person rules: share links, recipients and requests are found only on d
   await assert.rejects(asPerson(efua, () => q.get("SELECT token_hash FROM collection_links WHERE id = ?", link.id)), /permission denied/);
   await assert.rejects(asPerson(efua, () => q.run("UPDATE collection_links SET revoked_at = 1 WHERE id = ?", link.id)), /permission denied/);
 
+  // Only the owner and admins manage links, so only they read them. A team member (who sees the collection) and a
+  // listener the collection is shared with ("Shared with you") read no link, recipient or request.
+  const yaw = await user("yaw"); // a member on the label's team
+  const dj = await user("dj"); // added to the link by username
+  await q.run("INSERT INTO account_members (account_id, user_id, role, created_at) VALUES (?, ?, 'member', ?)", label, yaw, now);
+  assert.equal((await L.addRecipients(asEfua, link.id, "@dj", "listen")).added, 1);
+  const rows = (person: number) =>
+    asPerson(person, async () => [
+      await q.count("SELECT COUNT(*)::int AS n FROM collection_links"),
+      await q.count("SELECT COUNT(*)::int AS n FROM link_recipients"),
+      await q.count("SELECT COUNT(*)::int AS n FROM link_requests"),
+    ]);
+  assert.deepEqual(await rows(yaw), [0, 0, 0], "a member reads no link rows");
+  assert.deepEqual(await rows(dj), [0, 0, 0], "a listener reads no link rows");
+  assert.deepEqual(await rows(efua), [1, 2, 1], "an admin reads the desk's");
+  assert.deepEqual(await rows(label), [1, 2, 1], "the owner reads the desk's");
+
   // The teammate answers the request: the lookup as the person, the change by the app.
   assert.equal((await L.decideRequest(asEfua, requestId, "decline")).status, "declined");
 });
