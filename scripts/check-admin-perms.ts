@@ -43,7 +43,7 @@ for (const file of walk(join(root, "src/app/admin")).filter((f) => f.endsWith(`$
 const SUPER_ROUTES = ["users-csv", "storage-manifest"];
 for (const file of walk(join(root, "src/app/api/admin")).filter((f) => f.endsWith("route.ts"))) {
   const src = readFileSync(file, "utf8");
-  if (!/requireAdmin(Action)?\("[\w.]+"\)/.test(src)) problems.push(`${relative(root, file)}: must call requireAdmin("…") or requireAdminAction("…")`);
+  if (!/requireAdmin(Action|Quiet)?\("[\w.]+"\)/.test(src)) problems.push(`${relative(root, file)}: must call requireAdmin("…"), requireAdminAction("…") or requireAdminQuiet("…")`);
   const name = relative(join(root, "src/app/api/admin"), file).split(sep)[0];
   if (SUPER_ROUTES.includes(name) && !src.includes('requireAdminAction("super")')) problems.push(`${relative(root, file)}: must call requireAdminAction("super")`);
 }

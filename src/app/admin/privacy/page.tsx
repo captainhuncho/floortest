@@ -58,6 +58,7 @@ export default async function Privacy({ searchParams }: { searchParams: Promise<
             <li>As a sender: {tracks} track{tracks === 1 ? "" : "s"} to {receivers} receiver{receivers === 1 ? "" : "s"}</li>
             <li>Messages to us: {d.messages.length} · Emails we sent them: {d.emails.length}{d.waitlist ? " · On the waitlist" : ""}</li>
             <li>Teams: on {d.teams.memberOf.length} · invites to this address {d.teams.invites.length} · replies held for approval {d.teams.heldReplies.length}</li>
+            <li>Verification proposals about the account: {d.verification.length}</li>
           </ul>
           <a href={`/api/admin/data?email=${encodeURIComponent(email)}`} className="btn-lime btn-sm inline-block">Download their data (JSON)</a>
 

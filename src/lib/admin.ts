@@ -1,11 +1,13 @@
 import "server-only";
 import { notFound, redirect } from "next/navigation";
 import { currentOpsAdmin } from "./ops";
-import { now, q, type User } from "./db";
+import type { User } from "./db";
 import { env } from "./env";
 import { flash } from "./flash";
 import type { Need } from "./ops-perms";
 import { can, opsAccessFor, type OpsAccess } from "./ops-access";
+import { logAdmin } from "./admin-log";
+export { logAdmin } from "./admin-log";
 export { can, homeFor, opsAccessFor, type OpsAccess } from "./ops-access";
 
 export const isAdminEmail = (email: string) => env.adminEmails.includes(email.toLowerCase());
@@ -28,6 +30,18 @@ export async function requireAdmin(need?: Need): Promise<User & { access: OpsAcc
 
 export const adminReady = (u: User) => !!u.totp_enabled_at;
 
+/**
+ * For admin API routes that must answer "not found" the same way for a missing thing and a forbidden one (verification
+ * proof): signed in to ops as requireAdmin() checks, but without the permission it returns null instead of redirecting,
+ * and the caller answers 404. The refusal is still logged.
+ */
+export async function requireAdminQuiet(need: Need): Promise<(User & { access: OpsAccess }) | null> {
+  const u = await requireAdmin();
+  if (can(u.access, need)) return u;
+  await logAdmin(u.id, "denied", need);
+  return null;
+}
+
 /** Every admin action names what it needs (see ACTION_NEEDS); the build check makes sure none is missed. */
 export async function requireAdminAction(need: Need): Promise<User & { access: OpsAccess }> {
   const u = await requireAdmin();
@@ -40,6 +54,3 @@ export async function requireAdminAction(need: Need): Promise<User & { access: O
   return u;
 }
 
-export async function logAdmin(adminId: number, action: string, target = "", detail = "") {
-  await q.run("INSERT INTO admin_log (admin_id, action, target, detail, created_at) VALUES (?,?,?,?,?)", adminId, action, target, detail.slice(0, 300), now());
-}

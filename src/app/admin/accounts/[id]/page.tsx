@@ -9,6 +9,7 @@ import { fmtBytes } from "@/lib/format";
 import { APP_URL } from "@/lib/mail";
 import { planOf } from "@/lib/plan-store";
 import { ConfirmButton } from "../../AdminUi";
+import { VerifiedMarkBox } from "./VerifiedMarkBox";
 import { OpsForm } from "../../OpsForm";
 import {
   adminCancelEmailChange,
@@ -28,6 +29,7 @@ import {
 } from "../../actions";
 
 const day = (t: number) => new Date(t).toLocaleDateString("en-GB");
+
 const when = (t: number) => new Date(t).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
 
 /** User 360: everything about one account on one page, with every admin action in one place. */
@@ -36,7 +38,7 @@ export default async function Account({ params }: { params: Promise<{ id: string
   const support = can(me.access, "users.support");
   const id = Number((await params).id);
   if (!Number.isSafeInteger(id)) notFound();
-  const u = await q.get<User & { extra_seats: number; identity_status: string | null; invite_code: string | null; referred_by: number | null; suspended_at: number | null; suspended_reason: string; pending_email: string | null; pending_email_at: number | null; signup_source: string; admin_tags: string }>("SELECT * FROM users WHERE id = ?", id);
+  const u = await q.get<User & { extra_seats: number; identity_status: string | null; identity_verified_at: number | null; identity_note: string; invite_code: string | null; referred_by: number | null; suspended_at: number | null; suspended_reason: string; pending_email: string | null; pending_email_at: number | null; signup_source: string; admin_tags: string }>("SELECT * FROM users WHERE id = ?", id);
   const notes = await q.all<{ id: number; body: string; created_at: number; handle: string | null }>(
     "SELECT n.id, n.body, n.created_at, a.handle FROM account_notes n LEFT JOIN users a ON a.id = n.admin_id WHERE n.user_id = ? ORDER BY n.created_at DESC LIMIT 50",
     id,
@@ -360,6 +362,8 @@ export default async function Account({ params }: { params: Promise<{ id: string
             </details>
           </div>
           </>)}
+
+          <VerifiedMarkBox me={me} u={u} />
 
           {support && (
           <div className="space-y-3 rounded-md border border-danger/30 p-4">

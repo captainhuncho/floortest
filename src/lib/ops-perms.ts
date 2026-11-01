@@ -34,7 +34,10 @@ export const PERMS = {
   switches: "Feature switches",
   content: "Site content",
   "plans.read": "Plans (view)",
-  verification: "Verification",
+  verification: "Verification (propose, send back requests, remove a mark)",
+  // Never a role default (owner, 1 Nov): the super admin ticks these per person on Ops team.
+  "verification.direct": "Verification (add the mark directly, with proof)",
+  "verification.approve": "Verification (approve or decline proposals)",
   moderation: "Moderation",
   blocks: "Sender blocks",
 } as const;
@@ -72,13 +75,15 @@ export const SUPER_ONLY = [
   "Storage file list download",
 ];
 
-/** "x.act" includes "x.read"; "users.support" includes "users.read". */
+/** "x.act" includes "x.read"; "users.support" includes "users.read"; "verification.direct" and ".approve" include "verification". */
 export function has(perms: ReadonlySet<Perm>, need: Perm) {
   if (perms.has(need)) return true;
   if (need.endsWith(".read")) {
     const base = need.slice(0, -5);
     return perms.has(`${base}.act` as Perm) || (base === "users" && perms.has("users.support"));
   }
+  // Adding the mark directly or approving proposals includes opening Verification.
+  if (need === "verification") return perms.has("verification.direct") || perms.has("verification.approve");
   return false;
 }
 
@@ -164,7 +169,14 @@ export const ACTION_NEEDS: Record<string, Need> = {
   runJobNow: "jobs",
   resendEmail: "emails.act",
   setContactHandled: "inbox.act",
+  // Approving their own request adds the mark, so it also needs "verification.direct" or "verification.approve"
+  // (checked inside, src/lib/verification-proposals.ts approveRequest); plain "verification" forwards it as a proposal.
   approveIdentity: "verification",
+  verifyDirectly: "verification.direct",
+  proposeVerification: "verification",
+  withdrawProposal: "verification",
+  approveProposal: "verification.approve",
+  declineProposal: "verification.approve",
   revokeIdentity: "verification",
   rejectIdentity: "verification",
   addProtectedName: "verification",
