@@ -9,12 +9,13 @@ import { purgeExpired } from "@/lib/retention";
 import { notificationsFor } from "@/lib/notifications";
 import { Logo } from "@/components/Logo";
 import { Sidebar } from "./Sidebar";
-import { FeedbackButton } from "./FeedbackButton";
+import { FeedbackAsk, FeedbackButton } from "./FeedbackButton";
 import { MobileTabBar } from "./MobileTabBar";
 import { TopBar } from "./TopBar";
 import { DeskBar } from "./DeskBar";
 import { PageFrame } from "./PageFrame";
 import { teamsFor } from "@/lib/account-members";
+import { feedbackAskDue } from "@/lib/feedback";
 import { currentTheme, themeClass } from "@/lib/theme";
 import { SkipLink } from "@/components/SkipLink";
 
@@ -30,6 +31,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
     view ? Promise.resolve([]) : teamsFor(user.actor_id),
     currentPerson(),
   ]);
+  // The one-time "How's FloorTest working for you?" (lib/feedback-ask): the person's, never in an admin view.
+  const askFeedback = !view && (await feedbackAskDue(user.actor_id));
   // Even with the switch on, uploads stop if the routed collection closed or the desk is full. With no collection the
   // link stays open and tracks land in the Review Queue, unsorted.
   const blocked = active && isClosed(active)
@@ -61,12 +64,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
             {/* Phones: the logo floats on top in a frosted bar, always in view (owner, 30 Oct); desktop keeps the slim bar. */}
             <div className="sticky top-0 z-40 bg-gradient-to-b from-ink from-60% to-transparent px-3 pb-3 pt-[max(0.5rem,env(safe-area-inset-top))] md:bg-none md:p-0">
               <div className="flex h-14 items-center justify-end gap-2 rounded-[20px] border border-line bg-card/80 pl-3 pr-1.5 shadow-[0_10px_30px_-16px_rgba(0,0,0,0.55)] backdrop-blur-xl backdrop-saturate-150 sm:gap-3 md:h-14 md:rounded-none md:border-0 md:bg-ink/70 md:px-6 md:shadow-none">
-                <Logo href="/" className="mr-auto md:hidden" />
+                <Logo href="/" compact className="mr-auto md:hidden" />
                 <span className="mr-auto hidden md:block" />
-                <div className="hidden md:block">
-                  <FeedbackButton />
-                </div>
-                <TopBar user={{ name: user.name, handle: user.handle, verified: user.identity_status === "verified" }} notices={notices} />
+                {/* Feedback sits first in the top bar's box at every size (1 Nov: phones had no way in). */}
+                <TopBar
+                  user={{ name: user.name, handle: user.handle, verified: user.identity_status === "verified" }}
+                  notices={notices}
+                  lead={<FeedbackButton />}
+                />
               </div>
             </div>
             {view && (
@@ -88,6 +93,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 teams={teams.map((t) => ({ id: t.id, name: t.name, role: t.role }))}
               />
             )}
+            {/* Asked once, after the person's 5th decision: a card in the page, never over the player (lib/feedback-ask). */}
+            <FeedbackAsk due={askFeedback} />
             {/* The confirm-your-email banner lives on the Floor and Send pages only (they render VerifyBanner). */}
             <PageFrame>{children}</PageFrame>
             {!view && <LivePulse url="/api/pulse" />}

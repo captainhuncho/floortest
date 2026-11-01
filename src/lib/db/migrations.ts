@@ -1981,6 +1981,14 @@ alter table tracks add column ops_reviewed_by bigint references users(id) on del
 create index if not exists tracks_ops_reviewed_by on tracks(ops_reviewed_by) where ops_reviewed_by is not null;`,
   },
   {
+    // The one-time feedback ask (1 Nov, lib/feedback-ask): when the person answered it, on their own row, so it's asked
+    // once per account on every device. Each feedback item also keeps the sender's window width in CSS px (owner, 1 Nov),
+    // shown on ops → Feedback beside the page. Additive only.
+    id: "0122_feedback_asked_at_viewport",
+    sql: `alter table users add column if not exists feedback_asked_at bigint;
+alter table contact_messages add column if not exists viewport int;`,
+  },
+  {
     // Staff verification with reason and proof (owner, 1 Nov): every Verified mark staff add has a record of why and the
     // proof, so other teams can check it. A proposal is pending until someone with "verification.approve" (never its
     // proposer) approves or declines it; a direct verification is written as an approved proposal decided by the same

@@ -20,9 +20,9 @@ export function BetaTag({ small = false }: { small?: boolean }) {
 /**
  * The FloorTest crest and name, with the Beta tag while FloorTest is in beta. `ops` swaps in the brushed-silver crest used
  * only on the admin side (no tag there), same size and no effects (owner, 29 Oct: one look everywhere); `small` is the quiet sign-off at the foot of pages that lead with someone else's
- * name (the public send page, the sender's receipt).
+ * name (the public send page, the sender's receipt). `compact` is the desk's phone bar (see below).
  */
-export function Logo({ href = "/", className = "", ops = false, small = false }: { href?: string; className?: string; ops?: boolean; small?: boolean }) {
+export function Logo({ href = "/", className = "", ops = false, small = false, compact = false }: { href?: string; className?: string; ops?: boolean; small?: boolean; compact?: boolean }) {
   if (small)
     return (
       <Link href={href} className={`tap inline-flex items-center gap-1.5 text-[12px] font-semibold tracking-tight text-dim hover:text-bone ${className}`}>
@@ -36,7 +36,8 @@ export function Logo({ href = "/", className = "", ops = false, small = false }:
     <Link href={href} className={`tap inline-flex items-center gap-2 text-lg font-bold tracking-tight ${className}`}>
       {/* eslint-disable-next-line @next/next/no-img-element -- the crest is an SVG; Next's image optimizer doesn't process SVGs */}
       <img draggable={false} src={ops ? "/brand/crest-ops.svg" : "/brand/crest.svg"} alt="" aria-hidden className="size-7 shrink-0" />
-      FloorTest
+      {/* compact: phones (under 640px) show the crest and the Beta tag, so the desk's top bar fits at 320px; the name stays for screen readers. */}
+      {compact ? <span className="max-sm:sr-only">FloorTest</span> : "FloorTest"}
       {!ops && <BetaTag />}
     </Link>
   );
