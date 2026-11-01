@@ -120,9 +120,9 @@ export function AccountsTable({ rows, canAct }: { rows: AccountRow[]; canAct: bo
                       {u.name}
                     </Link>
                     <span className="text-mute"> @{u.handle}</span>
-                    {u.suspended && <span className="chip ml-2 border-danger/50 text-danger">Suspended</span>}
+                    {u.suspended && <span className="ml-2 inline-flex rounded-full bg-danger/15 px-2.5 py-0.5 text-[12px] font-semibold text-danger">Suspended</span>}
                     {u.tags.map((t) => (
-                      <span key={t} className="chip ml-1 border-line text-mute">
+                      <span key={t} className="ml-1 inline-flex rounded-full bg-ink-4 px-2 py-0.5 text-[11.5px] font-semibold text-mute">
                         {t}
                       </span>
                     ))}
@@ -132,17 +132,20 @@ export function AccountsTable({ rows, canAct }: { rows: AccountRow[]; canAct: bo
               <td className="px-4 py-2.5 text-mute">{u.kind}</td>
               <td className="px-4 py-2.5 text-mute">
                 {u.email}
-                {!u.confirmed && <span className="ml-1 text-danger">unconfirmed</span>}
+                {!u.confirmed && <span className="ml-2 inline-flex whitespace-nowrap rounded-full bg-[var(--admin-amber)]/15 px-2 py-0.5 text-[11.5px] font-semibold text-[var(--admin-amber)]">Unconfirmed</span>}
               </td>
-              <td className="px-4 py-2.5 capitalize">{u.plan}</td>
+              <td className="px-4 py-2.5">
+                {/* Pills like pins 107 and 110: paid plans lit, free plain. */}
+                <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[12px] font-semibold capitalize ${u.plan === "free" ? "bg-ink-4 text-mute" : "bg-[var(--admin-violet)]/20 text-[var(--admin-violet)]"}`}>{u.plan}</span>
+              </td>
               <td className="px-4 py-2.5 text-right tnum">{u.live.toLocaleString("en-GB")}</td>
               <td className="px-4 py-2.5">
-                <span className="inline-flex items-center gap-2">
+                <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[12px] font-semibold ${u.twoFactor ? "bg-lime/15 text-lime" : "bg-ink-4 text-mute"}`}>
                   <span aria-hidden className={`size-1.5 rounded-full ${u.twoFactor ? "bg-lime" : "bg-faint"}`} />
                   {u.twoFactor ? "2FA on" : "Password only"}
                 </span>
               </td>
-              <td className="px-4 py-2.5 text-mute tnum">{u.joined}</td>
+              <td className="whitespace-nowrap px-4 py-2.5 text-mute tnum">{u.joined}</td>
             </tr>
           ))}
         </tbody>
