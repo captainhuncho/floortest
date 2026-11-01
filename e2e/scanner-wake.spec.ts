@@ -11,9 +11,13 @@ import { expect, logIn, test, wav } from "./fixtures";
 const SCANNER = `http://127.0.0.1:${process.env.E2E_SCANNER_PORT || 3211}`;
 const CRON = { Authorization: "Bearer e2e-cron-secret-not-used-anywhere-else" };
 
-// Its own connection address (a documentation IP; the local copy reads it from this header, Vercel never does), so its
-// uploads don't use up the hourly per-connection limit the other upload specs share.
-test.use({ extraHTTPHeaders: { "x-vercel-forwarded-for": "203.0.113.26" } });
+// Each repeat of this spec (--repeat-each) sends as its own seeded sender (scan1–scan6@, scripts/seed.ts) from its own
+// connection address (a documentation IP; the local copy reads it from this header, Vercel never does). Its sends then
+// never meet the five-a-day limit per sender or the hourly one per connection, and never use up the other upload
+// specs' (1 Nov: sharing sender@ hit the daily limit, so "is received" never came).
+const run = () => test.info().repeatEachIndex;
+const sender = () => `scan${(run() % 6) + 1}@floortest.test`;
+test.beforeEach(async ({ page }) => page.context().setExtraHTTPHeaders({ "x-vercel-forwarded-for": `203.0.113.${26 + (run() % 200)}` }));
 
 async function scannerMode(page: Page, mode: { asleepMs?: number; down?: boolean }) {
   await page.request.post(`${SCANNER}/__mode`, { data: mode });
@@ -37,7 +41,7 @@ async function send(page: Page, title: string) {
 test.afterEach(async ({ page }) => scannerMode(page, {}));
 
 test("a sleeping scanner: the track is received and held without waking it, then the batch wakes it once and delivers", async ({ page }) => {
-  await logIn(page, "sender@floortest.test");
+  await logIn(page, sender());
   await scannerMode(page, { asleepMs: 600_000 });
   await send(page, "Night Bus");
   await expect(page.getByRole("heading", { name: /“Night Bus” is received\./ })).toBeVisible({ timeout: 30_000 });
@@ -52,7 +56,7 @@ test("a sleeping scanner: the track is received and held without waking it, then
 });
 
 test("a scanner that stays down: the track stays held through a batch, then arrives on the next one", async ({ page }) => {
-  await logIn(page, "sender@floortest.test");
+  await logIn(page, sender());
   await scannerMode(page, { down: true });
   await send(page, "Held Over");
   await expect(page.getByRole("heading", { name: /“Held Over” is received\./ })).toBeVisible({ timeout: 30_000 });
