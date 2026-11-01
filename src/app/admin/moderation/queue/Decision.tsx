@@ -8,7 +8,7 @@ import type { QueueRow } from "./model";
 export type Kind = "keep" | "remove" | "block" | "blockEverywhere";
 
 const Kbd = ({ k }: { k: string }) => (
-  <kbd aria-hidden className="kit-kbd ml-auto hidden sm:inline">
+  <kbd aria-hidden className="mq-kbd kit-kbd ml-auto">
     {k}
   </kbd>
 );
@@ -29,6 +29,7 @@ export function Decision({
   keepRef,
   removeRef,
   blockRef,
+  keys = true,
 }: {
   row: QueueRow;
   detail: TrackDetail | null;
@@ -39,11 +40,13 @@ export function Decision({
   keepRef: React.Ref<HTMLButtonElement>;
   removeRef: React.Ref<HTMLButtonElement>;
   blockRef: React.Ref<HTMLButtonElement>;
+  /** Shows the key hints; off in the dialog, where single keys don't act. */
+  keys?: boolean;
 }) {
   const track = row.track_id != null;
   const ready = !!detail && detail.track_id === row.track_id;
   return (
-    <div className="mq-decision">
+    <div className="mq-decision" data-keys={keys ? "" : undefined}>
       {track ? (
         <dl className="mq-kv mq-kv--text">
           <dt>Keep</dt>
@@ -85,7 +88,7 @@ export function Decision({
           Skip <Kbd k="j" />
         </button>
       </div>
-      <p className="mq-hints mt-4 hidden text-[12px] text-faint sm:flex">
+      <p className="mq-hints mt-4 hidden text-[12px] text-faint">
         <span>
           <kbd className="kit-kbd">j</kbd> <kbd className="kit-kbd">k</kbd> move
         </span>

@@ -39,18 +39,22 @@
   padding-bottom: 12px;
 }
 .mq-tabs {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 4px;
   padding: 3px;
   border-radius: 12px;
   background: var(--color-ink-2);
   border: 1px solid var(--color-line);
 }
+@media (min-width: 768px) {
+  .mq-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
 .mq-tab {
-  flex: 1 1 auto;
   min-height: 36px;
-  padding: 0 10px;
+  padding: 0 6px;
   border-radius: 9px;
   font-size: 13px;
   font-weight: 600;
@@ -198,4 +202,16 @@
 }
 .mq-decision .kit-opsbtn {
   width: 100%;
+}
+/* Key hints only where single keys act (not in the dialog) and where there is a keyboard to press them. */
+.mq-kbd {
+  display: none;
+}
+@media (min-width: 640px) and (hover: hover) {
+  .mq-decision[data-keys] .mq-kbd {
+    display: inline;
+  }
+  .mq-decision[data-keys] .mq-hints {
+    display: flex;
+  }
 }

@@ -178,23 +178,19 @@ export function QueueView({ rows, search, initial, detail, me, canBlockEverywher
       {!phone &&
         (current ? (
           <TrackPane row={current} detail={d} loading={loading} position={position} handle={player} onDecide={() => setSheet(true)} />
-        ) : (
+        ) : rows.length ? (
           <div className="mq-body mq-empty">
-            <p className="font-semibold text-bone">{rows.length ? "Pick a track" : "No signals right now"}</p>
-            <p className="mt-1 text-[13px] text-faint">{rows.length ? "Choose one on the left, or press j." : "Nothing needs a decision. New signals show up here."}</p>
+            <p className="font-semibold text-bone">Pick a track</p>
+            <p className="mt-1 text-[13px] text-faint">Choose one on the left, or press j.</p>
           </div>
-        ))}
-      {wide && (
+        ) : null)}
+      {wide && current && (
         <aside aria-label="Decision" className="mq-act">
-          {current && (
-            <>
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-[16px] font-semibold tracking-[-0.015em]">Decision</h2>
-                <span className="text-[12px] text-mute">as @{me}</span>
-              </div>
-              {decision}
-            </>
-          )}
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-[16px] font-semibold tracking-[-0.015em]">Decision</h2>
+            <span className="text-[12px] text-mute">as @{me}</span>
+          </div>
+          {decision}
         </aside>
       )}
       {!wide && current && (
@@ -210,7 +206,9 @@ export function QueueView({ rows, search, initial, detail, me, canBlockEverywher
               {d ? <Listen d={d} handle={player} compact /> : current.track_id ? <p className="mt-3 text-faint">Opening the track…</p> : null}
             </div>
           )}
-          {decision}
+          {current && (
+            <Decision key={current.key} row={current} detail={d} me={me} canBlockEverywhere={canBlockEverywhere} onAct={act} onSkip={() => move(1)} keepRef={keepBtn} removeRef={removeBtn} blockRef={blockBtn} keys={false} />
+          )}
         </Dialog>
       )}
       {confirmNode}
