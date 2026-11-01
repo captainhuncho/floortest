@@ -30,6 +30,18 @@ export async function requireAdmin(need?: Need): Promise<User & { access: OpsAcc
 
 export const adminReady = (u: User) => !!u.totp_enabled_at;
 
+/**
+ * For admin API routes that must answer "not found" the same way for a missing thing and a forbidden one (verification
+ * proof): signed in to ops as requireAdmin() checks, but without the permission it returns null instead of redirecting,
+ * and the caller answers 404. The refusal is still logged.
+ */
+export async function requireAdminQuiet(need: Need): Promise<(User & { access: OpsAccess }) | null> {
+  const u = await requireAdmin();
+  if (can(u.access, need)) return u;
+  await logAdmin(u.id, "denied", need);
+  return null;
+}
+
 /** Every admin action names what it needs (see ACTION_NEEDS); the build check makes sure none is missed. */
 export async function requireAdminAction(need: Need): Promise<User & { access: OpsAccess }> {
   const u = await requireAdmin();

@@ -503,31 +503,64 @@ export async function removeFromWaitlist(id: number) {
 
 /* Identity verification and protected names */
 
+/**
+ * Approves someone's own request (bio code found). It adds the Verified mark, so plain "verification" can't: it needs
+ * "verification.direct" or "verification.approve" (owner, 1 Nov). Others forward it with reason and proof instead.
+ */
 export async function approveIdentity(userId: number): Promise<OpsResult> {
   const a = await requireAdminAction("verification");
-  const u = await q.get<{ email: string; name: string; handle: string }>(
-    "UPDATE users SET identity_status = 'verified', identity_verified_at = ?, identity_note = '' WHERE id = ? RETURNING email, name, handle",
-    now(),
-    userId,
-  );
-  if (!u) return no("Account not found");
-  const { verifiedEmail } = await import("@/lib/identity-direct");
-  await sendMail({ userId, audience: "receiver", to: u.email, ...(await verifiedEmail(u, "request")) });
-  await logAdmin(a.id, "verified identity", `@${u.handle}`);
-  return ok(`Verified @${u.handle} and emailed them`);
+  const V = await import("@/lib/verification-proposals");
+  const powers = V.powersOf(a.access);
+  if (!powers.direct && !powers.approve) return no("Approving adds the Verified mark. Forward it for approval with your reason and proof instead.");
+  const r = await V.approveRequest(a, userId);
+  return r.ok ? ok(`Verified @${r.handle} and emailed them`) : no(r.why);
 }
 
+/** Reason, profile links and uploaded-proof tickets from a verification form (src/app/admin/ProofForm.tsx). */
+const proofInput = (form: FormData) => ({
+  reason: String(form.get("reason") || ""),
+  links: String(form.get("links") || "").slice(0, 3000),
+  tickets: form.getAll("ticket").map(String).filter(Boolean).slice(0, 6),
+});
+
 /**
- * Adds the Verified mark without a request from them (owner, 1 Nov): staff already know whose account it is. A note on
- * how they checked is required; it's kept on the account and in the admin log. See src/lib/identity-direct.ts.
+ * Adds the Verified mark without a request (owner, 1 Nov): super admin and "verification.direct" only, with a reason
+ * and proof, kept as an approved proposal for other teams to check. src/lib/verification-proposals.ts.
  */
-export async function verifyDirectly(userId: number, form: FormData) {
+export async function verifyDirectly(userId: number, form: FormData): Promise<OpsResult> {
+  const a = await requireAdminAction("verification.direct");
+  const { verifyDirect } = await import("@/lib/verification-proposals");
+  const r = await verifyDirect(a, userId, proofInput(form));
+  return r.ok ? ok(`Verified @${r.handle} and emailed them`) : no(r.why);
+}
+
+/** "Propose verification…": reason and proof, then someone with approval decides. */
+export async function proposeVerification(userId: number, form: FormData): Promise<OpsResult> {
   const a = await requireAdminAction("verification");
-  const { verifyDirect } = await import("@/lib/identity-direct");
-  const r = await verifyDirect(a.id, userId, String(form.get("note") || ""));
-  if (!r.ok) return fail(r.why);
-  await done(`Verified @${r.handle} and emailed them`);
-  refresh();
+  const { proposeVerification: propose } = await import("@/lib/verification-proposals");
+  const r = await propose(a, userId, proofInput(form));
+  return r.ok ? ok(`Sent @${r.handle} for approval`) : no(r.why);
+}
+
+export async function withdrawProposal(proposalId: number): Promise<OpsResult> {
+  const a = await requireAdminAction("verification");
+  const { withdrawProposal: withdraw } = await import("@/lib/verification-proposals");
+  const r = await withdraw(a, proposalId);
+  return r.ok ? ok(`Withdrew the proposal for @${r.handle}`) : no(r.why);
+}
+
+export async function approveProposal(proposalId: number): Promise<OpsResult> {
+  const a = await requireAdminAction("verification.approve");
+  const { approveProposal: approve } = await import("@/lib/verification-proposals");
+  const r = await approve(a, proposalId);
+  return r.ok ? ok(`Verified @${r.handle} and emailed them`) : no(r.why);
+}
+
+export async function declineProposal(proposalId: number, form: FormData): Promise<OpsResult> {
+  const a = await requireAdminAction("verification.approve");
+  const { declineProposal: decline } = await import("@/lib/verification-proposals");
+  const r = await decline(a, proposalId, String(form.get("note") || "").slice(0, 1000));
+  return r.ok ? ok(`Declined the proposal for @${r.handle}`) : no(r.why);
 }
 
 /** Takes the Verified mark back (e.g. the account changed hands or was verified by mistake). A reason is required and sent to them. */

@@ -92,7 +92,16 @@ export async function dataFor(email: string) {
       : [],
   };
   const newsletter = await q.get<Record<string, unknown>>("SELECT email, marketing, source, created_at FROM newsletter_subscribers WHERE lower(email) = ?", e);
-  return { email: e, account, sent, messages, emails, waitlist, newsletter, reopenAlerts, comments, shareLinks, teams };
+  // Staff verification (owner, 1 Nov): each proposal about this account, its reason, links and proof file names.
+  const verification = account
+    ? await q.all<Record<string, unknown>>(
+        `SELECT p.reason, p.links, p.status, p.created_at, p.decided_at, p.decision_note,
+           (SELECT string_agg(f.original_name, ', ' ORDER BY f.id) FROM verification_proofs f WHERE f.proposal_id = p.id) AS proof_files
+         FROM verification_proposals p WHERE p.user_id = ? ORDER BY p.created_at`,
+        account.id,
+      )
+    : [];
+  return { email: e, account, sent, messages, emails, waitlist, newsletter, reopenAlerts, comments, shareLinks, teams, verification };
 }
 
 /**

@@ -8,10 +8,8 @@ import { q, type User } from "@/lib/db";
 import { fmtBytes } from "@/lib/format";
 import { APP_URL } from "@/lib/mail";
 import { planOf } from "@/lib/plan-store";
-import { ConfirmButton, ConfirmSubmit } from "../../AdminUi";
-import { StatusPill, type Tone } from "../../PinParts";
-import { CuePoint } from "@/components/CuePoint";
-import { DIRECT_NOTE_MAX, DIRECT_NOTE_MIN } from "@/lib/identity-direct";
+import { ConfirmButton } from "../../AdminUi";
+import { VerifiedMarkBox } from "./VerifiedMarkBox";
 import { OpsForm } from "../../OpsForm";
 import {
   adminCancelEmailChange,
@@ -19,7 +17,6 @@ import {
   adminChangeHandle,
   resendEmail,
   resetTwoFactor,
-  revokeIdentity,
   setContactHandled,
   setPlanFor,
   setExtraSeatsFor,
@@ -29,16 +26,9 @@ import {
   unsuspendAccount,
   addNote,
   saveTags,
-  verifyDirectly,
 } from "../../actions";
 
 const day = (t: number) => new Date(t).toLocaleDateString("en-GB");
-const MARK: Record<string, [string, Tone]> = {
-  verified: ["Verified", "lime"],
-  pending: ["Request waiting", "amber"],
-  rejected: ["Not verified (sent back or removed)", "mute"],
-  none: ["Not verified", "mute"],
-};
 
 const when = (t: number) => new Date(t).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
 
@@ -46,7 +36,6 @@ const when = (t: number) => new Date(t).toLocaleString("en-GB", { dateStyle: "me
 export default async function Account({ params }: { params: Promise<{ id: string }> }) {
   const me = await requireAdmin("users.read");
   const support = can(me.access, "users.support");
-  const verifier = can(me.access, "verification");
   const id = Number((await params).id);
   if (!Number.isSafeInteger(id)) notFound();
   const u = await q.get<User & { extra_seats: number; identity_status: string | null; identity_verified_at: number | null; identity_note: string; invite_code: string | null; referred_by: number | null; suspended_at: number | null; suspended_reason: string; pending_email: string | null; pending_email_at: number | null; signup_source: string; admin_tags: string }>("SELECT * FROM users WHERE id = ?", id);
@@ -374,58 +363,7 @@ export default async function Account({ params }: { params: Promise<{ id: string
           </div>
           </>)}
 
-          <section className="space-y-3 rounded-md border border-line p-4" aria-labelledby="mark-h">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 id="mark-h" className="flex items-center gap-1.5 text-sm font-semibold">
-                <CuePoint size={16} />
-                Verified mark
-              </h3>
-              <StatusPill tone={(MARK[u.identity_status ?? "none"] ?? MARK.none)[1]}>{(MARK[u.identity_status ?? "none"] ?? MARK.none)[0]}</StatusPill>
-            </div>
-            {u.identity_status === "verified" && u.identity_verified_at && <p className="text-xs text-mute">Since {day(u.identity_verified_at)}{u.identity_note ? ` · ${u.identity_note}` : ""}</p>}
-            {u.identity_status === "rejected" && u.identity_note && <p className="text-xs text-mute">Last note: {u.identity_note}</p>}
-            {u.identity_status === "pending" && verifier && (
-              <Link href="/admin/verification" className="inline-flex min-h-11 items-center text-sm underline underline-offset-4">Review their request in Verification</Link>
-            )}
-            {verifier && u.identity_status === "verified" && (
-              <details>
-                <summary className="cursor-pointer py-3 text-sm">Remove verification…</summary>
-                <form action={revokeIdentity.bind(null, id)} className="mt-2 space-y-2">
-                  <label className="block space-y-1.5">
-                    <span className="label">Reason (sent to them)</span>
-                    <input name="note" required maxLength={200} className="input" placeholder="e.g. the account changed hands" />
-                  </label>
-                  <ConfirmSubmit
-                    message={`Remove @${u.handle}'s Verified mark? They'll be emailed the reason.`}
-                    className="btn-sm w-full rounded-md border border-danger/50 px-4 text-danger hover:bg-danger/10"
-                  >
-                    Remove verification
-                  </ConfirmSubmit>
-                </form>
-              </details>
-            )}
-            {verifier && u.identity_status !== "verified" && u.identity_status !== "pending" && (
-              u.suspended_at ? (
-                <p className="text-xs text-mute">Restore the account before verifying it.</p>
-              ) : !u.email_verified_at ? (
-                <p className="text-xs text-mute">They need to confirm their email before they can be verified.</p>
-              ) : (
-                <details>
-                  <summary className="cursor-pointer py-3 text-sm">Verify profile…</summary>
-                  <form action={verifyDirectly.bind(null, id)} className="mt-2 space-y-2">
-                    <label className="block space-y-1.5">
-                      <span className="label">How you checked it&apos;s them</span>
-                      <input name="note" required minLength={DIRECT_NOTE_MIN} maxLength={DIRECT_NOTE_MAX} className="input" placeholder="Known label, checked their Instagram" autoComplete="off" />
-                    </label>
-                    <ConfirmSubmit message={`Add the Verified mark to @${u.handle} and email them?`} className="btn-lime btn-sm w-full">
-                      Verify and email them
-                    </ConfirmSubmit>
-                    <p className="text-xs text-mute">No request or bio code needed. The note is kept here and in the admin log; the email doesn&apos;t include it.</p>
-                  </form>
-                </details>
-              )
-            )}
-          </section>
+          <VerifiedMarkBox me={me} u={u} />
 
           {support && (
           <div className="space-y-3 rounded-md border border-danger/30 p-4">

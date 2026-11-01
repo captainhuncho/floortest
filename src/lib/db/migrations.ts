@@ -1980,4 +1980,44 @@ create policy person_links_read on collection_links for select to ft_person usin
 alter table tracks add column ops_reviewed_by bigint references users(id) on delete set null;
 create index if not exists tracks_ops_reviewed_by on tracks(ops_reviewed_by) where ops_reviewed_by is not null;`,
   },
+  {
+    // Staff verification with reason and proof (owner, 1 Nov): every Verified mark staff add has a record of why and the
+    // proof, so other teams can check it. A proposal is pending until someone with "verification.approve" (never its
+    // proposer) approves or declines it; a direct verification is written as an approved proposal decided by the same
+    // person. One pending proposal per account (the partial unique index). Proof files live in the private bucket under
+    // random keys (verification/…), served only through /api/admin/verification-proofs/[id]. Rows go with the account
+    // (cascade; their files are queued by accountKeys). The app's own connection only: RLS on, no policies, no grants.
+    id: "0122_verification_proposals",
+    sql: `create table if not exists verification_proposals (
+  id bigint generated always as identity primary key,
+  user_id bigint not null references users(id) on delete cascade,
+  proposer_id bigint references users(id) on delete set null,
+  reason text not null check (char_length(reason) between 10 and 500),
+  links text not null default '',
+  status text not null default 'pending' check (status in ('pending', 'approved', 'declined', 'withdrawn')),
+  created_at bigint not null,
+  decided_by bigint references users(id) on delete set null,
+  decided_at bigint,
+  decision_note text not null default ''
+);
+create unique index if not exists verification_proposals_one_pending on verification_proposals(user_id) where status = 'pending';
+create index if not exists verification_proposals_user on verification_proposals(user_id, created_at desc);
+create index if not exists verification_proposals_waiting on verification_proposals(created_at) where status = 'pending';
+create index if not exists verification_proposals_proposer on verification_proposals(proposer_id) where proposer_id is not null;
+create index if not exists verification_proposals_decided_by on verification_proposals(decided_by) where decided_by is not null;
+alter table verification_proposals enable row level security;
+create table if not exists verification_proofs (
+  id bigint generated always as identity primary key,
+  proposal_id bigint not null references verification_proposals(id) on delete cascade,
+  file_key text not null unique,
+  mime text not null check (mime in ('image/png', 'image/jpeg', 'image/webp', 'application/pdf')),
+  size bigint not null check (size > 0 and size <= 10485760),
+  original_name text not null default '',
+  created_at bigint not null
+);
+create index if not exists verification_proofs_proposal on verification_proofs(proposal_id);
+alter table verification_proofs enable row level security;
+alter table file_reservations drop constraint if exists file_reservations_kind_check;
+alter table file_reservations add constraint file_reservations_kind_check check (kind in ('cover', 'collection_art', 'site_image', 'verification_proof'));`,
+  },
 ];

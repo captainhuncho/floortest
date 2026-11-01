@@ -10,44 +10,50 @@ process.env.APP_SECRET ??= "test-secret-".padEnd(48, "x");
 delete process.env.DATABASE_URL;
 delete process.env.RESEND_API_KEY;
 
-test("ops verify someone directly: needs a note, refuses verified, suspended and unconfirmed, logs it and emails without a code", async () => {
+test("ops verify someone directly: needs a reason and proof, refuses verified, suspended and unconfirmed, logs it and emails without a code", async () => {
   const { q } = await import("../src/lib/db");
-  const { verifyDirect, findToVerify } = await import("../src/lib/identity-direct");
+  const { findToVerify } = await import("../src/lib/identity-direct");
+  const V = await import("../src/lib/verification-proposals");
+  const direct = { super: false as const, role: "care" as const, perms: new Set(["verification", "verification.direct"] as const) };
   const t = Date.now();
   const user = async (handle: string, extra: { confirmed?: boolean; suspended?: boolean; status?: string } = {}) =>
     (await q.get<{ id: number }>(
       "INSERT INTO users (email, password_hash, name, handle, plan, tz, email_verified_at, suspended_at, identity_status, created_at) VALUES (?, 'h', ?, ?, 'free', 'UTC', ?, ?, ?, ?) RETURNING id",
       `${handle}@verify.io`, `${handle} Name`, handle, extra.confirmed === false ? null : t, extra.suspended ? t : null, extra.status ?? "none", t,
     ))!.id;
-  const staff = await user("opsstaff");
+  const staffId = await user("opsstaff");
+  const staff = { id: staffId, access: direct };
+  const proof = (reason: string) => ({ reason, links: "https://instagram.com/knownlabel", tickets: [] });
+  const verifyDirect = (actor: typeof staff, id: number, reason: string) => V.verifyDirect(actor, id, proof(reason));
   const label = await user("knownlabel");
   const done = await user("alreadyset", { status: "verified" });
   const off = await user("suspendedone", { suspended: true });
   const fresh = await user("unconfirmed", { confirmed: false });
   const state = (id: number) => q.get<{ identity_status: string; identity_verified_at: number | null; identity_note: string }>("SELECT identity_status, identity_verified_at, identity_note FROM users WHERE id = ?", id);
 
-  // A note on how staff checked is required: 2–200 characters.
-  assert.deepEqual(await verifyDirect(staff, label, " "), { ok: false, why: "Say how you checked it's them, e.g. known label, checked their Instagram" });
-  assert.equal((await verifyDirect(staff, label, "x".repeat(201))).ok, false);
+  // A reason is required: 10–500 characters.
+  assert.match((await verifyDirect(staff, label, " ") as { why: string }).why, /at least 10 characters/);
+  assert.equal((await verifyDirect(staff, label, "x".repeat(501))).ok, false);
   assert.equal((await state(label))!.identity_status, "none", "nothing changed without a note");
 
   // Refusals, each with its own reason, and nothing changes.
-  assert.match((await verifyDirect(staff, done, "checked") as { why: string }).why, /already verified/);
-  assert.match((await verifyDirect(staff, off, "checked") as { why: string }).why, /suspended/);
-  assert.match((await verifyDirect(staff, fresh, "checked") as { why: string }).why, /confirmed their email/);
-  assert.match((await verifyDirect(staff, 999_999, "checked") as { why: string }).why, /not found/);
+  assert.match((await verifyDirect(staff, done, "checked their page") as { why: string }).why, /already verified/);
+  assert.match((await verifyDirect(staff, off, "checked their page") as { why: string }).why, /suspended/);
+  assert.match((await verifyDirect(staff, fresh, "checked their page") as { why: string }).why, /confirmed their email/);
+  assert.match((await verifyDirect(staff, 999_999, "checked their page") as { why: string }).why, /not found/);
   assert.equal((await state(off))!.identity_status, "none");
   assert.equal((await state(fresh))!.identity_status, "none");
 
   // A 'none' account: verified now, the note kept, the admin log written, one email without a code.
   const r = await verifyDirect(staff, label, "  known label,   checked their Instagram ");
-  assert.deepEqual(r, { ok: true, handle: "knownlabel" });
+  assert.equal(r.ok, true);
+  assert.equal((r as { handle: string }).handle, "knownlabel");
   const s = (await state(label))!;
   assert.equal(s.identity_status, "verified");
   assert.ok(s.identity_verified_at && s.identity_verified_at >= t);
   assert.equal(s.identity_note, "known label, checked their Instagram");
   const log = await q.all<{ admin_id: number; action: string; target: string; detail: string }>("SELECT admin_id, action, target, detail FROM admin_log WHERE target = '@knownlabel'");
-  assert.deepEqual(log, [{ admin_id: staff, action: "verified identity (no request)", target: "@knownlabel", detail: "known label, checked their Instagram" }]);
+  assert.deepEqual(log, [{ admin_id: staffId, action: "verified identity (no request)", target: "@knownlabel", detail: `proposal #${(r as { id: number }).id}: known label, checked their Instagram` }]);
   const mail = await q.all<{ subject: string; body: string }>("SELECT subject, body FROM outbox WHERE lower(to_email) = 'knownlabel@verify.io'");
   assert.equal(mail.length, 1);
   assert.equal(mail[0].subject, "You're verified on FloorTest");
@@ -57,7 +63,7 @@ test("ops verify someone directly: needs a note, refuses verified, suspended and
   assert.doesNotMatch(mail[0].body, /Instagram/, "the staff note stays internal");
 
   // Twice is refused: one verification, one email, one log line.
-  assert.match((await verifyDirect(staff, label, "again") as { why: string }).why, /already verified/);
+  assert.match((await verifyDirect(staff, label, "again, checked") as { why: string }).why, /already verified/);
   assert.equal(await q.count("SELECT COUNT(*)::int AS n FROM outbox WHERE lower(to_email) = 'knownlabel@verify.io'"), 1);
   assert.equal(await q.count("SELECT COUNT(*)::int AS n FROM admin_log WHERE target = '@knownlabel'"), 1);
 
@@ -93,13 +99,17 @@ test("the verified email: one template, the right line for a request and for a d
   assert.match(empty, /real you\.\n\nSee your page:/);
 });
 
-test("verifying directly needs the Verification permission", async () => {
+test("verifying directly needs verification.direct, which no role has by default", async () => {
   const { ACTION_NEEDS, ROLE_PERMS, has } = await import("../src/lib/ops-perms");
-  assert.equal(ACTION_NEEDS.verifyDirectly, "verification");
-  assert.ok(has(new Set(ROLE_PERMS.care), "verification"), "Customer Care can");
+  assert.equal(ACTION_NEEDS.verifyDirectly, "verification.direct");
+  for (const role of Object.values(ROLE_PERMS)) {
+    assert.ok(!role.includes("verification.direct" as never) && !role.includes("verification.approve" as never), "never a role default");
+  }
+  assert.ok(has(new Set(ROLE_PERMS.care), "verification"), "Customer Care can propose");
+  assert.ok(!has(new Set(ROLE_PERMS.care), "verification.direct"), "but not verify directly");
   assert.ok(!has(new Set(ROLE_PERMS.developer), "verification"), "Developer can't");
   const src = fs.readFileSync(new URL("../src/app/admin/actions.ts", import.meta.url), "utf8");
   const action = src.split(/^(?=export async function )/m).find((p) => p.startsWith("export async function verifyDirectly("))!;
-  assert.match(action, /requireAdminAction\("verification"\)/, "checked on the server before anything else");
-  assert.ok(action.indexOf('requireAdminAction("verification")') < action.indexOf("verifyDirect("));
+  assert.match(action, /requireAdminAction\("verification\.direct"\)/, "checked on the server before anything else");
+  assert.ok(action.indexOf('requireAdminAction("verification.direct")') < action.indexOf("verifyDirect("));
 });
