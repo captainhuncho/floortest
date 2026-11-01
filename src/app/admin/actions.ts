@@ -402,7 +402,7 @@ export async function resendEmail(outboxId: number): Promise<OpsResult> {
   if (m.subject.includes(HIDDEN) || m.body.includes(HIDDEN)) return no("This email held a sign-in code or private link, so it can't be resent. Ask them to request a new one.");
   const mail = await heldSend(a.id, "resent email", m.to_email, { userId: m.user_id, to: m.to_email, subject: m.subject, body: m.body, audience: m.audience });
   await logAdmin(a.id, "resent email", m.subject, "held");
-  return okUndo(`Resending to ${m.to_email} in a few seconds`, signUndo({ kind: "email_resend", items: [], mail: [mail], admin: a.id }));
+  return okUndo(`Resending to ${m.to_email}`, signUndo({ kind: "email_resend", items: [], mail: [mail], admin: a.id }));
 }
 
 export async function setContactHandled(id: number, handled: boolean): Promise<OpsResult> {
@@ -479,7 +479,7 @@ export async function resendInvite(code: string): Promise<OpsResult> {
   }
   const mail = await mailInviteHeld(a, "resent invite", send, inv.email, inv.note);
   await logAdmin(a.id, "resent invite", inv.email, send);
-  return okUndo(`Resending the invite to ${inv.email} in a few seconds`, signUndo({ kind: "invite_resend", items: [{ code: send, prev: send !== code ? code : undefined }], mail: [mail], admin: a.id }));
+  return okUndo(`Resending the invite to ${inv.email}`, signUndo({ kind: "invite_resend", items: [{ code: send, prev: send !== code ? code : undefined }], mail: [mail], admin: a.id }));
 }
 
 /**
@@ -507,7 +507,7 @@ export async function inviteFromWaitlist(id: number): Promise<OpsResult> {
   const s = await sendWaitlistInvite(id, a);
   if (s.r === "invited") return no("Already invited");
   if (s.r === "joined") return no("They already have an account");
-  return okUndo("Invite goes in a few seconds", signUndo({ kind: "waitlist_invite", items: [s.item], mail: [s.mail], admin: a.id }));
+  return okUndo("Invited", signUndo({ kind: "waitlist_invite", items: [s.item], mail: [s.mail], admin: a.id }));
 }
 
 /** Waitlist → "Invite the oldest N": first come, first served, one at a time. One Undo takes back the whole batch. */
@@ -527,7 +527,7 @@ export async function inviteOldestFromWaitlist(form: FormData): Promise<OpsResul
   }
   const extra = joined ? ` · ${joined} already had an account` : "";
   if (!items.length) return ok(`Nobody new to invite${extra}`);
-  return okUndo(`Inviting ${items.length} from the waitlist in a few seconds${extra}`, signUndo({ kind: "waitlist_invite", items, mail, admin: a.id }));
+  return okUndo(`Invited ${items.length} from the waitlist${extra}`, signUndo({ kind: "waitlist_invite", items, mail, admin: a.id }));
 }
 
 export async function removeFromWaitlist(id: number) {
@@ -1290,7 +1290,7 @@ export async function approvePlanRequest(id: number, form: FormData): Promise<Op
     subject: `You're on ${plan.name} — FloorTest`,
     body: `Hi ${r.name.split(/\s+/)[0] || r.name},\n\nYou're on ${plan.name} now, free for the rest of the beta: room for ${plan.limit.toLocaleString("en")} active tracks.${plan.id !== r.plan ? ` (You asked for ${r.plan}; ${plan.name} fits how you work better for now. Reply if you think otherwise.)` : ""}${note ? `\n\n${note}` : ""}\n\nSee it: ${APP_URL}/dashboard/plans\n\n— FloorTest`,
   });
-  return okUndo(`@${r.handle} is on ${plan.name}; the email goes in a few seconds.`, signUndo({ kind: "plan_approve", items: [{ ref: id, user: r.user_id, prev: r.current }], mail: [mail], admin: a.id }));
+  return okUndo(`@${r.handle} is on ${plan.name}`, signUndo({ kind: "plan_approve", items: [{ ref: id, user: r.user_id, prev: r.current }], mail: [mail], admin: a.id }));
 }
 
 export async function declinePlanRequest(id: number, form: FormData): Promise<OpsResult> {
@@ -1308,7 +1308,7 @@ export async function declinePlanRequest(id: number, form: FormData): Promise<Op
     subject: "About your FloorTest plan request",
     body: `Hi ${r.name.split(/\s+/)[0] || r.name},\n\nThanks for asking for ${r.plan}. We're not moving you for now:\n\n${reason}\n\nYou keep everything on your current plan, and you can ask again any time from Account → Plans.\n\n— FloorTest`,
   });
-  return okUndo(`Declined @${r.handle}'s request; the email goes in a few seconds.`, signUndo({ kind: "plan_decline", items: [{ ref: id }], mail: [mail], admin: a.id }));
+  return okUndo(`Declined @${r.handle}'s request`, signUndo({ kind: "plan_decline", items: [{ ref: id }], mail: [mail], admin: a.id }));
 }
 
 const UNDO_WHAT = {

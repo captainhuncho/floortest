@@ -130,3 +130,26 @@ export function peopleQuery(raw: string) {
   const q = raw.trim().replace(/^@/, "").slice(0, 100);
   return q.length >= PEOPLE_MIN_QUERY ? q : null;
 }
+
+/** A held send (src/lib/mail.ts SEND_HOLD_MS): the server waits this long before the email goes. */
+export const HELD_SERVER_MS = 8_000;
+/** What the toast counts down ("Sending in 5 s"), well inside the server's hold. */
+export const HELD_SHOWN_MS = 5_000;
+/** Kept back from the end of the hold, so an Undo pressed at the last moment still reaches the server in time. */
+export const HELD_MARGIN_MS = 1_000;
+/** How long "Sent" stays once the Undo window has closed. */
+export const HELD_SENT_MS = 2_500;
+
+/**
+ * Time left to undo a held send, in ms (0: too late, no Undo). The clock starts when the answer, and its token, reached
+ * the browser. Hovering or focusing the toast (`pausedMs`) stops the count, but never past the server's hold: the
+ * Undo window always closes HELD_MARGIN_MS before the email goes, however long the pause.
+ */
+export function heldLeft(receivedAt: number, now: number, pausedMs = 0) {
+  const shown = HELD_SHOWN_MS - (now - receivedAt - Math.max(0, pausedMs));
+  const hard = receivedAt + HELD_SERVER_MS - HELD_MARGIN_MS - now;
+  return Math.max(0, Math.min(shown, hard, HELD_SHOWN_MS));
+}
+
+/** The whole seconds "Sending in N s" shows: 5 at the start, 1 in the last second. */
+export const heldSeconds = (leftMs: number) => Math.ceil(Math.max(0, leftMs) / 1000);
