@@ -1,11 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
+import { testDataDir } from "./test-db";
 
 // One send, one email (owner, 29 Oct). A throwaway local database and storage folder, set before the app's modules load.
-process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "ft-send-receipts-"));
+process.env.DATA_DIR = testDataDir("ft-send-receipts-");
 process.env.APP_SECRET ??= "test-secret-".padEnd(48, "x");
 delete process.env.DATABASE_URL;
 delete process.env.S3_BUCKET;

@@ -1,12 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
+import { testDataDir } from "./test-db";
 
 // Rule 3 (audit 27 Oct): the server never fetches an address a visitor chose (SSRF). A throwaway local database for the
 // tunnel's rate limit.
-process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "ft-fetch-"));
+process.env.DATA_DIR = testDataDir("ft-fetch-");
 process.env.APP_SECRET ??= "test-secret-".padEnd(48, "x");
 delete process.env.DATABASE_URL;
 
