@@ -148,6 +148,8 @@ Jobs ─► Run now (per job, src/lib/cron-jobs.ts: the scheduled code, under th
 Queue buttons (Inbox handled/reopen, Verification approve/not yet, Plan request approve/decline, Incident handled)
    ─► the action answers in place (src/lib/ops-result.ts, OpsForm): no reload, buttons locked while it
    works, success in the toast, a refusal under the form
+   ─► Verification approve works only while that person's request is waiting (identity_status 'pending'); any other
+      account answers "Account not found" (src/lib/identity-approve.ts)
    ─► Block sender for @them / Block everywhere / Remove track… (confirm)
 Verification (owner, 1 Nov: reason and proof for every staff verification; src/lib/verification-proposals.ts)
    ├─ Proposals waiting ─► account, proposer, reason, links, proof (thumbnails / PDF names ─► /api/admin/verification-proofs/[id])
