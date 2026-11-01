@@ -70,9 +70,7 @@ test("the owner sees the team, turns on reply approval and invites someone", asy
   await expect(page.getByRole("region", { name: "People (2 of 3 seats)" }).getByText("Lena Listener", { exact: true })).toBeVisible();
   if (!rerun) {
     // Owners manage their team only with two-step sign-in on (owner, 15 Oct): the invite form waits until then.
-    // .first(): while the page refreshes, the notice can briefly exist twice (old and new page), and an exact match
-    // would fail at once on two (seen 1 Nov after main's settings changes). The count check below still means "gone".
-    await expect(page.getByText("Two-step sign-in keeps the whole team safe.").first()).toBeVisible();
+    await expect(page.getByText("Two-step sign-in keeps the whole team safe.")).toBeVisible();
     await expect(page.getByLabel("Email to invite")).toHaveCount(0);
     await page.goto("/dashboard/settings/security");
     // Under load "Set up" showed before React owned it and the click did nothing (1 Nov): wait for React first.
@@ -135,12 +133,11 @@ test("a member switches to the team's desk, can't open owner settings, and their
   await expect(page.getByRole("status").filter({ hasText: /Waiting for approval/ })).toBeVisible();
   await page.goto("/dashboard/settings/team");
   await expect(page.getByRole("heading", { name: "Your replies waiting for approval" })).toBeVisible();
-  // .first(): during the page's refresh the reply can briefly show twice (old and new page), as the two-step notice did.
-  await expect(page.getByText(reply).first()).toBeVisible();
+  await expect(page.getByText(reply)).toBeVisible();
 
   // The desk's log shows what was done on it, but never the owner's own sign-ins or security settings.
   await page.goto("/dashboard/activity");
-  await expect(page.getByText("The account holder's sign-ins and settings aren't shown.").first()).toBeVisible();
+  await expect(page.getByText("The account holder's sign-ins and settings aren't shown.")).toBeVisible();
   await expect(page.getByText("Signed in", { exact: true })).toHaveCount(0);
 });
 

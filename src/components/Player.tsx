@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { analyzeAudio } from "@/lib/analyze";
 import { fmtTime } from "@/lib/format";
 import { LISTEN_BEAT_MS, listenThreshold } from "@/lib/plans";
@@ -300,8 +300,15 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [current, toggle, seekBy, changeVolume, volume, muted]);
 
+  // One stable value: a new object each render reached the dashboard's still-hydrating Suspense boundary (loading.tsx)
+  // during the mount effect below, so React re-rendered the page and its hidden streamed copy briefly sat beside the
+  // visible one (1 Nov; scratchpad dupe probe). Hydrating the server HTML also shows the page sooner.
+  const value = useMemo(
+    () => ({ current, playing, buffering, time, duration, play, toggle, seek, seekBy, failures, volume, muted, volumeTouched }),
+    [current, playing, buffering, time, duration, play, toggle, seek, seekBy, failures, volume, muted, volumeTouched],
+  );
   return (
-    <PlayerContext.Provider value={{ current, playing, buffering, time, duration, play, toggle, seek, seekBy, failures, volume, muted, volumeTouched }}>
+    <PlayerContext.Provider value={value}>
       {children}
     </PlayerContext.Provider>
   );
