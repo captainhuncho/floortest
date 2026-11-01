@@ -1,27 +1,40 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Waveform } from "@/components/Waveform";
 import { fmtTime } from "@/lib/format";
+import { useMediaSession } from "@/lib/use-media-session";
 
 /**
  * Moderation → listen to a reported track (owner, 1 Nov 2026). Nothing loads until Play, so opening a track doesn't
- * count as listening; each play is written to the admin log by /api/admin/tracks/[id]/audio.
+ * count as listening; each play is written to the admin log by /api/admin/tracks/[id]/audio. Media keys and the lock
+ * screen play, pause and seek it once it has played (no next / previous: one disputed track at a time).
  */
-export function ModerationPlayer({ id, peaks, duration }: { id: number; peaks: number[] | null; duration: number | null }) {
-  const audio = useRef<HTMLAudioElement>(null);
+export function ModerationPlayer({ id, title, artist, peaks, duration }: { id: number; title: string; artist: string | null; peaks: number[] | null; duration: number | null }) {
+  const audio = useRef<HTMLAudioElement | null>(null);
+  const [element, setElement] = useState<HTMLAudioElement | null>(null);
+  const attach = useCallback((el: HTMLAudioElement | null) => {
+    audio.current = el;
+    setElement(el);
+  }, []);
   const [playing, setPlaying] = useState(false);
   const [at, setAt] = useState(0);
   const [len, setLen] = useState(duration ?? 0);
   const [failed, setFailed] = useState(false);
 
-  const toggle = () => {
+  const start = () => {
     const a = audio.current;
     if (!a) return;
     if (!a.src) a.src = `/api/admin/tracks/${id}/audio`;
-    if (a.paused) a.play().catch(() => setFailed(true));
+    a.play().catch(() => setFailed(true));
+  };
+  const toggle = () => {
+    const a = audio.current;
+    if (!a) return;
+    if (a.paused) start();
     else a.pause();
   };
+  useMediaSession({ audio: element, meta: { title, artist }, play: start });
   const seek = (f: number) => {
     const a = audio.current;
     if (!a || !len) return;
@@ -59,7 +72,7 @@ export function ModerationPlayer({ id, peaks, duration }: { id: number; peaks: n
         </p>
       </div>
       <audio
-        ref={audio}
+        ref={attach}
         preload="none"
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}

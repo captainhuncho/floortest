@@ -58,6 +58,14 @@ test("the listener on the list accepts the notice and hears the music", async ({
   // Listen-only: no download, and the download address refuses.
   await expect(page.getByRole("link", { name: "Download original" })).toHaveCount(0);
   expect((await page.request.get(src!.replace(/\/audio$/, "/download"))).status()).toBe(404);
+  // Keys (1 Nov): Space starts the first track and hands it the media keys; ↓ turns every player down and remembers it.
+  await page.locator("main").click({ position: { x: 2, y: 2 } });
+  await page.keyboard.press("Space");
+  await expect.poll(() => page.evaluate(() => (navigator.mediaSession.metadata as MediaMetadata | null)?.title ?? "")).not.toBe("");
+  await page.keyboard.press("ArrowDown");
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("ft:volume"))).toBe("0.9");
+  expect(await page.locator("audio").evaluateAll((all) => all.map((a) => (a as HTMLAudioElement).volume))).toEqual(expect.arrayContaining([0.9]));
+  await expect(page.locator("[data-collection-player] [aria-live=polite]")).toHaveText("Volume 90%");
   await ctx.close();
 });
 

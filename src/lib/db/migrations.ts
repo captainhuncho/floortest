@@ -1988,4 +1988,10 @@ create index if not exists tracks_ops_reviewed_by on tracks(ops_reviewed_by) whe
     sql: `alter table users add column if not exists feedback_asked_at bigint;
 alter table contact_messages add column if not exists viewport int;`,
   },
+  {
+    // "Not now" on the feedback ask asks once more after 10 further decisions (owner, 1 Nov; lib/feedback-ask): when the
+    // person first chose it. A second Not now sets feedback_asked_at like Send. Additive only.
+    id: "0123_feedback_snoozed_at",
+    sql: `alter table users add column if not exists feedback_snoozed_at bigint;`,
+  },
 ];

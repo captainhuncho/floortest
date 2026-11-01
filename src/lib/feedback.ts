@@ -1,6 +1,6 @@
 import "server-only";
 import { now, q, type User } from "./db";
-import { FEEDBACK_ASK_AFTER, shouldAskFeedback } from "./feedback-ask";
+import { closeOutcome, FEEDBACK_ASK_AFTER, FEEDBACK_ASK_AGAIN_AFTER, shouldAskFeedback } from "./feedback-ask";
 
 const KINDS = ["Idea", "Bug", "Confusing", "Love it"];
 
@@ -34,17 +34,30 @@ export async function fileFeedback(desk: Pick<User, "id" | "actor_id">, kind: st
  * team desk with them as actor; both indexed (events_user, fk_events_actor_id).
  */
 export async function feedbackAskDue(actorId: number) {
-  const row = await q.get<{ asked_at: number | null; decisions: number }>(
-    `SELECT (SELECT feedback_asked_at FROM users WHERE id = ?) AS asked_at,
-            (SELECT COUNT(*)::int FROM (
-               SELECT 1 FROM events WHERE type IN ('kept', 'passed') AND (actor_id = ? OR (actor_id IS NULL AND user_id = ?)) LIMIT ?
-             ) d) AS decisions`,
-    actorId, actorId, actorId, FEEDBACK_ASK_AFTER,
+  const me = await q.get<{ asked_at: number | null; snoozed_at: number | null }>("SELECT feedback_asked_at AS asked_at, feedback_snoozed_at AS snoozed_at FROM users WHERE id = ?", actorId);
+  if (!me || me.asked_at != null) return false;
+  const snoozedAt = me.snoozed_at == null ? null : Number(me.snoozed_at);
+  // Before a snooze, count to 5 from the start; after one, count to 10 from the snooze.
+  const row = await q.get<{ n: number }>(
+    `SELECT COUNT(*)::int AS n FROM (
+       SELECT 1 FROM events WHERE type IN ('kept', 'passed') AND (actor_id = ? OR (actor_id IS NULL AND user_id = ?)) AND created_at > ? LIMIT ?
+     ) d`,
+    actorId, actorId, snoozedAt ?? 0, snoozedAt == null ? FEEDBACK_ASK_AFTER : FEEDBACK_ASK_AGAIN_AFTER,
   );
-  return !!row && shouldAskFeedback({ decisions: Number(row.decisions), askedAt: row.asked_at == null ? null : Number(row.asked_at) });
+  const n = Number(row?.n ?? 0);
+  return shouldAskFeedback({ decisions: n, askedAt: null, snoozedAt, sinceSnooze: n });
 }
 
-/** The ask was answered (sent, Not now or Don't ask again): kept on the person's own row, so it's asked once. */
+/** The ask was sent from, or ended with Don't ask again (or a second Not now): it isn't asked again. */
 export async function markFeedbackAsked(actorId: number) {
   await q.run("UPDATE users SET feedback_asked_at = ? WHERE id = ? AND feedback_asked_at IS NULL", now(), actorId);
+}
+
+/** Closing the ask: the first "Not now" snoozes it for 10 decisions; anything else ends it (lib/feedback-ask). */
+export async function closeFeedbackAskFor(actorId: number, choice: "later" | "never") {
+  const me = await q.get<{ snoozed_at: number | null }>("SELECT feedback_snoozed_at AS snoozed_at FROM users WHERE id = ?", actorId);
+  if (!me) return;
+  if (closeOutcome(choice, me.snoozed_at == null ? null : Number(me.snoozed_at)) === "snooze")
+    await q.run("UPDATE users SET feedback_snoozed_at = ? WHERE id = ? AND feedback_snoozed_at IS NULL AND feedback_asked_at IS NULL", now(), actorId);
+  else await markFeedbackAsked(actorId);
 }

@@ -121,7 +121,7 @@ async function Detail({ t, back }: { t: Found; back: string | null }) {
       <p className="text-mute">{t.artist}</p>
       {/* Staff listen only to disputed tracks (owner, 1 Nov 2026); the audio route refuses the rest too. */}
       {playable ? (
-        <ModerationPlayer key={t.id} id={t.id} peaks={peaks} duration={meta?.duration ?? null} />
+        <ModerationPlayer key={t.id} id={t.id} title={t.title} artist={t.artist} peaks={peaks} duration={meta?.duration ?? null} />
       ) : (
         <p className="mt-4 rounded-[10px] bg-ink-3 px-3 py-2.5 text-[13px] text-mute ring-1 ring-line">Listening is only for tracks with an open takedown claim.</p>
       )}

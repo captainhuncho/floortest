@@ -7,6 +7,7 @@ import { currentPerson } from "@/lib/auth";
 import { fmtTime } from "@/lib/format";
 import { linkSessionSecret } from "@/lib/link-cookies";
 import { ACCESS_NOTICE, linkByKey, linkSession, linkTracks, recipientFor } from "@/lib/share-links";
+import { CollectionPlayer } from "./CollectionPlayer";
 import { Gate } from "./Gate";
 
 // Private by design: never indexed, never cached.
@@ -76,28 +77,30 @@ export default async function SharedLink({ params }: { params: Promise<{ token: 
             {session.permission === "download" ? "Listen and download" : "Listen only"} · opened as {session.email}. Your access is personal: please don&apos;t forward this link.
           </p>
           {tracks.length ? (
-            <ul className="mt-2.5 flex flex-col">
-              {tracks.map((t) => (
-                <li key={t.id} className="flex flex-col gap-2 border-t border-line py-3 first:border-t-0">
-                  <p className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
-                    <span className="min-w-0 truncate text-[13.5px] font-semibold">
-                      {t.title}
-                      {t.artist && <span className="font-normal text-mute"> · {t.artist}</span>}
-                    </span>
-                    <span className="text-[11.5px] text-mute tnum">{[t.genre, t.bpm ? `${Math.round(t.bpm)} BPM` : null, t.duration ? fmtTime(t.duration) : null].filter(Boolean).join(" · ")}</span>
-                  </p>
-                  <audio controls preload="none" controlsList="nodownload" src={`/api/c/${token}/tracks/${t.id}/audio`} className="w-full" aria-label={`Play ${t.title}`} />
-                  {session.permission === "download" && (
-                    <a
-                      href={`/api/c/${token}/tracks/${t.id}/download`}
-                      className="inline-flex min-h-11 w-fit items-center rounded-[11px] border border-line bg-well px-3.5 text-[12.5px] font-semibold text-bone hover:bg-ink-4"
-                    >
-                      Download original
-                    </a>
-                  )}
-                </li>
-              ))}
-            </ul>
+            <CollectionPlayer>
+              <ul className="mt-2.5 flex flex-col">
+                {tracks.map((t) => (
+                  <li key={t.id} className="flex flex-col gap-2 border-t border-line py-3 first:border-t-0">
+                    <p className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
+                      <span className="min-w-0 truncate text-[13.5px] font-semibold">
+                        {t.title}
+                        {t.artist && <span className="font-normal text-mute"> · {t.artist}</span>}
+                      </span>
+                      <span className="text-[11.5px] text-mute tnum">{[t.genre, t.bpm ? `${Math.round(t.bpm)} BPM` : null, t.duration ? fmtTime(t.duration) : null].filter(Boolean).join(" · ")}</span>
+                    </p>
+                    <audio controls preload="none" controlsList="nodownload" src={`/api/c/${token}/tracks/${t.id}/audio`} className="w-full" aria-label={`Play ${t.title}`} data-title={t.title} data-artist={t.artist ?? ""} />
+                    {session.permission === "download" && (
+                      <a
+                        href={`/api/c/${token}/tracks/${t.id}/download`}
+                        className="inline-flex min-h-11 w-fit items-center rounded-[11px] border border-line bg-well px-3.5 text-[12.5px] font-semibold text-bone hover:bg-ink-4"
+                      >
+                        Download original
+                      </a>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </CollectionPlayer>
           ) : (
             <p className="py-6 text-[13px] text-mute">Nothing to hear here yet. Tracks show here when {link.owner_name} adds them.</p>
           )}
