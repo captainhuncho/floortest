@@ -1,4 +1,4 @@
-import { expect, logIn, test } from "./fixtures";
+import { expect, hydrated, logIn, test } from "./fixtures";
 
 /** Settings → Account's shortcut switch: off, K does nothing in the Queue; on again, K keeps (and Undo puts it back). */
 test("the shortcut switch turns the Queue's letter keys off and on", async ({ page }) => {
@@ -9,15 +9,9 @@ test("the shortcut switch turns the Queue's letter keys off and on", async ({ pa
 
   // The Queue streams in as server HTML before React takes it over, so Keep shows a moment before K is listened for
   // (1 Nov: under a loaded full run K landed in that gap, nothing was kept and "added to Prepare for set" never came).
-  // Wait until React owns the button, then a frame for its effects, before pressing K. Limit: "__reactProps" is React's
-  // own internal key on a hydrated element, not a public API; a React upgrade could rename it, and then this poll fails
-  // every run (never passes silently). The lasting fix is an app-side sign, such as a data attribute on the rail set
-  // once its key listener is on (DecisionRail, the Queue screen).
-  async function ready() {
-    await expect(keep).toBeVisible();
-    await expect.poll(() => keep.evaluate((el) => Object.keys(el).some((k) => k.startsWith("__reactProps")))).toBe(true);
-    await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
-  }
+  // hydrated() waits for React first (its limit is in fixtures.ts). The lasting fix is an app-side sign, such as a data
+  // attribute on the rail set once its key listener is on (DecisionRail, the Queue screen).
+  const ready = () => hydrated(keep);
 
   // Off: K is ignored and the track stays up for review.
   await page.evaluate(() => localStorage.setItem("ft:shortcuts", "off"));

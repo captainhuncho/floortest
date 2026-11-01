@@ -1,4 +1,17 @@
-import { expect, test as base, type Page } from "@playwright/test";
+import { expect, test as base, type Locator, type Page } from "@playwright/test";
+
+/**
+ * Waits until React owns `target` and has run a frame of effects. A page can show a button as server HTML a moment
+ * before React attaches its handler, so under load a click or key press can land in that gap and do nothing (1 Nov:
+ * the Queue's K in shortcuts.spec.ts; Security's "Set up" in teams.spec.ts). Wait for this before the first press on a
+ * freshly loaded page. Limit: "__reactProps" is React's own internal key on a hydrated element, not a public API; a
+ * React upgrade could rename it, and then this fails every run (it never passes silently).
+ */
+export async function hydrated(target: Locator) {
+  await expect(target).toBeVisible();
+  await expect.poll(() => target.evaluate((el) => Object.keys(el).some((k) => k.startsWith("__reactProps")))).toBe(true);
+  await target.page().evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+}
 
 /**
  * Stands in for Cloudflare's Turnstile script (the test machine may not reach Cloudflare): renders the widget's

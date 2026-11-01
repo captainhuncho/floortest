@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { BETA_START, betaNumbers, betaWeek, biggestDrop, decisions, forecast, formatHours, funnel, isBetaAccount, isSelfSent, median, showShare, type BetaAccountRow } from "../src/lib/growth";
+import { accountsShort, BETA_START, betaNumbers, betaRunning, betaWeek, betaWindowDays, expectedByNow, expectedByWeek, paceOf, biggestDrop, decisions, forecast, formatHours, funnel, isBetaAccount, isSelfSent, median, showShare, type BetaAccountRow } from "../src/lib/growth";
 
 test("forecast follows a straight trend and widens its range further out", () => {
   const p = forecast([10, 12, 14, 16, 18, 20], 3);
@@ -177,4 +177,79 @@ test("a desk that only sent itself tracks and decided on one is not activated", 
   assert.equal(n.weeklyActive, 1, "the decision still makes them active");
   assert.equal(n.activated, 0, "no track from a real sender, so not activated");
   assert.equal(n.firstListenHours, null);
+});
+
+test("a step after one that reached nobody has no share", () => {
+  const f = funnel([
+    { label: "Waitlist", n: 3 },
+    { label: "Invited", n: 0 },
+    { label: "Signed up", n: 10 },
+  ]);
+  assert.deepEqual(f.map((s) => s.ofPrev), [100, 0, null]);
+  assert.equal(funnel([{ label: "A", n: 0 }])[0].ofPrev, null);
+  assert.equal(biggestDrop(f)?.label, "Invited", "the empty step is still the biggest drop; the step after it isn't judged");
+});
+
+test("the first week's window covers only the days since the start", () => {
+  assert.equal(betaWindowDays(BETA_START), 1, "at least 1");
+  assert.equal(betaWindowDays(BETA_START + 14 * H), 1);
+  assert.equal(betaWindowDays(BETA_START + D + 1), 2, "rounded up");
+  assert.equal(betaWindowDays(BETA_START + 7 * D - 1), 7);
+  assert.equal(betaWindowDays(BETA_START + 7 * D), null, "a full week in: no note");
+});
+
+test("pace: a straight line from 0 to the target at week 8", () => {
+  assert.equal(expectedByWeek(15, 1), 2, "ceil(15 / 8)");
+  assert.equal(expectedByWeek(25, 3), 10, "ceil(75 / 8)");
+  assert.equal(expectedByWeek(10, 8), 10);
+  assert.equal(expectedByWeek(15, 12), 15, "never past the target");
+  assert.equal(paceOf(1, 2), "behind");
+  assert.equal(paceOf(2, 2), "on pace");
+  assert.equal(paceOf(3, 2), "ahead");
+  assert.equal(paceOf(1.5, 2), "behind");
+});
+
+test("gap to target: how many more accounts even if all counted", () => {
+  assert.equal(accountsShort(7, 15), 8);
+  assert.equal(accountsShort(15, 15), null);
+  assert.equal(accountsShort(30, 25), null);
+});
+
+test("tracks per active receiver: real senders in the last 7 days, never before the start", () => {
+  const now = BETA_START + 10 * D;
+  const accounts = [acct(1, "a@example.com"), acct(2, "b@example.com"), acct(3, "solo@example.com")];
+  const t = (user_id: number, created_at: number, sender_email = "artist@example.com") => ({ user_id, created_at, played_at: null, deleted_at: null, sender_email });
+  const tracks = [t(1, now - D), t(1, now - 2 * D), t(2, now - 7 * D), t(2, now - 7 * D - 1), t(3, now - D, "solo@example.com"), t(1, BETA_START - H)];
+  const n = betaNumbers({ now, adminEmails: [], accounts, activity: [ev(1, "kept", now - H), ev(2, "kept", now - H)], tracks });
+  assert.equal(n.recentTracks, 3, "two for account 1, the one exactly 7 days ago; not older, not self-sent, not October");
+  assert.equal(n.tracksPerActive, 1.5);
+  const none = betaNumbers({ now, adminEmails: [], accounts, activity: [], tracks });
+  assert.equal(none.tracksPerActive, null, "no weekly active receivers: no ratio");
+  const early = betaNumbers({ now: BETA_START + 2 * D, adminEmails: [], accounts, activity: [ev(1, "kept", BETA_START + D)], tracks: [t(1, BETA_START - H), t(1, BETA_START + H)] });
+  assert.equal(early.recentTracks, 1, "in week 1 the window starts at 1 Nov");
+});
+
+test("during the beta the paying drop isn't the first finding; activation drops are", () => {
+  const steps = funnel([
+    { label: "Signed up", n: 40 },
+    { label: "Got a track", n: 20 },
+    { label: "Kept a track", n: 15 },
+    { label: "Pays", n: 1 },
+  ]);
+  const base = { steps, sources: [], kinds: [], signups: [], next: [] };
+  assert.match(decisions(base)[0].title, /kept a track → pays/, "after the beta the paying drop leads");
+  const beta = decisions({ ...base, duringBeta: true });
+  assert.match(beta[0].title, /signed up → got a track/);
+  assert.match(beta[beta.length - 1].title, /Kept a track → pays/, "kept, lower down");
+  assert.equal(betaRunning(BETA_START + 8 * 7 * D - 1), true);
+  assert.equal(betaRunning(BETA_START + 8 * 7 * D), false);
+});
+
+test("the pace line scales by the days gone, so day 1 doesn't read as behind", () => {
+  assert.equal(expectedByNow(15, BETA_START + H), 0, "a few hours in, nothing expected yet");
+  assert.equal(expectedByNow(15, BETA_START + 7 * D), 2, "end of week 1 matches the weekly line");
+  assert.equal(expectedByNow(25, BETA_START + 28 * D), 13, "halfway");
+  assert.equal(expectedByNow(15, BETA_START + 80 * D), 15, "never past the target");
+  assert.equal(expectedByNow(15, BETA_START - D), 0, "never below 0");
+  assert.equal(paceOf(0, expectedByNow(15, BETA_START + H)), "on pace");
 });

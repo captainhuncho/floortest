@@ -1,12 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
+import { testDataDir } from "./test-db";
 
 // A throwaway local database and test-only secrets, set before the app's modules load. Nothing leaves the machine.
-process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "ft-ops-hardening-"));
+process.env.DATA_DIR = testDataDir("ft-ops-hardening-");
 process.env.APP_SECRET ??= "test-secret-".padEnd(48, "x");
 process.env.RESEND_WEBHOOK_SECRET = `whsec_${Buffer.from("test-webhook-secret-0123456789").toString("base64")}`;
 delete process.env.DATABASE_URL;

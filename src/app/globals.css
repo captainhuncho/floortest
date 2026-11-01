@@ -58,6 +58,15 @@
   --default-transition-timing-function: var(--ease-out);
 }
 
+/* The two downloaded fonts (app/fonts.ts, files in app/fonts/): the names the pages ask for, then a local fallback
+   sized to match while the file loads (the same overrides next/font/google generated), so text doesn't jump. */
+:root {
+  --font-serif: "Instrument Serif", "Instrument Serif Fallback";
+  --font-stage-mono: "JetBrains Mono", "JetBrains Mono Fallback";
+}
+@font-face { font-family: "Instrument Serif Fallback"; src: local("Times New Roman"); ascent-override: 117.94%; descent-override: 36.93%; line-gap-override: 0%; size-adjust: 83.94%; }
+@font-face { font-family: "JetBrains Mono Fallback"; src: local(Arial); ascent-override: 75.79%; descent-override: 22.29%; line-gap-override: 0%; size-adjust: 134.59%; }
+
 html, body { background: var(--color-ink); color: var(--color-bone); }
 /* Keyboard focus and in-page jumps stop clear of the fixed bars: on phones the top bar (76px) and, at the bottom, the
    tab bar plus mini player; from md up only the player bar (44px button + 24px padding + border) sits at the bottom. */

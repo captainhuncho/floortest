@@ -1,10 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
+import { testDataDir } from "./test-db";
 
-process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "ft-health-limit-"));
+process.env.DATA_DIR = testDataDir("ft-health-limit-");
 process.env.APP_SECRET ??= "test-secret-".padEnd(48, "x");
 process.env.CRON_SECRET = "cron-test-secret";
 delete process.env.DATABASE_URL;
