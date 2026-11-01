@@ -5,7 +5,7 @@ import { switchOn } from "@/lib/switches";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { collectionsFor, isClosed } from "@/lib/desk";
-import { now, q, type Track } from "@/lib/db";
+import { asPerson, now, q } from "@/lib/db";
 import { fmtDay } from "@/lib/format";
 import { genresFor, MIX_STATUS } from "@/lib/plans";
 import { briefItems } from "@/lib/brief";
@@ -14,6 +14,7 @@ import { LinkRow } from "../../floor/FloorClient";
 import { APP_URL } from "@/lib/mail";
 import { CARD, InfoRow, SectionHead } from "@/components/Kit";
 import { ListRows, type ListRow } from "../../list/ListRows";
+import { LIST_COLUMNS, type ListTrack } from "../../rows";
 import { CollectionDetailHeader, DeleteCollection, EditCollectionInfo } from "../CollectionForms";
 import { OwnerUpload } from "../OwnerUpload";
 import { ShareLinks, type ShareLinkView } from "../ShareLinks";
@@ -38,14 +39,18 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
   const admin = atLeast(user.role, "admin");
   // Share links (behind the "sharing" switch): only while sharing is switched on.
   const links = admin && (await sharingOn()) ? await linksFor(user, c.id) : null;
-  const sharedTracks = links ? Number((await q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM tracks WHERE collection_id = ? AND deleted_at IS NULL AND share_ok = 1 AND share_terms IS NOT NULL", c.id))?.n ?? 0) : 0;
+  // Track and sender reads run under the per-person rules (B8) as well as the desk filter; share links stay the app's.
+  const asMe = <T,>(fn: () => Promise<T>) => asPerson(user.actor_id, fn);
+  const sharedTracks = links ? Number((await asMe(() => q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM tracks WHERE collection_id = ? AND deleted_at IS NULL AND share_ok = 1 AND share_terms IS NOT NULL", c.id)))?.n ?? 0) : 0;
 
-  const tracks = await q.all<Track & { sender_name: string; sender_email: string; sender_verified: number | null }>(
-    `SELECT t.*, s.name AS sender_name, s.email AS sender_email, s.verified_at AS sender_verified
-       FROM tracks t JOIN senders s ON s.id = t.sender_id
-       WHERE t.user_id = ? AND t.collection_id = ? AND t.deleted_at IS NULL ORDER BY t.created_at DESC LIMIT 500`,
-    user.id,
-    c.id,
+  const tracks = await asMe(() =>
+    q.all<ListTrack & { sender_name: string; sender_email: string; sender_verified: number | null }>(
+      `SELECT ${LIST_COLUMNS}, s.name AS sender_name, s.email AS sender_email, s.verified_at AS sender_verified
+         FROM tracks t JOIN senders s ON s.id = t.sender_id
+         WHERE t.user_id = ? AND t.collection_id = ? AND t.deleted_at IS NULL ORDER BY t.created_at DESC LIMIT 500`,
+      user.id,
+      c.id,
+    ),
   );
   const cards: ListRow[] = tracks.map((t) => ({
     id: t.id,

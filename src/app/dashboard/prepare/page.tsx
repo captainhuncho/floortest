@@ -21,7 +21,7 @@ export const metadata = { title: "Prepare — FloorTest" };
 export default async function PrepareForSet() {
   const user = await requireUser();
   await trackUse(user.id, "prepare");
-  const kept = await loadRows(user.id, { inSet: true });
+  const kept = await loadRows(user.id, { inSet: true, actor: user.actor_id });
   const canMark = canMarkPlayedOut(user);
   // Starting a new batch is for the owner and admins.
   const canClear = user.role !== "member";

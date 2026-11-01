@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { addCollection, canCapCallouts, routeToCollection } from "@/lib/desk";
 import { revalidatePath } from "next/cache";
 import { requireUser, requireRole } from "@/lib/auth";
-import { now, q } from "@/lib/db";
+import { asPerson, asSystem, now, q } from "@/lib/db";
 import { cleanGenre, MAX_COLLECTION_GENRES } from "@/lib/plans";
 import { switchOn } from "@/lib/switches";
 import { audit } from "@/lib/audit";
@@ -18,6 +18,8 @@ export async function createCollection(form: FormData) {
   const name = String(form.get("name") || "").trim().slice(0, 60);
   if (!name) return;
   // Two collections per desk during the beta (the page hides New collection at two; addCollection holds the line, atomically).
+  // It stays on the app's own connection: holding that line locks the desk's account row, which a teammate working the
+  // desk as the person couldn't lock. The desk comes from the session, never from the request.
   const id = await addCollection(u.id, name);
   if (!id) return;
   await audit(u.id, "collection_created", name);
@@ -32,7 +34,8 @@ export async function createCollection(form: FormData) {
 
 export async function setActiveCollection(id: number) {
   const u = await requireRole("admin");
-  const c = await ownCollection(u.id, id);
+  // Found as the person (B8). Routing changes the desk's own account row, which only the app may do for a team desk.
+  const c = await asPerson(u.actor_id, () => ownCollection(u.id, id));
   if (!c) return;
   if (!(await routeToCollection(u, id))) return;
   await audit(u.id, "collection_activated", c.name);
@@ -43,8 +46,11 @@ export async function setActiveCollection(id: number) {
 
 export async function updateCollection(id: number, form: FormData) {
   const u = await requireUser();
-  const c = await ownCollection(u.id, id);
+  // Every collection and track query below runs as the person (B8); switches and the audit log are the app's own.
+  const asMe = <T,>(fn: () => Promise<T>) => asPerson(u.actor_id, fn);
+  const c = await asMe(() => ownCollection(u.id, id));
   if (!c) return;
+  const sharing = await switchOn("sharing");
   const name = String(form.get("name") || "").trim().slice(0, 60);
   const closes = String(form.get("closes") || "");
   // A closing date means "open through the end of that day" in the receiver's timezone offset sent by the browser.
@@ -62,8 +68,8 @@ export async function updateCollection(id: number, form: FormData) {
     const raw = JSON.parse(String(form.get("genres") || "[]"));
     if (Array.isArray(raw)) genres = [...new Set(raw.filter((g) => typeof g === "string").map(cleanGenre).filter(Boolean))].slice(0, MAX_COLLECTION_GENRES);
   } catch {}
-  const before = (await q.get<{ closes_at: number | null; max_tracks: number | null }>("SELECT closes_at, max_tracks FROM collections WHERE id = ?", id))!;
-  await q.run(
+  const before = (await asMe(() => q.get<{ closes_at: number | null; max_tracks: number | null }>("SELECT closes_at, max_tracks FROM collections WHERE id = ?", id)))!;
+  await asMe(() => q.run(
     `UPDATE collections SET name = COALESCE(NULLIF(?, ''), name), closes_at = ?, brief_wanted = ?, bpm_min = ?, bpm_max = ?, brief_note = ?, genres = ?, allow_sharing = ?
      WHERE id = ?`,
     name,
@@ -73,9 +79,9 @@ export async function updateCollection(id: number, form: FormData) {
     hi,
     text("brief_note", 200),
     genres.length ? JSON.stringify(genres) : "",
-    (await switchOn("sharing")) ? (form.get("allow_sharing") === "on" ? 1 : 0) : 0,
+    sharing ? (form.get("allow_sharing") === "on" ? 1 : 0) : 0,
     id,
-  );
+  ));
   // What changed that decides whether the link takes tracks, named in the log (who did it shows beside it).
   const changes: string[] = [];
   if ((before.closes_at ?? null) !== closesAt) changes.push(closesAt ? `closes ${new Date(closesAt).toISOString().slice(0, 10)}` : "no close date");
@@ -84,8 +90,8 @@ export async function updateCollection(id: number, form: FormData) {
     const n = Math.round(Number(form.get("max_tracks")));
     const max = form.get("max_tracks") && n >= 1 && n <= 100_000 ? n : null;
     if ((before.max_tracks ?? null) !== max) changes.push(max ? `cap ${max} tracks` : "no cap");
-    const received = Number((await q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM tracks WHERE collection_id = ? AND deleted_at IS NULL", id))?.n ?? 0);
-    await q.run("UPDATE collections SET max_tracks = ?, full_at = CASE WHEN ? THEN COALESCE(full_at, ?) ELSE NULL END WHERE id = ?", max, !!max && received >= max, now(), id);
+    const received = Number((await asMe(() => q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM tracks WHERE collection_id = ? AND deleted_at IS NULL", id)))?.n ?? 0);
+    await asMe(() => q.run("UPDATE collections SET max_tracks = ?, full_at = CASE WHEN ? THEN COALESCE(full_at, ?) ELSE NULL END WHERE id = ?", max, !!max && received >= max, now(), id));
   }
   await audit(u.id, "collection_updated", changes.length ? `${name || c.name}: ${changes.join(", ")}` : name || c.name);
   // A new closing date or a raised cap can reopen the link: senders who asked to hear about it get their email.
@@ -97,12 +103,13 @@ export async function updateCollection(id: number, form: FormData) {
 /** Deleting a collection is confirmed by typing its name in capitals; tracks in it are kept, unsorted. */
 export async function deleteCollection(id: number, confirm: string) {
   const u = await requireRole("admin");
-  const c = await ownCollection(u.id, id);
+  const c = await asPerson(u.actor_id, () => ownCollection(u.id, id));
   if (!c) return;
   if (confirm.trim() !== c.name.trim().toUpperCase()) return;
-  if ((await q.count("SELECT COUNT(*) AS n FROM collections WHERE user_id = ?", u.id)) <= 1) return; // the link always needs somewhere to route
-  // Tracks fall back to "unsorted" (collection_id NULL) rather than being deleted; the artwork goes with it.
-  await removeCollection(u.id, id);
+  if ((await asPerson(u.actor_id, () => q.count("SELECT COUNT(*) AS n FROM collections WHERE user_id = ?", u.id))) <= 1) return; // the link always needs somewhere to route
+  // Tracks fall back to "unsorted" (collection_id NULL) rather than being deleted; the artwork goes with it. Found as the
+  // person above; retiring the artwork and re-routing the desk's link need the app's own connection, on purpose.
+  await asSystem(() => removeCollection(u.id, id));
   await audit(u.id, "collection_deleted", c.name);
   done();
   redirect("/dashboard/collections");

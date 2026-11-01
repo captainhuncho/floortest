@@ -4,9 +4,10 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { collectionsFor } from "@/lib/desk";
-import { q, likeContains, type Sender, type Track } from "@/lib/db";
+import { asPerson, q, likeContains, type Sender, type Track } from "@/lib/db";
 import { APP_URL } from "@/lib/mail";
 import { ReviewPanel } from "../ReviewPanel";
+import { LIST_COLUMNS, type ListTrack } from "../rows";
 import { toPlayer } from "@/lib/player-track";
 import { SubmissionsList } from "../list/SubmissionsList";
 import { TrackList, type Row } from "../TrackList";
@@ -53,25 +54,33 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
   const cond = STATUSES.find(([k]) => k === status)![2];
   // Needs review plays oldest-first like a queue; decided views show the latest decisions first.
   const order = status === "review" ? "t.created_at ASC" : status === "all" ? "t.created_at DESC" : "t.decided_at DESC";
+  // Every track, sender, collection and folder read here runs under the per-person rules (B8) as well as the desk filter.
+  const asMe = <T,>(fn: () => Promise<T>) => asPerson(user.actor_id, fn);
   // The open track (when the address names one) with its sender, scoped to this account.
   const selectedWithSender = (id: number) =>
     Number.isSafeInteger(id)
-      ? q.get<Track & { s: Sender }>(
-          "SELECT t.*, to_jsonb(s) AS s FROM tracks t JOIN senders s ON s.id = t.sender_id WHERE t.id = ? AND t.user_id = ? AND t.deleted_at IS NULL",
-          id,
-          user.id,
+      ? asMe(() =>
+          q.get<Track & { s: Sender }>(
+            "SELECT t.*, to_jsonb(s) AS s FROM tracks t JOIN senders s ON s.id = t.sender_id WHERE t.id = ? AND t.user_id = ? AND t.deleted_at IS NULL",
+            id,
+            user.id,
+          ),
         )
       : Promise.resolve(undefined);
   // Counts for every tab, the list, and the requested track load at the same time.
   const [counts, tracks, requested] = await Promise.all([
-    q.get<Record<StatusKey, number>>(
-      `SELECT ${STATUSES.map(([k, , c]) => `COUNT(*) FILTER (WHERE ${c}) AS "${k}"`).join(", ")} ${from} WHERE ${base.join(" AND ")}`,
-      ...args,
+    asMe(() =>
+      q.get<Record<StatusKey, number>>(
+        `SELECT ${STATUSES.map(([k, , c]) => `COUNT(*) FILTER (WHERE ${c}) AS "${k}"`).join(", ")} ${from} WHERE ${base.join(" AND ")}`,
+        ...args,
+      ),
     ).then((r) => r!),
-    q.all<Track & { sender_name: string; collection_name: string | null; release_title: string | null }>(
-      `SELECT t.*, s.name AS sender_name, c.name AS collection_name, r.title AS release_title ${from}
-       WHERE ${base.join(" AND ")} AND ${cond} ORDER BY ${order} LIMIT 500`,
-      ...args,
+    asMe(() =>
+      q.all<ListTrack & { sender_name: string; collection_name: string | null; release_title: string | null }>(
+        `SELECT ${LIST_COLUMNS}, s.name AS sender_name, c.name AS collection_name, r.title AS release_title ${from}
+         WHERE ${base.join(" AND ")} AND ${cond} ORDER BY ${order} LIMIT 500`,
+        ...args,
+      ),
     ),
     sp.t ? selectedWithSender(Number(sp.t)) : Promise.resolve(undefined),
   ]);

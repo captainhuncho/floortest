@@ -1,10 +1,24 @@
 import "server-only";
-import { q, type Track } from "@/lib/db";
+import { asPerson, q, type Track } from "@/lib/db";
 import type { Row } from "./TrackList";
 import { parseCues } from "@/lib/cues";
 
-/** Track rows for list views: every live track, optionally just one collection and/or just kept ones. */
-export async function loadRows(userId: number, opts: { collectionId?: number; keptOnly?: boolean; inSet?: boolean } = {}): Promise<Row[]> {
+/**
+ * The track columns the desk lists read (List, Review queue, a collection, Prepare for set): never the whole row, so the
+ * receipt token, file keys and the rest stay in the database (owner rule "send only the fields needed", 1 Nov).
+ */
+const LIST_FIELDS = [
+  "id", "sender_id", "title", "artist", "message", "genre", "duration", "bpm", "energy", "cues", "peaks", "decision",
+  "played_at", "downloaded_at", "replied_at", "created_at", "release_status", "mix_status", "duplicate_of", "release_id", "track_no",
+] as const;
+export type ListTrack = Pick<Track, (typeof LIST_FIELDS)[number]>;
+export const LIST_COLUMNS = LIST_FIELDS.map((f) => `t.${f}`).join(", ");
+
+/**
+ * Track rows for list views: every live track, optionally just one collection and/or just kept ones. With `actor` (the
+ * signed-in person), the read runs under the per-person rules (B8) as well as the desk filter.
+ */
+export async function loadRows(userId: number, opts: { collectionId?: number; keptOnly?: boolean; inSet?: boolean; actor?: number } = {}): Promise<Row[]> {
   const where = ["t.user_id = ?", "t.deleted_at IS NULL"];
   const args: number[] = [userId];
   if (opts.collectionId) {
@@ -13,12 +27,14 @@ export async function loadRows(userId: number, opts: { collectionId?: number; ke
   }
   if (opts.keptOnly) where.push("t.decision = 'kept'");
   if (opts.inSet) where.push("t.decision = 'kept' AND t.set_cleared_at IS NULL");
-  const tracks = await q.all<Track & { sender_name: string; collection_name: string | null }>(
-    `SELECT t.*, s.name AS sender_name, c.name AS collection_name FROM tracks t
-     JOIN senders s ON s.id = t.sender_id LEFT JOIN collections c ON c.id = t.collection_id
-     WHERE ${where.join(" AND ")} ORDER BY ${opts.keptOnly || opts.inSet ? "t.decided_at DESC" : "t.created_at DESC"} LIMIT 500`,
-    ...args,
-  );
+  const read = () =>
+    q.all<ListTrack & { sender_name: string; collection_name: string | null }>(
+      `SELECT ${LIST_COLUMNS}, s.name AS sender_name, c.name AS collection_name FROM tracks t
+       JOIN senders s ON s.id = t.sender_id LEFT JOIN collections c ON c.id = t.collection_id
+       WHERE ${where.join(" AND ")} ORDER BY ${opts.keptOnly || opts.inSet ? "t.decided_at DESC" : "t.created_at DESC"} LIMIT 500`,
+      ...args,
+    );
+  const tracks = opts.actor ? await asPerson(opts.actor, read) : await read();
   return tracks.map((t) => ({
     id: t.id,
     title: t.title,
