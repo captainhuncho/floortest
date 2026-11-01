@@ -135,7 +135,7 @@ Users ─► Filters (type, plan, tag, joined, activity, security) ─► chips 
    tick rows (≤ 50) ─┬─ Add tag ─► tag added to each ─► admin log
                      └─ Suspend… (≤ 20) ─► reason ─► each: signed out, link offline, email with appeal ─► admin log
 Growth ─► Growth & decisions ─► findings · funnel · projection · sources · cohorts · pipeline
-Moderation ─► search ─► pick a track ─► Play (5-minute file link; admin log "played track")
+Moderation ─► search ─► pick a track ─► Play, only with an open takedown claim (5-minute file link; admin log "played track"; otherwise 404 + "refused play")
 Queue buttons (Inbox handled/reopen, Verification approve/not yet, Plan request approve/decline, Incident handled)
    ─► the action answers in place (src/lib/ops-result.ts, OpsForm): no reload, buttons locked while it
    works, success in the toast, a refusal under the form

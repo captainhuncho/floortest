@@ -8,6 +8,6 @@ export const runtime = "nodejs";
 export async function GET(req: Request) {
   const u = await appUser(req);
   if (!u) return unauthorized();
-  const rows = await loadRows(u.id, { inSet: true });
+  const rows = await loadRows(u.id, { inSet: true, actor: u.actor_id });
   return json({ tracks: rows.map((r) => ({ ...r, audio: `/api/v1/tracks/${r.id}/audio` })) });
 }

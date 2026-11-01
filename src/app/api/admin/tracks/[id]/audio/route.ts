@@ -1,5 +1,6 @@
 import { logAdmin, requireAdmin } from "@/lib/admin";
 import { q } from "@/lib/db";
+import { staffMayPlay } from "@/lib/staff-listen";
 import { storage } from "@/lib/storage";
 
 export const runtime = "nodejs";
@@ -8,13 +9,19 @@ export const runtime = "nodejs";
 const LINK_SECONDS = 300;
 
 /**
- * Admin → Moderation → play: staff with the moderation permission can listen to a track to check a report
- * (owner, 1 Nov 2026). Every start of a play is written to the admin log with the track and whose desk it is on.
+ * Admin → Moderation → play: staff with the moderation permission can listen to a track only while it has an open
+ * takedown claim (owner, 1 Nov 2026: staff listening is on hold except for disputed tracks; src/lib/staff-listen.ts).
+ * Any other track gets the same 404 as a missing one, and the refusal is logged. Every start of a play is written to the
+ * admin log with the track and whose desk it is on.
  */
 export async function GET(req: Request, ctx: RouteContext<"/api/admin/tracks/[id]/audio">) {
   const admin = await requireAdmin("moderation");
   const id = Number((await ctx.params).id);
   if (!Number.isInteger(id) || id < 1) return new Response("Not found", { status: 404 });
+  if (!(await staffMayPlay(id))) {
+    await logAdmin(admin.id, "refused play", `#${id}`, "no open takedown claim");
+    return new Response("Not found", { status: 404, headers: { "Cache-Control": "private, no-store" } });
+  }
   const t = await q.get<{ id: number; title: string; artist: string; file_key: string | null; mime: string; handle: string }>(
     "SELECT t.id, t.title, t.artist, t.file_key, t.mime, u.handle FROM tracks t JOIN users u ON u.id = t.user_id WHERE t.id = ? AND t.deleted_at IS NULL",
     id,
