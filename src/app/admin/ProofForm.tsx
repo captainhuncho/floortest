@@ -113,7 +113,7 @@ export function ProofForm({
           <ul className="space-y-0.5 text-xs text-mute">
             {files.map((f) => (
               <li key={`${f.name}-${f.size}`} className="truncate">
-                {f.name} · {(f.size / 1024 / 1024).toFixed(1)} MB
+                {f.name} · {f.size < 1024 * 1024 ? `${Math.max(1, Math.round(f.size / 1024))} KB` : `${(f.size / 1024 / 1024).toFixed(1)} MB`}
               </li>
             ))}
           </ul>
