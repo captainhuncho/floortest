@@ -51,3 +51,19 @@ test("Jobs Run now runs the email queue and records the run", async ({ page }) =
   const daily = page.getByRole("listitem").filter({ has: page.getByText("Daily emails", { exact: true }) });
   await expect(daily.getByRole("button", { name: "Run now" })).toBeVisible();
 });
+
+// The shell's live feed (GET /api/admin/feed): signed-in ops get recent activity, private to them; anyone else gets none.
+test("the live feed answers ops with recent activity and nobody else", async ({ page, browser }) => {
+  const outside = await browser.newContext();
+  const signedOut = await outside.request.get("/api/admin/feed", { maxRedirects: 0 });
+  expect(signedOut.status()).not.toBe(200);
+  await outside.close();
+
+  await opsLogIn(page);
+  const res = await page.request.get("/api/admin/feed");
+  expect(res.status()).toBe(200);
+  expect(res.headers()["cache-control"]).toBe("private, max-age=30");
+  const { items } = (await res.json()) as { items: { kind: string; text: string; href: string }[] };
+  expect(items.some((i) => i.kind === "signup")).toBe(true);
+  expect(items.every((i) => !i.text.startsWith("signed in to ops"))).toBe(true);
+});
