@@ -373,7 +373,7 @@ function BetaSection({ n, windowDays, now }: { n: BetaNumbers; windowDays: numbe
           tone={perActive != null && perActive >= BETA_TARGETS.tracksPerActive ? "lime" : "violet"}
           caption={`${perShare ? `target ${BETA_TARGETS.tracksPerActive}+ a week · ` : ""}${n.recentTracks} ${n.recentTracks === 1 ? "track" : "tracks"} from senders in the last 7 days`}
         >
-          {perShare && perActive != null && <TargetNotes value={perActive} target={BETA_TARGETS.tracksPerActive} now={now} />}
+          {/* A rate, not a total that grows: its target (10+) holds from day 1, so it gets no pace line, like time to first listen. */}
         </MonoStat>
         <MonoStat
           i={4}
