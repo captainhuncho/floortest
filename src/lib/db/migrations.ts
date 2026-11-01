@@ -1970,4 +1970,14 @@ grant execute on function ft_desk_admin(bigint) to ft_person;
 drop policy if exists person_links_read on collection_links;
 create policy person_links_read on collection_links for select to ft_person using (exists (select 1 from collections c where c.id = collection_links.collection_id and ft_desk_admin(c.user_id)));`,
   },
+  {
+    // Ops → Moderation → Keep (ops server design, 1 Nov): when a staff member reviewed a track and kept it, so search can
+    // say "Reviewed by @x" and the moderation queue (only tracks with a real signal: an open takedown claim, a sender
+    // blocked by receivers, a late scanner check; owner, 1 Nov) can drop it once kept. Additive only. The index keeps deleting a
+    // staff account from scanning every track (tests/fk-indexes.test.ts); only reviewed tracks are in it.
+    id: "0121_track_ops_review",
+    sql: `alter table tracks add column ops_reviewed_at bigint;
+alter table tracks add column ops_reviewed_by bigint references users(id) on delete set null;
+create index if not exists tracks_ops_reviewed_by on tracks(ops_reviewed_by) where ops_reviewed_by is not null;`,
+  },
 ];

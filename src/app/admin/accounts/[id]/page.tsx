@@ -9,6 +9,7 @@ import { fmtBytes } from "@/lib/format";
 import { APP_URL } from "@/lib/mail";
 import { planOf } from "@/lib/plan-store";
 import { ConfirmButton } from "../../AdminUi";
+import { OpsForm } from "../../OpsForm";
 import {
   adminCancelEmailChange,
   adminChangeEmail,
@@ -224,9 +225,9 @@ export default async function Account({ params }: { params: Promise<{ id: string
                       </span>
                       <span className="flex items-center gap-3 text-mute">
                         {day(m.created_at)}
-                        <form action={setContactHandled.bind(null, m.id, !m.handled_at)}>
+                        <OpsForm action={setContactHandled.bind(null, m.id, !m.handled_at)}>
                           <button className="text-sm text-bone underline">{m.handled_at ? "Reopen" : "Mark handled"}</button>
-                        </form>
+                        </OpsForm>
                       </span>
                     </div>
                     <p className="line-clamp-3 whitespace-pre-wrap text-mute">{m.message}</p>
