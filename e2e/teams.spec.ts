@@ -133,12 +133,11 @@ test("a member switches to the team's desk, can't open owner settings, and their
   await expect(page.getByRole("status").filter({ hasText: /Waiting for approval/ })).toBeVisible();
   await page.goto("/dashboard/settings/team");
   await expect(page.getByRole("heading", { name: "Your replies waiting for approval" })).toBeVisible();
-  // .first(): during the page's refresh the reply can briefly show twice (old and new page), as the two-step notice did.
-  await expect(page.getByText(reply).first()).toBeVisible();
+  await expect(page.getByText(reply)).toBeVisible();
 
   // The desk's log shows what was done on it, but never the owner's own sign-ins or security settings.
   await page.goto("/dashboard/activity");
-  await expect(page.getByText("The account holder's sign-ins and settings aren't shown.").first()).toBeVisible();
+  await expect(page.getByText("The account holder's sign-ins and settings aren't shown.")).toBeVisible();
   await expect(page.getByText("Signed in", { exact: true })).toHaveCount(0);
 });
 
