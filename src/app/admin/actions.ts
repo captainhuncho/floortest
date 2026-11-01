@@ -23,6 +23,7 @@ import { issueViewTicket } from "@/lib/ops";
 import { APP_URL } from "@/lib/mail";
 import { env } from "@/lib/env";
 import { HIDDEN, sendMail } from "@/lib/mail";
+import { approvePendingIdentity } from "@/lib/identity-approve";
 import { isAdminEmail, logAdmin, requireAdminAction } from "@/lib/admin";
 import { opsAccessFor, suspendRefusal } from "@/lib/ops-access";
 import { PERMS, ROLE_PERMS, ROLES, type Perm, type Role } from "@/lib/ops-perms";
@@ -505,11 +506,8 @@ export async function removeFromWaitlist(id: number) {
 
 export async function approveIdentity(userId: number): Promise<OpsResult> {
   const a = await requireAdminAction("verification");
-  const u = await q.get<{ email: string; name: string; handle: string }>(
-    "UPDATE users SET identity_status = 'verified', identity_verified_at = ?, identity_note = '' WHERE id = ? RETURNING email, name, handle",
-    now(),
-    userId,
-  );
+  // Only a request that is waiting (lib/identity-approve); any other account answers "not found".
+  const u = await approvePendingIdentity(userId);
   if (!u) return no("Account not found");
   await sendMail({
     userId,
