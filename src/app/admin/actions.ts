@@ -12,7 +12,7 @@ import { after } from "next/server";
 import { FEATURES, type Feature } from "@/lib/features";
 import { allPlans, FREE_PLAN } from "@/lib/plan-store";
 import { audienceWhere, cleanTags, describeAudience, readAudience } from "@/lib/audience";
-import { BULK_MAX, bulkIds, SUSPEND_MAX } from "@/lib/admin-bulk";
+import { ADMIN_PLANS, BULK_MAX, bulkIds, SUSPEND_MAX } from "@/lib/admin-bulk";
 import type { OpsResult } from "@/lib/ops-result";
 import { searchPeople, type PeopleAnswer } from "@/lib/ops-palette";
 import { JOBS, withJobLease, type JobName } from "@/lib/cron";
@@ -59,9 +59,15 @@ const no = (error: string): OpsResult => {
 };
 const target = async (id: number) => q.get<{ id: number; email: string; handle: string }>("SELECT id, email, handle FROM users WHERE id = ?", id);
 
-export async function suspendAccount(userId: number, reason: string) {
+/**
+ * Suspends one account. The record page answers with a flash; the new Users (switch ops_shell) passes `answer` and gets
+ * the result back to show in place, and a reason is then required (it goes in their email and the log).
+ */
+export async function suspendAccount(userId: number, reason: string, answer = false): Promise<OpsResult | void> {
   const a = await requireAdminAction("users.support");
+  if (answer && !String(reason ?? "").trim()) return no("Give a reason: it goes in the email and the log");
   const r = await suspendOne(a, userId, reason);
+  if (answer) return r.ok ? ok(`Suspended @${r.handle} and emailed them`) : no(r.why);
   if (!r.ok) return fail(r.why);
   await done(`Suspended @${r.handle} and emailed them`);
   refresh();
@@ -193,12 +199,14 @@ export async function resetTwoFactor(userId: number, form: FormData) {
   refresh();
 }
 
-export async function setPlanFor(userId: number, plan: string) {
+/** One account's plan (super admin only; never in bulk). `answer`: the new Users gets the result back instead of a flash. */
+export async function setPlanFor(userId: number, plan: string, answer = false): Promise<OpsResult | void> {
   const a = await requireAdminAction("super");
-  const u = await target(userId);
-  if (!u || !["free", "pro", "team"].includes(plan)) return fail("Couldn't change the plan");
+  const u = Number.isSafeInteger(userId) && userId > 0 ? await target(userId) : undefined;
+  if (!u || !ADMIN_PLANS.includes(plan as (typeof ADMIN_PLANS)[number])) return answer ? no("Couldn't change the plan") : fail("Couldn't change the plan");
   await q.run("UPDATE users SET plan = ? WHERE id = ?", plan, u.id);
   await logAdmin(a.id, "changed plan", `@${u.handle}`, plan);
+  if (answer) return ok(`@${u.handle} is now on ${plan}`);
   await done(`@${u.handle} is now on ${plan}`);
   refresh();
 }
@@ -1165,23 +1173,26 @@ export async function sendTestEmail(id: EmailId) {
 }
 
 /** Private admin tags on an account, used to filter Users and announcements. */
-export async function saveTags(userId: number, form: FormData) {
+export async function saveTags(userId: number, form: FormData, answer = false): Promise<OpsResult | void> {
   const a = await requireAdminAction("users.support");
-  const u = await target(userId);
-  if (!u) return;
-  const tags = cleanTags(String(form.get("tags") || ""));
-  await q.run("UPDATE users SET admin_tags = ? WHERE id = ?", tags, userId);
+  const u = Number.isSafeInteger(userId) && userId > 0 ? await target(userId) : undefined;
+  if (!u) return answer ? no("That account isn't there") : undefined;
+  const tags = cleanTags(String(form.get("tags") || "").slice(0, 2000));
+  await q.run("UPDATE users SET admin_tags = ? WHERE id = ?", tags, u.id);
   await logAdmin(a.id, "tagged account", `@${u.handle}`, tags || "none");
+  if (answer) return ok(tags ? `Tags saved for @${u.handle}` : `Tags cleared for @${u.handle}`);
   await done("Tags saved.");
   refresh();
 }
 
 /** A private note on an account, visible only in Admin. */
-export async function addNote(userId: number, form: FormData) {
+export async function addNote(userId: number, form: FormData, answer = false): Promise<OpsResult | void> {
   const a = await requireAdminAction("users.support");
   const body = String(form.get("note") || "").trim().slice(0, 2000);
-  if (!body || !(await target(userId))) return fail("Write a note first.");
-  await q.run("INSERT INTO account_notes (user_id, admin_id, body, created_at) VALUES (?,?,?,?)", userId, a.id, body, now());
+  const u = body && Number.isSafeInteger(userId) && userId > 0 ? await target(userId) : undefined;
+  if (!u) return answer ? no("Write a note first") : fail("Write a note first.");
+  await q.run("INSERT INTO account_notes (user_id, admin_id, body, created_at) VALUES (?,?,?,?)", u.id, a.id, body, now());
+  if (answer) return ok(`Note added for @${u.handle}`);
   await done("Note added.");
   refresh();
 }

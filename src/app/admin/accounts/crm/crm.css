@@ -1,0 +1,531 @@
+/*
+ * The new Users (admin redesign B, step 5; switch ops_shell). The table drops its quieter columns as the page gets
+ * narrower (a container query, so the docked panel counts), never scrolling sideways; below 768px it is the list,
+ * and a row opens the record as a sheet. Solid panels; only the bulk bar and toasts are glass (the kit).
+ */
+.ou {
+  container: ou / inline-size;
+  min-width: 0;
+}
+.ou-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 16px;
+}
+.ou-views {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-top: 14px;
+}
+.ou-viewtab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: var(--kit-tap, 44px);
+  padding: 0 12px;
+  border-radius: 9px;
+  color: var(--color-mute);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.ou-viewtab:hover {
+  color: var(--color-bone);
+}
+.ou-viewtab[aria-current="page"] {
+  color: var(--color-bone);
+  background: var(--color-ink-4);
+}
+.ou-viewn {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-mute);
+}
+.ou-tools {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.ou-search {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 260px;
+  max-width: 24rem;
+}
+.ou-search .input {
+  min-width: 0;
+  flex: 1;
+}
+.ou-filter-panel {
+  position: fixed;
+  inset: 7rem 1rem auto;
+  z-index: 40;
+  max-height: 70dvh;
+  overflow-y: auto;
+  padding: 16px;
+  border: 1px solid var(--color-line-2);
+  border-radius: 14px;
+  background: var(--color-ink-3);
+  box-shadow: var(--kit-shadow);
+}
+.ou-filter-panel > * + * {
+  margin-top: 12px;
+}
+@media (min-width: 640px) {
+  .ou-filter-panel {
+    position: absolute;
+    inset: 100% 0 auto;
+    margin-top: 8px;
+  }
+}
+/* Phones always get the list, so the Table / List switch and the "click a cell" hint are for wider screens. */
+.ou-narrow {
+  display: none;
+}
+@media (max-width: 767px) {
+  .ou-layout,
+  .ou-wide {
+    display: none !important;
+  }
+  .ou-narrow {
+    display: inline;
+  }
+}
+.ou-count {
+  margin-left: auto;
+  color: var(--color-mute);
+  font-size: 13px;
+}
+.ou-empty {
+  margin-top: 16px;
+  padding: 24px;
+  border: 1px solid var(--color-line);
+  border-radius: 14px;
+  color: var(--color-mute);
+}
+
+/* ---------- The table ---------- */
+.ou-tablewrap {
+  margin-top: 12px;
+  border: 1px solid var(--color-line);
+  border-radius: 14px;
+  background: var(--color-ink-2);
+  overflow: hidden;
+}
+.ou-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13.5px;
+  text-align: left;
+}
+.ou-table th {
+  height: 40px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--color-line);
+  color: var(--color-mute);
+  font-size: 12px;
+  font-weight: 600;
+}
+.ou-table td {
+  height: 56px;
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--color-line);
+  vertical-align: middle;
+  overflow: hidden;
+}
+.ou-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.ou-table tbody tr:not([aria-selected="true"]):hover > td {
+  background: color-mix(in srgb, var(--color-bone) 3%, transparent);
+}
+.ou-c-check {
+  width: 52px;
+}
+.ou-c-type {
+  width: 104px;
+}
+.ou-c-plan {
+  width: 96px;
+}
+.ou-c-tags {
+  width: 168px;
+}
+.ou-c-status {
+  width: 136px;
+}
+.ou-c-tracks {
+  width: 68px;
+  text-align: right;
+}
+th.ou-c-tracks {
+  text-align: right;
+}
+.ou-c-joined {
+  width: 112px;
+  white-space: nowrap;
+}
+.ou-c-acts {
+  width: 112px;
+}
+/* Quieter columns go first as the page narrows; the drawer shows them all. */
+@container ou (max-width: 1199px) {
+  .ou-c-joined {
+    display: none;
+  }
+}
+@container ou (max-width: 979px) {
+  .ou-c-type,
+  .ou-c-tracks {
+    display: none;
+  }
+}
+@container ou (max-width: 859px) {
+  .ou-c-note {
+    display: none;
+  }
+}
+.ou-check {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: -4px;
+  cursor: pointer;
+}
+.ou-who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.ou-avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--color-ink-4);
+  color: var(--color-bone);
+  font-size: 11px;
+  font-weight: 700;
+}
+.ou-avatar--lg {
+  width: 44px;
+  height: 44px;
+  font-size: 14px;
+}
+.ou-name {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-bone);
+  font-weight: 600;
+  text-align: left;
+}
+.ou-name:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.ou-sub {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-mute);
+  font-size: 12.5px;
+}
+.ou-note {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ou-tags {
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+.ou-acts {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+/* Edit sits at full strength on every row (a11y B fix 10: never a faded control). */
+.ou-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--color-line-2);
+  border-radius: 10px;
+  background: var(--color-ink-3);
+  color: var(--color-bone);
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ou-btn--sm {
+  min-height: 36px;
+  padding: 0 12px;
+}
+.ou-btn:hover {
+  border-color: var(--color-mute);
+}
+.ou-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  color: var(--color-mute);
+}
+.ou-icon-btn:hover {
+  background: var(--color-ink-4);
+  color: var(--color-bone);
+}
+.ou-btn:focus-visible,
+.ou-icon-btn:focus-visible,
+.ou-name:focus-visible,
+.ou-lopen:focus-visible,
+.ou-viewtab:focus-visible,
+.ou-pg:focus-visible {
+  outline: 2px solid var(--kit-focus);
+  outline-offset: 1px;
+}
+
+/* ---------- Pills ---------- */
+/* Opaque tints (mixed with the panel, not see-through), so a picked row's violet never drops the text below 4.5:1. */
+.ou-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--color-ink-4);
+  color: var(--color-bone);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ou-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+}
+.ou-pill[data-status="Active"] {
+  background: color-mix(in srgb, var(--color-lime) 12%, var(--color-ink-2));
+  color: var(--color-lime);
+}
+.ou-pill[data-status="Unconfirmed"] {
+  background: color-mix(in srgb, var(--admin-amber, #f2c14e) 12%, var(--color-ink-2));
+  color: var(--admin-amber, #f2c14e);
+}
+.ou-pill[data-status="Suspended"] {
+  background: color-mix(in srgb, var(--color-danger) 12%, var(--color-ink-2));
+  color: var(--kit-danger-t);
+}
+.ou-plan {
+  color: var(--color-mute);
+  text-transform: capitalize;
+}
+.ou-plan[data-paid] {
+  background: color-mix(in srgb, var(--admin-violet, #9b8cff) 12%, var(--color-ink-2));
+  color: var(--admin-violet, #9b8cff);
+}
+
+/* ---------- The list (List layout and phones) ---------- */
+.ou-list {
+  margin-top: 12px;
+  border: 1px solid var(--color-line);
+  border-radius: 14px;
+  background: var(--color-ink-2);
+  overflow: hidden;
+}
+.ou-lrow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px 4px 8px;
+}
+.ou-lrow + .ou-lrow {
+  border-top: 1px solid var(--color-line);
+}
+li.kit-row[data-current] {
+  box-shadow: inset 3px 0 0 var(--admin-violet, #9b8cff);
+}
+.ou-lopen {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 56px;
+  padding: 4px 6px;
+  border-radius: 10px;
+  text-align: left;
+}
+.ou-lname {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+/* ---------- Pages ---------- */
+.ou-pages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  color: var(--color-mute);
+  font-size: 13px;
+}
+.ou-pg {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--color-line);
+  border-radius: 10px;
+  color: var(--color-mute);
+}
+.ou-pg[aria-current="page"] {
+  border-color: var(--color-line-2);
+  background: var(--color-ink-4);
+  color: var(--color-bone);
+}
+
+/* ---------- The record drawer ---------- */
+dialog.ou-drawer {
+  margin: 0 0 0 auto;
+  padding: 0;
+  width: min(440px, 100vw);
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  border: 0;
+  border-left: 1px solid var(--color-line);
+  background: var(--color-ink-2);
+  color: var(--color-bone);
+  box-shadow: var(--kit-shadow);
+  transform: translateX(100%);
+  transition: transform var(--kit-dur) var(--kit-ease), overlay var(--kit-dur) allow-discrete, display var(--kit-dur) allow-discrete;
+}
+dialog.ou-drawer[open] {
+  transform: none;
+  @starting-style {
+    transform: translateX(100%);
+  }
+}
+dialog.ou-drawer::backdrop {
+  background: rgb(0 0 0 / 0.45);
+}
+.ou-drawer-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px 20px calc(16px + env(safe-area-inset-bottom));
+}
+.ou-drawer-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ou-facts {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: 10px 12px;
+  margin-top: 20px;
+  font-size: 14px;
+}
+.ou-facts dt {
+  color: var(--color-mute);
+  font-size: 13px;
+}
+.ou-facts dd {
+  min-width: 0;
+}
+.ou-facts .ou-tags {
+  flex-wrap: wrap;
+}
+.ou-note-full {
+  margin-bottom: 4px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ou-drawer-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 20px;
+}
+/* Phones: a sheet from the bottom, clear of the home bar; the facts stack. */
+@media (max-width: 767px) {
+  dialog.ou-drawer {
+    margin: auto 0 0;
+    width: 100%;
+    height: auto;
+    max-height: calc(100dvh - max(1rem, env(safe-area-inset-top)));
+    border-left: 0;
+    border-top: 1px solid var(--color-line);
+    border-radius: 20px 20px 0 0;
+    transform: translateY(100%);
+  }
+  dialog.ou-drawer[open] {
+    @starting-style {
+      transform: translateY(100%);
+    }
+  }
+  .ou-facts {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+  .ou-facts dd + dt {
+    margin-top: 10px;
+  }
+  .ou-drawer-foot > *,
+  .ou-drawer-foot .kit-opsbtn > button {
+    flex: 1 1 100%;
+    width: 100%;
+    min-height: 48px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  dialog.ou-drawer,
+  dialog.ou-drawer[open] {
+    transform: none;
+    transition: opacity 150ms linear, overlay 150ms allow-discrete, display 150ms allow-discrete;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  dialog.ou-drawer::backdrop {
+    background: rgb(0 0 0 / 0.8);
+  }
+}
+@media print {
+  dialog.ou-drawer,
+  .ou-tools,
+  .ou-pages {
+    display: none !important;
+  }
+}

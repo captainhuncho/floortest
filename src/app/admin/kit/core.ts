@@ -137,3 +137,51 @@ export function peopleQuery(raw: string) {
   const q = raw.trim().replace(/^@/, "").slice(0, 100);
   return q.length >= PEOPLE_MIN_QUERY ? q : null;
 }
+
+/** The most tags one account keeps (src/lib/audience.ts cleanTags keeps the first 20). */
+export const TAGS_MAX = 20;
+
+/**
+ * Tags typed into an inline tag editor, the way the server keeps them (src/lib/audience.ts cleanTags): split on commas
+ * and spaces, lower case, letters, digits and dashes, at most 30 characters each. Empty pieces never make a chip.
+ */
+export function cleanTagList(raw: string): string[] {
+  return String(raw)
+    .split(/[,\s]+/)
+    .map((t) => t.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 30))
+    .filter(Boolean);
+}
+
+/** A new list with the typed tags added at the end: trimmed, cleaned, no repeats (prototype kit fix 3), at most 20. */
+export function addTags(list: readonly string[], raw: string): string[] {
+  const next = [...list];
+  for (const t of cleanTagList(raw)) if (!next.includes(t) && next.length < TAGS_MAX) next.push(t);
+  return next;
+}
+
+export type EditType = "text" | "select" | "tags";
+export type EditValue = string | readonly string[];
+
+/** Whether an edit changed anything (tags compare in order, as they are saved). */
+export function sameValue(a: EditValue, b: EditValue) {
+  return Array.isArray(a) || Array.isArray(b) ? [a].flat().join("\u0000") === [b].flat().join("\u0000") : a === b;
+}
+
+/**
+ * What an inline cell shows while its save is out. A select keeps its old choice until the server answers, because
+ * the save may first ask (a confirm) and may be refused (prototype kit fix 4); text and tags show the new value at once
+ * and go back if the save fails.
+ */
+export function shownWhileSaving<T extends EditValue>(type: EditType, previous: T, next: T): T {
+  return type === "select" ? previous : next;
+}
+
+/** Arrow keys, Home and End in a segmented control: the option they move to, wrapping round; null for other keys. */
+export function segmentStep(index: number, key: string, count: number): number | null {
+  if (count < 1) return null;
+  const d = ({ ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 } as Record<string, number>)[key];
+  if (d) return (index + d + count) % count;
+  if (key === "Home") return 0;
+  if (key === "End") return count - 1;
+  return null;
+}
