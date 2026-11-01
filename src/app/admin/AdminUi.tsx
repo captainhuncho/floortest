@@ -1,7 +1,10 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { announceOps, type OpsResult } from "@/lib/ops-result";
 import { Toaster } from "./kit/Toaster";
+
+const isOpsResult = (r: unknown): r is OpsResult => typeof r === "object" && r !== null && "ok" in r;
 
 /**
  * The admin messages: a flash from an action not converted yet (then cleared so a reload doesn't repeat it), or a
@@ -20,7 +23,8 @@ export function ConfirmButton({
   confirmLabel = "Confirm",
   danger = false,
 }: {
-  action: () => Promise<void>;
+  /** A server action; one that answers with an OpsResult (src/lib/ops-result.ts) has it shown in the toast. */
+  action: () => Promise<unknown>;
   message: string;
   className?: string;
   children: React.ReactNode;
@@ -52,7 +56,10 @@ export function ConfirmButton({
               className={destructive ? "btn-sm rounded-md bg-danger px-4 font-bold text-ink" : "btn-lime btn-sm"}
               onClick={() => {
                 ref.current?.close();
-                start(() => action());
+                start(async () => {
+                  const r = await action();
+                  if (isOpsResult(r)) announceOps(r);
+                });
               }}
             >
               {confirmLabel}

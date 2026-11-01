@@ -122,12 +122,18 @@ export const SEND_HOLD_MS = 8_000;
  * Queued to go SEND_HOLD_MS from now, then sent after the response. Every send path claims only queued rows whose next_at
  * has come, so until then cancelHeldMail stops it, even if the tab is closed; if the server stops first, the mail job
  * sends it on its next run. A failure is retried like any queued email and shows in the Email log. Returns the outbox id.
+ * `onSent` gets the delivery status once this process has tried it (not when cancelled, nor when the mail job sends it
+ * after a restart).
  */
-export async function sendMailHeld(opts: MailOpts, holdMs = SEND_HOLD_MS): Promise<number> {
+export async function sendMailHeld(
+  opts: MailOpts,
+  { holdMs = SEND_HOLD_MS, onSent }: { holdMs?: number; onSent?: (status: string) => Promise<unknown> } = {},
+): Promise<number> {
   const id = await queueMail(opts, q, { holdMs });
   afterResponse(async () => {
     await new Promise((done) => setTimeout(done, holdMs));
-    await deliver(id);
+    const status = await deliver(id);
+    if (onSent && status !== "cancelled") await onSent(status);
   });
   return id;
 }

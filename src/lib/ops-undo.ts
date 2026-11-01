@@ -8,9 +8,14 @@ import { SEND_HOLD_MS } from "@/lib/mail";
  * with the app secret, naming what to put back, the held emails, the admin who did it and when it stops working (the
  * hold). undoSend checks the signature, that the caller is that admin and that it hasn't expired, so Undo is exactly as
  * allowed as the action was, with no second permission list.
+ *
+ * Kinds and their items: plan_approve { ref: request, user, prev: old plan }; plan_decline { ref: request };
+ * waitlist_invite { ref: waitlist entry, code: the new invite }; invite_resend { code: the code sent, prev: the old code
+ * it replaced, if any }; email_resend (nothing to put back, only the email to stop).
  */
-export type UndoKind = "plan_approve" | "plan_decline";
-export type Undo = { kind: UndoKind; ref: number; user: number; prev: string; mail: number[]; admin: number; exp: number };
+export type UndoKind = "plan_approve" | "plan_decline" | "waitlist_invite" | "invite_resend" | "email_resend";
+export type UndoItem = { ref?: number; user?: number; prev?: string; code?: string };
+export type Undo = { kind: UndoKind; items: UndoItem[]; mail: number[]; admin: number; exp: number };
 
 const sig = (body: string) => crypto.createHmac("sha256", `ops-undo:${env.secret}`).update(body).digest("base64url");
 
@@ -28,7 +33,7 @@ export function readUndo(token: string, adminId: number, at = Date.now()): Undo 
   if (want.length !== got.length || !crypto.timingSafeEqual(want, got)) return null;
   try {
     const u = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as Undo;
-    return u.admin === adminId && at <= u.exp ? u : null;
+    return u.admin === adminId && at <= u.exp && Array.isArray(u.items) && Array.isArray(u.mail) ? u : null;
   } catch {
     return null;
   }

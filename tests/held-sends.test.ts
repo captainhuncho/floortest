@@ -29,16 +29,52 @@ test("a held email isn't sent before its time, cancel stops it, and once it has 
   assert.equal(await cancelHeldMail([goes]), 0, "too late once it has gone");
 });
 
+test("Undo at the moment the hold ends: the email goes once or not at all, never both", async () => {
+  const { q } = await import("../src/lib/db");
+  const { queueMail, deliver, cancelHeldMail, SEND_HOLD_MS } = await import("../src/lib/mail");
+  for (let i = 0; i < 20; i++) {
+    const id = await queueMail({ userId: null, audience: "support", to: `race${i}@x.io`, subject: "Race", body: "Hi" }, q, { holdMs: SEND_HOLD_MS });
+    await q.run("UPDATE outbox SET next_at = ? WHERE id = ?", Date.now() - 1, id); // the hold ends now
+    const [status, cancelled] = await Promise.all([deliver(id), cancelHeldMail([id])]);
+    const row = (await q.get<{ status: string; attempts: number }>("SELECT status, attempts FROM outbox WHERE id = ?", id))!;
+    if (cancelled) {
+      assert.equal(row.status, "cancelled");
+      assert.equal(row.attempts, 0, "never tried once cancelled");
+      assert.equal(status, "cancelled");
+    } else {
+      assert.notEqual(row.status, "cancelled");
+      assert.equal(row.attempts, 1, "tried exactly once");
+    }
+  }
+});
+
+test("a held email whose server stopped mid-hold is sent by the mail job, once", async () => {
+  const { q } = await import("../src/lib/db");
+  const { queueMail, drainOutbox, cancelHeldMail, SEND_HOLD_MS } = await import("../src/lib/mail");
+  // Queued with a hold and no process left to send it (the timer died with the server).
+  const id = await queueMail({ userId: null, audience: "support", to: "restart@x.io", subject: "Restart", body: "Hi" }, q, { holdMs: SEND_HOLD_MS });
+  await drainOutbox();
+  assert.equal((await q.get<{ status: string }>("SELECT status FROM outbox WHERE id = ?", id))!.status, "queued", "the job waits out the hold");
+  await q.run("UPDATE outbox SET next_at = ? WHERE id = ?", Date.now() - 1, id);
+  await drainOutbox();
+  await drainOutbox();
+  const row = (await q.get<{ status: string; attempts: number }>("SELECT status, attempts FROM outbox WHERE id = ?", id))!;
+  assert.notEqual(row.status, "queued");
+  assert.equal(row.attempts, 1);
+  assert.equal(await cancelHeldMail([id]), 0, "too late once the job sent it");
+});
+
 test("an undo token works only for the same admin, within the hold, untampered", async () => {
   const { signUndo, readUndo } = await import("../src/lib/ops-undo");
   const { SEND_HOLD_MS } = await import("../src/lib/mail");
   const at = Date.now();
-  const token = signUndo({ kind: "plan_approve", ref: 7, user: 3, prev: "free", mail: [11], admin: 42 }, at);
-  assert.deepEqual(readUndo(token, 42, at + 1_000), { kind: "plan_approve", ref: 7, user: 3, prev: "free", mail: [11], admin: 42, exp: at + SEND_HOLD_MS });
+  const undo = { kind: "waitlist_invite" as const, items: [{ ref: 7, code: "FLOOR-AAAA" }, { ref: 8, code: "FLOOR-BBBB" }], mail: [11, 12], admin: 42 };
+  const token = signUndo(undo, at);
+  assert.deepEqual(readUndo(token, 42, at + 1_000), { ...undo, exp: at + SEND_HOLD_MS });
   assert.equal(readUndo(token, 43, at + 1_000), null, "another admin");
   assert.equal(readUndo(token, 42, at + SEND_HOLD_MS + 1), null, "past the hold");
   const [body, mac] = token.split(".");
-  const forged = Buffer.from(JSON.stringify({ kind: "plan_approve", ref: 7, user: 3, prev: "pro", mail: [11], admin: 42, exp: at + SEND_HOLD_MS })).toString("base64url");
+  const forged = Buffer.from(JSON.stringify({ ...undo, mail: [99], exp: at + SEND_HOLD_MS })).toString("base64url");
   assert.equal(readUndo(`${forged}.${mac}`, 42, at + 1_000), null, "changed contents");
   assert.equal(readUndo(`${body}.x${mac.slice(1)}`, 42, at + 1_000), null, "changed signature");
   assert.equal(readUndo("nonsense", 42, at), null);
