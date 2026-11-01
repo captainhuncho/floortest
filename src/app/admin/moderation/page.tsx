@@ -5,6 +5,7 @@ import { likeContains, q } from "@/lib/db";
 import { fmtBytes } from "@/lib/format";
 import { blockEverywhere, blockSenderAsAdmin, removeTrackAsAdmin } from "../actions";
 import { ModerationPlayer } from "./ModerationPlayer";
+import { staffMayPlay } from "@/lib/staff-listen";
 
 type Found = { id: number; title: string; artist: string; size: number; created_at: number; handle: string; user_id: number; sender_id: number; sender: string; email: string; blocked_at: number | null };
 
@@ -87,7 +88,7 @@ export default async function Moderation({ searchParams }: { searchParams: Promi
 }
 
 async function Detail({ t, back }: { t: Found; back: string | null }) {
-  const [meta, history, events] = await Promise.all([
+  const [meta, history, events, playable] = await Promise.all([
     q.get<{ peaks: string | null; duration: number | null; name: string }>("SELECT t.peaks, t.duration, u.name FROM tracks t JOIN users u ON u.id = t.user_id WHERE t.id = ?", t.id),
     q.get<{ tracks: number; receivers: number; blocked: number }>(
       `SELECT COUNT(t.id) AS tracks, COUNT(DISTINCT s.user_id) AS receivers, COUNT(DISTINCT s.id) FILTER (WHERE s.blocked_at IS NOT NULL) AS blocked
@@ -95,6 +96,7 @@ async function Detail({ t, back }: { t: Found; back: string | null }) {
       t.email,
     ),
     q.all<{ type: string; detail: string; created_at: number }>("SELECT type, detail, created_at FROM events WHERE track_id = ? ORDER BY created_at DESC LIMIT 5", t.id),
+    staffMayPlay(t.id),
   ]);
   const peaks = meta?.peaks ? (JSON.parse(meta.peaks) as number[]) : null;
   const sent = Number(history?.tracks ?? 0);
@@ -112,7 +114,12 @@ async function Detail({ t, back }: { t: Found; back: string | null }) {
         {t.title}
       </h2>
       <p className="text-mute">{t.artist}</p>
-      <ModerationPlayer key={t.id} id={t.id} peaks={peaks} duration={meta?.duration ?? null} />
+      {/* Staff listen only to disputed tracks (owner, 1 Nov 2026); the audio route refuses the rest too. */}
+      {playable ? (
+        <ModerationPlayer key={t.id} id={t.id} peaks={peaks} duration={meta?.duration ?? null} />
+      ) : (
+        <p className="mt-4 rounded-[10px] bg-ink-3 px-3 py-2.5 text-[13px] text-mute ring-1 ring-line">Listening is only for tracks with an open takedown claim.</p>
+      )}
       <dl className="mt-5 grid grid-cols-[6.5rem_minmax(0,1fr)] gap-x-3 gap-y-2 border-t border-line pt-4 text-[13px]">
         <dt className="text-faint">Sender</dt>
         <dd className="truncate">
