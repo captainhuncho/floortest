@@ -18,7 +18,7 @@ export async function GET(req: Request) {
   const session = await currentSessionHash();
   if (!session) return Response.json({ error: "Sign in again." }, { status: 401 });
   const origin = new URL(req.url).origin;
-  const rows = await loadRows(u.id, { inSet: true });
+  const rows = await loadRows(u.id, { inSet: true, actor: u.actor_id });
   return Response.json(
     {
       owner: u.id,
