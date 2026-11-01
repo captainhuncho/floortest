@@ -54,3 +54,17 @@ export function onConsentChange(listener: (consent: Consent) => void) {
   window.addEventListener(CONSENT_EVENT, handler);
   return () => window.removeEventListener(CONSENT_EVENT, handler);
 }
+
+/**
+ * Where the banner's Cookie Policy link points. The ops host serves only the admin area, so /cookies there is "not
+ * found": on that host the link goes to the main site's page instead. Elsewhere (main site, local, previews, where
+ * ops and the app share an address) it stays the plain /cookies path.
+ */
+export function cookiePolicyHref(host: string | null | undefined, appUrl: string, opsUrl: string): string {
+  if (!host || opsUrl === appUrl) return "/cookies";
+  try {
+    return new URL(opsUrl).host === host ? new URL("/cookies", appUrl).href : "/cookies";
+  } catch {
+    return "/cookies";
+  }
+}

@@ -7,7 +7,12 @@ import {
   BETA_START,
   BETA_TARGETS,
   BETA_WEEKS,
+  accountsShort,
   betaNumbers,
+  betaRunning,
+  expectedByWeek,
+  paceOf,
+  betaWindowDays,
   decisions,
   forecast,
   formatHours,
@@ -109,7 +114,7 @@ export default async function Growth() {
   ]);
   const sources: Group[] = sourceRows.map((r) => ({ name: r.name, people: num(r.people), activated: num(r.activated), paid: num(r.paid) }));
   const kinds: Group[] = kindRows.map((r) => ({ name: KIND_LABEL[r.kind ?? ""] ?? "Not set", people: num(r.people), activated: num(r.activated), paid: num(r.paid) }));
-  const cards = decisions({ steps: flow.slice(2), sources, kinds, signups, next: nextSignups });
+  const cards = decisions({ steps: flow.slice(2), sources, kinds, signups, next: nextSignups, duringBeta: betaRunning(t) });
 
   // "Do they stay?": for each weekly group of sign-ups, the share active in each week since they joined.
   const cohorts = Array.from({ length: COHORTS }, (_, c) => {
@@ -138,7 +143,7 @@ export default async function Growth() {
         <p className="mt-1 text-[15px] text-mute">From FloorTest&apos;s own numbers: people who joined in the last {WINDOW_DAYS} days, and the last {WEEKS} weeks of activity.</p>
       </header>
 
-      <BetaSection n={beta} />
+      <BetaSection n={beta} windowDays={betaWindowDays(t)} />
 
       {/* Findings first (decision cards), each with the counts behind it. */}
       <section aria-labelledby="dec-h" className={P} style={i(1)}>
@@ -160,7 +165,7 @@ export default async function Growth() {
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <section aria-labelledby="fun-h" className={P} style={i(3)}>
           <h2 id="fun-h" className="text-[16px] font-semibold">From waitlist to paying</h2>
-          <p className="text-[12.5px] text-faint">Last {WINDOW_DAYS} days · each bar is a share of the first step anyone reached</p>
+          <p className="text-[12.5px] text-faint">People who joined in the last {WINDOW_DAYS} days (not the same group as the beta numbers above)</p>
           <ol className="mt-4 space-y-3">
             {flow.map((s, n) => (
               <li key={s.label}>
@@ -169,7 +174,10 @@ export default async function Growth() {
                   <span className="tnum">
                     <b className="font-semibold">{s.n.toLocaleString("en-GB")}</b>
                     {n > 0 &&
-                      (s.ofPrev > 100 ? (
+                      (s.ofPrev == null ? (
+                        // The step before reached nobody, so there's no share to give.
+                        <span className="ml-2 text-[12px] text-faint" aria-label="no share: the step before reached nobody">—</span>
+                      ) : s.ofPrev > 100 ? (
                         // People can skip steps (sign up without the waitlist, pay without keeping a track).
                         <span className="ml-2 text-[12px] text-faint">more than the step before</span>
                       ) : (
@@ -315,14 +323,16 @@ async function loadBeta(): Promise<[BetaAccountRow[], BetaActivityRow[], BetaTra
 }
 
 /** The beta's three weekly targets (docs/beta-launch-plan.md), as three tiles. Small bases show the raw number only. */
-function BetaSection({ n }: { n: BetaNumbers }) {
+function BetaSection({ n, windowDays }: { n: BetaNumbers; windowDays: number | null }) {
   const share = showShare(n.accounts);
-  // Under 5 accounts the base rule is raw count only: no share, no target, no bar.
+  // Under 5 accounts the base rule is raw count only: no share, no target, no bar, no pace.
   const of = (v: number, target: number) => (share ? `${pct(v, n.accounts)}% of ${n.accounts} beta accounts · target ${target} · ` : "");
   const toward = (v: number, target: number) => (share ? Math.min(100, (v / target) * 100) : undefined);
   const hours = n.firstListenHours;
   const fast = hours != null && hours < BETA_TARGETS.firstListenHours;
   const listenShare = showShare(n.listenAccounts);
+  const perActive = n.tracksPerActive;
+  const perShare = showShare(n.weeklyActive);
   return (
     <section aria-labelledby="beta-h" className="admin-panel admin-rise p-5" style={{ "--i": 0 } as React.CSSProperties}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -334,7 +344,7 @@ function BetaSection({ n }: { n: BetaNumbers }) {
       <p className="mt-1 text-[12.5px] text-faint tnum">
         {n.accounts} beta {n.accounts === 1 ? "account" : "accounts"} · {n.invited} invited / {n.other} other · {n.joinedBefore} joined before 1 Nov / {n.joinedSince} since · activity counted from 1 Nov · not counting the owner, ops staff, test accounts or suspended accounts
       </p>
-      <div className="mt-4 grid gap-4 md:grid-cols-3">
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <MonoStat
           i={1}
           label="Weekly active receivers"
@@ -342,7 +352,9 @@ function BetaSection({ n }: { n: BetaNumbers }) {
           pct={toward(n.weeklyActive, BETA_TARGETS.weeklyActive)}
           tone={n.weeklyActive >= BETA_TARGETS.weeklyActive ? "lime" : "violet"}
           caption={`${of(n.weeklyActive, BETA_TARGETS.weeklyActive)}kept or passed a track in the last 7 days`}
-        />
+        >
+          {share && <TargetNotes value={n.weeklyActive} target={BETA_TARGETS.weeklyActive} week={n.week} accounts={n.accounts} verb="active" />}
+        </MonoStat>
         <MonoStat
           i={2}
           label="Activated receivers"
@@ -350,9 +362,21 @@ function BetaSection({ n }: { n: BetaNumbers }) {
           pct={toward(n.activated, BETA_TARGETS.activated)}
           tone={n.activated >= BETA_TARGETS.activated ? "lime" : "violet"}
           caption={`${of(n.activated, BETA_TARGETS.activated)}got a track from a sender and made a decision`}
-        />
+        >
+          {share && <TargetNotes value={n.activated} target={BETA_TARGETS.activated} week={n.week} accounts={n.accounts} verb="activated" />}
+        </MonoStat>
         <MonoStat
           i={3}
+          label="Tracks per active receiver"
+          value={perActive == null ? "—" : perActive.toFixed(1)}
+          pct={perActive != null && perShare ? Math.min(100, (perActive / BETA_TARGETS.tracksPerActive) * 100) : undefined}
+          tone={perActive != null && perActive >= BETA_TARGETS.tracksPerActive ? "lime" : "violet"}
+          caption={`${perShare ? `target ${BETA_TARGETS.tracksPerActive}+ a week · ` : ""}${n.recentTracks} ${n.recentTracks === 1 ? "track" : "tracks"} from senders in the last 7 days`}
+        >
+          {perShare && perActive != null && <TargetNotes value={perActive} target={BETA_TARGETS.tracksPerActive} week={n.week} />}
+        </MonoStat>
+        <MonoStat
+          i={4}
           label="Time to first listen (median)"
           value={formatHours(hours)}
           pct={hours != null && listenShare ? Math.min(100, (hours / BETA_TARGETS.firstListenHours) * 100) : undefined}
@@ -360,7 +384,35 @@ function BetaSection({ n }: { n: BetaNumbers }) {
           caption={`${listenShare ? `target under ${BETA_TARGETS.firstListenHours} h · ` : ""}${n.listened} ${n.listened === 1 ? "track" : "tracks"} listened to · ${n.waiting} waiting for a first listen`}
         />
       </div>
+      {windowDays != null && (
+        // In the first week the 7-day window reaches back before the beta, so it's shorter than Overview's 7 days.
+        <p className="mt-3 text-[12.5px] text-faint">
+          Counting since 1 Nov, so this week covers {windowDays} {windowDays === 1 ? "day" : "days"}.
+        </p>
+      )}
     </section>
+  );
+}
+
+/**
+ * Under a target tile: where a straight line from 0 to the target at week 8 stands this week, and whether the
+ * number is ahead, on pace or behind it; with `accounts`, also how many more accounts the target needs even if every
+ * one counted. Plain words, no alarm colour.
+ */
+function TargetNotes({ value, target, week, accounts, verb }: { value: number; target: number; week: number; accounts?: number; verb?: string }) {
+  const expected = expectedByWeek(target, week);
+  const short = accounts == null ? null : accountsShort(accounts, target);
+  return (
+    <>
+      <p className="mt-2 text-[12.5px] text-mute">
+        By week {week} you&apos;d expect about <span className="tnum">{expected}</span> · <b className="font-semibold text-bone">{paceOf(value, expected)}</b>
+      </p>
+      {short != null && (
+        <p className="mt-1 text-[12.5px] text-faint">
+          {accounts} accounts: even if all are {verb}, you&apos;d need {short} more to reach {target}.
+        </p>
+      )}
+    </>
   );
 }
 
