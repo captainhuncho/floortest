@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import { currentStep, totpCode } from "../src/lib/totp";
 import { OPS_EMAIL, OPS_TOTP_SECRET } from "./ops-account";
 
@@ -32,3 +32,12 @@ export async function opsLogIn(page: Page) {
   await page.waitForURL(/\/admin/);
 }
 
+
+/** Turns the site-wide `ops_shell` switch ("New ops navigation") on or off from Feature switches, as the super admin. */
+export async function flipOpsShell(page: Page, on: boolean) {
+  await page.goto("/admin/switches");
+  const row = page.getByRole("listitem").filter({ hasText: "New ops navigation" });
+  await row.getByRole("button", { name: `${on ? "Turn on" : "Turn off"} New ops navigation` }).click();
+  await page.locator("dialog[open]").getByRole("button", { name: on ? "Turn on" : "Turn off" }).click();
+  await expect(row.getByText(on ? "On" : "Off", { exact: true })).toBeVisible();
+}
