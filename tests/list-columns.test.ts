@@ -33,7 +33,7 @@ test("loadRows still fills every list field from the named columns", async () =>
      VALUES (?,?,'Night Bus','DJ A','tok-cols','audio/c.wav','c.wav','audio/wav',1,?,'House',300,124,'[0.1,0.5]','Hi',?,'kept',?)`,
     desk, sender, t, t, t,
   );
-  const [row] = await loadRows(desk, { keptOnly: true });
+  const [row] = await loadRows(desk, { keptOnly: true, actor: desk });
   assert.equal(row.title, "Night Bus");
   assert.equal(row.sender, "Sam");
   assert.equal(row.genre, "House");
