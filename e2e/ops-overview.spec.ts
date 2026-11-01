@@ -25,6 +25,9 @@ test("ops overview: off is today's Overview; on, Waiting on me sorted by due, a 
     await expect(page.locator("main h1")).toHaveText(/^\d+ things are waiting on you$/);
     await expect(page.getByRole("heading", { name: "Act now" })).toHaveCount(0);
     await expect(page.getByText(/Oldest: Paper Moons – Night Bus/)).toBeVisible();
+    // The list folds after six; the seeded Moderation claim (e2e/ops-moderation.spec.ts) makes more than that.
+    const more = page.getByRole("button", { name: /^Show \d+ more$/ });
+    if (await more.count()) await more.click();
     const titles = await list.getByRole("listitem").evaluateAll((rows) => rows.map((r) => r.querySelector("span > span")?.textContent ?? ""));
     const at = (t: string) => titles.findIndex((x) => x.startsWith(t));
     expect(at("Paper Moons – Night Bus"), "the late takedown first").toBe(0);

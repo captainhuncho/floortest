@@ -5,7 +5,7 @@ import { Icon } from "../AdminNav";
 import { isActive, type AreaToday, type NextDue, type ShellArea, type ShellPage } from "./model";
 
 /** What a quiet count means, said to screen readers (hot counts are "N waiting"). */
-const QUIET: Record<string, string> = { "/admin/feedback": "new", "/admin/waitlist": "not invited yet" };
+const QUIET: Record<string, string> = { "/admin/feedback": "new", "/admin/waitlist": "not invited yet", "/admin/moderation": "with a signal" };
 
 /**
  * The section panel (admin redesign B): the open area's pages with their counts, the next item due there with its

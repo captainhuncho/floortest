@@ -28,6 +28,8 @@ export type KeyInfo = {
   /** A dialog, sheet or the palette is open. */
   dialogOpen: boolean;
   defaultPrevented?: boolean;
+  /** The press came from a button, link or other control, where Space and Enter belong to the control. */
+  onControl?: boolean;
 };
 
 /**
@@ -37,11 +39,16 @@ export type KeyInfo = {
 export function shortcutAllowed(k: KeyInfo) {
   if (k.defaultPrevented || k.metaKey || k.ctrlKey || k.altKey) return false;
   if (k.inField || k.dialogOpen) return false;
+  // Space and Enter press the focused button or link; a shortcut on them must never take that away.
+  if (k.onControl && (k.key === " " || k.key === "Enter")) return false;
   return k.key.length === 1 || k.key === "Enter" || k.key === "Escape";
 }
 
 /** A key press as the shortcut list names it: letters lower case unless Shift made them upper case. */
 export const keyName = (key: string, shift = false) => (shift && key.length === 1 ? key : key.toLowerCase());
+
+/** How the "?" list names a key: the space bar as "Space". */
+export const keyLabel = (combo: string) => (combo === " " ? "Space" : combo);
 
 /**
  * Finds the shortcut for a key, keeping two-key sequences ("g i") in mind. Returns the shortcut to run, or `pending`
