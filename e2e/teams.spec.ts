@@ -66,9 +66,7 @@ test("the owner sees the team, turns on reply approval and invites someone", asy
   await expect(page.getByRole("region", { name: "People (2 of 3 seats)" }).getByText("Lena Listener", { exact: true })).toBeVisible();
   if (!rerun) {
     // Owners manage their team only with two-step sign-in on (owner, 15 Oct): the invite form waits until then.
-    // .first(): while the page refreshes, the notice can briefly exist twice (old and new page), and an exact match
-    // would fail at once on two (seen 1 Nov after main's settings changes). The count check below still means "gone".
-    await expect(page.getByText("Two-step sign-in keeps the whole team safe.").first()).toBeVisible();
+    await expect(page.getByText("Two-step sign-in keeps the whole team safe.")).toBeVisible();
     await expect(page.getByLabel("Email to invite")).toHaveCount(0);
     await page.goto("/dashboard/settings/security");
     // Under load "Set up" showed before React owned it and the click did nothing (1 Nov): wait for React first.
