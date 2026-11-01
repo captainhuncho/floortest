@@ -65,10 +65,10 @@ test("verification proof files keep their own stricter policy: the proxy doesn't
   Object.assign(process.env, { NODE_ENV: "production", SITE_PASSWORD: "", OPS_URL: "" });
   const { NextRequest } = await import("next/server");
   const { proxy, OWN_CSP } = await import("../src/proxy");
-  assert.deepEqual(OWN_CSP, ["/api/admin/verification-proofs/"]);
+  assert.equal(OWN_CSP.length, 1, "only the proof file route sets its own policy");
   const proof = proxy(new NextRequest("https://floortest.app/api/admin/verification-proofs/12"));
   assert.equal(proof.headers.get("content-security-policy"), null, "the route's own CSP stands (tests/verification-proposals.test.ts)");
-  for (const path of ["/api/admin/verification-proofs-x", "/api/admin/verification-proofs", "/admin/verification"]) {
+  for (const path of ["/api/admin/verification-proofs-x", "/api/admin/verification-proofs", "/api/admin/verification-proofs/upload", "/api/admin/verification-proofs/12/x", "/admin/verification"]) {
     const csp = proxy(new NextRequest(`https://floortest.app${path}`)).headers.get("content-security-policy") ?? "";
     assert.match(csp, /frame-ancestors 'none'/, `${path} keeps the page policy`);
   }
