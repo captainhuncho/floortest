@@ -13,6 +13,7 @@ import { CuePoint } from "@/components/CuePoint";
 import { PauseSwitch } from "../PauseSwitch";
 import { LinkCard } from "./LinkCard";
 import { ThemeSwitch } from "./ThemeSwitch";
+import { SendFeedbackRow } from "../FeedbackButton";
 import { currentTheme } from "@/lib/theme";
 
 export const metadata = { title: "Account — FloorTest" };
@@ -210,7 +211,17 @@ export default async function Account() {
             </Group>
             <Group id="about-h" title="About FloorTest">
               <Row href="/contact" icon="mail" title="Contact us" external />
-              <Row href="/contact?topic=feedback" icon="reply" title="Send feedback" external />
+              {/* The in-app form, filed to the Feedback page with this page's path (1 Nov; it used to open /contact as "General"). */}
+              <SendFeedbackRow>
+                <IconBox name="reply" small />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13px] font-semibold text-bone">Send feedback</span>
+                  <span className="block truncate text-[11.5px] text-mute">Straight to the FloorTest team</span>
+                </span>
+                <span className="text-faint transition group-hover:text-bone group-aria-expanded:rotate-90 motion-reduce:transition-none">
+                  <Icon name="chev" className="size-4" />
+                </span>
+              </SendFeedbackRow>
               <Row href="/trust" icon="shield" title="Trust & security" sub="How we keep music private" external />
               <Row href="/terms" icon="prep" title="Terms & conditions" external />
               <Row href="/licenses" icon="prep" title="Legal" external />

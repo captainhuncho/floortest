@@ -20,8 +20,8 @@ const TYPE_TONE: Record<string, Tone> = { Idea: "violet", Bug: "danger", Confusi
 /** When the picked view is empty, this many of the latest items (any status) show underneath, so the page still says something. */
 const LATEST = 3;
 
-type Row = { id: number; user_id: number | null; handle: string | null; name: string; topic: string; message: string; page: string; feedback_status: string; created_at: number };
-const COLS = "m.id, m.user_id, u.handle, m.name, m.topic, m.message, m.page, m.feedback_status, m.created_at";
+type Row = { id: number; user_id: number | null; handle: string | null; name: string; topic: string; message: string; page: string; viewport: number | null; feedback_status: string; created_at: number };
+const COLS = "m.id, m.user_id, u.handle, m.name, m.topic, m.message, m.page, m.viewport, m.feedback_status, m.created_at";
 const FROM = "FROM contact_messages m LEFT JOIN users u ON u.id = m.user_id";
 
 /**
@@ -222,6 +222,12 @@ function Item({ r, i, canAct }: { r: Row; i: number; canAct: boolean }) {
               <>
                 {" · on "}
                 <span className="font-mono text-mute">{r.page}</span>
+              </>
+            )}
+            {r.viewport != null && (
+              <>
+                {" · "}
+                <span className="font-mono text-mute">{r.viewport} px</span>
               </>
             )}
           </span>
