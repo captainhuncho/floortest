@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { stored, useDeviceState } from "@/components/useBrowserValue";
 
-export type IconName = "grid" | "pulse" | "alert" | "inbox" | "users" | "mail" | "list" | "ticket" | "shield" | "flag" | "log" | "chart" | "life" | "rocket" | "back" | "search" | "chevron";
+export type IconName = "grid" | "pulse" | "alert" | "inbox" | "users" | "mail" | "list" | "ticket" | "shield" | "flag" | "log" | "chart" | "life" | "rocket" | "back" | "search" | "chevron" | "clock" | "more" | "panel";
 export type NavItem = { href: string; label: string; badge?: number; icon: IconName };
 export type NavGroup = { id: string; title: string; icon: IconName; sections: { title: string; items: NavItem[] }[] };
 
@@ -30,6 +30,9 @@ export function Icon({ name, className = "size-4" }: { name: IconName; className
     back: "M15 18l-6-6 6-6",
     search: "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4",
     chevron: "M15 18l-6-6 6-6",
+    clock: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2",
+    more: "M6.3 5a1.3 1.3 0 1 1-2.6 0 1.3 1.3 0 0 1 2.6 0zM13.3 5a1.3 1.3 0 1 1-2.6 0 1.3 1.3 0 0 1 2.6 0zM20.3 5a1.3 1.3 0 1 1-2.6 0 1.3 1.3 0 0 1 2.6 0zM6.3 12a1.3 1.3 0 1 1-2.6 0 1.3 1.3 0 0 1 2.6 0zM13.3 12a1.3 1.3 0 1 1-2.6 0 1.3 1.3 0 0 1 2.6 0zM20.3 12a1.3 1.3 0 1 1-2.6 0 1.3 1.3 0 0 1 2.6 0zM6.3 19a1.3 1.3 0 1 1-2.6 0 1.3 1.3 0 0 1 2.6 0zM13.3 19a1.3 1.3 0 1 1-2.6 0 1.3 1.3 0 0 1 2.6 0zM20.3 19a1.3 1.3 0 1 1-2.6 0 1.3 1.3 0 0 1 2.6 0z",
+    panel: "M4 4h16v16H4zM9 4v16",
   }[name];
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
