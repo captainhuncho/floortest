@@ -143,7 +143,7 @@ export function shellAreas(
 
 /** The first thing due in an area, worded on the server so the page and its first paint agree. */
 export type NextDue = { title: string; subtitle: string; href: string; when: string; late: boolean };
-/** Figures only from what was read: how many wait, and how many of those are past the 3-hour target. */
+/** Figures only from what was read: how many wait, and how many of those are past their due time (KIND_DUE_MS). */
 export type AreaToday = { waiting: number; late: number; lateMore: boolean };
 export type ShellData = {
   areas: ShellArea[];

@@ -8,9 +8,12 @@ import { CountUp } from "./CountUp";
 import { configProblems, env } from "@/lib/env";
 import { now as clock, q } from "@/lib/db";
 import { fmtBytes } from "@/lib/format";
-import { ALLOWANCE_WARN, allowances } from "@/lib/allowance";
+import { allowances } from "@/lib/allowance";
 import { lastBackup } from "@/lib/backup";
 import { jobProblems, lastRuns } from "@/lib/cron";
+import { KIND_DUE_MS } from "@/lib/ops-waiting";
+import { healthChecks, healthScore, type Tone } from "./health";
+import { NewOverview } from "./overview/NewOverview";
 
 const DAY = 86_400_000;
 /** Below this, week-on-week percentages are noise ("1 → 3 is +200%"), so only the difference is shown. */
@@ -20,11 +23,12 @@ const SPARK_DAYS = 14;
 /** Recent activity shows this many rows; the rest fold away. */
 const FEED_SHOWN = 5;
 
-type Tone = "ok" | "warn" | "bad" | "idle";
 type Todo = { n: number; label: string; sub: string; href: string; area: string; urgent?: boolean; oldest?: number | null; dueDays?: number };
 
 /** A verdict first, then what needs acting on, how the platform is running, and how this week compares with last. */
 export default async function AdminOverview({ searchParams }: { searchParams: Promise<{ activity?: string }> }) {
+  // The new look (admin redesign B) is one switch: with ops_shell on, Overview is "Waiting on me"; off, exactly as before.
+  if (await switchOn("ops_shell")) return <NewOverview />;
   const withAdminParam = (await searchParams).activity === "all";
   const me = await requireAdmin("overview");
   // The admin log is the super admin's alone, so only they can mix admin actions into the activity feed.
@@ -159,9 +163,7 @@ export default async function AdminOverview({ searchParams }: { searchParams: Pr
 
   const problems = configProblems();
   const takedowns = num(td?.n);
-  const full = storage.filter((a) => a.used >= a.limit * ALLOWANCE_WARN);
-  // A backup that went stale is an alarm; so is none at all once the nightly job has been running for two days.
-  const backupStale = backup ? t - backup.at > 2 * DAY : !!runs.purge && t - num(usr?.first_at) > 2 * DAY;
+  const { checks: health, full, backupStale } = healthChecks({ t, problems, backup, runs, mail, storage, firstAt: num(usr?.first_at) });
   const stuck = num(del?.stuck);
 
   const todo: Todo[] = [
@@ -171,16 +173,16 @@ export default async function AdminOverview({ searchParams }: { searchParams: Pr
     { n: backupStale ? 1 : 0, label: backup ? "Database backup is overdue" : "No database backup yet", sub: backup ? `Last one ${new Date(backup.at).toLocaleDateString("en-GB")}` : "The nightly job is running but hasn't saved a backup", href: "/admin/jobs", area: "monitor", urgent: true },
     { n: full.length, label: "Storage is getting full", sub: full.map((a) => `${a.label} ${Math.round((a.used / a.limit) * 100)}%`).join(" · "), href: "/admin/storage", area: "monitor", urgent: true },
     { n: stuck, label: "Files stuck waiting to be deleted", sub: "Storage keeps refusing them; see Storage", href: "/admin/storage", area: "monitor", urgent: true },
-    { n: takedowns, label: "Takedown claims to decide", sub: "Copyright claims waiting for a decision", href: "/admin/takedowns", area: "trust", urgent: true, oldest: num(td?.at) || null, dueDays: 2 },
-    { n: num(msg?.privacy), label: "Privacy requests", sub: "Copies of data or erasure, due within a month", href: "/admin/privacy", area: "trust", urgent: true, oldest: num(msg?.privacy_at) || null, dueDays: 21 },
+    { n: takedowns, label: "Takedown claims to decide", sub: "Copyright claims waiting for a decision", href: "/admin/takedowns", area: "trust", urgent: true, oldest: num(td?.at) || null, dueDays: KIND_DUE_MS.takedown / DAY },
+    { n: num(msg?.privacy), label: "Privacy requests", sub: "Copies of data or erasure, due within a month", href: "/admin/privacy", area: "trust", urgent: true, oldest: num(msg?.privacy_at) || null, dueDays: KIND_DUE_MS.privacy / DAY },
     { n: num(msg?.appeals), label: "Suspension appeals", sub: "People asking to be restored", href: "/admin/inbox", area: "trust", urgent: true, oldest: num(msg?.appeals_at) || null, dueDays: 7 },
     { n: num(inc?.failed), label: "Email failures", sub: "", href: "/admin/incidents?kind=email_failed", area: "monitor" },
     { n: num(inc?.other), label: "Open incidents", sub: "", href: "/admin/incidents", area: "monitor" },
-    { n: num(msg?.inbox), label: "Inbox", sub: "", href: "/admin/inbox", area: "support", oldest: num(msg?.inbox_at) || null, dueDays: 3 },
+    { n: num(msg?.inbox), label: "Inbox", sub: "", href: "/admin/inbox", area: "support", oldest: num(msg?.inbox_at) || null, dueDays: KIND_DUE_MS.inbox / DAY },
     { n: num(msg?.feedback), label: "New feedback", sub: "", href: "/admin/feedback?status=new", area: "support" },
     { n: num(usr?.verifying), label: "Verification", sub: "", href: "/admin/verification", area: "trust" },
     { n: partnersStuck, label: "Partners to nudge", sub: "", href: "/admin/partners?show=stuck", area: "growth" },
-    { n: num(planReq?.n), label: "Plan requests", sub: "", href: "/admin/plan-requests", area: "growth", oldest: num(planReq?.at) || null, dueDays: 2 },
+    { n: num(planReq?.n), label: "Plan requests", sub: "", href: "/admin/plan-requests", area: "growth", oldest: num(planReq?.at) || null, dueDays: KIND_DUE_MS.plan_request / DAY },
     { n: wait, label: "Waitlist", sub: "", href: "/admin/waitlist", area: "growth" },
   ].filter((x) => x.n > 0 && ok(x.href));
   const now = todo.filter((x) => x.urgent);
@@ -189,19 +191,7 @@ export default async function AdminOverview({ searchParams }: { searchParams: Pr
   const ageDays = (at?: number | null) => (at ? Math.floor((t - at) / DAY) : null);
   const overdue = (x: Todo) => x.oldest != null && x.dueDays != null && (ageDays(x.oldest) ?? 0) >= x.dueDays;
 
-  // Health: one tile per moving part, worst state wins the verdict.
-  const jobTile = (r: { ok: boolean; at: number; ms: number } | null, late: number): [Tone, string] =>
-    !r ? ["idle", "Not run yet"] : !r.ok ? ["bad", `Failed ${new Date(r.at).toLocaleString("en-GB")}`] : t - r.at > late ? ["warn", `Last ${new Date(r.at).toLocaleDateString("en-GB")}`] : ["ok", `OK · ${new Date(r.at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} UTC`];
-  const mailPct = mail ? Math.max(mail.day / mail.limits.day, mail.month / mail.limits.month) : 0;
-  const storagePct = storage.length ? Math.max(...storage.map((a) => a.used / a.limit)) : 0;
-  const health: { label: string; tone: Tone; value: string; href: string }[] = [
-    { label: "Config", tone: problems.length ? "bad" : "ok", value: problems.length ? `${problems.length} problem${problems.length === 1 ? "" : "s"}` : "All set", href: "#health" },
-    { label: "Backup", tone: backupStale ? "bad" : backup ? "ok" : "idle", value: backup ? `${new Date(backup.at).toLocaleDateString("en-GB")} · ${fmtBytes(backup.bytes)}` : "First one tonight", href: "/admin/jobs" },
-    { label: "Cleanup", ...tileOf(jobTile(runs.purge, 1.5 * DAY)), href: "/admin/jobs" },
-    { label: "Digest", ...tileOf(jobTile(runs.digest, 1.5 * DAY)), href: "/admin/jobs" },
-    { label: "Quota", tone: !mail ? "idle" : mail.warn ? "bad" : mailPct > 0.5 ? "warn" : "ok", value: mail ? `${Math.round(mailPct * 100)}% used` : "Unknown", href: "/admin/emails" },
-    { label: "Storage", tone: !storage.length ? "idle" : full.length ? "bad" : storagePct > 0.5 ? "warn" : "ok", value: storage.length ? `${Math.round(storagePct * 100)}% used` : "Unknown", href: "/admin/storage" },
-  ];
+  // Health: one tile per moving part (./health.ts), worst state wins the verdict.
   const shownHealth = health.filter((h) => ok(h.href));
 
   const degraded = health.some((h) => h.tone === "bad") || unavailable.length > 0;
@@ -257,9 +247,7 @@ export default async function AdminOverview({ searchParams }: { searchParams: Pr
   const toneDot: Record<Tone, string> = { ok: "bg-lime", warn: "bg-[var(--admin-amber)]", bad: "bg-danger", idle: "bg-faint" };
   const toneWord: Record<Tone, string> = { ok: "OK", warn: "Warning", bad: "Problem", idle: "Not run yet" };
   const checked = new Date(t).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
-  // Health as one score (pin 119's arc): OK counts fully, a warning half, a problem not at all; "not run yet" is left out.
-  const scored = shownHealth.filter((h) => h.tone !== "idle");
-  const score = scored.length ? Math.round((scored.reduce((n, h) => n + (h.tone === "ok" ? 1 : h.tone === "warn" ? 0.5 : 0), 0) / scored.length) * 100) : 100;
+  const score = healthScore(shownHealth);
   const tracksNow = trend[1][1];
   const tracksBefore = trend[1][2];
   const kept = product.find((m) => m.label === "Kept");
@@ -566,10 +554,6 @@ export default async function AdminOverview({ searchParams }: { searchParams: Pr
       </p>
     </div>
   );
-}
-
-function tileOf([tone, value]: [Tone, string]) {
-  return { tone, value };
 }
 
 /** Daily tracks for 14 days as bars (pin 151): last week faint violet, this week bone, today lime with its number on top. */
