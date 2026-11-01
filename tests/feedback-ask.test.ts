@@ -61,3 +61,38 @@ test("the ask counts the person's own decisions, and answering it on any desk en
   const again = await q.get<{ at: number }>("SELECT feedback_asked_at AS at FROM users WHERE id = ?", ama);
   assert.equal(Number(again!.at), Number(first!.at), "the first answer's time is kept");
 });
+
+// "Not now" asks once more after 10 further decisions (owner, 1 Nov); a second Not now, Send or Don't ask again ends it.
+test("Not now snoozes the ask for 10 decisions, once", async () => {
+  const { shouldAskFeedback, closeOutcome, FEEDBACK_ASK_AGAIN_AFTER } = await import("../src/lib/feedback-ask");
+  assert.equal(FEEDBACK_ASK_AGAIN_AFTER, 10);
+  assert.equal(shouldAskFeedback({ decisions: 50, askedAt: null, snoozedAt: 1, sinceSnooze: 9 }), false, "9 after the snooze: not yet");
+  assert.equal(shouldAskFeedback({ decisions: 50, askedAt: null, snoozedAt: 1, sinceSnooze: 10 }), true, "10 after: asked again");
+  assert.equal(shouldAskFeedback({ decisions: 50, askedAt: 2, snoozedAt: 1, sinceSnooze: 99 }), false, "ended: never");
+  assert.equal(closeOutcome("later", null), "snooze");
+  assert.equal(closeOutcome("later", 1), "end", "a second Not now ends it");
+  assert.equal(closeOutcome("never", null), "end");
+
+  const { q } = await import("../src/lib/db");
+  const { feedbackAskDue, closeFeedbackAskFor } = await import("../src/lib/feedback");
+  // The first decisions happen well before the snooze; the later ones after it.
+  let t = Date.now() - 100_000;
+  const me = (await q.get<{ id: number }>(
+    "INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at) VALUES ('nn@fa.io', 'h', 'nn', 'fann', 'pro', 'UTC', ?) RETURNING id",
+    t,
+  ))!.id;
+  const sender = (await q.get<{ id: number }>("INSERT INTO senders (user_id, email, name, created_at) VALUES (?, 's@fa.io', 'S', ?) RETURNING id", me, t))!.id;
+  const decide = (n: number) => Promise.all(Array.from({ length: n }, () => q.run("INSERT INTO events (user_id, actor_id, sender_id, type, detail, created_at) VALUES (?,NULL,?,'kept','',?)", me, sender, ++t)));
+  await decide(5);
+  assert.equal(await feedbackAskDue(me), true);
+  await closeFeedbackAskFor(me, "later");
+  assert.equal(await feedbackAskDue(me), false, "snoozed");
+  t = Date.now() + 1000;
+  await decide(9);
+  assert.equal(await feedbackAskDue(me), false, "9 more: still snoozed");
+  await decide(1);
+  assert.equal(await feedbackAskDue(me), true, "the 10th after Not now asks again");
+  await closeFeedbackAskFor(me, "later");
+  await decide(30);
+  assert.equal(await feedbackAskDue(me), false, "a second Not now ends it");
+});

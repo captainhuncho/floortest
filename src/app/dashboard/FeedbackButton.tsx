@@ -14,8 +14,8 @@ const SECONDARY =
 /**
  * The feedback form: a kind, a text box and Send. Goes to the admin Feedback page with the page it came from
  * (sendFeedback → lib/feedback) and the window width. `ask` is the one-time ask after a person's 5th decision
- * (FeedbackAsk, lib/feedback-ask): its own question, and Not now / Don't ask again instead of Cancel, either of which
- * closes it for good.
+ * (FeedbackAsk, lib/feedback-ask): its own question, and Not now (asks once more after 10 decisions) / Don't ask again
+ * (closes it for good) instead of Cancel.
  */
 export function FeedbackForm({ ask = false, onClose, className = "" }: { ask?: boolean; onClose: () => void; className?: string }) {
   const [kind, setKind] = useState("Idea");
@@ -24,9 +24,9 @@ export function FeedbackForm({ ask = false, onClose, className = "" }: { ask?: b
   const path = usePathname();
   const toast = useToast();
   const title = ask ? "How's FloorTest working for you?" : "Help shape FloorTest";
-  const dismiss = () => {
+  const dismiss = (choice: "later" | "never") => {
     onClose();
-    if (ask) void closeFeedbackAsk().catch(() => {});
+    if (ask) void closeFeedbackAsk(choice).catch(() => {});
   };
 
   return (
@@ -82,10 +82,10 @@ export function FeedbackForm({ ask = false, onClose, className = "" }: { ask?: b
         </button>
         {ask ? (
           <>
-            <button type="button" className={SECONDARY} onClick={dismiss}>
+            <button type="button" className={SECONDARY} onClick={() => dismiss("later")}>
               Not now
             </button>
-            <button type="button" className="inline-flex min-h-11 items-center px-1.5 text-[12.5px] font-medium text-mute underline-offset-4 hover:text-bone hover:underline" onClick={dismiss}>
+            <button type="button" className="inline-flex min-h-11 items-center px-1.5 text-[12.5px] font-medium text-mute underline-offset-4 hover:text-bone hover:underline" onClick={() => dismiss("never")}>
               Don&apos;t ask again
             </button>
           </>
