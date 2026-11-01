@@ -277,7 +277,7 @@ export default async function Growth() {
 
 /**
  * The beta's rows in three queries: every account that could count (whenever it was made: invites went out before
- * 1 Nov), then submitted/decision events (events_time) and tracks with the sender's email (tracks_created), both
+ * 1 Nov), then decision events (events_time) and tracks with the sender's email (tracks_created), both
  * bounded to the beta start (1 Nov, UTC). Who counts and the maths are in lib/growth (betaNumbers), so they're tested
  * apart from the database.
  */
@@ -294,7 +294,7 @@ async function loadBeta(): Promise<[BetaAccountRow[], BetaActivityRow[], BetaTra
     q.all<BetaActivityRow>(
       `SELECT e.user_id, e.type, COUNT(*) AS n, MAX(e.created_at) AS last_at
        FROM events e
-       WHERE e.created_at >= ? AND e.type IN ('submitted', 'kept', 'passed')
+       WHERE e.created_at >= ? AND e.type IN ('kept', 'passed')
        GROUP BY e.user_id, e.type`,
       BETA_START,
     ),
@@ -349,7 +349,7 @@ function BetaSection({ n }: { n: BetaNumbers }) {
           value={`${n.activated}`}
           pct={toward(n.activated, BETA_TARGETS.activated)}
           tone={n.activated >= BETA_TARGETS.activated ? "lime" : "violet"}
-          caption={`${of(n.activated, BETA_TARGETS.activated)}got a track and made a decision`}
+          caption={`${of(n.activated, BETA_TARGETS.activated)}got a track from a sender and made a decision`}
         />
         <MonoStat
           i={3}

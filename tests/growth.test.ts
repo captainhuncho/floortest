@@ -121,19 +121,17 @@ test("beta numbers: who counts, the 7-day edge, activation and time to first lis
     acct(9, "quiet@example.com", { created_at: BETA_START - 5 * D }),
   ];
   const activity = [
-    // Decided exactly 7 days ago: inside the window. Its track was deleted, but the submitted event still counts.
-    ev(1, "submitted", now - 9 * D),
+    // Decided exactly 7 days ago: inside the window.
     ev(1, "kept", now - 7 * D),
     // Decided 7 days and 1 ms ago: outside the window, still activated.
-    ev(2, "submitted", now - 10 * D, 2),
+    // Its only listened track was deleted later; it was still received, so account 2 is activated.
     ev(2, "passed", now - 7 * D - 1),
     // Joined in October, active after 1 Nov: counts. Nothing arrived, so not activated.
     ev(3, "kept", now - D),
     // Joined in October and active only in October (23:30Z on 31 Oct is still October): doesn't count.
-    ev(8, "submitted", BETA_START - 30 * 60_000),
     ev(8, "kept", BETA_START - 30 * 60_000),
     // Excluded accounts never count, however busy.
-    ...[4, 5, 6, 7].flatMap((u) => [ev(u, "submitted", now - H, 5), ev(u, "kept", now - H, 5)]),
+    ...[4, 5, 6, 7].flatMap((u) => [ev(u, "kept", now - H, 5)]),
   ];
   const tracks = [
     { user_id: 1, created_at: BETA_START + D, played_at: BETA_START + D + 2 * H, deleted_at: null, sender_email: "artist@example.com" },
@@ -166,4 +164,17 @@ test("beta numbers with no listens yet show no median", () => {
   assert.equal(formatHours(n.firstListenHours), "—");
   assert.equal(n.waiting, 1);
   assert.deepEqual([n.weeklyActive, n.activated, n.listened], [0, 0, 0]);
+});
+
+test("a desk that only sent itself tracks and decided on one is not activated", () => {
+  const now = BETA_START + 3 * D;
+  const accounts = [acct(1, "solo@example.com", { team_emails: ["mate@example.com"] })];
+  const tracks = [
+    { user_id: 1, created_at: BETA_START + D, played_at: BETA_START + D + H, deleted_at: null, sender_email: "Solo@Example.com" },
+    { user_id: 1, created_at: BETA_START + D, played_at: null, deleted_at: null, sender_email: "mate@example.com" },
+  ];
+  const n = betaNumbers({ now, adminEmails: [], accounts, activity: [ev(1, "kept", now - H)], tracks });
+  assert.equal(n.weeklyActive, 1, "the decision still makes them active");
+  assert.equal(n.activated, 0, "no track from a real sender, so not activated");
+  assert.equal(n.firstListenHours, null);
 });

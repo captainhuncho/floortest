@@ -154,7 +154,7 @@ export function isBetaAccount(u: Pick<BetaAccountRow, "email" | "suspended_at" |
   return !email.endsWith("@floortest.test");
 }
 
-/** Per account and event type ('submitted', 'kept' or 'passed'): how many since the start, and the latest one. */
+/** Per account and decision type ('kept' or 'passed'): how many since the start, and the latest one. */
 export type BetaActivityRow = { user_id: number; type: string; n: number; last_at: number };
 
 /** A track on a beta account since the start, with its sender's email (lower case). */
@@ -197,7 +197,6 @@ export function betaNumbers(input: { now: number; adminEmails: readonly string[]
   const joinedBefore = [...beta.values()].filter((u) => Number(u.created_at) < start).length;
   const invited = [...beta.values()].filter((u) => u.invited).length;
   const weekAgo = input.now - WEEK_MS;
-  const submitted = new Set<number>();
   const decided = new Set<number>();
   const recent = new Set<number>();
   for (const a of input.activity) {
@@ -205,26 +204,28 @@ export function betaNumbers(input: { now: number; adminEmails: readonly string[]
     const last = Number(a.last_at);
     // Activity before the beta start never counts (the query is bounded the same way).
     if (!beta.has(id) || !(Number(a.n) > 0) || last < start) continue;
-    if (a.type === "submitted") submitted.add(id);
-    else if (a.type === "kept" || a.type === "passed") {
+    if (a.type === "kept" || a.type === "passed") {
       decided.add(id);
       // The last 7 days include the moment exactly 7 days ago.
       if (last >= weekAgo && last <= input.now) recent.add(id);
     }
   }
   const weeklyActive = recent.size;
-  const activated = [...decided].filter((id) => submitted.has(id)).length;
   const waits: number[] = [];
   const listenAccounts = new Set<number>();
+  // "Link received ≥ 1 track" (the plan): a track since the start from a sender who isn't the desk or its team.
+  const received = new Set<number>();
   let waiting = 0;
   for (const t of input.tracks) {
     const account = beta.get(Number(t.user_id));
     if (!account || Number(t.created_at) < start || isSelfSent(t.sender_email, account)) continue;
+    received.add(Number(t.user_id));
     if (t.played_at != null) {
       waits.push(Math.max(0, Number(t.played_at) - Number(t.created_at)));
       listenAccounts.add(Number(t.user_id));
     } else if (t.deleted_at == null) waiting++;
   }
+  const activated = [...decided].filter((id) => received.has(id)).length;
   const mid = median(waits);
   return {
     week: betaWeek(input.now, start),
