@@ -81,10 +81,11 @@
   40%, 100% { transform: scale(2.6); opacity: 0; }
 }
 
-/* Arrive once: panels fade up 6px in a short stagger; lines draw; numbers count (CountUp). */
+/* Arrive once, at a pace you can watch (owner, 1 Nov: "medium speed where you sit down and you see progress"):
+   panels fade up 6px in a gentle stagger; lines draw and bars fill over ~1.5 s; numbers count (CountUp). */
 .admin-rise {
-  animation: admin-rise 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  animation-delay: calc(var(--i, 0) * 35ms);
+  animation: admin-rise 560ms cubic-bezier(0.22, 0.7, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
 }
 @keyframes admin-rise {
   from { opacity: 0; transform: translateY(6px); }
@@ -92,23 +93,23 @@
 .admin-draw {
   stroke-dasharray: 1;
   stroke-dashoffset: 1;
-  animation: admin-draw 900ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-  animation-delay: calc(120ms + var(--i, 0) * 40ms);
+  animation: admin-draw 1800ms cubic-bezier(0.45, 0, 0.2, 1) forwards;
+  animation-delay: calc(300ms + var(--i, 0) * 90ms);
 }
 @keyframes admin-draw {
   to { stroke-dashoffset: 0; }
 }
 .admin-fill {
   opacity: 0;
-  animation: admin-fade 400ms ease-out 700ms forwards;
+  animation: admin-fade 600ms ease-out 1600ms forwards;
 }
 @keyframes admin-fade {
   to { opacity: 1; }
 }
 .admin-grow {
   transform-origin: left;
-  animation: admin-grow 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  animation-delay: calc(200ms + var(--i, 0) * 60ms);
+  animation: admin-grow 1500ms cubic-bezier(0.45, 0, 0.2, 1) both;
+  animation-delay: calc(350ms + var(--i, 0) * 110ms);
 }
 @keyframes admin-grow {
   from { transform: scaleX(0); }
@@ -116,27 +117,33 @@
 /* Bars and blocks rise from the floor, one after another. */
 .admin-grow-y {
   transform-origin: bottom;
-  animation: admin-grow-y 650ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  animation-delay: calc(150ms + var(--i, 0) * 35ms);
+  animation: admin-grow-y 1300ms cubic-bezier(0.45, 0, 0.2, 1) both;
+  animation-delay: calc(300ms + var(--i, 0) * 70ms);
 }
 @keyframes admin-grow-y {
   from { transform: scaleY(0); }
 }
 /* Gauge ticks light up in order, like a level meter. */
 .admin-tick {
-  animation: admin-tick 220ms ease-out both;
-  animation-delay: calc(250ms + var(--i, 0) * 28ms);
+  animation: admin-tick 450ms ease-out both;
+  animation-delay: calc(350ms + var(--i, 0) * 55ms);
 }
 @keyframes admin-tick {
   from { opacity: 0.12; }
 }
+/* Seen this page already this session (AdminMotion.tsx): everything is simply there. Presses still respond. */
+.admin-still :is(.admin-rise, .admin-area, .admin-grow, .admin-grow-y, .admin-tick, .admin-panel) { animation: none; }
+.admin-still .admin-draw { animation: none; stroke-dashoffset: 0; }
+.admin-still .admin-fill { animation: none; opacity: 1; }
+.admin-still .admin-canvas main :is(.rounded-md, .rounded-lg).border.border-line,
+.admin-still .admin-canvas main .card { animation: none; }
 .admin-press { transition: transform 160ms cubic-bezier(0.32, 0.72, 0, 1), background-color 150ms, color 150ms; }
 .admin-press:active { transform: scale(0.97); }
 .admin-lift { transition: background-color 150ms, box-shadow 200ms, transform 260ms cubic-bezier(0.32, 0.72, 0, 1); }
 @media (hover: hover) {
   .admin-lift:hover { transform: translateY(-2px); }
 }
-.admin-area { animation: admin-rise 200ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.admin-area { animation: admin-rise 420ms cubic-bezier(0.22, 0.7, 0.2, 1) both; }
 .admin-side { transition: width 240ms cubic-bezier(0.3, 0.7, 0.2, 1); }
 
 /* Keyboard focus is always visible in ops. */
@@ -180,7 +187,7 @@
     0 0 0 1px color-mix(in srgb, var(--color-bone) 8%, transparent),
     inset 0 1px 0 color-mix(in srgb, var(--color-bone) 7%, transparent),
     0 18px 40px -24px rgb(0 0 0 / 0.55);
-  animation: admin-rise 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: admin-rise 560ms cubic-bezier(0.22, 0.7, 0.2, 1) both;
 }
 /* Boxes inside boxes become calm tiles with concentric corners, not panels on panels. */
 .admin-canvas main :is(.rounded-md, .rounded-lg).border.border-line :is(.rounded-md, .rounded-lg).border.border-line,

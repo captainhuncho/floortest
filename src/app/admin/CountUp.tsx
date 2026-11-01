@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 
 const SEEN = "floortest-admin-counted";
+const COUNT_MS = 1500;
 
 /**
  * A number that counts up from 0 the first time the Overview opens in a browser session (owner, 1 Nov: ops should
@@ -25,8 +26,9 @@ export function CountUp({ value, className }: { value: number; className?: strin
     const start = performance.now();
     let raf = 0;
     const step = (now: number) => {
-      const p = Math.min(1, (now - start) / 650);
-      el.textContent = fmt(value * (1 - Math.pow(1 - p, 3)));
+      // In step with the bars (1.5 s, owner 1 Nov: slow enough to watch), easing in and out like them.
+      const p = Math.min(1, (now - start) / COUNT_MS);
+      el.textContent = fmt(value * (p < 0.5 ? 4 * p ** 3 : 1 - (-2 * p + 2) ** 3 / 2));
       if (p < 1) raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
