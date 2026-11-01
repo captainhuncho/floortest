@@ -1,18 +1,13 @@
 import { requireAdmin } from "@/lib/admin";
 import Link from "next/link";
 import { q } from "@/lib/db";
+import { INCIDENT_KIND_LABEL } from "@/lib/incident-kinds";
 import { ConfirmButton } from "../AdminUi";
 import { resolveAllIncidents, resolveIncident } from "../actions";
 import { LevelPill, LogTime, PageHead } from "../PinParts";
 import { OpsForm } from "../OpsForm";
 
-const KINDS: Record<string, string> = {
-  server_error: "Server error",
-  upload_failed: "Upload failed",
-  upload_rejected: "Upload refused",
-  cron_failed: "Scheduled job failed",
-  email_failed: "Email failed",
-};
+const KINDS = INCIDENT_KIND_LABEL;
 /** A visitor's file being refused is information, not a fault: it never goes on the to-do list. */
 const INFO = new Set(["upload_rejected"]);
 

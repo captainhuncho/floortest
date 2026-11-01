@@ -3,6 +3,7 @@ import { q } from "@/lib/db";
 import { JOBS, lastRuns, type JobName } from "@/lib/cron";
 import { can, type OpsAccess } from "@/lib/ops-access";
 import type { Need } from "@/lib/ops-perms";
+import { incidentKindLabel } from "@/lib/incident-kinds";
 
 /**
  * Ops → Overview → "Waiting on me" (ops redesign B, 1 Nov): everything across ops that is waiting for a person, in one
@@ -107,12 +108,13 @@ const SOURCES: Record<Exclude<WaitingKind, "job_failed">, Source> = {
     count: () => q.count("SELECT COUNT(*) AS n FROM takedowns WHERE status = 'open'"),
   },
   plan_request: {
-    rows: () => q.all<Row>(`SELECT r.id, '@' || u.handle AS title, 'Asks for ' || r.plan AS subtitle, r.created_at FROM plan_requests r JOIN users u ON u.id = r.user_id WHERE r.status = 'pending' ORDER BY r.created_at LIMIT ${LIMIT}`),
+    rows: () => q.all<Row>(`SELECT r.id, '@' || u.handle AS title, 'Asks for ' || COALESCE(pl.name, r.plan) AS subtitle, r.created_at FROM plan_requests r JOIN users u ON u.id = r.user_id LEFT JOIN plans pl ON pl.id = r.plan WHERE r.status = 'pending' ORDER BY r.created_at LIMIT ${LIMIT}`),
     count: () => q.count("SELECT COUNT(*) AS n FROM plan_requests WHERE status = 'pending'"),
   },
   incident: {
     // Rejected uploads are a sender's problem, not ops' (as the rail's badge counts them).
-    rows: () => q.all<Row>(`SELECT id, message AS title, kind AS subtitle, created_at FROM incidents WHERE resolved_at IS NULL AND kind <> 'upload_rejected' ORDER BY created_at LIMIT ${LIMIT}`),
+    // The kind in plain words ("Scheduled job failed"), never its slug.
+    rows: async () => (await q.all<Row>(`SELECT id, message AS title, kind AS subtitle, created_at FROM incidents WHERE resolved_at IS NULL AND kind <> 'upload_rejected' ORDER BY created_at LIMIT ${LIMIT}`)).map((r) => ({ ...r, subtitle: incidentKindLabel(r.subtitle) })),
     count: () => q.count("SELECT COUNT(*) AS n FROM incidents WHERE resolved_at IS NULL AND kind <> 'upload_rejected'"),
   },
 };

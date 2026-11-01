@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
-import { opsLogIn } from "./ops-login";
+import { flipOpsShell, opsLogIn } from "./ops-login";
 import { AREAS } from "../src/app/admin/shell/model";
 
 /**
@@ -8,13 +8,7 @@ import { AREAS } from "../src/app/admin/shell/model";
  * sidebar; on, those are gone and the rail, panel and top bar (phones: the bottom bar and More) reach every page. One
  * sign-in for all of it (a fresh two-step code can take half a minute), and the switch goes back off at the end.
  */
-const flip = async (page: Page, on: boolean) => {
-  await page.goto("/admin/switches");
-  const row = page.getByRole("listitem").filter({ hasText: "New ops navigation" });
-  await row.getByRole("button", { name: `${on ? "Turn on" : "Turn off"} New ops navigation` }).click();
-  await page.locator("dialog[open]").getByRole("button", { name: on ? "Turn on" : "Turn off" }).click();
-  await expect(row.getByText(on ? "On" : "Off", { exact: true })).toBeVisible();
-};
+const flip = flipOpsShell;
 
 const oldNav = (page: Page) => page.getByRole("navigation", { name: "Admin areas" });
 const rail = (page: Page) => page.getByRole("navigation", { name: "Ops areas" });
