@@ -128,8 +128,8 @@ export function Stepper({ steps, done, status, failed }: { steps: string[]; done
   );
 }
 
-/** Pin 96's "Call duration" card: a label, a big mono figure, a bar under it and a short caption. */
-export function MonoStat({ label, value, caption, pct, tone = "lime", i = 0 }: { label: string; value: string; caption: string; pct?: number; tone?: Tone; i?: number }) {
+/** Pin 96's "Call duration" card: a label, a big mono figure, a bar under it and a short caption (plus optional notes under it). */
+export function MonoStat({ label, value, caption, pct, tone = "lime", i = 0, children }: { label: string; value: string; caption: string; pct?: number; tone?: Tone; i?: number; children?: ReactNode }) {
   return (
     <div className="admin-panel admin-rise p-5" style={{ "--i": i } as React.CSSProperties}>
       <p className="text-[13px] font-medium text-mute">{label}</p>
@@ -140,6 +140,7 @@ export function MonoStat({ label, value, caption, pct, tone = "lime", i = 0 }: {
         </span>
       )}
       <p className="mt-2.5 font-mono text-[11.5px] text-faint">{caption}</p>
+      {children}
     </div>
   );
 }

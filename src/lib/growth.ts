@@ -60,15 +60,24 @@ const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0);
 
 /**
  * Plain findings from the numbers, most useful first. Each says what it saw and what to do; nothing is claimed
- * without the counts behind it.
+ * without the counts behind it. `duringBeta`: while the beta runs, getting people a track and a decision matters
+ * more than paying, so the biggest drop is picked from the steps before the last one (paying), and the paying step's
+ * drop comes at the end instead (owner, 1 Nov).
  */
-export function decisions(input: { steps: FunnelStep[]; sources: Group[]; kinds: Group[]; signups: number[]; next: Point[] }): Card[] {
+export function decisions(input: { steps: FunnelStep[]; sources: Group[]; kinds: Group[]; signups: number[]; next: Point[]; duringBeta?: boolean }): Card[] {
   const cards: Card[] = [];
-  const drop = biggestDrop(input.steps);
+  const steps = input.duringBeta ? input.steps.slice(0, -1) : input.steps;
+  const drop = biggestDrop(steps);
   if (drop && drop.ofPrev != null && drop.ofPrev < 60) {
-    const before = input.steps[input.steps.indexOf(drop) - 1];
+    const before = steps[steps.indexOf(drop) - 1];
     cards.push({ title: `Biggest drop: ${before.label.toLowerCase()} → ${drop.label.toLowerCase()}`, detail: `Only ${drop.ofPrev}% make that step (${drop.n} of ${before.n}). Fixing this step moves every number after it.`, tone: "act" });
   }
+  const last = input.steps.length > 1 ? input.steps[input.steps.length - 1] : null;
+  const lastBefore = last ? input.steps[input.steps.length - 2] : null;
+  const payDrop =
+    input.duringBeta && last && lastBefore && last.ofPrev != null && last.ofPrev < 60
+      ? { title: `${lastBefore.label} → ${last.label.toLowerCase()}`, detail: `${last.ofPrev}% make that step (${last.n} of ${lastBefore.n}). During the beta, tracks arriving and getting decided come first.`, tone: "watch" as const }
+      : null;
   const bestOf = (groups: Group[]) => groups.filter((g) => g.people >= MIN_GROUP).sort((a, b) => pct(b.paid, b.people) - pct(a.paid, a.people) || b.people - a.people);
   const kinds = bestOf(input.kinds);
   if (kinds.length >= 2 && pct(kinds[0].paid, kinds[0].people) > 0) {
@@ -92,6 +101,7 @@ export function decisions(input: { steps: FunnelStep[]; sources: Group[]; kinds:
     const total = input.next.reduce((a, p) => a + p.value, 0);
     cards.push({ title: `About ${total} sign-ups in the next 4 weeks`, detail: `Likely between ${input.next.reduce((a, p) => a + p.low, 0)} and ${input.next.reduce((a, p) => a + p.high, 0)}, if the last weeks are a fair guide. A projection, not a promise.`, tone: "watch" });
   }
+  if (payDrop) cards.push(payDrop);
   return cards;
 }
 
@@ -109,7 +119,20 @@ export const BETA_START = Date.UTC(2026, 10, 1);
 export const BETA_WEEKS = 8;
 /** Below this many accounts in a metric's base, show the raw number only: no percentage and no target bar. */
 export const SMALL_BASE = 5;
-export const BETA_TARGETS = { weeklyActive: 15, activated: 25, firstListenHours: 48 } as const;
+export const BETA_TARGETS = { weeklyActive: 15, activated: 25, firstListenHours: 48, tracksPerActive: 10 } as const;
+
+/** Whether the beta is still on: from the start until the end of week 8. */
+export const betaRunning = (now: number, start = BETA_START) => now < start + BETA_WEEKS * 7 * 86_400_000;
+
+/** Where a straight line from 0 at the start to `target` at week 8 stands in `week`: ceil(target × week / 8). */
+export const expectedByWeek = (target: number, week: number) => Math.ceil((target * Math.min(BETA_WEEKS, Math.max(0, week))) / BETA_WEEKS);
+
+export type Pace = "ahead" | "on pace" | "behind";
+/** Against that line: behind only when below it, on pace when level, ahead when above. */
+export const paceOf = (n: number, expected: number): Pace => (n < expected ? "behind" : n > expected ? "ahead" : "on pace");
+
+/** How many more accounts it would take to reach `target` even if every beta account counted; null when there are enough. */
+export const accountsShort = (accounts: number, target: number): number | null => (accounts < target ? target - accounts : null);
 
 const DAY_MS = 86_400_000;
 const WEEK_MS = 7 * DAY_MS;
@@ -188,6 +211,10 @@ export type BetaNumbers = {
   waiting: number;
   /** Accounts behind the median (beta accounts with at least one listened track). */
   listenAccounts: number;
+  /** Tracks from real senders (the self-sent rule) delivered in the last 7 days, counted from the start. */
+  recentTracks: number;
+  /** recentTracks ÷ weeklyActive, or null with no weekly active receivers. */
+  tracksPerActive: number | null;
 };
 
 /**
@@ -225,11 +252,14 @@ export function betaNumbers(input: { now: number; adminEmails: readonly string[]
   const listenAccounts = new Set<number>();
   // "Link received ≥ 1 track" (the plan): a track since the start from a sender who isn't the desk or its team.
   const received = new Set<number>();
+  let recentTracks = 0;
   let waiting = 0;
   for (const t of input.tracks) {
     const account = beta.get(Number(t.user_id));
     if (!account || Number(t.created_at) < start || isSelfSent(t.sender_email, account)) continue;
     received.add(Number(t.user_id));
+    // The last 7 days, never before the start (the same window as weekly active).
+    if (Number(t.created_at) >= Math.max(start, weekAgo) && Number(t.created_at) <= input.now) recentTracks++;
     if (t.played_at != null) {
       waits.push(Math.max(0, Number(t.played_at) - Number(t.created_at)));
       listenAccounts.add(Number(t.user_id));
@@ -250,6 +280,8 @@ export function betaNumbers(input: { now: number; adminEmails: readonly string[]
     listened: waits.length,
     waiting,
     listenAccounts: listenAccounts.size,
+    recentTracks,
+    tracksPerActive: weeklyActive ? recentTracks / weeklyActive : null,
   };
 }
 
