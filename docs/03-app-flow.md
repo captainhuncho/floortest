@@ -137,6 +137,15 @@ Edit mode is bound to the exact ops session that opened it (pass and cookie are 
    sidebar: Essentials (Overview, Inbox, Users, Moderation) + the open area's pages
    each page needs its permission, else ─► /admin/no-access
    phones: bottom bar Home · Inbox · Users · Safety · More (More ─► full menu)
+   switch ops_shell on (admin redesign B, src/app/admin/shell/): the top bar and sidebar above are gone, instead
+   rail (≥768 px): Overview · Support · Trust & safety · Growth · Product · Platform · Admin, each "N waiting"
+      (Waiting on me, src/lib/ops-waiting.ts), then ⌘K and the profile (Sign out)
+      ─► an area ─► the panel shows its pages (with counts), Next due (─► Open) and Today (waiting, past 3 h)
+      panel docked from 1100 px (‹ collapses it; the rail's panel button brings it back); narrower or collapsed,
+      it opens over the page and Esc, a click away or a page change closes it
+   top bar: Ops › area › page · ⌘K search · the time
+   g then o / s / t / g / p / l / a ─► that area's first page
+   phones: bottom bar Waiting (─► Overview) · Inbox · Users · Search (⌘K) · More (─► sheet with every area and page)
 ⌘K / Ctrl+K (any ops page, not over another dialog; src/app/admin/kit/Palette.tsx)
    ─► type ─┬─ people (Users (view) only; 2+ characters; name, @handle or email: the part before the @ unless you
             │    type an @, then the whole address; exact @handle first, then names starting with it; ≤ 8; 60 searches

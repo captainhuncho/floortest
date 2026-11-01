@@ -62,6 +62,11 @@ export const SWITCHES = {
     initial: false,
     targeted: true,
   },
+  ops_shell: {
+    label: "New ops navigation",
+    description: "Ops only (admin redesign B): the rail, section panel and top bar on wide screens and the bottom bar on phones replace the top tabs and sidebar. Off: ops looks as before. Nothing changes outside ops.",
+    initial: false,
+  },
   uploads_paused: {
     label: "Pause all uploads",
     description: "Maintenance switch: every receiver's link stops taking new tracks, with a short notice to senders. Nothing is lost.",
