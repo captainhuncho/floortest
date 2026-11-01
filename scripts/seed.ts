@@ -116,8 +116,11 @@ async function main() {
     await db.run("UPDATE collections SET allow_sharing = 1 WHERE id = ?", villagers);
     // Two listeners with confirmed emails (test-only accounts): one the owner adds, one who has to ask; and a confirmed
     // sender, since a new account can't send until its email is confirmed; and a confirmed account of its own for the
-    // passkey tests and one for the two-factor test (a passkey or two-factor needs a confirmed email).
-    for (const [email, name, handle] of [["listener@floortest.test", "Lena Listener", "lena"], ["stranger@floortest.test", "Sam Stranger", "samx"], ["sender@floortest.test", "Eddie Tester", "eddie"], ["keys@floortest.test", "Kit Keys", "kitkeys"], ["tfa@floortest.test", "Tess Twostep", "tesstfa"]])
+    // passkey tests and one for the two-factor test (a passkey or two-factor needs a confirmed email). Six confirmed
+    // senders for e2e/scanner-wake.spec.ts, one per repeat, so its sends never meet the five-a-day limit per sender or
+    // use up sender@'s (1 Nov).
+    const scanners = Array.from({ length: 6 }, (_, i) => [`scan${i + 1}@floortest.test`, `Scan Tester ${i + 1}`, `scantest${i + 1}`]);
+    for (const [email, name, handle] of [["listener@floortest.test", "Lena Listener", "lena"], ["stranger@floortest.test", "Sam Stranger", "samx"], ["sender@floortest.test", "Eddie Tester", "eddie"], ["keys@floortest.test", "Kit Keys", "kitkeys"], ["tfa@floortest.test", "Tess Twostep", "tesstfa"], ...scanners])
       await db.run(
         "INSERT INTO users (email, password_hash, name, handle, plan, tz, email_verified_at, created_at) VALUES (?,?,?,?,?,?,?,?)",
         email,

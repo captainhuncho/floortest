@@ -1,5 +1,7 @@
 "use client";
 
+// The form brings its own field styles, so it looks right outside the (auth) layout too (ops sign-in, 1 Nov).
+import "./auth.css";
 import { Turnstile } from "@/components/Turnstile";
 import { SourceField } from "@/components/SourceField";
 import { useActionForm } from "@/components/useActionForm";
