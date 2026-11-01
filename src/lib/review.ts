@@ -2,7 +2,7 @@
 import "server-only";
 import { emailText } from "./email-copy";
 import { drainNow, retireTrackFiles } from "./deletion";
-import { isDecision, logEvent, now, q, type Decision, type Sender, type Track, type User } from "./db";
+import { isDecision, logEvent, logEvents, now, q, type Decision, type Sender, type Track, type User } from "./db";
 import { APP_URL, deliverLater, queueMail } from "./mail";
 import { alertIfFull } from "./notify";
 import { LISTEN_BEAT_CAP_MS, listenThreshold } from "./plans";
@@ -133,6 +133,36 @@ export async function decide(user: User, t: Track, decision: Decision) {
   return { prev, eventId };
 }
 
+const placeholders = (ids: number[]) => ids.map(() => "?").join(",");
+
+/**
+ * Keep or "not for me" for a batch from the List view: one update and one activity insert for the lot, together or not at
+ * all. Tracks that already hold this call are left alone; the lock is checked on the rows as they are now, as in `decide`.
+ * A batch has no undo, so nothing is read first. `locked` counts the tracks a member couldn't change.
+ */
+export async function decideMany(user: User, tracks: Pick<Track, "id" | "decision">[], decision: Decision) {
+  const ids = tracks.filter((t) => t.decision !== decision).map((t) => t.id);
+  if (!ids.length) return { changed: 0, locked: 0 };
+  const role = user.role ?? "owner";
+  const changed = await q.tx(async (db) => {
+    const rows = await db.all<{ id: number; sender_id: number }>(
+      `UPDATE tracks SET decision = ?, decided_at = ?, decided_by = ?, decided_role = ?, set_cleared_at = NULL, expiry_warned_at = NULL
+       WHERE user_id = ? AND id IN (${placeholders(ids)}) AND decision IS DISTINCT FROM ? AND ${UNLOCKED} RETURNING id, sender_id`,
+      decision,
+      now(),
+      user.actor_id ?? user.id,
+      role,
+      user.id,
+      ...ids,
+      decision,
+      role,
+    );
+    await logEvents(rows.map((r) => ({ user_id: user.id, actor_id: user.actor_id, sender_id: r.sender_id, track_id: r.id, type: decision, detail: "" })), db);
+    return rows.length;
+  });
+  return { changed, locked: ids.length - changed };
+}
+
 export async function undoDecision(user: User, t: Track, prev: { decision: unknown; decided_at: unknown }, eventId: number) {
   // The undo token round-trips through the browser: accept only values this app could have produced.
   const decision = isDecision(prev.decision) ? prev.decision : null;
@@ -168,6 +198,20 @@ export async function clearDecision(user: Pick<User, "role">, t: Pick<Track, "id
   return r.changes > 0;
 }
 
+/** Clears the calls on a batch in one update; `locked` counts the ones a member couldn't clear. */
+export async function clearDecisions(user: Pick<User, "id" | "role">, tracks: Pick<Track, "id" | "decision">[]) {
+  const ids = tracks.filter((t) => t.decision).map((t) => t.id);
+  if (!ids.length) return { changed: 0, locked: 0 };
+  const r = await q.run(
+    `UPDATE tracks SET decision = NULL, decided_at = NULL, decided_by = NULL, decided_role = NULL, expiry_warned_at = NULL
+     WHERE user_id = ? AND id IN (${placeholders(ids)}) AND decision IS NOT NULL AND ${UNLOCKED}`,
+    user.id,
+    ...ids,
+    user.role ?? "owner",
+  );
+  return { changed: r.changes, locked: ids.length - r.changes };
+}
+
 export async function reply(user: User, s: Sender, t: Track | undefined, body: string) {
   // The email, the track's "replied" mark and the log entry together (Codex review, phase B item 4).
   const id = await q.tx(async (db) => {
@@ -189,17 +233,24 @@ export async function reply(user: User, s: Sender, t: Track | undefined, body: s
 
 /* ───────────────────────── Removal & retention ───────────────────────── */
 
-/** Removes the audio and frees the slot. History stays attached to the sender. */
-export async function deleteTrack(user: User, t: Track) {
+/**
+ * Removes the audio and frees the slots. History stays attached to the sender. A batch is one transaction (files, rows,
+ * activity), then one storage drain and one capacity check for the lot.
+ */
+export async function deleteTracks(user: User, tracks: Pick<Track, "id" | "sender_id">[]) {
+  if (!tracks.length) return;
+  const ids = tracks.map((t) => t.id);
   await q.tx(async (db) => {
-    await retireTrackFiles(db, [t.id], "deleted by receiver");
-    await db.run("UPDATE tracks SET deleted_at = ?, file_key = NULL, art_key = NULL WHERE id = ?", now(), t.id);
+    await retireTrackFiles(db, ids, "deleted by receiver");
+    await db.run(`UPDATE tracks SET deleted_at = ?, file_key = NULL, art_key = NULL WHERE id IN (${placeholders(ids)})`, now(), ...ids);
     await reopenCallouts(db);
+    await logEvents(tracks.map((t) => ({ user_id: user.id, actor_id: user.actor_id, sender_id: t.sender_id, track_id: t.id, type: "deleted", detail: "" })), db);
   });
-  await logEvent({ user_id: user.id, actor_id: user.actor_id, sender_id: t.sender_id, track_id: t.id, type: "deleted", detail: "" });
   await drainNow();
   await alertIfFull(user.id, await capacity(user)); // re-arms the "link paused" email once there's space
 }
+
+export const deleteTrack = (user: User, t: Track) => deleteTracks(user, [t]);
 
 export async function setBlocked(user: User, s: Sender, blocked: boolean) {
   await q.run("UPDATE senders SET blocked_at = ? WHERE id = ?", blocked ? now() : null, s.id);
