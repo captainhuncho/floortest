@@ -14,6 +14,8 @@ import { allPlans, FREE_PLAN } from "@/lib/plan-store";
 import { audienceWhere, cleanTags, describeAudience, readAudience } from "@/lib/audience";
 import { BULK_MAX, bulkIds, SUSPEND_MAX } from "@/lib/admin-bulk";
 import type { OpsResult } from "@/lib/ops-result";
+import { JOBS, withJobLease, type JobName } from "@/lib/cron";
+import { RUN_JOB, rerunRefusal } from "@/lib/cron-jobs";
 import { SITE_PAGES, type SitePage } from "@/lib/content";
 import { writeContent } from "@/lib/content-write";
 import { redirect } from "next/navigation";
@@ -299,6 +301,50 @@ export async function removeTrackAsAdmin(trackId: number, reason: string) {
   await logAdmin(a.id, "removed track", `${t.artist} – ${t.title}`, `from @${t.handle}${reason ? ` · ${reason}` : ""}`);
   await done(`Removed "${t.title}" and its file`);
   refresh();
+}
+
+/** Moderation → Keep: a staff member reviewed the track and is leaving it up. Recorded on the track and in the log. */
+export async function keepTrack(trackId: number): Promise<OpsResult> {
+  const a = await requireAdminAction("moderation");
+  if (!Number.isSafeInteger(trackId) || trackId < 1) return no("That track isn't there");
+  const t = await q.get<{ title: string; artist: string; handle: string }>(
+    `UPDATE tracks t SET ops_reviewed_at = ?, ops_reviewed_by = ? FROM users u
+     WHERE t.id = ? AND t.deleted_at IS NULL AND u.id = t.user_id RETURNING t.title, t.artist, u.handle`,
+    now(),
+    a.id,
+    trackId,
+  );
+  if (!t) return no("That track is already gone");
+  await logAdmin(a.id, "reviewed, kept", `${t.artist} – ${t.title}`, `on @${t.handle}`);
+  return ok(`Kept "${t.title}": marked reviewed`);
+}
+
+/**
+ * Jobs → Run now: one job straight away, through the same code as its schedule (src/lib/cron-jobs.ts) and under its
+ * lease, so it never runs alongside a copy already going. The daily ones only make up a failed or missed run
+ * (rerunRefusal), and the backup and clean-up is the super admin's.
+ */
+export async function runJobNow(job: string): Promise<OpsResult> {
+  const a = await requireAdminAction("jobs");
+  if (!(job in JOBS)) return no("That isn't a job");
+  const name = job as JobName;
+  if (name === "purge" && !a.access.super) {
+    await logAdmin(a.id, "denied", "run job", name);
+    return no("Only the super admin can run the backup and clean-up");
+  }
+  const refused = await rerunRefusal(name);
+  if (refused) return no(refused);
+  const started = Date.now();
+  let out;
+  try {
+    out = await withJobLease(name, () => RUN_JOB[name](started));
+  } catch (e) {
+    await logAdmin(a.id, "ran job", JOBS[name].label, "failed");
+    return no(`${JOBS[name].label} failed: ${e instanceof Error ? e.message : String(e)}. See Incidents.`);
+  }
+  if (!out) return no(`${JOBS[name].label} is already running`);
+  await logAdmin(a.id, "ran job", JOBS[name].label, out.ok ? "done" : "failed");
+  return out.ok ? ok(`${JOBS[name].label}: done`) : no(`${JOBS[name].label} ran but failed. See Incidents.`);
 }
 
 /** Blocks a sender email on one receiver's link (the same as the receiver blocking them). */

@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import { currentStep, totpCode } from "../src/lib/totp";
 import { OPS_EMAIL, OPS_INBOX_MESSAGE, OPS_TOTP_SECRET } from "./ops-account";
@@ -20,13 +21,17 @@ async function freshCode() {
   return totpCode(OPS_TOTP_SECRET, step);
 }
 
-test("Inbox Mark handled and Reopen answer in place", async ({ page }) => {
+async function opsLogIn(page: Page) {
   await page.goto("/ops-login");
   await page.getByLabel("Email").fill(OPS_EMAIL);
   await page.getByRole("textbox", { name: "Password" }).fill("floortest-demo");
   await page.getByLabel("Two-step code").fill(await freshCode());
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForURL(/\/admin/);
+}
+
+test("Inbox Mark handled and Reopen answer in place", async ({ page }) => {
+  await opsLogIn(page);
 
   await page.goto("/admin/inbox");
   const message = page.getByRole("listitem").filter({ hasText: OPS_INBOX_MESSAGE });
@@ -44,4 +49,28 @@ test("Inbox Mark handled and Reopen answer in place", async ({ page }) => {
   await handled.getByRole("button", { name: "Reopen" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Reopened" })).toBeVisible();
   await expect(handled).toHaveCount(0);
+});
+
+// Moderation → Keep: records who reviewed the track and kept it, shown on the track and in the results.
+test("Moderation Keep marks a track reviewed, in place", async ({ page }) => {
+  await opsLogIn(page);
+  await page.goto("/admin/moderation?q=Harmattan");
+  await page.getByRole("list", { name: "Results" }).getByRole("link", { name: /Harmattan/ }).click();
+  await expect(page.getByText("Not yet")).toBeVisible();
+  await page.getByRole("button", { name: "Keep", exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: 'Kept "Harmattan": marked reviewed' })).toBeVisible();
+  await expect(page.getByText(/Kept by @oluops/)).toBeVisible();
+  await expect(page.getByRole("list", { name: "Results" }).getByText("Reviewed", { exact: true })).toBeVisible();
+});
+
+// Jobs → Run now: the email queue runs straight away through its scheduled code and records a run; the daily jobs
+// (never run in a fresh test copy) offer Run now too.
+test("Jobs Run now runs the email queue and records the run", async ({ page }) => {
+  await opsLogIn(page);
+  await page.goto("/admin/jobs");
+  const mail = page.getByRole("listitem").filter({ has: page.getByText("Email queue", { exact: true }) });
+  await mail.getByRole("button", { name: "Run now" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Email queue: done" })).toBeVisible({ timeout: 30_000 });
+  const daily = page.getByRole("listitem").filter({ has: page.getByText("Daily emails", { exact: true }) });
+  await expect(daily.getByRole("button", { name: "Run now" })).toBeVisible();
 });

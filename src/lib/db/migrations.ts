@@ -1947,4 +1947,13 @@ alter table scanner_budget enable row level security;`,
     id: "0118_person_held_reply_ids",
     sql: `do $$ begin execute format('grant usage on sequence %s to ft_person', pg_get_serial_sequence('held_replies', 'id')); end $$;`,
   },
+  {
+    // Ops → Moderation → Keep (ops server design, 1 Nov): when a staff member reviewed a track and kept it, so search can
+    // say "Reviewed by @x" and leave reviewed tracks out of "Not reviewed yet". Additive only. The index keeps deleting a
+    // staff account from scanning every track (tests/fk-indexes.test.ts); only reviewed tracks are in it.
+    id: "0121_track_ops_review",
+    sql: `alter table tracks add column ops_reviewed_at bigint;
+alter table tracks add column ops_reviewed_by bigint references users(id) on delete set null;
+create index if not exists tracks_ops_reviewed_by on tracks(ops_reviewed_by) where ops_reviewed_by is not null;`,
+  },
 ];
