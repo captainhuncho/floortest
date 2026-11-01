@@ -79,3 +79,44 @@ test("an undo token works only for the same admin, within the hold, untampered",
   assert.equal(readUndo(`${body}.x${mac.slice(1)}`, 42, at + 1_000), null, "changed signature");
   assert.equal(readUndo("nonsense", 42, at), null);
 });
+
+test("an email queued again after a failed try can't be cancelled: it may have reached them", async () => {
+  const { q } = await import("../src/lib/db");
+  const { queueMail, cancelHeldMail, SEND_HOLD_MS } = await import("../src/lib/mail");
+  const id = await queueMail({ userId: null, audience: "support", to: "retry@x.io", subject: "Retry", body: "Hi" }, q, { holdMs: SEND_HOLD_MS });
+  // What deliver leaves after a timed-out first try (retry backoff) or the daily cap: queued again, one attempt made.
+  await q.run("UPDATE outbox SET attempts = 1 WHERE id = ?", id);
+  assert.equal(await cancelHeldMail([id]), 0);
+  assert.equal((await q.get<{ status: string }>("SELECT status FROM outbox WHERE id = ?", id))!.status, "queued");
+});
+
+test("Undo stops a waitlist invite and puts the person back, or, if putting back fails, does neither", async () => {
+  const { q, now } = await import("../src/lib/db");
+  const { queueMail, SEND_HOLD_MS } = await import("../src/lib/mail");
+  const { takeBack } = await import("../src/lib/ops-undo");
+  const setUp = async (n: number) => {
+    const email = `wait${n}@x.io`;
+    const w = (await q.get<{ id: number }>("INSERT INTO waitlist (email, created_at, invited_at) VALUES (?, ?, ?) RETURNING id", email, now(), now()))!;
+    const code = `FLOOR-TEST${n}`;
+    await q.run("INSERT INTO invites (code, max_uses, note, email, created_at) VALUES (?,?,?,?,?)", code, 1, "From the waitlist", email, now());
+    const mail = await queueMail({ userId: null, audience: "support", to: email, subject: "Invite", body: "Hi" }, q, { holdMs: SEND_HOLD_MS });
+    return { id: w.id, code, mail, u: { kind: "waitlist_invite" as const, items: [{ ref: w.id, code }], mail: [mail], admin: 1, exp: Date.now() + SEND_HOLD_MS } };
+  };
+  const state = async (s: { id: number; code: string; mail: number }) => ({
+    mail: (await q.get<{ status: string }>("SELECT status FROM outbox WHERE id = ?", s.mail))!.status,
+    invited: (await q.get<{ invited_at: number | null }>("SELECT invited_at FROM waitlist WHERE id = ?", s.id))!.invited_at !== null,
+    revoked: (await q.get<{ revoked_at: number | null }>("SELECT revoked_at FROM invites WHERE code = ?", s.code))!.revoked_at !== null,
+  });
+
+  const good = await setUp(1);
+  assert.equal(await takeBack(good.u), 1);
+  assert.deepEqual(await state(good), { mail: "cancelled", invited: false, revoked: true });
+
+  const bad = await setUp(2);
+  await assert.rejects(
+    takeBack(bad.u, async () => {
+      throw new Error("revert failed");
+    }),
+  );
+  assert.deepEqual(await state(bad), { mail: "queued", invited: true, revoked: false }, "the email still goes, the invite stands");
+});
