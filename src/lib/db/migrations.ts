@@ -1949,7 +1949,8 @@ alter table scanner_budget enable row level security;`,
   },
   {
     // Ops → Moderation → Keep (ops server design, 1 Nov): when a staff member reviewed a track and kept it, so search can
-    // say "Reviewed by @x" and leave reviewed tracks out of "Not reviewed yet". Additive only. The index keeps deleting a
+    // say "Reviewed by @x" and the moderation queue (only tracks with a real signal: an open takedown claim, a sender
+    // blocked by receivers, a late scanner check; owner, 1 Nov) can drop it once kept. Additive only. The index keeps deleting a
     // staff account from scanning every track (tests/fk-indexes.test.ts); only reviewed tracks are in it.
     id: "0121_track_ops_review",
     sql: `alter table tracks add column ops_reviewed_at bigint;
