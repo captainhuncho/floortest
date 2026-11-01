@@ -1934,4 +1934,10 @@ alter table sender_links enable row level security;`,
 );
 alter table scanner_budget enable row level security;`,
   },
+  {
+    // The email caps count today's sends by status and send time on every email (mail.ts overSharedPart,
+    // email-budget mailedToday): without this they read the whole outbox as it grows (audit, 1 Nov). Additive only.
+    id: "0117_outbox_status_attempt",
+    sql: `create index if not exists outbox_status_attempt on outbox(status, last_attempt_at);`,
+  },
 ];
