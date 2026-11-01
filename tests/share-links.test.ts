@@ -34,7 +34,7 @@ async function makeSetup() {
   // Sent under the 1 Oct colleague wording: shareable then, but not through collection links.
   const oldModel = await track("Old", 1);
   await q.run("UPDATE tracks SET share_terms = NULL WHERE id = ?", oldModel);
-  return { q, owner: { id: owner }, mate, col, shared, privateTrack: await track("Private", 0), oldModel };
+  return { q, owner: { id: owner, actor_id: owner }, mate, col, shared, privateTrack: await track("Private", 0), oldModel };
 }
 
 test("share links: own address, named recipients, codes, sessions, reset, revoke, tracks", async () => {
@@ -95,7 +95,7 @@ test("requests to join: one waiting, decline cooldown, approve with less than th
   const { owner, col } = await setup().catch(async () => {
     // Second test in the same database: reuse the owner and collection.
     const { q } = await import("../src/lib/db");
-    const o = (await q.get<{ id: number }>("SELECT id FROM users WHERE handle = 'owner'"))!;
+    const o = (await q.get<{ id: number; actor_id: number }>("SELECT id, id AS actor_id FROM users WHERE handle = 'owner'"))!;
     return { owner: o, col: (await q.get<{ id: number }>("SELECT id FROM collections WHERE user_id = ?", o.id))!.id };
   });
   const { link, url } = await L.createLink(owner, col, { permission: "download", days: 14, requests: true });
@@ -134,7 +134,7 @@ test("requests to join: one waiting, decline cooldown, approve with less than th
 test("account holders: open by number while signed in, Shared with you, activity, and probing warnings", async () => {
   const L = await import("../src/lib/share-links");
   const { q } = await import("../src/lib/db");
-  const o = (await q.get<{ id: number }>("SELECT id FROM users WHERE handle = 'owner'"))!;
+  const o = (await q.get<{ id: number; actor_id: number }>("SELECT id, id AS actor_id FROM users WHERE handle = 'owner'"))!;
   const col = (await q.get<{ id: number }>("SELECT id FROM collections WHERE user_id = ?", o.id))!.id;
   const viewer = async (handle: string) => (await q.get<{ id: number; email: string; email_verified_at: number | null }>("SELECT id, email, email_verified_at FROM users WHERE handle = ?", handle))!;
   const mate = await viewer("mate");
@@ -186,7 +186,7 @@ test("account holders: open by number while signed in, Shared with you, activity
 test("retention, account deletion and the artist's stop switch", async () => {
   const L = await import("../src/lib/share-links");
   const { q } = await import("../src/lib/db");
-  const o = (await q.get<{ id: number }>("SELECT id FROM users WHERE handle = 'owner'"))!;
+  const o = (await q.get<{ id: number; actor_id: number }>("SELECT id, id AS actor_id FROM users WHERE handle = 'owner'"))!;
   const col = (await q.get<{ id: number }>("SELECT id FROM collections WHERE user_id = ?", o.id))!.id;
   const DAY = 86_400_000;
 
@@ -297,5 +297,5 @@ test("the owner's link list groups each link's people, requests and latest 12 ev
   assert.ok(!("link_id" in va.requests[0]) && !("link_id" in va.events[0]));
 
   // Someone else's collection: nothing.
-  assert.deepEqual(await L.linksFor({ id: owner.id + 999 }, col), []);
+  assert.deepEqual(await L.linksFor({ id: owner.id + 999, actor_id: owner.id + 999 }, col), []);
 });
