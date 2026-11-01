@@ -7,7 +7,12 @@ import { analyzeAudio } from "@/lib/analyze";
 import { fmtTime } from "@/lib/format";
 import { LISTEN_BEAT_MS, listenThreshold } from "@/lib/plans";
 import { hideNowPlaying, onNowPlayingAction, showNowPlaying } from "@/lib/native-now-playing";
+import { SEEK_STEP } from "@/lib/media-session";
+import { VOLUME_STEP, clampVolume, playerKey, saveVolume, savedVolume } from "@/lib/player-keys";
+import { useMediaSession } from "@/lib/use-media-session";
+import { isCharacterKey, overlayOpen, shortcutsOn } from "./useShortcuts";
 import { useToast } from "./Toast";
+import { VolumeNote } from "./VolumeNote";
 import { Waveform } from "./Waveform";
 
 export type PlayerTrack = {
@@ -32,6 +37,11 @@ type Ctx = {
   seekBy: (seconds: number) => void;
   /** Goes up by one each time a track won't play (no connection, or the file is gone), so the bar can say so. */
   failures: number;
+  /** The player's own volume (0–1) and mute, remembered on this device. Hardware volume keys are the device's. */
+  volume: number;
+  muted: boolean;
+  /** Goes up by one each time the volume or mute is changed from the keyboard, so the bar shows the note. */
+  volumeTouched: number;
 };
 
 const PlayerContext = createContext<Ctx | null>(null);
@@ -56,6 +66,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [failures, setFailures] = useState(0);
+  // The element itself, for the media keys (created in the effect below; the ref is for everything else).
+  const [element, setElement] = useState<HTMLAudioElement | null>(null);
+  const [volume, setVolumeState] = useState(1);
+  const [muted, setMuted] = useState(false);
+  const [volumeTouched, setVolumeTouched] = useState(0);
   // A play() refused for a real reason (not the browser's autoplay rule, not a newer track replacing this one).
   const refused = useCallback((e: unknown) => {
     const name = e instanceof DOMException ? e.name : "";
@@ -113,18 +128,32 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       setBuffering(false);
       refused(e);
     });
-    if ("mediaSession" in navigator) {
-      // Lock screen, Control Centre and headphones: title, artist and the FloorTest crest as artwork.
-      navigator.mediaSession.metadata = new MediaMetadata({ title: t.title, artist: t.artist, album: "FloorTest", artwork: [{ src: "/icon.svg", sizes: "512x512", type: "image/svg+xml" }] });
-    }
     if (!t.peaks) void backfill(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Skip between tracks in the current queue (media keys, lock screen, the Android notification). A ref read, so it
+  // always acts on the queue and track loaded now.
+  const step = useCallback(
+    (by: number) => {
+      const q = queue.current;
+      const i = q.findIndex((t) => t.id === listened.current.id);
+      const t = q[i + by];
+      if (i >= 0 && t) start(t);
+    },
+    [start],
+  );
+
   useEffect(() => {
     const a = new Audio();
     a.preload = "metadata";
+    const saved = savedVolume();
+    a.volume = saved.volume;
+    a.muted = saved.muted;
     audio.current = a;
+    setElement(a);
+    setVolumeState(saved.volume);
+    setMuted(saved.muted);
     const onTime = () => {
       setTime(a.currentTime);
       const l = listened.current;
@@ -170,31 +199,28 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       a.addEventListener("loadedmetadata", () => (a.currentTime = at), { once: true });
       if (resume) void a.play().catch(() => setPlaying(false));
     });
-    // Skip between tracks in the current queue from the lock screen.
-    const step = (by: number) => {
-      const q = queue.current;
-      const i = q.findIndex((t) => t.id === listened.current.id);
-      const t = q[i + by];
-      if (i >= 0 && t) start(t);
-    };
-    if ("mediaSession" in navigator) {
-      navigator.mediaSession.setActionHandler("play", () => void a.play());
-      navigator.mediaSession.setActionHandler("pause", () => a.pause());
-      navigator.mediaSession.setActionHandler("seekbackward", () => (a.currentTime = Math.max(0, a.currentTime - 10)));
-      navigator.mediaSession.setActionHandler("seekforward", () => (a.currentTime = Math.min(a.duration, a.currentTime + 10)));
-      navigator.mediaSession.setActionHandler("nexttrack", () => step(1));
-      navigator.mediaSession.setActionHandler("previoustrack", () => step(-1));
-    }
-    // The Android app's notification player sends the same buttons.
+    // The Android app's notification player sends the same buttons as the media keys.
     const stopNative = onNowPlayingAction((act) => (act === "play" ? void a.play() : act === "pause" ? a.pause() : step(act === "next" ? 1 : -1)));
     return () => {
       stopNative();
       hideNowPlaying();
       a.pause();
       a.src = "";
+      setElement(null);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Media keys, headphone buttons, lock screen, Control Centre, Touch Bar (src/lib/media-session.ts).
+  useMediaSession({
+    audio: element,
+    meta: current ? { title: current.title, artist: current.artist } : null,
+    play: () => {
+      if (listened.current.id) void audio.current?.play().catch(refused);
+    },
+    onNext: () => step(1),
+    onPrev: () => step(-1),
+  });
 
   // Android app: keep the notification player in step (title, play/pause, where we are). Progress runs on from here.
   useEffect(() => {
@@ -238,8 +264,46 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     listened.current.last = a.currentTime;
   }, []);
 
+  const changeVolume = useCallback((v: number, m: boolean) => {
+    const a = audio.current;
+    const next = clampVolume(v);
+    if (a) {
+      a.volume = next;
+      a.muted = m;
+    }
+    setVolumeState(next);
+    setMuted(m);
+    setVolumeTouched((n) => n + 1);
+    saveVolume(next, m);
+  }, []);
+
+  // The desk's player keys, on every dashboard page while a track is loaded (src/lib/player-keys.ts). The Review Queue
+  // and List handle Space and ← / → themselves (they act on the open track), marked by [data-player-keys]; this adds
+  // Shift+↑ / Shift+↓ volume and M mute there, and all of them elsewhere.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!current || e.defaultPrevented || overlayOpen()) return;
+      const k = playerKey(e, { volumeNeedsShift: true });
+      if (!k) return;
+      if (isCharacterKey(e) && !shortcutsOn()) return;
+      const pageOwns = !!document.querySelector("[data-player-keys]");
+      const a = audio.current;
+      if (k === "toggle" && !pageOwns) toggle();
+      else if (k === "back" && !pageOwns) seekBy(-SEEK_STEP);
+      else if (k === "forward" && !pageOwns) seekBy(SEEK_STEP);
+      else if (k === "louder" || k === "quieter") changeVolume((a?.volume ?? volume) + (k === "louder" ? VOLUME_STEP : -VOLUME_STEP), false);
+      else if (k === "mute") changeVolume(a?.volume ?? volume, !(a?.muted ?? muted));
+      else return;
+      e.preventDefault();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [current, toggle, seekBy, changeVolume, volume, muted]);
+
   return (
-    <PlayerContext.Provider value={{ current, playing, buffering, time, duration, play, toggle, seek, seekBy, failures }}>{children}</PlayerContext.Provider>
+    <PlayerContext.Provider value={{ current, playing, buffering, time, duration, play, toggle, seek, seekBy, failures, volume, muted, volumeTouched }}>
+      {children}
+    </PlayerContext.Provider>
   );
 }
 
@@ -265,7 +329,7 @@ export function BufferRing({ className = "-inset-1" }: { className?: string }) {
 }
 
 export function PlayerBar() {
-  const { current, playing, buffering, time, duration, toggle, seek, failures } = usePlayer();
+  const { current, playing, buffering, time, duration, toggle, seek, failures, volume, muted, volumeTouched } = usePlayer();
   const toast = useToast();
   useEffect(() => {
     if (failures) toast.show({ message: "This track won't play right now. Check your connection, then press play again.", tone: "error" });
@@ -285,7 +349,10 @@ export function PlayerBar() {
             <Link href={`/dashboard/review?view=queue&s=all&t=${current.id}`} className="truncate text-sm font-bold tracking-[-0.4px] text-bone">
               {current.title}
             </Link>
-            <span className="shrink-0 text-[11px] text-faint tnum">{fmtTime(time)}</span>
+            <span className="flex shrink-0 items-center gap-2">
+              <VolumeNote volume={volume} muted={muted} touched={volumeTouched} />
+              <span className="text-[11px] text-faint tnum">{fmtTime(time)}</span>
+            </span>
           </span>
           <Waveform peaks={current.peaks} progress={d ? time / d : 0} duration={d} onSeek={seek} height={18} label={`Seek ${current.title}`} />
         </div>
@@ -324,6 +391,7 @@ export function PlayerBar() {
           <Waveform peaks={current.peaks} progress={d ? time / d : 0} duration={d} onSeek={seek} height={32} label={`Seek ${current.title}`} />
         </div>
         <span className="hidden text-sm text-mute tnum sm:block">{fmtTime(d)}</span>
+        <VolumeNote volume={volume} muted={muted} touched={volumeTouched} className="w-20 text-right" />
       </div>
     </div>
     </>
