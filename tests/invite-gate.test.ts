@@ -1,11 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
+import { testDataDir } from "./test-db";
 
 // A throwaway local database and a gated site, set before the app's modules load.
-process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "ft-invite-gate-"));
+process.env.DATA_DIR = testDataDir("ft-invite-gate-");
 process.env.APP_SECRET ??= "test-secret-".padEnd(48, "x");
 process.env.SITE_PASSWORD = "gate-test-only";
 delete process.env.VERCEL_ENV;

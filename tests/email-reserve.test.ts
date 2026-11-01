@@ -1,11 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
+import { testDataDir } from "./test-db";
 
 // A throwaway local database and a small daily send limit, set before the app's modules load. No email key: nothing is sent.
-process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "ft-email-reserve-"));
+process.env.DATA_DIR = testDataDir("ft-email-reserve-");
 process.env.APP_SECRET ??= "test-secret-".padEnd(48, "x");
 process.env.MAIL_DAILY_LIMIT = "10";
 delete process.env.MAIL_RESERVED_SHARE;
