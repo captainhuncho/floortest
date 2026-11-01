@@ -70,6 +70,12 @@ Floor ─► Collections ─► New collection / Open collection ─► Add trac
 Nightly, only if Settings → Receiving → "When a callout closes" is on ─► a link on a collection past its close date ─► moves to the newest open collection ─► email to the receiver · bell: "Your link now goes to …" · activity: "Link moved on its own to"
 Floor ─► Send ─► their-link ─► upload ─► Sent list (≤10 days open, older folded) ─► Track → /receipt/<token>
 Avatar ─► Account ─► Settings (profile, receiving, notifications, plan, security) · Sign out ─► /signed-out
+Feedback (every desk page, phones too: the speech-bubble icon in the top bar) ─► Idea / Bug / Confusing / Love it · text ─► Send ─► ops → Feedback (with the page it came from and the window width, e.g. 390 px) · toast "Thanks. It went straight to the FloorTest team."
+Account ─► About FloorTest ─► Send feedback ─► the same form opens under the row (not the public contact page) ─► Send ─► ops → Feedback
+5th Keep / Not for me by a person (any desk, counted from their own activity) ─► the decision saves as usual ─► a card at the top of the page (in the page, not over it), once: "How's FloorTest working for you?" (no focus taken; shortcuts and the player carry on)
+   ├─ Send ─► ops → Feedback ─► not asked again
+   ├─ Not now (first time) ─► closes ─► asked once more after 10 further decisions (users.feedback_snoozed_at)
+   └─ Don't ask again · a second Not now ─► closes ─► not asked again (users.feedback_asked_at, per person, every device)
 ```
 Mobile tab bar: Floor · Queue · Collections · Prepare. Desktop sidebar adds Send, Contacts, Activity.
 
@@ -136,6 +142,15 @@ Users ─► Filters (type, plan, tag, joined, activity, security) ─► chips 
                      └─ Suspend… (≤ 20) ─► reason ─► each: signed out, link offline, email with appeal ─► admin log
 Growth ─► Growth & decisions ─► findings · funnel · projection · sources · cohorts · pipeline
 Moderation ─► search ─► pick a track ─► Play, only with an open takedown claim (5-minute file link; admin log "played track"; otherwise 404 + "refused play")
+   ─► Keep ─► marked reviewed (tracks.ops_reviewed_at/by; "Kept by @x" on the track, a Reviewed chip in results; admin log "reviewed, kept")
+Jobs ─► Run now (per job, src/lib/cron-jobs.ts: the scheduled code, under the job's lease)
+   ─► email queue, virus check: any time · daily emails, backup and clean-up: only after a failed or missed run, asks
+   first; backup is the super admin's ─► toast; the run shows in Recent runs; admin log "ran job"
+Queue buttons (Inbox handled/reopen, Verification approve/not yet, Plan request approve/decline, Incident handled)
+   ─► the action answers in place (src/lib/ops-result.ts, OpsForm): no reload, buttons locked while it
+   works, success in the toast, a refusal under the form
+   ─► Verification approve works only while that person's request is waiting (identity_status 'pending'); any other
+      account answers "Account not found" (src/lib/identity-approve.ts)
    ─► Block sender for @them / Block everywhere / Remove track… (confirm)
 ```
 

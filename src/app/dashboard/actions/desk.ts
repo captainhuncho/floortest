@@ -7,14 +7,21 @@ import { receiverLookup } from "@/lib/receiver-lookup";
 import { requireUser, requireRole } from "@/lib/auth";
 import { likeContains, now, q } from "@/lib/db";
 import { audit } from "@/lib/audit";
-import { fileFeedback } from "@/lib/feedback";
+import { closeFeedbackAskFor, fileFeedback, markFeedbackAsked } from "@/lib/feedback";
 import { sendReopenAlerts } from "@/lib/reopen";
 import { done } from "./common";
 
 /** Beta feedback, signed by the person who sent it (src/lib/feedback.ts). */
-export async function sendFeedback(kind: string, message: string, path: string) {
+export async function sendFeedback(kind: string, message: string, path: string, fromAsk = false, viewport?: number) {
   const u = await requireUser();
-  await fileFeedback(u, kind, message, path);
+  await fileFeedback(u, kind, message, path, viewport);
+  if (fromAsk) await markFeedbackAsked(u.actor_id);
+}
+
+/** "Not now" (asks once more after 10 decisions) or "Don't ask again" on the feedback ask (lib/feedback-ask). */
+export async function closeFeedbackAsk(choice: "later" | "never" = "never") {
+  const u = await requireUser();
+  await closeFeedbackAskFor(u.actor_id, choice === "later" ? "later" : "never");
 }
 
 export async function dismissOnboarding() {

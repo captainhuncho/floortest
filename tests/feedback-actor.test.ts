@@ -19,16 +19,29 @@ test("feedback from a team desk records the person who sent it, not the account 
     ))!.id;
   const label = await user("fblabel");
   const ama = await user("fbama");
-  const row = () => q.get<{ user_id: number; actor_id: number | null; name: string; email: string; topic: string; page: string }>(
-    "SELECT user_id, actor_id, name, email, topic, page FROM contact_messages ORDER BY id DESC LIMIT 1",
+  const row = () => q.get<{ user_id: number; actor_id: number | null; name: string; email: string; topic: string; page: string; viewport: number | null }>(
+    "SELECT user_id, actor_id, name, email, topic, page, viewport FROM contact_messages ORDER BY id DESC LIMIT 1",
   );
 
-  await fileFeedback({ id: label, actor_id: ama }, "Bug", "The waveform stalls", "/dashboard/floor");
-  assert.deepEqual(await row(), { user_id: label, actor_id: ama, name: "fbama", email: "fbama@fb.io", topic: "Feedback · Bug", page: "/dashboard/floor" });
+  await fileFeedback({ id: label, actor_id: ama }, "Bug", "The waveform stalls", "/dashboard/floor", 390);
+  assert.deepEqual(await row(), { user_id: label, actor_id: ama, name: "fbama", email: "fbama@fb.io", topic: "Feedback · Bug", page: "/dashboard/floor", viewport: 390 });
 
   await fileFeedback({ id: label, actor_id: label }, "Other", "On my own desk", "");
-  assert.deepEqual(await row(), { user_id: label, actor_id: label, name: "fblabel", email: "fblabel@fb.io", topic: "Feedback", page: "" });
+  assert.deepEqual(await row(), { user_id: label, actor_id: label, name: "fblabel", email: "fblabel@fb.io", topic: "Feedback", page: "", viewport: null });
 
   await fileFeedback({ id: label, actor_id: ama }, "Idea", "   ", "/x");
   assert.equal(await q.count("SELECT COUNT(*) AS n FROM contact_messages"), 2, "an empty message is dropped");
+});
+
+// The window width (owner, 1 Nov): a whole number from 0 to 10000, whatever the browser sends.
+test("feedback keeps the sender's window width, rounded and kept within 0 to 10000", async () => {
+  const { cleanViewport } = await import("../src/lib/feedback");
+  assert.equal(cleanViewport(390), 390);
+  assert.equal(cleanViewport(1440.6), 1441);
+  assert.equal(cleanViewport(-5), 0);
+  assert.equal(cleanViewport(99999), 10000);
+  assert.equal(cleanViewport("abc"), null);
+  assert.equal(cleanViewport(Infinity), null);
+  assert.equal(cleanViewport(undefined), null);
+  assert.equal(cleanViewport(null), null);
 });

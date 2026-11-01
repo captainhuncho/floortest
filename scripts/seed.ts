@@ -5,6 +5,8 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { dataDir, getDb } from "../src/lib/db/client";
+import { sealSecret } from "../src/lib/totp";
+import { OPS_EMAIL, OPS_INBOX_MESSAGE, OPS_TOTP_SECRET } from "../e2e/ops-account";
 
 if (process.env.DATABASE_URL || process.env.S3_BUCKET || process.env.NODE_ENV === "production") {
   console.error("Refusing to seed: this script is for local development only (DATABASE_URL, S3_BUCKET or NODE_ENV=production is set).");
@@ -229,6 +231,25 @@ async function main() {
   if (process.env.SEED_OPEN_SIGNUP === "1") await db.run("INSERT INTO switches (key, on_, updated_at) VALUES ('open_signup', 1, ?) ON CONFLICT (key) DO UPDATE SET on_ = 1", now);
   // Send page tests (SEED_SEND_MUSIC=1, test runs only): the Send page is off in the beta but its tests stay, for when it's back.
   if (process.env.SEED_SEND_MUSIC === "1") await db.run("INSERT INTO switches (key, on_, updated_at) VALUES ('send_music', 1, ?) ON CONFLICT (key) DO UPDATE SET on_ = 1", now);
+  // Ops tests (SEED_OPS=1, test runs only): an ops account with two-step sign-in already on (ops sign-in asks for a
+  // code every time; the secret is e2e/ops-account.ts's test value, sealed with the test copy's APP_SECRET) and one
+  // Inbox message for it to handle. It is the super admin only because playwright.config.ts names it in ADMIN_EMAILS.
+  if (process.env.SEED_OPS === "1") {
+    await db.run(
+      "INSERT INTO users (email, password_hash, name, handle, plan, tz, email_verified_at, totp_secret, totp_enabled_at, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+      OPS_EMAIL,
+      hash("floortest-demo"),
+      "Olu Ops",
+      "oluops",
+      "free",
+      "Europe/London",
+      now,
+      sealSecret(OPS_TOTP_SECRET, process.env.APP_SECRET ?? ""),
+      now,
+      now - DAY,
+    );
+    await db.run("INSERT INTO contact_messages (name, email, topic, message, created_at) VALUES (?,?,?,?,?)", "Ina Inbox", "ina@example.com", "Something else", OPS_INBOX_MESSAGE, now - 3_600_000);
+  }
   // Sharing tests: the Villagers tracks were sent while the callout allowed sharing.
   if (process.env.SEED_SHARING === "1") await db.run("UPDATE tracks SET share_ok = 1, share_terms = ? WHERE collection_id = ?", "e2e", villagers);
   const ama = senders["ama@example.com"];

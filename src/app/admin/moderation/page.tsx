@@ -3,14 +3,18 @@ import Link from "next/link";
 import { ConfirmButton } from "../AdminUi";
 import { likeContains, q } from "@/lib/db";
 import { fmtBytes } from "@/lib/format";
-import { blockEverywhere, blockSenderAsAdmin, removeTrackAsAdmin } from "../actions";
+import { blockEverywhere, blockSenderAsAdmin, keepTrack, removeTrackAsAdmin } from "../actions";
+import { OpsForm } from "../OpsForm";
 import { ModerationPlayer } from "./ModerationPlayer";
 import { staffMayPlay } from "@/lib/staff-listen";
 
-type Found = { id: number; title: string; artist: string; size: number; created_at: number; handle: string; user_id: number; sender_id: number; sender: string; email: string; blocked_at: number | null };
+type Found = {
+  id: number; title: string; artist: string; size: number; created_at: number; handle: string; user_id: number; sender_id: number; sender: string; email: string; blocked_at: number | null;
+  ops_reviewed_at: number | null; reviewed_by: string | null;
+};
 
-const COLS = "t.id, t.title, t.artist, t.size, t.created_at, u.handle, u.id AS user_id, s.id AS sender_id, s.name AS sender, s.email, s.blocked_at";
-const FROM = "FROM tracks t JOIN users u ON u.id = t.user_id JOIN senders s ON s.id = t.sender_id";
+const COLS = "t.id, t.title, t.artist, t.size, t.created_at, u.handle, u.id AS user_id, s.id AS sender_id, s.name AS sender, s.email, s.blocked_at, t.ops_reviewed_at, r.handle AS reviewed_by";
+const FROM = "FROM tracks t JOIN users u ON u.id = t.user_id JOIN senders s ON s.id = t.sender_id LEFT JOIN users r ON r.id = t.ops_reviewed_by";
 const day = (ms: number) => new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 
 /**
@@ -69,6 +73,7 @@ export default async function Moderation({ searchParams }: { searchParams: Promi
                     <span className="block truncate text-[12.5px] text-mute">
                       {t.email} → @{t.handle}
                       {t.blocked_at && <span className="chip ml-2 border-line text-mute">Blocked</span>}
+                      {t.ops_reviewed_at && <span className="chip ml-2 border-line text-mute">Reviewed</span>}
                     </span>
                   </span>
                   <span className="shrink-0 text-right text-[12.5px] text-faint tnum">
@@ -116,7 +121,7 @@ async function Detail({ t, back }: { t: Found; back: string | null }) {
       <p className="text-mute">{t.artist}</p>
       {/* Staff listen only to disputed tracks (owner, 1 Nov 2026); the audio route refuses the rest too. */}
       {playable ? (
-        <ModerationPlayer key={t.id} id={t.id} peaks={peaks} duration={meta?.duration ?? null} />
+        <ModerationPlayer key={t.id} id={t.id} title={t.title} artist={t.artist} peaks={peaks} duration={meta?.duration ?? null} />
       ) : (
         <p className="mt-4 rounded-[10px] bg-ink-3 px-3 py-2.5 text-[13px] text-mute ring-1 ring-line">Listening is only for tracks with an open takedown claim.</p>
       )}
@@ -143,8 +148,17 @@ async function Detail({ t, back }: { t: Found; back: string | null }) {
           {sent} track{sent === 1 ? "" : "s"} to {receivers} receiver{receivers === 1 ? "" : "s"}
           {blocked > 0 && <span className="text-danger"> · blocked by {blocked}</span>}
         </dd>
+        <dt className="text-faint">Reviewed</dt>
+        <dd>
+          {t.ops_reviewed_at
+            ? `Kept by @${t.reviewed_by ?? "a former team member"}, ${new Date(t.ops_reviewed_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`
+            : <span className="text-mute">Not yet</span>}
+        </dd>
       </dl>
       <div className="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
+        <OpsForm action={keepTrack.bind(null, t.id)}>
+          <button className="btn-lime btn-sm">Keep</button>
+        </OpsForm>
         {!t.blocked_at && (
           <ConfirmButton action={blockSenderAsAdmin.bind(null, t.sender_id)} message={`Block ${t.email} from @${t.handle}'s link?`} className="btn-ghost btn-sm">
             Block sender for @{t.handle}

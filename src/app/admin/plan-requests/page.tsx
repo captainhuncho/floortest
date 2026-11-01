@@ -6,6 +6,7 @@ import { allPlans } from "@/lib/plan-store";
 import { grantablePlan, REQUEST_KINDS, type PlanRequest } from "@/lib/plan-requests";
 import { approvePlanRequest, declinePlanRequest } from "../actions";
 import { ConfirmSubmit } from "../AdminUi";
+import { OpsForm } from "../OpsForm";
 
 type Row = PlanRequest & { handle: string; name: string; email: string; current: string; account_kind: string | null; tracks: number };
 
@@ -67,7 +68,7 @@ export default async function PlanRequests() {
                 {r.note && <div className="sm:col-span-2"><dt className="label">Note</dt><dd className="whitespace-pre-wrap">{r.note}</dd></div>}
               </dl>
               <div className="grid gap-4 border-t border-line bg-ink px-5 py-4 lg:grid-cols-2">
-                <form action={approvePlanRequest.bind(null, r.id)} className="space-y-2">
+                <OpsForm action={approvePlanRequest.bind(null, r.id)} className="space-y-2">
                   <div className="flex flex-wrap items-end gap-2">
                     <label className="block space-y-1.5">
                       <span className="label">Give them</span>
@@ -78,8 +79,8 @@ export default async function PlanRequests() {
                     <button className="btn-lime btn-sm">Approve</button>
                   </div>
                   <input name="note" maxLength={500} placeholder="Optional note in their email" className="input" />
-                </form>
-                <form action={declinePlanRequest.bind(null, r.id)} className="space-y-2">
+                </OpsForm>
+                <OpsForm action={declinePlanRequest.bind(null, r.id)} className="space-y-2">
                   <label className="block space-y-1.5">
                     <span className="label">Or decline, with a reason (sent to them)</span>
                     <input name="reason" required maxLength={500} placeholder="e.g. Free fits your volume for now" className="input" />
@@ -87,7 +88,7 @@ export default async function PlanRequests() {
                   <ConfirmSubmit message={`Decline @${r.handle}'s request? They're emailed the reason.`} className="btn-sm rounded-md border border-danger/50 px-4 text-danger hover:bg-danger/10">
                     Decline
                   </ConfirmSubmit>
-                </form>
+                </OpsForm>
               </div>
             </li>
           ))}

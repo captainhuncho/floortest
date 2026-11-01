@@ -12,7 +12,7 @@ export function ShortcutsSwitch() {
   const [on, setOn] = useShortcutsOn();
   const toast = useToast();
   return (
-    <SettingLine title="Keyboard shortcuts" sub="In the Review Queue: K keep, X not for me, R reply, U undo, J next, 1–4 jump. Space and the arrow keys always work.">
+    <SettingLine title="Keyboard shortcuts" sub="In the Review Queue: K keep, X not for me, R reply, U undo, J next, 1–4 jump, and M mute in the player. Space, the arrow keys and Shift+↑/↓ for volume always work.">
       <Switch
         on={on}
         label="Keyboard shortcuts"

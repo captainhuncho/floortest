@@ -102,6 +102,8 @@ export function DecisionRail({ track, selfHref, next, prev }: Props) {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (isTyping(e.target)) return;
+      // Shift+↑ / Shift+↓ are the player's volume (Player.tsx), not a move between tracks.
+      if (e.shiftKey && e.key.startsWith("Arrow")) return;
       // Settings → Account can switch the letter and number keys off; Space and the arrows stay.
       if (isCharacterKey(e) && !shortcutsOn()) return;
       const k = e.key.toLowerCase();
@@ -221,7 +223,7 @@ export function DecisionRail({ track, selfHref, next, prev }: Props) {
   const btn = "inline-flex min-h-13 items-center justify-center gap-2 rounded-[15px] px-3 text-[14.5px] font-semibold transition-colors disabled:opacity-40";
   const key = "rounded-[5px] border border-current px-1.5 font-mono text-[10px] font-semibold opacity-55 [@media(pointer:coarse)]:hidden";
   return (
-    <div className="flex flex-col gap-2.5">
+    <div data-player-keys className="flex flex-col gap-2.5">
       <div className="grid grid-cols-2 gap-2" role="group" aria-label="Decision">
         <button
           onClick={() => decide("passed")}
@@ -255,7 +257,7 @@ export function DecisionRail({ track, selfHref, next, prev }: Props) {
           Space play · K keep · X not for me · R reply · more shortcuts
         </summary>
         <p className="mt-1 text-mute">
-          K keep · X not for me · R reply · Space play · 1–4 jump to 25/50/75/90% · ←/→ 10s · ↑/↓ or J move · U undo
+          K keep · X not for me · R reply · Space play · 1–4 jump to 25/50/75/90% · ←/→ 10s · ↑/↓ or J move · U undo · Shift+↑/↓ volume · M mute · media keys play, pause, next, previous
         </p>
       </details>
     </div>
