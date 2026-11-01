@@ -1,11 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
+import { testDataDir } from "./test-db";
 
 // A throwaway local database for this test only, set before the app's modules load. No email key: nothing is sent.
-process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "ft-two-factor-on-"));
+process.env.DATA_DIR = testDataDir("ft-two-factor-on-");
 process.env.APP_SECRET ??= "test-secret-".padEnd(48, "x");
 delete process.env.DATABASE_URL;
 delete process.env.RESEND_API_KEY;

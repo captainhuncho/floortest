@@ -1,11 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
+import { testDataDir } from "./test-db";
 
 // A throwaway local database and secret for this test only, set before the app's modules load.
-process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "ft-plan-grant-"));
+process.env.DATA_DIR = testDataDir("ft-plan-grant-");
 process.env.APP_SECRET ??= "test-secret-".padEnd(48, "x");
 delete process.env.DATABASE_URL;
 
