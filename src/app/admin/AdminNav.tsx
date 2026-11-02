@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { opsSignOut } from "../ops-login/actions";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { useNavPath } from "@/components/useNavPath";
 import { useState } from "react";
 import { stored, useDeviceState } from "@/components/useBrowserValue";
 
@@ -63,7 +64,7 @@ const areaBadge = (g: NavGroup) => g.sections.reduce((n, s) => n + s.items.reduc
  * pages in the sidebar; the count is everything waiting in that area. Wide screens only; phones use AdminMobileNav.
  */
 export function AdminTopNav({ groups }: { groups: NavGroup[] }) {
-  const path = usePathname();
+  const path = useNavPath();
   const area = currentArea(groups, path);
   return (
     <nav aria-label="Admin areas" className="sticky top-0 z-20 hidden border-b border-line bg-ink/80 backdrop-blur md:block">
@@ -101,7 +102,7 @@ export function AdminTopNav({ groups }: { groups: NavGroup[] }) {
  * icon named on focus and hover.
  */
 export function AdminNav({ groups, admin }: { groups: NavGroup[]; admin: { name: string; initials: string; role: string } }) {
-  const path = usePathname();
+  const path = useNavPath();
   const router = useRouter();
   const active = isActiveFor(path);
   const [open, setOpen] = useDeviceState(() => stored(KEY) !== "closed", true);

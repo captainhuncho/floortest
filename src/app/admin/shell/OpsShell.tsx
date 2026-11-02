@@ -1,8 +1,9 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { stored, useDeviceState } from "@/components/useBrowserValue";
+import { useNavPath } from "@/components/useNavPath";
 import { useShortcuts } from "../kit/Keys";
 import { locate, type AreaId, type ShellData } from "./model";
 import { Panel } from "./Panel";
@@ -22,7 +23,8 @@ const DOCK_QUERY = "(min-width: 1100px)";
  * mounting, so a page under it renders once (PR #338).
  */
 export function OpsShell({ data, me, children }: { data: ShellData; me: Me; children: React.ReactNode }) {
-  const path = usePathname();
+  // The tapped page from the moment it is tapped (useNavPath.ts), so the rail, panel and phone bar answer at once.
+  const path = useNavPath();
   const router = useRouter();
   const { areas, next, today, total } = data;
   const { area: here, page } = locate(areas, path);

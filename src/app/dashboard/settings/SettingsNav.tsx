@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useNavPath } from "@/components/useNavPath";
 import { CARD, Icon } from "@/components/Kit";
 
 /** Each page with the least team role that can open it (on your own desk you're the owner, so you see all of them). */
@@ -20,7 +20,7 @@ export const sectionsFor = (role: keyof typeof RANK, teams: boolean) =>
 
 /** Desktop: a left rail of the settings pages, the current one lit. Phones: a back link to the Account menu. */
 export function SettingsNav({ role, teams }: { role: keyof typeof RANK; teams: boolean }) {
-  const path = usePathname();
+  const path = useNavPath();
   const sections = sectionsFor(role, teams);
   const current = SECTIONS.find((s) => path.startsWith(`/dashboard/settings/${s.slug}`));
   return (
