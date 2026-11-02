@@ -65,8 +65,8 @@ async function proxyHeaders(path: string) {
 
 // Owner, 2 Nov: the private link pages aren't kept by browsers or caches, and don't pass their address to other sites.
 // same-origin, never no-referrer: that makes browsers send Origin: null on the page's own server-action posts.
-test("the five private link pages answer private, no-store and same-origin referrers", async () => {
-  for (const path of ["/receipt/abc123", "/sent/abc123", "/join/abc123", "/verify-email/abc123", "/confirm-email/abc123", "/receipt/abc123/"]) {
+test("the private link pages (and password reset) answer private, no-store and same-origin referrers", async () => {
+  for (const path of ["/receipt/abc123", "/sent/abc123", "/join/abc123", "/verify-email/abc123", "/confirm-email/abc123", "/reset/abc123", "/receipt/abc123/"]) {
     const h = await proxyHeaders(path);
     assert.equal(h.get("cache-control"), "private, no-store", path);
     assert.equal(h.get("referrer-policy"), "same-origin", path);
@@ -75,5 +75,5 @@ test("the five private link pages answer private, no-store and same-origin refer
 });
 
 test("other pages keep the site-wide referrer policy", async () => {
-  for (const path of ["/", "/sent", "/sent/reopen/abc123", "/join/abc123/login", "/dashboard"]) assert.equal((await proxyHeaders(path)).get("referrer-policy"), null, path);
+  for (const path of ["/", "/sent", "/sent/reopen/abc123", "/join/abc123/login", "/forgot", "/newsletter/confirm/abc123", "/unsubscribe/abc123", "/dashboard"]) assert.equal((await proxyHeaders(path)).get("referrer-policy"), null, path);
 });

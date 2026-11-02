@@ -2,13 +2,13 @@
 
 import { opsSignOut } from "../ops-login/actions";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useNavPath } from "@/components/useNavPath";
 import { useEffect, useRef } from "react";
 import { Icon, type IconName, type NavGroup } from "./AdminNav";
 
 /** Phones: the current page's name as a button that opens every page, grouped, with the current one marked. */
 export function AdminMobileNav({ groups }: { groups: NavGroup[] }) {
-  const path = usePathname();
+  const path = useNavPath();
   const ref = useRef<HTMLDetailsElement>(null);
   const isActive = (href: string) => (href === "/admin" ? path === "/admin" : path.startsWith(href));
   const items = groups.flatMap((g) => g.sections.flatMap((s) => s.items));

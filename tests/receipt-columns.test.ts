@@ -20,9 +20,11 @@ test("the receipt reads only the columns it shows, never the decision or the fil
 
   const r = await receiptByToken("cols-track");
   assert.ok(r, "the receipt is found by its token");
-  const extra = ["receiver", "receiver_handle", "receiver_status", "receiver_plan", "collection", "sender_email", "verified_at", "sender_account"];
+  const extra = ["receiver", "receiver_handle", "receiver_status", "receiver_plan", "collection", "sender_email", "verified_at", "sender_account", "sender_id"];
   assert.deepEqual(Object.keys(r).sort(), [...RECEIPT_TRACK_COLUMNS, ...extra].sort());
-  for (const k of ["decision", "decided_at", "file_key", "original_name", "token", "sender_id"]) assert.ok(!(k in r), `${k} is not read`);
+  for (const k of ["decision", "decided_at", "file_key", "original_name", "token"]) assert.ok(!(k in r), `${k} is not read`);
+  // The sender id is read for the server-side proof check (Option B, 2 Nov); the page never hands it to the browser.
+  assert.equal(r.sender_id, sender);
   assert.equal(r.receiver, "Rae");
   assert.equal(await receiptByToken("no-such-token"), undefined);
 });

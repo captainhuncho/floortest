@@ -1,6 +1,7 @@
 import { TapSpeed } from "@/components/TapSpeed";
 import { NativeApp } from "@/components/NativeApp";
 import { PullToRefresh } from "@/components/PullToRefresh";
+import { NavProgress } from "@/components/NavProgress";
 import { PageViews } from "@/components/PageViews";
 import { ConsentBanner } from "@/components/ConsentBanner";
 import { mono, serif } from "./fonts";
@@ -38,6 +39,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <p className="bg-lime px-4 py-1 text-center text-xs font-medium text-ink">Preview · test data only, separate from the live site</p>
         )}
         {children}
+        {/* A tapped menu link shows at once; a thin line if the next page takes over 150ms (useNavPath.ts). */}
+        <NavProgress />
         {/* Vercel Web Analytics and browser Sentry wait for Accept on the banner (owner's rule, 20 Oct 2026). */}
         {/* Pull to refresh on every page (owner's rule): the desk, public pages, sign-in, messages and admin. */}
         <PullToRefresh />

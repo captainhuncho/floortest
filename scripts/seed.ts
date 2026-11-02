@@ -293,6 +293,8 @@ async function main() {
     await user(LINKS.invitee.email, "Ivy Invitee", "ivyinvitee", true);
     await user(LINKS.unverified.email, "Uma Unconfirmed", "umaunconf", false, { email_verify_token: hashToken(LINKS.verifyToken) });
     await user(LINKS.changer.email, "Cal Changer", "calchanger", true, { pending_email: LINKS.changer.next, pending_email_token: hashToken(LINKS.confirmToken), pending_email_at: now - 3_600_000 });
+    const resetter = await user(LINKS.resetter.email, "Remy Resetter", "remyreset", true);
+    await db.run("INSERT INTO password_resets (token_hash, user_id, expires_at, created_at) VALUES (?,?,?,?)", hashToken(LINKS.resetToken), resetter, now + DAY, now);
     const callout = await id("INSERT INTO collections (user_id, name, allow_sharing, created_at) VALUES (?,?,1,?)", desk, "Links callout", now - 4 * DAY);
     await db.run("UPDATE users SET active_collection_id = ? WHERE id = ?", callout, desk);
     const sid = await id("INSERT INTO senders (user_id, email, name, created_at) VALUES (?,?,?,?)", desk, LINKS.sender.email, LINKS.sender.artist, now - 2 * DAY);
@@ -301,9 +303,18 @@ async function main() {
     const data = wav(audio);
     putFile(key, data);
     const tid = await id(
-      `INSERT INTO tracks (user_id, collection_id, sender_id, token, title, artist, message, file_key, original_name, mime, size, duration, bpm, peaks, share_ok, share_terms, created_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,'e2e',?)`,
-      desk, callout, sid, LINKS.receiptToken, LINKS.sender.title, LINKS.sender.artist, "", key, `${LINKS.sender.title}.wav`, "audio/wav", data.length, 32, 123, JSON.stringify(peaks(audio.x)), now - DAY,
+      `INSERT INTO tracks (user_id, collection_id, sender_id, token, title, artist, message, file_key, original_name, mime, size, duration, bpm, peaks, share_ok, share_terms, played_at, played_out_at, played_out_note, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,'e2e',?,?,?,?)`,
+      desk, callout, sid, LINKS.receiptToken, LINKS.sender.title, LINKS.sender.artist, "", key, `${LINKS.sender.title}.wav`, "audio/wav", data.length, 32, 123, JSON.stringify(peaks(audio.x)),
+      now - 20 * 3_600_000, now - 3_600_000, LINKS.playedOutNote, now - DAY,
+    );
+    const otherKey = `audio/${desk}/${crypto.randomUUID()}.wav`;
+    putFile(otherKey, data);
+    const other = await id("INSERT INTO senders (user_id, email, name, created_at) VALUES (?,?,?,?)", desk, LINKS.other.email, "Otto Other", now - 2 * DAY);
+    await id(
+      `INSERT INTO tracks (user_id, collection_id, sender_id, token, title, artist, message, file_key, original_name, mime, size, duration, bpm, peaks, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      desk, callout, other, LINKS.otherReceiptToken, LINKS.other.title, "Otto Other", "", otherKey, `${LINKS.other.title}.wav`, "audio/wav", data.length, 32, 123, JSON.stringify(peaks(audio.x)), now - DAY,
     );
     await db.run("INSERT INTO events (user_id, sender_id, track_id, type, detail, created_at) VALUES (?,?,?,?,?,?)", desk, sid, tid, "submitted", "into Links callout", now - DAY);
     await db.run("INSERT INTO sender_links (id_hash, email, created_at, expires_at) VALUES (?,?,?,?)", hashToken(LINKS.sentToken), LINKS.sender.email, now, now + DAY);
