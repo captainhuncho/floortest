@@ -6,6 +6,7 @@ import { sendWelcome } from "@/lib/onboarding";
 import { currentPerson } from "@/lib/auth";
 import { hashToken } from "@/lib/token-hash";
 import { confirmEmail } from "@/lib/accounts";
+import { maskEmail } from "@/lib/mask-email";
 
 export const metadata = { title: "Confirm your email — FloorTest", robots: { index: false } };
 
@@ -65,7 +66,7 @@ export default async function VerifyEmail({ params, searchParams }: { params: Pr
         }
       >
         <p>
-          Sign in to the FloorTest account for <span className="text-bone">{pending.email}</span> in this browser, then open this link again.
+          Sign in to the FloorTest account for <span className="text-bone">{maskEmail(pending.email)}</span> in this browser, then open this link again.
         </p>
         <p>Didn&apos;t make this account? Sign in with an email code instead: it confirms the address and signs out whoever made it.</p>
       </MessagePage>
