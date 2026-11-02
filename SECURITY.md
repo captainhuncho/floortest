@@ -104,6 +104,7 @@ Do not add permissive cross-origin access to internal routes. A future integrati
 - The only `NEXT_PUBLIC_` values are `NEXT_PUBLIC_SENTRY_DSN` and `NEXT_PUBLIC_VERCEL_ENV`, both public by design; the Turnstile site key is public by design too. No other secret reaches a client bundle (invariant 9).
 - Never in the repo, chat, logs, commit messages, issues or handoffs: secrets, production data, private audio, reusable tokens, connection strings. Private link keys are redacted before Sentry, Vercel Analytics and the incident log (`src/lib/redact-url.ts`).
 - `.gitignore` covers `.env*` (except `.env.example`, the committed template: setting names and placeholders only, never real values), `.mcp.json`, `skills-lock.json` and `.claude/settings.local.json`.
+- Hidden files are never served (2 Nov): any address with a part starting with "." (`/.env`, `/.git/config`, `/.htaccess`, `/icons/.DS_Store`, also written with `%2E`, `%2F` or `%5C`) answers "not found" from the proxy, even if such a file lands in `public/` by mistake (`src/lib/dot-paths.ts`; the proxy matcher never skips these paths; `tests/dot-paths.test.ts`). Only `/.well-known/` (security.txt) is public. Vercel also refuses `/.env*` and `/.git*` on its own.
 - Rotation steps for each secret: `docs/operations.md`, Rotating secrets.
 
 ### How to report

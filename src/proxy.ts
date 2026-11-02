@@ -3,6 +3,7 @@ import { GATE_COOKIE, gatePassword, hasGatePass } from "@/lib/site-gate";
 import { contentSecurityPolicy, makeNonce } from "@/lib/csp";
 import { crossSiteWrite } from "@/lib/cross-site";
 import { LINK_PAGE_HEADERS, NOINDEX, indexable, linkPage } from "@/lib/search-index";
+import { isHiddenPath } from "@/lib/dot-paths";
 
 /**
  * Keeps the admin area and the main site apart by host. With OPS_URL set (production): the ops host serves only the
@@ -17,8 +18,9 @@ const OPS_HOST = (() => {
 })();
 
 const OPS_PATHS = ["/admin", "/api/admin", "/ops-login"];
-// Shared, read-only helpers the admin pages also use (site image previews, page-speed beacons).
-const SHARED = ["/api/site-image", "/api/tap-speed"];
+// Shared, read-only helpers the admin pages also use (site image previews, page-speed beacons), and /.well-known
+// (security.txt), public on every host.
+const SHARED = ["/api/site-image", "/api/tap-speed", "/.well-known"];
 const under = (path: string, list: string[]) => list.some((p) => path === p || path.startsWith(`${p}/`));
 const isOps = (path: string) => under(path, OPS_PATHS);
 // Open while the site is gated: the gate itself and signing in (a real sign-in then unlocks the site). Nothing about
@@ -28,7 +30,8 @@ const isOps = (path: string) => under(path, OPS_PATHS);
 // "/manifest.webmanifest": the home-screen name and icons; browsers fetch it without cookies, so behind the gate it
 // would get the coming-soon page and phones would lose the icon.
 // "/invite": beta invite links, which let a live personal invite through to sign-up (src/app/invite/[code]/route.ts).
-const GATE_OPEN = ["/coming-soon", "/login", "/forgot", "/reset", "/signed-out", "/c", "/join", "/manifest.webmanifest", "/invite"];
+// "/.well-known": security.txt, so anyone reporting a problem finds the contact before launch too.
+const GATE_OPEN = ["/coming-soon", "/login", "/forgot", "/reset", "/signed-out", "/c", "/join", "/manifest.webmanifest", "/invite", "/.well-known"];
 const notFound = (req: NextRequest, request: { headers: Headers }) => NextResponse.rewrite(new URL("/_not-found", req.url), { status: 404, request });
 
 /**
@@ -59,6 +62,8 @@ export const OWN_CSP = [/^\/api\/admin\/verification-proofs\/\d+$/];
 
 function route(req: NextRequest, request: { headers: Headers }) {
   const path = req.nextUrl.pathname;
+  // Hidden files (/.env, /.git, any part starting with "."): "not found" on every host, before anything else (src/lib/dot-paths.ts).
+  if (isHiddenPath(path)) return notFound(req, request);
   // Another site's page can't make a signed-in browser change anything here (src/lib/cross-site.ts).
   if (path.startsWith("/api/") && crossSiteWrite(req.method, req.headers, req.nextUrl.origin))
     return NextResponse.json({ error: "Open this from FloorTest." }, { status: 403 });
@@ -91,6 +96,8 @@ export const config = {
   // Everything except Next's own files and static assets, and the local-storage upload route (test copies only;
   // it checks its own signed token). Requests through the proxy keep only the first 10 MB of a body, which cut
   // bigger local uploads short; the live site uploads straight to Cloudflare and never comes through here.
+  // A path with a hidden part (/.env.txt, /icons/.x.png, or with %2E for the dot, %2F/%5C for a separator) is never
+  // skipped, so the hidden-file rule above always sees it.
   // Keep in step with PROXY_SKIPS in src/lib/csp.ts (next.config.ts gives these paths their CSP; tests/csp.test.ts).
-  matcher: ["/((?!_next/|favicon|icons/|fonts/|images/|api/storage/upload|.*\\.(?:png|jpg|jpeg|svg|webp|ico|txt|xml|woff2?)$).*)"],
+  matcher: ["/((?!(?!(?:.*(?:/|%2[fF]|%5[cC]))?(?:\\.|%2[eE]))(?:_next/|favicon|icons/|fonts/|images/|api/storage/upload|.*\\.(?:png|jpg|jpeg|svg|webp|ico|txt|xml|woff2?)$)).*)"],
 };
