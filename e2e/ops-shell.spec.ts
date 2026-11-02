@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, test } from "./fixtures";
+import { expect, hydrated, test } from "./fixtures";
 import { flipOpsShell, opsLogIn } from "./ops-login";
 import { AREAS } from "../src/app/admin/shell/model";
 
@@ -34,6 +34,8 @@ test("ops shell: off is today's navigation; on, the rail and panel reach every p
     for (const area of AREAS) {
       for (const page_ of area.sections.flatMap((s) => s.pages)) {
         const item = rail(page).getByRole(area.id === "overview" ? "link" : "button", { name: new RegExp(`^${area.title}(, \\d+ waiting)?$`) });
+        // After each page load the rail re-hydrates; a click before React owns the button does nothing (seen 2 Nov).
+        await hydrated(item);
         await item.click();
         if (area.id !== "overview") {
           await expect(item).toHaveAttribute("aria-pressed", "true");

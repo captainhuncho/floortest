@@ -42,3 +42,36 @@ test("the approveIdentity action goes through the pending-only approval", () => 
   assert.match(fn, /approvePendingIdentity\(userId\)/);
   assert.doesNotMatch(fn, /UPDATE users SET identity_status = 'verified'/, "no unguarded UPDATE left in the action");
 });
+
+test("turning down a verification request only works while it's waiting; a verified account keeps its mark and time", async () => {
+  const { q } = await import("../src/lib/db");
+  const { rejectPendingIdentity } = await import("../src/lib/identity-approve");
+  const t = Date.now();
+  const user = async (handle: string, status: string, verifiedAt: number | null = null) =>
+    (await q.get<{ id: number }>(
+      "INSERT INTO users (email, password_hash, name, handle, plan, tz, email_verified_at, identity_status, identity_verified_at, identity_note, created_at) VALUES (?, 'h', ?, ?, 'free', 'UTC', ?, ?, ?, 'earlier', ?) RETURNING id",
+      `${handle}@id.io`, handle, handle, t, status, verifiedAt, t,
+    ))!.id;
+  const row = (id: number) => q.get<{ identity_status: string; identity_verified_at: number | null; identity_note: string }>("SELECT identity_status, identity_verified_at, identity_note FROM users WHERE id = ?", id);
+
+  const verified = await user("rjverified", "verified", 1234);
+  assert.equal(await rejectPendingIdentity(verified, "nope"), null, "a verified account isn't turned down");
+  assert.deepEqual(await row(verified), { identity_status: "verified", identity_verified_at: 1234, identity_note: "earlier" });
+  for (const status of ["none", "rejected"]) assert.equal(await rejectPendingIdentity(await user(`rj${status}`, status), "nope"), null, `${status}: refused`);
+  assert.equal(await rejectPendingIdentity(999_999, "nope"), null, "missing: same answer");
+
+  const waiting = await user("rjpending", "pending");
+  const r = await rejectPendingIdentity(waiting, "add a link we can check");
+  assert.equal(r?.handle, "rjpending");
+  assert.deepEqual(r?.before, { identity_status: "pending", identity_note: "earlier" }, "what Undo puts back");
+  assert.deepEqual(await row(waiting), { identity_status: "rejected", identity_verified_at: null, identity_note: "add a link we can check" });
+  assert.equal(await rejectPendingIdentity(waiting, "again"), null, "a second click does nothing");
+});
+
+test("the rejectIdentity action goes through the pending-only rejection", () => {
+  const src = fs.readFileSync(path.join(__dirname, "../src/app/admin/actions.ts"), "utf8");
+  const start = src.indexOf("export async function rejectIdentity");
+  const fn = src.slice(start, src.indexOf("export async function", start + 10));
+  assert.match(fn, /rejectPendingIdentity\(userId, note\)/);
+  assert.doesNotMatch(fn, /UPDATE users SET identity_status = 'rejected'/, "no unguarded UPDATE left in the action");
+});

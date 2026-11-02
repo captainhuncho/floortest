@@ -259,6 +259,13 @@ night follow the theme.
 - **Selection:** violet tint on picked rows, a 3px violet edge on the current one; checkboxes 20px in 44px targets.
   The bulk bar sticks to the bottom of the screen after the table, so it never covers the last row.
 - **Motion:** transform and opacity only, about 380 ms on the house curve; reduced motion keeps fades.
+- **InlineEdit:** a cell is a button showing its value (an outline on hover, the lime focus ring); click or Enter opens
+  the field in place (ink-3, 2px lime outline, caret at the end). Tags are 28px chips with a 28px × (36px on touch);
+  Enter or a comma adds one, Enter on an empty field saves. A select keeps its old value with a small spinner until
+  the save answers; ✓ shows in lime for 1.2 s; a refusal shows under the cell in danger text. Fields are 16px and
+  44px tall on phones.
+- **Segmented:** a radio group in an ink-2 well with 3px padding; the chosen option sits on an ink-4 highlight that
+  slides with translateX and scaleX (never width); arrows, Home and End move. 36px tall, 44px on touch.
 
 ### Ops shell (admin redesign B, step 2, 1 Nov; switch `ops_shell`)
 `src/app/admin/shell/` (layout in `shell.css`, model in `model.ts`, tested by `tests/ops-shell.test.ts` and
