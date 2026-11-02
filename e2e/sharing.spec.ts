@@ -10,6 +10,12 @@ test.describe.configure({ mode: "serial" });
 
 let shareUrl = "";
 
+// Each repeat (--repeat-each) asks as its own seeded stranger (stranger@, stranger2–6@, scripts/seed.ts) from its own
+// connection address (a documentation IP; the local copy reads it from this header, Vercel never does), so asking never
+// meets the two-a-day limit per email or the ten-an-hour one per connection (1 Nov: the third repeat was refused).
+const run = () => test.info().repeatEachIndex;
+const strangerEmail = () => (run() % 6 === 0 ? "stranger@floortest.test" : `stranger${(run() % 6) + 1}@floortest.test`);
+
 async function asUser(browser: Browser, email: string) {
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
@@ -72,7 +78,9 @@ test("the listener on the list accepts the notice and hears the music", async ({
 });
 
 test("a stranger can only ask; once approved they get in", async ({ browser, page }) => {
-  const stranger = await asUser(browser, "stranger@floortest.test");
+  const email = strangerEmail();
+  const stranger = await asUser(browser, email);
+  await stranger.ctx.setExtraHTTPHeaders({ "x-vercel-forwarded-for": `203.0.113.${100 + (run() % 100)}` });
   const path = new URL(shareUrl).pathname;
   await stranger.page.goto(path);
   await stranger.page.getByLabel("Your name").fill("Sam Stranger");
@@ -83,14 +91,14 @@ test("a stranger can only ask; once approved they get in", async ({ browser, pag
 
   await logIn(page, "demo@floortest.test");
   await openVillagers(page);
-  await expect(page.getByText(/stranger@floortest.test · via this link/)).toBeVisible();
+  await expect(page.getByText(`${email} · via this link`)).toBeVisible();
   await page.getByRole("button", { name: "Approve" }).click();
   await expect(page.getByRole("button", { name: "Approve" })).toHaveCount(0);
 
   await stranger.page.goto(path);
   await stranger.page.getByRole("checkbox", { name: "I understand and agree." }).check();
   await stranger.page.getByRole("button", { name: "Open the collection" }).click();
-  await expect(stranger.page.getByText(/opened as stranger@floortest.test/)).toBeVisible();
+  await expect(stranger.page.getByText(`opened as ${email}`, { exact: false })).toBeVisible();
   await stranger.ctx.close();
 });
 
