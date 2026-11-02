@@ -90,6 +90,9 @@ test("hold and scan: an asleep scanner holds the upload without waking; the batc
   const keyOf = async (id: string) => (await q.get<{ file_key: string }>("SELECT file_key FROM uploads WHERE id = ?", id))!.file_key;
   const mailTo = (to: string) => q.get<{ subject: string }>("SELECT subject FROM outbox WHERE to_email = ? ORDER BY id DESC LIMIT 1", to);
   const fake = await fakeScanner();
+  // Steps 1-3 need the scanner's answer within the deadline: 400 ms ran out once under a full parallel run (2 Nov, the
+  // batch delivered 0 of 2). Steps 4-5 wait it out on purpose (the scanner never answers), so they go back to 400 ms.
+  process.env.SCAN_DEADLINE_MS = "10000";
   try {
     // 1. Asleep: both sends are held at once; nothing scanned and nothing woken for single files; no tracks.
     await upload("a1", "First");
@@ -123,6 +126,7 @@ test("hold and scan: an asleep scanner holds the upload without waking; the batc
     assert.match((await mailTo("b1@sender.io"))?.subject ?? "", /wasn't sent: Bad/);
 
     // 4. Scanner still down after waiting: they stay held for the next run (not the file's fault: no try counted).
+    process.env.SCAN_DEADLINE_MS = "400";
     fake.state.answer = "down";
     fake.state.awake = false;
     await upload("c1", "Waiting One");
@@ -146,6 +150,7 @@ test("hold and scan: an asleep scanner holds the upload without waking; the batc
   } finally {
     fake.close();
     delete process.env.SCAN_URL;
+    process.env.SCAN_DEADLINE_MS = "400";
   }
 });
 

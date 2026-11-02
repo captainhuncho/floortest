@@ -7,6 +7,7 @@ import { imageKind, IMAGE_TYPES as TYPES, type ImageKind } from "@/lib/images";
 import { trackArtEnabled } from "@/lib/plan-store";
 import { allow } from "@/lib/ratelimit";
 import { sealUpload, storage } from "@/lib/storage";
+import { receiptWhere } from "./receipt-token";
 
 /**
  * Artwork goes straight to storage like the audio, then is decoded and re-encoded like covers (WebP, metadata
@@ -21,8 +22,10 @@ type Reply = { status: number; body: Record<string, unknown> };
 const err = (error: string, status: number): Reply => ({ status, body: { error } });
 const KINDS: Record<string, ImageKind> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
 
-const sentTrack = (token: string) =>
-  q.get<Track & { plan: string }>("SELECT t.*, u.plan FROM tracks t JOIN users u ON u.id = t.user_id WHERE t.token = ? AND t.deleted_at IS NULL", token);
+const sentTrack = (token: string) => {
+  const m = receiptWhere(token, "t");
+  return q.get<Track & { plan: string }>(`SELECT t.*, u.plan FROM tracks t JOIN users u ON u.id = t.user_id WHERE ${m.sql} AND t.deleted_at IS NULL`, ...m.args);
+};
 
 /**
  * The sender attaches optional artwork to a track they just sent (`ref` is its receipt token). Two steps:

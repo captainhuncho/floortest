@@ -26,7 +26,6 @@ test("ops shell: off is today's navigation; on, the rail and panel reach every p
 
   await flip(page, true);
   try {
-
     await test.step("switch on: one navigation, and every page in today's menu opens from the rail and the panel", async () => {
       await page.goto("/admin");
       await expect(rail(page)).toBeVisible();
@@ -35,6 +34,8 @@ test("ops shell: off is today's navigation; on, the rail and panel reach every p
       for (const area of AREAS) {
         for (const page_ of area.sections.flatMap((s) => s.pages)) {
           const item = rail(page).getByRole(area.id === "overview" ? "link" : "button", { name: new RegExp(`^${area.title}(, \\d+ waiting)?$`) });
+          // After each page load the rail re-hydrates; a click before React owns the button does nothing (seen 2 Nov).
+          await hydrated(item);
           await item.click();
           if (area.id !== "overview") {
             await expect(item).toHaveAttribute("aria-pressed", "true");

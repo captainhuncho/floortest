@@ -9,6 +9,7 @@ import { ModerationPlayer } from "./ModerationPlayer";
 import { staffMayPlay } from "@/lib/staff-listen";
 import { switchOn } from "@/lib/switches";
 import { Queue } from "./queue/Queue";
+import { receiptWhere } from "@/lib/receipt-token";
 
 type Found = {
   id: number; title: string; artist: string; size: number; created_at: number; handle: string; user_id: number; sender_id: number; sender: string; email: string; blocked_at: number | null;
@@ -30,12 +31,13 @@ export default async function Moderation({ searchParams }: { searchParams: Promi
   if (await switchOn("ops_shell")) return <Queue sp={sp} me={admin.handle} access={admin.access} />;
   const search = (sp.q || "").trim().slice(0, 100);
   const like = likeContains(search);
+  const byReceipt = receiptWhere(search, "t");
   const tracks = search
     ? await q.all<Found>(
         `SELECT ${COLS} ${FROM}
-         WHERE t.deleted_at IS NULL AND (t.title ILIKE ? OR t.artist ILIKE ? OR s.email ILIKE ? OR s.name ILIKE ? OR t.token = ?)
+         WHERE t.deleted_at IS NULL AND (t.title ILIKE ? OR t.artist ILIKE ? OR s.email ILIKE ? OR s.name ILIKE ? OR ${byReceipt.sql})
          ORDER BY t.created_at DESC LIMIT 100`,
-        like, like, like, like, search,
+        like, like, like, like, ...byReceipt.args,
       )
     : [];
   // Whole numbers in range only, like the audio route: "?t=1.5" or a 15-digit id must not reach Postgres as an int.

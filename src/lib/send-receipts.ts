@@ -4,6 +4,7 @@ import { emailTemplate, fillEmail } from "./email-copy";
 import { APP_URL, noLinks, queueMail } from "./mail";
 import { queueNewTracksNotice } from "./notify";
 import { recordIncident } from "./incidents";
+import { receiptUrl } from "./receipt-token";
 
 /*
  * One send, one email (owner, 29 Oct). Several tracks sent together (a batch of up to 3, or a release folder) used to
@@ -88,7 +89,7 @@ export async function queueSendEmails(db: Queryable, g: SendGroup, t: Templates)
   const sender = (await db.get<{ name: string; email: string }>("SELECT name, email FROM senders WHERE id = ?", tracks[0].sender_id))!;
   const receiver = (await db.get<{ name: string }>("SELECT name FROM users WHERE id = ?", g.userId))!;
   const collection = tracks[0].collection_id ? await db.get<{ name: string }>("SELECT name FROM collections WHERE id = ?", tracks[0].collection_id) : undefined;
-  const receipt = (token: string) => `${APP_URL}/receipt/${token}`;
+  const receipt = (token: string) => receiptUrl({ token });
   // Everything the sender typed is shown without links: this email goes to whatever address they entered.
   const vars = {
     sender: noLinks(sender.name),

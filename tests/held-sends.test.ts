@@ -16,7 +16,9 @@ test("a held email isn't sent before its time, cancel stops it, and once it has 
   const mail = { userId: null, audience: "support" as const, to: "held@x.io", subject: "Held", body: "Hi" };
   const status = async (id: number) => (await q.get<{ status: string }>("SELECT status FROM outbox WHERE id = ?", id))!.status;
 
-  const held = await queueMail(mail, q, { holdMs: SEND_HOLD_MS });
+  // An hour, not SEND_HOLD_MS: under a loaded full run the first queue and deliver can take 8 s, and the check is that a
+  // hold that hasn't ended stops delivery, however long the hold.
+  const held = await queueMail(mail, q, { holdMs: 3_600_000 });
   await deliver(held);
   assert.equal(await status(held), "queued", "not delivered while held");
   assert.equal(await cancelHeldMail([held]), 1);
@@ -76,7 +78,8 @@ test("an undo token works only for the same admin, within the hold, untampered",
   const [body, mac] = token.split(".");
   const forged = Buffer.from(JSON.stringify({ ...undo, mail: [99], exp: at + SEND_HOLD_MS })).toString("base64url");
   assert.equal(readUndo(`${forged}.${mac}`, 42, at + 1_000), null, "changed contents");
-  assert.equal(readUndo(`${body}.x${mac.slice(1)}`, 42, at + 1_000), null, "changed signature");
+  // Always a different first character (a fixed "x" was no change when the signature started with x, 1 time in 64).
+  assert.equal(readUndo(`${body}.${mac[0] === "x" ? "y" : "x"}${mac.slice(1)}`, 42, at + 1_000), null, "changed signature");
   assert.equal(readUndo("nonsense", 42, at), null);
 });
 
@@ -127,10 +130,15 @@ test("the process waits a little past the hold before sending, so an early timer
   const status = async (id: number) => (await q.get<{ status: string }>("SELECT status FROM outbox WHERE id = ?", id))!.status;
   const holdMs = 50;
   // Outside a request, the send runs at once in this process (afterResponse), as after a response.
+  const sentAt = Date.now();
   const id = await sendMailHeld({ userId: null, audience: "support", to: "grace@x.io", subject: "Grace", body: "Hi" }, { holdMs });
+  // Timings under a loaded full run (Safety, 2 Nov): the "not yet" check counts only when it really ran before the
+  // grace ended, and "sent" is waited for (up to 10 s) rather than read once at a fixed moment.
   await new Promise((done) => setTimeout(done, holdMs + SEND_GRACE_MS / 2));
-  assert.equal(await status(id), "queued", "not before the grace is over");
-  await new Promise((done) => setTimeout(done, SEND_GRACE_MS + 300));
+  const early = await status(id);
+  if (Date.now() - sentAt < holdMs + SEND_GRACE_MS - 50) assert.equal(early, "queued", "not before the grace is over");
+  const until = Date.now() + 10_000;
+  while ((await status(id)) === "queued" && Date.now() < until) await new Promise((done) => setTimeout(done, 50));
   assert.notEqual(await status(id), "queued", "sent by this process, not left to the mail job");
 });
 

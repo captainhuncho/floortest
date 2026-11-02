@@ -5,6 +5,7 @@ import type { Signal } from "@/lib/ops-signals";
 import { staffMayPlay } from "@/lib/staff-listen";
 import { signalsNow } from "../../shell/data";
 import { ageWords, signalWords, type QueueRow } from "./model";
+import { receiptWhere } from "@/lib/receipt-token";
 
 /** The picked track, everything the middle pane and the decision need. Dates are worded here, on the server. */
 export type TrackDetail = {
@@ -73,11 +74,12 @@ export async function queueRows(search: string, now = Date.now()): Promise<Queue
     return signals.map((s) => rowFrom(s, s.track_id ? byId.get(s.track_id) : undefined, s.signal_at, now));
   }
   const like = likeContains(search);
+  const byReceipt = receiptWhere(search, "t");
   const found = await q.all<TrackInfo & { created_at: number }>(
     `${INFO.replace("SELECT ", "SELECT t.created_at, ")}
-     WHERE t.deleted_at IS NULL AND (t.title ILIKE ? OR t.artist ILIKE ? OR s.email ILIKE ? OR s.name ILIKE ? OR t.token = ?)
+     WHERE t.deleted_at IS NULL AND (t.title ILIKE ? OR t.artist ILIKE ? OR s.email ILIKE ? OR s.name ILIKE ? OR ${byReceipt.sql})
      ORDER BY t.created_at DESC LIMIT ${SEARCH_LIMIT}`,
-    like, like, like, like, search,
+    like, like, like, like, ...byReceipt.args,
   );
   const signalOf = new Map<number, Signal>();
   for (const s of signals) if (s.track_id && !signalOf.has(s.track_id)) signalOf.set(s.track_id, s);

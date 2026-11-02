@@ -25,7 +25,7 @@ import { APP_URL } from "@/lib/mail";
 import { env } from "@/lib/env";
 import { HIDDEN, sendMail, sendMailHeld } from "@/lib/mail";
 import { readUndo, signUndo, takeBack, type UndoItem } from "@/lib/ops-undo";
-import { approvePendingIdentity } from "@/lib/identity-approve";
+import { approvePendingIdentity, rejectPendingIdentity } from "@/lib/identity-approve";
 import { isAdminEmail, logAdmin, requireAdminAction } from "@/lib/admin";
 import { opsAccessFor, suspendRefusal } from "@/lib/ops-access";
 import { PERMS, ROLE_PERMS, ROLES, type Perm, type Role } from "@/lib/ops-perms";
@@ -41,6 +41,7 @@ import { eraseSender, purgeAccount } from "@/lib/privacy";
 import { localPath } from "@/lib/safe-links";
 import { normalEmail } from "@/lib/email-normal";
 import { deleteRevokedInvite, GATE_CODE_MIN_LENGTH, restoreRevokedInvite } from "@/lib/invites";
+import { receiptWhere } from "@/lib/receipt-token";
 
 const refresh = () => revalidatePath("/admin", "layout");
 const done = (m: string) => flash(m);
@@ -655,16 +656,8 @@ export async function revokeIdentity(userId: number, form: FormData): Promise<Op
 export async function rejectIdentity(userId: number, form: FormData): Promise<OpsResult> {
   const a = await requireAdminAction("verification");
   const note = String(form.get("note") || "").trim().slice(0, 200);
-  const u = await q.tx(async (db) => {
-    const before = await db.get<{ identity_status: string; identity_note: string }>("SELECT identity_status, identity_note FROM users WHERE id = ? FOR UPDATE", userId);
-    if (!before) return null;
-    const row = await db.get<{ email: string; name: string; handle: string }>(
-      "UPDATE users SET identity_status = 'rejected', identity_note = ? WHERE id = ? RETURNING email, name, handle",
-      note,
-      userId,
-    );
-    return row ? { ...row, before } : null;
-  });
+  // Only a waiting request (lib/identity-approve): a verified account isn't turned down here, and anything else is "not found".
+  const u = await rejectPendingIdentity(userId, note);
   if (!u) return no("Account not found");
   const mail = await heldSend(a.id, "rejected identity", `@${u.handle}`, {
     userId,
@@ -756,9 +749,10 @@ export async function openTakedown(form: FormData) {
   const claimantEmail = normalEmail(String(form.get("claimant_email") || "")).slice(0, 200);
   const ref = String(form.get("track") || "").trim().slice(0, 100);
   if (!claimant || !claimantEmail.includes("@") || !ref) return fail("Fill in the claimant, a valid email and the track");
+  const m = receiptWhere(ref, "t");
   const t = await q.get<{ id: number; title: string; artist: string; handle: string }>(
-    "SELECT t.id, t.title, t.artist, u.handle FROM tracks t JOIN users u ON u.id = t.user_id WHERE t.token = ? OR t.id::text = ?",
-    ref,
+    `SELECT t.id, t.title, t.artist, u.handle FROM tracks t JOIN users u ON u.id = t.user_id WHERE ${m.sql} OR t.id::text = ?`,
+    ...m.args,
     ref,
   );
   const label = t ? `${t.artist} – ${t.title} (@${t.handle})` : `Not found: ${ref}`;

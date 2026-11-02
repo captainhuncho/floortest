@@ -57,7 +57,7 @@ test("every path gets exactly one CSP: the proxy's (with a nonce) or next.config
   assert.equal(matcher, `/((?!${PROXY_SKIPS.slice(3, -1)}).*)`, "the proxy matcher and PROXY_SKIPS list the same paths");
   const byProxy = new RegExp(`^${matcher}$`);
   const byConfig = new RegExp(`^/(${PROXY_SKIPS}.*)$`);
-  for (const path of ["/", "/login", "/maxwell", "/api/health", "/api/v1/me", "/_next/static/chunks/a.js", "/robots.txt", "/icon.svg", "/fonts/x.woff2", "/api/storage/upload", "/favicon.ico", "/images/a.png", "/c/abc", "/dashboard/review"])
+  for (const path of ["/", "/login", "/maxwell", "/api/health", "/api/v1/me", "/_next/static/chunks/a.js", "/robots.txt", "/icon.svg", "/fonts/x.woff2", "/api/storage/upload", "/favicon.ico", "/images/a.png", "/c/abc", "/dashboard/review", "/icons/.x.png", "/.env.txt", "/icons/%2Ex.png", "/.well-known/security.txt"])
     assert.notEqual(byProxy.test(path), byConfig.test(path), path);
 });
 
