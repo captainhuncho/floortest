@@ -119,7 +119,7 @@ test.describe("receipt details need proof", () => {
     // With proof it works: the switch goes, and stays gone.
     await again.click();
     await page.getByRole("dialog").getByRole("button", { name: "Stop sharing" }).click();
-    await expect(again).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /^Stop/ })).toHaveCount(0);
     await page.reload();
     await expect(page.getByText(LINKS.sender.title)).toBeVisible();
     await expect(page.getByRole("button", { name: "Stop private sharing" })).toHaveCount(0);
