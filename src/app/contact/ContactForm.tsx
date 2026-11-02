@@ -32,7 +32,7 @@ export function ContactForm({ name, email, topic, message, botCheckKey }: { name
       <label className="block space-y-1.5">
         <span className="label">Topic</span>
         <select name="topic" className="input" defaultValue={topic}>
-          {["General", "Account or billing", "A track I sent", "Report abuse", "Impersonation", "Copyright claim", "Suspension appeal", "Privacy request", "Partnerships"].map((t) => (
+          {["General", "Account or billing", "A track I sent", "Report abuse", "Impersonation", "Copyright claim", "Suspension appeal", "Locked out of my account", "Privacy request", "Partnerships"].map((t) => (
             <option key={t}>{t}</option>
           ))}
         </select>

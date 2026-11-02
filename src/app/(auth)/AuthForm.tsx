@@ -11,6 +11,7 @@ import { AuthIcon } from "./AuthFrame";
 import type { FormState } from "./actions";
 import { PasswordStrength } from "@/components/PasswordStrength";
 import { browserTimeZone, useBrowserValue } from "@/components/useBrowserValue";
+import { HoldNotice } from "./HoldNotice";
 
 /** Smooth scrolling, unless the person has asked their device for less motion. */
 const scrollBehavior = (): ScrollBehavior => (matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth");
@@ -86,6 +87,9 @@ export function AuthForm({
   const [shown, setShown] = useState<Record<string, boolean>>({});
   const [issue, setIssue] = useState<{ key: string; text: string } | null>(null);
   const alertRef = useRef<HTMLParagraphElement>(null);
+  // A hold (lib/login-limits): the button waits until its countdown ends; the server checks it again anyway.
+  const [released, setReleased] = useState<FormState>(undefined);
+  const held = !!state?.holdLeft && released !== state;
   useEffect(() => {
     if (state?.error) alertRef.current?.scrollIntoView({ block: "center", behavior: scrollBehavior() });
   }, [state?.error]);
@@ -254,12 +258,13 @@ export function AuthForm({
           {state.error}
         </p>
       )}
+      {held && state?.holdLeft && <HoldNotice key={state.holdLeft} left={state.holdLeft} final={state.holdFinal} onDone={() => setReleased(state)} />}
       {captureSource && <SourceField />}
       <Turnstile action="auth" siteKey={botCheckKey ?? null} />
       {state?.challenge && !botCheckKey && <Turnstile action="auth" key="challenge" siteKey={challengeKey ?? null} eager />}
       <div className="af-ft">
-        <button className="af-btn af-prime" disabled={pending}>
-          {pending ? "One moment…" : submit}
+        <button className={`af-btn ${held ? "af-off" : "af-prime"}`} disabled={pending || held}>
+          {pending ? "One moment…" : held ? "Paused" : submit}
         </button>
         {extra}
         {footer && (
