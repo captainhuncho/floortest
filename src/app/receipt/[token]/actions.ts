@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { stopSharingByReceipt } from "@/lib/share-links";
 import { receiptByToken } from "@/lib/receipt";
+import { receiptPath } from "@/lib/receipt-token";
 import { receiptProven, rememberSender } from "@/lib/receipt-proof";
 import { CodeError, checkCode, sendCode } from "@/lib/sender-code";
 import { allow, ipFrom } from "@/lib/ratelimit";
@@ -20,10 +21,10 @@ const RECEIPT_CODES_PER_HOUR = 3;
  * being the sender (src/lib/receipt-proof.ts); without it, the same "nothing happened" as an unknown link.
  */
 export async function stopSharing(token: string) {
-  const r = await receiptByToken(String(token).slice(0, 100));
+  const r = await receiptByToken(token);
   if (!r || !(await receiptProven(r))) return false;
   const ok = await stopSharingByReceipt(token);
-  revalidatePath(`/receipt/${token}`);
+  revalidatePath(receiptPath({ token }));
   return ok;
 }
 
@@ -34,7 +35,7 @@ export type CodeState = { sent?: string; error?: string; done?: boolean } | null
  * time, whatever happened (a limit, a bounce, an unknown link): "We sent a code to m•••@g•••.com".
  */
 export async function requestReceiptCode(token: string): Promise<CodeState> {
-  const r = await receiptByToken(String(token).slice(0, 100));
+  const r = await receiptByToken(token);
   if (!r) return { sent: maskEmail(null) };
   const sent = { sent: maskEmail(r.sender_email) };
   if (!(await allow("receipt_code", hashToken(token.slice(0, 100)), RECEIPT_CODES_PER_HOUR, HOUR))) return sent;
@@ -48,7 +49,7 @@ export async function requestReceiptCode(token: string): Promise<CodeState> {
 
 /** Checks the code; right once, then this browser shows this sender's receipts for 30 days. */
 export async function verifyReceiptCode(token: string, _: CodeState, form: FormData): Promise<CodeState> {
-  const r = await receiptByToken(String(token).slice(0, 100));
+  const r = await receiptByToken(token);
   const code = String(form.get("code") ?? "").replace(/\D/g, "").slice(0, 6);
   if (!r) return { error: "That code isn't right. Check the email and try again." };
   if (code.length !== 6) return { sent: maskEmail(r.sender_email), error: "Enter the 6-digit code from the email." };
@@ -58,6 +59,6 @@ export async function verifyReceiptCode(token: string, _: CodeState, form: FormD
     return { sent: maskEmail(r.sender_email), error: e instanceof CodeError ? e.message : "Something went wrong. Try again." };
   }
   await rememberSender({ id: r.sender_id, email: r.sender_email });
-  revalidatePath(`/receipt/${token}`);
+  revalidatePath(receiptPath({ token }));
   return { done: true };
 }

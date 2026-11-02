@@ -41,6 +41,6 @@ export const NOT_AVAILABLE = "This track is no longer available.";
 
 /** True when the receipt behind this token exists and this request proves its sender. */
 export async function senderProvenFor(token: string) {
-  const r = await receiptByToken(String(token).slice(0, 100));
+  const r = await receiptByToken(token);
   return !!r && (await receiptProven(r));
 }
