@@ -3,9 +3,11 @@ import { expect, hydrated, logIn, test } from "./fixtures";
 import { flipOpsShell, opsLogIn } from "./ops-login";
 
 /**
- * Speed fixes, phase 1: a tapped menu item lights up at once (useNavPath.ts), and a page that is slow to arrive shows
- * its loading skeleton (loading.tsx) instead of nothing. The app has no test-only delay, so the slow page is made here:
- * the browser holds back that page's own data request (not the prefetch, which carries the skeleton) for a few seconds.
+ * Speed fixes, phase 1: a tapped menu item lights up at once (useNavPath.ts), and while the next page is on its way the
+ * thin line at the top shows (NavProgress.tsx). The app has no test-only delay, so the slow page is made here: the
+ * browser holds back that page's own request for a few seconds. The e2e copy runs `next dev`, which never prefetches,
+ * so the skeletons (they come from the prefetch) aren't asserted here; the release check renders them on a production
+ * build instead.
  */
 async function holdBack(page: Page, path: string, ms = 4000) {
   await page.route("**/*", async (route) => {
@@ -35,21 +37,22 @@ async function msUntilCurrent(page: Page, link: Locator) {
   return page.evaluate(() => (window as unknown as { __lit: Promise<number> }).__lit);
 }
 
-const skeleton = (page: Page) => page.getByRole("status", { name: "Loading" });
+/** The line at the top: on while the tapped page is on its way, gone once it has arrived. */
+const progress = (page: Page) => page.locator(".nav-progress[data-on]");
 
-test("desk: the tapped menu item lights up within 100 ms, and a slow page shows its skeleton", async ({ page }) => {
+test("desk: the tapped menu item lights up within 100 ms, with the line at the top until a slow page arrives", async ({ page }) => {
   await logIn(page, "demo@floortest.test");
   await page.goto("/dashboard/floor");
   await holdBack(page, "/dashboard/review");
   const queue = page.getByRole("navigation", { name: "Main" }).filter({ visible: true }).first().getByRole("link", { name: /^Review Queue/ });
   expect(await msUntilCurrent(page, queue)).toBeLessThan(100);
-  await expect(skeleton(page)).toBeVisible();
+  await expect(progress(page)).toBeAttached();
   await expect(page.getByRole("heading", { level: 1, name: "Review Queue" })).toBeVisible({ timeout: 20_000 });
-  await expect(skeleton(page)).toHaveCount(0);
+  await expect(progress(page)).toHaveCount(0);
   await expect(queue).toHaveAttribute("aria-current", "page");
 });
 
-test("ops: today's sidebar and the new shell's panel light the tapped page within 100 ms; slow pages show the skeleton", async ({ page }) => {
+test("ops: today's sidebar and the new shell's panel light the tapped page within 100 ms; the line shows until it arrives", async ({ page }) => {
   test.setTimeout(300_000);
   await opsLogIn(page);
 
@@ -58,9 +61,9 @@ test("ops: today's sidebar and the new shell's panel light the tapped page withi
     await holdBack(page, "/admin/accounts");
     const users = page.getByRole("navigation", { name: "Admin", exact: true }).getByRole("link", { name: /^Users/ });
     expect(await msUntilCurrent(page, users)).toBeLessThan(100);
-    await expect(skeleton(page)).toBeVisible();
+    await expect(progress(page)).toBeAttached();
     await expect(page.locator("main h1").first()).toHaveText("Users", { timeout: 20_000 });
-    await expect(skeleton(page)).toHaveCount(0);
+    await expect(progress(page)).toHaveCount(0);
   });
 
   await flipOpsShell(page, true);
@@ -70,9 +73,9 @@ test("ops: today's sidebar and the new shell's panel light the tapped page withi
       await holdBack(page, "/admin/feedback");
       const feedback = page.getByRole("navigation", { name: "Support pages" }).getByRole("link", { name: /^Feedback/ });
       expect(await msUntilCurrent(page, feedback)).toBeLessThan(100);
-      await expect(skeleton(page)).toBeVisible();
+      await expect(progress(page)).toBeAttached();
       await expect(page.locator("main h1").first()).toBeVisible({ timeout: 20_000 });
-      await expect(skeleton(page)).toHaveCount(0);
+      await expect(progress(page)).toHaveCount(0);
       await expect(feedback).toHaveAttribute("aria-current", "page");
     });
   } finally {
