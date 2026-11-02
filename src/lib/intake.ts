@@ -22,6 +22,7 @@ import { recordIncident } from "./incidents";
 import { recordStoredDigest } from "./file-digests";
 import { activeCollection, capacity, isClosed, isFull, isPaused, pausedMessage, rewardReferral } from "./desk";
 import { normalEmail } from "./email-normal";
+import { receiptUrl } from "./receipt-token";
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -541,7 +542,7 @@ async function finishClaimed(receiver: User, up: Upload, ref: string, analysis: 
         title: noLinks(track.title),
         artist: noLinks(track.artist),
         for_collection: collection ? ` for ${collection.name}` : "",
-        receipt_url: `${APP_URL}/receipt/${track.token}`,
+        receipt_url: receiptUrl(track),
         sent_url: `${APP_URL}/sent`,
       };
       // One of several in a send: its emails go with the rest of the send's (straight away if it's the last one).

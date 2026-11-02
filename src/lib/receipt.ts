@@ -1,4 +1,5 @@
 import { q, type Track } from "./db";
+import { receiptWhere } from "./receipt-token";
 
 /**
  * The track columns a sender's receipt uses, and no others. The receiver's decision, notes and the file's storage key
@@ -24,12 +25,13 @@ export type ReceiptTrack = Pick<Track, (typeof RECEIPT_TRACK_COLUMNS)[number]> &
 
 /** One receipt by its token, with the receiver, callout and sender details the page shows. */
 export function receiptByToken(token: string) {
+  const m = receiptWhere(token, "t");
   const cols = RECEIPT_TRACK_COLUMNS.map((c) => `t.${c}`).join(", ");
   return q.get<ReceiptTrack>(
     `SELECT ${cols}, u.name AS receiver, u.handle AS receiver_handle, u.identity_status AS receiver_status, u.plan AS receiver_plan, c.name AS collection, s.email AS sender_email, s.verified_at, s.account_id AS sender_account, s.id AS sender_id
        FROM tracks t JOIN users u ON u.id = t.user_id JOIN senders s ON s.id = t.sender_id
        LEFT JOIN collections c ON c.id = t.collection_id
-       WHERE t.token = ?`,
-    token,
+       WHERE ${m.sql}`,
+    ...m.args,
   );
 }

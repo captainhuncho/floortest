@@ -12,6 +12,7 @@ import { validateAudio } from "./validate";
 import { scannerAwake, scanStored, SCAN_FAILED, SCAN_REFUSED, type ScanResult } from "./scan";
 import { chargeScanner, senderScope } from "./scan-budget";
 import { recordIncident } from "./incidents";
+import { receiptUrl, receiptWhere } from "./receipt-token";
 
 export type Stem = { id: number; track_id: number; file_key: string; name: string; mime: string; size: number; created_at: number };
 
@@ -51,7 +52,7 @@ export async function requestStems(user: User, t: Track) {
     body: [
       `${user.name} liked "${t.title}" and asked for the stems.`,
       "",
-      `Upload them here as WAV or MP3 files (one file per stem, up to ${MAX_STEMS}): ${APP_URL}/receipt/${t.token}`,
+      `Upload them here as WAV or MP3 files (one file per stem, up to ${MAX_STEMS}): ${receiptUrl(t)}`,
       "",
       "Only they can hear or download them.",
     ].join("\n"),
@@ -68,7 +69,8 @@ export const stemSenderEmail = async (t: Pick<Track, "sender_id">) =>
   t.sender_id ? (await q.get<{ email: string | null }>("SELECT email FROM senders WHERE id = ?", t.sender_id))?.email : null;
 
 async function trackForStems(token: string) {
-  const t = await q.get<Track>("SELECT * FROM tracks WHERE token = ?", token);
+  const m = receiptWhere(token, "");
+  const t = await q.get<Track>(`SELECT * FROM tracks WHERE ${m.sql}`, ...m.args);
   if (!t) throw new IntakeError("This track is no longer available.", 404);
   if (!t.stems_requested_at) throw new IntakeError("Stems weren't requested for this track.", 403);
   const plan = (await q.get<{ plan: string }>("SELECT plan FROM users WHERE id = ?", t.user_id))?.plan ?? "free";

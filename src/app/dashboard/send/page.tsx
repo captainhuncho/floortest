@@ -10,6 +10,7 @@ import { APP_URL } from "@/lib/mail";
 import { unheardAfterWindow } from "@/lib/plans";
 import { SendComposer } from "./SendComposer";
 import { CARD, Chip, Icon, PageHead, SectionHead } from "@/components/Kit";
+import { receiptPath } from "@/lib/receipt-token";
 
 export const metadata = { title: "Send — FloorTest" };
 
@@ -45,7 +46,7 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
   const row = (r: Sent) => (
     <li key={r.token} className="border-t border-line first:border-t-0">
       <Link
-        href={`/receipt/${r.token}`}
+        href={receiptPath(r)}
         className="group/row -mx-1.5 flex min-h-11 items-center gap-2 rounded-[11px] px-1.5 py-2.5 hover:bg-well focus-visible:bg-well focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-lime active:bg-well"
       >
         <span className="min-w-0 flex-1">
