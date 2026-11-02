@@ -7,7 +7,7 @@ import { APP_URL, deliverLater, queueMail } from "./mail";
 import { alertIfFull } from "./notify";
 import { LISTEN_BEAT_CAP_MS, listenThreshold } from "./plans";
 import { capacity, reopenCallouts } from "./desk";
-import { receiptUrl } from "./receipt-token";
+import { receiptToken, receiptUrl } from "./receipt-token";
 
 const senderOf = async (t: Track) => (await q.get<Sender>("SELECT * FROM senders WHERE id = ?", t.sender_id))!;
 
@@ -54,7 +54,7 @@ async function signal(user: User, t: Track, type: "played" | "downloaded" | "pla
   const id = await q.tx(async (db) => {
     if (!(await db.run(...change)).changes) return null;
     await logEvent({ user_id: user.id, actor_id: user.actor_id, sender_id: s.id, track_id: t.id, type, detail }, db);
-    return queueMail({ userId: user.id, to: s.email, secrets: [t.token], ...text }, db);
+    return queueMail({ userId: user.id, to: s.email, secrets: [receiptToken(t)], ...text }, db);
   });
   if (id === null) return false;
   deliverLater(id);
@@ -222,7 +222,7 @@ export async function reply(user: User, s: Sender, t: Track | undefined, body: s
       {
         userId: user.id,
         to: s.email,
-        secrets: [t?.token],
+        secrets: [t ? receiptToken(t) : null],
         subject: t ? `${user.name} replied about "${t.title}"` : `Message from ${user.name}`,
         body: `${body}\n\n— ${user.name}${t ? `\n\nYour receipt: ${receiptUrl(t)}` : ""}\n\nSent via FloorTest`,
       },

@@ -12,7 +12,7 @@ import { validateAudio } from "./validate";
 import { scannerAwake, scanStored, SCAN_FAILED, SCAN_REFUSED, type ScanResult } from "./scan";
 import { chargeScanner, senderScope } from "./scan-budget";
 import { recordIncident } from "./incidents";
-import { receiptUrl, receiptWhere } from "./receipt-token";
+import { receiptToken, receiptUrl, receiptWhere } from "./receipt-token";
 
 export type Stem = { id: number; track_id: number; file_key: string; name: string; mime: string; size: number; created_at: number };
 
@@ -47,7 +47,7 @@ export async function requestStems(user: User, t: Track) {
     userId: user.id,
     audience: "sender",
     to: s.email,
-    secrets: [t.token],
+    secrets: [receiptToken(t)],
     subject: `${user.name} asked for the stems of "${t.title}"`,
     body: [
       `${user.name} liked "${t.title}" and asked for the stems.`,

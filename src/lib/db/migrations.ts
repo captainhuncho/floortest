@@ -2041,4 +2041,16 @@ alter table file_reservations add constraint file_reservations_kind_check check 
     id: "0125_senders_blocked",
     sql: `create index if not exists senders_blocked on senders(blocked_at) where blocked_at is not null;`,
   },
+  {
+    // Receipt tokens stored hashed (link-page audit, Safety-reviewed design, 2 Nov): token_hash finds the receipt,
+    // token_sealed (AES-256-GCM with the app secret, src/lib/receipt-token.ts) lets the server rebuild the link for later
+    // emails and /sent. This step only adds and fills the hash; the app seals old tokens and clears the plain column row
+    // by row (nightly job and on first read). Expand only: code before this still reads and writes token.
+    id: "0126_receipt_token_hash",
+    sql: `alter table tracks add column if not exists token_hash text;
+alter table tracks add column if not exists token_sealed text;
+alter table tracks alter column token drop not null;
+update tracks set token_hash = encode(sha256(convert_to(token, 'UTF8')), 'hex') where token_hash is null and token is not null;
+create unique index if not exists tracks_token_hash on tracks(token_hash);`,
+  },
 ];

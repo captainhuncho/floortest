@@ -7,7 +7,7 @@ import { APP_URL, sendMailLater } from "./mail";
 import { SCAN_REFUSED, wakeScanner } from "./scan";
 import { chargeScanner, senderScope } from "./scan-budget";
 import { completeStemUpload } from "./stems";
-import { receiptUrl } from "./receipt-token";
+import { receiptToken, receiptUrl } from "./receipt-token";
 
 /**
  * Hold and scan (plan B10 option 3, owner 26 Oct). The virus scanner sleeps when idle; an upload (a track, or a stem
@@ -45,11 +45,11 @@ async function describe(up: Held, receiver: Pick<User, "handle">) {
   const meta = JSON.parse(up.meta) as Partial<SubmissionMeta> & StemMeta;
   if (meta.kind !== "stem")
     return { kind: "track" as const, meta, label: meta.title ?? "your track", email: meta.email, resend: `${APP_URL}/${receiver.handle}`, token: null };
-  const t = await q.get<{ token: string; email: string | null }>(
-    "SELECT t.token, s.email FROM tracks t LEFT JOIN senders s ON s.id = t.sender_id WHERE t.id = ?",
+  const t = await q.get<{ id: number; token: string | null; token_sealed: string | null; email: string | null }>(
+    "SELECT t.id, t.token, t.token_sealed, s.email FROM tracks t LEFT JOIN senders s ON s.id = t.sender_id WHERE t.id = ?",
     meta.trackId ?? 0,
   );
-  return { kind: "stem" as const, meta, label: meta.name ?? "your stem", email: t?.email ?? undefined, resend: t ? receiptUrl(t) : null, token: t?.token ?? null };
+  return { kind: "stem" as const, meta, label: meta.name ?? "your stem", email: t?.email ?? undefined, resend: t ? receiptUrl(t) : null, token: t ? receiptToken(t) : null };
 }
 
 /** The receipt link is a private link: the stored copy of the email hides it (src/lib/mail.ts). */

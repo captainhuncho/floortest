@@ -4,7 +4,7 @@ import { emailTemplate, fillEmail } from "./email-copy";
 import { APP_URL, noLinks, queueMail } from "./mail";
 import { queueNewTracksNotice } from "./notify";
 import { recordIncident } from "./incidents";
-import { receiptUrl } from "./receipt-token";
+import { receiptToken, receiptUrl } from "./receipt-token";
 
 /*
  * One send, one email (owner, 29 Oct). Several tracks sent together (a batch of up to 3, or a release folder) used to
@@ -70,7 +70,7 @@ export async function holdForSend(db: Queryable, g: SendGroup, trackId: number, 
   return saved >= expected ? queueSendEmails(db, g, t) : [];
 }
 
-type Waiting = { id: number; token: string; title: string; artist: string; sender_id: number; collection_id: number | null; deleted_at: number | null; decision: string | null; track_no: number | null; created_at: number; original_name: string | null; duration: number | null };
+type Waiting = { id: number; token: string | null; token_sealed: string | null; title: string; artist: string; sender_id: number; collection_id: number | null; deleted_at: number | null; decision: string | null; track_no: number | null; created_at: number; original_name: string | null; duration: number | null };
 
 /**
  * Claims every track of this send still waiting and queues one "Delivered" email to the sender listing them (with each
@@ -80,7 +80,7 @@ type Waiting = { id: number; token: string; title: string; artist: string; sende
 export async function queueSendEmails(db: Queryable, g: SendGroup, t: Templates) {
   const claimed = await db.all<Waiting>(
     `UPDATE tracks SET receipt_due_at = NULL WHERE user_id = ? AND ${g.column} = ? AND receipt_due_at IS NOT NULL
-     RETURNING id, token, title, artist, sender_id, collection_id, deleted_at, decision, track_no, created_at, original_name, duration`,
+     RETURNING id, token, token_sealed, title, artist, sender_id, collection_id, deleted_at, decision, track_no, created_at, original_name, duration`,
     g.userId,
     g.id,
   );
@@ -89,7 +89,6 @@ export async function queueSendEmails(db: Queryable, g: SendGroup, t: Templates)
   const sender = (await db.get<{ name: string; email: string }>("SELECT name, email FROM senders WHERE id = ?", tracks[0].sender_id))!;
   const receiver = (await db.get<{ name: string }>("SELECT name FROM users WHERE id = ?", g.userId))!;
   const collection = tracks[0].collection_id ? await db.get<{ name: string }>("SELECT name FROM collections WHERE id = ?", tracks[0].collection_id) : undefined;
-  const receipt = (token: string) => receiptUrl({ token });
   // Everything the sender typed is shown without links: this email goes to whatever address they entered.
   const vars = {
     sender: noLinks(sender.name),
@@ -97,10 +96,10 @@ export async function queueSendEmails(db: Queryable, g: SendGroup, t: Templates)
     for_collection: collection ? ` for ${collection.name}` : "",
     sent_url: `${APP_URL}/sent`,
     ...(tracks.length === 1
-      ? { title: noLinks(tracks[0].title), artist: noLinks(tracks[0].artist), receipt_url: receipt(tracks[0].token) }
+      ? { title: noLinks(tracks[0].title), artist: noLinks(tracks[0].artist), receipt_url: receiptUrl(tracks[0]) }
       : {
           count: `${tracks.length} tracks`,
-          tracks: tracks.map((x) => `• ${noLinks(x.artist)} – ${noLinks(x.title)}\n  Receipt: ${receipt(x.token)}`).join("\n\n"),
+          tracks: tracks.map((x) => `• ${noLinks(x.artist)} – ${noLinks(x.title)}\n  Receipt: ${receiptUrl(x)}`).join("\n\n"),
         }),
   };
   const words = tracks.length === 1 ? t.one : t.many;
@@ -109,7 +108,7 @@ export async function queueSendEmails(db: Queryable, g: SendGroup, t: Templates)
       {
         userId: g.userId,
         to: sender.email,
-        secrets: tracks.map((x) => x.token),
+        secrets: tracks.map(receiptToken),
         subject: fillEmail(words.subject, vars).replace(/\s+/g, " "),
         body: fillEmail(words.body, vars),
         details: receiptDetails(tracks, receiver.name, collection?.name),
