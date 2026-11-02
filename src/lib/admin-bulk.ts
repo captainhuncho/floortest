@@ -15,6 +15,9 @@ export function bulkIds(raw: string[]): number[] | null {
 /** Suspending sends an email each, so a batch stays small enough to finish inside one request. */
 export const SUSPEND_MAX = 20;
 
+/** The plans staff can set on one account (the record page and the new Users). Never changed in bulk (owner, 1 Nov). */
+export const ADMIN_PLANS = ["free", "pro", "team"] as const;
+
 /** Users are listed this many to a page. */
 export const PAGE_SIZE = 50;
 

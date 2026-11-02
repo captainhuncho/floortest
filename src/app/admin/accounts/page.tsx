@@ -7,11 +7,15 @@ import { allPlans } from "@/lib/plan-store";
 import { AudienceFields } from "../AudienceFields";
 import { KIND_LABEL, now } from "@/lib/db";
 import { likeContains, q } from "@/lib/db";
+import { switchOn } from "@/lib/switches";
+import { CrmUsers } from "./crm/CrmUsers";
 
 /** Users: receivers (accounts with a link) and senders (people who've sent tracks, identified by email). */
 export default async function Users({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const admin = await requireAdmin("users.read");
   const sp = await searchParams;
+  // The new look (admin redesign B, step 5; switch ops_shell): views, edit in place, bulk. Off, today's page as it was.
+  if (sp.view !== "senders" && (await switchOn("ops_shell"))) return <CrmUsers sp={sp} access={admin.access} />;
   const search = (sp.q || "").trim().slice(0, 100);
   if (sp.view === "senders") return <Senders search={search} />;
   const aud = readAudience((k) => sp[k]);
