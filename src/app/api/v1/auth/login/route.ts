@@ -4,10 +4,10 @@ import { issueAppSession } from "@/lib/app-auth";
 import { body, fail, json } from "@/lib/api-v1";
 import { q } from "@/lib/db";
 import { HUMAN_CHECK_AFTER, HUMAN_MESSAGE, humanCheck, recentFailures } from "@/lib/human-check";
-import { record, requestIp } from "@/lib/ratelimit";
+import { recentCount, record, requestIp } from "@/lib/ratelimit";
 import { checkSecondFactor } from "@/lib/security";
 import { normalEmail } from "@/lib/email-normal";
-import { afterRightPassword, holdAnswer, loginLocked, passwordHold, recordLoginFailure } from "@/lib/login-limits";
+import { afterRightPassword, claimTry, holdAnswer, loginLocked, passwordHold, recordLoginFailure } from "@/lib/login-limits";
 import { alertGuessedAccount } from "@/lib/login-alert";
 
 export const runtime = "nodejs";
@@ -36,6 +36,12 @@ export async function POST(req: Request) {
   const form = new FormData();
   form.set("cf-turnstile-response", String(b.humanToken ?? ""));
   if (!(await humanCheck(failures, form, ip)).ok) return fail(HUMAN_MESSAGE, 403, { needsHuman: true });
+  // Counted before the password is checked, so tries at the same moment can't all get through; handed back if it's right.
+  const attempt = await claimTry("login", email, ip);
+  if (attempt.hold) {
+    const a = holdAnswer(attempt.hold);
+    return fail(a.error, 429, { holdLeft: a.holdLeft, holdFinal: a.holdFinal });
+  }
   const u = await q.get<{ id: number; password_hash: string; suspended_at: number | null; totp_enabled_at: number | null }>(
     "SELECT id, password_hash, suspended_at, totp_enabled_at FROM users WHERE email = ?",
     email,
@@ -50,15 +56,20 @@ export async function POST(req: Request) {
     }
     return fail("Email or password is incorrect.", 401, { needsHuman: failures + 1 >= HUMAN_CHECK_AFTER });
   }
-  await afterRightPassword("login", email, ip);
+  await afterRightPassword("login", email, ip, attempt);
   if (u.suspended_at) return fail("This account is suspended.", 403);
   await upgradePasswordHash(u.id, password, u.password_hash);
   if (u.totp_enabled_at) {
     const code = String(b.code ?? "").trim().slice(0, 20);
     if (!code) return fail("Enter the code from your authenticator app.", 401, { needsCode: true });
+    // Wrong codes are capped per account, shared with the website's two-step page and ops (8 in 15 minutes): reached
+    // only with the right password, so it can't lock anyone out, and many devices can't add up to more guesses.
+    const twoStep = `user:${u.id}`;
+    if ((await recentCount("twofa_fail", twoStep, 15 * 60_000)) >= 8) return fail("Too many wrong codes. Wait 15 minutes and sign in again.", 429);
     if (!(await checkSecondFactor(u.id, code))) {
       await record("login_fail_ip", ip);
       await record("login_fail_email", email);
+      await record("twofa_fail", twoStep);
       return fail("That code didn't work.", 401, { needsCode: true });
     }
   }

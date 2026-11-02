@@ -20,11 +20,9 @@ export async function loginLocked(email: string, ip: string): Promise<"connectio
   return !(await botCheckKey()) && (await recentCount("login_fail_email", email, WINDOW)) >= 10 ? "email" : null;
 }
 
-/** One wrong password: counted for the connection, the email (for the human check) and the two together (the holds). */
+/** One wrong password, after claimTry: counted for the connection, the email and the two together; may start a hold. */
 export async function recordLoginFailure(email: string, ip: string) {
-  await record("login_fail_ip", ip);
-  await record("login_fail_email", email);
-  return afterWrongPassword("login", email, ip);
+  return afterWrongPassword("login", email, ip, { claimed: true });
 }
 
 /**
@@ -72,22 +70,52 @@ export async function passwordHold(kind: SignIn, email: string, ip: string, at =
   return hold && at < hold.until ? { until: hold.until, final: hold.final } : null;
 }
 
-/**
- * A wrong password for this email from this connection. Counts the wrong tries since the last hold ended (or the last
- * right password, or 15 minutes ago); the fifth starts the next hold, one step longer than the last if that ended within
- * HOLD_MEMORY, and returns it. Two tries at the same moment get the same step, never a jump to the top.
- */
-export async function afterWrongPassword(kind: SignIn, email: string, ip: string): Promise<Hold | null> {
-  const key = pair(email, ip);
-  await record(`${kind}_fail_pair`, key);
+/** The wrong tries in this round (since the last hold ended, the last right password, or 15 minutes ago) and the last hold. */
+async function round(kind: SignIn, key: string) {
   const at = now();
   const { lastOk, hold: prev } = await history(kind, key);
   const since = Math.max(at - WINDOW, prev?.until ?? 0, lastOk);
   const wrong = await q.get<{ n: number }>("SELECT COUNT(*) AS n FROM rate_events WHERE bucket = ? AND key = ? AND created_at > ?", `${kind}_fail_pair`, key, since);
-  if (Number(wrong?.n ?? 0) < HOLD_AFTER) return null;
+  return { at, prev, wrong: Number(wrong?.n ?? 0) };
+}
+
+/** Starts the next hold: one step longer than the last if that ended within HOLD_MEMORY, else the first step. */
+async function startHold(kind: SignIn, key: string, prev: { step: number; until: number } | null, at: number): Promise<Hold> {
   const step = prev && at < prev.until + HOLD_MEMORY ? Math.min(prev.step + 1, HOLD_STEPS.length - 1) : 0;
   await record(holdBucket(kind, step), key);
   return { until: now() + HOLD_STEPS[step], final: step === HOLD_STEPS.length - 1 };
+}
+
+/** One try's place in the counters, from claimTry: the rows to hand back if the password turns out right. */
+export type Try = { ids: number[]; hold: Hold | null };
+
+/**
+ * Takes this try's place before anything is checked (Safety review, 2 Nov): counted for the connection, the email and
+ * the two together, so tries sent at the same moment can't all slip past the counts before any is recorded. If earlier
+ * tries in flight have already used up this round, it answers with the hold and nothing more is tried. A right password
+ * hands the place back (afterRightPassword), so it's never counted as wrong.
+ */
+export async function claimTry(kind: SignIn, email: string, ip: string): Promise<Try> {
+  const key = pair(email, ip);
+  const ids: number[] = [];
+  for (const [bucket, k] of [[`${kind}_fail_ip`, ip], [`${kind}_fail_email`, email], [`${kind}_fail_pair`, key]]) {
+    const row = await q.get<{ id: number }>("INSERT INTO rate_events (bucket, key, created_at) VALUES (?,?,?) RETURNING id", bucket, k, now());
+    if (row) ids.push(row.id);
+  }
+  const { at, prev, wrong } = await round(kind, key);
+  return { ids, hold: wrong > HOLD_AFTER ? await startHold(kind, key, prev, at) : null };
+}
+
+/**
+ * A wrong password (or, on ops, any failed sign-in) for this email from this connection. The fifth wrong try in a round
+ * starts the next hold and returns it. Tries at the same moment get the same step, never a jump to the top. `claimed`:
+ * claimTry already counted this try.
+ */
+export async function afterWrongPassword(kind: SignIn, email: string, ip: string, { claimed = false } = {}): Promise<Hold | null> {
+  const key = pair(email, ip);
+  if (!claimed) await record(`${kind}_fail_pair`, key);
+  const { at, prev, wrong } = await round(kind, key);
+  return wrong < HOLD_AFTER ? null : startHold(kind, key, prev, at);
 }
 
 /**
@@ -114,7 +142,8 @@ export const holdAnswer = (hold: Hold, kind: SignIn = "login") => {
   };
 };
 
-/** A right password from this connection: the wrong tries and holds before it no longer count. */
-export async function afterRightPassword(kind: SignIn, email: string, ip: string) {
+/** A right password from this connection: its own claimed place is handed back, and the wrong tries and holds before it no longer count. */
+export async function afterRightPassword(kind: SignIn, email: string, ip: string, claimed?: Try) {
+  if (claimed?.ids.length) await q.run(`DELETE FROM rate_events WHERE id IN (${claimed.ids.map(() => "?").join(",")})`, ...claimed.ids);
   await record(`${kind}_ok_pair`, pair(email, ip));
 }

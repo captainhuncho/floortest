@@ -19,7 +19,7 @@ import { env } from "@/lib/env";
 import { APP_URL, sendMail } from "@/lib/mail";
 import { RESERVED_HANDLES } from "@/lib/plans";
 import { allow, recentCount, record, requestIp } from "@/lib/ratelimit";
-import { afterRightPassword, holdAnswer, loginLocked, passwordHold, recordLoginFailure } from "@/lib/login-limits";
+import { afterRightPassword, claimTry, holdAnswer, loginLocked, passwordHold, recordLoginFailure } from "@/lib/login-limits";
 import { alertGuessedAccount } from "@/lib/login-alert";
 import { normalEmail } from "@/lib/email-normal";
 import { isProtectedHandle } from "@/lib/identity";
@@ -260,6 +260,9 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
   const failures = await recentFailures("login_fail_email", "login_fail_ip", email, ip);
   const human = await humanCheck(failures, form, ip);
   if (!human.ok) return { error: HUMAN_MESSAGE, challenge: true };
+  // This try is counted before the password is checked, so tries at the same moment can't all get through; handed back below if it's right.
+  const attempt = await claimTry("login", email, ip);
+  if (attempt.hold) return holdAnswer(attempt.hold);
   const row = await q.get<{ id: number; password_hash: string; suspended_at: number | null }>("SELECT id, password_hash, suspended_at FROM users WHERE email = ?", email);
   const ok = await verifyPassword(password, row?.password_hash ?? (await DUMMY_HASH));
   if (!row || !ok) {
@@ -271,7 +274,7 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
     }
     return { error: "Email or password is incorrect.", challenge: failures + 1 >= HUMAN_CHECK_AFTER };
   }
-  await afterRightPassword("login", email, ip);
+  await afterRightPassword("login", email, ip, attempt);
   if (row.suspended_at) return { error: "This account is suspended. To appeal, go to the Contact page and choose Suspension appeal." };
   await upgradePasswordHash(row.id, password, row.password_hash);
   await afterPassword(row.id, "password");

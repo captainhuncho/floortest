@@ -11,23 +11,30 @@ delete process.env.DATABASE_URL;
 
 const MIN = 60_000;
 
+/** One wrong password the way sign-in counts it: the try's place first (claimTry), then the failure. */
+async function wrongTry(email: string, ip: string) {
+  const { claimTry, recordLoginFailure } = await import("../src/lib/login-limits");
+  const attempt = await claimTry("login", email, ip);
+  return attempt.hold ?? recordLoginFailure(email, ip);
+}
+
 test("a stranger's wrong passwords don't lock the owner out: the guessing connection is held, the owner elsewhere isn't", async () => {
   const { q } = await import("../src/lib/db");
-  const { loginLocked, passwordHold, recordLoginFailure } = await import("../src/lib/login-limits");
+  const { loginLocked, passwordHold } = await import("../src/lib/login-limits");
   await q.run("INSERT INTO switches (key, on_, updated_at) VALUES ('bot_check', 1, ?) ON CONFLICT (key) DO UPDATE SET on_ = 1", Date.now());
-  for (let i = 0; i < 12; i++) await recordLoginFailure("owner@x.io", "6.6.6.6");
+  for (let i = 0; i < 12; i++) await wrongTry("owner@x.io", "6.6.6.6");
   assert.ok(await passwordHold("login", "owner@x.io", "6.6.6.6"), "the guessing connection is on hold");
   assert.equal(await passwordHold("login", "owner@x.io", "1.2.3.4"), null, "the owner, elsewhere, isn't held");
   assert.equal(await loginLocked("owner@x.io", "1.2.3.4"), null, "and isn't stopped (the human check still applies)");
-  for (let i = 0; i < 20; i++) await recordLoginFailure(`other${i}@x.io`, "7.7.7.7");
+  for (let i = 0; i < 20; i++) await wrongTry(`other${i}@x.io`, "7.7.7.7");
   assert.equal(await loginLocked("new@x.io", "7.7.7.7"), "connection", "one connection trying many emails is stopped");
 });
 
 test("with the human check off there is nothing to ask for, so the per-email stop stays", async () => {
   const { q } = await import("../src/lib/db");
-  const { loginLocked, recordLoginFailure } = await import("../src/lib/login-limits");
+  const { loginLocked } = await import("../src/lib/login-limits");
   await q.run("UPDATE switches SET on_ = 0 WHERE key = 'bot_check'");
-  for (let i = 0; i < 10; i++) await recordLoginFailure("plain@x.io", `9.9.9.${i}`);
+  for (let i = 0; i < 10; i++) await wrongTry("plain@x.io", `9.9.9.${i}`);
   assert.equal(await loginLocked("plain@x.io", "1.2.3.4"), "email");
   await q.run("UPDATE switches SET on_ = 1 WHERE key = 'bot_check'");
 });
@@ -119,6 +126,21 @@ test("a hold looks the same whether or not the email has an account, and app and
   }
   assert.deepEqual(answers[0], answers[1], "same words, same step, same time left");
   assert.equal(await passwordHold("ops", "real@x.io", "3.3.3.3"), null, "an app hold doesn't hold ops, and the other way round");
+});
+
+test("tries sent at the same moment are counted first: a burst gets at most 5 checked, and a right one gives its place back", async () => {
+  const { q } = await import("../src/lib/db");
+  const { HOLD_AFTER, afterRightPassword, claimTry } = await import("../src/lib/login-limits");
+  const ip = "9.8.7.6";
+  // Twelve at once from one device for one email: every try past the fifth is answered with the hold, unchecked.
+  const claims = await Promise.all(Array.from({ length: 12 }, () => claimTry("login", "burst2@x.io", ip)));
+  assert.ok(claims.filter((c) => !c.hold).length <= HOLD_AFTER, "at most five go on to the password check");
+  // A right password hands its place back: the connection and email counters don't grow.
+  const before = Number((await q.get<{ n: number }>("SELECT COUNT(*) AS n FROM rate_events WHERE bucket = 'login_fail_ip' AND key = ?", "9.8.7.5"))?.n ?? 0);
+  const right = await claimTry("login", "fine2@x.io", "9.8.7.5");
+  await afterRightPassword("login", "fine2@x.io", "9.8.7.5", right);
+  const after = Number((await q.get<{ n: number }>("SELECT COUNT(*) AS n FROM rate_events WHERE bucket = 'login_fail_ip' AND key = ?", "9.8.7.5"))?.n ?? 0);
+  assert.equal(after, before, "a right password leaves no wrong-try record behind");
 });
 
 // Owner, 2 Nov: ops sign-in gets the same device-only holds instead of its old stop on the whole account.

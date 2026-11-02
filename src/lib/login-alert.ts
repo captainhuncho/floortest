@@ -2,6 +2,7 @@ import "server-only";
 import { now, q } from "./db";
 import { afterResponse, APP_URL, sendMail } from "./mail";
 import { allow, recentCount } from "./ratelimit";
+import { opsAccessFor } from "./ops-access";
 import type { Hold, SignIn } from "./login-limits";
 
 const HOUR = 3_600_000;
@@ -20,6 +21,8 @@ export function alertGuessedAccount(email: string, hold: Hold, kind: SignIn = "l
   afterResponse(async () => {
     const u = await q.get<{ id: number; email: string; name: string; tz: string }>("SELECT id, email, name, tz FROM users WHERE email = ? AND suspended_at IS NULL", email);
     if (!u) return;
+    // An ops alert goes only to people on the ops team: a customer's email typed into ops sign-in tells them nothing.
+    if (kind === "ops" && !(await opsAccessFor({ id: u.id, email: u.email }))) return;
     const id = String(u.id);
     if ((await recentCount("login_alert", id, DAY)) >= PER_ACCOUNT_A_DAY || !(await allow("login_alert", id, 1, HOUR))) return;
     if (!(await allow("login_alert_all", "all", ALL_A_DAY, DAY))) return;

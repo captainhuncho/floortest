@@ -11,7 +11,7 @@ import { HUMAN_CHECK_AFTER, HUMAN_MESSAGE, humanCheck, recentFailures } from "@/
 import type { FormState } from "../(auth)/actions";
 import { normalEmail } from "@/lib/email-normal";
 import { botCheckKey } from "@/lib/turnstile";
-import { afterRightPassword, afterWrongPassword, holdAnswer, passwordHold } from "@/lib/login-limits";
+import { afterRightPassword, afterWrongPassword, claimTry, holdAnswer, passwordHold } from "@/lib/login-limits";
 import { alertGuessedAccount } from "@/lib/login-alert";
 
 const DUMMY = hashPassword("not-a-real-password");
@@ -35,12 +35,13 @@ export async function opsSignIn(_: FormState, form: FormData): Promise<FormState
   if (!(await botCheckKey()) && (await recentCount("ops_fail_email", email, WINDOW)) >= 5) return { error: "Too many attempts. Wait 15 minutes." };
   const failures = await recentFailures("ops_fail_email", "ops_fail_ip", email, ip);
   if (!(await humanCheck(failures, form, ip)).ok) return { error: HUMAN_MESSAGE, challenge: true };
+  // This try is counted before anything is checked, so tries at the same moment can't all get through (lib/login-limits).
+  const attempt = await claimTry("ops", email, ip);
+  if (attempt.hold) return holdAnswer(attempt.hold, "ops");
   // Any failure counts toward the device's hold, the two-step code too: ops needs both every time, and a right password
   // with a wrong code must not let a stolen password guess codes freely. The answer never says which part was wrong.
   const fail = async (): Promise<FormState> => {
-    await record("ops_fail_ip", ip);
-    await record("ops_fail_email", email);
-    const started = await afterWrongPassword("ops", email, ip);
+    const started = await afterWrongPassword("ops", email, ip, { claimed: true });
     if (started) {
       alertGuessedAccount(email, started, "ops");
       return holdAnswer(started, "ops");
@@ -55,8 +56,15 @@ export async function opsSignIn(_: FormState, form: FormData): Promise<FormState
   // The super admin, or an active ops team member; anyone else gets the same "didn't work" as a wrong password.
   const access = u && passwordOk ? await opsAccessFor({ id: u.id, email }) : null;
   if (!u || !passwordOk || !access || !u.email_verified_at || !u.totp_enabled_at || u.suspended_at) return fail();
-  if (!(await checkSecondFactor(u.id, code))) return fail();
-  await afterRightPassword("ops", email, ip);
+  // Wrong two-step codes are also capped per account, shared with the website and the app (8 in 15 minutes): reached
+  // only with the right password, so it can't be used to lock anyone out, and many devices can't add up to more guesses.
+  const twoStep = `user:${u.id}`;
+  if ((await recentCount("twofa_fail", twoStep, WINDOW)) >= 8) return fail();
+  if (!(await checkSecondFactor(u.id, code))) {
+    await record("twofa_fail", twoStep);
+    return fail();
+  }
+  await afterRightPassword("ops", email, ip, attempt);
   await upgradePasswordHash(u.id, password, u.password_hash);
   await createOpsSession(u.id);
   await logAdmin(u.id, "signed in to ops", "", ip);
