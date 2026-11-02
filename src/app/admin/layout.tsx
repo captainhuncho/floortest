@@ -44,14 +44,16 @@ async function legacyBadges(allowed: (href: string) => boolean) {
 }
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const admin = await requireAdmin();
+  // Independent reads together, not one after another (speed phase 1): who it is, which navigation, the flash, the theme.
+  // The new shell (admin redesign B) or today's navigation, never both: one switch, read once per request.
+  const [admin, shell, notice, theme] = await Promise.all([requireAdmin(), switchOn("ops_shell"), readFlash(), currentTheme()]);
   const access = admin.access;
   const allowed = (href: string) => can(access, needFor(href));
-  // The new shell (admin redesign B) or today's navigation, never both: one switch, read once per request.
-  const shell = await switchOn("ops_shell");
+  // The badge counts for whichever navigation is on (only what this person can open).
+  const [badges, data] = await Promise.all([shell ? Promise.resolve({}) : legacyBadges(allowed), shell ? shellData(access, allowed) : Promise.resolve(null)]);
   // Grouped by the question being asked; Overview sits on its own at the top, the admin tools at the bottom (shell/model.ts).
   // Each person sees only what they can open; empty sections and groups drop out.
-  const groups: NavGroup[] = legacyGroups(allowed, shell ? {} : await legacyBadges(allowed));
+  const groups: NavGroup[] = legacyGroups(allowed, badges);
   const roleLabel = access.super ? "Super admin" : ROLES[access.role];
   const initials = admin.name
     .split(/\s+/)
@@ -59,13 +61,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     .map((w) => w[0]?.toUpperCase())
     .join("");
   const me = { name: admin.name, initials, role: roleLabel };
-  const notice = await readFlash();
   // ⌘K: the pages this person can open (the same filtered list as the menu) and the kit's own actions.
   const paletteEntries: PaletteEntry[] = [
     ...groups.flatMap((g) => g.sections.flatMap((sec) => sec.items.map((i) => ({ id: i.href, label: i.label, href: i.href, group: "Pages" as const, hint: g.title || undefined, keywords: [g.title, sec.title].filter(Boolean) })))),
     { id: "keys", label: "Keyboard shortcuts", group: "Actions", hint: "?", keywords: ["help", "keys"] },
   ];
-  const theme = themeClass(await currentTheme());
+  const themeName = themeClass(theme);
   const extras = (
     <>
       <Toast flash={notice} />
@@ -74,11 +75,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   );
   if (shell) {
     return (
-      <div id="theme-root" className={theme}>
+      <div id="theme-root" className={themeName}>
         <KeysProvider>
           <AdminMotion />
           <SkipLink />
-          <OpsShell data={await shellData(access, allowed)} me={me}>
+          <OpsShell data={data!} me={me}>
             {children}
           </OpsShell>
           {extras}
@@ -87,7 +88,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     );
   }
   return (
-    <div id="theme-root" className={`${theme} md:flex`}>
+    <div id="theme-root" className={`${themeName} md:flex`}>
       <KeysProvider>
       <AdminMotion />
       <SkipLink />

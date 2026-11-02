@@ -4,6 +4,7 @@ import { logout } from "@/app/(auth)/actions";
 import { currentPerson } from "@/lib/auth";
 import { inviteBySecret } from "@/lib/account-members";
 import { JoinButton } from "./JoinButton";
+import { maskEmail } from "@/lib/mask-email";
 
 export const metadata: Metadata = { title: "Join a team — FloorTest", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -20,6 +21,9 @@ export default async function Join({ params }: { params: Promise<{ token: string
         <p>It may have expired (invites last 7 days), been cancelled or already used. Ask the person who invited you for a new one.</p>
       </MessagePage>
     );
+  // The invited address shows in full only to the person signed in with it; anyone else holding the link (a forwarded
+  // email, a link scanner, a different account) sees it masked.
+  const shown = me && me.email.toLowerCase() === inv.email ? inv.email : maskEmail(inv.email);
   const title = `Join ${inv.account_name} on FloorTest`;
   const about = (
     <p>
@@ -37,7 +41,7 @@ export default async function Join({ params }: { params: Promise<{ token: string
         actions={
           <>
             <a href={`/join/${token}/login`} className={PRIMARY}>
-              Log in with {inv.email}
+              Log in with {shown}
             </a>
             <a href={`/join/${token}/signup`} className={SECONDARY}>
               New to FloorTest? Create your login
@@ -54,7 +58,7 @@ export default async function Join({ params }: { params: Promise<{ token: string
         <MessagePage icon="contacts" title={title} wide actions={<button className={SECONDARY}>Sign out</button>}>
           {about}
           <p role="alert" className="text-bone">
-            This invite was sent to {inv.email}, but you&apos;re signed in as {me.email}. Sign out, then open this invite again and log in with {inv.email} to accept it.
+            This invite was sent to {shown}, but you&apos;re signed in as {me.email}. Sign out, then open this invite again and log in with that email to accept it.
           </p>
         </MessagePage>
       </form>
@@ -62,6 +66,9 @@ export default async function Join({ params }: { params: Promise<{ token: string
   return (
     <MessagePage icon="contacts" title={title} wide actions={<JoinButton token={token} name={inv.account_name} />}>
       {about}
+      <p>
+        You&apos;re signed in as <span className="text-bone">{shown}</span>, the email this invite was sent to.
+      </p>
     </MessagePage>
   );
 }

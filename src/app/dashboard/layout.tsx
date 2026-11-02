@@ -23,16 +23,18 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const [user, view, theme] = await Promise.all([requireUser(), viewingAs(), currentTheme()]);
   // Retention cleanup runs after the response, so it never slows a page down.
   after(() => purgeExpired().catch((e) => console.error("[purge]", e)));
-  const [collections, cap, active, notices, teams, me] = await Promise.all([
+  // All of the desk's reads at once (speed phase 1: the feedback ask and the send switch used to wait for the rest).
+  const [collections, cap, active, notices, teams, me, askFeedback, canSend] = await Promise.all([
     collectionsForView(user.id),
     capacityForView(user.id, user.plan),
     activeCollectionForView(user.active_collection_id),
     notificationsFor(user),
     view ? Promise.resolve([]) : teamsFor(user.actor_id),
     currentPerson(),
+    // The one-time "How's FloorTest working for you?" (lib/feedback-ask): the person's, never in an admin view.
+    view ? Promise.resolve(false) : feedbackAskDue(user.actor_id),
+    user.role !== "member" ? switchOn("send_music", user) : Promise.resolve(false),
   ]);
-  // The one-time "How's FloorTest working for you?" (lib/feedback-ask): the person's, never in an admin view.
-  const askFeedback = !view && (await feedbackAskDue(user.actor_id));
   // Even with the switch on, uploads stop if the routed collection closed or the desk is full. With no collection the
   // link stays open and tracks land in the Review Queue, unsorted.
   const blocked = active && isClosed(active)
@@ -58,7 +60,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             needsReview={collections.reduce((n, c) => n + c.needs_review, 0)}
             cap={cap}
             pause={pauseState}
-            canSend={user.role !== "member" && (await switchOn("send_music", user))}
+            canSend={canSend}
           />
           <main id="main" className="min-w-0 pb-48 md:overflow-y-auto md:pb-24">
             {/* Phones: the logo floats on top in a frosted bar, always in view (owner, 30 Oct); desktop keeps the slim bar. */}

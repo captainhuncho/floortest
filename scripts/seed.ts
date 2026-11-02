@@ -7,6 +7,8 @@ import path from "node:path";
 import { dataDir, getDb } from "../src/lib/db/client";
 import { sealSecret } from "../src/lib/totp";
 import { OPS_BLOCKED, OPS_CLAIMED, OPS_EMAIL, OPS_FEEDBACK_MESSAGE, OPS_INBOX_MESSAGE, OPS_TOTP_SECRET } from "../e2e/ops-account";
+import { LINKS } from "../e2e/link-pages-data";
+import { hashToken } from "../src/lib/token-hash";
 
 if (process.env.DATABASE_URL || process.env.S3_BUCKET || process.env.NODE_ENV === "production") {
   console.error("Refusing to seed: this script is for local development only (DATABASE_URL, S3_BUCKET or NODE_ENV=production is set).");
@@ -277,6 +279,38 @@ async function main() {
       if (m === OPS_CLAIMED)
         await db.run("INSERT INTO takedowns (track_id, track_label, claimant, claimant_email, basis, created_at) VALUES (?,?,?,?,?,?)", tid, `${m.artist} – ${m.title}`, "Atlas Publishing", "claims@atlas.example", "Uses our sample", now - 2 * 3_600_000);
     }
+  }
+  // Private link page tests (SEED_LINK_PAGES=1, test runs only; e2e/link-pages.spec.ts): a desk of its own with one
+  // shared track whose receipt, sender history link, team invite and two email links are known, so the spec can open
+  // each page with only its link and check the address never shows in full. Its own desk so the demo desk's counts stay.
+  if (process.env.SEED_LINK_PAGES === "1") {
+    const user = (email: string, name: string, handle: string, verified: boolean, extra = {} as Record<string, unknown>) =>
+      id(
+        `INSERT INTO users (email, password_hash, name, handle, plan, tz, email_verified_at, created_at${Object.keys(extra).map((k) => `, ${k}`).join("")}) VALUES (?,?,?,?,?,?,?,?${Object.keys(extra).map(() => ",?").join("")})`,
+        email, hash("floortest-demo"), name, handle, "free", "Europe/London", verified ? now - DAY : null, now - 2 * DAY, ...Object.values(extra),
+      );
+    const desk = await user(LINKS.desk.email, LINKS.desk.name, LINKS.desk.handle, true, { extra_seats: 1 });
+    await user(LINKS.invitee.email, "Ivy Invitee", "ivyinvitee", true);
+    await user(LINKS.unverified.email, "Uma Unconfirmed", "umaunconf", false, { email_verify_token: hashToken(LINKS.verifyToken) });
+    await user(LINKS.changer.email, "Cal Changer", "calchanger", true, { pending_email: LINKS.changer.next, pending_email_token: hashToken(LINKS.confirmToken), pending_email_at: now - 3_600_000 });
+    const callout = await id("INSERT INTO collections (user_id, name, allow_sharing, created_at) VALUES (?,?,1,?)", desk, "Links callout", now - 4 * DAY);
+    await db.run("UPDATE users SET active_collection_id = ? WHERE id = ?", callout, desk);
+    const sid = await id("INSERT INTO senders (user_id, email, name, created_at) VALUES (?,?,?,?)", desk, LINKS.sender.email, LINKS.sender.artist, now - 2 * DAY);
+    const audio = makeLoop(123, 51, 9090);
+    const key = `audio/${desk}/${crypto.randomUUID()}.wav`;
+    const data = wav(audio);
+    putFile(key, data);
+    const tid = await id(
+      `INSERT INTO tracks (user_id, collection_id, sender_id, token, title, artist, message, file_key, original_name, mime, size, duration, bpm, peaks, share_ok, share_terms, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,'e2e',?)`,
+      desk, callout, sid, LINKS.receiptToken, LINKS.sender.title, LINKS.sender.artist, "", key, `${LINKS.sender.title}.wav`, "audio/wav", data.length, 32, 123, JSON.stringify(peaks(audio.x)), now - DAY,
+    );
+    await db.run("INSERT INTO events (user_id, sender_id, track_id, type, detail, created_at) VALUES (?,?,?,?,?,?)", desk, sid, tid, "submitted", "into Links callout", now - DAY);
+    await db.run("INSERT INTO sender_links (id_hash, email, created_at, expires_at) VALUES (?,?,?,?)", hashToken(LINKS.sentToken), LINKS.sender.email, now, now + DAY);
+    await db.run(
+      "INSERT INTO account_invites (account_id, email, role, token_hash, invited_by, created_at, expires_at) VALUES (?,?,?,?,?,?,?)",
+      desk, LINKS.invitee.email, "member", crypto.createHash("sha256").update(LINKS.inviteSecret, "utf8").digest("hex"), desk, now, now + 7 * DAY,
+    );
   }
   // Sharing tests: the Villagers tracks were sent while the callout allowed sharing.
   if (process.env.SEED_SHARING === "1") await db.run("UPDATE tracks SET share_ok = 1, share_terms = ? WHERE collection_id = ?", "e2e", villagers);

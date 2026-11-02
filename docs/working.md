@@ -22,7 +22,7 @@ Same format as the other panels: one or two lines per voice, one recommendation,
 2. One release desk (owner, 29 Oct): only the desk session merges into `main`, writes the release report and merges `main` into `mobile-next`. The owner says "ship it" and "roll back" to the desk. Other sessions never merge into `main` and never open a PR from `mobile-next` into `main`; when a PR is ready they send the desk one line: "ready: PR, head commit, checks passed". A ship branch starts from `main`, never from `mobile-next`. GitHub closes any PR from `mobile-next` into `main` by itself (`.github/workflows/no-mobile-next-to-main.yml`, owner, 29 Oct).
 3. Fixes that must reach production are built on a branch from `main`, then merged into `mobile-next`.
 4. Ship: merge the release PR into `main` on GitHub (never push `main`; steps in the `owner-ship` skill), wait ~60 s, merge `main` into `mobile-next` and push `mobile-next`, confirm the deploy.
-5. Checks before every push; e2e when sending, review, downloads, receipts or auth change.
+5. Checks before every push; e2e when sending, review, downloads, receipts or auth change. On this Mac, at most two full e2e runs at once across all sessions; before starting one, count the others (`ps` for Playwright and `next start`/`next dev`) and wait if two are running. Every session stops its own dev and e2e servers, and removes its scratch worktrees, as soon as that run is finished (owner, 2 Nov).
 6. Several sessions share one checkout: commit only your own changes, leave the rest.
 7. Secrets, deletions, sign-ins, dashboard settings and legal wording are the owner's.
 8. Before shipping, check what `main` already has: another session may have shipped it (14 Oct: batches 1–4 and the home went out from one session while another was building the same ship).
@@ -189,6 +189,7 @@ State on 15 Oct: production has almost everything. Live: sending, review (phone 
 
 ## Decision log
 
+- 2 Nov: at most two full e2e runs at once on this Mac, and finished dev and e2e servers stopped at once (owner: "yes, add the two-e2e limit and stop finished servers"). Backend found the load at 469–500 with 17 Next servers and about 30 headless Chromium processes running, which made timing tests fail everywhere.
 - 1 Nov: the test link is a Vercel project domain that follows `mobile-next` (added by Build on the owner's yes); a hand alias assign had pinned it, so it missed the day's `mobile-next` pushes. Never assign it by hand; every try-it report confirms its sha.
 - 1 Nov: the owner's ship words go in the merge commit body and the next release's report, not in a new commit on the release PR, so the PR head doesn't change after CI passes and the merge doesn't wait for a second CI run (owner: "how can i make it faster?", then "yes, do 1 and 2"); Backend makes the unit tests run in parallel, each with its own test database, to shorten the CI job.
 - 31 Oct: a fourth session, Backend, takes server code, data and the production checklist from Safety; Safety keeps security and code scanning and reviews Backend's auth and permission changes (owner, in the Desk: "yes BACKEND is mine, add it to the session list"; the split chosen in the Backend session).

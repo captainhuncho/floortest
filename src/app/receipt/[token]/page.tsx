@@ -20,6 +20,7 @@ import { activeCollection, capacity, isClosed, isPaused, userByHandleForView } f
 import { StopSharing } from "./StopSharing";
 import { CARD, Cover, Icon, initials } from "@/components/Kit";
 import { CuePoint } from "@/components/CuePoint";
+import { maskEmail } from "@/lib/mask-email";
 
 export const metadata = { title: "Your receipt — FloorTest", robots: { index: false } };
 
@@ -120,7 +121,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
           {stemsOn && <StemUpload token={token} receiver={who.split(/\s+/)[0]} existing={stemsSent(t)} max={MAX_STEMS} />}
           {!t.verified_at && (
             <p className="text-[13px] leading-5 text-mute">
-              Confirm your email from the delivery email, so {who} sees you as verified. Updates go to <span className="text-bone">{t.sender_email}</span>.
+              Confirm your email from the delivery email, so {who} sees you as verified. Updates go to <span className="text-bone">{maskEmail(t.sender_email)}</span>.
             </p>
           )}
         </section>
@@ -194,7 +195,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
         </summary>
         <div className="mb-2.5 flex flex-col gap-2 border-l border-line-2 pl-3 leading-[1.45]">
           <p>
-            Updates go to <span className="text-mute">{t.sender_email}</span>{t.verified_at ? " (confirmed)." : "."}
+            Updates go to <span className="text-mute">{maskEmail(t.sender_email)}</span>{t.verified_at ? " (confirmed)." : "."}
           </p>
           <p>
             <span {...panel("private_note", "Keep {receiver} as it is: the page fills in the receiver's name.")}>{fill(c.private_note, { receiver: who })}</span>

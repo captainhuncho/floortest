@@ -21,6 +21,7 @@ import { RESERVED_HANDLES } from "@/lib/plans";
 import { allow, recentCount, record, requestIp } from "@/lib/ratelimit";
 import { loginLocked, recordLoginFailure } from "@/lib/login-limits";
 import { normalEmail } from "@/lib/email-normal";
+import { maskEmail } from "@/lib/mask-email";
 import { isProtectedHandle } from "@/lib/identity";
 import { sendWelcome } from "@/lib/onboarding";
 import { checkSecondFactor, finishSignIn, sendEmailVerification } from "@/lib/security";
@@ -92,7 +93,8 @@ async function createAccount(form: FormData, a: NewAccount, opts: { googleEmail?
   // The invite code is what proves the email while sign-up is closed, so wrong guesses are counted (per email and per
   // connection) and stop well before a code could be found by trying.
   const ip = await requestIp();
-  if (!open && ((await recentCount("invite_fail_email", a.email, HOUR)) >= INVITE_TRIES_EMAIL || (await recentCount("invite_fail_ip", ip, HOUR)) >= INVITE_TRIES_IP))
+  // A team invite link counts too: its masked address must not be guessable by trying emails (owner, 2 Nov).
+  if ((!open || form.get("team")) && ((await recentCount("invite_fail_email", a.email, HOUR)) >= INVITE_TRIES_EMAIL || (await recentCount("invite_fail_ip", ip, HOUR)) >= INVITE_TRIES_IP))
     return { error: "Too many tries. Wait an hour, then use the sign-up link in your invite email." };
   // Closed: only a personal Ops invite to this exact email, with its emailed code, opens an account (src/lib/invites.ts).
   const invite = await resolveInvite(String(form.get("ref") || form.get("invite") || ""), a.email, open, { emailProven: opts.googleEmail });
@@ -102,6 +104,15 @@ async function createAccount(form: FormData, a: NewAccount, opts: { googleEmail?
   // With Google the email is already proven, so a live invite sent to it counts even without the invite link here.
   const team = (await teamInviteFor(form, a.email)) ?? (opts.googleEmail ? await inviteForEmail(a.email) : undefined);
   if (team) a.verified = true;
+  // A live team invite typed with a different email: say which address it went to (masked), rather than creating an
+  // account that silently doesn't join the team.
+  const teamMiss = !team ? await liveTeamInvite(form) : undefined;
+  // Counted like a wrong invite code, so the masked hint can't be used to guess the full address.
+  if (teamMiss) {
+    await record("invite_fail_email", a.email);
+    await record("invite_fail_ip", ip);
+    return { error: `This invite went to ${maskEmail(teamMiss.email)}. Sign up with that email to join ${teamMiss.account_name}.` };
+  }
   if (!open && !invite.valid && !team) {
     await record("invite_fail_email", a.email);
     await record("invite_fail_ip", ip);
@@ -485,6 +496,12 @@ async function teamInviteFor(form: FormData, email: string) {
   if (!secret) return undefined;
   const inv = await inviteBySecret(secret);
   return inv && inv.email === normalEmail(email) ? inv : undefined;
+}
+
+/** The live team invite named in a sign-up form, whatever email was typed. */
+async function liveTeamInvite(form: FormData) {
+  const secret = String(form.get("team") || "");
+  return secret ? inviteBySecret(secret) : undefined;
 }
 
 /** After a sign-up from a team invite: join the team and switch to its desk. */
