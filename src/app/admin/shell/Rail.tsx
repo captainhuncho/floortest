@@ -37,8 +37,8 @@ export function Rail({
   return (
     <aside aria-label="Ops" className="ops-rail flex-col items-center gap-1 border-r border-line bg-ink-2 px-2.5 py-3">
       {/* eslint-disable-next-line @next/next/no-img-element -- the crest is an SVG; Next's image optimizer doesn't process SVGs */}
-      <img draggable={false} src="/brand/crest-ops.svg" alt="" aria-hidden className="mb-2 size-9" />
-      <nav aria-label="Ops areas">
+      <img draggable={false} src="/brand/crest-ops.svg" alt="" aria-hidden className="ops-rail-crest mb-2 size-9" />
+      <nav aria-label="Ops areas" className="ops-rail-areas">
         <ul className="flex flex-col items-center gap-1">
           {areas.map((a) => {
             const single = a.sections.length === 1 && a.sections[0].items.length === 1;
@@ -122,11 +122,14 @@ function Profile({ me }: { me: Me }) {
         type="button"
         aria-expanded={open}
         aria-controls={id}
-        aria-label={`${me.name}, ${me.role}`}
         onClick={() => setOpen(!open)}
         className="ops-press grid size-11 place-items-center rounded-full"
       >
+        {/* Named "MA: Maxwell Adjavon, super": the initials that show come first (WCAG 2.5.3, step 6 sweep). */}
         <span className="grid size-9 place-items-center rounded-full bg-ink-4 text-[12px] font-bold text-bone">{me.initials}</span>
+        <span className="sr-only">
+          : {me.name}, {me.role}
+        </span>
       </button>
       <div id={id} hidden={!open} className="kit-floating kit-glass absolute bottom-0 left-full z-50 ml-3 w-60 rounded-[16px] p-3">
         <p className="truncate text-[14px] font-semibold text-bone">{me.name}</p>

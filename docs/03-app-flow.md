@@ -155,6 +155,10 @@ Edit mode is bound to the exact ops session that opened it (pass and cookie are 
       figures: tracks this week (14-day line), active receivers, waitlist (Waitlist), a month at list price (Revenue)
       phones: a tile per page with its count and first due (─► page), then the list
       nothing waiting ─► "Nothing is waiting on you" and the last thing handled
+      Live (Users (view) or super admin): the server's read first, then GET /api/admin/feed every 30 s
+         ─ only while the tab is visible, the card on screen, no data saver, not paused (Pause ─► Resume)
+         ─ new rows fade in once · Announce ─► screen readers hear new rows · a row ─► the account / Takedowns / log
+         ─ 403 ─► the card goes away
 ⌘K / Ctrl+K (any ops page, not over another dialog; src/app/admin/kit/Palette.tsx)
    ─► type ─┬─ people (Users (view) only; 2+ characters; name, @handle or email: the part before the @ unless you
             │    type an @, then the whole address; exact @handle first, then names starting with it; ≤ 8; 60 searches

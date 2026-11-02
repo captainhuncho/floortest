@@ -55,7 +55,7 @@ export function ConfirmButton({
             <button
               type="button"
               autoFocus
-              className={destructive ? "btn-sm rounded-md bg-danger px-4 font-bold text-ink" : "btn-lime btn-sm"}
+              className={destructive ? "btn-sm rounded-md bg-danger px-4 font-bold text-on-danger" : "btn-lime btn-sm"}
               onClick={() => {
                 ref.current?.close();
                 start(async () => {

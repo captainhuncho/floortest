@@ -11,10 +11,23 @@
 .ops-panel {
   display: none;
 }
+/* Phones held sideways (below 768px): the page and the bottom bar keep clear of the notch on either side. */
+.ops-main {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+.ops-phonebar {
+  left: calc(0.75rem + env(safe-area-inset-left));
+  right: calc(0.75rem + env(safe-area-inset-right));
+}
 @media (min-width: 768px) {
   .ops-shell {
     display: grid;
-    grid-template-columns: 64px auto minmax(0, 1fr);
+    /* The rail grows by the left safe area (a phone sideways with its notch on the left), so its icons stay clear. */
+    grid-template-columns: calc(64px + env(safe-area-inset-left)) auto minmax(0, 1fr);
+  }
+  .ops-main {
+    padding-left: 0;
   }
   .ops-rail {
     grid-column: 1;
@@ -24,6 +37,10 @@
     height: 100vh;
     height: 100dvh;
     z-index: 45; /* its name tips and the profile card show over the panel */
+    padding-left: calc(env(safe-area-inset-left) + 0.625rem);
+  }
+  .ops-rail > * {
+    flex-shrink: 0;
   }
   .ops-main {
     grid-column: 3;
@@ -31,7 +48,7 @@
   .ops-shell[data-peek] .ops-panel {
     display: flex;
     position: fixed;
-    left: 64px;
+    left: calc(64px + env(safe-area-inset-left));
     top: 0;
     bottom: 0;
     z-index: 40;
@@ -41,9 +58,31 @@
   }
   .ops-scrim {
     position: fixed;
-    inset: 0 0 0 64px;
+    inset: 0 0 0 calc(64px + env(safe-area-inset-left));
     z-index: 39;
     background: rgb(0 0 0 / 0.35);
+  }
+}
+/*
+ * A phone held sideways (844x390) gets the rail, but seven areas, search and the profile don't fit 390px. Below 520px
+ * tall the crest goes and the areas scroll on their own (their name tips are clipped there; each still has its name),
+ * so every icon keeps its 44px and search and the profile stay pinned at the bottom.
+ */
+@media (min-width: 768px) and (max-height: 520px) {
+  .ops-rail {
+    padding-block: 0.5rem;
+  }
+  .ops-rail-crest {
+    display: none;
+  }
+  .ops-rail > .ops-rail-areas {
+    flex-shrink: 1;
+    min-height: 0;
+    margin-inline: -0.625rem;
+    padding: 6px 0.625rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
   }
 }
 @media (min-width: 1100px) {

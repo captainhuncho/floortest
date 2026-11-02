@@ -442,7 +442,8 @@ dialog.ou-drawer::backdrop {
   height: 100%;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 16px 20px calc(16px + env(safe-area-inset-bottom));
+  /* Clear of the home bar, and of the notch when a phone is held sideways. */
+  padding: 16px max(20px, env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
 }
 .ou-drawer-head {
   display: flex;
@@ -553,5 +554,24 @@ html:has(.ou .kit-bulkbar) {
 @media (max-width: 767px) {
   html:has(.ou .kit-bulkbar) {
     scroll-padding-bottom: calc(var(--kit-toast-lift, 0px) + 4px + 4.5rem + env(safe-area-inset-bottom));
+  }
+}
+
+/*
+ * Touch screens (step 6 phone pass): a phone held sideways is wide enough for the table, so its row controls get the
+ * same 44px as the phone list. The name keeps its one line; padding above and below (offset by a negative margin) makes it 44px to tap.
+ */
+@media (pointer: coarse), (max-width: 767px) {
+  .ou-btn,
+  .ou-btn--sm {
+    min-height: 44px;
+  }
+  .ou-icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+  .ou-name {
+    margin-block: -12px;
+    padding-block: 12px;
   }
 }

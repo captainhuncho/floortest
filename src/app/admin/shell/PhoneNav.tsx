@@ -34,7 +34,7 @@ export function PhoneNav({ areas, total, path, me }: { areas: ShellArea[]; total
   const onTab = tabs.some((t) => isActive(path, t.href));
   return (
     <>
-      <nav aria-label="Ops shortcuts" className="kit-glass fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+8px)] z-30 rounded-full px-1.5 md:hidden">
+      <nav aria-label="Ops shortcuts" className="ops-phonebar kit-glass fixed bottom-[calc(env(safe-area-inset-bottom)+8px)] z-30 rounded-full px-1.5 md:hidden">
         <ul className="grid" style={{ gridTemplateColumns: `repeat(${tabs.length + 2}, minmax(0, 1fr))` }}>
           {tabs.map((t) => {
             const on = isActive(path, t.href);
@@ -43,15 +43,20 @@ export function PhoneNav({ areas, total, path, me }: { areas: ShellArea[]; total
                 <Link
                   href={t.href}
                   aria-current={on ? "page" : undefined}
-                  aria-label={`${t.label}${t.badge ? `, ${t.badge} waiting` : ""}`}
                   className={`${TAB} ${on ? "bg-ink-4/80 text-bone" : "text-mute"}`}
                 >
                   <Icon name={t.icon} className={`size-5 ${on ? "text-lime" : ""}`} />
-                  <span aria-hidden>{t.label}</span>
+                  {/* Named "Inbox, 2 waiting" from what shows ("Inbox" and the badge's "2"), so the spoken name contains
+                      the visible words (WCAG 2.5.3, step 6 sweep): no aria-label over it. */}
+                  <span>{t.label}</span>
                   {t.badge > 0 && (
-                    <span aria-hidden className="absolute left-1/2 top-1 ml-1.5 min-w-[18px] rounded-[9px] bg-lime px-1 text-center text-[10.5px] font-bold leading-[18px] text-[#10110f] tnum">
-                      {t.badge}
-                    </span>
+                    <>
+                      <span className="sr-only">,</span>{" "}
+                      <span className="absolute left-1/2 top-1 ml-1.5 min-w-[18px] rounded-[9px] bg-lime px-1 text-center text-[10.5px] font-bold leading-[18px] text-[#10110f] tnum">
+                        {t.badge}
+                      </span>
+                      <span className="sr-only"> waiting</span>
+                    </>
                   )}
                 </Link>
               </li>

@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, test } from "./fixtures";
+import { expect, hydrated, test } from "./fixtures";
 import { flipOpsShell, opsLogIn } from "./ops-login";
 import { AREAS } from "../src/app/admin/shell/model";
 
@@ -80,7 +80,11 @@ test("ops shell: off is today's navigation; on, the rail and panel reach every p
     await expect(bar.getByRole("link", { name: /^Inbox, \d+ waiting$/ })).toBeVisible();
     await expect(bar.getByRole("link", { name: "Users" })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    for (const box of await bar.getByRole("listitem").evaluateAll((li) => li.map((l) => l.firstElementChild!.getBoundingClientRect().height))) {
+      expect(box, "every tab is at least 44 px tall").toBeGreaterThanOrEqual(44);
+    }
     const more = bar.getByRole("button", { name: "More" });
+    await hydrated(more);
     await more.click();
     const sheet = page.getByRole("dialog", { name: "All pages" });
     await expect(sheet).toBeVisible();
@@ -89,6 +93,7 @@ test("ops shell: off is today's navigation; on, the rail and panel reach every p
     await expect(sheet).toBeHidden();
     await expect(more).toBeFocused();
     await more.click();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth), "the open sheet doesn't scroll sideways").toBeLessThanOrEqual(390);
     await sheet.getByRole("link", { name: /^Moderation/ }).click();
     await page.waitForURL(/\/admin\/moderation$/);
     await expect(sheet).toBeHidden();
