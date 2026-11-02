@@ -89,3 +89,16 @@
     transform: none;
   }
 }
+
+/* The page scrolls under the floating top bar (and, on phones, the bottom bar). Scroll padding keeps a row that gets
+   focus (Tab, j/k) clear of both, so focus is never hidden under them (WCAG 2.4.11). The top bar is 48px tall with
+   12px above it (8px plus the safe area on phones); 12px more gives the row some air. */
+html:has(.ops-shell) {
+  scroll-padding-top: 72px;
+}
+@media (max-width: 767px) {
+  html:has(.ops-shell) {
+    scroll-padding-top: calc(68px + env(safe-area-inset-top));
+    scroll-padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  }
+}

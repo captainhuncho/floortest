@@ -130,11 +130,11 @@ export default async function Account({ params }: { params: Promise<{ id: string
         <div className="min-w-0 space-y-8">
           <section aria-labelledby="crm-h" className="space-y-3">
             <h2 id="crm-h" className="text-lg font-semibold">Tags and notes <span className="text-sm font-normal text-mute">(only admins see these)</span></h2>
-            <form action={saveTags.bind(null, u.id)} className="flex flex-wrap items-center gap-2">
+            <form action={async (fd: FormData) => { "use server"; await saveTags(id, fd); }} className="flex flex-wrap items-center gap-2">
               <input name="tags" defaultValue={u.admin_tags.split(",").join(", ")} placeholder="beta-1, label-lead" className="input max-w-md" aria-label="Tags" />
               <button className="btn-ghost btn-sm">Save tags</button>
             </form>
-            <form action={addNote.bind(null, u.id)} className="space-y-2">
+            <form action={async (fd: FormData) => { "use server"; await addNote(id, fd); }} className="space-y-2">
               <textarea name="note" rows={2} maxLength={2000} placeholder="Add a note: a call, a promise, feedback…" className="input" aria-label="New note" />
               <button className="btn-ghost btn-sm">Add note</button>
             </form>
