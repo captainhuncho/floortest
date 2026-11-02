@@ -6,6 +6,7 @@ import { ago, fmtDay } from "@/lib/format";
 import { redirect } from "next/navigation";
 import { readSenderLink, revokeSenderLink } from "@/lib/senderLink";
 import { RETAIN_UNREVIEWED_DAYS, unheardAfterWindow } from "@/lib/plans";
+import { receiptPath } from "@/lib/receipt-token";
 
 export const metadata = { title: "Your sends — FloorTest", robots: { index: false } };
 
@@ -67,7 +68,7 @@ export default async function SenderHistory({ params }: { params: Promise<{ toke
             const [label, good, at] = status(r);
             return (
               <li key={r.token} className="border-t border-line first:border-t-0">
-                <Link href={`/receipt/${r.token}`} className="-mx-2 flex min-h-14 items-center gap-3 rounded-xl px-2 py-2.5 hover:bg-well">
+                <Link href={receiptPath(r)} className="-mx-2 flex min-h-14 items-center gap-3 rounded-xl px-2 py-2.5 hover:bg-well">
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[13px] font-semibold">{r.title}</span>
                     <span className="block text-[11.5px] leading-[1.4] text-mute">

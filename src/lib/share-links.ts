@@ -5,6 +5,7 @@ import { env } from "./env";
 import { allow } from "./ratelimit";
 import { switchOn } from "./switches";
 import { normalEmail } from "./email-normal";
+import { receiptWhere } from "./receipt-token";
 
 /**
  * Collection share links (sharing phase 2). A link is its own thing: a random ID (only a fingerprint stored),
@@ -632,9 +633,10 @@ export async function linkDataFor(email: string, userId: number | null) {
  */
 export async function stopSharingByReceipt(token: string) {
   // Works the same once the track has left the desk (it's in no share link by then), so the receipt doesn't tell.
+  const m = receiptWhere(token, "");
   const t = await q.get<{ id: number; collection_id: number | null; deleted_at: number | null }>(
-    "UPDATE tracks SET share_ok = 0 WHERE token = ? AND share_ok = 1 RETURNING id, collection_id, deleted_at",
-    String(token).slice(0, 100),
+    `UPDATE tracks SET share_ok = 0 WHERE ${m.sql} AND share_ok = 1 RETURNING id, collection_id, deleted_at`,
+    ...m.args,
   );
   if (!t) return false;
   if (t.collection_id && !t.deleted_at)
