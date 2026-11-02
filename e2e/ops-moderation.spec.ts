@@ -1,4 +1,4 @@
-import { expect, test } from "./fixtures";
+import { expect, hydrated, test } from "./fixtures";
 import { OPS_BLOCKED, OPS_CLAIMED } from "./ops-account";
 import { flipOpsShell, opsLogIn } from "./ops-login";
 
@@ -79,6 +79,26 @@ test("ops moderation: off is today's page; on, the signal queue, the listening r
     await expect(keys.getByText("Keep (mark reviewed)")).toBeVisible();
     await expect(keys.getByText("Space", { exact: true })).toBeVisible();
     await page.keyboard.press("Escape");
+  });
+
+  await test.step("phone (390 px): the list and the bottom bar, a row opens the sheet, nothing scrolls sideways", async () => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    try {
+      await page.goto("/admin/moderation");
+      await expect(page.getByRole("navigation", { name: "Ops shortcuts" })).toBeVisible();
+      const row = list.getByRole("link", { name: new RegExp(OPS_CLAIMED.title) });
+      await hydrated(row);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+      await row.click();
+      const sheet = page.getByRole("dialog", { name: OPS_CLAIMED.title });
+      await expect(sheet).toBeVisible();
+      await expect(sheet.getByRole("button", { name: "Keep", exact: true })).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+      await page.keyboard.press("Escape");
+      await expect(sheet).toBeHidden();
+    } finally {
+      await page.setViewportSize({ width: 1280, height: 720 });
+    }
   });
 
   await flipOpsShell(page, false);

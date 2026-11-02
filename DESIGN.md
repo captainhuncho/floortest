@@ -285,6 +285,15 @@ night follow the theme.
   opens the app's Dialog as a bottom sheet with every page (16px text).
 - **Motion:** the panel's pages rise once per view (admin-rise, 560ms); opening over the page slides 8px in 240ms;
   reduced motion keeps fades; reduced transparency makes the glass solid.
+- **Phones and touch (step 6):** 44px targets on every touch screen (`pointer: coarse`), not just below 768px, because
+  a phone held sideways gets the rail and the Users table. Safe areas on all sides: the page, the phone bar and the
+  sheets pad by the notch and the home bar; the rail's column grows by the left inset. Below 520px tall the rail drops
+  the crest and its areas scroll on their own, search and the profile pinned. Scroll padding keeps focus clear of both
+  bars. Names that show a count read it in the same words ("Inbox, 2 waiting"; the initials lead the profile's name).
+- **Live card (Overview):** an admin panel under Platform (beside it from 768px, one column from 1280px). Header: a lime
+  live dot (faint when paused or not updating), "Live", Announce (a pressed toggle) and Pause / Resume. Eight
+  one-line 44px rows (kind icon, words truncated, mute time), with room kept for all eight so nothing moves. New rows
+  fade in once (200ms, 4px drop, no stagger); reduced motion: no animation.
 
 ### Review Row (signature)
 The heart of the desk: play button, title and artist, a waveform, the Listened tag, BPM and length in tabular mono, all in one dense row that scans like a crate. Selecting a row opens the review panel below with Keep / Not for me always in reach.

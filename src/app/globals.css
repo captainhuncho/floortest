@@ -130,7 +130,8 @@ dialog[open]::backdrop {
     transition-timing-function: var(--ease-drawer); transition-duration: 200ms;
   }
   .ft-dialog[open] { transform: none; transition-duration: 300ms; @starting-style { transform: translateY(100%); opacity: 1; } }
-  .ft-dialog-panel { padding: 0.5rem 1rem calc(1rem + env(safe-area-inset-bottom)); }
+  /* Full width on phones, so the sides keep clear of the notch when the phone is held sideways. */
+  .ft-dialog-panel { padding: 0.5rem max(1rem, env(safe-area-inset-right)) calc(1rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left)); }
 }
 @media (prefers-reduced-transparency: reduce) { .ft-dialog::backdrop { backdrop-filter: none; background: rgb(0 0 0 / 0.8); } }
 /* Toasts (src/components/Toast.tsx): bottom centre, clear of whatever floats at the bottom. Phones: above the tab bar,

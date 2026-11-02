@@ -35,7 +35,7 @@ export function TopBar({ area, page }: { area: ShellArea | undefined; page: Shel
             {showArea && (
               <li className="hidden shrink-0 items-center gap-2 sm:flex">
                 <span aria-hidden>›</span>
-                <Link href={area.href} className="rounded-[6px] hover:text-bone">
+                <Link href={area.href} className="inline-flex min-h-11 items-center rounded-[6px] hover:text-bone">
                   {area.title}
                 </Link>
               </li>
