@@ -10,9 +10,10 @@ import { hashToken } from "./token-hash";
  * is the sender's only key to their receipt, so every lookup and every link to it goes through here.
  *
  * Stored as `token_hash` (its SHA-256, src/lib/token-hash.ts) to find the receipt, and `token_sealed` (AES-256-GCM with a
- * key from APP_SECRET, the track id bound in) so the server can rebuild the link for later emails and /sent. A copy of
- * the database (a backup, an ops query) holds nothing that opens a receipt. Rows from before migration 0126 still have
- * the plain `token` until they're sealed (nightly, and on first read); lookups accept both until none is left.
+ * key from APP_SECRET, the track id bound in) so the server can rebuild the link for later emails and /sent. Lookups and
+ * links already use these. The plain `token` is still written and kept for one release (Safety, 2 Nov): the owner's
+ * "roll back" puts back the previous build, which reads only `token`. The next release clears it and drops the plain
+ * lookup; after that a copy of the database (a backup, an ops query) holds nothing that opens a receipt.
  * If APP_SECRET changes, sealed copies can't be opened: lookups still work, and links in new emails become /sent.
  */
 
@@ -83,30 +84,25 @@ export const receiptPathForToken = (token: string) => `/receipt/${String(token).
 /** The receipt's full link, for emails. */
 export const receiptUrl = (track: ReceiptKey) => `${APP_URL}${receiptPath(track)}`;
 
-/** Stores a track's token the new way (hash and sealed copy, no plain token). For a track just made, in its transaction. */
+/** Adds the hash and sealed copy for a track's token (the plain one stays this release). For a new track, in its transaction. */
 export async function storeReceiptToken(db: Queryable, trackId: number, token: string) {
-  await db.run("UPDATE tracks SET token_hash = ?, token_sealed = ?, token = NULL WHERE id = ?", hashToken(token), sealReceiptToken(token, trackId), trackId);
+  await db.run("UPDATE tracks SET token_hash = ?, token_sealed = ? WHERE id = ?", hashToken(token), sealReceiptToken(token, trackId), trackId);
 }
 
-/**
- * Seals one old row's plain token, then clears it, each step guarded so it happens once and never leaves a row with
- * neither: the plain column is cleared only where it still holds this token and both new columns are filled.
- */
+/** Seals one old row: hash and sealed copy added once, only where the row still holds this token and has no copy yet. */
 export async function sealOldReceipt(trackId: number, token: string) {
-  return q.tx(async (t) => {
-    await t.run(
-      "UPDATE tracks SET token_hash = ?, token_sealed = COALESCE(token_sealed, ?) WHERE id = ? AND token = ?",
-      hashToken(token), sealReceiptToken(token, trackId), trackId, token,
-    );
-    return (await t.run("UPDATE tracks SET token = NULL WHERE id = ? AND token = ? AND token_sealed IS NOT NULL AND token_hash IS NOT NULL", trackId, token)).changes > 0;
-  });
+  const r = await q.run(
+    "UPDATE tracks SET token_hash = ?, token_sealed = ? WHERE id = ? AND token = ? AND token_sealed IS NULL",
+    hashToken(token), sealReceiptToken(token, trackId), trackId, token,
+  );
+  return r.changes > 0;
 }
 
-/** The nightly batch: seals up to `limit` old rows; returns how many, and how many still have a plain token. */
+/** The nightly batch: seals up to `limit` old rows; returns how many, and how many are still unsealed. */
 export async function sealOldReceipts(limit = 2000) {
-  const rows = await q.all<{ id: number; token: string }>("SELECT id, token FROM tracks WHERE token IS NOT NULL ORDER BY id LIMIT ?", limit);
+  const rows = await q.all<{ id: number; token: string }>("SELECT id, token FROM tracks WHERE token IS NOT NULL AND token_sealed IS NULL ORDER BY id LIMIT ?", limit);
   let sealed = 0;
   for (const r of rows) if (await sealOldReceipt(r.id, r.token)) sealed++;
-  const left = await q.count("SELECT COUNT(*) AS n FROM tracks WHERE token IS NOT NULL");
-  return { receiptsSealed: sealed, receiptsPlainLeft: left };
+  const left = await q.count("SELECT COUNT(*) AS n FROM tracks WHERE token IS NOT NULL AND token_sealed IS NULL");
+  return { receiptsSealed: sealed, receiptsUnsealedLeft: left };
 }

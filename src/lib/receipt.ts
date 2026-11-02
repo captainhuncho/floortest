@@ -24,15 +24,15 @@ export type ReceiptTrack = Pick<Track, (typeof RECEIPT_TRACK_COLUMNS)[number]> &
 };
 
 /**
- * One receipt by its token, with the receiver, callout and sender details the page shows. An old row that still holds
- * its token in plain is sealed on this first read (src/lib/receipt-token.ts); the token never leaves this function.
+ * One receipt by its token, with the receiver, callout and sender details the page shows. An old row without its
+ * sealed copy gets one on this first read (src/lib/receipt-token.ts); the token never leaves this function.
  */
 export async function receiptByToken(token: string) {
   const m = receiptWhere(token, "t");
   const cols = RECEIPT_TRACK_COLUMNS.map((c) => `t.${c}`).join(", ");
   const r = await q.get<ReceiptTrack & { track_id_: number; plain_: string | null }>(
     `SELECT ${cols}, u.name AS receiver, u.handle AS receiver_handle, u.identity_status AS receiver_status, u.plan AS receiver_plan, c.name AS collection, s.email AS sender_email, s.verified_at, s.account_id AS sender_account, s.id AS sender_id,
-            t.id AS track_id_, t.token AS plain_
+            t.id AS track_id_, CASE WHEN t.token_sealed IS NULL THEN t.token END AS plain_
        FROM tracks t JOIN users u ON u.id = t.user_id JOIN senders s ON s.id = t.sender_id
        LEFT JOIN collections c ON c.id = t.collection_id
        WHERE ${m.sql}`,

@@ -60,7 +60,7 @@ async function purge(started: number): Promise<JobOutcome> {
       digests = { error: message(e) };
       await recordIncident("cron_failed", "Checking file fingerprints failed", detail(e), "/api/cron/purge");
     }
-    // Old receipt tokens still stored in plain: sealed and cleared in batches (src/lib/receipt-token.ts). Never blocks the rest.
+    // Old receipt tokens without a hash and sealed copy get them, in batches (src/lib/receipt-token.ts). Never blocks the rest.
     let receipts;
     try {
       receipts = await sealOldReceipts();

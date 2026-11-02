@@ -26,17 +26,20 @@ async function setUp(handle: string, token: string | null) {
 }
 
 // Receipt tokens stored hashed (Safety-reviewed design, 2 Nov): the database holds a hash to find the receipt and a
-// sealed copy to rebuild its link; never the plain token, except old rows until they're sealed.
-test("a new receipt token is stored only as a hash and a sealed copy; the link still opens", async () => {
+// sealed copy to rebuild its link. The plain token is still kept this release, so a rollback to the previous build works;
+// these tests also clear it, to show lookups and links don't need it (the next release stops keeping it).
+test("a new receipt token gets a hash and a sealed copy; with the plain one cleared, the link still opens", async () => {
   const { q } = await import("../src/lib/db");
   const R = await import("../src/lib/receipt-token");
   const { hashToken } = await import("../src/lib/token-hash");
   const { APP_URL } = await import("../src/lib/mail");
   const { id } = await setUp("rtnew", null);
   const token = R.newReceiptToken();
+  await q.run("UPDATE tracks SET token = ? WHERE id = ?", token, id);
   await q.tx((db) => R.storeReceiptToken(db, id, token));
+  assert.equal((await q.get<{ token: string }>("SELECT token FROM tracks WHERE id = ?", id))!.token, token, "kept this release, for a rollback");
+  await q.run("UPDATE tracks SET token = NULL WHERE id = ?", id); // as the next release will
   const row = (await q.get<{ id: number; token: string | null; token_hash: string; token_sealed: string }>("SELECT id, token, token_hash, token_sealed FROM tracks WHERE id = ?", id))!;
-  assert.equal(row.token, null, "no plain token stored");
   assert.equal(row.token_hash, hashToken(token));
   assert.ok(!row.token_sealed.includes(token), "the sealed copy doesn't show the token");
   assert.deepEqual(await R.findByReceiptToken(token), { id });
@@ -51,7 +54,7 @@ test("a new receipt token is stored only as a hash and a sealed copy; the link s
   assert.equal(R.receiptWhere("x".repeat(500)).args[1], "x".repeat(100));
 });
 
-test("an old row keeps working, is sealed on first read, and the nightly batch seals the rest once", async () => {
+test("an old row keeps working, is sealed on first read (plain token kept), and the nightly batch seals the rest once", async () => {
   const { q } = await import("../src/lib/db");
   const R = await import("../src/lib/receipt-token");
   const { receiptByToken } = await import("../src/lib/receipt");
@@ -66,7 +69,7 @@ test("an old row keeps working, is sealed on first read, and the nightly batch s
   await q.run("UPDATE tracks SET token_hash = NULL WHERE id = ?", old.id);
   assert.ok(await receiptByToken("old-token-aaaa"), "the old link opens");
   const after = await plain(old.id);
-  assert.equal(after.token, null);
+  assert.equal(after.token, "old-token-aaaa", "the plain token stays this release, for a rollback");
   assert.equal(after.token_hash, hashToken("old-token-aaaa"));
   assert.equal(R.openReceiptToken(after.token_sealed!, old.id), "old-token-aaaa");
   assert.ok(await receiptByToken("old-token-aaaa"), "and still opens after sealing");
@@ -75,16 +78,12 @@ test("an old row keeps working, is sealed on first read, and the nightly batch s
   const many = await Promise.all(["b1", "b2", "b3"].map((n, i) => setUp(`rtbatch${i}`, `batch-token-${n}`)));
   const [a, b] = await Promise.all([R.sealOldReceipts(), R.sealOldReceipts()]);
   assert.equal(a.receiptsSealed + b.receiptsSealed, 3, "each row sealed once");
-  assert.equal(a.receiptsPlainLeft, 0);
+  assert.equal((await R.sealOldReceipts()).receiptsUnsealedLeft, 0);
   for (const m of many) {
     const r = await plain(m.id);
-    assert.equal(r.token, null);
-    assert.ok(r.token_hash && r.token_sealed);
+    assert.ok(r.token && r.token_hash && r.token_sealed, "hash and sealed copy added, nothing removed");
   }
-  // Clearing is guarded: a row whose sealed copy is missing keeps its plain token.
-  const guard = await setUp("rtguard", "guard-token-1");
-  await q.run("UPDATE tracks SET token_sealed = NULL WHERE id = ?", guard.id);
-  assert.equal((await q.run("UPDATE tracks SET token = NULL WHERE id = ? AND token = ? AND token_sealed IS NOT NULL AND token_hash IS NOT NULL", guard.id, "guard-token-1")).changes, 0);
+  assert.equal((await R.sealOldReceipts()).receiptsSealed, 0, "a sealed row isn't sealed again");
 });
 
 test("stored email copies hide the receipt link; erasing a sender removes the hash and sealed copy too", async () => {
@@ -94,7 +93,9 @@ test("stored email copies hide the receipt link; erasing a sender removes the ha
   const { eraseSender } = await import("../src/lib/privacy");
   const { id, email } = await setUp("rtmail", null);
   const token = R.newReceiptToken();
+  await q.run("UPDATE tracks SET token = ? WHERE id = ?", token, id);
   await q.tx((db) => R.storeReceiptToken(db, id, token));
+  await q.run("UPDATE tracks SET token = NULL WHERE id = ?", id);
   const row = (await q.get<ReceiptKey>("SELECT id, token, token_sealed FROM tracks WHERE id = ?", id))!;
   const mail = await queueMail({ userId: null, audience: "support", to: email, subject: "Listened", body: `See it: ${R.receiptUrl(row)}`, secrets: [R.receiptToken(row)] });
   const stored = (await q.get<{ body: string }>("SELECT body FROM outbox WHERE id = ?", mail))!.body;
