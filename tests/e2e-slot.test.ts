@@ -36,9 +36,14 @@ test("each slot is a private folder and holder.json carries only pid, worktree, 
   const slot = claimSlot(options, process.pid, "/repo/a", "3290");
   assert.ok(slot);
   assert.equal(fs.lstatSync(slot).mode & 0o777, 0o700);
-  const file = path.join(slot, "holder.json");
-  assert.equal(fs.lstatSync(file).mode & 0o777, 0o600);
-  assert.deepEqual(Object.keys(JSON.parse(fs.readFileSync(file, "utf8"))), ["pid", "cwd", "port", "started"]);
+  // One open file for both checks, so the mode and the contents come from the same file.
+  const fd = fs.openSync(path.join(slot, "holder.json"), fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+  try {
+    assert.equal(fs.fstatSync(fd).mode & 0o777, 0o600);
+    assert.deepEqual(Object.keys(JSON.parse(fs.readFileSync(fd, "utf8"))), ["pid", "cwd", "port", "started"]);
+  } finally {
+    fs.closeSync(fd);
+  }
 });
 
 test("a slot held by a dead run is taken over", () => {
