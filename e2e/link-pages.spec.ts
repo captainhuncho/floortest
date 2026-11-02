@@ -93,8 +93,9 @@ test.describe("private link pages", () => {
     await hydrated(stop);
     await stop.click();
     await page.getByRole("dialog").getByRole("button", { name: "Stop sharing" }).click();
-    // The action refreshes the receipt, which then has nothing left to stop: the switch is gone, and stays gone.
-    await expect(stop).toHaveCount(0);
+    // The action refreshes the receipt, which then has nothing left to stop: the switch (and its "Stopping…" state) is
+    // gone, and stays gone after a reload.
+    await expect(page.getByRole("button", { name: /^Stop/ })).toHaveCount(0);
     await page.reload();
     await expect(page.getByText(LINKS.sender.title)).toBeVisible();
     await expect(page.getByRole("button", { name: "Stop private sharing" })).toHaveCount(0);
