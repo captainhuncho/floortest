@@ -117,6 +117,8 @@ export async function sendMailLater(opts: MailOpts) {
 
 /** Ops sends with Undo (ops server design §2, owner 1 Nov): how long such an email waits on the server before it goes. */
 export const SEND_HOLD_MS = 8_000;
+/** How long past the hold this process waits before sending: a timer can fire a little early, and a claim made before next_at matches nothing, which would leave the email to the mail job (up to 10 minutes). */
+export const SEND_GRACE_MS = 500;
 
 /**
  * Queued to go SEND_HOLD_MS from now, then sent after the response. Every send path claims only queued rows whose next_at
@@ -131,7 +133,7 @@ export async function sendMailHeld(
 ): Promise<number> {
   const id = await queueMail(opts, q, { holdMs });
   afterResponse(async () => {
-    await new Promise((done) => setTimeout(done, holdMs));
+    await new Promise((done) => setTimeout(done, holdMs + SEND_GRACE_MS));
     const status = await deliver(id);
     if (onSent && status !== "cancelled") await onSent(status);
   });

@@ -2,13 +2,14 @@ import "server-only";
 import crypto from "node:crypto";
 import { now, q, type Queryable } from "./db";
 import { env } from "./env";
-import { sendMail } from "./mail";
+import { sendMailHeld } from "./mail";
 import { logAdmin } from "./admin-log";
 import { can, type OpsAccess } from "./ops-access";
 import { storage } from "./storage";
 import { discardFiles } from "./deletion";
 import { reserveFile, settleFile } from "./file-reservations";
 import { verifiedEmail } from "./identity-direct";
+import type { UndoItem } from "./ops-undo";
 import { approvePendingIdentity } from "./identity-approve";
 import { cleanFileName, cleanLinks, cleanReason, isProofMime, PROOF_FILES_MAX, proofRefusal, sizeRefusal, sniffProof, type ProofMime } from "./verification-proof";
 
@@ -23,7 +24,8 @@ import { cleanFileName, cleanLinks, cleanReason, isProofMime, PROOF_FILES_MAX, p
  */
 
 export type Actor = { id: number; access: OpsAccess };
-type Result = { ok: true; handle: string; id: number } | { ok: false; why: string };
+/** `undo`: the "verified" email, held a few seconds, and what puts the account back if it's taken back (ops-undo, kind "verify"). */
+type Result = { ok: true; handle: string; id: number; undo?: { mail: number; item: UndoItem } } | { ok: false; why: string };
 const no = (why: string) => ({ ok: false as const, why });
 
 export const powersOf = (access: OpsAccess) => ({
@@ -181,6 +183,20 @@ const markVerified = (db: Queryable, userId: number) =>
 
 class Refused extends Error {}
 
+/** The account's identity status and note before a change, so Undo can put them back. */
+const identityBefore = async (db: Queryable, userId: number) =>
+  (await db.get<{ identity_status: string; identity_note: string }>("SELECT identity_status, identity_note FROM users WHERE id = ?", userId)) ?? {
+    identity_status: "none",
+    identity_note: "",
+  };
+
+/** The "verified" email, held for Undo (ops server design §2); "sent" goes in the admin log once it has gone. */
+const sendVerified = async (actorId: number, userId: number, row: { email: string; name: string; handle: string }, how: "direct" | "request") =>
+  sendMailHeld(
+    { userId, audience: "receiver", to: row.email, ...(await verifiedEmail(row, how)) },
+    { onSent: (status) => logAdmin(actorId, "sent", "verified email", `@${row.handle}: ${status}`) },
+  );
+
 /** Proposers ("verification"): reason and proof, then "Send for approval". */
 export async function proposeVerification(actor: Actor, userId: number, input: ProofInput): Promise<Result> {
   if (!powersOf(actor.access).propose) return no("You don't have permission to do that.");
@@ -225,13 +241,14 @@ export async function verifyDirect(actor: Actor, userId: number, input: ProofInp
   const claimed = await claimProofs(actor.id, input.tickets);
   if (!claimed.ok) return claimed;
   const t = now();
-  let done: { id: number; row: { email: string; name: string; handle: string } };
+  let done: { id: number; row: { email: string; name: string; handle: string }; before: { identity_status: string; identity_note: string }; closed: number[] };
   try {
     done = await q.tx(async (db) => {
+      const before = await identityBefore(db, userId);
       const row = await markVerified(db, userId);
       if (!row) throw new Refused(targetRefusal(await targetOf(userId)) ?? "That account is already verified");
-      await db.run(
-        "UPDATE verification_proposals SET status = 'declined', decided_by = ?, decided_at = ?, decision_note = 'Verified directly instead' WHERE user_id = ? AND status = 'pending'",
+      const closed = await db.all<{ id: number }>(
+        "UPDATE verification_proposals SET status = 'declined', decided_by = ?, decided_at = ?, decision_note = 'Verified directly instead' WHERE user_id = ? AND status = 'pending' RETURNING id",
         actor.id, t, userId,
       );
       const p = await db.get<{ id: number }>(
@@ -239,7 +256,7 @@ export async function verifyDirect(actor: Actor, userId: number, input: ProofInp
         userId, actor.id, checked.reason, checked.links.join("\n"), t, actor.id, t,
       );
       await insertProofs(db, p!.id, claimed.files);
-      return { id: p!.id, row };
+      return { id: p!.id, row, before, closed: closed.map((c) => c.id) };
     });
   } catch (e) {
     await discardFiles(claimed.files.map((f) => f.key), "verification proof not used");
@@ -247,9 +264,10 @@ export async function verifyDirect(actor: Actor, userId: number, input: ProofInp
     throw e;
   }
   for (const f of claimed.files) await settleFile(f.key);
-  await sendMail({ userId, audience: "receiver", to: done.row.email, ...(await verifiedEmail(done.row, "direct")) });
+  const mail = await sendVerified(actor.id, userId, done.row, "direct");
   await logAdmin(actor.id, "verified identity (no request)", `@${done.row.handle}`, `proposal #${done.id}: ${checked.reason}`);
-  return { ok: true, handle: done.row.handle, id: done.id };
+  const item = { user: userId, prev: done.before.identity_status, note: done.before.identity_note, ref: done.id, code: "close", refs: done.closed };
+  return { ok: true, handle: done.row.handle, id: done.id, undo: { mail, item } };
 }
 
 /** Approvers: the proposal's mark, the "verified" email once, and who decided. Never the proposer's own. */
@@ -268,6 +286,7 @@ async function approveAs(actorId: number, proposalId: number): Promise<Result> {
   if (!p || p.status !== "pending") return no("That proposal has already been decided");
   if (p.proposer_id === actor.id) return no("You proposed this one, so someone else has to approve it");
   let row: { email: string; name: string; handle: string };
+  let before = { identity_status: "none", identity_note: "" };
   try {
     row = await q.tx(async (db) => {
       const claimed = await db.get(
@@ -275,6 +294,7 @@ async function approveAs(actorId: number, proposalId: number): Promise<Result> {
         actor.id, now(), proposalId, actor.id,
       );
       if (!claimed) throw new Refused("That proposal has already been decided");
+      before = await identityBefore(db, p.user_id);
       const r = await markVerified(db, p.user_id);
       if (!r) throw new Refused(targetRefusal(await targetOf(p.user_id)) ?? "That account is already verified");
       return r;
@@ -284,9 +304,10 @@ async function approveAs(actorId: number, proposalId: number): Promise<Result> {
     throw e;
   }
   // After their own request, the email says they can take the code out of their bio.
-  await sendMail({ userId: p.user_id, audience: "receiver", to: row.email, ...(await verifiedEmail(row, p.was === "pending" ? "request" : "direct")) });
+  const mail = await sendVerified(actor.id, p.user_id, row, p.was === "pending" ? "request" : "direct");
   await logAdmin(actor.id, "approved verification proposal", `@${row.handle}`, `proposal #${proposalId}`);
-  return { ok: true, handle: row.handle, id: proposalId };
+  const item = { user: p.user_id, prev: before.identity_status, note: before.identity_note, ref: proposalId, code: "reopen" };
+  return { ok: true, handle: row.handle, id: proposalId, undo: { mail, item } };
 }
 
 /** Approvers: a declined proposal keeps its note, so the proposer and other teams see why. Nothing is emailed. */
@@ -329,8 +350,8 @@ export async function approveRequest(actor: Actor, userId: number, approve = () 
   if (!powers.direct && !powers.approve) return no("Approving adds the Verified mark. Forward it for approval with your reason and proof instead.");
   // Only a request that's really waiting (security review H1, and #330's lib/identity-approve): any other account,
   // or a missing one, gets the same "Account not found". Never a way to verify an account with no reason or proof.
-  const u = await q.get<{ identity_status: string; identity_links: string; identity_code: string | null; suspended_at: number | null; email_verified_at: number | null }>(
-    "SELECT identity_status, identity_links, identity_code, suspended_at, email_verified_at FROM users WHERE id = ?",
+  const u = await q.get<{ identity_status: string; identity_note: string; identity_links: string; identity_code: string | null; suspended_at: number | null; email_verified_at: number | null }>(
+    "SELECT identity_status, identity_note, identity_links, identity_code, suspended_at, email_verified_at FROM users WHERE id = ?",
     userId,
   );
   if (!u || u.identity_status !== "pending") return no("Account not found");
@@ -351,9 +372,10 @@ export async function approveRequest(actor: Actor, userId: number, approve = () 
     "INSERT INTO verification_proposals (user_id, proposer_id, source, reason, links, status, created_at, decided_by, decided_at) VALUES (?, NULL, 'own_request', ?, ?, 'approved', ?, ?, ?) RETURNING id",
     userId, reason, links.join("\n"), t, actor.id, t,
   );
-  await sendMail({ userId, audience: "receiver", to: row.email, ...(await verifiedEmail(row, "request")) });
+  const mail = await sendVerified(actor.id, userId, row, "request");
   await logAdmin(actor.id, "verified identity", `@${row.handle}`, `proposal #${p!.id}`);
-  return { ok: true, handle: row.handle, id: p!.id };
+  const item = { user: userId, prev: "pending", note: u.identity_note, ref: p!.id, code: "close" };
+  return { ok: true, handle: row.handle, id: p!.id, undo: { mail, item } };
 }
 
 /** The profiles they gave with their request, through the same check as staff links (review L4). */

@@ -12,10 +12,23 @@ import { cancelHeldMail, SEND_HOLD_MS } from "@/lib/mail";
  *
  * Kinds and their items: plan_approve { ref: request, user, prev: old plan }; plan_decline { ref: request };
  * waitlist_invite { ref: waitlist entry, code: the new invite }; invite_resend { code: the code sent, prev: the old code
- * it replaced, if any }; email_resend (nothing to put back, only the email to stop).
+ * it replaced, if any }; email_resend (nothing to put back, only the email to stop); invite_email { code: the new
+ * invite }; verify { user, prev: identity status before, note: identity note before, ref: the proposal, code: "reopen"
+ * (an approved proposal goes back to waiting) or "close" (a record the action wrote is closed), refs: proposals the
+ * action declined, reopened }; identity_reject { user, prev, note }; identity_revoke { user, at: when they were
+ * verified, note }.
  */
-export type UndoKind = "plan_approve" | "plan_decline" | "waitlist_invite" | "invite_resend" | "email_resend";
-export type UndoItem = { ref?: number; user?: number; prev?: string; code?: string };
+export type UndoKind =
+  | "plan_approve"
+  | "plan_decline"
+  | "waitlist_invite"
+  | "invite_resend"
+  | "email_resend"
+  | "invite_email"
+  | "verify"
+  | "identity_reject"
+  | "identity_revoke";
+export type UndoItem = { ref?: number; user?: number; prev?: string; code?: string; note?: string; at?: number | null; refs?: number[] };
 export type Undo = { kind: UndoKind; items: UndoItem[]; mail: number[]; admin: number; exp: number };
 
 const sig = (body: string) => crypto.createHmac("sha256", `ops-undo:${env.secret}`).update(body).digest("base64url");
@@ -55,6 +68,28 @@ export async function revertItem(db: Queryable, u: Undo, item: UndoItem) {
     // The resend swapped an old short code for a new one: the old one comes back, the unsent new one is revoked.
     await db.run("UPDATE invites SET revoked_at = ? WHERE code = ? AND revoked_at IS NULL", now(), item.code);
     await db.run("UPDATE invites SET revoked_at = NULL WHERE code = ?", item.prev);
+  } else if (u.kind === "invite_email") {
+    await db.run("UPDATE invites SET revoked_at = ? WHERE code = ? AND revoked_at IS NULL", now(), item.code);
+  } else if (u.kind === "verify") {
+    // The mark comes off and the account is as it was; the proposal trail stays (no row is removed).
+    const back = await db.run(
+      "UPDATE users SET identity_status = ?, identity_verified_at = NULL, identity_note = ? WHERE id = ? AND identity_status = 'verified'",
+      item.prev ?? "none", item.note ?? "", item.user,
+    );
+    if (!back.changes) return;
+    if (item.code === "reopen")
+      await db.run("UPDATE verification_proposals SET status = 'pending', decided_by = NULL, decided_at = NULL WHERE id = ? AND status = 'approved'", item.ref);
+    else
+      await db.run("UPDATE verification_proposals SET status = 'withdrawn', decision_note = 'Undone before the email went' WHERE id = ? AND status = 'approved'", item.ref);
+    for (const id of item.refs ?? [])
+      await db.run("UPDATE verification_proposals SET status = 'pending', decided_by = NULL, decided_at = NULL, decision_note = '' WHERE id = ? AND status = 'declined'", id);
+  } else if (u.kind === "identity_reject") {
+    await db.run("UPDATE users SET identity_status = ?, identity_note = ? WHERE id = ? AND identity_status = 'rejected'", item.prev ?? "none", item.note ?? "", item.user);
+  } else if (u.kind === "identity_revoke") {
+    await db.run(
+      "UPDATE users SET identity_status = 'verified', identity_verified_at = ?, identity_note = ? WHERE id = ? AND identity_status = 'rejected'",
+      item.at ?? now(), item.note ?? "", item.user,
+    );
   }
 }
 

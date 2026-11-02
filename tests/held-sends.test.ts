@@ -120,3 +120,63 @@ test("Undo stops a waitlist invite and puts the person back, or, if putting back
   );
   assert.deepEqual(await state(bad), { mail: "queued", invited: true, revoked: false }, "the email still goes, the invite stands");
 });
+
+test("the process waits a little past the hold before sending, so an early timer doesn't leave it to the mail job", async () => {
+  const { q } = await import("../src/lib/db");
+  const { sendMailHeld, SEND_GRACE_MS } = await import("../src/lib/mail");
+  const status = async (id: number) => (await q.get<{ status: string }>("SELECT status FROM outbox WHERE id = ?", id))!.status;
+  const holdMs = 50;
+  // Outside a request, the send runs at once in this process (afterResponse), as after a response.
+  const id = await sendMailHeld({ userId: null, audience: "support", to: "grace@x.io", subject: "Grace", body: "Hi" }, { holdMs });
+  await new Promise((done) => setTimeout(done, holdMs + SEND_GRACE_MS / 2));
+  assert.equal(await status(id), "queued", "not before the grace is over");
+  await new Promise((done) => setTimeout(done, SEND_GRACE_MS + 300));
+  assert.notEqual(await status(id), "queued", "sent by this process, not left to the mail job");
+});
+
+test("Undo takes back verification, a rejection, a removed mark and a personal invite, as they were", async () => {
+  const { q, now } = await import("../src/lib/db");
+  const { queueMail, SEND_HOLD_MS } = await import("../src/lib/mail");
+  const { takeBack } = await import("../src/lib/ops-undo");
+  const t = now();
+  const user = async (handle: string, status: string, note = "", verifiedAt: number | null = null) =>
+    (await q.get<{ id: number }>(
+      "INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at, email_verified_at, identity_status, identity_note, identity_verified_at) VALUES (?,'h','U',?,'free','UTC',?,?,?,?,?) RETURNING id",
+      `${handle}@x.io`, handle, t, t, status, note, verifiedAt,
+    ))!.id;
+  const held = () => queueMail({ userId: null, audience: "receiver", to: "who@x.io", subject: "Held", body: "Hi" }, q, { holdMs: SEND_HOLD_MS });
+  const undo = async (kind: "verify" | "identity_reject" | "identity_revoke" | "invite_email", item: Record<string, unknown>) =>
+    takeBack({ kind, items: [item], mail: [await held()], admin: 1, exp: Date.now() + SEND_HOLD_MS });
+  const identity = (id: number) => q.get<{ identity_status: string; identity_note: string; identity_verified_at: number | null }>("SELECT identity_status, identity_note, identity_verified_at FROM users WHERE id = ?", id);
+  const proposal = async (id: number) => (await q.get<{ status: string }>("SELECT status FROM verification_proposals WHERE id = ?", id))!.status;
+  const propose = async (userId: number, status: string) =>
+    (await q.get<{ id: number }>("INSERT INTO verification_proposals (user_id, proposer_id, reason, status, created_at) VALUES (?, NULL, 'A reason long enough to pass the check', ?, ?) RETURNING id", userId, status, t))!.id;
+
+  // Verified directly: the mark comes off, the record it wrote is closed, the colleague's proposal it closed waits again.
+  const direct = await user("undodirect", "verified");
+  const written = await propose(direct, "approved");
+  const colleague = await propose(direct, "declined");
+  assert.equal(await undo("verify", { user: direct, prev: "rejected", note: "old note", ref: written, code: "close", refs: [colleague] }), 1);
+  assert.deepEqual(await identity(direct), { identity_status: "rejected", identity_note: "old note", identity_verified_at: null });
+  assert.equal(await proposal(written), "withdrawn");
+  assert.equal(await proposal(colleague), "pending");
+
+  // An approved proposal goes back to waiting.
+  const approved = await user("undoapproved", "verified");
+  const waiting = await propose(approved, "approved");
+  await undo("verify", { user: approved, prev: "none", note: "", ref: waiting, code: "reopen" });
+  assert.equal((await identity(approved))!.identity_status, "none");
+  assert.equal(await proposal(waiting), "pending");
+
+  const rejected = await user("undoreject", "rejected", "not yet");
+  await undo("identity_reject", { user: rejected, prev: "pending", note: "" });
+  assert.deepEqual(await identity(rejected), { identity_status: "pending", identity_note: "", identity_verified_at: null });
+
+  const revoked = await user("undorevoke", "rejected", "changed hands");
+  await undo("identity_revoke", { user: revoked, at: 1234, note: "" });
+  assert.deepEqual(await identity(revoked), { identity_status: "verified", identity_note: "", identity_verified_at: 1234 });
+
+  await q.run("INSERT INTO invites (code, max_uses, note, email, created_at) VALUES (?,?,?,?,?)", "FLOOR-UNDOMAIL", 1, "", "p@x.io", t);
+  await undo("invite_email", { code: "FLOOR-UNDOMAIL" });
+  assert.notEqual((await q.get<{ revoked_at: number | null }>("SELECT revoked_at FROM invites WHERE code = 'FLOOR-UNDOMAIL'"))!.revoked_at, null);
+});
