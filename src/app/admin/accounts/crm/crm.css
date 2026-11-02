@@ -529,3 +529,20 @@ dialog.ou-drawer::backdrop {
     display: none !important;
   }
 }
+
+/* ---------- The bulk bar here ---------- */
+/* Near solid (94% ink-2 under the blur), so the rows behind it can't be read through it; the kit's glass edge stays.
+   Reduced transparency makes it fully solid (kit.css). */
+.ou .kit-bulkbar.kit-glass {
+  background: color-mix(in srgb, var(--color-ink-2) 94%, transparent);
+}
+/* While rows are picked, the list ends with room for the bar plus 16px (the bar sets --kit-toast-lift to its height
+   plus 12px), so the last row can always scroll clear of it. Phones add the bottom bar and the home bar. */
+.ou .kit-bulkwrap:has(.kit-bulkbar) :is(.ou-tablewrap, .ou-list) {
+  margin-bottom: calc(var(--kit-toast-lift, 0px) + 4px);
+}
+@media (max-width: 767px) {
+  .ou .kit-bulkwrap:has(.kit-bulkbar) :is(.ou-tablewrap, .ou-list) {
+    margin-bottom: calc(var(--kit-toast-lift, 0px) + 4px + 4.5rem + env(safe-area-inset-bottom));
+  }
+}
