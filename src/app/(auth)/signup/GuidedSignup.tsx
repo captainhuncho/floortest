@@ -307,12 +307,12 @@ export function GuidedSignup({
         <div className="af-gap af-first">
           <div>
             <label htmlFor="f-first_name" className="af-lab">First name</label>
-            <input id="f-first_name" name="first_name" className={`af-fld${bad("first_name")}`} value={answers.first_name} onChange={(e) => set("first_name", e.target.value)} autoComplete="given-name" placeholder="Maxwell" maxLength={60} aria-invalid={issue?.field === "first_name" || undefined} aria-describedby={describedBy("first_name")} />
+            <input id="f-first_name" name="first_name" className={`af-fld${bad("first_name")}`} value={answers.first_name} onChange={(e) => set("first_name", e.target.value)} autoComplete="given-name" placeholder="Username" maxLength={60} aria-invalid={issue?.field === "first_name" || undefined} aria-describedby={describedBy("first_name")} />
             {problem("first_name")}
           </div>
           <div>
             <label htmlFor="f-last_name" className="af-lab">Surname</label>
-            <input id="f-last_name" name="last_name" className={`af-fld${bad("last_name")}`} value={answers.last_name} onChange={(e) => set("last_name", e.target.value)} autoComplete="family-name" placeholder="Adjavon" maxLength={60} aria-invalid={issue?.field === "last_name" || undefined} aria-describedby={describedBy("last_name")} />
+            <input id="f-last_name" name="last_name" className={`af-fld${bad("last_name")}`} value={answers.last_name} onChange={(e) => set("last_name", e.target.value)} autoComplete="family-name" maxLength={60} aria-invalid={issue?.field === "last_name" || undefined} aria-describedby={describedBy("last_name")} />
             {problem("last_name")}
           </div>
         </div>

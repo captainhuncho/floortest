@@ -129,7 +129,7 @@ export function HomePreview({ host }: { host: string }) {
         </div>
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3 text-xs">
-          <span className="text-mute">Your link · {host}/maxwell</span>
+          <span className="text-mute">Your link · {host}/username</span>
           <span className="uppercase text-lime">Routing to {COLLECTIONS[col].name}</span>
         </div>
       </div>
