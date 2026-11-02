@@ -80,8 +80,9 @@ kbd.kit-kbd {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
-/* A press answers at once: no easing on the way down. */
-.kit-press:active:not([aria-disabled="true"]) {
+/* A press answers at once: no easing on the way down. [data-pressed] is set straight on pointerdown (OpsButton.tsx),
+   so the press shows even where :active is late or missing (some touch browsers); the release eases back. */
+.kit-press:is(:active, [data-pressed]):not([aria-disabled="true"]) {
   transform: scale(0.97);
   transition-duration: 0s;
 }
@@ -626,6 +627,7 @@ tr.kit-row:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .kit-press,
   .kit-press:active,
+  .kit-press[data-pressed],
   .kit-btn-state {
     transform: none !important;
     transition: opacity 120ms linear;

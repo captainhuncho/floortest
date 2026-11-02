@@ -1,6 +1,6 @@
 "use client";
 
-import { PlayIcon, usePlayer } from "@/components/Player";
+import { PlayIcon, usePlayer, usePlayerTime } from "@/components/Player";
 import { fmtTime } from "@/lib/format";
 import { toPlayer } from "@/lib/player-track";
 
@@ -25,8 +25,10 @@ function bars(peaks: number[] | null) {
  * plays, a tap or the arrow keys on the waveform move through it.
  */
 export function UpNextHero({ track, queue }: { track: Hero; queue: Hero[] }) {
-  const { current, playing, buffering, time, duration, play, toggle, seek } = usePlayer();
+  const { current, playing, buffering, duration, play, toggle, seek } = usePlayer();
   const on = current?.id === track.id;
+  // Follows the playing position only while this is the loaded track.
+  const time = usePlayerTime(on);
   const length = on && duration ? duration : (track.duration ?? 0);
   const progress = on && length ? time / length : 0;
   const shape = bars(track.peaks);
