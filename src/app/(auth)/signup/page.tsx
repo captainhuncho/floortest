@@ -8,6 +8,8 @@ import { env, isPreview } from "@/lib/env";
 import { googleConfig } from "@/lib/google-auth";
 import { GuidedSignup } from "./GuidedSignup";
 import { inviteBySecret } from "@/lib/account-members";
+import { currentPerson } from "@/lib/auth";
+import { maskEmail } from "@/lib/mask-email";
 
 export const metadata = { title: "Claim your link — FloorTest" };
 
@@ -24,14 +26,21 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
   const { E } = editable(c, !!editor);
   const host = env.appUrl.replace(/^https?:\/\//, "");
   const hasInvite = !inviteOnly || !!team || !!personal?.email;
-  const lockedEmail = team?.email ?? personal?.email ?? undefined;
+  // Anyone holding the invite link can open this page, so the invited address shows masked (owner, 2 Nov) and the
+  // person types it themselves; sign-up checks it matches the invite. Shown in full only to someone already signed in
+  // with that exact email.
+  const invitedEmail = team?.email ?? personal?.email ?? undefined;
+  const me = invitedEmail ? await currentPerson() : null;
+  const isInvitee = !!invitedEmail && me?.email.toLowerCase() === invitedEmail.toLowerCase();
+  const lockedEmail = isInvitee ? invitedEmail : undefined;
+  const shownEmail = isInvitee ? invitedEmail : maskEmail(invitedEmail);
   const notice = team ? (
     <>
-      You&apos;re joining <b>{team.account_name}</b> on FloorTest. Create your own login with <b>{team.email}</b>; you&apos;ll get your own link too.
+      You&apos;re joining <b>{team.account_name}</b> on FloorTest. Create your own login with <b>{shownEmail}</b>, the email your invite went to; you&apos;ll get your own link too.
     </>
   ) : personal?.email ? (
     <>
-      You&apos;re invited. Sign up with <b>{personal.email}</b> to use it.
+      You&apos;re invited. Sign up with <b>{shownEmail}</b>, the email your invite went to.
     </>
   ) : referrer && !inviteOnly ? (
     <>

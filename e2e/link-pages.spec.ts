@@ -60,6 +60,17 @@ test.describe("private link pages", () => {
     for (const body of [html, rsc]) expect(body).not.toContain(LINKS.invitee.email);
   });
 
+  // Runs before the invitee joins below (one worker, in order): the invite must still be live.
+  test("signed out, sign-up from the invite shows the invited address masked and doesn't fill it in", async ({ page }) => {
+    const path = `/signup?team=${LINKS.inviteSecret}`;
+    const { html, rsc } = await fetchBoth(page.request, path);
+    for (const body of [html, rsc]) {
+      expect(body.toLowerCase()).not.toContain(LINKS.invitee.email.toLowerCase());
+      expect(body).not.toContain(encodeURIComponent(LINKS.invitee.email));
+    }
+    expect(html).toContain(LINKS.invitee.masked);
+  });
+
   test("signed in as the invitee, the invite shows the full address and joining works", async ({ page }) => {
     await logIn(page, LINKS.invitee.email);
     await page.goto(`/join/${LINKS.inviteSecret}`);
