@@ -6,6 +6,7 @@ import { ipFrom } from "@/lib/ratelimit";
 import { unheardAfterWindow } from "@/lib/plans";
 import { sentBy } from "@/lib/sent";
 import { readSubmission } from "@/lib/submission";
+import { receiptToken } from "@/lib/receipt-token";
 
 export const runtime = "nodejs";
 
@@ -19,7 +20,7 @@ export async function GET(req: Request) {
   const rows = await sentBy(u);
   return json({
     sends: rows.map((r) => ({
-      token: r.token, title: r.title, artist: r.artist, receiver: r.receiver, handle: r.handle, sentAt: r.created_at,
+      token: receiptToken(r), title: r.title, artist: r.artist, receiver: r.receiver, handle: r.handle, sentAt: r.created_at,
       listenedAt: r.played_at, downloadedAt: r.downloaded_at, repliedAt: r.replied_at, playedOutAt: r.played_out_at, notListened: unheardAfterWindow(r),
     })),
   });

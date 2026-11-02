@@ -44,7 +44,7 @@ export default async function Send({ searchParams }: { searchParams: Promise<{ t
   // This week's sends, for the count beside the list's title.
   const week = sent.filter((r) => Number(r.created_at) >= t - 7 * 86_400_000).length;
   const row = (r: Sent) => (
-    <li key={r.token} className="border-t border-line first:border-t-0">
+    <li key={r.id} className="border-t border-line first:border-t-0">
       <Link
         href={receiptPath(r)}
         className="group/row -mx-1.5 flex min-h-11 items-center gap-2 rounded-[11px] px-1.5 py-2.5 hover:bg-well focus-visible:bg-well focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-lime active:bg-well"

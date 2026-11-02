@@ -15,6 +15,7 @@ import { scanHeldUploads } from "@/lib/held-uploads";
 import { drainOutbox } from "@/lib/mail";
 import { sendDueReceipts } from "@/lib/send-receipts";
 import { q } from "@/lib/db";
+import { sealOldReceipts } from "@/lib/receipt-token";
 
 /**
  * The four scheduled jobs (src/lib/cron.ts JOBS), shared by their cron routes and Admin → Jobs → Run now (ops server
@@ -59,9 +60,17 @@ async function purge(started: number): Promise<JobOutcome> {
       digests = { error: message(e) };
       await recordIncident("cron_failed", "Checking file fingerprints failed", detail(e), "/api/cron/purge");
     }
+    // Old receipt tokens without a hash and sealed copy get them, in batches (src/lib/receipt-token.ts). Never blocks the rest.
+    let receipts;
+    try {
+      receipts = await sealOldReceipts();
+    } catch (e) {
+      receipts = { error: message(e) };
+      await recordIncident("cron_failed", "Sealing old receipt tokens failed", detail(e), "/api/cron/purge");
+    }
     const warned = await warnExpiring();
     const purged = await purgeExpired({ force: true });
-    const result = { ...records, ...purged, ...warned, backup, vault, digests };
+    const result = { ...records, ...purged, ...warned, backup, vault, digests, receipts };
     await recordRun("purge", started, true, result);
     return { ok: true, result };
   } catch (e) {

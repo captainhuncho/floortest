@@ -28,7 +28,8 @@ test("a sender's history never says when a track left the desk", async () => {
   const rows = await sentBy({ id: me, email: "me@x.io", email_verified_at: t });
   assert.equal(rows.length, 2);
   for (const r of rows) assert.equal("deleted_at" in r, false, "removal date is never returned");
-  // The two rows differ only in title: nothing in them separates the removed track from the waiting one.
-  const strip = (r: Record<string, unknown>) => Object.fromEntries(Object.entries(r).filter(([k]) => !["token", "title", "created_at"].includes(k)));
+  // The two rows differ only in which track they are (id, receipt token, title, when sent): nothing in them separates the
+  // removed track from the waiting one.
+  const strip = (r: Record<string, unknown>) => Object.fromEntries(Object.entries(r).filter(([k]) => !["id", "token", "token_sealed", "title", "created_at"].includes(k)));
   assert.deepEqual(strip(rows[0]), strip(rows[1]));
 });

@@ -1,5 +1,5 @@
 import { q, type Track } from "./db";
-import { receiptWhere } from "./receipt-token";
+import { receiptWhere, sealOldReceipt } from "./receipt-token";
 
 /**
  * The track columns a sender's receipt uses, and no others. The receiver's decision, notes and the file's storage key
@@ -23,15 +23,23 @@ export type ReceiptTrack = Pick<Track, (typeof RECEIPT_TRACK_COLUMNS)[number]> &
   sender_id: number;
 };
 
-/** One receipt by its token, with the receiver, callout and sender details the page shows. */
-export function receiptByToken(token: string) {
+/**
+ * One receipt by its token, with the receiver, callout and sender details the page shows. An old row without its
+ * sealed copy gets one on this first read (src/lib/receipt-token.ts); the token never leaves this function.
+ */
+export async function receiptByToken(token: string) {
   const m = receiptWhere(token, "t");
   const cols = RECEIPT_TRACK_COLUMNS.map((c) => `t.${c}`).join(", ");
-  return q.get<ReceiptTrack>(
-    `SELECT ${cols}, u.name AS receiver, u.handle AS receiver_handle, u.identity_status AS receiver_status, u.plan AS receiver_plan, c.name AS collection, s.email AS sender_email, s.verified_at, s.account_id AS sender_account, s.id AS sender_id
+  const r = await q.get<ReceiptTrack & { track_id_: number; plain_: string | null }>(
+    `SELECT ${cols}, u.name AS receiver, u.handle AS receiver_handle, u.identity_status AS receiver_status, u.plan AS receiver_plan, c.name AS collection, s.email AS sender_email, s.verified_at, s.account_id AS sender_account, s.id AS sender_id,
+            t.id AS track_id_, CASE WHEN t.token_sealed IS NULL THEN t.token END AS plain_
        FROM tracks t JOIN users u ON u.id = t.user_id JOIN senders s ON s.id = t.sender_id
        LEFT JOIN collections c ON c.id = t.collection_id
        WHERE ${m.sql}`,
     ...m.args,
   );
+  if (!r) return undefined;
+  const { track_id_, plain_, ...receipt } = r;
+  if (plain_) await sealOldReceipt(track_id_, plain_).catch((e) => console.error("[receipt] sealing an old token failed", (e as Error).message));
+  return receipt as ReceiptTrack;
 }
