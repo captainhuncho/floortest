@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { after } from "node:test";
 import { MIGRATIONS } from "../src/lib/db/migrations";
 
 /**
@@ -16,9 +17,13 @@ export function templateDir() {
   return path.join(os.tmpdir(), `floortest-test-db-${hash}`);
 }
 
-/** A fresh database folder for one test file: a copy of the migrated template when there is one, else empty. */
+/**
+ * A fresh database folder for one test file: a copy of the migrated template when there is one, else empty. Removed
+ * when the file's tests finish, passed or failed (2 Nov: left behind, about 45,000 of them filled the disk).
+ */
 export function testDataDir(prefix: string) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+  after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const template = templateDir();
   if (fs.existsSync(path.join(template, "ready"))) fs.cpSync(path.join(template, "pg"), path.join(dir, "pg"), { recursive: true });
   return dir;
