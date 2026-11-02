@@ -76,7 +76,7 @@ export async function VerifiedMarkBox({ me, u }: { me: { id: number; access: Ops
       {powers.propose && u.identity_status === "verified" && (
         <details>
           <summary className="cursor-pointer py-3 text-sm">Remove verification…</summary>
-          <form action={revokeIdentity.bind(null, u.id)} className="mt-2 space-y-2">
+          <OpsForm action={revokeIdentity.bind(null, u.id)} className="mt-2 space-y-2">
             <label className="block space-y-1.5">
               <span className="label">Reason (sent to them)</span>
               <input name="note" required maxLength={200} className="input text-base sm:text-sm" placeholder="e.g. the account changed hands" />
@@ -87,7 +87,7 @@ export async function VerifiedMarkBox({ me, u }: { me: { id: number; access: Ops
             >
               Remove verification
             </ConfirmSubmit>
-          </form>
+          </OpsForm>
         </details>
       )}
 
