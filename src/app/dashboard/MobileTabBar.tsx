@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useNavPath } from "@/components/useNavPath";
 import { useState } from "react";
 
 /** Icon from the Figma design, tinted with the tab's text colour. */
@@ -44,7 +44,7 @@ function QueueBadge({ count }: { count: number }) {
 
 /** Phones only: the four places a DJ lives, one thumb away, as separate floating pills (owner, 30 Oct redesign). */
 export function MobileTabBar({ needsReview }: { needsReview: number }) {
-  const path = usePathname();
+  const path = useNavPath();
   const tabs = [
     { href: "/dashboard/floor", label: "Floor", icon: "layout-grid", active: path === "/dashboard/floor" },
     { href: "/dashboard/review", label: "Queue", icon: "arrow-down-circle", active: path === "/dashboard/review", badge: needsReview },

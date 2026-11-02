@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useNavPath } from "@/components/useNavPath";
 import { Logo } from "@/components/Logo";
 import { NavIcon, type NavIconName } from "@/components/NavIcon";
 import type { PauseState } from "./PauseSwitch";
@@ -37,7 +37,7 @@ const ITEM = `${ROW} h-[clamp(2.75rem,6dvh,3rem)] items-center gap-3.5 text-left
 const IDLE = "border-transparent text-mute hover:bg-card hover:text-bone";
 
 export function Sidebar({ needsReview, cap, pause, canSend = true }: Props) {
-  const path = usePathname();
+  const path = useNavPath();
   const { expanded, pinned, setPinned, tapOpen, toggleTap, panelProps } = useRail(path);
 
   const nav = [

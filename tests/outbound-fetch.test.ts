@@ -47,6 +47,7 @@ const KNOWN: Record<string, string[]> = {
   // SCAN_URL, the environment, via scanBase() (/scan, /wake, /status in scannerHealth and scannerAwake, /health)
   "src/lib/scan.ts": ["`${url}/scan`", "`${url}/wake`", "`${url}/status`", "`${url}/status`", "`${url}/health`"],
   "src/lib/google-auth.ts": ["TOKEN_URL"], // Google's fixed token address
+  "src/lib/mail.ts": ["MAIL_SINK"], // MAIL_SINK_URL, the environment; test copies only, loopback addresses only
 };
 
 function files(dir: string): string[] {

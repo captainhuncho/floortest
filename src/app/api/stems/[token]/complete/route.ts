@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { senderProvenFor, NOT_AVAILABLE } from "@/lib/receipt-proof";
 import { IntakeError, UploadHeld } from "@/lib/intake";
 import { completeStemUpload } from "@/lib/stems";
 
@@ -12,6 +13,7 @@ export const runtime = "nodejs";
  * virus scanner is asleep or down: the stem is kept and attached within about 10 minutes (src/lib/held-uploads.ts).
  */
 export async function POST(req: Request, ctx: RouteContext<"/api/stems/[token]/complete">) {
+  if (!(await senderProvenFor((await ctx.params).token))) return NextResponse.json({ error: NOT_AVAILABLE }, { status: 404 });
   const body = (await req.json().catch(() => ({}))) as { uploadId?: unknown };
   try {
     const stem = await completeStemUpload((await ctx.params).token, String(body.uploadId ?? ""));
