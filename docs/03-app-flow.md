@@ -184,6 +184,13 @@ Jobs ─► Run now (per job, src/lib/cron-jobs.ts: the scheduled code, under th
 Queue buttons (Inbox handled/reopen, Verification approve/not yet, Plan request approve/decline, Incident handled)
    ─► the action answers in place (src/lib/ops-result.ts, OpsForm): no reload, buttons locked while it
    works, success in the toast, a refusal under the form
+Held sends (Email log / account Resend, Invites Resend, Waitlist Invite and "Invite the oldest" (after its confirm),
+Plan request approve/decline) ─► email queued 8 s ahead ─► toast "<what happened> · Sending in 5 s · Undo" counting
+   5 → 0 (read out once; hover or focus pauses the count, never past 7 s after the answer, so Undo always reaches
+   the server inside its 8 s; src/app/admin/kit/core.ts heldLeft)
+   ├─ Undo or ⌘Z / Ctrl+Z ─► undoSend ─► toast "Not sent" (row back: person waiting again, request pending again,
+   │   page refreshed by the action) or "Too late: it was sent"; admin log "cancelled"
+   └─ count ends ─► "· Sent", Undo gone ─► closes after 2.5 s ─► the email goes at 8 s (Email log: logged / sent)
    ─► Verification approve works only while that person's request is waiting (identity_status 'pending'); any other
       account answers "Account not found" (src/lib/identity-approve.ts)
    ─► Block sender for @them / Block everywhere / Remove track… (confirm)
