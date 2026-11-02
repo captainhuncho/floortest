@@ -41,6 +41,7 @@ import { eraseSender, purgeAccount } from "@/lib/privacy";
 import { localPath } from "@/lib/safe-links";
 import { normalEmail } from "@/lib/email-normal";
 import { deleteRevokedInvite, GATE_CODE_MIN_LENGTH, restoreRevokedInvite } from "@/lib/invites";
+import { receiptWhere } from "@/lib/receipt-token";
 
 const refresh = () => revalidatePath("/admin", "layout");
 const done = (m: string) => flash(m);
@@ -748,9 +749,10 @@ export async function openTakedown(form: FormData) {
   const claimantEmail = normalEmail(String(form.get("claimant_email") || "")).slice(0, 200);
   const ref = String(form.get("track") || "").trim().slice(0, 100);
   if (!claimant || !claimantEmail.includes("@") || !ref) return fail("Fill in the claimant, a valid email and the track");
+  const m = receiptWhere(ref, "t");
   const t = await q.get<{ id: number; title: string; artist: string; handle: string }>(
-    "SELECT t.id, t.title, t.artist, u.handle FROM tracks t JOIN users u ON u.id = t.user_id WHERE t.token = ? OR t.id::text = ?",
-    ref,
+    `SELECT t.id, t.title, t.artist, u.handle FROM tracks t JOIN users u ON u.id = t.user_id WHERE ${m.sql} OR t.id::text = ?`,
+    ...m.args,
     ref,
   );
   const label = t ? `${t.artist} – ${t.title} (@${t.handle})` : `Not found: ${ref}`;
