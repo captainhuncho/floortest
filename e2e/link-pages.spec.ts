@@ -100,6 +100,20 @@ test.describe("private link pages", () => {
   // The receipt's own server action (stop sharing) under the same headers: e2e/receipt-proof.spec.ts, which needs proof
   // first since Option B (2 Nov).
 
+  test("a password reset link gets the same headers, and saving the new password still works", async ({ page }) => {
+    const path = `/reset/${LINKS.resetToken}`;
+    const { headers, rscHeaders } = await fetchBoth(page.request, path);
+    expectPrivateHeaders(headers, path);
+    expectPrivateHeaders(rscHeaders, path);
+    await page.goto(path);
+    await page.getByLabel("New password").fill(LINKS.resetter.newPassword);
+    await page.getByLabel("Confirm it").fill(LINKS.resetter.newPassword);
+    const save = page.getByRole("button", { name: "Save and log in" });
+    await hydrated(save);
+    await save.click();
+    await page.waitForURL(/\/dashboard\//, { timeout: 60_000 });
+  });
+
   test("the sender history's End this link action still works", async ({ page }) => {
     await gotoSent(page);
     await page.getByRole("button", { name: "End this link now" }).click();

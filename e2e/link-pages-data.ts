@@ -20,4 +20,7 @@ export const LINKS = {
   verifyToken: "e2eLinkPagesVerifyEmailToken0001",
   changer: { email: "changer.links@floortest.test", masked: "c•••@f•••.test", next: "changed.links@floortest.test" },
   confirmToken: "e2eLinkPagesConfirmEmailToken001",
+  /** A password reset link: the same headers as the pages above (hub review of #375, 2 Nov). */
+  resetter: { email: "resetter.links@floortest.test", newPassword: "Quiet-Harbour-Lantern-2049" },
+  resetToken: "e2eLinkPagesPasswordResetToken01",
 } as const;
