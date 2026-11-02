@@ -1,8 +1,9 @@
 "use client";
 
+import { useRenderProbe } from "@/lib/render-probe";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { analyzeAudio } from "@/lib/analyze";
 import { fmtTime } from "@/lib/format";
 import { LISTEN_BEAT_MS, listenThreshold } from "@/lib/plans";
@@ -29,7 +30,7 @@ type Ctx = {
   playing: boolean;
   /** Asked to play but waiting for audio (a big WAV on a slow line): the play button shows a ring, not just Pause. */
   buffering: boolean;
-  time: number;
+  /** Not the playing position: that changes about 4 times a second, so it has its own store (usePlayerTime). */
   duration: number;
   play: (t: PlayerTrack, queue?: PlayerTrack[]) => void;
   toggle: () => void;
@@ -51,6 +52,52 @@ export const usePlayer = () => {
   return c;
 };
 
+/**
+ * Where the track is, in seconds, kept outside the player's context (speed fixes phase 1, 2 Nov). It moves about 4
+ * times a second while a track plays; in the context it re-rendered every consumer (the review rail, whole track
+ * lists) that often. Now only components that read it with usePlayerTime follow it.
+ */
+type TimeStore = { get: () => number; set: (t: number) => void; subscribe: (fn: () => void) => () => void };
+function createTimeStore(): TimeStore {
+  let time = 0;
+  const listeners = new Set<() => void>();
+  return {
+    get: () => time,
+    set: (t) => {
+      if (t === time) return;
+      time = t;
+      for (const fn of listeners) fn();
+    },
+    subscribe: (fn) => {
+      listeners.add(fn);
+      return () => listeners.delete(fn);
+    },
+  };
+}
+const PlayerTimeContext = createContext<TimeStore | null>(null);
+
+/**
+ * The playing position in seconds. `active` false (a row that isn't the loaded track) always reads 0, so that row
+ * doesn't re-render while another track plays.
+ */
+export function usePlayerTime(active = true) {
+  const store = useContext(PlayerTimeContext);
+  if (!store) throw new Error("usePlayerTime outside PlayerProvider");
+  return useSyncExternalStore(store.subscribe, () => (active ? store.get() : 0), () => 0);
+}
+
+/** A track's waveform with the player's progress on it while it's the loaded track (`on`); `length` in seconds. */
+export function PlayerWaveform({ on, length, ...rest }: { on: boolean; length: number } & Omit<React.ComponentProps<typeof Waveform>, "progress" | "duration">) {
+  const time = usePlayerTime(on);
+  return <Waveform {...rest} progress={on && length ? time / length : 0} duration={length} />;
+}
+
+/** The playing position as m:ss, for the bar and the mini player. */
+function PlayerClock({ className }: { className?: string }) {
+  useRenderProbe("PlayerClock");
+  return <span className={className}>{fmtTime(usePlayerTime())}</span>;
+}
+
 export const isTyping = (el: EventTarget | null) =>
   el instanceof HTMLElement && !!el.closest("input, textarea, select, [contenteditable]");
 
@@ -63,7 +110,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [current, setCurrent] = useState<PlayerTrack | null>(null);
   const [playing, setPlaying] = useState(false);
   const [buffering, setBuffering] = useState(false);
-  const [time, setTime] = useState(0);
+  const [timeStore] = useState(createTimeStore);
   const [duration, setDuration] = useState(0);
   const [failures, setFailures] = useState(0);
   // The element itself, for the media keys (created in the effect below; the ref is for everything else).
@@ -118,7 +165,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     const a = audio.current!;
     listened.current = { id: t.id, last: 0, sinceBeat: 0, reported: t.played, duration: t.duration };
     setCurrent(t);
-    setTime(0);
+    timeStore.set(0);
     setDuration(t.duration ?? 0);
     a.src = `/api/tracks/${t.id}/audio`;
     // A new source always has to load first; "playing" clears this once sound actually starts.
@@ -155,7 +202,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setVolumeState(saved.volume);
     setMuted(saved.muted);
     const onTime = () => {
-      setTime(a.currentTime);
+      timeStore.set(a.currentTime);
       const l = listened.current;
       const delta = a.currentTime - l.last;
       if (delta > 0 && delta < 1.5) l.sinceBeat += delta;
@@ -302,14 +349,15 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   // One stable value: a new object each render reached the dashboard's still-hydrating Suspense boundary (loading.tsx)
   // during the mount effect below, so React re-rendered the page and its hidden streamed copy briefly sat beside the
-  // visible one (1 Nov; scratchpad dupe probe). Hydrating the server HTML also shows the page sooner.
+  // visible one (1 Nov; scratchpad dupe probe). Hydrating the server HTML also shows the page sooner. The time is not
+  // in it (its own store, usePlayerTime), so playing changes this only on play, pause, buffering or a new track.
   const value = useMemo(
-    () => ({ current, playing, buffering, time, duration, play, toggle, seek, seekBy, failures, volume, muted, volumeTouched }),
-    [current, playing, buffering, time, duration, play, toggle, seek, seekBy, failures, volume, muted, volumeTouched],
+    () => ({ current, playing, buffering, duration, play, toggle, seek, seekBy, failures, volume, muted, volumeTouched }),
+    [current, playing, buffering, duration, play, toggle, seek, seekBy, failures, volume, muted, volumeTouched],
   );
   return (
     <PlayerContext.Provider value={value}>
-      {children}
+      <PlayerTimeContext.Provider value={timeStore}>{children}</PlayerTimeContext.Provider>
     </PlayerContext.Provider>
   );
 }
@@ -336,7 +384,8 @@ export function BufferRing({ className = "-inset-1" }: { className?: string }) {
 }
 
 export function PlayerBar() {
-  const { current, playing, buffering, time, duration, toggle, seek, failures, volume, muted, volumeTouched } = usePlayer();
+  const { current, playing, buffering, duration, toggle, seek, failures, volume, muted, volumeTouched } = usePlayer();
+  useRenderProbe("PlayerBar");
   const toast = useToast();
   useEffect(() => {
     if (failures) toast.show({ message: "This track won't play right now. Check your connection, then press play again.", tone: "error" });
@@ -358,10 +407,10 @@ export function PlayerBar() {
             </Link>
             <span className="flex shrink-0 items-center gap-2">
               <VolumeNote volume={volume} muted={muted} touched={volumeTouched} />
-              <span className="text-[11px] text-faint tnum">{fmtTime(time)}</span>
+              <PlayerClock className="text-[11px] text-faint tnum" />
             </span>
           </span>
-          <Waveform peaks={current.peaks} progress={d ? time / d : 0} duration={d} onSeek={seek} height={18} label={`Seek ${current.title}`} />
+          <PlayerWaveform on length={d} peaks={current.peaks} onSeek={seek} height={18} label={`Seek ${current.title}`} />
         </div>
         {/* A 44px tap area around the 28px button; the negative margin keeps the layout as drawn. */}
         <button
@@ -393,9 +442,9 @@ export function PlayerBar() {
           <p className="truncate text-sm font-medium">{current.title}</p>
           <p className="truncate text-sm text-mute">{current.artist}</p>
         </Link>
-        <span className="hidden text-sm text-mute tnum sm:block">{fmtTime(time)}</span>
+        <PlayerClock className="hidden text-sm text-mute tnum sm:block" />
         <div className="min-w-0 flex-1">
-          <Waveform peaks={current.peaks} progress={d ? time / d : 0} duration={d} onSeek={seek} height={32} label={`Seek ${current.title}`} />
+          <PlayerWaveform on length={d} peaks={current.peaks} onSeek={seek} height={32} label={`Seek ${current.title}`} />
         </div>
         <span className="hidden text-sm text-mute tnum sm:block">{fmtTime(d)}</span>
         <VolumeNote volume={volume} muted={muted} touched={volumeTouched} className="w-20 text-right" />

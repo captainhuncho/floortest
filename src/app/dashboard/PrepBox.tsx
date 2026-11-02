@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { usePlayer, type PlayerTrack } from "@/components/Player";
+import { usePlayer, usePlayerTime, type PlayerTrack } from "@/components/Player";
 import { useToast } from "@/components/Toast";
 import { fmtCue, MAX_CUES, type Cue } from "@/lib/cues";
 import { savePrep } from "./actions/review";
@@ -23,8 +23,8 @@ export function PrepBox({ track, energy: initialEnergy, cues: initialCues }: { t
     setCues(c);
     setDirty(true);
   };
-  const addCue = () => {
-    const at = Math.round(player.time * 10) / 10;
+  const addCue = (time: number) => {
+    const at = Math.round(time * 10) / 10;
     if (cues.some((c) => Math.abs(c.at - at) < 0.5)) return;
     change(energy, [...cues, { at, label: "" }].sort((a, b) => a.at - b.at).slice(0, MAX_CUES));
   };
@@ -81,14 +81,7 @@ export function PrepBox({ track, energy: initialEnergy, cues: initialCues }: { t
             Cues {cues.length}/{MAX_CUES}
           </span>
           {on ? (
-            <button
-              type="button"
-              disabled={cues.length >= MAX_CUES}
-              onClick={addCue}
-              className="rounded-md border border-line px-2.5 py-1 text-[11px] font-bold hover:border-lime hover:text-lime disabled:opacity-40"
-            >
-              + Cue at {fmtCue(player.time)}
-            </button>
+            <AddCue disabled={cues.length >= MAX_CUES} onAdd={addCue} />
           ) : (
             <button type="button" onClick={() => player.play(track)} className="text-[11px] text-mute underline-offset-4 hover:text-bone hover:underline tap-text">
               Play to mark cues
@@ -119,5 +112,20 @@ export function PrepBox({ track, energy: initialEnergy, cues: initialCues }: { t
         )}
       </div>
     </section>
+  );
+}
+
+/** "+ Cue at 1:23": the one part of Set prep that follows the playing position, so only it re-renders while playing. */
+function AddCue({ disabled, onAdd }: { disabled: boolean; onAdd: (time: number) => void }) {
+  const time = usePlayerTime();
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => onAdd(time)}
+      className="rounded-md border border-line px-2.5 py-1 text-[11px] font-bold hover:border-lime hover:text-lime disabled:opacity-40"
+    >
+      + Cue at {fmtCue(time)}
+    </button>
   );
 }

@@ -19,7 +19,8 @@ import { env } from "@/lib/env";
 import { APP_URL, sendMail } from "@/lib/mail";
 import { RESERVED_HANDLES } from "@/lib/plans";
 import { allow, recentCount, record, requestIp } from "@/lib/ratelimit";
-import { loginLocked, recordLoginFailure } from "@/lib/login-limits";
+import { afterRightPassword, claimTry, holdAnswer, loginLocked, passwordHold, recordLoginFailure } from "@/lib/login-limits";
+import { alertGuessedAccount } from "@/lib/login-alert";
 import { normalEmail } from "@/lib/email-normal";
 import { maskEmail } from "@/lib/mask-email";
 import { isProtectedHandle } from "@/lib/identity";
@@ -59,8 +60,11 @@ async function afterPassword(userId: number, how: "password" | "reset" | "email 
   redirect(await landing("/dashboard/floor"));
 }
 
-/** `challenge`: show the human check (after repeated wrong tries). */
-export type FormState = { error?: string; ok?: boolean; challenge?: boolean } | undefined;
+/**
+ * `challenge`: show the human check (after repeated wrong tries). `holdLeft`: password tries from this device are paused
+ * for this long (ms), so the form counts down; `holdFinal`: the last, 24-hour step, which offers "Report this".
+ */
+export type FormState = { error?: string; ok?: boolean; challenge?: boolean; holdLeft?: number; holdFinal?: boolean } | undefined;
 
 const HOUR = 3_600_000;
 const INVITE_TRIES_EMAIL = 5;
@@ -255,18 +259,33 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
   const email = normalEmail(String(form.get("email") || "")).slice(0, 200);
   const password = String(form.get("password") || "").slice(0, 200);
   const ip = await requestIp();
-  // Failed attempts only, per connection and per account on that connection (lib/login-limits).
-  if (await loginLocked(email, ip)) return { error: "Too many attempts. Wait 15 minutes, or reset your password." };
+  // A hold on this email from this connection (5 wrong passwords, then longer each time; lib/login-limits): checked
+  // before the password, so nothing is tried while it lasts. The same answer whether or not the email has an account.
+  const hold = await passwordHold("login", email, ip);
+  if (hold) return holdAnswer(hold);
+  // Failed attempts only: per connection, or per email when the human check is off (lib/login-limits).
+  const locked = await loginLocked(email, ip);
+  if (locked === "connection") return { error: "Too many attempts from this connection. Wait 15 minutes, or reset your password." };
+  if (locked === "email") return { error: "Too many attempts. Wait 15 minutes, or reset your password." };
   // After a few wrong tries, prove you're human first (Cloudflare). Checked here on the server, so it can't be skipped.
   const failures = await recentFailures("login_fail_email", "login_fail_ip", email, ip);
   const human = await humanCheck(failures, form, ip);
   if (!human.ok) return { error: HUMAN_MESSAGE, challenge: true };
+  // This try is counted before the password is checked, so tries at the same moment can't all get through; handed back below if it's right.
+  const attempt = await claimTry("login", email, ip);
+  if (attempt.hold) return holdAnswer(attempt.hold);
   const row = await q.get<{ id: number; password_hash: string; suspended_at: number | null }>("SELECT id, password_hash, suspended_at FROM users WHERE email = ?", email);
   const ok = await verifyPassword(password, row?.password_hash ?? (await DUMMY_HASH));
   if (!row || !ok) {
-    await recordLoginFailure(email, ip);
+    const started = await recordLoginFailure(email, ip);
+    if (started) {
+      // The account holder hears about it (at most hourly, sent after this answer so timing gives nothing away).
+      alertGuessedAccount(email, started);
+      return holdAnswer(started);
+    }
     return { error: "Email or password is incorrect.", challenge: failures + 1 >= HUMAN_CHECK_AFTER };
   }
+  await afterRightPassword("login", email, ip, attempt);
   if (row.suspended_at) return { error: "This account is suspended. To appeal, go to the Contact page and choose Suspension appeal." };
   await upgradePasswordHash(row.id, password, row.password_hash);
   await afterPassword(row.id, "password");

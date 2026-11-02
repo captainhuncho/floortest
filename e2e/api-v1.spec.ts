@@ -3,6 +3,26 @@ import { expect, test, wav, signUp } from "./fixtures";
 /** The mobile app's API, end to end: sign in, read the queue, decide, refresh, sign out — and the guards around it. */
 test.describe.configure({ mode: "serial" });
 
+// Owner, 2 Nov: the app's sign-in has the website's growing holds. Its own address (off Vercel the app reads
+// X-Forwarded-For) and a made-up email, so these wrong tries don't count against the other tests' sign-ins.
+test("app sign-in: the fifth wrong password from one device starts a hold with a countdown", async ({ request }) => {
+  const email = `ghost+${Date.now().toString(36)}@example.test`;
+  // A fresh address each run, so repeat runs within 15 minutes don't reach the per-connection stop.
+  const net = `10.${Math.floor(Math.random() * 200) + 20}.${Math.floor(Math.random() * 250)}`;
+  const headers = { "X-Forwarded-For": `${net}.1` };
+  const data = { email, password: "wrong-password-123", humanToken: "XXXX.DUMMY.TOKEN.XXXX" };
+  for (let i = 1; i < 5; i++) expect((await request.post("/api/v1/auth/login", { headers, data })).status(), `wrong try ${i}`).toBe(401);
+  const held = await request.post("/api/v1/auth/login", { headers, data });
+  expect(held.status()).toBe(429);
+  const body = await held.json();
+  expect(body.error).toContain("Too many wrong passwords");
+  expect(body.holdLeft).toBeGreaterThan(100_000);
+  expect(body.holdLeft).toBeLessThanOrEqual(120_000);
+  // Held: even the next try isn't checked, and another device isn't held.
+  expect((await request.post("/api/v1/auth/login", { headers, data })).status()).toBe(429);
+  expect((await request.post("/api/v1/auth/login", { headers: { "X-Forwarded-For": `${net}.2` }, data })).status()).toBe(401);
+});
+
 test("app sign-in, queue, keep, token refresh and sign-out", async ({ request }) => {
   // Wrong password: one message, no hint whether the account exists.
   const bad = await request.post("/api/v1/auth/login", { data: { email: "demo@floortest.test", password: "nope-nope-nope" } });

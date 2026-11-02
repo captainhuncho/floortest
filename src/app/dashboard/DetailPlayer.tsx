@@ -1,12 +1,14 @@
 "use client";
 
-import { PlayIcon, usePlayer, type PlayerTrack } from "@/components/Player";
+import { PlayIcon, usePlayer, usePlayerTime, type PlayerTrack } from "@/components/Player";
 import { Waveform } from "@/components/Waveform";
 import { fmtTime } from "@/lib/format";
 
 export function DetailPlayer({ track }: { track: PlayerTrack }) {
-  const { current, playing, time, duration, play, seek } = usePlayer();
+  const { current, playing, duration, play, seek } = usePlayer();
   const isCurrent = current?.id === track.id;
+  // The track page's own transport shows the time, so it follows the playing position (only while it's this track).
+  const time = usePlayerTime(isCurrent);
   const d = (isCurrent && duration) || track.duration || 0;
   return (
     // Redesign (30 Oct): the waveform gets the full width; under it the time, a round lime play button and the length.

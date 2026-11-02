@@ -220,7 +220,8 @@ Tactile and plain: they say what you get ("Download kept", "Clear kept").
 - **Ghost:** transparent with a 1px Booth Line border and Bone text; hover darkens the border to Mute and fills Booth Card. The secondary action.
 - **Danger:** transparent with a red outline and red text; confirmation dialogs use solid red for the final yes. Destructive actions always confirm.
 - **Small:** 12px bold, 6px × 12px, at least 36px tall on desktop and 44px on touch screens.
-- **Press:** scale to 0.97 on press, instantly; transitions are 150ms ease-out on colour, background, border and transform only.
+- **Press:** scale to 0.97 on press, instantly (0 ms on the way down; the release eases back over 150 ms); transitions are 150ms ease-out on colour, background, border and transform only.
+- **Touch:** buttons, links, fields, labels and summaries carry `touch-action: manipulation` (base layer, `globals.css`), so a tap never waits 300 ms for a possible double-tap zoom on mobile Safari; pinch zoom and scrolling still work. Checked by `e2e/tap-response.spec.ts` (speed fixes phase 1, 2 Nov).
 
 ### Chips
 - **Style:** pills on Booth Card with Mute text; filters and tabs are chips or segmented controls, never buttons.
@@ -251,7 +252,8 @@ The shared controls of the ops area, `src/app/admin/kit/` (look in `kit.css`, ru
 night follow the theme.
 - **Glass only on what floats:** the ⌘K palette, toasts and the bulk bar (blur 22px, saturate 170%, a hairline edge).
   Panels, the rail and dialogs stay solid. Only the newest toast is glass. Reduced transparency makes all of them solid.
-- **OpsButton:** presses scale to .97 with no delay; the label gives way to a spinner after 150 ms, then "✓ …" in the
+- **OpsButton:** presses scale to .97 with no delay (set on pointerdown itself as `data-pressed`, so a touch shows it
+  on the next frame, not when the browser decides it is a press); the label gives way to a spinner after 150 ms, then "✓ …" in the
   same space for 1.2 s; a refusal shows under it in danger text with Retry. Its size never changes while it works.
 - **Toasts:** bottom centre (above the phone bar), up to three, newest last, Undo 44px with its ⌘Z hint.
 - **Confirm:** the Dialog shell with the affected names in a well, a reason field when asked, focus on Cancel.
