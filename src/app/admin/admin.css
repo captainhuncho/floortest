@@ -81,11 +81,12 @@
   40%, 100% { transform: scale(2.6); opacity: 0; }
 }
 
-/* Arrive once, at a pace you can watch (owner, 1 Nov: "medium speed where you sit down and you see progress"):
-   panels fade up 6px in a gentle stagger; lines draw and bars fill over ~1.5 s; numbers count (CountUp). */
+/* Arrive once, fast (owner in the Desk, 2 Nov, speed fixes phase 1: "something visible under 100 ms after a tap").
+   This replaces the 1 Nov ask for slower, watchable bars (~1.5 s, "medium speed where you sit down and you see
+   progress"). Everything arrives together in about 200 ms with no stagger and no delay: panels fade up 6px; lines draw
+   and bars fill in 200-250 ms; numbers count in 250 ms (CountUp). --i on the elements is no longer read here. */
 .admin-rise {
-  animation: admin-rise 560ms cubic-bezier(0.22, 0.7, 0.2, 1) both;
-  animation-delay: calc(var(--i, 0) * 70ms);
+  animation: admin-rise 200ms cubic-bezier(0.22, 0.7, 0.2, 1) both;
 }
 @keyframes admin-rise {
   from { opacity: 0; transform: translateY(6px); }
@@ -93,40 +94,37 @@
 .admin-draw {
   stroke-dasharray: 1;
   stroke-dashoffset: 1;
-  animation: admin-draw 1800ms cubic-bezier(0.45, 0, 0.2, 1) forwards;
-  animation-delay: calc(300ms + var(--i, 0) * 90ms);
+  animation: admin-draw 250ms cubic-bezier(0.45, 0, 0.2, 1) forwards;
 }
 @keyframes admin-draw {
   to { stroke-dashoffset: 0; }
 }
+/* The area under a line fades in as the line finishes drawing. */
 .admin-fill {
   opacity: 0;
-  animation: admin-fade 600ms ease-out 1600ms forwards;
+  animation: admin-fade 150ms ease-out 100ms forwards;
 }
 @keyframes admin-fade {
   to { opacity: 1; }
 }
 .admin-grow {
   transform-origin: left;
-  animation: admin-grow 1500ms cubic-bezier(0.45, 0, 0.2, 1) both;
-  animation-delay: calc(350ms + var(--i, 0) * 110ms);
+  animation: admin-grow 220ms cubic-bezier(0.45, 0, 0.2, 1) both;
 }
 @keyframes admin-grow {
   from { transform: scaleX(0); }
 }
-/* Bars and blocks rise from the floor, one after another. */
+/* Bars and blocks rise from the floor, all together. */
 .admin-grow-y {
   transform-origin: bottom;
-  animation: admin-grow-y 1300ms cubic-bezier(0.45, 0, 0.2, 1) both;
-  animation-delay: calc(300ms + var(--i, 0) * 70ms);
+  animation: admin-grow-y 220ms cubic-bezier(0.45, 0, 0.2, 1) both;
 }
 @keyframes admin-grow-y {
   from { transform: scaleY(0); }
 }
-/* Gauge ticks light up in order, like a level meter. */
+/* Gauge ticks light up, all together. */
 .admin-tick {
-  animation: admin-tick 450ms ease-out both;
-  animation-delay: calc(350ms + var(--i, 0) * 55ms);
+  animation: admin-tick 200ms ease-out both;
 }
 @keyframes admin-tick {
   from { opacity: 0.12; }
@@ -143,7 +141,7 @@
 @media (hover: hover) {
   .admin-lift:hover { transform: translateY(-2px); }
 }
-.admin-area { animation: admin-rise 420ms cubic-bezier(0.22, 0.7, 0.2, 1) both; }
+.admin-area { animation: admin-rise 200ms cubic-bezier(0.22, 0.7, 0.2, 1) both; }
 .admin-side { transition: width 240ms cubic-bezier(0.3, 0.7, 0.2, 1); }
 
 /* Keyboard focus is always visible in ops. */
@@ -187,7 +185,7 @@
     0 0 0 1px color-mix(in srgb, var(--color-bone) 8%, transparent),
     inset 0 1px 0 color-mix(in srgb, var(--color-bone) 7%, transparent),
     0 18px 40px -24px rgb(0 0 0 / 0.55);
-  animation: admin-rise 560ms cubic-bezier(0.22, 0.7, 0.2, 1) both;
+  animation: admin-rise 200ms cubic-bezier(0.22, 0.7, 0.2, 1) both;
 }
 /* Boxes inside boxes become calm tiles with concentric corners, not panels on panels. */
 .admin-canvas main :is(.rounded-md, .rounded-lg).border.border-line :is(.rounded-md, .rounded-lg).border.border-line,

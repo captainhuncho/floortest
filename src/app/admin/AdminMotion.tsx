@@ -7,7 +7,8 @@ import { REFRESH_EVENT } from "@/components/PullToRefresh";
 const SEEN = "floortest-admin-moved";
 /** The old "start still" cookie (1 Nov); cleared so a browser that has it doesn't keep it. */
 const OLD_COOKIE = "ft_ops_still";
-const ARRIVAL_MS = 2500;
+/** Long enough for every arrival animation in admin.css (about 250 ms since 2 Nov) to finish, with room to spare. */
+const ARRIVAL_MS = 600;
 let hydrated = false;
 const remember = (paths: string[]) => {
   try {
@@ -19,8 +20,9 @@ const remember = (paths: string[]) => {
  * When the arrival motion plays. A full load or a browser refresh always plays it, so you can see the page refresh
  * (owner, 1 Nov: "when you hit the refresh or reload on the browser, the pages need to refresh"). Moving inside ops
  * plays it the first time you open each page in a session; a page seen before, a filter or a tab switch starts still
- * (hub, 1 Nov: staff open these pages all day). Only a class on #theme-root changes, so it never blocks a click or a
- * key; reduced motion is handled in admin.css.
+ * (hub, 1 Nov: staff open these pages all day). The motion itself is about 200 ms with no stagger (owner in the Desk,
+ * 2 Nov, speed fixes: this replaces the 1 Nov ask for slow, watchable bars). Only a class on #theme-root changes, so it
+ * never blocks a click or a key; reduced motion is handled in admin.css.
  */
 export function AdminMotion() {
   const path = usePathname();

@@ -3,11 +3,13 @@
 import { useEffect, useRef } from "react";
 
 const SEEN = "floortest-admin-counted";
-const COUNT_MS = 1500;
+/** In step with the bars (admin.css): quick, so the real number is there almost at once (owner, 2 Nov). */
+const COUNT_MS = 250;
 
 /**
  * A number that counts up from 0 the first time the Overview opens in a browser session (owner, 1 Nov: ops should
- * feel alive), then just shows the value. Server-rendered with the real number, so nothing is hidden without
+ * feel alive), then just shows the value. The count takes 250 ms (owner in the Desk, 2 Nov, speed fixes: this replaces
+ * the 1 Nov ask for a slow, watchable 1.5 s count). Server-rendered with the real number, so nothing is hidden without
  * JavaScript, and screen readers and reduced motion get the value at once.
  */
 export function CountUp({ value, className }: { value: number; className?: string }) {
@@ -19,14 +21,14 @@ export function CountUp({ value, className }: { value: number; className?: strin
     try {
       first = !sessionStorage.getItem(SEEN);
       // Marked a moment later, so every number on the page counts on that first visit.
-      if (first) setTimeout(() => sessionStorage.setItem(SEEN, "1"), 1000);
+      if (first) setTimeout(() => sessionStorage.setItem(SEEN, "1"), COUNT_MS + 250);
     } catch {}
     if (!first || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const fmt = (n: number) => Math.round(n).toLocaleString("en-GB");
     const start = performance.now();
     let raf = 0;
     const step = (now: number) => {
-      // In step with the bars (1.5 s, owner 1 Nov: slow enough to watch), easing in and out like them.
+      // In step with the bars (250 ms, owner 2 Nov), easing in and out like them.
       const p = Math.min(1, (now - start) / COUNT_MS);
       el.textContent = fmt(value * (p < 0.5 ? 4 * p ** 3 : 1 - (-2 * p + 2) ** 3 / 2));
       if (p < 1) raf = requestAnimationFrame(step);
