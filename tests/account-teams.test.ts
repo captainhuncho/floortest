@@ -34,7 +34,8 @@ test("account teams: seats by plan, invites, roles, removal, reply approval and 
   const k = await T.inviteToTeam(desk("owner"), "kofi@team.io", "member");
 
   // Accepting: only with the invited email, and only once.
-  await assert.rejects(T.acceptInvite(a.secret, await person(kofi)), /sent to ama@team.io/);
+  // A different account sees the invited address masked (owner, 2 Nov), and still can't accept.
+  await assert.rejects(T.acceptInvite(a.secret, await person(kofi)), (e: Error) => /sent to a•••@t•••\.io\./.test(e.message) && !e.message.includes("ama@team.io"));
   await T.acceptInvite(a.secret, await person(ama));
   await assert.rejects(T.acceptInvite(a.secret, await person(ama)), /isn't valid/);
   await T.acceptInvite(k.secret, await person(kofi));

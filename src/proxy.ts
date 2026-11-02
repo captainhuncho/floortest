@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { GATE_COOKIE, gatePassword, hasGatePass } from "@/lib/site-gate";
 import { contentSecurityPolicy, makeNonce } from "@/lib/csp";
 import { crossSiteWrite } from "@/lib/cross-site";
-import { NOINDEX, indexable } from "@/lib/search-index";
+import { LINK_PAGE_HEADERS, NOINDEX, indexable, linkPage } from "@/lib/search-index";
 
 /**
  * Keeps the admin area and the main site apart by host. With OPS_URL set (production): the ops host serves only the
@@ -45,6 +45,8 @@ export function proxy(req: NextRequest) {
   if (!OWN_CSP.some((p) => p.test(req.nextUrl.pathname))) res.headers.set("Content-Security-Policy", csp);
   // Search engines list only the public pages; any other answer (pages, API, redirects, not-found) says noindex.
   if (!indexable(req.nextUrl.pathname)) res.headers.set("X-Robots-Tag", NOINDEX);
+  // Private link pages: not kept by browsers or caches, and the address isn't passed on to other sites (search-index.ts).
+  if (linkPage(req.nextUrl.pathname)) for (const [k, v] of Object.entries(LINK_PAGE_HEADERS)) res.headers.set(k, v);
   return res;
 }
 

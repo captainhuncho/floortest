@@ -6,6 +6,7 @@ import { APP_URL, sendMail } from "./mail";
 import { RESERVED_HANDLES } from "./plans";
 import { revokeAllSessions } from "./sessions";
 import { hashToken } from "./token-hash";
+import { maskEmail } from "./mask-email";
 
 const DAY = 86_400_000;
 const isUniqueViolation = (e: unknown) => (e as { code?: string })?.code === "23505";
@@ -23,7 +24,6 @@ export async function nextHandleChange(userId: number) {
 /** How long the confirmation link for a new email works. */
 export const EMAIL_CHANGE_HOURS = 48;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const mask = (e: string) => e.replace(/^(.{2}).*@/, "$1…@");
 
 /** How long a deleted account's link names stay reserved: links printed on flyers and in bios outlive a rename's. */
 export const DELETED_HANDLE_HOLD_DAYS = 365;
@@ -137,7 +137,7 @@ export async function requestEmailChange(userId: number, next: string, by: "user
     audience: "support",
     to: u.email,
     subject: "Your FloorTest email is being changed",
-    body: `Hi ${first},\n\n${by === "admin" ? "At your request, our support team started" : "Someone signed in to your account started"} changing its email to ${mask(email)}. It only changes once that address confirms.\n\nIf this wasn't you, reply to this email or contact us straight away: ${APP_URL}/contact\n\n— FloorTest`,
+    body: `Hi ${first},\n\n${by === "admin" ? "At your request, our support team started" : "Someone signed in to your account started"} changing its email to ${maskEmail(email)}. It only changes once that address confirms.\n\nIf this wasn't you, reply to this email or contact us straight away: ${APP_URL}/contact\n\n— FloorTest`,
   });
   return null;
 }

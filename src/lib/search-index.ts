@@ -19,3 +19,18 @@ export function indexable(path: string) {
  * crawler that may not open a page can't see its noindex and may list the bare link, token included.
  */
 export const CRAWL_BLOCKED = ["/dashboard", "/admin", "/api/", "/login", "/signup", "/forgot", "/newsletter/", "/sent/reopen/"];
+
+/**
+ * Pages opened from a private link that show something about the person it was sent to (owner, 2 Nov): a receipt, the
+ * sender's history, a team invite, and the two email confirmations. Browsers and shared caches don't keep them
+ * (`Cache-Control: private, no-store`), and when someone follows a link away from one, other sites aren't told the
+ * address (`Referrer-Policy: same-origin`). Not `no-referrer`: with it browsers send `Origin: null` on the page's own
+ * form posts, and Next refuses server actions that don't come from this site.
+ */
+export const LINK_PAGES = /^\/(receipt|sent|join|verify-email|confirm-email)\/[^/]+\/?$/;
+export const LINK_PAGE_HEADERS = { "Cache-Control": "private, no-store", "Referrer-Policy": "same-origin" } as const;
+
+/** True for one of the private link pages above (not the routes beside them, like /join/<token>/login). */
+export function linkPage(path: string) {
+  return LINK_PAGES.test(path);
+}
