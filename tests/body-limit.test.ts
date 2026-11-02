@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { testDataDir } from "./test-db";
 
 process.env.APP_SECRET ??= "test-secret-".padEnd(48, "x");
 
@@ -32,7 +33,7 @@ test("the Resend webhook answers 413 to an oversized report before checking its 
 
 test("the Sentry tunnel answers 413 to an oversized envelope", async () => {
   process.env.NEXT_PUBLIC_SENTRY_DSN = "https://abc@o1.ingest.sentry.io/123";
-  process.env.DATA_DIR ??= (await import("node:fs")).mkdtempSync((await import("node:path")).join((await import("node:os")).tmpdir(), "ft-body-limit-"));
+  process.env.DATA_DIR ??= testDataDir("ft-body-limit-");
   delete process.env.DATABASE_URL;
   const { POST } = await import("../src/app/api/monitoring/route");
   const res = await POST(new Request("http://localhost/api/monitoring", { method: "POST", headers: { "x-real-ip": "7.7.7.7" }, body: stream(1100, 1000), duplex: "half" } as RequestInit));
