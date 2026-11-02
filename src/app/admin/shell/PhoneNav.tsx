@@ -43,19 +43,19 @@ export function PhoneNav({ areas, total, path, me }: { areas: ShellArea[]; total
                 <Link
                   href={t.href}
                   aria-current={on ? "page" : undefined}
+                  aria-label={`${t.label}${t.badge ? `, ${t.badge} waiting` : ""}`}
                   className={`${TAB} ${on ? "bg-ink-4/80 text-bone" : "text-mute"}`}
                 >
                   <Icon name={t.icon} className={`size-5 ${on ? "text-lime" : ""}`} />
-                  {/* Named "Inbox, 2 waiting" from what shows ("Inbox" and the badge's "2"), so the spoken name contains
-                      the visible words (WCAG 2.5.3, step 6 sweep): no aria-label over it. */}
+                  {/* The name ("Inbox, 2 waiting") holds the visible words in their order, and the space between the
+                      label and the badge keeps them two words ("Inbox 2", not "Inbox2"): WCAG 2.5.3, step 6 sweep. */}
                   <span>{t.label}</span>
                   {t.badge > 0 && (
                     <>
-                      <span className="sr-only">,</span>{" "}
+                      {" "}
                       <span className="absolute left-1/2 top-1 ml-1.5 min-w-[18px] rounded-[9px] bg-lime px-1 text-center text-[10.5px] font-bold leading-[18px] text-[#10110f] tnum">
                         {t.badge}
                       </span>
-                      <span className="sr-only"> waiting</span>
                     </>
                   )}
                 </Link>

@@ -293,7 +293,7 @@ night follow the theme.
 - **Live card (Overview):** an admin panel under Platform (beside it from 768px, one column from 1280px). Header: a lime
   live dot (faint when paused or not updating), "Live", Announce (a pressed toggle) and Pause / Resume. Eight
   one-line 44px rows (kind icon, words truncated, mute time), with room kept for all eight so nothing moves. New rows
-  fade in once (560ms, 4px drop); reduced motion: no animation.
+  fade in once (200ms, 4px drop, no stagger); reduced motion: no animation.
 
 ### Review Row (signature)
 The heart of the desk: play button, title and artist, a waveform, the Listened tag, BPM and length in tabular mono, all in one dense row that scans like a crate. Selecting a row opens the review panel below with Keep / Not for me always in reach.

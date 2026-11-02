@@ -20,7 +20,7 @@
   min-height: calc(8 * 44px);
 }
 .ops-live-new {
-  animation: ops-live-in 560ms cubic-bezier(0.22, 0.7, 0.2, 1) both;
+  animation: ops-live-in 200ms cubic-bezier(0.22, 0.7, 0.2, 1) both;
 }
 @keyframes ops-live-in {
   from {
