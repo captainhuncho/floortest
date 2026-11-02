@@ -258,7 +258,8 @@ night follow the theme.
 - **Palette:** 620px wide, 12% from the top, 52px input, 44px rows; the active row is raised with a 2px lime edge.
 - **Selection:** violet tint on picked rows, a 3px violet edge on the current one; checkboxes 20px in 44px targets.
   The bulk bar sticks to the bottom of the screen after the table, so it never covers the last row.
-- **Motion:** transform and opacity only, about 380 ms on the house curve; reduced motion keeps fades.
+- **Motion:** transform and opacity only, 220 ms on the house curve (380 ms until the speed fixes, 2 Nov); reduced
+  motion keeps fades.
 - **InlineEdit:** a cell is a button showing its value (an outline on hover, the lime focus ring); click or Enter opens
   the field in place (ink-3, 2px lime outline, caret at the end). Tags are 28px chips with a 28px × (36px on touch);
   Enter or a comma adds one, Enter on an empty field saves. A select keeps its old value with a small spinner until
@@ -283,8 +284,13 @@ night follow the theme.
   1024px), live dot and time. On phones it keeps the crest and the page's name.
 - **Phone bar:** a floating glass capsule 12px from the edges and 8px above the home bar, five 56px targets; More
   opens the app's Dialog as a bottom sheet with every page (16px text).
-- **Motion:** the panel's pages rise once per view (admin-rise, 560ms); opening over the page slides 8px in 240ms;
+- **Motion:** the panel's pages rise once per view (admin-rise, 200ms, no stagger); opening over the page slides 8px in 240ms;
   reduced motion keeps fades; reduced transparency makes the glass solid.
+- **Arrival motion across ops** (`admin.css`, owner in the Desk 2 Nov, speed fixes phase 1; replaces the 1 Nov slow,
+  watchable ~1.5 s bars): everything arrives together, no stagger and no delay. Panels rise 6px in 200 ms; bars grow
+  in 220 ms; lines draw in 250 ms (the area under them fades in by 250 ms); gauge ticks light in 200 ms; numbers count
+  in 250 ms (`CountUp.tsx`). Nothing on arrival runs over 250 ms (`e2e/ops-motion.spec.ts`). Reduced motion: nothing
+  moves (the site-wide rule in `globals.css` drops every animation) and numbers show their value at once.
 
 ### Review Row (signature)
 The heart of the desk: play button, title and artist, a waveform, the Listened tag, BPM and length in tabular mono, all in one dense row that scans like a crate. Selecting a row opens the review panel below with Keep / Not for me always in reach.
