@@ -293,7 +293,11 @@ night follow the theme.
   sheets pad by the notch and the home bar; the rail's column grows by the left inset. Below 520px tall the rail drops
   the crest and its areas scroll on their own, search and the profile pinned. Scroll padding keeps focus clear of both
   bars. Names that show a count read it in the same words ("Inbox, 2 waiting"; the initials lead the profile's name).
-- **Live card (Overview):** an admin panel under Platform (beside it from 768px, one column from 1280px). Header: a lime
+- **Overview inside the shell (owner, 2 Nov):** /admin is today's Overview (verdict, Act now, Tracks received, Health, this
+  week, Is it working?, Waiting on you, Recent activity) in both navigations; with the switch on it fills the shell's page column
+  (same 1240px main as before). The "Waiting on me" Overview and the Live card below are kept in code
+  (`src/app/admin/overview/`) but not shown.
+- **Live card (Overview; not shown since 2 Nov, kept in code):** an admin panel under Platform (beside it from 768px, one column from 1280px). Header: a lime
   live dot (faint when paused or not updating), "Live", Announce (a pressed toggle) and Pause / Resume. Eight
   one-line 44px rows (kind icon, words truncated, mute time), with room kept for all eight so nothing moves. New rows
   fade in once (200ms, 4px drop, no stagger); reduced motion: no animation.

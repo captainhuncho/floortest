@@ -2,12 +2,51 @@ import { expect, hydrated, test } from "./fixtures";
 import { flipOpsShell, opsLogIn } from "./ops-login";
 
 /**
+ * Overview is the same page in both navigations (owner, 2 Nov: "bring back the overview page"). With `ops_shell` on, the
+ * rail, top bar and phone bar frame today's Overview; the step-3/step-6 "Waiting on me" Overview and its Live card stay
+ * in code (src/app/admin/overview) but /admin no longer shows them. The switch goes back off at the end.
+ */
+test("ops overview: today's Overview with the switch off and on, inside the new frame when on", async ({ page }) => {
+  test.setTimeout(240_000);
+  await opsLogIn(page);
+
+  await test.step("switch off: today's Overview", async () => {
+    await page.goto("/admin");
+    await expect(page.getByRole("heading", { name: "Act now" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Ops areas" })).toHaveCount(0);
+  });
+
+  await flipOpsShell(page, true);
+  try {
+    await test.step("switch on: the same Overview inside the rail and top bar, once, with no Waiting on me list or Live card", async () => {
+      await page.goto("/admin");
+      await expect(page.getByRole("navigation", { name: "Ops areas" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Act now" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Tracks received" })).toBeVisible();
+      await expect(page.locator("main h1")).toHaveCount(1);
+      await expect(page.locator("main h1")).not.toHaveText(/things are waiting on you$/);
+      await expect(page.getByRole("list", { name: "Waiting items" })).toHaveCount(0);
+      await expect(page.getByRole("region", { name: "Live" })).toHaveCount(0);
+      // After a reload the page is still there once (the #338 lesson: no doubled tree).
+      await page.reload();
+      await expect(page.getByRole("heading", { name: "Act now" })).toHaveCount(1);
+      await expect(page.locator("main")).toHaveCount(1);
+    });
+  } finally {
+    await flipOpsShell(page, false);
+  }
+});
+
+/**
+ * Skipped (owner, 2 Nov): /admin shows today's Overview with ops_shell on too, so "Waiting on me" and its Live card are
+ * not rendered anywhere. Kept, not deleted, so it can come back if that Overview is shown again.
+ *
  * The new Overview, "Waiting on me" (admin redesign B, step 3), behind the same `ops_shell` switch as the shell. The
  * seeded ops data (scripts/seed.ts, SEED_OPS) waits in every area but Safety's privacy: a takedown past its two days
  * (the oldest), an incident due within the hour, a plan request and an Inbox message. Nothing is handled here, so the
  * other ops specs keep their seeded items; the switch goes back off at the end.
  */
-test("ops overview: off is today's Overview; on, Waiting on me sorted by due, a filter, Start with the oldest and keys", async ({ page }) => {
+test.skip("ops overview: off is today's Overview; on, Waiting on me sorted by due, a filter, Start with the oldest and keys", async ({ page }) => {
   test.setTimeout(240_000);
   await opsLogIn(page);
 
