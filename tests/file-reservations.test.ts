@@ -35,10 +35,13 @@ test("leftover uploads: after a week, files nothing points to are queued for del
   await reserveFile("covers/1-done.webp", "cover");
   await settleFile("covers/1-done.webp");
 
-  assert.equal(await reconcileFiles(t + 1000), 0, "nothing is touched inside the grace period");
+  // Times from after the setup, which took over a minute on a loaded machine (2 Nov): the reservations are stamped
+  // when made, so a time taken before them could fall inside their grace period.
+  const made = Date.now();
+  assert.equal(await reconcileFiles(made + 1000), 0, "nothing is touched inside the grace period");
   assert.equal(await q.count("SELECT COUNT(*)::int AS n FROM file_reservations"), 7);
 
-  assert.equal(await reconcileFiles(t + RESERVATION_GRACE_MS + 60_000), 3, "only the three nothing points to");
+  assert.equal(await reconcileFiles(made + RESERVATION_GRACE_MS + 60_000), 3, "only the three nothing points to");
   const queued = (await q.all<{ file_key: string }>("SELECT file_key FROM storage_deletions ORDER BY file_key")).map((r) => r.file_key);
   assert.deepEqual(queued, ["collection-art/1-lost.webp", "covers/1-lost.webp", "site/aaaaaaaaaaaaaaaaaa.webp"]);
   assert.equal(await q.count("SELECT COUNT(*)::int AS n FROM file_reservations"), 0, "every reservation is settled");
