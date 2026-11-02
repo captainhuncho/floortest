@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { stopSharingByReceipt } from "@/lib/share-links";
 import { receiptByToken } from "@/lib/receipt";
-import { receiptPath } from "@/lib/receipt-token";
+import { receiptPathForToken } from "@/lib/receipt-token";
 import { receiptProven, rememberSender } from "@/lib/receipt-proof";
 import { CodeError, checkCode, sendCode } from "@/lib/sender-code";
 import { allow, ipFrom } from "@/lib/ratelimit";
@@ -24,7 +24,7 @@ export async function stopSharing(token: string) {
   const r = await receiptByToken(token);
   if (!r || !(await receiptProven(r))) return false;
   const ok = await stopSharingByReceipt(token);
-  revalidatePath(receiptPath({ token }));
+  revalidatePath(receiptPathForToken(token));
   return ok;
 }
 
@@ -59,6 +59,6 @@ export async function verifyReceiptCode(token: string, _: CodeState, form: FormD
     return { sent: maskEmail(r.sender_email), error: e instanceof CodeError ? e.message : "Something went wrong. Try again." };
   }
   await rememberSender({ id: r.sender_id, email: r.sender_email });
-  revalidatePath(receiptPath({ token }));
+  revalidatePath(receiptPathForToken(token));
   return { done: true };
 }

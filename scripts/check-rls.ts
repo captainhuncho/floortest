@@ -11,6 +11,13 @@ import { MIGRATIONS } from "../src/lib/db/migrations";
 
 /** Column names that hold sign-in secrets, as a Postgres regular expression. */
 const SECRET_COLUMNS = "password|secret|recovery_codes|google_sub|totp_last_step|identity_code|_token$|token_hash$|code_hash$";
+/**
+ * Named exceptions, each with its reason (and Safety's review). `tracks.token_hash` (migration 0126) is the SHA-256 of a
+ * receipt token: 96 random bits, so the hash can't be turned back into the token, and a lookup hashes what the visitor
+ * brings, so the hash itself opens nothing. ft_person keeps its table-wide grant on tracks because desk code run as the
+ * person reads whole track rows (`SELECT *`), which a column-by-column grant would break.
+ */
+const ALLOWED_SECRETS = new Set(["tracks.token_hash"]);
 
 async function main() {
   const pg = await PGlite.create();
@@ -68,8 +75,9 @@ async function main() {
     console.error(granted.length ? `ft_person may use ${unruled.join(", ")} with no policy saying whose rows are whose.` : "ft_person has no tables: migration 0097 missing?");
     process.exit(1);
   }
-  if (secrets.length) {
-    console.error(`ft_person may use sign-in secret column(s): ${secrets.map((r) => r.name).join(", ")}.`);
+  const flagged = secrets.filter((r) => !ALLOWED_SECRETS.has(r.name));
+  if (flagged.length) {
+    console.error(`ft_person may use sign-in secret column(s): ${flagged.map((r) => r.name).join(", ")}.`);
     console.error("Grant ft_person only the columns it needs (see migration 0106), never these.");
     process.exit(1);
   }

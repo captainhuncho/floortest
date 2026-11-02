@@ -37,10 +37,10 @@ export default async function SenderHistory({ params }: { params: Promise<{ toke
       </main>
     );
   const rows = await q.all<{
-    token: string; title: string; artist: string; created_at: number; played_at: number | null; downloaded_at: number | null;
+    id: number; token: string | null; token_sealed: string | null; title: string; artist: string; created_at: number; played_at: number | null; downloaded_at: number | null;
     replied_at: number | null; played_out_at: number | null; receiver: string;
   }>(
-    `SELECT t.token, t.title, t.artist, t.created_at, t.played_at, t.downloaded_at, t.replied_at, t.played_out_at, u.name AS receiver
+    `SELECT t.id, t.token, t.token_sealed, t.title, t.artist, t.created_at, t.played_at, t.downloaded_at, t.replied_at, t.played_out_at, u.name AS receiver
      FROM tracks t JOIN senders s ON s.id = t.sender_id JOIN users u ON u.id = t.user_id
      WHERE lower(s.email) = ? AND u.suspended_at IS NULL ORDER BY t.created_at DESC LIMIT 300`,
     email,
@@ -69,7 +69,7 @@ export default async function SenderHistory({ params }: { params: Promise<{ toke
           {rows.map((r) => {
             const [label, good, at] = status(r);
             return (
-              <li key={r.token} className="border-t border-line first:border-t-0">
+              <li key={r.id} className="border-t border-line first:border-t-0">
                 <Link href={receiptPath(r)} className="-mx-2 flex min-h-14 items-center gap-3 rounded-xl px-2 py-2.5 hover:bg-well">
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[13px] font-semibold">{r.title}</span>

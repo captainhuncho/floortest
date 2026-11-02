@@ -22,7 +22,7 @@ import { recordIncident } from "./incidents";
 import { recordStoredDigest } from "./file-digests";
 import { activeCollection, capacity, isClosed, isFull, isPaused, pausedMessage, rewardReferral } from "./desk";
 import { normalEmail } from "./email-normal";
-import { receiptUrl } from "./receipt-token";
+import { newReceiptToken, receiptToken, receiptUrl, storeReceiptToken } from "./receipt-token";
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -323,9 +323,14 @@ export async function pointAtSealed(uploadId: string, original: string, sealed: 
  */
 export type Analysis = { duration: number | null; bpm: number | null; peaks: number[] | null };
 
-/** The track an upload already made, if any (looked up by the upload's fingerprint). */
-export const trackForUpload = (receiverId: number, uploadId: string) =>
-  q.get<Track>("SELECT * FROM tracks WHERE upload_ref = ? AND user_id = ? AND created_at > ?", uploadRef(uploadId), receiverId, now() - UPLOAD_TTL);
+/**
+ * The track an upload already made, if any (looked up by the upload's fingerprint), with its receipt token opened from
+ * the sealed copy, so a retried completion answers with the same receipt link as the first.
+ */
+export async function trackForUpload(receiverId: number, uploadId: string) {
+  const t = await q.get<Track>("SELECT * FROM tracks WHERE upload_ref = ? AND user_id = ? AND created_at > ?", uploadRef(uploadId), receiverId, now() - UPLOAD_TTL);
+  return t ? { ...t, token: receiptToken(t) } : undefined;
+}
 
 type CompleteOpts = { from?: "request" | "batch"; scanDeadlineMs?: number };
 
@@ -479,6 +484,9 @@ async function finishClaimed(receiver: User, up: Upload, ref: string, analysis: 
           "INSERT INTO releases (id, user_id, sender_id, title, artist, kind, created_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT (id) DO NOTHING",
           meta.release.id, fresh.id, sender.id, meta.release.title, meta.release.artist, meta.release.kind, now(),
         );
+      // The receipt token, with its hash and sealed copy (src/lib/receipt-token.ts). The plain column is still written this
+      // release so a rollback to the previous build keeps working (Safety, 2 Nov); the next release stops writing it.
+      const receiptKey = newReceiptToken();
       const track = (await db.get<Track>(
         `INSERT INTO tracks (user_id, collection_id, sender_id, token, title, artist, message, release_status, mix_status, genre,
                              file_key, original_name, mime, size, duration, bpm, peaks, created_at, share_ok, release_id, sets_ok, ai_use, track_no, musical_key, isrc, batch_id, share_terms, upload_ref)
@@ -486,7 +494,7 @@ async function finishClaimed(receiver: User, up: Upload, ref: string, analysis: 
         fresh.id,
         collection?.id ?? null,
         sender.id,
-        crypto.randomBytes(12).toString("base64url"),
+        receiptKey,
         meta.title,
         meta.artist,
         meta.message,
@@ -513,6 +521,7 @@ async function finishClaimed(receiver: User, up: Upload, ref: string, analysis: 
         sharing && collection?.allow_sharing ? (meta.ownerCollectionId ? "owner" : SHARING_TERMS_VERSION) : null,
         ref,
       ))!;
+      await storeReceiptToken(db, track.id, receiptKey);
       // Possible duplicate: the same file (byte size and length) already on this desk, or the same
       // sender re-sending the same title. Flagged for the receiver, never blocked.
       const dup = await db.get<{ id: number }>(
@@ -553,7 +562,7 @@ async function finishClaimed(receiver: User, up: Upload, ref: string, analysis: 
               {
                 userId: fresh.id,
                 to: sender.email,
-                secrets: [track.token],
+                secrets: [receiptKey],
                 subject: fillEmail(delivered.subject, vars).replace(/\s+/g, " "),
                 body: fillEmail(delivered.body, vars),
                 details: receiptDetails([track], fresh.name, collection?.name),

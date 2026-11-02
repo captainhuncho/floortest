@@ -284,7 +284,7 @@ export default async function Home({
                   href={DEMO}
                   className="inline-flex min-h-11 items-center gap-1 text-[13.5px] text-bone hover:underline hover:underline-offset-4"
                 >
-                  <E k="hero_example" /> <span className="text-dim">/maxwell</span> →
+                  <E k="hero_example" /> <span className="text-dim">/username</span> →
                 </Link>
               </div>
               {!user && (

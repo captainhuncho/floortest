@@ -152,7 +152,10 @@ export type Track = {
   user_id: number;
   collection_id: number | null;
   sender_id: number;
-  token: string;
+  /** Receipt token, plain: only rows from before migration 0126 until they're sealed (src/lib/receipt-token.ts). */
+  token: string | null;
+  /** The receipt token sealed with the app secret, to rebuild the link (src/lib/receipt-token.ts). */
+  token_sealed: string | null;
   title: string;
   artist: string;
   message: string;

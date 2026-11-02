@@ -31,8 +31,8 @@ export type TrackDetail = {
   events: { at: string; type: string; detail: string }[];
 };
 
-type TrackInfo = { id: number; title: string; artist: string; token: string; handle: string; sender: string; email: string; ops_reviewed_at: number | null; reviewed_by: string | null };
-const INFO = `SELECT t.id, t.title, t.artist, t.token, u.handle, s.name AS sender, s.email, t.ops_reviewed_at, r.handle AS reviewed_by
+type TrackInfo = { id: number; title: string; artist: string; handle: string; sender: string; email: string; ops_reviewed_at: number | null; reviewed_by: string | null };
+const INFO = `SELECT t.id, t.title, t.artist, u.handle, s.name AS sender, s.email, t.ops_reviewed_at, r.handle AS reviewed_by
   FROM tracks t JOIN users u ON u.id = t.user_id JOIN senders s ON s.id = t.sender_id LEFT JOIN users r ON r.id = t.ops_reviewed_by`;
 const SEARCH_LIMIT = 100;
 
@@ -53,7 +53,9 @@ function rowFrom(s: Signal | null, t: TrackInfo | undefined, at: number, now: nu
     receiver: handle,
     sender: t?.sender ?? (kind === "late_scan" ? s!.who : ""),
     email: t?.email ?? (kind === "late_scan" ? s!.who : ""),
-    token: t?.token ?? "",
+    // Receipt tokens never go to the browser (receipt-token hashing, 2 Nov): a search by token is matched on the server
+    // (receiptWhere below), so the row's own field stays empty.
+    token: "",
     age: ageWords(now - at),
     ...words,
     reviewedBy: t?.ops_reviewed_at ? `@${t.reviewed_by ?? "a former team member"}` : null,
