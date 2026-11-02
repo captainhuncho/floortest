@@ -101,6 +101,24 @@ export function OpsButton({
           if (e.detail > 1) return;
           run();
         }}
+        // The pressed look goes on in the pointerdown itself, straight on the element (no React render in between), so
+        // it shows on the next frame; it comes off on release. The spinner still waits SPINNER_DELAY_MS (150 ms).
+        onPointerDown={(e) => {
+          rest.onPointerDown?.(e);
+          if (e.button === 0) e.currentTarget.setAttribute("data-pressed", "");
+        }}
+        onPointerUp={(e) => {
+          rest.onPointerUp?.(e);
+          e.currentTarget.removeAttribute("data-pressed");
+        }}
+        onPointerCancel={(e) => {
+          rest.onPointerCancel?.(e);
+          e.currentTarget.removeAttribute("data-pressed");
+        }}
+        onPointerLeave={(e) => {
+          rest.onPointerLeave?.(e);
+          e.currentTarget.removeAttribute("data-pressed");
+        }}
         aria-busy={phase !== "idle" || undefined}
         aria-disabled={phase !== "idle" || undefined}
         data-phase={phase}

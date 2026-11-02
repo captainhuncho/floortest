@@ -1,5 +1,6 @@
 "use client";
 
+import { useRenderProbe } from "@/lib/render-probe";
 import { useRouter } from "next/navigation";
 // The router's own option for a full prefetch (typed in AppRouterInstance.prefetch); a plain prefetch of this dynamic
 // page only loads the loading screen.
@@ -31,6 +32,7 @@ type Props = {
 export function DecisionRail({ track, selfHref, next, prev }: Props) {
   const router = useRouter();
   const player = usePlayer();
+  useRenderProbe("DecisionRail");
   const toast = useToast();
   const [busy, start] = useTransition();
   // The swipe hint shows until the first swipe on this device.

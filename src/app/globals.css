@@ -164,11 +164,16 @@ html:has([data-batch-bar]) [data-toast-region] { bottom: calc(env(safe-area-inse
 }
 /* Leaving: a quick fade and drop before the toast unmounts (150ms, EXIT_MS in Toast.tsx). */
 [data-toast][data-leaving] { opacity: 0; transform: translateY(8px); transition-duration: 150ms; transition-timing-function: var(--ease-out); pointer-events: none; }
-/* In the base layer so a button's own transition utilities (transition-colors, duration-100…) win over it. */
+/* In the base layer so a button's own transition utilities (transition-colors, duration-100…) win over it.
+   touch-action: manipulation on everything you tap or type in: no 300 ms wait for a possible double-tap zoom on mobile
+   Safari, while pinch zoom and scrolling still work (speed fixes phase 1, 2 Nov). */
 @layer base {
   button, .btn { -webkit-tap-highlight-color: transparent; transition-property: color, background-color, border-color, opacity, transform, translate, scale; transition-duration: 150ms; transition-timing-function: var(--ease-out); }
+  a, button, input, select, textarea, label, summary, [role="button"], .btn { touch-action: manipulation; }
 }
-button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; }
+/* A press shows at once (0 ms on the way down); the release eases back over the 150 ms above. iOS Safari applies
+   :active on touch because the page has a touchstart listener (usePullToRefresh). */
+button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; transition-duration: 0ms; }
 .switch-thumb { transition: translate 200ms var(--ease-out), background-color 150ms var(--ease-out); }
 /* Tactile navigation (same material as the phone tab bar): a dark panel with a lit top edge, and the
    current item raised like a pressed-in key. Used by the desktop sidebar and the admin sidebar. */
