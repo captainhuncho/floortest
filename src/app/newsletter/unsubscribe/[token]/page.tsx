@@ -1,23 +1,22 @@
-import Link from "next/link";
-import { MessagePage, PRIMARY } from "@/app/_ui/MessagePage";
-import { unsubscribeNewsletter } from "@/lib/newsletter";
+import { ConfirmByPost } from "@/app/_ui/ConfirmByPost";
+import { leaveNewsletter } from "./actions";
 
 export const metadata = { title: "Newsletter — FloorTest", robots: { index: false } };
 
+/**
+ * The unsubscribe link in every newsletter email. Opening it shows a button; only pressing it unsubscribes, so a mail
+ * scanner opening the link can't (Safety, 2 Nov; account emails' /unsubscribe/… already asks first).
+ */
 export default async function Unsubscribe({ params }: { params: Promise<{ token: string }> }) {
-  const ok = await unsubscribeNewsletter((await params).token.slice(0, 64));
+  const token = (await params).token.slice(0, 64);
   return (
-    <MessagePage
-      icon={ok ? "check" : "link"}
-      tone={ok ? "ok" : "off"}
-      title={ok ? "You're unsubscribed" : "That link didn't work"}
-      actions={
-        <Link href="/" className={PRIMARY}>
-          Back to FloorTest
-        </Link>
-      }
-    >
-      <p>{ok ? "You won't get the FloorTest newsletter any more. Changed your mind? Sign up again from the home page." : "Check the link in the email and try again."}</p>
-    </MessagePage>
+    <ConfirmByPost
+      action={leaveNewsletter.bind(null, token)}
+      icon="check"
+      ask={{ title: "Unsubscribe from the newsletter?", body: "You'll stop getting the FloorTest newsletter. Nothing else changes." }}
+      button="Unsubscribe"
+      done={{ title: "You're unsubscribed", body: "You won't get the FloorTest newsletter any more. Changed your mind? Sign up again from the home page." }}
+      failed={{ title: "That link didn't work", body: "Check the link in the email and try again." }}
+    />
   );
 }

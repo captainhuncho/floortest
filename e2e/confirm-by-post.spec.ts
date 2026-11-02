@@ -8,6 +8,7 @@ import { expect, test } from "./fixtures";
 for (const [path, button] of [
   ["/sent/reopen/not-a-real-token", "Confirm the alert"],
   ["/newsletter/confirm/not-a-real-token", "Subscribe"],
+  ["/newsletter/unsubscribe/not-a-real-token", "Unsubscribe"],
 ] as const) {
   test(`${path.split("/").slice(1, 3).join(" ")}: opening the link only asks; pressing the button acts`, async ({ page }) => {
     await page.goto(path);
