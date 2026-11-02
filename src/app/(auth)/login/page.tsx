@@ -29,7 +29,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const host = env.appUrl.replace(/^https?:\/\//, "");
   return (
     <EditablePage editing={!!editor} page="auth" label="Sign-up and log-in" values={c}>
-      <AuthFrame aside={<LinkCard label="Your link" name="Maxwell Adjavon" role="DJ" handle="maxwell" host={host} initials="MA" note="Every track sent to it lands on your desk." />}>
+      <AuthFrame aside={<LinkCard label="Your link" name="Username" role="DJ" handle="username" host={host} initials="U" note="Every track sent to it lands on your desk." />}>
         <h1 className="af-h"><E k="login_title" /></h1>
         <p className="af-sub"><E k="login_intro" /></p>
         {googleError && (
