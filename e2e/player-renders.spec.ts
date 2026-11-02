@@ -8,6 +8,8 @@ import { expect, logIn, test } from "./fixtures";
 const PLAY_MS = 2000;
 
 test("while a track plays, components that don't show time don't re-render", async ({ page }) => {
+  // The first open of the review page compiles it in the dev server; give that room on a busy machine.
+  test.setTimeout(180_000);
   await page.addInitScript(() => {
     window.__ftRenders = {};
   });
