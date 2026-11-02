@@ -34,7 +34,7 @@ export function PhoneNav({ areas, total, path, me }: { areas: ShellArea[]; total
   const onTab = tabs.some((t) => isActive(path, t.href));
   return (
     <>
-      <nav aria-label="Ops shortcuts" className="kit-glass fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+8px)] z-30 rounded-full px-1.5 md:hidden">
+      <nav aria-label="Ops shortcuts" className="ops-phonebar kit-glass fixed bottom-[calc(env(safe-area-inset-bottom)+8px)] z-30 rounded-full px-1.5 md:hidden">
         <ul className="grid" style={{ gridTemplateColumns: `repeat(${tabs.length + 2}, minmax(0, 1fr))` }}>
           {tabs.map((t) => {
             const on = isActive(path, t.href);
@@ -47,11 +47,16 @@ export function PhoneNav({ areas, total, path, me }: { areas: ShellArea[]; total
                   className={`${TAB} ${on ? "bg-ink-4/80 text-bone" : "text-mute"}`}
                 >
                   <Icon name={t.icon} className={`size-5 ${on ? "text-lime" : ""}`} />
-                  <span aria-hidden>{t.label}</span>
+                  {/* The name ("Inbox, 2 waiting") holds the visible words in their order, and the space between the
+                      label and the badge keeps them two words ("Inbox 2", not "Inbox2"): WCAG 2.5.3, step 6 sweep. */}
+                  <span>{t.label}</span>
                   {t.badge > 0 && (
-                    <span aria-hidden className="absolute left-1/2 top-1 ml-1.5 min-w-[18px] rounded-[9px] bg-lime px-1 text-center text-[10.5px] font-bold leading-[18px] text-[#10110f] tnum">
-                      {t.badge}
-                    </span>
+                    <>
+                      {" "}
+                      <span className="absolute left-1/2 top-1 ml-1.5 min-w-[18px] rounded-[9px] bg-lime px-1 text-center text-[10.5px] font-bold leading-[18px] text-[#10110f] tnum">
+                        {t.badge}
+                      </span>
+                    </>
                   )}
                 </Link>
               </li>

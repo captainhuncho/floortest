@@ -1,4 +1,4 @@
-import { expect, test } from "./fixtures";
+import { expect, hydrated, test } from "./fixtures";
 import { flipOpsShell, opsLogIn } from "./ops-login";
 
 /**
@@ -158,6 +158,27 @@ test("ops users: off is today's page; on, views in the URL, edit in place, bulk 
       const keys = page.getByRole("dialog", { name: "Keyboard shortcuts" });
       await expect(keys.getByText("Edit the current row (its tags)")).toBeVisible();
       await page.keyboard.press("Escape");
+    });
+
+    await test.step("phone (390 px): the list and the bottom bar, a row opens the sheet, nothing scrolls sideways", async () => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      try {
+        await page.goto("/admin/accounts");
+        await expect(page.getByRole("navigation", { name: "Ops shortcuts" })).toBeVisible();
+        const row = page.getByRole("list", { name: "Accounts" }).getByRole("button", { name: /Lena Listener/ }).first();
+        await hydrated(row);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+        await row.click();
+        const sheet = page.getByRole("dialog", { name: "Lena Listener" });
+        await expect(sheet).toBeVisible();
+        const close = sheet.getByRole("button", { name: "Close record" });
+        expect((await close.boundingBox())!.height, "a 44 px target").toBeGreaterThanOrEqual(44);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+        await page.keyboard.press("Escape");
+        await expect(sheet).toBeHidden();
+      } finally {
+        await page.setViewportSize({ width: 1280, height: 720 });
+      }
     });
   } finally {
     await flipOpsShell(page, false);

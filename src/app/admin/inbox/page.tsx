@@ -106,7 +106,7 @@ export default async function Inbox({ searchParams }: { searchParams: Promise<{ 
                         {m.handled_at && ` · handled ${new Date(m.handled_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`}
                       </p>
                     </div>
-                    {!m.handled_at && <span aria-label="Waiting for a reply" className="mt-2 size-2.5 shrink-0 rounded-full bg-lime" />}
+                    {!m.handled_at && <span role="img" aria-label="Waiting for a reply" className="mt-2 size-2.5 shrink-0 rounded-full bg-lime" />}
                   </div>
                   {/* The message in a quiet inset block; long ones fold. */}
                   <div className="mt-4 rounded-[14px] bg-ink-3 px-4 py-3 text-[14px] leading-relaxed">

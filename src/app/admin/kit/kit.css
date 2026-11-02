@@ -5,7 +5,7 @@
  */
 #theme-root {
   --kit-ease: cubic-bezier(0.32, 0.72, 0, 1);
-  --kit-dur: 380ms;
+  --kit-dur: 220ms;
   --kit-tap: 44px;
   --kit-focus: var(--color-lime);
   --kit-glass-fill: color-mix(in srgb, var(--color-ink-2) 86%, transparent);

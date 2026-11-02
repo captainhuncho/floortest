@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { can, requireAdmin } from "@/lib/admin";
 import { incidentKindLabel } from "@/lib/incident-kinds";
+import { feedFor, feedRows, type FeedItem } from "@/lib/ops-feed";
 import { needFor } from "@/lib/ops-perms";
 import { Icon } from "../AdminNav";
 import { overviewData, SPARK_DAYS, type Kpi, type Platform, type Tile } from "./data";
+import { LiveCard } from "./LiveCard";
 import { KIND_ROW, things } from "./model";
 import { WaitingList } from "./WaitingList";
 import "./overview.css";
@@ -21,6 +23,9 @@ export async function NewOverview() {
   const me = await requireAdmin("overview");
   const allowed = (href: string) => can(me.access, needFor(href));
   const d = await overviewData(me.access, allowed);
+  // The Live card, only for someone the feed has something for (people need users.read; takedowns and the log are the
+  // super admin's). Its first paint is this read; the card then asks GET /api/admin/feed itself.
+  const live = can(me.access, "users.read") || can(me.access, "super") ? await liveFirst(me.access) : null;
   const { head } = d;
   const today = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
   const past = head.pastDue ? `${head.pastDue}${head.pastMore ? " or more" : ""} ${head.pastDue === 1 ? "is" : "are"} past due.` : "None is past due.";
@@ -60,12 +65,27 @@ export async function NewOverview() {
 
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px] xl:gap-6">
         <WaitingList rows={d.rows} areas={d.areas} oldestId={head.oldest ? `${head.oldest.kind}-${head.oldest.id}` : null} lastHandled={d.lastHandled} capped={head.total > d.rows.length ? head.total : 0} />
-        {d.platform && <PlatformCard p={d.platform} allowed={allowed} />}
+        {(d.platform || live) && (
+          <div className="grid min-w-0 gap-5 md:grid-cols-2 md:items-start xl:grid-cols-1 xl:gap-6">
+            {d.platform && <PlatformCard p={d.platform} allowed={allowed} />}
+            {live && <LiveCard initial={live.items} now={live.now} />}
+          </div>
+        )}
       </div>
 
       {d.kpis.length > 0 && <Kpis kpis={d.kpis} />}
     </div>
   );
+}
+
+/** The feed as the server reads it for this person; if the read fails, the card starts empty and its own poll catches up. */
+async function liveFirst(access: Parameters<typeof feedFor>[0]): Promise<{ items: FeedItem[]; now: number }> {
+  const now = Date.now();
+  try {
+    return { items: feedFor(access, await feedRows(now)), now };
+  } catch {
+    return { items: [], now };
+  }
 }
 
 /** B's phone home: a tile per page with something to act on, its count and its first due. Phones only. */

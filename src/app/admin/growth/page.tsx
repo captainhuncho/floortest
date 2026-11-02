@@ -218,7 +218,8 @@ export default async function Growth() {
       <section aria-labelledby="co-h" className={P} style={i(6)}>
         <h2 id="co-h" className="text-[16px] font-semibold">Do they stay?</h2>
         <p className="text-[12.5px] text-faint">Each row is a week of sign-ups; each cell, the share who listened to or decided on a track that many weeks after joining</p>
-        <div className="mt-4 overflow-x-auto">
+        {/* Scrolls sideways on phones, so it takes focus: arrow keys can move it (step 6 sweep, scrollable-region-focusable). */}
+        <div tabIndex={0} role="region" aria-labelledby="co-h" className="mt-4 overflow-x-auto rounded-[8px] focus-visible:outline-2 focus-visible:outline-lime">
           <table className="w-full min-w-[560px] border-separate border-spacing-1 text-[12px]">
             <thead>
               <tr className="text-faint">
