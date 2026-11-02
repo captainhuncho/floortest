@@ -546,3 +546,12 @@ dialog.ou-drawer::backdrop {
     margin-bottom: calc(var(--kit-toast-lift, 0px) + 4px + 4.5rem + env(safe-area-inset-bottom));
   }
 }
+/* And focus moved by j/k or Tab stops clear of the bar (WCAG 2.4.11): the same height, as scroll padding. */
+html:has(.ou .kit-bulkbar) {
+  scroll-padding-bottom: calc(var(--kit-toast-lift, 0px) + 4px);
+}
+@media (max-width: 767px) {
+  html:has(.ou .kit-bulkbar) {
+    scroll-padding-bottom: calc(var(--kit-toast-lift, 0px) + 4px + 4.5rem + env(safe-area-inset-bottom));
+  }
+}

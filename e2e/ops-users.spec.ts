@@ -90,6 +90,31 @@ test("ops users: off is today's page; on, views in the URL, edit in place, bulk 
       await expect(table.getByText("e2e-users", { exact: true })).toHaveCount(3);
     });
 
+    await test.step("with rows picked, j moves focus to rows near the bottom and they never sit under the bulk bar", async () => {
+      await page.setViewportSize({ width: 1280, height: 560 });
+      const boxes = table.getByRole("checkbox", { name: /^Select (?!every)/ });
+      await boxes.nth(0).click();
+      await boxes.nth(1).click();
+      const bar = page.getByRole("toolbar", { name: /^Bulk actions/ });
+      await expect(bar).toBeVisible();
+      await page.getByRole("heading", { level: 1, name: "Users" }).click();
+      await page.evaluate(() => window.scrollTo(0, 0));
+      const rows = table.locator("tbody tr");
+      const count = await rows.count();
+      for (let i = 0; i < count; i++) {
+        await page.keyboard.press("j");
+        const focused = table.locator("tbody tr:focus");
+        await expect(focused).toHaveCount(1);
+        const [r, b] = await Promise.all([focused.boundingBox(), bar.boundingBox()]);
+        expect(r && b, "row and bar are on screen").toBeTruthy();
+        expect(r!.y + r!.height, `row ${i + 1} ends above the bar`).toBeLessThanOrEqual(b!.y + 1);
+        expect(r!.y, `row ${i + 1} starts below the top bar`).toBeGreaterThanOrEqual(60);
+      }
+      await page.setViewportSize({ width: 1280, height: 720 });
+      await page.keyboard.press("Escape");
+      await expect(bar).toBeHidden();
+    });
+
     await test.step("a saved view is in the address and survives a reload", async () => {
       const views = page.getByRole("navigation", { name: "Saved views" });
       await views.getByRole("link", { name: /^Unconfirmed/ }).click();
