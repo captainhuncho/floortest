@@ -189,7 +189,16 @@ const startOfDay = (at: number) => {
  * tests' fake inbox, e2e/fake-mail.mjs), so a test can read a code it was sent. Never in a production build, and never
  * when a real key is set; the status stays "logged" either way.
  */
-const MAIL_SINK = process.env.NODE_ENV !== "production" && !env.email.resendKey ? (process.env.MAIL_SINK_URL ?? "").trim() : "";
+const MAIL_SINK = process.env.NODE_ENV !== "production" && !env.email.resendKey ? loopbackOnly(process.env.MAIL_SINK_URL) : "";
+/** The sink must be on this machine (http://127.0.0.1, localhost or [::1]); any other address is ignored. */
+function loopbackOnly(raw: string | undefined) {
+  try {
+    const u = new URL((raw ?? "").trim());
+    return u.protocol === "http:" && ["127.0.0.1", "localhost", "[::1]"].includes(u.hostname) ? u.href : "";
+  } catch {
+    return "";
+  }
+}
 async function sinkMail(to: string, subject: string, body: string) {
   await fetch(MAIL_SINK, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ to, subject, body }), signal: AbortSignal.timeout(2_000) }).catch(() => {});
 }
