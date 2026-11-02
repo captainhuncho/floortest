@@ -184,6 +184,25 @@ const startOfDay = (at: number) => {
  * digests) waits until after midnight UTC once the rest is used. Optional emails (the ones with an unsubscribe link) stop
  * at MAIL_WARN_AT if that comes first.
  */
+/**
+ * Test copies only: with no Resend key, an email that would only be logged is also handed to MAIL_SINK_URL (the end-to-end
+ * tests' fake inbox, e2e/fake-mail.mjs), so a test can read a code it was sent. Never in a production build, and never
+ * when a real key is set; the status stays "logged" either way.
+ */
+const MAIL_SINK = process.env.NODE_ENV !== "production" && !env.email.resendKey ? loopbackOnly(process.env.MAIL_SINK_URL) : "";
+/** The sink must be on this machine (http://127.0.0.1, localhost or [::1]); any other address is ignored. */
+function loopbackOnly(raw: string | undefined) {
+  try {
+    const u = new URL((raw ?? "").trim());
+    return u.protocol === "http:" && ["127.0.0.1", "localhost", "[::1]"].includes(u.hostname) ? u.href : "";
+  } catch {
+    return "";
+  }
+}
+async function sinkMail(to: string, subject: string, body: string) {
+  await fetch(MAIL_SINK, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ to, subject, body }), signal: AbortSignal.timeout(2_000) }).catch(() => {});
+}
+
 async function overSharedPart(at: number, optional: boolean) {
   const share = optional ? Math.min(MAIL_WARN_AT, 1 - MAIL_RESERVED_SHARE) : 1 - MAIL_RESERVED_SHARE;
   const today = await q.count("SELECT COUNT(*) AS n FROM outbox WHERE status = 'sent' AND last_attempt_at >= ?", startOfDay(at));
@@ -260,6 +279,7 @@ export async function deliver(id: number, { retry = true } = {}): Promise<string
     return "queued (daily limit)";
   }
   if (suppressed) status = `skipped (${suppressed.reason} before)`;
+  else if (!willSend && MAIL_SINK) await sinkMail(to, subject, p.body);
   else if (willSend) {
     try {
       const res = await fetch("https://api.resend.com/emails", {

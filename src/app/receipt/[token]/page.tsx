@@ -21,17 +21,25 @@ import { StopSharing } from "./StopSharing";
 import { CARD, Cover, Icon, initials } from "@/components/Kit";
 import { CuePoint } from "@/components/CuePoint";
 import { maskEmail } from "@/lib/mask-email";
+import { receiptProven } from "@/lib/receipt-proof";
+import { ShowDetails } from "./ShowDetails";
 
 export const metadata = { title: "Your receipt — FloorTest", robots: { index: false } };
 
 /**
  * A sender's receipt. It answers, in this order: did they listen, when, what else has happened, what it means,
  * and is there anything to do. The receiver's keep/pass decision is private and never appears here.
+ *
+ * With the link alone (owner, 2 Nov, Option B) it shows only what happened and when, and the sender's email masked.
+ * The track, the receiver, the callout, the played-out note, the waveform, stems, stop sharing and "Send another" need
+ * proof of being the sender (src/lib/receipt-proof.ts), checked here on the server: until then they aren't rendered,
+ * so they're in neither the HTML nor the data React loads with it.
  */
 export default async function Receipt({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const t = await receiptByToken(token);
   if (!t) notFound();
+  const proven = await receiptProven(t);
 
   const [sharing, signupOpen] = await Promise.all([switchOn("sharing"), switchOn("open_signup")]);
   // The invitation shows once the site is public (behind the coming-soon password it would lead to a wall);
@@ -41,10 +49,12 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
   const stemsOn = !!t.stems_requested_at && (await featureOn("stems", { id: t.user_id, plan: t.receiver_plan }));
   const [c, editor] = await Promise.all([siteCopy("receipt"), siteEditor()]);
   const { E, panel } = editable(c, !!editor);
-  const who = t.receiver;
+  // Without proof the receiver stays unnamed: "the receiver" in every sentence that would name them.
+  const who = proven ? t.receiver : "the receiver";
+  const Who = proven ? t.receiver : "The receiver";
   // "Send another" only while the receiver's link takes uploads: the same checks as their link page (not paused, the
   // callout open, room on the desk). A suspended account isn't found at all.
-  const rcv = await userByHandleForView(t.receiver_handle);
+  const rcv = proven ? await userByHandleForView(t.receiver_handle) : null;
   const takingSends = !!rcv && !isPaused(rcv) && !isClosed(await activeCollection(rcv)) && !(await capacity(rcv)).full;
 
   /*
@@ -53,11 +63,11 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
    */
   type Step = { key: string; label: string; at: number | null; meaningful: boolean; note?: string; means: string };
   const steps: Step[] = [
-    { key: "delivered", label: "Delivered", at: t.created_at, meaningful: false, note: `to ${who}'s desk${t.collection ? ` for ${t.collection}` : ""}`, means: "The original file reached the desk safely." },
+    { key: "delivered", label: "Delivered", at: t.created_at, meaningful: false, note: `to ${who}'s desk${proven && t.collection ? ` for ${t.collection}` : ""}`, means: "The original file reached the desk safely." },
     { key: "listened", label: "Listened", at: t.played_at, meaningful: true, means: SIGNALS.listened + "." },
     { key: "downloaded", label: "Downloaded", at: t.downloaded_at, meaningful: true, means: SIGNALS.downloaded + "." },
     { key: "replied", label: "Replied", at: t.replied_at, meaningful: true, note: "The message is in your email.", means: SIGNALS.replied + "." },
-    { key: "played_out", label: "Played out", at: t.played_out_at, meaningful: true, note: t.played_out_note || undefined, means: SIGNALS.playedOut + "." },
+    { key: "played_out", label: "Played out", at: t.played_out_at, meaningful: true, note: (proven && t.played_out_note) || undefined, means: SIGNALS.playedOut + "." },
   ];
   // When the file left the desk is never shown: "Not for me" files leave sooner than undecided ones, so the date would give the decision away.
   const happened = steps.filter((s) => s.at).sort((a, b) => a.at! - b.at!);
@@ -70,18 +80,18 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
   // The headline is the strongest thing that has happened.
   const when = (at: number) => `${fmtDate(at)} · ${ago(at)}`;
   const headline = t.played_out_at
-    ? { status: "played_out", strong: true, title: `${who} played it out.`, detail: `${t.played_out_note ? `“${t.played_out_note}” · ` : ""}${when(t.played_out_at)}` }
+    ? { status: "played_out", strong: true, title: `${Who} played it out.`, detail: `${proven && t.played_out_note ? `“${t.played_out_note}” · ` : ""}${when(t.played_out_at)}` }
     : t.replied_at
-      ? { status: "replied", strong: true, title: `${who} replied.`, detail: `The message is in your email · ${when(t.replied_at)}` }
+      ? { status: "replied", strong: true, title: `${Who} replied.`, detail: `The message is in your email · ${when(t.replied_at)}` }
       : t.downloaded_at
-        ? { status: "downloaded", strong: true, title: `${who} downloaded it.`, detail: `Listened ${t.played_at ? ago(t.played_at) : "earlier"}, downloaded ${when(t.downloaded_at)}` }
+        ? { status: "downloaded", strong: true, title: `${Who} downloaded it.`, detail: `Listened ${t.played_at ? ago(t.played_at) : "earlier"}, downloaded ${when(t.downloaded_at)}` }
         : t.played_at
-          ? { status: "listened", strong: true, title: `${who} listened.`, detail: when(t.played_at) }
+          ? { status: "listened", strong: true, title: `${Who} listened.`, detail: when(t.played_at) }
           : unheard
             ? { status: "unheard", strong: false, title: `Not listened to in ${RETAIN_UNREVIEWED_DAYS} days.`, detail: `Delivered ${fmtDay(t.created_at)}. Files leave the desk after ${RETAIN_UNREVIEWED_DAYS} days unless they're kept.` }
             : { status: "waiting", strong: false, title: `Waiting for ${who} to listen.`, detail: `Delivered ${when(t.created_at)}. We'll email you the moment it's listened to.` };
 
-  const todo = !t.verified_at || stemsOn;
+  const todo = proven && (!t.verified_at || stemsOn);
 
   return (
     <EditablePage editing={!!editor} page="receipt" label="Receipts" values={c}>
@@ -93,6 +103,12 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
           <E k="kicker" />
         </p>
         <StatusHeadline status={headline.status} title={headline.title} detail={headline.detail} strong={headline.strong} />
+        {!proven && (
+          <div className="border-t border-dashed border-line-2 pt-3">
+            <ShowDetails token={token} masked={maskEmail(t.sender_email)} />
+          </div>
+        )}
+        {proven && (
         <div className="flex flex-col gap-2.5 border-t border-dashed border-line-2 pt-3">
           <div className="flex min-w-0 items-center gap-2.5">
             <Cover text={initials(t.title)} />
@@ -108,6 +124,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
           </div>
           {t.peaks && <Waveform peaks={JSON.parse(t.peaks)} height={32} />}
         </div>
+        )}
       </header>
 
       {todo && (
@@ -127,7 +144,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
         </section>
       )}
       {/* Collection share links: the artist can stop private sharing of this track at any time. */}
-      {sharing && !!t.share_ok && !!t.share_terms && t.share_terms !== "owner" && (
+      {proven && sharing && !!t.share_ok && !!t.share_terms && t.share_terms !== "owner" && (
         <div className={`${CARD} p-3`}>
           <StopSharing token={token} receiver={who.split(/\s+/)[0]} />
         </div>

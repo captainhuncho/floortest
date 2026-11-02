@@ -36,8 +36,10 @@ const resendsSinceCheck = (email: string) =>
 /**
  * Emails a fresh code (replacing any earlier one). "human": the caller has just passed the bot check. "resend": a new
  * code after a recent one, at most MAX_RESENDS times per bot check, so one solved check can't buy a stream of emails.
+ * "receipt": a sender asking to see a receipt's details (owner, 2 Nov): the address comes from the receipt, never from
+ * the visitor, and the caller adds its own limit per receipt. It doesn't count as a bot check for sending.
  */
-export async function sendCode(email: string, ip: string, how: "human" | "resend") {
+export async function sendCode(email: string, ip: string, how: "human" | "resend" | "receipt") {
   if (how === "resend") {
     // The slot is taken first, then counted, so resends sent at the same moment can't all get under the limit.
     const mine = await q.get<{ id: number }>("INSERT INTO rate_events (bucket, key, created_at) VALUES ('sender_code_resend', ?, ?) RETURNING id", email, now());
@@ -61,9 +63,16 @@ export async function sendCode(email: string, ip: string, how: "human" | "resend
     audience: "sender",
     to: email,
     secrets: [code],
-    subject: "Your FloorTest code to send music",
     expires: true,
-    body: `Your code to confirm your email and send your music:\n\n${code}\n\nIt works for 10 minutes. If you didn't try to send music on FloorTest, ignore this email.\n\n— FloorTest`,
+    ...(how === "receipt"
+      ? {
+          subject: "Your FloorTest code to see your receipt",
+          body: `Your code to see the details on your FloorTest receipt:\n\n${code}\n\nIt works for 10 minutes. If you didn't ask for it, ignore this email: nobody sees the details without the code.\n\n— FloorTest`,
+        }
+      : {
+          subject: "Your FloorTest code to send music",
+          body: `Your code to confirm your email and send your music:\n\n${code}\n\nIt works for 10 minutes. If you didn't try to send music on FloorTest, ignore this email.\n\n— FloorTest`,
+        }),
   };
   // The sender is waiting on this screen, so a code that didn't go must say so (a report on 29 Oct: "no code came").
   // One more try for a passing failure; the same code both times, so a late first email still works.
@@ -83,8 +92,9 @@ export async function canResend(email: string) {
 /**
  * Checks a typed code; right once, then it's used up. Wrong five times and a new code is needed. Each try is counted
  * before the code is compared, in one statement, so guesses sent at the same moment can't all get past the limit.
+ * remember: also set this browser's ft_sender cookie (sending); off for a receipt code.
  */
-export async function checkCode(email: string, code: string) {
+export async function checkCode(email: string, code: string, { remember = true }: { remember?: boolean } = {}) {
   const row = await q.get<{ code_hash: string; attempts: number }>(
     "UPDATE sender_codes SET attempts = attempts + 1 WHERE email = ? AND expires_at >= ? AND attempts < ? RETURNING code_hash, attempts",
     email,
@@ -101,6 +111,8 @@ export async function checkCode(email: string, code: string) {
     throw new CodeError(row.attempts >= MAX_ATTEMPTS ? "Too many wrong tries. Send a new code." : "That code isn't right. Check the email and try again.");
   // Deleting it is what makes it single-use: of two right answers at once, only one gets through.
   if (!(await q.run("DELETE FROM sender_codes WHERE email = ? AND code_hash = ?", email, row.code_hash)).changes) throw new CodeError("That code was already used. Send a new one.");
+  // A receipt code proves the address for that receipt only (src/lib/receipt-proof.ts), not for sending.
+  if (!remember) return;
   const body = `${Buffer.from(email).toString("base64url")}.${Date.now() + REMEMBER}`;
   (await cookies()).set(COOKIE, `${body}.${sign(body)}`, { httpOnly: true, secure: env.appUrl.startsWith("https"), sameSite: "lax", path: "/", maxAge: REMEMBER / 1000 });
 }

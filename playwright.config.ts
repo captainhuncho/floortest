@@ -5,10 +5,11 @@ import { defineConfig, devices } from "@playwright/test";
  * storage, no email sending, Cloudflare's always-pass test keys for the bot check, no site password). Nothing here can touch the live database, R2 or Resend.
  * Run: npm run e2e (stop any other dev server in the same folder first: they'd share the .next folder).
  * Two runs in different worktrees can go side by side on their own ports (owner, 31 Oct):
- * E2E_PORT=3220 E2E_SCANNER_PORT=3221 npm run e2e. The defaults stay 3210 and 3211.
+ * E2E_PORT=3220 E2E_SCANNER_PORT=3221 E2E_MAIL_PORT=3222 npm run e2e. The defaults stay 3210, 3211 and 3212.
  */
 const PORT = Number(process.env.E2E_PORT || 3210);
 const SCANNER_PORT = Number(process.env.E2E_SCANNER_PORT || 3211);
+const MAIL_PORT = Number(process.env.E2E_MAIL_PORT || 3212);
 const env = {
   DATA_DIR: ".e2e/data",
   DATABASE_URL: "",
@@ -44,6 +45,9 @@ const env = {
   SCAN_DEADLINE_MS: "6000",
   // scanner-wake.spec.ts runs the held-uploads job (/api/cron/scan-held) itself, with this secret.
   CRON_SECRET: "e2e-cron-secret-not-used-anywhere-else",
+  // A fake inbox (e2e/fake-mail.mjs): with no Resend key, emails that are only logged also go there, so a test can read
+  // a code it was sent (src/lib/mail.ts, MAIL_SINK_URL; never in a production build).
+  MAIL_SINK_URL: `http://127.0.0.1:${MAIL_PORT}/mail`,
   APP_URL: `http://localhost:${PORT}`,
   APP_SECRET: "e2e-only-secret-not-used-anywhere-else-000000",
 };
@@ -57,6 +61,12 @@ export default defineConfig({
   reporter: [["list"]],
   use: { baseURL: `http://localhost:${PORT}`, trace: "retain-on-failure", ...devices["Desktop Chrome"] },
   webServer: [
+    {
+      command: "node e2e/fake-mail.mjs",
+      url: `http://127.0.0.1:${MAIL_PORT}/status`,
+      reuseExistingServer: false,
+      env: { FAKE_MAIL_PORT: String(MAIL_PORT) },
+    },
     {
       command: "node e2e/fake-scanner.mjs",
       url: `http://127.0.0.1:${SCANNER_PORT}/status`,
