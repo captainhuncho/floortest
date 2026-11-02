@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { after, test } from "node:test";
-import { claimSlot, defaultOptions, holders, releaseSlot, waitForSlot } from "../scripts/e2e-slot";
+import { UnsafeSlotDirError, claimSlot, defaultOptions, holders, releaseSlot, waitForSlot } from "../scripts/e2e-slot";
 
 // Each test gets its own slot folder, never the shared one other sessions use.
 const made: string[] = [];
@@ -31,6 +31,16 @@ test("two runs get a slot each; a third gets none while both are alive", () => {
   assert.deepEqual(holders(options).map((h) => [h.pid, h.cwd]), [[process.pid, "/repo/a"], [process.ppid, "/repo/b"]]);
 });
 
+test("each slot is a private folder and holder.json carries only pid, worktree, port and start time", () => {
+  const options = tempOptions();
+  const slot = claimSlot(options, process.pid, "/repo/a", "3290");
+  assert.ok(slot);
+  assert.equal(fs.lstatSync(slot).mode & 0o777, 0o700);
+  const file = path.join(slot, "holder.json");
+  assert.equal(fs.lstatSync(file).mode & 0o777, 0o600);
+  assert.deepEqual(Object.keys(JSON.parse(fs.readFileSync(file, "utf8"))), ["pid", "cwd", "port", "started"]);
+});
+
 test("a slot held by a dead run is taken over", () => {
   const options = tempOptions();
   claimSlot(options, process.ppid, "/repo/b");
@@ -50,7 +60,7 @@ test("releasing frees the slot for the next run; a waiting run gets it", async (
   const waiting = waitForSlot(options, 20, (line) => lines.push(line));
   await new Promise((resolve) => setTimeout(resolve, 50));
   assert.ok(lines.length > 0 && lines[0].includes("slots busy"));
-  releaseSlot(first);
+  releaseSlot(options, first);
   assert.equal(path.basename(await waiting), "slot-1");
 });
 
@@ -58,13 +68,43 @@ test("release leaves a slot alone that another run now holds", () => {
   const options = tempOptions();
   const slot = claimSlot(options, process.ppid);
   assert.ok(slot);
-  releaseSlot(slot, process.pid);
+  releaseSlot(options, slot, process.pid);
   assert.equal(holders(options).length, 1);
 });
 
-test("the slot folder is shared and outside the repo; E2E_SLOTS changes the count", () => {
-  assert.equal(defaultOptions({}).dir, path.join(os.tmpdir(), "floortest-e2e-slots"));
+test("the slot folder is shared, outside the repo and the temp folder; E2E_SLOTS changes the count", () => {
+  assert.equal(defaultOptions({}).dir, path.join(os.homedir(), ".cache", "floortest-e2e-slots"));
+  assert.equal(defaultOptions({ E2E_SLOT_DIR: "/x/slots" }).dir, "/x/slots");
   assert.equal(defaultOptions({}).count, 2);
   assert.equal(defaultOptions({ E2E_SLOTS: "3" }).count, 3);
   assert.equal(defaultOptions({ E2E_SLOTS: "0" }).count, 2);
+});
+
+test("a slot folder that is a link is refused", () => {
+  const options = tempOptions();
+  const real = path.join(options.dir, "real");
+  fs.mkdirSync(real, { mode: 0o700 });
+  const link = path.join(options.dir, "linked");
+  fs.symlinkSync(real, link);
+  assert.throws(() => claimSlot({ dir: link, count: 2 }), UnsafeSlotDirError);
+  assert.deepEqual(fs.readdirSync(real), []);
+});
+
+test("a slot folder others can read or write is refused", () => {
+  const options = tempOptions();
+  fs.chmodSync(options.dir, 0o755);
+  assert.throws(() => claimSlot(options), /needs 700/);
+  assert.deepEqual(fs.readdirSync(options.dir), []);
+});
+
+test("a holder.json that is a link is not followed, and the slot stays held until the grace runs out", () => {
+  const options = tempOptions();
+  const target = path.join(options.dir, "elsewhere.json");
+  const planted = JSON.stringify({ pid: process.pid, cwd: "/planted", started: "x" });
+  fs.writeFileSync(target, planted);
+  fs.mkdirSync(path.join(options.dir, "slot-1"), { mode: 0o700 });
+  fs.symlinkSync(target, path.join(options.dir, "slot-1", "holder.json"));
+  assert.deepEqual(holders(options), []);
+  assert.equal(path.basename(claimSlot(options) ?? ""), "slot-2");
+  assert.equal(fs.readFileSync(target, "utf8"), planted);
 });
