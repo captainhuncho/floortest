@@ -447,6 +447,181 @@ tr.kit-row:focus-visible {
   }
 }
 
+/* ---------- InlineEdit ---------- */
+.kit-edit {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+.kit-edit-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 36px;
+  padding: 2px 6px;
+  margin: 0 -6px;
+  border-radius: 8px;
+  color: inherit;
+  text-align: left;
+  cursor: text;
+  touch-action: manipulation;
+}
+.kit-edit-cell:hover {
+  box-shadow: inset 0 0 0 1px var(--color-line-2);
+}
+.kit-edit-cell:focus-visible,
+.kit-edit-field:focus-visible,
+.kit-chip button:focus-visible,
+.kit-seg button:focus-visible {
+  outline: 2px solid var(--kit-focus);
+  outline-offset: 1px;
+}
+.kit-edit-cell[data-saving] .kit-edit-value {
+  opacity: 0.6;
+}
+.kit-edit-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kit-edit-empty {
+  color: var(--color-mute);
+}
+.kit-edit-spin {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  color: var(--color-mute);
+}
+.kit-edit-tick {
+  flex: none;
+  color: var(--color-lime);
+  font-weight: 700;
+  animation: kit-fade-in 160ms linear;
+}
+.kit-edit-field {
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--color-ink-3);
+  color: var(--color-bone);
+  font: inherit;
+  font-size: 14px;
+  outline: 2px solid var(--kit-focus);
+  outline-offset: 0;
+}
+.kit-chips .kit-edit-field {
+  flex: 1;
+  width: auto;
+  min-width: 90px;
+}
+.kit-edit-error {
+  display: block;
+  margin-top: 4px;
+  color: var(--kit-danger-t);
+  font-size: 12.5px;
+  line-height: 1.35;
+  white-space: normal;
+}
+.kit-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.kit-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 28px;
+  padding: 0 2px 0 10px;
+  border-radius: 999px;
+  background: var(--color-ink-4);
+  color: var(--color-bone);
+  font-size: 13px;
+  font-weight: 500;
+}
+.kit-chip:not(:has(button)) {
+  padding-right: 10px;
+}
+.kit-chip button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  color: var(--color-mute);
+  font-size: 16px;
+  line-height: 1;
+}
+.kit-chip button:hover {
+  color: var(--color-bone);
+  background: color-mix(in srgb, var(--color-bone) 10%, transparent);
+}
+/* Phones: 16px fields (no iOS zoom) and 44px targets. */
+@media (pointer: coarse), (max-width: 767px) {
+  .kit-edit-field {
+    font-size: 16px;
+    min-height: var(--kit-tap);
+  }
+  .kit-edit-cell {
+    min-height: var(--kit-tap);
+  }
+  .kit-chip button {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+/* ---------- Segmented ---------- */
+.kit-seg {
+  position: relative;
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 11px;
+  border: 1px solid var(--color-line);
+  background: var(--color-ink-2);
+  isolation: isolate;
+}
+.kit-seg button {
+  position: relative;
+  z-index: 1;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 8px;
+  color: var(--color-mute);
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.kit-seg button[aria-checked="true"] {
+  color: var(--color-bone);
+}
+.kit-seg-ind {
+  position: absolute;
+  z-index: 0;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  width: 100px;
+  border-radius: 8px;
+  background: var(--color-ink-4);
+  transform-origin: 0 50%;
+}
+.kit-seg-ind[data-anim] {
+  transition: transform var(--kit-dur) var(--kit-ease);
+}
+@media (pointer: coarse) {
+  .kit-seg button {
+    min-height: var(--kit-tap);
+  }
+}
+
 /* ---------- Reduced motion: fades only ---------- */
 @media (prefers-reduced-motion: reduce) {
   .kit-press,
@@ -465,6 +640,9 @@ tr.kit-row:focus-visible {
   }
   .kit-bulk-num {
     animation: none;
+  }
+  .kit-seg-ind[data-anim] {
+    transition: none;
   }
   .kit-spin {
     animation-duration: 2.4s;

@@ -168,6 +168,16 @@ Users ─► Filters (type, plan, tag, joined, activity, security) ─► chips 
                      ┬─ Add tag ─► tag added to each ─► toast ─► admin log
                      └─ Suspend… (≤ 20) ─► confirm naming them (starts on Cancel) ─► reason ─► each: signed out, link
                         offline, email with appeal ─► toast ─► admin log
+Users, ops_shell on (src/app/admin/accounts/crm/) ─► saved view tabs (?view=pro · unconfirmed · suspended · new) + today's
+   filters and search ─► Table or List (?layout=list; phones: list)
+   ─► click a cell (or Edit / e) ─┬─ tags: Enter or , adds a chip, Enter on empty saves ─► saveTags(answer) ─► ✓ + toast with Undo
+                                  ├─ note: Enter ─► addNote(answer) ─► becomes the latest note ─► toast
+                                  ├─ plan (super admin, one account) ─► setPlanFor(answer) ─► toast with Undo
+                                  └─ status ─► Suspend… ─► confirm, reason required ─► suspendAccount(answer) ─► toast
+      Esc cancels; a refusal shows under the cell ("… Old value kept.")
+   ─► › or Enter on a row ─► record drawer (modal; a sheet on phones) ─► same fields · Open full record · Suspend…
+      ─► Esc ─► focus back on the row
+   ─► tick rows ─► bulk bar: Add tag · Suspend… · Export CSV (picked rows, super admin) · Clear
 Feedback ─► New / Planned / Fixed / Won't do (OpsButton) ─► spinner after 150 ms ─► ✓ in place + toast; a refusal
    ("That isn't a feedback status", "That feedback is gone") under the switch with Retry
 Growth ─► Growth & decisions ─► findings · funnel · projection · sources · cohorts · pipeline
