@@ -7,6 +7,7 @@ import { APP_URL, deliverLater, queueMail } from "./mail";
 import { alertIfFull } from "./notify";
 import { LISTEN_BEAT_CAP_MS, listenThreshold } from "./plans";
 import { capacity, reopenCallouts } from "./desk";
+import { receiptUrl } from "./receipt-token";
 
 const senderOf = async (t: Track) => (await q.get<Sender>("SELECT * FROM senders WHERE id = ?", t.sender_id))!;
 
@@ -68,14 +69,14 @@ async function markListened(user: User, t: Track, secondsHeard: number) {
   if (t.played_at) return false;
   if (!(secondsHeard >= listenThreshold(t.duration) - 0.5)) return false;
   return signal(user, t, "played", `${Math.round(secondsHeard)}s`, ["UPDATE tracks SET played_at = ? WHERE id = ? AND played_at IS NULL", now(), t.id], (s) =>
-    emailText("listened", { sender: s.name, receiver: user.name, title: t.title, artist: t.artist, receipt_url: `${APP_URL}/receipt/${t.token}`, sent_url: `${APP_URL}/sent` }),
+    emailText("listened", { sender: s.name, receiver: user.name, title: t.title, artist: t.artist, receipt_url: receiptUrl(t), sent_url: `${APP_URL}/sent` }),
   );
 }
 
 /** Downloaded: called only once the original file has been fully sent. */
 export async function markDownloaded(user: User, t: Track) {
   await signal(user, t, "downloaded", "", ["UPDATE tracks SET downloaded_at = ? WHERE id = ? AND downloaded_at IS NULL", now(), t.id], (s) =>
-    emailText("downloaded", { sender: s.name, receiver: user.name, title: t.title, artist: t.artist, receipt_url: `${APP_URL}/receipt/${t.token}`, sent_url: `${APP_URL}/sent` }),
+    emailText("downloaded", { sender: s.name, receiver: user.name, title: t.title, artist: t.artist, receipt_url: receiptUrl(t), sent_url: `${APP_URL}/sent` }),
   );
 }
 
@@ -83,7 +84,7 @@ export async function markDownloaded(user: User, t: Track) {
 export async function markPlayedOut(user: User, t: Track, note: string) {
   const clean = note.replace(/\s+/g, " ").trim().slice(0, 140);
   return signal(user, t, "played_out", clean, ["UPDATE tracks SET played_out_at = ?, played_out_note = ? WHERE id = ? AND played_out_at IS NULL", now(), clean, t.id], (s) =>
-    emailText("played_out", { sender: s.name, receiver: user.name, title: t.title, artist: t.artist, receipt_url: `${APP_URL}/receipt/${t.token}`, sent_url: `${APP_URL}/sent`, note: clean ? ` (${clean})` : "" }),
+    emailText("played_out", { sender: s.name, receiver: user.name, title: t.title, artist: t.artist, receipt_url: receiptUrl(t), sent_url: `${APP_URL}/sent`, note: clean ? ` (${clean})` : "" }),
   );
 }
 
@@ -223,7 +224,7 @@ export async function reply(user: User, s: Sender, t: Track | undefined, body: s
         to: s.email,
         secrets: [t?.token],
         subject: t ? `${user.name} replied about "${t.title}"` : `Message from ${user.name}`,
-        body: `${body}\n\n— ${user.name}${t ? `\n\nYour receipt: ${APP_URL}/receipt/${t.token}` : ""}\n\nSent via FloorTest`,
+        body: `${body}\n\n— ${user.name}${t ? `\n\nYour receipt: ${receiptUrl(t)}` : ""}\n\nSent via FloorTest`,
       },
       db,
     );

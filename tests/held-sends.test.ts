@@ -130,10 +130,15 @@ test("the process waits a little past the hold before sending, so an early timer
   const status = async (id: number) => (await q.get<{ status: string }>("SELECT status FROM outbox WHERE id = ?", id))!.status;
   const holdMs = 50;
   // Outside a request, the send runs at once in this process (afterResponse), as after a response.
+  const sentAt = Date.now();
   const id = await sendMailHeld({ userId: null, audience: "support", to: "grace@x.io", subject: "Grace", body: "Hi" }, { holdMs });
+  // Timings under a loaded full run (Safety, 2 Nov): the "not yet" check counts only when it really ran before the
+  // grace ended, and "sent" is waited for (up to 10 s) rather than read once at a fixed moment.
   await new Promise((done) => setTimeout(done, holdMs + SEND_GRACE_MS / 2));
-  assert.equal(await status(id), "queued", "not before the grace is over");
-  await new Promise((done) => setTimeout(done, SEND_GRACE_MS + 300));
+  const early = await status(id);
+  if (Date.now() - sentAt < holdMs + SEND_GRACE_MS - 50) assert.equal(early, "queued", "not before the grace is over");
+  const until = Date.now() + 10_000;
+  while ((await status(id)) === "queued" && Date.now() < until) await new Promise((done) => setTimeout(done, 50));
   assert.notEqual(await status(id), "queued", "sent by this process, not left to the mail job");
 });
 
