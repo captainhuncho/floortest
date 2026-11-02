@@ -1,4 +1,4 @@
-import { expect, test } from "./fixtures";
+import { expect, hydrated, test } from "./fixtures";
 import { flipOpsShell, opsLogIn } from "./ops-login";
 
 /**
@@ -70,6 +70,56 @@ test("ops overview: off is today's Overview; on, Waiting on me sorted by due, a 
   await test.step("Start with the oldest opens the oldest item's page", async () => {
     await page.getByRole("link", { name: /^Start with the oldest/ }).click();
     await page.waitForURL(/\/admin\/takedowns$/);
+  });
+
+  await test.step("Live: the seeded activity, newest first, each row linking to its page", async () => {
+    await page.goto("/admin");
+    const card = page.getByRole("region", { name: "Live" });
+    const rows = card.getByRole("list", { name: "Recent activity" }).getByRole("link");
+    await expect(rows.first()).toBeVisible();
+    // The seeded accounts' sign-ups are in it, linked to their records.
+    await expect(rows.filter({ hasText: /^Sign-up: / }).first()).toHaveAttribute("href", /^\/admin\/accounts\/\d+$/);
+    const times = await card.locator("time").evaluateAll((ts) => ts.map((t) => Date.parse(t.getAttribute("datetime")!)));
+    expect(times, "newest first").toEqual([...times].sort((a, b) => b - a));
+    await expect(card.getByRole("button", { name: "Announce" })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  await test.step("Live: asks every 30 s, not while the tab is hidden or paused, and again once visible", async () => {
+    await page.clock.install();
+    let asks = 0;
+    page.on("request", (r) => void (r.url().endsWith("/api/admin/feed") && asks++));
+    await page.goto("/admin");
+    const card = page.getByRole("region", { name: "Live" });
+    const pause = card.getByRole("button", { name: "Pause live activity" });
+    await hydrated(pause);
+    await card.scrollIntoViewIfNeeded();
+    // The fake clock still moves with real time between steps, so the "not yet" check leaves a few seconds of slack.
+    await page.clock.runFor(25_000);
+    expect(asks, "nothing before 30 s").toBe(0);
+    await page.clock.runFor(6_000);
+    await expect.poll(() => asks).toBe(1);
+
+    const setHidden = (hidden: boolean) =>
+      page.evaluate((h) => {
+        Object.defineProperty(document, "hidden", { configurable: true, get: () => h });
+        Object.defineProperty(document, "visibilityState", { configurable: true, get: () => (h ? "hidden" : "visible") });
+        document.dispatchEvent(new Event("visibilitychange"));
+      }, hidden);
+    await setHidden(true);
+    await page.clock.runFor(95_000);
+    expect(asks, "no asking while the tab is hidden").toBe(1);
+    await setHidden(false);
+    await page.clock.runFor(100);
+    await expect.poll(() => asks, { message: "visible again after the interval passed: asks at once" }).toBe(2);
+
+    await pause.click();
+    await expect(card.getByRole("button", { name: "Resume live activity" })).toBeVisible();
+    await expect(card.getByText("Paused", { exact: true })).toBeVisible();
+    await page.clock.runFor(95_000);
+    expect(asks, "no asking while paused").toBe(2);
+    await card.getByRole("button", { name: "Resume live activity" }).click();
+    await page.clock.runFor(100);
+    await expect.poll(() => asks).toBe(3);
   });
 
   await flipOpsShell(page, false);

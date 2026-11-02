@@ -10,3 +10,26 @@
     stroke-dasharray: none;
   }
 }
+
+/*
+ * The Live card (step 6). Rows are one line at 44px, and the list keeps room for all of them, so the card's height never
+ * changes as rows arrive or the feed is empty (no layout shift). A new row fades in once; with reduced motion it just
+ * appears.
+ */
+.ops-live-rows {
+  min-height: calc(8 * 44px);
+}
+.ops-live-new {
+  animation: ops-live-in 560ms cubic-bezier(0.22, 0.7, 0.2, 1) both;
+}
+@keyframes ops-live-in {
+  from {
+    opacity: 0;
+    translate: 0 -4px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ops-live-new {
+    animation: none;
+  }
+}
