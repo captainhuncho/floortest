@@ -120,3 +120,16 @@ test("a hold looks the same whether or not the email has an account, and app and
   assert.deepEqual(answers[0], answers[1], "same words, same step, same time left");
   assert.equal(await passwordHold("ops", "real@x.io", "3.3.3.3"), null, "an app hold doesn't hold ops, and the other way round");
 });
+
+// Owner, 2 Nov: ops sign-in gets the same device-only holds instead of its old stop on the whole account.
+test("ops holds: on the device only, never naming the wrong part, and no Report link (not on the ops host)", async () => {
+  const { HOLD_AFTER, HOLD_STEPS, afterWrongPassword, holdAnswer, passwordHold } = await import("../src/lib/login-limits");
+  let hold = null;
+  for (let i = 0; i < HOLD_AFTER; i++) hold = await afterWrongPassword("ops", "staff@x.io", "2.2.2.2");
+  assert.ok(hold && Math.abs(hold.until - Date.now() - HOLD_STEPS[0]) < 2_000, "the same first step");
+  assert.ok(await passwordHold("ops", "staff@x.io", "2.2.2.2"), "the guessing device is held");
+  assert.equal(await passwordHold("ops", "staff@x.io", "1.1.1.1"), null, "the staff member, elsewhere, isn't");
+  const a = holdAnswer(hold, "ops");
+  assert.doesNotMatch(a.error, /password/i, "never says the password was the wrong part");
+  assert.equal(holdAnswer({ until: Date.now() + 1_000, final: true }, "ops").holdFinal, false, "no Report this on ops");
+});

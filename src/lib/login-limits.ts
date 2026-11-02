@@ -43,7 +43,7 @@ const HOLD_BUCKETS = (kind: SignIn) => HOLD_STEPS.map((_, step) => holdBucket(ki
 
 /** A hold in force: when it ends, and whether it's the last step (which offers "Report this"). */
 export type Hold = { until: number; final: boolean };
-/** Which sign-in counts the holds (only the app's today; ops keeps its own stricter stop). */
+/** Which sign-in counts the holds: the app's (wrong passwords) or ops' (failed sign-ins, password or two-step code); each on its own. */
 export type SignIn = "login" | "ops";
 
 /**
@@ -92,15 +92,27 @@ export async function afterWrongPassword(kind: SignIn, email: string, ip: string
 
 /**
  * The sign-in form's answer while a hold is on: the same words for every email, account or not. The time left, not the
- * end time, so a phone whose clock is off still counts down right.
+ * end time, so a phone whose clock is off still counts down right. Ops counts failed sign-ins (password or two-step code)
+ * and never says which part was wrong; its form has no "Report this" (the contact page isn't on the ops host).
  */
-export const holdAnswer = (hold: Hold) => ({
-  error: hold.final
-    ? "Too many wrong passwords from this device, so password sign-in here is paused for 24 hours. You can still reset your password or sign in with a code sent to your email."
-    : "Too many wrong passwords. Try again when the timer ends, or reset your password.",
-  holdLeft: Math.max(0, hold.until - now()),
-  holdFinal: hold.final,
-});
+export const holdAnswer = (hold: Hold, kind: SignIn = "login") => {
+  const holdLeft = Math.max(0, hold.until - now());
+  if (kind === "ops")
+    return {
+      error: hold.final
+        ? "Too many failed sign-ins from this device, so ops sign-in here is paused for 24 hours. Ask the owner if you need in sooner."
+        : "Too many failed sign-ins. Try again when the timer ends.",
+      holdLeft,
+      holdFinal: false,
+    };
+  return {
+    error: hold.final
+      ? "Too many wrong passwords from this device, so password sign-in here is paused for 24 hours. You can still reset your password or sign in with a code sent to your email."
+      : "Too many wrong passwords. Try again when the timer ends, or reset your password.",
+    holdLeft,
+    holdFinal: hold.final,
+  };
+};
 
 /** A right password from this connection: the wrong tries and holds before it no longer count. */
 export async function afterRightPassword(kind: SignIn, email: string, ip: string) {

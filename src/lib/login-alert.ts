@@ -2,7 +2,7 @@ import "server-only";
 import { now, q } from "./db";
 import { afterResponse, APP_URL, sendMail } from "./mail";
 import { allow, recentCount } from "./ratelimit";
-import type { Hold } from "./login-limits";
+import type { Hold, SignIn } from "./login-limits";
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -16,7 +16,7 @@ const ALL_A_DAY = 200;
  * sign-ins). Not from the share kept for sign-in codes and resets, so it can never crowd those out. Runs after the answer
  * has gone back, so how long the page takes never reveals that the email has an account.
  */
-export function alertGuessedAccount(email: string, hold: Hold) {
+export function alertGuessedAccount(email: string, hold: Hold, kind: SignIn = "login") {
   afterResponse(async () => {
     const u = await q.get<{ id: number; email: string; name: string; tz: string }>("SELECT id, email, name, tz FROM users WHERE email = ? AND suspended_at IS NULL", email);
     if (!u) return;
@@ -26,6 +26,24 @@ export function alertGuessedAccount(email: string, hold: Hold) {
     const zone = { timeZone: u.tz || "UTC" };
     const when = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", ...zone }).format(now());
     const until = new Intl.DateTimeFormat("en-GB", { dateStyle: hold.final ? "medium" : undefined, timeStyle: "short", ...zone }).format(hold.until);
+    if (kind === "ops")
+      return sendMail({
+        userId: u.id,
+        audience: "receiver",
+        to: u.email,
+        subject: "Failed sign-ins to FloorTest ops with your email",
+        body: [
+          `Hi ${u.name.split(/\s+/)[0] || "there"},`,
+          "",
+          `Someone tried to sign in to FloorTest ops with your email several times and failed, so we've paused ops sign-in from that device until ${until}.`,
+          `When: ${when}`,
+          "",
+          "If it was you, wait for the pause to end.",
+          `If it wasn't, nobody got in with those tries. To be sure, choose a new password and sign out other devices: ${APP_URL}/dashboard/settings/security`,
+          "",
+          "— FloorTest",
+        ].join("\n"),
+      });
     await sendMail({
       userId: u.id,
       audience: "receiver",
