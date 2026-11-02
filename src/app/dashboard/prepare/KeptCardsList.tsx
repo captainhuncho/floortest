@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { usePlayer } from "@/components/Player";
+import { PlayerWaveform, usePlayer } from "@/components/Player";
 import { useToast } from "@/components/Toast";
 import { TrackRow, trackAge } from "@/components/TrackRow";
-import { Waveform } from "@/components/Waveform";
 import { fmtTime } from "@/lib/format";
 import { toPlayer } from "@/lib/player-track";
 import type { PlayedOutStatus } from "@/lib/played-out-prompt";
@@ -19,7 +18,7 @@ import type { Row } from "../TrackList";
  * evaluation-only.
  */
 export function KeptCardsList({ rows, status, canMark }: { rows: Row[]; status: Record<number, PlayedOutStatus>; canMark: boolean }) {
-  const { current, playing, time, duration, play, seek } = usePlayer();
+  const { current, playing, duration, play, seek } = usePlayer();
   const queue = rows.map(toPlayer);
   return (
     <ul className="divide-y divide-line">
@@ -34,7 +33,7 @@ export function KeptCardsList({ rows, status, canMark }: { rows: Row[]; status: 
             canMark={canMark}
             playing={on && playing}
             onPlay={() => play(toPlayer(r), queue)}
-            waveform={<Waveform peaks={r.peaks} progress={on && d ? time / d : 0} duration={d} onSeek={on ? seek : undefined} height={28} label={`Seek ${r.title}`} />}
+            waveform={<PlayerWaveform on={on} length={d} peaks={r.peaks} onSeek={on ? seek : undefined} height={28} label={`Seek ${r.title}`} />}
           />
         );
       })}

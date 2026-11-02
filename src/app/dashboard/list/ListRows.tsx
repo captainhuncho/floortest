@@ -1,11 +1,11 @@
 "use client";
 
+import { useRenderProbe } from "@/lib/render-probe";
 import { decisionLabel } from "@/lib/statuses";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { isTyping, PlayIcon, usePlayer } from "@/components/Player";
+import { isTyping, PlayerWaveform, PlayIcon, usePlayer } from "@/components/Player";
 import { useToast } from "@/components/Toast";
-import { Waveform } from "@/components/Waveform";
 import type { Decision } from "@/lib/db";
 import { fmtTime } from "@/lib/format";
 import { toPlayer } from "@/lib/player-track";
@@ -73,6 +73,7 @@ export function ListRows({
   title?: string;
 }) {
   const player = usePlayer();
+  useRenderProbe("ListRows");
   const toast = useToast();
   const [selected, setSelected] = useState<number | null>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
@@ -319,10 +320,11 @@ export function ListRows({
                   {name}
                 </button>
                 <div className="hidden w-[min(28%,240px)] min-w-0 @4xl:block" onClick={(e) => e.stopPropagation()}>
-                  <Waveform
+                  <PlayerWaveform
+                    on={isCurrent}
+                    length={d}
                     peaks={r.peaks}
                     height={30}
-                    progress={isCurrent && d ? player.time / d : 0}
                     onSeek={isCurrent ? player.seek : (f) => (player.play(toPlayer(r), queue), setTimeout(() => player.seek(f), 250))}
                     label={`Seek ${r.title}`}
                   />

@@ -1,9 +1,9 @@
 "use client";
 
+import { useRenderProbe } from "@/lib/render-probe";
 import Link from "next/link";
 import { Fragment } from "react";
-import { PlayIcon, usePlayer } from "@/components/Player";
-import { Waveform } from "@/components/Waveform";
+import { PlayerWaveform, PlayIcon, usePlayer } from "@/components/Player";
 import { ago, fmtTime } from "@/lib/format";
 import { toPlayer } from "@/lib/player-track";
 import { useQueue } from "./review/QueueState";
@@ -34,7 +34,8 @@ export type Row = {
 
 /** `showDecision`: the Kept / Not for me / Needs review chip, only where the tab doesn't already say it (All). */
 export function TrackList({ rows, selectedId, hrefFor, showDecision = true }: { rows: Row[]; selectedId: number | null; hrefFor: Record<number, string>; showDecision?: boolean }) {
-  const { current, playing, time, duration, play, seek } = usePlayer();
+  const { current, playing, duration, play, seek } = usePlayer();
+  useRenderProbe("TrackList");
   // In the Review Queue (QueueState) a tap shows the track at once and a decided track leaves straight away.
   const state = useQueue();
   const shownRows = state ? rows.filter((r) => !state.gone.has(r.id)) : rows;
@@ -96,7 +97,7 @@ export function TrackList({ rows, selectedId, hrefFor, showDecision = true }: { 
               </span>
             </Link>
             <div className={`hidden min-w-0 @3xl:block ${isCurrent ? "relative z-10" : ""}`}>
-              <Waveform peaks={r.peaks} height={28} progress={isCurrent && d ? time / d : 0} duration={d} onSeek={isCurrent ? seek : undefined} dim={!!r.decision && !isCurrent} />
+              <PlayerWaveform on={isCurrent} length={d} peaks={r.peaks} height={28} onSeek={isCurrent ? seek : undefined} dim={!!r.decision && !isCurrent} />
             </div>
             <div className="flex items-center gap-2.5 text-[11px] text-mute">
               {words && <span className="hidden @xl:inline">{words}</span>}
