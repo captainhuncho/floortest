@@ -5,6 +5,7 @@ import { allow } from "./ratelimit";
 import { switchOn } from "./switches";
 import { env } from "./env";
 import { normalEmail } from "./email-normal";
+import { maskEmail } from "./mask-email";
 
 /**
  * Account teams. A label, radio station or crew has one FloorTest account (its owner's) and invites the people who run
@@ -178,7 +179,7 @@ export async function acceptInvite(secret: string, person: Pick<User, "id" | "em
 }
 
 async function join<I extends { id: number; account_id: number; email: string; role: "admin" | "member" }>(inv: I, person: Pick<User, "id" | "email" | "email_verified_at">) {
-  if (person.email.toLowerCase() !== inv.email) throw new TeamError(`This invite was sent to ${inv.email}. Log in with that email to accept it.`);
+  if (person.email.toLowerCase() !== inv.email) throw new TeamError(`This invite was sent to ${maskEmail(inv.email)}. Log in with that email to accept it.`);
   if (!person.email_verified_at) throw new TeamError("Confirm your email first (check your inbox), then open the invite again.");
   if (person.id === inv.account_id) throw new TeamError("That's your own account.");
   await q.tx(async (db) => {

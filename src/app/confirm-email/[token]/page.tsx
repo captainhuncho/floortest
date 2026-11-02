@@ -5,6 +5,7 @@ import { confirmEmailChange, pendingEmailFor } from "@/lib/accounts";
 import { audit } from "@/lib/audit";
 import { currentPerson } from "@/lib/auth";
 import { APP_URL, sendMail } from "@/lib/mail";
+import { maskEmail } from "@/lib/mask-email";
 
 export const metadata = { title: "Confirm your new email — FloorTest", robots: { index: false } };
 
@@ -26,13 +27,12 @@ export default async function ConfirmEmail({ params, searchParams }: { params: P
         audience: "support",
         to: r.from,
         subject: "Your FloorTest email was changed",
-        body: `Hi,\n\nThe email on your FloorTest account is now ${r.to.replace(/^(.{2}).*@/, "$1…@")}. You've been signed out on every device.\n\nIf this wasn't you, contact us straight away: ${APP_URL}/contact\n\n— FloorTest`,
+        body: `Hi,\n\nThe email on your FloorTest account is now ${maskEmail(r.to)}. You've been signed out on every device.\n\nIf this wasn't you, contact us straight away: ${APP_URL}/contact\n\n— FloorTest`,
       }).catch(() => {});
     }
     redirect(r ? `/confirm-email/${encodeURIComponent(token)}?done=1` : `/confirm-email/${encodeURIComponent(token)}`);
   }
 
-  const masked = (e: string) => e.replace(/^(.{2}).*@/, "$1…@");
   if (done)
     return (
       <MessagePage
@@ -75,7 +75,7 @@ export default async function ConfirmEmail({ params, searchParams }: { params: P
         }
       >
         <p>
-          Sign in to the FloorTest account that asked for this change (it still uses <span className="text-bone">{masked(pending.email)}</span>) in this browser, then open this link again.
+          Sign in to the FloorTest account that asked for this change (it still uses <span className="text-bone">{maskEmail(pending.email)}</span>) in this browser, then open this link again.
         </p>
         <p>Didn&apos;t ask for this? Ignore it and nothing changes.</p>
       </MessagePage>

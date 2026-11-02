@@ -6,6 +6,7 @@ import { ago, fmtDay } from "@/lib/format";
 import { redirect } from "next/navigation";
 import { readSenderLink, revokeSenderLink } from "@/lib/senderLink";
 import { RETAIN_UNREVIEWED_DAYS, unheardAfterWindow } from "@/lib/plans";
+import { maskEmail } from "@/lib/mask-email";
 import { receiptPath } from "@/lib/receipt-token";
 
 export const metadata = { title: "Your sends — FloorTest", robots: { index: false } };
@@ -57,7 +58,8 @@ export default async function SenderHistory({ params }: { params: Promise<{ toke
       <section aria-labelledby="history-h" className={`${CARD} flex flex-col p-3`}>
         <p className="flex items-center gap-1.5 text-[11.5px] text-mute">
           <Icon name="lock" className="size-[15px]" />
-          <span className="min-w-0 truncate">Private · {email}</span>
+          {/* Masked: the link gets forwarded and screenshotted; the address it came to is enough for the sender to recognise it. */}
+          <span className="min-w-0 truncate">Private · {maskEmail(email)}</span>
         </p>
         <h1 id="history-h" className="mt-2 text-[24px] font-semibold leading-tight tracking-[-0.03em] sm:text-[28px]">Everything you&apos;ve sent</h1>
         <p className="mt-1 text-[12.5px] text-mute tnum">
