@@ -25,7 +25,7 @@ import { APP_URL } from "@/lib/mail";
 import { env } from "@/lib/env";
 import { HIDDEN, sendMail, sendMailHeld } from "@/lib/mail";
 import { readUndo, signUndo, takeBack, type UndoItem } from "@/lib/ops-undo";
-import { approvePendingIdentity } from "@/lib/identity-approve";
+import { approvePendingIdentity, rejectPendingIdentity } from "@/lib/identity-approve";
 import { isAdminEmail, logAdmin, requireAdminAction } from "@/lib/admin";
 import { opsAccessFor, suspendRefusal } from "@/lib/ops-access";
 import { PERMS, ROLE_PERMS, ROLES, type Perm, type Role } from "@/lib/ops-perms";
@@ -647,16 +647,8 @@ export async function revokeIdentity(userId: number, form: FormData): Promise<Op
 export async function rejectIdentity(userId: number, form: FormData): Promise<OpsResult> {
   const a = await requireAdminAction("verification");
   const note = String(form.get("note") || "").trim().slice(0, 200);
-  const u = await q.tx(async (db) => {
-    const before = await db.get<{ identity_status: string; identity_note: string }>("SELECT identity_status, identity_note FROM users WHERE id = ? FOR UPDATE", userId);
-    if (!before) return null;
-    const row = await db.get<{ email: string; name: string; handle: string }>(
-      "UPDATE users SET identity_status = 'rejected', identity_note = ? WHERE id = ? RETURNING email, name, handle",
-      note,
-      userId,
-    );
-    return row ? { ...row, before } : null;
-  });
+  // Only a waiting request (lib/identity-approve): a verified account isn't turned down here, and anything else is "not found".
+  const u = await rejectPendingIdentity(userId, note);
   if (!u) return no("Account not found");
   const mail = await heldSend(a.id, "rejected identity", `@${u.handle}`, {
     userId,
