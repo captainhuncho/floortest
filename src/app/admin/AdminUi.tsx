@@ -3,15 +3,17 @@
 import { useRef, useState, useTransition } from "react";
 import { announceOps, type OpsResult } from "@/lib/ops-result";
 import { Toaster } from "./kit/Toaster";
+import { undoSend } from "./actions";
 
 const isOpsResult = (r: unknown): r is OpsResult => typeof r === "object" && r !== null && "ok" in r;
 
 /**
  * The admin messages: a flash from an action not converted yet (then cleared so a reload doesn't repeat it), or a
- * result an OpsForm or OpsButton announced. The ops kit's toast stack (src/app/admin/kit/Toaster.tsx) does the work.
+ * result an OpsForm, OpsButton or ConfirmButton announced. The ops kit's toast stack (src/app/admin/kit/Toaster.tsx) does
+ * the work; a held send's Undo goes to undoSend.
  */
 export function Toast({ flash }: { flash: { id: number; text: string; tone: "ok" | "error" } | null }) {
-  return <Toaster flash={flash} />;
+  return <Toaster flash={flash} onUndoHeld={undoSend} />;
 }
 
 /** A confirm pop-up in FloorTest's style, instead of the browser's grey box. */

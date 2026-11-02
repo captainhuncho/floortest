@@ -11,11 +11,11 @@ export type OpsResult = { ok: true; message: string; undoToken?: string } | { ok
 export const OPS_RESULT_EVENT = "ft:ops-result";
 
 /**
- * What the toast can offer besides the message (ops kit, 1 Nov). `undo` adds an Undo button and ⌘Z / Ctrl+Z.
- * `sendIn` holds a send: the toast says "Sending in 5 s · Undo" and calls `commit` only when the window closes without
- * an undo. The hold is only on screen for now; the server-side hold (outbox not_before) comes with the backend work.
+ * What the toast can offer besides the message (ops kit, 1 Nov). `undo` adds an Undo button and ⌘Z / Ctrl+Z, for a
+ * change the browser can take back itself. A held send needs nothing here: its `undoToken` makes the toast count down
+ * "Sending in 5 s · Undo" and ask the server (undoSend) on Undo (src/app/admin/kit/Toaster.tsx).
  */
-export type OpsToastExtras = { undo?: () => unknown; sendIn?: number; commit?: () => unknown };
+export type OpsToastExtras = { undo?: () => unknown };
 export type OpsToastDetail = OpsResult & OpsToastExtras;
 
 export function announceOps(result: OpsResult, extras: OpsToastExtras = {}) {
