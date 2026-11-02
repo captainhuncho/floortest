@@ -299,9 +299,18 @@ async function main() {
     const data = wav(audio);
     putFile(key, data);
     const tid = await id(
-      `INSERT INTO tracks (user_id, collection_id, sender_id, token, title, artist, message, file_key, original_name, mime, size, duration, bpm, peaks, share_ok, share_terms, created_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,'e2e',?)`,
-      desk, callout, sid, LINKS.receiptToken, LINKS.sender.title, LINKS.sender.artist, "", key, `${LINKS.sender.title}.wav`, "audio/wav", data.length, 32, 123, JSON.stringify(peaks(audio.x)), now - DAY,
+      `INSERT INTO tracks (user_id, collection_id, sender_id, token, title, artist, message, file_key, original_name, mime, size, duration, bpm, peaks, share_ok, share_terms, played_at, played_out_at, played_out_note, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,'e2e',?,?,?,?)`,
+      desk, callout, sid, LINKS.receiptToken, LINKS.sender.title, LINKS.sender.artist, "", key, `${LINKS.sender.title}.wav`, "audio/wav", data.length, 32, 123, JSON.stringify(peaks(audio.x)),
+      now - 20 * 3_600_000, now - 3_600_000, LINKS.playedOutNote, now - DAY,
+    );
+    const otherKey = `audio/${desk}/${crypto.randomUUID()}.wav`;
+    putFile(otherKey, data);
+    const other = await id("INSERT INTO senders (user_id, email, name, created_at) VALUES (?,?,?,?)", desk, LINKS.other.email, "Otto Other", now - 2 * DAY);
+    await id(
+      `INSERT INTO tracks (user_id, collection_id, sender_id, token, title, artist, message, file_key, original_name, mime, size, duration, bpm, peaks, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      desk, callout, other, LINKS.otherReceiptToken, LINKS.other.title, "Otto Other", "", otherKey, `${LINKS.other.title}.wav`, "audio/wav", data.length, 32, 123, JSON.stringify(peaks(audio.x)), now - DAY,
     );
     await db.run("INSERT INTO events (user_id, sender_id, track_id, type, detail, created_at) VALUES (?,?,?,?,?,?)", desk, sid, tid, "submitted", "into Links callout", now - DAY);
     await db.run("INSERT INTO sender_links (id_hash, email, created_at, expires_at) VALUES (?,?,?,?)", hashToken(LINKS.sentToken), LINKS.sender.email, now, now + DAY);

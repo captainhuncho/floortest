@@ -69,7 +69,12 @@ Queue (List) ─► Select ─► tick tracks / Select all ─► bar: Keep · N
 Floor ─► Collections ─► New collection / Open collection ─► Add tracks (owner: choose WAV/MP3s, edit titles, rights tick, upload) ─► Edit collection · Download collection · Files only · Send new tracks here
 Nightly, only if Settings → Receiving → "When a callout closes" is on ─► a link on a collection past its close date ─► moves to the newest open collection ─► email to the receiver · bell: "Your link now goes to …" · activity: "Link moved on its own to"
 Floor ─► Send ─► their-link ─► upload ─► Sent list (≤10 days open, older folded) ─► Track → /receipt/<token>
-   /receipt/<token> and /sent/<link> show the sender's email masked (m•••@g•••.com); Stop private sharing and End this link now still work
+   /receipt/<token> and /sent/<link> show the sender's email masked (m•••@g•••.com); End this link now still works
+   /receipt/<token> ─┬─ sent from this browser (ft_receipt) or signed in as the sending account ─► the whole receipt
+                     └─ link only ─► status and dates, "The receiver …" ─► Show my details ─► "We sent a code to m•••@g•••.com"
+                          (same answer every time; 3 an hour per receipt, 5 per email, 20 per connection)
+                          ─► 6-digit code (10 min, 5 tries) ─► the whole receipt; this browser remembers it 30 days
+                          stems upload / Stop private sharing without proof ─► refused on the server, same answer as an unknown link
 Avatar ─► Account ─► Settings (profile, receiving, notifications, plan, security) · Sign out ─► /signed-out
 Feedback (every desk page, phones too: the speech-bubble icon in the top bar) ─► Idea / Bug / Confusing / Love it · text ─► Send ─► ops → Feedback (with the page it came from and the window width, e.g. 390 px) · toast "Thanks. It went straight to the FloorTest team."
 Account ─► About FloorTest ─► Send feedback ─► the same form opens under the row (not the public contact page) ─► Send ─► ops → Feedback

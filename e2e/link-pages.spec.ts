@@ -86,19 +86,8 @@ test.describe("private link pages", () => {
     await expect(page.getByRole("heading", { name: "Email changed" })).toBeVisible();
   });
 
-  test("the receipt's stop-sharing action still works with the same-origin referrer policy", async ({ page }) => {
-    await page.goto(`/receipt/${LINKS.receiptToken}`);
-    await expect(page.getByText(LINKS.sender.masked).first()).toBeVisible();
-    const stop = page.getByRole("button", { name: "Stop private sharing" });
-    await hydrated(stop);
-    await stop.click();
-    await page.getByRole("dialog").getByRole("button", { name: "Stop sharing" }).click();
-    // The action refreshes the receipt, which then has nothing left to stop: the switch is gone, and stays gone.
-    await expect(stop).toHaveCount(0);
-    await page.reload();
-    await expect(page.getByText(LINKS.sender.title)).toBeVisible();
-    await expect(page.getByRole("button", { name: "Stop private sharing" })).toHaveCount(0);
-  });
+  // The receipt's own server action (stop sharing) under the same headers: e2e/receipt-proof.spec.ts, which needs proof
+  // first since Option B (2 Nov).
 
   test("the sender history's End this link action still works", async ({ page }) => {
     await gotoSent(page);
