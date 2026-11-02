@@ -122,7 +122,7 @@ export default async function Takedowns() {
                     <ConfirmSubmit
                       formAction={decideTakedown.bind(null, c.id, "removed")}
                       message="Remove this track from the receiver's desk and delete the file? This can't be undone."
-                      className="admin-press inline-flex min-h-11 items-center rounded-full bg-danger px-5 text-[13.5px] font-semibold text-ink"
+                      className="admin-press inline-flex min-h-11 items-center rounded-full bg-danger px-5 text-[13.5px] font-semibold text-on-danger"
                     >
                       Remove track
                     </ConfirmSubmit>

@@ -117,7 +117,7 @@ export function TrackPane({
                 <dd className={`tnum ${d.history.blocked ? "text-danger" : ""}`}>{d.history.blocked}</dd>
                 <dt>Sent to</dt>
                 <dd className="truncate">
-                  <Link href={`/admin/accounts/${d.user_id}`} className="underline-offset-2 hover:underline">
+                  <Link href={`/admin/accounts/${d.user_id}`} className="inline-flex min-h-11 max-w-full items-center underline-offset-2 hover:underline">
                     @{d.receiver}
                   </Link>
                 </dd>
