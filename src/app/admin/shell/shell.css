@@ -96,6 +96,16 @@
     width: 256px;
   }
 }
+/* An area's name tip hides while the panel shows that area (it names it already, and the tip would cover its first
+   row): open over the page, or docked. Other areas keep their tips on hover and keyboard focus. */
+.ops-shell[data-peek] .ops-rail [data-shown] .ops-tip {
+  display: none;
+}
+@media (min-width: 1100px) {
+  .ops-shell:not([data-collapsed]) .ops-rail [data-shown] .ops-tip {
+    display: none;
+  }
+}
 /* "Show the side panel" sits in the rail only while the panel is collapsed on a screen wide enough to dock it. */
 .ops-expand {
   display: none;
