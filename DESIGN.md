@@ -223,7 +223,13 @@ looks exactly as before.
   `prefers-reduced-motion` keeps fades and drops the press scale.
 - **Press** (`.press`, ops `.kit-press`): scale 0.97 on pointer-down with no easing, the release eases back over 160ms on
   the iOS drawer curve. Links that act like buttons on a glass-pass page carry it.
-- **Type:** the Floor greeting 26px (30px from 640px), section titles 16px; headings track at -0.02em / -0.01em, a little
+- **Floor layout, option B:** the ops Overview's order. A headline row (date, the greeting with a lime dot while tracks
+  wait, the figures Kept this week, First listen and Decided as readouts on the right), an **Act now** plate with solid
+  cards (Waiting in lime when something waits, with a coral "over 5 days" pill; kept tracks ready for the set in violet
+  with Prepare), then Up next with the player and Just in beside **Your desk**, whose fullness is the ops tick arc
+  (`components/TickArc.tsx`, shared with the ops Health gauge: waiting, kept, not for me, free), then This week with
+  ops-style bars.
+- **Type:** the Floor greeting 30px (36px from 640px) on option B, section titles 16px; headings track at -0.02em / -0.01em, a little
   softer than before.
 - **Not here:** glass on cards, long lists or every row (it costs frames on cheap phones and shows nothing over a plain
   page); a second accent (violet stays for comparison and secondary data); new shadows on anything that isn't a plate,
