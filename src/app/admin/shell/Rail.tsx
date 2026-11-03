@@ -22,6 +22,8 @@ export function Rail({
   current,
   shown,
   onPick,
+  onHover,
+  onLeave,
   collapsed,
   onExpand,
   me,
@@ -30,6 +32,9 @@ export function Rail({
   current: AreaId | undefined;
   shown: AreaId | undefined;
   onPick: (id: AreaId, opener: HTMLElement, single: boolean) => void;
+  /** A mouse rests on an area with pages, or leaves it (OpsShell decides when the panel follows; touch never calls these). */
+  onHover: (id: AreaId) => void;
+  onLeave: () => void;
   collapsed: boolean;
   onExpand: () => void;
   me: Me;
@@ -65,7 +70,17 @@ export function Rail({
                     {inner}
                   </Link>
                 ) : (
-                  <button type="button" aria-label={name} aria-current={here ? "true" : undefined} aria-pressed={shown === a.id} aria-controls="ops-panel" className={cls} onClick={(e) => onPick(a.id, e.currentTarget, false)}>
+                  <button
+                    type="button"
+                    aria-label={name}
+                    aria-current={here ? "true" : undefined}
+                    aria-pressed={shown === a.id}
+                    aria-controls="ops-panel"
+                    className={cls}
+                    onClick={(e) => onPick(a.id, e.currentTarget, false)}
+                    onPointerEnter={(e) => e.pointerType === "mouse" && onHover(a.id)}
+                    onPointerLeave={(e) => e.pointerType === "mouse" && onLeave()}
+                  >
                     {inner}
                   </button>
                 )}

@@ -21,6 +21,8 @@ export function Panel({
   peek,
   onClose,
   onCollapse,
+  onPointerEnter,
+  onPointerLeave,
 }: {
   ref: React.Ref<HTMLElement>;
   area: ShellArea;
@@ -30,9 +32,19 @@ export function Panel({
   peek: boolean;
   onClose: () => void;
   onCollapse: () => void;
+  /** The mouse in the panel keeps an area opened by hover; leaving it closes that (OpsShell). */
+  onPointerEnter: () => void;
+  onPointerLeave: () => void;
 }) {
   return (
-    <aside ref={ref} id="ops-panel" aria-labelledby="ops-panel-h" className="ops-panel flex-col border-r border-line bg-ink-2">
+    <aside
+      ref={ref}
+      id="ops-panel"
+      aria-labelledby="ops-panel-h"
+      className="ops-panel flex-col border-r border-line bg-ink-2"
+      onPointerEnter={(e) => e.pointerType === "mouse" && onPointerEnter()}
+      onPointerLeave={(e) => e.pointerType === "mouse" && onPointerLeave()}
+    >
       <div className="flex items-center justify-between gap-2 pb-1 pl-4 pr-2 pt-3">
         <h2 id="ops-panel-h" className="truncate text-[15px] font-semibold tracking-[-0.015em] text-bone">
           {area.title}
