@@ -58,7 +58,7 @@ export function Rail({
                     {a.waiting}
                   </span>
                 )}
-                <span aria-hidden className={TIP}>
+                <span aria-hidden className={`ops-tip ${TIP}`}>
                   {a.title}
                 </span>
               </>
@@ -66,7 +66,7 @@ export function Rail({
             return (
               <li key={a.id}>
                 {single ? (
-                  <Link href={a.href} aria-label={name} aria-current={here ? "page" : undefined} className={cls} onClick={(e) => onPick(a.id, e.currentTarget, true)}>
+                  <Link href={a.href} aria-label={name} aria-current={here ? "page" : undefined} data-shown={shown === a.id ? "" : undefined} className={cls} onClick={(e) => onPick(a.id, e.currentTarget, true)}>
                     {inner}
                   </Link>
                 ) : (
@@ -76,6 +76,7 @@ export function Rail({
                     aria-current={here ? "true" : undefined}
                     aria-pressed={shown === a.id}
                     aria-controls="ops-panel"
+                    data-shown={shown === a.id ? "" : undefined}
                     className={cls}
                     onClick={(e) => onPick(a.id, e.currentTarget, false)}
                     onPointerEnter={(e) => e.pointerType === "mouse" && onHover(a.id)}
