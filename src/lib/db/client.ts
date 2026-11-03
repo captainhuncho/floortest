@@ -9,6 +9,7 @@
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { MIGRATIONS } from "./migrations";
+import { withConnectRetry } from "./retry";
 
 export type Row = Record<string, unknown>;
 
@@ -107,6 +108,9 @@ async function openPostgres(url: string): Promise<Db> {
   const sql = postgres(url, {
     max,
     idle_timeout: 20,
+    // Give up on a connection that hasn't opened after 10 s (postgres.js waits 30 s by default); one retry follows
+    // (src/lib/db/retry.ts).
+    connect_timeout: 10,
     // Works behind transaction-mode poolers (Supabase :6543, PgBouncer).
     prepare: false,
     // Any database across the internet (Neon) must be encrypted; it fails rather than falling back to plain text.
@@ -141,11 +145,23 @@ async function openPostgres(url: string): Promise<Db> {
   };
   const pooled = rawOf(sql as unknown as Unsafe);
   return {
-    ...wrap({ query: (text, params) => slot(() => pooled.query(text, params)) }),
+    // A query that couldn't connect is tried once more; the pause happens outside the slot, so it holds no connection.
+    ...wrap({ query: (text, params) => withConnectRetry(() => slot(() => pooled.query(text, params))) }),
     kind: "postgres",
     async tx(fn) {
-      // A transaction holds one connection for its whole length, so it takes one slot.
-      return slot(async () => (await sql.begin((t) => fn(wrap(rawOf(t as unknown as Unsafe))))) as never);
+      // A transaction holds one connection for its whole length, so it takes one slot. It is tried again only if it
+      // couldn't start: once its body has begun, a failure is never repeated.
+      let started = false;
+      return withConnectRetry(
+        () =>
+          slot(async () =>
+            (await sql.begin((t) => {
+              started = true;
+              return fn(wrap(rawOf(t as unknown as Unsafe)));
+            })) as never,
+          ),
+        () => !started,
+      );
     },
     async close() {
       await sql.end({ timeout: 5 });
