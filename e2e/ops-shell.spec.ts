@@ -13,7 +13,7 @@ const flip = flipOpsShell;
 const oldNav = (page: Page) => page.getByRole("navigation", { name: "Admin areas" });
 const rail = (page: Page) => page.getByRole("navigation", { name: "Ops areas" });
 
-test("ops shell: off is today's navigation; on, the rail and panel reach every page, badges, phone bar and More", async ({ page }) => {
+test("ops shell: off is today's navigation; on, the rail and panel reach every page, badges, phone bar and More", async ({ page, browser, baseURL }) => {
   test.setTimeout(600_000);
   await opsLogIn(page);
 
@@ -103,6 +103,79 @@ test("ops shell: off is today's navigation; on, the rail and panel reach every p
       await expect(page.getByRole("dialog", { name: "Search people, pages and actions" })).toBeVisible();
       await page.keyboard.press("Escape");
       await page.setViewportSize({ width: 1280, height: 720 });
+    });
+
+    await test.step("mouse: resting on an area opens its panel, the panel keeps it, leaving closes it; a click pins it", async () => {
+      // 1024 wide: the panel isn't docked, so an area opens over the page.
+      await page.setViewportSize({ width: 1024, height: 768 });
+      await page.goto("/admin");
+      const panel = page.locator("#ops-panel");
+      const support = rail(page).getByRole("button", { name: /^Support/ });
+      await hydrated(support);
+      await expect(panel).toBeHidden();
+      await support.hover();
+      await expect(panel).toBeVisible();
+      await expect(panel.getByRole("heading", { name: "Support" })).toBeVisible();
+      await expect(support).toHaveAttribute("aria-pressed", "true");
+      expect(await page.evaluate(() => document.activeElement?.closest("#ops-panel") === null), "hover never moves focus into the panel").toBe(true);
+      // Across from the icon into the panel: it stays open.
+      const box = (await panel.boundingBox())!;
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 8 });
+      await page.waitForTimeout(700);
+      await expect(panel).toBeVisible();
+      // Another area switches after the open delay, then leaving both closes it.
+      const product = rail(page).getByRole("button", { name: /^Product/ });
+      await product.hover();
+      await expect(panel.getByRole("heading", { name: "Product" })).toBeVisible();
+      await page.mouse.move(900, 400, { steps: 4 });
+      await expect(panel).toBeHidden();
+      // Escape closes an area shown by hover.
+      await support.hover();
+      await expect(panel).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(panel).toBeHidden();
+      await page.mouse.move(900, 400);
+      // A click pins it: leaving no longer closes it, and Escape still does.
+      await support.click();
+      await expect(panel).toBeVisible();
+      await page.mouse.move(900, 400, { steps: 4 });
+      await page.waitForTimeout(700);
+      await expect(panel).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(panel).toBeHidden();
+      // Docked (1280): resting shows another area in the panel, leaving puts back the current one.
+      await page.setViewportSize({ width: 1280, height: 720 });
+      await page.goto("/admin");
+      await hydrated(product);
+      await expect(panel.getByRole("heading", { name: "Overview" })).toBeVisible();
+      await product.hover();
+      await expect(panel.getByRole("heading", { name: "Product" })).toBeVisible();
+      await page.mouse.move(1100, 400, { steps: 4 });
+      await expect(panel.getByRole("heading", { name: "Overview" })).toBeVisible();
+    });
+
+    await test.step("touch: a tap opens an area as before and resting never opens one", async () => {
+      // A touch tablet (rail, panel over the page) signed in as the same person: no hover, coarse pointer.
+      const touch = await browser.newContext({ baseURL, storageState: await page.context().storageState(), viewport: { width: 1024, height: 768 }, hasTouch: true, isMobile: true });
+      try {
+        const tab = await touch.newPage();
+        await tab.goto("/admin");
+        const panel = tab.locator("#ops-panel");
+        const support = rail(tab).getByRole("button", { name: /^Support/ });
+        await hydrated(support);
+        await support.hover();
+        await tab.waitForTimeout(700);
+        await expect(panel, "no hover-open on a touch screen").toBeHidden();
+        await support.tap();
+        await expect(panel).toBeVisible();
+        await expect(support).toHaveAttribute("aria-pressed", "true");
+        await tab.waitForTimeout(700);
+        await expect(panel, "a tapped area stays open").toBeVisible();
+        await tab.getByRole("button", { name: "Close the side panel" }).tap();
+        await expect(panel).toBeHidden();
+      } finally {
+        await touch.close();
+      }
     });
 
   } finally {
