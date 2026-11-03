@@ -2,7 +2,7 @@ import { EmptyState } from "@/components/Feedback";
 import { trackUse } from "@/lib/usage";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
-import { q, likeContains } from "@/lib/db";
+import { asPerson, q, likeContains } from "@/lib/db";
 import { pickShow, pickSort, SHOWS } from "./filters";
 import { ago } from "@/lib/format";
 import { CARD, Chip, Cover, Icon, PageHead, SectionHead, SEG, segTab, initials } from "@/components/Kit";
@@ -66,10 +66,12 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
   const search = (sp.q || "").trim().slice(0, 100);
 
   const shown = Math.min(MAX_SHOWN, Math.max(PAGE, Math.ceil((Number(sp.n) || PAGE) / PAGE) * PAGE));
+  // Every read here runs as the signed-in person (per-person rules, B8): the database itself shows only desks they work.
+  const asMe = <T,>(fn: () => Promise<T>) => asPerson(user.actor_id, fn);
 
   // Senders, with their track stats and the latest message in either direction: the first `shown` of them, plus the
   // totals over everyone who matches (worked out before the limit).
-  const rows = (await q.all<Row>(`WITH msgs AS (
+  const rows = await asMe(() => q.all<Row>(`WITH msgs AS (
          SELECT sender_id, created_at AS at, message AS text, 'message' AS kind FROM tracks WHERE user_id = ? AND message != ''
          UNION ALL
          SELECT sender_id, created_at, detail, 'reply' FROM events WHERE user_id = ? AND type = 'reply'
@@ -95,18 +97,20 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
   // The latest track from each sender on screen: shown beside the row from 768px up, where there's room.
   const ids = rows.map((r) => r.id);
   const latest = ids.length
-    ? await q.all<{ sender_id: number; title: string; collection: string | null; created_at: number }>(
-        `SELECT DISTINCT ON (t.sender_id) t.sender_id, t.title, c.name AS collection, t.created_at
-           FROM tracks t LEFT JOIN collections c ON c.id = t.collection_id
-           WHERE t.user_id = ? AND t.sender_id IN (${ids.map(() => "?").join(",")}) ORDER BY t.sender_id, t.created_at DESC`,
-        user.id,
-        ...ids,
+    ? await asMe(() =>
+        q.all<{ sender_id: number; title: string; collection: string | null; created_at: number }>(
+          `SELECT DISTINCT ON (t.sender_id) t.sender_id, t.title, c.name AS collection, t.created_at
+             FROM tracks t LEFT JOIN collections c ON c.id = t.collection_id
+             WHERE t.user_id = ? AND t.sender_id IN (${ids.map(() => "?").join(",")}) ORDER BY t.sender_id, t.created_at DESC`,
+          user.id,
+          ...ids,
+        ),
       )
     : [];
   const latestBy = new Map(latest.map((l) => [l.sender_id, l]));
   const from = sp.from === "them" || sp.from === "you" ? sp.from : "all";
-  const messages = await q.all<{ sender_id: number; name: string; at: number; text: string; kind: "message" | "reply"; title: string; collection: string | null }>(
-    `SELECT * FROM (
+  const messages = await asMe(() => q.all<{ sender_id: number; name: string; at: number; text: string; kind: "message" | "reply"; title: string; collection: string | null }>(
+    `SELECT sender_id, name, at, text, kind, title, collection FROM (
        SELECT t.sender_id, s.name, t.created_at AS at, t.message AS text, 'message' AS kind, t.title, c.name AS collection
          FROM tracks t JOIN senders s ON s.id = t.sender_id LEFT JOIN collections c ON c.id = t.collection_id
          WHERE t.user_id = ? AND t.message != ''
@@ -117,7 +121,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
      ) m ${from === "them" ? "WHERE kind = 'message'" : from === "you" ? "WHERE kind = 'reply'" : ""} ORDER BY at DESC LIMIT 200`,
     user.id,
     user.id,
-  );
+  ));
   const totals = {
     people: Number(rows[0]?.total_people ?? 0),
     sent: Number(rows[0]?.total_sent ?? 0),
