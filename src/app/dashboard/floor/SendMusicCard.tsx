@@ -23,7 +23,7 @@ export function SendMusicCard({ recent, host }: { recent: { handle: string; name
             autoComplete="off"
             autoCapitalize="none"
             required
-            className="-ml-2 min-w-[4rem] flex-1 bg-transparent text-base text-bone outline-none placeholder:text-faint md:text-xs"
+            className="-ml-2 min-h-11 min-w-[4rem] flex-1 bg-transparent text-base text-bone outline-none placeholder:text-faint md:text-xs"
             style={{ outline: "none" }}
           />
           <button type="submit" className={GHOST_ON_WELL}>

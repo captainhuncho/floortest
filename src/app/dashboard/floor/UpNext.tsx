@@ -24,7 +24,7 @@ export function UpNext({ items }: { items: Item[] }) {
             >
               <PlayIcon playing={on && playing} className="size-3.5" />
             </button>
-            <Link href={`/dashboard/review?view=queue&t=${t.id}`} className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <Link href={`/dashboard/review?view=queue&t=${t.id}`} className="flex min-h-11 min-w-0 flex-1 flex-col justify-center gap-0.5">
               <span className="truncate text-[13px] font-semibold text-bone">
                 {t.artist} - {t.title}
               </span>

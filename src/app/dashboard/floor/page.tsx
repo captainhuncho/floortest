@@ -188,7 +188,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
     <section aria-labelledby="desk-h" className="flex flex-col gap-3 plate p-3 sm:p-4">
       <div className="flex items-baseline justify-between gap-3">
         <h2 id="desk-h" className="text-[16px] font-semibold tracking-[-0.01em] text-bone">Your desk</h2>
-        <Link href={capHref} className={`text-[12px] tnum underline-offset-4 hover:underline ${nearLimit ? "font-semibold text-lime" : "text-mute hover:text-bone"}`}>
+        <Link href={capHref} className={`inline-flex min-h-11 items-center gap-1 text-[12px] tnum underline-offset-4 hover:underline ${nearLimit ? "font-semibold text-lime" : "text-mute hover:text-bone"}`}>
           <strong className={`text-[16px] font-semibold ${nearLimit ? "" : "text-bone"}`}>{cap.used.toLocaleString("en-GB")}</strong> of {cap.limit.toLocaleString("en-GB")} tracks
         </Link>
       </div>
