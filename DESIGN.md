@@ -203,7 +203,31 @@ Flat by default, layered by tone. Surfaces step from Booth Black (page) to Booth
 - **Tactile panel** (`box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 2px 4px rgb(0 0 0 / 0.5), 0 14px 30px -6px rgb(0 0 0 / 0.75)`): the navigation rail and floating tab bar only.
 
 ### Named Rules
-**The Floaters Only Rule.** Page cards have borders, not shadows. If it doesn't float above the page, it doesn't cast a shadow.
+**The Floaters Only Rule.** Page cards have borders, not shadows. If it doesn't float above the page, it doesn't cast a shadow. Exception: plates (below, the glass pass) carry their own soft lift.
+
+### Materials: the glass pass (owner, 3 Nov; page 1: the Floor)
+The desk now wears the ops console's direction-B look, page by page, so the two feel like one product. The materials
+live once in `src/app/globals.css` ("Shared materials") and ops reads the same tokens (`kit.css`, `admin.css`), so ops
+looks exactly as before.
+- **Canvas** (`.desk-canvas`, ops `.admin-canvas`): violet and lime light falling from the top and a fine grain over
+  the ink (`--canvas-light`, `--grain`, `--grain-opacity`). A static layer behind the page, reaching up under the top bar;
+  the grain fades out at the bottom. More contrast drops it.
+- **Plate** (`.plate`, ops `.admin-panel`): solid sections. A hairline ring, light on the top edge, a soft lift; 22px
+  corners, tiles inside take concentric corners (14–16px). Day: white with a line ring. Plates never blur, so a long
+  page scrolls as cheaply as before.
+- **Glass** (`.glass`, ops `.kit-glass`): the heavy material, `blur(22px) saturate(170%)` over an 86% fill with a lit top
+  edge. Only on fixed or floating chrome: the phone top bar, the phone tab bar, and in ops the top bar, phone bar, ⌘K,
+  toasts and bulk bar. Never on a plate, a list, a row or another glass layer.
+- **Fallbacks:** no `backdrop-filter` support and `prefers-reduced-transparency: reduce` give the solid fill
+  (`--glass-solid`); `prefers-contrast: more` gives solid glass and plates with a `line-2` edge and no canvas;
+  `prefers-reduced-motion` keeps fades and drops the press scale.
+- **Press** (`.press`, ops `.kit-press`): scale 0.97 on pointer-down with no easing, the release eases back over 160ms on
+  the iOS drawer curve. Links that act like buttons on a glass-pass page carry it.
+- **Type:** the Floor greeting 26px (30px from 640px), section titles 16px; headings track at -0.02em / -0.01em, a little
+  softer than before.
+- **Not here:** glass on cards, long lists or every row (it costs frames on cheap phones and shows nothing over a plain
+  page); a second accent (violet stays for comparison and secondary data); new shadows on anything that isn't a plate,
+  a floater or chrome.
 
 **The No Nesting Rule.** A card never holds another card.
 
