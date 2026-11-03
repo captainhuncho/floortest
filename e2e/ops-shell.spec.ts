@@ -117,6 +117,13 @@ test("ops shell: off is today's navigation; on, the rail and panel reach every p
       await expect(panel).toBeVisible();
       await expect(panel.getByRole("heading", { name: "Support" })).toBeVisible();
       await expect(support).toHaveAttribute("aria-pressed", "true");
+      await expect(support.locator(".ops-tip"), "the panel names the area, so its tip doesn't cover the first row").toBeHidden();
+      // Another area's tip still shows on keyboard focus.
+      await support.focus();
+      await page.keyboard.press("Tab");
+      const trust = rail(page).getByRole("button", { name: /^Trust & safety/ });
+      await expect(trust).toBeFocused();
+      await expect(trust.locator(".ops-tip")).toBeVisible();
       expect(await page.evaluate(() => document.activeElement?.closest("#ops-panel") === null), "hover never moves focus into the panel").toBe(true);
       // Across from the icon into the panel: it stays open.
       const box = (await panel.boundingBox())!;

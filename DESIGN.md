@@ -279,7 +279,7 @@ night follow the theme.
 - **Hover (owner, 3 Nov: "the menu in ops should respond to the mouse hover"):** with a mouse (`(hover: hover) and
   (pointer: fine)`), resting 150ms on an area shows its panel (over the page, no dim, focus stays put; docked, the panel
   switches to it); leaving the icon and the panel for 300ms puts it back, Esc too. A click pins it as before; touch,
-  taps and keys are unchanged.
+  taps and keys are unchanged. While the panel shows an area, that area's name tip stays hidden (the panel names it).
 - **Rail:** solid ink-2, 44px icon buttons with 13px corners, the current area on ink-4 with a lime icon, a lime count
   badge (dark text) on areas with something waiting, the name as a tip on hover and focus. ⌘K and the initials at the
   bottom; the initials open a small glass card with name, role and Sign out.
