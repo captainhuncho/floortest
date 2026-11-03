@@ -92,7 +92,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
       {
         text: `Your link is paused${user.pause_until ? ` until ${fmtDay(user.pause_until)}` : ""}. Turn it back on in Account when you're ready.`,
         action: user.role === "member" ? undefined : (
-          <Link href="/dashboard/account" className={GHOST}>
+          <Link href="/dashboard/account" className={`${GHOST} press`}>
             Open Account
           </Link>
         ),
@@ -105,7 +105,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
           action: user.role === "member" ? undefined : openAlternative ? (
             <SwitchCollection id={openAlternative.id} name={openAlternative.name} />
           ) : (
-            <Link href="/dashboard/collections" className={LIME_SM}>
+            <Link href="/dashboard/collections" className={`${LIME_SM} press`}>
               {canAdd ? "New collection" : "Open Collections"}
             </Link>
           ),
@@ -117,10 +117,10 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
             text: `Your desk holds ${cap.limit.toLocaleString("en-GB")} active tracks and it's full, so your link has stopped taking new ones. Download what you need from Prepare, then delete tracks you're done with in the Review Queue to make room.`,
             action: (
               <span className="flex flex-wrap gap-2">
-                <Link href="/dashboard/prepare" className={LIME_SM}>
+                <Link href="/dashboard/prepare" className={`${LIME_SM} press`}>
                   Open Prepare
                 </Link>
-                <Link href="/dashboard/plans" className={GHOST}>
+                <Link href="/dashboard/plans" className={`${GHOST} press`}>
                   See plans
                 </Link>
               </span>
@@ -132,15 +132,16 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   const keptDelta = stats.keptWeek - stats.keptPrev;
   const tiles = (
     <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
-      <StatTile icon="inbox" label="Waiting" value={String(stats.waiting)} chip={stale > 0 ? <Chip tone="warn">{stale} over {STALE_DAYS} days</Chip> : undefined} />
+      <StatTile plate icon="inbox" label="Waiting" value={String(stats.waiting)} chip={stale > 0 ? <Chip tone="warn">{stale} over {STALE_DAYS} days</Chip> : undefined} />
       <StatTile
+        plate
         icon="heart"
         label="Kept this week"
         value={String(stats.keptWeek)}
         chip={keptDelta > 0 ? <Chip tone="up"><FloorIcon name="up" className="size-3" />{keptDelta}</Chip> : keptDelta < 0 ? <Chip>−{Math.abs(keptDelta)}</Chip> : undefined}
       />
-      <StatTile icon="head" label="First listen" value={stats.medianListenMs !== null ? waitShort(stats.medianListenMs) : "–"} chip={<Chip>{stats.medianListenMs !== null ? "usual" : "no plays yet"}</Chip>} />
-      <StatTile icon="check" label="Decided" value={stats.decisionRate !== null ? `${stats.decisionRate}%` : "–"} chip={<Chip>30 days</Chip>} />
+      <StatTile plate icon="head" label="First listen" value={stats.medianListenMs !== null ? waitShort(stats.medianListenMs) : "–"} chip={<Chip>{stats.medianListenMs !== null ? "usual" : "no plays yet"}</Chip>} />
+      <StatTile plate icon="check" label="Decided" value={stats.decisionRate !== null ? `${stats.decisionRate}%` : "–"} chip={<Chip>30 days</Chip>} />
     </div>
   );
 
@@ -175,8 +176,8 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
 
   // A new desk's link, on its own above the checklist.
   const linkSection = (
-    <section aria-labelledby="link-h" className="flex flex-col gap-2.5 rounded-[18px] border border-line bg-card p-3 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
-      <h2 id="link-h" className="text-[15px] font-semibold text-bone">Your link</h2>
+    <section aria-labelledby="link-h" className="flex flex-col gap-2.5 plate p-3 sm:p-4">
+      <h2 id="link-h" className="text-[16px] font-semibold tracking-[-0.01em] text-bone">Your link</h2>
       <p className="text-[11.5px] text-mute">{linkWhere.replace(/^Your link · sends to/, "Sends tracks to").replace(/^Your link · n/, "N")}</p>
       <LinkRow link={link} />
     </section>
@@ -184,9 +185,9 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
 
   // The desk card (the mock's "Your desk"): how full it is as ticks, what needs you, its figures and the link.
   const deskCard = !fresh && (
-    <section aria-labelledby="desk-h" className="flex flex-col gap-3 rounded-[18px] border border-line bg-card p-3 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
+    <section aria-labelledby="desk-h" className="flex flex-col gap-3 plate p-3 sm:p-4">
       <div className="flex items-baseline justify-between gap-3">
-        <h2 id="desk-h" className="text-[15px] font-semibold text-bone">Your desk</h2>
+        <h2 id="desk-h" className="text-[16px] font-semibold tracking-[-0.01em] text-bone">Your desk</h2>
         <Link href={capHref} className={`text-[12px] tnum underline-offset-4 hover:underline ${nearLimit ? "font-semibold text-lime" : "text-mute hover:text-bone"}`}>
           <strong className={`text-[16px] font-semibold ${nearLimit ? "" : "text-bone"}`}>{cap.used.toLocaleString("en-GB")}</strong> of {cap.limit.toLocaleString("en-GB")} tracks
         </Link>
@@ -206,7 +207,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
             <li key={d.key}>
               <Link
                 href={d.href}
-                className={`group flex min-h-11 items-center gap-2 rounded-[11px] border px-2.5 text-[12.5px] ${d.urgent ? "border-lime/40 font-semibold text-lime" : "border-line bg-well text-mute hover:text-bone"}`}
+                className={`group press flex min-h-11 items-center gap-2 rounded-[14px] border px-2.5 text-[12.5px] ${d.urgent ? "border-lime/40 font-semibold text-lime" : "border-line bg-well text-mute hover:text-bone"}`}
               >
                 {d.urgent && <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-lime" />}
                 <span className="min-w-0 flex-1">{d.text}</span>
@@ -217,15 +218,15 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
         </ul>
       )}
       <div className="grid grid-cols-3 border-y border-dashed border-line-2 py-1.5 text-center">
-        <Link href="/dashboard/collections" className="flex min-h-11 flex-col items-center justify-center rounded-[10px] hover:bg-well">
+        <Link href="/dashboard/collections" className="press flex min-h-11 flex-col items-center justify-center rounded-[14px] hover:bg-well">
           <span className="text-[11.5px] text-mute">Collections</span>
           <span className="text-[14px] font-semibold text-bone tnum">{collections.length}</span>
         </Link>
-        <Link href="/dashboard/contacts" className="flex min-h-11 flex-col items-center justify-center rounded-[10px] hover:bg-well">
+        <Link href="/dashboard/contacts" className="press flex min-h-11 flex-col items-center justify-center rounded-[14px] hover:bg-well">
           <span className="text-[11.5px] text-mute">Contacts</span>
           <span className="text-[14px] font-semibold text-bone tnum">{contactCount}</span>
         </Link>
-        <Link href="/dashboard/plans" className="flex min-h-11 flex-col items-center justify-center rounded-[10px] hover:bg-well">
+        <Link href="/dashboard/plans" className="press flex min-h-11 flex-col items-center justify-center rounded-[14px] hover:bg-well">
           <span className="text-[11.5px] text-mute">Plan</span>
           <span className="text-[14px] font-semibold text-bone">{plan.name}</span>
         </Link>
@@ -241,9 +242,9 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   const week = stats.daily.slice(-7);
   const receivedDelta = stats.receivedWeek - stats.receivedPrev;
   const weekCard = !fresh && stats.receivedWeek + stats.receivedPrev + stats.keptWeek > 0 && (
-    <section aria-labelledby="week-h" className="flex flex-col gap-3 rounded-[18px] border border-line bg-card p-3 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
+    <section aria-labelledby="week-h" className="flex flex-col gap-3 plate p-3 sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="week-h" className="text-[15px] font-semibold text-bone">This week</h2>
+        <h2 id="week-h" className="text-[16px] font-semibold tracking-[-0.01em] text-bone">This week</h2>
         <Chip tone={receivedDelta > 0 ? "up" : "flat"}>
           {stats.receivedWeek} received · {receivedDelta === 0 ? "same as last week" : receivedDelta > 0 ? `${receivedDelta} more` : `${-receivedDelta} fewer`}
         </Chip>
@@ -260,16 +261,18 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
       setting up, what's ready for a set) and the desk on the right (how full it is, the link, the week, sending).
       What needs you stays on top at every width: the tiles, the one lime button, anything wrong.
     */}
-    <div className="page-gutter py-4 sm:py-7">
+    <div className="page-gutter relative isolate py-4 sm:py-7">
+      {/* The ops canvas (light from the top, fine grain) behind the Floor: glass pass page 1, owner 3 Nov. */}
+      <div aria-hidden className="desk-canvas" />
       <div className="mx-auto flex w-full max-w-3xl min-w-0 flex-col gap-4 sm:gap-5 xl:max-w-6xl">
         {sp.desk === "ended" && (
-          <p role="alert" className="rounded-[13px] border border-danger/40 bg-danger/10 px-4 py-3 text-[13px] text-bone">
+          <p role="alert" className="rounded-[16px] border border-danger/40 bg-danger/10 px-4 py-3 text-[13px] text-bone">
             You don&apos;t have access to that team&apos;s desk any more, so nothing was changed. This is your own desk.
           </p>
         )}
         <header className="flex min-w-0 flex-col gap-1">
           <p className="text-[12px] text-mute">{today}</p>
-          <h1 className="text-[22px] font-semibold leading-tight tracking-[-0.025em] text-bone sm:text-[26px]">
+          <h1 className="text-[26px] font-semibold leading-[1.1] tracking-[-0.02em] text-bone sm:text-[30px]">
             {welcome ? `Welcome, ${first}.` : `${greeting}, ${first}`}
           </h1>
           {welcome && <p className="max-w-[46ch] text-[14px] leading-snug text-mute">Your link is ready. Share it and the first track lands here.</p>}
@@ -281,7 +284,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
         </header>
 
         {problem && (
-          <div role="alert" className="flex flex-wrap items-center gap-x-3 gap-y-2.5 rounded-[14px] border border-danger/40 bg-danger/10 px-3.5 py-3">
+          <div role="alert" className="flex flex-wrap items-center gap-x-3 gap-y-2.5 rounded-[16px] border border-danger/40 bg-danger/10 px-3.5 py-3">
             <span aria-hidden className="size-2 shrink-0 rounded-full bg-danger" />
             <p className="min-w-[12rem] flex-1 text-[13px] font-medium leading-snug text-bone">{problem.text}</p>
             {problem.action}
@@ -298,20 +301,20 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
         <div className="grid grid-cols-1 gap-4 sm:gap-5 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
           <div className="flex min-w-0 flex-col gap-4 sm:gap-5">
             {oldest && (
-              <section aria-labelledby="next-h" className="flex flex-col gap-3 rounded-[18px] border border-line bg-card p-3 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
+              <section aria-labelledby="next-h" className="flex flex-col gap-3 plate p-3 sm:p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <IconBox name="wave" small />
-                    <h2 id="next-h" className="text-[15px] font-semibold text-bone">Up next</h2>
+                    <h2 id="next-h" className="text-[16px] font-semibold tracking-[-0.01em] text-bone">Up next</h2>
                   </div>
-                  <Link href="/dashboard/review?view=queue" className={GHOST}>
+                  <Link href="/dashboard/review?view=queue" className={`${GHOST} press`}>
                     {stats.waiting > 1 ? <span className="tnum">All {stats.waiting}</span> : "Open the queue"}
                     <FloorIcon name="chev" className="size-3.5" />
                   </Link>
                 </div>
                 <div className="min-w-0">
                   <p className="text-[11.5px] text-mute">{stats.waiting > 1 ? "Oldest waiting" : "Waiting"}</p>
-                  <p className="mt-0.5 truncate text-[20px] font-semibold leading-tight tracking-[-0.03em] text-bone">{oldest.title}</p>
+                  <p className="mt-0.5 truncate text-[20px] font-semibold leading-tight tracking-[-0.02em] text-bone">{oldest.title}</p>
                   <p className="truncate text-[13px] text-mute">{oldest.artist}</p>
                 </div>
                 <UpNextHero track={oldest} queue={upNext} />
@@ -330,7 +333,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
                 </dl>
                 <Link
                   href="/dashboard/review?view=queue"
-                  className="btn-lime min-h-12 w-full px-6 text-[15px]! transition-transform duration-100 active:scale-[0.97] motion-reduce:active:scale-100"
+                  className="btn-lime press min-h-12 w-full rounded-[16px]! px-6 text-[15px]!"
                 >
                   {stats.waiting === 1 ? "Listen now" : "Start with the oldest"}
                 </Link>
@@ -349,7 +352,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
             {user.role !== "member" && <Onboarding user={user} />}
 
             {kept > 0 && (
-              <section aria-labelledby="set-h" className="flex items-center justify-between gap-4 rounded-[18px] border border-line bg-card p-3 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
+              <section aria-labelledby="set-h" className="flex items-center justify-between gap-4 plate p-3 sm:p-4">
                 <div className="flex min-w-0 items-center gap-2.5">
                   <IconBox name="heart" />
                   <div className="min-w-0">
@@ -363,7 +366,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
                     </p>
                   </div>
                 </div>
-                <Link href="/dashboard/prepare" className={GHOST}>
+                <Link href="/dashboard/prepare" className={`${GHOST} press`}>
                   Prepare
                 </Link>
               </section>
@@ -376,7 +379,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
               {weekCard}
               {/* On a team desk, Members can't send as the account; in the beta nobody sends from here (switch send_music). */}
               {canSend && (
-                <div className="overflow-hidden rounded-[18px] border border-line bg-card shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
+                <div className="plate overflow-hidden">
                   <SendMusicCard recent={recentSends} host={APP_URL.replace(/^https?:\/\//, "")} />
                 </div>
               )}

@@ -8,56 +8,28 @@
   --kit-dur: 220ms;
   --kit-tap: 44px;
   --kit-focus: var(--color-lime);
-  --kit-glass-fill: color-mix(in srgb, var(--color-ink-2) 86%, transparent);
-  --kit-glass-solid: var(--color-ink-3);
-  --kit-glass-edge: color-mix(in srgb, var(--color-bone) 14%, transparent);
-  --kit-glass-lit: color-mix(in srgb, var(--color-bone) 6%, transparent);
-  --kit-shadow: 0 18px 48px rgb(0 0 0 / 0.45), 0 2px 8px rgb(0 0 0 / 0.3);
+  /* The glass tokens and the .kit-glass layer itself are shared with the desk now (globals.css, "Shared materials"). */
+  --kit-glass-fill: var(--glass-fill);
+  --kit-glass-solid: var(--glass-solid);
+  --kit-glass-edge: var(--glass-edge);
+  --kit-glass-lit: var(--glass-lit);
+  --kit-shadow: var(--glass-shadow);
   --kit-danger-t: #ff7a6b;
 }
 #theme-root.theme-day {
-  --kit-glass-fill: color-mix(in srgb, #ffffff 86%, transparent);
-  --kit-glass-solid: #ffffff;
-  --kit-glass-edge: rgb(22 23 20 / 0.12);
-  --kit-glass-lit: rgb(255 255 255 / 0.7);
-  --kit-shadow: 0 18px 48px rgb(16 17 15 / 0.16), 0 2px 8px rgb(16 17 15 / 0.08);
   --kit-danger-t: #b42318;
 }
 @media (prefers-color-scheme: light) {
   #theme-root.theme-system {
-    --kit-glass-fill: color-mix(in srgb, #ffffff 86%, transparent);
-    --kit-glass-solid: #ffffff;
-    --kit-glass-edge: rgb(22 23 20 / 0.12);
-    --kit-glass-lit: rgb(255 255 255 / 0.7);
-    --kit-shadow: 0 18px 48px rgb(16 17 15 / 0.16), 0 2px 8px rgb(16 17 15 / 0.08);
     --kit-danger-t: #b42318;
   }
 }
 
-/* ---------- Glass: floating layers only ---------- */
-.kit-glass {
-  background: var(--kit-glass-fill);
-  -webkit-backdrop-filter: blur(22px) saturate(170%);
-  backdrop-filter: blur(22px) saturate(170%);
-  border: 1px solid var(--kit-glass-edge);
-  box-shadow: inset 0 1px 0 var(--kit-glass-lit), var(--kit-shadow);
-}
+/* ---------- Glass: floating layers only (.kit-glass lives in globals.css) ---------- */
 .kit-floating:not(.kit-glass) {
   background: var(--kit-glass-solid);
   border: 1px solid var(--kit-glass-edge);
   box-shadow: var(--kit-shadow);
-}
-@media (prefers-reduced-transparency: reduce) {
-  .kit-glass {
-    -webkit-backdrop-filter: none !important;
-    backdrop-filter: none !important;
-    background: var(--kit-glass-solid) !important;
-  }
-}
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .kit-glass {
-    background: var(--kit-glass-solid);
-  }
 }
 kbd.kit-kbd {
   font: 500 12px/1 var(--font-mono, ui-monospace, monospace);
@@ -75,17 +47,7 @@ kbd.kit-kbd {
   align-items: flex-start;
   max-width: 100%;
 }
-.kit-press {
-  transition: transform 160ms var(--kit-ease), background-color 150ms, color 150ms;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
-/* A press answers at once: no easing on the way down. [data-pressed] is set straight on pointerdown (OpsButton.tsx),
-   so the press shows even where :active is late or missing (some touch browsers); the release eases back. */
-.kit-press:is(:active, [data-pressed]):not([aria-disabled="true"]) {
-  transform: scale(0.97);
-  transition-duration: 0s;
-}
+/* .kit-press and its pressed look live in globals.css (shared with the desk as .press). */
 .kit-press[aria-disabled="true"] {
   cursor: default;
 }

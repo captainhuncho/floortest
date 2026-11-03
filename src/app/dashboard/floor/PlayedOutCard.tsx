@@ -9,9 +9,9 @@ export function PlayedOutCard({ titles }: { titles: string[] }) {
   const [pending, start] = useTransition();
   const n = titles.length;
   return (
-    <section aria-labelledby="po-h" className="flex flex-col gap-3.5 rounded-2xl border border-line-2 bg-ink-2 p-5">
+    <section aria-labelledby="po-h" className="flex flex-col gap-3.5 plate p-5">
       <p className="text-[11.5px] text-mute">After the weekend</p>
-      <h2 id="po-h" className="text-[22px] font-bold leading-tight tracking-[-0.4px] text-bone">Did any of these get played?</h2>
+      <h2 id="po-h" className="text-[22px] font-bold leading-tight tracking-[-0.02em] text-bone">Did any of these get played?</h2>
       <p className="text-[13px] text-mute">
         {n} track{n === 1 ? "" : "s"} you kept last week
         {n <= 3 ? `: ${titles.join(", ")}` : `, starting with ${titles.slice(0, 2).join(", ")}`}. Tick the ones you played and each sender sees Played out.

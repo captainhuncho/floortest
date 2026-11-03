@@ -104,9 +104,11 @@ export function SectionHead({ id, icon, title, aside }: { id?: string; icon?: Ic
 }
 
 /** One number with its label: the label says what it counts, the chip its scope or change. */
-export function StatTile({ icon, label, value, chip }: { icon: IconName; label: string; value: string; chip?: React.ReactNode }) {
+export function StatTile({ icon, label, value, chip, plate }: { icon: IconName; label: string; value: string; chip?: React.ReactNode; plate?: boolean }) {
+  // plate: the shared plate material (globals.css), for pages done in the glass pass (the Floor so far).
+  const surface = plate ? "plate p-2.5 sm:p-3" : "rounded-2xl border border-line bg-card p-2.5 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]";
   return (
-    <div className="flex min-w-0 items-center gap-2.5 rounded-2xl border border-line bg-card p-2.5 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
+    <div className={`flex min-w-0 items-center gap-2.5 ${surface}`}>
       <IconBox name={icon} />
       <dl className="min-w-0">
         <dt className="truncate text-[11.5px] text-mute">{label}</dt>

@@ -62,12 +62,13 @@ export function MobileTabBar({ needsReview }: { needsReview: number }) {
           key={t.href}
           href={t.href}
           aria-current={t.active ? "page" : undefined}
-          // Separate floating pills (owner, 30 Oct mock): frosted, equal width, the label in sentence case under the icon.
-          className={`relative flex h-[54px] flex-1 flex-col items-center justify-center gap-[3px] whitespace-nowrap rounded-[27px] border text-[10.5px] font-semibold shadow-[0_10px_26px_-14px_rgba(0,0,0,0.45)] backdrop-blur-xl backdrop-saturate-150 transition duration-100 active:scale-95 motion-reduce:active:scale-100 ${
+          // Separate floating pills (owner, 30 Oct mock), in the shared glass (glass pass, 3 Nov): equal width, the label in
+          // sentence case under the icon; the press answers on pointer-down.
+          className={`relative flex h-[54px] flex-1 flex-col items-center justify-center gap-[3px] whitespace-nowrap glass press rounded-[27px] text-[10.5px] font-semibold ${
             t.active
               ? // Soft lime, so the page's one lime button stays the loudest thing on screen.
                 "border-lime/40 bg-[color-mix(in_oklab,var(--color-lime)_16%,var(--color-ink-2))] text-lime"
-              : "border-line bg-card/80 text-mute"
+              : "text-mute"
           }`}
         >
           <Icon name={t.icon} />
