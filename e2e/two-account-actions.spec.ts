@@ -192,7 +192,11 @@ test("team actions with another account's member, invite and held-reply ids answ
 });
 
 test("a stem opens only under its own track, even on the same desk", async ({ page, request }) => {
-  const tracks = await queueOf(request, await appLogin(request, "demo@floortest.test"));
+  // Every track in Maxwell's collections, decided or not (earlier specs decide some of the queue).
+  const max = await appLogin(request, "demo@floortest.test");
+  const collections = (await (await request.get("/api/v1/collections", { headers: max })).json()).collections as { id: number }[];
+  const tracks: { id: number; title: string }[] = [];
+  for (const c of collections) tracks.push(...(await (await request.get(`/api/v1/collections/${c.id}`, { headers: max })).json()).tracks);
   const low = tracks.find((t) => t.title === "Low Orbit");
   const other = tracks.find((t) => t.title !== "Low Orbit");
   expect(low && other).toBeTruthy();
