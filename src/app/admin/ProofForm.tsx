@@ -71,7 +71,9 @@ export function ProofForm({
       form.reset();
       setFiles([]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Try again.");
+      // A fixed message: an error's own words can carry server detail (Safety, 4 Nov).
+      void err;
+      setError("Something went wrong. Try again.");
     } finally {
       setBusy(null);
     }
