@@ -73,6 +73,7 @@ export const SUPER_ONLY = [
   "View as",
   "Users CSV export",
   "Storage file list download",
+  "Site-wide switches, Beta started among them",
 ];
 
 /** "x.act" includes "x.read"; "users.support" includes "users.read"; "verification.direct" and ".approve" include "verification". */

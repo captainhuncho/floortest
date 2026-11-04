@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/admin";
+import { can } from "@/lib/ops-access";
 import { q } from "@/lib/db";
 import { FEATURES, switchFor, type Feature } from "@/lib/features";
 import { allPlans } from "@/lib/plan-store";
@@ -13,7 +14,9 @@ const handlesOf = async (ids: number[]) =>
 
 /** Held-back features, switched on per plan or for named accounts (for testing with a few people first). */
 export default async function Switches() {
-  await requireAdmin("switches");
+  const me = await requireAdmin("switches");
+  // Site-wide switches are the super admin's (flipSwitch, saveSwitchRule need "super"); other staff see them read-only.
+  const owner = can(me.access, "super");
   const plans = await allPlans();
   const list = await Promise.all(
     (Object.keys(FEATURES) as Feature[]).map(async (f) => {
@@ -49,7 +52,9 @@ export default async function Switches() {
               </div>
               <div className="flex items-center gap-3">
                 <span className={`text-[13px] font-semibold ${on ? "text-lime" : "text-faint"}`}>{on ? "On" : "Off"}</span>
+                {!owner && <span className="text-[13px] text-mute">Only the owner can change this</span>}
                 {/* A big switch (pins 17, 18): the track fills lime and the knob slides; it still asks before changing. */}
+                {owner && (
                 <ConfirmButton
                   action={flipSwitch.bind(null, key, !on)}
                   message={`Turn ${on ? "off" : "on"} "${SWITCHES[key].label}"? It takes effect straight away for everyone.`}
@@ -63,8 +68,9 @@ export default async function Switches() {
                     className={`block size-9 rounded-full shadow-[0_2px_6px_rgb(0_0_0/0.35)] transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${on ? "translate-x-8 bg-ink" : "translate-x-0 bg-bone"}`}
                   />
                 </ConfirmButton>
+                )}
               </div>
-              {isTargeted(key) && <RuleForm switchKey={key} rule={rule} reach={reach} handles={handles} plans={plans} planName={planName} />}
+              {isTargeted(key) && <RuleForm switchKey={key} rule={rule} reach={reach} handles={handles} plans={plans} planName={planName} readOnly={!owner} />}
             </li>
           ))}
         </ul>
@@ -107,6 +113,7 @@ function RuleForm({
   handles,
   plans,
   planName,
+  readOnly,
 }: {
   switchKey: SwitchKey;
   rule: SwitchRule | null;
@@ -114,10 +121,17 @@ function RuleForm({
   handles: string[];
   plans: { id: string; name: string }[];
   planName: (id: string) => string;
+  readOnly: boolean;
 }) {
   const summary = rule
     ? `${describeRule(rule, planName)} · ${reach?.covered ?? 0} of ${reach?.total ?? 0} accounts${rule.countries.length ? " at most (country is checked on each visit)" : ""}`
     : "Everyone, when on";
+  if (readOnly)
+    return (
+      <p className="w-full basis-full text-sm">
+        <span className="font-semibold">Who sees it:</span>&nbsp;<span className="text-mute">{summary}</span>
+      </p>
+    );
   return (
     <details className="w-full basis-full rounded-md border border-line">
       <summary className="flex min-h-11 cursor-pointer items-center px-4 text-sm">
