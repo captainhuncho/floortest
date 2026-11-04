@@ -123,7 +123,7 @@ test("playback links handed to the browser or app last 5 minutes at most", async
     "INSERT INTO tracks (user_id, sender_id, title, artist, token, file_key, original_name, mime, size, created_at, art_key) VALUES (?,?,'T','A','tk-link','audio/x.wav','a.wav','audio/wav',1,?,'art/x.png') RETURNING id",
     uid, s, t,
   ))!.id;
-  const me = { id: uid, plan: "pro" };
+  const me = { id: uid, plan: "pro", actor_id: uid };
   for (const action of ["play", "download", "art", "offline"] as const) {
     const g = await fileAccess(me, action, id);
     if (g) assert.ok(g.maxLinkSeconds <= 300, `${action}: ${g.maxLinkSeconds}s`);

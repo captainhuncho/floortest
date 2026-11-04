@@ -1,6 +1,6 @@
 import { appUser } from "@/lib/app-auth";
 import { body, fail, json, unauthorized } from "@/lib/api-v1";
-import { isDecision } from "@/lib/db";
+import { asPerson, isDecision } from "@/lib/db";
 import { ownedTrack } from "@/lib/desk";
 import { allow } from "@/lib/ratelimit";
 import { decide } from "@/lib/review";
@@ -16,6 +16,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/v1/tracks/[id]/
   if (!isDecision(decision)) return fail("Choose kept or passed.", 400);
   const t = await ownedTrack(u, Number((await ctx.params).id));
   if (!t) return fail("Not found", 404);
-  await decide(u, t, decision);
+  // As the person, the same as the website (src/app/dashboard/actions/review.ts), so the per-person rules check it too.
+  await asPerson(u.actor_id, () => decide(u, t, decision));
   return json({ ok: true });
 }
