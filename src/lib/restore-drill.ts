@@ -214,6 +214,9 @@ async function vaultFiles(db: Queryable, { vaultHead }: DrillOptions): Promise<C
   return { name, ok: !missing.length, detail: missing.length ? `${missing.length} of ${keys.length} missing, first: ${missing.slice(0, 3).join(", ")}` : `${keys.length} of ${keys.length} present` };
 }
 
+/** A table cell: backslashes escaped first, then pipes, so a detail ending in "\\" can't break the row (CodeQL 21). */
+export const cell = (s: string) => s.replace(/\\/g, "\\\\").replace(/\|/g, "\\|");
+
 /** The evidence file for docs/evidence/: what was restored, each check, and the recovery times. */
 export function drillEvidence(r: { date: string; backupKey: string; backupAt: string; target: string; checks: Check[]; rtoMs: number; rpoMs: number; commit: string }) {
   const mins = (ms: number) => `${Math.round(ms / 6000) / 10} min`;
@@ -230,7 +233,7 @@ export function drillEvidence(r: { date: string; backupKey: string; backupAt: st
     "",
     "| Check | Result | Detail |",
     "|---|---|---|",
-    ...r.checks.map((c) => `| ${c.name} | ${c.skipped ? "skipped" : c.ok ? "pass" : "**fail**"} | ${c.detail.replace(/\|/g, "\\|")} |`),
+    ...r.checks.map((c) => `| ${c.name} | ${c.skipped ? "skipped" : c.ok ? "pass" : "**fail**"} | ${cell(c.detail)} |`),
     "",
   ].join("\n");
 }
