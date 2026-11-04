@@ -69,6 +69,17 @@ export async function requestStems(user: User, t: Track) {
 export const stemSenderEmail = async (t: Pick<Track, "sender_id">) =>
   t.sender_id ? (await q.get<{ email: string | null }>("SELECT email FROM senders WHERE id = ?", t.sender_id))?.email : null;
 
+/** Whether this upload is a stem started for this track: only startStemUpload makes one, and only while the receipt is open. */
+const stemUploadFor = async (trackId: number, uploadId: string) =>
+  !!(await q.get("SELECT 1 FROM uploads WHERE id = ? AND meta::jsonb->>'kind' = 'stem' AND (meta::jsonb->>'trackId')::bigint = ?", String(uploadId).slice(0, 64), trackId));
+
+/** The same check by receipt token, for the complete route's proof step (src/lib/receipt-proof.ts). */
+export async function stemStartedWhileOpen(token: string, uploadId: string) {
+  const m = receiptWhere(token, "");
+  const t = await q.get<{ id: number }>(`SELECT id FROM tracks WHERE ${m.sql}`, ...m.args);
+  return !!t && (await stemUploadFor(t.id, uploadId));
+}
+
 /**
  * The track a stem is for, by its receipt token (src/lib/receipt-life.ts). A new upload (`start`) needs the receipt
  * open. One started while it was open always finishes (`complete`, from the sender or the held batch; owner, 4 Nov:
@@ -80,10 +91,8 @@ async function trackForStems(token: string, step: "start" | "complete", uploadId
   const m = receiptWhere(token, "");
   const t = await q.get<Track>(`SELECT * FROM tracks WHERE ${m.sql}`, ...m.args);
   const life = t ? receiptLife(t) : "closed";
-  const startedWhileOpen = async () =>
-    !!t && step === "complete" && !!uploadId &&
-    !!(await q.get("SELECT 1 FROM uploads WHERE id = ? AND meta::jsonb->>'kind' = 'stem' AND (meta::jsonb->>'trackId')::bigint = ?", uploadId, t.id));
-  if (!t || (life === "closed" && !(await startedWhileOpen()))) throw new IntakeError("This track is no longer available.", 404);
+  const finishing = !!t && step === "complete" && !!uploadId && (await stemUploadFor(t.id, uploadId));
+  if (!t || (life === "closed" && !finishing)) throw new IntakeError("This track is no longer available.", 404);
   if (!t.stems_requested_at) throw new IntakeError("Stems weren't requested for this track.", 403);
   if (step === "start" && life !== "open") throw new IntakeError("This receipt doesn't take stems any more.", 403);
   const plan = (await q.get<{ plan: string }>("SELECT plan FROM users WHERE id = ?", t.user_id))?.plan ?? "free";

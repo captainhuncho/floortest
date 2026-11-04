@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { currentPerson } from "./auth";
 import { env } from "./env";
 import { receiptByToken, receiptLifeByToken } from "./receipt";
+import { stemStartedWhileOpen } from "./stems";
 import { RECEIPT_COOKIE, RECEIPT_REMEMBER_MS, proves, withSender } from "./receipt-proof-core";
 
 /** What a proof check needs from a receipt: its sender, that sender's current email, and the account they sent from. */
@@ -42,10 +43,14 @@ export const NOT_AVAILABLE = "This track is no longer available.";
 /**
  * True when the receipt behind this token exists, hasn't closed, and this request proves its sender. Its life is read
  * first, so a closed and an unknown token stop at the same point after the same single lookup (Safety, 4 Nov).
+ *
+ * `finishing`: the stem upload being completed. A stem started while the receipt was open finishes even if it has
+ * closed since (owner, 4 Nov), so a closed receipt with that upload goes on to the proof check like an open one.
  */
-export async function senderProvenFor(token: string) {
+export async function senderProvenFor(token: string, finishing?: { stemUpload: string }) {
   const life = await receiptLifeByToken(token);
-  if (!life || life.life === "closed") return false;
+  if (!life) return false;
+  if (life.life === "closed" && !(finishing && (await stemStartedWhileOpen(token, finishing.stemUpload)))) return false;
   const r = await receiptByToken(token);
   return !!r && (await receiptProven(r));
 }

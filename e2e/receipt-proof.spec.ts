@@ -160,6 +160,13 @@ test.describe("receipt details need proof", () => {
     await proven.goto(`/receipt/${closed}`);
     await expect(proven.getByRole("heading", { name: "This receipt has closed" })).toBeVisible();
     await same("stems start, proven", proven.request.post(`/api/stems/${closed}`, start), proven.request.post(`/api/stems/${unknown}`, start));
+    // A stem started while it was open still finishes after the close, for its proven sender only (owner, 4 Nov).
+    const finish = { data: { uploadId: LINKS.closedStemUpload } };
+    await same("finish, no proof", page.request.post(`/api/stems/${closed}/complete`, finish), page.request.post(`/api/stems/${unknown}/complete`, finish));
+    await same("finish, made-up upload", proven.request.post(`/api/stems/${closed}/complete`, { data: { uploadId: "e2eNoSuchUpload" } }), proven.request.post(`/api/stems/${unknown}/complete`, { data: { uploadId: "e2eNoSuchUpload" } }));
+    const landed = await proven.request.post(`/api/stems/${closed}/complete`, finish);
+    expect(landed.status()).toBe(200);
+    expect((await landed.json()).name).toBe("Bass.wav");
     await proven.context().close();
   });
 

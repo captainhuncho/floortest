@@ -15,6 +15,8 @@ export const LINKS = {
   otherReceiptToken: "e2eLinkPagesReceipt02",
   /** The first sender's track from 200 days ago: its receipt has closed (src/lib/receipt-life.ts). */
   closedReceiptToken: "e2eLinkPagesReceipt03",
+  /** A stem upload started for that track while its receipt was open: it may still finish (owner, 4 Nov). */
+  closedStemUpload: "e2eClosedReceiptStemUpload000001",
   sentToken: "e2eLinkPagesSentLinkToken0000001",
   invitee: { email: "invitee.links@floortest.test", masked: "i•••@f•••.test" },
   inviteSecret: "e2eLinkPagesInviteSecret0000001",
