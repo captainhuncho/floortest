@@ -25,20 +25,16 @@ async function setUp(handle: string, token: string | null) {
   return { id, email: `${handle}-s@x.io` };
 }
 
-// Receipt tokens stored hashed (Safety-reviewed design, 2 Nov): the database holds a hash to find the receipt and a
-// sealed copy to rebuild its link. The plain token is still kept this release, so a rollback to the previous build works;
-// these tests also clear it, to show lookups and links don't need it (the next release stops keeping it).
-test("a new receipt token gets a hash and a sealed copy; with the plain one cleared, the link still opens", async () => {
+// Receipt tokens stored hashed (Safety-reviewed design, 2 Nov; plain column cleared by 0127, plan B11): the database
+// holds a hash to find the receipt and a sealed copy to rebuild its link, never the plain token.
+test("a new receipt token is stored only as a hash and a sealed copy; the link still opens", async () => {
   const { q } = await import("../src/lib/db");
   const R = await import("../src/lib/receipt-token");
   const { hashToken } = await import("../src/lib/token-hash");
   const { APP_URL } = await import("../src/lib/mail");
   const { id } = await setUp("rtnew", null);
   const token = R.newReceiptToken();
-  await q.run("UPDATE tracks SET token = ? WHERE id = ?", token, id);
   await q.tx((db) => R.storeReceiptToken(db, id, token));
-  assert.equal((await q.get<{ token: string }>("SELECT token FROM tracks WHERE id = ?", id))!.token, token, "kept this release, for a rollback");
-  await q.run("UPDATE tracks SET token = NULL WHERE id = ?", id); // as the next release will
   const row = (await q.get<{ id: number; token: string | null; token_hash: string; token_sealed: string }>("SELECT id, token, token_hash, token_sealed FROM tracks WHERE id = ?", id))!;
   assert.equal(row.token_hash, hashToken(token));
   assert.ok(!row.token_sealed.includes(token), "the sealed copy doesn't show the token");
@@ -51,39 +47,56 @@ test("a new receipt token gets a hash and a sealed copy; with the plain one clea
   assert.equal(R.receiptPath({ id, token: null, token_sealed: `${row.token_sealed[0] === "x" ? "y" : "x"}${row.token_sealed.slice(1)}` }), "/sent", "a damaged copy falls back too");
   assert.equal(await R.findByReceiptToken(`${token}x`), undefined);
   assert.equal(await R.findByReceiptToken(`${token}${"x".repeat(200)}`), undefined, "overlong input is cut, not matched whole");
-  assert.equal(R.receiptWhere("x".repeat(500)).args[1], "x".repeat(100));
+  assert.deepEqual(R.receiptWhere("x".repeat(500)).args, [hashToken("x".repeat(100))], "only the hash of the cut input");
 });
 
-test("an old row keeps working, is sealed on first read (plain token kept), and the nightly batch seals the rest once", async () => {
+test("an old row without a sealed copy opens by its hash, and the nightly batch seals it once", async () => {
   const { q } = await import("../src/lib/db");
   const R = await import("../src/lib/receipt-token");
   const { receiptByToken } = await import("../src/lib/receipt");
   const { hashToken } = await import("../src/lib/token-hash");
-  const plain = async (id: number) => (await q.get<{ token: string | null; token_hash: string | null; token_sealed: string | null }>("SELECT token, token_hash, token_sealed FROM tracks WHERE id = ?", id))!;
+  const read = async (id: number) => (await q.get<{ token: string | null; token_hash: string | null; token_sealed: string | null }>("SELECT token, token_hash, token_sealed FROM tracks WHERE id = ?", id))!;
 
   // Migration 0126 fills token_hash in SQL: it must be the same hash the app looks up with.
   const inSql = (await q.get<{ h: string }>("SELECT encode(sha256(convert_to(?, 'UTF8')), 'hex') AS h", "old-token-aaaa"))!.h;
   assert.equal(inSql, hashToken("old-token-aaaa"));
-  // Before migration 0126 a row had only the plain token: found by it, then sealed when the receipt is opened.
   const old = await setUp("rtold", "old-token-aaaa");
-  await q.run("UPDATE tracks SET token_hash = NULL WHERE id = ?", old.id);
-  assert.ok(await receiptByToken("old-token-aaaa"), "the old link opens");
-  const after = await plain(old.id);
-  assert.equal(after.token, "old-token-aaaa", "the plain token stays this release, for a rollback");
-  assert.equal(after.token_hash, hashToken("old-token-aaaa"));
-  assert.equal(R.openReceiptToken(after.token_sealed!, old.id), "old-token-aaaa");
-  assert.ok(await receiptByToken("old-token-aaaa"), "and still opens after sealing");
+  await q.run("UPDATE tracks SET token_hash = ? WHERE id = ?", inSql, old.id);
+  assert.ok(await receiptByToken("old-token-aaaa"), "found by its hash");
+  assert.equal((await read(old.id)).token_sealed, null, "opening it changes nothing");
 
-  // The batch, twice at once: every row sealed, none left with neither, the count reaches zero.
+  // The batch, twice at once: each row sealed once, nothing removed, the count reaches zero.
   const many = await Promise.all(["b1", "b2", "b3"].map((n, i) => setUp(`rtbatch${i}`, `batch-token-${n}`)));
   const [a, b] = await Promise.all([R.sealOldReceipts(), R.sealOldReceipts()]);
-  assert.equal(a.receiptsSealed + b.receiptsSealed, 3, "each row sealed once");
+  assert.equal(a.receiptsSealed + b.receiptsSealed, 4, "each unsealed row (three plus the old one) sealed once");
   assert.equal((await R.sealOldReceipts()).receiptsUnsealedLeft, 0);
-  for (const m of many) {
-    const r = await plain(m.id);
-    assert.ok(r.token && r.token_hash && r.token_sealed, "hash and sealed copy added, nothing removed");
+  for (const m of [old, ...many]) {
+    const r = await read(m.id);
+    assert.ok(r.token_hash && r.token_sealed, "hash and sealed copy");
+    assert.equal(R.openReceiptToken(r.token_sealed!, m.id), r.token);
   }
   assert.equal((await R.sealOldReceipts()).receiptsSealed, 0, "a sealed row isn't sealed again");
+});
+
+test("migration 0127 clears the plain token only where the hash and sealed copy are both there and match", async () => {
+  const { q } = await import("../src/lib/db");
+  const R = await import("../src/lib/receipt-token");
+  const { hashToken } = await import("../src/lib/token-hash");
+  const { MIGRATIONS } = await import("../src/lib/db/migrations");
+  const clear = MIGRATIONS.find((m) => m.id === "0127_receipt_token_clear")!;
+  const sealed = await setUp("rtclear1", "clear-token-1");
+  await q.run("UPDATE tracks SET token_hash = ?, token_sealed = ? WHERE id = ?", hashToken("clear-token-1"), R.sealReceiptToken("clear-token-1", sealed.id), sealed.id);
+  const unsealed = await setUp("rtclear2", "clear-token-2");
+  await q.run("UPDATE tracks SET token_hash = ? WHERE id = ?", hashToken("clear-token-2"), unsealed.id);
+  const standIn = await setUp("rtclear3", "restored-abc");
+  await q.run("UPDATE tracks SET token_hash = ?, token_sealed = ? WHERE id = ?", hashToken("real-3"), R.sealReceiptToken("real-3", standIn.id), standIn.id);
+  await q.run(clear.sql);
+  const token = async (id: number) => (await q.get<{ token: string | null }>("SELECT token FROM tracks WHERE id = ?", id))!.token;
+  assert.equal(await token(sealed.id), null, "cleared: its sealed copy rebuilds the link");
+  assert.equal(await token(unsealed.id), "clear-token-2", "kept: no sealed copy yet");
+  assert.equal(await token(standIn.id), "restored-abc", "kept: not the real token, so not the one to clear");
+  assert.deepEqual(await R.findByReceiptToken("clear-token-1"), { id: sealed.id }, "the link still opens");
+  assert.equal(R.receiptPath({ id: sealed.id, token_sealed: (await q.get<{ s: string }>("SELECT token_sealed AS s FROM tracks WHERE id = ?", sealed.id))!.s }), "/receipt/clear-token-1");
 });
 
 test("after a backup restore, the sealer never rewrites a receipt's hash, so its link keeps opening", async () => {
@@ -107,7 +120,7 @@ test("after a backup restore, the sealer never rewrites a receipt's hash, so its
   const full = (await q.get<{ id: number; token: string; token_hash: string; token_sealed: string | null }>("SELECT id, token, token_hash, token_sealed FROM tracks WHERE id = ?", id))!;
   assert.equal(R.receiptToken(full), null);
   assert.ok(R.receiptUrl(full).endsWith("/sent"), "not /receipt/restored-…");
-  // Opening the receipt (the first-read path) doesn't rewrite it either.
+  // Opening the receipt doesn't rewrite it either.
   const { receiptByToken } = await import("../src/lib/receipt");
   assert.ok(await receiptByToken("real-receipt-token-1"));
   assert.equal((await q.get<{ token_hash: string }>("SELECT token_hash FROM tracks WHERE id = ?", id))!.token_hash, realHash);
@@ -132,7 +145,7 @@ test("stored email copies hide the receipt link; erasing a sender removes the ha
   assert.equal(await q.get("SELECT 1 FROM tracks WHERE id = ? OR token_hash = ?", id, (await import("../src/lib/token-hash")).hashToken(token)), undefined);
 });
 
-test("nothing outside src/lib/receipt-token.ts looks up a receipt token or builds a receipt link by hand", () => {
+test("nothing outside src/lib/receipt-token.ts looks up a receipt token, reads the plain one or builds a receipt link by hand", () => {
   const files: string[] = [];
   const walk = (dir: string) => {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -147,6 +160,6 @@ test("nothing outside src/lib/receipt-token.ts looks up a receipt token or build
   const allowed = [/src\/lib\/receipt-token\.ts$/, /src\/app\/\[handle\]\/SubmitForm\.tsx$/, /src\/app\/receipt\/\[token\]\//];
   const bad = files
     .filter((f) => !allowed.some((a) => a.test(f)))
-    .filter((f) => /\/receipt\/\$\{|\bt\.token(_hash)? = \?|tracks WHERE token(_hash)? = \?|UPDATE tracks SET[^`"]*WHERE token(_hash)? = \?/.test(fs.readFileSync(f, "utf8")));
+    .filter((f) => /\/receipt\/\$\{|\bt\.token(_hash)? = \?|tracks WHERE token(_hash)? = \?|UPDATE tracks SET[^`"]*WHERE token(_hash)? = \?|\bt\.token\b(?!_)|UPDATE tracks[^`"]*RETURNING[^`"]*\btoken,/.test(fs.readFileSync(f, "utf8")));
   assert.deepEqual(bad.map((f) => path.relative(path.join(__dirname, ".."), f)), [], "go through receiptWhere / receiptUrl / receiptPath");
 });

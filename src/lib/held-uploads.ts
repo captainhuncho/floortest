@@ -45,8 +45,8 @@ async function describe(up: Held, receiver: Pick<User, "handle">) {
   const meta = JSON.parse(up.meta) as Partial<SubmissionMeta> & StemMeta;
   if (meta.kind !== "stem")
     return { kind: "track" as const, meta, label: meta.title ?? "your track", email: meta.email, resend: `${APP_URL}/${receiver.handle}`, token: null };
-  const t = await q.get<{ id: number; token: string | null; token_hash: string | null; token_sealed: string | null; email: string | null }>(
-    "SELECT t.id, t.token, t.token_hash, t.token_sealed, s.email FROM tracks t LEFT JOIN senders s ON s.id = t.sender_id WHERE t.id = ?",
+  const t = await q.get<{ id: number; token_sealed: string | null; email: string | null }>(
+    "SELECT t.id, t.token_sealed, s.email FROM tracks t LEFT JOIN senders s ON s.id = t.sender_id WHERE t.id = ?",
     meta.trackId ?? 0,
   );
   return { kind: "stem" as const, meta, label: meta.name ?? "your stem", email: t?.email ?? undefined, resend: t ? receiptUrl(t) : null, token: t ? receiptToken(t) : null };

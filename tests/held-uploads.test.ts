@@ -244,7 +244,12 @@ test("hold and scan for stems: a stem sent while the scanner sleeps is held, the
     "INSERT INTO tracks (user_id, sender_id, title, artist, token, file_key, original_name, mime, size, created_at, stems_requested_at) VALUES (?,?,'T','A','stem-track','audio/x.wav','x.wav','audio/wav',1,?,?)",
     uid, sender, t, t,
   );
+  // Since migration 0126 every track has its hash: rows made here get it as the migration gave old ones.
+  await q.run("UPDATE tracks SET token_hash = encode(sha256(convert_to(token, 'UTF8')), 'hex') WHERE token_hash IS NULL AND token IS NOT NULL");
   const trackId = (await q.get<{ id: number }>("SELECT id FROM tracks WHERE token = 'stem-track'"))!.id;
+  // A sealed copy, as every track has once it's made (the batch rebuilds the receipt token from it).
+  const { sealReceiptToken } = await import("../src/lib/receipt-token");
+  await q.run("UPDATE tracks SET token_sealed = ?, token = NULL WHERE id = ?", sealReceiptToken("stem-track", trackId), trackId);
   const file = wav();
   const send = async (name: string) => {
     const { uploadId } = await S.startStemUpload("stem-track", name, file.length, "2.2.2.2");
