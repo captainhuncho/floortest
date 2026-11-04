@@ -86,6 +86,13 @@ test("the nightly backup restores into an empty database and every check passes"
   }
 });
 
+test("an evidence cell escapes backslashes before pipes, so no detail can break the table", async () => {
+  const { cell } = await import("../src/lib/restore-drill");
+  assert.equal(cell("a|b"), "a\\|b");
+  assert.equal(cell("ends \\|"), "ends \\\\\\|", "a backslash before a pipe stays a literal backslash, and the pipe stays escaped");
+  assert.equal(cell("c:\\x"), "c:\\\\x");
+});
+
 test("a target that isn't empty is refused before anything is written", async () => {
   const { openPglite, migrate } = await import("../src/lib/db/client");
   const { restoreInto } = await import("../src/lib/restore-drill");
