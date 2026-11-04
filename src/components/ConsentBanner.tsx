@@ -8,9 +8,9 @@ import { useConsent } from "@/lib/use-consent";
 /**
  * Asks before Vercel Analytics or browser Sentry run (owner's rule, 20 Oct 2026). Accept and Not now are the same size
  * on the same bar, and both are remembered. Any link to #cookie-settings (footer, sign-in pages) brings it back.
- * `policyHref`: the Cookie Policy link, the main site's page when shown on the ops host (root layout).
+ * Main site only: the root layout leaves it off the ops host.
  */
-export function ConsentBanner({ policyHref = "/cookies" }: { policyHref?: string }) {
+export function ConsentBanner() {
   const consent = useConsent();
 
   useEffect(() => {
@@ -55,7 +55,7 @@ export function ConsentBanner({ policyHref = "/cookies" }: { policyHref?: string
       <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
         <p id="consent-heading" className="text-sm text-mute">
           Can we count visits and collect crash reports so we can fix problems? Neither runs unless you say yes.{" "}
-          <Link href={policyHref} className="underline hover:text-bone">
+          <Link href="/cookies" className="underline hover:text-bone">
             Cookie Policy
           </Link>
         </p>
