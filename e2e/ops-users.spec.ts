@@ -183,8 +183,8 @@ test("ops users: off is today's page; on, views in the URL, edit in place, bulk 
         const remove = sheet.getByRole("button", { name: "Remove e2e-inline" });
         await expect(remove).toBeVisible();
         await page.evaluate(() => Promise.all(document.getAnimations().filter((a) => a.effect?.getComputedTiming().endTime !== Infinity).map((a) => a.finished)));
-        const box = (await remove.boundingBox())!;
-        expect(Math.min(box.width, box.height), "the chip's × is a 44 px target").toBeGreaterThanOrEqual(44);
+        const chipBox = (await remove.boundingBox())!;
+        expect(Math.min(chipBox.width, chipBox.height), "the chip's × is a 44 px target").toBeGreaterThanOrEqual(44);
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
         await page.keyboard.press("Escape"); // leaves the tag editor, unchanged
         await expect(remove).toBeHidden();
