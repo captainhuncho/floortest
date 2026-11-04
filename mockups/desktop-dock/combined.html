@@ -1,0 +1,1155 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>FloorTest desk, combined</title>
+<style>
+/* Tokens: FloorTest design B. Lime is the one accent; violet is the quiet second voice. */
+:root {
+  --ink: #10110f;
+  --bone: #f1f1eb;
+  --lime: #d5ff48;
+  --violet: #9b8cff;
+
+  --wall: var(--bone);
+  --wall-2: #e6e6dc;
+  --plate: #fbfbf6;
+  --plate-2: #f1f1ea;
+  --line: rgba(16,17,15,.12);
+  --line-strong: rgba(16,17,15,.28);
+  --text: var(--ink);
+  --mute: #55574f;
+  --glass: rgba(251,251,246,.62);
+  --glass-line: rgba(16,17,15,.10);
+  --tile: #fbfbf6;
+  --tile-icon: var(--ink);
+  --folder-back: #c9c3f5;
+  --folder-front: #dcd7ff;
+  --folder-ink: #3b3470;
+  --groove: rgba(16,17,15,.07);
+  --shadow: 0 1px 2px rgba(16,17,15,.08), 0 18px 48px -12px rgba(16,17,15,.28);
+  --dock-shadow: 0 1px 1px rgba(16,17,15,.06), 0 14px 34px -10px rgba(16,17,15,.30);
+  --focus: #5a4bd6;
+  --keep-bg: var(--ink);
+  --keep-fg: var(--lime);
+  --danger: #a2321f;
+  --sel: rgba(155,140,255,.35);
+
+  --menubar-h: 30px;
+  --radius-win: 14px;
+  --font: ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --ease-out: cubic-bezier(.16,1,.3,1);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --wall: var(--ink);
+    --wall-2: #191a17;
+    --plate: #1a1b18;
+    --plate-2: #222420;
+    --line: rgba(241,241,235,.10);
+    --line-strong: rgba(241,241,235,.24);
+    --text: var(--bone);
+    --mute: #a4a69b;
+    --glass: rgba(26,27,24,.58);
+    --glass-line: rgba(241,241,235,.10);
+    --tile: #23251f;
+    --tile-icon: var(--bone);
+    --folder-back: #3a3466;
+    --folder-front: #4b4387;
+    --folder-ink: #e7e3ff;
+    --groove: rgba(241,241,235,.05);
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 24px 60px -12px rgba(0,0,0,.65);
+    --dock-shadow: 0 1px 1px rgba(0,0,0,.3), 0 18px 40px -10px rgba(0,0,0,.7);
+    --focus: var(--lime);
+    --keep-bg: var(--lime);
+    --keep-fg: var(--ink);
+    --danger: #ff8a73;
+  }
+}
+:root[data-theme="dark"] {
+  --wall: var(--ink);
+  --wall-2: #191a17;
+  --plate: #1a1b18;
+  --plate-2: #222420;
+  --line: rgba(241,241,235,.10);
+  --line-strong: rgba(241,241,235,.24);
+  --text: var(--bone);
+  --mute: #a4a69b;
+  --glass: rgba(26,27,24,.58);
+  --glass-line: rgba(241,241,235,.10);
+  --tile: #23251f;
+  --tile-icon: var(--bone);
+  --folder-back: #3a3466;
+  --folder-front: #4b4387;
+  --folder-ink: #e7e3ff;
+  --groove: rgba(241,241,235,.05);
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 24px 60px -12px rgba(0,0,0,.65);
+  --dock-shadow: 0 1px 1px rgba(0,0,0,.3), 0 18px 40px -10px rgba(0,0,0,.7);
+  --focus: var(--lime);
+  --keep-bg: var(--lime);
+  --keep-fg: var(--ink);
+  --danger: #ff8a73;
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root { --glass: var(--plate); }
+}
+@media (prefers-contrast: more) {
+  :root { --line: var(--line-strong); --glass: var(--plate); --mute: var(--text); }
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  font: 14px/1.4 var(--font);
+  color: var(--text);
+  background: var(--wall);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+::selection { background: var(--sel); color: var(--text); }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
+.num { font-variant-numeric: tabular-nums; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+/* ---------- Wallpaper: grain over a pressed-vinyl groove field ---------- */
+.desk {
+  position: fixed; inset: 0; height: 100dvh;
+  background:
+    radial-gradient(120% 90% at 30% 110%, var(--wall-2), transparent 60%),
+    var(--wall);
+  overflow: hidden;
+}
+.desk::before { /* grooves: concentric rings centred off-canvas, like the edge of a record */
+  content: ""; position: absolute; inset: 0;
+  background: repeating-radial-gradient(circle at 112% 118%, transparent 0 7px, var(--groove) 7px 8px);
+  mask-image: radial-gradient(90% 90% at 100% 100%, #000 20%, transparent 75%);
+  -webkit-mask-image: radial-gradient(90% 90% at 100% 100%, #000 20%, transparent 75%);
+  pointer-events: none;
+}
+.desk::after { /* grain */
+  content: ""; position: absolute; inset: -50%;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 .55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  opacity: .16; mix-blend-mode: overlay; pointer-events: none;
+}
+.label-mark { /* the desk's own name, set quietly into the wallpaper */
+  position: absolute; left: 40px; bottom: 112px;
+  font-weight: 650; letter-spacing: -.035em; font-size: clamp(40px, 6vw, 84px); line-height: .9;
+  color: var(--text); opacity: .07; pointer-events: none; user-select: none;
+}
+
+/* ---------- Menu bar (glass) ---------- */
+.menubar {
+  position: fixed; top: 0; left: 0; right: 0; height: calc(var(--menubar-h) + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) 12px 0;
+  display: flex; align-items: center; gap: 4px;
+  background: var(--glass);
+  backdrop-filter: blur(24px) saturate(1.4); -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border-bottom: 1px solid var(--glass-line);
+  z-index: 900; font-size: 13px;
+}
+.menubar .brand { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: -.01em; padding: 0 8px; }
+.brand-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--lime); box-shadow: inset 0 0 0 1.5px var(--ink); }
+.mb-btn { background: none; border: 0; padding: 3px 9px; border-radius: 6px; cursor: default; min-height: 24px; }
+.mb-btn:hover, .mb-btn[aria-expanded="true"] { background: var(--line); }
+.mb-app { font-weight: 600; }
+.mb-spacer { flex: 1; }
+.mb-link { font-family: var(--mono); font-size: 12px; color: var(--mute); }
+.mb-right { display: flex; align-items: center; gap: 2px; }
+.mb-now { display: none; align-items: center; gap: 6px; color: var(--mute); }
+.mb-now.on { display: inline-flex; }
+.eq { display: inline-flex; gap: 2px; align-items: flex-end; height: 10px; }
+.eq i { width: 2px; background: var(--violet); height: 4px; animation: eq 900ms var(--ease-out) infinite alternate; }
+.eq i:nth-child(2) { animation-delay: -300ms; } .eq i:nth-child(3) { animation-delay: -600ms; }
+@keyframes eq { to { height: 10px; } }
+.menu {
+  position: fixed; top: calc(var(--menubar-h) + env(safe-area-inset-top) + 4px); min-width: 230px; padding: 6px;
+  background: var(--plate); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); z-index: 950;
+}
+.menu[hidden] { display: none; }
+.menu button { display: flex; width: 100%; justify-content: space-between; gap: 16px; text-align: left; padding: 7px 10px; border: 0; background: none; border-radius: 6px; }
+.menu button:hover, .menu button:focus-visible { background: var(--line); }
+.menu kbd { font: 12px var(--font); color: var(--mute); }
+.menu hr { border: 0; border-top: 1px solid var(--line); margin: 5px 4px; }
+
+/* ---------- Desktop folders ---------- */
+.folders {
+  position: absolute; top: calc(var(--menubar-h) + 26px); left: 26px;
+  display: grid; grid-template-columns: repeat(2, 124px); grid-auto-rows: 132px; gap: 6px 4px;
+  list-style: none; margin: 0; padding: 0;
+}
+.folder {
+  width: 124px; height: 132px; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 6px 4px; border: 0; background: none; border-radius: 10px; cursor: pointer; text-align: center;
+}
+.folder svg { width: 92px; height: 76px; overflow: visible; transition: transform 240ms var(--ease-out); }
+.f-sleeve { transform-box: view-box; transform-origin: 46px 60px; transition: transform 320ms var(--ease-out); }
+.folder:hover .f-s1, .folder:focus-visible .f-s1, .folder[aria-pressed="true"] .f-s1 { transform: rotate(-14deg) translate(-3px,-4px); }
+.folder:hover .f-s2, .folder:focus-visible .f-s2, .folder[aria-pressed="true"] .f-s2 { transform: rotate(12deg) translate(3px,-5px); }
+.f-glass { fill: var(--folder-front); opacity: .8; }
+.f-shine { fill: url(#fshine); }
+.folder:hover svg, .folder:focus-visible svg { transform: translateY(-2px); }
+.folder:active svg { transform: scale(.96); }
+.folder .fname { font-size: 13px; font-weight: 600; line-height: 1.15; padding: 1px 6px; border-radius: 5px; max-width: 104px; }
+.folder .fcount { font-size: 11.5px; color: var(--mute); }
+.folder[aria-pressed="true"] .fname { background: var(--focus); color: var(--plate); }
+:root[data-theme="dark"] .folder[aria-pressed="true"] .fname { color: var(--ink); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .folder[aria-pressed="true"] .fname { color: var(--ink); } }
+.f-back { fill: var(--folder-back); }
+.f-front { fill: var(--folder-front); }
+.f-disc { fill: #121310; }
+.f-label { fill: var(--lime); }
+.f-hole { fill: var(--folder-front); }
+.f-tab-new { fill: var(--lime); }
+
+/* ---------- Windows ---------- */
+.win {
+  position: absolute; display: flex; flex-direction: column;
+  min-width: 340px; max-width: calc(100vw - 24px); max-height: calc(100dvh - var(--menubar-h) - 112px);
+  border-radius: var(--radius-win); background: var(--plate);
+  box-shadow: var(--shadow), 0 0 0 1px var(--line);
+  overflow: hidden; outline: none;
+}
+.win.is-front { box-shadow: var(--shadow), 0 0 0 1px var(--line-strong); }
+.win:not(.is-front) .titlebar { opacity: .9; }
+.win:not(.is-front) .lights button { color: var(--mute); }
+.titlebar {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px;
+  height: 44px; padding: 0 12px; flex: none;
+  background: var(--glass);
+  backdrop-filter: blur(18px) saturate(1.3); -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  border-bottom: 1px solid var(--line);
+  cursor: grab; touch-action: none; user-select: none;
+}
+.titlebar:active { cursor: grabbing; }
+.lights { display: flex; gap: 6px; }
+/* Window controls: drawn glyphs, always visible (no hover reveal). */
+.lights button {
+  width: 26px; height: 26px; display: grid; place-items: center; padding: 0;
+  border-radius: 50%; border: 1px solid var(--line-strong); background: transparent; cursor: pointer;
+}
+.lights button svg { width: 12px; height: 12px; stroke-width: 2.2; }
+.lights button:hover { background: var(--line); }
+.lights .close:hover { background: var(--danger); border-color: var(--danger); color: var(--plate); }
+.win-title { font-weight: 650; font-size: 13.5px; letter-spacing: -.005em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 7px; }
+.win-title svg { width: 15px; height: 15px; color: var(--mute); }
+.win-meta { justify-self: end; font-size: 12px; color: var(--mute); white-space: nowrap; }
+.win-body { overflow: auto; flex: 1; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+.win-body::-webkit-scrollbar { width: 10px; }
+.win-body::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 10px; border: 3px solid var(--plate); }
+.win.is-zoomed { left: 12px !important; top: calc(var(--menubar-h) + 10px) !important; width: calc(100vw - 24px) !important; height: calc(100dvh - var(--menubar-h) - 116px) !important; max-height: none; }
+
+/* Section head inside a window */
+.pane-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 18px 20px 10px; }
+.pane-head h2 { margin: 0; font-size: 20px; letter-spacing: -.02em; font-weight: 680; }
+.pane-head p { margin: 0; color: var(--mute); font-size: 13px; }
+.pane-note { margin: 0 20px 12px; color: var(--mute); font-size: 13px; }
+
+/* Track rows */
+.tracks { list-style: none; margin: 0; padding: 0 8px 12px; }
+.track {
+  display: grid; grid-template-columns: 40px minmax(0, 1fr) 56px auto; align-items: center; gap: 12px;
+  padding: 8px 12px; border-radius: 10px; transition: background 160ms, opacity 200ms;
+}
+.track + .track { box-shadow: 0 -1px 0 var(--line); }
+.track:hover { background: color-mix(in srgb, var(--line) 45%, transparent); }
+.track.is-playing { background: color-mix(in srgb, var(--violet) 14%, transparent); }
+.play {
+  width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line-strong); background: var(--plate-2);
+  display: grid; place-items: center; cursor: pointer; padding: 0;
+}
+.play svg { width: 15px; height: 15px; }
+.is-playing .play { background: var(--violet); border-color: var(--violet); color: #10110f; }
+.t-main { min-width: 0; }
+.t-title { font-weight: 620; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.t-sub { font-size: 12.5px; color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.t-len { color: var(--mute); font-size: 12.5px; text-align: right; }
+.t-act { display: flex; gap: 6px; justify-content: flex-end; min-width: 196px; }
+.btn {
+  min-height: 34px; padding: 0 13px; border-radius: 999px; border: 1px solid var(--line-strong);
+  background: transparent; cursor: pointer; font-weight: 600; font-size: 13px; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn:hover { background: var(--line); }
+.btn.keep { background: var(--keep-bg); color: var(--keep-fg); border-color: var(--keep-bg); }
+.btn.keep:hover { filter: brightness(1.08); }
+.btn.quiet { border-color: transparent; color: var(--mute); }
+.btn.quiet:hover { color: var(--text); }
+.btn.lg { min-height: 44px; padding: 0 20px; font-size: 14px; }
+.decided { font-size: 12.5px; color: var(--mute); display: inline-flex; align-items: center; gap: 8px; }
+.decided strong { color: var(--text); font-weight: 620; }
+.decided .tick { width: 8px; height: 8px; border-radius: 50%; background: var(--lime); box-shadow: inset 0 0 0 1.5px var(--ink); }
+.decided .pass { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--mute); }
+.track.is-passed .t-title { color: var(--mute); }
+.new-pill { font-size: 11px; font-weight: 650; color: var(--folder-ink); margin-left: 6px; }
+
+/* Review Queue */
+.queue { padding: 8px 22px 22px; }
+.q-pos { color: var(--mute); font-size: 12.5px; }
+.q-title { font-size: 26px; letter-spacing: -.025em; font-weight: 700; margin: 6px 0 2px; line-height: 1.1; text-wrap: balance; }
+.q-artist { color: var(--mute); margin: 0 0 16px; }
+.wave { display: flex; align-items: center; gap: 2px; height: 72px; margin: 4px 0 8px; cursor: pointer; border-radius: 8px; padding: 0; border: 0; background: none; width: 100%; }
+.wave i { flex: 1; background: var(--line-strong); border-radius: 2px; min-width: 2px; }
+.wave i.on { background: var(--violet); }
+.q-times { display: flex; justify-content: space-between; color: var(--mute); font-size: 12px; margin-bottom: 16px; }
+.q-facts { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12.5px; color: var(--mute); margin: 0 0 18px; padding: 0; list-style: none; }
+.q-facts b { color: var(--text); font-weight: 600; }
+.q-actions { display: flex; gap: 8px; align-items: center; }
+.q-actions .spacer { flex: 1; }
+.kbd-hint { font-size: 12px; color: var(--mute); margin-top: 14px; }
+.kbd-hint kbd { font: 11.5px var(--mono); border: 1px solid var(--line-strong); border-radius: 4px; padding: 0 4px; }
+
+/* Generic lists */
+.rows { list-style: none; margin: 0; padding: 0 12px 14px; }
+.rows li { display: flex; align-items: center; gap: 12px; padding: 10px 8px; }
+.rows li + li { box-shadow: 0 -1px 0 var(--line); }
+.rows .grow { flex: 1; min-width: 0; }
+.rows .sub { color: var(--mute); font-size: 12.5px; }
+.avatar { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 650; font-size: 12.5px; background: color-mix(in srgb, var(--violet) 26%, var(--plate-2)); color: var(--text); flex: none; }
+.ev-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--violet); flex: none; }
+.ev-dot.lime { background: var(--lime); box-shadow: inset 0 0 0 1.5px var(--ink); }
+.ev-dot.mute { background: var(--line-strong); }
+.time { color: var(--mute); font-size: 12px; white-space: nowrap; }
+.field { display: flex; gap: 8px; margin: 0 20px 14px; }
+.field input, .field textarea {
+  flex: 1; min-width: 0; font: 14px var(--mono); color: var(--text); background: var(--plate-2);
+  border: 1px solid var(--line-strong); border-radius: 10px; padding: 10px 12px; min-height: 44px;
+}
+.field textarea { font-family: var(--font); resize: none; height: 72px; line-height: 1.45; }
+.switch-row { display: flex; align-items: center; gap: 14px; padding: 12px 8px; }
+.switch-row + .switch-row { box-shadow: 0 -1px 0 var(--line); }
+.switch { position: relative; width: 44px; height: 26px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--plate-2); cursor: pointer; flex: none; padding: 0; }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: var(--mute); transition: transform 200ms var(--ease-out), background 200ms; }
+.switch[aria-checked="true"] { background: var(--keep-bg); border-color: var(--keep-bg); }
+.switch[aria-checked="true"]::after { transform: translateX(18px); background: var(--keep-fg); }
+.seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 999px; padding: 2px; }
+.seg button { border: 0; background: none; border-radius: 999px; padding: 6px 12px; cursor: pointer; font-size: 13px; min-height: 32px; }
+.seg button[aria-pressed="true"] { background: var(--text); color: var(--plate); }
+.prep-folder { display: flex; align-items: center; gap: 12px; }
+.mini-folder { width: 34px; height: 28px; flex: none; }
+
+/* ---------- Dock (glass) ---------- */
+.dock-wrap { position: fixed; left: 0; right: 0; bottom: 10px; display: flex; justify-content: center; z-index: 800; pointer-events: none; padding-bottom: env(safe-area-inset-bottom); }
+.dock {
+  pointer-events: auto; display: flex; align-items: flex-end; gap: 6px; padding: 7px 9px;
+  background: var(--glass);
+  backdrop-filter: blur(26px) saturate(1.5); -webkit-backdrop-filter: blur(26px) saturate(1.5);
+  border: 1px solid var(--glass-line); border-radius: 22px; box-shadow: var(--dock-shadow);
+  list-style: none; margin: 0;
+}
+.dock li { display: flex; }
+.dock .sep { width: 1px; align-self: stretch; margin: 6px 4px; background: var(--line-strong); }
+.dock-item {
+  --s: 1; position: relative; width: 54px; height: 54px; padding: 0; border: 0; background: none; cursor: pointer;
+  display: grid; place-items: center; border-radius: 14px;
+  transform-origin: 50% 100%; transform: scale(var(--s)); margin: 0 calc((var(--s) - 1) * 27px);
+  transition: transform 140ms var(--ease-out), margin 140ms var(--ease-out);
+}
+.tile {
+  width: 48px; height: 48px; border-radius: 13px; display: grid; place-items: center;
+  background: var(--tile); color: var(--tile-icon);
+  box-shadow: 0 0 0 1px var(--line), 0 2px 6px -2px rgba(0,0,0,.25);
+}
+.tile svg.i { width: 24px; height: 24px; stroke-width: 1.6; }
+.dock-item[data-app="floor"] .tile { background: var(--ink); color: var(--lime); }
+:root[data-theme="dark"] .dock-item[data-app="floor"] .tile { box-shadow: 0 0 0 1px var(--line-strong), 0 2px 6px -2px rgba(0,0,0,.25); }
+.dock-item .badge {
+  position: absolute; top: -2px; right: -2px; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px;
+  background: var(--lime); color: var(--ink); font-size: 11.5px; font-weight: 700; display: grid; place-items: center;
+  box-shadow: 0 0 0 2px var(--plate);
+}
+.dock-item .dot { position: absolute; bottom: -6px; left: 50%; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--text); opacity: 0; transition: opacity 200ms; }
+.dock-item.is-open .dot { opacity: 1; }
+.dock-item .tip {
+  position: absolute; bottom: calc(100% + 12px); left: 50%; transform: translateX(-50%);
+  padding: 4px 9px; border-radius: 7px; font-size: 12px; font-weight: 600; white-space: nowrap;
+  background: var(--plate); border: 1px solid var(--line); box-shadow: var(--shadow); opacity: 0; pointer-events: none; transition: opacity 120ms;
+}
+.dock-item:hover .tip, .dock-item:focus-visible .tip { opacity: 1; }
+.dock-item:focus-visible { outline-offset: 3px; }
+.dock-item .mlabel { display: none; }
+.dock-item.bounce .tile { animation: bounce 620ms var(--ease-out); }
+@keyframes bounce { 0%,100% { transform: translateY(0); } 30% { transform: translateY(-16px); } 60% { transform: translateY(0); } 78% { transform: translateY(-5px); } }
+.dock .more-item { display: none; }
+
+/* Press: every button gives under the finger (Emil). Keyboard presses skip it. */
+.btn, .play, .lights button, .seg button, .w-btn { transition: transform 120ms var(--ease-out), background 160ms; }
+.btn:active, .play:active, .lights button:active, .seg button:active, .w-btn:active { transform: scale(.96); }
+.dock-item:active .tile { transform: scale(.92); transition: transform 100ms var(--ease-out); }
+
+/* ---------- Widgets (right column, solid plates) ---------- */
+.widgets { position: absolute; top: calc(var(--menubar-h) + 26px); right: 22px; width: 272px; display: flex; flex-direction: column; gap: 12px; }
+.widget { background: var(--plate); border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px; box-shadow: 0 1px 2px rgba(16,17,15,.06); }
+.widget h3 { margin: 0 0 8px; font-size: 11.5px; font-weight: 650; letter-spacing: .02em; color: var(--mute); text-transform: uppercase; }
+.w-now { display: grid; grid-template-columns: 52px 1fr 44px; gap: 12px; align-items: center; }
+.w-cover { width: 52px; height: 52px; border-radius: 10px; background: conic-gradient(from 200deg, var(--violet), #5a4bd6, var(--ink) 70%, var(--violet)); position: relative; }
+.w-cover::after { content: ""; position: absolute; inset: 19px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 0 1.5px var(--ink); }
+.w-btn { width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--keep-bg); color: var(--keep-fg); display: grid; place-items: center; cursor: pointer; padding: 0; }
+.w-btn svg { width: 16px; height: 16px; }
+.w-t { font-weight: 640; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.w-s { font-size: 12.5px; color: var(--mute); }
+.w-big { font-size: 34px; font-weight: 700; letter-spacing: -.03em; line-height: 1; }
+.w-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; }
+.w-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.w-stats b { display: block; font-size: 22px; letter-spacing: -.02em; }
+.w-stats span { font-size: 12px; color: var(--mute); }
+.w-bars { display: flex; align-items: flex-end; gap: 4px; height: 34px; margin-top: 10px; }
+.w-bars i { flex: 1; border-radius: 3px; background: var(--line-strong); }
+.w-bars i.on { background: var(--violet); }
+@media (max-width: 1023px) and (min-width: 768px) { .widgets { width: 240px; } }
+@media (max-width: 767px) and (max-height: 700px) { .widgets .widget:first-child { display: none; } }
+
+/* Toast */
+.toast {
+  position: fixed; left: 50%; bottom: 96px; transform: translate(-50%, 12px); opacity: 0;
+  display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 16px; border-radius: 999px;
+  background: var(--text); color: var(--plate); font-size: 13.5px; box-shadow: var(--shadow); z-index: 980;
+  transition: opacity 200ms, transform 260ms var(--ease-out); pointer-events: none;
+}
+.toast.on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.toast button { background: none; border: 1px solid color-mix(in srgb, var(--plate) 40%, transparent); color: var(--plate); border-radius: 999px; padding: 6px 12px; cursor: pointer; font-weight: 600; min-height: 32px; }
+
+/* More sheet (phone only) */
+.more-sheet[hidden] { display: none; }
+
+/* ---------- Phone ---------- */
+@media (max-width: 767px) {
+  :root { --menubar-h: 44px; }
+  .menubar { font-size: 14px; padding-left: 8px; padding-right: 8px; }
+  .mb-menus, .mb-link, .mb-clock-day { display: none; }
+  .label-mark { bottom: calc(96px + env(safe-area-inset-bottom)); left: 18px; font-size: 44px; opacity: .08; }
+  .folders {
+    left: 12px; right: 12px; top: calc(var(--menubar-h) + env(safe-area-inset-top) + 24px);
+    grid-template-columns: repeat(3, 1fr); grid-auto-rows: auto; gap: 14px 6px;
+  }
+  .folder { width: 100%; height: auto; min-height: 112px; }
+  .folder .fname { font-size: 13px; }
+  .widgets { left: 12px; right: 12px; width: auto; top: auto; bottom: calc(82px + env(safe-area-inset-bottom)); gap: 8px; }
+  .widgets .w-week { display: none; }
+  .widget { padding: 12px 14px; }
+  .dock-wrap { bottom: 0; padding: 0; }
+  .dock {
+    width: 100%; border-radius: 0; border-width: 1px 0 0; gap: 0; padding: 4px 6px calc(4px + env(safe-area-inset-bottom));
+    justify-content: space-around; align-items: stretch;
+  }
+  .dock li { flex: 1; }
+  .dock .sep, .dock .desk-only { display: none; }
+  .dock .more-item { display: flex; }
+  .dock-item { width: 100%; height: 58px; transform: none !important; margin: 0 !important; display: flex; flex-direction: column; justify-content: center; gap: 3px; border-radius: 12px; }
+  .tile { width: 30px; height: 30px; border-radius: 9px; background: transparent; box-shadow: none; }
+  .dock-item[data-app="floor"] .tile { background: transparent; color: inherit; }
+  .tile svg.i { width: 22px; height: 22px; }
+  .dock-item .mlabel { display: block; font-size: 11px; font-weight: 600; color: var(--mute); }
+  .dock-item.is-front .mlabel, .dock-item.is-front .tile { color: var(--text); }
+  .dock-item.is-front .tile { background: color-mix(in srgb, var(--lime) 85%, transparent); color: var(--ink); }
+  .dock-item .tip { display: none; }
+  .dock-item .dot { display: none; }
+  .dock-item .badge { top: 2px; right: calc(50% - 36px); }
+  .win {
+    left: 0 !important; right: 0; top: calc(var(--menubar-h) + env(safe-area-inset-top) + 8px) !important;
+    width: 100% !important; height: auto !important; bottom: calc(66px + env(safe-area-inset-bottom));
+    max-width: none; max-height: none; min-width: 0; border-radius: 18px 18px 0 0;
+  }
+  .titlebar { height: 52px; cursor: default; }
+  .titlebar .zoom, .titlebar .min { display: none; }
+  .lights button { width: 44px; height: 44px; }
+  .lights button svg { width: 14px; height: 14px; }
+  .win-meta { display: none; }
+  .titlebar { grid-template-columns: 44px 1fr 44px; }
+  .win-title { justify-self: center; }
+  .track { grid-template-columns: 44px minmax(0,1fr) auto; grid-template-areas: "p m l" "a a a"; row-gap: 8px; padding: 10px 8px; }
+  .track .play { grid-area: p; width: 44px; height: 44px; }
+  .track .t-main { grid-area: m; } .track .t-len { grid-area: l; }
+  .track .t-act { grid-area: a; justify-content: stretch; min-width: 0; }
+  .track .t-act .btn { flex: 1; justify-content: center; min-height: 44px; }
+  .btn { min-height: 44px; }
+  .field input, .field textarea { font-size: 16px; }
+  .toast { bottom: calc(80px + env(safe-area-inset-bottom)); }
+  .more-sheet { position: fixed; left: 8px; right: 8px; bottom: calc(72px + env(safe-area-inset-bottom)); z-index: 850; background: var(--plate); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); padding: 6px; }
+  .more-sheet button { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 0 12px; border: 0; background: none; border-radius: 10px; text-align: left; font-weight: 600; font-size: 15px; cursor: pointer; }
+  .more-sheet button:hover { background: var(--line); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
+  .dock-item { transform: none !important; margin: 0 !important; }
+}
+@media print { .dock-wrap, .menubar { display: none; } body { overflow: visible; } }
+</style>
+</head>
+<body>
+
+<!-- Icon set: one stroke weight, drawn for this mock. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs><linearGradient id="fshine" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".38"/><stop offset=".5" stop-color="#fff" stop-opacity=".06"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
+  <symbol id="i-floor" viewBox="0 0 24 24"><path d="M3 18h18"/><path d="M5 18V9"/><path d="M9 18V5"/><path d="M13 18v-7"/><path d="M17 18V8"/><path d="M21 18v-4"/></symbol>
+  <symbol id="i-queue" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/><path d="M12 3v3"/><path d="M19 12h2"/></symbol>
+  <symbol id="i-coll" viewBox="0 0 24 24"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6H9l2 2h8.5A1.5 1.5 0 0 1 21 9.5v8A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5z"/></symbol>
+  <symbol id="i-prep" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="m9 13 2 2 4-4"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M4 12 20 4l-5 16-3-7z"/><path d="m12 13 8-9"/></symbol>
+  <symbol id="i-contacts" viewBox="0 0 24 24"><circle cx="9" cy="9" r="3.5"/><path d="M3 19c.8-3 3.2-4.5 6-4.5s5.2 1.5 6 4.5"/><path d="M16 5.5a3 3 0 0 1 0 6"/><path d="M18 14.6c1.5.6 2.5 2 3 4.4"/></symbol>
+  <symbol id="i-activity" viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 5 12L17 12h4"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h10"/><path d="M18 7h2"/><circle cx="16" cy="7" r="2"/><path d="M4 17h2"/><path d="M10 17h10"/><circle cx="8" cy="17" r="2"/></symbol>
+  <symbol id="i-account" viewBox="0 0 24 24"><circle cx="12" cy="9" r="3.5"/><path d="M5 19.5c1.2-3.2 3.8-4.8 7-4.8s5.8 1.6 7 4.8"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14" stroke-width="3.2"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-min" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-zoom" viewBox="0 0 24 24"><path d="M14 4h6v6M10 20H4v-6"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 4v12"/><path d="m7 11 5 5 5-5"/><path d="M5 20h14"/></symbol>
+</svg>
+
+<div class="desk" id="desk">
+  <div class="label-mark" aria-hidden="true">Maya Ofori<br>desk</div>
+
+  <ul class="folders" id="folders" aria-label="Collections on your desk"></ul>
+
+  <aside class="widgets" aria-label="Desk widgets">
+    <section class="widget">
+      <h3>Last played</h3>
+      <div class="w-now">
+        <span class="w-cover" aria-hidden="true"></span>
+        <div style="min-width:0"><div class="w-t" id="wNowT">Halflight (Extended Mix)</div><div class="w-s">Kwame Asante · 6:42</div></div>
+        <button class="w-btn" type="button" id="wPlay" aria-label="Play Halflight (Extended Mix)" aria-pressed="false"><svg class="i" aria-hidden="true"><use href="#i-play"/></svg></button>
+      </div>
+    </section>
+    <section class="widget">
+      <h3>Review Queue</h3>
+      <div class="w-row">
+        <div><div class="w-big num">12</div><div class="w-s">waiting · oldest 6 days</div></div>
+        <button class="btn keep" type="button" id="wQueue">Start</button>
+      </div>
+    </section>
+    <section class="widget w-week">
+      <h3>This week</h3>
+      <div class="w-stats num"><div><b>38</b><span>arrived</span></div><div><b>11</b><span>kept</span></div><div><b>4</b><span>played out</span></div></div>
+      <div class="w-bars" aria-hidden="true"><i style="height:40%"></i><i style="height:65%"></i><i style="height:30%"></i><i style="height:80%"></i><i style="height:55%"></i><i class="on" style="height:100%"></i><i style="height:20%"></i></div>
+    </section>
+  </aside>
+</div>
+
+<header class="menubar" id="menubar">
+  <span class="brand"><span class="brand-dot" aria-hidden="true"></span>FloorTest</span>
+  <span class="mb-btn mb-app" id="mbApp">Desk</span>
+  <nav class="mb-menus" aria-label="Menu bar">
+    <button class="mb-btn" data-menu="menuDesk" aria-haspopup="menu" aria-expanded="false">Desk</button>
+    <button class="mb-btn" data-menu="menuWindow" aria-haspopup="menu" aria-expanded="false">Window</button>
+  </nav>
+  <span class="mb-spacer"></span>
+  <div class="mb-right">
+    <span class="mb-now" id="mbNow" aria-live="polite"><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span><span id="mbNowText"></span></span>
+    <button class="mb-btn mb-link" id="mbLink" title="Copy your link">floortest.app/maya</button>
+    <span class="mb-btn num" id="mbClock"><span class="mb-clock-day"></span></span>
+  </div>
+</header>
+
+<div class="menu" id="menuDesk" role="menu" hidden>
+  <button role="menuitem" data-open="floor">Open Floor <kbd>1</kbd></button>
+  <button role="menuitem" data-open="review">Open Review Queue <kbd>2</kbd></button>
+  <button role="menuitem" data-open="send">Share your link</button>
+  <hr>
+  <button role="menuitem" data-open="settings">Account</button>
+</div>
+<div class="menu" id="menuWindow" role="menu" hidden>
+  <button role="menuitem" data-act="minimise">Minimise front window</button>
+  <button role="menuitem" data-act="close">Close front window <kbd>Esc</kbd></button>
+  <hr>
+  <button role="menuitem" data-act="closeall">Close all windows</button>
+</div>
+
+<main id="windows" aria-label="Open windows"></main>
+
+<div class="dock-wrap">
+  <ul class="dock" id="dock" aria-label="Sections"></ul>
+</div>
+<div class="more-sheet" id="moreSheet" role="menu" aria-label="More sections" hidden></div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toastText"></span><button id="toastUndo" type="button">Undo</button></div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (s, r = document) => r.querySelector(s);
+  const icon = (id, cls = "i") => `<svg class="${cls}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const isPhone = () => matchMedia("(max-width: 767px)").matches;
+  const reduceMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ---------------- Sample desk ---------------- */
+  const APPS = [
+    { id: "floor", label: "Floor", short: "Floor", icon: "floor", group: 1, tab: true },
+    { id: "review", label: "Review Queue", short: "Queue", icon: "queue", group: 1, tab: true, badge: 12 },
+    { id: "collections", label: "Collections", short: "Collections", icon: "coll", group: 1, tab: true },
+    { id: "prepare", label: "Prepare", short: "Prepare", icon: "prep", group: 1, tab: true },
+    { id: "send", label: "Send", short: "Send", icon: "send", group: 2 },
+    { id: "contacts", label: "Contacts", short: "Contacts", icon: "contacts", group: 2 },
+    { id: "activity", label: "Activity", short: "Activity", icon: "activity", group: 2 },
+    { id: "settings", label: "Account", short: "Account", icon: "account", group: 3 },
+  ];
+
+  const FLOOR = [
+    { t: "Halflight (Extended Mix)", a: "Kwame Asante", by: "sent by Kwame", len: "6:42", nu: true },
+    { t: "Okada Run", a: "Tems & Juno Ray", by: "via Low Tide Records", len: "5:18", nu: true },
+    { t: "Basement Hymn", a: "Ines Moreau", by: "sent by Ines", len: "7:05" },
+    { t: "Lagos at 4am (VIP)", a: "Dami Bello", by: "sent by Dami", len: "4:56" },
+    { t: "Pressure Drop Tool", a: "Saskia Veldt", by: "via Rotary Audio", len: "6:11" },
+    { t: "Glass Floors", a: "Northbound Collective", by: "sent by Theo", len: "5:47" },
+    { t: "Accra Dub", a: "Ama Serwaa", by: "sent by Ama", len: "8:20" },
+    { t: "Late Shift (work in progress)", a: "Rhys Okon", by: "sent by Rhys", len: "3:58" },
+  ];
+
+  const COLLECTIONS = [
+    { id: "peak", name: "Peak time", count: 24, fresh: true, tracks: [["Glass Floors", "Northbound Collective", "5:47"], ["Pressure Drop Tool", "Saskia Veldt", "6:11"], ["Night Bus Theory", "Lune", "6:30"], ["Steel Pan Acid", "Kofi Mensah", "5:02"]] },
+    { id: "warm", name: "Warm-up", count: 17, tracks: [["Accra Dub", "Ama Serwaa", "8:20"], ["Soft Focus", "Hana Ito", "7:12"], ["Quiet Riot (Dub)", "Lowfield", "6:48"]] },
+    { id: "label", name: "Label picks", count: 9, tracks: [["Halflight (Extended Mix)", "Kwame Asante", "6:42"], ["Okada Run", "Tems & Juno Ray", "5:18"]] },
+    { id: "radio", name: "Radio show 14", count: 12, tracks: [["Basement Hymn", "Ines Moreau", "7:05"], ["Harmattan", "Efe Ojo", "4:40"], ["Two Rooms", "Pale Hours", "5:25"]] },
+    { id: "hidden", name: "Friday at Hidden", count: 31, tracks: [["Lagos at 4am (VIP)", "Dami Bello", "4:56"], ["Concrete Choir", "Vera Lind", "6:02"]] },
+    { id: "maybe", name: "Maybe later", count: 6, tracks: [["Late Shift (work in progress)", "Rhys Okon", "3:58"], ["Untitled 0412", "Moss Theory", "5:33"]] },
+  ];
+
+  const QUEUE = [
+    { t: "Concrete Choir", a: "Vera Lind", len: "6:02", bpm: 128, key: "8A", from: "Vera, 6 days ago", status: "Unreleased, exclusive" },
+    { t: "Harmattan", a: "Efe Ojo", len: "4:40", bpm: 122, key: "3B", from: "Efe, 5 days ago", status: "Released 2026, Afro house" },
+    { t: "Two Rooms", a: "Pale Hours", len: "5:25", bpm: 124, key: "11A", from: "Low Tide Records, 4 days ago", status: "Work in progress" },
+    { t: "Steel Pan Acid", a: "Kofi Mensah", len: "5:02", bpm: 130, key: "6A", from: "Kofi, 3 days ago", status: "Unreleased, DJ sets allowed" },
+  ];
+
+  /* ---------------- Folders on the desk ---------------- */
+  const SLEEVES = { peak: ["#d5ff48", "#10110f"], warm: ["#ffb26b", "#9b8cff"], label: ["#9b8cff", "#f1f1eb"], radio: ["#7fd1c7", "#10110f"], hidden: ["#10110f", "#d5ff48"], maybe: ["#c9c3f5", "#55574f"] };
+  const folderSvg = (fresh, id) => { const [a, b] = SLEEVES[id] || ["#9b8cff", "#10110f"]; return `
+    <svg viewBox="0 0 92 76" aria-hidden="true">
+      <path class="f-back" d="M5 10a5 5 0 0 1 5-5h20l6 6h46a5 5 0 0 1 5 5v50a5 5 0 0 1-5 5H10a5 5 0 0 1-5-5z"/>
+      ${fresh ? '<path class="f-tab-new" d="M10 5h20l6 6H10a5 5 0 0 1 0 0z"/>' : ""}
+      <g class="f-sleeve f-s1"><rect x="16" y="12" width="34" height="34" rx="3" fill="${a}"/><rect x="16" y="12" width="34" height="34" rx="3" fill="none" stroke="rgba(0,0,0,.18)"/></g>
+      <g class="f-sleeve f-s2"><rect x="42" y="10" width="34" height="34" rx="3" fill="${b}"/><circle cx="59" cy="27" r="9" fill="none" stroke="rgba(255,255,255,.22)"/></g>
+      <circle class="f-disc" cx="46" cy="22" r="17"/>
+      <circle cx="46" cy="22" r="12.5" fill="none" stroke="rgba(255,255,255,.1)"/>
+      <circle class="f-label" cx="46" cy="22" r="5.2"/>
+      <circle cx="46" cy="22" r="1.2" fill="#121310"/>
+      <path class="f-glass" d="M3 30a5 5 0 0 1 5-5h76a5 5 0 0 1 5 5v36a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5z"/>
+      <path class="f-shine" d="M3 30a5 5 0 0 1 5-5h76a5 5 0 0 1 5 5v36a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5z"/>
+      <path d="M8 26.5h76" stroke="rgba(255,255,255,.45)" stroke-width="1"/>
+    </svg>`; };
+
+  const folders = $("#folders");
+  folders.innerHTML = COLLECTIONS.map((c) => `
+    <li><button class="folder" type="button" data-folder="${c.id}" aria-pressed="false">
+      ${folderSvg(c.fresh, c.id)}
+      <span class="fname">${esc(c.name)}</span>
+      <span class="fcount num">${c.count} tracks${c.fresh ? ", 3 new" : ""}</span>
+    </button></li>`).join("");
+
+  folders.addEventListener("click", (e) => {
+    const b = e.target.closest(".folder"); if (!b) return;
+    folders.querySelectorAll(".folder").forEach((f) => f.setAttribute("aria-pressed", String(f === b)));
+    openWindow("c-" + b.dataset.folder, b);
+  });
+
+  /* ---------------- Dock ---------------- */
+  const dock = $("#dock");
+  let lastGroup = 1;
+  dock.innerHTML = APPS.map((a) => {
+    let sep = "";
+    if (a.group !== lastGroup) { sep = '<li class="sep" aria-hidden="true"></li>'; lastGroup = a.group; }
+    return `${sep}<li class="${a.tab ? "" : "desk-only"}"><button class="dock-item" type="button" data-app="${a.id}" aria-label="${esc(a.label)}${a.badge ? `, ${a.badge} to review` : ""}">
+      <span class="tile">${icon(a.icon)}</span>
+      ${a.badge ? `<span class="badge num" aria-hidden="true">${a.badge}</span>` : ""}
+      <span class="mlabel">${esc(a.short)}</span>
+      <span class="tip" aria-hidden="true">${esc(a.label)}</span>
+      <span class="dot" aria-hidden="true"></span>
+    </button></li>`;
+  }).join("") + `<li class="more-item"><button class="dock-item" type="button" id="moreBtn" aria-haspopup="menu" aria-expanded="false" aria-label="More sections"><span class="tile">${icon("more")}</span><span class="mlabel">More</span></button></li>`;
+
+  dock.addEventListener("click", (e) => {
+    const b = e.target.closest(".dock-item"); if (!b) return;
+    if (b.id === "moreBtn") return toggleMore();
+    openWindow(b.dataset.app, b);
+  });
+
+  // Magnify: follows the pointer for a mouse; touch and keyboard get the plain dock.
+  const items = () => [...dock.querySelectorAll(".dock-item")];
+  dock.addEventListener("pointermove", (e) => {
+    if (e.pointerType !== "mouse" || isPhone() || reduceMotion()) return;
+    items().forEach((it) => {
+      const r = it.getBoundingClientRect();
+      const d = Math.abs(e.clientX - (r.left + r.width / 2));
+      const k = Math.max(0, 1 - d / 170); const s = 1 + Math.sin(k * Math.PI / 2) * 0.58;
+      it.style.setProperty("--s", s.toFixed(3));
+    });
+  });
+  dock.addEventListener("pointerleave", () => items().forEach((it) => it.style.setProperty("--s", 1)));
+
+  // More sheet (phone)
+  const moreSheet = $("#moreSheet");
+  moreSheet.innerHTML = APPS.filter((a) => !a.tab).map((a) => `<button role="menuitem" data-app="${a.id}">${icon(a.icon)}${esc(a.label)}</button>`).join("");
+  function toggleMore(force) {
+    const btn = $("#moreBtn");
+    const open = force ?? moreSheet.hidden;
+    moreSheet.hidden = !open; btn.setAttribute("aria-expanded", String(open));
+    if (open) moreSheet.querySelector("button").focus();
+  }
+  moreSheet.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-app]"); if (!b) return;
+    toggleMore(false); openWindow(b.dataset.app, $("#moreBtn"));
+  });
+
+  /* ---------------- Window content ---------------- */
+  const trackRow = (t, i) => `
+    <li class="track" data-i="${i}">
+      <button class="play" type="button" aria-label="Play ${esc(t.t)}">${icon("play")}</button>
+      <div class="t-main">
+        <div class="t-title">${esc(t.t)}${t.nu ? '<span class="new-pill">New</span>' : ""}</div>
+        <div class="t-sub">${esc(t.a)} · ${esc(t.by)}</div>
+      </div>
+      <span class="t-len num">${t.len}</span>
+      <div class="t-act">
+        <button class="btn" type="button" data-decide="pass">Not for me</button>
+        <button class="btn keep" type="button" data-decide="keep">Keep</button>
+      </div>
+    </li>`;
+
+  const waveBars = (n, seed) => {
+    let h = "", x = seed;
+    for (let i = 0; i < n; i++) {
+      x = (x * 9301 + 49297) % 233280;
+      const env = Math.sin((i / n) * Math.PI) * 0.65 + 0.35;
+      const v = Math.max(8, Math.round((x / 233280) * 100 * env));
+      h += `<i style="height:${v}%"></i>`;
+    }
+    return h;
+  };
+
+  const CONTENT = {
+    floor: {
+      title: "Floor", meta: "8 waiting",
+      size: [760, 560],
+      body: () => `
+        <div class="pane-head"><h2>Up next</h2><p class="num">Newest first · 2 arrived today</p></div>
+        <ul class="tracks" data-list="floor">${FLOOR.map(trackRow).join("")}</ul>`,
+    },
+    review: {
+      title: "Review Queue", meta: "Oldest first",
+      size: [560, 520],
+      body: () => `<div class="queue" id="queuePane"></div>`,
+    },
+    collections: {
+      title: "Collections", meta: `${COLLECTIONS.length} collections`,
+      size: [480, 470],
+      body: () => `
+        <div class="pane-head"><h2>Collections</h2><p>One per callout</p></div>
+        <ul class="rows">${COLLECTIONS.map((c) => `
+          <li><svg class="mini-folder" viewBox="0 0 76 62" aria-hidden="true"><path class="f-back" d="M4 8a4 4 0 0 1 4-4h18l5 5h37a4 4 0 0 1 4 4v41a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z"/><path class="f-front" d="M2 22a4 4 0 0 1 4-4h64a4 4 0 0 1 4 4v32a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4z"/></svg>
+          <div class="grow"><div style="font-weight:620">${esc(c.name)}</div><div class="sub num">${c.count} tracks</div></div>
+          <button class="btn" type="button" data-openfolder="${c.id}">Open</button></li>`).join("")}</ul>`,
+    },
+    prepare: {
+      title: "Prepare", meta: "Ready for Rekordbox",
+      size: [520, 400],
+      body: () => `
+        <div class="pane-head"><h2>Prepare</h2><p>Kept tracks, sorted into named folders</p></div>
+        <ul class="rows">
+          ${[["Friday at Hidden", 31, "friday-at-hidden"], ["Radio show 14", 12, "radio-show-14"], ["Peak time", 24, "peak-time"]].map(([n, c, f]) => `
+          <li class="prep-folder"><div class="grow"><div style="font-weight:620">${n}</div><div class="sub num">${c} tracks · WAV and MP3</div></div>
+          <button class="btn" type="button" data-export="${f}">${icon("down")}Rekordbox XML</button></li>`).join("")}
+        </ul>
+        <p class="pane-note">Downloads keep the sender's original file. Nothing is re-encoded.</p>`,
+    },
+    send: {
+      title: "Send", meta: "Your link",
+      size: [520, 400],
+      body: () => `
+        <div class="pane-head"><h2>Your link</h2><p>Open to senders</p></div>
+        <div class="field"><input id="linkField" value="floortest.app/maya" readonly aria-label="Your link"><button class="btn keep lg" type="button" data-copy="linkField">${icon("copy")}Copy</button></div>
+        <p class="pane-note">A caption to post with it:</p>
+        <div class="field"><textarea id="capField" aria-label="Caption">Sending me music for Friday at Hidden? Upload it here, no account needed. You'll get a receipt when I listen.</textarea><button class="btn lg" type="button" data-copy="capField">Copy</button></div>`,
+    },
+    contacts: {
+      title: "Contacts", meta: "42 senders",
+      size: [500, 440],
+      body: () => `
+        <div class="pane-head"><h2>Contacts</h2><p>People who send to you</p></div>
+        <ul class="rows">
+          ${[["KA", "Kwame Asante", "9 tracks · 4 kept", "Wants feedback on the extended mix"], ["IM", "Ines Moreau", "6 tracks · 3 kept", "Played Basement Hymn at Corsica"], ["LT", "Low Tide Records", "14 tracks · 5 kept", "Promo contact: Juno"], ["DB", "Dami Bello", "3 tracks · 1 kept", ""], ["SV", "Saskia Veldt", "5 tracks · 2 kept", "Prefers WAV"]].map(([i, n, s, note]) => `
+          <li><span class="avatar">${i}</span><div class="grow"><div style="font-weight:620">${n}</div><div class="sub num">${s}${note ? " · " + note : ""}</div></div><button class="btn quiet" type="button" data-toast="Opened ${n}. Notes and replies sit here in the app.">Open</button></li>`).join("")}
+        </ul>`,
+    },
+    activity: {
+      title: "Activity", meta: "Today",
+      size: [500, 440],
+      body: () => `
+        <div class="pane-head"><h2>Activity</h2><p>What happened on your desk</p></div>
+        <ul class="rows">
+          <li><span class="ev-dot"></span><div class="grow">Kwame Asante sent <b>Halflight (Extended Mix)</b></div><span class="time num">21:12</span></li>
+          <li><span class="ev-dot"></span><div class="grow">Low Tide Records sent <b>Okada Run</b></div><span class="time num">18:40</span></li>
+          <li><span class="ev-dot lime"></span><div class="grow">You kept <b>Glass Floors</b> into Peak time</div><span class="time num">16:05</span></li>
+          <li><span class="ev-dot mute"></span><div class="grow">You replied to Ines Moreau</div><span class="time num">14:22</span></li>
+          <li><span class="ev-dot lime"></span><div class="grow">You marked <b>Basement Hymn</b> played out</div><span class="time num">Yesterday</span></li>
+        </ul>`,
+    },
+    settings: {
+      title: "Account", meta: "Maya Ofori",
+      size: [480, 420],
+      body: () => `
+        <div class="pane-head"><h2>Account</h2><p>Maya Ofori</p></div>
+        <div class="rows" style="padding-top:0">
+          <div class="switch-row"><div class="grow"><div style="font-weight:620">Link open</div><div class="sub">Senders can upload to floortest.app/maya</div></div><button class="switch" role="switch" aria-checked="true" aria-label="Link open"></button></div>
+          <div class="switch-row"><div class="grow"><div style="font-weight:620">Email me when a track arrives</div><div class="sub">One email a day at most</div></div><button class="switch" role="switch" aria-checked="false" aria-label="Email me when a track arrives"></button></div>
+          <div class="switch-row"><div class="grow"><div style="font-weight:620">Keyboard shortcuts</div><div class="sub">K to keep, N for not for me</div></div><button class="switch" role="switch" aria-checked="true" aria-label="Keyboard shortcuts"></button></div>
+          <div class="switch-row"><div class="grow"><div style="font-weight:620">Look</div></div>
+            <div class="seg" role="group" aria-label="Look"><button type="button" data-theme-set="system">System</button><button type="button" data-theme-set="light">Light</button><button type="button" data-theme-set="dark">Dark</button></div></div>
+        </div>`,
+    },
+  };
+  COLLECTIONS.forEach((c) => {
+    CONTENT["c-" + c.id] = {
+      title: c.name, meta: `${c.count} tracks`, folder: true,
+      size: [560, 400],
+      body: () => `
+        <div class="pane-head"><h2>${esc(c.name)}</h2><p class="num">Showing ${c.tracks.length} of ${c.count}</p></div>
+        <ul class="tracks">${c.tracks.map(([t, a, len], i) => `
+          <li class="track" data-i="${i}">
+            <button class="play" type="button" aria-label="Play ${esc(t)}">${icon("play")}</button>
+            <div class="t-main"><div class="t-title">${esc(t)}</div><div class="t-sub">${esc(a)}</div></div>
+            <span class="t-len num">${len}</span>
+            <div class="t-act" style="min-width:0"><button class="btn" type="button" data-prep>Add to Prepare</button></div>
+          </li>`).join("")}</ul>`,
+    };
+  });
+
+  /* ---------------- Window manager ---------------- */
+  const layer = $("#windows");
+  const wins = new Map();
+  let z = 10, cascade = 0;
+  const START = { floor: [318, 58], review: [560, 120], collections: [620, 90] };
+
+  function openWindow(id, fromEl) {
+    let w = wins.get(id);
+    if (w && w.dataset.min === "1") { restore(w, fromEl); return; }
+    if (w) { focusWin(w); return; }
+    const c = CONTENT[id]; if (!c) return;
+    w = document.createElement("section");
+    w.className = "win"; w.tabIndex = -1; w.dataset.id = id;
+    w.setAttribute("role", "dialog"); w.setAttribute("aria-labelledby", "wt-" + id);
+    const [W, H] = c.size;
+    const vw = innerWidth, vh = innerHeight;
+    const start = START[id] || [380 + cascade * 34, 96 + cascade * 30];
+    cascade = (cascade + 1) % 6;
+    w.style.width = Math.min(W, vw - 24) + "px";
+    w.style.height = Math.min(H, vh - 150) + "px";
+    w.style.left = Math.max(12, Math.min(start[0], vw - W - 260)) + "px";
+    w.style.top = Math.max(42, Math.min(start[1], vh - H - 110)) + "px";
+    const appIcon = (APPS.find((a) => a.id === id) || { icon: "coll" }).icon;
+    w.innerHTML = `
+      <div class="titlebar">
+        <div class="lights">
+          <button class="close" type="button" aria-label="Close ${esc(c.title)}">${icon("x")}</button>
+          <button class="min" type="button" aria-label="Minimise ${esc(c.title)}">${icon("min")}</button>
+          <button class="zoom" type="button" aria-label="Fill the screen">${icon("zoom")}</button>
+        </div>
+        <h1 class="win-title" id="wt-${id}" style="margin:0">${icon(appIcon)}${esc(c.title)}</h1>
+        <span class="win-meta num">${esc(c.meta)}</span>
+      </div>
+      <div class="win-body">${c.body()}</div>`;
+    layer.appendChild(w);
+    wins.set(id, w);
+    wire(w, id);
+    focusWin(w);
+    animateIn(w, fromEl);
+    const di = dock.querySelector(`[data-app="${id}"]`);
+    if (di && !reduceMotion()) { di.classList.remove("bounce"); void di.offsetWidth; di.classList.add("bounce"); }
+    syncDock();
+  }
+
+  function originDelta(w, fromEl) {
+    if (!fromEl) return null;
+    const a = fromEl.getBoundingClientRect(), b = w.getBoundingClientRect();
+    return { x: a.left + a.width / 2 - (b.left + b.width / 2), y: a.top + a.height / 2 - (b.top + b.height / 2) };
+  }
+  function animateIn(w, fromEl) {
+    if (reduceMotion()) return;
+    if (isPhone()) { w.animate([{ transform: "translateY(40px)", opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 320, easing: "cubic-bezier(.16,1,.3,1)" }); return; }
+    const d = originDelta(w, fromEl);
+    const from = d ? `translate(${d.x}px, ${d.y}px) scale(.12)` : "scale(.96)";
+    w.animate([{ transform: from, opacity: 0, filter: "blur(6px)" }, { transform: "none", opacity: 1, filter: "blur(0)" }], { duration: 380, easing: "cubic-bezier(.16,1,.3,1)" });
+  }
+
+  function dockTarget(id) {
+    return dock.querySelector(`[data-app="${id}"]`) || (id.startsWith("c-") ? dock.querySelector('[data-app="collections"]') : null) || (isPhone() ? $("#moreBtn") : null);
+  }
+
+  function minimise(w) {
+    const id = w.dataset.id;
+    const done = () => { w.hidden = true; w.dataset.min = "1"; w.classList.remove("is-front"); focusTop(); syncDock(); };
+    if (reduceMotion()) return done();
+    const d = originDelta(w, dockTarget(id));
+    const to = d ? `translate(${d.x}px, ${d.y}px) scale(.08)` : "translateY(40px) scale(.9)";
+    w.animate([{ transform: "none", opacity: 1 }, { transform: to, opacity: 0, filter: "blur(4px)" }], { duration: 300, easing: "cubic-bezier(.5,0,.75,0)" }).onfinish = done;
+  }
+  function restore(w, fromEl) { w.hidden = false; w.dataset.min = "0"; focusWin(w); animateIn(w, fromEl || dockTarget(w.dataset.id)); syncDock(); }
+
+  function closeWin(w) {
+    const id = w.dataset.id;
+    const done = () => { w.remove(); wins.delete(id); if (id.startsWith("c-")) { const f = folders.querySelector(`[data-folder="${id.slice(2)}"]`); f && f.setAttribute("aria-pressed", "false"); } focusTop(); syncDock(); };
+    if (id === "floor" || id.startsWith("c-")) stopPlaying(w);
+    if (reduceMotion()) return done();
+    w.animate([{ transform: "none", opacity: 1 }, { transform: "scale(.96)", opacity: 0 }], { duration: 160, easing: "ease-in" }).onfinish = done;
+  }
+
+  function focusWin(w) {
+    wins.forEach((o) => o.classList.toggle("is-front", o === w));
+    w.style.zIndex = ++z;
+    w.focus({ preventScroll: true });
+    $("#mbApp").textContent = CONTENT[w.dataset.id].title;
+    syncDock();
+  }
+  function frontWin() {
+    let best = null;
+    wins.forEach((w) => { if (!w.hidden && (!best || +w.style.zIndex > +best.style.zIndex)) best = w; });
+    return best;
+  }
+  function focusTop() {
+    const w = frontWin();
+    if (w) focusWin(w); else { $("#mbApp").textContent = "Desk"; syncDock(); }
+  }
+  function syncDock() {
+    const front = frontWin();
+    dock.querySelectorAll(".dock-item[data-app]").forEach((b) => {
+      const id = b.dataset.app;
+      const open = wins.has(id) || (id === "collections" && [...wins.keys()].some((k) => k.startsWith("c-")));
+      b.classList.toggle("is-open", open);
+      const isFront = front && (front.dataset.id === id || (id === "collections" && front.dataset.id.startsWith("c-")));
+      b.classList.toggle("is-front", !!isFront);
+      if (isFront) b.setAttribute("aria-current", "true"); else b.removeAttribute("aria-current");
+    });
+    const mb = $("#moreBtn");
+    if (mb) mb.classList.toggle("is-front", !!front && APPS.some((a) => !a.tab && a.id === front.dataset.id));
+  }
+
+  function wire(w, id) {
+    w.addEventListener("pointerdown", () => { if (!w.classList.contains("is-front")) focusWin(w); }, true);
+    w.querySelector(".close").onclick = () => closeWin(w);
+    w.querySelector(".min").onclick = () => minimise(w);
+    w.querySelector(".zoom").onclick = () => w.classList.toggle("is-zoomed");
+
+    // Drag by the title bar (pointer: mouse, pen or touch on a large screen).
+    const bar = w.querySelector(".titlebar");
+    bar.addEventListener("dblclick", (e) => { if (!e.target.closest("button") && !isPhone()) w.classList.toggle("is-zoomed"); });
+    bar.addEventListener("pointerdown", (e) => {
+      if (e.target.closest("button") || isPhone() || w.classList.contains("is-zoomed")) return;
+      const sx = e.clientX, sy = e.clientY, ox = w.offsetLeft, oy = w.offsetTop;
+      bar.setPointerCapture(e.pointerId);
+      const move = (ev) => {
+        w.style.left = Math.min(innerWidth - 120, Math.max(-w.offsetWidth + 120, ox + ev.clientX - sx)) + "px";
+        w.style.top = Math.min(innerHeight - 140, Math.max(32, oy + ev.clientY - sy)) + "px";
+      };
+      const up = () => { bar.removeEventListener("pointermove", move); bar.removeEventListener("pointerup", up); bar.removeEventListener("pointercancel", up); };
+      bar.addEventListener("pointermove", move); bar.addEventListener("pointerup", up); bar.addEventListener("pointercancel", up);
+    });
+
+    w.addEventListener("click", (e) => {
+      const t = e.target;
+      const play = t.closest(".play"); if (play) return togglePlay(w, play.closest(".track"));
+      const dec = t.closest("[data-decide]"); if (dec) return decide(dec.closest(".track"), dec.dataset.decide);
+      const undo = t.closest("[data-undo]"); if (undo) return undoDecision(undo.closest(".track"));
+      const of = t.closest("[data-openfolder]"); if (of) return openWindow("c-" + of.dataset.openfolder, of);
+      const ex = t.closest("[data-export]"); if (ex) return toast(`Export ready: ${ex.dataset.export}.xml`);
+      const cp = t.closest("[data-copy]"); if (cp) { copyText($("#" + cp.dataset.copy).value); return toast("Copied"); }
+      const ts = t.closest("[data-toast]"); if (ts) return toast(ts.dataset.toast);
+      const prep = t.closest("[data-prep]"); if (prep) { const on = prep.textContent !== "In Prepare"; prep.textContent = on ? "In Prepare" : "Add to Prepare"; prep.classList.toggle("keep", on); return; }
+      const sw = t.closest(".switch"); if (sw) { sw.setAttribute("aria-checked", String(sw.getAttribute("aria-checked") !== "true")); return; }
+      const th = t.closest("[data-theme-set]"); if (th) return setTheme(th.dataset.themeSet);
+      const qa = t.closest("[data-q]"); if (qa) return queueAct(qa.dataset.q);
+      const wv = t.closest(".wave"); if (wv) return scrub(wv, e);
+    });
+
+    if (id === "review") renderQueue();
+    if (id === "settings") syncThemeButtons();
+  }
+
+  /* ---------------- Floor: play and decide ---------------- */
+  let playing = null;
+  function togglePlay(w, row) {
+    const was = row.classList.contains("is-playing");
+    document.querySelectorAll(".track.is-playing").forEach(stopRow);
+    if (!was) {
+      row.classList.add("is-playing");
+      const b = row.querySelector(".play"); b.innerHTML = icon("pause"); b.setAttribute("aria-label", "Pause");
+      playing = row;
+      $("#mbNowText").textContent = row.querySelector(".t-title").firstChild.textContent;
+      $("#mbNow").classList.add("on");
+    } else { playing = null; $("#mbNow").classList.remove("on"); }
+  }
+  function stopRow(r) { r.classList.remove("is-playing"); const b = r.querySelector(".play"); b.innerHTML = icon("play"); b.setAttribute("aria-label", "Play"); }
+  function stopPlaying(w) { if (playing && w.contains(playing)) { stopRow(playing); playing = null; $("#mbNow").classList.remove("on"); } }
+
+  function decide(row, kind) {
+    const act = row.querySelector(".t-act");
+    row.dataset.prev = act.innerHTML;
+    row.classList.toggle("is-passed", kind === "pass");
+    act.innerHTML = kind === "keep"
+      ? `<span class="decided"><span class="tick"></span><strong>Kept</strong></span><button class="btn quiet" type="button" data-undo>Undo</button>`
+      : `<span class="decided"><span class="pass"></span>Not for me</span><button class="btn quiet" type="button" data-undo>Undo</button>`;
+    const title = row.querySelector(".t-title").firstChild.textContent;
+    toast(kind === "keep" ? `Kept ${title}` : `${title}: not for me. Only you see this.`, () => undoDecision(row));
+    act.querySelector("[data-undo]").focus();
+    updateFloorMeta();
+  }
+  function undoDecision(row) {
+    if (!row.dataset.prev) return;
+    row.querySelector(".t-act").innerHTML = row.dataset.prev;
+    delete row.dataset.prev; row.classList.remove("is-passed");
+    row.querySelector("[data-decide='keep']").focus();
+    hideToast(); updateFloorMeta();
+  }
+  function updateFloorMeta() {
+    const w = wins.get("floor"); if (!w) return;
+    const left = w.querySelectorAll("[data-decide='keep']").length;
+    w.querySelector(".win-meta").textContent = left ? `${left} waiting` : "All decided";
+  }
+
+  /* ---------------- Review Queue ---------------- */
+  let qi = 0, qProgress = 0.32;
+  function renderQueue() {
+    const p = $("#queuePane"); if (!p) return;
+    if (qi >= QUEUE.length) {
+      p.innerHTML = `<p class="q-pos">Queue clear</p><h2 class="q-title">Nothing waiting</h2><p class="q-artist">New tracks land on the Floor first.</p><button class="btn lg" type="button" data-q="restart">Start again</button>`;
+      return;
+    }
+    const q = QUEUE[qi];
+    const bars = 64, on = Math.round(bars * qProgress);
+    p.innerHTML = `
+      <p class="q-pos num">${qi + 1} of 12 · from ${esc(q.from)}</p>
+      <h2 class="q-title">${esc(q.t)}</h2>
+      <p class="q-artist">${esc(q.a)}</p>
+      <button class="wave" type="button" aria-label="Seek in ${esc(q.t)}">${waveBars(bars, 7 + qi * 31)}</button>
+      <div class="q-times num"><span>${fmt(lenSec(q.len) * qProgress)}</span><span>${q.len}</span></div>
+      <ul class="q-facts num"><li><b>${q.bpm}</b> BPM</li><li>Key <b>${q.key}</b></li><li>${esc(q.status)}</li></ul>
+      <div class="q-actions">
+        <button class="btn lg" type="button" data-q="pass">Not for me</button>
+        <button class="btn keep lg" type="button" data-q="keep">Keep</button>
+        <span class="spacer"></span>
+        <button class="btn quiet lg" type="button" data-q="skip">Later</button>
+      </div>
+      <p class="kbd-hint">Shortcuts: <kbd>K</kbd> keep, <kbd>N</kbd> not for me, <kbd>Space</kbd> play</p>`;
+    p.querySelectorAll(".wave i").forEach((b, i) => b.classList.toggle("on", i < on));
+  }
+  const lenSec = (s) => { const [m, x] = s.split(":").map(Number); return m * 60 + x; };
+  const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+  function scrub(wv, e) {
+    const r = wv.getBoundingClientRect();
+    qProgress = e.clientX ? Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)) : Math.min(1, qProgress + 0.1);
+    renderQueue(); $("#queuePane .wave").focus();
+  }
+  function queueAct(a) {
+    const q = QUEUE[qi];
+    if (a === "restart") { qi = 0; }
+    else {
+      if (a === "keep") toast(`Kept ${q.t}`);
+      if (a === "pass") toast(`${q.t}: not for me. Only you see this.`);
+      if (a === "skip") toast(`${q.t} moved to later`);
+      qi++;
+      const badge = dock.querySelector('[data-app="review"] .badge');
+      if (badge && a !== "skip") { const n = Math.max(0, +badge.textContent - 1); badge.textContent = n; dock.querySelector('[data-app="review"]').setAttribute("aria-label", `Review Queue, ${n} to review`); }
+    }
+    qProgress = 0.08; renderQueue();
+    const first = $("#queuePane [data-q]"); first && first.focus();
+  }
+
+  /* ---------------- Toast, copy, theme, clock ---------------- */
+  let toastTimer, toastUndo = null;
+  function toast(msg, undo) {
+    $("#toastText").textContent = msg;
+    toastUndo = undo || null;
+    $("#toastUndo").hidden = !undo;
+    $("#toast").classList.add("on");
+    clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, 4200);
+  }
+  function hideToast() { $("#toast").classList.remove("on"); }
+  $("#toastUndo").onclick = () => { toastUndo && toastUndo(); hideToast(); };
+  function copyText(s) { try { navigator.clipboard && navigator.clipboard.writeText(s); } catch (_) {} }
+  $("#wQueue").onclick = (e) => openWindow("review", e.currentTarget);
+  $("#wPlay").onclick = (e) => {
+    const b = e.currentTarget, on = b.getAttribute("aria-pressed") !== "true";
+    b.setAttribute("aria-pressed", String(on));
+    b.innerHTML = `<svg class="i" aria-hidden="true"><use href="#i-${on ? "pause" : "play"}"/></svg>`;
+    b.setAttribute("aria-label", `${on ? "Pause" : "Play"} Halflight (Extended Mix)`);
+    $("#mbNowText").textContent = "Halflight (Extended Mix)";
+    $("#mbNow").classList.toggle("on", on);
+  };
+  $("#mbLink").onclick = () => { copyText("https://floortest.app/maya"); toast("Your link is copied"); };
+
+  function setTheme(v) {
+    if (v === "system") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", v);
+    try { localStorage.setItem("ft-desk-theme", v); } catch (_) {}
+    syncThemeButtons();
+  }
+  function syncThemeButtons() {
+    const cur = document.documentElement.getAttribute("data-theme") || "system";
+    document.querySelectorAll("[data-theme-set]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.themeSet === cur)));
+  }
+  try { const t = localStorage.getItem("ft-desk-theme"); if (t && t !== "system" && !location.hash.includes("theme")) document.documentElement.setAttribute("data-theme", t); } catch (_) {}
+  const hashTheme = location.hash.match(/theme=(light|dark)/); if (hashTheme) document.documentElement.setAttribute("data-theme", hashTheme[1]);
+
+  function tick() {
+    const d = new Date();
+    const day = d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+    const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+    $("#mbClock").innerHTML = `<span class="mb-clock-day">${day}&nbsp;&nbsp;</span>${time}`;
+  }
+  tick(); setInterval(tick, 20000);
+
+  /* ---------------- Menu bar menus ---------------- */
+  document.querySelectorAll("[data-menu]").forEach((b) => {
+    b.addEventListener("click", () => {
+      const m = $("#" + b.dataset.menu);
+      const open = m.hidden;
+      closeMenus();
+      if (open) { m.hidden = false; m.style.left = b.getBoundingClientRect().left + "px"; b.setAttribute("aria-expanded", "true"); m.querySelector("button").focus(); }
+    });
+  });
+  function closeMenus() { document.querySelectorAll(".menu").forEach((m) => (m.hidden = true)); document.querySelectorAll("[data-menu]").forEach((b) => b.setAttribute("aria-expanded", "false")); }
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".menu, [data-menu]")) closeMenus();
+    if (!e.target.closest("#moreSheet, #moreBtn") && !moreSheet.hidden) toggleMore(false);
+    const o = e.target.closest(".menu [data-open]"); if (o) { closeMenus(); openWindow(o.dataset.open); }
+    const a = e.target.closest(".menu [data-act]");
+    if (a) {
+      closeMenus();
+      const f = frontWin();
+      if (a.dataset.act === "minimise" && f) minimise(f);
+      if (a.dataset.act === "close" && f) closeWin(f);
+      if (a.dataset.act === "closeall") [...wins.values()].forEach(closeWin);
+    }
+  });
+
+  /* ---------------- Keyboard ---------------- */
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      if (!document.querySelectorAll(".menu:not([hidden])").length && moreSheet.hidden) { const f = frontWin(); if (f) { e.preventDefault(); closeWin(f); } }
+      closeMenus(); if (!moreSheet.hidden) { toggleMore(false); $("#moreBtn").focus(); }
+      return;
+    }
+    if (e.target.closest("input, textarea")) return;
+    const f = frontWin();
+    if (f && f.dataset.id === "review" && !e.metaKey && !e.ctrlKey) {
+      if (e.key === "k" || e.key === "K") queueAct("keep");
+      if (e.key === "n" || e.key === "N") queueAct("pass");
+    }
+    if (!e.metaKey && !e.ctrlKey && !e.altKey && (e.key === "1" || e.key === "2") && !e.target.closest(".win")) openWindow(e.key === "1" ? "floor" : "review");
+  });
+
+  /* ---------------- Opening state ---------------- */
+  if (!location.hash.includes("desk")) openWindow("floor");
+  if (!isPhone() && location.hash.includes("two")) openWindow("review");
+})();
+</script>
+</body>
+</html>
