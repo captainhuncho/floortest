@@ -18,7 +18,6 @@ import { receiptWhere } from "./receipt-token";
  */
 
 export type Permission = "listen" | "download";
-export const PERMISSIONS: Record<Permission, string> = { listen: "Listen", download: "Listen + Download" };
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 /** Recommended for unreleased music: two weeks. */
