@@ -1,6 +1,7 @@
 import "server-only";
 import { q } from "./db";
 import { receiptWhere } from "./receipt-token";
+import { receiptLifeByToken } from "./receipt";
 
 /**
  * A short "version" of what someone's open pages show. It changes whenever something they'd see changes, so a
@@ -20,6 +21,8 @@ export async function deskPulse(userId: number) {
 
 /** What a sender's private receipt shows: the track's steps. Not the file's deletion, whose timing would give a "Not for me" away. */
 export async function receiptPulse(token: string) {
+  // A closed receipt (src/lib/receipt-life.ts) answers as an unknown link does: nothing.
+  if ((await receiptLifeByToken(token))?.life === "closed") return "";
   const m = receiptWhere(token, "t");
   const r = await q.get<{ p: string }>(
     `SELECT CONCAT_WS('.', t.played_at, t.downloaded_at, t.replied_at, t.played_out_at, t.share_ok) AS p

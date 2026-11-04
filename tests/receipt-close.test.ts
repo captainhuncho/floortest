@@ -11,42 +11,54 @@ delete process.env.DATABASE_URL;
 const DAY = 86_400_000;
 const T0 = Date.UTC(2026, 0, 1);
 const at = (d: number) => T0 + d * DAY;
-const untouched = { created_at: T0, played_out_at: null, decision: null, decided_at: null, deleted_at: null };
+const base = { created_at: T0, played_out_at: null, stems_requested_at: null, stems_sent: null };
 
-// Receipt links close 90 days after the track's final outcome (owner, 4 Nov, "go 90", "Backend's way").
-test("an early Not for me and a track nobody touched look the same on days 1, 89, 91, 179 and 181", async () => {
+// Receipt links close 90 days after the track's final outcome (owner, 4 Nov, "go 90"; "same clock for all, plus the
+// stems hold"). The clock reads only what the receipt shows, so tracks a receiver kept, passed, deleted or never
+// opened all look the same. LifeFacts has no decision or deletion field to read.
+test("every track runs on the same clock: read-only on day 90, closed on day 180", async () => {
   const { receiptLife, receiptClosesAt } = await import("../src/lib/receipt-life");
-  const earlyPass = { ...untouched, decision: "passed", decided_at: at(2) };
-  // The pass's file leaves on day 32 (retention), the untouched one's on day 90.
-  const passRemoved = { ...earlyPass, deleted_at: at(32) };
-  const untouchedRemoved = { ...untouched, deleted_at: at(90) };
-  const deskDeleted = { ...untouched, deleted_at: at(5) };
-  const lateishPass = { ...untouched, decision: "passed", decided_at: at(80), deleted_at: at(110) };
   const expected = { 1: "open", 89: "open", 91: "read-only", 179: "read-only", 181: "closed" } as const;
-  for (const [day, life] of Object.entries(expected)) {
-    for (const [name, t] of Object.entries({ untouched, earlyPass, passRemoved, untouchedRemoved, deskDeleted, lateishPass }))
-      assert.equal(receiptLife(t, at(Number(day))), life, `${name} on day ${day}`);
-  }
-  for (const t of [untouched, earlyPass, passRemoved, untouchedRemoved, deskDeleted, lateishPass]) assert.equal(receiptClosesAt(t), at(180), "the same closing date");
+  for (const [day, life] of Object.entries(expected)) assert.equal(receiptLife(base, at(Number(day))), life, `day ${day}`);
+  assert.equal(receiptClosesAt(base), at(180));
 });
 
-test("played out is final at once; kept stays live until an outcome", async () => {
+test("played out is final at once, and closes 90 days after", async () => {
   const { receiptLife } = await import("../src/lib/receipt-life");
-  const played = { ...untouched, decision: "kept", decided_at: at(1), played_out_at: at(3) };
+  const played = { ...base, played_out_at: at(3) };
   assert.equal(receiptLife(played, at(2)), "open");
-  assert.equal(receiptLife(played, at(4)), "read-only", "read-only from the night it was played");
+  assert.equal(receiptLife(played, at(4)), "read-only");
   assert.equal(receiptLife(played, at(92)), "read-only", "day 89 after playing");
   assert.equal(receiptLife(played, at(94)), "closed", "day 91 after playing");
-  const kept = { ...untouched, decision: "kept", decided_at: at(1) };
-  assert.equal(receiptLife(kept, at(400)), "open", "kept: no outcome yet");
-  // Kept, then deleted on day 200 (already past day 90, so the link being live said nothing new).
-  const keptDeleted = { ...kept, deleted_at: at(200) };
-  assert.equal(receiptLife(keptDeleted, at(199)), "open");
-  assert.equal(receiptLife(keptDeleted, at(201)), "read-only");
-  assert.equal(receiptLife(keptDeleted, at(291)), "closed");
+  // Played out after day 90 (a kept track) doesn't move the clock: it was read-only from day 90 already.
+  assert.equal(receiptLife({ ...base, played_out_at: at(120) }, at(181)), "closed");
 });
 
-async function track(handle: string, days: number, extra: Partial<Record<"decision" | "decided_at" | "deleted_at" | "played_out_at", unknown>> = {}) {
+test("an open stems request holds the receipt open until a stem arrives", async () => {
+  const { receiptLife } = await import("../src/lib/receipt-life");
+  const asked = { ...base, stems_requested_at: at(10) };
+  assert.equal(receiptLife(asked, at(91)), "open", "asked, none sent: open past day 90");
+  assert.equal(receiptLife(asked, at(400)), "open");
+  const sent = { ...asked, stems_sent: JSON.stringify(["Drums.wav"]) };
+  assert.equal(receiptLife(sent, at(91)), "read-only", "once a stem lands the normal clock applies");
+  assert.equal(receiptLife(sent, at(181)), "closed");
+  assert.equal(receiptLife({ ...asked, stems_sent: "not json" }, at(91)), "open", "a broken list reads as nothing sent");
+});
+
+test("the decision can't change the clock: kept-and-played and passed-and-played are the same on days 89, 91, 179, 181", async () => {
+  const { receiptLife } = await import("../src/lib/receipt-life");
+  // The same facts reach the clock whatever the receiver decided: decision and removal aren't among them.
+  const kept = { ...base, decision: "kept", decided_at: at(1), played_at: at(1) } as typeof base;
+  const passed = { ...base, decision: "passed", decided_at: at(1), played_at: at(1), deleted_at: at(31) } as typeof base;
+  for (const d of [1, 89, 91, 179, 181]) assert.equal(receiptLife(kept, at(d)), receiptLife(passed, at(d)), `day ${d}`);
+  const src = fs.readFileSync(new URL("../src/lib/receipt-life.ts", import.meta.url), "utf8");
+  assert.doesNotMatch(src.replace(/\/\*[^]*?\*\/|\/\/.*$/gm, ""), /decision|decided_at|deleted_at/, "the clock never reads them");
+  const receipt = fs.readFileSync(new URL("../src/lib/receipt.ts", import.meta.url), "utf8");
+  const life = receipt.slice(receipt.indexOf("export async function receiptLifeByToken"));
+  assert.doesNotMatch(life, /decision|decided_at|deleted_at/, "nor the lookup");
+});
+
+async function track(handle: string, days: number, extra: Partial<Record<"decision" | "decided_at" | "deleted_at" | "played_out_at" | "stems_sent", unknown>> = {}) {
   const { q } = await import("../src/lib/db");
   const R = await import("../src/lib/receipt-token");
   const created = Date.now() - days * DAY;
@@ -67,11 +79,13 @@ test("the lookup by token: day 89 opens, day 91 is read-only, day 181 is closed,
   const { receiptLifeByToken } = await import("../src/lib/receipt");
   const S = await import("../src/lib/stems");
   const d89 = await track("rc89", 89);
-  const d91 = await track("rc91", 91);
-  const d181 = await track("rc181", 181, { decision: "passed", decided_at: Date.now() - 180 * DAY });
+  const d91 = await track("rc91", 91, { stems_sent: JSON.stringify(["Keys.wav"]) });
+  const d181 = await track("rc181", 181, { decision: "passed", decided_at: Date.now() - 180 * DAY, stems_sent: JSON.stringify(["Keys.wav"]) });
+  const held = await track("rchold", 120);
   assert.equal((await receiptLifeByToken(d89.token))?.life, "open");
   assert.equal((await receiptLifeByToken(d91.token))?.life, "read-only");
   assert.equal((await receiptLifeByToken(d181.token))?.life, "closed");
+  assert.equal((await receiptLifeByToken(held.token))?.life, "open", "stems asked for, none sent: held open");
   assert.equal(await receiptLifeByToken("no-such-token"), null);
   // Stem upload: allowed on day 89, refused on day 91, by the server whatever the page shows.
   await assert.doesNotReject(S.startStemUpload(d89.token, "bass.wav", 1000, "9.9.9.1"));
@@ -96,6 +110,9 @@ test("from the outcome nothing can be done from the receipt; closed answers as a
   const receipt = fs.readFileSync(new URL("../src/lib/receipt.ts", import.meta.url), "utf8");
   const cols = receipt.slice(receipt.indexOf("RECEIPT_TRACK_COLUMNS = ["), receipt.indexOf("] as const"));
   assert.doesNotMatch(cols, /decision|decided_at|deleted_at/);
+  // The live status answers as for an unknown link once closed.
+  const pulse = fs.readFileSync(new URL("../src/lib/pulse.ts", import.meta.url), "utf8");
+  assert.match(pulse, /life === "closed"\) return "";/);
   // Sender history (/sent, confirmed email) doesn't look at the receipt's life: closing ends only the bearer link.
   const sent = fs.readFileSync(new URL("../src/lib/sent.ts", import.meta.url), "utf8");
   assert.doesNotMatch(sent, /receipt-life|receiptLife/);
@@ -105,7 +122,7 @@ test("sender history still lists a track whose receipt has closed", async () => 
   const { q } = await import("../src/lib/db");
   const { sentBy } = await import("../src/lib/sent");
   const { receiptLifeByToken } = await import("../src/lib/receipt");
-  const old = await track("rchist", 400, { deleted_at: Date.now() - 300 * DAY });
+  const old = await track("rchist", 400, { deleted_at: Date.now() - 300 * DAY, stems_sent: JSON.stringify(["Keys.wav"]) });
   assert.equal((await receiptLifeByToken(old.token))?.life, "closed");
   const t = Date.now();
   const me = (await q.get<{ id: number }>("INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at, email_verified_at) VALUES ('rchist-s@x.io', 'h', 'S', 'rchists', 'free', 'UTC', ?, ?) RETURNING id", t, t))!;

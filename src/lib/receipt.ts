@@ -38,11 +38,11 @@ export async function receiptByToken(token: string) {
 }
 
 /**
- * The receipt's life (src/lib/receipt-life.ts) by its token: open, read-only or closed, and when it closes. The
- * decision and deletion it's worked out from stay here, on the server; only the result goes on.
+ * The receipt's life (src/lib/receipt-life.ts) by its token: open, read-only or closed, and when it closes. Worked out
+ * only from what the receipt already shows (upload, played out, the stems request and stems sent), never the decision.
  */
 export async function receiptLifeByToken(token: string, now = Date.now()) {
   const m = receiptWhere(token, "");
-  const t = await q.get<LifeFacts>(`SELECT created_at, played_out_at, decision, decided_at, deleted_at FROM tracks WHERE ${m.sql}`, ...m.args);
+  const t = await q.get<LifeFacts>(`SELECT created_at, played_out_at, stems_requested_at, stems_sent FROM tracks WHERE ${m.sql}`, ...m.args);
   return t ? { life: receiptLife(t, now), closesAt: receiptClosesAt(t) } : null;
 }
