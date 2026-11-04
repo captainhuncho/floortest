@@ -566,9 +566,13 @@ html:has(.ou .kit-bulkbar) {
   .ou-btn--sm {
     min-height: 44px;
   }
+  /* A fixed 44px box that a flex row can't squeeze (the drawer's close sits beside a flexible title). */
   .ou-icon-btn {
+    flex: none;
     width: 44px;
     height: 44px;
+    min-width: 44px;
+    min-height: 44px;
   }
   .ou-name {
     margin-block: -12px;
