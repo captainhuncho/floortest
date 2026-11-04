@@ -1,0 +1,793 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>FloorTest desk</title>
+<style>
+/* FloorTest desktop mock, motion lens: purposeful, fast, interruptible.
+   Easing: enter = strong ease-out, on-screen move = ease-in-out, sheets = iOS drawer curve. */
+:root{
+  --ink:#10110f; --bone:#f1f1eb; --lime:#d5ff48; --violet:#9b8cff;
+  --ease-out:cubic-bezier(0.23,1,0.32,1);
+  --ease-in-out:cubic-bezier(0.77,0,0.175,1);
+  --ease-drawer:cubic-bezier(0.32,0.72,0,1);
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+
+  --canvas:#e9e8df; --plate:#f8f8f3; --plate-2:#efeee6; --text:#10110f; --mute:#5c5e57;
+  --line:rgba(16,17,15,.12); --line-strong:rgba(16,17,15,.22);
+  --glass:rgba(248,248,243,.62); --glass-line:rgba(255,255,255,.7);
+  --shadow:0 1px 0 rgba(255,255,255,.6) inset,0 18px 50px -12px rgba(16,17,15,.28),0 2px 6px rgba(16,17,15,.08);
+  --focus:#4d3ad6; --folder:#9b8cff; --folder-tab:#8574f5; --tile:#fbfbf7;
+  --grain-op:.07;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --canvas:#10110f; --plate:#1a1b18; --plate-2:#22231f; --text:#f1f1eb; --mute:#9c9e95;
+    --line:rgba(241,241,235,.1); --line-strong:rgba(241,241,235,.2);
+    --glass:rgba(30,31,28,.58); --glass-line:rgba(255,255,255,.08);
+    --shadow:0 1px 0 rgba(255,255,255,.05) inset,0 24px 60px -12px rgba(0,0,0,.7),0 2px 8px rgba(0,0,0,.4);
+    --focus:#d5ff48; --folder:#9b8cff; --folder-tab:#7d6cf0; --tile:#242521;
+    --grain-op:.09; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --canvas:#10110f; --plate:#1a1b18; --plate-2:#22231f; --text:#f1f1eb; --mute:#9c9e95;
+  --line:rgba(241,241,235,.1); --line-strong:rgba(241,241,235,.2);
+  --glass:rgba(30,31,28,.58); --glass-line:rgba(255,255,255,.08);
+  --shadow:0 1px 0 rgba(255,255,255,.05) inset,0 24px 60px -12px rgba(0,0,0,.7),0 2px 8px rgba(0,0,0,.4);
+  --focus:#d5ff48; --folder:#9b8cff; --folder-tab:#7d6cf0; --tile:#242521;
+  --grain-op:.09; color-scheme:dark;
+}
+@media (prefers-contrast:more){
+  :root{ --line:rgba(16,17,15,.45); --line-strong:#10110f; --mute:#30312d; --glass:var(--plate); }
+  :root[data-theme="dark"]{ --line:rgba(241,241,235,.45); --line-strong:#f1f1eb; --mute:#d4d5ce; --glass:var(--plate); }
+}
+@media (prefers-contrast:more) and (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){ --line:rgba(241,241,235,.45); --line-strong:#f1f1eb; --mute:#d4d5ce; --glass:var(--plate); }
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  font:14px/1.4 var(--font); color:var(--text); background:var(--canvas);
+  height:100dvh; overflow:hidden; -webkit-font-smoothing:antialiased;
+  -webkit-tap-highlight-color:transparent;
+}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:8px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* Wallpaper: canvas + film grain + a faint vignette. No colour wash. */
+.wallpaper{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(120% 90% at 50% 40%,transparent 55%,rgba(0,0,0,.06) 100%);}
+.wallpaper::after{content:"";position:absolute;inset:0;opacity:var(--grain-op);mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1.4 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");}
+:root[data-theme="dark"] .wallpaper::after{mix-blend-mode:screen;filter:invert(1)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .wallpaper::after{mix-blend-mode:screen;filter:invert(1)}}
+
+/* Glass: fixed chrome only (menu bar, Dock, title bars). */
+.glass{background:var(--glass);-webkit-backdrop-filter:blur(22px) saturate(160%);backdrop-filter:blur(22px) saturate(160%)}
+@media (prefers-reduced-transparency:reduce){.glass{background:var(--plate);-webkit-backdrop-filter:none;backdrop-filter:none}}
+
+/* Pressables: the interface hears the press. */
+.press{transition:transform 160ms var(--ease-out),background-color 150ms ease,color 150ms ease}
+.press:active{transform:scale(.97)}
+
+/* Menu bar */
+.menubar{position:fixed;top:0;left:0;right:0;z-index:900;height:32px;display:flex;align-items:center;gap:4px;
+  padding:0 10px;padding-left:max(10px,env(safe-area-inset-left));padding-right:max(10px,env(safe-area-inset-right));
+  border-bottom:1px solid var(--line);font-size:13px}
+.brand{display:flex;align-items:center;gap:7px;font-weight:650;letter-spacing:-.01em;padding:0 8px}
+.brand-mark{width:14px;height:14px;border-radius:50%;background:var(--ink);box-shadow:inset 0 0 0 3.5px var(--lime)}
+.mb-btn{height:24px;padding:0 9px;border-radius:6px;display:inline-flex;align-items:center;gap:6px}
+@media (hover:hover) and (pointer:fine){.mb-btn:hover{background:var(--line)}}
+.mb-btn[aria-expanded="true"]{background:var(--line)}
+.mb-current{font-weight:600}
+.mb-spacer{flex:1}
+.status-dot{width:7px;height:7px;border-radius:50%;background:#56b33d;box-shadow:0 0 0 2px rgba(86,179,61,.2)}
+.status-dot.off{background:var(--mute);box-shadow:none}
+.clock{font-variant-numeric:tabular-nums;padding:0 8px;color:var(--text)}
+
+/* Menu popover: scales from its trigger. */
+.menu{position:fixed;top:30px;z-index:950;min-width:220px;padding:5px;border-radius:10px;border:1px solid var(--line);
+  background:var(--plate);box-shadow:var(--shadow);transform-origin:top left;
+  transition:opacity 150ms var(--ease-out),transform 150ms var(--ease-out)}
+.menu[hidden]{display:block;opacity:0;transform:scale(.97);pointer-events:none;visibility:hidden;
+  transition:opacity 100ms ease,transform 100ms ease,visibility 0s 100ms}
+.menu button{display:flex;width:100%;justify-content:space-between;gap:16px;padding:6px 10px;border-radius:6px;text-align:left;font-size:13px}
+.menu button:focus-visible{outline-offset:-2px}
+@media (hover:hover) and (pointer:fine){.menu button:hover{background:var(--line)}}
+.menu kbd{font:12px var(--font);color:var(--mute)}
+.menu hr{border:0;border-top:1px solid var(--line);margin:4px 6px}
+
+/* Desktop */
+.desktop{position:fixed;inset:32px 0 0 0;z-index:1}
+.folders{position:absolute;top:22px;right:22px;display:grid;grid-template-columns:repeat(2,104px);gap:10px 6px;list-style:none;margin:0;padding:0}
+.folder{width:104px;padding:8px 4px 6px;border-radius:10px;display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center}
+.folder svg{width:64px;height:52px;filter:drop-shadow(0 4px 6px rgba(16,17,15,.14));transition:transform 160ms var(--ease-out)}
+.folder:active svg{transform:scale(.95)}
+.folder .f-name{font-size:12.5px;font-weight:550;line-height:1.2;padding:1px 6px;border-radius:5px}
+.folder .f-count{font-size:11.5px;color:var(--mute);font-variant-numeric:tabular-nums}
+.folder[aria-pressed="true"] .f-name{background:var(--focus);color:var(--canvas)}
+.folder[aria-pressed="true"]{background:var(--line)}
+.f-back{fill:var(--folder-tab)} .f-front{fill:var(--folder)} .f-shine{fill:rgba(255,255,255,.22)}
+.folder.add .f-front{fill:none;stroke:var(--line-strong);stroke-width:1.5;stroke-dasharray:4 3}
+.folder.add .f-back{fill:none}
+.folder.add svg{filter:none}
+.folders li{opacity:1;transform:none}
+.booting .folders li{opacity:0;transform:translateY(6px)}
+.folders li{transition:opacity 300ms var(--ease-out),transform 300ms var(--ease-out);transition-delay:calc(var(--i) * 40ms)}
+
+.desk-hint{position:absolute;left:28px;bottom:118px;font-size:12px;color:var(--mute);max-width:280px}
+
+/* Windows: glass title bar, solid body. */
+.win{position:absolute;z-index:10;display:flex;flex-direction:column;border-radius:12px;overflow:hidden;
+  background:var(--plate);border:1px solid var(--line-strong);box-shadow:var(--shadow);min-width:360px}
+.win.inactive .titlebar{opacity:.92}
+.win.inactive .tl{background:var(--line-strong)!important}
+.titlebar{height:44px;flex:0 0 44px;display:flex;align-items:center;gap:12px;padding:0 12px;border-bottom:1px solid var(--line);
+  cursor:grab;user-select:none;-webkit-user-select:none;touch-action:none}
+.titlebar:active{cursor:grabbing}
+.lights{display:flex;gap:8px}
+.tl{width:13px;height:13px;border-radius:50%;position:relative;display:grid;place-items:center}
+.tl::before{content:"";position:absolute;inset:-6px} /* larger hit area */
+.tl svg{width:8px;height:8px;opacity:0;transition:opacity 120ms ease}
+.lights:focus-within .tl svg{opacity:.75}
+@media (hover:hover) and (pointer:fine){.lights:hover .tl svg{opacity:.75}}
+.tl.close{background:#ff5f57}.tl.min{background:#febc2e}.tl.full{background:#28c840}
+.win-title{flex:1;text-align:center;font-weight:600;font-size:13px;margin-right:57px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.win-title small{font-weight:400;color:var(--mute);margin-left:6px}
+.win-close-m{display:none}
+.win-body{flex:1;overflow:auto;overscroll-behavior:contain}
+.win.maxed{border-radius:0}
+
+/* Track list */
+.sect-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:16px 18px 10px}
+.sect-head h2{font-size:17px;margin:0;letter-spacing:-.01em}
+.sect-head p{margin:0;color:var(--mute);font-size:12.5px}
+.tracks{list-style:none;margin:0;padding:0 8px 10px}
+.track{display:grid;grid-template-columns:36px minmax(0,1fr) auto auto;align-items:center;gap:12px;padding:8px 10px;border-radius:9px}
+.track + .track{box-shadow:0 -1px 0 var(--line)}
+.play{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line-strong)}
+.play svg{width:12px;height:12px}
+.play[aria-pressed="true"]{background:var(--text);color:var(--canvas);border-color:var(--text)}
+.t-title{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.t-meta{font-size:12.5px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.t-len{font:12.5px var(--mono);color:var(--mute);font-variant-numeric:tabular-nums}
+.actions{display:flex;gap:6px}
+.btn{height:32px;padding:0 13px;border-radius:8px;font-weight:600;font-size:13px;white-space:nowrap}
+.btn.keep{background:var(--lime);color:var(--ink)}
+.btn.pass{border:1px solid var(--line-strong)}
+@media (hover:hover) and (pointer:fine){.btn.pass:hover{background:var(--line)}.btn.keep:hover{background:#c9f53a}}
+.btn.quiet{color:var(--mute);padding:0 8px;text-decoration:underline;text-underline-offset:3px}
+.decided{font-size:12.5px;color:var(--mute);display:flex;align-items:center;gap:6px}
+.decided b{color:var(--text);font-weight:600}
+.track.is-passed .t-title,.track.is-passed .t-meta{opacity:.45}
+.check{width:14px;height:14px;border-radius:50%;background:var(--lime);color:var(--ink);display:inline-grid;place-items:center}
+.check svg{width:9px;height:9px}
+
+/* Generic rows */
+.rows{list-style:none;margin:0;padding:0 18px 14px}
+.rows li:first-child{border-top:0}
+.rows li{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.rows .muted{color:var(--mute);font-size:12.5px}
+.linkbox{margin:0 18px 14px;display:flex;gap:8px;align-items:center;padding:6px 6px 6px 12px;border:1px solid var(--line-strong);border-radius:10px;background:var(--plate-2)}
+.linkbox code{flex:1;font:13px var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.switch{width:40px;height:24px;border-radius:12px;background:var(--line-strong);position:relative;flex:0 0 auto;transition:background-color 150ms ease}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform 180ms var(--ease-out)}
+.switch[aria-checked="true"]{background:#56b33d}
+.switch[aria-checked="true"]::after{transform:translateX(16px)}
+.mini-folders{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:6px;padding:4px 14px 16px;list-style:none;margin:0}
+.mini-folders .folder{width:100%}
+.prep-step{display:flex;gap:10px;align-items:center}
+.box{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--line-strong);display:grid;place-items:center;flex:0 0 auto}
+.box[aria-checked="true"]{background:var(--text);border-color:var(--text);color:var(--canvas)}
+.box svg{width:11px;height:11px;opacity:0}
+.box[aria-checked="true"] svg{opacity:1}
+.prep-row{width:100%;display:flex;gap:10px;align-items:center;text-align:left;min-height:32px}
+
+/* Dock */
+.dock-wrap{position:fixed;left:0;right:0;bottom:10px;z-index:800;display:flex;justify-content:center;pointer-events:none;
+  padding-bottom:env(safe-area-inset-bottom)}
+.dock{pointer-events:auto;display:flex;align-items:flex-end;gap:14px;padding:9px 14px 6px;border-radius:22px;
+  border:1px solid var(--glass-line);box-shadow:0 0 0 1px var(--line),0 14px 40px -10px rgba(16,17,15,.35)}
+.dock-item{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:56px;position:relative}
+.dock-item.more{display:none}
+.tile{width:52px;height:52px;border-radius:13px;display:grid;place-items:center;background:var(--tile);
+  border:1px solid var(--line);box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 3px 8px -2px rgba(16,17,15,.2);
+  transform-origin:50% 100%;transition:transform 200ms var(--ease-out);will-change:transform}
+.tile svg{width:24px;height:24px}
+.dock-item.primary .tile{background:var(--ink);color:var(--lime);border-color:rgba(0,0,0,.4)}
+.dock-item:active .tile{scale:.94}
+.tile{transition:transform 200ms var(--ease-out),scale 120ms var(--ease-out)}
+.dock.tracking .tile{transition:transform 90ms linear,scale 120ms var(--ease-out)}
+.d-label{font-size:10.5px;font-weight:550;color:var(--text);white-space:nowrap;letter-spacing:.005em}
+.d-label .long{display:inline}.d-label .short{display:none}
+.dot{width:4px;height:4px;border-radius:50%;background:var(--text);opacity:0;transform:scale(.6);transition:opacity 180ms var(--ease-out),transform 180ms var(--ease-out)}
+.dock-item.running .dot{opacity:.85;transform:none}
+.badge{position:absolute;top:-5px;right:-1px;min-width:19px;height:19px;padding:0 5px;border-radius:10px;background:var(--violet);
+  color:var(--ink);font-size:11px;font-weight:700;display:grid;place-items:center;border:2px solid var(--plate);z-index:2}
+.dock-sep{width:1px;align-self:stretch;margin:4px 0 18px;background:var(--line-strong)}
+
+/* Toasts: transitions so a rapid second Keep retargets instead of restarting. */
+.toasts{position:fixed;left:50%;bottom:118px;z-index:1000;width:min(380px,calc(100vw - 32px));translate:-50% 0;pointer-events:none}
+.toast{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;gap:10px;padding:10px 10px 10px 14px;border-radius:12px;
+  background:var(--ink);color:var(--bone);font-size:13px;box-shadow:0 12px 30px -8px rgba(0,0,0,.45);pointer-events:auto;
+  transition:transform 400ms var(--ease-out),opacity 400ms var(--ease-out);transform:translateY(calc(var(--y,0) * -1)) scale(var(--s,1));opacity:var(--o,1)}
+.toast[data-mounted="false"]{transform:translateY(100%);opacity:0}
+.toast[data-leaving="true"]{transform:translateY(100%);opacity:0;transition-duration:200ms}
+.toast .msg{flex:1;min-width:0}
+.toast .msg b{font-weight:600}
+.toast button{height:30px;padding:0 10px;border-radius:7px;color:var(--lime);font-weight:600}
+:root[data-theme="dark"] .toast{background:var(--bone);color:var(--ink)}
+:root[data-theme="dark"] .toast button{color:#4d3ad6}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .toast{background:var(--bone);color:var(--ink)}:root:not([data-theme="light"]) .toast button{color:#4d3ad6}}
+
+/* Phone: bottom bar, folder grid, full-screen sheets. */
+@media (max-width:640px){
+  .menubar{height:calc(44px + env(safe-area-inset-top));padding-top:env(safe-area-inset-top);font-size:14px}
+  .mb-current,.mb-menu,.clock,.desk-only{display:none}
+  .mb-btn{white-space:nowrap;height:36px}
+  .dock-item[data-more]{display:none}
+  .dock-item.more{display:flex}
+  .decided{grid-column:2 / -1}
+  .desktop{inset:calc(44px + env(safe-area-inset-top)) 0 0 0;z-index:auto;overflow:auto;padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+  .folders{position:static;grid-template-columns:repeat(3,1fr);gap:12px 4px;padding:20px 12px 8px}
+  .folder{width:100%;min-height:44px}
+  .desk-hint{position:static;padding:4px 20px 20px;max-width:none}
+  .phone-title{display:block!important;padding:18px 20px 0;margin:0;font-size:22px;letter-spacing:-.02em}
+  .dock-wrap{bottom:0}
+  .dock{width:100%;border-radius:0;border:0;border-top:1px solid var(--line);box-shadow:none;gap:0;justify-content:space-around;
+    padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+  .dock-item{width:auto;flex:1;min-height:52px;justify-content:center;gap:2px}
+  .tile{width:30px;height:30px;border-radius:9px;transform:none!important;box-shadow:none}
+  .tile svg{width:18px;height:18px}
+  .dock-sep{display:none}
+  .d-label{font-size:10px}
+  .d-label .long{display:none}.d-label .short{display:inline}
+  .dot{position:absolute;top:2px;left:50%;margin-left:-2px}
+  .badge{top:0;right:calc(50% - 26px);min-width:17px;height:17px;font-size:10px}
+  .win{position:fixed!important;left:0!important;right:0;top:calc(10px + env(safe-area-inset-top))!important;bottom:0;width:auto!important;height:auto!important;
+    min-width:0;border-radius:16px 16px 0 0;z-index:960!important;border-bottom:0}
+  .titlebar{height:56px;flex-basis:56px;cursor:default;padding:0 8px 0 16px}
+  .titlebar::before{content:"";position:absolute;top:6px;left:50%;width:36px;height:5px;margin-left:-18px;border-radius:3px;background:var(--line-strong)}
+  .lights{display:none}
+  .win-title{text-align:left;margin:0;font-size:17px}
+  .win-close-m{display:inline-flex;align-items:center;justify-content:center;min-width:44px;height:44px;border-radius:10px;font-weight:600;color:var(--focus)}
+  .track{grid-template-columns:36px minmax(0,1fr) auto;row-gap:8px}
+  .t-len{display:none}
+  .actions{grid-column:2 / -1}
+  .actions .btn{height:44px;flex:1;font-size:15px}
+  .play{width:44px;height:44px}
+  .track{grid-template-columns:44px minmax(0,1fr) auto}
+  .toasts{bottom:calc(84px + env(safe-area-inset-bottom))}
+  .scrim{position:fixed;inset:0;z-index:940;background:rgba(0,0,0,.32);opacity:0;pointer-events:none;transition:opacity 250ms ease}
+  .scrim.on{opacity:1;pointer-events:auto}
+  input,select,textarea{font-size:16px}
+}
+.phone-title{display:none}
+
+@media (prefers-reduced-motion:reduce){
+  .tile,.dock.tracking .tile{transition:none;transform:none!important}
+  .booting .folders li{transform:none}
+  .folders li{transition:opacity 200ms ease;transition-delay:0ms}
+  .toast,.toast[data-mounted="false"],.toast[data-leaving="true"]{transform:none;transition:opacity 200ms ease}
+  .press:active,.folder:active svg{transform:none}
+  .switch::after{transition:none}
+}
+@media print{.dock-wrap,.menubar,.wallpaper,.toasts{display:none}.desktop{position:static}.win{position:static!important;box-shadow:none}}
+</style>
+</head>
+<body class="booting">
+<div class="wallpaper" aria-hidden="true"></div>
+
+<header class="menubar glass">
+  <span class="brand"><span class="brand-mark" aria-hidden="true"></span>FloorTest</span>
+  <button class="mb-btn mb-menu press" id="deskMenuBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="deskMenu">Desk</button>
+  <button class="mb-btn mb-menu press" id="winMenuBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="winMenu">Window</button>
+  <span class="mb-btn mb-current" id="currentApp" aria-live="polite">Floor</span>
+  <span class="mb-spacer"></span>
+  <button class="mb-btn press" id="linkStatus" title="Your link"><span class="status-dot" id="statusDot"></span><span id="statusText">Link open</span></button>
+  <button class="mb-btn press" id="themeBtn" aria-label="Theme: match system">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>
+    <span id="themeText">Auto</span>
+  </button>
+  <span class="clock" id="clock">Wed 4 Nov 21:40</span>
+</header>
+
+<div class="menu" id="deskMenu" role="menu" aria-labelledby="deskMenuBtn" hidden>
+  <button role="menuitem" data-open="floor">Open the Floor <kbd>1</kbd></button>
+  <button role="menuitem" data-open="review">Open Review Queue <kbd>2</kbd></button>
+  <button role="menuitem" data-open="send">Copy my link</button>
+  <hr>
+  <button role="menuitem" data-action="tidy">Tidy windows</button>
+</div>
+<div class="menu" id="winMenu" role="menu" aria-labelledby="winMenuBtn" hidden>
+  <button role="menuitem" data-action="minall">Minimise all</button>
+  <button role="menuitem" data-action="closeall">Close all <kbd>Esc</kbd></button>
+</div>
+
+<main class="desktop" id="desktop" aria-label="Desktop">
+  <h1 class="phone-title">Your desk</h1>
+  <ul class="folders" id="folders" aria-label="Collections"></ul>
+  <p class="desk-hint" id="deskHint">Collections live on the desktop. Open one to see its tracks.<span class="desk-only"> Esc closes the front window.</span></p>
+</main>
+
+<div class="scrim" id="scrim"></div>
+
+<nav class="dock-wrap" aria-label="Main">
+  <div class="dock glass" id="dock"></div>
+</nav>
+
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const reduce = matchMedia('(prefers-reduced-motion: reduce)');
+const phone = matchMedia('(max-width: 640px)');
+const finePointer = matchMedia('(hover: hover) and (pointer: fine)');
+
+const I = {
+  floor:'<path d="M4 15h16M4 19h16"/><rect x="5" y="4" width="14" height="7" rx="2"/>',
+  review:'<path d="M12 4v10m-4-4 4 4 4-4"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>',
+  collections:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  prepare:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 12l2 2 4-4"/>',
+  send:'<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  contacts:'<circle cx="9" cy="9" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 6.5a3 3 0 0 1 0 5.6M18 19a5 5 0 0 0-2.4-4.3"/>',
+  activity:'<path d="M3 12h4l2-6 4 12 2-6h6"/>',
+  account:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'
+};
+const svg = (p, w = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+const folderSvg = `<svg viewBox="0 0 64 52" aria-hidden="true"><path class="f-back" d="M4 8a4 4 0 0 1 4-4h14l5 5h29a4 4 0 0 1 4 4v31a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z"/><path class="f-front" d="M2 18a4 4 0 0 1 4-4h52a4 4 0 0 1 4 4v26a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4z"/><rect class="f-shine" x="2" y="14" width="60" height="2" rx="1"/></svg>`;
+const ICON_PLAY = '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1.5v9l7.5-4.5z" fill="currentColor"/></svg>';
+const ICON_PAUSE = '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 1.5h2.5v9H2.5zM7 1.5h2.5v9H7z" fill="currentColor"/></svg>';
+const ICON_CHECK = '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6.5 5 9l4.5-6"/></svg>';
+
+/* Data */
+const collections = [
+  { id:'peak', name:'Peak time', tracks:[['Night Shift','Marlo Vance','6:42'],['Concrete Bloom','Ilse Okafor','7:05'],['Hollow Signal','TRNSIT','5:58'],['Ferrous','Dana Kuhl','6:20']], extra:20 },
+  { id:'warm', name:'Warm-up', tracks:[['Soft Machinery','Hana Ito','7:31'],['Late Bus','Quiet Harbour','6:02'],['Pale Room','Oren Blum','8:14']], extra:15 },
+  { id:'label', name:'Label picks', tracks:[['Paper Tiger (Club Mix)','Sela Marr','6:55'],['Low Orbit','Kofi Ansah','5:47']], extra:7 },
+  { id:'radio', name:'Radio show 14', tracks:[['Blue Hour','Mira Solberg','4:12'],['Glass Garden','Teo Ruiz','5:03'],['Undertow','Nils Aaro','6:36']], extra:9 },
+  { id:'closing', name:'Closing records', tracks:[['After Everything','June Adebayo','9:02'],['Last Ferry','Pol Serra','7:48']], extra:4 },
+  { id:'maybe', name:'Maybe later', tracks:[['Rust Belt','Cass Monroe','6:10'],['Static Hymn','Odile Faure','5:29']], extra:19 },
+];
+const floorTracks = [
+  { id:'t1', title:'Night Shift', artist:'Marlo Vance', from:'Sent by Undertone Records', len:'6:42', state:null },
+  { id:'t2', title:'Concrete Bloom', artist:'Ilse Okafor', from:'Sent by the artist', len:'7:05', state:null },
+  { id:'t3', title:'Hollow Signal', artist:'TRNSIT', from:'Sent by Parallel PR', len:'5:58', state:null },
+  { id:'t4', title:'Soft Machinery', artist:'Hana Ito', from:'Sent by the artist', len:'7:31', state:null },
+  { id:'t5', title:'Paper Tiger (Club Mix)', artist:'Sela Marr', from:'Sent by Mono Dept.', len:'6:55', state:null },
+  { id:'t6', title:'Low Orbit', artist:'Kofi Ansah', from:'Sent by Kinship Audio', len:'5:47', state:null },
+  { id:'t7', title:'Glass Garden', artist:'Teo Ruiz', from:'Sent by the artist', len:'5:03', state:null },
+];
+let reviewLeft = 4;
+let linkOpen = true;
+let playing = null;
+
+const apps = [
+  { id:'floor', label:'Floor', short:'Floor', primary:true, w:700, h:500 },
+  { id:'review', label:'Review Queue', short:'Queue', w:560, h:420 },
+  { id:'collections', label:'Collections', short:'Collections', w:540, h:380 },
+  { id:'prepare', label:'Prepare', short:'Prepare', w:520, h:420 },
+  { id:'send', label:'Send', short:'Send', more:true, w:500, h:330 },
+  { id:'contacts', label:'Contacts', short:'Contacts', more:true, w:500, h:380 },
+  { id:'activity', label:'Activity', short:'Activity', more:true, w:480, h:400 },
+  { id:'account', label:'Account', short:'Account', sep:true, more:true, w:480, h:380 },
+  { id:'more', label:'More', short:'More', hidden:true, w:420, h:360 },
+];
+
+/* Renderers */
+function trackRow(t, ctx) {
+  const isPlay = playing === t.id;
+  let right;
+  if (t.state === 'kept') right = `<span class="decided"><span class="check">${ICON_CHECK}</span>Kept in <b>${esc(t.into || 'Peak time')}</b><button class="btn quiet press" data-undo="${t.id}">Undo</button></span>`;
+  else if (t.state === 'passed') right = `<span class="decided">Not for you<button class="btn quiet press" data-undo="${t.id}">Undo</button></span>`;
+  else right = `<span class="actions"><button class="btn pass press" data-pass="${t.id}">Not for me</button><button class="btn keep press" data-keep="${t.id}">Keep</button></span>`;
+  return `<li class="track ${t.state === 'passed' ? 'is-passed' : ''}" data-row="${t.id}">
+    <button class="play press" data-play="${t.id}" aria-pressed="${isPlay}" aria-label="${isPlay ? 'Pause' : 'Play'} ${esc(t.title)}">${isPlay ? ICON_PAUSE : ICON_PLAY}</button>
+    <div style="min-width:0"><div class="t-title">${esc(t.title)}</div><div class="t-meta">${esc(t.artist)} · ${esc(t.from)}</div></div>
+    <span class="t-len">${t.len}</span>${right}</li>`;
+}
+const render = {
+  floor() {
+    const open = floorTracks.filter(t => !t.state).length;
+    return `<div class="sect-head"><h2>Incoming</h2><p>${open} of ${floorTracks.length} waiting on you</p></div>
+      <ul class="tracks">${floorTracks.map(trackRow).join('')}</ul>`;
+  },
+  review() {
+    const list = [['Ferrous','Dana Kuhl','Listened to 2:10 of 6:20'],['Pale Room','Oren Blum','Listened to 0:45 of 8:14'],['Undertow','Nils Aaro','Not played yet'],['Rust Belt','Cass Monroe','Not played yet']].slice(4 - reviewLeft);
+    return `<div class="sect-head"><h2>Review Queue</h2><p>${reviewLeft} tracks need a decision</p></div>
+      <ul class="rows">${list.map(([t,a,m]) => `<li><div><div class="t-title">${esc(t)}</div><div class="muted">${esc(a)} · ${esc(m)}</div></div><button class="btn keep press" data-review="${esc(t)}">Keep</button></li>`).join('') || '<li><span class="muted">Nothing left to review. New tracks land on the Floor.</span></li>'}</ul>`;
+  },
+  collections() {
+    return `<div class="sect-head"><h2>Collections</h2><p>${collections.length} collections</p></div>
+      <ul class="mini-folders">${collections.map(c => `<li>${folderBtn(c)}</li>`).join('')}</ul>`;
+  },
+  prepare() {
+    const steps = [['Peak time: 24 tracks downloaded',true],['Warm-up: check keys against the opener',false],['Radio show 14: write the tracklist',false],['Label picks: send notes to Mono Dept.',false]];
+    return `<div class="sect-head"><h2>Prepare</h2><p>Saturday, before the set</p></div>
+      <ul class="rows">${steps.map(([s,d]) => `<li><button class="prep-row press" role="checkbox" aria-checked="${d}" data-check><span class="box" aria-hidden="true">${ICON_CHECK}</span><span>${esc(s)}</span></button></li>`).join('')}</ul>`;
+  },
+  send() {
+    return `<div class="sect-head"><h2>Your link</h2><p>Senders upload here, no account needed</p></div>
+      <div class="linkbox"><code>floortest.com/ana-reyes</code><button class="btn keep press" data-copy>Copy link</button></div>
+      <ul class="rows"><li><div><div class="t-title">Taking new tracks</div><div class="muted">Turn off to pause your link</div></div><button class="switch press" role="switch" aria-checked="${linkOpen}" aria-label="Taking new tracks" data-linkswitch></button></li></ul>`;
+  },
+  contacts() {
+    const c = [['Undertone Records','Label · 12 tracks sent'],['Parallel PR','Promoter · 8 tracks sent'],['Ilse Okafor','Artist · 3 tracks sent'],['Kinship Audio','Label · 5 tracks sent']];
+    return `<div class="sect-head"><h2>Contacts</h2><p>People who send you music</p></div>
+      <ul class="rows">${c.map(([n,m]) => `<li><div><div class="t-title">${esc(n)}</div><div class="muted">${esc(m)}</div></div><button class="btn pass press" data-toast="Opened ${esc(n)}">Open</button></li>`).join('')}</ul>`;
+  },
+  activity() {
+    const a = [['21:32','Kinship Audio sent Low Orbit'],['20:58','You kept Night Shift'],['19:14','Parallel PR sent Hollow Signal'],['17:40','Receipt sent to Ilse Okafor'],['Yesterday','You prepared Peak time for Saturday']];
+    return `<div class="sect-head"><h2>Activity</h2><p>Today</p></div>
+      <ul class="rows">${a.map(([t,m]) => `<li><span>${esc(m)}</span><span class="muted" style="font-variant-numeric:tabular-nums">${t}</span></li>`).join('')}</ul>`;
+  },
+  more() {
+    return `<ul class="rows" style="padding-top:8px">${apps.filter(a => a.more).map(a => `<li><button class="prep-row press" style="min-height:44px" data-app="${a.id}"><span class="tile" style="width:32px;height:32px;border-radius:9px;box-shadow:none">${svg(I[a.id])}</span><span class="t-title">${a.label}</span></button></li>`).join('')}</ul>`;
+  },
+  account() {
+    const s = [['Keyboard shortcuts on the Floor',true],['Daily email with new tracks',false],['Send senders a receipt',true]];
+    return `<div class="sect-head"><h2>Account</h2><p>Ana Reyes · DJ</p></div>
+      <ul class="rows">${s.map(([l,on]) => `<li><span>${esc(l)}</span><button class="switch press" role="switch" aria-checked="${on}" aria-label="${esc(l)}" data-switch></button></li>`).join('')}</ul>`;
+  },
+};
+function folderBtn(c) {
+  const n = c.tracks.length + c.extra;
+  return `<button class="folder press" data-folder="${c.id}" aria-pressed="false">${folderSvg}<span class="f-name">${esc(c.name)}</span><span class="f-count">${n} tracks</span></button>`;
+}
+function folderRender(c) {
+  return `<div class="sect-head"><h2>${esc(c.name)}</h2><p>${c.tracks.length + c.extra} tracks, newest first</p></div>
+    <ul class="rows">${c.tracks.map(([t,a,l]) => `<li><div><div class="t-title">${esc(t)}</div><div class="muted">${esc(a)}</div></div><span class="t-len">${l}</span></li>`).join('')}
+    <li><span class="muted">and ${c.extra} more</span><button class="btn pass press" data-toast="Showing all of ${esc(c.name)}">Show all</button></li></ul>`;
+}
+
+/* Desktop folders */
+const foldersEl = $('#folders');
+foldersEl.innerHTML = collections.map((c, i) => `<li style="--i:${i}">${folderBtn(c)}</li>`).join('') +
+  `<li style="--i:${collections.length}"><button class="folder add press" data-newfolder>${folderSvg}<span class="f-name">New collection</span><span class="f-count">&nbsp;</span></button></li>`;
+
+/* Dock */
+const dock = $('#dock');
+dock.innerHTML = apps.filter(a => !a.hidden).map(a => `${a.sep ? '<span class="dock-sep" aria-hidden="true"></span>' : ''}
+  <button class="dock-item ${a.primary ? 'primary' : ''}" data-app="${a.id}"${a.more ? ' data-more' : ''} aria-label="${a.label}${a.id === 'review' ? ', ' + reviewLeft + ' need review' : ''}">
+    ${a.id === 'review' ? `<span class="badge" id="reviewBadge" aria-hidden="true">${reviewLeft}</span>` : ''}
+    <span class="tile">${svg(I[a.id])}</span><span class="dot"></span>
+    <span class="d-label" aria-hidden="true"><span class="long">${a.label}</span><span class="short">${a.short}</span></span>
+  </button>`).join('') +
+  `<button class="dock-item more" data-app="more" aria-label="More"><span class="tile">${svg('<circle cx="6" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="18" cy="12" r="1.4"/>', 2.4)}</span><span class="dot"></span><span class="d-label" aria-hidden="true">More</span></button>`;
+
+/* Magnify: pointer-fine only, transform only, set directly on each tile. */
+const tiles = [...dock.querySelectorAll('.tile')];
+dock.addEventListener('pointermove', e => {
+  if (!finePointer.matches || phone.matches || reduce.matches || e.pointerType !== 'mouse') return;
+  dock.classList.add('tracking');
+  for (const t of tiles) {
+    const r = t.getBoundingClientRect();
+    const d = Math.abs(e.clientX - (r.left + r.width / 2));
+    const k = Math.max(0, 1 - d / 130);
+    const s = 1 + 0.38 * k * k * (3 - 2 * k);
+    t.style.transform = `translateY(${-(s - 1) * 22}px) scale(${s})`;
+  }
+});
+dock.addEventListener('pointerleave', () => { dock.classList.remove('tracking'); tiles.forEach(t => t.style.transform = ''); });
+
+/* Windows */
+const desktop = $('#desktop');
+const wins = new Map(); // key -> {el, trigger, minimised}
+let z = 20, cascade = 0;
+const scrim = $('#scrim');
+scrim.addEventListener('click', () => { const t = topWin(); if (t) close(t.key); });
+
+function dockItem(key) { return dock.querySelector(`[data-app="${key.startsWith('folder:') ? 'collections' : key}"]`); }
+function setRunning() {
+  dock.querySelectorAll('.dock-item').forEach(d => {
+    const id = d.dataset.app;
+    const on = [...wins.keys()].some(k => k === id || (id === 'collections' && k.startsWith('folder:')));
+    d.classList.toggle('running', on);
+  });
+  const top = topWin();
+  $('#currentApp').textContent = top ? top.el.dataset.title : 'Desk';
+  scrim.classList.toggle('on', phone.matches && !!top);
+}
+function topWin() {
+  let best = null;
+  for (const w of wins.values()) if (!w.minimised && (!best || +w.el.style.zIndex > +best.el.style.zIndex)) best = w;
+  return best;
+}
+function focusWin(w) {
+  w.el.style.zIndex = ++z;
+  wins.forEach(o => o.el.classList.toggle('inactive', o !== w));
+  setRunning();
+}
+function originFrom(el, trigger) {
+  if (!trigger) return 'center';
+  const t = trigger.getBoundingClientRect(), r = el.getBoundingClientRect();
+  return `${t.left + t.width / 2 - r.left}px ${t.top + t.height / 2 - r.top}px`;
+}
+function animateIn(el, trigger, instant) {
+  el.getAnimations().forEach(a => a.cancel());
+  if (instant) return;
+  if (phone.matches) {
+    el.animate([{ transform:'translateY(100%)' }, { transform:'translateY(0)' }], { duration: reduce.matches ? 0 : 320, easing:'cubic-bezier(0.32,0.72,0,1)' });
+    return;
+  }
+  el.style.transformOrigin = originFrom(el, trigger);
+  const frames = reduce.matches
+    ? [{ opacity:0 }, { opacity:1 }]
+    : [{ opacity:0, transform:'scale(.9)' }, { opacity:1, transform:'scale(1)' }];
+  el.animate(frames, { duration: reduce.matches ? 150 : 220, easing:'cubic-bezier(0.23,1,0.32,1)' });
+}
+function animateOut(el, toward, kind, instant, done) {
+  el.getAnimations().forEach(a => a.cancel());
+  if (instant) return done();
+  let frames, opts;
+  if (phone.matches) {
+    frames = [{ transform:'translateY(0)' }, { transform:'translateY(100%)' }];
+    opts = { duration: reduce.matches ? 0 : 220, easing:'cubic-bezier(0.32,0.72,0,1)' };
+  } else if (reduce.matches) {
+    frames = [{ opacity:1 }, { opacity:0 }]; opts = { duration:120, easing:'ease' };
+  } else if (kind === 'min' && toward) {
+    el.style.transformOrigin = originFrom(el, toward);
+    frames = [{ opacity:1, transform:'scale(1)' }, { opacity:0, transform:'scale(.12)' }];
+    opts = { duration:260, easing:'cubic-bezier(0.77,0,0.175,1)' };
+  } else {
+    el.style.transformOrigin = 'center';
+    frames = [{ opacity:1, transform:'scale(1)' }, { opacity:0, transform:'scale(.96)' }];
+    opts = { duration:150, easing:'cubic-bezier(0.23,1,0.32,1)' };
+  }
+  el.animate(frames, opts).onfinish = done;
+}
+function bodyFor(key) {
+  if (key.startsWith('folder:')) return folderRender(collections.find(c => c.id === key.slice(7)));
+  return render[key]();
+}
+function refresh(key) { const w = wins.get(key); if (w) { const b = w.el.querySelector('.win-body'); const st = b.scrollTop; b.innerHTML = bodyFor(key); b.scrollTop = st; } }
+
+function open(key, trigger, instant = false) {
+  const existing = wins.get(key);
+  if (existing) {
+    if (existing.minimised) { existing.minimised = false; existing.el.hidden = false; animateIn(existing.el, trigger, instant); }
+    focusWin(existing);
+    existing.el.querySelector('.win-body').focus({ preventScroll:true });
+    return;
+  }
+  const isFolder = key.startsWith('folder:');
+  const app = isFolder ? null : apps.find(a => a.id === key);
+  const col = isFolder ? collections.find(c => c.id === key.slice(7)) : null;
+  const title = isFolder ? col.name : app.label;
+  const w = isFolder ? 460 : app.w, h = isFolder ? 430 : app.h;
+  const el = document.createElement('section');
+  el.className = 'win';
+  el.dataset.title = title;
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-labelledby', 'wt-' + key.replace(':', '-'));
+  el.innerHTML = `<div class="titlebar glass">
+      <div class="lights">
+        <button class="tl close" data-close aria-label="Close ${esc(title)}"><svg viewBox="0 0 8 8" stroke="#4d0000" stroke-width="1.3"><path d="M1.5 1.5l5 5M6.5 1.5l-5 5"/></svg></button>
+        <button class="tl min" data-min aria-label="Minimise ${esc(title)}"><svg viewBox="0 0 8 8" stroke="#5c3a00" stroke-width="1.3"><path d="M1.2 4h5.6"/></svg></button>
+        <button class="tl full" data-full aria-label="Fill the screen with ${esc(title)}"><svg viewBox="0 0 8 8" fill="#0a4a00"><path d="M1.5 1.5h3.5l-3.5 3.5zM6.5 6.5H3l3.5-3.5z"/></svg></button>
+      </div>
+      <div class="win-title" id="wt-${key.replace(':', '-')}">${esc(title)}${isFolder ? '<small>Collection</small>' : ''}</div>
+      <button class="win-close-m press" data-close>Done</button>
+    </div><div class="win-body" tabindex="-1">${bodyFor(key)}</div>`;
+  const dr = desktop.getBoundingClientRect();
+  let left = Math.max(16, Math.min(dr.width - w - 260, 60 + cascade * 34));
+  let top = Math.max(14, Math.min(dr.height - h - 110, 24 + cascade * 30));
+  if (isFolder && trigger) { // open beside the folder it came from
+    const t = trigger.getBoundingClientRect();
+    left = Math.max(16, Math.min(t.left - w - 40, dr.width - w - 16));
+    top = Math.max(14, Math.min(t.top - dr.top + cascade * 12, dr.height - h - 110));
+  }
+  cascade = (cascade + 1) % 6;
+  Object.assign(el.style, { left:left + 'px', top:top + 'px', width:w + 'px', height:h + 'px' });
+  (phone.matches ? document.body : desktop).appendChild(el); // phone sheets sit above the bottom bar
+  const rec = { el, trigger, minimised:false, key };
+  wins.set(key, rec);
+  focusWin(rec);
+  animateIn(el, trigger, instant);
+  el.querySelector('.win-body').focus({ preventScroll:true });
+  wireWindow(rec);
+}
+function close(key, instant = false) {
+  const w = wins.get(key); if (!w) return;
+  wins.delete(key);
+  setRunning();
+  const back = w.trigger && document.contains(w.trigger) ? w.trigger : dockItem(key);
+  animateOut(w.el, null, 'close', instant, () => w.el.remove());
+  const next = topWin(); if (next) focusWin(next);
+  if (back) back.focus({ preventScroll:true });
+}
+function minimise(key) {
+  const w = wins.get(key); if (!w) return;
+  w.minimised = true;
+  const di = dockItem(key);
+  animateOut(w.el, di, 'min', false, () => { if (w.minimised) w.el.hidden = true; });
+  const next = topWin(); if (next) focusWin(next); else setRunning();
+}
+function toggleFull(key) {
+  const w = wins.get(key); if (!w) return;
+  const el = w.el;
+  if (el.classList.toggle('maxed')) {
+    el.dataset.prev = el.style.cssText;
+    const dr = desktop.getBoundingClientRect();
+    Object.assign(el.style, { left:'0px', top:'0px', width:dr.width + 'px', height:(dr.height - 96) + 'px' });
+  } else el.style.cssText = el.dataset.prev;
+  el.style.zIndex = ++z;
+}
+function wireWindow(w) {
+  const el = w.el, bar = el.querySelector('.titlebar');
+  el.addEventListener('pointerdown', () => focusWin(w), true);
+  let drag = null;
+  bar.addEventListener('pointerdown', e => {
+    if (phone.matches || e.target.closest('button') || el.classList.contains('maxed')) return;
+    if (drag) return; // ignore a second finger
+    drag = { id:e.pointerId, x:e.clientX - el.offsetLeft, y:e.clientY - el.offsetTop };
+    bar.setPointerCapture(e.pointerId);
+  });
+  bar.addEventListener('pointermove', e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dr = desktop.getBoundingClientRect();
+    const x = Math.min(Math.max(e.clientX - drag.x, -el.offsetWidth + 120), dr.width - 120);
+    const y = Math.min(Math.max(e.clientY - drag.y, 0), dr.height - 60);
+    el.style.left = x + 'px'; el.style.top = y + 'px';
+  });
+  const end = e => { if (drag && e.pointerId === drag.id) drag = null; };
+  bar.addEventListener('pointerup', end); bar.addEventListener('pointercancel', end);
+  bar.addEventListener('dblclick', e => { if (!e.target.closest('button')) toggleFull(w.key); });
+}
+
+/* Keyboard-started clicks (detail === 0) skip motion: they happen often and must feel instant. */
+const viaKeys = e => e.detail === 0;
+
+/* Toasts */
+const toastsEl = $('#toasts');
+const toasts = [];
+function toast(html, undo) {
+  const t = document.createElement('div');
+  t.className = 'toast'; t.dataset.mounted = 'false';
+  t.innerHTML = `<span class="msg">${html}</span>${undo ? '<button class="press">Undo</button>' : ''}`;
+  toastsEl.appendChild(t);
+  const rec = { el:t, timer:null, left:4000, start:0 };
+  toasts.unshift(rec);
+  if (undo) t.querySelector('button').addEventListener('click', () => { undo(); dismiss(rec); });
+  t.addEventListener('pointerenter', () => pause(rec)); t.addEventListener('pointerleave', () => resume(rec));
+  requestAnimationFrame(() => requestAnimationFrame(() => { t.dataset.mounted = 'true'; layoutToasts(); }));
+  resume(rec);
+  while (toasts.length > 3) dismiss(toasts[toasts.length - 1]);
+}
+function pause(r) { clearTimeout(r.timer); r.left -= Date.now() - r.start; }
+function resume(r) { r.start = Date.now(); clearTimeout(r.timer); r.timer = setTimeout(() => dismiss(r), Math.max(800, r.left)); }
+document.addEventListener('visibilitychange', () => toasts.forEach(r => document.hidden ? pause(r) : resume(r)));
+function dismiss(r) {
+  const i = toasts.indexOf(r); if (i < 0) return;
+  toasts.splice(i, 1); clearTimeout(r.timer);
+  r.el.dataset.leaving = 'true';
+  setTimeout(() => r.el.remove(), 220);
+  layoutToasts();
+}
+function layoutToasts() {
+  toasts.forEach((r, i) => { r.el.style.setProperty('--y', (i * 10) + 'px'); r.el.style.setProperty('--s', 1 - i * .05); r.el.style.setProperty('--o', i ? .9 - i * .2 : 1); r.el.style.zIndex = 10 - i; });
+}
+
+/* Clicks */
+document.addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t) { clearFolderSel(); return; }
+  const ds = t.dataset;
+  const key = t.closest('.win') && [...wins.entries()].find(([, w]) => w.el === t.closest('.win'))?.[0];
+  if (ds.app) { const fromMore = key === 'more'; if (fromMore) close('more', true); open(ds.app, fromMore ? dockItem('more') : t, viaKeys(e)); return; }
+  if (ds.folder) {
+    clearFolderSel(); if (t.closest('#folders')) t.setAttribute('aria-pressed', 'true');
+    open('folder:' + ds.folder, t, viaKeys(e)); return;
+  }
+  if ('newfolder' in ds) { toast('New collection made. Name it from the Collections window.'); return; }
+  if ('close' in ds) { close(key, viaKeys(e)); return; }
+  if ('min' in ds) { minimise(key); return; }
+  if ('full' in ds) { toggleFull(key); return; }
+  if (ds.keep) { decide(ds.keep, 'kept'); return; }
+  if (ds.pass) { decide(ds.pass, 'passed'); return; }
+  if (ds.undo) { decide(ds.undo, null); return; }
+  if (ds.play) { playing = playing === ds.play ? null : ds.play; refresh('floor'); $(`[data-play="${ds.play}"]`)?.focus(); return; }
+  if (ds.review) { reviewLeft = Math.max(0, reviewLeft - 1); updateBadge(); refresh('review'); toast(`Kept <b>${esc(ds.review)}</b>.`); return; }
+  if ('check' in ds) { t.setAttribute('aria-checked', t.getAttribute('aria-checked') !== 'true'); return; }
+  if ('switch' in ds) { t.setAttribute('aria-checked', t.getAttribute('aria-checked') !== 'true'); return; }
+  if ('linkswitch' in ds) { setLink(!linkOpen); t.setAttribute('aria-checked', linkOpen); return; }
+  if ('copy' in ds) { navigator.clipboard?.writeText('https://floortest.com/ana-reyes').catch(() => {}); toast('Link copied.'); return; }
+  if (ds.toast) { toast(esc(ds.toast) + '.'); return; }
+});
+function clearFolderSel() { foldersEl.querySelectorAll('[aria-pressed="true"]').forEach(f => f.setAttribute('aria-pressed', 'false')); }
+
+function decide(id, state) {
+  const t = floorTracks.find(x => x.id === id); if (!t) return;
+  const prev = t.state; t.state = state; t.into = 'Peak time';
+  refresh('floor');
+  const row = $(`[data-row="${id}"]`);
+  (row?.querySelector('[data-undo], [data-keep]'))?.focus({ preventScroll:true });
+  if (state === 'kept') toast(`Kept <b>${esc(t.title)}</b> in Peak time.`, () => { t.state = prev; refresh('floor'); });
+  if (state === 'passed') toast(`<b>${esc(t.title)}</b> is not for you. The sender gets an honest receipt.`, () => { t.state = prev; refresh('floor'); });
+}
+function updateBadge() {
+  const b = $('#reviewBadge'); const item = dock.querySelector('[data-app="review"]');
+  if (reviewLeft) { b.textContent = reviewLeft; } else b.remove();
+  item.setAttribute('aria-label', `Review Queue${reviewLeft ? ', ' + reviewLeft + ' need review' : ''}`);
+}
+function setLink(on) {
+  linkOpen = on;
+  $('#statusDot').classList.toggle('off', !on);
+  $('#statusText').textContent = on ? 'Link open' : 'Link paused';
+  toast(on ? 'Your link is taking tracks again.' : 'Your link is paused. Senders see a polite note.');
+}
+$('#linkStatus').addEventListener('click', e => open('send', e.currentTarget, viaKeys(e)));
+
+/* Menus */
+function wireMenu(btnId, menuId) {
+  const btn = $('#' + btnId), menu = $('#' + menuId);
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const isOpen = !menu.hidden;
+    closeMenus();
+    if (isOpen) return;
+    menu.style.left = btn.getBoundingClientRect().left + 'px';
+    menu.hidden = false; btn.setAttribute('aria-expanded', 'true');
+    if (viaKeys(e)) menu.querySelector('button').focus();
+  });
+  menu.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    e.stopPropagation(); closeMenus(); btn.focus();
+    if (b.dataset.open) { open(b.dataset.open, btn, true); if (b.dataset.open === 'send') { navigator.clipboard?.writeText('https://floortest.com/ana-reyes').catch(() => {}); toast('Link copied.'); } }
+    if (b.dataset.action === 'tidy') { cascade = 0; [...wins.values()].forEach((w, i) => { if (w.el.classList.contains('maxed')) toggleFull(w.key); w.el.style.left = (60 + i * 34) + 'px'; w.el.style.top = (24 + i * 30) + 'px'; }); }
+    if (b.dataset.action === 'minall') [...wins.keys()].forEach(minimise);
+    if (b.dataset.action === 'closeall') [...wins.keys()].forEach(k => close(k, true));
+  });
+  menu.addEventListener('keydown', e => {
+    const items = [...menu.querySelectorAll('button')], i = items.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length].focus(); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+  });
+}
+function closeMenus() { document.querySelectorAll('.menu').forEach(m => m.hidden = true); document.querySelectorAll('[aria-haspopup]').forEach(b => b.setAttribute('aria-expanded', 'false')); }
+wireMenu('deskMenuBtn', 'deskMenu'); wireMenu('winMenuBtn', 'winMenu');
+document.addEventListener('pointerdown', e => { if (!e.target.closest('.menu, [aria-haspopup]')) closeMenus(); });
+
+/* Keys: Esc closes the open menu, else the front window. No animation on keyboard actions. */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    const openMenu = [...document.querySelectorAll('.menu')].find(m => !m.hidden);
+    if (openMenu) { closeMenus(); $('#' + openMenu.getAttribute('aria-labelledby')).focus(); return; }
+    const top = topWin(); if (top) close(top.key, true);
+  }
+  if ((e.key === '1' || e.key === '2') && !e.metaKey && !e.ctrlKey && !e.target.closest('input,textarea')) open(e.key === '1' ? 'floor' : 'review', null, true);
+});
+
+/* Theme: Auto, Light, Dark. */
+const themes = ['auto', 'light', 'dark'];
+let theme = 'auto';
+try { theme = localStorage.getItem('ft-theme') || 'auto'; } catch {}
+function applyTheme() {
+  if (theme === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.dataset.theme = theme;
+  $('#themeText').textContent = theme[0].toUpperCase() + theme.slice(1);
+  $('#themeBtn').setAttribute('aria-label', `Theme: ${theme === 'auto' ? 'match system' : theme}. Change theme`);
+}
+$('#themeBtn').addEventListener('click', () => { theme = themes[(themes.indexOf(theme) + 1) % 3]; try { localStorage.setItem('ft-theme', theme); } catch {} applyTheme(); });
+applyTheme();
+
+/* Clock */
+function tick() { const d = new Date(); $('#clock').textContent = d.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' }) + ' ' + d.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' }); }
+tick(); setInterval(tick, 15000);
+
+/* Boot: Floor open on desktop; on phone the desk shows first and the Floor is one tap away. */
+requestAnimationFrame(() => document.body.classList.remove('booting'));
+if (!phone.matches) open('floor', dock.querySelector('[data-app="floor"]'), true);
+setRunning();
+phone.addEventListener('change', setRunning);
+})();
+</script>
+</body>
+</html>
