@@ -1,5 +1,5 @@
 import type { CDPSession, Locator, Page } from "@playwright/test";
-import { expect, hydrated, test as base } from "./fixtures";
+import { expect, hydrated, logIn as logInAs, test as base } from "./fixtures";
 
 /**
  * Every control in the Review Queue (Queue and List views) does what it says (owner, 4 Nov, glass pass page 2): each
@@ -23,13 +23,8 @@ const test = base.extend<{ problems: string[] }>({
   ],
 });
 
-async function logIn(page: Page) {
-  await page.goto("/login");
-  await page.getByLabel("Email").fill("demo@floortest.test");
-  await page.getByRole("textbox", { name: "Password" }).fill("floortest-demo");
-  await page.getByRole("button", { name: "Log in" }).click();
-  await page.waitForURL(/\/dashboard\//);
-}
+/** The demo desk, through the shared log-in (it passes the human check a full run's earlier wrong tries can bring up). */
+const logIn = (page: Page) => logInAs(page, "demo@floortest.test");
 
 const panel = (page: Page) => page.getByRole("complementary", { name: "Review" });
 const rail = (page: Page) => panel(page).getByRole("group", { name: "Decision" });
@@ -262,16 +257,24 @@ test.describe("Review Queue controls, desktop 1280", () => {
   test("reply: ⌘/Ctrl+Enter and Send reply both send", async ({ page }) => {
     await queue(page);
     const box = page.locator("#reply-body");
+    // A full run has already sent replies to these senders (reply-feedback.spec), so the daily limit may refuse one:
+    // either answer counts, as long as it is said, and a refused reply keeps its text (sent ones clear the box).
     const sent = /Reply emailed to|Already sent|Not sent/;
-    await box.fill(`Thanks, this one is on my list (keys ${Date.now()}).`);
+    const answered = async (text: string) => {
+      const said = page.getByText(sent).first();
+      await expect(said).toBeVisible();
+      await expect(box).toHaveValue(/^Not sent/.test((await said.textContent()) ?? "") ? text : "");
+      // One toast at a time (6 s): wait for it to go so the next answer is a new one.
+      await expect(page.getByText(sent)).toHaveCount(0, { timeout: 15_000 });
+    };
+    const first = `Thanks, this one is on my list (keys ${Date.now()}).`;
+    await box.fill(first);
     await box.press("ControlOrMeta+Enter");
-    await toast(page, sent);
-    await expect(box).toHaveValue("");
-    await box.fill(`Thanks, I'll play it this weekend (button ${Date.now()}).`);
+    await answered(first);
+    const second = `Thanks, I'll play it this weekend (button ${Date.now()}).`;
+    await box.fill(second);
     await page.getByRole("button", { name: "Send reply" }).click();
-    // One toast at a time: the box empties only once the server said it went (a refused reply keeps its text).
-    await expect(box).toHaveValue("");
-    await toast(page, sent);
+    await answered(second);
   });
 
   test("details: open, Download original, Move and move back, Delete asks first", async ({ page }) => {
@@ -390,10 +393,13 @@ test.describe("Review Queue controls, desktop 1280", () => {
       await page.keyboard.press(key);
       await expect.poll(async () => Number(await slider.getAttribute("aria-valuenow"))).toBeGreaterThanOrEqual(at - 2);
     }
-    await page.keyboard.press("ArrowLeft");
-    await expect.poll(async () => Number(await slider.getAttribute("aria-valuenow"))).toBeLessThan(70);
+    // From a quarter in, so the 32 s track can't run out under a slow machine while the arrows are checked.
+    await page.keyboard.press("1");
+    await expect.poll(async () => Number(await slider.getAttribute("aria-valuenow"))).toBeLessThan(45);
     await page.keyboard.press("ArrowRight");
-    await expect.poll(async () => Number(await slider.getAttribute("aria-valuenow"))).toBeGreaterThan(70);
+    await expect.poll(async () => Number(await slider.getAttribute("aria-valuenow"))).toBeGreaterThan(50);
+    await page.keyboard.press("ArrowLeft");
+    await expect.poll(async () => Number(await slider.getAttribute("aria-valuenow"))).toBeLessThan(50);
 
     await page.keyboard.press("k");
     await toast(page, /added to Prepare for set/);
