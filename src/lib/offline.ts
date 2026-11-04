@@ -61,7 +61,7 @@ export async function offlineFile(token: string, at = now()): Promise<{ fileKey:
   if (!live) return null;
   if (g.deskId !== g.actorId && !((await teamsOn(g.deskId)) && (await roleOn(g.deskId, g.actorId)))) return null;
   const desk = await q.get<{ id: number; plan: string }>("SELECT id, plan FROM users WHERE id = ? AND suspended_at IS NULL", g.deskId);
-  const f = await fileAccess(desk, "offline", g.trackId);
+  const f = await fileAccess(desk && { ...desk, actor_id: g.actorId }, "offline", g.trackId);
   if (!f) return null;
   const left = Math.floor((g.expiresAt - at) / 1000);
   return left > 0 ? { fileKey: f.key, mime: f.mime, expiresIn: Math.min(STORAGE_LINK_SECONDS, f.maxLinkSeconds, left) } : null;

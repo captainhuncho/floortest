@@ -16,5 +16,5 @@ export async function GET(req: Request, ctx: RouteContext<"/api/v1/tracks/[id]/a
   if (signed) return Response.json({ url: signed, expiresIn: f.maxLinkSeconds }, { headers: { "Cache-Control": "no-store" } });
   // Local development (no bucket): stream from disk.
   const { body } = await store.stream(f.key);
-  return new Response(body, { headers: { "Content-Type": f.mime, "Cache-Control": "private, no-store" } });
+  return new Response(body, { headers: { "Content-Type": f.mime, "X-Content-Type-Options": "nosniff", "Cache-Control": "private, no-store" } });
 }

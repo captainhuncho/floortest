@@ -67,6 +67,11 @@ export const SWITCHES = {
     description: "Ops only (admin redesign B): the rail, section panel and top bar on wide screens and the bottom bar on phones replace the top tabs and sidebar. Off: ops looks as before. Nothing changes outside ops.",
     initial: false,
   },
+  beta_started: {
+    label: "Beta started",
+    description: "Turn on once the five-person pre-beta run (plan B0, docs/prebeta-run.md) is recorded. Off: Ops → Growth says the beta hasn't started and shows no beta week or targets. Nothing changes for receivers or senders.",
+    initial: false,
+  },
   uploads_paused: {
     label: "Pause all uploads",
     description: "Maintenance switch: every receiver's link stops taking new tracks, with a short notice to senders. Nothing is lost.",

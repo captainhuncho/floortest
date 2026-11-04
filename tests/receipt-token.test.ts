@@ -44,7 +44,7 @@ test("a new receipt token is stored only as a hash and a sealed copy; the link s
   // Bound to its row: moved to another track it doesn't open, and the link falls back to /sent (nothing logged).
   assert.equal(R.openReceiptToken(row.token_sealed, id + 1), null);
   assert.equal(R.receiptPath({ id: id + 1, token: null, token_sealed: row.token_sealed }), "/sent");
-  assert.equal(R.receiptPath({ id, token: null, token_sealed: `x${row.token_sealed.slice(1)}` }), "/sent", "a damaged copy falls back too");
+  assert.equal(R.receiptPath({ id, token: null, token_sealed: `${row.token_sealed[0] === "x" ? "y" : "x"}${row.token_sealed.slice(1)}` }), "/sent", "a damaged copy falls back too");
   assert.equal(await R.findByReceiptToken(`${token}x`), undefined);
   assert.equal(await R.findByReceiptToken(`${token}${"x".repeat(200)}`), undefined, "overlong input is cut, not matched whole");
   assert.deepEqual(R.receiptWhere("x".repeat(500)).args, [hashToken("x".repeat(100))], "only the hash of the cut input");

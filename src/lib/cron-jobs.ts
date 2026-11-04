@@ -1,5 +1,6 @@
 import "server-only";
 import { recordIncident } from "@/lib/incidents";
+import { safeFailure } from "@/lib/safe-failure";
 import { cleanupRecords, purgeExpired } from "@/lib/retention";
 import { NextResponse } from "next/server";
 import { cronAuthorized, JOBS, lastRuns, recordRun, withJobLease, type JobName } from "@/lib/cron";
@@ -24,8 +25,14 @@ import { sealOldReceipts } from "@/lib/receipt-token";
  */
 export type JobOutcome = { ok: boolean; result: unknown };
 
-const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
-const detail = (e: unknown) => (e instanceof Error ? `${e.message}\n${e.stack ?? ""}` : String(e));
+/**
+ * A failed step: its detail goes to an incident (src/lib/safe-failure.ts); the job's result, shown in Admin → Jobs and
+ * kept in job_runs, holds only "failed" and the incident's reference, never the error's own words.
+ */
+const failure = async (e: unknown, what: string, path: string) => {
+  const f = await safeFailure(e, what, { kind: "cron_failed", path });
+  return { error: f.error, ref: f.ref };
+};
 
 /**
  * Daily: clean up old records (runs even if the backup fails, and keeps the backup small), then a database backup
@@ -39,8 +46,8 @@ async function purge(started: number): Promise<JobOutcome> {
     try {
       backup = await runBackup();
     } catch (e) {
-      await recordIncident("cron_failed", "Nightly database backup failed; retention skipped", detail(e), "/api/cron/purge");
-      await recordRun("purge", started, false, { error: "backup failed; no tracks deleted", ...records });
+      const { ref } = await failure(e, "Nightly database backup failed; retention skipped", "/api/cron/purge");
+      await recordRun("purge", started, false, { error: "backup failed; no tracks deleted", ref, ...records });
       return { ok: false, result: { error: "Backup failed; nothing was deleted" } };
     }
     // The recovery copy of new files (when the vault is set up). A failure is reported but never blocks the rest.
@@ -49,24 +56,21 @@ async function purge(started: number): Promise<JobOutcome> {
       vault = await runVaultCopy(90_000);
       if (vault.on && vault.failed) await recordIncident("cron_failed", `${vault.failed} file(s) couldn't be copied to the recovery bucket`, "Retried next night. See Admin → Storage & costs.", "/api/cron/purge");
     } catch (e) {
-      vault = { error: message(e) };
-      await recordIncident("cron_failed", "Copying files to the recovery bucket failed", detail(e), "/api/cron/purge");
+      vault = await failure(e, "Copying files to the recovery bucket failed", "/api/cron/purge");
     }
     // File fingerprints: new files first, then re-checks (src/lib/file-digests.ts). A failure never blocks the rest.
     let digests;
     try {
       digests = await runFileDigests(60_000);
     } catch (e) {
-      digests = { error: message(e) };
-      await recordIncident("cron_failed", "Checking file fingerprints failed", detail(e), "/api/cron/purge");
+      digests = await failure(e, "Checking file fingerprints failed", "/api/cron/purge");
     }
     // Old receipt tokens without a hash and sealed copy get them, in batches (src/lib/receipt-token.ts). Never blocks the rest.
     let receipts;
     try {
       receipts = await sealOldReceipts();
     } catch (e) {
-      receipts = { error: message(e) };
-      await recordIncident("cron_failed", "Sealing old receipt tokens failed", detail(e), "/api/cron/purge");
+      receipts = await failure(e, "Sealing old receipt tokens failed", "/api/cron/purge");
     }
     const warned = await warnExpiring();
     const purged = await purgeExpired({ force: true });
@@ -74,8 +78,7 @@ async function purge(started: number): Promise<JobOutcome> {
     await recordRun("purge", started, true, result);
     return { ok: true, result };
   } catch (e) {
-    await recordRun("purge", started, false, message(e));
-    await recordIncident("cron_failed", "Daily cleanup job failed", detail(e), "/api/cron/purge");
+    await recordRun("purge", started, false, await failure(e, "Daily cleanup job failed", "/api/cron/purge"));
     throw e;
   }
 }
@@ -103,8 +106,7 @@ async function digest(started: number): Promise<JobOutcome> {
       result[name] = await step();
     } catch (e) {
       failed.push(name);
-      result[name] = { error: message(e) };
-      await recordIncident("cron_failed", `Daily emails: the ${name} step failed`, detail(e), "/api/cron/digest");
+      result[name] = await failure(e, `Daily emails: the ${name} step failed`, "/api/cron/digest");
     }
   }
   await recordRun("digest", started, !failed.length, result);
@@ -119,8 +121,7 @@ async function scan(started: number): Promise<JobOutcome> {
     await recordRun("scan", started, true, result, { history: busy });
     return { ok: true, result };
   } catch (e) {
-    await recordIncident("cron_failed", "Held uploads virus check failed", detail(e), "/api/cron/scan-held");
-    await recordRun("scan", started, false, { error: message(e) });
+    await recordRun("scan", started, false, await failure(e, "Held uploads virus check failed", "/api/cron/scan-held"));
     return { ok: false, result: { error: "Held uploads check failed" } };
   }
 }
@@ -142,8 +143,7 @@ async function mail(started: number): Promise<JobOutcome> {
     await recordRun("mail", started, true, result, { history: result.due > 0 || "stuck" in result });
     return { ok: true, result };
   } catch (e) {
-    await recordIncident("cron_failed", "Email queue job failed", detail(e), "/api/cron/mail");
-    await recordRun("mail", started, false, { error: message(e) });
+    await recordRun("mail", started, false, await failure(e, "Email queue job failed", "/api/cron/mail"));
     return { ok: false, result: { error: "Email queue failed" } };
   }
 }

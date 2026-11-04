@@ -27,7 +27,7 @@ import { HIDDEN, sendMail, sendMailHeld } from "@/lib/mail";
 import { readUndo, signUndo, takeBack, type UndoItem } from "@/lib/ops-undo";
 import { approvePendingIdentity, rejectPendingIdentity } from "@/lib/identity-approve";
 import { isAdminEmail, logAdmin, requireAdminAction } from "@/lib/admin";
-import { opsAccessFor, suspendRefusal } from "@/lib/ops-access";
+import { annotateRefusal, opsAccessFor, staffOf, suspendRefusal } from "@/lib/ops-access";
 import { PERMS, ROLE_PERMS, ROLES, type Perm, type Role } from "@/lib/ops-perms";
 import { grantablePlan, type PlanRequest } from "@/lib/plan-requests";
 import { flash } from "@/lib/flash";
@@ -42,6 +42,7 @@ import { localPath } from "@/lib/safe-links";
 import { normalEmail } from "@/lib/email-normal";
 import { deleteRevokedInvite, GATE_CODE_MIN_LENGTH, restoreRevokedInvite } from "@/lib/invites";
 import { receiptWhere } from "@/lib/receipt-token";
+import { safeFailure } from "@/lib/safe-failure";
 
 const refresh = () => revalidatePath("/admin", "layout");
 const done = (m: string) => flash(m);
@@ -104,12 +105,16 @@ export async function tagAccounts(form: FormData): Promise<OpsResult> {
   const tag = cleanTags(String(form.get("tag") || "")).split(",")[0];
   if (!ids) return no(TOO_MANY);
   if (!ids.length || !tag) return no("Pick accounts and type a tag");
-  const rows = await q.all<{ id: number; admin_tags: string }>(`SELECT id, admin_tags FROM users WHERE id IN (${ids.map(() => "?").join(",")})`, ...ids);
+  const found = await q.all<{ id: number; admin_tags: string }>(`SELECT id, admin_tags FROM users WHERE id IN (${ids.map(() => "?").join(",")})`, ...ids);
+  // Ops staff and the super admin are skipped unless the rank rule allows it (annotateRefusal), and counted.
+  const staff = await staffOf(found.map((r) => Number(r.id)));
+  const rows = found.filter((r) => !annotateRefusal(a, { id: Number(r.id), ...(staff.get(Number(r.id)) ?? { super: false, staff: false }) }));
+  const skipped = found.length - rows.length;
   await q.tx(async (db) => {
     for (const r of rows) await db.run("UPDATE users SET admin_tags = ? WHERE id = ?", cleanTags(`${r.admin_tags},${tag}`), r.id);
   });
-  await logAdmin(a.id, "tagged accounts", `${rows.length} account${rows.length === 1 ? "" : "s"}`, `${tag} · ids ${rows.map((r) => r.id).join(",")}`);
-  return ok(`Tagged ${rows.length} account${rows.length === 1 ? "" : "s"} ${tag}`);
+  await logAdmin(a.id, "tagged accounts", `${rows.length} account${rows.length === 1 ? "" : "s"}`, `${tag} · ids ${rows.map((r) => r.id).join(",")}${skipped ? ` · skipped ${skipped} (ops staff)` : ""}`);
+  return (rows.length ? ok : no)(`Tagged ${rows.length} account${rows.length === 1 ? "" : "s"} ${tag}${skipped ? `, skipped ${skipped} (ops staff)` : ""}`);
 }
 
 /** ⌘K → people: name, @handle or email (src/lib/ops-palette.ts holds the limits and the query). */
@@ -238,7 +243,7 @@ export async function backupNow() {
     await logAdmin(a.id, "backed up the database", "", JSON.stringify(r));
     await done("Database backed up.");
   } catch (e) {
-    await logAdmin(a.id, "backup failed", "", e instanceof Error ? e.message : String(e));
+    await logAdmin(a.id, "backup failed", "", (await safeFailure(e, "Backup from ops failed", { path: "/admin/backups" })).ref);
     return fail("The backup failed. Nothing was changed; see Incidents.");
   }
   refresh();
@@ -253,8 +258,9 @@ export async function checkStorage(form: FormData) {
   try {
     r = await checkBucket(bucket);
   } catch (e) {
-    await logAdmin(a.id, "checked storage", bucket, `failed: ${(e as Error).message}`);
-    return fail(`${(e as Error).message}. Nothing was counted as missing; check the app's storage key can read this bucket.`);
+    const f = await safeFailure(e, `Checking the ${bucket} bucket failed`, { path: "/admin/storage" });
+    await logAdmin(a.id, "checked storage", bucket, `failed: ${f.ref}`);
+    return fail(`${f.message} Nothing was counted as missing; check the app's storage key can read this bucket.`);
   }
   await logAdmin(a.id, "checked storage", bucket, `${r.present}/${r.expected} present, ${r.missing.length} missing, ${r.wrongSize.length} wrong size${r.finished ? "" : ", stopped early (time)"}`);
   await done(r.missing.length || r.wrongSize.length ? `${bucket}: ${r.missing.length} missing, ${r.wrongSize.length} wrong size.` : r.finished ? `${bucket}: all ${r.expected} files present.` : `${bucket}: checked ${r.checked} of ${r.expected} before time ran out; run it again.`);
@@ -364,8 +370,9 @@ export async function runJobNow(job: string): Promise<OpsResult> {
   try {
     out = await withJobLease(name, () => RUN_JOB[name](started));
   } catch (e) {
-    await logAdmin(a.id, "ran job", JOBS[name].label, "failed");
-    return no(`${JOBS[name].label} failed: ${e instanceof Error ? e.message : String(e)}. See Incidents.`);
+    const f = await safeFailure(e, `${JOBS[name].label} failed when run from ops`, { kind: "cron_failed", path: "/admin/jobs" });
+    await logAdmin(a.id, "ran job", JOBS[name].label, `failed: ${f.ref}`);
+    return no(f.message);
   }
   if (!out) return no(`${JOBS[name].label} is already running`);
   await logAdmin(a.id, "ran job", JOBS[name].label, out.ok ? "done" : "failed");
@@ -1224,6 +1231,8 @@ export async function saveTags(userId: number, form: FormData, answer = false): 
   const a = await requireAdminAction("users.support");
   const u = Number.isSafeInteger(userId) && userId > 0 ? await target(userId) : undefined;
   if (!u) return answer ? no("That account isn't there") : undefined;
+  const refusedTags = annotateRefusal(a, { id: u.id, ...((await staffOf([u.id])).get(u.id) ?? { super: false, staff: false }) });
+  if (refusedTags) return answer ? no(refusedTags) : fail(refusedTags);
   const tags = cleanTags(String(form.get("tags") || "").slice(0, 2000));
   await q.run("UPDATE users SET admin_tags = ? WHERE id = ?", tags, u.id);
   await logAdmin(a.id, "tagged account", `@${u.handle}`, tags || "none");
@@ -1238,6 +1247,8 @@ export async function addNote(userId: number, form: FormData, answer = false): P
   const body = String(form.get("note") || "").trim().slice(0, 2000);
   const u = body && Number.isSafeInteger(userId) && userId > 0 ? await target(userId) : undefined;
   if (!u) return answer ? no("Write a note first") : fail("Write a note first.");
+  const refusedNote = annotateRefusal(a, { id: u.id, ...((await staffOf([u.id])).get(u.id) ?? { super: false, staff: false }) });
+  if (refusedNote) return answer ? no(refusedNote) : fail(refusedNote);
   await q.run("INSERT INTO account_notes (user_id, admin_id, body, created_at) VALUES (?,?,?,?)", u.id, a.id, body, now());
   if (answer) return ok(`Note added for @${u.handle}`);
   await done("Note added.");

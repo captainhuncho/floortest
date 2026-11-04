@@ -56,7 +56,7 @@ Success: receivers clear their queue faster and find the tracks they play out; s
 
 ## Evidence on Hand
 
-- Real product, live at floortest.app in private beta with real receivers and senders.
+- Real product at floortest.app, invite-only behind the coming-soon password. The five-person pre-beta run (plan B0) has not been done yet (4 Nov); the private beta starts after a recorded B0 pass.
 - The pre-seed deck (Sept 2026) is referenced by the voice guide; it is not in this repository.
 - No testimonials, customer logos, press or usage statistics exist for public use. Do not invent them.
 
