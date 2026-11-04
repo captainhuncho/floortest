@@ -4,6 +4,7 @@ import { safeName } from "@/lib/rekordbox";
 import { allow } from "@/lib/ratelimit";
 import { logLinkEvent } from "@/lib/share-links";
 import { storage } from "@/lib/storage";
+import { attachment } from "@/lib/content-disposition";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -26,7 +27,7 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/c/[token]/track
     headers: {
       "Content-Type": t.mime,
       "Content-Length": String(size),
-      "Content-Disposition": `attachment; filename="${name.replace(/[^\x20-\x7e]/g, "_").replace(/"/g, "")}"; filename*=UTF-8''${encodeURIComponent(name)}`,
+      "Content-Disposition": attachment(name),
       "Cache-Control": "private, no-store",
     },
   });

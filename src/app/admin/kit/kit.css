@@ -573,9 +573,14 @@ tr.kit-row:focus-visible {
   .kit-edit-cell {
     min-height: var(--kit-tap);
   }
+  /* A 44px hit box that looks and lays out as the 36px circle: 4px padding with the background clipped to it, and
+     a -4px margin so the chip keeps its size (the extra 4px each side fits in the 6px gap between chips). */
   .kit-chip button {
-    width: 36px;
-    height: 36px;
+    width: var(--kit-tap);
+    height: var(--kit-tap);
+    padding: 4px;
+    margin: -4px;
+    background-clip: content-box;
   }
 }
 
