@@ -23,7 +23,8 @@ export async function GET(req: Request, ctx: RouteContext<"/api/tracks/[id]/audi
   const head = await store.head(f.key);
   if (!head) return new Response("Not found", { status: 404 });
   const size = head.size;
-  const base = { "Content-Type": f.mime, "Accept-Ranges": "bytes", "Cache-Control": "private, max-age=3600" };
+  // nosniff: the browser plays it as the type the server checked, never guesses another (Safety, 4 Nov).
+  const base = { "Content-Type": f.mime, "X-Content-Type-Options": "nosniff", "Accept-Ranges": "bytes", "Cache-Control": "private, max-age=3600" };
   const range = req.headers.get("range")?.match(/bytes=(\d*)-(\d*)/);
   if (range) {
     let start = range[1] ? Number(range[1]) : size - Number(range[2]);

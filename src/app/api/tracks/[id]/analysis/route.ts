@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { currentDeskForChange } from "@/lib/auth";
+import { currentDeskForChange, viewingAs } from "@/lib/auth";
 import { ownedTrack } from "@/lib/desk";
 import { q } from "@/lib/db";
 
@@ -7,6 +7,8 @@ export const runtime = "nodejs";
 
 /** Backfills waveform/BPM for tracks whose sender's browser couldn't analyse the audio. Only fills empty fields. */
 export async function POST(req: Request, ctx: RouteContext<"/api/tracks/[id]/analysis">) {
+  // An admin viewing an account changes nothing in it, checked here and not only by the cookie path (Safety, 4 Nov).
+  if (await viewingAs()) return NextResponse.json({ error: "Read-only while viewing an account." }, { status: 403 });
   const user = await currentDeskForChange();
   if (user instanceof Response) return user;
   if (!user) return NextResponse.json({ error: "Sign in again." }, { status: 401 });

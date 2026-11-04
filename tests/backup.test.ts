@@ -78,6 +78,6 @@ test("a backup holds no invite code or receipt token, but keeps what a restore n
   const invite = dump.tables.invites.find((i) => i.code === user.invite_code);
   assert.ok(invite, "the account still points at its (hidden) invite, so invite use counts survive a restore");
   const track = dump.tables.tracks.find((r) => r.user_id === uid)!;
-  assert.equal(typeof track.token, "string", "the column stays filled (it's required and unique)");
-  assert.ok((track.token as string).length >= 32);
+  // Left out, not replaced (Safety, 4 Nov): receipts are found by token_hash and rebuilt from token_sealed, both kept.
+  assert.equal(track.token, null, "no plain receipt token, real or stand-in");
 });

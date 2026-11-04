@@ -54,10 +54,10 @@ test("stored files are fingerprinted by the server; a changed or missing file is
   assert.equal(second.failed, 1);
   assert.equal((await q.get<{ status: string }>("SELECT status FROM file_digests WHERE file_key = ?", `audio/${uid}/a.wav`))!.status, "mismatch");
   const me = { id: uid, plan: "pro" };
-  assert.equal(await fileAccess(me, "play", a), null, "quarantined: no playback");
-  assert.equal(await fileAccess(me, "download", a), null, "or download");
-  assert.equal(await fileAccess(me, "play", gone), null);
-  assert.ok(await fileAccess(me, "play", b), "the untouched file still plays");
+  assert.equal(await fileAccess({ ...me, actor_id: me.id }, "play", a), null, "quarantined: no playback");
+  assert.equal(await fileAccess({ ...me, actor_id: me.id }, "download", a), null, "or download");
+  assert.equal(await fileAccess({ ...me, actor_id: me.id }, "play", gone), null);
+  assert.ok(await fileAccess({ ...me, actor_id: me.id }, "play", b), "the untouched file still plays");
   const alerts = await q.all<{ message: string; detail: string }>("SELECT message, detail FROM incidents WHERE message LIKE '%fingerprint%'");
   assert.equal(alerts.length, 2, "one alert per run that found something");
   assert.ok(alerts.every((x) => !x.detail.includes("a.wav") && !x.message.includes("a.wav")), "no file names in alerts");
