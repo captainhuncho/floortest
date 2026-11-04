@@ -92,7 +92,8 @@ for (const dir of OPS_DIRS) {
   }
 }
 // The CRM and queue loaders read every account or track: outside their own folders, only a page that signs in an
-// admin may import them (the folder's own components call them under that page).
+// admin may import them (the folder's own components call them under that page). Known limits: a re-export
+// (export { … } from) is not followed, and tests/ is not scanned.
 const LOADERS = ["src/app/admin/accounts/crm/data.ts", "src/app/admin/moderation/queue/data.ts"].map((f) => join(root, f));
 for (const file of walk(join(root, "src")).filter((f) => /\.tsx?$/.test(f) && !LOADERS.some((l) => f.startsWith(join(l, "..") + sep)))) {
   const src = readFileSync(file, "utf8");
