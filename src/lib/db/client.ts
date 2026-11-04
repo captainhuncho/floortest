@@ -102,7 +102,7 @@ function wrap(raw: Raw): Queryable {
   };
 }
 
-async function openPostgres(url: string): Promise<Db> {
+export async function openPostgres(url: string): Promise<Db> {
   const { default: postgres } = await import("postgres");
   const max = Math.max(1, Number(process.env.DB_POOL_MAX || 5));
   const sql = postgres(url, {
@@ -169,7 +169,7 @@ async function openPostgres(url: string): Promise<Db> {
   };
 }
 
-async function openPglite(dir: string): Promise<Db> {
+export async function openPglite(dir: string): Promise<Db> {
   const { PGlite, types } = await import("@electric-sql/pglite");
   await mkdir(dir, { recursive: true }); // first run on a fresh install
   const pg = await PGlite.create(dir, { parsers: { [types.INT8]: (v: string) => Number(v) } });

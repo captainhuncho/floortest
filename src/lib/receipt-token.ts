@@ -95,8 +95,8 @@ export async function storeReceiptToken(db: Queryable, trackId: number, token: s
  * hashing that would break the receipt link the real hash still opens. A missing hash (a row the build before 0126 wrote
  * during a deploy) is filled from the token, which is then the real one.
  */
-export async function sealOldReceipt(trackId: number, token: string) {
-  const r = await q.run(
+export async function sealOldReceipt(trackId: number, token: string, db: Queryable = q) {
+  const r = await db.run(
     "UPDATE tracks SET token_hash = COALESCE(token_hash, ?), token_sealed = ? WHERE id = ? AND token = ? AND token_sealed IS NULL AND (token_hash IS NULL OR token_hash = ?)",
     hashToken(token), sealReceiptToken(token, trackId), trackId, token, hashToken(token),
   );
@@ -110,12 +110,13 @@ const PLAIN_IS_REAL = "(token_hash IS NULL OR token_hash = encode(sha256(convert
  * The nightly batch: seals up to `limit` old rows; returns how many, how many real ones are still unsealed, and how
  * many hold a token that isn't theirs (a restored stand-in: never sealed, their hash keeps working).
  */
-export async function sealOldReceipts(limit = 2000) {
+export async function sealOldReceipts(limit = 2000, db: Queryable = q) {
   const unsealed = "token IS NOT NULL AND token_sealed IS NULL";
-  const rows = await q.all<{ id: number; token: string }>(`SELECT id, token FROM tracks WHERE ${unsealed} AND ${PLAIN_IS_REAL} ORDER BY id LIMIT ?`, limit);
+  const rows = await db.all<{ id: number; token: string }>(`SELECT id, token FROM tracks WHERE ${unsealed} AND ${PLAIN_IS_REAL} ORDER BY id LIMIT ?`, limit);
   let sealed = 0;
-  for (const r of rows) if (await sealOldReceipt(r.id, r.token)) sealed++;
-  const left = await q.count(`SELECT COUNT(*) AS n FROM tracks WHERE ${unsealed} AND ${PLAIN_IS_REAL}`);
-  const standIns = await q.count(`SELECT COUNT(*) AS n FROM tracks WHERE ${unsealed} AND NOT (${PLAIN_IS_REAL})`);
+  for (const r of rows) if (await sealOldReceipt(r.id, r.token, db)) sealed++;
+  const count = async (where: string) => Number((await db.get<{ n: number }>(`SELECT COUNT(*)::int AS n FROM tracks WHERE ${where}`))?.n ?? 0);
+  const left = await count(`${unsealed} AND ${PLAIN_IS_REAL}`);
+  const standIns = await count(`${unsealed} AND NOT (${PLAIN_IS_REAL})`);
   return { receiptsSealed: sealed, receiptsUnsealedLeft: left, receiptsRestoredStandIns: standIns };
 }
