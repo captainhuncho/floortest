@@ -1,5 +1,7 @@
 # Five-person pre-beta run (before the 1 Nov private beta)
 
+**Not run yet (4 Nov).** The private beta starts after a recorded pass; then switch Beta started on (Ops → Feature switches).
+
 Plan item B0. Five testers use the live site (invite-only, behind the coming-soon password) on their own phones and
 computers. It checks the whole product before the beta opens; it is not the beta. Fix and re-test every blocker before
 inviting anyone else. Ideas that aren't defects go to a list for after the run, not into this build.

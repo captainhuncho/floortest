@@ -21,7 +21,7 @@ import { hashToken } from "./token-hash";
 const MAX_TOKEN = 100;
 
 /** What a link needs from a track row: its id, and the plain token (old rows, or just made) or the sealed one. */
-export type ReceiptKey = { id: number; token?: string | null; token_sealed?: string | null };
+export type ReceiptKey = { id: number; token?: string | null; token_hash?: string | null; token_sealed?: string | null };
 
 const keyFrom = () => crypto.createHash("sha256").update(`floortest-receipt:${env.secret}`).digest();
 
@@ -52,7 +52,9 @@ export const newReceiptToken = () => crypto.randomBytes(12).toString("base64url"
 
 /** The plain token for building a link or hiding it in an email's stored copy, or null when it can't be had. */
 export function receiptToken(track: ReceiptKey): string | null {
-  if (track.token) return track.token;
+  // The plain token only when it's the row's own: after a backup restore it holds a random stand-in whose hash isn't
+  // the row's, and a link built from that wouldn't open (Safety, 4 Nov). A just-made track has no hash in memory yet.
+  if (track.token && (track.token_hash == null || hashToken(track.token) === track.token_hash)) return track.token;
   return track.token_sealed ? openReceiptToken(track.token_sealed, track.id) : null;
 }
 
@@ -95,8 +97,8 @@ export async function storeReceiptToken(db: Queryable, trackId: number, token: s
  * hashing that would break the receipt link the real hash still opens. A missing hash (a row the build before 0126 wrote
  * during a deploy) is filled from the token, which is then the real one.
  */
-export async function sealOldReceipt(trackId: number, token: string) {
-  const r = await q.run(
+export async function sealOldReceipt(trackId: number, token: string, db: Queryable = q) {
+  const r = await db.run(
     "UPDATE tracks SET token_hash = COALESCE(token_hash, ?), token_sealed = ? WHERE id = ? AND token = ? AND token_sealed IS NULL AND (token_hash IS NULL OR token_hash = ?)",
     hashToken(token), sealReceiptToken(token, trackId), trackId, token, hashToken(token),
   );
@@ -110,12 +112,13 @@ const PLAIN_IS_REAL = "(token_hash IS NULL OR token_hash = encode(sha256(convert
  * The nightly batch: seals up to `limit` old rows; returns how many, how many real ones are still unsealed, and how
  * many hold a token that isn't theirs (a restored stand-in: never sealed, their hash keeps working).
  */
-export async function sealOldReceipts(limit = 2000) {
+export async function sealOldReceipts(limit = 2000, db: Queryable = q) {
   const unsealed = "token IS NOT NULL AND token_sealed IS NULL";
-  const rows = await q.all<{ id: number; token: string }>(`SELECT id, token FROM tracks WHERE ${unsealed} AND ${PLAIN_IS_REAL} ORDER BY id LIMIT ?`, limit);
+  const rows = await db.all<{ id: number; token: string }>(`SELECT id, token FROM tracks WHERE ${unsealed} AND ${PLAIN_IS_REAL} ORDER BY id LIMIT ?`, limit);
   let sealed = 0;
-  for (const r of rows) if (await sealOldReceipt(r.id, r.token)) sealed++;
-  const left = await q.count(`SELECT COUNT(*) AS n FROM tracks WHERE ${unsealed} AND ${PLAIN_IS_REAL}`);
-  const standIns = await q.count(`SELECT COUNT(*) AS n FROM tracks WHERE ${unsealed} AND NOT (${PLAIN_IS_REAL})`);
+  for (const r of rows) if (await sealOldReceipt(r.id, r.token, db)) sealed++;
+  const count = async (where: string) => Number((await db.get<{ n: number }>(`SELECT COUNT(*)::int AS n FROM tracks WHERE ${where}`))?.n ?? 0);
+  const left = await count(`${unsealed} AND ${PLAIN_IS_REAL}`);
+  const standIns = await count(`${unsealed} AND NOT (${PLAIN_IS_REAL})`);
   return { receiptsSealed: sealed, receiptsUnsealedLeft: left, receiptsRestoredStandIns: standIns };
 }

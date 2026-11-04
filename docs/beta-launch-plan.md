@@ -15,7 +15,7 @@ Prove that DJs with weekly callouts **keep using** the desk, and that senders **
 | Sender → receiver conversion | Senders who later sign up | 5% |
 | Kept → exported | Share of kept tracks downloaded in a crate | Tracks whether the "to the DJ set" promise is real |
 
-Weekly active receivers, activated receivers, tracks per active receiver and time to first listen are shown live, with the pace each target needs, at the top of Admin → Growth (beta week; every non-staff, non-test account whenever it joined, split invited / other and joined before 1 Nov / since; activity from 1 Nov; small bases as raw numbers).
+Weekly active receivers, activated receivers, tracks per active receiver and time to first listen are shown live, with the pace each target needs, at the top of Admin → Growth, once the pre-beta run (B0) is recorded and the Beta started switch is on; until then it says "Beta not started" with no week or targets (4 Nov) (beta week; every non-staff, non-test account whenever it joined, split invited / other and joined before 1 Nov / since; activity from 1 Nov; small bases as raw numbers).
 
 ## Phases
 
