@@ -171,8 +171,12 @@ test("ops users: off is today's page; on, views in the URL, edit in place, bulk 
         await row.click();
         const sheet = page.getByRole("dialog", { name: "Lena Listener" });
         await expect(sheet).toBeVisible();
+        // Measure once the sheet has slid up: mid-slide its translateY leaves the box a hair under 44 (43.99997).
+        await sheet.evaluate((d) => Promise.all(d.getAnimations().map((a) => a.finished)));
         const close = sheet.getByRole("button", { name: "Close record" });
-        expect((await close.boundingBox())!.height, "a 44 px target").toBeGreaterThanOrEqual(44);
+        const box = (await close.boundingBox())!;
+        expect(Math.round(box.height), "a 44 px target").toBeGreaterThanOrEqual(44);
+        expect(Math.round(box.width), "a 44 px target").toBeGreaterThanOrEqual(44);
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
         await page.keyboard.press("Escape");
         await expect(sheet).toBeHidden();
