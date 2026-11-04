@@ -229,6 +229,9 @@ looks exactly as before.
   with Prepare), then Up next with the player and Just in beside **Your desk**, whose fullness is the ops tick arc
   (`components/TickArc.tsx`, shared with the ops Health gauge: waiting, kept, not for me, free), then This week with
   ops-style bars.
+- **Floor, the Waiting card (4 Nov):** the count, then the oldest waiting track (title, artist, "Oldest · 2d ago") and a
+  black "Start listening" pill; the whole card opens the queue. Nothing waiting: a quiet grey card that says so, with
+  "Open the queue". Both Act now cards size to their content.
 - **Type:** the Floor greeting 30px (36px from 640px) on option B, section titles 16px; headings track at -0.02em / -0.01em, a little
   softer than before.
 - **Not here:** glass on cards, long lists or every row (it costs frames on cheap phones and shows nothing over a plain
