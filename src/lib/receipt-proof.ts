@@ -2,7 +2,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { currentPerson } from "./auth";
 import { env } from "./env";
-import { receiptByToken } from "./receipt";
+import { receiptByToken, receiptLifeByToken } from "./receipt";
 import { RECEIPT_COOKIE, RECEIPT_REMEMBER_MS, proves, withSender } from "./receipt-proof-core";
 
 /** What a proof check needs from a receipt: its sender, that sender's current email, and the account they sent from. */
@@ -39,8 +39,13 @@ export async function rememberSender(sender: { id: number; email: string }) {
 /** What an unknown receipt link and a request without proof both get, so the answer never says which. */
 export const NOT_AVAILABLE = "This track is no longer available.";
 
-/** True when the receipt behind this token exists and this request proves its sender. */
+/**
+ * True when the receipt behind this token exists, hasn't closed, and this request proves its sender. Its life is read
+ * first, so a closed and an unknown token stop at the same point after the same single lookup (Safety, 4 Nov).
+ */
 export async function senderProvenFor(token: string) {
+  const life = await receiptLifeByToken(token);
+  if (!life || life.life === "closed") return false;
   const r = await receiptByToken(token);
   return !!r && (await receiptProven(r));
 }

@@ -3,7 +3,7 @@ import { discardFiles } from "@/lib/deletion";
 import crypto from "node:crypto";
 import { claimUpload, HELD_MAX_TRIES, IntakeError, pointAtSealed, releaseUpload, UploadHeld } from "./intake";
 import { now, q, type Sender, type Track, type User } from "./db";
-import { APP_URL, sendMail } from "./mail";
+import { APP_URL, sendMail, sendMailLater } from "./mail";
 import { MAX_UPLOAD_BYTES } from "./plans";
 import { featureOn } from "./features";
 import { recentCount, record } from "./ratelimit";
@@ -69,13 +69,19 @@ export async function requestStems(user: User, t: Track) {
 export const stemSenderEmail = async (t: Pick<Track, "sender_id">) =>
   t.sender_id ? (await q.get<{ email: string | null }>("SELECT email FROM senders WHERE id = ?", t.sender_id))?.email : null;
 
-async function trackForStems(token: string) {
+/**
+ * The track a stem is for, by its receipt token. A closed receipt answers exactly as an unknown token, before any other
+ * check (src/lib/receipt-life.ts). A new upload (`start`) needs the receipt open; one started while it was open may
+ * finish (`complete`, also from the held batch): the first stem to land ends the stems hold, and the others sent with
+ * it mustn't be lost (Safety, 4 Nov).
+ */
+async function trackForStems(token: string, step: "start" | "complete") {
   const m = receiptWhere(token, "");
   const t = await q.get<Track>(`SELECT * FROM tracks WHERE ${m.sql}`, ...m.args);
-  if (!t) throw new IntakeError("This track is no longer available.", 404);
+  const life = t ? receiptLife(t) : "closed";
+  if (!t || life === "closed") throw new IntakeError("This track is no longer available.", 404);
   if (!t.stems_requested_at) throw new IntakeError("Stems weren't requested for this track.", 403);
-  // Read-only from the track's final outcome (src/lib/receipt-life.ts): decided without telling which way.
-  if (receiptLife(t) !== "open") throw new IntakeError("This receipt doesn't take stems any more.", 403);
+  if (step === "start" && life !== "open") throw new IntakeError("This receipt doesn't take stems any more.", 403);
   const plan = (await q.get<{ plan: string }>("SELECT plan FROM users WHERE id = ?", t.user_id))?.plan ?? "free";
   if (!(await featureOn("stems", { id: t.user_id, plan }))) throw new IntakeError("Not found", 404);
   return t;
@@ -83,7 +89,7 @@ async function trackForStems(token: string) {
 
 /** Step 1 of a stem upload, from the sender's receipt page. The bytes go straight to storage. */
 export async function startStemUpload(token: string, fileName: string, size: number, ip: string) {
-  const t = await trackForStems(token);
+  const t = await trackForStems(token, "start");
   const ext = fileName.toLowerCase().match(/\.(wav|mp3)$/)?.[0];
   if (!ext) throw new IntakeError("Stems must be WAV or MP3 files.", 400);
   if (!Number.isSafeInteger(size) || size <= 0) throw new IntakeError("Choose a WAV or MP3 file.", 400);
@@ -119,7 +125,7 @@ export async function startStemUpload(token: string, fileName: string, size: num
  * `scanDeadlineMs` when given).
  */
 export async function completeStemUpload(token: string, uploadId: string, opts: { from?: "request" | "batch"; scanDeadlineMs?: number } = {}) {
-  const t = await trackForStems(token);
+  const t = await trackForStems(token, "complete");
   // Claimed first: of two completes sent at the same moment, only one goes on.
   const up = await claimUpload<{ id: string; file_key: string; size: number; meta: string; held_at: number | null; held_tries: number }>(
     uploadId,
@@ -236,8 +242,9 @@ export async function completeStemUpload(token: string, uploadId: string, opts: 
   // One email per batch: only when nothing else arrived for this track in the last half hour.
   if (!previous || now() - previous > HOUR / 2) {
     const r = await q.get<{ email: string; name: string }>("SELECT email, name FROM users WHERE id = ?", t.user_id);
+    // Queued and sent after the answer, so a live track's completion takes no longer than a deleted one's (Safety, 4 Nov).
     if (r)
-      await sendMail({
+      await sendMailLater({
         userId: t.user_id,
         audience: "receiver",
         to: r.email,

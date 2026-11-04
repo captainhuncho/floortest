@@ -136,6 +136,33 @@ test.describe("receipt details need proof", () => {
     await expect(page.getByRole("button", { name: "Stop private sharing" })).toHaveCount(0);
   });
 
+  test("a closed receipt shows only that it closed, and every route answers as for an unknown link", async ({ page, browser }) => {
+    const closed = LINKS.closedReceiptToken;
+    const unknown = "e2eNoSuchReceiptToken";
+    await page.goto(`/receipt/${closed}`);
+    await expect(page.getByRole("heading", { name: "This receipt has closed" })).toBeVisible();
+    const html = await (await page.request.get(`/receipt/${closed}`)).text();
+    for (const secret of [...PRIVATE, "An Older Groove", "Drums.wav"]) expect(html, secret).not.toContain(secret);
+    // The live status, stems start and stems finish: byte for byte the unknown link's answer.
+    const same = async (what: string, a: Promise<import("@playwright/test").APIResponse>, b: Promise<import("@playwright/test").APIResponse>) => {
+      const [x, y] = await Promise.all([a, b]);
+      expect(x.status(), what).toBe(y.status());
+      expect(await x.text(), what).toBe(await y.text());
+    };
+    await same("pulse", page.request.get(`/api/pulse/receipt/${closed}`), page.request.get(`/api/pulse/receipt/${unknown}`));
+    const start = { data: { fileName: "bass.wav", size: 1000 } };
+    await same("stems start", page.request.post(`/api/stems/${closed}`, start), page.request.post(`/api/stems/${unknown}`, start));
+    await same("stems finish", page.request.post(`/api/stems/${closed}/complete`, { data: { uploadId: "x" } }), page.request.post(`/api/stems/${unknown}/complete`, { data: { uploadId: "x" } }));
+    // Even with proof of being the sender (this browser holds the sender's receipt cookie after a code), it stays closed.
+    const proven = await freshPage(browser);
+    await proven.goto(RECEIPT);
+    await proveWithCode(proven, LINKS.sender.email, LINKS.sender.masked);
+    await proven.goto(`/receipt/${closed}`);
+    await expect(proven.getByRole("heading", { name: "This receipt has closed" })).toBeVisible();
+    await same("stems start, proven", proven.request.post(`/api/stems/${closed}`, start), proven.request.post(`/api/stems/${unknown}`, start));
+    await proven.context().close();
+  });
+
   test("sending from a browser shows that track's whole receipt there, and not in another browser", async ({ page, browser }) => {
     const email = `fresh.sender.${Date.now()}@example.com`;
     const since = Date.now() - 1000;

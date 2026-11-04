@@ -328,6 +328,12 @@ async function main() {
       desk, callout, other, LINKS.otherReceiptToken, LINKS.other.title, "Otto Other", "", otherKey, `${LINKS.other.title}.wav`, "audio/wav", data.length, 32, 123, JSON.stringify(peaks(audio.x)), now - DAY,
     );
     await db.run("INSERT INTO events (user_id, sender_id, track_id, type, detail, created_at) VALUES (?,?,?,?,?,?)", desk, sid, tid, "submitted", "into Links callout", now - DAY);
+    // The same sender's track from 200 days ago, its stems sent: past day 180, so its receipt has closed.
+    await id(
+      `INSERT INTO tracks (user_id, collection_id, sender_id, token, title, artist, message, original_name, mime, size, duration, bpm, played_at, stems_requested_at, stems_sent, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      desk, callout, sid, LINKS.closedReceiptToken, "An Older Groove", LINKS.sender.artist, "", "older.wav", "audio/wav", data.length, 32, 123, now - 199 * DAY, now - 199 * DAY, JSON.stringify(["Drums.wav"]), now - 200 * DAY,
+    );
     await db.run("INSERT INTO sender_links (id_hash, email, created_at, expires_at) VALUES (?,?,?,?)", hashToken(LINKS.sentToken), LINKS.sender.email, now, now + DAY);
     await db.run(
       "INSERT INTO account_invites (account_id, email, role, token_hash, invited_by, created_at, expires_at) VALUES (?,?,?,?,?,?,?)",

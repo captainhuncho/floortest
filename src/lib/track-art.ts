@@ -8,6 +8,7 @@ import { trackArtEnabled } from "@/lib/plan-store";
 import { allow } from "@/lib/ratelimit";
 import { sealUpload, storage } from "@/lib/storage";
 import { receiptWhere } from "./receipt-token";
+import { receiptLife } from "./receipt-life";
 
 /**
  * Artwork goes straight to storage like the audio, then is decoded and re-encoded like covers (WebP, metadata
@@ -24,7 +25,9 @@ const KINDS: Record<string, ImageKind> = { "image/jpeg": "jpg", "image/png": "pn
 
 const sentTrack = (token: string) => {
   const m = receiptWhere(token, "t");
-  return q.get<Track & { plan: string }>(`SELECT t.*, u.plan FROM tracks t JOIN users u ON u.id = t.user_id WHERE ${m.sql} AND t.deleted_at IS NULL`, ...m.args);
+  // Found whether or not the receiver has deleted it: a deleted track answers exactly as a live one, and its artwork is
+  // thrown away at the end (Safety, 4 Nov), so the answer can't tell the sender it was deleted.
+  return q.get<Track & { plan: string }>(`SELECT t.*, u.plan FROM tracks t JOIN users u ON u.id = t.user_id WHERE ${m.sql}`, ...m.args);
 };
 
 /**
@@ -37,7 +40,10 @@ const sentTrack = (token: string) => {
  */
 export async function attachTrackArt(ref: string, body: { type?: string; size?: number; done?: boolean }): Promise<Reply> {
   const t = await sentTrack(ref);
-  if (!t || t.created_at < now() - WINDOW_MS) return err("Not found", 404);
+  // A closed receipt answers as an unknown one; a read-only one (played out within the hour) takes nothing new.
+  const life = t ? receiptLife(t) : "closed";
+  if (!t || life === "closed" || t.created_at < now() - WINDOW_MS) return err("Not found", 404);
+  if (life !== "open") return err("This receipt doesn't take artwork any more.", 403);
   if (!(await trackArtEnabled(t.plan))) return err("This receiver doesn't take artwork.", 403);
   const store = await storage();
   if (t.art_key) return err("This track already has artwork.", 409);
@@ -70,6 +76,12 @@ export async function attachTrackArt(ref: string, body: { type?: string; size?: 
     await q.run("UPDATE uploads SET file_key = ? WHERE id = ?", kept, up.id);
     await discardFiles([sealed], "track artwork re-encoded", { linkLive: false });
     await store.put(kept, art, TYPES.webp);
+    // A deleted track: everything above ran as for a live one; now the artwork goes instead of staying.
+    if (t.deleted_at) {
+      await discardFiles([kept], "track artwork for a deleted track", { linkLive: false });
+      await q.run("DELETE FROM uploads WHERE id = ?", up.id);
+      return { status: 200, body: { ok: true } };
+    }
     // Only the first artwork sticks, even if two arrive at once.
     const set = await q.tx(async (db) => {
       const row = await db.get<{ id: number }>("UPDATE tracks SET art_key = ? WHERE id = ? AND art_key IS NULL RETURNING id", kept, t.id);

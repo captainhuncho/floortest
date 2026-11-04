@@ -1,7 +1,10 @@
-import { RETAIN_UNREVIEWED_DAYS } from "./plans";
-
 const DAY = 86_400_000;
 
+/**
+ * Days from upload to the track's final outcome when it isn't played out first. Its own number, not the retention
+ * setting, so a change to how long files are kept can't move the receipt clock unnoticed (Safety, 4 Nov).
+ */
+export const RECEIPT_FINAL_DAYS = 90;
 /** Days a receipt link stays open after the track's final outcome (owner, 4 Nov: "go 90"). */
 export const RECEIPT_CLOSE_DAYS = 90;
 
@@ -25,7 +28,7 @@ export type ReceiptLife = "open" | "read-only" | "closed";
  * played out (the sender sees it) or upload + 90 days, whichever comes first.
  */
 export function finalAt(t: Pick<LifeFacts, "created_at" | "played_out_at">) {
-  const floor = t.created_at + RETAIN_UNREVIEWED_DAYS * DAY;
+  const floor = t.created_at + RECEIPT_FINAL_DAYS * DAY;
   return t.played_out_at ? Math.min(t.played_out_at, floor) : floor;
 }
 

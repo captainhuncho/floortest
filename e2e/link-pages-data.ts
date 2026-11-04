@@ -13,6 +13,8 @@ export const LINKS = {
   /** A second sender's receipt on the same desk: its proof must not open the first. */
   other: { email: "other.sender@example.com", masked: "o•••@e•••.com", title: "Someone Else Entirely" },
   otherReceiptToken: "e2eLinkPagesReceipt02",
+  /** The first sender's track from 200 days ago: its receipt has closed (src/lib/receipt-life.ts). */
+  closedReceiptToken: "e2eLinkPagesReceipt03",
   sentToken: "e2eLinkPagesSentLinkToken0000001",
   invitee: { email: "invitee.links@floortest.test", masked: "i•••@f•••.test" },
   inviteSecret: "e2eLinkPagesInviteSecret0000001",
