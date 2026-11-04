@@ -12,8 +12,8 @@ test("one deny-by-default rule decides every private file: only the desk's own, 
   const { fileAccess } = await import("../src/lib/file-access");
   const t = Date.now();
   const user = async (handle: string) =>
-    (await q.get<{ id: number; plan: string }>(
-      "INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at, email_verified_at) VALUES (?, 'h', ?, ?, 'team', 'UTC', ?, ?) RETURNING id, plan",
+    (await q.get<{ id: number; plan: string; actor_id: number }>(
+      "INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at, email_verified_at) VALUES (?, 'h', ?, ?, 'team', 'UTC', ?, ?) RETURNING id, plan, id AS actor_id",
       `${handle}@x.io`, handle, handle, t, t,
     ))!;
   const mine = await user("mine");

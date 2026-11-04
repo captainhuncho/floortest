@@ -10,8 +10,8 @@ delete process.env.DATABASE_URL;
 const setup = async (handle: string) => {
   const { q } = await import("../src/lib/db");
   const t = Date.now();
-  const desk = (await q.get<{ id: number; plan: string }>(
-    "INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at, email_verified_at) VALUES (?,'h','B',?,'pro','UTC',?,?) RETURNING id, plan",
+  const desk = (await q.get<{ id: number; plan: string; actor_id: number }>(
+    "INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at, email_verified_at) VALUES (?,'h','B',?,'pro','UTC',?,?) RETURNING id, plan, id AS actor_id",
     `${handle}@x.io`, handle, t, t,
   ))!;
   const sender = (await q.get<{ id: number }>("INSERT INTO senders (user_id, email, name, created_at) VALUES (?, 's@x.io', 'S', ?) RETURNING id", desk.id, t))!.id;

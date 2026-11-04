@@ -6,6 +6,7 @@ import { markDownloaded } from "@/lib/review";
 import { crateTracks, crateZip, safeName } from "@/lib/crate";
 import { q, type Collection } from "@/lib/db";
 import { BATCH_MAX } from "@/lib/batch";
+import { attachment } from "@/lib/content-disposition";
 
 export const runtime = "nodejs";
 /** Largest single crate download: ZIP files without the 64-bit extension stop at 4 GB, and the download must finish in time. */
@@ -57,7 +58,7 @@ export async function GET(req: Request) {
   return new Response(zip, {
     headers: {
       "Content-Type": "application/zip",
-      "Content-Disposition": `attachment; filename="${safeName(crate).replace(/[^\x20-\x7e]/g, "_")}.zip"`,
+      "Content-Disposition": attachment(`${safeName(crate)}.zip`),
       "Cache-Control": "private, no-store",
     },
   });

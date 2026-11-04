@@ -43,7 +43,7 @@ const PLAY_LINK_SECONDS = 300;
 const OFFLINE_LINK_SECONDS = 300;
 
 export async function fileAccess(
-  desk: { id: number; plan: string; actor_id?: number } | null | undefined,
+  desk: { id: number; plan: string; actor_id: number } | null | undefined,
   action: FileAction,
   trackId: number,
   stemId?: number,
@@ -54,15 +54,16 @@ export async function fileAccess(
 }
 
 async function grantFor(
-  desk: { id: number; plan: string; actor_id?: number } | null | undefined,
+  desk: { id: number; plan: string; actor_id: number } | null | undefined,
   action: FileAction,
   trackId: number,
   stemId?: number,
 ): Promise<FileGrant | null> {
   if (!desk || !Number.isSafeInteger(trackId) || trackId <= 0) return null;
   const find = () => q.get<Track>("SELECT * FROM tracks WHERE id = ? AND user_id = ? AND deleted_at IS NULL", trackId, desk.id);
-  // A signed-in person's request is also checked by the per-person database rules (migration 0097, `asPerson`).
-  const track = desk.actor_id ? await asPerson(desk.actor_id, find) : await find();
+  // Every request is also checked by the per-person database rules (migration 0097, `asPerson`): who is asking is
+  // required, so no caller can skip them (Safety, 4 Nov: offline links passed none).
+  const track = await asPerson(desk.actor_id, find);
   if (!track) return null;
   switch (action) {
     case "play":
