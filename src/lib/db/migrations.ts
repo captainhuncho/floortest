@@ -2053,4 +2053,12 @@ alter table tracks alter column token drop not null;
 update tracks set token_hash = encode(sha256(convert_to(token, 'UTF8')), 'hex') where token_hash is null and token is not null;
 create unique index if not exists tracks_token_hash on tracks(token_hash);`,
   },
+  {
+    // Receipt tokens, the contract step (plan B11, after 0126 had been live two nights and every row was sealed): the
+    // plain token is cleared where the row's hash and sealed copy are both there and the hash is that token's own, so a
+    // copy of the database holds nothing that opens a receipt. Rows without a sealed copy keep theirs for the nightly
+    // sealer. The code before this already reads the hash and sealed copy first, so rolling back one release still works.
+    id: "0127_receipt_token_clear",
+    sql: `update tracks set token = null where token is not null and token_hash is not null and token_sealed is not null and token_hash = encode(sha256(convert_to(token, 'UTF8')), 'hex');`,
+  },
 ];

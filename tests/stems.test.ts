@@ -39,11 +39,14 @@ test("stems: the receipt's request works the same after the track leaves the des
   const uid = (await q.get<{ id: number }>("INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at, email_verified_at) VALUES ('r@x.io','h','R','r','pro','UTC',?,?) RETURNING id", t, t))!.id;
   await q.run("INSERT INTO feature_switches (feature, plans, users, updated_at) VALUES ('stems', '[]', ?, ?)", JSON.stringify([uid]), t);
   const sender = (await q.get<{ id: number }>("INSERT INTO senders (user_id, email, name, created_at) VALUES (?, 's@x.io', 'S', ?) RETURNING id", uid, t))!.id;
-  const track = async (token: string, deleted: number | null) =>
-    q.run(
+  const track = async (token: string, deleted: number | null) => {
+    await q.run(
       "INSERT INTO tracks (user_id, sender_id, title, artist, token, file_key, original_name, mime, size, created_at, stems_requested_at, deleted_at) VALUES (?,?,'T','A',?,'audio/x.wav','x.wav','audio/wav',1,?,?,?)",
       uid, sender, token, t, t, deleted,
     );
+    // Since migration 0126 every track has its hash: rows made here get it as the migration gave old ones.
+    await q.run("UPDATE tracks SET token_hash = encode(sha256(convert_to(token, 'UTF8')), 'hex') WHERE token_hash IS NULL AND token IS NOT NULL");
+  };
   await track("on-desk", null);
   await track("removed", t);
 
@@ -95,6 +98,8 @@ test("stems: completes sent at the same moment save a stem once, and never past 
     "INSERT INTO tracks (user_id, sender_id, title, artist, token, file_key, original_name, mime, size, created_at, stems_requested_at) VALUES (?,?,'T','A','cap-track','audio/y.wav','y.wav','audio/wav',1,?,?)",
     uid, sender, t, t,
   );
+  // Since migration 0126 every track has its hash: rows made here get it as the migration gave old ones.
+  await q.run("UPDATE tracks SET token_hash = encode(sha256(convert_to(token, 'UTF8')), 'hex') WHERE token_hash IS NULL AND token IS NOT NULL");
   const trackId = (await q.get<{ id: number }>("SELECT id FROM tracks WHERE token = 'cap-track'"))!.id;
   const stems = () => q.count("SELECT COUNT(*) AS n FROM stems WHERE track_id = ?", trackId);
 
@@ -136,6 +141,8 @@ test("stems: a failure right after sealing leaves the upload pointing at a file 
     "INSERT INTO tracks (user_id, sender_id, title, artist, token, file_key, original_name, mime, size, created_at, stems_requested_at) VALUES (?,?,'T','A','seal-track','audio/z.wav','z.wav','audio/wav',1,?,?)",
     uid, sender, t, t,
   );
+  // Since migration 0126 every track has its hash: rows made here get it as the migration gave old ones.
+  await q.run("UPDATE tracks SET token_hash = encode(sha256(convert_to(token, 'UTF8')), 'hex') WHERE token_hash IS NULL AND token IS NOT NULL");
   const { uploadId } = await S.startStemUpload("seal-track", "drums.wav", wav().length, "8.8.8.8");
   await store.put((await q.get<{ file_key: string }>("SELECT file_key FROM uploads WHERE id = ?", uploadId))!.file_key, wav(), "audio/wav");
 

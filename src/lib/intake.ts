@@ -484,8 +484,8 @@ async function finishClaimed(receiver: User, up: Upload, ref: string, analysis: 
           "INSERT INTO releases (id, user_id, sender_id, title, artist, kind, created_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT (id) DO NOTHING",
           meta.release.id, fresh.id, sender.id, meta.release.title, meta.release.artist, meta.release.kind, now(),
         );
-      // The receipt token, with its hash and sealed copy (src/lib/receipt-token.ts). The plain column is still written this
-      // release so a rollback to the previous build keeps working (Safety, 2 Nov); the next release stops writing it.
+      // The receipt token: only its hash and sealed copy are stored (src/lib/receipt-token.ts); the plain token stays in
+      // memory for this response and the emails written now.
       const receiptKey = newReceiptToken();
       const track = (await db.get<Track>(
         `INSERT INTO tracks (user_id, collection_id, sender_id, token, title, artist, message, release_status, mix_status, genre,
@@ -494,7 +494,7 @@ async function finishClaimed(receiver: User, up: Upload, ref: string, analysis: 
         fresh.id,
         collection?.id ?? null,
         sender.id,
-        receiptKey,
+        null,
         meta.title,
         meta.artist,
         meta.message,
@@ -522,6 +522,7 @@ async function finishClaimed(receiver: User, up: Upload, ref: string, analysis: 
         ref,
       ))!;
       await storeReceiptToken(db, track.id, receiptKey);
+      track.token = receiptKey;
       // Possible duplicate: the same file (byte size and length) already on this desk, or the same
       // sender re-sending the same title. Flagged for the receiver, never blocked.
       const dup = await db.get<{ id: number }>(

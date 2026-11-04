@@ -9,6 +9,7 @@ import { sealSecret } from "../src/lib/totp";
 import { OPS_BLOCKED, OPS_CLAIMED, OPS_EMAIL, OPS_FEEDBACK_MESSAGE, OPS_INBOX_MESSAGE, OPS_TOTP_SECRET } from "../e2e/ops-account";
 import { LINKS } from "../e2e/link-pages-data";
 import { hashToken } from "../src/lib/token-hash";
+import { sealWith } from "../src/lib/receipt-seal";
 
 if (process.env.DATABASE_URL || process.env.S3_BUCKET || process.env.NODE_ENV === "production") {
   console.error("Refusing to seed: this script is for local development only (DATABASE_URL, S3_BUCKET or NODE_ENV=production is set).");
@@ -329,6 +330,14 @@ async function main() {
   await ev(ama, null, "note", now - 26 * DAY, "Consistently strong. Ask about a live set for the Accra date.");
   await db.run("UPDATE tracks SET replied_at = ? WHERE id = ?", now - 27 * DAY + 600_000, harmattan);
   await ev(ama, harmattan, "reply", now - 27 * DAY + 600_000, "This is great. Send the extended mix when you can, I want it for the closing hour.");
+  // Receipt tokens stored as the site stores them (migration 0127): a hash to find the receipt and a sealed copy to
+  // rebuild its link, never the plain token. The seed knows the tokens (e2e/link-pages-data.ts), so it seals them here.
+  // Without an APP_SECRET (a quick local seed) it keeps the plain token beside its hash, which links still use.
+  const secret = process.env.APP_SECRET;
+  for (const r of await db.all<{ id: number; token: string }>("SELECT id, token FROM tracks WHERE token IS NOT NULL")) {
+    if (secret) await db.run("UPDATE tracks SET token_hash = ?, token_sealed = ?, token = NULL WHERE id = ?", hashToken(r.token), sealWith(r.token, r.id, secret), r.id);
+    else await db.run("UPDATE tracks SET token_hash = ? WHERE id = ?", hashToken(r.token), r.id);
+  }
   await db.close();
   console.log(`Seeded ${tracks.length} tracks into ${DATA_DIR}\nLogin: demo@floortest.test / floortest-demo  ·  Receiver link: /maxwell`);
 }
