@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { q, type Queryable } from "./db";
 import { env } from "./env";
 import { APP_URL } from "./mail";
+import { openWith, sealWith } from "./receipt-seal";
 import { hashToken } from "./token-hash";
 
 /**
@@ -22,29 +23,11 @@ const MAX_TOKEN = 100;
 /** What a link needs from a track row: its id and sealed copy (or, for a track just made, its token in memory). */
 export type ReceiptKey = { id: number; token?: string | null; token_hash?: string | null; token_sealed?: string | null };
 
-const keyFrom = () => crypto.createHash("sha256").update(`floortest-receipt:${env.secret}`).digest();
-
 /** The token sealed for one track: a fresh IV each time, the track id as associated data, so it can't be moved to another row. */
-export function sealReceiptToken(token: string, trackId: number) {
-  const iv = crypto.randomBytes(12);
-  const c = crypto.createCipheriv("aes-256-gcm", keyFrom(), iv);
-  c.setAAD(Buffer.from(String(trackId)));
-  const body = Buffer.concat([c.update(token, "utf8"), c.final()]);
-  return [iv, c.getAuthTag(), body].map((b) => b.toString("base64url")).join(".");
-}
+export const sealReceiptToken = (token: string, trackId: number) => sealWith(token, trackId, env.secret);
 
 /** The plain token, or null if it can't be opened (another row's copy, a changed APP_SECRET). Never logs the token. */
-export function openReceiptToken(sealed: string, trackId: number): string | null {
-  try {
-    const [iv, tag, body] = sealed.split(".").map((p) => Buffer.from(p, "base64url"));
-    const d = crypto.createDecipheriv("aes-256-gcm", keyFrom(), iv);
-    d.setAAD(Buffer.from(String(trackId)));
-    d.setAuthTag(tag);
-    return Buffer.concat([d.update(body), d.final()]).toString("utf8");
-  } catch {
-    return null;
-  }
-}
+export const openReceiptToken = (sealed: string, trackId: number): string | null => openWith(sealed, trackId, env.secret);
 
 /** A new receipt token: 96 random bits. */
 export const newReceiptToken = () => crypto.randomBytes(12).toString("base64url");
