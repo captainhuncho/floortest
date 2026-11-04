@@ -2,18 +2,20 @@ import { NextResponse } from "next/server";
 import { now, q } from "@/lib/db";
 import { RESERVED_HANDLES } from "@/lib/plans";
 import { allow, ipFrom } from "@/lib/ratelimit";
+import { redactUrl } from "@/lib/redact-url";
 
 export const runtime = "nodejs";
 
 /**
  * Collapses a path to its page, never the person or item: /receipt/abc123 → /receipt/:token, /dashboard/collections/42 → …/:id,
- * and anyone's receiving link (/djkwame) → /:link.
+ * and anyone's receiving link (/djkwame) → /:link. Private links go through redactUrl (the same list Sentry and analytics
+ * use), and any segment of 20+ letters, digits, _ or - is treated as a key too, so a new token route can't leak here.
  */
 function pageOf(path: string) {
-  const parts = path.split("?")[0].split("/").filter(Boolean).slice(0, 4);
+  const parts = redactUrl(path.split("?")[0]).split("/").filter(Boolean).slice(0, 4);
   if (parts.length === 1 && !RESERVED_HANDLES.has(parts[0].toLowerCase())) return "/:link";
   const out = parts.map((p, i) =>
-    /^\d+$/.test(p) ? ":id" : i > 0 && ["t", "s", "v", "receipt", "share", "sent", "reset", "verify-email", "unsubscribe"].includes(parts[i - 1]) ? ":token" : p.length > 40 ? ":token" : p,
+    /^\d+$/.test(p) ? ":id" : p === "[token]" || (i > 0 && ["t", "s", "v", "share"].includes(parts[i - 1])) || p.length > 40 || /^[\w-]{20,}$/.test(p) ? ":token" : p,
   );
   return "/" + out.join("/");
 }
