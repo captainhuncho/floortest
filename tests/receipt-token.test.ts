@@ -86,6 +86,29 @@ test("an old row keeps working, is sealed on first read (plain token kept), and 
   assert.equal((await R.sealOldReceipts()).receiptsSealed, 0, "a sealed row isn't sealed again");
 });
 
+test("after a backup restore, the sealer never rewrites a receipt's hash, so its link keeps opening", async () => {
+  const { q } = await import("../src/lib/db");
+  const R = await import("../src/lib/receipt-token");
+  const { hashToken } = await import("../src/lib/token-hash");
+  // A row as a restore leaves it: the real hash, no sealed copy, and a random stand-in in token (src/lib/backup.ts).
+  const { id } = await setUp("rtrestored", "real-receipt-token-1");
+  const realHash = hashToken("real-receipt-token-1");
+  await q.run("UPDATE tracks SET token = 'restored-0123456789abcdef', token_hash = ?, token_sealed = NULL WHERE id = ?", realHash, id);
+  assert.equal((await q.get<{ token_hash: string }>("SELECT token_hash FROM tracks WHERE id = ?", id))!.token_hash, realHash);
+
+  assert.equal(await R.sealOldReceipt(id, "restored-0123456789abcdef"), false, "a stand-in isn't sealed");
+  const batch = await R.sealOldReceipts();
+  assert.ok(batch.receiptsRestoredStandIns >= 1, "counted apart, so it never blocks the batch");
+  const row = (await q.get<{ token_hash: string; token_sealed: string | null }>("SELECT token_hash, token_sealed FROM tracks WHERE id = ?", id))!;
+  assert.equal(row.token_hash, realHash, "the hash is the original");
+  assert.equal(row.token_sealed, null);
+  assert.deepEqual(await R.findByReceiptToken("real-receipt-token-1"), { id }, "the sender's link still opens");
+  // Opening the receipt (the first-read path) doesn't rewrite it either.
+  const { receiptByToken } = await import("../src/lib/receipt");
+  assert.ok(await receiptByToken("real-receipt-token-1"));
+  assert.equal((await q.get<{ token_hash: string }>("SELECT token_hash FROM tracks WHERE id = ?", id))!.token_hash, realHash);
+});
+
 test("stored email copies hide the receipt link; erasing a sender removes the hash and sealed copy too", async () => {
   const { q } = await import("../src/lib/db");
   const R = await import("../src/lib/receipt-token");

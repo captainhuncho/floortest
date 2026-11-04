@@ -11,6 +11,7 @@ import { reconcileFiles } from "./file-reservations";
 import { drainOutbox } from "./mail";
 import { sendDueReceipts } from "./send-receipts";
 import { purgeLinkRecords } from "./share-links";
+import { safeFailure } from "./safe-failure";
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -110,7 +111,10 @@ export async function purgeExpired({ force = false } = {}) {
   // Emails still waiting: sends whose receipt never went (src/lib/send-receipts.ts), retries, and any whose send a crash
   // or a closed connection cut off (src/lib/mail.ts).
   await sendDueReceipts(t).catch((e) => console.error("[retention] send receipts", e));
-  const outbox = await drainOutbox().catch((e) => ({ error: e instanceof Error ? e.message : String(e) }));
+  const outbox = await drainOutbox().catch(async (e) => {
+    const f = await safeFailure(e, "Sending waiting emails during the clean-up failed", { kind: "cron_failed", path: "/api/cron/purge" });
+    return { error: f.error, ref: f.ref };
+  });
 
   // Retention deletes people's tracks, so it only runs from the nightly job, right after a successful backup.
   if (!force) {
