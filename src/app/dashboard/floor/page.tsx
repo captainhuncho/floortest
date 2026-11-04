@@ -327,7 +327,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
                     waited, and the way in. The whole card opens the queue, which plays oldest first. */}
                 <Link
                   href="/dashboard/review?view=queue"
-                  className={`press flex h-full flex-col gap-3 rounded-[18px] p-4 ${oldest ? "bg-lime text-[#10110f]" : "bg-ink-3 text-bone"}`}
+                  className={`press flex h-full flex-col gap-3 rounded-[18px] p-4 ${oldest ? "bg-lime text-[#10110f]" : "border border-line bg-ink-3 text-bone"}`}
                 >
                   <span className="text-[14px] font-semibold leading-snug">Waiting</span>
                   <span className="flex min-w-0 items-center gap-3.5">
@@ -344,7 +344,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
                   </span>
                   <span className="mt-auto flex flex-wrap items-center gap-2">
                     {oldest ? (
-                      <span className="inline-flex min-h-11 items-center gap-1 rounded-full bg-[#10110f] px-4 text-[13px] font-semibold text-lime">
+                      <span className="inline-flex min-h-11 items-center gap-1 rounded-full bg-[#10110f] px-4 text-[13px] font-semibold text-[#d5ff48]">
                         Start listening <FloorIcon name="chev" className="size-3.5" />
                       </span>
                     ) : (
