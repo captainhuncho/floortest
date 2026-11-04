@@ -112,9 +112,25 @@ test("a backup with a broken foreign key fails the restore and leaves no rows", 
   }
 });
 
-test("the drill command refuses production settings and runs only with --confirm-drill", () => {
+test("the drill refuses production settings, an unnamed production endpoint and the production host", async () => {
+  const { drillRefusal, redactHost } = await import("../src/lib/restore-drill");
+  const prod = "postgres://u:p@ep-live-endpoint-123456.eu-west-2.aws.neon.tech/neondb?sslmode=require";
+  const branch = "postgres://u:p@ep-drill-branch-987654.eu-west-2.aws.neon.tech/neondb?sslmode=require";
+  const named = { RESTORE_REFUSE_HOSTS: "ep-live-endpoint-123456" } as unknown as NodeJS.ProcessEnv;
+  assert.match(drillRefusal({ ...named, DATABASE_URL: prod }, branch)!, /DATABASE_URL or POSTGRES_URL/);
+  assert.match(drillRefusal({ ...named, POSTGRES_URL: prod }, branch)!, /DATABASE_URL or POSTGRES_URL/);
+  assert.match(drillRefusal({} as unknown as NodeJS.ProcessEnv, branch)!, /set RESTORE_REFUSE_HOSTS/, "no production endpoint named: refused");
+  assert.match(drillRefusal(named, prod)!, /is the production database/, "the production endpoint: refused");
+  assert.doesNotMatch(drillRefusal(named, prod)!, /ep-live-endpoint-123456/, "and not named in full");
+  assert.equal(drillRefusal(named, branch), null, "a drill branch is allowed");
+  assert.match(drillRefusal(named, "not a url")!, /isn't a postgres/);
+  // The evidence never carries the full host.
+  assert.equal(redactHost("ep-drill-branch-987654.eu-west-2.aws.neon.tech"), "a Neon branch (ep-…, eu-west-2)");
+  assert.equal(redactHost("localhost"), "a local Postgres");
+  assert.equal(redactHost("db.internal.example.com"), "a Postgres host (name withheld)");
   const src = fs.readFileSync(path.join(__dirname, "../scripts/restore-drill-pg.ts"), "utf8");
-  assert.match(src, /process\.env\.DATABASE_URL \|\| process\.env\.POSTGRES_URL/);
+  assert.match(src, /settingsRefusal\(process\.env\)/, "settings checked before anything is asked");
   assert.match(src, /--confirm-drill/);
   assert.match(src, /hidden\(/, "keys are typed hidden");
+  assert.doesNotMatch(src, /proud-bar/);
 });

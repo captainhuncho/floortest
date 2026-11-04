@@ -11,8 +11,10 @@
  * type its connection string, BACKUP_KEY and APP_SECRET when asked (nothing is shown or saved). APP_SECRET is the live
  * site's: sealed receipt copies only open with it. For the recovery bucket check, set the vault's S3_* settings first.
  *
- * It refuses when DATABASE_URL or POSTGRES_URL is set in the shell (a production setting left there), when the target
- * is the production database's host, and when the target has any table in it. Without --confirm-drill it only reads.
+ * Set RESTORE_REFUSE_HOSTS to the live database's Neon endpoint id (ep-…) first. It refuses when that's missing, when
+ * DATABASE_URL or POSTGRES_URL is set in the shell (a production setting left there), when the target is on a refused
+ * host, and when the target has any table in it. Without --confirm-drill it only reads. The evidence names the target
+ * only as "a Neon branch (ep-…, region)".
  */
 import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -20,10 +22,7 @@ import readline from "node:readline";
 import { gunzipSync } from "node:zlib";
 import { openPostgres } from "../src/lib/db/client";
 import { backupSecrets, openBackup } from "../src/lib/backup-crypto";
-import { assertEmpty, checkRestore, drillEvidence, restoreInto, type Check, type Dump } from "../src/lib/restore-drill";
-
-/** Hosts that are never a drill target: the production database's endpoint, plus any in RESTORE_REFUSE_HOSTS. */
-const PRODUCTION_HOSTS = ["proud-bar", ...(process.env.RESTORE_REFUSE_HOSTS ?? "").split(",").map((h) => h.trim()).filter(Boolean)];
+import { assertEmpty, checkRestore, drillEvidence, drillRefusal, redactHost, restoreInto, settingsRefusal, type Check, type Dump } from "../src/lib/restore-drill";
 
 /** Asks for a value without showing what's typed (keys and connection strings). */
 function hidden(prompt: string): Promise<string> {
@@ -51,16 +50,13 @@ async function main() {
   const file = process.argv.find((a) => a.endsWith(".enc") || a.endsWith(".json.gz"));
   const confirm = process.argv.includes("--confirm-drill");
   if (!file) return refuse("give the path to a backup file (db-….json.gz.enc).");
-  if (process.env.DATABASE_URL || process.env.POSTGRES_URL) refuse("DATABASE_URL or POSTGRES_URL is set in this shell. Unset it: a drill never runs with a production setting around.");
+  const settings = settingsRefusal(process.env);
+  if (settings) refuse(settings);
 
   const target = process.env.RESTORE_TARGET_URL || (await hidden("Empty target database URL (hidden): "));
-  let host = "";
-  try {
-    host = new URL(target).hostname;
-  } catch {
-    refuse("that isn't a postgres:// connection string.");
-  }
-  if (PRODUCTION_HOSTS.some((p) => host.includes(p))) refuse(`${host} is the production database.`);
+  const why = drillRefusal(process.env, target);
+  if (why) refuse(why);
+  const host = redactHost(new URL(target).hostname.toLowerCase());
   if (!process.env.BACKUP_KEY) process.env.BACKUP_KEY = await hidden("BACKUP_KEY (hidden): ");
   if (!process.env.APP_SECRET) process.env.APP_SECRET = await hidden("Live APP_SECRET, to open sealed receipts (hidden): ");
 

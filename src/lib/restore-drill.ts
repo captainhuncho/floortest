@@ -14,6 +14,41 @@ export type DrillOptions = { vaultHead?: (key: string) => Promise<unknown> };
 const num = async (db: Queryable, sql: string, ...args: unknown[]) => Number((await db.get<{ n: number }>(sql, ...args))?.n ?? 0);
 const ident = (s: string) => `"${s.replace(/"/g, '""')}"`;
 
+/**
+ * Why a drill can't run with these settings, or null. A production setting in the shell (DATABASE_URL, POSTGRES_URL),
+ * no production endpoint named to refuse (RESTORE_REFUSE_HOSTS: the live database's Neon endpoint id, ep-…), or a target
+ * on one of those hosts. The empty-target check (assertEmpty) runs after this, on the connection.
+ */
+export function drillRefusal(env: NodeJS.ProcessEnv, target: string): string | null {
+  const settings = settingsRefusal(env);
+  if (settings) return settings;
+  const refused = refusedHosts(env);
+  let host: string;
+  try {
+    host = new URL(target).hostname.toLowerCase();
+  } catch {
+    return "that isn't a postgres:// connection string.";
+  }
+  if (!host) return "that connection string has no host.";
+  return refused.some((h) => host.includes(h)) ? `that target is the production database (${redactHost(host)}).` : null;
+}
+
+const refusedHosts = (env: NodeJS.ProcessEnv) => (env.RESTORE_REFUSE_HOSTS ?? "").split(",").map((h) => h.trim().toLowerCase()).filter(Boolean);
+
+/** The part of drillRefusal that needs no target: checked before anything is asked for. */
+export function settingsRefusal(env: NodeJS.ProcessEnv): string | null {
+  if (env.DATABASE_URL || env.POSTGRES_URL) return "DATABASE_URL or POSTGRES_URL is set in this shell. Unset it: a drill never runs with a production setting around.";
+  if (!refusedHosts(env).length) return "set RESTORE_REFUSE_HOSTS to the live database's endpoint id (ep-…, from the Neon console), so it can never be the target.";
+  return null;
+}
+
+/** A host as the evidence may name it: a Neon endpoint as its region only, never the full name. */
+export function redactHost(host: string) {
+  if (/^(localhost|127\.0\.0\.1|\[?::1\]?)$/.test(host)) return "a local Postgres";
+  const neon = /^ep-[a-z0-9-]+\.([a-z0-9-]+)\.aws\.neon\.tech$/.exec(host) ?? /^ep-[a-z0-9-]+\.([a-z0-9-]+)(?:\.[a-z0-9-]+)*\.neon\.tech$/.exec(host);
+  return neon ? `a Neon branch (ep-…, ${neon[1]})` : "a Postgres host (name withheld)";
+}
+
 /** Refuses a database that already has anything in it: production, or a branch someone is using. */
 export async function assertEmpty(db: Queryable) {
   const tables = await num(db, "SELECT COUNT(*)::int AS n FROM information_schema.tables WHERE table_schema = 'public'");

@@ -21,7 +21,7 @@ import { hashToken } from "./token-hash";
 const MAX_TOKEN = 100;
 
 /** What a link needs from a track row: its id, and the plain token (old rows, or just made) or the sealed one. */
-export type ReceiptKey = { id: number; token?: string | null; token_sealed?: string | null };
+export type ReceiptKey = { id: number; token?: string | null; token_hash?: string | null; token_sealed?: string | null };
 
 const keyFrom = () => crypto.createHash("sha256").update(`floortest-receipt:${env.secret}`).digest();
 
@@ -52,7 +52,9 @@ export const newReceiptToken = () => crypto.randomBytes(12).toString("base64url"
 
 /** The plain token for building a link or hiding it in an email's stored copy, or null when it can't be had. */
 export function receiptToken(track: ReceiptKey): string | null {
-  if (track.token) return track.token;
+  // The plain token only when it's the row's own: after a backup restore it holds a random stand-in whose hash isn't
+  // the row's, and a link built from that wouldn't open (Safety, 4 Nov). A just-made track has no hash in memory yet.
+  if (track.token && (track.token_hash == null || hashToken(track.token) === track.token_hash)) return track.token;
   return track.token_sealed ? openReceiptToken(track.token_sealed, track.id) : null;
 }
 

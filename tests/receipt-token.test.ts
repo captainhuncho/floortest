@@ -103,6 +103,10 @@ test("after a backup restore, the sealer never rewrites a receipt's hash, so its
   assert.equal(row.token_hash, realHash, "the hash is the original");
   assert.equal(row.token_sealed, null);
   assert.deepEqual(await R.findByReceiptToken("real-receipt-token-1"), { id }, "the sender's link still opens");
+  // Links built for it later (emails, /sent) never use the stand-in: it has no sealed copy, so they fall back to /sent.
+  const full = (await q.get<{ id: number; token: string; token_hash: string; token_sealed: string | null }>("SELECT id, token, token_hash, token_sealed FROM tracks WHERE id = ?", id))!;
+  assert.equal(R.receiptToken(full), null);
+  assert.ok(R.receiptUrl(full).endsWith("/sent"), "not /receipt/restored-…");
   // Opening the receipt (the first-read path) doesn't rewrite it either.
   const { receiptByToken } = await import("../src/lib/receipt");
   assert.ok(await receiptByToken("real-receipt-token-1"));
