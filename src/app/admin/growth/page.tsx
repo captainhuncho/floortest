@@ -10,6 +10,7 @@ import {
   accountsShort,
   betaNumbers,
   betaRunning,
+  betaWeekShown,
   expectedByNow,
   paceOf,
   betaWindowDays,
@@ -27,6 +28,7 @@ import {
   type Point,
 } from "@/lib/growth";
 import { MonoStat } from "../PinParts";
+import { switchOn } from "@/lib/switches";
 
 export const metadata = { title: "Growth & decisions — FloorTest ops" };
 
@@ -55,6 +57,8 @@ export default async function Growth() {
   const cohortFrom = t - COHORTS * WEEK;
   const week = (col: string) => `FLOOR((${col} - ?) / ${WEEK})`;
   const betaRows = loadBeta();
+  // Held until the pre-beta run (plan B0) is recorded (owner, 4 Nov): no beta week or targets before then.
+  const started = switchOn("beta_started");
 
   const [signupWeeks, trackWeeks, steps, sourceRows, kindRows, cohortUsers, requests, plans, payers] = await Promise.all([
     q.all<{ w: number; n: number }>(`SELECT ${week("created_at")} AS w, COUNT(*) AS n FROM users WHERE created_at >= ? GROUP BY 1`, from, from),
@@ -98,6 +102,7 @@ export default async function Growth() {
 
   const [betaAccounts, betaActivity, betaTracks] = await betaRows;
   const beta = betaNumbers({ now: t, adminEmails: env.adminEmails, accounts: betaAccounts, activity: betaActivity, tracks: betaTracks });
+  const betaWeek = betaWeekShown(await started, t);
 
   const series = (rows: { w: number; n: number }[]) => Array.from({ length: WEEKS }, (_, i) => num(rows.find((r) => num(r.w) === i)?.n));
   const signups = series(signupWeeks);
@@ -114,7 +119,7 @@ export default async function Growth() {
   ]);
   const sources: Group[] = sourceRows.map((r) => ({ name: r.name, people: num(r.people), activated: num(r.activated), paid: num(r.paid) }));
   const kinds: Group[] = kindRows.map((r) => ({ name: KIND_LABEL[r.kind ?? ""] ?? "Not set", people: num(r.people), activated: num(r.activated), paid: num(r.paid) }));
-  const cards = decisions({ steps: flow.slice(2), sources, kinds, signups, next: nextSignups, duringBeta: betaRunning(t) });
+  const cards = decisions({ steps: flow.slice(2), sources, kinds, signups, next: nextSignups, duringBeta: betaWeek != null && betaRunning(t) });
 
   // "Do they stay?": for each weekly group of sign-ups, the share active in each week since they joined.
   const cohorts = Array.from({ length: COHORTS }, (_, c) => {
@@ -143,7 +148,14 @@ export default async function Growth() {
         <p className="mt-1 text-[15px] text-mute">From FloorTest&apos;s own numbers: people who joined in the last {WINDOW_DAYS} days, and the last {WEEKS} weeks of activity.</p>
       </header>
 
-      <BetaSection n={beta} windowDays={betaWindowDays(t)} now={t} />
+      {betaWeek != null ? (
+        <BetaSection n={beta} windowDays={betaWindowDays(t)} now={t} />
+      ) : (
+        <section aria-labelledby="beta-h" className={P} style={i(0)}>
+          <h2 id="beta-h" className="text-[16px] font-semibold">Beta not started</h2>
+          <p className="mt-1 text-[13px] text-mute">Pre-beta run (B0) not recorded. Beta weeks and targets show here once it is: Ops → Feature switches → Beta started.</p>
+        </section>
+      )}
 
       {/* Findings first (decision cards), each with the counts behind it. */}
       <section aria-labelledby="dec-h" className={P} style={i(1)}>

@@ -48,7 +48,7 @@ test("a new receipt token gets a hash and a sealed copy; with the plain one clea
   // Bound to its row: moved to another track it doesn't open, and the link falls back to /sent (nothing logged).
   assert.equal(R.openReceiptToken(row.token_sealed, id + 1), null);
   assert.equal(R.receiptPath({ id: id + 1, token: null, token_sealed: row.token_sealed }), "/sent");
-  assert.equal(R.receiptPath({ id, token: null, token_sealed: `x${row.token_sealed.slice(1)}` }), "/sent", "a damaged copy falls back too");
+  assert.equal(R.receiptPath({ id, token: null, token_sealed: `${row.token_sealed[0] === "x" ? "y" : "x"}${row.token_sealed.slice(1)}` }), "/sent", "a damaged copy falls back too");
   assert.equal(await R.findByReceiptToken(`${token}x`), undefined);
   assert.equal(await R.findByReceiptToken(`${token}${"x".repeat(200)}`), undefined, "overlong input is cut, not matched whole");
   assert.equal(R.receiptWhere("x".repeat(500)).args[1], "x".repeat(100));
@@ -103,6 +103,10 @@ test("after a backup restore, the sealer never rewrites a receipt's hash, so its
   assert.equal(row.token_hash, realHash, "the hash is the original");
   assert.equal(row.token_sealed, null);
   assert.deepEqual(await R.findByReceiptToken("real-receipt-token-1"), { id }, "the sender's link still opens");
+  // Links built for it later (emails, /sent) never use the stand-in: it has no sealed copy, so they fall back to /sent.
+  const full = (await q.get<{ id: number; token: string; token_hash: string; token_sealed: string | null }>("SELECT id, token, token_hash, token_sealed FROM tracks WHERE id = ?", id))!;
+  assert.equal(R.receiptToken(full), null);
+  assert.ok(R.receiptUrl(full).endsWith("/sent"), "not /receipt/restored-…");
   // Opening the receipt (the first-read path) doesn't rewrite it either.
   const { receiptByToken } = await import("../src/lib/receipt");
   assert.ok(await receiptByToken("real-receipt-token-1"));
