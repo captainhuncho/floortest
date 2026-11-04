@@ -48,6 +48,50 @@ for (const file of walk(join(root, "src/app/api/admin")).filter((f) => f.endsWit
   if (SUPER_ROUTES.includes(name) && !src.includes('requireAdminAction("super")')) problems.push(`${relative(root, file)}: must call requireAdminAction("super")`);
 }
 
+// 4. Ops folders (Users CRM, moderation queue, ops kit): no server actions of their own (they live in actions.ts, so
+// check 1 covers them), every action they import has an ACTION_NEEDS entry, and no client file pulls in a server-only
+// module. Type-only imports are skipped: they vanish at build.
+const OPS_DIRS = ["src/app/admin/accounts/crm", "src/app/admin/moderation/queue", "src/app/admin/kit"];
+const adminActions = join(root, "src/app/admin/actions");
+const resolveImport = (from: string, spec: string): string | null => {
+  const base = spec.startsWith("@/") ? join(root, "src", spec.slice(2)) : spec.startsWith(".") ? join(from, "..", spec) : null;
+  if (!base) return null;
+  for (const p of [base, `${base}.ts`, `${base}.tsx`, join(base, "index.ts")]) {
+    try {
+      if (statSync(p).isFile()) return p;
+    } catch {}
+  }
+  return null;
+};
+const valueImports = (src: string) =>
+  [...src.matchAll(/^import\s+(?!type\s)([^"';]*?)\s+from\s+["']([^"']+)["']/gm)]
+    .map(([, names, spec]) => ({
+      spec,
+      names: (names.match(/\{([^}]*)\}/)?.[1] ?? "")
+        .split(",")
+        .map((n) => n.trim())
+        .filter((n) => n && !n.startsWith("type "))
+        .map((n) => n.split(/\s+as\s+/)[0]),
+      hasDefault: /^[\w$]+/.test(names.trim()),
+    }))
+    .filter((i) => i.names.length || i.hasDefault);
+for (const dir of OPS_DIRS) {
+  for (const file of walk(join(root, dir)).filter((f) => /\.tsx?$/.test(f))) {
+    const rel = relative(root, file);
+    const src = readFileSync(file, "utf8");
+    if (/^\s*["']use server["']/m.test(src)) problems.push(`${rel}: server actions belong in src/app/admin/actions.ts`);
+    const isClient = /^["']use client["']/.test(src.trimStart());
+    for (const imp of valueImports(src)) {
+      const target = resolveImport(file, imp.spec);
+      if (!target) continue;
+      if (target.replace(/\.tsx?$/, "") === adminActions)
+        for (const n of imp.names) if (!ACTION_NEEDS[n]) problems.push(`${rel}: imports ${n} from actions.ts, which has no entry in ACTION_NEEDS`);
+      if (isClient && /^import\s+["']server-only["']/m.test(readFileSync(target, "utf8")))
+        problems.push(`${rel}: client file imports server-only ${imp.spec}`);
+    }
+  }
+}
+
 if (problems.length) {
   console.error(`Ops permission check failed:\n  ${problems.join("\n  ")}`);
   process.exit(1);
