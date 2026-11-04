@@ -56,15 +56,20 @@ export function onConsentChange(listener: (consent: Consent) => void) {
 }
 
 /**
- * Where the banner's Cookie Policy link points. The ops host serves only the admin area, so /cookies there is "not
- * found": on that host the link goes to the main site's page instead. Elsewhere (main site, local, previews, where
- * ops and the app share an address) it stays the plain /cookies path.
+ * Whether this request is for the ops host (owner, 4 Nov 2026: the live site has the cookie banner, ops doesn't). The
+ * ops host serves only the admin area for staff, so there is no banner there and nothing optional loads: no Vercel
+ * Analytics, no browser Sentry, whatever an earlier visit chose. Local and previews share one address with the app,
+ * so they count as the main site.
  */
-export function cookiePolicyHref(host: string | null | undefined, appUrl: string, opsUrl: string): string {
-  if (!host || opsUrl === appUrl) return "/cookies";
+export function isOpsHost(host: string | null | undefined, appUrl: string, opsUrl: string): boolean {
+  if (!host || opsUrl === appUrl) return false;
   try {
-    return new URL(opsUrl).host === host ? new URL("/cookies", appUrl).href : "/cookies";
+    return new URL(opsUrl).host === host;
   } catch {
-    return "/cookies";
+    return false;
   }
 }
+
+/** In the browser: the root layout marks the ops host with `data-site="ops"` on <html>. */
+export const OPS_SITE = "ops";
+export const onOpsSite = () => typeof document !== "undefined" && document.documentElement.dataset.site === OPS_SITE;
