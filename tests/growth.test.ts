@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { accountsShort, BETA_START, betaNumbers, betaRunning, betaWeek, betaWindowDays, expectedByNow, expectedByWeek, paceOf, biggestDrop, decisions, forecast, formatHours, funnel, isBetaAccount, isSelfSent, median, showShare, type BetaAccountRow } from "../src/lib/growth";
+import { accountsShort, BETA_START, betaNumbers, betaRunning, betaWeek, betaWeekShown, betaWindowDays, expectedByNow, expectedByWeek, paceOf, biggestDrop, decisions, forecast, formatHours, funnel, isBetaAccount, isSelfSent, median, showShare, type BetaAccountRow } from "../src/lib/growth";
 
 test("forecast follows a straight trend and widens its range further out", () => {
   const p = forecast([10, 12, 14, 16, 18, 20], 3);
@@ -252,4 +252,12 @@ test("the pace line scales by the days gone, so day 1 doesn't read as behind", (
   assert.equal(expectedByNow(15, BETA_START + 80 * D), 15, "never past the target");
   assert.equal(expectedByNow(15, BETA_START - D), 0, "never below 0");
   assert.equal(paceOf(0, expectedByNow(15, BETA_START + H)), "on pace");
+});
+
+test("the beta week shows only once the pre-beta run is recorded (beta_started switch)", async () => {
+  assert.equal(betaWeekShown(false, BETA_START + 10 * D), null, "switch off: no week");
+  assert.equal(betaWeekShown(true, BETA_START + 10 * D), 2, "switch on: week n as before");
+  assert.equal(betaWeekShown(true, BETA_START + 10 * D), betaWeek(BETA_START + 10 * D));
+  const { SWITCHES } = await import("../src/lib/switches");
+  assert.equal(SWITCHES.beta_started.initial, false, "off until the owner turns it on");
 });

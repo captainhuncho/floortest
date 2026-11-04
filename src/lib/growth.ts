@@ -147,6 +147,12 @@ const DAY_MS = 86_400_000;
 const WEEK_MS = 7 * DAY_MS;
 const HOUR_MS = 3_600_000;
 
+/**
+ * The beta week Ops → Growth shows, or null while the beta hasn't started (owner, 4 Nov: the five-person pre-beta run,
+ * plan B0, was never recorded, so the clock is held until the beta_started switch says it was).
+ */
+export const betaWeekShown = (started: boolean, now: number, start = BETA_START) => (started ? betaWeek(now, start) : null);
+
 /** "Beta week X of 8": week 1 is the first 7 days from the start, capped at 8 (and never below 1). */
 export function betaWeek(now: number, start = BETA_START): number {
   return Math.min(BETA_WEEKS, Math.max(1, Math.floor((now - start) / WEEK_MS) + 1));
