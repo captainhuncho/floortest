@@ -89,20 +89,33 @@ export async function storeReceiptToken(db: Queryable, trackId: number, token: s
   await db.run("UPDATE tracks SET token_hash = ?, token_sealed = ? WHERE id = ?", hashToken(token), sealReceiptToken(token, trackId), trackId);
 }
 
-/** Seals one old row: hash and sealed copy added once, only where the row still holds this token and has no copy yet. */
+/**
+ * Seals one old row: its sealed copy added once, and only where the row's hash is this token's. A hash that's there is
+ * never rewritten (Safety, 4 Nov): after a backup restore `token` holds a random stand-in (src/lib/backup.ts), and
+ * hashing that would break the receipt link the real hash still opens. A missing hash (a row the build before 0126 wrote
+ * during a deploy) is filled from the token, which is then the real one.
+ */
 export async function sealOldReceipt(trackId: number, token: string) {
   const r = await q.run(
-    "UPDATE tracks SET token_hash = ?, token_sealed = ? WHERE id = ? AND token = ? AND token_sealed IS NULL",
-    hashToken(token), sealReceiptToken(token, trackId), trackId, token,
+    "UPDATE tracks SET token_hash = COALESCE(token_hash, ?), token_sealed = ? WHERE id = ? AND token = ? AND token_sealed IS NULL AND (token_hash IS NULL OR token_hash = ?)",
+    hashToken(token), sealReceiptToken(token, trackId), trackId, token, hashToken(token),
   );
   return r.changes > 0;
 }
 
-/** The nightly batch: seals up to `limit` old rows; returns how many, and how many are still unsealed. */
+/** The same hash as hashToken, in SQL, so the batch picks only rows whose plain token is still the real one. */
+const PLAIN_IS_REAL = "(token_hash IS NULL OR token_hash = encode(sha256(convert_to(token, 'UTF8')), 'hex'))";
+
+/**
+ * The nightly batch: seals up to `limit` old rows; returns how many, how many real ones are still unsealed, and how
+ * many hold a token that isn't theirs (a restored stand-in: never sealed, their hash keeps working).
+ */
 export async function sealOldReceipts(limit = 2000) {
-  const rows = await q.all<{ id: number; token: string }>("SELECT id, token FROM tracks WHERE token IS NOT NULL AND token_sealed IS NULL ORDER BY id LIMIT ?", limit);
+  const unsealed = "token IS NOT NULL AND token_sealed IS NULL";
+  const rows = await q.all<{ id: number; token: string }>(`SELECT id, token FROM tracks WHERE ${unsealed} AND ${PLAIN_IS_REAL} ORDER BY id LIMIT ?`, limit);
   let sealed = 0;
   for (const r of rows) if (await sealOldReceipt(r.id, r.token)) sealed++;
-  const left = await q.count("SELECT COUNT(*) AS n FROM tracks WHERE token IS NOT NULL AND token_sealed IS NULL");
-  return { receiptsSealed: sealed, receiptsUnsealedLeft: left };
+  const left = await q.count(`SELECT COUNT(*) AS n FROM tracks WHERE ${unsealed} AND ${PLAIN_IS_REAL}`);
+  const standIns = await q.count(`SELECT COUNT(*) AS n FROM tracks WHERE ${unsealed} AND NOT (${PLAIN_IS_REAL})`);
+  return { receiptsSealed: sealed, receiptsUnsealedLeft: left, receiptsRestoredStandIns: standIns };
 }

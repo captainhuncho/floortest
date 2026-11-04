@@ -42,6 +42,7 @@ import { localPath } from "@/lib/safe-links";
 import { normalEmail } from "@/lib/email-normal";
 import { deleteRevokedInvite, GATE_CODE_MIN_LENGTH, restoreRevokedInvite } from "@/lib/invites";
 import { receiptWhere } from "@/lib/receipt-token";
+import { safeFailure } from "@/lib/safe-failure";
 
 const refresh = () => revalidatePath("/admin", "layout");
 const done = (m: string) => flash(m);
@@ -238,7 +239,7 @@ export async function backupNow() {
     await logAdmin(a.id, "backed up the database", "", JSON.stringify(r));
     await done("Database backed up.");
   } catch (e) {
-    await logAdmin(a.id, "backup failed", "", e instanceof Error ? e.message : String(e));
+    await logAdmin(a.id, "backup failed", "", (await safeFailure(e, "Backup from ops failed", { path: "/admin/backups" })).ref);
     return fail("The backup failed. Nothing was changed; see Incidents.");
   }
   refresh();
@@ -253,8 +254,9 @@ export async function checkStorage(form: FormData) {
   try {
     r = await checkBucket(bucket);
   } catch (e) {
-    await logAdmin(a.id, "checked storage", bucket, `failed: ${(e as Error).message}`);
-    return fail(`${(e as Error).message}. Nothing was counted as missing; check the app's storage key can read this bucket.`);
+    const f = await safeFailure(e, `Checking the ${bucket} bucket failed`, { path: "/admin/storage" });
+    await logAdmin(a.id, "checked storage", bucket, `failed: ${f.ref}`);
+    return fail(`${f.message} Nothing was counted as missing; check the app's storage key can read this bucket.`);
   }
   await logAdmin(a.id, "checked storage", bucket, `${r.present}/${r.expected} present, ${r.missing.length} missing, ${r.wrongSize.length} wrong size${r.finished ? "" : ", stopped early (time)"}`);
   await done(r.missing.length || r.wrongSize.length ? `${bucket}: ${r.missing.length} missing, ${r.wrongSize.length} wrong size.` : r.finished ? `${bucket}: all ${r.expected} files present.` : `${bucket}: checked ${r.checked} of ${r.expected} before time ran out; run it again.`);
@@ -364,8 +366,9 @@ export async function runJobNow(job: string): Promise<OpsResult> {
   try {
     out = await withJobLease(name, () => RUN_JOB[name](started));
   } catch (e) {
-    await logAdmin(a.id, "ran job", JOBS[name].label, "failed");
-    return no(`${JOBS[name].label} failed: ${e instanceof Error ? e.message : String(e)}. See Incidents.`);
+    const f = await safeFailure(e, `${JOBS[name].label} failed when run from ops`, { kind: "cron_failed", path: "/admin/jobs" });
+    await logAdmin(a.id, "ran job", JOBS[name].label, `failed: ${f.ref}`);
+    return no(f.message);
   }
   if (!out) return no(`${JOBS[name].label} is already running`);
   await logAdmin(a.id, "ran job", JOBS[name].label, out.ok ? "done" : "failed");
