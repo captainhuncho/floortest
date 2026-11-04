@@ -70,7 +70,7 @@ export async function holdForSend(db: Queryable, g: SendGroup, trackId: number, 
   return saved >= expected ? queueSendEmails(db, g, t) : [];
 }
 
-type Waiting = { id: number; token: string | null; token_hash: string | null; token_sealed: string | null; title: string; artist: string; sender_id: number; collection_id: number | null; deleted_at: number | null; decision: string | null; track_no: number | null; created_at: number; original_name: string | null; duration: number | null };
+type Waiting = { id: number; token_sealed: string | null; title: string; artist: string; sender_id: number; collection_id: number | null; deleted_at: number | null; decision: string | null; track_no: number | null; created_at: number; original_name: string | null; duration: number | null };
 
 /**
  * Claims every track of this send still waiting and queues one "Delivered" email to the sender listing them (with each
@@ -80,7 +80,7 @@ type Waiting = { id: number; token: string | null; token_hash: string | null; to
 export async function queueSendEmails(db: Queryable, g: SendGroup, t: Templates) {
   const claimed = await db.all<Waiting>(
     `UPDATE tracks SET receipt_due_at = NULL WHERE user_id = ? AND ${g.column} = ? AND receipt_due_at IS NOT NULL
-     RETURNING id, token, token_hash, token_sealed, title, artist, sender_id, collection_id, deleted_at, decision, track_no, created_at, original_name, duration`,
+     RETURNING id, token_sealed, title, artist, sender_id, collection_id, deleted_at, decision, track_no, created_at, original_name, duration`,
     g.userId,
     g.id,
   );

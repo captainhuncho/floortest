@@ -23,11 +23,15 @@ async function makeSetup() {
   const mate = await user("mate");
   const col = (await q.get<{ id: number }>("INSERT INTO collections (user_id, name, created_at) VALUES (?, 'Afterlife', ?) RETURNING id", owner, now))!.id;
   const sender = (await q.get<{ id: number }>("INSERT INTO senders (user_id, email, name, created_at) VALUES (?, 's@x.io', 'S', ?) RETURNING id", owner, now))!.id;
-  const track = async (title: string, shareOk: number) =>
-    (await q.get<{ id: number }>(
+  const track = async (title: string, shareOk: number) => {
+    const id = (await q.get<{ id: number }>(
       "INSERT INTO tracks (user_id, sender_id, collection_id, title, artist, token, file_key, original_name, mime, size, created_at, share_ok, share_terms) VALUES (?,?,?,?,'A',?,'audio/x.wav','x.wav','audio/wav',1,?,?,?) RETURNING id",
       owner, sender, col, title, `tok-${title}`, now, shareOk, shareOk ? "test" : null,
     ))!.id;
+    // Since migration 0126 every track has its hash: rows made here get it as the migration gave old ones.
+    await q.run("UPDATE tracks SET token_hash = encode(sha256(convert_to(token, 'UTF8')), 'hex') WHERE token_hash IS NULL AND token IS NOT NULL");
+    return id;
+  };
   const shared = await track("Shared", 1);
   // Sent under the 1 Oct colleague wording: shareable then, but not through collection links.
   const oldModel = await track("Old", 1);
@@ -205,6 +209,8 @@ test("retention, account deletion and the artist's stop switch", async () => {
     "INSERT INTO tracks (user_id, sender_id, collection_id, title, artist, token, file_key, original_name, mime, size, created_at, share_ok, share_terms, deleted_at) SELECT user_id, sender_id, collection_id, 'Gone', 'A', 'tok-Gone', file_key, original_name, mime, size, created_at, 1, 'test', ? FROM tracks WHERE id = ? RETURNING id, token",
     Date.now(), shared.id,
   ))!;
+  // Since migration 0126 every track has its hash: rows made here get it as the migration gave old ones.
+  await q.run("UPDATE tracks SET token_hash = encode(sha256(convert_to(token, 'UTF8')), 'hex') WHERE token_hash IS NULL AND token IS NOT NULL");
   assert.equal(await L.stopSharingByReceipt(gone.token), true);
   assert.equal(await q.get("SELECT 1 FROM link_events WHERE track_id = ?", gone.id), undefined);
 
@@ -259,6 +265,8 @@ test("a share link hands over only the named track columns", async () => {
     "INSERT INTO tracks (user_id, sender_id, collection_id, title, artist, token, file_key, original_name, mime, size, created_at, share_ok, share_terms, message) SELECT user_id, sender_id, collection_id, 'Columns', 'A', 'tok-Columns', file_key, original_name, mime, size, created_at, 1, 'test', 'a private note' FROM tracks WHERE collection_id = ? LIMIT 1 RETURNING id",
     col,
   ))!.id;
+  // Since migration 0126 every track has its hash: rows made here get it as the migration gave old ones.
+  await q.run("UPDATE tracks SET token_hash = encode(sha256(convert_to(token, 'UTF8')), 'hex') WHERE token_hash IS NULL AND token IS NOT NULL");
   const { url } = await L.createLink(owner, col, { permission: "listen", days: 14, requests: true });
   const live = (await L.linkBySecret(url.split("/c/")[1]))!;
   const want = ["artist", "bpm", "duration", "file_key", "genre", "id", "mime", "title"];

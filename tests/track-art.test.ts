@@ -33,6 +33,8 @@ async function track(token: string) {
     "INSERT INTO tracks (user_id, sender_id, title, artist, token, file_key, original_name, mime, size, created_at) VALUES (?,?,'T','A',?,'audio/a.wav','a.wav','audio/wav',1,?) RETURNING id",
     owner, sender, token, t,
   ))!.id;
+  // Since migration 0126 every track has its hash: rows made here get it as the migration gave old ones.
+  await q.run("UPDATE tracks SET token_hash = encode(sha256(convert_to(token, 'UTF8')), 'hex') WHERE token_hash IS NULL AND token IS NOT NULL");
   const { attachTrackArt } = await import("../src/lib/track-art");
   const call = (body: object) => attachTrackArt(token, body);
   const artKey = async () => (await q.get<{ art_key: string | null }>("SELECT art_key FROM tracks WHERE id = ?", id))!.art_key;
