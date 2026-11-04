@@ -263,7 +263,8 @@ test.describe("Review Queue controls, desktop 1280", () => {
     const answered = async (text: string) => {
       const said = page.getByText(sent).first();
       await expect(said).toBeVisible();
-      await expect(box).toHaveValue(/^Not sent/.test((await said.textContent()) ?? "") ? text : "");
+      // Not anchored: the toast's text starts with a screen-reader prefix ("Didn't work: Not sent: …").
+      await expect(box).toHaveValue(/Not sent/.test((await said.textContent()) ?? "") ? text : "");
       // One toast at a time (6 s): wait for it to go so the next answer is a new one.
       await expect(page.getByText(sent)).toHaveCount(0, { timeout: 15_000 });
     };
@@ -386,9 +387,18 @@ test.describe("Review Queue controls, desktop 1280", () => {
     await page.keyboard.press("ArrowUp");
     await expect(rows.locator('li[aria-current="true"]')).toHaveAttribute("data-row", first!);
 
+    // In a full run, earlier specs' 2–6 s uploads come first (newest first): step down to a seeded 32 s track, so the
+    // 10 s ArrowRight jump can't run past the end.
+    const current = rows.locator('li[aria-current="true"]');
+    for (let i = 0; i < 40 && !/of 0:32$/.test((await current.getByRole("slider").getAttribute("aria-valuetext")) ?? ""); i++) {
+      const at = await current.getAttribute("data-row");
+      await page.keyboard.press("j");
+      await expect(current).not.toHaveAttribute("data-row", at!);
+    }
+    const playing = await current.getAttribute("data-row");
     await page.keyboard.press("Space");
     await expect(page.locator("[data-player-bar]")).toBeVisible();
-    const slider = rows.locator(`li[data-row="${first}"]`).getByRole("slider");
+    const slider = rows.locator(`li[data-row="${playing}"]`).getByRole("slider");
     for (const [key, at] of [["1", 25], ["3", 75]] as const) {
       await page.keyboard.press(key);
       await expect.poll(async () => Number(await slider.getAttribute("aria-valuenow"))).toBeGreaterThanOrEqual(at - 2);
