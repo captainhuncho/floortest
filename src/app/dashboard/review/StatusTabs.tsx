@@ -38,7 +38,7 @@ export function StatusTabs({ tabs, active }: { tabs: Tab[]; active: string }) {
     <nav
       ref={nav}
       // Segmented tabs (redesign, 30 Oct): full width on a phone, each tab a fair share; scrolls sideways before it squashes.
-      className={`${SEG} w-full max-w-full overflow-x-auto lg:w-auto lg:min-w-[440px] lg:max-w-[560px] lg:flex-1`}
+      className={`${SEG} rounded-[14px]! w-full max-w-full overflow-x-auto lg:w-auto lg:min-w-[440px] lg:max-w-[560px] lg:flex-1`}
       aria-label="Status" data-pending={pending ? "" : undefined} aria-busy={pending || undefined}>
       {tabs.map((t) => {
         const on = chosen === t.key;
@@ -63,7 +63,8 @@ export function StatusTabs({ tabs, active }: { tabs: Tab[]; active: string }) {
               topBefore.current = nav.current?.getBoundingClientRect().top ?? null;
               start(() => router.push(t.href, { scroll: false }));
             }}
-            className={`${segTab(on)} min-h-11! flex-1 gap-1 px-2 transition-colors sm:text-[12.5px]`}
+            // press: the tab answers on pointer-down, before the new list arrives (glass pass, owner 4 Nov).
+            className={`${segTab(on)} press min-h-11! flex-1 gap-1 rounded-[11px]! px-2 sm:text-[12.5px]`}
           >
             {t.label} <span className={`text-[11px] font-semibold tnum ${on ? "" : "opacity-80"}`}>{t.count}</span>
           </Link>

@@ -62,7 +62,7 @@ export function TrackList({ rows, selectedId, hrefFor, showDecision = true }: { 
         return (
           <Fragment key={r.id}>
           {header && (
-            <li className="mt-1 flex items-baseline gap-2 rounded-[10px] bg-well px-2.5 py-1.5 text-[12px]">
+            <li className="mt-1 flex items-baseline gap-2 rounded-[12px] bg-well px-2.5 py-1.5 text-[12px]">
               <span className="text-[11px] font-semibold text-mute">Folder</span>
               <span className="min-w-0 truncate font-semibold text-bone">{r.release!.title}</span>
               <span className="shrink-0 text-[11px] text-mute tnum">· {r.release!.count} tracks</span>
@@ -75,13 +75,13 @@ export function TrackList({ rows, selectedId, hrefFor, showDecision = true }: { 
             aria-current={selected ? "true" : undefined}
             className={`group relative grid min-h-11 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5 border-t py-2 transition-colors first:border-t-transparent @3xl:grid-cols-[auto_minmax(0,14rem)_minmax(0,1fr)_auto] ${
               selected
-                ? `rounded-xl border-t-transparent bg-well px-2 shadow-[inset_2px_0_0_var(--color-lime)] ${state ? "max-xl:hidden" : ""}`
+                ? `rounded-[14px] border-t-transparent bg-well px-2 shadow-[inset_2px_0_0_var(--color-lime)] ${state ? "max-xl:hidden" : ""}`
                 : "border-line px-0.5 hover:bg-well/60"
             } ${selected ? "" : "[[aria-current]+&]:border-t-transparent"} ${r.release ? "pl-4" : ""}`}
           >
             <button
               onClick={() => play(toPlayer(r), queue)}
-              className={`relative z-10 grid size-11 place-items-center rounded-[11px] border transition-colors ${
+              className={`relative z-10 grid size-11 place-items-center rounded-[12px] border ${
                 isCurrent ? "border-lime/50 bg-lime/12 text-lime" : "border-line bg-well text-bone group-hover:border-line-2"
               }`}
               aria-label={isCurrent && playing ? `Pause ${r.title}` : `Play ${r.title}`}

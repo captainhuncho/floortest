@@ -25,7 +25,7 @@ import { ReviewTogether } from "./ReviewTogether";
 import { TrackStepper } from "./review/TrackStepper";
 import type { Step } from "./review/QueueState";
 import { ReplyCard } from "./review/ReplyCard";
-import { CARD, Chip, Cover, Icon, IconBox, InfoRow, initials } from "@/components/Kit";
+import { Chip, Cover, Icon, IconBox, InfoRow, initials } from "@/components/Kit";
 
 export async function ReviewPanel({
   track: t,
@@ -95,7 +95,7 @@ export async function ReviewPanel({
   const collectionName = collections.find((c) => c.id === t.collection_id)?.name ?? null;
 
   const releaseBlock = release && (
-    <details className="group/rel rounded-[11px] border border-line bg-well">
+    <details className="group/rel rounded-[14px] border border-line bg-well">
       <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-2.5 py-2 text-[12px] [&::-webkit-details-marker]:hidden">
         <span className="flex min-w-0 items-center gap-2 truncate">
           <Icon name="folder" className="size-[15px] text-mute" />
@@ -177,11 +177,13 @@ export async function ReviewPanel({
   const art = artFrom ? `/api/track-art/${artFrom.id}?v=${encodeURIComponent(artFrom.art_key)}` : null;
 
   const senderLink = (
-    <Link href={`/dashboard/contacts/${sender.id}`} className="text-bone underline-offset-4 hover:underline">
+    // 44px tall on touch screens, like every other control (the Every device rule); flat inline with a mouse.
+    <Link href={`/dashboard/contacts/${sender.id}`} className="text-bone underline-offset-4 hover:underline pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center">
       {sender.name}
     </Link>
   );
-  const card = `${CARD} p-3.5 sm:p-4`;
+  // Plates (glass pass page 2, owner 4 Nov): solid sections, so the long page costs nothing to scroll.
+  const card = "plate p-3.5 sm:p-4";
 
   return (
     // Redesign (owner, 30 Oct): the open track is a stack of cards. The player card holds what the decision needs
@@ -284,7 +286,7 @@ export async function ReviewPanel({
           <div className="mt-3 grid gap-1.5 sm:grid-cols-2">
             <a
               href={`/api/tracks/${t.id}/download`}
-              className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-line bg-well px-3 text-[13px] font-semibold text-bone hover:border-line-2"
+              className="press inline-flex min-h-11 items-center justify-center gap-1.5 rounded-[14px] border border-line bg-well px-3 text-[13px] font-semibold text-bone hover:border-line-2"
             >
               <Icon name="dl" className="size-4" />
               Download original
@@ -297,7 +299,7 @@ export async function ReviewPanel({
                 id={`move-${t.id}`}
                 name="collection"
                 defaultValue={t.collection_id ?? ""}
-                className="min-w-0 flex-1 rounded-l-xl border border-line bg-well px-2.5 text-[13px] text-bone max-sm:text-base"
+                className="min-w-0 flex-1 rounded-l-[14px] border border-line bg-well px-2.5 text-[13px] text-bone max-sm:text-base"
               >
                 {t.collection_id == null && <option value="">Unsorted</option>}
                 {collections.map((c) => (
@@ -306,7 +308,7 @@ export async function ReviewPanel({
                   </option>
                 ))}
               </select>
-              <button className="inline-flex items-center gap-1.5 rounded-r-xl border border-l-0 border-line bg-well px-3 text-[13px] font-semibold text-bone hover:border-line-2">
+              <button className="inline-flex items-center gap-1.5 rounded-r-[14px] border border-l-0 border-line bg-well px-3 text-[13px] font-semibold text-bone hover:border-line-2">
                 <Icon name="folder" className="size-4" />
                 Move
               </button>
@@ -331,7 +333,7 @@ export async function ReviewPanel({
                 <Icon name="user" className="size-[15px] text-mute" />
                 Sender
               </h3>
-              <Link href={`/dashboard/contacts/${sender.id}`} className="inline-flex min-h-9 items-center text-[12px] text-mute underline-offset-4 hover:text-bone hover:underline">
+              <Link href={`/dashboard/contacts/${sender.id}`} className="inline-flex min-h-9 items-center text-[12px] text-mute underline-offset-4 hover:text-bone hover:underline pointer-coarse:min-h-11">
                 Full history →
               </Link>
             </div>

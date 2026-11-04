@@ -76,7 +76,7 @@ export function ReplyCard({ senderName, onReply }: { senderName: string; onReply
         required
         maxLength={4000}
         aria-keyshortcuts="R"
-        className="input min-h-20 resize-y rounded-xl! bg-well! max-sm:text-base sm:text-[13px]"
+        className="input min-h-20 resize-y rounded-[14px]! bg-well! max-sm:text-base sm:text-[13px]"
         placeholder={`Emailed to ${senderName} from FloorTest. Nothing is sent until you press Send.`}
         onKeyDown={(e) => {
           if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) formRef.current?.requestSubmit();
@@ -95,7 +95,7 @@ export function ReplyCard({ senderName, onReply }: { senderName: string; onReply
           Cancel
         </button>
         <span className="hidden text-[11px] text-faint [@media(pointer:fine)]:inline">⌘/Ctrl + Enter to send</span>
-        <button className="ml-auto inline-flex min-h-11 items-center sm:min-h-10 gap-1.5 rounded-xl border border-line bg-well px-3.5 text-[13px] font-semibold text-bone transition-colors hover:border-line-2 disabled:opacity-40" disabled={busy}>
+        <button className="ml-auto inline-flex min-h-11 items-center sm:min-h-10 gap-1.5 rounded-[14px] border border-line bg-well px-3.5 text-[13px] font-semibold text-bone hover:border-line-2 disabled:opacity-40" disabled={busy}>
           <Icon name="send" className="size-4" />
           {busy ? "Sending…" : "Send reply"}
         </button>

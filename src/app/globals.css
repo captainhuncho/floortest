@@ -593,8 +593,13 @@ html:has(.theme-day), html:has(.theme-day) body { background: #fafaf6; }
 
 /* Review Queue: while a status tab loads, the list steps back so the tap visibly registered. */
 .review-list { transition: opacity 150ms var(--ease-out); }
-nav[data-pending] ~ .review-list, :has(> nav[data-pending]) ~ .review-list { opacity: 0.45; pointer-events: none; }
+/* The tabs and the list sit in different branches of the page, so the fade is reached from the page itself. (The old
+   sibling selectors never matched once the tabs moved into the header row: the list didn't fade, 4 Nov.) */
+.review-page:has(nav[data-pending]) .review-list { opacity: 0.45; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { .review-list { transition: none; } }
+/* The List view's rows on a plate: ListRows draws its own card (Collections still shows that), so inside .list-plate the
+   card goes clear and the plate carries the surface. Solid, no blur: the list can hold 500 rows. */
+.list-plate > section { background: transparent; border-color: transparent; box-shadow: none; }
 
 /* Home stage (src/app/HomeStage.tsx). Resting styles are the final frame; animations only run from an earlier state,
    so reduced motion (which drops every animation above) shows the still. One lime light per picture. */

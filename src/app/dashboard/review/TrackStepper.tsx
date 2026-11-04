@@ -9,7 +9,7 @@ import { useStep, type Step } from "./QueueState";
  */
 export function TrackStepper({ fromId, prev, next, position }: { fromId: number; prev: Step; next: Step; position: string | null }) {
   const step = useStep(fromId);
-  const btn = "grid size-11 place-items-center rounded-[11px] border border-line bg-well text-bone transition-colors hover:border-line-2 disabled:text-faint disabled:opacity-50";
+  const btn = "grid size-11 place-items-center rounded-[12px] border border-line bg-well text-bone hover:border-line-2 disabled:text-faint disabled:opacity-50";
   return (
     <div className="flex shrink-0 items-center gap-0.5">
       <button type="button" className={btn} aria-label="Previous track" disabled={!prev} onClick={() => step(prev)}>

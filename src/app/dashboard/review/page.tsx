@@ -16,7 +16,7 @@ import { FilterMenu } from "../list/FilterMenu";
 import { StatusTabs } from "./StatusTabs";
 import { QueueState, ShownPanel } from "./QueueState";
 import { VIEW_COOKIE } from "../view-cookie";
-import { CARD, Icon, SectionHead } from "@/components/Kit";
+import { Icon, SectionHead } from "@/components/Kit";
 
 export const metadata = { title: "Review Queue — FloorTest" };
 
@@ -139,7 +139,10 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
     // phone the open track comes first, then the rest of the list (the open row steps aside, so it reads as Next).
     // QueueState shows a tapped or next track at once, before the server's page arrives.
     <QueueState servedId={selected?.id ?? null} status={status}>
-      <div className="page-gutter py-4 sm:py-6">
+      {/* review-page: the tab-change fade reaches the list from here (globals.css). relative isolate: the canvas sits behind. */}
+      <div className="review-page page-gutter relative isolate py-4 sm:py-6">
+        {/* The ops canvas behind the queue, as on the Floor (glass pass page 2, owner 4 Nov). */}
+        <div aria-hidden className="desk-canvas" />
         <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-3.5 xl:max-w-[1360px]">
           <section className="flex min-w-0 flex-col gap-3" aria-labelledby="submissions-h">
             <header className="flex flex-wrap items-end justify-between gap-3">
@@ -191,7 +194,7 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
                     name="q"
                     defaultValue={search}
                     placeholder="Search title, artist or sender"
-                    className="input min-h-11 rounded-xl! bg-well! pl-9 max-sm:text-base sm:text-[13px]"
+                    className="input min-h-11 rounded-[14px]! bg-well! pl-9 max-sm:text-base sm:text-[13px]"
                   />
                 </form>
               </div>
@@ -223,17 +226,17 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
             )}
             {/* Wide screens keep the review column even when this tab is empty, so switching tabs never reflows the page. */}
             {!selected && totalActive > 0 && (
-              <aside aria-label="Review" className={`${CARD} hidden min-h-64 items-center justify-center p-6 xl:col-start-2 xl:row-start-1 xl:flex`}>
+              <aside aria-label="Review" className={`plate hidden min-h-64 items-center justify-center p-6 xl:col-start-2 xl:row-start-1 xl:flex`}>
                 <p className="max-w-56 text-center text-[13px] text-mute">Nothing to review in this view. Pick another tab or collection.</p>
               </aside>
             )}
 
-            {/* Fades while a tab change loads (see StatusTabs and globals.css). */}
+            {/* Fades while a tab change loads: StatusTabs marks itself pending, .review-page:has() reaches here (globals.css). */}
             <section aria-label="Tracks in this view" className="review-list min-w-0 xl:col-start-1 xl:row-start-1">
               {totalActive === 0 && !search ? (
                 <EmptyDesk link={`${APP_URL}/${user.handle}`} welcome={!!sp.welcome} />
               ) : rows.length === 0 ? (
-                <div className={`${CARD} px-4 py-14 text-center`}>
+                <div className="plate px-4 py-14 text-center">
                   <p className="text-[13px] font-semibold text-bone">
                     {search ? `Nothing matches “${search}”.` : status === "review" ? "Nothing waiting. You're all caught up." : "Nothing here yet."}
                   </p>
@@ -244,7 +247,7 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
                   )}
                 </div>
               ) : (
-                <div className={`${CARD} p-3 pt-2`}>
+                <div className="plate p-3 pt-2">
                   <div className="px-0.5 pt-1 pb-2">
                     <SectionHead title={tabLabel} aside={orderWords} />
                   </div>
@@ -271,16 +274,16 @@ export default async function Submissions({ searchParams }: { searchParams: Prom
 function EmptyDesk({ link, welcome }: { link: string; welcome: boolean }) {
   const steps = ["Press play", "Keep, Not for me, or reply. The next track comes up automatically", "Prepare your kept tracks for a set"];
   return (
-    <div className={`${CARD} p-4 sm:p-6`}>
+    <div className="plate p-4 sm:p-6">
       <p className="text-[11.5px] font-semibold text-lime">{welcome ? "Your desk is ready" : "No tracks yet"}</p>
       <h2 className="mt-1.5 text-[18px] font-semibold leading-snug tracking-[-0.02em] text-bone">Share your link in your next callout.</h2>
       <p className="mt-1.5 max-w-lg text-[13px] text-mute">
         Senders pick a WAV or MP3, confirm their email and send. No account needed. New tracks land here, ready to play.
       </p>
-      <p className="mt-4 w-fit max-w-full break-all rounded-[11px] border border-line bg-well px-3 py-2.5 font-mono text-[12.5px] text-bone">{link}</p>
+      <p className="mt-4 w-fit max-w-full break-all rounded-[14px] border border-line bg-well px-3 py-2.5 font-mono text-[12.5px] text-bone">{link}</p>
       <ol className="mt-5 grid gap-2 sm:grid-cols-3">
         {steps.map((step, i) => (
-          <li key={step} className="flex gap-2 rounded-[11px] border border-line bg-well p-3 text-[13px] text-bone">
+          <li key={step} className="flex gap-2 rounded-[14px] border border-line bg-well p-3 text-[13px] text-bone">
             <span className="font-semibold text-lime tnum">{i + 1}</span> {step}
           </li>
         ))}

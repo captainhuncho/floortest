@@ -232,6 +232,14 @@ looks exactly as before.
 - **Floor, the Waiting card (4 Nov):** the count, then the oldest waiting track (title, artist, "Oldest · 2d ago") and a
   black "Start listening" pill; the whole card opens the queue. Nothing waiting: a quiet grey card that says so, with
   "Open the queue". Both Act now cards size to their content.
+- **Review Queue (page 2, 4 Nov):** same structure and controls; the canvas behind both views; the list card, the open
+  track's cards (player, note, reply, Details, set prep, stems, Review together) and the empty states are plates; the
+  List view's rows sit on a plate (`.list-plate` clears ListRows' own card, which Collections still shows until its pass).
+  Inner pieces take 12–16px corners (tabs and the Queue/List switch 14px with 11px segments, fields and Details controls
+  14px, the decision buttons 16px). Glass only on the List view's batch bar (fixed); the track list, the List view's rows
+  (up to 500) and the filter sheet stay solid. Buttons press through the base rule (scale 0.97, `globals.css`); `press`
+  only on links (status tabs, Download original), never on a `<button>`, where it would scale twice. The tab-change fade
+  now reaches the list (`.review-page:has(nav[data-pending]) .review-list`; the old sibling selectors never matched).
 - **Type:** the Floor greeting 30px (36px from 640px) on option B, section titles 16px; headings track at -0.02em / -0.01em, a little
   softer than before.
 - **Not here:** glass on cards, long lists or every row (it costs frames on cheap phones and shows nothing over a plain

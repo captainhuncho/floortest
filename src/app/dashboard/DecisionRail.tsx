@@ -222,7 +222,9 @@ export function DecisionRail({ track, selfHref, next, prev }: Props) {
 
   // Redesign (30 Oct): two big buttons, Keep the page's one lime button; the shortcut sits beside each word where
   // there's a keyboard.
-  const btn = "inline-flex min-h-13 items-center justify-center gap-2 rounded-[15px] px-3 text-[14.5px] font-semibold transition-colors disabled:opacity-40";
+  // Buttons press on pointer-down already (globals.css, scale 0.97); 16px corners sit inside the plate's 22. No
+  // transition-colors: it would cut the scale out of the base transition, so the release would snap back.
+  const btn = "inline-flex min-h-13 items-center justify-center gap-2 rounded-[16px] px-3 text-[14.5px] font-semibold disabled:opacity-40";
   const key = "rounded-[5px] border border-current px-1.5 font-mono text-[10px] font-semibold opacity-55 [@media(pointer:coarse)]:hidden";
   return (
     <div data-player-keys className="flex flex-col gap-2.5">

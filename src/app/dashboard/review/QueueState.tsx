@@ -5,7 +5,7 @@ import { createContext, useCallback, useContext, useState } from "react";
 import { usePlayer, type PlayerTrack } from "@/components/Player";
 import { fmtTime } from "@/lib/format";
 import { DetailPlayer } from "../DetailPlayer";
-import { CARD, Cover, initials } from "@/components/Kit";
+import { Cover, initials } from "@/components/Kit";
 
 /**
  * The Review Queue answers a tap at once (owner, 28 Oct: "slow to respond to clicks"). Opening a track or deciding
@@ -97,9 +97,9 @@ export function ShownPanel({ servedId, children }: { servedId: number; children:
   const shown = useQueue()?.shown;
   if (!shown || shown.id === servedId) return <>{children}</>;
   const meta = [shown.bpm && `${Math.round(shown.bpm)} BPM`, shown.duration && fmtTime(shown.duration), shown.genre].filter(Boolean).join(" · ");
-  const btn = "inline-flex min-h-13 items-center justify-center rounded-[15px] border text-[14.5px] font-semibold opacity-40";
+  const btn = "inline-flex min-h-13 items-center justify-center rounded-[16px] border text-[14.5px] font-semibold opacity-40";
   return (
-    <div className={`${CARD} flex flex-col gap-3 p-3.5 sm:p-4`} aria-busy="true">
+    <div className="plate flex flex-col gap-3 p-3.5 sm:p-4" aria-busy="true">
       <div className="flex items-center gap-3">
         <Cover text={initials(shown.title)} size="size-[46px]" />
         <div className="min-w-0 flex-1">
