@@ -10,7 +10,7 @@ import { connection } from "next/server";
 import { headers } from "next/headers";
 import "./globals.css";
 import { env, isPreview } from "@/lib/env";
-import { cookiePolicyHref } from "@/lib/consent";
+import { isOpsHost, OPS_SITE } from "@/lib/consent";
 
 /** Zoom is never locked (WCAG 1.4.4). iOS Safari's zoom-on-focus is avoided by 16px fields on touch screens instead (globals.css).
  *  viewportFit cover: without it iOS reports every env(safe-area-inset-*) as 0 and the notch and home-bar paddings do nothing. */
@@ -28,11 +28,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // Every page renders per request, so each gets the fresh script nonce from src/proxy.ts (src/lib/csp.ts). A page
   // built ahead of time would carry no nonce and its scripts would be blocked (audit 27 Oct).
   await connection();
-  // On the ops host /cookies is "not found", so the banner links to the main site's Cookie Policy there.
-  const policyHref = cookiePolicyHref((await headers()).get("host"), env.appUrl, env.opsUrl);
+  // The ops host (staff only) gets no cookie banner and loads nothing optional (owner, 4 Nov 2026).
+  const ops = isOpsHost((await headers()).get("host"), env.appUrl, env.opsUrl);
   return (
     // suppressHydrationWarning: the Android app writes its safe-area sizes onto <html> before React starts.
-    <html lang="en" className={`${serif.variable} ${mono.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${serif.variable} ${mono.variable}`} data-site={ops ? OPS_SITE : undefined} suppressHydrationWarning>
       <body className="site min-h-dvh">
         <NativeApp />
         {isPreview && (
@@ -41,11 +41,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {children}
         {/* A tapped menu link shows at once; a thin line if the next page takes over 150ms (useNavPath.ts). */}
         <NavProgress />
-        {/* Vercel Web Analytics and browser Sentry wait for Accept on the banner (owner's rule, 20 Oct 2026). */}
+        {/* Vercel Web Analytics and browser Sentry wait for Accept on the banner (owner's rule, 20 Oct 2026); none of
+            the three is on the ops host. */}
         {/* Pull to refresh on every page (owner's rule): the desk, public pages, sign-in, messages and admin. */}
         <PullToRefresh />
-        <PageViews />
-        <ConsentBanner policyHref={policyHref} />
+        {!ops && <PageViews />}
+        {!ops && <ConsentBanner />}
         {!isPreview && process.env.NODE_ENV === "production" && <TapSpeed />}
       </body>
     </html>

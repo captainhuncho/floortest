@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { consentFromCookieHeader, cookiePolicyHref, parseConsent } from "../src/lib/consent";
+import { consentFromCookieHeader, isOpsHost, parseConsent } from "../src/lib/consent";
 
 test("reads a saved choice", () => {
   assert.equal(parseConsent("accepted"), "accepted");
@@ -18,11 +18,13 @@ test("finds the choice among other cookies", () => {
   assert.equal(consentFromCookieHeader(""), null);
 });
 
-test("the Cookie Policy link points at the main site only on the ops host", () => {
+test("only the ops host counts as ops (no cookie banner, nothing optional loads there)", () => {
   const app = "https://floortest.app";
   const ops = "https://ops.floortest.app";
-  assert.equal(cookiePolicyHref("ops.floortest.app", app, ops), "https://floortest.app/cookies");
-  assert.equal(cookiePolicyHref("floortest.app", app, ops), "/cookies", "main site unchanged");
-  assert.equal(cookiePolicyHref("localhost:3000", "http://localhost:3000", "http://localhost:3000"), "/cookies", "local and previews share one address");
-  assert.equal(cookiePolicyHref(null, app, ops), "/cookies");
+  assert.equal(isOpsHost("ops.floortest.app", app, ops), true);
+  assert.equal(isOpsHost("floortest.app", app, ops), false, "the live site keeps the banner");
+  assert.equal(isOpsHost("www.floortest.app", app, ops), false);
+  assert.equal(isOpsHost("localhost:3000", "http://localhost:3000", "http://localhost:3000"), false, "local and previews share one address");
+  assert.equal(isOpsHost(null, app, ops), false);
+  assert.equal(isOpsHost("ops.floortest.app", app, "not a url"), false);
 });
