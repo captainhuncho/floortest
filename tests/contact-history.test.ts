@@ -28,14 +28,14 @@ test("a contact's page counts every track but lists the latest 50 tracks and 200
   for (let i = 0; i < 180; i++)
     await q.run("INSERT INTO events (user_id, sender_id, track_id, type, detail, created_at) VALUES (?,?,NULL,'note',?,?)", desk, sam, `n${i}`, t0 + 100_000 + i);
 
-  const h = await contactHistory(sam, tracksShown(undefined));
+  const h = await contactHistory(desk, sam, tracksShown(undefined));
   assert.deepEqual([h.sent, h.kept, h.downloaded], [60, 7, 3], "counts cover every track");
   assert.equal(h.firstSent, t0);
   assert.equal(h.lastSent, t0 + 59_000);
   assert.equal(h.tracks.length, TRACK_PAGE);
   assert.equal(h.tracks[0].title, "T59", "newest first");
   assert.ok(!("token" in h.tracks[0]) && !("file_key" in h.tracks[0]), "only the columns the page shows");
-  assert.equal((await contactHistory(sam, tracksShown("51"))).tracks.length, 60, "Show more rounds up to the next page");
+  assert.equal((await contactHistory(desk, sam, tracksShown("51"))).tracks.length, 60, "Show more rounds up to the next page");
 
   assert.equal(h.thread.length, MAX_MESSAGES);
   assert.equal(h.olderMessages, true);
@@ -45,6 +45,24 @@ test("a contact's page counts every track but lists the latest 50 tracks and 200
 
   assert.equal(tracksShown("-5"), TRACK_PAGE);
   assert.equal(tracksShown("999999"), 1000);
-  const quiet = await contactHistory(other, TRACK_PAGE);
+  const quiet = await contactHistory(desk, other, TRACK_PAGE);
   assert.deepEqual([quiet.sent, quiet.thread.length, quiet.olderMessages], [1, 1, false]);
+
+  // Per-person rules (B8): read as someone who doesn't work this desk, the same sender shows nothing at all, even if
+  // their id got past the page's own check. A teammate of the desk sees it as the owner does.
+  const stranger = (await q.get<{ id: number }>("INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at) VALUES ('x@ch.io', 'h', 'X', 'chstranger', 'pro', 'UTC', ?) RETURNING id", t0))!.id;
+  const forged = await contactHistory(stranger, sam, TRACK_PAGE);
+  assert.deepEqual([forged.sent, forged.kept, forged.tracks.length, forged.thread.length, forged.firstSent], [0, 0, 0, 0, undefined], "nothing from another desk");
+  const mate = (await q.get<{ id: number }>("INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at) VALUES ('m@ch.io', 'h', 'M', 'chmate', 'pro', 'UTC', ?) RETURNING id", t0))!.id;
+  await q.run("INSERT INTO account_members (account_id, user_id, role, created_at) VALUES (?, ?, 'member', ?)", desk, mate, t0);
+  assert.equal((await contactHistory(mate, sam, TRACK_PAGE)).sent, 60, "a teammate reads the team desk's contact");
+});
+
+test("the contacts pages read through the person scope", async () => {
+  const fs = await import("node:fs");
+  const read = (p: string) => fs.readFileSync(new URL(`../src/app/dashboard/${p}`, import.meta.url), "utf8");
+  const list = read("contacts/page.tsx");
+  assert.equal((list.match(/asMe\(\(\) =>/g) ?? []).length, 3, "the three list reads");
+  assert.doesNotMatch(list, /await q\.(all|get|count)/, "no query outside the person scope");
+  assert.match(read("contacts/[id]/page.tsx"), /contactHistory\(user\.actor_id, /);
 });

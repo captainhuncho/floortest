@@ -1,6 +1,6 @@
 /** One contact's history on a desk (the contact page): counts over everything, the latest tracks and messages only. */
 import "server-only";
-import { q, type Track } from "./db";
+import { asPerson, q, type Track } from "./db";
 
 /** Tracks shown at first, and how many more each "Show more" adds; the most a link can ask for. */
 export const TRACK_PAGE = 50;
@@ -21,9 +21,11 @@ export const tracksShown = (n: unknown) => Math.min(MAX_TRACKS, Math.max(TRACK_P
 /**
  * The sender must already be checked as this desk's (ownedSender). The numbers count every track they sent, the list is
  * the newest `shown`, and the conversation the newest MAX_MESSAGES (oldest first), with `olderMessages` when there are more.
+ * Read as `actor`, the signed-in person (per-person rules, B8), so the database itself shows nothing from a desk they
+ * don't work, whatever sender id reaches it.
  */
-export async function contactHistory(senderId: number, shown: number) {
-  const [stats, tracks, latest] = await Promise.all([
+export async function contactHistory(actor: number, senderId: number, shown: number) {
+  const [stats, tracks, latest] = await asPerson(actor, () => Promise.all([
     q.get<{ sent: number; kept: number; downloaded: number; first_at: number | null; last_at: number | null }>(
       `SELECT COUNT(*)::int AS sent, (COUNT(*) FILTER (WHERE decision = 'kept'))::int AS kept,
          (COUNT(*) FILTER (WHERE downloaded_at IS NOT NULL))::int AS downloaded, MIN(created_at) AS first_at, MAX(created_at) AS last_at
@@ -37,7 +39,7 @@ export async function contactHistory(senderId: number, shown: number) {
       shown,
     ),
     q.all<{ kind: ContactMessage["kind"]; at: number; text: string; track: string | null; track_id: number | null }>(
-      `SELECT * FROM (
+      `SELECT kind, at, text, track, track_id FROM (
          SELECT 'message' AS kind, t.created_at AS at, t.message AS text, t.title AS track, t.id AS track_id FROM tracks t
            WHERE t.sender_id = ? AND t.message != ''
          UNION ALL
@@ -48,7 +50,7 @@ export async function contactHistory(senderId: number, shown: number) {
       senderId,
       MAX_MESSAGES + 1,
     ),
-  ]);
+  ]));
   const thread = latest
     .slice(0, MAX_MESSAGES)
     .reverse()

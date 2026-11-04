@@ -20,7 +20,7 @@ export default async function Contact({ params, searchParams }: { params: Promis
   if (!s) notFound();
   const shown = tracksShown((await searchParams).n);
   // The numbers count every track this person sent; the list and the conversation are the latest ones only (1 Nov).
-  const { sent, kept, downloaded, firstSent, lastSent, tracks, thread, olderMessages } = await contactHistory(s.id, shown);
+  const { sent, kept, downloaded, firstSent, lastSent, tracks, thread, olderMessages } = await contactHistory(user.actor_id, s.id, shown);
   const tz = user.tz || undefined;
 
   return (
