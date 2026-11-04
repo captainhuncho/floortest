@@ -70,16 +70,20 @@ export const stemSenderEmail = async (t: Pick<Track, "sender_id">) =>
   t.sender_id ? (await q.get<{ email: string | null }>("SELECT email FROM senders WHERE id = ?", t.sender_id))?.email : null;
 
 /**
- * The track a stem is for, by its receipt token. A closed receipt answers exactly as an unknown token, before any other
- * check (src/lib/receipt-life.ts). A new upload (`start`) needs the receipt open; one started while it was open may
- * finish (`complete`, also from the held batch): the first stem to land ends the stems hold, and the others sent with
- * it mustn't be lost (Safety, 4 Nov).
+ * The track a stem is for, by its receipt token (src/lib/receipt-life.ts). A new upload (`start`) needs the receipt
+ * open. One started while it was open always finishes (`complete`, from the sender or the held batch; owner, 4 Nov:
+ * "the finishing rule for stems is fine"): the first stem to land ends the stems hold, and the others sent with it
+ * mustn't be lost. Only startStemUpload makes stem upload rows, and only while open, so an existing row for this track
+ * is the proof. Otherwise a closed receipt answers exactly as an unknown token, before any other check.
  */
-async function trackForStems(token: string, step: "start" | "complete") {
+async function trackForStems(token: string, step: "start" | "complete", uploadId?: string) {
   const m = receiptWhere(token, "");
   const t = await q.get<Track>(`SELECT * FROM tracks WHERE ${m.sql}`, ...m.args);
   const life = t ? receiptLife(t) : "closed";
-  if (!t || life === "closed") throw new IntakeError("This track is no longer available.", 404);
+  const startedWhileOpen = async () =>
+    !!t && step === "complete" && !!uploadId &&
+    !!(await q.get("SELECT 1 FROM uploads WHERE id = ? AND meta::jsonb->>'kind' = 'stem' AND (meta::jsonb->>'trackId')::bigint = ?", uploadId, t.id));
+  if (!t || (life === "closed" && !(await startedWhileOpen()))) throw new IntakeError("This track is no longer available.", 404);
   if (!t.stems_requested_at) throw new IntakeError("Stems weren't requested for this track.", 403);
   if (step === "start" && life !== "open") throw new IntakeError("This receipt doesn't take stems any more.", 403);
   const plan = (await q.get<{ plan: string }>("SELECT plan FROM users WHERE id = ?", t.user_id))?.plan ?? "free";
@@ -125,7 +129,7 @@ export async function startStemUpload(token: string, fileName: string, size: num
  * `scanDeadlineMs` when given).
  */
 export async function completeStemUpload(token: string, uploadId: string, opts: { from?: "request" | "batch"; scanDeadlineMs?: number } = {}) {
-  const t = await trackForStems(token, "complete");
+  const t = await trackForStems(token, "complete", uploadId);
   // Claimed first: of two completes sent at the same moment, only one goes on.
   const up = await claimUpload<{ id: string; file_key: string; size: number; meta: string; held_at: number | null; held_tries: number }>(
     uploadId,

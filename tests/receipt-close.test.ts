@@ -177,6 +177,24 @@ test("the stems hold doesn't lose stems: past day 90, three started at once all 
   assert.deepEqual(S.stemsSent(row).sort(), ["bass.wav", "drums.wav", "keys.wav"]);
 });
 
+test("a stem started while the receipt was open still lands after it closes; an unknown upload gets the unknown answer", async () => {
+  const { q } = await import("../src/lib/db");
+  const { storage } = await import("../src/lib/storage");
+  const { receiptLifeByToken } = await import("../src/lib/receipt");
+  const S = await import("../src/lib/stems");
+  const store = await storage();
+  // Started while the stems hold kept it open (none sent yet); then another stem landed, so this 200-day-old receipt
+  // is closed by the time this one finishes. The upload row is what startStemUpload made while it was open.
+  const t = await track("rclate", 200);
+  const { uploadId } = await S.startStemUpload(t.token, "late.wav", wav().length, "4.4.4.1");
+  const key = (await q.get<{ file_key: string }>("SELECT file_key FROM uploads WHERE id = ?", uploadId))!.file_key;
+  await store.put(key, wav(), "audio/wav");
+  await q.run("UPDATE tracks SET stems_sent = ? WHERE id = ?", SENT, t.id);
+  assert.equal((await receiptLifeByToken(t.token))?.life, "closed");
+  assert.equal((await S.completeStemUpload(t.token, uploadId, { from: "batch" })).name, "late.wav");
+  assert.deepEqual(await caught(S.completeStemUpload(t.token, "no-such-upload")), { status: 404, error: "This track is no longer available." });
+});
+
 test("artwork: a deleted track answers as a live one and never gets artwork", async () => {
   const { q } = await import("../src/lib/db");
   const { attachTrackArt } = await import("../src/lib/track-art");
