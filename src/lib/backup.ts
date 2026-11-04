@@ -24,10 +24,10 @@ const keyFor = (t: number) => `backups/db-${new Date(t).toISOString().slice(0, 1
 const dayKey = (t: number) => `backups/db-${new Date(t).toISOString().slice(0, 10)}`;
 /**
  * Live tokens and email bodies (they hold sign-in and unsubscribe links) are blanked: not needed to restore. Invite
- * codes (they open an account) and receipt tokens (tracks.token, they open a sender's receipt page) are replaced: an
- * invite code by the same stand-in on invites.code and users.invite_code (a keyed hash with a fresh key per backup, so
- * use counts survive a restore but the code can't be read back or guessed), a receipt token by a new random one (the
- * column is required and unique). After a restore, old invite codes and receipt links stop working. Password hashes and
+ * codes (they open an account) are replaced by the same stand-in on invites.code and users.invite_code (a keyed hash with
+ * a fresh key per backup, so use counts survive a restore but the code can't be read back or guessed); after a restore,
+ * old invite codes stop working. A plain receipt token (tracks.token) is left out (null): receipts are found by
+ * token_hash and their links rebuilt from token_sealed, both kept, so receipt links keep working after a restore. Password hashes and
  * encrypted two-factor secrets stay: people need them to sign in after a restore.
  */
 type Row = Record<string, unknown>;
@@ -37,7 +37,7 @@ function scrubbers(): Record<string, (r: Row) => Row> {
   return {
     users: (r) => ({ ...r, pending_email_token: null, email_verify_token: null, invite_code: hideCode(r.invite_code) }),
     invites: (r) => ({ ...r, code: hideCode(r.code) }),
-    tracks: (r) => ({ ...r, token: `restored-${randomBytes(24).toString("hex")}` }),
+    tracks: (r) => ({ ...r, token: null }),
     outbox: (r) => ({ ...r, body: "" }),
   };
 }

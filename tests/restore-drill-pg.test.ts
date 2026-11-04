@@ -70,8 +70,9 @@ test("the nightly backup restores into an empty database and every check passes"
     assert.match(by["Foreign keys"].detail, /0 orphan rows/);
     assert.match(by["Each person sees only their own desk"].detail, /tracks 0 \(must be 0\)/);
     assert.match(by["Sealed receipt links open"].detail, /^2\/2 /);
-    // The backup replaced every plain token with a stand-in: the two unsealed ones stay unsealed, no hash changes.
-    assert.match(by["The sealer after a restore"].detail, /^2 restored stand-in.*0 hash\(es\) changed/);
+    // The backup leaves plain tokens out: nothing to mistake for a real one, and no hash changes.
+    assert.match(by["The sealer after a restore"].detail, /^0 restored stand-in.*0 hash\(es\) changed/);
+    assert.equal(Number((await target.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM tracks WHERE token IS NOT NULL"))!.n), 0, "no plain token restored");
     assert.equal(heads.length, 4, "every track's file looked up in the vault");
     // A new row after the restore takes a fresh id, not one the backup already used.
     const before = Number((await target.get<{ n: number }>("SELECT MAX(id)::int AS n FROM users"))!.n);
