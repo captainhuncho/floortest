@@ -17,6 +17,8 @@ test("the receipt reads only the columns it shows, never the decision or the fil
     "INSERT INTO tracks (user_id, sender_id, title, artist, token, file_key, original_name, mime, size, created_at, decision, decided_at) VALUES (?,?,'T','A','cols-track','audio/secret.wav','x.wav','audio/wav',1,?,'passed',?)",
     uid, sender, t, t,
   );
+  // Since migration 0126 every track has its hash: rows made here get it as the migration gave old ones.
+  await q.run("UPDATE tracks SET token_hash = encode(sha256(convert_to(token, 'UTF8')), 'hex') WHERE token_hash IS NULL AND token IS NOT NULL");
 
   const r = await receiptByToken("cols-track");
   assert.ok(r, "the receipt is found by its token");

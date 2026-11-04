@@ -10,18 +10,17 @@ import { hashToken } from "./token-hash";
  * is the sender's only key to their receipt, so every lookup and every link to it goes through here.
  *
  * Stored as `token_hash` (its SHA-256, src/lib/token-hash.ts) to find the receipt, and `token_sealed` (AES-256-GCM with a
- * key from APP_SECRET, the track id bound in) so the server can rebuild the link for later emails and /sent. Lookups and
- * links already use these. The plain `token` is still written and kept for one release (Safety, 2 Nov): the owner's
- * "roll back" puts back the previous build, which reads only `token`. The next release clears it and drops the plain
- * lookup; after that a copy of the database (a backup, an ops query) holds nothing that opens a receipt.
+ * key from APP_SECRET, the track id bound in) so the server can rebuild the link for later emails and /sent. The plain
+ * `tracks.token` is no longer written or read (migration 0127 cleared it, plan B11): a copy of the database (a backup,
+ * an ops query) holds nothing that opens a receipt. A just-made track carries its token in memory only.
  * If APP_SECRET changes, sealed copies can't be opened: lookups still work, and links in new emails become /sent.
  */
 
 /** Longest token we look up: longer input is cut, never searched for whole. */
 const MAX_TOKEN = 100;
 
-/** What a link needs from a track row: its id, and the plain token (old rows, or just made) or the sealed one. */
-export type ReceiptKey = { id: number; token?: string | null; token_sealed?: string | null };
+/** What a link needs from a track row: its id and sealed copy (or, for a track just made, its token in memory). */
+export type ReceiptKey = { id: number; token?: string | null; token_hash?: string | null; token_sealed?: string | null };
 
 const keyFrom = () => crypto.createHash("sha256").update(`floortest-receipt:${env.secret}`).digest();
 
@@ -52,18 +51,16 @@ export const newReceiptToken = () => crypto.randomBytes(12).toString("base64url"
 
 /** The plain token for building a link or hiding it in an email's stored copy, or null when it can't be had. */
 export function receiptToken(track: ReceiptKey): string | null {
-  if (track.token) return track.token;
+  // The plain token only when it's the row's own: after a backup restore it holds a random stand-in whose hash isn't
+  // the row's, and a link built from that wouldn't open (Safety, 4 Nov). A just-made track has no hash in memory yet.
+  if (track.token && (track.token_hash == null || hashToken(track.token) === track.token_hash)) return track.token;
   return track.token_sealed ? openReceiptToken(track.token_sealed, track.id) : null;
 }
 
-/**
- * The WHERE condition matching a receipt token, for a query whose tracks table is `alias` (or unaliased with ""). The
- * hash, plus the plain column while old rows still have it (that part goes once none is left).
- */
+/** The WHERE condition matching a receipt token, for a query whose tracks table is `alias` (or unaliased with ""). */
 export function receiptWhere(token: string, alias = "t") {
-  const cut = String(token).slice(0, MAX_TOKEN);
-  const col = (c: string) => (alias ? `${alias}.${c}` : c);
-  return { sql: `(${col("token_hash")} = ? OR ${col("token")} = ?)`, args: [hashToken(cut), cut] as unknown[] };
+  const col = alias ? `${alias}.token_hash` : "token_hash";
+  return { sql: `${col} = ?`, args: [hashToken(String(token).slice(0, MAX_TOKEN))] as unknown[] };
 }
 
 /** The track a receipt token belongs to, by id, or undefined. Deleted tracks are found too; callers decide. */
@@ -84,7 +81,7 @@ export const receiptPathForToken = (token: string) => `/receipt/${String(token).
 /** The receipt's full link, for emails. */
 export const receiptUrl = (track: ReceiptKey) => `${APP_URL}${receiptPath(track)}`;
 
-/** Adds the hash and sealed copy for a track's token (the plain one stays this release). For a new track, in its transaction. */
+/** Stores a new track's token as its hash and sealed copy (never in plain). In the track's own transaction. */
 export async function storeReceiptToken(db: Queryable, trackId: number, token: string) {
   await db.run("UPDATE tracks SET token_hash = ?, token_sealed = ? WHERE id = ?", hashToken(token), sealReceiptToken(token, trackId), trackId);
 }

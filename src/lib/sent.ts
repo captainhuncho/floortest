@@ -2,7 +2,7 @@ import "server-only";
 import { q, type User } from "@/lib/db";
 
 export type SentRow = {
-  id: number; token: string | null; token_sealed: string | null; title: string; artist: string; created_at: number; played_at: number | null; downloaded_at: number | null;
+  id: number; token_sealed: string | null; title: string; artist: string; created_at: number; played_at: number | null; downloaded_at: number | null;
   replied_at: number | null; played_out_at: number | null; receiver: string; handle: string;
 };
 
@@ -13,7 +13,7 @@ export type SentRow = {
  */
 export function sentBy(user: Pick<User, "id" | "email" | "email_verified_at">) {
   return q.all<SentRow>(
-    `SELECT t.id, t.token, t.token_sealed, t.title, t.artist, t.created_at, t.played_at, t.downloaded_at, t.replied_at, t.played_out_at, u.name AS receiver, u.handle
+    `SELECT t.id, t.token_sealed, t.title, t.artist, t.created_at, t.played_at, t.downloaded_at, t.replied_at, t.played_out_at, u.name AS receiver, u.handle
      FROM tracks t JOIN senders s ON s.id = t.sender_id JOIN users u ON u.id = t.user_id
      WHERE ? AND (s.account_id = ? OR lower(s.email) = ?)
      ORDER BY t.created_at DESC LIMIT 200`,
