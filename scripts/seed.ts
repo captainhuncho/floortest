@@ -322,8 +322,9 @@ async function main() {
     putFile(otherKey, data);
     const other = await id("INSERT INTO senders (user_id, email, name, created_at) VALUES (?,?,?,?)", desk, LINKS.other.email, "Otto Other", now - 2 * DAY);
     await id(
-      `INSERT INTO tracks (user_id, collection_id, sender_id, token, title, artist, message, file_key, original_name, mime, size, duration, bpm, peaks, created_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      // Shared under the callout's terms and not played out, so its receipt is still open (stop sharing works there).
+      `INSERT INTO tracks (user_id, collection_id, sender_id, token, title, artist, message, file_key, original_name, mime, size, duration, bpm, peaks, share_ok, share_terms, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,'e2e',?)`,
       desk, callout, other, LINKS.otherReceiptToken, LINKS.other.title, "Otto Other", "", otherKey, `${LINKS.other.title}.wav`, "audio/wav", data.length, 32, 123, JSON.stringify(peaks(audio.x)), now - DAY,
     );
     await db.run("INSERT INTO events (user_id, sender_id, track_id, type, detail, created_at) VALUES (?,?,?,?,?,?)", desk, sid, tid, "submitted", "into Links callout", now - DAY);

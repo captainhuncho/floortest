@@ -13,6 +13,7 @@ import { scannerAwake, scanStored, SCAN_FAILED, SCAN_REFUSED, type ScanResult } 
 import { chargeScanner, senderScope } from "./scan-budget";
 import { recordIncident } from "./incidents";
 import { receiptToken, receiptUrl, receiptWhere } from "./receipt-token";
+import { receiptLife } from "./receipt-life";
 
 export type Stem = { id: number; track_id: number; file_key: string; name: string; mime: string; size: number; created_at: number };
 
@@ -73,6 +74,8 @@ async function trackForStems(token: string) {
   const t = await q.get<Track>(`SELECT * FROM tracks WHERE ${m.sql}`, ...m.args);
   if (!t) throw new IntakeError("This track is no longer available.", 404);
   if (!t.stems_requested_at) throw new IntakeError("Stems weren't requested for this track.", 403);
+  // Read-only from the track's final outcome (src/lib/receipt-life.ts): decided without telling which way.
+  if (receiptLife(t) !== "open") throw new IntakeError("This receipt doesn't take stems any more.", 403);
   const plan = (await q.get<{ plan: string }>("SELECT plan FROM users WHERE id = ?", t.user_id))?.plan ?? "free";
   if (!(await featureOn("stems", { id: t.user_id, plan }))) throw new IntakeError("Not found", 404);
   return t;

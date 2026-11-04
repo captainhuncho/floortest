@@ -1,5 +1,6 @@
 import { q, type Track } from "./db";
 import { receiptWhere } from "./receipt-token";
+import { receiptClosesAt, receiptLife, type LifeFacts } from "./receipt-life";
 
 /**
  * The track columns a sender's receipt uses, and no others. The receiver's decision, notes and the file's storage key
@@ -34,4 +35,14 @@ export async function receiptByToken(token: string) {
        WHERE ${m.sql}`,
     ...m.args,
   );
+}
+
+/**
+ * The receipt's life (src/lib/receipt-life.ts) by its token: open, read-only or closed, and when it closes. The
+ * decision and deletion it's worked out from stay here, on the server; only the result goes on.
+ */
+export async function receiptLifeByToken(token: string, now = Date.now()) {
+  const m = receiptWhere(token, "");
+  const t = await q.get<LifeFacts>(`SELECT created_at, played_out_at, decision, decided_at, deleted_at FROM tracks WHERE ${m.sql}`, ...m.args);
+  return t ? { life: receiptLife(t, now), closesAt: receiptClosesAt(t) } : null;
 }
