@@ -166,6 +166,7 @@ async function main() {
 ];
 
   let harmattan = 0;
+  let lowOrbit = 0;
   for (const [i, t] of tracks.entries()) {
     const sid = await sender(t.s[0], t.s[1], t.ago);
     const audio = makeLoop(t.bpm, t.hz, 1234 + i * 77);
@@ -182,6 +183,7 @@ async function main() {
       t.keep ? "kept" : t.pass ? "passed" : null, decidedAt, created,
     );
     if (t.title === "Harmattan") harmattan = tid;
+    if (t.title === "Low Orbit") lowOrbit = tid;
     await ev(sid, tid, "submitted", created, t.c === afterlife ? "into Afterlife callout" : "into Villagers callout");
     if (t.played) await ev(sid, tid, "played", now - t.played * DAY);
     if (t.dl) await ev(sid, tid, "downloaded", now - t.dl * DAY + 60_000);
@@ -194,6 +196,13 @@ async function main() {
   // the owner, and the demo account has to stay as the other specs expect it whatever order they run in (1 Nov).
   if (process.env.SEED_TEAMS === "1") {
     await db.run("INSERT INTO switches (key, on_, updated_at) VALUES ('teams', 1, ?) ON CONFLICT (key) DO UPDATE SET on_ = 1", now);
+    // One real stem on the demo desk's Low Orbit, so e2e/two-account-actions.spec.ts can ask for it under another of
+    // the desk's own tracks (Safety's group 4: a stem id is only good with its own track).
+    const stem = wav(makeLoop(126, 46, 777));
+    const stemKey = `stems/${uid}/${crypto.randomUUID()}.wav`;
+    putFile(stemKey, stem);
+    await db.run("INSERT INTO stems (track_id, file_key, name, mime, size, created_at) VALUES (?,?,?,?,?,?)", lowOrbit, stemKey, "Low Orbit (Drums).wav", "audio/wav", stem.length, now);
+    await db.run("INSERT INTO feature_switches (feature, plans, users, updated_at) VALUES ('stems', '[]', ?, ?) ON CONFLICT (feature) DO NOTHING", JSON.stringify([uid]), now);
     const team = await id(
       "INSERT INTO users (email, password_hash, name, handle, plan, role_line, tz, email_verified_at, created_at, extra_seats) VALUES (?,?,?,?,?,?,?,?,?,?)",
       "teams@floortest.test",
