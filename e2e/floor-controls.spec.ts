@@ -41,11 +41,17 @@ const desk = (page: Page) => page.getByRole("region", { name: "Your desk" });
 /** The top bar's account button (initials, "Your profile"). */
 const account = (page: Page) => page.getByRole("button", { name: /Your profile/ }).filter({ visible: true }).first();
 
-/** Clicks a link and checks it lands on its page (any 4xx/5xx on the way fails the test through `problems`). */
-async function lands(page: Page, link: Locator, url: RegExp) {
+/** The page is at exactly this path and query (an href read off the page), compared as strings, no regex. */
+const at = (href: string) => (u: URL) => u.pathname + u.search === href;
+
+/**
+ * Clicks a link and checks it lands on its page (any 4xx/5xx on the way fails the test through `problems`). A string
+ * is an href read off the page and must match exactly.
+ */
+async function lands(page: Page, link: Locator, url: RegExp | string) {
   await expect(link).toBeVisible();
   await link.click();
-  await page.waitForURL(url);
+  await page.waitForURL(typeof url === "string" ? at(url) : url);
   await expect(page.locator("#main h1").first()).toBeVisible();
 }
 
@@ -57,6 +63,7 @@ test.describe("Floor controls, desktop 1280", () => {
   });
 
   const links: [string, (p: Page) => Locator, RegExp][] = [
+    ["Act now: Waiting (the oldest track, Start listening)", (p) => main(p).getByRole("link", { name: /^Waiting \d+ (Oldest|Arrived) · .*Start listening/ }), /\/dashboard\/review\?view=queue$/],
     ["Up next: All / Open the queue", (p) => upNext(p).getByRole("link", { name: /^(All \d+|Open the queue)/ }), /\/dashboard\/review\?view=queue$/],
     ["Up next: Start with the oldest", (p) => upNext(p).getByRole("link", { name: /^(Start with the oldest|Listen now)$/ }), /\/dashboard\/review\?view=queue$/],
     ["Just in: a track's title", (p) => upNext(p).locator('a[href*="view=queue&t="]').first(), /\/dashboard\/review\?view=queue&t=\d+/],
@@ -76,7 +83,7 @@ test.describe("Floor controls, desktop 1280", () => {
     expect(hrefs.length).toBeGreaterThan(0);
     for (const href of hrefs) {
       await floor(page);
-      await lands(page, page.locator(`section[aria-labelledby="onboard-h"] a[href="${href}"]`).first(), new RegExp(href.replace(/[?]/g, "\\?") + "$"));
+      await lands(page, page.locator(`section[aria-labelledby="onboard-h"] a[href="${href}"]`).first(), href);
     }
   });
 
@@ -86,7 +93,7 @@ test.describe("Floor controls, desktop 1280", () => {
     expect(hrefs.length).toBeGreaterThanOrEqual(6);
     for (const href of hrefs) {
       await floor(page);
-      await lands(page, nav.locator(`a[href="${href}"]`), new RegExp(href + "$"));
+      await lands(page, nav.locator(`a[href="${href}"]`), href);
     }
   });
 
@@ -234,7 +241,7 @@ test.describe("Floor controls, phone 390", () => {
     for (const href of hrefs) {
       await floor(page);
       await bar.locator(`a[href="${href}"]`).tap();
-      await page.waitForURL(new RegExp(href + "$"));
+      await page.waitForURL(at(href));
       await expect(bar.locator(`a[href="${href}"]`)).toHaveAttribute("aria-current", "page");
     }
   });

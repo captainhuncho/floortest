@@ -323,16 +323,35 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
             <h2 id="now-h" className="text-[16px] font-semibold tracking-[-0.01em] text-bone">Act now</h2>
             <ul className="mt-3 grid gap-3 sm:grid-cols-2">
               <li>
+                {/* Waiting (owner, 4 Nov: "mostly empty space"): the count, then the oldest track and how long it has
+                    waited, and the way in. The whole card opens the queue, which plays oldest first. */}
                 <Link
                   href="/dashboard/review?view=queue"
-                  className={`press flex h-full min-h-[132px] flex-col justify-between rounded-[18px] p-4 ${stats.waiting ? "bg-lime text-[#10110f]" : "bg-ink-3 text-bone"}`}
+                  className={`press flex h-full flex-col gap-3 rounded-[18px] p-4 ${oldest ? "bg-lime text-[#10110f]" : "bg-ink-3 text-bone"}`}
                 >
-                  <span className="flex items-start justify-between gap-2">
-                    <span className="text-[14px] font-semibold leading-snug">Waiting</span>
-                    <span aria-hidden className="text-[18px] leading-none">↗</span>
-                  </span>
-                  <span className="flex flex-wrap items-end justify-between gap-2">
+                  <span className="text-[14px] font-semibold leading-snug">Waiting</span>
+                  <span className="flex min-w-0 items-center gap-3.5">
                     <span className="text-[36px] font-semibold leading-none tracking-[-0.03em] tnum">{stats.waiting}</span>
+                    {oldest ? (
+                      <span className="flex min-w-0 flex-1 flex-col border-l border-[#10110f]/20 pl-3.5">
+                        <span className="text-[11.5px] text-[#10110f]/70">{stats.waiting > 1 ? "Oldest" : "Arrived"} · {ago(Number(oldest.created_at))}</span>
+                        <span className="truncate text-[14px] font-semibold leading-tight">{oldest.title}</span>
+                        <span className="truncate text-[12.5px] text-[#10110f]/75">{oldest.artist}</span>
+                      </span>
+                    ) : (
+                      <span className="min-w-0 flex-1 text-[12.5px] leading-snug text-mute">Nothing waiting. New tracks land here first.</span>
+                    )}
+                  </span>
+                  <span className="mt-auto flex flex-wrap items-center gap-2">
+                    {oldest ? (
+                      <span className="inline-flex min-h-11 items-center gap-1 rounded-full bg-[#10110f] px-4 text-[13px] font-semibold text-lime">
+                        Start listening <FloorIcon name="chev" className="size-3.5" />
+                      </span>
+                    ) : (
+                      <span className="inline-flex min-h-11 items-center gap-1 rounded-full border border-line-2 px-4 text-[13px] font-semibold text-mute">
+                        Open the queue <FloorIcon name="chev" className="size-3.5" />
+                      </span>
+                    )}
                     {stale > 0 && (
                       <span className="rounded-full bg-[#2a1410] px-2.5 py-1 text-[12px] font-bold text-[#ffb3a6] tnum">
                         {stale} over {STALE_DAYS} days
@@ -343,7 +362,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
               </li>
               {kept > 0 && (
                 <li>
-                  <section aria-labelledby="set-h" className="flex h-full min-h-[132px] flex-col justify-between gap-3 rounded-[18px] bg-[#c9c1ff] p-4 text-[#16123a]">
+                  <section aria-labelledby="set-h" className="flex h-full flex-col justify-between gap-3 rounded-[18px] bg-[#c9c1ff] p-4 text-[#16123a]">
                     <div className="min-w-0">
                       <h3 id="set-h" className="text-[14px] font-semibold leading-snug">
                         <span className="tnum">{kept}</span> kept track{kept === 1 ? "" : "s"} ready for your set
