@@ -295,7 +295,9 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; transiti
 }
 /* The desk's canvas (the Floor so far): the ops canvas's light and grain on a layer behind the page, reaching up under
    the top bar so there is no seam. Static, so scrolling only moves it. More contrast drops it. */
-.desk-canvas { position: absolute; inset: -6rem 0 0; z-index: -1; pointer-events: none; background: var(--canvas-light); }
+/* The light is drawn on a fixed 900px band (it fades out by about 250px), not on the whole canvas: sized to the canvas,
+   any change in page height (Next track in the Queue) repainted the full page-tall layer and slowed the press. */
+.desk-canvas { position: absolute; inset: -6rem 0 0; z-index: -1; pointer-events: none; background: var(--canvas-light); background-size: 100% 900px; background-repeat: no-repeat; }
 .desk-canvas::before { content: ""; position: absolute; inset: 0; opacity: var(--grain-opacity); filter: var(--grain-filter); background-image: var(--grain); mask-image: linear-gradient(to bottom, #000 75%, transparent); }
 @media (prefers-contrast: more) { .desk-canvas { display: none; } }
 

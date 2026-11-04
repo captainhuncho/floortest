@@ -211,7 +211,8 @@ live once in `src/app/globals.css` ("Shared materials") and ops reads the same t
 looks exactly as before.
 - **Canvas** (`.desk-canvas`, ops `.admin-canvas`): violet and lime light falling from the top and a fine grain over
   the ink (`--canvas-light`, `--grain`, `--grain-opacity`). A static layer behind the page, reaching up under the top bar;
-  the grain fades out at the bottom. More contrast drops it.
+  the grain fades out at the bottom. The light sits on a fixed 900px band at the top, not sized to the page, so a page
+  that changes height (Next track in the Queue) doesn't repaint the whole canvas. More contrast drops it.
 - **Plate** (`.plate`, ops `.admin-panel`): solid sections. A hairline ring, light on the top edge, a soft lift; 22px
   corners, tiles inside take concentric corners (14–16px). Day: white with a line ring. Plates never blur, so a long
   page scrolls as cheaply as before.
