@@ -1,6 +1,7 @@
 import "server-only";
 import crypto from "node:crypto";
 import { discardFiles } from "@/lib/deletion";
+import { queueDeletion } from "@/lib/deletion-core";
 import { now, q, type Track } from "@/lib/db";
 import { optimizeImage } from "@/lib/image-optimize";
 import { imageKind, IMAGE_TYPES as TYPES, type ImageKind } from "@/lib/images";
@@ -23,11 +24,20 @@ type Reply = { status: number; body: Record<string, unknown> };
 const err = (error: string, status: number): Reply => ({ status, body: { error } });
 const KINDS: Record<string, ImageKind> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
 
+type ArtTrack = Pick<Track, "id" | "user_id" | "created_at" | "art_key" | "deleted_at" | "played_out_at" | "stems_requested_at" | "stems_sent"> & {
+  art_attached_at: number | null;
+  plan: string;
+};
+
 const sentTrack = (token: string) => {
   const m = receiptWhere(token, "t");
   // Found whether or not the receiver has deleted it: a deleted track answers exactly as a live one, and its artwork is
   // thrown away at the end (Safety, 4 Nov), so the answer can't tell the sender it was deleted.
-  return q.get<Track & { plan: string }>(`SELECT t.*, u.plan FROM tracks t JOIN users u ON u.id = t.user_id WHERE ${m.sql}`, ...m.args);
+  return q.get<ArtTrack>(
+    `SELECT t.id, t.user_id, t.created_at, t.art_key, t.art_attached_at, t.deleted_at, t.played_out_at, t.stems_requested_at, t.stems_sent, u.plan
+       FROM tracks t JOIN users u ON u.id = t.user_id WHERE ${m.sql}`,
+    ...m.args,
+  );
 };
 
 /**
@@ -46,7 +56,8 @@ export async function attachTrackArt(ref: string, body: { type?: string; size?: 
   if (life !== "open") return err("This receipt doesn't take artwork any more.", 403);
   if (!(await trackArtEnabled(t.plan))) return err("This receiver doesn't take artwork.", 403);
   const store = await storage();
-  if (t.art_key) return err("This track already has artwork.", 409);
+  // art_attached_at stays through a delete (which clears art_key), so this answers the same on a deleted track.
+  if (t.art_key || t.art_attached_at) return err("This track already has artwork.", 409);
 
   if (body.done) {
     const up = await q.get<{ id: string; file_key: string; ext: string; size: number }>(
@@ -76,16 +87,18 @@ export async function attachTrackArt(ref: string, body: { type?: string; size?: 
     await q.run("UPDATE uploads SET file_key = ? WHERE id = ?", kept, up.id);
     await discardFiles([sealed], "track artwork re-encoded", { linkLive: false });
     await store.put(kept, art, TYPES.webp);
-    // A deleted track: everything above ran as for a live one; now the artwork goes instead of staying.
-    if (t.deleted_at) {
-      await discardFiles([kept], "track artwork for a deleted track", { linkLive: false });
-      await q.run("DELETE FROM uploads WHERE id = ?", up.id);
-      return { status: 200, body: { ok: true } };
-    }
-    // Only the first artwork sticks, even if two arrive at once.
+    // Only the first artwork sticks, even if two arrive at once; either way the attach is recorded. A deleted track does
+    // the same database work as a live one, and its artwork is queued for removal instead of kept (the file is deleted
+    // by the queue, not inside this request), so neither the answer nor its timing tells the sender of the delete.
     const set = await q.tx(async (db) => {
-      const row = await db.get<{ id: number }>("UPDATE tracks SET art_key = ? WHERE id = ? AND art_key IS NULL RETURNING id", kept, t.id);
+      const row = await db.get<{ id: number }>(
+        "UPDATE tracks SET art_key = CASE WHEN deleted_at IS NULL THEN ? ELSE art_key END, art_attached_at = ? WHERE id = ? AND art_key IS NULL AND art_attached_at IS NULL RETURNING id",
+        kept,
+        now(),
+        t.id,
+      );
       if (row) await db.run("DELETE FROM uploads WHERE id = ?", up.id);
+      if (row && t.deleted_at) await queueDeletion(db, [kept], "track artwork for a deleted track", now());
       return row;
     });
     if (!set) return refuse("This track already has artwork.", 409);

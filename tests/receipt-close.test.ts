@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { testDataDir } from "./test-db";
+import type { User } from "../src/lib/db";
 
 // A throwaway local database, storage folder and secret for this test only, set before the app's modules load.
 process.env.DATA_DIR = testDataDir("ft-receipt-close-");
@@ -76,11 +77,11 @@ test("the stems hold: asked for and none sent keeps it open; a malformed list re
 type Extra = Partial<Record<"decision" | "decided_at" | "deleted_at" | "played_at" | "played_out_at" | "stems_sent", unknown>>;
 
 /** A receiver with stems on, a sender and one track `days` old, with its receipt token stored as the live site does. */
-async function track(handle: string, days: number, extra: Extra = {}, { stems = true } = {}) {
+async function track(handle: string, days: number, extra: Extra = {}, { stems = true, plan = "pro" } = {}) {
   const { q } = await import("../src/lib/db");
   const R = await import("../src/lib/receipt-token");
   const created = Date.now() - days * DAY;
-  const uid = (await q.get<{ id: number }>("INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at) VALUES (?, 'h', 'R', ?, 'pro', 'UTC', ?) RETURNING id", `${handle}@x.io`, handle, created))!.id;
+  const uid = (await q.get<{ id: number }>("INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at) VALUES (?, 'h', 'R', ?, ?, 'UTC', ?) RETURNING id", `${handle}@x.io`, handle, plan, created))!.id;
   await q.run("INSERT INTO feature_switches (feature, plans, users, updated_at) VALUES ('stems', '[]', ?, ?) ON CONFLICT (feature) DO UPDATE SET users = (feature_switches.users::jsonb || excluded.users::jsonb)::text", JSON.stringify([uid]), created);
   const sid = (await q.get<{ id: number }>("INSERT INTO senders (user_id, email, name, created_at) VALUES (?, ?, 'S', ?) RETURNING id", uid, `${handle}-s@x.io`, created))!.id;
   const id = (await q.get<{ id: number }>(
@@ -195,19 +196,47 @@ test("a stem started while the receipt was open still lands after it closes; an 
   assert.deepEqual(await caught(S.completeStemUpload(t.token, "no-such-upload")), { status: 404, error: "This track is no longer available." });
 });
 
-test("artwork: a deleted track answers as a live one and never gets artwork", async () => {
+test("artwork: live and deleted tracks answer the same at every step, before and after a real delete", async () => {
   const { q } = await import("../src/lib/db");
+  const { storage } = await import("../src/lib/storage");
   const { attachTrackArt } = await import("../src/lib/track-art");
-  const live = await track("artlive", 0);
-  const gone = await track("artgone", 0, { deleted_at: Date.now() });
-  const a = await attachTrackArt(live.token, { type: "image/png", size: 1000 });
-  const b = await attachTrackArt(gone.token, { type: "image/png", size: 1000 });
-  assert.equal(b.status, a.status, JSON.stringify([a, b]));
-  assert.deepEqual(Object.keys(b.body), Object.keys(a.body));
-  const da = await attachTrackArt(live.token, { done: true });
-  const dg = await attachTrackArt(gone.token, { done: true });
-  assert.deepEqual({ s: dg.status, e: (dg.body as { error?: string }).error }, { s: da.status, e: (da.body as { error?: string }).error });
-  assert.equal((await q.get<{ art_key: string | null }>("SELECT art_key FROM tracks WHERE id = ?", gone.id))!.art_key, null);
+  const { deleteTracks } = await import("../src/lib/review");
+  const sharp = (await import("sharp")).default;
+  const store = await storage();
+  const png = new Uint8Array(await sharp({ create: { width: 8, height: 8, channels: 3, background: "#c33" } }).png().toBuffer());
+  const shape = (r: { status: number; body: Record<string, unknown> }) => ({ status: r.status, error: r.body.error ?? null, keys: Object.keys(r.body).sort() });
+  const upload = async (token: string) => {
+    const start = await attachTrackArt(token, { type: "image/png", size: png.length });
+    if (start.status === 200) {
+      const row = await q.get<{ file_key: string }>("SELECT file_key FROM uploads WHERE meta::jsonb->>'kind' = 'track_art' ORDER BY created_at DESC LIMIT 1");
+      await store.put(row!.file_key, png, "image/png");
+    }
+    return { start: shape(start), done: shape(await attachTrackArt(token, { done: true })), again: shape(await attachTrackArt(token, { type: "image/png", size: png.length })) };
+  };
+  const user = (id: number) => q.get<User>("SELECT * FROM users WHERE id = ?", id) as Promise<User>;
+
+  // Deleted before any artwork: the same answers as a live track, start, finish and a second try (already has it).
+  const live = await track("artlive", 0, {}, { plan: "team" });
+  const gone = await track("artgone", 0, {}, { plan: "team" });
+  await deleteTracks((await user(gone.uid))!, [{ id: gone.id, sender_id: (await q.get<{ s: number }>("SELECT sender_id AS s FROM tracks WHERE id = ?", gone.id))!.s }]);
+  const a = await upload(live.token);
+  const b = await upload(gone.token);
+  assert.deepEqual(b, a);
+  assert.equal(a.done.status, 200, "a real image is accepted");
+  assert.equal(a.again.status, 409, "a second try: already has artwork");
+  const goneRow = (await q.get<{ art_key: string | null; art_attached_at: number | null }>("SELECT art_key, art_attached_at FROM tracks WHERE id = ?", gone.id))!;
+  assert.equal(goneRow.art_key, null, "a deleted track never keeps artwork");
+  assert.ok(goneRow.art_attached_at, "but the attach is recorded");
+
+  // Artwork first, then the receiver deletes the track through the real delete path: still "already has artwork".
+  const kept = await track("artkept", 0, {}, { plan: "team" });
+  const then = await track("artthen", 0, {}, { plan: "team" });
+  assert.deepEqual(await upload(then.token), await upload(kept.token));
+  await deleteTracks((await user(then.uid))!, [{ id: then.id, sender_id: (await q.get<{ s: number }>("SELECT sender_id AS s FROM tracks WHERE id = ?", then.id))!.s }]);
+  const tryKept = shape(await attachTrackArt(kept.token, { type: "image/png", size: png.length }));
+  const tryThen = shape(await attachTrackArt(then.token, { type: "image/png", size: png.length }));
+  assert.deepEqual(tryThen, tryKept);
+  assert.equal(tryThen.status, 409);
 });
 
 test("sender history still lists a track whose receipt has closed", async () => {

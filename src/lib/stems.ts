@@ -1,5 +1,6 @@
 import "server-only";
 import { discardFiles } from "@/lib/deletion";
+import { queueDeletion } from "@/lib/deletion-core";
 import crypto from "node:crypto";
 import { claimUpload, HELD_MAX_TRIES, IntakeError, pointAtSealed, releaseUpload, UploadHeld } from "./intake";
 import { now, q, type Sender, type Track, type User } from "./db";
@@ -25,6 +26,16 @@ const UPLOAD_TTL = 2 * HOUR;
 export async function stemsFor(trackId: number) {
   return q.all<Stem>("SELECT * FROM stems WHERE track_id = ? ORDER BY name", trackId);
 }
+
+/** Whether a stored stems list is a JSON array (what the database's count needs). */
+const isNameList = (raw: string | null) => {
+  if (raw == null) return true;
+  try {
+    return Array.isArray(JSON.parse(raw));
+  } catch {
+    return false;
+  }
+};
 
 /** What the sender's receipt lists: every stem they sent, whether or not the track is still on the desk. */
 export function stemsSent(t: Pick<Track, "stems_sent">): string[] {
@@ -77,7 +88,9 @@ const stemUploadFor = async (trackId: number, uploadId: string) =>
 export async function stemStartedWhileOpen(token: string, uploadId: string) {
   const m = receiptWhere(token, "");
   const t = await q.get<{ id: number }>(`SELECT id FROM tracks WHERE ${m.sql}`, ...m.args);
-  return !!t && (await stemUploadFor(t.id, uploadId));
+  // The upload lookup runs for a missing track too, so an unknown token takes the same steps as a closed one.
+  const found = await stemUploadFor(t?.id ?? -1, uploadId);
+  return !!t && found;
 }
 
 /**
@@ -87,11 +100,20 @@ export async function stemStartedWhileOpen(token: string, uploadId: string) {
  * mustn't be lost. Only startStemUpload makes stem upload rows, and only while open, so an existing row for this track
  * is the proof. Otherwise a closed receipt answers exactly as an unknown token, before any other check.
  */
+type StemTrack = Pick<
+  Track,
+  "id" | "user_id" | "sender_id" | "title" | "artist" | "created_at" | "played_out_at" | "deleted_at" | "stems_requested_at" | "stems_sent"
+>;
+
 async function trackForStems(token: string, step: "start" | "complete", uploadId?: string) {
   const m = receiptWhere(token, "");
-  const t = await q.get<Track>(`SELECT * FROM tracks WHERE ${m.sql}`, ...m.args);
+  const t = await q.get<StemTrack>(
+    `SELECT id, user_id, sender_id, title, artist, created_at, played_out_at, deleted_at, stems_requested_at, stems_sent FROM tracks WHERE ${m.sql}`,
+    ...m.args,
+  );
   const life = t ? receiptLife(t) : "closed";
-  const finishing = !!t && step === "complete" && !!uploadId && (await stemUploadFor(t.id, uploadId));
+  // Looked up for every completion, a missing track included, so a closed and an unknown token take the same steps.
+  const finishing = step === "complete" && (await stemUploadFor(t?.id ?? -1, uploadId ?? ""));
   if (!t || (life === "closed" && !finishing)) throw new IntakeError("This track is no longer available.", 404);
   if (!t.stems_requested_at) throw new IntakeError("Stems weren't requested for this track.", 403);
   if (step === "start" && life !== "open") throw new IntakeError("This receipt doesn't take stems any more.", 403);
@@ -224,8 +246,14 @@ export async function completeStemUpload(token: string, uploadId: string, opts: 
       MAX_STEMS,
     );
   const full = () => new IntakeError(`That's the maximum of ${MAX_STEMS} stems for this track.`, 409);
+  // A list that isn't a JSON array (a bad write) reads as nothing sent (stemsSent), and is reset here so the count
+  // below can't fail on it (Safety, 4 Nov).
+  if (!isNameList(t.stems_sent)) await q.run("UPDATE tracks SET stems_sent = '[]' WHERE id = ? AND stems_sent IS NOT DISTINCT FROM ?", t.id, t.stems_sent);
   if (t.deleted_at) {
-    await discard();
+    // The same database work as for a live track; the files are queued for removal, not deleted inside this request,
+    // so neither the answer nor its timing tells the sender of the delete.
+    await queueDeletion(q, [fileKey, up.file_key], "stem for a deleted track", now());
+    await q.run("DELETE FROM uploads WHERE id = ?", up.id);
     if (!(await sent())) throw full();
     return { name, size: head.size };
   }

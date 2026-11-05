@@ -49,8 +49,10 @@ export const NOT_AVAILABLE = "This track is no longer available.";
  */
 export async function senderProvenFor(token: string, finishing?: { stemUpload: string }) {
   const life = await receiptLifeByToken(token);
-  if (!life) return false;
-  if (life.life === "closed" && !(finishing && (await stemStartedWhileOpen(token, finishing.stemUpload)))) return false;
+  // A closed and an unknown token take the same steps: the upload lookup runs for both when completing a stem.
+  const gone = !life || life.life === "closed";
+  const started = gone && !!finishing && (await stemStartedWhileOpen(token, finishing.stemUpload));
+  if (!life || (gone && !started)) return false;
   const r = await receiptByToken(token);
   return !!r && (await receiptProven(r));
 }
