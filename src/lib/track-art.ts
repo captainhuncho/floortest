@@ -56,8 +56,9 @@ export async function attachTrackArt(ref: string, body: { type?: string; size?: 
   if (life !== "open") return err("This receipt doesn't take artwork any more.", 403);
   if (!(await trackArtEnabled(t.plan))) return err("This receiver doesn't take artwork.", 403);
   const store = await storage();
-  // art_attached_at stays through a delete (which clears art_key), so this answers the same on a deleted track.
-  if (t.art_key || t.art_attached_at) return err("This track already has artwork.", 409);
+  // Decided by this track's own mark only: it stays through a delete (which clears art_key), and art_key can arrive from
+  // a deleted release sibling (handOverFolderCovers), which would otherwise tell the sender of that delete (Safety, 4 Nov).
+  if (t.art_attached_at) return err("This track already has artwork.", 409);
 
   if (body.done) {
     const up = await q.get<{ id: string; file_key: string; ext: string; size: number }>(
@@ -90,15 +91,18 @@ export async function attachTrackArt(ref: string, body: { type?: string; size?: 
     // Only the first artwork sticks, even if two arrive at once; either way the attach is recorded. A deleted track does
     // the same database work as a live one, and its artwork is queued for removal instead of kept (the file is deleted
     // by the queue, not inside this request), so neither the answer nor its timing tells the sender of the delete.
+    // The row's state is read back from the update itself, not from before the image work: a delete in between leaves
+    // the file unused, and it's queued for removal like any other unstored copy.
     const set = await q.tx(async (db) => {
-      const row = await db.get<{ id: number }>(
-        "UPDATE tracks SET art_key = CASE WHEN deleted_at IS NULL THEN ? ELSE art_key END, art_attached_at = ? WHERE id = ? AND art_key IS NULL AND art_attached_at IS NULL RETURNING id",
+      const row = await db.get<{ id: number; deleted_at: number | null; art_key: string | null }>(
+        `UPDATE tracks SET art_key = CASE WHEN deleted_at IS NULL AND art_key IS NULL THEN ? ELSE art_key END, art_attached_at = ?
+          WHERE id = ? AND art_attached_at IS NULL RETURNING id, deleted_at, art_key`,
         kept,
         now(),
         t.id,
       );
       if (row) await db.run("DELETE FROM uploads WHERE id = ?", up.id);
-      if (row && t.deleted_at) await queueDeletion(db, [kept], "track artwork for a deleted track", now());
+      if (row && row.art_key !== kept) await queueDeletion(db, [kept], row.deleted_at ? "track artwork for a deleted track" : "track artwork not stored", now());
       return row;
     });
     if (!set) return refuse("This track already has artwork.", 409);

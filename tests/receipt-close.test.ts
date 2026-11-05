@@ -239,6 +239,132 @@ test("artwork: live and deleted tracks answer the same at every step, before and
   assert.equal(tryThen.status, 409);
 });
 
+/** Real artwork helpers: a small PNG, one full attach (start, put the bytes, done), and a short form of each answer. */
+async function artKit() {
+  const { q } = await import("../src/lib/db");
+  const { storage } = await import("../src/lib/storage");
+  const { attachTrackArt } = await import("../src/lib/track-art");
+  const sharp = (await import("sharp")).default;
+  const store = await storage();
+  const png = new Uint8Array(await sharp({ create: { width: 8, height: 8, channels: 3, background: "#3c3" } }).png().toBuffer());
+  const shape = (r: { status: number; body: Record<string, unknown> }) => ({ status: r.status, error: r.body.error ?? null, keys: Object.keys(r.body).sort() });
+  const start = async (token: string) => {
+    const r = await attachTrackArt(token, { type: "image/png", size: png.length });
+    if (r.status === 200) {
+      const row = await q.get<{ file_key: string }>("SELECT file_key FROM uploads WHERE meta::jsonb->>'kind' = 'track_art' ORDER BY created_at DESC LIMIT 1");
+      await store.put(row!.file_key, png, "image/png");
+    }
+    return shape(r);
+  };
+  const done = async (token: string) => shape(await attachTrackArt(token, { done: true }));
+  return { start, done, attach: async (token: string) => ({ start: await start(token), done: await done(token), again: await start(token) }) };
+}
+
+/** One receiver with a release of two tracks (A, B), team plan (artwork on), all sent just now. */
+async function release(handle: string) {
+  const { q } = await import("../src/lib/db");
+  const R = await import("../src/lib/receipt-token");
+  const t = Date.now();
+  const uid = (await q.get<{ id: number }>("INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at) VALUES (?, 'h', 'R', ?, 'team', 'UTC', ?) RETURNING id", `${handle}@x.io`, handle, t))!.id;
+  const sid = (await q.get<{ id: number }>("INSERT INTO senders (user_id, email, name, created_at) VALUES (?, ?, 'S', ?) RETURNING id", uid, `${handle}-s@x.io`, t))!.id;
+  const rel = `rel-${handle}`.padEnd(20, "x");
+  await q.run("INSERT INTO releases (id, user_id, sender_id, title, artist, kind, created_at) VALUES (?, ?, ?, 'EP', 'A', 'ep', ?)", rel, uid, sid, t);
+  const make = async (n: number) => {
+    const id = (await q.get<{ id: number }>(
+      "INSERT INTO tracks (user_id, sender_id, title, artist, original_name, mime, size, created_at, release_id, track_no) VALUES (?, ?, 'T', 'A', 't.wav', 'audio/wav', 1, ?, ?, ?) RETURNING id",
+      uid, sid, t, rel, n,
+    ))!.id;
+    const token = R.newReceiptToken();
+    await q.tx((db) => R.storeReceiptToken(db, id, token));
+    return { id, token, sender_id: sid };
+  };
+  return { uid, a: await make(1), b: await make(2) };
+}
+
+const userRow = async (id: number) => {
+  const { q } = await import("../src/lib/db");
+  return (await q.get<User>("SELECT * FROM users WHERE id = ?", id))!;
+};
+
+test("artwork: a cover handed over from a deleted release sibling doesn't change the other track's answers", async () => {
+  const { q } = await import("../src/lib/db");
+  const { deleteTracks } = await import("../src/lib/review");
+  const art = await artKit();
+  const deleted = await release("relgone");
+  const twin = await release("reltwin");
+  // Artwork on track A of both releases; then the receiver deletes A of one of them (its cover moves to B).
+  assert.deepEqual(await art.attach(deleted.a.token), await art.attach(twin.a.token));
+  await deleteTracks(await userRow(deleted.uid), [{ id: deleted.a.id, sender_id: deleted.a.sender_id }]);
+  assert.ok((await q.get<{ art_key: string | null }>("SELECT art_key FROM tracks WHERE id = ?", deleted.b.id))!.art_key, "the cover moved to B");
+  // B's answers: the same as the twin release's B, where nothing was deleted.
+  assert.deepEqual(await art.attach(deleted.b.token), await art.attach(twin.b.token));
+});
+
+test("artwork: a track deleted between upload and finish leaves its file queued for removal", async () => {
+  const { q } = await import("../src/lib/db");
+  const { deleteTracks } = await import("../src/lib/review");
+  const art = await artKit();
+  const r = await release("relrace");
+  assert.equal((await art.start(r.a.token)).status, 200);
+  await deleteTracks(await userRow(r.uid), [{ id: r.a.id, sender_id: r.a.sender_id }]);
+  const before = Date.now();
+  assert.equal((await art.done(r.a.token)).status, 200, "answered as for a live track");
+  const row = (await q.get<{ art_key: string | null; art_attached_at: number | null }>("SELECT art_key, art_attached_at FROM tracks WHERE id = ?", r.a.id))!;
+  assert.equal(row.art_key, null);
+  assert.ok(row.art_attached_at);
+  const queued = await q.all<{ file_key: string }>("SELECT file_key FROM storage_deletions WHERE file_key LIKE ? AND created_at >= ?", `track-art/${r.uid}/%.webp`, before - 1000);
+  assert.equal(queued.length, 1, "the re-encoded artwork is queued, not left in storage");
+});
+
+test("artwork: a read-only receipt (played out within the hour) refuses new artwork on the server", async () => {
+  const { attachTrackArt } = await import("../src/lib/track-art");
+  // No stems request, so the stems hold doesn't keep it open.
+  const t = await track("artro", 0, { played_out_at: Date.now() - 1000 }, { plan: "team", stems: false });
+  const r = await attachTrackArt(t.token, { type: "image/png", size: 1000 });
+  assert.deepEqual({ status: r.status, error: r.body.error }, { status: 403, error: "This receipt doesn't take artwork any more." });
+});
+
+test("stems: a real stem on a deleted track answers as on a live one, first and second time; a malformed list completes", async () => {
+  const { q } = await import("../src/lib/db");
+  const { storage } = await import("../src/lib/storage");
+  const S = await import("../src/lib/stems");
+  const store = await storage();
+  const send = async (token: string, name: string, ip: string) => {
+    const { uploadId } = await S.startStemUpload(token, name, wav().length, ip);
+    const key = (await q.get<{ file_key: string }>("SELECT file_key FROM uploads WHERE id = ?", uploadId))!.file_key;
+    await store.put(key, wav(), "audio/wav");
+    return S.completeStemUpload(token, uploadId).then((s) => ({ name: s.name, size: s.size }));
+  };
+  const live = await track("stlive", 2);
+  const gone = await track("stgone", 2, { deleted_at: Date.now() });
+  for (const [n, name] of ["drums.wav", "bass.wav"].entries())
+    assert.deepEqual(await send(gone.token, name, `3.3.${n}.2`), await send(live.token, name, `3.3.${n}.1`), `attempt ${n + 1}`);
+  const list = async (id: number) => S.stemsSent((await q.get<{ stems_sent: string | null }>("SELECT stems_sent FROM tracks WHERE id = ?", id))!);
+  assert.deepEqual(await list(gone.id), await list(live.id));
+  assert.equal((await S.stemsFor(gone.id)).length, 0, "nothing kept on the deleted track");
+  // A stored list that isn't a JSON array completes instead of failing the count.
+  const bad = await track("stbad", 2, { stems_sent: "{}" });
+  assert.equal((await send(bad.token, "keys.wav", "3.3.9.1")).name, "keys.wav");
+  assert.deepEqual(await list(bad.id), ["keys.wav"]);
+});
+
+test("migration 0128 sets art_attached_at only where artwork exists, and a rerun changes nothing", async () => {
+  const { q } = await import("../src/lib/db");
+  const { MIGRATIONS } = await import("../src/lib/db/migrations");
+  const sql = MIGRATIONS.find((m) => m.id === "0128_track_art_attached")!.sql;
+  const withArt = await track("mig1", 3);
+  const without = await track("mig2", 3);
+  await q.run("UPDATE tracks SET art_key = 'track-art/x/y.webp', art_attached_at = NULL WHERE id = ?", withArt.id);
+  const run = async () => {
+    for (const stmt of sql.split(";").map((s) => s.trim()).filter(Boolean)) await q.run(stmt);
+    return q.all<{ id: number; a: number | null }>("SELECT id, art_attached_at AS a FROM tracks WHERE id IN (?, ?) ORDER BY id", withArt.id, without.id);
+  };
+  const first = await run();
+  const created = (await q.get<{ c: number }>("SELECT created_at AS c FROM tracks WHERE id = ?", withArt.id))!.c;
+  assert.deepEqual(first.map((r) => r.a), [Number(created), null]);
+  assert.deepEqual(await run(), first, "a rerun changes nothing");
+});
+
 test("sender history still lists a track whose receipt has closed", async () => {
   const { q } = await import("../src/lib/db");
   const { sentBy } = await import("../src/lib/sent");

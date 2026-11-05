@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import type { APIRequestContext, Browser, Page } from "@playwright/test";
 import { expect, hydrated, test, wav } from "./fixtures";
 import { LINKS } from "./link-pages-data";
@@ -94,6 +95,17 @@ test.describe("receipt details need proof", () => {
     // Played out is the track's final outcome (owner, 4 Nov): the record stays, nothing more can be done from it.
     await expect(page.getByText(/This receipt is read-only now/)).toBeVisible();
     await expect(page.getByRole("button", { name: "Stop private sharing" })).toHaveCount(0);
+    // Hidden is not the guard: the stop-sharing server action itself, called by its id as the browser would, as the
+    // proven sender, answers false and changes nothing (the dev server's action manifest names the id).
+    const manifest = JSON.parse(fs.readFileSync(".next/dev/server/server-reference-manifest.json", "utf8")).node as Record<string, { filename: string; exportedName: string }>;
+    const id = Object.entries(manifest).find(([, v]) => v.exportedName === "stopSharing" && v.filename.startsWith("src/app/receipt/"))?.[0];
+    expect(id, "stopSharing compiled").toBeTruthy();
+    const res = await page.request.post(RECEIPT, {
+      headers: { "Next-Action": id!, Accept: "text/x-component", Origin: new URL(page.url()).origin, "Content-Type": "text/plain;charset=UTF-8" },
+      data: JSON.stringify([LINKS.receiptToken]),
+    });
+    expect(res.status()).toBe(200);
+    expect(await res.text()).toMatch(/^1:false$/m);
   });
 
   test("on an open receipt, stop sharing works only with proof", async ({ page, browser }) => {
