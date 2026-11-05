@@ -230,7 +230,7 @@ test("the browser sends nothing before Accept, and never a key, a query or our o
   for (const consent of ["pending", "rejected", "", "null"]) assert.equal(visitBeacon({ ...base, consent }), null, `nothing for ${consent || "no choice"}`);
   assert.ok(visitBeacon({ ...base, consent: "accepted" }));
   const sent = JSON.parse(visitBeacon({ ...base, consent: "accepted", path: "/receipt/abc123", referrer: "https://floortest.test/reset/Ab3dE6gH9jK2mN5pQ8sT1vW4yZ7_c-0x", search: "?utm_source=Mail&k=secret" })!);
-  assert.deepEqual(sent, { kind: "visit", path: "/receipt/[token]", device: "phone", ref: "", utm: "Mail" });
+  assert.deepEqual(sent, { kind: "visit", path: "/receipt/:token", device: "phone", ref: "", utm: "Mail" });
   assert.equal(referrerHost("https://www.news.example/story?id=9#top", "floortest.test"), "news.example");
   assert.equal(referrerHost("https://floortest.test:443/join/xyz", "floortest.test"), "");
   assert.equal(referrerHost("javascript:alert(1)", "floortest.test"), "");
@@ -286,4 +286,55 @@ test("an account that already holds a newly reserved name can still save Setting
   const other = (await q.get<{ id: number }>("INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at, email_verified_at) VALUES ('o@x.io','h','O','otherdj','pro','UTC',?,?) RETURNING id", t, t))!.id;
   assert.equal(await changeHandle(holder, "security"), null, "keeping it is not a change");
   assert.equal(await changeHandle(other, "takedown"), "That link name is reserved.", "nobody new can take one");
+});
+
+test("the browser reduces every path the way the server does before sending", async () => {
+  const { visitBeacon, browserPage } = await import("../src/lib/visit-beacon");
+  const KEY = "Zq8wX3vB6nM1kL4jH7gF2dS5aP0oI9uY";
+  const raw = (path: string) => JSON.parse(visitBeacon({ consent: "accepted", path, landing: false, referrer: "", search: "", host: "floortest.test", device: "phone" })!).path as string;
+  for (const p of [`/share/${KEY}`, `/confirm-sender/${KEY}`, `/x/abcdefghij0123456789`, `/s/${KEY}`, `/v/${KEY}`]) {
+    const sent = raw(p);
+    assert.ok(!sent.includes(KEY.slice(0, 8)) && !sent.includes("abcdefghij"), `${p} sent as ${sent}`);
+  }
+  assert.equal(raw(`/share/${KEY}`), "/other");
+  assert.equal(raw(`/dashboard/review?token=${KEY}`), "/dashboard/review", "a query never leaves");
+  assert.equal(raw("/DJKwame?x=1"), "/djkwame", "a receiving link is sent as its handle alone");
+  assert.equal(browserPage("/not a handle!"), "/other");
+  assert.equal(raw("/dashboard/collections/42"), "/dashboard/collections/:id");
+});
+
+test("what the browser sends is stored as the same page", async () => {
+  await reset();
+  const { browserPage } = await import("../src/lib/visit-beacon");
+  for (const p of ["/receipt/abc123", "/dashboard/collections/42", "/dashboard/Some Thing", "/share/zzzzzzzzzzzzzzzzzzzzzzzz", "/pricing"]) await send({ kind: "view", path: browserPage(p) });
+  assert.deepEqual((await rows()).map((r) => r.page).sort(), ["/dashboard/:x", "/dashboard/collections/:id", "/other", "/pricing", "/receipt/:token"]);
+});
+
+test("two IPv6 addresses in one /64 share the per-minute limit", async () => {
+  await reset();
+  const { q } = await import("../src/lib/db");
+  await q.run("TRUNCATE rate_events");
+  for (let i = 0; i < 20; i++) await send({ kind: "view", path: "/" }, { "x-real-ip": "2001:db8:aa:bb::1" });
+  for (let i = 0; i < 20; i++) await send({ kind: "view", path: "/" }, { "x-real-ip": "2001:db8:aa:bb:ffff::2" });
+  assert.equal((await q.get<{ n: number }>("SELECT COALESCE(SUM(n), 0)::int AS n FROM visit_counts"))!.n, 30);
+  await send({ kind: "view", path: "/" }, { "x-real-ip": "2001:db8:aa:cc::1" });
+  assert.equal((await q.get<{ n: number }>("SELECT COALESCE(SUM(n), 0)::int AS n FROM visit_counts"))!.n, 31, "another /64 has its own");
+  await q.run("TRUNCATE rate_events");
+});
+
+test("a bot, a non-JSON body and an oversized body never take a rate-limit slot", async () => {
+  await reset();
+  const { q } = await import("../src/lib/db");
+  await q.run("TRUNCATE rate_events");
+  await send({ kind: "view", path: "/" }, { "user-agent": "Googlebot/2.1" });
+  await send({ kind: "view", path: "/" }, { "content-type": "text/plain" });
+  await send({ kind: "view", path: "/" }, { "content-length": "5000" });
+  await send(JSON.stringify({ kind: "view", path: "/", device: "x".repeat(3000) }));
+  assert.equal((await q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM rate_events"))!.n, 0);
+  assert.deepEqual(await rows(), []);
+});
+
+test("an IPv4 address written as IPv6 counts as that IPv4 address", async () => {
+  const { connectionKey } = await import("../src/app/api/visit/route");
+  assert.equal(connectionKey("::ffff:9.8.7.6"), "9.8.7.6");
 });
