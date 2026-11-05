@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useSyncExternalStore } from "react";
-import { isTyping } from "./Player";
 import { stored } from "./useBrowserValue";
 
 /**
@@ -50,18 +49,6 @@ export function overlayOpen() {
   } catch {
     return false;
   }
-}
-
-/**
- * Whether a key press may run a page shortcut: no modifier, not typing, nothing floating open, and focus on the page
- * itself or inside the review area (`[data-shortcuts]`), never in the navigation, a menu or another panel.
- */
-export function shortcutTarget(e: KeyboardEvent) {
-  if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return false;
-  if (overlayOpen()) return false;
-  const t = e.target;
-  if (!(t instanceof Element) || t === document.body || t === document.documentElement) return true;
-  return !!t.closest("[data-shortcuts]");
 }
 
 /** A single-character shortcut (a letter or digit), the kind the switch turns off. */

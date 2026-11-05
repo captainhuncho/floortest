@@ -8,7 +8,6 @@ import { isAccountType } from "./account-types";
 
 /** 1 welcome, 2 name, 3 link, 4 role, 5 email and password. Steps 6 to 8 come after the account exists (/signup/ready). */
 export type SignupStep = 1 | 2 | 3 | 4 | 5;
-export const LAST_FORM_STEP: SignupStep = 5;
 /** The progress line counts the seven questions after the welcome: steps 2 to 8. */
 export const QUESTIONS = 7;
 export const progressOf = (screen: number) => Math.max(0, Math.min(QUESTIONS, screen - 1));

@@ -22,8 +22,8 @@ Charts: white bars at night, olive (#5f8000) by day. Round play buttons use the 
 
 ## One system (batch 3, 14 Oct)
 - **Page frame:** every dashboard page lays out against the space beside the sidebar (`PageFrame` adds no box) and centres one column in it (`mx-auto` plus a max width), so nothing sits to the left on wide screens (owner, 31 Oct). Pages carry their own `page-gutter` (16px / 32px). Column widths: reading pages 768px (Activity, Emails, Referrals; `page-narrow`), Contacts 1024px, wide desk pages 768px then 1152px from 1280px (Floor, Send, Prepare, Account, Plans), Collections 1152px, the Queue 1360px with its docked review column, Settings 1000px.
-- **Titles:** `PageTitle` / `page-title` (28px bold) on every dashboard page; `page-title-display` (32px) only for the Floor greeting.
-- **Selection:** `Segmented` (bone fill, ink text) for one-of-a-few choices; `Tabs` (bone text + 2px bone underline, one sideways-scrolling row on phones) for views. No lime for selection.
+- **Titles:** the `page-title` class (28px bold) on every dashboard page (settings pages through `PageTitle` in `src/app/dashboard/settings/Section.tsx`); `page-title-display` (32px) only for the Floor greeting.
+- **Selection:** `Segmented` (bone fill, ink text) for one-of-a-few choices; tabs (bone text + 2px bone underline, one sideways-scrolling row on phones) for views, as in the Queue's `StatusTabs`. No lime for selection.
 - **Track rows:** `TrackRow` everywhere a track is listed: title first (13px bold bone) over artist · genre (12px faint), right-aligned tabular columns, waveform only ≥ 1024px, neutral text tags (`TrackTag`), a bone dot for waiting, a bone bar for selected; actions drop to their own line on narrow rows.
 - **Readouts, not tiles:** numbers sit in readout lines or one readout panel with cells split by 1px `line` rules (the Floor, collection pages, Contacts); `text-stat` for the Floor's numbers. No stat tiles, no tile grids.
 - **Logs:** Activity is a set log (TIME · WHAT · WHO, tabular, 1px rules, day eyebrows).
