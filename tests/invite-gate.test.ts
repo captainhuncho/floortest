@@ -34,6 +34,12 @@ test("a live personal invite link gives a one-day pass and opens sign-up; anythi
   assert.match(cookie, /Max-Age=86400/, "the invite's pass lasts a day, not the 30 days a sign-in gives");
   assert.match(cookie, /HttpOnly/i);
 
+  // A used invite, gate or not, lands on "This invite has been used or has expired" (owner, 5 Nov), with no pass.
+  await q.run("INSERT INTO invites (code, max_uses, note, email, created_at, used_at) VALUES ('FLOOR-USED789012', 1, '', 'usedg@x.io', ?, ?)", Date.now(), Date.now());
+  const used = await invite("FLOOR-USED789012");
+  assert.equal(new URL(used.headers.get("location")!).pathname, "/invite/used");
+  assert.equal(used.headers.get("set-cookie"), null, "a used invite gets no pass");
+
   for (const code of ["FLOOR-NOPE234567", "FLOOR-OLD789", "' OR 1=1 --"]) {
     const no = await invite(code);
     assert.equal(new URL(no.headers.get("location")!).pathname, "/coming-soon", code);

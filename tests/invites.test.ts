@@ -18,7 +18,7 @@ test("sign-up closed: only a personal invite, with its emailed code, for that ex
   await q.run("INSERT INTO invites (code, max_uses, note, created_at) VALUES ('GROUP', 25, '', ?)", t);
 
   assert.equal((await resolveInvite("", "Ana@X.io", false)).valid, false, "the email alone isn't enough: anyone can type someone else's email");
-  assert.deepEqual(await resolveInvite("personal1", "Ana@X.io", false), { valid: true, referrerId: null, code: "PERSONAL1" }, "the code from the invite link opens it");
+  assert.deepEqual(await resolveInvite("personal1", "Ana@X.io", false), { valid: true, referrerId: null, code: "PERSONAL1", personal: true }, "the code from the invite link opens it");
   assert.equal((await resolveInvite("", "ana@x.io", false, { emailProven: true })).valid, true, "an email already proven (Google) needs no code");
   assert.equal((await resolveInvite("PERSONAL1", "bob@x.io", false)).valid, false, "someone else's invite code doesn't");
   assert.equal((await resolveInvite("", "bob@x.io", false)).valid, false, "no invite for this email");

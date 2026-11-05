@@ -79,8 +79,9 @@ export async function checkSecondFactor(userId: number, input: string): Promise<
 export async function sendEmailVerification(userId: number) {
   const token = crypto.randomBytes(24).toString("base64url");
   const u = await q.get<{ email: string; name: string }>(
-    "UPDATE users SET email_verify_token = ? WHERE id = ? AND email_verified_at IS NULL RETURNING email, name",
+    "UPDATE users SET email_verify_token = ?, email_verify_sent_at = ? WHERE id = ? AND email_verified_at IS NULL RETURNING email, name",
     hashToken(token),
+    now(),
     userId,
   );
   if (!u || !(await accountEmailAllowed())) return false;
@@ -91,7 +92,7 @@ export async function sendEmailVerification(userId: number) {
     to: u.email,
     secrets: [token],
     subject: "Confirm your email for FloorTest",
-    body: `Hi ${u.name.split(/\s+/)[0]},\n\nConfirm this is your email so password resets and alerts reach you:\n${APP_URL}/verify-email/${token}\n\n— FloorTest`,
+    body: `Hi ${u.name.split(/\s+/)[0]},\n\nConfirm this is your email so password resets and alerts reach you:\n${APP_URL}/verify-email/${token}\n\nThe link works for 48 hours. After that, send a fresh one from your desk.\n\n— FloorTest`,
   });
   return true;
 }

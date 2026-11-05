@@ -24,7 +24,7 @@ test("an email confirmation link only counts for the person signed in to that ac
   const squatter = await make("squat", "victim@x.io", false);
   const other = await make("other", "other@x.io", true);
   const { hashToken } = await import("../src/lib/token-hash");
-  await q.run("UPDATE users SET email_verify_token = ? WHERE id = ?", hashToken("tok-verify-1"), squatter);
+  await q.run("UPDATE users SET email_verify_token = ?, email_verify_sent_at = ? WHERE id = ?", hashToken("tok-verify-1"), Date.now(), squatter);
   assert.equal(await confirmEmail("tok-verify-1", null), undefined, "a click with nobody signed in confirms nothing");
   assert.equal(await confirmEmail("tok-verify-1", other), undefined, "nor does someone signed in to another account");
   assert.equal((await q.get<{ v: number | null }>("SELECT email_verified_at AS v FROM users WHERE id = ?", squatter))!.v, null);

@@ -40,7 +40,7 @@ import { logEvent, now, q, type Track } from "@/lib/db";
 import { eraseSender, purgeAccount } from "@/lib/privacy";
 import { localPath } from "@/lib/safe-links";
 import { normalEmail } from "@/lib/email-normal";
-import { deleteRevokedInvite, GATE_CODE_MIN_LENGTH, restoreRevokedInvite } from "@/lib/invites";
+import { deleteRevokedInvite, GATE_CODE_MIN_LENGTH, inviteExpiry, restoreRevokedInvite } from "@/lib/invites";
 import { receiptWhere } from "@/lib/receipt-token";
 import { safeFailure } from "@/lib/safe-failure";
 
@@ -470,13 +470,14 @@ export async function inviteByEmail(form: FormData): Promise<OpsResult> {
     const taken =
       !EMAIL_RE.test(email) ||
       (await q.get("SELECT 1 FROM users WHERE email = ?", email)) ||
-      (await q.get("SELECT 1 FROM invites WHERE email = ? AND revoked_at IS NULL AND NOT EXISTS (SELECT 1 FROM users u WHERE u.invite_code = invites.code)", email));
+      // A pending invite is one still waiting: an expired one doesn't block sending a new one.
+      (await q.get("SELECT 1 FROM invites WHERE email = ? AND revoked_at IS NULL AND used_at IS NULL AND (expires_at IS NULL OR expires_at > ?)", email, now()));
     if (taken) {
       skipped++;
       continue;
     }
     const code = newCode();
-    await q.run("INSERT INTO invites (code, max_uses, note, email, created_at) VALUES (?,?,?,?,?)", code, 1, note, email, now());
+    await q.run("INSERT INTO invites (code, max_uses, note, email, created_at, expires_at) VALUES (?,?,?,?,?,?)", code, 1, note, email, now(), inviteExpiry());
     mail.push(await mailInviteHeld(a, "invited by email", code, email, note));
     items.push({ code });
     await logAdmin(a.id, "invited by email", email, code);
@@ -489,17 +490,21 @@ export async function inviteByEmail(form: FormData): Promise<OpsResult> {
 
 export async function resendInvite(code: string): Promise<OpsResult> {
   const a = await requireAdminAction("invites");
-  const inv = await q.get<{ email: string | null; note: string }>("SELECT email, note FROM invites WHERE code = ? AND revoked_at IS NULL", code);
+  const inv = await q.get<{ email: string | null; note: string; used_at: number | null; expires_at: number | null }>(
+    "SELECT email, note, used_at, expires_at FROM invites WHERE code = ? AND revoked_at IS NULL",
+    code,
+  );
   if (!inv?.email) return no("Couldn't resend: the invite is revoked or has no email");
+  if (inv.used_at) return no("Couldn't resend: the invite was already used to sign up");
   // An old short code can't open the coming-soon gate (src/lib/invites.ts): resending swaps in a new long one.
   const send = code.length < GATE_CODE_MIN_LENGTH ? newCode() : code;
   if (send !== code) {
-    await q.run("INSERT INTO invites (code, max_uses, note, email, created_at) SELECT ?, max_uses, note, email, ? FROM invites WHERE code = ?", send, now(), code);
+    await q.run("INSERT INTO invites (code, max_uses, note, email, created_at, expires_at) SELECT ?, max_uses, note, email, ?, ? FROM invites WHERE code = ?", send, now(), inviteExpiry(), code);
     await q.run("UPDATE invites SET revoked_at = ? WHERE code = ?", now(), code);
-  }
+  } else await q.run("UPDATE invites SET expires_at = ? WHERE code = ?", inviteExpiry(), code); // a resend gives a fresh 14 days
   const mail = await mailInviteHeld(a, "resent invite", send, inv.email, inv.note);
   await logAdmin(a.id, "resent invite", inv.email, send);
-  return okUndo(`Resending the invite to ${inv.email}`, signUndo({ kind: "invite_resend", items: [{ code: send, prev: send !== code ? code : undefined }], mail: [mail], admin: a.id }));
+  return okUndo(`Resending the invite to ${inv.email}`, signUndo({ kind: "invite_resend", items: [{ code: send, prev: send !== code ? code : undefined, at: send !== code ? undefined : inv.expires_at }], mail: [mail], admin: a.id }));
 }
 
 /**
@@ -514,7 +519,7 @@ async function sendWaitlistInvite(id: number, a: { id: number; name: string }) {
     return { r: "joined" as const };
   }
   const code = newCode();
-  await q.run("INSERT INTO invites (code, max_uses, note, email, created_at) VALUES (?,?,?,?,?)", code, 1, "From the waitlist", w.email, now());
+  await q.run("INSERT INTO invites (code, max_uses, note, email, created_at, expires_at) VALUES (?,?,?,?,?,?)", code, 1, "From the waitlist", w.email, now(), inviteExpiry());
   await q.run("UPDATE waitlist SET invited_at = ? WHERE id = ?", now(), id);
   const mail = await mailInviteHeld(a, "invited from waitlist", code, w.email, "", w.handle);
   await logAdmin(a.id, "invited from waitlist", w.email, code);
