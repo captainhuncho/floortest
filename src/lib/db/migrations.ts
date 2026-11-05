@@ -2061,20 +2061,6 @@ create unique index if not exists tracks_token_hash on tracks(token_hash);`,
     id: "0127_receipt_token_clear",
     sql: `update tracks set token = null where token is not null and token_hash is not null and token_sealed is not null and token_hash = encode(sha256(convert_to(token, 'UTF8')), 'hex');`,
   },  {
-    // Label and Radio are two account types instead of one "Label / Radio" (owner, 5 Nov). Existing Label / Radio accounts
-    // become Label (they were "label" before 0095); a radio account picks Radio in Settings. A feature-switch rule that
-    // named Label / Radio names both new types too. Expand only: the database still accepts 'label_radio' and rules keep
-    // it, so the release before this one still runs. Rolling back is safe only because that release already fails
-    // closed (switch-rules fail-closed, shipped first): a rule or form naming only label or radio there reaches nobody,
-    // never everyone. Runs once; the switches update skips rules that already name radio, so a second run changes nothing.
-    // A later contract step remaps any label_radio written during a rollback and drops it from the constraint and rules.
-    id: "0129_split_label_radio",
-    sql: `alter table users drop constraint if exists users_kind_check;
-alter table users add constraint users_kind_check check (kind in ('dj', 'producer_dj', 'ar', 'label', 'radio', 'label_radio', 'artist', 'curator', 'music_pro'));
-update users set kind = 'label' where kind = 'label_radio';
-update switches set rule = replace(rule, '"label_radio"', '"label_radio","label","radio"') where rule like '%"label_radio"%' and rule not like '%"radio"%';`,
-  },
-  {
     // When the sender attached artwork (Safety's review of #431, 4 Nov). Deleting a track clears art_key, so "already
     // has artwork" was answered only while the track lived, which told the sender of a delete. This mark stays through
     // a delete; tracks that have artwork today get their upload time. Additive only.
@@ -2120,6 +2106,21 @@ update invites set expires_at = coalesce(sent_at, created_at) + 1209600000
   where email is not null and expires_at is null and used_at is null;
 alter table users add column if not exists email_verify_sent_at bigint;
 update users set email_verify_sent_at = (extract(epoch from now()) * 1000)::bigint where email_verify_token is not null and email_verify_sent_at is null;`,
+  },
+  {
+    // Label and Radio are two account types instead of one "Label / Radio" (owner, 5 Nov). Existing Label / Radio accounts
+    // become Label (they were "label" before 0095); a radio account picks Radio in Settings. A feature-switch rule that
+    // named Label / Radio names both new types too. Expand only: the database still accepts 'label_radio' and rules keep
+    // it, so the release before this one still runs. Rolling back is safe only to a release with #438 (switch rules fail
+    // closed): there a stored rule naming only label or radio reaches nobody, and a switch form or announcement filter
+    // from this release is refused or reaches nobody, never everyone. Once this is live, never roll back past #438.
+    // Runs once; the switches update skips rules that already name radio, so a second run changes nothing. A later
+    // contract step remaps any label_radio written during a rollback and drops it from the constraint and rules.
+    id: "0129_split_label_radio",
+    sql: `alter table users drop constraint if exists users_kind_check;
+alter table users add constraint users_kind_check check (kind in ('dj', 'producer_dj', 'ar', 'label', 'radio', 'label_radio', 'artist', 'curator', 'music_pro'));
+update users set kind = 'label' where kind = 'label_radio';
+update switches set rule = replace(rule, '"label_radio"', '"label_radio","label","radio"') where rule like '%"label_radio"%' and rule not like '%"radio"%';`,
   },
 ];
 
