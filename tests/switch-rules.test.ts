@@ -106,10 +106,12 @@ test("saving a rule form: a page from another release and an unchanged save over
   const refused = (r: ReturnType<typeof save>, why: RegExp) => assert.match("error" in r ? r.error : "saved", why);
   const working = JSON.stringify({ accounts: [], types: ["dj"], plans: [], countries: [], percent: 100 });
 
-  // A page from another release: a type or plan this release doesn't know is refused, never dropped (dropping
-  // type_radio here over a DJ rule would have saved no rule, which is everyone).
-  refused(save({ type_radio: "on", percent: "100" }, working), /out of date/);
-  refused(save({ type_dj: "on", type_label: "on", percent: "100" }, working), /out of date/);
+  // A page from another release: a type or plan this release doesn't know is refused, never dropped (dropping it here
+  // over a DJ rule would have saved no rule, which is everyone). Since the split, the old release's form sends
+  // type_label_radio; before it, a form from the split release sent type_label or type_radio.
+  refused(save({ type_label_radio: "on", percent: "100" }, working), /out of date/);
+  refused(save({ type_dj: "on", type_radio_station: "on", percent: "100" }, working), /out of date/);
+  assert.deepEqual(ok(save({ type_label: "on", type_radio: "on", percent: "100" }, working)), { accounts: [], types: ["label", "radio"], plans: [], countries: [], percent: 100 });
   refused(save({ plan_enterprise: "on", percent: "100" }, working), /out of date/);
   refused(save({ countries: "GB FRA", percent: "100" }, working), /two-letter/);
   assert.deepEqual(ok(save({ type_dj: "on", countries: "gb, ie", percent: "50" }, working)), { accounts: [], types: ["dj"], plans: [], countries: ["GB", "IE"], percent: 50 });
