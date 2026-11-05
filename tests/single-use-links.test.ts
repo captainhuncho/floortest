@@ -6,6 +6,7 @@ import { testDataDir } from "./test-db";
 process.env.DATA_DIR = testDataDir("ft-single-use-");
 process.env.APP_SECRET ??= "test-secret-".padEnd(48, "x");
 delete process.env.SITE_PASSWORD;
+process.env.ADMIN_EMAILS = "teamdesk@x.io"; // teams are on for this desk only (teamsOn)
 delete process.env.DATABASE_URL;
 delete process.env.RESEND_API_KEY;
 
@@ -192,4 +193,43 @@ test("sign-up claims the invite inside the account transaction and rolls back wh
   assert.match(tx, /claimPersonalInvite\(db, invite\.valid && invite\.personal \? invite\.code : null, a\.email\)/, "the claim runs in the same transaction as the account");
   assert.match(tx, /throw INVITE_GONE/, "a lost claim rolls the account back");
   assert.match(src, /if \(e === INVITE_GONE\) return \{ error: "This invite has been used or has expired/);
+});
+
+test("a team invite accepted twice at once: one wins, the other is refused", async () => {
+  const { q } = await import("../src/lib/db");
+  const { acceptInvite } = await import("../src/lib/account-members");
+  const crypto = await import("node:crypto");
+  const desk = await addUser("teamdesk@x.io", "teamdesk");
+  const mate = await addUser("mate@x.io", "matedesk");
+  await q.run("UPDATE users SET email_verified_at = ? WHERE id = ?", Date.now(), mate);
+  const secret = "team-secret-for-race-test";
+  await q.run(
+    "INSERT INTO account_invites (account_id, email, role, token_hash, created_at, expires_at) VALUES (?, 'mate@x.io', 'member', ?, ?, ?)",
+    desk, crypto.createHash("sha256").update(secret, "utf8").digest("hex"), Date.now(), Date.now() + DAY,
+  );
+  const person = { id: mate, email: "mate@x.io", email_verified_at: Date.now() };
+  const results = await Promise.allSettled([acceptInvite(secret, person), acceptInvite(secret, person)]);
+  assert.equal(results.filter((r) => r.status === "fulfilled").length, 1, "used once");
+  assert.equal(results.filter((r) => r.status === "rejected").length, 1, "the second accept loses at the guarded update");
+});
+
+test("sending a confirmation email stamps when it went, so the 48 hours can be counted", async () => {
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(new URL("../src/lib/security.ts", import.meta.url), "utf8");
+  assert.match(src, /UPDATE users SET email_verify_token = \?, email_verify_sent_at = \? WHERE id = \? AND email_verified_at IS NULL/);
+});
+
+test("pages that honour a link check it too: verify-email's 48 hours, sign-up's dead invite and dead team invite", async () => {
+  const { readFileSync } = await import("node:fs");
+  const read = (f: string) => readFileSync(new URL(`../${f}`, import.meta.url), "utf8");
+  const verify = read("src/app/verify-email/[token]/page.tsx");
+  assert.match(verify, /email_verify_token = \? AND email_verify_sent_at > \?/, "the page treats a link past 48 hours as not recognised");
+  assert.match(verify, /verifyLinkCutoff\(\)/);
+  const signup = read("src/app/(auth)/signup/page.tsx");
+  assert.match(signup, /if \(inviteCode && \(await personalInviteGone\(inviteCode\)\)\) redirect\("\/invite\/used"\)/, "a dead personal invite never shows the form");
+  assert.match(signup, /if \(sp\.team && !team\) redirect\(`\/join\//, "a dead team invite goes to the join page, which says so");
+  const auth = read("src/app/(auth)/actions.ts");
+  const tx = auth.slice(auth.indexOf("return await q.tx(async (db) => {"), auth.indexOf("} catch (e) {", auth.indexOf("return await q.tx(async (db) => {")));
+  assert.match(tx, /UPDATE account_invites SET accepted_at = \? WHERE id = \? AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > \? RETURNING/, "the team invite is accepted in the account transaction");
+  assert.match(tx, /else if \(!open && !invite\.valid\) throw TEAM_GONE/, "when the team invite was what let them in, a lost accept rolls the account back");
 });
