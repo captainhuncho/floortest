@@ -13,10 +13,12 @@ export const runtime = "nodejs";
  * virus scanner is asleep or down: the stem is kept and attached within about 10 minutes (src/lib/held-uploads.ts).
  */
 export async function POST(req: Request, ctx: RouteContext<"/api/stems/[token]/complete">) {
-  if (!(await senderProvenFor((await ctx.params).token))) return NextResponse.json({ error: NOT_AVAILABLE }, { status: 404 });
   const body = (await req.json().catch(() => ({}))) as { uploadId?: unknown };
+  const uploadId = String(body.uploadId ?? "");
+  // A stem started while the receipt was open finishes even after it closes (owner, 4 Nov); proof still applies.
+  if (!(await senderProvenFor((await ctx.params).token, { stemUpload: uploadId }))) return NextResponse.json({ error: NOT_AVAILABLE }, { status: 404 });
   try {
-    const stem = await completeStemUpload((await ctx.params).token, String(body.uploadId ?? ""));
+    const stem = await completeStemUpload((await ctx.params).token, uploadId);
     return NextResponse.json({ name: stem.name, size: stem.size });
   } catch (e) {
     if (e instanceof UploadHeld) return NextResponse.json({ held: true, message: e.message }, { status: 202 });

@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { stopSharingByReceipt } from "@/lib/share-links";
-import { receiptByToken } from "@/lib/receipt";
+import { receiptByToken, receiptLifeByToken } from "@/lib/receipt";
 import { receiptPathForToken } from "@/lib/receipt-token";
 import { receiptProven, rememberSender } from "@/lib/receipt-proof";
 import { CodeError, checkCode, sendCode } from "@/lib/sender-code";
@@ -21,6 +21,9 @@ const RECEIPT_CODES_PER_HOUR = 3;
  * being the sender (src/lib/receipt-proof.ts); without it, the same "nothing happened" as an unknown link.
  */
 export async function stopSharing(token: string) {
+  // Read-only from the track's final outcome (src/lib/receipt-life.ts), so nothing changes from then on. The life is
+  // read first: an unknown and a closed token stop at the same point after the same single lookup.
+  if ((await receiptLifeByToken(token))?.life !== "open") return false;
   const r = await receiptByToken(token);
   if (!r || !(await receiptProven(r))) return false;
   const ok = await stopSharingByReceipt(token);
@@ -35,6 +38,9 @@ export type CodeState = { sent?: string; error?: string; done?: boolean } | null
  * time, whatever happened (a limit, a bounce, an unknown link): "We sent a code to m•••@g•••.com".
  */
 export async function requestReceiptCode(token: string): Promise<CodeState> {
+  // A closed receipt answers as an unknown link does, after the same single lookup.
+  const life = await receiptLifeByToken(token);
+  if (!life || life.life === "closed") return { sent: maskEmail(null) };
   const r = await receiptByToken(token);
   if (!r) return { sent: maskEmail(null) };
   const sent = { sent: maskEmail(r.sender_email) };
@@ -49,9 +55,13 @@ export async function requestReceiptCode(token: string): Promise<CodeState> {
 
 /** Checks the code; right once, then this browser shows this sender's receipts for 30 days. */
 export async function verifyReceiptCode(token: string, _: CodeState, form: FormData): Promise<CodeState> {
-  const r = await receiptByToken(token);
   const code = String(form.get("code") ?? "").replace(/\D/g, "").slice(0, 6);
-  if (!r) return { error: "That code isn't right. Check the email and try again." };
+  const wrong = { error: "That code isn't right. Check the email and try again." };
+  // A closed receipt answers as an unknown link does, after the same single lookup.
+  const life = await receiptLifeByToken(token);
+  if (!life || life.life === "closed") return wrong;
+  const r = await receiptByToken(token);
+  if (!r) return wrong;
   if (code.length !== 6) return { sent: maskEmail(r.sender_email), error: "Enter the 6-digit code from the email." };
   try {
     await checkCode(normalEmail(r.sender_email), code, { remember: false });

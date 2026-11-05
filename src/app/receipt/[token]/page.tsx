@@ -7,7 +7,8 @@ import { notFound } from "next/navigation";
 import { LivePulse } from "@/components/LivePulse";
 import { fill, siteCopy } from "@/lib/content";
 import { Waveform } from "@/components/Waveform";
-import { receiptByToken } from "@/lib/receipt";
+import { receiptByToken, receiptLifeByToken } from "@/lib/receipt";
+import { ReceiptClosed } from "./ReceiptClosed";
 import { ago, fmtDate, fmtDay, fmtTime } from "@/lib/format";
 import { RETAIN_UNREVIEWED_DAYS, SIGNALS, unheardAfterWindow } from "@/lib/plans";
 import { featureOn } from "@/lib/features";
@@ -39,6 +40,11 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
   const { token } = await params;
   const t = await receiptByToken(token);
   if (!t) notFound();
+  // 90 days after the track's final outcome the link shows only that it closed; from the outcome it's read-only
+  // (src/lib/receipt-life.ts: worked out so that it never gives the receiver's decision away).
+  const status = await receiptLifeByToken(token);
+  if (!status || status.life === "closed") return <ReceiptClosed />;
+  const open = status.life === "open";
   const proven = await receiptProven(t);
 
   const [sharing, signupOpen] = await Promise.all([switchOn("sharing"), switchOn("open_signup")]);
@@ -46,7 +52,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
   // with sign-up still invite-only it leads to the waitlist.
   const invite = !gatePassword() && !t.sender_account ? (signupOpen ? "/signup" : "/#waitlist") : null;
   // Neither the stems request nor the share switch changes when the file leaves the desk: that would give a Not for me away.
-  const stemsOn = !!t.stems_requested_at && (await featureOn("stems", { id: t.user_id, plan: t.receiver_plan }));
+  const stemsOn = open && !!t.stems_requested_at && (await featureOn("stems", { id: t.user_id, plan: t.receiver_plan }));
   const [c, editor] = await Promise.all([siteCopy("receipt"), siteEditor()]);
   const { E, panel } = editable(c, !!editor);
   // Without proof the receiver stays unnamed: "the receiver" in every sentence that would name them.
@@ -127,6 +133,11 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
         )}
       </header>
 
+      {!open && status.closesAt && (
+        <p className={`${CARD} p-3 text-[13px] leading-5 text-mute`}>
+          This receipt is read-only now: nothing more can be sent or changed from it. The link closes on {fmtDay(status.closesAt)}.
+        </p>
+      )}
       {todo && (
         <section aria-labelledby="todo-h" className={`${CARD} flex flex-col gap-2.5 p-3`}>
           <h2 id="todo-h" className="flex items-center gap-2 text-[15px] font-semibold tracking-[-0.015em]">
@@ -144,7 +155,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
         </section>
       )}
       {/* Collection share links: the artist can stop private sharing of this track at any time. */}
-      {proven && sharing && !!t.share_ok && !!t.share_terms && t.share_terms !== "owner" && (
+      {open && proven && sharing && !!t.share_ok && !!t.share_terms && t.share_terms !== "owner" && (
         <div className={`${CARD} p-3`}>
           <StopSharing token={token} receiver={who.split(/\s+/)[0]} />
         </div>
