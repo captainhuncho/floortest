@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { can } from "@/lib/admin";
 import type { OpsAccess } from "@/lib/ops-access";
-import { ACTIVITY, JOINED, readAudience } from "@/lib/audience";
+import { ACTIVITY, JOINED, kindLabel, readAudience } from "@/lib/audience";
 import { ADMIN_PLANS, PAGE_SIZE, readPage, readSecurity, SECURITY } from "@/lib/admin-bulk";
 import { allPlans } from "@/lib/plan-store";
-import { KIND_LABEL, now } from "@/lib/db";
+import { now } from "@/lib/db";
 import { AudienceFields } from "../../AudienceFields";
 import { crmRows } from "./data";
 import { editableFor, pageList, readLayout, readView, usersHref, VIEW_KEYS, VIEWS } from "./model";
@@ -33,7 +33,7 @@ export async function CrmUsers({ sp, access }: { sp: Record<string, string | und
   const first = (page - 1) * PAGE_SIZE + 1;
   const csv = new URLSearchParams(Object.entries({ ...aud, joined: params.joined, security, q: search }).filter(([, v]) => v) as [string, string][]).toString();
   const chips = [
-    aud.kind && { label: "Type", value: KIND_LABEL[aud.kind], off: link({ kind: "", page: "" }) },
+    aud.kind && { label: "Type", value: kindLabel(aud.kind), off: link({ kind: "", page: "" }) },
     aud.plan && { label: "Plan", value: planName(aud.plan), off: link({ plan: "", page: "" }) },
     aud.tag && { label: "Tag", value: aud.tag, off: link({ tag: "", page: "" }) },
     aud.joined && { label: "Joined", value: JOINED[aud.joined], off: link({ joined: "", page: "" }) },

@@ -35,6 +35,18 @@ const narrows = (r: SwitchRule) => r.types.length > 0 || r.plans.length > 0 || r
 
 export const ruleIsEmpty = (r: SwitchRule) => r.accounts.length === 0 && !narrows(r);
 
+/** A stored rule that lost a part (its types, plans or countries no longer exist): it covers only its named accounts. */
+export const ruleIsLost = (r: SwitchRule) => r.percent === 0;
+
+const narrowsByPart = (r: SwitchRule) => r.types.length > 0 || r.plans.length > 0 || r.countries.length > 0;
+
+/**
+ * Saving `next` over a lost rule must not quietly widen it: clearing it (everyone when on) or a bare percentage of
+ * everyone takes the Clear rule button on purpose. Named accounts only, or any type, plan or country, is fine.
+ */
+export const widensLostRule = (stored: SwitchRule | null, next: SwitchRule | null) =>
+  !!stored && ruleIsLost(stored) && (!next || (!narrowsByPart(next) && next.percent < 100));
+
 /** A rule as stored (JSON in switches.rule), cleaned; null for no rule or anything unreadable. */
 export function readRule(raw: string | null | undefined): SwitchRule | null {
   if (!raw) return null;
@@ -48,6 +60,11 @@ export function readRule(raw: string | null | undefined): SwitchRule | null {
       countries: [...new Set(list(o.countries).filter((c): c is string => typeof c === "string" && COUNTRY.test(c)))].slice(0, MAX_RULE_COUNTRIES),
       percent: clampPercent(o.percent),
     };
+    // Fail closed: a part that was set but kept none of its values (an account type that no longer exists, say) covers
+    // nobody beyond the named accounts. Dropping the part instead would widen the rule, at worst to everyone. Such a rule
+    // is marked by percent 0, which a saved rule never has (clampPercent keeps it 1-100).
+    const lost = (k: "types" | "plans" | "countries") => list(o[k]).length > 0 && rule[k].length === 0;
+    if (lost("types") || lost("plans") || lost("countries")) return { ...rule, percent: 0 };
     return ruleIsEmpty(rule) ? null : rule;
   } catch {
     return null;
@@ -95,6 +112,7 @@ export function describeRule(rule: SwitchRule, planName: (id: string) => string 
     rule.countries.length ? `in ${rule.countries.join(", ")}` : "",
   ].filter(Boolean);
   const named = rule.accounts.length ? `${rule.accounts.length} named account${rule.accounts.length === 1 ? "" : "s"}` : "";
+  if (ruleIsLost(rule)) return `${named ? `Only ${named}; nobody else` : "Nobody"}: its account types, plans or countries no longer exist`;
   if (!narrows(rule)) return `Only ${named}`;
   const who = `${rule.percent < 100 ? `${rule.percent}% of ` : ""}${parts.length ? `accounts ${parts.join(", ")}` : "all accounts"}`;
   return named ? `${named}, plus ${who}` : who.charAt(0).toUpperCase() + who.slice(1);

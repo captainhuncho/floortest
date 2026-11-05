@@ -6,7 +6,7 @@ import { allPlans } from "@/lib/plan-store";
 import { clearSwitchRule, flipSwitch, saveSwitch, saveSwitchRule } from "../actions";
 import { ConfirmButton } from "../AdminUi";
 import { isTargeted, ruleCoverage, SWITCHES, switchState, type SwitchKey } from "@/lib/switches";
-import { describeRule, type SwitchRule } from "@/lib/switch-rules";
+import { describeRule, ruleIsLost, type SwitchRule } from "@/lib/switch-rules";
 import { ACCOUNT_TYPES, type AccountType } from "@/lib/account-types";
 
 const handlesOf = async (ids: number[]) =>
@@ -142,6 +142,12 @@ function RuleForm({
           Named accounts always get it. The rest narrows everyone else: each part you set must match, then the percentage takes the same slice every time
           for the same account. Leave everything empty for everyone.
         </p>
+        {rule && ruleIsLost(rule) && (
+          <p role="alert" className="rounded-md border border-line p-3 text-sm">
+            <span className="font-semibold">Review this rule.</span> Its account types, plans or countries no longer exist, so it reaches only its named
+            accounts. Pick who it&rsquo;s for and save, or clear it on purpose.
+          </p>
+        )}
         <label className="block space-y-1.5">
           <span className="label">Named accounts (handles)</span>
           <input name="handles" defaultValue={handles.map((h) => `@${h}`).join(" ")} className="input" placeholder="@djname @label" autoComplete="off" />
@@ -171,7 +177,7 @@ function RuleForm({
           </label>
           <label className="block space-y-1.5">
             <span className="label">Percentage of matching accounts</span>
-            <input name="percent" type="number" inputMode="numeric" min={1} max={100} defaultValue={rule?.percent ?? 100} className="input" />
+            <input name="percent" type="number" inputMode="numeric" min={1} max={100} defaultValue={rule && !ruleIsLost(rule) ? rule.percent : 100} className="input" />
           </label>
         </div>
         <div className="flex flex-wrap gap-3">

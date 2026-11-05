@@ -60,6 +60,34 @@ test("stored rules are cleaned; an empty or unreadable rule is no rule", async (
   assert.equal(describeRule(rule({ accounts: [1, 2] })), "Only 2 named accounts");
 });
 
+test("fail closed: a rule whose types, plans or countries no longer exist covers only its named accounts", async () => {
+  const { readRule, ruleCovers, ruleIsLost, describeRule, widensLostRule } = await import("../src/lib/switch-rules");
+  const dj = { id: 5, plan: "pro", kind: "dj" as const };
+  // Each lost part on its own, with no named accounts: before this, each read as no rule, which is everyone.
+  for (const part of [{ types: ["radio_station"] }, { plans: ["NOT A PLAN"] }, { countries: ["FRA"] }]) {
+    const lost = readRule(JSON.stringify({ accounts: [], types: [], plans: [], countries: [], percent: 100, ...part }));
+    assert.ok(lost, `${Object.keys(part)[0]}: not read as no rule`);
+    assert.ok(ruleIsLost(lost!));
+    for (const country of ["", "GB", null]) assert.equal(ruleCovers("x", lost!, dj, country), false, `${Object.keys(part)[0]} covers nobody`);
+    assert.equal(describeRule(lost!), "Nobody: its account types, plans or countries no longer exist");
+  }
+  const named = readRule(JSON.stringify({ accounts: [9], types: ["radio_station"], plans: [], countries: [], percent: 100 }))!;
+  assert.equal(ruleCovers("x", named, { ...dj, id: 9 }, ""), true, "named accounts still get it");
+  assert.equal(ruleCovers("x", named, dj, ""), false);
+  assert.equal(describeRule(named), "Only 1 named account; nobody else: its account types, plans or countries no longer exist");
+  // A type kept next to a lost one is still a working rule.
+  assert.equal(ruleIsLost(readRule(JSON.stringify({ accounts: [], types: ["dj", "radio_station"], plans: [], countries: [], percent: 100 }))!), false);
+
+  // Saving over a lost rule: clearing it or a bare percentage of everyone is refused; narrowing again is fine.
+  const lost = readRule(JSON.stringify({ accounts: [], types: ["radio_station"], plans: [], countries: [], percent: 100 }));
+  assert.equal(widensLostRule(lost, null), true, "clearing (everyone) needs Clear rule");
+  assert.equal(widensLostRule(lost, rule({ percent: 50 })), true, "50% of everyone is wider");
+  assert.equal(widensLostRule(lost, rule({ types: ["dj"] })), false);
+  assert.equal(widensLostRule(lost, rule({ accounts: [3] })), false, "named accounts only is narrower");
+  assert.equal(widensLostRule(rule({ types: ["dj"] }), null), false, "a working rule clears as before");
+  assert.equal(widensLostRule(null, null), false);
+});
+
 test("from the server: off beats any rule, a rule keeps the feature from accounts outside it, old code still works", async () => {
   const { q } = await import("../src/lib/db");
   const { switchOn, setSwitch, setSwitchRule, switchState, ruleCoverage } = await import("../src/lib/switches");
