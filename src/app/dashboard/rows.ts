@@ -54,5 +54,3 @@ export async function loadRows(userId: number, opts: { collectionId?: number; ke
     cueCount: parseCues(t.cues, t.duration).length,
   }));
 }
-
-export const reviewHref = (id: number) => `/dashboard/review?view=queue&s=all&t=${id}`;

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { fmtTime } from "@/lib/format";
 import { Chip } from "./Kit";
 import { PlayIcon } from "./Player";
 
@@ -79,19 +78,6 @@ export function trackAge(ts: number, now = Date.now()) {
   if (d < 30) return `${d}d`;
   const mo = Math.round(d / 30);
   return mo < 12 ? `${mo}mo` : `${Math.round(mo / 12)}y`;
-}
-
-/** The three readouts most track lists share, in this order: BPM, length, age (each optional per list). */
-export function trackColumns(
-  t: { bpm?: number | null; duration?: number | null; createdAt?: number },
-  opts: { bpm?: TrackColumn["from"] | false; length?: TrackColumn["from"] | false; age?: TrackColumn["from"] | false } = {},
-): TrackColumn[] {
-  const cols: TrackColumn[] = [];
-  if (opts.bpm !== false) cols.push({ key: "bpm", label: "BPM", value: t.bpm ? `${Math.round(t.bpm)} BPM` : "", width: "w-14", from: opts.bpm ?? "sm" });
-  if (opts.length !== false) cols.push({ key: "length", label: "Length", value: fmtTime(t.duration), width: "w-10", from: opts.length || undefined });
-  if (opts.age !== false && t.createdAt)
-    cols.push({ key: "age", label: "Age", value: trackAge(t.createdAt), width: "w-9", from: opts.age || undefined, title: new Date(t.createdAt).toLocaleString() });
-  return cols;
 }
 
 const TAG_TONE: Record<string, "up" | "acc" | "warn"> = { Kept: "up", "Played out": "acc", "Needs review": "warn" };

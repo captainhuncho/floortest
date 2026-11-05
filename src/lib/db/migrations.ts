@@ -2062,6 +2062,14 @@ create unique index if not exists tracks_token_hash on tracks(token_hash);`,
     sql: `update tracks set token = null where token is not null and token_hash is not null and token_sealed is not null and token_hash = encode(sha256(convert_to(token, 'UTF8')), 'hex');`,
   },
   {
+    // When the sender attached artwork (Safety's review of #431, 4 Nov). Deleting a track clears art_key, so "already
+    // has artwork" was answered only while the track lived, which told the sender of a delete. This mark stays through
+    // a delete; tracks that have artwork today get their upload time. Additive only.
+    id: "0128_track_art_attached",
+    sql: `alter table tracks add column if not exists art_attached_at bigint;
+update tracks set art_attached_at = created_at where art_attached_at is null and art_key is not null;`,
+  },
+  {
     // Visit counts (owner, 5 Nov): in-house, per day, how many visits and page views each page had, from which country
     // (Vercel's header), which site or utm_source, and which device. Counts only: no IP, cookie, account or visitor id.
     // link_owner is the receiver whose receiving link (/handle) was visited, so Ops sees whose link gets traffic; it goes

@@ -96,7 +96,6 @@ export async function markPlayedOut(user: User, t: Track, note: string) {
  */
 export const decisionLocked = (user: Pick<User, "role">, t: Pick<Track, "decision" | "decided_role">) =>
   user.role === "member" && !!t.decision && (t.decided_role === "owner" || t.decided_role === "admin");
-export const LOCKED_MESSAGE = "The owner or an A&R / Admin made this call, so only they can change it.";
 
 /**
  * `decisionLocked` checked on the row as it is now, not on the copy the page loaded, so an owner's or admin's call made

@@ -1,9 +1,10 @@
 import "server-only";
 import { discardFiles } from "@/lib/deletion";
+import { queueDeletion } from "@/lib/deletion-core";
 import crypto from "node:crypto";
 import { claimUpload, HELD_MAX_TRIES, IntakeError, pointAtSealed, releaseUpload, UploadHeld } from "./intake";
 import { now, q, type Sender, type Track, type User } from "./db";
-import { APP_URL, sendMail } from "./mail";
+import { APP_URL, sendMail, sendMailLater } from "./mail";
 import { MAX_UPLOAD_BYTES } from "./plans";
 import { featureOn } from "./features";
 import { recentCount, record } from "./ratelimit";
@@ -13,6 +14,7 @@ import { scannerAwake, scanStored, SCAN_FAILED, SCAN_REFUSED, type ScanResult } 
 import { chargeScanner, senderScope } from "./scan-budget";
 import { recordIncident } from "./incidents";
 import { receiptToken, receiptUrl, receiptWhere } from "./receipt-token";
+import { receiptLife } from "./receipt-life";
 
 export type Stem = { id: number; track_id: number; file_key: string; name: string; mime: string; size: number; created_at: number };
 
@@ -24,6 +26,16 @@ const UPLOAD_TTL = 2 * HOUR;
 export async function stemsFor(trackId: number) {
   return q.all<Stem>("SELECT * FROM stems WHERE track_id = ? ORDER BY name", trackId);
 }
+
+/** Whether a stored stems list is a JSON array (what the database's count needs). */
+const isNameList = (raw: string | null) => {
+  if (raw == null) return true;
+  try {
+    return Array.isArray(JSON.parse(raw));
+  } catch {
+    return false;
+  }
+};
 
 /** What the sender's receipt lists: every stem they sent, whether or not the track is still on the desk. */
 export function stemsSent(t: Pick<Track, "stems_sent">): string[] {
@@ -68,11 +80,43 @@ export async function requestStems(user: User, t: Track) {
 export const stemSenderEmail = async (t: Pick<Track, "sender_id">) =>
   t.sender_id ? (await q.get<{ email: string | null }>("SELECT email FROM senders WHERE id = ?", t.sender_id))?.email : null;
 
-async function trackForStems(token: string) {
+/** Whether this upload is a stem started for this track: only startStemUpload makes one, and only while the receipt is open. */
+const stemUploadFor = async (trackId: number, uploadId: string) =>
+  !!(await q.get("SELECT 1 FROM uploads WHERE id = ? AND meta::jsonb->>'kind' = 'stem' AND (meta::jsonb->>'trackId')::bigint = ?", String(uploadId).slice(0, 64), trackId));
+
+/** The same check by receipt token, for the complete route's proof step (src/lib/receipt-proof.ts). */
+export async function stemStartedWhileOpen(token: string, uploadId: string) {
   const m = receiptWhere(token, "");
-  const t = await q.get<Track>(`SELECT * FROM tracks WHERE ${m.sql}`, ...m.args);
-  if (!t) throw new IntakeError("This track is no longer available.", 404);
+  const t = await q.get<{ id: number }>(`SELECT id FROM tracks WHERE ${m.sql}`, ...m.args);
+  // The upload lookup runs for a missing track too, so an unknown token takes the same steps as a closed one.
+  const found = await stemUploadFor(t?.id ?? -1, uploadId);
+  return !!t && found;
+}
+
+/**
+ * The track a stem is for, by its receipt token (src/lib/receipt-life.ts). A new upload (`start`) needs the receipt
+ * open. One started while it was open always finishes (`complete`, from the sender or the held batch; owner, 4 Nov:
+ * "the finishing rule for stems is fine"): the first stem to land ends the stems hold, and the others sent with it
+ * mustn't be lost. Only startStemUpload makes stem upload rows, and only while open, so an existing row for this track
+ * is the proof. Otherwise a closed receipt answers exactly as an unknown token, before any other check.
+ */
+type StemTrack = Pick<
+  Track,
+  "id" | "user_id" | "sender_id" | "title" | "artist" | "created_at" | "played_out_at" | "deleted_at" | "stems_requested_at" | "stems_sent"
+>;
+
+async function trackForStems(token: string, step: "start" | "complete", uploadId?: string) {
+  const m = receiptWhere(token, "");
+  const t = await q.get<StemTrack>(
+    `SELECT id, user_id, sender_id, title, artist, created_at, played_out_at, deleted_at, stems_requested_at, stems_sent FROM tracks WHERE ${m.sql}`,
+    ...m.args,
+  );
+  const life = t ? receiptLife(t) : "closed";
+  // Looked up for every completion, a missing track included, so a closed and an unknown token take the same steps.
+  const finishing = step === "complete" && (await stemUploadFor(t?.id ?? -1, uploadId ?? ""));
+  if (!t || (life === "closed" && !finishing)) throw new IntakeError("This track is no longer available.", 404);
   if (!t.stems_requested_at) throw new IntakeError("Stems weren't requested for this track.", 403);
+  if (step === "start" && life !== "open") throw new IntakeError("This receipt doesn't take stems any more.", 403);
   const plan = (await q.get<{ plan: string }>("SELECT plan FROM users WHERE id = ?", t.user_id))?.plan ?? "free";
   if (!(await featureOn("stems", { id: t.user_id, plan }))) throw new IntakeError("Not found", 404);
   return t;
@@ -80,7 +124,7 @@ async function trackForStems(token: string) {
 
 /** Step 1 of a stem upload, from the sender's receipt page. The bytes go straight to storage. */
 export async function startStemUpload(token: string, fileName: string, size: number, ip: string) {
-  const t = await trackForStems(token);
+  const t = await trackForStems(token, "start");
   const ext = fileName.toLowerCase().match(/\.(wav|mp3)$/)?.[0];
   if (!ext) throw new IntakeError("Stems must be WAV or MP3 files.", 400);
   if (!Number.isSafeInteger(size) || size <= 0) throw new IntakeError("Choose a WAV or MP3 file.", 400);
@@ -116,7 +160,7 @@ export async function startStemUpload(token: string, fileName: string, size: num
  * `scanDeadlineMs` when given).
  */
 export async function completeStemUpload(token: string, uploadId: string, opts: { from?: "request" | "batch"; scanDeadlineMs?: number } = {}) {
-  const t = await trackForStems(token);
+  const t = await trackForStems(token, "complete", uploadId);
   // Claimed first: of two completes sent at the same moment, only one goes on.
   const up = await claimUpload<{ id: string; file_key: string; size: number; meta: string; held_at: number | null; held_tries: number }>(
     uploadId,
@@ -202,8 +246,14 @@ export async function completeStemUpload(token: string, uploadId: string, opts: 
       MAX_STEMS,
     );
   const full = () => new IntakeError(`That's the maximum of ${MAX_STEMS} stems for this track.`, 409);
+  // A list that isn't a JSON array (a bad write) reads as nothing sent (stemsSent), and is reset here so the count
+  // below can't fail on it (Safety, 4 Nov).
+  if (!isNameList(t.stems_sent)) await q.run("UPDATE tracks SET stems_sent = '[]' WHERE id = ? AND stems_sent IS NOT DISTINCT FROM ?", t.id, t.stems_sent);
   if (t.deleted_at) {
-    await discard();
+    // The same database work as for a live track; the files are queued for removal, not deleted inside this request,
+    // so neither the answer nor its timing tells the sender of the delete.
+    await queueDeletion(q, [fileKey, up.file_key], "stem for a deleted track", now());
+    await q.run("DELETE FROM uploads WHERE id = ?", up.id);
     if (!(await sent())) throw full();
     return { name, size: head.size };
   }
@@ -233,8 +283,9 @@ export async function completeStemUpload(token: string, uploadId: string, opts: 
   // One email per batch: only when nothing else arrived for this track in the last half hour.
   if (!previous || now() - previous > HOUR / 2) {
     const r = await q.get<{ email: string; name: string }>("SELECT email, name FROM users WHERE id = ?", t.user_id);
+    // Queued and sent after the answer, so a live track's completion takes no longer than a deleted one's (Safety, 4 Nov).
     if (r)
-      await sendMail({
+      await sendMailLater({
         userId: t.user_id,
         audience: "receiver",
         to: r.email,
