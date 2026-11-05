@@ -6,7 +6,7 @@ import { allPlans } from "@/lib/plan-store";
 import { clearSwitchRule, flipSwitch, saveSwitch, saveSwitchRule } from "../actions";
 import { ConfirmButton } from "../AdminUi";
 import { isTargeted, ruleCoverage, SWITCHES, switchState, type SwitchKey } from "@/lib/switches";
-import { describeRule, type SwitchRule } from "@/lib/switch-rules";
+import { describeRule, lostWords, ruleIsLost, type SwitchRule } from "@/lib/switch-rules";
 import { ACCOUNT_TYPES, type AccountType } from "@/lib/account-types";
 
 const handlesOf = async (ids: number[]) =>
@@ -142,6 +142,12 @@ function RuleForm({
           Named accounts always get it. The rest narrows everyone else: each part you set must match, then the percentage takes the same slice every time
           for the same account. Leave everything empty for everyone.
         </p>
+        {rule && ruleIsLost(rule) && (
+          <p role="alert" className="rounded-md border border-line p-3 text-sm">
+            <span className="font-semibold">Review this rule.</span> It reaches only its named accounts because {lostWords(rule)}. Set that part again and
+            save, or clear the rule on purpose.
+          </p>
+        )}
         <label className="block space-y-1.5">
           <span className="label">Named accounts (handles)</span>
           <input name="handles" defaultValue={handles.map((h) => `@${h}`).join(" ")} className="input" placeholder="@djname @label" autoComplete="off" />

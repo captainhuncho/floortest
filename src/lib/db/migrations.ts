@@ -2060,14 +2060,28 @@ create unique index if not exists tracks_token_hash on tracks(token_hash);`,
     // sealer. The code before this already reads the hash and sealed copy first, so rolling back one release still works.
     id: "0127_receipt_token_clear",
     sql: `update tracks set token = null where token is not null and token_hash is not null and token_sealed is not null and token_hash = encode(sha256(convert_to(token, 'UTF8')), 'hex');`,
-  },
-  {
+  },  {
     // When the sender attached artwork (Safety's review of #431, 4 Nov). Deleting a track clears art_key, so "already
     // has artwork" was answered only while the track lived, which told the sender of a delete. This mark stays through
     // a delete; tracks that have artwork today get their upload time. Additive only.
     id: "0128_track_art_attached",
     sql: `alter table tracks add column if not exists art_attached_at bigint;
 update tracks set art_attached_at = created_at where art_attached_at is null and art_key is not null;`,
+  },
+  {
+    // Label and Radio are two account types instead of one "Label / Radio" (owner, 5 Nov). Existing Label / Radio accounts
+    // become Label (they were "label" before 0095); a radio account picks Radio in Settings. A feature-switch rule that
+    // named Label / Radio names both new types too. Expand only: the database still accepts 'label_radio' and rules keep
+    // it, so the release before this one still runs. Rolling back is safe only to a release with #438 (switch rules fail
+    // closed): there a stored rule naming only label or radio reaches nobody, and a switch form or announcement filter
+    // from this release is refused or reaches nobody, never everyone. Once this is live, never roll back past #438.
+    // Runs once; the switches update skips rules that already name radio, so a second run changes nothing. A later
+    // contract step remaps any label_radio written during a rollback and drops it from the constraint and rules.
+    id: "0129_split_label_radio",
+    sql: `alter table users drop constraint if exists users_kind_check;
+alter table users add constraint users_kind_check check (kind in ('dj', 'producer_dj', 'ar', 'label', 'radio', 'label_radio', 'artist', 'curator', 'music_pro'));
+update users set kind = 'label' where kind = 'label_radio';
+update switches set rule = replace(rule, '"label_radio"', '"label_radio","label","radio"') where rule like '%"label_radio"%' and rule not like '%"radio"%';`,
   },
   {
     // A personal beta invite is used once and lasts 14 days (owner, 5 Nov). Before, "used" was only "an account holds

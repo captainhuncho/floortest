@@ -28,7 +28,7 @@ import {
 import { AuthFrame, AuthIcon, CrestMoment, LinkCard, type AuthIconName } from "../AuthFrame";
 import { signup, type FormState } from "../actions";
 
-const ROLE_ICONS: Record<string, AuthIconName> = { dj: "head", producer_dj: "wave", ar: "star", label_radio: "radio", artist: "mic", curator: "disc", music_pro: "case" };
+const ROLE_ICONS: Record<string, AuthIconName> = { dj: "head", producer_dj: "wave", ar: "star", label: "sleeve", radio: "radio", artist: "mic", curator: "disc", music_pro: "case" };
 const ROLES = Object.entries(ACCOUNT_TYPES).map(([value, label]) => ({ value, label, icon: ROLE_ICONS[value] ?? "user" }));
 const HANDLE_WAIT_MS = 400;
 const AVAIL = {

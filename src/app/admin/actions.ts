@@ -32,8 +32,7 @@ import { PERMS, ROLE_PERMS, ROLES, type Perm, type Role } from "@/lib/ops-perms"
 import { grantablePlan, type PlanRequest } from "@/lib/plan-requests";
 import { flash } from "@/lib/flash";
 import { isTargeted, setSwitch, setSwitchRule, SWITCHES, type SwitchKey } from "@/lib/switches";
-import { clampPercent, describeRule, parseCountries, readRule, MAX_RULE_ACCOUNTS } from "@/lib/switch-rules";
-import { ACCOUNT_TYPES, isAccountType } from "@/lib/account-types";
+import { describeRule, readRule, ruleFromForm, MAX_RULE_ACCOUNTS } from "@/lib/switch-rules";
 import { drainNow, retireTrackFiles } from "@/lib/deletion";
 import { cancelEmailChange, changeHandle, HANDLE_HOLD_DAYS, requestEmailChange } from "@/lib/accounts";
 import { logEvent, now, q, type Track } from "@/lib/db";
@@ -999,15 +998,11 @@ export async function saveSwitchRule(key: SwitchKey, form: FormData) {
   const missing = handles.filter((h) => !found.some((f) => f.handle === h));
   if (missing.length) return fail(`No account with ${missing.map((h) => `@${h}`).join(", ")}`);
   const plans = await allPlans();
-  const rule = readRule(
-    JSON.stringify({
-      accounts: found.map((f) => Number(f.id)),
-      types: Object.keys(ACCOUNT_TYPES).filter((t) => isAccountType(t) && form.get(`type_${t}`) === "on"),
-      plans: plans.map((p) => p.id).filter((p) => form.get(`plan_${p}`) === "on"),
-      countries: parseCountries(String(form.get("countries") || "")),
-      percent: clampPercent(form.get("percent")),
-    }),
-  );
+  // Fails closed: a page from another release, or saving over a lost rule without setting its lost part again, is refused.
+  const stored = readRule((await q.get<{ rule: string | null }>("SELECT rule FROM switches WHERE key = ?", key))?.rule);
+  const asked = ruleFromForm({ keys: [...form.keys()], get: (k) => form.get(k) }, found.map((f) => Number(f.id)), plans.map((p) => p.id), stored);
+  if ("error" in asked) return fail(asked.error);
+  const rule = asked.rule;
   await setSwitchRule(key, rule, a.id);
   const words = rule ? describeRule(rule, (id) => plans.find((p) => p.id === id)?.name ?? id) : "everyone";
   await logAdmin(a.id, rule ? "set switch rule" : "cleared switch rule", SWITCHES[key].label, words);

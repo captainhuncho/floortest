@@ -8,6 +8,11 @@ const DAY = 86_400_000;
 export const JOINED = { 0: "Any time", 7: "Last 7 days", 30: "Last 30 days", 90: "Last 90 days" } as Record<number, string>;
 export const ACTIVITY = { "": "Any activity", active: "Active in the last 30 days", inactive: "Not active for 30+ days" } as const;
 
+/** The type filter for a type that doesn't exist: no account has it, so the filter matches nobody. */
+export const UNKNOWN_KIND = "unknown";
+/** A type filter in words, for chips and logs. */
+export const kindLabel = (kind: string) => KIND_LABEL[kind] ?? "Unknown type (nobody)";
+
 /** Read the filters from a query string or form. Anything unknown falls to "any". */
 export function readAudience(get: (k: string) => unknown): Audience {
   const s = (k: string) => String(get(k) ?? "").trim();
@@ -15,7 +20,9 @@ export function readAudience(get: (k: string) => unknown): Audience {
   const activity = s("activity");
   return {
     plan: /^[a-z][a-z0-9_]{1,23}$/.test(s("plan")) ? s("plan") : "",
-    kind: s("kind") in KIND_LABEL ? s("kind") : "",
+    // An unknown type (a form opened before a type was renamed or removed) matches nobody rather than falling to "any",
+    // so a stale announcement form can never reach everyone.
+    kind: Object.hasOwn(KIND_LABEL, s("kind")) ? s("kind") : s("kind") ? UNKNOWN_KIND : "",
     tag: s("tag").toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 30),
     joined: joined in JOINED ? joined : 0,
     activity: activity === "active" || activity === "inactive" ? activity : "",
@@ -55,7 +62,7 @@ export function audienceWhere(a: Audience, at = Date.now(), withSuspended = fals
 
 /** "Labels · Pro · tag beta-1 · joined last 30 days", for logs and the announcement list. */
 export function describeAudience(a: Audience, planName = (id: string) => id) {
-  const parts = [a.kind && KIND_LABEL[a.kind], a.plan && planName(a.plan), a.tag && `tag ${a.tag}`, a.joined && `joined ${JOINED[a.joined].toLowerCase()}`, a.activity && ACTIVITY[a.activity].toLowerCase()];
+  const parts = [a.kind && kindLabel(a.kind), a.plan && planName(a.plan), a.tag && `tag ${a.tag}`, a.joined && `joined ${JOINED[a.joined].toLowerCase()}`, a.activity && ACTIVITY[a.activity].toLowerCase()];
   return parts.filter(Boolean).join(" · ") || "Everyone";
 }
 

@@ -20,6 +20,7 @@ const PATHS = {
   wave: <path d="M3 12h2M7 8v8M11 5v14M15 9v6M19 7v10" />,
   mic: <><rect x="9" y="3.5" width="6" height="11" rx="3" /><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5" /></>,
   disc: <><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="2" /></>,
+  sleeve: <><rect x="3.5" y="5" width="12" height="14" rx="2" /><path d="M15.5 5.6A6.5 6.5 0 0 1 15.5 18.4" /><circle cx="9.5" cy="12" r="2" /></>,
   radio: <><rect x="3.5" y="8" width="17" height="11.5" rx="2.5" /><path d="M7 8l9-4.5" /><circle cx="15.5" cy="13.75" r="2.5" /></>,
   star: <path d="M12 4l2.4 5 5.4.6-4 3.7 1.1 5.3L12 16l-4.9 2.6 1.1-5.3-4-3.7 5.4-.6z" />,
   case: <><rect x="3.5" y="7.5" width="17" height="12" rx="2.5" /><path d="M9 7.5V6a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 6v1.5M3.5 12.5h17" /></>,
