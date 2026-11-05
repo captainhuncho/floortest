@@ -1,7 +1,6 @@
 /* Plans (names, prices, limits, features) live in the database: see plan-store.ts and Admin → Plans. */
 
 export const MAX_UPLOAD_BYTES = 250 * 1024 * 1024;
-export const ACCEPTED_MIME = ["audio/wav", "audio/x-wav", "audio/wave", "audio/vnd.wave", "audio/mpeg", "audio/mp3"];
 export const ACCEPTED_EXT = [".wav", ".mp3"];
 
 export const RESERVED_HANDLES = new Set([
@@ -47,7 +46,6 @@ export const RATE_PER_IP_PER_HOUR = 10;
 export const RATE_PER_EMAIL_PER_DAY = 5;
 /** Most tracks in one EP or album (Send folders). A release counts as one send against the daily limit. */
 export const MAX_RELEASE_TRACKS = 12;
-export const RELEASE_KINDS = { ep: "EP", album: "Album" } as const;
 
 /** Sender-declared context. Labels are shared by both public page styles and the review panel. */
 /** What the sender declared about AI when sending. */
