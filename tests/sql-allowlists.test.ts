@@ -46,8 +46,8 @@ test("an announcement or list filter for a type that doesn't exist reaches nobod
   };
   assert.ok((await count("")) >= 1, "no type picked is everyone");
   assert.equal(await count("dj"), 1);
-  for (const stale of ["radio", "label_radio", "constructor", "toString"]) assert.equal(await count(stale), 0, `${stale} reaches nobody`);
-  assert.equal(describeAudience(readAudience((k) => ({ kind: "radio" })[k])), "Unknown type (nobody)");
+  for (const stale of ["label_radio", "constructor", "toString"]) assert.equal(await count(stale), 0, `${stale} reaches nobody`);
+  assert.equal(describeAudience(readAudience((k) => ({ kind: "label_radio" })[k])), "Unknown type (nobody)");
 });
 
 test("search text: % and _ are literal, and an injection attempt finds nothing extra", async () => {

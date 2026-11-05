@@ -99,7 +99,7 @@ test("from the server: off beats any rule, a rule keeps the feature from account
   const inside = await user("inside", "in@x.io", "pro", "dj");
   const outside = await user("outside", "out@x.io", "free", "curator");
   const named = await user("named", "named@x.io", "free", "artist");
-  const boss = await user("boss", "boss@x.io", "free", "label_radio");
+  const boss = await user("boss", "boss@x.io", "free", "label");
   for (const d of [inside, outside]) for (const n of ["One", "Two"]) await q.run("INSERT INTO collections (user_id, name, created_at) VALUES (?,?,?)", d, n, t);
 
   // On with a rule: Pro DJs, plus one named account.

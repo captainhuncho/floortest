@@ -43,6 +43,8 @@ Production and Preview have separate values. Never paste values into chats or ti
 
 **Fail closed (5 Nov):** a stored rule whose account types, plans or countries no longer exist reaches only its named accounts, never everyone; Ops shows it as "Nobody: its account types, plans or countries no longer exist" with a Review this rule note, and saving it as no rule or a bare percentage of everyone is refused (use Clear rule on purpose). An announcement or Users filter for a type that doesn't exist reaches nobody ("Unknown type (nobody)"). This ships before any account type is renamed or split, so rolling back a later type change lands on code that already fails closed.
 
+**Rolling back the Label / Radio split (0129):** the release before it already fails closed, so a switch rule or an open Ops form that names only Label or Radio reaches nobody there, never everyone; Label and Radio accounts show as "type not set" until the split is back. Nothing to undo in the database (0129 is expand only). Reloading open Ops pages after a rollback is still good practice.
+
 ## Releasing
 
 1. Work on branch `mobile-next`. Every push builds a preview.
