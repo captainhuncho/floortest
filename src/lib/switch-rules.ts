@@ -21,7 +21,14 @@ export type SwitchRule = {
   countries: string[];
   /** 1–100: the share of matching accounts that get it. 100 is all of them. */
   percent: number;
+  /**
+   * Only on a rule read back from storage, never saved: the parts that were set but can't be read any more (an account
+   * type that no longer exists, say), or "rule" when the stored rule can't be read at all. Such a rule covers only its
+   * named accounts.
+   */
+  lost?: LostPart[];
 };
+export type LostPart = "accounts" | "types" | "plans" | "countries" | "rule";
 
 /** The account a switch is checked for: on a team desk, the desk (account) row, so every seat sees the same. */
 export type SwitchSubject = { id: number; plan: string; kind: AccountType | null; email?: string };
@@ -29,46 +36,95 @@ export type SwitchSubject = { id: number; plan: string; kind: AccountType | null
 export const MAX_RULE_ACCOUNTS = 200;
 export const MAX_RULE_COUNTRIES = 60;
 const COUNTRY = /^[A-Z]{2}$/;
+const PLAN_ID = /^[a-z0-9_-]{1,40}$/;
 
 /** Narrows anything beyond named accounts: without these, a rule is only its named accounts. */
 const narrows = (r: SwitchRule) => r.types.length > 0 || r.plans.length > 0 || r.countries.length > 0 || r.percent < 100;
+const narrowsByPart = (r: SwitchRule) => r.types.length > 0 || r.plans.length > 0 || r.countries.length > 0;
 
 export const ruleIsEmpty = (r: SwitchRule) => r.accounts.length === 0 && !narrows(r);
 
-/** A stored rule that lost a part (its types, plans or countries no longer exist): it covers only its named accounts. */
-export const ruleIsLost = (r: SwitchRule) => r.percent === 0;
+/** A stored rule that lost a part or can't be read: it covers only its named accounts, never everyone. */
+export const ruleIsLost = (r: SwitchRule) => !!r.lost?.length;
 
-const narrowsByPart = (r: SwitchRule) => r.types.length > 0 || r.plans.length > 0 || r.countries.length > 0;
+const LOST_WORDS: Record<LostPart, string> = {
+  rule: "the stored rule can't be read",
+  accounts: "its named accounts can't be read",
+  types: "its account types no longer exist",
+  plans: "its plans no longer exist",
+  countries: "its countries can't be read",
+};
+/** Why a lost rule reaches nobody, in words: "its account types no longer exist". */
+export const lostWords = (r: SwitchRule) => (r.lost ?? []).map((p) => LOST_WORDS[p]).join("; ");
+
+/** Reaches only its named accounts (or nobody), for a stored value that can't be read. */
+const unreadable = (): SwitchRule => ({ accounts: [], types: [], plans: [], countries: [], percent: 100, lost: ["rule"] });
 
 /**
- * Saving `next` over a lost rule must not quietly widen it: clearing it (everyone when on) or a bare percentage of
- * everyone takes the Clear rule button on purpose. Named accounts only, or any type, plan or country, is fine.
+ * A rule as stored (JSON in switches.rule), cleaned; null only for no rule (nothing stored, or a rule with nothing set).
+ * Fails closed: anything stored that can't be read, and any part that was set but kept none of its values, gives a lost
+ * rule that covers only its named accounts. Dropping the part instead would widen the rule, at worst to everyone.
  */
-export const widensLostRule = (stored: SwitchRule | null, next: SwitchRule | null) =>
-  !!stored && ruleIsLost(stored) && (!next || (!narrowsByPart(next) && next.percent < 100));
-
-/** A rule as stored (JSON in switches.rule), cleaned; null for no rule or anything unreadable. */
 export function readRule(raw: string | null | undefined): SwitchRule | null {
   if (!raw) return null;
+  let o: unknown;
   try {
-    const o = JSON.parse(raw) as Record<string, unknown>;
-    const list = (v: unknown) => (Array.isArray(v) ? v : []);
-    const rule: SwitchRule = {
-      accounts: [...new Set(list(o.accounts).filter((n): n is number => Number.isSafeInteger(n) && (n as number) > 0))].slice(0, MAX_RULE_ACCOUNTS),
-      types: [...new Set(list(o.types).filter(isAccountType))],
-      plans: [...new Set(list(o.plans).filter((p): p is string => typeof p === "string" && /^[a-z0-9_-]{1,40}$/.test(p)))],
-      countries: [...new Set(list(o.countries).filter((c): c is string => typeof c === "string" && COUNTRY.test(c)))].slice(0, MAX_RULE_COUNTRIES),
-      percent: clampPercent(o.percent),
-    };
-    // Fail closed: a part that was set but kept none of its values (an account type that no longer exists, say) covers
-    // nobody beyond the named accounts. Dropping the part instead would widen the rule, at worst to everyone. Such a rule
-    // is marked by percent 0, which a saved rule never has (clampPercent keeps it 1-100).
-    const lost = (k: "types" | "plans" | "countries") => list(o[k]).length > 0 && rule[k].length === 0;
-    if (lost("types") || lost("plans") || lost("countries")) return { ...rule, percent: 0 };
-    return ruleIsEmpty(rule) ? null : rule;
+    o = JSON.parse(raw);
   } catch {
-    return null;
+    return unreadable();
   }
+  if (!o || typeof o !== "object" || Array.isArray(o)) return unreadable();
+  const r = o as Record<string, unknown>;
+  const parts = ["accounts", "types", "plans", "countries"] as const;
+  if (parts.some((k) => r[k] !== undefined && !Array.isArray(r[k]))) return unreadable();
+  if (r.percent !== undefined && !(typeof r.percent === "number" && Number.isFinite(r.percent))) return unreadable();
+  const list = (k: (typeof parts)[number]) => (r[k] as unknown[] | undefined) ?? [];
+  const rule: SwitchRule = {
+    accounts: [...new Set(list("accounts").filter((n): n is number => Number.isSafeInteger(n) && (n as number) > 0))].slice(0, MAX_RULE_ACCOUNTS),
+    types: [...new Set(list("types").filter(isAccountType))],
+    plans: [...new Set(list("plans").filter((p): p is string => typeof p === "string" && PLAN_ID.test(p)))],
+    countries: [...new Set(list("countries").filter((c): c is string => typeof c === "string" && COUNTRY.test(c)))].slice(0, MAX_RULE_COUNTRIES),
+    percent: clampPercent(r.percent),
+  };
+  const lost = parts.filter((k) => list(k).length > 0 && rule[k].length === 0);
+  if (lost.length) return { ...rule, lost };
+  return ruleIsEmpty(rule) ? null : rule;
+}
+
+/** A rule form's fields. `keys` are every field name the form sent, so a page from another release is caught. */
+export type RuleForm = { keys: string[]; get: (k: string) => unknown };
+
+/**
+ * The rule an admin's form asks for, or why it can't be saved. `accountIds` are the named handles already looked up;
+ * `planIds` the plans that exist; `stored` the rule saved now. Refuses:
+ * - a form with a type, plan or country this release doesn't know (a page left open from another release), since
+ *   dropping it would widen the rule;
+ * - saving over a lost rule without setting each lost part again (the deliberate way out is Clear rule).
+ */
+export function ruleFromForm(form: RuleForm, accountIds: number[], planIds: string[], stored: SwitchRule | null): { rule: SwitchRule | null } | { error: string } {
+  const stale = "This page is out of date. Reload it and try again.";
+  for (const k of form.keys) {
+    if (k.startsWith("type_") && !isAccountType(k.slice(5))) return { error: stale };
+    if (k.startsWith("plan_") && !planIds.includes(k.slice(5))) return { error: stale };
+  }
+  const words = String(form.get("countries") ?? "").toUpperCase().split(/[\s,;]+/).filter(Boolean);
+  if (words.some((c) => !COUNTRY.test(c))) return { error: "Countries must be two-letter codes, like GB IE." };
+  const next = readRule(
+    JSON.stringify({
+      accounts: accountIds,
+      types: Object.keys(ACCOUNT_TYPES).filter((t) => form.get(`type_${t}`) === "on"),
+      plans: planIds.filter((p) => form.get(`plan_${p}`) === "on"),
+      countries: parseCountries(words.join(" ")),
+      percent: clampPercent(form.get("percent")),
+    }),
+  );
+  if (stored && ruleIsLost(stored)) {
+    const setAgain = (p: LostPart) =>
+      !!next && (p === "rule" ? next.accounts.length > 0 || narrowsByPart(next) : next[p].length > 0);
+    if (!stored.lost!.every(setAgain))
+      return { error: `This rule reaches nobody because ${lostWords(stored)}. Set that part again, or use Clear rule (everyone) on purpose.` };
+  }
+  return { rule: next };
 }
 
 export function clampPercent(v: unknown) {
@@ -97,7 +153,7 @@ export function bucket(key: string, accountId: number) {
 export function ruleCovers(key: string, rule: SwitchRule, who: SwitchSubject | null, country: string | null, superAdmin = false) {
   if (!who) return false;
   if (superAdmin || rule.accounts.includes(who.id)) return true;
-  if (!narrows(rule)) return false;
+  if (ruleIsLost(rule) || !narrows(rule)) return false;
   if (rule.types.length && !(who.kind && rule.types.includes(who.kind))) return false;
   if (rule.plans.length && !rule.plans.includes(who.plan)) return false;
   if (rule.countries.length && country !== null && !rule.countries.includes(country.toUpperCase())) return false;
@@ -112,7 +168,7 @@ export function describeRule(rule: SwitchRule, planName: (id: string) => string 
     rule.countries.length ? `in ${rule.countries.join(", ")}` : "",
   ].filter(Boolean);
   const named = rule.accounts.length ? `${rule.accounts.length} named account${rule.accounts.length === 1 ? "" : "s"}` : "";
-  if (ruleIsLost(rule)) return `${named ? `Only ${named}; nobody else` : "Nobody"}: its account types, plans or countries no longer exist`;
+  if (ruleIsLost(rule)) return `${named ? `Only ${named}; nobody else` : "Nobody"}: ${lostWords(rule)}`;
   if (!narrows(rule)) return `Only ${named}`;
   const who = `${rule.percent < 100 ? `${rule.percent}% of ` : ""}${parts.length ? `accounts ${parts.join(", ")}` : "all accounts"}`;
   return named ? `${named}, plus ${who}` : who.charAt(0).toUpperCase() + who.slice(1);
