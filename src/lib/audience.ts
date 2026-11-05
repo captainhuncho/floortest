@@ -1,8 +1,11 @@
 import "server-only";
 import { KIND_LABEL } from "./db";
 
-/** Who an admin view or announcement is about: plan, account type, admin tag, how recently they joined, and activity. */
-export type Audience = { plan: string; kind: string; tag: string; joined: number; activity: "" | "active" | "inactive" };
+/**
+ * Who an admin view or announcement is about: plan, account type, admin tag, how recently they joined, and activity.
+ * `nobody`: a filter was sent that can't be read, so the audience matches no account.
+ */
+export type Audience = { plan: string; kind: string; tag: string; joined: number; activity: "" | "active" | "inactive"; nobody?: true };
 
 const DAY = 86_400_000;
 export const JOINED = { 0: "Any time", 7: "Last 7 days", 30: "Last 30 days", 90: "Last 90 days" } as Record<number, string>;
@@ -13,25 +16,33 @@ export const UNKNOWN_KIND = "unknown";
 /** A type filter in words, for chips and logs. */
 export const kindLabel = (kind: string) => KIND_LABEL[kind] ?? "Unknown type (nobody)";
 
-/** Read the filters from a query string or form. Anything unknown falls to "any". */
+/**
+ * Read the filters from a query string or form. Empty means "any". A value that can't be read (a form or link from
+ * another release, or a hand-edited one) matches nobody rather than falling to "any", so a stale announcement form can
+ * never reach everyone.
+ */
 export function readAudience(get: (k: string) => unknown): Audience {
   const s = (k: string) => String(get(k) ?? "").trim();
-  const joined = Number(s("joined"));
+  const plan = s("plan");
+  const tag = s("tag").toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 30);
+  const joined = s("joined");
   const activity = s("activity");
-  return {
-    plan: /^[a-z][a-z0-9_]{1,23}$/.test(s("plan")) ? s("plan") : "",
-    // An unknown type (a form opened before a type was renamed or removed) matches nobody rather than falling to "any",
-    // so a stale announcement form can never reach everyone.
+  const a: Audience = {
+    plan: /^[a-z][a-z0-9_]{1,23}$/.test(plan) ? plan : "",
     kind: Object.hasOwn(KIND_LABEL, s("kind")) ? s("kind") : s("kind") ? UNKNOWN_KIND : "",
-    tag: s("tag").toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 30),
-    joined: joined in JOINED ? joined : 0,
+    tag,
+    joined: Object.hasOwn(JOINED, joined) ? Number(joined) : 0,
     activity: activity === "active" || activity === "inactive" ? activity : "",
   };
+  // `nobody` itself travels in links (the CSV export), and can only narrow.
+  const unread = s("nobody") || (plan && !a.plan) || (s("tag") && !tag) || (joined && !Object.hasOwn(JOINED, joined)) || (activity && !a.activity);
+  return unread ? { ...a, nobody: true } : a;
 }
 
 /** SQL conditions on users `u`. Suspended accounts are left out unless `withSuspended` (the Users list shows them). */
 export function audienceWhere(a: Audience, at = Date.now(), withSuspended = false) {
   const where = withSuspended ? ["TRUE"] : ["u.suspended_at IS NULL"];
+  if (a.nobody) where.push("FALSE");
   const args: unknown[] = [];
   if (a.plan) {
     where.push("u.plan = ?");
@@ -63,7 +74,7 @@ export function audienceWhere(a: Audience, at = Date.now(), withSuspended = fals
 /** "Labels · Pro · tag beta-1 · joined last 30 days", for logs and the announcement list. */
 export function describeAudience(a: Audience, planName = (id: string) => id) {
   const parts = [a.kind && kindLabel(a.kind), a.plan && planName(a.plan), a.tag && `tag ${a.tag}`, a.joined && `joined ${JOINED[a.joined].toLowerCase()}`, a.activity && ACTIVITY[a.activity].toLowerCase()];
-  return parts.filter(Boolean).join(" · ") || "Everyone";
+  return [...parts, a.nobody && "Unreadable filter (nobody)"].filter(Boolean).join(" · ") || "Everyone";
 }
 
 /** Tidy a free-text tag list: lowercase words, comma-separated, unique. */

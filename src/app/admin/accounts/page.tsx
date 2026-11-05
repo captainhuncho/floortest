@@ -23,12 +23,12 @@ export default async function Users({ searchParams }: { searchParams: Promise<Re
   const page = readPage(sp.page);
   const w = audienceWhere(aud, now(), true);
   const plans = await allPlans();
-  const params = { ...aud, joined: aud.joined ? String(aud.joined) : "", security, q: search };
+  const params = { ...aud, joined: aud.joined ? String(aud.joined) : "", nobody: aud.nobody ? "1" : "", security, q: search };
   const link = (change: Partial<Record<keyof typeof params | "page", string>>) => {
     const qs = new URLSearchParams(Object.entries({ ...params, ...change }).filter(([, v]) => v) as [string, string][]).toString();
     return `/admin/accounts${qs ? `?${qs}` : ""}`;
   };
-  const csv = new URLSearchParams(Object.entries({ ...aud, joined: params.joined, security, q: search }).filter(([, v]) => v) as [string, string][]).toString();
+  const csv = new URLSearchParams(Object.entries({ ...aud, joined: params.joined, nobody: params.nobody, security, q: search }).filter(([, v]) => v) as [string, string][]).toString();
   const where = `${w.sql} AND ${securityWhere(security)} ${search ? "AND (u.name ILIKE ? OR u.email ILIKE ? OR u.handle ILIKE ?)" : ""}`;
   const args = [...w.args, ...(search ? Array(3).fill(likeContains(search)) : [])];
   const [total, rows] = await Promise.all([
@@ -48,6 +48,7 @@ export default async function Users({ searchParams }: { searchParams: Promise<Re
   const planName = (id: string) => plans.find((p) => p.id === id)?.name ?? id;
   // Each filter that's on, as a chip that takes it off.
   const chips = [
+    aud.nobody && { label: "Filter", value: "Unreadable (nobody)", off: link({ plan: "", tag: "", joined: "", activity: "", nobody: "", page: "" }) },
     aud.kind && { label: "Type", value: kindLabel(aud.kind), off: link({ kind: "", page: "" }) },
     aud.plan && { label: "Plan", value: planName(aud.plan), off: link({ plan: "", page: "" }) },
     aud.tag && { label: "Tag", value: aud.tag, off: link({ tag: "", page: "" }) },

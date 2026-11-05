@@ -164,7 +164,8 @@ export async function setSwitchRule(key: TargetedSwitch, rule: SwitchRule | null
     "INSERT INTO switches (key, on_, rule, admin_id, updated_at) VALUES (?,?,?,?,?) ON CONFLICT (key) DO UPDATE SET rule = excluded.rule, admin_id = excluded.admin_id, updated_at = excluded.updated_at",
     key,
     SWITCHES[key].initial ? 1 : 0,
-    rule ? JSON.stringify(rule) : null,
+    // Only the rule's own parts: `lost` is worked out on each read, never stored.
+    rule ? JSON.stringify({ accounts: rule.accounts, types: rule.types, plans: rule.plans, countries: rule.countries, percent: rule.percent }) : null,
     adminId,
     now(),
   );

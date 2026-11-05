@@ -72,9 +72,9 @@ test("fail closed: a rule whose types, plans or countries no longer exist covers
   const { readRule, ruleCovers, ruleIsLost, describeRule } = await import("../src/lib/switch-rules");
   // Each lost part on its own, with no named accounts: before, each read as no rule, which is everyone.
   const cases = [
-    { part: { types: ["radio_station"] }, words: "Nobody: its account types no longer exist" },
-    { part: { plans: ["NOT A PLAN"] }, words: "Nobody: its plans no longer exist" },
-    { part: { countries: ["FRA"] }, words: "Nobody: its countries can't be read" },
+    { part: { types: ["radio_station"] }, words: "Nobody (super admins can test): its account types no longer exist" },
+    { part: { plans: ["NOT A PLAN"] }, words: "Nobody (super admins can test): its plans no longer exist" },
+    { part: { countries: ["FRA"] }, words: "Nobody (super admins can test): its countries can't be read" },
   ];
   for (const { part, words } of cases) {
     const lost = readRule(JSON.stringify({ accounts: [], types: [], plans: [], countries: [], percent: 100, ...part }));
@@ -90,7 +90,7 @@ test("fail closed: a rule whose types, plans or countries no longer exist covers
   const named = readRule(JSON.stringify({ accounts: [9], types: ["radio_station"], plans: [], countries: [], percent: 100 }))!;
   assert.equal(ruleCovers("x", named, { ...dj, id: 9 }, ""), true, "named accounts still get it");
   assert.equal(ruleCovers("x", named, dj, ""), false);
-  assert.equal(describeRule(named), "Only 1 named account; nobody else: its account types no longer exist");
+  assert.equal(describeRule(named), "Only 1 named account; nobody else (super admins can test): its account types no longer exist");
   assert.equal(ruleIsLost(readRule(JSON.stringify({ accounts: [], types: ["dj", "radio_station"], plans: [], countries: [], percent: 100 }))!), false, "a surviving type keeps a working rule");
 });
 
@@ -103,7 +103,7 @@ test("saving a rule form: a page from another release and an unchanged save over
     assert.ok("rule" in r, "error" in r ? r.error : "");
     return (r as { rule: unknown }).rule;
   };
-  const refused = (r: ReturnType<typeof save>, why: RegExp) => assert.match("error" in r ? r.error : "saved", why);
+  const refused = (r: ReturnType<typeof save>, why: RegExp, msg = "") => assert.match("error" in r ? r.error : "saved", why, msg);
   const working = JSON.stringify({ accounts: [], types: ["dj"], plans: [], countries: [], percent: 100 });
 
   // A page from another release: a type or plan this release doesn't know is refused, never dropped (dropping it here
@@ -127,7 +127,17 @@ test("saving a rule form: a page from another release and an unchanged save over
   assert.deepEqual(ok(save({ type_dj: "on", plan_pro: "on", percent: "20" }, lost)), { accounts: [], types: ["dj"], plans: ["pro"], countries: [], percent: 20 });
   // An unreadable stored rule: any explicit rule (named accounts or a part) replaces it; an empty form doesn't.
   refused(save({ percent: "100" }, "not json"), /the stored rule can't be read/);
+  refused(save({ percent: "50" }, "not json"), /the stored rule can't be read/, "a bare percentage is not a rule part");
   assert.ok(ok(save({ percent: "100" }, "not json", [3])), "named accounts only is fine");
+
+  // The percentage must be sent and be a whole number from 1 to 100; it is never read as 100 when missing.
+  for (const percent of [undefined, "", " ", "abc", "0", "101", "50.5", "-5", "1e2"])
+    refused(save({ type_dj: "on", ...(percent === undefined ? {} : { percent }) }, working), /percentage from 1 to 100/);
+  // Any field this release doesn't send is refused; Next's own $ACTION fields pass.
+  refused(save({ type_dj: "on", percent: "100", audience: "everyone" }, working), /out of date/);
+  assert.deepEqual(ok(save({ type_dj: "on", percent: "100", "$ACTION_ID_abc": "", "$ACTION_REF_1": "" }, working)), { accounts: [], types: ["dj"], plans: [], countries: [], percent: 100 });
+  // A rule that would read back as lost is never saved (here, a plan id the stored rule can't hold).
+  refused(ruleFromForm(form({ "plan_Bad Plan": "on", percent: "100" }), [], ["Bad Plan"], null), /can't be saved because its plans no longer exist/);
 });
 
 test("the switches action and page are wired to the fail-closed checks", () => {
@@ -185,6 +195,22 @@ test("from the server: off beats any rule, a rule keeps the feature from account
   await setSwitch("teams", false, boss);
   assert.equal(await teamsOn(boss), true, "super admin's desk, switch off");
   assert.equal(await teamsOn(inside), false);
+
+  // What's stored is read on every check: a lost rule reaches only its named accounts and super admins, an unreadable one
+  // only super admins, whatever the switch row says.
+  await setSwitch("more_collections", true, boss);
+  await q.run("UPDATE switches SET rule = ? WHERE key = 'more_collections'", JSON.stringify({ accounts: [named], types: ["radio_station"], plans: [], countries: [], percent: 100 }));
+  assert.equal(await switchOn("more_collections", inside), false, "lost rule: plain account");
+  assert.equal(await switchOn("more_collections", outside), false, "lost rule: plain account");
+  assert.equal(await switchOn("more_collections", named), true, "lost rule: named account");
+  assert.equal(await switchOn("more_collections", boss), true, "lost rule: super admin");
+  await q.run("UPDATE switches SET rule = 'not json' WHERE key = 'more_collections'");
+  for (const id of [inside, outside, named]) assert.equal(await switchOn("more_collections", id), false, "unreadable rule: nobody");
+  assert.equal(await switchOn("more_collections", boss), true, "unreadable rule: super admin");
+
+  // Only the rule's parts are stored, never the lost marker worked out on read.
+  await setSwitchRule("more_collections", { ...rule({ types: ["dj"] }), lost: ["types"] }, boss);
+  assert.deepEqual(JSON.parse((await q.get<{ rule: string }>("SELECT rule FROM switches WHERE key = 'more_collections'"))!.rule), rule({ types: ["dj"] }));
 
   // Cleared: on for everyone again.
   await setSwitch("more_collections", true, boss);

@@ -26,11 +26,12 @@ test("contacts sort and filter, review status: anything off the list falls back,
   for (const v of HOSTILE) for (const sql of [pickSort(v)[2], pickShow(v)[2]]) assert.ok(fixed.has(sql), sql);
 });
 
-test("admin audience filters: unknown values become 'any' (an unknown type matches nobody), and the SQL carries only placeholders", async () => {
+test("admin audience filters: values that can't be read match nobody, and the SQL carries only placeholders", async () => {
   const { audienceWhere, readAudience } = await import("../src/lib/audience");
   const form: Record<string, string> = { plan: "' OR 1=1 --", kind: "label' --", tag: "x' OR '1'='1", joined: "7 OR 1=1", activity: "active; DROP TABLE users" };
   const a = readAudience((k) => form[k]);
-  assert.deepEqual(a, { plan: "", kind: "unknown", tag: "xor11", joined: 0, activity: "" });
+  assert.deepEqual(a, { plan: "", kind: "unknown", tag: "xor11", joined: 0, activity: "", nobody: true });
+  assert.match(audienceWhere(a).sql, /\bFALSE\b/);
   const w = audienceWhere({ plan: "pro", kind: "label", tag: "beta", joined: 30, activity: "inactive" }, 1_000_000_000_000);
   assert.doesNotMatch(w.sql, /pro|label|beta/, "values travel as bound arguments only");
   assert.equal((w.sql.match(/\?/g) ?? []).length, w.args.length);
@@ -48,6 +49,16 @@ test("an announcement or list filter for a type that doesn't exist reaches nobod
   assert.equal(await count("dj"), 1);
   for (const stale of ["label_radio", "constructor", "toString"]) assert.equal(await count(stale), 0, `${stale} reaches nobody`);
   assert.equal(describeAudience(readAudience((k) => ({ kind: "label_radio" })[k])), "Unknown type (nobody)");
+
+  // The other filters fail closed the same way: a value that can't be read reaches nobody, never everyone.
+  const reach = async (f: Record<string, string>) => {
+    const w = audienceWhere(readAudience((k) => f[k]));
+    return Number((await q.get<{ n: number }>(`SELECT count(*) AS n FROM users u WHERE ${w.sql}`, ...w.args))!.n);
+  };
+  assert.ok((await reach({ plan: "", tag: "", joined: "0", activity: "" })) >= 1, "the form's own empty values are everyone");
+  for (const f of [{ plan: "Not A Plan" }, { tag: "!!!" }, { joined: "5" }, { joined: "constructor" }, { activity: "all" }, { nobody: "1" }] as Record<string, string>[])
+    assert.equal(await reach(f), 0, `${JSON.stringify(f)} reaches nobody`);
+  assert.equal(describeAudience(readAudience((k) => ({ joined: "5" })[k])), "Unreadable filter (nobody)");
 });
 
 test("search text: % and _ are literal, and an injection attempt finds nothing extra", async () => {
