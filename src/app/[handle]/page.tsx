@@ -96,6 +96,8 @@ export default async function ReceiverPage({ params }: Props) {
     {/* One column at every width (owner, 29 Oct), in the desk's card look (owner, 30 Oct): the receiver's card at the top,
         kept (smaller) once a file is picked; the brief, the drop box or the form below. */}
     <main className="theme-system group/page mx-auto flex min-h-dvh max-w-[600px] flex-col gap-3 bg-ink px-3.5 pb-8 pt-[max(1.25rem,env(safe-area-inset-top))] text-bone sm:px-6 sm:pt-10">
+      {/* Only a live receiver's page carries this, so the visit counter credits a handle only here (src/lib/visit-beacon.ts). */}
+      <span hidden data-visit-handle={receiver.handle} />
       <ProfileBar cover={cover} name={receiver.name} callout={collection && !closedReason ? collection.name : null}>
       {/* The receiver's section is the previous version (owner, 31 Oct): photo, name and callout centred, no card. */}
       <header className="mb-3 flex flex-col items-center gap-2.5 text-center">

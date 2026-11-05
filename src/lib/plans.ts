@@ -9,6 +9,8 @@ export const RESERVED_HANDLES = new Set([
   // as someone's receiving link (Safety review of #435, 5 Nov).
   "c", "receipt", "join", "invite", "cookies", "security", "takedown", "coming-soon", "content-rules", "privacy-choices", "law-enforcement",
   "subprocessors", "newsletter", "signed-out", "ops-login",
+  // The visit counter's name for pages we don't serve, never a receiver's link.
+  "other",
 ]);
 
 /** Signal definitions. These are shown to receivers and senders, so they must stay strict. */

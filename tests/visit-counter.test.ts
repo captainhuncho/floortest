@@ -298,16 +298,20 @@ test("the browser reduces every path the way the server does before sending", as
   }
   assert.equal(raw(`/share/${KEY}`), "/other");
   assert.equal(raw(`/dashboard/review?token=${KEY}`), "/dashboard/review", "a query never leaves");
-  assert.equal(raw("/DJKwame?x=1"), "/djkwame", "a receiving link is sent as its handle alone");
-  assert.equal(browserPage("/not a handle!"), "/other");
+  assert.equal(browserPage("/DJKwame?x=1", "djkwame"), "/djkwame", "a live receiver's page sends its handle");
+  assert.equal(raw("/DJKwame?x=1"), "/:link", "without the page's mark, no handle leaves");
+  assert.equal(browserPage("/not a handle!"), "/:link");
   assert.equal(raw("/dashboard/collections/42"), "/dashboard/collections/:id");
 });
 
 test("what the browser sends is stored as the same page", async () => {
   await reset();
   const { browserPage } = await import("../src/lib/visit-beacon");
-  for (const p of ["/receipt/abc123", "/dashboard/collections/42", "/dashboard/Some Thing", "/share/zzzzzzzzzzzzzzzzzzzzzzzz", "/pricing"]) await send({ kind: "view", path: browserPage(p) });
-  assert.deepEqual((await rows()).map((r) => r.page).sort(), ["/dashboard/:x", "/dashboard/collections/:id", "/other", "/pricing", "/receipt/:token"]);
+  for (const p of ["/receipt/abc123", "/dashboard/collections/42", "/dashboard/Some Thing", "/share/zzzzzzzzzzzzzzzzzzzzzzzz", "/pricing", "/zq8wx3vb6nm1kl4jh7"]) await send({ kind: "view", path: browserPage(p) });
+  await send({ kind: "view", path: "/OTHER" });
+  const r = await rows();
+  assert.deepEqual(r.map((x) => x.page).sort(), ["/:link", "/dashboard/:x", "/dashboard/collections/:id", "/other", "/pricing", "/receipt/:token"]);
+  assert.ok(r.every((x) => x.link_owner === null));
 });
 
 test("two IPv6 addresses in one /64 share the per-minute limit", async () => {
@@ -337,4 +341,28 @@ test("a bot, a non-JSON body and an oversized body never take a rate-limit slot"
 test("an IPv4 address written as IPv6 counts as that IPv4 address", async () => {
   const { connectionKey } = await import("../src/app/api/visit/route");
   assert.equal(connectionKey("::ffff:9.8.7.6"), "9.8.7.6");
+});
+
+test("a key at the top level never leaves the browser, and an empty part means /other", async () => {
+  const { browserPage } = await import("../src/lib/visit-beacon");
+  const mixed = "Zq8wX3vB6nM1kL4jH7gF2dS5aP0o";
+  const lower = "abcdefghijklmnopqrst";
+  for (const k of [mixed, lower]) {
+    const sent = browserPage(`/${k}`);
+    assert.equal(sent, "/:link");
+    assert.equal(browserPage(`/${k}`, "someoneelse"), "/:link", "a mark for another handle doesn't help");
+  }
+  assert.equal(browserPage("/receipt//abcdef"), "/other");
+  assert.equal(browserPage("//evil.example/x"), "/other");
+  const { RESERVED_HANDLES } = await import("../src/lib/plans");
+  assert.ok(RESERVED_HANDLES.has("other"));
+});
+
+test("only a live receiver's page marks its handle for the counter", async () => {
+  const fs = await import("node:fs");
+  const page = fs.readFileSync("src/app/[handle]/page.tsx", "utf8");
+  const mark = page.indexOf("data-visit-handle={receiver.handle}");
+  assert.ok(mark > 0, "the receiver page marks its handle");
+  assert.ok(page.indexOf("notFound();") > 0 && page.indexOf("notFound();") < mark, "after the not-found and suspended check");
+  assert.equal(fs.readFileSync("src/components/Visits.tsx", "utf8").includes('querySelector("[data-visit-handle]")'), true);
 });

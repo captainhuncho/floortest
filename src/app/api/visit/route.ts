@@ -108,13 +108,14 @@ export async function POST(req: Request) {
   if (!(await allow("visit_all", "all", VIEWS_A_DAY, 86_400_000))) return done();
   const kind = body.kind === "visit" ? "visit" : "view";
   // The browser already sends pages reduced (src/lib/visit-beacon.ts); /other is one of them, never someone's link.
-  let page = body.path === "/other" ? "/other" : knownPage(pageOf(body.path));
+  let page = body.path.toLowerCase() === "/other" ? "/other" : knownPage(pageOf(body.path));
   const country = (req.headers.get("x-vercel-ip-country") ?? "").trim().toUpperCase();
   const host = fullHost.split(":")[0];
   let source = kind === "visit" ? sourceOf(body.ref, body.utm, host) : "";
   const device = DEVICES.has(String(body.device)) ? String(body.device) : "";
   // A receiving link (/handle) is counted against its receiver, so Ops can see whose link gets visits.
-  const handle = page === "/:link" ? body.path.split(/[/?#]/)[1]?.toLowerCase() : "";
+  const named = page === "/:link" ? (body.path.split(/[/?#]/)[1]?.toLowerCase() ?? "") : "";
+  const handle = /^[a-z0-9][a-z0-9-_]{1,29}$/.test(named) ? named : "";
   const owner = handle ? ((await q.get<{ id: number }>("SELECT id FROM users WHERE handle = ? AND suspended_at IS NULL", handle))?.id ?? null) : null;
   const day = new Date().toISOString().slice(0, 10);
   // A day's list of pages and sources can't grow without end: once full, new values join /other and other.

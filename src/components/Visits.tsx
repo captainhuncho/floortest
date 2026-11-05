@@ -28,7 +28,9 @@ function Counter({ consent }: { consent: string }) {
     const coarse = matchMedia("(pointer: coarse)").matches;
     const device = coarse ? (Math.min(screen.width, screen.height) >= 700 ? "tablet" : "phone") : "desktop";
     // Read again at each page: a withdrawal in another tab stops the next page here too.
-    const body = visitBeacon({ consent: consent === "accepted" ? (readConsent() ?? "") : consent, path, landing, referrer: document.referrer, search: location.search, host: location.host, device });
+    const body = visitBeacon({ consent: consent === "accepted" ? (readConsent() ?? "") : consent, path, landing, referrer: document.referrer, search: location.search, host: location.host, device,
+      linkHandle: document.querySelector("[data-visit-handle]")?.getAttribute("data-visit-handle") ?? null,
+    });
     if (!body) return;
     let sent = false;
     try {
