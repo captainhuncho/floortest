@@ -2074,4 +2074,12 @@ alter table users add constraint users_kind_check check (kind in ('dj', 'produce
 update users set kind = 'label' where kind = 'label_radio';
 update switches set rule = replace(rule, '"label_radio"', '"label_radio","label","radio"') where rule like '%"label_radio"%' and rule not like '%"radio"%';`,
   },
+  {
+    // When the sender attached artwork (Safety's review of #431, 4 Nov). Deleting a track clears art_key, so "already
+    // has artwork" was answered only while the track lived, which told the sender of a delete. This mark stays through
+    // a delete; tracks that have artwork today get their upload time. Additive only.
+    id: "0128_track_art_attached",
+    sql: `alter table tracks add column if not exists art_attached_at bigint;
+update tracks set art_attached_at = created_at where art_attached_at is null and art_key is not null;`,
+  },
 ];
