@@ -32,7 +32,7 @@ import { PERMS, ROLE_PERMS, ROLES, type Perm, type Role } from "@/lib/ops-perms"
 import { grantablePlan, type PlanRequest } from "@/lib/plan-requests";
 import { flash } from "@/lib/flash";
 import { isTargeted, setSwitch, setSwitchRule, SWITCHES, type SwitchKey } from "@/lib/switches";
-import { clampPercent, describeRule, parseCountries, readRule, MAX_RULE_ACCOUNTS } from "@/lib/switch-rules";
+import { clampPercent, describeRule, parseCountries, readRule, widensLostRule, MAX_RULE_ACCOUNTS } from "@/lib/switch-rules";
 import { ACCOUNT_TYPES, isAccountType } from "@/lib/account-types";
 import { drainNow, retireTrackFiles } from "@/lib/deletion";
 import { cancelEmailChange, changeHandle, HANDLE_HOLD_DAYS, requestEmailChange } from "@/lib/accounts";
@@ -1003,6 +1003,10 @@ export async function saveSwitchRule(key: SwitchKey, form: FormData) {
       percent: clampPercent(form.get("percent")),
     }),
   );
+  // A stored rule that lost its types, plans or countries covers nobody but its named accounts: don't quietly widen it.
+  const stored = readRule((await q.get<{ rule: string | null }>("SELECT rule FROM switches WHERE key = ?", key))?.rule);
+  if (widensLostRule(stored, rule))
+    return fail("This rule's account types, plans or countries no longer exist, so it reaches nobody. Pick who it's for, or use Clear rule (everyone) on purpose.");
   await setSwitchRule(key, rule, a.id);
   const words = rule ? describeRule(rule, (id) => plans.find((p) => p.id === id)?.name ?? id) : "everyone";
   await logAdmin(a.id, rule ? "set switch rule" : "cleared switch rule", SWITCHES[key].label, words);
