@@ -24,7 +24,7 @@ export default async function RequestPlan({ searchParams }: { searchParams: Prom
   // Once paid plans start, people choose and pay for themselves.
   if (billing) redirect(plan ? `/dashboard/checkout?plan=${plan.id}` : "/dashboard/plans");
   if (!plan || plan.price <= current.price) redirect("/dashboard/plans");
-  const guess = user.kind === "label_radio" || user.kind === "ar" ? "label" : user.kind === "music_pro" ? "management" : user.kind ? "artist" : "";
+  const guess = user.kind === "label" || user.kind === "radio" || user.kind === "ar" ? "label" : user.kind === "music_pro" ? "management" : user.kind ? "artist" : "";
 
   return (
     <div className="page-gutter py-4 text-bone sm:py-7">
