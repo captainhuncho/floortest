@@ -21,8 +21,10 @@ export async function GET(req: Request, ctx: RouteContext<"/invite/[code]">) {
   const signup = new URL("/signup", req.url);
   new URL(req.url).searchParams.forEach((v, k) => k !== "invite" && signup.searchParams.set(k, v));
   signup.searchParams.set("invite", code);
-  if (!gatePassword()) return NextResponse.redirect((await personalInviteGone(code)) ? new URL("/invite/used", req.url) : signup);
-  if (!(await allow("invite-gate", ipFrom(req.headers), TRIES, WINDOW_MS))) return NextResponse.redirect(new URL("/coming-soon", req.url));
+  // Counted before any lookup, gate or not, so codes can't be tried quickly here.
+  const tryOk = await allow("invite-gate", ipFrom(req.headers), TRIES, WINDOW_MS);
+  if (!gatePassword()) return NextResponse.redirect(tryOk && (await personalInviteGone(code)) ? new URL("/invite/used", req.url) : signup);
+  if (!tryOk) return NextResponse.redirect(new URL("/coming-soon", req.url));
   if (await personalInviteGone(code)) return NextResponse.redirect(new URL("/invite/used", req.url));
   const open = await liveInviteCode(code);
   if (!open) return NextResponse.redirect(new URL("/coming-soon", req.url));

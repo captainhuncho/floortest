@@ -490,7 +490,10 @@ export async function inviteByEmail(form: FormData): Promise<OpsResult> {
 
 export async function resendInvite(code: string): Promise<OpsResult> {
   const a = await requireAdminAction("invites");
-  const inv = await q.get<{ email: string | null; note: string; used_at: number | null }>("SELECT email, note, used_at FROM invites WHERE code = ? AND revoked_at IS NULL", code);
+  const inv = await q.get<{ email: string | null; note: string; used_at: number | null; expires_at: number | null }>(
+    "SELECT email, note, used_at, expires_at FROM invites WHERE code = ? AND revoked_at IS NULL",
+    code,
+  );
   if (!inv?.email) return no("Couldn't resend: the invite is revoked or has no email");
   if (inv.used_at) return no("Couldn't resend: the invite was already used to sign up");
   // An old short code can't open the coming-soon gate (src/lib/invites.ts): resending swaps in a new long one.
@@ -501,7 +504,7 @@ export async function resendInvite(code: string): Promise<OpsResult> {
   } else await q.run("UPDATE invites SET expires_at = ? WHERE code = ?", inviteExpiry(), code); // a resend gives a fresh 14 days
   const mail = await mailInviteHeld(a, "resent invite", send, inv.email, inv.note);
   await logAdmin(a.id, "resent invite", inv.email, send);
-  return okUndo(`Resending the invite to ${inv.email}`, signUndo({ kind: "invite_resend", items: [{ code: send, prev: send !== code ? code : undefined }], mail: [mail], admin: a.id }));
+  return okUndo(`Resending the invite to ${inv.email}`, signUndo({ kind: "invite_resend", items: [{ code: send, prev: send !== code ? code : undefined, at: send !== code ? undefined : inv.expires_at }], mail: [mail], admin: a.id }));
 }
 
 /**

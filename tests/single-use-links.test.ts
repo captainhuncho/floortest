@@ -102,16 +102,17 @@ test("Ops: restoring a used invite is refused; restoring an unused one gives a f
   assert.ok(row!.expires_at > Date.now() + 13 * DAY);
 });
 
-test("migration 0131 marks invites already used (also after the account was deleted) and gives waiting ones 14 days", async () => {
+test("migration 0131 marks invites already used, and times waiting ones from when they were sent (so a deleted account's invite stays dead)", async () => {
   const { q } = await import("../src/lib/db");
   const { MIGRATIONS } = await import("../src/lib/db/migrations");
   const step = MIGRATIONS.find((m) => m.id === "0131_invite_used_expires")!;
-  const raw = (code: string, email: string) => q.run("INSERT INTO invites (code, max_uses, note, email, created_at) VALUES (?, 1, '', ?, ?)", code, email, Date.now());
+  const raw = (code: string, email: string, sent = Date.now()) => q.run("INSERT INTO invites (code, max_uses, note, email, created_at, sent_at) VALUES (?, 1, '', ?, ?, ?)", code, email, sent, sent);
   await raw("FLOOR-MIGA234567", "miga@x.io"); // used by its code
   await addUser("miga@x.io", "migadesk", "FLOOR-MIGA234567");
   await raw("FLOOR-MIGB234567", "migb@x.io"); // its email signed up another way
   await addUser("migb@x.io", "migbdesk");
-  await raw("FLOOR-MIGC234567", "migc@x.io"); // still waiting
+  await raw("FLOOR-MIGC234567", "migc@x.io"); // still waiting, sent today
+  await raw("FLOOR-MIGD234567", "migd@x.io", Date.now() - 30 * DAY); // sent a month ago: its account may have been deleted, leaving no trace
   await q.run("INSERT INTO invites (code, max_uses, note, created_at) VALUES ('MIG-SHARED', 25, '', ?)", Date.now());
   await q.run("INSERT INTO users (email, password_hash, name, handle, plan, kind, email_verify_token, created_at) VALUES ('ver@x.io', 'h', 'V', 'verdesk', 'free', null, 'hash', ?)", Date.now());
   for (const stmt of step.sql.split(/;\s*\n/).map((s) => s.trim()).filter(Boolean)) await q.run(stmt);
@@ -121,6 +122,10 @@ test("migration 0131 marks invites already used (also after the account was dele
   const c = (await get("FLOOR-MIGC234567"))!;
   assert.equal(c.used_at, null);
   assert.ok(c.expires_at! > Date.now() + 13 * DAY && c.expires_at! <= Date.now() + 14 * DAY);
+  const d = (await get("FLOOR-MIGD234567"))!;
+  assert.ok(d.expires_at! < Date.now(), "a month-old invite is already past its 14 days, not given 14 new ones");
+  const { resolveInvite } = await import("../src/lib/invites");
+  assert.equal((await resolveInvite("FLOOR-MIGD234567", "migd@x.io", false)).valid, false);
   assert.equal((await get("MIG-SHARED"))!.expires_at, null, "shared codes keep no expiry");
   const v = await q.get<{ email_verify_sent_at: number | null }>("SELECT email_verify_sent_at FROM users WHERE handle = 'verdesk'");
   assert.ok(v!.email_verify_sent_at, "a confirmation link already sent gets 48 hours from today");
@@ -150,4 +155,41 @@ test("a password change also ends emailed sign-in codes, half-finished two-step 
   assert.equal(await q.count("SELECT COUNT(*) AS n FROM two_step_tickets WHERE user_id = ?", id), 0);
   const u = await q.get<{ pending_email: string | null; pending_email_token: string | null }>("SELECT pending_email, pending_email_token FROM users WHERE id = ?", id);
   assert.deepEqual(u, { pending_email: null, pending_email_token: null });
+});
+
+test("a personal invite written without an expiry (an old build during a deploy) still ends 14 days after it was made", async () => {
+  const { q } = await import("../src/lib/db");
+  const { resolveInvite, liveInviteCode } = await import("../src/lib/invites");
+  await q.run("INSERT INTO invites (code, max_uses, note, email, created_at) VALUES ('FLOOR-NULL234567', 1, '', 'null@x.io', ?)", Date.now() - 15 * DAY);
+  await q.run("INSERT INTO invites (code, max_uses, note, email, created_at) VALUES ('FLOOR-NULF234567', 1, '', 'nulf@x.io', ?)", Date.now() - DAY);
+  assert.equal((await resolveInvite("FLOOR-NULL234567", "null@x.io", false)).valid, false);
+  assert.equal(await liveInviteCode("FLOOR-NULL234567"), false);
+  assert.equal((await resolveInvite("FLOOR-NULF234567", "nulf@x.io", false)).valid, true);
+});
+
+test("Undo of a same-code resend puts the invite's old expiry back", async () => {
+  const { q } = await import("../src/lib/db");
+  const { revertItem } = await import("../src/lib/ops-undo");
+  const old = Date.now() + 2 * DAY;
+  await invite("FLOOR-UNDO234567", "undo@x.io", { expires: Date.now() + 14 * DAY });
+  await q.tx((db) => revertItem(db, { kind: "invite_resend", items: [], mail: [], admin: 1, exp: Date.now() + 60_000 }, { code: "FLOOR-UNDO234567", at: old }));
+  assert.equal((await q.get<{ expires_at: number }>("SELECT expires_at FROM invites WHERE code = 'FLOOR-UNDO234567'"))!.expires_at, old);
+});
+
+test("the invite link counts tries before looking anything up, gate or not", async () => {
+  await invite("FLOOR-RATE234567", "rate@x.io", { used: Date.now() });
+  const first = await openLink("FLOOR-RATE234567");
+  assert.equal(first, "/invite/used");
+  for (let i = 0; i < 25; i++) await openLink("FLOOR-NOPE" + String(i).padStart(6, "0"));
+  assert.equal(await openLink("FLOOR-RATE234567"), "/signup", "past the limit it answers without a lookup (sign-up then does its own check)");
+});
+
+test("sign-up claims the invite inside the account transaction and rolls back when it was claimed first", async () => {
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(new URL("../src/app/(auth)/actions.ts", import.meta.url), "utf8");
+  const tx = src.slice(src.indexOf("return await q.tx(async (db) => {"), src.indexOf("} catch (e) {", src.indexOf("return await q.tx(async (db) => {")));
+  assert.match(tx, /INSERT INTO users/);
+  assert.match(tx, /claimPersonalInvite\(db, invite\.valid && invite\.personal \? invite\.code : null, a\.email\)/, "the claim runs in the same transaction as the account");
+  assert.match(tx, /throw INVITE_GONE/, "a lost claim rolls the account back");
+  assert.match(src, /if \(e === INVITE_GONE\) return \{ error: "This invite has been used or has expired/);
 });

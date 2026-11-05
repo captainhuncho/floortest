@@ -14,7 +14,7 @@ export const inviteExpiry = (from = now()) => from + INVITE_DAYS * 86_400_000;
  * SQL for a personal invite (alias i) that can still open an account: not revoked, not used, not expired. Used is a
  * mark on the invite itself, so deleting the account made with it never brings the invite back.
  */
-const LIVE = "i.revoked_at IS NULL AND i.used_at IS NULL AND (i.expires_at IS NULL OR i.expires_at > ?)";
+const LIVE = `i.revoked_at IS NULL AND i.used_at IS NULL AND COALESCE(i.expires_at, i.created_at + ${INVITE_DAYS * 86_400_000}) > ?`;
 const used = (code: string) => q.count("SELECT COUNT(*) AS n FROM users WHERE invite_code = ?", code);
 
 /**
@@ -133,10 +133,11 @@ export async function restoreRevokedInvite(raw: unknown): Promise<InviteChange> 
       if (await db.get("SELECT 1 FROM users WHERE lower(email) = lower(?)", inv.email))
         return { ok: false, reason: `Couldn't restore: ${inv.email} already has an account.` };
       const other = await db.get(
-        `SELECT 1 FROM invites i WHERE lower(i.email) = lower(?) AND i.code <> ? AND i.revoked_at IS NULL
+        `SELECT 1 FROM invites i WHERE lower(i.email) = lower(?) AND i.code <> ? AND ${LIVE}
            AND NOT EXISTS (SELECT 1 FROM users u WHERE u.invite_code = i.code)`,
         inv.email,
         inv.code,
+        now(),
       );
       if (other) return { ok: false, reason: `Couldn't restore: ${inv.email} already has another invite waiting. Revoke that one first.` };
     }

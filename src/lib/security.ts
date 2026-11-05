@@ -92,7 +92,7 @@ export async function sendEmailVerification(userId: number) {
     to: u.email,
     secrets: [token],
     subject: "Confirm your email for FloorTest",
-    body: `Hi ${u.name.split(/\s+/)[0]},\n\nConfirm this is your email so password resets and alerts reach you:\n${APP_URL}/verify-email/${token}\n\n— FloorTest`,
+    body: `Hi ${u.name.split(/\s+/)[0]},\n\nConfirm this is your email so password resets and alerts reach you:\n${APP_URL}/verify-email/${token}\n\nThe link works for 48 hours. After that, send a fresh one from your desk.\n\n— FloorTest`,
   });
   return true;
 }

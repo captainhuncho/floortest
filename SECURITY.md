@@ -173,8 +173,8 @@ Turnstile guards sign-up, log-in after wrong tries, waitlist, contact, newslette
 | Ticket between the two sign-in steps | 5 minutes, used once (`two_step_tickets`) | `two-step-ticket.ts` |
 | Swapped app refresh token (kept to spot reuse) | until it would have expired | `app-auth.ts`, `app_refresh_spent` |
 | Invite link gate pass (`/invite/<code>`) | 1 day; signing up or in gives the usual 30 | `src/app/invite/[code]/route.ts` |
-| Personal beta invite | 14 days from sending (Resend or Restore gives a fresh 14), used once: marked used in the sign-up transaction, and the mark stays if that account is later deleted (owner, 5 Nov) | `src/lib/invites.ts`, migration 0131 |
-| Email confirmation link | 48 hours | `accounts.ts` `VERIFY_LINK_HOURS` |
+| Personal beta invite | 14 days from sending (Resend or Restore gives a fresh 14; Undo of a resend puts the old expiry back; one made without an expiry still ends 14 days after it was made), used once: marked used in the sign-up transaction, and the mark stays if that account is later deleted (owner, 5 Nov) | `src/lib/invites.ts`, migration 0131 |
+| Email confirmation link | 48 hours (`users.email_verify_sent_at`) | `accounts.ts` `VERIFY_LINK_HOURS` |
 | Ops draft-preview pass | 60 seconds, used once (`preview_passes_used`) | `draft-preview.ts` |
 | Step-up (re-enter password / code) | 10 tries an hour | `step-up.ts` |
 | Sender and share-link email codes | 10 minutes | `sender-code.ts`, `share-links.ts` |
@@ -183,7 +183,7 @@ Turnstile guards sign-up, log-in after wrong tries, waitlist, contact, newslette
 | Signed audio and download links | 1 hour at most | invariant 1 |
 | Direct-upload link | 15 minutes | `docs/05-data.md` |
 
-"Sign out everywhere", a password change and a suspension end every browser and app session. A password change, a reset, turning on two-step and a confirmed email change also end any reset link, emailed sign-in code, half-finished two-step sign-in and pending email change (owner, 5 Nov: nothing emailed before the change keeps working after it; `revokeAllSessions` in `src/lib/sessions.ts`). "Sign out other devices" and a confirmed email change end every other session too, ops sessions included. The Security page lists each browser session (device label and last use, never the IP) with its own Sign out.
+"Sign out everywhere", a password change and a suspension end every browser and app session. A password change, a reset, turning on two-step, a confirmed email change, "Sign out other devices" and the email-code takeover of an unconfirmed account also end any reset link, emailed sign-in code, half-finished two-step sign-in and pending email change (so "Sign out other devices" and turning on two-step cancel an email change in progress) (owner, 5 Nov: nothing emailed before the change keeps working after it; `revokeAllSessions` in `src/lib/sessions.ts`). "Sign out other devices" and a confirmed email change end every other session too, ops sessions included. The Security page lists each browser session (device label and last use, never the IP) with its own Sign out.
 
 ### Roles and what each may see or do
 
