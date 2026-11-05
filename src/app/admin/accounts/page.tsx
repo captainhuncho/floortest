@@ -1,6 +1,6 @@
 import { can, requireAdmin } from "@/lib/admin";
 import Link from "next/link";
-import { ACTIVITY, JOINED, audienceWhere, readAudience } from "@/lib/audience";
+import { ACTIVITY, JOINED, audienceWhere, kindLabel, readAudience } from "@/lib/audience";
 import { PAGE_SIZE, readPage, readSecurity, SECURITY, securityWhere } from "@/lib/admin-bulk";
 import { AccountsTable } from "./AccountsTable";
 import { allPlans } from "@/lib/plan-store";
@@ -48,7 +48,7 @@ export default async function Users({ searchParams }: { searchParams: Promise<Re
   const planName = (id: string) => plans.find((p) => p.id === id)?.name ?? id;
   // Each filter that's on, as a chip that takes it off.
   const chips = [
-    aud.kind && { label: "Type", value: KIND_LABEL[aud.kind], off: link({ kind: "", page: "" }) },
+    aud.kind && { label: "Type", value: kindLabel(aud.kind), off: link({ kind: "", page: "" }) },
     aud.plan && { label: "Plan", value: planName(aud.plan), off: link({ plan: "", page: "" }) },
     aud.tag && { label: "Tag", value: aud.tag, off: link({ tag: "", page: "" }) },
     aud.joined && { label: "Joined", value: JOINED[aud.joined], off: link({ joined: "", page: "" }) },
