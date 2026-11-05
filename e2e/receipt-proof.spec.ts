@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import type { APIRequestContext, Browser, Page } from "@playwright/test";
 import { expect, hydrated, test, wav } from "./fixtures";
 import { LINKS } from "./link-pages-data";
@@ -83,7 +84,7 @@ test.describe("receipt details need proof", () => {
     for (const secret of PRIVATE) expect(html, secret).not.toContain(secret);
   });
 
-  test("a code from the sender's email shows everything, stays after a reload, and stop sharing works only with proof", async ({ page, browser }) => {
+  test("a code from the sender's email shows everything, stays after a reload; played out, the receipt is read-only", async ({ page }) => {
     await page.goto(RECEIPT);
     await proveWithCode(page, LINKS.sender.email, LINKS.sender.masked);
     await expect(page.getByText(LINKS.sender.title)).toBeVisible();
@@ -91,12 +92,34 @@ test.describe("receipt details need proof", () => {
     await page.reload();
     await expect(page.getByText(LINKS.sender.title)).toBeVisible();
     await expect(page.getByRole("heading", { level: 1, name: `${LINKS.desk.name} played it out.` })).toBeVisible();
+    // Played out is the track's final outcome (owner, 4 Nov): the record stays, nothing more can be done from it.
+    await expect(page.getByText(/This receipt is read-only now/)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Stop private sharing" })).toHaveCount(0);
+    // Hidden is not the guard: the stop-sharing server action itself, called by its id as the browser would, as the
+    // proven sender, answers false and changes nothing (the dev server's action manifest names the id).
+    const manifest = JSON.parse(fs.readFileSync(".next/dev/server/server-reference-manifest.json", "utf8")).node as Record<string, { filename: string; exportedName: string }>;
+    const id = Object.entries(manifest).find(([, v]) => v.exportedName === "stopSharing" && v.filename.startsWith("src/app/receipt/"))?.[0];
+    expect(id, "stopSharing compiled").toBeTruthy();
+    const res = await page.request.post(RECEIPT, {
+      headers: { "Next-Action": id!, Accept: "text/x-component", Origin: new URL(page.url()).origin, "Content-Type": "text/plain;charset=UTF-8" },
+      data: JSON.stringify([LINKS.receiptToken]),
+    });
+    expect(res.status()).toBe(200);
+    expect(await res.text()).toMatch(/^1:false$/m);
+  });
+
+  test("on an open receipt, stop sharing works only with proof", async ({ page, browser }) => {
+    const other = `/receipt/${LINKS.otherReceiptToken}`;
+    await page.goto(other);
+    await proveWithCode(page, LINKS.other.email, LINKS.other.masked);
+    await expect(page.getByText(LINKS.other.title)).toBeVisible();
+    await expect(page.getByText(/This receipt is read-only now/)).toHaveCount(0);
 
     // Capture the stop-sharing server action, replay it from a browser without proof: refused, sharing stays on.
     const stop = page.getByRole("button", { name: "Stop private sharing" });
     await hydrated(stop);
     let action: { headers: Record<string, string>; body: string } | null = null;
-    await page.route(RECEIPT, async (route) => {
+    await page.route(other, async (route) => {
       const req = route.request();
       if (req.method() === "POST" && req.headers()["next-action"]) {
         action = { headers: await req.allHeaders(), body: req.postData() ?? "" };
@@ -109,10 +132,10 @@ test.describe("receipt details need proof", () => {
     await expect.poll(() => action).not.toBeNull();
     const stranger = await freshPage(browser);
     const headers = Object.fromEntries(Object.entries(action!.headers).filter(([k]) => k !== "cookie"));
-    const replay = await stranger.request.post(RECEIPT, { headers, data: action!.body });
+    const replay = await stranger.request.post(other, { headers, data: action!.body });
     expect(replay.status()).toBeLessThan(500);
     await stranger.context().close();
-    await page.unroute(RECEIPT);
+    await page.unroute(other);
     await page.reload();
     const again = page.getByRole("button", { name: "Stop private sharing" });
     await hydrated(again);
@@ -121,8 +144,42 @@ test.describe("receipt details need proof", () => {
     await page.getByRole("dialog").getByRole("button", { name: "Stop sharing" }).click();
     await expect(page.getByRole("button", { name: /^Stop/ })).toHaveCount(0);
     await page.reload();
-    await expect(page.getByText(LINKS.sender.title)).toBeVisible();
+    await expect(page.getByText(LINKS.other.title)).toBeVisible();
     await expect(page.getByRole("button", { name: "Stop private sharing" })).toHaveCount(0);
+  });
+
+  test("a closed receipt shows only that it closed, and every route answers as for an unknown link", async ({ page, browser }) => {
+    const closed = LINKS.closedReceiptToken;
+    const unknown = "e2eNoSuchReceiptToken";
+    await page.goto(`/receipt/${closed}`);
+    await expect(page.getByRole("heading", { name: "This receipt has closed" })).toBeVisible();
+    const html = await (await page.request.get(`/receipt/${closed}`)).text();
+    for (const secret of [...PRIVATE, "An Older Groove", "Drums.wav"]) expect(html, secret).not.toContain(secret);
+    // The live status, stems start and stems finish: byte for byte the unknown link's answer.
+    const same = async (what: string, a: Promise<import("@playwright/test").APIResponse>, b: Promise<import("@playwright/test").APIResponse>) => {
+      const [x, y] = await Promise.all([a, b]);
+      expect(x.status(), what).toBe(y.status());
+      expect(await x.text(), what).toBe(await y.text());
+    };
+    await same("pulse", page.request.get(`/api/pulse/receipt/${closed}`), page.request.get(`/api/pulse/receipt/${unknown}`));
+    const start = { data: { fileName: "bass.wav", size: 1000 } };
+    await same("stems start", page.request.post(`/api/stems/${closed}`, start), page.request.post(`/api/stems/${unknown}`, start));
+    await same("stems finish", page.request.post(`/api/stems/${closed}/complete`, { data: { uploadId: "x" } }), page.request.post(`/api/stems/${unknown}/complete`, { data: { uploadId: "x" } }));
+    // Even with proof of being the sender (this browser holds the sender's receipt cookie after a code), it stays closed.
+    const proven = await freshPage(browser);
+    await proven.goto(RECEIPT);
+    await proveWithCode(proven, LINKS.sender.email, LINKS.sender.masked);
+    await proven.goto(`/receipt/${closed}`);
+    await expect(proven.getByRole("heading", { name: "This receipt has closed" })).toBeVisible();
+    await same("stems start, proven", proven.request.post(`/api/stems/${closed}`, start), proven.request.post(`/api/stems/${unknown}`, start));
+    // A stem started while it was open still finishes after the close, for its proven sender only (owner, 4 Nov).
+    const finish = { data: { uploadId: LINKS.closedStemUpload } };
+    await same("finish, no proof", page.request.post(`/api/stems/${closed}/complete`, finish), page.request.post(`/api/stems/${unknown}/complete`, finish));
+    await same("finish, made-up upload", proven.request.post(`/api/stems/${closed}/complete`, { data: { uploadId: "e2eNoSuchUpload" } }), proven.request.post(`/api/stems/${unknown}/complete`, { data: { uploadId: "e2eNoSuchUpload" } }));
+    const landed = await proven.request.post(`/api/stems/${closed}/complete`, finish);
+    expect(landed.status()).toBe(200);
+    expect((await landed.json()).name).toBe("Bass.wav");
+    await proven.context().close();
   });
 
   test("sending from a browser shows that track's whole receipt there, and not in another browser", async ({ page, browser }) => {
