@@ -202,7 +202,7 @@ async function main() {
     const stemKey = `stems/${uid}/${crypto.randomUUID()}.wav`;
     putFile(stemKey, stem);
     await db.run("INSERT INTO stems (track_id, file_key, name, mime, size, created_at) VALUES (?,?,?,?,?,?)", lowOrbit, stemKey, "Low Orbit (Drums).wav", "audio/wav", stem.length, now);
-    await db.run("INSERT INTO feature_switches (feature, plans, users, updated_at) VALUES ('stems', '[]', ?, ?) ON CONFLICT (feature) DO NOTHING", JSON.stringify([uid]), now);
+    await db.run("INSERT INTO feature_switches (feature, plans, users, updated_at) VALUES ('stems', '[]', ?, ?) ON CONFLICT (feature) DO UPDATE SET users = (feature_switches.users::jsonb || excluded.users::jsonb)::text", JSON.stringify([uid]), now);
     const team = await id(
       "INSERT INTO users (email, password_hash, name, handle, plan, role_line, tz, email_verified_at, created_at, extra_seats) VALUES (?,?,?,?,?,?,?,?,?,?)",
       "teams@floortest.test",
@@ -322,11 +322,30 @@ async function main() {
     putFile(otherKey, data);
     const other = await id("INSERT INTO senders (user_id, email, name, created_at) VALUES (?,?,?,?)", desk, LINKS.other.email, "Otto Other", now - 2 * DAY);
     await id(
-      `INSERT INTO tracks (user_id, collection_id, sender_id, token, title, artist, message, file_key, original_name, mime, size, duration, bpm, peaks, created_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      // Shared under the callout's terms and not played out, so its receipt is still open (stop sharing works there).
+      `INSERT INTO tracks (user_id, collection_id, sender_id, token, title, artist, message, file_key, original_name, mime, size, duration, bpm, peaks, share_ok, share_terms, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,'e2e',?)`,
       desk, callout, other, LINKS.otherReceiptToken, LINKS.other.title, "Otto Other", "", otherKey, `${LINKS.other.title}.wav`, "audio/wav", data.length, 32, 123, JSON.stringify(peaks(audio.x)), now - DAY,
     );
     await db.run("INSERT INTO events (user_id, sender_id, track_id, type, detail, created_at) VALUES (?,?,?,?,?,?)", desk, sid, tid, "submitted", "into Links callout", now - DAY);
+    // The same sender's track from 200 days ago, its stems sent: past day 180, so its receipt has closed.
+    await id(
+      `INSERT INTO tracks (user_id, collection_id, sender_id, token, title, artist, message, original_name, mime, size, duration, bpm, played_at, stems_requested_at, stems_sent, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      desk, callout, sid, LINKS.closedReceiptToken, "An Older Groove", LINKS.sender.artist, "", "older.wav", "audio/wav", data.length, 32, 123, now - 199 * DAY, now - 199 * DAY, JSON.stringify(["Drums.wav"]), now - 200 * DAY,
+    );
+    // A stem the sender started for it while the receipt was still open, its file in storage, waiting to be completed.
+    const older = (await db.get<{ id: number }>("SELECT id FROM tracks WHERE token = ?", LINKS.closedReceiptToken))!.id;
+    const stemKey = `stems/${desk}/${older}/${crypto.randomUUID()}.wav`;
+    putFile(stemKey, data);
+    await db.run(
+      "INSERT INTO uploads (id, receiver_id, file_key, ext, size, meta, ip, created_at) VALUES (?,?,?,?,?,?,?,?)",
+      LINKS.closedStemUpload, desk, stemKey, ".wav", data.length, JSON.stringify({ kind: "stem", trackId: older, name: "Bass.wav" }), "", now,
+    );
+    await db.run(
+      "INSERT INTO feature_switches (feature, plans, users, updated_at) VALUES ('stems', '[]', ?, ?) ON CONFLICT (feature) DO UPDATE SET users = (feature_switches.users::jsonb || excluded.users::jsonb)::text",
+      JSON.stringify([desk]), now,
+    );
     await db.run("INSERT INTO sender_links (id_hash, email, created_at, expires_at) VALUES (?,?,?,?)", hashToken(LINKS.sentToken), LINKS.sender.email, now, now + DAY);
     await db.run(
       "INSERT INTO account_invites (account_id, email, role, token_hash, invited_by, created_at, expires_at) VALUES (?,?,?,?,?,?,?)",
