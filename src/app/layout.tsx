@@ -47,7 +47,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {/* Pull to refresh on every page (owner's rule): the desk, public pages, sign-in, messages and admin. */}
         <PullToRefresh />
         {!ops && <PageViews />}
-        {/* In-house visit counts: no cookie, id or IP kept, nothing sent to another company (owner, 5 Nov). */}
+        {/* In-house visit counts, after Accept on the banner like the page views: no cookie, id or IP kept, nothing sent to
+            another company (owner, 5 Nov). */}
         {!ops && <Visits />}
         {!ops && <ConsentBanner />}
         {!isPreview && process.env.NODE_ENV === "production" && <TapSpeed />}
