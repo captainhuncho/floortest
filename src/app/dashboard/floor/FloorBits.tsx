@@ -5,10 +5,9 @@
  * Server components; the play controls live in UpNextHero.
  */
 
-import { Icon, type IconName } from "@/components/Kit";
+import { Icon } from "@/components/Kit";
 
 export { Chip, IconBox, InfoRow, StatTile } from "@/components/Kit";
-export type FloorIconName = IconName;
 export const FloorIcon = Icon;
 
 /** How full the desk is, as ticks: waiting (lime), kept (dim lime), not for me (grey), free (empty). Decorative; the legend says the numbers. */

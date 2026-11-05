@@ -68,20 +68,6 @@ async function dailyReceived(userId: number, tz: string, days: number) {
   });
 }
 
-/** Genre share of tracks received in the last 30 days: top five plus "Other". */
-export async function genreMix(userId: number) {
-  const rows = await q.all<{ genre: string; n: number }>(
-    `SELECT COALESCE(NULLIF(genre, ''), 'Not set') AS genre, COUNT(*) AS n FROM tracks
-     WHERE user_id = ? AND created_at >= ? GROUP BY 1 ORDER BY n DESC, 1`,
-    userId,
-    now() - 30 * DAY,
-  );
-  // Plain objects: these go straight to a client component.
-  const top = rows.slice(0, 5).map((r) => ({ genre: r.genre, n: r.n }));
-  const rest = rows.slice(5).reduce((s, r) => s + r.n, 0);
-  return rest ? [...top, { genre: "Other", n: rest }] : top;
-}
-
 export function fmtDuration(ms: number) {
   const h = ms / 3_600_000;
   if (h < 1) return `${Math.max(1, Math.round(ms / 60_000))}m`;
