@@ -51,7 +51,7 @@ export const AREAS: readonly AreaDef[] = [
     icon: "chart",
     key: "p",
     sections: [
-      { title: "Insight", pages: [{ href: "/admin/metrics", label: "Metrics", icon: "chart" }, { href: "/admin/usage", label: "Feature use", icon: "chart" }] },
+      { title: "Insight", pages: [{ href: "/admin/metrics", label: "Metrics", icon: "chart" }, { href: "/admin/visits", label: "Visits", icon: "chart" }, { href: "/admin/usage", label: "Feature use", icon: "chart" }] },
       { title: "Control", pages: [{ href: "/admin/switches", label: "Feature switches", icon: "flag" }, { href: "/admin/content", label: "Site content", icon: "list" }] },
     ],
   },

@@ -93,6 +93,7 @@ export const PAGE_NEEDS: Record<string, Need> = {
   "/admin": "overview",
   "/admin/metrics": "metrics",
   "/admin/growth": "metrics",
+  "/admin/visits": "metrics",
   "/admin/usage": "usage",
   "/admin/revenue": "revenue",
   "/admin/storage": "storage",
