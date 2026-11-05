@@ -20,7 +20,8 @@ export const runtime = "nodejs";
  * - junk is dropped before it takes a rate-limit slot, so it can't use up the site-wide cap;
  * - 30 a minute and VIEWS_PER_IP_A_DAY a day per connection, VIEWS_A_DAY site-wide;
  * - a page outside FloorTest's own routes counts as /other, and each day keeps at most PAGES_A_DAY pages and
- *   SOURCES_A_DAY sources; past that, new ones count as /other and other.
+ *   SOURCES_A_DAY sources; past that, new ones count as /other and other. Two beacons at the same moment can each see
+ *   room for one more, so a day may end a few over; that's accepted (no lock on a counter).
  */
 export const VIEWS_PER_IP_A_DAY = 500;
 export const VIEWS_A_DAY = 50_000;
@@ -37,18 +38,45 @@ const ROUTES = new Set([
 ]);
 const done = () => new NextResponse(null, { status: 204 });
 
-/** Where the visit came from: a utm_source if the link had one, else the other site's name, else "" (typed or bookmarked). */
+/**
+ * Where the visit came from: a utm_source if the link had one, else the other site's name, else "" (typed, bookmarked
+ * or our own site). The browser sends only a site name (src/lib/visit-beacon.ts); anything else is refused here too.
+ */
 export function sourceOf(ref: unknown, utm: unknown, ownHost: string) {
   const tag = String(utm ?? "").toLowerCase().replace(/[^a-z0-9._-]/g, "").slice(0, 30);
   if (tag) return tag;
-  try {
-    const u = new URL(String(ref ?? ""));
-    if (u.protocol !== "https:" && u.protocol !== "http:") return "";
-    const host = u.hostname.toLowerCase().replace(/^www\./, "").slice(0, 60);
-    return host === ownHost.replace(/^www\./, "") ? "" : host;
-  } catch {
-    return "";
+  const host = String(ref ?? "").toLowerCase().replace(/^www\./, "");
+  if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(host) || host.length > 60) return "";
+  return host === ownHost.replace(/^www\./, "") ? "" : host;
+}
+
+/** The rate-limit key for a connection: an IPv6 address by its /64 (one home or phone), an IPv4 address as it is. */
+export function connectionKey(ip: string) {
+  if (!ip.includes(":")) return ip;
+  const [head, tail = ""] = ip.toLowerCase().split("::");
+  const left = head ? head.split(":") : [];
+  const right = tail ? tail.split(":") : [];
+  const full = ip.includes("::") ? [...left, ...Array(Math.max(0, 8 - left.length - right.length)).fill("0"), ...right] : left;
+  return `${full.slice(0, 4).map((g) => g.replace(/^0+(?=.)/, "")).join(":")}::/64`;
+}
+
+/** The body, read only up to MAX_BODY bytes whether or not a Content-Length was sent (chunked bodies too); null if longer. */
+async function readCapped(req: Request) {
+  if (!req.body) return "";
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done: end, value } = await reader.read();
+    if (end) break;
+    size += value.byteLength;
+    if (size > MAX_BODY) {
+      await reader.cancel().catch(() => {});
+      return null;
+    }
+    chunks.push(value);
   }
+  return new TextDecoder().decode(Buffer.concat(chunks));
 }
 
 /** A page name from pageOf, kept only if it's one of our routes: later parts stay ids, keys or short lowercase words. */
@@ -77,8 +105,8 @@ export async function POST(req: Request) {
   if (!(req.headers.get("content-type") ?? "").toLowerCase().startsWith("application/json")) return done();
   if (Number(req.headers.get("content-length") ?? 0) > MAX_BODY) return done();
   if (BOT.test(req.headers.get("user-agent") ?? "")) return done();
-  const text = await req.text().catch(() => "");
-  if (text.length > MAX_BODY) return done();
+  const text = await readCapped(req).catch(() => null);
+  if (text === null) return done();
   let body: { kind?: unknown; path?: unknown; ref?: unknown; utm?: unknown; device?: unknown } | null = null;
   try {
     body = JSON.parse(text);
@@ -87,7 +115,7 @@ export async function POST(req: Request) {
   }
   if (typeof body?.path !== "string" || !body.path.startsWith("/")) return done();
   // Only well-formed beacons from our pages reach the limits, so junk can't spend them.
-  const ip = ipFrom(req.headers);
+  const ip = connectionKey(ipFrom(req.headers));
   if (!(await allow("visit", ip, 30, 60_000))) return done();
   if (!(await allow("visit_ip_day", ip, VIEWS_PER_IP_A_DAY, 86_400_000))) return done();
   if (!(await allow("visit_all", "all", VIEWS_A_DAY, 86_400_000))) return done();

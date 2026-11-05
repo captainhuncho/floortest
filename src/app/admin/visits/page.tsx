@@ -94,8 +94,8 @@ export default async function Visits({ searchParams }: { searchParams: Promise<{
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Visits</h1>
         <p className="mt-2 max-w-2xl text-mute">
-          Where FloorTest&apos;s traffic comes from, counted on our own server for every visitor, with or without the cookie banner. Only daily counts
-          are kept: no IP address, cookie, account or visitor id. A visit is the first page someone opens; a view is every page after that. Bots are left
+          Where FloorTest&apos;s traffic comes from, counted on our own server for visitors who chose Accept on the cookie banner, from that
+          page on. Only daily counts are kept: no IP address, cookie, account or visitor id. A visit is the first page someone opens; a view is every page after that. Bots are left
           out. Counts are kept 400 days.
         </p>
       </div>

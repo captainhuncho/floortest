@@ -43,7 +43,7 @@ async function reset() {
 
 test("a visit is counted by page, country, source and device, and repeats add up", async () => {
   await reset();
-  const v = { kind: "visit", path: "/pricing", ref: "https://www.instagram.com/p/xyz?igsh=abc", device: "phone" };
+  const v = { kind: "visit", path: "/pricing", ref: "www.instagram.com", device: "phone" };
   await send(v, { "x-vercel-ip-country": "gh" });
   await send(v, { "x-vercel-ip-country": "GH" });
   assert.deepEqual(await rows(), [{ kind: "visit", page: "/pricing", link_owner: null, country: "GH", source: "instagram.com", device: "phone", n: 2 }]);
@@ -51,9 +51,9 @@ test("a visit is counted by page, country, source and device, and repeats add up
 
 test("utm_source wins, our own site counts as direct, and views carry no source", async () => {
   await reset();
-  await send({ kind: "visit", path: "/", ref: "https://google.com/", utm: "Newsletter_Nov" });
-  await send({ kind: "visit", path: "/", ref: "https://floortest.test/login" });
-  await send({ kind: "view", path: "/login", ref: "https://google.com/" });
+  await send({ kind: "visit", path: "/", ref: "google.com", utm: "Newsletter_Nov" });
+  await send({ kind: "visit", path: "/", ref: "floortest.test" });
+  await send({ kind: "view", path: "/login", ref: "google.com" });
   const r = await rows();
   assert.deepEqual(
     r.map((x) => [x.kind, x.page, x.source]),
@@ -81,7 +81,7 @@ test("a receiving link is counted against its receiver; an unknown one against n
   const { q } = await import("../src/lib/db");
   const t = Date.now();
   const uid = (await q.get<{ id: number }>("INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at, email_verified_at) VALUES ('v@x.io','h','V','djvisit','pro','UTC',?,?) RETURNING id", t, t))!.id;
-  await send({ kind: "visit", path: "/DJVisit", ref: "https://t.co/abc" });
+  await send({ kind: "visit", path: "/DJVisit", ref: "t.co" });
   await send({ kind: "visit", path: "/nobodyhere" });
   const r = await rows();
   assert.deepEqual(
@@ -207,11 +207,13 @@ test("a page that shadows a handle is never credited to whoever holds that handl
   await send({ kind: "visit", path: "/cookies" });
   assert.deepEqual((await rows()).map((r) => [r.page, r.link_owner]), [["/cookies", null]]);
   const fs = await import("node:fs");
-  const top = fs
-    .readdirSync("src/app", { withFileTypes: true })
-    .filter((d) => d.isDirectory() && !/^[([_]/.test(d.name))
-    .map((d) => d.name)
-    .concat(fs.readdirSync("src/app/(auth)", { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name));
+  // Every top-level folder, looking inside route groups like (auth) at any depth of grouping.
+  const walk = (dir: string): string[] =>
+    fs
+      .readdirSync(dir, { withFileTypes: true })
+      .filter((d) => d.isDirectory() && !/^[[_]/.test(d.name))
+      .flatMap((d) => (d.name.startsWith("(") ? walk(`${dir}/${d.name}`) : [d.name]));
+  const top = walk("src/app");
   for (const name of top) assert.ok(RESERVED_HANDLES.has(name) || name === "fonts", `/${name} is a page, so its handle must be reserved`);
 });
 
@@ -220,4 +222,68 @@ test("Ops → Visits needs the metrics permission", async () => {
   assert.equal(PAGE_NEEDS["/admin/visits"], "metrics");
   const fs = await import("node:fs");
   assert.match(fs.readFileSync("src/app/admin/visits/page.tsx", "utf8"), /await requireAdmin\("metrics"\)/);
+});
+
+test("the browser sends nothing before Accept, and never a key, a query or our own previous page", async () => {
+  const { visitBeacon, referrerHost } = await import("../src/lib/visit-beacon");
+  const base = { path: "/pricing", landing: true, referrer: "", search: "", host: "floortest.test", device: "phone" };
+  for (const consent of ["pending", "rejected", "", "null"]) assert.equal(visitBeacon({ ...base, consent }), null, `nothing for ${consent || "no choice"}`);
+  assert.ok(visitBeacon({ ...base, consent: "accepted" }));
+  const sent = JSON.parse(visitBeacon({ ...base, consent: "accepted", path: "/receipt/abc123", referrer: "https://floortest.test/reset/Ab3dE6gH9jK2mN5pQ8sT1vW4yZ7_c-0x", search: "?utm_source=Mail&k=secret" })!);
+  assert.deepEqual(sent, { kind: "visit", path: "/receipt/[token]", device: "phone", ref: "", utm: "Mail" });
+  assert.equal(referrerHost("https://www.news.example/story?id=9#top", "floortest.test"), "news.example");
+  assert.equal(referrerHost("https://floortest.test:443/join/xyz", "floortest.test"), "");
+  assert.equal(referrerHost("javascript:alert(1)", "floortest.test"), "");
+  const later = JSON.parse(visitBeacon({ ...base, consent: "accepted", landing: false, referrer: "https://other.example/" })!);
+  assert.deepEqual(Object.keys(later).sort(), ["device", "kind", "path"], "a view carries no referrer");
+});
+
+test("a full URL or a path in the referrer field is refused on the server too", async () => {
+  await reset();
+  await send({ kind: "visit", path: "/", ref: "https://floortest.test/reset/abc" });
+  await send({ kind: "visit", path: "/", ref: "news.example/story" });
+  assert.deepEqual((await rows()).map((r) => [r.source, r.n]), [["", 2]]);
+});
+
+test("a body over 2 KB is refused by its Content-Length and, when chunked, while it's read", async () => {
+  await reset();
+  await send({ kind: "visit", path: "/" }, { "content-length": "5000" });
+  const { POST } = await import("../src/app/api/visit/route");
+  // A body that never ends: reading it all (req.text()) would hang, so this passes only if reading stops at the cap.
+  let pulled = 0;
+  const chunk = new TextEncoder().encode("x".repeat(1024));
+  const stream = new ReadableStream({
+    pull(c) {
+      pulled++;
+      c.enqueue(chunk);
+    },
+  });
+  await POST(
+    new Request("http://floortest.test/api/visit", {
+      method: "POST",
+      headers: { host: "floortest.test", "content-type": "application/json", "sec-fetch-site": "same-origin", "x-real-ip": "3.3.3.3" },
+      body: stream,
+      duplex: "half",
+    } as RequestInit),
+  );
+  assert.deepEqual(await rows(), []);
+  assert.ok(pulled <= 4, `stopped reading after ${pulled} chunks`);
+});
+
+test("IPv6 connections share a rate limit per /64", async () => {
+  const { connectionKey } = await import("../src/app/api/visit/route");
+  assert.equal(connectionKey("2001:db8:1:2::5"), connectionKey("2001:0db8:0001:0002:aaaa:bbbb:cccc:1"));
+  assert.notEqual(connectionKey("2001:db8:1:2::5"), connectionKey("2001:db8:1:3::5"));
+  assert.equal(connectionKey("::1"), "0:0:0:0::/64");
+  assert.equal(connectionKey("9.9.9.9"), "9.9.9.9");
+});
+
+test("an account that already holds a newly reserved name can still save Settings", async () => {
+  const { q } = await import("../src/lib/db");
+  const { changeHandle } = await import("../src/lib/accounts");
+  const t = Date.now();
+  const holder = (await q.get<{ id: number }>("INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at, email_verified_at) VALUES ('sec@x.io','h','S','security','pro','UTC',?,?) RETURNING id", t, t))!.id;
+  const other = (await q.get<{ id: number }>("INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at, email_verified_at) VALUES ('o@x.io','h','O','otherdj','pro','UTC',?,?) RETURNING id", t, t))!.id;
+  assert.equal(await changeHandle(holder, "security"), null, "keeping it is not a change");
+  assert.equal(await changeHandle(other, "takedown"), "That link name is reserved.", "nobody new can take one");
 });
