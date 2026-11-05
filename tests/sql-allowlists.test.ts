@@ -26,14 +26,28 @@ test("contacts sort and filter, review status: anything off the list falls back,
   for (const v of HOSTILE) for (const sql of [pickSort(v)[2], pickShow(v)[2]]) assert.ok(fixed.has(sql), sql);
 });
 
-test("admin audience filters: unknown values become 'any', and the SQL carries only placeholders", async () => {
+test("admin audience filters: unknown values become 'any' (an unknown type matches nobody), and the SQL carries only placeholders", async () => {
   const { audienceWhere, readAudience } = await import("../src/lib/audience");
   const form: Record<string, string> = { plan: "' OR 1=1 --", kind: "label' --", tag: "x' OR '1'='1", joined: "7 OR 1=1", activity: "active; DROP TABLE users" };
   const a = readAudience((k) => form[k]);
-  assert.deepEqual(a, { plan: "", kind: "", tag: "xor11", joined: 0, activity: "" });
+  assert.deepEqual(a, { plan: "", kind: "unknown", tag: "xor11", joined: 0, activity: "" });
   const w = audienceWhere({ plan: "pro", kind: "label", tag: "beta", joined: 30, activity: "inactive" }, 1_000_000_000_000);
   assert.doesNotMatch(w.sql, /pro|label|beta/, "values travel as bound arguments only");
   assert.equal((w.sql.match(/\?/g) ?? []).length, w.args.length);
+});
+
+test("an announcement or list filter for a type that doesn't exist reaches nobody, never everyone", async () => {
+  const { audienceWhere, readAudience, describeAudience } = await import("../src/lib/audience");
+  const { q } = await import("../src/lib/db");
+  await q.run("INSERT INTO users (email, password_hash, name, handle, plan, kind, created_at) VALUES ('aud@x.io', 'h', 'aud', 'aud', 'free', 'dj', 1)");
+  const count = async (kind: string) => {
+    const w = audienceWhere(readAudience((k) => ({ kind })[k]));
+    return Number((await q.get<{ n: number }>(`SELECT count(*) AS n FROM users u WHERE ${w.sql}`, ...w.args))!.n);
+  };
+  assert.ok((await count("")) >= 1, "no type picked is everyone");
+  assert.equal(await count("dj"), 1);
+  for (const stale of ["radio", "label_radio", "constructor", "toString"]) assert.equal(await count(stale), 0, `${stale} reaches nobody`);
+  assert.equal(describeAudience(readAudience((k) => ({ kind: "radio" })[k])), "Unknown type (nobody)");
 });
 
 test("search text: % and _ are literal, and an injection attempt finds nothing extra", async () => {
