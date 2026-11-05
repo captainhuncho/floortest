@@ -79,8 +79,9 @@ export async function checkSecondFactor(userId: number, input: string): Promise<
 export async function sendEmailVerification(userId: number) {
   const token = crypto.randomBytes(24).toString("base64url");
   const u = await q.get<{ email: string; name: string }>(
-    "UPDATE users SET email_verify_token = ? WHERE id = ? AND email_verified_at IS NULL RETURNING email, name",
+    "UPDATE users SET email_verify_token = ?, email_verify_sent_at = ? WHERE id = ? AND email_verified_at IS NULL RETURNING email, name",
     hashToken(token),
+    now(),
     userId,
   );
   if (!u || !(await accountEmailAllowed())) return false;

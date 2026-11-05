@@ -33,7 +33,7 @@ import { accountEmailAllowed } from "@/lib/email-budget";
 import { HUMAN_CHECK_AFTER, HUMAN_MESSAGE, humanCheck, recentFailures } from "@/lib/human-check";
 import { breachedError } from "@/lib/breached";
 import { resetWithLink } from "@/lib/password-reset";
-import { resolveInvite } from "@/lib/invites";
+import { claimPersonalInvite, resolveInvite } from "@/lib/invites";
 import { revokeAllSessions } from "@/lib/sessions";
 import { checkPasskey, hasPasskey, secondStepOptions, signInOptions } from "@/lib/passkeys";
 
@@ -169,15 +169,22 @@ async function createAccount(form: FormData, a: NewAccount, opts: { googleEmail?
         a.verified ? now() : null,
         now(),
       ))!;
+      // A personal invite is used once (owner, 5 Nov): marked here, in the same transaction, so two sign-ups racing on
+      // one code can't both get in, and deleting this account later never brings the invite back.
+      if (!(await claimPersonalInvite(db, invite.valid && invite.personal ? invite.code : null, a.email))) throw INVITE_GONE;
       // No collection is made for them: each receiver names and creates their own (owner, 15 Oct; two in the beta).
       return { id: u.id };
     });
   } catch (e) {
+    if (e === INVITE_GONE) return { error: "This invite has been used or has expired. Ask the person who invited you for a new one." };
     // Lost a race for the same email or link name.
     if ((e as { code?: string })?.code === "23505") return { error: TAKEN };
     throw e;
   }
 }
+
+/** Thrown inside the sign-up transaction when the personal invite was claimed first, so the account rolls back. */
+const INVITE_GONE = Symbol("invite gone");
 
 const fromForm = (form: FormData, k: string, max: number) => String(form.get(k) || "").trim().slice(0, max);
 

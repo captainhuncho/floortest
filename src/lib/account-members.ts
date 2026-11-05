@@ -183,7 +183,9 @@ async function join<I extends { id: number; account_id: number; email: string; r
   if (!person.email_verified_at) throw new TeamError("Confirm your email first (check your inbox), then open the invite again.");
   if (person.id === inv.account_id) throw new TeamError("That's your own account.");
   await q.tx(async (db) => {
-    await db.run("UPDATE account_invites SET accepted_at = ? WHERE id = ?", now(), inv.id);
+    // Used once: a revoke, an expiry or a second accept that lands first wins, and this accept rolls back.
+    const took = await db.run("UPDATE account_invites SET accepted_at = ? WHERE id = ? AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > ?", now(), inv.id, now());
+    if (!took.changes) throw new TeamError("This invite isn't valid any more. Ask the person who invited you for a new one.");
     await db.run(
       "INSERT INTO account_members (account_id, user_id, role, invited_by, created_at) VALUES (?,?,?,(SELECT invited_by FROM account_invites WHERE id = ?),?) ON CONFLICT (account_id, user_id) DO NOTHING",
       inv.account_id, person.id, inv.role, inv.id, now(),

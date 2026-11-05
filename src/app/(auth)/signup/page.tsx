@@ -10,6 +10,8 @@ import { GuidedSignup } from "./GuidedSignup";
 import { inviteBySecret } from "@/lib/account-members";
 import { currentPerson } from "@/lib/auth";
 import { maskEmail } from "@/lib/mask-email";
+import { redirect } from "next/navigation";
+import { personalInviteGone } from "@/lib/invites";
 
 export const metadata = { title: "Claim your link — FloorTest" };
 
@@ -17,10 +19,14 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
   const sp = await searchParams;
   const ref = (sp.ref || "").toUpperCase().slice(0, 32);
   const inviteCode = (sp.invite || "").toUpperCase().slice(0, 32);
+  // A used, expired or revoked personal invite never shows the form as if it were live (owner, 5 Nov).
+  if (inviteCode && (await personalInviteGone(inviteCode))) redirect("/invite/used");
   const personal = inviteCode ? await q.get<{ email: string | null }>("SELECT email FROM invites WHERE code = ? AND revoked_at IS NULL", inviteCode) : undefined;
   const referrer = ref ? await q.get<{ name: string }>("SELECT name FROM users WHERE referral_code = ?", ref) : undefined;
   // Joining a team from an invite email: no invite code needed, and the email is the one invited.
   const team = sp.team ? await inviteBySecret(sp.team) : undefined;
+  // A used, expired or cancelled team invite: the join page says so plainly, rather than a bare sign-up form.
+  if (sp.team && !team) redirect(`/join/${encodeURIComponent(sp.team.slice(0, 200))}`);
   const inviteOnly = !(await switchOn("open_signup")) && !team;
   const [c, home, editor] = await Promise.all([siteCopy("auth"), siteCopy("home"), siteEditor()]);
   const { E } = editable(c, !!editor);
