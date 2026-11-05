@@ -18,9 +18,9 @@ const OPS_HOST = (() => {
 })();
 
 const OPS_PATHS = ["/admin", "/api/admin", "/ops-login"];
-// Shared, read-only helpers the admin pages also use (site image previews, page-speed beacons), and /.well-known
+// Shared, read-only helpers the admin pages also use (site image previews, page-speed and visit beacons), and /.well-known
 // (security.txt), public on every host.
-const SHARED = ["/api/site-image", "/api/tap-speed", "/.well-known"];
+const SHARED = ["/api/site-image", "/api/tap-speed", "/api/visit", "/.well-known"];
 const under = (path: string, list: string[]) => list.some((p) => path === p || path.startsWith(`${p}/`));
 const isOps = (path: string) => under(path, OPS_PATHS);
 // Open while the site is gated: the gate itself and signing in (a real sign-in then unlocks the site). Nothing about

@@ -2061,4 +2061,25 @@ create unique index if not exists tracks_token_hash on tracks(token_hash);`,
     id: "0127_receipt_token_clear",
     sql: `update tracks set token = null where token is not null and token_hash is not null and token_sealed is not null and token_hash = encode(sha256(convert_to(token, 'UTF8')), 'hex');`,
   },
+  {
+    // Visit counts (owner, 5 Nov): in-house, per day, how many visits and page views each page had, from which country
+    // (Vercel's header), which site or utm_source, and which device. Counts only: no IP, cookie, account or visitor id.
+    // link_owner is the receiver whose receiving link (/handle) was visited, so Ops sees whose link gets traffic; it goes
+    // with the account.
+    id: "0130_visit_counts",
+    sql: `create table if not exists visit_counts (
+  day text not null,
+  kind text not null check (kind in ('visit', 'view')),
+  page text not null,
+  link_owner bigint references users(id) on delete cascade,
+  country text not null default '',
+  source text not null default '',
+  device text not null default '',
+  n int not null default 1
+);
+create unique index if not exists visit_counts_key on visit_counts(day, kind, page, (coalesce(link_owner, 0)), country, source, device);
+create index if not exists visit_counts_owner on visit_counts(link_owner, day) where link_owner is not null;
+alter table visit_counts enable row level security;`,
+  },
 ];
+
