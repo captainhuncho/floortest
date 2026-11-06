@@ -87,5 +87,5 @@ export const TOUR_HABITS: { title: string; line: string; href?: string; link?: s
   { title: "Decide within a few days", line: "Senders see when you listened. A quick Keep or Not for me keeps the queue short and senders sending." },
   { title: "Use the keyboard on a computer", line: "K keeps, X is Not for me, R opens a reply. Every shortcut is listed in Settings.", href: "/dashboard/settings/account", link: "See shortcuts" },
   { title: "Going away? Pause your link", line: "Senders see you're on a break and when you're back, instead of sending into silence.", href: "/dashboard/account", link: "Open Account" },
-  { title: "Protect your desk", line: "Turn on two-factor sign-in, so a stolen password isn't enough.", href: "/dashboard/settings/security", link: "Open Security" },
+  { title: "Protect your desk", line: "Turn on two-step sign-in, so a stolen password isn't enough.", href: "/dashboard/settings/security", link: "Open Security" },
 ];

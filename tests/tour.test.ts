@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { createHash } from "node:crypto";
 import { testDataDir } from "./test-db";
 
 // A throwaway local database for this test only, set before the app's modules load.
@@ -24,8 +25,20 @@ test("the tour: five steps with a real picture each, ending on Share your link, 
   assert.equal(tourTip("label_radio"), null, "an old or unknown type gets no tip");
   assert.equal(tourTip(null), null);
   assert.equal(tourTip("constructor"), null);
-  // Owner, 6 Nov: never the owner's link; any link in the tour reads exactly floortest.app/username.
-  for (const m of JSON.stringify({ TOUR_STEPS, TOUR_FINISH, TOUR_TIPS, TOUR_HABITS }).matchAll(/floortest\.app\/[a-z0-9_-]*/gi)) assert.equal(m[0], "floortest.app/username");
+  // Owner, 6 Nov: never the owner's link; any link in the tour reads exactly floortest.app/username. The words carry no
+  // link at all, and the pictures (demo data, link checked by eye) are pinned, so a new picture needs a fresh look first.
+  assert.doesNotMatch(JSON.stringify({ TOUR_STEPS, TOUR_FINISH, TOUR_TIPS, TOUR_HABITS }), /floortest\.app\//i);
+  const pinned: Record<string, string> = {
+    link: "adac49d03de0271c7a537c0ec7d88b80a941b8af5e1907442076c8053ebc8472",
+    floor: "d5643458b585e1175c14d0db953406da4a05be217b3fa527368892c6a99994e3",
+    queue: "8f40e1da7a424d66d2cf4e9c752f56a5fd1375007fdec15031655dd993dd27d9",
+    collections: "ce91a1be41259a9ab54236e5d85742082137ddaabe67266fde5ea355f4dccbca",
+    prepare: "c1f13fd3157a276d462b5297e9cbc2f7608356331d75c07d178586bf624b2850",
+  };
+  for (const s of TOUR_STEPS) {
+    const sha = createHash("sha256").update(fs.readFileSync(new URL(`../public${s.image}`, import.meta.url))).digest("hex");
+    assert.equal(sha, pinned[s.id], `${s.image} is the checked picture`);
+  }
   // Brand voice (docs/brand-voice.md): no exclamation marks or square brackets, Keep / Not for me, "track" not "song".
   const strings = (v: unknown): string[] => (typeof v === "string" ? [v] : v && typeof v === "object" ? Object.values(v).flatMap(strings) : []);
   const words = strings({ TOUR_STEPS, TOUR_FINISH, TOUR_TIPS, TOUR_HABITS }).join("\n");
@@ -35,7 +48,8 @@ test("the tour: five steps with a real picture each, ending on Share your link, 
 
 test("the tour opens once per person, never in an admin's view, and closing it marks it seen", async () => {
   const floor = read("../src/app/dashboard/floor/page.tsx");
-  assert.match(floor, /const tourDue = !view && !\(await q\.get<\{ t: number \| null \}>\("SELECT tour_seen_at AS t FROM users WHERE id = \?", user\.actor_id\)\)\?\.t;/);
+  assert.match(floor, /q\.get<\{ t: number \| null \}>\("SELECT tour_seen_at AS t FROM users WHERE id = \?", user\.actor_id\),\n  \]\);/, "the person's own row, read with the rest");
+  assert.match(floor, /const tourDue = !view && !tourSeen\?\.t;/);
   assert.match(floor, /\{tourDue && <FirstVisitTour tip=\{tourTip\(user\.kind\)\} \/>\}/);
   const desk = read("../src/app/dashboard/actions/desk.ts");
   const fn = desk.slice(desk.indexOf("export async function markTourSeen(")).split("\nexport ")[0];
@@ -77,6 +91,8 @@ test("marking the tour seen changes only the person's own row, not the team desk
   assert.ok(first, "A marked");
   assert.equal(await seen(desk), null, "the team desk A works on stays unmarked");
   assert.equal(await seen(b), null, "B stays unmarked");
+  // A fixed earlier time, so the check below can't pass by both closes landing in the same millisecond.
+  await q.run("UPDATE users SET tour_seen_at = 1000 WHERE id = ?", a);
   await markTourSeenFor(a);
-  assert.equal(await seen(a), first, "a second close keeps the first time");
+  assert.equal(await seen(a), 1000, "a second close keeps the first time");
 });
