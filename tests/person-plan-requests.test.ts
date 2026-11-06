@@ -9,7 +9,7 @@ process.env.APP_SECRET ??= "test-secret-".padEnd(48, "x");
 delete process.env.DATABASE_URL;
 
 // The writes requestPlan and withdrawPlanRequest make (src/app/dashboard/actions/settings.ts), as the person.
-const FILE = "INSERT INTO plan_requests (user_id, plan, kind, org, link, volume, note, created_at) VALUES (?,?,?,?,?,?,?,?)";
+const FILE = "INSERT INTO plan_requests (user_id, plan, kind, org, link, volume, note) VALUES (?,?,?,?,?,?,?)";
 const WITHDRAW = "UPDATE plan_requests SET status = 'withdrawn' WHERE user_id = ? AND status = 'pending'";
 
 async function people() {
@@ -28,7 +28,7 @@ test("the owner files, sees and withdraws their own desk's request as the person
   const { pendingRequest } = await import("../src/lib/plan-requests");
   const { now, user } = await people();
   const me = await user("ownerplan");
-  await asPerson(me, () => q.run(FILE, me, "pro", "artist", "", "", "", "", now));
+  await asPerson(me, () => q.run(FILE, me, "pro", "artist", "", "", "", ""));
   assert.equal((await pendingRequest(me, me))?.plan, "pro", "the owner sees it as the person");
   assert.equal((await asPerson(me, () => q.run(WITHDRAW, me))).changes, 1);
   assert.equal(await pendingRequest(me, me), undefined);
@@ -43,11 +43,11 @@ test("nobody else sees, files or withdraws a desk's request, a teammate included
   const admin = await user("adminplan");
   const stranger = await user("strangerplan");
   await q.run("INSERT INTO account_members (account_id, user_id, role, created_at) VALUES (?, ?, 'admin', ?)", label, admin, now);
-  await asPerson(label, () => q.run(FILE, label, "team", "label", "Label Ltd", "https://label.example", "", "", now));
+  await asPerson(label, () => q.run(FILE, label, "team", "label", "Label Ltd", "https://label.example", "", ""));
   for (const who of [admin, stranger]) {
     assert.equal(await pendingRequest(label, who), undefined, `person ${who} doesn't see the label's request`);
     assert.equal((await asPerson(who, () => q.run(WITHDRAW, label))).changes, 0, `person ${who} can't withdraw it`);
-    await assert.rejects(asPerson(who, () => q.run(FILE, label, "team", "label", "", "", "", "", now)), /row-level security|policy/i, `person ${who} can't file for the label`);
+    await assert.rejects(asPerson(who, () => q.run(FILE, label, "team", "label", "", "", "", "")), /row-level security|policy/i, `person ${who} can't file for the label`);
   }
   assert.equal((await pendingRequest(label))?.plan, "team", "still waiting");
 });
@@ -59,7 +59,7 @@ test("as the person, a request can't be filed or changed into a decision, and op
   // Filing one already approved, or with a granted plan, is refused outright.
   await assert.rejects(asPerson(me, () => q.run("INSERT INTO plan_requests (user_id, plan, kind, status, created_at) VALUES (?, 'team', 'artist', 'approved', ?)", me, now)), /permission denied/i);
   await assert.rejects(asPerson(me, () => q.run("INSERT INTO plan_requests (user_id, plan, kind, granted_plan, created_at) VALUES (?, 'team', 'artist', 'team', ?)", me, now)), /permission denied/i);
-  await asPerson(me, () => q.run(FILE, me, "pro", "artist", "", "", "", "", now));
+  await asPerson(me, () => q.run(FILE, me, "pro", "artist", "", "", "", ""));
   // Approving your own, or touching the decision, is refused.
   await assert.rejects(asPerson(me, () => q.run("UPDATE plan_requests SET status = 'approved' WHERE user_id = ?", me)), /row-level security|policy/i);
   for (const col of ["granted_plan", "decided_by", "decided_at", "decision_note", "plan"])
@@ -82,11 +82,39 @@ test("the plan pages and actions read and write requests as the person, and role
     return actions.slice(start, next < 0 ? undefined : next);
   };
   assert.match(body("requestPlan"), /requireRole\("owner"\)/);
-  assert.match(body("requestPlan"), /asPerson\(u\.actor_id, async \(\) => \{\s*await q\.run\("UPDATE plan_requests/);
+  assert.match(body("requestPlan"), /asPerson\(u\.actor_id, \(\) =>\s*q\.tx\(async \(db\) => \{\s*await db\.run\("UPDATE plan_requests/);
+  assert.doesNotMatch(body("requestPlan"), /INSERT INTO plan_requests \([^)]*created_at/, "the database stamps the time");
   assert.match(body("withdrawPlanRequest"), /requireRole\("owner"\)/);
   assert.match(body("withdrawPlanRequest"), /pendingRequest\(u\.id, u\.actor_id\)/);
   assert.match(body("withdrawPlanRequest"), /asPerson\(u\.actor_id, \(\) => q\.run\("UPDATE plan_requests/);
   for (const page of ["src/app/dashboard/plans/page.tsx", "src/app/dashboard/plans/request/page.tsx"])
     assert.match(fs.readFileSync(page, "utf8"), /pendingRequest\(user\.id, user\.actor_id\)/, `${page} reads as the person`);
   assert.doesNotMatch(fs.readFileSync("src/lib/plan-requests.ts", "utf8"), /SELECT \*/, "named columns only");
+});
+
+test("a request's time is the database's: the person can't back-date one up ops' queue", async () => {
+  const { q, asPerson } = await import("../src/lib/db");
+  const { user } = await people();
+  const me = await user("timeplan");
+  await assert.rejects(asPerson(me, () => q.run("INSERT INTO plan_requests (user_id, plan, kind, created_at) VALUES (?, 'pro', 'artist', 1)", me)), /permission denied/i);
+  const before = Date.now();
+  await asPerson(me, () => q.run(FILE, me, "pro", "artist", "", "", "", ""));
+  const t = (await q.get<{ t: number }>("SELECT created_at AS t FROM plan_requests WHERE user_id = ?", me))!.t;
+  assert.ok(t >= before - 1000 && t <= Date.now() + 1000, `stamped now: ${t}`);
+});
+
+test("withdrawing and filing again happen together, so a quick second submit leaves one waiting request", async () => {
+  const { q, asPerson } = await import("../src/lib/db");
+  const { user } = await people();
+  const me = await user("twiceplan");
+  const file = () =>
+    asPerson(me, () =>
+      q.tx(async (db) => {
+        await db.run("UPDATE plan_requests SET status = 'withdrawn' WHERE user_id = ? AND status = 'pending'", me);
+        await db.run(FILE, me, "pro", "artist", "", "", "", "");
+      }),
+    );
+  await file();
+  await file();
+  assert.equal((await q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM plan_requests WHERE user_id = ? AND status = 'pending'", me))!.n, 1);
 });

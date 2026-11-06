@@ -145,3 +145,26 @@ test("Settings saves the owner's own alerts and profile through the person's rul
   assert.match(body("updateSettings"), /if \(unsaved\) return \{ error: unsaved \}/);
   for (const name of ["updatePublicPage", "setRerouteClosed"]) assert.match(body(name), /asSystem\(\(\) => q\.run\("UPDATE users SET/, `${name} is the app's on purpose`);
 });
+
+test("consent times at sign-up are the database's too", async () => {
+  const { q } = await import("../src/lib/db");
+  const t = Date.now();
+  const row = await q.get<{ p: number | null; m: number | null }>(
+    "INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at, notify_product, product_consent_at, notify_marketing, marketing_consent_at) VALUES ('signup@settings.io', 'h', 'S', 'signupset', 'free', 'UTC', ?, 1, 1, 0, 5) RETURNING product_consent_at AS p, marketing_consent_at AS m",
+    t,
+  );
+  assert.ok(row!.p! >= t - 1000, "a yes gets the database's time, not the one supplied");
+  assert.equal(row!.m, null, "a no gets no time, even if one is supplied");
+});
+
+test("a save that fails shows the message instead of an error page, and ops hear about it", async () => {
+  const { q } = await import("../src/lib/db");
+  const { saveAlerts, NOT_SAVED } = await import("../src/lib/settings-save");
+  const { user } = await setup();
+  const me = await user("failset");
+  const incidents = async () => (await q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM incidents"))!.n;
+  const before = await incidents();
+  // An hour far out of range makes the database refuse the write.
+  assert.equal(await saveAlerts(me, me, { ...ALERTS, digestHour: 1e12 }), NOT_SAVED);
+  assert.equal(await incidents(), before + 1);
+});
