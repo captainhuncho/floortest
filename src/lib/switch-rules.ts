@@ -91,33 +91,44 @@ export function readRule(raw: string | null | undefined): SwitchRule | null {
   return ruleIsEmpty(rule) ? null : rule;
 }
 
+/** The rule form's fields besides type_* and plan_* (src/app/admin/switches/page.tsx). */
+const RULE_FIELDS = ["handles", "countries", "percent"];
 /** A rule form's fields. `keys` are every field name the form sent, so a page from another release is caught. */
 export type RuleForm = { keys: string[]; get: (k: string) => unknown };
 
 /**
  * The rule an admin's form asks for, or why it can't be saved. `accountIds` are the named handles already looked up;
  * `planIds` the plans that exist; `stored` the rule saved now. Refuses:
- * - a form with a type, plan or country this release doesn't know (a page left open from another release), since
+ * - a form with a field, type, plan or country this release doesn't know (a page left open from another release), since
  *   dropping it would widen the rule;
+ * - a missing or non-numeric percentage, rather than reading it as 100;
+ * - a rule that would itself read back as lost;
  * - saving over a lost rule without setting each lost part again (the deliberate way out is Clear rule).
  */
 export function ruleFromForm(form: RuleForm, accountIds: number[], planIds: string[], stored: SwitchRule | null): { rule: SwitchRule | null } | { error: string } {
   const stale = "This page is out of date. Reload it and try again.";
   for (const k of form.keys) {
-    if (k.startsWith("type_") && !isAccountType(k.slice(5))) return { error: stale };
-    if (k.startsWith("plan_") && !planIds.includes(k.slice(5))) return { error: stale };
+    if (k.startsWith("type_")) {
+      if (!isAccountType(k.slice(5))) return { error: stale };
+    } else if (k.startsWith("plan_")) {
+      if (!planIds.includes(k.slice(5))) return { error: stale };
+    } else if (!RULE_FIELDS.includes(k) && !k.startsWith("$ACTION")) return { error: stale };
   }
   const words = String(form.get("countries") ?? "").toUpperCase().split(/[\s,;]+/).filter(Boolean);
   if (words.some((c) => !COUNTRY.test(c))) return { error: "Countries must be two-letter codes, like GB IE." };
+  const percent = String(form.get("percent") ?? "").trim();
+  if (!/^\d{1,3}$/.test(percent) || Number(percent) < 1 || Number(percent) > 100) return { error: "Set a percentage from 1 to 100." };
   const next = readRule(
     JSON.stringify({
       accounts: accountIds,
       types: Object.keys(ACCOUNT_TYPES).filter((t) => form.get(`type_${t}`) === "on"),
       plans: planIds.filter((p) => form.get(`plan_${p}`) === "on"),
       countries: parseCountries(words.join(" ")),
-      percent: clampPercent(form.get("percent")),
+      percent: Number(percent),
     }),
   );
+  // A part that wouldn't read back (a plan id the stored rule can't hold, say) would save a rule that reaches nobody.
+  if (next && ruleIsLost(next)) return { error: `This rule can't be saved because ${lostWords(next)}.` };
   if (stored && ruleIsLost(stored)) {
     const setAgain = (p: LostPart) =>
       !!next && (p === "rule" ? next.accounts.length > 0 || narrowsByPart(next) : next[p].length > 0);
@@ -168,7 +179,7 @@ export function describeRule(rule: SwitchRule, planName: (id: string) => string 
     rule.countries.length ? `in ${rule.countries.join(", ")}` : "",
   ].filter(Boolean);
   const named = rule.accounts.length ? `${rule.accounts.length} named account${rule.accounts.length === 1 ? "" : "s"}` : "";
-  if (ruleIsLost(rule)) return `${named ? `Only ${named}; nobody else` : "Nobody"}: ${lostWords(rule)}`;
+  if (ruleIsLost(rule)) return `${named ? `Only ${named}; nobody else` : "Nobody"} (super admins can test): ${lostWords(rule)}`;
   if (!narrows(rule)) return `Only ${named}`;
   const who = `${rule.percent < 100 ? `${rule.percent}% of ` : ""}${parts.length ? `accounts ${parts.join(", ")}` : "all accounts"}`;
   return named ? `${named}, plus ${who}` : who.charAt(0).toUpperCase() + who.slice(1);

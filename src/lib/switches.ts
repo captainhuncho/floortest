@@ -3,7 +3,7 @@ import { cache } from "react";
 import { headers } from "next/headers";
 import { now, q, type Queryable } from "./db";
 import { env } from "./env";
-import { readRule, ruleCovers, type SwitchRule, type SwitchSubject } from "./switch-rules";
+import { readRule, ruleCovers, ruleIsLost, type SwitchRule, type SwitchSubject } from "./switch-rules";
 
 /**
  * Site-wide switches, flipped from Admin → Feature switches with no deploy. Each is off or on;
@@ -160,11 +160,14 @@ export async function ruleCoverage(key: TargetedSwitch, rule: SwitchRule) {
 
 /** Sets or clears (null) a targeted switch's rule; on/off stays as it is. */
 export async function setSwitchRule(key: TargetedSwitch, rule: SwitchRule | null, adminId: number) {
+  // A lost rule is only ever read back, never saved: stripping the marker could store an empty rule, which is everyone.
+  if (rule && ruleIsLost(rule)) throw new Error("A rule that lost a part can't be saved");
   await q.run(
     "INSERT INTO switches (key, on_, rule, admin_id, updated_at) VALUES (?,?,?,?,?) ON CONFLICT (key) DO UPDATE SET rule = excluded.rule, admin_id = excluded.admin_id, updated_at = excluded.updated_at",
     key,
     SWITCHES[key].initial ? 1 : 0,
-    rule ? JSON.stringify(rule) : null,
+    // Only the rule's own parts: `lost` is worked out on each read, never stored.
+    rule ? JSON.stringify({ accounts: rule.accounts, types: rule.types, plans: rule.plans, countries: rule.countries, percent: rule.percent }) : null,
     adminId,
     now(),
   );
