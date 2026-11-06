@@ -14,7 +14,7 @@ import { env } from "@/lib/env";
 import { purgeAccount } from "@/lib/privacy";
 import { cancelEmailChange, changeHandle, requestEmailChange, resetVerified } from "@/lib/accounts";
 import { capacity } from "@/lib/desk";
-import { asSystem, now, q } from "@/lib/db";
+import { asPerson, asSystem, now, q } from "@/lib/db";
 import { saveAlerts, saveProfile } from "@/lib/settings-save";
 import { sendDigest } from "@/lib/notify";
 import { offeredPlan, planOf } from "@/lib/plan-store";
