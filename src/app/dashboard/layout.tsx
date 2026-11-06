@@ -70,7 +70,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 <span className="mr-auto hidden md:block" />
                 {/* Feedback sits first in the top bar's box at every size (1 Nov: phones had no way in). */}
                 <TopBar
-                  user={{ name: user.name, handle: user.handle, verified: user.identity_status === "verified" }}
+                  user={{
+                    name: user.name,
+                    handle: user.handle,
+                    verified: user.identity_status === "verified",
+                    photo: user.cover_key ? `/api/cover/${encodeURIComponent(user.handle)}?v=${encodeURIComponent(user.cover_key)}` : null,
+                  }}
                   notices={notices}
                   lead={<FeedbackButton />}
                 />
