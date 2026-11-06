@@ -48,6 +48,7 @@ export function Sidebar({ needsReview, cap, pause, canSend = true }: Props) {
     ...(canSend ? [{ href: "/dashboard/send", label: "Send", icon: "send", active: path.startsWith("/dashboard/send") }] : []),
     { href: "/dashboard/contacts", label: "Contacts", icon: "contacts", active: path.startsWith("/dashboard/contacts") },
     { href: "/dashboard/activity", label: "Activity", icon: "activity", active: path.startsWith("/dashboard/activity") },
+    { href: "/dashboard/how-it-works", label: "How it works", icon: "help", active: path === "/dashboard/how-it-works" },
   ];
 
   // Labels stay in the page when folded (screen readers and tests read them); they only fade out of sight.

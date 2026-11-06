@@ -2137,6 +2137,15 @@ update users set email_verify_sent_at = (extract(epoch from now()) * 1000)::bigi
     sql: `grant update (notify_submissions, digest_hour, quiet_start, quiet_end, notify_alerts, notify_product, notify_marketing, product_consent_at, marketing_consent_at) on users to ft_person;
 revoke update (cover_key, active_collection_id) on users from ft_person;`,
   },
+  {
+    // The first-visit tour (owner, 6 Nov: "a tour on what FloorTest is when people get onboarded"): when this person
+    // closed or finished it, on their own row (a teammate gets their own). Accounts that exist today are marked as
+    // having seen it, so the tour opens only for people who join from now on; everyone can open How FloorTest works.
+    // Additive only: code before this never reads it. (0132 is #448's; 0133 and 0134 are Backend's B8 slice 2, agreed 6 Nov.)
+    id: "0135_tour_seen",
+    sql: `alter table users add column if not exists tour_seen_at bigint;
+update users set tour_seen_at = (extract(epoch from now()) * 1000)::bigint where tour_seen_at is null;`,
+  },
 ];
 
 
