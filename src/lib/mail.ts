@@ -4,6 +4,7 @@ import { unsubToken, type UnsubKind } from "./unsubscribe";
 import crypto from "node:crypto";
 import { now, q, type Queryable } from "./db";
 import { normalEmail } from "./email-normal";
+import { CODE_EMAIL_TTL_MS } from "./code-mail";
 import { env, isPreview } from "./env";
 import { recordIncident } from "./incidents";
 import { emailHtml } from "./email-html";
@@ -210,6 +211,25 @@ async function overSharedPart(at: number, optional: boolean) {
   return today >= MAIL_LIMITS.day * share;
 }
 
+/** Tells ops once a day that emails are being held because the block list can't be read. */
+async function reportBlockCheckDown(at: number) {
+  const day = new Date(startOfDay(at)).toISOString().slice(0, 10);
+  const first = await q
+    .get(
+      `INSERT INTO app_state (key, value, updated_at) VALUES ('mail_blockcheck_day', ?, ?)
+       ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at WHERE app_state.value <> excluded.value RETURNING key`,
+      day,
+      at,
+    )
+    .catch(() => true);
+  if (first)
+    await recordIncident(
+      "email_failed",
+      "Emails are being held: the block list can't be read",
+      "Each email is retried as usual and closed as failed after its last try; codes that expire are dropped. Check the email_suppressions table and its permissions.",
+    );
+}
+
 /** One notice a day that optional email is being held back. */
 async function reportDeferred(at: number) {
   const day = new Date(startOfDay(at)).toISOString().slice(0, 10);
@@ -231,10 +251,10 @@ async function reportDeferred(at: number) {
 export async function deliver(id: number, { retry = true } = {}): Promise<string> {
   const at = now();
   // A send that crashed is picked up again only while it has attempts left; drainOutbox closes the rest.
-  const row = await q.get<{ user_id: number | null; payload: string; idem_key: string; attempts: number; subject: string; optional: number; reserved: number }>(
+  const row = await q.get<{ user_id: number | null; payload: string; idem_key: string; attempts: number; subject: string; optional: number; reserved: number; created_at: number }>(
     `UPDATE outbox SET status = 'sending', attempts = attempts + 1, last_attempt_at = ?
      WHERE id = ? AND payload IS NOT NULL AND ((status = 'queued' AND next_at <= ?) OR (status = 'sending' AND last_attempt_at < ? AND attempts < ?))
-     RETURNING user_id, payload, idem_key, attempts, subject, optional, reserved`,
+     RETURNING user_id, payload, idem_key, attempts, subject, optional, reserved, created_at`,
     at,
     id,
     at,
@@ -251,13 +271,38 @@ export async function deliver(id: number, { retry = true } = {}): Promise<string
     await recordIncident("email_failed", "A queued email couldn't be read (was APP_SECRET changed?) and was dropped", `${row.subject}\n${e instanceof Error ? e.message : String(e)}`);
     return "failed (unreadable)";
   }
+  // A code is never sent after it stopped working, however it got here (a retry after a network failure, or a send
+  // picked up again after a crash or a failed drop): past its lifetime it's dropped unsent (Safety review of #464).
+  if (p.expires && at - Number(row.created_at) > CODE_EMAIL_TTL_MS) {
+    await q.run("UPDATE outbox SET status = 'dropped (expired)', payload = NULL, next_at = NULL WHERE id = ?", id);
+    return "dropped (expired)";
+  }
   let to = p.to;
   let subject = p.subject;
   let status = "logged";
   let providerId: string | null = null;
   // An address that bounced for good gets nothing more; one that reported us as spam still gets what it asks for
   // (sign-in codes, resets) but no optional email. Admin → Emails can lift either.
-  const block = await q.get<{ reason: string }>("SELECT reason FROM email_suppressions WHERE email = ?", normalEmail(p.to)).catch(() => undefined); // the same form the block list stores
+  // Matched in the form the block list stores. If the list can't be read, nothing goes out to an address that may be
+  // blocked (fail closed; Safety reviews of #458 and #464): the attempt counts as a failed one, so the usual retries and
+  // MAX_ATTEMPTS bound it and the last one raises an incident; ops are told once a day while the check is down; and a
+  // code that expires is dropped rather than held (the person can ask for another).
+  let block: { reason: string } | undefined;
+  let blockCheckDown = false;
+  try {
+    block = await q.get<{ reason: string }>("SELECT reason FROM email_suppressions WHERE email = ?", normalEmail(p.to));
+  } catch (e) {
+    // Code and message only: the error can carry the query's values, which include the recipient's address.
+    console.error("[mail] block list check failed", (e as { code?: string })?.code ?? "", String((e as Error)?.message ?? "").slice(0, 200));
+    blockCheckDown = true;
+    await reportBlockCheckDown(at);
+    if (p.expires) {
+      // Not swallowed: if this write fails, the error surfaces and the row stays 'sending'. If the send is picked up again
+      // later, the lifetime check above drops it unsent once it's past CODE_EMAIL_TTL_MS.
+      await q.run("UPDATE outbox SET status = 'dropped (block check failed)', payload = NULL, next_at = NULL WHERE id = ?", id);
+      return "dropped (block check failed)";
+    }
+  }
   const suppressed = block && (block.reason === "bounced" || row.optional) ? block : undefined;
   // Staging (Vercel previews) never emails real people: everything goes to STAGING_EMAIL_TO, or nowhere.
   const stagingTo = isPreview ? (process.env.STAGING_EMAIL_TO ?? "").trim() : "";
@@ -266,7 +311,7 @@ export async function deliver(id: number, { retry = true } = {}): Promise<string
     to = stagingTo || p.to;
     if (!stagingTo) status = "logged (staging)";
   }
-  const willSend = !suppressed && !!env.email.resendKey && !(isPreview && !stagingTo);
+  const willSend = !suppressed && !blockCheckDown && !!env.email.resendKey && !(isPreview && !stagingTo);
   if (willSend && !row.reserved && (await overSharedPart(at, !!row.optional))) {
     if (p.expires) {
       // A code that would arrive after it stopped working: drop it now, so nothing dead goes out tomorrow.
@@ -280,6 +325,7 @@ export async function deliver(id: number, { retry = true } = {}): Promise<string
     return "queued (daily limit)";
   }
   if (suppressed) status = `skipped (${suppressed.reason} before)`;
+  else if (blockCheckDown) status = "failed (block check)";
   else if (!willSend && MAIL_SINK) await sinkMail(to, subject, p.body);
   else if (willSend) {
     try {

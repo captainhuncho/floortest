@@ -1,4 +1,5 @@
 import "server-only";
+import { CODE_EMAIL_TTL_MS } from "./code-mail";
 import crypto from "node:crypto";
 import { cookies } from "next/headers";
 import { now, q } from "./db";
@@ -13,7 +14,7 @@ import { allow, record } from "./ratelimit";
  * browser remembers the address for 30 days (a signed, http-only cookie), so repeat senders aren't asked again.
  */
 const HOUR = 3_600_000;
-const CODE_TTL = 10 * 60_000;
+const CODE_TTL = CODE_EMAIL_TTL_MS; // the code and its email share one lifetime
 const MAX_ATTEMPTS = 5;
 const REMEMBER = 30 * 24 * HOUR;
 const COOKIE = "ft_sender";

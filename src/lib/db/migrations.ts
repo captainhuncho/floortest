@@ -2167,7 +2167,7 @@ revoke update (product_consent_at, marketing_consent_at, links, role_line, page_
   {
     // Email delivery log (owner, 6 Nov: emails that arrived showed only "Bounced"): when Resend first reported the email
     // delivered, so a later bounce (often a forwarded copy) can't hide that, and the bounce reason on the email itself.
-    // Additive only. Numbered 0136: 0132 to 0134 are the per-person Settings work (#448 and slice 2), 0133 is plan requests (#453) and 0135 Build's onboarding tour (#451).
+    // Additive only. Numbered 0136: 0132 is Settings (#448), 0133 plan requests and 0134 the Settings follow-ups (#453), 0135 Build's onboarding tour (#451).
     id: "0136_outbox_delivery_detail",
     sql: `alter table outbox add column if not exists delivered_at bigint;
 alter table outbox add column if not exists delivery_detail text not null default '';`,

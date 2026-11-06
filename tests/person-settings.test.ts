@@ -167,6 +167,9 @@ test("a save that fails shows the message instead of an error page, and ops hear
   // An hour far out of range makes the database refuse the write.
   assert.equal(await saveAlerts(me, me, { ...ALERTS, digestHour: 1e12 }), NOT_SAVED);
   assert.equal(await incidents(), before + 1);
+  // The incident carries only the database's error code, never the message (it could repeat a value from the form).
+  const detail = (await q.get<{ detail: string }>("SELECT detail FROM incidents ORDER BY id DESC LIMIT 1"))!.detail;
+  assert.match(detail, /^code ([0-9A-Z]{5}|unknown)$/);
 });
 
 test("a Next.js redirect inside a save passes through instead of becoming a failed save", async () => {
