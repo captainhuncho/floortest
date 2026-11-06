@@ -70,6 +70,7 @@ export async function cleanupRecords(t = now(), until = Date.now() + PURGE_BUDGE
   );
   await q.run("DELETE FROM job_runs WHERE started_at < ?", t - 90 * DAY);
   await q.run("DELETE FROM feature_use WHERE day < ?", new Date(t - 400 * DAY).toISOString().slice(0, 10));
+  await q.run("DELETE FROM visit_counts WHERE day < ?", new Date(t - 400 * DAY).toISOString().slice(0, 10));
   const removed = {
     emails: await deleteInBatches("outbox", "created_at < ?", [t - KEEP_DAYS.outbox * DAY], until),
     incidents: await deleteInBatches("incidents", "created_at < ? AND (resolved_at IS NOT NULL OR kind = 'upload_rejected')", [t - KEEP_DAYS.incidents * DAY], until),

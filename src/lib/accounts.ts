@@ -73,10 +73,12 @@ export async function resetVerified(db: Pick<typeof q, "run">, userId: number) {
 export async function changeHandle(userId: number, next: string, { forward = true, checks = true } = {}): Promise<string | null> {
   const handle = next.trim().toLowerCase().replace(/^@/, "");
   if (!/^[a-z0-9][a-z0-9-_]{1,29}$/.test(handle)) return "Link names use 2–30 letters, numbers, - or _.";
-  if (RESERVED_HANDLES.has(handle)) return "That link name is reserved.";
   const u = await q.get<{ handle: string }>("SELECT handle FROM users WHERE id = ?", userId);
   if (!u) return "Account not found.";
+  // Keeping your own link is never a change, even if its name has since been reserved for a page (so saving Settings
+  // still works for an account that held it first).
   if (u.handle === handle) return null;
+  if (RESERVED_HANDLES.has(handle)) return "That link name is reserved.";
   if (checks && (await isProtectedHandle(handle))) return "That name is protected for a well-known artist. If it's you, contact us.";
   if (await handleHeld(handle, userId)) return "That link was someone's until recently and is still reserved.";
   // Switching back keeps the original deadline, so bouncing between names can't hold two of them forever.
