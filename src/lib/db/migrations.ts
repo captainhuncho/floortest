@@ -2103,5 +2103,14 @@ create unique index if not exists visit_counts_key on visit_counts(day, kind, pa
 create index if not exists visit_counts_owner on visit_counts(link_owner, day) where link_owner is not null;
 alter table visit_counts enable row level security;`,
   },
+  {
+    // Per-person rules, Settings (B8, Backend slice 1, 5 Nov): the owner's own alert and contact choices are saved as the
+    // person, so the person role may write these columns on its own row only (person_users_own). Consent times are the
+    // person's own record. Never granted: plan, email, handle, identity_*, suspended_at, extra_seats, reply_* or anything
+    // to do with money or verification.
+    id: "0132_person_settings",
+    sql: `grant update (notify_submissions, digest_hour, quiet_start, quiet_end, notify_alerts, notify_product, notify_marketing, product_consent_at, marketing_consent_at) on users to ft_person;`,
+  },
 ];
+
 

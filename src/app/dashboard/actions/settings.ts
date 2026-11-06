@@ -14,7 +14,7 @@ import { env } from "@/lib/env";
 import { purgeAccount } from "@/lib/privacy";
 import { cancelEmailChange, changeHandle, requestEmailChange, resetVerified } from "@/lib/accounts";
 import { capacity } from "@/lib/desk";
-import { now, q } from "@/lib/db";
+import { asPerson, asSystem, now, q } from "@/lib/db";
 import { sendDigest } from "@/lib/notify";
 import { offeredPlan, planOf } from "@/lib/plan-store";
 import { switchOn } from "@/lib/switches";
@@ -41,7 +41,8 @@ export async function updateNotifications(_: SettingsState, form: FormData): Pro
     tz = "UTC";
   }
   const quiet = form.get("quiet") === "on";
-  await q.run(
+  // As the person (B8): the database lets them write only their own row's alert columns (migration 0132).
+  const saved = await asPerson(u.actor_id, () => q.run(
     `UPDATE users SET notify_submissions = ?, digest_hour = ?, quiet_start = ?, quiet_end = ?, notify_alerts = ?, notify_product = ?, notify_marketing = ?,
        product_consent_at = CASE WHEN ? = 1 THEN COALESCE(product_consent_at, ?) ELSE NULL END,
        marketing_consent_at = CASE WHEN ? = 1 THEN COALESCE(marketing_consent_at, ?) ELSE NULL END, tz = ? WHERE id = ?`,
@@ -58,7 +59,8 @@ export async function updateNotifications(_: SettingsState, form: FormData): Pro
     now(),
     tz,
     u.id,
-  );
+  ));
+  if (!saved.changes) return { error: "Couldn't save your settings. Reload the page and try again." };
   await audit(u.id, "notifications_updated");
   done();
   return { ok: true };
@@ -82,6 +84,8 @@ export async function updateSettings(_: SettingsState, form: FormData): Promise<
   const firstName = String(form.get("first_name") || "").trim().slice(0, 60);
   const lastName = String(form.get("last_name") || "").trim().slice(0, 60);
   if (!firstName || !lastName) return { error: "Add your first name and surname." };
+  // The link name stays the app's on purpose: it checks and frees names across everyone (handle_history, protected and
+  // released names), which the person's rules can't see.
   const problem = await changeHandle(u.id, handle);
   if (problem) return { error: problem };
   const picked = form.get("kind");
@@ -94,10 +98,12 @@ export async function updateSettings(_: SettingsState, form: FormData): Promise<
     if (v === "on" || v === "off") chosen[t] = v === "on";
   }
   const tools = TOOL_IDS.some((t) => t in chosen) ? toolOverrides(kind, chosen) : u.tools;
-  await q.run(
-    "UPDATE users SET name = ?, first_name = ?, last_name = ?, kind = ?, kind_note = ?, tools = ? WHERE id = ?",
-    name, firstName, lastName, kind, kindNote, tools, u.id,
+  // As the person (B8): only their own row, only these columns.
+  const saved = await asPerson(u.actor_id, () =>
+    q.run("UPDATE users SET name = ?, first_name = ?, last_name = ?, kind = ?, kind_note = ?, tools = ? WHERE id = ?", name, firstName, lastName, kind, kindNote, tools, u.id),
   );
+  if (!saved.changes) return { error: "Couldn't save your settings. Reload the page and try again." };
+  // Clearing the Verified mark writes identity columns, which are never the person's to write: the app does it.
   if (name !== u.name) await resetVerified(q, u.id);
   if (name !== u.name || handle !== u.handle) await audit(u.id, "settings_updated", handle !== u.handle ? `link is now /${handle}` : name);
   done();
@@ -120,7 +126,9 @@ export async function updatePublicPage(_: SettingsState, form: FormData): Promis
   }
   if (links.length > MAX_LINKS) return { error: `Up to ${MAX_LINKS} profiles.` };
   const parsed = { links };
-  await q.run("UPDATE users SET page_style = ?, role_line = ?, links = ? WHERE id = ?", style, role, JSON.stringify(parsed.links), u.id);
+  // The app's on purpose (B8, Safety 5 Nov): a team admin edits the desk owner's row, and a database rule for that can't be
+  // limited to these columns. requireRole("admin") gates it; a narrow database function per admin action comes next.
+  await asSystem(() => q.run("UPDATE users SET page_style = ?, role_line = ?, links = ? WHERE id = ?", style, role, JSON.stringify(parsed.links), u.id));
   const addresses = (l: ProfileLink[]) => l.map((x) => x.url).sort().join(" ");
   if (addresses(parsed.links) !== addresses(readLinks(u.links))) await resetVerified(q, u.id);
   await audit(u.id, "page_updated", style === "stage" ? "Stage style" : "Classic style");
@@ -276,7 +284,8 @@ export async function withdrawPlanRequest() {
 /** Settings → Receiving: when a callout's closing date passes, move the link to the newest open collection (off by default). */
 export async function setRerouteClosed(on: boolean) {
   const u = await requireRole("admin");
-  await q.run("UPDATE users SET reroute_closed = ? WHERE id = ?", on ? 1 : 0, u.id);
+  // The app's on purpose, like updatePublicPage: an admin writes the desk owner's row (B8, Safety 5 Nov).
+  await asSystem(() => q.run("UPDATE users SET reroute_closed = ? WHERE id = ?", on ? 1 : 0, u.id));
   await audit(u.id, "settings_updated", on ? "link moves to an open collection when a callout closes" : "link stays put when a callout closes");
   done();
 }
