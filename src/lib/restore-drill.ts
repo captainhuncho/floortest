@@ -75,6 +75,19 @@ const identities = (db: Queryable) =>
       WHERE table_schema = 'public' AND (is_identity = 'YES' OR column_default LIKE 'nextval(%')`,
   );
 
+/** The triggers that stamp times on insert or update, which a restore must turn off while loading. */
+export const STAMP_TRIGGERS = [
+  { tbl: "users", name: "users_consent_times" },
+  { tbl: "users", name: "users_consent_times_insert" },
+  { tbl: "plan_requests", name: "plan_requests_created_at" },
+] as const;
+const stampTriggers = async (db: Queryable) => {
+  const have = await db.all<{ tbl: string; name: string }>(
+    "SELECT c.relname AS tbl, t.tgname AS name FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public'",
+  );
+  return STAMP_TRIGGERS.filter((s) => have.some((h) => h.tbl === s.tbl && h.name === s.name));
+};
+
 /**
  * Migrates the empty database (recording schema_migrations), then loads every table in one transaction with the foreign
  * keys checked once at the end, as a real restore must (rows arrive in any order). Identity sequences are moved past the
@@ -85,11 +98,11 @@ export async function restoreInto(db: Db, dump: Dump) {
   await migrate(db);
   const fks = await foreignKeys(db);
   const present = new Set((await db.all<{ t: string }>("SELECT table_name AS t FROM information_schema.tables WHERE table_schema = 'public'")).map((r) => r.t));
-  // The consent-time triggers (migrations 0134, 0137) stamp "now" on every insert; a restore must keep the times the
-  // backup holds, which are the legal record. They're off while loading, inside the transaction, and back on after.
-  const consentTriggers = (await db.all<{ name: string }>("SELECT tgname AS name FROM pg_trigger WHERE tgrelid = 'public.users'::regclass AND tgname IN ('users_consent_times', 'users_consent_times_insert')")).map((r) => r.name);
+  // Triggers that stamp "now" (consent times, migrations 0134 and 0137; a plan request's time, 0137) would overwrite what
+  // the backup holds; consent times are a legal record. They're off while loading, inside the transaction, and back on.
+  const stampers = await stampTriggers(db);
   await db.tx(async (t) => {
-    for (const name of consentTriggers) await t.run(`ALTER TABLE users DISABLE TRIGGER ${ident(name)}`);
+    for (const s of stampers) await t.run(`ALTER TABLE ${ident(s.tbl)} DISABLE TRIGGER ${ident(s.name)}`);
     for (const f of fks) await t.run(`ALTER TABLE ${ident(f.child)} ALTER CONSTRAINT ${ident(f.name)} DEFERRABLE INITIALLY DEFERRED`);
     for (const [table, rows] of Object.entries(dump.tables)) {
       if (!present.has(table)) throw new Error(`The backup has a table the schema doesn't: ${table}`);
@@ -104,7 +117,7 @@ export async function restoreInto(db: Db, dump: Dump) {
     // Every foreign key checked here, inside the transaction, so a broken backup fails loudly and nothing is kept.
     await t.run("SET CONSTRAINTS ALL IMMEDIATE");
     for (const f of fks) await t.run(`ALTER TABLE ${ident(f.child)} ALTER CONSTRAINT ${ident(f.name)} NOT DEFERRABLE`);
-    for (const name of consentTriggers) await t.run(`ALTER TABLE users ENABLE TRIGGER ${ident(name)}`);
+    for (const s of stampers) await t.run(`ALTER TABLE ${ident(s.tbl)} ENABLE TRIGGER ${ident(s.name)}`);
   });
   // Consent times as the backup holds them: each restored user's two times must equal the dump's.
   const consentDiffer: number[] = [];

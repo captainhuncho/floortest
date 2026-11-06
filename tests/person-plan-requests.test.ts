@@ -83,7 +83,7 @@ test("the plan pages and actions read and write requests as the person, and role
   };
   assert.match(body("requestPlan"), /requireRole\("owner"\)/);
   assert.match(body("requestPlan"), /asPerson\(u\.actor_id, \(\) =>\s*q\.tx\(async \(db\) => \{\s*await db\.run\("UPDATE plan_requests/);
-  assert.match(body("requestPlan"), /code === "23505"\) redirect\("\/dashboard\/plans\?requested=1"\)/, "a racing second submit lands as already requested");
+  assert.match(body("requestPlan"), /err\?\.code === "23505" && \(err\.constraint_name \?\? err\.constraint\) === "plan_requests_one_pending"\) redirect\("\/dashboard\/plans\?requested=1"\)/, "only the one-pending race lands as already requested");
   assert.doesNotMatch(body("requestPlan"), /INSERT INTO plan_requests \([^)]*created_at/, "the database stamps the time");
   assert.match(body("withdrawPlanRequest"), /requireRole\("owner"\)/);
   assert.match(body("withdrawPlanRequest"), /pendingRequest\(u\.id, u\.actor_id\)/);
@@ -93,15 +93,32 @@ test("the plan pages and actions read and write requests as the person, and role
   assert.doesNotMatch(fs.readFileSync("src/lib/plan-requests.ts", "utf8"), /SELECT \*/, "named columns only");
 });
 
-test("a request's time is the database's: the person can't back-date one up ops' queue", async () => {
+test("a request's time is the database's for the person: a sent time is ignored, so it can't be back-dated, and older code still works", async () => {
   const { q, asPerson } = await import("../src/lib/db");
   const { user } = await people();
   const me = await user("timeplan");
-  await assert.rejects(asPerson(me, () => q.run("INSERT INTO plan_requests (user_id, plan, kind, created_at) VALUES (?, 'pro', 'artist', 1)", me)), /permission denied/i);
   const before = Date.now();
-  await asPerson(me, () => q.run(FILE, me, "pro", "artist", "", "", "", ""));
+  // The build before this one sends created_at as the person: still allowed, and the database's time wins.
+  await asPerson(me, () => q.run("INSERT INTO plan_requests (user_id, plan, kind, created_at) VALUES (?, 'pro', 'artist', 1)", me));
   const t = (await q.get<{ t: number }>("SELECT created_at AS t FROM plan_requests WHERE user_id = ?", me))!.t;
-  assert.ok(t >= before - 1000 && t <= Date.now() + 1000, `stamped now: ${t}`);
+  assert.ok(t >= before - 1000 && t <= Date.now() + 1000, `stamped now, not 1: ${t}`);
+  // The app's own connection (seeds, tests, restores) may still set a time; left out, the database stamps it.
+  await q.run("UPDATE plan_requests SET status = 'withdrawn' WHERE user_id = ?", me);
+  await q.run("INSERT INTO plan_requests (user_id, plan, kind, created_at) VALUES (?, 'pro', 'artist', 5)", me);
+  assert.equal((await q.get<{ t: number }>("SELECT min(created_at) AS t FROM plan_requests WHERE user_id = ?", me))!.t, 5);
+  await q.run("UPDATE plan_requests SET status = 'withdrawn' WHERE user_id = ?", me);
+  await q.run("INSERT INTO plan_requests (user_id, plan, kind) VALUES (?, 'pro', 'artist')", me);
+  assert.ok((await q.get<{ t: number }>("SELECT max(created_at) AS t FROM plan_requests WHERE user_id = ?", me))!.t > 1_000_000_000_000);
+});
+
+test("a second waiting request is refused by the one-pending rule, and the error names it", async () => {
+  const { q } = await import("../src/lib/db");
+  const { user } = await people();
+  const me = await user("dupeplan");
+  await q.run("INSERT INTO plan_requests (user_id, plan, kind) VALUES (?, 'pro', 'artist')", me);
+  const err = await q.run("INSERT INTO plan_requests (user_id, plan, kind) VALUES (?, 'pro', 'artist')", me).then(() => null, (e) => e as { code?: string; constraint_name?: string; constraint?: string });
+  assert.equal(err?.code, "23505");
+  assert.equal(err?.constraint_name ?? err?.constraint, "plan_requests_one_pending");
 });
 
 test("withdrawing and filing again happen together, so a quick second submit leaves one waiting request", async () => {

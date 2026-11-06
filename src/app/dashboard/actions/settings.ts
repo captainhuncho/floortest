@@ -260,7 +260,8 @@ export async function requestPlan(form: FormData) {
     );
   } catch (e) {
     // Two submits at the same moment: the other one is already waiting (plan_requests_one_pending), so this one is done.
-    if ((e as { code?: string })?.code === "23505") redirect("/dashboard/plans?requested=1");
+    const err = e as { code?: string; constraint_name?: string; constraint?: string };
+    if (err?.code === "23505" && (err.constraint_name ?? err.constraint) === "plan_requests_one_pending") redirect("/dashboard/plans?requested=1");
     throw e;
   }
   await audit(u.id, "plan_requested", next.name);
