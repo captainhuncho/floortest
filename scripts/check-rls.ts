@@ -66,6 +66,28 @@ async function main() {
         and (has_column_privilege('ft_person', c.oid, a.attnum, 'UPDATE') or has_column_privilege('ft_person', c.oid, a.attnum, 'INSERT'))
       order by 1`,
   );
+  // plan_requests (Safety review of #453): the person files and withdraws, ops decides. The person may never change a
+  // decision, the plan asked for, whose it is or its time, nor file one already decided or with its own time.
+  const { rows: lockedRequests } = await pg.query<{ name: string }>(
+    `select a.attname || ' (' || p.priv || ')' as name
+       from pg_attribute a join pg_class c on c.oid = a.attrelid join pg_namespace n on n.oid = c.relnamespace
+       cross join (values ('UPDATE'), ('INSERT')) p(priv)
+      where n.nspname = 'public' and c.relname = 'plan_requests' and a.attnum > 0 and not a.attisdropped
+        and ((p.priv = 'UPDATE' and a.attname ~ '^(granted_plan|decided_.*|decision_note|plan|user_id|created_at|kind|org|link|volume|note)$')
+          or (p.priv = 'INSERT' and a.attname ~ '^(granted_plan|decided_.*|decision_note|status)$'))
+        and has_column_privilege('ft_person', c.oid, a.attnum, p.priv)
+      order by 1`,
+  );
+  // Times set only by the database (migrations 0134 and 0137): each stamping trigger must exist on its table, be on in
+  // normal sessions ('O' or 'A'), fire BEFORE, per ROW, on its event, with no WHEN condition, and call the public
+  // function. A plan request's time is stamped on insert (the person may still send one; it's ignored).
+  const { rows: stampers } = await pg.query<{ name: string }>(
+    `select t.tgname as name from pg_trigger t join pg_class c on c.oid = t.tgrelid join pg_proc f on f.oid = t.tgfoid join pg_namespace fn on fn.oid = f.pronamespace
+      where t.tgenabled in ('O', 'A') and (t.tgtype & 1) = 1 and (t.tgtype & 2) = 2 and t.tgqual is null and fn.nspname = 'public'
+        and ((c.relname = 'users' and t.tgname = 'users_consent_times_insert' and (t.tgtype & 4) = 4 and f.proname = 'ft_consent_times')
+          or (c.relname = 'users' and t.tgname = 'users_consent_times' and (t.tgtype & 16) = 16 and f.proname = 'ft_consent_times')
+          or (c.relname = 'plan_requests' and t.tgname = 'plan_requests_created_at' and (t.tgtype & 4) = 4 and f.proname = 'ft_stamp_created_at'))`,
+  );
   // A table ft_person may add rows to must let it draw the row's id: identity columns need nothing more, a plain
   // sequence needs usage (migration 0118), or the insert fails only when that path first runs as the person.
   const { rows: sequences } = await pg.query<{ name: string }>(
@@ -98,6 +120,15 @@ async function main() {
   if (lockedUsers.length) {
     console.error(`ft_person may write users column(s) that are never the person's: ${lockedUsers.map((r) => r.name).join(", ")}.`);
     console.error("Only the app sets these (migrations 0132 and 0134).");
+    process.exit(1);
+  }
+  if (lockedRequests.length) {
+    console.error(`ft_person may write plan_requests column(s) that are ops': ${lockedRequests.map((r) => r.name).join(", ")}.`);
+    process.exit(1);
+  }
+  if (stampers.length !== 3) {
+    const missing = ["users_consent_times", "users_consent_times_insert", "plan_requests_created_at"].filter((n) => !stampers.some((r) => r.name === n));
+    console.error(`Time-stamping trigger(s) missing, off, or not as they must be (BEFORE, ROW, their event, no WHEN, public function): ${missing.join(", ")} (migrations 0134, 0137).`);
     process.exit(1);
   }
   if (sequences.length) {

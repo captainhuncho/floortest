@@ -24,7 +24,7 @@ delete process.env.BACKUP_BUCKET;
 
 // The real practice restore (Safety, 4 Nov): the app's own nightly backup, restored into a second, empty database
 // with scripts/restore-drill-pg.ts's restore and checks. Production runs it into a new Neon branch.
-async function seededBackup() {
+async function makeBackup() {
   const { q } = await import("../src/lib/db");
   const { storage } = await import("../src/lib/storage");
   const { runBackup } = await import("../src/lib/backup");
@@ -53,6 +53,10 @@ async function seededBackup() {
   const file = Buffer.from(await new Response((await store.stream(key)).body).arrayBuffer());
   return { key, dump: JSON.parse(gunzipSync(openBackup(file, process.env.BACKUP_KEY!)).toString()) };
 }
+
+// Made once and shared: the seed users can only be inserted once into this test's database.
+let backup: ReturnType<typeof makeBackup> | undefined;
+const seededBackup = () => (backup ??= makeBackup()).then((b) => ({ key: b.key, dump: structuredClone(b.dump) }));
 
 test("the nightly backup restores into an empty database and every check passes", async () => {
   const { openPglite } = await import("../src/lib/db/client");
@@ -141,4 +145,29 @@ test("the drill refuses production settings, an unnamed production endpoint and 
   assert.match(src, /--confirm-drill/);
   assert.match(src, /hidden\(/, "keys are typed hidden");
   assert.doesNotMatch(src, /proud-bar/);
+});
+
+test("a restore keeps consent times exactly as the backup holds them, and the check says so", async () => {
+  const { openPglite } = await import("../src/lib/db/client");
+  const { restoreInto, checkRestore } = await import("../src/lib/restore-drill");
+  const { dump } = await seededBackup();
+  // Times from long ago, as a real backup would hold: the triggers that stamp "now" must not touch them on restore.
+  const users = dump.tables.users as Record<string, unknown>[];
+  users[0] = { ...users[0], notify_product: 1, product_consent_at: 12345, notify_marketing: 1, marketing_consent_at: 23456 };
+  users[1] = { ...users[1], notify_product: 1, product_consent_at: 1500, notify_marketing: 0, marketing_consent_at: null };
+  const target = await openPglite(emptyDir("ft-restore-consent-"));
+  try {
+    const restored = await restoreInto(target, dump);
+    const got = await target.all<{ id: number; p: number | null; m: number | null }>("SELECT id, product_consent_at AS p, marketing_consent_at AS m FROM users ORDER BY id");
+    const want = users.map((u) => ({ id: Number(u.id), p: u.product_consent_at === null ? null : Number(u.product_consent_at), m: u.marketing_consent_at === null || u.marketing_consent_at === undefined ? null : Number(u.marketing_consent_at) }));
+    assert.deepEqual(got.map((r) => ({ id: Number(r.id), p: r.p === null ? null : Number(r.p), m: r.m === null ? null : Number(r.m) })), want);
+    const checks = await checkRestore(target, restored, { vaultHead: async () => ({ size: 1 }) });
+    const consent = checks.find((c) => c.name === "Consent times")!;
+    assert.ok(consent.ok, consent.detail);
+    // And the triggers are back on afterwards: a new sign-up gets the database's time.
+    const fresh = await target.get<{ p: number }>("INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at, notify_product, product_consent_at) VALUES ('after@x.io','h','A','drillafter','pro','UTC',1,1,7) RETURNING product_consent_at AS p");
+    assert.ok(Number(fresh!.p) > 1_000_000_000_000, "triggers re-enabled");
+  } finally {
+    await target.close();
+  }
 });

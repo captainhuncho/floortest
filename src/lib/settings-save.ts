@@ -1,5 +1,6 @@
 import "server-only";
 import { asPerson, q } from "@/lib/db";
+import { recordIncident } from "@/lib/incidents";
 
 /**
  * The owner's own Settings saves (B8, Backend slice 1): run as the person, so the database allows only the owner's own
@@ -28,16 +29,33 @@ export type Alerts = {
  * given, cleared when taken back.
  */
 export async function saveAlerts(person: number, desk: number, a: Alerts): Promise<string | null> {
-  const r = await asPerson(person, () =>
-    q.run(ALERTS_SQL, a.mode, a.digestHour, a.quietStart, a.quietEnd, a.alerts ? 1 : 0, a.product ? 1 : 0, a.marketing ? 1 : 0, a.tz, desk),
+  return guarded("alerts", () =>
+    asPerson(person, () => q.run(ALERTS_SQL, a.mode, a.digestHour, a.quietStart, a.quietEnd, a.alerts ? 1 : 0, a.product ? 1 : 0, a.marketing ? 1 : 0, a.tz, desk)),
   );
-  return r.changes ? null : NOT_SAVED;
+}
+
+/**
+ * Runs a save and turns any failure into the message to show, never an error page: a refused write (as after a rollback
+ * to code that writes a column the person role no longer may) is logged for ops as an incident (Desk's gate note, 6 Nov).
+ */
+async function guarded(what: string, save: () => Promise<{ changes: number }>): Promise<string | null> {
+  try {
+    return (await save()).changes ? null : NOT_SAVED;
+  } catch (e) {
+    // A redirect or notFound from Next.js passes through (their errors carry a digest starting NEXT_).
+    const digest = (e as { digest?: unknown })?.digest;
+    if (typeof digest === "string" && digest.startsWith("NEXT_")) throw e;
+    await recordIncident("server_error", `A Settings ${what} save failed`, String((e as Error)?.message ?? e).slice(0, 200)).catch(() => {});
+    return NOT_SAVED;
+  }
 }
 
 export type Profile = { name: string; firstName: string; lastName: string; kind: string | null; kindNote: string; tools: string | null };
 
 /** Saves the profile fields; null when saved, else the message to show. */
 export async function saveProfile(person: number, desk: number, p: Profile): Promise<string | null> {
-  const r = await asPerson(person, () => q.run(PROFILE_SQL, p.name, p.firstName, p.lastName, p.kind, p.kindNote, p.tools, desk));
-  return r.changes ? null : NOT_SAVED;
+  return guarded("profile", () => asPerson(person, () => q.run(PROFILE_SQL, p.name, p.firstName, p.lastName, p.kind, p.kindNote, p.tools, desk)));
 }
+
+/** For tests only: the same guard the saves use. */
+export const guardedForTest = guarded;

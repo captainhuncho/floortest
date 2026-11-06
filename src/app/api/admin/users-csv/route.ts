@@ -29,7 +29,7 @@ export async function GET(req: Request) {
   const day = (t: number | null) => (t ? new Date(t).toISOString().slice(0, 10) : "");
   const lines = [
     ["First name", "Surname", "Public name", "Link", "Email", "Type", "Plan", "Tags", "Newsletter", "Offers", "Joined", "Last active"],
-    ...rows.map((r) => [r.first_name, r.last_name, r.name, r.handle, r.email, KIND_LABEL[r.kind ?? ""] ?? "", r.plan, r.admin_tags, r.notify_product ? "yes" : "no", r.notify_marketing ? "yes" : "no", day(r.created_at), day(r.last_active_at)]),
+    ...rows.map((r) => [r.first_name, r.last_name, r.name, r.handle, r.email, KIND_LABEL[r.kind ?? ""] ?? "", r.plan, r.admin_tags, r.notify_product === 1 ? "yes" : "no", r.notify_marketing === 1 ? "yes" : "no", day(r.created_at), day(r.last_active_at)]),
   ].map((l) => l.map(csvCell).join(","));
   const filters = picked ? `${picked.length} picked` : [describeAudience(aud), security && SECURITY[security], search && `search “${search}”`].filter(Boolean).join(" · ");
   await logAdmin(a.id, "exported users", filters, `${rows.length} rows`);

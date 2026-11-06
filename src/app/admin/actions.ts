@@ -1294,8 +1294,8 @@ export async function setOpsMemberDisabled(userId: number, disabled: boolean) {
 /* Plan requests (beta): people ask for Pro or Team; ops gives the plan that fits who they are. */
 
 async function openRequest(id: number) {
-  return q.get<PlanRequest & { email: string; handle: string; name: string; current: string }>(
-    "SELECT r.*, u.email, u.handle, u.name, u.plan AS current FROM plan_requests r JOIN users u ON u.id = r.user_id WHERE r.id = ? AND r.status = 'pending'",
+  return q.get<Pick<PlanRequest, "id" | "user_id" | "plan" | "status"> & { email: string; handle: string; name: string; current: string }>(
+    "SELECT r.id, r.user_id, r.plan, r.status, u.email, u.handle, u.name, u.plan AS current FROM plan_requests r JOIN users u ON u.id = r.user_id WHERE r.id = ? AND r.status = 'pending'",
     id,
   );
 }

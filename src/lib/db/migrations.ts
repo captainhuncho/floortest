@@ -2181,4 +2181,21 @@ alter table outbox add column if not exists delivery_detail text not null defaul
     sql: `alter table users add column if not exists tour_seen_at bigint;
 update users set tour_seen_at = (extract(epoch from now()) * 1000)::bigint where tour_seen_at is null;`,
   },
+  {
+    // Per-person rules, follow-ups from Safety's reviews of #453 and #459 (6 Nov). A plan request's time is the database's,
+    // so a person can't back-date one up ops' queue: a BEFORE INSERT trigger stamps created_at and ignores any value the
+    // person sends (the app's own connection, which seeds, tests and restores, may still set it).
+    // The insert grant on created_at stays, so code that still sends it (the build before this one, during a deploy or
+    // after a rollback) keeps working. Consent times come only from the database at sign-up too: the consent trigger also
+    // runs on INSERT (a time only when the choice is yes). Functions stay on one line: the migration runner splits
+    // statements at a semicolon and newline.
+    id: "0137_person_followups",
+    sql: `alter table plan_requests alter column created_at set default ((extract(epoch from clock_timestamp()) * 1000)::bigint);
+create or replace function ft_stamp_created_at() returns trigger language plpgsql set search_path = public as $$ begin if current_user = 'ft_person' or new.created_at is null then new.created_at := (extract(epoch from clock_timestamp()) * 1000)::bigint; end if; return new; end $$;
+drop trigger if exists plan_requests_created_at on plan_requests;
+create trigger plan_requests_created_at before insert on plan_requests for each row execute function ft_stamp_created_at();
+create or replace function ft_consent_times() returns trigger language plpgsql set search_path = public as $$ begin if tg_op = 'INSERT' then new.product_consent_at := case when new.notify_product = 1 then (extract(epoch from clock_timestamp()) * 1000)::bigint end; new.marketing_consent_at := case when new.notify_marketing = 1 then (extract(epoch from clock_timestamp()) * 1000)::bigint end; return new; end if; new.product_consent_at := case when new.notify_product = 1 then case when old.notify_product = 1 then coalesce(old.product_consent_at, (extract(epoch from clock_timestamp()) * 1000)::bigint) else (extract(epoch from clock_timestamp()) * 1000)::bigint end end; new.marketing_consent_at := case when new.notify_marketing = 1 then case when old.notify_marketing = 1 then coalesce(old.marketing_consent_at, (extract(epoch from clock_timestamp()) * 1000)::bigint) else (extract(epoch from clock_timestamp()) * 1000)::bigint end end; return new; end $$;
+drop trigger if exists users_consent_times_insert on users;
+create trigger users_consent_times_insert before insert on users for each row execute function ft_consent_times();`,
+  },
 ];
