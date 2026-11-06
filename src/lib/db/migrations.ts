@@ -2145,22 +2145,23 @@ revoke update (cover_key, active_collection_id) on users from ft_person;`,
     sql: `grant select (id, user_id, plan, status, created_at) on plan_requests to ft_person;
 grant insert (user_id, plan, kind, org, link, volume, note, created_at) on plan_requests to ft_person;
 grant update (status) on plan_requests to ft_person;
-do $$ begin execute format('grant usage on sequence %s to ft_person', pg_get_serial_sequence('plan_requests', 'id')); end $$;
 create policy person_plan_requests_read on plan_requests for select to ft_person using (user_id = ft_person_id());
 create policy person_plan_requests_file on plan_requests for insert to ft_person with check (user_id = ft_person_id() and status = 'pending');
 create policy person_plan_requests_withdraw on plan_requests for update to ft_person using (user_id = ft_person_id() and status = 'pending') with check (user_id = ft_person_id() and status = 'withdrawn');`,
   },
   {
-    // Per-person rules, Settings follow-ups (Safety review of #448, 5 Nov). Consent times are a legal record, so the
-    // database sets them in the same statement that changes the choice: kept from before while still given, set now when
-    // newly given, cleared when taken back. Two saves racing can no longer bring back an old time. And the public page and
-    // pause fields go back to the app only: no person path writes them, and writing links as the person would skip the
-    // Verified reset (scripts/check-rls.ts now fails if any of these come back).
+    // Per-person rules, Settings follow-ups (Safety reviews of #448 and #453, 5–6 Nov). Consent times are a legal record,
+    // so only the database sets them, in the same statement that changes the choice: kept while consent was already given,
+    // set now when it's newly given, cleared when taken back. Any time a statement tries to write itself is ignored (the
+    // trigger also fires on the time columns), whoever writes it, and the person role can't write the time columns at
+    // all. Two saves racing can no longer bring back an old time. The public page and pause fields go back to the app
+    // only: no person path writes them, and writing links as the person would skip the Verified reset
+    // (scripts/check-rls.ts fails if any of these come back).
     id: "0134_person_settings_followups",
     // The function stays on one line: the migration runner splits statements at a semicolon followed by a newline.
-    sql: `create or replace function ft_consent_times() returns trigger language plpgsql set search_path = public as $$ begin new.product_consent_at := case when new.notify_product = 1 then coalesce(old.product_consent_at, (extract(epoch from clock_timestamp()) * 1000)::bigint) end; new.marketing_consent_at := case when new.notify_marketing = 1 then coalesce(old.marketing_consent_at, (extract(epoch from clock_timestamp()) * 1000)::bigint) end; return new; end $$;
+    sql: `create or replace function ft_consent_times() returns trigger language plpgsql set search_path = public as $$ begin new.product_consent_at := case when new.notify_product = 1 then case when old.notify_product = 1 then coalesce(old.product_consent_at, (extract(epoch from clock_timestamp()) * 1000)::bigint) else (extract(epoch from clock_timestamp()) * 1000)::bigint end end; new.marketing_consent_at := case when new.notify_marketing = 1 then case when old.notify_marketing = 1 then coalesce(old.marketing_consent_at, (extract(epoch from clock_timestamp()) * 1000)::bigint) else (extract(epoch from clock_timestamp()) * 1000)::bigint end end; return new; end $$;
 drop trigger if exists users_consent_times on users;
-create trigger users_consent_times before update of notify_product, notify_marketing on users for each row execute function ft_consent_times();
-revoke update (links, role_line, page_style, paused_at, pause_until, pause_message) on users from ft_person;`,
+create trigger users_consent_times before update of notify_product, notify_marketing, product_consent_at, marketing_consent_at on users for each row execute function ft_consent_times();
+revoke update (product_consent_at, marketing_consent_at, links, role_line, page_style, paused_at, pause_until, pause_message) on users from ft_person;`,
   },
 ];

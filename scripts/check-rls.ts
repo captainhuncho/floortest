@@ -20,10 +20,11 @@ const SECRET_COLUMNS = "password|secret|recovery_codes|google_sub|totp_last_step
 const ALLOWED_SECRETS = new Set(["tracks.token_hash"]);
 /**
  * users columns ft_person may never change, even on its own row (Safety review of #448, 5 Nov): money, sign-in identity,
- * verification, the public cover's storage key, routing, and the public page and pause fields the app sets (writing
- * links as the person would skip the Verified reset). As a Postgres regular expression on the column name.
+ * verification, consent times (set only by the database), the public cover's storage key, routing, and the public page
+ * and pause fields the app sets (writing links as the person would skip the Verified reset). As a Postgres regular
+ * expression on the column name.
  */
-const USERS_NEVER_WRITABLE = "^(plan|email|handle|extra_seats|suspended_at|cover_key|active_collection_id|links|role_line|page_style|paused_at|pause_until|pause_message|identity_.*)$";
+const USERS_NEVER_WRITABLE = "^(plan|email|handle|extra_seats|suspended_at|cover_key|active_collection_id|links|role_line|page_style|paused_at|pause_until|pause_message|product_consent_at|marketing_consent_at|identity_.*)$";
 
 async function main() {
   const pg = await PGlite.create();

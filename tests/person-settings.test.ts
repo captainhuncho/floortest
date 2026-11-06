@@ -56,16 +56,34 @@ test("the owner saves their own alerts and profile as the person, through the ac
   assert.ok((await times())!.m! > first.m!, "a fresh time after giving it again");
 });
 
-test("the database sets consent times whoever writes the choice, so an old time can't come back", async () => {
-  const { q } = await import("../src/lib/db");
+test("only the database sets consent times: a written time is refused as the person and ignored from the app", async () => {
+  const { q, asPerson } = await import("../src/lib/db");
   const { user } = await setup();
   const me = await user("triggerset");
-  // Even a write that tries to set its own time (as the old code did) gets the database's.
+  const time = async () => (await q.get<{ t: number | null }>("SELECT marketing_consent_at AS t FROM users WHERE id = ?", me))!.t;
+  // As the person, the time columns can't be written at all.
+  await assert.rejects(asPerson(me, () => q.run("UPDATE users SET marketing_consent_at = 1 WHERE id = ?", me)), /permission denied/i);
+  await assert.rejects(asPerson(me, () => q.run("UPDATE users SET product_consent_at = 1 WHERE id = ?", me)), /permission denied/i);
+  // From the app's own connection: a time without consent doesn't stick, and with consent it's the database's own.
+  await q.run("UPDATE users SET marketing_consent_at = 12345 WHERE id = ?", me);
+  assert.equal(await time(), null, "no consent, no time");
   await q.run("UPDATE users SET notify_marketing = 1, marketing_consent_at = 1 WHERE id = ?", me);
-  const t = (await q.get<{ t: number }>("SELECT marketing_consent_at AS t FROM users WHERE id = ?", me))!.t;
-  assert.ok(t > 1_000_000_000_000, "not the time the statement tried to set");
-  await q.run("UPDATE users SET notify_marketing = 0, marketing_consent_at = 5 WHERE id = ?", me);
-  assert.equal((await q.get<{ t: number | null }>("SELECT marketing_consent_at AS t FROM users WHERE id = ?", me))!.t, null);
+  const given = (await time())!;
+  assert.ok(given > 1_000_000_000_000, "the database's time, not the statement's");
+  await q.run("UPDATE users SET marketing_consent_at = 12345 WHERE id = ?", me);
+  assert.equal(await time(), given, "a later forged time is ignored while consent stands");
+  // Taken back clears it, even if a stale time is pushed in afterwards; opting in again gives a fresh time.
+  await q.run("UPDATE users SET notify_marketing = 0 WHERE id = ?", me);
+  assert.equal(await time(), null);
+  await q.run("UPDATE users SET marketing_consent_at = 12345 WHERE id = ?", me);
+  assert.equal(await time(), null, "no stale time while withdrawn");
+  await new Promise((r) => setTimeout(r, 15));
+  await q.run("UPDATE users SET notify_marketing = 1 WHERE id = ?", me);
+  assert.ok((await time())! > given, "a fresh time on opting in again");
+  // Unsubscribing (src/lib/unsubscribe.ts) still ends at no consent and no time.
+  const { UNSUB_KINDS } = await import("../src/lib/unsubscribe");
+  await q.run(UNSUB_KINDS.marketing.sql, me);
+  assert.deepEqual(await q.get("SELECT notify_marketing, marketing_consent_at FROM users WHERE id = ?", me), { notify_marketing: 0, marketing_consent_at: null });
 });
 
 test("nobody else saves a desk's settings as the person, and the save says so instead of claiming success", async () => {
