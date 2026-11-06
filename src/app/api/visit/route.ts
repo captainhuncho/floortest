@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { isOpsHost } from "@/lib/consent";
 import { q } from "@/lib/db";
 import { env } from "@/lib/env";
-import { pageOf } from "@/lib/page-of";
+import { knownPage, pageOf } from "@/lib/page-of";
 import { allow, ipFrom } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
@@ -30,12 +30,6 @@ export const SOURCES_A_DAY = 200;
 const MAX_BODY = 2048;
 const BOT = /bot|crawl|spider|slurp|preview|headless|lighthouse|facebookexternalhit|embedly|curl|wget|python|node-fetch/i;
 const DEVICES = new Set(["phone", "tablet", "desktop"]);
-/** The first part of every page FloorTest serves (src/app, with the (auth) group's pages); anything else is /other. */
-const ROUTES = new Set([
-  "c", "coming-soon", "confirm-email", "contact", "content-rules", "cookies", "dashboard", "invite", "join", "law-enforcement",
-  "licenses", "newsletter", "pricing", "privacy", "privacy-choices", "receipt", "security", "sent", "subprocessors", "takedown",
-  "terms", "trust", "unsubscribe", "verify-email", "waitlist", "forgot", "login", "reset", "signed-out", "signup",
-]);
 const done = () => new NextResponse(null, { status: 204 });
 
 /**
@@ -51,7 +45,9 @@ export function sourceOf(ref: unknown, utm: unknown, ownHost: string) {
 }
 
 /** The rate-limit key for a connection: an IPv6 address by its /64 (one home or phone), an IPv4 address as it is. */
-export function connectionKey(ip: string) {
+export function connectionKey(raw: string) {
+  // An IPv4 address written the IPv6 way (::ffff:1.2.3.4) is still that IPv4 address.
+  const ip = raw.replace(/^::ffff:(?=\d+\.\d+\.\d+\.\d+$)/i, "");
   if (!ip.includes(":")) return ip;
   const [head, tail = ""] = ip.toLowerCase().split("::");
   const left = head ? head.split(":") : [];
@@ -77,15 +73,6 @@ async function readCapped(req: Request) {
     chunks.push(value);
   }
   return new TextDecoder().decode(Buffer.concat(chunks));
-}
-
-/** A page name from pageOf, kept only if it's one of our routes: later parts stay ids, keys or short lowercase words. */
-export function knownPage(page: string) {
-  if (page === "/" || page === "/:link") return page;
-  const [first, ...rest] = page.split("/").filter(Boolean);
-  if (!ROUTES.has(first)) return "/other";
-  const tail = rest.slice(0, 2).map((p) => (p === ":id" || p === ":token" || /^[a-z][a-z-]{0,23}$/.test(p) ? p : ":x"));
-  return "/" + [first, ...tail].join("/");
 }
 
 /** True only for a request our own pages sent: same-origin by Sec-Fetch-Site, or by Origin when that header is missing. */
@@ -120,13 +107,15 @@ export async function POST(req: Request) {
   if (!(await allow("visit_ip_day", ip, VIEWS_PER_IP_A_DAY, 86_400_000))) return done();
   if (!(await allow("visit_all", "all", VIEWS_A_DAY, 86_400_000))) return done();
   const kind = body.kind === "visit" ? "visit" : "view";
-  let page = knownPage(pageOf(body.path));
+  // The browser already sends pages reduced (src/lib/visit-beacon.ts); /other is one of them, never someone's link.
+  let page = body.path.toLowerCase() === "/other" ? "/other" : knownPage(pageOf(body.path));
   const country = (req.headers.get("x-vercel-ip-country") ?? "").trim().toUpperCase();
   const host = fullHost.split(":")[0];
   let source = kind === "visit" ? sourceOf(body.ref, body.utm, host) : "";
   const device = DEVICES.has(String(body.device)) ? String(body.device) : "";
   // A receiving link (/handle) is counted against its receiver, so Ops can see whose link gets visits.
-  const handle = page === "/:link" ? body.path.split(/[/?#]/)[1]?.toLowerCase() : "";
+  const named = page === "/:link" ? (body.path.split(/[/?#]/)[1]?.toLowerCase() ?? "") : "";
+  const handle = /^[a-z0-9][a-z0-9-_]{1,29}$/.test(named) ? named : "";
   const owner = handle ? ((await q.get<{ id: number }>("SELECT id FROM users WHERE handle = ? AND suspended_at IS NULL", handle))?.id ?? null) : null;
   const day = new Date().toISOString().slice(0, 10);
   // A day's list of pages and sources can't grow without end: once full, new values join /other and other.
