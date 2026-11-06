@@ -40,7 +40,7 @@ test("the email confirmation link is looked up by its hash", async () => {
   // Stored the way sendEmailVerification (src/lib/security.ts) stores it: the hash, never the link.
   const stored = hashToken("link-verify-1");
   assert.match(stored, SHA256_HEX);
-  await q.run("UPDATE users SET email_verify_token = ? WHERE id = ?", stored, me);
+  await q.run("UPDATE users SET email_verify_token = ?, email_verify_sent_at = ? WHERE id = ?", stored, Date.now(), me);
   assert.equal(await confirmEmail(stored, me), undefined, "the stored value is no use as a link");
   assert.deepEqual(await confirmEmail("link-verify-1", me), { id: me }, "the link itself confirms");
 });

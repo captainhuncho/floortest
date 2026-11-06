@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { liveInviteCode } from "@/lib/invites";
+import { liveInviteCode, personalInviteGone } from "@/lib/invites";
 import { allow, ipFrom } from "@/lib/ratelimit";
 import { GATE_COOKIE, gatePassword, gateToken } from "@/lib/site-gate";
 
@@ -12,15 +12,21 @@ const INVITE_PASS_SECONDS = 86_400;
 /**
  * A beta invite link. While the site is behind the coming-soon password, a live personal invite counts as the pass
  * (like a team invite or signing in), so the invited person reaches sign-up; anything else gets the coming-soon page.
- * The proxy sends old-style links (/signup?invite=CODE) here too. Other query values (handle) ride along.
+ * The proxy sends old-style links (/signup?invite=CODE) here too. Other query values (handle) ride along. A personal
+ * invite that was used, expired or revoked goes to /invite/used, gate or not, never to a form that looks live (owner,
+ * 5 Nov).
  */
 export async function GET(req: Request, ctx: RouteContext<"/invite/[code]">) {
   const { code } = await ctx.params;
   const signup = new URL("/signup", req.url);
   new URL(req.url).searchParams.forEach((v, k) => k !== "invite" && signup.searchParams.set(k, v));
   signup.searchParams.set("invite", code);
-  if (!gatePassword()) return NextResponse.redirect(signup);
-  const open = (await allow("invite-gate", ipFrom(req.headers), TRIES, WINDOW_MS)) && (await liveInviteCode(code));
+  // Counted before any lookup, gate or not, so codes can't be tried quickly here.
+  const tryOk = await allow("invite-gate", ipFrom(req.headers), TRIES, WINDOW_MS);
+  if (!gatePassword()) return NextResponse.redirect(tryOk && (await personalInviteGone(code)) ? new URL("/invite/used", req.url) : signup);
+  if (!tryOk) return NextResponse.redirect(new URL("/coming-soon", req.url));
+  if (await personalInviteGone(code)) return NextResponse.redirect(new URL("/invite/used", req.url));
+  const open = await liveInviteCode(code);
   if (!open) return NextResponse.redirect(new URL("/coming-soon", req.url));
   const res = NextResponse.redirect(signup);
   res.cookies.set(GATE_COOKIE, gateToken(), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: INVITE_PASS_SECONDS });
