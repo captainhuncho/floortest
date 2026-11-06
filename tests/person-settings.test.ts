@@ -10,78 +10,76 @@ delete process.env.DATABASE_URL;
 
 const SOURCE = "src/app/dashboard/actions/settings.ts";
 
-// The writes Settings makes for the owner's own row (src/app/dashboard/actions/settings.ts), as the person.
-const NOTIFY =
-  "UPDATE users SET notify_submissions = ?, digest_hour = ?, quiet_start = ?, quiet_end = ?, notify_alerts = ?, notify_product = ?, notify_marketing = ?, product_consent_at = ?, marketing_consent_at = ?, tz = ? WHERE id = ?";
-const PROFILE = "UPDATE users SET name = ?, first_name = ?, last_name = ?, kind = ?, kind_note = ?, tools = ? WHERE id = ?";
-
 async function setup() {
   const { q } = await import("../src/lib/db");
   const now = Date.now();
-  const user = async (handle: string, suspended = false) =>
+  const user = async (handle: string) =>
     (await q.get<{ id: number }>(
-      "INSERT INTO users (email, password_hash, name, handle, plan, tz, email_verified_at, created_at, suspended_at) VALUES (?, 'h', ?, ?, 'team', 'UTC', ?, ?, ?) RETURNING id",
-      `${handle}@settings.io`, handle, handle, now, now, suspended ? now : null,
+      "INSERT INTO users (email, password_hash, name, handle, plan, tz, email_verified_at, created_at) VALUES (?, 'h', ?, ?, 'team', 'UTC', ?, ?) RETURNING id",
+      `${handle}@settings.io`, handle, handle, now, now,
     ))!.id;
   return { q, now, user };
 }
 
-test("the owner saves their own alerts and profile as the person, and only their own", async () => {
-  const { q, asPerson } = await import("../src/lib/db");
+const ALERTS = { mode: "instant", digestHour: 8, quietStart: null, quietEnd: null, alerts: true, product: true, marketing: false, tz: "Europe/London" } as const;
+const PROFILE = { name: "New Name", firstName: "New", lastName: "Name", kind: "label", kindNote: "", tools: "{}" };
+
+test("the owner saves their own alerts and profile as the person, through the action's own statements", async () => {
+  const { q } = await import("../src/lib/db");
+  const { saveAlerts, saveProfile } = await import("../src/lib/settings-save");
   const { now, user } = await setup();
   const label = await user("labelset");
-  const admin = await user("adminset"); // an admin on the label's team, not its owner
+  assert.equal(await saveAlerts(label, label, ALERTS, now), null, "alerts saved");
+  assert.equal(await saveProfile(label, label, PROFILE), null, "profile saved");
+  const row = await q.get<{ notify_submissions: string; digest_hour: number; tz: string; name: string; notify_product: number; product_consent_at: number | null; marketing_consent_at: number | null }>(
+    "SELECT notify_submissions, digest_hour, tz, name, notify_product, product_consent_at, marketing_consent_at FROM users WHERE id = ?",
+    label,
+  );
+  assert.deepEqual(row, { notify_submissions: "instant", digest_hour: 8, tz: "Europe/London", name: "New Name", notify_product: 1, product_consent_at: now, marketing_consent_at: null });
+  // A consent keeps its first time while still given, and clears when taken back.
+  assert.equal(await saveAlerts(label, label, ALERTS, now + 60_000), null);
+  assert.equal((await q.get<{ t: number }>("SELECT product_consent_at AS t FROM users WHERE id = ?", label))!.t, now);
+  assert.equal(await saveAlerts(label, label, { ...ALERTS, product: false, marketing: true }, now + 120_000), null);
+  assert.deepEqual(await q.get("SELECT product_consent_at, marketing_consent_at FROM users WHERE id = ?", label), { product_consent_at: null, marketing_consent_at: now + 120_000 });
+});
+
+test("nobody else saves a desk's settings as the person, and the save says so instead of claiming success", async () => {
+  const { q } = await import("../src/lib/db");
+  const { saveAlerts, saveProfile, NOT_SAVED } = await import("../src/lib/settings-save");
+  const { now, user } = await setup();
+  const label = await user("deskset");
+  const admin = await user("adminset"); // an admin on the label's team, not its owner: owner-only stays owner-only
   const member = await user("memberset");
   const stranger = await user("strangerset");
   await q.run("INSERT INTO account_members (account_id, user_id, role, created_at) VALUES (?, ?, 'admin', ?), (?, ?, 'member', ?)", label, admin, now, label, member, now);
-  const notify = (actor: number, row: number) => asPerson(actor, () => q.run(NOTIFY, "instant", 8, null, null, 1, 1, 0, now, null, "Europe/London", row));
-  const profile = (actor: number, row: number) => asPerson(actor, () => q.run(PROFILE, "New Name", "New", "Name", "label", "", "{}", row));
-
-  assert.equal((await notify(label, label)).changes, 1, "the owner saves their own alerts");
-  assert.equal((await profile(label, label)).changes, 1, "and their own profile");
-  const row = await q.get<{ notify_submissions: string; digest_hour: number; tz: string; name: string; product_consent_at: number | null }>(
-    "SELECT notify_submissions, digest_hour, tz, name, product_consent_at FROM users WHERE id = ?",
-    label,
-  );
-  assert.deepEqual(row, { notify_submissions: "instant", digest_hour: 8, tz: "Europe/London", name: "New Name", product_consent_at: now });
-
-  // Nobody else writes the owner's row as the person: not an admin of that team (owner-only stays owner-only), a member
-  // or a stranger. The row is filtered out, so nothing changes.
   for (const who of [admin, member, stranger]) {
-    assert.equal((await notify(who, label)).changes, 0, `person ${who} can't save the desk's alerts`);
-    assert.equal((await profile(who, label)).changes, 0, `person ${who} can't save the desk's profile`);
+    assert.equal(await saveAlerts(who, label, ALERTS, now), NOT_SAVED, `person ${who} can't save the desk's alerts`);
+    assert.equal(await saveProfile(who, label, PROFILE), NOT_SAVED, `person ${who} can't save the desk's profile`);
   }
-  assert.equal((await q.get<{ name: string }>("SELECT name FROM users WHERE id = ?", label))!.name, "New Name");
+  assert.deepEqual(await q.get("SELECT name, notify_submissions FROM users WHERE id = ?", label), { name: "deskset", notify_submissions: "digest" });
 });
 
-test("as the person, money, sign-in and verification columns stay unwritable, even on your own row", async () => {
+test("as the person, money, sign-in, verification, cover and routing columns stay unwritable, even on your own row", async () => {
   const { q, asPerson } = await import("../src/lib/db");
   const { user } = await setup();
   const me = await user("selfset");
   const cols = (await q.all<{ column_name: string }>("SELECT column_name FROM information_schema.columns WHERE table_name = 'users'")).map((c) => c.column_name);
-  const fixed = ["plan", "email", "handle", "suspended_at", "extra_seats", "password_hash", "totp_secret", "recovery_codes", "google_sub", "email_verified_at", "email_verify_token", "pending_email", "pending_email_token", "invite_code", "referral_code", "admin_tags"];
+  const fixed = [
+    "plan", "email", "handle", "suspended_at", "extra_seats", "password_hash", "totp_secret", "recovery_codes", "google_sub", "email_verified_at",
+    "email_verify_token", "pending_email", "pending_email_token", "invite_code", "referral_code", "admin_tags", "cover_key", "active_collection_id",
+  ];
   const never = cols.filter((c) => fixed.includes(c) || /^(identity_|reply_)/.test(c));
-  for (const c of ["plan", "email", "handle", "suspended_at", "extra_seats"]) assert.ok(never.includes(c), `${c} is checked`);
+  for (const c of ["plan", "email", "handle", "suspended_at", "extra_seats", "cover_key", "active_collection_id"]) assert.ok(never.includes(c), `${c} is checked`);
   assert.ok(never.some((c) => c.startsWith("identity_")) && never.some((c) => c.startsWith("reply_")), "identity_* and reply_* are checked");
   for (const c of never) {
     const can = await q.get<{ ok: boolean }>("SELECT has_column_privilege('ft_person', 'users', ?, 'UPDATE') AS ok", c);
     assert.equal(can!.ok, false, `ft_person must not update users.${c}`);
   }
-  // And the database refuses it outright, rather than quietly writing nothing.
-  for (const [col, value] of [["plan", "label"], ["email", "x@evil.io"], ["handle", "takeover"], ["identity_status", "verified"], ["suspended_at", null]] as const)
+  for (const [col, value] of [["plan", "label"], ["email", "x@evil.io"], ["handle", "takeover"], ["identity_status", "verified"], ["suspended_at", null], ["cover_key", "covers/other.webp"]] as const)
     await assert.rejects(asPerson(me, () => q.run(`UPDATE users SET ${col} = ? WHERE id = ?`, value, me)), /permission denied/i, `${col} refused`);
 });
 
-test("a suspended desk's teammate writes nothing on it as the person", async () => {
-  const { q, asPerson } = await import("../src/lib/db");
-  const { now, user } = await setup();
-  const gone = await user("goneset", true);
-  const helper = await user("helperset");
-  await q.run("INSERT INTO account_members (account_id, user_id, role, created_at) VALUES (?, ?, 'admin', ?)", gone, helper, now);
-  assert.equal((await asPerson(helper, () => q.run(PROFILE, "x", "x", "x", "dj", "", "{}", gone))).changes, 0);
-});
-
-test("Settings runs the owner's own saves as the person, keeps the rest the app's on purpose, and no role changes", () => {
+test("Settings saves the owner's own alerts and profile through the person's rules, keeps the rest the app's, and no role changes", () => {
   const src = fs.readFileSync(SOURCE, "utf8");
   const body = (name: string) => {
     const start = src.indexOf(`export async function ${name}(`);
@@ -96,9 +94,10 @@ test("Settings runs the owner's own saves as the person, keeps the rest the app'
     cancelMyEmailChange: "owner", requestPlan: "owner", withdrawPlanRequest: "owner", setRerouteClosed: "admin",
   };
   for (const [name, role] of Object.entries(roles)) assert.match(body(name), new RegExp(`requireRole\\("${role}"\\)`), `${name} still needs ${role}`);
-  // The owner's own saves go through the person's rules.
-  assert.match(body("updateNotifications"), /asPerson\(u\.actor_id, \(\) => q\.run\(\s*`UPDATE users SET notify_submissions/);
-  assert.match(body("updateSettings"), /asPerson\(u\.actor_id, \(\) =>\s*q\.run\("UPDATE users SET name = \?/);
-  // The admin actions stay the app's, on purpose and said so.
+  assert.match(body("updateNotifications"), /saveAlerts\(u\.actor_id, u\.id,/);
+  assert.match(body("updateNotifications"), /if \(problem\) return \{ error: problem \}/);
+  assert.doesNotMatch(body("updateNotifications"), /UPDATE users/, "no write of its own outside the person's rules");
+  assert.match(body("updateSettings"), /saveProfile\(u\.actor_id, u\.id,/);
+  assert.match(body("updateSettings"), /if \(unsaved\) return \{ error: unsaved \}/);
   for (const name of ["updatePublicPage", "setRerouteClosed"]) assert.match(body(name), /asSystem\(\(\) => q\.run\("UPDATE users SET/, `${name} is the app's on purpose`);
 });
