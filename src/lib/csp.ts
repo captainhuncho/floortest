@@ -54,4 +54,4 @@ export function makeNonce() {
  * `tests/csp.test.ts` checks the two agree). next.config.ts gives these the nonce-free policy above. A path with a part
  * starting with "." is never skipped: the proxy turns every hidden file away (src/lib/dot-paths.ts).
  */
-export const PROXY_SKIPS = "(?:(?!(?:.*(?:/|%2[fF]|%5[cC]))?(?:\\.|%2[eE]))(?:_next/|favicon|icons/|fonts/|images/|api/storage/upload|.*\\.(?:png|jpg|jpeg|svg|webp|ico|txt|xml|woff2?)$))";
+export const PROXY_SKIPS = "(?:(?!(?:.*(?:/|%2[fF]|%5[cC]))?(?:\\.|%2[eE]))(?:_next/|favicon|(?:auth|brand|icons|motion|tour|fonts|images)/|api/storage/upload|(?:apple-icon\\.png|icon\\.svg|opengraph-image\\.png|opengraph-image\\.alt\\.txt|robots\\.txt|sitemap\\.xml)$))";
