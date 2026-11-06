@@ -43,6 +43,8 @@ test("a code email's send status becomes the message the person waiting sees", a
   assert.equal(codeMailProblem("logged (no RESEND_API_KEY)"), null);
   assert.match(codeMailProblem("dropped (daily limit)") ?? "", /can't send codes right now/);
   assert.match(codeMailProblem("queued (daily limit)") ?? "", /can't send codes right now/);
+  // A code not sent because the block list couldn't be checked: the person is told, never shown "code sent".
+  assert.match(codeMailProblem("dropped (block check failed)") ?? "", /can't send codes right now/);
   assert.match(codeMailProblem("skipped (bounced before)") ?? "", /bounced before/);
   assert.match(codeMailProblem("failed (500)") ?? "", /didn't go through/);
 });
