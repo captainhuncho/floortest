@@ -251,12 +251,18 @@ export async function requestPlan(form: FormData) {
   // As the person (B8, migration 0133): the database lets them withdraw and file only their own desk's request, and only
   // as a waiting one; deciding it stays ops'.
   // One transaction, so a double submit can't leave two waiting or fail halfway; the database stamps created_at (0137).
-  await asPerson(u.actor_id, () =>
-    q.tx(async (db) => {
-      await db.run("UPDATE plan_requests SET status = 'withdrawn' WHERE user_id = ? AND status = 'pending'", u.id);
-      await db.run("INSERT INTO plan_requests (user_id, plan, kind, org, link, volume, note) VALUES (?,?,?,?,?,?,?)", u.id, next.id, kind, org, link, volume, note);
-    }),
-  );
+  try {
+    await asPerson(u.actor_id, () =>
+      q.tx(async (db) => {
+        await db.run("UPDATE plan_requests SET status = 'withdrawn' WHERE user_id = ? AND status = 'pending'", u.id);
+        await db.run("INSERT INTO plan_requests (user_id, plan, kind, org, link, volume, note) VALUES (?,?,?,?,?,?,?)", u.id, next.id, kind, org, link, volume, note);
+      }),
+    );
+  } catch (e) {
+    // Two submits at the same moment: the other one is already waiting (plan_requests_one_pending), so this one is done.
+    if ((e as { code?: string })?.code === "23505") redirect("/dashboard/plans?requested=1");
+    throw e;
+  }
   await audit(u.id, "plan_requested", next.name);
   // A heads-up to the super admins; the request waits in ops either way.
   for (const to of env.adminEmails)

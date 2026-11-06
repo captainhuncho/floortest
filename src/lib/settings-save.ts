@@ -42,6 +42,9 @@ async function guarded(what: string, save: () => Promise<{ changes: number }>): 
   try {
     return (await save()).changes ? null : NOT_SAVED;
   } catch (e) {
+    // A redirect or notFound from Next.js passes through (their errors carry a digest starting NEXT_).
+    const digest = (e as { digest?: unknown })?.digest;
+    if (typeof digest === "string" && digest.startsWith("NEXT_")) throw e;
     await recordIncident("server_error", `A Settings ${what} save failed`, String((e as Error)?.message ?? e).slice(0, 200)).catch(() => {});
     return NOT_SAVED;
   }
@@ -53,3 +56,6 @@ export type Profile = { name: string; firstName: string; lastName: string; kind:
 export async function saveProfile(person: number, desk: number, p: Profile): Promise<string | null> {
   return guarded("profile", () => asPerson(person, () => q.run(PROFILE_SQL, p.name, p.firstName, p.lastName, p.kind, p.kindNote, p.tools, desk)));
 }
+
+/** For tests only: the same guard the saves use. */
+export const guardedForTest = guarded;

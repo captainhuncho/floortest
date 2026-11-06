@@ -83,6 +83,7 @@ test("the plan pages and actions read and write requests as the person, and role
   };
   assert.match(body("requestPlan"), /requireRole\("owner"\)/);
   assert.match(body("requestPlan"), /asPerson\(u\.actor_id, \(\) =>\s*q\.tx\(async \(db\) => \{\s*await db\.run\("UPDATE plan_requests/);
+  assert.match(body("requestPlan"), /code === "23505"\) redirect\("\/dashboard\/plans\?requested=1"\)/, "a racing second submit lands as already requested");
   assert.doesNotMatch(body("requestPlan"), /INSERT INTO plan_requests \([^)]*created_at/, "the database stamps the time");
   assert.match(body("withdrawPlanRequest"), /requireRole\("owner"\)/);
   assert.match(body("withdrawPlanRequest"), /pendingRequest\(u\.id, u\.actor_id\)/);

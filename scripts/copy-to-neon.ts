@@ -64,6 +64,9 @@ async function compare() {
     select c.conrelid::regclass::text as tbl, c.conname as name, pg_get_constraintdef(c.oid) as def
     from pg_constraint c join pg_namespace n on n.oid = c.connamespace where c.contype = 'f' and n.nspname = 'public'`;
   for (const f of fks) await dst.unsafe(`alter table ${f.tbl} drop constraint "${f.name}"`);
+  // Consent-time triggers off while copying, so users keep the consent times they have (the legal record), back on after.
+  const consentTriggers = (await dst<{ name: string }[]>`select tgname as name from pg_trigger where tgrelid = 'public.users'::regclass and tgname in ('users_consent_times', 'users_consent_times_insert')`).map((r) => r.name);
+  for (const name of consentTriggers) await dst.unsafe(`alter table users disable trigger "${name}"`);
 
   // 4. Copy each table in batches. Identity columns keep their original IDs.
   for (const t of await tables(src)) {
@@ -84,6 +87,7 @@ async function compare() {
     console.log(`copied ${t}: ${copied}`);
   }
 
+  for (const name of consentTriggers) await dst.unsafe(`alter table users enable trigger "${name}"`);
   // 5. Foreign keys back on: re-adding them checks every row, so a broken link fails loudly here.
   for (const f of fks) await dst.unsafe(`alter table ${f.tbl} add constraint "${f.name}" ${f.def}`);
 

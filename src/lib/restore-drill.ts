@@ -85,7 +85,11 @@ export async function restoreInto(db: Db, dump: Dump) {
   await migrate(db);
   const fks = await foreignKeys(db);
   const present = new Set((await db.all<{ t: string }>("SELECT table_name AS t FROM information_schema.tables WHERE table_schema = 'public'")).map((r) => r.t));
+  // The consent-time triggers (migrations 0134, 0137) stamp "now" on every insert; a restore must keep the times the
+  // backup holds, which are the legal record. They're off while loading, inside the transaction, and back on after.
+  const consentTriggers = (await db.all<{ name: string }>("SELECT tgname AS name FROM pg_trigger WHERE tgrelid = 'public.users'::regclass AND tgname IN ('users_consent_times', 'users_consent_times_insert')")).map((r) => r.name);
   await db.tx(async (t) => {
+    for (const name of consentTriggers) await t.run(`ALTER TABLE users DISABLE TRIGGER ${ident(name)}`);
     for (const f of fks) await t.run(`ALTER TABLE ${ident(f.child)} ALTER CONSTRAINT ${ident(f.name)} DEFERRABLE INITIALLY DEFERRED`);
     for (const [table, rows] of Object.entries(dump.tables)) {
       if (!present.has(table)) throw new Error(`The backup has a table the schema doesn't: ${table}`);
@@ -100,13 +104,22 @@ export async function restoreInto(db: Db, dump: Dump) {
     // Every foreign key checked here, inside the transaction, so a broken backup fails loudly and nothing is kept.
     await t.run("SET CONSTRAINTS ALL IMMEDIATE");
     for (const f of fks) await t.run(`ALTER TABLE ${ident(f.child)} ALTER CONSTRAINT ${ident(f.name)} NOT DEFERRABLE`);
+    for (const name of consentTriggers) await t.run(`ALTER TABLE users ENABLE TRIGGER ${ident(name)}`);
   });
+  // Consent times as the backup holds them: each restored user's two times must equal the dump's.
+  const consentDiffer: number[] = [];
+  for (const row of dump.tables.users ?? []) {
+    const got = await db.get<{ p: number | null; m: number | null }>("SELECT product_consent_at AS p, marketing_consent_at AS m FROM users WHERE id = ?", row.id);
+    const want = { p: (row.product_consent_at ?? null) as number | null, m: (row.marketing_consent_at ?? null) as number | null };
+    const same = (a: number | null, b: number | null) => (a === null || b === null ? a === b : Number(a) === Number(b));
+    if (!got || !same(got.p, want.p) || !same(got.m, want.m)) consentDiffer.push(Number(row.id));
+  }
   const counts: Record<string, { want: number; got: number }> = {};
   for (const [table, rows] of Object.entries(dump.tables)) counts[table] = { want: rows.length, got: await num(db, `SELECT COUNT(*)::int AS n FROM ${ident(table)}`) };
   for (const s of await identities(db)) {
     await db.get(`SELECT setval(pg_get_serial_sequence(?, ?), GREATEST(COALESCE(MAX(${ident(s.col)}), 0), 1), MAX(${ident(s.col)}) IS NOT NULL) FROM ${ident(s.table)}`, s.table, s.col);
   }
-  return { counts, fks };
+  return { counts, fks, consent: { checked: (dump.tables.users ?? []).length, differ: consentDiffer } };
 }
 
 /** The checks after a restore. Each says what it looked at; a skipped one says why. */
@@ -127,6 +140,13 @@ export async function checkRestore(db: Db, restored: Awaited<ReturnType<typeof r
     if (n) broken.push(`${f.child}.${f.cols.join("+")}: ${n}`);
     orphans += n;
   }
+  add(
+    "Consent times",
+    !restored.consent.differ.length,
+    restored.consent.differ.length
+      ? `${restored.consent.differ.length} of ${restored.consent.checked} users came back with different consent times (ids ${restored.consent.differ.slice(0, 10).join(", ")})`
+      : `${restored.consent.checked} users, newsletter and offers consent times as in the backup`,
+  );
   add("Foreign keys", !orphans, orphans ? broken.join(", ") : `${restored.fks.length} foreign keys, 0 orphan rows`);
 
   // The next id each table hands out is past every restored one, so the first insert after a restore can't collide.

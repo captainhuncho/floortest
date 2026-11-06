@@ -80,7 +80,10 @@ async function main() {
   );
   // Consent times are set only by the database (migrations 0134 and 0137): both triggers must exist and be on.
   const { rows: consentTriggers } = await pg.query<{ name: string }>(
-    "select tgname as name from pg_trigger where tgrelid = 'public.users'::regclass and tgname in ('users_consent_times', 'users_consent_times_insert') and tgenabled <> 'D'",
+    // Enabled in normal sessions ('O' or 'A'; 'R' would fire only in replication), row-level, BEFORE, calling ft_consent_times.
+    `select t.tgname as name from pg_trigger t join pg_proc f on f.oid = t.tgfoid
+      where t.tgrelid = 'public.users'::regclass and t.tgname in ('users_consent_times', 'users_consent_times_insert')
+        and t.tgenabled in ('O', 'A') and (t.tgtype & 1) = 1 and (t.tgtype & 2) = 2 and f.proname = 'ft_consent_times'`,
   );
   // A table ft_person may add rows to must let it draw the row's id: identity columns need nothing more, a plain
   // sequence needs usage (migration 0118), or the insert fails only when that path first runs as the person.

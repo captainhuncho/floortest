@@ -168,3 +168,9 @@ test("a save that fails shows the message instead of an error page, and ops hear
   assert.equal(await saveAlerts(me, me, { ...ALERTS, digestHour: 1e12 }), NOT_SAVED);
   assert.equal(await incidents(), before + 1);
 });
+
+test("a Next.js redirect inside a save passes through instead of becoming a failed save", async () => {
+  const { guardedForTest } = await import("../src/lib/settings-save");
+  const redirectError = Object.assign(new Error("NEXT_REDIRECT"), { digest: "NEXT_REDIRECT;replace;/x;307;" });
+  await assert.rejects(guardedForTest("alerts", async () => { throw redirectError; }), (e) => e === redirectError);
+});
