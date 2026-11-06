@@ -2125,5 +2125,18 @@ update invites set expires_at = coalesce(sent_at, created_at) + 1209600000
 alter table users add column if not exists email_verify_sent_at bigint;
 update users set email_verify_sent_at = (extract(epoch from now()) * 1000)::bigint where email_verify_token is not null and email_verify_sent_at is null;`,
   },
+  {
+    // Per-person rules, Settings (B8, Backend slice 1, 5 Nov): the owner's own alert and contact choices are saved as the
+    // person, so the person role may write these columns on its own row only (person_users_own). Consent times are the
+    // person's own record. Never granted: plan, email, handle, identity_*, suspended_at, extra_seats, reply_* or anything
+    // to do with money or verification. The person can't read the consent times (teammates see the row), so the app works
+    // them out. Also taken back from 0108: cover_key (a storage key the public cover route serves, so it must only ever be
+    // set by the upload flow) and active_collection_id (routing, which the app checks is the desk's own collection);
+    // no person path writes either (Safety review of #448, 5 Nov).
+    id: "0132_person_settings",
+    sql: `grant update (notify_submissions, digest_hour, quiet_start, quiet_end, notify_alerts, notify_product, notify_marketing, product_consent_at, marketing_consent_at) on users to ft_person;
+revoke update (cover_key, active_collection_id) on users from ft_person;`,
+  },
 ];
+
 
