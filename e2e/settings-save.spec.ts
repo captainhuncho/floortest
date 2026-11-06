@@ -5,23 +5,24 @@ import { expect, hydrated, logIn, test } from "./fixtures";
 test("the owner saves alerts and a newsletter consent, and they stick", async ({ page }) => {
   await logIn(page, "demo@floortest.test");
   await page.goto("/dashboard/settings/notifications");
-  await hydrated(page);
+  const saveButton = () => page.getByRole("button", { name: "Save", exact: true });
+  await hydrated(saveButton());
   const newsletter = () => page.locator('input[name="notify_product"]');
   const was = await newsletter().isChecked();
   const save = async () => {
-    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await saveButton().click();
     await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
   };
   // Flip the newsletter, save, and see it kept after a reload.
   await newsletter().locator("xpath=..").click();
   await save();
   await page.reload();
-  await hydrated(page);
+  await hydrated(saveButton());
   await expect(newsletter()).toBeChecked({ checked: !was });
   // Put it back as it was, through the same save.
   await newsletter().locator("xpath=..").click();
   await save();
   await page.reload();
-  await hydrated(page);
+  await hydrated(saveButton());
   await expect(newsletter()).toBeChecked({ checked: was });
 });
