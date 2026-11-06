@@ -33,7 +33,10 @@ test("a forged, edited, unsigned or other-key cookie proves nothing", () => {
   const c = withSender(SECRET, undefined, ama.id, ama.email);
   const [body, sig] = c.split(".");
   const forged = Buffer.from(JSON.stringify([{ s: ama.id, e: emailBinding(SECRET, ama.email), x: Date.now() + 1e9 }])).toString("base64url");
-  for (const bad of [undefined, "", body, `${forged}.${sig}`, `${body}.x${sig.slice(1)}`, withSender("another-secret".padEnd(48, "y"), undefined, ama.id, ama.email), "ama@example.com"])
+  // An edited signature: its first character changed to a different one (always "x" failed about 1 run in 64, when the
+  // signature already started with "x" and the "edit" left it valid).
+  const edited = `${body}.${sig[0] === "x" ? "y" : "x"}${sig.slice(1)}`;
+  for (const bad of [undefined, "", body, `${forged}.${sig}`, edited, withSender("another-secret".padEnd(48, "y"), undefined, ama.id, ama.email), "ama@example.com"])
     assert.equal(cookieProves(SECRET, bad, ama), false, String(bad));
   assert.deepEqual(readProof(SECRET, "%%%.%%%"), []);
 });
