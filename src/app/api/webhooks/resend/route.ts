@@ -26,16 +26,18 @@ function verified(secret: string, id: string, timestamp: string, body: string, s
 type Report = { type: string; emailId: string; to: string; bounce: { type?: string; subType?: string; message?: string } | null };
 
 /**
- * The parts of a report this route uses, checked for type. Anything else (a number or object where text belongs) is
- * refused with 400 and changes nothing, so a malformed report can't crash the route and be retried by Resend forever.
+ * The parts of a report this route uses, checked for type. A report that fails (a number or object where text belongs,
+ * say after a change on Resend's side) is recorded once with an incident and answered 200 "ignored": a crash or a non-2xx
+ * answer would have Resend retry it for about a day and could get the endpoint switched off, stopping all tracking.
+ * `to` is only a fallback for an email we can't find, so a bad one is dropped rather than failing the report.
  */
 function readReport(raw: unknown): Report | null {
   const o = raw as { type?: unknown; data?: { email_id?: unknown; to?: unknown; bounce?: unknown } } | null;
   if (!o || typeof o !== "object" || typeof o.type !== "string") return null;
   const d = o.data;
   if (!d || typeof d !== "object" || typeof d.email_id !== "string") return null;
-  const to = Array.isArray(d.to) ? d.to[0] : (d.to ?? "");
-  if (typeof to !== "string") return null;
+  const first = Array.isArray(d.to) ? d.to[0] : d.to;
+  const to = typeof first === "string" ? first : "";
   let bounce: Report["bounce"] = null;
   if (d.bounce !== undefined && d.bounce !== null) {
     if (typeof d.bounce !== "object" || Array.isArray(d.bounce)) return null;
@@ -58,6 +60,9 @@ function readReport(raw: unknown): Report | null {
  * - a hard bounce on an email never delivered is "bounced" and stops further email to the address; a spam report is
  *   "complained" and stops optional email, as before.
  */
+/** The delivery reports this route acts on, by Resend's event type. */
+const REPORTS = { "email.delivered": "delivered", "email.delivery_delayed": "delayed", "email.bounced": "bounced", "email.complained": "complained" } as const;
+
 export async function POST(req: Request) {
   const secret = process.env.RESEND_WEBHOOK_SECRET;
   if (!secret) return new NextResponse(null, { status: 404 });
@@ -73,12 +78,16 @@ export async function POST(req: Request) {
   } catch {
     return new NextResponse(null, { status: 400 });
   }
-  const delivery = { "email.delivered": "delivered", "email.delivery_delayed": "delayed", "email.bounced": "bounced", "email.complained": "complained" }[
-    typeof (parsed as { type?: unknown })?.type === "string" ? (parsed as { type: string }).type : ""
-  ];
+  const kind = typeof (parsed as { type?: unknown })?.type === "string" ? (parsed as { type: string }).type : "";
+  const delivery = Object.hasOwn(REPORTS, kind) ? REPORTS[kind as keyof typeof REPORTS] : undefined;
   if (!delivery) return NextResponse.json({ ignored: true });
   const e = readReport(parsed);
-  if (!e || !e.emailId) return new NextResponse(null, { status: 400 });
+  if (!e || !e.emailId) {
+    // Signed by Resend but not in the shape we read: noted once, then answered 2xx so it isn't retried.
+    const fresh = await q.get("INSERT INTO webhook_receipts (provider, event_id, received_at) VALUES ('resend', ?, ?) ON CONFLICT DO NOTHING RETURNING event_id", h.get("svix-id"), now());
+    if (fresh) await recordIncident("email_failed", `A ${kind} report from Resend wasn't in the expected shape, so it was skipped.`, "Check Resend's webhook format");
+    return NextResponse.json({ ignored: true });
+  }
   const id = e.emailId;
   const to = e.to;
   const bounce = e.bounce;

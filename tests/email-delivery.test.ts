@@ -115,28 +115,62 @@ test("a missing, wrong or forged signature is refused with 401 and changes nothi
   assert.equal(await blocked("victim@x.io"), false);
 });
 
-test("a signed report with the wrong types is refused with 400 and changes nothing, instead of crashing", async () => {
+test("a signed report in the wrong shape is noted once and answered 200, changing no email or block", async () => {
+  const { q } = await import("../src/lib/db");
   const { POST } = await import("../src/app/api/webhooks/resend/route");
   await email("em_odd", "odd@x.io");
-  const before = await counts();
   const secret = Buffer.from(process.env.RESEND_WEBHOOK_SECRET!.replace(/^whsec_/, ""), "base64");
+  const incidents = async () => (await q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM incidents"))!.n;
   const bad = [
     { type: "email.bounced", data: { email_id: "em_odd", to: ["odd@x.io"], bounce: { type: 5, message: "x" } } },
     { type: "email.bounced", data: { email_id: "em_odd", to: ["odd@x.io"], bounce: { type: "Permanent", message: { long: true } } } },
     { type: "email.bounced", data: { email_id: "em_odd", to: ["odd@x.io"], bounce: { type: "Permanent", subType: 7 } } },
-    { type: "email.bounced", data: { email_id: "em_odd", to: [42], bounce: { type: "Permanent" } } },
     { type: "email.bounced", data: { email_id: 99, to: ["odd@x.io"] } },
     { type: "email.bounced", data: { email_id: "em_odd", to: ["odd@x.io"], bounce: "Permanent" } },
   ];
   for (const [i, payload] of bad.entries()) {
     const body = JSON.stringify(payload);
     const id = `msg_odd_${i}`;
-    const ts = String(Math.floor(Date.now() / 1000));
-    const sig = crypto.createHmac("sha256", secret).update(`${id}.${ts}.${body}`).digest("base64");
-    const res = await POST(new Request("http://localhost/api/webhooks/resend", { method: "POST", body, headers: { "svix-id": id, "svix-timestamp": ts, "svix-signature": `v1,${sig}` } }));
-    assert.equal(res.status, 400, `refused: ${body}`);
+    const send = () => {
+      const ts = String(Math.floor(Date.now() / 1000));
+      const sig = crypto.createHmac("sha256", secret).update(`${id}.${ts}.${body}`).digest("base64");
+      return POST(new Request("http://localhost/api/webhooks/resend", { method: "POST", body, headers: { "svix-id": id, "svix-timestamp": ts, "svix-signature": `v1,${sig}` } }));
+    };
+    const before = { ...(await counts())!, incidents: await incidents() };
+    const res = await send();
+    assert.equal(res.status, 200, `answered 2xx: ${body}`);
+    assert.deepEqual(await res.json(), { ignored: true });
+    const after = { ...(await counts())!, incidents: await incidents() };
+    assert.deepEqual(after, { ...before, receipts: before.receipts + 1, incidents: before.incidents + 1 }, "noted once with an incident, nothing else");
+    await send(); // a retry of the same report adds nothing
+    assert.deepEqual({ ...(await counts())!, incidents: await incidents() }, after);
   }
-  assert.deepEqual(await counts(), before);
+});
+
+test("a bad `to` doesn't stop a report whose email is found", async () => {
+  const row = await email("em_badto", "found@x.io");
+  const { POST } = await import("../src/app/api/webhooks/resend/route");
+  const secret = Buffer.from(process.env.RESEND_WEBHOOK_SECRET!.replace(/^whsec_/, ""), "base64");
+  const body = JSON.stringify({ type: "email.delivered", data: { email_id: "em_badto", to: [42] } });
+  const ts = String(Math.floor(Date.now() / 1000));
+  const sig = crypto.createHmac("sha256", secret).update(`msg_badto.${ts}.${body}`).digest("base64");
+  await POST(new Request("http://localhost/api/webhooks/resend", { method: "POST", body, headers: { "svix-id": "msg_badto", "svix-timestamp": ts, "svix-signature": `v1,${sig}` } }));
+  assert.equal((await row()).delivery, "delivered");
+});
+
+test("a hard bounce for an email we can't find still blocks the address it names", async () => {
+  await report("em_unknown", "email.bounced", { type: "Permanent", message: "550 gone" });
+  assert.equal(await blocked("someone@x.io"), true, "falls back to data.to");
+});
+
+test("an unknown event type that matches an object's built-in names is ignored", async () => {
+  const { POST } = await import("../src/app/api/webhooks/resend/route");
+  const secret = Buffer.from(process.env.RESEND_WEBHOOK_SECRET!.replace(/^whsec_/, ""), "base64");
+  const body = JSON.stringify({ type: "constructor", data: { email_id: "em_x", to: ["a@x.io"] } });
+  const ts = String(Math.floor(Date.now() / 1000));
+  const sig = crypto.createHmac("sha256", secret).update(`msg_ctor.${ts}.${body}`).digest("base64");
+  const res = await POST(new Request("http://localhost/api/webhooks/resend", { method: "POST", body, headers: { "svix-id": "msg_ctor", "svix-timestamp": ts, "svix-signature": `v1,${sig}` } }));
+  assert.deepEqual(await res.json(), { ignored: true });
 });
 
 test("a very long bounce message is kept to 300 characters on the email and the block list", async () => {
@@ -147,4 +181,18 @@ test("a very long bounce message is kept to 300 characters on the email and the 
   const block = await q.get<{ d: string }>("SELECT detail AS d FROM email_suppressions WHERE email = 'long@x.io'");
   assert.ok(row!.d.length <= 300 && row!.d.length > 200, `email detail ${row!.d.length}`);
   assert.ok(block!.d.length <= 300, `block detail ${block!.d.length}`);
+  // After delivery, the "After delivery: " note is kept to 300 too.
+  const after = await email("em_long_after", "longafter@x.io");
+  await report("em_long_after", "email.delivered");
+  await report("em_long_after", "email.bounced", { type: "Permanent", subType: "General", message: "y".repeat(1000) });
+  const d = (await after()).delivery_detail;
+  assert.ok(d.startsWith("After delivery: ") && d.length === 300, `after-delivery detail ${d.length}`);
+});
+
+test("the Blocked chip matches addresses the way the block list stores them", async () => {
+  const { q } = await import("../src/lib/db");
+  const { normalEmail } = await import("../src/lib/email-normal");
+  const raw = " Ｒecords@Forward.IO ";
+  const sql = await q.get<{ v: string }>("SELECT lower(btrim(normalize(?, NFKC))) AS v", raw);
+  assert.equal(sql!.v, normalEmail(raw));
 });
