@@ -37,6 +37,8 @@ const env = {
   SEED_OPS: "1",
   // The private link pages (receipt, sender history, team invite, email links) are tested with known links (scripts/seed.ts).
   SEED_LINK_PAGES: "1",
+  // Seeded accounts have seen the first-visit tour, so it doesn't cover what other tests click; signed-up ones still get it (scripts/seed.ts).
+  SEED_TOUR_SEEN: "1",
   ADMIN_EMAILS: "ops@floortest.test",
   // A fake virus scanner (e2e/fake-scanner.mjs): every file is clean, but scanner-wake.spec.ts makes it sleep or stay
   // down. The wait for a waking scanner is cut from 150 s to 6 s so those tests stay short.

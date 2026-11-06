@@ -21,6 +21,8 @@ import { playedOutPrompt } from "@/lib/played-out-prompt";
 import { Chip, DeskStrip, FloorIcon, IconBox, InfoRow, Legend, StatTile } from "./FloorBits";
 import { LinkRow, WeekChart } from "./FloorClient";
 import { GHOST, LIME_SM } from "../kitButtons";
+import { FirstVisitTour } from "../Tour";
+import { tourTip } from "@/lib/tour";
 
 export const metadata = { title: "Floor — FloorTest" };
 
@@ -64,6 +66,8 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
     planOf(user.plan),
   ]);
   const welcome = !!sp.welcome;
+  // The tour opens by itself once per person (their own row, so each teammate gets it), never in an admin's view.
+  const tourDue = !view && !(await q.get<{ t: number | null }>("SELECT tour_seen_at AS t FROM users WHERE id = ?", user.actor_id))?.t;
   const stats = await homeStats(user.id, prefs.tz);
   const weekend = await playedOutPrompt({ ...user, tz: prefs.tz });
   const paused = isPaused(user);
@@ -255,6 +259,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   return (
     <>
     {!view && !user.email_verified_at && <VerifyBanner email={user.email} />}
+    {tourDue && <FirstVisitTour tip={tourTip(user.kind)} />}
     {/*
       The elevated Floor (owner, 30 Oct). One column on phones and tablets; from 1280px the work on the left (Up next,
       setting up, what's ready for a set) and the desk on the right (how full it is, the link, the week, sending).
