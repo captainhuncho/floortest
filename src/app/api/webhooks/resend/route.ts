@@ -64,14 +64,14 @@ function readReport(raw: unknown): Report | null {
 const REPORTS = { "email.delivered": "delivered", "email.delivery_delayed": "delayed", "email.bounced": "bounced", "email.complained": "complained" } as const;
 
 /**
- * A report signed by Resend that we can't read: the incident is raised first, then the report is marked as seen, and the
- * answer is 2xx so Resend doesn't retry it. If raising the incident fails, nothing is marked and Resend's retry tries
- * again, so the incident is never lost (Safety review of #452).
+ * A report signed by Resend that we can't read. It's marked as seen only once its incident is saved, then answered 2xx
+ * so Resend doesn't retry it. If the incident can't be saved, nothing is marked and the answer is 500, so Resend retries
+ * and the incident is recorded on a later try (Safety review of #458).
  */
 async function skipUnreadable(eventId: string, what: string) {
   const seen = await q.get("SELECT 1 FROM webhook_receipts WHERE provider = 'resend' AND event_id = ?", eventId);
   if (!seen) {
-    await recordIncident("email_failed", what, "Check Resend's webhook format");
+    if (!(await recordIncident("email_failed", what, "Check Resend's webhook format"))) return new NextResponse(null, { status: 500 });
     await q.run("INSERT INTO webhook_receipts (provider, event_id, received_at) VALUES ('resend', ?, ?) ON CONFLICT DO NOTHING", eventId, now());
   }
   return NextResponse.json({ ignored: true });

@@ -12,8 +12,11 @@ export const ALERT_THRESHOLD = 5;
  * Records something that went wrong, for the admin incident feed. Never throws: reporting a
  * problem must not cause another one. Kept out of "server-only" so instrumentation can use it.
  * `urgent` (failed nightly jobs, stuck deletions) alerts the admins straight away instead of waiting for a spike.
+ * Returns whether the incident itself was saved (an alert failing afterwards doesn't change that), for the few callers
+ * that must not mark something handled unless it was recorded (the Resend webhook).
  */
-export async function recordIncident(kind: IncidentKind, message: string, detail = "", path = "", { urgent = false } = {}) {
+export async function recordIncident(kind: IncidentKind, message: string, detail = "", path = "", { urgent = false } = {}): Promise<boolean> {
+  let recorded = false;
   try {
     const db = await getDb();
     await db.run(
@@ -24,12 +27,14 @@ export async function recordIncident(kind: IncidentKind, message: string, detail
       path.slice(0, 300),
       Date.now(),
     );
-    if (kind === "upload_rejected") return; // a visitor's bad file, not our fault: logged, never alerted
+    recorded = true;
+    if (kind === "upload_rejected") return true; // a visitor's bad file, not our fault: logged, never alerted
     if (urgent || kind === "cron_failed") await alert(db, "incident_alert_urgent", 15 * 60_000, `FloorTest: ${message}`, [message, detail.split("\n")[0] ?? ""]);
     else await alertIfSpiking(db);
   } catch (e) {
     console.error("[incident] could not record", e);
   }
+  return recorded;
 }
 
 type Db = Awaited<ReturnType<typeof getDb>>;
