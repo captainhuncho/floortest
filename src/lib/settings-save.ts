@@ -45,7 +45,8 @@ async function guarded(what: string, save: () => Promise<{ changes: number }>): 
     // A redirect or notFound from Next.js passes through (their errors carry a digest starting NEXT_).
     const digest = (e as { digest?: unknown })?.digest;
     if (typeof digest === "string" && digest.startsWith("NEXT_")) throw e;
-    // Only the database's error code: the message could repeat a value from the form.
+    console.error(`[settings] ${what} save failed`, e); // the full error for diagnosis, server-side only
+    // Only the database's error code in the incident: the message could repeat a value from the form.
     await recordIncident("server_error", `A Settings ${what} save failed`, `code ${(e as { code?: string })?.code ?? "unknown"}`).catch(() => {});
     return NOT_SAVED;
   }

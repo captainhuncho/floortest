@@ -211,6 +211,25 @@ async function overSharedPart(at: number, optional: boolean) {
 }
 
 /** One notice a day that optional email is being held back. */
+/** Tells ops once a day that emails are being held because the block list can't be read. */
+async function reportBlockCheckDown(at: number) {
+  const day = new Date(startOfDay(at)).toISOString().slice(0, 10);
+  const first = await q
+    .get(
+      `INSERT INTO app_state (key, value, updated_at) VALUES ('mail_blockcheck_day', ?, ?)
+       ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at WHERE app_state.value <> excluded.value RETURNING key`,
+      day,
+      at,
+    )
+    .catch(() => true);
+  if (first)
+    await recordIncident(
+      "email_failed",
+      "Emails are being held: the block list can't be read",
+      "Each email is retried as usual and closed as failed after its last try; codes that expire are dropped. Check the email_suppressions table and its permissions.",
+    );
+}
+
 async function reportDeferred(at: number) {
   const day = new Date(startOfDay(at)).toISOString().slice(0, 10);
   const first = await q.get(
@@ -257,14 +276,22 @@ export async function deliver(id: number, { retry = true } = {}): Promise<string
   let providerId: string | null = null;
   // An address that bounced for good gets nothing more; one that reported us as spam still gets what it asks for
   // (sign-in codes, resets) but no optional email. Admin → Emails can lift either.
-  // Matched in the form the block list stores. If the list can't be read, the email waits and is tried again rather than
-  // going out to an address that may be blocked (fail closed; Safety review of #458).
+  // Matched in the form the block list stores. If the list can't be read, nothing goes out to an address that may be
+  // blocked (fail closed; Safety reviews of #458 and #464): the attempt counts as a failed one, so the usual retries and
+  // MAX_ATTEMPTS bound it and the last one raises an incident; ops are told once a day while the check is down; and a
+  // code that expires is dropped rather than held (the person can ask for another).
   let block: { reason: string } | undefined;
+  let blockCheckDown = false;
   try {
     block = await q.get<{ reason: string }>("SELECT reason FROM email_suppressions WHERE email = ?", normalEmail(p.to));
-  } catch {
-    await q.run("UPDATE outbox SET status = 'queued', attempts = GREATEST(attempts - 1, 0), next_at = ? WHERE id = ?", at + 5 * 60_000, id).catch(() => {});
-    return "queued (block check failed)";
+  } catch (e) {
+    console.error("[mail] block list check failed", e);
+    blockCheckDown = true;
+    await reportBlockCheckDown(at);
+    if (p.expires) {
+      await q.run("UPDATE outbox SET status = 'dropped (block check failed)', payload = NULL, next_at = NULL WHERE id = ?", id).catch(() => {});
+      return "dropped (block check failed)";
+    }
   }
   const suppressed = block && (block.reason === "bounced" || row.optional) ? block : undefined;
   // Staging (Vercel previews) never emails real people: everything goes to STAGING_EMAIL_TO, or nowhere.
@@ -274,7 +301,7 @@ export async function deliver(id: number, { retry = true } = {}): Promise<string
     to = stagingTo || p.to;
     if (!stagingTo) status = "logged (staging)";
   }
-  const willSend = !suppressed && !!env.email.resendKey && !(isPreview && !stagingTo);
+  const willSend = !suppressed && !blockCheckDown && !!env.email.resendKey && !(isPreview && !stagingTo);
   if (willSend && !row.reserved && (await overSharedPart(at, !!row.optional))) {
     if (p.expires) {
       // A code that would arrive after it stopped working: drop it now, so nothing dead goes out tomorrow.
@@ -288,6 +315,7 @@ export async function deliver(id: number, { retry = true } = {}): Promise<string
     return "queued (daily limit)";
   }
   if (suppressed) status = `skipped (${suppressed.reason} before)`;
+  else if (blockCheckDown) status = "failed (block check)";
   else if (!willSend && MAIL_SINK) await sinkMail(to, subject, p.body);
   else if (willSend) {
     try {

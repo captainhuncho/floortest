@@ -299,18 +299,30 @@ test("a spam block still lets sign-in codes and resets out, and skips only optio
   assert.match(await status("Newsletter"), /^skipped \(complained/, "optional mail is skipped");
 });
 
-test("if the block list can't be read, the email waits for a retry instead of going out", async () => {
+test("if the block list can't be read, nothing goes out: ops are told once, retries end at the limit, and an expiring code is dropped", async () => {
   const { q } = await import("../src/lib/db");
-  const { sendMail } = await import("../src/lib/mail");
+  const { queueMail, deliver } = await import("../src/lib/mail");
+  const incidents = async () => (await q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM incidents"))!.n;
+  const id = await queueMail({ userId: null, to: "maybe-blocked@x.io", subject: "Receipt", body: "B" });
+  const code = await queueMail({ userId: null, to: "maybe-blocked@x.io", subject: "Your code", body: "123456", expires: true });
+  const before = await incidents();
   await q.run("ALTER TABLE email_suppressions RENAME TO email_suppressions_off");
   try {
-    await sendMail({ userId: null, to: "maybe-blocked@x.io", subject: "Held", body: "B" });
+    for (let i = 0; i < 8; i++) {
+      await q.run("UPDATE outbox SET next_at = 0 WHERE id = ? AND status = 'queued'", id);
+      await deliver(id);
+    }
+    await deliver(code);
   } finally {
     await q.run("ALTER TABLE email_suppressions_off RENAME TO email_suppressions");
   }
-  const row = await q.get<{ status: string; next_at: number | null }>("SELECT status, next_at FROM outbox WHERE to_email = 'maybe-blocked@x.io' ORDER BY id DESC LIMIT 1");
-  assert.equal(row!.status, "queued");
-  assert.ok(row!.next_at && row!.next_at > Date.now(), "due again shortly");
+  const row = await q.get<{ status: string; attempts: number; payload: string | null }>("SELECT status, attempts, payload FROM outbox WHERE id = ?", id);
+  assert.deepEqual(row, { status: "failed (block check)", attempts: 5, payload: null }, "bounded by the usual limit, then closed");
+  const held = await q.get<{ status: string; payload: string | null }>("SELECT status, payload FROM outbox WHERE id = ?", code);
+  assert.deepEqual(held, { status: "dropped (block check failed)", payload: null }, "a code isn't held to arrive dead");
+  const raised = await q.all<{ message: string }>("SELECT message FROM incidents ORDER BY id DESC LIMIT ?", (await incidents()) - before);
+  assert.equal(raised.filter((r) => /block list can't be read/.test(r.message)).length, 1, "ops told once, not on every try");
+  assert.ok(raised.some((r) => /failed \(block check\)/.test(r.message)), "the closed email raises its own incident");
 });
 
 test("an incident is raised only when a block is added or upgraded, not for every repeat report", async () => {
@@ -326,5 +338,5 @@ test("an incident is raised only when a block is added or upgraded, not for ever
   await email("em_rep3", "spamonly@x.io");
   await report("em_rep3", "email.complained");
   const spam = await q.get<{ message: string }>("SELECT message FROM incidents ORDER BY id DESC LIMIT 1");
-  assert.match(spam!.message, /Optional emails stop to this address; sign-in codes and resets still go/);
+  assert.match(spam!.message, /Optional emails stop to this address; emails people need \(sign-in codes, resets, receipts\) still go/);
 });

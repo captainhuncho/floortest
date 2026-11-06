@@ -142,7 +142,7 @@ export async function POST(req: Request) {
     await recordIncident(
       "email_failed",
       done.reason === "complained"
-        ? `Marked as spam: ${done.email.replace(/^(.{2}).*@/, "$1…@")}. Optional emails stop to this address; sign-in codes and resets still go.`
+        ? `Marked as spam: ${done.email.replace(/^(.{2}).*@/, "$1…@")}. Optional emails stop to this address; emails people need (sign-in codes, resets, receipts) still go.`
         : `Bounced: ${done.email.replace(/^(.{2}).*@/, "$1…@")}. No more email goes to this address.`,
       done.subject,
     );
