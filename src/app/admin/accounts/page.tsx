@@ -1,6 +1,6 @@
 import { can, requireAdmin } from "@/lib/admin";
 import Link from "next/link";
-import { ACTIVITY, JOINED, audienceWhere, kindLabel, readAudience } from "@/lib/audience";
+import { ACTIVITY, JOINED, audienceQuery, audienceWhere, kindLabel, readAudience } from "@/lib/audience";
 import { PAGE_SIZE, readPage, readSecurity, SECURITY, securityWhere } from "@/lib/admin-bulk";
 import { AccountsTable } from "./AccountsTable";
 import { allPlans } from "@/lib/plan-store";
@@ -23,12 +23,13 @@ export default async function Users({ searchParams }: { searchParams: Promise<Re
   const page = readPage(sp.page);
   const w = audienceWhere(aud, now(), true);
   const plans = await allPlans();
-  const params = { ...aud, joined: aud.joined ? String(aud.joined) : "", security, q: search };
+  // The filters as sent, not as read: a value that can't be read stays unreadable on the next page and in the CSV.
+  const params = { ...audienceQuery((k) => sp[k]), security, q: search };
   const link = (change: Partial<Record<keyof typeof params | "page", string>>) => {
     const qs = new URLSearchParams(Object.entries({ ...params, ...change }).filter(([, v]) => v) as [string, string][]).toString();
     return `/admin/accounts${qs ? `?${qs}` : ""}`;
   };
-  const csv = new URLSearchParams(Object.entries({ ...aud, joined: params.joined, security, q: search }).filter(([, v]) => v) as [string, string][]).toString();
+  const csv = new URLSearchParams(Object.entries(params).filter(([, v]) => v)).toString();
   const where = `${w.sql} AND ${securityWhere(security)} ${search ? "AND (u.name ILIKE ? OR u.email ILIKE ? OR u.handle ILIKE ?)" : ""}`;
   const args = [...w.args, ...(search ? Array(3).fill(likeContains(search)) : [])];
   const [total, rows] = await Promise.all([
@@ -48,6 +49,7 @@ export default async function Users({ searchParams }: { searchParams: Promise<Re
   const planName = (id: string) => plans.find((p) => p.id === id)?.name ?? id;
   // Each filter that's on, as a chip that takes it off.
   const chips = [
+    aud.nobody && { label: "Filter", value: "Unreadable (nobody)", off: link({ plan: "", kind: "", tag: "", joined: "", activity: "", nobody: "", page: "" }) },
     aud.kind && { label: "Type", value: kindLabel(aud.kind), off: link({ kind: "", page: "" }) },
     aud.plan && { label: "Plan", value: planName(aud.plan), off: link({ plan: "", page: "" }) },
     aud.tag && { label: "Tag", value: aud.tag, off: link({ tag: "", page: "" }) },

@@ -1529,7 +1529,8 @@ where body ~ '/(receipt|reset|verify-email|confirm-email|join|sent|newsletter/co
 update incidents set detail = regexp_replace(detail, '^(\\[Staging → [^]]*\\] )?[0-9]{6}( is your FloorTest)', '\\1•••••• (hidden)\\2')
 where kind = 'email_failed' and detail ~ '[0-9]{6} is your FloorTest';
 `,
-  },  {
+  },
+  {
     // A deleted account's link names stay reserved (with no account behind them), so nobody can take over a link
     // that's still in bios and on flyers and receive music meant for someone else.
     id: "0092_released_handles",
@@ -1541,7 +1542,8 @@ create table released_handles (
 );
 alter table released_handles enable row level security;
 `,
-  },  {
+  },
+  {
     // An upload is finished once: completing claims it first, so two completes sent at the same moment can't each
     // make a track (or a stem). A claim older than a few minutes (a crash mid-way) can be taken again.
     // checked_at: the start passed the send limits, so it counts as a release's or batch's first track.
@@ -2060,7 +2062,8 @@ create unique index if not exists tracks_token_hash on tracks(token_hash);`,
     // sealer. The code before this already reads the hash and sealed copy first, so rolling back one release still works.
     id: "0127_receipt_token_clear",
     sql: `update tracks set token = null where token is not null and token_hash is not null and token_sealed is not null and token_hash = encode(sha256(convert_to(token, 'UTF8')), 'hex');`,
-  },  {
+  },
+  {
     // When the sender attached artwork (Safety's review of #431, 4 Nov). Deleting a track clears art_key, so "already
     // has artwork" was answered only while the track lived, which told the sender of a delete. This mark stays through
     // a delete; tracks that have artwork today get their upload time. Additive only.
