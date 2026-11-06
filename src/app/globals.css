@@ -175,23 +175,6 @@ html:has([data-batch-bar]) [data-toast-region] { bottom: calc(env(safe-area-inse
    :active on touch because the page has a touchstart listener (usePullToRefresh). */
 button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; transition-duration: 0ms; }
 .switch-thumb { transition: translate 200ms var(--ease-out), background-color 150ms var(--ease-out); }
-/* Tactile navigation (same material as the phone tab bar): a dark panel with a lit top edge, and the
-   current item raised like a pressed-in key. Used by the desktop sidebar and the admin sidebar. */
-.tactile-panel {
-  border: 1px solid rgb(255 255 255 / 0.07);
-  background: linear-gradient(to bottom, #24261f, #141512);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 2px 4px rgb(0 0 0 / 0.5), 0 14px 30px -6px rgb(0 0 0 / 0.75);
-}
-.tactile-item { color: #94978e; transition: background-color 120ms var(--ease-out), color 120ms var(--ease-out), box-shadow 120ms var(--ease-out); }
-@media (hover: hover) and (pointer: fine) { .tactile-item:hover { color: #f1f1eb; background: rgb(255 255 255 / 0.04); } }
-.tactile-item:active { background: #1f211b; box-shadow: inset 0 2px 4px rgb(0 0 0 / 0.6); }
-.tactile-item[aria-current="page"] {
-  color: #fff;
-  font-weight: 700;
-  background: linear-gradient(to bottom, #353a2d, #23261e);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 2px 6px rgb(0 0 0 / 0.55);
-}
-.tactile-label { color: #94978e; }
 /* Admin areas: each group of the admin menu has its own accent, carried onto the Overview numbers that belong to it. */
 [data-area="monitor"] { --area: #6ec8ff; }
 [data-area="support"] { --area: #ffb648; }
@@ -206,12 +189,6 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; transiti
 [data-area="product"] { --area: #b9a2ff; }
 [data-area="admin"] { --area: #a8ac9f; }
 [data-area="overview"] { --area: #d5ff48; }
-[data-area] .area-label { color: var(--area); }
-/* Admin menu: brighter, heavier links than the generic tactile list. */
-[data-area] .tactile-item { color: #c4c7bd; }
-[data-area] .tactile-item svg { color: var(--area); opacity: 0.9; transition: opacity 120ms var(--ease-out); }
-[data-area] .tactile-item:hover svg, [data-area] .tactile-item[aria-current="page"] svg { opacity: 1; }
-[data-area] .tactile-item[aria-current="page"] { box-shadow: inset 2px 0 0 var(--area), inset 0 1px 0 rgb(255 255 255 / 0.12), 0 2px 6px rgb(0 0 0 / 0.55); }
 .area-card { border-top: 2px solid var(--area); }
 .area-dot { background: var(--area); }
 /* Player buffering (Player.tsx BufferRing): a lit arc turning on a faint track. Hidden until the button has been
@@ -431,7 +408,6 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; transiti
   .theme-system .play-dot { background: #10110f; color: #f1f1eb; }
   .theme-system .play-dot img { filter: invert(1); }
 }
-.live-dot { background: var(--color-lime); box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-lime) 22%, transparent); }
 
 /* Pieces designed as dark objects (the desktop sidebar, the floating phone tab bar) stay dark in Day mode. */
 .theme-root .keep-night {
@@ -482,7 +458,7 @@ html:has(.theme-day), html:has(.theme-day) body { background: #fafaf6; }
 
 /* Inside the FloorTest phone app only: no long-press callouts or accidental text selection, except where you type. */
 .native-app { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
-.native-app :is(input, textarea, [contenteditable="true"], [contenteditable="plaintext-only"], .selectable) { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+.native-app :is(input, textarea, [contenteditable="true"], [contenteditable="plaintext-only"]) { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
 
 /* Review Queue: while a status tab loads, the list steps back so the tap visibly registered. */
 .review-list { transition: opacity 150ms var(--ease-out); }
@@ -522,13 +498,9 @@ nav[data-pending] ~ .review-list, :has(> nav[data-pending]) ~ .review-list { opa
 @supports (animation-timeline: view()) {
   .stage-fill { animation: stage-fill linear both; animation-timeline: view(); animation-range: entry 10% cover 35%; }
   .stage-fill-late { animation-range: entry 30% cover 45%; }
-  .stage-tick { animation: stage-tick linear both; animation-timeline: view(); animation-range: cover 30% cover 45%; }
 }
 @keyframes stage-fill { from { opacity: 0; translate: 0 32px; } }
-@keyframes stage-tick { from { color: var(--color-faint); } }
 
-.stage-land { animation: stage-land 4s var(--ease-out) 3; }
-@keyframes stage-land { 0% { opacity: 0; scale: 0.97; } 8%, 100% { opacity: 1; scale: 1; } }
 /* The bar runs a little past the 0:30 mark before it holds, so the listen reads as counted, not as stopping there. */
 /* Scaled, not resized (no layout per frame); two passes (12s), then it rests at the full bar. */
 .stage-progress { width: 52%; transform-origin: left; animation: stage-progress 6s linear 2; }

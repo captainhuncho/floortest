@@ -13,7 +13,7 @@ const EVENT = "ft:shortcuts";
 
 export const shortcutsOn = () => stored(KEY) !== "off";
 
-export function setShortcutsOn(on: boolean) {
+function setShortcutsOn(on: boolean) {
   try {
     if (on) localStorage.removeItem(KEY);
     else localStorage.setItem(KEY, "off");

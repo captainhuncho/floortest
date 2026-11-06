@@ -59,7 +59,7 @@ export function StatusPill({ status }: { status: string }) {
   );
 }
 
-export function PlanPill({ plan, label }: { plan: string; label: string }) {
+function PlanPill({ plan, label }: { plan: string; label: string }) {
   return (
     <span className="ou-pill ou-plan" data-paid={plan !== "free" || undefined}>
       {label}
@@ -67,7 +67,7 @@ export function PlanPill({ plan, label }: { plan: string; label: string }) {
   );
 }
 
-export const TagChips = ({ tags }: { tags: readonly string[] }) => (
+const TagChips = ({ tags }: { tags: readonly string[] }) => (
   <span className="kit-chips ou-tags">
     {tags.map((t, i) => (
       <span key={t} className="kit-chip">

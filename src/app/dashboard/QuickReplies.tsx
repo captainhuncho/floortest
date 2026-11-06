@@ -1,7 +1,7 @@
 "use client";
 
 /** One-tap starting points for a reply. They fill the box; nothing is sent until you press Send. */
-export const quickReplies = (name: string) => {
+const quickReplies = (name: string) => {
   const first = name.trim().split(/\s+/)[0] || "there";
   return [
     { label: "Interested", text: `Thanks ${first}, I'm into this one and I'll be testing it in my sets. Send anything else you're working on.` },

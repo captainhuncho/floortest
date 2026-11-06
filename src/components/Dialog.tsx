@@ -83,7 +83,7 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([t
  * Keeps Tab inside an open modal. The browser's modal dialog makes the page behind it inert, but Tab can still leave
  * for the address bar; this wraps from the last control to the first and back (ops kit, a11y review 1 Nov).
  */
-export function trapTab(root: HTMLElement, e: Pick<KeyboardEvent, "key" | "shiftKey" | "preventDefault">) {
+function trapTab(root: HTMLElement, e: Pick<KeyboardEvent, "key" | "shiftKey" | "preventDefault">) {
   if (e.key !== "Tab") return;
   const list = [...root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => !el.closest("[inert]") && el.getClientRects().length);
   if (!list.length) return e.preventDefault();
@@ -158,7 +158,7 @@ export function useModalDialog(open: boolean, onClose: () => void, busy = false)
 }
 
 /** Dialog buttons: full width and 48px on phones, the app's regular size from 640px. */
-export const DIALOG_BTN = "inline-flex min-h-12 items-center justify-center rounded-control px-4 text-[14px] font-semibold sm:min-h-10 sm:text-[13px] disabled:opacity-50";
+const DIALOG_BTN = "inline-flex min-h-12 items-center justify-center rounded-control px-4 text-[14px] font-semibold sm:min-h-10 sm:text-[13px] disabled:opacity-50";
 export const DIALOG_QUIET = `${DIALOG_BTN} border border-line bg-ink-3 text-bone hover:border-line-2`;
 export const DIALOG_MAIN = `${DIALOG_BTN} bg-lime text-[#10110f] hover:bg-[#e2ff7a]`;
 export const DIALOG_DANGER = `${DIALOG_BTN} bg-danger text-on-danger hover:opacity-90`;
