@@ -18,7 +18,8 @@ import { UpNext } from "./UpNext";
 import { UpNextHero } from "./UpNextHero";
 import { PlayedOutCard } from "./PlayedOutCard";
 import { playedOutPrompt } from "@/lib/played-out-prompt";
-import { Chip, DeskStrip, FloorIcon, IconBox, InfoRow, Legend, StatTile } from "./FloorBits";
+import { Chip, deskTicks, FloorIcon, IconBox, InfoRow, Legend } from "./FloorBits";
+import { TickArc } from "@/components/TickArc";
 import { LinkRow, WeekChart } from "./FloorClient";
 import { GHOST, LIME_SM } from "../kitButtons";
 import { FirstVisitTour } from "../Tour";
@@ -98,7 +99,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
       {
         text: `Your link is paused${user.pause_until ? ` until ${fmtDay(user.pause_until)}` : ""}. Turn it back on in Account when you're ready.`,
         action: user.role === "member" ? undefined : (
-          <Link href="/dashboard/account" className={GHOST}>
+          <Link href="/dashboard/account" className={`${GHOST} press`}>
             Open Account
           </Link>
         ),
@@ -111,7 +112,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
           action: user.role === "member" ? undefined : openAlternative ? (
             <SwitchCollection id={openAlternative.id} name={openAlternative.name} />
           ) : (
-            <Link href="/dashboard/collections" className={LIME_SM}>
+            <Link href="/dashboard/collections" className={`${LIME_SM} press`}>
               {canAdd ? "New collection" : "Open Collections"}
             </Link>
           ),
@@ -123,10 +124,10 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
             text: `Your desk holds ${cap.limit.toLocaleString("en-GB")} active tracks and it's full, so your link has stopped taking new ones. Download what you need from Prepare, then delete tracks you're done with in the Review Queue to make room.`,
             action: (
               <span className="flex flex-wrap gap-2">
-                <Link href="/dashboard/prepare" className={LIME_SM}>
+                <Link href="/dashboard/prepare" className={`${LIME_SM} press`}>
                   Open Prepare
                 </Link>
-                <Link href="/dashboard/plans" className={GHOST}>
+                <Link href="/dashboard/plans" className={`${GHOST} press`}>
                   See plans
                 </Link>
               </span>
@@ -134,20 +135,34 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
           }
         : null;
 
-  // The four tiles. A figure with no data yet says so rather than showing a zero that means nothing.
+  // Option B (owner, 3 Nov: "give me another option"): the Floor laid out like the ops Overview. The figures sit in
+  // the headline row as readouts; what to act on sits under it as solid cards. A figure with no data yet says so
+  // rather than showing a zero that means nothing.
   const keptDelta = stats.keptWeek - stats.keptPrev;
-  const tiles = (
-    <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
-      <StatTile icon="inbox" label="Waiting" value={String(stats.waiting)} chip={stale > 0 ? <Chip tone="warn">{stale} over {STALE_DAYS} days</Chip> : undefined} />
-      <StatTile
-        icon="heart"
-        label="Kept this week"
-        value={String(stats.keptWeek)}
-        chip={keptDelta > 0 ? <Chip tone="up"><FloorIcon name="up" className="size-3" />{keptDelta}</Chip> : keptDelta < 0 ? <Chip>−{Math.abs(keptDelta)}</Chip> : undefined}
-      />
-      <StatTile icon="head" label="First listen" value={stats.medianListenMs !== null ? waitShort(stats.medianListenMs) : "–"} chip={<Chip>{stats.medianListenMs !== null ? "usual" : "no plays yet"}</Chip>} />
-      <StatTile icon="check" label="Decided" value={stats.decisionRate !== null ? `${stats.decisionRate}%` : "–"} chip={<Chip>30 days</Chip>} />
-    </div>
+  const readouts = (
+    <dl className="grid grid-cols-3 gap-4 sm:gap-8">
+      <div className="min-w-0">
+        <dt className="text-[12.5px] text-mute">Kept this week</dt>
+        <dd className="mt-1 flex flex-wrap items-center gap-1.5">
+          <span className="text-[28px] font-semibold leading-none tracking-[-0.03em] text-bone tnum sm:text-[34px]">{stats.keptWeek}</span>
+          {keptDelta > 0 ? <Chip tone="up"><FloorIcon name="up" className="size-3" />{keptDelta}</Chip> : keptDelta < 0 ? <Chip>−{Math.abs(keptDelta)}</Chip> : null}
+        </dd>
+      </div>
+      <div className="min-w-0">
+        <dt className="text-[12.5px] text-mute">First listen</dt>
+        <dd className="mt-1 flex flex-wrap items-center gap-1.5">
+          <span className="text-[28px] font-semibold leading-none tracking-[-0.03em] text-bone tnum sm:text-[34px]">{stats.medianListenMs !== null ? waitShort(stats.medianListenMs) : "–"}</span>
+          <Chip>{stats.medianListenMs !== null ? "usual" : "no plays yet"}</Chip>
+        </dd>
+      </div>
+      <div className="min-w-0">
+        <dt className="text-[12.5px] text-mute">Decided</dt>
+        <dd className="mt-1 flex flex-wrap items-center gap-1.5">
+          <span className="text-[28px] font-semibold leading-none tracking-[-0.03em] text-bone tnum sm:text-[34px]">{stats.decisionRate !== null ? `${stats.decisionRate}%` : "–"}</span>
+          <Chip>30 days</Chip>
+        </dd>
+      </div>
+    </dl>
   );
 
   // Your desk: what needs you (approvals, lime) and seats as links; then how full it is, collections, contacts and plan.
@@ -181,8 +196,8 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
 
   // A new desk's link, on its own above the checklist.
   const linkSection = (
-    <section aria-labelledby="link-h" className="flex flex-col gap-2.5 rounded-[18px] border border-line bg-card p-3 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
-      <h2 id="link-h" className="text-[15px] font-semibold text-bone">Your link</h2>
+    <section aria-labelledby="link-h" className="flex flex-col gap-2.5 plate p-3 sm:p-4">
+      <h2 id="link-h" className="text-[16px] font-semibold tracking-[-0.01em] text-bone">Your link</h2>
       <p className="text-[11.5px] text-mute">{linkWhere.replace(/^Your link · sends to/, "Sends tracks to").replace(/^Your link · n/, "N")}</p>
       <LinkRow link={link} />
     </section>
@@ -190,14 +205,18 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
 
   // The desk card (the mock's "Your desk"): how full it is as ticks, what needs you, its figures and the link.
   const deskCard = !fresh && (
-    <section aria-labelledby="desk-h" className="flex flex-col gap-3 rounded-[18px] border border-line bg-card p-3 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
+    <section aria-labelledby="desk-h" className="flex flex-col gap-3 plate p-3 sm:p-4">
       <div className="flex items-baseline justify-between gap-3">
-        <h2 id="desk-h" className="text-[15px] font-semibold text-bone">Your desk</h2>
-        <Link href={capHref} className={`text-[12px] tnum underline-offset-4 hover:underline ${nearLimit ? "font-semibold text-lime" : "text-mute hover:text-bone"}`}>
+        <h2 id="desk-h" className="text-[16px] font-semibold tracking-[-0.01em] text-bone">Your desk</h2>
+        <Link href={capHref} className={`inline-flex min-h-11 items-center gap-1 text-[12px] tnum underline-offset-4 hover:underline ${nearLimit ? "font-semibold text-lime" : "text-mute hover:text-bone"}`}>
           <strong className={`text-[16px] font-semibold ${nearLimit ? "" : "text-bone"}`}>{cap.used.toLocaleString("en-GB")}</strong> of {cap.limit.toLocaleString("en-GB")} tracks
         </Link>
       </div>
-      <DeskStrip waiting={stats.waiting} kept={kept} passed={passed} limit={cap.limit} />
+      {/* How full the desk is as the ops gauge's arc of ticks: waiting, kept, not for me, free (the legend says the numbers). */}
+      <TickArc colours={deskTicks({ waiting: stats.waiting, kept, passed, limit: cap.limit })} label={`${cap.used} of ${cap.limit} tracks used`}>
+        <p className="text-[30px] font-semibold leading-none tracking-[-0.03em] text-bone tnum">{free.toLocaleString("en-GB")}</p>
+        <p className="text-[12px] text-mute">free</p>
+      </TickArc>
       <Legend
         items={[
           { label: `Waiting ${stats.waiting}`, tone: "bg-lime" },
@@ -212,7 +231,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
             <li key={d.key}>
               <Link
                 href={d.href}
-                className={`group flex min-h-11 items-center gap-2 rounded-[11px] border px-2.5 text-[12.5px] ${d.urgent ? "border-lime/40 font-semibold text-lime" : "border-line bg-well text-mute hover:text-bone"}`}
+                className={`group press flex min-h-11 items-center gap-2 rounded-[14px] border px-2.5 text-[12.5px] ${d.urgent ? "border-lime/40 font-semibold text-lime" : "border-line bg-well text-mute hover:text-bone"}`}
               >
                 {d.urgent && <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-lime" />}
                 <span className="min-w-0 flex-1">{d.text}</span>
@@ -222,16 +241,16 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
           ))}
         </ul>
       )}
-      <div className="grid grid-cols-3 border-y border-dashed border-line-2 py-1.5 text-center">
-        <Link href="/dashboard/collections" className="flex min-h-11 flex-col items-center justify-center rounded-[10px] hover:bg-well">
+      <div className="grid grid-cols-3 gap-2 text-center">
+        <Link href="/dashboard/collections" className="press flex min-h-14 flex-col items-center justify-center rounded-[14px] bg-ink-3 hover:bg-ink-4">
           <span className="text-[11.5px] text-mute">Collections</span>
           <span className="text-[14px] font-semibold text-bone tnum">{collections.length}</span>
         </Link>
-        <Link href="/dashboard/contacts" className="flex min-h-11 flex-col items-center justify-center rounded-[10px] hover:bg-well">
+        <Link href="/dashboard/contacts" className="press flex min-h-14 flex-col items-center justify-center rounded-[14px] bg-ink-3 hover:bg-ink-4">
           <span className="text-[11.5px] text-mute">Contacts</span>
           <span className="text-[14px] font-semibold text-bone tnum">{contactCount}</span>
         </Link>
-        <Link href="/dashboard/plans" className="flex min-h-11 flex-col items-center justify-center rounded-[10px] hover:bg-well">
+        <Link href="/dashboard/plans" className="press flex min-h-14 flex-col items-center justify-center rounded-[14px] bg-ink-3 hover:bg-ink-4">
           <span className="text-[11.5px] text-mute">Plan</span>
           <span className="text-[14px] font-semibold text-bone">{plan.name}</span>
         </Link>
@@ -247,9 +266,9 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   const week = stats.daily.slice(-7);
   const receivedDelta = stats.receivedWeek - stats.receivedPrev;
   const weekCard = !fresh && stats.receivedWeek + stats.receivedPrev + stats.keptWeek > 0 && (
-    <section aria-labelledby="week-h" className="flex flex-col gap-3 rounded-[18px] border border-line bg-card p-3 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
+    <section aria-labelledby="week-h" className="flex flex-col gap-3 plate p-3 sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="week-h" className="text-[15px] font-semibold text-bone">This week</h2>
+        <h2 id="week-h" className="text-[16px] font-semibold tracking-[-0.01em] text-bone">This week</h2>
         <Chip tone={receivedDelta > 0 ? "up" : "flat"}>
           {stats.receivedWeek} received · {receivedDelta === 0 ? "same as last week" : receivedDelta > 0 ? `${receivedDelta} more` : `${-receivedDelta} fewer`}
         </Chip>
@@ -267,17 +286,22 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
       setting up, what's ready for a set) and the desk on the right (how full it is, the link, the week, sending).
       What needs you stays on top at every width: the tiles, the one lime button, anything wrong.
     */}
-    <div className="page-gutter py-4 sm:py-7">
+    <div className="page-gutter relative isolate py-4 sm:py-7">
+      {/* The ops canvas (light from the top, fine grain) behind the Floor: glass pass page 1, owner 3 Nov. */}
+      <div aria-hidden className="desk-canvas" />
       <div className="mx-auto flex w-full max-w-3xl min-w-0 flex-col gap-4 sm:gap-5 xl:max-w-6xl">
         {sp.desk === "ended" && (
-          <p role="alert" className="rounded-[13px] border border-danger/40 bg-danger/10 px-4 py-3 text-[13px] text-bone">
+          <p role="alert" className="rounded-[16px] border border-danger/40 bg-danger/10 px-4 py-3 text-[13px] text-bone">
             You don&apos;t have access to that team&apos;s desk any more, so nothing was changed. This is your own desk.
           </p>
         )}
-        <header className="flex min-w-0 flex-col gap-1">
+        {/* The headline row, as on the ops Overview: the greeting (a lime dot while tracks wait), the figures on the right. */}
+        <header className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          <div className="flex min-w-0 flex-col gap-1">
           <p className="text-[12px] text-mute">{today}</p>
-          <h1 className="text-[22px] font-semibold leading-tight tracking-[-0.025em] text-bone sm:text-[26px]">
-            {welcome ? `Welcome, ${first}.` : `${greeting}, ${first}`}
+          <h1 className="flex items-center gap-3 text-[30px] font-semibold leading-[1.1] tracking-[-0.025em] text-bone sm:text-[36px]">
+            {!welcome && stats.waiting > 0 && <span aria-hidden className="size-3 shrink-0 rounded-full bg-lime" />}
+            <span className="min-w-0">{welcome ? `Welcome, ${first}.` : `${greeting}, ${first}`}</span>
           </h1>
           {welcome && <p className="max-w-[46ch] text-[14px] leading-snug text-mute">Your link is ready. Share it and the first track lands here.</p>}
           {!welcome && !stats.waiting && (
@@ -285,10 +309,12 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
               {kept ? `You're all caught up. ${kept} kept track${kept === 1 ? " is" : "s are"} ready for your set.` : "You're all caught up. New tracks will show up here first."}
             </p>
           )}
+          </div>
+          {!fresh && readouts}
         </header>
 
         {problem && (
-          <div role="alert" className="flex flex-wrap items-center gap-x-3 gap-y-2.5 rounded-[14px] border border-danger/40 bg-danger/10 px-3.5 py-3">
+          <div role="alert" className="flex flex-wrap items-center gap-x-3 gap-y-2.5 rounded-[16px] border border-danger/40 bg-danger/10 px-3.5 py-3">
             <span aria-hidden className="size-2 shrink-0 rounded-full bg-danger" />
             <p className="min-w-[12rem] flex-1 text-[13px] font-medium leading-snug text-bone">{problem.text}</p>
             {problem.action}
@@ -298,27 +324,91 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
         {/* A desk that has never had a track: sharing the link is the first job, so it comes straight after the welcome. */}
         {fresh && linkSection}
 
-        {!fresh && tiles}
+        {/* Act now, as on the ops Overview: solid cards, what's waiting first, then what's ready for the set. */}
+        {!fresh && (
+          <section aria-labelledby="now-h" className="plate p-4 sm:p-5">
+            <h2 id="now-h" className="text-[16px] font-semibold tracking-[-0.01em] text-bone">Act now</h2>
+            <ul className="mt-3 grid gap-3 sm:grid-cols-2">
+              <li>
+                {/* Waiting (owner, 4 Nov: "mostly empty space"): the count, then the oldest track and how long it has
+                    waited, and the way in. The whole card opens the queue, which plays oldest first. */}
+                <Link
+                  href="/dashboard/review?view=queue"
+                  className={`press flex h-full flex-col gap-3 rounded-[18px] p-4 ${oldest ? "bg-lime text-[#10110f]" : "border border-line bg-ink-3 text-bone"}`}
+                >
+                  <span className="text-[14px] font-semibold leading-snug">Waiting</span>
+                  <span className="flex min-w-0 items-center gap-3.5">
+                    <span className="text-[36px] font-semibold leading-none tracking-[-0.03em] tnum">{stats.waiting}</span>
+                    {oldest ? (
+                      <span className="flex min-w-0 flex-1 flex-col border-l border-[#10110f]/20 pl-3.5">
+                        <span className="text-[11.5px] text-[#10110f]/70">{stats.waiting > 1 ? "Oldest" : "Arrived"} · {ago(Number(oldest.created_at))}</span>
+                        <span className="truncate text-[14px] font-semibold leading-tight">{oldest.title}</span>
+                        <span className="truncate text-[12.5px] text-[#10110f]/75">{oldest.artist}</span>
+                      </span>
+                    ) : (
+                      <span className="min-w-0 flex-1 text-[12.5px] leading-snug text-mute">Nothing waiting. New tracks land here first.</span>
+                    )}
+                  </span>
+                  <span className="mt-auto flex flex-wrap items-center gap-2">
+                    {oldest ? (
+                      <span className="inline-flex min-h-11 items-center gap-1 rounded-full bg-[#10110f] px-4 text-[13px] font-semibold text-[#d5ff48]">
+                        Start listening <FloorIcon name="chev" className="size-3.5" />
+                      </span>
+                    ) : (
+                      <span className="inline-flex min-h-11 items-center gap-1 rounded-full border border-line-2 px-4 text-[13px] font-semibold text-mute">
+                        Open the queue <FloorIcon name="chev" className="size-3.5" />
+                      </span>
+                    )}
+                    {stale > 0 && (
+                      <span className="rounded-full bg-[#2a1410] px-2.5 py-1 text-[12px] font-bold text-[#ffb3a6] tnum">
+                        {stale} over {STALE_DAYS} days
+                      </span>
+                    )}
+                  </span>
+                </Link>
+              </li>
+              {kept > 0 && (
+                <li>
+                  <section aria-labelledby="set-h" className="flex h-full flex-col justify-between gap-3 rounded-[18px] bg-[#c9c1ff] p-4 text-[#16123a]">
+                    <div className="min-w-0">
+                      <h3 id="set-h" className="text-[14px] font-semibold leading-snug">
+                        <span className="tnum">{kept}</span> kept track{kept === 1 ? "" : "s"} ready for your set
+                      </h3>
+                      <p className="mt-1 text-[12.5px] leading-snug text-[#16123a]/80">
+                        {nearLimit
+                          ? `Your desk is nearly full (${cap.used} of ${cap.limit}). Download them, then delete the ones you're done with to make room.`
+                          : "Download them as a crate with a Rekordbox playlist."}
+                      </p>
+                    </div>
+                    <Link href="/dashboard/prepare" className="press inline-flex min-h-11 w-fit items-center rounded-full bg-[#16123a] px-4 text-[13px] font-semibold text-[#e9e5ff]">
+                      Prepare
+                    </Link>
+                  </section>
+                </li>
+              )}
+            </ul>
+          </section>
+        )}
 
         {weekend && <PlayedOutCard titles={weekend.tracks.map((t) => t.title)} />}
 
-        <div className="grid grid-cols-1 gap-4 sm:gap-5 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
+        <div className="grid grid-cols-1 gap-4 sm:gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] xl:items-start">
           <div className="flex min-w-0 flex-col gap-4 sm:gap-5">
             {oldest && (
-              <section aria-labelledby="next-h" className="flex flex-col gap-3 rounded-[18px] border border-line bg-card p-3 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
+              <section aria-labelledby="next-h" className="flex flex-col gap-3 plate p-3 sm:p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <IconBox name="wave" small />
-                    <h2 id="next-h" className="text-[15px] font-semibold text-bone">Up next</h2>
+                    <h2 id="next-h" className="text-[16px] font-semibold tracking-[-0.01em] text-bone">Up next</h2>
                   </div>
-                  <Link href="/dashboard/review?view=queue" className={GHOST}>
+                  <Link href="/dashboard/review?view=queue" className={`${GHOST} press`}>
                     {stats.waiting > 1 ? <span className="tnum">All {stats.waiting}</span> : "Open the queue"}
                     <FloorIcon name="chev" className="size-3.5" />
                   </Link>
                 </div>
                 <div className="min-w-0">
                   <p className="text-[11.5px] text-mute">{stats.waiting > 1 ? "Oldest waiting" : "Waiting"}</p>
-                  <p className="mt-0.5 truncate text-[20px] font-semibold leading-tight tracking-[-0.03em] text-bone">{oldest.title}</p>
+                  <p className="mt-0.5 truncate text-[20px] font-semibold leading-tight tracking-[-0.02em] text-bone">{oldest.title}</p>
                   <p className="truncate text-[13px] text-mute">{oldest.artist}</p>
                 </div>
                 <UpNextHero track={oldest} queue={upNext} />
@@ -337,7 +427,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
                 </dl>
                 <Link
                   href="/dashboard/review?view=queue"
-                  className="btn-lime min-h-12 w-full px-6 text-[15px]! transition-transform duration-100 active:scale-[0.97] motion-reduce:active:scale-100"
+                  className="btn-lime press min-h-12 w-full rounded-[16px]! px-6 text-[15px]!"
                 >
                   {stats.waiting === 1 ? "Listen now" : "Start with the oldest"}
                 </Link>
@@ -355,26 +445,6 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
             {/* Setting up the account is for the owner and admins; members skip the checklist. */}
             {user.role !== "member" && <Onboarding user={user} />}
 
-            {kept > 0 && (
-              <section aria-labelledby="set-h" className="flex items-center justify-between gap-4 rounded-[18px] border border-line bg-card p-3 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <IconBox name="heart" />
-                  <div className="min-w-0">
-                    <h2 id="set-h" className="text-[14px] font-semibold text-bone">
-                      <span className="tnum">{kept}</span> kept track{kept === 1 ? "" : "s"} ready for your set
-                    </h2>
-                    <p className="text-[12px] text-faint">
-                      {nearLimit
-                        ? `Your desk is nearly full (${cap.used} of ${cap.limit}). Download them, then delete the ones you're done with to make room.`
-                        : "Download them as a crate with a Rekordbox playlist."}
-                    </p>
-                  </div>
-                </div>
-                <Link href="/dashboard/prepare" className={GHOST}>
-                  Prepare
-                </Link>
-              </section>
-            )}
           </div>
 
           {(!fresh || canSend) && (
@@ -383,7 +453,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
               {weekCard}
               {/* On a team desk, Members can't send as the account; in the beta nobody sends from here (switch send_music). */}
               {canSend && (
-                <div className="overflow-hidden rounded-[18px] border border-line bg-card shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
+                <div className="plate overflow-hidden">
                   <SendMusicCard recent={recentSends} host={APP_URL.replace(/^https?:\/\//, "")} />
                 </div>
               )}

@@ -4,28 +4,24 @@
  * Reduced motion keeps short fades only.
  */
 #theme-root {
-  --admin-violet: #9b8cff;
+  --admin-violet: var(--violet); /* the shared token (globals.css, "Shared materials"), day and night */
   --admin-amber: #f2c14e;
 }
 #theme-root.theme-day {
-  --admin-violet: #5b45d6;
   --admin-amber: #7d5600;
 }
 @media (prefers-color-scheme: light) {
   #theme-root.theme-system {
-    --admin-violet: #5b45d6;
     --admin-amber: #7d5600;
   }
 }
 
-/* Textured canvas: fine grain over ink, with a soft light falling from the top (pins 0–3), never behind text alone. */
+/* Textured canvas: fine grain over ink, with a soft light falling from the top (pins 0–3), never behind text alone.
+   The light, the grain and their day values are shared with the desk (globals.css). */
 .admin-canvas {
   position: relative;
   isolation: isolate;
-  background:
-    radial-gradient(1200px 520px at 70% -120px, color-mix(in srgb, var(--admin-violet, #9b8cff) 9%, transparent), transparent 70%),
-    radial-gradient(900px 420px at 0% -80px, color-mix(in srgb, var(--color-lime) 5%, transparent), transparent 70%),
-    var(--color-ink);
+  background: var(--canvas-light), var(--color-ink);
 }
 .admin-canvas::before {
   content: "";
@@ -33,39 +29,12 @@
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  opacity: 0.07;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: var(--grain-opacity);
+  filter: var(--grain-filter);
+  background-image: var(--grain);
 }
-.theme-day .admin-canvas::before {
-  opacity: 0.05;
-  filter: invert(1);
-}
-@media (prefers-color-scheme: light) {
-  .theme-system .admin-canvas::before {
-    opacity: 0.05;
-    filter: invert(1);
-  }
-}
-/* Panels like machined plates: a hairline ring, light catching the top edge, a soft lift; tiles inside use smaller,
-   concentric corners (rounded-[16px] in a 22px panel). */
-.admin-panel {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--color-ink-2) 96%, white 4%), var(--color-ink-2));
-  border-radius: 22px;
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--color-bone) 8%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--color-bone) 7%, transparent),
-    0 18px 40px -24px rgb(0 0 0 / 0.55);
-}
-.theme-day .admin-panel {
-  background: var(--color-ink-3);
-  box-shadow: 0 0 0 1px var(--color-line), 0 14px 30px -22px rgb(20 24 10 / 0.25);
-}
-@media (prefers-color-scheme: light) {
-  .theme-system .admin-panel {
-    background: var(--color-ink-3);
-    box-shadow: 0 0 0 1px var(--color-line), 0 14px 30px -22px rgb(20 24 10 / 0.25);
-  }
-}
+/* Panels like machined plates (.admin-panel, shared with the desk as .plate in globals.css): a hairline ring, light
+   catching the top edge, a soft lift; tiles inside use smaller, concentric corners (rounded-[16px] in a 22px panel). */
 
 /* The one loop: the live dot breathes once every 6 s. */
 .admin-live::after {

@@ -78,7 +78,7 @@ export function WeekChart({ days }: { days: Day[] }) {
         {total} {view} in the last 7 days.
       </p>
       <div aria-hidden className="flex flex-col gap-1.5">
-        <div className="relative grid h-24 grid-cols-7 items-end gap-2 border-b border-dashed border-line-2">
+        <div className="relative grid h-36 grid-cols-7 items-end gap-2 border-b border-dashed border-line-2">
           <span className="pointer-events-none absolute inset-x-0 top-0 border-t border-dashed border-line" />
           <span className="pointer-events-none absolute -top-2 right-0 text-[10px] text-faint tnum">{top}</span>
           {days.map((d, i) => {
@@ -87,8 +87,8 @@ export function WeekChart({ days }: { days: Day[] }) {
             const grey = view === "received" ? Math.max(0, v - lime) : 0;
             return (
               <div key={i} className="flex h-full flex-col justify-end gap-0.5">
-                {grey > 0 && <span className="block rounded-[5px] bg-line-2" style={{ height: `${(grey / top) * 100}%` }} />}
-                {lime > 0 && <span className="block rounded-[5px] bg-lime" style={{ height: `${(lime / top) * 100}%` }} />}
+                {grey > 0 && <span className="block rounded-t-[8px] rounded-b-[3px] bg-line-2" style={{ height: `${(grey / top) * 100}%` }} />}
+                {lime > 0 && <span className="block rounded-t-[8px] rounded-b-[3px] bg-lime" style={{ height: `${(lime / top) * 100}%` }} />}
               </div>
             );
           })}
