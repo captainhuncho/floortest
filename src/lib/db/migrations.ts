@@ -2137,6 +2137,12 @@ update users set email_verify_sent_at = (extract(epoch from now()) * 1000)::bigi
     sql: `grant update (notify_submissions, digest_hour, quiet_start, quiet_end, notify_alerts, notify_product, notify_marketing, product_consent_at, marketing_consent_at) on users to ft_person;
 revoke update (cover_key, active_collection_id) on users from ft_person;`,
   },
+  {
+    // Email delivery log (owner, 6 Nov: emails that arrived showed only "Bounced"): when Resend first reported the email
+    // delivered, so a later bounce (often a forwarded copy) can't hide that, and the bounce reason on the email itself.
+    // Additive only. Numbered 0136: 0132 to 0134 are the per-person Settings work (#448 and slice 2), 0135 is set aside for Build's onboarding tour (#451, moving from 0133).
+    id: "0136_outbox_delivery_detail",
+    sql: `alter table outbox add column if not exists delivered_at bigint;
+alter table outbox add column if not exists delivery_detail text not null default '';`,
+  },
 ];
-
-
