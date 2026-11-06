@@ -192,6 +192,113 @@ button:not(:disabled):active, .btn:not(:disabled):active { scale: 0.97; transiti
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 2px 6px rgb(0 0 0 / 0.55);
 }
 .tactile-label { color: #94978e; }
+/* ── Shared materials (direction B, owner 1 Nov; desk glass pass 3 Nov, DESIGN.md "Materials") ──
+   Built for the ops console and moved here so the desk wears the same: a textured canvas with a soft light from the
+   top, solid plates for sections, glass only on chrome that floats over scrolling content, and a press that answers on
+   pointer-down. Ops looks exactly as before (admin.css and kit.css now read these). Declared on :root too (the ops
+   sign-in page has no theme root) and again on #theme-root, so the colours they mix resolve in the theme's own. */
+:root, #theme-root {
+  --violet: #9b8cff;
+  /* Glass: the heavy material, for fixed or floating chrome only (top bars, tab bars, ⌘K, toasts). */
+  --glass-fill: color-mix(in srgb, var(--color-ink-2) 86%, transparent);
+  --glass-solid: var(--color-ink-3);
+  --glass-edge: color-mix(in srgb, var(--color-bone) 14%, transparent);
+  --glass-lit: color-mix(in srgb, var(--color-bone) 6%, transparent);
+  --glass-shadow: 0 18px 48px rgb(0 0 0 / 0.45), 0 2px 8px rgb(0 0 0 / 0.3);
+  /* The canvas: violet and lime light falling from the top, and a fine grain over the ink. */
+  --canvas-light:
+    radial-gradient(1200px 520px at 70% -120px, color-mix(in srgb, var(--violet) 9%, transparent), transparent 70%),
+    radial-gradient(900px 420px at 0% -80px, color-mix(in srgb, var(--color-lime) 5%, transparent), transparent 70%);
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --grain-opacity: 0.07;
+  --grain-filter: none;
+}
+#theme-root.theme-day {
+  --violet: #5b45d6;
+  --glass-fill: color-mix(in srgb, #ffffff 86%, transparent);
+  --glass-solid: #ffffff;
+  --glass-edge: rgb(22 23 20 / 0.12);
+  --glass-lit: rgb(255 255 255 / 0.7);
+  --glass-shadow: 0 18px 48px rgb(16 17 15 / 0.16), 0 2px 8px rgb(16 17 15 / 0.08);
+  --grain-opacity: 0.05;
+  --grain-filter: invert(1);
+}
+@media (prefers-color-scheme: light) {
+  #theme-root.theme-system {
+    --violet: #5b45d6;
+    --glass-fill: color-mix(in srgb, #ffffff 86%, transparent);
+    --glass-solid: #ffffff;
+    --glass-edge: rgb(22 23 20 / 0.12);
+    --glass-lit: rgb(255 255 255 / 0.7);
+    --glass-shadow: 0 18px 48px rgb(16 17 15 / 0.16), 0 2px 8px rgb(16 17 15 / 0.08);
+    --grain-opacity: 0.05;
+    --grain-filter: invert(1);
+  }
+}
+/* In the components layer, so a page's own utilities (md:bg-…, rounded-…) can still adjust a piece. */
+@layer components {
+  /* Glass (ops: kit-glass). Never on a plate, a long list or another glass layer. */
+  .glass, .kit-glass {
+    background: var(--glass-fill);
+    -webkit-backdrop-filter: blur(22px) saturate(170%);
+    backdrop-filter: blur(22px) saturate(170%);
+    border: 1px solid var(--glass-edge);
+    box-shadow: inset 0 1px 0 var(--glass-lit), var(--glass-shadow);
+  }
+  /* Plates (ops: admin-panel): machined sections, a hairline ring, light on the top edge, a soft lift. 22px corners;
+     tiles inside take concentric corners (14–16px). Solid, so they cost nothing to scroll. */
+  .plate, .admin-panel {
+    background: linear-gradient(180deg, color-mix(in srgb, var(--color-ink-2) 96%, white 4%), var(--color-ink-2));
+    border-radius: 22px;
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--color-bone) 8%, transparent),
+      inset 0 1px 0 color-mix(in srgb, var(--color-bone) 7%, transparent),
+      0 18px 40px -24px rgb(0 0 0 / 0.55);
+  }
+  .theme-day :is(.plate, .admin-panel) {
+    background: var(--color-ink-3);
+    box-shadow: 0 0 0 1px var(--color-line), 0 14px 30px -22px rgb(20 24 10 / 0.25);
+  }
+}
+@media (prefers-color-scheme: light) {
+  .theme-system :is(.plate, .admin-panel) {
+    background: var(--color-ink-3);
+    box-shadow: 0 0 0 1px var(--color-line), 0 14px 30px -22px rgb(20 24 10 / 0.25);
+  }
+}
+/* Press (ops: kit-press): the pressed look shows on pointer-down with no easing; the release eases back. Unlayered,
+   as it was in ops, so a button's own transition utilities never slow the press down. */
+.press, .kit-press {
+  transition: transform 160ms var(--ease-drawer), background-color 150ms, color 150ms;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.press:is(:active, [data-pressed]):not([aria-disabled="true"]),
+.kit-press:is(:active, [data-pressed]):not([aria-disabled="true"]) {
+  transform: scale(0.97);
+  transition-duration: 0s;
+}
+/* Fallbacks: no blur support, or the person asked for less transparency, gets the solid fill; more contrast gets a
+   solid fill with a clear edge. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass, .kit-glass { background: var(--glass-solid); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass, .kit-glass { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; background: var(--glass-solid) !important; }
+}
+@media (prefers-contrast: more) {
+  .glass { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--glass-solid); border-color: var(--color-line-2); }
+  .plate { box-shadow: 0 0 0 1px var(--color-line-2); background: var(--color-ink-3); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .press, .press:active, .press[data-pressed] { transform: none !important; transition: opacity 120ms linear; }
+}
+/* The desk's canvas (the Floor so far): the ops canvas's light and grain on a layer behind the page, reaching up under
+   the top bar so there is no seam. Static, so scrolling only moves it. More contrast drops it. */
+.desk-canvas { position: absolute; inset: -6rem 0 0; z-index: -1; pointer-events: none; background: var(--canvas-light); }
+.desk-canvas::before { content: ""; position: absolute; inset: 0; opacity: var(--grain-opacity); filter: var(--grain-filter); background-image: var(--grain); mask-image: linear-gradient(to bottom, #000 75%, transparent); }
+@media (prefers-contrast: more) { .desk-canvas { display: none; } }
+
 /* Admin areas: each group of the admin menu has its own accent, carried onto the Overview numbers that belong to it. */
 [data-area="monitor"] { --area: #6ec8ff; }
 [data-area="support"] { --area: #ffb648; }

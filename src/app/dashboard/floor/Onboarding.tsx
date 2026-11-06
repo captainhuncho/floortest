@@ -50,9 +50,9 @@ export async function Onboarding({ user }: { user: User }) {
 
   // Figma "Get Your Desk Running": one column, checked steps struck through, open steps carry a hint.
   return (
-    <section aria-labelledby="onboard-h" className="rounded-[18px] border border-line bg-card p-3 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
+    <section aria-labelledby="onboard-h" className="plate p-3 sm:p-4">
       <div className="flex items-center justify-between gap-3">
-        <h2 id="onboard-h" className="text-[15px] font-semibold text-bone">
+        <h2 id="onboard-h" className="text-[16px] font-semibold tracking-[-0.01em] text-bone">
           Get your desk running · {doneCount} of {steps.length}
         </h2>
         <form action={dismissOnboarding}>
