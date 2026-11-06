@@ -4,6 +4,7 @@ import { readLimited } from "@/lib/body-limit";
 import { now, q } from "@/lib/db";
 import { recordIncident } from "@/lib/incidents";
 import { normalEmail } from "@/lib/email-normal";
+import { nextDelivery } from "@/lib/email-delivery";
 
 export const runtime = "nodejs";
 
@@ -22,14 +23,46 @@ function verified(secret: string, id: string, timestamp: string, body: string, s
   });
 }
 
-type Event = { type?: string; data?: { email_id?: string; to?: string[] | string; bounce?: { type?: string; subType?: string; message?: string } } };
+type Report = { type: string; emailId: string; to: string; bounce: { type?: string; subType?: string; message?: string } | null };
+
+/**
+ * The parts of a report this route uses, checked for type. A report that fails (a number or object where text belongs,
+ * say after a change on Resend's side) is recorded once with an incident and answered 200 "ignored": a crash or a non-2xx
+ * answer would have Resend retry it for about a day and could get the endpoint switched off, stopping all tracking.
+ * `to` is only a fallback for an email we can't find, so a bad one is dropped rather than failing the report.
+ */
+function readReport(raw: unknown): Report | null {
+  const o = raw as { type?: unknown; data?: { email_id?: unknown; to?: unknown; bounce?: unknown } } | null;
+  if (!o || typeof o !== "object" || typeof o.type !== "string") return null;
+  const d = o.data;
+  if (!d || typeof d !== "object" || typeof d.email_id !== "string") return null;
+  const first = Array.isArray(d.to) ? d.to[0] : d.to;
+  const to = typeof first === "string" ? first : "";
+  let bounce: Report["bounce"] = null;
+  if (d.bounce !== undefined && d.bounce !== null) {
+    if (typeof d.bounce !== "object" || Array.isArray(d.bounce)) return null;
+    const b = d.bounce as Record<string, unknown>;
+    for (const k of ["type", "subType", "message"]) if (b[k] !== undefined && typeof b[k] !== "string") return null;
+    bounce = { type: b.type as string | undefined, subType: b.subType as string | undefined, message: b.message as string | undefined };
+  }
+  return { type: o.type, emailId: d.email_id, to, bounce };
+}
 
 /**
  * Delivery reports from Resend: delivered, delayed, bounced or marked as spam. Each one updates its email on Admin → Emails.
- * A permanent bounce or a spam report stops further email to that address. Needs RESEND_WEBHOOK_SECRET.
- * Each event (svix-id) is acted on once: it's recorded in the same transaction as its changes, so a retried or replayed
- * report changes nothing and raises no second incident (Codex review, 19 Oct).
+ * Needs RESEND_WEBHOOK_SECRET. Each event (svix-id) is acted on once: it's recorded in the same transaction as its
+ * changes, so a retried or replayed report changes nothing and raises no second incident (Codex review, 19 Oct).
+ *
+ * What each email shows (owner, 6 Nov: emails that arrived showed only "Bounced"):
+ * - "delivered" stays once it's reported: a bounce that comes after it (often a forwarded copy failing at another
+ *   mailbox) is kept as a note, not a new status, and doesn't stop email to the address;
+ * - a soft bounce (Resend type Transient: mailbox full, server busy) is "soft_bounce" and stops nothing;
+ * - a hard bounce on an email never delivered is "bounced" and stops further email to the address; a spam report is
+ *   "complained" and stops optional email, as before.
  */
+/** The delivery reports this route acts on, by Resend's event type. */
+const REPORTS = { "email.delivered": "delivered", "email.delivery_delayed": "delayed", "email.bounced": "bounced", "email.complained": "complained" } as const;
+
 export async function POST(req: Request) {
   const secret = process.env.RESEND_WEBHOOK_SECRET;
   if (!secret) return new NextResponse(null, { status: 404 });
@@ -39,46 +72,62 @@ export async function POST(req: Request) {
   const h = req.headers;
   if (!verified(secret, h.get("svix-id") ?? "", h.get("svix-timestamp") ?? "", body, h.get("svix-signature") ?? "")) return new NextResponse(null, { status: 401 });
 
-  let e: Event;
+  let parsed: unknown;
   try {
-    e = JSON.parse(body);
+    parsed = JSON.parse(body);
   } catch {
     return new NextResponse(null, { status: 400 });
   }
-  const delivery = { "email.delivered": "delivered", "email.delivery_delayed": "delayed", "email.bounced": "bounced", "email.complained": "complained" }[e.type ?? ""];
-  const id = e.data?.email_id;
-  if (!delivery || !id) return NextResponse.json({ ignored: true });
-
-  const to = (Array.isArray(e.data?.to) ? e.data?.to[0] : e.data?.to) ?? "";
-  const permanent = delivery === "bounced" && (e.data?.bounce?.type ?? "Permanent").toLowerCase() !== "transient";
-  const reason = delivery === "complained" ? "complained" : permanent ? "bounced" : null;
+  const kind = typeof (parsed as { type?: unknown })?.type === "string" ? (parsed as { type: string }).type : "";
+  const delivery = Object.hasOwn(REPORTS, kind) ? REPORTS[kind as keyof typeof REPORTS] : undefined;
+  if (!delivery) return NextResponse.json({ ignored: true });
+  const e = readReport(parsed);
+  if (!e || !e.emailId) {
+    // Signed by Resend but not in the shape we read: noted once, then answered 2xx so it isn't retried.
+    const fresh = await q.get("INSERT INTO webhook_receipts (provider, event_id, received_at) VALUES ('resend', ?, ?) ON CONFLICT DO NOTHING RETURNING event_id", h.get("svix-id"), now());
+    if (fresh) await recordIncident("email_failed", `A ${kind} report from Resend wasn't in the expected shape, so it was skipped.`, "Check Resend's webhook format");
+    return NextResponse.json({ ignored: true });
+  }
+  const id = e.emailId;
+  const to = e.to;
+  const bounce = e.bounce;
+  const soft = delivery === "bounced" && (bounce?.type ?? "Permanent").toLowerCase() === "transient";
+  const detail = delivery === "bounced" ? [soft ? "Soft bounce" : "Bounce", bounce?.subType, bounce?.message].filter(Boolean).join(": ").slice(0, 300) : "";
   const done = await q.tx(async (db) => {
     const fresh = await db.get("INSERT INTO webhook_receipts (provider, event_id, received_at) VALUES ('resend', ?, ?) ON CONFLICT DO NOTHING RETURNING event_id", h.get("svix-id"), now());
     if (!fresh) return null;
-    // A later "delayed" never overwrites a final result.
-    const row = await db.get<{ id: number; to_email: string; subject: string }>(
-      `UPDATE outbox SET delivery = ?, delivery_at = ? WHERE provider_id = ? AND (? <> 'delayed' OR delivery IN ('', 'delayed')) RETURNING id, to_email, subject`,
-      delivery,
-      now(),
+    const row = await db.get<{ id: number; to_email: string; subject: string; delivery: string; delivered_at: number | null }>(
+      "SELECT id, to_email, subject, delivery, delivered_at FROM outbox WHERE provider_id = ? FOR UPDATE",
       id,
-      delivery,
     );
+    const deliveredBefore = !!row?.delivered_at || row?.delivery === "delivered";
+    const next = row ? nextDelivery(row.delivery, deliveredBefore, delivery as "delivered" | "delayed" | "bounced" | "complained", soft) : null;
+    if (row && next)
+      await db.run(
+        "UPDATE outbox SET delivery = ?, delivery_at = ?, delivered_at = CASE WHEN ? = 'delivered' THEN COALESCE(delivered_at, ?) ELSE delivered_at END WHERE id = ?",
+        next, now(), next, now(), row.id,
+      );
+    // The reason stays on the email either way, so a bounce after delivery is still visible.
+    if (row && detail)
+      await db.run("UPDATE outbox SET delivery_detail = ? WHERE id = ?", deliveredBefore ? `After delivery: ${detail}`.slice(0, 300) : detail, row.id);
+    // Stop email to the address only for a hard bounce on an email that never arrived, or a spam report.
+    const reason = delivery === "complained" ? "complained" : delivery === "bounced" && !soft && !deliveredBefore ? "bounced" : null;
     const email = normalEmail(row?.to_email ?? to);
     if (email && reason)
       await db.run(
         "INSERT INTO email_suppressions (email, reason, detail, created_at) VALUES (?,?,?,?) ON CONFLICT (email) DO NOTHING",
         email,
         reason,
-        (e.data?.bounce?.message ?? "").slice(0, 300),
+        (bounce?.message ?? "").slice(0, 300),
         now(),
       );
-    return { email, subject: row?.subject ?? "" };
+    return { email, subject: row?.subject ?? "", reason };
   });
   if (!done) return NextResponse.json({ duplicate: true });
-  if (done.email && reason)
+  if (done.email && done.reason)
     await recordIncident(
       "email_failed",
-      `${reason === "complained" ? "Marked as spam" : "Bounced"}: ${done.email.replace(/^(.{2}).*@/, "$1…@")}. No more email goes to this address.`,
+      `${done.reason === "complained" ? "Marked as spam" : "Bounced"}: ${done.email.replace(/^(.{2}).*@/, "$1…@")}. No more email goes to this address.`,
       done.subject,
     );
   return NextResponse.json({ ok: true });
