@@ -22,12 +22,15 @@ export default async function Emails({ searchParams }: { searchParams: Promise<{
   const failedOnly = sp.failed === "1";
   const where = [
     search ? "(o.to_email ILIKE ? OR o.subject ILIKE ?)" : "",
+    // Soft bounces stay out on purpose: they block nothing and usually arrive on Resend's retry.
     failedOnly ? "(o.status LIKE 'failed%' OR o.status LIKE 'skipped%' OR o.delivery IN ('bounced', 'complained'))" : "",
   ].filter(Boolean);
   const tracking = !!process.env.RESEND_WEBHOOK_SECRET;
   const usage = await mailUsage();
   const pct = (n: number, d: number) => Math.min(100, Math.round((n / d) * 100));
   const blocked = await q.all<{ email: string; reason: string; detail: string; created_at: number }>("SELECT email, reason, detail, created_at FROM email_suppressions ORDER BY created_at DESC LIMIT 100");
+  // The Blocked chip is display only: the send-time check (src/lib/mail.ts) uses normalEmail itself. SQL's lower/btrim can
+  // differ from JavaScript's for rare characters (tabs, a dotted İ), which can only miss a chip, never let mail through.
   const rows = await q.all<{ id: number; to_email: string; subject: string; body: string; status: string; delivery: string; delivery_detail: string; blocked: boolean; audience: string; created_at: number; handle: string | null; user_id: number | null }>(
     `SELECT o.id, o.to_email, o.subject, o.body, o.status, o.delivery, o.delivery_detail, EXISTS (SELECT 1 FROM email_suppressions s WHERE s.email = lower(btrim(normalize(o.to_email, NFKC)))) AS blocked, o.audience, o.created_at, o.user_id, u.handle FROM outbox o LEFT JOIN users u ON u.id = o.user_id ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY o.created_at DESC LIMIT 200`,
     ...(search ? [likeContains(search), likeContains(search)] : []),
