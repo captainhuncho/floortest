@@ -23,7 +23,28 @@ function verified(secret: string, id: string, timestamp: string, body: string, s
   });
 }
 
-type Event = { type?: string; data?: { email_id?: string; to?: string[] | string; bounce?: { type?: string; subType?: string; message?: string } } };
+type Report = { type: string; emailId: string; to: string; bounce: { type?: string; subType?: string; message?: string } | null };
+
+/**
+ * The parts of a report this route uses, checked for type. Anything else (a number or object where text belongs) is
+ * refused with 400 and changes nothing, so a malformed report can't crash the route and be retried by Resend forever.
+ */
+function readReport(raw: unknown): Report | null {
+  const o = raw as { type?: unknown; data?: { email_id?: unknown; to?: unknown; bounce?: unknown } } | null;
+  if (!o || typeof o !== "object" || typeof o.type !== "string") return null;
+  const d = o.data;
+  if (!d || typeof d !== "object" || typeof d.email_id !== "string") return null;
+  const to = Array.isArray(d.to) ? d.to[0] : (d.to ?? "");
+  if (typeof to !== "string") return null;
+  let bounce: Report["bounce"] = null;
+  if (d.bounce !== undefined && d.bounce !== null) {
+    if (typeof d.bounce !== "object" || Array.isArray(d.bounce)) return null;
+    const b = d.bounce as Record<string, unknown>;
+    for (const k of ["type", "subType", "message"]) if (b[k] !== undefined && typeof b[k] !== "string") return null;
+    bounce = { type: b.type as string | undefined, subType: b.subType as string | undefined, message: b.message as string | undefined };
+  }
+  return { type: o.type, emailId: d.email_id, to, bounce };
+}
 
 /**
  * Delivery reports from Resend: delivered, delayed, bounced or marked as spam. Each one updates its email on Admin → Emails.
@@ -46,18 +67,21 @@ export async function POST(req: Request) {
   const h = req.headers;
   if (!verified(secret, h.get("svix-id") ?? "", h.get("svix-timestamp") ?? "", body, h.get("svix-signature") ?? "")) return new NextResponse(null, { status: 401 });
 
-  let e: Event;
+  let parsed: unknown;
   try {
-    e = JSON.parse(body);
+    parsed = JSON.parse(body);
   } catch {
     return new NextResponse(null, { status: 400 });
   }
-  const delivery = { "email.delivered": "delivered", "email.delivery_delayed": "delayed", "email.bounced": "bounced", "email.complained": "complained" }[e.type ?? ""];
-  const id = e.data?.email_id;
-  if (!delivery || !id) return NextResponse.json({ ignored: true });
-
-  const to = (Array.isArray(e.data?.to) ? e.data?.to[0] : e.data?.to) ?? "";
-  const bounce = e.data?.bounce;
+  const delivery = { "email.delivered": "delivered", "email.delivery_delayed": "delayed", "email.bounced": "bounced", "email.complained": "complained" }[
+    typeof (parsed as { type?: unknown })?.type === "string" ? (parsed as { type: string }).type : ""
+  ];
+  if (!delivery) return NextResponse.json({ ignored: true });
+  const e = readReport(parsed);
+  if (!e || !e.emailId) return new NextResponse(null, { status: 400 });
+  const id = e.emailId;
+  const to = e.to;
+  const bounce = e.bounce;
   const soft = delivery === "bounced" && (bounce?.type ?? "Permanent").toLowerCase() === "transient";
   const detail = delivery === "bounced" ? [soft ? "Soft bounce" : "Bounce", bounce?.subType, bounce?.message].filter(Boolean).join(": ").slice(0, 300) : "";
   const done = await q.tx(async (db) => {

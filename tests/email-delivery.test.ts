@@ -83,3 +83,68 @@ test("the status rule, case by case", async () => {
   assert.equal(nextDelivery("complained", false, "bounced", false), null);
   assert.equal(nextDelivery("delivered", true, "complained", false), "complained");
 });
+
+const counts = async () => {
+  const { q } = await import("../src/lib/db");
+  return q.get<{ receipts: number; touched: number; blocked: number }>(
+    "SELECT (SELECT COUNT(*)::int FROM webhook_receipts) AS receipts, (SELECT COUNT(*)::int FROM outbox WHERE delivery <> '' OR delivery_detail <> '') AS touched, (SELECT COUNT(*)::int FROM email_suppressions) AS blocked",
+  );
+};
+
+test("a missing, wrong or forged signature is refused with 401 and changes nothing", async () => {
+  const { POST } = await import("../src/app/api/webhooks/resend/route");
+  await email("em_forged", "victim@x.io");
+  const before = await counts();
+  const body = JSON.stringify({ type: "email.bounced", data: { email_id: "em_forged", to: ["victim@x.io"], bounce: { type: "Permanent", message: "x" } } });
+  const ts = String(Math.floor(Date.now() / 1000));
+  const forged = crypto.createHmac("sha256", Buffer.from("not-the-secret")).update(`msg_forged.${ts}.${body}`).digest("base64");
+  const realSecret = Buffer.from(process.env.RESEND_WEBHOOK_SECRET!.replace(/^whsec_/, ""), "base64");
+  const otherBody = crypto.createHmac("sha256", realSecret).update(`msg_forged.${ts}.{"type":"email.delivered"}`).digest("base64");
+  const tries: Record<string, string>[] = [
+    { "svix-id": "msg_forged", "svix-timestamp": ts },
+    { "svix-id": "msg_forged", "svix-timestamp": ts, "svix-signature": "v1,AAAA" },
+    { "svix-id": "msg_forged", "svix-timestamp": ts, "svix-signature": `v1,${forged}` },
+    { "svix-id": "msg_forged", "svix-timestamp": ts, "svix-signature": `v1,${otherBody}` },
+    { "svix-id": "msg_forged", "svix-timestamp": String(Number(ts) - 3600), "svix-signature": `v1,${crypto.createHmac("sha256", realSecret).update(`msg_forged.${Number(ts) - 3600}.${body}`).digest("base64")}` },
+  ];
+  for (const headers of tries) {
+    const res = await POST(new Request("http://localhost/api/webhooks/resend", { method: "POST", body, headers }));
+    assert.equal(res.status, 401, `refused: ${Object.keys(headers).join(", ")}`);
+  }
+  assert.deepEqual(await counts(), before, "no receipt, no status, no block");
+  assert.equal(await blocked("victim@x.io"), false);
+});
+
+test("a signed report with the wrong types is refused with 400 and changes nothing, instead of crashing", async () => {
+  const { POST } = await import("../src/app/api/webhooks/resend/route");
+  await email("em_odd", "odd@x.io");
+  const before = await counts();
+  const secret = Buffer.from(process.env.RESEND_WEBHOOK_SECRET!.replace(/^whsec_/, ""), "base64");
+  const bad = [
+    { type: "email.bounced", data: { email_id: "em_odd", to: ["odd@x.io"], bounce: { type: 5, message: "x" } } },
+    { type: "email.bounced", data: { email_id: "em_odd", to: ["odd@x.io"], bounce: { type: "Permanent", message: { long: true } } } },
+    { type: "email.bounced", data: { email_id: "em_odd", to: ["odd@x.io"], bounce: { type: "Permanent", subType: 7 } } },
+    { type: "email.bounced", data: { email_id: "em_odd", to: [42], bounce: { type: "Permanent" } } },
+    { type: "email.bounced", data: { email_id: 99, to: ["odd@x.io"] } },
+    { type: "email.bounced", data: { email_id: "em_odd", to: ["odd@x.io"], bounce: "Permanent" } },
+  ];
+  for (const [i, payload] of bad.entries()) {
+    const body = JSON.stringify(payload);
+    const id = `msg_odd_${i}`;
+    const ts = String(Math.floor(Date.now() / 1000));
+    const sig = crypto.createHmac("sha256", secret).update(`${id}.${ts}.${body}`).digest("base64");
+    const res = await POST(new Request("http://localhost/api/webhooks/resend", { method: "POST", body, headers: { "svix-id": id, "svix-timestamp": ts, "svix-signature": `v1,${sig}` } }));
+    assert.equal(res.status, 400, `refused: ${body}`);
+  }
+  assert.deepEqual(await counts(), before);
+});
+
+test("a very long bounce message is kept to 300 characters on the email and the block list", async () => {
+  const { q } = await import("../src/lib/db");
+  await email("em_long", "long@x.io");
+  await report("em_long", "email.bounced", { type: "Permanent", subType: "General", message: "x".repeat(1000) });
+  const row = await q.get<{ d: string }>("SELECT delivery_detail AS d FROM outbox WHERE provider_id = 'em_long'");
+  const block = await q.get<{ d: string }>("SELECT detail AS d FROM email_suppressions WHERE email = 'long@x.io'");
+  assert.ok(row!.d.length <= 300 && row!.d.length > 200, `email detail ${row!.d.length}`);
+  assert.ok(block!.d.length <= 300, `block detail ${block!.d.length}`);
+});
