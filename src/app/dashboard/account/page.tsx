@@ -210,7 +210,7 @@ export default async function Account() {
               {referralsOn && <Row href="/dashboard/referrals" icon="plus" title="Referrals" sub="Invite DJs · get more active tracks" />}
             </Group>
             <Group id="about-h" title="About FloorTest">
-              <Row href="/dashboard/how-it-works" icon="music" title="How FloorTest works" sub="The tour, and how to get the most out of your desk" />
+              <Row href="/dashboard/how-it-works" icon="help" title="How FloorTest works" sub="The tour, and how to get the most out of your desk" />
               <Row href="/contact" icon="mail" title="Contact us" external />
               {/* The in-app form, filed to the Feedback page with this page's path (1 Nov; it used to open /contact as "General"). */}
               <SendFeedbackRow>

@@ -16,7 +16,7 @@ export const TOUR_STEPS: TourStep[] = [
       "Each sender gets an honest receipt: Delivered, Listened, Downloaded, Played out.",
     ],
     image: "/tour/link.webp",
-    alt: "A FloorTest link page: the callout brief and a Choose WAV or MP3 button",
+    alt: "A demo link page: the callout brief and a Choose WAV or MP3 button",
   },
   {
     id: "floor",

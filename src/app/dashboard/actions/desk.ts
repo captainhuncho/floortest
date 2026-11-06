@@ -10,6 +10,7 @@ import { audit } from "@/lib/audit";
 import { closeFeedbackAskFor, fileFeedback, markFeedbackAsked } from "@/lib/feedback";
 import { sendReopenAlerts } from "@/lib/reopen";
 import { done } from "./common";
+import { markTourSeenFor } from "@/lib/tour-seen";
 
 /** Beta feedback, signed by the person who sent it (src/lib/feedback.ts). */
 export async function sendFeedback(kind: string, message: string, path: string, fromAsk = false, viewport?: number) {
@@ -33,8 +34,9 @@ export async function dismissOnboarding() {
 /** The first-visit tour was closed or finished: it never opens by itself again for this person (their own row, not the
  * desk's, so each teammate gets it once). How FloorTest works replays it any time. */
 export async function markTourSeen() {
+  // requirePerson: the signed-in person, never the team desk they're working on; in an admin's view it redirects first.
   const me = await requirePerson();
-  await q.run("UPDATE users SET tour_seen_at = ? WHERE id = ? AND tour_seen_at IS NULL", now(), me.id);
+  await markTourSeenFor(me.id);
 }
 
 export type { ReceiverLookup } from "@/lib/receiver-lookup";
