@@ -257,7 +257,15 @@ export async function deliver(id: number, { retry = true } = {}): Promise<string
   let providerId: string | null = null;
   // An address that bounced for good gets nothing more; one that reported us as spam still gets what it asks for
   // (sign-in codes, resets) but no optional email. Admin → Emails can lift either.
-  const block = await q.get<{ reason: string }>("SELECT reason FROM email_suppressions WHERE email = ?", normalEmail(p.to)).catch(() => undefined); // the same form the block list stores
+  // Matched in the form the block list stores. If the list can't be read, the email waits and is tried again rather than
+  // going out to an address that may be blocked (fail closed; Safety review of #458).
+  let block: { reason: string } | undefined;
+  try {
+    block = await q.get<{ reason: string }>("SELECT reason FROM email_suppressions WHERE email = ?", normalEmail(p.to));
+  } catch {
+    await q.run("UPDATE outbox SET status = 'queued', attempts = GREATEST(attempts - 1, 0), next_at = ? WHERE id = ?", at + 5 * 60_000, id).catch(() => {});
+    return "queued (block check failed)";
+  }
   const suppressed = block && (block.reason === "bounced" || row.optional) ? block : undefined;
   // Staging (Vercel previews) never emails real people: everything goes to STAGING_EMAIL_TO, or nowhere.
   const stagingTo = isPreview ? (process.env.STAGING_EMAIL_TO ?? "").trim() : "";

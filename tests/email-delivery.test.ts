@@ -287,3 +287,44 @@ test("the block list only ever moves from a spam block to a bounce block, never 
   await report("em_bc2", "email.complained");
   assert.deepEqual(await reason("bounce-then-spam@x.io"), { reason: "bounced", detail: "gone" });
 });
+
+test("a spam block still lets sign-in codes and resets out, and skips only optional mail", async () => {
+  const { q } = await import("../src/lib/db");
+  const { sendMail } = await import("../src/lib/mail");
+  await q.run("INSERT INTO email_suppressions (email, reason, detail, created_at) VALUES ('grumbly@x.io', 'complained', '', ?)", Date.now());
+  await sendMail({ userId: null, to: "grumbly@x.io", subject: "Your code", body: "B" });
+  await sendMail({ userId: null, to: "grumbly@x.io", subject: "Newsletter", body: "B", unsubscribe: "product" });
+  const status = async (subject: string) => (await q.get<{ status: string }>("SELECT status FROM outbox WHERE to_email = 'grumbly@x.io' AND subject = ? ORDER BY id DESC LIMIT 1", subject))!.status;
+  assert.doesNotMatch(await status("Your code"), /^skipped/, "required mail goes out");
+  assert.match(await status("Newsletter"), /^skipped \(complained/, "optional mail is skipped");
+});
+
+test("if the block list can't be read, the email waits for a retry instead of going out", async () => {
+  const { q } = await import("../src/lib/db");
+  const { sendMail } = await import("../src/lib/mail");
+  await q.run("ALTER TABLE email_suppressions RENAME TO email_suppressions_off");
+  try {
+    await sendMail({ userId: null, to: "maybe-blocked@x.io", subject: "Held", body: "B" });
+  } finally {
+    await q.run("ALTER TABLE email_suppressions_off RENAME TO email_suppressions");
+  }
+  const row = await q.get<{ status: string; next_at: number | null }>("SELECT status, next_at FROM outbox WHERE to_email = 'maybe-blocked@x.io' ORDER BY id DESC LIMIT 1");
+  assert.equal(row!.status, "queued");
+  assert.ok(row!.next_at && row!.next_at > Date.now(), "due again shortly");
+});
+
+test("an incident is raised only when a block is added or upgraded, not for every repeat report", async () => {
+  const { q } = await import("../src/lib/db");
+  const incidents = async () => (await q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM incidents"))!.n;
+  await email("em_rep1", "repeat@x.io");
+  const a = await incidents();
+  await report("em_rep1", "email.bounced", { type: "Permanent", message: "gone" });
+  assert.equal(await incidents(), a + 1, "a new block");
+  await email("em_rep2", "repeat@x.io");
+  await report("em_rep2", "email.bounced", { type: "Permanent", message: "gone again" });
+  assert.equal(await incidents(), a + 1, "already blocked: no second incident");
+  await email("em_rep3", "spamonly@x.io");
+  await report("em_rep3", "email.complained");
+  const spam = await q.get<{ message: string }>("SELECT message FROM incidents ORDER BY id DESC LIMIT 1");
+  assert.match(spam!.message, /Optional emails stop to this address; sign-in codes and resets still go/);
+});

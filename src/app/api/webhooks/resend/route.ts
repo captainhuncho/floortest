@@ -123,23 +123,27 @@ export async function POST(req: Request) {
     // Stop email to the address only for a hard bounce on an email that never arrived, or a spam report.
     const reason = delivery === "complained" ? "complained" : delivery === "bounced" && !soft && !deliveredBefore ? "bounced" : null;
     const email = normalEmail(row?.to_email ?? to);
-    if (email && reason)
-      await db.run(
+    // Only an insert or an upgrade counts as a change: an incident is raised for that alone, not for every repeat report.
+    const changed = email && reason
+      ? await db.get<{ reason: string }>(
         // A hard bounce on an address already blocked for a spam report makes it a full block: a spam report still lets
         // sign-in codes and resets through, which would keep going to an address that no longer exists.
-        "INSERT INTO email_suppressions (email, reason, detail, created_at) VALUES (?,?,?,?) ON CONFLICT (email) DO UPDATE SET reason = 'bounced', detail = excluded.detail WHERE email_suppressions.reason = 'complained' AND excluded.reason = 'bounced'",
+        "INSERT INTO email_suppressions (email, reason, detail, created_at) VALUES (?,?,?,?) ON CONFLICT (email) DO UPDATE SET reason = 'bounced', detail = excluded.detail WHERE email_suppressions.reason = 'complained' AND excluded.reason = 'bounced' RETURNING reason",
         email,
         reason,
         (bounce?.message ?? "").slice(0, 300),
         now(),
-      );
-    return { email, subject: row?.subject ?? "", reason };
+      )
+      : undefined;
+    return { email, subject: row?.subject ?? "", reason: changed ? reason : null };
   });
   if (!done) return NextResponse.json({ duplicate: true });
   if (done.email && done.reason)
     await recordIncident(
       "email_failed",
-      `${done.reason === "complained" ? "Marked as spam" : "Bounced"}: ${done.email.replace(/^(.{2}).*@/, "$1…@")}. No more email goes to this address.`,
+      done.reason === "complained"
+        ? `Marked as spam: ${done.email.replace(/^(.{2}).*@/, "$1…@")}. Optional emails stop to this address; sign-in codes and resets still go.`
+        : `Bounced: ${done.email.replace(/^(.{2}).*@/, "$1…@")}. No more email goes to this address.`,
       done.subject,
     );
   return NextResponse.json({ ok: true });
