@@ -1,4 +1,4 @@
-import { ACTIVITY, JOINED, type Audience } from "@/lib/audience";
+import { ACTIVITY, JOINED, UNKNOWN_KIND, type Audience } from "@/lib/audience";
 import { KIND_LABEL } from "@/lib/db";
 import type { Plan } from "@/lib/plan-store";
 
@@ -6,6 +6,11 @@ import type { Plan } from "@/lib/plan-store";
 export function AudienceFields({ a, plans }: { a: Audience; plans: Plan[] }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      {(a.nobody || a.kind === UNKNOWN_KIND) && (
+        <p role="alert" className="col-span-full rounded-md border border-line p-3 text-sm">
+          <span className="font-semibold">This filter can&apos;t be read,</span> so it reaches nobody. Pick it again below; the fields show Everyone until you do.
+        </p>
+      )}
       <label className="block space-y-1.5">
         <span className="label">Type</span>
         <select name="kind" defaultValue={a.kind} className="input">

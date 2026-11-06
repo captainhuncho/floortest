@@ -78,6 +78,7 @@ test("Label / Radio splits: accounts become Label, switch rules keep their reach
   await add("splitold", "label_radio"); // the release before can still write its id after a rollback
   await assert.rejects(add("splitbad", "producer"));
 
+  assert.equal(once.split_test, JSON.stringify({ accounts: [], types: ["label_radio", "label", "radio"], plans: [], countries: [], percent: 100 }), "label_radio kept, label and radio added, nothing else changed");
   assert.equal(once.split_dj, JSON.stringify({ accounts: [], types: ["dj"], plans: [], countries: [], percent: 100 }), "rules without it untouched");
   const rule = readRule(once.split_test)!;
   assert.deepEqual(rule.types, ["label", "radio"]);
