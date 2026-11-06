@@ -102,8 +102,8 @@ export function FirstVisitTour({ tip }: { tip: string | null }) {
       tip={tip}
       onClose={() => {
         setOpen(false);
-        // If saving fails (offline, signed out), the only effect is that the tour opens once more next visit, so the
-        // close itself never waits on it or shows an error.
+        // If saving fails (offline, a server error), the only effect is that the tour opens once more next visit, so the
+        // close itself never waits on it or shows an error. A signed-out session is sent to /login by requirePerson.
         markTourSeen().catch(() => undefined);
       }}
     />
