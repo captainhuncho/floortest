@@ -26,7 +26,7 @@ async function people() {
 test("the owner files, sees and withdraws their own desk's request as the person", async () => {
   const { q, asPerson } = await import("../src/lib/db");
   const { pendingRequest } = await import("../src/lib/plan-requests");
-  const { now, user } = await people();
+  const { user } = await people();
   const me = await user("ownerplan");
   await asPerson(me, () => q.run(FILE, me, "pro", "artist", "", "", "", ""));
   assert.equal((await pendingRequest(me, me))?.plan, "pro", "the owner sees it as the person");

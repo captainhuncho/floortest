@@ -240,7 +240,7 @@ Tactile and plain: they say what you get ("Download kept", "Clear kept").
 - **Labels and help:** labels above in 11px caps; help text 11px Faint below; field borders use Field; required fields marked "Req". On touch screens inputs are 16px text so phones don't zoom.
 
 ### Navigation
-- **Desktop:** a dark tactile rail that stays dark in both themes; items in 12px uppercase with 0.5px tracking, icons at 18px, the current item raised with an inset highlight, lime count badges.
+- **Desktop:** a dark rail that stays dark in both themes; items in 12px uppercase with 0.5px tracking, icons at 18px, the current item raised with an inset highlight, lime count badges.
 - **Phones:** a floating dark tab bar (22px radius) above the content, current tab raised.
 
 ### Dialogs and Sheets

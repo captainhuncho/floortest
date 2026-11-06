@@ -25,7 +25,7 @@ type Props<K extends string> = {
 };
 
 /** From `start`, walking `dir` (wrapping), the first item that isn't disabled; -1 if none. Shared with Tabs. */
-export function nextEnabled(items: readonly { disabled?: boolean }[], start: number, dir: number): number {
+function nextEnabled(items: readonly { disabled?: boolean }[], start: number, dir: number): number {
   const n = items.length;
   for (let k = 0, i = start; k < n; k++, i += dir || 1) {
     const at = ((i % n) + n) % n;

@@ -27,7 +27,7 @@ type Todo = { n: number; label: string; sub: string; href: string; area: string;
 /** A verdict first, then what needs acting on, how the platform is running, and how this week compares with last. */
 export default async function AdminOverview({ searchParams }: { searchParams: Promise<{ activity?: string }> }) {
   // The same Overview in both navigations (owner, 2 Nov): with ops_shell on it sits inside the new frame. The step-6
-  // "Waiting on me" Overview and its Live card (./overview) are kept in code but not shown.
+  // "Waiting on me" Overview and its Live card were removed on 4 Nov; only ./overview's data helpers remain.
   const withAdminParam = (await searchParams).activity === "all";
   const me = await requireAdmin("overview");
   // The admin log is the super admin's alone, so only they can mix admin actions into the activity feed.

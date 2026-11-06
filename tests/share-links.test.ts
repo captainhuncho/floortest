@@ -64,7 +64,7 @@ test("share links: own address, named recipients, codes, sessions, reset, revoke
   // Codes: wrong, then right, then used up.
   let sentCode = "";
   await L.sendLinkCode(live, "a@x.io", "1.1.1.1", async (_to, code) => void (sentCode = code));
-  await assert.rejects(L.checkLinkCode(live, "a@x.io", "000000".replace(/./g, (d, i) => String((Number(sentCode[i]) + 1) % 10))));
+  await assert.rejects(L.checkLinkCode(live, "a@x.io", "000000".replace(/./g, (_d, i) => String((Number(sentCode[i]) + 1) % 10))));
   assert.equal(await L.checkLinkCode(live, "a@x.io", sentCode), "a@x.io");
   await assert.rejects(L.checkLinkCode(live, "a@x.io", sentCode), "a code works once");
 

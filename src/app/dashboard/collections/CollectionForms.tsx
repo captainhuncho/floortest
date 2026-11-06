@@ -100,7 +100,7 @@ export function CapTicks({ used, limit, cells = 25 }: { used: number; limit: num
   );
 }
 
-export function CollectionCard({ c, receiving, closed, canManage = true, startEditing = false }: { c: C; receiving: boolean; closed: boolean; canManage?: boolean; startEditing?: boolean }) {
+function CollectionCard({ c, receiving, closed, canManage = true, startEditing = false }: { c: C; receiving: boolean; closed: boolean; canManage?: boolean; startEditing?: boolean }) {
   const [editing, setEditing] = useState(startEditing);
   const [pending, start] = useTransition();
 

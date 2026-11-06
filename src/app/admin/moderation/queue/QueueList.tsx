@@ -4,7 +4,7 @@ import Link from "next/link";
 import { FILTERS, type Filter, type QueueRow } from "./model";
 
 /** The signal's dot and words, coloured by kind (text stays ≥4.5:1 in both themes). */
-export function SignalLine({ row, className = "" }: { row: QueueRow; className?: string }) {
+function SignalLine({ row, className = "" }: { row: QueueRow; className?: string }) {
   const text = row.kind ? row.words : (row.reviewedBy ? `Reviewed by ${row.reviewedBy}` : "No signals");
   return (
     <span data-kind={row.kind ?? "none"} className={`mq-sig ${className}`}>

@@ -12,9 +12,9 @@ export const TOAST_MAX = 3;
 export const TOAST_MS = 6000;
 export const TOAST_ERROR_MS = 8000;
 /** Two-key shortcuts ("g i") must come within this long of each other. */
-export const KEY_SEQUENCE_MS = 900;
+const KEY_SEQUENCE_MS = 900;
 /** People search in ⌘K: fewer characters than this find nobody (and never reach the server). */
-export const PEOPLE_MIN_QUERY = 2;
+const PEOPLE_MIN_QUERY = 2;
 export const PEOPLE_MAX_RESULTS = 8;
 
 /** What a key handler needs to know about a key press, so the rule can be tested without a browser. */
@@ -107,7 +107,7 @@ export function namesShown(names: readonly string[], max = 8) {
 }
 
 /** How well a query matches a piece of text, 0 for no match: exact, then prefix, then a word start, then anywhere. */
-export function matchScore(query: string, text: string | undefined | null) {
+function matchScore(query: string, text: string | undefined | null) {
   const q = query.trim().toLowerCase();
   if (!q || !text) return 0;
   const t = text.toLowerCase();
