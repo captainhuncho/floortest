@@ -2084,6 +2084,26 @@ update users set kind = 'label' where kind = 'label_radio';
 update switches set rule = replace(rule, '"label_radio"', '"label_radio","label","radio"') where rule like '%"label_radio"%' and rule not like '%"radio"%';`,
   },
   {
+    // Visit counts (owner, 5 Nov): in-house, per day, how many visits and page views each page had, from which country
+    // (Vercel's header), which site or utm_source, and which device. Counts only: no IP, cookie, account or visitor id.
+    // link_owner is the receiver whose receiving link (/handle) was visited, so Ops sees whose link gets traffic; it goes
+    // with the account.
+    id: "0130_visit_counts",
+    sql: `create table if not exists visit_counts (
+  day text not null,
+  kind text not null check (kind in ('visit', 'view')),
+  page text not null,
+  link_owner bigint references users(id) on delete cascade,
+  country text not null default '',
+  source text not null default '',
+  device text not null default '',
+  n int not null default 1
+);
+create unique index if not exists visit_counts_key on visit_counts(day, kind, page, (coalesce(link_owner, 0)), country, source, device);
+create index if not exists visit_counts_owner on visit_counts(link_owner, day) where link_owner is not null;
+alter table visit_counts enable row level security;`,
+  },
+  {
     // A personal beta invite is used once and lasts 14 days (owner, 5 Nov). Before, "used" was only "an account holds
     // this code", so deleting that account brought the invite back to life, and an unused one never expired. Invites
     // already used (by their code, or by their email signing up any other way) are marked now. Ones still waiting get
@@ -2103,3 +2123,4 @@ alter table users add column if not exists email_verify_sent_at bigint;
 update users set email_verify_sent_at = (extract(epoch from now()) * 1000)::bigint where email_verify_token is not null and email_verify_sent_at is null;`,
   },
 ];
+
