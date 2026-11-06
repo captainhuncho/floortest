@@ -31,7 +31,7 @@ test("admin audience filters: values that can't be read match nobody, and the SQ
   const { audienceWhere, readAudience } = await import("../src/lib/audience");
   const form: Record<string, string> = { plan: "' OR 1=1 --", kind: "label' --", tag: "x' OR '1'='1", joined: "7 OR 1=1", activity: "active; DROP TABLE users" };
   const a = readAudience((k) => form[k]);
-  assert.deepEqual(a, { plan: "", kind: "unknown", tag: "xor11", joined: 0, activity: "", nobody: true });
+  assert.deepEqual(a, { plan: "", kind: "unknown", tag: "", joined: 0, activity: "", nobody: true });
   assert.match(audienceWhere(a).sql, /\bFALSE\b/);
   const w = audienceWhere({ plan: "pro", kind: "label", tag: "beta", joined: 30, activity: "inactive" }, 1_000_000_000_000);
   assert.doesNotMatch(w.sql, /pro|label|beta/, "values travel as bound arguments only");
@@ -67,13 +67,21 @@ test("an announcement or list filter for a type that doesn't exist reaches nobod
   for (const f of [{ plan: "Not A Plan" }, { kind: "label_radio" }, { tag: "!!!" }, { joined: "5" }, { activity: "all" }, { plan: "pro", tag: "Beta-1", joined: "30" },
     // Padded and over-long values: the preview and the publish must read the same, never a cut-down filter.
     { plan: `pro${" ".repeat(97)}x` }, { kind: `dj${" ".repeat(98)}` + "x" }, { joined: `30${" ".repeat(98)}x` }, { activity: `active${" ".repeat(94)}x` },
-    { plan: "p".repeat(101) }, { tag: `${"!".repeat(95)}abcdefghij` }, { tag: "a".repeat(31) }, { tag: `beta${" ".repeat(200)}` }] as Record<string, string>[]) {
+    { plan: "p".repeat(101) }, { tag: `${"!".repeat(95)}abcdefghij` }, { tag: "a".repeat(31) }, { tag: `beta${" ".repeat(200)}` },
+    // nobody travels on, alone or with readable filters.
+    { nobody: "1", plan: "pro" }, { nobody: "true" }] as Record<string, string>[]) {
     const again = audienceQuery((k) => f[k]);
     assert.deepEqual(readAudience((k) => again[k as keyof typeof again]), readAudience((k) => f[k]), JSON.stringify(f));
   }
   for (const f of [{ plan: `pro${" ".repeat(97)}x` }, { plan: "p".repeat(101) }, { tag: "a".repeat(31) }] as Record<string, string>[])
     assert.equal(readAudience((k) => f[k]).nobody, true, `${JSON.stringify(f).slice(0, 40)}: over the limit reaches nobody`);
-  assert.equal(readAudience((k) => ({ tag: `${"!".repeat(95)}abcdefghij` })[k]).tag, "abcdefghij");
+  // A tag is read only as typed: anything stripped could match a different tag.
+  for (const tag of [`${"!".repeat(95)}abc`, `${"!".repeat(95)}abcdefghij`, "Béta", "a,b", "beta 1", "x' OR '1'='1"])
+    assert.equal(readAudience((k) => ({ tag })[k]).nobody, true, tag.slice(-12));
+  assert.deepEqual(readAudience((k) => ({ tag: "Beta-1" })[k]), { plan: "", kind: "", tag: "beta-1", joined: 0, activity: "" }, "case aside, as typed");
+  for (const f of [{ nobody: "1", plan: "pro" }, { joined: "5" }, { kind: "label_radio" }] as Record<string, string>[])
+    assert.equal(audienceQuery((k) => f[k]).nobody, "1", `${JSON.stringify(f)}: nobody=1 travels on`);
+  assert.equal(audienceQuery((k) => ({ plan: "pro" })[k as "plan"]).nobody, "", "a readable filter carries no nobody");
 
   // Newsletter subscribers join only an audience of Everyone.
   const { audienceIsEveryone } = await import("../src/lib/audience");
@@ -144,6 +152,16 @@ test("publishing: an unreadable audience, or subscribers with a narrowed one, wr
     assert.match("error" in r ? r.error : "saved", why, JSON.stringify(f).slice(0, 40));
   }
   assert.deepEqual(await rows(), before, "nothing written, nothing queued");
+
+  // Through the page's hidden fields (the preview's query, passed on as the publish form): nobody is never lost.
+  const { audienceQuery } = await import("../src/lib/audience");
+  for (const sp of [{ nobody: "1" }, { nobody: "1", plan: "pro" }, { nobody: "true" }, { plan: "Not A Plan" }, { tag: "beta 1" }] as Record<string, string>[]) {
+    const draft = { title: "Hello", list: "product", subscribers: "on" };
+    const fields: Record<string, string> = { ...draft, ...audienceQuery((k) => sp[k]) };
+    const r = await saveAnnouncement(1, (k) => fields[k] ?? null);
+    assert.match("error" in r ? r.error : "saved", /can't be read/, JSON.stringify(sp));
+  }
+  assert.deepEqual(await rows(), before, "still nothing written, nothing queued");
 
   // Everyone: the subscriber is included; a narrowed audience without subscribers still publishes to it.
   const all = await save({});

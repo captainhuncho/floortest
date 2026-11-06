@@ -183,6 +183,11 @@ export default async function Announcements({ searchParams }: { searchParams: Pr
                 {`Subject: ${draft.title}\n\n${draft.body}\n\n${draft.href ? `${env.appUrl}${draft.href}` : env.appUrl}`}
               </pre>
             )}
+            {draft.list && draft.subscribers && !audienceIsEveryone(aud) && (
+              <p role="alert" className="rounded-md border border-line p-3 text-sm">
+                Newsletter subscribers can only be included when the audience is Everyone. Untick them or clear the filters, or Publish will be refused.
+              </p>
+            )}
             <p className="text-[14px]">
               {describeAudience(aud, (id) => plans.find((p) => p.id === id)?.name ?? id)}: reaches {reach} account{reach === 1 ? "" : "s"} in the bell
               {draft.list ? `, and emails ${emailReach + subscriberReach}${subscriberReach ? ` (${subscriberReach} without an account)` : ""}` : ""}.

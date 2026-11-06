@@ -35,7 +35,7 @@ export async function CrmUsers({ sp, access }: { sp: Record<string, string | und
   const first = (page - 1) * PAGE_SIZE + 1;
   const csv = new URLSearchParams(Object.entries({ ...audParams, security, q: search }).filter(([, v]) => v)).toString();
   const chips = [
-    aud.nobody && { label: "Filter", value: "Unreadable (nobody)", off: link({ plan: "", tag: "", joined: "", activity: "", page: "" }) },
+    aud.nobody && { label: "Filter", value: "Unreadable (nobody)", off: link({ plan: "", kind: "", tag: "", joined: "", activity: "", nobody: "", page: "" }) },
     aud.kind && { label: "Type", value: kindLabel(aud.kind), off: link({ kind: "", page: "" }) },
     aud.plan && { label: "Plan", value: planName(aud.plan), off: link({ plan: "", page: "" }) },
     aud.tag && { label: "Tag", value: aud.tag, off: link({ tag: "", page: "" }) },

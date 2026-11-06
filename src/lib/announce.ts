@@ -39,11 +39,15 @@ export async function saveAnnouncement(adminId: number, get: (k: string) => unkn
   const plans = await allPlans();
   const label = describeAudience(aud, (id) => plans.find((p) => p.id === id)?.name ?? id);
   const w = audienceWhere(aud);
-  const id = (await q.get<{ id: number }>(
-    "INSERT INTO announcements (title, body, href, audience, emailed, admin_id, created_at) VALUES (?,?,?,?,?,?,?) RETURNING id",
-    title, body, href, label, list ? 1 : 0, adminId, now(),
-  ))!.id;
-  await q.run(`INSERT INTO announcement_recipients (announcement_id, user_id) SELECT ?, u.id FROM users u WHERE ${w.sql}`, id, ...w.args);
+  // The announcement and its bell recipients together, or neither.
+  const id = await q.tx(async (db) => {
+    const row = (await db.get<{ id: number }>(
+      "INSERT INTO announcements (title, body, href, audience, emailed, admin_id, created_at) VALUES (?,?,?,?,?,?,?) RETURNING id",
+      title, body, href, label, list ? 1 : 0, adminId, now(),
+    ))!;
+    await db.run(`INSERT INTO announcement_recipients (announcement_id, user_id) SELECT ?, u.id FROM users u WHERE ${w.sql}`, row.id, ...w.args);
+    return row.id;
+  });
   const people = list
     ? await q.all<{ id: number; email: string }>(
         `SELECT u.id, u.email FROM users u WHERE ${w.sql} AND ${consent} AND u.email_verified_at IS NOT NULL LIMIT 5000`,
