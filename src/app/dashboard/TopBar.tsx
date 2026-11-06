@@ -11,7 +11,8 @@ import type { Notice } from "@/lib/notifications";
 import { clearNotifications, markNotificationsRead, quickSearch, type SearchHit } from "./actions/desk";
 
 type Props = {
-  user: { name: string; handle: string; verified: boolean };
+  /** photo: the desk's profile photo (/api/cover/…), or null for none: initials only when there's no photo. */
+  user: { name: string; handle: string; verified: boolean; photo: string | null };
   notices: { items: Notice[]; unread: number };
   /** First in the box: the Feedback button (dashboard/FeedbackButton), so the phone bar fits at 320px. */
   lead?: React.ReactNode;
@@ -28,6 +29,9 @@ const initials = (name: string) =>
 
 export function TopBar(p: Props) {
   const [open, setOpen] = useState<Open>(null);
+  // A photo that won't load (removed by a scan, a network blip) falls back to initials rather than a broken image; a new
+  // upload has a new address, so it gets its own try.
+  const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
   const router = useRouter();
   const root = useRef<HTMLDivElement>(null);
 
@@ -97,7 +101,12 @@ export function TopBar(p: Props) {
             {p.user.verified && <CuePoint size={16} label="Verified" />}
           </span>
           <Icon name="chev" className="hidden size-3.5 text-mute sm:block" />
-          <span className="grid size-11 place-items-center rounded-[11px] bg-ink-4 text-[13px] font-bold text-bone">{initials(p.user.name)}</span>
+          {p.user.photo && p.user.photo !== failedPhoto ? (
+            // eslint-disable-next-line @next/next/no-img-element -- our own signed redirect, sized at 44px; next/image adds nothing here
+            <img src={p.user.photo} alt="" width={44} height={44} onError={() => setFailedPhoto(p.user.photo)} className="size-11 rounded-[11px] bg-ink-4 object-cover" />
+          ) : (
+            <span className="grid size-11 place-items-center rounded-[11px] bg-ink-4 text-[13px] font-bold text-bone">{initials(p.user.name)}</span>
+          )}
           <span className="sr-only">Your profile</span>
         </button>
       </div>
