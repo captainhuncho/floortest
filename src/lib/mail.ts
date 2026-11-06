@@ -3,6 +3,7 @@ import "server-only";
 import { unsubToken, type UnsubKind } from "./unsubscribe";
 import crypto from "node:crypto";
 import { now, q, type Queryable } from "./db";
+import { normalEmail } from "./email-normal";
 import { env, isPreview } from "./env";
 import { recordIncident } from "./incidents";
 import { emailHtml } from "./email-html";
@@ -256,7 +257,7 @@ export async function deliver(id: number, { retry = true } = {}): Promise<string
   let providerId: string | null = null;
   // An address that bounced for good gets nothing more; one that reported us as spam still gets what it asks for
   // (sign-in codes, resets) but no optional email. Admin → Emails can lift either.
-  const block = await q.get<{ reason: string }>("SELECT reason FROM email_suppressions WHERE email = ?", p.to.trim().toLowerCase()).catch(() => undefined);
+  const block = await q.get<{ reason: string }>("SELECT reason FROM email_suppressions WHERE email = ?", normalEmail(p.to)).catch(() => undefined); // the same form the block list stores
   const suppressed = block && (block.reason === "bounced" || row.optional) ? block : undefined;
   // Staging (Vercel previews) never emails real people: everything goes to STAGING_EMAIL_TO, or nowhere.
   const stagingTo = isPreview ? (process.env.STAGING_EMAIL_TO ?? "").trim() : "";
