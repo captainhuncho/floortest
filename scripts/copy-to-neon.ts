@@ -11,7 +11,7 @@
 // then compare row counts table by table. The source is only ever read.
 import postgres from "postgres";
 import { MIGRATIONS } from "../src/lib/db/migrations";
-import { STAMP_TRIGGERS } from "../src/lib/restore-drill";
+import { STAMP_TRIGGERS } from "../src/lib/stamp-triggers";
 
 const SRC = process.env.SUPABASE_DATABASE_URL;
 // --test copies into the Neon "copy-test" branch (NEON_TEST_URL) instead of production.
@@ -69,9 +69,9 @@ async function compare() {
   // back on after. Triggers and foreign keys are restored in finally, so a failed copy can't leave them off.
   const have = await dst<{ tbl: string; name: string }[]>`select c.relname as tbl, t.tgname as name from pg_trigger t join pg_class c on c.oid = t.tgrelid join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public'`;
   const stampers = STAMP_TRIGGERS.filter((s) => have.some((h) => h.tbl === s.tbl && h.name === s.name));
-  for (const s of stampers) await dst.unsafe(`alter table "${s.tbl}" disable trigger "${s.name}"`);
 
   try {
+  for (const s of stampers) await dst.unsafe(`alter table "${s.tbl}" disable trigger "${s.name}"`);
   // 4. Copy each table in batches. Identity columns keep their original IDs.
   for (const t of await tables(src)) {
     if (t === "schema_migrations") continue;
@@ -92,9 +92,12 @@ async function compare() {
   }
 
   } finally {
-    for (const s of stampers) await dst.unsafe(`alter table "${s.tbl}" enable trigger "${s.name}"`);
-    // 5. Foreign keys back on: re-adding them checks every row, so a broken link fails loudly here.
-    for (const f of fks) await dst.unsafe(`alter table ${f.tbl} add constraint "${f.name}" ${f.def}`);
+    try {
+      for (const s of stampers) await dst.unsafe(`alter table "${s.tbl}" enable trigger "${s.name}"`);
+    } finally {
+      // 5. Foreign keys back on, even if a trigger couldn't be: re-adding them checks every row, so a broken link fails loudly here.
+      for (const f of fks) await dst.unsafe(`alter table ${f.tbl} add constraint "${f.name}" ${f.def}`);
+    }
   }
 
   // 6. Identity counters continue after the highest copied ID.

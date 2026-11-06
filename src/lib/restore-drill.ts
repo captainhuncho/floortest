@@ -1,4 +1,5 @@
 import { migrate, type Db, type Queryable } from "./db/client";
+import { STAMP_TRIGGERS } from "./stamp-triggers";
 import { findByReceiptToken, openReceiptToken, sealOldReceipts } from "./receipt-token";
 import { hashToken } from "./token-hash";
 
@@ -75,12 +76,6 @@ const identities = (db: Queryable) =>
       WHERE table_schema = 'public' AND (is_identity = 'YES' OR column_default LIKE 'nextval(%')`,
   );
 
-/** The triggers that stamp times on insert or update, which a restore must turn off while loading. */
-export const STAMP_TRIGGERS = [
-  { tbl: "users", name: "users_consent_times" },
-  { tbl: "users", name: "users_consent_times_insert" },
-  { tbl: "plan_requests", name: "plan_requests_created_at" },
-] as const;
 const stampTriggers = async (db: Queryable) => {
   const have = await db.all<{ tbl: string; name: string }>(
     "SELECT c.relname AS tbl, t.tgname AS name FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public'",
