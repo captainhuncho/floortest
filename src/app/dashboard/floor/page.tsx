@@ -35,7 +35,7 @@ export const metadata = { title: "Floor — FloorTest" };
 export default async function TheFloor({ searchParams }: { searchParams: Promise<{ welcome?: string; desk?: string }> }) {
   const user = await requireUser();
   // Everything below is independent, so it all goes to the database at once.
-  const [, sp, prefs, collections, active, cap, upNextRows, oldestTrack, recentSends, staleRow, view, plan] = await Promise.all([
+  const [, sp, prefs, collections, active, cap, upNextRows, oldestTrack, recentSends, staleRow, view, plan, tourSeen] = await Promise.all([
     trackUse(user.id, "floor"),
     searchParams,
     prefsForView(user.id),
@@ -64,10 +64,12 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
     // An admin viewing this desk doesn't get the confirm-your-email banner.
     viewingAs(),
     planOf(user.plan),
+    // The tour opens by itself once per person (their own row, so each teammate gets it).
+    q.get<{ t: number | null }>("SELECT tour_seen_at AS t FROM users WHERE id = ?", user.actor_id),
   ]);
   const welcome = !!sp.welcome;
-  // The tour opens by itself once per person (their own row, so each teammate gets it), never in an admin's view.
-  const tourDue = !view && !(await q.get<{ t: number | null }>("SELECT tour_seen_at AS t FROM users WHERE id = ?", user.actor_id))?.t;
+  // Never in an admin's view.
+  const tourDue = !view && !tourSeen?.t;
   const stats = await homeStats(user.id, prefs.tz);
   const weekend = await playedOutPrompt({ ...user, tz: prefs.tz });
   const paused = isPaused(user);
