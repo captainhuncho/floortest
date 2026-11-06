@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { can } from "@/lib/admin";
 import type { OpsAccess } from "@/lib/ops-access";
-import { ACTIVITY, JOINED, kindLabel, readAudience } from "@/lib/audience";
+import { ACTIVITY, JOINED, audienceQuery, kindLabel, readAudience } from "@/lib/audience";
 import { ADMIN_PLANS, PAGE_SIZE, readPage, readSecurity, SECURITY } from "@/lib/admin-bulk";
 import { allPlans } from "@/lib/plan-store";
 import { now } from "@/lib/db";
@@ -24,16 +24,18 @@ export async function CrmUsers({ sp, access }: { sp: Record<string, string | und
   const layout = readLayout(sp.layout);
   const edit = editableFor({ super: access.super, perms: access.perms });
   const [plans, data] = await Promise.all([allPlans(), crmRows({ aud, security, search, view, page, at: now(), showEmail: can(access, "users.read") })]);
-  const params: Record<string, string> = { ...aud, joined: aud.joined ? String(aud.joined) : "", nobody: aud.nobody ? "1" : "", security, q: search, view, layout };
+  // The filters as sent, not as read: a value that can't be read stays unreadable on the next page and in the CSV.
+  const audParams = audienceQuery((k) => sp[k]);
+  const params: Record<string, string> = { ...audParams, security, q: search, view, layout };
   const link = (change: Record<string, string>) => usersHref(params, change);
   const planName = (id: string) => plans.find((p) => p.id === id)?.name ?? id;
   const planOptions = ADMIN_PLANS.map((p) => ({ value: p, label: planName(p) }));
   const { total, rows, counts } = data;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const first = (page - 1) * PAGE_SIZE + 1;
-  const csv = new URLSearchParams(Object.entries({ ...aud, joined: params.joined, nobody: params.nobody, security, q: search }).filter(([, v]) => v) as [string, string][]).toString();
+  const csv = new URLSearchParams(Object.entries({ ...audParams, security, q: search }).filter(([, v]) => v)).toString();
   const chips = [
-    aud.nobody && { label: "Filter", value: "Unreadable (nobody)", off: link({ plan: "", tag: "", joined: "", activity: "", nobody: "", page: "" }) },
+    aud.nobody && { label: "Filter", value: "Unreadable (nobody)", off: link({ plan: "", tag: "", joined: "", activity: "", page: "" }) },
     aud.kind && { label: "Type", value: kindLabel(aud.kind), off: link({ kind: "", page: "" }) },
     aud.plan && { label: "Plan", value: planName(aud.plan), off: link({ plan: "", page: "" }) },
     aud.tag && { label: "Tag", value: aud.tag, off: link({ tag: "", page: "" }) },

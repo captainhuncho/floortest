@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import { testDataDir } from "./test-db";
 
 // Rule 1 (audit 27 Oct; owner's SQL rule, 24 Oct): sort and filter values from the address only pick from fixed lists,
@@ -56,9 +57,36 @@ test("an announcement or list filter for a type that doesn't exist reaches nobod
     return Number((await q.get<{ n: number }>(`SELECT count(*) AS n FROM users u WHERE ${w.sql}`, ...w.args))!.n);
   };
   assert.ok((await reach({ plan: "", tag: "", joined: "0", activity: "" })) >= 1, "the form's own empty values are everyone");
-  for (const f of [{ plan: "Not A Plan" }, { tag: "!!!" }, { joined: "5" }, { joined: "constructor" }, { activity: "all" }, { nobody: "1" }] as Record<string, string>[])
+  for (const f of [{ plan: "Not A Plan" }, { tag: "!!!" }, { joined: "5" }, { joined: "constructor" }, { activity: "all" }] as Record<string, string>[])
     assert.equal(await reach(f), 0, `${JSON.stringify(f)} reaches nobody`);
   assert.equal(describeAudience(readAudience((k) => ({ joined: "5" })[k])), "Unreadable filter (nobody)");
+
+  // Links and forms carry the filters as sent, and the server reads them again: the unreadable stay unreadable, and a
+  // made-up flag in a link decides nothing.
+  const { audienceQuery } = await import("../src/lib/audience");
+  for (const f of [{ plan: "Not A Plan" }, { kind: "label_radio" }, { tag: "!!!" }, { joined: "5" }, { activity: "all" }, { plan: "pro", tag: "Beta-1", joined: "30" }] as Record<string, string>[]) {
+    const again = audienceQuery((k) => f[k]);
+    assert.deepEqual(readAudience((k) => again[k as keyof typeof again]), readAudience((k) => f[k]), JSON.stringify(f));
+  }
+  assert.ok((await reach({ nobody: "1" })) >= 1, "nobody=1 is not read");
+});
+
+test("admin pages pass the filters on as sent, and an unreadable audience is never published", () => {
+  const read = (f: string) => fs.readFileSync(new URL(f, import.meta.url), "utf8");
+  const users = read("../src/app/admin/accounts/page.tsx");
+  assert.match(users, /const params = \{ \.\.\.audienceQuery\(\(k\) => sp\[k\]\), security, q: search \};/, "Users: pager links");
+  assert.match(users, /const csv = new URLSearchParams\(Object\.entries\(params\)/, "Users: CSV link");
+  const crm = read("../src/app/admin/accounts/crm/CrmUsers.tsx");
+  assert.match(crm, /const audParams = audienceQuery\(\(k\) => sp\[k\]\);\s*const params: Record<string, string> = \{ \.\.\.audParams,/, "CRM: pager links");
+  assert.match(crm, /const csv = new URLSearchParams\(Object\.entries\(\{ \.\.\.audParams,/, "CRM: CSV link");
+  assert.match(read("../src/app/admin/announcements/page.tsx"), /Object\.entries\(\{ \.\.\.draft, \.\.\.audienceQuery\(\(k\) => sp\[k\]\) \}\)/, "publish form");
+  assert.match(read("../src/app/admin/AudienceFields.tsx"), /\{\(a\.nobody \|\| a\.kind === UNKNOWN_KIND\) && \(\s*<p role="alert"/, "the form says the filter can't be read");
+  const actions = read("../src/app/admin/actions.ts");
+  const publish = actions.slice(actions.indexOf("export async function publishAnnouncement(")).split("\nexport ")[0];
+  const refuse = publish.indexOf('if (aud.nobody || aud.kind === UNKNOWN_KIND) return fail("This audience can\'t be read. Pick it again.");');
+  assert.ok(refuse > 0, "publish refuses an unreadable audience");
+  for (const later of ["INSERT INTO announcements", "newsletter_subscribers", "sendMail("]) assert.ok(publish.indexOf(later) > refuse, `refused before ${later}`);
+
 });
 
 test("search text: % and _ are literal, and an injection attempt finds nothing extra", async () => {

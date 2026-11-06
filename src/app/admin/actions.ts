@@ -11,7 +11,7 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { FEATURES, type Feature } from "@/lib/features";
 import { allPlans, FREE_PLAN } from "@/lib/plan-store";
-import { audienceWhere, cleanTags, describeAudience, readAudience } from "@/lib/audience";
+import { UNKNOWN_KIND, audienceWhere, cleanTags, describeAudience, readAudience } from "@/lib/audience";
 import { ADMIN_PLANS, BULK_MAX, bulkIds, SUSPEND_MAX } from "@/lib/admin-bulk";
 import type { OpsResult } from "@/lib/ops-result";
 import { searchPeople, type PeopleAnswer } from "@/lib/ops-palette";
@@ -854,6 +854,9 @@ export async function publishAnnouncement(form: FormData) {
   const outside = email && form.get("subscribers") === "on";
   // Links must stay on FloorTest: "/path" only, never "//host", "/\host" or javascript: (src/lib/safe-links.ts).
   if (!title || (href && !localPath(href))) return fail("Needs a title, and links must start with /");
+  // An audience that can't be read reaches nobody: refuse it before anything is saved or emailed, including newsletter
+  // subscribers, who are picked outside the audience.
+  if (aud.nobody || aud.kind === UNKNOWN_KIND) return fail("This audience can't be read. Pick it again.");
   const plans = await allPlans();
   const label = describeAudience(aud, (id) => plans.find((p) => p.id === id)?.name ?? id);
   const w = audienceWhere(aud);

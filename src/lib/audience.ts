@@ -16,6 +16,15 @@ export const UNKNOWN_KIND = "unknown";
 /** A type filter in words, for chips and logs. */
 export const kindLabel = (kind: string) => KIND_LABEL[kind] ?? "Unknown type (nobody)";
 
+const AUDIENCE_KEYS = ["plan", "kind", "tag", "joined", "activity"] as const;
+
+/**
+ * The filters exactly as sent, for links and forms that carry them on (paging, CSV, publish). The server reads them
+ * again with readAudience, so a value that can't be read still reaches nobody there; no flag is trusted.
+ */
+export const audienceQuery = (get: (k: string) => unknown) =>
+  Object.fromEntries(AUDIENCE_KEYS.map((k) => [k, String(get(k) ?? "").trim().slice(0, 100)])) as Record<(typeof AUDIENCE_KEYS)[number], string>;
+
 /**
  * Read the filters from a query string or form. Empty means "any". A value that can't be read (a form or link from
  * another release, or a hand-edited one) matches nobody rather than falling to "any", so a stale announcement form can
@@ -34,8 +43,7 @@ export function readAudience(get: (k: string) => unknown): Audience {
     joined: Object.hasOwn(JOINED, joined) ? Number(joined) : 0,
     activity: activity === "active" || activity === "inactive" ? activity : "",
   };
-  // `nobody` itself travels in links (the CSV export), and can only narrow.
-  const unread = s("nobody") || (plan && !a.plan) || (s("tag") && !tag) || (joined && !Object.hasOwn(JOINED, joined)) || (activity && !a.activity);
+  const unread = (plan && !a.plan) || (s("tag") && !tag) || (joined && !Object.hasOwn(JOINED, joined)) || (activity && !a.activity);
   return unread ? { ...a, nobody: true } : a;
 }
 

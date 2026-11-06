@@ -1,7 +1,7 @@
 import { requireAdmin } from "@/lib/admin";
 import { q } from "@/lib/db";
 import { env } from "@/lib/env";
-import { audienceWhere, describeAudience, readAudience } from "@/lib/audience";
+import { audienceQuery, audienceWhere, describeAudience, readAudience } from "@/lib/audience";
 import { allPlans } from "@/lib/plan-store";
 import { publishAnnouncement } from "../actions";
 import { AudienceFields } from "../AudienceFields";
@@ -184,7 +184,7 @@ export default async function Announcements({ searchParams }: { searchParams: Pr
               {draft.list ? `, and emails ${emailReach + subscriberReach}${subscriberReach ? ` (${subscriberReach} without an account)` : ""}` : ""}.
             </p>
             <form action={publishAnnouncement}>
-              {Object.entries({ ...draft, ...aud }).map(([k, v]) =>
+              {Object.entries({ ...draft, ...audienceQuery((k) => sp[k]) }).map(([k, v]) =>
                 k === "subscribers" ? v && <input key={k} type="hidden" name={k} value="on" /> : <input key={k} type="hidden" name={k} value={String(v)} />,
               )}
               <button className="admin-press inline-flex min-h-11 items-center rounded-full bg-lime px-5 text-[13.5px] font-semibold text-ink">Publish</button>

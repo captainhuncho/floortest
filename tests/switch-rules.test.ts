@@ -208,8 +208,12 @@ test("from the server: off beats any rule, a rule keeps the feature from account
   for (const id of [inside, outside, named]) assert.equal(await switchOn("more_collections", id), false, "unreadable rule: nobody");
   assert.equal(await switchOn("more_collections", boss), true, "unreadable rule: super admin");
 
-  // Only the rule's parts are stored, never the lost marker worked out on read.
-  await setSwitchRule("more_collections", { ...rule({ types: ["dj"] }), lost: ["types"] }, boss);
+  // A lost rule is never saved (stripping its marker could store an empty rule, which is everyone), and a saved rule
+  // stores only its parts.
+  for (const lost of [{ ...rule({ types: ["dj"] }), lost: ["types" as const] }, { ...rule({}), lost: ["rule" as const] }])
+    await assert.rejects(setSwitchRule("more_collections", lost, boss), /lost a part/);
+  assert.equal((await q.get<{ rule: string }>("SELECT rule FROM switches WHERE key = 'more_collections'"))!.rule, "not json", "nothing written");
+  await setSwitchRule("more_collections", rule({ types: ["dj"] }), boss);
   assert.deepEqual(JSON.parse((await q.get<{ rule: string }>("SELECT rule FROM switches WHERE key = 'more_collections'"))!.rule), rule({ types: ["dj"] }));
 
   // Cleared: on for everyone again.
