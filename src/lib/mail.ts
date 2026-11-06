@@ -4,6 +4,7 @@ import { unsubToken, type UnsubKind } from "./unsubscribe";
 import crypto from "node:crypto";
 import { now, q, type Queryable } from "./db";
 import { normalEmail } from "./email-normal";
+import { CODE_EMAIL_TTL_MS } from "./code-mail";
 import { env, isPreview } from "./env";
 import { recordIncident } from "./incidents";
 import { emailHtml } from "./email-html";
@@ -250,10 +251,10 @@ async function reportDeferred(at: number) {
 export async function deliver(id: number, { retry = true } = {}): Promise<string> {
   const at = now();
   // A send that crashed is picked up again only while it has attempts left; drainOutbox closes the rest.
-  const row = await q.get<{ user_id: number | null; payload: string; idem_key: string; attempts: number; subject: string; optional: number; reserved: number }>(
+  const row = await q.get<{ user_id: number | null; payload: string; idem_key: string; attempts: number; subject: string; optional: number; reserved: number; created_at: number }>(
     `UPDATE outbox SET status = 'sending', attempts = attempts + 1, last_attempt_at = ?
      WHERE id = ? AND payload IS NOT NULL AND ((status = 'queued' AND next_at <= ?) OR (status = 'sending' AND last_attempt_at < ? AND attempts < ?))
-     RETURNING user_id, payload, idem_key, attempts, subject, optional, reserved`,
+     RETURNING user_id, payload, idem_key, attempts, subject, optional, reserved, created_at`,
     at,
     id,
     at,
@@ -269,6 +270,12 @@ export async function deliver(id: number, { retry = true } = {}): Promise<string
     await q.run("UPDATE outbox SET status = 'failed (unreadable)', payload = NULL, next_at = NULL WHERE id = ?", id);
     await recordIncident("email_failed", "A queued email couldn't be read (was APP_SECRET changed?) and was dropped", `${row.subject}\n${e instanceof Error ? e.message : String(e)}`);
     return "failed (unreadable)";
+  }
+  // A code is never sent after it stopped working, however it got here (a retry after a network failure, or a send
+  // picked up again after a crash or a failed drop): past its lifetime it's dropped unsent (Safety review of #464).
+  if (p.expires && at - Number(row.created_at) > CODE_EMAIL_TTL_MS) {
+    await q.run("UPDATE outbox SET status = 'dropped (expired)', payload = NULL, next_at = NULL WHERE id = ?", id);
+    return "dropped (expired)";
   }
   let to = p.to;
   let subject = p.subject;
@@ -290,8 +297,8 @@ export async function deliver(id: number, { retry = true } = {}): Promise<string
     blockCheckDown = true;
     await reportBlockCheckDown(at);
     if (p.expires) {
-      // Not swallowed: if this write fails, the row stays 'sending' and the error surfaces; the stuck-send pass closes it
-      // once its attempts are used, and nothing is sent on the way.
+      // Not swallowed: if this write fails, the error surfaces and the row stays 'sending'. If the send is picked up again
+      // later, the lifetime check above drops it unsent once it's past CODE_EMAIL_TTL_MS.
       await q.run("UPDATE outbox SET status = 'dropped (block check failed)', payload = NULL, next_at = NULL WHERE id = ?", id);
       return "dropped (block check failed)";
     }

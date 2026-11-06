@@ -340,3 +340,27 @@ test("an incident is raised only when a block is added or upgraded, not for ever
   const spam = await q.get<{ message: string }>("SELECT message FROM incidents ORDER BY id DESC LIMIT 1");
   assert.match(spam!.message, /Optional emails stop to this address; emails people need \(sign-in codes, resets, receipts\) still go/);
 });
+
+test("an expiring code is never sent late, even if its drop failed and the send is picked up again", async () => {
+  const { q } = await import("../src/lib/db");
+  const { queueMail, deliver, drainOutbox } = await import("../src/lib/mail");
+  const id = await queueMail({ userId: null, to: "late-code@x.io", subject: "Late code", body: "654321", expires: true });
+  // The block list can't be read and the drop can't be written either: deliver throws, leaving the row mid-send.
+  await q.run("ALTER TABLE email_suppressions RENAME TO email_suppressions_off");
+  await q.run("CREATE OR REPLACE FUNCTION test_refuse_drop() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF new.status LIKE 'dropped%' THEN RAISE EXCEPTION 'refused'; END IF; RETURN new; END $$");
+  await q.run("CREATE TRIGGER test_refuse_drop BEFORE UPDATE ON outbox FOR EACH ROW EXECUTE FUNCTION test_refuse_drop()");
+  try {
+    await assert.rejects(deliver(id));
+  } finally {
+    await q.run("DROP TRIGGER test_refuse_drop ON outbox");
+    await q.run("ALTER TABLE email_suppressions_off RENAME TO email_suppressions");
+  }
+  assert.equal((await q.get<{ status: string }>("SELECT status FROM outbox WHERE id = ?", id))!.status, "sending");
+  // Everything recovers; the send is now old (15 minutes) and stale, so the queue picks it up again.
+  await q.run("UPDATE outbox SET created_at = created_at - 15 * 60000, last_attempt_at = last_attempt_at - 15 * 60000 WHERE id = ?", id);
+  await drainOutbox(50);
+  const row = await q.get<{ status: string; payload: string | null }>("SELECT status, payload FROM outbox WHERE id = ?", id);
+  assert.deepEqual(row, { status: "dropped (expired)", payload: null }, "dropped unsent, never logged or sent");
+  const { codeMailProblem } = await import("../src/lib/code-mail");
+  assert.match(codeMailProblem("dropped (expired)") ?? "", /Ask for a new one/);
+});
