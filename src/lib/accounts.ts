@@ -153,12 +153,17 @@ export async function requestEmailChange(userId: number, next: string, by: "user
 export async function confirmEmail(token: string, personId: number | null) {
   if (!token || token.length > 100 || !personId) return undefined;
   return q.get<{ id: number }>(
-    "UPDATE users SET email_verified_at = COALESCE(email_verified_at, ?), email_verify_token = NULL WHERE email_verify_token = ? AND id = ? RETURNING id",
+    "UPDATE users SET email_verified_at = COALESCE(email_verified_at, ?), email_verify_token = NULL WHERE email_verify_token = ? AND id = ? AND email_verify_sent_at > ? RETURNING id",
     now(),
     hashToken(token),
     personId,
+    verifyLinkCutoff(),
   );
 }
+
+/** An email confirmation link lasts 48 hours, like an email-change link (owner, 5 Nov: links that never expire). */
+export const VERIFY_LINK_HOURS = 48;
+export const verifyLinkCutoff = () => now() - VERIFY_LINK_HOURS * 3_600_000;
 
 export async function pendingEmailFor(token: string) {
   if (!token || token.length > 100) return undefined;

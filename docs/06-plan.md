@@ -184,6 +184,32 @@ Owner keeps control; sharing never makes music public or moves ownership. Behind
 ## Account teams (built 11 Oct · switch `teams` on in production 11–15 Oct, off since the 15 Oct beta scope: teams only on super-admin desks)
 Decided: a colleague is a **seat on an account** (label, radio, crew), not someone a track is shared with. Seats: Free 1, Pro 2, Team 5, extra seats as add-ons; seats get the plan's benefits only on that desk; Owner / Admin (override, two-step) / Member (review, notes, replies); the owner or an admin chooses whether members' replies need approval and by whom. Left: add-on seats self-serve once Paddle is live (today ops sets them); the app API works on your own desk only; lawyer: teams in the Terms/Privacy (who sees what, the owner's responsibility for their team).
 
+## Road to public launch (owner, 5 Nov: "plan it")
+One ordered list from here to launch, built from the gate below and the production checklist
+([8. Project Implementation.md](8.%20Project%20Implementation.md)). Dev = the Backend, Build and Safety sessions; the
+owner's steps are marked. The hard gate below still decides launch; this is the order to get there.
+
+1. **Finish what's in review (dev):** the visit counter (#435), single-use links (#440), Safety's follow-ups for #431.
+2. **Data safety (dev):** per-person database rules on every desk read and write (B8, the biggest piece; Safety and
+   Backend split the remaining pages); the slow-query and pagination pass (B7 item 2); the version check on site content
+   and plans (B7 item 4).
+3. **Prove it holds (dev + owner):** owner buys Neon Launch (7-day restore window); dev runs a real restore drill into
+   a real Postgres and records it (next drill by 28 Nov); dev runs the load test on a throwaway deployment (B6); a second
+   virus scanner so uploads don't stop if one fails (B10); owner confirms the nightly recovery copy (Admin → Storage &
+   costs).
+4. **Security before strangers (dev):** two-step sign-in for team owners and admins and every ops role that changes
+   data; security emails (new device, password or email change, team invite, unusual downloads); alerts for repeated
+   cross-account denials, scanner down, failed backups and stuck deletions (Phase C above).
+5. **Business and accounts (owner):** lawyer's redlines and registrations (gate 1; start now, it takes longest); Paddle
+   account, then dev builds checkout (gate 2); paid UptimeRobot and Resend (gate 3); spend alerts at Vercel, Neon,
+   Cloudflare and Resend (B7); a GitHub plan with a ruleset protecting `main` (B5).
+6. **External pentest (owner books, dev fixes):** on Preview after steps 2–4, at least five working days before launch
+   (gate 10, `docs/pentest-brief.md`).
+7. **Launch day (Desk, on the owner's word):** remove `SITE_PASSWORD`, turn on `open_signup` (gate 6); set an uptime and
+   latency target and watch the first week.
+
+Start now, in parallel: the owner on the lawyer and Paddle (neither waits for code); dev on B8 once #435 and #440 close.
+
 ## Before public launch (the gate, agreed 12 Oct; see PRODUCT.md Launch Decisions)
 **Hard gate (launch waits for all of these):**
 1. **Legal:** lawyer redlines (incl. Q23, the Google sign-in privacy section, teams in Terms/Privacy, and the positioning change of 12 Oct: Terms, Takedown and Content rules still say "unreleased music"; FloorTest now takes released tracks too, so the lawyer words that), remove "draft" banners, operator details, registrations (Ghana DPC; UK/EU rep if advised; DMCA agent before marketing in the US).
@@ -218,6 +244,7 @@ Two paid add-ons for labels, bought on top of a plan. Parked: neither goes live 
 Open items from `docs/archive/HANDOFF.md`, `docs/archive/CLAUDE_NEXT_WORK.md` and `docs/beta-launch-plan.md` that weren't in this plan. Everything else in those lists is built or superseded.
 
 **Safety and operations (before public launch):**
+- 5 Nov, built on branch `fix/single-use-links` (not live): **links stop working once used** (owner, 5 Nov). A personal beta invite is used once and lasts 14 days: marked used in the sign-up transaction, kept used if that account is deleted (before, deleting the account brought the invite back), and a used or expired link shows "This invite has been used or has expired" instead of a live sign-up form. Invites already waiting get 14 days from when they were sent (owner, 5 Nov), so ones whose account was deleted before the fix stay dead. Email confirmation links last 48 hours. A team invite accept is guarded against a revoke landing mid-accept, and `/signup?team=` with a dead invite says so. A password change also ends emailed sign-in codes, half-finished two-step sign-ins and a pending email change. Migration 0131. Still open from the same scan (5 Nov): invite codes and newsletter tokens are stored in plain text (hash them), and wording on an expired two-step sign-in, an expired Google sign-up and a second newsletter confirm.
 - Recovery copy of audio: ✅ built as the vault (launch list item 5); the owner's token and two Vercel values are what's left.
 - Backups in their own bucket with their own key: ✅ with the vault on, backups are written only to `floortest-vault` with the vault key, and the copies in the audio bucket age out over 14 days; 13 Oct, a bucket lock on the vault's `backups/` prefix (`backups-14-days`) means no key can delete or overwrite a backup younger than 14 days, which is also when the nightly clean-up removes them. Still to do: streamed backups once the database grows.
 - Load test on Neon's pooled connection: many uploads, page loads and the nightly jobs at once.

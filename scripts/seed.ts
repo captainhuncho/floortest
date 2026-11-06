@@ -301,7 +301,7 @@ async function main() {
       );
     const desk = await user(LINKS.desk.email, LINKS.desk.name, LINKS.desk.handle, true, { extra_seats: 1 });
     await user(LINKS.invitee.email, "Ivy Invitee", "ivyinvitee", true);
-    await user(LINKS.unverified.email, "Uma Unconfirmed", "umaunconf", false, { email_verify_token: hashToken(LINKS.verifyToken) });
+    await user(LINKS.unverified.email, "Uma Unconfirmed", "umaunconf", false, { email_verify_token: hashToken(LINKS.verifyToken), email_verify_sent_at: now });
     await user(LINKS.changer.email, "Cal Changer", "calchanger", true, { pending_email: LINKS.changer.next, pending_email_token: hashToken(LINKS.confirmToken), pending_email_at: now - 3_600_000 });
     const resetter = await user(LINKS.resetter.email, "Remy Resetter", "remyreset", true);
     await db.run("INSERT INTO password_resets (token_hash, user_id, expires_at, created_at) VALUES (?,?,?,?)", hashToken(LINKS.resetToken), resetter, now + DAY, now);

@@ -12,7 +12,7 @@ import { cancelHeldMail, SEND_HOLD_MS } from "@/lib/mail";
  *
  * Kinds and their items: plan_approve { ref: request, user, prev: old plan }; plan_decline { ref: request };
  * waitlist_invite { ref: waitlist entry, code: the new invite }; invite_resend { code: the code sent, prev: the old code
- * it replaced, if any }; email_resend (nothing to put back, only the email to stop); invite_email { code: the new
+ * it replaced, if any; at: the invite's expiry before a same-code resend gave it 14 fresh days }; email_resend (nothing to put back, only the email to stop); invite_email { code: the new
  * invite }; verify { user, prev: identity status before, note: identity note before, ref: the proposal, code: "reopen"
  * (an approved proposal goes back to waiting) or "close" (a record the action wrote is closed), refs: proposals the
  * action declined, reopened }; identity_reject { user, prev, note }; identity_revoke { user, at: when they were
@@ -68,6 +68,9 @@ export async function revertItem(db: Queryable, u: Undo, item: UndoItem) {
     // The resend swapped an old short code for a new one: the old one comes back, the unsent new one is revoked.
     await db.run("UPDATE invites SET revoked_at = ? WHERE code = ? AND revoked_at IS NULL", now(), item.code);
     await db.run("UPDATE invites SET revoked_at = NULL WHERE code = ?", item.prev);
+  } else if (u.kind === "invite_resend" && item.code && item.at !== undefined) {
+    // A same-code resend gave the invite 14 fresh days: Undo puts its old expiry back (owner, 5 Nov).
+    await db.run("UPDATE invites SET expires_at = ? WHERE code = ? AND used_at IS NULL", item.at, item.code);
   } else if (u.kind === "invite_email") {
     await db.run("UPDATE invites SET revoked_at = ? WHERE code = ? AND revoked_at IS NULL", now(), item.code);
   } else if (u.kind === "verify") {

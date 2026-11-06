@@ -2104,12 +2104,35 @@ create index if not exists visit_counts_owner on visit_counts(link_owner, day) w
 alter table visit_counts enable row level security;`,
   },
   {
+    // A personal beta invite is used once and lasts 14 days (owner, 5 Nov). Before, "used" was only "an account holds
+    // this code", so deleting that account brought the invite back to life, and an unused one never expired. Invites
+    // already used (by their code, or by their email signing up any other way) are marked now. Ones still waiting get
+    // 14 days from when they were sent (owner, 5 Nov): an invite whose account was deleted before this left no trace,
+    // so counting from today would have revived it. Shared codes (no email) keep no expiry: they open nothing while
+    // sign-up is closed. Email
+    // confirmation links now last 48 hours, like an email-change link; ones already sent get 48 hours from today.
+    id: "0131_invite_used_expires",
+    sql: `alter table invites add column if not exists used_at bigint;
+alter table invites add column if not exists expires_at bigint;
+update invites i set used_at = coalesce((select min(u.created_at) from users u where u.invite_code = i.code), (extract(epoch from now()) * 1000)::bigint)
+  where i.email is not null and i.used_at is null
+    and (exists (select 1 from users u where u.invite_code = i.code) or exists (select 1 from users u where lower(u.email) = lower(i.email)));
+update invites set expires_at = coalesce(sent_at, created_at) + 1209600000
+  where email is not null and expires_at is null and used_at is null;
+alter table users add column if not exists email_verify_sent_at bigint;
+update users set email_verify_sent_at = (extract(epoch from now()) * 1000)::bigint where email_verify_token is not null and email_verify_sent_at is null;`,
+  },
+  {
     // Per-person rules, Settings (B8, Backend slice 1, 5 Nov): the owner's own alert and contact choices are saved as the
     // person, so the person role may write these columns on its own row only (person_users_own). Consent times are the
     // person's own record. Never granted: plan, email, handle, identity_*, suspended_at, extra_seats, reply_* or anything
-    // to do with money or verification.
+    // to do with money or verification. The person can't read the consent times (teammates see the row), so the app works
+    // them out. Also taken back from 0108: cover_key (a storage key the public cover route serves, so it must only ever be
+    // set by the upload flow) and active_collection_id (routing, which the app checks is the desk's own collection);
+    // no person path writes either (Safety review of #448, 5 Nov).
     id: "0132_person_settings",
-    sql: `grant update (notify_submissions, digest_hour, quiet_start, quiet_end, notify_alerts, notify_product, notify_marketing, product_consent_at, marketing_consent_at) on users to ft_person;`,
+    sql: `grant update (notify_submissions, digest_hour, quiet_start, quiet_end, notify_alerts, notify_product, notify_marketing, product_consent_at, marketing_consent_at) on users to ft_person;
+revoke update (cover_key, active_collection_id) on users from ft_person;`,
   },
   {
     // Per-person rules, plan requests (B8, Backend slice 2, 5 Nov): the owner files, withdraws and sees their own desk's

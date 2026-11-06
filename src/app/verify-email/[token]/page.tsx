@@ -5,7 +5,7 @@ import { q } from "@/lib/db";
 import { sendWelcome } from "@/lib/onboarding";
 import { currentPerson } from "@/lib/auth";
 import { hashToken } from "@/lib/token-hash";
-import { confirmEmail } from "@/lib/accounts";
+import { confirmEmail, verifyLinkCutoff } from "@/lib/accounts";
 import { maskEmail } from "@/lib/mask-email";
 
 export const metadata = { title: "Confirm your email — FloorTest", robots: { index: false } };
@@ -14,7 +14,11 @@ export const metadata = { title: "Confirm your email — FloorTest", robots: { i
 export default async function VerifyEmail({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<{ done?: string }> }) {
   const { token } = await params;
   const done = !!(await searchParams).done;
-  const pending = done ? null : await q.get<{ id: number; email: string }>("SELECT id, email FROM users WHERE email_verify_token = ?", hashToken(token.slice(0, 100)));
+  const pending = done ? null : await q.get<{ id: number; email: string }>(
+        "SELECT id, email FROM users WHERE email_verify_token = ? AND email_verify_sent_at > ?",
+        hashToken(token.slice(0, 100)),
+        verifyLinkCutoff(),
+      );
   const me = await currentPerson();
 
   async function confirm() {
@@ -51,7 +55,7 @@ export default async function VerifyEmail({ params, searchParams }: { params: Pr
           </Link>
         }
       >
-        <p>This link is invalid, already used, or was replaced by a newer one. You can send a fresh one from your desk.</p>
+        <p>This link is invalid, already used, past its 48 hours, or was replaced by a newer one. You can send a fresh one from your desk.</p>
       </MessagePage>
     );
   if (me?.id !== pending.id)

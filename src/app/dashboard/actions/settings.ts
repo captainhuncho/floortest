@@ -14,7 +14,8 @@ import { env } from "@/lib/env";
 import { purgeAccount } from "@/lib/privacy";
 import { cancelEmailChange, changeHandle, requestEmailChange, resetVerified } from "@/lib/accounts";
 import { capacity } from "@/lib/desk";
-import { asPerson, asSystem, now, q } from "@/lib/db";
+import { asSystem, now, q } from "@/lib/db";
+import { saveAlerts, saveProfile } from "@/lib/settings-save";
 import { sendDigest } from "@/lib/notify";
 import { offeredPlan, planOf } from "@/lib/plan-store";
 import { switchOn } from "@/lib/switches";
@@ -41,26 +42,18 @@ export async function updateNotifications(_: SettingsState, form: FormData): Pro
     tz = "UTC";
   }
   const quiet = form.get("quiet") === "on";
-  // As the person (B8): the database lets them write only their own row's alert columns (migration 0132).
-  const saved = await asPerson(u.actor_id, () => q.run(
-    `UPDATE users SET notify_submissions = ?, digest_hour = ?, quiet_start = ?, quiet_end = ?, notify_alerts = ?, notify_product = ?, notify_marketing = ?,
-       product_consent_at = CASE WHEN ? = 1 THEN COALESCE(product_consent_at, ?) ELSE NULL END,
-       marketing_consent_at = CASE WHEN ? = 1 THEN COALESCE(marketing_consent_at, ?) ELSE NULL END, tz = ? WHERE id = ?`,
-    ["instant", "digest", "off"].includes(mode) ? mode : "digest",
-    hour("digest_hour") ?? 9,
-    quiet ? hour("quiet_start") : null,
-    quiet ? hour("quiet_end") : null,
-    form.get("notify_alerts") === "on" ? 1 : 0,
-    form.get("notify_product") === "on" ? 1 : 0,
-    form.get("notify_marketing") === "on" ? 1 : 0,
-    form.get("notify_product") === "on" ? 1 : 0,
-    now(),
-    form.get("notify_marketing") === "on" ? 1 : 0,
-    now(),
+  // As the person (B8): only the owner's own row, only these columns (src/lib/settings-save.ts).
+  const problem = await saveAlerts(u.actor_id, u.id, {
+    mode: mode === "instant" || mode === "off" ? mode : "digest",
+    digestHour: hour("digest_hour") ?? 9,
+    quietStart: quiet ? hour("quiet_start") : null,
+    quietEnd: quiet ? hour("quiet_end") : null,
+    alerts: form.get("notify_alerts") === "on",
+    product: form.get("notify_product") === "on",
+    marketing: form.get("notify_marketing") === "on",
     tz,
-    u.id,
-  ));
-  if (!saved.changes) return { error: "Couldn't save your settings. Reload the page and try again." };
+  });
+  if (problem) return { error: problem };
   await audit(u.id, "notifications_updated");
   done();
   return { ok: true };
@@ -98,11 +91,9 @@ export async function updateSettings(_: SettingsState, form: FormData): Promise<
     if (v === "on" || v === "off") chosen[t] = v === "on";
   }
   const tools = TOOL_IDS.some((t) => t in chosen) ? toolOverrides(kind, chosen) : u.tools;
-  // As the person (B8): only their own row, only these columns.
-  const saved = await asPerson(u.actor_id, () =>
-    q.run("UPDATE users SET name = ?, first_name = ?, last_name = ?, kind = ?, kind_note = ?, tools = ? WHERE id = ?", name, firstName, lastName, kind, kindNote, tools, u.id),
-  );
-  if (!saved.changes) return { error: "Couldn't save your settings. Reload the page and try again." };
+  // As the person (B8): only their own row, only these columns (src/lib/settings-save.ts).
+  const unsaved = await saveProfile(u.actor_id, u.id, { name, firstName, lastName, kind, kindNote, tools });
+  if (unsaved) return { error: unsaved };
   // Clearing the Verified mark writes identity columns, which are never the person's to write: the app does it.
   if (name !== u.name) await resetVerified(q, u.id);
   if (name !== u.name || handle !== u.handle) await audit(u.id, "settings_updated", handle !== u.handle ? `link is now /${handle}` : name);
