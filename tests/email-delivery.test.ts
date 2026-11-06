@@ -196,3 +196,46 @@ test("the Blocked chip matches addresses the way the block list stores them", as
   const sql = await q.get<{ v: string }>("SELECT lower(btrim(normalize(?, NFKC))) AS v", raw);
   assert.equal(sql!.v, normalEmail(raw));
 });
+
+test("a signed report that isn't readable is noted once, with the incident first, and answered 200", async () => {
+  const { q } = await import("../src/lib/db");
+  const { POST } = await import("../src/app/api/webhooks/resend/route");
+  const secret = Buffer.from(process.env.RESEND_WEBHOOK_SECRET!.replace(/^whsec_/, ""), "base64");
+  const body = "{not json";
+  const send = () => {
+    const ts = String(Math.floor(Date.now() / 1000));
+    const sig = crypto.createHmac("sha256", secret).update(`msg_nojson.${ts}.${body}`).digest("base64");
+    return POST(new Request("http://localhost/api/webhooks/resend", { method: "POST", body, headers: { "svix-id": "msg_nojson", "svix-timestamp": ts, "svix-signature": `v1,${sig}` } }));
+  };
+  const incidents = async () => (await q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM incidents"))!.n;
+  const before = await incidents();
+  const res = await send();
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { ignored: true });
+  assert.equal(await incidents(), before + 1);
+  assert.ok(await q.get("SELECT 1 FROM webhook_receipts WHERE event_id = 'msg_nojson'"));
+  await send();
+  assert.equal(await incidents(), before + 1, "a retry adds nothing");
+});
+
+test("an address blocked for a spam report becomes a full block when it later hard-bounces", async () => {
+  const { q } = await import("../src/lib/db");
+  await q.run("INSERT INTO email_suppressions (email, reason, detail, created_at) VALUES ('spamthendead@x.io', 'complained', '', ?)", Date.now());
+  await email("em_dead", "spamthendead@x.io");
+  await report("em_dead", "email.bounced", { type: "Permanent", message: "550 mailbox gone" });
+  assert.deepEqual(await q.get("SELECT reason, detail FROM email_suppressions WHERE email = 'spamthendead@x.io'"), { reason: "bounced", detail: "550 mailbox gone" });
+  // A spam report never softens a bounce block.
+  await email("em_dead2", "spamthendead@x.io");
+  await report("em_dead2", "email.complained");
+  assert.equal((await q.get<{ reason: string }>("SELECT reason FROM email_suppressions WHERE email = 'spamthendead@x.io'"))!.reason, "bounced");
+});
+
+test("the send-time block check matches an address the way the block list stores it", async () => {
+  const { q } = await import("../src/lib/db");
+  const { sendMail } = await import("../src/lib/mail");
+  await q.run("INSERT INTO email_suppressions (email, reason, detail, created_at) VALUES ('fullwidth@x.io', 'bounced', '', ?)", Date.now());
+  // A full-width "ｆ" and stray spaces: NFKC, trim and lowercase make it the stored address.
+  await sendMail({ userId: null, to: " ｆullwidth@X.io ", subject: "S", body: "B" });
+  const row = await q.get<{ status: string }>("SELECT status FROM outbox WHERE subject = 'S' AND to_email LIKE '%ullwidth%' ORDER BY id DESC LIMIT 1");
+  assert.match(row!.status, /^skipped \(bounced/);
+});

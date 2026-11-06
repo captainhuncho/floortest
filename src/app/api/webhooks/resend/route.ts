@@ -63,6 +63,20 @@ function readReport(raw: unknown): Report | null {
 /** The delivery reports this route acts on, by Resend's event type. */
 const REPORTS = { "email.delivered": "delivered", "email.delivery_delayed": "delayed", "email.bounced": "bounced", "email.complained": "complained" } as const;
 
+/**
+ * A report signed by Resend that we can't read: the incident is raised first, then the report is marked as seen, and the
+ * answer is 2xx so Resend doesn't retry it. If raising the incident fails, nothing is marked and Resend's retry tries
+ * again, so the incident is never lost (Safety review of #452).
+ */
+async function skipUnreadable(eventId: string, what: string) {
+  const seen = await q.get("SELECT 1 FROM webhook_receipts WHERE provider = 'resend' AND event_id = ?", eventId);
+  if (!seen) {
+    await recordIncident("email_failed", what, "Check Resend's webhook format");
+    await q.run("INSERT INTO webhook_receipts (provider, event_id, received_at) VALUES ('resend', ?, ?) ON CONFLICT DO NOTHING", eventId, now());
+  }
+  return NextResponse.json({ ignored: true });
+}
+
 export async function POST(req: Request) {
   const secret = process.env.RESEND_WEBHOOK_SECRET;
   if (!secret) return new NextResponse(null, { status: 404 });
@@ -72,22 +86,18 @@ export async function POST(req: Request) {
   const h = req.headers;
   if (!verified(secret, h.get("svix-id") ?? "", h.get("svix-timestamp") ?? "", body, h.get("svix-signature") ?? "")) return new NextResponse(null, { status: 401 });
 
+  const eventId = h.get("svix-id") ?? "";
   let parsed: unknown;
   try {
     parsed = JSON.parse(body);
   } catch {
-    return new NextResponse(null, { status: 400 });
+    return skipUnreadable(eventId, "A report from Resend wasn't readable, so it was skipped.");
   }
   const kind = typeof (parsed as { type?: unknown })?.type === "string" ? (parsed as { type: string }).type : "";
   const delivery = Object.hasOwn(REPORTS, kind) ? REPORTS[kind as keyof typeof REPORTS] : undefined;
   if (!delivery) return NextResponse.json({ ignored: true });
   const e = readReport(parsed);
-  if (!e || !e.emailId) {
-    // Signed by Resend but not in the shape we read: noted once, then answered 2xx so it isn't retried.
-    const fresh = await q.get("INSERT INTO webhook_receipts (provider, event_id, received_at) VALUES ('resend', ?, ?) ON CONFLICT DO NOTHING RETURNING event_id", h.get("svix-id"), now());
-    if (fresh) await recordIncident("email_failed", `A ${kind} report from Resend wasn't in the expected shape, so it was skipped.`, "Check Resend's webhook format");
-    return NextResponse.json({ ignored: true });
-  }
+  if (!e || !e.emailId) return skipUnreadable(eventId, `A ${kind} report from Resend wasn't in the expected shape, so it was skipped.`);
   const id = e.emailId;
   const to = e.to;
   const bounce = e.bounce;
@@ -115,7 +125,9 @@ export async function POST(req: Request) {
     const email = normalEmail(row?.to_email ?? to);
     if (email && reason)
       await db.run(
-        "INSERT INTO email_suppressions (email, reason, detail, created_at) VALUES (?,?,?,?) ON CONFLICT (email) DO NOTHING",
+        // A hard bounce on an address already blocked for a spam report makes it a full block: a spam report still lets
+        // sign-in codes and resets through, which would keep going to an address that no longer exists.
+        "INSERT INTO email_suppressions (email, reason, detail, created_at) VALUES (?,?,?,?) ON CONFLICT (email) DO UPDATE SET reason = 'bounced', detail = excluded.detail WHERE email_suppressions.reason = 'complained' AND excluded.reason = 'bounced'",
         email,
         reason,
         (bounce?.message ?? "").slice(0, 300),
