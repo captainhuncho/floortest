@@ -119,4 +119,10 @@ export async function signUp(page: Page, a: NewAccount, { finish = true }: { fin
   await expect(page.getByRole("heading", { name: "Your link is ready." })).toBeVisible();
   await page.getByRole("link", { name: "Go to your desk" }).click();
   await page.waitForURL(/\/dashboard\/floor\?welcome=1/);
+  // A new account gets the first-visit tour on the Floor (src/app/dashboard/Tour.tsx). Check it opens, then skip it so
+  // it doesn't cover what the test clicks next; e2e/tour.spec.ts walks it.
+  const tour = page.getByRole("dialog");
+  await expect(tour.getByText("Step 1 of 6")).toBeVisible();
+  await tour.getByRole("button", { name: "Skip the tour" }).click();
+  await expect(tour).toBeHidden();
 }

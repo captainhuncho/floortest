@@ -1,5 +1,5 @@
 import "server-only";
-import { q } from "./db";
+import { asPerson, q } from "./db";
 
 /** Who's asking for a bigger plan during the beta: ops uses this to give each person the plan that fits. */
 export const REQUEST_KINDS = {
@@ -42,4 +42,11 @@ export function grantablePlan<P extends { id: string; position: number; retired:
 }
 
 /** This person's open request, if any. */
-export const pendingRequest = (userId: number) => q.get<PlanRequest>("SELECT * FROM plan_requests WHERE user_id = ? AND status = 'pending'", userId);
+/**
+ * The desk's open request, if any: only what the plan pages show. Pass `person` (the signed-in person) to read it under
+ * the per-person rules (B8): only the desk's own owner sees it.
+ */
+export const pendingRequest = (userId: number, person?: number) => {
+  const read = () => q.get<Pick<PlanRequest, "id" | "plan">>("SELECT id, plan FROM plan_requests WHERE user_id = ? AND status = 'pending'", userId);
+  return person ? asPerson(person, read) : read();
+};
