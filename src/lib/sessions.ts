@@ -23,13 +23,18 @@ export function readSessionToken(jar: { get(name: string): { value: string } | u
 /**
  * Ends every way into the account after its password changes or is reset: every browser and app session (except
  * `keep`, the browser doing the change, when given), every ops (admin area) session, and any reset link not yet used,
- * so an old emailed link can't set the password again. Pass `db` to run inside the caller's transaction.
+ * so an old emailed link can't set the password again. Also any emailed sign-in code, half-finished two-step sign-in
+ * and pending email change (owner, 5 Nov: nothing emailed before the change keeps working after it). Pass `db` to run
+ * inside the caller's transaction.
  */
 export async function revokeAllSessions(userId: number, o: { keep?: string | null; db?: Queryable } = {}) {
   const db = o.db ?? q;
   const ended = await db.run("DELETE FROM sessions WHERE user_id = ? AND token_hash <> ?", userId, o.keep ?? "");
   const ops = await db.run("DELETE FROM admin_sessions WHERE user_id = ?", userId);
   await db.run("UPDATE password_resets SET used_at = ? WHERE user_id = ? AND used_at IS NULL", now(), userId);
+  await db.run("DELETE FROM login_codes WHERE user_id = ?", userId);
+  await db.run("DELETE FROM two_step_tickets WHERE user_id = ?", userId);
+  await db.run("UPDATE users SET pending_email = NULL, pending_email_token = NULL, pending_email_at = NULL WHERE id = ? AND pending_email_token IS NOT NULL", userId);
   return ended.changes + ops.changes;
 }
 

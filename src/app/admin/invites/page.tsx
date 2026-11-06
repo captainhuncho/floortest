@@ -9,7 +9,7 @@ import { createInvite, deleteInvite, inviteByEmail, resendInvite, restoreInvite,
 export default async function Invites() {
   await requireAdmin("invites");
   const rows = await q.all<{
-    code: string; max_uses: number; note: string; email: string | null; sent_at: number | null; created_at: number; revoked_at: number | null; used: number; joined: string | null;
+    code: string; max_uses: number; note: string; email: string | null; sent_at: number | null; created_at: number; revoked_at: number | null; used: number; joined: string | null; used_at: number | null; expires_at: number | null;
   }>(
     `SELECT i.*, (SELECT COUNT(*) FROM users u WHERE u.invite_code = i.code) AS used,
        (SELECT u.handle FROM users u WHERE u.invite_code = i.code ORDER BY u.created_at LIMIT 1) AS joined
@@ -22,6 +22,8 @@ export default async function Invites() {
   const personal = rows.filter((r) => r.email && !r.revoked_at);
   const shared = rows.filter((r) => !r.email && !r.revoked_at);
   const revoked = rows.filter((r) => r.revoked_at);
+  // Used is the invite's own mark (it stays when the account made with it is deleted); unused ones last 14 days.
+  const at = Date.now();
 
   return (
     <div className="space-y-10">
@@ -57,6 +59,10 @@ export default async function Invites() {
                     <td className="px-4 py-3">
                       {r.used ? (
                         <span className="chip border-lime/50 text-lime">Joined @{r.joined}</span>
+                      ) : r.used_at ? (
+                        <span className="chip border-line text-mute">Used</span>
+                      ) : r.expires_at !== null && r.expires_at <= at ? (
+                        <span className="chip border-line text-mute">Expired</span>
                       ) : (
                         <span className="chip border-line text-mute">Pending</span>
                       )}
@@ -64,7 +70,7 @@ export default async function Invites() {
                     <td className="px-4 py-3 text-mute">{r.code}</td>
                     <td className="px-4 py-3 text-mute">{new Date(r.sent_at ?? r.created_at).toLocaleDateString("en-GB")}</td>
                     <td className="space-x-3 whitespace-nowrap px-4 py-3 text-right">
-                      {!r.used && (
+                      {!r.used && !r.used_at && (
                         <>
                           <ConfirmButton action={resendInvite.bind(null, r.code)} message={`Email the invite to ${r.email} again?`} className="text-sm text-mute hover:text-bone">
                             Resend

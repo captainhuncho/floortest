@@ -33,7 +33,7 @@ import { accountEmailAllowed } from "@/lib/email-budget";
 import { HUMAN_CHECK_AFTER, HUMAN_MESSAGE, humanCheck, recentFailures } from "@/lib/human-check";
 import { breachedError } from "@/lib/breached";
 import { resetWithLink } from "@/lib/password-reset";
-import { resolveInvite } from "@/lib/invites";
+import { claimPersonalInvite, resolveInvite } from "@/lib/invites";
 import { revokeAllSessions } from "@/lib/sessions";
 import { checkPasskey, hasPasskey, secondStepOptions, signInOptions } from "@/lib/passkeys";
 
@@ -91,7 +91,7 @@ type NewAccount = { email: string; firstName: string; lastName: string; handle: 
  * Everything both sign-ups (password and Google) check and do once the person is known: the invite (unless sign-up
  * is open), terms, the link name, the rate limit, and creating the account with its Inbox. Returns the new id or an error.
  */
-async function createAccount(form: FormData, a: NewAccount, opts: { googleEmail?: boolean } = {}): Promise<{ id: number } | { error: string }> {
+async function createAccount(form: FormData, a: NewAccount, opts: { googleEmail?: boolean } = {}): Promise<{ id: number; teamAccount?: number } | { error: string }> {
   if (form.get("agree") !== "on") return { error: "Please confirm you're 18 or over and agree to the Terms to create an account." };
   const open = await switchOn("open_signup");
   // The invite code is what proves the email while sign-up is closed, so wrong guesses are counted (per email and per
@@ -169,15 +169,43 @@ async function createAccount(form: FormData, a: NewAccount, opts: { googleEmail?
         a.verified ? now() : null,
         now(),
       ))!;
+      // A personal invite is used once (owner, 5 Nov): marked here, in the same transaction, so two sign-ups racing on
+      // one code can't both get in, and deleting this account later never brings the invite back.
+      if (!(await claimPersonalInvite(db, invite.valid && invite.personal ? invite.code : null, a.email))) throw INVITE_GONE;
+      // A team invite is accepted in the same transaction (owner, 5 Nov: used once). When it is what let them in during
+      // the beta and a cancel, expiry or another accept landed first, the account rolls back; otherwise they just
+      // don't join.
+      let teamAccount: number | undefined;
+      if (team) {
+        const t = now();
+        const took = await db.get<{ account_id: number }>(
+          "UPDATE account_invites SET accepted_at = ? WHERE id = ? AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > ? RETURNING account_id",
+          t, team.id, t,
+        );
+        if (took) {
+          await db.run(
+            "INSERT INTO account_members (account_id, user_id, role, invited_by, created_at) VALUES (?,?,?,(SELECT invited_by FROM account_invites WHERE id = ?),?) ON CONFLICT (account_id, user_id) DO NOTHING",
+            took.account_id, u.id, team.role, team.id, t,
+          );
+          teamAccount = took.account_id;
+        } else if (!open && !invite.valid) throw TEAM_GONE;
+      }
       // No collection is made for them: each receiver names and creates their own (owner, 15 Oct; two in the beta).
-      return { id: u.id };
+      return { id: u.id, teamAccount };
     });
   } catch (e) {
+    if (e === INVITE_GONE) return { error: "This invite has been used or has expired. Ask the person who invited you for a new one." };
+    if (e === TEAM_GONE) return { error: "This invite isn't valid any more. Ask the person who invited you for a new one." };
     // Lost a race for the same email or link name.
     if ((e as { code?: string })?.code === "23505") return { error: TAKEN };
     throw e;
   }
 }
+
+/** Thrown inside the sign-up transaction when the personal invite was claimed first, so the account rolls back. */
+const INVITE_GONE = Symbol("invite gone");
+/** Thrown inside the sign-up transaction when the team invite that let them in was cancelled, expired or taken first. */
+const TEAM_GONE = Symbol("team invite gone");
 
 const fromForm = (form: FormData, k: string, max: number) => String(form.get(k) || "").trim().slice(0, max);
 
@@ -200,7 +228,7 @@ export async function signup(_: FormState, form: FormData): Promise<FormState> {
   if ("error" in r) return r;
   await createSession(r.id);
   // Joining a team: accept the invite and open the team's desk straight away.
-  const joined = await joinTeamAfterSignup(form, r.id);
+  const joined = r.teamAccount ? await enterTeam(r.teamAccount, email) : await joinTeamAfterSignup(form, r.id);
   if (joined) redirect("/dashboard/floor");
   await sendEmailVerification(r.id);
   // The guided sign-up carries on after the account exists: check your email, add a photo, your link is ready
@@ -232,7 +260,8 @@ export async function signupWithGoogle(_: FormState, form: FormData): Promise<Fo
   await q.run("UPDATE users SET google_sub = ?, google_linked_at = ? WHERE id = ?", who.sub, now(), r.id);
   await finishSignIn(r.id, "Google");
   // Joining a team (from the invite link, or an invite sent to this Google email): accept it and open the team's desk.
-  if ((await joinTeamAfterSignup(form, r.id)) ?? (await joinTeamByEmail(r.id))) redirect("/dashboard/floor");
+  if ((r.teamAccount ? await enterTeam(r.teamAccount, who.email) : null) ?? (await joinTeamAfterSignup(form, r.id)) ?? (await joinTeamByEmail(r.id)))
+    redirect("/dashboard/floor");
   await sendWelcome(r.id);
   redirect(await landing("/dashboard/floor?welcome=1"));
 }
