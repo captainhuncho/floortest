@@ -42,6 +42,9 @@ export function proxy(req: NextRequest) {
   const csp = contentSecurityPolicy({ nonce: makeNonce(), dev: process.env.NODE_ENV !== "production" });
   const request = { headers: new Headers(req.headers) };
   request.headers.set("Content-Security-Policy", csp);
+  // Whether this request can change anything, set here for every request so a client can't send its own (auth.ts reads
+  // it: a server action can arrive without Next's own Next-Action header).
+  request.headers.set(WRITE_HEADER, req.method !== "GET" && req.method !== "HEAD" ? "1" : "0");
   const res = route(req, request);
   // Verification proof files send their own, stricter policy (default-src 'none', frame-ancestors 'none'; security
   // review M2): the page policy isn't laid over it. Host separation and the cross-site check above still apply.
@@ -58,6 +61,17 @@ export function proxy(req: NextRequest) {
  * route beside it (and anything else under that path) keeps the page policy and its frame-ancestors 'none'. Each
  * also sends X-Frame-Options DENY and nosniff itself.
  */
+/** Set by the proxy on every request: "1" for a request that can change something (any method but GET or HEAD). */
+export const WRITE_HEADER = "x-ft-write";
+
+/** The view-as cookie's name (src/lib/auth.ts VIEW_AS_COOKIE; kept here so the proxy needs no server code). */
+export const VIEW_AS_COOKIE_NAME = "floortest_view_as";
+
+/** A request that could change something while an admin is viewing someone's desk. */
+export function viewWrite(method: string, viewing: boolean) {
+  return viewing && method !== "GET" && method !== "HEAD";
+}
+
 export const OWN_CSP = [/^\/api\/admin\/verification-proofs\/\d+$/];
 
 function route(req: NextRequest, request: { headers: Headers }) {
@@ -67,6 +81,11 @@ function route(req: NextRequest, request: { headers: Headers }) {
   // Another site's page can't make a signed-in browser change anything here (src/lib/cross-site.ts).
   if (path.startsWith("/api/") && crossSiteWrite(req.method, req.headers, req.nextUrl.origin))
     return NextResponse.json({ error: "Open this from FloorTest." }, { status: 403 });
+  // An admin's "view as" is read-only for every way in (Safety audit M1): Next.js runs a server action from a plain form
+  // post without its Next-Action header, so the header check in auth.ts isn't enough on its own. Any change request that
+  // carries the view cookie (sent only to /dashboard) goes back to the read-only desk without running. Starting and
+  // ending a view are GETs.
+  if (viewWrite(req.method, req.cookies.has(VIEW_AS_COOKIE_NAME))) return NextResponse.redirect(new URL("/dashboard/floor?readonly=1", req.url), 303);
   const onOpsHost = !!OPS_HOST && req.headers.get("host") === OPS_HOST;
   // Coming-soon gate: every page on the main site shows the coming-soon page until the password is entered.
   // The API (webhooks, health, cron) and ops (its own sign-in) stay reachable.
