@@ -17,13 +17,13 @@ export function ViewToggle({ view }: { view: "queue" | "list" }) {
     router.push(`/dashboard/review?view=${v}`);
   };
   return (
-    <div className={SEG} role="group" aria-label="Layout">
+    <div className={`${SEG} rounded-[14px]!`} role="group" aria-label="Layout">
       {(["queue", "list"] as const).map((v) => (
         <button
           key={v}
           onClick={() => go(v)}
           aria-pressed={view === v}
-          className={`${segTab(view === v)} min-h-10! px-3 transition-colors`}
+          className={`${segTab(view === v)} min-h-10! rounded-[11px]! px-3 pointer-coarse:min-h-11!`}
         >
           {v === "queue" ? "Queue" : "List"}
         </button>

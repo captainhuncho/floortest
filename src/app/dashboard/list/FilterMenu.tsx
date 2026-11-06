@@ -36,7 +36,7 @@ export function FilterMenu({ label, options, icon = false }: { label: string; op
         aria-expanded={open}
         aria-haspopup="menu"
         className={`flex items-center gap-1.5 border border-line bg-well font-medium transition hover:text-bone ${
-          icon ? "min-h-11 rounded-xl px-3 text-[13px]" : "min-h-9 rounded-[10px] px-2.5 text-[11.5px]"
+          icon ? "min-h-11 rounded-[14px] px-3 text-[13px]" : "min-h-9 rounded-[12px] px-2.5 text-[11.5px]"
         } ${filtered ? "text-bone" : "text-mute"}`}
       >
         {icon && <Icon name="folder" className="size-4" />}
@@ -47,7 +47,7 @@ export function FilterMenu({ label, options, icon = false }: { label: string; op
         </svg>
       </button>
       {open && (
-        <div role="menu" className="absolute left-0 top-full z-30 mt-1 max-h-80 min-w-52 overflow-y-auto rounded-[13px] border border-line bg-card p-1 shadow-pop">
+        <div role="menu" className="absolute left-0 top-full z-30 mt-1 max-h-80 min-w-52 overflow-y-auto rounded-[16px] border border-line bg-card p-1 shadow-pop">
           {options.map((o) => (
             <Link
               key={o.href}
@@ -55,7 +55,7 @@ export function FilterMenu({ label, options, icon = false }: { label: string; op
               aria-checked={o.active}
               href={o.href}
               onClick={() => setOpen(false)}
-              className={`flex min-h-11 items-center justify-between gap-4 rounded-[10px] px-3 py-2 text-[13px] hover:bg-well ${o.active ? "text-bone" : "text-mute"}`}
+              className={`flex min-h-11 items-center justify-between gap-4 rounded-[12px] px-3 py-2 text-[13px] hover:bg-well ${o.active ? "text-bone" : "text-mute"}`}
             >
               <span className="truncate">
                 {o.active && <span aria-hidden className="text-lime">✓ </span>}

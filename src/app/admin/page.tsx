@@ -1,4 +1,5 @@
 import { can, requireAdmin } from "@/lib/admin";
+import { TickArc } from "@/components/TickArc";
 import { needFor } from "@/lib/ops-perms";
 import { mailUsage } from "@/lib/mail-quota";
 import { partnerRows } from "@/lib/partners";
@@ -596,35 +597,10 @@ function Gauge({ value, tone }: { value: number; tone: Tone }) {
   const lit = Math.round((value / 100) * ticks);
   const colour = tone === "bad" ? "var(--color-danger)" : tone === "warn" ? "var(--admin-amber)" : "var(--color-lime)";
   return (
-    <div className="relative mx-auto mt-2 h-[132px] w-[240px]" role="img" aria-label={`Health score ${value} out of 100`}>
-      <svg viewBox="0 0 240 132" className="absolute inset-0" aria-hidden>
-        {Array.from({ length: ticks }, (_, i) => {
-          const a = Math.PI - (i / (ticks - 1)) * Math.PI;
-          const x1 = 120 + Math.cos(a) * 82;
-          const y1 = 122 - Math.sin(a) * 82;
-          const x2 = 120 + Math.cos(a) * 112;
-          const y2 = 122 - Math.sin(a) * 112;
-          return (
-            <line
-              key={i}
-              x1={x1}
-              y1={y1}
-              x2={x2}
-              y2={y2}
-              stroke={i < lit ? colour : "var(--color-ink-4)"}
-              strokeWidth="9"
-              strokeLinecap="round"
-              className={i < lit ? "admin-tick" : ""}
-              style={{ "--i": i } as React.CSSProperties}
-            />
-          );
-        })}
-      </svg>
-      <div className="absolute inset-x-0 bottom-1 text-center">
-        <p className="text-[30px] font-semibold leading-none tracking-[-0.03em] tnum">{value}</p>
-        <p className="text-[12px] text-mute">health score</p>
-      </div>
-    </div>
+    <TickArc colours={Array.from({ length: ticks }, (_, i) => (i < lit ? colour : "var(--color-ink-4)"))} lit={lit} litClassName="admin-tick" label={`Health score ${value} out of 100`}>
+      <p className="text-[30px] font-semibold leading-none tracking-[-0.03em] tnum">{value}</p>
+      <p className="text-[12px] text-mute">health score</p>
+    </TickArc>
   );
 }
 

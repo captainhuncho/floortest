@@ -5,7 +5,7 @@ import { asPerson, q, likeContains, type User } from "@/lib/db";
 import { MIX_STATUS, RELEASE_STATUS } from "@/lib/plans";
 import { ViewToggle } from "../ViewToggle";
 import { FilterMenu, type Option } from "./FilterMenu";
-import { CARD, Icon, PageHead } from "@/components/Kit";
+import { Icon, PageHead } from "@/components/Kit";
 import { FilterSheet } from "./FilterSheet";
 import { ListRows, type ListRow } from "./ListRows";
 import { LIST_COLUMNS, type ListTrack } from "../rows";
@@ -159,7 +159,9 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
   const clearHref = search ? `/dashboard/review?view=list&q=${encodeURIComponent(search)}` : "/dashboard/review?view=list";
 
   return (
-    <div className="page-gutter flex min-h-full flex-col gap-3.5 py-4 sm:py-6">
+    <div className="page-gutter relative isolate flex min-h-full flex-col gap-3.5 py-4 sm:py-6">
+      {/* The ops canvas behind the list, as on the Floor and the Queue (glass pass page 2, owner 4 Nov). */}
+      <div aria-hidden className="desk-canvas" />
       <PageHead label="Every track, one row each" title="Review Queue">
         <ViewToggle view="list" />
       </PageHead>
@@ -183,12 +185,12 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
           <span className="pointer-events-none absolute inset-y-0 left-2.5 grid place-items-center text-mute">
             <Icon name="search" className="size-[15px]" />
           </span>
-          <input id="list-q" name="q" defaultValue={search} placeholder="Search tracks…" className="input min-h-11 w-full rounded-xl! bg-well! py-1.5 pl-8 max-md:text-base md:min-h-9 md:w-56 md:rounded-[10px]! md:text-[12px]" />
+          <input id="list-q" name="q" defaultValue={search} placeholder="Search tracks…" className="input min-h-11 w-full rounded-[14px]! bg-well! py-1.5 pl-8 max-md:text-base md:min-h-9 md:w-56 md:rounded-[12px]! md:text-[12px]" />
         </form>
       </div>
 
       {rows.length === 0 ? (
-        <p className={`${CARD} px-6 py-16 text-center text-[13px] text-mute`}>
+        <p className="plate px-6 py-16 text-center text-[13px] text-mute">
           {search || activeFilters ? (
             <>
               Nothing matches these filters.{" "}
@@ -201,7 +203,10 @@ export async function SubmissionsList({ user, sp }: { user: User; sp: Search }) 
           )}
         </p>
       ) : (
-        <ListRows rows={rows} title={status[0] === "all" ? "All tracks" : status[1]} collections={collections.map((c) => ({ id: c.id, name: c.name }))} />
+        // The rows sit on a plate here; ListRows keeps its own card on Collections until that page's pass (list-plate, globals.css).
+        <div className="list-plate plate">
+          <ListRows rows={rows} title={status[0] === "all" ? "All tracks" : status[1]} collections={collections.map((c) => ({ id: c.id, name: c.name }))} />
+        </div>
       )}
     </div>
   );

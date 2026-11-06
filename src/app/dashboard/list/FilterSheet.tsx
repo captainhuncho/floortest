@@ -34,7 +34,7 @@ export function FilterSheet({
         type="button"
         onClick={() => ref.current?.showModal()}
         aria-haspopup="dialog"
-        className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-[13px] font-semibold ${active ? "border-lime/40 bg-lime/12 text-lime" : "border-line bg-well text-bone"} ${className}`}
+        className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-[14px] border px-3 text-[13px] font-semibold ${active ? "border-lime/40 bg-lime/12 text-lime" : "border-line bg-well text-bone"} ${className}`}
       >
         <Icon name="filter" className="size-4" />
         Filter
@@ -77,7 +77,7 @@ export function FilterSheet({
                       href={o.href}
                       scroll={false}
                       aria-current={o.active ? "true" : undefined}
-                      className={`inline-flex min-h-11 max-w-[16rem] items-center gap-1.5 rounded-xl border px-3 text-[13px] ${o.active ? "border-lime/40 bg-lime/12 font-semibold text-lime" : "border-line bg-well text-bone"}`}
+                      className={`press inline-flex min-h-11 max-w-[16rem] items-center gap-1.5 rounded-[14px] border px-3 text-[13px] ${o.active ? "border-lime/40 bg-lime/12 font-semibold text-lime" : "border-line bg-well text-bone"}`}
                     >
                       <span className="truncate">{o.label}</span>
                       {o.count !== undefined && <span className="text-[11.5px] text-mute tnum">{o.count}</span>}

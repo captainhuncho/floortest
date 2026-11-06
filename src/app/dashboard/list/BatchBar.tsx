@@ -39,14 +39,16 @@ export function BatchBar({
   }
 
   // The kit's quiet button: 36px, 44px on touch screens.
-  const btn = "inline-flex min-h-9 items-center justify-center rounded-[10px] border border-line bg-well px-3 text-[12px] font-semibold text-bone transition hover:border-line-2 disabled:opacity-40 pointer-coarse:min-h-11";
-  const danger = "inline-flex min-h-9 items-center justify-center rounded-[10px] border border-danger/40 bg-danger/10 px-3 text-[12px] font-semibold text-danger transition disabled:opacity-40 pointer-coarse:min-h-11";
+  const btn = "inline-flex min-h-9 items-center justify-center rounded-[12px] border border-line bg-well px-3 text-[12px] font-semibold text-bone transition hover:border-line-2 disabled:opacity-40 pointer-coarse:min-h-11";
+  const danger = "inline-flex min-h-9 items-center justify-center rounded-[12px] border border-danger/40 bg-danger/10 px-3 text-[12px] font-semibold text-danger transition disabled:opacity-40 pointer-coarse:min-h-11";
   return (
     <div
       role="region"
       aria-label="Selected tracks"
       data-batch-bar
-      className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+92px)] z-40 mx-auto max-w-3xl rounded-[18px] border border-line-2 bg-card p-2.5 shadow-pop md:bottom-6"
+      // Glass (glass pass, owner 4 Nov): it floats over the list, so the rows stay faintly visible under it. The list itself
+      // never gets backdrop-filter (up to 500 rows).
+      className="glass fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+92px)] z-40 mx-auto max-w-3xl rounded-[22px] p-2.5 md:bottom-6"
     >
       {confirming ? (
         <div className="flex flex-wrap items-center gap-2">
@@ -79,7 +81,7 @@ export function BatchBar({
             <label className="flex min-w-0 items-center">
               <span className="sr-only">Move to collection</span>
               <select
-                className="input min-h-9 w-full !rounded-[10px] !bg-well !py-1.5 max-md:text-base md:text-[12px] pointer-coarse:min-h-11 md:!w-auto"
+                className="input min-h-9 w-full !rounded-[12px] !bg-well !py-1.5 max-md:text-base md:text-[12px] pointer-coarse:min-h-11 md:!w-auto"
                 disabled={busy}
                 value=""
                 onChange={(e) => {
