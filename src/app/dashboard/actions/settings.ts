@@ -257,11 +257,12 @@ export async function requestPlan(form: FormData) {
   const volume = (VOLUMES as readonly string[]).includes(String(form.get("volume"))) ? String(form.get("volume")) : "";
   const note = String(form.get("note") || "").trim().slice(0, 1000);
   if (link === null) redirect(`/dashboard/plans/request?plan=${next.id}&error=link`);
-  await q.run("UPDATE plan_requests SET status = 'withdrawn' WHERE user_id = ? AND status = 'pending'", u.id);
-  await q.run(
-    "INSERT INTO plan_requests (user_id, plan, kind, org, link, volume, note, created_at) VALUES (?,?,?,?,?,?,?,?)",
-    u.id, next.id, kind, org, link, volume, note, now(),
-  );
+  // As the person (B8, migration 0133): the database lets them withdraw and file only their own desk's request, and only
+  // as a waiting one; deciding it stays ops'.
+  await asPerson(u.actor_id, async () => {
+    await q.run("UPDATE plan_requests SET status = 'withdrawn' WHERE user_id = ? AND status = 'pending'", u.id);
+    await q.run("INSERT INTO plan_requests (user_id, plan, kind, org, link, volume, note, created_at) VALUES (?,?,?,?,?,?,?,?)", u.id, next.id, kind, org, link, volume, note, now());
+  });
   await audit(u.id, "plan_requested", next.name);
   // A heads-up to the super admins; the request waits in ops either way.
   for (const to of env.adminEmails)
@@ -273,8 +274,8 @@ export async function requestPlan(form: FormData) {
 /** Takes back an open plan request. */
 export async function withdrawPlanRequest() {
   const u = await requireRole("owner");
-  if (await pendingRequest(u.id)) {
-    await q.run("UPDATE plan_requests SET status = 'withdrawn' WHERE user_id = ? AND status = 'pending'", u.id);
+  if (await pendingRequest(u.id, u.actor_id)) {
+    await asPerson(u.actor_id, () => q.run("UPDATE plan_requests SET status = 'withdrawn' WHERE user_id = ? AND status = 'pending'", u.id));
     await audit(u.id, "plan_request_withdrawn", "");
   }
   done();

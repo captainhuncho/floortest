@@ -2111,6 +2111,20 @@ alter table visit_counts enable row level security;`,
     id: "0132_person_settings",
     sql: `grant update (notify_submissions, digest_hour, quiet_start, quiet_end, notify_alerts, notify_product, notify_marketing, product_consent_at, marketing_consent_at) on users to ft_person;`,
   },
+  {
+    // Per-person rules, plan requests (B8, Backend slice 2, 5 Nov): the owner files, withdraws and sees their own desk's
+    // request as the person. They read only what the plan pages show; they file one only as waiting (status keeps its
+    // default) and change one only from waiting to withdrawn. Deciding it (status, granted plan, decision) stays ops'.
+    id: "0133_person_plan_requests",
+    sql: `grant select (id, user_id, plan, status, created_at) on plan_requests to ft_person;
+grant insert (user_id, plan, kind, org, link, volume, note, created_at) on plan_requests to ft_person;
+grant update (status) on plan_requests to ft_person;
+do $$ begin execute format('grant usage on sequence %s to ft_person', pg_get_serial_sequence('plan_requests', 'id')); end $$;
+create policy person_plan_requests_read on plan_requests for select to ft_person using (user_id = ft_person_id());
+create policy person_plan_requests_file on plan_requests for insert to ft_person with check (user_id = ft_person_id() and status = 'pending');
+create policy person_plan_requests_withdraw on plan_requests for update to ft_person using (user_id = ft_person_id() and status = 'pending') with check (user_id = ft_person_id() and status = 'withdrawn');`,
+  },
 ];
+
 
 
