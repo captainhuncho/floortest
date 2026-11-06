@@ -9,6 +9,7 @@ import { APP_URL } from "@/lib/mail";
 const DELIVERY: Record<string, [string, string]> = {
   delivered: ["Delivered", "border-lime/50 text-lime"],
   delayed: ["Delayed", "border-[#ffb648]/50 text-[#ffb648]"],
+  soft_bounce: ["Soft bounce", "border-[#ffb648]/50 text-[#ffb648]"],
   bounced: ["Bounced", "border-danger/50 text-danger"],
   complained: ["Marked as spam", "border-danger/50 text-danger"],
 };
@@ -27,8 +28,8 @@ export default async function Emails({ searchParams }: { searchParams: Promise<{
   const usage = await mailUsage();
   const pct = (n: number, d: number) => Math.min(100, Math.round((n / d) * 100));
   const blocked = await q.all<{ email: string; reason: string; detail: string; created_at: number }>("SELECT * FROM email_suppressions ORDER BY created_at DESC LIMIT 100");
-  const rows = await q.all<{ id: number; to_email: string; subject: string; body: string; status: string; delivery: string; audience: string; created_at: number; handle: string | null; user_id: number | null }>(
-    `SELECT o.*, u.handle FROM outbox o LEFT JOIN users u ON u.id = o.user_id ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY o.created_at DESC LIMIT 200`,
+  const rows = await q.all<{ id: number; to_email: string; subject: string; body: string; status: string; delivery: string; delivery_detail: string; audience: string; created_at: number; handle: string | null; user_id: number | null }>(
+    `SELECT o.id, o.to_email, o.subject, o.body, o.status, o.delivery, o.delivery_detail, o.audience, o.created_at, o.user_id, u.handle FROM outbox o LEFT JOIN users u ON u.id = o.user_id ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY o.created_at DESC LIMIT 200`,
     ...(search ? [likeContains(search), likeContains(search)] : []),
   );
   return (
@@ -123,6 +124,8 @@ export default async function Emails({ searchParams }: { searchParams: Promise<{
                         · {m.audience} · {d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
                       </span>
                     </span>
+                    {/* Why it bounced, from Resend; kept even when the email was delivered first (a forwarded copy failing). */}
+                    {m.delivery_detail && <span className="block truncate text-[12.5px] text-[#ffb648]">{m.delivery_detail}</span>}
                   </span>
                   <span className="flex shrink-0 items-center gap-2">
                     {DELIVERY[m.delivery] && <span className={`chip ${DELIVERY[m.delivery][1]}`}>{DELIVERY[m.delivery][0]}</span>}
