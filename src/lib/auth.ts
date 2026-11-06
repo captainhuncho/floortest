@@ -139,12 +139,22 @@ const currentDesk = cache(async (): Promise<{ user: User; stale: boolean } | nul
   return resolveDesk(person, Number((await cookies()).get(DESK_COOKIE)?.value));
 });
 
+/**
+ * Whether this request can change something: the proxy marks every non-GET/HEAD request (src/proxy.ts WRITE_HEADER,
+ * overwriting anything a client sends); Next's own Next-Action header counts too. A server action can arrive as a plain
+ * form post without that header, so it alone isn't a safe test (Safety audit M1).
+ */
+async function isWrite() {
+  const h = await headers();
+  return h.get("x-ft-write") === "1" || !!h.get("next-action");
+}
+
 /** The signed-in person themselves, whatever desk they're working on. Memoised per request. */
 export const currentPerson = cache(async (): Promise<User | null> => {
   const view = await viewingAs();
   if (view) {
-    // Read-only: a server action (anything that changes data) acts as nobody while viewing.
-    if ((await headers()).get("next-action")) return null;
+    // Read-only: a request that could change data acts as nobody while viewing (the proxy also refuses them).
+    if (await isWrite()) return null;
     const cols = USER_COLUMNS;
     const v = await q.get<User>(`SELECT ${cols} FROM users WHERE id = ?`, view.userId);
     return v ? self(v) : null;
@@ -201,7 +211,7 @@ export async function requireUser(): Promise<User> {
   if (!d) redirect("/login");
   // A change from a team desk they lost (removed, seat paused) is stopped, not made on their own desk instead:
   // back to their own desk with a note. Pages just show their own desk.
-  if (d.stale && (await headers()).get("next-action")) {
+  if (d.stale && (await isWrite())) {
     (await cookies()).delete(DESK_COOKIE);
     redirect("/dashboard/floor?desk=ended");
   }

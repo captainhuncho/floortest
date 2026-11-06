@@ -109,7 +109,10 @@ export const trackLabel = (t: { artist: string; title: string }) => `${t.artist}
 /** On a team desk, the person who did it (so the log reads "Ama kept…"); null on your own desk or outside a request. */
 async function actorOn(userId: number) {
   try {
-    const { currentUser } = await import("./auth");
+    const { currentUser, viewingAs } = await import("./auth");
+    // While an admin views this account, anything logged names the admin, never the customer (Safety audit M1).
+    const view = await viewingAs();
+    if (view && view.userId === userId) return view.adminId;
     const u = await currentUser();
     return u && u.id === userId && u.actor_id !== u.id ? u.actor_id : null;
   } catch {
