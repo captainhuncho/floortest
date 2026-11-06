@@ -366,6 +366,10 @@ async function main() {
     if (secret) await db.run("UPDATE tracks SET token_hash = ?, token_sealed = ?, token = NULL WHERE id = ?", hashToken(r.token), sealWith(r.token, r.id, secret), r.id);
     else await db.run("UPDATE tracks SET token_hash = ? WHERE id = ?", hashToken(r.token), r.id);
   }
+  // Test runs only (SEED_TOUR_SEEN=1, set by playwright.config.ts): the seeded accounts have already seen the first-visit
+  // tour, so its pop-up doesn't sit over the screens other tests click. Accounts a test signs up still get it
+  // (e2e/fixtures.ts signUp checks it opens, e2e/tour.spec.ts walks it).
+  if (process.env.SEED_TOUR_SEEN === "1") await db.run("UPDATE users SET tour_seen_at = ? WHERE tour_seen_at IS NULL", now);
   await db.close();
   console.log(`Seeded ${tracks.length} tracks into ${DATA_DIR}\nLogin: demo@floortest.test / floortest-demo  ·  Receiver link: /maxwell`);
 }
