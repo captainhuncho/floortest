@@ -11,7 +11,8 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { FEATURES, type Feature } from "@/lib/features";
 import { allPlans, FREE_PLAN } from "@/lib/plan-store";
-import { UNKNOWN_KIND, audienceWhere, cleanTags, describeAudience, readAudience } from "@/lib/audience";
+import { cleanTags } from "@/lib/audience";
+import { saveAnnouncement } from "@/lib/announce";
 import { ADMIN_PLANS, BULK_MAX, bulkIds, SUSPEND_MAX } from "@/lib/admin-bulk";
 import type { OpsResult } from "@/lib/ops-result";
 import { searchPeople, type PeopleAnswer } from "@/lib/ops-palette";
@@ -37,7 +38,6 @@ import { drainNow, retireTrackFiles } from "@/lib/deletion";
 import { cancelEmailChange, changeHandle, HANDLE_HOLD_DAYS, requestEmailChange } from "@/lib/accounts";
 import { logEvent, now, q, type Track } from "@/lib/db";
 import { eraseSender, purgeAccount } from "@/lib/privacy";
-import { localPath } from "@/lib/safe-links";
 import { normalEmail } from "@/lib/email-normal";
 import { deleteRevokedInvite, GATE_CODE_MIN_LENGTH, restoreRevokedInvite } from "@/lib/invites";
 import { receiptWhere } from "@/lib/receipt-token";
@@ -844,40 +844,12 @@ export async function saveSwitch(feature: Feature, form: FormData) {
 /** Publishes to the bell of everyone matching the filters; with email on, also emails those of them who opted into product news. */
 export async function publishAnnouncement(form: FormData) {
   const a = await requireAdminAction("announcements");
-  const title = String(form.get("title") || "").trim().slice(0, 100);
-  const body = String(form.get("body") || "").trim().slice(0, 600);
-  const href = String(form.get("href") || "").trim().slice(0, 200);
-  const aud = readAudience((k) => form.get(k));
-  const list = form.get("list") === "marketing" ? "marketing" : form.get("list") === "product" ? "product" : null;
+  // Checked and saved in src/lib/announce.ts; a refusal writes nothing and emails nobody.
+  const saved = await saveAnnouncement(a.id, (k) => form.get(k));
+  if ("error" in saved) return fail(saved.error);
+  const { title, body, href, label, list, people, subscribers } = saved;
   const email = !!list;
-  const consent = list === "marketing" ? "u.notify_marketing = 1" : "u.notify_product = 1";
-  const outside = email && form.get("subscribers") === "on";
-  // Links must stay on FloorTest: "/path" only, never "//host", "/\host" or javascript: (src/lib/safe-links.ts).
-  if (!title || (href && !localPath(href))) return fail("Needs a title, and links must start with /");
-  // An audience that can't be read reaches nobody: refuse it before anything is saved or emailed, including newsletter
-  // subscribers, who are picked outside the audience.
-  if (aud.nobody || aud.kind === UNKNOWN_KIND) return fail("This audience can't be read. Pick it again.");
-  const plans = await allPlans();
-  const label = describeAudience(aud, (id) => plans.find((p) => p.id === id)?.name ?? id);
-  const w = audienceWhere(aud);
-  const id = (await q.get<{ id: number }>(
-    "INSERT INTO announcements (title, body, href, audience, emailed, admin_id, created_at) VALUES (?,?,?,?,?,?,?) RETURNING id",
-    title, body, href, label, email ? 1 : 0, a.id, now(),
-  ))!.id;
-  await q.run(`INSERT INTO announcement_recipients (announcement_id, user_id) SELECT ?, u.id FROM users u WHERE ${w.sql}`, id, ...w.args);
-  const people = email
-    ? await q.all<{ id: number; email: string }>(
-        `SELECT u.id, u.email FROM users u WHERE ${w.sql} AND ${consent} AND u.email_verified_at IS NOT NULL LIMIT 5000`,
-        ...w.args,
-      )
-    : [];
-  // People without an account who confirmed the newsletter (and, for offers, opted into those too).
-  const subscribers = outside
-    ? await q.all<{ email: string; token: string }>(
-        `SELECT s.email, s.token FROM newsletter_subscribers s WHERE s.confirmed_at IS NOT NULL AND s.unsubscribed_at IS NULL ${list === "marketing" ? "AND s.marketing = 1" : ""}
-           AND NOT EXISTS (SELECT 1 FROM users u WHERE lower(u.email) = s.email) LIMIT 5000`,
-      )
-    : [];
+  const outside = subscribers.length > 0;
   await logAdmin(a.id, "published announcement", title, `${label}${email ? ` · ${list} email to ${people.length} accounts${outside ? ` + ${subscribers.length} subscribers` : ""}` : ""}`);
   if (people.length || subscribers.length)
     after(async () => {

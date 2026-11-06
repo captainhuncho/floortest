@@ -1,7 +1,7 @@
 import { requireAdmin } from "@/lib/admin";
 import { q } from "@/lib/db";
 import { env } from "@/lib/env";
-import { audienceQuery, audienceWhere, describeAudience, readAudience } from "@/lib/audience";
+import { audienceIsEveryone, audienceQuery, audienceWhere, describeAudience, readAudience } from "@/lib/audience";
 import { allPlans } from "@/lib/plan-store";
 import { publishAnnouncement } from "../actions";
 import { AudienceFields } from "../AudienceFields";
@@ -59,7 +59,8 @@ export default async function Announcements({ searchParams }: { searchParams: Pr
   const reach = await q.count(`SELECT COUNT(*) AS n FROM users u WHERE ${w.sql}`, ...w.args);
   const consent = draft.list === "marketing" ? "u.notify_marketing = 1" : "u.notify_product = 1";
   const emailReach = draft.list ? await q.count(`SELECT COUNT(*) AS n FROM users u WHERE ${w.sql} AND ${consent} AND u.email_verified_at IS NOT NULL`, ...w.args) : 0;
-  const subscriberReach = draft.list && draft.subscribers
+  // Subscribers join only an audience of Everyone; publishing refuses them otherwise.
+  const subscriberReach = draft.list && draft.subscribers && audienceIsEveryone(aud)
     ? await q.count(`SELECT COUNT(*) AS n FROM newsletter_subscribers s WHERE s.confirmed_at IS NOT NULL AND s.unsubscribed_at IS NULL ${draft.list === "marketing" ? "AND s.marketing = 1" : ""} AND NOT EXISTS (SELECT 1 FROM users u WHERE lower(u.email) = s.email)`)
     : 0;
   const past = await q.all<Past>("SELECT id, title, body, href, audience, emailed, created_at FROM announcements ORDER BY created_at DESC LIMIT 30");
@@ -95,7 +96,10 @@ export default async function Announcements({ searchParams }: { searchParams: Pr
         </label>
         <label className="flex min-h-11 items-end gap-2 pb-3 text-sm">
           <input type="checkbox" name="subscribers" defaultChecked={draft.subscribers} className="accent-lime" />
-          Include newsletter subscribers without an account
+          <span>
+            Include newsletter subscribers without an account
+            <span className="block text-mute">Only when the audience is Everyone: they have no plan, type or activity to filter.</span>
+          </span>
         </label>
       </div>
     </>

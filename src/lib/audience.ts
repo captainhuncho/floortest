@@ -17,35 +17,47 @@ export const UNKNOWN_KIND = "unknown";
 export const kindLabel = (kind: string) => KIND_LABEL[kind] ?? "Unknown type (nobody)";
 
 const AUDIENCE_KEYS = ["plan", "kind", "tag", "joined", "activity"] as const;
+/** Longest filter value read; anything longer matches nobody. */
+const MAX_FILTER = 100;
+const MAX_TAG = 30;
 
 /**
- * The filters exactly as sent, for links and forms that carry them on (paging, CSV, publish). The server reads them
- * again with readAudience, so a value that can't be read still reaches nobody there; no flag is trusted.
+ * The filters exactly as sent, uncut, for links and forms that carry them on (paging, CSV, publish). The server reads
+ * them again with readAudience, so the preview and the publish always read the same audience.
  */
 export const audienceQuery = (get: (k: string) => unknown) =>
-  Object.fromEntries(AUDIENCE_KEYS.map((k) => [k, String(get(k) ?? "").trim().slice(0, 100)])) as Record<(typeof AUDIENCE_KEYS)[number], string>;
+  Object.fromEntries(AUDIENCE_KEYS.map((k) => [k, String(get(k) ?? "").trim()])) as Record<(typeof AUDIENCE_KEYS)[number], string>;
 
 /**
  * Read the filters from a query string or form. Empty means "any". A value that can't be read (a form or link from
- * another release, or a hand-edited one) matches nobody rather than falling to "any", so a stale announcement form can
- * never reach everyone.
+ * another release, a hand-edited one, or one over the length limit) matches nobody rather than falling to "any", so a
+ * stale announcement form can never reach everyone. `nobody` (sent by the release before this one) can only narrow.
  */
 export function readAudience(get: (k: string) => unknown): Audience {
   const s = (k: string) => String(get(k) ?? "").trim();
   const plan = s("plan");
-  const tag = s("tag").toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 30);
+  const tag = s("tag").toLowerCase().replace(/[^a-z0-9-]/g, "");
   const joined = s("joined");
   const activity = s("activity");
   const a: Audience = {
     plan: /^[a-z][a-z0-9_]{1,23}$/.test(plan) ? plan : "",
     kind: Object.hasOwn(KIND_LABEL, s("kind")) ? s("kind") : s("kind") ? UNKNOWN_KIND : "",
-    tag,
+    tag: tag.length <= MAX_TAG ? tag : "",
     joined: Object.hasOwn(JOINED, joined) ? Number(joined) : 0,
     activity: activity === "active" || activity === "inactive" ? activity : "",
   };
-  const unread = (plan && !a.plan) || (s("tag") && !tag) || (joined && !Object.hasOwn(JOINED, joined)) || (activity && !a.activity);
+  const unread =
+    !!s("nobody") ||
+    AUDIENCE_KEYS.some((k) => s(k).length > MAX_FILTER) ||
+    (plan && !a.plan) ||
+    (s("tag") && !a.tag) ||
+    (joined && !Object.hasOwn(JOINED, joined)) ||
+    (activity && !a.activity);
   return unread ? { ...a, nobody: true } : a;
 }
+
+/** No filter set: every account. Newsletter subscribers (no account, so no plan, type or activity) join only then. */
+export const audienceIsEveryone = (a: Audience) => !a.nobody && !a.plan && !a.kind && !a.tag && !a.joined && !a.activity;
 
 /** SQL conditions on users `u`. Suspended accounts are left out unless `withSuspended` (the Users list shows them). */
 export function audienceWhere(a: Audience, at = Date.now(), withSuspended = false) {
