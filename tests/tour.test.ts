@@ -52,9 +52,9 @@ test("the tour opens once per person, never in an admin's view, and closing it m
   assert.match(read("../src/app/dashboard/account/page.tsx"), /<Row href="\/dashboard\/how-it-works"/);
 });
 
-test("0133: accounts from before see no pop-up; new accounts get it once", async () => {
+test("0135: accounts from before see no pop-up; new accounts get it once", async () => {
   const { q } = await import("../src/lib/db");
-  const migration = (await import("../src/lib/db/migrations")).MIGRATIONS.find((m) => m.id === "0133_tour_seen")!;
+  const migration = (await import("../src/lib/db/migrations")).MIGRATIONS.find((m) => m.id === "0135_tour_seen")!;
   await q.run("INSERT INTO users (email, password_hash, name, handle, created_at) VALUES ('old@x.io', 'h', 'old', 'oldtour', 1)");
   await q.run("UPDATE users SET tour_seen_at = NULL");
   for (const stmt of migration.sql.split(/;\s*\n/).map((s) => s.trim()).filter(Boolean)) await q.run(stmt);
