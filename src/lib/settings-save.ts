@@ -1,5 +1,5 @@
 import "server-only";
-import { asPerson, asSystem, now, q } from "@/lib/db";
+import { asPerson, q } from "@/lib/db";
 
 /**
  * The owner's own Settings saves (B8, Backend slice 1): run as the person, so the database allows only the owner's own
@@ -7,7 +7,7 @@ import { asPerson, asSystem, now, q } from "@/lib/db";
  * test (tests/person-settings.test.ts) run these exact statements.
  */
 export const ALERTS_SQL =
-  "UPDATE users SET notify_submissions = ?, digest_hour = ?, quiet_start = ?, quiet_end = ?, notify_alerts = ?, notify_product = ?, notify_marketing = ?, product_consent_at = ?, marketing_consent_at = ?, tz = ? WHERE id = ?";
+  "UPDATE users SET notify_submissions = ?, digest_hour = ?, quiet_start = ?, quiet_end = ?, notify_alerts = ?, notify_product = ?, notify_marketing = ?, tz = ? WHERE id = ?";
 export const PROFILE_SQL = "UPDATE users SET name = ?, first_name = ?, last_name = ?, kind = ?, kind_note = ?, tools = ? WHERE id = ?";
 export const NOT_SAVED = "Couldn't save your settings. Reload the page and try again.";
 
@@ -23,23 +23,13 @@ export type Alerts = {
 };
 
 /**
- * Saves the alerts and contact choices; null when saved, else the message to show. A consent keeps its first time while
- * still given, starts now when newly given, and clears when taken back. The earlier times are read by the app: they're
- * the person's record, but teammates can see the person's row, so they aren't readable as the person.
+ * Saves the alerts and contact choices; null when saved, else the message to show. The consent times are set by the
+ * database in the same statement (trigger users_consent_times, migration 0134): kept while still given, set when newly
+ * given, cleared when taken back.
  */
-export async function saveAlerts(person: number, desk: number, a: Alerts, at = now()): Promise<string | null> {
-  const before = await asSystem(() =>
-    q.get<{ product_consent_at: number | null; marketing_consent_at: number | null }>("SELECT product_consent_at, marketing_consent_at FROM users WHERE id = ?", desk),
-  );
-  if (!before) return NOT_SAVED;
+export async function saveAlerts(person: number, desk: number, a: Alerts): Promise<string | null> {
   const r = await asPerson(person, () =>
-    q.run(
-      ALERTS_SQL,
-      a.mode, a.digestHour, a.quietStart, a.quietEnd, a.alerts ? 1 : 0, a.product ? 1 : 0, a.marketing ? 1 : 0,
-      a.product ? (before.product_consent_at ?? at) : null,
-      a.marketing ? (before.marketing_consent_at ?? at) : null,
-      a.tz, desk,
-    ),
+    q.run(ALERTS_SQL, a.mode, a.digestHour, a.quietStart, a.quietEnd, a.alerts ? 1 : 0, a.product ? 1 : 0, a.marketing ? 1 : 0, a.tz, desk),
   );
   return r.changes ? null : NOT_SAVED;
 }

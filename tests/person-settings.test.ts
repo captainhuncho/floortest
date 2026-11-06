@@ -27,20 +27,63 @@ const PROFILE = { name: "New Name", firstName: "New", lastName: "Name", kind: "l
 test("the owner saves their own alerts and profile as the person, through the action's own statements", async () => {
   const { q } = await import("../src/lib/db");
   const { saveAlerts, saveProfile } = await import("../src/lib/settings-save");
-  const { now, user } = await setup();
+  const { user } = await setup();
   const label = await user("labelset");
-  assert.equal(await saveAlerts(label, label, ALERTS, now), null, "alerts saved");
+  const times = () => q.get<{ p: number | null; m: number | null }>("SELECT product_consent_at AS p, marketing_consent_at AS m FROM users WHERE id = ?", label);
+  const before = Date.now();
+  assert.equal(await saveAlerts(label, label, { ...ALERTS, product: true, marketing: true }), null, "alerts saved");
   assert.equal(await saveProfile(label, label, PROFILE), null, "profile saved");
-  const row = await q.get<{ notify_submissions: string; digest_hour: number; tz: string; name: string; notify_product: number; product_consent_at: number | null; marketing_consent_at: number | null }>(
-    "SELECT notify_submissions, digest_hour, tz, name, notify_product, product_consent_at, marketing_consent_at FROM users WHERE id = ?",
+  const row = await q.get<{ notify_submissions: string; digest_hour: number; tz: string; name: string; notify_product: number; notify_marketing: number }>(
+    "SELECT notify_submissions, digest_hour, tz, name, notify_product, notify_marketing FROM users WHERE id = ?",
     label,
   );
-  assert.deepEqual(row, { notify_submissions: "instant", digest_hour: 8, tz: "Europe/London", name: "New Name", notify_product: 1, product_consent_at: now, marketing_consent_at: null });
-  // A consent keeps its first time while still given, and clears when taken back.
-  assert.equal(await saveAlerts(label, label, ALERTS, now + 60_000), null);
-  assert.equal((await q.get<{ t: number }>("SELECT product_consent_at AS t FROM users WHERE id = ?", label))!.t, now);
-  assert.equal(await saveAlerts(label, label, { ...ALERTS, product: false, marketing: true }, now + 120_000), null);
-  assert.deepEqual(await q.get("SELECT product_consent_at, marketing_consent_at FROM users WHERE id = ?", label), { product_consent_at: null, marketing_consent_at: now + 120_000 });
+  assert.deepEqual(row, { notify_submissions: "instant", digest_hour: 8, tz: "Europe/London", name: "New Name", notify_product: 1, notify_marketing: 1 });
+  // Both consents get a time when given, set by the database in the same statement.
+  const first = (await times())!;
+  for (const t of [first.p, first.m]) assert.ok(t !== null && t >= before - 1000 && t <= Date.now() + 1000, `a consent time is set: ${t}`);
+  // Saving again while still given keeps each first time, for the newsletter and for offers alike.
+  await new Promise((r) => setTimeout(r, 15));
+  assert.equal(await saveAlerts(label, label, { ...ALERTS, product: true, marketing: true }), null);
+  assert.deepEqual(await times(), first, "both first times kept on a second save");
+  // Taking one back clears only that one; the other keeps its first time.
+  assert.equal(await saveAlerts(label, label, { ...ALERTS, product: false, marketing: true }), null);
+  assert.deepEqual(await times(), { p: null, m: first.m });
+  assert.equal(await saveAlerts(label, label, { ...ALERTS, product: false, marketing: false }), null);
+  assert.deepEqual(await times(), { p: null, m: null }, "offers consent cleared when taken back");
+  // Given again later: a new time, not the old one.
+  await new Promise((r) => setTimeout(r, 15));
+  assert.equal(await saveAlerts(label, label, { ...ALERTS, product: false, marketing: true }), null);
+  assert.ok((await times())!.m! > first.m!, "a fresh time after giving it again");
+});
+
+test("only the database sets consent times: a written time is refused as the person and ignored from the app", async () => {
+  const { q, asPerson } = await import("../src/lib/db");
+  const { user } = await setup();
+  const me = await user("triggerset");
+  const time = async () => (await q.get<{ t: number | null }>("SELECT marketing_consent_at AS t FROM users WHERE id = ?", me))!.t;
+  // As the person, the time columns can't be written at all.
+  await assert.rejects(asPerson(me, () => q.run("UPDATE users SET marketing_consent_at = 1 WHERE id = ?", me)), /permission denied/i);
+  await assert.rejects(asPerson(me, () => q.run("UPDATE users SET product_consent_at = 1 WHERE id = ?", me)), /permission denied/i);
+  // From the app's own connection: a time without consent doesn't stick, and with consent it's the database's own.
+  await q.run("UPDATE users SET marketing_consent_at = 12345 WHERE id = ?", me);
+  assert.equal(await time(), null, "no consent, no time");
+  await q.run("UPDATE users SET notify_marketing = 1, marketing_consent_at = 1 WHERE id = ?", me);
+  const given = (await time())!;
+  assert.ok(given > 1_000_000_000_000, "the database's time, not the statement's");
+  await q.run("UPDATE users SET marketing_consent_at = 12345 WHERE id = ?", me);
+  assert.equal(await time(), given, "a later forged time is ignored while consent stands");
+  // Taken back clears it, even if a stale time is pushed in afterwards; opting in again gives a fresh time.
+  await q.run("UPDATE users SET notify_marketing = 0 WHERE id = ?", me);
+  assert.equal(await time(), null);
+  await q.run("UPDATE users SET marketing_consent_at = 12345 WHERE id = ?", me);
+  assert.equal(await time(), null, "no stale time while withdrawn");
+  await new Promise((r) => setTimeout(r, 15));
+  await q.run("UPDATE users SET notify_marketing = 1 WHERE id = ?", me);
+  assert.ok((await time())! > given, "a fresh time on opting in again");
+  // Unsubscribing (src/lib/unsubscribe.ts) still ends at no consent and no time.
+  const { UNSUB_KINDS } = await import("../src/lib/unsubscribe");
+  await q.run(UNSUB_KINDS.marketing.sql, me);
+  assert.deepEqual(await q.get("SELECT notify_marketing, marketing_consent_at FROM users WHERE id = ?", me), { notify_marketing: 0, marketing_consent_at: null });
 });
 
 test("nobody else saves a desk's settings as the person, and the save says so instead of claiming success", async () => {
@@ -53,13 +96,13 @@ test("nobody else saves a desk's settings as the person, and the save says so in
   const stranger = await user("strangerset");
   await q.run("INSERT INTO account_members (account_id, user_id, role, created_at) VALUES (?, ?, 'admin', ?), (?, ?, 'member', ?)", label, admin, now, label, member, now);
   for (const who of [admin, member, stranger]) {
-    assert.equal(await saveAlerts(who, label, ALERTS, now), NOT_SAVED, `person ${who} can't save the desk's alerts`);
+    assert.equal(await saveAlerts(who, label, ALERTS), NOT_SAVED, `person ${who} can't save the desk's alerts`);
     assert.equal(await saveProfile(who, label, PROFILE), NOT_SAVED, `person ${who} can't save the desk's profile`);
   }
   assert.deepEqual(await q.get("SELECT name, notify_submissions FROM users WHERE id = ?", label), { name: "deskset", notify_submissions: "digest" });
 });
 
-test("as the person, money, sign-in, verification, cover and routing columns stay unwritable, even on your own row", async () => {
+test("as the person, money, sign-in, verification, cover, routing, public page and pause columns stay unwritable, even on your own row", async () => {
   const { q, asPerson } = await import("../src/lib/db");
   const { user } = await setup();
   const me = await user("selfset");
@@ -67,9 +110,10 @@ test("as the person, money, sign-in, verification, cover and routing columns sta
   const fixed = [
     "plan", "email", "handle", "suspended_at", "extra_seats", "password_hash", "totp_secret", "recovery_codes", "google_sub", "email_verified_at",
     "email_verify_token", "pending_email", "pending_email_token", "invite_code", "referral_code", "admin_tags", "cover_key", "active_collection_id",
+    "links", "role_line", "page_style", "paused_at", "pause_until", "pause_message",
   ];
   const never = cols.filter((c) => fixed.includes(c) || /^(identity_|reply_)/.test(c));
-  for (const c of ["plan", "email", "handle", "suspended_at", "extra_seats", "cover_key", "active_collection_id"]) assert.ok(never.includes(c), `${c} is checked`);
+  for (const c of ["plan", "email", "handle", "suspended_at", "extra_seats", "cover_key", "active_collection_id", "links", "pause_message"]) assert.ok(never.includes(c), `${c} is checked`);
   assert.ok(never.some((c) => c.startsWith("identity_")) && never.some((c) => c.startsWith("reply_")), "identity_* and reply_* are checked");
   for (const c of never) {
     const can = await q.get<{ ok: boolean }>("SELECT has_column_privilege('ft_person', 'users', ?, 'UPDATE') AS ok", c);

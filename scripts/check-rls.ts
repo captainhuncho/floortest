@@ -18,6 +18,13 @@ const SECRET_COLUMNS = "password|secret|recovery_codes|google_sub|totp_last_step
  * person reads whole track rows (`SELECT *`), which a column-by-column grant would break.
  */
 const ALLOWED_SECRETS = new Set(["tracks.token_hash"]);
+/**
+ * users columns ft_person may never change, even on its own row (Safety review of #448, 5 Nov): money, sign-in identity,
+ * verification, consent times (set only by the database), the public cover's storage key, routing, and the public page
+ * and pause fields the app sets (writing links as the person would skip the Verified reset). As a Postgres regular
+ * expression on the column name.
+ */
+const USERS_NEVER_WRITABLE = "^(plan|email|handle|extra_seats|suspended_at|cover_key|active_collection_id|links|role_line|page_style|paused_at|pause_until|pause_message|product_consent_at|marketing_consent_at|identity_.*)$";
 
 async function main() {
   const pg = await PGlite.create();
@@ -52,6 +59,13 @@ async function main() {
           or has_column_privilege('ft_person', c.oid, a.attnum, 'UPDATE'))
       order by 1`,
   );
+  const { rows: lockedUsers } = await pg.query<{ name: string }>(
+    `select a.attname as name from pg_attribute a join pg_class c on c.oid = a.attrelid join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public' and c.relname = 'users' and a.attnum > 0 and not a.attisdropped
+        and a.attname ~ '${USERS_NEVER_WRITABLE}'
+        and (has_column_privilege('ft_person', c.oid, a.attnum, 'UPDATE') or has_column_privilege('ft_person', c.oid, a.attnum, 'INSERT'))
+      order by 1`,
+  );
   // A table ft_person may add rows to must let it draw the row's id: identity columns need nothing more, a plain
   // sequence needs usage (migration 0118), or the insert fails only when that path first runs as the person.
   const { rows: sequences } = await pg.query<{ name: string }>(
@@ -79,6 +93,11 @@ async function main() {
   if (flagged.length) {
     console.error(`ft_person may use sign-in secret column(s): ${flagged.map((r) => r.name).join(", ")}.`);
     console.error("Grant ft_person only the columns it needs (see migration 0106), never these.");
+    process.exit(1);
+  }
+  if (lockedUsers.length) {
+    console.error(`ft_person may write users column(s) that are never the person's: ${lockedUsers.map((r) => r.name).join(", ")}.`);
+    console.error("Only the app sets these (migrations 0132 and 0134).");
     process.exit(1);
   }
   if (sequences.length) {

@@ -20,7 +20,7 @@ export default async function RequestPlan({ searchParams }: { searchParams: Prom
   const user = await requireUser();
   const sp = await searchParams;
   if (!(await switchOn("plan_requests", user))) redirect("/dashboard/plans");
-  const [billing, plan, current, open] = await Promise.all([switchOn("billing"), offeredPlan(String(sp.plan ?? "")), planOf(user.plan), pendingRequest(user.id)]);
+  const [billing, plan, current, open] = await Promise.all([switchOn("billing"), offeredPlan(String(sp.plan ?? "")), planOf(user.plan), pendingRequest(user.id, user.actor_id)]);
   // Once paid plans start, people choose and pay for themselves.
   if (billing) redirect(plan ? `/dashboard/checkout?plan=${plan.id}` : "/dashboard/plans");
   if (!plan || plan.price <= current.price) redirect("/dashboard/plans");

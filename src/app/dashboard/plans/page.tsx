@@ -29,7 +29,7 @@ export default async function Plans({ searchParams }: { searchParams: Promise<{ 
   // Just upgraded at checkout: celebrate it, but only if the plan really is theirs now.
   const sp = await searchParams;
   const welcomed = sp.welcome === user.plan && current.price > 0;
-  const pending = await pendingRequest(user.id);
+  const pending = await pendingRequest(user.id, user.actor_id);
   const [billing, sharing] = await Promise.all([switchOn("billing"), switchOn("sharing")]);
   const pct = Math.min(100, Math.round((cap.used / Math.max(1, cap.limit)) * 100));
   // Offered plans, plus the person's own plan even if it's been retired (they keep it until they change).
