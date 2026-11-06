@@ -136,3 +136,21 @@ test("withdrawing and filing again happen together, so a quick second submit lea
   await file();
   assert.equal((await q.get<{ n: number }>("SELECT COUNT(*)::int AS n FROM plan_requests WHERE user_id = ? AND status = 'pending'", me))!.n, 1);
 });
+
+test("ops approve or decline a request only while it's still waiting", () => {
+  const src = fs.readFileSync("src/app/admin/actions.ts", "utf8");
+  assert.match(src, /UPDATE plan_requests SET status = 'approved'[^"]*WHERE id = \? AND status = 'pending' RETURNING id/);
+  assert.match(src, /if \(took\) await db\.run\("UPDATE users SET plan = \?/, "the plan changes only with the approval");
+  assert.match(src, /UPDATE plan_requests SET status = 'declined'[^"]*WHERE id = \? AND status = 'pending'"/);
+  assert.match(src, /if \(!declined\.changes\) return no\(/);
+});
+
+test("the time is stamped by the exact person role, not by membership: the app's own login must be a member to switch into it", async () => {
+  const { q } = await import("../src/lib/db");
+  // pg_has_role(current_user, 'ft_person', 'MEMBER') is true for the app's own login (it must be a member to SET ROLE, and
+  // a superuser is a member of every role), so keying on membership would also overwrite times the app sets on purpose
+  // (seeds, ops' queue order, restores). The person always writes as ft_person itself (asPerson sets the role).
+  const fn = await q.get<{ src: string }>("SELECT prosrc AS src FROM pg_proc WHERE proname = 'ft_stamp_created_at'");
+  assert.match(fn!.src, /current_user = 'ft_person'/);
+  assert.equal((await q.get<{ ok: boolean }>("SELECT pg_has_role(current_user, 'ft_person', 'MEMBER') AS ok"))!.ok, true, "the app's login is a member");
+});

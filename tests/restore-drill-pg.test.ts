@@ -164,6 +164,11 @@ test("a restore keeps consent times exactly as the backup holds them, and the ch
     const checks = await checkRestore(target, restored, { vaultHead: async () => ({ size: 1 }) });
     const consent = checks.find((c) => c.name === "Consent times")!;
     assert.ok(consent.ok, consent.detail);
+    // And the check really looks: a restore whose consent times differ fails it.
+    const bad = await checkRestore(target, { ...restored, consent: { checked: restored.consent.checked, differ: [Number(users[0].id)] } }, { vaultHead: async () => ({ size: 1 }) });
+    const badConsent = bad.find((c) => c.name === "Consent times")!;
+    assert.equal(badConsent.ok, false);
+    assert.match(badConsent.detail, /1 of 2 users came back with different consent times/);
     // And the triggers are back on afterwards: a new sign-up gets the database's time.
     const fresh = await target.get<{ p: number }>("INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at, notify_product, product_consent_at) VALUES ('after@x.io','h','A','drillafter','pro','UTC',1,1,7) RETURNING product_consent_at AS p");
     assert.ok(Number(fresh!.p) > 1_000_000_000_000, "triggers re-enabled");
