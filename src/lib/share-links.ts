@@ -1,4 +1,5 @@
 import "server-only";
+import { CODE_EMAIL_TTL_MS } from "./code-mail";
 import crypto from "node:crypto";
 import { asPerson, now, q, type Collection, type Queryable, type Track, type User } from "./db";
 import { env } from "./env";
@@ -24,7 +25,7 @@ const DAY = 24 * HOUR;
 export const DEFAULT_LINK_DAYS = 14;
 /** How long one verified visit lasts before the code (or sign-in) is asked again. */
 export const SESSION_MS = 12 * HOUR;
-const CODE_TTL = 10 * 60_000;
+const CODE_TTL = CODE_EMAIL_TTL_MS; // the code and its email share one lifetime
 const MAX_CODE_ATTEMPTS = 5;
 /** Request limits (see docs/06-plan.md, Controlled collection sharing). */
 export const REQUESTS_PER_EMAIL_PER_DAY = 2;

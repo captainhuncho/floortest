@@ -1307,10 +1307,14 @@ export async function approvePlanRequest(id: number, form: FormData): Promise<Op
   const plan = grantablePlan(await allPlans(), String(form.get("plan") || r.plan), r.plan, r.current);
   if (!plan) return no("Pick the plan they asked for, or one at or above their current plan.");
   const note = String(form.get("note") || "").trim().slice(0, 500);
-  await q.tx(async (db) => {
-    await db.run("UPDATE users SET plan = ? WHERE id = ?", plan.id, r.user_id);
-    await db.run("UPDATE plan_requests SET status = 'approved', granted_plan = ?, decided_by = ?, decided_at = ?, decision_note = ? WHERE id = ?", plan.id, a.id, now(), note, id);
+  // Decided only while it's still waiting: one withdrawn (or decided by someone else) during review changes nothing, and
+  // the plan isn't changed either (Safety review of #459).
+  const decided = await q.tx(async (db) => {
+    const took = await db.get("UPDATE plan_requests SET status = 'approved', granted_plan = ?, decided_by = ?, decided_at = ?, decision_note = ? WHERE id = ? AND status = 'pending' RETURNING id", plan.id, a.id, now(), note, id);
+    if (took) await db.run("UPDATE users SET plan = ? WHERE id = ?", plan.id, r.user_id);
+    return !!took;
   });
+  if (!decided) return no("Couldn't approve: the request was withdrawn or already decided");
   await logAdmin(a.id, "approved plan request", `@${r.handle}`, `${plan.name}${plan.id !== r.plan ? ` (asked for ${r.plan})` : ""}`);
   // Held a few seconds (undoSend can stop it and put the old plan back), then sent; a failure retries via the Email log.
   const mail = await heldSend(a.id, "approved plan request", `@${r.handle}`, {
@@ -1328,7 +1332,8 @@ export async function declinePlanRequest(id: number, form: FormData): Promise<Op
   if (!r) return no("That request was already dealt with.");
   const reason = String(form.get("reason") || "").trim().slice(0, 500);
   if (!reason) return no("Give a short reason; it's sent to them.");
-  await q.run("UPDATE plan_requests SET status = 'declined', decided_by = ?, decided_at = ?, decision_note = ? WHERE id = ?", a.id, now(), reason, id);
+  const declined = await q.run("UPDATE plan_requests SET status = 'declined', decided_by = ?, decided_at = ?, decision_note = ? WHERE id = ? AND status = 'pending'", a.id, now(), reason, id);
+  if (!declined.changes) return no("Couldn't decline: the request was withdrawn or already decided");
   await logAdmin(a.id, "declined plan request", `@${r.handle}`, reason.slice(0, 120));
   // Held a few seconds (undoSend can stop it and reopen the request), then sent; a failure retries via the Email log.
   const mail = await heldSend(a.id, "declined plan request", `@${r.handle}`, {
