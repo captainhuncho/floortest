@@ -210,7 +210,6 @@ async function overSharedPart(at: number, optional: boolean) {
   return today >= MAIL_LIMITS.day * share;
 }
 
-/** One notice a day that optional email is being held back. */
 /** Tells ops once a day that emails are being held because the block list can't be read. */
 async function reportBlockCheckDown(at: number) {
   const day = new Date(startOfDay(at)).toISOString().slice(0, 10);
@@ -230,6 +229,7 @@ async function reportBlockCheckDown(at: number) {
     );
 }
 
+/** One notice a day that optional email is being held back. */
 async function reportDeferred(at: number) {
   const day = new Date(startOfDay(at)).toISOString().slice(0, 10);
   const first = await q.get(
@@ -285,11 +285,14 @@ export async function deliver(id: number, { retry = true } = {}): Promise<string
   try {
     block = await q.get<{ reason: string }>("SELECT reason FROM email_suppressions WHERE email = ?", normalEmail(p.to));
   } catch (e) {
-    console.error("[mail] block list check failed", e);
+    // Code and message only: the error can carry the query's values, which include the recipient's address.
+    console.error("[mail] block list check failed", (e as { code?: string })?.code ?? "", String((e as Error)?.message ?? "").slice(0, 200));
     blockCheckDown = true;
     await reportBlockCheckDown(at);
     if (p.expires) {
-      await q.run("UPDATE outbox SET status = 'dropped (block check failed)', payload = NULL, next_at = NULL WHERE id = ?", id).catch(() => {});
+      // Not swallowed: if this write fails, the row stays 'sending' and the error surfaces; the stuck-send pass closes it
+      // once its attempts are used, and nothing is sent on the way.
+      await q.run("UPDATE outbox SET status = 'dropped (block check failed)', payload = NULL, next_at = NULL WHERE id = ?", id);
       return "dropped (block check failed)";
     }
   }

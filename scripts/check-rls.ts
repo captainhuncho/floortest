@@ -84,14 +84,15 @@ async function main() {
   const { rows: stampers } = await pg.query<{ name: string }>(
     `select t.tgname as name from pg_trigger t join pg_class c on c.oid = t.tgrelid join pg_proc f on f.oid = t.tgfoid join pg_namespace fn on fn.oid = f.pronamespace
       where t.tgenabled in ('O', 'A') and (t.tgtype & 1) = 1 and (t.tgtype & 2) = 2 and t.tgqual is null and fn.nspname = 'public'
-        and f.prosrc ~* 'clock_timestamp\\(\\)'
+        -- comments stripped first, so a comment that names the call can't pass for it
+        and regexp_replace(f.prosrc, '--[^\\n]*|/\\*.*?\\*/', '', 'g') ~* 'clock_timestamp\\(\\)'
         and ((c.relname = 'users' and t.tgname = 'users_consent_times_insert' and (t.tgtype & 4) = 4 and f.proname = 'ft_consent_times')
           or (c.relname = 'users' and t.tgname = 'users_consent_times' and (t.tgtype & 16) = 16 and f.proname = 'ft_consent_times'
               -- UPDATE OF exactly the choice and time columns, so a forged time can't slip past it
               and (select array_agg(a.attname::text order by a.attname) from pg_attribute a where a.attrelid = t.tgrelid and a.attnum = any(t.tgattr::int2[]))
                 = array['marketing_consent_at', 'notify_marketing', 'notify_product', 'product_consent_at'])
           or (c.relname = 'plan_requests' and t.tgname = 'plan_requests_created_at' and (t.tgtype & 4) = 4 and f.proname = 'ft_stamp_created_at'
-              and f.prosrc like '%current_user = ''ft_person''%'))`,
+              and regexp_replace(f.prosrc, '--[^\\n]*|/\\*.*?\\*/', '', 'g') like '%current_user = ''ft_person''%'))`,
   );
   // A table ft_person may add rows to must let it draw the row's id: identity columns need nothing more, a plain
   // sequence needs usage (migration 0118), or the insert fails only when that path first runs as the person.

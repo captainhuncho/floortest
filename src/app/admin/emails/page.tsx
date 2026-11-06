@@ -23,7 +23,7 @@ export default async function Emails({ searchParams }: { searchParams: Promise<{
   const where = [
     search ? "(o.to_email ILIKE ? OR o.subject ILIKE ?)" : "",
     // Soft bounces stay out on purpose: they block nothing and usually arrive on Resend's retry.
-    failedOnly ? "(o.status LIKE 'failed%' OR o.status LIKE 'skipped%' OR o.delivery IN ('bounced', 'complained'))" : "",
+    failedOnly ? "(o.status LIKE 'failed%' OR o.status LIKE 'skipped%' OR o.status LIKE 'dropped%' OR o.delivery IN ('bounced', 'complained'))" : "",
   ].filter(Boolean);
   const tracking = !!process.env.RESEND_WEBHOOK_SECRET;
   const usage = await mailUsage();
