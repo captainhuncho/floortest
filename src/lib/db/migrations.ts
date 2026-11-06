@@ -2122,5 +2122,14 @@ update invites set expires_at = coalesce(sent_at, created_at) + 1209600000
 alter table users add column if not exists email_verify_sent_at bigint;
 update users set email_verify_sent_at = (extract(epoch from now()) * 1000)::bigint where email_verify_token is not null and email_verify_sent_at is null;`,
   },
+  {
+    // The first-visit tour (owner, 6 Nov: "a tour on what FloorTest is when people get onboarded"): when this person
+    // closed or finished it, on their own row (a teammate gets their own). Accounts that exist today are marked as
+    // having seen it, so the tour opens only for people who join from now on; everyone can open How FloorTest works.
+    // Additive only: code before this never reads it. (0132 is taken by an open PR.)
+    id: "0133_tour_seen",
+    sql: `alter table users add column if not exists tour_seen_at bigint;
+update users set tour_seen_at = (extract(epoch from now()) * 1000)::bigint where tour_seen_at is null;`,
+  },
 ];
 

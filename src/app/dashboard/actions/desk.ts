@@ -4,7 +4,7 @@
 import { markBell } from "@/lib/notifications";
 import { revalidatePath } from "next/cache";
 import { receiverLookup } from "@/lib/receiver-lookup";
-import { requireUser, requireRole } from "@/lib/auth";
+import { requirePerson, requireUser, requireRole } from "@/lib/auth";
 import { likeContains, now, q } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { closeFeedbackAskFor, fileFeedback, markFeedbackAsked } from "@/lib/feedback";
@@ -28,6 +28,13 @@ export async function dismissOnboarding() {
   const u = await requireRole("admin");
   await q.run("UPDATE users SET onboarding_dismissed_at = ? WHERE id = ?", now(), u.id);
   done();
+}
+
+/** The first-visit tour was closed or finished: it never opens by itself again for this person (their own row, not the
+ * desk's, so each teammate gets it once). How FloorTest works replays it any time. */
+export async function markTourSeen() {
+  const me = await requirePerson();
+  await q.run("UPDATE users SET tour_seen_at = ? WHERE id = ? AND tour_seen_at IS NULL", now(), me.id);
 }
 
 export type { ReceiverLookup } from "@/lib/receiver-lookup";
