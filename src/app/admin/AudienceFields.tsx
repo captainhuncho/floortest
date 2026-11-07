@@ -8,7 +8,7 @@ export function AudienceFields({ a, plans }: { a: Audience; plans: Plan[] }) {
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
       {(a.nobody || a.kind === UNKNOWN_KIND) && (
         <p role="alert" className="col-span-full rounded-md border border-line p-3 text-sm">
-          <span className="font-semibold">This filter can&apos;t be read,</span> so it reaches nobody. Pick it again below; the fields show Everyone until you do.
+          <span className="font-semibold">This filter can&apos;t be read,</span> so it reaches nobody. The fields below keep the parts that could be read; set the rest again.
         </p>
       )}
       <label className="block space-y-1.5">
