@@ -1,7 +1,8 @@
 import { requireAdmin } from "@/lib/admin";
 import { q } from "@/lib/db";
 import { env } from "@/lib/env";
-import { audienceIsEveryone, audienceQuery, audienceWhere, describeAudience, readAudience } from "@/lib/audience";
+import { audienceQuery, audienceWhere, describeAudience, readAudience } from "@/lib/audience";
+import { emailReach } from "@/lib/announce";
 import { allPlans } from "@/lib/plan-store";
 import { publishAnnouncement } from "../actions";
 import { AudienceFields } from "../AudienceFields";
@@ -57,12 +58,10 @@ export default async function Announcements({ searchParams }: { searchParams: Pr
   const w = audienceWhere(aud);
   const previewing = sp.preview === "1" && !!draft.title;
   const reach = await q.count(`SELECT COUNT(*) AS n FROM users u WHERE ${w.sql}`, ...w.args);
-  const consent = draft.list === "marketing" ? "u.notify_marketing = 1" : "u.notify_product = 1";
-  const emailReach = draft.list ? await q.count(`SELECT COUNT(*) AS n FROM users u WHERE ${w.sql} AND ${consent} AND u.email_verified_at IS NOT NULL`, ...w.args) : 0;
-  // Subscribers join only an audience of Everyone; publishing refuses them otherwise.
-  const subscriberReach = draft.list && draft.subscribers && audienceIsEveryone(aud)
-    ? await q.count(`SELECT COUNT(*) AS n FROM newsletter_subscribers s WHERE s.confirmed_at IS NOT NULL AND s.unsubscribed_at IS NULL ${draft.list === "marketing" ? "AND s.marketing = 1" : ""} AND NOT EXISTS (SELECT 1 FROM users u WHERE lower(u.email) = s.email)`)
-    : 0;
+  // The same reach the publish uses (src/lib/announce.ts): same consent, same cap, same Everyone-only subscribers.
+  const mail = emailReach(aud, draft.list === "marketing" || draft.list === "product" ? draft.list : null, draft.subscribers);
+  const emailReachCount = mail.people ? await q.count(`SELECT COUNT(*) AS n FROM (${mail.people.sql}) x`, ...mail.people.args) : 0;
+  const subscriberReach = mail.subscribers ? await q.count(`SELECT COUNT(*) AS n FROM (${mail.subscribers}) x`) : 0;
   const past = await q.all<Past>("SELECT id, title, body, href, audience, emailed, created_at FROM announcements ORDER BY created_at DESC LIMIT 30");
   const todayKey = new Date().toDateString();
   const fields = (
@@ -183,14 +182,14 @@ export default async function Announcements({ searchParams }: { searchParams: Pr
                 {`Subject: ${draft.title}\n\n${draft.body}\n\n${draft.href ? `${env.appUrl}${draft.href}` : env.appUrl}`}
               </pre>
             )}
-            {draft.list && draft.subscribers && !audienceIsEveryone(aud) && (
+            {mail.refused && (
               <p role="alert" className="rounded-md border border-line p-3 text-sm">
                 Newsletter subscribers can only be included when the audience is Everyone. Untick them or clear the filters, or Publish will be refused.
               </p>
             )}
             <p className="text-[14px]">
               {describeAudience(aud, (id) => plans.find((p) => p.id === id)?.name ?? id)}: reaches {reach} account{reach === 1 ? "" : "s"} in the bell
-              {draft.list ? `, and emails ${emailReach + subscriberReach}${subscriberReach ? ` (${subscriberReach} without an account)` : ""}` : ""}.
+              {draft.list ? `, and emails ${emailReachCount + subscriberReach}${subscriberReach ? ` (${subscriberReach} without an account)` : ""}` : ""}.
             </p>
             <form action={publishAnnouncement}>
               {Object.entries({ ...draft, ...audienceQuery((k) => sp[k]) }).map(([k, v]) =>
