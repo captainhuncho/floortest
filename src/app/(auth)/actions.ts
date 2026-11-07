@@ -16,9 +16,9 @@ import { audit } from "@/lib/audit";
 import { createPasswordReset, createSession, currentPerson, destroySession, hashPassword, setDesk, verifyPassword, upgradePasswordHash } from "@/lib/auth";
 import { now, q } from "@/lib/db";
 import { env } from "@/lib/env";
-import { APP_URL, sendMail } from "@/lib/mail";
+import { afterResponse, APP_URL, sendMail } from "@/lib/mail";
 import { RESERVED_HANDLES } from "@/lib/plans";
-import { allow, recentCount, record, requestIp } from "@/lib/ratelimit";
+import { allow, claim, handBack, recentCount, record, requestIp } from "@/lib/ratelimit";
 import { afterRightPassword, claimTry, holdAnswer, loginLocked, passwordHold, recordLoginFailure } from "@/lib/login-limits";
 import { alertGuessedAccount } from "@/lib/login-alert";
 import { normalEmail } from "@/lib/email-normal";
@@ -36,6 +36,8 @@ import { resetWithLink } from "@/lib/password-reset";
 import { claimPersonalInvite, resolveInvite } from "@/lib/invites";
 import { revokeAllSessions } from "@/lib/sessions";
 import { checkPasskey, hasPasskey, secondStepOptions, signInOptions } from "@/lib/passkeys";
+import { guardTwoStep } from "@/lib/two-step-limits";
+import { EMAIL_CEILING, emailRequestBlocked } from "@/lib/email-request-limits";
 
 const CHALLENGE = "floortest_2fa";
 /** Set by a share link: where to land after signing in or up (see `safeNext`). */
@@ -128,10 +130,12 @@ async function createAccount(form: FormData, a: NewAccount, opts: { googleEmail?
   if (RESERVED_HANDLES.has(a.handle)) return { error: "That link name is reserved." };
   if (await isProtectedHandle(a.handle)) return { error: "That name is protected for a well-known artist. If it's you, contact us and we'll set it up." };
   if (!(await allow("signup_ip", ip, 10, HOUR))) return { error: "Too many sign-ups from this connection. Try again later." };
-  // Never say whether an email has an account: the real owner gets a quiet heads-up instead (at most once a day).
+  // Never say whether an email has an account: the real owner gets a quiet heads-up instead (at most once a day), sent
+  // after the answer has gone back so how long it takes never shows the email has an account (sign-in audit M2).
   const owner = await q.get<{ id: number; name: string }>("SELECT id, name FROM users WHERE email = ?", a.email);
   if (owner) {
-    if ((await allow("signup_exists_notice", a.email, 1, 24 * HOUR)) && (await accountEmailAllowed()))
+    afterResponse(async () => {
+      if (!(await allow("signup_exists_notice", a.email, 1, 24 * HOUR)) || !(await accountEmailAllowed())) return;
       await sendMail({
         userId: owner.id,
         audience: "receiver",
@@ -140,6 +144,7 @@ async function createAccount(form: FormData, a: NewAccount, opts: { googleEmail?
         subject: "Someone tried to sign up with your email",
         body: `Hi ${owner.name.split(/\s+/)[0]},\n\nSomeone just tried to create a FloorTest account with this email address. You already have one, so nothing was created.\n\nIf it was you, log in here: ${APP_URL}/login (forgot your password? ${APP_URL}/forgot)\n\nIf it wasn't you, you don't need to do anything.\n\n— FloorTest`,
       });
+    }, "[signup] existing-account notice failed");
     return { error: TAKEN };
   }
   if ((await q.get("SELECT 1 FROM users WHERE handle = ?", a.handle)) || (await handleHeld(a.handle))) return { error: "That link is taken." };
@@ -333,10 +338,13 @@ export async function requestPasswordReset(_: FormState, form: FormData): Promis
   const email = normalEmail(String(form.get("email") || "")).slice(0, 200);
   if (!EMAIL.test(email)) return { error: "Enter the email you signed up with." };
   const ip = await requestIp();
-  if (!(await allow("reset_ip", ip, 5, HOUR)) || !(await allow("reset_email", email, 3, HOUR)))
-    return { error: "Too many requests. Try again in an hour." };
-  const user = await q.get<{ id: number; name: string }>("SELECT id, name FROM users WHERE email = ?", email);
-  if (user && (await accountEmailAllowed())) {
+  const blocked = await emailRequestBlocked("reset", email, ip, form);
+  if (blocked) return blocked;
+  // Looked up and sent after the answer has gone back, so how long the page takes never shows whether the address has
+  // an account (sign-in audit M2). A suspended account gets no link: it couldn't use the session anyway.
+  afterResponse(async () => {
+    const user = await q.get<{ id: number; name: string }>("SELECT id, name FROM users WHERE email = ? AND suspended_at IS NULL", email);
+    if (!user || !(await accountEmailAllowed())) return;
     const token = await createPasswordReset(user.id);
     await sendMail({
       reserved: true,
@@ -347,7 +355,7 @@ export async function requestPasswordReset(_: FormState, form: FormData): Promis
       subject: "Reset your FloorTest password",
       body: `Hi ${user.name.split(/\s+/)[0]},\n\nUse this link within an hour to choose a new password:\n${APP_URL}/reset/${token}\n\nIf you didn't ask for this, ignore this email. Your password hasn't changed.\n\n— FloorTest`,
     });
-  }
+  }, "[reset] reset email failed");
   return { ok: true };
 }
 
@@ -365,32 +373,91 @@ export async function resetPassword(token: string, _: FormState, form: FormData)
 }
 
 const CODE_EMAIL = "floortest_code_email";
+/** The browser that asked for a code: each gets its own, so asking with someone's email never replaces theirs (M4). */
+const CODE_DEVICE = "floortest_code_device";
 const CODE_MS = 10 * 60_000;
 const CODE_TRIES = 5;
+/** One answer for a wrong, used-up or missing code, whether or not the email has an account (sign-in audit M3). */
+const CODE_FAILED = "That code didn't work or has expired. Check the latest email, or ask for a new code.";
 // Keyed with the app secret, so a leaked table can't be brute-forced back into codes.
 const codeHash = (userId: number, code: string) => crypto.createHmac("sha256", env.secret).update(`${userId}:${code}`).digest("hex");
+const deviceHash = (device: string) => crypto.createHash("sha256").update(device).digest("hex");
+const DEVICE = /^[A-Za-z0-9_-]{32}$/;
+/**
+ * Wrong codes for one email in an hour, from every browser together (Safety, 7 Nov): each browser's code has its own five
+ * tries, so without this a guesser could ask for code after code. Past it, code sign-in for that email pauses; password
+ * and passkey still work. Keyed on the email, not the account, so it looks the same whether or not there is one.
+ * Set to five tries for each of the most requests one address can get in an hour (owner, 7 Nov), so pausing it costs a
+ * stranger as many requests and solved human checks as the request ceiling itself, never a handful.
+ */
+const CODE_GUESSES_AN_HOUR = CODE_TRIES * EMAIL_CEILING;
+const CODES_PAUSED = "Too many wrong codes for this email. Try again in an hour, reset your password, or log in with your password or a passkey.";
+/** Code tries from one connection in an hour, for every email together: one connection can't pause code sign-in for many addresses. */
+const CODE_TRIES_PER_IP = 30;
+const CODE_TRIES_IP_PAUSED = "Too many codes tried from this connection. Try again in an hour, or log in with your password or a passkey.";
+const CODE_TOO_LONG = "That took too long. Ask for a new code.";
+/** Live codes an account can have at once, across browsers. A new browser past it gets none; older ones are never replaced. */
+const LIVE_CODES = 5;
+/**
+ * Proof that this browser asked for a code for this email in the last 10 minutes (Safety, 7 Nov): the time, and an HMAC on
+ * the app secret over email, browser and time. Without it, anyone could set the email and browser cookies by hand and
+ * spend an address's wrong-code allowance without ever asking for a code (or passing the human check). Set for every
+ * request, account or not, so it tells nothing.
+ */
+const CODE_PASS = "floortest_code_pass";
+const passMac = (email: string, device: string, t: number) => crypto.createHmac("sha256", env.secret).update(`code-pass:${email}|${device}|${t}`).digest("base64url");
+const makePass = (email: string, device: string, t = now()) => `${t}.${passMac(email, device, t)}`;
+/** The pass's time when it is genuine, for this email and browser, and under 10 minutes old; otherwise null. */
+function passTime(pass: string, email: string, device: string): number | null {
+  const [ts, mac] = pass.split(".");
+  const t = Number(ts);
+  if (!/^\d{13}$/.test(ts ?? "") || !mac || now() - t > CODE_MS || t > now() + 60_000) return null;
+  const want = Buffer.from(passMac(email, device, t));
+  const got = Buffer.from(mac);
+  return got.length === want.length && crypto.timingSafeEqual(got, want) ? t : null;
+}
 
 /** Emails a 6-digit sign-in code. Always moves on to the code page, so it can't reveal which emails have accounts. */
 export async function requestLoginCode(_: FormState, form: FormData): Promise<FormState> {
   const email = normalEmail(String(form.get("email") || "")).slice(0, 200);
   if (!EMAIL.test(email)) return { error: "Enter the email you signed up with." };
   const ip = await requestIp();
-  // Asking for codes again and again: prove you're human first.
-  const asked = await recentFailures("login_code_email", "login_code_ip", email, ip);
-  if (!(await humanCheck(asked, form, ip)).ok) return { error: HUMAN_MESSAGE, challenge: true };
-  if (!(await allow("login_code_ip", ip, 10, HOUR)) || !(await allow("login_code_email", email, 5, HOUR)))
-    return { error: "Too many codes requested. Try again in an hour, or log in with your password." };
-  const user = await q.get<{ id: number; name: string; suspended_at: number | null }>("SELECT id, name, suspended_at FROM users WHERE email = ?", email);
-  if (user && !user.suspended_at && (await accountEmailAllowed())) {
+  const blocked = await emailRequestBlocked("login_code", email, ip, form);
+  if (blocked) return blocked;
+  const jar = await cookies();
+  const kept = jar.get(CODE_DEVICE)?.value ?? "";
+  const device = DEVICE.test(kept) ? kept : crypto.randomBytes(24).toString("base64url");
+  // Looked up and sent after the answer has gone back, so how long the page takes never shows whether the address has
+  // an account (sign-in audit M2). The code is this browser's alone: a new one here replaces only this browser's.
+  afterResponse(async () => {
+    const user = await q.get<{ id: number; name: string }>("SELECT id, name FROM users WHERE email = ? AND suspended_at IS NULL", email);
+    if (!user || !(await accountEmailAllowed())) return;
     const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
-    await q.run(
-      `INSERT INTO login_codes (user_id, code_hash, attempts, expires_at, created_at) VALUES (?,?,0,?,?)
-       ON CONFLICT (user_id) DO UPDATE SET code_hash = excluded.code_hash, attempts = 0, expires_at = excluded.expires_at, created_at = excluded.created_at`,
-      user.id,
-      codeHash(user.id, code),
-      now() + CODE_MS,
-      now(),
-    );
+    const requester = deviceHash(device);
+    // Only while the account has fewer than LIVE_CODES live codes from other browsers: past that, nothing is stored or sent.
+    // The account's row is locked for the count and the write, so requests at the same moment can't overshoot the cap.
+    const saved = await q.tx(async (db) => {
+      await db.get("SELECT id FROM users WHERE id = ? FOR UPDATE", user.id);
+      return db.run(
+        `INSERT INTO sign_in_codes (user_id, requester, code_hash, attempts, expires_at, created_at)
+         SELECT ?, ?, ?, 0, ?, ? WHERE (SELECT COUNT(*) FROM sign_in_codes WHERE user_id = ? AND requester <> ? AND expires_at > ?) < ?
+         ON CONFLICT (user_id, requester) DO UPDATE SET code_hash = excluded.code_hash, attempts = 0, expires_at = excluded.expires_at, created_at = excluded.created_at`,
+        user.id,
+        requester,
+        codeHash(user.id, code),
+        now() + CODE_MS,
+        now(),
+        user.id,
+        requester,
+        now(),
+        LIVE_CODES,
+      );
+    });
+    if (!saved.changes) {
+      // Shown on Admin → Security: someone may be keeping this account's codes full.
+      await record("login_code_full", String(user.id));
+      return;
+    }
     await sendMail({
       reserved: true,
       userId: user.id,
@@ -398,10 +465,13 @@ export async function requestLoginCode(_: FormState, form: FormData): Promise<Fo
       to: email,
       secrets: [code],
       subject: "Your FloorTest sign-in code",
-      body: `Hi ${user.name.split(/\s+/)[0]},\n\nYour sign-in code is:\n\n${code}\n\nIt works once, for 10 minutes. If you didn't try to sign in, ignore this email. Nobody can get in without the code.\n\n— FloorTest`,
+      body: `Hi ${user.name.split(/\s+/)[0]},\n\nYour sign-in code is:\n\n${code}\n\nIt works once, for 10 minutes, in the browser you asked for it in. If you didn't try to sign in, ignore this email. Nobody can get in without the code.\n\n— FloorTest`,
     });
-  }
-  (await cookies()).set(CODE_EMAIL, email, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: CODE_MS / 1000 });
+  }, "[login] sign-in code email failed");
+  const cookie = { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: CODE_MS / 1000 } as const;
+  jar.set(CODE_EMAIL, email, cookie);
+  jar.set(CODE_DEVICE, device, cookie);
+  jar.set(CODE_PASS, makePass(email, device), cookie);
   redirect("/login/code/enter");
 }
 
@@ -409,24 +479,41 @@ export async function requestLoginCode(_: FormState, form: FormData): Promise<Fo
 export async function verifyLoginCode(_: FormState, form: FormData): Promise<FormState> {
   const jar = await cookies();
   const email = jar.get(CODE_EMAIL)?.value ?? "";
-  if (!email) return { error: "That took too long. Ask for a new code." };
+  const device = jar.get(CODE_DEVICE)?.value ?? "";
+  // Nothing is counted until the cookies prove this browser asked for a code for this email in the last 10 minutes; a
+  // hand-set or old pair gets the same answer as a timed-out one, whether or not the email has an account.
+  if (email.length > 200 || !EMAIL.test(email) || !DEVICE.test(device)) return { error: CODE_TOO_LONG };
+  const pass = passTime(jar.get(CODE_PASS)?.value ?? "", email, device);
+  if (pass === null) return { error: CODE_TOO_LONG };
   const code = String(form.get("code") || "").replace(/\D/g, "").slice(0, 6);
+  if ((await claim("login_code_verify_ip", await requestIp(), CODE_TRIES_PER_IP, HOUR)) === null) return { error: CODE_TRIES_IP_PAUSED };
+  // Five tries per code request in this browser, account or not: more needs another request, which meets the human check.
+  const thisPass = crypto.createHash("sha256").update(`${email}|${device}|${pass}`).digest("hex");
+  if ((await claim("login_code_guess_pass", thisPass, CODE_TRIES, HOUR)) === null) return { error: CODE_FAILED };
+  // This try takes its place in the email's hourly count before anything is compared, and is handed back if it's refused
+  // here or turns out right, so parallel guesses from many browsers can't all slip under the cap.
+  const guess = await claim("login_code_guess", email, CODE_GUESSES_AN_HOUR, HOUR);
+  if (guess === null) return { error: CODES_PAUSED };
   const user = await q.get<{ id: number; suspended_at: number | null; email_verified_at: number | null }>("SELECT id, suspended_at, email_verified_at FROM users WHERE email = ?", email);
   // Each try is counted before the code is compared, in one statement, so parallel guesses can't all slip in at once.
-  const row = user && (await q.get<{ code_hash: string; attempts: number }>(
-    "UPDATE login_codes SET attempts = attempts + 1 WHERE user_id = ? AND expires_at > ? AND attempts < ? RETURNING code_hash, attempts",
-    user.id,
+  // Run for a missing account too (it matches nothing), so the time taken doesn't tell the two apart.
+  const row = await q.get<{ code_hash: string; attempts: number }>(
+    "UPDATE sign_in_codes SET attempts = attempts + 1 WHERE user_id = ? AND requester = ? AND expires_at > ? AND attempts < ? RETURNING code_hash, attempts",
+    user?.id ?? 0,
+    deviceHash(device),
     now(),
     CODE_TRIES,
-  ));
-  if (!user || !row) return { error: "That code has expired. Ask for a new one." };
-  const ok = code.length === 6 && crypto.timingSafeEqual(Buffer.from(codeHash(user.id, code)), Buffer.from(row.code_hash));
-  if (!ok) return { error: row.attempts >= CODE_TRIES ? "Too many wrong codes. Ask for a new one." : "That code didn't work. Check the latest email and try again." };
+  );
+  const ok = !!user && !!row && code.length === 6 && crypto.timingSafeEqual(Buffer.from(codeHash(user.id, code)), Buffer.from(row.code_hash));
+  if (!user || !row || !ok) return { error: CODE_FAILED };
   // Used once: deleting it is what makes the code single-use.
-  const used = await q.run("DELETE FROM login_codes WHERE user_id = ? AND code_hash = ?", user.id, row.code_hash);
-  if (!used.changes) return { error: "That code was already used. Ask for a new one." };
+  const used = await q.run("DELETE FROM sign_in_codes WHERE user_id = ? AND requester = ? AND code_hash = ?", user.id, deviceHash(device), row.code_hash);
+  if (!used.changes) return { error: CODE_FAILED };
+  await handBack(guess);
   if (user.suspended_at) return { error: "This account is suspended. To appeal, go to the Contact page and choose Suspension appeal." };
   jar.delete(CODE_EMAIL);
+  jar.delete(CODE_DEVICE);
+  jar.delete(CODE_PASS);
   // Receiving the code proves the address is theirs. The account was never confirmed, so whoever created it may not be
   // this person (someone can sign up with another's email and wait). Reset what the creator set up: sign out every
   // other session, replace the password with an unusable one, turn off two-factor and remove any passkeys. The owner sets their own.
@@ -463,13 +550,10 @@ export async function verifySecondStep(_: FormState, form: FormData): Promise<Fo
   const ticket = jar.get(CHALLENGE)?.value;
   const userId = await ticketUser(ticket);
   if (!userId) return { error: "That took too long. Log in again." };
-  const key = `user:${userId}`;
-  if ((await recentCount("twofa_fail", key, 15 * 60_000)) >= 8) return { error: "Too many wrong codes. Wait 15 minutes and log in again." };
-  const result = await checkSecondFactor(userId, String(form.get("code") || "").slice(0, 40));
-  if (!result) {
-    await record("twofa_fail", key);
-    return { error: "That code didn't work. Check your authenticator app and try again." };
-  }
+  const tried = await guardTwoStep(userId, () => checkSecondFactor(userId, String(form.get("code") || "").slice(0, 40)));
+  if ("held" in tried) return tried.held;
+  if ("wrong" in tried) return { error: "That code didn't work. Check your authenticator app and try again." };
+  const result = tried.result;
   jar.delete(CHALLENGE);
   if (!(await spendTicket(ticket, userId))) return { error: "That took too long. Log in again." };
   await finishSignIn(userId, result === "code" ? "two-factor" : "recovery code");
@@ -512,12 +596,9 @@ export async function passkeySecondStep(answer: unknown): Promise<FormState> {
   const ticket = jar.get(CHALLENGE)?.value;
   const userId = await ticketUser(ticket);
   if (!userId) return { error: "That took too long. Log in again." };
-  const key = `user:${userId}`;
-  if ((await recentCount("twofa_fail", key, 15 * 60_000)) >= 8) return { error: "Too many wrong tries. Wait 15 minutes and log in again." };
-  if (!(await checkPasskey("second", answer, userId))) {
-    await record("twofa_fail", key);
-    return { error: "That passkey didn't work. Try again, or enter the code from your authenticator app." };
-  }
+  const tried = await guardTwoStep(userId, () => checkPasskey("second", answer, userId));
+  if ("held" in tried) return tried.held;
+  if ("wrong" in tried) return { error: "That passkey didn't work. Try again, or enter the code from your authenticator app." };
   jar.delete(CHALLENGE);
   if (!(await spendTicket(ticket, userId))) return { error: "That took too long. Log in again." };
   await finishSignIn(userId, "passkey as two-step");

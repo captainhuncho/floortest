@@ -1,17 +1,19 @@
 import Link from "next/link";
+import { botCheckKey } from "@/lib/turnstile";
 import { AuthForm } from "../AuthForm";
 import { requestPasswordReset } from "../actions";
 import { AuthFrame } from "../AuthFrame";
 
 export const metadata = { title: "Reset your password — FloorTest" };
 
-export default function ForgotPage() {
+export default async function ForgotPage() {
   return (
     <AuthFrame>
       <h1 className="af-h">Reset your password</h1>
       <p className="af-sub mb-7">We&apos;ll email you a link to choose a new one.</p>
       <AuthForm
         action={requestPasswordReset}
+        challengeKey={await botCheckKey()}
         submit="Email me a reset link"
         fields={[{ name: "email", label: "Email", type: "email", autoComplete: "email" }]}
         footer={{ text: "Remembered it?", href: "/login", link: "Log in" }}

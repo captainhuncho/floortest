@@ -5,7 +5,7 @@ import { hashPassword, verifyPassword, upgradePasswordHash } from "@/lib/auth";
 import { homeFor, logAdmin, opsAccessFor } from "@/lib/admin";
 import { q } from "@/lib/db";
 import { createOpsSession, currentOpsAdmin, destroyOpsSession } from "@/lib/ops";
-import { recentCount, record, requestIp } from "@/lib/ratelimit";
+import { recentCount, requestIp } from "@/lib/ratelimit";
 import { checkSecondFactor } from "@/lib/security";
 import { HUMAN_CHECK_AFTER, HUMAN_MESSAGE, humanCheck, recentFailures } from "@/lib/human-check";
 import type { FormState } from "../(auth)/actions";
@@ -13,6 +13,7 @@ import { normalEmail } from "@/lib/email-normal";
 import { botCheckKey } from "@/lib/turnstile";
 import { afterRightPassword, afterWrongPassword, claimTry, holdAnswer, passwordHold } from "@/lib/login-limits";
 import { alertGuessedAccount } from "@/lib/login-alert";
+import { guardTwoStep } from "@/lib/two-step-limits";
 
 const DUMMY = hashPassword("not-a-real-password");
 
@@ -56,14 +57,10 @@ export async function opsSignIn(_: FormState, form: FormData): Promise<FormState
   // The super admin, or an active ops team member; anyone else gets the same "didn't work" as a wrong password.
   const access = u && passwordOk ? await opsAccessFor({ id: u.id, email }) : null;
   if (!u || !passwordOk || !access || !u.email_verified_at || !u.totp_enabled_at || u.suspended_at) return fail();
-  // Wrong two-step codes are also capped per account, shared with the website and the app (8 in 15 minutes): reached
-  // only with the right password, so it can't be used to lock anyone out, and many devices can't add up to more guesses.
-  const twoStep = `user:${u.id}`;
-  if ((await recentCount("twofa_fail", twoStep, WINDOW)) >= 8) return fail();
-  if (!(await checkSecondFactor(u.id, code))) {
-    await record("twofa_fail", twoStep);
-    return fail();
-  }
+  // Wrong two-step codes also get growing holds per account, shared with the website and the app (lib/two-step-limits).
+  // Ops never says which part was wrong, so a two-step hold answers like any failed sign-in.
+  const tried = await guardTwoStep(u.id, () => checkSecondFactor(u.id, code));
+  if (!("result" in tried)) return fail();
   await afterRightPassword("ops", email, ip, attempt);
   await upgradePasswordHash(u.id, password, u.password_hash);
   await createOpsSession(u.id);
