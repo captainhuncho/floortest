@@ -104,7 +104,7 @@ test("admin pages pass the filters on as sent, and an unreadable audience is nev
   // returns its refusal before any mail is queued.
   const actions = read("../src/app/admin/actions.ts");
   const publish = actions.slice(actions.indexOf("export async function publishAnnouncement(")).split("\nexport ")[0];
-  assert.match(publish, /^[^]*?\{\s*const a = await requireAdminAction\("announcements"\);[^]*?const saved = await saveAnnouncement\(a\.id, \(k\) => form\.get\(k\)\);\s*if \("error" in saved\) return fail\(saved\.error\);/);
+  assert.match(publish, /^[^]*?\{\s*const a = await requireAdminAction\("announcements"\);[^]*?const saved = await saveAnnouncement\(a\.id, readJoined\(form\)\);\s*if \("error" in saved\) return fail\(saved\.error\);/);
   assert.ok(publish.indexOf("sendMail(") > publish.indexOf('if ("error" in saved)'), "refused before any mail");
   const lib = read("../src/lib/announce.ts");
   const refuse = lib.indexOf("if (aud.nobody || aud.kind === UNKNOWN_KIND) return { error:");

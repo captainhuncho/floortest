@@ -32,12 +32,14 @@ export async function saveAnnouncement(adminId: number, get: (k: string) => unkn
   // An audience that can't be read reaches nobody: refuse it before anything is saved or emailed, including newsletter
   // subscribers, who are picked outside the audience.
   if (aud.nobody || aud.kind === UNKNOWN_KIND) return { error: "This audience can't be read. Pick it again." };
-  const reach = emailReach(aud, list, get("subscribers") === "on");
+  // One clock for the bell recipients and the email reach, so a "joined"/"activity" filter can't pick two different sets.
+  const at = Date.now();
+  const reach = emailReach(aud, list, get("subscribers") === "on", at);
   // Subscribers have no account, so no filter can narrow them (owner, 6 Nov): only with the audience set to Everyone.
   if (reach.refused) return { error: "Newsletter subscribers can only be included when the audience is Everyone." };
   const plans = await allPlans();
   const label = describeAudience(aud, (id) => plans.find((p) => p.id === id)?.name ?? id);
-  const w = audienceWhere(aud);
+  const w = audienceWhere(aud, at);
   // The announcement and its bell recipients together, or neither.
   const id = await q.tx(async (db) => {
     const row = (await db.get<{ id: number }>(
@@ -61,20 +63,20 @@ export const EMAIL_CAP = 5000;
  * opted into those too). The preview's counts and the publish both use it, so they can't disagree. `refused`:
  * subscribers were asked for with a filter set, which publishing refuses and the preview warns about.
  */
-export function emailReach(aud: Audience, list: AnnouncementList | null, wantsSubscribers: boolean) {
-  const w = audienceWhere(aud);
+export function emailReach(aud: Audience, list: AnnouncementList | null, wantsSubscribers: boolean, at = Date.now()) {
+  const w = audienceWhere(aud, at);
   const consent = list === "marketing" ? "u.notify_marketing = 1" : "u.notify_product = 1";
   const outside = !!list && wantsSubscribers;
   const refused = outside && !audienceIsEveryone(aud);
   return {
     refused,
     people: list
-      ? { sql: `SELECT u.id, u.email FROM users u WHERE ${w.sql} AND ${consent} AND u.email_verified_at IS NOT NULL LIMIT ${EMAIL_CAP}`, args: w.args }
+      ? { sql: `SELECT u.id, u.email FROM users u WHERE ${w.sql} AND ${consent} AND u.email_verified_at IS NOT NULL ORDER BY u.id LIMIT ${EMAIL_CAP}`, args: w.args }
       : null,
     subscribers:
       outside && !refused
         ? `SELECT s.email, s.token FROM newsletter_subscribers s WHERE s.confirmed_at IS NOT NULL AND s.unsubscribed_at IS NULL ${list === "marketing" ? "AND s.marketing = 1" : ""}
-           AND NOT EXISTS (SELECT 1 FROM users u WHERE lower(u.email) = s.email) LIMIT ${EMAIL_CAP}`
+           AND NOT EXISTS (SELECT 1 FROM users u WHERE lower(u.email) = s.email) ORDER BY s.id LIMIT ${EMAIL_CAP}`
         : null,
   };
 }
