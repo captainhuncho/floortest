@@ -30,5 +30,9 @@ export type Security = keyof typeof SECURITY;
 /** Anything but "on" or "off" means no filter. */
 export const readSecurity = (raw: string | undefined): Security => (raw === "on" || raw === "off" ? raw : "");
 
+/** A Security value that was sent but isn't "on" or "off" (a doubled ?security=on&security=off reads "on,off"). The
+ * CSV refuses it rather than reading it as no filter, which would export every account in the audience. */
+export const securityUnreadable = (raw: string) => raw !== "" && raw !== "on" && raw !== "off";
+
 /** The fixed SQL for each choice; the request only ever picks one of these. */
 export const securityWhere = (s: Security) => (s === "on" ? "u.totp_enabled_at IS NOT NULL" : s === "off" ? "u.totp_enabled_at IS NULL" : "TRUE");

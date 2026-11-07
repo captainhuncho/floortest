@@ -129,9 +129,12 @@ test("the users CSV reads ?plan=pro&plan=team as nobody and selects no rows", as
   };
   assert.ok((await rows("plan=pro")) > 0, "Pro accounts exist to export");
   assert.equal(await rows("plan=pro&plan=team"), 0, "a doubled filter exports nobody, not the first value");
+  // A doubled Security filter is refused (400, no file), never read as "no filter", which would export every account.
+  const { securityUnreadable } = await import("../src/lib/admin-bulk");
   const sp = new URLSearchParams("security=on&security=off&q=a&q=b");
-  assert.equal(readJoined(sp)("security"), "on,off", "a doubled Security filter is not read as its first value");
-  assert.equal(readJoined(sp)("q"), "a,b");
+  assert.equal(securityUnreadable(readJoined(sp)("security")), true, "?security=on&security=off exports nothing");
+  for (const ok of ["", "on", "off"]) assert.equal(securityUnreadable(ok), false, `"${ok}" exports as before`);
+  assert.equal(readJoined(sp)("q"), "a,b", "a doubled search is a literal search, so it can only narrow");
 });
 
 test("publishing with a doubled filter in the form is refused and writes nothing", async () => {

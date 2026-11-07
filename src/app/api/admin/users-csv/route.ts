@@ -2,7 +2,7 @@ import { requireAdminAction, logAdmin } from "@/lib/admin";
 import { audienceWhere, describeAudience, readAudience, readJoined } from "@/lib/audience";
 import { csvCell } from "@/lib/csv";
 import { likeContains, q, KIND_LABEL } from "@/lib/db";
-import { BULK_MAX, bulkIds, readSecurity, SECURITY, securityWhere } from "@/lib/admin-bulk";
+import { BULK_MAX, bulkIds, readSecurity, SECURITY, securityUnreadable, securityWhere } from "@/lib/admin-bulk";
 
 export const runtime = "nodejs";
 
@@ -17,11 +17,14 @@ export async function GET(req: Request) {
   const w = audienceWhere(aud, Date.now(), true);
   // The same Security filter and search as the Users list, so the file is the list on screen (1 Nov: both were
   // dropped and "Password only" exported every account).
-  const security = readSecurity(get("security") || undefined);
+  const rawSecurity = get("security");
+  const security = readSecurity(rawSecurity || undefined);
   const search = get("q").trim().slice(0, 100);
   // The new Users' bulk bar exports just the picked rows (?ids=1,2,3; at most BULK_MAX, whole numbers only).
   const picked = sp.has("ids") ? (bulkIds((sp.get("ids") || "").split(",")) ?? []) : null;
   if (picked && !picked.length) return new Response(`Pick at least one account, at most ${BULK_MAX}`, { status: 400 });
+  // An unreadable Security filter exports nothing, never every account (Safety, #481).
+  if (!picked && securityUnreadable(rawSecurity)) return new Response("This Security filter can't be read. Pick it again.", { status: 400 });
   const where = picked
     ? `u.id IN (${picked.map(() => "?").join(",")})`
     : `${w.sql} AND ${securityWhere(security)} ${search ? "AND (u.name ILIKE ? OR u.email ILIKE ? OR u.handle ILIKE ?)" : ""}`;
