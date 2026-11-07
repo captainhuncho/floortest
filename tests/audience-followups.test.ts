@@ -56,11 +56,38 @@ test("the preview and the publish read one email reach: same subscriber gate, sa
   const refused = await saveAnnouncement(1, form({ title: "x", list: "product", subscribers: "on", plan: "pro" }));
   assert.deepEqual(refused, { error: "Newsletter subscribers can only be included when the audience is Everyone." });
 
-  // The preview counts from emailReach and writes no email SQL of its own.
-  const page = src("src/app/admin/announcements/page.tsx");
-  assert.match(page, /emailReach\(aud, /);
-  assert.match(page, /\{mail\.refused && \(/);
-  assert.doesNotMatch(page, /newsletter_subscribers|notify_product|notify_marketing/);
+});
+
+test("the preview's email count is the number the publish emails, for the same audience", async () => {
+  const { q } = await import("../src/lib/db");
+  const { emailReach, saveAnnouncement } = await import("../src/lib/announce");
+  const { audienceWhere, readAudience } = await import("../src/lib/audience");
+  const add = (h: string, plan: string, product: number, verified: boolean) =>
+    q.run(
+      "INSERT INTO users (email, password_hash, name, handle, plan, notify_product, email_verified_at, created_at) VALUES (?,?,?,?,?,?,?,1)",
+      `${h}@x.io`, "h", h, h, plan, product, verified ? 1 : null,
+    );
+  await add("pro-in", "pro", 1, true);
+  await add("pro-in2", "pro", 1, true);
+  await add("pro-optout", "pro", 0, true);
+  await add("pro-unverified", "pro", 1, false);
+  await add("team-in", "team", 1, true);
+  const admin = (await q.get<{ id: number }>("SELECT id FROM users WHERE handle = 'pro-in'"))!.id;
+
+  const draft = { title: "Pro news", list: "product", plan: "pro" };
+  // As the preview page counts it.
+  const at = Date.now();
+  const aud = readAudience(form(draft));
+  const mail = emailReach(aud, "product", false, at);
+  const previewEmails = await q.count(`SELECT COUNT(*) AS n FROM (${mail.people!.sql}) x`, ...mail.people!.args);
+  const w = audienceWhere(aud, at);
+  const previewBell = await q.count(`SELECT COUNT(*) AS n FROM users u WHERE ${w.sql}`, ...w.args);
+  // As the publish picks them.
+  const saved = await saveAnnouncement(admin, form(draft));
+  assert.ok(!("error" in saved));
+  assert.equal(saved.people.length, previewEmails, "emails the number the preview showed");
+  assert.deepEqual(saved.people.map((p) => p.email).sort(), ["pro-in2@x.io", "pro-in@x.io"], "only opted-in, confirmed Pro accounts");
+  assert.equal(await q.count("SELECT COUNT(*) AS n FROM announcement_recipients WHERE announcement_id = ?", saved.id), previewBell, "the bell reaches the number the preview showed");
 });
 
 test("a tag is checked as typed, before lowercasing", async () => {
@@ -93,10 +120,29 @@ test("Clear all and the unreadable chip clear nobody; the Type chip drops nobody
   }
 });
 
-test("the users CSV joins repeated filter keys as the pages do, so a doubled filter reads as nobody", async () => {
-  const { readAudience } = await import("../src/lib/audience");
-  const sp = new URLSearchParams("plan=pro&plan=team");
-  assert.equal(readAudience((k) => sp.getAll(k).join(",")).nobody, true);
-  assert.equal(readAudience((k) => sp.get(k)).nobody, undefined, "first-value reading would have exported Pro");
-  assert.match(src("src/app/api/admin/users-csv/route.ts"), /readAudience\(\(k\) => sp\.getAll\(k\)\.join\(","\)\)/);
+test("the users CSV reads ?plan=pro&plan=team as nobody and selects no rows", async () => {
+  const { q } = await import("../src/lib/db");
+  const { audienceWhere, readAudience, readJoined } = await import("../src/lib/audience");
+  const rows = async (query: string) => {
+    const w = audienceWhere(readAudience(readJoined(new URLSearchParams(query))), Date.now(), true);
+    return q.count(`SELECT COUNT(*) AS n FROM users u WHERE ${w.sql}`, ...w.args);
+  };
+  assert.ok((await rows("plan=pro")) > 0, "Pro accounts exist to export");
+  assert.equal(await rows("plan=pro&plan=team"), 0, "a doubled filter exports nobody, not the first value");
+  const sp = new URLSearchParams("security=on&security=off&q=a&q=b");
+  assert.equal(readJoined(sp)("security"), "on,off", "a doubled Security filter is not read as its first value");
+  assert.equal(readJoined(sp)("q"), "a,b");
+});
+
+test("publishing with a doubled filter in the form is refused and writes nothing", async () => {
+  const { q } = await import("../src/lib/db");
+  const { saveAnnouncement } = await import("../src/lib/announce");
+  const { readJoined } = await import("../src/lib/audience");
+  const fd = new FormData();
+  fd.set("title", "Doubled");
+  fd.append("plan", "pro");
+  fd.append("plan", "team");
+  const before = await q.count("SELECT COUNT(*) AS n FROM announcements");
+  assert.deepEqual(await saveAnnouncement(1, readJoined(fd)), { error: "This audience can't be read. Pick it again." });
+  assert.equal(await q.count("SELECT COUNT(*) AS n FROM announcements"), before);
 });

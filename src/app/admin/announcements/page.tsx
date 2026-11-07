@@ -55,11 +55,12 @@ export default async function Announcements({ searchParams }: { searchParams: Pr
   const draft = { title: (sp.title || "").slice(0, 100), body: (sp.body || "").slice(0, 600), href: (sp.href || "").slice(0, 200), list: sp.list === "marketing" ? "marketing" : sp.list === "product" ? "product" : "", subscribers: sp.subscribers === "on" };
   const aud = readAudience((k) => sp[k]);
   const plans = await allPlans();
-  const w = audienceWhere(aud);
+  const at = Date.now();
+  const w = audienceWhere(aud, at);
   const previewing = sp.preview === "1" && !!draft.title;
   const reach = await q.count(`SELECT COUNT(*) AS n FROM users u WHERE ${w.sql}`, ...w.args);
   // The same reach the publish uses (src/lib/announce.ts): same consent, same cap, same Everyone-only subscribers.
-  const mail = emailReach(aud, draft.list === "marketing" || draft.list === "product" ? draft.list : null, draft.subscribers);
+  const mail = emailReach(aud, draft.list === "marketing" || draft.list === "product" ? draft.list : null, draft.subscribers, at);
   const emailReachCount = mail.people ? await q.count(`SELECT COUNT(*) AS n FROM (${mail.people.sql}) x`, ...mail.people.args) : 0;
   const subscriberReach = mail.subscribers ? await q.count(`SELECT COUNT(*) AS n FROM (${mail.subscribers}) x`) : 0;
   const past = await q.all<Past>("SELECT id, title, body, href, audience, emailed, created_at FROM announcements ORDER BY created_at DESC LIMIT 30");
