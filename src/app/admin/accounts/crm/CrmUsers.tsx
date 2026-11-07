@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { can } from "@/lib/admin";
 import type { OpsAccess } from "@/lib/ops-access";
-import { ACTIVITY, JOINED, audienceQuery, kindLabel, readAudience } from "@/lib/audience";
+import { ACTIVITY, AUDIENCE_CLEARED, JOINED, audienceQuery, kindLabel, kindOff, readAudience } from "@/lib/audience";
 import { ADMIN_PLANS, PAGE_SIZE, readPage, readSecurity, SECURITY } from "@/lib/admin-bulk";
 import { allPlans } from "@/lib/plan-store";
 import { now } from "@/lib/db";
@@ -35,8 +35,8 @@ export async function CrmUsers({ sp, access }: { sp: Record<string, string | und
   const first = (page - 1) * PAGE_SIZE + 1;
   const csv = new URLSearchParams(Object.entries({ ...audParams, security, q: search }).filter(([, v]) => v)).toString();
   const chips = [
-    aud.nobody && { label: "Filter", value: "Unreadable (nobody)", off: link({ plan: "", kind: "", tag: "", joined: "", activity: "", nobody: "", page: "" }) },
-    aud.kind && { label: "Type", value: kindLabel(aud.kind), off: link({ kind: "", page: "" }) },
+    aud.nobody && { label: "Filter", value: "Unreadable (nobody)", off: link({ ...AUDIENCE_CLEARED, page: "" }) },
+    aud.kind && { label: "Type", value: kindLabel(aud.kind), off: link({ ...kindOff((k) => sp[k]), page: "" }) },
     aud.plan && { label: "Plan", value: planName(aud.plan), off: link({ plan: "", page: "" }) },
     aud.tag && { label: "Tag", value: aud.tag, off: link({ tag: "", page: "" }) },
     aud.joined && { label: "Joined", value: JOINED[aud.joined], off: link({ joined: "", page: "" }) },
@@ -70,7 +70,7 @@ export async function CrmUsers({ sp, access }: { sp: Record<string, string | und
             </select>
           </label>
           <div className="flex justify-end gap-2">
-            <Link href={link({ kind: "", plan: "", tag: "", joined: "", activity: "", security: "", page: "" })} className="btn-ghost btn-sm">
+            <Link href={link({ ...AUDIENCE_CLEARED, security: "", page: "" })} className="btn-ghost btn-sm">
               Clear all
             </Link>
             <button className="btn-lime btn-sm">Show results</button>

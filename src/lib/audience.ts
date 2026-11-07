@@ -17,7 +17,10 @@ export const UNKNOWN_KIND = "unknown";
 export const kindLabel = (kind: string) => KIND_LABEL[kind] ?? "Unknown type (nobody)";
 
 const AUDIENCE_KEYS = ["plan", "kind", "tag", "joined", "activity"] as const;
-/** Longest filter value read; anything longer matches nobody. */
+/**
+ * Longest filter value read; anything longer matches nobody. A backstop: each field's own check (plan pattern, tag
+ * length, the fixed lists for type, joined and activity) already refuses longer values.
+ */
 const MAX_FILTER = 100;
 const MAX_TAG = 30;
 
@@ -40,13 +43,14 @@ export function readAudience(get: (k: string) => unknown): Audience {
   const s = (k: string) => String(get(k) ?? "").trim();
   const plan = s("plan");
   // A tag is read only as typed (case aside): stripping characters could match a different tag ("beta 1" is not beta1).
-  const tag = s("tag").toLowerCase();
+  // Checked before lowercasing, which can turn other letters into ASCII (the Kelvin sign K becomes k).
+  const tag = /^[A-Za-z0-9-]*$/.test(s("tag")) ? s("tag").toLowerCase() : "";
   const joined = s("joined");
   const activity = s("activity");
   const a: Audience = {
     plan: /^[a-z][a-z0-9_]{1,23}$/.test(plan) ? plan : "",
     kind: Object.hasOwn(KIND_LABEL, s("kind")) ? s("kind") : s("kind") ? UNKNOWN_KIND : "",
-    tag: /^[a-z0-9-]*$/.test(tag) && tag.length <= MAX_TAG ? tag : "",
+    tag: tag.length <= MAX_TAG ? tag : "",
     joined: Object.hasOwn(JOINED, joined) ? Number(joined) : 0,
     activity: activity === "active" || activity === "inactive" ? activity : "",
   };
@@ -60,6 +64,19 @@ export function readAudience(get: (k: string) => unknown): Audience {
     (activity && !a.activity);
   return unread ? { ...a, nobody: true } : a;
 }
+
+/** Every audience filter off, nobody included: for "Clear all" and the unreadable-filter chip. */
+export const AUDIENCE_CLEARED = { plan: "", kind: "", tag: "", joined: "", activity: "", nobody: "" } as const;
+
+/**
+ * The link change that takes the Type filter off. An unknown type is one cause of nobody; nobody goes with it unless
+ * another filter still can't be read. A nobody carried on from an older form is dropped too: removing the filter is the
+ * admin's own choice, and announcements read the audience again before publishing.
+ */
+export const kindOff = (get: (k: string) => unknown) => ({
+  kind: "",
+  nobody: readAudience((k) => (k === "kind" || k === "nobody" ? "" : get(k))).nobody ? "1" : "",
+});
 
 /** No filter set: every account. Newsletter subscribers (no account, so no plan, type or activity) join only then. */
 export const audienceIsEveryone = (a: Audience) => !a.nobody && !a.plan && !a.kind && !a.tag && !a.joined && !a.activity;
