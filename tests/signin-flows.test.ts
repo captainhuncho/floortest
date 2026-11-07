@@ -207,3 +207,38 @@ test("M2: forgot password answers the same for an account, no account and a susp
   assert.equal(await links(live), 1, "the live account gets a link");
   assert.equal(await links(gone), 0, "a suspended account gets none");
 });
+
+test("the per-email cap is exact: the 125th wrong try still gets the ordinary answer, the next one pauses", async () => {
+  const { q } = await load();
+  const { EMAIL_CEILING } = await import("../src/lib/email-request-limits");
+  const CAP = 5 * EMAIL_CEILING;
+  const email = "edge-of-cap@audit.io";
+  await person(email);
+  for (let i = 0; i < CAP - 1; i++) await q.run("INSERT INTO rate_events (bucket, key, created_at) VALUES ('login_code_guess', ?, ?)", email, Date.now());
+  const jar: Jar = new Map();
+  await askForCode(jar, email, null, "10.9.9.1");
+  assert.match((await verify(jar, "000000", "10.9.9.1"))?.error ?? "", FAILED, "try 125: compared, ordinary answer");
+  assert.equal(await rows("login_code_guess", email), CAP, "and counted");
+  assert.match((await verify(jar, "000000", "10.9.9.1"))?.error ?? "", /Too many wrong codes for this email/, "try 126: paused");
+  assert.equal(await rows("login_code_guess", email), CAP, "a refused try isn't counted");
+});
+
+test("a pass whose time isn't 13 plain digits is refused before anything is counted, even with a genuine signature", async () => {
+  const { env } = await load();
+  const email = "odd-pass@audit.io";
+  const device = "B".repeat(32);
+  const sign = (t: number) => crypto.createHmac("sha256", env.secret).update(`code-pass:${email}|${device}|${t}`).digest("base64url");
+  const t = Date.now();
+  const before = (await rows("login_code_guess")) + (await rows("login_code_verify_ip")) + (await rows("login_code_guess_pass"));
+  for (const [ts, n] of [
+    [(t / 1e12).toString() + "e12", t], // scientific notation for the same time
+    ["0x" + t.toString(16), t], // hex for the same time
+    [String(Math.floor(t / 10)), Math.floor(t / 10)], // 12 digits
+    [String(t * 10), t * 10], // 14 digits
+  ] as [string, number][]) {
+    const jar = new Map([["floortest_code_email", email], ["floortest_code_device", device], ["floortest_code_pass", `${ts}.${sign(n)}`]]) as Jar;
+    assert.match((await verify(jar, "123456", "10.9.9.2"))?.error ?? "", /took too long/, `pass time ${ts}`);
+  }
+  const after = (await rows("login_code_guess")) + (await rows("login_code_verify_ip")) + (await rows("login_code_guess_pass"));
+  assert.equal(after, before, "no row written");
+});
