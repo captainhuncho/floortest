@@ -23,7 +23,7 @@ export default async function Cookies() {
             "__Host-floortest_session: keeps you signed in. Strictly necessary. Lasts 30 days, ends sooner if it isn't used for 14 days, and ends when you sign out.",
             "floortest_2fa: remembers that you've entered your password while you type your two-factor code. Strictly necessary. Lasts 5 minutes.",
             "floortest_passkey: holds the one-time check while you sign in with a passkey. Strictly necessary. Lasts 5 minutes.",
-            "floortest_code_email: remembers which address we just emailed a sign-in code to, while you type the code. Strictly necessary. Lasts 10 minutes.",
+            "floortest_code_email, floortest_code_device, floortest_code_pass: remember which address we just emailed a sign-in code to, and that this browser asked for it, while you type the code. Strictly necessary. Last 10 minutes.",
             "ft_google, ft_google_signup, ft_google_link: carry you safely through signing in, signing up or connecting with Google. Strictly necessary. Last 10 minutes (30 minutes while you finish signing up).",
             "floortest_next: brings you back to the page you were on after you sign in. Strictly necessary. Lasts 1 hour.",
             "ft_team_invite: holds a team invitation while you sign in or sign up to accept it. Strictly necessary. Lasts 1 hour.",

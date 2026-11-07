@@ -66,7 +66,22 @@ export function turnstileAnswerOk(out: { success?: boolean; action?: string; hos
 const FAIL_CLOSED: ReadonlySet<BotAction> = new Set(["sent", "newsletter", "reopen", "contact", "send"]);
 
 export async function passedTurnstile(token: unknown, ip: string | undefined, action: BotAction) {
-  if (!(await botCheckKey())) return true;
+  return (await turnstileVerdict(token, ip, action)) !== "fail";
+}
+
+/**
+ * The check's answer in full: "pass" (solved), "fail" (not solved, or refused on purpose), or "open" (switched off, or let
+ * through only because Cloudflare couldn't answer or our setup is wrong). Callers that need another stop when nothing
+ * was really checked (the per-address limit on emailed codes and links) treat "open" as no check.
+ */
+export async function turnstileVerdict(token: unknown, ip: string | undefined, action: BotAction): Promise<"pass" | "fail" | "open"> {
+  if (!(await botCheckKey())) return "open";
+  const verdict = await verifyTurnstile(token, ip, action);
+  return verdict === true ? "pass" : verdict === false ? "fail" : "open";
+}
+
+/** true: solved. false: not solved, or refused. "open": let through unchecked (outage or our own misconfiguration). */
+async function verifyTurnstile(token: unknown, ip: string | undefined, action: BotAction): Promise<boolean | "open"> {
   // Failed checks go on Admin → Security (by connection, kept 48 hours like every rate-limit record).
   const failed = async () => {
     await record("bot_fail", ip && ip !== "unknown" ? ip : "unknown").catch(() => {});
@@ -94,7 +109,7 @@ export async function passedTurnstile(token: unknown, ip: string | undefined, ac
     const ours = codes.filter((c) => c.includes("secret") || c === "internal-error");
     if (ours.length) {
       await recordIncident("server_error", "Bot check misconfigured; let a form through unchecked", ours.join(", "));
-      return true;
+      return "open";
     }
     return failed();
   } catch (e) {
@@ -103,7 +118,7 @@ export async function passedTurnstile(token: unknown, ip: string | undefined, ac
     console.error("[turnstile] verify failed", e);
     const closed = FAIL_CLOSED.has(action);
     await recordIncident("server_error", closed ? "Bot check unavailable; refused a form that emails strangers" : "Bot check unavailable; let a form through unchecked", e instanceof Error ? e.message : String(e));
-    return !closed;
+    return closed ? false : "open";
   }
 }
 

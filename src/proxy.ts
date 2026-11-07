@@ -119,5 +119,5 @@ export const config = {
   // A path with a hidden part (/.env.txt, /icons/.x.png, or with %2E for the dot, %2F/%5C for a separator) is never
   // skipped, so the hidden-file rule above always sees it.
   // Keep in step with PROXY_SKIPS in src/lib/csp.ts (next.config.ts gives these paths their CSP; tests/csp.test.ts).
-  matcher: ["/((?!(?!(?:.*(?:/|%2[fF]|%5[cC]))?(?:\\.|%2[eE]))(?:_next/|favicon|(?:auth|brand|icons|motion|tour|fonts|images)/|api/storage/upload|(?:apple-icon\\.png|icon\\.svg|opengraph-image\\.png|opengraph-image\\.alt\\.txt|robots\\.txt|sitemap\\.xml)$)).*)"],
+  matcher: ["/((?!(?!(?:.*(?:/|%2[fF]|%5[cC]))?(?:\\.|%2[eE]))(?:_next/|(?:auth|brand|icons|motion|tour|fonts|images)/|api/storage/upload(?:/|$)|(?:favicon\\.ico|apple-icon\\.png|icon\\.svg|opengraph-image\\.png|opengraph-image\\.alt\\.txt|robots\\.txt|sitemap\\.xml)$)).*)"],
 };

@@ -4,11 +4,12 @@ import { issueAppSession } from "@/lib/app-auth";
 import { body, fail, json } from "@/lib/api-v1";
 import { q } from "@/lib/db";
 import { HUMAN_CHECK_AFTER, HUMAN_MESSAGE, humanCheck, recentFailures } from "@/lib/human-check";
-import { recentCount, record, requestIp } from "@/lib/ratelimit";
+import { record, requestIp } from "@/lib/ratelimit";
 import { checkSecondFactor } from "@/lib/security";
 import { normalEmail } from "@/lib/email-normal";
 import { afterRightPassword, claimTry, holdAnswer, loginLocked, passwordHold, recordLoginFailure } from "@/lib/login-limits";
 import { alertGuessedAccount } from "@/lib/login-alert";
+import { guardTwoStep } from "@/lib/two-step-limits";
 
 export const runtime = "nodejs";
 
@@ -62,14 +63,12 @@ export async function POST(req: Request) {
   if (u.totp_enabled_at) {
     const code = String(b.code ?? "").trim().slice(0, 20);
     if (!code) return fail("Enter the code from your authenticator app.", 401, { needsCode: true });
-    // Wrong codes are capped per account, shared with the website's two-step page and ops (8 in 15 minutes): reached
-    // only with the right password, so it can't lock anyone out, and many devices can't add up to more guesses.
-    const twoStep = `user:${u.id}`;
-    if ((await recentCount("twofa_fail", twoStep, 15 * 60_000)) >= 8) return fail("Too many wrong codes. Wait 15 minutes and sign in again.", 429);
-    if (!(await checkSecondFactor(u.id, code))) {
+    // Wrong codes get growing holds per account, shared with the website's two-step page and ops (lib/two-step-limits).
+    const tried = await guardTwoStep(u.id, () => checkSecondFactor(u.id, code));
+    if ("held" in tried) return fail(tried.held.error, 429, { holdLeft: tried.held.holdLeft, needsCode: true });
+    if ("wrong" in tried) {
       await record("login_fail_ip", ip);
       await record("login_fail_email", email);
-      await record("twofa_fail", twoStep);
       return fail("That code didn't work.", 401, { needsCode: true });
     }
   }

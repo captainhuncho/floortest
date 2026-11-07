@@ -244,10 +244,12 @@ async function viewingActor(userId: number) {
 export async function logEvents(rows: Omit<EventRow, "id" | "created_at">[], db: Queryable = q) {
   if (!rows.length) return;
   const at = now();
-  const viewing = await viewingActor(rows[0].user_id);
+  // Checked for each account in the batch, not just the first row's (Safety review of #476).
+  const viewing = new Map<number, number | null>();
+  for (const id of new Set(rows.map((e) => e.user_id))) viewing.set(id, await viewingActor(id));
   await db.run(
     `INSERT INTO events (user_id, sender_id, track_id, type, detail, created_at, actor_id) VALUES ${rows.map(() => "(?,?,?,?,?,?,?)").join(",")}`,
-    ...rows.flatMap((e) => [e.user_id, e.sender_id, e.track_id, e.type, e.detail, at, viewing ?? (e.actor_id && e.actor_id !== e.user_id ? e.actor_id : null)]),
+    ...rows.flatMap((e) => [e.user_id, e.sender_id, e.track_id, e.type, e.detail, at, viewing.get(e.user_id) ?? (e.actor_id && e.actor_id !== e.user_id ? e.actor_id : null)]),
   );
 }
 

@@ -106,7 +106,6 @@ export const recentAudit = (userId: number, limit = 50, { teammate = false } = {
 
 export const trackLabel = (t: { artist: string; title: string }) => `${t.artist} – ${t.title}`;
 
-/** On a team desk, the person who did it (so the log reads "Ama kept…"); null on your own desk or outside a request. */
 /**
  * The admin viewing this account right now (ops "View as"), or null. Every activity record written while viewing names
  * the admin, never the customer (Safety audit M1): account_log, events, listens and feedback. Null outside a request.
@@ -116,11 +115,19 @@ export async function viewingAdminFor(userId: number): Promise<number | null> {
     const { viewingAs } = await import("./auth");
     const view = await viewingAs();
     return view && view.userId === userId ? view.adminId : null;
-  } catch {
+  } catch (e) {
+    // Outside a request (jobs, scripts, tests) there's no viewer. On the live site anything else is a fault worth seeing
+    // in the logs, not a quiet "nobody".
+    if (process.env.NODE_ENV === "production" && !/outside a request scope/i.test(String((e as Error)?.message ?? e)))
+      console.error("[audit] couldn't tell whether an admin is viewing", e);
     return null;
   }
 }
 
+/**
+ * Who did it: the admin viewing the account (ops "View as"), else on a team desk the teammate (so the log reads
+ * "Ama kept…"); null on your own desk or outside a request.
+ */
 async function actorOn(userId: number) {
   try {
     const admin = await viewingAdminFor(userId);
