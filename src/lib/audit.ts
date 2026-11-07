@@ -107,12 +107,25 @@ export const recentAudit = (userId: number, limit = 50, { teammate = false } = {
 export const trackLabel = (t: { artist: string; title: string }) => `${t.artist} – ${t.title}`;
 
 /** On a team desk, the person who did it (so the log reads "Ama kept…"); null on your own desk or outside a request. */
+/**
+ * The admin viewing this account right now (ops "View as"), or null. Every activity record written while viewing names
+ * the admin, never the customer (Safety audit M1): account_log, events, listens and feedback. Null outside a request.
+ */
+export async function viewingAdminFor(userId: number): Promise<number | null> {
+  try {
+    const { viewingAs } = await import("./auth");
+    const view = await viewingAs();
+    return view && view.userId === userId ? view.adminId : null;
+  } catch {
+    return null;
+  }
+}
+
 async function actorOn(userId: number) {
   try {
-    const { currentUser, viewingAs } = await import("./auth");
-    // While an admin views this account, anything logged names the admin, never the customer (Safety audit M1).
-    const view = await viewingAs();
-    if (view && view.userId === userId) return view.adminId;
+    const admin = await viewingAdminFor(userId);
+    if (admin) return admin;
+    const { currentUser } = await import("./auth");
     const u = await currentUser();
     return u && u.id === userId && u.actor_id !== u.id ? u.actor_id : null;
   } catch {

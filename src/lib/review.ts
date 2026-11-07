@@ -1,5 +1,6 @@
 /** Reviewing: listened, downloaded, played out, decisions, replies, deleting and blocking. */
 import "server-only";
+import { viewingAdminFor } from "./audit";
 import { emailText } from "./email-copy";
 import { drainNow, retireTrackFiles } from "./deletion";
 import { isDecision, logEvent, logEvents, now, q, type Decision, type Sender, type Track, type User } from "./db";
@@ -20,6 +21,8 @@ const senderOf = async (t: Track) => (await q.get<Sender>("SELECT * FROM senders
  */
 export async function recordListen(user: User, t: Track, kind: "play" | "beat", session: string, at = now()) {
   if (t.played_at) return false;
+  // While an admin views this desk, a listen is theirs, never the customer's (Safety audit M1).
+  const actor = (await viewingAdminFor(user.id)) ?? user.actor_id;
   if (kind === "play") {
     await q.run(
       `INSERT INTO listens (track_id, actor_id, session_hash, started_at, last_beat_at, credited_ms) VALUES (?,?,?,?,?,0)
@@ -27,7 +30,7 @@ export async function recordListen(user: User, t: Track, kind: "play" | "beat", 
          credited_ms = CASE WHEN listens.session_hash = excluded.session_hash THEN listens.credited_ms ELSE 0 END,
          started_at = CASE WHEN listens.session_hash = excluded.session_hash THEN listens.started_at ELSE excluded.started_at END,
          session_hash = excluded.session_hash, last_beat_at = excluded.last_beat_at`,
-      t.id, user.actor_id, session, at, at,
+      t.id, actor, session, at, at,
     );
     return false;
   }
@@ -35,7 +38,7 @@ export async function recordListen(user: User, t: Track, kind: "play" | "beat", 
     `UPDATE listens SET credited_ms = credited_ms + LEAST(GREATEST(? - last_beat_at, 0), ?), last_beat_at = ?
      WHERE track_id = ? AND actor_id = ? AND session_hash = ? AND last_beat_at IS NOT NULL AND last_beat_at <= ?
      RETURNING credited_ms`,
-    at, LISTEN_BEAT_CAP_MS, at, t.id, user.actor_id, session, at,
+    at, LISTEN_BEAT_CAP_MS, at, t.id, actor, session, at,
   );
   if (!row) return false;
   const first = await markListened(user, t, Number(row.credited_ms) / 1000);

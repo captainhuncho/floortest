@@ -4,6 +4,7 @@ import { contentSecurityPolicy, makeNonce } from "@/lib/csp";
 import { crossSiteWrite } from "@/lib/cross-site";
 import { LINK_PAGE_HEADERS, NOINDEX, indexable, linkPage } from "@/lib/search-index";
 import { isHiddenPath } from "@/lib/dot-paths";
+import { READ_HEADER, readMarker } from "@/lib/read-marker";
 
 /**
  * Keeps the admin area and the main site apart by host. With OPS_URL set (production): the ops host serves only the
@@ -42,9 +43,10 @@ export function proxy(req: NextRequest) {
   const csp = contentSecurityPolicy({ nonce: makeNonce(), dev: process.env.NODE_ENV !== "production" });
   const request = { headers: new Headers(req.headers) };
   request.headers.set("Content-Security-Policy", csp);
-  // Whether this request can change anything, set here for every request so a client can't send its own (auth.ts reads
-  // it: a server action can arrive without Next's own Next-Action header).
-  request.headers.set(WRITE_HEADER, req.method !== "GET" && req.method !== "HEAD" ? "1" : "0");
+  // The read mark (src/lib/read-marker.ts): any client copy is deleted, and only a GET or HEAD gets the real one.
+  // auth.ts treats a request without it as one that can change something.
+  request.headers.delete(READ_HEADER);
+  if (req.method === "GET" || req.method === "HEAD") request.headers.set(READ_HEADER, readMarker());
   const res = route(req, request);
   // Verification proof files send their own, stricter policy (default-src 'none', frame-ancestors 'none'; security
   // review M2): the page policy isn't laid over it. Host separation and the cross-site check above still apply.
@@ -56,14 +58,6 @@ export function proxy(req: NextRequest) {
   return res;
 }
 
-/**
- * Routes that set their own Content-Security-Policy, matched exactly: a proof file by its number only, so the upload
- * route beside it (and anything else under that path) keeps the page policy and its frame-ancestors 'none'. Each
- * also sends X-Frame-Options DENY and nosniff itself.
- */
-/** Set by the proxy on every request: "1" for a request that can change something (any method but GET or HEAD). */
-export const WRITE_HEADER = "x-ft-write";
-
 /** The view-as cookie's name (src/lib/auth.ts VIEW_AS_COOKIE; kept here so the proxy needs no server code). */
 export const VIEW_AS_COOKIE_NAME = "floortest_view_as";
 
@@ -72,6 +66,11 @@ export function viewWrite(method: string, viewing: boolean) {
   return viewing && method !== "GET" && method !== "HEAD";
 }
 
+/**
+ * Routes that set their own Content-Security-Policy, matched exactly: a proof file by its number only, so the upload
+ * route beside it (and anything else under that path) keeps the page policy and its frame-ancestors 'none'. Each
+ * also sends X-Frame-Options DENY and nosniff itself.
+ */
 export const OWN_CSP = [/^\/api\/admin\/verification-proofs\/\d+$/];
 
 function route(req: NextRequest, request: { headers: Headers }) {
@@ -112,11 +111,13 @@ function route(req: NextRequest, request: { headers: Headers }) {
 }
 
 export const config = {
-  // Everything except Next's own files and static assets, and the local-storage upload route (test copies only;
-  // it checks its own signed token). Requests through the proxy keep only the first 10 MB of a body, which cut
-  // bigger local uploads short; the live site uploads straight to Cloudflare and never comes through here.
+  // Everything except Next's own files, the static folders (public/auth, brand, icons, motion, tour, fonts, images), the
+  // few root metadata files and the local-storage upload route (test copies only; it checks its own signed token).
+  // Pages and actions always go through, whatever the path ends in: a skipped /dashboard/x.png once ran a server action
+  // unchecked (Safety audit M1). Requests through the proxy keep only the first 10 MB of a body, which cut bigger local
+  // uploads short; the live site uploads straight to Cloudflare and never comes through here.
   // A path with a hidden part (/.env.txt, /icons/.x.png, or with %2E for the dot, %2F/%5C for a separator) is never
   // skipped, so the hidden-file rule above always sees it.
   // Keep in step with PROXY_SKIPS in src/lib/csp.ts (next.config.ts gives these paths their CSP; tests/csp.test.ts).
-  matcher: ["/((?!(?!(?:.*(?:/|%2[fF]|%5[cC]))?(?:\\.|%2[eE]))(?:_next/|favicon|icons/|fonts/|images/|api/storage/upload|.*\\.(?:png|jpg|jpeg|svg|webp|ico|txt|xml|woff2?)$)).*)"],
+  matcher: ["/((?!(?!(?:.*(?:/|%2[fF]|%5[cC]))?(?:\\.|%2[eE]))(?:_next/|favicon|(?:auth|brand|icons|motion|tour|fonts|images)/|api/storage/upload|(?:apple-icon\\.png|icon\\.svg|opengraph-image\\.png|opengraph-image\\.alt\\.txt|robots\\.txt|sitemap\\.xml)$)).*)"],
 };

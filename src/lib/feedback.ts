@@ -1,4 +1,5 @@
 import "server-only";
+import { viewingAdminFor } from "./audit";
 import { now, q, type User } from "./db";
 import { closeOutcome, FEEDBACK_ASK_AFTER, FEEDBACK_ASK_AGAIN_AFTER, shouldAskFeedback } from "./feedback-ask";
 
@@ -24,7 +25,7 @@ export async function fileFeedback(desk: Pick<User, "id" | "actor_id">, kind: st
   const topic = KINDS.includes(kind) ? `Feedback · ${kind}` : "Feedback";
   await q.run(
     "INSERT INTO contact_messages (user_id, actor_id, name, email, topic, message, page, viewport, created_at) VALUES (?,?,?,?,?,?,?,?,?)",
-    desk.id, desk.actor_id, person.name, person.email, topic, body, String(path || "").slice(0, 200), cleanViewport(viewport), now(),
+    desk.id, (await viewingAdminFor(desk.id)) ?? desk.actor_id, person.name, person.email, topic, body, String(path || "").slice(0, 200), cleanViewport(viewport), now(),
   );
 }
 
