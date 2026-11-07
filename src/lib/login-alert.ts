@@ -47,6 +47,27 @@ export function alertGuessedAccount(email: string, hold: Hold, kind: SignIn = "l
           "— FloorTest",
         ].join("\n"),
       });
+    // Wrong two-step codes come only after the right password, so this one says plainly: the password is known.
+    if (kind === "twofa")
+      return sendMail({
+        userId: u.id,
+        audience: "receiver",
+        to: u.email,
+        subject: "Your FloorTest password was used, but the two-step code was wrong",
+        body: [
+          `Hi ${u.name.split(/\s+/)[0] || "there"},`,
+          "",
+          `Someone signed in to your FloorTest account with your password, then typed the wrong two-step code several times. Two-step sign-in is paused until ${until}.`,
+          `When: ${when}`,
+          "",
+          "If it was you, wait for the pause to end.",
+          `If it wasn't, your password is known to someone else. Nobody got in, but choose a new password now and sign out other devices: ${APP_URL}/dashboard/settings/security`,
+          "",
+          `Need help? Reply to this email or write to us: ${APP_URL}/contact`,
+          "",
+          "— FloorTest",
+        ].join("\n"),
+      });
     await sendMail({
       userId: u.id,
       audience: "receiver",

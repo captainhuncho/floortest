@@ -33,6 +33,7 @@ export async function revokeAllSessions(userId: number, o: { keep?: string | nul
   const ops = await db.run("DELETE FROM admin_sessions WHERE user_id = ?", userId);
   await db.run("UPDATE password_resets SET used_at = ? WHERE user_id = ? AND used_at IS NULL", now(), userId);
   await db.run("DELETE FROM login_codes WHERE user_id = ?", userId);
+  await db.run("DELETE FROM sign_in_codes WHERE user_id = ?", userId);
   await db.run("DELETE FROM two_step_tickets WHERE user_id = ?", userId);
   await db.run("UPDATE users SET pending_email = NULL, pending_email_token = NULL, pending_email_at = NULL WHERE id = ? AND pending_email_token IS NOT NULL", userId);
   return ended.changes + ops.changes;

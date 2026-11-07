@@ -5,7 +5,11 @@ const scrubEvent = <E,>(event: E): E => {
   const e = event as any;
   if (e.request?.url) e.request.url = redactUrl(e.request.url);
   if (e.request) delete e.request.query_string;
-  for (const k of Object.keys(e.request?.headers ?? {})) if (/^referer$/i.test(k)) e.request.headers[k] = redactUrl(e.request.headers[k]);
+  for (const k of Object.keys(e.request?.headers ?? {})) {
+    if (/^referer$/i.test(k)) e.request.headers[k] = redactUrl(e.request.headers[k]);
+    // The proxy's read mark (src/lib/read-marker.ts) is a fixed value per secret: never sent anywhere.
+    if (/^x-ft-read$/i.test(k)) delete e.request.headers[k];
+  }
   if (typeof e.transaction === "string") e.transaction = redactUrl(e.transaction);
   for (const b of e.breadcrumbs ?? []) {
     if (typeof b.message === "string") b.message = redactUrl(b.message);

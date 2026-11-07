@@ -2198,4 +2198,22 @@ create or replace function ft_consent_times() returns trigger language plpgsql s
 drop trigger if exists users_consent_times_insert on users;
 create trigger users_consent_times_insert before insert on users for each row execute function ft_consent_times();`,
   },
+  {
+    // Sign-in audit M4 (6 Nov): one emailed sign-in code per device, not per account, so someone asking for codes with
+    // another person's email can't replace the code that person is about to type. Each row belongs to the browser that
+    // asked (a random value in a cookie, stored here as a hash). A new table rather than a changed key on login_codes:
+    // the build before this one keeps using login_codes during a deploy or after a rollback, untouched.
+    id: "0138_sign_in_codes",
+    sql: `create table if not exists sign_in_codes (
+  user_id bigint not null references users(id) on delete cascade,
+  requester text not null,
+  code_hash text not null,
+  attempts int not null default 0,
+  expires_at bigint not null,
+  created_at bigint not null,
+  primary key (user_id, requester)
+);
+create index if not exists sign_in_codes_expires on sign_in_codes(expires_at);
+alter table sign_in_codes enable row level security;`,
+  },
 ];

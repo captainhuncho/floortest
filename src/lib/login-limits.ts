@@ -41,8 +41,11 @@ const HOLD_BUCKETS = (kind: SignIn) => HOLD_STEPS.map((_, step) => holdBucket(ki
 
 /** A hold in force: when it ends, and whether it's the last step (which offers "Report this"). */
 export type Hold = { until: number; final: boolean };
-/** Which sign-in counts the holds: the app's (wrong passwords) or ops' (failed sign-ins, password or two-step code); each on its own. */
-export type SignIn = "login" | "ops";
+/**
+ * Which sign-in counts the holds: the app's (wrong passwords), ops' (failed sign-ins, password or two-step code), or the
+ * two-step code after a right password on the website, the app and ops (per account, lib/two-step-limits); each on its own.
+ */
+export type SignIn = "login" | "ops" | "twofa";
 
 /**
  * This connection's newest hold for the email, unless a right password came after it (which starts the steps over),
@@ -125,6 +128,14 @@ export async function afterWrongPassword(kind: SignIn, email: string, ip: string
  */
 export const holdAnswer = (hold: Hold, kind: SignIn = "login") => {
   const holdLeft = Math.max(0, hold.until - now());
+  if (kind === "twofa")
+    return {
+      error: hold.final
+        ? "Too many wrong codes, so two-step sign-in for this account is paused for 24 hours."
+        : "Too many wrong codes. Try again when the timer ends.",
+      holdLeft,
+      holdFinal: false,
+    };
   if (kind === "ops")
     return {
       error: hold.final
