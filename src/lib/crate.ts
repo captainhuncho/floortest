@@ -4,7 +4,7 @@ import { withoutHeld } from "./file-digests";
 import { storage } from "./storage";
 import { zipStream, type Entry } from "./zip";
 
-export { crateFileName, m3u, rekordboxXml, safeName } from "./rekordbox";
+export { crateFileName, safeName } from "./rekordbox";
 import { cratePath, m3u, rekordboxXml, safeName, textStream } from "./rekordbox";
 
 /**

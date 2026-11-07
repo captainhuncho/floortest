@@ -15,7 +15,7 @@ export const SECTIONS = [
   { slug: "account", title: "Account", sub: "Keyboard shortcuts, log out or delete your account", min: "member", icon: "gear" },
 ] as const;
 const RANK = { member: 1, admin: 2, owner: 3 } as const;
-export const sectionsFor = (role: keyof typeof RANK, teams: boolean) =>
+const sectionsFor = (role: keyof typeof RANK, teams: boolean) =>
   SECTIONS.filter((s) => RANK[role] >= RANK[s.min] && (s.slug !== "team" || teams));
 
 /** Desktop: a left rail of the settings pages, the current one lit. Phones: a back link to the Account menu. */

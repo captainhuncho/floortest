@@ -10,7 +10,7 @@ import { APP_URL, sendMail } from "@/lib/mail";
 import { deviceId, endSession, revokeAllSessions } from "@/lib/sessions";
 import QRCode from "qrcode";
 import { env } from "@/lib/env";
-import { newTotpSecret, openSecret, otpauthUri, sealSecret, verifyTotp } from "@/lib/totp";
+import { newTotpSecret, otpauthUri, sealSecret } from "@/lib/totp";
 import { q } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { done } from "./common";

@@ -379,7 +379,7 @@ export function PlayIcon({ playing, className = "h-4 w-4" }: { playing: boolean;
  * The buffering ring: a 2px arc turning around a play button while audio loads. It sits inside the button (which
  * needs `relative` and `data-buffering` while loading) and fades in after 150ms, so a fast start never flashes it.
  */
-export function BufferRing({ className = "-inset-1" }: { className?: string }) {
+function BufferRing({ className = "-inset-1" }: { className?: string }) {
   return <span aria-hidden data-buffer-ring className={`pointer-events-none absolute rounded-full ${className}`} />;
 }
 

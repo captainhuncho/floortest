@@ -8,8 +8,8 @@ export const SHARED = ["Permanent receiving link", "Private uploads, no sender a
 export type Live = { sharing: boolean; teams: boolean };
 
 /** What a plan enables, read from its settings (folders, artwork, seats), so the cards can't drift from the product. */
-export const folderLine = (p: Plan) => (p.folderBytes > 0 ? `Send folders (EP or album) up to ${fmtBytes(p.folderBytes)}` : "");
-export const seatsLine = (p: Plan) => `${p.seats} people on one account (you + ${p.seats - 1}), each with their own login; extra seats available`;
+const folderLine = (p: Plan) => (p.folderBytes > 0 ? `Send folders (EP or album) up to ${fmtBytes(p.folderBytes)}` : "");
+const seatsLine = (p: Plan) => `${p.seats} people on one account (you + ${p.seats - 1}), each with their own login; extra seats available`;
 const ART = "Track artwork from senders";
 
 /** Ops' own feature lines that may be shown: no capacity (shown on its own), no "everything in" pointers, nothing held. */

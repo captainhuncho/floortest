@@ -50,7 +50,7 @@ const ESSENTIALS = ["/admin", "/admin/inbox", "/admin/accounts", "/admin/moderat
 const isActiveFor = (path: string) => (href: string) => (href === "/admin" ? path === "/admin" : path === href || path.startsWith(`${href}/`));
 
 /** The area (top-bar tab) the current page belongs to; Overview when none matches. */
-export function currentArea(groups: NavGroup[], path: string) {
+function currentArea(groups: NavGroup[], path: string) {
   const active = isActiveFor(path);
   return groups.find((g) => g.sections.some((s) => s.items.some((i) => active(i.href)))) ?? groups[0];
 }
