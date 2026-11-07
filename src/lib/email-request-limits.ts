@@ -1,6 +1,6 @@
 import "server-only";
 import { now, q } from "./db";
-import { allow, recentCount } from "./ratelimit";
+import { claim, handBack, recentCount } from "./ratelimit";
 import { turnstileVerdict } from "./turnstile";
 
 const HOUR = 3_600_000;
@@ -17,6 +17,13 @@ export const EMAIL_SOFT = 3;
  * Cloudflare couldn't answer, or our setup is wrong), so its inbox can't be flooded.
  */
 export const EMAIL_HARD = 10;
+/**
+ * The ceiling for one address from everywhere even when every request passes the human check (Safety, 7 Nov), so a
+ * stranger solving checks can't keep the account's live codes full or its inbox busy for ever. The cost: someone who
+ * solves this many checks in an hour pauses that address's codes and links for the rest of the hour (password and
+ * passkey sign-in still work).
+ */
+export const EMAIL_CEILING = 25;
 
 export type EmailForm = keyof typeof LIMITS;
 
@@ -30,8 +37,9 @@ export const HUMAN_REQUESTS = "Lots of requests for this email. Confirm you're h
  * Limits on the public forms that email a link or code to an address (forgot password, sign in with a code). Sign-in
  * audit M4 (6 Nov): a stop per address from everywhere let a stranger lock someone out for an hour by asking for codes
  * with their email. So the hard stops are per connection and per address from that connection; past a few requests for
- * one address from everywhere, every connection (the owner's too) only has to pass the human check. When the check
- * didn't really run, a higher stop per address keeps its inbox from being flooded.
+ * one address from everywhere, every connection (the owner's too) has to pass the human check. When the check didn't
+ * really run, a stop of EMAIL_HARD per address keeps its inbox from being flooded; when it did, EMAIL_CEILING is the
+ * last stop. Either can pause one address's codes and links for an hour, but only at the cost of that many requests.
  *
  * Race-safe (Safety, 7 Nov): this request's place for the address is taken first, then counted, and handed back if the
  * request is refused, like `allow`. Requests sent at the same moment from many connections each see the others, so they
@@ -47,11 +55,18 @@ export async function emailRequestBlocked(kind: EmailForm, email: string, ip: st
   };
   // Earlier requests for this address in the hour, this one not included.
   const before = (await recentCount(`${kind}_email`, email, HOUR)) - 1;
+  if (before >= EMAIL_CEILING) return refuse({ error: TOO_MANY[kind] });
   if (before >= EMAIL_SOFT) {
     const verdict = await turnstileVerdict(form.get("cf-turnstile-response"), ip, "auth");
     if (verdict === "fail") return refuse({ error: HUMAN_REQUESTS, challenge: true });
     if (verdict === "open" && before >= EMAIL_HARD) return refuse({ error: TOO_MANY[kind] });
   }
-  if (!(await allow(`${kind}_ip`, ip, limit.ip, HOUR)) || !(await allow(`${kind}_pair`, `${ip}|${email}`, limit.pair, HOUR))) return refuse({ error: TOO_MANY[kind] });
+  const perIp = await claim(`${kind}_ip`, ip, limit.ip, HOUR);
+  if (perIp === null) return refuse({ error: TOO_MANY[kind] });
+  if ((await claim(`${kind}_pair`, `${ip}|${email}`, limit.pair, HOUR)) === null) {
+    // Refused for this address: the connection's own slot goes back too, so it can still ask for others.
+    await handBack(perIp);
+    return refuse({ error: TOO_MANY[kind] });
+  }
   return null;
 }

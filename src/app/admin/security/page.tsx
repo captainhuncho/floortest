@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/admin";
 import Link from "next/link";
 import { q, now } from "@/lib/db";
+import { HOLD_AFTER } from "@/lib/login-limits";
 
 export const metadata = { title: "Security — FloorTest admin" };
 
@@ -9,14 +10,19 @@ const HOUR = 3_600_000;
 const LOCK_WINDOW = 15 * 60_000;
 const LOCK_EMAIL = 10;
 const LOCK_IP = 20;
-const LOCK_2FA = 8;
+/** Two-step holds start at five wrong codes in a round (lib/two-step-limits, HOLD_AFTER). */
+const LOCK_2FA = HOLD_AFTER;
 
 const LIMITS: Record<string, string> = {
   signup_ip: "Sign-ups per connection",
   login_code_ip: "Sign-in codes per connection",
   login_code_email: "Sign-in codes per email",
   login_code_pair: "Sign-in codes per email from one connection",
-  login_code_guess: "Wrong sign-in codes per account",
+  login_code_guess: "Wrong sign-in codes per email",
+  login_code_guess_pass: "Sign-in code tries per code request",
+  login_code_verify_ip: "Sign-in code tries per connection",
+  login_code_full: "Sign-in codes refused: account already has five live (by account id)",
+  twofa_alert: "“Your password was used” warnings sent (by account id)",
   reset_ip: "Password resets per connection",
   reset_email: "Password resets per email",
   reset_pair: "Password resets per email from one connection",

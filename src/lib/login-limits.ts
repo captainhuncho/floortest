@@ -101,7 +101,10 @@ export type Try = { ids: number[]; hold: Hold | null };
 export async function claimTry(kind: SignIn, email: string, ip: string): Promise<Try> {
   const key = pair(email, ip);
   const ids: number[] = [];
-  for (const [bucket, k] of [[`${kind}_fail_ip`, ip], [`${kind}_fail_email`, email], [`${kind}_fail_pair`, key]]) {
+  // Two-step holds are per account only (its "connection" is always "*"): the per-connection and per-email rows would
+  // never be read, so only the pair is counted.
+  const buckets = kind === "twofa" ? [[`${kind}_fail_pair`, key]] : [[`${kind}_fail_ip`, ip], [`${kind}_fail_email`, email], [`${kind}_fail_pair`, key]];
+  for (const [bucket, k] of buckets) {
     const row = await q.get<{ id: number }>("INSERT INTO rate_events (bucket, key, created_at) VALUES (?,?,?) RETURNING id", bucket, k, now());
     if (row) ids.push(row.id);
   }

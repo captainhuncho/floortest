@@ -18,11 +18,22 @@ export async function record(bucket: string, key: string, db: Queryable = q) {
  * can't all slip under the limit together.
  */
 export async function allow(bucket: string, key: string, limit: number, windowMs: number) {
+  return (await claim(bucket, key, limit, windowMs)) !== null;
+}
+
+/** Like `allow`, but returns the slot's id (0 if the insert returned none) so a caller can hand it back later, or null when over. */
+export async function claim(bucket: string, key: string, limit: number, windowMs: number): Promise<number | null> {
   const mine = await q.get<{ id: number }>("INSERT INTO rate_events (bucket, key, created_at) VALUES (?,?,?) RETURNING id", bucket, key, now());
   const n = await recentCount(bucket, key, windowMs);
-  if (n <= limit) return true;
+  if (n <= limit) return mine?.id ?? 0;
   if (mine) await q.run("DELETE FROM rate_events WHERE id = ?", mine.id);
-  return false;
+  return null;
+}
+
+/** Hands back slots taken with `claim`. */
+export async function handBack(...ids: (number | null | undefined)[]) {
+  const live = ids.filter((id): id is number => !!id);
+  if (live.length) await q.run(`DELETE FROM rate_events WHERE id IN (${live.map(() => "?").join(",")})`, ...live);
 }
 
 /**

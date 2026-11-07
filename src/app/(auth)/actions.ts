@@ -18,7 +18,7 @@ import { now, q } from "@/lib/db";
 import { env } from "@/lib/env";
 import { afterResponse, APP_URL, sendMail } from "@/lib/mail";
 import { RESERVED_HANDLES } from "@/lib/plans";
-import { allow, recentCount, record, requestIp } from "@/lib/ratelimit";
+import { allow, claim, handBack, recentCount, record, requestIp } from "@/lib/ratelimit";
 import { afterRightPassword, claimTry, holdAnswer, loginLocked, passwordHold, recordLoginFailure } from "@/lib/login-limits";
 import { alertGuessedAccount } from "@/lib/login-alert";
 import { normalEmail } from "@/lib/email-normal";
@@ -389,9 +389,31 @@ const DEVICE = /^[A-Za-z0-9_-]{32}$/;
  * and passkey still work. Keyed on the email, not the account, so it looks the same whether or not there is one.
  */
 const CODE_GUESSES_AN_HOUR = 20;
-const CODES_PAUSED = "Too many wrong codes for this email. Try again in an hour, or log in with your password or a passkey.";
+const CODES_PAUSED = "Too many wrong codes for this email. Try again in an hour, reset your password, or log in with your password or a passkey.";
+/** Code tries from one connection in an hour, for every email together: one connection can't pause code sign-in for many addresses. */
+const CODE_TRIES_PER_IP = 30;
+const CODE_TRIES_IP_PAUSED = "Too many codes tried from this connection. Try again in an hour, or log in with your password or a passkey.";
+const CODE_TOO_LONG = "That took too long. Ask for a new code.";
 /** Live codes an account can have at once, across browsers. A new browser past it gets none; older ones are never replaced. */
 const LIVE_CODES = 5;
+/**
+ * Proof that this browser asked for a code for this email in the last 10 minutes (Safety, 7 Nov): the time, and an HMAC on
+ * the app secret over email, browser and time. Without it, anyone could set the email and browser cookies by hand and
+ * spend an address's wrong-code allowance without ever asking for a code (or passing the human check). Set for every
+ * request, account or not, so it tells nothing.
+ */
+const CODE_PASS = "floortest_code_pass";
+const passMac = (email: string, device: string, t: number) => crypto.createHmac("sha256", env.secret).update(`code-pass:${email}|${device}|${t}`).digest("base64url");
+const makePass = (email: string, device: string, t = now()) => `${t}.${passMac(email, device, t)}`;
+/** The pass's time when it is genuine, for this email and browser, and under 10 minutes old; otherwise null. */
+function passTime(pass: string, email: string, device: string): number | null {
+  const [ts, mac] = pass.split(".");
+  const t = Number(ts);
+  if (!Number.isSafeInteger(t) || !mac || now() - t > CODE_MS || t > now() + 60_000) return null;
+  const want = Buffer.from(passMac(email, device, t));
+  const got = Buffer.from(mac);
+  return got.length === want.length && crypto.timingSafeEqual(got, want) ? t : null;
+}
 
 /** Emails a 6-digit sign-in code. Always moves on to the code page, so it can't reveal which emails have accounts. */
 export async function requestLoginCode(_: FormState, form: FormData): Promise<FormState> {
@@ -411,21 +433,29 @@ export async function requestLoginCode(_: FormState, form: FormData): Promise<Fo
     const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
     const requester = deviceHash(device);
     // Only while the account has fewer than LIVE_CODES live codes from other browsers: past that, nothing is stored or sent.
-    const saved = await q.run(
-      `INSERT INTO sign_in_codes (user_id, requester, code_hash, attempts, expires_at, created_at)
-       SELECT ?, ?, ?, 0, ?, ? WHERE (SELECT COUNT(*) FROM sign_in_codes WHERE user_id = ? AND requester <> ? AND expires_at > ?) < ?
-       ON CONFLICT (user_id, requester) DO UPDATE SET code_hash = excluded.code_hash, attempts = 0, expires_at = excluded.expires_at, created_at = excluded.created_at`,
-      user.id,
-      requester,
-      codeHash(user.id, code),
-      now() + CODE_MS,
-      now(),
-      user.id,
-      requester,
-      now(),
-      LIVE_CODES,
-    );
-    if (!saved.changes) return;
+    // The account's row is locked for the count and the write, so requests at the same moment can't overshoot the cap.
+    const saved = await q.tx(async (db) => {
+      await db.get("SELECT id FROM users WHERE id = ? FOR UPDATE", user.id);
+      return db.run(
+        `INSERT INTO sign_in_codes (user_id, requester, code_hash, attempts, expires_at, created_at)
+         SELECT ?, ?, ?, 0, ?, ? WHERE (SELECT COUNT(*) FROM sign_in_codes WHERE user_id = ? AND requester <> ? AND expires_at > ?) < ?
+         ON CONFLICT (user_id, requester) DO UPDATE SET code_hash = excluded.code_hash, attempts = 0, expires_at = excluded.expires_at, created_at = excluded.created_at`,
+        user.id,
+        requester,
+        codeHash(user.id, code),
+        now() + CODE_MS,
+        now(),
+        user.id,
+        requester,
+        now(),
+        LIVE_CODES,
+      );
+    });
+    if (!saved.changes) {
+      // Shown on Admin → Security: someone may be keeping this account's codes full.
+      await record("login_code_full", String(user.id));
+      return;
+    }
     await sendMail({
       reserved: true,
       userId: user.id,
@@ -439,6 +469,7 @@ export async function requestLoginCode(_: FormState, form: FormData): Promise<Fo
   const cookie = { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: CODE_MS / 1000 } as const;
   jar.set(CODE_EMAIL, email, cookie);
   jar.set(CODE_DEVICE, device, cookie);
+  jar.set(CODE_PASS, makePass(email, device), cookie);
   redirect("/login/code/enter");
 }
 
@@ -447,18 +478,20 @@ export async function verifyLoginCode(_: FormState, form: FormData): Promise<For
   const jar = await cookies();
   const email = jar.get(CODE_EMAIL)?.value ?? "";
   const device = jar.get(CODE_DEVICE)?.value ?? "";
-  if (!email || !DEVICE.test(device)) return { error: "That took too long. Ask for a new code." };
+  // Nothing is counted until the cookies prove this browser asked for a code for this email in the last 10 minutes; a
+  // hand-set or old pair gets the same answer as a timed-out one, whether or not the email has an account.
+  if (email.length > 200 || !EMAIL.test(email) || !DEVICE.test(device)) return { error: CODE_TOO_LONG };
+  const pass = passTime(jar.get(CODE_PASS)?.value ?? "", email, device);
+  if (pass === null) return { error: CODE_TOO_LONG };
   const code = String(form.get("code") || "").replace(/\D/g, "").slice(0, 6);
+  if ((await claim("login_code_verify_ip", await requestIp(), CODE_TRIES_PER_IP, HOUR)) === null) return { error: CODE_TRIES_IP_PAUSED };
+  // Five tries per code request in this browser, account or not: more needs another request, which meets the human check.
+  const thisPass = crypto.createHash("sha256").update(`${email}|${device}|${pass}`).digest("hex");
+  if ((await claim("login_code_guess_pass", thisPass, CODE_TRIES, HOUR)) === null) return { error: CODE_FAILED };
   // This try takes its place in the email's hourly count before anything is compared, and is handed back if it's refused
   // here or turns out right, so parallel guesses from many browsers can't all slip under the cap.
-  const guess = await q.get<{ id: number }>("INSERT INTO rate_events (bucket, key, created_at) VALUES (?,?,?) RETURNING id", "login_code_guess", email, now());
-  const handBack = async () => {
-    if (guess) await q.run("DELETE FROM rate_events WHERE id = ?", guess.id);
-  };
-  if ((await recentCount("login_code_guess", email, HOUR)) > CODE_GUESSES_AN_HOUR) {
-    await handBack();
-    return { error: CODES_PAUSED };
-  }
+  const guess = await claim("login_code_guess", email, CODE_GUESSES_AN_HOUR, HOUR);
+  if (guess === null) return { error: CODES_PAUSED };
   const user = await q.get<{ id: number; suspended_at: number | null; email_verified_at: number | null }>("SELECT id, suspended_at, email_verified_at FROM users WHERE email = ?", email);
   // Each try is counted before the code is compared, in one statement, so parallel guesses can't all slip in at once.
   // Run for a missing account too (it matches nothing), so the time taken doesn't tell the two apart.
@@ -474,10 +507,11 @@ export async function verifyLoginCode(_: FormState, form: FormData): Promise<For
   // Used once: deleting it is what makes the code single-use.
   const used = await q.run("DELETE FROM sign_in_codes WHERE user_id = ? AND requester = ? AND code_hash = ?", user.id, deviceHash(device), row.code_hash);
   if (!used.changes) return { error: CODE_FAILED };
-  await handBack();
+  await handBack(guess);
   if (user.suspended_at) return { error: "This account is suspended. To appeal, go to the Contact page and choose Suspension appeal." };
   jar.delete(CODE_EMAIL);
   jar.delete(CODE_DEVICE);
+  jar.delete(CODE_PASS);
   // Receiving the code proves the address is theirs. The account was never confirmed, so whoever created it may not be
   // this person (someone can sign up with another's email and wait). Reset what the creator set up: sign out every
   // other session, replace the password with an unusable one, turn off two-factor and remove any passkeys. The owner sets their own.

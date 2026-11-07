@@ -114,6 +114,23 @@ test("M4: requests for one address sent all at once from many connections can't 
   assert.equal(kept, through);
 });
 
+test("refused for one address, a connection keeps its share for others", async () => {
+  const { emailRequestBlocked } = await import("../src/lib/email-request-limits");
+  const { q } = await import("../src/lib/db");
+  const form = new FormData();
+  const ip = "10.5.0.1";
+  for (let i = 0; i < 8; i++) await emailRequestBlocked("reset", "one-address@audit.io", ip, form); // 3 allowed, 5 refused
+  const used = Number((await q.get<{ n: number }>("SELECT COUNT(*) AS n FROM rate_events WHERE bucket = 'reset_ip' AND key = ?", ip))!.n);
+  assert.equal(used, 3, "only the requests that went through count against the connection");
+  assert.equal(await emailRequestBlocked("reset", "another@audit.io", ip, form), null);
+});
+
+test("M5: two-step tries are counted per account only", async () => {
+  const { q } = await import("../src/lib/db");
+  const n = Number((await q.get<{ n: number }>("SELECT COUNT(*) AS n FROM rate_events WHERE bucket IN ('twofa_fail_ip', 'twofa_fail_email')"))!.n);
+  assert.equal(n, 0, "no per-connection or per-email rows nobody reads");
+});
+
 test("M5: a password reset or change ends the two-step hold", async () => {
   const { q } = await import("../src/lib/db");
   const { guardTwoStep } = await import("../src/lib/two-step-limits");
