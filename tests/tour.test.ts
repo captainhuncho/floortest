@@ -48,7 +48,7 @@ test("the tour: five steps with a real picture each, ending on Share your link, 
 
 test("the tour opens once per person, never in an admin's view, and closing it marks it seen", async () => {
   const floor = read("../src/app/dashboard/floor/page.tsx");
-  assert.match(floor, /q\.get<\{ t: number \| null \}>\("SELECT tour_seen_at AS t FROM users WHERE id = \?", user\.actor_id\)\.catch\(\(\) => \(\{ t: 1 \}\)\),\n  \]\);/, "the person's own row, read with the rest; a failed read counts as seen");
+  assert.match(floor, /q\.get<\{ t: number \| null \}>\("SELECT tour_seen_at AS t FROM users WHERE id = \?", user\.actor_id\)\.catch\(\(e\) => \{[^}]*console\.error\("\[floor\] tour read failed", e\);\s*return \{ t: 1 \};\s*\}\),\n  \]\);/, "the person's own row, read with the rest; a failed read is logged and counts as seen");
   assert.match(floor, /const tourDue = !view && !tourSeen\?\.t;/);
   assert.match(floor, /\{tourDue && <FirstVisitTour tip=\{tourTip\(user\.kind\)\} \/>\}/);
   const desk = read("../src/app/dashboard/actions/desk.ts");

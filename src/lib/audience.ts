@@ -39,6 +39,12 @@ export const audienceQuery = (get: (k: string) => unknown) => ({
  * another release, a hand-edited one, or one over the length limit) matches nobody rather than falling to "any", so a
  * stale announcement form can never reach everyone. `nobody` (sent by the release before this one) can only narrow.
  */
+/**
+ * A reader for a form or query string that joins repeated keys (?plan=pro&plan=team is "pro,team"), as the pages read
+ * them, so a doubled filter reads as nobody instead of taking the first value. Used by the publish action and the CSV.
+ */
+export const readJoined = (src: { getAll(k: string): unknown[] }) => (k: string) => src.getAll(k).map(String).join(",");
+
 export function readAudience(get: (k: string) => unknown): Audience {
   const s = (k: string) => String(get(k) ?? "").trim();
   const plan = s("plan");

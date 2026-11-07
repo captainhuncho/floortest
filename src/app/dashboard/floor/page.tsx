@@ -66,7 +66,11 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
     planOf(user.plan),
     // The tour opens by itself once per person (their own row, so each teammate gets it).
     // A failed read counts as seen: the tour waits for the next visit and the Floor still loads.
-    q.get<{ t: number | null }>("SELECT tour_seen_at AS t FROM users WHERE id = ?", user.actor_id).catch(() => ({ t: 1 })),
+    q.get<{ t: number | null }>("SELECT tour_seen_at AS t FROM users WHERE id = ?", user.actor_id).catch((e) => {
+      // Logged so a failing read is seen; the tour then stays hidden rather than breaking the Floor.
+      console.error("[floor] tour read failed", e);
+      return { t: 1 };
+    }),
   ]);
   const welcome = !!sp.welcome;
   // Never in an admin's view.

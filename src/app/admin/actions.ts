@@ -11,7 +11,7 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { FEATURES, type Feature } from "@/lib/features";
 import { allPlans, FREE_PLAN } from "@/lib/plan-store";
-import { cleanTags } from "@/lib/audience";
+import { cleanTags, readJoined } from "@/lib/audience";
 import { saveAnnouncement } from "@/lib/announce";
 import { ADMIN_PLANS, BULK_MAX, bulkIds, SUSPEND_MAX } from "@/lib/admin-bulk";
 import type { OpsResult } from "@/lib/ops-result";
@@ -852,7 +852,9 @@ export async function saveSwitch(feature: Feature, form: FormData) {
 export async function publishAnnouncement(form: FormData) {
   const a = await requireAdminAction("announcements");
   // Checked and saved in src/lib/announce.ts; a refusal writes nothing and emails nobody.
-  const saved = await saveAnnouncement(a.id, (k) => form.get(k));
+  // Repeated keys are joined, as the pages read them, so a doubled filter (plan=pro&plan=team) reads as nobody and is
+  // refused instead of publishing to the first value.
+  const saved = await saveAnnouncement(a.id, readJoined(form));
   if ("error" in saved) return fail(saved.error);
   const { title, body, href, label, list, people, subscribers } = saved;
   const email = !!list;
