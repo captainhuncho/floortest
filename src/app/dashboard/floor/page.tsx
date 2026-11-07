@@ -65,7 +65,8 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
     viewingAs(),
     planOf(user.plan),
     // The tour opens by itself once per person (their own row, so each teammate gets it).
-    q.get<{ t: number | null }>("SELECT tour_seen_at AS t FROM users WHERE id = ?", user.actor_id),
+    // A failed read counts as seen: the tour waits for the next visit and the Floor still loads.
+    q.get<{ t: number | null }>("SELECT tour_seen_at AS t FROM users WHERE id = ?", user.actor_id).catch(() => ({ t: 1 })),
   ]);
   const welcome = !!sp.welcome;
   // Never in an admin's view.

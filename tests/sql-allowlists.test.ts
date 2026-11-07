@@ -108,7 +108,7 @@ test("admin pages pass the filters on as sent, and an unreadable audience is nev
   assert.ok(publish.indexOf("sendMail(") > publish.indexOf('if ("error" in saved)'), "refused before any mail");
   const lib = read("../src/lib/announce.ts");
   const refuse = lib.indexOf("if (aud.nobody || aud.kind === UNKNOWN_KIND) return { error:");
-  const everyone = lib.indexOf("if (outside && !audienceIsEveryone(aud)) return { error:");
+  const everyone = lib.indexOf("if (reach.refused) return { error:");
   assert.ok(refuse > 0 && everyone > 0);
   for (const later of ["INSERT INTO announcements", "announcement_recipients", "newsletter_subscribers"])
     assert.ok(lib.indexOf(later) > Math.max(refuse, everyone), `refused before ${later}`);

@@ -74,7 +74,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
                     name: user.name,
                     handle: user.handle,
                     verified: user.identity_status === "verified",
-                    photo: user.cover_key ? `/api/cover/${encodeURIComponent(user.handle)}?v=${encodeURIComponent(user.cover_key)}` : null,
+                    // On a team's desk the teammate sees initials, not the desk owner's photo as if it were theirs.
+                    photo: user.cover_key && user.actor_id === user.id ? `/api/cover/${encodeURIComponent(user.handle)}?v=${encodeURIComponent(user.cover_key)}` : null,
                   }}
                   notices={notices}
                   lead={<FeedbackButton />}

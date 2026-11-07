@@ -10,7 +10,9 @@ export const runtime = "nodejs";
 export async function GET(req: Request) {
   const a = await requireAdminAction("super");
   const sp = new URL(req.url).searchParams;
-  const aud = readAudience((k) => sp.get(k));
+  // Repeated keys are joined, as the pages read them (?kind=a&kind=b is "a,b"), so a doubled filter reads as nobody here
+  // too instead of taking the first value.
+  const aud = readAudience((k) => sp.getAll(k).join(","));
   const w = audienceWhere(aud, Date.now(), true);
   // The same Security filter and search as the Users list, so the file is the list on screen (1 Nov: both were
   // dropped and "Password only" exported every account).
