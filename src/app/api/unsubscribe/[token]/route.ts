@@ -8,6 +8,6 @@ export async function POST(_req: Request, ctx: RouteContext<"/api/unsubscribe/[t
 }
 
 /** Someone opened the header link in a browser: show the confirm page instead of acting on a GET. */
-export async function GET(req: Request, ctx: RouteContext<"/api/unsubscribe/[token]">) {
+export async function GET(_req: Request, ctx: RouteContext<"/api/unsubscribe/[token]">) {
   return Response.redirect(new URL(`/unsubscribe/${encodeURIComponent((await ctx.params).token)}`, env.appUrl), 303);
 }

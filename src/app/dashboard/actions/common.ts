@@ -5,8 +5,6 @@ import { q } from "@/lib/db";
 
 export const done = () => revalidatePath("/dashboard", "layout");
 
-/** Postgres unique-violation, e.g. two people claiming the same link name at once. */
-export const isUniqueViolation = (e: unknown) => (e as { code?: string })?.code === "23505";
 
 export function ownCollection(userId: number, id: number) {
   if (!Number.isSafeInteger(id)) return Promise.resolve(undefined);

@@ -17,7 +17,7 @@ const SECONDARY =
  * (FeedbackAsk, lib/feedback-ask): its own question, and Not now (asks once more after 10 decisions) / Don't ask again
  * (closes it for good) instead of Cancel.
  */
-export function FeedbackForm({ ask = false, onClose, className = "" }: { ask?: boolean; onClose: () => void; className?: string }) {
+function FeedbackForm({ ask = false, onClose, className = "" }: { ask?: boolean; onClose: () => void; className?: string }) {
   const [kind, setKind] = useState("Idea");
   const [pending, start] = useTransition();
   const text = useRef<HTMLTextAreaElement>(null);
