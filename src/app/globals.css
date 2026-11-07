@@ -58,6 +58,31 @@
   --default-transition-timing-function: var(--ease-out);
 }
 
+/* shadcn/ui's colour names (components.json), pointed at FloorTest's own tokens, so a shadcn component wears the
+   FloorTest look and follows Day mode, System and keep-night with no extra rules. --color-card is FloorTest's already
+   and stays as it is. Tailwind's rounded-* scale, the fonts and the body styles are not touched: shadcn init would
+   have replaced them (and restyled every existing rounded-md), so its generated CSS was left out. */
+@theme inline {
+  --color-background: var(--color-ink);
+  --color-foreground: var(--color-bone);
+  --color-card-foreground: var(--color-bone);
+  --color-popover: var(--color-card);
+  --color-popover-foreground: var(--color-bone);
+  /* Lime fill with ink text at night; Day mode turns both (olive fill, near-white text), still readable. */
+  --color-primary: var(--color-lime);
+  --color-primary-foreground: var(--color-ink);
+  --color-secondary: var(--color-well);
+  --color-secondary-foreground: var(--color-bone);
+  --color-muted: var(--color-well);
+  --color-muted-foreground: var(--color-mute);
+  --color-accent: var(--color-ink-4);
+  --color-accent-foreground: var(--color-bone);
+  --color-destructive: var(--color-danger);
+  --color-border: var(--color-line);
+  --color-input: var(--color-field);
+  --color-ring: var(--color-lime);
+}
+
 /* The two downloaded fonts (app/fonts.ts, files in app/fonts/): the names the pages ask for, then a local fallback
    sized to match while the file loads (the same overrides next/font/google generated), so text doesn't jump. */
 :root {

@@ -7,7 +7,7 @@ What FloorTest is built on, so nobody guesses. Change a tool, service or limit â
 | Layer | Choice | Notes |
 |---|---|---|
 | Framework | Next.js 16 (App Router, server components, server actions), React 19, TypeScript | `src/app`; "use server" files export only async functions |
-| Styling | Tailwind CSS 4 (`@theme` tokens in `src/app/globals.css`) | design rules in 04 |
+| Styling | Tailwind CSS 4 (`@theme` tokens in `src/app/globals.css`); shadcn/ui set up (7 Nov, `components.json`, `cn` in `src/lib/utils.ts`, no components yet) | design rules in 04 |
 | Database | Postgres: **Neon** (London, AWS eu-west-2, next to the `lhr1` functions; measured 10 Oct: from Ghana requests enter Vercel at Cape Town `cpt1`, so each dynamic request is ~0.4 s round trip before any work, which is why pages preload what they can) in production; separate database for Preview builds; **PGlite** in `./data` locally | raw SQL via `q` helpers in `src/lib/db`; migrations in `src/lib/db/migrations.ts` (append-only, run by `vercel-build`) |
 | Files | **Cloudflare R2** (S3 API, private bucket `floortest-audio-eu`, Western Europe, since 11 Oct; previews use `floortest-audio-preview`); local disk in development. Recovery copy in a second bucket when `BACKUP_*` is set (`src/lib/vault.ts`) | audio, stems, covers, artwork; signed URLs; uploads go browser â†’ R2 directly |
 | Hosting | **Vercel**, region lhr1 (London); **Pro** since 14 Oct | `main` deploys production; `mobile-next` is the working branch |
