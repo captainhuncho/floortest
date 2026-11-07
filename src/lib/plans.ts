@@ -11,6 +11,9 @@ export const RESERVED_HANDLES = new Set([
   "subprocessors", "newsletter", "signed-out", "ops-login",
   // The visit counter's name for pages we don't serve, never a receiver's link.
   "other",
+  // The static folders the proxy skips (src/proxy.ts matcher): a link name there would get no proxy at all (Safety
+  // review of #476).
+  "auth", "brand", "icons", "motion", "tour", "fonts", "images",
 ]);
 
 /** Signal definitions. These are shown to receivers and senders, so they must stay strict. */

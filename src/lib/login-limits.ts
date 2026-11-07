@@ -1,5 +1,5 @@
 import "server-only";
-import { now, q } from "./db";
+import { now, q, type Queryable } from "./db";
 import { recentCount, record } from "./ratelimit";
 import { botCheckKey } from "./turnstile";
 
@@ -41,8 +41,11 @@ const HOLD_BUCKETS = (kind: SignIn) => HOLD_STEPS.map((_, step) => holdBucket(ki
 
 /** A hold in force: when it ends, and whether it's the last step (which offers "Report this"). */
 export type Hold = { until: number; final: boolean };
-/** Which sign-in counts the holds: the app's (wrong passwords) or ops' (failed sign-ins, password or two-step code); each on its own. */
-export type SignIn = "login" | "ops";
+/**
+ * Which sign-in counts the holds: the app's (wrong passwords), ops' (failed sign-ins, password or two-step code), or the
+ * two-step code after a right password on the website, the app and ops (per account, lib/two-step-limits); each on its own.
+ */
+export type SignIn = "login" | "ops" | "twofa";
 
 /**
  * This connection's newest hold for the email, unless a right password came after it (which starts the steps over),
@@ -98,7 +101,10 @@ export type Try = { ids: number[]; hold: Hold | null };
 export async function claimTry(kind: SignIn, email: string, ip: string): Promise<Try> {
   const key = pair(email, ip);
   const ids: number[] = [];
-  for (const [bucket, k] of [[`${kind}_fail_ip`, ip], [`${kind}_fail_email`, email], [`${kind}_fail_pair`, key]]) {
+  // Two-step holds are per account only (its "connection" is always "*"): the per-connection and per-email rows would
+  // never be read, so only the pair is counted.
+  const buckets = kind === "twofa" ? [[`${kind}_fail_pair`, key]] : [[`${kind}_fail_ip`, ip], [`${kind}_fail_email`, email], [`${kind}_fail_pair`, key]];
+  for (const [bucket, k] of buckets) {
     const row = await q.get<{ id: number }>("INSERT INTO rate_events (bucket, key, created_at) VALUES (?,?,?) RETURNING id", bucket, k, now());
     if (row) ids.push(row.id);
   }
@@ -125,6 +131,14 @@ export async function afterWrongPassword(kind: SignIn, email: string, ip: string
  */
 export const holdAnswer = (hold: Hold, kind: SignIn = "login") => {
   const holdLeft = Math.max(0, hold.until - now());
+  if (kind === "twofa")
+    return {
+      error: hold.final
+        ? "Too many wrong codes, so two-step sign-in for this account is paused for 24 hours."
+        : "Too many wrong codes. Try again when the timer ends.",
+      holdLeft,
+      holdFinal: false,
+    };
   if (kind === "ops")
     return {
       error: hold.final
@@ -141,6 +155,19 @@ export const holdAnswer = (hold: Hold, kind: SignIn = "login") => {
     holdFinal: hold.final,
   };
 };
+
+/** Two-step holds are per account, from any device (lib/two-step-limits): the "email" and "connection" they're keyed on. */
+export const twoStepKey = (userId: number) => `user:${userId}`;
+export const TWO_STEP_ANY = "*";
+
+/**
+ * Ends the account's two-step hold and starts its count over, as a right answer would (Safety, 7 Nov). Called whenever
+ * every way in is ended (a password reset or change, sign out everywhere, suspension: revokeAllSessions), so the owner
+ * who changes the password after the "your password was used" email isn't kept waiting for up to 24 hours.
+ */
+export async function endTwoStepHold(userId: number, db: Queryable = q) {
+  await record(`twofa_ok_pair`, pair(twoStepKey(userId), TWO_STEP_ANY), db);
+}
 
 /** A right password from this connection: its own claimed place is handed back, and the wrong tries and holds before it no longer count. */
 export async function afterRightPassword(kind: SignIn, email: string, ip: string, claimed?: Try) {
