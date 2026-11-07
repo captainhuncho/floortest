@@ -99,14 +99,16 @@ test("M3: wrong, expired, used, other browser's and no-account codes all get the
 
 test("wrong codes from every browser together pause code sign-in for that email, account or not", async () => {
   const { q } = await load();
+  const { EMAIL_CEILING } = await import("../src/lib/email-request-limits");
+  const CAP = 5 * EMAIL_CEILING; // five tries for each of the most requests an address can get in an hour
   for (const email of ["guessed@audit.io", "ghost@audit.io"]) {
     if (email.startsWith("guessed")) await person(email);
-    // Twenty wrong codes this hour from other browsers.
-    for (let i = 0; i < 20; i++) await q.run("INSERT INTO rate_events (bucket, key, created_at) VALUES ('login_code_guess', ?, ?)", email, Date.now());
+    // A full hour's wrong codes from other browsers.
+    for (let i = 0; i < CAP; i++) await q.run("INSERT INTO rate_events (bucket, key, created_at) VALUES ('login_code_guess', ?, ?)", email, Date.now());
     const jar: Jar = new Map();
     await askForCode(jar, email, null, "10.9.1.1");
     assert.match((await verify(jar, "111111"))?.error ?? "", /Too many wrong codes for this email/, `${email}: paused`);
-    assert.equal(Number((await q.get<{ n: number }>("SELECT COUNT(*) AS n FROM rate_events WHERE bucket = 'login_code_guess' AND key = ?", email))!.n), 20, "a refused try isn't counted");
+    assert.equal(await rows("login_code_guess", email), CAP, "a refused try isn't counted");
   }
 });
 
@@ -121,8 +123,10 @@ test("wrong codes sent all at once from many browsers never get more than the ca
   }
   // Five browsers, five tries each would be 25: all sent at once.
   await Promise.all(jars.flatMap((jar, i) => Array.from({ length: 5 }, () => verify(jar, "999999", `10.9.2.${i}`))));
+  // Each browser's request allows five, however many are sent at once.
   const counted = Number((await q.get<{ n: number }>("SELECT COUNT(*) AS n FROM rate_events WHERE bucket = 'login_code_guess' AND key = ?", "burst-codes@audit.io"))!.n);
-  assert.ok(counted <= 20, `at most 20 compared (${counted})`);
+  assert.ok(counted <= 25, `at most 25 compared (${counted})`);
+  assert.equal(Number((await q.get<{ n: number }>("SELECT COUNT(*) AS n FROM sign_in_codes WHERE user_id = ? AND attempts > 5", id))!.n), 0, "no code tried more than five times");
 });
 
 test("an account has at most five live codes, even when browsers ask at the same moment; a refusal shows on Admin Security", async () => {
@@ -154,24 +158,33 @@ test("hand-set or forged code cookies count nothing, account or not", async () =
   assert.equal(after, before, "no row written");
 });
 
-test("one connection that pauses code sign-in for one address can't also pause another", async () => {
+test("a few code requests and wrong tries from one connection never pause the owner's real code", async () => {
+  const id = await person("cheap-pause@audit.io");
   const ip = "10.9.6.1";
-  // Five code requests (this connection's limit for one address), five tries each.
-  for (let n = 0; n < 5; n++) {
+  // Four code requests, five wrong tries each (the attack Safety found in round 3).
+  for (let n = 0; n < 4; n++) {
     const jar: Jar = new Map();
-    await askForCode(jar, "first-target@audit.io", null, ip);
+    await askForCode(jar, "cheap-pause@audit.io", null, ip);
     for (let i = 0; i < 5; i++) await verify(jar, "000000", ip);
   }
-  assert.equal(await rows("login_code_guess", "first-target@audit.io"), 20, "the first address is at its cap");
-  // The same connection turns to a second address: its tries across all emails run out first.
-  const jar: Jar = new Map();
-  await askForCode(jar, "second-target@audit.io", null, ip);
-  for (let i = 0; i < 5; i++) await verify(jar, "000000", ip);
-  assert.ok((await rows("login_code_guess", "second-target@audit.io")) <= 5, "only a handful counted");
-  // The second address's owner, elsewhere, isn't paused.
+  // The owner, elsewhere, asks for a code and types it: signed in.
   const owner: Jar = new Map();
-  await askForCode(owner, "second-target@audit.io", null, "10.9.6.2");
-  assert.match((await verify(owner, "000000", "10.9.6.2"))?.error ?? "", FAILED, "an ordinary wrong-code answer, not a pause");
+  const code = await askForCode(owner, "cheap-pause@audit.io", id, "10.9.6.2");
+  assert.equal(await verify(owner, code, "10.9.6.2"), undefined, "the right code signs in, no pause");
+});
+
+test("one connection runs out of tries across all emails long before any address pauses", async () => {
+  const ip = "10.9.8.1";
+  for (const email of ["first-target@audit.io", "second-target@audit.io"])
+    for (let n = 0; n < 5; n++) {
+      const jar: Jar = new Map();
+      await askForCode(jar, email, null, ip);
+      for (let i = 0; i < 5; i++) await verify(jar, "000000", ip);
+    }
+  assert.equal((await rows("login_code_guess", "first-target@audit.io")) + (await rows("login_code_guess", "second-target@audit.io")), 30, "30 tries from the connection in all");
+  const owner: Jar = new Map();
+  await askForCode(owner, "second-target@audit.io", null, "10.9.8.2");
+  assert.match((await verify(owner, "000000", "10.9.8.2"))?.error ?? "", FAILED, "an ordinary wrong-code answer, not a pause");
 });
 
 test("each code request gives five tries in that browser, account or not", async () => {

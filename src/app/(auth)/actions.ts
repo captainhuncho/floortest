@@ -37,7 +37,7 @@ import { claimPersonalInvite, resolveInvite } from "@/lib/invites";
 import { revokeAllSessions } from "@/lib/sessions";
 import { checkPasskey, hasPasskey, secondStepOptions, signInOptions } from "@/lib/passkeys";
 import { guardTwoStep } from "@/lib/two-step-limits";
-import { emailRequestBlocked } from "@/lib/email-request-limits";
+import { EMAIL_CEILING, emailRequestBlocked } from "@/lib/email-request-limits";
 
 const CHALLENGE = "floortest_2fa";
 /** Set by a share link: where to land after signing in or up (see `safeNext`). */
@@ -387,8 +387,10 @@ const DEVICE = /^[A-Za-z0-9_-]{32}$/;
  * Wrong codes for one email in an hour, from every browser together (Safety, 7 Nov): each browser's code has its own five
  * tries, so without this a guesser could ask for code after code. Past it, code sign-in for that email pauses; password
  * and passkey still work. Keyed on the email, not the account, so it looks the same whether or not there is one.
+ * Set to five tries for each of the most requests one address can get in an hour (owner, 7 Nov), so pausing it costs a
+ * stranger as many requests and solved human checks as the request ceiling itself, never a handful.
  */
-const CODE_GUESSES_AN_HOUR = 20;
+const CODE_GUESSES_AN_HOUR = CODE_TRIES * EMAIL_CEILING;
 const CODES_PAUSED = "Too many wrong codes for this email. Try again in an hour, reset your password, or log in with your password or a passkey.";
 /** Code tries from one connection in an hour, for every email together: one connection can't pause code sign-in for many addresses. */
 const CODE_TRIES_PER_IP = 30;
@@ -409,7 +411,7 @@ const makePass = (email: string, device: string, t = now()) => `${t}.${passMac(e
 function passTime(pass: string, email: string, device: string): number | null {
   const [ts, mac] = pass.split(".");
   const t = Number(ts);
-  if (!Number.isSafeInteger(t) || !mac || now() - t > CODE_MS || t > now() + 60_000) return null;
+  if (!/^\d{13}$/.test(ts ?? "") || !mac || now() - t > CODE_MS || t > now() + 60_000) return null;
   const want = Buffer.from(passMac(email, device, t));
   const got = Buffer.from(mac);
   return got.length === want.length && crypto.timingSafeEqual(got, want) ? t : null;
