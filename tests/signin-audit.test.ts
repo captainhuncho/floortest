@@ -47,6 +47,8 @@ test("M5: wrong two-step codes get growing holds per account, counted before the
     "INSERT INTO users (email, password_hash, name, handle, plan, tz, email_verified_at, created_at) VALUES ('twostep@audit.io', 'h', 'Two Step', 'twostepaudit', 'free', 'UTC', ?, ?) RETURNING id",
     now, now,
   ))!.id;
+  // Wrong-password alerts have already used up the day's share for this account: the two-step warning has its own.
+  for (let i = 0; i < 3; i++) await q.run("INSERT INTO rate_events (bucket, key, created_at) VALUES ('login_alert', ?, ?)", String(id), now);
   // Right answers hand their place back: many in a row never start a hold.
   for (let i = 0; i < 8; i++) assert.ok("result" in (await guardTwoStep(id, async () => true)), "a right code goes through");
   // A right answer clears the round from its millisecond on: step past it, as any real next try would.
@@ -92,27 +94,41 @@ test("M5: the website, the app and ops all go through the same two-step holds", 
   }
 });
 
-test("M2 and M4: forgot password and sign-in codes look up and email the account after the answer, codes per browser", () => {
-  for (const name of ["requestPasswordReset", "requestLoginCode"]) {
-    const fn = body(name);
-    assert.match(fn, /emailRequestBlocked\(/, `${name} uses the shared limits`);
-    const lookup = fn.indexOf("FROM users WHERE email");
-    assert.ok(lookup > fn.indexOf("afterResponse(async"), `${name} looks the address up only after the answer`);
-    assert.match(fn, /suspended_at IS NULL/, `${name} sends nothing to a suspended account`);
-  }
-  assert.match(body("requestLoginCode"), /INSERT INTO sign_in_codes \(user_id, requester,/);
-  assert.match(body("requestLoginCode"), /ON CONFLICT \(user_id, requester\)/, "a new code replaces only this browser's");
-  assert.doesNotMatch(ACTIONS, /login_codes/, "the old one-per-account table isn't written");
-  // Signing up with an email that has an account: the heads-up goes after the answer.
+// The forms themselves (M2, M3, codes per browser, the caps on wrong and live codes) are run end to end in
+// tests/signin-flows.test.ts. Two things a run can't show: the old one-per-account table isn't written, and the sign-up
+// heads-up goes after the answer.
+test("M2 and M4: the old code table isn't written, and the sign-up heads-up goes after the answer", () => {
+  assert.doesNotMatch(body("requestLoginCode"), /login_codes/, "the old one-per-account table isn't written");
   assert.match(ACTIONS, /if \(owner\) \{\s*afterResponse\(/);
 });
 
-test("M3: a sign-in code gets one answer whether it's wrong, used up, expired or for no account", () => {
-  const fn = body("verifyLoginCode");
-  assert.doesNotMatch(fn, /has expired|Too many wrong codes|didn't work\. Check/, "no answer of its own for each case");
-  assert.equal(fn.match(/error: CODE_FAILED/g)?.length, 2, "a wrong or missing code, and a code used at the same moment");
-  assert.match(fn, /user\?\.id \?\? 0/, "the count runs for a missing account too, so timing doesn't tell");
-  assert.match(fn, /AND requester = \?/, "only this browser's code");
+test("M4: requests for one address sent all at once from many connections can't all slip under the per-address stop", async () => {
+  const { emailRequestBlocked, EMAIL_HARD } = await import("../src/lib/email-request-limits");
+  const form = new FormData();
+  const all = await Promise.all(Array.from({ length: 40 }, (_, i) => emailRequestBlocked("login_code", "rushed@audit.io", `10.2.0.${i}`, form)));
+  const through = all.filter((r) => r === null).length;
+  assert.ok(through <= EMAIL_HARD, `at most ${EMAIL_HARD} through (${through})`);
+  // Refused requests hand their place back, so the address isn't held longer than its real requests.
+  const { q } = await import("../src/lib/db");
+  const kept = Number((await q.get<{ n: number }>("SELECT COUNT(*) AS n FROM rate_events WHERE bucket = 'login_code_email' AND key = 'rushed@audit.io'"))!.n);
+  assert.equal(kept, through);
+});
+
+test("M5: a password reset or change ends the two-step hold", async () => {
+  const { q } = await import("../src/lib/db");
+  const { guardTwoStep } = await import("../src/lib/two-step-limits");
+  const { revokeAllSessions } = await import("../src/lib/sessions");
+  const t = Date.now();
+  const id = (await q.get<{ id: number }>(
+    "INSERT INTO users (email, password_hash, name, handle, plan, tz, email_verified_at, created_at) VALUES ('held@audit.io', 'h', 'Held', 'heldaudit', 'free', 'UTC', ?, ?) RETURNING id",
+    t, t,
+  ))!.id;
+  for (let i = 0; i < 5; i++) await guardTwoStep(id, async () => false);
+  assert.ok("held" in (await guardTwoStep(id, async () => true)), "held after five wrong codes");
+  await new Promise((r) => setTimeout(r, 5));
+  await revokeAllSessions(id); // what a reset or a change of password runs
+  await new Promise((r) => setTimeout(r, 5));
+  assert.ok("result" in (await guardTwoStep(id, async () => true)), "the owner can sign in straight after");
 });
 
 test("two browsers can each hold a sign-in code for one account", async () => {
@@ -154,4 +170,6 @@ test("error reports never carry the proxy's read mark", async () => {
   const event = { request: { url: "https://floortest.app/dashboard", headers: { "X-Ft-Read": "mark", "user-agent": "x" } } };
   const out = (sentryOptions.beforeSend as (e: unknown) => { request: { headers: Record<string, string> } })(event);
   assert.deepEqual(out.request.headers, { "user-agent": "x" });
+  const span = (sentryOptions.beforeSendSpan as (s: unknown) => { data: Record<string, string> })({ data: { "http.request.header.x_ft_read": "mark", "http.method": "GET" } });
+  assert.deepEqual(span.data, { "http.method": "GET" }, "nor do tracing spans");
 });

@@ -42,6 +42,7 @@ import { normalEmail } from "@/lib/email-normal";
 import { deleteRevokedInvite, GATE_CODE_MIN_LENGTH, inviteExpiry, restoreRevokedInvite } from "@/lib/invites";
 import { receiptWhere } from "@/lib/receipt-token";
 import { safeFailure } from "@/lib/safe-failure";
+import { revokeAllSessions } from "@/lib/sessions";
 
 const refresh = () => revalidatePath("/admin", "layout");
 const done = (m: string) => flash(m);
@@ -132,7 +133,8 @@ async function suspendOne(a: Awaited<ReturnType<typeof requireAdminAction>>, use
   const r = await q.tx(async (db) => {
     const r = await db.run("UPDATE users SET suspended_at = ?, suspended_reason = ? WHERE id = ? AND suspended_at IS NULL", now(), why, u.id);
     if (!r.changes) return r;
-    await db.run("DELETE FROM sessions WHERE user_id = ?", u.id);
+    // Every way in ends: sessions, ops sessions, unused reset links and emailed sign-in codes (Safety, 7 Nov).
+    await revokeAllSessions(u.id, { db });
     await db.run("INSERT INTO account_actions (user_id, kind, reason, admin_id, created_at) VALUES (?,?,?,?,?)", u.id, "suspended", why, a.id, now());
     await db.run("INSERT INTO admin_log (admin_id, action, target, detail, created_at) VALUES (?,?,?,?,?)", a.id, "suspended", `@${u.handle}`, why, now());
     return r;

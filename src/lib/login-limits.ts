@@ -1,5 +1,5 @@
 import "server-only";
-import { now, q } from "./db";
+import { now, q, type Queryable } from "./db";
 import { recentCount, record } from "./ratelimit";
 import { botCheckKey } from "./turnstile";
 
@@ -152,6 +152,19 @@ export const holdAnswer = (hold: Hold, kind: SignIn = "login") => {
     holdFinal: hold.final,
   };
 };
+
+/** Two-step holds are per account, from any device (lib/two-step-limits): the "email" and "connection" they're keyed on. */
+export const twoStepKey = (userId: number) => `user:${userId}`;
+export const TWO_STEP_ANY = "*";
+
+/**
+ * Ends the account's two-step hold and starts its count over, as a right answer would (Safety, 7 Nov). Called whenever
+ * every way in is ended (a password reset or change, sign out everywhere, suspension: revokeAllSessions), so the owner
+ * who changes the password after the "your password was used" email isn't kept waiting for up to 24 hours.
+ */
+export async function endTwoStepHold(userId: number, db: Queryable = q) {
+  await record(`twofa_ok_pair`, pair(twoStepKey(userId), TWO_STEP_ANY), db);
+}
 
 /** A right password from this connection: its own claimed place is handed back, and the wrong tries and holds before it no longer count. */
 export async function afterRightPassword(kind: SignIn, email: string, ip: string, claimed?: Try) {

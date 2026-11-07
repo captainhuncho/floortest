@@ -24,8 +24,11 @@ export function alertGuessedAccount(email: string, hold: Hold, kind: SignIn = "l
     // An ops alert goes only to people on the ops team: a customer's email typed into ops sign-in tells them nothing.
     if (kind === "ops" && !(await opsAccessFor({ id: u.id, email: u.email }))) return;
     const id = String(u.id);
-    if ((await recentCount("login_alert", id, DAY)) >= PER_ACCOUNT_A_DAY || !(await allow("login_alert", id, 1, HOUR))) return;
-    if (!(await allow("login_alert_all", "all", ALL_A_DAY, DAY))) return;
+    // The "your password was used" alert has its own share (Safety, 7 Nov): wrong passwords are cheap to cause and must
+    // never use up the one warning that says the password is known.
+    const pool = kind === "twofa" ? "twofa_alert" : "login_alert";
+    if ((await recentCount(pool, id, DAY)) >= PER_ACCOUNT_A_DAY || !(await allow(pool, id, 1, HOUR))) return;
+    if (!(await allow(`${pool}_all`, "all", ALL_A_DAY, DAY))) return;
     const zone = { timeZone: u.tz || "UTC" };
     const when = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", ...zone }).format(now());
     const until = new Intl.DateTimeFormat("en-GB", { dateStyle: hold.final ? "medium" : undefined, timeStyle: "short", ...zone }).format(hold.until);

@@ -2,6 +2,7 @@ import "server-only";
 import crypto from "node:crypto";
 import { now, q, type Queryable } from "./db";
 import { env } from "./env";
+import { endTwoStepHold } from "./login-limits";
 
 /**
  * The browser session cookie. On the live site it carries the `__Host-` prefix: the browser then sends it only over
@@ -24,7 +25,8 @@ export function readSessionToken(jar: { get(name: string): { value: string } | u
  * Ends every way into the account after its password changes or is reset: every browser and app session (except
  * `keep`, the browser doing the change, when given), every ops (admin area) session, and any reset link not yet used,
  * so an old emailed link can't set the password again. Also any emailed sign-in code, half-finished two-step sign-in
- * and pending email change (owner, 5 Nov: nothing emailed before the change keeps working after it). Pass `db` to run
+ * and pending email change (owner, 5 Nov: nothing emailed before the change keeps working after it). It also ends any
+ * two-step hold, so the owner who changes the password after a warning isn't held for up to 24 hours. Pass `db` to run
  * inside the caller's transaction.
  */
 export async function revokeAllSessions(userId: number, o: { keep?: string | null; db?: Queryable } = {}) {
@@ -35,6 +37,7 @@ export async function revokeAllSessions(userId: number, o: { keep?: string | nul
   await db.run("DELETE FROM login_codes WHERE user_id = ?", userId);
   await db.run("DELETE FROM sign_in_codes WHERE user_id = ?", userId);
   await db.run("DELETE FROM two_step_tickets WHERE user_id = ?", userId);
+  await endTwoStepHold(userId, db);
   await db.run("UPDATE users SET pending_email = NULL, pending_email_token = NULL, pending_email_at = NULL WHERE id = ? AND pending_email_token IS NOT NULL", userId);
   return ended.changes + ops.changes;
 }

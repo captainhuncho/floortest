@@ -31,3 +31,22 @@ test("bot check down: forms that email strangers refuse, sign-in still lets peop
     globalThis.fetch = real;
   }
 });
+
+test("bot check down: emailed codes and reset links for one address still stop at the hard limit", async () => {
+  const { q } = await import("../src/lib/db");
+  const { emailRequestBlocked, EMAIL_HARD } = await import("../src/lib/email-request-limits");
+  await q.run("INSERT INTO switches (key, on_, updated_at) VALUES ('bot_check', 1, ?) ON CONFLICT (key) DO UPDATE SET on_ = 1", Date.now());
+  const real = globalThis.fetch;
+  try {
+    globalThis.fetch = (async () => {
+      throw new TypeError("fetch failed");
+    }) as typeof fetch;
+    const form = new FormData();
+    form.set("cf-turnstile-response", "tok");
+    let sent = 0;
+    for (let i = 0; i < EMAIL_HARD + 5; i++) if (!(await emailRequestBlocked("reset", "outage@audit.io", `10.3.0.${i}`, form))) sent++;
+    assert.equal(sent, EMAIL_HARD, "the check let them through unchecked, so the hard stop applies");
+  } finally {
+    globalThis.fetch = real;
+  }
+});

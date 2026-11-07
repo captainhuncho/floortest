@@ -1,12 +1,10 @@
 import "server-only";
 import { q } from "./db";
 import { record } from "./ratelimit";
-import { afterRightPassword, afterWrongPassword, claimTry, holdAnswer, passwordHold } from "./login-limits";
+import { afterRightPassword, afterWrongPassword, claimTry, holdAnswer, passwordHold, twoStepKey as who, TWO_STEP_ANY as ANY } from "./login-limits";
 import { alertGuessedAccount } from "./login-alert";
 
-/** Counted per account, from any device: only someone with the right password gets this far. */
-const who = (userId: number) => `user:${userId}`;
-const ANY = "*";
+// Counted per account, from any device: only someone with the right password gets this far.
 
 export type TwoStepHeld = ReturnType<typeof holdAnswer>;
 

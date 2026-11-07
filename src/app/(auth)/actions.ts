@@ -383,6 +383,15 @@ const CODE_FAILED = "That code didn't work or has expired. Check the latest emai
 const codeHash = (userId: number, code: string) => crypto.createHmac("sha256", env.secret).update(`${userId}:${code}`).digest("hex");
 const deviceHash = (device: string) => crypto.createHash("sha256").update(device).digest("hex");
 const DEVICE = /^[A-Za-z0-9_-]{32}$/;
+/**
+ * Wrong codes for one email in an hour, from every browser together (Safety, 7 Nov): each browser's code has its own five
+ * tries, so without this a guesser could ask for code after code. Past it, code sign-in for that email pauses; password
+ * and passkey still work. Keyed on the email, not the account, so it looks the same whether or not there is one.
+ */
+const CODE_GUESSES_AN_HOUR = 20;
+const CODES_PAUSED = "Too many wrong codes for this email. Try again in an hour, or log in with your password or a passkey.";
+/** Live codes an account can have at once, across browsers. A new browser past it gets none; older ones are never replaced. */
+const LIVE_CODES = 5;
 
 /** Emails a 6-digit sign-in code. Always moves on to the code page, so it can't reveal which emails have accounts. */
 export async function requestLoginCode(_: FormState, form: FormData): Promise<FormState> {
@@ -400,15 +409,23 @@ export async function requestLoginCode(_: FormState, form: FormData): Promise<Fo
     const user = await q.get<{ id: number; name: string }>("SELECT id, name FROM users WHERE email = ? AND suspended_at IS NULL", email);
     if (!user || !(await accountEmailAllowed())) return;
     const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
-    await q.run(
-      `INSERT INTO sign_in_codes (user_id, requester, code_hash, attempts, expires_at, created_at) VALUES (?,?,?,0,?,?)
+    const requester = deviceHash(device);
+    // Only while the account has fewer than LIVE_CODES live codes from other browsers: past that, nothing is stored or sent.
+    const saved = await q.run(
+      `INSERT INTO sign_in_codes (user_id, requester, code_hash, attempts, expires_at, created_at)
+       SELECT ?, ?, ?, 0, ?, ? WHERE (SELECT COUNT(*) FROM sign_in_codes WHERE user_id = ? AND requester <> ? AND expires_at > ?) < ?
        ON CONFLICT (user_id, requester) DO UPDATE SET code_hash = excluded.code_hash, attempts = 0, expires_at = excluded.expires_at, created_at = excluded.created_at`,
       user.id,
-      deviceHash(device),
+      requester,
       codeHash(user.id, code),
       now() + CODE_MS,
       now(),
+      user.id,
+      requester,
+      now(),
+      LIVE_CODES,
     );
+    if (!saved.changes) return;
     await sendMail({
       reserved: true,
       userId: user.id,
@@ -432,6 +449,16 @@ export async function verifyLoginCode(_: FormState, form: FormData): Promise<For
   const device = jar.get(CODE_DEVICE)?.value ?? "";
   if (!email || !DEVICE.test(device)) return { error: "That took too long. Ask for a new code." };
   const code = String(form.get("code") || "").replace(/\D/g, "").slice(0, 6);
+  // This try takes its place in the email's hourly count before anything is compared, and is handed back if it's refused
+  // here or turns out right, so parallel guesses from many browsers can't all slip under the cap.
+  const guess = await q.get<{ id: number }>("INSERT INTO rate_events (bucket, key, created_at) VALUES (?,?,?) RETURNING id", "login_code_guess", email, now());
+  const handBack = async () => {
+    if (guess) await q.run("DELETE FROM rate_events WHERE id = ?", guess.id);
+  };
+  if ((await recentCount("login_code_guess", email, HOUR)) > CODE_GUESSES_AN_HOUR) {
+    await handBack();
+    return { error: CODES_PAUSED };
+  }
   const user = await q.get<{ id: number; suspended_at: number | null; email_verified_at: number | null }>("SELECT id, suspended_at, email_verified_at FROM users WHERE email = ?", email);
   // Each try is counted before the code is compared, in one statement, so parallel guesses can't all slip in at once.
   // Run for a missing account too (it matches nothing), so the time taken doesn't tell the two apart.
@@ -447,6 +474,7 @@ export async function verifyLoginCode(_: FormState, form: FormData): Promise<For
   // Used once: deleting it is what makes the code single-use.
   const used = await q.run("DELETE FROM sign_in_codes WHERE user_id = ? AND requester = ? AND code_hash = ?", user.id, deviceHash(device), row.code_hash);
   if (!used.changes) return { error: CODE_FAILED };
+  await handBack();
   if (user.suspended_at) return { error: "This account is suspended. To appeal, go to the Contact page and choose Suspension appeal." };
   jar.delete(CODE_EMAIL);
   jar.delete(CODE_DEVICE);

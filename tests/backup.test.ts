@@ -33,7 +33,7 @@ test("backups are encrypted, hold no sessions, codes or IPs, blank live tokens, 
   assert.throws(() => openBackup(file, "wrong-key".padEnd(48, "q")), "unreadable without the key");
   const dump = JSON.parse(gunzipSync(openBackup(file, process.env.BACKUP_KEY!)).toString()) as { tables: Record<string, Record<string, unknown>[]> };
 
-  for (const table of ["sessions", "admin_sessions", "link_sessions", "view_tickets", "login_codes", "sender_codes", "link_codes", "password_resets", "rate_events", "uploads"]) {
+  for (const table of ["sessions", "admin_sessions", "link_sessions", "view_tickets", "login_codes", "sign_in_codes", "sender_codes", "link_codes", "password_resets", "rate_events", "uploads"]) {
     assert.ok(SKIP.has(table));
     assert.equal(table in dump.tables, false, `${table} is not in the backup`);
   }

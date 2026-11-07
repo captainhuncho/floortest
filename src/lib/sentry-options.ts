@@ -22,6 +22,8 @@ const scrubSpan = <S,>(span: S): S => {
   const sp = span as any;
   if (typeof sp.description === "string") sp.description = redactUrl(sp.description);
   for (const k of ["url", "http.url", "url.full", "url.path", "http.target", "http.route"]) if (typeof sp.data?.[k] === "string") sp.data[k] = redactUrl(sp.data[k]);
+  // Tracing can copy request headers into span fields (e.g. http.request.header.x_ft_read): drop the read mark there too.
+  for (const k of Object.keys(sp.data ?? {})) if (/x[-_]ft[-_]read/i.test(k)) delete sp.data[k];
   return span;
 };
 /* eslint-enable @typescript-eslint/no-explicit-any */
