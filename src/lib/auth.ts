@@ -2,6 +2,7 @@ import { after } from "next/server";
 import { atLeast, type TeamRole } from "./account-members";
 import { refuseStaleChange, resolveDesk } from "./team-desk";
 import "server-only";
+import { isWriteRequest } from "./read-marker";
 import crypto from "node:crypto";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -140,13 +141,12 @@ const currentDesk = cache(async (): Promise<{ user: User; stale: boolean } | nul
 });
 
 /**
- * Whether this request can change something: the proxy marks every non-GET/HEAD request (src/proxy.ts WRITE_HEADER,
- * overwriting anything a client sends); Next's own Next-Action header counts too. A server action can arrive as a plain
- * form post without that header, so it alone isn't a safe test (Safety audit M1).
+ * Whether this request can change something: yes, unless the proxy marked it as a read (src/lib/read-marker.ts, an HMAC
+ * only the proxy can make, set on GET and HEAD only). A path the proxy skips, or a forged header, counts as a change.
+ * Next's own Next-Action header counts too (Safety audit M1).
  */
 async function isWrite() {
-  const h = await headers();
-  return h.get("x-ft-write") === "1" || !!h.get("next-action");
+  return isWriteRequest(await headers());
 }
 
 /** The signed-in person themselves, whatever desk they're working on. Memoised per request. */

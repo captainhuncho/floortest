@@ -220,6 +220,7 @@ export type EventRow = {
 };
 
 export async function logEvent(e: Omit<EventRow, "id" | "created_at">, db: Queryable = q) {
+  const viewing = await viewingActor(e.user_id);
   const r = await db.get<{ id: number }>(
     "INSERT INTO events (user_id, sender_id, track_id, type, detail, created_at, actor_id) VALUES (?,?,?,?,?,?,?) RETURNING id",
     e.user_id,
@@ -228,18 +229,25 @@ export async function logEvent(e: Omit<EventRow, "id" | "created_at">, db: Query
     e.type,
     e.detail,
     now(),
-    e.actor_id && e.actor_id !== e.user_id ? e.actor_id : null,
+    viewing ?? (e.actor_id && e.actor_id !== e.user_id ? e.actor_id : null),
   );
   return r!.id;
+}
+
+/** While an admin views an account (ops "View as"), activity is logged as theirs (src/lib/audit.ts viewingAdminFor). */
+async function viewingActor(userId: number) {
+  const { viewingAdminFor } = await import("../audit");
+  return viewingAdminFor(userId);
 }
 
 /** Several activity rows in one insert (a batch action), stamped with the same time. */
 export async function logEvents(rows: Omit<EventRow, "id" | "created_at">[], db: Queryable = q) {
   if (!rows.length) return;
   const at = now();
+  const viewing = await viewingActor(rows[0].user_id);
   await db.run(
     `INSERT INTO events (user_id, sender_id, track_id, type, detail, created_at, actor_id) VALUES ${rows.map(() => "(?,?,?,?,?,?,?)").join(",")}`,
-    ...rows.flatMap((e) => [e.user_id, e.sender_id, e.track_id, e.type, e.detail, at, e.actor_id && e.actor_id !== e.user_id ? e.actor_id : null]),
+    ...rows.flatMap((e) => [e.user_id, e.sender_id, e.track_id, e.type, e.detail, at, viewing ?? (e.actor_id && e.actor_id !== e.user_id ? e.actor_id : null)]),
   );
 }
 
