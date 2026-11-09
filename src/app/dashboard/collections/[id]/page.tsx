@@ -3,7 +3,7 @@ import { atLeast } from "@/lib/account-members";
 import { canCapCallouts } from "@/lib/desk";
 import { switchOn } from "@/lib/switches";
 import { notFound } from "next/navigation";
-import { requireUser } from "@/lib/auth";
+import { requireUser, viewingAs } from "@/lib/auth";
 import { collectionsFor, isClosed } from "@/lib/desk";
 import { asPerson, now, q } from "@/lib/db";
 import { fmtDay } from "@/lib/format";
@@ -16,6 +16,7 @@ import { CARD, InfoRow, SectionHead } from "@/components/Kit";
 import { ListRows, type ListRow } from "../../list/ListRows";
 import { LIST_COLUMNS, type ListTrack } from "../../rows";
 import { CollectionDetailHeader, DeleteCollection, EditCollectionInfo } from "../CollectionForms";
+import { CalloutShare } from "../CalloutShare";
 import { OwnerUpload } from "../OwnerUpload";
 import { ShareLinks, type ShareLinkView } from "../ShareLinks";
 import { linksFor, sharingOn } from "@/lib/share-links";
@@ -96,6 +97,8 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
   const brief = editable.brief;
   const closed = isClosed(c);
   const live = receiving && !closed;
+  // The share card is the account owner's only, for now; staff viewing as someone get no card.
+  const canShareCard = live && user.role === "owner" && !(await viewingAs());
   const readout = [`${c.needs_review} to review`, `${c.kept} kept`, `${c.count} received`, !closed && c.closes_at ? `closes ${fmtDay(c.closes_at)}` : null].filter(Boolean).join(" · ");
 
   // The mock's detail card: the numbers, the brief, the facts as rows, the link while it's receiving, then the actions.
@@ -132,6 +135,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
         <div className="flex flex-col gap-1.5">
           <p className="text-[11.5px] text-mute">Your link sends here</p>
           <LinkRow link={`${APP_URL}/${user.handle}`} />
+          {canShareCard && <CalloutShare collectionId={c.id} collectionName={c.name} link={`${APP_URL}/${user.handle}`} />}
         </div>
       )}
       {/* The shared download pair, laid out side by side and full width in this card. */}
