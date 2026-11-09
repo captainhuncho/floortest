@@ -68,7 +68,7 @@ export function SettingsForm({ name, firstName, lastName, handle, base, nextChan
           <input name="handle" defaultValue={handle} className="min-h-11 w-full min-w-0 bg-transparent py-2.5 pr-3 text-[13px] text-bone outline-none" required />
         </div>
         <span className={HELP}>
-          You can change it once a year{nextChange ? ` (next: ${nextChange})` : ""}. Your old link forwards here for 14 days, and you can switch back within that time. Update your bios first.
+          You can change it once a year{nextChange ? ` (next: ${nextChange})` : ""}. Your old link forwards here for 14 days and stays reserved for you for a year, so you can switch back. Update your bios first.
         </span>
       </label>
       <SaveBar pending={pending} state={state} />
