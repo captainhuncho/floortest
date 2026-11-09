@@ -101,12 +101,26 @@ test("Hebrew reads right to left in glyph order", async () => {
   assert.equal(l.glyphs[0].id, lamed, "the last letter is drawn first, at the left");
 });
 
-test("a number range inside Arabic keeps its reading order", async () => {
-  const l = (await shaped("أفرو 118–124 BPM"))!;
-  const files = l.glyphs.map((g) => path.basename(g.file));
-  assert.equal(files.at(-1), "NotoSansArabic-Regular.ttf", "the Arabic word ends the line on the right");
-  const latinStart = files.indexOf("NotoSans-Regular.ttf");
-  assert.equal(latinStart, 3, "118 comes before –124 BPM");
+test("right-to-left text mixed with Latin or number shapes it can't place falls back", async () => {
+  for (const text of ["דני (DJ)", "Hello (مرحبا) World", "مرحبا (Hello) بكم", "שלום [world] עולם", "مرحبا 12:30 بكم", "128-140 موسيقى", "Hello مرحبا.", "أفرو 118–124 BPM", "ب2"]) assert.equal(await shaped(text), null, text);
+});
+
+test("pure right-to-left text, brackets, a period and whole-word numbers keep their order and spaces", async () => {
+  const closingShape = (await shaped("ب)"))!.glyphs[0].id;
+  assert.equal((await shaped("مرحبا (بكم)"))!.glyphs[0].id, closingShape, "the bracket at the end is on the left and mirrored");
+  const period = (await shaped("مرحبا."))!;
+  assert.equal(period.glyphs[0].id, (await shaped("ب."))!.glyphs[0].id, "the period ends the sentence on the left");
+  const middle = (await shaped("مرحبا 128 بكم"))!;
+  const digits = (await shaped("128"))!;
+  assert.equal(middle.glyphs.length, (await shaped("مرحبا"))!.glyphs.length + (await shaped("بكم"))!.glyphs.length + digits.glyphs.length + 2, "both spaces stay");
+  assert.equal(new Set(middle.glyphs.map((g) => g.file)).size <= 2, true);
+});
+
+test("a field that can't be drawn keeps its BPM", async () => {
+  const { renderCard } = await import("../src/lib/callout-card/render");
+  const mixed = await renderCard("story", { ...fields, details: "أفرو 118–124 BPM", bpm: "118–124 BPM" }, null);
+  const plain = await renderCard("story", { ...fields, details: "118–124 BPM", bpm: "118–124 BPM" }, null);
+  assert.deepEqual(await sharp(mixed).raw().toBuffer(), await sharp(plain).raw().toBuffer());
 });
 
 test("shared punctuation and marks in a non-Latin line draw from a font that has them", async () => {
@@ -116,7 +130,7 @@ test("shared punctuation and marks in a non-Latin line draw from a font that has
     assert.ok(l.glyphs.every((g) => g.id !== 0) && !inFont(l, "NotoSans-Regular.ttf"), text);
   }
   const samples = [["نادية", "،؛؟"], ["שלום", "׃"], ["नादिया", "।॥"], ["বাংলা", "।"], ["தமிழ்", ""], ["สวัสดี", "฿"], ["ナディア", "、。・ー"], ["나디아", "、。"], ["娜迪亚", "，。"]] as const;
-  const ascii = Array.from({ length: 0x5e }, (_, i) => String.fromCharCode(0x21 + i)).filter((c) => !/\p{L}/u.test(c));
+  const ascii = Array.from({ length: 0x5e }, (_, i) => String.fromCharCode(0x21 + i)).filter((c) => !/[\p{L}\p{N}]/u.test(c));
   for (const [word, own] of samples) for (const ch of [...own, ...ascii, "–", "—", "…", "’"]) {
     const l = await shaped(`${word}${ch}`, /[가-힣]/.test(word) ? "kr" : /[ぁ-ヿ]/.test(word) ? "jp" : undefined);
     assert.ok(l && l.glyphs.every((g) => g.id !== 0), `${word} + U+${ch.codePointAt(0)!.toString(16)}`);

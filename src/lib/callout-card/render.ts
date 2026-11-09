@@ -3,10 +3,10 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import QRCode from "qrcode";
 import sharp, { type OverlayOptions } from "sharp";
-import { layoutText, shortenGraphemes, type CjkFont } from "./shape";
+import { layoutText, shortenGraphemes, TEXT_BLEED, type CjkFont } from "./shape";
 
 export type CardFormat = "story" | "square";
-export type CardFields = { name: string; handle: string; callout: string; details: string; closes: string; link: string; target: string; cjk?: CjkFont };
+export type CardFields = { name: string; handle: string; callout: string; details: string; bpm?: string; closes: string; link: string; target: string; cjk?: CjkFont };
 
 const INK = { r: 16, g: 17, b: 15, alpha: 1 };
 const CLEAR = { r: 0, g: 0, b: 0, alpha: 0 };
@@ -85,13 +85,27 @@ async function drawFixed(text: string, source: Font, size: number, colour: strin
 async function drawFitted(text: string, font: Font, size: number, colour: string, maxWidth: number, cjk?: CjkFont) {
   const drawn = await drawText(text, font, size, colour, { cjk });
   if (!drawn || drawn.width <= maxWidth) return drawn;
-  return drawText(text, font, Math.floor((size * maxWidth) / drawn.width), colour, { cjk });
+  return drawText(text, font, Math.floor((size * (maxWidth - TEXT_BLEED)) / (drawn.width - TEXT_BLEED)), colour, { cjk });
+}
+
+/** The photo's header, or null if it's too slow to read. */
+async function readMetadata(bytes: Uint8Array) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      sharp(bytes, { limitInputPixels: MAX_PHOTO_PIXELS }).metadata(),
+      new Promise<null>((resolve) => { timer = setTimeout(() => resolve(null), SHARP_SECONDS * 1000); }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /** The photo tilted into the mailer's window, or null if it can't be used, so the caller can try the next one. */
 export async function fitPhoto(bytes: Uint8Array): Promise<Buffer | null> {
   try {
-    const meta = await sharp(bytes, { limitInputPixels: MAX_PHOTO_PIXELS }).metadata();
+    const meta = await readMetadata(bytes);
+    if (!meta) return null;
     if (!PHOTO_FORMATS.includes(meta.format ?? "")) return null;
     const shorter = Math.min(meta.autoOrient?.width ?? meta.width ?? 0, meta.autoOrient?.height ?? meta.height ?? 0);
     if (shorter < PHOTO_SLOT) return null;
@@ -167,7 +181,10 @@ export async function renderCard(format: CardFormat, fields: CardFields, photo: 
   stack(await drawFixed("Send your track to", FONTS.mono, l.kicker, MUTE));
   stack((await drawFitted(shortenGraphemes(fields.name, 40), FONTS.serif, l.name, BONE, TEXT_WIDTH, cjk)) ?? (await drawFitted(fields.handle, FONTS.serif, l.name, BONE, TEXT_WIDTH)));
   if (fields.callout) stack(await drawFitted(shortenGraphemes(fields.callout, 60), FONTS.monoMedium, l.callout, BONE, TEXT_WIDTH, cjk));
-  if (fields.details) stack(await drawText(shortenGraphemes(fields.details, detailChars), FONTS.mono, l.details, MUTE, { width: TEXT_WIDTH, maxLines: l.detailLines, cjk }));
+  if (fields.details) {
+    const details = await drawText(shortenGraphemes(fields.details, detailChars), FONTS.mono, l.details, MUTE, { width: TEXT_WIDTH, maxLines: l.detailLines, cjk });
+    stack(details ?? (fields.bpm ? await drawText(fields.bpm, FONTS.mono, l.details, MUTE) : null));
+  }
 
   const qrTop = y + l.gap;
   const footerWidth = TEXT_WIDTH - qrSize - 24;
