@@ -35,7 +35,7 @@ import { flash } from "@/lib/flash";
 import { isTargeted, setSwitch, setSwitchRule, SWITCHES, type SwitchKey } from "@/lib/switches";
 import { describeRule, readRule, ruleFromForm, MAX_RULE_ACCOUNTS } from "@/lib/switch-rules";
 import { drainNow, retireTrackFiles } from "@/lib/deletion";
-import { cancelEmailChange, changeHandle, HANDLE_HOLD_DAYS, requestEmailChange } from "@/lib/accounts";
+import { cancelEmailChange, changeHandle, HANDLE_FORWARD_DAYS, HANDLE_HOLD_DAYS, requestEmailChange } from "@/lib/accounts";
 import { logEvent, now, q, type Track } from "@/lib/db";
 import { eraseSender, purgeAccount } from "@/lib/privacy";
 import { normalEmail } from "@/lib/email-normal";
@@ -903,9 +903,9 @@ export async function adminChangeHandle(userId: number, form: FormData) {
       subject: "Your FloorTest link changed",
       body: takeback
         ? `Hi,\n\nWe've changed your FloorTest link to ${env.appUrl}/${fresh.handle} because the name you had belongs to another artist. Reason: ${reason}\n\nIf you think this is a mistake, contact us: ${env.appUrl}/contact\n\n— FloorTest`
-        : `Hi,\n\nAs requested, your FloorTest link is now ${env.appUrl}/${fresh.handle}. Your old link forwards there for ${HANDLE_HOLD_DAYS} days, then anyone can claim it, so update your bios now.\n\n— FloorTest`,
+        : `Hi,\n\nAs requested, your FloorTest link is now ${env.appUrl}/${fresh.handle}. Your old link forwards there for ${HANDLE_FORWARD_DAYS} days, so update your bios now. The old name stays reserved for you for ${HANDLE_HOLD_DAYS} days.\n\n— FloorTest`,
     }).catch(() => {});
-  await done(`@${u.handle} is now @${fresh?.handle}${takeback ? "; old name released" : `; old link forwards for ${HANDLE_HOLD_DAYS} days`}`);
+  await done(`@${u.handle} is now @${fresh?.handle}${takeback ? "; old name released" : `; old link forwards for ${HANDLE_FORWARD_DAYS} days`}`);
   refresh();
 }
 

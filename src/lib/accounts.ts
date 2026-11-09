@@ -10,8 +10,10 @@ import { maskEmail } from "./mask-email";
 
 const DAY = 86_400_000;
 const isUniqueViolation = (e: unknown) => (e as { code?: string })?.code === "23505";
-/** How long an old link keeps forwarding, and stays reserved for its owner. Then anyone can claim it. */
-export const HANDLE_HOLD_DAYS = 14;
+/** How long an old link keeps forwarding to the new one. */
+export const HANDLE_FORWARD_DAYS = 14;
+/** How long an old link stays reserved for its account: links printed on flyers and QR codes outlive the forwarding. Then anyone can claim it, and starts empty. */
+export const HANDLE_HOLD_DAYS = 365;
 /** A link name can change once in this many days. */
 export const HANDLE_CHANGE_DAYS = 365;
 
@@ -44,7 +46,7 @@ export async function handleHeld(handle: string, forUserId = 0) {
 export async function forwardedHandle(old: string) {
   return (
     await q.get<{ handle: string }>(
-      "SELECT u.handle FROM handle_history h JOIN users u ON u.id = h.user_id WHERE h.old_handle = ? AND h.forward = 1 AND h.expires_at > ? AND u.suspended_at IS NULL",
+      "SELECT u.handle FROM handle_history h JOIN users u ON u.id = h.user_id WHERE h.old_handle = ? AND h.forward = 1 AND h.forward_until > ? AND u.suspended_at IS NULL",
       old.toLowerCase(),
       now(),
     )
@@ -65,7 +67,7 @@ export async function resetVerified(db: Pick<typeof q, "run">, userId: number) {
 }
 
 /**
- * Moves an account to a new handle. The old one forwards for HANDLE_HOLD_DAYS and is reserved for them,
+ * Moves an account to a new handle. The old one forwards for HANDLE_FORWARD_DAYS and is reserved for them for HANDLE_HOLD_DAYS,
  * unless `forward` is off (taken back for impersonation): then it's released at once.
  * `checks` off skips the protected-name rule and the once-a-year limit, for admins.
  * Going back to your own old name while it's still held is an undo: it doesn't use up the yearly change.
@@ -87,6 +89,7 @@ export async function changeHandle(userId: number, next: string, { forward = tru
     const next = await nextHandleChange(userId);
     if (next) return `You can change your link once a year. Next change: ${new Date(next).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}.`;
   }
+  const holdUntil = undo ? undo.expires_at : now() + HANDLE_HOLD_DAYS * DAY;
   try {
     await q.tx(async (db) => {
       await db.run("DELETE FROM handle_history WHERE old_handle = ?", handle); // taking back one of your own old links
@@ -95,8 +98,8 @@ export async function changeHandle(userId: number, next: string, { forward = tru
       if (!undo) await db.run("UPDATE users SET handle_changed_at = ? WHERE id = ?", now(), userId);
       if (forward)
         await db.run(
-          "INSERT INTO handle_history (old_handle, user_id, forward, created_at, expires_at) VALUES (?,?,?,?,?) ON CONFLICT (old_handle) DO UPDATE SET user_id = excluded.user_id, forward = 1, created_at = excluded.created_at, expires_at = excluded.expires_at",
-          u.handle, userId, 1, now(), undo ? undo.expires_at : now() + HANDLE_HOLD_DAYS * DAY,
+          "INSERT INTO handle_history (old_handle, user_id, forward, created_at, expires_at, forward_until) VALUES (?,?,?,?,?,?) ON CONFLICT (old_handle) DO UPDATE SET user_id = excluded.user_id, forward = 1, created_at = excluded.created_at, expires_at = excluded.expires_at, forward_until = excluded.forward_until",
+          u.handle, userId, 1, now(), holdUntil, Math.min(holdUntil, now() + HANDLE_FORWARD_DAYS * DAY),
         );
       else await db.run("DELETE FROM handle_history WHERE old_handle = ?", u.handle);
     });

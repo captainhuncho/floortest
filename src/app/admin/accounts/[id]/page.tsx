@@ -46,7 +46,7 @@ export default async function Account({ params }: { params: Promise<{ id: string
   if (!u) notFound();
   const t = now();
   const pendingEmail = u.pending_email && (u.pending_email_at ?? 0) > t - 48 * 3_600_000 ? u.pending_email : null;
-  const oldHandles = await q.all<{ old_handle: string; forward: number; expires_at: number }>("SELECT old_handle, forward, expires_at FROM handle_history WHERE user_id = ? AND expires_at > ? ORDER BY created_at DESC", id, t);
+  const oldHandles = await q.all<{ old_handle: string; forward: number; forward_until: number; expires_at: number }>("SELECT old_handle, forward, forward_until, expires_at FROM handle_history WHERE user_id = ? AND expires_at > ? ORDER BY created_at DESC", id, t);
 
   const [cap, collection, collections, all, bytes, sessions] = await Promise.all([
     capacity(u),
@@ -118,7 +118,7 @@ export default async function Account({ params }: { params: Promise<{ id: string
           {u.suspended_at && <span className="chip border-danger/50 text-danger">Suspended {day(u.suspended_at)}{u.suspended_reason ? `: ${u.suspended_reason}` : ""}</span>}
           {pendingEmail && <span className="chip border-lime/40 text-lime">Email change to {pendingEmail} waiting</span>}
           {oldHandles.map((h) => (
-            <span key={h.old_handle} className="chip border-line text-mute">/{h.old_handle} forwards until {day(h.expires_at)}</span>
+            <span key={h.old_handle} className="chip border-line text-mute">/{h.old_handle} {h.forward_until > t ? `forwards until ${day(h.forward_until)}, ` : ""}reserved until {day(h.expires_at)}</span>
           ))}
           {chips.map(([label, good]) => (
             <span key={label} className={`chip ${good ? "border-lime/40 text-lime" : "border-line text-mute"}`}>{label}</span>
@@ -334,7 +334,7 @@ export default async function Account({ params }: { params: Promise<{ id: string
                   <span>Also protect the old name (only with the box above)</span>
                 </label>
                 <button className="btn-ghost btn-sm">Change handle</button>
-                <p className="text-xs text-mute">They&apos;re emailed. Normally the old link forwards for 14 days and stays reserved for them, then anyone can claim it. Admin changes don&apos;t count toward their once-a-year limit.</p>
+                <p className="text-xs text-mute">They&apos;re emailed. Normally the old link forwards for 14 days and stays reserved for them for a year, then anyone can claim it. Admin changes don&apos;t count toward their once-a-year limit.</p>
               </form>
             </details>
             <details>
