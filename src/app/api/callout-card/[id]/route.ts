@@ -26,18 +26,22 @@ type CardCollection = {
 
 /** A stored photo ready for the card, or null if it's held back, missing, slow or unusable. */
 async function photoFrom(key: string | null) {
-  if (!key || (await quarantined(key))) return null;
+  if (!key) return null;
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
+    if (await quarantined(key)) return null;
     const store = await storage();
     const load = async () => {
       const head = await store.head(key);
       if (!head || head.size > MAX_PHOTO_BYTES) return null;
       return store.read(key, 0, head.size - 1);
     };
-    const bytes = await Promise.race([load(), new Promise<null>((resolve) => AbortSignal.timeout(STORAGE_MS).addEventListener("abort", () => resolve(null)))]);
+    const bytes = await Promise.race([load(), new Promise<null>((resolve) => { timer = setTimeout(() => resolve(null), STORAGE_MS); })]);
     return bytes ? await fitPhoto(bytes) : null;
   } catch {
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 

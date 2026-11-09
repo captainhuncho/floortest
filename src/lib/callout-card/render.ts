@@ -1,12 +1,12 @@
 import "server-only";
 import fs from "node:fs/promises";
 import path from "node:path";
-import opentype from "opentype.js";
 import QRCode from "qrcode";
 import sharp, { type OverlayOptions } from "sharp";
+import { layoutText, shortenGraphemes, type CjkFont } from "./shape";
 
 export type CardFormat = "story" | "square";
-export type CardFields = { name: string; handle: string; callout: string; details: string; closes: string; link: string; target: string };
+export type CardFields = { name: string; handle: string; callout: string; details: string; closes: string; link: string; target: string; cjk?: CjkFont };
 
 const INK = { r: 16, g: 17, b: 15, alpha: 1 };
 const CLEAR = { r: 0, g: 0, b: 0, alpha: 0 };
@@ -26,8 +26,6 @@ const MAX_PHOTO_PIXELS = 40_000_000;
 const SHARP_SECONDS = 5;
 const QR_QUIET_MODULES = 4;
 const LINE_HEIGHT = 1.28;
-const BASELINE = 0.98;
-const TEXT_BLEED = 8;
 
 const LAYOUT = {
   story: { width: 1080, height: 1920, art: { x: 57, y: 232, scale: 0.95 }, top: 1085, kicker: 32, name: 104, callout: 40, details: 32, gap: 24, qrScale: 4, detailLines: 2 },
@@ -43,50 +41,50 @@ const FONTS = {
   brand: { file: path.join(process.cwd(), "src/app/fonts/Inter-Bold.ttf") },
 };
 type Font = (typeof FONTS)[keyof typeof FONTS];
+type TextOptions = { width?: number; maxLines?: number; cjk?: CjkFont };
+type Drawn = { input: Buffer; width: number; height: number };
 
-/** Control and direction-override characters out, so a name can't reorder or hide what's printed. */
-export const cleanText = (raw: string) => raw.normalize("NFC").replace(/[\p{C}\p{Zl}\p{Zp}]/gu, " ").replace(/\s+/g, " ").trim();
-/** True when the card's font can draw every character. Anything else would print as empty boxes. */
-export const printable = (text: string) => /^[ -~ -ÿĂıŒœ–—‘’‚“”„•…‹›€™−]*$/.test(text);
-const shorten = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text);
+const JOINING_SCRIPTS = "\\p{Script=Arabic}\\p{Script=Devanagari}\\p{Script=Bengali}\\p{Script=Tamil}";
+const JOINS_BEFORE = new RegExp(`[${JOINING_SCRIPTS}]$`, "u");
+const JOINS_AFTER = new RegExp(`^[${JOINING_SCRIPTS}]`, "u");
+const ZERO_WIDTH_JOINER = /[‌‍]/;
+const KEYCAP = /[0-9#*]️?⃣/gu;
+const EMOJI = /(?![©®™])\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Regional_Indicator}|\p{Variation_Selector}|[\u{e0020}-\u{e007f}]|⃣/gu;
 
-const fonts = new Map<string, Promise<opentype.Font>>();
-const loadFont = (file: string) => {
-  if (!fonts.has(file)) fonts.set(file, fs.readFile(file).then((b) => opentype.parse(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength))));
-  return fonts.get(file)!;
-};
+/** Emoji, control and direction-override characters out, so a name can't reorder or hide what's printed. Joiners stay only where a script needs them. */
+export const cleanText = (raw: string) =>
+  raw
+    .normalize("NFC")
+    .replace(KEYCAP, "")
+    .replace(EMOJI, "")
+    .replace(/[\p{C}\p{Zl}\p{Zp}]/gu, (ch, at: number, all: string) => {
+      if (!ZERO_WIDTH_JOINER.test(ch)) return " ";
+      return JOINS_BEFORE.test(all.slice(Math.max(0, at - 2), at)) && JOINS_AFTER.test(all.slice(at + 1, at + 3)) ? ch : "";
+    })
+    .replace(/\s+/g, " ")
+    .trim();
 
-function wrapLines(font: opentype.Font, text: string, size: number, width: number) {
-  const lines: string[] = [];
-  let line = "";
-  const fits = (t: string) => font.getAdvanceWidth(t, size) <= width;
-  for (const word of text.split(" ").flatMap((w) => (fits(w) ? [w] : (w.match(new RegExp(`.{1,${Math.max(1, Math.floor(width / (size * 0.62)))}}`, "gu")) ?? [w])))) {
-    const next = line ? `${line} ${word}` : word;
-    if (fits(next)) line = next;
-    else {
-      if (line) lines.push(line);
-      line = word;
-    }
-  }
-  return line ? [...lines, line] : lines;
+/** Words drawn as shapes from the card's own font files: no system fonts, nothing a person typed reaches a markup parser. Null if a character can't be drawn. */
+async function drawText(text: string, source: Font, size: number, colour: string, options: TextOptions = {}): Promise<Drawn | null> {
+  const layout = await layoutText(text, { house: source.file, size, ...options });
+  if (!layout) return null;
+  const height = Math.ceil(size * LINE_HEIGHT) * layout.lines;
+  const input = await sharp(Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${layout.width}" height="${height}"><g fill="${colour}">${layout.body}</g></svg>`)).png().toBuffer();
+  return { input, width: layout.width, height };
 }
 
-/** Words drawn as shapes from the card's own font files: no system fonts, nothing a person typed reaches a markup parser. */
-async function drawText(text: string, source: Font, size: number, colour: string, width?: number) {
-  const font = await loadFont(source.file);
-  const lines = width ? wrapLines(font, text, size, width) : [text];
-  const lineHeight = Math.ceil(size * LINE_HEIGHT);
-  const drawnWidth = Math.ceil(Math.max(...lines.map((l) => font.getAdvanceWidth(l, size)), 1)) + TEXT_BLEED;
-  const height = lineHeight * lines.length;
-  const paths = lines.map((l, i) => font.getPath(l, 0, Math.round(size * BASELINE) + i * lineHeight, size).toPathData(2)).join("");
-  const input = await sharp(Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${drawnWidth}" height="${height}"><path fill="${colour}" d="${paths}"/></svg>`)).png().toBuffer();
-  return { input, width: drawnWidth, height };
+/** Text we wrote ourselves: the card's fonts always have it. */
+async function drawFixed(text: string, source: Font, size: number, colour: string) {
+  const drawn = await drawText(text, source, size, colour);
+  if (!drawn) throw new Error("card font is missing a fixed character");
+  return drawn;
 }
 
 /** One line, made smaller if it would run past `maxWidth`. */
-async function drawFitted(text: string, font: Font, size: number, colour: string, maxWidth: number) {
-  const drawn = await drawText(text, font, size, colour);
-  return drawn.width <= maxWidth ? drawn : drawText(text, font, Math.floor((size * maxWidth) / drawn.width), colour);
+async function drawFitted(text: string, font: Font, size: number, colour: string, maxWidth: number, cjk?: CjkFont) {
+  const drawn = await drawText(text, font, size, colour, { cjk });
+  if (!drawn || drawn.width <= maxWidth) return drawn;
+  return drawText(text, font, Math.floor((size * maxWidth) / drawn.width), colour, { cjk });
 }
 
 /** The photo tilted into the mailer's window, or null if it can't be used, so the caller can try the next one. */
@@ -104,8 +102,8 @@ export async function fitPhoto(bytes: Uint8Array): Promise<Buffer | null> {
 
 async function drawLockup() {
   const crest = await sharp(path.join(process.cwd(), "public/brand/crest.svg")).resize(112, 112, { fit: "contain", background: CLEAR }).png().toBuffer();
-  const word = await drawText("FloorTest", FONTS.brand, 48, BONE);
-  const beta = await drawText("BETA", FONTS.monoMedium, 18, LIME);
+  const word = await drawFixed("FloorTest", FONTS.brand, 48, BONE);
+  const beta = await drawFixed("BETA", FONTS.monoMedium, 18, LIME);
   const pad = { x: 12, y: 6 };
   const pillW = beta.width + pad.x * 2;
   const pillH = beta.height + pad.y * 2;
@@ -158,23 +156,25 @@ export async function renderCard(format: CardFormat, fields: CardFields, photo: 
 
   const layers: OverlayOptions[] = [{ input: art, left: l.art.x, top: l.art.y }];
   let y = l.top;
-  const stack = async (drawn: Promise<{ input: Buffer; width: number; height: number }>, after: number) => {
-    const { input, height } = await drawn;
-    layers.push({ input, left: TEXT_LEFT, top: y });
-    y += height + after;
+  const stack = (drawn: Drawn | null) => {
+    if (!drawn) return;
+    layers.push({ input: drawn.input, left: TEXT_LEFT, top: y });
+    y += drawn.height;
   };
-  await stack(drawText("Send your track to", FONTS.mono, l.kicker, MUTE), 0);
-  await stack(drawFitted(shorten(fields.name, 40), FONTS.serif, l.name, BONE, TEXT_WIDTH), 0);
-  if (fields.callout) await stack(drawFitted(shorten(fields.callout, 60), FONTS.monoMedium, l.callout, BONE, TEXT_WIDTH), 0);
-  if (fields.details) await stack(drawText(shorten(fields.details, detailChars), FONTS.mono, l.details, MUTE, TEXT_WIDTH), 0);
+  const { cjk } = fields;
+  stack(await drawFixed("Send your track to", FONTS.mono, l.kicker, MUTE));
+  stack((await drawFitted(shortenGraphemes(fields.name, 40), FONTS.serif, l.name, BONE, TEXT_WIDTH, cjk)) ?? (await drawFitted(fields.handle, FONTS.serif, l.name, BONE, TEXT_WIDTH)));
+  if (fields.callout) stack(await drawFitted(shortenGraphemes(fields.callout, 60), FONTS.monoMedium, l.callout, BONE, TEXT_WIDTH, cjk));
+  if (fields.details) stack(await drawText(shortenGraphemes(fields.details, detailChars), FONTS.mono, l.details, MUTE, { width: TEXT_WIDTH, maxLines: l.detailLines, cjk }));
 
   const qrTop = y + l.gap;
   const footerWidth = TEXT_WIDTH - qrSize - 24;
   const link = await drawFitted(fields.link, FONTS.monoMedium, l.callout, BONE, footerWidth);
+  if (!link) throw new Error("the card's link can't be drawn");
   const linkTop = qrTop + qrSize - link.height;
   layers.push({ input: qr, left: TEXT_LEFT + TEXT_WIDTH - qrSize, top: qrTop }, { input: link.input, left: TEXT_LEFT, top: linkTop });
-  if (fields.closes) {
-    const closes = await drawText(fields.closes, FONTS.mono, l.details, MUTE);
+  const closes = fields.closes ? await drawText(fields.closes, FONTS.mono, l.details, MUTE) : null;
+  if (closes) {
     layers.push({ input: closes.input, left: TEXT_LEFT, top: linkTop - closes.height });
   }
   // Nothing from the photo's file (location, camera) carries over: sharp drops metadata unless asked to keep it.

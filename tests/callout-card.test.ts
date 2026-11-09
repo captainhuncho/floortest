@@ -47,11 +47,118 @@ test("hostile and very long text draws as text and stays on the card", async () 
   assert.equal(await decode(png, 1080), "https://floortest.app/" + "a".repeat(30));
 });
 
-test("names the fonts can't draw fall back to the handle, never empty boxes", async () => {
+const NOTO = (name: string) => path.join(process.cwd(), "src/lib/callout-card/fonts", name);
+const SERIF = NOTO("instrument-serif-italic-latin.ttf");
+const shaped = async (text: string, cjk?: "jp" | "kr" | "sc" | "tc") => {
+  const { layoutText } = await import("../src/lib/callout-card/shape");
+  return layoutText(text, { house: SERIF, size: 100, cjk });
+};
+const inFont = (l: { glyphs: { file: string }[] }, file: string) => l.glyphs.some((g) => path.basename(g.file) === file);
+
+test("every Latin-range character draws a real glyph, in the card's fonts or Noto", async () => {
+  const { layoutText } = await import("../src/lib/callout-card/shape");
+  const house = ["instrument-serif-italic-latin.ttf", "jetbrains-mono-400-latin.ttf", "jetbrains-mono-500-latin.ttf"].map(NOTO);
+  for (const file of house) {
+    for (let cp = 0x21; cp <= 0x24f; cp++) {
+      if (/[\p{C}\p{Z}\p{M}]/u.test(String.fromCodePoint(cp))) continue;
+      const l = await layoutText(String.fromCodePoint(cp), { house: file, size: 40 });
+      assert.ok(l, `U+${cp.toString(16)} in ${path.basename(file)}`);
+      assert.ok(l.glyphs.every((g) => g.id !== 0), `U+${cp.toString(16)} is not a box`);
+    }
+  }
+  const half = await shaped("Kid ½");
+  assert.ok(half && inFont(half, "NotoSans-Regular.ttf"), "a character the serif lacks moves to Noto");
+});
+
+test("each script is really shaped by its own font", async () => {
+  const arabic = (await shaped("نادية"))!;
+  assert.ok(inFont(arabic, "NotoSansArabic-Regular.ttf"));
+  const { layoutText } = await import("../src/lib/callout-card/shape");
+  const isolated = await Promise.all([..."نادية"].map((c) => layoutText(c, { house: SERIF, size: 100 })));
+  assert.notDeepEqual(arabic.glyphs.map((g) => g.id).reverse(), isolated.map((l) => l!.glyphs[0].id), "letters join rather than standing alone");
+  const hindi = (await shaped("कि"))!;
+  assert.ok(inFont(hindi, "NotoSansDevanagari-Regular.ttf"));
+  const parts = [(await shaped("क"))!.glyphs[0].id, (await shaped("ि"))!.glyphs.at(-1)!.id];
+  assert.equal(hindi.glyphs[1].id, parts[0], "the vowel sign is reordered before the consonant");
+  for (const [text, file] of [["สวัสดี", "NotoSansThai-Regular.ttf"], ["שלום", "NotoSansHebrew-Regular.ttf"], ["বাংলা", "NotoSansBengali-Regular.ttf"], ["தமிழ்", "NotoSansTamil-Regular.ttf"], ["Łukasz", "NotoSans-Regular.ttf"], ["Надя", "NotoSans-Regular.ttf"]] as const) {
+    const l = await shaped(text);
+    assert.ok(l && inFont(l, file) && l.glyphs.every((g) => g.id !== 0), text);
+  }
+  for (const [text, cjk, file] of [["ナディア", "jp", "NotoSansJP-Regular.otf"], ["나디아", "kr", "NotoSansKR-Regular.otf"], ["娜迪亚", "sc", "NotoSansSC-Regular.otf"], ["娜迪亞", "tc", "NotoSansTC-Regular.otf"]] as const) {
+    const l = await shaped(text, cjk);
+    assert.ok(l && inFont(l, file), text);
+  }
+});
+
+test("Vietnamese draws without boxes in whichever font has it", async () => {
+  const l = await shaped("Nguyễn Thị Ánh");
+  assert.ok(l && l.glyphs.every((g) => g.id !== 0));
+});
+
+test("Hebrew reads right to left in glyph order", async () => {
+  const l = (await shaped("של"))!;
+  const lamed = (await shaped("ל"))!.glyphs[0].id;
+  assert.equal(l.glyphs[0].id, lamed, "the last letter is drawn first, at the left");
+});
+
+test("a number range inside Arabic keeps its reading order", async () => {
+  const l = (await shaped("أفرو 118–124 BPM"))!;
+  const files = l.glyphs.map((g) => path.basename(g.file));
+  assert.equal(files.at(-1), "NotoSansArabic-Regular.ttf", "the Arabic word ends the line on the right");
+  const latinStart = files.indexOf("NotoSans-Regular.ttf");
+  assert.equal(latinStart, 3, "118 comes before –124 BPM");
+});
+
+test("too many fonts, missing glyphs, stacked marks and huge strings can't be drawn", async () => {
+  assert.equal(await shaped("Abc نادية שלום"), null, "three font files");
+  assert.equal(await shaped("ᚠᚢᚦ"), null, "a script with no font");
+  assert.equal(await shaped(`a${"́".repeat(5)}`), null, "stacked marks");
+  assert.ok(await shaped(`a${"́".repeat(2)}`));
+  assert.equal(await shaped("สวัสดี".repeat(200)), null, "over the glyph cap");
+});
+
+test("fields keep every language, drop emoji, and only an empty name uses the handle", async () => {
   const { cardFields } = await import("../src/lib/callout-card/fields");
-  for (const name of ["نادية", "ナディア", "Nadia 🎧", "Łukasz"]) assert.equal(cardFields({ ...receiver, name }, callout).name, "nadia", name);
-  assert.equal(cardFields(receiver, { ...callout, name: "コール" }).callout, "");
-  assert.equal(cardFields({ ...receiver, name: "José" }, callout).name, "José");
+  for (const name of ["نادية", "ナディア", "Łukasz", "José"]) assert.equal(cardFields({ ...receiver, name }, callout).name, name);
+  assert.equal(cardFields({ ...receiver, name: "Nadia 🎧" }, callout).name, "Nadia");
+  for (const name of ["🎧", "👩‍🎤", "1️⃣", "🇬🇧", "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "❤️"]) assert.equal(cardFields({ ...receiver, name }, callout).name, "nadia", name);
+  assert.equal(cardFields({ ...receiver, name: "ナディア" }, callout).cjk, "jp");
+  assert.equal(cardFields({ ...receiver, name: "娜迪", tz: "Asia/Taipei" }, callout).cjk, "tc");
+  assert.equal(cardFields({ ...receiver, name: "娜迪" }, callout).cjk, "sc");
+});
+
+test("a name that can't be drawn prints the handle, an RTL name leaves link and QR alone", async () => {
+  const { renderCard } = await import("../src/lib/callout-card/render");
+  const handleOnly = await renderCard("story", { ...fields, name: fields.handle }, null);
+  const undrawable = await renderCard("story", { ...fields, name: "ᚠᚢᚦ" }, null);
+  assert.deepEqual(await sharp(undrawable).raw().toBuffer(), await sharp(handleOnly).raw().toBuffer());
+  const footer = (png: Buffer) => sharp(png).extract({ left: 0, top: 1500, width: 1080, height: 420 }).raw().toBuffer();
+  const rtl = await renderCard("story", { ...fields, name: "نادية", callout: fields.callout }, null);
+  assert.equal(await decode(rtl, 1080), fields.target);
+  const ltr = await renderCard("story", { ...fields, name: "Nadia" }, null);
+  assert.deepEqual(await footer(rtl), await footer(ltr), "printed link and QR don't move");
+});
+
+test("every language fits the card in both formats and the QR still reads", async () => {
+  const { renderCard } = await import("../src/lib/callout-card/render");
+  const samples = ["نادية أوكوي", "नादिया ओकोये", "สวัสดีครับ", "שלום עולם", "ナディア・オコイエ", "나디아 오코예", "娜迪亚奥科耶", "Łukasz Nguyễn Надя"];
+  for (const format of ["story", "square"] as const) {
+    for (const text of samples) {
+      const png = await renderCard(format, { ...fields, name: text.repeat(4), callout: text.repeat(6), details: text.repeat(12), cjk: /[ぁ-ヿ]/.test(text) ? "jp" : /[가-힣]/.test(text) ? "kr" : "sc" }, null);
+      assert.equal(await decode(png, 1080), fields.target, `${format} ${text}`);
+    }
+  }
+});
+
+test("200 renders don't grow memory", async () => {
+  const { renderCard } = await import("../src/lib/callout-card/render");
+  const card = { ...fields, name: "ナディア", callout: "نادية", details: "สวัสดี", cjk: "jp" as const };
+  await renderCard("square", card, null);
+  const before = process.memoryUsage();
+  for (let i = 0; i < 200; i++) await renderCard("square", card, null);
+  global.gc?.();
+  const after = process.memoryUsage();
+  assert.ok(after.arrayBuffers - before.arrayBuffers < 16 * 1024 * 1024, `grew ${(after.arrayBuffers - before.arrayBuffers) / 1e6} MB`);
 });
 
 test("direction and control characters are stripped", async () => {

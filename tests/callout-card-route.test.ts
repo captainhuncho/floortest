@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import sharp from "sharp";
 import { testDataDir } from "./test-db";
 import { inRequest, type Jar } from "./request-scope";
 
@@ -126,6 +127,68 @@ test("an open callout gives a private PNG with a fixed filename", async () => {
   assert.ok((await r.arrayBuffer()).byteLength > 1000);
 });
 
+const photoBytes = (colour: string) => sharp({ create: { width: 800, height: 800, channels: 3, background: colour } }).jpeg().toBuffer();
+async function storedPhoto(name: string, bytes: Uint8Array) {
+  const { storage } = await import("../src/lib/storage");
+  const key = `card-test/${++serial}-${name}`;
+  await (await storage()).put(key, bytes, "image/jpeg");
+  return key;
+}
+const quarantine = async (key: string) => (await load()).q.run("INSERT INTO file_digests (file_key, sha256, size, checked_at, status) VALUES (?, '', 0, ?, 'mismatch')", key, Date.now());
+/** The colour at the centre of the mailer's window, which shows the photo or the blank card. */
+const windowColour = async (r: Response) => {
+  assert.equal(r.status, 200);
+  const { data } = await sharp(Buffer.from(await r.arrayBuffer())).extract({ left: 57 + 490, top: 232 + 220, width: 1, height: 1 }).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  return [...data];
+};
+async function withPhotos(art: string | null, cover: string | null) {
+  const { q } = await load();
+  const id = await account();
+  const c = await callout(id);
+  await q.run("UPDATE collections SET art_key = ? WHERE id = ?", art, c);
+  await q.run("UPDATE users SET cover_key = ? WHERE id = ?", cover, id);
+  return call(await signIn(id), c);
+}
+const isRed = ([r, g, b]: number[]) => r > 180 && g < 80 && b < 80;
+const isBlue = ([r, g, b]: number[]) => b > 180 && g < 80 && r < 80;
+
+test("art is used first, a quarantined art_key falls to cover_key, both held gives the blank card", async () => {
+  const red = await photoBytes("#e01010");
+  const blue = await photoBytes("#1010e0");
+  assert.ok(isRed(await windowColour(await withPhotos(await storedPhoto("a", red), await storedPhoto("c", blue)))));
+  const heldArt = await storedPhoto("a", red);
+  await quarantine(heldArt);
+  assert.ok(isBlue(await windowColour(await withPhotos(heldArt, await storedPhoto("c", blue)))));
+  const heldCover = await storedPhoto("c", blue);
+  await quarantine(heldCover);
+  const blank = await windowColour(await withPhotos(heldArt, heldCover));
+  assert.ok(!isRed(blank) && !isBlue(blank));
+});
+
+test("corrupt or over-10 MB art still gives a card, from the next photo", async () => {
+  const blue = await photoBytes("#1010e0");
+  const corrupt = await storedPhoto("bad", Buffer.from("not an image"));
+  assert.ok(isBlue(await windowColour(await withPhotos(corrupt, await storedPhoto("c", blue)))));
+  const huge = await storedPhoto("huge", new Uint8Array(10 * 1024 * 1024 + 1));
+  assert.ok(isBlue(await windowColour(await withPhotos(huge, await storedPhoto("c", blue)))));
+});
+
+test("the site password is 409 unavailable and a suspended account gets no card", async () => {
+  const { q } = await load();
+  const id = await account();
+  const c = await callout(id);
+  const jar = await signIn(id);
+  process.env.SITE_PASSWORD = "gate";
+  try {
+    const gated = await call(jar, c);
+    assert.deepEqual([gated.status, await gated.json()], [409, { reason: "unavailable" }]);
+  } finally {
+    delete process.env.SITE_PASSWORD;
+  }
+  await q.run("UPDATE users SET suspended_at = ? WHERE id = ?", Date.now(), id);
+  assert.equal((await call(jar, c)).status, 401, "a suspended account's session stops working before the route's own check");
+});
+
 test("after 20 in a minute a person gets 429 with Retry-After", async () => {
   const id = await account();
   const jar = await signIn(id);
@@ -141,5 +204,5 @@ test("card text reaches the image only as path data, and the fonts stay server-s
   const config = fs.readFileSync(path.join(process.cwd(), "next.config.ts"), "utf8");
   assert.match(config, /"\/api\/callout-card\/\[id\]": \[[^\]]*callout-card\/fonts[^\]]*Inter-Bold/);
   assert.equal(fs.existsSync(path.join(process.cwd(), "public/fonts")), false);
-  for (const licence of ["OFL-instrument-serif.txt", "OFL-jetbrains-mono.txt"]) assert.ok(fs.existsSync(path.join(process.cwd(), "src/lib/callout-card/fonts", licence)));
+  for (const licence of ["OFL-instrument-serif.txt", "OFL-jetbrains-mono.txt", "OFL-NotoSans.txt", "OFL-NotoSansArabic.txt", "OFL-NotoSansHebrew.txt", "OFL-NotoSansDevanagari.txt", "OFL-NotoSansBengali.txt", "OFL-NotoSansTamil.txt", "OFL-NotoSansThai.txt", "OFL-NotoSansCJK.txt"]) assert.ok(fs.existsSync(path.join(process.cwd(), "src/lib/callout-card/fonts", licence)));
 });
