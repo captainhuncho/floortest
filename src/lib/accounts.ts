@@ -10,8 +10,10 @@ import { maskEmail } from "./mask-email";
 
 const DAY = 86_400_000;
 const isUniqueViolation = (e: unknown) => (e as { code?: string })?.code === "23505";
-/** How long an old link keeps forwarding, and stays reserved for its owner. Then anyone can claim it. */
-export const HANDLE_HOLD_DAYS = 14;
+/** How long an old link keeps forwarding to the new one. */
+export const HANDLE_FORWARD_DAYS = 14;
+/** How long an old link stays reserved for its account: links printed on flyers and QR codes outlive the forwarding. Then anyone can claim it, and starts empty. */
+export const HANDLE_HOLD_DAYS = 365;
 /** A link name can change once in this many days. */
 export const HANDLE_CHANGE_DAYS = 365;
 
@@ -30,12 +32,13 @@ export const DELETED_HANDLE_HOLD_DAYS = 365;
 
 /**
  * An old handle someone else gave up recently, or one a deleted account used: reserved, so nobody can grab a link
- * that's still in bios.
+ * that's still in bios. `ignoreRenames` is for staff recovering a name: another live or suspended account's old-name hold
+ * doesn't stop them, but a deleted account's reservation still does.
  */
-export async function handleHeld(handle: string, forUserId = 0) {
+export async function handleHeld(handle: string, forUserId = 0, ignoreRenames = false) {
   const t = now();
   return !!(
-    (await q.get("SELECT 1 FROM handle_history WHERE old_handle = ? AND expires_at > ? AND user_id <> ?", handle, t, forUserId)) ||
+    (!ignoreRenames && (await q.get("SELECT 1 FROM handle_history WHERE old_handle = ? AND expires_at > ? AND user_id <> ?", handle, t, forUserId))) ||
     (await q.get("SELECT 1 FROM released_handles WHERE handle = ? AND expires_at > ?", handle, t))
   );
 }
@@ -44,7 +47,7 @@ export async function handleHeld(handle: string, forUserId = 0) {
 export async function forwardedHandle(old: string) {
   return (
     await q.get<{ handle: string }>(
-      "SELECT u.handle FROM handle_history h JOIN users u ON u.id = h.user_id WHERE h.old_handle = ? AND h.forward = 1 AND h.expires_at > ? AND u.suspended_at IS NULL",
+      "SELECT u.handle FROM handle_history h JOIN users u ON u.id = h.user_id WHERE h.old_handle = ? AND h.forward = 1 AND h.forward_until > ? AND u.suspended_at IS NULL",
       old.toLowerCase(),
       now(),
     )
@@ -65,8 +68,8 @@ export async function resetVerified(db: Pick<typeof q, "run">, userId: number) {
 }
 
 /**
- * Moves an account to a new handle. The old one forwards for HANDLE_HOLD_DAYS and is reserved for them,
- * unless `forward` is off (taken back for impersonation): then it's released at once.
+ * Moves an account to a new handle. The old one forwards for HANDLE_FORWARD_DAYS and is reserved for them for HANDLE_HOLD_DAYS,
+ * unless `forward` is off (taken back for impersonation): then it and any other name they still held are released at once.
  * `checks` off skips the protected-name rule and the once-a-year limit, for admins.
  * Going back to your own old name while it's still held is an undo: it doesn't use up the yearly change.
  */
@@ -80,25 +83,28 @@ export async function changeHandle(userId: number, next: string, { forward = tru
   if (u.handle === handle) return null;
   if (RESERVED_HANDLES.has(handle)) return "That link name is reserved.";
   if (checks && (await isProtectedHandle(handle))) return "That name is protected for a well-known artist. If it's you, contact us.";
-  if (await handleHeld(handle, userId)) return "That link was someone's until recently and is still reserved.";
+  if (await handleHeld(handle, userId, !checks)) return "That link was someone's until recently and is still reserved.";
   // Switching back keeps the original deadline, so bouncing between names can't hold two of them forever.
   const undo = await q.get<{ expires_at: number }>("SELECT expires_at FROM handle_history WHERE old_handle = ? AND user_id = ? AND expires_at > ?", handle, userId, now());
   if (checks && !undo) {
     const next = await nextHandleChange(userId);
     if (next) return `You can change your link once a year. Next change: ${new Date(next).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}.`;
   }
+  const holdUntil = undo ? undo.expires_at : now() + HANDLE_HOLD_DAYS * DAY;
   try {
     await q.tx(async (db) => {
-      await db.run("DELETE FROM handle_history WHERE old_handle = ?", handle); // taking back one of your own old links
+      // Taking back one of your own old links. Staff recovering a name also end another account's hold on it.
+      if (checks) await db.run("DELETE FROM handle_history WHERE old_handle = ? AND user_id = ?", handle, userId);
+      else await db.run("DELETE FROM handle_history WHERE old_handle = ?", handle);
       await db.run("UPDATE users SET handle = ? WHERE id = ?", handle, userId);
       await resetVerified(db, userId);
-      if (!undo) await db.run("UPDATE users SET handle_changed_at = ? WHERE id = ?", now(), userId);
+      if (!undo && (checks || !forward)) await db.run("UPDATE users SET handle_changed_at = ? WHERE id = ?", now(), userId);
       if (forward)
         await db.run(
-          "INSERT INTO handle_history (old_handle, user_id, forward, created_at, expires_at) VALUES (?,?,?,?,?) ON CONFLICT (old_handle) DO UPDATE SET user_id = excluded.user_id, forward = 1, created_at = excluded.created_at, expires_at = excluded.expires_at",
-          u.handle, userId, 1, now(), undo ? undo.expires_at : now() + HANDLE_HOLD_DAYS * DAY,
+          "INSERT INTO handle_history (old_handle, user_id, forward, created_at, expires_at, forward_until) VALUES (?,?,?,?,?,?) ON CONFLICT (old_handle) DO UPDATE SET user_id = excluded.user_id, forward = 1, created_at = excluded.created_at, expires_at = excluded.expires_at, forward_until = excluded.forward_until",
+          u.handle, userId, 1, now(), holdUntil, Math.min(holdUntil, now() + HANDLE_FORWARD_DAYS * DAY),
         );
-      else await db.run("DELETE FROM handle_history WHERE old_handle = ?", u.handle);
+      else await db.run("DELETE FROM handle_history WHERE user_id = ?", userId); // a take-back ends every name they held
     });
   } catch (e) {
     if (isUniqueViolation(e)) return "That link is taken.";
