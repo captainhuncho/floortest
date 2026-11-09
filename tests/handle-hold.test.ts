@@ -166,3 +166,33 @@ test("migration 0139 extends held names only", async () => {
   assert.equal(Number(expired?.expires_at), t - 6 * DAY, "an expired name isn't brought back");
   assert.equal(await handleHeld("migexpired"), false);
 });
+
+test("a staff assign leaves the yearly limit alone; a take-back uses it", async () => {
+  const { q, changeHandle, make } = await setup();
+  const changedAt = async (id: number) => (await q.get<{ handle_changed_at: number | null }>("SELECT handle_changed_at FROM users WHERE id = ?", id))?.handle_changed_at ?? null;
+  const artist = await make("limit-a@x.io", "limitartist");
+  assert.equal(await changeHandle(artist, "limitgiven", { checks: false }), null);
+  assert.equal(await changedAt(artist), null, "an artist given their name can still rename");
+  const taken = await make("limit-b@x.io", "limitfake");
+  assert.equal(await changeHandle(taken, "limitclean", { forward: false, checks: false }), null);
+  assert.ok(await changedAt(taken), "a taken-back account can't rename straight away");
+  assert.match((await changeHandle(taken, "limitfake")) ?? "", /once a year/, "nor onto the name just released");
+});
+
+test("an ordinary rename is refused on another account's hold and leaves it in place", async () => {
+  const { q, changeHandle, make } = await setup();
+  const holder = await make("hold-a@x.io", "holdname");
+  const other = await make("hold-b@x.io", "holdother");
+  await changeHandle(holder, "holdmoved");
+  assert.match((await changeHandle(other, "holdname")) ?? "", /reserved/);
+  assert.ok(await q.get("SELECT 1 FROM handle_history WHERE old_handle = 'holdname' AND user_id = ?", holder));
+});
+
+test("only staff calls can delete another account's hold, and the log names who lost it", () => {
+  const src = fs.readFileSync(new URL("../src/lib/accounts.ts", import.meta.url), "utf8");
+  assert.match(src, /if \(checks\) await db\.run\("DELETE FROM handle_history WHERE old_handle = \? AND user_id = \?", handle, userId\);/);
+  const actions = fs.readFileSync(new URL("../src/app/admin/actions.ts", import.meta.url), "utf8");
+  const body = actions.slice(actions.indexOf("export async function adminChangeHandle(")).split("\nexport ")[0];
+  assert.ok(body.indexOf("const displaced") < body.indexOf("await changeHandle("), "read before the row is deleted");
+  assert.match(body, /ended reservation held by #\$\{displaced\.user_id\}/);
+});

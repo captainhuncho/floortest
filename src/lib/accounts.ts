@@ -93,10 +93,12 @@ export async function changeHandle(userId: number, next: string, { forward = tru
   const holdUntil = undo ? undo.expires_at : now() + HANDLE_HOLD_DAYS * DAY;
   try {
     await q.tx(async (db) => {
-      await db.run("DELETE FROM handle_history WHERE old_handle = ?", handle); // taking back one of your own old links
+      // Taking back one of your own old links. Staff recovering a name also end another account's hold on it.
+      if (checks) await db.run("DELETE FROM handle_history WHERE old_handle = ? AND user_id = ?", handle, userId);
+      else await db.run("DELETE FROM handle_history WHERE old_handle = ?", handle);
       await db.run("UPDATE users SET handle = ? WHERE id = ?", handle, userId);
       await resetVerified(db, userId);
-      if (!undo) await db.run("UPDATE users SET handle_changed_at = ? WHERE id = ?", now(), userId);
+      if (!undo && (checks || !forward)) await db.run("UPDATE users SET handle_changed_at = ? WHERE id = ?", now(), userId);
       if (forward)
         await db.run(
           "INSERT INTO handle_history (old_handle, user_id, forward, created_at, expires_at, forward_until) VALUES (?,?,?,?,?,?) ON CONFLICT (old_handle) DO UPDATE SET user_id = excluded.user_id, forward = 1, created_at = excluded.created_at, expires_at = excluded.expires_at, forward_until = excluded.forward_until",
