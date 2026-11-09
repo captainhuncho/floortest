@@ -24,6 +24,10 @@ const nextConfig: NextConfig = {
   // PGlite (the in-process database) is only for local development; on Vercel DATABASE_URL is always set,
   // so it's left out of the deployed functions. Each deployment stores a copy of them, so this saves ~25 MB apiece.
   outputFileTracingExcludes: process.env.VERCEL ? { "*": ["node_modules/@electric-sql/pglite/**"] } : {},
+  // The share card reads these from disk when it draws; nothing imports them, so tracing wouldn't find them.
+  outputFileTracingIncludes: {
+    "/api/callout-card/[id]": ["./src/lib/callout-card/art/**", "./src/lib/callout-card/fonts/**", "./src/app/fonts/Inter-Bold.ttf", "./public/brand/crest.svg"],
+  },
   poweredByHeader: false,
   // The Turnstile site key is public by design; this lets it be stored as TURNSTILE_SITE_KEY in Vercel.
   async headers() {

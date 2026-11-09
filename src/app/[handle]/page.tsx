@@ -11,7 +11,7 @@ import { teamSize } from "@/lib/team";
 import type { Metadata, Viewport } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { forwardedHandle } from "@/lib/accounts";
-import { activeCollection, capacity, isClosed, isPaused, pausedMessage, userByHandleForView } from "@/lib/desk";
+import { activeCollection, calloutBlock, capacity, isPaused, pausedMessage, userByHandleForView } from "@/lib/desk";
 import { fmtDay } from "@/lib/format";
 import { genresFor, RETAIN_UNREVIEWED_DAYS } from "@/lib/plans";
 import { folderLimit, trackArtEnabled } from "@/lib/plan-store";
@@ -59,20 +59,21 @@ export default async function ReceiverPage({ params }: Props) {
   }
   const [collection, sharing, { full }, c, editor] = await Promise.all([activeCollection(receiver), switchOn("sharing"), capacity(receiver), siteCopy("link"), siteEditor()]);
   const { E, panel } = editable(c, !!editor);
-  const closed = isClosed(collection);
   const { list: genres, custom: ownGenres } = genresFor(collection);
   const paused = isPaused(receiver);
   const note = paused ? receiver.pause_message : "";
   const [team, folderBytes, botKey, trackArt] = await Promise.all([teamSize(receiver.id), folderLimit(receiver.plan), botCheckKey(), trackArtEnabled(receiver.plan)]);
-  const closedReason = paused
-    ? pausedMessage(receiver)
-    : closed
-    ? collection!.full_at
-      ? `“${collection!.name}” is full: it has all the tracks ${receiver.name} asked for.`
-      : `“${collection!.name}” closed on ${fmtDay(collection!.closes_at!, receiver.tz)}.`
-    : full
-      ? `${receiver.name} isn't accepting new tracks right now.`
-      : null;
+  const block = calloutBlock(receiver, collection, full);
+  const closedReason =
+    block === "paused"
+      ? pausedMessage(receiver)
+      : block === "full"
+        ? `“${collection!.name}” is full: it has all the tracks ${receiver.name} asked for.`
+        : block === "closed"
+          ? `“${collection!.name}” closed on ${fmtDay(collection!.closes_at!, receiver.tz)}.`
+          : block
+            ? `${receiver.name} isn't accepting new tracks right now.`
+            : null;
 
   // The brief shows only what the receiver asked for: their own genres (never the default list, which they didn't choose),
   // and the rest as it reads on the desk. Genres become tappable choices that carry into the form.
