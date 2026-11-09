@@ -94,7 +94,7 @@ test("the route is owner-only, has fixed inputs, and asks for named columns", ()
   const route = fs.readFileSync(path.join(process.cwd(), "src/app/api/callout-card/[id]/route.ts"), "utf8");
   assert.ok(!/SELECT \*|activeCollection|collectionOf/.test(route));
   assert.match(route, /FROM collections WHERE id = \? AND user_id = \?/);
-  assert.match(route, /if \(await viewingAs\(\)\) return notFound\(\)/);
+  assert.match(route, /if \(user\.role !== "owner" \|\| \(await viewingAs\(\)\)\) return notFound\(\)/);
   assert.match(route, /email_verified_at/);
   assert.match(route, /\/\^\\d\{1,15\}\$\//);
   assert.match(route, /\["story", "square"\]/);

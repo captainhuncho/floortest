@@ -45,7 +45,7 @@ async function photoFrom(key: string | null) {
 export async function GET(req: Request, ctx: RouteContext<"/api/callout-card/[id]">) {
   const user = await currentUser();
   if (!user) return new Response("Sign in", { status: 401 });
-  if (await viewingAs()) return notFound();
+  if (user.role !== "owner" || (await viewingAs())) return notFound();
   if (!user.email_verified_at) return new Response("Confirm your email first", { status: 403 });
   const raw = (await ctx.params).id;
   if (!/^\d{1,15}$/.test(raw)) return notFound();
