@@ -105,6 +105,26 @@ test("right-to-left text mixed with Latin or number shapes it can't place falls 
   for (const text of ["דני (DJ)", "Hello (مرحبا) World", "مرحبا (Hello) بكم", "שלום [world] עולם", "مرحبا 12:30 بكم", "128-140 موسيقى", "Hello مرحبا.", "أفرو 118–124 BPM", "ب2"]) assert.equal(await shaped(text), null, text);
 });
 
+test("digits and symbols whose place in right-to-left text isn't certain fall back", async () => {
+  for (const text of ["مرحبا १ २ عالم", "مرحبا ๑ عالم", "مرحبا ১ عالم", "مرحبا ½¼ عالم", "אבג \u0482\u214f", "אבג \ua789", "אבג \ua78a", "אבג \ua92e", "אבג \uab5b", "אבג \u10fb"]) assert.equal(await shaped(text), null, text);
+  for (const text of ["مرحبا ٢٠٢٦ عالم", "مرحبا ۲۰۲۶ عالم", "שלום 2026 עולם"]) assert.ok(await shaped(text), text);
+});
+
+test("one wide unbreakable character can't run off the card", async () => {
+  const { renderCard } = await import("../src/lib/callout-card/render");
+  const wide = `${"छ्".repeat(59)}छ`;
+  for (const format of ["story", "square"] as const) {
+    const withWide = await renderCard(format, { ...fields, details: wide }, null);
+    const without = await renderCard(format, { ...fields, details: "" }, null);
+    assert.deepEqual(await sharp(withWide).raw().toBuffer(), await sharp(without).raw().toBuffer(), "the field is left out");
+  }
+});
+
+test("a name of invisible filler characters uses the handle", async () => {
+  const { cardFields } = await import("../src/lib/callout-card/fields");
+  for (const name of ["\u3164\u3164", "\u2800"]) assert.equal(cardFields({ ...receiver, name }, callout).name, "nadia");
+});
+
 test("pure right-to-left text, brackets, a period and whole-word numbers keep their order and spaces", async () => {
   const closingShape = (await shaped("ب)"))!.glyphs[0].id;
   assert.equal((await shaped("مرحبا (بكم)"))!.glyphs[0].id, closingShape, "the bracket at the end is on the left and mirrored");

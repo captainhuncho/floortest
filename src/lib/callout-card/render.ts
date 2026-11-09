@@ -50,7 +50,7 @@ const JOINS_BEFORE = new RegExp(`[${JOINING_SCRIPTS}]$`, "u");
 const JOINS_AFTER = new RegExp(`^[${JOINING_SCRIPTS}]`, "u");
 const ZERO_WIDTH_JOINER = /[‌‍]/;
 const KEYCAP = /[0-9#*]️?⃣/gu;
-const EMOJI = /(?![©®™])\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Regional_Indicator}|\p{Variation_Selector}|[\u{e0020}-\u{e007f}]|⃣/gu;
+const EMOJI = /(?![©®™])\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Regional_Indicator}|\p{Variation_Selector}|[\u{e0020}-\u{e007f}]|[\u20e3\u115f\u1160\u17b4\u17b5\u2800\u3164\uffa0]/gu;
 
 /** Emoji, control and direction-override characters out, so a name can't reorder or hide what's printed. Joiners stay only where a script needs them. */
 export const cleanText = (raw: string) =>

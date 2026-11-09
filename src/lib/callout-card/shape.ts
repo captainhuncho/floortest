@@ -28,6 +28,9 @@ const SCRIPT_FILES: [RegExp, string][] = [
 ];
 const CJK_SCRIPT = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
 const RTL = /[\p{Script=Arabic}\p{Script=Hebrew}]/u;
+// Only characters whose place in right-to-left text is certain: anything else (other digits, symbols that read left to right) falls back.
+const RTL_SAFE = /^[\p{Script=Arabic}\p{Script=Hebrew}\p{M}\u200c\u200d 0-9٠-٩۰-۹!-\/:-@\[-`{-~،؛؟«»\u2010-\u2027]+$/u;
+const RTL_NUMBER = /^[0-9٠-٩۰-۹]+$/u;
 const JOINERS = /[\p{M}\u200c\u200d]/u;
 const MAX_FILES_PER_STRING = 2;
 const MAX_GLYPHS = 400;
@@ -88,8 +91,8 @@ const fileForScript = (ch: string, cjk: CjkFont) => (CJK_SCRIPT.test(ch) ? CJK_F
  */
 function assertPlainDirection(text: string) {
   if (!RTL.test(text)) return;
-  if ([...text].some((ch) => /\p{L}/u.test(ch) && !RTL.test(ch))) throw new Undrawable();
-  if (text.split(" ").some((word) => /\p{N}/u.test(word) && !/^\p{N}+$/u.test(word))) throw new Undrawable();
+  if (!RTL_SAFE.test(text)) throw new Undrawable();
+  if (text.split(" ").some((word) => /\p{N}/u.test(word) && !RTL_NUMBER.test(word))) throw new Undrawable();
 }
 
 /** Splits one line into runs that each have one font and one direction, in reading order. Fonts are claimed before they're read. */
@@ -187,6 +190,7 @@ function place(hb: HarfBuzz, text: string, opts: LayoutOptions, runsFor: (line: 
     }
     widest = Math.max(widest, cursor);
   });
+  if (opts.width && widest > opts.width + TEXT_BLEED) throw new Undrawable();
   if (placedGlyphs.length > MAX_GLYPHS || body.length > MAX_PATH_CHARS) throw new Undrawable();
   return { body, width: Math.ceil(widest) + TEXT_BLEED, lines: lines.length, glyphs: placedGlyphs };
 }
