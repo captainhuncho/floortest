@@ -109,6 +109,55 @@ test("a number range inside Arabic keeps its reading order", async () => {
   assert.equal(latinStart, 3, "118 comes before –124 BPM");
 });
 
+test("shared punctuation and marks in a non-Latin line draw from a font that has them", async () => {
+  for (const text of ["ミュージック", "東京ミュージック", "ジャズ・バー", "「ナディア」、東京。", "ナ〜！？"]) {
+    const l = await shaped(text, "jp");
+    assert.ok(l, text);
+    assert.ok(l.glyphs.every((g) => g.id !== 0) && !inFont(l, "NotoSans-Regular.ttf"), text);
+  }
+  const samples = [["نادية", "،؛؟"], ["שלום", "׃"], ["नादिया", "।॥"], ["বাংলা", "।"], ["தமிழ்", ""], ["สวัสดี", "฿"], ["ナディア", "、。・ー"], ["나디아", "、。"], ["娜迪亚", "，。"]] as const;
+  const ascii = Array.from({ length: 0x5e }, (_, i) => String.fromCharCode(0x21 + i)).filter((c) => !/\p{L}/u.test(c));
+  for (const [word, own] of samples) for (const ch of [...own, ...ascii, "–", "—", "…", "’"]) {
+    const l = await shaped(`${word}${ch}`, /[가-힣]/.test(word) ? "kr" : /[ぁ-ヿ]/.test(word) ? "jp" : undefined);
+    assert.ok(l && l.glyphs.every((g) => g.id !== 0), `${word} + U+${ch.codePointAt(0)!.toString(16)}`);
+  }
+  for (let cp = 0x3000; cp <= 0x30ff; cp++) {
+    const ch = String.fromCodePoint(cp);
+    if (!/[\p{Script=Common}]/u.test(ch) || /[\p{Z}\p{C}]/u.test(ch)) continue;
+    assert.ok(await shaped(`ナ${ch}`, "jp"), `U+${cp.toString(16)}`);
+  }
+});
+
+test("numbers read in the right order inside right-to-left text", async () => {
+  for (const year of ["٢٠٢٦", "۲۰۲۶", "2026"]) {
+    for (const lead of year === "2026" ? ["نادية", "שלום"] : ["نادية"]) {
+      const ids = (await shaped(`${lead} ${year}`))!.glyphs.slice(0, 4).map((g) => g.id);
+      assert.equal(ids[0], ids[2], `${year} after ${lead} reads 2,0,2`);
+      assert.notEqual(ids[0], ids[1], `${year} after ${lead}`);
+      assert.notEqual(ids[0], ids[3], `${year} after ${lead} ends in 6, not 2`);
+    }
+    const alone = (await shaped(year))!.glyphs.map((g) => g.id);
+    assert.equal(alone[0], alone[2], `${year} alone`);
+    assert.notEqual(alone[3], alone[0], `${year} alone ends in 6`);
+  }
+});
+
+test("joiners can't hide stacked marks", async () => {
+  assert.equal(await shaped(`ب${"\u06d6\u06d7\u06d8\u06d9\u200d".repeat(20)}ب`), null);
+  assert.equal(await shaped(`ب${"\u06d6\u200c".repeat(6)}`), null);
+  assert.ok(await shaped("می\u200cخواهم"), "a real Persian joiner still draws");
+});
+
+test("a photo in any format but JPEG, PNG or WebP is skipped", async () => {
+  const { fitPhoto } = await import("../src/lib/callout-card/render");
+  const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="900" height="900"><rect width="900" height="900"/></svg>');
+  assert.equal(await fitPhoto(svg), null);
+  const base = sharp({ create: { width: 900, height: 900, channels: 3, background: "#884422" } });
+  assert.equal(await fitPhoto(await base.clone().tiff().toBuffer()), null);
+  assert.equal(await fitPhoto(await base.clone().gif().toBuffer()), null);
+  for (const encoded of [base.clone().jpeg(), base.clone().png(), base.clone().webp()]) assert.ok(await fitPhoto(await encoded.toBuffer()));
+});
+
 test("too many fonts, missing glyphs, stacked marks and huge strings can't be drawn", async () => {
   assert.equal(await shaped("Abc نادية שלום"), null, "three font files");
   assert.equal(await shaped("ᚠᚢᚦ"), null, "a script with no font");

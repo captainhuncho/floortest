@@ -23,6 +23,7 @@ const LOCKUP_TILT = 8.5;
 const TEXT_LEFT = 96;
 const TEXT_WIDTH = 888;
 const MAX_PHOTO_PIXELS = 40_000_000;
+const PHOTO_FORMATS: readonly string[] = ["jpeg", "png", "webp"];
 const SHARP_SECONDS = 5;
 const QR_QUIET_MODULES = 4;
 const LINE_HEIGHT = 1.28;
@@ -91,6 +92,7 @@ async function drawFitted(text: string, font: Font, size: number, colour: string
 export async function fitPhoto(bytes: Uint8Array): Promise<Buffer | null> {
   try {
     const meta = await sharp(bytes, { limitInputPixels: MAX_PHOTO_PIXELS }).metadata();
+    if (!PHOTO_FORMATS.includes(meta.format ?? "")) return null;
     const shorter = Math.min(meta.autoOrient?.width ?? meta.width ?? 0, meta.autoOrient?.height ?? meta.height ?? 0);
     if (shorter < PHOTO_SLOT) return null;
     const square = await sharp(bytes, { limitInputPixels: MAX_PHOTO_PIXELS }).timeout({ seconds: SHARP_SECONDS }).rotate().resize(PHOTO_SLOT, PHOTO_SLOT, { fit: "cover", position: "centre" }).png().toBuffer();

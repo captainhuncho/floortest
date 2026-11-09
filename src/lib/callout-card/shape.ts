@@ -28,7 +28,8 @@ const SCRIPT_FILES: [RegExp, string][] = [
 ];
 const CJK_SCRIPT = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
 const RTL = /[\p{Script=Arabic}\p{Script=Hebrew}]/u;
-const JOINERS = /[\p{M}‌‍]/u;
+const JOINERS = /[\p{M}\u200c\u200d]/u;
+const COMMON = /[\p{Script=Common}\p{Script=Inherited}]/u;
 const MAX_FILES_PER_STRING = 2;
 const MAX_GLYPHS = 400;
 const MAX_PATH_CHARS = 600_000;
@@ -41,7 +42,11 @@ const TEXT_BLEED = 8;
 
 type HarfBuzz = typeof import("harfbuzzjs");
 let loading: Promise<HarfBuzz> | undefined;
-const harfbuzz = () => (loading ??= import("harfbuzzjs"));
+const harfbuzz = () =>
+  (loading ??= import("harfbuzzjs").catch((error) => {
+    loading = undefined;
+    throw error;
+  }));
 
 class Undrawable extends Error {}
 
@@ -90,9 +95,11 @@ function splitRuns(hb: HarfBuzz, line: string, paragraphRtl: boolean, cjk: CjkFo
     }
     const scripted = fileForScript(ch, cjk);
     const isDigit = /\p{N}/u.test(ch);
-    const isLetter = /\p{L}/u.test(ch);
-    const file = scripted ?? (isLetter ? LATIN : ([prev?.file, lineFile, LATIN].find((f) => f && covers(f, ch)) ?? LATIN));
-    const rtl = scripted ? RTL.test(ch) : isDigit || isLetter ? false : (prev?.rtl ?? paragraphRtl);
+    const shared = COMMON.test(ch);
+    const candidates = shared ? [prev?.file, lineFile, LATIN] : [LATIN, prev?.file, lineFile];
+    const file = scripted ?? candidates.find((f) => f && covers(f, ch)) ?? LATIN;
+    // Numbers read left to right in every script, including Arabic-Indic digits.
+    const rtl = isDigit ? false : scripted ? RTL.test(ch) : shared ? (prev?.rtl ?? paragraphRtl) : false;
     if (prev && prev.file === file && prev.rtl === rtl) runs[runs.length - 1] = { ...prev, text: prev.text + ch };
     else runs.push({ text: ch, file, rtl });
   }
@@ -173,7 +180,7 @@ function place(hb: HarfBuzz, text: string, opts: LayoutOptions, runsFor: (line: 
  * for each script. Null when it can't be drawn cleanly, so the caller uses the handle or leaves the field out.
  */
 export async function layoutText(text: string, opts: LayoutOptions): Promise<Layout | null> {
-  if (STACKED_MARKS.test(text)) return null;
+  if (STACKED_MARKS.test(text.replace(/[\u200c\u200d]/g, ""))) return null;
   const hb = await harfbuzz();
   try {
     return place(hb, text, opts, (line) => [{ text: line, file: opts.house, rtl: false }], opts.size);
