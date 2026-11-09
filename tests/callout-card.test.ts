@@ -49,7 +49,7 @@ test("hostile and very long text draws as text and stays on the card", async () 
 
 test("names the fonts can't draw fall back to the handle, never empty boxes", async () => {
   const { cardFields } = await import("../src/lib/callout-card/fields");
-  for (const name of ["نادية", "ナディア", "Nadia 🎧"]) assert.equal(cardFields({ ...receiver, name }, callout).name, "nadia", name);
+  for (const name of ["نادية", "ナディア", "Nadia 🎧", "Łukasz"]) assert.equal(cardFields({ ...receiver, name }, callout).name, "nadia", name);
   assert.equal(cardFields(receiver, { ...callout, name: "コール" }).callout, "");
   assert.equal(cardFields({ ...receiver, name: "José" }, callout).name, "José");
 });
@@ -94,7 +94,8 @@ test("the route is owner-only, has fixed inputs, and asks for named columns", ()
   const route = fs.readFileSync(path.join(process.cwd(), "src/app/api/callout-card/[id]/route.ts"), "utf8");
   assert.ok(!/SELECT \*|activeCollection|collectionOf/.test(route));
   assert.match(route, /FROM collections WHERE id = \? AND user_id = \?/);
-  assert.match(route, /if \(user\.role !== "owner" \|\| \(await viewingAs\(\)\)\) return notFound\(\)/);
+  assert.match(route, /if \(await viewingAs\(\)\) return notFound\(\)/);
+  assert.match(route, /if \(user\.role !== "owner"\) return notFound\(\)/);
   assert.match(route, /email_verified_at/);
   assert.match(route, /\/\^\\d\{1,15\}\$\//);
   assert.match(route, /\["story", "square"\]/);
