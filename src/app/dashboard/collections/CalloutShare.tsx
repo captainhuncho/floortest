@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useModalDialog } from "@/components/Dialog";
 import { Icon } from "@/components/Kit";
 import { useToast } from "@/components/Toast";
@@ -29,10 +29,18 @@ export function CalloutShare({ collectionId, collectionName, link }: { collectio
   const [cards, setCards] = useState<Partial<Record<CardFormat, Card>>>({});
   // Each opening of the sheet gets a number, so a card that arrives after the sheet closed is dropped.
   const opening = useRef(0);
+  const imageUrls = useRef(new Set<string>());
+
+  const releaseImages = () => {
+    opening.current += 1;
+    for (const url of imageUrls.current) URL.revokeObjectURL(url);
+    imageUrls.current.clear();
+  };
+  // Leaving the page with the sheet open never reaches close().
+  useEffect(() => releaseImages, []);
 
   const close = () => {
-    opening.current += 1;
-    for (const c of Object.values(cards)) if (c.status === "ready") URL.revokeObjectURL(c.url);
+    releaseImages();
     setCards({});
     setFormat("story");
     setOpen(false);
@@ -54,7 +62,9 @@ export function CalloutShare({ collectionId, collectionName, link }: { collectio
       }
       const file = new File([await res.blob()], `floortest-callout-${f}.png`, { type: "image/png" });
       if (started !== opening.current) return;
-      put({ status: "ready", file, url: URL.createObjectURL(file), canShare: !!navigator.canShare?.({ files: [file] }) });
+      const url = URL.createObjectURL(file);
+      imageUrls.current.add(url);
+      put({ status: "ready", file, url, canShare: !!navigator.canShare?.({ files: [file] }) });
     } catch {
       put({ status: "problem", ...cardProblem(0, null, null) });
     }
