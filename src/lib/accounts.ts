@@ -32,12 +32,13 @@ export const DELETED_HANDLE_HOLD_DAYS = 365;
 
 /**
  * An old handle someone else gave up recently, or one a deleted account used: reserved, so nobody can grab a link
- * that's still in bios.
+ * that's still in bios. `ignoreRenames` is for staff recovering a name: another live or suspended account's old-name hold
+ * doesn't stop them, but a deleted account's reservation still does.
  */
-export async function handleHeld(handle: string, forUserId = 0) {
+export async function handleHeld(handle: string, forUserId = 0, ignoreRenames = false) {
   const t = now();
   return !!(
-    (await q.get("SELECT 1 FROM handle_history WHERE old_handle = ? AND expires_at > ? AND user_id <> ?", handle, t, forUserId)) ||
+    (!ignoreRenames && (await q.get("SELECT 1 FROM handle_history WHERE old_handle = ? AND expires_at > ? AND user_id <> ?", handle, t, forUserId))) ||
     (await q.get("SELECT 1 FROM released_handles WHERE handle = ? AND expires_at > ?", handle, t))
   );
 }
@@ -68,7 +69,7 @@ export async function resetVerified(db: Pick<typeof q, "run">, userId: number) {
 
 /**
  * Moves an account to a new handle. The old one forwards for HANDLE_FORWARD_DAYS and is reserved for them for HANDLE_HOLD_DAYS,
- * unless `forward` is off (taken back for impersonation): then it's released at once.
+ * unless `forward` is off (taken back for impersonation): then it and any other name they still held are released at once.
  * `checks` off skips the protected-name rule and the once-a-year limit, for admins.
  * Going back to your own old name while it's still held is an undo: it doesn't use up the yearly change.
  */
@@ -82,7 +83,7 @@ export async function changeHandle(userId: number, next: string, { forward = tru
   if (u.handle === handle) return null;
   if (RESERVED_HANDLES.has(handle)) return "That link name is reserved.";
   if (checks && (await isProtectedHandle(handle))) return "That name is protected for a well-known artist. If it's you, contact us.";
-  if (await handleHeld(handle, userId)) return "That link was someone's until recently and is still reserved.";
+  if (await handleHeld(handle, userId, !checks)) return "That link was someone's until recently and is still reserved.";
   // Switching back keeps the original deadline, so bouncing between names can't hold two of them forever.
   const undo = await q.get<{ expires_at: number }>("SELECT expires_at FROM handle_history WHERE old_handle = ? AND user_id = ? AND expires_at > ?", handle, userId, now());
   if (checks && !undo) {
@@ -101,7 +102,7 @@ export async function changeHandle(userId: number, next: string, { forward = tru
           "INSERT INTO handle_history (old_handle, user_id, forward, created_at, expires_at, forward_until) VALUES (?,?,?,?,?,?) ON CONFLICT (old_handle) DO UPDATE SET user_id = excluded.user_id, forward = 1, created_at = excluded.created_at, expires_at = excluded.expires_at, forward_until = excluded.forward_until",
           u.handle, userId, 1, now(), holdUntil, Math.min(holdUntil, now() + HANDLE_FORWARD_DAYS * DAY),
         );
-      else await db.run("DELETE FROM handle_history WHERE old_handle = ?", u.handle);
+      else await db.run("DELETE FROM handle_history WHERE user_id = ?", userId); // a take-back ends every name they held
     });
   } catch (e) {
     if (isUniqueViolation(e)) return "That link is taken.";
