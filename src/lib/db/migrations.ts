@@ -2216,4 +2216,13 @@ create trigger users_consent_times_insert before insert on users for each row ex
 create index if not exists sign_in_codes_expires on sign_in_codes(expires_at);
 alter table sign_in_codes enable row level security;`,
   },
+  {
+    // An old link used to forward and stay reserved for the same 14 days. Now it forwards for 14 and stays reserved for
+    // the account for 365. Names still held when this runs get the longer reservation, counted from when they were given up.
+    id: "0139_handle_forward_until",
+    sql: `alter table handle_history add column forward_until bigint not null default 0;
+update handle_history set forward_until = expires_at;
+update handle_history set expires_at = created_at + 31536000000
+  where expires_at > (extract(epoch from now()) * 1000)::bigint;`,
+  },
 ];
