@@ -6,7 +6,7 @@
 
 The drafts at /terms and /privacy were rewritten on 29 Sep 2026 to close the gaps listed further down. Owner decisions so far:
 
-- **Operator:** **FloorTest Labs**, a company being registered in **Ghana** (not the UK). Renamed from "FloorTest LTD" on 7 Oct 2026; the Terms and Privacy pages now use the new name. Governing law is set to Ghana. Complaints point to Ghana's Data Protection Commission and the user's local authority, such as the UK ICO. Add the registration number and address to `src/lib/legal.ts` once incorporated.
+- **Operator:** **FloorTest Labs LTD**, registered in **Ghana** (not the UK) with the Office of the Registrar of Companies on 1 Nov 2026, No. CS231621126, registered office Number 26 New Road, near Durban Street 604, Madina, Accra. The Terms and Privacy pages name it from `src/lib/legal.ts` (owner's wording, 10 Nov 2026; legal pages dated 10 November 2026). Governing law is set to Ghana. Complaints point to Ghana's Data Protection Commission and the user's local authority, such as the UK ICO.
 - **Contact:** since 13 Oct the legal pages use legal@, privacy@, copyright@ and security@floortest.app instead of info@imullar.com (see What changed 11–13 Oct; question 30).
 - **Website:** **floortest.app** (moved from floortest.imullar.com on 7 Oct 2026; old links redirect). Emails come from team@floortest.app (hello@ until 13 Oct); support@floortest.app for help and takedowns.
 - **Minimum age:** 18+. Stated in both documents, on sign-up and on the send form.
@@ -47,7 +47,7 @@ The owner asked for the public pages to match the product and to lose internal n
 - Law enforcement: IP retention corrected (abuse limits up to 3 days; email copies with sign-in alerts 90 days), was "48 hours".
 - Takedown: "the receiver's link it was sent to" (was "the sender's link"); repeat infringers blocked from sending; US notices to copyright@ (DMCA agent still to register, question open).
 - Responsible disclosure: "We don't offer payment for reports" (was "no paid bug bounty yet").
-- Still open for you: whether Google Workspace (privacy@, copyright@, support@ mailboxes) belongs on the sub-processor list; the operator line still reads "a company being registered in Ghana"; DMCA designated agent registration.
+- Still open for you: whether Google Workspace (privacy@, copyright@, support@ mailboxes) belongs on the sub-processor list; DMCA designated agent registration.
 
 ## What changed 11–13 Oct 2026 (please review)
 
