@@ -38,7 +38,7 @@
 **Story angles** (facts only from the repo)
 1. **The other side of the demo:** music tools serve makers; FloorTest serves the DJ or label receiving new tracks every week.
 2. **A receipt that doesn't lie:** "Listened" means 30 seconds of real playback; the DJ's Keep / Not for me stays private. Angle for producer newsletters.
-3. **Built for London and Lagos:** launching in the UK, EU, Ghana and Nigeria at the same price; solo DJs and curators in both scenes lead. Operator being registered in Ghana.
+3. **Built for London and Lagos:** launching in the UK, EU, Ghana and Nigeria at the same price; solo DJs and curators in both scenes lead. Operator: FloorTest Labs LTD, registered in Ghana.
 4. **Your files stay yours:** originals never transcoded, virus scanning on our own servers (no third-party scanner), unkept files deleted after 90 days.
 5. **Senders never pay:** no paid boosts, no pay-to-be-heard; the free link is the business case for honesty. Contrast with paid submission platforms.
 

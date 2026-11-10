@@ -58,7 +58,7 @@ Rough break-even: the launch stack ($110–170) is covered by 18–28 Pro monthl
 | Item | Cost | When |
 |---|---|---|
 | Lawyer (Ghana, UK/EU data protection) | owner's quote | before launch |
-| Company registration (FloorTest Labs, Ghana) | owner's quote | before launch |
+| Company registration (FloorTest Labs LTD, Ghana) | owner's quote | done 1 Nov 2026 (No. CS231621126) |
 | Apple Developer Program | $99 a year | when the apps go to the store (held) |
 | Google Play registration | $25 once | same |
 | App store fees | 15% of in-app sales (small business rate), absorbed per the 12 Oct decision | same |
