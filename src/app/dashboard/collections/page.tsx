@@ -2,13 +2,14 @@ import { trackUse } from "@/lib/usage";
 import { BETA_COLLECTIONS, canAddCollection, canCapCallouts } from "@/lib/desk";
 import { switchOn } from "@/lib/switches";
 import Link from "next/link";
-import { requireUser } from "@/lib/auth";
-import { collectionsFor, isClosed } from "@/lib/desk";
+import { requireUser, viewingAs } from "@/lib/auth";
+import { calloutBlock, capacity, collectionsFor, isClosed } from "@/lib/desk";
 import { fmtDay } from "@/lib/format";
 import { genresFor } from "@/lib/plans";
 import { briefItems } from "@/lib/brief";
 import { APP_URL } from "@/lib/mail";
 import { CapTicks, CollectionTile, Folder, NewCollection } from "./CollectionForms";
+import { shareCardTarget } from "./callout-card";
 import { q } from "@/lib/db";
 import { sharedLinksFor } from "@/lib/share-links";
 import { CARD, Chip, Icon, PageHead, SectionHead } from "@/components/Kit";
@@ -42,6 +43,9 @@ export default async function Collections() {
         receiving.id,
       )
     : [];
+  const card = receiving
+    ? shareCardTarget({ isOwner: user.role === "owner", viewingAs: !!(await viewingAs()), active: receiving, blocked: !!calloutBlock(user, receiving, (await capacity(user)).full) })
+    : undefined;
   const host = APP_URL.replace(/^https?:\/\//, "");
   return (
     <div className="page-gutter py-4 sm:py-7">
@@ -65,6 +69,7 @@ export default async function Collections() {
                   closed={isClosed(c)}
                   canManage={canManage}
                   link={`${APP_URL}/${user.handle}`}
+                  card={c.id === receiving?.id ? card : undefined}
                 />
               </li>
             );

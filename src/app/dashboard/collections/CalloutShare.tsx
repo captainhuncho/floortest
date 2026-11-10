@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useModalDialog } from "@/components/Dialog";
 import { Icon } from "@/components/Kit";
 import { useToast } from "@/components/Toast";
@@ -22,11 +22,25 @@ type Card =
  * Share a callout as an image for a story or a feed. The image is fetched when the sheet opens, not on the Share tap:
  * phones only allow navigator.share straight after a tap, and waiting on the network first loses that.
  */
-export function CalloutShare({ collectionId, collectionName, link }: { collectionId: number; collectionName: string; link: string }) {
+export function CalloutShare({
+  collectionId,
+  collectionName,
+  link,
+  trigger,
+}: {
+  collectionId: number;
+  collectionName: string;
+  link: string;
+  /** A different button to open the sheet, such as the link row's Share icon. Defaults to a full-width "Share as a card". */
+  trigger?: { label: string; className: string; content: React.ReactNode };
+}) {
   const toast = useToast();
+  const headingId = useId();
   const [open, setOpen] = useState(false);
   const [format, setFormat] = useState<CardFormat>("story");
   const [cards, setCards] = useState<Partial<Record<CardFormat, Card>>>({});
+  // Read when the sheet opens, so the server and the browser render the same thing.
+  const [canShareLink, setCanShareLink] = useState(false);
   // Each opening of the sheet gets a number, so a card that arrives after the sheet closed is dropped.
   const opening = useRef(0);
   const imageUrls = useRef(new Set<string>());
@@ -71,6 +85,7 @@ export function CalloutShare({ collectionId, collectionName, link }: { collectio
   }
 
   function start() {
+    setCanShareLink(typeof navigator.share === "function");
     setOpen(true);
     void load("story");
   }
@@ -96,24 +111,38 @@ export function CalloutShare({ collectionId, collectionName, link }: { collectio
     }
   }
 
+  async function shareLink() {
+    try {
+      await navigator.share({ title: "Send me your music", url: link });
+    } catch {
+      // Closing the share sheet isn't an error worth saying anything about.
+    }
+  }
+
   const card = cards[format] ?? { status: "loading" as const };
   const aspect = FORMATS.find((x) => x.id === format)?.aspect;
 
   return (
     <>
-      <button type="button" onClick={start} aria-haspopup="dialog" className={`${GHOST_TALL} w-full`}>
-        <Icon name="share" className="size-4" />
-        Share as a card
-      </button>
+      {trigger ? (
+        <button type="button" onClick={start} aria-haspopup="dialog" aria-label={trigger.label} className={trigger.className}>
+          {trigger.content}
+        </button>
+      ) : (
+        <button type="button" onClick={start} aria-haspopup="dialog" className={`${GHOST_TALL} w-full`}>
+          <Icon name="share" className="size-4" />
+          Share as a card
+        </button>
+      )}
       <dialog
         {...modalProps}
-        aria-labelledby="callout-share-h"
+        aria-labelledby={headingId}
         className="m-0 mt-auto max-h-[92dvh] w-full max-w-none rounded-t-[22px] border border-b-0 border-line bg-card p-0 text-bone backdrop:bg-black/55 sm:m-auto sm:max-w-md sm:rounded-[22px] sm:border-b"
       >
         {open && (
           <div className="flex flex-col gap-3 px-4 pt-2.5 pb-[max(1rem,env(safe-area-inset-bottom))]">
             <div className="flex items-center justify-between gap-2">
-              <h2 id="callout-share-h" className="min-w-0 truncate text-[15px] font-semibold">
+              <h2 id={headingId} className="min-w-0 truncate text-[15px] font-semibold">
                 Share {collectionName}
               </h2>
               <button type="button" onClick={close} aria-label="Close" className="grid size-11 shrink-0 place-items-center rounded-xl text-mute">
@@ -144,26 +173,34 @@ export function CalloutShare({ collectionId, collectionName, link }: { collectio
                 <div role="status" aria-label="Making your card" className={`${aspect} h-[50dvh] max-w-full animate-pulse rounded-xl bg-well`} />
               )}
             </div>
-            {card.status === "ready" && (
-              <div className="flex flex-col gap-2">
-                {card.canShare && (
-                  <button type="button" onClick={() => void share(card.file)} className={`${LIME} w-full`}>
-                    Share image
-                  </button>
-                )}
-                <a href={card.url} download={card.file.name} className={card.canShare ? `${GHOST_TALL} w-full` : `${LIME} inline-flex w-full items-center justify-center`}>
-                  Save image
-                </a>
-                <div className="grid grid-cols-2 gap-2">
-                  <button type="button" onClick={() => void copy(cardCaption(collectionName, link), "Caption copied.")} className={GHOST_TALL}>
-                    Copy caption
-                  </button>
-                  <button type="button" onClick={() => void copy(link, "Link copied.")} className={GHOST_TALL}>
-                    Copy link
-                  </button>
-                </div>
+            <div className="flex flex-col gap-2">
+              {card.status === "ready" && (
+                <>
+                  {card.canShare && (
+                    <button type="button" onClick={() => void share(card.file)} className={`${LIME} w-full`}>
+                      Share image
+                    </button>
+                  )}
+                  <a href={card.url} download={card.file.name} className={card.canShare ? `${GHOST_TALL} w-full` : `${LIME} inline-flex w-full items-center justify-center`}>
+                    Save image
+                  </a>
+                </>
+              )}
+              {/* The plain link works whatever happens to the card. */}
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => void copy(cardCaption(collectionName, link), "Caption copied.")} className={GHOST_TALL}>
+                  Copy caption
+                </button>
+                <button type="button" onClick={() => void copy(link, "Link copied.")} className={GHOST_TALL}>
+                  Copy link
+                </button>
               </div>
-            )}
+              {canShareLink && (
+                <button type="button" onClick={() => void shareLink()} className={`${GHOST_TALL} w-full`}>
+                  Share link only
+                </button>
+              )}
+            </div>
           </div>
         )}
       </dialog>
