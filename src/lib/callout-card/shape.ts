@@ -30,7 +30,9 @@ const SCRIPT_FILES: [RegExp, string][] = [
 const CJK_SCRIPT = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
 const RTL = /[\p{Script=Arabic}\p{Script=Hebrew}]/u;
 // Only characters whose place in right-to-left text is certain: anything else (other digits, symbols that read left to right) falls back.
-const RTL_SAFE = /^[\p{Script=Arabic}\p{Script=Hebrew}\p{M}\u200c\u200d 0-9٠-٩۰-۹!-\/:-@\[-`{-~،؛؟«»\u2010-\u2027]+$/u;
+const RTL_SAFE = /^[\p{Script=Arabic}\p{Script=Hebrew}\p{Mn}\u200c\u200d 0-9٠-٩۰-۹!-\/:-@\[-`{-~،؛؟«»\u2010-\u2027]+$/u;
+// In right-to-left text a mark must sit on a right-to-left letter; a leading mark would turn the line left to right.
+const RTL_STRAY_MARK = /(?:^|[^\p{Script=Arabic}\p{Script=Hebrew}\p{Mn}\u200c\u200d])\p{Mn}/u;
 const RTL_NUMBER = /^[0-9٠-٩۰-۹]+$/u;
 const JOINERS = /[\p{M}\u200c\u200d]/u;
 const MAX_FILES_PER_STRING = 2;
@@ -92,7 +94,7 @@ const fileForScript = (ch: string, cjk: CjkFont) => (CJK_SCRIPT.test(ch) ? CJK_F
  */
 function assertPlainDirection(text: string) {
   if (!RTL.test(text)) return;
-  if (!RTL_SAFE.test(text) || /[\u066b\u066c]/.test(text)) throw new Undrawable();
+  if (!RTL_SAFE.test(text) || RTL_STRAY_MARK.test(text) || /[\u066b\u066c]/.test(text)) throw new Undrawable();
   if (text.split(" ").some((word) => /\p{N}/u.test(word) && !RTL_NUMBER.test(word))) throw new Undrawable();
 }
 

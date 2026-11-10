@@ -27,10 +27,12 @@ const PHOTO_FORMATS: readonly string[] = ["jpeg", "png", "webp"];
 const SHARP_SECONDS = 5;
 const QR_QUIET_MODULES = 4;
 const LINE_HEIGHT = 1.28;
+/** Space kept between one block's ink and the next block's ink, when ink reaches past its box. */
+const INK_GAP = 6;
 
 const LAYOUT = {
-  story: { width: 1080, height: 1920, art: { x: 57, y: 232, scale: 0.95 }, top: 1085, kicker: 32, name: 104, callout: 40, details: 32, gap: 24, qrScale: 4, detailLines: 2 },
-  square: { width: 1080, height: 1080, art: { x: 195, y: 0, scale: 0.68 }, top: 618, kicker: 26, name: 76, callout: 32, details: 26, gap: 6, qrScale: 3, detailLines: 1 },
+  story: { width: 1080, height: 1920, art: { x: 57, y: 232, scale: 0.95 }, top: 1085, kicker: 32, name: 104, callout: 40, details: 32, gap: 24, qrScale: 4, detailLines: 2, bottom: 96 },
+  square: { width: 1080, height: 1080, art: { x: 195, y: 0, scale: 0.68 }, top: 618, kicker: 26, name: 76, callout: 32, details: 26, gap: 6, qrScale: 3, detailLines: 1, bottom: 48 },
 };
 
 const CARD_DIR = path.join(process.cwd(), "src/lib/callout-card");
@@ -44,7 +46,7 @@ const FONTS = {
 type Font = (typeof FONTS)[keyof typeof FONTS];
 type TextOptions = { width?: number; maxLines?: number; cjk?: CjkFont };
 /** `width` and `height` are the text's box for layout; the image is larger by the padding, so no ink is cut. */
-type Drawn = { input: Buffer; width: number; height: number; padLeft: number; padTop: number };
+type Drawn = { input: Buffer; width: number; height: number; padLeft: number; padTop: number; padRight: number; padBottom: number };
 const INK_MARGIN = 2;
 /** Where to composite a drawn text so its box, not its padding, sits at left and top. */
 const at = (drawn: Drawn, left: number, top: number): OverlayOptions => ({ input: drawn.input, left: Math.round(left - drawn.padLeft), top: Math.round(top - drawn.padTop) });
@@ -84,7 +86,7 @@ export async function drawText(text: string, source: Font, size: number, colour:
   const imageWidth = layout.width + pad.left + pad.right;
   const imageHeight = layout.height + pad.top + pad.bottom;
   const input = await sharp(Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${imageWidth}" height="${imageHeight}"><g fill="${colour}" transform="translate(${pad.left} ${pad.top})">${layout.body}</g></svg>`)).png().toBuffer();
-  return { input, width: layout.width, height: layout.height, padLeft: pad.left, padTop: pad.top };
+  return { input, width: layout.width, height: layout.height, padLeft: pad.left, padTop: pad.top, padRight: pad.right, padBottom: pad.bottom };
 }
 
 /** Text we wrote ourselves: the card's fonts always have it. */
@@ -172,6 +174,47 @@ async function drawQr(target: string, scale: number) {
   return QRCode.toBuffer(target, { errorCorrectionLevel: "M", margin: QR_QUIET_MODULES, scale, type: "png", color: { dark: "#10110f", light: "#ffffff" } });
 }
 
+const above = (d: Drawn) => d.padTop - INK_MARGIN;
+const below = (d: Drawn) => d.padBottom - INK_MARGIN;
+
+/** Kicker, name, callout and details placed top to bottom so no block's ink touches another's or the QR row. Exported for the overlap test. */
+export async function stackText(format: CardFormat, fields: CardFields, qrSize: number) {
+  const l = LAYOUT[format];
+  const { cjk } = fields;
+  const detailChars = Math.floor(TEXT_WIDTH / (l.details * 0.6)) * l.detailLines;
+  const handle = () => drawFitted(fields.handle, FONTS.serif, l.name, BONE, TEXT_WIDTH);
+  const bpm = async () => (fields.bpm ? drawText(fields.bpm, FONTS.mono, l.details, MUTE) : null);
+  const kicker = await drawFixed("Send your track to", FONTS.mono, l.kicker, MUTE);
+  // Each block with what replaces it if its ink doesn't fit: the handle, no callout, the BPM.
+  const blocks: [Drawn | null, () => Promise<Drawn | null>][] = [
+    [kicker, async () => kicker],
+    [(await drawFitted(shortenGraphemes(fields.name, 40), FONTS.serif, l.name, BONE, TEXT_WIDTH, cjk)) ?? (await handle()), handle],
+    [fields.callout ? await drawFitted(shortenGraphemes(fields.callout, 60), FONTS.monoMedium, l.callout, BONE, TEXT_WIDTH, cjk) : null, async () => null],
+    [fields.details ? ((await drawText(shortenGraphemes(fields.details, detailChars), FONTS.mono, l.details, MUTE, { width: TEXT_WIDTH, maxLines: l.detailLines, cjk })) ?? (await bpm())) : null, bpm],
+  ];
+  const offCard = (d: Drawn) => d.padLeft > TEXT_LEFT || TEXT_LEFT + d.width + d.padRight > l.width;
+  const place = (drawn: (Drawn | null)[]) => {
+    const layers: { drawn: Drawn; left: number; top: number }[] = [];
+    let y = l.top;
+    let reach = 0;
+    for (const d of drawn) {
+      if (!d) continue;
+      const shift = reach + above(d);
+      const top = y + (shift > 0 ? shift + INK_GAP : 0);
+      layers.push({ drawn: d, left: TEXT_LEFT, top });
+      y = top + d.height;
+      reach = below(d);
+    }
+    const qrTop = y + (reach > 0 ? reach + INK_GAP : 0) + l.gap;
+    return { layers, qrTop, fits: qrTop + qrSize <= l.height - l.bottom && drawn.every((d) => !d || !offCard(d)) };
+  };
+  const first = place(blocks.map(([d]) => d));
+  if (first.fits) return first;
+  const second = place(await Promise.all(blocks.map(([d, fallback]) => (d && (offCard(d) || above(d) + below(d) > 0) ? fallback() : d))));
+  if (!second.fits) throw new Error("the card's text can't be placed");
+  return second;
+}
+
 /** Draws the card. `photo` comes from fitPhoto; null uses the blank card. Nothing is fetched. */
 export async function renderCard(format: CardFormat, fields: CardFields, photo: Buffer | null) {
   const l = LAYOUT[format];
@@ -181,25 +224,9 @@ export async function renderCard(format: CardFormat, fields: CardFields, photo: 
     drawQr(fields.target, l.qrScale),
   ]);
   const qrSize = (await sharp(qr).metadata()).width ?? 0;
-  const detailChars = Math.floor(TEXT_WIDTH / (l.details * 0.6)) * l.detailLines;
-
-  const layers: OverlayOptions[] = [{ input: art, left: l.art.x, top: l.art.y }];
-  let y = l.top;
-  const stack = (drawn: Drawn | null) => {
-    if (!drawn) return;
-    layers.push(at(drawn, TEXT_LEFT, y));
-    y += drawn.height;
-  };
-  const { cjk } = fields;
-  stack(await drawFixed("Send your track to", FONTS.mono, l.kicker, MUTE));
-  stack((await drawFitted(shortenGraphemes(fields.name, 40), FONTS.serif, l.name, BONE, TEXT_WIDTH, cjk)) ?? (await drawFitted(fields.handle, FONTS.serif, l.name, BONE, TEXT_WIDTH)));
-  if (fields.callout) stack(await drawFitted(shortenGraphemes(fields.callout, 60), FONTS.monoMedium, l.callout, BONE, TEXT_WIDTH, cjk));
-  if (fields.details) {
-    const details = await drawText(shortenGraphemes(fields.details, detailChars), FONTS.mono, l.details, MUTE, { width: TEXT_WIDTH, maxLines: l.detailLines, cjk });
-    stack(details ?? (fields.bpm ? await drawText(fields.bpm, FONTS.mono, l.details, MUTE) : null));
-  }
-
-  const qrTop = y + l.gap;
+  const text = await stackText(format, fields, qrSize);
+  const layers: OverlayOptions[] = [{ input: art, left: l.art.x, top: l.art.y }, ...text.layers.map((b) => at(b.drawn, b.left, b.top))];
+  const { qrTop } = text;
   const footerWidth = TEXT_WIDTH - qrSize - 24;
   const link = await drawFitted(fields.link, FONTS.monoMedium, l.callout, BONE, footerWidth);
   if (!link) throw new Error("the card's link can't be drawn");
