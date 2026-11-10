@@ -173,7 +173,7 @@ test("corrupt or over-10 MB art still gives a card, from the next photo", async 
   assert.ok(isBlue(await windowColour(await withPhotos(huge, await storedPhoto("c", blue)))));
 });
 
-test("the site password is 409 unavailable and a suspended account gets no card", async () => {
+test("the site password is 409 invite-only and a suspended account gets no card", async () => {
   const { q } = await load();
   const id = await account();
   const c = await callout(id);
@@ -181,7 +181,9 @@ test("the site password is 409 unavailable and a suspended account gets no card"
   process.env.SITE_PASSWORD = "gate";
   try {
     const gated = await call(jar, c);
-    assert.deepEqual([gated.status, await gated.json()], [409, { reason: "unavailable" }]);
+    assert.deepEqual([gated.status, await gated.json()], [409, { reason: "invite-only" }]);
+    const notActive = await call(jar, await callout(id, false));
+    assert.deepEqual([notActive.status, await notActive.json()], [409, { reason: "unavailable" }], "a callout that isn't active stays unavailable behind the gate");
   } finally {
     delete process.env.SITE_PASSWORD;
   }
