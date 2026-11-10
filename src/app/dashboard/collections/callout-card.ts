@@ -1,5 +1,17 @@
 export type CardFormat = "story" | "square";
 
+/** The callout a share sheet can make a card for. */
+export type ShareCardTarget = { collectionId: number; collectionName: string };
+
+/**
+ * Which callout the link's Share button offers as a card: the receiving callout, while it takes tracks, for the account
+ * owner only and never in a staff view. The same rule as the card route, so the button never offers a card it refuses.
+ */
+export function shareCardTarget(o: { isOwner: boolean; viewingAs: boolean; active: { id: number; name: string } | null | undefined; blocked: boolean }): ShareCardTarget | undefined {
+  if (!o.isOwner || o.viewingAs || !o.active || o.blocked) return undefined;
+  return { collectionId: o.active.id, collectionName: o.active.name };
+}
+
 /** The words to post with the card. The link is the same one printed on the card. */
 export function cardCaption(collectionName: string, link: string): string {
   return `Sending me music for ${collectionName}? Send the track here: ${link}. You'll know when I've listened.`;

@@ -26,7 +26,6 @@ const MAX_PHOTO_PIXELS = 40_000_000;
 const PHOTO_FORMATS: readonly string[] = ["jpeg", "png", "webp"];
 const SHARP_SECONDS = 5;
 const QR_QUIET_MODULES = 4;
-const LINE_HEIGHT = 1.28;
 /** Space kept between one block's ink and the next block's ink, when ink reaches past its box. */
 const INK_GAP = 6;
 
