@@ -33,6 +33,7 @@ export function cardFields(receiver: Receiver, callout: Callout): CardFields {
     handle: receiver.handle,
     callout: title,
     details,
+    bpm,
     closes: text("deadline"),
     link: target.replace(/^https?:\/\//, ""),
     target,

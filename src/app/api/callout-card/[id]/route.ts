@@ -67,7 +67,13 @@ export async function GET(req: Request, ctx: RouteContext<"/api/callout-card/[id
   if (block) return NextResponse.json({ reason: block }, { status: 409 });
 
   const photo = (await photoFrom(collection.art_key)) ?? (await photoFrom(user.cover_key));
-  const png = await renderCard(format as CardFormat, cardFields(user, collection), photo);
+  let png: Buffer;
+  try {
+    png = await renderCard(format as CardFormat, cardFields(user, collection), photo);
+  } catch (error) {
+    console.error("callout card render failed", error);
+    return new Response("Couldn't make the card", { status: 500 });
+  }
   return new Response(new Uint8Array(png), {
     headers: {
       "Content-Type": "image/png",

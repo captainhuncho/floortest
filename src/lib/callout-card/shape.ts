@@ -28,7 +28,10 @@ const SCRIPT_FILES: [RegExp, string][] = [
 ];
 const CJK_SCRIPT = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
 const RTL = /[\p{Script=Arabic}\p{Script=Hebrew}]/u;
-const JOINERS = /[\p{M}‌‍]/u;
+// Only characters whose place in right-to-left text is certain: anything else (other digits, symbols that read left to right) falls back.
+const RTL_SAFE = /^[\p{Script=Arabic}\p{Script=Hebrew}\p{M}\u200c\u200d 0-9٠-٩۰-۹!-\/:-@\[-`{-~،؛؟«»\u2010-\u2027]+$/u;
+const RTL_NUMBER = /^[0-9٠-٩۰-۹]+$/u;
+const JOINERS = /[\p{M}\u200c\u200d]/u;
 const MAX_FILES_PER_STRING = 2;
 const MAX_GLYPHS = 400;
 const MAX_PATH_CHARS = 600_000;
@@ -37,11 +40,16 @@ const STACKED_MARKS = /\p{M}{5,}/u;
 const FALLBACK_SCALE = 0.88;
 const LINE_HEIGHT = 1.28;
 const BASELINE = 0.98;
-const TEXT_BLEED = 8;
+/** Spare width on every drawn line, so the last glyph is never cut. */
+export const TEXT_BLEED = 8;
 
 type HarfBuzz = typeof import("harfbuzzjs");
 let loading: Promise<HarfBuzz> | undefined;
-const harfbuzz = () => (loading ??= import("harfbuzzjs"));
+const harfbuzz = () =>
+  (loading ??= import("harfbuzzjs").catch((error) => {
+    loading = undefined;
+    throw error;
+  }));
 
 class Undrawable extends Error {}
 
@@ -77,10 +85,24 @@ function shape(hb: HarfBuzz, run: Run) {
 
 const fileForScript = (ch: string, cjk: CjkFont) => (CJK_SCRIPT.test(ch) ? CJK_FILES[cjk] : SCRIPT_FILES.find(([re]) => re.test(ch))?.[1]);
 
-/** Splits one line into runs that each have one font and one direction, in reading order. */
-function splitRuns(hb: HarfBuzz, line: string, paragraphRtl: boolean, cjk: CjkFont) {
-  const covers = (file: string, ch: string) => !!open(hb, file).font.nominalGlyph(ch.codePointAt(0)!);
-  const lineFile = [...line].map((ch) => fileForScript(ch, cjk)).find(Boolean);
+/**
+ * Right-to-left text is only drawn when the order is certain: right-to-left letters, neutral punctuation, and
+ * numbers that stand as whole words. Anything mixed could print in the wrong order, so it falls back instead.
+ */
+function assertPlainDirection(text: string) {
+  if (!RTL.test(text)) return;
+  if (!RTL_SAFE.test(text)) throw new Undrawable();
+  if (text.split(" ").some((word) => /\p{N}/u.test(word) && !RTL_NUMBER.test(word))) throw new Undrawable();
+}
+
+/** Splits one line into runs that each have one font and one direction, in reading order. Fonts are claimed before they're read. */
+function splitRuns(hb: HarfBuzz, line: string, primary: string | undefined, paragraphRtl: boolean, cjk: CjkFont, claimed: Set<string>) {
+  const claim = (file: string) => {
+    if (!claimed.has(file) && claimed.size >= MAX_FILES_PER_STRING) throw new Undrawable();
+    claimed.add(file);
+    return file;
+  };
+  const covers = (file: string, ch: string) => !!open(hb, claim(file)).font.nominalGlyph(ch.codePointAt(0)!);
   const runs: Run[] = [];
   for (const ch of line) {
     const prev = runs.at(-1);
@@ -89,14 +111,12 @@ function splitRuns(hb: HarfBuzz, line: string, paragraphRtl: boolean, cjk: CjkFo
       continue;
     }
     const scripted = fileForScript(ch, cjk);
-    const isDigit = /\p{N}/u.test(ch);
-    const isLetter = /\p{L}/u.test(ch);
-    const file = scripted ?? (isLetter ? LATIN : ([prev?.file, lineFile, LATIN].find((f) => f && covers(f, ch)) ?? LATIN));
-    const rtl = scripted ? RTL.test(ch) : isDigit || isLetter ? false : (prev?.rtl ?? paragraphRtl);
+    const file = claim(scripted ?? [prev?.file, primary].find((f) => f && covers(f, ch)) ?? LATIN);
+    // Numbers read left to right in every script, including Arabic-Indic digits.
+    const rtl = paragraphRtl && !/\p{N}/u.test(ch);
     if (prev && prev.file === file && prev.rtl === rtl) runs[runs.length - 1] = { ...prev, text: prev.text + ch };
     else runs.push({ text: ch, file, rtl });
   }
-  if (new Set(runs.map((r) => r.file)).size > MAX_FILES_PER_STRING) throw new Undrawable();
   return paragraphRtl ? rightToLeftOrder(runs) : runs;
 }
 
@@ -137,13 +157,19 @@ function wrapLines(text: string, fits: (t: string) => boolean) {
   return line ? [...lines, line] : lines;
 }
 
+function endWithEllipsis(lines: string[], fits: (t: string) => boolean) {
+  const last = graphemes(lines[lines.length - 1]);
+  while (last.length && !fits(`${last.join("").trimEnd()}…`)) last.pop();
+  return [...lines.slice(0, -1), `${last.join("").trimEnd()}…`];
+}
+
 function place(hb: HarfBuzz, text: string, opts: LayoutOptions, runsFor: (line: string) => Run[], size: number): Layout {
   const measure = (line: string) => runsFor(line).reduce((sum, run) => {
     const s = shape(hb, run);
     return sum + s.glyphs.reduce((w, g) => w + g.advance, 0) * (size / s.upem);
   }, 0);
   const wrapped = opts.width ? wrapLines(text, (t) => measure(t) <= opts.width!) : [text];
-  const lines = opts.maxLines ? wrapped.slice(0, opts.maxLines) : wrapped;
+  const lines = opts.maxLines && wrapped.length > opts.maxLines ? endWithEllipsis(wrapped.slice(0, opts.maxLines), (t) => !opts.width || measure(t) <= opts.width) : wrapped;
   const lineHeight = Math.ceil(opts.size * LINE_HEIGHT);
   const placedGlyphs: Layout["glyphs"] = [];
   let body = "";
@@ -164,6 +190,7 @@ function place(hb: HarfBuzz, text: string, opts: LayoutOptions, runsFor: (line: 
     }
     widest = Math.max(widest, cursor);
   });
+  if (opts.width && widest > opts.width + TEXT_BLEED) throw new Undrawable();
   if (placedGlyphs.length > MAX_GLYPHS || body.length > MAX_PATH_CHARS) throw new Undrawable();
   return { body, width: Math.ceil(widest) + TEXT_BLEED, lines: lines.length, glyphs: placedGlyphs };
 }
@@ -173,7 +200,7 @@ function place(hb: HarfBuzz, text: string, opts: LayoutOptions, runsFor: (line: 
  * for each script. Null when it can't be drawn cleanly, so the caller uses the handle or leaves the field out.
  */
 export async function layoutText(text: string, opts: LayoutOptions): Promise<Layout | null> {
-  if (STACKED_MARKS.test(text)) return null;
+  if (STACKED_MARKS.test(text.replace(/[\u200c\u200d]/g, ""))) return null;
   const hb = await harfbuzz();
   try {
     return place(hb, text, opts, (line) => [{ text: line, file: opts.house, rtl: false }], opts.size);
@@ -181,9 +208,12 @@ export async function layoutText(text: string, opts: LayoutOptions): Promise<Lay
     if (!(error instanceof Undrawable)) throw error;
   }
   try {
-    const firstStrong = [...text].find((ch) => /\p{L}/u.test(ch));
-    const paragraphRtl = !!firstStrong && RTL.test(firstStrong);
-    return place(hb, text, opts, (line) => splitRuns(hb, line, paragraphRtl, opts.cjk ?? "sc"), opts.size * FALLBACK_SCALE);
+    assertPlainDirection(text);
+    const cjk = opts.cjk ?? "sc";
+    const paragraphRtl = RTL.test(text);
+    const primary = [...text].map((ch) => fileForScript(ch, cjk)).find(Boolean);
+    const claimed = new Set<string>();
+    return place(hb, text, opts, (line) => splitRuns(hb, line, primary, paragraphRtl, cjk, claimed), opts.size * FALLBACK_SCALE);
   } catch (error) {
     if (error instanceof Undrawable) return null;
     throw error;
