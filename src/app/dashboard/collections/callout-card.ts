@@ -22,6 +22,7 @@ const BLOCKED: Record<string, string> = {
   full: "This callout is full, so there's no card to share.",
   paused: "This callout is paused. Open it again to share a card.",
   unavailable: "This callout can't be shared right now.",
+  "invite-only": "Cards are off while FloorTest is invite-only. Share the link instead.",
 };
 
 /** What the sheet says when the card route refuses, and whether trying again could help. */
