@@ -9,6 +9,19 @@
         "dev"
       ],
       "port": 3000
+    },
+    {
+      "name": "floortest-look",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "-p", "3210"],
+      "port": 3210,
+      "env": {
+        "DATA_DIR": "/private/tmp/claude-501/-Users-maxwelladjavon--claude-spares-spare-CvI5C7/f37f2fba-16fb-4e92-a381-0074f92bf43d/scratchpad/ftdata",
+        "APP_SECRET": "throwaway-local-look",
+        "DATABASE_URL": "",
+        "RESEND_API_KEY": "",
+        "SITE_PASSWORD": ""
+      }
     }
   ]
 }
