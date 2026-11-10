@@ -61,8 +61,10 @@ export async function GET(req: Request, ctx: RouteContext<"/api/callout-card/[id
   const collection = await q.get<CardCollection>(`SELECT ${COLLECTION_FIELDS} FROM collections WHERE id = ? AND user_id = ?`, Number(raw), user.id);
   if (!collection) return notFound();
   const account = await q.get<{ suspended_at: number | null }>("SELECT suspended_at FROM users WHERE id = ?", user.id);
-  const live = !account?.suspended_at && !gatePassword() && user.active_collection_id === collection.id;
+  const live = !account?.suspended_at && user.active_collection_id === collection.id;
   if (!live) return NextResponse.json({ reason: "unavailable" }, { status: 409 });
+  // Behind the Coming soon password the card's QR would land strangers on the password page.
+  if (gatePassword()) return NextResponse.json({ reason: "invite-only" }, { status: 409 });
   const block = calloutBlock(user, collection, (await capacity(user)).full);
   if (block) return NextResponse.json({ reason: block }, { status: 409 });
 

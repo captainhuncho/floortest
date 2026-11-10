@@ -9,11 +9,17 @@ test("the caption carries the callout name and the exact link printed on the car
 });
 
 test("a callout that can't be shared says why and offers no retry", () => {
-  for (const reason of ["closed", "full", "paused", "unavailable"]) {
+  for (const reason of ["closed", "full", "paused", "unavailable", "invite-only"]) {
     const p = cardProblem(409, reason, null);
     assert.equal(p.canRetry, false);
     assert.ok(p.message.length > 0);
   }
+});
+
+test("behind the site password the sheet says cards are off while invite-only", () => {
+  const { message } = cardProblem(409, "invite-only", null);
+  assert.equal(message, "Cards are off while FloorTest is invite-only. Share the link instead.");
+  assert.ok(!message.includes("!"));
 });
 
 test("an unknown refusal reason falls back to the general message", () => {
