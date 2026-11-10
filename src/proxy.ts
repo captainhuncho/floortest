@@ -25,8 +25,9 @@ const OPS_PATHS = ["/admin", "/api/admin", "/ops-login"];
 const SHARED = ["/api/site-image", "/api/tap-speed", "/api/visit", "/.well-known"];
 const under = (path: string, list: string[]) => list.some((p) => path === p || path.startsWith(`${p}/`));
 const isOps = (path: string) => under(path, OPS_PATHS);
-// Open while the site is gated: the gate itself and signing in (a real sign-in then unlocks the site). Nothing about
-// FloorTest is public before launch; Google's sign-in review (which needs public legal pages) waits until then.
+// Open while the site is gated: the gate itself and signing in (a real sign-in then unlocks the site). Before launch
+// only these, receiving links, receipts, sender history and the legal pages are public (owner, 10 Nov); the home page,
+// pricing, sign-up and the desk stay behind the password.
 // "/c": collection share links, which do their own checks (and say "not available" while sharing is switched off).
 // "/join": team invites (sign-up from one works during the beta, like an invite code).
 // "/manifest.webmanifest": the home-screen name and icons; browsers fetch it without cookies, so behind the gate it
@@ -35,7 +36,10 @@ const isOps = (path: string) => under(path, OPS_PATHS);
 // "/.well-known": security.txt, so anyone reporting a problem finds the contact before launch too.
 // "/sent", "/receipt": a sender's history and receipts, so people sending to an open receiving link (below) can follow
 // what happened to their track (owner, 10 Nov).
-const GATE_OPEN = ["/coming-soon", "/login", "/forgot", "/reset", "/signed-out", "/c", "/join", "/manifest.webmanifest", "/invite", "/.well-known", "/sent", "/receipt"];
+// The legal pages and Contact: a sender can read what the send form asks them to agree to and report a link (owner,
+// 10 Nov, "open the legal pages too"). Only who can open them changes; the wording stays as it is.
+const GATE_OPEN = ["/coming-soon", "/login", "/forgot", "/reset", "/signed-out", "/c", "/join", "/manifest.webmanifest", "/invite", "/.well-known", "/sent", "/receipt",
+  "/terms", "/privacy", "/cookies", "/contact", "/privacy-choices", "/subprocessors", "/content-rules", "/takedown", "/law-enforcement", "/security"];
 
 /**
  * A receiving link (floortest.app/<link name>) is open while the site is gated, so anyone with the link can send before

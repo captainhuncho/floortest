@@ -5,9 +5,9 @@ import { readSessionToken } from "./sessions";
 import { GATE_COOKIE, gatePassword, hasGatePass } from "./site-gate";
 
 /**
- * While the coming-soon gate is on, public API routes keyed by a receiver's handle (QR code, cover) must not confirm
- * which handles exist. The proxy never gates /api/* (webhooks, health and cron stay reachable), so those routes ask
- * here: true means "answer as for an unknown handle". A visitor with the gate pass, or a signed-in person, sees them.
+ * UNUSED since 10 Nov (#503): receiving links are open while the gate is on, so the QR and cover routes no longer ask
+ * here and nothing imports this. Kept until the owner decides whether to delete it; don't wire it back up without
+ * checking that. It used to answer "true" for "answer as for an unknown handle" to visitors without the gate pass.
  */
 export async function hiddenBehindGate(req: Request): Promise<boolean> {
   if (!gatePassword()) return false;

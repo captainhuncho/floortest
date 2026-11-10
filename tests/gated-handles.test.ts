@@ -11,17 +11,15 @@ delete process.env.DATABASE_URL;
 
 const SITE = "https://floortest.app";
 
-async function qr(handle: string, cookie?: string) {
+async function qr(handle: string) {
   const { GET } = await import("../src/app/api/qr/[handle]/route");
   const headers: Record<string, string> = { "x-real-ip": "7.7.7.7" };
-  if (cookie) headers.cookie = cookie;
   return GET(new Request(`${SITE}/api/qr/${handle}`, { headers }), { params: Promise.resolve({ handle }) } as RouteContext<"/api/qr/[handle]">);
 }
 
-async function cover(handle: string, cookie?: string) {
+async function cover(handle: string) {
   const { GET } = await import("../src/app/api/cover/[handle]/route");
   const headers: Record<string, string> = {};
-  if (cookie) headers.cookie = cookie;
   return GET(new Request(`${SITE}/api/cover/${handle}`, { headers }), { params: Promise.resolve({ handle }) } as RouteContext<"/api/cover/[handle]">);
 }
 
@@ -42,13 +40,13 @@ test("the gate lets receiving links, receipts and sender history through and kee
   const { proxy } = await import("../src/proxy");
   const gated = (p: string) => /\/coming-soon/.test(proxy(new NextRequest(`${SITE}${p}`)).headers.get("x-middleware-rewrite") ?? "");
 
-  for (const p of ["/realdj", "/RealDJ", "/realdj/", "/real-dj_2", "/nobody-here", "/sent", "/sent/sometoken", "/sent/reopen/sometoken", "/receipt/sometoken"])
+  for (const p of ["/realdj", "/RealDJ", "/realdj/", "/real-dj_2", "/nobody-here", "/sent", "/sent/sometoken", "/sent/reopen/sometoken", "/receipt/sometoken", "/terms", "/privacy", "/cookies", "/contact", "/contact?report=realdj", "/privacy-choices", "/subprocessors", "/content-rules", "/takedown", "/law-enforcement", "/security"])
     assert.equal(gated(p), false, `${p} is open`);
-  for (const p of ["/", "/pricing", "/signup", "/terms", "/privacy", "/waitlist", "/dashboard", "/dashboard/floor", "/admin", "/realdj/extra", "/a", "/-x", "/x.y", `/${"a".repeat(31)}`, "/Pricing", "/PRICING/", "/a%2Fb", "/%61dmin", "//realdj", "/_next", "/x.png"])
+  for (const p of ["/", "/pricing", "/signup", "/waitlist", "/trust", "/licenses", "/dashboard", "/dashboard/floor", "/admin", "/realdj/extra", "/a", "/-x", "/x.y", `/${"a".repeat(31)}`, "/Pricing", "/PRICING/", "/index", "/INDEX", "/404", "/500", "/a%2Fb", "/%61dmin", "//realdj", "/_next", "/x.png"])
     assert.equal(gated(p), true, `${p} stays behind the password`);
   const { RESERVED_HANDLES } = await import("../src/lib/plans");
   for (const name of RESERVED_HANDLES) {
-    if (name.includes(".") || ["auth", "brand", "icons", "motion", "tour", "fonts", "images", "_next", "static", "api", "c", "invite", "join", "sent", "receipt", "coming-soon", "login", "forgot", "reset", "signed-out"].includes(name)) continue;
+    if (name.includes(".") || ["auth", "brand", "icons", "motion", "tour", "fonts", "images", "_next", "static", "api", "c", "invite", "join", "sent", "receipt", "coming-soon", "login", "forgot", "reset", "signed-out", "terms", "privacy", "cookies", "contact", "privacy-choices", "subprocessors", "content-rules", "takedown", "law-enforcement", "security"].includes(name)) continue;
     assert.equal(gated(`/${name}`), true, `/${name} is a page, so it stays behind the password`);
   }
 });
