@@ -43,7 +43,7 @@ Last updated 13 Oct 2026.
 - **support@floortest.app**: help and the contact form (Vercel `SUPPORT_EMAIL`).
 - **legal@**, **privacy@**, **copyright@**, **security@floortest.app**: legal notices, data requests, takedown notices, security reports. Created 13 Oct and shown on the legal pages (`LEGAL` in `src/lib/legal.ts`: legal@ for the Terms, content rules and law enforcement; privacy@ for Privacy, Cookies, privacy choices and Sub-processors; copyright@ for takedowns; security@ for the Security page). The lawyer confirms the mapping (brief question 30).
 - FloorTest's own emails come from **team@floortest.app**, and replies go there (`MAIL_FROM`; `MAIL_REPLY_TO` is unset on purpose).
-- Operator named in Terms and Privacy: **FloorTest Labs**, being registered in Ghana. Change it in `src/lib/legal.ts`.
+- Operator named in Terms and Privacy: **FloorTest Labs LTD**, registered in Ghana on 1 Nov 2026 (No. CS231621126), registered office in Madina, Accra. Change it in `src/lib/legal.ts`.
 
 ## Where each setting lives
 
