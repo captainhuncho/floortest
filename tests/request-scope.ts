@@ -36,12 +36,12 @@ function cookieStore(jar: Jar) {
 /** What an action ended with: its answer, or the page it redirected to. */
 export type Outcome = { answer?: unknown; redirect?: string };
 
-export async function inRequest(jar: Jar, ip: string, action: () => Promise<unknown>): Promise<Outcome> {
+export async function inRequest(jar: Jar, ip: string, action: () => Promise<unknown>, { dropAfter = false } = {}): Promise<Outcome> {
   const { workAsyncStorage } = await import("next/dist/server/app-render/work-async-storage.external");
   const { workUnitAsyncStorage } = await import("next/dist/server/app-render/work-unit-async-storage.external");
   const cookies = cookieStore(jar);
   const headers = new Headers({ "x-forwarded-for": ip, "user-agent": "test" });
-  const workStore = { route: "/test", forceStatic: false, dynamicShouldError: false, isStaticGeneration: false } as never;
+  const workStore = { route: "/test", forceStatic: false, dynamicShouldError: false, isStaticGeneration: false, ...(dropAfter ? { afterContext: { after: () => {} } } : {}) } as never;
   const requestStore = { type: "request", phase: "action", cookies, mutableCookies: cookies, userspaceMutableCookies: cookies, headers, url: { pathname: "/test", search: "" } } as never;
   try {
     const answer = await workAsyncStorage.run(workStore, () => workUnitAsyncStorage.run(requestStore, action));

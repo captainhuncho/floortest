@@ -80,7 +80,7 @@ export async function activeCollection(user: Pick<User, "active_collection_id">,
   return user.active_collection_id ? db.get<Collection>("SELECT * FROM collections WHERE id = ?", user.active_collection_id) : undefined;
 }
 
-export const isClosed = (c: Collection | undefined, at = now()) => (!!c?.closes_at && c.closes_at <= at) || !!c?.full_at;
+export const isClosed = (c: Pick<Collection, "closes_at" | "full_at"> | undefined, at = now()) => (!!c?.closes_at && c.closes_at <= at) || !!c?.full_at;
 /** Closed because it reached its track cap (rather than its closing date). */
 export const isFull = (c: Collection | undefined) => !!c?.full_at;
 /** After tracks are deleted: a full callout whose live tracks have dropped back under its cap takes sends again. */
@@ -132,6 +132,17 @@ export async function routeToCollection(desk: Pick<User, "id" | "role">, collect
 
 /** "Pause my link": the receiver is away. Ends on its own at pause_until, if one was set. */
 export const isPaused = (u: Pick<User, "paused_at" | "pause_until">, at = now()) => !!u.paused_at && (!u.pause_until || u.pause_until > at);
+
+/** Why a receiver's link isn't taking tracks into this callout right now, or null if it is. One rule for the public page and the share card. */
+export function calloutBlock(
+  receiver: Pick<User, "paused_at" | "pause_until">,
+  collection: Pick<Collection, "closes_at" | "full_at"> | undefined,
+  accountFull: boolean,
+): "paused" | "closed" | "full" | "unavailable" | null {
+  if (isPaused(receiver)) return "paused";
+  if (isClosed(collection)) return collection!.full_at ? "full" : "closed";
+  return accountFull ? "unavailable" : null;
+}
 
 export function pausedMessage(u: Pick<User, "name" | "pause_until" | "tz">) {
   const until = u.pause_until ? ` until ${new Date(u.pause_until).toLocaleDateString("en-GB", { day: "numeric", month: "long", timeZone: u.tz })}` : "";
