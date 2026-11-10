@@ -4,7 +4,7 @@ import Link from "next/link";
 import { requireUser, viewingAs } from "@/lib/auth";
 import { switchOn } from "@/lib/switches";
 import { VerifyBanner } from "../VerifyBanner";
-import { activeCollectionForView, canAddCollection, capacityForView, collectionsForView, isClosed, isPaused } from "@/lib/desk";
+import { activeCollectionForView, calloutBlock, canAddCollection, capacityForView, collectionsForView, isClosed, isPaused } from "@/lib/desk";
 import { now, q } from "@/lib/db";
 import { atLeast, canApprove, heldReplies, seatsFor, seatsUsed, teamsOn } from "@/lib/account-members";
 import { ago, fmtDay } from "@/lib/format";
@@ -23,6 +23,7 @@ import { LinkRow, WeekChart } from "./FloorClient";
 import { GHOST, LIME_SM } from "../kitButtons";
 import { FirstVisitTour } from "../Tour";
 import { tourTip } from "@/lib/tour";
+import { shareCardTarget } from "../collections/callout-card";
 
 export const metadata = { title: "Floor — FloorTest" };
 
@@ -79,6 +80,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
   const weekend = await playedOutPrompt({ ...user, tz: prefs.tz });
   const paused = isPaused(user);
   const link = `${APP_URL}/${user.handle}`;
+  const card = shareCardTarget({ isOwner: user.role === "owner", viewingAs: !!view, active, blocked: !!calloutBlock(user, active ?? undefined, cap.full) });
   // Each row's age is worked out here, once, so the server and the browser agree on it.
   const upNext = upNextRows.map((t) => ({ ...t, peaks: t.peaks ? JSON.parse(t.peaks) : null, played: !!t.played_at, age: ago(Number(t.created_at)) }));
   const oldest = oldestTrack ? { ...oldestTrack, peaks: oldestTrack.peaks ? JSON.parse(oldestTrack.peaks) : null, played: !!oldestTrack.played_at } : null;
@@ -189,7 +191,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
     <section aria-labelledby="link-h" className="flex flex-col gap-2.5 rounded-[18px] border border-line bg-card p-3 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
       <h2 id="link-h" className="text-[15px] font-semibold text-bone">Your link</h2>
       <p className="text-[11.5px] text-mute">{linkWhere.replace(/^Your link · sends to/, "Sends tracks to").replace(/^Your link · n/, "N")}</p>
-      <LinkRow link={link} />
+      <LinkRow link={link} card={card} />
     </section>
   );
 
@@ -243,7 +245,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
       </div>
       <div className="flex flex-col gap-1.5">
         <h3 id="link-h" className="text-[11.5px] text-mute">{linkWhere}</h3>
-        <LinkRow link={link} />
+        <LinkRow link={link} card={card} />
       </div>
     </section>
   );

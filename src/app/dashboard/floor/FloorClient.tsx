@@ -3,9 +3,20 @@
 import { useState } from "react";
 import { useToast } from "@/components/Toast";
 import { GHOST_ON_WELL } from "../kitButtons";
+import { CalloutShare } from "../collections/CalloutShare";
+import type { ShareCardTarget } from "../collections/callout-card";
 
-/** The receiving link as the mock draws it (owner, 30 Oct): the address in mono, Copy, and Share where the device has a share sheet. */
-export function LinkRow({ link }: { link: string }) {
+const SHARE_ICON = (
+  <svg viewBox="0 0 24 24" aria-hidden className="size-[15px]" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 15V4M8 8l4-4 4 4M5 12v6.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V12" />
+  </svg>
+);
+
+/**
+ * The receiving link as the mock draws it (owner, 30 Oct): the address in mono, Copy, and Share. With a callout to
+ * offer (owner, 10 Nov), Share opens the card sheet, which can still share the plain link.
+ */
+export function LinkRow({ link, card }: { link: string; card?: ShareCardTarget }) {
   const toast = useToast();
   const pretty = link.replace(/^https?:\/\//, "");
   async function copy() {
@@ -33,11 +44,18 @@ export function LinkRow({ link }: { link: string }) {
         </svg>
         Copy
       </button>
-      <button type="button" onClick={share} aria-label="Share your link" className={GHOST_ON_WELL.replace("px-3", "w-10 px-0")}>
-        <svg viewBox="0 0 24 24" aria-hidden className="size-[15px]" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 15V4M8 8l4-4 4 4M5 12v6.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V12" />
-        </svg>
-      </button>
+      {card ? (
+        <CalloutShare
+          collectionId={card.collectionId}
+          collectionName={card.collectionName}
+          link={link}
+          trigger={{ label: "Share your link or a card", className: GHOST_ON_WELL.replace("px-3", "w-10 px-0"), content: SHARE_ICON }}
+        />
+      ) : (
+        <button type="button" onClick={share} aria-label="Share your link" className={GHOST_ON_WELL.replace("px-3", "w-10 px-0")}>
+          {SHARE_ICON}
+        </button>
+      )}
     </div>
   );
 }
