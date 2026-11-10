@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useModalDialog } from "@/components/Dialog";
 import { Icon } from "@/components/Kit";
 import { useToast } from "@/components/Toast";
@@ -35,6 +35,7 @@ export function CalloutShare({
   trigger?: { label: string; className: string; content: React.ReactNode };
 }) {
   const toast = useToast();
+  const headingId = useId();
   const [open, setOpen] = useState(false);
   const [format, setFormat] = useState<CardFormat>("story");
   const [cards, setCards] = useState<Partial<Record<CardFormat, Card>>>({});
@@ -135,13 +136,13 @@ export function CalloutShare({
       )}
       <dialog
         {...modalProps}
-        aria-labelledby="callout-share-h"
+        aria-labelledby={headingId}
         className="m-0 mt-auto max-h-[92dvh] w-full max-w-none rounded-t-[22px] border border-b-0 border-line bg-card p-0 text-bone backdrop:bg-black/55 sm:m-auto sm:max-w-md sm:rounded-[22px] sm:border-b"
       >
         {open && (
           <div className="flex flex-col gap-3 px-4 pt-2.5 pb-[max(1rem,env(safe-area-inset-bottom))]">
             <div className="flex items-center justify-between gap-2">
-              <h2 id="callout-share-h" className="min-w-0 truncate text-[15px] font-semibold">
+              <h2 id={headingId} className="min-w-0 truncate text-[15px] font-semibold">
                 Share {collectionName}
               </h2>
               <button type="button" onClick={close} aria-label="Close" className="grid size-11 shrink-0 place-items-center rounded-xl text-mute">
