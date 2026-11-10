@@ -10,6 +10,7 @@ import { DownloadActions } from "../DownloadActions";
 import { GenresField } from "./GenresField";
 import { CARD, Chip, Cover, Icon, IconBox, initials } from "@/components/Kit";
 import { LinkRow } from "../floor/FloorClient";
+import type { ShareCardTarget } from "./callout-card";
 import { DANGER, GHOST, GHOST_TALL, LIME } from "../kitButtons";
 import type { BriefItem } from "@/lib/brief";
 
@@ -317,7 +318,7 @@ export function Folder({ tab, hatched = false, children }: { tab: React.ReactNod
  * One callout as a card (the mock): cover, name and where it stands; to review, kept and tracks; how full it is if
  * capped; the link while it's receiving; then the one next step. The whole card opens it; ··· has every option.
  */
-export function CollectionTile({ c, receiving, closed, canManage = true, link }: { c: C; receiving: boolean; closed: boolean; /** Owner or A&R / Admin: may change where the link sends tracks. */ canManage?: boolean; /** The desk's public link, shown on the receiving card. */ link?: string }) {
+export function CollectionTile({ c, receiving, closed, canManage = true, link, card }: { c: C; receiving: boolean; closed: boolean; /** Owner or A&R / Admin: may change where the link sends tracks. */ canManage?: boolean; /** The desk's public link, shown on the receiving card. */ link?: string; /** The callout the link's Share offers as a card. */ card?: ShareCardTarget }) {
   const [menu, setMenu] = useState(false);
   const [editing, setEditing] = useState(false);
   const [pending, start] = useTransition();
@@ -365,7 +366,7 @@ export function CollectionTile({ c, receiving, closed, canManage = true, link }:
       {live && link && (
         <div className="relative z-10 flex flex-col gap-1.5">
           <p className="text-[11.5px] text-mute">Your link sends here</p>
-          <LinkRow link={link} />
+          <LinkRow link={link} card={card} />
         </div>
       )}
       <div className="mt-auto flex flex-wrap items-center justify-between gap-2">

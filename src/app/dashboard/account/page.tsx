@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { logout } from "../../(auth)/actions";
-import { requireUser } from "@/lib/auth";
+import { requireUser, viewingAs } from "@/lib/auth";
 import { switchOn } from "@/lib/switches";
 import { fmtDay } from "@/lib/format";
-import { capacity, collectionsFor, isClosed, isPaused } from "@/lib/desk";
+import { calloutBlock, capacity, collectionsFor, isClosed, isPaused } from "@/lib/desk";
 import { q } from "@/lib/db";
 import { APP_URL } from "@/lib/mail";
 import { planOf } from "@/lib/plan-store";
@@ -12,6 +12,7 @@ import { CARD, Chip, Icon, IconBox, PageHead, SectionHead, initials, type IconNa
 import { CuePoint } from "@/components/CuePoint";
 import { PauseSwitch } from "../PauseSwitch";
 import { LinkCard } from "./LinkCard";
+import { shareCardTarget } from "../collections/callout-card";
 import { ThemeSwitch } from "./ThemeSwitch";
 import { SendFeedbackRow } from "../FeedbackButton";
 import { currentTheme } from "@/lib/theme";
@@ -68,7 +69,10 @@ export default async function Account() {
     count("SELECT COUNT(*) AS n FROM collections WHERE user_id = ?"),
     count("SELECT COUNT(*) AS n FROM senders WHERE user_id = ?"),
   ]);
-  const cols = (await collectionsFor(user.id)).map((c) => ({ id: c.id, name: c.name, closed: isClosed(c) }));
+  const allCollections = await collectionsFor(user.id);
+  const cols = allCollections.map((c) => ({ id: c.id, name: c.name, closed: isClosed(c) }));
+  const active = allCollections.find((c) => c.id === user.active_collection_id);
+  const card = shareCardTarget({ isOwner: user.role === "owner", viewingAs: !!(await viewingAs()), active, blocked: !!calloutBlock(user, active, cap.full) });
   const pct = Math.min(100, Math.round((cap.used / cap.limit) * 100));
   const link = `${APP_URL}/${user.handle}`;
   const since = fmtDay(user.created_at, user.tz);
@@ -97,7 +101,7 @@ export default async function Account() {
           <p className="text-[11px] text-faint">Member since {since}</p>
         </div>
       </div>
-      <LinkCard link={link} handle={user.handle} collections={cols} activeId={user.active_collection_id} canManage={user.role !== "member"} />
+      <LinkCard link={link} handle={user.handle} collections={cols} activeId={user.active_collection_id} canManage={user.role !== "member"} card={card} />
       {/* The Link open switch lives here on phones, where the sidebar is hidden. */}
       {user.role !== "member" && (
         <div className="border-t border-line pt-2">

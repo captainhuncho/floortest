@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { cardCaption, cardProblem } from "../src/app/dashboard/collections/callout-card";
+import { cardCaption, cardProblem, shareCardTarget } from "../src/app/dashboard/collections/callout-card";
 
 test("the caption carries the callout name and the exact link printed on the card", () => {
   const caption = cardCaption("Villagers", "https://floortest.app/nadia");
@@ -33,4 +33,15 @@ test("an unverified email is told what to do; any other failure can be retried",
   assert.deepEqual(cardProblem(403, null, null), { message: "Verify your email to share a card.", canRetry: false });
   assert.equal(cardProblem(500, null, null).canRetry, true);
   assert.equal(cardProblem(404, null, null).canRetry, true);
+});
+
+test("the link's Share offers a card only for the owner's open receiving callout, never in a staff view", () => {
+  const active = { id: 7, name: "Villagers" };
+  const base = { isOwner: true, viewingAs: false, active, blocked: false };
+  assert.deepEqual(shareCardTarget(base), { collectionId: 7, collectionName: "Villagers" });
+  assert.equal(shareCardTarget({ ...base, isOwner: false }), undefined);
+  assert.equal(shareCardTarget({ ...base, viewingAs: true }), undefined);
+  assert.equal(shareCardTarget({ ...base, active: null }), undefined);
+  assert.equal(shareCardTarget({ ...base, active: undefined }), undefined);
+  assert.equal(shareCardTarget({ ...base, blocked: true }), undefined);
 });
