@@ -4,8 +4,7 @@ import { cardCaption, cardProblem, shareCardTarget } from "../src/app/dashboard/
 
 test("the caption carries the callout name and the exact link printed on the card", () => {
   const caption = cardCaption("Villagers", "https://floortest.app/nadia");
-  assert.match(caption, /Villagers/);
-  assert.ok(caption.includes("https://floortest.app/nadia"));
+  assert.equal(caption, "Sending me music for Villagers? Send the track here: https://floortest.app/nadia. You'll know when I've listened.");
   assert.ok(!caption.includes("!"));
 });
 
