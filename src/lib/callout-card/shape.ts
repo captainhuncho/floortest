@@ -4,7 +4,8 @@ import path from "node:path";
 
 /** Which Chinese, Japanese or Korean font a card uses. A card only ever loads one. */
 export type CjkFont = "jp" | "kr" | "sc" | "tc";
-export type Layout = { body: string; width: number; lines: number; glyphs: { file: string; id: number }[] };
+/** `ink` is where the glyphs actually draw, in the same units as the box; it can reach past the box on any side. */
+export type Layout = { body: string; width: number; height: number; lines: number; glyphs: { file: string; id: number }[]; ink: { left: number; top: number; right: number; bottom: number } };
 type LayoutOptions = { house: string; size: number; width?: number; maxLines?: number; cjk?: CjkFont };
 type Run = { text: string; file: string; rtl: boolean };
 
@@ -91,7 +92,7 @@ const fileForScript = (ch: string, cjk: CjkFont) => (CJK_SCRIPT.test(ch) ? CJK_F
  */
 function assertPlainDirection(text: string) {
   if (!RTL.test(text)) return;
-  if (!RTL_SAFE.test(text)) throw new Undrawable();
+  if (!RTL_SAFE.test(text) || /[\u066b\u066c]/.test(text)) throw new Undrawable();
   if (text.split(" ").some((word) => /\p{N}/u.test(word) && !RTL_NUMBER.test(word))) throw new Undrawable();
 }
 
@@ -174,6 +175,7 @@ function place(hb: HarfBuzz, text: string, opts: LayoutOptions, runsFor: (line: 
   const placedGlyphs: Layout["glyphs"] = [];
   let body = "";
   let widest = 1;
+  const ink = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
   lines.forEach((line, index) => {
     let cursor = 0;
     for (const run of runsFor(line)) {
@@ -182,17 +184,28 @@ function place(hb: HarfBuzz, text: string, opts: LayoutOptions, runsFor: (line: 
       for (const g of shaped.glyphs) {
         placedGlyphs.push({ file: shaped.file, id: g.id });
         const d = shaped.font.glyphToPath(g.id);
-        const x = (cursor + g.x * scale).toFixed(2);
-        const y = (Math.round(opts.size * BASELINE) + index * lineHeight - g.y * scale).toFixed(2);
-        if (d) body += `<path transform="translate(${x} ${y}) scale(${scale.toFixed(5)} ${(-scale).toFixed(5)})" d="${d}"/>`;
+        const gx = cursor + g.x * scale;
+        const gy = Math.round(opts.size * BASELINE) + index * lineHeight - g.y * scale;
+        const extents = shaped.font.glyphExtents(g.id);
+        if (d && extents && extents.width !== 0 && extents.height !== 0) {
+          const left = gx + extents.xBearing * scale;
+          const top = gy - extents.yBearing * scale;
+          ink.left = Math.min(ink.left, left, left + extents.width * scale);
+          ink.right = Math.max(ink.right, left, left + extents.width * scale);
+          ink.top = Math.min(ink.top, top, top - extents.height * scale);
+          ink.bottom = Math.max(ink.bottom, top, top - extents.height * scale);
+        }
+        if (d) body += `<path transform="translate(${gx.toFixed(2)} ${gy.toFixed(2)}) scale(${scale.toFixed(5)} ${(-scale).toFixed(5)})" d="${d}"/>`;
         cursor += g.advance * scale;
       }
     }
     widest = Math.max(widest, cursor);
   });
   if (opts.width && widest > opts.width + TEXT_BLEED) throw new Undrawable();
+  // Nothing visible (only fillers or joiners) counts as nothing to print.
+  if (ink.right <= ink.left) throw new Undrawable();
   if (placedGlyphs.length > MAX_GLYPHS || body.length > MAX_PATH_CHARS) throw new Undrawable();
-  return { body, width: Math.ceil(widest) + TEXT_BLEED, lines: lines.length, glyphs: placedGlyphs };
+  return { body, width: Math.ceil(widest) + TEXT_BLEED, height: lineHeight * lines.length, lines: lines.length, glyphs: placedGlyphs, ink };
 }
 
 /**

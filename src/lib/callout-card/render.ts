@@ -43,14 +43,18 @@ const FONTS = {
 };
 type Font = (typeof FONTS)[keyof typeof FONTS];
 type TextOptions = { width?: number; maxLines?: number; cjk?: CjkFont };
-type Drawn = { input: Buffer; width: number; height: number };
+/** `width` and `height` are the text's box for layout; the image is larger by the padding, so no ink is cut. */
+type Drawn = { input: Buffer; width: number; height: number; padLeft: number; padTop: number };
+const INK_MARGIN = 2;
+/** Where to composite a drawn text so its box, not its padding, sits at left and top. */
+const at = (drawn: Drawn, left: number, top: number): OverlayOptions => ({ input: drawn.input, left: Math.round(left - drawn.padLeft), top: Math.round(top - drawn.padTop) });
 
 const JOINING_SCRIPTS = "\\p{Script=Arabic}\\p{Script=Devanagari}\\p{Script=Bengali}\\p{Script=Tamil}";
 const JOINS_BEFORE = new RegExp(`[${JOINING_SCRIPTS}]$`, "u");
 const JOINS_AFTER = new RegExp(`^[${JOINING_SCRIPTS}]`, "u");
 const ZERO_WIDTH_JOINER = /[‌‍]/;
 const KEYCAP = /[0-9#*]️?⃣/gu;
-const EMOJI = /(?![©®™])\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Regional_Indicator}|\p{Variation_Selector}|[\u{e0020}-\u{e007f}]|[\u20e3\u115f\u1160\u17b4\u17b5\u2800\u3164\uffa0]/gu;
+const EMOJI = /(?![©®™])\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Regional_Indicator}|\p{Variation_Selector}|[\u{e0020}-\u{e007f}]|[\u20e3\u034f\u115f\u1160\u17b4\u17b5\u2800\u3164\uffa0\ufffc]/gu;
 
 /** Emoji, control and direction-override characters out, so a name can't reorder or hide what's printed. Joiners stay only where a script needs them. */
 export const cleanText = (raw: string) =>
@@ -66,12 +70,21 @@ export const cleanText = (raw: string) =>
     .trim();
 
 /** Words drawn as shapes from the card's own font files: no system fonts, nothing a person typed reaches a markup parser. Null if a character can't be drawn. */
-async function drawText(text: string, source: Font, size: number, colour: string, options: TextOptions = {}): Promise<Drawn | null> {
+export async function drawText(text: string, source: Font, size: number, colour: string, options: TextOptions = {}): Promise<Drawn | null> {
   const layout = await layoutText(text, { house: source.file, size, ...options });
   if (!layout) return null;
-  const height = Math.ceil(size * LINE_HEIGHT) * layout.lines;
-  const input = await sharp(Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${layout.width}" height="${height}"><g fill="${colour}">${layout.body}</g></svg>`)).png().toBuffer();
-  return { input, width: layout.width, height };
+  const pad = {
+    left: Math.ceil(Math.max(0, -layout.ink.left)) + INK_MARGIN,
+    top: Math.ceil(Math.max(0, -layout.ink.top)) + INK_MARGIN,
+    right: Math.ceil(Math.max(0, layout.ink.right - layout.width)) + INK_MARGIN,
+    bottom: Math.ceil(Math.max(0, layout.ink.bottom - layout.height)) + INK_MARGIN,
+  };
+  // Ink reaching further than the font size past its box is not text we can place.
+  if (Object.values(pad).some((p) => p > size)) return null;
+  const imageWidth = layout.width + pad.left + pad.right;
+  const imageHeight = layout.height + pad.top + pad.bottom;
+  const input = await sharp(Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${imageWidth}" height="${imageHeight}"><g fill="${colour}" transform="translate(${pad.left} ${pad.top})">${layout.body}</g></svg>`)).png().toBuffer();
+  return { input, width: layout.width, height: layout.height, padLeft: pad.left, padTop: pad.top };
 }
 
 /** Text we wrote ourselves: the card's fonts always have it. */
@@ -129,9 +142,9 @@ async function drawLockup() {
   const line = await sharp({ create: { width, height: 112, channels: 4, background: CLEAR } })
     .composite([
       { input: crest, left: 0, top: 0 },
-      { input: word.input, left: 112 + gap, top: Math.round((112 - word.height) / 2) },
+      at(word, 112 + gap, (112 - word.height) / 2),
       { input: pill, left: width - pillW, top: Math.round((112 - pillH) / 2) },
-      { input: beta.input, left: width - pillW + pad.x, top: Math.round((112 - beta.height) / 2) },
+      at(beta, width - pillW + pad.x, (112 - beta.height) / 2),
     ])
     .png()
     .toBuffer();
@@ -174,7 +187,7 @@ export async function renderCard(format: CardFormat, fields: CardFields, photo: 
   let y = l.top;
   const stack = (drawn: Drawn | null) => {
     if (!drawn) return;
-    layers.push({ input: drawn.input, left: TEXT_LEFT, top: y });
+    layers.push(at(drawn, TEXT_LEFT, y));
     y += drawn.height;
   };
   const { cjk } = fields;
@@ -191,10 +204,10 @@ export async function renderCard(format: CardFormat, fields: CardFields, photo: 
   const link = await drawFitted(fields.link, FONTS.monoMedium, l.callout, BONE, footerWidth);
   if (!link) throw new Error("the card's link can't be drawn");
   const linkTop = qrTop + qrSize - link.height;
-  layers.push({ input: qr, left: TEXT_LEFT + TEXT_WIDTH - qrSize, top: qrTop }, { input: link.input, left: TEXT_LEFT, top: linkTop });
+  layers.push({ input: qr, left: TEXT_LEFT + TEXT_WIDTH - qrSize, top: qrTop }, at(link, TEXT_LEFT, linkTop));
   const closes = fields.closes ? await drawText(fields.closes, FONTS.mono, l.details, MUTE) : null;
   if (closes) {
-    layers.push({ input: closes.input, left: TEXT_LEFT, top: linkTop - closes.height });
+    layers.push(at(closes, TEXT_LEFT, linkTop - closes.height));
   }
   // Nothing from the photo's file (location, camera) carries over: sharp drops metadata unless asked to keep it.
   return sharp({ create: { width: l.width, height: l.height, channels: 4, background: INK } }).composite(layers).flatten({ background: INK }).png().toBuffer();

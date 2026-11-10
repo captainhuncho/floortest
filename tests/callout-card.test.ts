@@ -125,6 +125,35 @@ test("a name of invisible filler characters uses the handle", async () => {
   for (const name of ["\u3164\u3164", "\u2800"]) assert.equal(cardFields({ ...receiver, name }, callout).name, "nadia");
 });
 
+test("no glyph ink is cut off at the edges of its box", async () => {
+  const { drawText } = await import("../src/lib/callout-card/render");
+  const { layoutText } = await import("../src/lib/callout-card/shape");
+  const margin = 200;
+  for (const text of ["Jacob", "Jeff", "Joy", "Ödön", "Ångström", "ẤẤẤẤẤ", "a\u0301\u0301\u0301\u0301", "عبدالله القحطاني", "اردو زبان", "ক্ষ্ম্র", "ख्रि कि"]) {
+    const drawn = (await drawText(text, { file: SERIF }, 104, "#fff"))!;
+    assert.ok(drawn, text);
+    const layout = (await layoutText(text, { house: SERIF, size: 104 }))!;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${layout.width + margin * 2}" height="${layout.height + margin * 2}"><g fill="#fff" transform="translate(${margin} ${margin})">${layout.body}</g></svg>`;
+    const { data, info } = await sharp(Buffer.from(svg)).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    const image = await sharp(drawn.input).metadata();
+    const box = { left: margin - drawn.padLeft, top: margin - drawn.padTop, right: margin - drawn.padLeft + image.width!, bottom: margin - drawn.padTop + image.height! };
+    for (let y = 0; y < info.height; y++) for (let x = 0; x < info.width; x++) {
+      if (data[(y * info.width + x) * 4 + 3] === 0) continue;
+      assert.ok(x >= box.left && x < box.right && y >= box.top && y < box.bottom, `${text}: ink at ${x},${y} outside ${JSON.stringify(box)}`);
+    }
+  }
+});
+
+test("Arabic decimal and thousands separators fall back", async () => {
+  assert.equal(await shaped("مرحبا ٫٬ مرحبا"), null);
+  assert.equal(await shaped("مرحبا ١٬٠٠٠"), null);
+});
+
+test("a name of only a grapheme joiner or object placeholder uses the handle", async () => {
+  const { cardFields } = await import("../src/lib/callout-card/fields");
+  for (const name of ["\u034f", "\u034f\u034f", "\ufffc"]) assert.equal(cardFields({ ...receiver, name }, callout).name, "nadia");
+});
+
 test("pure right-to-left text, brackets, a period and whole-word numbers keep their order and spaces", async () => {
   const closingShape = (await shaped("ب)"))!.glyphs[0].id;
   assert.equal((await shaped("مرحبا (بكم)"))!.glyphs[0].id, closingShape, "the bracket at the end is on the left and mirrored");
