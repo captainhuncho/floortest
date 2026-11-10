@@ -9,10 +9,12 @@ floortest.app ──(no gate pass)──► /coming-soon ──password──►
                                      └─ Sign in ──► /login
 beta invite email ──► /signup?invite=CODE ──► /invite/CODE ──live personal invite──► gate pass + /signup (invite shown)
                                                           └─ wrong, used, revoked, shared code, or 20 tries in 10 min ──► /coming-soon
-Nothing about FloorTest is public before launch (legal pages too); the gate shows only "Coming soon". Open without
+Before launch the gate shows only "Coming soon" for the rest of the site (home, pricing, sign-up and the desk). Open without
 the password since 10 Nov (owner): receiving links (floortest.app/<link name>; any one-part path shaped like a link name
 that isn't one of the site's own pages, `receivingLinkPath` in `src/proxy.ts`), so anyone with a link can send, plus
-receipts (`/receipt/…`) and sender history (`/sent`, `/sent/…`), and the cover and QR images of a link. A personal
+receipts (`/receipt/…`) and sender history (`/sent`, `/sent/…`), the cover and QR images of a link, and the legal
+pages and Contact (`/terms`, `/privacy`, `/cookies`, `/contact`, `/privacy-choices`, `/subprocessors`, `/content-rules`,
+`/takedown`, `/law-enforcement`, `/security`) so a sender can read what they agree to and report a link (wording unchanged). A personal
 invite stops opening it once its email has an account (owner, 29 Oct); team invites open it the same way via /join.
 The invite's pass lasts one day (signing up or in gives the usual 30), and only codes made since 29 Oct (FLOOR- plus 10
 characters) open it: an older invite still signs up with the password, or Ops resends it, which swaps in a new code.

@@ -65,8 +65,8 @@ Before sending:
 After sending: each row shows **Pending**, then **Joined @handle** once the tester signs up. Copy the handle into the
 Who table's Desk link column. **Resend** emails the same code again; **Revoke** cancels an unused one (a typo).
 
-With the site password message, add what the note leaves out: anyone a tester shares their link with needs the
-password too, pass it on privately, and send anything that breaks with a screenshot and the time.
+With the site password message, add what the note leaves out: anyone a tester shares their link with can send
+without the password (receiving links, receipts, /sent, the legal pages and Contact are open since 10 Nov), but the rest of the site needs it, and send anything that breaks with a screenshot and the time.
 
 ## Who
 First name or initials only, never an email or phone number. "Email received" is the date their reply came in.
