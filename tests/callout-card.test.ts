@@ -154,6 +154,47 @@ test("a name of only a grapheme joiner or object placeholder uses the handle", a
   for (const name of ["\u034f", "\u034f\u034f", "\ufffc"]) assert.equal(cardFields({ ...receiver, name }, callout).name, "nadia");
 });
 
+test("in right-to-left text a mark that doesn't sit on a right-to-left letter falls back", async () => {
+  for (const text of ["\u093e \u05d0\u05d1", "\u09be \u05d0\u05d1", "\u0bbe \u05d0\u05d1", "\u0903 \u05d0\u05d1", "\u05d0\u05d1 \u0301", "\u05d0\u05d1\u093e"]) assert.equal(await shaped(text), null, text);
+  assert.ok(await shaped("\u05e9\u05b8\u05c1\u05dc\u05d5\u05b9\u05dd"));
+  assert.ok(await shaped("\u0645\u064f\u062d\u064e\u0645\u0651\u064e\u062f"));
+});
+
+test("no block's ink touches another block, the QR row or the card's edges", async () => {
+  const { stackText } = await import("../src/lib/callout-card/render");
+  const { cardFields } = await import("../src/lib/callout-card/fields");
+  const QRCode = (await import("qrcode")).default;
+  const heavy = ["\u1ed6\u0303\u0303", "\u01fa\u0344", "\u1eaa\u0303\u0301", "\u00c1\u0302\u0303\u0308", "\u0e01\u0e31\u0e49\u0e4a\u0e4b",
+    "a\u0302\u0303\u0335\u0319\u032d \u1eb6\u0347\u0326\u033e\u030f g\u0302 A\u0304\u0320", "\u1ea0 P\u015e\u1ec0\u0119t\u0324\u036d \u0100\u032d\u033c\u0341\u0305 o\u0303\u0322\u031b\u034e\u032f", "Jacob Jeff", "Nadia"];
+  const sizes = { story: { width: 1080, height: 1920, scale: 4 }, square: { width: 1080, height: 1080, scale: 3 } } as const;
+  for (const format of ["story", "square"] as const) {
+    const { width, height, scale } = sizes[format];
+    for (const text of heavy) for (const [name, title, wanted, bpm] of [[text, "", "", null], [text, text, text, 120], ["Nadia", text, text, 120]] as const) {
+      const card = cardFields({ ...receiver, name }, { ...callout, name: title, brief_wanted: wanted, bpm_min: bpm, bpm_max: bpm });
+      const qr = await QRCode.toBuffer(card.target, { errorCorrectionLevel: "M", margin: 4, scale });
+      const qrSize = (await sharp(qr).metadata()).width!;
+      const { layers, qrTop } = await stackText(format, card, qrSize);
+      assert.ok(qrTop + qrSize <= height, `${format} ${text}: QR off the card`);
+      const owner = new Uint8Array(width * height);
+      for (const [index, { drawn, left, top }] of layers.entries()) {
+        const { data, info } = await sharp(drawn.input).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+        const x0 = Math.round(left - drawn.padLeft);
+        const y0 = Math.round(top - drawn.padTop);
+        for (let y = 0; y < info.height; y++) for (let x = 0; x < info.width; x++) {
+          if (data[(y * info.width + x) * 4 + 3] === 0) continue;
+          const cx = x0 + x;
+          const cy = y0 + y;
+          const where = `${format} ${JSON.stringify([name, title, wanted])} block ${index} at ${cx},${cy}`;
+          assert.ok(cx >= 0 && cx < width && cy >= 0, `${where}: off the card`);
+          assert.ok(cy < qrTop, `${where}: in the QR row (from ${qrTop})`);
+          assert.ok(owner[cy * width + cx] === 0 || owner[cy * width + cx] === index + 1, `${where}: on block ${owner[cy * width + cx] - 1}`);
+          owner[cy * width + cx] = index + 1;
+        }
+      }
+    }
+  }
+});
+
 test("pure right-to-left text, brackets, a period and whole-word numbers keep their order and spaces", async () => {
   const closingShape = (await shaped("ب)"))!.glyphs[0].id;
   assert.equal((await shaped("مرحبا (بكم)"))!.glyphs[0].id, closingShape, "the bracket at the end is on the left and mirrored");
