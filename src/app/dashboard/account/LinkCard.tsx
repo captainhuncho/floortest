@@ -14,8 +14,9 @@ export function LinkCard({ link, handle, collections, activeId, canManage = true
   const ghost = "inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-[10px] border border-line bg-card px-2.5 text-[12px] font-semibold text-bone hover:border-line-2 pointer-coarse:min-h-11";
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-1.5 rounded-xl border border-line bg-well py-1 pl-3 pr-1">
-        <p className="min-w-0 flex-1 truncate font-mono text-[12px] text-bone">
+      {/* Four buttons leave a phone too little room for the address, so there it takes its own line. */}
+      <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-line bg-well py-1 pl-3 pr-1">
+        <p className="min-w-0 flex-1 truncate font-mono text-[12px] text-bone max-sm:basis-full max-sm:py-1.5">
           {pretty.replace(handle, "")}
           <span className="text-lime">{handle}</span>
         </p>
