@@ -30,21 +30,28 @@ export function matchInviteCode(raw: unknown, alias = "i") {
   return { sql: `(${alias}.code_hash = ? OR (${alias}.code_hash IS NULL AND ${alias}.code = ?))`, args: [hashToken(code), code] as unknown[] };
 }
 
-/** What a new invite stores for a code it emails or shows once: never the code itself. */
-export function inviteKeys(plain: string) {
+/**
+ * What a new invite stores for a code it emails or shows once: never the code itself. The last 4 characters are kept
+ * as a hint only for a random code (`hint: true`), whose 20 characters leave 80 unknown bits behind the hash; a typed
+ * shared code keeps no hint, so nothing of it is stored in the clear (Safety, #512 round 2).
+ */
+export function inviteKeys(plain: string, { hint = true } = {}) {
   const h = hashToken(cleanInviteCode(plain));
-  return { code: h, codeHash: h, hint: cleanInviteCode(plain).slice(-4) };
+  return { code: h, codeHash: h, hint: hint ? cleanInviteCode(plain).slice(-4) : "" };
 }
 
-/** How Ops names an invite: its last 4 characters ("…7QK2"). */
+/** Shortest shared code Ops may type by hand. */
+export const TYPED_CODE_MIN_LENGTH = 8;
+
+/** How Ops names an invite: its last 4 characters ("…7QK2"), or for a typed shared code the end of its hash. */
 export const inviteLabel = (code: string, hint?: string | null) => `…${hint || code.slice(-4)}`;
 
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 /**
- * A new personal invite code: FLOOR- and 16 characters from 32 (80 bits), so its stored hash can't be worked back
- * to the code by trying them all. The code is what proves the email while sign-up is closed.
+ * A new invite code: FLOOR- and 20 characters from 32 (100 bits). Ops keeps the last 4 as a hint, so 80 unknown bits
+ * stay behind the stored hash: too many to work back by trying. The code is what proves the email while sign-up is closed.
  */
-export const newInviteCode = (length = 16) => `FLOOR-${Array.from(crypto.randomBytes(length), (b) => ALPHABET[b % ALPHABET.length]).join("")}`;
+export const newInviteCode = (length = 20) => `FLOOR-${Array.from(crypto.randomBytes(length), (b) => ALPHABET[b % ALPHABET.length]).join("")}`;
 
 const used = (code: string) => q.count("SELECT COUNT(*) AS n FROM users WHERE invite_code = ?", code);
 

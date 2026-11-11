@@ -4,7 +4,7 @@ import { runBackup } from "@/lib/backup";
 import { AUDIT_BUCKETS, checkBucket } from "@/lib/storage-audit";
 import { setExtraSeats } from "@/lib/account-members";
 import { reopenCallouts } from "@/lib/desk";
-import { newsletterFooter } from "@/lib/newsletter";
+import { newsletterFooter, newsletterUnsubToken } from "@/lib/newsletter";
 import { EMAILS, emailKey, emailTemplate, emailText, fillEmail, SAMPLE_VARS, type EmailId } from "@/lib/email-copy";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
@@ -38,7 +38,7 @@ import { cancelEmailChange, changeHandle, HANDLE_FORWARD_DAYS, HANDLE_HOLD_DAYS,
 import { logEvent, now, q, type Track } from "@/lib/db";
 import { eraseSender, purgeAccount } from "@/lib/privacy";
 import { normalEmail } from "@/lib/email-normal";
-import { addPersonalInvite, deleteRevokedInvite, inviteKeys, inviteLabel, newInviteCode, restoreRevokedInvite, swapPersonalInvite } from "@/lib/invites";
+import { addPersonalInvite, deleteRevokedInvite, inviteKeys, inviteLabel, matchInviteCode, newInviteCode, restoreRevokedInvite, swapPersonalInvite, TYPED_CODE_MIN_LENGTH } from "@/lib/invites";
 import { receiptWhere } from "@/lib/receipt-token";
 import { safeFailure } from "@/lib/safe-failure";
 import { revokeAllSessions } from "@/lib/sessions";
@@ -275,8 +275,12 @@ export async function checkStorage(form: FormData) {
 export async function createInvite(form: FormData): Promise<InviteCreated> {
   const a = await requireAdminAction("invites");
   const typed = String(form.get("code") || "").trim().toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 24);
+  if (typed && typed.length < TYPED_CODE_MIN_LENGTH) return { ok: false, error: `Type at least ${TYPED_CODE_MIN_LENGTH} characters, or leave it blank for a random code.` };
   const code = typed || newInviteCode();
-  const k = inviteKeys(code);
+  const k = inviteKeys(code, { hint: !typed });
+  // An invite an older build wrote during a deploy has no hash yet: check its plain code too.
+  const m = matchInviteCode(code);
+  if (await q.get(`SELECT 1 FROM invites i WHERE ${m.sql}`, ...m.args)) return { ok: false, error: `An invite called ${code} already exists. Pick another code.` };
   const max = Math.min(10_000, Math.max(1, Math.round(Number(form.get("max_uses")) || 25)));
   const note = String(form.get("note") || "").trim().slice(0, 120);
   // Any unique clash (a new invite's hash, or an old invite whose plain code was hashed by 0140) means it exists.
@@ -879,7 +883,8 @@ export async function publishAnnouncement(form: FormData) {
           body: [body, "", href ? `${env.appUrl}${href}` : env.appUrl, "", list === "marketing" ? "You get these because offers and promotions are on in your notification settings." : "You get these because the newsletter is on in your notification settings.", "FloorTest"].join("\n"),
         }).catch(() => {});
       for (const sub of subscribers)
-        await sendMail({ userId: null, audience: "support", to: sub.email, subject: title, body: [body, "", href ? `${env.appUrl}${href}` : env.appUrl, "", newsletterFooter(sub)].join("\n") }).catch(() => {});
+        // The Email log's copy hides the unsubscribe link (Safety, #512 round 2).
+        await sendMail({ userId: null, audience: "support", to: sub.email, secrets: [newsletterUnsubToken(sub)], subject: title, body: [body, "", href ? `${env.appUrl}${href}` : env.appUrl, "", newsletterFooter(sub)].join("\n") }).catch(() => {});
     });
   refresh();
   await done(people.length + subscribers.length ? `Published; emailing ${people.length + subscribers.length} people` : "Published");

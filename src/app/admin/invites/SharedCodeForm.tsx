@@ -11,14 +11,14 @@ import type { InviteCreated } from "@/lib/ops-result";
 export function SharedCodeForm({ action }: { action: (form: FormData) => Promise<InviteCreated> }) {
   const [result, run, pending] = useActionState(async (_: InviteCreated | null, form: FormData) => action(form), null);
   const [hidden, setHidden] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"" | "yes" | "no">("");
   const fresh = result?.ok && hidden !== result.code ? result.code : null;
   return (
     <div className="space-y-3">
       <form action={run} aria-busy={pending} className="grid gap-3 rounded-md border border-line p-5 aria-busy:pointer-events-none aria-busy:opacity-60 sm:grid-cols-[1fr_120px_1fr_auto] sm:items-end">
         <label className="block space-y-1.5">
-          <span className="label">Code (blank = random; shown once)</span>
-          <input name="code" className="input uppercase" placeholder="FLOOR-XXXXXXXXXXXXXXXX" />
+          <span className="label">Code (8+ characters, or blank for random; shown once)</span>
+          <input name="code" className="input uppercase" placeholder="FLOOR-XXXXXXXXXXXXXXXXXXXX" />
         </label>
         <label className="block space-y-1.5">
           <span className="label">Max uses</span>
@@ -44,14 +44,16 @@ export function SharedCodeForm({ action }: { action: (form: FormData) => Promise
             type="button"
             className="btn-sm min-h-11 border border-line"
             onClick={() => {
-              navigator.clipboard?.writeText(fresh).then(() => setCopied(true), () => setCopied(false));
+              if (!navigator.clipboard) return setCopied("no");
+              navigator.clipboard.writeText(fresh).then(() => setCopied("yes"), () => setCopied("no"));
             }}
           >
-            {copied ? "Copied" : "Copy"}
+            {copied === "yes" ? "Copied" : "Copy"}
           </button>
-          <button type="button" className="min-h-11 text-mute hover:text-bone" onClick={() => { setHidden(fresh); setCopied(false); }}>
+          <button type="button" className="min-h-11 min-w-11 px-3 text-mute hover:text-bone" onClick={() => { setHidden(fresh); setCopied(""); }}>
             Done
           </button>
+          {copied === "no" && <span className="basis-full text-xs text-mute">Couldn&apos;t copy here. Select the code and copy it by hand.</span>}
         </div>
       )}
     </div>

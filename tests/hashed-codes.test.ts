@@ -21,7 +21,7 @@ test("a new personal invite stores no code, only its hash and last 4, and still 
   const { inviteKeys, newInviteCode, resolveInvite, liveInviteCode, personalInviteGone, claimPersonalInvite } = await import("../src/lib/invites");
   const { hashToken } = await import("../src/lib/token-hash");
   const code = newInviteCode();
-  assert.match(code, /^FLOOR-[A-Z2-9]{16}$/, "16 random characters (80 bits), so the hash can't be reversed by trying");
+  assert.match(code, /^FLOOR-[A-Z2-9]{20}$/, "20 random characters: 80 unknown bits stay behind the hash after the 4-character hint");
   const k = inviteKeys(code);
   await q.run("INSERT INTO invites (code, code_hash, code_hint, max_uses, note, email, created_at) VALUES (?,?,?,1,'','new@x.io',?)", k.code, k.codeHash, k.hint, Date.now());
 
@@ -138,4 +138,29 @@ test("a new shared code goes back in the action's answer, never through a cookie
   assert.match(body, /newInviteCode\(\)/, "a random shared code has the full 16 characters");
   const form = fs.readFileSync(new URL("../src/app/admin/invites/SharedCodeForm.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(form, /cookie|localStorage|sessionStorage/, "the page keeps it in memory only");
+});
+
+test("Undo of the first of two quick Resends brings nothing back: one live invite stays", async () => {
+  const { q } = await import("../src/lib/db");
+  const { addPersonalInvite, swapPersonalInvite, liveInviteCode } = await import("../src/lib/invites");
+  const { revertItem } = await import("../src/lib/ops-undo");
+  const a = await addPersonalInvite("twice@x.io", "");
+  const b = (await swapPersonalInvite(a.id, "twice@x.io", ""))!; // Resend A → B
+  const c = (await swapPersonalInvite(b.id, "twice@x.io", ""))!; // Resend B → C, inside the first one's hold
+  await revertItem(q, { kind: "invite_resend" } as never, { code: b.id, prev: a.id } as never); // Undo the first
+  assert.equal(await liveInviteCode(a.code), false, "A stays revoked");
+  assert.equal(await liveInviteCode(c.code), true, "C still works");
+  assert.equal(await q.count("SELECT COUNT(*) AS n FROM invites WHERE email = 'twice@x.io' AND revoked_at IS NULL"), 1);
+});
+
+test("a typed shared code keeps no hint; only random codes keep their last 4", async () => {
+  const { inviteKeys, newInviteCode } = await import("../src/lib/invites");
+  assert.equal(inviteKeys("DJCREW2026", { hint: false }).hint, "", "nothing of a typed code is stored in the clear");
+  const code = newInviteCode();
+  assert.equal(inviteKeys(code).hint, code.slice(-4));
+  const fs = await import("node:fs");
+  const src = fs.readFileSync(new URL("../src/app/admin/actions.ts", import.meta.url), "utf8");
+  const body = src.slice(src.indexOf("export async function createInvite")).split("\nexport ")[0];
+  assert.match(body, /TYPED_CODE_MIN_LENGTH/, "short typed codes are refused");
+  assert.match(body, /inviteKeys\(code, \{ hint: !typed \}\)/);
 });
