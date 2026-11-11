@@ -7,6 +7,7 @@ import { RESERVED_HANDLES } from "./plans";
 import { revokeAllSessions } from "./sessions";
 import { hashToken } from "./token-hash";
 import { maskEmail } from "./mask-email";
+import { readLinks, sameProfiles, type ProfileLink } from "./socials";
 
 const DAY = 86_400_000;
 const isUniqueViolation = (e: unknown) => (e as { code?: string })?.code === "23505";
@@ -65,6 +66,14 @@ export async function resetVerified(db: Pick<typeof q, "run">, userId: number) {
     userId,
   );
   return r.changes > 0;
+}
+
+/**
+ * After a desk saves its profile links: the Verified mark goes only when the profiles themselves changed, not when the
+ * same profile was written another way (owner, 11 Nov). `saved` is the links column before the save. True if it went.
+ */
+export async function resetIfProfilesChanged(userId: number, saved: string | null, links: ProfileLink[]) {
+  return sameProfiles(links, readLinks(saved)) ? false : resetVerified(q, userId);
 }
 
 /**

@@ -32,10 +32,10 @@ export function PublicPageForm({ roleLine, links, verified = false }: { roleLine
   const used = new Set(rows.map((r) => r.platform));
   // Asks only for a different profile, not the same one written another way. A row that doesn't parse gets the server's
   // error instead, so nothing is asked.
-  const [guarded, confirmDialog] = useVerifiedGuard(verified, "profiles", () => {
+  const [guarded, confirmDialog] = useVerifiedGuard(verified, () => {
     const next = rows.filter((r) => r.url.trim()).map((r) => slotLink(r.platform, r.url));
-    if (next.some((r) => "error" in r)) return false;
-    return !sameProfiles(links, next as ProfileLink[]);
+    if (next.some((r) => "error" in r)) return null;
+    return sameProfiles(links, next as ProfileLink[]) ? null : "profiles";
   }, onSubmit);
   return (
     <form onSubmit={guarded} className="flex flex-col gap-5">

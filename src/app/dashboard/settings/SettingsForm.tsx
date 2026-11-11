@@ -11,11 +11,14 @@ import { useVerifiedGuard } from "./useVerifiedGuard";
 
 export function SettingsForm({ name, firstName, lastName, handle, base, nextChange, kind, kindNote, tools, verified = false }: { name: string; firstName: string; lastName: string; handle: string; base: string; nextChange: string | null; kind: AccountType | null; kindNote: string; tools: string | null; verified?: boolean }) {
   const [state, onSubmit, pending] = useActionForm(updateSettings, undefined);
-  // The server clears the Verified mark when the shown name changes (empty shows the username): same rule here.
-  const [guarded, confirmDialog] = useVerifiedGuard(verified, "professional name", (f) => {
+  // The server clears the Verified mark when the shown name or the username (your link) changes: same rule here. An empty
+  // name shows the username.
+  const [guarded, confirmDialog] = useVerifiedGuard(verified, (f) => {
     const fd = new FormData(f);
-    const next = String(fd.get("name") || "").trim().slice(0, 80) || String(fd.get("handle") || "").trim().toLowerCase();
-    return next !== name;
+    const nextHandle = String(fd.get("handle") || "").trim().toLowerCase();
+    const nextName = String(fd.get("name") || "").trim().slice(0, 80) || nextHandle;
+    const changed = [nextName !== name && "professional name", nextHandle !== handle && "username"].filter(Boolean);
+    return changed.length ? changed.join(" and ") : null;
   }, onSubmit);
   const [type, setType] = useState<AccountType | null>(kind);
   // A tool follows the chosen type's default until it's switched by hand.
