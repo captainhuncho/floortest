@@ -1,6 +1,7 @@
 import { userByHandle } from "@/lib/desk";
 import { quarantined } from "@/lib/file-digests";
 import { storage } from "@/lib/storage";
+import { allow, ipFrom } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
 
@@ -11,6 +12,8 @@ const TYPES: Record<string, string> = { jpg: "image/jpeg", png: "image/png", web
  * so responses can be cached hard.
  */
 export async function GET(req: Request, ctx: RouteContext<"/api/cover/[handle]">) {
+  // Public and open to anyone before launch too: a connection gets 30 a minute, like the QR code (Safety follow-up to #503).
+  if (!(await allow("cover", ipFrom(req.headers), 30, 60_000))) return new Response("Too many requests", { status: 429 });
   const u = await userByHandle((await ctx.params).handle);
   // A cover that failed its fingerprint check is held back, like every other stored file.
   if (!u?.cover_key || (await quarantined(u.cover_key))) return new Response("Not found", { status: 404 });

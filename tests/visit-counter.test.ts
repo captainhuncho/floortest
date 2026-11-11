@@ -215,6 +215,13 @@ test("a page that shadows a handle is never credited to whoever holds that handl
       .flatMap((d) => (d.name.startsWith("(") ? walk(`${dir}/${d.name}`) : [d.name]));
   const top = walk("src/app");
   for (const name of top) assert.ok(RESERVED_HANDLES.has(name) || name === "fonts", `/${name} is a page, so its handle must be reserved`);
+  // Every one-part source next.config.ts redirects (/dj, /sender, /t/:token…): a link name there would never load.
+  const config = fs.readFileSync("next.config.ts", "utf8");
+  const sources = [...config.matchAll(/source: "\/([a-z0-9_-]+)(?:\/|")/g)].map((m) => m[1]);
+  assert.ok(sources.includes("dj") && sources.includes("t"), "the redirect list was read");
+  for (const name of sources) assert.ok(RESERVED_HANDLES.has(name), `/${name} is a redirect source, so its handle must be reserved`);
+  // Every folder or extensionless file in public/: the proxy skips the folders, so a link name there would get no proxy.
+  for (const name of fs.readdirSync("public")) if (!name.includes(".")) assert.ok(RESERVED_HANDLES.has(name), `public/${name} must be reserved`);
 });
 
 test("Ops → Visits needs the metrics permission", async () => {
