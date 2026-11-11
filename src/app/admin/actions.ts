@@ -269,7 +269,7 @@ export async function checkStorage(form: FormData) {
 
 /**
  * A shared code is stored as its hash (src/lib/invites.ts), so the code goes back to Ops once, in this answer, and is
- * never put in a cookie or shown again (Safety, #512 round 1). A random one has 16 characters (80 bits); a typed one is
+ * never put in a cookie or shown again (Safety, #512 round 1). A random one has 20 characters (100 bits); a typed one is
  * only as strong as what Ops types, which is fine while shared codes open nothing (sign-up closed).
  */
 export async function createInvite(form: FormData): Promise<InviteCreated> {

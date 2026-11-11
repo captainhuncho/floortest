@@ -135,7 +135,7 @@ test("a new shared code goes back in the action's answer, never through a cookie
   const body = src.slice(src.indexOf("export async function createInvite")).split("\nexport ")[0];
   assert.doesNotMatch(body, /\b(done|fail|flash|cookies)\(/, "no flash cookie carries the code");
   assert.match(body, /return \{ ok: true, message: .*, code \};/, "the code is in the result");
-  assert.match(body, /newInviteCode\(\)/, "a random shared code has the full 16 characters");
+  assert.match(body, /newInviteCode\(\)/, "a random shared code has the full 20 characters");
   const form = fs.readFileSync(new URL("../src/app/admin/invites/SharedCodeForm.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(form, /cookie|localStorage|sessionStorage/, "the page keeps it in memory only");
 });

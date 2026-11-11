@@ -122,7 +122,7 @@ export async function swapPersonalInvite(oldId: string, email: string, note: str
 }
 
 /**
- * Shortest code that can open the coming-soon gate: personal invites since 29 Oct are FLOOR- plus 10 characters. Older
+ * Shortest code that can open the coming-soon gate: personal invites since 11 Nov are FLOOR- plus 20 characters (FLOOR- plus 10 from 29 Oct). Older
  * ones (FLOOR- plus 5 or 6) still sign up with the password, and resending one from Ops swaps in a long code.
  */
 export const GATE_CODE_MIN_LENGTH = 16;
