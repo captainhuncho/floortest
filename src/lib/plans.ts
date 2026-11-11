@@ -17,6 +17,9 @@ export const RESERVED_HANDLES = new Set([
   // Names Next.js itself answers to: on Vercel /index serves the home page, and /404 and /500 its error pages. Receiving
   // links are open while the site is gated, so these must never count as one (Safety review of #503, 10 Nov).
   "index", "404", "500",
+  // Old addresses next.config.ts redirects elsewhere: a link name here would never load, because the redirect answers
+  // first (Safety follow-up to #503). tests/visit-counter.test.ts checks every one-part redirect source is listed.
+  "dj", "sender", "mobile", "activity", "collections", "operations", "share", "confirm-sender",
 ]);
 
 /** Signal definitions. These are shown to receivers and senders, so they must stay strict. */
