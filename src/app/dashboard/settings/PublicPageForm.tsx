@@ -3,11 +3,12 @@
 import { useActionForm } from "@/components/useActionForm";
 import { useRouter } from "next/navigation";
 import {useRef, useState} from "react";
-import { MAX_LINKS, PLATFORMS, type ProfileLink } from "@/lib/socials";
+import { MAX_LINKS, PLATFORMS, sameProfiles, slotLink, type ProfileLink } from "@/lib/socials";
 import { updatePublicPage } from "../actions/settings";
 import { SaveBar } from "./SaveBar";
 import { BTN, BTN_GHOST, FIELD, HELP, Notice } from "./ui";
 import { Icon } from "@/components/Kit";
+import { useVerifiedGuard } from "./useVerifiedGuard";
 
 const PLACEHOLDER: Record<string, string> = {
   instagram: "@yourname or a link",
@@ -21,7 +22,7 @@ const PLACEHOLDER: Record<string, string> = {
   website: "yoursite.com",
 };
 
-export function PublicPageForm({ roleLine, links }: { roleLine: string; links: ProfileLink[] }) {
+export function PublicPageForm({ roleLine, links, verified = false }: { roleLine: string; links: ProfileLink[]; verified?: boolean }) {
   const [state, onSubmit, pending] = useActionForm(updatePublicPage, undefined);
   // One row per profile; a key per row so removing one keeps the others' typing intact.
   const [rows, setRows] = useState(() =>
@@ -29,8 +30,15 @@ export function PublicPageForm({ roleLine, links }: { roleLine: string; links: P
   );
   const nextKey = useRef(rows.length);
   const used = new Set(rows.map((r) => r.platform));
+  // Asks only for a different profile, not the same one written another way. A row that doesn't parse gets the server's
+  // error instead, so nothing is asked.
+  const [guarded, confirmDialog] = useVerifiedGuard(verified, "profiles", () => {
+    const next = rows.filter((r) => r.url.trim()).map((r) => slotLink(r.platform, r.url));
+    if (next.some((r) => "error" in r)) return false;
+    return !sameProfiles(links, next as ProfileLink[]);
+  }, onSubmit);
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-5">
+    <form onSubmit={guarded} className="flex flex-col gap-5">
       <label className="flex flex-col gap-1.5">
         <span className={FIELD}>Role line</span>
         <input name="role_line" defaultValue={roleLine} maxLength={60} className="input" placeholder="DJ / Performer" />
@@ -89,6 +97,7 @@ export function PublicPageForm({ roleLine, links }: { roleLine: string; links: P
         <p className={HELP}>Up to {MAX_LINKS}.</p>
       </fieldset>
       <SaveBar pending={pending} state={state} />
+      {confirmDialog}
     </form>
   );
 }

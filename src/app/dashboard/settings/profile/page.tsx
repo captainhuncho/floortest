@@ -35,10 +35,10 @@ export default async function Profile() {
         <CoverUpload handle={user.handle} cover={user.cover_key} />
       </Section>
       <Section id="link-h" icon="link" title="Name and link">
-        <SettingsForm kind={user.kind} kindNote={user.kind_note} tools={user.tools} firstName={user.first_name} lastName={user.last_name} name={user.name} handle={user.handle} base={APP_URL} nextChange={nextLink ? new Date(nextLink).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : null} />
+        <SettingsForm kind={user.kind} kindNote={user.kind_note} tools={user.tools} firstName={user.first_name} lastName={user.last_name} name={user.name} handle={user.handle} base={APP_URL} verified={identity.status === "verified"} nextChange={nextLink ? new Date(nextLink).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : null} />
       </Section>
       <Section id="page-h" icon="share" title="Role line and profiles" sub="Your profiles show as icons under your name, so senders know it's really you.">
-        <PublicPageForm roleLine={user.role_line} links={readLinks(user.links)} />
+        <PublicPageForm roleLine={user.role_line} links={readLinks(user.links)} verified={identity.status === "verified"} />
       </Section>
       <Section id="identity-h" icon="shield" title="Verified mark" sub="Tells senders they've found the real you, not an impersonator.">
         <IdentityForm status={identity.status} links={identity.links} note={identity.note} />
