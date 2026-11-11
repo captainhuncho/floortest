@@ -26,7 +26,7 @@ const SHARED = ["/api/site-image", "/api/tap-speed", "/api/visit", "/.well-known
 const under = (path: string, list: string[]) => list.some((p) => path === p || path.startsWith(`${p}/`));
 const isOps = (path: string) => under(path, OPS_PATHS);
 // Open while the site is gated: the gate itself and signing in (a real sign-in then unlocks the site). Before launch
-// only these, receiving links, receipts, sender history and the legal pages are public (owner, 10 Nov); the home page,
+// only these, receiving links, receipts, sender history, the legal pages and Contact are public (owner, 10 Nov); the home page,
 // pricing, sign-up and the desk stay behind the password.
 // "/c": collection share links, which do their own checks (and say "not available" while sharing is switched off).
 // "/join": team invites (sign-up from one works during the beta, like an invite code).
@@ -37,9 +37,12 @@ const isOps = (path: string) => under(path, OPS_PATHS);
 // "/sent", "/receipt": a sender's history and receipts, so people sending to an open receiving link (below) can follow
 // what happened to their track (owner, 10 Nov).
 // The legal pages and Contact: a sender can read what the send form asks them to agree to and report a link (owner,
-// 10 Nov, "open the legal pages too"). Only who can open them changes; the wording stays as it is.
-const GATE_OPEN = ["/coming-soon", "/login", "/forgot", "/reset", "/signed-out", "/c", "/join", "/manifest.webmanifest", "/invite", "/.well-known", "/sent", "/receipt",
-  "/terms", "/privacy", "/cookies", "/contact", "/privacy-choices", "/subprocessors", "/content-rules", "/takedown", "/law-enforcement", "/security"];
+// 10 Nov, "open the legal pages too"). Only who can open them changes; the wording stays as it is. These open only the
+// page itself (a trailing slash too), never a path under it, so a later child route such as /security/<something>
+// stays behind the password (Safety follow-up to #503).
+const GATE_OPEN = ["/coming-soon", "/login", "/forgot", "/reset", "/signed-out", "/c", "/join", "/manifest.webmanifest", "/invite", "/.well-known", "/sent", "/receipt"];
+const GATE_OPEN_EXACT = ["/terms", "/privacy", "/cookies", "/contact", "/privacy-choices", "/subprocessors", "/content-rules", "/takedown", "/law-enforcement", "/security"];
+const exactly = (path: string, list: string[]) => list.some((p) => path === p || path === `${p}/`);
 
 /**
  * A receiving link (floortest.app/<link name>) is open while the site is gated, so anyone with the link can send before
@@ -108,7 +111,7 @@ function route(req: NextRequest, request: { headers: Headers }) {
   const onOpsHost = !!OPS_HOST && req.headers.get("host") === OPS_HOST;
   // Coming-soon gate: every page on the main site except the open ones above shows the coming-soon page until the
   // password is entered. The API (webhooks, health, cron) and ops (its own sign-in) stay reachable.
-  if (gatePassword() && !onOpsHost && !path.startsWith("/api/") && !under(path, GATE_OPEN) && !receivingLinkPath(path) && !hasGatePass(req.cookies.get(GATE_COOKIE)?.value)) {
+  if (gatePassword() && !onOpsHost && !path.startsWith("/api/") && !under(path, GATE_OPEN) && !exactly(path, GATE_OPEN_EXACT) && !receivingLinkPath(path) && !hasGatePass(req.cookies.get(GATE_COOKIE)?.value)) {
     // Invite emails link to /signup?invite=CODE: the invite route checks the code and opens the gate for a live one.
     const invite = path === "/signup" ? req.nextUrl.searchParams.get("invite") : null;
     if (invite) {
