@@ -86,3 +86,56 @@ test("newsletter: the stored token is a hash; the emailed token confirms; signed
   await q.run("INSERT INTO newsletter_subscribers (email, token, token_hash, created_at, confirmed_at) VALUES ('old@x.io', 'tok-old-abcdef', ?, ?, ?)", hashToken("tok-old-abcdef"), Date.now(), Date.now());
   assert.equal(await unsubscribeNewsletter("tok-old-abcdef"), true, "an old email's unsubscribe link still works");
 });
+
+test("Resend swaps in a new code and revokes the old one; two at once leave one live code; Undo puts the old one back", async () => {
+  const { q } = await import("../src/lib/db");
+  const { addPersonalInvite, swapPersonalInvite, liveInviteCode, personalInviteGone } = await import("../src/lib/invites");
+  const { revertItem } = await import("../src/lib/ops-undo");
+  const old = await addPersonalInvite("resend@x.io", "");
+  const fresh = await swapPersonalInvite(old.id, "resend@x.io", "");
+  assert.ok(fresh && fresh.code !== old.code);
+  assert.equal(await liveInviteCode(fresh!.code), true, "the new code works");
+  assert.equal(await liveInviteCode(old.code), false, "the old code doesn't");
+  assert.equal(await personalInviteGone(old.code), true);
+
+  const [a, b] = await Promise.all([swapPersonalInvite(fresh!.id, "resend@x.io", ""), swapPersonalInvite(fresh!.id, "resend@x.io", "")]);
+  assert.equal([a, b].filter(Boolean).length, 1, "only one of two Resends at once makes a code");
+  const live = await q.count("SELECT COUNT(*) AS n FROM invites WHERE email = 'resend@x.io' AND revoked_at IS NULL");
+  assert.equal(live, 1, "one live invite for the email");
+
+  const newest = (a ?? b)!;
+  await revertItem(q, { kind: "invite_resend" } as never, { code: newest.id, prev: fresh!.id } as never);
+  assert.equal(await liveInviteCode(fresh!.code), true, "Undo brings the previous code back");
+  assert.equal(await liveInviteCode(newest.code), false, "and the unsent new one stops working");
+});
+
+test("the no-hash fallback never matches a used, revoked or expired invite", async () => {
+  const { q } = await import("../src/lib/db");
+  const { resolveInvite, liveInviteCode } = await import("../src/lib/invites");
+  const t = Date.now();
+  await q.run("INSERT INTO invites (code, max_uses, note, email, created_at, used_at) VALUES ('FLOOR-NHUSED234567', 1, '', 'nh1@x.io', ?, ?)", t, t);
+  await q.run("INSERT INTO invites (code, max_uses, note, email, created_at, revoked_at) VALUES ('FLOOR-NHREVK234567', 1, '', 'nh2@x.io', ?, ?)", t, t);
+  await q.run("INSERT INTO invites (code, max_uses, note, email, created_at, expires_at) VALUES ('FLOOR-NHEXPD234567', 1, '', 'nh3@x.io', ?, ?)", t, t - 1);
+  for (const [code, email] of [["FLOOR-NHUSED234567", "nh1@x.io"], ["FLOOR-NHREVK234567", "nh2@x.io"], ["FLOOR-NHEXPD234567", "nh3@x.io"]]) {
+    assert.equal((await resolveInvite(code, email, false)).valid, false, code);
+    assert.equal(await liveInviteCode(code), false, code);
+  }
+});
+
+test("malformed, empty and unknown-id unsubscribe links do nothing", async () => {
+  const { unsubscribeNewsletter } = await import("../src/lib/newsletter");
+  for (const bad of ["", "n", "n1.", "n1.short", `n999999.${"A".repeat(22)}`, `n0.${"A".repeat(22)}`, `n1.${"A".repeat(23)}`, "' OR 1=1 --"])
+    assert.equal(await unsubscribeNewsletter(bad), false, JSON.stringify(bad));
+});
+
+test("a new shared code goes back in the action's answer, never through a cookie", async () => {
+  const fs = await import("node:fs");
+  // Server actions need an ops session, so this checks the code path.
+  const src = fs.readFileSync(new URL("../src/app/admin/actions.ts", import.meta.url), "utf8");
+  const body = src.slice(src.indexOf("export async function createInvite")).split("\nexport ")[0];
+  assert.doesNotMatch(body, /\b(done|fail|flash|cookies)\(/, "no flash cookie carries the code");
+  assert.match(body, /return \{ ok: true, message: .*, code \};/, "the code is in the result");
+  assert.match(body, /newInviteCode\(\)/, "a random shared code has the full 16 characters");
+  const form = fs.readFileSync(new URL("../src/app/admin/invites/SharedCodeForm.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(form, /cookie|localStorage|sessionStorage/, "the page keeps it in memory only");
+});

@@ -7,6 +7,9 @@
 /** `undoToken`: a signed token for undoSend (src/lib/ops-undo.ts), when the action held an email and can be taken back (not `undo`, which is the toast's own callback, OpsToastExtras). */
 export type OpsResult = { ok: true; message: string; undoToken?: string } | { ok: false; error: string };
 
+/** Ops → Invites → Create code: the new shared code, shown once from the page's memory (src/app/admin/invites/SharedCodeForm.tsx). */
+export type InviteCreated = { ok: true; message: string; code: string } | { ok: false; error: string };
+
 /** The browser event OpsForm sends with a result, for the admin toast to show it (the row may already be gone). */
 export const OPS_RESULT_EVENT = "ft:ops-result";
 

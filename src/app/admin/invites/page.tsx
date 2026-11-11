@@ -4,6 +4,7 @@ import { OpsForm } from "../OpsForm";
 import { q } from "@/lib/db";
 import { env } from "@/lib/env";
 import { GATE_CODE_MIN_LENGTH, inviteLabel } from "@/lib/invites";
+import { SharedCodeForm } from "./SharedCodeForm";
 import { createInvite, deleteInvite, inviteByEmail, resendInvite, restoreInvite, revokeInvite } from "../actions";
 
 export default async function Invites() {
@@ -97,21 +98,7 @@ export default async function Invites() {
           <h2 id="codes-h" className="text-lg font-semibold">Shared codes</h2>
           <p className="mt-1 text-sm text-mute">One code for a group, like a collective or a class, with a cap on sign-ups. While Open sign-up is off, shared codes (and referral codes) don&apos;t open accounts: only a personal invite to that email does.</p>
         </div>
-        <form action={createInvite} className="grid gap-3 rounded-md border border-line p-5 sm:grid-cols-[1fr_120px_1fr_auto] sm:items-end">
-          <label className="block space-y-1.5">
-            <span className="label">Code (blank = random; shown once)</span>
-            <input name="code" className="input uppercase" placeholder="FLOOR-XXXXX" />
-          </label>
-          <label className="block space-y-1.5">
-            <span className="label">Max uses</span>
-            <input name="max_uses" type="number" min={1} defaultValue={25} className="input" />
-          </label>
-          <label className="block space-y-1.5">
-            <span className="label">Note (who it&apos;s for)</span>
-            <input name="note" className="input" placeholder="e.g. Accra DJ collective" />
-          </label>
-          <button className="btn-lime btn-sm">Create code</button>
-        </form>
+        <SharedCodeForm action={createInvite} />
         <div className="overflow-x-auto rounded-md border border-line">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-line text-mute">

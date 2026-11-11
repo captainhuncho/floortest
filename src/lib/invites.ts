@@ -89,6 +89,32 @@ export async function resolveInvite(raw: string, email: string, open: boolean, o
 }
 
 /**
+ * A new personal invite for `email`, stored as its hash; the code itself goes only into the email. Returns the code to
+ * email, the invite's id and how Ops names it.
+ */
+export async function addPersonalInvite(email: string, note: string, db: Queryable = q) {
+  const code = newInviteCode();
+  const k = inviteKeys(code);
+  await db.run(
+    "INSERT INTO invites (code, code_hash, code_hint, max_uses, note, email, created_at, expires_at) VALUES (?,?,?,?,?,?,?,?)",
+    k.code, k.codeHash, k.hint, 1, note, email, now(), inviteExpiry(),
+  );
+  return { code, id: k.code, label: inviteLabel(k.code, k.hint) };
+}
+
+/**
+ * Ops → Resend: only a code's hash is stored, so a resend always makes a new code (with a fresh 14 days) and revokes the
+ * old one, in one transaction. The old one is revoked only while it's still live, so two Resends at once can't leave two
+ * working codes (Safety, #512 round 1): the second gets null and makes nothing.
+ */
+export async function swapPersonalInvite(oldId: string, email: string, note: string) {
+  return q.tx(async (db) => {
+    const revoked = await db.run("UPDATE invites SET revoked_at = ? WHERE code = ? AND revoked_at IS NULL AND used_at IS NULL", now(), oldId);
+    return revoked.changes ? addPersonalInvite(email, note, db) : null;
+  });
+}
+
+/**
  * Shortest code that can open the coming-soon gate: personal invites since 29 Oct are FLOOR- plus 10 characters. Older
  * ones (FLOOR- plus 5 or 6) still sign up with the password, and resending one from Ops swaps in a long code.
  */

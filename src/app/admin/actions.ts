@@ -13,7 +13,7 @@ import { allPlans, FREE_PLAN } from "@/lib/plan-store";
 import { cleanTags, readJoined } from "@/lib/audience";
 import { saveAnnouncement } from "@/lib/announce";
 import { ADMIN_PLANS, BULK_MAX, bulkIds, SUSPEND_MAX } from "@/lib/admin-bulk";
-import type { OpsResult } from "@/lib/ops-result";
+import type { InviteCreated, OpsResult } from "@/lib/ops-result";
 import { searchPeople, type PeopleAnswer } from "@/lib/ops-palette";
 import { JOBS, withJobLease, type JobName } from "@/lib/cron";
 import { RUN_JOB, rerunRefusal } from "@/lib/cron-jobs";
@@ -35,10 +35,10 @@ import { isTargeted, setSwitch, setSwitchRule, SWITCHES, type SwitchKey } from "
 import { describeRule, readRule, ruleFromForm, MAX_RULE_ACCOUNTS } from "@/lib/switch-rules";
 import { drainNow, retireTrackFiles } from "@/lib/deletion";
 import { cancelEmailChange, changeHandle, HANDLE_FORWARD_DAYS, HANDLE_HOLD_DAYS, requestEmailChange } from "@/lib/accounts";
-import { logEvent, now, q, type Queryable, type Track } from "@/lib/db";
+import { logEvent, now, q, type Track } from "@/lib/db";
 import { eraseSender, purgeAccount } from "@/lib/privacy";
 import { normalEmail } from "@/lib/email-normal";
-import { deleteRevokedInvite, inviteExpiry, inviteKeys, inviteLabel, newInviteCode, restoreRevokedInvite } from "@/lib/invites";
+import { addPersonalInvite, deleteRevokedInvite, inviteKeys, inviteLabel, newInviteCode, restoreRevokedInvite, swapPersonalInvite } from "@/lib/invites";
 import { receiptWhere } from "@/lib/receipt-token";
 import { safeFailure } from "@/lib/safe-failure";
 import { revokeAllSessions } from "@/lib/sessions";
@@ -267,11 +267,15 @@ export async function checkStorage(form: FormData) {
   refresh();
 }
 
-/** A shared code is stored as its hash (src/lib/invites.ts), so Ops shows it once, here, and never again. */
-export async function createInvite(form: FormData) {
+/**
+ * A shared code is stored as its hash (src/lib/invites.ts), so the code goes back to Ops once, in this answer, and is
+ * never put in a cookie or shown again (Safety, #512 round 1). A random one has 16 characters (80 bits); a typed one is
+ * only as strong as what Ops types, which is fine while shared codes open nothing (sign-up closed).
+ */
+export async function createInvite(form: FormData): Promise<InviteCreated> {
   const a = await requireAdminAction("invites");
   const typed = String(form.get("code") || "").trim().toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 24);
-  const code = typed || newInviteCode(10);
+  const code = typed || newInviteCode();
   const k = inviteKeys(code);
   const max = Math.min(10_000, Math.max(1, Math.round(Number(form.get("max_uses")) || 25)));
   const note = String(form.get("note") || "").trim().slice(0, 120);
@@ -280,10 +284,10 @@ export async function createInvite(form: FormData) {
     "INSERT INTO invites (code, code_hash, code_hint, max_uses, note, created_at) VALUES (?,?,?,?,?,?) ON CONFLICT DO NOTHING",
     k.code, k.codeHash, k.hint, max, note, now(),
   );
-  if (!r.changes) return fail(`An invite called ${code} already exists. Pick another code.`);
+  if (!r.changes) return { ok: false, error: `An invite called ${code} already exists. Pick another code.` };
   await logAdmin(a.id, "created invite", inviteLabel(k.code, k.hint), `${max} uses${note ? ` · ${note}` : ""}`);
-  await done(`Invite ${code} created. Copy it now: Ops won't show it again.`);
   refresh();
+  return { ok: true, message: `Invite ${inviteLabel(k.code, k.hint)} created`, code };
 }
 
 export async function revokeInvite(code: string) {
@@ -310,7 +314,11 @@ export async function deleteInvite(code: string) {
   const a = await requireAdminAction("invites");
   const r = await deleteRevokedInvite(code);
   if (!r.ok) return fail(r.reason);
-  const logged = await q.count("SELECT COUNT(*) AS n FROM admin_log WHERE strpos(target, ?) > 0 OR strpos(detail, ?) > 0", r.code, r.code);
+  // Older log lines name an invite by its code; since 0140 they name it by its last 4 ("…7QK2").
+  const logged = await q.count(
+    "SELECT COUNT(*) AS n FROM admin_log WHERE strpos(target, ?) > 0 OR strpos(detail, ?) > 0 OR strpos(target, ?) > 0 OR strpos(detail, ?) > 0",
+    r.code, r.code, r.label, r.label,
+  );
   await logAdmin(a.id, "deleted invite", r.email ?? r.label, `${r.label} · ${r.emails} email${r.emails === 1 ? "" : "s"} removed`);
   await done(`Deleted ${r.label}${r.email ? ` for ${r.email}` : ""} and ${r.emails} invite email${r.emails === 1 ? "" : "s"}. ${logged} Ops log line${logged === 1 ? "" : "s"} still mention it.`);
   refresh();
@@ -454,20 +462,6 @@ async function inviteMail(code: string, email: string, inviter: string, note: st
   };
 }
 
-/**
- * A new personal invite for `email`: stored as its hash (src/lib/invites.ts), the code itself only in the email. Returns
- * the code to email and the invite's id.
- */
-async function addPersonalInvite(email: string, note: string, db: Queryable = q) {
-  const code = newInviteCode();
-  const k = inviteKeys(code);
-  await db.run(
-    "INSERT INTO invites (code, code_hash, code_hint, max_uses, note, email, created_at, expires_at) VALUES (?,?,?,?,?,?,?,?)",
-    k.code, k.codeHash, k.hint, 1, note, email, now(), inviteExpiry(),
-  );
-  return { code, id: k.code, label: inviteLabel(k.code, k.hint) };
-}
-
 /** An invite email held for Undo; the invite is marked sent only once the email has gone. `id` is the invite's id. */
 async function mailInviteHeld(admin: { id: number; name: string }, what: string, code: string, id: string, email: string, note: string, handle = "") {
   const mail = await heldSend(admin.id, what, email, await inviteMail(code, email, admin.name, note, handle), async (status) => {
@@ -515,12 +509,8 @@ export async function resendInvite(code: string): Promise<OpsResult> {
   );
   if (!inv?.email) return no("Couldn't resend: the invite is revoked or has no email");
   if (inv.used_at) return no("Couldn't resend: the invite was already used to sign up");
-  // Only the code's hash is stored, so a resend always swaps in a new code (with a fresh 14 days) and revokes the old one.
-  const fresh = await q.tx(async (db) => {
-    const made = await addPersonalInvite(inv.email!, inv.note, db);
-    await db.run("UPDATE invites SET revoked_at = ? WHERE code = ?", now(), code);
-    return made;
-  });
+  const fresh = await swapPersonalInvite(code, inv.email, inv.note);
+  if (!fresh) return no("Couldn't resend: the invite was revoked, used or resent meanwhile");
   const mail = await mailInviteHeld(a, "resent invite", fresh.code, fresh.id, inv.email, inv.note);
   await logAdmin(a.id, "resent invite", inv.email, fresh.label);
   return okUndo(`Resending the invite to ${inv.email}`, signUndo({ kind: "invite_resend", items: [{ code: fresh.id, prev: code }], mail: [mail], admin: a.id }));
