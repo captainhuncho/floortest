@@ -35,14 +35,14 @@ test("while the site is gated, the QR and cover routes serve a real handle, sinc
   assert.equal((await cover("nobody-here")).status, 404);
 });
 
-test("the gate lets receiving links, receipts and sender history through and keeps the rest behind the password", async () => {
+test("the gate lets receiving links, receipts, sender history, the legal pages and Contact through and keeps the rest behind the password", async () => {
   const { NextRequest } = await import("next/server");
   const { proxy } = await import("../src/proxy");
   const gated = (p: string) => /\/coming-soon/.test(proxy(new NextRequest(`${SITE}${p}`)).headers.get("x-middleware-rewrite") ?? "");
 
-  for (const p of ["/realdj", "/RealDJ", "/realdj/", "/real-dj_2", "/nobody-here", "/sent", "/sent/sometoken", "/sent/reopen/sometoken", "/receipt/sometoken", "/terms", "/privacy", "/cookies", "/contact", "/contact?report=realdj", "/privacy-choices", "/subprocessors", "/content-rules", "/takedown", "/law-enforcement", "/security"])
+  for (const p of ["/realdj", "/RealDJ", "/realdj/", "/real-dj_2", "/nobody-here", "/sent", "/sent/sometoken", "/sent/reopen/sometoken", "/receipt/sometoken", "/terms", "/privacy", "/cookies", "/contact", "/contact?report=realdj", "/terms/", "/security/", "/privacy-choices", "/subprocessors", "/content-rules", "/takedown", "/law-enforcement", "/security"])
     assert.equal(gated(p), false, `${p} is open`);
-  for (const p of ["/", "/pricing", "/signup", "/waitlist", "/trust", "/licenses", "/dashboard", "/dashboard/floor", "/admin", "/realdj/extra", "/a", "/-x", "/x.y", `/${"a".repeat(31)}`, "/Pricing", "/PRICING/", "/index", "/INDEX", "/404", "/500", "/a%2Fb", "/%61dmin", "//realdj", "/_next", "/x.png"])
+  for (const p of ["/", "/pricing", "/signup", "/waitlist", "/trust", "/licenses", "/dashboard", "/dashboard/floor", "/admin", "/realdj/extra", "/a", "/-x", "/x.y", `/${"a".repeat(31)}`, "/Pricing", "/PRICING/", "/index", "/INDEX", "/404", "/500", "/a%2Fb", "/%61dmin", "//realdj", "/_next", "/x.png", "/terms/x", "/security/anything", "/contact/x", "/privacy/a/b", "/dj", "/collections"])
     assert.equal(gated(p), true, `${p} stays behind the password`);
   const { RESERVED_HANDLES } = await import("../src/lib/plans");
   for (const name of RESERVED_HANDLES) {

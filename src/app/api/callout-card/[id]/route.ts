@@ -6,7 +6,6 @@ import { q } from "@/lib/db";
 import { calloutBlock, capacity } from "@/lib/desk";
 import { quarantined } from "@/lib/file-digests";
 import { allow } from "@/lib/ratelimit";
-import { gatePassword } from "@/lib/site-gate";
 import { storage } from "@/lib/storage";
 
 export const runtime = "nodejs";
@@ -63,8 +62,6 @@ export async function GET(req: Request, ctx: RouteContext<"/api/callout-card/[id
   const account = await q.get<{ suspended_at: number | null }>("SELECT suspended_at FROM users WHERE id = ?", user.id);
   const live = !account?.suspended_at && user.active_collection_id === collection.id;
   if (!live) return NextResponse.json({ reason: "unavailable" }, { status: 409 });
-  // Behind the Coming soon password the card's QR would land strangers on the password page.
-  if (gatePassword()) return NextResponse.json({ reason: "invite-only" }, { status: 409 });
   const block = calloutBlock(user, collection, (await capacity(user)).full);
   if (block) return NextResponse.json({ reason: block }, { status: 409 });
 
