@@ -2225,4 +2225,22 @@ update handle_history set forward_until = expires_at;
 update handle_history set expires_at = created_at + 31536000000
   where expires_at > (extract(epoch from now()) * 1000)::bigint;`,
   },
+  {
+    // Invite codes and newsletter tokens stored as hashes (owner, 11 Nov; open since the 5 Nov scan). The expand step:
+    // new columns only, filled from the plain values, which stay where they are (no row's data is rewritten here).
+    // The app now finds invites by code_hash and subscribers by token_hash, and new rows store only the hash; clearing
+    // the old plain values is a later migration, on the owner's yes. code_hint is the last 4 characters, for Ops to show;
+    // outbox_id is the invite's email, since its stored copy now hides the code. The hash is the same SHA-256 hex as
+    // src/lib/token-hash.ts, of the code as stored (capitals).
+    id: "0140_hash_invites_newsletter",
+    sql: `alter table invites add column if not exists code_hash text;
+alter table invites add column if not exists code_hint text not null default '';
+alter table invites add column if not exists outbox_id bigint;
+update invites set code_hash = encode(sha256(convert_to(code, 'UTF8')), 'hex') where code_hash is null;
+update invites set code_hint = right(code, 4) where code_hint = '';
+create unique index if not exists invites_code_hash on invites(code_hash);
+alter table newsletter_subscribers add column if not exists token_hash text;
+update newsletter_subscribers set token_hash = encode(sha256(convert_to(token, 'UTF8')), 'hex') where token_hash is null;
+create unique index if not exists newsletter_subscribers_token_hash on newsletter_subscribers(token_hash);`,
+  },
 ];

@@ -4,8 +4,7 @@ import { runBackup } from "@/lib/backup";
 import { AUDIT_BUCKETS, checkBucket } from "@/lib/storage-audit";
 import { setExtraSeats } from "@/lib/account-members";
 import { reopenCallouts } from "@/lib/desk";
-import crypto from "node:crypto";
-import { newsletterFooter } from "@/lib/newsletter";
+import { newsletterFooter, newsletterUnsubToken } from "@/lib/newsletter";
 import { EMAILS, emailKey, emailTemplate, emailText, fillEmail, SAMPLE_VARS, type EmailId } from "@/lib/email-copy";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
@@ -14,7 +13,7 @@ import { allPlans, FREE_PLAN } from "@/lib/plan-store";
 import { cleanTags, readJoined } from "@/lib/audience";
 import { saveAnnouncement } from "@/lib/announce";
 import { ADMIN_PLANS, BULK_MAX, bulkIds, SUSPEND_MAX } from "@/lib/admin-bulk";
-import type { OpsResult } from "@/lib/ops-result";
+import type { InviteCreated, OpsResult } from "@/lib/ops-result";
 import { searchPeople, type PeopleAnswer } from "@/lib/ops-palette";
 import { JOBS, withJobLease, type JobName } from "@/lib/cron";
 import { RUN_JOB, rerunRefusal } from "@/lib/cron-jobs";
@@ -39,7 +38,7 @@ import { cancelEmailChange, changeHandle, HANDLE_FORWARD_DAYS, HANDLE_HOLD_DAYS,
 import { logEvent, now, q, type Track } from "@/lib/db";
 import { eraseSender, purgeAccount } from "@/lib/privacy";
 import { normalEmail } from "@/lib/email-normal";
-import { deleteRevokedInvite, GATE_CODE_MIN_LENGTH, inviteExpiry, restoreRevokedInvite } from "@/lib/invites";
+import { addPersonalInvite, deleteRevokedInvite, inviteKeys, inviteLabel, matchInviteCode, newInviteCode, restoreRevokedInvite, swapPersonalInvite, TYPED_CODE_MIN_LENGTH } from "@/lib/invites";
 import { receiptWhere } from "@/lib/receipt-token";
 import { safeFailure } from "@/lib/safe-failure";
 import { revokeAllSessions } from "@/lib/sessions";
@@ -268,25 +267,39 @@ export async function checkStorage(form: FormData) {
   refresh();
 }
 
-export async function createInvite(form: FormData) {
+/**
+ * A shared code is stored as its hash (src/lib/invites.ts), so the code goes back to Ops once, in this answer, and is
+ * never put in a cookie or shown again (Safety, #512 round 1). A random one has 20 characters (100 bits); a typed one is
+ * only as strong as what Ops types, which is fine while shared codes open nothing (sign-up closed).
+ */
+export async function createInvite(form: FormData): Promise<InviteCreated> {
   const a = await requireAdminAction("invites");
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   const typed = String(form.get("code") || "").trim().toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 24);
-  const code = typed || `FLOOR-${Array.from(crypto.randomBytes(5), (b) => alphabet[b % alphabet.length]).join("")}`;
+  if (typed && typed.length < TYPED_CODE_MIN_LENGTH) return { ok: false, error: `Type at least ${TYPED_CODE_MIN_LENGTH} characters, or leave it blank for a random code.` };
+  const code = typed || newInviteCode();
+  const k = inviteKeys(code, { hint: !typed });
+  // An invite an older build wrote during a deploy has no hash yet: check its plain code too.
+  const m = matchInviteCode(code);
+  if (await q.get(`SELECT 1 FROM invites i WHERE ${m.sql}`, ...m.args)) return { ok: false, error: `An invite called ${code} already exists. Pick another code.` };
   const max = Math.min(10_000, Math.max(1, Math.round(Number(form.get("max_uses")) || 25)));
   const note = String(form.get("note") || "").trim().slice(0, 120);
-  const r = await q.run("INSERT INTO invites (code, max_uses, note, created_at) VALUES (?,?,?,?) ON CONFLICT (code) DO NOTHING", code, max, note, now());
-  if (!r.changes) return fail(`An invite called ${code} already exists. Pick another code.`);
-  await logAdmin(a.id, "created invite", code, `${max} uses${note ? ` · ${note}` : ""}`);
-  await done(`Invite ${code} created`);
+  // Any unique clash (a new invite's hash, or an old invite whose plain code was hashed by 0140) means it exists.
+  const r = await q.run(
+    "INSERT INTO invites (code, code_hash, code_hint, max_uses, note, created_at) VALUES (?,?,?,?,?,?) ON CONFLICT DO NOTHING",
+    k.code, k.codeHash, k.hint, max, note, now(),
+  );
+  if (!r.changes) return { ok: false, error: `An invite called ${code} already exists. Pick another code.` };
+  await logAdmin(a.id, "created invite", inviteLabel(k.code, k.hint), `${max} uses${note ? ` · ${note}` : ""}`);
   refresh();
+  return { ok: true, message: `Invite ${inviteLabel(k.code, k.hint)} created`, code };
 }
 
 export async function revokeInvite(code: string) {
   const a = await requireAdminAction("invites");
-  await q.run("UPDATE invites SET revoked_at = ? WHERE code = ? AND revoked_at IS NULL", now(), code);
-  await logAdmin(a.id, "revoked invite", code);
-  await done(`Revoked ${code}`);
+  const r = await q.get<{ code: string; code_hint: string }>("UPDATE invites SET revoked_at = ? WHERE code = ? AND revoked_at IS NULL RETURNING code, code_hint", now(), code);
+  const label = r ? inviteLabel(r.code, r.code_hint) : inviteLabel(String(code));
+  await logAdmin(a.id, "revoked invite", label);
+  await done(`Revoked ${label}`);
   refresh();
 }
 
@@ -295,8 +308,8 @@ export async function restoreInvite(code: string) {
   const a = await requireAdminAction("invites");
   const r = await restoreRevokedInvite(code);
   if (!r.ok) return fail(r.reason);
-  await logAdmin(a.id, "restored invite", r.email ?? r.code, r.code);
-  await done(`Restored ${r.code}${r.email ? ` for ${r.email}` : ""}`);
+  await logAdmin(a.id, "restored invite", r.email ?? r.label, r.label);
+  await done(`Restored ${r.label}${r.email ? ` for ${r.email}` : ""}`);
   refresh();
 }
 
@@ -305,9 +318,13 @@ export async function deleteInvite(code: string) {
   const a = await requireAdminAction("invites");
   const r = await deleteRevokedInvite(code);
   if (!r.ok) return fail(r.reason);
-  const logged = await q.count("SELECT COUNT(*) AS n FROM admin_log WHERE strpos(target, ?) > 0 OR strpos(detail, ?) > 0", r.code, r.code);
-  await logAdmin(a.id, "deleted invite", r.email ?? r.code, `${r.code} · ${r.emails} email${r.emails === 1 ? "" : "s"} removed`);
-  await done(`Deleted ${r.code}${r.email ? ` for ${r.email}` : ""} and ${r.emails} invite email${r.emails === 1 ? "" : "s"}. ${logged} Ops log line${logged === 1 ? "" : "s"} still mention it.`);
+  // Older log lines name an invite by its code; since 0140 they name it by its last 4 ("…7QK2").
+  const logged = await q.count(
+    "SELECT COUNT(*) AS n FROM admin_log WHERE strpos(target, ?) > 0 OR strpos(detail, ?) > 0 OR strpos(target, ?) > 0 OR strpos(detail, ?) > 0",
+    r.code, r.code, r.label, r.label,
+  );
+  await logAdmin(a.id, "deleted invite", r.email ?? r.label, `${r.label} · ${r.emails} email${r.emails === 1 ? "" : "s"} removed`);
+  await done(`Deleted ${r.label}${r.email ? ` for ${r.email}` : ""} and ${r.emails} invite email${r.emails === 1 ? "" : "s"}. ${logged} Ops log line${logged === 1 ? "" : "s"} still mention it.`);
   refresh();
 }
 
@@ -436,11 +453,6 @@ export async function setContactHandled(id: number, handled: boolean): Promise<O
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const newCode = () => {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  // 10 characters from 32 (50 bits): the code is what proves the email while sign-up is closed.
-  return `FLOOR-${Array.from(crypto.randomBytes(10), (b) => alphabet[b % alphabet.length]).join("")}`;
-};
 
 async function inviteMail(code: string, email: string, inviter: string, note: string, handle = "") {
   const link = `${env.appUrl}/signup?invite=${encodeURIComponent(code)}${handle ? `&handle=${encodeURIComponent(handle)}` : ""}`;
@@ -448,15 +460,20 @@ async function inviteMail(code: string, email: string, inviter: string, note: st
     userId: null,
     audience: "support" as const,
     to: email,
+    // The stored copy (Email log) hides the code: the invite row holds only its hash.
+    secrets: [code],
     ...(await emailText("invite", { inviter, personal_note: note ? `\n"${note}"\n` : "", signup_url: link, code, email })),
   };
 }
 
-/** An invite email held for Undo; the invite is marked sent only once the email has gone. */
-async function mailInviteHeld(admin: { id: number; name: string }, what: string, code: string, email: string, note: string, handle = "") {
-  return heldSend(admin.id, what, email, await inviteMail(code, email, admin.name, note, handle), async (status) => {
-    if (!status.startsWith("failed")) await q.run("UPDATE invites SET sent_at = ? WHERE code = ?", now(), code);
+/** An invite email held for Undo; the invite is marked sent only once the email has gone. `id` is the invite's id. */
+async function mailInviteHeld(admin: { id: number; name: string }, what: string, code: string, id: string, email: string, note: string, handle = "") {
+  const mail = await heldSend(admin.id, what, email, await inviteMail(code, email, admin.name, note, handle), async (status) => {
+    if (!status.startsWith("failed")) await q.run("UPDATE invites SET sent_at = ? WHERE code = ?", now(), id);
   });
+  // Delete for good finds the invite's email by this id, since its stored copy hides the code.
+  await q.run("UPDATE invites SET outbox_id = ? WHERE code = ?", mail, id);
+  return mail;
 }
 
 /** Sends a personal, single-use invite to each address, held for Undo. Skips existing accounts and pending invites. */
@@ -477,11 +494,10 @@ export async function inviteByEmail(form: FormData): Promise<OpsResult> {
       skipped++;
       continue;
     }
-    const code = newCode();
-    await q.run("INSERT INTO invites (code, max_uses, note, email, created_at, expires_at) VALUES (?,?,?,?,?,?)", code, 1, note, email, now(), inviteExpiry());
-    mail.push(await mailInviteHeld(a, "invited by email", code, email, note));
-    items.push({ code });
-    await logAdmin(a.id, "invited by email", email, code);
+    const inv = await addPersonalInvite(email, note);
+    mail.push(await mailInviteHeld(a, "invited by email", inv.code, inv.id, email, note));
+    items.push({ code: inv.id });
+    await logAdmin(a.id, "invited by email", email, inv.label);
   }
   const extra = skipped ? ` · skipped ${skipped}: not a valid email, already has an account, or already has a pending invite` : "";
   if (!items.length) return no(`Nobody to invite${extra}`);
@@ -497,15 +513,11 @@ export async function resendInvite(code: string): Promise<OpsResult> {
   );
   if (!inv?.email) return no("Couldn't resend: the invite is revoked or has no email");
   if (inv.used_at) return no("Couldn't resend: the invite was already used to sign up");
-  // An old short code can't open the coming-soon gate (src/lib/invites.ts): resending swaps in a new long one.
-  const send = code.length < GATE_CODE_MIN_LENGTH ? newCode() : code;
-  if (send !== code) {
-    await q.run("INSERT INTO invites (code, max_uses, note, email, created_at, expires_at) SELECT ?, max_uses, note, email, ?, ? FROM invites WHERE code = ?", send, now(), inviteExpiry(), code);
-    await q.run("UPDATE invites SET revoked_at = ? WHERE code = ?", now(), code);
-  } else await q.run("UPDATE invites SET expires_at = ? WHERE code = ?", inviteExpiry(), code); // a resend gives a fresh 14 days
-  const mail = await mailInviteHeld(a, "resent invite", send, inv.email, inv.note);
-  await logAdmin(a.id, "resent invite", inv.email, send);
-  return okUndo(`Resending the invite to ${inv.email}`, signUndo({ kind: "invite_resend", items: [{ code: send, prev: send !== code ? code : undefined, at: send !== code ? undefined : inv.expires_at }], mail: [mail], admin: a.id }));
+  const fresh = await swapPersonalInvite(code, inv.email, inv.note);
+  if (!fresh) return no("Couldn't resend: the invite was revoked, used or resent meanwhile");
+  const mail = await mailInviteHeld(a, "resent invite", fresh.code, fresh.id, inv.email, inv.note);
+  await logAdmin(a.id, "resent invite", inv.email, fresh.label);
+  return okUndo(`Resending the invite to ${inv.email}`, signUndo({ kind: "invite_resend", items: [{ code: fresh.id, prev: code }], mail: [mail], admin: a.id }));
 }
 
 /**
@@ -519,12 +531,11 @@ async function sendWaitlistInvite(id: number, a: { id: number; name: string }) {
     await q.run("UPDATE waitlist SET invited_at = ? WHERE id = ?", now(), id);
     return { r: "joined" as const };
   }
-  const code = newCode();
-  await q.run("INSERT INTO invites (code, max_uses, note, email, created_at, expires_at) VALUES (?,?,?,?,?,?)", code, 1, "From the waitlist", w.email, now(), inviteExpiry());
+  const inv = await addPersonalInvite(w.email, "From the waitlist");
   await q.run("UPDATE waitlist SET invited_at = ? WHERE id = ?", now(), id);
-  const mail = await mailInviteHeld(a, "invited from waitlist", code, w.email, "", w.handle);
-  await logAdmin(a.id, "invited from waitlist", w.email, code);
-  return { r: "sent" as const, mail, item: { ref: id, code } };
+  const mail = await mailInviteHeld(a, "invited from waitlist", inv.code, inv.id, w.email, "", w.handle);
+  await logAdmin(a.id, "invited from waitlist", w.email, inv.label);
+  return { r: "sent" as const, mail, item: { ref: id, code: inv.id } };
 }
 
 /** Waitlist → personal invite in one click. */
@@ -872,7 +883,8 @@ export async function publishAnnouncement(form: FormData) {
           body: [body, "", href ? `${env.appUrl}${href}` : env.appUrl, "", list === "marketing" ? "You get these because offers and promotions are on in your notification settings." : "You get these because the newsletter is on in your notification settings.", "FloorTest"].join("\n"),
         }).catch(() => {});
       for (const sub of subscribers)
-        await sendMail({ userId: null, audience: "support", to: sub.email, subject: title, body: [body, "", href ? `${env.appUrl}${href}` : env.appUrl, "", newsletterFooter(sub.token)].join("\n") }).catch(() => {});
+        // The Email log's copy hides the unsubscribe link (Safety, #512 round 2).
+        await sendMail({ userId: null, audience: "support", to: sub.email, secrets: [newsletterUnsubToken(sub)], subject: title, body: [body, "", href ? `${env.appUrl}${href}` : env.appUrl, "", newsletterFooter(sub)].join("\n") }).catch(() => {});
     });
   refresh();
   await done(people.length + subscribers.length ? `Published; emailing ${people.length + subscribers.length} people` : "Published");

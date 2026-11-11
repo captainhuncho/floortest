@@ -26,7 +26,7 @@ test("restore puts a revoked invite back, personal or shared", async () => {
   const { restoreRevokedInvite } = await import("../src/lib/invites");
   await invite("FLOOR-RESTOREME01", "ana@x.io");
   await invite("CREW", null);
-  assert.deepEqual(await restoreRevokedInvite("floor-restoreme01"), { ok: true, code: "FLOOR-RESTOREME01", email: "ana@x.io", emails: 0 });
+  assert.deepEqual(await restoreRevokedInvite("floor-restoreme01"), { ok: true, code: "FLOOR-RESTOREME01", label: "…ME01", email: "ana@x.io", emails: 0 });
   assert.equal(await revokedAt("FLOOR-RESTOREME01"), null);
   assert.equal((await restoreRevokedInvite("CREW")).ok, true, "shared codes come back freely");
   assert.equal((await restoreRevokedInvite("CREW")).ok, false, "a live invite isn't in the Revoked list");
@@ -59,7 +59,7 @@ test("delete removes a revoked invite and the invite emails carrying its code, n
   await mail("other@x.io", "Your invite code is FLOOR-DEEDEEDEE1.");
   await q.run("INSERT INTO admin_log (action, target, detail, created_at) VALUES ('invited by email', 'dee@x.io', 'FLOOR-DEEDEEDEE1', ?)", t);
 
-  assert.deepEqual(await deleteRevokedInvite("FLOOR-DEEDEEDEE1"), { ok: true, code: "FLOOR-DEEDEEDEE1", email: "dee@x.io", emails: 1 });
+  assert.deepEqual(await deleteRevokedInvite("FLOOR-DEEDEEDEE1"), { ok: true, code: "FLOOR-DEEDEEDEE1", label: "…DEE1", email: "dee@x.io", emails: 1 });
   assert.equal(await q.count("SELECT COUNT(*) AS n FROM invites WHERE code = 'FLOOR-DEEDEEDEE1'"), 0);
   assert.equal(await q.count("SELECT COUNT(*) AS n FROM outbox WHERE strpos(body, 'FLOOR-DEEDEEDEE1') > 0 AND lower(to_email) = 'dee@x.io'"), 0);
   assert.equal(await q.count("SELECT COUNT(*) AS n FROM outbox WHERE lower(to_email) = 'dee@x.io'"), 1, "her other emails stay");

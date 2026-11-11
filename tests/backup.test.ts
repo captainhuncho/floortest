@@ -54,7 +54,8 @@ test("a backup holds no invite code or receipt token, but keeps what a restore n
   const { runBackup } = await import("../src/lib/backup");
   const { openBackup } = await import("../src/lib/backup-crypto");
   const t = Date.now();
-  await q.run("INSERT INTO invites (code, max_uses, note, created_at) VALUES ('LIVE-INVITE-7Q', 25, '', ?)", t);
+  await q.run("INSERT INTO invites (code, code_hash, max_uses, note, created_at) VALUES ('LIVE-INVITE-7Q', 'hash-of-live-invite', 25, '', ?)", t);
+  await q.run("INSERT INTO newsletter_subscribers (email, token, token_hash, created_at) VALUES ('nl@x.io', 'live-newsletter-token-4k', 'hash-of-nl-token', ?)", t);
   const uid = (await q.get<{ id: number }>(
     "INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at, invite_code, totp_secret) VALUES ('inv@x.io','pw-hash-kept','I','invdesk','pro','UTC',?, 'LIVE-INVITE-7Q', 'sealed-totp-kept') RETURNING id",
     t,
@@ -71,6 +72,10 @@ test("a backup holds no invite code or receipt token, but keeps what a restore n
   const text = JSON.stringify(dump);
   assert.ok(!text.includes("LIVE-INVITE-7Q"), "no invite code anywhere");
   assert.ok(!text.includes("live-receipt-token-9z"), "no receipt token anywhere");
+  assert.ok(!text.includes("live-newsletter-token-4k"), "no plain newsletter token anywhere");
+  assert.ok(!text.includes("hash-of-live-invite"), "no invite code hash: invites stop working after a restore, as before");
+  const sub = dump.tables.newsletter_subscribers.find((r) => r.email === "nl@x.io")!;
+  assert.equal(sub.token_hash, "hash-of-nl-token", "the newsletter token's hash stays, so its links still work after a restore");
 
   const user = dump.tables.users.find((u) => u.email === "inv@x.io")!;
   assert.equal(user.password_hash, "pw-hash-kept", "password hashes stay, so people can sign in after a restore");
