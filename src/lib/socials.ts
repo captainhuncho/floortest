@@ -166,7 +166,8 @@ function tidyUrl(platform: PlatformKey, url: string): string {
   u.search = dropTracking(u.search);
   const shape = ANY_CASE[platform];
   if (shape && u.hostname === shape.host && shape.path.test(u.pathname)) u.pathname = u.pathname.toLowerCase();
-  return u.toString().replace(/\/$/, "");
+  // A bare host still saves without "/" (https://imss.bandcamp.com). With a query, a "/" at the end is the query's own.
+  return u.search ? u.toString() : u.toString().replace(/\/$/, "");
 }
 
 /**

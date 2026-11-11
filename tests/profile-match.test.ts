@@ -180,3 +180,15 @@ test("dropping a tracking parameter leaves the rest of the query exactly as it w
   assert.equal(yt("https://youtube.com/watch?si=1&v=a%2Bb&t=30").url, "https://youtube.com/watch?v=a%2Bb&t=30");
   assert.equal(yt("https://youtube.com/watch?v=A&utm%5Fsource=x").url, "https://youtube.com/watch?v=A", "an encoded tracking key still goes");
 });
+
+// Safety, PR 510 round 3: a "/" at the end of the query is part of the query, not a trailing slash.
+test("a slash at the end of the query counts; one at the end of the path doesn't", () => {
+  const yt = (u: string) => slotLink("youtube", u) as ProfileLink;
+  for (const [a, b] of [["https://youtube.com/playlist?list=PL1/", "https://youtube.com/playlist?list=PL1"], ["https://youtube.com/watch?v=AAA/", "https://youtube.com/watch?v=AAA"]]) {
+    assert.equal(yt(a).url, a, `${a} is saved as typed`);
+    assert.notEqual(yt(a).url, yt(b).url);
+    assert.ok(!sameProfiles([yt(a)], [yt(b)]), `${a} is a different link from ${b}`);
+  }
+  assert.equal(ig("instagram.com/imssrecords/").url, "https://instagram.com/imssrecords", "a profile still saves without a trailing slash");
+  assert.ok(sameProfiles([yt("https://youtube.com/@imss/")], [yt("https://youtube.com/@imss")]), "a path's trailing slash is the same page");
+});

@@ -67,3 +67,18 @@ test("the Public page save itself keeps the mark for a re-typed profile and take
   assert.deepEqual(await save("@page.dj"), { answer: { ok: true } });
   assert.equal(await status(), "rejected", "a different profile needs checking again");
 });
+
+test("a slash added at the end of a link's query takes the Verified mark (Safety, PR 510 round 3)", async () => {
+  const { q } = await import("../src/lib/db");
+  const { resetIfProfilesChanged } = await import("../src/lib/accounts");
+  const { slotLink } = await import("../src/lib/socials");
+  const t = Date.now();
+  const before = JSON.stringify([{ platform: "youtube", url: "https://youtube.com/watch?v=AAA" }]);
+  const id = (await q.get<{ id: number }>(
+    "INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at, email_verified_at, identity_status, identity_verified_at, links) VALUES ('yt@x.io', 'h', 'YT DJ', 'ytdj', 'pro', 'UTC', ?, ?, 'verified', ?, ?) RETURNING id",
+    t, t, t, before,
+  ))!.id;
+  const link = slotLink("youtube", "https://youtube.com/watch?v=AAA/") as { platform: "youtube"; url: string };
+  assert.equal(await resetIfProfilesChanged(id, before, [link]), true);
+  assert.equal((await q.get<{ s: string }>("SELECT identity_status AS s FROM users WHERE id = ?", id))!.s, "rejected");
+});
