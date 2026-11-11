@@ -41,7 +41,8 @@ export async function inRequest(jar: Jar, ip: string, action: () => Promise<unkn
   const { workUnitAsyncStorage } = await import("next/dist/server/app-render/work-unit-async-storage.external");
   const cookies = cookieStore(jar);
   const headers = new Headers({ "x-forwarded-for": ip, "user-agent": "test" });
-  const workStore = { route: "/test", forceStatic: false, dynamicShouldError: false, isStaticGeneration: false, ...(dropAfter ? { afterContext: { after: () => {} } } : {}) } as never;
+  // incrementalCache: revalidatePath only records the paths here, so an empty one lets an action call it.
+  const workStore = { route: "/test", incrementalCache: {}, forceStatic: false, dynamicShouldError: false, isStaticGeneration: false, ...(dropAfter ? { afterContext: { after: () => {} } } : {}) } as never;
   const requestStore = { type: "request", phase: "action", cookies, mutableCookies: cookies, userspaceMutableCookies: cookies, headers, url: { pathname: "/test", search: "" } } as never;
   try {
     const answer = await workAsyncStorage.run(workStore, () => workUnitAsyncStorage.run(requestStore, action));
