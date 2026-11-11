@@ -34,15 +34,7 @@ export function parseLink(raw: string): ProfileLink | { error: string } {
   const host = u.hostname.toLowerCase().replace(/^(www|m)\./, "");
   if (!host.includes(".") || u.username || u.password) return { error: `"${text.slice(0, 40)}" isn't a link.` };
   const p = PLATFORMS.find((p) => p.hosts.some((h) => host === h || host.endsWith(`.${h}`)));
-  // A profile on a known platform is saved in one form, so the database holds the same text for the same profile:
-  // no www./m., no trailing slash, no tracking query (?igsh=, ?si=). Websites keep exactly what was typed.
-  if (p) {
-    u.hostname = host;
-    u.search = "";
-    u.pathname = u.pathname.replace(/\/+$/, "");
-    if (ANY_CASE.has(p.key)) u.pathname = u.pathname.toLowerCase();
-  }
-  return { platform: p?.key ?? "website", url: u.toString().replace(/\/$/, p ? "" : "/").slice(0, 300) };
+  return { platform: p?.key ?? "website", url: u.toString().slice(0, 300) };
 }
 
 /** Where a bare username goes, for platforms that have one. */
@@ -59,7 +51,22 @@ const BY_NAME: Partial<Record<PlatformKey, (n: string) => string>> = {
  */
 const IG_RESERVED = new Set(["p", "reel", "reels", "tv", "stories", "explore", "accounts", "direct", "about", "developer", "legal"]);
 const IG_NAME = /^(?!\.)(?!.*\.\.)(?!.*\.$)[a-z0-9._]{1,30}$/;
-const IG_PROFILE = { test: (path: string) => { const n = path.replace(/^\//, ""); return IG_NAME.test(n) && !IG_RESERVED.has(n); } };
+const isInstagramProfile = (u: URL) => {
+  const name = u.pathname.slice(1);
+  return u.hostname === "instagram.com" && !u.search && IG_NAME.test(name) && !IG_RESERVED.has(name);
+};
+
+/**
+ * A link on a known platform, as it is saved (owner, 11 Nov): one form per profile, so the same profile typed another way
+ * is the same text. Refuses a port (instagram.com:8443 isn't Instagram's page). Only new saves use this; links already
+ * saved are shown exactly as they were (Safety, PR 510).
+ */
+function savedForm(r: ProfileLink): ProfileLink | { error: string } {
+  if (r.platform === "website") return r;
+  const u = new URL(r.url);
+  if (u.port) return { error: "Leave the port number out of the link." };
+  return { platform: r.platform, url: tidyUrl(r.platform, r.url).slice(0, 300) };
+}
 
 /** One profile slot: the platform the person picked, and a link (or just a username). The link must be on that platform. */
 export function slotLink(platform: string, raw: string): ProfileLink | { error: string } {
@@ -69,13 +76,15 @@ export function slotLink(platform: string, raw: string): ProfileLink | { error: 
   // A username, not a link: "@name" always, dots included (Instagram's @imss.records is a profile, not a website,
   // owner 11 Nov); a bare name only without a dot, so "linktr.ee" in the Instagram slot stays a link and is refused.
   const bare = p && /^[\w.-]+$/.test(name) && (text.startsWith("@") || !name.includes("."));
-  const r = parseLink(bare && BY_NAME[p.key] ? BY_NAME[p.key]!(name) : text);
+  const parsed = parseLink(bare && BY_NAME[p.key] ? BY_NAME[p.key]!(name) : text);
+  if ("error" in parsed) return parsed;
+  if (p && parsed.platform !== p.key) return { error: `That isn't a ${p.label} link.` };
+  if (!p && parsed.platform !== "website") return { error: `Pick ${PLATFORMS.find((x) => x.key === parsed.platform)!.label} for that link.` };
+  const r = savedForm(parsed);
   if ("error" in r) return r;
-  if (p && r.platform !== p.key) return { error: `That isn't a ${p.label} link.` };
-  if (p?.key === "instagram" && !IG_PROFILE.test(new URL(r.url).pathname)) {
+  if (p?.key === "instagram" && !isInstagramProfile(new URL(r.url))) {
     return { error: "That isn't an Instagram profile. Use @username or instagram.com/username." };
   }
-  if (!p && r.platform !== "website") return { error: `Pick ${PLATFORMS.find((x) => x.key === r.platform)!.label} for that link.` };
   return r;
 }
 
@@ -91,7 +100,9 @@ export function senderProfiles(instagram: string, streaming: string): { links: P
     const r = parseLink(streaming);
     if ("error" in r) return { error: `Streaming profile: ${r.error}` };
     if (r.platform === "website" || r.platform === "instagram") return { error: "Streaming profile: use a Spotify, Apple Music, SoundCloud, Beatport, Bandcamp, YouTube or TikTok link." };
-    links.push(r);
+    const saved = savedForm(r);
+    if ("error" in saved) return { error: `Streaming profile: ${saved.error}` };
+    links.push(saved);
   }
   if (!links.length) return { error: "Add your Instagram or a streaming profile, so the receiver knows who you are." };
   return { links };
@@ -109,26 +120,50 @@ export function parseLinks(raw: string): { links: ProfileLink[]; error?: string 
   return { links };
 }
 
-// Platforms whose usernames ignore letter case (instagram.com/IMSSRecords is instagram.com/imssrecords).
-const ANY_CASE: ReadonlySet<PlatformKey> = new Set(["instagram", "tiktok", "soundcloud"]);
+// Query parameters that only say where a link was shared from; dropping them never changes the page it opens.
+const TRACKING = /^(utm_\w+|igsh|igshid|si|is_from_webapp|feature)$/i;
+
+// The profile addresses whose username ignores letter case: instagram.com/IMSSRecords is instagram.com/imssrecords. Only on
+// the main host and in exactly this shape: short links (vm.tiktok.com/ZMeAbCd, on.soundcloud.com/AbCdE) keep their case.
+const ANY_CASE: Partial<Record<PlatformKey, { host: string; path: RegExp }>> = {
+  instagram: { host: "instagram.com", path: /^\/[^/]+$/ },
+  tiktok: { host: "tiktok.com", path: /^\/@[^/]+$/ },
+  soundcloud: { host: "soundcloud.com", path: /^\/[^/]+$/ },
+};
+
+/**
+ * A link written one way: lower-case host without www./m., no trailing slash, no fragment. On a known platform it also
+ * loses tracking parameters (?igsh=, ?si=, utm_…), never ones that pick the page (YouTube's ?v=, Apple Music's ?i=), and a
+ * username ignores case where ANY_CASE says so. A website keeps its path case and its whole query.
+ */
+function tidyUrl(platform: PlatformKey, url: string): string {
+  const u = new URL(url);
+  u.hash = "";
+  u.hostname = u.hostname.toLowerCase().replace(/^(www|m)\./, "");
+  u.pathname = u.pathname.replace(/\/+$/, "");
+  if (platform !== "website") {
+    const tracking = [...u.searchParams.keys()].filter((k) => TRACKING.test(k));
+    for (const k of tracking) u.searchParams.delete(k);
+    const shape = ANY_CASE[platform];
+    if (shape && u.hostname === shape.host && shape.path.test(u.pathname)) u.pathname = u.pathname.toLowerCase();
+  }
+  return u.toString().replace(/\/$/, "");
+}
 
 /**
  * The profile a link points to, ignoring how it was written: "@name", "instagram.com/name", "https://www.instagram.com/name/"
- * and "…/name/?igsh=…" are one Instagram profile. On a known platform the host loses www./m., and the path loses its trailing
- * slash, query and fragment; usernames on ANY_CASE platforms ignore case. A website keeps its path case and query, so two
- * different pages never look the same. Used to tell a real change of profile from a re-typed one (the Verified mark).
+ * and "…/name/?igsh=…" are one Instagram profile (see tidyUrl). Anything that can open a different page stays different:
+ * another host or subdomain, a port, a short-link code's case, a page-picking query. Used to tell a real change of profile
+ * from a re-typed one (the Verified mark).
  */
 export function profileKey(link: ProfileLink): string {
   let u: URL;
   try {
-    u = new URL(link.url);
+    u = new URL(tidyUrl(link.platform, link.url));
   } catch {
-    return link.url;
+    return `${link.platform} ${link.url}`;
   }
-  const host = u.hostname.toLowerCase().replace(/^(www|m)\./, "");
-  const path = u.pathname.replace(/\/+$/, "");
-  if (link.platform === "website") return `website ${host}${path}${u.search}`;
-  return `${link.platform} ${host}${ANY_CASE.has(link.platform) ? path.toLowerCase() : path}`;
+  return `${link.platform} ${u.host}${u.pathname.replace(/\/$/, "")}${u.search}`;
 }
 
 /** True when both lists point to the same profiles, whatever order or spelling they were written in. */

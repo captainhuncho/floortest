@@ -5,14 +5,14 @@ import { revalidatePath } from "next/cache";
 import { stepUp } from "@/lib/step-up";
 import { allow } from "@/lib/ratelimit";
 import { sendMail } from "@/lib/mail";
-import { MAX_LINKS, profileKey, readLinks, sameProfiles, slotLink, type ProfileLink } from "@/lib/socials";
+import { MAX_LINKS, profileKey, slotLink, type ProfileLink } from "@/lib/socials";
 import { isAccountType, TOOL_IDS, toolOverrides, type Tool } from "@/lib/account-types";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { destroySession, requireRole } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { purgeAccount } from "@/lib/privacy";
-import { cancelEmailChange, changeHandle, requestEmailChange, resetVerified } from "@/lib/accounts";
+import { cancelEmailChange, changeHandle, requestEmailChange, resetIfProfilesChanged, resetVerified } from "@/lib/accounts";
 import { capacity } from "@/lib/desk";
 import { asPerson, asSystem, now, q } from "@/lib/db";
 import { saveAlerts, saveProfile } from "@/lib/settings-save";
@@ -116,13 +116,12 @@ export async function updatePublicPage(_: SettingsState, form: FormData): Promis
     if (!links.some((l) => profileKey(l) === profileKey(r))) links.push(r);
   }
   if (links.length > MAX_LINKS) return { error: `Up to ${MAX_LINKS} profiles.` };
-  const parsed = { links };
   // The app's on purpose (B8, Safety 5 Nov): a team admin edits the desk owner's row, and a database rule for that can't be
   // limited to these columns. requireRole("admin") gates it; a narrow database function per admin action comes next.
-  await asSystem(() => q.run("UPDATE users SET page_style = ?, role_line = ?, links = ? WHERE id = ?", style, role, JSON.stringify(parsed.links), u.id));
+  await asSystem(() => q.run("UPDATE users SET page_style = ?, role_line = ?, links = ? WHERE id = ?", style, role, JSON.stringify(links), u.id));
   // Only a different profile takes the Verified mark away, not the same one written another way (owner, 11 Nov: re-typing
   // instagram.com/imssrecords as https://www.instagram.com/imssrecords/ removed a mark).
-  if (!sameProfiles(parsed.links, readLinks(u.links))) await resetVerified(q, u.id);
+  await resetIfProfilesChanged(u.id, u.links, links);
   await audit(u.id, "page_updated", style === "stage" ? "Stage style" : "Classic style");
   done();
   revalidatePath(`/${u.handle}`);

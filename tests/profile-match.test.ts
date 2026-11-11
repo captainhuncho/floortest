@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { profileKey, sameProfiles, slotLink, type ProfileLink } from "../src/lib/socials";
+import { profileKey, readLinks, sameProfiles, senderProfiles, slotLink, type ProfileLink } from "../src/lib/socials";
 
 const ig = (raw: string) => {
   const r = slotLink("instagram", raw);
@@ -72,4 +72,81 @@ test("Instagram's own username rules decide what counts as a profile", () => {
     "instagram.com/imssrecords/tagged", // a page inside a profile
   ];
   for (const h of bad) assert.ok("error" in slotLink("instagram", h), `${h} is refused`);
+});
+
+// Safety, PR 510 round 1: a looser profileKey or save rule must fail here. Every input below opens a different page from
+// instagram.com/imssrecords, so it's either refused or keeps a key of its own; it must never pass as the real profile.
+const REAL = profileKey({ platform: "instagram", url: "https://instagram.com/imssrecords" });
+const notTheReal = (raw: string) => {
+  const r = slotLink("instagram", raw);
+  assert.ok("error" in r || profileKey(r) !== REAL, `${JSON.stringify(raw)} passed as @imssrecords`);
+};
+
+test("another host, subdomain, port or sign-in part is never the same Instagram profile", () => {
+  for (const raw of [
+    "l.instagram.com/imssrecords",
+    "evil.instagram.com/imssrecords",
+    "instagram.com.evil.io/imssrecords",
+    "instagram.com:8443/imssrecords",
+    "https://user@instagram.com/imssrecords",
+    "https://user:pw@instagram.com/imssrecords",
+  ]) {
+    notTheReal(raw);
+    assert.ok("error" in slotLink("instagram", raw), `${raw} is refused in the Instagram slot`);
+  }
+  assert.notEqual(profileKey({ platform: "instagram", url: "https://evil.instagram.com/imssrecords" }), REAL);
+  assert.notEqual(profileKey({ platform: "instagram", url: "https://l.instagram.com/imssrecords" }), REAL);
+  assert.notEqual(profileKey({ platform: "instagram", url: "https://instagram.com:8443/imssrecords" }), REAL);
+});
+
+test("look-alike and hidden characters never pass as the real username", () => {
+  for (const raw of [
+    "instаgram.com/imssrecords", // Cyrillic а in the host
+    "instagram.com/imssrеcords", // Cyrillic е in the name
+    "instagram.com/imsśrecords", // accented letter
+    "instagram.com/imss\u200brecords", // zero-width space in the name
+    "instagram.com/imsse\u0301cords", // combining accent
+    "instagram.com/imss%72ecords", // %-encoded letter
+    "instagram.com/%69mssrecords",
+    "@ｉｍｓｓrecords", // full-width letters in the name
+    "@imss\u200brecords",
+  ]) notTheReal(raw);
+  // The browser's own address rules turn a full-width or zero-width host into plain instagram.com: the same page, saved as such.
+  for (const raw of ["ｉｎｓｔａｇｒａｍ.com/imssrecords", "insta\u200bgram.com/imssrecords"]) {
+    const r = ig(raw);
+    assert.equal(r.url, "https://instagram.com/imssrecords");
+  }
+});
+
+test("short links keep their case, and a query that picks the page keeps it apart", () => {
+  const key = (platform: string, url: string) => profileKey(slotLink(platform, url) as ProfileLink);
+  assert.notEqual(key("tiktok", "https://vm.tiktok.com/ZMabcDE/"), key("tiktok", "https://vm.tiktok.com/zmabcde"));
+  assert.notEqual(key("tiktok", "https://vt.tiktok.com/ZSabcDE/"), key("tiktok", "https://vt.tiktok.com/zsabcde"));
+  assert.notEqual(key("soundcloud", "https://on.soundcloud.com/AbCdE"), key("soundcloud", "https://on.soundcloud.com/abcde"));
+  assert.notEqual(key("youtube", "https://www.youtube.com/watch?v=AAA"), key("youtube", "https://www.youtube.com/watch?v=BBB"));
+  assert.notEqual(key("youtube", "https://youtube.com/playlist?list=PL1"), key("youtube", "https://youtube.com/playlist?list=PL2"));
+  assert.notEqual(key("applemusic", "https://music.apple.com/gb/album/x/1?i=5"), key("applemusic", "https://music.apple.com/gb/album/x/1?i=6"));
+  // Usernames on the main host still ignore case, and tracking parameters still go.
+  assert.equal(key("tiktok", "https://www.tiktok.com/@IMSS?is_from_webapp=1"), key("tiktok", "@imss"));
+  assert.equal(key("soundcloud", "https://soundcloud.com/IMSS/"), key("soundcloud", "@imss"));
+  assert.equal(key("youtube", "https://www.youtube.com/watch?v=AAA&feature=share&si=x"), key("youtube", "https://youtube.com/watch?v=AAA"));
+  assert.equal((slotLink("tiktok", "https://vm.tiktok.com/ZMabcDE/?utm_source=x") as ProfileLink).url, "https://vm.tiktok.com/ZMabcDE");
+});
+
+test("a port is refused on every known platform, for receivers and senders alike", () => {
+  assert.ok("error" in slotLink("spotify", "https://open.spotify.com:444/artist/x"));
+  assert.ok("error" in senderProfiles("", "https://open.spotify.com:444/artist/x"));
+  assert.ok(!("error" in slotLink("website", "https://imss.com:8080/")), "a website may use a port");
+});
+
+test("links already saved are shown exactly as they were saved", () => {
+  const stored = [
+    { platform: "tiktok", url: "https://vm.tiktok.com/ZMeAbCd/" },
+    { platform: "soundcloud", url: "https://on.soundcloud.com/AbCdE" },
+    { platform: "youtube", url: "https://youtube.com/watch?v=AAAA" },
+    { platform: "instagram", url: "https://www.instagram.com/IMSSRecords/?igsh=abc" },
+  ];
+  assert.deepEqual(readLinks(JSON.stringify(stored)), stored);
+  // ...and still count as the same profile as the tidy form, so re-saving them keeps the mark.
+  assert.ok(sameProfiles(readLinks(JSON.stringify(stored)), stored.map((l) => slotLink(l.platform, l.url) as ProfileLink)));
 });
