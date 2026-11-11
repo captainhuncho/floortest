@@ -3,15 +3,16 @@ import { ConfirmButton } from "../AdminUi";
 import { OpsForm } from "../OpsForm";
 import { q } from "@/lib/db";
 import { env } from "@/lib/env";
-import { GATE_CODE_MIN_LENGTH } from "@/lib/invites";
+import { GATE_CODE_MIN_LENGTH, inviteLabel } from "@/lib/invites";
 import { createInvite, deleteInvite, inviteByEmail, resendInvite, restoreInvite, revokeInvite } from "../actions";
 
 export default async function Invites() {
   await requireAdmin("invites");
   const rows = await q.all<{
-    code: string; max_uses: number; note: string; email: string | null; sent_at: number | null; created_at: number; revoked_at: number | null; used: number; joined: string | null; used_at: number | null; expires_at: number | null;
+    code: string; code_hint: string; max_uses: number; note: string; email: string | null; sent_at: number | null; created_at: number; revoked_at: number | null; used: number; joined: string | null; used_at: number | null; expires_at: number | null;
   }>(
-    `SELECT i.*, (SELECT COUNT(*) FROM users u WHERE u.invite_code = i.code) AS used,
+    `SELECT i.code, i.code_hint, i.max_uses, i.note, i.email, i.sent_at, i.created_at, i.revoked_at, i.used_at, i.expires_at,
+       (SELECT COUNT(*) FROM users u WHERE u.invite_code = i.code) AS used,
        (SELECT u.handle FROM users u WHERE u.invite_code = i.code ORDER BY u.created_at LIMIT 1) AS joined
      FROM invites i ORDER BY i.created_at DESC LIMIT 1000`,
   );
@@ -24,6 +25,8 @@ export default async function Invites() {
   const revoked = rows.filter((r) => r.revoked_at);
   // Used is the invite's own mark (it stays when the account made with it is deleted); unused ones last 14 days.
   const at = Date.now();
+  // Codes are stored as hashes (src/lib/invites.ts): Ops names each by its last 4 characters.
+  const label = (r: { code: string; code_hint: string }) => inviteLabel(r.code, r.code_hint);
 
   return (
     <div className="space-y-10">
@@ -67,7 +70,7 @@ export default async function Invites() {
                         <span className="chip border-line text-mute">Pending</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-mute">{r.code}</td>
+                    <td className="px-4 py-3 text-mute">{label(r)}</td>
                     <td className="px-4 py-3 text-mute">{new Date(r.sent_at ?? r.created_at).toLocaleDateString("en-GB")}</td>
                     <td className="space-x-3 whitespace-nowrap px-4 py-3 text-right">
                       {!r.used && !r.used_at && (
@@ -96,7 +99,7 @@ export default async function Invites() {
         </div>
         <form action={createInvite} className="grid gap-3 rounded-md border border-line p-5 sm:grid-cols-[1fr_120px_1fr_auto] sm:items-end">
           <label className="block space-y-1.5">
-            <span className="label">Code (blank = random)</span>
+            <span className="label">Code (blank = random; shown once)</span>
             <input name="code" className="input uppercase" placeholder="FLOOR-XXXXX" />
           </label>
           <label className="block space-y-1.5">
@@ -117,12 +120,12 @@ export default async function Invites() {
             <tbody className="divide-y divide-line">
               {shared.map((r) => (
                 <tr key={r.code}>
-                  <td className="px-4 py-3">{r.code}</td>
+                  <td className="px-4 py-3">{label(r)}</td>
                   <td className="px-4 py-3 tnum">{r.used} / {r.max_uses}</td>
                   <td className="px-4 py-3">{r.note}</td>
                   <td className="px-4 py-3 text-mute">{new Date(r.created_at).toLocaleDateString("en-GB")}</td>
                   <td className="px-4 py-3 text-right">
-                    <ConfirmButton action={revokeInvite.bind(null, r.code)} message={`Revoke ${r.code}? Nobody new can sign up with it.`} className="text-sm text-danger hover:underline">
+                    <ConfirmButton action={revokeInvite.bind(null, r.code)} message={`Revoke ${label(r)}? Nobody new can sign up with it.`} className="text-sm text-danger hover:underline">
                       Revoke
                     </ConfirmButton>
                   </td>
@@ -160,12 +163,12 @@ export default async function Invites() {
                 {revoked.map((r) => (
                   <tr key={r.code}>
                     <td className="px-4 py-3">{r.email ?? r.note}</td>
-                    <td className="px-4 py-3">{r.code}</td>
+                    <td className="px-4 py-3">{label(r)}</td>
                     <td className="px-4 py-3">{new Date(r.revoked_at!).toLocaleDateString("en-GB")}</td>
                     <td className="whitespace-nowrap px-4 py-1 text-right">
                       <ConfirmButton
                         action={restoreInvite.bind(null, r.code)}
-                        message={`Restore ${r.code}${r.email ? ` for ${r.email}` : ""}? It works again for sign-up.${r.email && r.code.length < GATE_CODE_MIN_LENGTH ? " It's an old short code, so it still can't open the coming-soon page; Resend it afterwards to send a new long code." : ""}`}
+                        message={`Restore ${label(r)}${r.email ? ` for ${r.email}` : ""}? It works again for sign-up.${r.email && r.code.length < GATE_CODE_MIN_LENGTH ? " It's an old short code, so it still can't open the coming-soon page; Resend it afterwards to send a new long code." : ""}`}
                         confirmLabel="Restore"
                         className="inline-flex min-h-11 min-w-11 items-center px-2 text-sm text-bone underline-offset-2 hover:underline"
                       >
@@ -174,7 +177,7 @@ export default async function Invites() {
                       {!r.used && (
                         <ConfirmButton
                           action={deleteInvite.bind(null, r.code)}
-                          message={`Delete ${r.code}${r.email ? ` for ${r.email}` : ""} for good? The invite and its invite emails are removed from Ops. This can't be undone. Ops log lines stay.`}
+                          message={`Delete ${label(r)}${r.email ? ` for ${r.email}` : ""} for good? The invite and its invite emails are removed from Ops. This can't be undone. Ops log lines stay.`}
                           confirmLabel="Delete for good"
                           className="inline-flex min-h-11 min-w-11 items-center px-2 text-sm text-danger underline-offset-2 hover:underline"
                         >

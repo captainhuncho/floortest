@@ -13,7 +13,7 @@ export type Saved = {
   label: string;
   list: AnnouncementList | null;
   people: { id: number; email: string }[];
-  subscribers: { email: string; token: string }[];
+  subscribers: { id: number; email: string }[];
 };
 
 /**
@@ -50,7 +50,7 @@ export async function saveAnnouncement(adminId: number, get: (k: string) => unkn
     return row.id;
   });
   const people = reach.people ? await q.all<{ id: number; email: string }>(reach.people.sql, ...reach.people.args) : [];
-  const subscribers = reach.subscribers ? await q.all<{ email: string; token: string }>(reach.subscribers) : [];
+  const subscribers = reach.subscribers ? await q.all<{ id: number; email: string }>(reach.subscribers) : [];
   return { id, title, body, href, label, list, people, subscribers };
 }
 
@@ -75,7 +75,7 @@ export function emailReach(aud: Audience, list: AnnouncementList | null, wantsSu
       : null,
     subscribers:
       outside && !refused
-        ? `SELECT s.email, s.token FROM newsletter_subscribers s WHERE s.confirmed_at IS NOT NULL AND s.unsubscribed_at IS NULL ${list === "marketing" ? "AND s.marketing = 1" : ""}
+        ? `SELECT s.id, s.email FROM newsletter_subscribers s WHERE s.confirmed_at IS NOT NULL AND s.unsubscribed_at IS NULL ${list === "marketing" ? "AND s.marketing = 1" : ""}
            AND NOT EXISTS (SELECT 1 FROM users u WHERE lower(u.email) = s.email) ORDER BY s.id LIMIT ${EMAIL_CAP}`
         : null,
   };

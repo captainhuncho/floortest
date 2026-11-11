@@ -26,7 +26,8 @@ const dayKey = (t: number) => `backups/db-${new Date(t).toISOString().slice(0, 1
  * Live tokens and email bodies (they hold sign-in and unsubscribe links) are blanked: not needed to restore. Invite
  * codes (they open an account) are replaced by the same stand-in on invites.code and users.invite_code (a keyed hash with
  * a fresh key per backup, so use counts survive a restore but the code can't be read back or guessed); after a restore,
- * old invite codes stop working. A plain receipt token (tracks.token) is left out (null): receipts are found by
+ * old invite codes stop working (their code_hash is left out too). A newsletter subscriber's plain token is swapped for
+ * a stand-in; its token_hash stays, so a confirm or unsubscribe link still works after a restore. A plain receipt token (tracks.token) is left out (null): receipts are found by
  * token_hash and their links rebuilt from token_sealed, both kept, so receipt links keep working after a restore. Password hashes and
  * encrypted two-factor secrets stay: people need them to sign in after a restore.
  */
@@ -36,7 +37,8 @@ function scrubbers(): Record<string, (r: Row) => Row> {
   const hideCode = (code: unknown) => (typeof code === "string" && code ? `hidden-${createHmac("sha256", key).update(code).digest("hex").slice(0, 24)}` : code);
   return {
     users: (r) => ({ ...r, pending_email_token: null, email_verify_token: null, invite_code: hideCode(r.invite_code) }),
-    invites: (r) => ({ ...r, code: hideCode(r.code) }),
+    invites: (r) => ({ ...r, code: hideCode(r.code), code_hash: null }),
+    newsletter_subscribers: (r) => ({ ...r, token: hideCode(r.token) }),
     tracks: (r) => ({ ...r, token: null }),
     outbox: (r) => ({ ...r, body: "" }),
   };

@@ -11,7 +11,7 @@ import { inviteBySecret } from "@/lib/account-members";
 import { currentPerson } from "@/lib/auth";
 import { maskEmail } from "@/lib/mask-email";
 import { redirect } from "next/navigation";
-import { personalInviteGone } from "@/lib/invites";
+import { matchInviteCode, personalInviteGone } from "@/lib/invites";
 
 export const metadata = { title: "Claim your link — FloorTest" };
 
@@ -21,7 +21,8 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
   const inviteCode = (sp.invite || "").toUpperCase().slice(0, 32);
   // A used, expired or revoked personal invite never shows the form as if it were live (owner, 5 Nov).
   if (inviteCode && (await personalInviteGone(inviteCode))) redirect("/invite/used");
-  const personal = inviteCode ? await q.get<{ email: string | null }>("SELECT email FROM invites WHERE code = ? AND revoked_at IS NULL", inviteCode) : undefined;
+  const match = inviteCode ? matchInviteCode(inviteCode) : null;
+  const personal = match ? await q.get<{ email: string | null }>(`SELECT i.email FROM invites i WHERE ${match.sql} AND i.revoked_at IS NULL`, ...match.args) : undefined;
   const referrer = ref ? await q.get<{ name: string }>("SELECT name FROM users WHERE referral_code = ?", ref) : undefined;
   // Joining a team from an invite email: no invite code needed, and the email is the one invited.
   const team = sp.team ? await inviteBySecret(sp.team) : undefined;

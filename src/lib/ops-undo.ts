@@ -65,11 +65,12 @@ export async function revertItem(db: Queryable, u: Undo, item: UndoItem) {
     await db.run("UPDATE invites SET revoked_at = ? WHERE code = ? AND revoked_at IS NULL", now(), item.code);
     await db.run("UPDATE waitlist SET invited_at = NULL WHERE id = ?", item.ref);
   } else if (u.kind === "invite_resend" && item.prev) {
-    // The resend swapped an old short code for a new one: the old one comes back, the unsent new one is revoked.
+    // The resend swapped the old code for a new one (every resend since 0140): the old one comes back, the unsent new
+    // one is revoked.
     await db.run("UPDATE invites SET revoked_at = ? WHERE code = ? AND revoked_at IS NULL", now(), item.code);
     await db.run("UPDATE invites SET revoked_at = NULL WHERE code = ?", item.prev);
   } else if (u.kind === "invite_resend" && item.code && item.at !== undefined) {
-    // A same-code resend gave the invite 14 fresh days: Undo puts its old expiry back (owner, 5 Nov).
+    // A same-code resend (before 0140) gave the invite 14 fresh days: Undo puts its old expiry back (owner, 5 Nov).
     await db.run("UPDATE invites SET expires_at = ? WHERE code = ? AND used_at IS NULL", item.at, item.code);
   } else if (u.kind === "invite_email") {
     await db.run("UPDATE invites SET revoked_at = ? WHERE code = ? AND revoked_at IS NULL", now(), item.code);

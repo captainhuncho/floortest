@@ -17,7 +17,9 @@ pages and Contact (`/terms`, `/privacy`, `/cookies`, `/contact`, `/privacy-choic
 `/takedown`, `/law-enforcement`, `/security`) so a sender can read what they agree to and report a link (wording unchanged). A personal
 invite stops opening it once its email has an account (owner, 29 Oct); team invites open it the same way via /join.
 The invite's pass lasts one day (signing up or in gives the usual 30), and only codes made since 29 Oct (FLOOR- plus 10
-characters) open it: an older invite still signs up with the password, or Ops resends it, which swaps in a new code.
+characters) open it: an older invite still signs up with the password, or Ops resends it. Every Resend swaps in a new
+code (FLOOR- plus 16 since 11 Nov), since only a code's hash is stored; Ops shows codes by their last 4 characters, and a
+shared code in full only once, when it's created.
 On /signup a wrong invite code counts: 5 an hour per email, 20 an hour per connection, then "Too many tries".
 ```
 
