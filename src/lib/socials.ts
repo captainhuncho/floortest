@@ -34,7 +34,15 @@ export function parseLink(raw: string): ProfileLink | { error: string } {
   const host = u.hostname.toLowerCase().replace(/^(www|m)\./, "");
   if (!host.includes(".") || u.username || u.password) return { error: `"${text.slice(0, 40)}" isn't a link.` };
   const p = PLATFORMS.find((p) => p.hosts.some((h) => host === h || host.endsWith(`.${h}`)));
-  return { platform: p?.key ?? "website", url: u.toString().slice(0, 300) };
+  // A profile on a known platform is saved in one form, so the database holds the same text for the same profile:
+  // no www./m., no trailing slash, no tracking query (?igsh=, ?si=). Websites keep exactly what was typed.
+  if (p) {
+    u.hostname = host;
+    u.search = "";
+    u.pathname = u.pathname.replace(/\/+$/, "");
+    if (ANY_CASE.has(p.key)) u.pathname = u.pathname.toLowerCase();
+  }
+  return { platform: p?.key ?? "website", url: u.toString().replace(/\/$/, p ? "" : "/").slice(0, 300) };
 }
 
 /** Where a bare username goes, for platforms that have one. */
@@ -45,14 +53,28 @@ const BY_NAME: Partial<Record<PlatformKey, (n: string) => string>> = {
   youtube: (n) => `youtube.com/@${n}`,
 };
 
+/**
+ * An Instagram profile address, by Instagram's own username rules: 1–30 letters, numbers, "." or "_", not starting or
+ * ending with ".", no "..". Post, reel and other pages (instagram.com/p/…, /reel/…, /explore) aren't profiles.
+ */
+const IG_RESERVED = new Set(["p", "reel", "reels", "tv", "stories", "explore", "accounts", "direct", "about", "developer", "legal"]);
+const IG_NAME = /^(?!\.)(?!.*\.\.)(?!.*\.$)[a-z0-9._]{1,30}$/;
+const IG_PROFILE = { test: (path: string) => { const n = path.replace(/^\//, ""); return IG_NAME.test(n) && !IG_RESERVED.has(n); } };
+
 /** One profile slot: the platform the person picked, and a link (or just a username). The link must be on that platform. */
 export function slotLink(platform: string, raw: string): ProfileLink | { error: string } {
   const text = raw.trim();
   const p = PLATFORMS.find((x) => x.key === platform);
   const name = text.replace(/^@/, "");
-  const r = parseLink(p && /^[\w.-]+$/.test(name) && !name.includes(".") && BY_NAME[p.key] ? BY_NAME[p.key]!(name) : text);
+  // A username, not a link: "@name" always, dots included (Instagram's @imss.records is a profile, not a website,
+  // owner 11 Nov); a bare name only without a dot, so "linktr.ee" in the Instagram slot stays a link and is refused.
+  const bare = p && /^[\w.-]+$/.test(name) && (text.startsWith("@") || !name.includes("."));
+  const r = parseLink(bare && BY_NAME[p.key] ? BY_NAME[p.key]!(name) : text);
   if ("error" in r) return r;
   if (p && r.platform !== p.key) return { error: `That isn't a ${p.label} link.` };
+  if (p?.key === "instagram" && !IG_PROFILE.test(new URL(r.url).pathname)) {
+    return { error: "That isn't an Instagram profile. Use @username or instagram.com/username." };
+  }
   if (!p && r.platform !== "website") return { error: `Pick ${PLATFORMS.find((x) => x.key === r.platform)!.label} for that link.` };
   return r;
 }
@@ -85,6 +107,34 @@ export function parseLinks(raw: string): { links: ProfileLink[]; error?: string 
   }
   if (links.length > MAX_LINKS) return { links, error: `Up to ${MAX_LINKS} links.` };
   return { links };
+}
+
+// Platforms whose usernames ignore letter case (instagram.com/IMSSRecords is instagram.com/imssrecords).
+const ANY_CASE: ReadonlySet<PlatformKey> = new Set(["instagram", "tiktok", "soundcloud"]);
+
+/**
+ * The profile a link points to, ignoring how it was written: "@name", "instagram.com/name", "https://www.instagram.com/name/"
+ * and "…/name/?igsh=…" are one Instagram profile. On a known platform the host loses www./m., and the path loses its trailing
+ * slash, query and fragment; usernames on ANY_CASE platforms ignore case. A website keeps its path case and query, so two
+ * different pages never look the same. Used to tell a real change of profile from a re-typed one (the Verified mark).
+ */
+export function profileKey(link: ProfileLink): string {
+  let u: URL;
+  try {
+    u = new URL(link.url);
+  } catch {
+    return link.url;
+  }
+  const host = u.hostname.toLowerCase().replace(/^(www|m)\./, "");
+  const path = u.pathname.replace(/\/+$/, "");
+  if (link.platform === "website") return `website ${host}${path}${u.search}`;
+  return `${link.platform} ${host}${ANY_CASE.has(link.platform) ? path.toLowerCase() : path}`;
+}
+
+/** True when both lists point to the same profiles, whatever order or spelling they were written in. */
+export function sameProfiles(a: ProfileLink[], b: ProfileLink[]) {
+  const keys = (l: ProfileLink[]) => [...new Set(l.map(profileKey))].sort().join("\n");
+  return keys(a) === keys(b);
 }
 
 /** Saved links, re-checked on the way out so nothing odd ever renders. */

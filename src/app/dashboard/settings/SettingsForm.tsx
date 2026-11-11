@@ -7,15 +7,22 @@ import { useActionForm } from "@/components/useActionForm";
 import { ACCOUNT_TYPES, readTools, TOOL_IDS, TOOLS, toolDefault, type AccountType, type Tool } from "@/lib/account-types";
 
 import { updateSettings } from "../actions/settings";
+import { useVerifiedGuard } from "./useVerifiedGuard";
 
-export function SettingsForm({ name, firstName, lastName, handle, base, nextChange, kind, kindNote, tools }: { name: string; firstName: string; lastName: string; handle: string; base: string; nextChange: string | null; kind: AccountType | null; kindNote: string; tools: string | null }) {
+export function SettingsForm({ name, firstName, lastName, handle, base, nextChange, kind, kindNote, tools, verified = false }: { name: string; firstName: string; lastName: string; handle: string; base: string; nextChange: string | null; kind: AccountType | null; kindNote: string; tools: string | null; verified?: boolean }) {
   const [state, onSubmit, pending] = useActionForm(updateSettings, undefined);
+  // The server clears the Verified mark when the shown name changes (empty shows the username): same rule here.
+  const [guarded, confirmDialog] = useVerifiedGuard(verified, "professional name", (f) => {
+    const fd = new FormData(f);
+    const next = String(fd.get("name") || "").trim().slice(0, 80) || String(fd.get("handle") || "").trim().toLowerCase();
+    return next !== name;
+  }, onSubmit);
   const [type, setType] = useState<AccountType | null>(kind);
   // A tool follows the chosen type's default until it's switched by hand.
   const [picked, setPicked] = useState<Partial<Record<Tool, boolean>>>(() => readTools(tools));
   const isOn = (t: Tool) => picked[t] ?? toolDefault(type, t);
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-5">
+    <form onSubmit={guarded} className="flex flex-col gap-5">
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5">
           <span className={FIELD}>First name</span>
@@ -72,6 +79,7 @@ export function SettingsForm({ name, firstName, lastName, handle, base, nextChan
         </span>
       </label>
       <SaveBar pending={pending} state={state} />
+      {confirmDialog}
     </form>
   );
 }
