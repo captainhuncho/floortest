@@ -6,6 +6,7 @@ import { AUDIT_LABELS, type AuditAction } from "@/lib/audit";
 import { activeCollection, capacity, isClosed, isPaused } from "@/lib/desk";
 import { q, type User } from "@/lib/db";
 import { fmtBytes } from "@/lib/format";
+import { inviteLabel } from "@/lib/invites";
 import { APP_URL } from "@/lib/mail";
 import { planOf } from "@/lib/plan-store";
 import { ConfirmButton } from "../../AdminUi";
@@ -38,7 +39,10 @@ export default async function Account({ params }: { params: Promise<{ id: string
   const support = can(me.access, "users.support");
   const id = Number((await params).id);
   if (!Number.isSafeInteger(id)) notFound();
-  const u = await q.get<User & { extra_seats: number; identity_status: string | null; identity_verified_at: number | null; identity_note: string; invite_code: string | null; referred_by: number | null; suspended_at: number | null; suspended_reason: string; pending_email: string | null; pending_email_at: number | null; signup_source: string; admin_tags: string }>("SELECT * FROM users WHERE id = ?", id);
+  const u = await q.get<User & { extra_seats: number; identity_status: string | null; identity_verified_at: number | null; identity_note: string; invite_code: string | null; referred_by: number | null; suspended_at: number | null; suspended_reason: string; pending_email: string | null; pending_email_at: number | null; signup_source: string; admin_tags: string; invite_hint: string | null }>(
+    "SELECT u.*, (SELECT i.code_hint FROM invites i WHERE i.code = u.invite_code) AS invite_hint FROM users u WHERE u.id = ?",
+    id,
+  );
   const notes = await q.all<{ id: number; body: string; created_at: number; handle: string | null }>(
     "SELECT n.id, n.body, n.created_at, a.handle FROM account_notes n LEFT JOIN users a ON a.id = n.admin_id WHERE n.user_id = ? ORDER BY n.created_at DESC LIMIT 50",
     id,
@@ -112,7 +116,7 @@ export default async function Account({ params }: { params: Promise<{ id: string
           <a href={`${APP_URL}/${u.handle}`} target="_blank" rel="noreferrer" className="text-mute hover:text-bone">@{u.handle} ↗</a>
         </div>
         <p className="mt-1 text-sm text-mute">
-          {u.first_name || u.last_name ? `${u.first_name} ${u.last_name} · ` : "legal name not given · "}{u.email} · {KIND_LABEL[u.kind ?? ""] ?? "type not set"}{u.kind_note ? ` (${u.kind_note})` : ""} · joined {day(u.created_at)} · {u.invite_code ? `invite ${u.invite_code}` : u.referred_by ? <Link href={`/admin/accounts/${u.referred_by}`} className="underline">referred</Link> : "no invite"} · {u.tz}{u.signup_source ? ` · came from ${u.signup_source}` : ""}
+          {u.first_name || u.last_name ? `${u.first_name} ${u.last_name} · ` : "legal name not given · "}{u.email} · {KIND_LABEL[u.kind ?? ""] ?? "type not set"}{u.kind_note ? ` (${u.kind_note})` : ""} · joined {day(u.created_at)} · {u.invite_code ? `invite ${u.invite_hint !== null ? inviteLabel(u.invite_code, u.invite_hint) : u.invite_code}` : u.referred_by ? <Link href={`/admin/accounts/${u.referred_by}`} className="underline">referred</Link> : "no invite"} · {u.tz}{u.signup_source ? ` · came from ${u.signup_source}` : ""}
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           {u.suspended_at && <span className="chip border-danger/50 text-danger">Suspended {day(u.suspended_at)}{u.suspended_reason ? `: ${u.suspended_reason}` : ""}</span>}
