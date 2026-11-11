@@ -18,6 +18,11 @@ export type PlatformKey = (typeof PLATFORMS)[number]["key"] | "website";
 export type ProfileLink = { platform: PlatformKey; url: string };
 
 export const MAX_LINKS = 8;
+/** The longest link saved. A longer one is refused with a message, never cut short (a cut link opens another page). */
+export const MAX_LINK_CHARS = 300;
+/** What a link field takes in: room for a long paste, so the person sees why it was refused instead of a silently cut link. */
+export const LINK_FIELD_CHARS = 2000;
+const TOO_LONG = `That link is over ${MAX_LINK_CHARS} characters. Use a shorter link to the same profile.`;
 
 /** Turn one pasted link into a recognised profile link, or explain why not. Bare "instagram.com/x" is accepted. */
 export function parseLink(raw: string): ProfileLink | { error: string } {
@@ -34,7 +39,7 @@ export function parseLink(raw: string): ProfileLink | { error: string } {
   const host = u.hostname.toLowerCase().replace(/^(www|m)\./, "");
   if (!host.includes(".") || u.username || u.password) return { error: `"${text.slice(0, 40)}" isn't a link.` };
   const p = PLATFORMS.find((p) => p.hosts.some((h) => host === h || host.endsWith(`.${h}`)));
-  return { platform: p?.key ?? "website", url: u.toString().slice(0, 300) };
+  return { platform: p?.key ?? "website", url: u.toString() };
 }
 
 /** Where a bare username goes, for platforms that have one. */
@@ -62,11 +67,14 @@ const isInstagramProfile = (u: URL) => {
  * saved are shown exactly as they were (Safety, PR 510).
  */
 function savedForm(r: ProfileLink): ProfileLink | { error: string } {
-  if (r.platform === "website") return r;
+  if (r.platform === "website") return fits(r);
   const u = new URL(r.url);
   if (u.port) return { error: "Leave the port number out of the link." };
-  return { platform: r.platform, url: tidyUrl(r.platform, r.url).slice(0, 300) };
+  return fits({ platform: r.platform, url: tidyUrl(r.platform, r.url) });
 }
+
+/** Measured as saved, after tidying, so a link that only runs long on tracking parameters still fits. */
+const fits = (r: ProfileLink): ProfileLink | { error: string } => (r.url.length > MAX_LINK_CHARS ? { error: TOO_LONG } : r);
 
 /** One profile slot: the platform the person picked, and a link (or just a username). The link must be on that platform. */
 export function slotLink(platform: string, raw: string): ProfileLink | { error: string } {
@@ -114,6 +122,7 @@ export function parseLinks(raw: string): { links: ProfileLink[]; error?: string 
   for (const line of raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)) {
     const r = parseLink(line);
     if ("error" in r) return { links, error: r.error };
+    if (r.url.length > MAX_LINK_CHARS) return { links, error: TOO_LONG };
     if (!links.some((l) => l.url === r.url)) links.push(r);
   }
   if (links.length > MAX_LINKS) return { links, error: `Up to ${MAX_LINKS} links.` };

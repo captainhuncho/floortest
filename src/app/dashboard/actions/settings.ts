@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { stepUp } from "@/lib/step-up";
 import { allow } from "@/lib/ratelimit";
 import { sendMail } from "@/lib/mail";
-import { MAX_LINKS, profileKey, slotLink, type ProfileLink } from "@/lib/socials";
+import { LINK_FIELD_CHARS, MAX_LINKS, profileKey, slotLink, type ProfileLink } from "@/lib/socials";
 import { isAccountType, TOOL_IDS, toolOverrides, type Tool } from "@/lib/account-types";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -107,7 +107,7 @@ export async function updatePublicPage(_: SettingsState, form: FormData): Promis
   const role = String(form.get("role_line") || "").trim().slice(0, 60);
   // One slot per profile: the platform picked, and its link.
   const platforms = form.getAll("platform").map(String);
-  const urls = form.getAll("url").map((v) => String(v).slice(0, 300));
+  const urls = form.getAll("url").map((v) => String(v).slice(0, LINK_FIELD_CHARS));
   const links: ProfileLink[] = [];
   for (const [i, raw] of urls.entries()) {
     if (!raw.trim()) continue;
