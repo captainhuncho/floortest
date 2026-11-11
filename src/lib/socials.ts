@@ -131,30 +131,49 @@ const ANY_CASE: Partial<Record<PlatformKey, { host: string; path: RegExp }>> = {
   soundcloud: { host: "soundcloud.com", path: /^\/[^/]+$/ },
 };
 
+// The only hosts written with www. or m. in front that are the same site without it. Anywhere else the prefix can be
+// another site: m.imss.com, www.github.io, m.imss.bandcamp.com and m.vm.tiktok.com aren't the pages without it.
+const MAIN_HOSTS = new Set(["instagram.com", "tiktok.com", "soundcloud.com", "youtube.com", "beatport.com"]);
+
+/** A query without its tracking parameters. Every other part is kept byte for byte, never decoded and re-encoded. */
+function dropTracking(search: string): string {
+  const kept = search.replace(/^\?/, "").split("&").filter((part) => {
+    try {
+      return !TRACKING.test(decodeURIComponent(part.split("=")[0].replace(/\+/g, " ")));
+    } catch {
+      return true;
+    }
+  });
+  const query = kept.join("&");
+  return query ? `?${query}` : "";
+}
+
 /**
- * A link written one way: lower-case host without www./m., no trailing slash, no fragment. On a known platform it also
- * loses tracking parameters (?igsh=, ?si=, utm_…), never ones that pick the page (YouTube's ?v=, Apple Music's ?i=), and a
- * username ignores case where ANY_CASE says so. A website keeps its path case and its whole query.
+ * A link written one way. A website only loses its fragment and gets a lower-case host: www.imss.com, m.imss.com and
+ * imss.com/about/ stay apart from imss.com and imss.com/about, since another owner's site can sit at each (Safety, PR 510).
+ * On a known platform it also loses a trailing slash, www./m. on the platform's main host only (MAIN_HOSTS), tracking
+ * parameters (?igsh=, ?si=, utm_…, never ones that pick the page, like YouTube's ?v=), and a username's case where
+ * ANY_CASE says so.
  */
 function tidyUrl(platform: PlatformKey, url: string): string {
   const u = new URL(url);
   u.hash = "";
-  u.hostname = u.hostname.toLowerCase().replace(/^(www|m)\./, "");
+  u.hostname = u.hostname.toLowerCase();
+  if (platform === "website") return u.toString();
+  const bare = u.hostname.replace(/^(www|m)\./, "");
+  if (MAIN_HOSTS.has(bare)) u.hostname = bare;
   u.pathname = u.pathname.replace(/\/+$/, "");
-  if (platform !== "website") {
-    const tracking = [...u.searchParams.keys()].filter((k) => TRACKING.test(k));
-    for (const k of tracking) u.searchParams.delete(k);
-    const shape = ANY_CASE[platform];
-    if (shape && u.hostname === shape.host && shape.path.test(u.pathname)) u.pathname = u.pathname.toLowerCase();
-  }
+  u.search = dropTracking(u.search);
+  const shape = ANY_CASE[platform];
+  if (shape && u.hostname === shape.host && shape.path.test(u.pathname)) u.pathname = u.pathname.toLowerCase();
   return u.toString().replace(/\/$/, "");
 }
 
 /**
  * The profile a link points to, ignoring how it was written: "@name", "instagram.com/name", "https://www.instagram.com/name/"
  * and "…/name/?igsh=…" are one Instagram profile (see tidyUrl). Anything that can open a different page stays different:
- * another host or subdomain, a port, a short-link code's case, a page-picking query. Used to tell a real change of profile
- * from a re-typed one (the Verified mark).
+ * another host or subdomain, a port, a short-link code's case, a page-picking query, and on a website a trailing slash.
+ * Used to tell a real change of profile from a re-typed one (the Verified mark).
  */
 export function profileKey(link: ProfileLink): string {
   let u: URL;
@@ -163,7 +182,8 @@ export function profileKey(link: ProfileLink): string {
   } catch {
     return `${link.platform} ${link.url}`;
   }
-  return `${link.platform} ${u.host}${u.pathname.replace(/\/$/, "")}${u.search}`;
+  const path = link.platform === "website" ? u.pathname : u.pathname.replace(/\/$/, "");
+  return `${link.platform} ${u.host}${path}${u.search}`;
 }
 
 /** True when both lists point to the same profiles, whatever order or spelling they were written in. */
