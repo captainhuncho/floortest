@@ -15,7 +15,7 @@ export function SettingsForm({ name, firstName, lastName, handle, base, nextChan
   // name shows the username.
   const [guarded, confirmDialog] = useVerifiedGuard(verified, (f) => {
     const fd = new FormData(f);
-    const nextHandle = String(fd.get("handle") || "").trim().toLowerCase().replace(/^@/, "");
+    const nextHandle = String(fd.get("handle") || "").trim().toLowerCase();
     const nextName = String(fd.get("name") || "").trim().slice(0, 80) || nextHandle;
     const changed = [nextName !== name && "professional name", nextHandle !== handle && "username"].filter(Boolean);
     return changed.length ? changed.join(" and ") : null;

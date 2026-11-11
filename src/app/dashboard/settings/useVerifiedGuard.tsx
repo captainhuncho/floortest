@@ -33,8 +33,11 @@ export function useVerifiedGuard(
       open={!!form}
       onClose={() => setForm(null)}
       onConfirm={() => {
+        // requestSubmit runs the submit handler straight away, or not at all when the browser's own checks stop the form;
+        // either way the next save asks again.
         confirmed.current = true;
         form?.requestSubmit();
+        confirmed.current = false;
       }}
       title="Remove your Verified mark?"
       body={`Changing your ${what} removes your Verified mark until we check it again. You can send it for checking from Verified mark below.`}

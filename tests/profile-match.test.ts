@@ -53,7 +53,8 @@ test("case still counts where a platform's address is case-sensitive, and websit
   const spotify = (u: string) => slotLink("spotify", u) as ProfileLink;
   assert.notEqual(profileKey(spotify("https://open.spotify.com/artist/AbC")), profileKey(spotify("https://open.spotify.com/artist/abc")));
   const site = (u: string) => slotLink("website", u) as ProfileLink;
-  assert.equal(profileKey(site("https://www.imss.com/about/")), profileKey(site("imss.com/about")));
+  assert.notEqual(profileKey(site("https://www.imss.com/about/")), profileKey(site("imss.com/about")), "www. can be another site");
+  assert.equal(profileKey(site("https://IMSS.com/about#team")), profileKey(site("imss.com/about")), "host case and fragment never matter");
   assert.notEqual(profileKey(site("imss.com/?page=1")), profileKey(site("imss.com/?page=2")));
 });
 
@@ -149,4 +150,33 @@ test("links already saved are shown exactly as they were saved", () => {
   assert.deepEqual(readLinks(JSON.stringify(stored)), stored);
   // ...and still count as the same profile as the tidy form, so re-saving them keeps the mark.
   assert.ok(sameProfiles(readLinks(JSON.stringify(stored)), stored.map((l) => slotLink(l.platform, l.url) as ProfileLink)));
+});
+
+// Safety, PR 510 round 2: www./m. come off only on a platform's own main host. Anywhere else the prefix can be someone
+// else's site, so it must keep its own key, and a query keeps every byte it had apart from tracking parameters.
+test("www. and m. only come off a platform's main host; websites, artist subdomains and short links keep them", () => {
+  const site = (u: string) => profileKey(slotLink("website", u) as ProfileLink);
+  for (const host of ["github.io", "blogspot.com", "netlify.app", "imss.com"]) {
+    const stored = site(`https://${host}/imss`);
+    assert.notEqual(site(`https://m.${host}/imss`), stored, `m.${host} is another site`);
+    assert.notEqual(site(`https://www.${host}/imss`), stored, `www.${host} is another site`);
+    assert.ok(!sameProfiles([slotLink("website", `https://m.${host}/imss`) as ProfileLink], [{ platform: "website", url: `https://${host}/imss` }]));
+  }
+  const key = (platform: string, url: string) => profileKey(slotLink(platform, url) as ProfileLink);
+  assert.notEqual(key("bandcamp", "https://m.imss.bandcamp.com"), key("bandcamp", "https://imss.bandcamp.com"));
+  assert.notEqual(key("bandcamp", "https://www.imss.bandcamp.com"), key("bandcamp", "https://imss.bandcamp.com"));
+  assert.equal((slotLink("bandcamp", "https://m.imss.bandcamp.com") as ProfileLink).url, "https://m.imss.bandcamp.com");
+  assert.notEqual(key("tiktok", "https://m.vm.tiktok.com/ZMabc"), key("tiktok", "https://vm.tiktok.com/ZMabc"));
+  assert.equal((slotLink("tiktok", "https://m.vm.tiktok.com/ZMabc") as ProfileLink).url, "https://m.vm.tiktok.com/ZMabc");
+  // The main hosts still lose them.
+  assert.equal(key("beatport", "https://www.beatport.com/artist/imss/1"), key("beatport", "https://beatport.com/artist/imss/1"));
+  assert.equal(key("youtube", "https://m.youtube.com/@imss"), key("youtube", "@imss"));
+});
+
+test("dropping a tracking parameter leaves the rest of the query exactly as it was", () => {
+  const yt = (u: string) => slotLink("youtube", u) as ProfileLink;
+  assert.notEqual(profileKey(yt("https://youtube.com/watch?v=%FF&si=1")), profileKey(yt("https://youtube.com/watch?v=%FE&si=1")));
+  assert.equal(yt("https://youtube.com/watch?v=%FF&si=1").url, "https://youtube.com/watch?v=%FF");
+  assert.equal(yt("https://youtube.com/watch?si=1&v=a%2Bb&t=30").url, "https://youtube.com/watch?v=a%2Bb&t=30");
+  assert.equal(yt("https://youtube.com/watch?v=A&utm%5Fsource=x").url, "https://youtube.com/watch?v=A", "an encoded tracking key still goes");
 });

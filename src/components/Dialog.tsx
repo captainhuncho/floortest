@@ -203,7 +203,7 @@ export function ConfirmDialog({
       description={body}
       actions={
         <>
-          <button type="button" autoFocus={danger} className={DIALOG_QUIET} disabled={pending} onClick={close}>
+          <button type="button" autoFocus={danger} data-autofocus={danger ? "" : undefined} className={DIALOG_QUIET} disabled={pending} onClick={close}>
             {cancelLabel}
           </button>
           <button
