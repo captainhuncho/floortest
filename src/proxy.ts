@@ -5,6 +5,7 @@ import { crossSiteWrite } from "@/lib/cross-site";
 import { LINK_PAGE_HEADERS, NOINDEX, indexable, linkPage } from "@/lib/search-index";
 import { isHiddenPath } from "@/lib/dot-paths";
 import { READ_HEADER, readMarker } from "@/lib/read-marker";
+import { RESERVED_HANDLES } from "@/lib/plans";
 
 /**
  * Keeps the admin area and the main site apart by host. With OPS_URL set (production): the ops host serves only the
@@ -24,15 +25,34 @@ const OPS_PATHS = ["/admin", "/api/admin", "/ops-login"];
 const SHARED = ["/api/site-image", "/api/tap-speed", "/api/visit", "/.well-known"];
 const under = (path: string, list: string[]) => list.some((p) => path === p || path.startsWith(`${p}/`));
 const isOps = (path: string) => under(path, OPS_PATHS);
-// Open while the site is gated: the gate itself and signing in (a real sign-in then unlocks the site). Nothing about
-// FloorTest is public before launch; Google's sign-in review (which needs public legal pages) waits until then.
+// Open while the site is gated: the gate itself and signing in (a real sign-in then unlocks the site). Before launch
+// only these, receiving links, receipts, sender history and the legal pages are public (owner, 10 Nov); the home page,
+// pricing, sign-up and the desk stay behind the password.
 // "/c": collection share links, which do their own checks (and say "not available" while sharing is switched off).
 // "/join": team invites (sign-up from one works during the beta, like an invite code).
 // "/manifest.webmanifest": the home-screen name and icons; browsers fetch it without cookies, so behind the gate it
 // would get the coming-soon page and phones would lose the icon.
 // "/invite": beta invite links, which let a live personal invite through to sign-up (src/app/invite/[code]/route.ts).
 // "/.well-known": security.txt, so anyone reporting a problem finds the contact before launch too.
-const GATE_OPEN = ["/coming-soon", "/login", "/forgot", "/reset", "/signed-out", "/c", "/join", "/manifest.webmanifest", "/invite", "/.well-known"];
+// "/sent", "/receipt": a sender's history and receipts, so people sending to an open receiving link (below) can follow
+// what happened to their track (owner, 10 Nov).
+// The legal pages and Contact: a sender can read what the send form asks them to agree to and report a link (owner,
+// 10 Nov, "open the legal pages too"). Only who can open them changes; the wording stays as it is.
+const GATE_OPEN = ["/coming-soon", "/login", "/forgot", "/reset", "/signed-out", "/c", "/join", "/manifest.webmanifest", "/invite", "/.well-known", "/sent", "/receipt",
+  "/terms", "/privacy", "/cookies", "/contact", "/privacy-choices", "/subprocessors", "/content-rules", "/takedown", "/law-enforcement", "/security"];
+
+/**
+ * A receiving link (floortest.app/<link name>) is open while the site is gated, so anyone with the link can send before
+ * launch (owner, 10 Nov). Only one path part shaped like a link name (2–30 letters, numbers, - or _, src/lib/accounts.ts)
+ * that isn't one of the site's own pages (RESERVED_HANDLES lists every top-level page; tests/visit-counter.test.ts keeps
+ * it complete), so /pricing, /signup and the rest stay behind the password. An unknown name gets the link's own "Nothing
+ * on this link" page.
+ */
+const LINK_NAME_PATH = /^\/([A-Za-z0-9][A-Za-z0-9_-]{1,29})\/?$/;
+export function receivingLinkPath(path: string) {
+  const m = LINK_NAME_PATH.exec(path);
+  return !!m && !RESERVED_HANDLES.has(m[1].toLowerCase());
+}
 const notFound = (req: NextRequest, request: { headers: Headers }) => NextResponse.rewrite(new URL("/_not-found", req.url), { status: 404, request });
 
 /**
@@ -86,9 +106,9 @@ function route(req: NextRequest, request: { headers: Headers }) {
   // ending a view are GETs.
   if (viewWrite(req.method, req.cookies.has(VIEW_AS_COOKIE_NAME))) return NextResponse.redirect(new URL("/dashboard/floor?readonly=1", req.url), 303);
   const onOpsHost = !!OPS_HOST && req.headers.get("host") === OPS_HOST;
-  // Coming-soon gate: every page on the main site shows the coming-soon page until the password is entered.
-  // The API (webhooks, health, cron) and ops (its own sign-in) stay reachable.
-  if (gatePassword() && !onOpsHost && !path.startsWith("/api/") && !under(path, GATE_OPEN) && !hasGatePass(req.cookies.get(GATE_COOKIE)?.value)) {
+  // Coming-soon gate: every page on the main site except the open ones above shows the coming-soon page until the
+  // password is entered. The API (webhooks, health, cron) and ops (its own sign-in) stay reachable.
+  if (gatePassword() && !onOpsHost && !path.startsWith("/api/") && !under(path, GATE_OPEN) && !receivingLinkPath(path) && !hasGatePass(req.cookies.get(GATE_COOKIE)?.value)) {
     // Invite emails link to /signup?invite=CODE: the invite route checks the code and opens the gate for a live one.
     const invite = path === "/signup" ? req.nextUrl.searchParams.get("invite") : null;
     if (invite) {

@@ -14,6 +14,9 @@ export const RESERVED_HANDLES = new Set([
   // The static folders the proxy skips (src/proxy.ts matcher): a link name there would get no proxy at all (Safety
   // review of #476).
   "auth", "brand", "icons", "motion", "tour", "fonts", "images",
+  // Names Next.js itself answers to: on Vercel /index serves the home page, and /404 and /500 its error pages. Receiving
+  // links are open while the site is gated, so these must never count as one (Safety review of #503, 10 Nov).
+  "index", "404", "500",
 ]);
 
 /** Signal definitions. These are shown to receivers and senders, so they must stay strict. */
