@@ -173,7 +173,7 @@ test("corrupt or over-10 MB art still gives a card, from the next photo", async 
   assert.ok(isBlue(await windowColour(await withPhotos(huge, await storedPhoto("c", blue)))));
 });
 
-test("the site password is 409 invite-only and a suspended account gets no card", async () => {
+test("with the site password on, a live callout still gets its card, and a suspended account gets none", async () => {
   const { q } = await load();
   const id = await account();
   const c = await callout(id);
@@ -181,7 +181,9 @@ test("the site password is 409 invite-only and a suspended account gets no card"
   process.env.SITE_PASSWORD = "gate";
   try {
     const gated = await call(jar, c);
-    assert.deepEqual([gated.status, await gated.json()], [409, { reason: "invite-only" }]);
+    // Receiving links open without the password since #503, so the card's QR lands on a working page (owner, 11 Nov).
+    assert.equal(gated.status, 200);
+    assert.equal(gated.headers.get("content-type"), "image/png");
     const notActive = await call(jar, await callout(id, false));
     assert.deepEqual([notActive.status, await notActive.json()], [409, { reason: "unavailable" }], "a callout that isn't active stays unavailable behind the gate");
   } finally {
