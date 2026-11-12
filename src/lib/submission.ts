@@ -1,5 +1,5 @@
 import "server-only";
-import { senderProfiles } from "@/lib/socials";
+import { LINK_FIELD_CHARS, senderProfiles } from "@/lib/socials";
 import type { User } from "@/lib/db";
 import type { SubmissionMeta } from "@/lib/intake";
 import { folderLimit } from "@/lib/plan-store";
@@ -54,7 +54,7 @@ export async function readSubmission(
   if (!pick("release_status", RELEASE_STATUS)) return bad("Choose a release status.");
   if (!name) return bad("Add your name.");
   // Senders without an account give their Instagram and/or a streaming profile; account senders have none here.
-  const profiles = account ? { links: [] } : senderProfiles(str("sender_instagram", 300), str("sender_streaming", 300));
+  const profiles = account ? { links: [] } : senderProfiles(str("sender_instagram", LINK_FIELD_CHARS), str("sender_streaming", LINK_FIELD_CHARS));
   if ("error" in profiles) return bad(profiles.error);
   if (!str("artist", 200)) return bad("Add the artist.");
   if (!Object.hasOwn(AI_USE, str("ai_use", 20))) return bad("Say whether you used AI to make this track.");
