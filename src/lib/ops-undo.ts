@@ -2,6 +2,7 @@ import "server-only";
 import crypto from "node:crypto";
 import { now, q, type Queryable } from "@/lib/db";
 import { env } from "@/lib/env";
+import { INVITE_DAYS } from "@/lib/invites";
 import { cancelHeldMail, SEND_HOLD_MS } from "@/lib/mail";
 
 /**
@@ -65,11 +66,19 @@ export async function revertItem(db: Queryable, u: Undo, item: UndoItem) {
     await db.run("UPDATE invites SET revoked_at = ? WHERE code = ? AND revoked_at IS NULL", now(), item.code);
     await db.run("UPDATE waitlist SET invited_at = NULL WHERE id = ?", item.ref);
   } else if (u.kind === "invite_resend" && item.prev) {
-    // The resend swapped an old short code for a new one: the old one comes back, the unsent new one is revoked.
-    await db.run("UPDATE invites SET revoked_at = ? WHERE code = ? AND revoked_at IS NULL", now(), item.code);
-    await db.run("UPDATE invites SET revoked_at = NULL WHERE code = ?", item.prev);
+    // The resend swapped the old code for a new one (every resend since 0140): the unsent new one is revoked, and the old
+    // one comes back only if that revoke happened, it's unused, and its email has no other live invite. A second Resend
+    // inside the hold already revoked the new one, so Undo of the first then changes nothing (Safety, #512 round 2).
+    const back = await db.run("UPDATE invites SET revoked_at = ? WHERE code = ? AND revoked_at IS NULL", now(), item.code);
+    if (back.changes)
+      await db.run(
+        `UPDATE invites p SET revoked_at = NULL WHERE p.code = ? AND p.used_at IS NULL
+           AND NOT EXISTS (SELECT 1 FROM invites o WHERE lower(o.email) = lower(p.email) AND o.code <> p.code
+             AND o.revoked_at IS NULL AND o.used_at IS NULL AND COALESCE(o.expires_at, o.created_at + ?) > ?)`,
+        item.prev, INVITE_DAYS * 86_400_000, now(),
+      );
   } else if (u.kind === "invite_resend" && item.code && item.at !== undefined) {
-    // A same-code resend gave the invite 14 fresh days: Undo puts its old expiry back (owner, 5 Nov).
+    // A same-code resend (before 0140) gave the invite 14 fresh days: Undo puts its old expiry back (owner, 5 Nov).
     await db.run("UPDATE invites SET expires_at = ? WHERE code = ? AND used_at IS NULL", item.at, item.code);
   } else if (u.kind === "invite_email") {
     await db.run("UPDATE invites SET revoked_at = ? WHERE code = ? AND revoked_at IS NULL", now(), item.code);
