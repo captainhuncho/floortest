@@ -3,7 +3,7 @@
 import { useActionForm } from "@/components/useActionForm";
 import { useRouter } from "next/navigation";
 import {useRef, useState} from "react";
-import { MAX_LINKS, PLATFORMS, sameProfiles, slotLink, type ProfileLink } from "@/lib/socials";
+import { LINK_FIELD_CHARS, MAX_LINKS, PLATFORMS, sameProfiles, slotLink, type ProfileLink } from "@/lib/socials";
 import { updatePublicPage } from "../actions/settings";
 import { SaveBar } from "./SaveBar";
 import { BTN, BTN_GHOST, FIELD, HELP, Notice } from "./ui";
@@ -68,7 +68,7 @@ export function PublicPageForm({ roleLine, links, verified = false }: { roleLine
               value={r.url}
               onChange={(e) => setRows((all) => all.map((x) => (x.key === r.key ? { ...x, url: e.target.value } : x)))}
               placeholder={PLACEHOLDER[r.platform]}
-              maxLength={300}
+              maxLength={LINK_FIELD_CHARS}
               className="input col-span-2 min-w-0 sm:flex-1"
             />
             <button

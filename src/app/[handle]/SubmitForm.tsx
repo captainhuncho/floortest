@@ -605,11 +605,11 @@ export function SubmitForm({
             <div className="grid grid-cols-2 gap-2">
               <label className="block min-w-0 space-y-1.5" htmlFor="sender-instagram">
                 <span className={LABEL}>Instagram</span>
-                <input id="sender-instagram" className={`input w-full ${invalid("sender-instagram")}`} name="sender_instagram" autoComplete="off" maxLength={300} placeholder="@yourname" value={sender.instagram} aria-invalid={isInvalid("sender-instagram")} aria-describedby={described("sender-instagram", "profiles-help")} onChange={(e) => (clear("sender-instagram"), setSender((s) => ({ ...s, instagram: e.target.value })))} />
+                <input id="sender-instagram" className={`input w-full ${invalid("sender-instagram")}`} name="sender_instagram" autoComplete="off" maxLength={2000} placeholder="@yourname" value={sender.instagram} aria-invalid={isInvalid("sender-instagram")} aria-describedby={described("sender-instagram", "profiles-help")} onChange={(e) => (clear("sender-instagram"), setSender((s) => ({ ...s, instagram: e.target.value })))} />
               </label>
               <label className="block min-w-0 space-y-1.5" htmlFor="sender-streaming">
                 <span className={LABEL}>Streaming profile</span>
-                <input id="sender-streaming" className="input w-full" name="sender_streaming" inputMode="url" autoComplete="url" maxLength={300} placeholder="open.spotify.com/artist/…" value={sender.streaming} aria-invalid={isInvalid("sender-instagram")} aria-describedby={described("sender-instagram", "profiles-help")} onChange={(e) => (clear("sender-instagram"), setSender((s) => ({ ...s, streaming: e.target.value })))} />
+                <input id="sender-streaming" className="input w-full" name="sender_streaming" inputMode="url" autoComplete="url" maxLength={2000} placeholder="open.spotify.com/artist/…" value={sender.streaming} aria-invalid={isInvalid("sender-instagram")} aria-describedby={described("sender-instagram", "profiles-help")} onChange={(e) => (clear("sender-instagram"), setSender((s) => ({ ...s, streaming: e.target.value })))} />
               </label>
             </div>
             {problem("sender-instagram")}

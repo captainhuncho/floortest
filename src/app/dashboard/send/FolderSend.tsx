@@ -384,11 +384,11 @@ export function FolderSend({
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="block space-y-1">
                     <span className={FIELD_LABEL}>Instagram</span>
-                    <input value={who.instagram} onChange={(e) => setWho((w) => ({ ...w, instagram: e.target.value }))} disabled={running} maxLength={300} placeholder="@yourname" className="input" />
+                    <input value={who.instagram} onChange={(e) => setWho((w) => ({ ...w, instagram: e.target.value }))} disabled={running} maxLength={2000} placeholder="@yourname" className="input" />
                   </label>
                   <label className="block space-y-1">
                     <span className={FIELD_LABEL}>Streaming profile</span>
-                    <input value={who.streaming} onChange={(e) => setWho((w) => ({ ...w, streaming: e.target.value }))} disabled={running} inputMode="url" maxLength={300} placeholder="open.spotify.com/artist/…" className="input" />
+                    <input value={who.streaming} onChange={(e) => setWho((w) => ({ ...w, streaming: e.target.value }))} disabled={running} inputMode="url" maxLength={2000} placeholder="open.spotify.com/artist/…" className="input" />
                   </label>
                 </div>
                 <span className="block text-[11.5px] text-mute">Spotify, Apple Music, SoundCloud, Beatport, Bandcamp, YouTube or TikTok. Helps {receiverName} know who you are.</span>
