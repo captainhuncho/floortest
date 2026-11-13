@@ -17,6 +17,8 @@ const CARDS_PER_MINUTE = 20;
 const MINUTE = 60_000;
 /** Room for an 80-character note in any script, with accents stacked, and not much more. */
 const MAX_BODY_CHARS = 4096;
+/** The same limit in bytes (4 per character at most), checked from the header before the body is read. */
+const MAX_BODY_BYTES = MAX_BODY_CHARS * 4;
 const notFound = () => new Response("Not found", { status: 404 });
 
 const COLLECTION_FIELDS = "id, name, art_key, closes_at, full_at, bpm_min, bpm_max, brief_wanted, brief_note, genres";
@@ -55,6 +57,7 @@ export async function GET(req: Request, ctx: RouteContext<"/api/callout-card/[id
 export async function POST(req: Request, ctx: RouteContext<"/api/callout-card/[id]">) {
   const desk = await currentDeskForChange();
   if (desk instanceof Response) return desk;
+  if (Number(req.headers.get("content-length") ?? 0) > MAX_BODY_BYTES) return new Response("Too long", { status: 413 });
   const raw = await req.text().catch(() => "");
   if (raw.length > MAX_BODY_CHARS) return new Response("Too long", { status: 413 });
   let body: { format?: unknown; note?: unknown } | null = null;
