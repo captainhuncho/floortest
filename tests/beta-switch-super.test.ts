@@ -38,7 +38,7 @@ test("a refused flip is logged as denied and changes nothing", () => {
 test("staff without super see site-wide switches read-only", () => {
   const page = fs.readFileSync(new URL("../src/app/admin/switches/page.tsx", import.meta.url), "utf8");
   assert.match(page, /const owner = can\(me\.access, "super"\)/);
-  assert.match(page, /\{owner && \(\s*<ConfirmButton\s+action=\{flipSwitch/, "the toggle shows only to the super admin");
+  assert.match(page, /\{owner && !blocked\.length && \(\s*<ConfirmButton\s+action=\{flipSwitch/, "the toggle shows only to the super admin");
   assert.match(page, /Only the owner can change this/);
   assert.match(page, /readOnly=\{!owner\}/, "the who-sees-it rule form is read-only too");
 });
