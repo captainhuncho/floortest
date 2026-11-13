@@ -1,8 +1,9 @@
 import { requireUser } from "@/lib/auth";
-import { libraryLimit, libraryUsed, listFolders, listLibrary, MAX_FOLDERS } from "@/lib/library";
+import { libraryLimit, libraryUsed, listFolders, listLibrary, MAX_FOLDERS, ownCollectionTrackCount } from "@/lib/library";
 import { fmtDay } from "@/lib/format";
 import { PageHead } from "@/components/Kit";
 import { OwnerUpload } from "../collections/OwnerUpload";
+import { MoveAllToProjects } from "./MoveAllToProjects";
 import { MusicList } from "./MusicList";
 import { NewProject, ProjectTile } from "./ProjectsUI";
 
@@ -15,13 +16,20 @@ export const metadata = { title: "Projects — FloorTest" };
  */
 export default async function Projects() {
   const user = await requireUser();
-  const [folders, loose, used, limit] = await Promise.all([listFolders(user), listLibrary(user, null), libraryUsed(user), libraryLimit(user.plan)]);
   const canEdit = user.role !== "member";
+  const [folders, loose, used, limit, inCollections] = await Promise.all([
+    listFolders(user),
+    listLibrary(user, null),
+    libraryUsed(user),
+    libraryLimit(user.plan),
+    canEdit ? ownCollectionTrackCount(user) : 0,
+  ]);
   return (
     <div className="page-gutter py-4 sm:py-7">
       <div className="mx-auto flex w-full min-w-0 max-w-4xl flex-col gap-4 sm:gap-5">
         <PageHead label={`${used} of ${limit} tracks`} title="Projects" />
         <p className="-mt-2 text-[13px] text-mute">Your own tracks to keep and listen to, in projects or on their own. They stay until you delete them.</p>
+        {canEdit && inCollections > 0 && <MoveAllToProjects count={inCollections} />}
         {(folders.length > 0 || canEdit) && (
           <ul className="grid items-start gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-label="Projects">
             {folders.map((p) => (
