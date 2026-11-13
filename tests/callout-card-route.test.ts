@@ -52,9 +52,9 @@ async function call(jar: Jar, id: string | number, query = "?format=story") {
   return out.answer as Response;
 }
 
-async function post(jar: Jar, id: string | number, body: string) {
+async function post(jar: Jar, id: string | number, body: string, headers: Record<string, string> = {}) {
   const { POST } = await load();
-  const req = new Request(`http://localhost/api/callout-card/${id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body });
+  const req = new Request(`http://localhost/api/callout-card/${id}`, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body });
   const out = await inRequest(jar, "10.8.0.1", () => POST(req, { params: Promise.resolve({ id: String(id) }) } as never), { dropAfter: true });
   return out.answer as Response;
 }
@@ -232,4 +232,23 @@ test("card text reaches the image only as path data, and the fonts stay server-s
   assert.match(config, /"\/api\/callout-card\/\[id\]": \[[^\]]*callout-card\/fonts[^\]]*Inter-Bold/);
   assert.equal(fs.existsSync(path.join(process.cwd(), "public/fonts")), false);
   for (const licence of ["OFL-instrument-serif.txt", "OFL-jetbrains-mono.txt", "OFL-NotoSans.txt", "OFL-NotoSansArabic.txt", "OFL-NotoSansHebrew.txt", "OFL-NotoSansDevanagari.txt", "OFL-NotoSansBengali.txt", "OFL-NotoSansTamil.txt", "OFL-NotoSansThai.txt", "OFL-NotoSansCJK.txt"]) assert.ok(fs.existsSync(path.join(process.cwd(), "src/lib/callout-card/fonts", licence)));
+});
+
+test("a note card for another account's callout, or a missing one, is the same 404 as GET", async () => {
+  const owner = await account();
+  const other = await account();
+  const theirs = await callout(other);
+  const jar = await signIn(owner);
+  await callout(owner);
+  const body = JSON.stringify({ format: "story", note: "hi" });
+  assert.equal((await post(jar, theirs, body)).status, 404);
+  assert.equal((await post(jar, 999_999_999, body)).status, 404);
+  assert.equal((await post(jar, "abc", body)).status, 404);
+});
+
+test("a body declared over the limit is refused from the header, before it's read", async () => {
+  const id = await account();
+  const c = await callout(id);
+  const res = await post(await signIn(id), c, JSON.stringify({ format: "story" }), { "Content-Length": String(1024 * 1024) });
+  assert.equal(res.status, 413);
 });
