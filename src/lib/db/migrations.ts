@@ -2298,4 +2298,9 @@ alter table library_tracks drop constraint if exists library_tracks_folder_id_fk
 alter table library_tracks add constraint library_tracks_folder_same_desk foreign key (folder_id, user_id) references library_folders(id, user_id) on delete set null (folder_id);
 create index if not exists library_tracks_folder_desk on library_tracks(folder_id, user_id);`,
   },
+  {
+    // library_tracks_folder_desk (0142) starts with folder_id, so the single-column index is redundant.
+    id: "0143_library_folder_index",
+    sql: `drop index if exists library_tracks_folder;`,
+  },
 ];
