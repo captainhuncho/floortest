@@ -1,6 +1,7 @@
 "use client";
 
 import { FormError } from "@/components/Feedback";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { analyzeAudio } from "@/lib/analyze";
@@ -14,9 +15,26 @@ type Item = { file: File; title: string; artist: string; status: "ready" | "uplo
 /**
  * The owner adds their own files (promos that came by email, a USB stick, their own music). Same safe path as a send:
  * straight to storage, checked as real audio, then added. `api` is the upload route (`${api}` starts, `${api}/complete`
- * finishes): a collection's (/api/collections/[id]/upload) or Projects's (/api/music/upload).
+ * finishes): a collection's (/api/collections/[id]/upload) or Projects's (/api/music/upload). `elsewhere` names where the
+ * tracks land when that isn't the page it's on (a collection's Add tracks goes to Projects, owner 13 Nov).
  */
-export function OwnerUpload({ api, heading, note, startOpen = false, fields = {} }: { api: string; heading: string; note: string; startOpen?: boolean; /** Sent with the start, e.g. the project to add to. */ fields?: Record<string, unknown> }) {
+export function OwnerUpload({
+  api,
+  heading,
+  note,
+  startOpen = false,
+  fields = {},
+  elsewhere,
+}: {
+  api: string;
+  heading: string;
+  note: string;
+  startOpen?: boolean;
+  /** Sent with the start, e.g. the project to add to. */
+  fields?: Record<string, unknown>;
+  /** Where the tracks land, when it isn't this page. */
+  elsewhere?: { label: string; href: string };
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(startOpen);
   const [items, setItems] = useState<Item[]>([]);
@@ -120,7 +138,15 @@ export function OwnerUpload({ api, heading, note, startOpen = false, fields = {}
                   <div className="h-full w-full origin-left bg-lime transition-transform duration-200 ease-linear" style={{ transform: `scaleX(${Math.max(0.02, Math.min(1, it.progress))})` }} />
                 </div>
               )}
-              {it.status === "done" && <p className="mt-1.5 text-lime">{it.held ? "Received. Checking for viruses; it appears here within 10 minutes." : "Added"}</p>}
+              {it.status === "done" && (
+                <p className="mt-1.5 text-lime">
+                  {it.held
+                    ? `Received. Checking for viruses; it appears ${elsewhere ? `in ${elsewhere.label}` : "here"} within 10 minutes.`
+                    : elsewhere
+                      ? `Added to ${elsewhere.label}`
+                      : "Added"}
+                </p>
+              )}
               <FormError className="mt-1.5">{it.error}</FormError>
             </li>
           ))}
@@ -139,6 +165,11 @@ export function OwnerUpload({ api, heading, note, startOpen = false, fields = {}
         <button type="button" onClick={sendAll} disabled={busy || !waiting} className={`${LIME} mt-3`}>
           {busy ? "Adding…" : waiting ? `Add ${waiting} track${waiting === 1 ? "" : "s"}` : "All added"}
         </button>
+      )}
+      {elsewhere && items.some((it) => it.status === "done") && (
+        <Link href={elsewhere.href} className={`${GHOST} mt-3`}>
+          Open {elsewhere.label}
+        </Link>
       )}
     </section>
   );
