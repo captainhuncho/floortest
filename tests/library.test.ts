@@ -162,6 +162,12 @@ test("Projects: projects (folders) and moves stay inside the desk; only the desk
   assert.ok(!refused.ok && /added yourself/.test(refused.error), "a sender's track stays under the data rules");
   const notTheirs = await lib.moveTrackToProjects(b, mineId, null);
   assert.ok(!notTheirs.ok, "another account can't move it");
+  // Two users: never into another desk's project, by the app or straight in the database (0142's same-desk key).
+  const intoTheirs = await lib.moveTrackToProjects(a, mineId, theirs);
+  assert.ok(!intoTheirs.ok && /isn't there/.test(intoTheirs.error), "never into another account's project");
+  assert.equal(await q.count("SELECT COUNT(*) AS n FROM library_tracks WHERE folder_id = ?", theirs), 0);
+  assert.equal((await q.get<{ deleted_at: number | null }>("SELECT deleted_at FROM tracks WHERE id = ?", mineId))!.deleted_at, null, "the track stays put");
+  await assert.rejects(q.run("UPDATE library_tracks SET folder_id = ? WHERE id = ?", theirs, row.id), /foreign key|violates/);
 
   const moved = await lib.moveTrackToProjects(a, mineId, ep);
   assert.ok(moved.ok);
