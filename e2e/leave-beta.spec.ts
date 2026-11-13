@@ -13,7 +13,8 @@ test("Leave beta blocks paid plans until the owner's checklist is done", async (
   const billing = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: "Paid plans and checkout" }) });
   await expect(billing.getByText("Off, blocked")).toBeVisible();
   await expect(billing.getByRole("button", { name: "Turn on Paid plans and checkout" })).toHaveCount(0);
-  await expect(page.getByText("Not built yet")).toBeVisible();
+  // "Not built yet" until Backend's site_lock switch lands, then its own toggle: either way the row is there.
+  await expect(page.getByRole("heading", { name: /^Site lock/ })).toBeVisible();
   await page.screenshot({ path: test.info().outputPath("leave-beta-desktop.png"), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: test.info().outputPath("leave-beta-phone.png"), fullPage: true });

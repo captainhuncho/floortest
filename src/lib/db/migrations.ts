@@ -2301,7 +2301,7 @@ create index if not exists library_tracks_folder_desk on library_tracks(folder_i
   {
     // Ops → Leave beta (Safety, 13 Nov): the owner-set checklist a site-wide switch waits on (billing waits on card
     // payments and the lawyer's renewal wording). Who marked it and when also goes to admin_log. Additive only.
-    id: "0143_launch_checks",
+    id: "0144_launch_checks",
     sql: `create table if not exists launch_checks (
   key text primary key,
   done_ int not null check (done_ in (0, 1)),

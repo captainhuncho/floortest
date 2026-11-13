@@ -31,11 +31,14 @@ const day = (at: number) => new Date(at).toLocaleDateString("en-GB", { day: "num
  */
 export default async function LeaveBeta() {
   await requireAdmin("super");
-  const [checks, signup, billing, started] = await Promise.all([
+  // Site lock (Backend, `site_lock`) shows its switch here once it is in SWITCHES; until then "Not built yet".
+  const lockKey = "site_lock" in SWITCHES ? ("site_lock" as SwitchKey) : null;
+  const [checks, signup, billing, started, lock] = await Promise.all([
     launchChecks(),
     switchState("open_signup"),
     switchState("billing"),
     switchState("beta_started"),
+    lockKey ? switchState(lockKey) : null,
   ]);
   const billingOpen = (SWITCH_BLOCKERS.billing ?? []).filter((c) => !checks[c].done);
 
@@ -45,9 +48,16 @@ export default async function LeaveBeta() {
         Each part of leaving the beta, what it waits on, and its switch. Every change asks first, takes effect straight away and goes in the admin log.
       </PageHead>
       <ul className="divide-y divide-line rounded-md border border-line">
-        <Row title="Site lock" state={<State text="Not built yet" />}>
-          <p className="text-sm text-mute">Backend is building it. It shows here once it exists.</p>
-        </Row>
+        {lockKey && lock ? (
+          <Row title={SWITCHES[lockKey].label} state={<State text={lock.on ? "On" : "Off"} on={lock.on} />} toggle={<Toggle k={lockKey} on={lock.on} />}>
+            <p className="text-sm text-mute">{SWITCHES[lockKey].description}</p>
+            <SwitchLink k={lockKey} />
+          </Row>
+        ) : (
+          <Row title="Site lock" state={<State text="Not built yet" />}>
+            <p className="text-sm text-mute">Backend is building it. It shows here once it exists.</p>
+          </Row>
+        )}
 
         <Row title={SWITCHES.open_signup.label} state={<State text={signup.on ? "On" : "Off"} on={signup.on} />} toggle={<Toggle k="open_signup" on={signup.on} />}>
           <p className="text-sm text-mute">{SWITCHES.open_signup.description}</p>
