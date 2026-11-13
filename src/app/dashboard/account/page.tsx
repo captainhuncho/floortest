@@ -208,7 +208,7 @@ export default async function Account() {
               {sendOn && <Row href="/dashboard/send" icon="send" title="Send music" />}
               {/* Who can send to your link sits with the desk; team admins find it in their team section instead. */}
               {user.role === "owner" && <Row href="/dashboard/settings/receiving" icon="shield" title="Receiving" sub="Blocked senders and desk rules" />}
-              <Row href="/dashboard/music" icon="music" title="My music" sub="Your own tracks, kept until you delete them" />
+              <Row href="/dashboard/projects" icon="music" title="Projects" sub="Your own tracks, kept until you delete them" />
               <Row href="/dashboard/contacts" icon="contacts" title="Contacts" />
               <Row href="/dashboard/activity" icon="activity" title="Activity" />
               <Row href="/dashboard/emails" icon="mail" title="Emails to senders" sub="Everything FloorTest told them" />

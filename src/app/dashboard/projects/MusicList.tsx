@@ -8,42 +8,61 @@ import { FormError } from "@/components/Feedback";
 import { PlayIcon, PlayerWaveform, usePlayer, type PlayerTrack } from "@/components/Player";
 import { useToast } from "@/components/Toast";
 import { fmtTime } from "@/lib/format";
-import { deleteMusic, renameMusic } from "../actions/music";
+import { deleteMusic, moveMusic, renameMusic } from "../actions/music";
 import { GHOST, LIME } from "../kitButtons";
+import { MoreIcon, Sheet } from "./ProjectsUI";
 
 export type MusicItem = { id: number; title: string; artist: string; duration: number | null; peaks: number[] | null; added: string };
 
-/** A My music track in the player: a negative id so it never matches a desk track, and its own audio route. */
+/** A Projects track in the player: a negative id so it never matches a desk track, and its own audio route. */
 const toPlayer = (t: MusicItem): PlayerTrack => ({ id: -t.id, src: `/api/music/${t.id}/audio`, title: t.title, artist: t.artist, peaks: t.peaks, duration: t.duration, played: true });
 
-/** The desk's own tracks: play any of them; the owner and admins rename and delete. */
-export function MusicList({ tracks, canEdit }: { tracks: MusicItem[]; canEdit: boolean }) {
+/**
+ * The desk's own tracks in one place (a project, or those in none): play any of them; the owner and admins rename,
+ * move to another project and delete. `here` is the project on screen (null: in no project).
+ */
+export function MusicList({ tracks, canEdit, folders, here, empty }: { tracks: MusicItem[]; canEdit: boolean; folders: { id: number; name: string }[]; here: number | null; empty: string }) {
   const { current, playing, play, toggle, seek } = usePlayer();
   const [hidden, setHidden] = useState<number[]>([]);
   const [editing, setEditing] = useState<number | null>(null);
+  const [menu, setMenu] = useState<MusicItem | null>(null);
+  const [moving, setMoving] = useState<MusicItem | null>(null);
   const [ask, confirmDialog] = useConfirm();
   const toast = useToast();
+  const router = useRouter();
   const shown = tracks.filter((t) => !hidden.includes(t.id));
   const queue = shown.map(toPlayer);
 
-  async function remove(t: MusicItem) {
-    const ok = await ask({ title: `Delete ${t.title}?`, body: "The track and its file are deleted from My music. This can't be undone.", confirmLabel: "Delete", danger: true });
-    if (!ok) return;
-    // Gone at once; back with a message if the server says no.
+  // Each leaves this list at once and comes back with a message if the server says no.
+  async function leave(t: MusicItem, run: () => Promise<{ ok: true } | { ok: false; error: string }>, done: string) {
     setHidden((h) => [...h, t.id]);
-    const r = await deleteMusic(t.id).catch(() => ({ ok: false as const, error: "Couldn't delete it. Try again." }));
+    const r = await run().catch(() => ({ ok: false as const, error: "Couldn't do that. Try again." }));
     if (!r.ok) {
       setHidden((h) => h.filter((id) => id !== t.id));
-      toast.show({ message: r.error, tone: "error" });
-    } else toast.show({ message: `Deleted ${t.title}` });
+      return toast.show({ message: r.error, tone: "error" });
+    }
+    toast.show({ message: done });
+    router.refresh();
   }
 
-  if (!shown.length)
-    return <p className={`${CARD} p-5 text-[13px] text-mute`}>{canEdit ? "Nothing here yet. Add your own WAV or MP3 files above; they stay until you delete them." : "Nothing here yet. The owner or an A&R / Admin can add tracks."}</p>;
+  async function remove(t: MusicItem) {
+    const ok = await ask({ title: `Delete ${t.title}?`, body: "The track and its file are deleted from Projects. This can't be undone.", confirmLabel: "Delete", danger: true });
+    if (ok) await leave(t, () => deleteMusic(t.id), `Deleted ${t.title}`);
+  }
+
+  function moveTo(t: MusicItem, folder: number | null) {
+    setMoving(null);
+    const name = folder === null ? "no project" : folders.find((f) => f.id === folder)?.name;
+    void leave(t, () => moveMusic(t.id, folder), `Moved ${t.title} to ${name}`);
+  }
+
+  if (!shown.length) return <p className={`${CARD} p-5 text-[13px] text-mute`}>{empty}</p>;
+
+  const targets: { id: number | null; name: string }[] = [...folders.filter((f) => f.id !== here), ...(here === null ? [] : [{ id: null, name: "No project" }])];
 
   return (
     <>
-      <ul className={`${CARD} flex flex-col`} aria-label="My music">
+      <ul className={`${CARD} flex flex-col`} aria-label="Tracks">
         {shown.map((t) => {
           const on = current?.id === -t.id;
           return (
@@ -67,14 +86,15 @@ export function MusicList({ tracks, canEdit }: { tracks: MusicItem[]; canEdit: b
                     </p>
                   </div>
                   {canEdit && (
-                    <div className="flex shrink-0 gap-1">
-                      <button type="button" onClick={() => setEditing(t.id)} className="tap-text px-2 text-[12px] font-bold text-mute hover:text-bone" aria-label={`Rename ${t.title}`}>
-                        Rename
-                      </button>
-                      <button type="button" onClick={() => remove(t)} className="tap-text px-2 text-[12px] font-bold text-mute hover:text-danger" aria-label={`Delete ${t.title}`}>
-                        Delete
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setMenu(t)}
+                      aria-haspopup="menu"
+                      aria-label={`More for ${t.title}`}
+                      className="grid size-11 shrink-0 place-items-center rounded-[12px] border border-line bg-well text-mute hover:text-bone"
+                    >
+                      <MoreIcon />
+                    </button>
                   )}
                 </div>
               )}
@@ -83,6 +103,36 @@ export function MusicList({ tracks, canEdit }: { tracks: MusicItem[]; canEdit: b
           );
         })}
       </ul>
+      {menu && (
+        <Sheet title={menu.title} onClose={() => setMenu(null)}>
+          <button role="menuitem" onClick={() => (setEditing(menu.id), setMenu(null))}>
+            Rename
+          </button>
+          {targets.length > 0 && (
+            <button role="menuitem" onClick={() => (setMoving(menu), setMenu(null))}>
+              Move to another project
+            </button>
+          )}
+          <button role="menuitem" className="text-danger" onClick={() => (setMenu(null), void remove(menu))}>
+            Delete
+          </button>
+          <button role="menuitem" className="text-center! text-mute" onClick={() => setMenu(null)}>
+            Cancel
+          </button>
+        </Sheet>
+      )}
+      {moving && (
+        <Sheet title={`Move ${moving.title} to`} onClose={() => setMoving(null)}>
+          {targets.map((f) => (
+            <button key={f.id ?? "none"} role="menuitem" onClick={() => moveTo(moving, f.id)}>
+              {f.name}
+            </button>
+          ))}
+          <button role="menuitem" className="text-center! text-mute" onClick={() => setMoving(null)}>
+            Cancel
+          </button>
+        </Sheet>
+      )}
       {confirmDialog}
     </>
   );

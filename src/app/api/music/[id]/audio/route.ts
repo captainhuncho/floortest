@@ -5,7 +5,7 @@ import { storage } from "@/lib/storage";
 export const runtime = "nodejs";
 
 /**
- * Playback of one of the desk's own tracks (My music), for anyone working the desk. Same as desk tracks
+ * Playback of one of the desk's own tracks (Projects), for anyone working the desk. Same as desk tracks
  * (src/app/api/tracks/[id]/audio): a short signed link with S3 storage, streamed from disk locally.
  */
 export async function GET(req: Request, ctx: RouteContext<"/api/music/[id]/audio">) {

@@ -2244,13 +2244,24 @@ update newsletter_subscribers set token_hash = encode(sha256(convert_to(token, '
 create unique index if not exists newsletter_subscribers_token_hash on newsletter_subscribers(token_hash);`,
   },
   {
-    // My music (owner, 13 Nov): a person's own tracks, kept until they delete them. Not desk tracks: never in the Review
+    // Projects (owner, 13 Nov): a person's own tracks, kept until they delete them. Not desk tracks: never in the Review
     // Queue, never expired by the nightly clean-up, and their own allowance per plan (plans.library_limit; the values
     // copy track_limit until the owner sets them). Files are queued for deletion with the row (src/lib/library.ts) and
-    // by accountKeys when the account goes (rows cascade). As the person, only on a desk they may work (ft_desk, as tracks).
-    // Additive only.
+    // by accountKeys when the account goes (rows cascade). As the person, only on a desk they may work (ft_desk, as tracks):
+    // they read, rename, move and delete; rows are added by the app after the upload checks. Folders (owner, 13 Nov:
+    // "folders like collections"): deleting one leaves its tracks in Projects, outside any folder. Additive only.
     id: "0141_library_tracks",
-    sql: `create table if not exists library_tracks (
+    sql: `create table if not exists library_folders (
+  id bigint generated always as identity primary key,
+  user_id bigint not null references users(id) on delete cascade,
+  name text not null check (char_length(name) between 1 and 60),
+  created_at bigint not null
+);
+create index if not exists library_folders_user on library_folders(user_id, created_at);
+alter table library_folders enable row level security;
+grant select, insert, update, delete on library_folders to ft_person;
+create policy person_library_folders on library_folders for all to ft_person using (ft_desk(user_id)) with check (ft_desk(user_id));
+create table if not exists library_tracks (
   id bigint generated always as identity primary key,
   user_id bigint not null references users(id) on delete cascade,
   title text not null check (char_length(title) between 1 and 200),
@@ -2264,11 +2275,14 @@ create unique index if not exists newsletter_subscribers_token_hash on newslette
   bpm double precision,
   peaks text,
   upload_ref text unique,
+  folder_id bigint references library_folders(id) on delete set null,
   created_at bigint not null
 );
 create index if not exists library_tracks_user on library_tracks(user_id, created_at desc);
+create index if not exists library_tracks_folder on library_tracks(folder_id);
 alter table library_tracks enable row level security;
-grant select, insert, update, delete on library_tracks to ft_person;
+grant select, delete on library_tracks to ft_person;
+grant update (title, artist, folder_id) on library_tracks to ft_person;
 create policy person_library_tracks on library_tracks for all to ft_person using (ft_desk(user_id)) with check (ft_desk(user_id));
 alter table plans add column if not exists library_limit int not null default 20 check (library_limit >= 0);
 update plans set library_limit = track_limit where track_limit > 20;`,

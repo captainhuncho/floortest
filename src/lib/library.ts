@@ -1,8 +1,11 @@
 import "server-only";
 import crypto from "node:crypto";
-import { asPerson, now, q, type Queryable, type User } from "./db";
-import { discardFiles } from "./deletion";
-import { queueDeletion } from "./deletion-core";
+import { asPerson, logEvent, now, q, type Queryable, type User } from "./db";
+import { discardFiles, drainNow } from "./deletion";
+import { handOverFolderCovers, queueDeletion } from "./deletion-core";
+import { capacity, reopenCallouts } from "./desk";
+import { quarantined } from "./file-digests";
+import { alertIfFull } from "./notify";
 import { claimUpload, HELD_MAX_TRIES, IntakeError, pointAtSealed, releaseUpload, UploadHeld, UPLOAD_TTL, type Analysis } from "./intake";
 import { recordIncident } from "./incidents";
 import { FREE_PLAN } from "./plan-store";
@@ -14,7 +17,7 @@ import { sealUpload, storage } from "./storage";
 import { validateAudio } from "./validate";
 
 /**
- * My music (owner, 13 Nov): a person's own tracks, kept until they delete them. Not desk tracks: they never reach the
+ * Projects (owner, 13 Nov): a person's own tracks, kept until they delete them. Not desk tracks: they never reach the
  * Review Queue, have no Keep / Not for me, and the nightly clean-up never expires them. Uploads take the same safe path
  * as a send (straight to storage, sealed, checked as real audio, virus-checked, held for the next batch while the
  * scanner sleeps) and have their own allowance per plan (plans.library_limit).
@@ -30,10 +33,17 @@ export type LibraryTrack = {
   size: number;
   duration: number | null;
   peaks: number[] | null;
+  /** The project (folder) it's in; null when it's in none. */
+  folder_id: number | null;
   created_at: number;
 };
 
-const COLUMNS = "id, title, artist, genre, mime, size, duration, peaks, created_at";
+/** A project: a folder of the desk's own tracks (owner, 13 Nov: "folders like collections"). */
+export type LibraryFolder = { id: number; name: string; count: number; duration: number; created_at: number };
+
+const COLUMNS = "id, title, artist, genre, mime, size, duration, peaks, folder_id, created_at";
+/** The most projects one desk can have: plenty for real use, a stop for scripts. */
+export const MAX_FOLDERS = 100;
 type Row = Omit<LibraryTrack, "peaks"> & { peaks: string | null };
 const toTrack = (r: Row): LibraryTrack => {
   let peaks: number[] | null = null;
@@ -41,44 +51,107 @@ const toTrack = (r: Row): LibraryTrack => {
     const p = r.peaks ? JSON.parse(r.peaks) : null;
     if (Array.isArray(p)) peaks = p.map(Number);
   } catch {}
-  return { ...r, size: Number(r.size), created_at: Number(r.created_at), duration: r.duration == null ? null : Number(r.duration), peaks };
+  return { ...r, size: Number(r.size), folder_id: r.folder_id == null ? null : Number(r.folder_id), created_at: Number(r.created_at), duration: r.duration == null ? null : Number(r.duration), peaks };
 };
 
 const HOUR = 3_600_000;
-/** The most files someone can add to My music in an hour (the owner-upload rate, shared with adding to collections). */
+/** The most files someone can add to Projects in an hour (the owner-upload rate, shared with adding to collections). */
 export const LIBRARY_UPLOADS_PER_HOUR = 60;
 const LIBRARY_KIND = "library";
 
 type Desk = Pick<User, "id" | "plan" | "actor_id" | "email">;
 
-/** The plan's My music allowance in tracks; an unknown plan counts as Free. */
+/** The plan's Projects allowance in tracks; an unknown plan counts as Free. */
 export async function libraryLimit(plan: string, db: Queryable = q) {
   const r = await db.get<{ n: number }>("SELECT library_limit AS n FROM plans WHERE id IN (?, ?) ORDER BY (id = ?) DESC LIMIT 1", plan, FREE_PLAN, plan);
   return Number(r?.n ?? 0);
 }
 
-/** The desk's own tracks, newest first. */
-export async function listLibrary(desk: Pick<User, "id" | "actor_id">) {
-  const rows = await asPerson(desk.actor_id, () => q.all<Row>(`SELECT ${COLUMNS} FROM library_tracks WHERE user_id = ? ORDER BY created_at DESC, id DESC`, desk.id));
+/**
+ * The desk's own tracks, newest first: all of them (`folder` left out), those in no project (null), or one project's.
+ */
+export async function listLibrary(desk: Pick<User, "id" | "actor_id">, folder?: number | null) {
+  const where = folder === undefined ? "" : folder === null ? " AND folder_id IS NULL" : " AND folder_id = ?";
+  const args = folder == null ? [desk.id] : [desk.id, folder];
+  const rows = await asPerson(desk.actor_id, () => q.all<Row>(`SELECT ${COLUMNS} FROM library_tracks WHERE user_id = ?${where} ORDER BY created_at DESC, id DESC`, ...args));
   return rows.map(toTrack);
 }
 
-/** Tracks kept plus uploads still in progress (started in the last UPLOAD_TTL, or held for their virus check). */
-export async function libraryUsed(desk: Pick<User, "id" | "actor_id">) {
-  const kept = await asPerson(desk.actor_id, () => q.count("SELECT COUNT(*) AS n FROM library_tracks WHERE user_id = ?", desk.id));
-  const open = await q.count(
+/** Kept tracks plus uploads still in progress (started in the last UPLOAD_TTL, or held for their virus check). */
+async function usedOn(db: Queryable, deskId: number) {
+  const n = async (sql: string, ...args: unknown[]) => Number((await db.get<{ n: number }>(sql, ...args))?.n ?? 0);
+  const kept = await n("SELECT COUNT(*) AS n FROM library_tracks WHERE user_id = ?", deskId);
+  const open = await n(
     "SELECT COUNT(*) AS n FROM uploads WHERE receiver_id = ? AND meta::jsonb->>'kind' = ? AND (created_at > ? OR held_at IS NOT NULL)",
-    desk.id,
+    deskId,
     LIBRARY_KIND,
     now() - UPLOAD_TTL,
   );
   return kept + open;
 }
 
-type LibraryMeta = { kind: typeof LIBRARY_KIND; title: string; artist: string; genre: string; originalName: string; email: string };
+/** How much of the allowance is taken (the desk is the signed-in one; counted on the app's connection). */
+export async function libraryUsed(desk: Pick<User, "id">) {
+  return usedOn(q, desk.id);
+}
+
+/** The desk's projects, oldest first, each with its track count and total length in seconds. */
+export async function listFolders(desk: Pick<User, "id" | "actor_id">): Promise<LibraryFolder[]> {
+  const rows = await asPerson(desk.actor_id, () =>
+    q.all<LibraryFolder>(
+      `SELECT f.id, f.name, f.created_at, COUNT(t.id) AS count, COALESCE(SUM(t.duration), 0) AS duration
+       FROM library_folders f LEFT JOIN library_tracks t ON t.folder_id = f.id AND t.user_id = f.user_id
+       WHERE f.user_id = ? GROUP BY f.id, f.name, f.created_at ORDER BY f.created_at, f.id`,
+      desk.id,
+    ),
+  );
+  return rows.map((r) => ({ id: Number(r.id), name: r.name, count: Number(r.count), duration: Number(r.duration), created_at: Number(r.created_at) }));
+}
+
+/** One of the desk's projects, or null when it isn't theirs (or is gone). */
+export async function getFolder(desk: Pick<User, "id" | "actor_id">, id: number) {
+  if (!Number.isSafeInteger(id)) return null;
+  return (await listFolders(desk)).find((f) => f.id === id) ?? null;
+}
+
+const folderName = (raw: string) => {
+  const name = raw.trim().replace(/\s+/g, " ").slice(0, 60);
+  if (!name) throw new IntakeError("Give the project a name.", 400);
+  return name;
+};
+
+/** A new project; its id. */
+export async function createFolder(desk: Pick<User, "id" | "actor_id">, raw: string) {
+  const name = folderName(raw);
+  return asPerson(desk.actor_id, async () => {
+    if ((await q.count("SELECT COUNT(*) AS n FROM library_folders WHERE user_id = ?", desk.id)) >= MAX_FOLDERS) throw new IntakeError(`You can have up to ${MAX_FOLDERS} projects.`, 409);
+    return Number((await q.get<{ id: number }>("INSERT INTO library_folders (user_id, name, created_at) VALUES (?,?,?) RETURNING id", desk.id, name, now()))!.id);
+  });
+}
+
+/** Renames a project. False when it isn't theirs. */
+export async function renameFolder(desk: Pick<User, "id" | "actor_id">, id: number, raw: string) {
+  const name = folderName(raw);
+  return !!(await asPerson(desk.actor_id, () => q.get("UPDATE library_folders SET name = ? WHERE id = ? AND user_id = ? RETURNING id", name, id, desk.id)));
+}
+
+/** Deletes a project; its tracks stay in Projects, in no project. False when it isn't theirs. */
+export async function deleteFolder(desk: Pick<User, "id" | "actor_id">, id: number) {
+  return !!(await asPerson(desk.actor_id, () => q.get("DELETE FROM library_folders WHERE id = ? AND user_id = ? RETURNING id", id, desk.id)));
+}
+
+/** Moves one of the desk's tracks into one of its projects, or out of any (null). False when either isn't theirs. */
+export async function moveLibraryTrack(desk: Pick<User, "id" | "actor_id">, id: number, folder: number | null) {
+  return asPerson(desk.actor_id, async () => {
+    if (folder !== null && !(await q.get("SELECT 1 FROM library_folders WHERE id = ? AND user_id = ?", folder, desk.id))) return false;
+    return !!(await q.get("UPDATE library_tracks SET folder_id = ? WHERE id = ? AND user_id = ? RETURNING id", folder, id, desk.id));
+  });
+}
+
+type LibraryMeta = { kind: typeof LIBRARY_KIND; title: string; artist: string; genre: string; originalName: string; email: string; folderId: number | null };
 
 /** Step 1: where to upload the file; the bytes go straight to storage. */
-export async function startLibraryUpload(desk: Desk, d: { fileName: string; size: number; title: string; artist: string; genre: string; rights: boolean }) {
+export async function startLibraryUpload(desk: Desk, d: { fileName: string; size: number; title: string; artist: string; genre: string; rights: boolean; folderId?: number | null }) {
   const ext = d.fileName.toLowerCase().match(/\.(wav|mp3)$/)?.[0];
   if (!ext) throw new IntakeError("Only WAV and MP3 files are accepted.", 400);
   if (!Number.isSafeInteger(d.size) || d.size <= 0) throw new IntakeError("Choose a WAV or MP3 file.", 400);
@@ -86,8 +159,9 @@ export async function startLibraryUpload(desk: Desk, d: { fileName: string; size
   if (!d.rights) throw new IntakeError("Confirm you're allowed to keep this file on FloorTest.", 400);
   const title = d.title.trim().slice(0, 200);
   if (!title) throw new IntakeError("Add a track title.", 400);
+  const folderId = d.folderId == null ? null : Number(d.folderId);
+  if (folderId !== null && !(await getFolder(desk, folderId))) throw new IntakeError("That project isn't there any more. Choose another.", 404);
   const limit = await libraryLimit(desk.plan);
-  if ((await libraryUsed(desk)) >= limit) throw new IntakeError(`My music is full (${limit} tracks on your plan). Delete some or upgrade to add more.`, 409);
   if (!(await allow("owner_upload", String(desk.id), LIBRARY_UPLOADS_PER_HOUR, HOUR))) throw new IntakeError("Too many uploads. Try again in an hour.", 429);
   const meta: LibraryMeta = {
     kind: LIBRARY_KIND,
@@ -97,10 +171,16 @@ export async function startLibraryUpload(desk: Desk, d: { fileName: string; size
     originalName: d.fileName.slice(0, 255),
     // Charges the virus check to this account's budget, and is who hears if a held file can't be checked.
     email: desk.email.toLowerCase(),
+    folderId,
   };
   const id = crypto.randomBytes(24).toString("base64url");
   const key = `library/${desk.id}/${crypto.randomUUID()}${ext}`;
-  await q.run("INSERT INTO uploads (id, receiver_id, file_key, ext, size, meta, ip, created_at) VALUES (?,?,?,?,?,?,?,?)", id, desk.id, key, ext, d.size, JSON.stringify(meta), "owner", now());
+  // Counted and reserved in one step, with the account's row locked, so starts sent at once can't pass the allowance together.
+  await q.tx(async (db) => {
+    await db.get("SELECT id FROM users WHERE id = ? FOR UPDATE", desk.id);
+    if ((await usedOn(db, desk.id)) >= limit) throw new IntakeError(`Projects are full (${limit} tracks on your plan). Delete some or upgrade to add more.`, 409);
+    await db.run("INSERT INTO uploads (id, receiver_id, file_key, ext, size, meta, ip, created_at) VALUES (?,?,?,?,?,?,?,?)", id, desk.id, key, ext, d.size, JSON.stringify(meta), "owner", now());
+  });
   const target = await (await storage()).uploadTarget(key, ext === ".wav" ? "audio/wav" : "audio/mpeg", d.size);
   return { uploadId: id, target };
 }
@@ -113,7 +193,7 @@ export async function libraryForUpload(deskId: number, uploadId: string) {
   return q.get<{ id: number }>("SELECT id FROM library_tracks WHERE upload_ref = ? AND user_id = ?", uploadRef(uploadId), deskId);
 }
 
-/** Whether an upload row is a My music upload (for the held-uploads batch). */
+/** Whether an upload row is a Projects upload (for the held-uploads batch). */
 export const isLibraryMeta = (meta: { kind?: string }) => meta.kind === LIBRARY_KIND;
 
 type ClaimedUpload = { id: string; file_key: string; size: number; meta: string; held_at: number | null; held_tries: number };
@@ -185,7 +265,7 @@ async function finish(desk: Pick<User, "id">, up: ClaimedUpload, meta: LibraryMe
   if (scan.verdict === "unavailable") {
     if (scan.file && Number(up.held_tries ?? 0) + 1 >= HELD_MAX_TRIES) {
       await discard();
-      await recordIncident("upload_failed", "The virus check kept failing on one My music upload; it was refused", `${scan.error} · account #${desk.id}`, "library upload");
+      await recordIncident("upload_failed", "The virus check kept failing on one Projects upload; it was refused", `${scan.error} · account #${desk.id}`, "library upload");
       throw new IntakeError(SCAN_FAILED, 400);
     }
     await q.run(
@@ -196,14 +276,15 @@ async function finish(desk: Pick<User, "id">, up: ClaimedUpload, meta: LibraryMe
       up.id,
     );
     if (charge && !charge.ok) throw new UploadHeld(charge.scope === "all" ? "budget_all" : "budget");
-    if (!asleep) await recordIncident("upload_failed", "Virus check unavailable; a My music upload is held for the next batch", scan.error, "library upload");
+    if (!asleep) await recordIncident("upload_failed", "Virus check unavailable; a Projects upload is held for the next batch", scan.error, "library upload");
     throw new UploadHeld(scan.file ? "file" : "scanner");
   }
   // The row and the upload's removal in one step: the abandoned-upload clean-up never deletes a file a row points at.
   return q.tx(async (db) => {
     const row = await db.get<{ id: number }>(
-      `INSERT INTO library_tracks (user_id, title, artist, genre, file_key, original_name, mime, size, duration, bpm, peaks, upload_ref, created_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id`,
+      // The project chosen at the start, if it's still there (deleted meanwhile: in no project).
+      `INSERT INTO library_tracks (user_id, title, artist, genre, file_key, original_name, mime, size, duration, bpm, peaks, upload_ref, folder_id, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,(SELECT id FROM library_folders WHERE id = ? AND user_id = ?),?) RETURNING id`,
       desk.id,
       meta.title,
       meta.artist,
@@ -216,6 +297,8 @@ async function finish(desk: Pick<User, "id">, up: ClaimedUpload, meta: LibraryMe
       analysis.bpm,
       analysis.peaks ? JSON.stringify(analysis.peaks) : null,
       uploadRef(uploadId),
+      meta.folderId ?? null,
+      desk.id,
       now(),
     );
     await db.run("DELETE FROM uploads WHERE id = ?", up.id);
@@ -245,4 +328,68 @@ export async function deleteLibraryTrack(desk: Pick<User, "id" | "actor_id">, id
     if (r) await queueDeletion(db, [r.file_key], "library track deleted", now());
     return !!r;
   });
+}
+
+/**
+ * Moves one of the desk's own uploads (a track it added to a collection itself, never one a sender sent; owner, 13 Nov)
+ * out of its collection into Projects, optionally into a project. The audio file stays and now belongs to the Projects
+ * row; the desk track is retired as a delete would (its artwork and stems go, its slot frees up), and the move is in
+ * the desk's activity. Who may is checked as the person; the move itself runs on the app's connection in one step.
+ */
+export async function moveTrackToProjects(desk: User, trackId: number, folder: number | null): Promise<{ ok: true; id: number } | { ok: false; error: string }> {
+  type T = { id: number; sender_id: number; title: string; artist: string; genre: string; file_key: string; original_name: string; mime: string; size: number; duration: number | null; bpm: number | null; peaks: string | null };
+  const t = await asPerson(desk.actor_id, () =>
+    q.get<T>(
+      `SELECT t.id, t.sender_id, t.title, t.artist, t.genre, t.file_key, t.original_name, t.mime, t.size, t.duration, t.bpm, t.peaks
+       FROM tracks t JOIN senders s ON s.id = t.sender_id
+       WHERE t.id = ? AND t.user_id = ? AND t.deleted_at IS NULL AND t.file_key IS NOT NULL AND s.account_id = ?`,
+      trackId,
+      desk.id,
+      desk.id,
+    ),
+  );
+  if (!t) return { ok: false, error: "Only tracks you added yourself can move to Projects." };
+  if (await quarantined(t.file_key)) return { ok: false, error: "That track is held for a check and can't move right now." };
+  if (folder !== null && !(await getFolder(desk, folder))) return { ok: false, error: "That project isn't there any more. Choose another." };
+  const limit = await libraryLimit(desk.plan);
+  const moved = await q.tx(async (db) => {
+    await db.get("SELECT id FROM users WHERE id = ? FOR UPDATE", desk.id);
+    if ((await usedOn(db, desk.id)) >= limit) return null;
+    // Still there and still a live track (a second tap, or a delete meanwhile, finds nothing).
+    const live = await db.get("SELECT id FROM tracks WHERE id = ? AND user_id = ? AND deleted_at IS NULL AND file_key = ?", t.id, desk.id, t.file_key);
+    if (!live) return 0;
+    const row = await db.get<{ id: number }>(
+      `INSERT INTO library_tracks (user_id, title, artist, genre, file_key, original_name, mime, size, duration, bpm, peaks, folder_id, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id`,
+      desk.id,
+      t.title.slice(0, 200) || "Untitled",
+      (t.artist ?? "").slice(0, 200),
+      (t.genre ?? "").slice(0, 60),
+      t.file_key,
+      t.original_name ?? "",
+      t.mime === "audio/mpeg" ? "audio/mpeg" : "audio/wav",
+      t.size,
+      t.duration,
+      t.bpm,
+      t.peaks,
+      folder,
+      now(),
+    );
+    // As a delete (src/lib/deletion.ts retireTrackFiles), but the audio is kept: only the artwork and stems go.
+    await handOverFolderCovers(db, [t.id]);
+    // Read again: a release cover may have just passed to another track.
+    const art = (await db.get<{ art_key: string | null }>("SELECT art_key FROM tracks WHERE id = ?", t.id))?.art_key ?? null;
+    const stems = await db.all<{ file_key: string }>("SELECT file_key FROM stems WHERE track_id = ?", t.id);
+    await queueDeletion(db, [art, ...stems.map((x) => x.file_key)], "track moved to Projects", now());
+    await db.run("DELETE FROM stems WHERE track_id = ?", t.id);
+    await db.run("UPDATE tracks SET deleted_at = ?, file_key = NULL, art_key = NULL WHERE id = ?", now(), t.id);
+    await reopenCallouts(db);
+    await logEvent({ user_id: desk.id, actor_id: desk.actor_id, sender_id: t.sender_id, track_id: t.id, type: "deleted", detail: "moved to Projects" }, db);
+    return Number(row!.id);
+  });
+  if (moved === null) return { ok: false, error: `Projects are full (${limit} tracks on your plan). Delete some or upgrade to add more.` };
+  if (moved === 0) return { ok: false, error: "That track isn't in the collection any more." };
+  await drainNow();
+  await alertIfFull(desk.id, await capacity(desk));
+  return { ok: true, id: moved };
 }

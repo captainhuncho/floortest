@@ -7,7 +7,7 @@ import { APP_URL, sendMailLater } from "./mail";
 import { SCAN_REFUSED, wakeScanner } from "./scan";
 import { chargeScanner, senderScope } from "./scan-budget";
 import { completeStemUpload } from "./stems";
-import { completeLibraryUpload, isLibraryMeta } from "./library";
+import { completeLibraryUpload, isLibraryMeta, libraryForUpload } from "./library";
 import { receiptToken, receiptUrl } from "./receipt-token";
 
 /**
@@ -44,9 +44,9 @@ type StemMeta = { kind?: string; trackId?: number; name?: string };
  */
 async function describe(up: Held, receiver: Pick<User, "handle">) {
   const meta = JSON.parse(up.meta) as Partial<SubmissionMeta> & StemMeta;
-  // My music (src/lib/library.ts): the account's own upload; it hears about it, and uploads again from My music.
+  // Projects (src/lib/library.ts): the account's own upload; it hears about it, and uploads again from Projects.
   if (isLibraryMeta(meta))
-    return { kind: "track" as const, library: true, meta, label: meta.title ?? "your track", email: meta.email, resend: `${APP_URL}/dashboard/music`, token: null };
+    return { kind: "track" as const, library: true, meta, label: meta.title ?? "your track", email: meta.email, resend: `${APP_URL}/dashboard/projects`, token: null };
   if (meta.kind !== "stem")
     return { kind: "track" as const, meta, label: meta.title ?? "your track", email: meta.email, resend: `${APP_URL}/${receiver.handle}`, token: null };
   const t = await q.get<{ id: number; token_sealed: string | null; email: string | null }>(
@@ -78,8 +78,10 @@ export async function scanHeldUploads(at = now(), { until = Date.now() + HELD_BU
       await mailSender(
         receiver,
         d,
-        `Your ${d.kind} wasn't sent: ${d.label}`,
-        `We couldn't run the virus check on "${d.label}" for ${receiver.name}, so it wasn't sent and the file has been deleted.${d.resend ? ` Please send it again: ${d.resend}` : ""}`,
+        "library" in d ? `Your track wasn't added to Projects: ${d.label}` : `Your ${d.kind} wasn't sent: ${d.label}`,
+        "library" in d
+          ? `We couldn't run the virus check on "${d.label}", so it wasn't added to Projects and the file has been deleted. Please upload it again: ${d.resend}`
+          : `We couldn't run the virus check on "${d.label}" for ${receiver.name}, so it wasn't sent and the file has been deleted.${d.resend ? ` Please send it again: ${d.resend}` : ""}`,
       );
     await recordIncident("upload_failed", "A held upload was never scanned; its sender was told to send again", `receiver #${up.receiver_id}`, "held uploads");
     out.gaveUp++;
@@ -150,19 +152,21 @@ export async function scanHeldUploads(at = now(), { until = Date.now() + HELD_BU
       if (e instanceof IntakeError) {
         // The completion has already discarded a flagged file; anything else it refused is discarded here.
         if (e.status !== 422) await drop(up, "held upload refused");
-        await mailSender(receiver, d, `Your ${d.kind} wasn't sent: ${d.label}`, e.status === 422 ? `"${d.label}" for ${receiver.name}: ${SCAN_REFUSED}` : `"${d.label}" for ${receiver.name} wasn't sent: ${e.message}`);
+        if ("library" in d) await mailSender(receiver, d, `Your track wasn't added to Projects: ${d.label}`, e.status === 422 ? `"${d.label}": ${SCAN_REFUSED}` : `"${d.label}" wasn't added to Projects: ${e.message}`);
+        else await mailSender(receiver, d, `Your ${d.kind} wasn't sent: ${d.label}`, e.status === 422 ? `"${d.label}" for ${receiver.name}: ${SCAN_REFUSED}` : `"${d.label}" for ${receiver.name} wasn't sent: ${e.message}`);
         out.refused++;
         continue;
       }
       // A failure after the track was saved (its upload row is gone with it) still delivered the track.
-      if (await trackForUpload(receiver.id, up.id)) {
+      if ("library" in d ? await libraryForUpload(receiver.id, up.id) : await trackForUpload(receiver.id, up.id)) {
         console.error("[held-uploads] after-save step failed", e);
         out.delivered++;
         continue;
       }
       // No track and no upload left: the file is lost. Never counted as delivered; the sender is told to send again.
       if (!(await q.get("SELECT 1 FROM uploads WHERE id = ?", up.id))) {
-        await mailSender(receiver, d, `Your ${d.kind} wasn't sent: ${d.label}`, `"${d.label}" for ${receiver.name} wasn't sent. Please send it again: ${d.resend}`);
+        if ("library" in d) await mailSender(receiver, d, `Your track wasn't added to Projects: ${d.label}`, `"${d.label}" wasn't added to Projects. Please upload it again: ${d.resend}`);
+        else await mailSender(receiver, d, `Your ${d.kind} wasn't sent: ${d.label}`, `"${d.label}" for ${receiver.name} wasn't sent. Please send it again: ${d.resend}`);
         await recordIncident("upload_failed", "A held upload was lost before its track was made; its sender was told to send again", e instanceof Error ? `${e.message}\n${e.stack ?? ""}` : String(e), "held uploads");
         out.refused++;
         continue;

@@ -184,10 +184,11 @@ Owner keeps control; sharing never makes music public or moves ownership. Behind
 ## Account teams (built 11 Oct · switch `teams` on in production 11–15 Oct, off since the 15 Oct beta scope: teams only on super-admin desks)
 Decided: a colleague is a **seat on an account** (label, radio, crew), not someone a track is shared with. Seats: Free 1, Pro 2, Team 5, extra seats as add-ons; seats get the plan's benefits only on that desk; Owner / Admin (override, two-step) / Member (review, notes, replies); the owner or an admin chooses whether members' replies need approval and by whom. Left: add-on seats self-serve once Paddle is live (today ops sets them); the app API works on your own desk only; lawyer: teams in the Terms/Privacy (who sees what, the owner's responsibility for their team).
 
-## My music (owner, 13 Nov: "build this out some more")
+## Projects (owner, 13 Nov: "build this out some more")
 Every account gets its own library for its own tracks, kept until deleted, with its own allowance. Phases, one at a time:
-1. **Store and listen** (built on `backend/my-music`, not live): `/dashboard/music`, upload, play, rename, delete.
-1b. Move existing owner uploads (tracks a desk added to its own collections) into My music, and point a collection's Add tracks here. Rewrites data, so its own PR and the owner's yes.
+1. **Store and listen** (built on `backend/my-music`, not live): `/dashboard/projects`, upload, play, rename, delete; projects (folders, built like collections: create, rename, delete, upload into one, move a track to another); a track the desk added to a collection itself moves to Projects from its review page (owner, 13 Nov: own uploads only, never a sender's).
+1b. Move all existing owner uploads in one go, and point a collection's Add tracks here. Rewrites data, so its own PR and the owner's yes. (One at a time already works, from 1.)
+Later: a project's cover photo (today its initials).
 2. Private share link for a track.
 3. Send a track to a receiver (behind `send_music`).
 4. Featured on the public page (needs terms first).

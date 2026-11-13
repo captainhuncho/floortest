@@ -14,9 +14,9 @@ type Item = { file: File; title: string; artist: string; status: "ready" | "uplo
 /**
  * The owner adds their own files (promos that came by email, a USB stick, their own music). Same safe path as a send:
  * straight to storage, checked as real audio, then added. `api` is the upload route (`${api}` starts, `${api}/complete`
- * finishes): a collection's (/api/collections/[id]/upload) or My music's (/api/music/upload).
+ * finishes): a collection's (/api/collections/[id]/upload) or Projects's (/api/music/upload).
  */
-export function OwnerUpload({ api, heading, note, startOpen = false }: { api: string; heading: string; note: string; startOpen?: boolean }) {
+export function OwnerUpload({ api, heading, note, startOpen = false, fields = {} }: { api: string; heading: string; note: string; startOpen?: boolean; /** Sent with the start, e.g. the project to add to. */ fields?: Record<string, unknown> }) {
   const router = useRouter();
   const [open, setOpen] = useState(startOpen);
   const [items, setItems] = useState<Item[]>([]);
@@ -51,7 +51,7 @@ export function OwnerUpload({ api, heading, note, startOpen = false }: { api: st
     const post = (url: string, body: object) =>
       fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(async (r) => ({ ok: r.ok, data: await r.json().catch(() => ({})) }));
     patch(i, { status: "uploading", progress: 0, error: undefined });
-    const start = await post(api, { fileName: it.file.name, size: it.file.size, title: it.title, artist: it.artist, rights });
+    const start = await post(api, { ...fields, fileName: it.file.name, size: it.file.size, title: it.title, artist: it.artist, rights });
     if (!start.ok) return patch(i, { status: "error", error: start.data.error || "Couldn't start the upload." });
     const target = start.data.target as { url: string; headers: Record<string, string> };
     const status = await new Promise<number>((resolve) => {

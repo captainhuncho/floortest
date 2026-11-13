@@ -25,6 +25,8 @@ import { ReviewTogether } from "./ReviewTogether";
 import { TrackStepper } from "./review/TrackStepper";
 import type { Step } from "./review/QueueState";
 import { ReplyCard } from "./review/ReplyCard";
+import { MoveToProjects } from "./projects/MoveToProjects";
+import { listFolders } from "@/lib/library";
 import { CARD, Chip, Cover, Icon, IconBox, InfoRow, initials } from "@/components/Kit";
 
 export async function ReviewPanel({
@@ -92,6 +94,9 @@ export async function ReviewPanel({
     played: !!t.played_at,
   };
   const removal = deletesAt(t);
+  // A track the desk added itself (sent from its own account) can move to Projects; a sender's never can (owner, 13 Nov).
+  const ownUpload = !!desk && desk.role !== "member" && sender.account_id === t.user_id && desk.id === t.user_id;
+  const projects = ownUpload ? await listFolders(desk) : [];
   const collectionName = collections.find((c) => c.id === t.collection_id)?.name ?? null;
 
   const releaseBlock = release && (
@@ -311,6 +316,7 @@ export async function ReviewPanel({
                 Move
               </button>
             </form>
+            {ownUpload && <MoveToProjects trackId={t.id} title={t.title} folders={projects.map((f) => ({ id: f.id, name: f.name }))} after={next?.href ?? "/dashboard/projects"} />}
           </div>
           {desk?.role !== "member" && (
             <div className="mt-1.5 flex justify-end">

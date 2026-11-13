@@ -24,7 +24,7 @@ export type PlayerTrack = {
   duration: number | null;
   played: boolean;
   /**
-   * Where the audio is, when it isn't a desk track (My music: /api/music/<id>/audio). Such tracks aren't counted as
+   * Where the audio is, when it isn't a desk track (Projects: /api/music/<id>/audio). Such tracks aren't counted as
    * listened and have no waveform backfill; their `id` is negative so it never matches a desk track's.
    */
   src?: string;
@@ -170,7 +170,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   const start = useCallback((t: PlayerTrack) => {
     const a = audio.current!;
-    // A track with its own src (My music) is never reported as listened: there is nobody's track to mark.
+    // A track with its own src (Projects) is never reported as listened: there is nobody's track to mark.
     listened.current = { id: t.id, src: audioUrl(t), last: 0, sinceBeat: 0, reported: t.played || !!t.src, duration: t.duration };
     setCurrent(t);
     timeStore.set(0);
@@ -410,7 +410,7 @@ export function PlayerBar() {
         {/* The title opens the track; the waveform beside it only seeks, so one tap never does both. */}
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <span className="flex items-center justify-between gap-2">
-            <Link href={current.src ? "/dashboard/music" : `/dashboard/review?view=queue&s=all&t=${current.id}`} className="truncate text-sm font-bold tracking-[-0.4px] text-bone">
+            <Link href={current.src ? "/dashboard/projects" : `/dashboard/review?view=queue&s=all&t=${current.id}`} className="truncate text-sm font-bold tracking-[-0.4px] text-bone">
               {current.title}
             </Link>
             <span className="flex shrink-0 items-center gap-2">
@@ -446,7 +446,7 @@ export function PlayerBar() {
           <PlayIcon playing={playing} />
           <BufferRing className="-inset-[5px] text-lime" />
         </button>
-        <Link href={current.src ? "/dashboard/music" : `/dashboard/review?view=queue&s=all&t=${current.id}`} className="w-40 min-w-0 shrink-0 sm:w-56">
+        <Link href={current.src ? "/dashboard/projects" : `/dashboard/review?view=queue&s=all&t=${current.id}`} className="w-40 min-w-0 shrink-0 sm:w-56">
           <p className="truncate text-sm font-medium">{current.title}</p>
           <p className="truncate text-sm text-mute">{current.artist}</p>
         </Link>
