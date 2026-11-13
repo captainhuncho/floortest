@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { offeredPlan, planOf } from "@/lib/plan-store";
 import { pendingRequest, REQUEST_KINDS, VOLUMES } from "@/lib/plan-requests";
 import { switchOn } from "@/lib/switches";
+import { LINK_FIELD_CHARS, MAX_LINK_CHARS } from "@/lib/socials";
 import { requestPlan, withdrawPlanRequest } from "../../actions/settings";
 import { CARD, PageHead } from "@/components/Kit";
 
@@ -12,6 +13,7 @@ export const metadata = { title: "Request a plan — FloorTest" };
 const ERRORS: Record<string, string> = {
   kind: "Tell us what you are.",
   link: "That link doesn't look right. Start it with https://",
+  long: `That link is over ${MAX_LINK_CHARS} characters. Use a shorter link to the same page.`,
   limit: "You've sent a few requests today. Try again tomorrow.",
 };
 
@@ -73,7 +75,7 @@ export default async function RequestPlan({ searchParams }: { searchParams: Prom
         </label>
         <label className="block space-y-1.5">
           <span className="label">A link to your work</span>
-          <input name="link" type="url" maxLength={300} placeholder="https://" className="input" />
+          <input name="link" type="url" maxLength={LINK_FIELD_CHARS} placeholder="https://" className="input" />
           <span className="block text-[11.5px] text-faint">Website, label page, Beatport, Spotify or Instagram</span>
         </label>
         <label className="block space-y-1.5">

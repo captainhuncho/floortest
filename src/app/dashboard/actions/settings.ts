@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { stepUp } from "@/lib/step-up";
 import { allow } from "@/lib/ratelimit";
 import { sendMail } from "@/lib/mail";
-import { LINK_FIELD_CHARS, MAX_LINKS, profileKey, slotLink, type ProfileLink } from "@/lib/socials";
+import { LINK_FIELD_CHARS, MAX_LINK_CHARS, MAX_LINKS, profileKey, slotLink, type ProfileLink } from "@/lib/socials";
 import { isAccountType, TOOL_IDS, toolOverrides, type Tool } from "@/lib/account-types";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -242,7 +242,9 @@ export async function requestPlan(form: FormData) {
   const kind = String(form.get("kind") || "") as RequestKind;
   if (!(kind in REQUEST_KINDS)) redirect(`/dashboard/plans/request?plan=${next.id}&error=kind`);
   const org = String(form.get("org") || "").trim().slice(0, 120);
-  const rawLink = String(form.get("link") || "").trim().slice(0, 300);
+  const rawLink = String(form.get("link") || "").trim().slice(0, LINK_FIELD_CHARS);
+  // Over the limit is refused, never cut: a cut link can open another page (as profile links, PR 514).
+  if (rawLink.length > MAX_LINK_CHARS) redirect(`/dashboard/plans/request?plan=${next.id}&error=long`);
   // Shown to ops as a link: https only, never javascript: or data: (src/lib/safe-links.ts).
   const link = rawLink ? httpsLink(rawLink) : "";
   const volume = (VOLUMES as readonly string[]).includes(String(form.get("volume"))) ? String(form.get("volume")) : "";
