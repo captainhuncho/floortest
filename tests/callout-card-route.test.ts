@@ -20,6 +20,7 @@ const load = async () => ({
   ...(await import("../src/lib/db")),
   ...(await import("../src/lib/auth")),
   GET: (await import("../src/app/api/callout-card/[id]/route")).GET,
+  POST: (await import("../src/app/api/callout-card/[id]/route")).POST,
 });
 
 async function account(opts: { verified?: boolean; email?: string } = {}) {
@@ -50,6 +51,28 @@ async function call(jar: Jar, id: string | number, query = "?format=story") {
   const out = await inRequest(jar, "10.8.0.1", () => GET(new Request(`http://localhost/api/callout-card/${id}${query}`), { params: Promise.resolve({ id: String(id) }) } as never), { dropAfter: true });
   return out.answer as Response;
 }
+
+async function post(jar: Jar, id: string | number, body: string) {
+  const { POST } = await load();
+  const req = new Request(`http://localhost/api/callout-card/${id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body });
+  const out = await inRequest(jar, "10.8.0.1", () => POST(req, { params: Promise.resolve({ id: String(id) }) } as never), { dropAfter: true });
+  return out.answer as Response;
+}
+
+test("a note comes in the body: 80 characters gives the card, 81 or a huge body is refused, signed out is still 401", async () => {
+  const id = await account();
+  const jar = await signIn(id);
+  const c = await callout(id);
+  const ok = await post(jar, c, JSON.stringify({ format: "square", note: "é".repeat(80) }));
+  assert.equal(ok.status, 200);
+  assert.equal(ok.headers.get("content-type"), "image/png");
+  assert.equal((await post(jar, c, JSON.stringify({ format: "square", note: "x".repeat(81) }))).status, 400);
+  assert.equal((await post(jar, c, JSON.stringify({ format: "square", note: "x".repeat(5000) }))).status, 413);
+  assert.equal((await post(jar, c, "not json")).status, 400);
+  assert.equal((await post(jar, c, JSON.stringify({ format: "poster", note: "hi" }))).status, 400);
+  assert.equal((await post(jar, c, JSON.stringify({ format: "story" }))).status, 200, "no note is the plain card");
+  assert.equal((await post(new Map(), c, JSON.stringify({ format: "story", note: "hi" }))).status, 401);
+});
 
 test("signed out is 401, unconfirmed email is 403", async () => {
   assert.equal((await call(new Map(), 1)).status, 401);

@@ -12,6 +12,22 @@ export function shareCardTarget(o: { isOwner: boolean; viewingAs: boolean; activ
   return { collectionId: o.active.id, collectionName: o.active.name };
 }
 
+/** The longest note a person can add to the card. The card route holds the same number (NOTE_MAX in render.ts). */
+export const NOTE_MAX = 80;
+
+/** Characters as a person counts them: an accented letter or a flag is one. */
+export function noteLength(text: string): number {
+  if (typeof Intl.Segmenter !== "function") return Array.from(text).length;
+  return [...new Intl.Segmenter().segment(text)].length;
+}
+
+/** The note cut to NOTE_MAX characters, never through the middle of one. */
+export function clipNote(text: string): string {
+  if (noteLength(text) <= NOTE_MAX) return text;
+  const parts = typeof Intl.Segmenter === "function" ? [...new Intl.Segmenter().segment(text)].map((x) => x.segment) : Array.from(text);
+  return parts.slice(0, NOTE_MAX).join("");
+}
+
 /** The words to post with the card. The link is the same one printed on the card. */
 export function cardCaption(collectionName: string, link: string): string {
   return `Sending me music for ${collectionName}? Send the track here: ${link}. You'll know when I've listened.`;

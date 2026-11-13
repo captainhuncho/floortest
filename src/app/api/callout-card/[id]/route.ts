@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { currentUser, viewingAs } from "@/lib/auth";
+import { currentDeskForChange, currentUser, viewingAs } from "@/lib/auth";
 import { cardFields } from "@/lib/callout-card/fields";
-import { fitPhoto, renderCard, type CardFormat } from "@/lib/callout-card/render";
-import { q } from "@/lib/db";
+import { cleanText, fitPhoto, NOTE_MAX, renderCard, type CardFormat } from "@/lib/callout-card/render";
+import { q, type User } from "@/lib/db";
 import { calloutBlock, capacity } from "@/lib/desk";
 import { quarantined } from "@/lib/file-digests";
 import { allow } from "@/lib/ratelimit";
@@ -15,6 +15,8 @@ const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 const STORAGE_MS = 5_000;
 const CARDS_PER_MINUTE = 20;
 const MINUTE = 60_000;
+/** Room for an 80-character note in any script, with accents stacked, and not much more. */
+const MAX_BODY_CHARS = 4096;
 const notFound = () => new Response("Not found", { status: 404 });
 
 const COLLECTION_FIELDS = "id, name, art_key, closes_at, full_at, bpm_min, bpm_max, brief_wanted, brief_note, genres";
@@ -46,14 +48,31 @@ async function photoFrom(key: string | null) {
 
 /** The share image for a callout that's open right now: for its owner only. */
 export async function GET(req: Request, ctx: RouteContext<"/api/callout-card/[id]">) {
+  return card(await currentUser(), (await ctx.params).id, new URL(req.url).searchParams.get("format") ?? "", "");
+}
+
+/** The same image with a line of the owner's own words. In the body, not the address, so it stays out of logs and history. Nothing is kept. */
+export async function POST(req: Request, ctx: RouteContext<"/api/callout-card/[id]">) {
+  const desk = await currentDeskForChange();
+  if (desk instanceof Response) return desk;
+  const raw = await req.text().catch(() => "");
+  if (raw.length > MAX_BODY_CHARS) return new Response("Too long", { status: 413 });
+  let body: { format?: unknown; note?: unknown } | null = null;
+  try {
+    body = JSON.parse(raw) as { format?: unknown; note?: unknown } | null;
+  } catch {}
+  if (!body || typeof body !== "object") return new Response("Bad request", { status: 400 });
+  const note = typeof body.note === "string" ? cleanText(body.note) : "";
+  if ([...new Intl.Segmenter().segment(note)].length > NOTE_MAX) return NextResponse.json({ reason: "note-too-long" }, { status: 400 });
+  return card(desk, (await ctx.params).id, typeof body.format === "string" ? body.format : "", note);
+}
+
+async function card(user: User | null, raw: string, format: string, note: string) {
   if (await viewingAs()) return notFound();
-  const user = await currentUser();
   if (!user) return new Response("Sign in", { status: 401 });
   if (user.role !== "owner") return notFound();
   if (!user.email_verified_at) return new Response("Confirm your email first", { status: 403 });
-  const raw = (await ctx.params).id;
   if (!/^\d{1,15}$/.test(raw)) return notFound();
-  const format = new URL(req.url).searchParams.get("format") ?? "";
   if (!FORMATS.includes(format)) return new Response("Unknown format", { status: 400 });
   if (!(await allow("callout-card", String(user.id), CARDS_PER_MINUTE, MINUTE))) return new Response("Too many requests", { status: 429, headers: { "Retry-After": "60" } });
 
@@ -68,7 +87,7 @@ export async function GET(req: Request, ctx: RouteContext<"/api/callout-card/[id
   const photo = (await photoFrom(collection.art_key)) ?? (await photoFrom(user.cover_key));
   let png: Buffer;
   try {
-    png = await renderCard(format as CardFormat, cardFields(user, collection), photo);
+    png = await renderCard(format as CardFormat, cardFields(user, collection, note), photo);
   } catch (error) {
     console.error("callout card render failed", error);
     return new Response("Couldn't make the card", { status: 500 });
