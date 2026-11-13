@@ -3,7 +3,8 @@ import { now, q, type Queryable } from "./db";
 import type { SwitchKey } from "./switches";
 
 /**
- * The owner-set checklist a site-wide switch waits on (Ops → Leave beta, Safety 13 Nov). Each item is marked done or
+ * The owner-set checklist a site-wide switch waits on (Ops → Leave beta, Safety 13 Nov; Open sign-up added by the Desk
+ * the same day, until Backend's sign-up bot fixes ship). Each item is marked done or
  * not done by the super admin; who and when go to admin_log. Nothing here edits legal text or the lawyer's status:
  * marking "renewal wording approved" only records that the owner has seen the lawyer's approval.
  */
@@ -11,6 +12,10 @@ export const LAUNCH_CHECKS = {
   card_payments: {
     label: "Card payments connected",
     hint: "The payment provider is set up and a real test charge has gone through.",
+  },
+  signup_bot_protection: {
+    label: "Sign-up bot protection (Safety audit 13 Nov)",
+    hint: "Backend's sign-up fixes from Safety's 13 Nov audit are live.",
   },
   renewal_wording: {
     label: "Lawyer's renewal wording approved",
@@ -21,6 +26,7 @@ export type LaunchCheck = keyof typeof LAUNCH_CHECKS;
 
 /** What each switch waits on. A switch with an item not done can't be turned on, from any admin page. */
 export const SWITCH_BLOCKERS: Partial<Record<SwitchKey, readonly LaunchCheck[]>> = {
+  open_signup: ["signup_bot_protection"],
   billing: ["card_payments", "renewal_wording"],
 };
 
