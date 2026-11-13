@@ -3,7 +3,7 @@ import { opsLogIn } from "./ops-login";
 
 /**
  * Ops → Notices (Desk, 13 Nov): staff add a notice with four times, it shows as a thin strip on the signed-in dashboard
- * with the times in the person's zone, a <script> title stays text, and closing it is remembered in that browser.
+ * with the times in the person's zone, a <script> title stays text, and closing it is saved on the server for them.
  */
 const stamp = Date.now().toString(36);
 const M = 60_000;
@@ -63,6 +63,15 @@ test("a notice added in ops shows on the dashboard as text, and closing it stick
   await desk.reload();
   await expect(desk.getByRole("heading").first()).toBeVisible();
   await expect(desk.getByRole("status").filter({ hasText: `Short update ${stamp}` })).toHaveCount(0);
+  // Saved on the server: the page as sent has no strip at all (no flash), and another device doesn't show it either.
+  const html = await (await desk.request.get("/dashboard/floor")).text();
+  expect(html).not.toContain(`Short update ${stamp}`);
+  const other = await (await browser.newContext()).newPage();
+  await logIn(other, "demo@floortest.test");
+  await other.goto("/dashboard/floor");
+  await expect(other.getByRole("heading").first()).toBeVisible();
+  await expect(other.getByRole("status").filter({ hasText: `Short update ${stamp}` })).toHaveCount(0);
+  await other.context().close();
   await ctx.close();
 
   // End early: it moves to Past.

@@ -70,7 +70,7 @@ The ticket between the password (or email code, reset link, Google) and /login/v
 ```
 Any dashboard page while a notice is live (show from ≤ now < hide after, not ended; the soonest if several; never in admin View as):
    thin strip under the top bar, role="status": "<title> Sun 15 Nov, 02:00–02:20. <detail> More" in the person's own time zone
-   ─► × (44 px) closes it; remembered per notice in this browser (shows again if storage is blocked)
+   ─► × (44 px) closes it at once ─► saved for the person (notice_dismissals, their own row) ─► never rendered for them again, any device
 Floor (waiting count ─► Start with the oldest; Up next rows open the track) ─► Queue (phones: the open track as a card above the list, ‹ › or a sideways swipe to the next one) ─► play ─► Keep (K) ──► Prepare ─► Download kept ─► name folder ─► ZIP
                               ├─ Not for me (X)    └─ Files only · Start a new batch (confirm) · Played it out (any day)
                               └─ Reply (R) ──► sender email

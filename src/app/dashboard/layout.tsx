@@ -7,7 +7,7 @@ import { switchOn } from "@/lib/switches";
 import { activeCollectionForView, capacityForView, collectionsForView, isClosed, isPaused } from "@/lib/desk";
 import { purgeExpired } from "@/lib/retention";
 import { notificationsFor } from "@/lib/notifications";
-import { liveNotice, noticeWindow } from "@/lib/site-notices";
+import { liveNoticeFor, noticeWindow } from "@/lib/site-notices";
 import { NoticeStrip } from "./NoticeStrip";
 import { Logo } from "@/components/Logo";
 import { Sidebar } from "./Sidebar";
@@ -36,8 +36,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
     // The one-time "How's FloorTest working for you?" (lib/feedback-ask): the person's, never in an admin view.
     view ? Promise.resolve(false) : feedbackAskDue(user.actor_id),
     user.role !== "member" ? switchOn("send_music", user) : Promise.resolve(false),
-    // Ops → Notices: one cached read (lib/site-notices), never in an admin view.
-    view ? Promise.resolve(null) : liveNotice(),
+    // Ops → Notices: one cached read (lib/site-notices), not rendered once the person closed it, never in an admin view.
+    view ? Promise.resolve(null) : liveNoticeFor(user.actor_id),
   ]);
   // Even with the switch on, uploads stop if the routed collection closed or the desk is full. With no collection the
   // link stays open and tracks land in the Review Queue, unsorted.

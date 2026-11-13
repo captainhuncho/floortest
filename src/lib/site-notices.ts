@@ -1,5 +1,5 @@
 import "server-only";
-import { now, q } from "./db";
+import { asPerson, now, q } from "./db";
 import { localPath } from "./safe-links";
 
 /**
@@ -70,6 +70,25 @@ export async function liveNotice(at = now()): Promise<Notice | null> {
     cached = { at, rows: rows.map(asNotice) };
   }
   return cached.rows.find((n) => n.show_from <= at && at < n.hide_after) ?? null;
+}
+
+/** The live notice for this person, unless they closed it (one primary-key read, only while a notice is live). */
+export async function liveNoticeFor(person: number, at = now()): Promise<Notice | null> {
+  const n = await liveNotice(at);
+  if (!n) return null;
+  const closed = await q.get<{ x: number }>("SELECT 1 AS x FROM notice_dismissals WHERE user_id = ? AND notice_id = ?", person, n.id);
+  return closed ? null : n;
+}
+
+/** The person closed a notice: written as them (per-person rules), so the row is always their own. */
+export async function dismissNoticeFor(person: number, noticeId: number): Promise<boolean> {
+  if (!Number.isSafeInteger(noticeId) || noticeId <= 0) return false;
+  try {
+    await asPerson(person, () => q.run("INSERT INTO notice_dismissals (notice_id, created_at) VALUES (?, ?) ON CONFLICT DO NOTHING", noticeId, now()));
+    return true;
+  } catch {
+    return false; // no such notice
+  }
 }
 
 /** For Ops → Notices: the latest notices, latest update first. */

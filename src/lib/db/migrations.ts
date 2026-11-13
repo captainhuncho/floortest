@@ -2301,7 +2301,8 @@ create index if not exists library_tracks_folder_desk on library_tracks(folder_i
   {
     // Ops → Notices (Desk, 13 Nov): a short notice of upcoming work, shown as a strip on the signed-in dashboard from
     // show_from until hide_after (or until ended early). Plain text only; the link is a path on FloorTest. 0143 is
-    // Backend's (#526) and 0144 Build's launch_checks (#529). Additive only.
+    // Backend's (#526) and 0144 Build's launch_checks (#529). Additive only. notice_dismissals keeps "closed" on the server,
+    // so a closed notice is never rendered (no flash, every device).
     id: "0145_site_notices",
     sql: `create table if not exists site_notices (
   id bigint generated always as identity primary key,
@@ -2320,6 +2321,17 @@ create index if not exists library_tracks_folder_desk on library_tracks(folder_i
 );
 create index if not exists site_notices_hide_after on site_notices(hide_after);
 create index if not exists fk_site_notices_admin_id on site_notices(admin_id);
-alter table site_notices enable row level security;`,
+alter table site_notices enable row level security;
+-- Who closed which notice (Desk, 13 Nov): the person's own rows, written as them; the owner comes from the session.
+create table if not exists notice_dismissals (
+  user_id bigint not null default ft_person_id() references users(id) on delete cascade,
+  notice_id bigint not null references site_notices(id) on delete cascade,
+  created_at bigint not null,
+  primary key (user_id, notice_id)
+);
+create index if not exists fk_notice_dismissals_notice_id on notice_dismissals(notice_id);
+alter table notice_dismissals enable row level security;
+grant select, insert on notice_dismissals to ft_person;
+create policy person_notice_dismissals on notice_dismissals for all to ft_person using (user_id = ft_person_id()) with check (user_id = ft_person_id());`,
   },
 ];

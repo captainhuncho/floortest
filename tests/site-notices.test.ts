@@ -28,6 +28,7 @@ test("a <script> payload stays plain text and the strip prints it as text", asyn
   assert.match(strip, /\{title\}/, "React prints the title as a text node");
   assert.match(strip, /role="status"/, "a status, not an alert");
   assert.match(strip, /size-11/, "the close button is 44px");
+  assert.doesNotMatch(strip, /localStorage/, "closing is saved on the server, not in the browser");
 });
 
 test("readNotice refuses what the brief rules out", async () => {
@@ -89,7 +90,7 @@ test("only staff with Announcements can open the page or change a notice", async
   assert.equal(PAGE_NEEDS["/admin/notices"], "announcements");
   assert.equal(ACTION_NEEDS.saveNotice, "announcements");
   assert.equal(ACTION_NEEDS.endNotice, "announcements");
-  assert.equal(can({ super: false, role: "support", perms: new Set(ROLE_PERMS.support) }, "announcements"), false, "support is refused");
+  assert.equal(can({ super: false, role: "care", perms: new Set(ROLE_PERMS.care) }, "announcements"), false, "customer care is refused");
   for (const name of ["saveNotice", "endNotice"]) {
     assert.match(body(name), /^[^]*?\{\s*const a = await requireAdminAction\("announcements"\);/, `${name} checks first`);
   }
@@ -108,8 +109,38 @@ test("each change writes one admin log line", () => {
 
 test("the dashboard reads the notice once per page, never in an admin view", () => {
   const layout = read("../src/app/dashboard/layout.tsx");
-  assert.match(layout, /view \? Promise\.resolve\(null\) : liveNotice\(\)/);
+  assert.match(layout, /view \? Promise\.resolve\(null\) : liveNoticeFor\(user\.actor_id\)/, "the person's own closes, not the desk's");
   assert.match(layout, /\{!view && siteNotice && \(/);
   const lib = read("../src/lib/site-notices.ts");
   assert.doesNotMatch(lib, /SELECT \*/, "named columns");
+});
+
+test("once closed it is never rendered for that person, on any device; others still see it", async () => {
+  const { asPerson, q } = await import("../src/lib/db");
+  const { createNotice, dismissNoticeFor, forgetNotices, liveNoticeFor } = await import("../src/lib/site-notices");
+  const t = Date.now();
+  const mk = async (h: string) =>
+    (await q.get<{ id: number }>(
+      "INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at, email_verified_at) VALUES (?, 'h', ?, ?, 'free', 'UTC', ?, ?) RETURNING id",
+      `${h}@example.test`,
+      h,
+      h,
+      t,
+      t,
+    ))!.id;
+  const [ana, ben] = [await mk("ana"), await mk("ben")];
+  const id = await createNotice({ ...base(t - H), title: "Closing test" }, ana);
+  forgetNotices();
+  assert.equal((await liveNoticeFor(ana, t))?.id, id);
+  assert.equal(await dismissNoticeFor(ana, id), true);
+  assert.equal(await dismissNoticeFor(ana, id), true, "closing twice is fine");
+  assert.equal(await liveNoticeFor(ana, t), null, "closed: the server renders nothing for her");
+  assert.equal((await liveNoticeFor(ben, t))?.id, id, "his strip still shows");
+  assert.equal(await dismissNoticeFor(ana, 999_999), false, "no such notice");
+  const row = await q.get<{ user_id: number }>("SELECT user_id FROM notice_dismissals WHERE notice_id = ?", id);
+  assert.equal(Number(row!.user_id), ana, "the owner comes from the session");
+  // As Ben, he can't close it for Ana or read her closes.
+  await assert.rejects(asPerson(ben, () => q.run("INSERT INTO notice_dismissals (user_id, notice_id, created_at) VALUES (?, ?, ?)", ana, id, t)));
+  const seen = await asPerson(ben, () => q.all("SELECT user_id FROM notice_dismissals"));
+  assert.equal(seen.length, 0, "he sees none of hers");
 });
