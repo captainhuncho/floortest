@@ -32,6 +32,7 @@ import { PERMS, ROLE_PERMS, ROLES, type Perm, type Role } from "@/lib/ops-perms"
 import { grantablePlan, type PlanRequest } from "@/lib/plan-requests";
 import { flash } from "@/lib/flash";
 import { isTargeted, setSwitch, setSwitchRule, SWITCHES, type SwitchKey } from "@/lib/switches";
+import { LAUNCH_CHECKS, openBlockers, setLaunchCheck, type LaunchCheck } from "@/lib/launch-checks";
 import { describeRule, readRule, ruleFromForm, MAX_RULE_ACCOUNTS } from "@/lib/switch-rules";
 import { drainNow, retireTrackFiles } from "@/lib/deletion";
 import { cancelEmailChange, changeHandle, HANDLE_FORWARD_DAYS, HANDLE_HOLD_DAYS, requestEmailChange } from "@/lib/accounts";
@@ -971,10 +972,26 @@ export async function resolveAllIncidents(kind: string) {
 export async function flipSwitch(key: SwitchKey, on: boolean) {
   const a = await requireAdminAction("super");
   if (!(key in SWITCHES)) return fail("Unknown switch");
+  // A switch waiting on the owner's checklist (Ops → Leave beta) can't be turned on from any page; off always works.
+  const open = on ? await openBlockers(key) : [];
+  if (open.length) {
+    await logAdmin(a.id, "switch refused", SWITCHES[key].label, `waiting on: ${open.map((c) => LAUNCH_CHECKS[c].label).join(", ")}`);
+    return fail(`${SWITCHES[key].label} can't be turned on yet: ${open.map((c) => LAUNCH_CHECKS[c].label.toLowerCase()).join(" and ")} not marked done.`);
+  }
   await setSwitch(key, on, a.id);
   await logAdmin(a.id, on ? "switched on" : "switched off", SWITCHES[key].label);
   await done(`${SWITCHES[key].label}: ${on ? "on" : "off"}`);
   revalidatePath("/", "layout");
+}
+
+/** Marks an item on the checklist a site-wide switch waits on (Ops → Leave beta). The owner's call, logged. */
+export async function markLaunchCheck(key: LaunchCheck, isDone: boolean) {
+  const a = await requireAdminAction("super");
+  if (!(key in LAUNCH_CHECKS)) return fail("Unknown checklist item");
+  await setLaunchCheck(key, isDone, a.id);
+  await logAdmin(a.id, isDone ? "marked done" : "marked not done", LAUNCH_CHECKS[key].label);
+  await done(`${LAUNCH_CHECKS[key].label}: ${isDone ? "done" : "not done"}`);
+  revalidatePath("/admin", "layout");
 }
 
 /**

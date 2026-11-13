@@ -2298,4 +2298,17 @@ alter table library_tracks drop constraint if exists library_tracks_folder_id_fk
 alter table library_tracks add constraint library_tracks_folder_same_desk foreign key (folder_id, user_id) references library_folders(id, user_id) on delete set null (folder_id);
 create index if not exists library_tracks_folder_desk on library_tracks(folder_id, user_id);`,
   },
+  {
+    // Ops → Leave beta (Safety, 13 Nov): the owner-set checklist a site-wide switch waits on (billing waits on card
+    // payments and the lawyer's renewal wording). Who marked it and when also goes to admin_log. Additive only.
+    id: "0143_launch_checks",
+    sql: `create table if not exists launch_checks (
+  key text primary key,
+  done_ int not null check (done_ in (0, 1)),
+  admin_id bigint references users(id) on delete set null,
+  updated_at bigint not null
+);
+create index if not exists fk_launch_checks_admin_id on launch_checks(admin_id);
+alter table launch_checks enable row level security;`,
+  },
 ];

@@ -111,6 +111,8 @@ export const PAGE_NEEDS: Record<string, Need> = {
   "/admin/invites": "invites",
   "/admin/announcements": "announcements",
   "/admin/switches": "switches",
+  // What stands between the beta and launch: site-wide switches and their blockers, so the super admin's alone.
+  "/admin/leave-beta": "super",
   "/admin/content": "content",
   "/admin/plans": "plans.read",
   "/admin/verification": "verification",
@@ -195,6 +197,8 @@ export const ACTION_NEEDS: Record<string, Need> = {
   flipSwitch: "super",
   saveSwitchRule: "super",
   clearSwitchRule: "super",
+  // The checklist a site-wide switch waits on (Ops → Leave beta), set by the owner.
+  markLaunchCheck: "super",
   publishAnnouncement: "announcements",
   resolveIncident: "incidents.act",
   resolveAllIncidents: "incidents.act",
