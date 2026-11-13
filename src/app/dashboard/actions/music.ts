@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { IntakeError } from "@/lib/intake";
-import { createFolder, deleteFolder, deleteLibraryTrack, moveLibraryTrack, moveTrackToProjects, renameFolder, renameLibraryTrack } from "@/lib/library";
+import { createFolder, deleteFolder, deleteLibraryTrack, moveAllOwnToProjects, moveLibraryTrack, moveTrackToProjects, renameFolder, renameLibraryTrack } from "@/lib/library";
 
 export type MusicResult = { ok: true } | { ok: false; error: string };
 
@@ -94,4 +94,12 @@ export async function moveToProjects(trackId: number, folder: number | null): Pr
   if (!r.ok) return r;
   revalidatePath("/dashboard", "layout");
   return { ok: true };
+}
+
+/** 1b: moves all the desk's own uploads from its collections into Projects (never a sender's). Owner and admins. */
+export async function moveAllToProjects(): Promise<{ ok: true; moved: number; left: number; full: boolean }> {
+  const u = await requireRole("admin");
+  const r = await moveAllOwnToProjects(u);
+  revalidatePath("/dashboard", "layout");
+  return { ok: true, ...r };
 }

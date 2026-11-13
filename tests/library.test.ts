@@ -180,3 +180,42 @@ test("Projects: projects (folders) and moves stay inside the desk; only the desk
   const again = await lib.moveTrackToProjects(a, mineId, null);
   assert.ok(!again.ok, "a second tap moves nothing");
 });
+
+test("Projects 1b: Move all moves only the desk's own uploads, stops when Projects are full, and leaves senders' tracks", async () => {
+  const { q, USER_COLUMNS } = await import("../src/lib/db");
+  const { storage } = await import("../src/lib/storage");
+  const lib = await import("../src/lib/library");
+  const t = Date.now();
+  const id = (await q.get<{ id: number }>("INSERT INTO users (email, password_hash, name, handle, plan, tz, created_at, email_verified_at) VALUES ('allmove@x.io','h','N','allmove','free','UTC',?,?) RETURNING id", t, t))!.id;
+  const desk = { ...(await q.get<Record<string, unknown>>(`SELECT ${USER_COLUMNS} FROM users WHERE id = ?`, id))!, actor_id: id, actor_name: "N", role: "owner" } as never as Parameters<typeof lib.moveAllOwnToProjects>[0];
+  const own = (await q.get<{ id: number }>("INSERT INTO senders (user_id, email, name, account_id, created_at) VALUES (?, 'allmove@x.io', 'Me', ?, ?) RETURNING id", id, id, t))!.id;
+  const stranger = (await q.get<{ id: number }>("INSERT INTO senders (user_id, email, name, created_at) VALUES (?, 's2@send.io', 'S', ?) RETURNING id", id, t))!.id;
+  const file = wav();
+  const track = async (sender: number, k: string) => {
+    await (await storage()).put(k, file, "audio/wav");
+    return (await q.get<{ id: number }>(
+      "INSERT INTO tracks (user_id, sender_id, title, artist, token, file_key, original_name, mime, size, created_at) VALUES (?,?,'T','Me',?,?,'m.wav','audio/wav',?,?) RETURNING id",
+      id,
+      sender,
+      `tok-${k}`,
+      k,
+      file.length,
+      t,
+    ))!.id;
+  };
+  for (const n of [1, 2, 3]) await track(own, `audio/${id}/all-${n}.wav`);
+  const sent = await track(stranger, `audio/${id}/all-sent.wav`);
+  assert.equal(await lib.ownCollectionTrackCount(desk), 3, "a sender's track isn't counted");
+
+  // Room for two: two move, one stays, and the desk is told Projects are full.
+  await q.run("UPDATE plans SET library_limit = 2 WHERE id = 'free'");
+  assert.deepEqual(await lib.moveAllOwnToProjects(desk), { moved: 2, left: 1, full: true });
+  assert.equal(await lib.ownCollectionTrackCount(desk), 1);
+  // More room: the rest moves; running it again moves nothing.
+  await q.run("UPDATE plans SET library_limit = 10 WHERE id = 'free'");
+  assert.deepEqual(await lib.moveAllOwnToProjects(desk), { moved: 1, left: 0, full: false });
+  assert.deepEqual(await lib.moveAllOwnToProjects(desk), { moved: 0, left: 0, full: false });
+  assert.equal(await q.count("SELECT COUNT(*) AS n FROM library_tracks WHERE user_id = ?", id), 3);
+  const kept = await q.get<{ deleted_at: number | null; file_key: string | null }>("SELECT deleted_at, file_key FROM tracks WHERE id = ?", sent);
+  assert.deepEqual([kept!.deleted_at, kept!.file_key], [null, `audio/${id}/all-sent.wav`], "the sender's track is untouched");
+});
