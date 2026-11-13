@@ -2298,4 +2298,28 @@ alter table library_tracks drop constraint if exists library_tracks_folder_id_fk
 alter table library_tracks add constraint library_tracks_folder_same_desk foreign key (folder_id, user_id) references library_folders(id, user_id) on delete set null (folder_id);
 create index if not exists library_tracks_folder_desk on library_tracks(folder_id, user_id);`,
   },
+  {
+    // Ops → Notices (Desk, 13 Nov): a short notice of upcoming work, shown as a strip on the signed-in dashboard from
+    // show_from until hide_after (or until ended early). Plain text only; the link is a path on FloorTest. 0143 is
+    // Backend's (#526) and 0144 Build's launch_checks (#529). Additive only.
+    id: "0145_site_notices",
+    sql: `create table if not exists site_notices (
+  id bigint generated always as identity primary key,
+  title text not null check (char_length(title) between 1 and 80),
+  detail text not null default '' check (char_length(detail) <= 200),
+  href text not null default '' check (char_length(href) <= 200),
+  show_from bigint not null,
+  starts_at bigint not null,
+  ends_at bigint not null,
+  hide_after bigint not null,
+  ended_at bigint,
+  admin_id bigint references users(id) on delete set null,
+  created_at bigint not null,
+  updated_at bigint not null,
+  check (show_from <= starts_at and starts_at < ends_at and ends_at <= hide_after)
+);
+create index if not exists site_notices_hide_after on site_notices(hide_after);
+create index if not exists fk_site_notices_admin_id on site_notices(admin_id);
+alter table site_notices enable row level security;`,
+  },
 ];

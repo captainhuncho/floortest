@@ -68,6 +68,9 @@ The ticket between the password (or email code, reset link, Google) and /login/v
 
 ## Receiver: daily loop
 ```
+Any dashboard page while a notice is live (show from ≤ now < hide after, not ended; the soonest if several; never in admin View as):
+   thin strip under the top bar, role="status": "<title> Sun 15 Nov, 02:00–02:20. <detail> More" in the person's own time zone
+   ─► × (44 px) closes it; remembered per notice in this browser (shows again if storage is blocked)
 Floor (waiting count ─► Start with the oldest; Up next rows open the track) ─► Queue (phones: the open track as a card above the list, ‹ › or a sideways swipe to the next one) ─► play ─► Keep (K) ──► Prepare ─► Download kept ─► name folder ─► ZIP
                               ├─ Not for me (X)    └─ Files only · Start a new batch (confirm) · Played it out (any day)
                               └─ Reply (R) ──► sender email
@@ -202,6 +205,9 @@ Users, ops_shell on (src/app/admin/accounts/crm/) ─► saved view tabs (?view=
 Feedback ─► New / Planned / Fixed / Won't do (OpsButton) ─► spinner after 150 ms ─► ✓ in place + toast; a refusal
    ("That isn't a feedback status", "That feedback is gone") under the switch with Retry
 Growth ─► Growth & decisions ─► findings · funnel · projection · sources · cohorts · pipeline
+Growth ─► Notices (permission Announcements) ─► title (80) · one line of detail (200) · optional /link · show from · update starts · update ends · hide after
+   ─► Add notice ─► admin log "created notice"; Edit (?edit=id) ─► "edited notice"; End early (confirm) ─► "ended notice"
+   lists Showing now · Upcoming · Past; the dashboard strip follows within 30 s (one cached read per server, lib/site-notices.ts)
 Moderation ─► search ─► pick a track ─► Play, only with an open takedown claim (5-minute file link; admin log "played track"; otherwise 404 + "refused play")
    ─► Keep ─► marked reviewed (tracks.ops_reviewed_at/by; "Kept by @x" on the track, a Reviewed chip in results; admin log "reviewed, kept")
 Moderation, ops_shell on ─► the signal queue (takedown claim · blocked sender · late scan, newest first) ─► pick a row (j/k)
