@@ -51,12 +51,12 @@ test("the proxy answers hidden files with not found before the gate; security.tx
   const { NextRequest } = await import("next/server");
   const { proxy } = await import("../src/proxy");
   for (const p of HIDDEN) {
-    const res = proxy(new NextRequest(`https://floortest.app${p}`));
+    const res = (await proxy(new NextRequest(`https://floortest.app${p}`)));
     assert.equal(res.status, 404, p);
     assert.match(res.headers.get("x-middleware-rewrite") ?? "", /\/_not-found$/, `${p}: the not-found page, never the file`);
   }
   // security.txt stays readable behind the coming-soon gate.
-  const sec = proxy(new NextRequest("https://floortest.app/.well-known/security.txt"));
+  const sec = (await proxy(new NextRequest("https://floortest.app/.well-known/security.txt")));
   assert.equal(sec.status, 200);
   assert.doesNotMatch(sec.headers.get("x-middleware-rewrite") ?? "", /coming-soon|_not-found/);
 });

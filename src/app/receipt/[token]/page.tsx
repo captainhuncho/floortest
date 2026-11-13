@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { gatePassword } from "@/lib/site-gate";
+import { gateLock } from "@/lib/site-gate";
 import { Logo } from "@/components/Logo";
 import { siteEditor } from "@/lib/site-editor";
 import { EditablePage, editable } from "@/components/Editable";
@@ -50,7 +50,7 @@ export default async function Receipt({ params }: { params: Promise<{ token: str
   const [sharing, signupOpen] = await Promise.all([switchOn("sharing"), switchOn("open_signup")]);
   // The invitation shows once the site is public (behind the coming-soon password it would lead to a wall);
   // with sign-up still invite-only it leads to the waitlist.
-  const invite = !gatePassword() && !t.sender_account ? (signupOpen ? "/signup" : "/#waitlist") : null;
+  const invite = !(await gateLock()) && !t.sender_account ? (signupOpen ? "/signup" : "/#waitlist") : null;
   // Neither the stems request nor the share switch changes when the file leaves the desk: that would give a Not for me away.
   const stemsOn = open && !!t.stems_requested_at && (await featureOn("stems", { id: t.user_id, plan: t.receiver_plan }));
   const [c, editor] = await Promise.all([siteCopy("receipt"), siteEditor()]);
