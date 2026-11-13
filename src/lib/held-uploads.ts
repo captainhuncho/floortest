@@ -7,6 +7,7 @@ import { APP_URL, sendMailLater } from "./mail";
 import { SCAN_REFUSED, wakeScanner } from "./scan";
 import { chargeScanner, senderScope } from "./scan-budget";
 import { completeStemUpload } from "./stems";
+import { completeLibraryUpload, isLibraryMeta } from "./library";
 import { receiptToken, receiptUrl } from "./receipt-token";
 
 /**
@@ -43,6 +44,9 @@ type StemMeta = { kind?: string; trackId?: number; name?: string };
  */
 async function describe(up: Held, receiver: Pick<User, "handle">) {
   const meta = JSON.parse(up.meta) as Partial<SubmissionMeta> & StemMeta;
+  // My music (src/lib/library.ts): the account's own upload; it hears about it, and uploads again from My music.
+  if (isLibraryMeta(meta))
+    return { kind: "track" as const, library: true, meta, label: meta.title ?? "your track", email: meta.email, resend: `${APP_URL}/dashboard/music`, token: null };
   if (meta.kind !== "stem")
     return { kind: "track" as const, meta, label: meta.title ?? "your track", email: meta.email, resend: `${APP_URL}/${receiver.handle}`, token: null };
   const t = await q.get<{ id: number; token_sealed: string | null; email: string | null }>(
@@ -126,6 +130,7 @@ export async function scanHeldUploads(at = now(), { until = Date.now() + HELD_BU
       // A scan that runs into the end of the run counts as "no scanner": the file stays held, it isn't refused.
       const scanDeadlineMs = left() - HELD_FINISH_MS;
       if (d.kind === "stem") await completeStemUpload(d.token!, up.id, { from: "batch", scanDeadlineMs });
+      else if ("library" in d) await completeLibraryUpload(receiver, up.id, analysis ?? { duration: null, bpm: null, peaks: null }, { from: "batch", scanDeadlineMs });
       else await completeUpload(receiver, up.id, analysis ?? { duration: null, bpm: null, peaks: null }, { from: "batch", scanDeadlineMs });
       out.delivered++;
     } catch (e) {

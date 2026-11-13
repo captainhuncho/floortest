@@ -2243,4 +2243,34 @@ alter table newsletter_subscribers add column if not exists token_hash text;
 update newsletter_subscribers set token_hash = encode(sha256(convert_to(token, 'UTF8')), 'hex') where token_hash is null;
 create unique index if not exists newsletter_subscribers_token_hash on newsletter_subscribers(token_hash);`,
   },
+  {
+    // My music (owner, 13 Nov): a person's own tracks, kept until they delete them. Not desk tracks: never in the Review
+    // Queue, never expired by the nightly clean-up, and their own allowance per plan (plans.library_limit; the values
+    // copy track_limit until the owner sets them). Files are queued for deletion with the row (src/lib/library.ts) and
+    // by accountKeys when the account goes (rows cascade). As the person, only on a desk they may work (ft_desk, as tracks).
+    // Additive only.
+    id: "0141_library_tracks",
+    sql: `create table if not exists library_tracks (
+  id bigint generated always as identity primary key,
+  user_id bigint not null references users(id) on delete cascade,
+  title text not null check (char_length(title) between 1 and 200),
+  artist text not null default '' check (char_length(artist) <= 200),
+  genre text not null default '' check (char_length(genre) <= 60),
+  file_key text not null unique,
+  original_name text not null default '',
+  mime text not null check (mime in ('audio/wav', 'audio/mpeg')),
+  size bigint not null check (size > 0),
+  duration double precision,
+  bpm double precision,
+  peaks text,
+  upload_ref text unique,
+  created_at bigint not null
+);
+create index if not exists library_tracks_user on library_tracks(user_id, created_at desc);
+alter table library_tracks enable row level security;
+grant select, insert, update, delete on library_tracks to ft_person;
+create policy person_library_tracks on library_tracks for all to ft_person using (ft_desk(user_id)) with check (ft_desk(user_id));
+alter table plans add column if not exists library_limit int not null default 20 check (library_limit >= 0);
+update plans set library_limit = track_limit where track_limit > 20;`,
+  },
 ];

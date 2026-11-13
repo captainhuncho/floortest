@@ -42,6 +42,19 @@ export type FileGrant = {
 const PLAY_LINK_SECONDS = 300;
 const OFFLINE_LINK_SECONDS = 300;
 
+/**
+ * My music (src/lib/library.ts): one of the desk's own tracks, played by anyone working the desk. Same short link and
+ * fingerprint hold as desk tracks; checked as the person, so a desk they can't work finds nothing.
+ */
+export async function libraryFileAccess(desk: { id: number; actor_id: number } | null | undefined, libraryId: number) {
+  if (!desk || !Number.isSafeInteger(libraryId) || libraryId <= 0) return null;
+  const row = await asPerson(desk.actor_id, () =>
+    q.get<{ file_key: string; mime: string }>("SELECT file_key, mime FROM library_tracks WHERE id = ? AND user_id = ?", libraryId, desk.id),
+  );
+  if (!row || (await quarantined(row.file_key))) return null;
+  return { key: row.file_key, mime: row.mime, maxLinkSeconds: PLAY_LINK_SECONDS };
+}
+
 export async function fileAccess(
   desk: { id: number; plan: string; actor_id: number } | null | undefined,
   action: FileAction,

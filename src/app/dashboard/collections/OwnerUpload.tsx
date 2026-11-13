@@ -12,12 +12,13 @@ import { GHOST, LIME } from "../kitButtons";
 type Item = { file: File; title: string; artist: string; status: "ready" | "uploading" | "done" | "error"; progress: number; error?: string; held?: boolean };
 
 /**
- * The owner adds their own files to this collection (promos that came by email, a USB stick…). Same safe path as a
- * send: straight to storage, checked as real audio, then added. Only the owner sees this; everyone else uses the link.
+ * The owner adds their own files (promos that came by email, a USB stick, their own music). Same safe path as a send:
+ * straight to storage, checked as real audio, then added. `api` is the upload route (`${api}` starts, `${api}/complete`
+ * finishes): a collection's (/api/collections/[id]/upload) or My music's (/api/music/upload).
  */
-export function OwnerUpload({ collectionId, collectionName }: { collectionId: number; collectionName: string }) {
+export function OwnerUpload({ api, heading, note, startOpen = false }: { api: string; heading: string; note: string; startOpen?: boolean }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(startOpen);
   const [items, setItems] = useState<Item[]>([]);
   const [rights, setRights] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -50,7 +51,7 @@ export function OwnerUpload({ collectionId, collectionName }: { collectionId: nu
     const post = (url: string, body: object) =>
       fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(async (r) => ({ ok: r.ok, data: await r.json().catch(() => ({})) }));
     patch(i, { status: "uploading", progress: 0, error: undefined });
-    const start = await post(`/api/collections/${collectionId}/upload`, { fileName: it.file.name, size: it.file.size, title: it.title, artist: it.artist, rights });
+    const start = await post(api, { fileName: it.file.name, size: it.file.size, title: it.title, artist: it.artist, rights });
     if (!start.ok) return patch(i, { status: "error", error: start.data.error || "Couldn't start the upload." });
     const target = start.data.target as { url: string; headers: Record<string, string> };
     const status = await new Promise<number>((resolve) => {
@@ -64,7 +65,7 @@ export function OwnerUpload({ collectionId, collectionName }: { collectionId: nu
     });
     if (status < 200 || status >= 300) return patch(i, { status: "error", error: "The upload didn't go through. Check your connection and try again." });
     const analysis = await analyzeAudio(it.file).catch(() => null);
-    const done = await post(`/api/collections/${collectionId}/upload/complete`, { uploadId: start.data.uploadId, ...(analysis ?? {}) });
+    const done = await post(`${api}/complete`, { uploadId: start.data.uploadId, ...(analysis ?? {}) });
     if (!done.ok) return patch(i, { status: "error", error: done.data.error || "The file didn't save, so nothing was added. Try again." });
     patch(i, { status: "done", progress: 1, held: !!done.data.held });
   }
@@ -92,8 +93,8 @@ export function OwnerUpload({ collectionId, collectionName }: { collectionId: nu
     <section aria-label="Add your own tracks" className="w-full basis-full border-t border-dashed border-line-2 pt-3">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-[13px] font-semibold text-bone">Add your own tracks to {collectionName}</h3>
-          <p className="mt-1 text-[12px] text-mute">For files you already have (promos by email, a USB stick). Senders and labels send through your link instead.</p>
+          <h3 className="text-[13px] font-semibold text-bone">{heading}</h3>
+          <p className="mt-1 text-[12px] text-mute">{note}</p>
         </div>
         <button type="button" onClick={() => (setOpen(false), setItems([]))} disabled={busy} className="tap-text text-[11px] font-bold text-mute hover:text-bone">
           Close

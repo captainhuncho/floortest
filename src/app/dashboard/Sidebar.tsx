@@ -44,6 +44,7 @@ export function Sidebar({ needsReview, cap, pause, canSend = true }: Props) {
     { href: "/dashboard/floor", label: "Floor", icon: "floor", active: path === "/dashboard/floor", tab: true },
     { href: "/dashboard/review", label: "Review Queue", icon: "queue", active: path === "/dashboard/review", badge: needsReview, tab: true },
     { href: "/dashboard/collections", label: "Collections", icon: "collections", active: path.startsWith("/dashboard/collections"), tab: true },
+    { href: "/dashboard/music", label: "My music", icon: "music", active: path.startsWith("/dashboard/music") },
     { href: "/dashboard/prepare", label: "Prepare", icon: "prepare", active: path === "/dashboard/prepare" || path.startsWith("/dashboard/prepare/"), tab: true },
     ...(canSend ? [{ href: "/dashboard/send", label: "Send", icon: "send", active: path.startsWith("/dashboard/send") }] : []),
     { href: "/dashboard/contacts", label: "Contacts", icon: "contacts", active: path.startsWith("/dashboard/contacts") },

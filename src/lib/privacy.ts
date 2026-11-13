@@ -102,7 +102,11 @@ export async function dataFor(email: string) {
         account.id,
       )
     : [];
-  return { email: e, account, sent, messages, emails, waitlist, newsletter, reopenAlerts, comments, shareLinks, teams, verification };
+  // My music: the account's own tracks (their details; the audio files themselves aren't part of the copy).
+  const myMusic = account
+    ? await q.all<Record<string, unknown>>("SELECT title, artist, genre, original_name, size, duration, created_at FROM library_tracks WHERE user_id = ? ORDER BY created_at", account.id)
+    : [];
+  return { email: e, account, sent, messages, emails, waitlist, newsletter, reopenAlerts, comments, shareLinks, teams, verification, myMusic };
 }
 
 /**
