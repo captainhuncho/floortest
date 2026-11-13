@@ -41,7 +41,8 @@ test("billing waits on both checklist items; marking them done clears it", async
   const { q } = await import("../src/lib/db");
   const { openBlockers, setLaunchCheck } = await import("../src/lib/launch-checks");
   assert.deepEqual(await openBlockers("billing"), ["card_payments", "renewal_wording"], "not marked yet is not done");
-  assert.deepEqual(await openBlockers("open_signup"), [], "other switches wait on nothing");
+  assert.deepEqual(await openBlockers("open_signup"), ["signup_bot_protection"], "open sign-up waits on the bot fixes");
+  assert.deepEqual(await openBlockers("beta_started"), [], "other switches wait on nothing");
 
   const t = Date.now();
   const owner = (await q.get<{ id: number }>(

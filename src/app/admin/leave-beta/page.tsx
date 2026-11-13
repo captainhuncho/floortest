@@ -40,7 +40,6 @@ export default async function LeaveBeta() {
     switchState("beta_started"),
     lockKey ? switchState(lockKey) : null,
   ]);
-  const billingOpen = (SWITCH_BLOCKERS.billing ?? []).filter((c) => !checks[c].done);
 
   return (
     <div className="space-y-6">
@@ -59,25 +58,8 @@ export default async function LeaveBeta() {
           </Row>
         )}
 
-        <Row title={SWITCHES.open_signup.label} state={<State text={signup.on ? "On" : "Off"} on={signup.on} />} toggle={<Toggle k="open_signup" on={signup.on} />}>
-          <p className="text-sm text-mute">{SWITCHES.open_signup.description}</p>
-          <SwitchLink k="open_signup" />
-        </Row>
-
-        <Row
-          title={SWITCHES.billing.label}
-          state={<State text={billing.on ? "On" : billingOpen.length ? "Off, blocked" : "Off, ready"} on={billing.on} />}
-          toggle={billing.on || !billingOpen.length ? <Toggle k="billing" on={billing.on} /> : null}
-        >
-          <p className="text-sm text-mute">{SWITCHES.billing.description}</p>
-          <p className="label mt-1">Waits on (you mark these)</p>
-          <ul className="space-y-2">
-            {(SWITCH_BLOCKERS.billing ?? []).map((c) => (
-              <CheckRow key={c} check={c} state={checks[c]} />
-            ))}
-          </ul>
-          <SwitchLink k="billing" />
-        </Row>
+        <BlockedRow k="open_signup" on={signup.on} checks={checks} />
+        <BlockedRow k="billing" on={billing.on} checks={checks} />
 
         <Row title={SWITCHES.beta_started.label} state={<State text={started.on ? "On" : "Off"} on={started.on} />} toggle={<Toggle k="beta_started" on={started.on} />}>
           <p className="text-sm text-mute">Changes the Growth numbers only. Nothing changes for receivers or senders.</p>
@@ -118,6 +100,24 @@ function Row({ title, state, toggle, children }: { title: string; state: React.R
   );
 }
 
+/** A switch that waits on the owner's checklist: no turn-on toggle until every item is done (off always works). */
+function BlockedRow({ k, on, checks }: { k: SwitchKey; on: boolean; checks: Record<LaunchCheck, CheckState> }) {
+  const needs = SWITCH_BLOCKERS[k] ?? [];
+  const open = needs.filter((c) => !checks[c].done);
+  return (
+    <Row title={SWITCHES[k].label} state={<State text={on ? "On" : open.length ? "Off, blocked" : "Off, ready"} on={on} />} toggle={on || !open.length ? <Toggle k={k} on={on} /> : null}>
+      <p className="text-sm text-mute">{SWITCHES[k].description}</p>
+      <p className="label mt-1">Waits on (you mark these)</p>
+      <ul className="space-y-2">
+        {needs.map((c) => (
+          <CheckRow key={c} check={c} state={checks[c]} switchLabel={SWITCHES[k].label} />
+        ))}
+      </ul>
+      <SwitchLink k={k} />
+    </Row>
+  );
+}
+
 const State = ({ text, on = false }: { text: string; on?: boolean }) => <span className={`text-[13px] font-semibold ${on ? "text-lime" : "text-faint"}`}>{text}</span>;
 
 const SwitchLink = ({ k }: { k: SwitchKey }) => (
@@ -144,7 +144,7 @@ function Toggle({ k, on }: { k: SwitchKey; on: boolean }) {
   );
 }
 
-function CheckRow({ check, state }: { check: LaunchCheck; state: CheckState }) {
+function CheckRow({ check, state, switchLabel }: { check: LaunchCheck; state: CheckState; switchLabel: string }) {
   const { label, hint } = LAUNCH_CHECKS[check];
   return (
     <li className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-line p-3">
@@ -164,7 +164,7 @@ function CheckRow({ check, state }: { check: LaunchCheck; state: CheckState }) {
       </div>
       <ConfirmButton
         action={markLaunchCheck.bind(null, check, !state.done)}
-        message={state.done ? `Mark "${label}" as not done? Paid plans can't be turned on again until it's done.` : `Mark "${label}" as done? Only mark it once it's true.`}
+        message={state.done ? `Mark "${label}" as not done? ${switchLabel} can't be turned on again until it's done.` : `Mark "${label}" as done? Only mark it once it's true.`}
         confirmLabel={state.done ? "Mark not done" : "Mark done"}
         className="admin-press inline-flex min-h-11 items-center rounded-[10px] px-3.5 text-[13px] font-semibold ring-1 ring-line-2"
       >
