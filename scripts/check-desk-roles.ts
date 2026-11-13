@@ -20,6 +20,7 @@ const ROLES: Record<string, Record<string, Need>> = {
   "batch.ts": { batchTracks: "member" }, // deleting in a batch is refused to members inside the action
   "collections.ts": { createCollection: "member", setActiveCollection: "admin", updateCollection: "member", deleteCollection: "admin" },
   "desk.ts": { sendFeedback: "member", closeFeedbackAsk: "member", dismissOnboarding: "admin", markTourSeen: "person", lookupReceiver: "member", clearNotifications: "member", markNotificationsRead: "member", quickSearch: "member", pauseLink: "admin", resumeLink: "admin" },
+  "music.ts": { renameMusic: "admin", deleteMusic: "admin", moveMusic: "admin", createProject: "admin", renameProject: "admin", deleteProject: "admin", moveToProjects: "admin" },
   "links.ts": { createShareLink: "admin", resetShareLink: "admin", revokeShareLink: "admin", addLinkRecipients: "admin", removeLinkRecipient: "admin", answerLinkRequest: "admin", setLinkRequests: "admin" },
   "review.ts": {
     decideTrack: "member", clearDecision: "member", undoDecision: "member", moveTrack: "member", deleteTrack: "admin", clearKept: "admin", playedOut: "member", playedOutBatch: "admin", skipPlayedOutPrompt: "admin",
@@ -80,6 +81,9 @@ const ROUTES: Record<string, Record<string, "admin" | "member" | "public">> = {
   "collections/[id]/upload/complete": { POST: "admin" },
   "cover": { POST: "admin", DELETE: "admin" }, // part of the public page (updatePublicPage)
   "export": { GET: "member" },
+  "music/[id]/audio": { GET: "member" },
+  "music/upload": { POST: "admin" },
+  "music/upload/complete": { POST: "admin" },
   "offline/list": { GET: "member" },
   "pulse": { GET: "member" },
   "submit/[handle]": { POST: "member" }, // sending as the account is refused to members inside

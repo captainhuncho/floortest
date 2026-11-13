@@ -18,6 +18,7 @@ export const AUDIT_BUCKETS = [...new Set([env.storage.s3.bucket, "floortest-audi
 export async function expectedFiles(): Promise<ExpectedFile[]> {
   const rows = await q.all<{ key: string; kind: string; size: number | null }>(
     `SELECT file_key AS key, 'track audio' AS kind, size FROM tracks WHERE file_key IS NOT NULL
+     UNION ALL SELECT file_key, 'my music audio', size FROM library_tracks
      UNION ALL SELECT art_key, 'track artwork', NULL FROM tracks WHERE art_key IS NOT NULL
      UNION ALL SELECT file_key, 'stem', size FROM stems
      UNION ALL SELECT cover_key, 'profile cover', NULL FROM users WHERE cover_key IS NOT NULL
