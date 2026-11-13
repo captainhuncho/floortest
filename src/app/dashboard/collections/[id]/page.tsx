@@ -145,7 +145,7 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
       </div>
       <div className="flex flex-wrap gap-2 [&>button]:min-h-11 [&>button]:min-w-0 [&>button]:flex-1">
         <EditCollectionInfo c={editable} receiving={receiving} closed={closed} canManage={admin} />
-        {admin && <OwnerUpload collectionId={c.id} collectionName={c.name} />}
+        {admin && <OwnerUpload api={`/api/collections/${c.id}/upload`} heading={`Add your own tracks to ${c.name}`} note="For files you already have (promos by email, a USB stick). Senders and labels send through your link instead." />}
       </div>
     </section>
   );
