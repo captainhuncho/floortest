@@ -235,6 +235,7 @@ Receivers' names, emails, password hashes, encrypted two-step secrets and Google
 - Undecided audio 90 days; Not for me 30 days; Kept until the receiver deletes. Artwork and stems go with their track. A 7-day warning email goes first.
 - Deleting an account removes every file and row it owns through the durable queue (invariant 11, `src/lib/deletion.ts`), including the recovery-bucket copies. A deleted account's link names stay reserved for a year.
 - Visit counts (`visit_counts`): 400 days, nightly clean-up (`src/lib/retention.ts`).
+- Admin log (`admin_log`): kept for good, never edited or deleted by anyone, super admin included; account deletion only clears the staff id (owner, 6 Nov; the 730-day clean-up was removed 12 Nov, test `tests/admin-log-kept.test.ts`).
 - Short-lived records: sessions and codes by their lifetimes above; `webhook_receipts` 30 days; `request_claims` 24 hours; share-link codes 1 day, unknown-address notes 2 days, links ended over a year ago with everything on them (`LINK_KEEP_DAYS`, pending the lawyer).
 - Privacy requests (copy, erase) run from ops by the super admin.
 - Full retention list: [docs/05-data.md](docs/05-data.md), Retention and deletion.
