@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { stepUp } from "@/lib/step-up";
 import { allow } from "@/lib/ratelimit";
 import { sendMail } from "@/lib/mail";
-import { LINK_FIELD_CHARS, MAX_LINK_CHARS, MAX_LINKS, profileKey, slotLink, type ProfileLink } from "@/lib/socials";
+import { LINK_FIELD_CHARS, MAX_LINKS, profileKey, requestLink, slotLink, type ProfileLink } from "@/lib/socials";
 import { isAccountType, TOOL_IDS, toolOverrides, type Tool } from "@/lib/account-types";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -23,7 +23,6 @@ import { audit } from "@/lib/audit";
 import { cleanProfileLink, IDENTITY_HOSTS, newIdentityCode } from "@/lib/identity";
 import { done } from "./common";
 import { REQUEST_KINDS, VOLUMES, pendingRequest, type RequestKind } from "@/lib/plan-requests";
-import { httpsLink } from "@/lib/safe-links";
 import { normalEmail } from "@/lib/email-normal";
 
 export async function updateNotifications(_: SettingsState, form: FormData): Promise<SettingsState> {
@@ -242,14 +241,13 @@ export async function requestPlan(form: FormData) {
   const kind = String(form.get("kind") || "") as RequestKind;
   if (!(kind in REQUEST_KINDS)) redirect(`/dashboard/plans/request?plan=${next.id}&error=kind`);
   const org = String(form.get("org") || "").trim().slice(0, 120);
-  const rawLink = String(form.get("link") || "").trim().slice(0, LINK_FIELD_CHARS);
-  // Over the limit is refused, never cut: a cut link can open another page (as profile links, PR 514).
-  if (rawLink.length > MAX_LINK_CHARS) redirect(`/dashboard/plans/request?plan=${next.id}&error=long`);
-  // Shown to ops as a link: https only, never javascript: or data: (src/lib/safe-links.ts).
-  const link = rawLink ? httpsLink(rawLink) : "";
+  // Shown to ops as a link: https only, never javascript: or data:; over the limit as saved is refused, never cut
+  // (a cut link can open another page, as profile links, PR 514). src/lib/socials.ts requestLink.
+  const asked = requestLink(String(form.get("link") || "").slice(0, LINK_FIELD_CHARS));
+  if ("error" in asked) redirect(`/dashboard/plans/request?plan=${next.id}&error=${asked.error}`);
+  const link = asked.link;
   const volume = (VOLUMES as readonly string[]).includes(String(form.get("volume"))) ? String(form.get("volume")) : "";
   const note = String(form.get("note") || "").trim().slice(0, 1000);
-  if (link === null) redirect(`/dashboard/plans/request?plan=${next.id}&error=link`);
   // As the person (B8, migration 0133): the database lets them withdraw and file only their own desk's request, and only
   // as a waiting one; deciding it stays ops'.
   // One transaction, so a double submit can't leave two waiting or fail halfway; the database stamps created_at (0137).

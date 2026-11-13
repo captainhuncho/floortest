@@ -1,3 +1,4 @@
+import { httpsLink } from "./safe-links";
 import { siApplemusic, siBandcamp, siBeatport, siInstagram, siSoundcloud, siSpotify, siTiktok, siYoutube } from "simple-icons";
 
 /**
@@ -23,6 +24,18 @@ export const MAX_LINK_CHARS = 300;
 /** What a link field takes in: room for a long paste, so the person sees why it was refused instead of a silently cut link. */
 export const LINK_FIELD_CHARS = 2000;
 const TOO_LONG = `That link is over ${MAX_LINK_CHARS} characters. Use a shorter link to the same profile.`;
+
+/**
+ * The link on a plan request: https only (src/lib/safe-links.ts), measured as it will be saved (after https:// is added
+ * and the address is encoded), and refused over the limit, never cut. Empty is fine: the field is optional.
+ */
+export function requestLink(raw: string): { link: string } | { error: "link" | "long" } {
+  const text = raw.trim();
+  if (!text) return { link: "" };
+  const link = httpsLink(text);
+  if (link === null) return { error: "link" };
+  return link.length > MAX_LINK_CHARS ? { error: "long" } : { link };
+}
 
 /** Turn one pasted link into a recognised profile link, or explain why not. Bare "instagram.com/x" is accepted. */
 export function parseLink(raw: string): ProfileLink | { error: string } {
