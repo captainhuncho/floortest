@@ -23,7 +23,14 @@ export type PlayerTrack = {
   peaks: number[] | null;
   duration: number | null;
   played: boolean;
+  /**
+   * Where the audio is, when it isn't a desk track (Projects: /api/music/<id>/audio). Such tracks aren't counted as
+   * listened and have no waveform backfill; their `id` is negative so it never matches a desk track's.
+   */
+  src?: string;
 };
+
+const audioUrl = (t: Pick<PlayerTrack, "id" | "src">) => t.src ?? `/api/tracks/${t.id}/audio`;
 
 type Ctx = {
   current: PlayerTrack | null;
@@ -126,7 +133,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const queue = useRef<PlayerTrack[]>([]);
   // "Listened" is counted by the server: the player says when a track starts or resumes ("play") and checks in about
   // every 10 s of sound actually heard ("beat"; seeks excluded). The server credits real time only (src/lib/review.ts).
-  const listened = useRef({ id: 0, last: 0, sinceBeat: 0, reported: false, duration: 0 as number | null });
+  const listened = useRef({ id: 0, src: "", last: 0, sinceBeat: 0, reported: false, duration: 0 as number | null });
   const reportListen = useCallback(
     (event: "play" | "beat") => {
       const l = listened.current;
@@ -163,11 +170,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   const start = useCallback((t: PlayerTrack) => {
     const a = audio.current!;
-    listened.current = { id: t.id, last: 0, sinceBeat: 0, reported: t.played, duration: t.duration };
+    // A track with its own src (Projects) is never reported as listened: there is nobody's track to mark.
+    listened.current = { id: t.id, src: audioUrl(t), last: 0, sinceBeat: 0, reported: t.played || !!t.src, duration: t.duration };
     setCurrent(t);
     timeStore.set(0);
     setDuration(t.duration ?? 0);
-    a.src = `/api/tracks/${t.id}/audio`;
+    a.src = audioUrl(t);
     // A new source always has to load first; "playing" clears this once sound actually starts.
     setBuffering(true);
     void a.play().catch((e) => {
@@ -175,7 +183,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       setBuffering(false);
       refused(e);
     });
-    if (!t.peaks) void backfill(t);
+    if (!t.peaks && !t.src) void backfill(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -242,7 +250,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       lastReload = Date.now();
       const at = a.currentTime;
       const resume = !a.paused;
-      a.src = `/api/tracks/${id}/audio`;
+      a.src = listened.current.src || `/api/tracks/${id}/audio`;
       a.addEventListener("loadedmetadata", () => (a.currentTime = at), { once: true });
       if (resume) void a.play().catch(() => setPlaying(false));
     });
@@ -402,7 +410,7 @@ export function PlayerBar() {
         {/* The title opens the track; the waveform beside it only seeks, so one tap never does both. */}
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <span className="flex items-center justify-between gap-2">
-            <Link href={`/dashboard/review?view=queue&s=all&t=${current.id}`} className="truncate text-sm font-bold tracking-[-0.4px] text-bone">
+            <Link href={current.src ? "/dashboard/projects" : `/dashboard/review?view=queue&s=all&t=${current.id}`} className="truncate text-sm font-bold tracking-[-0.4px] text-bone">
               {current.title}
             </Link>
             <span className="flex shrink-0 items-center gap-2">
@@ -438,7 +446,7 @@ export function PlayerBar() {
           <PlayIcon playing={playing} />
           <BufferRing className="-inset-[5px] text-lime" />
         </button>
-        <Link href={`/dashboard/review?view=queue&s=all&t=${current.id}`} className="w-40 min-w-0 shrink-0 sm:w-56">
+        <Link href={current.src ? "/dashboard/projects" : `/dashboard/review?view=queue&s=all&t=${current.id}`} className="w-40 min-w-0 shrink-0 sm:w-56">
           <p className="truncate text-sm font-medium">{current.title}</p>
           <p className="truncate text-sm text-mute">{current.artist}</p>
         </Link>

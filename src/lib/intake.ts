@@ -345,6 +345,11 @@ export async function completeUpload(receiver: User, uploadId: string, analysis:
   const made = await trackForUpload(receiver.id, uploadId);
   if (made) return made;
   const up = await claimUpload<Upload>(uploadId, receiver.id);
+  // A stem or a Projects upload has its own completion (stems.ts, library.ts): never finished here as a desk track.
+  if ((JSON.parse(up.meta) as { kind?: string }).kind) {
+    await releaseUpload(up.id);
+    throw new IntakeError("This upload took too long and expired. Upload the track again.", 410);
+  }
   try {
     return await finishClaimed(receiver, up, uploadRef(uploadId), analysis, opts);
   } catch (e) {
