@@ -17,8 +17,8 @@ function cjkFont(text: string, tz: string): CjkFont {
   return TZ_CJK[tz] ?? "sc";
 }
 
-/** What the card prints: only what the public link page already shows, and the same link in words and in the QR. */
-export function cardFields(receiver: Receiver, callout: Callout): CardFields {
+/** What the card prints: only what the public link page already shows, the owner's own note if they typed one, and the same link in words and in the QR. */
+export function cardFields(receiver: Receiver, callout: Callout, note = ""): CardFields {
   const { list, custom } = genresFor(callout);
   const items = briefItems(callout, custom ? list : [], receiver.tz);
   const text = (key: string) => items.find((b) => b.key === key)?.text ?? "";
@@ -27,16 +27,18 @@ export function cardFields(receiver: Receiver, callout: Callout): CardFields {
   const target = `${APP_URL}/${receiver.handle}`;
   const name = cleanText(receiver.name);
   const title = cleanText(callout.name);
+  const words = cleanText(note);
   const details = [genres, bpm].filter(Boolean).join(". ") || cleanText(text("wanted"));
   return {
     name: name || receiver.handle,
     handle: receiver.handle,
     callout: title,
+    note: words,
     details,
     bpm,
     closes: text("deadline"),
     link: target.replace(/^https?:\/\//, ""),
     target,
-    cjk: cjkFont(`${name}${title}${details}`, receiver.tz),
+    cjk: cjkFont(`${name}${title}${words}${details}`, receiver.tz),
   };
 }

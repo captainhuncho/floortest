@@ -6,7 +6,10 @@ import sharp, { type OverlayOptions } from "sharp";
 import { layoutText, shortenGraphemes, TEXT_BLEED, type CjkFont } from "./shape";
 
 export type CardFormat = "story" | "square";
-export type CardFields = { name: string; handle: string; callout: string; details: string; bpm?: string; closes: string; link: string; target: string; cjk?: CjkFont };
+export type CardFields = { name: string; handle: string; callout: string; note?: string; details: string; bpm?: string; closes: string; link: string; target: string; cjk?: CjkFont };
+
+/** The longest line of their own words a person can add to the card, in characters as people count them. */
+export const NOTE_MAX = 80;
 
 const INK = { r: 16, g: 17, b: 15, alpha: 1 };
 const CLEAR = { r: 0, g: 0, b: 0, alpha: 0 };
@@ -30,8 +33,8 @@ const QR_QUIET_MODULES = 4;
 const INK_GAP = 6;
 
 const LAYOUT = {
-  story: { width: 1080, height: 1920, art: { x: 57, y: 232, scale: 0.95 }, top: 1085, kicker: 32, name: 104, callout: 40, details: 32, gap: 24, qrScale: 4, detailLines: 2, bottom: 96 },
-  square: { width: 1080, height: 1080, art: { x: 195, y: 0, scale: 0.68 }, top: 618, kicker: 26, name: 76, callout: 32, details: 26, gap: 6, qrScale: 3, detailLines: 1, bottom: 48 },
+  story: { width: 1080, height: 1920, art: { x: 57, y: 232, scale: 0.95 }, top: 1085, kicker: 32, name: 104, callout: 40, note: 40, noteLines: 2, details: 32, gap: 24, qrScale: 4, detailLines: 2, bottom: 96 },
+  square: { width: 1080, height: 1080, art: { x: 195, y: 0, scale: 0.68 }, top: 618, kicker: 26, name: 76, callout: 32, note: 30, noteLines: 1, details: 26, gap: 6, qrScale: 3, detailLines: 1, bottom: 48 },
 };
 
 const CARD_DIR = path.join(process.cwd(), "src/lib/callout-card");
@@ -173,10 +176,11 @@ async function drawQr(target: string, scale: number) {
   return QRCode.toBuffer(target, { errorCorrectionLevel: "M", margin: QR_QUIET_MODULES, scale, type: "png", color: { dark: "#10110f", light: "#ffffff" } });
 }
 
+const DETAILS_BLOCK = 4;
 const above = (d: Drawn) => d.padTop - INK_MARGIN;
 const below = (d: Drawn) => d.padBottom - INK_MARGIN;
 
-/** Kicker, name, callout and details placed top to bottom so no block's ink touches another's or the QR row. Exported for the overlap test. */
+/** Kicker, name, callout, the person's note and details placed top to bottom so no block's ink touches another's or the QR row. Exported for the overlap test. */
 export async function stackText(format: CardFormat, fields: CardFields, qrSize: number) {
   const l = LAYOUT[format];
   const { cjk } = fields;
@@ -184,11 +188,12 @@ export async function stackText(format: CardFormat, fields: CardFields, qrSize: 
   const handle = () => drawFitted(fields.handle, FONTS.serif, l.name, BONE, TEXT_WIDTH);
   const bpm = async () => (fields.bpm ? drawText(fields.bpm, FONTS.mono, l.details, MUTE) : null);
   const kicker = await drawFixed("Send your track to", FONTS.mono, l.kicker, MUTE);
-  // Each block with what replaces it if its ink doesn't fit: the handle, no callout, the BPM.
+  // Each block with what replaces it if its ink doesn't fit: the handle, no callout, no note, the BPM.
   const blocks: [Drawn | null, () => Promise<Drawn | null>][] = [
     [kicker, async () => kicker],
     [(await drawFitted(shortenGraphemes(fields.name, 40), FONTS.serif, l.name, BONE, TEXT_WIDTH, cjk)) ?? (await handle()), handle],
     [fields.callout ? await drawFitted(shortenGraphemes(fields.callout, 60), FONTS.monoMedium, l.callout, BONE, TEXT_WIDTH, cjk) : null, async () => null],
+    [fields.note ? await drawText(shortenGraphemes(fields.note, NOTE_MAX), FONTS.serif, l.note, LIME, { width: TEXT_WIDTH, maxLines: l.noteLines, cjk }) : null, async () => null],
     [fields.details ? ((await drawText(shortenGraphemes(fields.details, detailChars), FONTS.mono, l.details, MUTE, { width: TEXT_WIDTH, maxLines: l.detailLines, cjk })) ?? (await bpm())) : null, bpm],
   ];
   const offCard = (d: Drawn) => d.padLeft > TEXT_LEFT || TEXT_LEFT + d.width + d.padRight > l.width;
@@ -209,9 +214,13 @@ export async function stackText(format: CardFormat, fields: CardFields, qrSize: 
   };
   const first = place(blocks.map(([d]) => d));
   if (first.fits) return first;
-  const second = place(await Promise.all(blocks.map(([d, fallback]) => (d && (offCard(d) || above(d) + below(d) > 0) ? fallback() : d))));
-  if (!second.fits) throw new Error("the card's text can't be placed");
-  return second;
+  const fallen = await Promise.all(blocks.map(([d, fallback]) => (d && (offCard(d) || above(d) + below(d) > 0) ? fallback() : d)));
+  const second = place(fallen);
+  if (second.fits) return second;
+  // The person's own words win over the brief line when both can't fit.
+  const third = fields.note ? place(fallen.map((d, i) => (i === DETAILS_BLOCK ? null : d))) : second;
+  if (!third.fits) throw new Error("the card's text can't be placed");
+  return third;
 }
 
 /** Draws the card. `photo` comes from fitPhoto; null uses the blank card. Nothing is fetched. */
