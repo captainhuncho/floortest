@@ -21,7 +21,7 @@ export async function GET(req: Request, ctx: RouteContext<"/api/music/[id]/audio
   const head = await store.head(f.key);
   if (!head) return new Response("Not found", { status: 404 });
   const size = head.size;
-  const base = { "Content-Type": f.mime, "X-Content-Type-Options": "nosniff", "Accept-Ranges": "bytes", "Cache-Control": "private, max-age=3600" };
+  const base = { "Content-Type": f.mime, "X-Content-Type-Options": "nosniff", "Accept-Ranges": "bytes", "Cache-Control": "private, no-store" };
   const range = req.headers.get("range")?.match(/bytes=(\d*)-(\d*)/);
   if (range) {
     let start = range[1] ? Number(range[1]) : size - Number(range[2]);

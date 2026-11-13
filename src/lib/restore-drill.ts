@@ -230,12 +230,12 @@ async function receipts(db: Db): Promise<Check[]> {
   ];
 }
 
-/** Every file a track or stem points to has its copy in the recovery bucket (the vault). */
+/** Every file a track, stem or Projects track points to has its copy in the recovery bucket (the vault). */
 async function vaultFiles(db: Queryable, { vaultHead }: DrillOptions): Promise<Check> {
   const name = "Files in the recovery bucket";
   if (!vaultHead) return { name, ok: true, skipped: true, detail: "Skipped: no vault credentials in this shell (the S3_* settings and the vault bucket's keys)" };
   const keys = (
-    await db.all<{ k: string }>("SELECT file_key AS k FROM tracks WHERE file_key IS NOT NULL AND deleted_at IS NULL UNION SELECT file_key FROM stems WHERE file_key IS NOT NULL")
+    await db.all<{ k: string }>("SELECT file_key AS k FROM tracks WHERE file_key IS NOT NULL AND deleted_at IS NULL UNION SELECT file_key FROM stems WHERE file_key IS NOT NULL UNION SELECT file_key FROM library_tracks")
   ).map((r) => r.k);
   const missing: string[] = [];
   for (const k of keys) if (!(await vaultHead(k))) missing.push(k);

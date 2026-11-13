@@ -2287,4 +2287,15 @@ create policy person_library_tracks on library_tracks for all to ft_person using
 alter table plans add column if not exists library_limit int not null default 20 check (library_limit >= 0);
 update plans set library_limit = track_limit where track_limit > 20;`,
   },
+  {
+    // Safety review of #519: a project's only changeable field is its name, and a track can only point at a project
+    // on its own desk (same pattern as tracks_collection_same_desk in 0105).
+    id: "0142_library_same_desk",
+    sql: `revoke update on library_folders from ft_person;
+grant update (name) on library_folders to ft_person;
+alter table library_folders add constraint library_folders_id_desk unique (id, user_id);
+alter table library_tracks drop constraint if exists library_tracks_folder_id_fkey;
+alter table library_tracks add constraint library_tracks_folder_same_desk foreign key (folder_id, user_id) references library_folders(id, user_id) on delete set null (folder_id);
+create index if not exists library_tracks_folder_desk on library_tracks(folder_id, user_id);`,
+  },
 ];
