@@ -10,6 +10,7 @@ import { defineConfig, devices } from "@playwright/test";
 const PORT = Number(process.env.E2E_PORT || 3210);
 const SCANNER_PORT = Number(process.env.E2E_SCANNER_PORT || 3211);
 const MAIL_PORT = Number(process.env.E2E_MAIL_PORT || 3212);
+const SITE_LOCK_PASS = !!process.env.E2E_SITE_LOCK;
 const env = {
   DATA_DIR: ".e2e/data",
   DATABASE_URL: "",
@@ -19,7 +20,9 @@ const env = {
   // Cloudflare's published test keys: the check always passes, with no real puzzle (developers.cloudflare.com/turnstile/troubleshooting/testing).
   TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
   TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
-  SITE_PASSWORD: "",
+  // The coming-soon gate has its own pass (npm run e2e:site-lock, e2e/site-lock.spec.ts) with a password set; the main
+  // run has none, so every other spec sees an open site.
+  SITE_PASSWORD: SITE_LOCK_PASS ? "e2e-gate-password" : "",
   GOOGLE_CLIENT_ID: "",
   GOOGLE_CLIENT_SECRET: "",
   NEXT_PUBLIC_SENTRY_DSN: "",
@@ -56,6 +59,8 @@ const env = {
 
 export default defineConfig({
   testDir: "e2e",
+  // The site-lock pass runs only its own spec; the main run skips it (it needs SITE_PASSWORD set).
+  ...(SITE_LOCK_PASS ? { testMatch: /site-lock\.spec\.ts$/ } : { testIgnore: /site-lock\.spec\.ts$/ }),
   timeout: 90_000,
   expect: { timeout: 15_000 },
   fullyParallel: false,
