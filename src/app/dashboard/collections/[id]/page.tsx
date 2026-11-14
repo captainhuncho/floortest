@@ -145,7 +145,15 @@ export default async function CollectionFolder({ params }: { params: Promise<{ i
       </div>
       <div className="flex flex-wrap gap-2 [&>button]:min-h-11 [&>button]:min-w-0 [&>button]:flex-1">
         <EditCollectionInfo c={editable} receiving={receiving} closed={closed} canManage={admin} />
-        {admin && <OwnerUpload api={`/api/collections/${c.id}/upload`} heading={`Add your own tracks to ${c.name}`} note="For files you already have (promos by email, a USB stick). Senders and labels send through your link instead." />}
+        {/* Your own tracks go to Projects, never into a collection (owner, 13 Nov: 1b); senders send through the link. */}
+        {admin && (
+          <OwnerUpload
+            api="/api/music/upload"
+            heading="Add your own tracks"
+            note="They go to Projects, kept until you delete them, never into a collection. Senders and labels send through your link instead."
+            elsewhere={{ label: "Projects", href: "/dashboard/projects" }}
+          />
+        )}
       </div>
     </section>
   );
