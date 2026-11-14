@@ -97,7 +97,7 @@ type NewAccount = { email: string; firstName: string; lastName: string; handle: 
  * Everything both sign-ups (password and Google) check and do once the person is known: the invite (unless sign-up
  * is open), terms, the link name, the rate limit, and creating the account with its Inbox. Returns the new id or an error.
  */
-async function createAccount(form: FormData, a: NewAccount, opts: { googleEmail?: boolean } = {}): Promise<{ id: number; teamAccount?: number } | { error: string }> {
+async function createAccount(form: FormData, a: NewAccount, opts: { googleEmail?: boolean; unchecked?: boolean } = {}): Promise<{ id: number; teamAccount?: number } | { error: string }> {
   if (form.get("agree") !== "on") return { error: "Please confirm you're 18 or over and agree to the Terms to create an account." };
   const open = await switchOn("open_signup");
   // The invite code is what proves the email while sign-up is closed, so wrong guesses are counted (per email and per
@@ -155,6 +155,9 @@ async function createAccount(form: FormData, a: NewAccount, opts: { googleEmail?
     return { error: TAKEN };
   }
   if ((await q.get("SELECT 1 FROM users WHERE handle = ?", a.handle)) || (await handleHeld(a.handle))) return { error: "That link is taken." };
+  // Taken last, just before the account is made, so junk attempts that fail any check above never use up the day's
+  // unchecked slots (Safety review of #535).
+  if (opts.unchecked && !(await uncheckedSignupAllowed(ip))) return { error: SIGNUP_BUSY };
   // Read before the transaction: a second query inside it would wait on the transaction's own connection.
   const terms = await termsVersion();
   try {
@@ -221,11 +224,18 @@ const TEAM_GONE = Symbol("team invite gone");
 
 const fromForm = (form: FormData, k: string, max: number) => String(form.get(k) || "").trim().slice(0, max);
 
-/** A sign-up the bot check let through unchecked: 2 a day per connection, 50 a day in all, and an incident (at most hourly). */
+/**
+ * A sign-up the bot check let through unchecked: 2 a day per connection, 50 a day in all, and an incident (at most
+ * hourly). When the site-wide cap refuses, the connection's slot is handed back.
+ */
 async function uncheckedSignupAllowed(ip: string) {
   if (await allow("signup_unchecked_alert", "all", 1, HOUR))
     await recordIncident("server_error", "Sign-up ran without a working bot check; tight sign-up caps are on", `caps: ${SIGNUP_CAPS.openIpDay} a day per connection, ${SIGNUP_CAPS.openAllDay} a day in all`);
-  return (await allow("signup_open_ip", ip, SIGNUP_CAPS.openIpDay, DAY)) && (await allow("signup_open_all", "all", SIGNUP_CAPS.openAllDay, DAY));
+  const mine = await claim("signup_open_ip", ip, SIGNUP_CAPS.openIpDay, DAY);
+  if (mine === null) return false;
+  if ((await claim("signup_open_all", "all", SIGNUP_CAPS.openAllDay, DAY)) !== null) return true;
+  await handBack(mine);
+  return false;
 }
 
 export async function signup(_: FormState, form: FormData): Promise<FormState> {
@@ -238,17 +248,15 @@ export async function signup(_: FormState, form: FormData): Promise<FormState> {
   const password = String(form.get("password") || "");
   if (form.get("agree") !== "on") return { error: "Please confirm you're 18 or over and agree to the Terms to create an account." };
   // The bot check fails closed for sign-up (Safety audit, 13 Nov): a sign-up it couldn't really check goes on only under
-  // the tight caps, and the admins hear about it.
-  const ip = await requestIp();
-  const bot = await turnstileVerdict(form.get("cf-turnstile-response"), ip, "auth");
+  // the tight caps (taken in createAccount, just before the insert), and the admins hear about it.
+  const bot = await turnstileVerdict(form.get("cf-turnstile-response"), await requestIp(), "auth");
   if (bot === "fail") return { error: BOT_MESSAGE };
-  if (bot === "open" && !(await uncheckedSignupAllowed(ip))) return { error: SIGNUP_BUSY };
   if (!password) return { error: "Choose a password." };
   const strength = passwordStrength(password, [name, firstName, lastName, email, handle]);
   if (!strength.ok) return { error: strength.tip ?? "Choose a stronger password." };
   const leaked = await breachedError(password);
   if (leaked) return { error: leaked };
-  const r = await createAccount(form, { email, firstName, lastName, handle, name, passwordHash: await hashPassword(password), verified: false });
+  const r = await createAccount(form, { email, firstName, lastName, handle, name, passwordHash: await hashPassword(password), verified: false }, { unchecked: bot === "open" });
   if ("error" in r) return r;
   await createSession(r.id);
   // Joining a team: accept the invite and open the team's desk straight away.

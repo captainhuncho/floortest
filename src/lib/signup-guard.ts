@@ -64,7 +64,8 @@ const THROWAWAY = new Set([
 
 /** True for an address at a throwaway inbox service, or any subdomain of one. Takes an address already through normalEmail. */
 export function isThrowawayEmail(email: string) {
-  const domain = email.split("@").pop() ?? "";
+  // Trailing dots are the same domain ("mailinator.com." is mailinator.com); normalEmail drops them too.
+  const domain = (email.split("@").pop() ?? "").replace(/\.+$/, "");
   const parts = domain.split(".");
   for (let i = 0; i < parts.length - 1; i++) if (THROWAWAY.has(parts.slice(i).join("."))) return true;
   return false;

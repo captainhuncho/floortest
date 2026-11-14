@@ -26,6 +26,8 @@ const DAY = 24 * HOUR;
  */
 /** Days an account that never confirmed its email keeps its link name (see cleanupRecords). */
 export const UNCONFIRMED_HANDLE_DAYS = 7;
+/** How long a link name freed that way stays held before anyone can take it (owner, 14 Nov: never claimable at once). */
+export const FREED_HANDLE_HOLD_DAYS = 30;
 export const KEEP_DAYS = { outbox: 90, incidents: 90, events: 730, account_log: 365 } as const;
 
 const BATCH = 5000;
@@ -66,11 +68,26 @@ export async function cleanupRecords(t = now(), until = Date.now() + PURGE_BUDGE
   await q.run("DELETE FROM handle_history WHERE expires_at < ?", t);
   await q.run("DELETE FROM released_handles WHERE expires_at < ?", t);
   // An account that never confirmed its email doesn't hold a link name for long (Safety audit, 13 Nov; owner's yes): after
-  // UNCONFIRMED_HANDLE_DAYS the name is free again. The account keeps a placeholder nobody can type ("-u<id>": a link name
-  // must start with a letter or number) and picks a new name if it confirms later. Nothing else about it changes.
+  // UNCONFIRMED_HANDLE_DAYS the name is let go. The account keeps a placeholder nobody can type ("-u<id>": a link name
+  // must start with a letter or number) and picks a new name if it confirms later. Accounts that own tracks or have
+  // received uploads keep their name (owner, 14 Nov: real accounts from before confirmation was required, whose links
+  // and receipts are out in the world). A freed name is held FREED_HANDLE_HOLD_DAYS before anyone can take it.
   await q.run(
-    "UPDATE users SET handle = '-u' || id::text WHERE email_verified_at IS NULL AND created_at < ? AND handle NOT LIKE '-%'",
+    `WITH gone AS (
+       SELECT id, handle FROM users u
+       WHERE email_verified_at IS NULL AND created_at < ? AND handle NOT LIKE '-%'
+         AND NOT EXISTS (SELECT 1 FROM tracks t WHERE t.user_id = u.id)
+         AND NOT EXISTS (SELECT 1 FROM uploads p WHERE p.receiver_id = u.id)
+         AND NOT EXISTS (SELECT 1 FROM library_tracks l WHERE l.user_id = u.id)
+       FOR UPDATE
+     ), renamed AS (
+       UPDATE users SET handle = '-u' || users.id::text FROM gone WHERE users.id = gone.id RETURNING gone.handle
+     )
+     INSERT INTO released_handles (handle, released_at, expires_at) SELECT handle, ?, ? FROM renamed
+     ON CONFLICT (handle) DO UPDATE SET released_at = excluded.released_at, expires_at = GREATEST(released_handles.expires_at, excluded.expires_at)`,
     t - UNCONFIRMED_HANDLE_DAYS * DAY,
+    t,
+    t + FREED_HANDLE_HOLD_DAYS * DAY,
   );
   await q.run("DELETE FROM tap_timings WHERE created_at < ?", t - 30 * DAY);
   // "Email me when it reopens": a sent request has done its job; one nobody answered in a year is stale; one whose
