@@ -150,7 +150,8 @@ So a storage outage can delay a deletion but can never lose track of a file. Wit
 |---|---|---|
 | Site down / 5xx | Vercel deployment state and logs; `/api/health` | Promote the previous deployment. If the database is the cause, check Neon status and connections |
 | "Something went wrong" on one page | Admin → Incidents (the code on the error page matches the log digest) | Fix forward, or roll back |
-| Nobody can sign up or send | Admin → Incidents for "Bot check"; Cloudflare Turnstile widget hostnames | Admin → Feature switches → turn off **Bot check** (instant) |
+| Nobody can sign up or send | Admin → Incidents for "Bot check"; Cloudflare Turnstile widget hostnames | Admin → Feature switches → turn off **Bot check** (instant; sign-up then runs under the tight caps, 50 a day in all, until it's back on) |
+| Sign-up says "Sign-up is busy right now" | Admin → Security, sign-up rows (`signup_all` 100 an hour; `signup_open_all` 50 a day when the bot check isn't checking); Admin → Incidents | Wait for the hour (or day) to pass; if the bot check is off or failing, fix it so the normal caps apply. The caps live in `src/lib/signup-guard.ts` (a code change) |
 | Emails not arriving | Admin → Emails sent (status column), Resend dashboard | Check domain verification and API key; resend from admin |
 | Backup missing (red on Overview) | Admin → Incidents "Nightly database backup failed"; R2 credentials | Fix and rerun: in Vercel → Cron Jobs, run `/api/cron/purge` |
 | Storage errors | Incidents "could not be deleted" / upload failures; Cloudflare R2 status | Queued deletions retry automatically once R2 is back |

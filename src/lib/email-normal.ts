@@ -1,6 +1,7 @@
 /**
  * The one rule for an email address, wherever one is typed or arrives: compatibility forms folded (NFKC, so a
- * full-width "Ａ" or the Kelvin sign is the plain letter), spaces trimmed, then lowercased. Stored emails are written
+ * full-width "Ａ" or the Kelvin sign is the plain letter), spaces trimmed, then lowercased, and trailing dots dropped
+ * ("a@b.com." is the same inbox as "a@b.com", and must match the same throwaway check). Stored emails are written
  * this way, so lookups compare like with like instead of mixing JavaScript and Postgres lowercasing.
  */
-export const normalEmail = (s: string) => s.normalize("NFKC").trim().toLowerCase();
+export const normalEmail = (s: string) => s.normalize("NFKC").trim().toLowerCase().replace(/\.+$/, "");
