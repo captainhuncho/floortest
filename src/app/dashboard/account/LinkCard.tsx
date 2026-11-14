@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Icon } from "@/components/Kit";
+import { linkShared } from "../link-shared";
 import { setActiveCollection } from "../actions/collections";
 import { QrButton } from "./QrRow";
 import { CalloutShare } from "../collections/CalloutShare";
@@ -25,6 +26,7 @@ export function LinkCard({ link, handle, collections, activeId, canManage = true
           className={ghost}
           onClick={() => {
             navigator.clipboard?.writeText(link);
+            linkShared();
             setCopied(true);
             setTimeout(() => setCopied(false), 1500);
           }}
@@ -45,6 +47,7 @@ export function LinkCard({ link, handle, collections, activeId, canManage = true
             aria-label="Share your link"
             className={`${ghost} w-10 px-0`}
             onClick={async () => {
+              linkShared();
               if (!navigator.share) return void navigator.clipboard?.writeText(link);
               try {
                 await navigator.share({ title: "Send me your music", url: link });

@@ -1,5 +1,6 @@
 "use client";
 
+import { linkShared } from "../link-shared";
 import { useEffect, useId, useRef, useState } from "react";
 import { useModalDialog } from "@/components/Dialog";
 import { Icon } from "@/components/Kit";
@@ -118,6 +119,7 @@ export function CalloutShare({
   async function copy(text: string, done: string) {
     try {
       await navigator.clipboard.writeText(text);
+      linkShared();
       toast.show({ message: done });
     } catch {
       toast.show({ message: "Couldn't copy. Try again.", tone: "error" });
@@ -127,6 +129,7 @@ export function CalloutShare({
     try {
       // Files only: some apps drop the image when text comes with it. The caption has its own button.
       await navigator.share({ files: [file] });
+      linkShared();
     } catch (e) {
       if ((e as Error).name !== "AbortError") toast.show({ message: "Couldn't share. Save the image instead.", tone: "error" });
     }
@@ -135,6 +138,7 @@ export function CalloutShare({
   async function shareLink() {
     try {
       await navigator.share({ title: "Send me your music", url: link });
+      linkShared();
     } catch {
       // Closing the share sheet isn't an error worth saying anything about.
     }
