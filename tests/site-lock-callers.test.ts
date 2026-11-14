@@ -251,3 +251,141 @@ test("a read that started before a flip never caches the old state", async () =>
   assert.equal(await g.gateLock(), null, "but the next request reads the flip, not the stale answer");
   g.forgetGateLock();
 });
+
+// Signed-in people keep working when the site re-locks (owner, 14 Nov): a live session gets through the proxy; a
+// signed-out visitor, an old pass, and any session that isn't live get Coming soon.
+async function session(userId: number, o: { expiresIn?: number; seenAgo?: number; kind?: string } = {}) {
+  const { q, now } = await import("../src/lib/db");
+  const token = crypto.randomBytes(32).toString("base64url");
+  const t = now();
+  await q.run(
+    "INSERT INTO sessions (token_hash, user_id, expires_at, created_at, device, last_seen_at, kind) VALUES (?,?,?,?,?,?,?)",
+    crypto.createHash("sha256").update(token).digest("hex"),
+    userId,
+    t + (o.expiresIn ?? 86_400_000),
+    t - (o.seenAgo ?? 0),
+    "test",
+    t - (o.seenAgo ?? 0),
+    o.kind ?? "web",
+  );
+  return token;
+}
+
+async function comingSoon(cookies: { gate?: string; session?: string }) {
+  const { NextRequest } = await import("next/server");
+  const { proxy } = await import("../src/proxy");
+  const cookie = [cookies.gate ? `ft_gate=${cookies.gate}` : "", cookies.session ? `floortest_session=${cookies.session}` : ""].filter(Boolean).join("; ");
+  const res = await proxy(new NextRequest(`${SITE}/dashboard`, { headers: cookie ? { cookie } : {} }));
+  return /\/coming-soon/.test(res.headers.get("x-middleware-rewrite") ?? "");
+}
+
+async function relock() {
+  const g = await import("../src/lib/site-gate");
+  await flip(false);
+  const old = (await (g.forgetGateLock(), g.gatePass())) ?? undefined;
+  await flip(true);
+  g.forgetGateLock();
+  g.forgetSessionChecks();
+  return { g, oldPass: old };
+}
+
+test("after a re-lock a signed-in person still gets in; a signed-out visitor and an old pass get Coming soon", async () => {
+  const id = await user("relock-member@example.test");
+  const live = await session(id);
+  await flip(true);
+  const { g } = await relock();
+  const old = g.gateToken(PASSWORD, "an-old-generation");
+  assert.equal(await comingSoon({ session: live }), false, "signed in: keeps working");
+  assert.equal(await comingSoon({}), true, "signed out: Coming soon");
+  assert.equal(await comingSoon({ gate: old }), true, "an old-generation pass: Coming soon");
+  assert.equal(await comingSoon({ gate: old, session: live }), false, "an old pass plus a live session: in, through the session");
+});
+
+test("only a live session counts: expired, idle, app, suspended, signed out or forged get Coming soon", async () => {
+  const { q, now } = await import("../src/lib/db");
+  const { WEB_IDLE_MS } = await import("../src/lib/sessions");
+  const id = await user("relock-checks@example.test");
+  const expired = await session(id, { expiresIn: -1 });
+  const idle = await session(id, { seenAgo: WEB_IDLE_MS + 60_000 });
+  const app = await session(id, { kind: "app" });
+  const signedOut = await session(id);
+  await q.run("DELETE FROM sessions WHERE token_hash = ?", crypto.createHash("sha256").update(signedOut).digest("hex"));
+  const suspendedId = await user("relock-suspended@example.test");
+  const suspended = await session(suspendedId);
+  await q.run("UPDATE users SET suspended_at = ? WHERE id = ?", now(), suspendedId);
+  await relock();
+  for (const [name, token] of Object.entries({
+    expired,
+    idle,
+    app,
+    signedOut,
+    suspended,
+    forged: crypto.randomBytes(32).toString("base64url"),
+    malformed: "' OR 1=1 --",
+  }))
+    assert.equal(await comingSoon({ session: token }), true, name);
+});
+
+test("signing out everywhere ends the way in within the session cache window", async (t) => {
+  const { q } = await import("../src/lib/db");
+  const id = await user("relock-revoke@example.test");
+  const token = await session(id);
+  const { g } = await relock();
+  t.mock.timers.enable({ apis: ["Date"], now: Date.now() });
+  try {
+    assert.equal(await comingSoon({ session: token }), false);
+    await q.run("DELETE FROM sessions WHERE user_id = ?", id);
+    t.mock.timers.tick(g.SESSION_CACHE_MS + 1);
+    t.mock.timers.tick(g.LOCK_CACHE_MS); // the switch read runs out too; it is read again for real
+    assert.equal(await comingSoon({ session: token }), true, "gone after the cache window");
+  } finally {
+    t.mock.timers.reset();
+    g.forgetGateLock();
+  }
+});
+
+test("switch unreadable: even a signed-in person gets Coming soon; a failed session check counts as signed out", async () => {
+  const id = await user("relock-outage@example.test");
+  const token = await session(id);
+  const { g } = await relock();
+  const undo = await breakLockRead();
+  try {
+    g.forgetGateLock();
+    assert.equal(await comingSoon({ session: token }), true, "switch unreadable: locked for everyone");
+  } finally {
+    undo();
+    g.forgetGateLock();
+  }
+  const { q } = await import("../src/lib/db");
+  const real = q.get;
+  const quiet = console.error;
+  q.get = ((sql: string, ...a: unknown[]) => {
+    if (/FROM sessions s JOIN users/.test(sql) && /SELECT 1 AS one/.test(sql)) return Promise.reject(new Error("database down"));
+    return (real as (s: string, ...r: unknown[]) => Promise<unknown>)(sql, ...a);
+  }) as typeof q.get;
+  console.error = () => {};
+  try {
+    g.forgetSessionChecks();
+    assert.equal(await comingSoon({ session: token }), true, "session check failed: Coming soon");
+  } finally {
+    q.get = real;
+    console.error = quiet;
+    g.forgetSessionChecks();
+  }
+});
+
+test("session checks are shared and remembered, and a pass holder never needs one", async () => {
+  const id = await user("relock-shared@example.test");
+  const token = await session(id);
+  const { g } = await relock();
+  await g.gateLock();
+  let r0 = g.sessionLookups();
+  const all = await Promise.all(Array.from({ length: 10 }, () => g.gateAdmits(undefined, token)));
+  assert.ok(all.every(Boolean));
+  assert.equal(g.sessionLookups() - r0, 1, "ten at once, one lookup");
+  await g.gateAdmits(undefined, token);
+  assert.equal(g.sessionLookups() - r0, 1, "remembered: no new lookup right away");
+  r0 = g.sessionLookups();
+  assert.equal(await g.gateAdmits((await g.gatePass())!, token), true);
+  assert.equal(g.sessionLookups() - r0, 0, "a current pass is checked first, without touching sessions");
+});

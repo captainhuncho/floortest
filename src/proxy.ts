@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { GATE_COOKIE, hasGatePass } from "@/lib/site-gate";
+import { GATE_COOKIE, gateAdmits } from "@/lib/site-gate";
+import { readSessionToken } from "@/lib/sessions";
 import { contentSecurityPolicy, makeNonce } from "@/lib/csp";
 import { crossSiteWrite } from "@/lib/cross-site";
 import { LINK_PAGE_HEADERS, NOINDEX, indexable, linkPage } from "@/lib/search-index";
@@ -111,8 +112,9 @@ async function route(req: NextRequest, request: { headers: Headers }) {
   const onOpsHost = !!OPS_HOST && req.headers.get("host") === OPS_HOST;
   // Coming-soon gate: every page on the main site except the open ones above shows the coming-soon page until the
   // password is entered. The API (webhooks, health, cron) and ops (its own sign-in) stay reachable. Whether the site is
-  // locked at all (SITE_PASSWORD and the site_lock switch) is asked last, so open paths never read the switch.
-  if (!onOpsHost && !path.startsWith("/api/") && !under(path, GATE_OPEN) && !exactly(path, GATE_OPEN_EXACT) && !receivingLinkPath(path) && !(await hasGatePass(req.cookies.get(GATE_COOKIE)?.value))) {
+  // locked at all (SITE_PASSWORD and the site_lock switch) is asked last, so open paths never read the switch. A live
+  // session also gets through, so signed-in people keep working when the site re-locks (owner, 14 Nov).
+  if (!onOpsHost && !path.startsWith("/api/") && !under(path, GATE_OPEN) && !exactly(path, GATE_OPEN_EXACT) && !receivingLinkPath(path) && !(await gateAdmits(req.cookies.get(GATE_COOKIE)?.value, readSessionToken(req.cookies, process.env.NODE_ENV === "production")))) {
     // Invite emails link to /signup?invite=CODE: the invite route checks the code and opens the gate for a live one.
     const invite = path === "/signup" ? req.nextUrl.searchParams.get("invite") : null;
     if (invite) {

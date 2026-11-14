@@ -1,6 +1,8 @@
 import crypto from "node:crypto";
 import { q } from "./db";
 import { env } from "./env";
+import { WEB_IDLE_MS } from "./sessions";
+import { hashToken } from "./token-hash";
 
 /**
  * The "Coming soon" gate: with SITE_PASSWORD set and the `site_lock` switch on (Admin → Feature switches, super admin
@@ -124,6 +126,81 @@ export async function hasGatePass(cookie: string | undefined, lock?: GateLock | 
   const want = Buffer.from(gateToken(l.password, l.gen));
   const got = Buffer.from(cookie);
   return want.length === got.length && crypto.timingSafeEqual(want, got);
+}
+
+/** How long a session check is trusted, how long one may take, and how many are remembered at once. */
+export const SESSION_CACHE_MS = 5_000;
+export const SESSION_READ_TIMEOUT_MS = 1_500;
+const SESSION_CACHE_MAX = 2_000;
+/** Session tokens are 32 random bytes in base64url; anything else is not looked up at all. */
+const TOKEN_SHAPE = /^[A-Za-z0-9_-]{43}$/;
+
+const sessionCache = new Map<string, { live: boolean; at: number }>();
+const sessionInflight = new Map<string, Promise<boolean>>();
+let sessionReads = 0;
+/** How many session checks reached the database (tests check they are shared and remembered). */
+export const sessionLookups = () => sessionReads;
+
+/**
+ * True when this browser holds a live web session: the same rule as signing in on every page (`currentUser`): not
+ * expired, used within WEB_IDLE_MS, the account not suspended. Signing out, "sign out everywhere" and a password change
+ * delete the session row, so they count within SESSION_CACHE_MS. A failed or slow check is false (fail closed).
+ */
+async function hasLiveSession(token: string | undefined): Promise<boolean> {
+  if (!token || !TOKEN_SHAPE.test(token)) return false;
+  const hash = hashToken(token);
+  const hit = sessionCache.get(hash);
+  if (hit && Date.now() - hit.at < SESSION_CACHE_MS) return hit.live;
+  const running = sessionInflight.get(hash);
+  if (running) return running;
+  const check = (async () => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      sessionReads++;
+      const t = Date.now();
+      const row = await Promise.race([
+        q.get<{ one: number }>(
+          `SELECT 1 AS one FROM sessions s JOIN users u ON u.id = s.user_id
+           WHERE s.token_hash = ? AND s.kind = 'web' AND s.expires_at > ? AND COALESCE(s.last_seen_at, s.created_at) > ? AND u.suspended_at IS NULL`,
+          hash,
+          t,
+          t - WEB_IDLE_MS,
+        ),
+        new Promise<never>((_, reject) => (timer = setTimeout(() => reject(new Error("session read timed out")), SESSION_READ_TIMEOUT_MS))),
+      ]);
+      const live = !!row;
+      if (sessionCache.size >= SESSION_CACHE_MAX) sessionCache.clear();
+      sessionCache.set(hash, { live, at: Date.now() });
+      return live;
+    } catch (e) {
+      console.error("[site-gate] couldn't check a session, treating it as signed out", e);
+      return false;
+    } finally {
+      clearTimeout(timer);
+      sessionInflight.delete(hash);
+    }
+  })();
+  sessionInflight.set(hash, check);
+  return check;
+}
+
+/** Forgets every remembered session check (tests; a re-lock doesn't need it, a session is a session). */
+export function forgetSessionChecks() {
+  sessionCache.clear();
+  sessionInflight.clear();
+}
+
+/**
+ * Whether the gate lets this request through (the proxy asks this). Open site: yes. Locked: a pass for the current
+ * lock, or a live session, so signed-in people keep working when the site re-locks (owner, 14 Nov) and only signed-out
+ * visitors see Coming soon. Switch unreadable (and no recent good read): no one, signed in or not.
+ */
+export async function gateAdmits(gateCookie: string | undefined, sessionToken: string | undefined) {
+  const lock = await gateLock();
+  if (!lock) return true;
+  if (lock.gen === UNREADABLE) return false;
+  if (await hasGatePass(gateCookie, lock)) return true;
+  return hasLiveSession(sessionToken);
 }
 
 /** The pass for this lock, or null when the lock couldn't be read (no pass is good then). */
