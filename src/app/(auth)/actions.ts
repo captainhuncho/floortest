@@ -6,7 +6,9 @@ import { isAccountType } from "@/lib/account-types";
 
 import { switchOn } from "@/lib/switches";
 import { handleHeld } from "@/lib/accounts";
-import { BOT_MESSAGE, passedTurnstile } from "@/lib/turnstile";
+import { BOT_MESSAGE, turnstileVerdict } from "@/lib/turnstile";
+import { recordIncident } from "@/lib/incidents";
+import { isThrowawayEmail, SIGNUP_CAPS } from "@/lib/signup-guard";
 import crypto from "node:crypto";
 import { cookies } from "next/headers";
 import { NEXT_COOKIE, safeNext, TEAM_INVITE_COOKIE } from "@/lib/next-path";
@@ -69,6 +71,8 @@ async function afterPassword(userId: number, how: "password" | "reset" | "email 
 export type FormState = { error?: string; ok?: boolean; challenge?: boolean; holdLeft?: number; holdFinal?: boolean } | undefined;
 
 const HOUR = 3_600_000;
+const DAY = 24 * HOUR;
+const SIGNUP_BUSY = "Sign-up is busy right now. Try again later.";
 const INVITE_TRIES_EMAIL = 5;
 const INVITE_TRIES_IP = 20;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -126,10 +130,13 @@ async function createAccount(form: FormData, a: NewAccount, opts: { googleEmail?
   }
   if (!a.firstName || !a.lastName || !a.email || !a.handle) return { error: "Fill in your first name, surname, username and email." };
   if (!EMAIL.test(a.email)) return { error: "Enter a valid email." };
+  if (isThrowawayEmail(a.email)) return { error: "Use a permanent email address." };
   if (!/^[a-z0-9][a-z0-9-_]{1,29}$/.test(a.handle)) return { error: "Link names use 2–30 letters, numbers, - or _." };
   if (RESERVED_HANDLES.has(a.handle)) return { error: "That link name is reserved." };
   if (await isProtectedHandle(a.handle)) return { error: "That name is protected for a well-known artist. If it's you, contact us and we'll set it up." };
-  if (!(await allow("signup_ip", ip, 10, HOUR))) return { error: "Too many sign-ups from this connection. Try again later." };
+  if (!(await allow("signup_ip", ip, SIGNUP_CAPS.ipHour, HOUR))) return { error: "Too many sign-ups from this connection. Try again later." };
+  if (!(await allow("signup_ip_day", ip, SIGNUP_CAPS.ipDay, DAY))) return { error: "Too many sign-ups from this connection. Try again tomorrow." };
+  if (!(await allow("signup_all", "all", SIGNUP_CAPS.allHour, HOUR))) return { error: SIGNUP_BUSY };
   // Never say whether an email has an account: the real owner gets a quiet heads-up instead (at most once a day), sent
   // after the answer has gone back so how long it takes never shows the email has an account (sign-in audit M2).
   const owner = await q.get<{ id: number; name: string }>("SELECT id, name FROM users WHERE email = ?", a.email);
@@ -214,6 +221,13 @@ const TEAM_GONE = Symbol("team invite gone");
 
 const fromForm = (form: FormData, k: string, max: number) => String(form.get(k) || "").trim().slice(0, max);
 
+/** A sign-up the bot check let through unchecked: 2 a day per connection, 50 a day in all, and an incident (at most hourly). */
+async function uncheckedSignupAllowed(ip: string) {
+  if (await allow("signup_unchecked_alert", "all", 1, HOUR))
+    await recordIncident("server_error", "Sign-up ran without a working bot check; tight sign-up caps are on", `caps: ${SIGNUP_CAPS.openIpDay} a day per connection, ${SIGNUP_CAPS.openAllDay} a day in all`);
+  return (await allow("signup_open_ip", ip, SIGNUP_CAPS.openIpDay, DAY)) && (await allow("signup_open_all", "all", SIGNUP_CAPS.openAllDay, DAY));
+}
+
 export async function signup(_: FormState, form: FormData): Promise<FormState> {
   const firstName = fromForm(form, "first_name", 60);
   const lastName = fromForm(form, "last_name", 60);
@@ -223,7 +237,12 @@ export async function signup(_: FormState, form: FormData): Promise<FormState> {
   const name = fromForm(form, "name", 80) || handle;
   const password = String(form.get("password") || "");
   if (form.get("agree") !== "on") return { error: "Please confirm you're 18 or over and agree to the Terms to create an account." };
-  if (!(await passedTurnstile(form.get("cf-turnstile-response"), await requestIp(), "auth"))) return { error: BOT_MESSAGE };
+  // The bot check fails closed for sign-up (Safety audit, 13 Nov): a sign-up it couldn't really check goes on only under
+  // the tight caps, and the admins hear about it.
+  const ip = await requestIp();
+  const bot = await turnstileVerdict(form.get("cf-turnstile-response"), ip, "auth");
+  if (bot === "fail") return { error: BOT_MESSAGE };
+  if (bot === "open" && !(await uncheckedSignupAllowed(ip))) return { error: SIGNUP_BUSY };
   if (!password) return { error: "Choose a password." };
   const strength = passwordStrength(password, [name, firstName, lastName, email, handle]);
   if (!strength.ok) return { error: strength.tip ?? "Choose a stronger password." };

@@ -341,10 +341,11 @@ test("a photo that's too small or not an image is skipped", async () => {
 
 test("one open rule for the public page and the card", async () => {
   const { calloutBlock } = await import("../src/lib/desk");
-  const open = { paused_at: null, pause_until: null };
+  const open = { paused_at: null, pause_until: null, email_verified_at: 1 };
   const live = { closes_at: null, full_at: null };
   assert.equal(calloutBlock(open, live, false), null);
-  assert.equal(calloutBlock({ paused_at: 1, pause_until: null }, live, false), "paused");
+  assert.equal(calloutBlock({ ...open, email_verified_at: null }, live, false), "not_open", "an unconfirmed account's link isn't open yet");
+  assert.equal(calloutBlock({ paused_at: 1, pause_until: null, email_verified_at: 1 }, live, false), "paused");
   assert.equal(calloutBlock(open, { closes_at: 1, full_at: null }, false), "closed");
   assert.equal(calloutBlock(open, { closes_at: null, full_at: 1 }, false), "full");
   assert.equal(calloutBlock(open, live, true), "unavailable");

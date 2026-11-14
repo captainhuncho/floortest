@@ -24,6 +24,8 @@ const DAY = 24 * HOUR;
  * How long records are kept before the nightly clean-up deletes them (days). The admin log isn't here on purpose: it
  * is kept for good and nothing deletes from it (owner, 6 Nov: "No admin can delete admin logs").
  */
+/** Days an account that never confirmed its email keeps its link name (see cleanupRecords). */
+export const UNCONFIRMED_HANDLE_DAYS = 7;
 export const KEEP_DAYS = { outbox: 90, incidents: 90, events: 730, account_log: 365 } as const;
 
 const BATCH = 5000;
@@ -63,6 +65,13 @@ export async function cleanupRecords(t = now(), until = Date.now() + PURGE_BUDGE
   await q.run("DELETE FROM sender_links WHERE expires_at < ?", t);
   await q.run("DELETE FROM handle_history WHERE expires_at < ?", t);
   await q.run("DELETE FROM released_handles WHERE expires_at < ?", t);
+  // An account that never confirmed its email doesn't hold a link name for long (Safety audit, 13 Nov; owner's yes): after
+  // UNCONFIRMED_HANDLE_DAYS the name is free again. The account keeps a placeholder nobody can type ("-u<id>": a link name
+  // must start with a letter or number) and picks a new name if it confirms later. Nothing else about it changes.
+  await q.run(
+    "UPDATE users SET handle = '-u' || id::text WHERE email_verified_at IS NULL AND created_at < ? AND handle NOT LIKE '-%'",
+    t - UNCONFIRMED_HANDLE_DAYS * DAY,
+  );
   await q.run("DELETE FROM tap_timings WHERE created_at < ?", t - 30 * DAY);
   // "Email me when it reopens": a sent request has done its job; one nobody answered in a year is stale; one whose
   // confirmation link expired unopened was never wanted.

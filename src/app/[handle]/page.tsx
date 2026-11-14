@@ -11,7 +11,7 @@ import { teamSize } from "@/lib/team";
 import type { Metadata, Viewport } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { forwardedHandle } from "@/lib/accounts";
-import { activeCollection, calloutBlock, capacity, isPaused, pausedMessage, userByHandleForView } from "@/lib/desk";
+import { activeCollection, calloutBlock, capacity, isPaused, NOT_OPEN_YET, pausedMessage, userByHandleForView } from "@/lib/desk";
 import { fmtDay } from "@/lib/format";
 import { genresFor, RETAIN_UNREVIEWED_DAYS } from "@/lib/plans";
 import { folderLimit, trackArtEnabled } from "@/lib/plan-store";
@@ -65,7 +65,9 @@ export default async function ReceiverPage({ params }: Props) {
   const [team, folderBytes, botKey, trackArt] = await Promise.all([teamSize(receiver.id), folderLimit(receiver.plan), botCheckKey(), trackArtEnabled(receiver.plan)]);
   const block = calloutBlock(receiver, collection, full);
   const closedReason =
-    block === "paused"
+    block === "not_open"
+      ? NOT_OPEN_YET(receiver.name)
+      : block === "paused"
       ? pausedMessage(receiver)
       : block === "full"
         ? `“${collection!.name}” is full: it has all the tracks ${receiver.name} asked for.`
