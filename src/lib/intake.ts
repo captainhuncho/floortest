@@ -20,7 +20,7 @@ import { scannerAwake, scanStored, SCAN_FAILED, SCAN_REFUSED, type ScanResult } 
 import { chargeScanner, senderScope } from "./scan-budget";
 import { recordIncident } from "./incidents";
 import { recordStoredDigest } from "./file-digests";
-import { activeCollection, capacity, isClosed, isFull, isPaused, pausedMessage, rewardReferral } from "./desk";
+import { activeCollection, capacity, isClosed, isFull, isPaused, linkNotOpenYet, NOT_OPEN_YET, pausedMessage, rewardReferral } from "./desk";
 import { normalEmail } from "./email-normal";
 import { newReceiptToken, receiptToken, receiptUrl, storeReceiptToken } from "./receipt-token";
 
@@ -67,6 +67,7 @@ export class IntakeError extends Error {
 /** Link-level rules: paused, closed, full. */
 async function checkOpen(receiver: User, db: Queryable = q) {
   if (await switchOn("uploads_paused", db)) throw new IntakeError("FloorTest is paused for maintenance, so nothing was sent. Try again in a little while.", 503);
+  if (linkNotOpenYet(receiver)) throw new IntakeError(NOT_OPEN_YET(receiver.name), 403);
   if (isPaused(receiver)) throw new IntakeError(pausedMessage(receiver));
   const active = await activeCollection(receiver, db);
   if (isFull(active)) throw new IntakeError(`This callout is full. ${receiver.name} isn't accepting tracks for it right now.`);
