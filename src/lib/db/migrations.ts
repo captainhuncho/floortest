@@ -2299,6 +2299,11 @@ alter table library_tracks add constraint library_tracks_folder_same_desk foreig
 create index if not exists library_tracks_folder_desk on library_tracks(folder_id, user_id);`,
   },
   {
+    // library_tracks_folder_desk (0142) starts with folder_id, so the single-column index is redundant.
+    id: "0143_library_folder_index",
+    sql: `drop index if exists library_tracks_folder;`,
+  },
+  {
     // Getting started on the Floor (Desk, 13 Nov): when the person first copied or shared their link or share card, so
     // the "Share your link" step ticks itself off. Set once, on their own row, by the app. Additive only. 0143 is
     // Backend's (#526), 0144 Build's launch_checks (#529), 0145 Build's site_notices (#533).
