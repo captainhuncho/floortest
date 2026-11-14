@@ -58,6 +58,21 @@ test("site lock: signed out sees Coming soon, signed in passes, and a re-lock ke
     await comingSoon(vPage);
   });
 
+  await test.step("a wrong password is refused and the page stays locked", async () => {
+    await vPage.getByLabel("Have the password?").fill("not-the-password");
+    await vPage.getByRole("button", { name: "Enter" }).click();
+    await expect(vPage.getByText("That password isn't right.")).toBeVisible();
+    await comingSoon(vPage);
+  });
+
+  await test.step("signed out, the API and downloads stay closed (the gate leaves /api to each route's own sign-in check)", async () => {
+    for (const path of ["/api/tracks/1/download", "/api/tracks/1/audio", "/api/export"]) {
+      const res = await vPage.request.get(path, { maxRedirects: 0 });
+      expect(res.status(), `${path} signed out`).not.toBe(200);
+      expect(res.headers()["content-type"] ?? "", `${path} sends no file`).not.toMatch(/audio|zip|octet-stream|csv/);
+    }
+  });
+
   await test.step("the password lets a signed-out visitor in", async () => {
     await unlock(vPage);
     await vPage.goto("/");
