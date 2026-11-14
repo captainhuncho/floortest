@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { GATE_COOKIE, gatePassword, hasGatePass } from "@/lib/site-gate";
+import { GATE_COOKIE, gateAdmits } from "@/lib/site-gate";
+import { readSessionToken } from "@/lib/sessions";
 import { contentSecurityPolicy, makeNonce } from "@/lib/csp";
 import { crossSiteWrite } from "@/lib/cross-site";
 import { LINK_PAGE_HEADERS, NOINDEX, indexable, linkPage } from "@/lib/search-index";
@@ -62,7 +63,7 @@ const notFound = (req: NextRequest, request: { headers: Headers }) => NextRespon
  * Every page gets a fresh script nonce in its CSP (src/lib/csp.ts). Next reads it from the request's CSP header and puts
  * it on its own scripts, so the same policy goes on the request (for rendering) and on the response (for the browser).
  */
-export function proxy(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const csp = contentSecurityPolicy({ nonce: makeNonce(), dev: process.env.NODE_ENV !== "production" });
   const request = { headers: new Headers(req.headers) };
   request.headers.set("Content-Security-Policy", csp);
@@ -70,7 +71,7 @@ export function proxy(req: NextRequest) {
   // auth.ts treats a request without it as one that can change something.
   request.headers.delete(READ_HEADER);
   if (req.method === "GET" || req.method === "HEAD") request.headers.set(READ_HEADER, readMarker());
-  const res = route(req, request);
+  const res = await route(req, request);
   // Verification proof files send their own, stricter policy (default-src 'none', frame-ancestors 'none'; security
   // review M2): the page policy isn't laid over it. Host separation and the cross-site check above still apply.
   if (!OWN_CSP.some((p) => p.test(req.nextUrl.pathname))) res.headers.set("Content-Security-Policy", csp);
@@ -96,7 +97,7 @@ export function viewWrite(method: string, viewing: boolean) {
  */
 export const OWN_CSP = [/^\/api\/admin\/verification-proofs\/\d+$/];
 
-function route(req: NextRequest, request: { headers: Headers }) {
+async function route(req: NextRequest, request: { headers: Headers }) {
   const path = req.nextUrl.pathname;
   // Hidden files (/.env, /.git, any part starting with "."): "not found" on every host, before anything else (src/lib/dot-paths.ts).
   if (isHiddenPath(path)) return notFound(req, request);
@@ -110,8 +111,10 @@ function route(req: NextRequest, request: { headers: Headers }) {
   if (viewWrite(req.method, req.cookies.has(VIEW_AS_COOKIE_NAME))) return NextResponse.redirect(new URL("/dashboard/floor?readonly=1", req.url), 303);
   const onOpsHost = !!OPS_HOST && req.headers.get("host") === OPS_HOST;
   // Coming-soon gate: every page on the main site except the open ones above shows the coming-soon page until the
-  // password is entered. The API (webhooks, health, cron) and ops (its own sign-in) stay reachable.
-  if (gatePassword() && !onOpsHost && !path.startsWith("/api/") && !under(path, GATE_OPEN) && !exactly(path, GATE_OPEN_EXACT) && !receivingLinkPath(path) && !hasGatePass(req.cookies.get(GATE_COOKIE)?.value)) {
+  // password is entered. The API (webhooks, health, cron) and ops (its own sign-in) stay reachable. Whether the site is
+  // locked at all (SITE_PASSWORD and the site_lock switch) is asked last, so open paths never read the switch. A live
+  // session also gets through, so signed-in people keep working when the site re-locks (owner, 14 Nov).
+  if (!onOpsHost && !path.startsWith("/api/") && !under(path, GATE_OPEN) && !exactly(path, GATE_OPEN_EXACT) && !receivingLinkPath(path) && !(await gateAdmits(req.cookies.get(GATE_COOKIE)?.value, readSessionToken(req.cookies, process.env.NODE_ENV === "production")))) {
     // Invite emails link to /signup?invite=CODE: the invite route checks the code and opens the gate for a live one.
     const invite = path === "/signup" ? req.nextUrl.searchParams.get("invite") : null;
     if (invite) {

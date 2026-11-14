@@ -28,7 +28,7 @@ const PRIVATE_PATHS = [
 async function robotsHeader(path: string) {
   const { NextRequest } = await import("next/server");
   const { proxy } = await import("../src/proxy");
-  return proxy(new NextRequest(`https://floortest.app${path}`)).headers.get("x-robots-tag");
+  return (await proxy(new NextRequest(`https://floortest.app${path}`))).headers.get("x-robots-tag");
 }
 
 test("every private path answers noindex, nofollow, noarchive", async () => {
@@ -60,7 +60,7 @@ test("robots.txt lets crawlers open link pages, so they see the noindex instead 
 async function proxyHeaders(path: string) {
   const { NextRequest } = await import("next/server");
   const { proxy } = await import("../src/proxy");
-  return proxy(new NextRequest(`https://floortest.app${path}`)).headers;
+  return (await proxy(new NextRequest(`https://floortest.app${path}`))).headers;
 }
 
 // Owner, 2 Nov: the private link pages aren't kept by browsers or caches, and don't pass their address to other sites.

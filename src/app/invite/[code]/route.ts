@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { liveInviteCode, personalInviteGone } from "@/lib/invites";
 import { allow, ipFrom } from "@/lib/ratelimit";
-import { GATE_COOKIE, gatePassword, gateToken } from "@/lib/site-gate";
+import { GATE_COOKIE, gateLock, passFor } from "@/lib/site-gate";
 
 /** Wrong codes allowed per address in ten minutes, so the gate can't be opened by guessing. */
 const TRIES = 20;
@@ -23,12 +23,15 @@ export async function GET(req: Request, ctx: RouteContext<"/invite/[code]">) {
   signup.searchParams.set("invite", code);
   // Counted before any lookup, gate or not, so codes can't be tried quickly here.
   const tryOk = await allow("invite-gate", ipFrom(req.headers), TRIES, WINDOW_MS);
-  if (!gatePassword()) return NextResponse.redirect(tryOk && (await personalInviteGone(code)) ? new URL("/invite/used", req.url) : signup);
+  const lock = await gateLock();
+  if (!lock) return NextResponse.redirect(tryOk && (await personalInviteGone(code)) ? new URL("/invite/used", req.url) : signup);
   if (!tryOk) return NextResponse.redirect(new URL("/coming-soon", req.url));
   if (await personalInviteGone(code)) return NextResponse.redirect(new URL("/invite/used", req.url));
   const open = await liveInviteCode(code);
   if (!open) return NextResponse.redirect(new URL("/coming-soon", req.url));
+  const pass = passFor(lock);
+  if (!pass) return NextResponse.redirect(new URL("/coming-soon", req.url));
   const res = NextResponse.redirect(signup);
-  res.cookies.set(GATE_COOKIE, gateToken(), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: INVITE_PASS_SECONDS });
+  res.cookies.set(GATE_COOKIE, pass, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: INVITE_PASS_SECONDS });
   return res;
 }
