@@ -7,6 +7,8 @@ import { switchOn } from "@/lib/switches";
 import { activeCollectionForView, capacityForView, collectionsForView, isClosed, isPaused } from "@/lib/desk";
 import { purgeExpired } from "@/lib/retention";
 import { notificationsFor } from "@/lib/notifications";
+import { liveNoticeFor, noticeWindow } from "@/lib/site-notices";
+import { NoticeStrip } from "./NoticeStrip";
 import { Logo } from "@/components/Logo";
 import { Sidebar } from "./Sidebar";
 import { FeedbackAsk, FeedbackButton } from "./FeedbackButton";
@@ -24,7 +26,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // Retention cleanup runs after the response, so it never slows a page down.
   after(() => purgeExpired().catch((e) => console.error("[purge]", e)));
   // All of the desk's reads at once (speed phase 1: the feedback ask and the send switch used to wait for the rest).
-  const [collections, cap, active, notices, teams, me, askFeedback, canSend] = await Promise.all([
+  const [collections, cap, active, notices, teams, me, askFeedback, canSend, siteNotice] = await Promise.all([
     collectionsForView(user.id),
     capacityForView(user.id, user.plan),
     activeCollectionForView(user.active_collection_id),
@@ -34,6 +36,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
     // The one-time "How's FloorTest working for you?" (lib/feedback-ask): the person's, never in an admin view.
     view ? Promise.resolve(false) : feedbackAskDue(user.actor_id),
     user.role !== "member" ? switchOn("send_music", user) : Promise.resolve(false),
+    // Ops → Notices: one cached read (lib/site-notices), not rendered once the person closed it, never in an admin view.
+    view ? Promise.resolve(null) : liveNoticeFor(user.actor_id),
   ]);
   // Even with the switch on, uploads stop if the routed collection closed or the desk is full. With no collection the
   // link stays open and tracks land in the Review Queue, unsorted.
@@ -82,6 +86,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 />
               </div>
             </div>
+            {/* Ops → Notices: a live notice, times in the signed-in person's own zone. Plain text. */}
+            {!view && siteNotice && (
+              <NoticeStrip id={siteNotice.id} title={siteNotice.title} detail={siteNotice.detail} href={siteNotice.href} when={noticeWindow(siteNotice, (me ?? user).tz)} />
+            )}
             {view && (
               <div role="alert" className="flex flex-wrap items-center justify-between gap-2 border-b border-danger/50 bg-danger/15 px-4 py-2.5 text-sm sm:px-6">
                 <span>

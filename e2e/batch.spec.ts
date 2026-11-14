@@ -70,8 +70,8 @@ test("the review panel keeps the decision in view and folds the rest into Detail
   await expect(details.getByText("Full history →")).toBeVisible();
 });
 
-/** The owner adds their own file to their own collection; nobody else can use that door. */
-test("the owner adds a WAV to their own collection; strangers and other collections are refused", async ({ page, browser }) => {
+/** The owner adds their own file from a collection page: it lands in Projects (1b), never the collection; strangers are refused. */
+test("the owner adds a WAV from a collection page and it lands in Projects; strangers and other collections are refused", async ({ page, browser }) => {
   // Signed out: refused.
   const anon = await browser.newContext();
   expect((await anon.request.post(`http://localhost:${process.env.E2E_PORT || 3210}/api/collections/2/upload`, { data: { fileName: "x.wav", size: 10, title: "X", rights: true } })).status()).toBe(401);
@@ -90,8 +90,9 @@ test("the owner adds a WAV to their own collection; strangers and other collecti
   await page.getByLabel("Choose WAV or MP3 files to add").setInputFiles({ name: "Owner Promo.wav", mimeType: "audio/wav", buffer: wav(4) });
   await page.getByLabel(/own these recordings/).check();
   await page.getByRole("button", { name: "Add 1 track" }).click();
-  await expect(page.getByText("Added", { exact: true })).toBeVisible({ timeout: 30_000 });
-  await page.reload();
+  await expect(page.getByText("Added to Projects", { exact: true })).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("link", { name: "Open Projects" }).click();
+  await page.waitForURL(/\/dashboard\/projects$/);
   await expect(page.getByText("Owner Promo").locator("visible=true").first()).toBeVisible();
 });
 

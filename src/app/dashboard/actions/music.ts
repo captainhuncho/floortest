@@ -2,16 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
+import { folderId, recordId } from "@/lib/ids";
 import { IntakeError } from "@/lib/intake";
 import { createFolder, deleteFolder, deleteLibraryTrack, moveAllOwnToProjects, moveLibraryTrack, moveTrackToProjects, renameFolder, renameLibraryTrack } from "@/lib/library";
 
 export type MusicResult = { ok: true } | { ok: false; error: string };
 
 const GONE = "That track isn't in Projects any more.";
-/** A project id from the browser: a positive whole number, or null for "in no project". */
-/** A track or project id from the browser: a positive safe whole number, or null (refused as gone). */
-const recordId = (v: unknown) => (Number.isSafeInteger(Number(v)) && Number(v) > 0 ? Number(v) : null);
-const folderId = (v: unknown) => (v == null || v === "" ? null : Number.isSafeInteger(Number(v)) && Number(v) > 0 ? Number(v) : NaN);
 
 /** Runs a change, turning a refusal (a missing name, too many projects) into its message. */
 async function attempt(run: () => Promise<boolean>, gone: string): Promise<MusicResult> {
