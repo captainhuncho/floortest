@@ -2304,6 +2304,19 @@ create index if not exists library_tracks_folder_desk on library_tracks(folder_i
     sql: `drop index if exists library_tracks_folder;`,
   },
   {
+    // Ops → Leave beta (Safety, 13 Nov): the owner-set checklist a site-wide switch waits on (billing waits on card
+    // payments and the lawyer's renewal wording). Who marked it and when also goes to admin_log. Additive only.
+    id: "0144_launch_checks",
+    sql: `create table if not exists launch_checks (
+  key text primary key,
+  done_ int not null check (done_ in (0, 1)),
+  admin_id bigint references users(id) on delete set null,
+  updated_at bigint not null
+);
+create index if not exists fk_launch_checks_admin_id on launch_checks(admin_id);
+alter table launch_checks enable row level security;`,
+  },
+  {
     // Getting started on the Floor (Desk, 13 Nov): when the person first copied or shared their link or share card, so
     // the "Share your link" step ticks itself off. Set once, on their own row, by the app. Additive only. 0143 is
     // Backend's (#526), 0144 Build's launch_checks (#529), 0145 Build's site_notices (#533).
