@@ -187,7 +187,7 @@ Decided: a colleague is a **seat on an account** (label, radio, crew), not someo
 ## Projects (owner, 13 Nov: "build this out some more")
 Every account gets its own library for its own tracks, kept until deleted, with its own allowance. Phases, one at a time:
 1. **Store and listen** (built on `backend/my-music`, not live): `/dashboard/projects`, upload, play, rename, delete; projects (folders, built like collections: create, rename, delete, upload into one, move a track to another); a track the desk added to a collection itself moves to Projects from its review page (owner, 13 Nov: own uploads only, never a sender's).
-1b. Move all existing owner uploads in one go, and point a collection's Add tracks here. Rewrites data, so its own PR and the owner's yes. (One at a time already works, from 1.)
+1b. Move all existing owner uploads in one go: **built** (owner's yes 13 Nov; Move all to Projects on the Projects page, `moveAllOwnToProjects`). Still to do: point a collection's Add tracks here.
 Later: a project's cover photo (today its initials).
 2. Private share link for a track.
 3. Send a track to a receiver (behind `send_music`).
