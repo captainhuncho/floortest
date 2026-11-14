@@ -113,6 +113,9 @@ test("Projects: projects (folders) and moves stay inside the desk; only the desk
   assert.ok(!(await lib.renameFolder(b, ep, "Taken")));
   assert.ok(!(await lib.deleteFolder(b, ep)));
   assert.ok(await lib.renameFolder(a, ep, "Winter EP"));
+  // As the person, only a project's name can change: moving it to another desk is refused (0142).
+  const { asPerson } = await import("../src/lib/db");
+  await assert.rejects(asPerson(a.actor_id, () => q.run("UPDATE library_folders SET user_id = ? WHERE id = ?", b.id, ep)), /permission denied/);
   await assert.rejects(lib.startLibraryUpload(a, { ...add, folderId: theirs }), /isn't there/, "never into another account's project");
 
   // An upload lands in the project it was added to.
@@ -177,6 +180,11 @@ test("Projects: projects (folders) and moves stay inside the desk; only the desk
   assert.equal(await q.count("SELECT COUNT(*) AS n FROM storage_deletions WHERE file_key = ?", kept.file_key), 0, "never queued for deletion");
   const retired = (await q.get<{ deleted_at: number | null; file_key: string | null }>("SELECT deleted_at, file_key FROM tracks WHERE id = ?", mineId))!;
   assert.ok(retired.deleted_at && retired.file_key === null, "the collection track is retired");
+  // The storage allowance counts Projects audio.
+  const { allowances } = await import("../src/lib/allowance");
+  const before = (await allowances())[0].used;
+  await q.run("INSERT INTO library_tracks (user_id, title, file_key, mime, size, created_at) VALUES (?, 'Extra', ?, 'audio/wav', 12345, ?)", a.id, `audio/${a.id}/extra.wav`, t);
+  assert.equal((await allowances())[0].used - before, 12345);
   const again = await lib.moveTrackToProjects(a, mineId, null);
   assert.ok(!again.ok, "a second tap moves nothing");
 });

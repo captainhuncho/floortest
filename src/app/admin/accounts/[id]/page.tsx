@@ -57,7 +57,12 @@ export default async function Account({ params }: { params: Promise<{ id: string
     activeCollection(u),
     q.count("SELECT COUNT(*) AS n FROM collections WHERE user_id = ?", id),
     q.count("SELECT COUNT(*) AS n FROM tracks WHERE user_id = ?", id),
-    q.get<{ n: number | null }>("SELECT SUM(size) AS n FROM tracks WHERE user_id = ? AND deleted_at IS NULL AND file_key IS NOT NULL", id),
+    // Their stored audio: desk tracks plus Projects.
+    q.get<{ n: number | null }>(
+      "SELECT (SELECT COALESCE(SUM(size), 0) FROM tracks WHERE user_id = ? AND deleted_at IS NULL AND file_key IS NOT NULL) + (SELECT COALESCE(SUM(size), 0) FROM library_tracks WHERE user_id = ?) AS n",
+      id,
+      id,
+    ),
     q.count("SELECT COUNT(*) AS n FROM sessions WHERE user_id = ? AND expires_at > ?", id, t),
   ]);
   const senders = await q.all<{ id: number; name: string; email: string; blocked_at: number | null; tracks: number; last: number | null }>(
@@ -98,7 +103,7 @@ export default async function Account({ params }: { params: Promise<{ id: string
   const usage = [
     ["Plan", (await planOf(u.plan)).name],
     ["Desk", `${cap.used} / ${cap.limit} tracks${cap.bonus ? ` (+${cap.bonus} bonus)` : ""}`],
-    ["Storage", fmtBytes(bytes?.n ?? 0)],
+    ["Storage", fmtBytes(Number(bytes?.n ?? 0))],
     ["Link", link],
     ["Collections", `${collections}${collection ? ` · active: ${collection.name}` : ""}`],
     ["Received ever", String(all)],

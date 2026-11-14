@@ -143,7 +143,8 @@ export async function deleteFolder(desk: Pick<User, "id" | "actor_id">, id: numb
 /** Moves one of the desk's tracks into one of its projects, or out of any (null). False when either isn't theirs. */
 export async function moveLibraryTrack(desk: Pick<User, "id" | "actor_id">, id: number, folder: number | null) {
   return asPerson(desk.actor_id, async () => {
-    if (folder !== null && !(await q.get("SELECT 1 FROM library_folders WHERE id = ? AND user_id = ?", folder, desk.id))) return false;
+    // FOR SHARE: the project can't be deleted between this check and the move (it would fail the same-desk key).
+    if (folder !== null && !(await q.get("SELECT 1 FROM library_folders WHERE id = ? AND user_id = ? FOR SHARE", folder, desk.id))) return false;
     return !!(await q.get("UPDATE library_tracks SET folder_id = ? WHERE id = ? AND user_id = ? RETURNING id", folder, id, desk.id));
   });
 }
@@ -358,6 +359,8 @@ export async function moveTrackToProjects(desk: User, trackId: number, folder: n
     // Still there and still a live track (a second tap, or a delete meanwhile, finds nothing).
     const live = await db.get("SELECT id FROM tracks WHERE id = ? AND user_id = ? AND deleted_at IS NULL AND file_key = ?", t.id, desk.id, t.file_key);
     if (!live) return 0;
+    // The project may have been deleted since the check above; locked so it can't go before the insert.
+    if (folder !== null && !(await db.get("SELECT 1 FROM library_folders WHERE id = ? AND user_id = ? FOR SHARE", folder, desk.id))) return -1;
     const row = await db.get<{ id: number }>(
       `INSERT INTO library_tracks (user_id, title, artist, genre, file_key, original_name, mime, size, duration, bpm, peaks, folder_id, created_at)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id`,
@@ -389,6 +392,7 @@ export async function moveTrackToProjects(desk: User, trackId: number, folder: n
   });
   if (moved === null) return { ok: false, error: `Projects are full (${limit} tracks on your plan). Delete some or upgrade to add more.` };
   if (moved === 0) return { ok: false, error: "That track isn't in the collection any more." };
+  if (moved === -1) return { ok: false, error: "That project isn't there any more. Choose another." };
   await drainNow();
   await alertIfFull(desk.id, await capacity(desk));
   return { ok: true, id: moved };

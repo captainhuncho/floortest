@@ -22,11 +22,12 @@ export default async function Storage() {
   const vaultRun = await lastVaultCopy();
   const t = Date.now();
   const n = async (sql: string, ...a: unknown[]) => Number((await q.get<{ n: string | number | null }>(sql, ...a))?.n ?? 0);
+  // Finished audio: desk tracks plus Projects (library_tracks).
   const [live, stems, pending, files] = await Promise.all([
-    n("SELECT COALESCE(SUM(size), 0) AS n FROM tracks WHERE file_key IS NOT NULL AND deleted_at IS NULL"),
+    n("SELECT (SELECT COALESCE(SUM(size), 0) FROM tracks WHERE file_key IS NOT NULL AND deleted_at IS NULL) + (SELECT COALESCE(SUM(size), 0) FROM library_tracks) AS n"),
     n("SELECT COALESCE(SUM(size), 0) AS n FROM stems"),
     n("SELECT COALESCE(SUM(size), 0) AS n FROM uploads"),
-    n("SELECT COUNT(*) AS n FROM tracks WHERE file_key IS NOT NULL AND deleted_at IS NULL"),
+    n("SELECT (SELECT COUNT(*) FROM tracks WHERE file_key IS NOT NULL AND deleted_at IS NULL) + (SELECT COUNT(*) FROM library_tracks) AS n"),
   ]);
   const total = live + stems + pending;
   // Same rules as purgeExpired: unreviewed after RETAIN_UNREVIEWED_DAYS, not-for-me after RETAIN_PASSED_DAYS.

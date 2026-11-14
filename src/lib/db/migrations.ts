@@ -2299,6 +2299,11 @@ alter table library_tracks add constraint library_tracks_folder_same_desk foreig
 create index if not exists library_tracks_folder_desk on library_tracks(folder_id, user_id);`,
   },
   {
+    // library_tracks_folder_desk (0142) starts with folder_id, so the single-column index is redundant.
+    id: "0143_library_folder_index",
+    sql: `drop index if exists library_tracks_folder;`,
+  },
+  {
     // Ops → Leave beta (Safety, 13 Nov): the owner-set checklist a site-wide switch waits on (billing waits on card
     // payments and the lawyer's renewal wording). Who marked it and when also goes to admin_log. Additive only.
     id: "0144_launch_checks",
