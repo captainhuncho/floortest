@@ -17,6 +17,8 @@ const fields = {
 };
 const callout = { name: "Villagers", bpm_min: 118, bpm_max: 124, brief_wanted: "Warm rollers", brief_note: "private-looking note", closes_at: null, genres: "" };
 const receiver = { name: "Nadia", handle: "nadia", tz: "UTC" };
+/** The longest note allowed, in wide letters so it fills the most room. */
+const NOTE_80 = "Warm-up house for Friday, send me rollers WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW".padEnd(80, "W");
 const decode = async (png: Buffer, width: number) => {
   const { data, info } = await sharp(png).resize(width).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   return jsQR(new Uint8ClampedArray(data), info.width, info.height)?.data;
@@ -169,8 +171,8 @@ test("no block's ink touches another block, the QR row or the card's edges", asy
   const sizes = { story: { width: 1080, height: 1920, scale: 4 }, square: { width: 1080, height: 1080, scale: 3 } } as const;
   for (const format of ["story", "square"] as const) {
     const { width, height, scale } = sizes[format];
-    for (const text of heavy) for (const [name, title, wanted, bpm] of [[text, "", "", null], [text, text, text, 120], ["Nadia", text, text, 120]] as const) {
-      const card = cardFields({ ...receiver, name }, { ...callout, name: title, brief_wanted: wanted, bpm_min: bpm, bpm_max: bpm });
+    for (const text of heavy) for (const [name, title, wanted, bpm, note] of [[text, "", "", null, ""], [text, text, text, 120, ""], ["Nadia", text, text, 120, ""], ["Nadia", text, text, 120, text], [text, text, text, 120, NOTE_80]] as const) {
+      const card = cardFields({ ...receiver, name }, { ...callout, name: title, brief_wanted: wanted, bpm_min: bpm, bpm_max: bpm }, note);
       const qr = await QRCode.toBuffer(card.target, { errorCorrectionLevel: "M", margin: 4, scale });
       const qrSize = (await sharp(qr).metadata()).width!;
       const { layers, qrTop } = await stackText(format, card, qrSize);
@@ -378,4 +380,34 @@ test("Inter is used only by the server renderer and never served", () => {
   assert.deepEqual(hits.sort(), ["src/lib/callout-card/render.ts"]);
   assert.equal(fs.existsSync(path.join(process.cwd(), "public/fonts/Inter-Bold.ttf")), false);
   assert.match(fs.readFileSync(path.join(process.cwd(), "src/lib/callout-card/render.ts"), "utf8"), /^import "server-only";/);
+});
+
+test("the owner's note prints under the title on both cards, cleaned, and still leaves the QR readable", async () => {
+  const { renderCard, stackText, NOTE_MAX } = await import("../src/lib/callout-card/render");
+  const { cardFields } = await import("../src/lib/callout-card/fields");
+  const client = await import("../src/app/dashboard/collections/callout-card");
+  assert.equal(client.NOTE_MAX, NOTE_MAX, "the sheet and the route allow the same length");
+  assert.equal(NOTE_80.length, NOTE_MAX);
+  const plain = cardFields(receiver, callout);
+  const noted = cardFields(receiver, callout, "  Out Friday \u202e🔥 send rollers\n ");
+  assert.equal(plain.note, "");
+  assert.equal(noted.note, "Out Friday send rollers", "emoji, controls and direction overrides out, spaces tidied");
+  for (const format of ["story", "square"] as const) {
+    const without = await stackText(format, plain, 132);
+    const withNote = await stackText(format, cardFields(receiver, callout, NOTE_80), 132);
+    assert.equal(withNote.layers.length >= without.layers.length, true, `${format}: the note is a block of its own`);
+    const png = await renderCard(format, cardFields(receiver, callout, NOTE_80), null);
+    assert.equal(await decode(png, 1080), plain.target, `${format}: QR still reads with the longest note`);
+  }
+});
+
+test("on the square card a long note wins over the brief line when both can't fit", async () => {
+  const { stackText } = await import("../src/lib/callout-card/render");
+  const QRCode = (await import("qrcode")).default;
+  const crowded = { ...fields, name: "W".repeat(40), callout: "W".repeat(60), details: "W".repeat(200), note: NOTE_80 };
+  const qr = await QRCode.toBuffer(crowded.target, { errorCorrectionLevel: "M", margin: 4, scale: 3 });
+  const qrSize = (await sharp(qr).metadata()).width!;
+  const { layers, qrTop } = await stackText("square", crowded, qrSize);
+  assert.ok(qrTop + qrSize <= 1080 - 48, "everything placed above the bottom margin");
+  assert.ok(layers.length >= 4, "kicker, name, callout and note all placed");
 });
