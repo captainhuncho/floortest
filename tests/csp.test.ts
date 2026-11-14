@@ -12,7 +12,7 @@ test("production pages: script-src has a fresh nonce and 'strict-dynamic', never
   const { proxy } = await import("../src/proxy");
   const nonces = new Set<string>();
   for (const path of ["/", "/login", "/privacy", "/dashboard/review", "/api/health"]) {
-    const res = proxy(new NextRequest(`https://floortest.app${path}`));
+    const res = (await proxy(new NextRequest(`https://floortest.app${path}`)));
     const csp = res.headers.get("content-security-policy") ?? "";
     const script = scriptSrc(csp);
     const nonce = script.match(/'nonce-([A-Za-z0-9+/=]{22,})'/)?.[1];
@@ -66,10 +66,10 @@ test("verification proof files keep their own stricter policy: the proxy doesn't
   const { NextRequest } = await import("next/server");
   const { proxy, OWN_CSP } = await import("../src/proxy");
   assert.equal(OWN_CSP.length, 1, "only the proof file route sets its own policy");
-  const proof = proxy(new NextRequest("https://floortest.app/api/admin/verification-proofs/12"));
+  const proof = (await proxy(new NextRequest("https://floortest.app/api/admin/verification-proofs/12")));
   assert.equal(proof.headers.get("content-security-policy"), null, "the route's own CSP stands (tests/verification-proposals.test.ts)");
   for (const path of ["/api/admin/verification-proofs-x", "/api/admin/verification-proofs", "/api/admin/verification-proofs/upload", "/api/admin/verification-proofs/12/x", "/admin/verification"]) {
-    const csp = proxy(new NextRequest(`https://floortest.app${path}`)).headers.get("content-security-policy") ?? "";
+    const csp = (await proxy(new NextRequest(`https://floortest.app${path}`))).headers.get("content-security-policy") ?? "";
     assert.match(csp, /frame-ancestors 'none'/, `${path} keeps the page policy`);
   }
   const src = fs.readFileSync(new URL("../src/lib/verification-proposals.ts", import.meta.url), "utf8");

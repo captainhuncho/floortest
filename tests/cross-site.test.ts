@@ -27,13 +27,13 @@ test("the proxy answers a cross-site API write 403 before any route runs", async
   Object.assign(process.env, { SITE_PASSWORD: "", OPS_URL: "", APP_URL: OWN });
   const { NextRequest } = await import("next/server");
   const { proxy } = await import("../src/proxy");
-  const req = (headers: Record<string, string>, method = "POST", url = `${OWN}/api/v1/tracks/1/decision`) => proxy(new NextRequest(url, { method, headers }));
-  const refused = req({ "sec-fetch-site": "cross-site", origin: "https://evil.example" });
+  const req = async (headers: Record<string, string>, method = "POST", url = `${OWN}/api/v1/tracks/1/decision`) => (await proxy(new NextRequest(url, { method, headers })));
+  const refused = (await req({ "sec-fetch-site": "cross-site", origin: "https://evil.example" }));
   assert.equal(refused.status, 403);
   assert.match(refused.headers.get("content-security-policy") ?? "", /frame-ancestors 'none'/, "the refusal still carries the CSP");
-  assert.notEqual(req({ "sec-fetch-site": "same-origin", origin: OWN }).status, 403);
-  assert.notEqual(req({}).status, 403, "the phone app and webhooks send no browser headers");
-  assert.notEqual(req({ "sec-fetch-site": "cross-site" }, "GET", `${OWN}/api/health`).status, 403, "reading is untouched");
+  assert.notEqual((await req({ "sec-fetch-site": "same-origin", origin: OWN })).status, 403);
+  assert.notEqual((await req({})).status, 403, "the phone app and webhooks send no browser headers");
+  assert.notEqual((await req({ "sec-fetch-site": "cross-site" }, "GET", `${OWN}/api/health`)).status, 403, "reading is untouched");
 });
 
 function files(dir: string): string[] {
