@@ -188,7 +188,7 @@ test("the invite link counts tries before looking anything up, gate or not", asy
 test("sign-up claims the invite inside the account transaction and rolls back when it was claimed first", async () => {
   const { readFileSync } = await import("node:fs");
   const src = readFileSync(new URL("../src/app/(auth)/actions.ts", import.meta.url), "utf8");
-  const tx = src.slice(src.indexOf("return await q.tx(async (db) => {"), src.indexOf("} catch (e) {", src.indexOf("return await q.tx(async (db) => {")));
+  const tx = src.slice(src.indexOf("const created = await q.tx(async (db) => {"), src.indexOf("} catch (e) {", src.indexOf("const created = await q.tx(async (db) => {")));
   assert.match(tx, /INSERT INTO users/);
   assert.match(tx, /claimPersonalInvite\(db, invite\.valid && invite\.personal \? invite\.code : null, a\.email\)/, "the claim runs in the same transaction as the account");
   assert.match(tx, /throw INVITE_GONE/, "a lost claim rolls the account back");
@@ -229,7 +229,7 @@ test("pages that honour a link check it too: verify-email's 48 hours, sign-up's 
   assert.match(signup, /if \(inviteCode && \(await personalInviteGone\(inviteCode\)\)\) redirect\("\/invite\/used"\)/, "a dead personal invite never shows the form");
   assert.match(signup, /if \(sp\.team && !team\) redirect\(`\/join\//, "a dead team invite goes to the join page, which says so");
   const auth = read("src/app/(auth)/actions.ts");
-  const tx = auth.slice(auth.indexOf("return await q.tx(async (db) => {"), auth.indexOf("} catch (e) {", auth.indexOf("return await q.tx(async (db) => {")));
+  const tx = auth.slice(auth.indexOf("const created = await q.tx(async (db) => {"), auth.indexOf("} catch (e) {", auth.indexOf("const created = await q.tx(async (db) => {")));
   assert.match(tx, /UPDATE account_invites SET accepted_at = \? WHERE id = \? AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > \? RETURNING/, "the team invite is accepted in the account transaction");
   assert.match(tx, /else if \(!open && !invite\.valid\) throw TEAM_GONE/, "when the team invite was what let them in, a lost accept rolls the account back");
 });

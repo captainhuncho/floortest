@@ -163,6 +163,33 @@ test("fix 1: when the site-wide unchecked cap is full, the connection's slot is 
   }
 });
 
+test("fix 1: an unchecked sign-up that fails at the last step (lost race, any error) hands both slots back", async () => {
+  await openSignup();
+  const { q } = await import("../src/lib/db");
+  // Make the account insert fail the way a lost race does (duplicate key, 23505) or with any other error, for two emails.
+  await q.run(`CREATE OR REPLACE FUNCTION test_signup_fail() RETURNS trigger AS $$
+    BEGIN
+      IF NEW.email = 'race@example.org' THEN RAISE EXCEPTION 'duplicate' USING ERRCODE = '23505'; END IF;
+      IF NEW.email = 'boom@example.org' THEN RAISE EXCEPTION 'boom'; END IF;
+      RETURN NEW;
+    END $$ LANGUAGE plpgsql`);
+  await q.run("CREATE TRIGGER test_signup_fail BEFORE INSERT ON users FOR EACH ROW EXECUTE FUNCTION test_signup_fail()");
+  try {
+    const ip = "198.51.100.9";
+    const before = await count("signup_open_all", "all");
+    const lost = await trySignup(ip, signupForm({ email: "race@example.org" }));
+    assert.match(errorOf(lost) ?? "", /^We couldn't create an account with those details/, "a lost race reads as taken");
+    await assert.rejects(trySignup(ip, signupForm({ email: "boom@example.org" })), /boom/, "any other error still surfaces");
+    assert.equal(await count("signup_open_ip", ip), 0, "the connection's slots came back");
+    assert.equal(await count("signup_open_all", "all"), before, "and the site-wide ones");
+    const ok = await trySignup(ip, signupForm());
+    assert.ok(ok.redirect, "so a real sign-up from the same connection still goes through");
+  } finally {
+    await q.run("DROP TRIGGER IF EXISTS test_signup_fail ON users");
+    await q.run("DROP FUNCTION IF EXISTS test_signup_fail()");
+  }
+});
+
 test("fix 3: a throwaway inbox is refused, with or without a trailing dot", async () => {
   const { isThrowawayEmail } = await import("../src/lib/signup-guard");
   const { normalEmail } = await import("../src/lib/email-normal");
