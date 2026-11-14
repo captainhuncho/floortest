@@ -32,7 +32,7 @@ import { annotateRefusal, opsAccessFor, staffOf, suspendRefusal } from "@/lib/op
 import { PERMS, ROLE_PERMS, ROLES, type Perm, type Role } from "@/lib/ops-perms";
 import { grantablePlan, type PlanRequest } from "@/lib/plan-requests";
 import { flash } from "@/lib/flash";
-import { isTargeted, setSwitch, setSwitchRule, SWITCHES, type SwitchKey } from "@/lib/switches";
+import { isTargeted, setSwitch, setSwitchRule, switchState, SWITCHES, type SwitchKey } from "@/lib/switches";
 import { LAUNCH_CHECKS, openBlockers, setLaunchCheck, type LaunchCheck } from "@/lib/launch-checks";
 import { describeRule, readRule, ruleFromForm, MAX_RULE_ACCOUNTS } from "@/lib/switch-rules";
 import { drainNow, retireTrackFiles } from "@/lib/deletion";
@@ -1001,6 +1001,9 @@ export async function resolveAllIncidents(kind: string) {
 export async function flipSwitch(key: SwitchKey, on: boolean) {
   const a = await requireAdminAction("super");
   if (!(key in SWITCHES)) return fail("Unknown switch");
+  // Already that way (a stale tab, a double click): write nothing. For the site lock a write is a new generation, which
+  // would quietly sign every browser out of the gate.
+  if ((await switchState(key, q)).on === on) return done(`${SWITCHES[key].label}: already ${on ? "on" : "off"}`);
   // A switch waiting on the owner's checklist (Ops → Leave beta) can't be turned on from any page; off always works.
   const open = on ? await openBlockers(key) : [];
   if (open.length) {

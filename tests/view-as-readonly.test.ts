@@ -16,12 +16,12 @@ test("a change request during view-as is refused by the proxy, whatever its meth
   const set = fs.readFileSync("src/lib/auth.ts", "utf8").match(/export const VIEW_AS_COOKIE = "([^"]+)"/)?.[1];
   assert.equal(VIEW_AS_COOKIE_NAME, set, "the proxy names the same cookie auth.ts sets");
   for (const method of ["POST", "PUT", "PATCH", "DELETE"]) {
-    const res = proxy(new NextRequest("https://floortest.app/dashboard/collections/1.png", { method, body: method === "DELETE" ? null : new FormData(), headers: { cookie: COOKIE } }));
+    const res = (await proxy(new NextRequest("https://floortest.app/dashboard/collections/1.png", { method, body: method === "DELETE" ? null : new FormData(), headers: { cookie: COOKIE } })));
     assert.equal(res.status, 303, `${method} refused`);
     assert.match(res.headers.get("location") ?? "", /\/dashboard\/floor\?readonly=1$/);
   }
-  for (const path of ["/dashboard/settings", "/dashboard/exit-view"]) assert.notEqual(proxy(new NextRequest(`https://floortest.app${path}`, { headers: { cookie: COOKIE } })).status, 303, `GET ${path} goes through`);
-  assert.notEqual(proxy(new NextRequest("https://floortest.app/dashboard/settings", { method: "POST", body: new FormData() })).status, 303, "no view cookie: no refusal");
+  for (const path of ["/dashboard/settings", "/dashboard/exit-view"]) assert.notEqual((await proxy(new NextRequest(`https://floortest.app${path}`, { headers: { cookie: COOKIE } }))).status, 303, `GET ${path} goes through`);
+  assert.notEqual((await proxy(new NextRequest("https://floortest.app/dashboard/settings", { method: "POST", body: new FormData() }))).status, 303, "no view cookie: no refusal");
 });
 
 test("the real matcher sends every page and action path through the proxy, whatever it ends in", async () => {
@@ -49,7 +49,7 @@ test("the proxy sets the read mark on GET and HEAD only, and strips any copy a c
   const { proxy } = await import("../src/proxy");
   const { readMarker, READ_HEADER } = await import("../src/lib/read-marker");
   const forwarded = (res: Response) => res.headers.get(`x-middleware-request-${READ_HEADER}`);
-  assert.equal(forwarded(proxy(new NextRequest("https://floortest.app/dashboard/floor", { headers: { [READ_HEADER]: "client" } }))), readMarker());
-  assert.equal(forwarded(proxy(new NextRequest("https://floortest.app/dashboard/floor", { method: "HEAD" }))), readMarker());
-  assert.equal(forwarded(proxy(new NextRequest("https://floortest.app/dashboard/floor", { method: "POST", body: new FormData(), headers: { [READ_HEADER]: readMarker() } }))), null, "a POST never carries it, even if sent");
+  assert.equal(forwarded((await proxy(new NextRequest("https://floortest.app/dashboard/floor", { headers: { [READ_HEADER]: "client" } })))), readMarker());
+  assert.equal(forwarded((await proxy(new NextRequest("https://floortest.app/dashboard/floor", { method: "HEAD" })))), readMarker());
+  assert.equal(forwarded((await proxy(new NextRequest("https://floortest.app/dashboard/floor", { method: "POST", body: new FormData(), headers: { [READ_HEADER]: readMarker() } })))), null, "a POST never carries it, even if sent");
 });

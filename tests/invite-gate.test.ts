@@ -59,15 +59,15 @@ test("guessing is capped: after 20 tries in ten minutes even a good code gets Co
 test("the gate sends invite emails' sign-up links to the invite check and keeps everything else behind the password", async () => {
   const { NextRequest } = await import("next/server");
   const { proxy } = await import("../src/proxy");
-  const go = (p: string) => proxy(new NextRequest(`${SITE}${p}`));
+  const go = async (p: string) => (await proxy(new NextRequest(`${SITE}${p}`)));
 
-  const old = go(`/signup?invite=${GOOD}&handle=eve`);
+  const old = (await go(`/signup?invite=${GOOD}&handle=eve`));
   assert.equal(old.status, 307, "links in invites already sent still work");
   const to = new URL(old.headers.get("location")!);
   assert.equal(to.pathname, `/invite/${GOOD}`);
   assert.equal(to.searchParams.get("handle"), "eve");
 
-  assert.equal(go(`/invite/${GOOD}`).headers.get("x-middleware-rewrite"), null, "the invite check itself is open");
+  assert.equal((await go(`/invite/${GOOD}`)).headers.get("x-middleware-rewrite"), null, "the invite check itself is open");
   for (const p of ["/signup", "/pricing", "/dashboard/floor"])
-    assert.match(go(p).headers.get("x-middleware-rewrite") ?? "", /\/coming-soon/, `${p} stays behind the password`);
+    assert.match((await go(p)).headers.get("x-middleware-rewrite") ?? "", /\/coming-soon/, `${p} stays behind the password`);
 });

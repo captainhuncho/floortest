@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { now, q, type Queryable } from "./db";
 import { env } from "./env";
 import { readRule, ruleCovers, ruleIsLost, type SwitchRule, type SwitchSubject } from "./switch-rules";
+import { forgetGateLock } from "./site-gate";
 
 /**
  * Site-wide switches, flipped from Admin → Feature switches with no deploy. Each is off or on;
@@ -77,6 +78,11 @@ export const SWITCHES = {
     description: "Maintenance switch: every receiver's link stops taking new tracks, with a short notice to senders. Nothing is lost.",
     initial: false,
   },
+  site_lock: {
+    label: "Site lock (coming soon)",
+    description: "On: floortest.app shows only the coming-soon page until a visitor enters the site password, signs in or follows a live invite; receiving links stay open. Off: the site is open to everyone. Turning it on again signs every browser out of the lock. Does nothing without SITE_PASSWORD. Turning it off on production is the owner's call.",
+    initial: true,
+  },
 } as const;
 export type SwitchKey = keyof typeof SWITCHES;
 /** Switches read for an account, which can carry a rule. */
@@ -141,6 +147,8 @@ export async function setSwitch(key: SwitchKey, on: boolean, adminId: number) {
     adminId,
     now(),
   );
+  // This process reads the new lock on its next request; the proxy and other instances within ~5 s (lib/site-gate).
+  if (key === "site_lock") forgetGateLock();
 }
 
 const isSuperAdmin = (who: SwitchSubject | null) => !!who?.email && env.adminEmails.includes(who.email.toLowerCase());

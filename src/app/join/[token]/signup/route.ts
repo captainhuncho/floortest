@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { inviteBySecret } from "@/lib/account-members";
-import { GATE_COOKIE, GATE_DAYS, gatePassword, gateToken } from "@/lib/site-gate";
+import { GATE_COOKIE, GATE_DAYS, gatePass } from "@/lib/site-gate";
 import { TEAM_INVITE_COOKIE } from "@/lib/next-path";
 
 /**
@@ -14,6 +14,7 @@ export async function GET(req: Request, ctx: RouteContext<"/join/[token]/signup"
   const res = NextResponse.redirect(new URL(`/signup?team=${encodeURIComponent(token)}`, req.url));
   // Remembered through "Sign up with Google" too, which leaves the site and comes back without the address.
   res.cookies.set(TEAM_INVITE_COOKIE, token, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 3600 });
-  if (gatePassword()) res.cookies.set(GATE_COOKIE, gateToken(), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: GATE_DAYS * 86_400 });
+  const pass = await gatePass();
+  if (pass) res.cookies.set(GATE_COOKIE, pass, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: GATE_DAYS * 86_400 });
   return res;
 }

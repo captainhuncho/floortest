@@ -10,7 +10,7 @@ import { cache } from "react";
 import { now, q, USER_COLUMNS, type User } from "./db";
 import { env, isProd } from "./env";
 import { opsSessionLive } from "./ops";
-import { GATE_COOKIE, GATE_DAYS, gatePassword, gateToken } from "./site-gate";
+import { GATE_COOKIE, GATE_DAYS, gatePass } from "./site-gate";
 import { deviceLabel } from "./device-label";
 import { OLD_SESSION_COOKIE, readSessionToken, sessionCookie, touchSession, WEB_IDLE_MS } from "./sessions";
 
@@ -61,8 +61,8 @@ export async function createSession(userId: number) {
   });
   if (COOKIE !== OLD_COOKIE) jar.delete(OLD_COOKIE);
   // While the site is behind the coming-soon gate, a real sign-in lets that browser through it.
-  if (gatePassword())
-    (await cookies()).set(GATE_COOKIE, gateToken(), { httpOnly: true, sameSite: "lax", secure: isProd, path: "/", maxAge: GATE_DAYS * 86_400 });
+  const pass = await gatePass();
+  if (pass) (await cookies()).set(GATE_COOKIE, pass, { httpOnly: true, sameSite: "lax", secure: isProd, path: "/", maxAge: GATE_DAYS * 86_400 });
 }
 
 /** Hash of this browser's session token, or null when signed out. */
