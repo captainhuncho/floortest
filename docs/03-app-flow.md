@@ -43,8 +43,9 @@ On /signup a wrong invite code counts: 5 an hour per email, 20 an hour per conne
                  └─ account exists ──► sign-in path below
 * while switch open_signup is off, only a personal Ops invite opens an account: the sign-up link in the invite email, with the email it went to (no code to type; the link carries it, and it confirms the email). Without the link, or with another email, sign-up says it's invite-only. Google sign-up with that email needs no link (Google proved the email); "No invite? Join the waitlist" ──► /#waitlist
 ```
-A new desk has no collection (owner, 15 Oct), and its link is open anyway: tracks sent to it land straight in the Review Queue, unsorted (`tracks.collection_id` empty; intake only refuses a paused link, a closed or full collection, or a full desk). The Floor's Your link says "Sends tracks to your Review Queue", the checklist suggests a collection for the callout (a brief and a closing date), and Account's routing menu shows "Review Queue (no collection)". Making a collection ("Send new tracks here now", on by default) points the link at it; from then on a closed collection stops uploads as before.
+A new desk has no collection (owner, 15 Oct), and its link is open anyway: tracks sent to it land straight in the Review Queue, unsorted (`tracks.collection_id` empty; intake only refuses a paused link, a closed or full collection, or a full desk). The Floor's Your link says "Sends tracks to your Review Queue", and Account's routing menu shows "Review Queue (no collection)". Making a collection ("Send new tracks here now", on by default) points the link at it; from then on a closed collection stops uploads as before.
 
+Getting started (Desk, 13 Nov): on the Floor, the account owner on their own desk sees five steps read from one query (`gettingStarted` in `src/lib/getting-started.ts`). Copying or sharing the link anywhere (the Floor's link row, Account's link card, a callout card, the caption) calls `markLinkShared`, which sets `users.link_shared_at` once. Hide this runs `dismissOnboarding`. The card is gone when hidden, when all five are done, or 30 days after sign-up; while it loads, a skeleton of its shape shows.
 ## Receiver: sign-in
 ```
 /login ─┬─ email + password ──► (two-factor on?) /login/verify (code, recovery code, or "Use a passkey instead") ──► Floor
@@ -68,6 +69,9 @@ The ticket between the password (or email code, reset link, Google) and /login/v
 
 ## Receiver: daily loop
 ```
+Any dashboard page while a notice is live (show from ≤ now < hide after, not ended; the soonest if several; never in admin View as):
+   thin strip under the top bar, role="status": "<title> Sun 15 Nov, 02:00–02:20. <detail> More" in the person's own time zone
+   ─► × (44 px) closes it at once ─► saved for the person (notice_dismissals, their own row) ─► never rendered for them again, any device
 Floor (waiting count ─► Start with the oldest; Up next rows open the track) ─► Queue (phones: the open track as a card above the list, ‹ › or a sideways swipe to the next one) ─► play ─► Keep (K) ──► Prepare ─► Download kept ─► name folder ─► ZIP
                               ├─ Not for me (X)    └─ Files only · Start a new batch (confirm) · Played it out (any day)
                               └─ Reply (R) ──► sender email
@@ -76,7 +80,7 @@ Review panel: title · one meta line · tags (sets / release / AI / duplicate / 
    Details (closed, remembered) ─► format & size · dates · Download · Move · Delete (confirm) · sender email, links, stats, note, last 3 events · Full history →
 Queue (List) ─► Select ─► tick tracks / Select all ─► bar: Keep · Not for me · Needs review · Move to… · Download · Delete ─► confirm ─► done (toast)
    Esc or Done leaves select mode; in select mode a tap on a row ticks it (never plays or opens it)
-Floor ─► Collections ─► New collection / Open collection ─► Add tracks (owner: choose WAV/MP3s, edit titles, rights tick, upload) ─► Edit collection · Download collection · Files only · Send new tracks here
+Floor ─► Collections ─► New collection / Open collection ─► Add tracks (owner: choose WAV/MP3s, edit titles, rights tick, upload; they land in Projects, Open Projects) ─► Edit collection · Download collection · Files only · Send new tracks here
 Nightly, only if Settings → Receiving → "When a callout closes" is on ─► a link on a collection past its close date ─► moves to the newest open collection ─► email to the receiver · bell: "Your link now goes to …" · activity: "Link moved on its own to"
 Floor ─► Send ─► their-link ─► upload ─► Sent list (≤10 days open, older folded) ─► Track → /receipt/<token>
    /receipt/<token> and /sent/<link> show the sender's email masked (m•••@g•••.com); End this link now still works
@@ -202,6 +206,9 @@ Users, ops_shell on (src/app/admin/accounts/crm/) ─► saved view tabs (?view=
 Feedback ─► New / Planned / Fixed / Won't do (OpsButton) ─► spinner after 150 ms ─► ✓ in place + toast; a refusal
    ("That isn't a feedback status", "That feedback is gone") under the switch with Retry
 Growth ─► Growth & decisions ─► findings · funnel · projection · sources · cohorts · pipeline
+Growth ─► Notices (permission Announcements) ─► title (80) · one line of detail (200) · optional /link · show from · update starts · update ends · hide after
+   ─► Add notice ─► admin log "created notice"; Edit (?edit=id) ─► "edited notice"; End early (confirm) ─► "ended notice"
+   lists Showing now · Upcoming · Past; the dashboard strip follows within 30 s (one cached read per server, lib/site-notices.ts)
 Moderation ─► search ─► pick a track ─► Play, only with an open takedown claim (5-minute file link; admin log "played track"; otherwise 404 + "refused play")
    ─► Keep ─► marked reviewed (tracks.ops_reviewed_at/by; "Kept by @x" on the track, a Reviewed chip in results; admin log "reviewed, kept")
 Moderation, ops_shell on ─► the signal queue (takedown claim · blocked sender · late scan, newest first) ─► pick a row (j/k)

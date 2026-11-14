@@ -41,7 +41,7 @@ export const AREAS: readonly AreaDef[] = [
     sections: [
       { title: "Decide", pages: [{ href: "/admin/growth", label: "Growth & decisions", icon: "chart" }] },
       { title: "Beta access", pages: [{ href: "/admin/waitlist", label: "Waitlist", icon: "list" }, { href: "/admin/invites", label: "Invites", icon: "ticket" }, { href: "/admin/plan-requests", label: "Plan requests", icon: "rocket" }] },
-      { title: "Reach", pages: [{ href: "/admin/announcements", label: "Announcements", icon: "mail" }] },
+      { title: "Reach", pages: [{ href: "/admin/announcements", label: "Announcements", icon: "mail" }, { href: "/admin/notices", label: "Notices", icon: "alert" }] },
       { title: "Revenue", pages: [{ href: "/admin/revenue", label: "Revenue", icon: "chart" }, { href: "/admin/plans", label: "Plans & prices", icon: "list" }] },
     ],
   },
@@ -52,7 +52,7 @@ export const AREAS: readonly AreaDef[] = [
     key: "p",
     sections: [
       { title: "Insight", pages: [{ href: "/admin/metrics", label: "Metrics", icon: "chart" }, { href: "/admin/visits", label: "Visits", icon: "chart" }, { href: "/admin/usage", label: "Feature use", icon: "chart" }] },
-      { title: "Control", pages: [{ href: "/admin/switches", label: "Feature switches", icon: "flag" }, { href: "/admin/content", label: "Site content", icon: "list" }] },
+      { title: "Control", pages: [{ href: "/admin/switches", label: "Feature switches", icon: "flag" }, { href: "/admin/leave-beta", label: "Leave beta", icon: "rocket" }, { href: "/admin/content", label: "Site content", icon: "list" }] },
     ],
   },
   {
