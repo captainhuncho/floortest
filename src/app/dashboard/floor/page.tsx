@@ -1,5 +1,6 @@
 import { trackUse } from "@/lib/usage";
 import { Onboarding, OnboardingSkeleton } from "./Onboarding";
+import { showsGettingStarted } from "@/lib/getting-started";
 import { Suspense } from "react";
 import Link from "next/link";
 import { requireUser, viewingAs } from "@/lib/auth";
@@ -361,7 +362,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
 
             {/* Getting started helps a new desk; on a busy one the queue comes first. Only the account owner on their own
                 desk sees it: not team members, not an admin in View as. */}
-            {user.role === "owner" && !view && user.actor_id === user.id && (
+            {showsGettingStarted(user, !!view) && (
               <Suspense fallback={<OnboardingSkeleton />}>
                 <Onboarding user={user} />
               </Suspense>

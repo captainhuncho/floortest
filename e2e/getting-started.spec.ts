@@ -46,3 +46,17 @@ test("a new owner sees five steps, copying the link ticks one off, and Hide this
   await page.reload();
   await expect(page.getByRole("heading", { name: "Getting started" })).toHaveCount(0);
 });
+
+test("copying the link on the Account page ticks Share your link on the Floor", async ({ page }) => {
+  const s = `${stamp}b`;
+  await signUp(page, { kind: "DJ", first: "Gia", last: "Copy", handle: `gs${s}`, email: `gs+${s}@example.test`, password: desk.password });
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/dashboard/account");
+  await page.getByRole("button", { name: "Copy", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Copied", exact: true })).toBeVisible();
+  await expect.poll(async () => {
+    await page.goto("/dashboard/floor");
+    return card(page).getByRole("listitem").filter({ hasText: /Share your link\s*\(done\)/ }).count();
+  }, { timeout: 15_000 }).toBe(1);
+  await expect(card(page).getByText("1 of 5")).toBeVisible();
+});
