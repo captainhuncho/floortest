@@ -42,6 +42,14 @@ export function cardShows(f: StartFacts, steps: Step[], at = now()): boolean {
 }
 
 /**
+ * Who sees the card on the Floor: the account owner on their own desk only. Never team members, never someone acting
+ * for the owner (actor_id is the signed-in person), never an admin's View as.
+ */
+export function showsGettingStarted(user: { id: number; actor_id: number; role: string }, viewingAs: boolean): boolean {
+  return user.role === "owner" && !viewingAs && user.actor_id === user.id;
+}
+
+/**
  * The card for an account owner on their own desk, or null. One query; a track moved to Projects still counts as the
  * first track (its desk row is kept, retired).
  */

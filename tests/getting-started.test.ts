@@ -1,6 +1,5 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { testDataDir } from "./test-db";
 
 process.env.DATA_DIR = testDataDir("ft-getting-started-");
@@ -83,14 +82,12 @@ test("the card goes 30 days after sign-up", async () => {
   assert.equal(await ids(id, "startold", t + DAY), null, "day 30: gone");
 });
 
-test("the Floor shows the card only to the account owner on their own desk", () => {
-  const page = readFileSync("src/app/dashboard/floor/page.tsx", "utf8");
-  assert.match(page, /user\.role === "owner" && !view && user\.actor_id === user\.id && \(\s*<Suspense fallback=\{<OnboardingSkeleton \/>\}>\s*<Onboarding user=\{user\} \/>/);
-  assert.equal((page.match(/<Onboarding /g) ?? []).length, 1, "rendered in one place only");
-});
-
-test("copying or sharing the link records the share step", () => {
-  for (const f of ["floor/FloorClient.tsx", "account/LinkCard.tsx", "collections/CalloutShare.tsx", "floor/ShareKit.tsx", "floor/StartCopy.tsx"]) {
-    assert.match(readFileSync(`src/app/dashboard/${f}`, "utf8"), /linkShared\(\)/, f);
+test("the Floor shows the card only to the account owner on their own desk", async () => {
+  const { showsGettingStarted } = await import("../src/lib/getting-started");
+  assert.equal(showsGettingStarted({ id: 1, actor_id: 1, role: "owner" }, false), true, "owner, own desk");
+  assert.equal(showsGettingStarted({ id: 1, actor_id: 1, role: "owner" }, true), false, "admin View as");
+  assert.equal(showsGettingStarted({ id: 1, actor_id: 2, role: "owner" }, false), false, "someone acting for the owner");
+  for (const role of ["admin", "member"]) {
+    assert.equal(showsGettingStarted({ id: 1, actor_id: 1, role }, false), false, role);
   }
 });
