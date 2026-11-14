@@ -75,7 +75,7 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith(".ts"))) {
  * quietly working on their own desk.
  */
 const ROUTES: Record<string, Record<string, "admin" | "member" | "public">> = {
-  "callout-card/[id]": { GET: "member" }, // stricter inside: the account owner only
+  "callout-card/[id]": { GET: "member", POST: "member" }, // stricter inside: the account owner only (POST adds a note, same checks)
   "collection-art/[id]": { GET: "member", POST: "member", DELETE: "member" }, // like updateCollection
   "collections/[id]/upload": { POST: "admin" },
   "collections/[id]/upload/complete": { POST: "admin" },

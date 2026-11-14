@@ -5,7 +5,7 @@ import { useModalDialog } from "@/components/Dialog";
 import { Icon } from "@/components/Kit";
 import { useToast } from "@/components/Toast";
 import { GHOST_TALL, LIME } from "../kitButtons";
-import { cardCaption, cardProblem, type CardFormat } from "./callout-card";
+import { cardCaption, cardProblem, clipNote, NOTE_MAX, noteLength, type CardFormat } from "./callout-card";
 
 const CARD_TIMEOUT_MS = 20_000;
 const FORMATS: { id: CardFormat; label: string; aspect: string }[] = [
@@ -39,6 +39,10 @@ export function CalloutShare({
   const [open, setOpen] = useState(false);
   const [format, setFormat] = useState<CardFormat>("story");
   const [cards, setCards] = useState<Partial<Record<CardFormat, Card>>>({});
+  // What's typed, and what the cards on screen were made with. Never saved: it goes to the card route and is gone.
+  const [note, setNote] = useState("");
+  const [applied, setApplied] = useState("");
+  const noteId = useId();
   // Read when the sheet opens, so the server and the browser render the same thing.
   const [canShareLink, setCanShareLink] = useState(false);
   // Each opening of the sheet gets a number, so a card that arrives after the sheet closed is dropped.
@@ -56,19 +60,27 @@ export function CalloutShare({
   const close = () => {
     releaseImages();
     setCards({});
+    setNote("");
+    setApplied("");
     setFormat("story");
     setOpen(false);
   };
   const { modalProps } = useModalDialog(open, close);
 
-  async function load(f: CardFormat) {
+  async function load(f: CardFormat, words = applied) {
     const started = opening.current;
     const put = (card: Card) => {
       if (started === opening.current) setCards((c) => ({ ...c, [f]: card }));
     };
     put({ status: "loading" });
     try {
-      const res = await fetch(`/api/callout-card/${collectionId}?format=${f}`, { signal: AbortSignal.timeout(CARD_TIMEOUT_MS) });
+      // POST so the note travels in the body, never in the address.
+      const res = await fetch(`/api/callout-card/${collectionId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ format: f, note: words }),
+        signal: AbortSignal.timeout(CARD_TIMEOUT_MS),
+      });
       if (!res.ok) {
         const reason = res.status === 409 ? ((await res.json().catch(() => null)) as { reason?: string } | null)?.reason ?? null : null;
         put({ status: "problem", ...cardProblem(res.status, reason, res.headers.get("Retry-After")) });
@@ -88,6 +100,15 @@ export function CalloutShare({
     setCanShareLink(typeof navigator.share === "function");
     setOpen(true);
     void load("story");
+  }
+  function addNote(e: React.FormEvent) {
+    e.preventDefault();
+    const words = note.trim();
+    if (words === applied) return;
+    releaseImages();
+    setCards({});
+    setApplied(words);
+    void load(format, words);
   }
   function choose(f: CardFormat) {
     setFormat(f);
@@ -156,6 +177,33 @@ export function CalloutShare({
                 </button>
               ))}
             </div>
+            <form onSubmit={addNote} className="flex flex-col gap-1.5">
+              <label htmlFor={noteId} className="text-[13px] text-mute">
+                Your words on the card (optional)
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id={noteId}
+                  type="text"
+                  value={note}
+                  onChange={(e) => setNote(clipNote(e.target.value))}
+                  placeholder="Warm-up house, out on Friday"
+                  enterKeyHint="done"
+                  autoComplete="off"
+                  aria-describedby={`${noteId}-count`}
+                  className="h-11 min-w-0 flex-1 rounded-xl border border-line bg-well px-3 text-[16px] text-bone placeholder:text-mute/70 focus:border-lime/50 focus:outline-none"
+                />
+                <button type="submit" disabled={note.trim() === applied} className={`${GHOST_TALL} shrink-0 disabled:opacity-40`}>
+                  {applied && !note.trim() ? "Remove" : "Add to card"}
+                </button>
+              </div>
+              <p id={`${noteId}-count`} className="flex justify-between text-[12px] text-mute">
+                <span>Emoji don&apos;t print on the card.</span>
+                <span aria-live="polite">
+                  {noteLength(note)}/{NOTE_MAX}
+                </span>
+              </p>
+            </form>
             <div aria-live="polite" className="flex justify-center">
               {card.status === "problem" ? (
                 <div className="flex w-full flex-col items-start gap-3 rounded-xl border border-line bg-well p-3">
