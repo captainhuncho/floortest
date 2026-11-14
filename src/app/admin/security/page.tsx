@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/admin";
 import Link from "next/link";
 import { q, now } from "@/lib/db";
 import { HOLD_AFTER } from "@/lib/login-limits";
+import { SIGNUP_CAPS } from "@/lib/signup-guard";
 
 export const metadata = { title: "Security — FloorTest admin" };
 
@@ -14,7 +15,11 @@ const LOCK_IP = 20;
 const LOCK_2FA = HOLD_AFTER;
 
 const LIMITS: Record<string, string> = {
-  signup_ip: "Sign-ups per connection",
+  signup_ip: `Sign-ups per connection (limit ${SIGNUP_CAPS.ipHour} an hour)`,
+  signup_ip_day: `Sign-ups per connection per day (limit ${SIGNUP_CAPS.ipDay})`,
+  signup_all: `Sign-ups site-wide (limit ${SIGNUP_CAPS.allHour} an hour)`,
+  signup_open_ip: `Sign-ups without a working bot check, per connection (limit ${SIGNUP_CAPS.openIpDay} a day)`,
+  signup_open_all: `Sign-ups without a working bot check, site-wide (limit ${SIGNUP_CAPS.openAllDay} a day)`,
   login_code_ip: "Sign-in codes per connection",
   login_code_email: "Sign-in codes per email",
   login_code_pair: "Sign-in codes per email from one connection",
