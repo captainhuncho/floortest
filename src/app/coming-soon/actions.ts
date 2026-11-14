@@ -16,11 +16,12 @@ export async function unlockSite(_: { error?: string } | undefined, form: FormDa
   const lock = await gateLock();
   // The site is open (no password, or the lock is off): nothing to unlock.
   if (!lock) redirect(localPath(next));
+  // Checked before the password, so during an outage the answer says nothing about whether the password was right.
+  const pass = passFor(lock);
+  if (!pass) return { error: "The site can't be unlocked right now. Try again in a minute." };
   const want = Buffer.from(lock.password);
   const got = Buffer.from(String(form.get("password") ?? ""));
   if (!want.length || want.length !== got.length || !crypto.timingSafeEqual(want, got)) return { error: "That password isn't right." };
-  const pass = passFor(lock);
-  if (!pass) return { error: "The site can't be unlocked right now. Try again in a minute." };
   (await cookies()).set(GATE_COOKIE, pass, { httpOnly: true, secure: isProd, sameSite: "lax", path: "/", maxAge: GATE_DAYS * 86_400 });
   redirect(localPath(next));
 }

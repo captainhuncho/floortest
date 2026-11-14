@@ -147,7 +147,7 @@ export async function setSwitch(key: SwitchKey, on: boolean, adminId: number) {
     adminId,
     now(),
   );
-  // This process reads the new lock at once; other instances within LOCK_CACHE_MS (lib/site-gate).
+  // This process reads the new lock on its next request; the proxy and other instances within ~5 s (lib/site-gate).
   if (key === "site_lock") forgetGateLock();
 }
 

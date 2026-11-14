@@ -27,41 +27,85 @@ export function gateToken(password = gatePassword(), gen = "") {
 export type GateLock = { password: string; gen: string };
 type LockRead = { on: boolean; gen: string };
 
-/** How long the proxy trusts a read of the switch, and how long one read may take before the site stays locked. */
+/** How long the proxy trusts a read of the switch, and how long one read may take before it counts as failed. */
 export const LOCK_CACHE_MS = 5_000;
 export const LOCK_READ_TIMEOUT_MS = 1_500;
+/** A failed read is remembered this long, so an outage costs one wait every 1.5 s, not one per request. */
+export const LOCK_FAIL_CACHE_MS = 1_500;
+/**
+ * When a read fails (database waking, pool busy, outage), the last good read is used if it is at most this old, so a
+ * slow moment doesn't lock out people who hold a pass. Older than that, or none yet: locked, and no pass is good.
+ */
+export const LOCK_LAST_GOOD_MS = 30_000;
 /** A generation no pass is ever made for: used when the switch can't be read, so the site stays locked for everyone. */
 const UNREADABLE = "unreadable";
 
-let cached: { read: LockRead; at: number } | null = null;
+let cached: { read: LockRead; at: number; ok: boolean } | null = null;
+let lastGood: { read: LockRead; at: number } | null = null;
+/** One read at a time, shared by every request that arrives while it runs. */
+let inflight: { epoch: number; read: Promise<LockRead> } | null = null;
+/** Bumped by forgetGateLock(): a read that started before a flip never caches the old state. */
+let epoch = 0;
+/** How many times the switch was read from the database (tests check reads are shared and failures cached). */
+let reads = 0;
+export const lockReads = () => reads;
 
 async function readSwitch(): Promise<LockRead> {
+  reads++;
   const row = await q.get<{ on: number; updated_at: number | string }>("SELECT on_ AS on, updated_at FROM switches WHERE key = ?", "site_lock");
   // No row: never flipped, so it is at its initial state (on) with the first generation.
   return row ? { on: !!Number(row.on), gen: String(row.updated_at) } : { on: true, gen: "" };
 }
 
-async function lockState(): Promise<LockRead> {
-  if (cached && Date.now() - cached.at < LOCK_CACHE_MS) return cached.read;
+async function readWithTimeout(): Promise<LockRead> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    const read = await Promise.race([
+    return await Promise.race([
       readSwitch(),
       new Promise<never>((_, reject) => (timer = setTimeout(() => reject(new Error("site_lock read timed out")), LOCK_READ_TIMEOUT_MS))),
     ]);
-    cached = { read, at: Date.now() };
-    return read;
-  } catch (e) {
-    console.error("[site-gate] couldn't read site_lock, keeping the site locked", e);
-    return { on: true, gen: UNREADABLE };
   } finally {
     clearTimeout(timer);
   }
 }
 
-/** Forgets the cached read, so this process sees a flip at once (the admin action calls it; tests too). */
+function lockState(): Promise<LockRead> {
+  if (cached && Date.now() - cached.at < (cached.ok ? LOCK_CACHE_MS : LOCK_FAIL_CACHE_MS)) return Promise.resolve(cached.read);
+  if (inflight && inflight.epoch === epoch) return inflight.read;
+  const mine = epoch;
+  const read: Promise<LockRead> = readWithTimeout().then(
+    (r) => {
+      if (mine === epoch) {
+        cached = { read: r, at: Date.now(), ok: true };
+        lastGood = { read: r, at: Date.now() };
+      }
+      return r;
+    },
+    (e) => {
+      const recent = lastGood && Date.now() - lastGood.at <= LOCK_LAST_GOOD_MS ? lastGood.read : null;
+      console.error(`[site-gate] couldn't read site_lock, ${recent ? "using the last good read" : "keeping the site locked"}`, e);
+      const r = recent ?? { on: true, gen: UNREADABLE };
+      if (mine === epoch) cached = { read: r, at: Date.now(), ok: false };
+      return r;
+    },
+  );
+  inflight = { epoch: mine, read };
+  void read.finally(() => {
+    if (inflight?.read === read) inflight = null;
+  });
+  return read;
+}
+
+/**
+ * Forgets everything read so far, so this process sees a flip on its next request (the admin action calls it; tests
+ * too). Other instances, and the proxy's own copy of this module, see it when their cache runs out: within ~5 s
+ * everywhere, up to ~6.5 s if a read was under way.
+ */
 export function forgetGateLock() {
+  epoch++;
   cached = null;
+  lastGood = null;
+  inflight = null;
 }
 
 /** The lock in force now, or null when the site is open. */
