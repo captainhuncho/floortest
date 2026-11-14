@@ -11,6 +11,7 @@ import { closeFeedbackAskFor, fileFeedback, markFeedbackAsked } from "@/lib/feed
 import { sendReopenAlerts } from "@/lib/reopen";
 import { done } from "./common";
 import { markTourSeenFor } from "@/lib/tour-seen";
+import { dismissNoticeFor } from "@/lib/site-notices";
 
 /** Beta feedback, signed by the person who sent it (src/lib/feedback.ts). */
 export async function sendFeedback(kind: string, message: string, path: string, fromAsk = false, viewport?: number) {
@@ -29,6 +30,13 @@ export async function dismissOnboarding() {
   const u = await requireRole("admin");
   await q.run("UPDATE users SET onboarding_dismissed_at = ? WHERE id = ?", now(), u.id);
   done();
+}
+
+/** Closes an Ops notice for the signed-in person (their own row, never the desk's); it isn't rendered for them again. */
+export async function dismissNotice(noticeId: number) {
+  // requirePerson: the person, not a team desk; in an admin's view it redirects first.
+  const me = await requirePerson();
+  return dismissNoticeFor(me.id, Number(noticeId));
 }
 
 /** The first-visit tour was closed or finished: it never opens by itself again for this person (their own row, not the

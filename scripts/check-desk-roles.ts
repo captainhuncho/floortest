@@ -19,7 +19,7 @@ const ROLES: Record<string, Record<string, Need>> = {
   "account-team.ts": { inviteTeammate: "lib", cancelTeamInvite: "lib", removeTeammate: "lib", changeTeamRole: "lib", saveReplyApproval: "lib", answerHeldReply: "lib", switchDesk: "person", joinTeam: "person" },
   "batch.ts": { batchTracks: "member" }, // deleting in a batch is refused to members inside the action
   "collections.ts": { createCollection: "member", setActiveCollection: "admin", updateCollection: "member", deleteCollection: "admin" },
-  "desk.ts": { sendFeedback: "member", closeFeedbackAsk: "member", dismissOnboarding: "admin", markTourSeen: "person", lookupReceiver: "member", clearNotifications: "member", markNotificationsRead: "member", quickSearch: "member", pauseLink: "admin", resumeLink: "admin" },
+  "desk.ts": { sendFeedback: "member", closeFeedbackAsk: "member", dismissOnboarding: "admin", markTourSeen: "person", dismissNotice: "person", lookupReceiver: "member", clearNotifications: "member", markNotificationsRead: "member", quickSearch: "member", pauseLink: "admin", resumeLink: "admin" },
   "music.ts": { renameMusic: "admin", deleteMusic: "admin", moveMusic: "admin", createProject: "admin", renameProject: "admin", deleteProject: "admin", moveToProjects: "admin", moveAllToProjects: "admin" },
   "links.ts": { createShareLink: "admin", resetShareLink: "admin", revokeShareLink: "admin", addLinkRecipients: "admin", removeLinkRecipient: "admin", answerLinkRequest: "admin", setLinkRequests: "admin" },
   "review.ts": {

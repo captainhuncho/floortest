@@ -12,6 +12,7 @@ import { FEATURES, type Feature } from "@/lib/features";
 import { allPlans, FREE_PLAN } from "@/lib/plan-store";
 import { cleanTags, readJoined } from "@/lib/audience";
 import { saveAnnouncement } from "@/lib/announce";
+import { createNotice, endNotice as endSiteNotice, noticeById, readNotice, updateNotice } from "@/lib/site-notices";
 import { ADMIN_PLANS, BULK_MAX, bulkIds, SUSPEND_MAX } from "@/lib/admin-bulk";
 import type { InviteCreated, OpsResult } from "@/lib/ops-result";
 import { searchPeople, type PeopleAnswer } from "@/lib/ops-palette";
@@ -890,6 +891,34 @@ export async function publishAnnouncement(form: FormData) {
   refresh();
   await done(people.length + subscribers.length ? `Published; emailing ${people.length + subscribers.length} people` : "Published");
   redirect("/admin/announcements?published=1");
+}
+
+/** Ops → Notices: creates a notice, or saves an edit when the form carries an id. Plain text; checked in src/lib/site-notices.ts. */
+export async function saveNotice(form: FormData) {
+  const a = await requireAdminAction("announcements");
+  const n = readNotice((k) => form.get(k));
+  if ("error" in n) return fail(n.error);
+  const id = Number(form.get("id") ?? 0);
+  if (id) {
+    if (!(await updateNotice(id, n, a.id))) return fail("That notice has ended or no longer exists.");
+    await logAdmin(a.id, "edited notice", n.title, `#${id}`);
+  } else {
+    const newId = await createNotice(n, a.id);
+    await logAdmin(a.id, "created notice", n.title, `#${newId}`);
+  }
+  revalidatePath("/", "layout");
+  await done(id ? "Notice saved" : "Notice added");
+  redirect("/admin/notices");
+}
+
+/** Ops → Notices: ends a notice now; it stops showing on the next page load (other servers within 30 seconds). */
+export async function endNotice(id: number) {
+  const a = await requireAdminAction("announcements");
+  const n = await noticeById(id);
+  if (!n || !(await endSiteNotice(id, a.id))) return fail("That notice has already ended.");
+  await logAdmin(a.id, "ended notice", n.title, `#${id}`);
+  revalidatePath("/", "layout");
+  await done("Notice ended");
 }
 
 /** Moves an account to a new handle. For impersonation, the old name is released (no forwarding) and can be protected. */
