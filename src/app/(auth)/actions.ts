@@ -155,13 +155,15 @@ async function createAccount(form: FormData, a: NewAccount, opts: { googleEmail?
     return { error: TAKEN };
   }
   if ((await q.get("SELECT 1 FROM users WHERE handle = ?", a.handle)) || (await handleHeld(a.handle))) return { error: "That link is taken." };
-  // Taken last, just before the account is made, so junk attempts that fail any check above never use up the day's
-  // unchecked slots (Safety review of #535).
-  if (opts.unchecked && !(await uncheckedSignupAllowed(ip))) return { error: SIGNUP_BUSY };
   // Read before the transaction: a second query inside it would wait on the transaction's own connection.
   const terms = await termsVersion();
+  // Taken last, just before the account is made, so junk attempts that fail any check above never use up the day's
+  // unchecked slots; and handed back below unless the account is made (Safety review of #535).
+  const slots = opts.unchecked ? await claimUncheckedSlots(ip) : [];
+  if (!slots) return { error: SIGNUP_BUSY };
+  let made = false;
   try {
-    return await q.tx(async (db) => {
+    const created = await q.tx(async (db) => {
       const u = (await db.get<{ id: number }>(
         "INSERT INTO users (email, password_hash, name, first_name, last_name, handle, referred_by, invite_code, tz, signup_source, kind, terms_accepted_at, terms_version, notify_product, product_consent_at, notify_marketing, marketing_consent_at, email_verified_at, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id",
         a.email,
@@ -208,12 +210,17 @@ async function createAccount(form: FormData, a: NewAccount, opts: { googleEmail?
       // No collection is made for them: each receiver names and creates their own (owner, 15 Oct; two in the beta).
       return { id: u.id, teamAccount };
     });
+    made = true;
+    return created;
   } catch (e) {
     if (e === INVITE_GONE) return { error: "This invite has been used or has expired. Ask the person who invited you for a new one." };
     if (e === TEAM_GONE) return { error: "This invite isn't valid any more. Ask the person who invited you for a new one." };
     // Lost a race for the same email or link name.
     if ((e as { code?: string })?.code === "23505") return { error: TAKEN };
     throw e;
+  } finally {
+    // No account, whatever the reason (a spent invite, a lost race, an error): the unchecked slots go back.
+    if (!made && slots.length) await handBack(...slots).catch((err) => console.error("[signup] couldn't hand back unchecked slots", err));
   }
 }
 
@@ -226,16 +233,21 @@ const fromForm = (form: FormData, k: string, max: number) => String(form.get(k) 
 
 /**
  * A sign-up the bot check let through unchecked: 2 a day per connection, 50 a day in all, and an incident (at most
- * hourly). When the site-wide cap refuses, the connection's slot is handed back.
+ * hourly). Returns the two claimed slots (the caller hands them back if no account is made), or null when a cap
+ * refuses; then the connection's slot, if claimed, is handed back at once.
  */
-async function uncheckedSignupAllowed(ip: string) {
+async function claimUncheckedSlots(ip: string): Promise<number[] | null> {
   if (await allow("signup_unchecked_alert", "all", 1, HOUR))
-    await recordIncident("server_error", "Sign-up ran without a working bot check; tight sign-up caps are on", `caps: ${SIGNUP_CAPS.openIpDay} a day per connection, ${SIGNUP_CAPS.openAllDay} a day in all`);
+    // A fault in the alert itself never blocks sign-up.
+    await recordIncident("server_error", "Sign-up ran without a working bot check; tight sign-up caps are on", `caps: ${SIGNUP_CAPS.openIpDay} a day per connection, ${SIGNUP_CAPS.openAllDay} a day in all`).catch((err) =>
+      console.error("[signup] couldn't record the unchecked sign-up incident", err),
+    );
   const mine = await claim("signup_open_ip", ip, SIGNUP_CAPS.openIpDay, DAY);
-  if (mine === null) return false;
-  if ((await claim("signup_open_all", "all", SIGNUP_CAPS.openAllDay, DAY)) !== null) return true;
+  if (mine === null) return null;
+  const all = await claim("signup_open_all", "all", SIGNUP_CAPS.openAllDay, DAY);
+  if (all !== null) return [mine, all];
   await handBack(mine);
-  return false;
+  return null;
 }
 
 export async function signup(_: FormState, form: FormData): Promise<FormState> {
