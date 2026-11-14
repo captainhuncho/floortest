@@ -6,6 +6,8 @@ import { allPlans } from "@/lib/plan-store";
 import { clearSwitchRule, flipSwitch, saveSwitch, saveSwitchRule } from "../actions";
 import { ConfirmButton } from "../AdminUi";
 import { isTargeted, ruleCoverage, SWITCHES, switchState, type SwitchKey } from "@/lib/switches";
+import { LAUNCH_CHECKS, openBlockers } from "@/lib/launch-checks";
+import Link from "next/link";
 import { describeRule, lostWords, ruleIsLost, type SwitchRule } from "@/lib/switch-rules";
 import { ACCOUNT_TYPES, type AccountType } from "@/lib/account-types";
 
@@ -31,7 +33,9 @@ export default async function Switches() {
     (Object.keys(SWITCHES) as SwitchKey[]).map(async (key) => {
       const { on, rule } = await switchState(key);
       const reach = rule && isTargeted(key) ? await ruleCoverage(key, rule) : null;
-      return { key, on, rule, reach, handles: rule ? await handlesOf(rule.accounts) : [] };
+      // Off and waiting on the owner's checklist (Ops → Leave beta): no toggle here either; turning off always works.
+      const blocked = on ? [] : await openBlockers(key);
+      return { key, on, rule, reach, blocked, handles: rule ? await handlesOf(rule.accounts) : [] };
     }),
   );
   const planName = (id: string) => plans.find((p) => p.id === id)?.name ?? id;
@@ -44,8 +48,8 @@ export default async function Switches() {
       <section aria-labelledby="site-h" className="space-y-3">
         <h2 id="site-h" className="text-lg font-semibold">Site-wide</h2>
         <ul className="divide-y divide-line rounded-md border border-line">
-          {site.map(({ key, on, rule, reach, handles }) => (
-            <li key={key} className="flex flex-wrap items-center justify-between gap-4 p-5">
+          {site.map(({ key, on, rule, reach, blocked, handles }) => (
+            <li key={key} id={`switch-${key}`} className="flex flex-wrap items-center justify-between gap-4 p-5">
               <div className="min-w-0 max-w-2xl">
                 <p className="font-bold">{SWITCHES[key].label}</p>
                 <p className="mt-1 text-sm text-mute">{SWITCHES[key].description}</p>
@@ -53,8 +57,13 @@ export default async function Switches() {
               <div className="flex items-center gap-3">
                 <span className={`text-[13px] font-semibold ${on ? "text-lime" : "text-faint"}`}>{on ? "On" : "Off"}</span>
                 {!owner && <span className="text-[13px] text-mute">Only the owner can change this</span>}
+                {owner && blocked.length > 0 && (
+                  <Link href="/admin/leave-beta" className="text-[13px] text-mute underline underline-offset-2">
+                    Waiting on {blocked.map((c) => LAUNCH_CHECKS[c].label.toLowerCase()).join(" and ")}
+                  </Link>
+                )}
                 {/* A big switch (pins 17, 18): the track fills lime and the knob slides; it still asks before changing. */}
-                {owner && (
+                {owner && !blocked.length && (
                 <ConfirmButton
                   action={flipSwitch.bind(null, key, !on)}
                   message={`Turn ${on ? "off" : "on"} "${SWITCHES[key].label}"? It takes effect straight away for everyone.`}

@@ -12,6 +12,7 @@ import { FEATURES, type Feature } from "@/lib/features";
 import { allPlans, FREE_PLAN } from "@/lib/plan-store";
 import { cleanTags, readJoined } from "@/lib/audience";
 import { saveAnnouncement } from "@/lib/announce";
+import { createNotice, endNotice as endSiteNotice, noticeById, readNotice, updateNotice } from "@/lib/site-notices";
 import { ADMIN_PLANS, BULK_MAX, bulkIds, SUSPEND_MAX } from "@/lib/admin-bulk";
 import type { InviteCreated, OpsResult } from "@/lib/ops-result";
 import { searchPeople, type PeopleAnswer } from "@/lib/ops-palette";
@@ -32,6 +33,7 @@ import { PERMS, ROLE_PERMS, ROLES, type Perm, type Role } from "@/lib/ops-perms"
 import { grantablePlan, type PlanRequest } from "@/lib/plan-requests";
 import { flash } from "@/lib/flash";
 import { isTargeted, setSwitch, setSwitchRule, SWITCHES, type SwitchKey } from "@/lib/switches";
+import { LAUNCH_CHECKS, openBlockers, setLaunchCheck, type LaunchCheck } from "@/lib/launch-checks";
 import { describeRule, readRule, ruleFromForm, MAX_RULE_ACCOUNTS } from "@/lib/switch-rules";
 import { drainNow, retireTrackFiles } from "@/lib/deletion";
 import { cancelEmailChange, changeHandle, HANDLE_FORWARD_DAYS, HANDLE_HOLD_DAYS, requestEmailChange } from "@/lib/accounts";
@@ -891,6 +893,34 @@ export async function publishAnnouncement(form: FormData) {
   redirect("/admin/announcements?published=1");
 }
 
+/** Ops → Notices: creates a notice, or saves an edit when the form carries an id. Plain text; checked in src/lib/site-notices.ts. */
+export async function saveNotice(form: FormData) {
+  const a = await requireAdminAction("announcements");
+  const n = readNotice((k) => form.get(k));
+  if ("error" in n) return fail(n.error);
+  const id = Number(form.get("id") ?? 0);
+  if (id) {
+    if (!(await updateNotice(id, n, a.id))) return fail("That notice has ended or no longer exists.");
+    await logAdmin(a.id, "edited notice", n.title, `#${id}`);
+  } else {
+    const newId = await createNotice(n, a.id);
+    await logAdmin(a.id, "created notice", n.title, `#${newId}`);
+  }
+  revalidatePath("/", "layout");
+  await done(id ? "Notice saved" : "Notice added");
+  redirect("/admin/notices");
+}
+
+/** Ops → Notices: ends a notice now; it stops showing on the next page load (other servers within 30 seconds). */
+export async function endNotice(id: number) {
+  const a = await requireAdminAction("announcements");
+  const n = await noticeById(id);
+  if (!n || !(await endSiteNotice(id, a.id))) return fail("That notice has already ended.");
+  await logAdmin(a.id, "ended notice", n.title, `#${id}`);
+  revalidatePath("/", "layout");
+  await done("Notice ended");
+}
+
 /** Moves an account to a new handle. For impersonation, the old name is released (no forwarding) and can be protected. */
 export async function adminChangeHandle(userId: number, form: FormData) {
   const a = await requireAdminAction("super");
@@ -971,10 +1001,26 @@ export async function resolveAllIncidents(kind: string) {
 export async function flipSwitch(key: SwitchKey, on: boolean) {
   const a = await requireAdminAction("super");
   if (!(key in SWITCHES)) return fail("Unknown switch");
+  // A switch waiting on the owner's checklist (Ops → Leave beta) can't be turned on from any page; off always works.
+  const open = on ? await openBlockers(key) : [];
+  if (open.length) {
+    await logAdmin(a.id, "switch refused", SWITCHES[key].label, `waiting on: ${open.map((c) => LAUNCH_CHECKS[c].label).join(", ")}`);
+    return fail(`${SWITCHES[key].label} can't be turned on yet: ${open.map((c) => LAUNCH_CHECKS[c].label.toLowerCase()).join(" and ")} not marked done.`);
+  }
   await setSwitch(key, on, a.id);
   await logAdmin(a.id, on ? "switched on" : "switched off", SWITCHES[key].label);
   await done(`${SWITCHES[key].label}: ${on ? "on" : "off"}`);
   revalidatePath("/", "layout");
+}
+
+/** Marks an item on the checklist a site-wide switch waits on (Ops → Leave beta). The owner's call, logged. */
+export async function markLaunchCheck(key: LaunchCheck, isDone: boolean) {
+  const a = await requireAdminAction("super");
+  if (!(key in LAUNCH_CHECKS)) return fail("Unknown checklist item");
+  await setLaunchCheck(key, isDone, a.id);
+  await logAdmin(a.id, isDone ? "marked done" : "marked not done", LAUNCH_CHECKS[key].label);
+  await done(`${LAUNCH_CHECKS[key].label}: ${isDone ? "done" : "not done"}`);
+  revalidatePath("/admin", "layout");
 }
 
 /**
