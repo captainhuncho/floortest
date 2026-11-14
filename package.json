@@ -16,7 +16,8 @@
     "test:leaks": "tsx --conditions=react-server --import ./scripts/test-leak-probe.mjs --test --test-force-exit tests/*.test.ts",
     "smoke": "tsx scripts/smoke.ts",
     "e2e": "tsx scripts/e2e-slot.ts",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "e2e:site-lock": "E2E_SITE_LOCK=1 tsx scripts/e2e-slot.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1141.0",
