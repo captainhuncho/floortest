@@ -133,16 +133,26 @@ export async function routeToCollection(desk: Pick<User, "id" | "role">, collect
 /** "Pause my link": the receiver is away. Ends on its own at pause_until, if one was set. */
 export const isPaused = (u: Pick<User, "paused_at" | "pause_until">, at = now()) => !!u.paused_at && (!u.pause_until || u.pause_until > at);
 
+/**
+ * A link opens only once its owner has confirmed their email (Safety audit, 13 Nov; owner's yes): until then the public
+ * page says "not open yet" and nothing can be sent to it, so a bot-made account can't be used as a drop box.
+ */
+export const linkNotOpenYet = (u: Pick<User, "email_verified_at">) => !u.email_verified_at;
+
 /** Why a receiver's link isn't taking tracks into this callout right now, or null if it is. One rule for the public page and the share card. */
 export function calloutBlock(
-  receiver: Pick<User, "paused_at" | "pause_until">,
+  receiver: Pick<User, "paused_at" | "pause_until" | "email_verified_at">,
   collection: Pick<Collection, "closes_at" | "full_at"> | undefined,
   accountFull: boolean,
-): "paused" | "closed" | "full" | "unavailable" | null {
+): "not_open" | "paused" | "closed" | "full" | "unavailable" | null {
+  if (linkNotOpenYet(receiver)) return "not_open";
   if (isPaused(receiver)) return "paused";
   if (isClosed(collection)) return collection!.full_at ? "full" : "closed";
   return accountFull ? "unavailable" : null;
 }
+
+/** What a sender sees on a link that isn't open yet (the page and an upload refused for it say the same). */
+export const NOT_OPEN_YET = (name: string) => `${name}'s link isn't open yet. Try again later.`;
 
 export function pausedMessage(u: Pick<User, "name" | "pause_until" | "tz">) {
   const until = u.pause_until ? ` until ${new Date(u.pause_until).toLocaleDateString("en-GB", { day: "numeric", month: "long", timeZone: u.tz })}` : "";
