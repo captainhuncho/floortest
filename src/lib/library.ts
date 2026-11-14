@@ -393,3 +393,38 @@ export async function moveTrackToProjects(desk: User, trackId: number, folder: n
   await alertIfFull(desk.id, await capacity(desk));
   return { ok: true, id: moved };
 }
+
+/** The desk's own uploads still in its collections (tracks it added itself, never a sender's): what "Move all" would move. */
+async function ownCollectionTrackIds(desk: User) {
+  const rows = await asPerson(desk.actor_id, () =>
+    q.all<{ id: number }>(
+      `SELECT t.id FROM tracks t JOIN senders s ON s.id = t.sender_id
+       WHERE t.user_id = ? AND t.deleted_at IS NULL AND t.file_key IS NOT NULL AND s.account_id = ?
+       ORDER BY t.created_at, t.id`,
+      desk.id,
+      desk.id,
+    ),
+  );
+  return rows.map((r) => Number(r.id));
+}
+
+/** How many of the desk's own uploads are still in its collections. */
+export async function ownCollectionTrackCount(desk: User) {
+  return (await ownCollectionTrackIds(desk)).length;
+}
+
+/**
+ * 1b (owner, 13 Nov): moves every one of the desk's own uploads out of its collections into Projects (in no project),
+ * one at a time through moveTrackToProjects, so each gets the same checks, file hand-over and activity line. Stops
+ * when Projects are full; a track held for a check stays where it is. Senders' tracks are never touched.
+ */
+export async function moveAllOwnToProjects(desk: User): Promise<{ moved: number; left: number; full: boolean }> {
+  const ids = await ownCollectionTrackIds(desk);
+  let moved = 0;
+  for (const id of ids) {
+    const r = await moveTrackToProjects(desk, id, null);
+    if (r.ok) moved++;
+    else if (r.error.startsWith("Projects are full")) return { moved, left: ids.length - moved, full: true };
+  }
+  return { moved, left: ids.length - moved, full: false };
+}
