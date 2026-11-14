@@ -2298,4 +2298,11 @@ alter table library_tracks drop constraint if exists library_tracks_folder_id_fk
 alter table library_tracks add constraint library_tracks_folder_same_desk foreign key (folder_id, user_id) references library_folders(id, user_id) on delete set null (folder_id);
 create index if not exists library_tracks_folder_desk on library_tracks(folder_id, user_id);`,
   },
+  {
+    // Getting started on the Floor (Desk, 13 Nov): when the person first copied or shared their link or share card, so
+    // the "Share your link" step ticks itself off. Set once, on their own row, by the app. Additive only. 0143 is
+    // Backend's (#526), 0144 Build's launch_checks (#529), 0145 Build's site_notices (#533).
+    id: "0146_link_shared_at",
+    sql: `alter table users add column if not exists link_shared_at bigint;`,
+  },
 ];
