@@ -22,6 +22,19 @@ test("a new desk has no collection, and its link is open", async ({ page }) => {
   await expect(page.getByRole("button", { name: "New collection" })).toBeVisible();
   await expect(page.getByText("Receiving", { exact: true })).toHaveCount(0);
   await expect(page.getByText(/sends tracks straight to your Review Queue/)).toBeVisible();
+  // A link takes tracks only once its owner has confirmed their email (sign-up guard, #535): confirm it from the email.
+  const MAIL = `http://127.0.0.1:${Number(process.env.E2E_MAIL_PORT || 3212)}/mail`;
+  let link = "";
+  await expect
+    .poll(async () => {
+      const box = (await (await page.request.get(`${MAIL}?to=${encodeURIComponent(desk.email)}`)).json()) as { body: string }[];
+      link = box.map((m) => m.body.match(/\/verify-email\/[A-Za-z0-9_-]+/)?.[0] ?? "").filter(Boolean).at(-1) ?? "";
+      return link;
+    })
+    .toMatch(/^\/verify-email\//);
+  await page.goto(link);
+  await page.getByRole("button", { name: "Confirm my email" }).click();
+  await expect(page.getByRole("heading", { name: "Email confirmed" })).toBeVisible();
 });
 
 test("a track sent to it lands in the Review Queue, unsorted", async ({ page }) => {
