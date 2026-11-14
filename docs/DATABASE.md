@@ -44,6 +44,7 @@ Inspect the current migration file before relying on a field name; this guide de
 
 - Append migrations; never reorder, rename or rewrite a migration that may have run.
 - Give each migration a unique sequential identifier and a clear purpose.
+- `tests/migrations-ids.test.ts` fails CI when a new migration reuses a 4-digit number or breaks the ascending order (two branches picked 0143 on 13 Nov). Agree the next free number with the other sessions before opening the PR. The three older clashes (0095, 0097, 0135) are already applied under their ids and stay as they are.
 - Prefer backward-compatible expansion before code starts depending on a new column.
 - Keep destructive changes separate and provide a recovery/rollback plan.
 - A migration must tolerate the deployment model and advisory-lock strategy already used by FloorTest.
