@@ -12,6 +12,7 @@ import { sendReopenAlerts } from "@/lib/reopen";
 import { done } from "./common";
 import { markTourSeenFor } from "@/lib/tour-seen";
 import { dismissNoticeFor } from "@/lib/site-notices";
+import { noteLinkShared } from "@/lib/getting-started";
 
 /** Beta feedback, signed by the person who sent it (src/lib/feedback.ts). */
 export async function sendFeedback(kind: string, message: string, path: string, fromAsk = false, viewport?: number) {
@@ -37,6 +38,13 @@ export async function dismissNotice(noticeId: number) {
   // requirePerson: the person, not a team desk; in an admin's view it redirects first.
   const me = await requirePerson();
   return dismissNoticeFor(me.id, Number(noticeId));
+}
+
+/** The person copied or shared their link or a share card: Getting started's "Share your link" ticks itself off. */
+export async function markLinkShared() {
+  // requirePerson: the signed-in person's own row; in an admin's view it redirects first.
+  const me = await requirePerson();
+  await noteLinkShared(me.id);
 }
 
 /** The first-visit tour was closed or finished: it never opens by itself again for this person (their own row, not the

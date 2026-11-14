@@ -2352,4 +2352,11 @@ alter table notice_dismissals enable row level security;
 grant select, insert on notice_dismissals to ft_person;
 create policy person_notice_dismissals on notice_dismissals for all to ft_person using (user_id = ft_person_id()) with check (user_id = ft_person_id());`,
   },
+  {
+    // Getting started on the Floor (Desk, 13 Nov): when the person first copied or shared their link or share card, so
+    // the "Share your link" step ticks itself off. Set once, on their own row, by the app. Additive only. 0143 is
+    // Backend's (#526), 0144 Build's launch_checks (#529), 0145 Build's site_notices (#533).
+    id: "0146_link_shared_at",
+    sql: `alter table users add column if not exists link_shared_at bigint;`,
+  },
 ];
