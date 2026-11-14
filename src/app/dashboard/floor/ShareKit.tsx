@@ -1,6 +1,7 @@
 "use client";
 
 import { useToast } from "@/components/Toast";
+import { linkShared } from "../link-shared";
 import { GHOST } from "../kitButtons";
 
 /**
@@ -13,6 +14,7 @@ export function ShareKit({ link, handle }: { link: string; handle: string }) {
   async function copy() {
     try {
       await navigator.clipboard.writeText(caption);
+      linkShared();
       toast.show({ message: "Caption copied. Paste it in your bio, a story or a callout." });
     } catch {
       toast.show({ message: "Couldn't copy. Select the caption and copy it yourself.", tone: "error" });

@@ -1,5 +1,6 @@
 import { trackUse } from "@/lib/usage";
-import { Onboarding } from "./Onboarding";
+import { Onboarding, OnboardingSkeleton } from "./Onboarding";
+import { Suspense } from "react";
 import Link from "next/link";
 import { requireUser, viewingAs } from "@/lib/auth";
 import { switchOn } from "@/lib/switches";
@@ -188,7 +189,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
 
   // A new desk's link, on its own above the checklist.
   const linkSection = (
-    <section aria-labelledby="link-h" className="flex flex-col gap-2.5 rounded-[18px] border border-line bg-card p-3 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
+    <section id="your-link" aria-labelledby="link-h" className="flex scroll-mt-20 flex-col gap-2.5 rounded-[18px] border border-line bg-card p-3 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">
       <h2 id="link-h" className="text-[15px] font-semibold text-bone">Your link</h2>
       <p className="text-[11.5px] text-mute">{linkWhere.replace(/^Your link · sends to/, "Sends tracks to").replace(/^Your link · n/, "N")}</p>
       <LinkRow link={link} card={card} />
@@ -243,7 +244,7 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
           <span className="text-[14px] font-semibold text-bone">{plan.name}</span>
         </Link>
       </div>
-      <div className="flex flex-col gap-1.5">
+      <div id="your-link" className="flex scroll-mt-20 flex-col gap-1.5">
         <h3 id="link-h" className="text-[11.5px] text-mute">{linkWhere}</h3>
         <LinkRow link={link} card={card} />
       </div>
@@ -358,9 +359,13 @@ export default async function TheFloor({ searchParams }: { searchParams: Promise
               </section>
             )}
 
-            {/* The checklist helps a new desk; on a busy one the queue comes first. */}
-            {/* Setting up the account is for the owner and admins; members skip the checklist. */}
-            {user.role !== "member" && <Onboarding user={user} />}
+            {/* Getting started helps a new desk; on a busy one the queue comes first. Only the account owner on their own
+                desk sees it: not team members, not an admin in View as. */}
+            {user.role === "owner" && !view && user.actor_id === user.id && (
+              <Suspense fallback={<OnboardingSkeleton />}>
+                <Onboarding user={user} />
+              </Suspense>
+            )}
 
             {kept > 0 && (
               <section aria-labelledby="set-h" className="flex items-center justify-between gap-4 rounded-[18px] border border-line bg-card p-3 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.6)]">

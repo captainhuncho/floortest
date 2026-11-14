@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useToast } from "@/components/Toast";
+import { linkShared } from "../link-shared";
 import { GHOST_ON_WELL } from "../kitButtons";
 import { CalloutShare } from "../collections/CalloutShare";
 import type { ShareCardTarget } from "../collections/callout-card";
@@ -22,6 +23,7 @@ export function LinkRow({ link, card }: { link: string; card?: ShareCardTarget }
   async function copy() {
     try {
       await navigator.clipboard.writeText(link);
+      linkShared();
       toast.show({ message: "Your link is copied. Paste it anywhere." });
     } catch {
       toast.show({ message: `Couldn't copy. Your link is ${pretty}`, tone: "error" });
@@ -31,6 +33,7 @@ export function LinkRow({ link, card }: { link: string; card?: ShareCardTarget }
     if (!navigator.share) return copy();
     try {
       await navigator.share({ title: "Send me your music", url: link });
+      linkShared();
     } catch {
       // Closing the share sheet isn't an error worth saying anything about.
     }
