@@ -1010,8 +1010,8 @@ export async function flipSwitch(key: SwitchKey, on: boolean) {
     await logAdmin(a.id, "switch refused", SWITCHES[key].label, `waiting on: ${open.map((c) => LAUNCH_CHECKS[c].label).join(", ")}`);
     return fail(`${SWITCHES[key].label} can't be turned on yet: ${open.map((c) => LAUNCH_CHECKS[c].label.toLowerCase()).join(" and ")} not marked done.`);
   }
-  await setSwitch(key, on, a.id);
-  await logAdmin(a.id, on ? "switched on" : "switched off", SWITCHES[key].label);
+  const changed = await setSwitch(key, on, a.id, (t) => logAdmin(a.id, on ? "switched on" : "switched off", SWITCHES[key].label, "", t));
+  if (!changed) return done(`${SWITCHES[key].label}: already ${on ? "on" : "off"}`);
   await done(`${SWITCHES[key].label}: ${on ? "on" : "off"}`);
   revalidatePath("/", "layout");
 }

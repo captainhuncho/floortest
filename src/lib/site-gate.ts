@@ -131,12 +131,21 @@ export async function hasGatePass(cookie: string | undefined, lock?: GateLock | 
 /** How long a session check is trusted, how long one may take, and how many are remembered at once. */
 export const SESSION_CACHE_MS = 5_000;
 export const SESSION_READ_TIMEOUT_MS = 1_500;
-const SESSION_CACHE_MAX = 2_000;
+export const SESSION_CACHE_MAX = 2_000;
+/**
+ * At most this many session checks reach the database at once; past that, a check is refused (signed out) without a
+ * query, so a flood of made-up tokens can't take every database connection.
+ */
+export const SESSION_INFLIGHT_MAX = 16;
+/** After a check fails (error or timeout), uncached checks are refused without a query for this long. */
+export const SESSION_FAIL_CACHE_MS = 1_500;
 /** Session tokens are 32 random bytes in base64url; anything else is not looked up at all. */
 const TOKEN_SHAPE = /^[A-Za-z0-9_-]{43}$/;
 
-const sessionCache = new Map<string, { live: boolean; at: number }>();
+/** Only live sessions are remembered: made-up tokens can't fill the map or push real sessions out of it. */
+const sessionCache = new Map<string, number>();
 const sessionInflight = new Map<string, Promise<boolean>>();
+let sessionFailedAt = 0;
 let sessionReads = 0;
 /** How many session checks reached the database (tests check they are shared and remembered). */
 export const sessionLookups = () => sessionReads;
@@ -150,9 +159,11 @@ async function hasLiveSession(token: string | undefined): Promise<boolean> {
   if (!token || !TOKEN_SHAPE.test(token)) return false;
   const hash = hashToken(token);
   const hit = sessionCache.get(hash);
-  if (hit && Date.now() - hit.at < SESSION_CACHE_MS) return hit.live;
+  if (hit !== undefined && Date.now() - hit < SESSION_CACHE_MS) return true;
   const running = sessionInflight.get(hash);
   if (running) return running;
+  if (Date.now() - sessionFailedAt < SESSION_FAIL_CACHE_MS) return false;
+  if (sessionInflight.size >= SESSION_INFLIGHT_MAX) return false;
   const check = (async () => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
@@ -169,10 +180,15 @@ async function hasLiveSession(token: string | undefined): Promise<boolean> {
         new Promise<never>((_, reject) => (timer = setTimeout(() => reject(new Error("session read timed out")), SESSION_READ_TIMEOUT_MS))),
       ]);
       const live = !!row;
-      if (sessionCache.size >= SESSION_CACHE_MAX) sessionCache.clear();
-      sessionCache.set(hash, { live, at: Date.now() });
+      if (live) {
+        if (sessionCache.size >= SESSION_CACHE_MAX) sessionCache.clear();
+        sessionCache.set(hash, Date.now());
+      } else {
+        sessionCache.delete(hash);
+      }
       return live;
     } catch (e) {
+      sessionFailedAt = Date.now();
       console.error("[site-gate] couldn't check a session, treating it as signed out", e);
       return false;
     } finally {
@@ -188,7 +204,11 @@ async function hasLiveSession(token: string | undefined): Promise<boolean> {
 export function forgetSessionChecks() {
   sessionCache.clear();
   sessionInflight.clear();
+  sessionFailedAt = 0;
 }
+
+/** How many live sessions are remembered now (tests check the map stays bounded and holds no made-up tokens). */
+export const rememberedSessions = () => sessionCache.size;
 
 /**
  * Whether the gate lets this request through (the proxy asks this). Open site: yes. Locked: a pass for the current

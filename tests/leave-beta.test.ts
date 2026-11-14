@@ -71,7 +71,11 @@ test("a blocked switch is refused before it is touched, and the refusal is logge
 
 test("each flip and each checklist mark writes an admin log line", () => {
   const flip = body("flipSwitch");
-  assert.ok(flip.indexOf('logAdmin(a.id, on ? "switched on" : "switched off"') > flip.indexOf("await setSwitch("), "logged after the flip");
+  assert.match(
+    flip,
+    /await setSwitch\(key, on, a\.id, \(t\) => logAdmin\(a\.id, on \? "switched on" : "switched off", SWITCHES\[key\]\.label, "", t\)\)/,
+    "the log line is written by setSwitch, in the flip's own transaction",
+  );
   const mark = body("markLaunchCheck");
   assert.ok(mark.indexOf('logAdmin(a.id, isDone ? "marked done" : "marked not done"') > mark.indexOf("await setLaunchCheck("), "logged after the mark");
 });

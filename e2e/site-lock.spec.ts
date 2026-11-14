@@ -58,6 +58,13 @@ test("site lock: signed out sees Coming soon, signed in passes, and a re-lock ke
     await comingSoon(vPage);
   });
 
+  await test.step("a wrong password is refused and the page stays locked", async () => {
+    await vPage.getByLabel("Have the password?").fill("not-the-password");
+    await vPage.getByRole("button", { name: "Enter" }).click();
+    await expect(vPage.getByText("That password isn't right.")).toBeVisible();
+    await comingSoon(vPage);
+  });
+
   await test.step("the password lets a signed-out visitor in", async () => {
     await unlock(vPage);
     await vPage.goto("/");
@@ -68,6 +75,20 @@ test("site lock: signed out sees Coming soon, signed in passes, and a re-lock ke
     await logIn(mPage, "demo@floortest.test");
     await mPage.goto("/dashboard/floor");
     await expect(mPage).toHaveURL(/\/dashboard\/floor/);
+  });
+
+  await test.step("signed out, a real track's download and audio and the export answer 401 (the gate leaves /api to each route's own sign-in check)", async () => {
+    // A track that exists: the first one the signed-in member can play.
+    let id = 0;
+    for (let n = 1; n <= 30 && !id; n++) if ([200, 206, 302].includes((await mPage.request.get(`/api/tracks/${n}/audio`, { maxRedirects: 0 })).status())) id = n;
+    expect(id, "found a track the member can play").toBeGreaterThan(0);
+    // Same-site, so the request gets past the other-site check and reaches the sign-in check.
+    const headers = { "sec-fetch-site": "same-origin" };
+    for (const path of [`/api/tracks/${id}/download`, `/api/tracks/${id}/audio`, "/api/export"]) {
+      const res = await vPage.request.get(path, { maxRedirects: 0, headers });
+      expect(res.status(), `${path} signed out`).toBe(401);
+      expect(res.headers()["content-type"] ?? "", `${path} sends no file`).not.toMatch(/audio|zip|octet-stream|csv/);
+    }
   });
 
   await test.step("re-lock from Feature switches", async () => {
