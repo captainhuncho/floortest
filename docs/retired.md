@@ -6,7 +6,7 @@ Features that were built, then replaced, and what was removed with them. Kept so
 
 **What it was:** a receiver shared one track with a colleague who had a FloorTest account, through a private `/share/<token>` link that lasted 7 days. Downloads were allowed only if the receiver was on a paid plan when the track was sent. A receiver could also ask the artist, per track, for permission ("Request to share"); the artist answered Allow or Decline on their receipt, with a 2-minute window to cancel. It sat behind the `sharing` switch and was never switched on for users.
 
-**Replaced by:** collection share links (`docs/01-product.md`, Collection share links): named, email-verified listeners on a whole collection, with expiry, reset and revoke, and the artist's consent given by the send-form wording (`tracks.share_terms`). Retired 11 Oct 2026; tables dropped after.
+**Replaced by:** collection share links (`docs/product/sender.md`, Collection share links): named, email-verified listeners on a whole collection, with expiry, reset and revoke, and the artist's consent given by the send-form wording (`tracks.share_terms`). Retired 11 Oct 2026; tables dropped after.
 
 **Removed:**
 
@@ -24,7 +24,7 @@ Pages and routes removed with it: `/share/[token]`, `/api/share/[token]/audio`, 
 
 **What it was:** on the Team plan, up to 10 FloorTest accounts per collection listened to tracks sent after they joined, voted keep or pass with a note, and (if the owner turned on "Teammates can Keep / Not for me") made the call. Live 11 Oct 2026 for a few hours.
 
-**Replaced by:** account teams (`docs/01-product.md`, Account teams): people join the whole account with a role (Owner, A&R / Admin, Member), and Review Together's comments and shared shortlist work for everyone on the team. Retired 11 Oct 2026; tables dropped after.
+**Replaced by:** account teams (`docs/product/sender.md`, Account teams): people join the whole account with a role (Owner, A&R / Admin, Member), and Review Together's comments and shared shortlist work for everyone on the team. Retired 11 Oct 2026; tables dropped after.
 
 **Removed:**
 
