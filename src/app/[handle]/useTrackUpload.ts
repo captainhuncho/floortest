@@ -299,7 +299,7 @@ export function useTrackUpload(handle: string, opts: { asAccount?: boolean } = {
     const shared = {
       name: field("name"), email: field("email"), sender_instagram: field("sender_instagram"), sender_streaming: field("sender_streaming"), message: field("message"), genre: field("genre"),
       release_status: field("release_status"), ai_use: field("ai_use"), mix_status: field("mix_status"),
-      sets_ok: fd.get("sets_ok") === "on", asAccount: !!opts.asAccount, terms_tick: fd.get("terms_tick") === "on",
+      sets_ok: fd.get("sets_ok") === "on", asAccount: !!opts.asAccount, terms_tick: fd.get("terms_tick") === "on", terms_hash: field("terms_hash") || undefined,
     };
     let sentCount = items.filter((x) => x.status === "done").length;
     for (const it of items) {

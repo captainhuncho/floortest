@@ -385,7 +385,7 @@ export function GuidedSignup({
           <label className="af-cbr">
             <input id="f-agree" type="checkbox" name="agree" checked={agree} onChange={(e) => { setAgree(e.target.checked); if (issue?.field === "agree") setIssue(null); }} aria-invalid={issue?.field === "agree" || undefined} aria-describedby={describedBy("agree")} />
             <span>
-              I&apos;m 18 or over, and I agree to the <a href="/terms" target="_blank">Terms of Use</a> and have read the <a href="/privacy" target="_blank">Privacy Policy</a>.
+              I&apos;m 18 or over, and I have read, understood and agree to the <a href="/terms" target="_blank">Terms</a> and <a href="/privacy" target="_blank">Privacy Policy</a>, including that music I send may be played by the receiver.
             </span>
           </label>
           {problem("agree")}

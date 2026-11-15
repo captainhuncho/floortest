@@ -11,6 +11,7 @@ import { EmailCode, startEmailCheck } from "./EmailCode";
 import { GenrePicker } from "./GenrePicker";
 import { SetsPermission } from "./SetsPermission";
 import { TransferScreen } from "./TransferScreen";
+import { TermsTick } from "./TermsTick";
 import { MAX_FILES, SENDER_KEY, useTrackUpload, type Item } from "./useTrackUpload";
 import { stored, useBrowserValue } from "@/components/useBrowserValue";
 import { recallSender } from "@/lib/sender-memory";
@@ -115,6 +116,26 @@ export function SubmitForm({
   // Without an account: the form waiting while the sender types the emailed code.
   const [waiting, setWaiting] = useState<{ email: string; fd: FormData } | null>(null);
   const [checking, setChecking] = useState(false);
+  // The Terms tick: needed until this browser's confirmed email shows the current Terms already accepted.
+  const [terms, setTerms] = useState<{ needed: boolean; updated: string | null; hash: string | null }>({ needed: true, updated: null, hash: null });
+  const [termsTicked, setTermsTicked] = useState(false);
+  const termsWaiting = !account && terms.needed && !termsTicked;
+  // A remembered sender whose email this browser already confirmed: ask whether the current Terms are accepted. The
+  // server answers only for that confirmed email. A refused send (the Terms changed meanwhile) asks again.
+  const termsRefused = !!error && /accept the Terms/.test(error);
+  const rememberedEmail = !account && remembered ? normalEmail(sender.email) : "";
+  useEffect(() => {
+    if (!rememberedEmail) return;
+    const ctl = new AbortController();
+    fetch(`/api/sender-code?email=${encodeURIComponent(rememberedEmail)}`, { signal: AbortSignal.any([ctl.signal, AbortSignal.timeout(8000)]) })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { confirmed?: boolean; termsNeeded?: boolean; termsUpdated?: boolean; termsVersion?: string; termsHash?: string } | null) => {
+        if (!d?.confirmed || d.termsNeeded === undefined) return;
+        setTerms({ needed: d.termsNeeded, updated: d.termsNeeded && d.termsUpdated ? (d.termsVersion ?? null) : null, hash: d.termsHash ?? null });
+      })
+      .catch(() => {});
+    return () => ctl.abort();
+  }, [rememberedEmail, termsRefused]);
   const alertRef = useRef<HTMLParagraphElement>(null);
   const router = useRouter();
   const doneRef = useRef<HTMLElement>(null);
@@ -647,30 +668,19 @@ export function SubmitForm({
               ))}
             </ul>
           )}
-          {/* Senders without an account tick the Terms (Research brief, owner 15 Nov); the server records it against their
-              confirmed email the first time and again after the Terms change. Layout is Build's to refine. */}
-          {!account && (
-            <label className="flex min-h-[44px] items-center gap-2.5 text-[13px] leading-[19px] text-mute">
-              <input type="checkbox" name="terms_tick" required className="size-[18px] shrink-0" />
-              <span>
-                I have read, understood and agree to the{" "}
-                <a href="/terms" target="_blank" rel="noopener" className="underline underline-offset-4">
-                  Terms
-                </a>{" "}
-                and{" "}
-                <a href="/privacy" target="_blank" rel="noopener" className="underline underline-offset-4">
-                  Privacy Policy
-                </a>
-                , including that music I send may be played by the receiver.
-              </span>
-            </label>
-          )}
+          {/* Senders without an account tick the Terms on a first send and after the Terms change (Research brief, owner 15 Nov). */}
+          {!account && terms.needed && <TermsTick checked={termsTicked} onChange={setTermsTicked} updated={terms.updated} hash={terms.hash} />}
           {/* On phones the send button stays within reach at the bottom of the screen while the form scrolls. */}
           <div className="max-sm:sticky max-sm:bottom-0 max-sm:z-10 max-sm:-mx-[18px] max-sm:border-t max-sm:border-line max-sm:bg-ink/95 max-sm:px-[18px] max-sm:pt-2.5 max-sm:pb-[max(12px,env(safe-area-inset-bottom))] max-sm:backdrop-blur-sm">
-            <button className="btn-lime min-h-[52px] w-full gap-2 rounded-[15px] text-[14.5px] font-bold" disabled={busy || analyzing || checking}>
+            <button className="btn-lime min-h-[52px] w-full gap-2 rounded-[15px] text-[14.5px] font-bold" disabled={busy || analyzing || checking || termsWaiting} aria-describedby={termsWaiting ? "terms-wait" : undefined}>
               <Icon name="send" className="size-4" />
               {checking ? "Checking your email…" : analyzing ? "Reading audio…" : many ? `Send ${items.length} tracks to ${receiverName}` : `Send to ${receiverName}`}
             </button>
+            {termsWaiting && (
+              <p id="terms-wait" className="pt-1.5 text-center text-[12px] text-mute">
+                Tick the box above to send.
+              </p>
+            )}
           </div>
           <p className="text-[12px] leading-[18px] text-dim">
             By sending you confirm you own or control {many ? "these tracks" : "this track"}, your answer about AI is accurate, and you&apos;re 18 or over. {receiverName} may listen to it and download it to evaluate it. They can play it in sets only if you turn on DJ sets above, and can&apos;t release it anywhere without a signed agreement with you.
