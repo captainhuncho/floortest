@@ -2,7 +2,7 @@
 
 import { FormError } from "@/components/Feedback";
 import { Req } from "@/components/Req";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { analyzeAudio } from "@/lib/analyze";
 import { fmtBytes } from "@/lib/format";
 import { MAX_RELEASE_TRACKS } from "@/lib/plans";
@@ -101,9 +101,24 @@ export function FolderSend({
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   // The one Terms tick for senders without an account (Research brief, owner 15 Nov); the hash comes from the email check.
+  // Shown until the server says this browser's confirmed email already accepted the current Terms (as on the link page).
   const [termsTicked, setTermsTicked] = useState(false);
+  const [terms, setTerms] = useState<{ needed: boolean; updated: string | null }>({ needed: true, updated: null });
+  const [askedEmail, setAskedEmail] = useState("");
   const termsHash = useRef<string | undefined>(undefined);
-  const termsWaiting = !account && !termsTicked;
+  const termsWaiting = !account && terms.needed && !termsTicked;
+  useEffect(() => {
+    if (account || !askedEmail) return;
+    const ctl = new AbortController();
+    fetch(`/api/sender-code?email=${encodeURIComponent(askedEmail)}`, { signal: AbortSignal.any([ctl.signal, AbortSignal.timeout(8000)]) })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { confirmed?: boolean; termsNeeded?: boolean; termsUpdated?: boolean; termsVersion?: string } | null) => {
+        if (!d?.confirmed || d.termsNeeded === undefined) return;
+        setTerms({ needed: d.termsNeeded, updated: d.termsNeeded && d.termsUpdated ? (d.termsVersion ?? null) : null });
+      })
+      .catch(() => {});
+    return () => ctl.abort();
+  }, [account, askedEmail]);
   // The current file has landed and its virus check is running (up to a minute while the scanner wakes).
   const [scanning, setScanning] = useState(false);
   const [id] = useState(releaseId);
@@ -170,6 +185,7 @@ export function FolderSend({
 
   function keepTerms(t: TermsState) {
     termsHash.current = t.termsNeeded ? t.termsHash : undefined;
+    if (t.termsNeeded !== undefined) setTerms((was) => ({ ...was, needed: t.termsNeeded! }));
   }
 
   async function upload() {
@@ -386,7 +402,7 @@ export function FolderSend({
               </label>
               <label className="block space-y-1.5">
                 <span className={FIELD_LABEL}>Your email<Req /></span>
-                <input type="email" value={who.email} onChange={(e) => setWho((w) => ({ ...w, email: e.target.value }))} disabled={running} autoComplete="email" maxLength={200} required className="input" />
+                <input type="email" value={who.email} onChange={(e) => setWho((w) => ({ ...w, email: e.target.value }))} onBlur={(e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.target.value) && setAskedEmail(normalEmail(e.target.value))} disabled={running} autoComplete="email" maxLength={200} required className="input" />
               </label>
               <fieldset className="space-y-2 sm:col-span-2">
                 <legend className={`${FIELD_LABEL} mb-1.5`}>
@@ -461,10 +477,10 @@ export function FolderSend({
       {items.length > 0 && (
         <p className="text-[11.5px] leading-[1.45] text-mute">
           <span className="text-danger">*</span> Required. By sending you confirm you own or control these tracks, your answer about AI is accurate, and you&apos;re 18 or over.{" "}
-          <a href="/terms" target="_blank" className="underline underline-offset-4">Terms</a>
+          <a href="/terms" target="_blank" rel="noopener" className="underline underline-offset-4">Terms</a>
         </p>
       )}
-      {items.length > 0 && !account && <TermsTick checked={termsTicked} onChange={setTermsTicked} updated={null} hash={null} />}
+      {items.length > 0 && !account && terms.needed && <TermsTick checked={termsTicked} onChange={setTermsTicked} updated={terms.updated} hash={null} />}
       {items.length > 0 && (
         <button type="submit" disabled={running || checking || termsWaiting} className="btn-lime inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[13px] text-[13px] font-semibold">
           <Icon name="send" className="size-4" />

@@ -276,9 +276,12 @@ export function SubmitForm({
     return false;
   }
 
-  /** Sends with the Terms hash the server just gave for the confirmed email, so a first-time sender's tick is recorded. */
+  /**
+   * Sends the hash of the Terms this page showed (Safety, 15 Nov): a stale page never records text it didn't show; the
+   * server refuses it (409) and the form asks again. Only without one does it use the hash from the email check.
+   */
   function sendWithTerms(fd: FormData, t: TermsState) {
-    if (t.termsNeeded && t.termsHash) fd.set("terms_hash", t.termsHash);
+    if (t.termsNeeded && !termsHash && t.termsHash) fd.set("terms_hash", t.termsHash);
     return send(fd);
   }
 
@@ -678,7 +681,7 @@ export function SubmitForm({
             </ul>
           )}
           {/* Senders without an account tick the Terms on a first send and after the Terms change (Research brief, owner 15 Nov). */}
-          {!account && terms.needed && <TermsTick checked={termsTicked} onChange={setTermsTicked} updated={terms.updated} hash={terms.hash ?? termsHash ?? null} />}
+          {!account && terms.needed && <TermsTick checked={termsTicked} onChange={setTermsTicked} updated={terms.updated} hash={termsHash ?? terms.hash ?? null} />}
           {/* On phones the send button stays within reach at the bottom of the screen while the form scrolls. */}
           <div className="max-sm:sticky max-sm:bottom-0 max-sm:z-10 max-sm:-mx-[18px] max-sm:border-t max-sm:border-line max-sm:bg-ink/95 max-sm:px-[18px] max-sm:pt-2.5 max-sm:pb-[max(12px,env(safe-area-inset-bottom))] max-sm:backdrop-blur-sm">
             <button className="btn-lime min-h-[52px] w-full gap-2 rounded-[15px] text-[14.5px] font-bold" disabled={busy || analyzing || checking || termsWaiting} aria-describedby={termsWaiting ? "terms-wait" : undefined}>
