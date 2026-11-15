@@ -89,7 +89,7 @@ export default async function Terms() {
         [
           "Changes and law",
           [
-            "We'll tell account holders by email before any significant change to these terms takes effect.",
+            "We may change these Terms and the Privacy Policy at any time. If a change is material, we will tell you by updating the date and posting it on FloorTest, or by other appropriate means, such as email. Using FloorTest after a change takes effect means you accept it.",
             "These terms are governed by the laws of Ghana. If you're a consumer, you keep any protections the law of the country you live in gives you, and can bring claims in your local courts.",
           ],
         ],
