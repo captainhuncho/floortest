@@ -29,7 +29,7 @@ export async function receiptByToken(token: string) {
   const m = receiptWhere(token, "t");
   const cols = RECEIPT_TRACK_COLUMNS.map((c) => `t.${c}`).join(", ");
   return q.get<ReceiptTrack>(
-    `SELECT ${cols}, u.name AS receiver, u.handle AS receiver_handle, u.identity_status AS receiver_status, u.plan AS receiver_plan, c.name AS collection, s.email AS sender_email, s.verified_at, s.account_id AS sender_account, s.id AS sender_id
+    `SELECT ${cols}, CASE WHEN u.suspended_at IS NULL THEN u.name ELSE 'A closed FloorTest account' END AS receiver, CASE WHEN u.suspended_at IS NULL THEN u.handle ELSE '' END AS receiver_handle, u.identity_status AS receiver_status, u.plan AS receiver_plan, c.name AS collection, s.email AS sender_email, s.verified_at, s.account_id AS sender_account, s.id AS sender_id
        FROM tracks t JOIN users u ON u.id = t.user_id JOIN senders s ON s.id = t.sender_id
        LEFT JOIN collections c ON c.id = t.collection_id
        WHERE ${m.sql}`,

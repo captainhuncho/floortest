@@ -2,6 +2,7 @@ import "server-only";
 import { recordIncident } from "@/lib/incidents";
 import { safeFailure } from "@/lib/safe-failure";
 import { cleanupRecords, purgeExpired } from "@/lib/retention";
+import { runDeletions } from "@/lib/account-deletion";
 import { NextResponse } from "next/server";
 import { cronAuthorized, JOBS, lastRuns, recordRun, withJobLease, type JobName } from "@/lib/cron";
 import { warnExpiring, runDigests as runReceiverDigests } from "@/lib/notify";
@@ -74,7 +75,14 @@ async function purge(started: number): Promise<JobOutcome> {
     }
     const warned = await warnExpiring();
     const purged = await purgeExpired({ force: true });
-    const result = { ...records, ...purged, ...warned, backup, vault, digests, receipts };
+    // Deleted accounts past their 14 days, and evidence past its 6 years (lib/account-deletion.ts). After the backup.
+    let deletions: object;
+    try {
+      deletions = await runDeletions();
+    } catch (e) {
+      deletions = await failure(e, "Purging deleted accounts failed", "/api/cron/purge");
+    }
+    const result = { ...records, ...purged, ...warned, backup, vault, digests, receipts, deletions };
     await recordRun("purge", started, true, result);
     return { ok: true, result };
   } catch (e) {

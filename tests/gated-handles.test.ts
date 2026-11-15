@@ -40,13 +40,13 @@ test("the gate lets receiving links, receipts, sender history, the legal pages a
   const { proxy } = await import("../src/proxy");
   const gated = async (p: string) => /\/coming-soon/.test((await proxy(new NextRequest(`${SITE}${p}`))).headers.get("x-middleware-rewrite") ?? "");
 
-  for (const p of ["/realdj", "/RealDJ", "/realdj/", "/real-dj_2", "/nobody-here", "/sent", "/sent/sometoken", "/sent/reopen/sometoken", "/receipt/sometoken", "/terms", "/privacy", "/cookies", "/contact", "/contact?report=realdj", "/terms/", "/security/", "/privacy-choices", "/subprocessors", "/content-rules", "/takedown", "/law-enforcement", "/security"])
+  for (const p of ["/realdj", "/RealDJ", "/realdj/", "/real-dj_2", "/nobody-here", "/sent", "/sent/sometoken", "/sent/reopen/sometoken", "/receipt/sometoken", "/restore", "/terms", "/privacy", "/cookies", "/contact", "/contact?report=realdj", "/terms/", "/security/", "/privacy-choices", "/subprocessors", "/content-rules", "/takedown", "/law-enforcement", "/security"])
     assert.equal((await gated(p)), false, `${p} is open`);
   for (const p of ["/", "/pricing", "/signup", "/waitlist", "/trust", "/licenses", "/dashboard", "/dashboard/floor", "/admin", "/realdj/extra", "/a", "/-x", "/x.y", `/${"a".repeat(31)}`, "/Pricing", "/PRICING/", "/index", "/INDEX", "/404", "/500", "/a%2Fb", "/%61dmin", "//realdj", "/_next", "/x.png", "/terms/x", "/security/anything", "/contact/x", "/privacy/a/b", "/dj", "/collections"])
     assert.equal((await gated(p)), true, `${p} stays behind the password`);
   const { RESERVED_HANDLES } = await import("../src/lib/plans");
   for (const name of RESERVED_HANDLES) {
-    if (name.includes(".") || ["auth", "brand", "icons", "motion", "tour", "fonts", "images", "_next", "static", "api", "c", "invite", "join", "sent", "receipt", "coming-soon", "login", "forgot", "reset", "signed-out", "terms", "privacy", "cookies", "contact", "privacy-choices", "subprocessors", "content-rules", "takedown", "law-enforcement", "security"].includes(name)) continue;
+    if (name.includes(".") || ["auth", "brand", "icons", "motion", "tour", "fonts", "images", "_next", "static", "api", "c", "invite", "join", "sent", "receipt", "coming-soon", "login", "forgot", "reset", "restore", "signed-out", "terms", "privacy", "cookies", "contact", "privacy-choices", "subprocessors", "content-rules", "takedown", "law-enforcement", "security"].includes(name)) continue;
     assert.equal((await gated(`/${name}`)), true, `/${name} is a page, so it stays behind the password`);
   }
 });

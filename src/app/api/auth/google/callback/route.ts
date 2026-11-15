@@ -7,6 +7,7 @@ import { env } from "@/lib/env";
 import { checkFlow, GOOGLE_COOKIE, GOOGLE_LINK_COOKIE, GOOGLE_SIGNUP_COOKIE, googleConfig, identityFromCode, LINK_MS, signIdentity, signPendingLink, SIGNUP_MS } from "@/lib/google-auth";
 import { pinGoogle } from "@/lib/google-link";
 import { finishSignIn } from "@/lib/security";
+import { restorable } from "@/lib/account-deletion";
 import { issueTicket, TICKET_MS } from "@/lib/two-step-ticket";
 
 export const runtime = "nodejs";
@@ -56,7 +57,7 @@ export async function GET(req: Request) {
     jar.set(GOOGLE_SIGNUP_COOKIE, signIdentity(who, env.secret), { httpOnly: true, sameSite: "lax", secure, path: "/", maxAge: SIGNUP_MS / 1000 });
     return go("/signup/google");
   }
-  if (user.suspended_at) return back("suspended");
+  if (user.suspended_at && !(await restorable(user.id))) return back("suspended");
   if (!pinned) {
     // Same email, but a different Google account is already pinned: refuse.
     if (user.google_sub) return back("different");
