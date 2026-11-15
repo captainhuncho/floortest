@@ -31,11 +31,20 @@ window.turnstile = {
   execute() {}, reset() {}, remove() {},
 };`;
 
+/**
+ * The test page's setup, for pages a test opens in its own browser context too (a second person signing in): the saved
+ * banner choice and the fake bot check. Without the fake check, a sign-in that needs it (after the guards spec's wrong
+ * tries) waits for Cloudflare's real script and never lands.
+ */
+export async function preparePage(page: Page, baseURL?: string) {
+  // A saved banner choice, so the cookie banner never covers what the tests click.
+  await page.context().addCookies([{ name: "ft_consent", value: "rejected", url: baseURL ?? "http://localhost:3000" }]);
+  await page.route("https://challenges.cloudflare.com/turnstile/v0/api.js*", (route) => route.fulfill({ contentType: "text/javascript", body: FAKE_TURNSTILE }));
+}
+
 export const test = base.extend({
   page: async ({ page, baseURL }, use) => {
-    // A saved banner choice, so the cookie banner never covers what the tests click.
-    await page.context().addCookies([{ name: "ft_consent", value: "rejected", url: baseURL ?? "http://localhost:3000" }]);
-    await page.route("https://challenges.cloudflare.com/turnstile/v0/api.js*", (route) => route.fulfill({ contentType: "text/javascript", body: FAKE_TURNSTILE }));
+    await preparePage(page, baseURL ?? undefined);
     // Every response sends Cross-Origin-Opener-Policy: same-origin, so the first visit from the blank tab moves the page
     // to a new browser process, and Playwright's focus emulation doesn't follow it (document.hasFocus() turns false and
     // focus events stop firing, so the bot check, which starts on focus, never loads). Make that move here, then give the
@@ -80,7 +89,12 @@ export async function submitLogin(page: Page, email: string, landing: RegExp, pa
   const dashboard = page.waitForURL(landing, { timeout: 60_000 }).then(() => "in" as const);
   const check = page.getByTestId("turnstile").waitFor({ state: "attached", timeout: 60_000 }).then(() => "check" as const, () => "none" as const);
   // The check may already be on screen with a token (then the first click got through): retry only if still here.
-  if ((await Promise.race([dashboard, check])) === "check" && !(await page.waitForURL(landing, { timeout: 5_000 }).then(() => true, () => false))) {
+  const first = await Promise.race([dashboard, check]).catch(async (e) => {
+    // Neither the landing page nor the check came: say where the page is and what it shows, so the failure names its cause.
+    const alert = await page.getByRole("alert").filter({ hasText: /\S/ }).allInnerTexts().catch(() => []);
+    throw new Error(`Log-in as ${email} didn't land: still on ${page.url()}; alert: ${alert.join(" | ") || "none"}`, { cause: e });
+  });
+  if (first === "check" && !(await page.waitForURL(landing, { timeout: 5_000 }).then(() => true, () => false))) {
     await page.getByRole("textbox", { name: "Password" }).fill(password);
     await page.getByRole("button", { name: "Log in" }).click();
     await page.waitForURL(landing);
