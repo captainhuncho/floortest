@@ -24,7 +24,7 @@ export default async function AcceptTerms() {
             <h1 className="af-h">Accept the Terms</h1>
             <p className="text-[13px] text-mute">The Terms can&apos;t be loaded right now, so your desk stays closed. Try again in a minute.</p>
           </div>
-          <Leave handle={me.handle} twoFactor={!!me.totp_enabled_at} />
+          <Leave handle={me.handle} twoFactor={!!me.totp_enabled_at} ownDesk={me.actor_id === me.id} />
         </div>
       </AuthFrame>
     );
@@ -44,14 +44,14 @@ export default async function AcceptTerms() {
           </p>
         </div>
         <AcceptForm hash={terms.hash} />
-        <Leave handle={me.handle} twoFactor={!!me.totp_enabled_at} />
+        <Leave handle={me.handle} twoFactor={!!me.totp_enabled_at} ownDesk={me.actor_id === me.id} />
       </div>
     </AuthFrame>
   );
 }
 
 /** Not agreeing never traps anyone (owner, 15 Nov): their data and Delete account stay in reach without the tick. */
-function Leave({ handle, twoFactor }: { handle: string; twoFactor: boolean }) {
+function Leave({ handle, twoFactor, ownDesk }: { handle: string; twoFactor: boolean; ownDesk: boolean }) {
   return (
     <div className="flex flex-col gap-3 border-t border-line pt-5">
       <p className="text-[13px] text-mute">
@@ -61,7 +61,8 @@ function Leave({ handle, twoFactor }: { handle: string; twoFactor: boolean }) {
         </Link>
         , or delete your account.
       </p>
-      <DeleteAccount handle={handle} twoFactor={twoFactor} sub="Your desk stays closed until you tick. You can still leave." />
+      {/* On a team's desk the account isn't theirs to delete: Delete would only send them round (Safety, 15 Nov). */}
+      {ownDesk && <DeleteAccount handle={handle} twoFactor={twoFactor} sub="Your desk stays closed until you tick. You can still leave." />}
       <form action={logout}>
         <button className="min-h-11 self-start text-[13px] text-mute underline underline-offset-4">Sign out</button>
       </form>

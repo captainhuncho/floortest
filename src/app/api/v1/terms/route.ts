@@ -34,7 +34,12 @@ export async function POST(req: Request) {
   const terms = await currentTermsOrNull();
   if (!terms) return fail(UNREADABLE, 503);
   if (data.hash !== terms.hash) return fail("The Terms changed while they were open. Read them again, then tick.", 409, { termsNeeded: true, hash: terms.hash, version: terms.version });
-  const { row, added } = await recordAcceptance({ userId: u.id, email: u.email }, u.name, terms);
+  const saved = await recordAcceptance({ userId: u.id, email: u.email }, u.name, terms).catch((e) => {
+    console.error("[terms] couldn't record the tick", e);
+    return null;
+  });
+  if (!saved) return fail("The Terms couldn't be saved just now. Try again in a minute.", 503);
+  const { row, added } = saved;
   if (added) afterResponse(() => termsPdfMail({ userId: u.id, email: u.email, name: u.name, acceptanceId: row.id }), "[terms] copy failed; the queue will retry");
   return json({ ok: true, version: terms.version });
 }

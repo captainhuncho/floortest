@@ -21,7 +21,13 @@ export async function acceptTerms(_: unknown, form: FormData): Promise<{ error: 
   // The person's own address: on a team desk `me` is the team's account, `actor_id` the person signed in.
   const person = await q.get<{ email: string; name: string }>("SELECT email, name FROM users WHERE id = ?", me.actor_id);
   if (!person) redirect("/login");
-  const { row, added } = await recordAcceptance({ userId: me.actor_id, email: person.email }, person.name, terms);
+  // A database blip (the Terms text not archived yet) answers plainly instead of an error page (Safety, 15 Nov).
+  const saved = await recordAcceptance({ userId: me.actor_id, email: person.email }, person.name, terms).catch((e) => {
+    console.error("[terms] couldn't record the tick", e);
+    return null;
+  });
+  if (!saved) return { error: "The Terms couldn't be saved just now. Try again in a minute." };
+  const { row, added } = saved;
   // Already accepted (a second submit, another tab): nothing is added and no second copy goes out (Safety M3).
   if (added) afterResponse(() => termsPdfMail({ userId: me.actor_id, email: person.email, name: person.name, acceptanceId: row.id }), "[terms] copy failed; the queue will retry");
   redirect("/dashboard/floor");

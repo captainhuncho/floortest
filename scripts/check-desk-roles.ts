@@ -49,6 +49,17 @@ const GUARD: Record<Need, string | null> = {
 
 const dir = join(__dirname, "../src/app/dashboard/actions");
 const problems: string[] = [];
+// requireOwnAccount skips the Terms tick (owner, 15 Nov), so only deleteAccount may call it.
+{
+  const walk = (d: string): string[] => readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(d, e.name)) : /\.tsx?$/.test(e.name) ? [join(d, e.name)] : []));
+  for (const f of walk(join(__dirname, "../src"))) {
+    if (f.endsWith(join("lib", "auth.ts"))) continue;
+    for (const part of readFileSync(f, "utf8").split(/^(?=export async function )/m)) {
+      if (!part.includes("requireOwnAccount(")) continue;
+      if (!(f.endsWith(join("actions", "settings.ts")) && part.startsWith("export async function deleteAccount("))) problems.push(`${f}: only deleteAccount may call requireOwnAccount (it skips the Terms tick)`);
+    }
+  }
+}
 for (const file of readdirSync(dir).filter((f) => f.endsWith(".ts"))) {
   const parts = readFileSync(join(dir, file), "utf8").split(/^(?=export async function )/m);
   const listed = ROLES[file] ?? {};
