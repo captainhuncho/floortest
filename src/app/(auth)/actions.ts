@@ -212,7 +212,7 @@ async function createAccount(form: FormData, a: NewAccount, opts: { googleEmail?
         } else if (!open && !invite.valid) throw TEAM_GONE;
       }
       // The acceptance record, in the same transaction as the account: no account without its record.
-      const { row: acceptance } = await recordAcceptance({ userId: u.id }, a.name, accepted, db);
+      const { row: acceptance } = await recordAcceptance({ userId: u.id, email: a.email }, a.name, accepted, db);
       // No collection is made for them: each receiver names and creates their own (owner, 15 Oct; two in the beta).
       return { id: u.id, teamAccount, acceptanceId: acceptance.id };
     });

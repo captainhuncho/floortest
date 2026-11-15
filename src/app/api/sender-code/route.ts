@@ -2,7 +2,7 @@ import { canResend, checkCode, CodeError, confirmedEmail, sendCode } from "@/lib
 import { ipFrom } from "@/lib/ratelimit";
 import { BOT_MESSAGE, passedTurnstile } from "@/lib/turnstile";
 import { normalEmail } from "@/lib/email-normal";
-import { currentTerms, needsTermsTick } from "@/lib/terms-record";
+import { senderTermsState } from "@/lib/terms-record";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const bad = (error: string, status = 400) => Response.json({ error }, { status });
@@ -15,11 +15,8 @@ export async function GET(req: Request) {
   return Response.json({ confirmed, ...(confirmed ? await termsState(email) : {}) }, { headers: { "Cache-Control": "no-store" } });
 }
 
-/** Whether this confirmed sender must tick the Terms before sending, and the Terms version and hash to send back. */
-async function termsState(email: string) {
-  const terms = await currentTerms();
-  return { termsNeeded: await needsTermsTick({ email }, terms), termsVersion: terms.version, termsHash: terms.hash };
-}
+/** Whether this confirmed sender must tick the Terms before sending (lib/terms-record.ts senderTermsState). */
+const termsState = senderTermsState;
 
 /** send: bot check, then email a code. resend: a new code after a recent send. check: the typed code; sets the cookie. */
 export async function POST(req: Request) {

@@ -21,7 +21,8 @@ export async function acceptTerms(_: unknown, form: FormData): Promise<{ error: 
   // The person's own address: on a team desk `me` is the team's account, `actor_id` the person signed in.
   const person = await q.get<{ email: string; name: string }>("SELECT email, name FROM users WHERE id = ?", me.actor_id);
   if (!person) redirect("/login");
-  const { row } = await recordAcceptance({ userId: me.actor_id }, person.name, terms);
-  afterResponse(() => termsPdfMail({ userId: me.actor_id, email: person.email, name: person.name, acceptanceId: row.id }), "[terms] copy failed; the queue will retry");
+  const { row, added } = await recordAcceptance({ userId: me.actor_id, email: person.email }, person.name, terms);
+  // Already accepted (a second submit, another tab): nothing is added and no second copy goes out (Safety M3).
+  if (added) afterResponse(() => termsPdfMail({ userId: me.actor_id, email: person.email, name: person.name, acceptanceId: row.id }), "[terms] copy failed; the queue will retry");
   redirect("/dashboard/floor");
 }

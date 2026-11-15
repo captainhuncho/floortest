@@ -13,7 +13,7 @@ async function main() {
   const db = await getDb();
   const now = Date.now();
   await db.run(
-    "INSERT INTO terms_acceptances (user_id, version, hash, name, accepted_at, pdf_sent_at) SELECT id, ?, ?, name, ?, ? FROM users WHERE id NOT IN (SELECT user_id FROM terms_acceptances WHERE user_id IS NOT NULL)",
+    "INSERT INTO terms_acceptances (kind, user_id, email, version, hash, name, accepted_at, pdf_sent_at) SELECT 'account', id, email, ?, ?, name, ?, ? FROM users WHERE id NOT IN (SELECT user_id FROM terms_acceptances WHERE user_id IS NOT NULL)",
     terms.version,
     terms.hash,
     now,

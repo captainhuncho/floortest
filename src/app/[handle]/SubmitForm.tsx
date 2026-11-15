@@ -69,12 +69,15 @@ export function SubmitForm({
   bpmRange = null,
   promise = [],
   receiverFirstName,
+  termsHash,
 }: {
   handle: string;
   receiverName: string;
   genres: string[];
   /** Sending from a signed-in FloorTest account: name and email come from the account. */
   account?: { name: string; email: string };
+  /** Hash of the Terms in force when the page was drawn, sent with the tick so the record proves which text was shown. */
+  termsHash?: string;
   /** The collection lets the receiver share tracks privately with people they name (collection share links). */
   allowSharing?: boolean;
   /** Turnstile site key for anonymous senders when the bot check is on. */
@@ -675,7 +678,7 @@ export function SubmitForm({
             </ul>
           )}
           {/* Senders without an account tick the Terms on a first send and after the Terms change (Research brief, owner 15 Nov). */}
-          {!account && terms.needed && <TermsTick checked={termsTicked} onChange={setTermsTicked} updated={terms.updated} hash={terms.hash} />}
+          {!account && terms.needed && <TermsTick checked={termsTicked} onChange={setTermsTicked} updated={terms.updated} hash={terms.hash ?? termsHash ?? null} />}
           {/* On phones the send button stays within reach at the bottom of the screen while the form scrolls. */}
           <div className="max-sm:sticky max-sm:bottom-0 max-sm:z-10 max-sm:-mx-[18px] max-sm:border-t max-sm:border-line max-sm:bg-ink/95 max-sm:px-[18px] max-sm:pt-2.5 max-sm:pb-[max(12px,env(safe-area-inset-bottom))] max-sm:backdrop-blur-sm">
             <button className="btn-lime min-h-[52px] w-full gap-2 rounded-[15px] text-[14.5px] font-bold" disabled={busy || analyzing || checking || termsWaiting} aria-describedby={termsWaiting ? "terms-wait" : undefined}>
