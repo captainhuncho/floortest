@@ -183,6 +183,62 @@ test("day 14: evidence kept, account purged, once; held accounts wait; evidence 
   assert.equal((await runDeletions()).evidenceExpired, 1);
 });
 
+test("an account switched back on is never purged; a hold re-checked just before; self-holds refused; the first hold stands", async () => {
+  const { q } = await import("../src/lib/db");
+  const { requestDeletion, runDeletions, setLegalHold } = await import("../src/lib/account-deletion");
+  const back = await account();
+  await requestDeletion(back.id);
+  await ageDeletion(back.id, 20);
+  // As if an admin switched it on by hand (the Unsuspend button now refuses a pending deletion).
+  await q.run("UPDATE users SET suspended_at = NULL WHERE id = ?", back.id);
+  await runDeletions();
+  assert.equal(await q.count("SELECT COUNT(*) AS n FROM users WHERE id = ?", back.id), 1, "live account kept");
+
+  const admin = await account("selfadmin");
+  assert.equal(await setLegalHold(admin.id, admin.id, "Mine"), false, "no hold on your own account");
+  const held = await account();
+  assert.ok(await setLegalHold(admin.id, held.id, "Court order 1"));
+  assert.equal(await setLegalHold(admin.id, held.id, "Something else"), false, "already held");
+  assert.equal((await q.get<{ r: string }>("SELECT legal_hold_reason AS r FROM users WHERE id = ?", held.id))!.r, "Court order 1");
+});
+
+test("evidence keeps the account's own sign-in detail, never free text naming others; expires exactly after 6 years", async () => {
+  const { q } = await import("../src/lib/db");
+  const { requestDeletion, runDeletions } = await import("../src/lib/account-deletion");
+  const { audit } = await import("../src/lib/audit");
+  const a = await account();
+  await audit(a.id, "signed_in", "with passkey");
+  await audit(a.id, "team_invited", "friend@example.test (member)");
+  await requestDeletion(a.id);
+  await ageDeletion(a.id, 15);
+  await runDeletions();
+  const record = JSON.parse((await q.get<{ record: string }>("SELECT record FROM account_evidence WHERE user_id = ?", a.id))!.record);
+  assert.ok(record.accountLog.some((l: { action: string; detail: string }) => l.action === "signed_in" && l.detail === "with passkey"));
+  assert.ok(record.accountLog.some((l: { action: string; detail: string }) => l.action === "team_invited" && l.detail === ""), "other people's emails left out");
+
+  // The 6-year line: 5 years 364 days kept, 6 years and a day gone.
+  const t = Date.UTC(2032, 5, 15);
+  const sixYearsBefore = Date.UTC(2026, 5, 15);
+  const kept = 900_001, gone = 900_002;
+  for (const [id, keepFrom] of [[kept, sixYearsBefore + DAY], [gone, sixYearsBefore - DAY]]) {
+    await q.run("INSERT INTO account_evidence (user_id, name, email, handle, account_created_at, deletion_requested_at, purged_at, keep_from, record) VALUES (?, 'x', ?, ?, 0, 0, 0, ?, '{}')", id, `ev${id}@example.test`, `ev${id}`, keepFrom);
+  }
+  await runDeletions(t);
+  assert.equal(await q.count("SELECT COUNT(*) AS n FROM account_evidence WHERE user_id = ?", kept), 1, "5y364d kept");
+  assert.equal(await q.count("SELECT COUNT(*) AS n FROM account_evidence WHERE user_id = ?", gone), 0, "6y1d deleted");
+});
+
+test("expired restore tickets are cleared by the nightly job", async () => {
+  const { q } = await import("../src/lib/db");
+  const { requestDeletion, issueRestoreTicket, runDeletions } = await import("../src/lib/account-deletion");
+  const a = await account();
+  await requestDeletion(a.id);
+  await issueRestoreTicket(a.id);
+  await q.run("UPDATE restore_tickets SET expires_at = 1 WHERE user_id = ?", a.id);
+  await runDeletions();
+  assert.equal(await q.count("SELECT COUNT(*) AS n FROM restore_tickets WHERE user_id = ?", a.id), 0);
+});
+
 test("the restore route is open through the site lock and its name can't be taken as a link", async () => {
   const fs = await import("node:fs");
   assert.match(fs.readFileSync("src/proxy.ts", "utf8"), /"\/restore"/);

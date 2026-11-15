@@ -134,13 +134,22 @@ export async function restoreWithTicket(id: string | undefined) {
  * lines, admin actions on it, and what senders submitted and what was played or downloaded (sender email, track title,
  * time). Terms acceptances are kept by their own table. No audio, file keys, passwords, tokens or messages.
  */
+/** account_log actions whose detail goes into the evidence record (no third-party names or free text in them). */
+const EVIDENCE_DETAIL = ["signed_in", "signed_out", "password_reset", "password_changed", "two_factor_on", "two_factor_off", "plan_changed", "deletion_requested", "account_restored"];
+
 async function keepEvidence(db: Queryable, userId: number, t: number) {
   const u = await db.get<{ name: string; email: string; handle: string; created_at: number; requested: number }>(
     "SELECT name, email, handle, created_at, deletion_requested_at AS requested FROM users WHERE id = ?",
     userId,
   );
   if (!u) return;
-  const accountLog = await db.all("SELECT action, detail, created_at FROM account_log WHERE user_id = ? ORDER BY created_at", userId);
+  // Every row's action and time; the detail only where it is about how they used the account (sign-in method, plan),
+  // never free text that can name other people (team invites, sender names, link messages).
+  const accountLog = await db.all(
+    "SELECT action, CASE WHEN action IN (" + EVIDENCE_DETAIL.map(() => "?").join(",") + ") THEN detail ELSE '' END AS detail, created_at FROM account_log WHERE user_id = ? ORDER BY created_at",
+    ...EVIDENCE_DETAIL,
+    userId,
+  );
   const accountActions = await db.all("SELECT kind, reason, created_at FROM account_actions WHERE user_id = ? ORDER BY created_at", userId);
   const events = await db.all(
     `SELECT e.type, s.email AS sender_email, t.title AS track_title, e.created_at FROM events e
@@ -169,9 +178,15 @@ async function keepEvidence(db: Queryable, userId: number, t: number) {
  * purged. Each account is its own try, so one failure doesn't stop the rest; a failed one is retried the next night
  * (the evidence insert keeps the first record) and raised as an incident. Then evidence past 6 years goes, unless held.
  */
+/**
+ * Due for purge: deletion asked more than 14 days ago, still switched off (an admin who switched it back on cancels
+ * the purge), and not on legal hold. One placeholder: the cut-off time.
+ */
+const DUE = "deletion_requested_at IS NOT NULL AND deletion_requested_at <= ? AND suspended_at IS NOT NULL AND legal_hold_at IS NULL";
+
 export async function runDeletions(t = now()) {
   const due = await q.all<{ id: number; email: string; name: string; handle: string }>(
-    "SELECT id, email, name, handle FROM users WHERE deletion_requested_at IS NOT NULL AND deletion_requested_at <= ? AND legal_hold_at IS NULL ORDER BY deletion_requested_at LIMIT ?",
+    `SELECT id, email, name, handle FROM users WHERE ${DUE} ORDER BY deletion_requested_at LIMIT ?`,
     t - UNDO_MS,
     PURGE_BATCH,
   );
@@ -179,23 +194,27 @@ export async function runDeletions(t = now()) {
   let failed = 0;
   for (const u of due) {
     try {
+      // Checked again just before: a hold or an admin's change since the list was read wins (Safety H1).
+      if (!(await q.get(`SELECT 1 AS ok FROM users WHERE id = ? AND ${DUE}`, u.id, t - UNDO_MS))) continue;
       await keepEvidence(q, Number(u.id), t);
-      // Queued before the purge: a queued email survives it (lib/privacy.ts forgetAddress), so this one still goes.
-      await sendMail({
-        userId: null,
-        audience: "support",
-        to: u.email,
-        reserved: true,
-        subject: "Your FloorTest account was deleted",
-        body: `Hi ${u.name.split(/\s+/)[0]},\n\nYour FloorTest account (${u.handle}) and everything on it were deleted today, 14 days after you asked.\n\n— FloorTest`,
-      });
       await purgeAccount(Number(u.id));
       purged++;
     } catch (e) {
       failed++;
       console.error("[deletions] purge failed", u.id, e);
+      continue;
     }
+    // After the purge, so a failed email can't stop it and no email says "deleted" before it is.
+    await sendMail({
+      userId: null,
+      audience: "support",
+      to: u.email,
+      reserved: true,
+      subject: "Your FloorTest account was deleted",
+      body: `Hi ${u.name.split(/\s+/)[0]},\n\nYour FloorTest account (${u.handle}) and everything on it were deleted today, 14 days after you asked.\n\n— FloorTest`,
+    }).catch((e) => console.error("[deletions] deleted email failed", u.id, e));
   }
+  await q.run("DELETE FROM restore_tickets WHERE expires_at < ?", t);
   if (failed) await recordIncident("cron_failed", `${failed} deleted account(s) couldn't be purged`, "Retried next night. Their evidence record is kept.", "/api/cron/purge");
   const expired = await q.run("DELETE FROM account_evidence WHERE legal_hold_at IS NULL AND keep_from < ?", yearsBefore(t, EVIDENCE_YEARS));
   return { accountsPurged: purged, accountPurgesFailed: failed, evidenceExpired: expired.changes };
@@ -213,10 +232,19 @@ function yearsBefore(t: number, years: number) {
  */
 export async function setLegalHold(adminId: number, userId: number, reason: string) {
   const why = reason.trim().slice(0, 500);
-  if (!why) return false;
+  // No reason, or an admin holding their own account (so it can't be used to dodge their own deletion): refused.
+  if (!why || adminId === userId) return false;
   const t = now();
-  const live = await q.run("UPDATE users SET legal_hold_at = ?, legal_hold_reason = ? WHERE id = ?", t, why, userId);
-  const kept = live.changes ? live : await q.run("UPDATE account_evidence SET legal_hold_at = ?, legal_hold_reason = ? WHERE user_id = ?", t, why, userId);
+  // The first hold stands: a second one doesn't overwrite its date or reason.
+  const onAccount = await q.get("SELECT 1 AS ok FROM users WHERE id = ?", userId);
+  const kept = await q.run(
+    onAccount
+      ? "UPDATE users SET legal_hold_at = ?, legal_hold_reason = ? WHERE id = ? AND legal_hold_at IS NULL"
+      : "UPDATE account_evidence SET legal_hold_at = ?, legal_hold_reason = ? WHERE user_id = ? AND legal_hold_at IS NULL",
+    t,
+    why,
+    userId,
+  );
   if (!kept.changes) return false;
   await logAdmin(adminId, "set legal hold", `account #${userId}`, why);
   return true;

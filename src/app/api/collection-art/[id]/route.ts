@@ -72,7 +72,7 @@ export async function DELETE(_req: Request, ctx: RouteContext<"/api/collection-a
 export async function GET(_req: Request, ctx: RouteContext<"/api/collection-art/[id]">) {
   const c = await collectionOf((await ctx.params).id);
   if (!c?.art_key) return new Response("Not found", { status: 404 });
-  const owner = await q.get<{ active_collection_id: number | null }>("SELECT active_collection_id FROM users WHERE id = ?", c.user_id);
+  const owner = await q.get<{ active_collection_id: number | null }>("SELECT active_collection_id FROM users WHERE id = ? AND suspended_at IS NULL", c.user_id);
   const viewer = await currentUser();
   const isPublic = !!owner && (await activeCollection(owner))?.id === c.id;
   if (!isPublic && viewer?.id !== c.user_id) return new Response("Not found", { status: 404 });
