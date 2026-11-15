@@ -17,5 +17,5 @@ export const LEGAL = {
   copyright: "copyright@floortest.app",
   /** Security vulnerability reports. */
   security: "security@floortest.app",
-  updated: "10 November 2026",
+  updated: "15 November 2026",
 };

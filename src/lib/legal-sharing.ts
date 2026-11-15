@@ -12,10 +12,12 @@ import { switchOn } from "./switches";
 export const SHARED_RESPONSIBILITY = [
   "Shared desks and collections. On FloorTest, a desk's owner is primarily responsible for the desk, its collections and everything in them. Anyone the owner adds to a team desk, or gives access to a collection by any means, including a share link, is also responsible for what they do with that desk, its collections and their contents, including any tracks they download, share or pass on. These terms apply to every person with access, not only the owner.",
   "Information you choose to share. FloorTest Labs is not responsible for what happens to your data, tracks or files after you choose to give them to someone else, for example by adding them to your team desk, sharing a link, or sending a file outside FloorTest. FloorTest Labs remains responsible for keeping the data it holds secure, as the law requires.",
+  "Once you send a track or share a file, we cannot recall or control copies the receiver already has. You send music at your own risk.",
+  "We are not responsible for what other users do, and you use FloorTest and interact with other users at your own risk.",
 ];
 
 export const SHARING_LEGAL = {
-  updated: "11 October 2026",
+  updated: "15 November 2026",
   terms: {
     senderSharing:
       "Private sharing. If the receiver's collection allows private sharing when you send, the receiver may let people they choose hear your track through a private FloorTest link. These can be people they add by email address, by company email domain or by FloorTest username, and people who ask and are approved. Each person must confirm their email address and accept FloorTest's rules before listening. The receiver decides whether each person can only listen or can also download the original file, and for how long (up to 90 days, or until the receiver ends it). Private sharing never makes your track public. Nobody given access may release, sell, distribute, upload or publish it without a signed agreement with you. The receiver can end anyone's access at any time, and you can stop private sharing of your track from your receipt. Tracks you sent before private sharing existed are never shared this way.",
