@@ -133,7 +133,14 @@ async function suspendOne(a: Awaited<ReturnType<typeof requireAdminAction>>, use
   if (refused) return { ok: false, why: refused };
   const why = String(reason || "").trim().slice(0, 200);
   const r = await q.tx(async (db) => {
-    const r = await db.run("UPDATE users SET suspended_at = ?, suspended_reason = ? WHERE id = ? AND suspended_at IS NULL", now(), why, u.id);
+    // A deletion in its 14 days counts as not suspended: suspending sets a new time, so the person can no longer restore
+    // it (RESTORABLE needs suspended_at = deletion_requested_at) and the purge still runs on day 14 (Safety H1, 15 Nov).
+    const r = await db.run(
+      "UPDATE users SET suspended_at = ?, suspended_reason = ? WHERE id = ? AND (suspended_at IS NULL OR suspended_at = deletion_requested_at)",
+      now() + 1,
+      why,
+      u.id,
+    );
     if (!r.changes) return r;
     // Every way in ends: sessions, ops sessions, unused reset links and emailed sign-in codes (Safety, 7 Nov).
     await revokeAllSessions(u.id, { db });

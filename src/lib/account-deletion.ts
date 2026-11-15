@@ -150,7 +150,10 @@ async function keepEvidence(db: Queryable, userId: number, t: number) {
     ...EVIDENCE_DETAIL,
     userId,
   );
-  const accountActions = await db.all("SELECT kind, reason, created_at FROM account_actions WHERE user_id = ? ORDER BY created_at", userId);
+  // A staff reason is free text: any email address in it is taken out.
+  const accountActions = (await db.all<{ kind: string; reason: string; created_at: number }>("SELECT kind, reason, created_at FROM account_actions WHERE user_id = ? ORDER BY created_at", userId)).map(
+    (a) => ({ ...a, reason: String(a.reason ?? "").replace(/[^\s@]+@[^\s@]+/g, "(email removed)") }),
+  );
   const events = await db.all(
     `SELECT e.type, s.email AS sender_email, t.title AS track_title, e.created_at FROM events e
      JOIN senders s ON s.id = e.sender_id LEFT JOIN tracks t ON t.id = e.track_id
@@ -228,7 +231,9 @@ function yearsBefore(t: number, years: number) {
 
 /**
  * Legal hold (super admin only; the caller checks). On a live or switched-off account it stops the purge; on a purged
- * account's evidence it stops the expiry. Everything is kept while it lasts. Returns false when there is nothing to hold.
+ * account's evidence it stops the expiry. It does not pause the ordinary retention rules (tracks still expire on their
+ * schedule, the person can still delete their own tracks): it holds the account and its evidence record only. Returns
+ * false when there is nothing to hold, or when an admin names their own account.
  */
 export async function setLegalHold(adminId: number, userId: number, reason: string) {
   const why = reason.trim().slice(0, 500);
@@ -252,6 +257,7 @@ export async function setLegalHold(adminId: number, userId: number, reason: stri
 
 /** Ends a hold. The clock restarts: a switched-off account gets 14 days from now, evidence 6 years from now. */
 export async function clearLegalHold(adminId: number, userId: number) {
+  if (adminId === userId) return false;
   const t = now();
   const live = await q.run(
     `UPDATE users SET legal_hold_at = NULL, legal_hold_reason = '',

@@ -239,6 +239,49 @@ test("expired restore tickets are cleared by the nightly job", async () => {
   assert.equal(await q.count("SELECT COUNT(*) AS n FROM restore_tickets WHERE user_id = ?", a.id), 0);
 });
 
+test("suspending during the 14 days sticks: restore refused, purge still due; Unsuspend refuses a pending deletion", async () => {
+  const fs = await import("node:fs");
+  const { q, now } = await import("../src/lib/db");
+  const { requestDeletion, restorable, issueRestoreTicket, restoreWithTicket } = await import("../src/lib/account-deletion");
+  // Server actions need an ops session, so the two guards are checked in the source and their SQL run here.
+  const src = fs.readFileSync("src/app/admin/actions.ts", "utf8");
+  const suspend = src.slice(src.indexOf("async function suspendOne")).split("\nexport ")[0];
+  assert.match(suspend, /suspended_at IS NULL OR suspended_at = deletion_requested_at/);
+  const unsuspend = src.slice(src.indexOf("export async function unsuspendAccount")).split("\nexport ")[0];
+  assert.match(unsuspend, /deletion_requested_at IS NOT NULL/);
+  assert.ok(unsuspend.indexOf("deletion_requested_at IS NOT NULL") < unsuspend.indexOf("UPDATE users"), "refused before any change");
+
+  const a = await account();
+  await requestDeletion(a.id);
+  const ticket = await issueRestoreTicket(a.id);
+  const r = await q.run(
+    "UPDATE users SET suspended_at = ?, suspended_reason = ? WHERE id = ? AND (suspended_at IS NULL OR suspended_at = deletion_requested_at)",
+    now() + 1,
+    "spam",
+    a.id,
+  );
+  assert.equal(r.changes, 1, "the suspension lands");
+  assert.equal(await restorable(a.id), false);
+  assert.equal(await restoreWithTicket(ticket), null, "restore refused");
+});
+
+test("a held account's tracks, events and log lines outlive ordinary retention; an admin can't clear a hold on themselves", async () => {
+  const { q } = await import("../src/lib/db");
+  const { setLegalHold, clearLegalHold } = await import("../src/lib/account-deletion");
+  const { cleanupRecords } = await import("../src/lib/retention");
+  const admin = await account("holdadmin");
+  const held = await account();
+  const old = Date.now() - 3000 * DAY;
+  await q.run("INSERT INTO account_log (user_id, action, detail, created_at) VALUES (?, 'signed_in', '', ?)", held.id, old);
+  await q.run("INSERT INTO account_log (user_id, action, detail, created_at) VALUES (?, 'signed_in', '', ?)", admin.id, old);
+  assert.ok(await setLegalHold(admin.id, held.id, "Dispute"));
+  await cleanupRecords(Date.now(), Date.now() + 60_000);
+  assert.equal(await q.count("SELECT COUNT(*) AS n FROM account_log WHERE user_id = ? AND created_at = ?", held.id, old), 1, "held: kept");
+  assert.equal(await q.count("SELECT COUNT(*) AS n FROM account_log WHERE user_id = ? AND created_at = ?", admin.id, old), 0, "not held: cleared");
+  assert.equal(await clearLegalHold(held.id, held.id), false, "not on yourself");
+  assert.equal(await clearLegalHold(admin.id, admin.id), false);
+});
+
 test("the restore route is open through the site lock and its name can't be taken as a link", async () => {
   const fs = await import("node:fs");
   assert.match(fs.readFileSync("src/proxy.ts", "utf8"), /"\/restore"/);
