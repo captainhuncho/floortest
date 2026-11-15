@@ -26,9 +26,13 @@ test("a sender without an account ticks the Terms before Send turns on", async (
 
 const MAIL = `http://127.0.0.1:${Number(process.env.E2E_MAIL_PORT || 3212)}/mail`;
 
-/** Fills the link page's send form for a new sender, up to and including the Terms tick. */
+/**
+ * Fills the link page's send form for a new sender, up to and including the Terms tick. It sends to Kit's link (a
+ * passkey-test account) because the suite's other sends to /maxwell already use most of the 10-an-hour slots per
+ * receiver and connection (src/lib/intake.ts), which made upload-resilience run out.
+ */
 async function fillFirstSend(page: Page, title: string, email: string) {
-  await page.goto("/maxwell");
+  await page.goto("/kitkeys");
   await page.getByLabel("Choose WAV or MP3 files").setInputFiles({ name: `Tick - ${title}.wav`, mimeType: "audio/wav", buffer: wav(4) });
   await expect(page.getByText(/WAV · \d+ KB · \d+:\d+/)).toBeVisible({ timeout: 30_000 });
   await page.getByLabel("Track title").fill(title);
@@ -74,7 +78,7 @@ test("when the Terms can't be checked, the send stops, says so and keeps the for
   // The server can't read the Terms (#547): it answers 503 before any file is stored.
   const error = "Couldn't check the Terms just now. Nothing was sent. Try again in a minute: your details are still here.";
   let puts = 0;
-  await page.route(/\/api\/submit\/maxwell$/, (route) =>
+  await page.route(/\/api\/submit\/kitkeys$/, (route) =>
     route.request().method() === "POST" ? route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error }) }) : route.continue(),
   );
   await page.route(/\/api\/storage\/upload/, (route) => (++puts, route.continue()));
