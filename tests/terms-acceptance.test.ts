@@ -7,6 +7,7 @@ import { inRequest, type Jar } from "./request-scope";
 // Terms acceptance records and the stamped PDF (Research brief, owner 15 Nov). A throwaway database, no email key.
 process.env.DATA_DIR = testDataDir("ft-terms-acceptance-");
 process.env.APP_SECRET ??= "test-secret-".padEnd(48, "x");
+process.env.ADMIN_EMAILS = "ops-admin@example.test";
 delete process.env.DATABASE_URL;
 delete process.env.RESEND_API_KEY;
 delete process.env.VERCEL_ENV;
@@ -159,10 +160,8 @@ test("a sender's PDF goes on their first Delivered email per Terms version, once
   assert.equal(await pendingTermsPdf(email), undefined, "nothing accepted, nothing to attach");
   const { row } = await recordAcceptance({ email }, "Once");
   assert.deepEqual(await pendingTermsPdf(email), { acceptanceId: row.id, email });
-  // What lib/mail.ts does when it sends: claims the copy; a second email queued meanwhile finds it claimed.
-  const claim = () => q.run("UPDATE terms_acceptances SET pdf_sent_at = ? WHERE id = ? AND pdf_sent_at IS NULL", now(), row.id);
-  assert.equal((await claim()).changes, 1);
-  assert.equal((await claim()).changes, 0, "claimed once");
+  // What lib/mail.ts does once the email carrying it is accepted: marks it sent (the claim itself is in terms-mail.test.ts).
+  await q.run("UPDATE terms_acceptances SET pdf_sent_at = ? WHERE id = ?", now(), row.id);
   assert.equal(await pendingTermsPdf(email), undefined, "later sends carry no copy");
 });
 
@@ -225,12 +224,83 @@ test("sending without an account: refused with termsNeeded until the box is tick
   assert.equal(await q.count("SELECT COUNT(*) AS n FROM terms_acceptances WHERE email = ?", email), 1, "and records nothing more");
 });
 
-test("the dashboard sends anyone who hasn't accepted the current Terms to /accept-terms, never in an admin view", async () => {
+/** A browser signed in as this person (a real session row and cookie). */
+async function signedIn(id: number): Promise<Jar> {
+  const { createSession } = await import("../src/lib/auth");
+  const jar: Jar = new Map();
+  await inRequest(jar, "10.7.0.1", () => createSession(id));
+  return jar;
+}
+
+/** The same browser with an ops admin's live "view as" ticket on this person's desk. */
+async function viewingAsAdmin(jar: Jar, target: number) {
+  const { q, now } = await import("../src/lib/db");
+  const { signViewAs, VIEW_AS_COOKIE } = await import("../src/lib/auth");
+  const admin = (await q.get<{ id: number }>(
+    "INSERT INTO users (email, password_hash, name, handle, plan, kind, tz, created_at, email_verified_at, totp_enabled_at) VALUES ('ops-admin@example.test','h','Ops','opsadmin','free','dj','UTC',?,?,?) ON CONFLICT (email) DO UPDATE SET name = 'Ops' RETURNING id",
+    now(), now(), now(),
+  ))!.id;
+  const token = crypto.randomBytes(16).toString("hex");
+  const hash = crypto.createHash("sha256").update(token).digest("hex");
+  await q.run("INSERT INTO admin_sessions (token_hash, user_id, created_at, last_seen_at, expires_at) VALUES (?,?,?,?,?)", hash, admin, now(), now(), now() + 3_600_000);
+  jar.set(VIEW_AS_COOKIE, signViewAs(admin, target, hash, process.env.APP_SECRET!));
+}
+
+const tickForm = (hash: string) => {
+  const f = new FormData();
+  f.set("tick", "on");
+  f.set("version", hash);
+  return f;
+};
+
+test("accepting on /accept-terms is refused in an admin's view of someone's desk, and records nothing", async () => {
+  const { q } = await import("../src/lib/db");
+  const { currentTerms } = await import("../src/lib/terms-record");
+  const { acceptTerms } = await import("../src/app/(auth)/accept-terms/actions");
+  const id = await user("viewed@example.test");
+  const jar = await signedIn(id);
+  await viewingAsAdmin(jar, id);
+  const out = await inRequest(jar, "10.7.0.2", async () => acceptTerms(undefined, tickForm((await currentTerms()).hash)));
+  assert.deepEqual(out.answer, { error: "Only the person can accept the Terms, not an admin view." });
+  assert.equal(await q.count("SELECT COUNT(*) AS n FROM terms_acceptances WHERE user_id = ?", id), 0);
+});
+
+test("on a team desk, accepting records the person signed in and their own email, never the team account's", async () => {
+  const { q } = await import("../src/lib/db");
+  const { currentTerms } = await import("../src/lib/terms-record");
+  const { DESK_COOKIE } = await import("../src/lib/auth");
+  const { acceptTerms } = await import("../src/app/(auth)/accept-terms/actions");
+  const team = await user("label-team@example.test");
+  const mate = await user("teammate@example.test");
+  const jar = await signedIn(mate);
+  jar.set(DESK_COOKIE, String(team)); // working on the team's desk
+  const out = await inRequest(jar, "10.7.0.3", async () => acceptTerms(undefined, tickForm((await currentTerms()).hash)), { dropAfter: true });
+  assert.equal(out.redirect, "/dashboard/floor");
+  const rows = await q.all<{ user_id: number; email: string }>("SELECT user_id, email FROM terms_acceptances WHERE user_id IN (?, ?)", team, mate);
+  assert.deepEqual(rows.map((r) => [Number(r.user_id), r.email]), [[mate, "teammate@example.test"]]);
+  // A stale page (Terms changed while it was open) records nothing.
+  const stale = await inRequest(jar, "10.7.0.3", () => acceptTerms(undefined, tickForm("0".repeat(64))), { dropAfter: true });
+  assert.match(String((stale.answer as { error?: string })?.error), /changed while this page was open/);
+});
+
+test("the desk sends someone who hasn't accepted the current Terms to /accept-terms, but never in an admin view", async () => {
+  const { currentTerms, deskNeedsTerms, recordAcceptance } = await import("../src/lib/terms-record");
+  const id = await user("fresh-desk@example.test");
+  assert.equal(await deskNeedsTerms(false, id), true, "no tick yet: asked");
+  assert.equal(await deskNeedsTerms(true, id), false, "an admin's view never asks");
+  await recordAcceptance({ userId: id, email: "fresh-desk@example.test" }, "Fresh", await currentTerms());
+  assert.equal(await deskNeedsTerms(false, id), false, "ticked the current text: straight in");
+  // The layout itself pulls in client components, so its one call is pinned here.
   const fs = await import("node:fs");
   const layout = fs.readFileSync(new URL("../src/app/dashboard/layout.tsx", import.meta.url), "utf8");
-  assert.match(layout, /if \(!view && \(await needsTermsTick\(\{ userId: user\.actor_id \}\)\)\) redirect\("\/accept-terms"\);/);
+  assert.match(layout, /if \(await deskNeedsTerms\(!!view, user\.actor_id\)\) redirect\("\/accept-terms"\);/);
+});
+
+test("sign-up records the tick inside the account's own transaction", async () => {
+  // The sign-up action needs the bot check and mail; its call is pinned here, the record itself is tested above.
+  const fs = await import("node:fs");
   const signup = fs.readFileSync(new URL("../src/app/(auth)/actions.ts", import.meta.url), "utf8");
-  assert.match(signup, /await recordAcceptance\(\{ userId: u\.id, email: a\.email \}, a\.name, accepted, db\)/, "sign-up records it inside the account's transaction");
+  assert.match(signup, /await recordAcceptance\(\{ userId: u\.id, email: a\.email \}, a\.name, accepted, db\)/);
 });
 
 test("ticking the same text again adds no row and no copy; a changed text gets its own row", async () => {

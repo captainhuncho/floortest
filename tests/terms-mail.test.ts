@@ -79,6 +79,30 @@ test("two ticks of the same text at once record one row (lock on the person)", a
   assert.equal(await q.count("SELECT COUNT(*) AS n FROM terms_acceptances WHERE email = ?", email), 1);
 });
 
+test("two emails claiming one copy: only the first carries it, and a finally failed email lets it go", async () => {
+  const { q } = await import("../src/lib/db");
+  const { queueMail, deliver, termsAttachment } = await import("../src/lib/mail");
+  const { recordAcceptance } = await import("../src/lib/terms-record");
+  const email = "race@example.test";
+  const { row } = await recordAcceptance({ email }, "Race");
+  const t = { acceptanceId: row.id, email };
+  const a = await queueMail({ userId: null, to: email, subject: "Delivered 1", body: "b", termsPdf: t });
+  const b = await queueMail({ userId: null, to: email, subject: "Delivered 2", body: "b", termsPdf: t });
+  const [pa, pb] = await Promise.all([termsAttachment(t, email, a), termsAttachment(t, email, b)]);
+  assert.equal(pa.length + pb.length, 1, "one email holds the copy");
+  const holder = pa.length ? a : b;
+  const other = holder === a ? b : a;
+  assert.equal((await termsAttachment(t, email, holder)).length, 1, "the holder's retry carries it again");
+  // The holder finally fails: the copy is let go and the other email can take it.
+  answer = 500;
+  assert.match(await deliver(holder, { retry: false }), /^failed/);
+  answer = 200;
+  assert.equal((await q.get<{ o: number | null }>("SELECT pdf_outbox_id AS o FROM terms_acceptances WHERE id = ?", row.id))!.o, null);
+  assert.equal(await deliver(other), "sent");
+  assert.ok(pdfOf(tries.at(-1)!), "the other email carried the copy");
+  assert.ok((await q.get<{ s: number | null }>("SELECT pdf_sent_at AS s FROM terms_acceptances WHERE id = ?", row.id))!.s);
+});
+
 test("copies to one address are capped at 3 a day, whatever asks for them", async () => {
   const { q } = await import("../src/lib/db");
   const { termsPdfMail } = await import("../src/lib/terms-mail");

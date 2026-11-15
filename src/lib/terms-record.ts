@@ -35,9 +35,30 @@ let cached: { at: number; terms: CurrentTerms } | undefined;
  */
 export async function currentTerms(): Promise<CurrentTerms> {
   if (cached && Date.now() - cached.at < TERMS_CACHE_MS) return cached.terms;
-  const terms = await readTerms();
-  cached = { at: Date.now(), terms };
-  return terms;
+  try {
+    const terms = await readTerms();
+    cached = { at: Date.now(), terms };
+    return terms;
+  } catch (e) {
+    // A failed read or archive serves the last good text (Safety, 15 Nov), and tries again on the next request.
+    if (!cached) throw e;
+    console.error("[terms] couldn't read the Terms; using the last good copy", e);
+    return cached.terms;
+  }
+}
+
+/**
+ * For pages that must stay up when the Terms can't be read at all (no copy yet on this server): the desk then skips the
+ * tick for this request rather than failing every page, and the send page leaves the hash out (the send route still
+ * refuses a tick that isn't for the current text).
+ */
+export async function currentTermsOrNull(): Promise<CurrentTerms | null> {
+  try {
+    return await currentTerms();
+  } catch (e) {
+    console.error("[terms] couldn't read the Terms", e);
+    return null;
+  }
 }
 
 /** Forget the cached Terms (tests). */
@@ -77,6 +98,16 @@ export async function needsTermsTick(who: { userId: number } | { email: string }
   const t = terms ?? (await currentTerms());
   const last = await latestAcceptance(who);
   return !last || last.hash !== t.hash;
+}
+
+/**
+ * Whether the desk must send this person to /accept-terms first: never in an admin's view of someone's desk, and not
+ * when the Terms can't be read at all (the desk stays up; it asks on a later request).
+ */
+export async function deskNeedsTerms(viewing: boolean, userId: number) {
+  if (viewing) return false;
+  const terms = await currentTermsOrNull();
+  return !!terms && (await needsTermsTick({ userId }, terms));
 }
 
 /**
@@ -133,7 +164,8 @@ export const archivedTerms = (hash: string) => q.get<{ version: string; body: st
 
 /**
  * The stamped PDF to attach to a sender's "Delivered" email: their latest acceptance, if its copy hasn't gone out yet
- * (so once per Terms version). Claimed when the email is sent (lib/mail.ts), so two sends at once attach it once.
+ * (so once per Terms version). The email that sends it claims it first (lib/mail.ts termsAttachment), so two emails at
+ * once attach it once.
  */
 export async function pendingTermsPdf(email: string, db: Queryable = q) {
   const last = await latestAcceptance({ email }, db);

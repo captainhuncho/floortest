@@ -20,7 +20,7 @@ import { botCheckKey } from "@/lib/turnstile";
 import { ReopenAlert } from "./ReopenAlert";
 import { CARD, Icon } from "@/components/Kit";
 import { SendModes } from "./SendModes";
-import { currentTerms } from "@/lib/terms-record";
+import { currentTermsOrNull } from "@/lib/terms-record";
 
 type Props = { params: Promise<{ handle: string }>; };
 
@@ -141,7 +141,7 @@ export default async function ReceiverPage({ params }: Props) {
           <ReopenAlert handle={receiver.handle} receiverName={receiver.name} botCheckKey={botKey} />
         </div>
       ) : (
-        <SendModes folderBytes={folderBytes} brief={brief} receiverFirstName={firstName} bpmRange={bpmRange} promise={bullets.map(([, b]) => b)} botCheckKey={botKey} handle={receiver.handle} receiverName={receiver.name} callout={collection && !closedReason ? collection.name : null} genres={genres} allowSharing={sharing && !!collection?.allow_sharing} trackArt={trackArt} termsHash={(await currentTerms()).hash} />
+        <SendModes folderBytes={folderBytes} brief={brief} receiverFirstName={firstName} bpmRange={bpmRange} promise={bullets.map(([, b]) => b)} botCheckKey={botKey} handle={receiver.handle} receiverName={receiver.name} callout={collection && !closedReason ? collection.name : null} genres={genres} allowSharing={sharing && !!collection?.allow_sharing} trackArt={trackArt} termsHash={(await currentTermsOrNull())?.hash} />
       )}
       {/* Once a file is picked the form repeats these above Send, so they step aside here. */}
       {!closedReason && (
