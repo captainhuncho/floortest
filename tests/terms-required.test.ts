@@ -96,3 +96,35 @@ test("every desk door checks the Terms: pages, actions, API changes and reads, a
     assert.match(src, /appUserAgreed\(req\)/, `${f} checks the Terms`);
   }
 });
+
+test("someone who hasn't ticked can still delete their account and ask for their data, but not use the desk", async () => {
+  const { createSession, currentPerson, requireOwnAccount, requireUser } = await import("../src/lib/auth");
+  const u = await user();
+  const jar = new Map<string, string>();
+  await inRequest(jar, "203.0.113.41", () => createSession(u.id));
+  const desk = await inRequest(jar, "203.0.113.41", () => requireUser(), { dropAfter: true });
+  assert.equal(desk.redirect, "/accept-terms", "no desk without the tick");
+  const own = await inRequest(jar, "203.0.113.41", () => requireOwnAccount(), { dropAfter: true });
+  assert.equal((own.answer as { id: number }).id, u.id, "Delete account still works");
+  const person = await inRequest(jar, "203.0.113.41", () => currentPerson(), { dropAfter: true });
+  assert.equal((person.answer as { id: number }).id, u.id, "the data request form still knows who asks");
+
+  const settings = fs.readFileSync("src/app/dashboard/actions/settings.ts", "utf8");
+  assert.match(settings.slice(settings.indexOf("export async function deleteAccount")), /^[^]*?requireOwnAccount\(\)/);
+  assert.match(fs.readFileSync("src/app/contact/actions.ts", "utf8"), /currentPerson\(\)/, "data requests go through the contact form");
+  const page = fs.readFileSync("src/app/(auth)/accept-terms/page.tsx", "utf8");
+  assert.match(page, /<Link href="\/contact\?topic=data"/);
+  assert.match(page, /<DeleteAccount /);
+  assert.equal((page.match(/<Leave /g) ?? []).length, 2, "both on the Terms page and when the Terms can't be read");
+});
+
+test("admins tick on their own desk like everyone, but the ops console never waits for the Terms", async () => {
+  const { deskNeedsTerms } = await import("../src/lib/terms-record");
+  const u = await user();
+  assert.equal(await deskNeedsTerms(false, u.id), true, "an admin's own desk is a desk like any other");
+  for (const f of ["src/lib/admin.ts", "src/lib/ops.ts", "src/lib/ops-access.ts"]) {
+    const src = fs.readFileSync(f, "utf8");
+    assert.doesNotMatch(src, /deskNeedsTerms|termsNeeded|requireUser|currentDesk/, `${f} stays reachable when the Terms can't be read`);
+  }
+  assert.match(fs.readFileSync("src/lib/admin.ts", "utf8"), /const u = await currentOpsAdmin\(\);/);
+});

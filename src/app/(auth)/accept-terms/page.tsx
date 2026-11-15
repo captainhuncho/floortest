@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentPerson, viewingAs } from "@/lib/auth";
 import { currentTermsOrNull, latestAcceptance, needsTermsTick } from "@/lib/terms-record";
 import { AuthFrame } from "../AuthFrame";
 import { AcceptForm } from "./AcceptForm";
+import { DeleteAccount } from "../../dashboard/settings/DeleteAccount";
 
 export const metadata = { title: "Accept the Terms — FloorTest", robots: { index: false } };
 
@@ -16,9 +18,12 @@ export default async function AcceptTerms() {
   if (!terms)
     return (
       <AuthFrame>
-        <div className="flex flex-col gap-3">
-          <h1 className="af-h">Accept the Terms</h1>
-          <p className="text-[13px] text-mute">The Terms can&apos;t be loaded right now, so your desk stays closed. Try again in a minute.</p>
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-3">
+            <h1 className="af-h">Accept the Terms</h1>
+            <p className="text-[13px] text-mute">The Terms can&apos;t be loaded right now, so your desk stays closed. Try again in a minute.</p>
+          </div>
+          <Leave handle={me.handle} twoFactor={!!me.totp_enabled_at} />
         </div>
       </AuthFrame>
     );
@@ -38,7 +43,24 @@ export default async function AcceptTerms() {
           </p>
         </div>
         <AcceptForm hash={terms.hash} />
+        <Leave handle={me.handle} twoFactor={!!me.totp_enabled_at} />
       </div>
     </AuthFrame>
+  );
+}
+
+/** Not agreeing never traps anyone (owner, 15 Nov): their data and Delete account stay in reach without the tick. */
+function Leave({ handle, twoFactor }: { handle: string; twoFactor: boolean }) {
+  return (
+    <div className="flex flex-col gap-3 border-t border-line pt-5">
+      <p className="text-[13px] text-mute">
+        Don&apos;t want to agree?{" "}
+        <Link href="/contact?topic=data" className="underline underline-offset-4">
+          Ask for a copy of your data
+        </Link>
+        , or delete your account.
+      </p>
+      <DeleteAccount handle={handle} twoFactor={twoFactor} sub="Your desk stays closed until you tick. You can still leave." />
+    </div>
   );
 }

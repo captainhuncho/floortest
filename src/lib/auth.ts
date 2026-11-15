@@ -228,6 +228,18 @@ export async function requireUser(): Promise<User> {
 }
 
 /**
+ * Deleting your own account: like requireRole("owner"), but it never waits for the Terms tick (owner, 15 Nov: someone
+ * who won't agree can still delete their account and ask for their data). Only for deleteAccount.
+ */
+export async function requireOwnAccount(): Promise<User> {
+  const d = await currentDesk();
+  if (!d && (await viewingAs())) redirect("/dashboard/floor?readonly=1");
+  if (!d) redirect("/login");
+  if (d.stale || !atLeast(d.user.role, "owner")) redirect("/dashboard/settings/team?denied=1");
+  return d.user;
+}
+
+/**
  * The desk for an API route that changes something (POST, PUT, PATCH, DELETE): currentUser, except that a change from a
  * team desk the person lost is refused with a 409 JSON error (refuseStaleChange) and the desk cookie is cleared, so it
  * never lands on their own desk instead. Null when signed out. scripts/check-desk-roles.ts makes change handlers use it.

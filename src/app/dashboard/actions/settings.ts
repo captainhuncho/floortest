@@ -9,7 +9,7 @@ import { LINK_FIELD_CHARS, MAX_LINKS, profileKey, requestLink, slotLink, type Pr
 import { isAccountType, TOOL_IDS, toolOverrides, type Tool } from "@/lib/account-types";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { destroySession, requireRole } from "@/lib/auth";
+import { destroySession, requireOwnAccount, requireRole } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { purgeAccount } from "@/lib/privacy";
 import { cancelEmailChange, changeHandle, requestEmailChange, resetIfProfilesChanged, resetVerified } from "@/lib/accounts";
@@ -184,7 +184,8 @@ export async function submitIdentity(_: SettingsState, form: FormData): Promise<
 
 /** Permanently deletes the account, every stored file, and all history. Password (and two-step code), then an email to say it's done. */
 export async function deleteAccount(_: SettingsState, form: FormData): Promise<SettingsState> {
-  const u = await requireRole("owner");
+  // Works before the Terms tick too (owner, 15 Nov), from the accept page.
+  const u = await requireOwnAccount();
   const problem = await stepUp(u.id, String(form.get("password") || ""), String(form.get("code") || ""));
   if (problem) return { error: problem };
   await sendMail({
