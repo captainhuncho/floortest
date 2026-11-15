@@ -2392,4 +2392,27 @@ create index if not exists terms_acceptances_hash on terms_acceptances (hash);
 alter table terms_versions enable row level security;
 alter table terms_acceptances enable row level security;`,
   },
+  {
+    // Brings a database that ran an early draft of 0147 to 0147's final shape (Safety, 15 Nov): the shared preview
+    // database applied the draft from a branch preview build before 0147 changed. Additive and idempotent: a no-op on
+    // a database that ran the final 0147 (production never ran either). The only row change fills an account row's
+    // empty email from its account and sets kind from user_id; nothing is deleted. Each DO block stays on one line
+    // (the runner splits on ";" at line end).
+    id: "0148_terms_acceptance_reconcile",
+    sql: `alter table terms_acceptances add column if not exists kind text;
+alter table terms_acceptances add column if not exists pdf_outbox_id bigint;
+alter table terms_acceptances add column if not exists account_deleted_at bigint;
+do $$ declare c record; begin for c in select conname from pg_constraint where conrelid = 'terms_acceptances'::regclass and contype = 'c' and pg_get_constraintdef(oid) like '%<>%' loop execute format('alter table terms_acceptances drop constraint %I', c.conname); end loop; end $$;
+update terms_acceptances a set email = u.email from users u where a.email is null and a.user_id = u.id;
+update terms_acceptances set kind = case when user_id is null then 'sender' else 'account' end where kind is null;
+alter table terms_acceptances alter column kind set not null;
+do $$ begin if not exists (select 1 from terms_acceptances where email is null) then alter table terms_acceptances alter column email set not null; end if; end $$;
+do $$ begin if not exists (select 1 from pg_constraint where conrelid = 'terms_acceptances'::regclass and contype = 'c' and pg_get_constraintdef(oid) like '%''sender''%' and pg_get_constraintdef(oid) not like '%account_deleted_at%') then alter table terms_acceptances add constraint terms_acceptances_kind_check check (kind in ('account', 'sender')); end if; end $$;
+do $$ begin if not exists (select 1 from pg_constraint where conrelid = 'terms_acceptances'::regclass and contype = 'c' and pg_get_constraintdef(oid) like '%account_deleted_at%') then alter table terms_acceptances add constraint terms_acceptances_sender_check check (kind = 'account' or (user_id is null and account_deleted_at is null)); end if; end $$;
+do $$ declare c record; begin for c in select conname from pg_constraint where conrelid = 'terms_acceptances'::regclass and contype = 'f' and confrelid = 'users'::regclass and confdeltype <> 'n' loop execute format('alter table terms_acceptances drop constraint %I', c.conname); execute 'alter table terms_acceptances add constraint terms_acceptances_user_id_fkey foreign key (user_id) references users(id) on delete set null'; end loop; end $$;
+do $$ begin if exists (select 1 from pg_indexes where tablename = 'terms_acceptances' and indexname = 'terms_acceptances_email' and indexdef not like '%sender%') then drop index terms_acceptances_email; end if; end $$;
+create index if not exists terms_acceptances_email on terms_acceptances (email, accepted_at desc) where kind = 'sender';
+create index if not exists terms_acceptances_expiry on terms_acceptances (kind, account_deleted_at, accepted_at);
+create index if not exists terms_acceptances_hash on terms_acceptances (hash);`,
+  },
 ];
