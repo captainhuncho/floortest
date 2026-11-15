@@ -224,6 +224,53 @@ test("sending without an account: refused with termsNeeded until the box is tick
   assert.equal(await q.count("SELECT COUNT(*) AS n FROM terms_acceptances WHERE email = ?", email), 1, "and records nothing more");
 });
 
+test("a failed Terms read serves the last good copy; with no copy at all a send is refused and nothing is recorded", async () => {
+  const { q } = await import("../src/lib/db");
+  const { currentTerms, currentTermsOrNull, forgetTerms, termsSource, TERMS_CACHE_MS } = await import("../src/lib/terms-record");
+  const { POST } = await import("../src/app/api/submit/[handle]/route");
+  const read = termsSource.read;
+  const realNow = Date.now;
+  const fail = async () => {
+    throw new Error("Terms page unreadable");
+  };
+  const quiet = console.error;
+  console.error = () => {};
+  try {
+    forgetTerms();
+    const good = await currentTerms();
+    // The cached copy has expired, and the next read fails: the last good copy is served.
+    Date.now = () => realNow() + TERMS_CACHE_MS + 1;
+    termsSource.read = fail;
+    assert.deepEqual(await currentTerms(), good);
+    Date.now = realNow;
+    // No copy at all on this server: the desk gets null, and a sender's send is refused before anything is recorded.
+    forgetTerms();
+    await assert.rejects(currentTerms(), /unreadable/);
+    assert.equal(await currentTermsOrNull(), null);
+    await user("terms-down-receiver@example.test");
+    const handle = `termsuser${n}`;
+    const email = "terms-down@example.test";
+    const out = await inRequest(new Map([["ft_sender", confirmedCookie(email)]]), "203.0.113.10", () =>
+      POST(
+        new Request(`http://localhost/api/submit/${handle}`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ name: "Down", email, title: "T", artist: "A", genre: "House", fileName: "t.wav", size: 1000, release_status: "unsigned", mix_status: "mastered", ai_use: "none", sender_instagram: "@down", terms_tick: true, terms_hash: good.hash }),
+        }),
+        { params: Promise.resolve({ handle }) } as never,
+      ),
+    );
+    assert.equal((out.answer as Response).status, 503);
+    assert.equal(await q.count("SELECT COUNT(*) AS n FROM terms_acceptances WHERE email = ?", email), 0, "nothing recorded");
+    assert.equal(await q.count("SELECT COUNT(*) AS n FROM uploads WHERE meta LIKE ?", `%${email}%`), 0, "no upload started");
+  } finally {
+    termsSource.read = read;
+    Date.now = realNow;
+    console.error = quiet;
+    forgetTerms();
+  }
+});
+
 /** A browser signed in as this person (a real session row and cookie). */
 async function signedIn(id: number): Promise<Jar> {
   const { createSession } = await import("../src/lib/auth");

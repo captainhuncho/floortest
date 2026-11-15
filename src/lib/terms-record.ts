@@ -36,7 +36,7 @@ let cached: { at: number; terms: CurrentTerms } | undefined;
 export async function currentTerms(): Promise<CurrentTerms> {
   if (cached && Date.now() - cached.at < TERMS_CACHE_MS) return cached.terms;
   try {
-    const terms = await readTerms();
+    const terms = await termsSource.read();
     cached = { at: Date.now(), terms };
     return terms;
   } catch (e) {
@@ -65,6 +65,9 @@ export async function currentTermsOrNull(): Promise<CurrentTerms | null> {
 export const forgetTerms = () => {
   cached = undefined;
 };
+
+/** Where the Terms are read from; tests swap `read` to make one read fail. */
+export const termsSource = { read: readTerms };
 
 async function readTerms(): Promise<CurrentTerms> {
   const { default: Terms } = await import("@/app/terms/page");
