@@ -41,6 +41,7 @@ import { claimPersonalInvite, resolveInvite } from "@/lib/invites";
 import { revokeAllSessions } from "@/lib/sessions";
 import { checkPasskey, hasPasskey, secondStepOptions, signInOptions } from "@/lib/passkeys";
 import { guardTwoStep } from "@/lib/two-step-limits";
+import { restorable, signInAccountByEmail } from "@/lib/account-deletion";
 import { EMAIL_CEILING, emailRequestBlocked } from "@/lib/email-request-limits";
 
 const CHALLENGE = "floortest_2fa";
@@ -367,7 +368,7 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
     return { error: "Email or password is incorrect.", challenge: failures + 1 >= HUMAN_CHECK_AFTER };
   }
   await afterRightPassword("login", email, ip, attempt);
-  if (row.suspended_at) return { error: "This account is suspended. To appeal, go to the Contact page and choose Suspension appeal." };
+  if (row.suspended_at && !(await restorable(row.id))) return { error: "This account is suspended. To appeal, go to the Contact page and choose Suspension appeal." };
   await upgradePasswordHash(row.id, password, row.password_hash);
   await afterPassword(row.id, "password");
   return undefined;
@@ -477,7 +478,8 @@ export async function requestLoginCode(_: FormState, form: FormData): Promise<Fo
   // Looked up and sent after the answer has gone back, so how long the page takes never shows whether the address has
   // an account (sign-in audit M2). The code is this browser's alone: a new one here replaces only this browser's.
   afterResponse(async () => {
-    const user = await q.get<{ id: number; name: string }>("SELECT id, name FROM users WHERE email = ? AND suspended_at IS NULL", email);
+    // A switched-off (deleted) account may still get a code inside its 14 days: signing in is how it is restored.
+    const user = await signInAccountByEmail(email);
     if (!user || !(await accountEmailAllowed())) return;
     const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
     const requester = deviceHash(device);
@@ -557,7 +559,7 @@ export async function verifyLoginCode(_: FormState, form: FormData): Promise<For
   const used = await q.run("DELETE FROM sign_in_codes WHERE user_id = ? AND requester = ? AND code_hash = ?", user.id, deviceHash(device), row.code_hash);
   if (!used.changes) return { error: CODE_FAILED };
   await handBack(guess);
-  if (user.suspended_at) return { error: "This account is suspended. To appeal, go to the Contact page and choose Suspension appeal." };
+  if (user.suspended_at && !(await restorable(user.id))) return { error: "This account is suspended. To appeal, go to the Contact page and choose Suspension appeal." };
   jar.delete(CODE_EMAIL);
   jar.delete(CODE_DEVICE);
   jar.delete(CODE_PASS);
@@ -626,7 +628,7 @@ export async function passkeySignIn(answer: unknown): Promise<FormState> {
     return { error: "That passkey didn't work. Try again, or log in with your password." };
   }
   const row = await q.get<{ suspended_at: number | null }>("SELECT suspended_at FROM users WHERE id = ?", userId);
-  if (!row || row.suspended_at) return { error: "This account is suspended. To appeal, go to the Contact page and choose Suspension appeal." };
+  if (!row || (row.suspended_at && !(await restorable(userId)))) return { error: "This account is suspended. To appeal, go to the Contact page and choose Suspension appeal." };
   await finishSignIn(userId, "passkey");
   redirect(await landing("/dashboard/floor"));
 }

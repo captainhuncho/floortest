@@ -157,6 +157,8 @@ export const ACTION_NEEDS: Record<string, Need> = {
   adminChangeEmail: "super",
   adminCancelEmailChange: "super",
   adminDeleteAccount: "super",
+  adminSetLegalHold: "super",
+  adminClearLegalHold: "super",
   adminEraseSender: "super",
   createInvite: "invites",
   revokeInvite: "invites",

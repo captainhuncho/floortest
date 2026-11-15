@@ -154,7 +154,7 @@ export async function warnExpiring(at = now()) {
   const day = 86_400_000;
   const rows = await q.all<{ id: number; user_id: number; title: string; artist: string; decision: string | null; email: string }>(
     `SELECT t.id, t.user_id, t.title, t.artist, t.decision, u.email FROM tracks t JOIN users u ON u.id = t.user_id
-     WHERE t.deleted_at IS NULL AND t.expiry_warned_at IS NULL AND u.notify_alerts = 1 AND (
+     WHERE t.deleted_at IS NULL AND t.expiry_warned_at IS NULL AND u.notify_alerts = 1 AND u.suspended_at IS NULL AND (
        (t.decision IS NULL AND t.created_at < ?) OR (t.decision = 'passed' AND t.decided_at < ?))
      ORDER BY t.user_id, t.created_at LIMIT 2000`,
     at - (RETAIN_UNREVIEWED_DAYS - WARN_DAYS) * day,
@@ -250,7 +250,7 @@ export async function sendDigest(userId: number) {
  */
 export async function runDigests(at = now()) {
   const users = await q.all<Pick<NotifyPrefs, "id" | "notify_submissions" | "digest_hour" | "quiet_start" | "quiet_end" | "tz" | "last_digest_at">>(
-    "SELECT id, notify_submissions, digest_hour, quiet_start, quiet_end, tz, last_digest_at FROM users WHERE notify_submissions IN ('digest', 'instant')",
+    "SELECT id, notify_submissions, digest_hour, quiet_start, quiet_end, tz, last_digest_at FROM users WHERE notify_submissions IN ('digest', 'instant') AND suspended_at IS NULL",
   );
   let sent = 0;
   let failed = 0;

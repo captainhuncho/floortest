@@ -38,7 +38,8 @@ import { describeRule, readRule, ruleFromForm, MAX_RULE_ACCOUNTS } from "@/lib/s
 import { drainNow, retireTrackFiles } from "@/lib/deletion";
 import { cancelEmailChange, changeHandle, HANDLE_FORWARD_DAYS, HANDLE_HOLD_DAYS, requestEmailChange } from "@/lib/accounts";
 import { logEvent, now, q, type Track } from "@/lib/db";
-import { eraseSender, purgeAccount } from "@/lib/privacy";
+import { eraseSender } from "@/lib/privacy";
+import { clearLegalHold, requestDeletion, setLegalHold } from "@/lib/account-deletion";
 import { normalEmail } from "@/lib/email-normal";
 import { addPersonalInvite, deleteRevokedInvite, inviteKeys, inviteLabel, matchInviteCode, newInviteCode, restoreRevokedInvite, swapPersonalInvite, TYPED_CODE_MIN_LENGTH } from "@/lib/invites";
 import { receiptWhere } from "@/lib/receipt-token";
@@ -132,7 +133,14 @@ async function suspendOne(a: Awaited<ReturnType<typeof requireAdminAction>>, use
   if (refused) return { ok: false, why: refused };
   const why = String(reason || "").trim().slice(0, 200);
   const r = await q.tx(async (db) => {
-    const r = await db.run("UPDATE users SET suspended_at = ?, suspended_reason = ? WHERE id = ? AND suspended_at IS NULL", now(), why, u.id);
+    // A deletion in its 14 days counts as not suspended: suspending sets a new time, so the person can no longer restore
+    // it (RESTORABLE needs suspended_at = deletion_requested_at) and the purge still runs on day 14 (Safety H1, 15 Nov).
+    const r = await db.run(
+      "UPDATE users SET suspended_at = ?, suspended_reason = ? WHERE id = ? AND (suspended_at IS NULL OR suspended_at = deletion_requested_at)",
+      now() + 1,
+      why,
+      u.id,
+    );
     if (!r.changes) return r;
     // Every way in ends: sessions, ops sessions, unused reset links and emailed sign-in codes (Safety, 7 Nov).
     await revokeAllSessions(u.id, { db });
@@ -169,6 +177,11 @@ export async function unsuspendAccount(userId: number) {
   const a = await requireAdminAction("users.support");
   const u = await target(userId);
   if (!u) return fail("Account not found");
+  // A deletion in its 14 days comes back only by the person signing in to restore it (Safety H1): switching it on
+  // here would leave the deletion date set, and the account live but still due for purge.
+  if (await q.get("SELECT 1 AS ok FROM users WHERE id = ? AND deletion_requested_at IS NOT NULL", u.id)) {
+    return fail("Deletion pending: staff can't switch this account back on. It is deleted 14 days after it was asked for, unless a legal hold stops it.");
+  }
   const r = await q.tx(async (db) => {
     const r = await db.run("UPDATE users SET suspended_at = NULL, suspended_reason = '' WHERE id = ? AND suspended_at IS NOT NULL", u.id);
     if (!r.changes) return r;
@@ -828,10 +841,24 @@ export async function adminDeleteAccount(userId: number, form: FormData) {
   const a = await requireAdminAction("super");
   const u = await target(userId);
   if (!u || u.id === a.id || String(form.get("confirm") || "").trim().toLowerCase() !== u.email.toLowerCase()) return fail("Nothing deleted: the email you typed didn't match");
-  await purgeAccount(u.id);
-  await logAdmin(a.id, "deleted account (privacy request)", `@${u.handle}`, u.email.replace(/^(.{2}).*@/, "$1…@"));
+  // Switched off now, purged after 14 days like a deletion from Settings (owner, 15 Nov); logged in admin_log there.
+  await requestDeletion(u.id, { adminId: a.id });
   refresh();
   redirect(`/admin/privacy?done=account`);
+}
+
+/** Legal hold (super admin only): keeps the account and all its data, or a purged account's evidence, until cleared. */
+export async function adminSetLegalHold(userId: number, form: FormData) {
+  const a = await requireAdminAction("super");
+  if (!(await setLegalHold(a.id, userId, String(form.get("reason") || "")))) return fail("No hold set: give a reason, and check the account exists");
+  refresh();
+}
+
+/** Ends a legal hold; the 14 days (or the evidence's 6 years) start again from now. */
+export async function adminClearLegalHold(userId: number) {
+  const a = await requireAdminAction("super");
+  if (!(await clearLegalHold(a.id, userId))) return fail("No hold to clear on that account");
+  refresh();
 }
 
 export async function adminEraseSender(form: FormData) {
