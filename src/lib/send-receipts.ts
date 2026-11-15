@@ -1,4 +1,5 @@
 import "server-only";
+import { pendingTermsPdf } from "./terms-record";
 import { now, q, type Queryable } from "./db";
 import { emailTemplate, fillEmail } from "./email-copy";
 import { APP_URL, noLinks, queueMail } from "./mail";
@@ -112,6 +113,7 @@ export async function queueSendEmails(db: Queryable, g: SendGroup, t: Templates)
         subject: fillEmail(words.subject, vars).replace(/\s+/g, " "),
         body: fillEmail(words.body, vars),
         details: receiptDetails(tracks, receiver.name, collection?.name),
+        termsPdf: await pendingTermsPdf(sender.email, db),
       },
       db,
     ),

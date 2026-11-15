@@ -12,7 +12,7 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "typecheck": "next typegen && tsc --noEmit",
     "pretest": "tsx --conditions=react-server scripts/test-db-template.ts",
-    "test": "tsx --conditions=react-server --test --test-force-exit tests/*.test.ts",
+    "test": "tsx --conditions=react-server --import ./tests/stubs/register.mjs --test --test-force-exit tests/*.test.ts",
     "test:leaks": "tsx --conditions=react-server --import ./scripts/test-leak-probe.mjs --test --test-force-exit tests/*.test.ts",
     "smoke": "tsx scripts/smoke.ts",
     "e2e": "tsx scripts/e2e-slot.ts",

@@ -14,6 +14,8 @@ const local = (ms: number) => {
 };
 
 test("a notice added in ops shows on the dashboard as text, and closing it sticks", async ({ page, browser }) => {
+  // Three sign-ins, two extra browsers and about ten page loads: past the 90 s default under full e2e load (Desk, 14 Nov).
+  test.setTimeout(240_000);
   const title = `<script>alert(1)</script> Short update ${stamp}`;
   const t = Date.now();
   await opsLogIn(page);

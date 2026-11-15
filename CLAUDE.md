@@ -9,7 +9,7 @@ Open only what the task touches. The docs stay true; if a doc and the code disag
 
 | For | Read |
 |---|---|
-| What a feature does, screen by screen | `docs/01-product.md` |
+| What a feature does, screen by screen | `docs/01-product.md` (index), one section per feature in `docs/product/receiver.md`, `sender.md`, `ops.md` |
 | Stack, services, env, deploys | `docs/02-technical.md`, `docs/services.md` |
 | Money: the finance panel, rhythm, decisions; costs; what a subscriber is worth | `docs/finance.md`, `docs/costs.md`, `docs/revenue-model.md` |
 | What happens on each click | `docs/03-app-flow.md` |
@@ -39,7 +39,9 @@ commit. Shipping an item from `06-plan.md` moves it to Done.
 - `vercel-build` runs migrations: a new migration reaches production only when shipped.
 
 ## Every session, every task (owner, 15 Oct; full text: `docs/working.md` rules 1–15)
-Four sessions share this repo (owner, 29 Oct; BACKEND added 31 Oct): Desk, Build, Safety and Backend. Only the Desk merges
+Five sessions share this repo (owner, 29 Oct; BACKEND added 31 Oct; RESEARCH added 14 Nov): Desk, Build, Safety, Backend and
+Research (read-only: answers questions and reviews how the sessions work; no code, branches or merges). The owner gives
+release words in the Desk only (14 Nov). Only the Desk merges
 into `main`, writes the release report and merges `main` into `mobile-next`; Build, Safety and Backend work on their own branches off `main` (never the
 shared checkout), may put work on `mobile-next` for the owner to try, and send the Desk "ready: PR, head commit, checks
 passed". Never open a PR from `mobile-next` into `main`. Never delete branches unless the owner asks. Every PR carries a

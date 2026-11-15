@@ -188,13 +188,19 @@ test.describe("receipt details need proof", () => {
     // Confirm the email with a code (the bot check is Cloudflare's always-pass test key in the test copy).
     expect((await page.request.post("/api/sender-code", { data: { action: "send", email, turnstile: "XXXX.DUMMY.TOKEN.XXXX" } })).ok()).toBe(true);
     const code = await codeFor(page.request, email, since);
-    expect((await page.request.post("/api/sender-code", { data: { action: "check", email, code } })).ok()).toBe(true);
+    const checked = await page.request.post("/api/sender-code", { data: { action: "check", email, code } });
+    expect(checked.ok()).toBe(true);
+    // A first send needs the Terms tick (Research brief, 15 Nov): refused without it, recorded with it.
+    const { termsNeeded, termsHash } = (await checked.json()) as { termsNeeded: boolean; termsHash: string };
+    expect(termsNeeded).toBe(true);
     const file = wav(2);
     const meta = {
       name: "Fran Fresh", email, sender_instagram: "@franfresh", title: "Proof By Sending", artist: "Fran Fresh", genre: "House",
       mix_status: "mastered", release_status: "unsigned", ai_use: "none", fileName: "proof.wav", size: file.length,
     };
-    const start = await page.request.post(`/api/submit/${LINKS.desk.handle}`, { data: meta });
+    const unticked = await page.request.post(`/api/submit/${LINKS.desk.handle}`, { data: meta });
+    expect(unticked.status()).toBe(409);
+    const start = await page.request.post(`/api/submit/${LINKS.desk.handle}`, { data: { ...meta, terms_tick: true, terms_hash: termsHash } });
     expect(start.ok(), await start.text()).toBe(true);
     const { uploadId, target } = (await start.json()) as { uploadId: string; target: { url: string; headers: Record<string, string> } };
     expect((await page.request.put(target.url, { headers: target.headers, data: file })).ok()).toBe(true);

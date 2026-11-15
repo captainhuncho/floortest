@@ -2359,4 +2359,37 @@ create policy person_notice_dismissals on notice_dismissals for all to ft_person
     id: "0146_link_shared_at",
     sql: `alter table users add column if not exists link_shared_at bigint;`,
   },
+  {
+    // Terms acceptance records (Research brief, owner 15 Nov): each Terms version's exact text is archived once, by its
+    // hash; each tick is a row against the account, or against the sender's confirmed email when there is no account.
+    // Kept as proof (owner, 15 Nov): an account's rows outlive the account by 6 years (user_id goes, the clean-up stamps
+    // account_deleted_at); a sender's rows go 6 years after the tick. Rows hold only name, email, version, time, hash.
+    id: "0147_terms_acceptance",
+    sql: `create table if not exists terms_versions (
+  hash text primary key,
+  version text not null,
+  body text not null,
+  created_at bigint not null
+);
+create table if not exists terms_acceptances (
+  id bigserial primary key,
+  kind text not null check (kind in ('account', 'sender')),
+  user_id bigint references users(id) on delete set null,
+  email text not null,
+  version text not null,
+  hash text not null references terms_versions(hash),
+  name text not null default '',
+  accepted_at bigint not null,
+  pdf_sent_at bigint,
+  pdf_outbox_id bigint,
+  account_deleted_at bigint,
+  check (kind = 'account' or (user_id is null and account_deleted_at is null))
+);
+create index if not exists terms_acceptances_user on terms_acceptances (user_id, accepted_at desc) where user_id is not null;
+create index if not exists terms_acceptances_email on terms_acceptances (email, accepted_at desc) where kind = 'sender';
+create index if not exists terms_acceptances_expiry on terms_acceptances (kind, account_deleted_at, accepted_at);
+create index if not exists terms_acceptances_hash on terms_acceptances (hash);
+alter table terms_versions enable row level security;
+alter table terms_acceptances enable row level security;`,
+  },
 ];

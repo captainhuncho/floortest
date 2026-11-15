@@ -9,7 +9,7 @@ Open only what the task touches. The docs stay true; if a doc and the code disag
 
 | For | Read |
 |---|---|
-| What a feature does, screen by screen | `docs/01-product.md` |
+| What a feature does, screen by screen | `docs/01-product.md` (index), one section per feature in `docs/product/receiver.md`, `sender.md`, `ops.md` |
 | Stack, services, env, deploys | `docs/02-technical.md`, `docs/services.md` |
 | What happens on each click | `docs/03-app-flow.md` |
 | Colours, type, layout, components | `DESIGN.md`, `docs/04-design.md` |
