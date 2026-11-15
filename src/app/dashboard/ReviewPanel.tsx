@@ -159,7 +159,7 @@ export async function ReviewPanel({
           {desk && decisionLocked(desk, t) ? " · only the owner or an A&R / Admin can change it" : ""}
         </Chip>
       )}
-      {t.sets_ok ? <Chip tone="up">Cleared for DJ sets</Chip> : <Chip tone="warn">Evaluation only: ask before playing it out</Chip>}
+      {t.sets_ok ? <Chip tone="up">OK to play</Chip> : <Chip tone="warn">Evaluation only: ask before playing it out</Chip>}
       {shortlist && (
         <Chip tone="acc">
           <Icon name="star" className="size-3" /> Shortlisted

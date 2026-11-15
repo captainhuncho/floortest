@@ -237,7 +237,7 @@ Start now, in parallel: the owner on the lawyer and Paddle (neither waits for co
 **Support process:** the owner answers support@floortest.app: takedowns and impersonation within 2 working days, everything else within 5.
 
 ## Team decisions queued
-- **Should "evaluation only" exist at all?** (raised by the owner, 12 Oct) Sending to a DJ means you want it played: that's the point of FloorTest. Today the send form asks for DJ-set permission (`tracks.sets_ok`), the review panel shows "Evaluation only: ask before playing it out", and the Monday Played out prompt leaves those tracks out. For the full panel (DJ/A&R, label owner, sender/producer, privacy & legal, copy): drop the question so sending means "you may play it"; keep it only for works in progress ("not finished, don't play yet"); or keep it as is. Touches the send form, Terms and content rules (lawyer), receipts, the Monday prompt and existing tracks.
+- **Should "evaluation only" exist at all?** Decided (owner, 15 Nov, Research brief PR B): only Label and A&R desks ask the sender "Evaluation only" (default) or "OK to play"; every other desk is DJ-style and sending means it may be played. One rule, `receiverAsksPlayChoice` in `src/lib/account-types.ts`; the server sets `tracks.sets_ok` from it (`play` field), and an evaluation-only track can never be marked played. Existing tracks keep their stored choice. Terms wording for this is the lawyer's (#550).
 
 ## After launch
 - Collection sharing switch-on (switch `sharing`, after the lawyer's wording; see Controlled collection sharing).
