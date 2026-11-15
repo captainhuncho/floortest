@@ -66,3 +66,36 @@
 - **No paid boosts or "pay to be heard" for senders,** ever. Senders are free. The queue is oldest first and nobody buys their way up.
 - **No fake scarcity or invented proof.** No made-up waitlist counts, user numbers, quotes, logos or "as heard on" lines. No "verified artist".
 - **No mass messaging on DJs' behalf.** We don't bulk-message WhatsApp groups or scrape producers, and we never share a receiver's decisions publicly. Keep and Not for me stay private.
+
+## 6. What comparable tools do (research, 15 Nov 2026)
+
+Read on 14 and 15 Nov 2026 from two comparable tools' own websites, their published terms and privacy policies, their help pages, and trade-press coverage. Everything below is what those tools say about themselves. We have not verified any of it. Treat it as ideas to test, not as facts about the market.
+
+**An inbox platform for dance-music professionals** (from its own website, changelog and help pages)
+- Social proof from named DJs and label owners, each tied to one specific result, such as a label that opened to demos and went on to sign artists.
+- A headline user count on the front page.
+- A hook about certainty: senders say they never knew whether anyone was listening. That is the same promise as our honest receipt.
+- A free start of about 20 tracks a month, with paid tiers above it and a paid placement option.
+- A story that grows past demos into selling releases and services.
+- A long public changelog and a manifesto.
+- A help centre that publishes machine-readable files, so AI assistants can read it and recommend it.
+
+**An app for sharing unreleased music** (from trade-press coverage at launch and its own app-store copy)
+- Security as the main pitch, backed by an outside security firm and a comparison with well-known storage services.
+- One launch press wave across music-industry and tech outlets, then word of mouth on social media.
+- A paid feature presented as news: artists selling demos without a commission.
+- A subscription tier for unlimited uploads.
+- A row inside the app that promotes labels and artists to other users.
+
+**What we take**
+1. Get a few named receivers on record, each with one real result in their own words. Never invented, per the rule above.
+2. Lead with the honest receipt, and say what happens to the music after sending.
+3. Keep a public changelog.
+4. Make the free start obvious.
+5. Plan one launch press wave.
+
+**What we do not take**
+- Any security claim we cannot prove.
+- Any comparison with other services' encryption.
+
+**Open for the owner:** whether to publish machine-readable help files for AI assistants, and who writes the press wave (see the marketing and sales team decision, with the Desk).
