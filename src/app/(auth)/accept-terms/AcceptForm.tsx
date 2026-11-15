@@ -14,12 +14,12 @@ export function AcceptForm({ hash }: { hash: string }) {
           I have read, understood and agree to the{" "}
           <a href="/terms" target="_blank" rel="noopener" className="underline underline-offset-4">
             Terms
-          </a>{" "}
-          and{" "}
+          </a>
+          , including that music I send may be played by the receiver, and have read the{" "}
           <a href="/privacy" target="_blank" rel="noopener" className="underline underline-offset-4">
             Privacy Policy
           </a>
-          , including that music I send may be played by the receiver.
+          .
         </span>
       </label>
       {state?.error && (

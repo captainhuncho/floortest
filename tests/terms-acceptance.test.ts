@@ -209,6 +209,14 @@ test("sending without an account: refused with termsNeeded until the box is tick
   assert.equal(await q.count("SELECT COUNT(*) AS n FROM terms_acceptances WHERE email = ?", email), 0, "nothing recorded without the tick");
   const stale = await call({ terms_tick: true, terms_hash: "an-older-text" });
   assert.equal(stale.status, 409, "a tick for other Terms text is refused");
+  const noHash = await call({ terms_tick: true });
+  assert.equal(noHash.status, 409, "a tick without the hash of the text shown is refused");
+  const forged = await inRequest(new Map([["ft_sender", confirmedCookie(email).replace(/.$/, (c) => (c === "A" ? "B" : "A"))]]), "203.0.113.9", () =>
+    POST(new Request(`http://localhost/api/submit/${handle}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body({ terms_tick: true, terms_hash: r.termsHash })) }), {
+      params: Promise.resolve({ handle }),
+    } as never),
+  );
+  assert.equal((forged.answer as Response).status, 401, "a forged confirmation cookie records nothing");
   const ok = await call({ terms_tick: true, terms_hash: r.termsHash });
   assert.notEqual(ok.status, 409, "ticked: past the Terms check");
   assert.equal(await q.count("SELECT COUNT(*) AS n FROM terms_acceptances WHERE email = ?", email), 1, "recorded against the confirmed email");
@@ -223,4 +231,48 @@ test("the dashboard sends anyone who hasn't accepted the current Terms to /accep
   assert.match(layout, /if \(!view && \(await needsTermsTick\(\{ userId: user\.actor_id \}\)\)\) redirect\("\/accept-terms"\);/);
   const signup = fs.readFileSync(new URL("../src/app/(auth)/actions.ts", import.meta.url), "utf8");
   assert.match(signup, /await recordAcceptance\(\{ userId: u\.id, email: a\.email \}, a\.name, accepted, db\)/, "sign-up records it inside the account's transaction");
+});
+
+test("ticking the same text again adds no row and no copy; a changed text gets its own row", async () => {
+  const { q } = await import("../src/lib/db");
+  const { recordAcceptance } = await import("../src/lib/terms-record");
+  const id = await user("twice@example.test");
+  const a = await recordAcceptance({ userId: id, email: "twice@example.test" }, "Twice");
+  const b = await recordAcceptance({ userId: id, email: "twice@example.test" }, "Twice");
+  assert.equal(a.added, true);
+  assert.equal(b.added, false, "a resubmitted form adds nothing");
+  assert.equal(b.row.id, a.row.id);
+  assert.equal(await q.count("SELECT COUNT(*) AS n FROM terms_acceptances WHERE user_id = ?", id), 1);
+});
+
+test("a sender's form state: told only for a confirmed email, and whether the Terms were updated since their last tick", async () => {
+  const { q, now } = await import("../src/lib/db");
+  const { GET } = await import("../src/app/api/sender-code/route");
+  const { senderTermsState } = await import("../src/lib/terms-record");
+  const email = "state@example.test";
+  const ask = async (jar: Jar) => (await inRequest(jar, "203.0.113.10", () => GET(new Request(`http://localhost/api/sender-code?email=${email}`)))).answer as Response;
+  const stranger = (await (await ask(new Map())).json()) as Record<string, unknown>;
+  assert.deepEqual(stranger, { confirmed: false }, "an unconfirmed browser learns nothing about the Terms");
+  const mine = (await (await ask(new Map([["ft_sender", confirmedCookie(email)]]))).json()) as Record<string, unknown>;
+  assert.equal(mine.termsNeeded, true);
+  assert.equal(mine.termsUpdated, false, "a first send isn't an update");
+  const old = await oldTerms();
+  await q.run("INSERT INTO terms_acceptances (kind, email, version, hash, name, accepted_at) VALUES ('sender',?,?,?,?,?)", email, old.version, old.hash, "S", now());
+  assert.equal((await senderTermsState(email)).termsUpdated, true, "ticked older text: the form says Updated");
+});
+
+test("names that would break a PDF are written as text", async () => {
+  const { textPdf } = await import("../src/lib/pdf-text");
+  const pdf = textPdf([{ text: "Accepted by ) Tj /X \\ ( Ünïcødé 名前\nnext" }], "T").toString("latin1");
+  assert.ok(pdf.includes("(Accepted by \\) Tj /X \\\\ \\( "), "brackets and backslashes escaped");
+  assert.doesNotMatch(pdf.split("stream")[1].split("endstream")[0], /(?<!\\)\) Tj \/X/, "no operator escapes the string");
+  assert.ok(/^startxref/m.test(pdf));
+});
+
+test("the person role can't read or write either table: only the app touches proof", async () => {
+  const { q, asPerson, now } = await import("../src/lib/db");
+  const id = await user("nosy@example.test");
+  await assert.rejects(asPerson(id, () => q.all("SELECT id FROM terms_acceptances")));
+  await assert.rejects(asPerson(id, () => q.all("SELECT hash FROM terms_versions")));
+  await assert.rejects(asPerson(id, () => q.run("INSERT INTO terms_versions (hash, version, body, created_at) VALUES ('x','x','x',?)", now())));
 });

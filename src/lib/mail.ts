@@ -331,7 +331,7 @@ export async function deliver(id: number, { retry = true } = {}): Promise<string
   else if (!willSend && MAIL_SINK) await sinkMail(to, subject, p.body);
   else if (willSend) {
     try {
-      const attachments = p.termsPdf ? await termsAttachment(p.termsPdf) : [];
+      const attachments = p.termsPdf ? await termsAttachment(p.termsPdf, to) : [];
       const res = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { Authorization: `Bearer ${env.email.resendKey}`, "Content-Type": "application/json", "Idempotency-Key": `outbox-${row.idem_key}` },
@@ -351,6 +351,8 @@ export async function deliver(id: number, { retry = true } = {}): Promise<string
       });
       status = res.ok ? "sent" : `failed (${res.status})`;
       if (res.ok) providerId = ((await res.json().catch(() => ({}))) as { id?: string }).id ?? null;
+      // The copy counts as sent only once the email is accepted, so a failed try sends it again on the retry (Safety M1).
+      if (res.ok && attachments.length && p.termsPdf) await q.run("UPDATE terms_acceptances SET pdf_sent_at = ? WHERE id = ? AND pdf_sent_at IS NULL", now(), p.termsPdf.acceptanceId);
       else console.error("[mail] Resend rejected", res.status, await res.text().catch(() => ""));
     } catch (e) {
       status = "failed (network)";
@@ -403,16 +405,25 @@ export async function drainOutbox(limit = 50, { until = Infinity } = {}) {
   return { due: due.length, sent, ...(stuck.length ? { stuck: stuck.length } : {}), ...(errors ? { errors } : {}) };
 }
 
-/** The stamped Terms PDF as a Resend attachment, or none if the acceptance or its archived text is gone. */
-async function termsAttachment(t: TermsPdf) {
-  const { acceptedTermsPdf } = await import("./terms-pdf");
-  const a = await q.get<{ id: number; version: string; hash: string; name: string; accepted_at: number; pdf_sent_at: number | null }>(
-    "SELECT id, version, hash, name, accepted_at, pdf_sent_at FROM terms_acceptances WHERE id = ?",
-    t.acceptanceId,
-  );
-  const pdf = a && (await acceptedTermsPdf(a, t.email));
-  if (!pdf) return [];
-  // Claimed here, so two emails queued before either went out carry it once.
-  if (!(await q.run("UPDATE terms_acceptances SET pdf_sent_at = ? WHERE id = ? AND pdf_sent_at IS NULL", now(), a.id)).changes) return [];
-  return [{ filename: `FloorTest-Terms-${a.version.replace(/[^A-Za-z0-9]+/g, "-")}.pdf`, content: pdf.toString("base64") }];
+/**
+ * The stamped Terms PDF as a Resend attachment, or none: if the acceptance or its archived text is gone, if its copy has
+ * already gone out on another email, or if the acceptance isn't this recipient's (Safety S5). It is marked sent after
+ * the email is accepted (deliver), so a retry carries it again; the PDF is the same bytes each time, so the retry's body
+ * matches the first try's for Resend's idempotency key. A PDF that can't be built never holds the email back.
+ */
+export async function termsAttachment(t: TermsPdf, to: string) {
+  try {
+    const { acceptedTermsPdf } = await import("./terms-pdf");
+    const a = await q.get<{ id: number; email: string; version: string; hash: string; name: string; accepted_at: number; pdf_sent_at: number | null }>(
+      "SELECT id, email, version, hash, name, accepted_at, pdf_sent_at FROM terms_acceptances WHERE id = ?",
+      t.acceptanceId,
+    );
+    if (!a || a.pdf_sent_at !== null || a.email.toLowerCase() !== to.toLowerCase()) return [];
+    const pdf = await acceptedTermsPdf(a, a.email);
+    if (!pdf) return [];
+    return [{ filename: `FloorTest-Terms-${a.version.replace(/[^A-Za-z0-9]+/g, "-")}.pdf`, content: pdf.toString("base64") }];
+  } catch (e) {
+    console.error("[mail] Terms copy couldn't be built; sending without it", e);
+    return [];
+  }
 }

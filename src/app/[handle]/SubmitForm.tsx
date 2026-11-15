@@ -68,12 +68,15 @@ export function SubmitForm({
   bpmRange = null,
   promise = [],
   receiverFirstName,
+  termsHash,
 }: {
   handle: string;
   receiverName: string;
   genres: string[];
   /** Sending from a signed-in FloorTest account: name and email come from the account. */
   account?: { name: string; email: string };
+  /** Hash of the Terms in force when the page was drawn, sent with the tick so the record proves which text was shown. */
+  termsHash?: string;
   /** The collection lets the receiver share tracks privately with people they name (collection share links). */
   allowSharing?: boolean;
   /** Turnstile site key for anonymous senders when the bot check is on. */
@@ -652,16 +655,17 @@ export function SubmitForm({
           {!account && (
             <label className="flex min-h-[44px] items-center gap-2.5 text-[13px] leading-[19px] text-mute">
               <input type="checkbox" name="terms_tick" required className="size-[18px] shrink-0" />
+              <input type="hidden" name="terms_hash" value={termsHash ?? ""} />
               <span>
                 I have read, understood and agree to the{" "}
                 <a href="/terms" target="_blank" rel="noopener" className="underline underline-offset-4">
                   Terms
-                </a>{" "}
-                and{" "}
+                </a>
+                , including that music I send may be played by the receiver, and have read the{" "}
                 <a href="/privacy" target="_blank" rel="noopener" className="underline underline-offset-4">
                   Privacy Policy
                 </a>
-                , including that music I send may be played by the receiver.
+                .
               </span>
             </label>
           )}

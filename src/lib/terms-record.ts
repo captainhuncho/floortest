@@ -24,11 +24,28 @@ export const termsHash = (body: string) => crypto.createHash("sha256").update(bo
 /** Hashes this process has already archived, so a page load costs no write once a version is stored. */
 const archived = new Set<string>();
 
+/** How long one server keeps the Terms it read: the page can change with the "sharing" switch, so not for good. */
+export const TERMS_CACHE_MS = 60_000;
+let cached: { at: number; terms: CurrentTerms } | undefined;
+
 /**
- * The Terms in force now, archived the first time this exact text is seen. Read from the page on every call (the
- * page can change with the "sharing" switch); the archive write happens once per version per process.
+ * The Terms in force now, archived the first time this exact text is seen. Read from the page, at most once a minute
+ * per server (every desk request asks). The text includes the sharing wording when the "sharing" switch is on, so
+ * flipping that switch is a change to the Terms people agreed to and asks everyone again: deliberate (Safety S3, 15 Nov).
  */
 export async function currentTerms(): Promise<CurrentTerms> {
+  if (cached && Date.now() - cached.at < TERMS_CACHE_MS) return cached.terms;
+  const terms = await readTerms();
+  cached = { at: Date.now(), terms };
+  return terms;
+}
+
+/** Forget the cached Terms (tests). */
+export const forgetTerms = () => {
+  cached = undefined;
+};
+
+async function readTerms(): Promise<CurrentTerms> {
   const { default: Terms } = await import("@/app/terms/page");
   const page = (await Terms()) as { props: { title: string; updated?: string; sections: Section[] } };
   const { title, updated = "", sections } = page.props;
@@ -41,9 +58,9 @@ export async function currentTerms(): Promise<CurrentTerms> {
   return terms;
 }
 
-export type Acceptance = { id: number; version: string; hash: string; name: string; accepted_at: number; pdf_sent_at: number | null };
+export type Acceptance = { id: number; email: string; version: string; hash: string; name: string; accepted_at: number; pdf_sent_at: number | null };
 
-const COLS = "id, version, hash, name, accepted_at, pdf_sent_at";
+const COLS = "id, email, version, hash, name, accepted_at, pdf_sent_at";
 
 /** The latest acceptance by this account or sender email, if any. */
 export async function latestAcceptance(who: { userId: number } | { email: string }, db: Queryable = q) {
@@ -70,6 +87,10 @@ export async function needsTermsTick(who: { userId: number } | { email: string }
 export async function recordAcceptance(who: { userId: number; email: string } | { email: string }, name: string, terms?: CurrentTerms, db: Queryable = q) {
   const t = terms ?? (await currentTerms());
   const account = "userId" in who;
+  // Ticking the text they last accepted again adds nothing (no row, no copy): a resubmitted form can't grow the table
+  // or send copy after copy (Safety M3). A text accepted before and changed since is a new tick, so it gets its row.
+  const last = await latestAcceptance(account ? { userId: who.userId } : { email: who.email }, db);
+  if (last && last.hash === t.hash) return { row: last, first: false, added: false };
   const prior = await db.get<{ id: number }>(
     account
       ? "SELECT id FROM terms_acceptances WHERE user_id = ? AND hash = ? LIMIT 1"
@@ -87,7 +108,18 @@ export async function recordAcceptance(who: { userId: number; email: string } | 
     name.slice(0, 200),
     now(),
   ))!;
-  return { row, first: !prior };
+  return { row, first: !prior, added: true };
+}
+
+/**
+ * For a sender's send form: whether they must tick, whether it's because the Terms changed since their last tick
+ * (`termsUpdated`, so the form can say "Updated {date}"), and the version and hash to send back with the tick.
+ */
+export async function senderTermsState(email: string) {
+  const terms = await currentTerms();
+  const last = await latestAcceptance({ email });
+  const termsNeeded = !last || last.hash !== terms.hash;
+  return { termsNeeded, termsUpdated: termsNeeded && !!last, termsVersion: terms.version, termsHash: terms.hash };
 }
 
 /** The archived text a stored acceptance points at (for the PDF and for disputes). */
