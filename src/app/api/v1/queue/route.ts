@@ -1,4 +1,4 @@
-import { appUser } from "@/lib/app-auth";
+import { appUserAgreed } from "@/lib/app-auth";
 import { json, unauthorized } from "@/lib/api-v1";
 import { asPerson, q } from "@/lib/db";
 
@@ -6,7 +6,8 @@ export const runtime = "nodejs";
 
 /** Tracks waiting for a decision, oldest first (the Review Queue). Audio plays from /api/v1/tracks/:id/audio. */
 export async function GET(req: Request) {
-  const u = await appUser(req);
+  const u = await appUserAgreed(req);
+  if (u instanceof Response) return u;
   if (!u) return unauthorized();
   // Read as the person (migration 0097), as the website's Review Queue is: the database checks whose desk it is too.
   const rows = await asPerson(u.actor_id, () => q.all<{ id: number; title: string; artist: string; genre: string; bpm: number | null; duration: number | null; sets_ok: number; created_at: number; sender: string; collection: string | null }>(

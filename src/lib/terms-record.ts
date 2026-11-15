@@ -43,14 +43,15 @@ export async function currentTerms(): Promise<CurrentTerms> {
     // A failed read or archive serves the last good text (Safety, 15 Nov), and tries again on the next request.
     if (!cached) throw e;
     console.error("[terms] couldn't read the Terms; using the last good copy", e);
+    // Served stale for another minute, so an outage doesn't re-read the page on every request (Safety, 15 Nov).
+    cached = { at: Date.now(), terms: cached.terms };
     return cached.terms;
   }
 }
 
 /**
- * For pages that must stay up when the Terms can't be read at all (no copy yet on this server): the desk then skips the
- * tick for this request rather than failing every page, and the send page leaves the hash out (the send route still
- * refuses a tick that isn't for the current text).
+ * The Terms, or null when they can't be read at all (no copy yet on this server). Nobody gets in without agreeing
+ * (owner, 15 Nov): callers treat null as "not agreed" (deskNeedsTerms, the accept page, the send route).
  */
 export async function currentTermsOrNull(): Promise<CurrentTerms | null> {
   try {
@@ -76,8 +77,14 @@ async function readTerms(): Promise<CurrentTerms> {
   const body = termsBody(title, updated, sections);
   const terms = { version: updated, hash: termsHash(body), body };
   if (!archived.has(terms.hash)) {
-    await q.run("INSERT INTO terms_versions (hash, version, body, created_at) VALUES (?,?,?,?) ON CONFLICT (hash) DO NOTHING", terms.hash, terms.version, terms.body, now());
-    archived.add(terms.hash);
+    // The text was read: a failed archive write (a database blip) mustn't lock everyone out. Logged, and tried again on
+    // the next read; a tick can't be stored until it lands, because acceptances point at the archived text (Safety, 15 Nov).
+    try {
+      await q.run("INSERT INTO terms_versions (hash, version, body, created_at) VALUES (?,?,?,?) ON CONFLICT (hash) DO NOTHING", terms.hash, terms.version, terms.body, now());
+      archived.add(terms.hash);
+    } catch (e) {
+      console.error("[terms] couldn't archive this Terms text; will retry", e);
+    }
   }
   return terms;
 }
@@ -104,14 +111,18 @@ export async function needsTermsTick(who: { userId: number } | { email: string }
 }
 
 /**
- * Whether the desk must send this person to /accept-terms first: never in an admin's view of someone's desk, and not
- * when the Terms can't be read at all (the desk stays up; it asks on a later request).
+ * Whether this person must accept the Terms before using anything: never in an admin's view of someone's desk.
+ * Nobody gets in without agreeing (owner, 15 Nov): when the Terms can't be read at all, that counts as not accepted,
+ * so the desk, its API and the app wait until they can be read again.
  */
 export async function deskNeedsTerms(viewing: boolean, userId: number) {
   if (viewing) return false;
   const terms = await currentTermsOrNull();
-  return !!terms && (await needsTermsTick({ userId }, terms));
+  return !terms || (await needsTermsTick({ userId }, terms));
 }
+
+/** What a refused API call answers when the person hasn't accepted the current Terms (or they can't be read). */
+export const TERMS_NEEDED_ERROR = "Accept the Terms to continue.";
 
 /**
  * Records a tick for the current Terms. An account's row also keeps the person's email, so it still proves the

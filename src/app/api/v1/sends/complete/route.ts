@@ -1,4 +1,4 @@
-import { appUser } from "@/lib/app-auth";
+import { appUserAgreed } from "@/lib/app-auth";
 import { body, fail, json, unauthorized } from "@/lib/api-v1";
 import { userByHandle } from "@/lib/desk";
 import { recordIncident } from "@/lib/incidents";
@@ -16,7 +16,8 @@ export const runtime = "nodejs";
  * within about 10 minutes, then the track arrives and the "Delivered" email goes out; nothing else to send.
  */
 export async function POST(req: Request) {
-  const u = await appUser(req);
+  const u = await appUserAgreed(req);
+  if (u instanceof Response) return u;
   if (!u) return unauthorized();
   const data = await body(req);
   const receiver = await userByHandle(String(data.to ?? "").trim().toLowerCase().slice(0, 30));

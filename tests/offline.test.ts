@@ -57,6 +57,11 @@ test("a download stops at once when the sign-in ends, the teammate leaves or the
 
   const ownerLink = offlineToken(track, owner, owner, ownerSession, t);
   const memberLink = offlineToken(track, owner, member, memberSession, t);
+  // Nobody gets in without agreeing (owner, 15 Nov): a saved link waits for the person's own tick.
+  assert.equal(await offlineFile(ownerLink, t + 1000), null, "no tick yet: refused");
+  const { agreeTerms } = await import("./agree-terms");
+  await agreeTerms(owner);
+  await agreeTerms(member);
   assert.deepEqual(await offlineFile(ownerLink, t + 1000), { fileKey: "audio/o.wav", mime: "audio/wav", expiresIn: STORAGE_LINK_SECONDS }, "the owner's link works");
   assert.ok(await offlineFile(memberLink, t + 1000), "a teammate's link works while they're on the desk");
   assert.equal((await offlineFile(ownerLink, t + OFFLINE_LINK_MS - 60_000))?.expiresIn, 60, "the storage link never outlasts the offline link");
