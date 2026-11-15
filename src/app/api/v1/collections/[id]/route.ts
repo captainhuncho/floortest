@@ -1,5 +1,5 @@
 import { loadRows } from "@/app/dashboard/rows";
-import { appUser } from "@/lib/app-auth";
+import { appUserAgreed } from "@/lib/app-auth";
 import { fail, json, unauthorized } from "@/lib/api-v1";
 import { asPerson, q } from "@/lib/db";
 
@@ -7,7 +7,8 @@ export const runtime = "nodejs";
 
 /** One of your collections and its tracks, newest first. Audio plays from /api/v1/tracks/:id/audio. */
 export async function GET(req: Request, ctx: RouteContext<"/api/v1/collections/[id]">) {
-  const u = await appUser(req);
+  const u = await appUserAgreed(req);
+  if (u instanceof Response) return u;
   if (!u) return unauthorized();
   const id = Number((await ctx.params).id) || 0;
   // Both reads run under the per-person rules (B8) as well as the desk filter.

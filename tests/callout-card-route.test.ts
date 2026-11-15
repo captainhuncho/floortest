@@ -1,4 +1,5 @@
 import { test } from "node:test";
+import { agreeTerms } from "./agree-terms";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -44,6 +45,7 @@ async function signIn(userId: number) {
   const { createSession } = await load();
   const jar: Jar = new Map();
   await inRequest(jar, "10.8.0.1", () => createSession(userId));
+  await agreeTerms(userId);
   return jar;
 }
 async function call(jar: Jar, id: string | number, query = "?format=story") {

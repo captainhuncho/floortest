@@ -104,14 +104,18 @@ export async function needsTermsTick(who: { userId: number } | { email: string }
 }
 
 /**
- * Whether the desk must send this person to /accept-terms first: never in an admin's view of someone's desk, and not
- * when the Terms can't be read at all (the desk stays up; it asks on a later request).
+ * Whether this person must accept the Terms before using anything: never in an admin's view of someone's desk.
+ * Nobody gets in without agreeing (owner, 15 Nov): when the Terms can't be read at all, that counts as not accepted,
+ * so the desk, its API and the app wait until they can be read again.
  */
 export async function deskNeedsTerms(viewing: boolean, userId: number) {
   if (viewing) return false;
   const terms = await currentTermsOrNull();
-  return !!terms && (await needsTermsTick({ userId }, terms));
+  return !terms || (await needsTermsTick({ userId }, terms));
 }
+
+/** What a refused API call answers when the person hasn't accepted the current Terms (or they can't be read). */
+export const TERMS_NEEDED_ERROR = "Accept the Terms to continue.";
 
 /**
  * Records a tick for the current Terms. An account's row also keeps the person's email, so it still proves the

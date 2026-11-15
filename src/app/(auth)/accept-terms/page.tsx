@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { currentPerson, viewingAs } from "@/lib/auth";
-import { currentTerms, latestAcceptance, needsTermsTick } from "@/lib/terms-record";
+import { currentTermsOrNull, latestAcceptance, needsTermsTick } from "@/lib/terms-record";
 import { AuthFrame } from "../AuthFrame";
 import { AcceptForm } from "./AcceptForm";
 
@@ -11,7 +11,17 @@ export default async function AcceptTerms() {
   if (await viewingAs()) redirect("/dashboard/floor");
   const me = await currentPerson();
   if (!me) redirect("/login");
-  const terms = await currentTerms();
+  const terms = await currentTermsOrNull();
+  // Nobody gets in without agreeing (owner, 15 Nov): Terms that can't be read keep the desk closed, with a plain note.
+  if (!terms)
+    return (
+      <AuthFrame>
+        <div className="flex flex-col gap-3">
+          <h1 className="af-h">Accept the Terms</h1>
+          <p className="text-[13px] text-mute">The Terms can&apos;t be loaded right now, so your desk stays closed. Try again in a minute.</p>
+        </div>
+      </AuthFrame>
+    );
   if (!(await needsTermsTick({ userId: me.actor_id }, terms))) redirect("/dashboard/floor");
   const before = await latestAcceptance({ userId: me.actor_id });
   return (

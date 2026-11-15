@@ -1,4 +1,5 @@
 import { test } from "node:test";
+import { agreeTerms } from "./agree-terms";
 import assert from "node:assert/strict";
 import { testDataDir } from "./test-db";
 import { form, inRequest } from "./request-scope";
@@ -246,6 +247,7 @@ test("fix 2: the app's send routes refuse an unconfirmed receiver with 403", asy
   const sender = await account("appsender", true);
   const receiver = await receiverWithCollection("notyetapp", false);
   const { accessToken } = await issueAppSession(sender.id, "Phone");
+  await agreeTerms(sender.id);
   const call = (path: string, body: object) =>
     new Request(`http://localhost${path}`, { method: "POST", headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" }, body: JSON.stringify(body) });
   const start = await import("../src/app/api/v1/sends/route");
