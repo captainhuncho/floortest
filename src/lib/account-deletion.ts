@@ -84,7 +84,8 @@ export async function requestDeletion(userId: number, by: { adminId: number } | 
       "",
       "— FloorTest",
     ].join("\n"),
-  });
+    // The account is already off: a mail failure must not show the person an error (Safety, 15 Nov).
+  }).catch((e) => console.error("[deletions] switched-off email failed", userId, e));
   return requested;
 }
 
@@ -123,6 +124,8 @@ export async function restoreWithTicket(id: string | undefined) {
     );
     if (!back.changes) return null;
     await db.run("DELETE FROM restore_tickets WHERE user_id = ?", Number(t.user_id));
+    // An evidence row written before a purge that didn't happen is stale once the account is back (Safety, 15 Nov).
+    await db.run("DELETE FROM account_evidence WHERE user_id = ?", Number(t.user_id));
     return Number(t.user_id);
   });
   if (userId) await audit(userId, "account_restored");
@@ -200,7 +203,8 @@ export async function runDeletions(t = now()) {
       // Checked again just before: a hold or an admin's change since the list was read wins (Safety H1).
       if (!(await q.get(`SELECT 1 AS ok FROM users WHERE id = ? AND ${DUE}`, u.id, t - UNDO_MS))) continue;
       await keepEvidence(q, Number(u.id), t);
-      await purgeAccount(Number(u.id));
+      // Checked once more inside the purge's own transaction, with the row locked: a hold set in between wins.
+      if (!(await purgeAccount(Number(u.id), async (db) => !!(await db.get(`SELECT 1 AS ok FROM users WHERE id = ? AND ${DUE}`, u.id, t - UNDO_MS))))) continue;
       purged++;
     } catch (e) {
       failed++;
@@ -268,6 +272,8 @@ export async function clearLegalHold(adminId: number, userId: number) {
     t,
     userId,
   );
+  // A live account's old evidence row (from a purge a hold stopped) is rewritten at its real purge (Safety, 15 Nov).
+  if (live.changes) await q.run("DELETE FROM account_evidence WHERE user_id = ?", userId);
   const done = live.changes
     ? live
     : await q.run("UPDATE account_evidence SET legal_hold_at = NULL, legal_hold_reason = '', keep_from = ? WHERE user_id = ? AND legal_hold_at IS NOT NULL", t, userId);

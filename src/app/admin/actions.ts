@@ -180,7 +180,7 @@ export async function unsuspendAccount(userId: number) {
   // A deletion in its 14 days comes back only by the person signing in to restore it (Safety H1): switching it on
   // here would leave the deletion date set, and the account live but still due for purge.
   if (await q.get("SELECT 1 AS ok FROM users WHERE id = ? AND deletion_requested_at IS NOT NULL", u.id)) {
-    return fail("Deletion pending. The person can restore it by signing in within 14 days of asking.");
+    return fail("Deletion pending: staff can't switch this account back on. It is deleted 14 days after it was asked for, unless a legal hold stops it.");
   }
   const r = await q.tx(async (db) => {
     const r = await db.run("UPDATE users SET suspended_at = NULL, suspended_reason = '' WHERE id = ? AND suspended_at IS NOT NULL", u.id);

@@ -15,7 +15,7 @@ import { quarantined, recordDigest } from "@/lib/file-digests";
 export const runtime = "nodejs";
 
 const MAX = 8 * 1024 * 1024;
-const collectionOf = async (raw: string) => q.get<Collection>("SELECT * FROM collections WHERE id = ?", Number(raw) || 0);
+const collectionOf = async (raw: string) => q.get<Pick<Collection, "id" | "user_id" | "name" | "art_key">>("SELECT id, user_id, name, art_key FROM collections WHERE id = ?", Number(raw) || 0);
 
 /** The owner's collection, for changing its artwork (never during a read-only support "view as", never from a lost team desk). */
 async function ownCollection(raw: string) {

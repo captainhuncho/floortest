@@ -20,6 +20,8 @@ export { deviceLabel };
 export async function finishSignIn(userId: number, how: "password" | "two-factor" | "recovery code" | "reset" | "email code" | "Google" | "passkey" | "passkey as two-step") {
   // A switched-off (deleted) account inside its 14 days gets no session: this sign-in only opens the restore page.
   const restoring = await restorable(userId);
+  // Every sign-in path checks this first; here too, so a switched-off account never gets a session (Safety, 15 Nov).
+  if (!restoring && (await q.get("SELECT 1 AS ok FROM users WHERE id = ? AND suspended_at IS NOT NULL", userId))) redirect("/login");
   if (!restoring) await createSession(userId);
   await audit(userId, "signed_in", `${how === "password" ? "" : `with ${how}`}${restoring ? " (to restore)" : ""}`.trim());
   try {

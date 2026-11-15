@@ -282,6 +282,43 @@ test("a held account's tracks, events and log lines outlive ordinary retention; 
   assert.equal(await clearLegalHold(admin.id, admin.id), false);
 });
 
+test("the purge re-checks inside its own transaction; a restore drops a stale evidence row; a suspended account gets no session", async () => {
+  const { q } = await import("../src/lib/db");
+  const { purgeAccount } = await import("../src/lib/privacy");
+  const { requestDeletion, issueRestoreTicket, restoreWithTicket } = await import("../src/lib/account-deletion");
+  const { finishSignIn } = await import("../src/lib/security");
+  const a = await account();
+  assert.equal(await purgeAccount(a.id, async () => false), false, "a no from the locked check deletes nothing");
+  assert.equal(await q.count("SELECT COUNT(*) AS n FROM users WHERE id = ?", a.id), 1);
+
+  const b = await account();
+  await requestDeletion(b.id);
+  await q.run("INSERT INTO account_evidence (user_id, name, email, handle, account_created_at, deletion_requested_at, purged_at, keep_from, record) VALUES (?, 'x', ?, ?, 0, 0, 0, 0, '{}')", b.id, b.email, b.handle);
+  assert.equal(await restoreWithTicket(await issueRestoreTicket(b.id)), b.id);
+  assert.equal(await q.count("SELECT COUNT(*) AS n FROM account_evidence WHERE user_id = ?", b.id), 0, "stale evidence gone");
+
+  const banned = await account();
+  await q.run("UPDATE users SET suspended_at = ? WHERE id = ?", Date.now(), banned.id);
+  const jar: Jar = new Map();
+  const out = await inRequest(jar, "203.0.113.30", () => finishSignIn(banned.id, "password"));
+  assert.equal(out.redirect, "/login");
+  assert.equal(await q.count("SELECT COUNT(*) AS n FROM sessions WHERE user_id = ?", banned.id), 0, "no session");
+});
+
+test("hold actions are super admin only; the restore cookie is HttpOnly, SameSite and scoped to /restore", async () => {
+  const fs = await import("node:fs");
+  const { ACTION_NEEDS } = await import("../src/lib/ops-perms");
+  const needs = ACTION_NEEDS as Record<string, string>;
+  assert.equal(needs.adminSetLegalHold, "super");
+  assert.equal(needs.adminClearLegalHold, "super");
+  const src = fs.readFileSync("src/lib/security.ts", "utf8");
+  const set = src.slice(src.indexOf("set(RESTORE_COOKIE"), src.indexOf("set(RESTORE_COOKIE") + 260);
+  assert.match(set, /httpOnly: true/);
+  assert.match(set, /sameSite: "lax"/);
+  assert.match(set, /path: "\/restore"/);
+  assert.match(set, /secure: process\.env\.NODE_ENV === "production"/);
+});
+
 test("the restore route is open through the site lock and its name can't be taken as a link", async () => {
   const fs = await import("node:fs");
   assert.match(fs.readFileSync("src/proxy.ts", "utf8"), /"\/restore"/);
