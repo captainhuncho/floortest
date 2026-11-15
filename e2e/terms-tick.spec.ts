@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import { expect, test, wav } from "./fixtures";
 
 /**
@@ -25,13 +26,12 @@ test("a sender without an account ticks the Terms before Send turns on", async (
 
 const MAIL = `http://127.0.0.1:${Number(process.env.E2E_MAIL_PORT || 3212)}/mail`;
 
-test("a first-time sender confirms the code, ticks the Terms and the track goes through", async ({ page }) => {
-  test.setTimeout(180_000);
-  const email = `first-${Date.now().toString(36)}@example.test`;
+/** Fills the link page's send form for a new sender, up to and including the Terms tick. */
+async function fillFirstSend(page: Page, title: string, email: string) {
   await page.goto("/maxwell");
-  await page.getByLabel("Choose WAV or MP3 files").setInputFiles({ name: "Tick - Second.wav", mimeType: "audio/wav", buffer: wav(4) });
+  await page.getByLabel("Choose WAV or MP3 files").setInputFiles({ name: `Tick - ${title}.wav`, mimeType: "audio/wav", buffer: wav(4) });
   await expect(page.getByText(/WAV · \d+ KB · \d+:\d+/)).toBeVisible({ timeout: 30_000 });
-  await page.getByLabel("Track title").fill("Tick Second");
+  await page.getByLabel("Track title").fill(title);
   await page.getByLabel("Artist").fill("First Sender");
   const genre = page.getByRole("combobox", { name: "Genre" });
   if (await genre.count()) await genre.selectOption({ index: 1 });
@@ -44,6 +44,12 @@ test("a first-time sender confirms the code, ticks the Terms and the track goes 
   await page.getByLabel(/^Instagram/).fill("@firstsender");
   await expect(page.getByLabel("Artist")).toHaveValue("First Sender");
   await page.getByRole("checkbox", { name: /I have read, understood and agree to the Terms/ }).check();
+}
+
+test("a first-time sender confirms the code, ticks the Terms and the track goes through", async ({ page }) => {
+  test.setTimeout(180_000);
+  const email = `first-${Date.now().toString(36)}@example.test`;
+  await fillFirstSend(page, "Tick Second", email);
   const since = Date.now() - 1000;
   await page.getByRole("button", { name: /^Send to / }).click();
   let code = "";
@@ -59,4 +65,30 @@ test("a first-time sender confirms the code, ticks the Terms and the track goes 
   // Accepted and recorded: the send goes through instead of being refused for a missing tick.
   await expect(page.getByText(/Nothing else to do/)).toBeVisible({ timeout: 90_000 });
   await expect(page.getByText(/accept the Terms/)).toHaveCount(0);
+});
+
+test("when the Terms can't be checked, the send stops, says so and keeps the form filled", async ({ page }) => {
+  test.setTimeout(180_000);
+  const email = `down-${Date.now().toString(36)}@example.test`;
+  await fillFirstSend(page, "Tick Down", email);
+  // The server can't read the Terms (#547): it answers 503 before any file is stored.
+  const error = "Couldn't check the Terms just now. Nothing was sent. Try again in a minute: your details are still here.";
+  let puts = 0;
+  await page.route(/\/api\/submit\/maxwell$/, (route) =>
+    route.request().method() === "POST" ? route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error }) }) : route.continue(),
+  );
+  await page.route(/\/api\/storage\/upload/, (route) => (++puts, route.continue()));
+  const since = Date.now() - 1000;
+  await page.getByRole("button", { name: /^Send to / }).click();
+  const box = async () => (await (await page.request.get(`${MAIL}?to=${encodeURIComponent(email)}`)).json()) as { body: string; at: number }[];
+  await expect.poll(async () => (await box()).filter((m) => m.at >= since).length, { timeout: 30_000 }).toBeGreaterThan(0);
+  const code = (await box()).filter((m) => m.at >= since).at(-1)?.body.match(/\b(\d{6})\b/)?.[1] ?? "";
+  await page.getByLabel("6-digit code").fill(code);
+  await page.getByRole("button", { name: /^Confirm and send to / }).click();
+  await expect(page.getByText(error).first()).toBeVisible({ timeout: 60_000 });
+  expect(puts, "no file was uploaded").toBe(0);
+  await expect(page.getByLabel("Track title")).toHaveValue("Tick Down");
+  // The confirmed sender is kept as one "Sending as …" line, with the email.
+  await expect(page.getByText(new RegExp(`Sending as .*${email.replace(".", "\\.")}`))).toBeVisible();
+  await expect(page.getByText(/Nothing else to do/)).toHaveCount(0);
 });
